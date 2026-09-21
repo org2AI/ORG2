@@ -73,6 +73,14 @@ function addAction() {
   return result!;
 }
 
+function clickAddAction() {
+  const button = addAction().querySelector<HTMLButtonElement>(
+    "[data-spotlight-row-action]"
+  );
+  expect(button).not.toBeNull();
+  button!.click();
+}
+
 function filter(label: string) {
   const result = Array.from(
     document.querySelectorAll<HTMLButtonElement>(
@@ -203,7 +211,7 @@ describe("WorkItemPickerModal", () => {
     );
     expect(issue).not.toBeNull();
     act(() => issue!.click());
-    await act(async () => addAction().click());
+    await act(async () => clickAddAction());
     expect(props.onSelect).toHaveBeenCalledWith([
       expect.objectContaining({
         kind: "workitem",
@@ -239,7 +247,7 @@ describe("WorkItemPickerModal", () => {
     expect(document.body.textContent).not.toContain("Issue from repo-a");
 
     selectLocal();
-    await act(async () => addAction().click());
+    await act(async () => clickAddAction());
     expect(props.onSelect).toHaveBeenCalledWith([
       expect.objectContaining({ kind: "workitem", pillPath: "project/ABC-1" }),
     ]);
@@ -316,13 +324,13 @@ describe("WorkItemPickerModal", () => {
     await act(async () =>
       document
         .querySelector<HTMLButtonElement>(
-          '[data-testid="session-creator-work-item-picker-refresh"]'
+          '[data-testid="session-creator-work-item-picker-refresh"] [data-spotlight-row-action]'
         )!
         .click()
     );
     expect(mocks.refresh).toHaveBeenCalledOnce();
     expect(addAction().classList.contains("cursor-not-allowed")).toBe(true);
-    act(() => addAction().click());
+    act(() => clickAddAction());
     expect(props.onSelect).not.toHaveBeenCalled();
   });
 
@@ -340,7 +348,7 @@ describe("WorkItemPickerModal", () => {
     await act(async () =>
       document
         .querySelector<HTMLButtonElement>(
-          '[data-testid="session-creator-work-item-picker-refresh"]'
+          '[data-testid="session-creator-work-item-picker-refresh"] [data-spotlight-row-action]'
         )!
         .click()
     );

@@ -1,7 +1,9 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import React, { memo, useCallback, useMemo } from "react";
+import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { repoApi } from "@src/api/tauri/repo";
+import Message from "@src/components/Message";
 import { useRepoGitInitialization } from "@src/hooks/git";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
 import { currentBranchAtom, sessionRepoHintAtom } from "@src/store/repo";
@@ -11,17 +13,12 @@ import {
   activeWorkspaceRootPathAtom,
   activeWorktreeAtom,
 } from "@src/store/workspace";
-import {
-  indexingProgressAtom,
-  isIndexingAtom,
-} from "@src/store/workstation/codeEditor/search/indexingProgressAtom";
 
 import { BaseStatusBar } from "./StatusBarBase";
 import { EditorStatusBarLeft } from "./components/EditorStatusBarLeft";
 import { EditorStatusBarRight } from "./components/EditorStatusBarRight";
 import type { EditorStatusBarProps } from "./types";
 import { useEditorStatusBarGit } from "./utils/useEditorStatusBarGit";
-import { useIndexingIndicator } from "./utils/useIndexingIndicator";
 
 export type { CommitInfo, CursorPosition, EditorStatusBarProps } from "./types";
 
@@ -69,7 +66,25 @@ export const EditorStatusBar: React.FC<EditorStatusBarProps> = memo(
       checkoutLoading,
     } = useEditorStatusBarGit({ repoName, repoPath, branchName });
 
-    const { isGitInitialized } = useRepoGitInitialization(repoPath);
+    const { isGitInitialized, refreshGitInitialization } =
+      useRepoGitInitialization(repoPath);
+    const [isInitializingGit, setIsInitializingGit] = useState(false);
+
+    const handleInitializeGit = useCallback(async () => {
+      if (!repoPath || isInitializingGit) return;
+
+      setIsInitializingGit(true);
+      try {
+        await repoApi.importLocalRepo({ fs_path: repoPath });
+        await refreshGitInitialization();
+      } catch (error) {
+        Message.error(
+          error instanceof Error ? error.message : t("errors.unexpectedError")
+        );
+      } finally {
+        setIsInitializingGit(false);
+      }
+    }, [isInitializingGit, repoPath, refreshGitInitialization, t]);
 
     const sessionRepoHint = useAtomValue(sessionRepoHintAtom);
     const setActiveFolderId = useSetAtom(activeFolderIdAtom);
@@ -83,11 +98,6 @@ export const EditorStatusBar: React.FC<EditorStatusBarProps> = memo(
       selectRepo(sessionRepoHint.repoId);
     }, [sessionRepoHint, selectRepo, setActiveFolderId]);
     const showGitControls = isGitInitialized === true;
-
-    const isIndexingActive = useAtomValue(isIndexingAtom);
-    const indexingProgress = useAtomValue(indexingProgressAtom);
-
-    const showIndexingIndicator = useIndexingIndicator(isIndexingActive);
 
     const leftContent = useMemo(
       () => (
@@ -113,13 +123,12 @@ export const EditorStatusBar: React.FC<EditorStatusBarProps> = memo(
           syncStatusLabel={syncStatusLabel}
           commitShortSha={commitInfo?.shortSha}
           sessionRepoHint={sessionRepoHint}
-          showIndexingIndicator={showIndexingIndicator}
-          isIndexingActive={isIndexingActive}
-          indexingProgress={indexingProgress}
           onRepoClick={onRepoClick}
           onBranchClick={onBranchClick}
           onWorktreeClick={onWorktreeClick}
           onSyncClick={handleSyncClick}
+          isInitializingGit={isInitializingGit}
+          onInitializeGit={handleInitializeGit}
           onFetchClick={handleFetchClick}
           onPullClick={handlePullClick}
           onRebaseClick={handleRebaseClick}
@@ -132,6 +141,8 @@ export const EditorStatusBar: React.FC<EditorStatusBarProps> = memo(
         branchName,
         isGitInitialized,
         showGitControls,
+        isInitializingGit,
+        handleInitializeGit,
         checkoutLoading,
         needsPublish,
         isSyncBusy,
@@ -153,9 +164,6 @@ export const EditorStatusBar: React.FC<EditorStatusBarProps> = memo(
         handlePushClick,
         syncSpinClass,
         syncStatusLabel,
-        showIndexingIndicator,
-        isIndexingActive,
-        indexingProgress,
         isMultiRoot,
         workspaceLabel,
         sessionRepoHint,
@@ -181,7 +189,6 @@ export const EditorStatusBar: React.FC<EditorStatusBarProps> = memo(
       <BaseStatusBar
         leftContent={leftContent}
         rightContent={rightContent}
-        roundedBottom={false}
         className={className}
       />
     );

@@ -14,10 +14,10 @@ import {
   readTextFile,
   remove,
   rename,
-  writeTextFile,
 } from "@tauri-apps/plugin-fs";
 
 import { createLogger } from "@src/hooks/logger";
+import { writeTextFileSerial } from "@src/services/file/writeTextFileSerial";
 import {
   type FileNode,
   fileContentAtom,
@@ -25,7 +25,6 @@ import {
   fileIsBinaryAtom,
   fileLoadingContentAtom,
   fileLoadingTreeAtom,
-  fileMarkSavedAtom,
   fileRepoPathAtom,
   fileSaveErrorAtom,
   fileSavedContentAtom,
@@ -221,6 +220,15 @@ export const FileService = {
     const filePath = path ?? store.get(fileSelectedPathAtom);
     const fileContent = content ?? store.get(fileContentAtom);
 
+    if (
+      path &&
+      content === undefined &&
+      path !== store.get(fileSelectedPathAtom)
+    ) {
+      store.set(fileSaveErrorAtom, "Open the requested file before saving it");
+      return false;
+    }
+
     if (!filePath) {
       log.error("[FileService] No file to save");
       return false;
@@ -230,8 +238,9 @@ export const FileService = {
     store.set(fileSaveErrorAtom, null);
 
     try {
-      await writeTextFile(filePath, fileContent);
-      store.set(fileMarkSavedAtom);
+      await writeTextFileSerial(filePath, fileContent);
+      if (store.get(fileSelectedPathAtom) === filePath)
+        store.set(fileSavedContentAtom, fileContent);
       return true;
     } catch (error) {
       const message =
@@ -425,7 +434,7 @@ export const FileService = {
         }
       }
 
-      await writeTextFile(path, content);
+      await writeTextFileSerial(path, content);
       // Refresh tree to show new file
       await this.refresh();
 

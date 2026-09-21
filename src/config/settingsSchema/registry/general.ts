@@ -18,6 +18,7 @@ import {
   TECH_SAVVY_LEVELS,
 } from "@src/config/profile/userProfile";
 import type { SettingDefinition } from "@src/config/settingsSchema/types";
+import { DEFAULT_BUTTON_TOOLTIP_DELAY_MS } from "@src/config/tooltip";
 
 /**
  * Skins are declared per variant, so each picker only offers ids that actually
@@ -67,6 +68,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
       "zh",
       "zh-Hant",
       "es",
+      "hi",
       "ru",
       "pt",
       "de",
@@ -74,6 +76,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
       "ko",
       "tr",
       "vi",
+      "id",
       "pl",
     ]),
     default: "system",
@@ -87,6 +90,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
       zh: "简体中文",
       "zh-Hant": "繁體中文",
       es: "Español",
+      hi: "हिन्दी",
       ru: "Русский",
       pt: "Português",
       de: "Deutsch",
@@ -94,6 +98,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
       ko: "한국어",
       tr: "Türkçe",
       vi: "Tiếng Việt",
+      id: "Bahasa Indonesia",
       pl: "Polski",
     },
   },
@@ -223,6 +228,40 @@ export const GENERAL_SETTINGS_REGISTRY = {
       center: "Page center",
     },
   },
+  "general.spotlightDimBackground": {
+    schema: z.boolean(),
+    default: true,
+    description:
+      "Dim and slightly blur the rest of the window while Spotlight is open",
+    category: "general",
+  },
+  "general.spotlightDetailCard": {
+    schema: z.boolean(),
+    default: true,
+    description:
+      "Show the hover detail card next to a Spotlight row (path, description, current-selection state)",
+    category: "general",
+  },
+  "general.buttonTooltipsEnabled": {
+    schema: z.boolean(),
+    default: true,
+    description:
+      "Show the label and keyboard shortcut tooltip when hovering toolbar and icon buttons. Info-icon tooltips are unaffected.",
+    category: "general",
+  },
+  "general.buttonTooltipDelayMs": {
+    schema: z.union([
+      z.literal(0),
+      z.literal(250),
+      z.literal(500),
+      z.literal(750),
+      z.literal(1000),
+    ]),
+    default: DEFAULT_BUTTON_TOOLTIP_DELAY_MS,
+    description:
+      "Hover time in milliseconds before a button tooltip appears (0, 250, 500, 750 or 1000)",
+    category: "general",
+  },
   "layout.sidebarSelectedRowOpacity": {
     schema: z.number().min(0).max(20),
     default: 5,
@@ -236,9 +275,19 @@ export const GENERAL_SETTINGS_REGISTRY = {
       "Show a theme-aware depth edge between the macOS sidebar and content panel",
     category: "general",
   },
+  "general.myStationSharing": {
+    schema: z.enum(["working-directory", "chat-tab"]),
+    default: "working-directory",
+    description:
+      "Share Workstation tabs and view state across chat tabs in the same working directory, or keep a separate workspace for each chat tab",
+    category: "general",
+    enumLabels: {
+      "working-directory": "Working directory",
+      "chat-tab": "Chat tab",
+    },
+  },
   "general.chatPanelPosition": {
-    // Edited in the sidebar layout menu, not a settings page.
-    settingsSearch: false,
+    // Settings → Appearance → App → Layout; also the sidebar layout menu.
     schema: z.enum(["left", "right"]),
     default: "left" as const,
     description: "Chat panel side shared by My Station and Agent Station",
@@ -249,8 +298,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
     },
   },
   "general.chatTurnPaginationEnabled": {
-    // Edited in the sidebar layout menu, not a settings page.
-    settingsSearch: false,
+    // Settings → Appearance → Chat Panel → Chat history; also quick menus.
     schema: z.boolean(),
     default: false,
     description:
@@ -258,8 +306,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
     category: "general",
   },
   "general.modelPickerStyle": {
-    // Edited in the sidebar layout menu, not a settings page.
-    settingsSearch: false,
+    // Settings → Appearance → App → Layout; also the sidebar layout menu.
     schema: z.enum(["spotlight", "dropdown"]),
     default: "spotlight" as const,
     description:
@@ -322,6 +369,14 @@ export const GENERAL_SETTINGS_REGISTRY = {
     default: false,
     description:
       "Prevent the system from sleeping while any agent session is actively working. Releases automatically when all sessions finish or the toggle is turned off",
+    category: "general",
+  },
+  "general.highRefreshRate": {
+    schema: z.boolean(),
+    default: true,
+    description:
+      "macOS only: render the interface at the display's full refresh rate (up to 120 Hz on ProMotion displays) instead of WebKit's default pace near 60 Hz. " +
+      "Scrolling, resizing and animations are smoother and use more energy while they run; an idle window costs the same either way",
     category: "general",
   },
   "general.updateChannel": {

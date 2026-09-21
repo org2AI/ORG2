@@ -41,15 +41,19 @@ vi.mock("@src/engines/Simulator/components/CaptionBar", () => ({
   default: ({ text }: { text: string }) =>
     createElement("span", { "data-caption": true }, text),
 }));
-vi.mock("./AgentStationChromeFrame", () => ({
+vi.mock("@src/scaffold/WorkbenchChrome/AgentStationChromeFrame", () => ({
   default: (props: { children: React.ReactNode; captionVisible: boolean }) => {
     frameSpy(props);
     return props.children;
   },
 }));
 vi.mock("./AppShellContent", () => ({ AppShellContent: () => null }));
-vi.mock("./WorkstationTabBar", () => ({ default: () => null }));
-vi.mock("./WorkstationTabHeader", () => ({ default: () => null }));
+vi.mock("@src/scaffold/WorkbenchChrome/WorkstationTabBar", () => ({
+  default: () => null,
+}));
+vi.mock("@src/scaffold/WorkbenchChrome/WorkstationTabHeader", () => ({
+  default: () => null,
+}));
 vi.mock("../shared/StatusBar/StatusBarRenderer", () => ({
   StatusBarRenderer: () => null,
 }));

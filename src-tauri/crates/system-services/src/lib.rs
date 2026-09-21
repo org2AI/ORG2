@@ -11,6 +11,7 @@
 //! `app_platform` crate (which only ships the macOS Objective-C
 //! `@try/@catch` FFI trampoline used by `agent_core` and friends).
 
+pub mod app_lock;
 pub mod app_menu;
 pub mod dependencies;
 pub mod dock_menu;

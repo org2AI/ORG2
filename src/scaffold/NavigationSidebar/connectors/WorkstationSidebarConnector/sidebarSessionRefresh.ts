@@ -3,9 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
   IMPORTED_HISTORY_SOURCE_DESCRIPTORS,
   externalHistoryRescanSources,
+  splitScanSourcesByOutcome,
 } from "@src/api/tauri/externalHistory";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { createLogger } from "@src/hooks/logger";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   loadSessionRoster,
   refreshRecentNativeSessions,
@@ -13,8 +14,10 @@ import {
 import {
   dataSourceConfigAtom,
   dataSourceRosterSignaturesAtom,
+  dataSourceScanFailureAtom,
   externalSessionsEnabledAtom,
   getSourceConfig,
+  reduceDataSourceScanFailures,
 } from "@src/store/session/dataSourceConfigAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
@@ -50,10 +53,22 @@ async function performSidebarSessionRescan(): Promise<void> {
     ...(scanResult?.sourceSignatures ?? {}),
   }));
 
+  // A source whose importer failed is not stamped as scanned; the rest of
+  // the refresh still lands.
+  const { succeeded, failed } = splitScanSourcesByOutcome(
+    sourceIds,
+    scanResult
+  );
+  for (const { sourceId, error } of failed) {
+    logger.warn(`Rescan failed for external source ${sourceId}:`, error);
+  }
   const lastScannedAt = Date.now();
+  store.set(dataSourceScanFailureAtom, (previous) =>
+    reduceDataSourceScanFailures(previous, succeeded, failed, lastScannedAt)
+  );
   store.set(dataSourceConfigAtom, (previous) => {
     const next = { ...previous };
-    for (const sourceId of sourceIds) {
+    for (const sourceId of succeeded) {
       next[sourceId] = {
         ...getSourceConfig(previous, sourceId),
         lastScannedAt,

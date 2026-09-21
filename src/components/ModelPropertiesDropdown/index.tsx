@@ -2,11 +2,15 @@
  * ModelPropertiesDropdown
  *
  * Model effort and option controls apply changes immediately through the
- * caller's existing save path. Closing the popover only dismisses it.
+ * caller's existing save path, and closing the popover only dismisses it.
+ * With `confirmChanges`, edits are staged instead: Apply saves them, Cancel
+ * (or Escape) drops them, and nothing else closes the popover.
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
@@ -76,6 +80,12 @@ interface ModelPropertiesDropdownProps {
    * secondary account menu appears, not attached to the inline pill.
    */
   sidePanelInContainer?: boolean;
+  /**
+   * Stage edits behind Cancel / Apply. The popover then stays open until one
+   * of them (or Escape) is used: outside clicks and host close requests,
+   * such as hovering another palette row, no longer dismiss it.
+   */
+  confirmChanges?: boolean;
 }
 
 // ============ COMPONENT ============
@@ -91,12 +101,14 @@ export const ModelPropertiesDropdown: React.FC<
   disabled = false,
   centerInContainer = false,
   sidePanelInContainer = false,
+  confirmChanges = false,
 }) => {
+  const { t } = useTranslation();
   const engine = useDropdownEngine<HTMLButtonElement>({
     placement: "auto",
     align: "left",
     closeOnEsc: true,
-    closeOnClickOutside: true,
+    closeOnClickOutside: !confirmChanges,
     // Native range and switch controls own their keyboard interactions.
     autoKeyboardNavigation: false,
     disabled,
@@ -133,7 +145,7 @@ export const ModelPropertiesDropdown: React.FC<
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || confirmChanges) return;
     const handleCloseRequest = (event: Event) => {
       const trigger = engine.triggerRef.current;
       const hoveredElement = (
@@ -149,7 +161,21 @@ export const ModelPropertiesDropdown: React.FC<
         handleCloseRequest
       );
     };
-  }, [close, engine.triggerRef, isOpen]);
+  }, [close, confirmChanges, engine.triggerRef, isOpen]);
+
+  // Staged model id while `confirmChanges` is on; null means "no edits yet",
+  // so every open starts from the saved value.
+  const [draft, setDraft] = useState<string | null>(null);
+  const shownValue = confirmChanges ? (draft ?? value) : value;
+  const closeDiscarding = useCallback(() => {
+    setDraft(null);
+    close();
+  }, [close]);
+  useEffect(() => {
+    if (!isOpen) return;
+    // Escape and every other engine-driven close also drop the draft.
+    return () => setDraft(null);
+  }, [isOpen]);
 
   useEffect(() => {
     // While the panel is closed (or custom positioning is off) the stale
@@ -272,8 +298,8 @@ export const ModelPropertiesDropdown: React.FC<
   ]);
 
   const selection = useMemo(
-    () => variantOptions.parseSelection(value),
-    [value, variantOptions]
+    () => variantOptions.parseSelection(shownValue),
+    [shownValue, variantOptions]
   );
   const availableLevels = variantOptions.availableLevels;
 
@@ -286,10 +312,20 @@ export const ModelPropertiesDropdown: React.FC<
         fast: next.fast && variantOptions.fastAvailable(next),
       };
       const modelId = variantOptions.resolveVariantId(normalized);
-      if (modelId && modelId !== value) onChange(modelId);
+      if (!modelId) return;
+      if (confirmChanges) {
+        setDraft(modelId);
+        return;
+      }
+      if (modelId !== value) onChange(modelId);
     },
-    [onChange, value, variantOptions]
+    [confirmChanges, onChange, value, variantOptions]
   );
+
+  const handleApply = () => {
+    if (draft && draft !== value) onChange(draft);
+    closeDiscarding();
+  };
 
   const handleThinkingToggle = (thinking: boolean) =>
     changeSelection({ ...selection, thinking });
@@ -359,6 +395,15 @@ export const ModelPropertiesDropdown: React.FC<
     ? positionStyle
     : { ...positionStyle, visibility: "hidden", pointerEvents: "none" };
 
+  // The staged (confirm) popover groups sections with the regular dropdown
+  // separator; the immediate popover keeps its bordered sections.
+  const sectionClass = confirmChanges
+    ? DROPDOWN_PANEL.paddingClass
+    : `${DROPDOWN_CLASSES.sectionContainer} last:border-b-0`;
+  const separator = confirmChanges ? (
+    <div role="separator" className={DROPDOWN_CLASSES.menuGroupSeparator} />
+  ) : null;
+
   const panel = isOpen && (
     <div
       ref={panelRef}
@@ -373,22 +418,29 @@ export const ModelPropertiesDropdown: React.FC<
           slider keeps the same discrete model variants while making the
           choice feel faster than a menu of rows. */}
       {availableLevels.length > 0 && (
-        <div className={`${DROPDOWN_CLASSES.sectionContainer} last:border-b-0`}>
-          <EffortSlider
-            key={getModelVariantBaseModel(value)}
-            levels={availableLevels}
-            value={selection.level}
-            onChange={handleLevelSelect}
-            fast={showFastRow && selection.fast}
-            animate={hasPosition}
-          />
+        <div className={sectionClass}>
+          {/* Inset to the switch rows' 10px content edge; the shared
+              section token and EffortSlider stay untouched. */}
+          <div className={`${DROPDOWN_ITEM.paddingXClass} py-1`}>
+            <EffortSlider
+              key={getModelVariantBaseModel(shownValue)}
+              levels={availableLevels}
+              value={selection.level}
+              onChange={handleLevelSelect}
+              fast={showFastRow && selection.fast}
+              animate={hasPosition}
+            />
+          </div>
         </div>
       )}
 
       {/* Thinking / Fast switches stay hidden when the family or current
           selection doesn't expose that dimension. */}
+      {availableLevels.length > 0 &&
+        (showThinkingRow || showFastRow) &&
+        separator}
       {(showThinkingRow || showFastRow) && (
-        <div className={`${DROPDOWN_CLASSES.sectionContainer} last:border-b-0`}>
+        <div className={sectionClass}>
           {showThinkingRow && (
             <SwitchRow
               icon={
@@ -420,6 +472,32 @@ export const ModelPropertiesDropdown: React.FC<
             />
           )}
         </div>
+      )}
+
+      {confirmChanges && (
+        <>
+          {separator}
+          <div
+            className={`flex justify-end gap-2 ${DROPDOWN_ITEM.paddingXClass} py-1.5`}
+          >
+            <Button
+              size="small"
+              variant="tertiary"
+              data-testid="model-properties-cancel"
+              onClick={closeDiscarding}
+            >
+              {t("common:actions.cancel", { defaultValue: "Cancel" })}
+            </Button>
+            <Button
+              size="small"
+              variant="primary"
+              data-testid="model-properties-apply"
+              onClick={handleApply}
+            >
+              {t("common:actions.apply", { defaultValue: "Apply" })}
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );

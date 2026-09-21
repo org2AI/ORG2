@@ -1,3 +1,5 @@
+import { ideServerAuthHeaders } from "@src/config/ideServer";
+
 import { FILE_API_BASE_URL } from "./constants";
 
 interface FileMtimeResponse {
@@ -7,7 +9,8 @@ interface FileMtimeResponse {
 export async function fetchFileMtime(filePath: string): Promise<number | null> {
   const params = new URLSearchParams({ file_path: filePath });
   const response = await fetch(
-    `${FILE_API_BASE_URL}/mtime?${params.toString()}`
+    `${FILE_API_BASE_URL}/mtime?${params.toString()}`,
+    { headers: ideServerAuthHeaders() }
   );
 
   if (!response.ok) {

@@ -2,7 +2,7 @@ import i18next from "i18next";
 import { useEffect, useRef } from "react";
 
 import { createLogger } from "@src/hooks/logger";
-import type { SessionReferenceOpen } from "@src/shared/dnd/sessionTabDrag";
+import type { SessionReferenceOpen } from "@src/util/dnd/sessionTabDrag";
 import {
   type NativeMenuItemOptions,
   popupNativeMenu,

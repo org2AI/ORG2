@@ -20,10 +20,10 @@ import { useTranslation } from "react-i18next";
 
 import { gitFetchStream } from "@src/api/http/git/streaming";
 import Button from "@src/components/Button";
-import { Placeholder } from "@src/components/Placeholder";
+import { PLACEHOLDER_TOKENS, Placeholder } from "@src/components/Placeholder";
 import type { GitFileStatus } from "@src/config/gitStatus";
 import { CodeMirrorDiff } from "@src/features/CodeMirror";
-import { ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
+import { Archive04Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import {
   FileHeader,
   GIT_FILE_LIST_MAX_WIDTH,
@@ -306,6 +306,13 @@ const GitCommitDetailContent: React.FC<GitCommitDetailContentProps> = ({
         <Placeholder
           variant="empty"
           placement="detail-panel"
+          icon={
+            <HugeiconsIcon
+              icon={Archive04Icon}
+              data-icon="archive-04"
+              size={PLACEHOLDER_TOKENS.detailIconSize}
+            />
+          }
           title={t("placeholders.noChanges")}
           subtitle={shortSha}
           fillParentHeight
@@ -347,7 +354,6 @@ const GitCommitDetailContent: React.FC<GitCommitDetailContentProps> = ({
             {fileListCollapsed && (
               <Button
                 layout="custom"
-                appearance="custom"
                 className="flex w-6 shrink-0 items-center justify-center border-r border-border-2 hover:bg-fill-1"
                 onClick={toggleFileList}
                 title={t("tooltips.showFileList")}

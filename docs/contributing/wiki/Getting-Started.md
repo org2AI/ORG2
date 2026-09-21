@@ -6,7 +6,7 @@ This page covers everything needed to install ORGII, get it running, and launch 
 
 The easiest way to start is to download a pre-built release.
 
-1. Go to the [Releases](https://github.com/YORG-AI/ORGII/releases) page.
+1. Go to the [Releases](https://github.com/org2AI/ORG2/releases) page.
 2. Download the asset for your platform:
    - **macOS (Apple Silicon):** `ORGII_<version>_aarch64.dmg`
    - **macOS (Intel):** `ORGII_<version>_x64.dmg`
@@ -32,8 +32,8 @@ The easiest way to start is to download a pre-built release.
 ### Clone and install
 
 ```bash
-git clone https://github.com/YORG-AI/ORGII.git
-cd ORGII
+git clone https://github.com/org2AI/ORG2.git
+cd ORG2
 pnpm install
 ```
 

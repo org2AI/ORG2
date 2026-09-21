@@ -22,14 +22,18 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
-import Select from "@src/components/Select";
+import TabPill from "@src/components/TabPill";
 import Textarea from "@src/components/Textarea";
-import { ClipboardCopyIcon, KeyboardIcon, SearchAreaIcon } from "@src/icons";
 import {
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import {
+  ClipboardCopyIcon,
+  InputShortTextIcon,
+  SearchAreaIcon,
+} from "@src/icons";
 import {
   SelectionGrid,
   type SelectionGridOption,
@@ -107,7 +111,7 @@ const GenericSetup: FC<AgentSetupProps> = ({
       [GENERIC_SETUP_METHOD.ENTER_KEY]: {
         key: GENERIC_SETUP_METHOD.ENTER_KEY,
         label: t("keyVault.enterKey"),
-        icon: KeyboardIcon,
+        icon: InputShortTextIcon,
       },
       [GENERIC_SETUP_METHOD.EXTRACT]: {
         key: GENERIC_SETUP_METHOD.EXTRACT,
@@ -293,12 +297,13 @@ const GenericSetup: FC<AgentSetupProps> = ({
             >
               <Button
                 variant={
-                  isOAuthConfigured || isApiKeyDetected ? "success" : "primary"
+                  isOAuthConfigured || isApiKeyDetected
+                    ? "secondary"
+                    : "primary"
                 }
-                appearance={
-                  isOAuthConfigured || isApiKeyDetected ? "outline" : undefined
+                tone={
+                  isOAuthConfigured || isApiKeyDetected ? "success" : undefined
                 }
-                size="default"
                 loading={autoDetecting}
                 disabled={autoDetecting}
                 onClick={() => onAutoDetect?.()}
@@ -329,7 +334,6 @@ const GenericSetup: FC<AgentSetupProps> = ({
         <SectionContainer>
           <SectionRow
             label={t("keyVault.apiKeyLabel")}
-            description={t("keyVault.apiKeyDesc")}
             layout="vertical"
             required
           >
@@ -362,14 +366,17 @@ const GenericSetup: FC<AgentSetupProps> = ({
                   {baseUrlMode === "custom" ? <CustomBaseUrlInfoIcon /> : null}
                 </span>
               }
-              description={t("keyVault.baseUrlDesc")}
               layout="vertical"
             >
               <div className="flex items-center gap-2">
-                <Select
-                  value={baseUrlMode}
-                  onChange={(val) => {
-                    const mode = val as BaseUrlMode;
+                <TabPill
+                  tabs={[
+                    { key: "official", label: t("keyVault.officialUrl") },
+                    { key: "custom", label: t("keyVault.customUrl") },
+                  ]}
+                  activeTab={baseUrlMode}
+                  onChange={(key) => {
+                    const mode = key as BaseUrlMode;
                     setBaseUrlMode(mode);
                     if (mode === "official") {
                       onChange({
@@ -377,19 +384,11 @@ const GenericSetup: FC<AgentSetupProps> = ({
                       });
                     }
                   }}
-                  options={[
-                    {
-                      value: "official",
-                      label: t("keyVault.officialUrl"),
-                    },
-                    {
-                      value: "custom",
-                      label: t("keyVault.customUrl"),
-                    },
-                  ]}
-                  size="default"
-                  dropdownWidthMode="min-match"
-                  className="w-fit shrink-0"
+                  variant="pill"
+                  buttonStyle
+                  fillWidth={false}
+                  height={32}
+                  className="shrink-0"
                 />
                 <Input
                   value={
@@ -399,6 +398,9 @@ const GenericSetup: FC<AgentSetupProps> = ({
                   }
                   onChange={(value) =>
                     onChange({ extracted_base_url: value || undefined })
+                  }
+                  placeholder={
+                    baseUrlMode === "custom" ? officialBaseUrl || "" : undefined
                   }
                   size="default"
                   className="min-w-0 flex-1"
@@ -410,9 +412,8 @@ const GenericSetup: FC<AgentSetupProps> = ({
 
           <SectionRow label="" showHeader={false}>
             <Button
-              variant={keyValidated ? "success" : "primary"}
-              appearance={keyValidated ? "outline" : undefined}
-              size="default"
+              variant={keyValidated ? "secondary" : "primary"}
+              tone={keyValidated ? "success" : undefined}
               loading={validatingKey}
               disabled={validatingKey || !data.raw_key_input}
               onClick={validateKey}
@@ -452,7 +453,6 @@ const GenericSetup: FC<AgentSetupProps> = ({
               <div className="mt-2 flex justify-start">
                 <Button
                   variant="primary"
-                  size="default"
                   loading={extracting}
                   disabled={extracting || !rawExtractInput.trim()}
                   onClick={() => {

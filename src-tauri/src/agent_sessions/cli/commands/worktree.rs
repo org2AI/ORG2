@@ -1,5 +1,5 @@
 //! Worktree branch operations on an existing session —
-//! `cli_agent_merge`, `cli_agent_worktree_diff`, `cli_agent_worktree_discard`.
+//! `cli_agent_merge`, `cli_agent_worktree_discard`.
 
 use super::super::persistence;
 use core_types::worktree::{MergeStrategy, WorktreeMergeResult};
@@ -89,39 +89,6 @@ pub async fn cli_agent_merge(
     crate::api::websocket_handler::broadcast(ws_msg.to_string());
 
     Ok(result)
-}
-
-/// Get diff between a session's worktree branch and its base branch.
-#[tauri::command]
-pub async fn cli_agent_worktree_diff(session_id: String) -> Result<String, String> {
-    let session = tokio::task::spawn_blocking({
-        let sid = session_id.clone();
-        move || persistence::get_session(&sid).map_err(|e| format!("DB error: {}", e))
-    })
-    .await
-    .map_err(|e| format!("Task error: {}", e))??
-    .ok_or_else(|| format!("Session {} not found", session_id))?;
-
-    let repo_path = session
-        .repo_path
-        .as_deref()
-        .ok_or("Session has no repo_path")?;
-    let base_branch = session
-        .base_branch
-        .as_deref()
-        .ok_or("Session has no base_branch")?;
-
-    if session.worktree_path.is_none() {
-        return Err("Session does not use worktree isolation".to_string());
-    }
-
-    let repo = std::path::Path::new(repo_path).to_path_buf();
-    let sid = session_id.clone();
-    let base = base_branch.to_string();
-
-    tokio::task::spawn_blocking(move || worktree::get_session_diff(&repo, &sid, &base))
-        .await
-        .map_err(|e| format!("Task error: {}", e))?
 }
 
 /// Discard a session's worktree (remove worktree and delete branch).

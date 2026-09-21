@@ -81,6 +81,8 @@ export function partsToPlainText(parts: ComposerFragmentPart[]): string {
 }
 
 export interface CutHandlerContext {
+  /** Opens the undo step the cut belongs to; `onAfterCut` closes it. */
+  markHistoryBoundary: () => void;
   reconcilePillsFromDom: () => void;
   onAfterCut: () => void;
 }
@@ -119,9 +121,13 @@ export function createCutHandler(ctx: CutHandlerContext) {
       // Some environments (JSDOM) do not support arbitrary MIME types.
     }
 
-    // Delete the selected range from the live DOM.
+    // Delete the selected range from the live DOM. `deleteContents` collapses
+    // the range to the point the content was removed from; keep the caret
+    // there. Clearing the selection instead leaves a focused editor with no
+    // range, which paints no caret and drops whatever is typed next.
+    ctx.markHistoryBoundary();
     range.deleteContents();
-    selection.removeAllRanges();
+    selection.collapse(range.startContainer, range.startOffset);
 
     // Sync pill registry and notify content-change subscribers.
     ctx.reconcilePillsFromDom();

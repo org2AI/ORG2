@@ -2,15 +2,16 @@ import React, { createContext, useContext, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import { COMPOSER_BOTTOM_DOCK_PADDING_CLASS } from "@src/config/composerStackTokens";
-import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
-import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 import {
   DetailPanelContainer,
   ScrollTrail,
   WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
   WORKSTATION_TRAIL_WIDTH,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { COMPOSER_BOTTOM_DOCK_PADDING_CLASS } from "@src/config/composerStackTokens";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
+import { useDetailRailLayout } from "@src/hooks/ui/layout/useDetailRailLayout";
+import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 
 import { resolveWorkItemThreadHeaderPolicy } from "./presentation";
 import { WORK_ITEM_THREAD_TOKENS } from "./tokens";
@@ -46,6 +47,7 @@ export const WorkItemThreadLayout: React.FC<WorkItemThreadLayoutProps> = ({
   sidebar,
 }) => {
   const { t } = useTranslation(["projects", "common"]);
+  const { paneRef, inlineRail } = useDetailRailLayout(Boolean(sidebar));
   const navigationTrailHost = useContext(WorkItemThreadNavigationPortalContext);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -63,7 +65,8 @@ export const WorkItemThreadLayout: React.FC<WorkItemThreadLayoutProps> = ({
   );
   // The trail sits inside the details rail when this layout owns one, so the
   // thread keeps a single right-hand column instead of stacking two rails.
-  const ownsDetailsRail = Boolean(sidebar) && !navigationTrailHost;
+  const ownsDetailsRail =
+    Boolean(sidebar) && !navigationTrailHost && !inlineRail;
   const navigationRail = (
     <div
       className={
@@ -90,7 +93,10 @@ export const WorkItemThreadLayout: React.FC<WorkItemThreadLayoutProps> = ({
 
   return (
     <DetailPanelContainer>
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <div
+        ref={paneRef}
+        className="relative flex min-h-0 flex-1 overflow-hidden"
+      >
         <div
           ref={scrollContainerRef}
           className="@container scrollbar-hide min-h-0 min-w-0 flex-1 overflow-y-auto"
@@ -121,6 +127,14 @@ export const WorkItemThreadLayout: React.FC<WorkItemThreadLayoutProps> = ({
               style={{ paddingBottom: footerBottomInset }}
               data-testid="work-item-thread-content-body"
             >
+              {inlineRail && sidebar ? (
+                <div
+                  className="mb-4"
+                  data-testid="work-item-thread-inline-properties"
+                >
+                  {sidebar}
+                </div>
+              ) : null}
               {headerPolicy.showHeader ? (
                 <div className={WORK_ITEM_THREAD_TOKENS.metadataBand}>
                   {path ? <div className="shrink-0">{path}</div> : null}

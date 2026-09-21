@@ -19,7 +19,7 @@ const ZCODE_PLUGIN_VERSION: &str = "0.1.0";
 
 /// Root of ZCode's filesystem plugin store (`~/.zcode/cli/plugins`).
 fn zcode_plugins_root() -> PathBuf {
-    app_paths::home_dir()
+    app_paths::external_history_home_dir()
         .join(".zcode")
         .join("cli")
         .join("plugins")
@@ -160,7 +160,7 @@ fn zcode_remove_plugin_from_registry() -> Result<(), String> {
 /// `true`; the default is `false`, so installing the cache/marketplace/data
 /// files alone is not enough — the config entry must be set too.
 pub(super) fn zcode_config_path() -> PathBuf {
-    app_paths::home_dir()
+    app_paths::external_history_home_dir()
         .join(".zcode")
         .join("cli")
         .join("config.json")
@@ -314,8 +314,8 @@ pub(super) fn update_zcode_plugin(enabled: bool, executable: &Path) -> Result<()
         &json!({
             "name": ZCODE_PLUGIN_NAME,
             "version": ZCODE_PLUGIN_VERSION,
-            "description": "ORGII session provenance — records file-interaction metadata via a managed hook. Prompts, tool output, and file contents are not stored.",
-            "author": { "name": "ORGII" },
+            "description": "ORG2 session provenance — records file-interaction metadata via a managed hook. Prompts, tool output, and file contents are not stored.",
+            "author": { "name": "ORG2" },
             "license": "MIT"
         }),
     )?;

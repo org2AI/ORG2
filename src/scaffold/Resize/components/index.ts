@@ -2,8 +2,4 @@
  * Resize Components - Barrel Export
  */
 
-export {
-  HorizontalResizeHandle,
-  ResizeHandle,
-  VerticalResizeHandle,
-} from "./ResizeHandle";
+export { HorizontalResizeHandle, VerticalResizeHandle } from "./ResizeHandle";

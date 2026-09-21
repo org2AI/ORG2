@@ -43,26 +43,17 @@ export function resolveVariantLabel(
   return variant.label;
 }
 
+/** Glyph inherits colour so the dropdown can tint it when selected. */
 function variantIconNode(
   variant: UnifiedProviderVariant,
   size: number
 ): React.ReactNode {
-  if (variant.mode === "api_key") {
-    return (
-      <HugeiconsIcon
-        icon={Key02Icon}
-        data-icon="key-round"
-        size={size}
-        className="shrink-0 text-text-3"
-      />
-    );
-  }
   return (
     <HugeiconsIcon
-      icon={Calendar01Icon}
-      data-icon="calendar"
+      icon={variant.mode === "api_key" ? Key02Icon : Calendar01Icon}
+      data-icon={variant.mode === "api_key" ? "key-round" : "calendar"}
       size={size}
-      className="shrink-0 text-text-3"
+      className="shrink-0"
     />
   );
 }
@@ -189,17 +180,10 @@ export function buildVariantSelectOptions(
   if (!selectedProvider || selectedProvider.variants.length <= 1) return [];
   return selectedProvider.variants.map((variant) => {
     const label = resolveVariantLabel(variant, selectedProvider, t);
-    const icon = variantIconNode(variant, 16);
-    const labelNode = (
-      <span className="flex items-center gap-2">
-        {icon}
-        {label}
-      </span>
-    );
     return {
       value: variant.modelType,
-      label: labelNode,
-      triggerLabel: labelNode,
+      label,
+      icon: variantIconNode(variant, 16),
       extra: { searchText: label },
     };
   });

@@ -181,3 +181,144 @@ fn codex_embedded_only_header_remains_reachable_without_retaining_bytes() {
     assert!(users[0].result.get("images").is_none());
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn generated_output_images_survive_replay_without_embedding_bytes() {
+    use serde_json::json;
+    let dir = std::env::temp_dir().join(format!("orgii-generated-replay-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("rollout.jsonl");
+    let rows = [
+        json!({"type":"event_msg","payload":{"type":"user_message","message":"draw an avatar"}}),
+        json!({"type":"response_item","payload":{"type":"custom_tool_call","call_id":"draw","name":"exec","input":"const result = await tools.image_gen__imagegen({prompt: 'avatar'}); generatedImage(result);"}}),
+        json!({"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"draw","output":[{"type":"input_text","text":"Script completed"},{"type":"input_image","image_url":"data:image/png;base64,AVATAR"}]}}),
+        json!({"type":"response_item","payload":{"type":"image_generation_call","id":"native-image","status":"completed","result":"NATIVE"}}),
+    ];
+    std::fs::write(
+        &path,
+        rows.iter()
+            .map(serde_json::Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n",
+    )
+    .unwrap();
+    for _ in 0..2 {
+        let chunks = super::load_codex_app_from_path("codexapp-generated", &path).unwrap();
+        let images = chunks
+            .iter()
+            .filter_map(|chunk| chunk.result.get("images"))
+            .collect::<Vec<_>>();
+        assert_eq!(images.len(), 2);
+        let reference = images[0][0].as_str().unwrap();
+        let native_descriptor: Vec<String> = serde_json::from_str(
+            images[1][0]
+                .as_str()
+                .unwrap()
+                .strip_prefix("orgii-transcript-image:")
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            super::load_codex_image_from_path(&path, &native_descriptor[1], &native_descriptor[2])
+                .unwrap()
+                .as_deref(),
+            Some("data:image/png;base64,NATIVE")
+        );
+        assert!(!serde_json::to_string(&chunks)
+            .unwrap()
+            .contains("base64,AVATAR"));
+        let descriptor: Vec<String> =
+            serde_json::from_str(reference.strip_prefix("orgii-transcript-image:").unwrap())
+                .unwrap();
+        assert_eq!(
+            super::load_codex_image_from_path(&path, &descriptor[1], &descriptor[2])
+                .unwrap()
+                .as_deref(),
+            Some("data:image/png;base64,AVATAR")
+        );
+    }
+    // A later user turn forces generated output into the collapsed catalog path.
+    use std::io::Write;
+    writeln!(
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .unwrap(),
+        "{}",
+        json!({"type":"event_msg","payload":{"type":"user_message","message":"continue"}})
+    )
+    .unwrap();
+    for _ in 0..2 {
+        let window =
+            super::load_codex_app_initial_window_from_path("codexapp-generated", &path, 1).unwrap();
+        let preview = window
+            .chunks
+            .iter()
+            .find(|c| c.result.get("unloadedTurn").is_some())
+            .unwrap();
+        let images = preview.result["images"].as_array().unwrap();
+        assert_eq!(images.len(), 2);
+        assert!(!serde_json::to_string(&window.chunks)
+            .unwrap()
+            .contains("base64,AVATAR"));
+        for (image, expected) in images.iter().zip([
+            "data:image/png;base64,AVATAR",
+            "data:image/png;base64,NATIVE",
+        ]) {
+            let parts: Vec<String> = serde_json::from_str(
+                image
+                    .as_str()
+                    .unwrap()
+                    .strip_prefix("orgii-transcript-image:")
+                    .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(
+                super::load_codex_image_from_path(&path, &parts[1], &parts[2])
+                    .unwrap()
+                    .as_deref(),
+                Some(expected)
+            );
+        }
+    }
+    let cloud =
+        super::load_codex_app_cloud_turn_from_path("codexapp-generated", &path, "codex-user-0", 0)
+            .unwrap();
+    assert!(cloud
+        .iter()
+        .any(|chunk| chunk.result["images"][0] == "data:image/png;base64,AVATAR"));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+#[ignore = "requires local generated-image rollout"]
+fn real_generated_images_in_collapsed_preview() {
+    let path = std::path::PathBuf::from(std::env::var("ORGII_CODEX_ROLLOUT_FIXTURE").unwrap());
+    let window =
+        super::load_codex_app_initial_window_from_path("codexapp-generated", &path, 1).unwrap();
+    let images: Vec<_> = window
+        .chunks
+        .iter()
+        .filter(|c| c.function != "user_message")
+        .filter_map(|c| c.result["images"].as_array())
+        .flatten()
+        .collect();
+    assert_eq!(images.len(), 4);
+    for image in images {
+        let parts: Vec<String> = serde_json::from_str(
+            image
+                .as_str()
+                .unwrap()
+                .strip_prefix("orgii-transcript-image:")
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            super::load_codex_image_from_path(&path, &parts[1], &parts[2])
+                .unwrap()
+                .unwrap()
+                .starts_with("data:image/")
+        );
+    }
+}

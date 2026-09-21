@@ -117,7 +117,7 @@ describe("StartPageQuotaGrid", () => {
     expect(markup).toContain("flex flex-col gap-3 @container/quota");
     expect(markup).toContain("kanban.dataSource.views.quota");
     expect(markup).toContain("flex min-h-9 items-center justify-between gap-3");
-    expect(markup).toContain("border-0 bg-transparent text-text-2");
+    expect(markup).toContain("btn:border-0 btn:bg-transparent btn:text-text-2");
     expect(markup).toContain(
       "truncate text-sm leading-5 font-semibold text-text-1"
     );

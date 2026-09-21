@@ -25,6 +25,7 @@
 import { useSetAtom } from "jotai";
 import React, { useEffect } from "react";
 
+import { TallSectionLabelsProvider } from "@src/components/layout/Section";
 import { wizardBreadcrumbTitleAtom } from "@src/store/ui/wizardBreadcrumbAtom";
 
 // ============================================
@@ -73,13 +74,15 @@ const WizardShell: React.FC<WizardShellProps> = ({
   }, [title, setBreadcrumbTitle]);
 
   return (
-    <div
-      className="flex h-full w-full flex-col overflow-hidden pt-2"
-      data-testid={testId}
-    >
-      {afterHeader}
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-    </div>
+    <TallSectionLabelsProvider>
+      <div
+        className="flex h-full w-full flex-col overflow-hidden pt-2"
+        data-testid={testId}
+      >
+        {afterHeader}
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      </div>
+    </TallSectionLabelsProvider>
   );
 };
 

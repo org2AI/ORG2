@@ -51,10 +51,8 @@ export const PlaybackSpeedInline: React.FC<PlaybackSpeedInlineProps> = ({
     <>
       <Button
         layout="custom"
-        appearance="custom"
         data-testid="session-replay-speed-trigger"
         ref={triggerRef as React.Ref<HTMLButtonElement>}
-        htmlType="button"
         disabled={disabled}
         onClick={toggle}
         aria-expanded={isOpen}
@@ -84,10 +82,8 @@ export const PlaybackSpeedInline: React.FC<PlaybackSpeedInlineProps> = ({
                 return (
                   <Button
                     layout="custom"
-                    appearance="custom"
                     key={speed}
                     data-testid={`session-replay-speed-${speed}`}
-                    htmlType="button"
                     role="option"
                     aria-selected={selected}
                     className={`${DROPDOWN_CLASSES.item} ${

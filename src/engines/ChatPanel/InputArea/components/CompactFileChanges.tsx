@@ -3,6 +3,8 @@
  *
  * Headless tracker for file-change stats shown in the composer files pill.
  * It intentionally renders no UI: clicking the pill opens Agent Station Diff.
+ * The chat composer mounts it only for native sessions; an imported session's
+ * stats come from its session summary, resolved by ChatView.
  */
 import { useAtomValue } from "jotai";
 import React, { memo, useEffect, useMemo } from "react";

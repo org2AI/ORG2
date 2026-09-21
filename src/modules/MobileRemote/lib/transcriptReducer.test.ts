@@ -8,6 +8,15 @@ import {
 } from "./transcriptReducer";
 
 describe("transcriptReducer", () => {
+  it("preserves bounded image metadata without accepting image payloads", () => {
+    const next = reduceTranscriptFromUpserts(createInitialTranscriptState(), [
+      { id: "image", source: "user", imageCount: 2, displayText: "screenshot" },
+      { id: "many", source: "user", imageCount: 999 },
+      { id: "bad", source: "user", imageCount: -1 },
+    ]);
+    expect(next.items.map((item) => item.imageCount)).toEqual([2, 8, 0]);
+    expect(next.items[0].text).toBe("screenshot");
+  });
   it("projects user and agent upserts", () => {
     const next = reduceTranscriptFromUpserts(createInitialTranscriptState(), [
       {

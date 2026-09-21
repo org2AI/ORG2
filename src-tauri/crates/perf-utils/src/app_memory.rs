@@ -39,6 +39,7 @@ pub async fn get_app_memory_snapshot_v1(app: AppHandle) -> AppMemorySnapshot {
     }
 }
 
+#[cfg(target_os = "macos")]
 #[cfg(test)]
 use inventory::ProcessDescriptor;
 #[cfg(target_os = "macos")]
@@ -51,6 +52,7 @@ use platform::parse_smaps_rollup;
 use platform::{macos_region_breakdown, macos_rusage};
 #[cfg(test)]
 use snapshot::aggregate_snapshot;
+#[cfg(target_os = "macos")]
 #[cfg(test)]
 use std::collections::HashMap;
 

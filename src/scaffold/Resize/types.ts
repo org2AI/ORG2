@@ -20,8 +20,6 @@ export interface ResizeHandleProps {
   isResizing?: boolean;
   /** Resting-state appearance: "border" (visible 1px line, default) or "transparent" (invisible until hover) */
   variant?: ResizeHandleVariant;
-  /** Disable hover/active color feedback (cursor still changes) */
-  noHover?: boolean;
   /** Use neutral border color instead of primary-6 for hover/active states */
   noAccent?: boolean;
   /** Right-click context menu handler */

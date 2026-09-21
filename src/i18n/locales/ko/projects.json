@@ -60,7 +60,7 @@
     },
     "loadingConnections": "GitHub 연결을 불러오는 중...",
     "noConnectionTitle": "GitHub 연결을 찾을 수 없음",
-    "noConnectionDescription": "먼저 Integrations에서 GitHub 연결을 추가한 다음 여기로 돌아와 GitHub Issues를 가져오세요.",
+    "noConnectionDescription": "먼저 Integrations에서 GitHub 연결을 추가한 다음 여기로 돌아와 GitHub Issues를 가져오세요",
     "linkedRepoHint": "이 Project는 현재 Workspace repo에도 연결됩니다: {{repoName}}",
     "errors": {
       "invalidRepo": "owner/repo 또는 GitHub 리포지토리 URL을 사용하세요."
@@ -80,7 +80,7 @@
     "importLinearOrgs": "Linear 워크스페이스 가져오기",
     "gitFolderPath": "Git 폴더 경로(선택 사항)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "폴더 동기화를 위해 이 워크스페이스를 기존 Git 작업 트리에 연결합니다.",
+    "gitFolderPathHint": "폴더 동기화를 위해 이 워크스페이스를 기존 Git 작업 트리에 연결합니다",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Git 폴더와 동기화됨",
     "pendingSync": "동기화 대기 중",
@@ -123,7 +123,7 @@
     "addTeams": "팀 추가",
     "addLabels": "라벨 추가",
     "addRepos": "저장소 연결",
-    "noReposHint": "사용 가능한 저장소가 없습니다. 먼저 워크스페이스에 저장소를 추가하세요.",
+    "noReposHint": "사용 가능한 저장소가 없습니다. 먼저 워크스페이스에 저장소를 추가하세요",
     "addDate": "날짜 추가",
     "clearDate": "날짜 지우기",
     "noStatus": "상태 없음",
@@ -358,10 +358,7 @@
       "moreProperties": "More properties"
     },
     "propertyFields": {
-      "assignee": "담당자",
-      "project": "Project",
-      "milestone": "마일스톤",
-      "dueDate": "마감일"
+      "project": "Project"
     },
     "addWorkItem": "작업 항목 추가",
     "agentWorkflow": {
@@ -392,8 +389,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "아직 사용 불가",
-      "prPendingHint": "Agent 완료 후 PR이 생성됩니다.",
-      "prNeutralHint": "PR이 아직 생성되지 않았습니다.",
+      "prPendingHint": "Agent 완료 후 PR이 생성됩니다",
+      "prNeutralHint": "PR이 아직 생성되지 않았습니다",
       "prCreatingHint": "Pull Request 생성 중...",
       "prCreateButton": "Pull Request 생성",
       "prCreateError": "Pull Request 생성 실패",
@@ -403,7 +400,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "파일 변경 없음",
-      "fileDiffCleanHint": "파일 변경이 감지되지 않았습니다.",
+      "fileDiffCleanHint": "파일 변경이 감지되지 않았습니다",
       "costSummary": "비용 요약",
       "totalCost": "총계",
       "tokens": "Token",
@@ -413,7 +410,7 @@
     "viewWorkItems": "Work Item 보기",
     "fromRoutine": "From routine: {{name}}",
     "batchField": {
-      "hint": "선택한 {{count}}개 항목에 적용됩니다."
+      "hint": "선택한 {{count}}개 항목에 적용됩니다"
     },
     "batchStatus": {
       "title": "상태 설정"
@@ -457,7 +454,7 @@
       "save": "현재 보기 저장",
       "saveTitle": "보기 저장",
       "namePlaceholder": "보기 이름",
-      "saveHint": "현재 필터를 저장합니다. 레이아웃은 처음 열 때의 기본값이 됩니다.",
+      "saveHint": "현재 필터를 저장합니다. 레이아웃은 처음 열 때의 기본값이 됩니다",
       "delete": "보기 삭제"
     },
     "table": {
@@ -475,14 +472,14 @@
     },
     "batchProperty": {
       "title": "속성 설정",
-      "hint": "선택한 {{count}}개 항목에 하나의 속성 값을 적용합니다. 값을 비워 두면 지워집니다.",
+      "hint": "선택한 {{count}}개 항목에 하나의 속성 값을 적용합니다. 값을 비워 두면 지워집니다",
       "propertyPlaceholder": "속성",
       "valuePlaceholder": "값",
       "applied": "{{count}}개 항목을 업데이트했습니다"
     },
     "revisionConflict": {
       "title": "편집 충돌 해결",
-      "description": "{{field}}이(가) 리비전 {{expected}} 이후에 변경되었습니다. 내 편집을 리비전 {{actual}}과(와) 비교한 뒤 유지할 버전을 선택하세요.",
+      "description": "{{field}}이(가) 리비전 {{expected}} 이후에 변경되었습니다. 내 편집을 리비전 {{actual}}과(와) 비교한 뒤 유지할 버전을 선택하세요",
       "mine": "내 버전",
       "latest": "최신 버전",
       "useLatest": "최신 버전 사용",
@@ -573,7 +570,7 @@
     "sidebarSync": "동기화",
     "sync": {
       "title": "외부 동기화",
-      "description": "이 Project의 작업 항목을 Linear 또는 GitHub 같은 외부 시스템에 미러링합니다.",
+      "description": "이 Project의 작업 항목을 Linear 또는 GitHub 같은 외부 시스템에 미러링합니다",
       "adapterPicker": {
         "title": "어댑터",
         "notAttached": "연결되지 않음",
@@ -582,7 +579,7 @@
         "changeWarning": "새 어댑터를 연결하기 전에 현재 어댑터를 해제하세요.",
         "detachProjectMenuLabel": "GitHub 연결 해제",
         "detachProjectTitle": "{{project}}에서 GitHub 연결을 해제할까요?",
-        "detachProjectDescription": "GitHub Issues 동기화가 중지됩니다. 로컬 프로젝트와 가져온 작업 항목은 ORG2에 남습니다.",
+        "detachProjectDescription": "GitHub Issues 동기화가 중지됩니다. 로컬 프로젝트와 가져온 작업 항목은 ORG2에 남습니다",
         "detachProjectAction": "{{project}}에서 GitHub 연결 해제",
         "detachProjectSuccess": "{{project}}에서 GitHub 연결을 해제했습니다"
       },
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "Webhook 상태를 불러오는 중…",
-        "notInstalledDescription": "Webhook 시크릿을 설치하면 다음 폴링을 기다리지 않고 공급자가 변경 사항을 직접 푸시합니다.",
+        "notInstalledDescription": "Webhook 시크릿을 설치하면 다음 폴링을 기다리지 않고 공급자가 변경 사항을 직접 푸시합니다",
         "install": "Webhook 설치",
-        "installedDescription": "URL을 공급자의 Webhook 구성에 붙여넣고 아래 시크릿으로 전송 내용을 서명하세요.",
+        "installedDescription": "URL을 공급자의 Webhook 구성에 붙여넣고 아래 시크릿으로 전송 내용을 서명하세요",
         "indicatorFresh": "최근 전송",
         "indicatorStale": "최근 전송 없음",
         "lastDeliveryNever": "전송 기록 없음",
@@ -627,7 +624,7 @@
         "copyUrl": "URL 복사",
         "rotate": "시크릿 회전",
         "secretTitle": "지금 시크릿을 복사하세요 — 다시 표시되지 않습니다",
-        "secretDescription": "이 서명 시크릿을 공급자의 Webhook 구성에 붙여넣으세요. 패널을 닫으면 평문 값은 저장되지 않습니다.",
+        "secretDescription": "이 서명 시크릿을 공급자의 Webhook 구성에 붙여넣으세요. 패널을 닫으면 평문 값은 저장되지 않습니다",
         "copySecret": "시크릿 복사",
         "dismissSecret": "저장했습니다",
         "secretCopied": "시크릿을 클립보드에 복사했습니다",
@@ -653,9 +650,9 @@
         "progressNoTotal": "{{count}}개 항목 가져옴",
         "completedSummary": "원격에서 {{count}}개 항목을 가져왔습니다.",
         "cancelledSummary": "{{count}}개 항목을 가져온 후 취소되었습니다.",
-        "pendingDescription": "첫 동기화는 원격 전체 이력을 한 번 순회합니다. 이후 동기화는 일반 증분 사이클을 사용합니다.",
-        "runningDescription": "원격 이력을 페이지 단위로 순회하고 있습니다. 진행 중에도 계속 작업할 수 있습니다.",
-        "failedDescription": "마지막 페이지에서 영구적인 오류가 발생했습니다. 재시도하면 커서 위치부터 이어집니다.",
+        "pendingDescription": "첫 동기화는 원격 전체 이력을 한 번 순회합니다. 이후 동기화는 일반 증분 사이클을 사용합니다",
+        "runningDescription": "원격 이력을 페이지 단위로 순회하고 있습니다. 진행 중에도 계속 작업할 수 있습니다",
+        "failedDescription": "마지막 페이지에서 영구적인 오류가 발생했습니다. 재시도하면 커서 위치부터 이어집니다",
         "cancel": "가져오기 취소",
         "retry": "재시도",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "상태",
     "statusesBuiltin": "기본 제공 상태",
-    "statusesBuiltinDescription": "표준 워크플로 버킷입니다. 항상 사용할 수 있습니다.",
+    "statusesBuiltinDescription": "표준 워크플로 버킷입니다. 항상 사용할 수 있습니다",
     "statusesCustom": "사용자 지정 상태",
-    "statusesCustomDescription": "기본 제공 버킷 위에 붙인 이름 별칭입니다. 필터, 개수, 보드는 이를 해당 버킷으로 취급합니다.",
+    "statusesCustomDescription": "기본 제공 버킷 위에 붙인 이름 별칭입니다. 필터, 개수, 보드는 이를 해당 버킷으로 취급합니다",
     "statusNamePlaceholder": "상태 이름",
     "noCustomStatuses": "아직 사용자 지정 상태가 없습니다.",
     "statusArchive": "상태 보관",
@@ -793,11 +790,11 @@
     "unknownState": "Unknown state",
     "emptyConnections": {
       "title": "No Linear connections",
-      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
+      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear"
     },
     "emptySelection": {
       "title": "Select a Linear Project",
-      "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
+      "description": "Choose a Project from the left to view live Linear Issues and edit Project details"
     },
     "forms": {
       "createProjectTitle": "Create Linear Project",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder sync complete",
     "syncFailed": "Git folder sync failed: {{message}}",
     "noResultTitle": "No Git sync result",
-    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
+    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts"
   }
 }

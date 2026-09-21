@@ -13,11 +13,8 @@ import {
   setDesktopConfig,
 } from "@src/api/tauri/agent";
 import Switch from "@src/components/Switch";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { CollapsibleSection } from "@src/modules/shared/layouts/blocks";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
+import { CollapsibleSection } from "@src/components/layout/blocks";
 
 type Gate = {
   key: keyof DesktopConfig;

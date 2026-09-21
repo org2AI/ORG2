@@ -9,8 +9,8 @@ import {
   type Org2CloudOrg,
   org2CloudOrgsAtom,
   org2CloudRosterVersionAtom,
-  sidebarActiveCloudOrgIdAtom,
 } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
+import { seedSidebarCloudScope } from "@src/features/Org2Cloud/sidebarCloudScope.testUtils";
 import { projectRosterChangedSignalAtom } from "@src/hooks/project/useProjectDataChanged";
 import { type SmokeRoot, createSmokeRoot } from "@src/test/reactSmokeHarness";
 
@@ -189,7 +189,7 @@ describe("useTeamInboxDataSource orchestration", () => {
     store = createStore();
     store.set(org2CloudAuthAtom, null);
     store.set(org2CloudOrgsAtom, []);
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
     root = createSmokeRoot();
   });
 
@@ -272,11 +272,11 @@ describe("useTeamInboxDataSource orchestration", () => {
     store.set(org2CloudAuthAtom, AUTH);
     store.set(org2CloudOrgsAtom, [cloudOrg("org-a"), cloudOrg("org-b")]);
     store.set(org2CloudRosterVersionAtom, { "org-a": 1, "org-b": 1 });
-    store.set(sidebarActiveCloudOrgIdAtom, "org-a");
+    seedSidebarCloudScope(store, "org-a");
 
     await mount();
     await act(async () => {
-      store.set(sidebarActiveCloudOrgIdAtom, "org-b");
+      seedSidebarCloudScope(store, "org-b");
     });
     await flushAsync();
 
@@ -355,7 +355,7 @@ describe("useTeamInboxDataSource orchestration", () => {
     store.set(org2CloudAuthAtom, AUTH);
     store.set(org2CloudOrgsAtom, [cloudOrg("org-a")]);
     store.set(org2CloudRosterVersionAtom, { "org-a": 1 });
-    store.set(sidebarActiveCloudOrgIdAtom, "org-a");
+    seedSidebarCloudScope(store, "org-a");
 
     await mount();
     await act(async () => {
@@ -366,6 +366,8 @@ describe("useTeamInboxDataSource orchestration", () => {
         accessToken: "access-b",
         refreshToken: "refresh-b",
       });
+      // The new identity must confirm its own membership before scope resumes.
+      seedSidebarCloudScope(store, "org-a");
     });
     await flushAsync();
 

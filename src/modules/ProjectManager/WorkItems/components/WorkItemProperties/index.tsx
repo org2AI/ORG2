@@ -12,10 +12,10 @@ import { pillControlStateClass } from "@src/components/CompoundPill/config";
 import { DROPDOWN_ITEM } from "@src/components/Dropdown/tokens";
 import { usePropertyDropdownDirection } from "@src/components/PropertyField/PropertyDropdownDirection";
 import type { FieldRowVariant } from "@src/components/PropertyField/PropertyFieldEditable";
+import { WorkstationTrailSection } from "@src/components/layout/blocks";
 import { WORKSTATION_TRAIL_CONTENT } from "@src/config/workstation/tokens";
 import { HugeiconsIcon, ListChevronsDownUpIcon } from "@src/icons";
 import { DEFAULT_LABELS } from "@src/modules/ProjectManager/config/manage";
-import { WorkstationTrailSection } from "@src/modules/shared/layouts/blocks";
 import type { ContextMenuItem } from "@src/types/core/shared";
 import type {
   WorkItemPriority,
@@ -361,7 +361,6 @@ const WorkItemProperties: React.FC<WorkItemPropertiesProps> = ({
           )}
           {showMoreMenu && moreMenuItems.length > 0 && (
             <Button
-              variant="secondary"
               size="small"
               shape="circle"
               iconOnly

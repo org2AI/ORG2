@@ -1,21 +1,3 @@
-/**
- * User Types
- *
- * Consolidated user-related type definitions.
- * Merged from: shared/user.ts + userProfile.ts
- */
-
-// ============================================
-// Account Types (from shared/user.ts)
-// ============================================
-
-export type ISetUserAPIKeyParam = {
-  user_id: string;
-  openai_api_key?: string;
-  deepseek_api_key?: string;
-  login_token?: string;
-};
-
 export type IUserInfo = {
   uuid: string;
   name: string;

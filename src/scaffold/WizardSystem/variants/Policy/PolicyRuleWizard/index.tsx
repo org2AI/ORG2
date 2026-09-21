@@ -8,7 +8,7 @@ import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import { SECTION_GAP_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
+import { SECTION_GAP_CLASSES } from "@src/components/layout/Section";
 import {
   WizardShell,
   WizardStepLayout,
@@ -60,12 +60,9 @@ const PolicyRuleWizard: React.FC<PolicyRuleWizardProps> = ({
 
   const stepActions = (
     <>
-      <Button variant="secondary" size="small" onClick={onCancel}>
-        {t("common:actions.cancel")}
-      </Button>
+      <Button onClick={onCancel}>{t("common:actions.cancel")}</Button>
       <Button
         variant="primary"
-        size="small"
         disabled={!canSaveMarkdown}
         onClick={handleSaveMarkdownRule}
       >

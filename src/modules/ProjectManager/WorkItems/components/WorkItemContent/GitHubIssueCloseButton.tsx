@@ -1,15 +1,17 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import Dropdown from "@src/components/Dropdown";
 import { DropdownItem, DropdownSearch } from "@src/components/Dropdown/exports";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
+  DROPDOWN_PANEL,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
 import SplitButton from "@src/components/SplitButton";
+import { getDropdownPanelStyle, useDropdownEngine } from "@src/hooks/dropdown";
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
@@ -41,11 +43,31 @@ const GitHubIssueCloseButton: React.FC<GitHubIssueCloseButtonProps> = ({
   onStatusChange,
 }) => {
   const { t } = useTranslation("common");
-  const [menuVisible, setMenuVisible] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
   const [menuLevel, setMenuLevel] = useState<CloseMenuLevel>("actions");
   const [searchQuery, setSearchQuery] = useState("");
   const busy = interaction.updatingStatus || interaction.submittingComment;
   const disabled = busy || interaction.updatingBody;
+
+  // Anchored on the split button's own DOM node (not a zero-width proxy)
+  // so the panel can actually left-align with the button it opens from.
+  const {
+    isOpen: menuVisible,
+    isPositioned,
+    toggle: toggleMenu,
+    close: closeMenu,
+    panelRef,
+    panelPosition,
+  } = useDropdownEngine<HTMLButtonElement>({
+    anchorRef,
+    align: "left",
+    onOpenChange: (open) => {
+      if (!open) {
+        setMenuLevel("actions");
+        setSearchQuery("");
+      }
+    },
+  });
 
   const filteredCandidates = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase();
@@ -56,12 +78,6 @@ const GitHubIssueCloseButton: React.FC<GitHubIssueCloseButtonProps> = ({
         String(candidate.number).includes(query.replace(/^#/, ""))
     );
   }, [interaction.duplicateCandidates, searchQuery]);
-
-  const closeMenu = () => {
-    setMenuVisible(false);
-    setMenuLevel("actions");
-    setSearchQuery("");
-  };
 
   const openDuplicateLevel = () => {
     setMenuLevel("duplicate");
@@ -88,8 +104,6 @@ const GitHubIssueCloseButton: React.FC<GitHubIssueCloseButtonProps> = ({
     >
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         className={`${DROPDOWN_CLASSES.menuActionItem} rounded-none border-b border-border-2`}
         onClick={() => {
           setMenuLevel("actions");
@@ -183,26 +197,11 @@ const GitHubIssueCloseButton: React.FC<GitHubIssueCloseButtonProps> = ({
 
   const actionsPanel = (
     <div
-      className={`${DROPDOWN_CLASSES.menuPanelBase} ${DROPDOWN_WIDTHS.fileTreeClass}`}
+      className={DROPDOWN_CLASSES.menuPanel}
       data-testid="github-issue-close-menu"
       onClick={(event) => event.stopPropagation()}
     >
       <div className={DROPDOWN_CLASSES.itemsColumn}>
-        <DropdownItem
-          icon={
-            <HugeiconsIcon
-              icon={CircleDotIcon}
-              data-icon="circle-dot"
-              size={DROPDOWN_ITEM.iconSize}
-              aria-hidden
-            />
-          }
-          onClick={closeMenu}
-          disabled={interaction.issueState === "open"}
-          dataTestId="github-issue-status-open"
-        >
-          {t("git.issues.status.open")}
-        </DropdownItem>
         <DropdownItem
           icon={
             <HugeiconsIcon
@@ -260,10 +259,6 @@ const GitHubIssueCloseButton: React.FC<GitHubIssueCloseButtonProps> = ({
   if (interaction.issueState === "closed") {
     return (
       <Button
-        htmlType="button"
-        variant="secondary"
-        appearance="outline"
-        size="default"
         shape="round"
         icon={
           <HugeiconsIcon
@@ -285,10 +280,7 @@ const GitHubIssueCloseButton: React.FC<GitHubIssueCloseButtonProps> = ({
 
   return (
     <SplitButton
-      htmlType="button"
-      variant="secondary"
-      appearance="outline"
-      size="default"
+      ref={anchorRef}
       shape="round"
       icon={
         <HugeiconsIcon
@@ -302,27 +294,28 @@ const GitHubIssueCloseButton: React.FC<GitHubIssueCloseButtonProps> = ({
       disabled={disabled}
       onClick={() => selectStatus({ stateReason: "completed" })}
       menu={
-        <Dropdown
-          droplist={menuLevel === "duplicate" ? duplicatePanel : actionsPanel}
-          trigger="click"
-          position="top-end"
-          popupVisible={menuVisible}
-          onVisibleChange={(visible) => {
-            setMenuVisible(visible);
-            if (!visible) {
-              setMenuLevel("actions");
-              setSearchQuery("");
-            }
-          }}
-          getPopupContainer={() => document.body}
-          avoidViewportOverflow
-        >
-          <div />
-        </Dropdown>
+        isPositioned
+          ? createPortal(
+              <div
+                ref={panelRef}
+                className={DROPDOWN_PANEL.zIndexClass}
+                style={{
+                  position: "fixed",
+                  ...getDropdownPanelStyle(panelPosition, {
+                    widthMode: "none",
+                  }),
+                }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {menuLevel === "duplicate" ? duplicatePanel : actionsPanel}
+              </div>,
+              document.body
+            )
+          : null
       }
       onMenuButtonClick={(event) => {
         event.stopPropagation();
-        setMenuVisible((visible) => !visible);
+        toggleMenu();
       }}
       menuOpen={menuVisible}
       menuButtonLabel={t("git.issues.composer.closeIssue")}

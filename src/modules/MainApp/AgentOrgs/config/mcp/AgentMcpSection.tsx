@@ -299,8 +299,6 @@ const AgentMcpSection: React.FC<AgentMcpSectionProps> = ({
 
   const addServerButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       onClick={handleAddServer}
       data-testid="agent-orgs-add-mcp-button"

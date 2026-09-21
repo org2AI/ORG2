@@ -61,6 +61,7 @@ export interface WorktreeSourceSelectorProps {
 }
 
 const BRANCH_GROUP_LABEL_FALLBACK = {
+  defaultBranches: "Default Branches",
   recent: "Recent",
   worktrees: "Worktrees",
   otherBranches: "Other Branches",

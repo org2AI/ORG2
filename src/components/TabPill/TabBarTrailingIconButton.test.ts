@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { jsx } from "react/jsx-runtime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_BUTTON_TOOLTIP_DELAY_MS } from "@src/config/tooltip";
+
 import { TabBarTrailingIconButton } from "./TabBarTrailingIconButton";
 
 vi.mock("@src/config/keyboard/useShortcutBindings", () => ({
@@ -50,7 +52,7 @@ describe("TabBarTrailingIconButton tooltip ownership", () => {
       act(() => {
         button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
       });
-      act(() => vi.advanceTimersByTime(250));
+      act(() => vi.advanceTimersByTime(DEFAULT_BUTTON_TOOLTIP_DELAY_MS));
       expect(document.querySelectorAll(".native-tooltip")).toHaveLength(1);
       expect(document.querySelector(".native-tooltip")?.textContent).toContain(
         "Search"
@@ -77,7 +79,7 @@ describe("TabBarTrailingIconButton tooltip ownership", () => {
       act(() =>
         button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
       );
-      act(() => vi.advanceTimersByTime(250));
+      act(() => vi.advanceTimersByTime(DEFAULT_BUTTON_TOOLTIP_DELAY_MS));
       expect(document.querySelector(".native-tooltip")).toBeNull();
     }
   );

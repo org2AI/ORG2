@@ -100,7 +100,6 @@ export const SearchFilters: React.FC<SearchFiltersProps> = memo(
             {onOnlyOpenFilesToggle && (
               <Button
                 variant="tertiary"
-                appearance="soft"
                 size="sidebar"
                 aria-pressed={onlyOpenFiles}
                 aria-label={t("tooltips.searchInOpenEditors")}
@@ -112,7 +111,6 @@ export const SearchFilters: React.FC<SearchFiltersProps> = memo(
                     size={14}
                   />
                 }
-                htmlType="button"
                 onClick={onOnlyOpenFilesToggle}
                 className={`shrink-0 self-center ${onlyOpenFiles ? "text-primary-6" : ""}`}
                 title={t("tooltips.searchInOpenEditors")}

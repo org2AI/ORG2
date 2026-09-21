@@ -30,7 +30,6 @@ export const SidebarTabButton: React.FC<{
   return (
     <Button
       layout="custom"
-      appearance="custom"
       onClick={handleClick}
       disabled={tab.disabled}
       data-action="panel.setLeftTab"

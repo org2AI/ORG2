@@ -1,23 +1,15 @@
 /**
  * WorkStation Shared Components
  *
- * Components shared across CodeEditor, DatabaseManager, and Browser.
+ * Components shared across CodeEditor and Browser.
  */
 
 // Layout shell
 export { WorkStationShell } from "./WorkStationShell";
-export { ExternalBrowserButton } from "./ExternalBrowserButton";
 
 // Shell configuration
-export {
-  buildPrimarySidebarConfig,
-  buildSecondaryPanelConfig,
-  DEFAULT_PRIMARY_SIDEBAR_CONFIG,
-} from "./WorkStationShell/config";
-export type {
-  PrimarySidebarConfig,
-  SecondaryPanelConfig,
-} from "./WorkStationShell/config";
+export { buildPrimarySidebarConfig } from "./WorkStationShell/config";
+export type { PrimarySidebarConfig } from "./WorkStationShell/config";
 
 // Shared panel tab-bar chrome (position-aware tab header + position toggle)
 export { default as PanelTabBar, PanelPositionToggle } from "./PanelTabBar";
@@ -27,7 +19,6 @@ export { TerminalInfoButton } from "./TerminalInfoButton";
 export { TerminalNewSessionSplitButton } from "./TerminalNewSessionSplitButton";
 
 // Diff display
-export { default as DiffFileSection } from "./DiffFileSection";
 export type { DiffFileSectionData } from "./DiffFileSection";
 export { default as DiffSectionList } from "./DiffSectionList";
 export type { DiffSectionListViewState } from "./DiffSectionList";
@@ -43,7 +34,6 @@ export { CountBadge } from "./CountBadge";
 
 // Primary sidebar layout
 export {
-  CollapsibleSection,
   PrimarySidebarLayout,
   PrimarySidebarLayoutWithSections,
 } from "./PrimarySidebarLayout";
@@ -57,17 +47,12 @@ export type { PrimarySidebarTab } from "./PrimarySidebarLayout";
 // `@src/modules/WorkStation/shared/SidebarModules` directly (see
 // CodeEditor/index.tsx, which also carries the side-effect import).
 
-// Property editor components
-export { EditableField, LinkedInputPair } from "./PropertyEditor";
-
 // Tab bar
 export { TabBar } from "./TabBar";
 export type { WorkStationTab } from "./TabBar";
-export { StationTabBarLeading } from "./StationTabBarLeading";
-export { TabBarLeadingLayout } from "./TabBarLeadingLayout";
 
 // File header with breadcrumb navigation (relocated to shared)
-export { default as FileHeader } from "@src/modules/shared/components/FileHeader";
+export { default as FileHeader } from "@src/features/FileHeader";
 
 export { default as GitFileList } from "./GitFileList";
 export {
@@ -76,19 +61,11 @@ export {
   GIT_FILE_LIST_MIN_WIDTH,
 } from "./GitFileList/widthAtom";
 
-// Resize handles
-export {
-  HorizontalResizeHandle,
-  VerticalResizeHandle,
-} from "@src/scaffold/Resize";
-
 // Floating bar (unsaved changes, review next, etc.)
 export { FloatingBar, UnsavedChangesBar } from "./UnsavedChangesBar";
 
-// Quick actions panel — types only. The component (framer-motion) is not
-// re-exported: nothing imports it through this barrel, and a value export
-// here would drag the animation stack into every barrel consumer.
-export type { QuickAction } from "./QuickActionsPanel";
+// Quick action item type (rendered by NoTabsPlaceholder)
+export type { QuickAction } from "./QuickActionsPanel/types";
 
 // No tabs placeholder (with quick actions)
 export { NoTabsPlaceholder } from "./NoTabsPlaceholder";
@@ -101,14 +78,10 @@ export type { SessionReplayPlaceholderMode } from "./useSimulatorPlaceholderActi
 
 // Session-replay shared building blocks (tab bar, sidebar selection helpers, …)
 export {
-  ReplayTabBar,
   ReplayShellLayout,
-  ReplayShellPlaceholder,
   SimulatorReplayChrome,
-  SimulatorWorkstationTabHeader,
   capNewestWithActive,
   mergeNewestFirstByTimestamp,
-  type KnownReplayTabKind,
   type ReplayTab,
   type TimestampedReplayTab,
 } from "./SessionReplay";
@@ -127,34 +100,15 @@ export {
 } from "./AppSwitcherWrappers";
 
 // Sidebar collapse toggle (lives in tab bar trailing slots)
-export {
-  SidebarToggleButton,
-  SimulatorSidebarToggleButton,
-  WorkStationSidebarToggleButton,
-} from "./SidebarToggleButton";
-
-// Tab bar trailing controls (per-app panel toggles)
-export { TabBarBottomPanelToggle } from "./TabBarTrailingControls";
+export { WorkStationSidebarToggleButton } from "./SidebarToggleButton";
 
 // Header and typography tokens (shared dimensions, button styles, class strings)
 export {
   WORK_STATION_PLACEHOLDER_PAGE_BG_CLASS,
-  HEADER_BUTTON,
   HEADER_ICON_SIZE,
 } from "@src/config/workstation/tokens";
 
 // Text tokens (i18n keys for Workstation)
 export { HUMANTOOLS_TEXT_KEYS } from "./textTokens";
-
-// Status bars
-export {
-  BaseStatusBar,
-  BrowserStatusBar,
-  EditorStatusBar,
-  StatusBarButton,
-  StatusBarDivider,
-  StatusBarRenderer,
-  StatusBarText,
-} from "./StatusBar";
 
 export type { CommitInfo, CursorPosition } from "./StatusBar";

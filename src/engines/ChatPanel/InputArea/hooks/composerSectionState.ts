@@ -1,11 +1,10 @@
-export type ComposerSecondarySection = "queue" | "process" | "files";
+export type ComposerSecondarySection = "process" | "files";
 export type ComposerActiveSection = ComposerSecondarySection | null;
 
 interface ResolveComposerSectionSwitchOptions {
   previousSessionId?: string | null;
   nextSessionId?: string | null;
   currentActiveSection: ComposerActiveSection;
-  queueCount: number;
   previouslyStoredSection?: ComposerActiveSection;
 }
 
@@ -18,7 +17,6 @@ export function resolveComposerSectionForSessionSwitch({
   previousSessionId,
   nextSessionId,
   currentActiveSection,
-  queueCount,
   previouslyStoredSection,
 }: ResolveComposerSectionSwitchOptions): ResolveComposerSectionSwitchResult {
   if (previousSessionId === nextSessionId) {
@@ -28,15 +26,8 @@ export function resolveComposerSectionForSessionSwitch({
     };
   }
 
-  const restoredSection =
-    previouslyStoredSection !== undefined
-      ? previouslyStoredSection
-      : queueCount > 0
-        ? "queue"
-        : null;
   return {
-    activeSection:
-      restoredSection === "queue" && queueCount === 0 ? null : restoredSection,
+    activeSection: previouslyStoredSection ?? null,
     storedSectionForPrevious: currentActiveSection,
   };
 }

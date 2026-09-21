@@ -1,14 +1,12 @@
 /**
  * SpotlightFooter Component
  *
- * Keyboard shortcut hints for selectors.
- * - `spotlight` (default): below the main panel — simple bg-bg-2 pill.
- * - `dropdown`: same hints with `DROPDOWN_CLASSES.panel` (e.g. @-mention menu).
+ * Keyboard shortcut hints in a pill below the Spotlight panel. Escape is
+ * not hinted: closing an overlay with it is universal.
  */
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import {
   KEYBOARD_SHORTCUT_VARIANT,
   KeyboardShortcut,
@@ -38,11 +36,6 @@ interface SpotlightFooterProps {
   /** Whether there's an active path (items selected) */
   hasActiveAction: boolean;
   /**
-   * `spotlight` — simple bg-bg-2 pill (default, GlobalSpotlight shell).
-   * `dropdown` — `DROPDOWN_CLASSES.panel` (border-border-2, bg-bg-2, shadow-dropdown).
-   */
-  variant?: "spotlight" | "dropdown";
-  /**
    * Which chip to render in the "active action" slot. Defaults to `back`
    * (Backspace + Return) to match historical drill-in palettes.
    */
@@ -59,79 +52,58 @@ interface SpotlightFooterProps {
 
 export const SpotlightFooter: React.FC<SpotlightFooterProps> = ({
   hasActiveAction,
-  variant = "spotlight",
   activeActionChip = SPOTLIGHT_FOOTER_ACTIVE_CHIP.back,
   trailingSlot,
 }) => {
   const { t } = useTranslation();
 
-  const inner = (
-    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-[11px] text-text-2">
-      <span className="flex items-center gap-1.5">
-        <KeyboardShortcut
-          shortcutId={"spotlight_navigate"}
-          variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
-        />
-        <span>{t("selectors.spotlightFooter.navigate")}</span>
-      </span>
-
-      <span className="flex items-center gap-1.5">
-        <KeyboardShortcut
-          shortcutId={"spotlight_select"}
-          variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
-        />
-        <span>{t("selectors.spotlightFooter.select")}</span>
-      </span>
-
-      {hasActiveAction &&
-        (activeActionChip === SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchColumn ||
-        activeActionChip === SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchSection ? (
-          <span className="flex items-center gap-1.5">
-            <KeyboardShortcut
-              shortcutId={"spotlight_switch_focus"}
-              variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
-            />
-            <span>
-              {activeActionChip === SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchSection
-                ? t("selectors.spotlightFooter.switchSection")
-                : t("selectors.spotlightFooter.switchColumn")}
-            </span>
-          </span>
-        ) : (
-          <span className="flex items-center gap-1.5">
-            <KeyboardShortcut
-              shortcutId={"spotlight_back"}
-              variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
-            />
-            <span>{t("actions.back")}</span>
-          </span>
-        ))}
-
-      <span className="flex items-center gap-1.5">
-        <KeyboardShortcut
-          shortcutId={"spotlight_close"}
-          variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
-        />
-        <span>{t("actions.close")}</span>
-      </span>
-
-      {trailingSlot}
-    </div>
-  );
-
-  if (variant === "dropdown") {
-    return (
-      <div className={`${DROPDOWN_CLASSES.panel} mx-auto w-fit max-w-full`}>
-        {inner}
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto w-fit max-w-full overflow-hidden rounded-full border border-border-2 bg-bg-2 shadow-lg">
-      {inner}
+      {/* The pill's rounded end hugs the first key chip, matching its
+          vertical inset. */}
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 py-2 pr-4 pl-2 text-[11px] text-text-2">
+        <span className="flex items-center gap-1.5">
+          <KeyboardShortcut
+            shortcutId={"spotlight_navigate"}
+            variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
+          />
+          <span>{t("selectors.spotlightFooter.navigate")}</span>
+        </span>
+
+        <span className="flex items-center gap-1.5">
+          <KeyboardShortcut
+            shortcutId={"spotlight_select"}
+            variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
+          />
+          <span>{t("selectors.spotlightFooter.select")}</span>
+        </span>
+
+        {hasActiveAction &&
+          (activeActionChip === SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchColumn ||
+          activeActionChip === SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchSection ? (
+            <span className="flex items-center gap-1.5">
+              <KeyboardShortcut
+                shortcutId={"spotlight_switch_focus"}
+                variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
+              />
+              <span>
+                {activeActionChip === SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchSection
+                  ? t("selectors.spotlightFooter.switchSection")
+                  : t("selectors.spotlightFooter.switchColumn")}
+              </span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <KeyboardShortcut
+                shortcutId={"spotlight_back"}
+                variant={KEYBOARD_SHORTCUT_VARIANT.spotlightFooter}
+              />
+              <span>{t("actions.back")}</span>
+            </span>
+          ))}
+
+        {trailingSlot}
+      </div>
     </div>
   );
 };
-
-export default SpotlightFooter;

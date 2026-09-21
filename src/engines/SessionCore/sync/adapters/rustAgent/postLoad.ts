@@ -11,6 +11,7 @@ import type { PostLoadResult } from "../../types";
 import {
   type TokenUsageRecord,
   getLatestContextUsageSnapshot,
+  getLatestForegroundUsage,
 } from "./usageProjection";
 
 const logger = createLogger("RustAgentAdapter");
@@ -71,10 +72,12 @@ export async function loadRustAgentPostLoadResult(
     });
     if (signal.aborted) return result;
     if (records?.length) {
-      const last = records[records.length - 1];
-      const fill =
-        last.contextTokens > 0 ? last.contextTokens : last.inputTokens;
-      if (fill > 0) result.contextTokens = fill;
+      const last = getLatestForegroundUsage(records);
+      if (last) {
+        const fill =
+          last.contextTokens > 0 ? last.contextTokens : last.inputTokens;
+        if (fill > 0) result.contextTokens = fill;
+      }
       const contextUsage = getLatestContextUsageSnapshot(records);
       if (contextUsage) result.contextUsage = contextUsage;
     }

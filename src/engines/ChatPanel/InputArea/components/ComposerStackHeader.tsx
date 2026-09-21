@@ -110,7 +110,6 @@ const ComposerStackHeader: React.FC<ComposerStackHeaderProps> = memo(
         {isCollapsible ? (
           <Button
             layout="custom"
-            appearance="custom"
             onClick={onToggle}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-left"
           >

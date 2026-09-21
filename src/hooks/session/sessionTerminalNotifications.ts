@@ -13,6 +13,8 @@ export interface SessionTerminalNotification {
   sessionId: string;
   status: string;
   sessionName: string;
+  /** True when the user already has this Session's tab selected. */
+  sessionInActiveTab: boolean;
   attentionRequired: boolean;
   errorMessage?: string;
   eventKey?: string;
@@ -40,6 +42,10 @@ export function deliverSessionTerminalNotification(
   };
 
   if (event.status === "completed" || event.status === "idle") {
+    // The transcript itself is the completion surface for the selected tab.
+    // Do not create a redundant native, audio, summary, or in-app message.
+    if (event.sessionInActiveTab) return;
+
     const body = t("notifications.taskCompletedBody", {
       name: event.sessionName,
     });

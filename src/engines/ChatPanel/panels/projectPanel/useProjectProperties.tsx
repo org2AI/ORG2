@@ -9,6 +9,10 @@ import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import Message from "@src/components/Message";
 import type { SelectOption } from "@src/components/Select";
+import {
+  WorkstationTrailIconButton,
+  WorkstationTrailSurface,
+} from "@src/components/layout/blocks";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { useProjectOrgCloudPermissions } from "@src/features/Org2Cloud/useProjectOrgCloudPermissions";
@@ -31,10 +35,6 @@ import {
   PropertiesPanel,
   PropertiesRailFrame,
 } from "@src/modules/ProjectManager/shared";
-import {
-  WorkstationTrailIconButton,
-  WorkstationTrailSurface,
-} from "@src/modules/shared/layouts/blocks";
 import { openProjectInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanel/selectionAtoms";
 
@@ -101,7 +101,6 @@ export function useProjectProperties(
     () => (
       <ToolbarTooltip label={propertiesToggleLabel}>
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly

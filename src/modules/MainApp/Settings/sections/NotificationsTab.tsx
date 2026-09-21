@@ -7,10 +7,7 @@
  *
  * Composes the master toggle and advanced blocks directly.
  */
-import {
-  SectionContainer,
-  SectionRow,
-} from "@/src/modules/shared/layouts/SectionLayout";
+import { SectionContainer, SectionRow } from "@/src/components/layout/Section";
 import React from "react";
 import { useTranslation } from "react-i18next";
 

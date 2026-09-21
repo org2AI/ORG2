@@ -7,7 +7,7 @@ use std::time::UNIX_EPOCH;
 pub(super) const CODEX_TURN_OFFSET_CACHE_CAPACITY: usize = 8;
 pub(super) const CODEX_TURN_OFFSET_LIMIT_PER_SESSION: usize = 4_096;
 pub(super) const CODEX_INITIAL_TURN_LIMIT: usize = 4_096;
-pub(super) const CODEX_TURN_CATALOG_PREVIEW_MAX_BYTES: usize = 512;
+pub(super) const CODEX_TURN_CATALOG_PREVIEW_MAX_BYTES: usize = 5_120;
 pub(super) const CODEX_REVERSE_SCAN_MAX_LINE_BYTES: usize = 4 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,13 +24,32 @@ pub(super) struct CodexTurnOffset {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct CodexAgentPreview {
+    pub(super) text: String,
+    pub(super) truncated: bool,
+}
+
+impl CodexAgentPreview {
+    pub(super) fn new(message: &str) -> Self {
+        Self {
+            text: bounded_codex_turn_preview(message),
+            truncated: message.len() > CODEX_TURN_CATALOG_PREVIEW_MAX_BYTES,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct CodexTurnCatalogEntry {
     /// Small path/URL references only; embedded bytes belong to loaded turns.
     pub(super) image_refs: Vec<String>,
+    pub(super) output_images: Vec<super::output_images::CatalogOutputImage>,
     pub(super) byte_offset: u64,
     pub(super) started_at: String,
     pub(super) user_preview: String,
-    pub(super) last_agent_preview: Option<String>,
+    pub(super) last_agent_preview: Option<CodexAgentPreview>,
+    /// Lines after this user row, up to the next one, that the replay parser
+    /// can render (`line_might_produce_codex_body`). Zero means the agent
+    /// never answered the round.
     pub(super) following_line_count: usize,
 }
 

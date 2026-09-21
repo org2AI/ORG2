@@ -306,6 +306,42 @@ function formatBalanceValue(amount: number, currency: string): string {
   }
 }
 
+/**
+ * Exact provider-reported balance (for example DeepSeek pay-as-you-go),
+ * formatted for display. Balance-only providers report
+ * `remaining_percentage: -1` (unknown), so every quota surface must render
+ * this value instead of synthesizing a percentage meter.
+ */
+export function resolveAccountQuotaBalanceValue(
+  quotaInfo: KeyVaultAccount["quotaInfo"]
+): string | null {
+  if (!quotaInfo || !("balance" in quotaInfo)) return null;
+  const balance = quotaInfo.balance;
+  if (
+    !balance ||
+    !Number.isFinite(balance.amount) ||
+    balance.amount < 0 ||
+    !balance.currency.trim()
+  ) {
+    return null;
+  }
+  return formatBalanceValue(balance.amount, balance.currency);
+}
+
+/** Overall remaining percentage, or null when the provider reports it as unknown (-1). */
+export function resolveKnownRemainingPercent(
+  remainingPercent: number | null | undefined
+): number | null {
+  if (
+    typeof remainingPercent !== "number" ||
+    !Number.isFinite(remainingPercent) ||
+    remainingPercent < 0
+  ) {
+    return null;
+  }
+  return remainingPercent;
+}
+
 export function formatQuotaResetTime(
   resetTime: string | null | undefined
 ): { compact: string; full: string } | null {
@@ -494,33 +530,23 @@ export function collectAccountQuotaCards(
             tIntegrations
           )
         : [];
-    const balance =
-      "balance" in account.quotaInfo ? account.quotaInfo.balance : undefined;
-    if (
-      balance &&
-      Number.isFinite(balance.amount) &&
-      balance.amount >= 0 &&
-      balance.currency.trim()
-    ) {
+    const balanceValue = resolveAccountQuotaBalanceValue(account.quotaInfo);
+    if (balanceValue !== null) {
       metrics.unshift({
         kind: "value",
         key: "balance",
         label: tIntegrations("keyVault.quota.balance", {
           defaultValue: "Balance",
         }),
-        value: formatBalanceValue(balance.amount, balance.currency),
+        value: balanceValue,
       });
     }
 
     if (metrics.length === 0) {
-      const remainingPercent = account.quotaInfo.remaining_percentage;
-      if (
-        typeof remainingPercent !== "number" ||
-        !Number.isFinite(remainingPercent) ||
-        remainingPercent < 0
-      ) {
-        continue;
-      }
+      const remainingPercent = resolveKnownRemainingPercent(
+        account.quotaInfo.remaining_percentage
+      );
+      if (remainingPercent === null) continue;
       cards.push({
         id: account.id,
         accountName: accountLabels.accountName,

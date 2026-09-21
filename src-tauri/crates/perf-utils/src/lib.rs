@@ -1,14 +1,12 @@
 //! Performance Optimization Module
 //!
 //! Provides Rust-accelerated implementations for performance-critical operations:
-//! - Binary file detection (SIMD-accelerated)
 //! - Large JSON parsing (simd-json)
 //! - Hash computation (SHA-256)
 //! - Diff computation and fuzzy patch application
 //! - Process metrics collection (memory, CPU usage)
 
 pub mod app_memory;
-pub mod binary_detection;
 pub mod diff_patch;
 pub mod hash;
 pub mod json_fast;
@@ -18,7 +16,6 @@ pub mod system_runtime;
 
 // Re-export all commands
 pub use app_memory::*;
-pub use binary_detection::*;
 pub use diff_patch::*;
 pub use hash::*;
 pub use json_fast::*;

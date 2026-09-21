@@ -5,7 +5,10 @@ import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
 import type { SpotlightItem } from "../types";
-import { usePinnedSpotlightItems } from "./usePinnedSpotlightItems";
+import {
+  type ListPinScope,
+  usePinnedSpotlightItems,
+} from "./usePinnedSpotlightItems";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -27,7 +30,7 @@ it("persists directory pins through remounts with a fresh store and isolates mai
     scope,
     enabled = true,
   }: {
-    scope: "commands" | "directories";
+    scope: ListPinScope;
     enabled?: boolean;
   }) {
     const items = usePinnedSpotlightItems(input, scope, enabled);
@@ -36,7 +39,7 @@ it("persists directory pins through remounts with a fresh store and isolates mai
     }, [items]);
     return null;
   }
-  function mount(scope: "commands" | "directories", enabled = true) {
+  function mount(scope: ListPinScope, enabled = true) {
     const root = createRoot(container);
     act(() =>
       root.render(
@@ -65,5 +68,58 @@ it("persists directory pins through remounts with a fresh store and isolates mai
   act(() => root.unmount());
   root = mount("directories", false);
   expect(output).toBe(input);
+  act(() => root.unmount());
+});
+
+it("pins an agent once even when it is listed under Recent and its group", () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const header = (id: string): SpotlightItem => ({
+    id,
+    label: id,
+    type: "option",
+    data: { isHeader: true },
+  });
+  const agent = (group: string): SpotlightItem => ({
+    id: `${group}:cli:codex`,
+    label: "Codex",
+    type: "action",
+    data: { pinId: "cli:codex" },
+  });
+  const input: SpotlightItem[] = [
+    header("__header_recent__"),
+    agent("__header_recent__"),
+    header("__header_cli__"),
+    agent("__header_cli__"),
+    {
+      id: "__header_cli__:cli:claude",
+      label: "Claude",
+      type: "action",
+      data: { pinId: "cli:claude" },
+    },
+  ];
+  let output: SpotlightItem[] = [];
+  function Harness() {
+    const items = usePinnedSpotlightItems(input, "agents");
+    useEffect(() => {
+      output = items;
+    }, [items]);
+    return null;
+  }
+  const root = createRoot(document.createElement("div"));
+  act(() =>
+    root.render(
+      createElement(Provider, { store: createStore() }, createElement(Harness))
+    )
+  );
+  act(() => output[1].data?.pinState?.onToggle());
+  expect(output.map((item) => item.id)).toEqual([
+    "section-user-pinned",
+    "__header_recent__:cli:codex",
+    "__header_cli__",
+    "__header_cli__:cli:claude",
+  ]);
+  expect(
+    JSON.parse(localStorage.getItem("orgii-spotlight-agent-pins")!)
+  ).toEqual(["cli:codex"]);
   act(() => root.unmount());
 });

@@ -105,14 +105,6 @@ export const WORK_ITEM_STATUS_COLOR: Record<
 };
 
 /**
- * Maps KanbanStatus to color key
- */
-export const KANBAN_STATUS_COLOR: Record<
-  KanbanStatus,
-  keyof typeof STATUS_COLORS
-> = WORK_ITEM_STATUS_COLOR;
-
-/**
  * Maps GanttStatus to color key
  */
 export const GANTT_STATUS_COLOR: Record<

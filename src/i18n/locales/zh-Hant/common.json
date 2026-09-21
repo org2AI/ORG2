@@ -18,6 +18,11 @@
     "file": "在檔案中搜尋",
     "named": "在 {{name}} 中搜尋"
   },
+  "sidebarSettings": {
+    "title": "側邊欄設定",
+    "showSidebar": "顯示側邊欄",
+    "colorSourceControlFiles": "檔案差異著色"
+  },
   "teamInbox": {
     "title": "團隊收件匣",
     "listLabel": "團隊收件匣清單",
@@ -373,7 +378,6 @@
     "restart": "重新啓動",
     "switchToStation": "切換到{{station}}",
     "discard": "丟棄",
-    "run": "運行",
     "clone": "克隆",
     "send": "發送",
     "sendMessageQueued": "發送（排隊）",
@@ -403,11 +407,10 @@
     "link": "連結",
     "copyName": "複製名稱",
     "switchMethod": "切換方式",
-    "dismiss": "忽略",
     "clearSelection": "清除選擇",
-    "clearAll": "全部清除",
     "expandView": "展開檢視",
-    "restoreSplitView": "恢復分割檢視"
+    "restoreSplitView": "恢復分割檢視",
+    "overwrite": "覆寫"
   },
   "status": {
     "yes": "是",
@@ -483,7 +486,6 @@
     "nextPage": "下一頁",
     "lastPage": "最後一頁",
     "selectPage": "選擇頁碼",
-    "title": "分頁",
     "round": "第 {{current}} 輪",
     "previousRound": "上一輪",
     "nextRound": "下一輪",
@@ -491,7 +493,7 @@
   },
   "optional": "可選",
   "common": {
-    "display": "顯示",
+    "display": "介面設定",
     "on": "開",
     "off": "關",
     "default": "默認",
@@ -560,7 +562,6 @@
     "globPatternsHint": "Glob 模式，逗號分隔",
     "outline": "大綱",
     "timeline": "時間線",
-    "indexing": "Index",
     "testExplorer": "測試瀏覽器",
     "installed": "已安裝",
     "extensionViews": "擴展視圖",
@@ -678,7 +679,6 @@
     "explorer": "資源管理器",
     "search": "搜索",
     "sourceControl": "源代碼管理",
-    "sessions": "Session",
     "myTabs": "我的分頁（{{count}}）",
     "design": "設計",
     "settings": "設置",
@@ -773,7 +773,7 @@
     "nextMatchLabel": "下一個匹配",
     "clearSearch": "清除搜索",
     "openFile": "打開文件",
-    "openNativeDevTools": "打開原生瀏覽器開發者工具",
+    "openNativeDevTools": "打開開發者工具",
     "captureScreenshot": "截圖",
     "enableInspectMode": "檢查元素",
     "disableInspectMode": "退出檢查 (Esc)",
@@ -789,7 +789,6 @@
     "closePanel": "關閉面板",
     "showSidebar": "顯示側邊欄",
     "hideSidebar": "隱藏側邊欄",
-    "moreOptions": "更多選項",
     "zoomIn": "放大",
     "zoomOut": "縮小",
     "goBack": "後退",
@@ -807,10 +806,9 @@
     "replaceAll": "全部替換 (Ctrl+Alt+Enter)",
     "replaceAllLabel": "全部替換",
     "moreActions": "更多操作...",
-    "formatSql": "格式化 SQL",
-    "queryHistory": "查詢歷史",
-    "executeQuery": "執行查詢 ({{shortcut}})",
     "startVoiceInput": "開始語音輸入",
+    "expandInput": "展開輸入框",
+    "collapseInput": "收合輸入框",
     "cancelRecording": "取消錄製",
     "stopAndTranscribe": "停止並轉錄",
     "htmlPreview": "HTML 預覽",
@@ -820,7 +818,6 @@
     "movePanelToRight": "面板移至右側",
     "movePanelToBottom": "面板移至底部",
     "domTree": "DOM 樹",
-    "closeSession": "關閉 Session",
     "clearNetworkLogs": "清除網絡日誌",
     "clearConsole": "清除控制台",
     "copyToClipboard": "複製到剪貼板",
@@ -871,7 +868,6 @@
     "pleaseTryAgain": "請重試",
     "noFileOpen": "打開文件以開始編輯",
     "selectFileToEdit": "在資源管理器中選擇檔案",
-    "noTabs": "打開標籤頁以開始",
     "noTabsOpen": "打開項目以開始",
     "selectItemToStart": "在側邊欄中選擇項目",
     "noDatabaseConnected": "未連接數據庫",
@@ -883,7 +879,7 @@
     "chatHistoryReloadHint": "Session 數據可能未加載",
     "chatHistoryAgentWorking": "Agent 運行中",
     "chatHistoryAgentWorkingHint": "首則回覆到達後會顯示訊息，此前工具列可能顯示閒置",
-    "pleaseSelect": "請選擇",
+    "pleaseSelect": "選擇",
     "noSessionsFound": "未找到 Session",
     "typeToSearchFiles": "輸入以搜索文件...",
     "selectFileToViewChanges": "選擇文件以查看變更",
@@ -953,7 +949,8 @@
     "selectSidebarStash": "選擇一個 stash",
     "selectSidebarCommit": "選擇一個 commit",
     "selectSidebarPullRequest": "選擇一個 pull request",
-    "selectSidebarIssue": "選擇一個 issue"
+    "selectSidebarIssue": "選擇一個 issue",
+    "pressEnterToSearch": "按 Enter 鍵搜尋"
   },
   "inbox": {
     "scrollToBottom": "滾動到底部",
@@ -982,7 +979,6 @@
     "notGitInitialized": "尚未初始化 Git",
     "notGitInitializedTooltip": "此工作目錄尚未有 .git 目錄。",
     "publishBranchToOrigin": "Publish 分支 \"{{branch}}\" 到 origin",
-    "scanningFiles": "正在掃描文件...",
     "branchTooltipSwitching": "分支：{{branch}}（切換中…）",
     "switchWorkspaceTooltip": "切換工作目錄",
     "switchWorktreeTooltip": "切換 Worktree",
@@ -993,12 +989,6 @@
     "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Git 操作",
     "switchToSessionRepo": "切換到 {{name}}",
-    "embeddingProgress": "嵌入：已處理 {{count}} 個 chunk",
-    "embeddingProgressWithPercent": "嵌入：已處理 {{count}} 個 chunk（{{percent}}%）",
-    "embeddingShort": "嵌入 {{percent}}%",
-    "embeddingLabel": "嵌入",
-    "indexingProgress": "索引：{{processed}}/{{total}} 個文件（{{percent}}%）",
-    "indexingProgressWithFile": "索引：{{processed}}/{{total}} 個文件（{{percent}}%）\n當前：{{file}}",
     "ports": {
       "workspaceSection": "目前工作區",
       "externalSection": "外部",
@@ -1051,9 +1041,8 @@
       "siteUnreachableTitle": "無法訪問此網站",
       "webviewHiddenTitle": "網頁檢視已暫時隱藏",
       "webviewHiddenBody": "關閉選單或對話框即可重新顯示。",
-      "embeddedFallbackTitle": "此網站可能無法在內嵌瀏覽器中運作",
-      "embeddedFallbackBody": "部分網站會封鎖或無法在應用程式 WebView 中呈現。如果頁面持續空白，請改用系統瀏覽器開啟。",
-      "currentUrl": "目前 URL"
+      "loadStalledTitle": "此頁面未載入完成",
+      "copyUrl": "複製 URL"
     },
     "unsavedChangesTitle": "未保存的更改",
     "ci": {
@@ -1069,7 +1058,9 @@
         "skipped": "已跳過",
         "passed": "已通過"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "檔案在磁碟上已變更",
+    "fileChangedOnDiskBody": "「{{name}}」自你開啟後已在磁碟上變更。要用你的版本覆寫嗎？"
   },
   "git": {
     "loading": "正在加載 Git 狀態...",
@@ -1096,7 +1087,7 @@
       "createTokenButton": "建立 Token",
       "openGitSettingsButton": "開啟設定",
       "configureInSettings": "在設定中配置 Git",
-      "configureInSettingsDesc": "在 設定 → 連接 中加入 GitHub App 存取權限、儲存 token 或掃描本機憑證，然後重試此 Git 操作。"
+      "configureInSettingsDesc": "在 設定 → 連接 中加入 GitHub App 存取權限、儲存 token 或掃描本機憑證，然後重試此 Git 操作"
     },
     "actions": {
       "publish": "Publish",
@@ -1134,7 +1125,12 @@
       "returnFromMiniTerminal": "在此處顯示",
       "resizeTerminal": "調整終端大小",
       "terminalProcessCount_one": "{{count}} 個程序",
-      "terminalProcessCount_other": "{{count}} 個程序"
+      "terminalProcessCount_other": "{{count}} 個程序",
+      "sources": "來源",
+      "sourcesCount_one": "{{count}} 個來源",
+      "sourcesCount_other": "{{count}} 個來源",
+      "loadMoreSources": "載入更多（+{{count}}）",
+      "sourceImage": "圖片"
     },
     "pr": {
       "title": "Pull request",
@@ -1217,6 +1213,93 @@
         "checkingConflicts": "正在檢查衝突…",
         "autoMergeEnabled": "已啟用自動合併",
         "inMergeQueue": "正在合併佇列中等待"
+      },
+      "mergeBox": {
+        "checksFailed": "部分檢查未成功",
+        "checksPending": "部分檢查尚未完成",
+        "checksPassed": "所有檢查均已通過",
+        "checksSkipped": "所有檢查均已略過",
+        "counts": {
+          "failing": "{{count}} 項失敗",
+          "inProgress": "{{count}} 項進行中",
+          "skipped": "{{count}} 項已略過",
+          "successful": "{{count}} 項成功",
+          "summary_one": "檢查：{{parts}}",
+          "summary_other": "檢查：{{parts}}"
+        },
+        "check": {
+          "queued": "排隊中",
+          "started": "{{time}}開始",
+          "successfulIn": "成功，耗時 {{duration}}",
+          "failingAfter": "執行 {{duration}} 後失敗",
+          "skipped": "已略過",
+          "successful": "成功",
+          "failing": "失敗"
+        },
+        "deployments": {
+          "label": "部署",
+          "none": "尚無部署",
+          "active_one": "{{count}} 個使用中的部署",
+          "active_other": "{{count}} 個使用中的部署",
+          "view": "檢視部署",
+          "notDeployed": "此分支尚未部署",
+          "deployed": "此分支已成功部署",
+          "deploying": "此分支正在部署",
+          "deployFailed": "此分支部署時發生錯誤",
+          "deployInactive": "此分支已不再部署",
+          "state": {
+            "active": "使用中",
+            "pending": "進行中",
+            "failure": "失敗",
+            "inactive": "未使用"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "變更已核准",
+            "detail": "已提交核准審查"
+          },
+          "reviewRequired": {
+            "title": "需要審查",
+            "detail": "至少需要一個核准審查才能合併"
+          },
+          "reviewChangesRequested": {
+            "title": "已要求變更",
+            "detail": "審查者要求在合併前進行變更"
+          },
+          "noConflicts": {
+            "title": "與基礎分支沒有衝突",
+            "detail": "可以自動執行合併"
+          },
+          "hasConflicts": {
+            "title": "此分支存在必須解決的衝突",
+            "detail": "請在頭部分支上解決衝突，然後推送"
+          },
+          "outOfDate": {
+            "title": "此分支落後於基礎分支",
+            "detail": "請將基礎分支的最新變更合併到此分支"
+          },
+          "checkingConflicts": {
+            "title": "正在檢查能否自動合併…",
+            "detail": "請稍候，GitHub 正在檢查分支狀態"
+          },
+          "autoMergeEnabled": {
+            "title": "已啟用自動合併",
+            "detail": "滿足要求後，此拉取請求將自動合併"
+          },
+          "inMergeQueue": {
+            "title": "正在合併佇列中等待",
+            "detail": "到達佇列最前端時，GitHub 會將其合併"
+          }
+        },
+        "merged": {
+          "title": "拉取請求已成功合併並關閉",
+          "detail": "可以安全刪除頭部分支"
+        },
+        "closed": {
+          "title": "已關閉，但有未合併的提交",
+          "detail": "此拉取請求已關閉。重新開啟後才能合併"
+        }
       },
       "commits": {
         "backToList": "全部提交",
@@ -1335,7 +1418,7 @@
       "cannotParseRepoName": "無法從 origin 遠端倉庫解析倉庫名稱",
       "authRequired": {
         "title": "連接 GitHub",
-        "description": "前往「設定 → 連接」以連接你的 GitHub 帳號。"
+        "description": "前往「設定 → 連接」以連接你的 GitHub 帳號"
       },
       "navigationTrail": "Pull request 導覽",
       "failedToLoad": "載入 pull request 失敗",
@@ -1505,15 +1588,112 @@
       "newIssueBodyPlaceholder": "描述此 issue（選填）…",
       "authRequired": {
         "title": "連接 GitHub",
-        "description": "前往「設定 → 連接」以連接你的 GitHub 帳號。"
+        "description": "前往「設定 → 連接」以連接你的 GitHub 帳號"
       },
       "reAuthRequired": "需要 GitHub 授權",
-      "reAuthDescription": "你的 GitHub token 已過期。請前往「設定 → 連接」重新連接。",
+      "reAuthDescription": "你的 GitHub token 已過期。請前往「設定 → 連接」重新連接",
       "goToSettings": "前往設定",
       "loadingTimeline": "正在載入活動…",
       "label": "Issue",
       "linkedLoading": "正在載入關聯項目",
       "detailNavigation": "Issue 導覽"
+    },
+    "branchSwitch": {
+      "title": "切換分支",
+      "conflictsTitle": "變更需要處理",
+      "blockedTitle": "切換分支需要處理",
+      "working": "正在儲存並切換…",
+      "current": "目前分支：{{branch}}",
+      "changedFiles": "{{count}} 個已變更檔案",
+      "question": "你想如何處理這些變更？",
+      "leave": "將變更留在 {{branch}}",
+      "leaveDescription": "儲存目前工作以便稍後繼續，並切換到乾淨的工作區",
+      "bring": "將變更帶到 {{branch}}",
+      "bringDescription": "將未提交的變更帶到目標分支",
+      "worktreeTitle": "此分支已在另一個工作樹中開啟",
+      "openWorktree": "開啟工作樹",
+      "activeTask": "有任務正在此工作樹中執行",
+      "activeTaskDescription": "現在切換會改變智慧體正在處理的檔案",
+      "switchAnyway": "仍然切換",
+      "switchedTo": "已切換到 {{branch}}",
+      "saveTitle": "切換前儲存檔案",
+      "saveDescription": "開啟的檔案有未儲存的編輯。請先儲存，再選擇將變更保留在哪裡",
+      "saveContinue": "全部儲存並繼續",
+      "saveFailed": "無法儲存所有檔案",
+      "multipleBuffers": "此檔案在多個編輯器中有變更。切換前請儲存或關閉這些編輯器",
+      "editedWhileSaving": "儲存期間檔案又被編輯。請檢查最新變更後重試",
+      "savePreview": "切換分支前，請在試算表編輯器中儲存或捨棄編輯",
+      "messages": {
+        "detached_head": "切換前請從目前的提交建立一個分支，以便分離狀態下的工作仍可存取",
+        "unborn": "使用已儲存的分支變更前，請先建立第一個提交",
+        "ignored_collision": "一個已忽略的檔案將被覆蓋。請在切換前將其移開",
+        "worktree_branch_in_use": "此分支已在另一個工作樹中開啟",
+        "invalid_branch_name": "請選擇一個有效的分支名稱",
+        "branch_exists": "該分支已存在",
+        "branch_not_found": "找不到該分支，或分支名稱有歧義。請重新整理分支列表並明確選擇一個遠端分支",
+        "upstream_mismatch": "同名的本機分支追蹤著不同的上游。請明確選擇本機分支",
+        "operation_merge": "請先完成或中止合併，再切換分支",
+        "operation_rebase": "請先完成或中止變基，再切換分支",
+        "operation_cherry_pick": "請先完成或中止揀選，再切換分支",
+        "operation_revert": "請先完成或中止還原，再切換分支",
+        "operation_other": "請先完成目前的 Git 操作，再切換分支",
+        "stale": "對話方塊開啟期間，檔案或分支發生了變化。請查看最新變更後重試",
+        "save_failed": "未能完成變更的儲存：{{detail}}。請在重試前檢查工作區和已儲存的變更",
+        "changed_while_saving": "儲存期間檔案發生了變化。未嘗試簽出；你的快照仍然可用",
+        "checkout_failed_restored": "簽出失敗；你的變更已恢復：{{detail}}",
+        "checkout_failed_saved": "簽出失敗。你的變更已儲存：{{detail}}",
+        "worktree_changed": "簽出過程中工作區發生了變化。你的原始變更已儲存；請在恢復前查看目前的檔案",
+        "restore_conflicts": "已切換到 {{branch}}。部分變更未能恢復：{{detail}}。你的原始變更已儲存",
+        "saved_on_previous": "變更已儲存在先前的分支上",
+        "brought": "你的變更已隨你帶到此分支",
+        "worktree_missing": "該工作樹已不存在。請重新整理後再試"
+      }
+    },
+    "dialogs": {
+      "detachedHead": {
+        "title": "Detached HEAD 狀態",
+        "body": "你目前處於 detached HEAD 狀態，位於提交 {{shortHash}}。\n\n你不在任何分支上。如果沒有先建立新分支就 checkout 到其他分支，你所做的提交可能會遺失。\n\n⚠️ detached HEAD 狀態下的提交可能會被垃圾回收。",
+        "createBranch": "建立分支",
+        "continueWithoutBranch": "不建立分支繼續"
+      },
+      "largePush": {
+        "title": "偵測到大量 push",
+        "body": "你即將向 {{remote}}/{{branch}} push {{commitCount}} 個提交。\n\n這比平時多。確定要繼續嗎？\n\n💡 建議將大量變更拆分成更小、更聚焦的提交。",
+        "confirm": "Push 全部提交"
+      },
+      "protectedBranch": {
+        "title": "受保護的分支",
+        "body": "{{remote}} 上的分支「{{branch}}」受保護，無法直接 push。\n\n受保護的分支要求變更透過 pull request 合入。",
+        "createPr": "建立 Pull Request"
+      },
+      "pullConflict": {
+        "title": "有本機變更，無法 pull",
+        "body": "來自「{{branch}}」的傳入變更會覆寫你的本機變更。{{fileInfo}}\n\n請選擇如何繼續：",
+        "fileInfo_one": " (影響 {{count}} 個檔案)",
+        "fileInfo_other": " (影響 {{count}} 個檔案)",
+        "stashAndPull": "Stash 後 pull",
+        "discardAndPull": "捨棄變更後 pull"
+      },
+      "pushRejected": {
+        "title": "Push 遭拒絕",
+        "body": "無法 push 到 {{remote}}/{{branch}}。\n\n遠端分支包含你本機沒有的提交。{{behindInfo}}\n\n⚠️ 強制 push 會永久覆寫遠端的變更。",
+        "behindInfo_one": " (落後 {{count}} 個提交)",
+        "behindInfo_other": " (落後 {{count}} 個提交)",
+        "pullAndPush": "先 pull 再 push",
+        "forcePush": "強制 push"
+      },
+      "conflict": {
+        "titleMerge": "Merge 衝突",
+        "titleRebase": "Rebase 衝突",
+        "bodyMerge": "Merge「{{branch}}」時發生衝突。{{progress}}{{files}}\n\n⚠️ 中止會取消這次 merge 並還原你的分支。",
+        "bodyRebase": "Rebase 到「{{branch}}」時發生衝突。{{progress}}{{files}}\n\n⚠️ 中止會將你的分支還原到 rebase 之前的狀態。",
+        "progress": " (第 {{current}} 步，共 {{total}} 步)",
+        "files_one": "\n\n{{count}} 個檔案存在衝突。",
+        "files_other": "\n\n{{count}} 個檔案存在衝突。",
+        "resolve": "解決衝突",
+        "abortMerge": "中止 Merge",
+        "abortRebase": "中止 Rebase"
+      }
     }
   },
   "selectors": {
@@ -1568,7 +1748,6 @@
         "createWorkspace": "建立新工作目錄"
       },
       "sources": {
-        "cloningFromGitHub": "正在從 GitHub 克隆",
         "cloningFromGitHubUrl": "通過 GitHub URL 克隆",
         "cloningFromMyGitHub": "從已連接的 GitHub 克隆",
         "creatingWorkspace": "正在建立新工作目錄",
@@ -1629,7 +1808,6 @@
         "createFrom": "基於分支創建",
         "deleteBranch": "刪除分支",
         "refresh": "刷新分支",
-        "checkoutDetachedSuccess": "已切換到 detached HEAD 狀態（當前提交）",
         "removeWorktree": "移除 Worktree",
         "newWorktree": "新建 Worktree...",
         "refreshPullRequests": "重新整理 Pull requests"
@@ -1637,9 +1815,15 @@
       "messages": {
         "deletedCount_one": "已刪除 {{count}} 個分支",
         "deletedCount_other": "已刪除 {{count}} 個分支",
-        "failedDeleteList": "刪除失敗：{{branches}}"
+        "failedDeleteList": "刪除失敗：{{branches}}",
+        "failedDelete": "無法刪除分支「{{branch}}」",
+        "prNoHeadBranch": "Pull request 沒有 head 分支",
+        "readBranchesFailed": "無法讀取本機分支",
+        "createPrBranchFailed": "無法建立 PR 分支",
+        "readRemotesFailed": "無法讀取儲存庫遠端"
       },
       "labels": {
+        "defaultBranches": "預設分支",
         "otherBranches": "其他分支",
         "current": "當前",
         "recent": "最近",
@@ -1687,6 +1871,8 @@
       "selectWorktreeSource": "選擇 Worktree 分支或 pull request"
     },
     "spotlightFooter": {
+      "settings": "Spotlight 設定",
+      "unpinAll": "取消全部釘選",
       "navigate": "導航",
       "select": "選擇",
       "switchColumn": "切換欄",
@@ -1770,11 +1956,6 @@
         "integrations": "Agent 與集成",
         "market": "市場",
         "actions": "操作"
-      },
-      "paramLabels": {
-        "repo": "倉庫",
-        "folder": "文件夾",
-        "branch": "分支"
       },
       "actions": {
         "showInFinder": {
@@ -1879,7 +2060,7 @@
     "chatRight": "右側聊天",
     "sidebarPosition": "工作站側邊欄",
     "modelPickerStyle": "選擇器樣式",
-    "paginateChatHistory": "將聊天記錄分頁",
+    "paginateChatHistory": "聊天記錄分頁",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "選單",
     "left": "左側",
@@ -2128,13 +2309,29 @@
   "selectionMenu": {
     "addToChat": "添加到對話",
     "addThisFile": "添加此文件",
-    "addLines": "添加第 {{from}} – {{to}} 行"
+    "addLines": "添加第 {{from}} – {{to}} 行",
+    "replyToSelection": "回覆",
+    "clearQuotedSelection": "移除引用內容",
+    "pinSelection": "釘選"
   },
   "browser": {
     "screenshot": {
       "added": "截圖已添加到聊天",
       "failed": "截圖失敗：{{reason}}",
-      "noActivePage": "沒有可截取的活動頁面"
+      "noActivePage": "沒有可截取的活動頁面",
+      "saved": "截圖已儲存",
+      "saveFailed": "儲存截圖失敗：{{reason}}"
+    },
+    "menu": {
+      "pageTheme": "頁面主題",
+      "themeAuto": "自動",
+      "themeLight": "淺色",
+      "themeDark": "深色",
+      "saveScreenshot": "儲存截圖...",
+      "openHtmlFile": "開啟 HTML 檔案..."
+    },
+    "openHtmlFile": {
+      "failed": "開啟檔案失敗：{{reason}}"
     },
     "selectedElement": {
       "addElement": "添加元素",
@@ -2154,7 +2351,7 @@
   "globalToolbar": {},
   "quitConfirmation": {
     "title": "結束 ORG2？",
-    "subtitle": "正在執行的工作階段會保留目前狀態。你可以稍後重新開啟 ORG2。",
+    "subtitle": "正在執行的工作階段會保留目前狀態。你可以稍後重新開啟 ORG2",
     "cancel": "取消",
     "confirm": "結束"
   },
@@ -2184,7 +2381,7 @@
   "browserCookieImport": {
     "safari": {
       "needsFullDiskAccess": "需要「完整磁碟取用權限」",
-      "explain": "Safari 將 Cookie 儲存在受 macOS 保護的資料夾中。請在系統設定的「完整磁碟存取權限」中允許 ORG2，然後重新檢查。",
+      "explain": "{{browser}} 將 Cookie 儲存在受 macOS 保護的資料夾中。請在系統設定的「完整磁碟存取權限」中允許 ORG2，然後重新檢查",
       "openSettings": "打開系統設定",
       "checkAgain": "重新檢查"
     },
@@ -2209,7 +2406,7 @@
     "doneSkipped_other": "已略過 {{count}} 個 Cookie",
     "empty": {
       "title": "找不到支援的瀏覽器",
-      "body": "請安裝帶有已儲存登入資訊的 Chrome、Edge、Brave 或 Firefox。"
+      "body": "請安裝帶有已儲存登入資訊的 Chrome、Edge、Brave 或 Firefox"
     },
     "category": {
       "banking": "銀行",
@@ -2218,7 +2415,7 @@
     },
     "errors": {
       "openSettingsFailed": "無法開啟系統設定",
-      "keychainDenied": "鑰匙圈存取遭拒。請重新選擇該設定檔並點選「允許」。",
+      "keychainDenied": "鑰匙圈存取遭拒。請重新選擇該設定檔並點選「允許」",
       "listFailed": "找不到可匯入的瀏覽器",
       "previewFailed": "無法從該瀏覽器讀取 Cookie",
       "importFailed": "無法匯入所選 Cookie"
@@ -2247,22 +2444,6 @@
     "openFailed": "無法開啟文件",
     "saveFirst": "請先儲存或捨棄修改，再使用其他應用程式開啟"
   },
-  "sqlEditor": {
-    "placeholder": "輸入 SQL 查詢...",
-    "format": "格式化",
-    "runQueryToSeeResults": "執行查詢以查看結果",
-    "executingQuery": "正在執行查詢...",
-    "queryFailed": "查詢失敗",
-    "queryCompleted": "查詢完成",
-    "noResults": "查詢未傳回結果",
-    "rowCount_one": "{{count}} 列",
-    "rowCount_other": "{{count}} 列",
-    "press": "按",
-    "toRun": "執行",
-    "nullValue": "NULL",
-    "booleanTrue": "true",
-    "booleanFalse": "false"
-  },
   "chatImage": {
     "maxReached": "最多允許 {{max}} 張圖片",
     "remainingWarning": "只能再新增 {{remaining}} 張圖片（最多 {{max}} 張）",
@@ -2280,5 +2461,11 @@
     "sessionJsonFile": "ORG2 工作階段 JSON",
     "skillsSource": "ORG2 技能",
     "gitServiceUnavailable": "無法連線至本機 Git 服務。請等待應用程式啟動完成後重試；如果問題持續發生，請重新啟動 ORG2。"
+  },
+  "imageActions": {
+    "addToChat": "新增至聊天",
+    "added": "已新增至聊天",
+    "failed": "圖片操作失敗，請重試",
+    "downloadCopy": "下載副本"
   }
 }

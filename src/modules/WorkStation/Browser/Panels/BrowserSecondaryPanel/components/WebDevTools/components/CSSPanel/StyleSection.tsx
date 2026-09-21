@@ -77,7 +77,6 @@ export const StyleSection: React.FC<StyleSectionProps> = memo(
         {/* Section header */}
         <Button
           layout="custom"
-          appearance="custom"
           onClick={handleToggle}
           className="flex w-full items-center gap-1.5 py-1.5 text-left"
         >

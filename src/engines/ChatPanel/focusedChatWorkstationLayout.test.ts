@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  FOCUSED_CHAT_MINIMAP_COLUMN_CONTAINER_PX,
   FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS,
   isSameFocusedChatGitEnvironment,
   resolveFocusedChatWorkstationRailInsetStyle,
@@ -62,9 +61,7 @@ describe("resolveFocusedChatWorkstationRailTrackClass", () => {
     for (const collapsed of [false, true]) {
       const track = resolveFocusedChatWorkstationRailTrackClass(collapsed);
       expect(track).toContain("w-0");
-      expect(track).toContain(
-        `@[${FOCUSED_CHAT_MINIMAP_COLUMN_CONTAINER_PX}px]/focusedchat:w-9`
-      );
+      expect(track).toContain(`@[850px]/focusedchat:w-9`);
     }
   });
 });
@@ -98,14 +95,14 @@ describe("FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS", () => {
 
   it("joins the flow at the width where the track reserves its column", () => {
     expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain(
-      `@[${FOCUSED_CHAT_MINIMAP_COLUMN_CONTAINER_PX}px]/focusedchat:relative`
+      `@[850px]/focusedchat:relative`
     );
   });
 
   it("stays centered on the fixed trailing rail column when expanded", () => {
     expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain("w-9");
     expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).toContain(
-      `@[${FOCUSED_CHAT_MINIMAP_COLUMN_CONTAINER_PX}px]/focusedchat:ml-auto`
+      `@[850px]/focusedchat:ml-auto`
     );
     expect(FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS).not.toContain("w-full");
   });
@@ -113,40 +110,93 @@ describe("FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS", () => {
 
 describe("resolveFocusedChatWorkstationSectionOrder", () => {
   it("keeps local session context below the local environment", () => {
-    expect(resolveFocusedChatWorkstationSectionOrder(true, true)).toEqual([
-      "workspace",
-      "session",
-      "tabs",
-    ]);
-    expect(resolveFocusedChatWorkstationSectionOrder(false, true)).toEqual([
-      "workspace",
-      "session",
-    ]);
+    expect(
+      resolveFocusedChatWorkstationSectionOrder(
+        true,
+        true,
+        false,
+        undefined,
+        false
+      )
+    ).toEqual(["workspace", "session", "tabs"]);
+    expect(
+      resolveFocusedChatWorkstationSectionOrder(
+        false,
+        true,
+        false,
+        undefined,
+        false
+      )
+    ).toEqual(["workspace", "session"]);
   });
 
   it("places a cloud session environment above the local environment", () => {
     expect(
-      resolveFocusedChatWorkstationSectionOrder(true, true, false, "cloud")
+      resolveFocusedChatWorkstationSectionOrder(
+        true,
+        true,
+        false,
+        "cloud",
+        false
+      )
     ).toEqual(["session", "workspace", "tabs"]);
     expect(
-      resolveFocusedChatWorkstationSectionOrder(false, true, true, "cloud")
+      resolveFocusedChatWorkstationSectionOrder(
+        false,
+        true,
+        true,
+        "cloud",
+        false
+      )
     ).toEqual(["session", "workspace", "subagents"]);
   });
 
   it("omits an empty session environment without hiding local actions", () => {
-    expect(resolveFocusedChatWorkstationSectionOrder(true, false)).toEqual([
-      "workspace",
-      "tabs",
-    ]);
+    expect(
+      resolveFocusedChatWorkstationSectionOrder(
+        true,
+        false,
+        false,
+        undefined,
+        false
+      )
+    ).toEqual(["workspace", "tabs"]);
   });
 
   it("slots subagents below the environment sections and above open tabs", () => {
-    expect(resolveFocusedChatWorkstationSectionOrder(true, true, true)).toEqual(
-      ["workspace", "session", "subagents", "tabs"]
-    );
     expect(
-      resolveFocusedChatWorkstationSectionOrder(false, false, true)
+      resolveFocusedChatWorkstationSectionOrder(
+        true,
+        true,
+        true,
+        undefined,
+        false
+      )
+    ).toEqual(["workspace", "session", "subagents", "tabs"]);
+    expect(
+      resolveFocusedChatWorkstationSectionOrder(
+        false,
+        false,
+        true,
+        undefined,
+        false
+      )
     ).toEqual(["workspace", "subagents"]);
+  });
+
+  it("slots sources after subagents and above open tabs", () => {
+    expect(
+      resolveFocusedChatWorkstationSectionOrder(true, true, true, "local", true)
+    ).toEqual(["workspace", "session", "subagents", "sources", "tabs"]);
+    expect(
+      resolveFocusedChatWorkstationSectionOrder(
+        false,
+        true,
+        false,
+        "cloud",
+        true
+      )
+    ).toEqual(["session", "workspace", "sources"]);
   });
 });
 

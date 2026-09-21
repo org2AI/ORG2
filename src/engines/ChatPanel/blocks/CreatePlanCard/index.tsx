@@ -40,7 +40,6 @@ import {
 import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 import { usePendingPlanApproval } from "@src/hooks/session/usePendingPlanApproval";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import { sessionRuntimeStatusAtom } from "@src/store/session/cliSessionStatusAtom";
 import { creatorDefaultModelSelectionAtom } from "@src/store/session/creatorDefaultModelAtom";
 import {
@@ -51,6 +50,7 @@ import { sessionByIdAtom } from "@src/store/session/sessionAtom";
 import { activeSessionIdAtom } from "@src/store/session/viewAtom";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import { resolveModelForMessage } from "@src/util/session/resolveModelForMessage";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import ToolUsageBadge from "../ToolCallBlock/ToolUsageBadge";
 import {

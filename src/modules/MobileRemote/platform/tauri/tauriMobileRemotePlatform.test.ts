@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MobileAuthSession } from "../../auth/mobileAuthState";
 import type { MobileRemoteRuntimePort } from "../types";
@@ -80,6 +81,33 @@ async function createPlatform(bridge: TauriMobileRemoteBridge) {
 }
 
 describe("createTauriMobileRemotePlatformWithBridge", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }))
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.documentElement.style.removeProperty("--color-chat-container");
+  });
+
+  it("applies the loaded theme canvas through the native bridge", async () => {
+    const { bridge } = createMemoryBridge();
+    bridge.applyCanvasColor = vi.fn().mockResolvedValue(undefined);
+    const { platform } = await createPlatform(bridge);
+    document.documentElement.style.setProperty(
+      "--color-chat-container",
+      "#202020"
+    );
+    await platform.appearance?.applyColorScheme("dark");
+    expect(bridge.applyCanvasColor).toHaveBeenCalledWith([32, 32, 32]);
+  });
+
   it("persists auth sessions in the injected Keychain boundary", async () => {
     const { bridge, secure } = createMemoryBridge();
     const { platform } = await createPlatform(bridge);
@@ -263,6 +291,11 @@ describe("createTauriMobileRemotePlatformWithBridge", () => {
       wsUrl: "wss://relay.example/a",
       desktopId: "desktop-a",
       deviceLabel: "Home Mac",
+      desktopIdentity: {
+        name: "Office Mac",
+        model: "Mac14,7",
+        username: "alex",
+      },
       deviceToken: "secret-a",
     });
     first.controller.dispose();
@@ -273,8 +306,25 @@ describe("createTauriMobileRemotePlatformWithBridge", () => {
     ).resolves.toMatchObject({
       desktopId: "desktop-a",
       deviceLabel: "Home Mac",
+      desktopIdentity: {
+        name: "Office Mac",
+        model: "Mac14,7",
+        username: "alex",
+      },
       deviceToken: "secret-a",
     });
+    await expect(
+      second.platform.connection.listPairedDesktops("local-development")
+    ).resolves.toEqual([
+      expect.objectContaining({
+        name: "Office Mac",
+        desktopIdentity: {
+          name: "Office Mac",
+          model: "Mac14,7",
+          username: "alex",
+        },
+      }),
+    ]);
     second.controller.dispose();
   });
 

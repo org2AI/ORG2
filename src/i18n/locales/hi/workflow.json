@@ -1,0 +1,16 @@
+{
+  "status": {
+    "polling": "पोलिंग",
+    "loadingSession": "सत्र डेटा लोड हो रहा है...",
+    "noSession": "कोई सत्र चयनित नहीं",
+    "implementing": "लागू किया जा रहा है",
+    "pending": "लंबित",
+    "inProgress": "प्रगति में",
+    "connected": "कनेक्ट है",
+    "connecting": "कनेक्ट हो रहा है...",
+    "disconnected": "डिस्कनेक्ट है"
+  },
+  "dialogs": {},
+  "toolDescriptions": {},
+  "stages": {}
+}

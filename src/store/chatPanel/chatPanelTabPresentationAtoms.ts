@@ -16,28 +16,10 @@ import {
   chatPanelStartPageOpenAtom,
   chatPanelWorkspaceOverviewTabAtom,
 } from "@src/store/ui/chatPanel/selectionAtoms";
-import { toggleChatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 
 import { recordChatPanelTabTransitionAtom } from "./chatPanelRecentTabsState";
-import {
-  type ChatPanelTab,
-  isChatPanelTabStationAvailable,
-} from "./chatPanelTabsModel";
-import {
-  activeChatPanelTabAtom,
-  chatPanelTabsAtom,
-} from "./chatPanelTabsState";
-
-/** User toggle guarded by the active tab's Station-access policy. */
-export const toggleActiveChatPanelMaximizedAtom = atom(null, (get, set) => {
-  if (!isChatPanelTabStationAvailable(get(activeChatPanelTabAtom))) {
-    return false;
-  }
-  set(toggleChatPanelMaximizedAtom);
-  return true;
-});
-toggleActiveChatPanelMaximizedAtom.debugLabel =
-  "toggleActiveChatPanelMaximized";
+import { type ChatPanelTab } from "./chatPanelTabsModel";
+import { chatPanelTabsAtom } from "./chatPanelTabsState";
 
 /**
  * Make the Launchpad / creator axes match the tab that just became active.
@@ -64,7 +46,7 @@ const syncChatPanelTabNavigationAtom = atom(
 
 /**
  * Reconcile creator / Launchpad state after hydration or layout changes.
- * Maximize behavior is derived at the layout boundary from the active tab, so
+ * Pane maximization is independent of tab navigation, so
  * reconciliation never mutates the user's persisted preference.
  */
 export const syncActiveChatPanelTabStateAtom = atom(null, (get, set) => {

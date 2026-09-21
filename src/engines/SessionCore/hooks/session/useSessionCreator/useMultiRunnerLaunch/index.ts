@@ -275,6 +275,7 @@ export function useMultiRunnerLaunch(
               effectiveSource,
               isBackgroundLaunch: true,
               launchCliAgentType: launchParams.platform,
+              launchCredentialSource: launchParams.credentialSource,
               launchOrgContext: resolvedWorkItemContext ?? undefined,
               result,
             })

@@ -1,6 +1,6 @@
 # Frontend Engines Architecture
 
-> Last updated: 2026-09-02
+> Last updated: 2026-09-16
 
 Engines (`src/engines/`) are **self-contained runtime subsystems** that power
 specific tools in the editor. Each engine owns its own state, business logic,
@@ -8,66 +8,93 @@ and (optionally) UI components. They are isolated from each other by design —
 cross-engine coordination happens through Jotai atoms, events, or explicit
 service calls, never via direct import chains.
 
+Engines sit at tier 3 of the six-tier layering described in
+`src/engines/README.md`: an engine may import `components/` and the tier-1
+leaves, and must not import `scaffold/` or `modules/`.
+
 ---
 
 ## Engine Inventory
 
-| Engine           | Directory                   | Primary responsibility                                                               |
-| ---------------- | --------------------------- | ------------------------------------------------------------------------------------ |
-| **SessionCore**  | `src/engines/SessionCore/`  | Session event lifecycle — ingestion, storage, sync, and rendering                    |
-| **ChatPanel**    | `src/engines/ChatPanel/`    | Conversation UI — chat history, input area, blocks, navigation                       |
-| **Simulator**    | `src/engines/Simulator/`    | Visual replay of agent sessions as "apps" (code editor, browser, messages)           |
-| **BrowserCore**  | `src/engines/BrowserCore/`  | Embedded browser sessions (multi-tab, history, proxy, incognito)                     |
-| **TerminalCore** | `src/engines/TerminalCore/` | PTY terminal sessions with xterm.js, shell profiles, agent-linked read-only sessions |
-| **DatabaseCore** | `src/engines/DatabaseCore/` | Unified database provider (SQLite, Supabase, Turso, Neon, Postgres, MySQL)           |
-| **GitWorkflow**  | `src/engines/GitWorkflow/`  | GitHub diff viewer and Git suggestion cards                                          |
+Line counts are `.ts` / `.tsx` excluding tests, measured 2026-09-16.
+
+| Engine           | Directory                   |   Lines | Primary responsibility                                                              |
+| ---------------- | --------------------------- | ------: | ----------------------------------------------------------------------------------- |
+| **ChatPanel**    | `src/engines/ChatPanel/`    | 100,765 | Conversation surface — history, composer, tab bar, side panels, event rendering     |
+| **SessionCore**  | `src/engines/SessionCore/`  |  41,111 | Session event lifecycle — ingestion, conversations, turns, storage, sync, rendering |
+| **Simulator**    | `src/engines/Simulator/`    |  12,655 | Visual replay of agent sessions as dockable "apps" in a grid                        |
+| **TerminalCore** | `src/engines/TerminalCore/` |   5,444 | PTY terminal sessions with xterm.js, shell integration, agent-linked sessions       |
+| **DatabaseCore** | `src/engines/DatabaseCore/` |   2,252 | Unified database provider (SQLite, Supabase, Turso, Neon, Postgres, MySQL)          |
+| **BrowserCore**  | `src/engines/BrowserCore/`  |   1,304 | Embedded browser sessions on Tauri WebViews                                         |
+
+There is no `GitWorkflow` engine, and the `GitHubDiff/` and
+`GitSuggestionCards/` directories it was said to own no longer exist anywhere in
+the tree. Git UI is spread across `components/GitDialogs`,
+`modules/WorkStation/shared/{GitFileList,DiffFileSection,DiffSectionList}`,
+`modules/WorkStation/shared/SidebarModules/SourceControl` and
+`features/CodeMirror/Diff`, over the atoms in `store/git/` and the provider in
+`contexts/git/GitStatusContext`.
 
 ---
 
 ## Engine Descriptions
 
-### SessionCore
+### ChatPanel
 
-The **central data engine**. All other engines read from its atoms.
+The largest engine, and the conversation surface itself: it renders the event
+stream and owns the composer.
 
 **Owns:**
 
-- `core/atoms/` — `eventsAtom`, `metadataAtom`, `uiItemsAtom`, write actions
-- `derived/` — derived atoms: `chatEventsAtom`, `simulatorEventsAtom`
+- `ChatHistory/` — scrollable, grouped event list and its projections
+- `ChatItems/` — per-event item wrappers
+- `events/` — per-event-kind stream renderers (agent message, thinking, tool
+  results, discussion)
+- `blocks/` — reusable block components (`CodeBlock`, `DiffBlock`,
+  `ExploreBlock`, `ListDirBlock`, …)
+- `InputArea/` — composer, attachments, slash commands, conversation targeting
+- `ChatPanelTabBar/`, `TabContent/` — the chat pane's own tab strip and per-tab
+  surfaces
+- `panels/` — auxiliary panel views (project, work item, runtime, cloud org,
+  GitHub issue / PR)
+- `SideChat/`, `ThreadSelector/`, `ConversationStreamProvider/`
+- `header/`, `components/`, `rendering/`, `adapters/`, `hooks/`
+
+**Config constants** (`config.ts`): `MIN_WIDTH = 420`,
+`MAX_WIDTH_RATIO = 0.5` (the maximum is derived per viewport by
+`getChatMaxWidth()`, not a fixed pixel value), `LEFT_PANEL_WIDTH = 64`,
+`RAPID_CLICK_THRESHOLD_MS = 300`.
+
+---
+
+### SessionCore
+
+The **central data engine**. All other engines read from its atoms. See
+`src/engines/SessionCore/ARCHITECTURE.md` for the full pipeline.
+
+**Owns:**
+
+- `core/atoms/` — `events.ts`, `metadata.ts`, `replay.ts`, `context.ts` and the
+  write actions (`actions*.ts`)
+- `derived/` — derived atoms: `chatEvents.ts`, `simulatorEvents.ts`,
+  planning-indicator and plan-display atoms
 - `ingestion/` — bridge to the Rust normalizer (`rustBridge.ts`); converts raw
-  `ActivityChunk` → `SessionEvent[]` via `es_process_chunks` Tauri IPC
-- `sync/` — WebSocket / Tauri Channel subscription, session sync provider,
-  per-session-type adapters (CLI, Rust agents)
-- `rendering/` — `propsNormalizer.ts`, component registry (`COMPONENT_LOADERS`),
-  per-tool event components
-- `storage/` — SQLite and IndexedDB persistence
+  `ActivityChunk` → `SessionEvent[]` over Tauri RPC
+- `conversations/` — canonical conversation events, native materializer /
+  projection / reconciliation, local continuation and turn identity
+- `turns/`, `control/` — turn lifecycle, intent dispatch, timeline boundaries
+- `sync/` — session channel subscription, sync provider, reconciliation, and
+  per-session-type adapters (CLI, native, Rust agents)
+- `rendering/` — prop normalization, component registry, per-tool event types
+- `replay/` — replay turn segments and shell replay ranges
+- `storage/` — SQLite cache adapter
+- `payloads/`, `services/`, `components/`
 - `workspace/atoms/` — session-scoped UI atoms (`sessionAtoms.ts`, `uiAtoms.ts`)
 - `hooks/session/` — session creation and discovery hooks
 - `hooks/replay/` — `useStepState` and planning-indicator hooks
 
 **Key invariant:** ALL chunk normalization happens in Rust. The TypeScript layer
-only calls Tauri IPC — no local normalization logic exists in TS.
-
----
-
-### ChatPanel
-
-Renders the conversation history and composer.
-
-**Owns:**
-
-- `ChatHistory/` — scrollable event list
-- `ChatItems/` — per-event item wrappers
-- `InputArea/` — text composer, file attachments, slash commands
-- `blocks/` — reusable block components (ToolCallBlock, CodeBlock, etc.)
-- `hooks/` — resize, scroll, keyboard shortcut hooks
-- `panels/` — auxiliary panels (context, references)
-- `navigation/` — thread navigation
-
-**Config constants** (`config.ts`):
-
-- `MIN_WIDTH = 420`, `MAX_WIDTH = 800` (chat panel resize constraints)
-- `RAPID_CLICK_THRESHOLD_MS = 300`
+only calls Tauri RPC — no local normalization logic exists in TS.
 
 ---
 
@@ -78,43 +105,25 @@ components.
 
 **Owns:**
 
+- `types/appTypes.ts` — the `AppType` enum: `CODE_EDITOR`, `CHANNELS`,
+  `BROWSER`, `STORY_MANAGER`, `DIFF`, `BACKGROUND_TASKS`, `CANVAS`
 - `utils/eventToDockMapping.ts` — maps `functionName` → `AppType`
-- `utils/findIndexAtTime.ts` — canonical binary-search for replay cursor
-- `utils/eventSegments.ts` — segment calculation for the timeline
 - `utils/simulatorEventRouting.ts` — pattern-based app-type routing
-- `hooks/` — `useGlobalReplay`, `useCellPlayback`, `useEventNavigation`,
-  `useSimulatorEvents`, `useSimulatorSubagents`, grid layout
-- `adapters/` — per-app-type simulator adapters
-- `apps/` — app-type entry points (`CODE_EDITOR`, `CHANNELS`, `BROWSER`, etc.)
-- `components/` — `SimulatorMainPane`, `SimulatorContentArea`
-- `types/appTypes.ts` — `AppType` enum
+- `utils/findIndexAtTime.ts` — canonical binary-search for the replay cursor
+- `apps/core/` — the framework layer: app config factory, matchers, replay
+  types, `useSimulatorAppState`, full-event hydration registry
+- `apps/canvas/`, `apps/backgroundTasks/` — the two app surfaces the engine
+  renders itself
+- `hooks/` — `useCellPlayback`, `useReplayMode`, `useEventNavigation`,
+  `useSimulatorEvents`, `useSimulatorSubagents`, `useGridLayout`, …
+- `components/` — `SimulatorContentArea`, `Dock`, `GridCell`, `CaptionBar`,
+  `SimulatorStatusBar`, `SubagentPipCard`, …
 
-**App-type routing:**
-
-| AppType         | Component             | Triggered by                                                     |
-| --------------- | --------------------- | ---------------------------------------------------------------- |
-| `CODE_EDITOR`   | `SimulatorCodeEditor` | `read_file`, `edit_file`, `run_shell`, `code_search`, `list_dir` |
-| `CHANNELS`      | `SimulatorMessages`   | `assistant`, `send_message`, `think`, `consult_agent`            |
-| `BROWSER`       | `SimulatorBrowser`    | `browser_action`, `navigate_browser`, `screenshot`               |
-| `DB_MANAGER`    | `SimulatorDatabase`   | `db_query`, `sql_execute`                                        |
-| `STORY_MANAGER` | `SimulatorProject`    | `project_overview`                                               |
-| `TRAJECTORY`    | `SimulatorTrajectory` | _(global view)_                                                  |
-
----
-
-### BrowserCore
-
-Provides multi-tab in-app browsing via Tauri WebViews.
-
-**Owns:**
-
-- `BrowserSessionWebview.tsx` — renders a single browser WebView
-- `BrowserUrlInput.tsx` — URL bar with back/forward/refresh
-- `hooks/` — session management, navigation, proxy
-- `types.ts` — `BrowserSession`, `BrowserTabData`, `NavigationAction`
-
-**State shape:** Each session has `sessions[]` (multi-tab), an
-`activeSessionId`, and optional `useProxy` / `incognito` flags.
+**App registration:** the remaining app surfaces (code editor, channels,
+browser, project, diff) are WorkStation components. They are registered
+`AppType` → lazy component in
+`modules/WorkStation/shared/simulatorRegistry`, so the engine never imports
+them — it renders whatever the registry resolves.
 
 ---
 
@@ -124,14 +133,12 @@ Full PTY terminal backed by xterm.js with agent integration.
 
 **Owns:**
 
-- `components/` — `TerminalView`, toolbar, resize handle
+- `components/` — `TerminalInteractive`, `TerminalDisplay`, `XtermOutput`,
+  `TerminalSearchPanel`
 - `hooks/useTerminalState.ts` — session CRUD, active session, resize
-- `hooks/useTerminalContextAdapter.ts` — adapts context for agent-linked sessions
-- `addons/` — xterm add-ons (fit, weblinks, search)
+- `addons/ShellIntegrationAddon.ts` — OSC shell-integration sequence handling
+- `terminalMountWindow.ts` — detached-window mounting
 - `types.ts` — `TerminalSession` (with `readOnly`, `agentSessionId`, `shellKind`)
-
-**Display title priority:** `userTitle` → `sequenceTitle` → `processName` →
-`name` (resolved by `getTerminalDisplayTitle(session)`).
 
 ---
 
@@ -142,24 +149,32 @@ Uniform interface over heterogeneous database back-ends.
 **Owns:**
 
 - `factory.ts` — creates provider instances by type
-- `providers/` — per-type adapters (SQLite via Tauri, HTTP-based for cloud DBs)
+- `providers/` — per-type adapters (`TauriSqliteProvider`, `TauriSqlProvider`,
+  `SupabaseProvider`, `TursoProvider`, `NeonProvider`, `PostgresProvider`,
+  `MySQLProvider`)
 - `types.ts` — `DatabaseType`, `ConnectionStatus`, `TableInfo`, query result types
-- `__tests__/` — unit tests for factory and provider utilities
 
 **Supported providers:** `sqlite`, `supabase`, `turso`, `neon`, `postgres`,
 `mysql`.
 
 ---
 
-### GitWorkflow
+### BrowserCore
 
-Lightweight engine for Git-related UI components. Not a full state manager —
-it delegates storage to Jotai atoms in `src/store/git/`.
+Provides in-app browsing via Tauri WebViews.
 
 **Owns:**
 
-- `GitHubDiff/` — GitHub-style side-by-side diff viewer
-- `GitSuggestionCards/` — AI-generated commit message / PR description cards
+- `index.tsx` — the `BrowserCore` surface that hosts the active session
+- `BrowserSessionWebview.tsx` — renders a single browser WebView
+- `nativeFrameAnchor.ts` — keeps the native webview aligned with its DOM slot
+- `webviewMountWindow.ts` — detached-window mounting
+- `hooks/` — `useBrowserAutomation`, `useBrowserContextAdapter`
+- `types.ts` — `BrowserSession`, navigation types
+
+The URL bar and tab strip are chrome, not engine code: they live in
+`modules/WorkStation/Browser/` and `scaffold/WorkbenchChrome/`. Session state is
+provided by `contexts/workstation/BrowserContext`.
 
 ---
 
@@ -168,32 +183,32 @@ it delegates storage to Jotai atoms in `src/store/git/`.
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │  Tauri IPC (Rust backend)                                            │
-│  • es_process_chunks / es_normalize_chunk  (SessionCore ingestion)   │
+│  • chunk consolidate / normalize / merge   (SessionCore ingestion)   │
 │  • Terminal PTY commands                   (TerminalCore)            │
-│  • Browser navigation / screenshot        (BrowserCore)             │
-│  • Git status / diff / commit             (GitWorkflow)              │
+│  • Browser navigation / screenshot         (BrowserCore)             │
+│  • SQL execution                           (DatabaseCore)            │
 └───────────────────────────────┬──────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │  SessionCore                                                        │
-│  sync/ → ingestion/ → core/atoms/eventsAtom                         │
+│  sync/ → ingestion/ → core/atoms/events                             │
 │                         │                                           │
-│              derived/chatEventsAtom  derived/simulatorEventsAtom    │
-└──────────┬──────────────┬─────────────────────┬─────────────────────┘
-           │              │                     │
-           ▼              ▼                     ▼
-    ┌─────────────┐ ┌──────────────┐   ┌───────────────┐
-    │  ChatPanel  │ │  Simulator   │   │  (Trajectory) │
-    │             │ │              │   │               │
-    │ reads       │ │ reads        │   │               │
-    │ chatEvents  │ │ simEvents    │   │               │
-    └─────────────┘ └──────────────┘   └───────────────┘
+│              derived/chatEvents      derived/simulatorEvents        │
+└──────────┬──────────────┬───────────────────────────────────────────┘
+           │              │
+           ▼              ▼
+    ┌─────────────┐ ┌──────────────┐
+    │  ChatPanel  │ │  Simulator   │
+    │             │ │              │
+    │ reads       │ │ reads        │
+    │ chatEvents  │ │ simEvents    │
+    └─────────────┘ └──────────────┘
 
-Independent engines (own Jotai atoms, no SessionCore dependency):
-  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐
-  │  BrowserCore │  │ TerminalCore │  │ DatabaseCore │  │ GitWorkflow │
-  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘
+Independent engines (own state, no SessionCore dependency):
+  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+  │  BrowserCore │  │ TerminalCore │  │ DatabaseCore │
+  └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
 ---
@@ -209,9 +224,17 @@ standard channel for reading shared state (e.g., ChatPanel reads
 
 ### Tauri Commands / IPC
 
-Engines that need data from Rust invoke Tauri commands (e.g.,
-`invoke("es_process_chunks", ...)`) and write results into their own atoms.
-Commands are typed via generated bindings in `src/commands/`.
+Engines that need data from Rust invoke Tauri commands through
+`@src/api/tauri/rpc` and write results into their own atoms. Commands are typed
+via generated bindings in `src/commands/`.
+
+### Registration (down as data, up as registration)
+
+An engine that must render surface-owned UI exposes a registry instead of
+importing the surface. `Simulator` is the worked example: WorkStation registers
+its app components into `simulatorRegistry`, and the engine resolves them by
+`AppType`. Use this whenever the alternative would be an `engines/ → modules/`
+import.
 
 ### Events (rare)
 
@@ -243,7 +266,7 @@ to avoid accidental coupling.
 1. Create `src/engines/MyEngine/` with `index.ts`, `types.ts`, `hooks/`,
    optional `components/`.
 2. Keep the engine isolated — no imports from sibling engines except via atoms
-   or service calls.
+   or service calls, and no imports from `scaffold/` or `modules/`.
 3. Export the public API from `index.ts`.
 4. Register any Tauri command bindings in `src/commands/`.
-5. Add the engine to this document.
+5. Add the engine to this document and to `src/engines/README.md`.

@@ -1,7 +1,7 @@
 import React from "react";
 
+import "@src/components/layout/blocks";
 import "@src/engines/ChatPanel/blocks/primitives/config";
-import "@src/modules/shared/layouts/blocks";
 
 export function PlaygroundPreviewShell({
   children,

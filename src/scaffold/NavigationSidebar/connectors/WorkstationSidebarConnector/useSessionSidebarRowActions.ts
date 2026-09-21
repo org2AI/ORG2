@@ -16,6 +16,7 @@ type DecorateRowActionsParams = Parameters<
   typeof useDecorateSessionRowActions
 >[0];
 interface UseSessionSidebarRowActionsParams {
+  sectionMenuItems?: ContextMenuParams["sectionMenuItems"];
   sessionMap: ContextMenuParams["sessionMap"];
   rename: ContextMenuParams["rename"];
   handleDeleteSession: ContextMenuParams["handleDeleteSession"];
@@ -41,6 +42,7 @@ interface UseSessionSidebarRowActionsParams {
 
 export function useSessionSidebarRowActions({
   sessionMap,
+  sectionMenuItems,
   rename,
   handleDeleteSession,
   deleteSessionCreatorDraft,
@@ -69,6 +71,7 @@ export function useSessionSidebarRowActions({
   const copyReference = useCopySessionReference();
   const handleMenuItemContextMenu = useWorkstationSidebarContextMenu({
     sessionMap,
+    sectionMenuItems,
     rename,
     handleDeleteSession,
     handleDeleteDraft: deleteSessionCreatorDraft,

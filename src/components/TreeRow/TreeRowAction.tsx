@@ -54,10 +54,12 @@ export const TreeRowAction: React.FC<TreeRowActionProps> = memo(
 
     return (
       <Button
-        htmlType="button"
         size="sidebar"
-        variant={variant === "default" ? "tertiary" : variant}
-        appearance="soft"
+        variant="tertiary"
+        tone={
+          variant === "danger" || variant === "success" ? variant : undefined
+        }
+        hoverTone={variant === "primary" ? "primary" : undefined}
         iconOnly
         aria-label={title}
         className={`action-btn group/action ${visibilityClass}`}

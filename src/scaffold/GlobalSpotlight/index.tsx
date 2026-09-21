@@ -1,11 +1,11 @@
 /**
- * GlobalSpotlight Component (NEW ARCHITECTURE)
+ * GlobalSpotlight command palette
  *
  * Command palette with reducer-based state management.
  * Modularized for better maintainability.
  */
 import { useAtomValue, useSetAtom } from "jotai";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 
@@ -14,6 +14,10 @@ import ImportSharedSessionDialog from "@src/features/Org2Cloud/ImportSharedSessi
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
 import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { currentBranchAtom } from "@src/store/repo";
+import type {
+  SpotlightInitialLayer,
+  SpotlightInitialQuery,
+} from "@src/store/ui/uiAtom";
 import {
   activeWorktreeAtom,
   setActiveWorktreeAtom,
@@ -23,6 +27,7 @@ import { SPOTLIGHT_FOOTER_ACTIVE_CHIP } from "./components";
 import CollabOrgForm from "./forms/CollabOrg/CollabOrgForm";
 import GitHubIssuesImportForm from "./forms/GitHubIssuesImport/GitHubIssuesImportForm";
 import { getEditorPaletteMode } from "./globalSpotlight.helpers";
+import type { WorkingDirectoryPickerMode } from "./globalSpotlight.helpers";
 import {
   type AddWorkingDirectoryModalStage,
   SpotlightProvider,
@@ -41,9 +46,9 @@ import {
   WorkingDirectoryPalette,
   WorktreePalette,
 } from "./palettes";
+import type { EditorPaletteMode } from "./palettes/EditorPalette/types";
 import { PaletteBody, SpotlightShell } from "./shell";
 import type { GlobalSpotlightProps } from "./types";
-import { SpotlightConfirmationView } from "./views";
 
 // ============================================
 // INNER COMPONENT
@@ -78,50 +83,62 @@ const GlobalSpotlightInner: React.FC<
   const currentRepoPath = currentRepo?.path ?? currentRepo?.fs_uri ?? "";
 
   const {
-    workingDirectoryPickerMode,
-    setWorkingDirectoryPickerMode,
-    collabOrgContext,
-    githubIssuesImportContext,
+    activeLayer: layer,
+    editorQuery,
+    openLayer,
+    closeLayer,
+    isRootActive,
     embeddedBranchMode,
     setEmbeddedBranchMode,
-    setEmbeddedWorktreeMode,
-    branchPickerOpen,
-    setBranchPickerOpen,
-    worktreePickerOpen,
-    setWorktreePickerOpen,
-    agentSessionSearchOpen,
-    allSessionsSearchOpen,
-    agentControlOpen,
-    sessionCreatorOpen,
-    sessionImportOpen,
-    embeddedEditorPalette,
     lastActivatedItemIdRef,
     pendingRestoreItemId,
     setPendingRestoreItemId,
     restoreLastActivatedItem,
-    handleOpenWorkingDirectoryPicker,
-    handleOpenCollabOrg,
-    handleOpenGitHubIssuesImport,
-    handleOpenBranchPicker,
-    handleOpenWorktreePicker,
-    handleOpenAgentSessionSearch,
-    handleOpenAllSessionsSearch,
-    handleOpenAgentControl,
-    handleOpenSessionCreator,
-    handleOpenSessionImport,
-    handleOpenEditorPalette,
-    handleCloseWorkingDirectoryPicker,
-    handleCloseCollabOrg,
-    handleCloseGitHubIssuesImport,
-    handleCloseBranchPicker,
-    handleCloseWorktreePicker,
-    handleCloseAgentSessionSearch,
-    handleCloseAllSessionsSearch,
-    handleCloseAgentControl,
-    handleCloseSessionCreator,
-    handleCloseSessionImport,
-    handleCloseEditorPalette,
   } = useSpotlightOverlayLayers(isOpen);
+  const handleOpenLayer = useCallback(
+    (next: SpotlightInitialLayer, query = "") => {
+      if (next.kind === "branch" && next.repoId) {
+        if (
+          !repos.some((repo) => repo.id === next.repoId && repo.kind === "git")
+        )
+          return;
+        if (next.repoId !== selectedRepoId) selectRepo(next.repoId);
+      }
+      openLayer(next, query);
+    },
+    [openLayer, repos, selectRepo, selectedRepoId]
+  );
+  const handleRequest = useCallback(
+    (request: SpotlightInitialQuery) => {
+      handleOpenLayer(request.layer ?? { kind: "default" }, request.query);
+    },
+    [handleOpenLayer]
+  );
+  const handleOpenWorkingDirectoryPicker = useCallback(
+    (mode: WorkingDirectoryPickerMode) =>
+      handleOpenLayer({ kind: "workspace", mode }),
+    [handleOpenLayer]
+  );
+  const handleOpenRepoBranchPicker = useCallback(
+    (repoId?: string) => handleOpenLayer({ kind: "branch", repoId }),
+    [handleOpenLayer]
+  );
+  const handleOpenEditorPalette = useCallback(
+    (query: string, mode?: EditorPaletteMode) =>
+      handleOpenLayer(
+        { kind: "editor", mode: mode ?? getEditorPaletteMode(query) },
+        query
+      ),
+    [handleOpenLayer]
+  );
+  const handleOpenAgentSessionSearch = useCallback(
+    () => handleOpenLayer({ kind: "agentSessionSearch" }),
+    [handleOpenLayer]
+  );
+  const handleOpenAllSessionsSearch = useCallback(
+    () => handleOpenLayer({ kind: "allSessionsSearch" }),
+    [handleOpenLayer]
+  );
 
   const {
     handleWorkspaceSelect,
@@ -140,25 +157,9 @@ const GlobalSpotlightInner: React.FC<
     selectBranch,
     refreshBranches,
     closeModal,
-    t,
     setActiveWorktree,
     setCurrentBranch,
-    setWorkingDirectoryPickerMode,
-    setBranchPickerOpen,
-    setWorktreePickerOpen,
   });
-
-  const handleOpenRepoBranchPicker = useCallback(
-    (repoId?: string) => {
-      if (repoId) {
-        if (!repos.some((repo) => repo.id === repoId && repo.kind === "git"))
-          return;
-        if (repoId !== selectedRepoId) selectRepo(repoId);
-      }
-      handleOpenBranchPicker();
-    },
-    [handleOpenBranchPicker, repos, selectRepo, selectedRepoId]
-  );
 
   // ============ ALL HOOKS MUST BE CALLED UNCONDITIONALLY ============
   // These hooks are needed for normal mode, but must always be called
@@ -176,34 +177,11 @@ const GlobalSpotlightInner: React.FC<
     currentRepoId: selectedRepoId || currentRepo?.id,
   });
   const { dispatch: spotlightDispatch, state: spotlightState } = spotlight;
-  const activeEditorPalette = embeddedEditorPalette;
 
   useSpotlightEffects({
-    isOpen:
-      isOpen &&
-      !workingDirectoryPickerMode &&
-      !collabOrgContext &&
-      !githubIssuesImportContext &&
-      !branchPickerOpen &&
-      !worktreePickerOpen &&
-      !agentSessionSearchOpen &&
-      !allSessionsSearchOpen &&
-      !agentControlOpen &&
-      !sessionImportOpen &&
-      !sessionCreatorOpen,
+    isOpen,
     dispatch: spotlightDispatch,
-    closeModal,
-    onOpenWorkingDirectoryLayer: handleOpenWorkingDirectoryPicker,
-    onOpenCollabOrgLayer: handleOpenCollabOrg,
-    onOpenGitHubIssuesImportLayer: handleOpenGitHubIssuesImport,
-    onOpenBranchLayer: handleOpenRepoBranchPicker,
-    onOpenWorktreeLayer: handleOpenWorktreePicker,
-    onOpenEditorLayer: handleOpenEditorPalette,
-    onOpenAgentSessionSearchLayer: handleOpenAgentSessionSearch,
-    onOpenAllSessionsSearchLayer: handleOpenAllSessionsSearch,
-    onOpenAgentControlLayer: handleOpenAgentControl,
-    onOpenSessionCreatorLayer: handleOpenSessionCreator,
-    onOpenSessionImportLayer: handleOpenSessionImport,
+    onRequest: handleRequest,
   });
 
   // Default view kernel — same hook every palette uses. Owns the input
@@ -239,7 +217,7 @@ const GlobalSpotlightInner: React.FC<
       if (event.key === "Escape" && pathLength > 0) {
         event.preventDefault();
         restoreLastActivatedItem();
-        spotlightDispatch({ type: "CLEAR_PATH" });
+        spotlightDispatch({ type: "RESET" });
         return;
       }
       internal(event);
@@ -247,16 +225,7 @@ const GlobalSpotlightInner: React.FC<
     [restoreLastActivatedItem, spotlightDispatch, pathLength]
   );
   const defaultKernel = useSelectorKernel({
-    isOpen:
-      isOpen &&
-      !branchPickerOpen &&
-      !worktreePickerOpen &&
-      !agentSessionSearchOpen &&
-      !allSessionsSearchOpen &&
-      !agentControlOpen &&
-      !sessionImportOpen &&
-      !sessionCreatorOpen &&
-      !activeEditorPalette,
+    isOpen: isRootActive,
     onClose: closeModal,
     items: spotlight.items,
     hasModalState: pathLength > 0,
@@ -274,21 +243,7 @@ const GlobalSpotlightInner: React.FC<
   const setDefaultSelectedIndex = defaultKernel.setSelectedIndex;
 
   useEffect(() => {
-    if (
-      workingDirectoryPickerMode ||
-      collabOrgContext ||
-      githubIssuesImportContext ||
-      branchPickerOpen ||
-      worktreePickerOpen ||
-      agentSessionSearchOpen ||
-      allSessionsSearchOpen ||
-      agentControlOpen ||
-      sessionImportOpen ||
-      sessionCreatorOpen ||
-      !pendingRestoreItemId
-    ) {
-      return;
-    }
+    if (!isRootActive || !pendingRestoreItemId) return;
 
     const entryIndex = spotlight.items.findIndex(
       (item) => item.id === pendingRestoreItemId
@@ -310,23 +265,13 @@ const GlobalSpotlightInner: React.FC<
     setDefaultSelectedIndex,
     setPendingRestoreItemId,
     spotlight.items,
-    workingDirectoryPickerMode,
-    collabOrgContext,
-    githubIssuesImportContext,
-    branchPickerOpen,
-    worktreePickerOpen,
-    agentSessionSearchOpen,
-    allSessionsSearchOpen,
-    agentControlOpen,
-    sessionCreatorOpen,
-    sessionImportOpen,
+    isRootActive,
   ]);
 
   // ============ NORMAL MODE ============
 
   // ============ RENDER HELPERS ============
   const getPlaceholder = (): string => {
-    if (spotlight.state.stage === "confirming") return "";
     if (spotlight.state.path.length === 0) {
       return t("selectors.spotlight.placeholder");
     }
@@ -334,10 +279,6 @@ const GlobalSpotlightInner: React.FC<
     switch (spotlight.state.missingParam) {
       case "repo":
         return t("selectors.spotlight.placeholders.workspace");
-      case "branch":
-        return t("selectors.spotlight.placeholders.branch");
-      case "source":
-        return t("selectors.spotlight.placeholders.source");
       case "language":
         return t("settings:general.languageSearchPlaceholder");
       case "theme":
@@ -352,26 +293,9 @@ const GlobalSpotlightInner: React.FC<
   // ============ EARLY RETURN ============
   if (!isOpen) return null;
 
-  // ============ CONFIRMATION PAGE ============
-  // Confirmation takes over the entire shell (no footer, no palette body).
-  const showConfirmation =
-    spotlight.confirmationPage.showConfirmation &&
-    spotlight.confirmationPage.confirmationData;
-
-  // Single SpotlightShell wraps the whole normal-mode tree.
-  const hasActiveAction =
-    !!workingDirectoryPickerMode ||
-    !!collabOrgContext ||
-    !!githubIssuesImportContext ||
-    branchPickerOpen ||
-    worktreePickerOpen ||
-    agentSessionSearchOpen ||
-    allSessionsSearchOpen ||
-    agentControlOpen ||
-    sessionImportOpen ||
-    sessionCreatorOpen ||
-    !!activeEditorPalette ||
-    spotlight.state.path.length > 0;
+  const hasActiveAction = !isRootActive || spotlight.state.path.length > 0;
+  const workingDirectoryPickerMode =
+    layer.kind === "workspace" ? layer.mode : null;
   const effectiveCurrentRepoId = selectedRepoId || undefined;
   const initialWorkingDirectoryStage: AddWorkingDirectoryModalStage =
     workingDirectoryPickerMode === "create"
@@ -386,139 +310,166 @@ const GlobalSpotlightInner: React.FC<
   // modes are the exception: they render no pinned section at all.
   const activeActionChip =
     workingDirectoryPickerMode === "switch" ||
-    worktreePickerOpen ||
-    (branchPickerOpen &&
+    layer.kind === "worktree" ||
+    (layer.kind === "branch" &&
       (embeddedBranchMode === "checkout" || embeddedBranchMode === "remove"))
       ? SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchSection
       : undefined;
 
-  const body = collabOrgContext ? (
-    <CollabOrgForm
-      key={`${collabOrgContext.source ?? "choose"}:${collabOrgContext.mode ?? "choose"}`}
-      initialSource={collabOrgContext.source}
-      initialMode={collabOrgContext.mode}
-      onCancel={handleCloseCollabOrg}
-      onCompleted={closeModal}
-    />
-  ) : githubIssuesImportContext ? (
-    <GitHubIssuesImportForm
-      orgId={githubIssuesImportContext.orgId}
-      repoName={githubIssuesImportContext.repoName ?? currentRepo?.name}
-      repoPath={githubIssuesImportContext.repoPath ?? currentRepoPath}
-      repoUrl={githubIssuesImportContext.repoUrl ?? currentRepo?.repo_url}
-      onCancel={handleCloseGitHubIssuesImport}
-      onImported={closeModal}
-    />
-  ) : workingDirectoryPickerMode ? (
-    <WorkingDirectoryPalette
-      key={workingDirectoryPickerMode}
-      isOpen={isOpen}
-      onClose={closeModal}
-      onGoBackToParent={handleCloseWorkingDirectoryPicker}
-      onSelect={handleWorkspaceSelect}
-      currentRepoId={effectiveCurrentRepoId}
-      initialAddMenu={workingDirectoryPickerMode === "add"}
-      initialAddStage={initialWorkingDirectoryStage}
-      asBody
-    />
-  ) : branchPickerOpen ? (
-    <BranchPalette
-      isOpen={isOpen}
-      onClose={closeModal}
-      onGoBackToParent={handleCloseBranchPicker}
-      onSelect={handleBranchPickerSelect}
-      onCreateBranch={handleCreateBranch}
-      onDeleteBranch={handleDeleteBranch}
-      onCheckoutDetached={handleCheckoutDetached}
-      repoId={effectiveCurrentRepoId ?? ""}
-      repoPath={
-        activeWorktree && activeWorktree.repoId === effectiveCurrentRepoId
-          ? activeWorktree.path
-          : currentRepoPath
-      }
-      repoName={currentRepo?.name}
-      currentBranchName={selectedBranchName}
-      asBody
-      onModeChange={setEmbeddedBranchMode}
-    />
-  ) : worktreePickerOpen ? (
-    <WorktreePalette
-      isOpen={isOpen}
-      onClose={closeModal}
-      onGoBackToParent={handleCloseWorktreePicker}
-      onSelect={handleWorktreePickerSelect}
-      onCreate={handleWorktreePickerCreate}
-      onRemoveWorktree={handleRemoveWorktree}
-      onModeChange={setEmbeddedWorktreeMode}
-      repoId={effectiveCurrentRepoId ?? ""}
-      repoPath={currentRepoPath}
-      activePath={activeWorktree?.path ?? currentRepoPath}
-      asBody
-    />
-  ) : agentSessionSearchOpen ? (
-    <AgentSessionSearchPalette
-      isOpen={isOpen}
-      onClose={closeModal}
-      onGoBackToParent={handleCloseAgentSessionSearch}
-      asBody
-    />
-  ) : allSessionsSearchOpen ? (
-    <AllSessionsSearchPalette
-      isOpen={isOpen}
-      onClose={closeModal}
-      onGoBackToParent={handleCloseAllSessionsSearch}
-      asBody
-    />
-  ) : agentControlOpen ? (
-    <AgentControlPalette
-      isOpen={isOpen}
-      onClose={closeModal}
-      onGoBackToParent={handleCloseAgentControl}
-      asBody
-    />
-  ) : sessionImportOpen ? (
-    <ImportSharedSessionDialog
-      visible={isOpen}
-      onClose={closeModal}
-      onGoBack={handleCloseSessionImport}
-      asBody
-    />
-  ) : sessionCreatorOpen ? (
-    <SessionCreatorPalette
-      isOpen={isOpen}
-      onClose={closeModal}
-      onGoBackToParent={handleCloseSessionCreator}
-      asBody
-    />
-  ) : activeEditorPalette ? (
-    <EditorPalette
-      key={activeEditorPalette.query}
-      isOpen={isOpen}
-      onClose={closeModal}
-      repoPath={currentRepoPath}
-      initialMode={activeEditorPalette.mode}
-      initialQuery={activeEditorPalette.query}
-      onGoBackToParent={handleCloseEditorPalette}
-      hideFileModeHints={activeEditorPalette.mode === "file"}
-      asBody
-    />
-  ) : showConfirmation ? (
-    <SpotlightConfirmationView confirmationPage={spotlight.confirmationPage} />
-  ) : (
-    <PaletteBody
-      kernel={defaultKernel}
-      items={spotlight.items}
-      placeholder={getPlaceholder()}
-      path={spotlight.state.path}
-      onRemoveSegment={(index) => {
-        if (index === 0) {
-          restoreLastActivatedItem();
-        }
-        spotlight.dispatch({ type: "TRUNCATE_PATH", payload: { index } });
-      }}
-      containerHeight={400}
-    />
-  );
+  const renderBody = () => {
+    switch (layer.kind) {
+      case "collabOrg":
+        return (
+          <CollabOrgForm
+            key={`${(layer.context ?? {}).source ?? "choose"}:${(layer.context ?? {}).mode ?? "choose"}`}
+            initialSource={(layer.context ?? {}).source}
+            initialMode={(layer.context ?? {}).mode}
+            onCancel={closeLayer}
+            onCompleted={closeModal}
+          />
+        );
+      case "githubIssuesImport":
+        return (
+          <GitHubIssuesImportForm
+            orgId={(layer.context ?? {}).orgId}
+            repoName={(layer.context ?? {}).repoName ?? currentRepo?.name}
+            repoPath={(layer.context ?? {}).repoPath ?? currentRepoPath}
+            repoUrl={(layer.context ?? {}).repoUrl ?? currentRepo?.repo_url}
+            onCancel={closeLayer}
+            onImported={closeModal}
+          />
+        );
+      case "workspace":
+        return (
+          <WorkingDirectoryPalette
+            key={workingDirectoryPickerMode}
+            isOpen={isOpen}
+            onClose={closeModal}
+            onGoBackToParent={closeLayer}
+            onSelect={handleWorkspaceSelect}
+            currentRepoId={effectiveCurrentRepoId}
+            initialAddMenu={workingDirectoryPickerMode === "add"}
+            initialAddStage={initialWorkingDirectoryStage}
+            asBody
+          />
+        );
+      case "branch":
+        return (
+          <BranchPalette
+            isOpen={isOpen}
+            onClose={closeModal}
+            onGoBackToParent={closeLayer}
+            onSelect={handleBranchPickerSelect}
+            onCreateBranch={handleCreateBranch}
+            onDeleteBranch={handleDeleteBranch}
+            onCheckoutDetached={handleCheckoutDetached}
+            repoId={effectiveCurrentRepoId ?? ""}
+            repoPath={
+              activeWorktree && activeWorktree.repoId === effectiveCurrentRepoId
+                ? activeWorktree.path
+                : currentRepoPath
+            }
+            repoName={currentRepo?.name}
+            currentBranchName={selectedBranchName}
+            asBody
+            onModeChange={setEmbeddedBranchMode}
+          />
+        );
+      case "worktree":
+        return (
+          <WorktreePalette
+            isOpen={isOpen}
+            onClose={closeModal}
+            onGoBackToParent={closeLayer}
+            onSelect={handleWorktreePickerSelect}
+            onCreate={handleWorktreePickerCreate}
+            onRemoveWorktree={handleRemoveWorktree}
+            repoId={effectiveCurrentRepoId ?? ""}
+            repoPath={currentRepoPath}
+            activePath={activeWorktree?.path ?? currentRepoPath}
+            asBody
+          />
+        );
+      case "agentSessionSearch":
+        return (
+          <AgentSessionSearchPalette
+            isOpen={isOpen}
+            onClose={closeModal}
+            onGoBackToParent={closeLayer}
+            asBody
+          />
+        );
+      case "allSessionsSearch":
+        return (
+          <AllSessionsSearchPalette
+            isOpen={isOpen}
+            onClose={closeModal}
+            onGoBackToParent={closeLayer}
+            asBody
+          />
+        );
+      case "agentControl":
+        return (
+          <AgentControlPalette
+            isOpen={isOpen}
+            onClose={closeModal}
+            onGoBackToParent={closeLayer}
+            asBody
+          />
+        );
+      case "sessionImport":
+        return (
+          <ImportSharedSessionDialog
+            visible={isOpen}
+            onClose={closeModal}
+            onGoBack={closeLayer}
+            asBody
+          />
+        );
+      case "sessionCreator":
+        return (
+          <SessionCreatorPalette
+            isOpen={isOpen}
+            onClose={closeModal}
+            onGoBackToParent={closeLayer}
+            asBody
+          />
+        );
+      case "editor":
+        return (
+          <EditorPalette
+            key={`${layer.mode ?? "file"}:${editorQuery}`}
+            isOpen={isOpen}
+            onClose={closeModal}
+            repoPath={currentRepoPath}
+            initialMode={layer.mode}
+            initialQuery={editorQuery}
+            onGoBackToParent={closeLayer}
+            hideFileModeHints={layer.mode === "file"}
+            asBody
+          />
+        );
+      case "default":
+        return (
+          <PaletteBody
+            kernel={defaultKernel}
+            items={spotlight.items}
+            placeholder={getPlaceholder()}
+            path={spotlight.state.path}
+            onRemoveSegment={(index) => {
+              if (index === 0) {
+                restoreLastActivatedItem();
+              }
+              spotlight.dispatch({ type: "TRUNCATE_PATH", payload: { index } });
+            }}
+            containerHeight={400}
+          />
+        );
+      default:
+        layer satisfies never;
+        return null;
+    }
+  };
 
   return (
     <SpotlightShell
@@ -526,14 +477,20 @@ const GlobalSpotlightInner: React.FC<
       onClose={closeModal}
       hasActiveAction={hasActiveAction}
       activeActionChip={activeActionChip}
+      pinScope={
+        layer.kind === "default"
+          ? "commands"
+          : layer.kind === "workspace"
+            ? "directories"
+            : undefined
+      }
       hideFooter={
-        !!showConfirmation ||
-        agentControlOpen ||
-        sessionCreatorOpen ||
-        sessionImportOpen
+        layer.kind === "agentControl" ||
+        layer.kind === "sessionCreator" ||
+        layer.kind === "sessionImport"
       }
     >
-      {body}
+      {renderBody()}
     </SpotlightShell>
   );
 };
@@ -543,20 +500,7 @@ const GlobalSpotlightInner: React.FC<
 // ============================================
 
 export const GlobalSpotlight: React.FC<GlobalSpotlightProps> = (props) => {
-  const { isOpen: externalIsOpen, onClose: onCloseFromParent } = props;
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Determine actual open state — parent controls visibility when provided.
-  const isOpen = externalIsOpen !== undefined ? externalIsOpen : isModalOpen;
-
-  const closeModal = useCallback(() => {
-    if (onCloseFromParent) {
-      onCloseFromParent();
-      return;
-    }
-    setIsModalOpen(false);
-  }, [onCloseFromParent]);
+  const { isOpen, onClose: closeModal } = props;
 
   return (
     <SpotlightProvider>

@@ -6,21 +6,25 @@
  * This abstraction allows any consumer (WorkStation UI, Integrations, Agents)
  * to work with any database type uniformly.
  */
+import type {
+  DatabaseConnectionConfig,
+  DatabaseType,
+  MySQLConnectionConfig,
+  NeonConnectionConfig,
+  PostgresConnectionConfig,
+  SqliteConnectionConfig,
+  SupabaseConnectionConfig,
+  TursoConnectionConfig,
+} from "@src/contracts/database/connection";
 
 // ============================================
 // Database Types
 // ============================================
 
-export const DATABASE_TYPES = [
-  "sqlite",
-  "supabase",
-  "turso",
-  "neon",
-  "postgres",
-  "mysql",
-] as const;
-
-export type DatabaseType = (typeof DATABASE_TYPES)[number];
+export {
+  DATABASE_TYPES,
+  type DatabaseType,
+} from "@src/contracts/database/connection";
 
 export type ConnectionStatus =
   | { state: "disconnected" }
@@ -62,6 +66,7 @@ export interface QueryOptions {
 
 export interface QueryResult {
   columns: string[];
+  /** Native SQL integers outside the JavaScript safe range are decimal strings. */
   values: unknown[][];
   rowCount: number;
   totalCount?: number;
@@ -80,64 +85,15 @@ export interface ExecuteResult {
 // Connection Configuration
 // ============================================
 
-interface BaseConnectionConfig {
-  id: string;
-  name: string;
-  type: DatabaseType;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface SqliteConnectionConfig extends BaseConnectionConfig {
-  type: "sqlite";
-  filePath: string;
-}
-
-export interface SupabaseConnectionConfig extends BaseConnectionConfig {
-  type: "supabase";
-  url: string;
-  accessToken: string;
-  schema?: string;
-}
-
-export interface TursoConnectionConfig extends BaseConnectionConfig {
-  type: "turso";
-  url: string;
-  authToken?: string;
-}
-
-export interface NeonConnectionConfig extends BaseConnectionConfig {
-  type: "neon";
-  connectionString: string;
-}
-
-export interface PostgresConnectionConfig extends BaseConnectionConfig {
-  type: "postgres";
-  host: string;
-  port: number;
-  database: string;
-  user: string;
-  password?: string;
-  ssl?: boolean;
-}
-
-export interface MySQLConnectionConfig extends BaseConnectionConfig {
-  type: "mysql";
-  host: string;
-  port: number;
-  database: string;
-  user: string;
-  password?: string;
-  ssl?: boolean;
-}
-
-export type DatabaseConnectionConfig =
-  | SqliteConnectionConfig
-  | SupabaseConnectionConfig
-  | TursoConnectionConfig
-  | NeonConnectionConfig
-  | PostgresConnectionConfig
-  | MySQLConnectionConfig;
+export type {
+  DatabaseConnectionConfig,
+  MySQLConnectionConfig,
+  NeonConnectionConfig,
+  PostgresConnectionConfig,
+  SqliteConnectionConfig,
+  SupabaseConnectionConfig,
+  TursoConnectionConfig,
+} from "@src/contracts/database/connection";
 
 // ============================================
 // Service Interface

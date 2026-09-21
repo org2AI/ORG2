@@ -6,19 +6,15 @@ import { useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
 import Dropdown from "@src/components/Dropdown";
+import DropdownActionItem from "@src/components/Dropdown/DropdownActionItem";
 import {
   DROPDOWN_CLASSES,
+  DROPDOWN_ITEM,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import {
-  KEYBOARD_SHORTCUT_VARIANT,
-  KeyboardShortcut,
-} from "@src/components/KeyboardShortcut";
 import { RecentTabsMenuSection } from "@src/components/RecentTabsMenuSection";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
-import { CHROME_TOOLTIP_HOVER_DELAY } from "@src/config/tooltip";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import {
   Add01Icon,
@@ -30,12 +26,12 @@ import {
   MessageAdd02Icon,
   PictureInPicture01Icon,
 } from "@src/icons";
-import { shouldShowInRecentTabsMenu } from "@src/shared/tabs/recentTabsMenu";
 import {
   openRecentChatPanelTabAtom,
   recentChatPanelTabsAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { type ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
+import { shouldShowInRecentTabsMenu } from "@src/util/tabs/recentTabsMenu";
 
 import { SessionIdentityIconById } from "../components/SessionIdentityIcon";
 import { CHAT_PANEL_HEADER_NO_DRAG_STYLE } from "../header";
@@ -79,7 +75,7 @@ export function PlusMenuContent({
         <HugeiconsIcon
           icon={MessageAdd02Icon}
           data-icon="message-add"
-          size={HEADER_ICON_SIZE.sm}
+          size={DROPDOWN_ITEM.iconSize}
           strokeWidth={1.8}
         />
       ),
@@ -93,7 +89,7 @@ export function PlusMenuContent({
         <HugeiconsIcon
           icon={KanbanIcon}
           data-icon="kanban"
-          size={HEADER_ICON_SIZE.sm}
+          size={DROPDOWN_ITEM.iconSize}
           strokeWidth={1.8}
         />
       ),
@@ -106,7 +102,7 @@ export function PlusMenuContent({
         <HugeiconsIcon
           icon={GaugeIcon}
           data-icon="gauge"
-          size={HEADER_ICON_SIZE.sm}
+          size={DROPDOWN_ITEM.iconSize}
           strokeWidth={1.8}
         />
       ),
@@ -119,7 +115,7 @@ export function PlusMenuContent({
         <HugeiconsIcon
           icon={DeliveryBox01Icon}
           data-icon="box"
-          size={HEADER_ICON_SIZE.sm}
+          size={DROPDOWN_ITEM.iconSize}
           strokeWidth={1.8}
         />
       ),
@@ -132,7 +128,7 @@ export function PlusMenuContent({
         <HugeiconsIcon
           icon={Briefcase02Icon}
           data-icon="briefcase-business"
-          size={HEADER_ICON_SIZE.sm}
+          size={DROPDOWN_ITEM.iconSize}
           strokeWidth={1.8}
         />
       ),
@@ -145,7 +141,7 @@ export function PlusMenuContent({
         <HugeiconsIcon
           icon={PictureInPicture01Icon}
           data-icon="picture-in-picture-2"
-          size={HEADER_ICON_SIZE.sm}
+          size={DROPDOWN_ITEM.iconSize}
           strokeWidth={1.8}
         />
       ),
@@ -156,35 +152,21 @@ export function PlusMenuContent({
 
   return (
     <div
-      className={`${DROPDOWN_CLASSES.menuPanelBase} ${DROPDOWN_WIDTHS.wideMenuClass}`}
+      className={`${DROPDOWN_CLASSES.menuPanelBase} ${DROPDOWN_WIDTHS.sidebarMenuClass}`}
     >
       <div className={DROPDOWN_CLASSES.itemsColumn}>
         {items.map((item) => (
-          <Button
-            layout="custom"
-            appearance="custom"
+          <DropdownActionItem
             key={item.id}
-            htmlType="button"
-            role="menuitem"
-            className={`${DROPDOWN_CLASSES.menuActionItem} justify-between`}
+            icon={item.icon}
+            shortcutId={"shortcutId" in item ? item.shortcutId : undefined}
             onClick={() => {
               onClose();
               item.onClick();
             }}
           >
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              {item.icon}
-              <span className="truncate">{item.label}</span>
-            </span>
-            {"shortcutId" in item && item.shortcutId ? (
-              <KeyboardShortcut
-                shortcutId={item.shortcutId}
-                variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
-                size="sm"
-                className="ml-4"
-              />
-            ) : null}
-          </Button>
+            {item.label}
+          </DropdownActionItem>
         ))}
         <RecentTabsMenuSection
           tabs={recentTabs.filter(shouldShowInRecentTabsMenu).map((tab) => ({
@@ -245,7 +227,6 @@ export function ChatPanelPlusMenu(
         <TabBarTrailingIconButton
           title={plusLabel}
           active={menuOpen}
-          tooltipMouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
           tooltipDisabled
           nativeTitle={false}
         >

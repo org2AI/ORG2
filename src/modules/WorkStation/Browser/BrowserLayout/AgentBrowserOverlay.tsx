@@ -71,12 +71,7 @@ export const AgentBrowserOverlay: React.FC<AgentBrowserOverlayProps> = memo(
                 {t("workstation.returnToAgent")}
               </Button>
             ) : (
-              <Button
-                size="mini"
-                variant="primary"
-                appearance="outline"
-                onClick={onTakeover}
-              >
+              <Button size="mini" onClick={onTakeover}>
                 <HugeiconsIcon icon={PauseIcon} data-icon="pause" size={12} />
                 {t("workstation.takeOver")}
               </Button>

@@ -1,8 +1,9 @@
 /**
  * TextSelectionDropdown Component
  *
- * A floating dropdown menu that appears when text is selected in terminal or browser views.
- * Provides options to "Ask Agent" or "Add to Session Context".
+ * A floating dropdown menu that appears when text is selected in terminal,
+ * browser, editor or chat-transcript views. The item set follows `source`:
+ * agent context for the first three, pin/quote for a chat selection.
  *
  * Features:
  * - High z-index (99999) for visibility above all other elements
@@ -45,9 +46,12 @@ import { stripPillReferences } from "@src/util/session/stripPillReferences";
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import {
+  CHAT_MENU_ITEMS,
   DropdownAction,
+  DropdownMenuItem,
   EDITOR_MENU_ITEMS,
   ICON_CONFIG,
+  INLINE_CLASSES,
   KEYBOARD_CONFIG,
   MENU_ITEMS,
   STYLE_CONFIG,
@@ -137,7 +141,6 @@ const SessionSelectorPanel: React.FC<SessionSelectorPanelProps> = memo(
         <div className={DROPDOWN_CLASSES.panelHeaderRow}>
           <Button
             variant="tertiary"
-            appearance="soft"
             size="mini"
             iconOnly
             icon={
@@ -236,6 +239,49 @@ const SessionSelectorPanel: React.FC<SessionSelectorPanelProps> = memo(
 
 SessionSelectorPanel.displayName = "SessionSelectorPanel";
 
+interface InlineActionBarProps {
+  items: DropdownMenuItem[];
+  labelOf: (item: DropdownMenuItem) => string;
+  activeIndex: number;
+  onSelect: (action: DropdownAction) => void;
+  onHover: (index: number) => void;
+  onHoverEnd: () => void;
+}
+
+/**
+ * One horizontal pill of text actions. Deliberately label-only: the bar
+ * floats over the text it acts on, so every pixel of chrome competes with
+ * what the user is reading.
+ */
+const InlineActionBar: React.FC<InlineActionBarProps> = memo(
+  ({ items, labelOf, activeIndex, onSelect, onHover, onHoverEnd }) => (
+    <div className={`${DROPDOWN_CLASSES.panel} ${INLINE_CLASSES.bar}`}>
+      {items.map((item, index) => (
+        <React.Fragment key={item.id}>
+          {index > 0 && <span className={INLINE_CLASSES.divider} />}
+          <div
+            role="button"
+            tabIndex={-1}
+            className={`${INLINE_CLASSES.action} ${
+              activeIndex === index
+                ? DROPDOWN_CLASSES.itemActive
+                : DROPDOWN_CLASSES.itemHover
+            }`}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => onSelect(item.id)}
+            onMouseEnter={() => onHover(index)}
+            onMouseLeave={onHoverEnd}
+          >
+            {labelOf(item)}
+          </div>
+        </React.Fragment>
+      ))}
+    </div>
+  )
+);
+
+InlineActionBar.displayName = "InlineActionBar";
+
 // ============================================
 // Utility Functions
 // ============================================
@@ -263,7 +309,10 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
   onAddToContext,
   onAddFile,
   onAddLines,
+  onPin,
+  onReply,
   lineRange,
+  layout = "menu",
   className = "",
 }) => {
   const { t } = useTranslation("common");
@@ -291,7 +340,12 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
   const sessionItems: SessionItem[] = recentSessions.map(mapSessionToItem);
 
   // Select menu items based on source
-  const menuItems = source === "editor" ? EDITOR_MENU_ITEMS : MENU_ITEMS;
+  const menuItems =
+    source === "editor"
+      ? EDITOR_MENU_ITEMS
+      : source === "chat"
+        ? CHAT_MENU_ITEMS
+        : MENU_ITEMS;
 
   // Phase 1 (layout): hide the dropdown and compute the clamped position into
   // a ref. Direct DOM opacity mutation avoids setState-in-layoutEffect.
@@ -312,7 +366,12 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
     const padding = 10;
 
     let safeX = position.x;
-    let safeY = position.y;
+    // The inline bar is anchored to the top of the selection: lift it clear
+    // of the text instead of covering the first line.
+    let safeY =
+      layout === "inline"
+        ? position.y - dropdownRect.height - STYLE_CONFIG.inlineOffsetY
+        : position.y;
 
     // Prevent overflow right
     if (safeX + dropdownRect.width + padding > viewportWidth) {
@@ -329,7 +388,7 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
     safeY = Math.max(padding, safeY);
 
     calculatedPositionRef.current = { x: safeX, y: safeY };
-  }, [visible, position]);
+  }, [layout, visible, position]);
 
   // Phase 2 (effect): commit the clamped position to state and reveal the
   // dropdown. Runs after the layout phase above, so safePosition is already
@@ -369,9 +428,24 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
           onAskAgent?.(selectedText);
         }
         onClose();
+      } else if (action === "pin") {
+        onPin?.(selectedText);
+        onClose();
+      } else if (action === "reply-to-selection") {
+        onReply?.(selectedText);
+        onClose();
       }
     },
-    [selectedText, onAskAgent, onAddToContext, onAddFile, onAddLines, onClose]
+    [
+      selectedText,
+      onAskAgent,
+      onAddToContext,
+      onAddFile,
+      onAddLines,
+      onPin,
+      onReply,
+      onClose,
+    ]
   );
 
   // Handle session selection
@@ -426,8 +500,15 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
           handleBack();
         }
       } else {
-        // Main menu navigation
-        if (key === KEYBOARD_CONFIG.up) {
+        // Main menu navigation. A row of actions reads left-to-right, so the
+        // inline bar walks the horizontal arrows and leaves ArrowRight as a
+        // movement key rather than an activation key.
+        const previousKey =
+          layout === "inline" ? KEYBOARD_CONFIG.left : KEYBOARD_CONFIG.up;
+        const nextKey =
+          layout === "inline" ? KEYBOARD_CONFIG.right : KEYBOARD_CONFIG.down;
+
+        if (key === previousKey) {
           event.preventDefault();
           setKeyboardNavigated(true);
           setActiveIndex((previous) => {
@@ -435,7 +516,7 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
             if (previous < 0) return menuItems.length - 1;
             return (previous - 1 + menuItems.length) % menuItems.length;
           });
-        } else if (key === KEYBOARD_CONFIG.down) {
+        } else if (key === nextKey) {
           event.preventDefault();
           setKeyboardNavigated(true);
           setActiveIndex((previous) => {
@@ -445,7 +526,7 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
           });
         } else if (
           key === KEYBOARD_CONFIG.enter ||
-          key === KEYBOARD_CONFIG.right
+          (layout !== "inline" && key === KEYBOARD_CONFIG.right)
         ) {
           event.preventDefault();
           // If no item is active, default to first item (index 0)
@@ -464,6 +545,7 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
       sessionItems,
       sessionActiveIndex,
       activeIndex,
+      layout,
       menuItems,
       handleMenuClick,
       handleSessionSelect,
@@ -489,6 +571,25 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
       });
     }
   }, [visible]);
+
+  const resolveItemLabel = useCallback(
+    (item: DropdownMenuItem): string => {
+      if (item.id === "add-to-chat") return t("selectionMenu.addToChat");
+      if (item.id === "add-file") return t("selectionMenu.addThisFile");
+      if (item.id === "add-lines") {
+        return t("selectionMenu.addLines", {
+          from: lineRange?.fromLine ?? 0,
+          to: lineRange?.toLine ?? 0,
+        });
+      }
+      if (item.id === "pin") return t("selectionMenu.pinSelection");
+      if (item.id === "reply-to-selection") {
+        return t("selectionMenu.replyToSelection");
+      }
+      return item.label;
+    },
+    [lineRange?.fromLine, lineRange?.toLine, t]
+  );
 
   // Click outside handler
   useEffect(() => {
@@ -525,7 +626,19 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
       onMouseDown={(event) => event.preventDefault()}
       tabIndex={-1}
     >
-      {showSessionSelector ? (
+      {layout === "inline" ? (
+        <InlineActionBar
+          items={menuItems}
+          labelOf={resolveItemLabel}
+          activeIndex={keyboardNavigated ? activeIndex : -1}
+          onSelect={handleMenuClick}
+          onHover={(index) => {
+            setKeyboardNavigated(false);
+            setActiveIndex(index);
+          }}
+          onHoverEnd={resetActiveIndex}
+        />
+      ) : showSessionSelector ? (
         <SessionSelectorPanel
           sessions={sessionItems}
           activeIndex={keyboardNavigated ? sessionActiveIndex : -1}
@@ -544,20 +657,6 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
         >
           <div className={DROPDOWN_CLASSES.itemsColumnPadded}>
             {menuItems.map((item, index) => {
-              let label: string;
-              if (item.id === "add-to-chat") {
-                label = t("selectionMenu.addToChat");
-              } else if (item.id === "add-file") {
-                label = t("selectionMenu.addThisFile");
-              } else if (item.id === "add-lines") {
-                label = t("selectionMenu.addLines", {
-                  from: lineRange?.fromLine ?? 0,
-                  to: lineRange?.toLine ?? 0,
-                });
-              } else {
-                label = item.label;
-              }
-
               return (
                 <MenuItemRow
                   key={item.id}
@@ -569,7 +668,7 @@ const TextSelectionDropdown: React.FC<TextSelectionDropdownProps> = ({
                       strokeWidth={1.75}
                     />
                   }
-                  label={label}
+                  label={resolveItemLabel(item)}
                   hasArrow={item.hasSecondLayer}
                   isActive={keyboardNavigated && activeIndex === index}
                   onClick={() => handleMenuClick(item.id)}

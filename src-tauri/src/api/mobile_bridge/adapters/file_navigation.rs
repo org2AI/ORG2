@@ -104,7 +104,7 @@ fn file_target_from_event(
     }
 }
 
-fn session_workspace_root(session_id: &str) -> Result<PathBuf, RpcError> {
+pub(super) fn session_workspace_root(session_id: &str) -> Result<PathBuf, RpcError> {
     let filter = SessionFilter {
         session_ids: Some(vec![session_id.to_string()]),
         limit: Some(1),

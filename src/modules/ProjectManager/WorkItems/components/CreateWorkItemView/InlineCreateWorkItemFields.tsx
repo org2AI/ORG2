@@ -1,56 +1,39 @@
 import { useAtomValue } from "jotai";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type ProjectOrg, projectApi } from "@src/api/http/project";
-import { PropertyDropdownField } from "@src/components/PropertyField/PropertyDropdownField";
-import type { PropertyDropdownOption } from "@src/components/PropertyField/PropertyDropdownField";
+import type { MarkdownEditorMode } from "@src/components/MarkdownTextareaEditor";
 import { INPUT_AREA_EDITOR_HEIGHT } from "@src/config/inputAreaTokens";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
-import { resolveProjectOrgScopeId } from "@src/features/Organizations/orgSelectorEntries";
-import { sidebarSelectedOrgIdAtom } from "@src/features/Organizations/sidebarOrgScopeAtom";
 import { createLogger } from "@src/hooks/logger";
 import {
-  mapWorkItemUpdatesToDraftPatch,
   useWorkItemCreatorDraft,
   useWorkItemImageInsert,
-  workItemDraftToStubWorkItem,
 } from "@src/hooks/project";
-import { useUndoStackWithRestore } from "@src/hooks/ui/useUndoableState";
-import { DeliveryBox01Icon, HugeiconsIcon } from "@src/icons";
 import {
-  CreateComposerTitleInput,
   ProjectContentEditor,
   type ProjectContentEditorRef,
 } from "@src/modules/ProjectManager/shared";
-import type { MarkdownEditorMode } from "@src/modules/shared/components/MarkdownTextareaEditor";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 import type { Person } from "@src/types/core/shared";
-import type {
-  WorkItem as WorkItemExtended,
-  WorkItemLabel,
-  WorkItemMilestone,
-  WorkItemProject,
-} from "@src/types/core/workItem";
+import type { WorkItemLabel, WorkItemProject } from "@src/types/core/workItem";
 
-import {
-  DEFAULT_PERSONAL_PROJECT_ORG_ID,
-  filterSelectableProjectOrgs,
-} from "../../../projectOrgVisibility";
 import WorkItemContentStack from "../WorkItemContentStack";
-import WorkItemProperties from "../WorkItemProperties";
 import type { WorkItemPropertyFieldKey } from "../WorkItemProperties/types";
+import type {
+  CreateWorkItemProjectOption,
+  InlineCreateWorkItemFieldsState,
+  UseInlineCreateWorkItemFieldsOptions,
+} from "./types";
+import { useInlineCreateWorkItemDraftUndo } from "./useInlineCreateWorkItemDraftUndo";
+import { useInlineCreateWorkItemMetaFields } from "./useInlineCreateWorkItemMetaFields";
+import { useInlineCreateWorkItemOrgScope } from "./useInlineCreateWorkItemOrgScope";
 
-interface CreateWorkItemProjectOption extends WorkItemProject {
-  slug?: string;
-  orgId?: string;
-}
+export type {
+  InlineCreateWorkItemFieldsState,
+  UseInlineCreateWorkItemFieldsOptions,
+} from "./types";
 
 export const CREATE_WORK_ITEM_VISIBLE_FIELDS: WorkItemPropertyFieldKey[] = [
   "project",
@@ -63,89 +46,30 @@ export const CREATE_WORK_ITEM_VISIBLE_FIELDS: WorkItemPropertyFieldKey[] = [
   "labels",
 ];
 
-export const CREATE_WORK_ITEM_INLINE_FIELDS: WorkItemPropertyFieldKey[] = [
-  "status",
-  "priority",
-];
+export { CREATE_WORK_ITEM_INLINE_FIELDS } from "./useInlineCreateWorkItemMetaFields";
 
-const CREATE_WORK_ITEM_BREADCRUMB_ICON_SIZE = 13;
 const logger = createLogger("InlineCreateWorkItemFields");
 
-export interface InlineCreateWorkItemFieldsState {
-  descriptionSection: React.ReactNode;
+interface UseInlineCreateWorkItemLookupsOptions {
   draft: WorkItemDraft;
-  editorResetKey: number;
-  editorRef: React.RefObject<ProjectContentEditorRef | null>;
-  editorMode: MarkdownEditorMode;
-  setEditorMode: React.Dispatch<React.SetStateAction<MarkdownEditorMode>>;
-  handlePropertyUpdate: (updates: Partial<WorkItemExtended>) => void;
-  inlinePropertyPills?: React.ReactNode;
-  resetDraftForCreateMore: () => void;
-  resolvedLabels: WorkItemLabel[];
-  resolvedMembers: Person[];
-  resolvedProjects: CreateWorkItemProjectOption[];
-  selectedProjectSlug?: string;
-  clearDraft: () => void;
-  setDraft: (draft: WorkItemDraft) => void;
-  showManualInputs: boolean;
-  statusOrgId: string;
-  stubWorkItem: WorkItemExtended;
-  titleSection: React.ReactNode;
-  updateDraft: (patch: Partial<WorkItemDraft>) => void;
-  /** Project picker, scoped to the org the creator is operating under. */
-  workItemProjectPill: React.ReactNode;
-  workItemPillBreadcrumb: React.ReactNode;
-}
-
-export interface UseInlineCreateWorkItemFieldsOptions {
-  draftId?: string;
-  aiGenerateMode?: boolean;
-  availableLabels?: WorkItemLabel[];
-  availableMembers?: Person[];
-  availableMilestones?: WorkItemMilestone[];
-  availableProjects?: WorkItemProject[];
-  chatPanelFooter?: boolean;
-  defaultProjectId?: string;
-  /**
-   * Render the fields for the chat-panel composer dock rather than the
-   * full-height creator page. The dock matches the session composer it swaps
-   * with: same editor height range, same text size, and focus on the main
-   * content instead of the title.
-   */
-  dockedComposer?: boolean;
-  onDraftChange?: (draft: WorkItemDraft) => void;
-  onSetUnsaved: (hasUnsaved: boolean) => void;
-  orgId?: string | null;
-  propertiesOpen?: boolean;
   projectId?: string;
-  projectName?: string;
   projectSlug?: string;
-  repoPath?: string | null;
+  availableMembers: Person[];
+  availableProjects: WorkItemProject[];
 }
 
-export function useInlineCreateWorkItemFields({
-  draftId,
-  aiGenerateMode = false,
-  availableLabels = [],
-  availableMembers = [],
-  availableMilestones = [],
-  availableProjects = [],
-  chatPanelFooter = false,
-  defaultProjectId,
-  dockedComposer = false,
-  onDraftChange,
-  onSetUnsaved,
-  orgId: surfaceOrgId,
-  propertiesOpen = false,
+/**
+ * Picker data the creator loads for itself when the host does not supply it:
+ * project orgs, projects (with their slugs), and the selected project's
+ * members and labels.
+ */
+function useInlineCreateWorkItemLookups({
+  draft,
   projectId,
-  projectName,
   projectSlug,
-  repoPath,
-}: UseInlineCreateWorkItemFieldsOptions): InlineCreateWorkItemFieldsState {
-  const { t } = useTranslation("projects");
-  const [editorResetKey, setEditorResetKey] = useState(0);
-  const [editorMode, setEditorMode] = useState<MarkdownEditorMode>("write");
-  const cloudOrgs = useAtomValue(org2CloudOrgsAtom);
+  availableMembers,
+  availableProjects,
+}: UseInlineCreateWorkItemLookupsOptions) {
   const [loadedMembers, setLoadedMembers] = useState<Person[]>([]);
   const [loadedProjects, setLoadedProjects] = useState<
     CreateWorkItemProjectOption[]
@@ -156,31 +80,12 @@ export function useInlineCreateWorkItemFields({
   >({});
   const [loadedLabels, setLoadedLabels] = useState<WorkItemLabel[]>([]);
 
-  const { draft, updateDraft, setDraft, resetDraft, clearDraft } =
-    useWorkItemCreatorDraft({
-      draftId,
-      seedProjectId: projectId,
-      defaultProjectId,
-      onSetUnsaved,
-    });
-
   const selectedProjectSlug =
     draft.projectId && draft.projectId === projectId
       ? projectSlug
       : draft.projectId
         ? loadedProjectSlugById[draft.projectId]
         : undefined;
-
-  const editorRef = useRef<ProjectContentEditorRef>(null);
-
-  useEffect(() => {
-    onDraftChange?.(draft);
-  }, [draft, onDraftChange]);
-
-  const { handleImageInsert } = useWorkItemImageInsert({
-    projectSlug: selectedProjectSlug ?? "",
-    editorRef,
-  });
 
   useEffect(() => {
     let cancelled = false;
@@ -271,97 +176,115 @@ export function useInlineCreateWorkItemFields({
     };
   }, [selectedProjectSlug, availableMembers.length]);
 
-  const selectableProjectOrgs = useMemo(
-    () => filterSelectableProjectOrgs(projectOrgs, cloudOrgs),
-    [cloudOrgs, projectOrgs]
-  );
-  const selectableProjectOrgIds = useMemo(
-    () => new Set(selectableProjectOrgs.map((org) => org.id)),
-    [selectableProjectOrgs]
-  );
+  return {
+    loadedMembers,
+    loadedProjects,
+    projectOrgs,
+    loadedLabels,
+    selectedProjectSlug,
+  };
+}
 
-  // The organization is not picked here — a work item belongs to whichever
-  // org the app is currently scoped to. A creator opened inside a specific
-  // org surface keeps that surface's org; everything else follows the
-  // globally selected org from the sidebar.
-  const globalOrgSelectorValue = useAtomValue(sidebarSelectedOrgIdAtom);
-  const globalProjectOrgId = useMemo(
-    () => resolveProjectOrgScopeId(globalOrgSelectorValue, projectOrgs),
-    [globalOrgSelectorValue, projectOrgs]
-  );
-  const requestedOrgId = surfaceOrgId ?? globalProjectOrgId;
-  const effectiveOrgId = selectableProjectOrgIds.has(requestedOrgId)
-    ? requestedOrgId
-    : DEFAULT_PERSONAL_PROJECT_ORG_ID;
+export function useInlineCreateWorkItemFields({
+  draftId,
+  aiGenerateMode = false,
+  availableLabels = [],
+  availableMembers = [],
+  availableMilestones = [],
+  availableProjects = [],
+  chatPanelFooter = false,
+  defaultProjectId,
+  dockedComposer = false,
+  onDraftChange,
+  onSetUnsaved,
+  orgId: surfaceOrgId,
+  propertiesOpen = false,
+  projectId,
+  projectName,
+  projectSlug,
+  repoPath,
+}: UseInlineCreateWorkItemFieldsOptions): InlineCreateWorkItemFieldsState {
+  const { t } = useTranslation("projects");
+  const [editorResetKey, setEditorResetKey] = useState(0);
+  const [editorMode, setEditorMode] = useState<MarkdownEditorMode>("write");
+  const cloudOrgs = useAtomValue(org2CloudOrgsAtom);
+
+  const { draft, updateDraft, setDraft, resetDraft, clearDraft } =
+    useWorkItemCreatorDraft({
+      draftId,
+      seedProjectId: projectId,
+      defaultProjectId,
+      onSetUnsaved,
+    });
+
+  const editorRef = useRef<ProjectContentEditorRef>(null);
+
+  useEffect(() => {
+    onDraftChange?.(draft);
+  }, [draft, onDraftChange]);
+
+  const {
+    loadedMembers,
+    loadedProjects,
+    projectOrgs,
+    loadedLabels,
+    selectedProjectSlug,
+  } = useInlineCreateWorkItemLookups({
+    draft,
+    projectId,
+    projectSlug,
+    availableMembers,
+    availableProjects,
+  });
+
+  const { handleImageInsert } = useWorkItemImageInsert({
+    projectSlug: selectedProjectSlug ?? "",
+    editorRef,
+  });
+
+  const { selectableProjectOrgs, effectiveOrgId, resolvedProjects } =
+    useInlineCreateWorkItemOrgScope({
+      cloudOrgs,
+      projectOrgs,
+      surfaceOrgId,
+      availableProjects,
+      loadedProjects,
+    });
 
   const resolvedMembers =
     availableMembers.length > 0 ? availableMembers : loadedMembers;
-  // Only projects under the effective org are offered — picking a project
-  // must never silently move the item to another organization.
-  const resolvedProjects = useMemo<CreateWorkItemProjectOption[]>(() => {
-    const projects: CreateWorkItemProjectOption[] =
-      availableProjects.length > 0 ? availableProjects : loadedProjects;
-    return projects.filter(
-      (project) =>
-        (project.orgId ?? DEFAULT_PERSONAL_PROJECT_ORG_ID) === effectiveOrgId
-    );
-  }, [availableProjects, loadedProjects, effectiveOrgId]);
   const resolvedLabels =
     availableLabels.length > 0 ? availableLabels : loadedLabels;
 
-  const undoStack = useUndoStackWithRestore<WorkItemDraft>({
-    keyboardShortcut: true,
-    currentValue: draft,
-    onRestore: (previous) => setDraft(previous),
+  const {
+    updateDraftWithUndo,
+    handleTitleChange,
+    handleDescriptionChange,
+    handlePropertyUpdate,
+  } = useInlineCreateWorkItemDraftUndo({ draft, setDraft, updateDraft });
+
+  const {
+    projectBreadcrumbSegment,
+    workItemPillBreadcrumb,
+    stubWorkItem,
+    inlinePropertyPills,
+    titleSection,
+  } = useInlineCreateWorkItemMetaFields({
+    t,
+    draft,
+    projectName,
+    resolvedProjects,
+    resolvedLabels,
+    resolvedMembers,
+    availableMilestones,
+    effectiveOrgId,
+    propertiesOpen,
+    aiGenerateMode,
+    dockedComposer,
+    updateDraftWithUndo,
+    handleTitleChange,
+    handlePropertyUpdate,
   });
-
-  const updateDraftWithUndo = useCallback(
-    (updates: Partial<WorkItemDraft>) => {
-      undoStack.snapshot(draft);
-      updateDraft(updates);
-    },
-    [draft, undoStack, updateDraft]
-  );
-
-  const handleTitleChange = useCallback(
-    (name: string) => updateDraftWithUndo({ name }),
-    [updateDraftWithUndo]
-  );
-
-  const handleDescriptionChange = useCallback(
-    (markdown: string, _text: string) =>
-      updateDraftWithUndo({ description: markdown }),
-    [updateDraftWithUndo]
-  );
-
-  const selectedProject = resolvedProjects.find(
-    (project) => project.id === draft.projectId
-  );
-  const selectedProjectName = selectedProject?.name ?? projectName ?? "";
-  const projectBreadcrumbLabel =
-    selectedProjectName || t("projects.dashboardTitle");
-
-  const projectOptions = useMemo<PropertyDropdownOption<string>[]>(
-    () =>
-      resolvedProjects.map((project) => ({
-        value: project.id,
-        label: project.name,
-        icon: (
-          <HugeiconsIcon
-            icon={DeliveryBox01Icon}
-            data-icon="box"
-            size={CREATE_WORK_ITEM_BREADCRUMB_ICON_SIZE}
-          />
-        ),
-        iconColor: project.color,
-      })),
-    [resolvedProjects]
-  );
-
-  const handleProjectBreadcrumbChange = useCallback(
-    (value: string) => updateDraftWithUndo({ projectId: value }),
-    [updateDraftWithUndo]
-  );
 
   // Standalone creations carry the org explicitly, so keep the draft in step
   // with the scope even though nothing in this view can change it. Held back
@@ -372,94 +295,6 @@ export function useInlineCreateWorkItemFields({
     if (draft.orgId === effectiveOrgId) return;
     updateDraft({ orgId: effectiveOrgId });
   }, [draft.orgId, effectiveOrgId, selectableProjectOrgs.length, updateDraft]);
-
-  const projectBreadcrumbSegment =
-    projectOptions.length > 0 ? (
-      <PropertyDropdownField
-        value={draft.projectId ?? ""}
-        label={
-          draft.projectId
-            ? projectBreadcrumbLabel
-            : t("projects.dashboardTitle")
-        }
-        icon={null}
-        options={projectOptions}
-        onChange={handleProjectBreadcrumbChange}
-        placement="portal"
-        fieldVariant="pill"
-        triggerVariant="pill"
-        searchable
-        searchPlaceholder={t("workItems.properties.searchProjects")}
-        selected={Boolean(draft.projectId)}
-        maxWidthClassName="max-w-[220px] shrink-0"
-        dataTestId="create-work-item-project-select"
-      />
-    ) : (
-      <PropertyDropdownField
-        value="project"
-        label={projectBreadcrumbLabel}
-        icon={null}
-        placement="portal"
-        fieldVariant="pill"
-        triggerVariant="pill"
-        readonly
-        searchable={false}
-        selected
-        maxWidthClassName="max-w-[220px] shrink-0"
-        dataTestId="create-work-item-project-select"
-      />
-    );
-
-  const workItemPillBreadcrumb = (
-    <div
-      className="flex min-w-0 flex-nowrap items-center gap-1.5"
-      data-testid="create-work-item-pill-breadcrumb"
-    >
-      {projectBreadcrumbSegment}
-    </div>
-  );
-
-  const stubWorkItem = workItemDraftToStubWorkItem(draft, selectedProjectName);
-
-  const handlePropertyUpdate = useCallback(
-    (updates: Partial<WorkItemExtended>) => {
-      updateDraftWithUndo(mapWorkItemUpdatesToDraftPatch(updates));
-    },
-    [updateDraftWithUndo]
-  );
-
-  const inlinePropertyPills = !propertiesOpen ? (
-    <div data-testid="create-work-item-property-pills">
-      <WorkItemProperties
-        statusOrgId={effectiveOrgId}
-        workItem={stubWorkItem}
-        onUpdate={handlePropertyUpdate}
-        availableProjects={resolvedProjects}
-        availableMilestones={availableMilestones}
-        availableLabels={resolvedLabels}
-        availableMembers={resolvedMembers}
-        visibleFields={CREATE_WORK_ITEM_INLINE_FIELDS}
-        fieldVariant="pill"
-        showMoreMenu
-      />
-    </div>
-  ) : undefined;
-
-  const workItemTitlePlaceholder = t("workItems.titlePlaceholder");
-  const optionalWorkItemTitlePlaceholder = `${workItemTitlePlaceholder} (${t("common:optional")})`;
-  const titleSection = (
-    <CreateComposerTitleInput
-      value={draft.name}
-      onChange={handleTitleChange}
-      placeholder={
-        aiGenerateMode
-          ? optionalWorkItemTitlePlaceholder
-          : workItemTitlePlaceholder
-      }
-      dataTestId="create-work-item-title-input"
-      autoFocus={!dockedComposer}
-    />
-  );
 
   const showManualInputs = !(chatPanelFooter && aiGenerateMode);
 

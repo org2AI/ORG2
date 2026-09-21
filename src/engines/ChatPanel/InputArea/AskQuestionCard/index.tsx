@@ -17,7 +17,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import { QuestionCardLoadingShell } from "./QuestionCardLoadingShell";
 import { QuestionCardShell } from "./QuestionCardShell";

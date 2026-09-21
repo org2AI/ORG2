@@ -14,13 +14,13 @@ import { useTranslation } from "react-i18next";
 import type { PillIconType } from "@src/components/ComposerInput";
 import Input from "@src/components/Input";
 import { GHOST_INPUT_PLACEHOLDER_CLASS } from "@src/components/Input/tokens";
-import ContextMenuPortal from "@src/engines/ChatPanel/InputArea/components/ContextMenuPortal";
-import SlashCommandPortal from "@src/engines/ChatPanel/InputArea/components/SlashCommandPortal";
-import { useComposerInput } from "@src/hooks/input";
 import MarkdownTextareaEditor, {
   type MarkdownEditorMode,
   type MarkdownTextareaEditorRef,
-} from "@src/modules/shared/components/MarkdownTextareaEditor";
+} from "@src/components/MarkdownTextareaEditor";
+import ContextMenuPortal from "@src/engines/ChatPanel/InputArea/components/ContextMenuPortal";
+import SlashCommandPortal from "@src/engines/ChatPanel/InputArea/components/SlashCommandPortal";
+import { useComposerInput } from "@src/hooks/input";
 import type { SlashItem } from "@src/types/extensions";
 
 export interface ProjectContentEditorRef {
@@ -98,7 +98,7 @@ export const ProjectContentTitleInput = forwardRef<
         appearance="bare"
         autoHeight
         className="mb-1 min-w-0 flex-1"
-        inputClassName={`text-[22px] font-semibold text-text-2 ${GHOST_INPUT_PLACEHOLDER_CLASS}`}
+        inputClassName={`text-[22px] font-semibold ${GHOST_INPUT_PLACEHOLDER_CLASS}`}
       />
       {titleActions && (
         <div className="flex shrink-0 items-center gap-1 pt-0.5">
@@ -365,7 +365,7 @@ const ProjectContentEditor = forwardRef<
             appearance="bare"
             autoHeight
             className="mb-5 w-full"
-            inputClassName={`text-[13px] text-text-2 ${GHOST_INPUT_PLACEHOLDER_CLASS}`}
+            inputClassName={`text-[13px] ${GHOST_INPUT_PLACEHOLDER_CLASS}`}
           />
         )}
 

@@ -13,6 +13,13 @@ import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import Select from "@src/components/Select";
 import {
+  SECTION_ACTION_GAP_CLASSES,
+  SectionContainer,
+  SectionHeading,
+  SectionRow,
+} from "@src/components/layout/Section";
+import { CARD_ROW_TOKENS } from "@src/components/layout/blocks";
+import {
   Add01Icon,
   ArchiveIcon,
   HugeiconsIcon,
@@ -20,13 +27,6 @@ import {
   RotateLeft01Icon,
 } from "@src/icons";
 import { WORK_ITEM_STATUS_OPTIONS } from "@src/modules/ProjectManager/config/manage";
-import {
-  SECTION_ACTION_GAP_CLASSES,
-  SectionContainer,
-  SectionHeading,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { CARD_ROW_TOKENS } from "@src/modules/shared/layouts/blocks";
 
 import {
   useCustomStatusDefinitions,
@@ -282,7 +282,6 @@ const StatusesSection: React.FC<StatusesSectionProps> = ({
                 iconOnly
                 size="small"
                 variant="tertiary"
-                appearance="ghost"
                 onClick={() => void handleArchive(definition)}
                 aria-label={
                   definition.archivedAt != null

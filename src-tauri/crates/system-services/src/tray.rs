@@ -242,6 +242,12 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 let Some(action) = action_for_menu_id(id) else {
                     return;
                 };
+                // While the app is locked a tray action may only bring the
+                // window (and its password page) forward, never act behind it.
+                if crate::app_lock::is_locked() {
+                    let _ = app_window::recreate_main_window(app);
+                    return;
+                }
                 let restore_window =
                     action != TrayAction::MarkAllRead || app.get_webview_window("main").is_none();
                 app.state::<PendingAction>().select(action);

@@ -21,7 +21,7 @@ vi.mock("@src/api/http/git/commits", () => ({
   getGitCommits: vi.fn(),
 }));
 
-vi.mock("@src/ActionSystem", () => ({
+vi.mock("@src/scaffold/ActionSystem", () => ({
   useActionSystem: () => ({ dispatch: vi.fn() }),
 }));
 
@@ -33,7 +33,7 @@ vi.mock("@src/hooks/tabHost/useWorkStationTabs", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   Placeholder: ({ variant }: { variant: string }) =>
     createElement("div", { "data-placeholder": variant }, variant),
 }));
@@ -44,8 +44,8 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("react-virtuoso", () => ({
-  Virtuoso: ({
+vi.mock("@src/components/VirtualList", () => ({
+  VirtualList: ({
     data,
     itemContent,
   }: {

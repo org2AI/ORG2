@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import { COMPOSER_STACK_INSET_X_CLASS } from "@src/config/composerStackTokens";
 import { HugeiconsIcon, PlayIcon } from "@src/icons";
 
 export const CHAT_RETRY_KIND = {
@@ -12,8 +13,7 @@ export const CHAT_RETRY_KIND = {
 export type ChatRetryKind =
   (typeof CHAT_RETRY_KIND)[keyof typeof CHAT_RETRY_KIND];
 
-export const CHAT_STATUS_BAR_CONTAINER_CLASS =
-  "-mb-8 flex min-h-10 w-full items-center rounded-t-[12px] bg-(--color-chat-container) pb-9 pl-1 pt-2 text-[12px] font-medium text-text-1";
+export const CHAT_STATUS_BAR_CONTAINER_CLASS = `${COMPOSER_STACK_INSET_X_CLASS} -mb-8 flex min-h-10 items-center rounded-t-[12px] bg-(--color-chat-container) pb-9 pl-1 pt-2 text-[12px] font-medium text-text-1`;
 
 export function toChatRetryKind(kind: string): ChatRetryKind {
   return kind === CHAT_RETRY_KIND.RATE_LIMITED
@@ -193,7 +193,6 @@ export function GroupChatPausedBanner({
               variant="primary"
               shape="round"
               size="mini"
-              htmlType="button"
               data-testid={resumeButtonTestId}
               disabled={disabled}
               onClick={onResume}

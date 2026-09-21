@@ -1,0 +1,31 @@
+// Mobile keeps the shared selector and navigation controls, but reserves a
+// separate metadata line so long timestamps and partial-history notices cannot
+// squeeze the round label. Desktop keeps its original single-row layout.
+.turn-navigation-toolbar-mobile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+
+  [data-turn-navigation-info] {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  [data-turn-navigation-time] {
+    padding: 0 8px 8px;
+    overflow-wrap: anywhere;
+  }
+
+  [data-turn-navigation-status] {
+    grid-column: 1 / -1;
+    padding: 0 8px 8px;
+    overflow-wrap: anywhere;
+  }
+
+  button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

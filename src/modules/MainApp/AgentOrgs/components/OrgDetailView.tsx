@@ -8,15 +8,14 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import TabPill from "@src/components/TabPill";
-import { type TeamMember } from "@src/modules/MainApp/AgentOrgs/components/TeamMemberTable";
-import { SECTION_GAP_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
+import { SECTION_GAP_CLASSES } from "@src/components/layout/Section";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
   PanelFooter,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { type TeamMember } from "@src/modules/MainApp/AgentOrgs/components/TeamMemberTable";
 import AgentTeamFormSections, {
   isOrgDraftValid,
 } from "@src/scaffold/WizardSystem/variants/AgentOrg/AgentTeamFormSections";
@@ -35,7 +34,6 @@ import {
   type PlanApprovalPolicy,
 } from "../types";
 import { buildAgentOptions } from "./org/config";
-import "./org/index.css";
 
 interface OrgDetailViewProps {
   selectedOrg: OrgDefinition;
@@ -172,18 +170,9 @@ const OrgDetailView: React.FC<OrgDetailViewProps> = ({
     >
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tabs}
-            activeTab="core"
-            onChange={() => {}}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tabs}
+        activeTab="core"
+        onTabChange={() => {}}
       />
       <div className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>

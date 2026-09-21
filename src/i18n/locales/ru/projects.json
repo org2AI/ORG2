@@ -60,7 +60,7 @@
     },
     "loadingConnections": "Загрузка подключений GitHub...",
     "noConnectionTitle": "Подключение GitHub не найдено",
-    "noConnectionDescription": "Сначала добавьте подключение GitHub в Integrations, затем вернитесь сюда, чтобы импортировать GitHub Issues.",
+    "noConnectionDescription": "Сначала добавьте подключение GitHub в Integrations, затем вернитесь сюда, чтобы импортировать GitHub Issues",
     "linkedRepoHint": "Этот Project также будет связан с текущим Workspace repo: {{repoName}}",
     "errors": {
       "invalidRepo": "Используйте owner/repo или URL репозитория GitHub."
@@ -80,7 +80,7 @@
     "importLinearOrgs": "Импортировать рабочие пространства Linear",
     "gitFolderPath": "Путь к папке Git (необязательно)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Свяжите это рабочее пространство с существующим рабочим деревом Git для синхронизации папки.",
+    "gitFolderPathHint": "Свяжите это рабочее пространство с существующим рабочим деревом Git для синхронизации папки",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Синхронизируется с папкой Git",
     "pendingSync": "Ожидает синхронизации",
@@ -123,7 +123,7 @@
     "addTeams": "Добавить команды",
     "addLabels": "Добавить метки",
     "addRepos": "Привязать репо",
-    "noReposHint": "Нет доступных репо. Сначала добавьте репо в рабочее пространство.",
+    "noReposHint": "Нет доступных репо. Сначала добавьте репо в рабочее пространство",
     "addDate": "Добавить дату",
     "clearDate": "Очистить дату",
     "noStatus": "Нет статуса",
@@ -358,10 +358,7 @@
       "moreProperties": "Больше свойств"
     },
     "propertyFields": {
-      "assignee": "Исполнитель",
-      "project": "Project",
-      "milestone": "Этап",
-      "dueDate": "Срок"
+      "project": "Project"
     },
     "addWorkItem": "Добавить рабочий элемент",
     "agentWorkflow": {
@@ -392,8 +389,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "Пока недоступно",
-      "prPendingHint": "PR будет создан после завершения Agent.",
-      "prNeutralHint": "PR ещё не создан.",
+      "prPendingHint": "PR будет создан после завершения Agent",
+      "prNeutralHint": "PR ещё не создан",
       "prCreatingHint": "Создание Pull Request...",
       "prCreateButton": "Создать Pull Request",
       "prCreateError": "Не удалось создать Pull Request",
@@ -403,7 +400,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "Нет изменений файлов",
-      "fileDiffCleanHint": "Изменения файлов не обнаружены.",
+      "fileDiffCleanHint": "Изменения файлов не обнаружены",
       "costSummary": "Итого по затратам",
       "totalCost": "Итого",
       "tokens": "Token",
@@ -413,7 +410,7 @@
     "viewWorkItems": "Смотреть Work Items",
     "fromRoutine": "From routine: {{name}}",
     "batchField": {
-      "hint": "Применяется к {{count}} выбранным элементам."
+      "hint": "Применяется к {{count}} выбранным элементам"
     },
     "batchStatus": {
       "title": "Установить статус"
@@ -457,7 +454,7 @@
       "save": "Сохранить текущее представление",
       "saveTitle": "Сохранить представление",
       "namePlaceholder": "Название представления",
-      "saveHint": "Сохраняет текущие фильтры; компоновка задаёт вид при первом открытии.",
+      "saveHint": "Сохраняет текущие фильтры; компоновка задаёт вид при первом открытии",
       "delete": "Удалить представление"
     },
     "table": {
@@ -475,14 +472,14 @@
     },
     "batchProperty": {
       "title": "Задать свойство",
-      "hint": "Применяет одно значение свойства к выбранным элементам ({{count}}). Оставьте значение пустым, чтобы очистить его.",
+      "hint": "Применяет одно значение свойства к выбранным элементам ({{count}}). Оставьте значение пустым, чтобы очистить его",
       "propertyPlaceholder": "Свойство",
       "valuePlaceholder": "Значение",
       "applied": "Обновлено элементов: {{count}}"
     },
     "revisionConflict": {
       "title": "Разрешить конфликт правок",
-      "description": "{{field}} изменилось после ревизии {{expected}}. Сравните вашу правку с ревизией {{actual}} и выберите, какую версию сохранить.",
+      "description": "{{field}} изменилось после ревизии {{expected}}. Сравните вашу правку с ревизией {{actual}} и выберите, какую версию сохранить",
       "mine": "Моя версия",
       "latest": "Последняя версия",
       "useLatest": "Использовать последнюю",
@@ -573,7 +570,7 @@
     "sidebarSync": "Синхронизация",
     "sync": {
       "title": "Внешняя синхронизация",
-      "description": "Зеркалирует рабочие элементы этого Project во внешнюю систему, например Linear или GitHub.",
+      "description": "Зеркалирует рабочие элементы этого Project во внешнюю систему, например Linear или GitHub",
       "adapterPicker": {
         "title": "Адаптер",
         "notAttached": "Не подключён",
@@ -582,7 +579,7 @@
         "changeWarning": "Отключите текущий адаптер перед подключением нового.",
         "detachProjectMenuLabel": "Отвязать GitHub",
         "detachProjectTitle": "Отвязать GitHub от {{project}}?",
-        "detachProjectDescription": "Синхронизация GitHub Issues остановится. Локальный Project и импортированные рабочие элементы останутся в ORG2.",
+        "detachProjectDescription": "Синхронизация GitHub Issues остановится. Локальный Project и импортированные рабочие элементы останутся в ORG2",
         "detachProjectAction": "Отвязать GitHub от {{project}}",
         "detachProjectSuccess": "GitHub отвязан от {{project}}"
       },
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "Загрузка статуса Webhook…",
-        "notInstalledDescription": "Установите секрет Webhook, чтобы поставщик отправлял изменения напрямую, не дожидаясь следующего опроса.",
+        "notInstalledDescription": "Установите секрет Webhook, чтобы поставщик отправлял изменения напрямую, не дожидаясь следующего опроса",
         "install": "Установить Webhook",
-        "installedDescription": "Вставьте URL в конфигурацию Webhook вашего поставщика и используйте секрет ниже для подписи доставок.",
+        "installedDescription": "Вставьте URL в конфигурацию Webhook вашего поставщика и используйте секрет ниже для подписи доставок",
         "indicatorFresh": "Недавняя доставка",
         "indicatorStale": "Нет недавних доставок",
         "lastDeliveryNever": "Доставок ещё не было",
@@ -627,7 +624,7 @@
         "copyUrl": "Копировать URL",
         "rotate": "Сменить секрет",
         "secretTitle": "Скопируйте этот секрет сейчас — он больше не будет показан",
-        "secretDescription": "Вставьте этот секрет подписи в конфигурацию Webhook вашего поставщика. Открытое значение не сохраняется после закрытия панели.",
+        "secretDescription": "Вставьте этот секрет подписи в конфигурацию Webhook вашего поставщика. Открытое значение не сохраняется после закрытия панели",
         "copySecret": "Копировать секрет",
         "dismissSecret": "Я сохранил его",
         "secretCopied": "Секрет скопирован в буфер обмена",
@@ -653,9 +650,9 @@
         "progressNoTotal": "Импортировано {{count}} элементов",
         "completedSummary": "Импортировано {{count}} элементов с удалённой стороны.",
         "cancelledSummary": "Отменено после импорта {{count}} элементов.",
-        "pendingDescription": "Первая синхронизация один раз проходит всю удалённую историю. Последующие используют обычный инкрементальный цикл.",
-        "runningDescription": "Удалённая история обходится постранично. Вы можете продолжать работать в это время.",
-        "failedDescription": "Последняя страница завершилась окончательной ошибкой. Повторная попытка продолжит с курсора.",
+        "pendingDescription": "Первая синхронизация один раз проходит всю удалённую историю. Последующие используют обычный инкрементальный цикл",
+        "runningDescription": "Удалённая история обходится постранично. Вы можете продолжать работать в это время",
+        "failedDescription": "Последняя страница завершилась окончательной ошибкой. Повторная попытка продолжит с курсора",
         "cancel": "Отменить импорт",
         "retry": "Повторить",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "Статусы",
     "statusesBuiltin": "Встроенные статусы",
-    "statusesBuiltinDescription": "Стандартные категории рабочего процесса. Доступны всегда.",
+    "statusesBuiltinDescription": "Стандартные категории рабочего процесса. Доступны всегда",
     "statusesCustom": "Пользовательские статусы",
-    "statusesCustomDescription": "Именованные псевдонимы для встроенной категории. Фильтры, счётчики и доски считают их своей категорией.",
+    "statusesCustomDescription": "Именованные псевдонимы для встроенной категории. Фильтры, счётчики и доски считают их своей категорией",
     "statusNamePlaceholder": "Название статуса",
     "noCustomStatuses": "Пользовательских статусов пока нет.",
     "statusArchive": "Архивировать статус",
@@ -793,11 +790,11 @@
     "unknownState": "Unknown state",
     "emptyConnections": {
       "title": "No Linear connections",
-      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
+      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear"
     },
     "emptySelection": {
       "title": "Select a Linear Project",
-      "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
+      "description": "Choose a Project from the left to view live Linear Issues and edit Project details"
     },
     "forms": {
       "createProjectTitle": "Create Linear Project",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder sync complete",
     "syncFailed": "Git folder sync failed: {{message}}",
     "noResultTitle": "No Git sync result",
-    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
+    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts"
   }
 }

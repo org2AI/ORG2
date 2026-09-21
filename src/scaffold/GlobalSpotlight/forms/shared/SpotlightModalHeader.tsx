@@ -88,13 +88,12 @@ const SpotlightModalHeader: React.FC<SpotlightModalHeaderProps> = ({
         )}
         <Button
           variant="tertiary"
-          appearance="soft"
           size="mini"
           aria-label={t("actions.close")}
           iconOnly
           icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={18} />}
           onClick={onClose}
-          className="border-transparent hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-500"
+          hoverTone="danger"
           title={t("actions.close")}
         />
       </div>

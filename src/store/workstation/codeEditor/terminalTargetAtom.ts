@@ -1,12 +1,14 @@
 import { atom } from "jotai";
 
-import { workstationActiveSessionIdAtom } from "@src/store/session/viewAtom";
+import { workstationWorkspaceId } from "../tabs/storage";
+import type { WorkstationWorkspaceId } from "../tabs/types";
+import { presentedWorkstationWorkspaceKeyAtom } from "../tabs/workspaceScope";
 
 export type TerminalTarget =
   | { kind: "agent"; sessionId: string }
   | { kind: "pty"; ptySessionId: string };
 
-export type TerminalTargetWorkspaceId = "global" | `session:${string}`;
+export type TerminalTargetWorkspaceId = WorkstationWorkspaceId;
 
 function terminalTargetWorkspaceId(
   sessionId: string | null
@@ -17,7 +19,7 @@ function terminalTargetWorkspaceId(
 /**
  * Terminal resources are global, but the selected resource is presentation
  * state owned by each WorkStation workspace. Keeping the selections separate
- * prevents Session B from inheriting Session A's agent terminal or PTY.
+ * follows the directory/chat-tab sharing policy.
  */
 export const codeEditorTerminalTargetsAtom = atom<
   Partial<Record<TerminalTargetWorkspaceId, TerminalTarget>>
@@ -30,14 +32,14 @@ export const codeEditorTerminalTargetAtom = atom<
   void
 >(
   (get) => {
-    const workspaceId = terminalTargetWorkspaceId(
-      get(workstationActiveSessionIdAtom)
+    const workspaceId = workstationWorkspaceId(
+      get(presentedWorkstationWorkspaceKeyAtom)
     );
     return get(codeEditorTerminalTargetsAtom)[workspaceId] ?? null;
   },
   (get, set, target) => {
-    const workspaceId = terminalTargetWorkspaceId(
-      get(workstationActiveSessionIdAtom)
+    const workspaceId = workstationWorkspaceId(
+      get(presentedWorkstationWorkspaceKeyAtom)
     );
     const targets = get(codeEditorTerminalTargetsAtom);
     if (target) {
@@ -58,10 +60,18 @@ export const clearTerminalTargetForWorkspaceAtom = atom(
   (get, set, sessionId: string) => {
     const workspaceId = terminalTargetWorkspaceId(sessionId);
     const targets = get(codeEditorTerminalTargetsAtom);
-    if (!(workspaceId in targets)) return;
     const next = { ...targets };
-    delete next[workspaceId];
-    set(codeEditorTerminalTargetsAtom, next);
+    let changed = false;
+    for (const [id, target] of Object.entries(targets)) {
+      if (
+        id === workspaceId ||
+        (target?.kind === "agent" && target.sessionId === sessionId)
+      ) {
+        delete next[id as TerminalTargetWorkspaceId];
+        changed = true;
+      }
+    }
+    if (changed) set(codeEditorTerminalTargetsAtom, next);
   }
 );
 clearTerminalTargetForWorkspaceAtom.debugLabel =

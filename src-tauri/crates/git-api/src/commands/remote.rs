@@ -8,7 +8,7 @@
 #[path = "tests/remote_tests.rs"]
 mod tests;
 
-use super::utils::run_git;
+use super::utils::{ensure_git_operand, run_git};
 use crate::types::*;
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use git::{close_inherited_fds, git_command};
@@ -68,6 +68,8 @@ pub fn list_remotes(repo_path: &Path) -> Result<Vec<GitRemoteInfo>, String> {
 
 /// Add a remote
 pub fn add_remote(repo_path: &Path, name: &str, url: &str) -> Result<GitRemoteInfo, String> {
+    ensure_git_operand(name, "remote name")?;
+    ensure_git_operand(url, "remote URL")?;
     let output = run_git(repo_path, &["remote", "add", name, url])?;
 
     if !output.status.success() {
@@ -84,6 +86,8 @@ pub fn add_remote(repo_path: &Path, name: &str, url: &str) -> Result<GitRemoteIn
 
 /// Update remote URL
 pub fn update_remote(repo_path: &Path, name: &str, url: &str) -> Result<GitRemoteInfo, String> {
+    ensure_git_operand(name, "remote name")?;
+    ensure_git_operand(url, "remote URL")?;
     let output = run_git(repo_path, &["remote", "set-url", name, url])?;
 
     if !output.status.success() {
@@ -100,6 +104,7 @@ pub fn update_remote(repo_path: &Path, name: &str, url: &str) -> Result<GitRemot
 
 /// Delete a remote
 pub fn delete_remote(repo_path: &Path, name: &str) -> Result<(), String> {
+    ensure_git_operand(name, "remote name")?;
     let output = run_git(repo_path, &["remote", "remove", name])?;
 
     if !output.status.success() {
@@ -444,6 +449,10 @@ pub(crate) fn detect_push_error_type(message: &str) -> GitErrorType {
 /// Push to remote
 pub fn push_to_remote(repo_path: &Path, request: &PushRequest) -> Result<GitPushResult, String> {
     let remote_name = request.remote.as_deref().unwrap_or("origin");
+    ensure_git_operand(remote_name, "remote")?;
+    if let Some(branch) = request.branch.as_deref() {
+        ensure_git_operand(branch, "branch")?;
+    }
 
     // Get current branch name
     let current_branch = run_git(repo_path, &["rev-parse", "--abbrev-ref", "HEAD"])
@@ -618,6 +627,13 @@ pub fn pull_from_remote(
     auth_token: Option<&str>,
     store_auth: bool,
 ) -> Result<GitPullResult, String> {
+    if let Some(r) = remote {
+        ensure_git_operand(r, "remote")?;
+    }
+    if let Some(b) = branch {
+        ensure_git_operand(b, "branch")?;
+    }
+
     let mut args = vec!["pull"];
     args.extend_from_slice(pull_strategy_args(strategy));
 
@@ -741,6 +757,10 @@ pub fn fetch_from_remote(
     auth_token: Option<&str>,
     store_auth: bool,
 ) -> Result<GitFetchResult, String> {
+    if let Some(r) = remote {
+        ensure_git_operand(r, "remote")?;
+    }
+
     let mut args = vec!["fetch"];
 
     if prune {

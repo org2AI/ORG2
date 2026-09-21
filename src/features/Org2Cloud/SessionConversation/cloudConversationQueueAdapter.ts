@@ -14,6 +14,7 @@ import {
   QueuedConversationBlockedError,
   QueuedConversationRecoveryPendingError,
   QueuedConversationTurnClosedError,
+  QueuedConversationTurnFailedError,
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import {
   conversationEventsForPush,
@@ -36,6 +37,7 @@ import {
   cloudLocator,
   probeCloudTurnCoordination,
 } from "./cloudConversationQueueAdapter.support";
+import { prepareCloudConversationRetry } from "./cloudConversationRetry";
 import {
   bumpConversationPlaneSignal,
   conversationPlaneSignalAtom,
@@ -73,6 +75,9 @@ export async function dispatchQueuedCloudConversation(
   const auth = await refreshBoundAuth();
   const authIdentityKey = expectedIdentityKey;
   const coordinationEnabled = await probeCloudTurnCoordination(auth);
+  // The durable root lock is held by the queue dispatcher. Only an explicit
+  // retry changes intent and supersedes a proved, empty native attempt.
+  const retry = await prepareCloudConversationRetry(message);
 
   // Build the canonical user payload once. It is admitted to the shared plane
   // before the local provider turn starts; retries reuse the stable turn id.
@@ -200,6 +205,12 @@ export async function dispatchQueuedCloudConversation(
       if (claim.outcome === "terminal") {
         coordination.state.alreadyTerminal = true;
         if (claim.status === "completed") return;
+        if (
+          claim.status === "failed" &&
+          retry.lineage.failed?.turnIntentId === message.turnIntentId
+        ) {
+          throw new QueuedConversationTurnFailedError("Agent request failed");
+        }
         throw new QueuedConversationTurnClosedError(
           `Cloud conversation turn is already ${claim.status}`
         );
@@ -301,6 +312,7 @@ export async function dispatchQueuedCloudConversation(
       target: descriptor.target,
       turnIntentId: message.turnIntentId,
       queueMessageId: message.id,
+      retry,
       ...(message.runnerSessionId
         ? {
             recovery: {
@@ -328,7 +340,10 @@ export async function dispatchQueuedCloudConversation(
     if (error instanceof QueuedConversationRecoveryPendingError) {
       throw error;
     }
-    if (error instanceof QueuedConversationTurnClosedError) {
+    if (
+      error instanceof QueuedConversationTurnClosedError ||
+      error instanceof QueuedConversationTurnFailedError
+    ) {
       if (coordination.state.claimed && !coordination.state.alreadyTerminal) {
         await stopLeaseRenewal();
         await coordination.finish("failed");

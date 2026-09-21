@@ -20,17 +20,17 @@ import {
   projectApi,
 } from "@src/api/http/project";
 import Button from "@src/components/Button";
-import Message from "@src/components/Message";
-import { Placeholder } from "@src/components/Placeholder";
-import { Copy01Icon, HugeiconsIcon, Link01Icon } from "@src/icons";
 import CompactListPanel, {
   type CompactListPanelEntry,
-} from "@src/modules/shared/components/CompactListPanel";
-import { WorkManagementRefreshButton } from "@src/modules/shared/components/WorkManagementRefreshButton";
+} from "@src/components/CompactListPanel";
+import Message from "@src/components/Message";
+import { Placeholder } from "@src/components/Placeholder";
+import { WorkManagementRefreshButton } from "@src/features/GitHubWork/WorkManagementRefreshButton";
+import { Copy01Icon, HugeiconsIcon, Link01Icon } from "@src/icons";
 import DetailPaneLayout, {
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
-import InboxListDetailLayout from "@src/modules/shared/layouts/InboxListDetailLayout";
+} from "@src/scaffold/layouts/DetailPaneLayout";
+import InboxListDetailLayout from "@src/scaffold/layouts/InboxListDetailLayout";
 import { copyText } from "@src/util/data/clipboard";
 
 const DELIVERY_STATUS_TONE: Record<string, string> = {
@@ -219,7 +219,6 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
           {status?.installed ? (
             <>
               <Button
-                variant="secondary"
                 size="small"
                 onClick={handleToggleEnabled}
                 disabled={busy || !status}

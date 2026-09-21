@@ -114,12 +114,14 @@ async fn detect_gh_cli() -> Option<GhCliCredential> {
 /// often contains only the username. Asking `gh` itself works for keychain and
 /// file-backed installs while preserving the CLI's active-host behavior.
 pub(crate) async fn resolve_gh_cli_token() -> Option<String> {
-    let mut executables = vec![PathBuf::from("gh")];
     #[cfg(target_os = "macos")]
-    executables.extend([
+    let executables = [
+        PathBuf::from("gh"),
         PathBuf::from("/opt/homebrew/bin/gh"),
         PathBuf::from("/usr/local/bin/gh"),
-    ]);
+    ];
+    #[cfg(not(target_os = "macos"))]
+    let executables = [PathBuf::from("gh")];
 
     for executable in executables {
         let mut command = tokio::process::Command::new(executable);

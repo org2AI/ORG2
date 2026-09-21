@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import TabPill from "@src/components/TabPill";
+import { PANEL_HEADER_TOKENS } from "@src/components/layout/blocks/PanelHeader/tokens";
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
@@ -16,7 +17,6 @@ import {
   ZoomInAreaIcon,
   ZoomOutAreaIcon,
 } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 
 import { VIEW_SCOPE_OPTIONS } from "../../config";
 import type { ZoomLevel } from "../../hooks/useGanttZoom";
@@ -164,9 +164,7 @@ const GanttToolbar: React.FC<GanttToolbarProps> = ({
             />
             <Button
               variant="tertiary"
-              appearance="ghost"
               size="mini"
-              htmlType="button"
               className="min-w-12 text-[11px] font-medium transition-all hover:bg-fill-2 hover:text-text-1"
               onClick={onResetZoom}
               title={t("tooltips.resetZoom")}
@@ -231,9 +229,7 @@ const GanttToolbar: React.FC<GanttToolbarProps> = ({
         {/* Today */}
         <Button
           variant="tertiary"
-          appearance="ghost"
           size="mini"
-          htmlType="button"
           className="ml-1 text-xs transition-all hover:bg-fill-2 hover:text-text-1"
           onClick={onGoToToday}
           title={t("tooltips.goToToday")}

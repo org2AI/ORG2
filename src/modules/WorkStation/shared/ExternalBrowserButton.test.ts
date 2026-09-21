@@ -15,12 +15,12 @@ import {
 
 import { ExternalBrowserButton } from "./ExternalBrowserButton";
 
-const { openExternalLink } = vi.hoisted(() => ({
-  openExternalLink: vi.fn().mockResolvedValue(undefined),
+const { openInSystemBrowser } = vi.hoisted(() => ({
+  openInSystemBrowser: vi.fn(),
 }));
 
-vi.mock("@src/util/platform/ipcRenderer", () => ({
-  openExternalLink,
+vi.mock("@src/util/ui/openLink", () => ({
+  openInSystemBrowser,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -55,7 +55,7 @@ describe("ExternalBrowserButton", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
-    openExternalLink.mockClear();
+    openInSystemBrowser.mockClear();
   });
 
   afterEach(() => {
@@ -80,8 +80,8 @@ describe("ExternalBrowserButton", () => {
     expect(markup).toMatch(/<button\b[^>]*type="button"/);
     expect(markup).toContain('aria-label="Open in external browser"');
     expect(markup).toContain('data-icon="chrome"');
-    expect(markup).toContain("enabled:hover:bg-surface-hover");
-    expect(markup).toContain("enabled:active:bg-surface-selected");
+    expect(markup).toContain("btn-hover:bg-surface-hover");
+    expect(markup).toContain("btn-active:bg-surface-selected");
     expect(markup).not.toContain("<a ");
     expect(markup).not.toContain('title="Open in external browser"');
   });
@@ -102,7 +102,7 @@ describe("ExternalBrowserButton", () => {
     });
 
     expect(onClick).toHaveBeenCalledOnce();
-    expect(openExternalLink).toHaveBeenCalledWith(
+    expect(openInSystemBrowser).toHaveBeenCalledWith(
       "https://github.com/openai/example/issues/42"
     );
   });

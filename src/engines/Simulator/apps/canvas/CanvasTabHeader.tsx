@@ -84,7 +84,6 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
             }
           >
             <Button
-              htmlType="button"
               variant="tertiary"
               size="mini"
               icon={
@@ -119,7 +118,6 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
             title={t("canvasCard.reload", "Reload")}
             size="mini"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               <HugeiconsIcon
@@ -132,7 +130,6 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
         )}
         <ToolbarTooltip label={shareHint}>
           <Button
-            htmlType="button"
             variant="tertiary"
             size="mini"
             icon={

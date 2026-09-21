@@ -11,9 +11,11 @@
 # allocating a macOS runner.
 #
 # Within the frontend job, lint covers only the files the pull request changed
-# (see scripts/ci/select-lint-targets.cjs). Typecheck and the unit suite stay
-# whole-repo: both have cross-file failure modes that a per-file diff cannot
-# bound.
+# (see scripts/ci/select-lint-targets.cjs), and unit tests cover only the test
+# files whose import graphs reach the diff, plus the guard tests that read
+# files outside their imports (see scripts/ci/select-unit-tests.cjs).
+# unit-tests-develop.yml runs the whole unit suite on every push to develop.
+# Typecheck stays whole-repo.
 #
 # Gitleaks independently scans full HEAD history against an exact reviewed baseline.
 #
@@ -61,8 +63,8 @@ jobs:
           -e GIT_CONFIG_VALUE_0=/repo
           ghcr.io/gitleaks/gitleaks:v8.24.3
           git /repo --log-opts=HEAD --no-banner --redact --verbose
-          --config /repo/.gitleaks.toml
-          --gitleaks-ignore-path /repo/.gitleaksignore
+          --config /repo/config/gitleaks.toml
+          --gitleaks-ignore-path /repo/config/gitleaksignore
 
   # ── Change scope ────────────────────────────────────────────────────────────
   changes:
@@ -110,8 +112,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # fetch-depth 0 so the lint-scope step below can diff base..head. The
-      # `changes` job pays the same cost in ~10s.
+      # fetch-depth 0 so the file-length and lint-scope steps below can diff
+      # base..head. The `changes` job pays the same cost in ~10s.
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -128,6 +130,22 @@ jobs:
 
       - name: Test CI policy helpers
         run: node --test scripts/ci/*.test.cjs
+
+      # TypeScript files (.ts/.tsx under src/) a pull request touches must stay
+      # within 700 lines. Only the diff is judged: a long file nobody edits
+      # never fails a build, and it gets split the next time a pull request
+      # changes it. Markdown, JSON, styles, and Rust are out of scope. Needs
+      # only git and node, so it runs before the dependency install.
+      # `shell: bash` adds pipefail, so a failed diff fails the step instead of
+      # passing an empty file list.
+      - name: File length (changed files)
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only --diff-filter=ACMR -z "${BASE_SHA}...${HEAD_SHA}" |
+            node scripts/ci/check-changed-file-length.cjs
 
       # warm-frontend-cache.yml publishes this same key from develop after
       # lockfile-changing merges, so a PR's first run restores the base
@@ -204,8 +222,21 @@ jobs:
           pnpm run test:i18n-keys
           pnpm run check:i18n-keys
 
+      # Runs the test files this pull request can affect, selected from each
+      # file's Vitest import graph; dependency, config, and setup-file changes
+      # run the whole suite. The step summary lists the selection and its
+      # reason. The diff goes to a file first so a failed `git diff` stops the
+      # step, rather than reaching the runner as an empty diff that it would
+      # answer with the whole suite.
       - name: Unit tests
-        run: pnpm run test
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only -z "${BASE_SHA}...${HEAD_SHA}" \
+            > "${RUNNER_TEMP}/unit-test-paths"
+          node scripts/ci/run-unit-tests.mjs < "${RUNNER_TEMP}/unit-test-paths"
 
   # ── Rust ────────────────────────────────────────────────────────────────────
   rust:
@@ -248,6 +279,46 @@ jobs:
       - name: cargo test (workspace)
         working-directory: src-tauri
         run: cargo test --workspace --no-fail-fast
+
+  # ── Rust (Windows) ──────────────────────────────────────────────────────────
+  # The macOS job above cannot see a `#[cfg(windows)]` / `#[cfg(unix)]` split
+  # that only breaks on Windows: the compiler configures the other arm out.
+  # Two consecutive releases (v2.0.0, v2.0.1) failed in exactly that way,
+  # each on a Windows-only unresolved import that no PR check had compiled.
+  # This job runs the same warnings-denied clippy gate on the release target
+  # so such a defect fails the PR instead of the tag build.
+  #
+  # Compile-only on purpose: the workspace test suite already runs on macOS,
+  # and the Windows runner's job is to prove the release target builds.
+  rust-windows:
+    name: Rust (clippy, Windows)
+    needs: changes
+    if: needs.changes.outputs.rust_required == 'true'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # windows-latest's host toolchain is x86_64-pc-windows-msvc, the same
+      # triple release.yaml builds, so no explicit --target is needed.
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # warm-rust-cache.yml publishes this same shared key from develop. Keep
+      # the key and workspace mapping in sync with that workflow.
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          shared-key: "ci-windows"
+
+      - name: Stage org2-pm sidecar
+        run: node scripts/tauri/prepare-sidecars.cjs --profile debug
+
+      - name: cargo clippy (all targets, warnings denied)
+        working-directory: src-tauri
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   # ── Dependency audit ────────────────────────────────────────────────────────
   # Only signal on the ~1000-crate Rust closure; nothing else watches Cargo.lock.

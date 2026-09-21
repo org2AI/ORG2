@@ -21,8 +21,6 @@
  *     `EditorMainPane`); recreating it per-tab breaks running terminals.
  * The provider MUST be mounted with the SAME instances the editor host already
  * holds — see `EditorMainPane/index.tsx`.
- *
- * See docs/workstation-unification/phase-2-host-hoist-plan.md (Phase 2.4).
  */
 import type { UseTerminalStateReturn } from "@/src/engines/TerminalCore/types";
 import { type ReactNode, createContext, useContext } from "react";
@@ -52,8 +50,6 @@ export interface EditorHostContextValue {
   onFileSelectWithLine?: (path: string, line: number) => void;
   /** Cursor position change callback */
   onCursorPositionChange?: (position: CursorPosition | null) => void;
-  /** Update an active search tab title from its query */
-  onSearchTabTitleChange?: (tabId: string, query: string) => void;
   /** Sync git-diff local edits to tab bar unsaved indicator */
   onGitDiffUnsavedChange?: (hasUnsaved: boolean) => void;
   /** Sync binary preview edits to tab bar unsaved indicator */

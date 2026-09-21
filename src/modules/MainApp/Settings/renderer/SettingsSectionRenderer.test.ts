@@ -34,6 +34,9 @@ vi.mock("../sections/MobileRemoteSettingsSection", () => ({
 vi.mock("../sections/HarnessConnections/HarnessConnectionsSection", () => ({
   default: () => "harness-content",
 }));
+vi.mock("../sections/ImportSection", () => ({
+  default: ({ activeTab }: { activeTab?: string }) => `import:${activeTab}`,
+}));
 
 describe("SettingsSectionRenderer", () => {
   it.each([
@@ -43,6 +46,7 @@ describe("SettingsSectionRenderer", () => {
     ["security", undefined, "security-content"],
     ["mobile-remote", undefined, "mobile-content"],
     ["harness-connections", undefined, "harness-content"],
+    ["import", "hooks", "import:hooks"],
   ] as const)(
     "renders the live %s section from its route",
     (section, tab, content) => {
@@ -69,6 +73,7 @@ describe("SettingsSectionRenderer", () => {
       "security",
       "mobile-remote",
       "harness-connections",
+      "import",
     ]);
   });
 

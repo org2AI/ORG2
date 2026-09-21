@@ -48,8 +48,6 @@ export const EMPTY_BROWSER_ADD_TO_CONVERSATION_NAV: BrowserAddToConversationNavS
 export interface ChatHistoryProps {
   /** Opaque background class for sticky headers. Must match the container surface. */
   surfaceBgClass?: string;
-  /** Dock side of the containing chat panel, used by narrow side previews. */
-  chatPanelPosition?: "left" | "right";
   agentOrgCurrentMemberName?: string | null;
   /**
    * Stable identifier of the member currently being viewed in the chat

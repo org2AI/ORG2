@@ -160,8 +160,8 @@ export const ProjectGitSyncReviewContent: React.FC<
           </div>
         </div>
         <Button
+          variant="tertiary"
           size="small"
-          appearance="ghost"
           disabled={syncing}
           onClick={() => void handleSyncAgain()}
         >
@@ -186,9 +186,7 @@ export const ProjectGitSyncReviewContent: React.FC<
               return (
                 <Button
                   layout="custom"
-                  appearance="custom"
                   key={conflict.id}
-                  htmlType="button"
                   className={`flex w-full flex-col rounded-md px-2 py-2 text-left transition-colors ${
                     active
                       ? "bg-fill-3 text-text-1"

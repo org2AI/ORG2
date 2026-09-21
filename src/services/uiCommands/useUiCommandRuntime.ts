@@ -2,11 +2,11 @@ import { Channel } from "@tauri-apps/api/core";
 import { useEffect, useRef } from "react";
 import { z } from "zod";
 
-import { uiCommands } from "@src/ActionSystem/publicUi/catalog";
-import { defineZodAction } from "@src/ActionSystem/schema/defineZodAction";
-import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
 import { useBrowserContext } from "@src/contexts/workstation";
 import { createLogger } from "@src/hooks/logger";
+import { uiCommands } from "@src/scaffold/ActionSystem/publicUi/catalog";
+import { defineZodAction } from "@src/scaffold/ActionSystem/schema/defineZodAction";
+import { zodActionRegistry } from "@src/scaffold/ActionSystem/schema/zodRegistry";
 import { createBrowserSessionTab } from "@src/store/workstation/browser/tabs";
 import {
   openWorkstationTabAtom,

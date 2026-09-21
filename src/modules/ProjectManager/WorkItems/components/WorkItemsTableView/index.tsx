@@ -20,6 +20,7 @@ import {
 } from "@src/modules/ProjectManager/config/manage";
 import type { Person } from "@src/types/core/shared";
 import type { WorkItem as WorkItemExtended } from "@src/types/core/workItem";
+import { openLink } from "@src/util/ui/openLink";
 
 import { useAllCustomStatusOptions } from "../../hooks/useStatusDefinitions";
 import {
@@ -141,10 +142,12 @@ function renderPropertyValue(
       return (
         <a
           href={String(value)}
-          target="_blank"
-          rel="noreferrer"
           className="text-primary-6 hover:underline"
-          onClick={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openLink(String(value));
+          }}
         >
           {String(value)}
         </a>

@@ -54,7 +54,7 @@ CLI 与应用必须使用相同的 `ORGII_HOME`。它只连接已有的本机实
 
 ## 修改命令
 
-公共参数与元数据的源头是 `src/ActionSystem/publicUi/catalog.ts`。修改后运行：
+公共参数与元数据的源头是 `src/scaffold/ActionSystem/publicUi/catalog.ts`。修改后运行：
 
 ```sh
 pnpm ui:catalog

@@ -14,21 +14,17 @@ import { describeModelLabel } from "../rawPromptModelLabel";
 import { resolveRawUserPrompt } from "../rawUserPrompt";
 import { useUserMessageDeliveryActions } from "../useUserMessageDeliveryActions";
 
-const USER_MSG_MAX_LINES = 3;
-const USER_MSG_MAX_CHARS = 120;
 const AGENT_ORG_INBOX_TRANSCRIPT_PREFIX = "Acknowledged inbox batch";
 
 interface UseUserChatItemModelArgs {
   chatItem: OptimizedChatItem;
-  compactPreview: boolean;
   modelId?: string | null;
   onEditSubmit?: (newText: string, imageDataUrls?: string[]) => void;
 }
 
-/** Derives the message text, attribution, delivery and preview state of a user turn. */
+/** Derives the message text, attribution, and delivery state of a user turn. */
 export function useUserChatItemModel({
   chatItem,
-  compactPreview,
   modelId,
   onEditSubmit,
 }: UseUserChatItemModelArgs) {
@@ -138,14 +134,6 @@ export function useUserChatItemModel({
         ? () => onEditSubmit(editedText || fullContent, messageImages)
         : null));
 
-  const needsTruncation = useMemo(() => {
-    if (!compactPreview) return false;
-    const textToCheck = fullContent || editedText;
-    if (!textToCheck) return false;
-    if (textToCheck.split("\n").length > USER_MSG_MAX_LINES) return true;
-    return textToCheck.length > USER_MSG_MAX_CHARS;
-  }, [compactPreview, editedText, fullContent]);
-
   // The wire prompt behind this bubble. `fullContent` is a rendering of it
   // (pills as badges, expansion block stripped, envelope normalized), so the
   // raw string is only reachable through the event itself.
@@ -171,7 +159,6 @@ export function useUserChatItemModel({
     isAgentOrgInboxTranscript,
     messageImages,
     retryDelivery,
-    needsTruncation,
     rawPrompt,
     cachedFiles,
   };

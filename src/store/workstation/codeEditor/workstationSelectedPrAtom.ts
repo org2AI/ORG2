@@ -3,7 +3,9 @@ import { atomFamily } from "jotai-family";
 
 import type {
   GitHubChecksSummary,
+  GitHubDeploymentsSummary,
   GitHubIssueComment,
+  GitHubIssueTimelineItem,
   GitHubPrReview,
   GitHubReviewComment,
   PrFile,
@@ -81,10 +83,16 @@ export interface WorkstationSelectedPrState {
   commits: Record<string, unknown>[];
   files: PrFile[];
   checks: GitHubChecksSummary | null;
+  /** Head-branch deployments; null until read or when the read failed. */
+  deployments: GitHubDeploymentsSummary | null;
+  /** The PR's GitHub issue-timeline (a PR is an issue in GitHub's REST API). */
+  timeline: GitHubIssueTimelineItem[];
   /** Initial load with no cached snapshot to paint from. */
   loading: boolean;
   /** Background revalidation over a cached snapshot. */
   refreshing: boolean;
+  /** A checks-only re-poll (manual or scheduled) is in flight. */
+  refreshingChecks: boolean;
   error: string | null;
   submittingComment: boolean;
   submittingReview: boolean;
@@ -105,8 +113,11 @@ export const initialSelectedPrState: WorkstationSelectedPrState = {
   commits: [],
   files: [],
   checks: null,
+  deployments: null,
+  timeline: [],
   loading: false,
   refreshing: false,
+  refreshingChecks: false,
   error: null,
   submittingComment: false,
   submittingReview: false,

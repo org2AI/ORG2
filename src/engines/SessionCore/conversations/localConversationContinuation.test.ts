@@ -1,3 +1,5 @@
+import nativeFailedUser from "@/src-tauri/crates/orgtrack-core/src/sources/fixtures/codex_native_failed_user.json";
+import nativeTerminalError from "@/src-tauri/crates/orgtrack-core/src/sources/fixtures/codex_terminal_error.json";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -16,10 +18,16 @@ import {
   parseConversationExecutionParentId,
   recoverLocalConversationTurn,
 } from "./localConversationContinuation";
+import { loadLocalCanonicalConversationTimeline } from "./localConversationExecutionTail";
+import { candidateMatchesTarget } from "./localConversationExecutionTargets";
+import { projectNativeConversationItems } from "./nativeConversationProjection";
+import { nativeSourceEventId } from "./nativeSourceEventIdentity";
+import { retryLineageEvent } from "./queuedRetryLineage";
 
 const mocks = vi.hoisted(() => ({
   getAgentSession: vi.fn(),
   cliStatus: vi.fn(),
+  loadCliRevision: vi.fn(),
   cliWaitForTurnTerminal: vi.fn(),
   turnIntentStatus: vi.fn(),
   invokeTauri: vi.fn(),
@@ -33,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   removeEvents: vi.fn(),
   removeSyntheticUserInputs: vi.fn(),
   getStoredEvents: vi.fn(),
+  getPersistedEvents: vi.fn(),
   getLatestSnapshot: vi.fn(),
   subscribeSession: vi.fn(),
   loadEvents: vi.fn(),
@@ -50,12 +59,16 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@src/api/tauri/agent", () => ({ getSession: mocks.getAgentSession }));
+vi.mock("@src/engines/SessionCore/sync/adapters/cli/cliHistory", () => ({
+  loadCliTranscriptRevision: mocks.loadCliRevision,
+}));
 vi.mock("@src/api/tauri/rpc", () => ({
   rpc: {
     cli: {
       status: mocks.cliStatus,
     },
     sessionCore: {
+      cache: { loadEvents: vi.fn(async () => []) },
       turnIntents: {
         waitForTerminal: mocks.cliWaitForTurnTerminal,
         status: mocks.turnIntentStatus,
@@ -79,6 +92,7 @@ vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
     removeByIdPrefix: mocks.removeEvents,
     removeSyntheticUserInputEvents: mocks.removeSyntheticUserInputs,
     getEvents: mocks.getStoredEvents,
+    getPersistedEvents: mocks.getPersistedEvents,
     getLatestSessionSnapshot: mocks.getLatestSnapshot,
     subscribeSession: mocks.subscribeSession,
   },
@@ -289,6 +303,7 @@ beforeEach(() => {
   mocks.removeEvents.mockResolvedValue(1);
   mocks.removeSyntheticUserInputs.mockResolvedValue(1);
   mocks.getStoredEvents.mockImplementation(async () => childEvents);
+  mocks.getPersistedEvents.mockResolvedValue([]);
   mocks.getLatestSnapshot.mockReturnValue(null);
   mocks.subscribeSession.mockReturnValue(() => undefined);
   mocks.storeGet.mockReturnValue(null);
@@ -595,7 +610,7 @@ describe("local native conversation continuation", () => {
     expect(parseConversationExecutionParentId("not-json")).toBeNull();
   });
 
-  it("keeps a failed user row when a fresh episode cannot load its timeline", async () => {
+  it("does not publish an empty native child when its source snapshot fails", async () => {
     const error = new Error("canonical timeline unavailable");
 
     await expect(
@@ -612,21 +627,13 @@ describe("local native conversation continuation", () => {
     ).rejects.toThrow(error.message);
 
     expect(mocks.removeEvents).not.toHaveBeenCalled();
-    expect(mocks.create).toHaveBeenCalledTimes(1);
-    expect(mocks.updateEvent).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ displayStatus: "failed" }),
-      "agentsession-child"
-    );
-    expect(mocks.markTerminal).toHaveBeenCalledWith(
-      "agentsession-child",
-      "failed",
-      expect.any(Object)
-    );
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.updateEvent).not.toHaveBeenCalled();
+    expect(mocks.markTerminal).not.toHaveBeenCalled();
     expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 
-  it("reveals the first imported execution before loading a large timeline", async () => {
+  it("snapshots imported history before publishing its first native execution", async () => {
     const order: string[] = [];
     mocks.create.mockImplementationOnce(async () => {
       order.push("created");
@@ -652,7 +659,7 @@ describe("local native conversation continuation", () => {
       },
     });
 
-    expect(order.slice(0, 3)).toEqual(["created", "visible", "timeline"]);
+    expect(order.slice(0, 3)).toEqual(["timeline", "created", "visible"]);
     expect(mocks.create).toHaveBeenCalledTimes(1);
   });
 
@@ -2021,6 +2028,129 @@ describe("local native conversation continuation", () => {
     );
   });
 
+  it.each([false, true])(
+    "rejects superseded same-text Codex reuse (unexplained output: %s)",
+    async (unexplainedOutput) => {
+      const sessionId = "cliagent-superseded-root";
+      const prefix = [
+        event("a-user", "user", "Remember a marker", { sessionId }),
+        event("a-answer", "assistant", "READY", { sessionId }),
+        event("b-user", "user", "Recall the marker", { sessionId }),
+        event("b-answer", "assistant", "marker", { sessionId }),
+      ];
+      // Use the actual parser/normalizer contract: the old and retried prompt
+      // have identical provider-visible text but distinct durable identities.
+      const failed = {
+        ...event("unused", "user", "", { sessionId }),
+        ...nativeFailedUser.normalizedUser,
+        result: {
+          ...nativeFailedUser.normalizedUser.result,
+          turnIntentId: "old-c",
+        },
+      } as SessionEvent;
+      const diagnostic = {
+        ...event("unused", "assistant", "", { sessionId }),
+        ...nativeTerminalError.diagnostic,
+      } as SessionEvent;
+      const successful = {
+        ...failed,
+        id: "codex-successful-c",
+        sessionId: "cliagent-successful-child",
+        result: { ...failed.result, turnIntentId: "new-c" },
+      } as SessionEvent;
+      const answer = event("new-c-answer", "assistant", "marker", {
+        sessionId: successful.sessionId,
+        turnId: "new-c",
+      });
+      const lineage = retryLineageEvent(sessionId, {
+        version: 1,
+        queueMessageId: "queue-c",
+        superseded: [
+          {
+            sessionId,
+            turnIntentId: "old-c",
+            sourceEventIds: [nativeSourceEventId(failed)],
+          },
+        ],
+      });
+      const nativeAudit = [
+        ...prefix,
+        failed,
+        diagnostic,
+        ...(unexplainedOutput ? [answer] : []),
+      ];
+      const auditBefore = JSON.stringify(nativeAudit);
+      const timeline = [
+        ...prefix,
+        failed,
+        diagnostic,
+        lineage,
+        successful,
+        answer,
+      ];
+      mockCompatibleCliEpisode(sessionId, "codex", nativeAudit);
+
+      const continuation = continueLocalConversation({
+        root: {
+          authority: "local-session",
+          authorityScope: [],
+          conversationId: sessionId,
+        },
+        title: "Retry continuation",
+        timeline,
+        displayText: "Next independent message D",
+        target: codexTarget,
+        turnIntentId: "new-d",
+      });
+
+      if (unexplainedOutput) {
+        await expect(continuation).rejects.toThrow(
+          "differs from the canonical conversation"
+        );
+        expect(mocks.create).not.toHaveBeenCalled();
+        expect(mocks.materialize).not.toHaveBeenCalled();
+        expect(mocks.synchronize).not.toHaveBeenCalled();
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+        expect(JSON.stringify(nativeAudit)).toBe(auditBefore);
+        return;
+      }
+      await continuation;
+      expect(mocks.create).toHaveBeenCalledOnce();
+      expect(mocks.synchronize).not.toHaveBeenCalled();
+      expect(mocks.materialize).toHaveBeenCalledWith({
+        sessionId: "agentsession-child",
+        timeline,
+      });
+      const materialized = projectNativeConversationItems(
+        mocks.materialize.mock.calls[0][0].timeline
+      );
+      expect(
+        materialized
+          .filter((item) => item.kind === "message" && item.role === "user")
+          .map((item) => item.id)
+      ).toEqual([
+        nativeSourceEventId(prefix[0]),
+        nativeSourceEventId(prefix[2]),
+        nativeSourceEventId(successful),
+      ]);
+      expect(materialized).toContainEqual(
+        expect.objectContaining({
+          kind: "message",
+          role: "assistant",
+          id: nativeSourceEventId(answer),
+        })
+      );
+      expect(mocks.sendMessage).toHaveBeenCalledOnce();
+      expect(mocks.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: "agentsession-child",
+          turnIntentId: "new-d",
+        })
+      );
+      expect(JSON.stringify(nativeAudit)).toBe(auditBefore);
+    }
+  );
+
   it("shows the ordinary optimistic turn before synchronizing a reused episode", async () => {
     const order: string[] = [];
     const timeline = [event("u1", "user", "same native history")];
@@ -3114,4 +3244,361 @@ describe("local native conversation continuation", () => {
       ])
     );
   });
+});
+
+describe("dynamic source execution identity", () => {
+  it("retries a proven unstarted child using the same execution and full prior history", async () => {
+    const localRoot = {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-market-root",
+    };
+    const childId = "cliagent-old-empty-child";
+    const nextTarget = {
+      cliAgentType: "claude_code",
+      credentialSource: "market:next-purchase",
+      model: "claude-sonnet-5",
+      workspaceRepoPath: "/repo",
+    };
+    const history = [
+      event("prior-user", "user", "previous paid Package question"),
+      event("prior-answer", "assistant", "previous paid Package answer"),
+    ];
+    mocks.cliStatus.mockImplementation(async ({ sessionId }) => ({
+      ...nextTarget,
+      sessionId,
+      credentialSource:
+        sessionId === childId
+          ? nextTarget.credentialSource
+          : "market:previous-purchase",
+      status: sessionId === childId ? "failed" : "completed",
+      repoPath: "/repo",
+      updatedAt: "2026-09-17T15:25:38Z",
+    }));
+    mocks.invokeTauri.mockResolvedValue([
+      {
+        sessionId: childId,
+        createdAt: "2026-09-17T15:00:28Z",
+        updatedAt: "2026-09-17T15:25:38Z",
+        status: "failed",
+        isTerminal: true,
+      },
+    ]);
+    mocks.loadCliRevision.mockImplementation(async () =>
+      childEvents.length
+        ? "native-ready"
+        : '["unstarted-native-child-v1","cliagent-old-empty-child"]'
+    );
+    mocks.loadEvents.mockImplementation(async (sessionId: string) => ({
+      events: sessionId === localRoot.conversationId ? history : childEvents,
+      source: "cli_history",
+    }));
+
+    // Normal Retry first asks whether the old execution accepted the durable
+    // intent. No accepted intent means the existing dispatch path may resume.
+    await expect(
+      recoverLocalConversationTurn({
+        root: localRoot,
+        target: nextTarget,
+        runnerSessionId: childId,
+        title: "Retry Package switch",
+        timeline: history,
+        displayText: "use the next Package",
+        turnIntentId: "old-package-switch",
+      })
+    ).resolves.toBeNull();
+    const result = await continueLocalConversationAfterTimelineLoad({
+      root: localRoot,
+      title: "Retry Package switch",
+      target: nextTarget,
+      displayText: "use the next Package",
+      turnIntentId: "old-package-switch",
+      loadTimeline: () => loadLocalCanonicalConversationTimeline(localRoot),
+    });
+    expect(result).toMatchObject({
+      sessionId: childId,
+      terminalStatus: "completed",
+    });
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.materialize).not.toHaveBeenCalled();
+    expect(mocks.synchronize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: childId,
+        timeline: history,
+      })
+    );
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: childId,
+        turnIntentId: "old-package-switch",
+      })
+    );
+    expect(childEvents.map((item) => item.displayText)).toEqual([
+      "previous paid Package question",
+      "previous paid Package answer",
+      "use the next Package",
+      "native answer",
+    ]);
+  });
+  it("snapshots the previous Package before creating its unbound native child", async () => {
+    const localRoot = {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-market-root",
+    };
+    const nextTarget = {
+      cliAgentType: "claude_code",
+      credentialSource: "market:next-purchase",
+      model: "claude-sonnet-5",
+      workspaceRepoPath: "/repo",
+    };
+    const history = [
+      event("prior-user", "user", "previous Package question"),
+      event("prior-answer", "assistant", "previous Package answer"),
+    ];
+    let created = false;
+    let snapshotStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      snapshotStarted = resolve;
+    });
+    let finishSnapshot!: () => void;
+    const snapshotGate = new Promise<void>((resolve) => {
+      finishSnapshot = resolve;
+    });
+    mocks.cliStatus.mockResolvedValue({
+      ...nextTarget,
+      credentialSource: "market:previous-purchase",
+      status: "completed",
+      repoPath: "/repo",
+      updatedAt: "2026-09-17T15:00:00Z",
+    });
+    mocks.create.mockImplementationOnce(async () => {
+      created = true;
+      return { sessionId: "cliagent-next-purchase" };
+    });
+    // Match the real native catalog: creation immediately publishes a pending
+    // child, but its native revision stays null until materialization. Use the
+    // actual canonical snapshot loader so a create-before-read fails closed.
+    mocks.invokeTauri.mockImplementation(async () =>
+      created
+        ? [
+            {
+              sessionId: "cliagent-next-purchase",
+              createdAt: "2026-09-17T15:00:28Z",
+              updatedAt: "2026-09-17T15:00:28Z",
+              status: "pending",
+              isTerminal: false,
+            },
+          ]
+        : []
+    );
+    mocks.loadCliRevision.mockImplementation(async () =>
+      childEvents.length ? "native-ready" : null
+    );
+    mocks.loadEvents.mockImplementation(async (sessionId: string) => ({
+      events: sessionId === localRoot.conversationId ? history : childEvents,
+      source: "cli_history",
+    }));
+    const loadTimeline = vi.fn(async () => {
+      snapshotStarted();
+      await snapshotGate;
+      return loadLocalCanonicalConversationTimeline(localRoot);
+    });
+    const run = continueLocalConversationAfterTimelineLoad({
+      root: localRoot,
+      title: "Switch Package",
+      target: nextTarget,
+      displayText: "use the next Package",
+      turnIntentId: "package-switch",
+      loadTimeline,
+    });
+    await started;
+    // Large-history reads must not create an unbound child or accept a turn.
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    finishSnapshot();
+    await expect(run).resolves.toMatchObject({
+      sessionId: "cliagent-next-purchase",
+      terminalStatus: "completed",
+    });
+    expect(loadTimeline).toHaveBeenCalledOnce();
+    expect(mocks.create).toHaveBeenCalledOnce();
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cliAgentType: nextTarget.cliAgentType,
+        credentialSource: nextTarget.credentialSource,
+        model: nextTarget.model,
+        repoPath: nextTarget.workspaceRepoPath,
+        accountId: undefined,
+      })
+    );
+    expect(mocks.materialize).toHaveBeenCalledWith({
+      sessionId: "cliagent-next-purchase",
+      timeline: history,
+    });
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "cliagent-next-purchase",
+        turnIntentId: "package-switch",
+      })
+    );
+  });
+  it("hydrates the source after restart and never reuses another billing source", async () => {
+    const root = {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-market-root",
+    };
+    const target = {
+      cliAgentType: "codex",
+      credentialSource: "market:workspace-a",
+      model: "model",
+      workspaceRepoPath: "/repo",
+    };
+    mocks.cliStatus.mockResolvedValue({
+      ...target,
+      repoPath: "/repo",
+      sessionId: root.conversationId,
+      updatedAt: "2026-09-14",
+    });
+    const rows = await loadLocalConversationExecutionTargets(root);
+    expect(rows[0]?.target).toEqual(target);
+    expect(await candidateMatchesTarget(root.conversationId, target)).toBe(
+      true
+    );
+    expect(
+      await candidateMatchesTarget(root.conversationId, {
+        ...target,
+        credentialSource: "market:workspace-b",
+      })
+    ).toBe(false);
+    expect(
+      await candidateMatchesTarget(root.conversationId, {
+        cliAgentType: "codex",
+        accountId: "keyvault",
+        model: "model",
+      })
+    ).toBe(false);
+  });
+  it("does not turn corrupt or mixed source ownership into ambient Claude", async () => {
+    const root = {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "cliagent-corrupt-root",
+    };
+    for (const extra of [
+      { credentialSource: "" },
+      { credentialSource: "market:a", accountId: "other" },
+    ]) {
+      mocks.cliStatus.mockResolvedValue({
+        cliAgentType: "claude_code",
+        model: "model",
+        updatedAt: "now",
+        ...extra,
+      });
+      expect(await loadLocalConversationExecutionTargets(root)).toEqual([]);
+    }
+  });
+});
+
+it("carries the dynamic source and selected model into a new execution episode", async () => {
+  mocks.cliStatus.mockResolvedValue(null);
+  mocks.materialize.mockRejectedValueOnce(
+    new Error("controlled materialization failure")
+  );
+  await expect(
+    continueLocalConversationAfterTimelineLoad({
+      root,
+      title: "Market recovery",
+      displayText: "continue",
+      turnIntentId: "source-create",
+      target: {
+        cliAgentType: "codex",
+        credentialSource: "market:workspace",
+        model: "selected-model",
+        workspaceRepoPath: "/repo",
+      },
+      loadTimeline: async () => [event("prior", "user", "previous turn")],
+    })
+  ).rejects.toThrow("controlled materialization failure");
+  expect(mocks.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      cliAgentType: "codex",
+      credentialSource: "market:workspace",
+      model: "selected-model",
+      accountId: undefined,
+    })
+  );
+  expect(mocks.sendMessage).not.toHaveBeenCalled();
+});
+
+it("reloads the exact SDE Package execution source and refuses another purchase", async () => {
+  const nativeRoot = {
+    authority: "local-session",
+    authorityScope: [],
+    conversationId: "sdeagent-package",
+  };
+  const target = {
+    agentDefinitionId: "builtin:sde",
+    credentialSource: "market:first",
+    model: "gpt",
+    workspaceRepoPath: "/repo",
+  };
+  mocks.getAgentSession.mockResolvedValue({
+    ...target,
+    workspacePath: "/repo",
+    updatedAt: "2026-09-17",
+  });
+  expect(
+    (await loadLocalConversationExecutionTargets(nativeRoot))[0]?.target
+  ).toEqual(target);
+  expect(await candidateMatchesTarget(nativeRoot.conversationId, target)).toBe(
+    true
+  );
+  expect(
+    await candidateMatchesTarget(nativeRoot.conversationId, {
+      ...target,
+      credentialSource: "market:second",
+    })
+  ).toBe(false);
+  mocks.getAgentSession.mockResolvedValue({
+    ...target,
+    accountId: "mixed",
+    workspacePath: "/repo",
+    updatedAt: "2026-09-17",
+  });
+  expect(await loadLocalConversationExecutionTargets(nativeRoot)).toEqual([]);
+});
+
+it("carries the SDE Package into native execution creation without a CLI account", async () => {
+  mocks.materialize.mockRejectedValueOnce(
+    new Error("controlled materialization failure")
+  );
+  await expect(
+    continueLocalConversationAfterTimelineLoad({
+      root,
+      title: "SDE package",
+      displayText: "continue",
+      turnIntentId: "sde-source-create",
+      target: {
+        agentDefinitionId: "builtin:sde",
+        credentialSource: "market:sde",
+        model: "gpt",
+        workspaceRepoPath: "/repo",
+      },
+      loadTimeline: async () => [event("prior", "user", "previous turn")],
+    })
+  ).rejects.toThrow("controlled materialization failure");
+  expect(mocks.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      agentDefinitionId: "builtin:sde",
+      credentialSource: "market:sde",
+      model: "gpt",
+      cliAgentType: undefined,
+      accountId: undefined,
+    })
+  );
+  expect(mocks.sendMessage).not.toHaveBeenCalled();
 });

@@ -6,7 +6,7 @@ import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 /** Shared text-free loading placeholder for initial chat-pane content. */
 const ChatLoadingBlock: React.FC = memo(() => (
   <SkeletonBar
-    className={`${CHAT_PANEL_WIDTH_TOKENS.contentWidth} h-8`}
+    className={`${CHAT_PANEL_WIDTH_TOKENS.contentWidth} h-4`}
     testId="chat-loading-block"
   />
 ));

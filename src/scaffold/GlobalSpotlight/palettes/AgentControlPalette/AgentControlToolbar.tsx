@@ -31,20 +31,13 @@ export const AgentControlToolbar: React.FC<AgentControlToolbarProps> = ({
 
   return (
     <div className="flex items-center gap-1 border-t border-border-2/50 px-3 py-2">
-      <Button
-        variant="tertiary"
-        size="mini"
-        shape="round"
-        htmlType="button"
-        onClick={onNewRound}
-      >
+      <Button variant="tertiary" size="mini" shape="round" onClick={onNewRound}>
         {t("adeManager.newRound")}
       </Button>
       <Button
         variant="tertiary"
         size="mini"
         shape="circle"
-        htmlType="button"
         icon={
           <HugeiconsIcon icon={previousIcon} size={12} strokeWidth={1.75} />
         }
@@ -57,7 +50,6 @@ export const AgentControlToolbar: React.FC<AgentControlToolbarProps> = ({
         variant="tertiary"
         size="mini"
         shape="circle"
-        htmlType="button"
         icon={<HugeiconsIcon icon={nextIcon} size={12} strokeWidth={1.75} />}
         iconOnly
         disabled={!hasNextActivity}
@@ -68,7 +60,6 @@ export const AgentControlToolbar: React.FC<AgentControlToolbarProps> = ({
         variant="tertiary"
         size="mini"
         shape="circle"
-        htmlType="button"
         icon={<HugeiconsIcon icon={latestIcon} size={12} strokeWidth={1.75} />}
         iconOnly
         disabled={!hasNextActivity}

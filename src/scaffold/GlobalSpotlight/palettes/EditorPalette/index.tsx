@@ -4,7 +4,6 @@
  * VS Code-style command palette for the editor page with prefix-based modes:
  * - (no prefix) - Go to file
  * - > - Commands
- * - : - Go to line
  * - @ - Symbols
  */
 import React, { useCallback } from "react";
@@ -137,7 +136,6 @@ export const EditorPalette: React.FC<EditorPaletteProps> = ({
     externalHandleKeyDown: handleModePillKeyDown,
     externalHandleItemClick: handleItemSelect,
     isItemSelectable: (item) => !item.data?.isHeader && !item.data?.disabled,
-    onReset: () => handleQueryChange(""),
   });
 
   const modeConfig = EDITOR_PALETTE_MODES[state.mode];
@@ -206,5 +204,3 @@ export const EditorPalette: React.FC<EditorPaletteProps> = ({
     </SpotlightShell>
   );
 };
-
-export default EditorPalette;

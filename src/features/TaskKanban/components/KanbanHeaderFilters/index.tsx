@@ -240,7 +240,6 @@ const KanbanHeaderFilters: React.FC<KanbanHeaderFiltersProps> = memo(
       <>
         <Button
           ref={triggerRef}
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly

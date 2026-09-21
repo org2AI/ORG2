@@ -552,6 +552,8 @@ export function useDispatchCategoryOptions(
         data: {
           isSelector: true,
           optionId: option.id,
+          // Shared by the Recent and group copies so a pin collapses both.
+          pinId: option.id,
           isCurrentSelection: isCurrent,
           // Execution transport for managed GUI runs (ACP vs shell-out).
           // CLI agent rows only — Rust agents, orgs, and the Cursor IDE row

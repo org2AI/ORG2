@@ -5,7 +5,7 @@
  * Used to create multiple stacked sections (Files, Outline, etc.)
  * Uses grow for proportional space distribution.
  *
- * Shared by: CodeEditor, DatabaseManager, Browser
+ * Shared by: CodeEditor, Browser
  */
 import React, { memo, useCallback, useState } from "react";
 
@@ -47,8 +47,6 @@ export interface CollapsibleSectionProps {
   onResizeStart?: (event: React.MouseEvent) => void;
   /** Whether this section should use auto height instead of grow */
   autoHeight?: boolean;
-  /** Whether to show top border instead of bottom border (for global sections) */
-  showTopBorder?: boolean;
   hideSeparator?: boolean;
   /** Stable selector for automated interaction with the section toggle. */
   headerTestId?: string;
@@ -71,7 +69,6 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
     actions = [],
     onResizeStart,
     autoHeight = false,
-    showTopBorder = false,
     hideSeparator = false,
     headerTestId,
   }) => {
@@ -116,8 +113,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
             minHeight: "100px",
           };
 
-    const showSeparator = !hideSeparator && (showTopBorder || !isLast);
-    const separatorPositionClass = showTopBorder ? "top-0" : "bottom-0";
+    const showSeparator = !hideSeparator && !isLast;
 
     return (
       <div
@@ -128,7 +124,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
       >
         {showSeparator && (
           <div
-            className={`pointer-events-none absolute right-2 left-2 ${separatorPositionClass} h-px bg-border-1`}
+            className="pointer-events-none absolute right-2 bottom-0 left-2 h-px bg-border-1"
             aria-hidden
           />
         )}
@@ -162,7 +158,6 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
                     const button = (
                       <Button
                         variant="tertiary"
-                        appearance="soft-no-drop"
                         size="sidebar"
                         iconOnly={!hasLabel}
                         icon={action.icon}
@@ -172,11 +167,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
                           event.stopPropagation();
                           action.onClick();
                         }}
-                        title={
-                          action.key === "refresh-git"
-                            ? undefined
-                            : action.tooltip
-                        }
+                        title={action.tooltip}
                       >
                         {action.label}
                       </Button>

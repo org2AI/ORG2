@@ -16,6 +16,7 @@ import type {
   SupabaseConnectionConfig,
   TableInfo,
 } from "../types";
+import { ConnectionLifecycle } from "./ConnectionLifecycle";
 
 interface ManagementApiError {
   message?: string;
@@ -27,8 +28,7 @@ export class SupabaseProvider implements IDatabaseService {
   readonly type = "supabase" as const;
   readonly config: SupabaseConnectionConfig;
 
-  private _status: ConnectionStatus = { state: "disconnected" };
-  private _connected = false;
+  private lifecycle = new ConnectionLifecycle<true>(async () => {});
   private schema: string;
   private projectRef: string;
 
@@ -63,6 +63,10 @@ export class SupabaseProvider implements IDatabaseService {
       "Content-Type: application/json",
       "-H",
       `Authorization: Bearer ${this.config.accessToken}`,
+      "--connect-timeout",
+      "10",
+      "--max-time",
+      "30",
       "-d",
       body,
     ]);
@@ -97,34 +101,19 @@ export class SupabaseProvider implements IDatabaseService {
   }
 
   get status(): ConnectionStatus {
-    return this._status;
+    return this.lifecycle.status;
   }
-
-  async connect(): Promise<void> {
-    if (this._connected) return;
-
-    this._status = { state: "connecting" };
-
-    try {
+  connect(): Promise<void> {
+    return this.lifecycle.connect(async () => {
       await this.executeManagementApi("SELECT 1 as test");
-      this._connected = true;
-      this._status = { state: "connected", connectedAt: Date.now() };
-    } catch (error) {
-      this._connected = false;
-      const message =
-        error instanceof Error ? error.message : "Failed to connect";
-      this._status = { state: "error", error: message };
-      throw error;
-    }
+      return true;
+    });
   }
-
-  async disconnect(): Promise<void> {
-    this._connected = false;
-    this._status = { state: "disconnected" };
+  disconnect(): Promise<void> {
+    return this.lifecycle.disconnect();
   }
-
   isConnected(): boolean {
-    return this._connected && this._status.state === "connected";
+    return this.lifecycle.current === true;
   }
 
   async getTables(): Promise<TableInfo[]> {
@@ -409,7 +398,7 @@ export class SupabaseProvider implements IDatabaseService {
   }
 
   private ensureConnected(): void {
-    if (!this._connected) {
+    if (!this.isConnected()) {
       throw new Error("Database not connected. Call connect() first.");
     }
   }

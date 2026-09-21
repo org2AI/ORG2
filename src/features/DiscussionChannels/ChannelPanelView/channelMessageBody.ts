@@ -8,10 +8,10 @@
  */
 import { parseGitHubPillUrl } from "@src/components/ComposerInput/githubUrl";
 import { resolvePostedReferenceHref } from "@src/components/ComposerInput/postedReferenceHref";
-import { projectMarkdownSessionReferences } from "@src/components/MarkDown/sessionReferenceProjection";
 import type { PillType } from "@src/config/pillTokens";
 import { parsePillTextToSnapshot } from "@src/engines/ChatPanel/InputArea/utils/pillContentParser";
 import type { CloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
+import { projectMarkdownSessionReferences } from "@src/features/Org2Cloud/markdown/sessionReferenceProjection";
 
 export interface ChannelSessionReference {
   kind: "session";

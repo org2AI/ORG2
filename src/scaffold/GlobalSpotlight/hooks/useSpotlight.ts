@@ -1,8 +1,8 @@
 /**
  * useSpotlight - Main Composition Hook
  *
- * Orchestrates all spotlight functionality with the new reducer architecture.
- * This is the single hook that components use to access all spotlight features.
+ * Builds root commands and executes parameter choices. Child palettes own
+ * their domain-specific state and data loading.
  */
 import { useAtomValue, useSetAtom } from "jotai";
 import {
@@ -13,21 +13,20 @@ import {
   useRef,
 } from "react";
 
-import {
-  ACTION_ID,
-  type ActionId,
-  useActionSystemOptional,
-} from "@src/ActionSystem";
 import type { GlobalThemePreference } from "@src/config/appearance/globalThemes";
 import type { SkinVariant } from "@src/config/appearance/skins/types";
 import type { CloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
 import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
 import { useAppNavigation } from "@src/hooks/navigation/useAppNavigation";
 import { showScaleMessage } from "@src/hooks/navigation/useGlobalShortcuts/types";
-import { useFilteredItems } from "@src/hooks/search";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
 import type { LanguagePreference } from "@src/i18n";
 import type { IconSvgElement } from "@src/icons";
+import {
+  ACTION_ID,
+  type ActionId,
+  useActionSystemOptional,
+} from "@src/scaffold/ActionSystem";
 import { checkForUpdatesManually } from "@src/scaffold/AppUpdater/actions";
 import {
   openAgentControlSpotlight,
@@ -40,7 +39,6 @@ import { PanelService } from "@src/services/panel";
 import { WorkStationViewService } from "@src/services/workStation/WorkStationViewService";
 import { openChatPanelCreateTargetAtom } from "@src/store/chatPanel/openChatPanelCreateTargetAtom";
 import { selectedRepoAtom } from "@src/store/repo";
-import { REPO_KIND } from "@src/store/repo/types";
 import type { Session } from "@src/store/session";
 import { spotlightRecentActionsAtom } from "@src/store/ui/spotlightRecentActionsAtom";
 import {
@@ -55,13 +53,12 @@ import { showInFinder } from "@src/util/platform/ipcRenderer";
 import type { EditorPaletteMode } from "../palettes/EditorPalette/types";
 import type {
   ActionDefinition,
-  BranchItem,
   GlobalSpotlightProps,
   RepoItem,
 } from "../types";
 import { useSpotlightDispatch, useSpotlightState } from "./core";
-import { useBranches, useSharedRepoList } from "./data";
-import { useConfirmationPage, useSpotlightItems } from "./features";
+import { useSharedRepoList } from "./data";
+import { useSpotlightItems } from "./features";
 import { addRecentActionId } from "./features/recentSpotlightActions";
 import type {
   SpotlightEditorActionId,
@@ -86,7 +83,7 @@ const THEME_ACTION_ID_BY_PREFERENCE: Record<GlobalThemePreference, ActionId> = {
 };
 
 export function useSpotlight(
-  props: GlobalSpotlightProps & {
+  props: Omit<GlobalSpotlightProps, "onClose"> & {
     isOpen: boolean;
     closeModal?: () => void;
     onOpenWorkingDirectoryPicker?: (
@@ -132,8 +129,7 @@ export function useSpotlight(
   const shouldFetchRepos = isOpen && state.missingParam === "repo";
 
   const activeRepoId = currentRepoId ?? currentRepo?.id;
-  const { repos, filteredRepos, loadRepos, refreshReposForce } =
-    useSharedRepoList(state.searchQuery);
+  const { filteredRepos, loadRepos } = useSharedRepoList(state.searchQuery);
   const sortedFilteredRepos = useMemo(() => {
     return [...filteredRepos].sort((repoA, repoB) => {
       if (repoA.id === activeRepoId) return -1;
@@ -141,19 +137,6 @@ export function useSpotlight(
       return 0;
     });
   }, [activeRepoId, filteredRepos]);
-
-  // Branches (lazy, only when needed)
-  const { branches, fetchBranches } = useBranches({
-    repoId: state.currentRepo?.id || null,
-    enabled: state.missingParam === "branch",
-  });
-
-  // Branch filtering only — repo filtering lives inside useSharedRepoList.
-  const { filteredItems: filteredBranches } = useFilteredItems({
-    items: branches,
-    searchQuery: state.searchQuery,
-    getSearchText: (branch) => branch.name,
-  });
 
   // Handlers (stable callbacks using dispatch)
   const handleSelectAction = useCallback(
@@ -178,6 +161,9 @@ export function useSpotlight(
     [actionSystem]
   );
 
+  // AppLayout and StationWindow both provide ActionSystem, but its core
+  // registration is deferred until idle. Keep startup/standalone fallbacks:
+  // they call the same domain services and the same typed layer openers.
   const runStaticActionFallback = useCallback(
     (
       fallback: SpotlightStaticActionFallback,
@@ -315,7 +301,7 @@ export function useSpotlight(
         closeModal?.();
       }
 
-      dispatch({ type: "RESET_TO_IDLE" });
+      dispatch({ type: "RESET" });
     },
     [
       closeModal,
@@ -340,7 +326,7 @@ export function useSpotlight(
       };
 
       onOpenEditorPalette?.(prefixByAction[actionId], modeByAction[actionId]);
-      dispatch({ type: "RESET_TO_IDLE" });
+      dispatch({ type: "RESET" });
     },
     [dispatch, onOpenEditorPalette]
   );
@@ -359,47 +345,18 @@ export function useSpotlight(
           }
         );
         closeModal?.();
-        dispatch({ type: "RESET_TO_IDLE" });
+        dispatch({ type: "RESET" });
         return;
       }
-
-      dispatch({ type: "PUSH_REPO", payload: { repo } });
-      // Trigger branch fetch if action needs branches (git repos only)
-      if (
-        state.currentAction?.requiredParams.includes("branch") &&
-        repo.kind !== REPO_KIND.FOLDER
-      ) {
-        fetchBranches(repo.id);
-      }
     },
-    [
-      closeModal,
-      dispatch,
-      dispatchActionOrFallback,
-      state.currentAction,
-      fetchBranches,
-    ]
-  );
-
-  const handleSelectBranch = useCallback(
-    (branch: BranchItem) => {
-      dispatch({
-        type: "PUSH_BRANCH",
-        payload: { branchName: branch.name, branchData: branch },
-      });
-    },
-    [dispatch]
+    [closeModal, dispatch, dispatchActionOrFallback, state.currentAction]
   );
 
   const handleSelectLanguage = useCallback(
-    (language: LanguagePreference, label: string) => {
-      dispatch({
-        type: "PUSH_LANGUAGE",
-        payload: { language, label },
-      });
+    (language: LanguagePreference) => {
       dispatchActionOrFallback(ACTION_ID.SETTINGS_SET_LANGUAGE, { language });
       closeModal?.();
-      dispatch({ type: "RESET_TO_IDLE" });
+      dispatch({ type: "RESET" });
     },
     [closeModal, dispatch, dispatchActionOrFallback]
   );
@@ -408,7 +365,7 @@ export function useSpotlight(
     (theme: GlobalThemePreference) => {
       dispatchActionOrFallback(THEME_ACTION_ID_BY_PREFERENCE[theme], {});
       closeModal?.();
-      dispatch({ type: "RESET_TO_IDLE" });
+      dispatch({ type: "RESET" });
     },
     [closeModal, dispatch, dispatchActionOrFallback]
   );
@@ -426,7 +383,7 @@ export function useSpotlight(
           variant satisfies never;
       }
       closeModal?.();
-      dispatch({ type: "RESET_TO_IDLE" });
+      dispatch({ type: "RESET" });
     },
     [closeModal, dispatch, setDarkSkinId, setLightSkinId]
   );
@@ -435,7 +392,7 @@ export function useSpotlight(
     (session: Session, sessionName: string) => {
       openSession(session.session_id, sessionName, session.repoPath);
       closeModal?.();
-      dispatch({ type: "RESET_TO_IDLE" });
+      dispatch({ type: "RESET" });
     },
     [closeModal, dispatch, openSession]
   );
@@ -444,7 +401,7 @@ export function useSpotlight(
     (reference: CloudSessionReference) => {
       if (!openCloudSessionReference(reference, { autoReplay: true })) return;
       closeModal?.();
-      dispatch({ type: "RESET_TO_IDLE" });
+      dispatch({ type: "RESET" });
     },
     [closeModal, dispatch, openCloudSessionReference]
   );
@@ -465,18 +422,17 @@ export function useSpotlight(
         () => navigateTo(path)
       );
       closeModal?.();
-      dispatch({ type: "RESET_TO_IDLE" });
+      dispatch({ type: "RESET" });
     },
     [closeModal, dispatch, dispatchActionOrFallback, navigateTo]
   );
 
   // Items
-  const { items } = useSpotlightItems(sortedFilteredRepos, filteredBranches, {
+  const { items } = useSpotlightItems(sortedFilteredRepos, {
     onSelectAction: handleSelectAction,
     onSelectStaticAction: handleSelectStaticAction,
     onSelectEditorAction: handleSelectEditorAction,
     onSelectRepo: handleSelectRepo,
-    onSelectBranch: handleSelectBranch,
     onSelectLanguage: handleSelectLanguage,
     onSelectTheme: handleSelectTheme,
     onSelectSkin: handleSelectSkin,
@@ -487,15 +443,6 @@ export function useSpotlight(
     isEditorRoute,
     isWorkStationRoute,
   });
-
-  // Confirmation page - execute action then reset
-  // Note: nav destinations bypass confirmation and navigate immediately in handleSelectPath
-  const handleExecute = useCallback(() => {
-    closeModal?.();
-    dispatch({ type: "RESET_TO_IDLE" });
-  }, [dispatch, closeModal]);
-
-  const confirmationPage = useConfirmationPage(handleExecute);
 
   const prevShouldFetchReposRef = useRef(false);
   const loadReposRef = useRef(loadRepos);
@@ -511,19 +458,9 @@ export function useSpotlight(
     prevShouldFetchReposRef.current = shouldFetchRepos;
   }, [shouldFetchRepos]);
 
-  // Auto-transition to confirming stage when complete
-  useEffect(() => {
-    if (state.isComplete && state.stage === "selecting") {
-      dispatch({ type: "START_CONFIRMING" });
-    }
-  }, [state.isComplete, state.stage, dispatch]);
-
   return {
     state,
     dispatch,
-    repos,
     items,
-    confirmationPage,
-    refreshReposForce,
   };
 }

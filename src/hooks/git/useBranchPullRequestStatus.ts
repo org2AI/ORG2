@@ -5,9 +5,7 @@ import { getGitRemotes } from "@src/api/http/git/remotes";
 import {
   type GitHubChecksSummary,
   findPullRequestLocal,
-  getChecksLocal,
   getGitCredentialForRemote,
-  getPRLocal,
 } from "@src/api/tauri/github";
 import {
   type BranchCiStatus,
@@ -23,6 +21,12 @@ import {
   setCachedBranchPullRequestStatus,
 } from "@src/services/git/branchPullRequestStatus";
 import { parseGithubRepoFullName } from "@src/services/git/operations/createPullRequest";
+import {
+  type LoadPullRequestHeadChecksOptions,
+  PULL_REQUEST_HEAD_CHECKS_REUSE_MS,
+  loadPullRequestHeadChecks,
+  subscribePullRequestHeadChecks,
+} from "@src/services/git/pullRequestHeadChecks";
 import {
   BRANCH_REMOTE_MUTATION_EVENT,
   type BranchRemoteMutationDetail,
@@ -82,6 +86,12 @@ function isGitHubRemote(remoteUrl: string): boolean {
   return /(?:^|@|\/\/)github\.com(?::|\/)/i.test(remoteUrl);
 }
 
+interface BranchStatusLoadOptions {
+  force?: boolean;
+  /** Fired by the poll timer rather than by a person, a push or a remount. */
+  scheduled?: boolean;
+}
+
 function resolveAuthScope(
   credential: {
     connection_id: string;
@@ -96,7 +106,8 @@ function resolveAuthScope(
 
 async function fetchStatusSnapshot(
   repoFullName: string,
-  branchName: string
+  branchName: string,
+  headChecksOptions: LoadPullRequestHeadChecksOptions
 ): Promise<BranchPullRequestStatusSnapshot> {
   const foundPr = await findPullRequestLocal(repoFullName, branchName);
   const pr =
@@ -110,16 +121,17 @@ async function fetchStatusSnapshot(
   let checks: GitHubChecksSummary | null = null;
   let checksUnavailable = false;
   try {
-    const detail = await getPRLocal(repoFullName, pr.number);
-    const head = detail.head;
-    const headSha =
-      head && typeof head === "object"
-        ? (head as Record<string, unknown>).sha
-        : null;
-    if (typeof headSha !== "string" || !headSha) {
+    // The pull-request detail panel traces the same head when this branch's
+    // pull request is open there; the shared reader asks GitHub once for both.
+    const head = await loadPullRequestHeadChecks(
+      repoFullName,
+      pr.number,
+      headChecksOptions
+    );
+    if (!head.headSha || !head.checks) {
       throw new Error("Pull request head SHA is unavailable");
     }
-    checks = await getChecksLocal(repoFullName, headSha);
+    checks = head.checks;
   } catch {
     checksUnavailable = true;
   }
@@ -135,9 +147,16 @@ export function useBranchPullRequestStatus({
 }: UseBranchPullRequestStatusOptions): UseBranchPullRequestStatusResult {
   const [state, setState] = useState<BranchPullRequestStatusState>(EMPTY_STATE);
   const generationRef = useRef(0);
-  const loadRef = useRef<((options?: { force?: boolean }) => void) | null>(
+  const loadRef = useRef<((options?: BranchStatusLoadOptions) => void) | null>(
     null
   );
+  // What the last successful load traced, so an answer another surface
+  // fetched for the same pull request can be recognised and landed.
+  const tracedRef = useRef<{
+    cacheKey: string;
+    repoFullName: string;
+    snapshot: BranchPullRequestStatusSnapshot;
+  } | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const pollAttemptRef = useRef(0);
   const pollHeadShaRef = useRef<string | null>(null);
@@ -162,6 +181,10 @@ export function useBranchPullRequestStatus({
       previousHead.revision !== headRevision;
     observedHeadRef.current = { scopeKey, revision: headRevision };
     if (localHeadChanged) remoteMutationVersionRef.current += 1;
+
+    // Names this hook's reads, so it can skip its own published answers.
+    const source = {};
+    tracedRef.current = null;
 
     const clearPollTimer = () => {
       if (pollTimerRef.current != null) {
@@ -201,11 +224,11 @@ export function useBranchPullRequestStatus({
 
       pollAttemptRef.current += 1;
       pollTimerRef.current = window.setTimeout(() => {
-        loadRef.current?.({ force: true });
+        loadRef.current?.({ force: true, scheduled: true });
       }, delay);
     };
 
-    const load = async (options?: { force?: boolean }) => {
+    const load = async (options?: BranchStatusLoadOptions) => {
       if (
         typeof document !== "undefined" &&
         document.visibilityState === "hidden"
@@ -289,9 +312,21 @@ export function useBranchPullRequestStatus({
         // lands while an older GitHub request is in flight, the forced read
         // must not join that pre-push promise and preserve stale green CI.
         const requestKey = `${cacheKey}|remote:${remoteMutationVersionRef.current}`;
+        // A timer poll may take the answer another surface fetched moments
+        // ago. A read someone asked for must reach GitHub, and one that
+        // follows a push must not even join a request dispatched before it.
+        const headChecksOptions: LoadPullRequestHeadChecksOptions =
+          options?.scheduled || !force
+            ? { maxAgeMs: PULL_REQUEST_HEAD_CHECKS_REUSE_MS, source }
+            : {
+                source,
+                maxAgeMs: 0,
+                bypassInFlight:
+                  appliedRemoteMutationVersionRef.current !== mutationVersion,
+              };
         const snapshot = await loadBranchPullRequestStatusCoalesced(
           requestKey,
-          () => fetchStatusSnapshot(repoFullName, branchName)
+          () => fetchStatusSnapshot(repoFullName, branchName, headChecksOptions)
         );
         if (!isCurrent()) return;
         const fetchedAt = Date.now();
@@ -307,6 +342,7 @@ export function useBranchPullRequestStatus({
           scopeKey,
         });
         appliedRemoteMutationVersionRef.current = mutationVersion;
+        tracedRef.current = { cacheKey, repoFullName, snapshot };
         scheduleNextPoll(snapshot);
       } catch {
         if (!isCurrent()) return;
@@ -324,6 +360,45 @@ export function useBranchPullRequestStatus({
     loadRef.current = (options) => {
       void load(options);
     };
+
+    // A pull-request detail panel on the same pull request just fetched its
+    // head's checks: take that answer and restart this timer instead of
+    // fetching it again when this timer would have fired.
+    const unsubscribeHeadChecks = subscribePullRequestHeadChecks((event) => {
+      const traced = tracedRef.current;
+      if (
+        disposed ||
+        event.source === source ||
+        !traced?.snapshot.pr ||
+        traced.repoFullName !== event.repoFullName ||
+        traced.snapshot.pr.number !== event.prNumber ||
+        !event.snapshot.checks
+      ) {
+        return;
+      }
+      const snapshot: BranchPullRequestStatusSnapshot = {
+        pr: traced.snapshot.pr,
+        checks: event.snapshot.checks,
+        checksUnavailable: false,
+      };
+      tracedRef.current = { ...traced, snapshot };
+      setCachedBranchPullRequestStatus(
+        traced.cacheKey,
+        snapshot,
+        event.snapshot.fetchedAt
+      );
+      setState((current) =>
+        current.scopeKey === scopeKey
+          ? {
+              ...current,
+              checks: snapshot.checks,
+              checksUnavailable: false,
+              lastFetchedAt: event.snapshot.fetchedAt,
+            }
+          : current
+      );
+      scheduleNextPoll(snapshot);
+    });
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -370,6 +445,8 @@ export function useBranchPullRequestStatus({
       disposed = true;
       generationRef.current += 1;
       loadRef.current = null;
+      tracedRef.current = null;
+      unsubscribeHeadChecks();
       clearPollTimer();
       if (typeof document !== "undefined") {
         document.removeEventListener(

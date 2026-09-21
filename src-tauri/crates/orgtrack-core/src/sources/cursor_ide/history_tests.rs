@@ -339,6 +339,75 @@ fn bubbles_to_chunks_preserves_order_and_filters_empty() {
 }
 
 #[test]
+fn turn_summaries_count_only_bubbles_that_render() {
+    fn with_id(mut bubble: OrderedBubble, id: &str) -> OrderedBubble {
+        bubble.bubble_id = id.to_string();
+        bubble.raw.bubble_id = id.to_string();
+        bubble
+    }
+    let user = |id: &str| with_id(parse_bubble(FIXTURE_BUBBLE_USER, 1), id);
+    // Thinking- or capability-only assistant bubble: no text, no tool.
+    let bookkeeping = |id: &str| {
+        let mut bubble = with_id(parse_bubble(FIXTURE_BUBBLE_ASSISTANT_TEXT, 2), id);
+        bubble.raw.text = String::new();
+        bubble.raw.tool_former_data = None;
+        bubble
+    };
+    let mut silent_tool = with_id(parse_bubble(FIXTURE_BUBBLE_ASSISTANT_TOOL, 2), "tool");
+    silent_tool.raw.text = String::new();
+    let mut unknown = bookkeeping("unknown");
+    unknown.raw.text = "never rendered".to_string();
+    unknown.raw.bubble_type = 99;
+    let bubbles = vec![
+        user("u1"),
+        bookkeeping("empty-1"),
+        bookkeeping("empty-2"),
+        user("u2"),
+        with_id(parse_bubble(FIXTURE_BUBBLE_ASSISTANT_TEXT, 2), "reply"),
+        user("u3"),
+        silent_tool,
+        unknown,
+        user("u4"),
+    ];
+    let order = bubbles
+        .iter()
+        .map(|bubble| RawComposerHeader {
+            bubble_id: bubble.bubble_id.clone(),
+            bubble_type: bubble.bubble_type,
+        })
+        .collect::<Vec<_>>();
+
+    let summaries = build_cursor_ide_turn_summaries(&order, &bubbles);
+
+    // Raw bubble counts ([2, 1, 2, 0]) drew an "Agent worked for" bar over
+    // turn u1, whose only bubbles render nothing.
+    assert_eq!(
+        summaries
+            .iter()
+            .map(|summary| summary.body_event_count)
+            .collect::<Vec<_>>(),
+        vec![0, 1, 1, 0]
+    );
+    // The predicate agrees with the chunk builder bubble by bubble.
+    let conn = empty_test_db();
+    for bubble in &bubbles {
+        let rendered = !bubbles_to_chunks(
+            &conn,
+            TEST_SESSION_ID,
+            std::slice::from_ref(bubble),
+            &CursorComposerContext::default(),
+        )
+        .is_empty();
+        assert_eq!(
+            bubble_might_render_chunk(bubble),
+            rendered,
+            "bubble {}",
+            bubble.bubble_id
+        );
+    }
+}
+
+#[test]
 fn bubble_type_of_zero_falls_back_to_header_type() {
     let mut bubble = parse_bubble(FIXTURE_BUBBLE_USER, 1);
     // Simulate a bubble blob where `type` field is missing or zero.

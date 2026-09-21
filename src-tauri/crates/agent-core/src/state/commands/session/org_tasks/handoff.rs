@@ -1036,18 +1036,6 @@ pub(super) async fn task_tools_context_for_root_command(
     }))
 }
 
-#[allow(dead_code)]
-fn _assert_handoff_state_is_exhaustive(state: TaskExecutionHandoffState) {
-    match state {
-        TaskExecutionHandoffState::Requested
-        | TaskExecutionHandoffState::Yielding
-        | TaskExecutionHandoffState::Released
-        | TaskExecutionHandoffState::Timeout
-        | TaskExecutionHandoffState::Unknown
-        | TaskExecutionHandoffState::Failed => {}
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

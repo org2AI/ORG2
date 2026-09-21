@@ -2,6 +2,8 @@ import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 
 import PrCiStatusIndicator from "@src/components/PrCiStatusIndicator";
+import type { WorkManagementTableRow } from "@src/features/GitHubWork/WorkManagementTable";
+import { compactRepositoryLabel } from "@src/features/GitHubWork/githubRepositoryLabel";
 import {
   CheckmarkCircle01Icon,
   CircleDotIcon,
@@ -11,8 +13,6 @@ import {
   GitPullRequestDraftIcon,
   HugeiconsIcon,
 } from "@src/icons";
-import type { WorkManagementTableRow } from "@src/modules/shared/components/WorkManagementTable";
-import { compactRepositoryLabel } from "@src/modules/shared/githubRepositoryLabel";
 
 import {
   ManagedIssueActionsCell,

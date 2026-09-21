@@ -40,7 +40,7 @@ vi.mock(
   () => ({ default: () => null })
 );
 
-vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", async () => {
+vi.mock("@src/components/MarkdownTextareaEditor", async () => {
   const { forwardRef } = await import("react");
   return {
     default: forwardRef<HTMLDivElement, Record<string, unknown>>(

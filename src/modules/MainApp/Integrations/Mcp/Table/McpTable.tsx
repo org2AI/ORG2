@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { McpConfigScope } from "@src/api/tauri/rpc/schemas/mcp";
 import Button from "@src/components/Button";
+import DeleteIconButton from "@src/components/Button/DeleteIconButton";
 import Checkbox from "@src/components/Checkbox";
 import Dropdown from "@src/components/Dropdown";
 import Menu from "@src/components/Menu";
@@ -12,10 +13,13 @@ import SettingsTable, {
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
 import TabPill, { type TabPillItem } from "@src/components/TabPill";
+import {
+  DETAIL_PANEL_TOKENS,
+  ScrollPreservation,
+} from "@src/components/layout/blocks";
 import type { CursorRepo } from "@src/hooks/policies";
 import {
   Add01Icon,
-  Delete02Icon,
   HugeiconsIcon,
   MoreHorizontalIcon,
   PowerServiceIcon,
@@ -27,10 +31,6 @@ import type {
   McpServerStatus,
   McpToolDef,
 } from "@src/modules/MainApp/AgentOrgs/config/mcp/useMcpServers";
-import {
-  DETAIL_PANEL_TOKENS,
-  ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
 
 import { selectedRowClassName } from "../../Tables/shared";
 import type { DetailMode } from "../../types";
@@ -384,30 +384,17 @@ export const McpTable: React.FC<McpTableProps> = ({
               role="presentation"
             >
               <Button
-                variant="secondary"
                 size="small"
                 onClick={() => onSelect(server.name, "preview")}
               >
                 {t("common:actions.view")}
               </Button>
               {onDelete ? (
-                <Button
-                  variant="secondary"
+                <DeleteIconButton
                   size="small"
-                  icon={
-                    <HugeiconsIcon
-                      icon={Delete02Icon}
-                      data-icon="trash-2"
-                      size={14}
-                      className="text-danger-6"
-                    />
-                  }
-                  iconOnly
-                  loading={deleting}
-                  disabled={deleting}
-                  aria-label={t("common:actions.remove")}
-                  title={t("common:actions.remove")}
-                  onClick={() => {
+                  deleting={deleting}
+                  label={t("common:actions.remove")}
+                  onDelete={() => {
                     void handleDeleteServer(server);
                   }}
                 />
@@ -437,7 +424,6 @@ export const McpTable: React.FC<McpTableProps> = ({
                 >
                   <Button
                     variant="tertiary"
-                    appearance="soft"
                     size="mini"
                     iconOnly
                     icon={
@@ -475,8 +461,6 @@ export const McpTable: React.FC<McpTableProps> = ({
 
   const addMcpButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       onClick={() =>
         onAdd(activeScopeTab === "workspace" ? "workspace" : "global")

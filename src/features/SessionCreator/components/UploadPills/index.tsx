@@ -135,7 +135,6 @@ const ImagePill: React.FC<ImagePillProps> = ({
       {/* Remove Button - appears on hover */}
       <Button
         layout="custom"
-        appearance="custom"
         className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-bg-overlay text-text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-bg-overlay-heavy"
         onClick={handleRemove}
         aria-label={`Remove ${file.name || "image"}`}
@@ -209,7 +208,6 @@ const UploadPill: React.FC<UploadPillProps> = ({
       {/* Remove Button */}
       <Button
         layout="custom"
-        appearance="custom"
         className="hover:bg-bg-4 absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-bg-3 text-text-3 opacity-0 transition-all group-hover:opacity-100 hover:text-text-1"
         onClick={handleRemove}
         aria-label={`Remove ${file.name}`}

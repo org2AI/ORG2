@@ -122,8 +122,6 @@ const ColorPicker: React.FC<ColorPickerProps> = memo(
       >
         <Button
           layout="custom"
-          appearance="custom"
-          htmlType="button"
           className={`${sizeConfig.dot} block rounded-full leading-none transition-transform hover:scale-110 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
           style={{ backgroundColor: value }}
           onClick={handleToggle}
@@ -134,8 +132,6 @@ const ColorPicker: React.FC<ColorPickerProps> = memo(
             {presets.map((preset) => (
               <Button
                 layout="custom"
-                appearance="custom"
-                htmlType="button"
                 key={preset}
                 className={`${sizeConfig.preset} rounded-full transition-transform hover:scale-110 ${preset === value ? "ring-2 ring-primary-5 ring-offset-1" : ""}`}
                 style={{ backgroundColor: preset }}

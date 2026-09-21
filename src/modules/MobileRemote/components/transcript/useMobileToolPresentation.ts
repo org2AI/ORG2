@@ -6,10 +6,15 @@ import type { TranscriptItem } from "../../lib/transcriptReducer";
 import { mobileFileTargets } from "./mobileFileTool";
 import {
   compactMetadata,
+  mobileSearchDetail,
+  mobileShellDetail,
+  mobileToolDetailSummary,
   mobileToolSummary,
   normalizeMobileToolLifecycle,
   outputFromToolData,
+  record,
   resolveMobileToolIconName,
+  stringValue,
   toolLabelKey,
 } from "./mobileToolPresentation";
 
@@ -22,7 +27,10 @@ export function useMobileToolPresentation(item: TranscriptItem) {
     ? t(`transcript.tools.labels.${labelKey}`)
     : formatToolName(rawName);
   const summary = mobileToolSummary(item);
+  const detailSummary = mobileToolDetailSummary(item);
   const output = outputFromToolData(item.toolData);
+  const shellDetail = mobileShellDetail(item);
+  const searchDetail = mobileSearchDetail(item);
   const fileTargets = mobileFileTargets(item);
   const metadata = compactMetadata(item.toolData);
   const metadataText =
@@ -38,9 +46,13 @@ export function useMobileToolPresentation(item: TranscriptItem) {
     t,
     lifecycle,
     rawName,
+    action: stringValue(record(item.toolData)?.action) || undefined,
     title,
     summary,
+    detailSummary,
     output,
+    shellDetail,
+    searchDetail,
     fileTargets,
     metadataText,
     hasDetails,

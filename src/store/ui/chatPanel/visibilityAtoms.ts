@@ -5,6 +5,7 @@ import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { z } from "zod/v4";
 
+import type { StationMode } from "@src/types/ui/workstation";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 import { chatWidthAtom, restoreChatWidthAtom } from "./widthAtoms";
@@ -15,7 +16,6 @@ const StationChatVisibilitySchema = z.object({
 });
 
 export type StationChatVisibility = z.infer<typeof StationChatVisibilitySchema>;
-export type ChatStationMode = keyof StationChatVisibility;
 
 export const stationChatVisibilityAtom = atomWithStorage<StationChatVisibility>(
   "stationChatVisibility",
@@ -28,9 +28,10 @@ export const stationChatVisibilityAtom = atomWithStorage<StationChatVisibility>(
 );
 stationChatVisibilityAtom.debugLabel = "stationChatVisibilityAtom";
 
+/** Write-only: show or hide one station's chat pane. */
 export const activeStationChatVisibleAtom = atom(
-  (get) => (mode: ChatStationMode) => get(stationChatVisibilityAtom)[mode],
-  (_get, set, mode: ChatStationMode, visible: boolean) => {
+  null,
+  (_get, set, mode: StationMode, visible: boolean) => {
     set(stationChatVisibilityAtom, (prev) => ({
       ...prev,
       [mode]: visible,

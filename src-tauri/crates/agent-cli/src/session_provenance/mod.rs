@@ -117,24 +117,33 @@ impl SessionProvenanceHookPlatform {
         }
     }
 
-    pub(super) fn config_path(self) -> PathBuf {
-        match self {
-            Self::ClaudeCode => app_paths::home_dir().join(".claude").join("settings.json"),
-            Self::Codex => app_paths::home_dir().join(".codex").join("hooks.json"),
-            Self::Cursor => app_paths::home_dir().join(".cursor").join("hooks.json"),
+    pub(super) fn config_path(self) -> Result<PathBuf, String> {
+        Ok(match self {
+            Self::ClaudeCode => {
+                crate::generic_config::resolve_config_path("claude_code", "settings")?
+            }
+            Self::Codex => crate::generic_config::resolve_config_path("codex", "config")?
+                .with_file_name("hooks.json"),
+            Self::Cursor => app_paths::external_history_home_dir()
+                .join(".cursor")
+                .join("hooks.json"),
             // Qwen Code reads Claude-Code-style JSON `hooks` from its settings;
             // Factory Droid uses a dedicated hooks file, both under $HOME.
-            Self::QwenCode => app_paths::home_dir().join(".qwen").join("settings.json"),
-            Self::FactoryDroid => app_paths::home_dir().join(".factory").join("hooks.json"),
+            Self::QwenCode => app_paths::external_history_home_dir()
+                .join(".qwen")
+                .join("settings.json"),
+            Self::FactoryDroid => app_paths::external_history_home_dir()
+                .join(".factory")
+                .join("hooks.json"),
             // Trae's global hooks file lives in its app dir. Trae CN uses
             // `.trae-cn`; the international build uses `.trae`. Prefer whichever
             // is present so each machine targets its installed variant.
             Self::Trae => {
-                let cn = app_paths::home_dir().join(".trae-cn");
+                let cn = app_paths::external_history_home_dir().join(".trae-cn");
                 let base = if cn.is_dir() {
                     cn
                 } else {
-                    app_paths::home_dir().join(".trae")
+                    app_paths::external_history_home_dir().join(".trae")
                 };
                 base.join("hooks.json")
             }
@@ -142,19 +151,21 @@ impl SessionProvenanceHookPlatform {
             // object) under its XDG config dir.
             Self::OpenCode => opencode_plugin_path(),
             // Windsurf's user hooks file; Antigravity's is under ~/.gemini/config.
-            Self::Windsurf => app_paths::home_dir()
+            Self::Windsurf => app_paths::external_history_home_dir()
                 .join(".codeium")
                 .join("windsurf")
                 .join("hooks.json"),
             // Kimi is a TOML config file (the user's main config).
-            Self::Kimi => app_paths::home_dir().join(".kimi").join("config.toml"),
-            Self::Antigravity => app_paths::home_dir()
+            Self::Kimi => app_paths::external_history_home_dir()
+                .join(".kimi")
+                .join("config.toml"),
+            Self::Antigravity => app_paths::external_history_home_dir()
                 .join(".gemini")
                 .join("config")
                 .join("hooks.json"),
             // ZCode captures via a managed plugin; surface its hooks.json.
             Self::ZCode => zcode_plugin_hooks_path(),
-        }
+        })
     }
 }
 
@@ -259,7 +270,7 @@ fn update_platform(
         }
         _ => {}
     }
-    let path = platform.config_path();
+    let path = platform.config_path()?;
     if !enabled && !path.exists() {
         return Ok(());
     }
@@ -485,14 +496,14 @@ fn config_has_managed_hooks(platform: SessionProvenanceHookPlatform) -> Result<b
             return Ok(opencode_plugin_is_managed(&opencode_plugin_path()));
         }
         SessionProvenanceHookPlatform::Kimi => {
-            return Ok(kimi_config_is_managed(&platform.config_path()));
+            return Ok(kimi_config_is_managed(&platform.config_path()?));
         }
         SessionProvenanceHookPlatform::ZCode => {
             return Ok(zcode_plugin_is_managed());
         }
         _ => {}
     }
-    let config = read_config(&platform.config_path())?;
+    let config = read_config(&platform.config_path()?)?;
     // Fail-open mirror of `live_status_enabled_quick` (minus the master gate,
     // which `update_platform`'s `enabled` already encodes at install time).
     let live_status = read_preferences()
@@ -556,7 +567,7 @@ fn current_managed_hook_fingerprint(
 ) -> Result<Option<String>, String> {
     match platform {
         SessionProvenanceHookPlatform::Codex => {
-            let config = read_config(&platform.config_path())?;
+            let config = read_config(&platform.config_path()?)?;
             Ok(managed_hook_fingerprint(&config, platform))
         }
         _ => Ok(None),
@@ -645,7 +656,10 @@ fn build_hook_status(
         desired_enabled,
         activation_state,
         last_activated_at,
-        config_path: platform.config_path().to_string_lossy().into_owned(),
+        config_path: platform
+            .config_path()
+            .map(|path| path.to_string_lossy().into_owned())
+            .unwrap_or_default(),
         error,
     }
 }

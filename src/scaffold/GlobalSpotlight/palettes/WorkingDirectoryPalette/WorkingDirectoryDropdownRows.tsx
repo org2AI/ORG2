@@ -8,19 +8,15 @@
 import React from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
-import Button from "@src/components/Button";
-import {
-  DROPDOWN_CLASSES,
-  DROPDOWN_ITEM,
-} from "@src/components/Dropdown/tokens";
+import { DROPDOWN_ITEM } from "@src/components/Dropdown/tokens";
 import {
   isSystemHomeRepoItem,
   isSystemPathRepoItem,
 } from "@src/features/SessionCreator/utils/systemPathSource";
 import type { UseDropdownListNavigationReturn } from "@src/hooks/dropdown";
-import { HugeiconsIcon, Tick01Icon } from "@src/icons";
 import { REPO_KIND } from "@src/store/repo";
 
+import { PickerOptionRow } from "../../components/PickerOptionRow";
 import { SpotlightDetailPane } from "../../components/SpotlightDetailPane";
 import { ICONS } from "../../config";
 import type { WorkspaceSwitchEntry } from "../../hooks";
@@ -64,31 +60,14 @@ export const RepoRow: React.FC<RepoRowProps> = ({
         data: { ...repo, isCurrentSelection: isCurrent },
       }}
     >
-      <Button
-        layout="custom"
-        appearance="custom"
-        htmlType="button"
+      <PickerOptionRow
+        label={repo.name}
+        selected={isCurrent}
         role="menuitem"
-        data-testid={`repo-dropdown-row-${repo.id}`}
-        {...keyboardProps}
-        className={`${DROPDOWN_CLASSES.item} ${
-          isCurrent ? DROPDOWN_CLASSES.itemSelected : DROPDOWN_CLASSES.itemHover
-        } w-full justify-start`}
-      >
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-          {isCurrent ? (
-            <HugeiconsIcon
-              icon={Tick01Icon}
-              data-icon="check"
-              size={DROPDOWN_ITEM.iconSize}
-              className="text-primary-6"
-            />
-          ) : (
-            <AnyIcon icon={Icon} size={DROPDOWN_ITEM.iconSize} />
-          )}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-left">{repo.name}</span>
-      </Button>
+        testId={`repo-dropdown-row-${repo.id}`}
+        keyboardProps={keyboardProps}
+        icon={<AnyIcon icon={Icon} size={DROPDOWN_ITEM.iconSize} />}
+      />
     </SpotlightDetailPane>
   );
 };
@@ -100,33 +79,14 @@ export const WorkspaceRow: React.FC<WorkspaceRowProps> = ({
   const { workspace, isActive } = entry;
 
   const row = (
-    <Button
-      layout="custom"
-      appearance="custom"
-      htmlType="button"
+    <PickerOptionRow
+      label={workspace.name}
+      selected={isActive}
       role="menuitem"
-      data-testid={`repo-dropdown-workspace-row-${workspace.workspaceId}`}
-      {...keyboardProps}
-      className={`${DROPDOWN_CLASSES.item} ${
-        isActive ? DROPDOWN_CLASSES.itemSelected : DROPDOWN_CLASSES.itemHover
-      } w-full justify-start`}
-    >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-        {isActive ? (
-          <HugeiconsIcon
-            icon={Tick01Icon}
-            data-icon="check"
-            size={DROPDOWN_ITEM.iconSize}
-            className="text-primary-6"
-          />
-        ) : (
-          <HugeiconsIcon icon={ICONS.workspace} size={DROPDOWN_ITEM.iconSize} />
-        )}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-left">
-        {workspace.name}
-      </span>
-    </Button>
+      testId={`repo-dropdown-workspace-row-${workspace.workspaceId}`}
+      keyboardProps={keyboardProps}
+      icon={<AnyIcon icon={ICONS.workspace} size={DROPDOWN_ITEM.iconSize} />}
+    />
   );
   return (
     <SpotlightDetailPane
@@ -157,20 +117,13 @@ export const OpenPathRow: React.FC<OpenPathRowProps> = ({
 
   return (
     <SpotlightDetailPane item={item}>
-      <Button
-        layout="custom"
-        appearance="custom"
-        htmlType="button"
+      <PickerOptionRow
+        label={item.label}
         role="menuitem"
-        data-testid="repo-dropdown-open-path-row"
-        {...keyboardProps}
-        className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full justify-start`}
-      >
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-          {Icon && <AnyIcon icon={Icon} size={DROPDOWN_ITEM.iconSize} />}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-      </Button>
+        testId="repo-dropdown-open-path-row"
+        keyboardProps={keyboardProps}
+        icon={Icon && <AnyIcon icon={Icon} size={DROPDOWN_ITEM.iconSize} />}
+      />
     </SpotlightDetailPane>
   );
 };

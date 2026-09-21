@@ -5,8 +5,8 @@ import {
   CHAT_BUBBLE_WIDTH_TOKENS,
   ChatBubbleCopyButton,
 } from "@src/components/ChatBubble";
-import { ChatImageThumbnailRow } from "@src/components/ChatImageThumbnail";
 import UserMessageContent from "@src/engines/ChatPanel/ChatHistory/components/UserMessageContent";
+import { ChatImageThumbnailRow } from "@src/engines/ChatPanel/ChatImageThumbnail";
 import { stripExpandedPillContent } from "@src/engines/ChatPanel/InputArea/utils/pillContentParser";
 import { ClipboardCheckIcon, HugeiconsIcon } from "@src/icons";
 

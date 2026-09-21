@@ -8,7 +8,7 @@
  */
 import { type RefObject, useEffect, useState } from "react";
 
-import { SCROLL_FADE_TOKENS } from "@src/modules/shared/layouts/tokens/scrollFadeTokens";
+import { SCROLL_FADE_TOKENS } from "@src/components/layout/tokens/scrollFadeTokens";
 
 const SCROLL_THRESHOLD = 2;
 

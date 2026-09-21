@@ -33,6 +33,7 @@ fn prepare_round_page_table(conn: &Connection) -> Result<(), String> {
             cache_write_tokens INTEGER NOT NULL,
             real_total_tokens  INTEGER NOT NULL,
             cost_usd           REAL NOT NULL,
+            usage_purpose      TEXT,
             created_at_ms      INTEGER NOT NULL
          );
          CREATE INDEX IF NOT EXISTS usage_dashboard_round_page_recent_idx
@@ -64,7 +65,7 @@ fn read_round_page(
     let sql = format!(
         "SELECT round_id, session_id, session_name, bucket, source, model,
                 input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
-                real_total_tokens, cost_usd, created_at_ms
+                real_total_tokens, cost_usd, created_at_ms, usage_purpose
          FROM {ROUND_PAGE_TABLE}
          ORDER BY {order_by}
          LIMIT ?1 OFFSET ?2"
@@ -91,6 +92,7 @@ fn read_round_page(
                     real_total_tokens: row.get(10)?,
                     cost_usd: row.get(11)?,
                     created_at_ms: row.get(12)?,
+                    usage_purpose: row.get(13)?,
                 })
             },
         )
@@ -181,9 +183,9 @@ pub fn usage_overview(
                 "INSERT INTO usage_dashboard_round_page (
                     round_id, session_id, session_name, bucket, source, model,
                     input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
-                    real_total_tokens, cost_usd, created_at_ms
+                    real_total_tokens, cost_usd, created_at_ms, usage_purpose
                  ) VALUES (
-                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13
+                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14
                  )",
             )
             .map_err(|err| err.to_string())?,
@@ -237,6 +239,7 @@ pub fn usage_overview(
                 round.real_total_tokens,
                 round.cost_usd,
                 round.created_at_ms,
+                round.usage_purpose,
             ])
             .map(|_| ())
             .map_err(|err| err.to_string())

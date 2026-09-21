@@ -3,14 +3,14 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import {
   Add01Icon,
   HugeiconsIcon,
   Refresh04Icon,
   SquareArrowUpRight02Icon,
 } from "@src/icons";
-import { openExternalLink } from "@src/util/platform/ipcRenderer";
+import { openLink } from "@src/util/ui/openLink";
 
 import {
   InlineCardBody,
@@ -133,7 +133,6 @@ const CliClientInlineExpandedCard = ({
         <InlineCardFooter>
           {onRefresh && (
             <Button
-              variant="secondary"
               size="small"
               icon={
                 <HugeiconsIcon
@@ -151,7 +150,6 @@ const CliClientInlineExpandedCard = ({
           )}
           {agent.docsUrl && (
             <Button
-              variant="secondary"
               size="small"
               icon={
                 <HugeiconsIcon
@@ -161,14 +159,13 @@ const CliClientInlineExpandedCard = ({
                 />
               }
               iconPosition="right"
-              onClick={() => openExternalLink(agent.docsUrl!)}
+              onClick={() => openLink(agent.docsUrl!, { navigate: true })}
             >
               {t("cliPreview.docs")}
             </Button>
           )}
           {onAdd && (
             <Button
-              variant="secondary"
               size="small"
               icon={
                 <HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />

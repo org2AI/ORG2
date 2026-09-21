@@ -6,7 +6,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import { ACTION_ID, useActionSystemOptional } from "@src/ActionSystem";
 import type { GitHubRepo } from "@src/api/http/github/types";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
@@ -16,14 +15,12 @@ import { buildIntegrationsPath } from "@src/config/mainAppPaths";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import {
   FilterIcon,
-  FolderClosedIcon,
-  FolderOpenIcon,
   HugeiconsIcon,
   InternetIcon,
   LockIcon,
   SquareArrowUpRight02Icon,
 } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
+import { ACTION_ID, useActionSystemOptional } from "@src/scaffold/ActionSystem";
 import { joinPathForDisplay } from "@src/util/file/pathUtils";
 
 import { ICONS } from "../../config";
@@ -32,6 +29,8 @@ import {
   SpotlightFormShell,
   SpotlightModalHeader,
 } from "../shared";
+import { DirectoryPathField } from "../shared/DirectoryPathField";
+import { SpotlightFormActions } from "../shared/SpotlightFormActions";
 
 interface CloneGitHubFormProps {
   filterText: string;
@@ -117,7 +116,7 @@ const CloneGitHubForm: React.FC<CloneGitHubFormProps> = ({
               placeholder={t("cloneForm.filterReposPlaceholder")}
               value={filterText}
               onChange={onFilterTextChange}
-              className="h-[32px] rounded-lg bg-fill-1 text-[14px]"
+              className="h-[32px] rounded-lg text-[14px]"
               prefix={
                 <HugeiconsIcon
                   icon={FilterIcon}
@@ -193,70 +192,44 @@ const CloneGitHubForm: React.FC<CloneGitHubFormProps> = ({
               </div>
             )}
           </div>
-          <div className="mb-3">
-            <label className="mb-2 block text-[14px] font-normal text-text-2">
-              {t("cloneForm.cloneTo")}
-            </label>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  value={localPath}
-                  onChange={onLocalPathChange}
-                  placeholder={t("cloneForm.parentFolderPlaceholder")}
-                  className="h-[32px] rounded-lg bg-fill-1 text-[14px]"
-                  prefix={
-                    <HugeiconsIcon
-                      icon={FolderClosedIcon}
-                      data-icon="folder"
-                      className="text-[16px] text-text-2"
-                      size={16}
-                    />
-                  }
-                />
-              </div>
-              <Button
-                variant="secondary"
-                size="default"
-                iconOnly
-                icon={
-                  <HugeiconsIcon
-                    icon={FolderOpenIcon}
-                    data-icon="folder-open"
-                    size={16}
-                  />
-                }
-                title={t("cloneForm.chooseFolder")}
-                onClick={async () => {
-                  const path = await onChoosePath();
-                  if (path) onLocalPathChange(path);
-                }}
-                className="h-[32px] w-[32px] shrink-0 rounded-lg border border-border-2 bg-bg-2 text-text-1 hover:bg-bg-3"
-              />
-            </div>
-            {/* Destination preview */}
-            {localPath && selectedRepo && (
-              <div className="mt-2 text-[12px] text-text-2">
-                {t("cloneForm.repoWillBeClonedTo")}{" "}
-                <span className="font-medium text-text-1">
-                  {joinPathForDisplay(
-                    localPath,
-                    repositories.find((repo) => repo.id === selectedRepo)
-                      ?.name ?? ""
-                  )}
-                </span>
-              </div>
-            )}
-          </div>
+          <DirectoryPathField
+            label={t("cloneForm.cloneTo")}
+            value={localPath}
+            onChange={onLocalPathChange}
+            onChoosePath={onChoosePath}
+            chooseLabel={t("cloneForm.chooseFolder")}
+            placeholder={t("cloneForm.parentFolderPlaceholder")}
+            disabled={loading}
+            preview={
+              localPath &&
+              selectedRepo && (
+                <div className="mt-2 text-[12px] text-text-2">
+                  {t("cloneForm.repoWillBeClonedTo")}{" "}
+                  <span className="font-medium text-text-1">
+                    {joinPathForDisplay(
+                      localPath,
+                      repositories.find((repo) => repo.id === selectedRepo)
+                        ?.name ?? ""
+                    )}
+                  </span>
+                </div>
+              )
+            }
+          />
         </SpotlightFormBody>
 
-        <PanelFooter
-          secondaryButtonSize="default"
-          primaryButtonSize="default"
+        <SpotlightFormActions
+          backLabel={t("actions.back")}
+          onBack={onCancel}
+          busy={loading}
+          submit={{
+            label: loading ? `${t("actions.clone")}...` : t("actions.clone"),
+            onClick: onSubmit,
+            disabled: isSubmitDisabled,
+          }}
           left={
             groupedRepos.length === 0 && !filterText ? (
               <Button
-                variant="secondary"
-                size="default"
                 icon={
                   <HugeiconsIcon
                     icon={SquareArrowUpRight02Icon}
@@ -271,21 +244,6 @@ const CloneGitHubForm: React.FC<CloneGitHubFormProps> = ({
               </Button>
             ) : null
           }
-          secondaryActions={[
-            {
-              label: t("actions.back"),
-              onClick: onCancel,
-              variant: "secondary",
-              disabled: loading,
-            },
-          ]}
-          primaryAction={{
-            label: loading ? `${t("actions.clone")}...` : t("actions.clone"),
-            onClick: onSubmit,
-            disabled: isSubmitDisabled,
-            loading,
-            variant: "primary",
-          }}
         />
       </SpotlightFormShell>
     </div>

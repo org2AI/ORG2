@@ -74,35 +74,3 @@ export function defineSimulatorAppConfig<TState extends SimulatorAppBaseState>(
     deriveState: config.deriveState,
   };
 }
-
-// ============================================
-// Helper: Common State Derivation Patterns
-// ============================================
-
-/**
- * Helper to derive operation-based state.
- * Extracts operations from events and finds the selected one.
- */
-export function deriveOperationState<TOperation extends { eventId: string }>(
-  events: SessionEvent[],
-  currentEventId: string | null,
-  extractOperation: (
-    event: SessionEvent,
-    isCurrent: boolean
-  ) => TOperation | null
-): { operations: TOperation[]; selectedOperation: TOperation | null } {
-  const operations: TOperation[] = [];
-
-  for (const event of events) {
-    const isCurrent = event.id === currentEventId;
-    const op = extractOperation(event, isCurrent);
-    if (op) operations.push(op);
-  }
-
-  const selectedOperation =
-    operations.find((op) => op.eventId === currentEventId) ??
-    operations[operations.length - 1] ??
-    null;
-
-  return { operations, selectedOperation };
-}

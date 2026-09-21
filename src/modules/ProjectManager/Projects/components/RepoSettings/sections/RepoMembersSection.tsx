@@ -16,31 +16,27 @@ import { useTranslation } from "react-i18next";
 
 import type { LinkedEmail, MemberEntry } from "@src/api/http/project";
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import Input from "@src/components/Input";
 import PersonAvatar from "@src/components/PersonAvatar";
-import { useCurrentUserMemberIds } from "@src/hooks/project/useCurrentUserMemberId";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
-import {
-  Add01Icon,
-  ArrowDown01Icon,
-  ArrowRight01Icon,
-  Cancel01Icon,
-  HugeiconsIcon,
-  MinusSignIcon,
-  Pen01Icon,
-  Refresh04Icon,
-  Tick01Icon,
-  UserAdd01Icon,
-} from "@src/icons";
-import { ClaimIdentityModal } from "@src/modules/ProjectManager/shared/components";
 import {
   SECTION_ACTION_GAP_CLASSES,
   SECTION_DESCRIPTION_CLASSES,
   SectionContainer,
   SectionHeading,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { CARD_ROW_TOKENS } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/Section";
+import { CARD_ROW_TOKENS } from "@src/components/layout/blocks";
+import { useCurrentUserMemberIds } from "@src/hooks/project/useCurrentUserMemberId";
+import {
+  Add01Icon,
+  HugeiconsIcon,
+  MinusSignIcon,
+  Pen01Icon,
+  UserAdd01Icon,
+} from "@src/icons";
+import { ClaimIdentityModal } from "@src/modules/ProjectManager/shared/components";
 import { formatLastCommitDate } from "@src/util/datetime/formatLastCommitDate";
 
 export interface RepoMembersSectionProps {
@@ -116,11 +112,8 @@ const MemberRowItem: React.FC<{
             ref={inputRef}
             defaultValue={member.name}
             className="w-full"
-            onKeyDown={(e) => {
-              if (e.key === "Enter")
-                handleSave((e.target as HTMLInputElement).value);
-              if (e.key === "Escape") handleCancel();
-            }}
+            onConfirm={handleSave}
+            onCancel={handleCancel}
           />
         ) : (
           <>
@@ -136,67 +129,46 @@ const MemberRowItem: React.FC<{
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        {editing ? (
-          <>
+      {!editing && (
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            icon={
+              <HugeiconsIcon icon={Pen01Icon} data-icon="pencil" size={14} />
+            }
+            iconOnly
+            onClick={handleStartEdit}
+          />
+          {!isCurrentUser && canClaim && onClaim && (
             <Button
               icon={
-                <HugeiconsIcon icon={Tick01Icon} data-icon="check" size={14} />
+                <HugeiconsIcon
+                  icon={UserAdd01Icon}
+                  data-icon="user-plus"
+                  size={14}
+                />
               }
               iconOnly
-              onClick={() => {
-                if (inputRef.current) handleSave(inputRef.current.value);
-              }}
+              onClick={() => onClaim(member)}
+              title={t("settings.claimAsMine")}
             />
-            <Button
-              icon={
-                <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
-              }
-              iconOnly
-              onClick={handleCancel}
-            />
-          </>
-        ) : (
-          <>
-            <Button
-              icon={
-                <HugeiconsIcon icon={Pen01Icon} data-icon="pencil" size={14} />
-              }
-              iconOnly
-              onClick={handleStartEdit}
-            />
-            {!isCurrentUser && canClaim && onClaim && (
-              <Button
-                icon={
-                  <HugeiconsIcon
-                    icon={UserAdd01Icon}
-                    data-icon="user-plus"
-                    size={14}
-                  />
-                }
-                iconOnly
-                onClick={() => onClaim(member)}
-                title={t("settings.claimAsMine")}
-              />
-            )}
-            <Button
-              icon={
-                variant === "active" ? (
-                  <HugeiconsIcon
-                    icon={MinusSignIcon}
-                    data-icon="minus"
-                    size={14}
-                  />
-                ) : (
-                  <HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />
-                )
-              }
-              iconOnly
-              onClick={() => onToggleActive(member.id)}
-            />
-          </>
-        )}
-      </div>
+          )}
+          <Button
+            icon={
+              variant === "active" ? (
+                <HugeiconsIcon
+                  icon={MinusSignIcon}
+                  data-icon="minus"
+                  size={14}
+                />
+              ) : (
+                <HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />
+              )
+            }
+            iconOnly
+            onClick={() => onToggleActive(member.id)}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -353,9 +325,6 @@ const RepoMembersSection: React.FC<RepoMembersSectionProps> = ({
     onSyncMembers().finally(() => setSyncing(false));
   }, [onSyncMembers]);
 
-  const { spinClass: syncSpinClass, handleClick: handleSyncClick } =
-    useRefreshSpin(handleSyncMembers, syncing);
-
   const memberDescription = useCallback(
     (member: MemberEntry) => {
       const parts: string[] = [];
@@ -378,37 +347,17 @@ const RepoMembersSection: React.FC<RepoMembersSectionProps> = ({
         >
           <div className={SECTION_ACTION_GAP_CLASSES}>
             {onSyncMembers && (
-              <Button
-                icon={
-                  <HugeiconsIcon
-                    icon={Refresh04Icon}
-                    data-icon="refresh-cw"
-                    size={14}
-                    className={syncSpinClass}
-                  />
-                }
+              <RefreshButton
+                variant="secondary"
                 iconOnly
-                disabled={syncing}
-                onClick={handleSyncClick}
+                label={t("common:actions.refresh")}
+                refreshing={syncing}
+                onRefresh={handleSyncMembers}
               />
             )}
             <Button
               onClick={() => setExpanded(!expanded)}
-              icon={
-                expanded ? (
-                  <HugeiconsIcon
-                    icon={ArrowDown01Icon}
-                    data-icon="chevron-down"
-                    size={14}
-                  />
-                ) : (
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    data-icon="chevron-right"
-                    size={14}
-                  />
-                )
-              }
+              icon={<DisclosureChevron expanded={expanded} size={14} />}
               iconOnly
             />
           </div>
@@ -453,19 +402,7 @@ const RepoMembersSection: React.FC<RepoMembersSectionProps> = ({
               <Button
                 onClick={() => setInactiveExpanded(!inactiveExpanded)}
                 icon={
-                  inactiveExpanded ? (
-                    <HugeiconsIcon
-                      icon={ArrowDown01Icon}
-                      data-icon="chevron-down"
-                      size={14}
-                    />
-                  ) : (
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      data-icon="chevron-right"
-                      size={14}
-                    />
-                  )
+                  <DisclosureChevron expanded={inactiveExpanded} size={14} />
                 }
                 iconOnly
               />

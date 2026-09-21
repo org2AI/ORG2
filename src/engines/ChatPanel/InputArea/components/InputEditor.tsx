@@ -64,8 +64,12 @@ export interface InputEditorProps {
   onSlashCommandClose?: () => void;
   /** Slash trigger behavior for this editor surface. */
   slashTriggerMode?: "command" | "context";
+  /** Single-line height for the compact composer row. */
+  compact?: boolean;
   /** Focus the contenteditable host after mount. */
   autoFocus?: boolean;
+  /** Extra ComposerInput classes (the expanded height). Ignored while `compact`. */
+  editorClassName?: string;
   /**
    * Non-document context rendered on the editor's first line before the
    * contenteditable surface. This intentionally stays outside the serialized
@@ -101,7 +105,9 @@ const InputEditor: React.FC<InputEditorProps> = memo(
     onSlashCommand,
     onSlashCommandClose,
     slashTriggerMode = "command",
+    compact = false,
     autoFocus = false,
+    editorClassName,
     leadingContent,
   }) => {
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -151,7 +157,10 @@ const InputEditor: React.FC<InputEditorProps> = memo(
     return (
       <div
         ref={wrapperRef}
-        className="relative flex w-full min-w-0 items-start"
+        className={clsx(
+          "relative flex w-full min-w-0",
+          compact ? "h-full min-h-0 items-center" : "items-start"
+        )}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
@@ -161,7 +170,10 @@ const InputEditor: React.FC<InputEditorProps> = memo(
         {leadingContent && (
           <div
             data-composer-leading-content
-            className="flex shrink-0 items-center pt-0.5 pl-3 text-sm leading-5"
+            className={clsx(
+              "flex shrink-0 items-center pl-3 text-sm leading-5",
+              compact ? "h-full" : "pt-0.5"
+            )}
           >
             {leadingContent}
           </div>
@@ -176,12 +188,19 @@ const InputEditor: React.FC<InputEditorProps> = memo(
           onSubmit={onSubmit}
           requireCmdEnter={!sendOnEnter}
           autoFocus={autoFocus}
-          className={clsx(
-            INPUT_AREA_EDITOR_CLASS,
-            leadingContent && "chat-input-editor chat-input-editor-leading"
-          )}
-          minHeight={INPUT_AREA_EDITOR_HEIGHT.min}
-          maxHeight={INPUT_AREA_EDITOR_HEIGHT.max}
+          className={
+            compact
+              ? "chat-input-editor chat-input-compact h-full max-h-9 min-h-0 min-w-0 flex-1"
+              : clsx(
+                  INPUT_AREA_EDITOR_CLASS,
+                  leadingContent &&
+                    "chat-input-editor chat-input-editor-leading",
+                  editorClassName
+                )
+          }
+          minHeight={compact ? 0 : INPUT_AREA_EDITOR_HEIGHT.min}
+          maxHeight={compact ? 36 : INPUT_AREA_EDITOR_HEIGHT.max}
+          overflowY={compact ? "visible" : undefined}
           onKeyDownForDropdown={handleKeyDownForDropdown}
           onSlashCommand={onSlashCommand}
           onSlashCommandClose={onSlashCommandClose}

@@ -210,6 +210,11 @@ extern "C" fn dock_menu_open_recent_handler(_self: &AnyObject, _cmd: Sel, sender
             .to_string_lossy()
             .to_string();
 
+        // Opening a recent workspace is an action behind the lock page.
+        if crate::app_lock::is_locked() {
+            return;
+        }
+
         if let Some(ref app_handle) = *DOCK_APP_HANDLE.lock().unwrap() {
             use tauri::{Emitter, Manager};
             if let Some(window) = app_handle.get_webview_window("main") {

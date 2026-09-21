@@ -32,12 +32,12 @@
 import { type RefObject, useCallback } from "react";
 
 import type { ComposerInputRef } from "@src/components/ComposerInput";
-import { resolveDropTarget } from "@src/shared/dnd/dropTargetUtils";
-import type { SessionReferenceOpen } from "@src/shared/dnd/sessionTabDrag";
+import { resolveDropTarget } from "@src/components/dnd/dropTargetUtils";
 import {
   type SessionDropContext,
   useSessionDropTarget,
-} from "@src/shared/dnd/useSessionDropTarget";
+} from "@src/components/dnd/useSessionDropTarget";
+import type { SessionReferenceOpen } from "@src/util/dnd/sessionTabDrag";
 
 /**
  * True when `InputArea`'s own drop target already inserted this pill, which

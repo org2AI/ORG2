@@ -59,7 +59,7 @@ const COMMAND_PREVIEW_OVERRIDES: Readonly<
     add: { action: "add", path: "/Users/developer/Work/new-project" },
     clone: {
       action: "clone",
-      url: "https://github.com/YORG-AI/orgii.git",
+      url: "https://github.com/org2AI/ORG2.git",
       target_dir: "/Users/developer/Documents/GitHub",
     },
     create: {

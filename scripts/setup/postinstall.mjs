@@ -49,7 +49,7 @@ function runStep(step, index) {
 
 const installStartedAt = performance.now();
 
-console.log("\nORGII postinstall setup");
+console.log("\nORG2 postinstall setup");
 console.log("Preparing local development helpers...");
 
 steps.forEach(runStep);

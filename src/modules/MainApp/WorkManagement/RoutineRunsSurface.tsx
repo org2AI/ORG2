@@ -22,24 +22,24 @@ import {
   projectApi,
 } from "@src/api/http/project";
 import Button from "@src/components/Button";
+import CompactListPanel, {
+  type CompactListPanelEntry,
+} from "@src/components/CompactListPanel";
 import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import Message from "@src/components/Message";
 import { Placeholder } from "@src/components/Placeholder";
 import TabPill from "@src/components/TabPill";
+import { WorkManagementRefreshButton } from "@src/features/GitHubWork/WorkManagementRefreshButton";
+import { WorkManagementSearchInput } from "@src/features/GitHubWork/WorkManagementSearchInput";
 import { useRoutineResultNavigation } from "@src/hooks/navigation";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
 import { HugeiconsIcon, PlayCircleIcon } from "@src/icons";
-import CompactListPanel, {
-  type CompactListPanelEntry,
-} from "@src/modules/shared/components/CompactListPanel";
-import { WorkManagementRefreshButton } from "@src/modules/shared/components/WorkManagementRefreshButton";
-import { WorkManagementSearchInput } from "@src/modules/shared/components/WorkManagementSearchInput";
 import DetailPaneLayout, {
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
-import InboxListDetailLayout from "@src/modules/shared/layouts/InboxListDetailLayout";
-import SplitListFullscreenButton from "@src/modules/shared/layouts/SplitListFullscreenButton";
-import SplitListHeader from "@src/modules/shared/layouts/SplitListHeader";
+} from "@src/scaffold/layouts/DetailPaneLayout";
+import InboxListDetailLayout from "@src/scaffold/layouts/InboxListDetailLayout";
+import SplitListFullscreenButton from "@src/scaffold/layouts/SplitListFullscreenButton";
+import SplitListHeader from "@src/scaffold/layouts/SplitListHeader";
 
 import { useWorkManagementSplitHeader } from "./workManagementSplitHeaderContext";
 
@@ -243,8 +243,6 @@ const RoutineRunDetailPane: React.FC<RoutineRunDetailPaneProps> = ({
                   <li key={item.shortId}>
                     <Button
                       layout="custom"
-                      appearance="custom"
-                      htmlType="button"
                       className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] hover:bg-fill-1"
                       onClick={() => openWorkItem(item.shortId)}
                       data-testid={`routine-run-work-item-${item.shortId}`}
@@ -373,15 +371,15 @@ const RoutineRunsSurface: React.FC = () => {
     <SplitListHeader
       primary={
         <div className="flex min-w-0 flex-1 items-center gap-px">
-          {splitDatasetControl}
-          {splitDatasetControl ? (
-            <HeaderSectionSeparator className="mx-0.5" />
-          ) : null}
           {datasetTabs}
         </div>
       }
       secondary={
         <div className="flex min-w-0 flex-1 items-center gap-px">
+          {splitDatasetControl}
+          {splitDatasetControl ? (
+            <HeaderSectionSeparator className="mx-0.5" />
+          ) : null}
           <WorkManagementSearchInput
             value={searchQuery}
             onChange={setSearchQuery}

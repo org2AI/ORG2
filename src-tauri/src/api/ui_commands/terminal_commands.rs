@@ -1,12 +1,24 @@
 //! Bounded, on-demand access to existing MyStation PTYs. No process creation or polling.
-use std::{io::Write, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use tauri::{State, WebviewWindow};
 use terminal::pty_commands::pty::PtyState;
 use tokio::sync::{Mutex, Semaphore};
 
 const MAX_OUTPUT_BYTES: usize = 8192;
 static INPUT_JOBS: Semaphore = Semaphore::const_new(16);
-type PtyWriter = Arc<Mutex<Box<dyn Write + Send>>>;
+/// The write half `guarded_write` drives. A real `PtyWriter` can only be built
+/// from a live PTY master, so the cancellation, capacity and timeout
+/// guarantees below are exercised through fixtures implementing this trait.
+#[async_trait::async_trait]
+trait TerminalWrite: Send + 'static {
+    async fn write_all(&mut self, bytes: &[u8]) -> std::io::Result<()>;
+}
+#[async_trait::async_trait]
+impl TerminalWrite for terminal::pty_io::PtyWriter {
+    async fn write_all(&mut self, bytes: &[u8]) -> std::io::Result<()> {
+        terminal::pty_io::PtyWriter::write_all(self, bytes).await
+    }
+}
 
 fn terminal_id(request: &app_ui::Request) -> Result<&str, String> {
     let id = request.params["terminalId"].as_str().unwrap_or("");
@@ -54,8 +66,8 @@ fn output_tail(output: &str, max_bytes: usize) -> (&str, bool) {
 
 /// Input may partially reach the PTY before an OS write fails or times out.
 /// Keep that result unknown and retain the writer/permit until the worker ends.
-async fn guarded_write(
-    writer: PtyWriter,
+async fn guarded_write<W: TerminalWrite>(
+    writer: Arc<Mutex<W>>,
     data: String,
     active: impl Fn() -> bool + Send + 'static,
 ) -> Result<usize, String> {
@@ -65,17 +77,14 @@ async fn guarded_write(
     let mut writer = writer
         .try_lock_owned()
         .map_err(|_| "BUSY: Terminal is receiving another input")?;
-    let mut task = tokio::task::spawn_blocking(move || {
+    let mut task = tokio::spawn(async move {
         let _permit = permit;
         if !active() {
             return Err("TERMINAL_REQUEST_EXPIRED: Input was not sent".to_string());
         }
-        writer
-            .write_all(data.as_bytes())
-            .and_then(|()| writer.flush())
-            .map_err(|_| {
-                "TERMINAL_WRITE_UNKNOWN: Input may have been partially delivered".to_string()
-            })?;
+        writer.write_all(data.as_bytes()).await.map_err(|_| {
+            "TERMINAL_WRITE_UNKNOWN: Input may have been partially delivered".to_string()
+        })?;
         Ok(data.len())
     });
     match tokio::time::timeout(Duration::from_secs(2), &mut task).await {
@@ -83,9 +92,10 @@ async fn guarded_write(
             "TERMINAL_WRITE_UNKNOWN: Input worker ended without confirmation".to_string()
         })?,
         Err(_) => {
-            // Cancel an unstarted blocking job. A running OS write cannot be undone;
-            // it retains its writer/permit and may finish after this unknown receipt.
-            task.abort();
+            // A submitted PTY write cannot be undone, so the worker is never
+            // aborted: it keeps the writer lock and the permit until it ends,
+            // which blocks an interleaved second write rather than replaying
+            // this one. The caller gets an unknown receipt now.
             Err("TERMINAL_WRITE_UNKNOWN: Input delivery exceeded the deadline; do not resend automatically".into())
         }
     }
@@ -123,11 +133,8 @@ pub async fn ui_terminal_io(
             })
             .transpose()?
             .unwrap_or(4096) as usize;
-        let output = session.redacted_output.clone();
+        let output = session.inspection_output();
         drop(sessions);
-        let output = output
-            .lock()
-            .map_err(|_| "TERMINAL_NOT_READY: Output snapshot unavailable")?;
         let (tail, truncated) = output_tail(&output, max_bytes);
         return Ok(
             serde_json::json!({"terminalId":id,"output":tail,"truncated":truncated,
@@ -159,12 +166,10 @@ mod tests {
     use std::sync::Mutex as StdMutex;
     static INPUT_TEST_LOCK: Mutex<()> = Mutex::const_new(());
     struct Capture(Arc<StdMutex<Vec<u8>>>);
-    impl Write for Capture {
-        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+    #[async_trait::async_trait]
+    impl TerminalWrite for Capture {
+        async fn write_all(&mut self, bytes: &[u8]) -> std::io::Result<()> {
             self.0.lock().unwrap().extend_from_slice(bytes);
-            Ok(bytes.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
             Ok(())
         }
     }
@@ -216,7 +221,7 @@ mod tests {
     async fn guarded_writer_checks_cancellation_and_never_replays_busy_input() {
         let _test = INPUT_TEST_LOCK.lock().await;
         let bytes = Arc::new(StdMutex::new(Vec::new()));
-        let writer: PtyWriter = Arc::new(Mutex::new(Box::new(Capture(bytes.clone()))));
+        let writer = Arc::new(Mutex::new(Capture(bytes.clone())));
         assert!(guarded_write(writer.clone(), "forbidden".into(), || false)
             .await
             .unwrap_err()
@@ -241,23 +246,23 @@ mod tests {
         let _test = INPUT_TEST_LOCK.lock().await;
         let permits = INPUT_JOBS.try_acquire_many(16).unwrap();
         let bytes = Arc::new(StdMutex::new(Vec::new()));
-        let writer: PtyWriter = Arc::new(Mutex::new(Box::new(Capture(bytes.clone()))));
+        let writer = Arc::new(Mutex::new(Capture(bytes.clone())));
         assert!(guarded_write(writer, "busy".into(), || true)
             .await
             .unwrap_err()
             .starts_with("BUSY"));
         assert!(bytes.lock().unwrap().is_empty());
         drop(permits);
-        struct FlushFailure;
-        impl Write for FlushFailure {
-            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-                Ok(bytes.len())
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
-                Err(std::io::Error::other("fixture flush failure"))
+        // `PtyWriter::write_all` submits and flushes as one step, so a failed
+        // flush now surfaces as a failed write with the same unknown outcome.
+        struct WriteFailure;
+        #[async_trait::async_trait]
+        impl TerminalWrite for WriteFailure {
+            async fn write_all(&mut self, _bytes: &[u8]) -> std::io::Result<()> {
+                Err(std::io::Error::other("fixture write failure"))
             }
         }
-        let writer: PtyWriter = Arc::new(Mutex::new(Box::new(FlushFailure)));
+        let writer = Arc::new(Mutex::new(WriteFailure));
         assert!(guarded_write(writer, "possibly delivered".into(), || true)
             .await
             .unwrap_err()
@@ -266,39 +271,34 @@ mod tests {
     #[tokio::test]
     async fn timed_out_write_keeps_its_writer_until_the_worker_finishes() {
         let _test = INPUT_TEST_LOCK.lock().await;
-        let gate = Arc::new((StdMutex::new(false), std::sync::Condvar::new()));
+        let gate = Arc::new(tokio::sync::Notify::new());
         let (started_tx, started_rx) = tokio::sync::oneshot::channel();
         struct BlockedWriter {
-            gate: Arc<(StdMutex<bool>, std::sync::Condvar)>,
+            gate: Arc<tokio::sync::Notify>,
             started: Option<tokio::sync::oneshot::Sender<()>>,
         }
-        impl Write for BlockedWriter {
-            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        #[async_trait::async_trait]
+        impl TerminalWrite for BlockedWriter {
+            async fn write_all(&mut self, _bytes: &[u8]) -> std::io::Result<()> {
                 if let Some(started) = self.started.take() {
                     let _ = started.send(());
                 }
-                let (lock, ready) = &*self.gate;
-                let mut released = lock.lock().unwrap();
-                while !*released {
-                    released = ready.wait(released).unwrap();
-                }
-                Ok(bytes.len())
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
+                // A submitted write is never cancelled; hold the writer past
+                // the caller's deadline exactly as a slow PTY would.
+                self.gate.notified().await;
                 Ok(())
             }
         }
-        let writer: PtyWriter = Arc::new(Mutex::new(Box::new(BlockedWriter {
+        let writer = Arc::new(Mutex::new(BlockedWriter {
             gate: gate.clone(),
             started: Some(started_tx),
-        })));
+        }));
         let task = tokio::spawn(guarded_write(writer.clone(), "one".into(), || true));
         started_rx.await.unwrap();
         let outcome = task.await.unwrap();
         let held_after_timeout = writer.try_lock().is_err();
         // Always release the fixture worker before asserting, including failure paths.
-        *gate.0.lock().unwrap() = true;
-        gate.1.notify_all();
+        gate.notify_one();
         let _finished = writer.lock().await;
         assert!(outcome.unwrap_err().starts_with("TERMINAL_WRITE_UNKNOWN"));
         assert!(held_after_timeout);

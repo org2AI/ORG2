@@ -1,6 +1,6 @@
 /**
  * `await_output` result parser — shared by TitleOnlyAdapter (wait_for /
- * monitor) and ToolCallBlock (list).
+ * monitor), WaitActivityGroup (wait totals), and ToolCallBlock (list).
  *
  * Rust embeds a single `awaitMeta::{...json}` line in its raw tool-call
  * output (see `src-tauri/.../await_tool.rs`). This module centralises the
@@ -161,8 +161,65 @@ export function readAwaitMetaFromResult(
 }
 
 /**
+ * Arguments only provider-imported waits carry: Codex `wait` cells
+ * (`cell_id`, `yield_time_ms`), clock sleeps (`duration_ms`), and `write_stdin`
+ * polls, which the Codex importer normalizes to `session_id` +
+ * `block_until_ms`. ORG2's own `await_output` accepts none of these, so its
+ * process output is never mistaken for a provider envelope.
+ */
+function isProviderWait(args: Record<string, unknown> | undefined): boolean {
+  return (
+    args?.cell_id !== undefined ||
+    args?.yield_time_ms !== undefined ||
+    args?.duration_ms !== undefined ||
+    args?.session_id !== undefined
+  );
+}
+
+/** The envelope Codex prints before a tool's own output (`Output:` marker). */
+function providerEnvelopeHeader(text: string): string {
+  const outputMarker = text.search(/^Output:/m);
+  return outputMarker < 0 ? text : text.slice(0, outputMarker);
+}
+
+/**
+ * How long one `await_output` call waited, or `undefined` when the payload
+ * does not record it.
+ *
+ * ORG2 waits report `waitedMs` through awaitMeta, which Rust fills only for a
+ * job still running when the wait returned. Provider waits have no awaitMeta:
+ * Codex states the elapsed time in its result envelope (`Wall time: 1.0021
+ * seconds` for exec output, `Wall time 5.0 seconds` for Desktop scripts), and
+ * the requested window is the fallback when the envelope is absent.
+ */
+export function resolveAwaitWaitedMs(
+  args: Record<string, unknown> | undefined,
+  result: Record<string, unknown> | undefined,
+  meta: AwaitMeta | null = readAwaitMetaFromResult(result)
+): number | undefined {
+  const items = meta?.items ?? [];
+  const representative =
+    items.find((item) => item.status !== "running") ?? items[0];
+  if (representative?.waitedMs !== undefined) return representative.waitedMs;
+  if (!isProviderWait(args)) return undefined;
+
+  for (const value of [result?.output, result?.content, result?.observation]) {
+    if (typeof value !== "string") continue;
+    const match = providerEnvelopeHeader(value).match(
+      /Wall time\s*:?\s+([\d.]+)\s+seconds?/i
+    );
+    if (match) return Number.parseFloat(match[1]) * 1000;
+  }
+
+  const requestedMs =
+    args?.duration_ms ?? args?.yield_time_ms ?? args?.block_until_ms;
+  return typeof requestedMs === "number" ? requestedMs : undefined;
+}
+
+/**
  * Format a duration in milliseconds as `"Xm Ys"` / `"Ys"` (abbreviated).
- * Used by TitleOnly countdown rendering and "Waited 5s" done labels.
+ * Used by TitleOnly countdown rendering, "Waited 5s" done labels, and wait
+ * group totals.
  */
 export function formatDurationShort(ms: number | undefined): string {
   if (ms == null || ms <= 0) return "";

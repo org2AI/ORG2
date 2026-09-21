@@ -190,14 +190,12 @@ const AccountModelsInlineSplit: React.FC<AccountModelsInlineSplitProps> = ({
         })}
         trailing={
           <>
-            <Tooltip content={sortLabel} position="top">
+            <Tooltip kind="button" content={sortLabel} position="top">
               <Button
                 variant="tertiary"
-                appearance="ghost"
                 size="mini"
                 iconOnly
                 icon={<AnyIcon icon={SortModeIcon} size={14} strokeWidth={2} />}
-                htmlType="button"
                 className="table-sorter shrink-0 hover:text-text-2"
                 aria-label={sortLabel}
                 onClick={() =>

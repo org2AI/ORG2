@@ -93,8 +93,6 @@ export const FieldRow: React.FC<FieldRowProps> = ({
     return (
       <div className="flex min-h-7 shrink-0 items-center overflow-visible">
         <Button
-          htmlType="button"
-          variant="secondary"
           size="small"
           shape="round"
           icon={iconContent}
@@ -135,8 +133,6 @@ export const FieldRow: React.FC<FieldRowProps> = ({
       >
         <Button
           layout="custom"
-          appearance="custom"
-          htmlType="button"
           className={
             isWorkstationTrail
               ? `${WORKSTATION_TRAIL_CONTENT.rowContent} cursor-pointer border-none bg-transparent outline-none`
@@ -156,14 +152,12 @@ export const FieldRow: React.FC<FieldRowProps> = ({
         {showChevron && (
           <Button
             variant="tertiary"
-            appearance="ghost"
             size="mini"
             style={{ width: 20 }}
             iconOnly
             icon={
               <HugeiconsIcon icon={EditIcon} size={DROPDOWN_ITEM.iconSize} />
             }
-            htmlType="button"
             aria-label="Open"
             onClick={onClick}
             disabled={disabled}
@@ -379,8 +373,6 @@ export const Option: React.FC<OptionProps> = ({
 }) => (
   <Button
     layout="custom"
-    appearance="custom"
-    htmlType="button"
     data-testid={dataTestId}
     className={[
       DROPDOWN_CLASSES.item,

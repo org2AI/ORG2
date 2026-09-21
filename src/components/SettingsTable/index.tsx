@@ -189,7 +189,6 @@ function SettingsTableToolbar({
 
   const filterButton = filterConfig ? (
     <Button
-      variant="secondary"
       iconOnly
       onClick={filterConfig.onToggle}
       icon={

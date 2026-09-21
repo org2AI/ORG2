@@ -115,7 +115,7 @@ const BasePill = React.forwardRef<HTMLSpanElement, BasePillProps>(
           : {})}
         {...(dataProps as React.HTMLAttributes<HTMLSpanElement>)}
       >
-        <span style={iconStyle}>{iconNode}</span>
+        {iconNode == null ? null : <span style={iconStyle}>{iconNode}</span>}
         {children}
       </span>
     );

@@ -13,7 +13,8 @@ export {
 
 export { isPairCompatible } from "./modelPairCompatibility";
 export { useOrgiiPoolCategories } from "./useOrgiiPoolCategories";
-export { useValidatedLastPair } from "./useValidatedLastPair";
+// Desktop consumers import useValidatedLastPair directly; its Market owner
+// checks depend on native auth and must stay outside this shared barrel.
 export { useModelAliasRegistry } from "./useModelAliasRegistry";
 export {
   useModelPillLabel,

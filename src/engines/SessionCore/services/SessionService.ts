@@ -17,26 +17,15 @@
  *     turnIntentSource: "user_submit",
  *   });
  */
-import {
-  CANCEL_REASON,
-  getSession as agentGetSession,
-  getPendingQuestions,
-  respondQuestion,
-  sessionLaunch,
-} from "@src/api/tauri/agent";
-import { rpc } from "@src/api/tauri/rpc";
+import { sessionLaunch } from "@src/api/tauri/agent";
 import { ROUTES } from "@src/config/routes";
 import { getAdapterForSession } from "@src/engines/SessionCore/sync/types";
 import { createLogger } from "@src/hooks/logger";
 import { navigateApp } from "@src/router/navigateApp";
 import { collectAdeContext } from "@src/services/context/collectors";
 import {
-  type Session,
-  type SessionStatus,
   activeSessionIdAtom,
-  loadSessions,
   markSessionActive,
-  sessionsAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom";
@@ -44,25 +33,17 @@ import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import { invokeTauri } from "@src/util/platform/tauri/init";
 import {
   isAgentSession,
-  isCliSession,
   isExternalHistorySession,
 } from "@src/util/session/sessionDispatch";
 
 import type {
-  SessionAnswerQuestionParams,
-  SessionCancelParams,
   SessionCreateParams,
-  SessionGetStatusParams,
-  SessionInfo,
   SessionInterruptParams,
-  SessionListParams,
   SessionMergeParams,
   SessionMergeResult,
   SessionOpenParams,
-  SessionPauseResumeParams,
   SessionResumeCliParams,
   SessionSendMessageParams,
-  SessionStatusInfo,
 } from "./types";
 
 const logger = createLogger("SessionService");
@@ -83,10 +64,10 @@ function throwServiceError(context: string, error: unknown): never {
 
 /**
  * Throw a clear error for operations that simply don't apply to a
- * Cursor IDE session — there's no ORGII-side process to resume, no
- * `Question` surface to answer, etc. Send / cancel are routed through
- * the adapter (Cursor IDE has working `sendMessage` and a no-op
- * `stopSession`) and never reach this guard.
+ * Cursor IDE session — there's no ORGII-side process to resume.
+ * Send / interrupt are routed through the adapter (Cursor IDE has a
+ * working `sendMessage` and a no-op `stopSession`) and never reach
+ * this guard.
  */
 function assertSupportsManagedOperation(
   sessionId: string,
@@ -97,28 +78,6 @@ function assertSupportsManagedOperation(
       `Operation "${operation}" is not supported for imported external history sessions (${sessionId}).`
     );
   }
-}
-
-function categoryForSession(sessionId: string): SessionInfo["category"] {
-  if (isCliSession(sessionId)) return "cli_agent";
-  if (isExternalHistorySession(sessionId)) return "external_history";
-  return "rust_agent";
-}
-
-function mapSessionToInfo(session: Session): SessionInfo {
-  return {
-    sessionId: session.session_id,
-    name: session.name || session.user_input || "Unnamed",
-    status: session.status,
-    category: categoryForSession(session.session_id),
-    createdAt: session.created_at,
-    updatedAt: session.updated_at,
-    repoName: session.repo_name,
-    branch: session.branch,
-    pendingQuestionsCount:
-      session.pending_questions_count ?? session.pending_questions?.length ?? 0,
-    userInput: session.user_input,
-  };
 }
 
 // ============================================
@@ -159,6 +118,7 @@ export const SessionService = {
       workspacePath: params.projectRepoPath || params.repoPath || undefined,
       worktreePath: params.worktreePath || undefined,
       accountId: params.accountId || undefined,
+      credentialSource: params.credentialSource,
       name: params.name || params.task.slice(0, 60),
       mode: params.mode || undefined,
       agentDefinitionId: params.agentDefinitionId || undefined,
@@ -169,7 +129,7 @@ export const SessionService = {
       ideContext: adeContext,
       ...(params.projectSlug ? { projectSlug: params.projectSlug } : {}),
       ...(isCli
-        ? { platform: params.cliAgentType }
+        ? { platform: params.cliAgentType, model: params.model || undefined }
         : params.keySource === "hosted_key"
           ? {
               tier: params.tier || undefined,
@@ -188,88 +148,6 @@ export const SessionService = {
       return { sessionId: result.sessionId };
     } catch (error) {
       throwServiceError("Failed to create session", error);
-    }
-  },
-
-  // ==========================================
-  // List / Status
-  // ==========================================
-
-  /**
-   * List sessions with optional filters.
-   */
-  async list(params?: SessionListParams): Promise<SessionInfo[]> {
-    try {
-      await loadSessions({
-        forceRefresh: true,
-        status: params?.status as SessionStatus | undefined,
-        repoPath: params?.repoId,
-        limit: params?.limit,
-      });
-
-      const store = getInstrumentedStore();
-      let result = store.get(sessionsAtom);
-
-      if (params?.status) {
-        result = result.filter((session) => session.status === params.status);
-      }
-      if (params?.repoId) {
-        result = result.filter((session) => session.repoPath === params.repoId);
-      }
-      if (params?.limit) {
-        result = result.slice(0, params.limit);
-      }
-
-      return result.map(mapSessionToInfo);
-    } catch (error) {
-      throwServiceError("Failed to list sessions", error);
-    }
-  },
-
-  /**
-   * Get detailed status of a specific session.
-   */
-  async getStatus(params: SessionGetStatusParams): Promise<SessionStatusInfo> {
-    const { sessionId } = params;
-
-    try {
-      if (isAgentSession(sessionId)) {
-        const session = await agentGetSession(sessionId);
-        const pendingResult = await getPendingQuestions(sessionId);
-        const pendingQuestionsRaw = pendingResult.pendingQuestions ?? [];
-
-        const pendingQuestions = pendingQuestionsRaw.map((pq) => ({
-          questionId: pq.id,
-          questionText: pq.question,
-        }));
-
-        const sessionStatus = session?.status ?? "completed";
-        const hasQuestions = pendingQuestions.length > 0;
-
-        return {
-          sessionId,
-          status: hasQuestions ? "waiting_for_user" : sessionStatus,
-          waitingFor: hasQuestions ? "question_answer" : null,
-          pendingQuestions,
-          pendingQuestionsCount: pendingQuestions.length,
-        };
-      }
-
-      const session = await rpc.cli.status({ sessionId });
-
-      if (!session) {
-        throw new Error(`CLI session not found: ${sessionId}`);
-      }
-
-      return {
-        sessionId,
-        status: session.status,
-        waitingFor: null,
-        pendingQuestions: [],
-        pendingQuestionsCount: 0,
-      };
-    } catch (error) {
-      throwServiceError(`Failed to get status for ${sessionId}`, error);
     }
   },
 
@@ -350,29 +228,7 @@ export const SessionService = {
   },
 
   // ==========================================
-  // Questions
-  // ==========================================
-
-  /**
-   * Answer a pending question from the agent.
-   *
-   * Cursor IDE has no ORGII-side question surface, so the call is
-   * rejected up-front rather than reaching the Tauri command.
-   */
-  async answerQuestion(params: SessionAnswerQuestionParams): Promise<void> {
-    const { sessionId, questionId, answer } = params;
-    assertSupportsManagedOperation(sessionId, "answerQuestion");
-
-    try {
-      await respondQuestion(sessionId, questionId, [[answer]]);
-      logger.info(`Answered question ${questionId} for session: ${sessionId}`);
-    } catch (error) {
-      throwServiceError(`Failed to answer question for ${sessionId}`, error);
-    }
-  },
-
-  // ==========================================
-  // Resume / Cancel / Interrupt
+  // Resume / Interrupt
   // ==========================================
 
   /** Interrupt the currently running turn for any session type. */
@@ -433,55 +289,6 @@ export const SessionService = {
     }
   },
 
-  /**
-   * Resume a paused session.
-   *
-   * @deprecated Use `resumeCli` for CLI sessions. This method is retained
-   * for ActionSystem backward-compatibility.
-   */
-  async resume(params: SessionPauseResumeParams): Promise<void> {
-    const { sessionId } = params;
-    assertSupportsManagedOperation(sessionId, "resume");
-
-    try {
-      if (isAgentSession(sessionId)) {
-        throw new Error(
-          "Agent sessions cannot be resumed. Send a new message instead."
-        );
-      }
-
-      await invokeTauri("cli_agent_resume", { sessionId });
-      logger.info(`Resumed CLI session: ${sessionId}`);
-    } catch (error) {
-      throwServiceError(`Failed to resume ${sessionId}`, error);
-    }
-  },
-
-  /**
-   * Cancel/stop a session entirely.
-   *
-   * Routes through the adapter so each session type cleans up the
-   * way it knows how. Cursor IDE's adapter no-ops here (the user
-   * cancels Cursor turns inside the probe window).
-   */
-  async cancel(params: SessionCancelParams): Promise<void> {
-    const { sessionId } = params;
-    const adapter = getAdapterForSession(sessionId);
-    if (!adapter) {
-      throwServiceError(
-        `Failed to cancel ${sessionId}`,
-        new Error(`No adapter registered for session ${sessionId}`)
-      );
-    }
-
-    try {
-      await adapter.stopSession(sessionId, CANCEL_REASON.USER_STOP);
-      logger.info(`Cancelled ${adapter.category} session: ${sessionId}`);
-    } catch (error) {
-      throwServiceError(`Failed to cancel ${sessionId}`, error);
-    }
-  },
-
   // ==========================================
   // Navigation (GUI)
   // ==========================================
@@ -533,38 +340,6 @@ export const SessionService = {
       throwServiceError(`Failed to merge session ${sessionId}`, error);
     } finally {
       _mergingSessionIds.delete(sessionId);
-    }
-  },
-
-  /**
-   * Get diff between a session's worktree branch and its base branch.
-   * Only works for sessions with worktree isolation.
-   */
-  async worktreeDiff(sessionId: string): Promise<string> {
-    try {
-      return await invokeTauri<string>("cli_agent_worktree_diff", {
-        sessionId,
-      });
-    } catch (error) {
-      throwServiceError(`Failed to get worktree diff for ${sessionId}`, error);
-    }
-  },
-
-  /**
-   * Get a unified diff patch for all files modified during a session.
-   *
-   * Uses the per-session file-history snapshots (pre-edit bytes vs. current
-   * on-disk content). Works for every SDE Agent session regardless of whether
-   * worktree isolation was used. Returns an empty string when no file-history
-   * snapshots exist.
-   */
-  async sessionDiff(sessionId: string): Promise<string> {
-    try {
-      return await invokeTauri<string>("cache_get_session_diff", {
-        sessionId,
-      });
-    } catch (error) {
-      throwServiceError(`Failed to get session diff for ${sessionId}`, error);
     }
   },
 

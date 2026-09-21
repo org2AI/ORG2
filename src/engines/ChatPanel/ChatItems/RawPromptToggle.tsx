@@ -163,7 +163,6 @@ const RawPromptToggleComponent: React.FC<RawPromptToggleProps> = ({
     <>
       <Button
         variant="tertiary"
-        appearance="soft"
         size="mini"
         aria-pressed={isOpen}
         iconOnly
@@ -176,7 +175,6 @@ const RawPromptToggleComponent: React.FC<RawPromptToggleProps> = ({
           />
         }
         ref={buttonRef}
-        htmlType="button"
         data-testid="chat-message-raw-prompt-toggle"
         title={label}
         aria-label={label}

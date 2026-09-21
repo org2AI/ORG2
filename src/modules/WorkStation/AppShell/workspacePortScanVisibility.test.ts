@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { shouldEnableWorkspacePortScan } from "./workspacePortScanVisibility";
 
 const visibleWorkspace = {
-  isActive: true,
   chatPanelFocused: false,
   hasActiveTab: true,
   isLaunchpad: false,
@@ -30,7 +29,6 @@ describe("shouldEnableWorkspacePortScan", () => {
   });
 
   it.each([
-    { isActive: false },
     { chatPanelFocused: true },
     { hasActiveTab: false },
     { isLaunchpad: true },

@@ -10,7 +10,6 @@ import {
   type IconSvgElement,
   ListTodoIcon,
 } from "@src/icons";
-import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "@src/scaffold/NavigationSidebar/config";
 
 import type { SessionSidebarView } from "./types";
 
@@ -87,13 +86,11 @@ export const SessionSidebarViewSwitcher: React.FC<SessionSidebarViewSwitcherProp
                 key={item.key}
                 content={item.label}
                 position="bottom"
-                mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
+                kind="button"
                 showArrow={false}
               >
                 <Button
                   layout="custom"
-                  appearance="custom"
-                  htmlType="button"
                   className={`relative z-1 flex h-7 w-full items-center justify-center rounded-full transition-[background-color,color] duration-150 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none ${
                     selected
                       ? "cursor-default text-primary-6"

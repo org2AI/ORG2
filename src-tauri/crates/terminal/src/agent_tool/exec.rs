@@ -133,6 +133,7 @@ pub async fn exec_in_pty(
     write_to_session(session_id, &wrapped_command, sessions.clone()).await?;
 
     let mut collected_output = String::new();
+    let mut decoder = crate::stream_snapshot::Utf8Stream::default();
     let deadline = tokio::time::Instant::now() + timeout;
     let mut lagged_count: u32 = 0;
     let mut chunks_received: u32 = 0;
@@ -162,7 +163,7 @@ pub async fn exec_in_pty(
             Ok(Ok(chunk)) => {
                 chunks_received += 1;
                 last_output_time = tokio::time::Instant::now();
-                append_marker_capture(&mut collected_output, &String::from_utf8_lossy(&chunk));
+                append_marker_capture(&mut collected_output, &decoder.push(&chunk, false));
 
                 if let Some(exit_info) = extract_done_marker(&collected_output, &done_marker) {
                     phase = ExecPhase::Completed;
@@ -181,6 +182,7 @@ pub async fn exec_in_pty(
                 );
 
                 collected_output.clear();
+                decoder = crate::stream_snapshot::Utf8Stream::default();
                 collected_output.push_str("[...output truncated due to buffer overflow...]\n");
 
                 let reprobe = " printf '\\n%s__%d__\\n' \"$__M\" $?\n".to_string();

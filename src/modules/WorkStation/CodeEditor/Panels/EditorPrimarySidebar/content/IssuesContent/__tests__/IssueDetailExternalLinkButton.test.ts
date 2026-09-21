@@ -59,7 +59,7 @@ vi.mock("@src/components/MarkDown", () => ({
     createElement("div", { "data-testid": "markdown" }, textContent),
 }));
 
-vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
+vi.mock("@src/components/MarkdownTextareaEditor", () => ({
   default: forwardRef(function MockMarkdownTextareaEditor(
     {
       appearance,
@@ -82,7 +82,7 @@ vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/components/GitHubLinkedReferences/lazy", () => ({
+vi.mock("@src/features/GitHubWork/GitHubLinkedReferences/lazy", () => ({
   default: ({ references }: { references: readonly unknown[] }) =>
     createElement("div", {
       "data-testid": "mock-linked-references",
@@ -140,8 +140,8 @@ describe("IssueDetailExternalLinkButton", () => {
     expect(markup).toMatch(/<button\b[^>]*type="button"/);
     expect(markup).toContain('aria-label="Open in external browser"');
     expect(markup).toContain('data-icon="chrome"');
-    expect(markup).toContain("enabled:hover:bg-surface-hover");
-    expect(markup).toContain("enabled:active:bg-surface-selected");
+    expect(markup).toContain("btn-hover:bg-surface-hover");
+    expect(markup).toContain("btn-active:bg-surface-selected");
     expect(markup).not.toContain("<a ");
   });
 

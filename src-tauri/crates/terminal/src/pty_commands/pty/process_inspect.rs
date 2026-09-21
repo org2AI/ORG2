@@ -109,6 +109,11 @@ fn get_process_name_ps(pid: u32) -> Option<String> {
 }
 
 /// Get the current working directory of a process.
+///
+/// Only the macOS and Linux foreground-process probes call this. Windows has
+/// no caller, so the function is gated instead of shipping as dead code that
+/// trips a warnings-denied Windows build.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 pub(super) fn get_process_cwd(pid: u32) -> Result<Option<String>, String> {
     #[cfg(target_os = "macos")]
     {
@@ -135,11 +140,6 @@ pub(super) fn get_process_cwd(pid: u32) -> Result<Option<String>, String> {
             Ok(path) => Ok(Some(path.to_string_lossy().to_string())),
             Err(_) => Ok(None),
         }
-    }
-    #[cfg(target_os = "windows")]
-    {
-        let _ = pid;
-        Ok(None)
     }
 }
 

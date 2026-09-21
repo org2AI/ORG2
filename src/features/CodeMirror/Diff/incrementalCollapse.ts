@@ -7,8 +7,16 @@ import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import type { DecorationSet } from "@codemirror/view";
 
-// Match GitHub Desktop’s DefaultDiffExpansionStep.
-export const COLLAPSE_EXPAND_STEP = 20;
+// Lines revealed per expand click on a one-direction collapsed row.
+export const COLLAPSE_EXPAND_STEP = 50;
+/**
+ * Single-button collapsed row height in px. It is fixed (the row's text is a
+ * fixed 12px) so `estimatedHeight` can be exact: in split view MergeView's
+ * spacer updates rebuild height-map nodes from the estimate without the row's
+ * DOM changing, so CodeMirror never re-measures it and the gutter would keep
+ * a wrong estimate.
+ */
+export const COLLAPSED_COMPACT_ROW_PX = 32;
 type ExpandSide = "start" | "end" | "all";
 interface HiddenRange {
   from: number;
@@ -27,7 +35,7 @@ class RemainingLines extends WidgetType {
     return "collapsed-unchanged-code";
   }
   get estimatedHeight() {
-    return 27;
+    return COLLAPSED_COMPACT_ROW_PX;
   }
   eq(other: RemainingLines) {
     return this.lines === other.lines;

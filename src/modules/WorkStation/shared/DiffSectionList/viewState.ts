@@ -9,7 +9,15 @@
  * while their `signal` matches the row's current expansion signal — into a
  * signal-free snapshot, and seed a fresh mount's map from such a snapshot.
  */
-import type { StateSnapshot } from "react-virtuoso";
+/**
+ * Saved scroll position for a rebuilt mount. The previous virtualizer persisted
+ * its measured row sizes alongside the offset; the TanStack list re-measures
+ * rows as they enter the window, so only the offset has to survive — it is
+ * re-applied once enough rows are measured for the scroller to reach it.
+ */
+export interface DiffSectionListScrollSnapshot {
+  scrollTop: number;
+}
 
 export interface RememberedExpansion {
   signal: number;
@@ -19,8 +27,8 @@ export interface RememberedExpansion {
 export interface DiffSectionListViewState {
   /** Per-row expansion overrides, keyed by the row's render key. */
   expanded: Record<string, boolean>;
-  /** Virtuoso scroll offset + measured sizes; `null` when never scrolled. */
-  scroll: StateSnapshot | null;
+  /** Saved scroll offset; `null` when this list was never scrolled. */
+  scroll: DiffSectionListScrollSnapshot | null;
   /**
    * Focus nonce whose scroll-into-view already ran. A remount for the same
    * nonce restores the saved scroll instead of jumping back to the focused

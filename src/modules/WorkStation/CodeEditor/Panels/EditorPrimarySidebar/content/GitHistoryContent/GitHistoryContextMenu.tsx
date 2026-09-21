@@ -6,11 +6,11 @@ import { createLogger } from "@src/hooks/logger";
 import { copyText } from "@src/util/data/clipboard";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
 import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
-import { openExternalLink } from "@src/util/platform/ipcRenderer";
 import {
   type NativeMenuItemOptions,
   popupNativeMenu,
 } from "@src/util/platform/tauri/nativeMenuPopup";
+import { openLink } from "@src/util/ui/openLink";
 
 const log = createLogger("GitHistoryContextMenu");
 
@@ -300,23 +300,28 @@ export default function GitHistoryContextMenu(
               },
               {
                 text: t("common:actions.viewOnGitHub"),
-                action: async () => {
-                  const remotes = await getGitRemotes({
-                    repo_id: repoId,
-                    repo_path: repoPath,
-                  });
-                  const commitUrl = getGitHubCommitUrl(
-                    remotes?.remotes ?? [],
-                    commit.sha
-                  );
-                  if (!commitUrl) {
-                    showGitActionDialogSafely(
-                      "No GitHub remote found for this repo",
-                      "warning"
-                    );
-                    return;
-                  }
-                  await openExternalLink(commitUrl);
+                action: () => {
+                  getGitRemotes({ repo_id: repoId, repo_path: repoPath })
+                    .then((remotes) => {
+                      const commitUrl = getGitHubCommitUrl(
+                        remotes?.remotes ?? [],
+                        commit.sha
+                      );
+                      if (!commitUrl) {
+                        showGitActionDialogSafely(
+                          "No GitHub remote found for this repo",
+                          "warning"
+                        );
+                        return;
+                      }
+                      openLink(commitUrl, { navigate: true });
+                    })
+                    .catch((error: unknown) => {
+                      log.error(
+                        "[GitHistoryContextMenu] Failed to open commit on GitHub:",
+                        error
+                      );
+                    });
                 },
               },
             ];

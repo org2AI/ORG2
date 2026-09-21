@@ -54,9 +54,6 @@ export interface EditorPrimarySidebarProps {
   onFileSelectWithLine?: (path: string, line: number) => void;
   /** Callback when a directory is toggled */
   onDirectoryToggle: (path: string) => void;
-  /** Callback when search button is clicked */
-  onSearchClick: () => void;
-  /** Callback when refresh is clicked */
   /** Callback when collapse all is clicked */
   onCollapseAll?: () => void;
   /** Callback for filter search */
@@ -67,8 +64,6 @@ export interface EditorPrimarySidebarProps {
   onTabChange?: (tab: EditorPrimarySidebarViewMode) => void;
   /** Callback when a git file is selected in Source Control tab */
   onGitFileSelect?: (file: GitFile) => void;
-  /** Whether to show only icons in tabs (VSCode style, default: true) */
-  iconOnly?: boolean;
   /** Callback when a symbol is clicked in outline (navigate to line) */
   onSymbolClick?: (line: number) => void;
   /** Callback when a timeline commit is clicked (opens diff view) */

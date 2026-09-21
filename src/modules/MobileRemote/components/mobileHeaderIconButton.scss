@@ -1,0 +1,16 @@
+@use "../mobileUiTokens" as mobile;
+
+// Defined on the button so body-portaled modals do not depend on shell inheritance.
+.mobile-header-icon-button {
+  --mobile-header-icon-button-size: #{mobile.$touch-target};
+
+  flex-shrink: 0;
+  background: var(--color-fill-2);
+  color: var(--color-text-2);
+  touch-action: manipulation;
+
+  &:hover,
+  &:active {
+    background: var(--color-fill-3);
+  }
+}

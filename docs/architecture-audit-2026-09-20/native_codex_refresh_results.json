@@ -1,0 +1,765 @@
+{
+  "cli": {
+    "version": "0.154.0",
+    "cases": [
+      {
+        "response": {
+          "id": 2,
+          "result": {
+            "account": {
+              "type": "chatgpt",
+              "email": "A@fixture.invalid",
+              "planType": "plus"
+            },
+            "requiresOpenaiAuth": true
+          }
+        },
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "case": "single",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85579.525680083
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "calls_before_release": 2,
+        "responses": [
+          {
+            "id": 2,
+            "result": {
+              "account": {
+                "type": "chatgpt",
+                "email": "A@fixture.invalid",
+                "planType": "plus"
+              },
+              "requiresOpenaiAuth": true
+            }
+          },
+          {
+            "id": 2,
+            "result": {
+              "account": null,
+              "requiresOpenaiAuth": true
+            }
+          }
+        ],
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "case": "concurrent",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85579.616544375
+          },
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": true,
+            "time": 85579.627418
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "responses": [
+          {
+            "id": 2,
+            "result": {
+              "account": {
+                "type": "chatgpt",
+                "email": "A@fixture.invalid",
+                "planType": "plus"
+              },
+              "requiresOpenaiAuth": true
+            }
+          },
+          {
+            "id": 2,
+            "result": {
+              "account": {
+                "type": "chatgpt",
+                "email": "A@fixture.invalid",
+                "planType": "plus"
+              },
+              "requiresOpenaiAuth": true
+            }
+          }
+        ],
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "case": "stale",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85580.7318675
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "response": {
+          "id": 2,
+          "result": {
+            "account": {
+              "type": "chatgpt",
+              "email": "A@fixture.invalid",
+              "planType": "plus"
+            },
+            "requiresOpenaiAuth": true
+          }
+        },
+        "final": {
+          "account_id": "B",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "case": "switch",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85580.784190375
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "calls_before_release": 1,
+        "responses": [
+          {
+            "id": 2,
+            "result": {
+              "account": {
+                "type": "chatgpt",
+                "email": "A@fixture.invalid",
+                "planType": "plus"
+              },
+              "requiresOpenaiAuth": true
+            }
+          },
+          {
+            "id": 3,
+            "result": {
+              "account": {
+                "type": "chatgpt",
+                "email": "A@fixture.invalid",
+                "planType": "plus"
+              },
+              "requiresOpenaiAuth": true
+            }
+          }
+        ],
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r2"
+        },
+        "case": "same-process",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85580.844129416
+          },
+          {
+            "refresh_token": "fixture-A-r1",
+            "duplicate": false,
+            "time": 85581.868528166
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "response": {
+          "id": 2,
+          "result": {
+            "account": {
+              "type": "chatgpt",
+              "email": "A@fixture.invalid",
+              "planType": "plus"
+            },
+            "requiresOpenaiAuth": true
+          }
+        },
+        "final": null,
+        "case": "logout",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85581.9362835
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "calls_before_release": 2,
+        "responses": [
+          {
+            "id": 2,
+            "result": {
+              "account": {
+                "type": "chatgpt",
+                "email": "A@fixture.invalid",
+                "planType": "plus"
+              },
+              "requiresOpenaiAuth": true
+            }
+          },
+          {
+            "id": 2,
+            "result": {
+              "account": null,
+              "requiresOpenaiAuth": true
+            }
+          }
+        ],
+        "final_a": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "final_b": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r0"
+        },
+        "case": "separate",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85582.04247925
+          },
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": true,
+            "time": 85582.05340675
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "process_exited": true,
+        "recovery_response": {
+          "id": 2,
+          "result": {
+            "account": null,
+            "requiresOpenaiAuth": true
+          }
+        },
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r0"
+        },
+        "case": "cancel",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85583.129034625
+          },
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": true,
+            "time": 85583.279012458
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      }
+    ]
+  },
+  "desktop": {
+    "version": "0.155.0-alpha.9.2",
+    "cases": [
+      {
+        "response": {
+          "error": {
+            "code": -32603,
+            "message": "workspace routing discovery failed"
+          },
+          "id": 2
+        },
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "case": "single",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85575.238715875
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "calls_before_release": 2,
+        "responses": [
+          {
+            "error": {
+              "code": -32603,
+              "message": "workspace routing discovery failed"
+            },
+            "id": 2
+          },
+          {
+            "id": 2,
+            "result": {
+              "account": null,
+              "requiresOpenaiAuth": true,
+              "workspaceRouting": null
+            }
+          }
+        ],
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "case": "concurrent",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85575.37183925
+          },
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": true,
+            "time": 85575.382707666
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "responses": [
+          {
+            "error": {
+              "code": -32603,
+              "message": "workspace routing discovery failed"
+            },
+            "id": 2
+          },
+          {
+            "error": {
+              "code": -32603,
+              "message": "workspace routing discovery failed"
+            },
+            "id": 2
+          }
+        ],
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "case": "stale",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85576.548720541
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "response": {
+          "error": {
+            "code": -32603,
+            "message": "workspace routing discovery failed"
+          },
+          "id": 2
+        },
+        "final": {
+          "account_id": "B",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "case": "switch",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85576.662132541
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "calls_before_release": 1,
+        "responses": [
+          {
+            "error": {
+              "code": -32603,
+              "message": "workspace routing discovery failed"
+            },
+            "id": 2
+          },
+          {
+            "error": {
+              "code": -32603,
+              "message": "workspace routing discovery failed"
+            },
+            "id": 3
+          }
+        ],
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r2"
+        },
+        "case": "same-process",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85576.783368333
+          },
+          {
+            "refresh_token": "fixture-A-r1",
+            "duplicate": false,
+            "time": 85577.800930291
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "response": {
+          "error": {
+            "code": -32603,
+            "message": "workspace routing discovery failed"
+          },
+          "id": 2
+        },
+        "final": null,
+        "case": "logout",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85577.979331
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "calls_before_release": 2,
+        "responses": [
+          {
+            "error": {
+              "code": -32603,
+              "message": "workspace routing discovery failed"
+            },
+            "id": 2
+          },
+          {
+            "id": 2,
+            "result": {
+              "account": null,
+              "requiresOpenaiAuth": true,
+              "workspaceRouting": null
+            }
+          }
+        ],
+        "final_a": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r1"
+        },
+        "final_b": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r0"
+        },
+        "case": "separate",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85578.10801225
+          },
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": true,
+            "time": 85578.118972125
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      },
+      {
+        "process_exited": true,
+        "recovery_response": {
+          "id": 2,
+          "result": {
+            "account": null,
+            "requiresOpenaiAuth": true,
+            "workspaceRouting": null
+          }
+        },
+        "final": {
+          "account_id": "A",
+          "token_account_id": "A",
+          "refresh_token": "fixture-A-r0"
+        },
+        "case": "cancel",
+        "calls": [
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": false,
+            "time": 85579.253840375
+          },
+          {
+            "refresh_token": "fixture-A-r0",
+            "duplicate": true,
+            "time": 85581.42064325
+          }
+        ],
+        "blocked_network": [
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443",
+          "chatgpt.com:443"
+        ]
+      }
+    ]
+  }
+}

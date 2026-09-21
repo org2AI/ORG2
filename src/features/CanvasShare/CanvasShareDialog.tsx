@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
+import { openLink } from "@src/util/ui/openLink";
 
 import type {
   CanvasShareDialogError,
@@ -140,8 +141,6 @@ const CanvasShareDialog: React.FC<CanvasShareDialogProps> = ({
                 <div className="flex shrink-0 items-center gap-2">
                   {state.linkKind === "self-contained" ? (
                     <Button
-                      htmlType="button"
-                      variant="secondary"
                       loading={state.retryingShortLink}
                       disabled={state.retryingShortLink}
                       onClick={onRetryShortLink}
@@ -154,16 +153,10 @@ const CanvasShareDialog: React.FC<CanvasShareDialogProps> = ({
                           )}
                     </Button>
                   ) : null}
-                  <Button
-                    htmlType="button"
-                    variant="secondary"
-                    href={state.link}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <Button onClick={() => openLink(state.link)}>
                     {t("canvasApp.shareDialogOpen", "Open")}
                   </Button>
-                  <Button htmlType="button" variant="primary" onClick={onCopy}>
+                  <Button variant="primary" onClick={onCopy}>
                     {state.copied
                       ? t("canvasApp.shareDialogCopied", "Copied")
                       : t("canvasApp.shareDialogCopy", "Copy link")}
@@ -179,9 +172,7 @@ const CanvasShareDialog: React.FC<CanvasShareDialogProps> = ({
               <span className="text-xs text-danger-6">
                 {errorMessage(state.error, t)}
               </span>
-              <Button htmlType="button" variant="secondary" onClick={onRetry}>
-                {t("canvasApp.retry", "Retry")}
-              </Button>
+              <Button onClick={onRetry}>{t("canvasApp.retry", "Retry")}</Button>
             </div>
           )}
         </div>

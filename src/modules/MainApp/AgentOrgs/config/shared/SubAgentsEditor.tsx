@@ -48,6 +48,12 @@ import {
 } from "@src/components/Dropdown/tokens";
 import NumberInput from "@src/components/NumberInput";
 import Switch from "@src/components/Switch";
+import {
+  SECTION_CONTROL_STYLE,
+  SECTION_GAP_CLASSES,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { Add01Icon, Cancel01Icon, HugeiconsIcon } from "@src/icons";
 import {
@@ -63,12 +69,6 @@ import {
   dedupeAgentsById,
   isSubAgentCandidate,
 } from "@src/modules/MainApp/AgentOrgs/utils/subAgentVisibility";
-import {
-  SECTION_CONTROL_STYLE,
-  SECTION_GAP_CLASSES,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 interface AddOption {
   value: string;
@@ -120,7 +120,6 @@ const AddSubAgentButton: React.FC<AddSubAgentButtonProps> = ({
     <div>
       <Button
         ref={triggerRef}
-        size="default"
         icon={
           <HugeiconsIcon
             icon={Add01Icon}
@@ -165,9 +164,7 @@ const AddSubAgentButton: React.FC<AddSubAgentButtonProps> = ({
                 filtered.map((opt) => (
                   <Button
                     layout="custom"
-                    appearance="custom"
                     key={opt.value}
-                    htmlType="button"
                     data-testid={`agent-orgs-subagents-add-option-${opt.value}`}
                     className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
                     onClick={() => handleSelect(opt.value)}
@@ -377,8 +374,8 @@ const SubAgentsEditor: React.FC<SubAgentsEditorProps> = ({
                   />
                 }
                 iconOnly
-                appearance="ghost"
-                variant="danger"
+                variant="tertiary"
+                tone="danger"
                 size="small"
                 data-testid={`agent-orgs-subagents-remove-${ref.agentId}`}
                 onClick={() => handleRemove(ref.agentId)}

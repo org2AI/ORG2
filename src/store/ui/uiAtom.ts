@@ -393,10 +393,6 @@ windowFullscreenAtom.debugLabel = "windowFullscreenAtom";
 export const spotlightOpenAtom = atom<boolean>(false);
 spotlightOpenAtom.debugLabel = "spotlightOpenAtom";
 
-/** Spotlight initial action - used to open spotlight with a specific action prefilled */
-export const spotlightInitialActionAtom = atom<string | null>(null);
-spotlightInitialActionAtom.debugLabel = "spotlightInitialActionAtom";
-
 /**
  * Spotlight initial query - used to open Spotlight with a prefilled query
  * and optional URL-like second-layer target.

@@ -49,6 +49,7 @@ describe("dismissed command triggers", () => {
         getOnSubmit: () => undefined,
         getText: () => host.textContent || "",
         insertNewline: vi.fn(),
+        markHistoryBoundary: vi.fn(),
         undo: () => false,
         redo: () => false,
         requireCmdEnter: true,

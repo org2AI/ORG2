@@ -1,6 +1,6 @@
 import { createStore } from "jotai/vanilla";
 
-import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import type { QueuedConversationDispatch } from "@src/contracts/conversation";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 
 import {

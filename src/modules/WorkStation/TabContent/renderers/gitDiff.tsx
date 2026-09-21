@@ -8,53 +8,42 @@
  * `case "git-diff"` (which keys the map by `tab.id` for timeline diffs and by
  * `tab.data.filePath` otherwise).
  */
-import React, { Suspense, memo, useMemo } from "react";
+import { useMemo } from "react";
 
-import { Placeholder } from "@src/components/Placeholder";
 import { useEditorHostContext } from "@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/context/editorHostContext";
 
-import type { UnifiedTabContentProps } from "../types";
+import { createLazyTabRenderer } from "./createLazyTabRenderer";
 
-const GitDiffContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/GitDiffContent")
-);
+const GitDiffTabRenderer = createLazyTabRenderer({
+  displayName: "GitDiffTabRenderer",
+  load: () =>
+    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/GitDiffContent"),
+  useProps: ({ tab }) => {
+    const {
+      gitFilesByPath,
+      gitDiffLoading,
+      repoPath,
+      forceRefresh,
+      onFileSelect,
+      onGitDiffUnsavedChange,
+    } = useEditorHostContext();
 
-const LazyFallback = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
+    const gitFile = useMemo(() => {
+      const gitFileKey = tab.data.isTimeline
+        ? tab.id
+        : (tab.data.filePath as string);
+      return gitFilesByPath.get(gitFileKey) || null;
+    }, [tab, gitFilesByPath]);
 
-const GitDiffTabRenderer: React.FC<UnifiedTabContentProps> = memo(({ tab }) => {
-  const {
-    gitFilesByPath,
-    gitDiffLoading,
-    repoPath,
-    forceRefresh,
-    onFileSelect,
-    onGitDiffUnsavedChange,
-  } = useEditorHostContext();
-
-  const gitFile = useMemo(() => {
-    const gitFileKey = tab.data.isTimeline
-      ? tab.id
-      : (tab.data.filePath as string);
-    return gitFilesByPath.get(gitFileKey) || null;
-  }, [tab, gitFilesByPath]);
-
-  return (
-    <Suspense fallback={<LazyFallback />}>
-      <GitDiffContent
-        gitFile={gitFile}
-        loading={gitDiffLoading}
-        repoPath={repoPath}
-        onReload={forceRefresh}
-        onFileSelect={onFileSelect}
-        onUnsavedChange={onGitDiffUnsavedChange}
-      />
-    </Suspense>
-  );
+    return {
+      gitFile,
+      loading: gitDiffLoading,
+      repoPath,
+      onReload: forceRefresh,
+      onFileSelect,
+      onUnsavedChange: onGitDiffUnsavedChange,
+    };
+  },
 });
-
-GitDiffTabRenderer.displayName = "GitDiffTabRenderer";
 
 export default GitDiffTabRenderer;

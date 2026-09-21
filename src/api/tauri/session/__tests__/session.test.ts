@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { localConversationTargetFromSession } from "@src/engines/ChatPanel/hooks/conversationTargetBinding/conversationSourceResolution";
 import { isPrimarySessionListSession } from "@src/util/session/sessionVisibility";
 
 import {
@@ -280,4 +281,38 @@ describe("type contracts", () => {
       expect(["own_key", "hosted_key"]).toContain(record.keySource);
     });
   });
+});
+
+it("preserves the aggregate dynamic source through frontend and ChatPanel conversion", () => {
+  for (const cliAgentType of ["codex", "claude_code"] as const) {
+    const row = toFrontendSession(
+      makeAggregateRecord({
+        cliAgentType,
+        credentialSource: "market:workspace",
+        model: "model",
+        repoPath: "/repo",
+      })
+    );
+    expect(row.credentialSource).toBe("market:workspace");
+    expect(
+      localConversationTargetFromSession({
+        ...row,
+        agentDefinitionId: "tool-scope",
+      })
+    ).toMatchObject({ cliAgentType, credentialSource: "market:workspace" });
+
+    expect(row.accountId).toBeUndefined();
+    expect(localConversationTargetFromSession(row)).toMatchObject({
+      cliAgentType,
+      credentialSource: "market:workspace",
+      model: "model",
+      workspaceRepoPath: "/repo",
+    });
+    expect(
+      localConversationTargetFromSession({ ...row, accountId: "other" })
+    ).toBeNull();
+    expect(
+      localConversationTargetFromSession({ ...row, credentialSource: "" })
+    ).toBeNull();
+  }
 });

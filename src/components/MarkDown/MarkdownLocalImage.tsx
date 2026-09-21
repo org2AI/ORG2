@@ -15,11 +15,7 @@ import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import Button from "@src/components/Button";
 import FileTypeIcon from "@src/components/FileTypeIcon";
-import ImagePreviewOverlay from "@src/components/ImagePreviewOverlay";
-import {
-  useIsSessionFileShared,
-  useOpenSessionSharedFile,
-} from "@src/features/Org2Cloud/SharedSessionFilesContext";
+import { useImageActions } from "@src/components/ImageActions/useImageActions";
 import { HugeiconsIcon, Image01Icon, ImageNotFound01Icon } from "@src/icons";
 import {
   releaseImageUrl,
@@ -29,6 +25,11 @@ import { getImageMimeType } from "@src/util/file/previewTypes";
 import { openFileInEditor } from "@src/util/ui/openFileInEditor";
 import { openFileInWorkStation } from "@src/util/ui/openFileInWorkStation";
 
+import {
+  markdownExtensions,
+  useMarkdownLocalFileIntercepted,
+  useMarkdownLocalFileInterceptor,
+} from "./extensions";
 import { parseMarkdownFileRef } from "./markdownFileRef";
 import { classifyMarkdownImageSrc } from "./markdownImageSrc";
 
@@ -108,8 +109,8 @@ function createLocalImageState(sourceKey: string | null): LocalImageState {
 
 const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
   ({ src, alt, workspaceRootPath }) => {
-    const openSharedFile = useOpenSessionSharedFile();
-    const shared = useIsSessionFileShared();
+    const openSharedFile = useMarkdownLocalFileInterceptor();
+    const shared = useMarkdownLocalFileIntercepted();
     const source = useMemo(
       () => classifyMarkdownImageSrc(src, workspaceRootPath),
       [src, workspaceRootPath]
@@ -166,10 +167,27 @@ const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
       };
     }, [localIsImage, source, sourceKey, shared]);
 
-    const handleImageClick = useCallback((event: React.MouseEvent) => {
-      containClick(event);
-      setImageState((current) => ({ ...current, showOverlay: true }));
-    }, []);
+    const actionLocalPath =
+      source.kind === "local" && localIsImage
+        ? `${source.homeRelative ? "~/" : ""}${source.path}`
+        : undefined;
+    const imageActions = useImageActions({
+      src: source.kind === "remote" ? source.src : (asyncSrc ?? ""),
+      localPath: actionLocalPath,
+      fileName:
+        source.kind === "local" ? source.path.split(/[\\/]/).pop() : undefined,
+    });
+    const ImageOverlay = markdownExtensions().ImageOverlay;
+    const handleImageClick = useCallback(
+      (event: React.MouseEvent) => {
+        containClick(event);
+        // With no overlay registered the click is still swallowed, so a
+        // wrapping markdown link cannot navigate the webview.
+        if (!ImageOverlay) return;
+        setImageState((current) => ({ ...current, showOverlay: true }));
+      },
+      [ImageOverlay]
+    );
 
     const handleFileChipClick = useCallback(
       (event: React.MouseEvent) => {
@@ -203,7 +221,25 @@ const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
     }
 
     if (source.kind === "remote") {
-      return <img src={source.src} alt={alt ?? ""} loading="lazy" />;
+      return (
+        <>
+          {/* Custom layout preserves the markdown image's intrinsic geometry. */}
+          <Button
+            layout="custom"
+            className="max-w-full"
+            aria-label={alt || source.src}
+            onClick={handleImageClick}
+            aria-busy={imageActions.busy}
+            onContextMenu={imageActions.onContextMenu}
+            onKeyDown={imageActions.onKeyDown}
+          >
+            <img src={source.src} alt={alt ?? ""} loading="lazy" />
+          </Button>
+          {showOverlay && ImageOverlay && (
+            <ImageOverlay dataUrl={source.src} onClose={handleClose} />
+          )}
+        </>
+      );
     }
 
     if (!localIsImage || failed) {
@@ -211,7 +247,6 @@ const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
       return (
         <Button
           layout="custom"
-          appearance="custom"
           className="inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md border border-border-2 bg-fill-1 px-2 py-1 align-middle text-xs text-text-2"
           title={source.path}
           tabIndex={0}
@@ -254,16 +289,27 @@ const MarkdownLocalImage: React.FC<MarkdownLocalImageProps> = memo(
 
     return (
       <>
-        <img
-          src={asyncSrc}
-          alt={alt ?? ""}
-          title={source.path}
-          className="cursor-zoom-in"
+        {/* Custom layout preserves the markdown image's intrinsic geometry. */}
+        <Button
+          layout="custom"
+          className="max-w-full"
+          aria-label={imageLabel(alt, source.path)}
           onClick={handleImageClick}
-          draggable={false}
-        />
-        {showOverlay && (
-          <ImagePreviewOverlay
+          aria-busy={imageActions.busy}
+          onContextMenu={imageActions.onContextMenu}
+          onKeyDown={imageActions.onKeyDown}
+        >
+          <img
+            src={asyncSrc}
+            alt={alt ?? ""}
+            title={source.path}
+            className="cursor-zoom-in"
+            draggable={false}
+          />
+        </Button>
+        {showOverlay && ImageOverlay && (
+          <ImageOverlay
+            originalRef={actionLocalPath}
             dataUrl={asyncSrc}
             fileName={imageLabel(alt, source.path)}
             onClose={handleClose}

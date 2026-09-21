@@ -30,8 +30,6 @@ const OverviewSectionToggle: React.FC<OverviewSectionToggleProps> = memo(
   }) => (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className="flex w-full items-center gap-1 px-1 text-left text-[11px] font-medium text-text-2 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
       aria-expanded={expanded}
       onClick={onToggle}

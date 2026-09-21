@@ -165,7 +165,12 @@ pub fn resolve_pr_base_with<R>(
 where
     R: FnMut(&[&str]) -> Result<GitInvocation, String>,
 {
-    let head = non_empty(head_branch);
+    crate::util::ensure_git_operand(remote, "remote")?;
+    // The head branch name is PR metadata, not something the user typed. One
+    // that git would parse as an option is never fetched by name; the pull ref
+    // below resolves the same commit from the PR number alone.
+    let head = non_empty(head_branch)
+        .filter(|name| crate::util::ensure_git_operand(name, "head branch").is_ok());
 
     // Attempt 1 — same-repo PR: fetch the head branch by name.
     if let Some(head_ref) = head {

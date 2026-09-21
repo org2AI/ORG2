@@ -21,7 +21,7 @@ import {
 } from "@src/modules/ProjectManager/WorkItems/workItemsViewModel";
 import { useProjectManagerWorkItemsTabBarRegistration } from "@src/modules/ProjectManager/hooks/useProjectManagerWorkItemsTabBarRegistration";
 import { WORKSPACE_SOURCE } from "@src/modules/ProjectManager/workspaceAggregate";
-import InboxListDetailLayout from "@src/modules/shared/layouts/InboxListDetailLayout";
+import InboxListDetailLayout from "@src/scaffold/layouts/InboxListDetailLayout";
 
 import {
   ProjectWorkItemsDetailPane,

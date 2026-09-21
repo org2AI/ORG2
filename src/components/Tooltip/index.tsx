@@ -49,6 +49,7 @@ import {
   getBestTooltipCandidate,
   getTooltipPositionSide,
 } from "./tooltipPlacement";
+import { useButtonTooltipTiming } from "./useButtonTooltipTiming";
 
 export type { TooltipPosition } from "./tooltipPlacement";
 
@@ -96,7 +97,16 @@ export interface TooltipProps {
   trigger?: "hover" | "click" | "focus";
 
   /**
-   * Show delay (ms)
+   * `"button"` marks the label/shortcut hint of a clickable control. Its show
+   * delay and visibility follow the global Appearance → Tooltips setting, and
+   * `mouseEnterDelay` is ignored. `"info"` (info icons, status badges, data
+   * previews) keeps the per-site `mouseEnterDelay`.
+   * @default 'info'
+   */
+  kind?: "button" | "info";
+
+  /**
+   * Show delay (ms). Ignored when `kind="button"`.
    * @default 100
    */
   mouseEnterDelay?: number;
@@ -196,9 +206,10 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
       content,
       position = "top",
       trigger = "hover",
-      mouseEnterDelay = 100,
+      kind = "info",
+      mouseEnterDelay: infoMouseEnterDelay = 100,
       mouseLeaveDelay = 100,
-      disabled = false,
+      disabled: disabledProp = false,
       open,
       defaultOpen = false,
       onOpenChange,
@@ -216,6 +227,12 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
     },
     _ref
   ) => {
+    const buttonTiming = useButtonTooltipTiming();
+    const isButtonTooltip = kind === "button";
+    const mouseEnterDelay = isButtonTooltip
+      ? buttonTiming.delayMs
+      : infoMouseEnterDelay;
+    const disabled = disabledProp || (isButtonTooltip && !buttonTiming.enabled);
     const [internalOpen, setInternalOpen] = useState(defaultOpen);
     const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
     const [arrowOffset, setArrowOffset] = useState({ left: 0, top: 0 });

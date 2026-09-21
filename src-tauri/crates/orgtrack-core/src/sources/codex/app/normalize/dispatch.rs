@@ -40,6 +40,18 @@ pub(crate) fn normalize_codex_tool_calls(raw_name: &str, args: Value) -> Vec<(St
         "web__run" | "web_run" | "web_search" => {
             vec![("web_search".to_string(), normalize_web_search_args(args))]
         }
+        // Clock sleeps are standalone waits, not shell continuations. Keep
+        // native arguments (including source identity) and expose the wait
+        // duration expected by the existing await-output presentation.
+        "sleep" | "clock_sleep" | "clock__sleep"
+            if args.get("duration_ms").and_then(Value::as_u64).is_some() =>
+        {
+            let mut args = args;
+            let duration = args["duration_ms"].clone();
+            args["command"] = Value::String("wait_for".to_string());
+            args["block_until_ms"] = duration;
+            vec![(imported_history::FUNCTION_AWAIT_OUTPUT.to_string(), args)]
+        }
         "write_stdin" => vec![(
             imported_history::FUNCTION_AWAIT_OUTPUT.to_string(),
             normalize_write_stdin_args(args),

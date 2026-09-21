@@ -11,6 +11,7 @@ import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import Select from "@src/components/Select";
 import Textarea from "@src/components/Textarea";
+import { ActivityHeaderActionButton } from "@src/features/GitHubWork/ActivityTimeline";
 import { useProjectCachedResource } from "@src/hooks/project";
 import {
   Add01Icon,
@@ -22,7 +23,6 @@ import {
   PlayIcon,
   Settings02Icon,
 } from "@src/icons";
-import { ActivityHeaderActionButton } from "@src/modules/shared/components/ActivityTimeline";
 import Modal from "@src/scaffold/ModalSystem";
 
 import { WorkItemThreadSection } from "../WorkItemThread";
@@ -257,8 +257,6 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
           {actions.map((action) => (
             <Button
               key={action.id}
-              variant="secondary"
-              appearance="outline"
               size="small"
               icon={
                 <HugeiconsIcon icon={PlayIcon} data-icon="play" size={12} />
@@ -363,7 +361,6 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
                 </span>
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
                   iconOnly
                   icon={
@@ -381,7 +378,6 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
                 />
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
                   iconOnly
                   icon={

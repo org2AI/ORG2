@@ -42,6 +42,7 @@ export function useSessionValidation(options: UseSessionValidationOptions) {
     const errors: string[] = [];
     const usingHostedKey = isHostedKey(advancedConfig.keySource);
     const usingCodeAccount = !!advancedConfig.selectedAccountId;
+    const usingCredentialSource = !!advancedConfig.credentialSource;
     const isCursorIde = dispatchCategory === "cursor_ide";
     const isOSMode =
       dispatchCategory === "rust_agent" &&
@@ -100,6 +101,7 @@ export function useSessionValidation(options: UseSessionValidationOptions) {
     if (
       !usingHostedKey &&
       !usingCodeAccount &&
+      !usingCredentialSource &&
       !advancedConfig.cliAgentType &&
       !advancedConfig.provider
     ) {
@@ -107,7 +109,12 @@ export function useSessionValidation(options: UseSessionValidationOptions) {
     }
 
     // Provider/model validation (own_key and rust_agent only)
-    if (!usingHostedKey && advancedConfig.provider && !usingCodeAccount) {
+    if (
+      !usingHostedKey &&
+      !usingCredentialSource &&
+      advancedConfig.provider &&
+      !usingCodeAccount
+    ) {
       const provider = providers.find(
         (providerItem) => providerItem.provider_name === advancedConfig.provider
       );
@@ -133,7 +140,12 @@ export function useSessionValidation(options: UseSessionValidationOptions) {
     }
 
     // Agent availability (own_key CLI sessions only)
-    if (!usingHostedKey && advancedConfig.agent && !usingCodeAccount) {
+    if (
+      !usingHostedKey &&
+      !usingCredentialSource &&
+      advancedConfig.agent &&
+      !usingCodeAccount
+    ) {
       const isApiProvider = isApiKeyProvider(advancedConfig.agent);
       if (!isApiProvider) {
         const agent = agents.find(

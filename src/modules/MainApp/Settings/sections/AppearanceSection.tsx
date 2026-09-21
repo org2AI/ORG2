@@ -3,21 +3,41 @@ import {
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@/src/modules/shared/layouts/SectionLayout";
+} from "@/src/components/layout/Section";
 import { useAtom } from "jotai";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import SegmentedTextPill from "@src/components/SegmentedTextPill";
 import Select from "@src/components/Select";
 import Slider from "@src/components/Slider";
 import Switch from "@src/components/Switch";
 import type { ApplicationUiFontId } from "@src/config/appearance/applicationUiFonts";
+import {
+  APPEARANCE_MODE,
+  type AppearanceMode,
+} from "@src/config/appearance/globalThemes";
 import type { AccentPreset } from "@src/config/appearance/skins/accent";
+import {
+  BUTTON_TOOLTIP_DELAY_OPTIONS_MS,
+  type ButtonTooltipDelayMs,
+} from "@src/config/tooltip";
 import {
   HOST_DESKTOP,
   resolveHostDesktop,
 } from "@src/config/windowChromeRadius";
 import { useSetting } from "@src/hooks/settings/useSettings";
+import { HugeiconsIcon, MonitorIcon, MoonIcon, Sun01Icon } from "@src/icons";
+import {
+  type IconStyle,
+  IconStyleFigure,
+} from "@src/modules/MainApp/Settings/previews/IconStyleFigure";
+import {
+  LabelWithPreview,
+  PreviewGrid,
+  previewItems,
+  withOptionPreviews,
+} from "@src/modules/MainApp/Settings/previews/primitives";
 import { BackgroundSettings } from "@src/modules/MainApp/Settings/subpages/BackgroundPage/BackgroundSettings";
 import {
   FeaturesSection as EditorFeaturesSection,
@@ -31,10 +51,16 @@ import {
   backgroundConfigPersistAtom,
   sanitizeSidebarOpacity,
 } from "@src/store/ui/backgroundConfigAtom";
+import { sessionBranchTagsVisibleAtom } from "@src/store/ui/sidebarAtom";
 import type { SpotlightPlacement } from "@src/store/ui/uiAtom";
 
 import { AppIconPicker } from "./AppIconPicker";
+import { AppearanceLayoutSection } from "./AppearanceLayoutSection";
 import { ChatPanelAppearanceTab } from "./ChatPanelAppearanceTab";
+import {
+  HIGH_REFRESH_RATE_SUPPORTED,
+  HighRefreshRateRow,
+} from "./HighRefreshRateRow";
 import { UI_SCALE_OPTIONS, useAppearanceState } from "./useAppearanceState";
 
 const getApproxFontSize = (scale: number): string => {
@@ -52,6 +78,8 @@ export const APPEARANCE_TAB_KEYS = {
 const SPOTLIGHT_PLACEMENT_OPTIONS: SpotlightPlacement[] = ["top", "center"];
 const IS_MACOS_HOST = resolveHostDesktop() === HOST_DESKTOP.MACOS;
 
+const renderIconStyle = (style: IconStyle) => <IconStyleFigure style={style} />;
+
 /**
  * Only meaningful while the sidebar is translucent — at an opaque surface the
  * slider would silently do nothing, so it is hidden rather than disabled.
@@ -61,10 +89,7 @@ const SidebarOpacityRow: React.FC = () => {
   const [config, setConfig] = useAtom(backgroundConfigPersistAtom);
 
   return (
-    <SectionRow
-      settingsSearchKeys="background.sidebarOpacity"
-      label={t("background.sidebarOpacity")}
-    >
+    <SectionRow label={t("background.sidebarOpacity")}>
       <div className="min-w-0" style={SECTION_CONTROL_STYLE}>
         <Slider
           min={MIN_SIDEBAR_OPACITY}
@@ -83,6 +108,55 @@ const SidebarOpacityRow: React.FC = () => {
   );
 };
 
+/** Global show/hide + hover delay for button (label + shortcut) tooltips. */
+const ButtonTooltipsSection: React.FC = () => {
+  const { t } = useTranslation("settings");
+  const [enabled, setEnabled] = useSetting("general.buttonTooltipsEnabled");
+  const [delayMs, setDelayMs] = useSetting("general.buttonTooltipDelayMs");
+
+  return (
+    <SectionContainer title={t("general.tooltips")}>
+      <SectionRow
+        settingsSearchKeys="general.buttonTooltipsEnabled"
+        label={t("general.buttonTooltipsEnabled")}
+        description={t("general.buttonTooltipsEnabledDesc")}
+      >
+        <Switch
+          checked={enabled}
+          onCheckedChange={setEnabled}
+          ariaLabel={t("general.buttonTooltipsEnabled")}
+          dataTestId="button-tooltips-enabled-switch"
+        />
+      </SectionRow>
+      {enabled && (
+        <SectionRow
+          settingsSearchKeys="general.buttonTooltipDelayMs"
+          label={t("general.buttonTooltipDelayMs")}
+        >
+          <SegmentedTextPill<`${ButtonTooltipDelayMs}`>
+            ariaLabel={t("general.buttonTooltipDelayMs")}
+            value={`${delayMs}`}
+            onChange={(value) =>
+              setDelayMs(Number(value) as ButtonTooltipDelayMs)
+            }
+            options={BUTTON_TOOLTIP_DELAY_OPTIONS_MS.map((ms) => ({
+              value: `${ms}` as const,
+              label:
+                ms === 0
+                  ? t("general.buttonTooltipDelayImmediate")
+                  : t("general.buttonTooltipDelaySeconds", {
+                      seconds: ms / 1000,
+                    }),
+            }))}
+            size="large"
+            dataTestId="button-tooltip-delay-select"
+          />
+        </SectionRow>
+      )}
+    </SectionContainer>
+  );
+};
+
 interface AppearanceSectionProps {
   activeTab?: string;
 }
@@ -97,8 +171,17 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
   const [sidebarEdgeDepthEnabled, setSidebarEdgeDepthEnabled] = useSetting(
     "layout.sidebarEdgeDepthEnabled"
   );
+  const [spotlightDimBackground, setSpotlightDimBackground] = useSetting(
+    "general.spotlightDimBackground"
+  );
+  const [spotlightDetailCard, setSpotlightDetailCard] = useSetting(
+    "general.spotlightDetailCard"
+  );
   const [usePointerCursors, setUsePointerCursors] = useSetting(
     "general.usePointerCursors"
+  );
+  const [sessionBranchTagsVisible, setSessionBranchTagsVisible] = useAtom(
+    sessionBranchTagsVisibleAtom
   );
   const {
     uiScale,
@@ -138,6 +221,29 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     setDockIcon,
     dockIconOptions,
   } = useAppearanceState();
+  const appearanceModePillOptions = appearanceModeOptions.map((option) => {
+    const icon =
+      option.value === APPEARANCE_MODE.SYSTEM
+        ? MonitorIcon
+        : option.value === APPEARANCE_MODE.LIGHT
+          ? Sun01Icon
+          : MoonIcon;
+
+    return {
+      value: option.value,
+      ariaLabel: option.label,
+      tooltip: option.label,
+      label: (
+        <HugeiconsIcon
+          icon={icon}
+          data-icon={`theme-${option.value}`}
+          size={14}
+          strokeWidth={1.75}
+          aria-hidden
+        />
+      ),
+    };
+  });
 
   return (
     <div className={SECTION_GAP_CLASSES}>
@@ -148,27 +254,47 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
               settingsSearchKeys="general.theme"
               label={t("general.appearanceMode")}
             >
-              <Select
+              <SegmentedTextPill<AppearanceMode>
+                ariaLabel={t("general.appearanceMode")}
                 value={appearanceMode}
                 onChange={handleAppearanceModeChange}
-                options={appearanceModeOptions}
+                options={appearanceModePillOptions}
+                size="large"
+              />
+            </SectionRow>
+            <SectionRow
+              settingsSearchKeys="general.applicationUiFont"
+              label={t("general.applicationFont")}
+            >
+              <Select
+                value={applicationUiFont}
+                onChange={(value) =>
+                  setApplicationUiFont(value as ApplicationUiFontId)
+                }
+                options={applicationUiFontOptions}
                 showSearch
                 size="default"
                 style={SECTION_CONTROL_STYLE}
               />
             </SectionRow>
             <SectionRow
-              settingsSearchKeys="general.dockIcon"
-              label={t("general.appIcon")}
+              settingsSearchKeys="general.uiScale"
+              label={t("general.uiScale")}
             >
-              <AppIconPicker
-                value={dockIcon}
-                options={dockIconOptions}
-                onChange={setDockIcon}
-                ariaLabel={t("general.appIcon")}
-                dataTestId="app-icon-picker"
+              <Select
+                value={String(uiScale)}
+                onChange={(value) => handleUIScaleChange(String(value))}
+                options={UI_SCALE_OPTIONS.map((scale) => ({
+                  label: `${scale}% · ${getApproxFontSize(scale)}`,
+                  value: String(scale),
+                }))}
+                size="default"
+                style={SECTION_CONTROL_STYLE}
               />
             </SectionRow>
+            {HIGH_REFRESH_RATE_SUPPORTED && (
+              <HighRefreshRateRow settingsSearchKeys="general.highRefreshRate" />
+            )}
           </SectionContainer>
 
           <SectionContainer title={t("general.skins")}>
@@ -295,33 +421,15 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
 
           <SectionContainer>
             <SectionRow
-              settingsSearchKeys="general.applicationUiFont"
-              label={t("general.applicationFont")}
+              settingsSearchKeys="general.dockIcon"
+              label={t("general.appIcon")}
             >
-              <Select
-                value={applicationUiFont}
-                onChange={(value) =>
-                  setApplicationUiFont(value as ApplicationUiFontId)
-                }
-                options={applicationUiFontOptions}
-                showSearch
-                size="default"
-                style={SECTION_CONTROL_STYLE}
-              />
-            </SectionRow>
-            <SectionRow
-              settingsSearchKeys="general.uiScale"
-              label={t("general.uiScale")}
-            >
-              <Select
-                value={String(uiScale)}
-                onChange={(value) => handleUIScaleChange(String(value))}
-                options={UI_SCALE_OPTIONS.map((scale) => ({
-                  label: `${scale}% · ${getApproxFontSize(scale)}`,
-                  value: String(scale),
-                }))}
-                size="default"
-                style={SECTION_CONTROL_STYLE}
+              <AppIconPicker
+                value={dockIcon}
+                options={dockIconOptions}
+                onChange={setDockIcon}
+                ariaLabel={t("general.appIcon")}
+                dataTestId="app-icon-picker"
               />
             </SectionRow>
           </SectionContainer>
@@ -341,21 +449,31 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
             </SectionRow>
             <SectionRow
               settingsSearchKeys="general.iconStyle"
-              label={t("general.iconStyle")}
-              description={t("general.iconStyleDesc")}
+              label={
+                <LabelWithPreview
+                  label={t("general.iconStyle")}
+                  preview={
+                    <PreviewGrid
+                      items={previewItems(iconStyleOptions, renderIconStyle)}
+                    />
+                  }
+                />
+              }
             >
-              <Select
+              <SegmentedTextPill<"colorful" | "monochrome">
+                ariaLabel={t("general.iconStyle")}
                 value={iconStyle}
-                onChange={(value) =>
-                  setIconStyle(String(value) as "colorful" | "monochrome")
-                }
-                options={iconStyleOptions}
-                size="default"
-                style={SECTION_CONTROL_STYLE}
+                onChange={setIconStyle}
+                options={withOptionPreviews(iconStyleOptions, renderIconStyle)}
+                size="large"
                 dataTestId="icon-style-select"
               />
             </SectionRow>
           </SectionContainer>
+
+          <ButtonTooltipsSection />
+
+          <AppearanceLayoutSection />
 
           <SectionContainer title={t("general.sidebar")}>
             <SectionRow
@@ -399,6 +517,14 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                 />
               </SectionRow>
             )}
+            <SectionRow label={t("general.sessionBranchTags")}>
+              <Switch
+                checked={sessionBranchTagsVisible}
+                onCheckedChange={setSessionBranchTagsVisible}
+                ariaLabel={t("general.sessionBranchTags")}
+                dataTestId="session-branch-tags-switch"
+              />
+            </SectionRow>
           </SectionContainer>
 
           <SectionContainer title={t("general.spotlight")}>
@@ -406,17 +532,33 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
               settingsSearchKeys="general.spotlightPlacement"
               label={t("general.spotlightPlacement")}
             >
-              <Select
+              <SegmentedTextPill<SpotlightPlacement>
+                ariaLabel={t("general.spotlightPlacement")}
                 value={spotlightPlacement}
-                onChange={(value) =>
-                  setSpotlightPlacement(String(value) as SpotlightPlacement)
-                }
+                onChange={setSpotlightPlacement}
                 options={SPOTLIGHT_PLACEMENT_OPTIONS.map((placement) => ({
                   label: t(`general.spotlightPlacementOptions.${placement}`),
                   value: placement,
                 }))}
-                size="default"
-                style={SECTION_CONTROL_STYLE}
+                size="large"
+              />
+            </SectionRow>
+            <SectionRow
+              settingsSearchKeys="general.spotlightDimBackground"
+              label={t("general.spotlightDimBackground")}
+            >
+              <Switch
+                checked={spotlightDimBackground}
+                onCheckedChange={setSpotlightDimBackground}
+              />
+            </SectionRow>
+            <SectionRow
+              settingsSearchKeys="general.spotlightDetailCard"
+              label={t("general.spotlightDetailCard")}
+            >
+              <Switch
+                checked={spotlightDetailCard}
+                onCheckedChange={setSpotlightDetailCard}
               />
             </SectionRow>
           </SectionContainer>

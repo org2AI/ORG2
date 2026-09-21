@@ -69,6 +69,32 @@ export function makeAwaitItem(jobKind: "shell" | "subagent", handle: string) {
   });
 }
 
+/**
+ * A Codex Desktop `write_stdin` poll as the importer emits it when the poll
+ * could not be merged into its exec command (the script printed `r.output`).
+ */
+export function makeCodexPollItem(sessionId: string, wallSeconds: number) {
+  return makeSessionEvent({
+    action_type: "tool_call",
+    function: "await_output",
+    uiCanonical: "await_output",
+    args: {
+      command: "wait_for",
+      handle: sessionId,
+      handles: [sessionId],
+      session_id: sessionId,
+      chars: "",
+      block_until_ms: 1000,
+    },
+    result: {
+      success: true,
+      status: "completed",
+      output: `Script completed\nWall time ${wallSeconds.toFixed(1)} seconds\nOutput:\n\n RUN  v4.1.11\n`,
+      raw_tool_name: "exec",
+    },
+  });
+}
+
 export function makeInspectTerminalsItem() {
   return makeSessionEvent({
     action_type: "tool_call",

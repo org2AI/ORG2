@@ -1,5 +1,6 @@
 import { gitApi } from "@src/api/http/git";
 import { getPRLocal, resolvePrWorktreeBase } from "@src/api/tauri/github";
+import i18n from "@src/i18n";
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -35,7 +36,12 @@ export async function preparePullRequestBranch({
     typeof headRepo?.full_name === "string" &&
     headRepo.full_name.toLowerCase() === repoFullName.toLowerCase();
   if (typeof head?.ref !== "string" || !head.ref.trim()) {
-    throw new Error("Pull request has no head branch");
+    throw new Error(
+      i18n.t(
+        "common:selectors.branch.messages.prNoHeadBranch",
+        "Pull request has no head branch"
+      )
+    );
   }
   // Fork names can collide with unrelated branches on the base repository.
   const branchName = sameRepo ? head.ref : `pr/${prNumber}`;
@@ -45,7 +51,13 @@ export async function preparePullRequestBranch({
     include_remote: false,
   });
   if (!isActive()) return null;
-  if (!branches) throw new Error("Could not read local branches");
+  if (!branches)
+    throw new Error(
+      i18n.t(
+        "common:selectors.branch.messages.readBranchesFailed",
+        "Could not read local branches"
+      )
+    );
   if (
     branches.branches.some(
       (branch) => branch.name === branchName && branch.branch_type === "local"
@@ -70,6 +82,12 @@ export async function preparePullRequestBranch({
     checkout: false,
   });
   if (!result.success)
-    throw new Error(result.error || "Could not create PR branch");
+    throw new Error(
+      result.error ||
+        i18n.t(
+          "common:selectors.branch.messages.createPrBranchFailed",
+          "Could not create PR branch"
+        )
+    );
   return isActive() ? branchName : null;
 }

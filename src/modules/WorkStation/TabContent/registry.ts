@@ -43,12 +43,15 @@ const GitLogEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/gitLog")),
 };
 
+/**
+ * Commit detail and stash detail share ONE renderer: `GitCommitDetailContent`
+ * is stash-agnostic (it loads a diff by `commitSha`) and `createStashDetailTab`
+ * already normalizes the stash identity into `commitSha` / `shortSha` /
+ * `commitMessage`. The two tab types stay distinct because they differ in tab
+ * id strategy, title and icon — not in what they render.
+ */
 const GitCommitDetailEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/gitCommitDetail")),
-};
-
-const GitStashDetailEntry: RendererEntry = {
-  Component: lazy(() => import("./renderers/gitStashDetail")),
 };
 
 const TerminalContentEntry: RendererEntry = {
@@ -95,10 +98,6 @@ const BrowserSessionEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/browserSession")),
 };
 
-const DevtoolsEntry: RendererEntry = {
-  Component: lazy(() => import("./renderers/devtools")),
-};
-
 // ============================================
 // Project Manager renderers
 // ============================================
@@ -129,10 +128,6 @@ const ProjectSettingsEntry: RendererEntry = {
 
 const ProjectOrgEntry: RendererEntry = {
   Component: lazy(() => import("./renderers/projectOrg")),
-};
-
-const ProjectOrgSettingsEntry: RendererEntry = {
-  Component: lazy(() => import("./renderers/projectOrgSettings")),
 };
 
 const ProjectGitSyncReviewEntry: RendererEntry = {
@@ -180,7 +175,7 @@ export const REGISTRY: TabContentRegistry = {
   "source-control": SourceControlEntry,
   "git-log": GitLogEntry,
   "git-commit-detail": GitCommitDetailEntry,
-  "git-stash-detail": GitStashDetailEntry,
+  "git-stash-detail": GitCommitDetailEntry,
   "terminal-content": TerminalContentEntry,
   "dom-component-preview": DomComponentPreviewEntry,
   terminal: TerminalEntry,
@@ -190,7 +185,6 @@ export const REGISTRY: TabContentRegistry = {
 
   // Browser
   "browser-session": BrowserSessionEntry,
-  devtools: DevtoolsEntry,
 
   // Project Manager
   "project-dashboard": ProjectDashboardEntry,
@@ -199,7 +193,6 @@ export const REGISTRY: TabContentRegistry = {
   "project-linear-work-items": ProjectLinearWorkItemsEntry,
   "project-settings": ProjectSettingsEntry,
   "project-org": ProjectOrgEntry,
-  "project-org-settings": ProjectOrgSettingsEntry,
   "project-git-sync-review": ProjectGitSyncReviewEntry,
   "project-workitems": ProjectWorkitemsEntry,
   "workItem-detail": WorkItemDetailEntry,

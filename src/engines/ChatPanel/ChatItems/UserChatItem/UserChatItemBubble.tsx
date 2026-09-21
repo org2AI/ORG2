@@ -1,14 +1,24 @@
-import type { MouseEvent, ReactNode, RefObject, SyntheticEvent } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  type SyntheticEvent,
+  useLayoutEffect,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import ClampedContent from "@src/components/ClampedContent";
 import ExpandOverlay from "@src/components/ExpandOverlay";
+import { ChatImageThumbnailRow } from "@src/engines/ChatPanel/ChatImageThumbnail";
 import { ClipboardCheckIcon, HugeiconsIcon, SparklesIcon } from "@src/icons";
 
 import CachedFileChip from "./CachedFileChip";
 
 // Continuous chat leaves roughly ten rendered lines visible before folding.
 const USER_MSG_CONTINUOUS_PREVIEW_HEIGHT = 10 * 24;
+// Paginated turn headers fold to three lines.
+const USER_MSG_COMPACT_PREVIEW_HEIGHT = 72;
 
 /**
  * Layout-only; border/hover/focus ring added per-row below.
@@ -33,7 +43,6 @@ interface UserChatItemBubbleProps {
   messageContent: ReactNode;
   messageContentRef: RefObject<HTMLDivElement | null>;
   isExpanded: boolean;
-  displayNeedsTruncation: boolean;
   onToggleTruncation: (event: SyntheticEvent) => void;
   cachedFiles: string[];
   previewFile: string | null;
@@ -54,7 +63,6 @@ export function UserChatItemBubble({
   messageContent,
   messageContentRef,
   isExpanded,
-  displayNeedsTruncation,
   onToggleTruncation,
   cachedFiles,
   previewFile,
@@ -62,6 +70,21 @@ export function UserChatItemBubble({
   onClosePreview,
 }: UserChatItemBubbleProps) {
   const { t } = useTranslation("sessions");
+  // Fold only when the rendered text overflows the preview. Raw prompt length
+  // says nothing: attachment envelopes and pills collapse to a short render.
+  // Measured while collapsed, kept while expanded.
+  const [needsFold, setNeedsFold] = useState(false);
+  useLayoutEffect(() => {
+    if (!compactPreview || isExpanded) return;
+    const element = messageContentRef.current;
+    if (!element) return;
+    const measure = () =>
+      setNeedsFold(element.scrollHeight > USER_MSG_COMPACT_PREVIEW_HEIGHT + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [compactPreview, isExpanded, messageContentRef]);
   const containerClass = `${DISPLAY_CONTAINER_BASE} ${isEditableDisplay ? "cursor-pointer outline-none" : ""}`;
 
   return (
@@ -111,42 +134,51 @@ export function UserChatItemBubble({
                   {messageContent}
                 </ClampedContent>
               ) : (
-                <div className="group/expand relative w-full">
-                  <div
-                    ref={messageContentRef}
-                    className={`allow-select ${isExpanded && displayNeedsTruncation ? "scrollbar-hide" : ""}`}
-                    style={
-                      displayNeedsTruncation && !isExpanded
-                        ? { maxHeight: 72, overflow: "hidden" }
-                        : isExpanded && displayNeedsTruncation
+                <>
+                  {/* Attachments stay outside the fold: it measures text only. */}
+                  {messageImages && messageImages.length > 0 && (
+                    <ChatImageThumbnailRow images={messageImages} />
+                  )}
+                  <div className="group/expand relative w-full">
+                    <div
+                      ref={messageContentRef}
+                      className={`allow-select ${isExpanded && needsFold ? "scrollbar-hide" : ""}`}
+                      style={
+                        needsFold && !isExpanded
                           ? {
-                              maxHeight: 240,
-                              overflowY: "auto",
-                              overflowX: "hidden",
+                              maxHeight: USER_MSG_COMPACT_PREVIEW_HEIGHT,
+                              overflow: "hidden",
                             }
-                          : undefined
-                    }
-                  >
-                    {messageContent}
+                          : isExpanded && needsFold
+                            ? {
+                                maxHeight: 240,
+                                overflowY: "auto",
+                                overflowX: "hidden",
+                              }
+                            : undefined
+                      }
+                    >
+                      {messageContent}
 
-                    {displayNeedsTruncation && isExpanded && (
+                      {needsFold && isExpanded && (
+                        <ExpandOverlay
+                          isExpanded
+                          onToggle={onToggleTruncation}
+                          fadeFrom="from-fill-2"
+                        />
+                      )}
+                    </div>
+
+                    {needsFold && !isExpanded && (
                       <ExpandOverlay
-                        isExpanded
+                        isExpanded={false}
                         onToggle={onToggleTruncation}
+                        collapsedFadeHeightClass="h-8"
                         fadeFrom="from-fill-2"
                       />
                     )}
                   </div>
-
-                  {displayNeedsTruncation && !isExpanded && (
-                    <ExpandOverlay
-                      isExpanded={false}
-                      onToggle={onToggleTruncation}
-                      collapsedFadeHeightClass="h-8"
-                      fadeFrom="from-fill-2"
-                    />
-                  )}
-                </div>
+                </>
               ))}
 
             {cachedFiles.length > 0 && (

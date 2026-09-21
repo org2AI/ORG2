@@ -28,25 +28,26 @@ import React, { memo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router-dom";
 
-import { ActionSystemProvider } from "@src/ActionSystem";
 import {
   STATION_WINDOW_SESSION_EVENT,
   type StationWindowSessionPayload,
   requestStationWindowSession,
 } from "@src/api/tauri/stationWindow";
+import { getPrimaryPaneBackgroundColor } from "@src/components/layout/tokens/viewContainerTokens";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
 import { DataProvider } from "@src/contexts/workspace/DataContext";
 import { BrowserProvider } from "@src/contexts/workstation";
 import { useEventStoreBridge } from "@src/engines/SessionCore/core/store/useEventStoreBridge";
 import SessionSyncProvider from "@src/engines/SessionCore/sync/SessionSyncProvider";
 import { createLogger } from "@src/hooks/logger";
+import { useMacosPageBackdropSurface } from "@src/hooks/platform/useMacosPageBackdropSurface";
 import { useTauriListen } from "@src/hooks/platform/useTauriListen";
 import { useProjectDataChangedListener } from "@src/hooks/project";
 import { useNativeSessionStatusMonitor } from "@src/hooks/session/useNativeSessionStatusMonitor";
 import { useGlobalBrowserWebviewLayering } from "@src/modules/WorkStation/Browser/hooks";
-import { getPrimaryPaneBackgroundStyle } from "@src/modules/shared/layouts/viewContainerTokens";
 import { useOpenUrlInBrowser } from "@src/modules/useOpenUrlInBrowser";
 import { useWorkStationPipelineBridge } from "@src/modules/useWorkStationPipelineBridge";
+import { ActionSystemProvider } from "@src/scaffold/ActionSystem";
 import { GlobalSpotlightPortal } from "@src/scaffold/GlobalSpotlight/GlobalSpotlightPortal";
 import { loadSessions } from "@src/store/session";
 import {
@@ -174,10 +175,11 @@ const StationWindowSurface: React.FC<{ stationMode: StationMode }> = memo(
     const repoPath = useAtomValue(activeWorkspaceRootPathAtom);
     const backgroundConfig = useAtomValue(resolvedBackgroundConfigAtom);
     const setStationMode = useSetAtom(stationModeAtom);
+    const paneSurfaceRef = useMacosPageBackdropSurface<HTMLDivElement>();
     const paneUnderlayStyle: React.CSSProperties = {
-      backgroundColor: getPrimaryPaneBackgroundStyle(
+      backgroundColor: getPrimaryPaneBackgroundColor(
         backgroundConfig.pageOpacity
-      ).backgroundColor,
+      ),
     };
 
     // Inside Tauri the window label seeds the local selection.
@@ -210,6 +212,7 @@ const StationWindowSurface: React.FC<{ stationMode: StationMode }> = memo(
         </React.Suspense>
         <ActionSystemProvider repoPath={repoPath}>
           <div
+            ref={paneSurfaceRef}
             className="relative isolate flex h-full min-h-0 min-w-0 flex-row overflow-hidden"
             style={paneUnderlayStyle}
             data-pane-surface-underlay
@@ -220,7 +223,7 @@ const StationWindowSurface: React.FC<{ stationMode: StationMode }> = memo(
               data-workbench-surface
             >
               <React.Suspense fallback={<WorkStationLoadingFallback />}>
-                <WorkStationPage isActive chatPanelFocused={false} />
+                <WorkStationPage chatPanelFocused={false} />
               </React.Suspense>
             </div>
           </div>

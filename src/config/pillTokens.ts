@@ -64,23 +64,6 @@ export const CONTEXT_PILL_PREFIXES: Record<string, string> = {
   issue: "issue://",
 } as const;
 
-/** Pill types that carry async-loaded content stored in the pill cache */
-export const CONTEXT_PILL_TYPES: ReadonlySet<string> = new Set(
-  Object.keys(CONTEXT_PILL_PREFIXES)
-);
-
-// ==============================================
-// Regex for stripping injected context from history replay
-// ==============================================
-
-/** Matches serialized context pill references like [terminal:terminal://...] */
-export const CONTEXT_PILL_REF_REGEX =
-  /\[(terminal|browser|dom-element|dom-component|pr|issue):(terminal|browser|dom-element|paste|pr|issue):\/\/[^\]]+\]/;
-
-/** Matches context headers and trace markers injected by the agent pipeline */
-export const CONTEXT_TRACE_MARKER_REGEX =
-  /(\[Terminal Context\]|\[Browser Context\]|\[Tool:|(?:^|\n)User:\s|(?:^|\n)Agent:\s)/;
-
 // ==============================================
 // Pill Text Cache (window.__orgiiTerminalPillTexts)
 // ==============================================

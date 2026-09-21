@@ -18,10 +18,15 @@ import { WEBVIEW_LAYOUT_CHANGED_EVENT } from "./webviewLayoutEvents";
 
 const logger = createLogger("InlineWebviewLayout");
 
+/** Far outside any window, so a parked view is never on screen. */
+const PARKED_POSITION = -10000;
+
 export interface UseWebviewLayoutParams {
   containerRef: RefObject<HTMLDivElement | null>;
   isWebviewCreated: boolean;
   isWebviewAvailable: boolean;
+  /** A parked (not visible) view ignores layout until it is shown again. */
+  isVisible: boolean;
   labelRef: MutableRefObject<string>;
   log: (...args: unknown[]) => void;
 }
@@ -29,13 +34,21 @@ export interface UseWebviewLayoutParams {
 export interface UseWebviewLayoutReturn {
   getContainerRect: () => DOMRect | null;
   updatePosition: (options?: { force?: boolean }) => Promise<void>;
+  /** Move the native view off screen without changing its size. */
+  parkOffscreen: () => Promise<void>;
 }
 
 export function useWebviewLayout(
   params: UseWebviewLayoutParams
 ): UseWebviewLayoutReturn {
-  const { containerRef, isWebviewCreated, isWebviewAvailable, labelRef, log } =
-    params;
+  const {
+    containerRef,
+    isWebviewCreated,
+    isWebviewAvailable,
+    isVisible,
+    labelRef,
+    log,
+  } = params;
 
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const scrollListenerRef = useRef<(() => void) | null>(null);
@@ -46,6 +59,16 @@ export function useWebviewLayout(
     y: number;
   } | null>(null);
 
+  // Every mounted browser session measures the same container, so without
+  // this gate each layout change would also move and resize the parked ones:
+  // an IPC and a hidden-page relayout per warm tab per resize frame, and a
+  // parked view dragged back on screen over the active one. Read at call time
+  // so timers armed while the view was visible cannot un-park it.
+  const isVisibleRef = useRef(isVisible);
+  useEffect(() => {
+    isVisibleRef.current = isVisible;
+  }, [isVisible]);
+
   const getContainerRect = useCallback(() => {
     if (!containerRef.current) return null;
     return containerRef.current.getBoundingClientRect();
@@ -54,6 +77,7 @@ export function useWebviewLayout(
   const updatePosition = useCallback(
     async (options?: { force?: boolean }) => {
       if (!isWebviewCreated || !containerRef.current) return;
+      if (!isVisibleRef.current) return;
 
       const rect = getContainerRect();
       if (!rect) return;
@@ -97,6 +121,22 @@ export function useWebviewLayout(
     },
     [isWebviewCreated, containerRef, getContainerRect, labelRef, log]
   );
+
+  // Parks at the last frame's size. Shrinking the view instead (it used to go
+  // to 1x1) makes the page lay out against a 1px viewport and then again at
+  // full size on every tab switch, firing its resize handlers both times.
+  const parkOffscreen = useCallback(async () => {
+    const lastFrame = lastResizeRect.current;
+    // The next show must re-send its frame even if it matches the last one.
+    lastResizeRect.current = null;
+    await invoke("update_inline_webview_position", {
+      label: labelRef.current,
+      x: PARKED_POSITION,
+      y: PARKED_POSITION,
+      width: lastFrame?.width ?? 1,
+      height: lastFrame?.height ?? 1,
+    });
+  }, [labelRef]);
 
   const debouncedUpdatePosition = useDebouncedCallback(() => {
     void updatePosition();
@@ -195,5 +235,5 @@ export function useWebviewLayout(
     updatePosition,
   ]);
 
-  return { getContainerRect, updatePosition };
+  return { getContainerRect, updatePosition, parkOffscreen };
 }

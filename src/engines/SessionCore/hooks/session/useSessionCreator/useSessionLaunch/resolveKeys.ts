@@ -32,6 +32,7 @@ import type {
 export interface ResolvedKeys {
   model: string | undefined;
   accountId: string | undefined;
+  credentialSource?: string;
   cliAgentType: CliAgentType | undefined;
   nativeHarnessType: NativeHarnessType | undefined;
   branch: string | undefined;
@@ -50,10 +51,11 @@ export interface KeyCallbacks {
 
 function resolveOwnKey(advancedConfig: AdvancedConfig): ResolvedKeys | null {
   const accountId = advancedConfig.selectedAccountId || undefined;
+  const credentialSource = advancedConfig.credentialSource || undefined;
   const cliAgentType = advancedConfig.cliAgentType || undefined;
   const provider = advancedConfig.provider || undefined;
 
-  if (!accountId && !cliAgentType && !provider) {
+  if (!accountId && !credentialSource && !cliAgentType && !provider) {
     Message.error({
       content: "Please select a model and source before launching",
       duration: 3000,
@@ -64,6 +66,7 @@ function resolveOwnKey(advancedConfig: AdvancedConfig): ResolvedKeys | null {
   return {
     model: advancedConfig.model || undefined,
     accountId,
+    credentialSource,
     cliAgentType,
     nativeHarnessType: advancedConfig.nativeHarnessType,
     branch: advancedConfig.branch,
@@ -96,6 +99,7 @@ async function resolveHostedKey(
   return {
     model: advancedConfig.listingModel || undefined,
     accountId: undefined,
+    credentialSource: undefined,
     cliAgentType: advancedConfig.cliAgentType,
     nativeHarnessType: undefined,
     branch: advancedConfig.branch,

@@ -76,7 +76,7 @@ mod catalog;
 mod slash;
 pub(crate) use catalog::{
     archive_thread, ensure_project, native_codex_app_server_command, register_thread,
-    synchronize_thread,
+    synchronize_thread, CatalogProfile,
 };
 
 /// How long to keep draining after `turn/interrupt` before giving up on a
@@ -479,11 +479,26 @@ impl CodexAppServerEventParser {
                 self.emit_session_start()
             }
             "turn/started" => {
+                // Notifications carry threadId; the direct turn/start result
+                // only carries turn. Neither may replace another thread's turn.
+                if params
+                    .get("threadId")
+                    .and_then(Value::as_str)
+                    .zip(self.thread_id.as_deref())
+                    .is_some_and(|(incoming, current)| incoming != current)
+                {
+                    return vec![];
+                }
                 if let Some(turn_id) = params
                     .get("turn")
                     .and_then(|t| t.get("id"))
                     .and_then(|v| v.as_str())
                 {
+                    if self.turn_id.as_deref() != Some(turn_id) {
+                        // Resume can replay the previous turn's usage before the
+                        // new turn starts. Never persist it for a failed new turn.
+                        self.usage = None;
+                    }
                     self.turn_id = Some(turn_id.to_string());
                 }
                 vec![]
@@ -553,20 +568,32 @@ impl CodexAppServerEventParser {
                 vec![chunk]
             }
             "thread/tokenUsage/updated" => {
+                // Usage belongs to a turn, not merely to its resumed thread.
+                // Ignore historical resume notifications and late prior turns.
+                if self.turn_id.as_deref().is_none()
+                    || params.get("turnId").and_then(Value::as_str) != self.turn_id.as_deref()
+                    || self.thread_id.as_deref().is_some_and(|thread_id| {
+                        params.get("threadId").and_then(Value::as_str) != Some(thread_id)
+                    })
+                {
+                    return vec![];
+                }
                 if let Some(last) = params.get("tokenUsage").and_then(|u| u.get("last")) {
                     let read = |key: &str| last.get(key).and_then(|v| v.as_u64()).unwrap_or(0);
-                    let input_tokens = read("inputTokens");
+                    let inclusive_input_tokens = read("inputTokens");
+                    let cache_read_tokens = read("cachedInputTokens").min(inclusive_input_tokens);
                     let output_tokens = read("outputTokens");
                     let reported_total = read("totalTokens");
                     self.usage = Some(TokenUsage {
-                        input_tokens,
+                        // Internal/native usage stores fresh input separately.
+                        input_tokens: inclusive_input_tokens - cache_read_tokens,
                         output_tokens,
-                        cache_read_tokens: read("cachedInputTokens"),
+                        cache_read_tokens,
                         cache_write_tokens: 0,
                         total_tokens: if reported_total > 0 {
                             reported_total
                         } else {
-                            input_tokens.saturating_add(output_tokens)
+                            inclusive_input_tokens.saturating_add(output_tokens)
                         },
                         model: None,
                     });
@@ -625,7 +652,10 @@ impl CodexAppServerEventParser {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
                 if will_retry {
-                    tracing::warn!("[CodexAppServer] Retryable error: {}", message);
+                    tracing::warn!(
+                        "[CodexAppServer] Retryable error: {}",
+                        canonicalize_cli_error_message(message)
+                    );
                     self.last_retry_notice = Some(canonicalize_cli_error_message(message));
                     return vec![];
                 }
@@ -781,6 +811,36 @@ impl CodexAppServerEventParser {
                 } else {
                     chunk.result = serde_json::json!({"status": "running"});
                 }
+                Self::stamp_tool_call_identity(&mut chunk, call_id);
+                vec![chunk]
+            }
+            "imageGeneration" => {
+                if !completed {
+                    return vec![];
+                }
+                let result = item
+                    .get("result")
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.is_empty());
+                let image = result
+                    .map(|data| {
+                        if data.starts_with("data:image/") {
+                            data.to_string()
+                        } else {
+                            format!("data:image/png;base64,{data}")
+                        }
+                    })
+                    .or_else(|| {
+                        item.get("savedPath")
+                            .and_then(Value::as_str)
+                            .map(str::to_owned)
+                    });
+                let Some(image) = image else {
+                    return vec![];
+                };
+                let mut chunk =
+                    ActivityChunk::new(&self.session_id, "tool_call", "image_generation");
+                chunk.result = serde_json::json!({"images": [image], "success": true});
                 Self::stamp_tool_call_identity(&mut chunk, call_id);
                 vec![chunk]
             }

@@ -5,7 +5,7 @@ import type {
 } from "@src/config/settingsNavigation";
 import type { GlobalSettingsSearchGroup } from "@src/config/settingsSearch";
 import type { buildSettingsSetupActions } from "@src/config/settingsSetupActions";
-import type { RenderedSettingsControl } from "@src/modules/shared/layouts/blocks/SettingsSearchDropdown/settingsControlSearch";
+import type { RenderedSettingsControl } from "@src/scaffold/NavigationSidebar/variants/SettingsSearchDropdown/settingsControlSearch";
 
 export interface SettingsControlSearchItem {
   readonly kind: "control";

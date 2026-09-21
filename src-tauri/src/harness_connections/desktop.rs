@@ -66,9 +66,8 @@ pub(super) async fn installation() -> Result<Option<String>, String> {
     Ok(None)
 }
 
-/// The local-profile schema was verified on Desktop 1.46388.x. Accept 1.x builds
-/// from that release onward; a different major line may change the schema, so it
-/// is reported rather than silently written. Each segment's leading digits are
+/// The local-profile schema is accepted for the verified 1.46388.x line and
+/// Desktop 2.110.x or newer 2.x releases. Each segment's leading digits are
 /// compared so a `-beta` style suffix does not fail as unparseable.
 pub(super) fn validate_version(version: &str) -> Result<(), String> {
     let numbers = version
@@ -86,18 +85,21 @@ pub(super) fn validate_version(version: &str) -> Result<(), String> {
     if numbers.len() != 3 {
         return Err("Cannot verify this Claude Desktop version".into());
     }
-    if numbers[0] != 1 {
+    let supported = match numbers[0] {
+        1 => numbers.as_slice() >= [1, 46388, 1].as_slice(),
+        2 => numbers.as_slice() >= [2, 110, 0].as_slice(),
+        _ => false,
+    };
+    if supported {
+        return Ok(());
+    }
+    if !matches!(numbers[0], 1 | 2) {
         return Err(format!(
-            "Claude Desktop {} uses an unverified configuration format; ORG2 supports 1.46388.1 and newer 1.x releases",
+            "Claude Desktop {} uses an unverified configuration format; ORG2 supports verified 1.x and 2.x releases",
             version.trim()
         ));
     }
-    if numbers.as_slice() < [1, 46388, 1].as_slice() {
-        return Err(
-            "Update Claude Desktop to 1.46388.1 or newer for this configuration format".into(),
-        );
-    }
-    Ok(())
+    Err("Update Claude Desktop to 1.46388.1 or 2.110.0 and newer".into())
 }
 
 pub(super) fn applied_options(
@@ -150,16 +152,18 @@ mod tests {
             "1.46388.1-beta",
             "1.99999.0",
             " 1.46388.4\n",
+            "2.110.0",
+            "2.110.1-beta",
+            "2.999.0",
         ] {
             validate_version(version).unwrap();
         }
-        for version in ["1.0.0", "1.46387.9", "1.46388.0-rc1"] {
-            assert_eq!(
-                validate_version(version).unwrap_err(),
-                "Update Claude Desktop to 1.46388.1 or newer for this configuration format"
-            );
+        for version in ["1.0.0", "1.46387.9", "1.46388.0-rc1", "2.109.9"] {
+            assert!(validate_version(version)
+                .unwrap_err()
+                .starts_with("Update Claude Desktop"));
         }
-        for version in ["2.0.0", "0.46388.1", "2.46388.1-beta"] {
+        for version in ["0.46388.1", "3.0.0"] {
             let error = validate_version(version).unwrap_err();
             assert!(error.contains(version), "{error}");
             assert!(error.contains("unverified"), "{error}");

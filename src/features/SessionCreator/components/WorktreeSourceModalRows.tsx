@@ -29,8 +29,6 @@ export function WorktreeSourceRow({
   return (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       onClick={onClick}
       className={`${getListItemClasses(selected)} min-h-8 w-full min-w-0 rounded-md! px-2! py-1! text-left`}
     >

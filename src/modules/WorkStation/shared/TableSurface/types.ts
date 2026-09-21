@@ -27,13 +27,6 @@ export interface TableSurfaceRow {
   cells: unknown[];
 }
 
-export interface TableSurfacePagination {
-  page: number;
-  totalCount: number;
-  pageSize: number;
-  onPageChange: (page: number) => void;
-}
-
 export interface TableSurfaceSortState {
   columnId: string | null;
   direction: "asc" | "desc";
@@ -47,10 +40,8 @@ export interface TableSurfaceProps {
   toolbarLeading?: ReactNode;
   toolbarTrailing?: ReactNode;
   showFormulaBar?: boolean;
-  activeCellLabelFallback?: string;
   hasMoreRows?: boolean;
   loadingMoreRows?: boolean;
-  pagination?: TableSurfacePagination;
   sortState?: TableSurfaceSortState;
   onSortColumn?: (columnId: string) => void;
   emptyTitle?: string;

@@ -1,7 +1,4 @@
-import {
-  SectionContainer,
-  SectionRow,
-} from "@/src/modules/shared/layouts/SectionLayout";
+import { SectionContainer, SectionRow } from "@/src/components/layout/Section";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -81,7 +78,6 @@ const NotificationFocusBlocks: React.FC = () => {
                     onChange={(hour, minute) =>
                       setQuietHoursStart(formatClockTime(hour, minute))
                     }
-                    className="w-24"
                   />
                 </label>
                 <label className="flex items-center gap-1.5 text-xs text-text-2">
@@ -92,7 +88,6 @@ const NotificationFocusBlocks: React.FC = () => {
                     onChange={(hour, minute) =>
                       setQuietHoursEnd(formatClockTime(hour, minute))
                     }
-                    className="w-24"
                   />
                 </label>
               </div>

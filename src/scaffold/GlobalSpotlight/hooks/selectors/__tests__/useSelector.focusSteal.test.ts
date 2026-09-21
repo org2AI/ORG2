@@ -138,6 +138,16 @@ describe("useSelector focus steal", () => {
     expect(focusSpy).toHaveBeenCalled();
   });
 
+  it("cancels pending focus when closed before the focus timer runs", async () => {
+    await dispatch(() => controls.setOpen(true));
+    await dispatch(() => controls.setOpen(false));
+    composer.focus();
+    focusSpy.mockClear();
+    await settle();
+    expect(focusSpy).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(composer);
+  });
+
   it("releases global list navigation when a tab's palette becomes inactive", async () => {
     const arrow = () => {
       const event = new KeyboardEvent("keydown", {

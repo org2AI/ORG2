@@ -304,7 +304,9 @@ describe("Dropdown", () => {
       0,
       markup.indexOf("No reviewers available")
     );
-    expect(emptyShell).toContain("text-[13px]");
+    expect(emptyShell).toContain(
+      "text-[length:var(--dropdown-font-size,13px)]"
+    );
     expect(emptyShell).toContain("text-text-3");
   });
 

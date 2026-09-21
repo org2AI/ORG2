@@ -59,6 +59,8 @@ export interface OptimizedChatItem {
   consolidatedParts?: number;
   /** Internal layout-only row used to keep a collapsed turn measurable. */
   structuralOnly?: boolean;
+  /** Turn-owned gallery, attached to the final visible row after collapse. */
+  outputImages?: string[];
   /** Thread selector synthetic data */
   threadSelectorData?: {
     roundNumber: number;
@@ -89,6 +91,9 @@ export interface ChatItemPipelineOptions {
   minBrowserActionsToStack?: number;
   groupTerminalActivities?: boolean;
   minTerminalActivitiesToGroup?: number;
+  /** Collapse runs of standalone waits that no terminal stack absorbed. */
+  groupWaitActivities?: boolean;
+  minWaitActivitiesToGroup?: number;
   groupEditActivities?: boolean;
   minEditActivitiesToGroup?: number;
   consolidatePartialObservations?: boolean;
@@ -107,6 +112,8 @@ export const DEFAULT_PIPELINE_OPTIONS: ChatItemPipelineOptions = {
   minBrowserActionsToStack: 3,
   groupTerminalActivities: true,
   minTerminalActivitiesToGroup: 1,
+  groupWaitActivities: true,
+  minWaitActivitiesToGroup: 2,
   groupEditActivities: true,
   minEditActivitiesToGroup: 1,
   consolidatePartialObservations: true,

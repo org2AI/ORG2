@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { CloudSessionHoverCardContent } from "@src/components/SessionHoverCard/CloudSessionHoverCard";
+import { CloudSessionHoverCardContent } from "@src/features/SessionHoverCard/CloudSessionHoverCard";
 import { GitForkIcon, MoreHorizontalIcon } from "@src/icons";
 import { NavigationMenuParentRow } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/NavigationMenu/NavigationMenuRow";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
@@ -456,7 +456,7 @@ describe("cloud fork parent hover rendering", () => {
       id: "cloudremote-org|row",
       key: "cloudremote-org|row",
       label: "Forked session",
-      shortcut: "@alice · forked from @bob · 2m",
+      trailingLabel: "@alice · forked from @bob · 2m",
       showMoreActions: true,
       rowActions: [
         { icon: GitForkIcon, label: "Fork", onClick: vi.fn() },
@@ -468,6 +468,7 @@ describe("cloud fork parent hover rendering", () => {
     expect(markup).toContain("group/parent");
     expect(markup).toContain("group-hover/parent:opacity-100");
     expect(markup).toContain("@alice · forked from @bob · 2m");
+    expect(markup).not.toContain("<kbd");
     expect(markup).toContain('aria-label="Fork"');
     expect(markup).toContain('aria-label="More"');
   });

@@ -95,3 +95,74 @@ fn api_error_io_returns_internal_server_error() {
     let response = err.into_response();
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
+
+/// Regression: `git ls-files --stage -- <name>` matched the selected name as a
+/// pathspec pattern and the parsers read the first line, so an untracked
+/// `[ab].txt` reported `a.txt`'s tracked state and blob hash.
+#[tokio::test]
+async fn git_file_status_matches_the_selected_path_literally() {
+    use crate::routes::file::{get_git_file_status, GitFileStatusQuery};
+    use axum::extract::Query;
+    fn git_in(dir: &std::path::Path, args: &[&str]) {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args([
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "user.name=t",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "init.defaultBranch=main",
+            ])
+            .args(args)
+            .output()
+            .expect("spawn git");
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    if std::process::Command::new("git")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        eprintln!("skipping: git executable not available");
+        return;
+    }
+    let repo = std::env::temp_dir().join(format!(
+        "orgii-file-status-literal-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock after epoch")
+            .as_nanos()
+    ));
+    let _ = std::fs::remove_dir_all(&repo);
+    std::fs::create_dir_all(&repo).expect("create test repo dir");
+    git_in(&repo, &["init"]);
+    for name in ["a.txt", "b.txt"] {
+        std::fs::write(repo.join(name), "one\n").expect("write file");
+    }
+    git_in(&repo, &["add", "."]);
+    git_in(&repo, &["commit", "-m", "base"]);
+    std::fs::write(repo.join("[ab].txt"), "untracked\n").expect("write untracked");
+
+    let response = get_git_file_status(Query(GitFileStatusQuery {
+        repo_path: repo.to_string_lossy().into_owned(),
+        file_path: repo.join("[ab].txt").to_string_lossy().into_owned(),
+    }))
+    .await;
+    let Ok(response) = response else {
+        panic!("route must succeed for a literal path");
+    };
+    assert!(!response.0.data.is_tracked);
+    assert!(!response.0.data.is_staged);
+    assert_eq!(response.0.data.blob_hash, None);
+
+    let _ = std::fs::remove_dir_all(&repo);
+}

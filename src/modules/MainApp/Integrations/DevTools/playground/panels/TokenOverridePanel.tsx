@@ -186,7 +186,6 @@ export function TokenOverridePanel({
         <div className="flex items-center gap-1">
           <Button
             variant="tertiary"
-            appearance="soft-no-drop"
             size="sidebar"
             aria-label={isMinimized ? "Expand" : "Minimize"}
             iconOnly
@@ -207,7 +206,6 @@ export function TokenOverridePanel({
           />
           <Button
             variant="tertiary"
-            appearance="soft-no-drop"
             size="sidebar"
             aria-label="Close"
             iconOnly
@@ -270,7 +268,6 @@ export function TokenOverridePanel({
           {hasOverrides && (
             <Button
               variant="tertiary"
-              appearance="ghost"
               size="mini"
               className="mt-1 w-full text-[12px] font-medium hover:bg-fill-4 hover:text-text-1"
               onClick={onReset}

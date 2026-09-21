@@ -18,6 +18,11 @@
     "file": "Search in file",
     "named": "Search in {{name}}"
   },
+  "sidebarSettings": {
+    "title": "Sidebar settings",
+    "showSidebar": "Show sidebar",
+    "colorSourceControlFiles": "Diff colors on files"
+  },
   "windowChrome": {
     "menus": {
       "file": "File",
@@ -196,7 +201,6 @@
     "switchToStation": "Switch to {{station}}",
     "switchMethod": "Switch method",
     "discard": "Discard",
-    "run": "Run",
     "clone": "Clone",
     "send": "Send",
     "sendMessageQueued": "Send (queued)",
@@ -224,11 +228,10 @@
     "later": "Later",
     "link": "Link",
     "copyName": "Copy Name",
-    "dismiss": "Dismiss",
     "clearSelection": "Clear selection",
-    "clearAll": "Clear All",
     "expandView": "Expand view",
-    "restoreSplitView": "Restore split view"
+    "restoreSplitView": "Restore split view",
+    "overwrite": "Overwrite"
   },
   "status": {
     "yes": "Yes",
@@ -314,7 +317,6 @@
     "nextPage": "Next page",
     "lastPage": "Last page",
     "selectPage": "Select page",
-    "title": "Pagination",
     "round": "Round {{current}}",
     "previousRound": "Previous round",
     "nextRound": "Next round",
@@ -322,7 +324,7 @@
   },
   "optional": "optional",
   "common": {
-    "display": "Display",
+    "display": "UI settings",
     "on": "On",
     "off": "Off",
     "default": "Default",
@@ -390,7 +392,6 @@
     "globPatternsHint": "Glob patterns, comma-separated",
     "outline": "Outline",
     "timeline": "Timeline",
-    "indexing": "Indexing",
     "testExplorer": "Test Explorer",
     "installed": "Installed",
     "extensionViews": "Extension Views",
@@ -509,7 +510,6 @@
     "explorer": "Explorer",
     "search": "Search",
     "sourceControl": "Source Control",
-    "sessions": "Sessions",
     "myTabs": "My tabs ({{count}})",
     "design": "Design",
     "settings": "Settings",
@@ -604,7 +604,7 @@
     "nextMatchLabel": "Next Match",
     "clearSearch": "Clear search",
     "openFile": "Open File",
-    "openNativeDevTools": "Open native browser DevTools",
+    "openNativeDevTools": "Open DevTools",
     "captureScreenshot": "Screenshot",
     "enableInspectMode": "Inspect element",
     "disableInspectMode": "Exit inspector (Esc)",
@@ -620,7 +620,6 @@
     "closePanel": "Close panel",
     "showSidebar": "Show Sidebar",
     "hideSidebar": "Hide Sidebar",
-    "moreOptions": "More Options",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "goBack": "Go back",
@@ -638,10 +637,9 @@
     "replaceAll": "Replace All (Ctrl+Alt+Enter)",
     "replaceAllLabel": "Replace All",
     "moreActions": "More Actions...",
-    "formatSql": "Format SQL (prettify)",
-    "queryHistory": "Query history",
-    "executeQuery": "Execute query ({{shortcut}})",
     "startVoiceInput": "Start voice input",
+    "expandInput": "Expand input",
+    "collapseInput": "Collapse input",
     "cancelRecording": "Cancel recording",
     "stopAndTranscribe": "Stop and transcribe",
     "htmlPreview": "HTML Preview",
@@ -651,7 +649,6 @@
     "movePanelToRight": "Move panel to the right",
     "movePanelToBottom": "Move panel to the bottom",
     "domTree": "DOM Tree",
-    "closeSession": "Close session",
     "clearNetworkLogs": "Clear network logs",
     "clearConsole": "Clear console",
     "copyToClipboard": "Copy to clipboard",
@@ -703,7 +700,6 @@
     "pleaseTryAgain": "Please try again",
     "noFileOpen": "Open a file to start editing",
     "selectFileToEdit": "Choose a file in Explorer",
-    "noTabs": "Open a tab to get started",
     "noTabsOpen": "Open an item to get started",
     "selectItemToStart": "Choose an item in the sidebar",
     "noDatabaseConnected": "No database connected",
@@ -715,7 +711,7 @@
     "chatHistoryReloadHint": "Session data may not have loaded",
     "chatHistoryAgentWorking": "Agent is running",
     "chatHistoryAgentWorkingHint": "Messages appear with the first response; the toolbar may look idle until then",
-    "pleaseSelect": "Please select",
+    "pleaseSelect": "Select",
     "noSessionsFound": "No sessions found",
     "typeToSearchFiles": "Type to search files...",
     "selectFileToViewChanges": "Select a file to view changes",
@@ -784,7 +780,8 @@
     "selectSidebarStash": "Select a stash",
     "selectSidebarCommit": "Select a commit",
     "selectSidebarPullRequest": "Select a pull request",
-    "selectSidebarIssue": "Select an issue"
+    "selectSidebarIssue": "Select an issue",
+    "pressEnterToSearch": "Press Enter to search"
   },
   "inbox": {
     "scrollToBottom": "Scroll to bottom",
@@ -813,7 +810,6 @@
     "notGitInitialized": "Not git initialized",
     "notGitInitializedTooltip": "This working directory does not have a .git directory yet.",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "scanningFiles": "Scanning files...",
     "branchTooltipSwitching": "Branch: {{branch}} (switching...)",
     "switchWorkspaceTooltip": "Switch working directory",
     "switchWorktreeTooltip": "Switch worktree",
@@ -824,12 +820,6 @@
     "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Git actions",
     "switchToSessionRepo": "Switch to {{name}}",
-    "embeddingProgress": "Embedding: {{count}} chunks processed",
-    "embeddingProgressWithPercent": "Embedding: {{count}} chunks processed ({{percent}}%)",
-    "embeddingShort": "Embedding {{percent}}%",
-    "embeddingLabel": "Embedding",
-    "indexingProgress": "Indexing: {{processed}}/{{total}} files ({{percent}}%)",
-    "indexingProgressWithFile": "Indexing: {{processed}}/{{total}} files ({{percent}}%)\nCurrent: {{file}}",
     "ports": {
       "workspaceSection": "Current workspace",
       "externalSection": "External",
@@ -894,13 +884,14 @@
       "simulatorBrowserNotice": "This browser is for session replay only. For persistent browsing, use the Browser in Main App (Tools → Browser).",
       "tlsDevNote": "Note: Some HTTPS sites (like GitHub) may show TLS errors in development mode due to certificate validation. Try HTTP sites or simple HTTPS sites like example.com.",
       "siteUnreachableTitle": "This site can't be reached",
-      "embeddedFallbackTitle": "This site may not work in the embedded browser",
-      "embeddedFallbackBody": "Some sites block or fail to render inside app WebViews. Open it in your system browser if the page stays blank.",
-      "currentUrl": "Current URL",
+      "loadStalledTitle": "This page didn't finish loading",
+      "copyUrl": "Copy URL",
       "webviewHiddenTitle": "Webview temporarily hidden",
       "webviewHiddenBody": "Close the menu or dialog to show it again."
     },
-    "unsavedChangesTitle": "Unsaved Changes"
+    "unsavedChangesTitle": "Unsaved Changes",
+    "fileChangedOnDiskTitle": "File changed on disk",
+    "fileChangedOnDiskBody": "\"{{name}}\" changed on disk since you opened it. Overwrite it with your version?"
   },
   "git": {
     "loading": "Loading git status...",
@@ -927,7 +918,7 @@
       "createTokenButton": "Create Token",
       "openGitSettingsButton": "Open Settings",
       "configureInSettings": "Configure Git in Settings",
-      "configureInSettingsDesc": "Add GitHub App access, save a token, or scan local credentials in Settings → Connections, then retry this Git operation."
+      "configureInSettingsDesc": "Add GitHub App access, save a token, or scan local credentials in Settings → Connections, then retry this Git operation"
     },
     "actions": {
       "publish": "Publish",
@@ -965,7 +956,12 @@
       "subagentRunning": "Running",
       "subagentPending": "Pending",
       "subagentCompleted": "Completed",
-      "subagentFailed": "Failed"
+      "subagentFailed": "Failed",
+      "sources": "Sources",
+      "sourcesCount_one": "{{count}} Source",
+      "sourcesCount_other": "{{count}} Sources",
+      "loadMoreSources": "Load more (+{{count}})",
+      "sourceImage": "Image"
     },
     "messages": {
       "pushSuccess": "Successfully pushed changes to remote",
@@ -1137,6 +1133,93 @@
         "autoMergeEnabled": "Auto-merge enabled",
         "inMergeQueue": "Waiting in the merge queue"
       },
+      "mergeBox": {
+        "checksFailed": "Some checks were not successful",
+        "checksPending": "Some checks haven't completed yet",
+        "checksPassed": "All checks have passed",
+        "checksSkipped": "All checks were skipped",
+        "counts": {
+          "failing": "{{count}} failing",
+          "inProgress": "{{count}} in progress",
+          "skipped": "{{count}} skipped",
+          "successful": "{{count}} successful",
+          "summary_one": "{{parts}} check",
+          "summary_other": "{{parts}} checks"
+        },
+        "check": {
+          "queued": "Queued",
+          "started": "Started {{time}}",
+          "successfulIn": "Successful in {{duration}}",
+          "failingAfter": "Failing after {{duration}}",
+          "skipped": "Skipped",
+          "successful": "Successful",
+          "failing": "Failing"
+        },
+        "deployments": {
+          "label": "Deployments",
+          "none": "No deployments",
+          "active_one": "{{count}} active deployment",
+          "active_other": "{{count}} active deployments",
+          "view": "View deployment",
+          "notDeployed": "This branch has not been deployed",
+          "deployed": "This branch was successfully deployed",
+          "deploying": "This branch is being deployed",
+          "deployFailed": "This branch had an error being deployed",
+          "deployInactive": "This branch is no longer deployed",
+          "state": {
+            "active": "Active",
+            "pending": "In progress",
+            "failure": "Failed",
+            "inactive": "Inactive"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Changes approved",
+            "detail": "An approving review was submitted"
+          },
+          "reviewRequired": {
+            "title": "Review required",
+            "detail": "At least one approving review is required to merge"
+          },
+          "reviewChangesRequested": {
+            "title": "Changes requested",
+            "detail": "A reviewer requested changes before merging"
+          },
+          "noConflicts": {
+            "title": "No conflicts with the base branch",
+            "detail": "Merging can be performed automatically"
+          },
+          "hasConflicts": {
+            "title": "This branch has conflicts that must be resolved",
+            "detail": "Resolve the conflicts on the head branch, then push"
+          },
+          "outOfDate": {
+            "title": "This branch is out of date with the base branch",
+            "detail": "Merge the latest base branch changes into this branch"
+          },
+          "checkingConflicts": {
+            "title": "Checking for the ability to merge automatically…",
+            "detail": "Hang in there while GitHub checks the branch's status"
+          },
+          "autoMergeEnabled": {
+            "title": "Auto-merge enabled",
+            "detail": "This pull request merges once its requirements are met"
+          },
+          "inMergeQueue": {
+            "title": "Waiting in the merge queue",
+            "detail": "GitHub merges it when it reaches the front of the queue"
+          }
+        },
+        "merged": {
+          "title": "Pull request successfully merged and closed",
+          "detail": "The head branch can be safely deleted"
+        },
+        "closed": {
+          "title": "Closed with unmerged commits",
+          "detail": "This pull request is closed. Reopen it to merge"
+        }
+      },
       "commits": {
         "backToList": "All commits",
         "none": "No commits",
@@ -1172,7 +1255,7 @@
       },
       "authRequired": {
         "title": "Connect GitHub",
-        "description": "Go to Settings → Connections to connect your GitHub account."
+        "description": "Go to Settings → Connections to connect your GitHub account"
       },
       "flow": {
         "wantsToMergeCommitsInto_one": "wants to merge {{count}} commit into",
@@ -1317,10 +1400,10 @@
       },
       "authRequired": {
         "title": "Connect GitHub",
-        "description": "Go to Settings → Connections to connect your GitHub account."
+        "description": "Go to Settings → Connections to connect your GitHub account"
       },
       "reAuthRequired": "GitHub Authorization Required",
-      "reAuthDescription": "Your GitHub token has expired. Go to Settings → Connections to reconnect.",
+      "reAuthDescription": "Your GitHub token has expired. Go to Settings → Connections to reconnect",
       "goToSettings": "Go to Settings",
       "timelineErrorTitle": "GitHub activity unavailable",
       "tabs": {
@@ -1345,6 +1428,103 @@
     "commit": {
       "copySha": "Copy SHA",
       "shaCopied": "SHA copied to clipboard"
+    },
+    "branchSwitch": {
+      "title": "Switch branch",
+      "conflictsTitle": "Changes need attention",
+      "blockedTitle": "Branch switch needs attention",
+      "working": "Saving and switching…",
+      "current": "Current branch: {{branch}}",
+      "changedFiles": "{{count}} changed files",
+      "question": "What would you like to do with your changes?",
+      "leave": "Leave changes on {{branch}}",
+      "leaveDescription": "Save your work for later and switch with a clean working tree",
+      "bring": "Bring changes to {{branch}}",
+      "bringDescription": "Move your uncommitted changes to the destination branch",
+      "worktreeTitle": "Branch is open in another worktree",
+      "openWorktree": "Open worktree",
+      "activeTask": "A task is running in this worktree",
+      "activeTaskDescription": "Switching now changes the files the agent is working on",
+      "switchAnyway": "Switch anyway",
+      "switchedTo": "Switched to {{branch}}",
+      "saveTitle": "Save files before switching",
+      "saveDescription": "Open files have unsaved edits. Save them before choosing where to keep your changes",
+      "saveContinue": "Save all and continue",
+      "saveFailed": "Could not save all files",
+      "multipleBuffers": "This file has edits in more than one editor. Save or close those editors before switching",
+      "editedWhileSaving": "Files were edited while saving. Review the latest edits and try again",
+      "savePreview": "Save or discard edits in the spreadsheet editor before switching branches",
+      "messages": {
+        "detached_head": "Create a branch from the current commit before switching, so detached work remains reachable",
+        "unborn": "Create the first commit before using saved branch changes",
+        "ignored_collision": "An ignored file would be overwritten. Move it out of the way before switching",
+        "worktree_branch_in_use": "This branch is already open in another worktree",
+        "invalid_branch_name": "Choose a valid branch name",
+        "branch_exists": "That branch already exists",
+        "branch_not_found": "Branch not found or ambiguous. Refresh branches and select an explicit remote branch",
+        "upstream_mismatch": "A local branch with that name tracks a different upstream. Choose the local branch explicitly",
+        "operation_merge": "Finish or abort the merge before switching branches",
+        "operation_rebase": "Finish or abort the rebase before switching branches",
+        "operation_cherry_pick": "Finish or abort the cherry-pick before switching branches",
+        "operation_revert": "Finish or abort the revert before switching branches",
+        "operation_other": "Finish the current Git operation before switching branches",
+        "stale": "The files or branches changed while the dialog was open. Review the latest changes and try again",
+        "save_failed": "Could not finish saving changes: {{detail}}. Review the working tree and saved changes before retrying",
+        "changed_while_saving": "Files changed while saving. Checkout was not attempted; your snapshot is available",
+        "checkout_failed_restored": "Checkout failed; your changes were restored: {{detail}}",
+        "checkout_failed_saved": "Checkout failed. Your changes are saved: {{detail}}",
+        "worktree_changed": "The worktree changed during checkout. Your original changes are saved; review the current files before restoring",
+        "restore_conflicts": "Switched to {{branch}}. Some changes could not be restored: {{detail}}. Your original changes are saved",
+        "saved_on_previous": "Changes saved on the previous branch",
+        "brought": "Your changes followed you to this branch",
+        "worktree_missing": "The worktree no longer exists. Refresh and try again"
+      }
+    },
+    "dialogs": {
+      "detachedHead": {
+        "title": "Detached HEAD State",
+        "body": "You are in detached HEAD state at commit {{shortHash}}.\n\nYou are not on any branch. Any commits you make may be lost if you checkout another branch without creating a new branch first.\n\n⚠️ Commits in detached HEAD state may be garbage collected.",
+        "createBranch": "Create Branch",
+        "continueWithoutBranch": "Continue Without Branch"
+      },
+      "largePush": {
+        "title": "Large Push Detected",
+        "body": "You are about to push {{commitCount}} commits to {{remote}}/{{branch}}.\n\nThis is more than usual. Are you sure you want to continue?\n\n💡 Consider breaking large changes into smaller, more focused commits.",
+        "confirm": "Push All Commits"
+      },
+      "protectedBranch": {
+        "title": "Protected Branch",
+        "body": "The branch \"{{branch}}\" on {{remote}} is protected and cannot be pushed to directly.\n\nProtected branches require changes to go through pull requests.",
+        "createPr": "Create Pull Request"
+      },
+      "pullConflict": {
+        "title": "Can't Pull with Local Changes",
+        "body": "Your local changes would be overwritten by the incoming changes from \"{{branch}}\".{{fileInfo}}\n\nChoose how to proceed:",
+        "fileInfo_one": " ({{count}} file affected)",
+        "fileInfo_other": " ({{count}} files affected)",
+        "stashAndPull": "Stash & Pull",
+        "discardAndPull": "Discard & Pull"
+      },
+      "pushRejected": {
+        "title": "Push Rejected",
+        "body": "Can't push to {{remote}}/{{branch}}.\n\nThe remote branch contains commits that you don't have locally.{{behindInfo}}\n\n⚠️ Force push will overwrite remote changes permanently.",
+        "behindInfo_one": " ({{count}} commit behind)",
+        "behindInfo_other": " ({{count}} commits behind)",
+        "pullAndPush": "Pull & Push",
+        "forcePush": "Force Push"
+      },
+      "conflict": {
+        "titleMerge": "Merge Conflict",
+        "titleRebase": "Rebase Conflict",
+        "bodyMerge": "Conflicts occurred while merging \"{{branch}}\".{{progress}}{{files}}\n\n⚠️ Aborting will cancel the merge and restore your branch.",
+        "bodyRebase": "Conflicts occurred while rebasing onto \"{{branch}}\".{{progress}}{{files}}\n\n⚠️ Aborting will restore your branch to its state before rebasing.",
+        "progress": " (Step {{current}} of {{total}})",
+        "files_one": "\n\n{{count}} file with conflicts.",
+        "files_other": "\n\n{{count}} files with conflicts.",
+        "resolve": "Resolve Conflicts",
+        "abortMerge": "Abort Merge",
+        "abortRebase": "Abort Rebase"
+      }
     }
   },
   "selectors": {
@@ -1399,7 +1579,6 @@
         "createWorkspace": "Create new working directory"
       },
       "sources": {
-        "cloningFromGitHub": "cloning from GitHub",
         "cloningFromGitHubUrl": "clone from GitHub URL",
         "cloningFromMyGitHub": "clone from my GitHub",
         "creatingWorkspace": "creating new working directory",
@@ -1460,7 +1639,6 @@
         "createFrom": "Create Branch From",
         "deleteBranch": "Delete branch",
         "refresh": "Refresh branch",
-        "checkoutDetachedSuccess": "Now in detached HEAD state at current commit",
         "removeWorktree": "Remove Worktree",
         "newWorktree": "New Worktree...",
         "refreshPullRequests": "Refresh Pull requests"
@@ -1468,9 +1646,15 @@
       "messages": {
         "deletedCount_one": "Deleted {{count}} branch",
         "deletedCount_other": "Deleted {{count}} branches",
-        "failedDeleteList": "Failed to delete: {{branches}}"
+        "failedDeleteList": "Failed to delete: {{branches}}",
+        "failedDelete": "Failed to delete branch \"{{branch}}\"",
+        "prNoHeadBranch": "Pull request has no head branch",
+        "readBranchesFailed": "Could not read local branches",
+        "createPrBranchFailed": "Could not create PR branch",
+        "readRemotesFailed": "Could not read repository remotes"
       },
       "labels": {
+        "defaultBranches": "Default Branches",
         "otherBranches": "Other Branches",
         "current": "Current",
         "recent": "Recent",
@@ -1518,6 +1702,8 @@
       "selectWorktreeSource": "Select worktree branch or pull request"
     },
     "spotlightFooter": {
+      "settings": "Spotlight settings",
+      "unpinAll": "Unpin all",
       "navigate": "Navigate",
       "select": "Select",
       "switchColumn": "Switch column",
@@ -1601,11 +1787,6 @@
         "integrations": "Agents & Integrations",
         "market": "Market",
         "actions": "Actions"
-      },
-      "paramLabels": {
-        "repo": "Repo",
-        "folder": "Folder",
-        "branch": "Branch"
       },
       "actions": {
         "showInFinder": {
@@ -1710,7 +1891,7 @@
     "chatRight": "Chat Right",
     "sidebarPosition": "Workstation sidebar",
     "modelPickerStyle": "Picker",
-    "paginateChatHistory": "Paginate chat history",
+    "paginateChatHistory": "Chat history pagination",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "Menu",
     "left": "Left",
@@ -1922,22 +2103,6 @@
     "password": "Password",
     "ssl": "Require SSL"
   },
-  "sqlEditor": {
-    "placeholder": "Enter SQL query...",
-    "format": "Format",
-    "runQueryToSeeResults": "Run a query to see results",
-    "executingQuery": "Executing query...",
-    "queryFailed": "Query failed",
-    "queryCompleted": "Query completed",
-    "noResults": "Query returned no results",
-    "rowCount_one": "{{count}} row",
-    "rowCount_other": "{{count}} rows",
-    "press": "Press",
-    "toRun": "to run",
-    "nullValue": "NULL",
-    "booleanTrue": "true",
-    "booleanFalse": "false"
-  },
   "uploadZone": {},
   "chatImage": {
     "maxReached": "Maximum {{max}} images allowed",
@@ -1982,13 +2147,29 @@
   "selectionMenu": {
     "addToChat": "Add to Chat",
     "addThisFile": "Add this file",
-    "addLines": "Add line {{from}} – {{to}}"
+    "addLines": "Add line {{from}} – {{to}}",
+    "replyToSelection": "Reply",
+    "clearQuotedSelection": "Remove quoted selection",
+    "pinSelection": "Pin"
   },
   "browser": {
     "screenshot": {
       "added": "Screenshot attached to chat",
       "failed": "Failed to capture screenshot: {{reason}}",
-      "noActivePage": "No active page to capture"
+      "noActivePage": "No active page to capture",
+      "saved": "Screenshot saved",
+      "saveFailed": "Failed to save screenshot: {{reason}}"
+    },
+    "menu": {
+      "pageTheme": "Page theme",
+      "themeAuto": "Auto",
+      "themeLight": "Light",
+      "themeDark": "Dark",
+      "saveScreenshot": "Save screenshot...",
+      "openHtmlFile": "Open HTML file..."
+    },
+    "openHtmlFile": {
+      "failed": "Failed to open file: {{reason}}"
     },
     "selectedElement": {
       "sentToChat": "Element attached to chat",
@@ -2206,7 +2387,7 @@
   },
   "quitConfirmation": {
     "title": "Quit ORG2?",
-    "subtitle": "Any running sessions will keep their current state. You can reopen ORG2 later.",
+    "subtitle": "Any running sessions will keep their current state. You can reopen ORG2 later",
     "cancel": "Cancel",
     "confirm": "Quit"
   },
@@ -2218,7 +2399,7 @@
   "browserCookieImport": {
     "safari": {
       "needsFullDiskAccess": "Needs Full Disk Access",
-      "explain": "Safari keeps its cookies in a folder macOS protects. Allow ORG2 under Full Disk Access in System Settings, then check again.",
+      "explain": "{{browser}} keeps its cookies in a folder macOS protects. Allow ORG2 under Full Disk Access in System Settings, then check again",
       "openSettings": "Open System Settings",
       "checkAgain": "Check again"
     },
@@ -2243,7 +2424,7 @@
     "doneSkipped_other": "{{count}} cookies were skipped",
     "empty": {
       "title": "No supported browsers found",
-      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from"
     },
     "category": {
       "banking": "Bank",
@@ -2252,7 +2433,7 @@
     },
     "errors": {
       "openSettingsFailed": "Couldn't open System Settings",
-      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow",
       "listFailed": "Couldn't find browsers to import from",
       "previewFailed": "Couldn't read cookies from that browser",
       "importFailed": "Couldn't import the selected cookies"
@@ -2281,5 +2462,11 @@
     "sessionJsonFile": "ORG2 Session JSON",
     "skillsSource": "ORG2 Skills",
     "gitServiceUnavailable": "Unable to reach the local Git service. Please try again after the app finishes starting, or restart ORG2 if this keeps happening."
+  },
+  "imageActions": {
+    "addToChat": "Add to chat",
+    "added": "Added to chat",
+    "failed": "Could not complete the image action",
+    "downloadCopy": "Download copy"
   }
 }

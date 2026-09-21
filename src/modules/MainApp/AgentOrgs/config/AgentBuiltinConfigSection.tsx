@@ -15,8 +15,8 @@ import { useTranslation } from "react-i18next";
 
 import { Placeholder } from "@src/components/Placeholder";
 import type { TabPillItem } from "@src/components/TabPill";
+import { SectionTabSwitch } from "@src/components/layout/Section";
 import type { SubAgentRef } from "@src/modules/MainApp/AgentOrgs/types";
-import { SectionTabSwitch } from "@src/modules/shared/layouts/SectionLayout";
 import {
   BUILTIN_OS_DEF_ID,
   BUILTIN_SDE_DEF_ID,

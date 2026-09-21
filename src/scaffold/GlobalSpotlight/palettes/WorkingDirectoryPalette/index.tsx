@@ -358,6 +358,7 @@ export const WorkingDirectoryPalette: React.FC<
       onClose={onClose}
       hasActiveAction={!addMenuKind && pinnedActionItems.length > 0}
       activeActionChip={SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchSection}
+      pinScope="directories"
     >
       {palette}
     </SpotlightShell>

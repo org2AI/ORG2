@@ -96,9 +96,15 @@ export const EDITOR_SETTINGS_REGISTRY = {
     description: "Highlight the active line in the editor",
     category: "editor",
   },
+  "editor.splitDiffCenteredLineNumbers": {
+    schema: z.boolean(),
+    default: false,
+    description:
+      "In split diffs, show both line-number columns between the two panes instead of at each pane's left edge",
+    category: "editor",
+  },
   "editor.showBlame": {
-    // Toggled in the code viewer, not a settings page.
-    settingsSearch: false,
+    // Settings → Appearance → Code Editor; also the file header menu.
     schema: z.boolean(),
     default: false,
     description:

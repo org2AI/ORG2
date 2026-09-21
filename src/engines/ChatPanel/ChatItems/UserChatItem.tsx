@@ -12,6 +12,7 @@ import PageNotice from "@src/components/PageNotice";
 import PersonAvatar from "@src/components/PersonAvatar";
 import { REPO_SETUP_PROMPT_MARKER } from "@src/config/repoSetupMarker";
 import type { OptimizedChatItem } from "@src/engines/ChatPanel/ChatHistory/chatItemPipeline/types";
+import { ChatImageThumbnailRow } from "@src/engines/ChatPanel/ChatImageThumbnail";
 import { conversationSenderStampOf } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 
 import UserMessageContent from "../ChatHistory/components/UserMessageContent";
@@ -21,6 +22,7 @@ import { UserChatItemBubble } from "./UserChatItem/UserChatItemBubble";
 import { UserChatItemToolbar } from "./UserChatItem/UserChatItemToolbar";
 import { useUserChatItemEdit } from "./UserChatItem/useUserChatItemEdit";
 import { useUserChatItemModel } from "./UserChatItem/useUserChatItemModel";
+import { normalizeUserMessageText } from "./normalizeUserMessageText";
 import { wasSubmittedByViewer } from "./parentAgentSender";
 import { resolveUserMessageSide } from "./userMessageSide";
 
@@ -82,10 +84,9 @@ const UserChatItem = ({
     isAgentOrgInboxTranscript,
     messageImages,
     retryDelivery,
-    needsTruncation,
     rawPrompt,
     cachedFiles,
-  } = useUserChatItemModel({ chatItem, compactPreview, modelId, onEditSubmit });
+  } = useUserChatItemModel({ chatItem, modelId, onEditSubmit });
 
   const handleToggleTruncation = useCallback(
     (event: SyntheticEvent) => {
@@ -158,7 +159,6 @@ const UserChatItem = ({
   );
   if (!hasDisplayContent) return null;
 
-  const displayNeedsTruncation = needsTruncation;
   const ownerSide =
     senderResolution.relationship === "viewer"
       ? "right"
@@ -181,10 +181,26 @@ const UserChatItem = ({
       t("chat.parentAgentSender")
     : senderResolution.identity?.displayName?.trim() || null;
 
+  // Attachments never sit inside the text fold. Continuous chat lifts them
+  // into their own row above the bubble, aligned to the message side;
+  // paginated headers keep them in the bubble, above the folded text.
+  const imagesAboveBubble = !compactPreview && Boolean(messageImages?.length);
+  const bubbleText = normalizeUserMessageText(
+    fullContent,
+    messageImages
+  ).trim();
+  const showBubble =
+    !imagesAboveBubble ||
+    isRepoSetup ||
+    isPlanApproved ||
+    cachedFiles.length > 0 ||
+    (bubbleText.length > 0 && bubbleText !== "(image)");
+
   const messageContent = (
     <UserMessageContent
       text={fullContent}
       images={messageImages}
+      showImages={false}
       mentions={mentions}
     />
   );
@@ -192,25 +208,34 @@ const UserChatItem = ({
   // Display mode
   const display = (
     <>
-      <UserChatItemBubble
-        isEditableDisplay={isEditableDisplay}
-        onEditClick={handleEditClick}
-        isRepoSetup={isRepoSetup}
-        isPlanApproved={isPlanApproved}
-        planApprovedEdited={planApprovedEdited}
-        fullContent={fullContent}
-        messageImages={messageImages}
-        compactPreview={compactPreview}
-        messageContent={messageContent}
-        messageContentRef={messageContentRef}
-        isExpanded={isExpanded}
-        displayNeedsTruncation={displayNeedsTruncation}
-        onToggleTruncation={handleToggleTruncation}
-        cachedFiles={cachedFiles}
-        previewFile={previewFile}
-        onTogglePreview={handleTogglePreview}
-        onClosePreview={handleClosePreview}
-      />
+      {imagesAboveBubble && messageImages && (
+        <ChatImageThumbnailRow
+          images={messageImages}
+          className={`mb-1.5 max-w-[min(600px,100%)] ${
+            isRemoteSharedMessage ? "justify-start" : "justify-end"
+          }`}
+        />
+      )}
+      {showBubble && (
+        <UserChatItemBubble
+          isEditableDisplay={isEditableDisplay}
+          onEditClick={handleEditClick}
+          isRepoSetup={isRepoSetup}
+          isPlanApproved={isPlanApproved}
+          planApprovedEdited={planApprovedEdited}
+          fullContent={fullContent}
+          messageImages={messageImages}
+          compactPreview={compactPreview}
+          messageContent={messageContent}
+          messageContentRef={messageContentRef}
+          isExpanded={isExpanded}
+          onToggleTruncation={handleToggleTruncation}
+          cachedFiles={cachedFiles}
+          previewFile={previewFile}
+          onTogglePreview={handleTogglePreview}
+          onClosePreview={handleClosePreview}
+        />
+      )}
       <UserChatItemToolbar
         rawPrompt={rawPrompt}
         sessionId={event?.sessionId}

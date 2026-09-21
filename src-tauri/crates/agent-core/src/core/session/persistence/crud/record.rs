@@ -44,6 +44,8 @@ pub struct UnifiedSessionRecord {
     pub status: String,
     pub model: Option<String>,
     pub account_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_source: Option<String>,
     /// Provider override for Rust Agent sessions using a native subscription harness.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_harness_type: Option<String>,
@@ -169,6 +171,7 @@ impl Default for UnifiedSessionRecord {
             status: String::new(),
             model: None,
             account_id: None,
+            credential_source: None,
             native_harness_type: None,
             user_input: None,
             total_tokens: 0,
@@ -230,7 +233,8 @@ pub(in crate::core::session::persistence) const UNIFIED_SESSION_SELECT: &str = r
         s.draft_text,
         s.reply_target_event_id,
         COALESCE(s.pinned, 0),
-        s.product_mode
+        s.product_mode,
+        s.credential_source
     FROM agent_sessions s
 "#;
 
@@ -258,6 +262,7 @@ pub(in crate::core::session::persistence) fn row_to_record(
         status: row.get(2)?,
         model: row.get(3)?,
         account_id: row.get(4)?,
+        credential_source: row.get(35)?,
         native_harness_type: row.get(30)?,
         user_input: row.get(5)?,
         total_tokens: row.get(6)?,
@@ -298,7 +303,7 @@ pub(in crate::core::session::persistence) fn row_to_record(
 mod tests {
     use super::*;
 
-    // Column layout MUST mirror `UNIFIED_SESSION_SELECT` (35 columns) —
+    // Column layout MUST mirror `UNIFIED_SESSION_SELECT` (36 columns) —
     // these fixtures drift silently when production columns are added.
     const VALID_ROW_SELECT: &str = r#"
         SELECT
@@ -316,6 +321,7 @@ mod tests {
             NULL,
             NULL,
             0,
+            NULL,
             NULL
     "#;
 
@@ -353,7 +359,8 @@ mod tests {
                     'half-typed reply',
                     'evt-42',
                     0,
-                    'project'
+                    'project',
+            NULL
                 "#,
                 [],
                 row_to_record,
@@ -416,7 +423,9 @@ mod tests {
                     NULL,
                     NULL,
                     NULL,
-                    0
+                    0,
+                    NULL,
+                    NULL
                 "#,
                 [],
                 row_to_record,
@@ -449,7 +458,9 @@ mod tests {
                     NULL,
                     NULL,
                     NULL,
-                    0
+                    0,
+                    NULL,
+                    NULL
                 "#,
                 [],
                 row_to_record,
@@ -470,7 +481,9 @@ mod tests {
                     0, '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z', 'sde',
                     NULL, NULL, '/tmp/project', NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                     'builtin:sde', NULL, NULL, NULL, NULL, 'own_key', NULL, NULL, NULL, NULL,
-                    0
+                    0,
+                    NULL,
+                    NULL
                 "#,
                 [],
                 row_to_record,

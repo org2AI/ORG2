@@ -1,5 +1,6 @@
 const http = require("node:http");
 const https = require("node:https");
+const devConfig = require("../../src-tauri/tauri.dev.conf.json");
 
 function createTauriArgs({ features = [], devUrl } = {}) {
   const args = ["dev"];
@@ -17,6 +18,7 @@ function createTauriArgs({ features = [], devUrl } = {}) {
   args.push(
     "--config",
     JSON.stringify({
+      ...devConfig,
       build: buildConfig,
     })
   );

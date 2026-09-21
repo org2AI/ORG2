@@ -122,8 +122,8 @@ export function buildSessionMenuItem({
     ) : undefined,
     // Sidebar rows stay in bare compact form ("2m"/"2h"/"2d", no "ago")
     // regardless of the app's display language — a localized sentence-style
-    // form (e.g. zh's "2分钟前") doesn't fit this row's fixed-width shortcut.
-    shortcut: formatCompactAge(timestampSrc),
+    // form (e.g. zh's "2分钟前") doesn't fit this row's compact trailing slot.
+    trailingLabel: formatCompactAge(timestampSrc),
     openContextMenuOnSelectedClick: true,
     opensChatPanelTab: true,
     dragPayload: {

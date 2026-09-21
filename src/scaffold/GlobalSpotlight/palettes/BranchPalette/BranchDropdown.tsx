@@ -16,10 +16,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
 import DropdownSearch from "@src/components/Dropdown/DropdownSearch";
 import {
   DROPDOWN_CLASSES,
@@ -34,12 +32,12 @@ import { useFilteredItems } from "@src/hooks/search";
 import {
   FolderClosedIcon,
   HugeiconsIcon,
-  Tick01Icon,
   WorkflowCircle05Icon,
 } from "@src/icons";
-import { getViewportSize } from "@src/util/ui/window/viewport";
 
+import { PickerOptionRow } from "../../components/PickerOptionRow";
 import { SpotlightDetailPane } from "../../components/SpotlightDetailPane";
+import { PickerDropdownShell } from "../../shell/PickerDropdownShell";
 import type { BranchItem } from "../../types";
 import { categorizeBranches } from "../../utils/branchUtils";
 import { BranchDropdownList } from "./BranchDropdownList";
@@ -49,7 +47,6 @@ import { useBranchFetch } from "./useBranchFetch";
 import { useWorktreeMap } from "./useWorktreeMap";
 
 const LIST_MAX_HEIGHT = 360;
-const VIEWPORT_MARGIN = 12;
 
 interface BranchListRow {
   branch: BranchItem;
@@ -79,42 +76,19 @@ const BranchRow: React.FC<BranchRowProps> = ({
         data: { ...branch, isCurrentSelection: isCurrent },
       }}
     >
-      <Button
-        layout="custom"
-        appearance="custom"
-        htmlType="button"
-        data-testid={`branch-dropdown-row-${branch.name}`}
-        {...keyboardProps}
-        className={`${DROPDOWN_CLASSES.item} ${
-          isCurrent ? DROPDOWN_CLASSES.itemSelected : DROPDOWN_CLASSES.itemHover
-        } w-full justify-start`}
-      >
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-          {isCurrent ? (
-            <HugeiconsIcon
-              icon={Tick01Icon}
-              data-icon="check"
-              size={DROPDOWN_ITEM.iconSize}
-              className="text-primary-6"
-            />
-          ) : branch.worktreePath ? (
-            <HugeiconsIcon
-              icon={FolderClosedIcon}
-              data-icon="folder"
-              size={DROPDOWN_ITEM.iconSize}
-              className="text-text-2"
-            />
-          ) : (
-            <HugeiconsIcon
-              icon={WorkflowCircle05Icon}
-              data-icon="git-branch"
-              size={DROPDOWN_ITEM.iconSize}
-              className="text-text-2"
-            />
-          )}
-        </span>
-        <span className="truncate">{branch.name}</span>
-      </Button>
+      <PickerOptionRow
+        label={branch.name}
+        selected={isCurrent}
+        testId={`branch-dropdown-row-${branch.name}`}
+        keyboardProps={keyboardProps}
+        icon={
+          <HugeiconsIcon
+            icon={branch.worktreePath ? FolderClosedIcon : WorkflowCircle05Icon}
+            size={DROPDOWN_ITEM.iconSize}
+            className="text-text-2"
+          />
+        }
+      />
     </SpotlightDetailPane>
   );
 };
@@ -210,12 +184,24 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
   const sections = useMemo(() => {
     const categorized = categorizeBranches(filteredBranches);
     const result: Array<{
-      key: "recent" | "worktrees" | "other";
+      key: "default" | "recent" | "worktrees" | "other";
       label: string | null;
       items: BranchItem[];
     }> = [];
+    if (categorized.default.length > 0) {
+      result.push({
+        key: "default",
+        label: t("selectors.branch.labels.defaultBranches"),
+        items: categorized.default,
+      });
+    }
     if (categorized.recent.length > 0) {
-      result.push({ key: "recent", label: null, items: categorized.recent });
+      // Recent needs a heading only when Default sits above it.
+      result.push({
+        key: "recent",
+        label: result.length > 0 ? t("selectors.branch.labels.recent") : null,
+        items: categorized.recent,
+      });
     }
     if (categorized.worktrees.length > 0) {
       result.push({
@@ -224,12 +210,11 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
         items: categorized.worktrees,
       });
     }
-    const tail = [...categorized.default, ...categorized.other];
-    if (tail.length > 0) {
+    if (categorized.other.length > 0) {
       result.push({
         key: "other",
         label: t("selectors.branch.labels.otherBranches"),
-        items: tail,
+        items: categorized.other,
       });
     }
     return result;
@@ -300,28 +285,13 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
     );
   if (!isOpen || !isPositioned) return null;
 
-  const { width: vw } = getViewportSize();
-  const width = Math.min(
-    Math.max(420, panelPosition.width),
-    vw - VIEWPORT_MARGIN * 2
-  );
-  const left = Math.max(
-    VIEWPORT_MARGIN,
-    Math.min(panelPosition.left, vw - VIEWPORT_MARGIN - width)
-  );
-
-  return createPortal(
-    <div
+  return (
+    <PickerDropdownShell
       ref={panelRef}
       data-spotlight-detail-anchor
       data-spotlight-tabs-scope
-      className={`${DROPDOWN_CLASSES.panel} fixed flex flex-col`}
-      style={{
-        top: panelPosition.top,
-        bottom: panelPosition.bottom,
-        left,
-        width,
-      }}
+      position={panelPosition}
+      preferredWidth={Math.max(420, panelPosition.width)}
     >
       <DropdownSearch
         leading={<BranchPickerTabs value={tab} onChange={setTab} />}
@@ -369,8 +339,7 @@ export const BranchDropdown: React.FC<BranchDropdownProps> = ({
           )}
         />
       )}
-    </div>,
-    document.body
+    </PickerDropdownShell>
   );
 };
 

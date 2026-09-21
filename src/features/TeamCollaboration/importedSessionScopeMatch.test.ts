@@ -26,7 +26,7 @@ const sessions = [
   {
     session_id: "claudecodeapp-agent-a5",
     repoPath: "/Users/me/org2",
-    repoRemoteUrls: ["git@github.com:yorgai/org2.git"],
+    repoRemoteUrls: ["git@github.com:org2AI/ORG2.git"],
     parentSessionId: "claudecodeapp-1",
   },
 ];
@@ -62,7 +62,7 @@ describe("collectScopeMatchedImportedSessionIds", () => {
     // as its own top-level team session (a wall of prompt-titled rows the
     // team list cannot fold: the cloud row has no parent linkage).
     const ids = collectScopeMatchedImportedSessionIds(sessions, [
-      "github.com/yorgai/org2",
+      "github.com/org2ai/org2",
     ]);
     expect(ids.has("claudecodeapp-agent-a5")).toBe(false);
   });

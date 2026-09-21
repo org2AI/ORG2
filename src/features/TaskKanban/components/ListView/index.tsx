@@ -9,7 +9,7 @@ import {
   type SessionTableColumnOverrides,
   type SessionTableItem,
   mapKanbanTaskToSessionTableItem,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/features/SessionTable";
 import { toIntlLocaleTag } from "@src/util/data/formatters/date";
 
 import { getColumnTitleKey } from "../../config";

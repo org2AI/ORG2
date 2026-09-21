@@ -87,6 +87,8 @@ describe("WorkStationShell config", () => {
         content: "devtools",
         position: "right",
         size: 400,
+        minSize: 200,
+        maxSize: 400,
       });
 
       expect(config).toEqual({
@@ -96,8 +98,8 @@ describe("WorkStationShell config", () => {
         size: 400,
         onSizeChange: undefined,
         onClose: undefined,
-        minSize: undefined,
-        maxSize: undefined,
+        minSize: 200,
+        maxSize: 400,
         resetSize: undefined,
       });
     });

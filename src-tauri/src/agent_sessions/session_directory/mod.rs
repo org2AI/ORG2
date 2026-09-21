@@ -22,6 +22,7 @@ pub mod display;
 pub mod orgtrack_adapter;
 pub mod patch;
 pub mod status;
+pub mod sections;
 pub mod types;
 
 #[cfg(test)]

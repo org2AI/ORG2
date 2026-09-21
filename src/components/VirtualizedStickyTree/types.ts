@@ -4,7 +4,8 @@
  * Generic types for virtualized tree with VS Code-style sticky scroll.
  */
 import type { MutableRefObject, ReactNode, RefObject } from "react";
-import type { VirtuosoHandle } from "react-virtuoso";
+
+import type { VirtualListHandle } from "@src/components/VirtualList";
 
 /**
  * Base interface for tree nodes.
@@ -94,8 +95,8 @@ export interface VirtualizedStickyTreeProps<TNode extends TreeNodeBase> {
   /** Empty state message */
   emptyMessage?: string;
 
-  /** Ref to expose Virtuoso handle */
-  virtuosoRef?: RefObject<VirtuosoHandle | null>;
+  /** Ref to expose the list's imperative handle */
+  listRef?: RefObject<VirtualListHandle | null>;
 
   /** Called when scrolling near the end of the list */
   onEndReached?: () => void;
@@ -126,10 +127,10 @@ export interface UseStickyScrollReturn<TNode extends TreeNodeBase> {
  */
 export interface UseScrollPreservationOptions<TNode extends TreeNodeBase> {
   flattenedNodes: FlattenedTreeNode<TNode>[];
-  virtuosoRef: RefObject<VirtuosoHandle | null>;
+  listRef: RefObject<VirtualListHandle | null>;
   lastScrollTopRef: MutableRefObject<number>;
   rowHeight: number;
-  /** Direct ref to the Virtuoso scroll container DOM element.
+  /** Direct ref to the scroll container DOM element.
    *  Used for precise scrollTop adjustment after scrollToIndex.
    *  Eliminates the need for document.querySelector(".scrollbar-hide"). */
   scrollerDomRef: MutableRefObject<HTMLDivElement | null>;

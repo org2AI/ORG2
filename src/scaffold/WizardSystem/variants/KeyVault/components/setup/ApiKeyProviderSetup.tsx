@@ -12,12 +12,12 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
-import Select from "@src/components/Select";
+import TabPill from "@src/components/TabPill";
 import {
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
 
 import { useProviderConfig } from "../../config";
 import {
@@ -135,7 +135,6 @@ const ApiKeyProviderSetup: React.FC<AgentSetupProps> = ({
       <SectionContainer>
         <SectionRow
           label={t("keyVault.apiKeyLabel")}
-          description={t("keyVault.apiKeyDesc")}
           layout="vertical"
           required
         >
@@ -175,14 +174,17 @@ const ApiKeyProviderSetup: React.FC<AgentSetupProps> = ({
                 {baseUrlMode === "custom" ? <CustomBaseUrlInfoIcon /> : null}
               </span>
             }
-            description={t("keyVault.baseUrlDesc")}
             layout="vertical"
           >
             <div className="flex items-center gap-2">
-              <Select
-                value={baseUrlMode}
-                onChange={(val) => {
-                  const mode = val as BaseUrlMode;
+              <TabPill
+                tabs={[
+                  { key: "official", label: t("keyVault.officialUrl") },
+                  { key: "custom", label: t("keyVault.customUrl") },
+                ]}
+                activeTab={baseUrlMode}
+                onChange={(key) => {
+                  const mode = key as BaseUrlMode;
                   setBaseUrlMode(mode);
                   if (mode === "official") {
                     onChange({
@@ -190,13 +192,11 @@ const ApiKeyProviderSetup: React.FC<AgentSetupProps> = ({
                     });
                   }
                 }}
-                options={[
-                  { value: "official", label: t("keyVault.officialUrl") },
-                  { value: "custom", label: t("keyVault.customUrl") },
-                ]}
-                size="default"
-                dropdownWidthMode="min-match"
-                className="w-fit shrink-0"
+                variant="pill"
+                buttonStyle
+                fillWidth={false}
+                height={32}
+                className="shrink-0"
               />
               <Input
                 value={
@@ -206,6 +206,9 @@ const ApiKeyProviderSetup: React.FC<AgentSetupProps> = ({
                 }
                 onChange={(value: string) =>
                   onChange({ extracted_base_url: value || undefined })
+                }
+                placeholder={
+                  baseUrlMode === "custom" ? officialBaseUrl || "" : undefined
                 }
                 size="default"
                 className="min-w-0 flex-1"
@@ -217,15 +220,10 @@ const ApiKeyProviderSetup: React.FC<AgentSetupProps> = ({
       </SectionContainer>
 
       <SectionContainer>
-        <SectionRow
-          label={t("keyVault.validate", "Validate")}
-          description={t("keyVault.validateDesc")}
-          required
-        >
+        <SectionRow label={t("keyVault.validate", "Validate")} required>
           <Button
-            variant={keyValidated ? "success" : "primary"}
-            appearance={keyValidated ? "outline" : undefined}
-            size="default"
+            variant={keyValidated ? "secondary" : "primary"}
+            tone={keyValidated ? "success" : undefined}
             loading={validatingKey}
             disabled={validatingKey || !data.raw_key_input}
             onClick={validateKey}

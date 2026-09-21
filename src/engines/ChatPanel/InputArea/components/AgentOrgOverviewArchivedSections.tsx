@@ -62,8 +62,8 @@ const AgentOrgOverviewArchivedSections: React.FC<
           })}
         </div>
         <Button
-          htmlType="button"
-          variant="danger"
+          variant="primary"
+          tone="danger"
           size="mini"
           disabled={view.archiveTeardown?.status !== "quiesced"}
           onClick={onRequestDelete}

@@ -4,18 +4,18 @@ import { useTranslation } from "react-i18next";
 import type { MemberEntry } from "@src/api/http/project";
 import { Placeholder } from "@src/components/Placeholder";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
+import {
+  WorkManagementTable,
+  type WorkManagementTableRow,
+} from "@src/features/GitHubWork/WorkManagementTable";
 import { HugeiconsIcon, ListTodoIcon } from "@src/icons";
 import { WORK_ITEMS_KANBAN_GROUP } from "@src/modules/ProjectManager/WorkItems/workItemsViewModel";
 import type { WorkItemsKanbanGroup } from "@src/modules/ProjectManager/WorkItems/workItemsViewModel";
 import type { ProjectManagerBreadcrumbSegment } from "@src/modules/ProjectManager/shared/components/ProjectManagerBreadcrumb";
 import { PROJECT_MANAGER_PLACEHOLDER_PLACEMENT } from "@src/modules/ProjectManager/shared/placeholderTokens";
-import {
-  WorkManagementTable,
-  type WorkManagementTableRow,
-} from "@src/modules/shared/components/WorkManagementTable";
 import DetailPaneLayout, {
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
+} from "@src/scaffold/layouts/DetailPaneLayout";
 
 import type {
   AggregatedWorkItem,

@@ -47,11 +47,11 @@ describe("getSessionScopeKeys", () => {
           repoRemoteUrls: [
             "git@github.com:org2ai/org2.git",
             "https://github.com/org2ai/org2.git",
-            "https://github.com/yorgai/org2.git",
+            "https://github.com/example/other.git",
           ],
           parentSessionId: undefined,
         })
-      ).toEqual(["github.com/org2ai/org2", "github.com/yorgai/org2"]);
+      ).toEqual(["github.com/org2ai/org2", "github.com/example/other"]);
       expect(peekMock).not.toHaveBeenCalled();
       expect(primeMock).not.toHaveBeenCalled();
     });

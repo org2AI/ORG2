@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ConversationRootLocator } from "@src/engines/SessionCore/conversations/conversationTypes";
-import { QueuedConversationBusyError } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import type { ConversationRootLocator } from "@src/contracts/conversation";
+import { QueuedConversationBusyError } from "@src/contracts/conversation";
 
 import { withCanonicalConversationTurnLock } from "../messageQueueRepository";
 

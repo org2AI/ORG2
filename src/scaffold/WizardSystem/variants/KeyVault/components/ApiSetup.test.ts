@@ -68,7 +68,11 @@ vi.mock("../hooks/useProviderSelection", () => ({
 // on the model section and save gate, without detection or network effects.
 vi.mock("./AgentSetupRouter", () => ({ AgentSetupRouter: () => null }));
 
-function renderCustomSetup(data: Partial<WizardData>, loading = false): string {
+function renderCustomSetup(
+  data: Partial<WizardData>,
+  loading = false,
+  existingAccountNames: string[] = []
+): string {
   return renderToStaticMarkup(
     createElement(ApiSetup, {
       data: {
@@ -82,6 +86,7 @@ function renderCustomSetup(data: Partial<WizardData>, loading = false): string {
       onCancel: vi.fn(),
       loading,
       submitLabel: "Save connection",
+      existingAccountNames,
     })
   );
 }
@@ -106,5 +111,25 @@ describe("Custom API model setup", () => {
     expect(html).toContain('value="deployment-high"');
     expect(html).toContain('value="Team model"');
     expect(html).toContain("Save connection");
+  });
+  it("explains a disabled save when the name duplicates an account", () => {
+    const saveable: Partial<WizardData> = {
+      raw_key_input: "fixture-key",
+      extracted_base_url: "https://example.invalid/v1",
+      custom_models: ["deployment-high"],
+      enabled_models: ["deployment-high"],
+    };
+    const disabledSave =
+      /<button[^>]*\bdisabled=""[^>]*>(?:(?!<\/button>).)*Save connection/s;
+
+    const unique = renderCustomSetup(saveable);
+    expect(unique).not.toMatch(disabledSave);
+    expect(unique).not.toContain(en.keyVault.nameDuplicate);
+
+    // Static markup never focuses or blurs the input: the error has to show
+    // from the name alone, or the disabled button goes unexplained.
+    const duplicate = renderCustomSetup(saveable, false, ["  my ENDPOINT "]);
+    expect(duplicate).toMatch(disabledSave);
+    expect(duplicate).toContain(en.keyVault.nameDuplicate);
   });
 });

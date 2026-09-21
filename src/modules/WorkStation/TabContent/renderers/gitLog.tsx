@@ -7,29 +7,15 @@
  * Self-contained: it derives everything from `tab.data` and needs no host
  * context (the read-only viewer takes `repoPath=""`).
  */
-import React, { Suspense, memo } from "react";
+import { createLazyTabRenderer } from "./createLazyTabRenderer";
 
-import { Placeholder } from "@src/components/Placeholder";
-
-import type { UnifiedTabContentProps } from "../types";
-
-const CodeViewerContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/CodeViewerContent")
-);
-
-const LazyFallback = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
-
-const GitLogTabRenderer: React.FC<UnifiedTabContentProps> = memo(({ tab }) => {
-  const operation = String(tab.data.operation || "unknown");
-  const errorMessage = String(tab.data.errorMessage || "");
-  const commandOutput = tab.data.commandOutput
-    ? String(tab.data.commandOutput)
+function buildGitErrorLog(data: Record<string, unknown>): string {
+  const operation = String(data.operation || "unknown");
+  const errorMessage = String(data.errorMessage || "");
+  const commandOutput = data.commandOutput
+    ? String(data.commandOutput)
     : undefined;
-  const timestamp = tab.data.timestamp ? String(tab.data.timestamp) : undefined;
-  const virtualFileName = tab.data.virtualFileName || tab.title || "git-error";
+  const timestamp = data.timestamp ? String(data.timestamp) : undefined;
 
   const errorTime = timestamp ? new Date(timestamp) : new Date();
   const lines: string[] = [
@@ -52,22 +38,21 @@ const GitLogTabRenderer: React.FC<UnifiedTabContentProps> = memo(({ tab }) => {
       `─────────────────────────────────────────────────────────────────`
     );
   }
-  const gitLogContent = lines.join("\n");
+  return lines.join("\n");
+}
 
-  return (
-    <Suspense fallback={<LazyFallback />}>
-      <CodeViewerContent
-        selectedFile={String(virtualFileName)}
-        fileContent={gitLogContent}
-        loading={false}
-        error={null}
-        repoPath=""
-        readOnly={true}
-      />
-    </Suspense>
-  );
+const GitLogTabRenderer = createLazyTabRenderer({
+  displayName: "GitLogTabRenderer",
+  load: () =>
+    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/CodeViewerContent"),
+  useProps: ({ tab }) => ({
+    selectedFile: String(tab.data.virtualFileName || tab.title || "git-error"),
+    fileContent: buildGitErrorLog(tab.data),
+    loading: false,
+    error: null,
+    repoPath: "",
+    readOnly: true,
+  }),
 });
-
-GitLogTabRenderer.displayName = "GitLogTabRenderer";
 
 export default GitLogTabRenderer;

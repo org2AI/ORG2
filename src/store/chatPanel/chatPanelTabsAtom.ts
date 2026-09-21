@@ -55,7 +55,6 @@ export { createTerminalTab } from "./chatPanelTabFactories";
 export {
   activateChatPanelTabAtom,
   syncActiveChatPanelTabStateAtom,
-  toggleActiveChatPanelMaximizedAtom,
 } from "./chatPanelTabPresentationAtoms";
 export {
   activeChatPanelTabCanGoBackAtom,
@@ -64,7 +63,6 @@ export {
   goForwardChatPanelTabAtom,
 } from "./chatPanelTabNavigationAtoms";
 export {
-  isChatPanelTabStationAvailable,
   type ChatPanelSelectedChannel,
   type ChatPanelTab,
   type ChatPanelTabType,

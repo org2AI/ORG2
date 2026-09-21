@@ -110,6 +110,12 @@ export interface DropdownProps {
   avoidViewportOverflow?: boolean;
 
   /**
+   * Trigger-to-panel gap (px).
+   * @default DROPDOWN_PANEL.triggerGapTight
+   */
+  gap?: number;
+
+  /**
    * Extra elements the outside-click close treats as inside the dropdown —
    * e.g. a second-level submenu panel portaled to `document.body`, which is
    * outside this panel's DOM but logically part of the open menu.
@@ -170,6 +176,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   className = "",
   style,
   avoidViewportOverflow = false,
+  gap,
   additionalInsideRefs,
   options: rawOptions,
   value,
@@ -348,6 +355,7 @@ const Dropdown: React.FC<DropdownProps> = ({
       position,
       triggerElement,
       panelElement: dropdownRef.current,
+      gap,
     });
     setVerticalFit((previous) =>
       areVerticalFitsEqual(previous, nextFit) ? previous : nextFit
@@ -367,13 +375,14 @@ const Dropdown: React.FC<DropdownProps> = ({
       containerElement: getPopupContainer(),
       dropdownElement: dropdownRef.current,
       avoidViewportOverflow,
+      gap,
     });
     setDropdownPosition((previous) =>
       areDropdownCoordinatesEqual(previous, nextCoordinates)
         ? previous
         : nextCoordinates
     );
-  }, [avoidViewportOverflow, position, getPopupContainer]);
+  }, [avoidViewportOverflow, gap, position, getPopupContainer]);
 
   // Scroll and resize can both fire many times per frame; collapse them into
   // a single measurement so an open dropdown costs one layout read per frame

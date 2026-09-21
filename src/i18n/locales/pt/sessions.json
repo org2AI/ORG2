@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Enviar como nova mensagem?",
+    "body": "Esta mensagem pertence a uma sessão de execução. Editá-la aqui não permite retroceder na conversa. Enviar este texto como nova mensagem no final? As mensagens e alterações de arquivos existentes serão mantidas.",
+    "sendNew": "Enviar nova mensagem"
+  },
   "tray": {
     "markAllRead": "Marcar tudo como lido",
     "showKanban": "Mostrar Kanban",
@@ -88,8 +93,7 @@
       "openFolder": "Abrir pasta",
       "tabs": {
         "all": "Todos",
-        "apps": "Apps",
-        "clis": "CLIs"
+        "apps": "Apps"
       },
       "views": {
         "scanning": "Escaneamento",
@@ -174,7 +178,8 @@
           "output": "Saída",
           "cache": "Leitura do cache",
           "cost": "Custo",
-          "filterBySession": "Filtrar por esta sessão"
+          "filterBySession": "Filtrar por esta sessão",
+          "purpose": "Finalidade"
         },
         "pricing": {
           "input": "Entrada",
@@ -199,7 +204,17 @@
           "title": "Ainda não há uso",
           "subtitle": "Execute ou escaneie algumas sessões de programação para exibir o uso de tokens aqui."
         },
-        "loadError": "Falha ao carregar os dados de uso"
+        "loadError": "Falha ao carregar os dados de uso",
+        "purposes": {
+          "main": "Resposta principal",
+          "session_title": "Título da sessão",
+          "session_memory": "Memória da sessão",
+          "workspace_memory": "Memória do espaço de trabalho",
+          "auto_dream": "Consolidação da memória",
+          "skill_prefetch": "Seleção de habilidades",
+          "memory_prefetch": "Recuperação de memória",
+          "compaction": "Compactação do contexto"
+        }
       },
       "sessions_one": "{{count}} sessão",
       "sessions_other": "{{count}} sessões",
@@ -326,18 +341,6 @@
         "tabs": {
           "agentBrowser": "Navegador do Agent",
           "searchFetch": "Buscar e buscar página"
-        },
-        "sections": {
-          "browserTitle": "Atividade do navegador",
-          "interactionsTitle": "Interações",
-          "webSearchesTitle": "Buscas na web",
-          "pagesFetchedTitle": "Páginas buscadas"
-        },
-        "empty": {
-          "noBrowserActivity": "Sem atividade no navegador",
-          "noBrowserInteractions": "Sem interações no navegador",
-          "noWebSearches": "Sem buscas na web",
-          "noPagesFetched": "Nenhuma página buscada"
         },
         "header": {
           "categoryBrowser": "Navegador",
@@ -519,8 +522,7 @@
     },
     "titleBar": {
       "showSidebar": "Mostrar barra lateral",
-      "hideSidebar": "Ocultar barra lateral",
-      "showBottomPanel": "Mostrar painel inferior"
+      "hideSidebar": "Ocultar barra lateral"
     },
     "multiTask": {
       "monitoringProgress": "Acompanhando o progresso de {{count}} subagents",
@@ -591,6 +593,7 @@
     "voicePermissionSheetTitle": "Acesso ao microfone necessário"
   },
   "chat": {
+    "draftTooLong": "O rascunho é muito longo (máximo de {{max}} caracteres)",
     "cliPermissions": {
       "ask": "Solicitar aprovação",
       "workspace": "Acesso ao espaço de trabalho",
@@ -625,23 +628,18 @@
       "inputPosition": "Entrada",
       "positionBottom": "Embaixo",
       "positionMiddle": "Centro",
-      "trailPosition": "Barra de contexto",
+      "repoBarPosition": "Barra do repo",
       "positionUp": "Acima",
       "positionDown": "Abaixo",
-      "uiControls": "Controles da interface",
-      "showQuickActions": "Mostrar ações rápidas",
+      "showQuickActions": "Ações rápidas",
       "showSkills": "Skills fixadas",
-      "showCliUpdate": "Mostrar atualizações da CLI",
-      "title": "O que você quer fazer?",
-      "back": "Voltar à página inicial",
+      "showCliUpdate": "Atualizações da CLI",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Nova sessão"
       },
       "newWorkItem": {
         "title": "Novo work item"
-      },
-      "setupRepo": {
-        "title": "Configurar Repo"
       },
       "addApiKey": {
         "title": "Adicionar chave API"
@@ -652,59 +650,27 @@
       "installLatestUpdate": {
         "title": "Instalar atualização mais recente"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "Sessão",
         "workItem": "Item de trabalho",
         "more": "Mais",
-        "work": "Trabalho",
         "manage": "Gerenciar",
-        "heatmap": "Tendências",
         "runtime": "Tempo de execução"
       },
       "quota": {
         "empty": "Ainda não há dados de quota. Atualize o uso no Key Vault.",
         "refresh": "Atualizar",
-        "justNow": "agora mesmo",
-        "minutesAgo": "há {{count}}min",
-        "hoursAgo": "há {{count}}h",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7d",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Semanal",
           "monthly": "Mensal"
         }
       },
-      "exploreRepos": {
-        "title": "Explorar Repos"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "Gerenciar issues"
       }
     },
     "defaultTitle": "Chat",
@@ -716,6 +682,16 @@
     "performActions_other": "Realizar {{count}} ações",
     "showInlineDiffs": "Diferenças em linha",
     "inputSettings": "Configurações de entrada",
+    "sendMethod": "Enviar com",
+    "navigation": {
+      "title": "Navegação",
+      "openLinksIn": "Abrir links em",
+      "internalBrowser": "Navegador interno",
+      "externalBrowser": "Navegador externo"
+    },
+    "compactInput": "Entrada compacta",
+    "composerGlow": "Brilho da entrada",
+    "separateEffortPill": "Effort em botão separado",
     "replay": {
       "follow": "Acompanhar"
     },
@@ -741,15 +717,11 @@
       "modeSourceBundled": "Modos carregados do fallback empacotado (Cursor de teste ainda não está em execução).",
       "modeRefresh": "Atualizar modos"
     },
-    "hideSimulator": "Ocultar Simulador",
-    "showSimulator": "Mostrar Simulador",
-    "fullScreenChat": "Focar painel de chat (ocultar Workstation)",
     "maximizeChatPanel": "Maximizar painel de chat",
     "showWorkstation": "Mostrar Workstation",
     "workstationUnavailableForPage": "O Workstation não está disponível nesta página",
     "hideWorkstation": "Ocultar Workstation",
     "restoreSplitView": "Mostrar Workstation",
-    "shrinkToWorkstation": "Reduzir painel de chat (mostrar Workstation)",
     "tuiModeOn": "Modo TUI (clique para desativar)",
     "tuiModeOff": "Ativar modo TUI",
     "tabs": {
@@ -901,10 +873,10 @@
       "exportJson": "Exportar JSON",
       "importAction": "Importar Session",
       "exportDescription": "Exporte a Session ativa como um snapshot JSON portátil",
-      "importDescription": "Importe um snapshot JSON de Session para a barra lateral.",
+      "importDescription": "Importe um snapshot JSON de Session para a barra lateral",
       "jsonSnapshotNote": "Sessions importadas são snapshots somente leitura e mantêm o histórico original de eventos",
       "chooseJson": "Escolher arquivo JSON",
-      "chooseJsonHint": "Selecione um arquivo de exportação .orgii-session.json.",
+      "chooseJsonHint": "Selecione um arquivo de exportação .orgii-session.json",
       "loadingPreview": "Contando eventos da Session…",
       "noActiveSession": "Nenhuma Session ativa selecionada.",
       "importedName": "Session importada: {{name}}",
@@ -953,22 +925,9 @@
       "showMore_one": "Mostrar mais {{count}}",
       "showMore_other": "Mostrar mais {{count}}"
     },
-    "manageIssues": {
-      "title": "Gerenciar issues",
-      "myWork": "Meu trabalho",
-      "allRepositories": "Todos os repos",
-      "newIssue": "Nova issue",
-      "tabs": {
-        "recent": "Recentes",
-        "assigned": "Atribuídas",
-        "byMe": "Por mim",
-        "mentioned": "Mencionadas"
-      }
-    },
     "readOnly": "Somente leitura",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "Criar issue do GitHub",
         "issueTitlePlaceholder": "Título da issue",
@@ -978,28 +937,40 @@
         "addToChat": "Add",
         "repositoryLabel": "Repositório",
         "createIssueFailed": "Falha ao criar issue",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "Todos os estados",
         "closeAsCompleted": "Fechar como concluído",
         "closeAsNotPlanned": "Fechar como não planejado",
         "statusUpdateFailed": "Falha ao atualizar o status do GitHub",
         "assignedToMe": "Atribuídos a mim",
         "createdByMe": "Criados por mim",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "Revisão solicitada",
-          "authoredByMe": "Criados por mim",
-          "otherTodos": "Outras pendências"
-        },
         "assigneeUpdateNotApplied": "O GitHub não aplicou a alteração de responsável",
         "assigneeUpdateSuccess": "Responsáveis atualizados no GitHub",
         "updateIssueFailed": "Falha ao atualizar a issue do GitHub",
-        "refreshIssues": "Atualizar issues",
-        "refreshPullRequests": "Atualizar pull requests"
+        "filters": {
+          "searchPlaceholder": "Pesquisar filtros",
+          "noMatches": "Nenhum filtro correspondente",
+          "activeCount": "Filtros ativos: {{count}}",
+          "clear": "Limpar filtros",
+          "reviewRequestedFromMe": "Revisão solicitada a mim",
+          "noAssignee": "Sem responsável",
+          "noLabel": "Sem etiqueta",
+          "linkedPullRequest": "Com pull request vinculado",
+          "draft": "Rascunho",
+          "readyForReview": "Pronto para revisão",
+          "recentlyUpdated": "Atualizado nos últimos 7 dias",
+          "stale": "Sem atualização há 30 dias",
+          "facetAuthor": "Autor",
+          "facetAssignee": "Responsável",
+          "facetLabel": "Etiqueta",
+          "facetMilestone": "Marco",
+          "facetReviewRequested": "Revisão solicitada",
+          "facetBaseBranch": "Branch base",
+          "facetCiStatus": "Verificações",
+          "ciSuccess": "Aprovadas",
+          "ciFailure": "Com falha",
+          "ciPending": "Pendentes"
+        }
       }
     },
     "sessionViews": {
@@ -1032,7 +1003,9 @@
     "sending": "Enviando…",
     "typeMessage": "Digite uma mensagem…",
     "session": "Sessão",
-    "history": "Sessões"
+    "history": "Sessões",
+    "goToPinnedPassage": "Ir para o trecho fixado: {{preview}}",
+    "unpinPassage": "Desafixar"
   },
   "planning": {
     "agentTyping": "Agent está digitando...",
@@ -1148,6 +1121,7 @@
     "terminalWaitRunning": "Aguardando o terminal terminar",
     "runShellFailed": "Falha no comando",
     "runCommands": "Executar comandos",
+    "waitBackgroundTasks": "Aguardar tarefas em segundo plano",
     "terminalSummary": {
       "command_one": "{{count}} comando",
       "command_other": "{{count}} comandos",
@@ -1158,6 +1132,10 @@
       "check_one": "{{count}} verificação",
       "check_other": "{{count}} verificações",
       "separator": ", "
+    },
+    "waitSummary": {
+      "count_one": "{{count}} vez",
+      "count_other": "{{count}} vezes"
     },
     "inspectTerminalsRunning": "Inspecionando terminais",
     "inspectTerminalsDone": "Terminais inspecionados",
@@ -1467,10 +1445,13 @@
     "webFetchRunning": "Buscando página",
     "webFetchDone": "Página buscada",
     "webFetchFailed": "Falha ao buscar página",
+    "awaitOutputSummaryShellSingle": "processo do Terminal",
     "awaitOutputSummaryShell_one": "1 processo do Terminal",
     "awaitOutputSummaryShell_other": "{{count}} processos do Terminal",
+    "awaitOutputSummarySubagentSingle": "subagent",
     "awaitOutputSummarySubagent_one": "1 subagent",
     "awaitOutputSummarySubagent_other": "{{count}} subagents",
+    "awaitOutputSummaryUnknownSingle": "uma tarefa em segundo plano",
     "awaitOutputSummaryUnknown_one": "uma tarefa em segundo plano",
     "awaitOutputSummaryUnknown_other": "{{count}} tarefas em segundo plano",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",
@@ -1924,7 +1905,7 @@
     "start": "Iniciar",
     "missingGit": {
       "title": "Git ausente",
-      "body": "O Git não está instalado ou não foi encontrado. Peça ao ADE Manager ou ao SDE Agent para instalar o Git nesta máquina e depois reinicie o ORG2."
+      "body": "O Git não está instalado ou não foi encontrado. Peça ao ADE Manager ou ao SDE Agent para instalar o Git nesta máquina e depois reinicie o ORG2"
     },
     "model": "Modelo",
     "contextMenu": {
@@ -1988,9 +1969,9 @@
       "formatting": "Formatação de texto"
     },
     "regionNoticeTitle": "Possíveis limitações regionais",
-    "regionNoticeBodyProvider": "Você está em {{location}}. Alguns modelos podem estar indisponíveis em sua região.",
-    "regionNoticeBodySanctions": "Você está em {{location}}. GitHub, npm, Docker Hub e serviços similares podem estar indisponíveis.",
-    "regionNoticeBodyBoth": "Você está em {{location}}. Alguns modelos e serviços como GitHub, npm e Docker Hub podem estar indisponíveis devido a políticas regionais e regras comerciais.",
+    "regionNoticeBodyProvider": "Você está em {{location}}. Alguns modelos podem estar indisponíveis em sua região",
+    "regionNoticeBodySanctions": "Você está em {{location}}. GitHub, npm, Docker Hub e serviços similares podem estar indisponíveis",
+    "regionNoticeBodyBoth": "Você está em {{location}}. Alguns modelos e serviços como GitHub, npm e Docker Hub podem estar indisponíveis devido a políticas regionais e regras comerciais",
     "selectAgent": "Selecione um Agent",
     "placeholderDefault": "Digite uma mensagem, @ para adicionar arquivos, / para usar skills",
     "wingmanPlaceholder": "Descreva sua missão — o que o Wingman deve observar?",
@@ -2139,7 +2120,7 @@
       "archiveTeardownRetained": "Arquivada, mas {{count}} processo não pôde ser liberado. A exclusão continua bloqueada.",
       "archiveTeardownQuiesced": "Arquivada e totalmente encerrada. A exclusão permanente já está disponível.",
       "dangerZone": "Zona de perigo",
-      "deleteDescription": "Excluir permanentemente esta equipe, todas as sessões e o histórico.",
+      "deleteDescription": "Excluir permanentemente esta equipe, todas as sessões e o histórico",
       "deleteTeam": "Excluir equipe",
       "deleteTitle": "Excluir esta equipe permanentemente?",
       "deleteWarning": "Isso exclui permanentemente todas as sessões e o histórico da equipe. A ação não pode ser desfeita.",

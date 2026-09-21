@@ -25,12 +25,8 @@ import { z } from "zod/v4";
 
 import { createLogger } from "@src/hooks/logger";
 
-import {
-  type CloudEndpoint,
-  ORG2_CLOUD_POSTGREST_SCHEMA,
-  getCloudEndpoint,
-} from "./config";
-import { fetchWithTransportRetry } from "./org2CloudFetchRetry";
+import { type CloudEndpoint, getCloudEndpoint } from "./config";
+import { callOrg2CloudRpc } from "./org2CloudRpc";
 
 const log = createLogger("Org2CloudCommentsClient");
 
@@ -95,34 +91,12 @@ async function callCommentRpc(
   body: Record<string, unknown>,
   endpoint: Pick<CloudEndpoint, "supabaseUrl" | "anonKey"> = getCloudEndpoint()
 ): Promise<unknown> {
-  const response = await fetchWithTransportRetry(
-    `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`,
-    {
-      method: "POST",
-      headers: {
-        apikey: endpoint.anonKey,
-        authorization: `Bearer ${accessToken}`,
-        "content-type": "application/json",
-        "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-      },
-      body: JSON.stringify(body),
-    }
-  );
-  const text = await response.text();
-  let payload: unknown = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    payload = null;
-  }
-  if (!response.ok) {
-    const message =
-      payload && typeof payload === "object" && "message" in payload
-        ? String((payload as { message: unknown }).message)
-        : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-    throw new Org2CloudCommentError(message, response.status);
-  }
-  return payload;
+  return callOrg2CloudRpc(functionName, body, {
+    accessToken,
+    endpoint,
+    createError: (message, status) =>
+      new Org2CloudCommentError(message, status),
+  });
 }
 
 // ---------------------------------------------------------------------------

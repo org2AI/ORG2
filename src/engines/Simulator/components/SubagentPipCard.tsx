@@ -23,16 +23,16 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { EVENT_LOADING_SHIMMER_TEXT_CLASSES } from "@src/engines/ChatPanel/blocks/primitives";
+import BreadcrumbFileHeader from "@src/features/FileHeader/BreadcrumbFileHeader";
 import {
   ArrowDown01Icon,
   ArrowExpand01Icon,
   ArrowLeft01Icon,
   ArrowLeft02Icon,
   ArrowRight01Icon,
-  ArrowShrink01Icon,
+  ArrowShrink02Icon,
   HugeiconsIcon,
 } from "@src/icons";
-import BreadcrumbFileHeader from "@src/modules/shared/components/FileHeader/BreadcrumbFileHeader";
 import { HorizontalResizeHandle } from "@src/scaffold/Resize";
 
 import { useMultiSessionSimulatorEvents } from "../hooks/useMultiSessionSimulatorEvents";
@@ -477,7 +477,6 @@ const SubagentPipCard: React.FC<SubagentPipCardProps> = ({
         {/* Banner header — task count + collapse toggle */}
         <div className="flex h-10 shrink-0 items-center gap-2 pr-2 pl-1.5">
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             iconOnly
@@ -529,7 +528,6 @@ const SubagentPipCard: React.FC<SubagentPipCardProps> = ({
             {!isBannerCollapsed && pageCount > 1 && (
               <>
                 <Button
-                  htmlType="button"
                   variant="tertiary"
                   size="small"
                   iconOnly
@@ -546,7 +544,6 @@ const SubagentPipCard: React.FC<SubagentPipCardProps> = ({
                   }
                 />
                 <Button
-                  htmlType="button"
                   variant="tertiary"
                   size="small"
                   iconOnly
@@ -565,7 +562,6 @@ const SubagentPipCard: React.FC<SubagentPipCardProps> = ({
               </>
             )}
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
@@ -578,7 +574,7 @@ const SubagentPipCard: React.FC<SubagentPipCardProps> = ({
               icon={
                 gridExpanded ? (
                   <HugeiconsIcon
-                    icon={ArrowShrink01Icon}
+                    icon={ArrowShrink02Icon}
                     data-icon="minimize-2"
                     size={14}
                     strokeWidth={1.75}

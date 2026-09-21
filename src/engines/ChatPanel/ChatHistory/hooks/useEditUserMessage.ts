@@ -23,12 +23,16 @@ import Message from "@src/components/Message";
 import { useChatSessionId } from "@src/engines/ChatPanel/ChatSessionContext";
 import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
 import { useUserIntentSubmit } from "@src/engines/ChatPanel/hooks/useWorkspaceChat/useUserIntentSubmit";
-import { editTruncationTimestampAtom } from "@src/engines/SessionCore";
+import {
+  editTruncationTimestampAtom,
+  triggerSessionReloadAtom,
+} from "@src/engines/SessionCore";
 import {
   beginOptimisticTurn,
   failOptimisticTurn,
 } from "@src/engines/SessionCore/control/optimisticTurnStatus";
 import { cancelTurnForTimelineBoundary } from "@src/engines/SessionCore/control/sessionTimelineBoundary";
+import { LOCAL_EXECUTION_TAIL_EVENT_PREFIX } from "@src/engines/SessionCore/conversations/localConversationExecutionTail";
 import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import {
@@ -38,7 +42,7 @@ import {
 } from "@src/engines/SessionCore/hooks/session/messageQueuePersistence";
 import {
   isUserIntentSendError,
-  setOptimisticQueueUserDelivery,
+  prepareOptimisticQueueUserRetry,
 } from "@src/engines/SessionCore/services/userIntentDispatch";
 import { deleteSession as deleteCachedSession } from "@src/engines/SessionCore/storage/cacheAdapter";
 import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
@@ -56,6 +60,7 @@ import {
   messageQueueHydratedAtom,
 } from "@src/store/ui/messageQueueAtom";
 import { clearTodosForSessionAtom } from "@src/store/ui/todoAtom";
+import { askNativeDialogSafely } from "@src/util/dialogs/nativeDialog";
 import { invokeTauri } from "@src/util/platform/tauri/init";
 import {
   isAgentSession,
@@ -97,6 +102,15 @@ export function useEditUserMessage(
       store.get(sessionIdAtom),
     [store, surfaceSessionId]
   );
+  const currentSessionResolver = useRef<
+    (() => string | null | undefined) | null
+  >(resolveCurrentSessionId);
+  useEffect(() => {
+    currentSessionResolver.current = resolveCurrentSessionId;
+    return () => {
+      currentSessionResolver.current = null;
+    };
+  }, [resolveCurrentSessionId]);
   const submitUserIntent = useUserIntentSubmit({
     getSessionId: resolveCurrentSessionId,
   });
@@ -120,13 +134,11 @@ export function useEditUserMessage(
       imageDataUrls?: string[]
     ) => {
       const initiatedSessionId = resolveCurrentSessionId();
-      const isStillOnInitiatingSession = (): boolean => {
-        if (!initiatedSessionId) return false;
-        if (surfaceSessionId) return surfaceSessionId === initiatedSessionId;
-        const activeSessionId = store.get(activeSessionIdAtom);
-        if (activeSessionId) return activeSessionId === initiatedSessionId;
-        return store.get(sessionIdAtom) === initiatedSessionId;
-      };
+      const isStillOnInitiatingSession = (): boolean =>
+        Boolean(
+          initiatedSessionId &&
+          currentSessionResolver.current?.() === initiatedSessionId
+        );
 
       const dbEventId = chatItem.event?.id ?? null;
       const eventId = dbEventId ?? chatItem.chunk_id;
@@ -231,26 +243,18 @@ export function useEditUserMessage(
             // bubble or loses serialized mention/image payloads.
             try {
               await flushMessageQueuePersistence(store);
-              const pendingUpdated = await setOptimisticQueueUserDelivery(
-                {
-                  // Queue admission owns the concrete EventStore projection
-                  // session. The mounted surface can be the canonical root
-                  // while this row lives on a local execution child.
-                  sessionId: durableFailedQueueRow.sessionId,
-                  visibleText: projection.displayContent,
-                  imageDataUrls:
-                    resendImages ?? durableFailedQueueRow.imageDataUrls,
-                  turnIntentId: retryTurnIntentId,
-                  queueMessageId: durableFailedQueueRow.id,
-                  createdAt: durableFailedQueueRow.createdAt,
-                },
-                "pending"
-              );
-              if (!pendingUpdated) {
-                throw new Error(
-                  "failed delivery projection is no longer available"
-                );
-              }
+              await prepareOptimisticQueueUserRetry({
+                // Queue admission owns the concrete EventStore projection
+                // session. The mounted surface can be the canonical root
+                // while this row lives on a local execution child.
+                sessionId: durableFailedQueueRow.sessionId,
+                visibleText: projection.displayContent,
+                imageDataUrls:
+                  resendImages ?? durableFailedQueueRow.imageDataUrls,
+                turnIntentId: retryTurnIntentId,
+                queueMessageId: durableFailedQueueRow.id,
+                createdAt: durableFailedQueueRow.createdAt,
+              });
             } catch (retryPreparationError) {
               // The old failed bubble is still authoritative. Restore its
               // matching held queue owner instead of leaving a new pending
@@ -299,6 +303,64 @@ export function useEditUserMessage(
           }
           log.error(
             "[useEditUserMessage] failed delivery retry failed:",
+            error
+          );
+          Message.error(t("errors.errorOccurred"));
+        }
+        return;
+      }
+
+      // Child turns are projected onto this root; their delivery status does
+      // not establish whether the provider succeeded. There is no child-scoped
+      // rewind contract here. Preserve every existing turn and require explicit
+      // consent to append, rather than presenting an old successful edit as a
+      // retry or rewinding the unrelated root. Proven queue failures above keep
+      // their existing retry owner and do not need this confirmation.
+      if (
+        initiatedSessionId &&
+        eventId.startsWith(LOCAL_EXECUTION_TAIL_EVENT_PREFIX)
+      ) {
+        const resendImages =
+          imageDataUrls && imageDataUrls.length > 0 ? imageDataUrls : undefined;
+        const projection = projectOutgoingUserMessage({
+          displayText: newText,
+          allowCanvasInterception:
+            !resendImages && !isCliSession(initiatedSessionId),
+        });
+        try {
+          const confirmed = await askNativeDialogSafely(
+            t("landedMessageEdit.body"),
+            {
+              title: t("landedMessageEdit.title"),
+              kind: "info",
+              okLabel: t("landedMessageEdit.sendNew"),
+              cancelLabel: t("common:actions.cancel"),
+            }
+          );
+          if (!confirmed || !isStillOnInitiatingSession()) return;
+          // This is an explicitly approved NEW submission, even when its text
+          // is unchanged. Reusing the original identity can collapse a valid
+          // historical turn rather than preserving the history we promised.
+          const resendTurnIntentId = mintTurnIntentId();
+          const handled = await onFailedUserIntentRetry?.({
+            displayText: projection.displayContent,
+            agentContent: projection.agentContent,
+            imageDataUrls: resendImages,
+            turnIntentId: resendTurnIntentId,
+          });
+          if (!handled) {
+            await submitUserIntent({
+              sessionId: initiatedSessionId,
+              displayContent: projection.displayContent,
+              agentContent: projection.agentContent,
+              imageDataUrls: resendImages,
+              source: "dispatch",
+              turnIntentId: resendTurnIntentId,
+            });
+          }
+        } catch (error) {
+          log.error(
+            "[useEditUserMessage] landed execution-tail resend failed:",
             error
           );
           Message.error(t("errors.errorOccurred"));
@@ -399,6 +461,10 @@ export function useEditUserMessage(
                   )
                 ),
             ]);
+            // Eviction empties the mounted anchor; nothing else re-hydrates
+            // it until the session is reopened. Bump the reload epoch so the
+            // sync owner reloads the rewound transcript from SQLite now.
+            store.set(triggerSessionReloadAtom, initiatedSessionId);
           }
         }
 
@@ -446,7 +512,6 @@ export function useEditUserMessage(
       setPendingPlanApprovals,
       clearTodosForSession,
       resolveCurrentSessionId,
-      surfaceSessionId,
       submitUserIntent,
       t,
       store,

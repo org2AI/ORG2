@@ -40,7 +40,7 @@ vi.mock("@src/hooks/git", () => ({
   useRepoGitInitialization: mocks.useRepoGitInitialization,
 }));
 
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   Placeholder: () => "loading-placeholder",
 }));
 

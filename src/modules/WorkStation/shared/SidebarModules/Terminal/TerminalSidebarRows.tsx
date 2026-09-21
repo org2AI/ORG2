@@ -2,8 +2,11 @@ import { useAtomValue } from "jotai";
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ProcessStopButton } from "@src/components/ProcessStopButton";
-import { TreeRowBase, type TreeRowNode } from "@src/components/TreeRow";
+import {
+  TreeRowAction,
+  TreeRowBase,
+  type TreeRowNode,
+} from "@src/components/TreeRow";
 // `types`, not the `exports` barrel — the barrel re-exports the TerminalCore
 // component and would drag xterm into the sidebar-modules chunk.
 import {
@@ -14,6 +17,7 @@ import {
   Infinity01Icon,
   ComputerTerminal01Icon,
   HugeiconsIcon,
+  StopCircleIcon,
 } from "@src/icons";
 import { shellProcessMapAtom } from "@src/store/session/shellProcessAtom";
 
@@ -51,11 +55,15 @@ export const AgentSessionRow: React.FC<AgentSessionRowProps> = memo(
           strokeWidth={1.75}
           className="shrink-0 text-primary-6 group-focus-within/item:hidden group-hover/item:hidden"
         />
-        <ProcessStopButton
-          size="sm"
-          className="hidden group-focus-within/item:flex group-hover/item:flex"
-          onClick={onClose}
-          label={t("common:workstation.ports.stopProcess")}
+        <TreeRowAction
+          icon={StopCircleIcon}
+          variant="danger"
+          showOnRowHover
+          onClick={(event) => {
+            event.stopPropagation();
+            onClose(event);
+          }}
+          title={t("common:workstation.ports.stopProcess")}
         />
       </TreeRowBase>
     );
@@ -91,11 +99,15 @@ export const PtySessionRow: React.FC<PtySessionRowProps> = memo(
 
     return (
       <TreeRowBase node={node} depth={0} isSelected={isActive} onClick={onOpen}>
-        <ProcessStopButton
-          size="sm"
-          className="hidden group-focus-within/item:flex group-hover/item:flex"
-          onClick={onClose}
-          label={t("common:tooltips.killTerminal")}
+        <TreeRowAction
+          icon={StopCircleIcon}
+          variant="danger"
+          showOnRowHover
+          onClick={(event) => {
+            event.stopPropagation();
+            onClose(event);
+          }}
+          title={t("common:tooltips.killTerminal")}
         />
       </TreeRowBase>
     );

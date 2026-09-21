@@ -14,7 +14,6 @@ import { useWorkstationSidebarMenuItemRouting } from "./sidebarConnector.menuIte
 import { useWorkstationSidebarOrgSelectorActions } from "./sidebarConnector.orgSelectorActions";
 import { useSidebarTabContextMenu } from "./sidebarTabContextMenu";
 import type { SessionSidebarView } from "./types";
-import type { useWorkItemsSidebarSurface } from "./useWorkItemsSidebarSurface";
 
 type SidebarOrgSelectorProps = Parameters<typeof SidebarOrgSelector>[0];
 type OrgSelectorActionsParams = Parameters<
@@ -50,9 +49,6 @@ interface UseWorkstationSidebarChromeParams {
   sessionMap: MenuItemRoutingParams["sessionMap"];
   cloudRemoteRowMap: MenuItemRoutingParams["cloudRemoteRowMap"];
   cloudRemoteViewerMap: MenuItemRoutingParams["cloudRemoteViewerMap"];
-  renderProjectsMenuItemWrapper: ReturnType<
-    typeof useWorkItemsSidebarSurface
-  >["renderMenuItemWrapper"];
   tSessions: MenuItemRoutingParams["tSessions"];
   setWorkManagementProjectsView: MenuItemRoutingParams["setWorkManagementProjectsView"];
   openWorkManagementTab: MenuItemRoutingParams["openWorkManagementTab"];
@@ -87,7 +83,6 @@ export function useWorkstationSidebarChrome({
   sessionMap,
   cloudRemoteRowMap,
   cloudRemoteViewerMap,
-  renderProjectsMenuItemWrapper,
   tSessions,
   setWorkManagementProjectsView,
   openWorkManagementTab,
@@ -162,7 +157,7 @@ export function useWorkstationSidebarChrome({
   });
   const resolvedRenderMenuItemWrapper =
     activeViewKey === "work-items"
-      ? renderProjectsMenuItemWrapper
+      ? undefined
       : renderWorkstationMenuItemWrapper;
 
   return {

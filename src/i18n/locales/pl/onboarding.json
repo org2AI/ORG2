@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "Ogólny przewodnik po układzie",
-      "description": "Poznaj panel czatu, Runtime, przełącznik trybu stacji i dok.",
+      "description": "Poznaj panel czatu, Runtime, przełącznik trybu stacji i dok",
       "duration": "1 min",
       "steps": {
         "chat-panel": {
           "title": "Panel czatu",
-          "body": "W tym miejscu użytkownicy prowadzą rozmowy z agentami, przeglądają aktywność i wysyłają dalsze instrukcje."
+          "body": "W tym miejscu użytkownicy prowadzą rozmowy z agentami, przeglądają aktywność i wysyłają dalsze instrukcje"
         },
         "runtime": {
           "title": "Środowisko uruchomieniowe",
-          "body": "Tutaj sprawdzisz własne użycie i stan działania. W obszaru roboczego możesz też sprawdzić synchronizację członków oraz otworzyć szczegóły użycia Codex, Claude i Cursor."
+          "body": "Tutaj sprawdzisz własne użycie i stan działania. W obszaru roboczego możesz też sprawdzić synchronizację członków oraz otworzyć szczegóły użycia Codex, Claude i Cursor"
         },
         "station-mode-pill": {
           "title": "Stacja przełączania tryby",
-          "body": "Użyj tej pigułki, aby przełączać tryby stacji. Pulpit oznacza My Station, Twoje miejsce pracy. Infinity oznacza Agent Station, widok aktywności agenta."
+          "body": "Użyj tej pigułki, aby przełączać tryby stacji. Pulpit oznacza My Station, Twoje miejsce pracy. Infinity oznacza Agent Station, widok aktywności agenta"
         },
         "dock": {
           "title": "Dok Agent Station",
-          "body": "Dok przełącza aplikacje wewnątrz stacji. Wycieczka tymczasowo wyłącza automatyczne ukrywanie, więc te elementy sterujące pozostają widoczne."
+          "body": "Dok przełącza aplikacje wewnątrz stacji. Wycieczka tymczasowo wyłącza automatyczne ukrywanie, więc te elementy sterujące pozostają widoczne"
         }
       }
     },
     "codeEditor": {
       "title": "Przewodnik po Edytorze kodu",
-      "description": "Poznaj karty, obszar roboczy edytora, kontrolę źródeł i historię Git.",
+      "description": "Poznaj karty, obszar roboczy edytora, kontrolę źródeł i historię Git",
       "duration": "2 min",
       "steps": {
         "tabs": {
           "title": "Karty Edytora kodu",
-          "body": "Na kartach gromadzone są pliki, różnice, terminale, widoki kontroli źródła i pulpity nawigacyjne, których używasz otwórz podczas pracy w repozytorium."
+          "body": "Na kartach gromadzone są pliki, różnice, terminale, widoki kontroli źródła i pulpity nawigacyjne, których używasz otwórz podczas pracy w repozytorium"
         },
         "editor-surface": {
           "title": "Obszar roboczy edytora",
-          "body": "To jest główna powierzchnia Edytora kodu. Tutaj otwieraj pliki, sprawdzaj różnice, uruchamiaj terminale i przeglądaj wygenerowane zmiany."
+          "body": "To jest główna powierzchnia Edytora kodu. Tutaj otwieraj pliki, sprawdzaj różnice, uruchamiaj terminale i przeglądaj wygenerowane zmiany"
         },
         "create-tabs": {
           "title": "Utwórz nowe karty",
-          "body": "Użyj menu plus na wszystkich kartach, aby tworzyć terminale, karty przeglądarki, pliki, pulpity nawigacyjne i narzędzia repo."
+          "body": "Użyj menu plus na wszystkich kartach, aby tworzyć terminale, karty przeglądarki, pliki, pulpity nawigacyjne i narzędzia repo"
         },
         "source-control": {
           "title": "Zmiany w Gicie",
-          "body": "Open Source Control w celu przeglądania zmienionych plików, tworzenia lub cofania pracy, zatwierdzania, ściągania, wypychania, pobieraj i synchronizuj ze zdalnym."
+          "body": "Open Source Control w celu przeglądania zmienionych plików, tworzenia lub cofania pracy, zatwierdzania, ściągania, wypychania, pobieraj i synchronizuj ze zdalnym"
         },
         "git-history": {
           "title": "Historia Git",
-          "body": "Historia Git przełącza Kontrolę źródła w tryb historii zatwierdzeń, dzięki czemu możesz sprawdzać poprzednie zatwierdzenia i powiązane zmiany."
+          "body": "Historia Git przełącza Kontrolę źródła w tryb historii zatwierdzeń, dzięki czemu możesz sprawdzać poprzednie zatwierdzenia i powiązane zmiany"
         }
       }
     }
   },
   "discovery": {
-    "title": "Pierwsze kroki i nowe funkcje",
-    "getStarted": "Pierwsze kroki",
-    "newFeatures": "Nowe funkcje",
-    "branchesTitle": "Gałęzie repozytorium",
-    "branchesDescription": "Przełączaj gałęzie repozytorium bezpośrednio w Spotlight."
+    "getStarted": "Pierwsze kroki"
   }
 }

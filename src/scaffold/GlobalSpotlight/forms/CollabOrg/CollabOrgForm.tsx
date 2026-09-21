@@ -6,6 +6,7 @@ import { projectApi } from "@src/api/http/project";
 import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import PageNotice from "@src/components/PageNotice";
+import { PanelFooter } from "@src/components/layout/blocks";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { cloudManagementErrorMessage } from "@src/features/Org2Cloud/org2CloudOrgManagement";
 import {
@@ -14,7 +15,6 @@ import {
 } from "@src/features/Org2Cloud/useCloudOrgMembershipActions";
 import { useOrg2CloudSignIn } from "@src/features/Org2Cloud/useOrg2CloudSignIn";
 import { Add01Icon, CloudIcon, LaptopIcon, Login01Icon } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 import { GUIDE_TARGETS } from "@src/scaffold/Tutorials/guideTargets";
 import SelectionGrid from "@src/scaffold/WizardSystem/primitives/SelectionGrid";
 import type { SelectionGridOption } from "@src/scaffold/WizardSystem/primitives/SelectionGrid";
@@ -29,6 +29,7 @@ import type {
 import { ICONS } from "../../config";
 import type { PathSegment } from "../../types";
 import { SpotlightFormBody, SpotlightFormShell } from "../shared";
+import { SpotlightFormField } from "../shared/SpotlightFormField";
 import { SpotlightFormLayout } from "../shared/SpotlightFormLayout";
 
 const LOCAL_SOURCE: SpotlightCollabOrgSource = "local";
@@ -296,7 +297,9 @@ const CollabOrgForm: React.FC<CollabOrgFormProps> = ({
                   type="info"
                   action={{
                     label: t("navigation:cloud.signIn"),
-                    onClick: openCloudSignIn,
+                    onClick: () => {
+                      void openCloudSignIn().catch(() => undefined);
+                    },
                   }}
                   dataTestId="create-cloud-org-sign-in-hint"
                 >
@@ -305,40 +308,30 @@ const CollabOrgForm: React.FC<CollabOrgFormProps> = ({
               ) : null}
 
               {showOrgName ? (
-                <label className="flex flex-col gap-2 text-sm text-text-2">
-                  <span>
-                    {t("navigation:collaboration.orgName")}
-                    <span className="text-danger-6" aria-hidden>
-                      *
-                    </span>
-                  </span>
-                  <div
-                    className="w-full"
-                    data-guide-target={GUIDE_TARGETS.COLLAB_ORG_NAME_INPUT}
-                  >
-                    <Input
-                      data-testid="create-collab-org-name"
-                      aria-label={t("navigation:collaboration.orgName")}
-                      value={orgName}
-                      onChange={setOrgName}
-                      placeholder={t(
-                        "navigation:collaboration.orgNamePlaceholder"
-                      )}
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </label>
+                <SpotlightFormField
+                  data-guide-target={GUIDE_TARGETS.COLLAB_ORG_NAME_INPUT}
+                  label={t("navigation:collaboration.orgName")}
+                  required
+                >
+                  <Input
+                    data-testid="create-collab-org-name"
+                    aria-label={t("navigation:collaboration.orgName")}
+                    value={orgName}
+                    onChange={setOrgName}
+                    placeholder={t(
+                      "navigation:collaboration.orgNamePlaceholder"
+                    )}
+                    autoFocus
+                    required
+                  />
+                </SpotlightFormField>
               ) : null}
 
               {showInvite ? (
-                <label className="flex flex-col gap-2 text-sm text-text-2">
-                  <span>
-                    {t("navigation:collaboration.inviteCode")}
-                    <span className="text-danger-6" aria-hidden>
-                      *
-                    </span>
-                  </span>
+                <SpotlightFormField
+                  label={t("navigation:collaboration.inviteCode")}
+                  required
+                >
                   <Input
                     data-testid="create-collab-org-invite"
                     aria-label={t("navigation:collaboration.inviteCode")}
@@ -350,7 +343,7 @@ const CollabOrgForm: React.FC<CollabOrgFormProps> = ({
                     autoFocus
                     required
                   />
-                </label>
+                </SpotlightFormField>
               ) : null}
 
               {error ? (
@@ -370,7 +363,6 @@ const CollabOrgForm: React.FC<CollabOrgFormProps> = ({
                 label: t("common:actions.clear"),
                 onClick: handleClear,
                 disabled: loading,
-                htmlType: "button",
               },
             ]}
             primaryAction={{

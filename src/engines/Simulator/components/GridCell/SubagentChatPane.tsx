@@ -196,7 +196,6 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
       )}
       <SubagentPromptToggle sessionId={sessionId} />
       <Button
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly

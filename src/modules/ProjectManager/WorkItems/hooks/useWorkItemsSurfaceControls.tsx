@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import Select from "@src/components/Select";
 import TabPill from "@src/components/TabPill";
 import type { TabPillItem } from "@src/components/TabPill";
-import { WorkManagementSearchInput } from "@src/modules/shared/components/WorkManagementSearchInput";
-import SplitListFullscreenButton from "@src/modules/shared/layouts/SplitListFullscreenButton";
+import { WorkManagementSearchInput } from "@src/features/GitHubWork/WorkManagementSearchInput";
+import SplitListFullscreenButton from "@src/scaffold/layouts/SplitListFullscreenButton";
 import type { ProjectDetailSurfaceView } from "@src/store/workstation/tabs";
 import type { Person } from "@src/types/core/shared";
 

@@ -194,6 +194,10 @@ pub(super) async fn set_sensitive_directory_permissions(
             .await
             .map_err(cache_io_error)?;
     }
+    // Windows has no POSIX mode bits; the cache lives under the user profile,
+    // whose ACL already restricts it to the owning account.
+    #[cfg(not(unix))]
+    let _ = path;
     Ok(())
 }
 
@@ -205,6 +209,8 @@ pub(super) async fn set_sensitive_file_permissions(path: &Path) -> Result<(), Cu
             .await
             .map_err(cache_io_error)?;
     }
+    #[cfg(not(unix))]
+    let _ = path;
     Ok(())
 }
 

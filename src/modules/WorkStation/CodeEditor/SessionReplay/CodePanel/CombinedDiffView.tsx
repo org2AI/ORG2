@@ -69,7 +69,6 @@ const EditSection: React.FC<{
     <div className="flex flex-col">
       <Button
         layout="custom"
-        appearance="custom"
         onClick={toggleCollapse}
         className={`sticky top-0 z-10 flex h-9 w-full cursor-pointer items-center gap-2 border-t border-border-2 px-3 text-[11px] hover:bg-fill-2 ${EDITOR_TAB_CANVAS_BG_CLASS}`}
       >
@@ -194,7 +193,6 @@ export const CombinedDiffView: React.FC<{
       {earlierEditCount > 0 && !showEarlierEdits && (
         <div className="flex w-full justify-center py-1.5">
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             icon={

@@ -1,0 +1,24 @@
+{
+  "productName": "ORG2 Dev",
+  "identifier": "org2ai.org2.dev",
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["yorgai-dev", "orgii-dev"]
+      }
+    },
+    "updater": {
+      "active": false
+    }
+  },
+  "bundle": {
+    "icon": [
+      "icons/dev/icon.png",
+      "icons/dev/32x32.png",
+      "icons/dev/128x128.png",
+      "icons/dev/128x128@2x.png",
+      "icons/dev/icon.icns",
+      "icons/dev/icon.ico"
+    ]
+  }
+}

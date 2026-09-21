@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import RuntimePanelView from "./RuntimePanelView";
 
-vi.mock("@src/modules/shared/dataSource", () => ({
+vi.mock("@src/features/RuntimeDataSource", () => ({
   default: () =>
     React.createElement("div", { "data-testid": "runtime-sections" }),
 }));

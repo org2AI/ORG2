@@ -6,6 +6,7 @@ import { IMPORTED_HISTORY_SOURCE_DESCRIPTORS } from "@src/api/tauri/externalHist
 import { formatAgentType } from "@src/assets/providers";
 import { getIconProviderFromType } from "@src/components/ModelIcon/config";
 import { resolveAgentIcon } from "@src/config/agentIcons";
+import { useSessionSources } from "@src/engines/ChatPanel/sessionSources/useSessionSources";
 import { useSubagentSessions } from "@src/engines/Simulator/hooks/useSubagentSessions";
 import { useChannelWorkItem } from "@src/features/DiscussionChannels/ChannelPanelView/useChannelWorkItem";
 import type {
@@ -20,10 +21,11 @@ import {
 import { getWorkItemStatusConfig } from "@src/modules/ProjectManager/config/manage";
 import {
   type FocusedChatRailIcon,
+  type FocusedChatRailSource,
   type FocusedChatRailSubagent,
   type FocusedChatSessionContext,
   FocusedChatWorkstationRail,
-} from "@src/modules/shared/layouts/FocusedChatWorkstationRail";
+} from "@src/scaffold/AppLayout/FocusedChatWorkstationRail";
 import { openWorkItemInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import type { Session } from "@src/store/session";
 import type { WorkItemStatus } from "@src/types/core/workItem";
@@ -191,8 +193,11 @@ interface ConnectedSessionWorkstationRailProps extends Omit<
   SessionWorkstationRailProps,
   "session" | "sessionId"
 > {
-  context: ResolvedSessionWorkstationContext;
+  orgId: string | undefined;
   projectSlug: string;
+  /** Session scope shared with the unlinked rail; `workItem` is replaced. */
+  sessionContext: FocusedChatSessionContext;
+  sources: FocusedChatRailSource[];
   subagentIcon: FocusedChatRailIcon;
   subagents: FocusedChatRailSubagent[];
   workItemId: string;
@@ -202,18 +207,19 @@ const ConnectedSessionWorkstationRail: React.FC<
   ConnectedSessionWorkstationRailProps
 > = ({
   compactMenuHost,
-  context,
   conversationMinimapHostRef,
+  orgId,
   projectSlug,
+  sessionContext: baseSessionContext,
+  sources,
   subagentIcon,
   subagents,
   topInset,
   workItemId,
 }) => {
-  const { t } = useTranslation();
   const openWorkItem = useSetAtom(openWorkItemInChatPanelTabAtom);
   const { resolved } = useChannelWorkItem({
-    orgId: context.orgId,
+    orgId,
     projectSlug,
     shortId: workItemId,
   });
@@ -230,26 +236,12 @@ const ConnectedSessionWorkstationRail: React.FC<
       projectId: resolved.projectId,
       projectSlug,
       projectName: resolved.projectName,
-      orgId: resolved.orgId ?? context.orgId,
+      orgId: resolved.orgId ?? orgId,
     });
-  }, [context.orgId, openWorkItem, projectSlug, resolved, workItemId]);
+  }, [orgId, openWorkItem, projectSlug, resolved, workItemId]);
 
   const sessionContext: FocusedChatSessionContext = {
-    agentHarness: context.agentHarness
-      ? {
-          icon: context.agentHarness.icon,
-          label: t("common:workstation.sessionAgent", {
-            name: context.agentHarness.name,
-          }),
-        }
-      : undefined,
-    branchName: context.branchName,
-    environmentKind: context.environmentKind,
-    owner: context.owner,
-    repoName: context.repoName,
-    repoPath: context.repoPath,
-    worktreeBranchName: context.worktreeBranchName,
-    worktreePath: context.worktreePath,
+    ...baseSessionContext,
     workItem: {
       label: workItemId,
       onClick: resolved ? handleOpen : undefined,
@@ -262,6 +254,7 @@ const ConnectedSessionWorkstationRail: React.FC<
       compactMenuHost={compactMenuHost}
       conversationMinimapHostRef={conversationMinimapHostRef}
       sessionContext={sessionContext}
+      sources={sources}
       subagentIcon={subagentIcon}
       subagents={subagents}
       topInset={topInset}
@@ -285,6 +278,8 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
     sessionId ?? null,
     session?.updated_at ? Date.parse(session.updated_at) || 0 : 0
   );
+  // Same freshness signal: a new user message advances the session row.
+  const sources = useSessionSources(sessionId, session?.updated_at);
   // A subagent runs on its parent's harness, so the parent's mark identifies
   // every child row — resolved through the same projection the sidebar and
   // chat tab use, which means a Codex session's subagents carry the Codex
@@ -331,9 +326,11 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
     return (
       <ConnectedSessionWorkstationRail
         compactMenuHost={compactMenuHost}
-        context={context}
         conversationMinimapHostRef={conversationMinimapHostRef}
+        orgId={context.orgId}
         projectSlug={context.projectSlug ?? ""}
+        sessionContext={baseSessionContext}
+        sources={sources}
         subagentIcon={subagentIcon}
         subagents={subagents}
         topInset={topInset}
@@ -347,6 +344,7 @@ const SessionWorkstationRail: React.FC<SessionWorkstationRailProps> = ({
       compactMenuHost={compactMenuHost}
       conversationMinimapHostRef={conversationMinimapHostRef}
       sessionContext={baseSessionContext}
+      sources={sources}
       subagentIcon={subagentIcon}
       subagents={subagents}
       topInset={topInset}

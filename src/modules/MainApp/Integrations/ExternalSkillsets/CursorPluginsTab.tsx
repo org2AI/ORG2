@@ -14,6 +14,11 @@ import SettingsTable, {
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
+import {
+  DETAIL_PANEL_TOKENS,
+  DetailPanelContainer,
+  ScrollPreservation,
+} from "@src/components/layout/blocks";
 import { createLogger } from "@src/hooks/logger";
 import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
@@ -24,11 +29,6 @@ import {
   ServerStack01Icon,
   Tick01Icon,
 } from "@src/icons";
-import {
-  DETAIL_PANEL_TOKENS,
-  DetailPanelContainer,
-  ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
 import { copyText } from "@src/util/data/clipboard";
 
 import CursorPluginInlineExpandedCard from "./CursorPluginInlineExpandedCard";
@@ -101,7 +101,6 @@ const CopyAllButton: React.FC<{ plugins: CursorPluginInfo[] }> = ({
     <div className="flex items-center px-4 py-2">
       <Button
         variant="tertiary"
-        appearance="ghost"
         size="mini"
         onClick={handleCopy}
         className="gap-1.5 text-[12px] hover:bg-fill-2 hover:text-text-1"

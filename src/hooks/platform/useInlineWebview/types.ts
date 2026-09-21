@@ -1,6 +1,8 @@
 import type { Webview } from "@tauri-apps/api/webview";
 import type { RefObject } from "react";
 
+export type WebviewHistoryDirection = "back" | "forward";
+
 export interface UseInlineWebviewOptions {
   containerRef: RefObject<HTMLDivElement | null>;
   url: string;
@@ -16,6 +18,16 @@ export interface UseInlineWebviewOptions {
   onCreated?: (webview: Webview) => void;
   onDestroyed?: () => void;
   onNavigate?: (url: string) => void;
+  /**
+   * Asked once for each in-place navigation. Answer "back"/"forward" when
+   * `targetUrl` is a step through the caller's own history: the native view
+   * then returns to that page through its back-forward list (no refetch, scroll
+   * position kept) when the list holds it, and loads the URL as usual when it
+   * does not. Answer null for every other navigation.
+   */
+  resolveHistoryDirection?: (
+    targetUrl: string
+  ) => WebviewHistoryDirection | null;
   onNewWindow?: (url: string) => void;
   onError?: (error: Error) => void;
 }

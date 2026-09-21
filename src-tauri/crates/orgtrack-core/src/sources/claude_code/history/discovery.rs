@@ -270,10 +270,7 @@ pub(super) fn claude_file_stem_from_session_id(session_id: &str) -> Result<&str,
     Ok(file_stem)
 }
 
-pub fn resolve_claude_session_path(
-    conn: &Connection,
-    file_stem: &str,
-) -> Result<PathBuf, String> {
+pub fn resolve_claude_session_path(conn: &Connection, file_stem: &str) -> Result<PathBuf, String> {
     if let Some(path) =
         imported_cache::get_cached_source_path_from_conn(conn, SOURCE_CLAUDE_CODE, file_stem)?
     {
@@ -305,6 +302,12 @@ pub(super) fn claude_projects_dirs() -> Result<Vec<PathBuf>, String> {
     dirs.extend(
         crate::sources::imported_history::managed_roots::profile_root_children(
             &app_paths::claude_code_cli_profile_root(),
+            &["projects"],
+        ),
+    );
+    dirs.extend(
+        crate::sources::imported_history::managed_roots::profile_root_children(
+            &app_paths::managed_cli_launch_root(),
             &["projects"],
         ),
     );

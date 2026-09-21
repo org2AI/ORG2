@@ -100,28 +100,58 @@ describe("external-history Markdown URL pills", () => {
 });
 
 describe("message reference interactions", () => {
-  it("renders file references as ordinary links", () => {
+  it("renders file references with the composer's pill face", () => {
     const markup = renderToStaticMarkup(
       createElement(UserMessageContent, {
         text: "fixtures [folder:/tmp/fixtures]",
       })
     );
 
-    expect(markup).toContain("hover:underline");
-    expect(markup).toContain("active:underline");
-    expect(markup).toContain("focus-visible:underline");
-    expect(markup).toContain('href="/tmp/fixtures"');
-    expect(markup).not.toContain("rounded-md");
+    // A reference keeps the same face it had while being typed; the target it
+    // used to expose as an href now lives on the pill's tooltip.
+    expect(markup).toContain('title="/tmp/fixtures"');
+    expect(markup).toContain('role="link"');
+    expect(markup).toContain("fixtures");
+    // A pill, not an anchor — but it still carries a link's hover affordance.
+    expect(markup).not.toContain("<a ");
+    expect(markup).toContain("group-hover:underline");
   });
 
-  it("renders non-web references as links instead of special tags", () => {
+  it("renders an ordinary link as link text with no icon", () => {
+    const markup = renderToStaticMarkup(
+      createElement(UserMessageContent, {
+        text: "see docs [link:https://docs.example/guide]",
+      })
+    );
+
+    // Blue link text that underlines on hover — not a file-like chip.
+    expect(markup).toContain('role="link"');
+    expect(markup).toContain("group-hover:underline");
+    expect(markup).not.toContain('data-icon="link"');
+  });
+
+  it("gives a reference pill an icon slot and an ordinary link none", () => {
+    const render = (text: string) =>
+      renderToStaticMarkup(createElement(UserMessageContent, { text }));
+    // Only BasePill's icon slot is centred this way. A branch reference is
+    // used because its glyph is a Hugeicon: the GitHub glyph is an SVG asset
+    // import, which is not transformed into a component under test.
+    const iconSlot = "justify-content:center";
+
+    expect(render("main [branch:main]")).toContain(iconSlot);
+    expect(render("see docs [link:https://docs.example/guide]")).not.toContain(
+      iconSlot
+    );
+  });
+
+  it("renders non-web references as pills carrying their target", () => {
     const markup = renderToStaticMarkup(
       createElement(UserMessageContent, { text: "main [branch:main]" })
     );
 
-    expect(markup).toContain('href="main"');
-    expect(markup).toContain("hover:underline");
-    expect(markup).not.toContain("rounded-md");
+    expect(markup).toContain('title="main"');
+    expect(markup).toContain('role="link"');
+    expect(markup).not.toContain("<a ");
   });
 
   it("renders an embedded PR reference as its real GitHub link", () => {
@@ -135,8 +165,11 @@ describe("message reference interactions", () => {
       })
     );
 
-    expect(markup).toContain(`href="${url}"`);
-    expect(markup).not.toContain("rounded-md");
+    // The embedded payload still resolves to the real GitHub target. A web
+    // reference shows the pull-request hover card instead of a tooltip, so the
+    // resolved address rides on the accessible name.
+    expect(markup).toContain(`aria-label="ORG2#606 (${url})"`);
+    expect(markup).not.toContain('title="');
   });
 
   it("renders an unsafe serialized reference as plain text", () => {

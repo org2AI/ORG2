@@ -3,13 +3,10 @@ import { z } from "zod/v4";
 import { createLogger } from "@src/hooks/logger";
 
 import { getFreshCloudAccessToken } from "./cloudShortId";
-import { ORG2_CLOUD_POSTGREST_SCHEMA, getCloudEndpoint } from "./config";
+import { getCloudEndpoint } from "./config";
 import { getCloudCapabilities } from "./org2CloudCapabilities";
 import { Org2CloudCommentError } from "./org2CloudCommentsClient";
-import {
-  fetchWithTransportRetry,
-  runCloudRequestWithTimeout,
-} from "./org2CloudFetchRetry";
+import { callOrg2CloudRpc } from "./org2CloudRpc";
 
 const log = createLogger("TeamInboxMentionsClient");
 
@@ -140,43 +137,14 @@ async function callTeamInboxRpc(
 ): Promise<unknown> {
   const endpoint = getCloudEndpoint();
   const token = await freshestToken(accessToken);
-  return runCloudRequestWithTimeout(
-    async (signal) => {
-      const response = await fetchWithTransportRetry(
-        `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`,
-        {
-          method: "POST",
-          headers: {
-            apikey: endpoint.anonKey,
-            authorization: `Bearer ${token}`,
-            "content-type": "application/json",
-            "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-          },
-          body: JSON.stringify(body),
-          signal,
-        }
-      );
-
-      const text = await response.text();
-      let payload: unknown = null;
-      try {
-        payload = text ? JSON.parse(text) : null;
-      } catch {
-        payload = null;
-      }
-
-      if (!response.ok) {
-        const message =
-          payload && typeof payload === "object" && "message" in payload
-            ? String((payload as { message: unknown }).message)
-            : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-        throw new Org2CloudCommentError(message, response.status);
-      }
-      return payload;
-    },
-    TEAM_INBOX_REQUEST_TIMEOUT_MS,
-    sourceSignal
-  );
+  return callOrg2CloudRpc(functionName, body, {
+    accessToken: token,
+    endpoint,
+    timeoutMs: TEAM_INBOX_REQUEST_TIMEOUT_MS,
+    signal: sourceSignal,
+    createError: (message, status) =>
+      new Org2CloudCommentError(message, status),
+  });
 }
 
 /**

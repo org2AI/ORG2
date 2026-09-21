@@ -7,7 +7,7 @@ import {
 } from "@src/api/tauri/github";
 import type { GitHubRepoPermissions } from "@src/api/tauri/github";
 import type { PullRequestListState } from "@src/api/tauri/github";
-import { loadGitHubRepoPermissions } from "@src/modules/shared/githubIssueDetailCoordinator";
+import { loadGitHubRepoPermissions } from "@src/features/GitHubWork/githubIssueDetailCoordinator";
 import {
   coalesceGitHubListRequest,
   getCachedIssues,

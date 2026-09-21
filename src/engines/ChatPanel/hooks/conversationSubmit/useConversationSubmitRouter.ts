@@ -2,9 +2,10 @@ import { useStore } from "jotai";
 import { useCallback } from "react";
 
 import { useUserIntentSubmit } from "@src/engines/ChatPanel/hooks/useWorkspaceChat/useUserIntentSubmit";
-import type {
-  ConversationRootLocator,
-  LocalConversationTarget,
+import {
+  type ConversationRootLocator,
+  type LocalConversationTarget,
+  isLocalConversationTarget,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
 import type {
   QueuedConversationDispatch,
@@ -93,11 +94,7 @@ export function canonicalConversationTargetOrThrow(
       "Select an available runtime before continuing this conversation"
     );
   }
-  if (
-    target.cliAgentType &&
-    (target.cliAgentType !== "claude_code" || target.accountId) &&
-    (!target.accountId || !target.model)
-  ) {
+  if (!isLocalConversationTarget(target)) {
     throw new SubmitValidationError(
       "Select a model and source before continuing this conversation"
     );

@@ -12,7 +12,11 @@ import { useLocation } from "react-router-dom";
 
 import { rpc } from "@src/api/tauri/rpc";
 import { Message } from "@src/components/Message";
-import TabPill from "@src/components/TabPill";
+import {
+  DETAIL_PANEL_TOKENS,
+  InternalHeader,
+  ScrollPreservation,
+} from "@src/components/layout/blocks";
 import {
   type AgentOrgsTabSegment,
   WIZARD_IDS,
@@ -27,11 +31,6 @@ import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useCliAgents } from "@src/modules/MainApp/Integrations/KeyVault/CliClients/hooks/useCliAgents";
-import {
-  DETAIL_PANEL_TOKENS,
-  InternalHeader,
-  ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
 import { reposAtom } from "@src/store/repo/atoms";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
 
@@ -297,18 +296,9 @@ const AgentOrgsPage: React.FC = () => {
     <div className="settings-page absolute inset-0 flex flex-col overflow-hidden">
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tabs}
-            activeTab={activeTableTab}
-            onChange={setActiveTableTab}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tabs}
+        activeTab={activeTableTab}
+        onTabChange={setActiveTableTab}
       />
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>

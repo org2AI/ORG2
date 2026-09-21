@@ -8,19 +8,19 @@ import React, {
 import { useTranslation } from "react-i18next";
 
 import type { WorkItemData as WorkItemDataPayload } from "@src/api/http/project";
+import { DetailHeaderTabs } from "@src/components/layout/blocks";
+import {
+  extractGitHubReferences,
+  getWorkItemReferenceText,
+} from "@src/features/GitHubWork/GitHubLinkedReferences/references";
+import ThreadDetailTabs, {
+  type ThreadDetailTab,
+} from "@src/features/GitHubWork/ThreadDetailTabs";
 import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
 import { useAgentDefinitions } from "@src/modules/MainApp/AgentOrgs/hooks/useAgentDefinitions";
 import { useAgentOrgs } from "@src/modules/MainApp/AgentOrgs/hooks/useAgentOrgs";
-import {
-  extractGitHubReferences,
-  getWorkItemReferenceText,
-} from "@src/modules/shared/components/GitHubLinkedReferences/references";
-import ThreadDetailTabs, {
-  type ThreadDetailTab,
-} from "@src/modules/shared/components/ThreadDetailTabs";
-import DetailPaneLayout from "@src/modules/shared/layouts/DetailPaneLayout";
-import { DetailHeaderTabs } from "@src/modules/shared/layouts/blocks";
+import DetailPaneLayout from "@src/scaffold/layouts/DetailPaneLayout";
 import { createWorkItemDetailTab } from "@src/store/workstation/tabs";
 import {
   WORK_ITEM_STATUS,

@@ -12,7 +12,7 @@
  */
 import React, { memo } from "react";
 
-import { ActionSystemProvider } from "@src/ActionSystem";
+import { ActionSystemProvider } from "@src/scaffold/ActionSystem";
 
 import { ProjectManagerLayout } from "./ProjectManagerLayout";
 

@@ -18,7 +18,8 @@ pub use lookup::{
     get_cached_source_path_by_suffix_from_conn, get_cached_source_path_from_conn,
     query_cached_session_by_session_id_from_conn,
     query_cached_session_by_session_id_including_superseded_from_conn,
-    query_cached_session_from_conn, stat_imported_transcript_by_session_id_from_conn,
+    query_cached_session_from_conn, query_cached_session_impact_by_session_id_from_conn,
+    stat_imported_transcript_by_session_id_from_conn,
 };
 pub use pins::{
     imported_session_pin_identity, pinned_imported_session_ids_from_conn,

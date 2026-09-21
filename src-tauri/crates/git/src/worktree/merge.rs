@@ -79,6 +79,7 @@ pub fn merge_session_worktree(
     strategy: MergeStrategy,
 ) -> Result<WorktreeMergeResult, String> {
     validate_session_id(session_id)?;
+    crate::util::ensure_git_operand(base_branch, "base branch")?;
     let repo_str = repo_path.to_string_lossy().to_string();
     let wt_path = session_worktree_dir(&repo_str, session_id);
     let branch = session_branch_name(session_id);

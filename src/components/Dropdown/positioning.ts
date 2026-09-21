@@ -153,6 +153,8 @@ interface CalculateDropdownPositionParams {
   containerElement: HTMLElement;
   dropdownElement: HTMLElement | null;
   avoidViewportOverflow: boolean;
+  /** Trigger-to-panel gap (px). Defaults to `DROPDOWN_PANEL.triggerGapTight`. */
+  gap?: number;
 }
 
 export function getPortalTransform(
@@ -215,10 +217,10 @@ export function calculateDropdownPosition({
   containerElement,
   dropdownElement,
   avoidViewportOverflow,
+  gap = DROPDOWN_PANEL.triggerGapTight,
 }: CalculateDropdownPositionParams): DropdownCoordinates {
   const triggerRect = triggerElement.getBoundingClientRect();
   const containerRect = containerElement.getBoundingClientRect();
-  const gap = DROPDOWN_PANEL.triggerGapTight;
 
   let top = 0;
   let left = 0;

@@ -19,6 +19,7 @@ import Checkbox from "@src/components/Checkbox";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import Select, { type SelectOption } from "@src/components/Select";
+import { ActivityHeaderActionButton } from "@src/features/GitHubWork/ActivityTimeline";
 import {
   Add01Icon,
   ArchiveIcon,
@@ -26,7 +27,6 @@ import {
   HugeiconsIcon,
   ListChevronsDownUpIcon,
 } from "@src/icons";
-import { ActivityHeaderActionButton } from "@src/modules/shared/components/ActivityTimeline";
 import type { Person } from "@src/types/core/shared";
 
 import { usePropertyDefinitions } from "../../hooks/usePropertyDefinitions";
@@ -510,7 +510,6 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
                 {editable ? (
                   <Button
                     variant="tertiary"
-                    appearance="ghost"
                     size="mini"
                     shape="circle"
                     iconOnly

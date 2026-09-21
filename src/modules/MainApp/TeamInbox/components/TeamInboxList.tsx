@@ -7,12 +7,9 @@ import {
   ListPanelSkeletonRows,
 } from "@src/components/ListPanel";
 import { Placeholder } from "@src/components/Placeholder";
+import { ListPanelScrollArea, LoadingBar } from "@src/components/layout/blocks";
 import type { ManagedPrItem } from "@src/modules/MainApp/WorkManagement/githubManagedItemModel";
-import CompactListHeader from "@src/modules/shared/layouts/CompactListHeader";
-import {
-  ListPanelScrollArea,
-  LoadingBar,
-} from "@src/modules/shared/layouts/blocks";
+import CompactListHeader from "@src/scaffold/layouts/CompactListHeader";
 
 import {
   type TeamInboxFilter,
@@ -44,6 +41,8 @@ export interface TeamInboxListProps {
   unreadCounts: TeamInboxUnreadCounts;
   query: string;
   loading: boolean;
+  /** Notification-source loading, independent of GitHub requests. */
+  inboxLoading?: boolean;
   pullRequests?: readonly ManagedPrItem[];
   pullRequestsLoading?: boolean;
   pullRequestsError?: string | null;
@@ -85,6 +84,7 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
   onSelectPullRequest,
   onRefresh,
   onMarkAllRead,
+  inboxLoading = loading,
   hasMore = false,
   loadingMore = false,
   onLoadMore,
@@ -163,11 +163,19 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
   const showPullRequestsErrorDetails =
     Boolean(pullRequestsError) && pullRequestsErrorUi.detailed;
   const showLoadingBar = loading || pullRequestsLoading || loadingMore;
-  // A load with nothing to show yet gets skeleton rows instead of a blank pane, so
-  // the list keeps its shape until the real rows arrive. Once any row exists,
-  // that content stays and the progress line alone carries the refresh.
-  const showSkeletonRows =
-    showLoadingBar && items.length === 0 && actionablePullRequestCount === 0;
+  const showInboxSkeletons = inboxLoading && items.length === 0;
+  const showPrSkeletons =
+    showPullRequests && pullRequestsLoading && actionablePullRequestCount === 0;
+  const showSkeletonRows = showInboxSkeletons || showPrSkeletons;
+  const renderSkeletonSection = (key: string, title: string) => (
+    <TeamInboxListSection
+      key={key}
+      title={title}
+      testId={`team-inbox-${key}-loading`}
+    >
+      <ListPanelSkeletonRows count={2} />
+    </TeamInboxListSection>
+  );
   const loadMoreAction =
     hasMore && onLoadMore ? (
       <div className="flex shrink-0 justify-center px-3 pt-1 pb-2">
@@ -292,6 +300,18 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
                 }
               />
             ) : null}
+            {showPrSkeletons ? (
+              <>
+                {renderSkeletonSection(
+                  "pr-review-requested",
+                  t("teamInbox.sections.reviewRequested")
+                )}
+                {renderSkeletonSection(
+                  "pr-authored",
+                  t("teamInbox.sections.authoredByMe")
+                )}
+              </>
+            ) : null}
             {showPullRequests &&
             pullRequestSections.reviewRequested.length > 0 ? (
               <TeamInboxListSection
@@ -360,7 +380,26 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
             ) : items.length > 0 ? (
               renderInboxRows(items, t("teamInbox.itemsLabel"))
             ) : null}
-            {showSkeletonRows ? <ListPanelSkeletonRows /> : null}
+            {showInboxSkeletons ? (
+              filter === "all" ? (
+                <>
+                  {renderSkeletonSection(
+                    "mentions",
+                    t("teamInbox.filters.mentions")
+                  )}
+                  {renderSkeletonSection(
+                    "assigned",
+                    t("teamInbox.filters.assigned")
+                  )}
+                  {renderSkeletonSection(
+                    "updates",
+                    t("teamInbox.sections.updates")
+                  )}
+                </>
+              ) : (
+                renderSkeletonSection(filter, t(`teamInbox.filters.${filter}`))
+              )
+            ) : null}
           </div>
           {loadMoreAction}
         </ListPanelScrollArea>

@@ -106,7 +106,6 @@ const SubagentPromptToggleComponent: React.FC<SubagentPromptToggleProps> = ({
     <>
       <Button
         ref={buttonRef}
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly

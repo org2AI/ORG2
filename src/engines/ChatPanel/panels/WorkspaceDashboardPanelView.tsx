@@ -1,7 +1,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useState } from "react";
 
-import { LaunchpadDashboard } from "@src/modules/shared/launchpad/components";
+import { LaunchpadDashboard } from "@src/features/Launchpad/components";
 import { openWorkingDirectorySpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import { openWorkspaceOverviewInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import type { Repo } from "@src/store/repo";

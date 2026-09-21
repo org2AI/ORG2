@@ -133,34 +133,34 @@ pub(super) fn cli_exec_mode_bridge(mode: Option<&str>) -> Option<&'static str> {
     match mode {
         AgentExecMode::Plan => Some(concat!(
             "<orgii_cli_exec_mode_bridge>\n",
-            "You are running inside ORGII PLAN mode. Plan mode is read-only unless the user explicitly approves Build later. ",
+            "You are running inside ORG2 PLAN mode. Plan mode is read-only unless the user explicitly approves Build later. ",
             "Do not implement, edit source files, run shell commands, or create the acceptance artifact.\n",
-            "- If the user asks to draft, create, update, revise, or submit an approval plan, use an ORGII plan tool such as create_plan, EnterPlanMode/ExitPlanMode, or a plan-file workflow if available.\n",
-            "- If no plan tool is available for an explicit plan request, write the plan as a markdown file (e.g. `plan.md`) with a title and concrete Build steps; ORGII canonicalizes the written plan file into the approval card.\n",
+            "- If the user asks to draft, create, update, revise, or submit an approval plan, use an ORG2 plan tool such as create_plan, EnterPlanMode/ExitPlanMode, or a plan-file workflow if available.\n",
+            "- If no plan tool is available for an explicit plan request, write the plan as a markdown file (e.g. `plan.md`) with a title and concrete Build steps; ORG2 canonicalizes the written plan file into the approval card.\n",
             "- If the user asks an ordinary question, asks for clarification, or explicitly says not to modify the pending plan, answer the question directly and do not create, revise, or submit a plan.\n",
             "- After submitting/outputting an approval plan, stop.\n",
             "</orgii_cli_exec_mode_bridge>"
         )),
         AgentExecMode::Build => Some(concat!(
             "<orgii_cli_exec_mode_bridge>\n",
-            "You are running inside ORGII BUILD mode. Execute the approved or requested work directly. ",
+            "You are running inside ORG2 BUILD mode. Execute the approved or requested work directly. ",
             "Do not create a new approval plan unless the user explicitly asks to switch back to Plan mode.\n",
             "Before claiming completion, re-read the produced artifact and check every literal acceptance constraint. For a file whose content must be exact, verify byte count and trailing bytes (for example with `wc -c` plus a hex/byte dump); command substitution and trimmed text readers hide trailing newlines and are not proof of byte equality.\n",
             "</orgii_cli_exec_mode_bridge>"
         )),
         AgentExecMode::Ask => Some(concat!(
             "<orgii_cli_exec_mode_bridge>\n",
-            "You are running inside ORGII ASK mode. Research and answer without editing files, applying patches, deleting files, or running write commands.\n",
+            "You are running inside ORG2 ASK mode. Research and answer without editing files, applying patches, deleting files, or running write commands.\n",
             "</orgii_cli_exec_mode_bridge>"
         )),
         AgentExecMode::Debug => Some(concat!(
             "<orgii_cli_exec_mode_bridge>\n",
-            "You are running inside ORGII DEBUG mode. Focus on diagnosis and evidence. Avoid implementation changes unless explicitly requested.\n",
+            "You are running inside ORG2 DEBUG mode. Focus on diagnosis and evidence. Avoid implementation changes unless explicitly requested.\n",
             "</orgii_cli_exec_mode_bridge>"
         )),
         AgentExecMode::Review => Some(concat!(
             "<orgii_cli_exec_mode_bridge>\n",
-            "You are running inside ORGII REVIEW mode. Inspect changes and produce a review verdict without modifying files.\n",
+            "You are running inside ORG2 REVIEW mode. Inspect changes and produce a review verdict without modifying files.\n",
             "</orgii_cli_exec_mode_bridge>"
         )),
         AgentExecMode::Wingman => None,
@@ -202,7 +202,7 @@ fn project_mode_bridge(
 
     Some(format!(
         "<orgii_project_mode>\n\
-         You are in ORGII Project product mode: Build execution plus the guarded `org2-pm` work-management CLI. Ordinary Build sessions do not have this PM mutation capability.\n\
+         You are in ORG2 Project product mode: Build execution plus the guarded `org2-pm` work-management CLI. Ordinary Build sessions do not have this PM mutation capability.\n\
          Use `org2-pm --help` for discovery and `--output json` for machine-readable results.\n\
          {}\n\
          {}\n\

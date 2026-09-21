@@ -5,7 +5,6 @@
  */
 import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
 import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
@@ -13,14 +12,10 @@ import Input from "@src/components/Input";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { Placeholder } from "@src/components/Placeholder";
 import Select from "@src/components/Select";
+import { VirtualList } from "@src/components/VirtualList";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { useKeyedCopyCheck } from "@src/hooks/ui/useCopyCheck";
-import {
-  BrushCleaningIcon,
-  Copy01Icon,
-  HugeiconsIcon,
-  Tick01Icon,
-} from "@src/icons";
+import { CleanIcon, Copy01Icon, HugeiconsIcon, Tick01Icon } from "@src/icons";
 import { copyText } from "@src/util/data/clipboard";
 
 import type { ConsoleEntry, FilterLevel, LogLevel } from "../../types";
@@ -179,11 +174,9 @@ function ConsoleLogEntryRow({
 
         {truncated && (
           <Button
-            variant="primary"
-            appearance="ghost"
+            variant="ghost"
             size="inline"
-            htmlType="button"
-            className="mt-0.5 text-[10px] underline decoration-primary-6/50 underline-offset-2 select-none hover:text-primary-5"
+            className="mt-0.5 text-[10px] select-none"
             onClick={(event) => {
               event.stopPropagation();
               onToggleMessage();
@@ -196,11 +189,9 @@ function ConsoleLogEntryRow({
         {entry.stack && (
           <div className="mt-1">
             <Button
-              variant="primary"
-              appearance="ghost"
+              variant="ghost"
               size="inline"
-              htmlType="button"
-              className="text-[10px] underline decoration-primary-6/50 underline-offset-2 select-none hover:text-primary-5"
+              className="text-[10px] select-none"
               onClick={(event) => {
                 event.stopPropagation();
                 onToggleStack();
@@ -398,17 +389,15 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = memo(
           <ToolbarTooltip label={t("tooltips.clearConsole")}>
             <Button
               variant="tertiary"
-              appearance="soft"
               size="sidebar"
               iconOnly
               icon={
                 <HugeiconsIcon
-                  icon={BrushCleaningIcon}
-                  data-icon="brush-cleaning"
+                  icon={CleanIcon}
+                  data-icon="clean"
                   size={HEADER_ICON_SIZE.sm}
                 />
               }
-              htmlType="button"
               onClick={handleClear}
               aria-label={t("tooltips.clearConsole")}
             />
@@ -425,11 +414,11 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = memo(
               fillParentHeight
             />
           ) : filteredEntries.length > CONSOLE_VIRTUALIZATION_THRESHOLD ? (
-            <Virtuoso
+            <VirtualList
               className="h-full overflow-x-hidden"
               data={filteredEntries}
               computeItemKey={(_index, entry) => entry.id}
-              increaseViewportBy={200}
+              overscanPx={200}
               itemContent={(_index, entry) => renderEntry(entry)}
             />
           ) : (

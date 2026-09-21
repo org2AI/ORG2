@@ -12,6 +12,8 @@ import {
   vi,
 } from "vitest";
 
+import { DEFAULT_BUTTON_TOOLTIP_DELAY_MS } from "@src/config/tooltip";
+
 import { ResizeHandle } from "./ResizeHandle";
 
 const reactActEnvironment = globalThis as typeof globalThis & {
@@ -95,7 +97,7 @@ describe("ResizeHandle indicator", () => {
     indicatorHost.remove();
   });
 
-  it("shows the contextual shortcut only after one second of hover", () => {
+  it("shows the contextual shortcut only after the button-tooltip delay", () => {
     vi.useFakeTimers();
     act(() => {
       root.render(
@@ -113,7 +115,7 @@ describe("ResizeHandle indicator", () => {
 
     act(() => {
       handle!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-      vi.advanceTimersByTime(999);
+      vi.advanceTimersByTime(DEFAULT_BUTTON_TOOLTIP_DELAY_MS - 1);
     });
     expect(document.body.textContent).not.toContain("Hide Sidebar");
 

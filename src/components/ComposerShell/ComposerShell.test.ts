@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { INPUT_AREA, INPUT_AREA_BUTTONS } from "@src/config/inputAreaTokens";
+
 import ComposerShell from ".";
 
 let container: HTMLDivElement;
@@ -52,6 +54,19 @@ describe("ComposerShell background focus", () => {
     const editor = renderShell();
     click(container.querySelector(`[data-testid="${testId}"]`)!);
     expect(document.activeElement).toBe(editor);
+  });
+
+  it("puts the caret after the text already typed, not in front of it", () => {
+    const editor = renderShell();
+    editor.append(document.createTextNode("draft message"));
+    window.getSelection()?.removeAllRanges();
+
+    click(container.querySelector('[data-testid="gap"]')!);
+
+    const selection = window.getSelection()!;
+    expect(selection.isCollapsed).toBe(true);
+    expect(selection.anchorNode).toBe(editor.firstChild);
+    expect(selection.anchorOffset).toBe("draft message".length);
   });
 
   it.each([
@@ -112,5 +127,40 @@ describe("ComposerShell background focus", () => {
     click(portal.firstElementChild!);
     expect(focus).not.toHaveBeenCalled();
     portal.remove();
+  });
+});
+
+describe("ComposerShell compact morph", () => {
+  function shellClasses(variant: "pill" | "embedded"): string[] {
+    act(() => {
+      root.render(createElement(ComposerShell, { variant }));
+    });
+    return container.firstElementChild!.className.split(/\s+/);
+  }
+
+  it("tweens padding and corner radius between the pill and the stacked box", () => {
+    const pill = shellClasses("pill");
+    const stacked = shellClasses("embedded");
+
+    for (const classes of [pill, stacked]) {
+      // One transition declaration: a second `transition-[…]` utility from
+      // the interaction tokens would silently replace this property list.
+      expect(classes.filter((name) => name.startsWith("transition-"))).toEqual([
+        "transition-[padding,border-radius]",
+      ]);
+      expect(classes).toContain("motion-reduce:transition-none");
+    }
+    expect(pill).toContain(INPUT_AREA.borderRadiusPillClass);
+    expect(stacked).toContain(INPUT_AREA.borderRadiusClass);
+  });
+
+  it("keeps the pill radius finite so it can interpolate", () => {
+    const pill = shellClasses("pill");
+
+    expect(pill).not.toContain("rounded-full");
+    // Half the compact row: 28px controls, 6px padding and a 1px border per side.
+    expect(INPUT_AREA.borderRadiusPill * 2).toBe(
+      INPUT_AREA_BUTTONS.iconButtonSize + 2 * 6 + 2 * 1
+    );
   });
 });

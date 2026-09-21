@@ -31,7 +31,7 @@ import type {
   RenderContext,
   UniversalEventProps,
 } from "@src/engines/SessionCore/rendering/types/universalProps";
-import { normalizeActivity } from "@src/lib/activityData";
+import { normalizeActivity } from "@src/util/data/activityData";
 
 const ACTIVE_EVENT_PAINTING_TTL_MS = 30 * 60 * 1000;
 

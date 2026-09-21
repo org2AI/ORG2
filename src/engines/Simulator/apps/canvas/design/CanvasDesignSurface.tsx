@@ -415,7 +415,7 @@ const CanvasDesignSurface: React.FC<CanvasDesignSurfaceProps> = ({
               {inspector.selected && (
                 <Button
                   data-canvas-design-close
-                  className="pointer-events-auto absolute bg-text-1 text-bg-1 shadow-lg hover:bg-text-2"
+                  className="pointer-events-auto absolute bg-text-1 text-bg-1 shadow-lg hover:bg-text-2 hover:text-bg-1"
                   style={{
                     left: clamp(
                       visibleSelection.rect.x +
@@ -436,7 +436,6 @@ const CanvasDesignSurface: React.FC<CanvasDesignSurfaceProps> = ({
                   onClick={inspector.clearSelection}
                   size="mini"
                   variant="tertiary"
-                  appearance="soft"
                   iconOnly
                   icon={
                     <HugeiconsIcon

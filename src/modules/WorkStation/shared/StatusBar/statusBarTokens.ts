@@ -41,8 +41,6 @@ export const STATUS_BAR_TOKENS = {
   leftCluster: "flex h-full min-w-0 flex-1 items-center overflow-hidden",
   /** Right cluster (cursor / encoding / tools / etc.) */
   rightCluster: "flex h-full shrink-0 items-center",
-  /** Optional centered slot */
-  centerCluster: "absolute left-1/2 flex h-full -translate-x-1/2 items-center",
 
   /** Status-menu footer with breathing room after a trailing timestamp. */
   menuFooterClass: `${DROPDOWN_CLASSES.footerContainer} pr-2`,
@@ -66,7 +64,7 @@ export const STATUS_BAR_TOKENS = {
    * status-bar CTAs read consistently.
    */
   buttonPrimary: `bg-primary-6 px-2.5 text-white hover:bg-primary-7 ${STATUS_BAR_TYPOGRAPHY.emphasis}`,
-  /** Non-interactive block (icon + labels), e.g. indexing */
+  /** Non-interactive block (icon + labels) */
   segment:
     "flex h-full shrink-0 cursor-default select-none items-center gap-1.5 px-2",
   /** Text-only segment */

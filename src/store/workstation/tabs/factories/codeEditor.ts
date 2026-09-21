@@ -121,50 +121,6 @@ export function createStartTab(): WorkStationTab {
 // Git Diff Tabs
 // ============================================
 
-export interface GitDiffTabData {
-  filePath: string;
-  extension: string;
-  gitStatusLetter: string;
-  isTimeline?: boolean;
-  commitSha?: string;
-  shortSha?: string;
-  headShortSha?: string;
-  commitMessage?: string;
-  commitAuthor?: string;
-  commitTimestamp?: string;
-  /**
-   * Where the diff tab was opened from. Drives the smart-sidebar behavior:
-   * only `"source-control"` causes the host to swap its default sidebar for
-   * `DiffTabSidebar` while this tab is active. Other origins (chat link,
-   * spotlight, programmatic, etc.) leave the user's current sidebar viewMode
-   * untouched, matching VS Code / Cursor behavior.
-   */
-  origin?: "source-control" | "other";
-}
-
-export const gitDiffTabFactory = defineTabFactory<GitDiffTabData>({
-  tabType: "git-diff",
-  idStrategy: {
-    type: "keyed",
-    prefix: "git-diff",
-    getKey: (data) =>
-      data.isTimeline && data.commitSha
-        ? `${data.commitSha}:${data.filePath}`
-        : data.filePath,
-  },
-  getTitle: (data) => getFileName(data.filePath),
-});
-
-export function createGitDiffTab(
-  filePath: string,
-  gitStatusLetter: string,
-  origin: GitDiffTabData["origin"] = "other"
-): WorkStationTab {
-  const name = getFileName(filePath);
-  const extension = getFileExtension(name);
-  return gitDiffTabFactory({ filePath, extension, gitStatusLetter, origin });
-}
-
 export function createTimelineDiffTab(
   filePath: string,
   commitSha: string,

@@ -15,6 +15,11 @@ import {
   nativeSourceEventId,
   portableToolCallId,
 } from "./nativeSourceEventIdentity";
+import {
+  isNativeTerminalDiagnosticOrEcho,
+  nativeTerminalDiagnosticSources,
+} from "./nativeTerminalDiagnostic";
+import { effectiveQueuedRetryEvents } from "./queuedRetryLineage";
 
 function nativeConversationTurnId(event: SessionEvent): string | undefined {
   const resultTurnId = (event.result as Record<string, unknown> | undefined)
@@ -136,6 +141,7 @@ export function projectNativeConversationItems(
   events: readonly SessionEvent[]
 ): NativeConversationItem[] {
   const items: NativeConversationItem[] = [];
+  const diagnosticSources = nativeTerminalDiagnosticSources(events);
   const persistedUserMessageIds = new Set(
     events.flatMap((event) => {
       if (event.functionName !== "user_message") return [];
@@ -146,7 +152,7 @@ export function projectNativeConversationItems(
         : [];
     })
   );
-  for (const event of events) {
+  for (const event of effectiveQueuedRetryEvents(events)) {
     if (
       event.actionType === "context_compacted" ||
       event.functionName === "context_compacted"
@@ -169,6 +175,7 @@ export function projectNativeConversationItems(
     }
     if (
       event.isDelta ||
+      isNativeTerminalDiagnosticOrEcho(event, diagnosticSources) ||
       isInternalLifecycleEvent(event) ||
       isPrivateProviderEvent(event) ||
       isUndeliveredUserEvent(event)

@@ -31,6 +31,7 @@ import {
   useRef,
 } from "react";
 
+import { useDeferredFocus } from "./useDeferredFocus";
 import { useTauriSelectAllShortcut } from "./useTauriSelectAllShortcut";
 
 // ============================================
@@ -259,6 +260,7 @@ export function useListNavigation<T extends ListItem>(
   // Handles Arrow, Tab, and Backspace when focus is outside the spotlight
   // input. Escape is NOT handled here — SpotlightPortal owns that.
   // ============================================
+  const focusInput = useDeferredFocus(inputRef, enableGlobalListener);
   useEffect(() => {
     if (!enableGlobalListener) return;
 
@@ -314,7 +316,7 @@ export function useListNavigation<T extends ListItem>(
         }
 
         if (inputRef?.current) {
-          setTimeout(() => inputRef.current?.focus(), 0);
+          focusInput();
         }
         return;
       }
@@ -357,7 +359,7 @@ export function useListNavigation<T extends ListItem>(
         }
 
         if (inputRef?.current) {
-          setTimeout(() => inputRef.current?.focus(), 0);
+          focusInput();
         }
         return;
       }
@@ -393,6 +395,7 @@ export function useListNavigation<T extends ListItem>(
     return () => document.removeEventListener("keydown", handler, true);
   }, [
     enableGlobalListener,
+    focusInput,
     enableDisclosureArrowNavigation,
     inputRef,
     findNextSelectableIndexFromRef,

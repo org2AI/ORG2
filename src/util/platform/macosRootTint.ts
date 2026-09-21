@@ -19,7 +19,9 @@
  * webview), and then flips `<html data-native-root-tint>` so the CSS tints
  * go transparent. The page composites onto exactly the surface it painted
  * before, the sidebar included, and the resize strip now shows that same
- * surface instead of bare material.
+ * surface instead of bare material. That surface is still translucent, so
+ * beside the opaque page it reads as a see-through band; while the window
+ * resizes, `macosPageBackdrop.ts` covers the page region with the page colour.
  *
  * Only the sRGB colour math lives here; nothing about it is Tauri-specific.
  */

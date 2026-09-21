@@ -57,8 +57,6 @@ interface NoTabsPlaceholderProps {
   caption?: string;
   /** Quick actions to display (omit for icon-only placeholder) */
   actions?: QuickAction[];
-  /** Optional click handler for actions */
-  onActionClick?: (action: QuickAction) => void;
   /** Optional contextual content rendered below the shortcut actions */
   children?: React.ReactNode;
 }
@@ -86,22 +84,18 @@ const ICON_MAP: Record<PlaceholderIcon, IconSvgElement> = {
 
 interface ActionItemProps {
   action: QuickAction;
-  onClick?: () => void;
 }
 
-const ActionItem = memo<ActionItemProps>(({ action, onClick }) => {
+const ActionItem = memo<ActionItemProps>(({ action }) => {
   const handleClick = () => {
     if (!action.disabled && action.onAction) {
       action.onAction();
     }
-    onClick?.();
   };
 
   return (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       onClick={handleClick}
       disabled={action.disabled}
       className={`${SPOTLIGHT_CLASSES.itemRow} w-full text-left transition-colors ${
@@ -157,7 +151,7 @@ ToolIcon.displayName = "ToolIcon";
 // ============================================
 
 export const NoTabsPlaceholder: React.FC<NoTabsPlaceholderProps> = memo(
-  ({ icon, caption, actions, onActionClick, children }) => {
+  ({ icon, caption, actions, children }) => {
     return (
       <div
         className={`flex h-full w-full items-center justify-center ${EDITOR_TAB_CANVAS_BG_CLASS}`}
@@ -179,11 +173,7 @@ export const NoTabsPlaceholder: React.FC<NoTabsPlaceholderProps> = memo(
               style={{ gap: SPOTLIGHT_TOKENS.itemGap }}
             >
               {actions.map((action) => (
-                <ActionItem
-                  key={action.id}
-                  action={action}
-                  onClick={() => onActionClick?.(action)}
-                />
+                <ActionItem key={action.id} action={action} />
               ))}
             </div>
           )}

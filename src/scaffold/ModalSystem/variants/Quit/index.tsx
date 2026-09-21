@@ -3,6 +3,7 @@ import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import quitImage from "@src/assets/illustrations/quit.png";
+import Illustration from "@src/components/Illustration";
 import Modal from "@src/scaffold/ModalSystem";
 import { quitConfirmationModalOpenAtom } from "@src/store/ui/overlayAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
@@ -59,14 +60,20 @@ const QuitConfirmationModal = () => {
     <Modal
       visible={isOpen}
       size="medium"
-      image={{ src: quitImage, alt: "" }}
+      headerMedia={
+        <Illustration src={quitImage} className="liquid-modal-image" />
+      }
       title={t("quitConfirmation.title")}
       closable={false}
       maskClosable={false}
+      // The capture handler above owns Escape, including composition checks.
+      escToExit={false}
       onCancel={handleCancel}
       onOk={handleQuit}
       okText={t("quitConfirmation.confirm")}
       cancelText={t("quitConfirmation.cancel")}
+      okButtonProps={{ shortcut: "Enter", "aria-keyshortcuts": "Enter" }}
+      cancelButtonProps={{ shortcut: "Esc", "aria-keyshortcuts": "Escape" }}
     >
       <p className="text-sm text-text-2">{t("quitConfirmation.subtitle")}</p>
     </Modal>

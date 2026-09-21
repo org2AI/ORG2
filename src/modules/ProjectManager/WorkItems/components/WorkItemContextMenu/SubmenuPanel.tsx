@@ -60,9 +60,7 @@ export const SubmenuPanel: React.FC<SubmenuPanelProps> = ({
         return (
           <Button
             layout="custom"
-            appearance="custom"
             key={item.id}
-            htmlType="button"
             className={`work-item-context-menu__item ${DROPDOWN_CLASSES.item} w-full justify-between border-none bg-transparent text-left ${DROPDOWN_CLASSES.itemHover} ${
               item.disabled ? DROPDOWN_CLASSES.itemDisabled : ""
             } ${isActive ? DROPDOWN_CLASSES.itemActive : ""}`}

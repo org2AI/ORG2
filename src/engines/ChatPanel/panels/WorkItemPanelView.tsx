@@ -4,8 +4,16 @@ import { useTranslation } from "react-i18next";
 
 import { STORY_SYNC_ADAPTER } from "@src/api/http/integrations/syncConnections";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import {
+  PersistentDetailTabPanel,
+  WorkstationTrailIconButton,
+  WorkstationTrailSurface,
+} from "@src/components/layout/blocks";
+import LazyGitHubLinkedReferences from "@src/features/GitHubWork/GitHubLinkedReferences/lazy";
+import type { ThreadDetailTab } from "@src/features/GitHubWork/ThreadDetailTabs";
 import { useProjectDataChanged } from "@src/hooks/project";
 import { useCurrentUserMemberIds } from "@src/hooks/project/useCurrentUserMemberId";
+import { useDetailRailLayout } from "@src/hooks/ui/layout/useDetailRailLayout";
 import { ArrowRightDoubleIcon, HugeiconsIcon } from "@src/icons";
 import { WorkItemThreadSurface } from "@src/modules/ProjectManager/WorkItems/components";
 import RevisionConflictModal from "@src/modules/ProjectManager/WorkItems/components/RevisionConflictModal";
@@ -15,13 +23,6 @@ import {
   PropertiesPanel,
   PropertiesRailFrame,
 } from "@src/modules/ProjectManager/shared";
-import LazyGitHubLinkedReferences from "@src/modules/shared/components/GitHubLinkedReferences/lazy";
-import type { ThreadDetailTab } from "@src/modules/shared/components/ThreadDetailTabs";
-import {
-  PersistentDetailTabPanel,
-  WorkstationTrailIconButton,
-  WorkstationTrailSurface,
-} from "@src/modules/shared/layouts/blocks";
 import type { ChatPanelSelectedWorkItem } from "@src/store/ui/chatPanel/selectionAtoms";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import type { WorkItem } from "@src/types/core/workItem";
@@ -48,6 +49,7 @@ export const WorkItemPanelView: React.FC<WorkItemPanelViewProps> = ({
   const { t } = useTranslation(["projects", "common"]);
   const activeWorkspaceRootPath = useAtomValue(activeWorkspaceRootPathAtom);
   const [propertiesOpen, setPropertiesOpen] = useState(true);
+  const { paneRef, inlineRail } = useDetailRailLayout(propertiesOpen);
   const [tabSelection, setTabSelection] = useState<{
     workItemId: string;
     activeTab: ThreadDetailTab;
@@ -189,54 +191,57 @@ export const WorkItemPanelView: React.FC<WorkItemPanelViewProps> = ({
     t,
   });
 
+  const propertiesContent = (
+    <WorkstationTrailSurface className="flex self-start">
+      <PropertiesPanel
+        title={t("projects:workItems.properties.title")}
+        fitContent
+        headerVariant="workstation-trail"
+        headerActions={
+          <ToolbarTooltip label={propertiesToggleLabel}>
+            <WorkstationTrailIconButton
+              onClick={toggleProperties}
+              aria-label={propertiesToggleLabel}
+              data-testid="chat-panel-work-item-properties-collapse"
+            >
+              <HugeiconsIcon
+                icon={ArrowRightDoubleIcon}
+                data-icon="chevrons-right"
+                size={14}
+                strokeWidth={1.75}
+              />
+            </WorkstationTrailIconButton>
+          </ToolbarTooltip>
+        }
+      >
+        <WorkItemProperties
+          statusOrgId={selectedWorkItem.orgId ?? "personal-org"}
+          workItem={selectedWorkItem.workItem}
+          onUpdate={handleUpdateWorkItem}
+          availableProjects={
+            selectedWorkItem.workItem.project
+              ? [selectedWorkItem.workItem.project]
+              : []
+          }
+          availableMilestones={
+            selectedWorkItem.workItem.milestone
+              ? [selectedWorkItem.workItem.milestone]
+              : []
+          }
+          availableLabels={selectedWorkItem.workItem.labels ?? []}
+          availableMembers={workItemMembers}
+          projectIconType={
+            isGitHubSyncedProject ? STORY_SYNC_ADAPTER.GITHUB : undefined
+          }
+          projectReadonly={projectSelectionReadonly}
+          panelVariant="workstation-trail"
+        />
+      </PropertiesPanel>
+    </WorkstationTrailSurface>
+  );
   const propertiesPanel = (
     <PropertiesRailFrame floatingContent>
-      <WorkstationTrailSurface className="flex self-start">
-        <PropertiesPanel
-          title={t("projects:workItems.properties.title")}
-          fitContent
-          headerVariant="workstation-trail"
-          headerActions={
-            <ToolbarTooltip label={propertiesToggleLabel}>
-              <WorkstationTrailIconButton
-                onClick={toggleProperties}
-                aria-label={propertiesToggleLabel}
-                data-testid="chat-panel-work-item-properties-collapse"
-              >
-                <HugeiconsIcon
-                  icon={ArrowRightDoubleIcon}
-                  data-icon="chevrons-right"
-                  size={14}
-                  strokeWidth={1.75}
-                />
-              </WorkstationTrailIconButton>
-            </ToolbarTooltip>
-          }
-        >
-          <WorkItemProperties
-            statusOrgId={selectedWorkItem.orgId ?? "personal-org"}
-            workItem={selectedWorkItem.workItem}
-            onUpdate={handleUpdateWorkItem}
-            availableProjects={
-              selectedWorkItem.workItem.project
-                ? [selectedWorkItem.workItem.project]
-                : []
-            }
-            availableMilestones={
-              selectedWorkItem.workItem.milestone
-                ? [selectedWorkItem.workItem.milestone]
-                : []
-            }
-            availableLabels={selectedWorkItem.workItem.labels ?? []}
-            availableMembers={workItemMembers}
-            projectIconType={
-              isGitHubSyncedProject ? STORY_SYNC_ADAPTER.GITHUB : undefined
-            }
-            projectReadonly={projectSelectionReadonly}
-            panelVariant="workstation-trail"
-          />
-        </PropertiesPanel>
-      </WorkstationTrailSurface>
+      {propertiesContent}
       <div
         ref={setNavigationTrailHost}
         className="pointer-events-none relative ml-auto min-h-0 w-11 flex-1"
@@ -246,11 +251,19 @@ export const WorkItemPanelView: React.FC<WorkItemPanelViewProps> = ({
   );
 
   return (
-    <WorkItemThreadNavigationPortalContext.Provider value={navigationTrailHost}>
+    <WorkItemThreadNavigationPortalContext.Provider
+      value={inlineRail ? null : navigationTrailHost}
+    >
       <div
         className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
+        ref={paneRef}
         data-testid="chat-panel-work-item-detail"
       >
+        {propertiesOpen && inlineRail && activeDetailTab !== "conversation" ? (
+          <div className="max-h-64 shrink-0 overflow-y-auto px-4 py-4">
+            {propertiesContent}
+          </div>
+        ) : null}
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -262,6 +275,13 @@ export const WorkItemPanelView: React.FC<WorkItemPanelViewProps> = ({
               >
                 <WorkItemThreadSurface
                   key={workItemContentKey}
+                  headerProperties={
+                    propertiesOpen &&
+                    inlineRail &&
+                    activeDetailTab === "conversation"
+                      ? propertiesContent
+                      : undefined
+                  }
                   workItem={selectedWorkItem.workItem}
                   onUpdateWorkItem={handleUpdateWorkItem}
                   onUpdateWorkItemImmediate={handleUpdateWorkItem}
@@ -293,7 +313,7 @@ export const WorkItemPanelView: React.FC<WorkItemPanelViewProps> = ({
               </PersistentDetailTabPanel>
             </div>
           </div>
-          {propertiesOpen ? propertiesPanel : null}
+          {propertiesOpen && !inlineRail ? propertiesPanel : null}
         </div>
       </div>
       <RevisionConflictModal

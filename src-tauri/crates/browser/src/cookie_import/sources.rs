@@ -4,6 +4,15 @@
 //! macOS this covers the Chromium family (Chrome, Edge, Brave, Arc, Vivaldi,
 //! Chromium) plus Firefox; on Windows and Linux, Firefox only — mirroring what
 //! can actually be decrypted per platform.
+//!
+//! ## Blocked is not absent
+//!
+//! macOS guards other apps' data. Without Full Disk Access it still lets this
+//! process see that a browser's folder exists, but refuses to read anything in
+//! it. Every scanner here reports that as a source with an
+//! `unavailable_reason`, so the picker can say how to unblock it. Treating a
+//! permission error as "not installed" makes the browser silently vanish from
+//! the list, which is indistinguishable from a bug to the person looking at it.
 
 use std::path::{Path, PathBuf};
 
@@ -108,15 +117,39 @@ fn macos_application_support() -> Option<PathBuf> {
         .map(|home| PathBuf::from(home).join("Library").join("Application Support"))
 }
 
+/// True when the OS refused the read, as opposed to the path not existing.
+fn is_permission_denied(error: &std::io::Error) -> bool {
+    error.kind() == std::io::ErrorKind::PermissionDenied
+}
+
 #[cfg(target_os = "macos")]
 fn discover_chromium_macos(sources: &mut Vec<SourceLocation>) {
     let Some(app_support) = macos_application_support() else {
         return;
     };
+    discover_chromium_in(&app_support, sources);
+}
 
+/// Scan the Chromium family under one application-support directory.
+#[cfg(target_os = "macos")]
+fn discover_chromium_in(app_support: &Path, sources: &mut Vec<SourceLocation>) {
     for vendor in CHROMIUM_VENDORS {
         let user_data_dir = app_support.join(vendor.support_subdir);
         if !user_data_dir.is_dir() {
+            continue;
+        }
+
+        if chromium_user_data_blocked(&user_data_dir) {
+            sources.push(SourceLocation {
+                id: format!("chromium:{}:{BLOCKED_PROFILE_ID}", vendor.browser_id),
+                kind: CookieSourceKind::Chromium,
+                browser_id: vendor.browser_id.to_string(),
+                browser_label: vendor.browser_label.to_string(),
+                profile_label: None,
+                store_path: user_data_dir,
+                keychain: None,
+                unavailable_reason: Some(SourceUnavailableReason::NeedsFullDiskAccess),
+            });
             continue;
         }
 
@@ -142,6 +175,26 @@ fn discover_chromium_macos(sources: &mut Vec<SourceLocation>) {
             });
         }
     }
+}
+
+/// Stands in for the profile segment of a source id when the profiles cannot be
+/// listed. No real Chromium profile directory can carry this name.
+#[cfg(target_os = "macos")]
+const BLOCKED_PROFILE_ID: &str = "<blocked>";
+
+/// A Chromium install that macOS will not let this process read.
+///
+/// Both halves matter. The refused listing is what "blocked" means. `Local
+/// State` is what makes it an install: every real user-data directory has one,
+/// while a leftover empty vendor folder does not and must not be reported as a
+/// blocked browser. Its metadata stays visible even when its contents are not.
+#[cfg(target_os = "macos")]
+fn chromium_user_data_blocked(user_data_dir: &Path) -> bool {
+    let listing_refused = matches!(
+        std::fs::read_dir(user_data_dir),
+        Err(error) if is_permission_denied(&error)
+    );
+    listing_refused && user_data_dir.join("Local State").symlink_metadata().is_ok()
 }
 
 /// Prefer the newer `<profile>/Network/Cookies` location, falling back to the
@@ -236,8 +289,30 @@ fn discover_firefox(sources: &mut Vec<SourceLocation>) {
     let Some(root) = firefox_root() else {
         return;
     };
-    let Ok(ini) = std::fs::read_to_string(root.join("profiles.ini")) else {
-        return;
+    discover_firefox_in(&root, sources);
+}
+
+/// Scan one Firefox root (the directory that holds `profiles.ini`).
+fn discover_firefox_in(root: &Path, sources: &mut Vec<SourceLocation>) {
+    let ini_path = root.join("profiles.ini");
+    let ini = match std::fs::read_to_string(&ini_path) {
+        Ok(ini) => ini,
+        // `profiles.ini` is there and the OS will not let us read it: Firefox
+        // is installed but blocked, not missing.
+        Err(error) if is_permission_denied(&error) => {
+            sources.push(SourceLocation {
+                id: "firefox:<blocked>".to_string(),
+                kind: CookieSourceKind::Firefox,
+                browser_id: "firefox".to_string(),
+                browser_label: "Firefox".to_string(),
+                profile_label: None,
+                store_path: ini_path,
+                keychain: None,
+                unavailable_reason: Some(SourceUnavailableReason::NeedsFullDiskAccess),
+            });
+            return;
+        }
+        Err(_) => return,
     };
 
     for (path, is_relative) in parse_firefox_profiles_ini(&ini) {
@@ -292,7 +367,7 @@ fn discover_safari_macos(sources: &mut Vec<SourceLocation>) {
                     return;
                 }
             }
-            Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+            Err(error) if is_permission_denied(&error) => {
                 blocked = true;
             }
             Err(_) => {}

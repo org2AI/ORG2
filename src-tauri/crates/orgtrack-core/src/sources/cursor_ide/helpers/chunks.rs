@@ -15,16 +15,7 @@ pub(in crate::sources::cursor_ide) fn bubbles_to_chunks(
     let mut chunks = Vec::with_capacity(bubbles.len());
 
     for ob in bubbles {
-        // Prefer the bubble's own `type`, fall back to the header's `type`
-        // (the header is what `composerData.fullConversationHeadersOnly`
-        // exposes — used as a backstop when the bubble blob is malformed).
-        let bubble_type = if ob.raw.bubble_type != 0 {
-            ob.raw.bubble_type
-        } else {
-            ob.bubble_type
-        };
-
-        match bubble_type {
+        match resolved_bubble_type(ob) {
             CURSOR_BUBBLE_TYPE_USER => {
                 if let Some(subagent_info) = composer_context.subagent_info.as_ref() {
                     if let Some(chunk) =
@@ -51,6 +42,54 @@ pub(in crate::sources::cursor_ide) fn bubbles_to_chunks(
     }
 
     chunks
+}
+
+/// Prefer the bubble's own `type`, fall back to the header's `type` (the
+/// header is what `composerData.fullConversationHeadersOnly` exposes — used as
+/// a backstop when the bubble blob is malformed).
+fn resolved_bubble_type(ob: &OrderedBubble) -> i64 {
+    if ob.raw.bubble_type != 0 {
+        ob.raw.bubble_type
+    } else {
+        ob.bubble_type
+    }
+}
+
+/// Whether `bubbles_to_chunks` could emit a chunk for this bubble, decided
+/// without building it: assistant bubbles need a tool name or non-blank text,
+/// unknown types never render. User-typed bubbles always count, including a
+/// subagent prompt that turns out empty.
+pub(in crate::sources::cursor_ide) fn bubble_might_render_chunk(ob: &OrderedBubble) -> bool {
+    match resolved_bubble_type(ob) {
+        CURSOR_BUBBLE_TYPE_USER => true,
+        CURSOR_BUBBLE_TYPE_ASSISTANT => {
+            ob.raw
+                .tool_former_data
+                .as_ref()
+                .is_some_and(|tool| !tool.name.is_empty())
+                || !ob.raw.text.trim().is_empty()
+        }
+        _ => false,
+    }
+}
+
+/// Body size of one turn: the bubbles after its user header that could
+/// render. Empty assistant bookkeeping (thinking- or capability-only bubbles)
+/// is left out so a turn the agent never answered advertises no body; a
+/// header whose blob is not loaded counts, since its content is unknown.
+pub(in crate::sources::cursor_ide) fn count_turn_body_bubbles(
+    turn_headers: &[RawComposerHeader],
+    bubbles_by_id: &HashMap<String, OrderedBubble>,
+) -> usize {
+    turn_headers
+        .iter()
+        .skip(1)
+        .filter(|header| {
+            bubbles_by_id
+                .get(&header.bubble_id)
+                .is_none_or(bubble_might_render_chunk)
+        })
+        .count()
 }
 
 pub(in crate::sources::cursor_ide) fn cursor_subagent_prompt_bubble_to_chunk(

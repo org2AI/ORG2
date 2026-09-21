@@ -138,6 +138,43 @@ pub async fn es_append(
     }
     let sid = state.resolve_session_id(session_id)?;
 
+    // Retry lineage is durable control metadata even for native-file sessions.
+    // Persist before publishing; unlike transient assistant placeholders, a
+    // failed write must retain delivery recovery ownership at the caller.
+    let (lineage, ordinary): (Vec<_>, Vec<_>) = events
+        .into_iter()
+        .partition(|event| event.action_type == "queued_retry_lineage");
+    if !lineage.is_empty() {
+        if lineage.iter().any(|event| {
+            event.session_id != sid
+                || core_types::session_event::queued_retry_lineage_data(
+                    &event.action_type,
+                    &event.id,
+                    &event.result,
+                )
+                .is_none()
+        }) {
+            return Err("Invalid queued retry lineage".into());
+        }
+        let cached = lineage
+            .iter()
+            .map(session_event_to_cached_event)
+            .collect::<Vec<_>>();
+        let persist_sid = sid.clone();
+        tokio::task::spawn_blocking(move || {
+            save_events_retry(
+                "es_append_retry_lineage",
+                &persist_sid,
+                &cached,
+                BULK_WRITE_MAX_RETRIES,
+            )
+        })
+        .await
+        .map_err(|err| err.to_string())??;
+        state.with_store_mut(&sid, |store| store.merge_events(lineage));
+    }
+    let events = ordinary;
+
     // Persist user-authored events so the truncate-on-edit path can locate
     // them by ID. Non-user events appended via es_append are UI-only
     // (streaming deltas, placeholders) and must NOT be written to SQLite
@@ -158,8 +195,7 @@ pub async fn es_append(
             event.source == EventSource::User
                 && !is_ts_placeholder_id(&event.id)
                 && (!skips_event_cache_save
-                    && (!is_synthetic_user_input(event)
-                        || is_agent_org_direct_source(event))
+                    && (!is_synthetic_user_input(event) || is_agent_org_direct_source(event))
                     || is_persisted_failed_user_delivery(event))
         })
         .map(|event| event.id.clone())

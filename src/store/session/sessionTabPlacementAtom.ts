@@ -1,7 +1,6 @@
 import { atom } from "jotai";
 
 import { openSessionWindow } from "@src/api/tauri/sessionWindow";
-import type { SessionTabTransfer } from "@src/shared/dnd/sessionTabDrag";
 import { closeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabLifecycleAtoms";
 import { openOrFocusSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpen/session";
 import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
@@ -13,6 +12,7 @@ import {
   openTab,
   workstationLayoutAtom,
 } from "@src/store/workstation/tabs";
+import type { SessionTabTransfer } from "@src/util/dnd/sessionTabDrag";
 
 import { sessionByIdAtom } from "./sessionAtom";
 import { claimPipelineSessionAtom, jumpToSessionAtom } from "./viewAtom";

@@ -19,6 +19,8 @@
  * cycle that invalidates the token for the whole document.
  */
 @theme inline reference {
+  --font-mono: var(--code-font-family);
+
   --color-pane-raised: var(--color-pane-raised);
   --color-pane-input: var(--color-pane-input);
 
@@ -104,6 +106,10 @@
   --color-merged-hover: var(--color-merged-button-hover);
   --color-merged-active: var(--color-merged-button-active);
   --color-merged-contrast: var(--color-merged-button-contrast);
+  --color-success-fill: var(--color-success-button-bg);
+  --color-success-fill-hover: var(--color-success-button-hover);
+  --color-success-fill-active: var(--color-success-button-active);
+  --color-success-fill-contrast: var(--color-success-button-contrast);
 
   --radius-page: var(--radius-page);
 
@@ -267,3 +273,40 @@
     cursor: default;
   }
 }
+
+/*
+ * Component-default variants, used by src/components/Button/presentation.tsx
+ * so classes a caller passes through `className` override the defaults the
+ * way a later class in one hand-written list would.
+ *
+ * - `btn:` (resting styles) emits into `utilities.button`, a layer nested in
+ *   `utilities`. Styles written directly in a layer outrank its nested
+ *   layers regardless of specificity or emission order, so a caller's
+ *   resting class always wins. Without it the two tie as plain utilities and
+ *   Tailwind's name order decides: `bg-transparent` sorts after `bg-fill-2`,
+ *   and `inline-flex` after `hidden`.
+ * - `btn-hover:` / `btn-active:` / `btn-focus:` / `btn-pressed:` (interaction
+ *   states) stay in `utilities` at single-class specificity via `:where()`.
+ *   Variant utilities are emitted after plain ones, so a component state
+ *   still beats a caller's resting class while that state is active, and any
+ *   caller state class (`hover:`, `enabled:hover:`, `focus-visible:` …)
+ *   outranks it on specificity. Plain `enabled:hover:` would out-specify a
+ *   caller's `hover:`.
+ */
+@custom-variant btn {
+  @layer button {
+    @slot;
+  }
+}
+
+@custom-variant btn-hover {
+  @media (hover: hover) {
+    &:where(:enabled:hover) {
+      @slot;
+    }
+  }
+}
+
+@custom-variant btn-active (&:where(:enabled:active));
+@custom-variant btn-focus (&:where(:focus-visible));
+@custom-variant btn-pressed (&:where([aria-pressed="true"]));

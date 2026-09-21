@@ -40,13 +40,12 @@ const FloatingExpandPill: React.FC<FloatingExpandPillProps> = ({
 
   return (
     <Button
-      variant="secondary"
-      appearance="solid"
+      variant="tertiary"
       size="mini"
       shape={showLabel ? "round" : "circle"}
       iconOnly={!showLabel}
       icon={<AnyIcon icon={Icon} size={16} strokeWidth={2.25} />}
-      className="pointer-events-auto shadow-xs backdrop-blur-xs"
+      className="pointer-events-auto bg-fill-2 text-text-1 shadow-xs backdrop-blur-xs hover:bg-fill-3"
       onClick={onClick}
       data-testid="expand-overlay-toggle"
       aria-expanded={expanded}

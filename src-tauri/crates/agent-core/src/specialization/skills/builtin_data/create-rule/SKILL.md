@@ -1,15 +1,15 @@
 ---
 name: create-rule
-description: Create persistent AI guidance rules for ORGII. Use when the user wants to create a rule, add coding standards, set up project conventions, configure file-specific patterns, or asks about .orgii/rules/ format.
+description: Create persistent AI guidance rules for ORG2. Use when the user wants to create a rule, add coding standards, set up project conventions, configure file-specific patterns, or asks about .orgii/rules/ format.
 ---
 
-# Creating Rules in ORGII
+# Creating Rules in ORG2
 
 Rules are markdown files injected into the agent's system prompt on every turn.
 They encode project conventions, coding standards, or personal preferences.
 
 > **CC alignment**: mirrors `.claude/rules/` in Claude Code.
-> ORGII native paths: `.orgii/rules/` (project), `~/.orgii/rules/` (global),
+> ORG2 native paths: `.orgii/rules/` (project), `~/.orgii/rules/` (global),
 > `~/.orgii/personal/rules/` (personal — OS Agent / channel sessions only).
 
 ## Before You Begin

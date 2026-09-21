@@ -404,9 +404,10 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
           stickyNode={stickyNode}
           onClick={onClick}
           stickyBgClass={resolvedStickyBgClass}
+          repoPath={repoPath}
         />
       ),
-      [resolvedStickyBgClass]
+      [resolvedStickyBgClass, repoPath]
     );
 
     // Handle sticky header click — VS Code pattern: scroll-to-reveal only,

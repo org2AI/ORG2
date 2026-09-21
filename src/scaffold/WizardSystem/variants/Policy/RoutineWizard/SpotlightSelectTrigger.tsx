@@ -88,9 +88,7 @@ const SpotlightSelectTrigger = forwardRef<
   return (
     <Button
       layout="custom"
-      appearance="custom"
       ref={ref}
-      htmlType="button"
       className={wrapperClasses}
       style={{
         ...style,

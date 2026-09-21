@@ -4,11 +4,11 @@
  * between them. Store access, row validation, locked reads and the canonical
  * conversation lock live in sibling modules and are re-exported here.
  */
-import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
+import { conversationRootKey } from "@src/contracts/conversation";
 import {
   QueuedConversationBusyError,
   QueuedConversationRecoveryPendingError,
-} from "@src/engines/SessionCore/conversations/queuedConversationContract";
+} from "@src/contracts/conversation";
 
 import {
   type ActiveMessageDelivery,

@@ -29,11 +29,11 @@ impl McpClient {
         let converted = resources
             .into_iter()
             .map(|r| McpResource {
-                uri: r.raw.uri,
-                name: r.raw.name,
-                description: r.raw.description,
-                mime_type: r.raw.mime_type,
-                size: r.raw.size.map(|s| s as u64),
+                uri: r.uri,
+                name: r.name,
+                description: r.description,
+                mime_type: r.mime_type,
+                size: r.size,
             })
             .collect();
 
@@ -59,27 +59,29 @@ impl McpClient {
         let contents = result
             .contents
             .into_iter()
-            .map(|c| match c {
+            // `ResourceContents` is `#[non_exhaustive]`; unknown shapes are dropped.
+            .filter_map(|c| match c {
                 rmcp::model::ResourceContents::TextResourceContents {
                     uri,
                     mime_type,
                     text,
                     ..
-                } => McpResourceContent::Text {
+                } => Some(McpResourceContent::Text {
                     uri,
                     mime_type,
                     text,
-                },
+                }),
                 rmcp::model::ResourceContents::BlobResourceContents {
                     uri,
                     mime_type,
                     blob,
                     ..
-                } => McpResourceContent::Blob {
+                } => Some(McpResourceContent::Blob {
                     uri,
                     mime_type,
                     blob,
-                },
+                }),
+                _ => None,
             })
             .collect();
 
@@ -108,10 +110,10 @@ impl McpClient {
         let converted = templates
             .into_iter()
             .map(|t| McpResourceTemplate {
-                uri_template: t.raw.uri_template,
-                name: t.raw.name,
-                description: t.raw.description,
-                mime_type: t.raw.mime_type,
+                uri_template: t.uri_template,
+                name: t.name,
+                description: t.description,
+                mime_type: t.mime_type,
             })
             .collect();
 

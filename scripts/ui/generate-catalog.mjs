@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { uiCatalog } from "../../src/ActionSystem/publicUi/catalog.ts";
+import { uiCatalog } from "../../src/scaffold/ActionSystem/publicUi/catalog.ts";
 
 const hash = createHash("sha256")
   .update(JSON.stringify(uiCatalog))

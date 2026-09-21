@@ -100,10 +100,10 @@ pub(in crate::commands) fn resolved_oauth_catalog(
         .filter(|model| model.is_default)
         .map(|model| model.id.clone())
         .collect();
-    // All built-in GPT-5.6 Codex families are product defaults even when an
+    // All built-in current Codex families are product defaults even when an
     // older live catalog names a different default. Preserve that live default
     // and append the built-ins so rescans never turn a user's existing default
-    // off while making Sol, Terra, and Luna immediately runnable.
+    // off while making Astra, Sol, Terra, and Luna immediately runnable.
     if agent_type == "codex" || default_enabled_models.is_empty() {
         for model in fallback_defaults {
             if !models.iter().any(|available| available.as_str() == *model)
@@ -114,6 +114,13 @@ pub(in crate::commands) fn resolved_oauth_catalog(
                 continue;
             }
             default_enabled_models.push((*model).to_string());
+        }
+    }
+    // Newly discovered generations are defaults without requiring a static
+    // catalog update. Only enable IDs actually present in this account catalog.
+    for model in &models {
+        if is_current_oauth_family(agent_type, model) && !default_enabled_models.contains(model) {
+            default_enabled_models.push(model.clone());
         }
     }
     if default_enabled_models.is_empty() {
@@ -138,6 +145,37 @@ pub(in crate::commands) fn resolved_oauth_catalog(
         model_variants,
         default_variants,
         source,
+    })
+}
+
+fn is_current_oauth_family(agent_type: &str, model: &str) -> bool {
+    let families: &[(&str, (u32, u32))] = match agent_type {
+        "codex" => &[("gpt-", (5, 5))],
+        "claude_code" => &[
+            ("claude-opus-", (4, 8)),
+            ("claude-sonnet-", (4, 8)),
+            ("claude-haiku-", (4, 8)),
+            ("claude-fable-", (5, 0)),
+            ("claude-mythos-", (5, 0)),
+        ],
+        _ => return false,
+    };
+    families.iter().any(|(prefix, minimum)| {
+        let Some(version) = model.strip_prefix(prefix) else {
+            return false;
+        };
+        let mut components = version.split(['.', '-']);
+        let Some(major) = components
+            .next()
+            .and_then(|value| value.parse::<u32>().ok())
+        else {
+            return false;
+        };
+        let minor = components
+            .next()
+            .and_then(|value| value.parse::<u32>().ok())
+            .unwrap_or(0);
+        (major, minor) >= *minimum
     })
 }
 

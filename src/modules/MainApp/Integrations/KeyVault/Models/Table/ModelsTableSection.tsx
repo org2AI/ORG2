@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { ORGII_ORCHESTRATOR } from "@src/assets/providers/types";
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import ModelIcon from "@src/components/ModelIcon";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
@@ -10,13 +11,11 @@ import SettingsTable, {
 import Switch from "@src/components/Switch";
 import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   Add01Icon,
   ArrowDown01Icon,
   ArrowUp01Icon,
   HugeiconsIcon,
-  Refresh04Icon,
 } from "@src/icons";
 import GroupRowEraTag from "@src/modules/MainApp/Integrations/KeyVault/shared/ModelTable/GroupRowEraTag";
 
@@ -181,26 +180,18 @@ export default function ModelsTableSection({
     olderCount > 0 && !isSearching ? (
       <div className="flex justify-center border-t border-border-2 py-2.5">
         <Button
-          variant="primary"
-          appearance="ghost"
+          variant="ghost"
           size="inline"
-          htmlType="button"
           onClick={() => setHideOlder((prev) => !prev)}
-          className="gap-1.5 text-[13px] hover:text-primary-5"
+          icon={
+            <HugeiconsIcon
+              icon={hideOlder ? ArrowDown01Icon : ArrowUp01Icon}
+              data-icon={hideOlder ? "chevron-down" : "chevron-up"}
+              size={14}
+            />
+          }
+          className="text-[13px]"
         >
-          {hideOlder ? (
-            <HugeiconsIcon
-              icon={ArrowDown01Icon}
-              data-icon="chevron-down"
-              size={14}
-            />
-          ) : (
-            <HugeiconsIcon
-              icon={ArrowUp01Icon}
-              data-icon="chevron-up"
-              size={14}
-            />
-          )}
           {hideOlder
             ? t("modelsTable.showMoreOlder")
             : t("modelsTable.showLessOlder")}
@@ -335,36 +326,21 @@ export default function ModelsTableSection({
     [expandedGroupKeys, renderExpandedGroupCard]
   );
 
-  const { spinClass: refreshSpinClass, handleClick: handleRefreshModelsClick } =
-    useRefreshSpin(() => {
-      void onRefreshModels?.();
-    }, refreshingAllModels ?? false);
-
   const refreshModelsButton = onRefreshModels ? (
-    <Button
+    <RefreshButton
       variant="secondary"
-      size="default"
-      icon={
-        <HugeiconsIcon
-          icon={Refresh04Icon}
-          data-icon="refresh-cw"
-          size={14}
-          className={refreshSpinClass}
-        />
-      }
       iconOnly
-      onClick={handleRefreshModelsClick}
-      disabled={refreshingAllModels}
-      aria-label={t("keyVault.refreshModels.button")}
-      title={t("keyVault.refreshModels.button")}
-      data-testid="key-vault-models-refresh-button"
+      label={t("keyVault.refreshModels.button")}
+      refreshing={refreshingAllModels ?? false}
+      onRefresh={() => {
+        void onRefreshModels?.();
+      }}
+      dataTestId="key-vault-models-refresh-button"
     />
   ) : null;
 
   const addProviderButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       iconOnly
       onClick={onAdd}

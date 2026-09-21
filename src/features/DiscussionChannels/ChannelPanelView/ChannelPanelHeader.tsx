@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import AnyIcon from "@src/components/AnyIcon";
 import Button from "@src/components/Button";
 import { PublishedHeaderSlotsView } from "@src/components/WindowChrome";
+import { PANEL_HEADER_TOKENS } from "@src/components/layout/blocks/PanelHeader/tokens";
 import {
   HashtagIcon,
   HugeiconsIcon,
@@ -19,7 +20,6 @@ import {
   Settings02Icon,
   UserMultipleIcon,
 } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 
 export interface ChannelPanelHeaderProps {
   name: string;
@@ -100,7 +100,6 @@ const ChannelPanelHeader: React.FC<ChannelPanelHeaderProps> = ({
                 </span>
               )}
               <Button
-                htmlType="button"
                 variant="tertiary"
                 size="small"
                 iconOnly

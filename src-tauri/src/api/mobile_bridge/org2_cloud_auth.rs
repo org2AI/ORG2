@@ -17,6 +17,21 @@ const REFRESH_SKEW_SECONDS: f64 = 60.0;
 pub const NOT_SIGNED_IN_MESSAGE: &str = "Sign in to ORG2 Cloud to use outdoor relay";
 pub const SESSION_EXPIRED_MESSAGE: &str = "ORG2 Cloud session expired; refreshing credentials";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CloudAuthError {
+    SignedOut,
+    Expired,
+}
+
+impl std::fmt::Display for CloudAuthError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::SignedOut => NOT_SIGNED_IN_MESSAGE,
+            Self::Expired => SESSION_EXPIRED_MESSAGE,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Org2CloudAuthSnapshot {
@@ -55,18 +70,18 @@ pub fn parse_snapshot(raw: &str) -> Option<Org2CloudAuthSnapshot> {
     Some(snapshot)
 }
 
-pub fn current_access_token() -> Result<String, String> {
-    let snapshot = load_snapshot().ok_or_else(|| NOT_SIGNED_IN_MESSAGE.to_string())?;
+pub fn current_access_token() -> Result<String, CloudAuthError> {
+    let snapshot = load_snapshot().ok_or(CloudAuthError::SignedOut)?;
     validate_access_token(&snapshot)
 }
 
-pub fn validate_access_token(snapshot: &Org2CloudAuthSnapshot) -> Result<String, String> {
+pub fn validate_access_token(snapshot: &Org2CloudAuthSnapshot) -> Result<String, CloudAuthError> {
     let token = snapshot.access_token.trim();
     if token.is_empty() {
-        return Err(NOT_SIGNED_IN_MESSAGE.to_string());
+        return Err(CloudAuthError::SignedOut);
     }
     if is_expired(snapshot.expires_at) {
-        return Err(SESSION_EXPIRED_MESSAGE.to_string());
+        return Err(CloudAuthError::Expired);
     }
     Ok(token.to_string())
 }
@@ -84,6 +99,10 @@ fn now_epoch_seconds() -> f64 {
         .map(|value| value.as_secs_f64())
         .unwrap_or(0.0)
 }
+
+// Shared by tests that replace the process-wide auth-store path.
+#[cfg(test)]
+pub(super) static TEST_AUTH_STORE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[cfg(test)]
 mod tests {
@@ -117,6 +136,9 @@ mod tests {
 
     #[test]
     fn shared_auth_store_path_matches_tauri_plugin_store_layout() {
+        let _lock = TEST_AUTH_STORE_LOCK
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let path = shared_auth_store_path();
         assert_eq!(
             path.file_name().and_then(|name| name.to_str()),
@@ -145,6 +167,9 @@ mod tests {
 
     #[test]
     fn load_snapshot_reads_shared_store_file() {
+        let _lock = TEST_AUTH_STORE_LOCK
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let dir = TempDir::new().expect("tempdir");
         write_store(&dir, Some(VALID_AUTH));
         std::env::set_var(
@@ -161,13 +186,16 @@ mod tests {
 
     #[test]
     fn current_access_token_reports_signed_out_when_store_is_empty() {
+        let _lock = TEST_AUTH_STORE_LOCK
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let dir = TempDir::new().expect("tempdir");
         write_store(&dir, None);
         std::env::set_var(
             "ORGII_TEST_SHARED_AUTH_STORE",
             dir.path().join("shared-service-auth.json"),
         );
-        assert_eq!(current_access_token(), Err(NOT_SIGNED_IN_MESSAGE.to_string()));
+        assert_eq!(current_access_token(), Err(CloudAuthError::SignedOut));
         std::env::remove_var("ORGII_TEST_SHARED_AUTH_STORE");
     }
 
@@ -181,7 +209,7 @@ mod tests {
         };
         assert_eq!(
             validate_access_token(&snapshot),
-            Err(SESSION_EXPIRED_MESSAGE.to_string())
+            Err(CloudAuthError::Expired)
         );
     }
 }

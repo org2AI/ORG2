@@ -121,8 +121,6 @@ const ThreadSelector: React.FC<ThreadSelectorProps> = memo(
           {showAllOption && threads.length > 1 && (
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={() => handleThreadClick(null)}
               className={`flex items-center rounded-md px-2 py-1 text-[11px] transition-all duration-150 ${
                 selectedThreadId === null
@@ -152,9 +150,7 @@ const ThreadSelector: React.FC<ThreadSelectorProps> = memo(
             return (
               <Button
                 layout="custom"
-                appearance="custom"
                 key={thread.threadId}
-                htmlType="button"
                 onClick={() => handleThreadClick(thread.threadId)}
                 className={`group flex items-center rounded-md px-2 py-1 text-[11px] transition-all duration-150 ${
                   isSelected
@@ -196,12 +192,11 @@ const ThreadSelector: React.FC<ThreadSelectorProps> = memo(
               </span>
             </div>
             <Button
-              variant="tertiary"
-              appearance="ghost"
+              variant="ghost"
               size="inline"
-              htmlType="button"
               onClick={() => handleThreadClick(null)}
-              className="text-[10px] hover:text-primary-6"
+              hoverTone="primary"
+              className="text-[10px]"
             >
               {t("chat.showAll")}
             </Button>

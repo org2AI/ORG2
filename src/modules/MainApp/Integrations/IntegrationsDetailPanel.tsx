@@ -10,14 +10,13 @@ import React, { Suspense, lazy, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Placeholder } from "@src/components/Placeholder";
-import TabPill from "@src/components/TabPill";
-import type { ExternalSkillsetsTab } from "@src/config/mainAppPaths";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
   ScrollFadeContainer,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import type { ExternalSkillsetsTab } from "@src/config/mainAppPaths";
 
 import { ConnectionsCategoryView } from "./Connections/ConnectionsCategoryView";
 import type { ConnectionsCategoryTableProps } from "./Connections/categoryTableProps";
@@ -169,18 +168,9 @@ const IntegrationsDetailPanel: React.FC<IntegrationsDetailPanelProps> = ({
         <DetailPanelContainer>
           <InternalHeader
             noPanelHeader
-            contentPadding
-            className={DETAIL_PANEL_TOKENS.headerWidth}
-            tabs={
-              <TabPill
-                tabs={myRolesTabs}
-                activeTab={myRolesActiveTab}
-                onChange={(tab) => setMyRolesActiveTab(tab as MyRolesTab)}
-                variant="simple"
-                fillWidth={false}
-                size="large"
-              />
-            }
+            tabs={myRolesTabs}
+            activeTab={myRolesActiveTab}
+            onTabChange={(tab) => setMyRolesActiveTab(tab as MyRolesTab)}
           />
           <ScrollFadeContainer
             className={`scroll-fade-at-top ${DETAIL_PANEL_TOKENS.scrollContentNoTop}`}

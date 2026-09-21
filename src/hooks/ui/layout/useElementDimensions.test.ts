@@ -16,13 +16,13 @@ import { useElementDimensions } from "./useElementDimensions";
 
 function DimensionProbe(): React.ReactNode {
   const elementRef = useRef<HTMLDivElement>(null);
-  const dimensions = useElementDimensions(elementRef);
+  const width = useElementDimensions(elementRef, { dimension: "width" });
 
   // eslint-disable-next-line react-hooks/refs -- createElement is required because Vitest only includes `.test.ts`; this is a normal React ref prop.
   return createElement("div", {
     ref: elementRef,
     "data-testid": "dimension-probe",
-    "data-dimensions": `${dimensions.width}x${dimensions.height}`,
+    "data-width": String(width),
   });
 }
 

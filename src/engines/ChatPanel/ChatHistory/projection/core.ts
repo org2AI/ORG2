@@ -228,6 +228,7 @@ function digestItemShape(items: readonly OptimizedChatItem[]): string {
     update(item.type);
     update(item.structuralOnly === true);
     update(item.event?.displayVariant);
+    update(item.outputImages?.length ?? 0);
     update(item.event?.displayText?.length ?? 0);
     update(item.readFileEvents?.length ?? 0);
     update(item.actionSummaryItems?.length ?? 0);

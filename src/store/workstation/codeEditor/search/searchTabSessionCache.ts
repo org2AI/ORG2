@@ -3,6 +3,8 @@ import type { SearchOptions, SearchResultFile } from "./types";
 export interface SearchTabSessionState {
   query: string;
   options: SearchOptions;
+  /** Query/options owning the cached results; draft edits do not change it. */
+  submittedSearch?: { query: string; options: SearchOptions } | null;
   results: SearchResultFile[];
   loading: boolean;
   loadingMore: boolean;

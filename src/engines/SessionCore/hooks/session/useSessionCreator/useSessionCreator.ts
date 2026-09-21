@@ -12,8 +12,8 @@
  * @example
  * const sessionCreator = useSessionCreator();
  */
-import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
@@ -21,20 +21,15 @@ import { isHostedKey } from "@src/api/tauri/session";
 import { useImageAttachment } from "@src/engines/ChatPanel/hooks/useInputArea/useImageAttachment";
 import { useSessionDiscovery } from "@src/engines/SessionCore/hooks/session/useSessionDiscovery";
 import type { SessionCreatorLaunchMode } from "@src/features/SessionCreator/types";
-import { createSystemPathSessionSource } from "@src/features/SessionCreator/utils/systemPathSource";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
 import { useAddToAgentInsertion, useComposerInput } from "@src/hooks/input";
 import { useFileUpload } from "@src/hooks/useFileUpload";
 import {
-  SYSTEM_PATH_ID,
-  type SessionSource,
   agentIconIdAtom,
   cliAgentTypeAtom,
   dispatchCategoryAtom,
   selectedAgentDefinitionIdAtom,
-  sessionSourceAtom,
 } from "@src/store/session/creatorStateAtom";
-import { isMultiRootWorkspaceAtom } from "@src/store/ui/workspaceFoldersAtom";
 import { primaryFolderAtom } from "@src/store/workspace/derived";
 import type { SlashItem } from "@src/types/extensions";
 import { getRustAgentType } from "@src/util/session/sessionDispatch";
@@ -43,6 +38,7 @@ import type { UseSessionCreatorReturn } from "./types";
 import { useAdvancedConfig } from "./useAdvancedConfig";
 import { useDraftManagement } from "./useDraftManagement";
 import { useMarketDeeplink } from "./useMarketDeeplink";
+import { useSessionCreatorSource } from "./useSessionCreatorSource";
 import { useSessionLaunch } from "./useSessionLaunch";
 import type {
   SessionLaunchSuccessInfo,
@@ -111,68 +107,12 @@ export function useSessionCreator(
   // Repo Selection
   // ============================================
 
-  // `sessionSourceAtom` holds the SessionCreator's *divergence* from the
-  // global repo selection. `null` ≡ no divergence → mirror that selection.
-  // The only bridge back to the global atom is the explicit "also switch
-  // workspace?" confirmation in SessionInfoLine (which calls `selectRepo`).
-  const {
-    selectedRepoId: globalRepoId,
-    currentBranch: globalBranch,
-    repos,
-    selectBranch,
-  } = useRepoSelection({ autoLoad: true });
-
-  const sessionSource = useAtomValue(sessionSourceAtom);
-  const setSessionSource = useSetAtom(sessionSourceAtom);
-
-  const isMultiRoot = useAtomValue(isMultiRootWorkspaceAtom);
-  const primaryFolder = useAtomValue(primaryFolderAtom);
-
-  // `effectiveSource` is what launch + display both consume. When no
-  // divergence is stored, synthesize it live from the global repo selection so
-  // the creator follows the workspace without needing a seed write.
-  const effectiveSource = useMemo<SessionSource | null>(() => {
-    if (sessionSource) return sessionSource;
-
-    if (isOSMode) {
-      return createSystemPathSessionSource({
-        systemPathId: SYSTEM_PATH_ID.HOME,
-        t,
-      });
-    }
-
-    // Workspace mode: use the primary folder so launch gets the stable
-    // workspace root rather than a stale selectedRepoIdAtom value.
-    if (isMultiRoot && primaryFolder) {
-      return {
-        type: "local",
-        repoId: primaryFolder.repoId ?? primaryFolder.id,
-        repoName: primaryFolder.name,
-        repoPath: primaryFolder.path,
-        branch: globalBranch || undefined,
-      };
-    }
-
-    if (!globalRepoId) return null;
-    const repo = repos.find((repoItem) => repoItem.id === globalRepoId);
-    if (!repo) return null;
-    return {
-      type: "local",
-      repoId: globalRepoId,
-      repoName: repo.name,
-      repoPath: repo.path || repo.fs_uri,
-      branch: globalBranch || undefined,
-    };
-  }, [
-    sessionSource,
+  const { repos, selectBranch } = useRepoSelection({ autoLoad: true });
+  const { effectiveSource, setDraftBranch } = useSessionCreatorSource({
     isOSMode,
     t,
-    isMultiRoot,
-    primaryFolder,
-    globalRepoId,
-    globalBranch,
-    repos,
-  ]);
+  });
+  const primaryFolder = useAtomValue(primaryFolderAtom);
 
   const creatorSkillWorkspacePaths = useMemo(() => {
     const roots = new Set<string>();
@@ -250,36 +190,6 @@ export function useSessionCreator(
       baseHandleSlashSelect(item);
     },
     [onSlashSelectIntercept, baseHandleSlashSelect]
-  );
-
-  // When the global repo selection changes, clear any session-specific
-  // divergence so the creator follows the new selection. We only clear when
-  // the stored draft
-  // points to a *different* repo — if it matches (e.g. handleRepoChange
-  // just synced them), we keep the draft so the branch is preserved.
-  const prevGlobalRepoIdRef = useRef(globalRepoId);
-  useEffect(() => {
-    if (prevGlobalRepoIdRef.current !== globalRepoId) {
-      prevGlobalRepoIdRef.current = globalRepoId;
-      if (sessionSource && sessionSource.repoId !== globalRepoId) {
-        setSessionSource(null);
-      }
-    }
-  }, [globalRepoId, sessionSource, setSessionSource]);
-
-  // Pure branch setter for the session-scoped pill: writes to the draft
-  // atom only, no git checkout. If there's no active draft yet we
-  // materialize one from `effectiveSource` so the change is captured as a
-  // divergence from the current mirror.
-  const setDraftBranch = useCallback(
-    (branch: string) => {
-      if (!effectiveSource) return;
-      setSessionSource({
-        ...effectiveSource,
-        branch: branch || undefined,
-      });
-    },
-    [effectiveSource, setSessionSource]
   );
 
   // ============================================
@@ -433,6 +343,7 @@ export function useSessionCreator(
 
     const hasModelOrAccount =
       !!advancedConfig.selectedAccountId ||
+      !!advancedConfig.credentialSource ||
       !!advancedConfig.model ||
       !!advancedConfig.cliAgentType;
     return hasModelOrAccount;

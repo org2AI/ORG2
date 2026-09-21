@@ -19,6 +19,11 @@ import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import Message from "@src/components/Message";
+import {
+  chatQuotedSelectionsAtom,
+  clearChatQuotedSelectionAtom,
+  setChatQuotedSelectionAtom,
+} from "@src/engines/ChatPanel/chatSelections/chatSelectionAtoms";
 import { createLogger } from "@src/hooks/logger";
 import { useSecretScanGuard } from "@src/hooks/security/useSecretScanGuard";
 import { useSessionCommandActions } from "@src/hooks/session/useSessionPatch";
@@ -120,12 +125,14 @@ export function useSubmitMessage({
       }
 
       const isExplicitAction = options.source === "explicit-action";
+      const editorTextAtSubmit =
+        refs.composerInputRef.current.getTextWithPills();
       const submitComposerSnapshot = isExplicitAction
         ? undefined
         : refs.composerInputRef.current.getSnapshot();
       const liveDisplayText = submitComposerSnapshot
         ? serializeSubmissionSnapshot(submitComposerSnapshot, false)
-        : refs.composerInputRef.current.getTextWithPills();
+        : editorTextAtSubmit;
       const resolvedInput = resolveSubmitInput(
         options,
         liveDisplayText,
@@ -239,8 +246,17 @@ export function useSubmitMessage({
           store.get(sessionByIdAtom(referencedSessionId))?.name,
       });
 
+      // A quoted reply is part of the message, not a side channel: the
+      // blockquote goes into the same display copy history renders and the
+      // agent reads. `isExplicitAction` submissions (auto-respond, rejects)
+      // are not the user's draft and carry no quote.
+      const quotedSelection = isExplicitAction
+        ? undefined
+        : store.get(chatQuotedSelectionsAtom)[draftSessionId];
+
       const payload = buildSubmissionPayload({
         displayText,
+        quotedSelection,
         contextBlocks,
         enableAgentInterceptors,
         hasAttachedImages,
@@ -282,13 +298,18 @@ export function useSubmitMessage({
           refs.composerInputRef.current.getTextWithPills();
         const editorStillContainsSubmittedText =
           !isExplicitAction &&
-          (editorTextBeforeClear === displayText ||
-            editorTextBeforeClear.trim() === displayText.trim());
+          // Compare the editor with itself before preprocessing. Snapshot
+          // serialization and MCP expansion can change the outgoing text
+          // without the user having edited the draft.
+          editorTextBeforeClear === editorTextAtSubmit;
         if (editorStillContainsSubmittedText) {
           refs.composerInputRef.current.clear();
           refs.setHasContent(false);
           if (citeCode.isCiteCode) {
             citeCode.clearCiteCode();
+          }
+          if (quotedSelection) {
+            store.set(clearChatQuotedSelectionAtom, draftSessionId);
           }
           imageAttachment.clearImages();
           clearImageDraft(draftSessionId);
@@ -335,6 +356,14 @@ export function useSubmitMessage({
               imagesSnapshot,
               citeSnapshot,
             });
+            // The composer is the only copy again, so the quote it was
+            // replying to has to come back with it.
+            if (quotedSelection) {
+              store.set(setChatQuotedSelectionAtom, {
+                sessionId: draftSessionId,
+                text: quotedSelection,
+              });
+            }
           }
 
           const reason = err instanceof Error ? err.message : String(err);

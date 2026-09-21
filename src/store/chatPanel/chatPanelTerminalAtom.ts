@@ -17,11 +17,9 @@
 import { atom } from "jotai";
 
 import { cliAgentTuiRelease } from "@src/api/tauri/agent/cliTerminalSession";
+import { TERMINAL_AGENT_STATUS } from "@src/contracts/terminal";
 import { clearTerminalBufferCache } from "@src/engines/TerminalCore/components/TerminalInteractive/bufferCache";
-import {
-  TERMINAL_AGENT_STATUS,
-  type TerminalSession,
-} from "@src/engines/TerminalCore/types";
+import type { TerminalSession } from "@src/engines/TerminalCore/types";
 import {
   initializedTerminalIdsAtom,
   markTerminalInitializedAtom,
@@ -49,6 +47,8 @@ export { isChatPanelTerminalId } from "@src/util/ui/terminal/chatPanelSessionId"
 // ────────────────────────────────────────────────────────────────────────────
 
 interface CreateChatPanelTerminalOptions {
+  /** Session-owned native launch configuration directories. */
+  envOverride?: Record<string, string>;
   name?: string;
   /** Initial working directory forwarded to create_pty */
   cwd?: string;
@@ -73,11 +73,17 @@ export const createChatPanelTerminalAtom = atom(
       agentCommand,
       expectedProcess,
       agentSessionId,
+      envOverride: launchEnv,
     } = typeof options === "string" ? { name: options } : options;
     const newId = `${CHAT_PANEL_TERMINAL_PREFIX}${crypto.randomUUID()}`;
     const envOverride =
-      agentCommand && agentSessionId
-        ? { ORGII_SESSION_ID: agentSessionId }
+      launchEnv || (agentCommand && agentSessionId)
+        ? {
+            ...launchEnv,
+            ...(agentCommand && agentSessionId
+              ? { ORGII_SESSION_ID: agentSessionId }
+              : {}),
+          }
         : undefined;
     const newSession: TerminalSession = {
       id: newId,
@@ -107,25 +113,26 @@ export const destroyChatPanelTerminalAtom = atom(
   async (get, set, sessionId: string): Promise<void> => {
     if (!isChatPanelTerminalId(sessionId)) return;
 
-    // Park the backing managed session before the PTY (and its exit
-    // listener) are torn down — the component-level pty-exit handler may
-    // already be unmounted when a tab is closed.
     const backingAgentSessionId = get(terminalSessionsAtom).find(
       (session) => session.id === sessionId
     )?.agentSessionId;
-    if (backingAgentSessionId) {
-      void cliAgentTuiRelease(backingAgentSessionId);
-    }
 
-    // Kill PTY
+    // Managed launch profiles belong to the running process. Native close is
+    // idempotent and kills/reaps the PTY child before acknowledging completion.
+    // Do not delete the profile while that child can still read configuration.
+    let closed = false;
     if (isTauriReady()) {
       try {
         await invokeTauri("close_pty", {
           sessionId: toBackendPtySessionId(sessionId),
         });
+        closed = true;
       } catch {
-        // PTY may already be gone
+        // Unknown close outcome: retain the profile for native exit/recovery.
       }
+    }
+    if (closed && backingAgentSessionId) {
+      await cliAgentTuiRelease(backingAgentSessionId);
     }
 
     // Clear the buffer cache slot so the LRU is not wasted on a closed terminal

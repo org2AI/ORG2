@@ -50,8 +50,9 @@ pub use super::models::CursorIdeTurnSummary;
 // Items brought into scope so the test module's `use super::*` can reach them.
 #[cfg(test)]
 use super::helpers::{
-    assistant_text_bubble_to_chunk, assistant_tool_bubble_to_chunk, cursor_tool_name_to_canonical,
-    normalize_created_at, parse_inner_json, parse_iso_to_epoch_ms, user_bubble_to_chunk,
+    assistant_text_bubble_to_chunk, assistant_tool_bubble_to_chunk, bubble_might_render_chunk,
+    cursor_tool_name_to_canonical, normalize_created_at, parse_inner_json, parse_iso_to_epoch_ms,
+    user_bubble_to_chunk,
 };
 #[cfg(test)]
 use super::io::load_content_blob;

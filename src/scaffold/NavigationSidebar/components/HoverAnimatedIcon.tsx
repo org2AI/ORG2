@@ -464,9 +464,7 @@ interface HoverAnimatedIconProps {
   iconName?: string;
   size?: number;
   strokeWidth?: number;
-  color?: string;
   className?: string;
-  triggerToken?: number;
 }
 
 export default function HoverAnimatedIcon({
@@ -474,12 +472,9 @@ export default function HoverAnimatedIcon({
   iconName,
   size = 14,
   strokeWidth = 2,
-  color,
   className,
-  triggerToken = 0,
 }: HoverAnimatedIconProps): React.ReactElement {
   const wrapperRef = useRef<HTMLSpanElement | null>(null);
-  const previousTriggerTokenRef = useRef<number>(triggerToken);
 
   useEffect(() => {
     injectStyles();
@@ -500,12 +495,6 @@ export default function HoverAnimatedIcon({
     triggerAnimation();
   }, [triggerAnimation]);
 
-  useEffect(() => {
-    if (triggerToken === previousTriggerTokenRef.current) return;
-    previousTriggerTokenRef.current = triggerToken;
-    triggerAnimation();
-  }, [triggerAnimation, triggerToken]);
-
   return (
     <span
       ref={wrapperRef}
@@ -517,7 +506,6 @@ export default function HoverAnimatedIcon({
         icon={icon}
         size={size}
         strokeWidth={strokeWidth}
-        color={color}
         className={className}
       />
     </span>

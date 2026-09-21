@@ -7,7 +7,7 @@ use crate::projectors::turn_metadata::{project_activity_chunks, ProjectedTurnMet
 use crate::sources::imported_history;
 
 use super::cache::{
-    bounded_codex_turn_preview, CodexTurnOffset, CODEX_INITIAL_TURN_LIMIT,
+    CodexAgentPreview, CodexTurnOffset, CODEX_INITIAL_TURN_LIMIT,
     CODEX_TURN_OFFSET_LIMIT_PER_SESSION,
 };
 
@@ -22,6 +22,7 @@ pub(super) enum CodexTranscriptCollectionMode<'a> {
     Visit(&'a mut dyn FnMut(Vec<ActivityChunk>) -> Result<(), String>),
     Initial { recent_turn_count: usize },
     Turn { turn_id: &'a str },
+    ReviewThroughCall { call_id: &'a str },
     FirstTurn,
 }
 
@@ -100,6 +101,13 @@ impl<'a> CodexTranscriptCollector<'a> {
         };
         let turn_id = user_chunk.chunk_id.clone();
         match &self.mode {
+            CodexTranscriptCollectionMode::ReviewThroughCall { call_id } => {
+                self.selected_turn_found = self.current.iter().any(|chunk| {
+                    chunk.result.get("call_id").and_then(Value::as_str) == Some(*call_id)
+                });
+                self.output.append(&mut self.current);
+                return Ok(());
+            }
             CodexTranscriptCollectionMode::Full => {
                 self.output.append(&mut self.current);
                 return Ok(());
@@ -167,6 +175,17 @@ impl<'a> CodexTranscriptCollector<'a> {
 
     fn compact_completed_turn(&mut self, completed: CompletedCodexTurn) {
         let last_agent_preview = last_assistant_preview_from_chunks(&completed.chunks);
+        let images: Vec<String> = completed
+            .chunks
+            .iter()
+            .filter(|c| !is_codex_user_chunk(c))
+            .filter_map(|c| c.result["images"].as_array())
+            .flatten()
+            .filter_map(Value::as_str)
+            .filter(|s| s.starts_with("orgii-transcript-image:"))
+            .take(64)
+            .map(str::to_owned)
+            .collect();
         if let Some(user_chunk) = completed.chunks.into_iter().find(is_codex_user_chunk) {
             let compacted_limit = match &self.mode {
                 CodexTranscriptCollectionMode::Initial { recent_turn_count } => {
@@ -187,7 +206,8 @@ impl<'a> CodexTranscriptCollector<'a> {
                     self.session_id,
                     &completed.summary,
                     completed.next_turn_id,
-                    last_agent_preview.as_deref(),
+                    last_agent_preview.as_ref(),
+                    &images,
                 ),
             ]);
         }
@@ -213,7 +233,7 @@ fn is_codex_user_chunk(chunk: &ActivityChunk) -> bool {
     chunk.function == imported_history::FUNCTION_USER_MESSAGE
 }
 
-fn last_assistant_preview_from_chunks(chunks: &[ActivityChunk]) -> Option<String> {
+fn last_assistant_preview_from_chunks(chunks: &[ActivityChunk]) -> Option<CodexAgentPreview> {
     chunks.iter().rev().find_map(|chunk| {
         if chunk.function != imported_history::FUNCTION_ASSISTANT {
             return None;
@@ -224,7 +244,7 @@ fn last_assistant_preview_from_chunks(chunks: &[ActivityChunk]) -> Option<String
             .or_else(|| chunk.result.get("content"))
             .and_then(Value::as_str)
             .filter(|message| !message.trim().is_empty())
-            .map(bounded_codex_turn_preview)
+            .map(CodexAgentPreview::new)
     })
 }
 
@@ -236,10 +256,13 @@ pub(super) fn build_unloaded_turn_placeholder_chunk(
     session_id: &str,
     turn: &ProjectedTurnMetadata,
     next_turn_id: Option<String>,
-    last_agent_preview: Option<&str>,
+    last_agent_preview: Option<&CodexAgentPreview>,
+    images: &[String],
 ) -> ActivityChunk {
     let internal_placeholder = format!("Codex turn {} is not loaded yet.", turn.turn_id);
-    let display_content = last_agent_preview.unwrap_or(&internal_placeholder);
+    let display_content = last_agent_preview
+        .map(|preview| preview.text.as_str())
+        .unwrap_or(&internal_placeholder);
     let mut chunk = ActivityChunk::new(session_id, "assistant", "assistant");
     chunk.chunk_id = format!("codex-unloaded-turn-{}", turn.turn_id);
     chunk.created_at = turn
@@ -250,6 +273,7 @@ pub(super) fn build_unloaded_turn_placeholder_chunk(
         chunk.args = json!({ "turnPreviewOnly": true });
     }
     chunk.result = json!({
+        "images": images,
         "observation": display_content,
         "content": display_content,
         "role": "assistant",
@@ -263,6 +287,7 @@ pub(super) fn build_unloaded_turn_placeholder_chunk(
             "durationMs": Value::Null,
             "eventCount": turn.event_count,
             "bodyEventCount": turn.body_event_count,
+            "previewTruncated": last_agent_preview.is_some_and(|preview| preview.truncated),
         },
     });
     chunk

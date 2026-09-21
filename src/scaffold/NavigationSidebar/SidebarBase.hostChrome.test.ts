@@ -43,8 +43,6 @@ vi.mock("@src/hooks/ui/sidebar/useSidebarState", () => ({
     isCollapsed: false,
     isDragging: false,
     handleMouseDown: () => undefined,
-    toggleCollapse: () => undefined,
-    expand: () => undefined,
     collapse: () => undefined,
     setWidth: () => undefined,
   }),

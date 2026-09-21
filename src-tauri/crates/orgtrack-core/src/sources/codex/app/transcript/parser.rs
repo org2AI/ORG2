@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{BufRead, BufReader, Seek, SeekFrom};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 
 use core_types::activity::ActivityChunk;
@@ -111,6 +111,24 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
     start_offset: u64,
     initial_sequence: usize,
 ) -> Result<CodexTranscriptLoad, String> {
+    parse_codex_app_bounded(
+        session_id,
+        path,
+        mode,
+        start_offset,
+        initial_sequence,
+        u64::MAX,
+    )
+}
+
+pub(super) fn parse_codex_app_bounded<'a>(
+    session_id: &'a str,
+    path: &Path,
+    mode: CodexTranscriptCollectionMode<'a>,
+    start_offset: u64,
+    initial_sequence: usize,
+    max_bytes: u64,
+) -> Result<CodexTranscriptLoad, String> {
     let mut file = fs::File::open(path)
         .map_err(|err| format!("Failed to open Codex history {}: {err}", path.display()))?;
     if start_offset > 0 {
@@ -121,7 +139,7 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             )
         })?;
     }
-    let mut reader = BufReader::new(file);
+    let mut reader = BufReader::new(file.take(max_bytes));
 
     let mut collector = CodexTranscriptCollector::new(session_id, mode);
     let mut pending_tool_calls: imported_history::PendingCallMap<Vec<ImportedToolCall>> =
@@ -170,12 +188,15 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
             break;
         }
         next_byte_offset = next_byte_offset.saturating_add(bytes_read as u64);
+        if next_byte_offset.saturating_sub(start_offset) >= max_bytes {
+            return Err("Codex review exceeds transcript byte budget".into());
+        }
         strip_ignored_embedded_images(&mut line);
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;
         }
-        let parsed: CodexJsonlLine = match serde_json::from_str(trimmed) {
+        let mut parsed: CodexJsonlLine = match serde_json::from_str(trimmed) {
             Ok(parsed) => parsed,
             Err(_) => {
                 pending_compacted_mirror = None;
@@ -183,6 +204,11 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                 continue;
             }
         };
+        super::output_images::reference_output_images(
+            session_id,
+            line_start_offset,
+            &mut parsed.payload,
+        );
         let created_at = parsed
             .timestamp
             .as_deref()
@@ -440,6 +466,21 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                     sequence += 1;
                 }
             }
+            "image_generation_call" => {
+                if let Some(image) = parsed
+                    .payload
+                    .get("result")
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.is_empty())
+                {
+                    let mut chunk = ActivityChunk::new(session_id, "tool_call", "image_generation");
+                    chunk.chunk_id = format!("codex-image-{sequence}");
+                    chunk.created_at = created_at.clone();
+                    chunk.result = json!({"images": [image], "success": true});
+                    collector.current.push(chunk);
+                    sequence += 1;
+                }
+            }
             "function_call" => {
                 if let Some((call_id, calls)) =
                     pending_tool_calls_from_payload(&parsed.payload, &created_at)
@@ -533,6 +574,20 @@ pub(super) fn parse_codex_app_from_path_with_mode<'a>(
                     let mut error_chunk = ActivityChunk::new(session_id, "error", "error");
                     error_chunk.chunk_id = format!("codex-error-{sequence}");
                     error_chunk.created_at = created_at.clone();
+                    // A task terminal diagnostic is an execution receipt, not
+                    // assistant conversation content. Preserve its visible
+                    // error while carrying provenance to native replay/retry.
+                    if let Some(turn_id) =
+                        lifecycle_turn_id(&parsed.payload, active_task_turn_id.as_deref())
+                    {
+                        error_chunk.args = json!({
+                            "__orgiiNativeTerminalDiagnostic": {
+                                "provider": "codex",
+                                "event": "task_complete",
+                                "providerTurnId": turn_id,
+                            }
+                        });
+                    }
                     error_chunk.result = json!({
                         "error": error_message,
                         "observation": error_message,

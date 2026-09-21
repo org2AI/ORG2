@@ -63,7 +63,7 @@ describe("resolveWorkbenchEvaluationWidth", () => {
 });
 
 function NarrowChatFocusProbe() {
-  useNarrowChatFocus({ enabled: true });
+  useNarrowChatFocus();
   return null;
 }
 

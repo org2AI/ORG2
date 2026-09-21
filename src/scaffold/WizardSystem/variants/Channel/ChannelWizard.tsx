@@ -153,7 +153,7 @@ const ChannelWizard: React.FC<ChannelWizardProps> = ({
           setGitSubmitError(
             t(
               "gitConnections.scanSelectRequired",
-              "Pick a detected credential to import."
+              "Pick a detected credential to import"
             )
           );
           setGitSubmitting(false);
@@ -195,7 +195,7 @@ const ChannelWizard: React.FC<ChannelWizardProps> = ({
       } else if (gitMethod === STORY_SYNC_AUTH_METHOD.SSH) {
         if (!gitSshKeyPath.trim()) {
           setGitSubmitError(
-            t("gitConnections.sshKeyPathRequired", "SSH key path is required.")
+            t("gitConnections.sshKeyPathRequired", "SSH key path is required")
           );
           setGitSubmitting(false);
           return;

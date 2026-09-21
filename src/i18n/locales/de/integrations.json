@@ -17,7 +17,7 @@
     "removeLocal": "Lokal entfernen",
     "unlist": "Entfernen",
     "confirmRemoveTitle": "\"{{name}}\" entfernen?",
-    "confirmRemoveMessage": "Die lokalen Anmeldedaten werden entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "confirmRemoveMessage": "Die lokalen Anmeldedaten werden entfernt. Diese Aktion kann nicht rückgängig gemacht werden",
     "toasts": {
       "refreshed": "{{name}} erfolgreich aktualisiert",
       "refreshError": "{{name}} konnte nicht aktualisiert werden: {{error}}",
@@ -68,10 +68,10 @@
       "accountEmail": "Konto-E-Mail"
     },
     "customModels": {
-      "manualSetupHint": "Gib die exakte Modell-ID deines Endpunkts und optional einen Anzeigenamen ein. Die Modellsuche ist optional; Aktivieren prüft keine Kompatibilität.",
+      "manualSetupHint": "Gib die exakte Modell-ID deines Endpunkts und optional einen Anzeigenamen ein. Die Modellsuche ist optional; Aktivieren prüft keine Kompatibilität",
       "modelNamePlaceholder": "Modell-id eingeben...",
       "displayNamePlaceholder": "Optionale Bezeichnung",
-      "emptyHint": "Noch keine benutzerdefinierten Modelle hinzugefügt.",
+      "emptyHint": "Noch keine benutzerdefinierten Modelle hinzugefügt",
       "addModel": "Modell hinzufügen",
       "testRequiresEndpoint": "Gib einen Endpunkt und einen API-Schlüssel ein, um dieses Modell zu testen",
       "invalidModelId": "Modell-IDs müssen 1–256 Byte lang sein und dürfen keine Leer- oder Steuerzeichen enthalten.",
@@ -145,14 +145,12 @@
       "keysVerified": "Anmeldedaten verifiziert",
       "failedMessage": "Ihr API Key und Session Token scheinen nicht zum selben Cursor-Konto zu gehören.",
       "failedError": "Fehler: {{error}}",
-      "failedHint": "Bitte erstellen Sie ein neues Angebot mit übereinstimmenden Anmeldedaten aus demselben Cursor-Konto.",
+      "failedHint": "Bitte erstellen Sie ein neues Angebot mit übereinstimmenden Anmeldedaten aus demselben Cursor-Konto",
       "listingRejected": "Angebot abgelehnt",
       "rejectedByAdmin": "Dieses Angebot wurde von einem Administrator abgelehnt."
     },
     "apiKeyLabel": "API Key",
-    "apiKeyDesc": "Geheimer Schlüssel zur Authentifizierung von Anfragen an die API des Anbieters",
     "baseUrlLabel": "Base URL",
-    "baseUrlDesc": "API-Endpunkt-URL — nur ändern bei Verwendung eines Proxys, benutzerdefinierten Deployments oder selbst gehosteten Servers",
     "apiProtocolLabel": "API-Protokoll",
     "apiProtocolDesc": "Drahtprotokoll für den integrierten Rust-Agent wählen",
     "officialUrl": "Offizielle URL",
@@ -171,14 +169,12 @@
       "validateDesc": "Prüfen Sie den Endpoint, wenn er läuft, oder speichern Sie nach dem manuellen Hinzufügen von Modellen"
     },
     "validate": "Validieren",
-    "validateDesc": "Anmeldedaten vor dem Fortfahren überprüfen",
     "validated": "Validiert",
     "validationSuccessModels": "{{count}} Modelle erkannt — im nächsten Schritt konfigurieren",
     "validationSuccessNoModels": "Key validiert — keine Modelle automatisch erkannt, bitte Modelle unten manuell hinzufügen",
     "addCliAgent": "Agent hinzufügen",
     "accountName": "Kontoname (optional)",
     "accountNameDesc": "Leer lassen, um {{provider}}, dann {{provider}}-1, {{provider}}-2 usw. zu verwenden",
-    "selectorDesc": "Wählen Sie den zu verbindenden Dienst",
     "accountNamePlaceholder": "Auto: {{provider}}",
     "descriptionOptional": "Beschreibung (optional)",
     "descriptionPlaceholder": "Beschreibung eingeben",
@@ -245,8 +241,8 @@
     "claudeCodeSignInDesc": "Melden Sie sich im integrierten Browser bei Claude Code an. ORG2 erfasst den authorization code und speichert den OAuth Token lokal",
     "claudeCodeReadyToSignIn": "Bereit zur Anmeldung bei Claude Code",
     "claudeCodeSignedIn": "Claude Code verbunden",
-    "claudeCodeOAuthHint": "Dies speichert ein claude_code OAuth-Konto für Rust agents mit anthropic_native.",
-    "claudeCodeBrowserHint": "Schließen Sie die Claude Code-Autorisierung im integrierten Browser ab.",
+    "claudeCodeOAuthHint": "Dies speichert ein claude_code OAuth-Konto für Rust agents mit anthropic_native",
+    "claudeCodeBrowserHint": "Schließen Sie die Claude Code-Autorisierung im integrierten Browser ab",
     "claudeCodeSignInErrorHint": "Schließen Sie den Browser und versuchen Sie die Anmeldung erneut. Es wurde kein Token gespeichert",
     "connectedViaChatGpt": "Verbunden über ChatGPT Plus/Pro",
     "apiKeyDetectedFromConfig": "API Key aus lokaler Config erkannt",
@@ -269,7 +265,7 @@
     "opensEmbeddedBrowser": "Verwenden Sie den internen Browser, um Ihr Cursor-Konto zu verbinden.",
     "loggedIn": "Angemeldet",
     "loginStep": "Anmelden",
-    "signInToCursorHint": "Melden Sie sich bei Ihrem Cursor-Konto an. Dieses Fenster schließt sich nach der Anmeldung automatisch.",
+    "signInToCursorHint": "Melden Sie sich bei Ihrem Cursor-Konto an. Dieses Fenster schließt sich nach der Anmeldung automatisch",
     "copilotCreatePat": "GitHub Personal Access Token erstellen",
     "copilotCreatePatDesc": "Öffnet den internen Browser zur GitHub-PAT-Erstellung",
     "copilotTokenValidated": "Token validiert",
@@ -303,7 +299,7 @@
     "cursorLoginBrowserTitle": "Cursor-Anmeldung",
     "modelCount": "{{count}} Modelle",
     "cursorLoginReadyTitle": "Cursor-Konto verbunden",
-    "cursorLoginReadyDesc": "Erstellen Sie unten einen Cursor API Key und fügen Sie ihn ein. Cursor agent funktioniert ohne diesen API Key nicht.",
+    "cursorLoginReadyDesc": "Erstellen Sie unten einen Cursor API Key und fügen Sie ihn ein. Cursor agent funktioniert ohne diesen API Key nicht",
     "cursorApiKeyBrowserHint": "Nach der Anmeldung öffnet ORG2 das Cursor dashboard. Erstellen Sie dort einen User API Key und fügen Sie ihn unten ein",
     "cursorApiKeyRecommendedTitle": "Cursor API Key empfohlen",
     "cursorApiKeyRecommendedDesc": "Sie können ohne Cursor API Key fortfahren, wenn Sie Cursor nur mit den Rust agents von ORG2 verwenden möchten; melden Sie sich einfach mit dem internen Browser an oder geben Sie ein session token an",
@@ -315,8 +311,8 @@
     "signInWithCodex": "Mit Codex anmelden",
     "codexReadyToSignIn": "Bereit zur Codex-Anmeldung",
     "codexSignedIn": "Codex verbunden",
-    "codexOAuthHint": "Dies speichert ein codex OAuth-Konto für den Zugriff auf das ChatGPT Codex Backend.",
-    "codexBrowserHint": "Schließe die Codex-Autorisierung im eingebetteten Browser ab.",
+    "codexOAuthHint": "Dies speichert ein codex OAuth-Konto für den Zugriff auf das ChatGPT Codex Backend",
+    "codexBrowserHint": "Schließe die Codex-Autorisierung im eingebetteten Browser ab",
     "codexSignInErrorHint": "Schließe den Browser und versuche die Anmeldung erneut. Es wurde kein Token gespeichert",
     "codexAutodetectTitle": "Codex-Sitzung erkennen",
     "codexAutodetectDesc": "Liest ~/.codex/auth.json und OPENAI_API_KEY aus deiner lokalen Umgebung",
@@ -330,7 +326,7 @@
     "claudeCodeDetectErrorHint": "Melde dich mit dem eingebetteten Browser an oder führe claude auth login aus und versuche die Erkennung erneut",
     "refreshModels": {
       "button": "Cursor-Modellliste aktualisieren",
-      "failed": "Aktualisierung von Cursor fehlgeschlagen: {{error}}"
+      "failed": "Dieser Market-Arbeitsbereich ist nicht verfügbar. Öffne Market erneut, um die Autorisierung zu aktualisieren."
     },
     "revalidate": "Erneut validieren",
     "confirmRemoveActiveSessions_one": "{{count}} aktive Sitzung verwendet dieses Konto noch und wird in ihrer nächsten Runde fehlschlagen:",
@@ -573,7 +569,7 @@
     },
     "gateway": {
       "title": "Gateway Agent",
-      "description": "Das Gateway leitet eingehende Nachrichten von allen Kanälen weiter. Wählen Sie einen API-Schlüssel und ein Modell für das semantische Routing.",
+      "description": "Das Gateway leitet eingehende Nachrichten von allen Kanälen weiter. Wählen Sie einen API-Schlüssel und ein Modell für das semantische Routing",
       "statusReady": "Konfiguriert",
       "statusUnconfigured": "Nicht konfiguriert",
       "account": "API-Schlüssel-Konto",
@@ -581,7 +577,7 @@
       "model": "Modell",
       "modelPlaceholder": "Modell auswählen",
       "groupPerUser": "Gruppenchat-Sitzungen pro Benutzer isolieren",
-      "groupPerUserDesc": "Jeder Teilnehmer in einem Gruppenchat erhält seinen eigenen Sitzungskontext."
+      "groupPerUserDesc": "Jeder Teilnehmer in einem Gruppenchat erhält seinen eigenen Sitzungskontext"
     },
     "emailProtocol": "Protokoll",
     "matrixDeviceNamePlaceholder": "ORG2-Bot"
@@ -621,7 +617,6 @@
     "collapseAllRows": "Alle einklappen",
     "orgiiMarketGroup": "ORG2-Markt",
     "variantSpeed": "Speed",
-    "variantOptions": "Versionsoptionen",
     "variantDefault": "Default",
     "variantCount": "{{count}} Versionen",
     "selectedVersion": "Ausgewählte Version",
@@ -629,8 +624,6 @@
     "keyDefaultVersionOnly": "Dieser key hat nur eine Standardversion: {{model}}",
     "selectedVersionFor": "Ausgewählte Version für {{model}}",
     "preferredVersion": "Bevorzugte Version",
-    "reasoningLevel": "Reasoning level",
-    "effort": "Effort",
     "addNewKey": "Neue key hinzufügen",
     "availableKeys": "{{enabled}}/{{total}} verfügbare keys aktiviert",
     "availableModels": "{{enabled}}/{{total}} verfügbare Modelle aktiviert",
@@ -758,28 +751,28 @@
     "tokenRequired": "Personal access token ist erforderlich",
     "oauthWaiting": "Warte auf OAuth",
     "oauthDeviceDesc": "Öffnen Sie die Verifizierungs-URL und geben Sie diesen Code ein, um GitHub zu autorisieren",
-    "oauthBrowserDesc": "Schließen Sie die Autorisierung im geöffneten Browserfenster ab.",
-    "oauthBrowserOpened": "Ein Browserfenster wurde geöffnet. Schließen Sie dort die Autorisierung ab, danach fährt der Assistent fort."
+    "oauthBrowserDesc": "Schließen Sie die Autorisierung im geöffneten Browserfenster ab",
+    "oauthBrowserOpened": "Ein Browserfenster wurde geöffnet. Schließen Sie dort die Autorisierung ab, danach fährt der Assistent fort"
   },
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "Automatisch erkennen",
     "methodOAuth": "Mit GitHub anmelden",
-    "methodPickerDesc": "Wähle, wie du dich bei GitHub authentifizieren möchtest.",
-    "oauthDeviceDesc": "Öffne die Verifizierungs-URL und gib diesen Code ein, um GitHub zu autorisieren.",
+    "methodPickerDesc": "Wähle, wie du dich bei GitHub authentifizieren möchtest",
+    "oauthDeviceDesc": "Öffne die Verifizierungs-URL und gib diesen Code ein, um GitHub zu autorisieren",
     "scanCredHelper": "Git credential helper ({{name}})",
     "scanEmpty": "Nichts erkannt",
-    "scanEmptyDesc": "Es wurden keine gh-CLI-Tokens, Credential-Helpers oder SSH-Schlüssel gefunden. Wähle oben eine andere Methode.",
+    "scanEmptyDesc": "Es wurden keine gh-CLI-Tokens, Credential-Helpers oder SSH-Schlüssel gefunden. Wähle oben eine andere Methode",
     "scanGhCli": "GitHub CLI (gh)",
     "scanResults": "Erkannte Zugangsdaten",
-    "scanResultsDesc": "Wähle eine Option zum Importieren. Tokens werden vor dem Speichern gegen GitHub validiert.",
+    "scanResultsDesc": "Wähle eine Option zum Importieren. Tokens werden vor dem Speichern gegen GitHub validiert",
     "scanSshKey": "SSH-Schlüssel — {{name}}",
     "scanning": "Wird gescannt…",
-    "scanningDesc": "Sucht auf diesem Gerät nach gh-CLI-Tokens, Credential-Helpers und SSH-Schlüsseln.",
+    "scanningDesc": "Sucht auf diesem Gerät nach gh-CLI-Tokens, Credential-Helpers und SSH-Schlüsseln",
     "sshKeyPath": "Pfad zum SSH-Schlüssel",
-    "sshKeyPathDesc": "Absoluter Pfad zum privaten Schlüssel (z. B. ~/.ssh/id_ed25519). Der zugehörige öffentliche Schlüssel muss bereits auf GitHub hinterlegt sein.",
-    "scanSelectRequired": "Wähle erkannte Zugangsdaten zum Importieren aus.",
-    "sshKeyPathRequired": "Der Pfad zum SSH-Schlüssel ist erforderlich."
+    "sshKeyPathDesc": "Absoluter Pfad zum privaten Schlüssel (z. B. ~/.ssh/id_ed25519). Der zugehörige öffentliche Schlüssel muss bereits auf GitHub hinterlegt sein",
+    "scanSelectRequired": "Wähle erkannte Zugangsdaten zum Importieren aus",
+    "sshKeyPathRequired": "Der Pfad zum SSH-Schlüssel ist erforderlich"
   },
   "builtInTools": {
     "tabTools": "Integrierte Tools",
@@ -809,9 +802,9 @@
     "agentBrowserRestartPromptMessage": "Nach dem Ändern des Browser CLI-Anbieters muss ORG2 neu gestartet werden, bevor Agents das ausgewählte Tool sehen. Jetzt neu starten?",
     "sidecarDownloadsSectionTitle": "Sidecar-Downloads",
     "sidecarAgentBrowserLabel": "Agent Browser CLI",
-    "sidecarAgentBrowserDesc": "Lädt die Agent Browser-Binärdatei für diese Plattform nach ~/.orgii/bin herunter. ORG2 lädt sie nie beim Start herunter.",
+    "sidecarAgentBrowserDesc": "Lädt die Agent Browser-Binärdatei für diese Plattform nach ~/.orgii/bin herunter. ORG2 lädt sie nie beim Start herunter",
     "sidecarPeekabooLabel": "Peekaboo CLI",
-    "sidecarPeekabooDesc": "Lädt die macOS-Peekaboo-Binärdatei für Desktop-Automatisierung nach ~/.orgii/bin herunter. Nicht unterstützte Plattformen bleiben deaktiviert.",
+    "sidecarPeekabooDesc": "Lädt die macOS-Peekaboo-Binärdatei für Desktop-Automatisierung nach ~/.orgii/bin herunter. Nicht unterstützte Plattformen bleiben deaktiviert",
     "sidecarUnsupported": "Nicht unterstützt",
     "sidecarInstalled": "Installiert",
     "sidecarNotInstalled": "Nicht installiert",
@@ -874,7 +867,7 @@
     "connectMethodDesc": "Wählen Sie, wie Sie Ihr GitHub-Konto verbinden möchten",
     "githubApp": "GitHub App",
     "detectFromSystem": "Vom System erkennen",
-    "detectFromSystemDesc": "Verwende gh CLI, SSH-Schlüssel oder Git-Credential-Helpers.",
+    "detectFromSystemDesc": "Verwende gh CLI, SSH-Schlüssel oder Git-Credential-Helpers",
     "credentialsDetected": "Anmeldedaten erkannt",
     "detectedVia": "Erkannt über {{source}}",
     "sshKeyLabel": "SSH-Schlüssel",
@@ -894,7 +887,7 @@
     "noCredentialsFound": "Keine GitHub-Anmeldedaten gefunden",
     "noCredentialsHint": "Installieren Sie die GitHub CLI (gh) oder richten Sie SSH-Schlüssel ein",
     "manuallyAddToken": "Token manuell hinzufügen",
-    "manualTokenDesc": "Füge ein GitHub PAT für HTTPS-Git-Operationen ein.",
+    "manualTokenDesc": "Füge ein GitHub PAT für HTTPS-Git-Operationen ein",
     "autoDetect": "Automatisch erkennen",
     "autoDetectTokenSaved": "GitHub-Token gespeichert",
     "autoDetectSshSwitched": "Remote auf SSH umgestellt",
@@ -920,7 +913,7 @@
     "coauthor": "Co-authored-by",
     "coauthorDesc": "{{name}} <{{email}}> zu Git-Commits hinzufügen, die aus ORG2 erstellt werden",
     "noTokenYet": "Token benötigt?",
-    "createTokenDesc": "Öffne GitHub und erstelle ein PAT mit repo-Zugriff.",
+    "createTokenDesc": "Öffne GitHub und erstelle ein PAT mit repo-Zugriff",
     "accountConnected": "GitHub-Konto verbunden",
     "disconnectMsg": "Möchten Sie wirklich trennen? Dadurch wird der Zugriff auf alle Repos dieses Kontos entfernt.",
     "disconnectTitle": "GitHub-Konto trennen",
@@ -929,7 +922,7 @@
     "connectRepoDesc": "GitHub-Konto verbinden, um auf Repos zuzugreifen",
     "github": "GitHub",
     "signInWithGithub": "Mit GitHub anmelden",
-    "signInWithGithubDesc": "ORG2 über den GitHub Device Flow autorisieren. Kein Server-Hosting nötig.",
+    "signInWithGithubDesc": "ORG2 über den GitHub Device Flow autorisieren. Kein Server-Hosting nötig",
     "oauthWaiting": "Warten auf Autorisierung",
     "oauthDeviceCodeDesc": "Öffne die URL unten und gib diesen Code ein",
     "oauthOpenGithub": "GitHub öffnen",
@@ -964,8 +957,8 @@
     "contentLabel": "Inhalt",
     "contentDesc": "Schreiben Sie den SKILL.md-Inhalt in Markdown. Dies liest der Agent",
     "scopeLabel": "Geltungsbereich",
-    "scopeDesc": "User-Skills sind in allen Repos verfügbar. Repo-spezifische Skills werden nur für dieses Repo geladen.",
-    "scopeDescEdit": "Beim Speichern wird der Skill-Ordner zwischen User-Speicher und repo-spezifischem Speicher verschoben.",
+    "scopeDesc": "User-Skills sind in allen Repos verfügbar. Repo-spezifische Skills werden nur für dieses Repo geladen",
+    "scopeDescEdit": "Beim Speichern wird der Skill-Ordner zwischen User-Speicher und repo-spezifischem Speicher verschoben",
     "scopeGlobal": "User",
     "binsLabel": "Erforderliche Programme",
     "binsDesc": "CLI-Programme, die dieser Skill benötigt (z. B. git, python, docker)",
@@ -985,7 +978,7 @@
     "filePathPlaceholder": "z. B. scripts/validate.py",
     "removeFile": "Datei entfernen",
     "editorNoDraftTitle": "Kein Skill-Entwurf in Bearbeitung",
-    "editorNoDraftDesc": "Klicken Sie auf der Skills-Seite auf „Erstellen“ oder wählen Sie ein Skill zum Bearbeiten aus.",
+    "editorNoDraftDesc": "Klicken Sie auf der Skills-Seite auf „Erstellen“ oder wählen Sie ein Skill zum Bearbeiten aus",
     "scopeWorkspace": "Repo-spezifisch",
     "deleteConfirmTitle": "Skill „{{name}}“ löschen?",
     "deleteConfirmMessage": "Dadurch werden der Skill und alle zugehörigen Dateien entfernt. Diese Aktion kann nicht rückgängig gemacht werden."
@@ -994,7 +987,7 @@
     "tab": "MCP",
     "searchPlaceholder": "MCP-Server suchen...",
     "noServers": "Keine MCP-Server konfiguriert",
-    "noServersDesc": "Fügen Sie einen MCP-Server hinzu, um die Agent-Fähigkeiten mit externen Tools zu erweitern.",
+    "noServersDesc": "Fügen Sie einen MCP-Server hinzu, um die Agent-Fähigkeiten mit externen Tools zu erweitern",
     "addServer": "MCP-Server hinzufügen",
     "editServer": "MCP-Server bearbeiten",
     "serverName": "Servername",
@@ -1117,12 +1110,12 @@
     },
     "sessionProvenance": {
       "masterToggle": "Provenienz-Hooks",
-      "masterToggleDesc": "Wenn deaktiviert, werden alle verwalteten Hooks deinstalliert und keine Signale erfasst; die Auswahl pro Plattform bleibt erhalten und wird beim erneuten Aktivieren wiederhergestellt.",
+      "masterToggleDesc": "Wenn deaktiviert, werden alle verwalteten Hooks deinstalliert und keine Signale erfasst; die Auswahl pro Plattform bleibt erhalten und wird beim erneuten Aktivieren wiederhergestellt",
       "liveStatusToggle": "Live-Agent-Status",
-      "liveStatusToggleDesc": "Zeigt, ob laufende CLI-Agenten arbeiten oder warten. Aus lässt die Provenienzerfassung aktiv.",
+      "liveStatusToggleDesc": "Zeigt, ob laufende CLI-Agenten arbeiten oder warten. Aus lässt die Provenienzerfassung aktiv",
       "title": "Sitzungsherkunft",
       "capture": "Dateiinteraktionen erfassen",
-      "description": "Erfasst Lese- und Schreibzugriffe auf Dateien als Metadaten. Prompts, Werkzeugausgaben und Dateiinhalte werden nicht gespeichert.",
+      "description": "Erfasst Lese- und Schreibzugriffe auf Dateien als Metadaten. Prompts, Werkzeugausgaben und Dateiinhalte werden nicht gespeichert",
       "installDrift": "Gespeicherte Einstellung und installierter Hook stimmen nicht überein. Schalten Sie die Erfassung um, um den verwalteten Hook zu reparieren. Konfiguration: {{path}}",
       "copyPath": "Kopieren",
       "col": {
@@ -1139,8 +1132,8 @@
       },
       "codexApproval": {
         "title": "ORG2-Hooks in Codex verifizieren",
-        "description": "Es wird darauf gewartet, dass Codex die aktuellen ORG2-Hooks genehmigt und ausführt.",
-        "instructions": "Öffne Codex, prüfe die ORG2-Hooks und wähle dann Trust all and continue. Der SessionStart-Hook bestätigt die Aktivierung automatisch, sobald die Sitzung startet.",
+        "description": "Es wird darauf gewartet, dass Codex die aktuellen ORG2-Hooks genehmigt und ausführt",
+        "instructions": "Öffne Codex, prüfe die ORG2-Hooks und wähle dann Trust all and continue. Der SessionStart-Hook bestätigt die Aktivierung automatisch, sobald die Sitzung startet",
         "review": "In Codex prüfen",
         "verified": "Durch ein echtes Codex-Hook-Signal verifiziert ({{time}})."
       },
@@ -1185,7 +1178,7 @@
       "addMember": "Mitglied hinzufügen",
       "noMembers": "Füge Mitglieder hinzu, um die Org-Hierarchie aufzubauen",
       "membersLabel": "Teammitglieder",
-      "membersDesc": "Jede Zeile ist ein Mitglied mit einer unabhängigen Writer-Berechtigung und Kommunikationseinstellungen. Namen müssen eindeutig sein; die Rolle ist nur ein Hinweis auf die Spezialisierung.",
+      "membersDesc": "Jede Zeile ist ein Mitglied mit einer unabhängigen Writer-Berechtigung und Kommunikationseinstellungen. Namen müssen eindeutig sein; die Rolle ist nur ein Hinweis auf die Spezialisierung",
       "memberName": "Name",
       "memberNamePlaceholder": "Eindeutiger Routing-Name (z.B. SDE-1)",
       "memberNameDuplicate": "Ein anderes Mitglied verwendet diesen Namen bereits. Namen müssen innerhalb der Org eindeutig sein.",
@@ -1238,9 +1231,9 @@
       "descriptionPlaceholder": "Was macht dieser Agent? (optional)",
       "subAgentsTab": "Subagents",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
-      "maxToolUseConcurrencyDesc": "Gleichzeitige Tool-Aufrufe pro Nachricht. Standard: 10.",
+      "maxToolUseConcurrencyDesc": "Gleichzeitige Tool-Aufrufe pro Nachricht. Standard: 10",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
-      "subAgentWorktreeIsolationDesc": "In einem temporären Git Worktree ausführen (isolierter Datei- und Shell-Zugriff).",
+      "subAgentWorktreeIsolationDesc": "In einem temporären Git Worktree ausführen (isolierter Datei- und Shell-Zugriff)",
       "addSubAgent": "Sub-Agent hinzufügen...",
       "noSubAgents": "Keine Sub-Agents konfiguriert."
     },
@@ -1276,30 +1269,30 @@
     "applicableAgentsDesc": "Auf welche Agents diese Regel angewendet wird (leer = alle)",
     "selectAgents": "Agents auswählen…",
     "ruleSource": "Quelle",
-    "ruleSourceDesc": "Wählen Sie User für alle Repos oder Repo für eine repo-spezifische Richtlinie.",
+    "ruleSourceDesc": "Wählen Sie User für alle Repos oder Repo für eine repo-spezifische Richtlinie",
     "ruleSourceUser": "User",
-    "ruleSourceUserDesc": "Eine Benutzerpräferenz, die in allen Repos verfügbar ist.",
+    "ruleSourceUserDesc": "Eine Benutzerpräferenz, die in allen Repos verfügbar ist",
     "ruleSourceRepo": "Repo",
-    "ruleSourceRepoDesc": "Eine Richtlinie, die für ein ausgewähltes Repo gespeichert wird.",
+    "ruleSourceRepoDesc": "Eine Richtlinie, die für ein ausgewähltes Repo gespeichert wird",
     "ruleRepo": "Repo",
     "ruleRepoDesc": "Das einzelne Repo, für das diese Richtlinie gilt",
     "selectRepo": "Repo auswählen…",
     "ruleSourcePersonal": "Persönlich",
-    "ruleSourcePersonalDesc": "Gespeichert in ~/.orgii/personal/rules/. Nur OS-Agent-/Channel-Sessions.",
+    "ruleSourcePersonalDesc": "Gespeichert in ~/.orgii/personal/rules/. Nur OS-Agent-/Channel-Sessions",
     "findSkills": {
       "title": "Skills suchen",
       "placeholder": "Skills suchen...",
       "installs": "Installs",
       "emptyTitle": "Skills suchen",
-      "emptySubtitle": "Gib mindestens 2 Zeichen ein und drücke Enter, um Skills zu finden.",
+      "emptySubtitle": "Gib mindestens 2 Zeichen ein und drücke Enter, um Skills zu finden",
       "noResults": "Keine Skills gefunden",
-      "noResultsDesc": "Versuche einen anderen Suchbegriff."
+      "noResultsDesc": "Versuche einen anderen Suchbegriff"
     },
     "importAgentTitle": "Agents aus anderen Apps importieren",
     "importAgentColumn": "Agent",
     "importedItemAgents": "Agents",
     "emptySelectionTitle": "Wählen Sie ein Mitglied oder ein Agent-Team aus",
-    "emptySelectionSubtitle": "Wählen Sie in der Seitenleiste einen Agent oder ein Agent-Team aus, um ihn anzuzeigen und zu konfigurieren.",
+    "emptySelectionSubtitle": "Wählen Sie in der Seitenleiste einen Agent oder ein Agent-Team aus, um ihn anzuzeigen und zu konfigurieren",
     "applicableWorkspace": "Anwendbarer Workspace",
     "tableTabs": {
       "agents": "Agents",
@@ -1332,18 +1325,18 @@
     "cliManagedConfig": {
       "title": "CLI-Konfigurationsumschalter",
       "modeLabel": "Modus",
-      "modeDesc": "Standard stellt die eigene Konfiguration der CLI wieder her. ORG2-verwaltet schreibt eine gesicherte Proxy-Konfiguration.",
+      "modeDesc": "Standard stellt die eigene Konfiguration der CLI wieder her. ORG2-verwaltet schreibt eine gesicherte Proxy-Konfiguration",
       "modeDefault": "Standard",
       "modeOrgii": "ORG2-verwaltet",
       "conflict": "Externe Änderung",
       "conflictTitle": "Konflikt",
-      "conflictDesc": "Die aktive CLI-Konfiguration wurde geändert, nachdem ORG2 sie geschrieben hat.",
+      "conflictDesc": "Die aktive CLI-Konfiguration wurde geändert, nachdem ORG2 sie geschrieben hat",
       "proxyStatus": "Proxy",
       "proxyDefault": "Standardmodus",
       "proxyReady": "Proxy bereit",
       "proxyNotReady": "Proxy nicht bereit",
       "keyLabel": "Key",
-      "keyDesc": "Es werden nur API Keys angezeigt, die mit dieser CLI und dem verwalteten Proxy kompatibel sind.",
+      "keyDesc": "Es werden nur API Keys angezeigt, die mit dieser CLI und dem verwalteten Proxy kompatibel sind",
       "selectKey": "Key auswählen",
       "modelLabel": "Modell",
       "selectModel": "Modell auswählen",
@@ -1356,7 +1349,7 @@
       "forceRestore": "Wiederherstellen erzwingen",
       "applySuccess": "ORG2-verwaltete Konfiguration angewendet",
       "restoreSuccess": "Standardkonfiguration wiederhergestellt",
-      "proxyLifecycleDesc": "Lass ORG2 in diesem Modus laufen. Beim Schließen des Fensters bleibt der Proxy in der Menüleiste aktiv; beim Beenden von ORG2 wird sicher der Standard wiederhergestellt, sofern die Konfiguration nicht extern geändert wurde."
+      "proxyLifecycleDesc": "Lass ORG2 in diesem Modus laufen. Beim Schließen des Fensters bleibt der Proxy in der Menüleiste aktiv; beim Beenden von ORG2 wird sicher der Standard wiederhergestellt, sofern die Konfiguration nicht extern geändert wurde"
     }
   },
   "databases": {
@@ -1546,7 +1539,7 @@
       "elapsed": "Gesamtzeit: {{value}}s"
     },
     "title": "Lokaler Housekeeper",
-    "description": "Das lokale MiniCPM übernimmt Prompt-Verfeinerung, kurze Schritt-Erklärungen und leichtgewichtige UI-Steuerung. Coding-Aufgaben und komplexe ADE-Einrichtung verwenden weiterhin das Haupt-Agent-Modell.",
+    "description": "Das lokale MiniCPM übernimmt Prompt-Verfeinerung, kurze Schritt-Erklärungen und leichtgewichtige UI-Steuerung. Coding-Aufgaben und komplexe ADE-Einrichtung verwenden weiterhin das Haupt-Agent-Modell",
     "autoAccount": "MiniCPM-vLLM-Konto automatisch auswählen",
     "tiles": {
       "model": "Modell",
@@ -1556,37 +1549,37 @@
     "settings": {
       "enabled": {
         "title": "Housekeeper aktivieren",
-        "description": "Wenn deaktiviert, verwenden Prompt-Verfeinerung, Schritt-Erklärungen und leichtgewichtige UI-Steuerung kein MiniCPM."
+        "description": "Wenn deaktiviert, verwenden Prompt-Verfeinerung, Schritt-Erklärungen und leichtgewichtige UI-Steuerung kein MiniCPM"
       },
       "account": {
         "title": "vLLM-MiniCPM-Konto",
-        "description": "Verwendet ein vorhandenes vllm_api-Konto aus dem Key Vault; es wird kein separater Zugangsdatenspeicher angelegt."
+        "description": "Verwendet ein vorhandenes vllm_api-Konto aus dem Key Vault; es wird kein separater Zugangsdatenspeicher angelegt"
       },
       "model": {
         "title": "Modell-ID",
-        "description": "Docker vLLM MiniCPM5-1B verwendet standardmäßig openbmb/MiniCPM5-1B."
+        "description": "Docker vLLM MiniCPM5-1B verwendet standardmäßig openbmb/MiniCPM5-1B"
       },
       "context": {
         "title": "Sicheres Kontextbudget",
-        "description": "Verwendet auf 4-GB-GPUs ein konservatives Budget von 10000 Tokens, statt dem theoretischen 32k-Limit zu vertrauen."
+        "description": "Verwendet auf 4-GB-GPUs ein konservatives Budget von 10000 Tokens, statt dem theoretischen 32k-Limit zu vertrauen"
       }
     },
     "features": {
       "promptPolish": {
         "title": "Prompt-Verfeinerung",
-        "description": "Verfeinert die Eingabe manuell, bevor sie an das stärkere Coding-Modell gesendet wird."
+        "description": "Verfeinert die Eingabe manuell, bevor sie an das stärkere Coding-Modell gesendet wird"
       },
       "stepExplain": {
         "title": "Erklärungen zu Agent-Schritten",
-        "description": "Erzeugt ein bis zwei kurze chinesische Erklärungen für Schritte der Session-Wiedergabe."
+        "description": "Erzeugt ein bis zwei kurze chinesische Erklärungen für Schritte der Session-Wiedergabe"
       },
       "uiControl": {
         "title": "Leichtgewichtige ADE/UI-Steuerung",
-        "description": "MiniCPM darf Anfragen nur in eine strikte lokale Aktions-Whitelist einordnen."
+        "description": "MiniCPM darf Anfragen nur in eine strikte lokale Aktions-Whitelist einordnen"
       },
       "contextCompact": {
         "title": "Automatische Kontextpflege",
-        "description": "Lässt MiniCPM eine isolierte fortlaufende Zusammenfassung des älteren Kontexts pflegen, während aktivierte Sitzungen inaktiv sind."
+        "description": "Lässt MiniCPM eine isolierte fortlaufende Zusammenfassung des älteren Kontexts pflegen, während aktivierte Sitzungen inaktiv sind"
       }
     }
   },
@@ -1657,13 +1650,21 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "Import fehlgeschlagen: {{message}}",
-    "partialFailure": "Einige Zugangsdaten konnten nicht importiert werden:"
+    "partialFailure": "Einige Zugangsdaten konnten nicht importiert werden:",
+    "importSucceeded": "Unter „Konten“ gespeichert: {{names}}. Die importierten Anmeldedaten sind jetzt als wiederverwendbare Verbindungen verfügbar."
   },
   "skills": {
     "shareToOrg": "Mit Organisation teilen",
     "share": "Teilen",
     "sharedToOrg": "Skill mit der Organisation geteilt",
-    "shareToOrgHint": "Mitglieder der Organisation erhalten den aktuellen Snapshot dieses Skills; teile ihn nach dem Bearbeiten erneut, um ein Update zu veröffentlichen.",
+    "shareToOrgHint": "Mitglieder der Organisation erhalten den aktuellen Snapshot dieses Skills; teile ihn nach dem Bearbeiten erneut, um ein Update zu veröffentlichen",
     "shareOrgPlaceholder": "Organisation"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Loading official packages…",
+    "purchasesFailed": "Could not load official packages. Try again.",
+    "failed": "Verbindung mit Market fehlgeschlagen. Bitte versuche es erneut.",
+    "title": "Official packages",
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

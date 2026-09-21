@@ -3,14 +3,11 @@ import { RefObject, useEffect, useLayoutEffect, useState } from "react";
 /**
  * useElementDimensions Hook
  *
- * Consolidated hook for measuring element dimensions (width, height, or both).
- * Replaces useWidth, useHeight, and provides base for viewport-relative calculations.
+ * Measures one dimension (width or height) of an element.
  *
  * Features:
  * - ResizeObserver for accurate dimension tracking
  * - SSR-safe with useIsomorphicLayoutEffect
- * - Supports measuring width, height, or both
- * - Handles nested ref objects
  * - Window resize fallback
  */
 
@@ -18,16 +15,11 @@ import { RefObject, useEffect, useLayoutEffect, useState } from "react";
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-export type DimensionType = "width" | "height" | "both";
-
-export interface ElementDimensions {
-  width: number;
-  height: number;
-}
+export type DimensionType = "width" | "height";
 
 export interface UseElementDimensionsOptions {
-  /** What to measure: 'width', 'height', or 'both' */
-  dimension?: DimensionType;
+  /** What to measure: 'width' (clientWidth) or 'height' (clientHeight) */
+  dimension: DimensionType;
   /** Disable measurement and listener ownership while the element is absent. */
   enabled?: boolean;
   /** Additional dependency to trigger re-measurement */
@@ -35,111 +27,56 @@ export interface UseElementDimensionsOptions {
 }
 
 /**
- * Hook for measuring element dimensions with ResizeObserver
+ * Hook for measuring an element dimension with ResizeObserver
  *
  * @example
- * // Measure width only
  * const width = useElementDimensions(ref, { dimension: 'width' });
  *
  * @example
- * // Measure height only
- * const height = useElementDimensions(ref, { dimension: 'height' });
- *
- * @example
- * // Measure both dimensions
- * const { width, height } = useElementDimensions(ref, { dimension: 'both' });
- *
- * @example
  * // With additional dependencies
- * const width = useElementDimensions(ref, { dimension: 'width', deps: [isOpen] });
+ * const height = useElementDimensions(ref, { dimension: 'height', deps: [isOpen] });
  */
 export function useElementDimensions(
-  ref: RefObject<HTMLElement | null | { current?: HTMLElement | null }>,
-  options: UseElementDimensionsOptions & { dimension: "width" }
-): number;
+  ref: RefObject<HTMLElement | null>,
+  options: UseElementDimensionsOptions
+): number {
+  const { dimension, enabled = true, deps = [] } = options;
 
-export function useElementDimensions(
-  ref: RefObject<HTMLElement | null | { current?: HTMLElement | null }>,
-  options: UseElementDimensionsOptions & { dimension: "height" }
-): number;
-
-export function useElementDimensions(
-  ref: RefObject<HTMLElement | null | { current?: HTMLElement | null }>,
-  options?: UseElementDimensionsOptions & { dimension?: "both" }
-): ElementDimensions;
-
-export function useElementDimensions(
-  ref: RefObject<HTMLElement | null | { current?: HTMLElement | null }>,
-  options: UseElementDimensionsOptions = {}
-): number | ElementDimensions {
-  const { dimension = "both", enabled = true, deps = [] } = options;
-
-  const [dimensions, setDimensions] = useState<ElementDimensions>({
-    width: 0,
-    height: 0,
-  });
+  const [size, setSize] = useState(0);
 
   useIsomorphicLayoutEffect(() => {
     if (!enabled) return;
 
-    const measureDimensions = () => {
-      // Handle nested ref objects
-      const element =
-        ref.current instanceof HTMLElement
-          ? ref.current
-          : ref.current?.current instanceof HTMLElement
-            ? ref.current.current
-            : null;
-
+    const measureDimension = () => {
+      const element = ref.current;
       if (!element) return;
-
-      const newDimensions: ElementDimensions = {
-        width: element.clientWidth,
-        height: element.clientHeight,
-      };
-
-      setDimensions((previousDimensions) => {
-        if (
-          previousDimensions.width === newDimensions.width &&
-          previousDimensions.height === newDimensions.height
-        ) {
-          return previousDimensions;
-        }
-        return newDimensions;
-      });
+      setSize(
+        dimension === "width" ? element.clientWidth : element.clientHeight
+      );
     };
 
     // Measure immediately
-    measureDimensions();
+    measureDimension();
 
-    // Get the actual element
-    const element =
-      ref.current instanceof HTMLElement
-        ? ref.current
-        : ref.current?.current instanceof HTMLElement
-          ? ref.current.current
-          : null;
+    const element = ref.current;
 
     // Set up ResizeObserver for accurate tracking
     let resizeObserver: ResizeObserver | null = null;
     if (element && typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(measureDimensions);
+      resizeObserver = new ResizeObserver(measureDimension);
       resizeObserver.observe(element);
     }
 
     // Listen for window resize as fallback
-    window.addEventListener("resize", measureDimensions);
+    window.addEventListener("resize", measureDimension);
 
     return () => {
-      window.removeEventListener("resize", measureDimensions);
+      window.removeEventListener("resize", measureDimension);
       resizeObserver?.disconnect();
     };
-  }, [ref, enabled, ...deps]);
+  }, [ref, enabled, dimension, ...deps]);
 
-  // Return based on requested dimension
-  if (dimension === "width") return dimensions.width;
-  if (dimension === "height") return dimensions.height;
-  return dimensions;
+  return size;
 }
 
 export default useElementDimensions;

@@ -91,6 +91,11 @@ export interface ChatHistoryListProps {
   /** Publishes the one active scroll root to the shared viewport owner. */
   onScrollRootChange?: (node: HTMLDivElement | null) => void;
   /**
+   * Called after re-measured virtual rows were committed synchronously, so the
+   * viewport owner can correct scroll against the offsets about to paint.
+   */
+  onRowLayoutCommit?: () => void;
+  /**
    * When set, `GroupItemRenderer` paints a `NewEventDivider` with this
    * label above each group's last item. Subagent panes opt in so the
    * freshest event in every turn is signposted. `null` / undefined

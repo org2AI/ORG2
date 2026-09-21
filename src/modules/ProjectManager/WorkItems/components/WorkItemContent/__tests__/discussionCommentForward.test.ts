@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { LinkedSession } from "@src/api/http/project/types/agentWorkflow";
+import type { LinkedSession } from "@src/contracts/project/agentWorkflow";
 
 import {
   buildDiscussionForwardMessage,

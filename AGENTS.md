@@ -62,11 +62,11 @@ Review gate: any UI predicate introduced to hide malformed data must cite an exp
 
 - Production React action buttons MUST use `Button` from `@src/components/Button`, or an existing reusable control built on it. Do not introduce raw `<button>` elements or `createElement("button", ...)` outside the shared Button implementation. Do not bypass this rule with clickable `div`/`span` elements, `role="button"`, or `<input type="button">`.
 - Read the current `ButtonProps` and presentation definitions in `src/components/Button/` before adding or changing button presentation. Match the surrounding toolbar, row, panel, or form through shared props instead of copying per-site button styling.
-- Choose `variant` for semantic importance and `appearance` for the surface: for example, `soft` for compact hover-fill actions, `soft-no-drop` for a transparent button layer, and `ghost` for text-color-only hover. Use the appropriate primary, secondary, tertiary, or destructive treatment for the action and its neighbors.
+- Choose `variant` for importance (`primary` filled call to action, `secondary` outlined default, `tertiary` transparent with a hover fill, `ghost` text/icon-color-only hover) and `tone` for semantic color (`danger`, `warning`, `success`, `merged`); `hoverTone` colors a neutral button only while hovered. Use a `tertiary` or `ghost` with `aria-pressed` for toggles.
 - Match the surrounding dimensions with `size`: `sidebar` (20px), `mini` (24px), `small` (28px), `default` (32px), or `large` (40px). Use `inline` for text actions that inherit surrounding typography without a fixed height. Preserve intentional caller-owned geometry, including widths that collapse until hover; shared inline dimensions must not override that behavior.
 - For icon actions, use `iconOnly` with the glyph passed through `icon={...}`; default-layout `iconOnly` does not render children. Provide an accessible name such as `aria-label` and preserve useful tooltips.
 - Use `disabled`, `loading`, and `htmlType` rather than recreating their behavior. `htmlType` defaults to `"button"`; specify `"submit"` or `"reset"` when intended. Preserve refs, event propagation, keyboard behavior, and state semantics (`aria-pressed` for toggles, `aria-expanded` for disclosures).
-- Reserve `layout="custom"` and `appearance="custom"` for compound controls whose direct children, geometry, or token-based surface cannot be expressed through standard Button props, such as menu rows, switch tracks, tabs, or selectable cards. Document the concrete reason in the reusable component or audit report. Custom props are not a shortcut for ordinary actions; reuse or extend an existing control family instead of duplicating its styling at each call site.
+- Reserve `layout="custom"` for compound controls whose direct children, geometry, or token-based surface cannot be expressed through standard Button props, such as menu rows, switch tracks, tabs, or selectable cards. Document the concrete reason in the reusable component or audit report. Custom props are not a shortcut for ordinary actions; reuse or extend an existing control family instead of duplicating its styling at each call site.
 - Native buttons are allowed at genuine non-React boundaries, such as CodeMirror `GutterMarker.toDOM` and bootstrap fallback HTML, where rendering the React component is unavailable. Document why the boundary requires native DOM. These exceptions do not authorize raw buttons in React components. Test fixtures and displayed code examples are not production button sites.
 
 Before completing any change that adds or modifies action controls, inspect the changed production files and diff for raw button JSX, native button creation, and substitute clickable elements. Resolve new bypasses or document the concrete non-React exception. Use source/AST inspection to distinguish rendered controls from comments, fixtures, and example strings; a regex count alone is insufficient. This check applies even when `frontend-ui-audit` is skipped and is an author/review obligation, not an automatic lint or CI gate.
@@ -110,23 +110,26 @@ contributors. If this section and `.github/PR_RULES.md` ever differ, follow
 Dependabot-generated descriptions have the narrow exception documented in
 `.github/PR_RULES.md`; title and build/security checks still apply.
 
-Hard gates: one responsibility; a scoped Conventional Commit title; the
+Hard gates: one coherent theme or objective; a scoped Conventional Commit title; the
 required `Problem`, `Solution`, `Potential risks`, and `Verification` sections;
 and a final GitHub read-back of the published pull request.
 
-#### Single responsibility
+#### Coherent scope
 
-- One PR solves one problem or delivers one feature. Do not combine multiple
-  features, unrelated bug fixes, opportunistic refactors, cleanup, formatting,
-  or documentation changes in the same PR.
-- Supporting tests and documentation belong in the same PR only when they
-  directly verify or explain that PR's single change.
-- If requested work contains independent changes, split them into separate
-  branches/worktrees and separate PRs.
+- One PR may group related changes under one coherent theme or user-facing
+  objective, such as update-dialog design, copy, and update-flow localization.
+  Explain the shared theme and how each change supports it. Different layers
+  or independently implementable fixes do not by themselves require a split.
+- Split unrelated themes or objectives into separate branches/worktrees and
+  PRs. Sharing a repository or request does not make unrelated changes one theme.
+- Supporting tests and documentation belong with the theme they verify or
+  explain. Explicitly requested delivery-policy changes may accompany that
+  work when identified in the description.
 - If a new unrelated request arrives after a PR has been opened, do not append
   it to the existing branch. Create a separate PR.
 - Before handoff, compare the branch against its base and confirm every changed
-  file maps directly to the PR's stated problem or solution.
+  file maps directly to the PR's stated theme, problem, or solution, or an
+  explicitly requested delivery-policy change.
 
 #### Description format
 

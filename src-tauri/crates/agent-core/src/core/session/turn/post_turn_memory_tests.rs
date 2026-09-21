@@ -437,6 +437,7 @@ async fn session_memory_cooldown_jobs_are_skipped_not_completed() {
             sm_state: Arc::clone(&state),
             sm_config: SessionMemoryConfig::default(),
             fork_provider: ForkProviderSpec {
+                credential_source: None,
                 model: PARENT.into(),
                 account_id: None,
                 reliability: ReliabilityConfig::default(),

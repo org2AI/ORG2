@@ -23,6 +23,37 @@ function exposeIdeServerUrlForE2E(): void {
 
 exposeIdeServerUrlForE2E();
 
+/**
+ * Per-launch token the local IDE server requires on every request. Desktop
+ * startup reads it over IPC before the App module graph is loaded, the same
+ * way it resolves the port. It stays empty in browser and unit-test builds,
+ * which never reach that server.
+ */
+export let IDE_SERVER_TOKEN = "";
+
+export const IDE_SERVER_TOKEN_HEADER = "x-orgii-token";
+
+/** For `EventSource` and `WebSocket`, which cannot set request headers. */
+export const IDE_SERVER_TOKEN_QUERY_PARAM = "orgii_token";
+
+export function configureIdeServerToken(token: string): void {
+  IDE_SERVER_TOKEN = token;
+}
+
+/** Headers to spread into every `fetch` that targets the local IDE server. */
+export function ideServerAuthHeaders(): Record<string, string> {
+  return IDE_SERVER_TOKEN
+    ? { [IDE_SERVER_TOKEN_HEADER]: IDE_SERVER_TOKEN }
+    : {};
+}
+
+/** Append the token to a local IDE server URL opened without headers. */
+export function withIdeServerToken(url: string): string {
+  if (!IDE_SERVER_TOKEN) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${IDE_SERVER_TOKEN_QUERY_PARAM}=${encodeURIComponent(IDE_SERVER_TOKEN)}`;
+}
+
 export function configureIdeServerForIdentifier(identifier: string): number {
   const { ideServerPort } = runtimeInstanceProfileForIdentifier(identifier);
   IDE_SERVER_PORT = String(ideServerPort);

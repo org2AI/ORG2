@@ -1,11 +1,12 @@
 import { useAtom, useAtomValue } from "jotai";
-import { type MutableRefObject, useEffect, useMemo } from "react";
+import { type MutableRefObject, useContext, useEffect, useMemo } from "react";
 
 import type {
   ComposerInputRef,
   ComposerSnapshot,
 } from "@src/components/ComposerInput";
 import { useConversationExecutionBinding } from "@src/engines/ChatPanel/ConversationExecutionBindingContext";
+import { ChatPanelFullScreenContext } from "@src/engines/ChatPanel/chatPanelFullScreenContext";
 import { useInputArea } from "@src/engines/ChatPanel/hooks/useInputArea";
 import type {
   CustomMentionOption,
@@ -17,7 +18,10 @@ import {
   useConversationSubmitOverride,
 } from "@src/features/Org2Cloud/SessionConversation/useConversationComposer";
 import { voiceInputEnabledAtom } from "@src/store/platform/voiceInputAtom";
-import { pinnedActionsVisibleAtom } from "@src/store/session";
+import {
+  compactComposerInputAtom,
+  pinnedActionsVisibleAtom,
+} from "@src/store/session";
 import type { SlashItemCategory } from "@src/types/extensions";
 import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
@@ -26,9 +30,11 @@ import { getComposerPills } from "../composerPills";
 import {
   type InputAreaPresentation,
   isContextualInputAreaPresentation,
+  shouldUseCompactComposerLayout,
 } from "../inputAreaPresentation";
 import { useContainerDrag } from "./useContainerDrag";
 import { useEditMode } from "./useEditMode";
+import { useEditorExpansion } from "./useEditorExpansion";
 import { useInputAreaComposerActions } from "./useInputAreaComposerActions";
 import { useInputAreaMentionOptions } from "./useInputAreaMentionOptions";
 import { useInputAreaMenus } from "./useInputAreaMenus";
@@ -137,6 +143,9 @@ export function useInputAreaInteractiveModel({
     attachedImages,
     hasImages,
     clearAttachedImages,
+    isCiteCode,
+    replyInfo,
+    handleContentChange,
   } = inputArea;
 
   const currentTextEmpty = isInputEmpty();
@@ -157,6 +166,30 @@ export function useInputAreaInteractiveModel({
   });
   const isContextualPanel = presentation === "contextual";
   const isContextual = isContextualInputAreaPresentation(presentation);
+
+  const compactInputEnabled = useAtomValue(compactComposerInputAtom);
+  const chatPanelFullScreen = useContext(ChatPanelFullScreenContext);
+  const compactLayoutInput = {
+    compactInputEnabled,
+    chatPanelFullScreen,
+    isEditMode,
+    hasImages,
+    isCiteCode,
+    isReply: replyInfo.isReply,
+  };
+  const { editorMultiline, onEditorContentChange } = useEditorExpansion({
+    enabled: compactInputEnabled && chatPanelFullScreen && !isEditMode,
+    compactEligible: shouldUseCompactComposerLayout({
+      ...compactLayoutInput,
+      editorMultiline: false,
+    }),
+    containerRef,
+    handleContentChange,
+  });
+  const isCompactRow = shouldUseCompactComposerLayout({
+    ...compactLayoutInput,
+    editorMultiline,
+  });
 
   const {
     handleOpenContextMenu,
@@ -267,6 +300,8 @@ export function useInputAreaInteractiveModel({
     handlePinnedActionsContextMenu,
     isContextualPanel,
     isContextual,
+    isCompactRow,
+    onEditorContentChange,
     handleOpenContextMenu,
     handleContextMenuClose,
     handleKeyboardAtMention,

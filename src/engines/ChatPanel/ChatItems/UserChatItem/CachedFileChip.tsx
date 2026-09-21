@@ -45,7 +45,6 @@ const CachedFileChip: FC<{
         >
           <Button
             layout="custom"
-            appearance="custom"
             className="absolute top-2 right-2 text-lg text-white/70 hover:text-white"
             onClick={onClosePreview}
           >

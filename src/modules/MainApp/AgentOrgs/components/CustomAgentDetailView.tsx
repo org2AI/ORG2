@@ -22,17 +22,18 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import { Placeholder } from "@src/components/Placeholder";
 import type { TabPillItem } from "@src/components/TabPill";
-import { Cancel01Icon, Delete02Icon, HugeiconsIcon } from "@src/icons";
 import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
+  InternalHeader,
   PANEL_HEADER_TOKENS,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { Cancel01Icon, Delete02Icon, HugeiconsIcon } from "@src/icons";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 
 import {
@@ -51,7 +52,6 @@ import AgentSkillsetsSection from "../config/skills/AgentSkillsetsSection";
 import { useAgentDefinitions } from "../hooks/useAgentDefinitions";
 import { agentOrgsActiveTabAtom } from "../store/agentOrgsActiveTabAtom";
 import type { AgentDefinition, SubAgentRef } from "../types";
-import AgentDetailHeader from "./AgentDetailHeader";
 
 /**
  * Caller-supplied extra tab. Used by `WingmanDetailView` to splice in
@@ -192,8 +192,8 @@ const CustomAgentDetailView: React.FC<CustomAgentDetailViewProps> = ({
       return (
         <div className="flex items-center gap-1">
           <Button
-            variant="danger"
-            appearance="solid"
+            variant="primary"
+            tone="danger"
             size="mini"
             shape="round"
             data-testid="agent-orgs-confirm-delete-agent-button"
@@ -247,7 +247,8 @@ const CustomAgentDetailView: React.FC<CustomAgentDetailViewProps> = ({
 
   const headerElement = useMemo(
     () => (
-      <AgentDetailHeader
+      <InternalHeader
+        noPanelHeader
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}

@@ -10,15 +10,7 @@ import React from "react";
 import { getToolIcon } from "@src/config/toolIcons";
 import type { ToolUsageMetadata } from "@src/engines/SessionCore/core/types";
 
-import ToolUsageBadge from "../ToolCallBlock/ToolUsageBadge";
-import {
-  EventBlockHeader,
-  EventBlockHeaderIcon,
-  EventBlockHeaderSubtitle,
-  EventBlockHeaderTitle,
-  getEventBlockContainerClasses,
-} from "../primitives";
-import { useBlockHeader } from "../useBlockLocate";
+import { HeaderOnlyBlock } from "../primitives";
 
 interface SearchBlockProps {
   /** Search pattern/query */
@@ -38,60 +30,24 @@ interface SearchBlockProps {
 }
 
 const SearchBlock: React.FC<SearchBlockProps> = React.memo(
-  ({ pattern, isLoading = false, eventId, action, title, toolUsage }) => {
-    const {
-      isHeaderHovered,
-      handleHeaderMouseEnter,
-      handleHeaderMouseLeave,
-      handleLocate,
-    } = useBlockHeader({
-      defaultCollapsed: true,
-      eventId,
-      collapseAllValue: false,
-      preserveDefaultOnExpand: true,
-    });
-
-    const toolIcon = getToolIcon("code_search", {
-      size: 14,
-      className: "text-text-2",
-      action,
-    });
-
-    return (
-      <div className={getEventBlockContainerClasses(false)}>
-        <EventBlockHeader
-          isCollapsed
-          withHover={false}
-          onNavigate={handleLocate}
-          onMouseEnter={handleHeaderMouseEnter}
-          onMouseLeave={handleHeaderMouseLeave}
-          rightContent={
-            toolUsage ? <ToolUsageBadge usage={toolUsage} /> : undefined
-          }
-        >
-          <EventBlockHeaderIcon
-            icon={toolIcon}
-            isCollapsed
-            isHeaderHovered={isHeaderHovered}
-            hasContent={false}
-            isLoading={isLoading}
-          />
-          <EventBlockHeaderTitle isLoading={isLoading}>
-            {title}
-          </EventBlockHeaderTitle>
-          {pattern && (
-            <EventBlockHeaderSubtitle
-              isLoading={isLoading}
-              title={pattern}
-              className="text-text-1"
-            >
-              <span className="min-w-0 truncate">{pattern}</span>
-            </EventBlockHeaderSubtitle>
-          )}
-        </EventBlockHeader>
-      </div>
-    );
-  }
+  ({ pattern, isLoading = false, eventId, action, title, toolUsage }) => (
+    <HeaderOnlyBlock
+      icon={getToolIcon("code_search", {
+        size: 14,
+        className: "text-text-2",
+        action,
+      })}
+      title={title}
+      subtitle={pattern}
+      subtitleTitle={pattern}
+      subtitleClassName="text-text-1"
+      truncateSubtitle
+      isLoading={isLoading}
+      eventId={eventId}
+      toolUsage={toolUsage}
+      collapseParticipation
+    />
+  )
 );
 
 SearchBlock.displayName = "SearchBlock";

@@ -29,7 +29,6 @@ import {
 import { eventIndexAtom } from "@src/engines/SessionCore/core/atoms/events";
 import { useSessionId } from "@src/engines/SessionCore/hooks/session";
 import { selectedExecutionThreadAtom } from "@src/store/ui/sessionPaginationAtom";
-import { simulatorDataSourceAtom } from "@src/store/ui/simulatorAtom";
 
 import { resolveNonEmptyEventFromIds } from "../utils/skipEmptyRunningEvent";
 import { useSimulatorEvents } from "./useSimulatorEvents";
@@ -79,11 +78,6 @@ export function useSimulatorSession(): UseSimulatorSessionReturn {
   const [selectedTaskId, setSelectedTaskId] = useAtom(
     selectedExecutionThreadAtom
   );
-
-  const setGlobalDataSource = useSetAtom(simulatorDataSourceAtom);
-  useEffect(() => {
-    setGlobalDataSource("real");
-  }, [setGlobalDataSource]);
 
   // Reset thread selection when session changes
   const prevSessionIdRef = useRef<string | null>(null);

@@ -257,6 +257,10 @@ pub fn ensure_tables_with(conn: &Connection) -> SqliteResult<()> {
         "ALTER TABLE agent_sessions ADD COLUMN last_turn_cancelled INTEGER NOT NULL DEFAULT 0",
     );
 
+    let _ = conn.execute(
+        "ALTER TABLE agent_sessions ADD COLUMN credential_source TEXT",
+        [],
+    );
     // This schema owner can be initialized before the shared session CRUD
     // migrations in isolated tests and recovery paths. Ensure product_mode is
     // present before the normalization query below references it.

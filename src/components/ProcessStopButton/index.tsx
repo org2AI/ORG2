@@ -11,7 +11,6 @@ interface ProcessStopButtonProps extends Omit<
   label: string;
   size?: keyof typeof BUTTON_SIZE;
   loading?: boolean;
-  appearance?: "soft" | "soft-no-drop";
 }
 
 /** Shared process termination affordance, matching the server watcher. */
@@ -19,7 +18,6 @@ export function ProcessStopButton({
   label,
   size = "md",
   loading = false,
-  appearance = "soft",
   disabled,
   className = "",
   title = label,
@@ -28,8 +26,8 @@ export function ProcessStopButton({
 }: ProcessStopButtonProps) {
   return (
     <Button
-      variant="danger"
-      appearance={appearance}
+      variant="tertiary"
+      tone="danger"
       size={size === "sm" ? "sidebar" : size === "lg" ? "small" : "mini"}
       iconOnly
       icon={
@@ -41,7 +39,6 @@ export function ProcessStopButton({
         />
       }
       {...props}
-      htmlType="button"
       aria-label={label}
       title={title}
       disabled={disabled}

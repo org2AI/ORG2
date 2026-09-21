@@ -23,8 +23,8 @@ import React, {
 } from "react";
 
 import Button from "@src/components/Button";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { useFilteredItems } from "@src/hooks/search";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { agentNameAtom } from "@src/store/session/creatorStateAtom";
@@ -45,9 +45,9 @@ import {
   MODEL_SECTION,
   useUnifiedModelPalette,
 } from "./useUnifiedModelPalette";
+import { VariantPillEditContext } from "./variantPillEditContext";
 
 export type { UnifiedModelPaletteProps } from "./types";
-export { UnifiedModelDropdown } from "./UnifiedModelDropdown";
 
 // ============ COMPONENT ============
 
@@ -70,8 +70,10 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
     selectedModelId,
     selectedSourceIndex,
     setSelectedSourceIndex,
+    pinnedItems,
     recentItems,
     allModelItems,
+    pinnedHeader,
     recentHeader,
     allHeader,
     sourceItems,
@@ -145,6 +147,12 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
     return `${item.label} ${item.desc || ""} ${rightLabel} ${searchAlias}`;
   }, []);
 
+  const { filteredItems: filteredPinnedItems } = useFilteredItems({
+    items: pinnedItems,
+    searchQuery,
+    getSearchText,
+  });
+
   const { filteredItems: filteredRecentItems } = useFilteredItems({
     items: recentItems,
     searchQuery,
@@ -159,6 +167,10 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
 
   const filteredItems = useMemo<SpotlightItem[]>(() => {
     const out: SpotlightItem[] = [];
+    if (filteredPinnedItems.length > 0) {
+      out.push(pinnedHeader);
+      out.push(...filteredPinnedItems);
+    }
     if (filteredRecentItems.length > 0) {
       out.push(recentHeader);
       out.push(...filteredRecentItems);
@@ -169,9 +181,11 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
     }
     return out;
   }, [
+    filteredPinnedItems,
     filteredRecentItems,
     filteredAllModelItems,
     primaryItems.length,
+    pinnedHeader,
     recentHeader,
     allHeader,
   ]);
@@ -369,12 +383,35 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
   );
 
   // Hovering a left-column row returns keyboard ownership to that column.
+  // While a variant pill's Apply / Cancel popover is open, hovering other
+  // rows must not move the selection: that would swap the key column and
+  // unmount the row that owns the open popover.
+  const editingVariantPillsRef = useRef(new Set<string>());
+  const [variantEditing, setVariantEditing] = useState(false);
+  const handleVariantEditingChange = useCallback(
+    (pillId: string, open: boolean) => {
+      const editing = editingVariantPillsRef.current;
+      if (open) editing.add(pillId);
+      else editing.delete(pillId);
+      setVariantEditing(editing.size > 0);
+    },
+    []
+  );
+  const variantPillEditContext = useMemo(
+    () => ({
+      confirmChanges: true,
+      onEditingChange: handleVariantEditingChange,
+    }),
+    [handleVariantEditingChange]
+  );
+
   const handleItemHover = useCallback(
     (index: number) => {
+      if (variantEditing) return;
       kernel.setSelectedIndex(index);
       setActiveColumn("models");
     },
-    [kernel, setActiveColumn]
+    [kernel, setActiveColumn, variantEditing]
   );
 
   const handleItemSelect = useCallback(
@@ -394,7 +431,6 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
   const refreshModelsButton = (
     <Button
       variant="tertiary"
-      appearance="soft-no-drop"
       size="small"
       shape="round"
       iconOnly
@@ -406,7 +442,6 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
           className={refreshSpinClass}
         />
       }
-      htmlType="button"
       onClick={handleRefreshModelsClick}
       disabled={refreshingAllModels}
       aria-label={tCommonHook("actions.refresh")}
@@ -438,6 +473,7 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
         source?.action?.();
       }}
       onSourceHover={(index) => {
+        if (variantEditing) return;
         setSelectedSourceIndex(index);
         setActiveColumn("sources");
       }}
@@ -450,15 +486,18 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
       onClose={onClose}
       hasActiveAction={activeColumn !== "models"}
       activeActionChip={SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchColumn}
+      pinScope="models"
     >
-      <PaletteBody
-        kernel={kernel}
-        items={filteredItems}
-        path={[]}
-        placeholder={placeholderModel}
-        contentOverride={content}
-        inputTrailingSlot={refreshModelsButton}
-      />
+      <VariantPillEditContext.Provider value={variantPillEditContext}>
+        <PaletteBody
+          kernel={kernel}
+          items={filteredItems}
+          path={[]}
+          placeholder={placeholderModel}
+          contentOverride={content}
+          inputTrailingSlot={refreshModelsButton}
+        />
+      </VariantPillEditContext.Provider>
       <ShellFooterAction>{footerAction}</ShellFooterAction>
       {keyFirstToggle}
     </SpotlightShell>

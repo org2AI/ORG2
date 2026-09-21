@@ -2,24 +2,16 @@ import { useSetAtom } from "jotai";
 import { useCallback } from "react";
 
 import { clearSessionAtom } from "@src/engines/SessionCore/core/atoms";
-import {
-  openChatPanelCreateTargetAtom,
-  openExploreInChatPanelTabAtom,
-} from "@src/store/chatPanel/chatPanelTabsAtom";
+import { openChatPanelCreateTargetAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import {
   activeSessionIdAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session";
-import {
-  CHAT_PANEL_CREATE_TARGET,
-  chatPanelStartPageOpenAtom,
-} from "@src/store/ui/chatPanel/selectionAtoms";
+import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanel/selectionAtoms";
 import { resetChatPanelSessionSurfaceAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 
 export function useChatPanelNavigationActions() {
-  const setStartPageOpen = useSetAtom(chatPanelStartPageOpenAtom);
   const resetSessionSurface = useSetAtom(resetChatPanelSessionSurfaceAtom);
-  const openExploreTab = useSetAtom(openExploreInChatPanelTabAtom);
   const openCreateTarget = useSetAtom(openChatPanelCreateTargetAtom);
   const dispatchClearSession = useSetAtom(clearSessionAtom);
   const setWorkstationActiveSessionId = useSetAtom(
@@ -37,11 +29,6 @@ export function useChatPanelNavigationActions() {
     resetSessionSurface();
   }, [resetSessionSurface]);
 
-  const resetToSessionSurface = useCallback(() => {
-    showSessionSurface();
-    resetActiveSession();
-  }, [resetActiveSession, showSessionSurface]);
-
   const openWorkItemCreate = useCallback(() => {
     openCreateTarget({
       target: CHAT_PANEL_CREATE_TARGET.WORK_ITEM,
@@ -54,20 +41,12 @@ export function useChatPanelNavigationActions() {
     });
   }, [openCreateTarget]);
 
-  const openWorkspaceExplore = useCallback(() => {
-    openExploreTab();
-    resetActiveSession();
-  }, [openExploreTab, resetActiveSession]);
-
   return {
     dispatchClearSession,
     openProjectCreate,
     openWorkItemCreate,
-    openWorkspaceExplore,
     resetActiveSession,
-    resetToSessionSurface,
     setActiveSessionId,
-    setStartPageOpen,
     setWorkstationActiveSessionId,
     showSessionSurface,
   };

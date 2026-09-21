@@ -2,17 +2,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type WorkItemRun, projectApi } from "@src/api/http/project";
-import { useProjectDataChanged } from "@src/hooks/project";
-import { HugeiconsIcon, RepeatIcon } from "@src/icons";
+import { ScrollTrailTarget } from "@src/components/layout/blocks";
 import {
   formatTokensShort,
   formatUsd,
-} from "@src/modules/shared/dataSource/usageFormat";
+} from "@src/features/RuntimeDataSource/usageFormat";
 import {
-  ScrollTrailTarget,
   SessionTable,
   type SessionTableItem,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/features/SessionTable";
+import { useProjectDataChanged } from "@src/hooks/project";
+import { HugeiconsIcon, RepeatIcon } from "@src/icons";
 import {
   formatReplayDateLabel,
   toIntlLocaleTag,

@@ -34,7 +34,9 @@ type ImportedSessionDisplayInput = Partial<
 export interface LocalSessionDisplayInput {
   session_id: string;
   user_input?: string;
-  cliAgentType?: Session["cliAgentType"];
+  // Wire adapters can carry an older/newer provider alias. Validation and
+  // fallback stay in parseCliAgentType instead of unsafe casts at each caller.
+  cliAgentType?: string;
   agentOrgId?: string;
   agentDisplayName?: string;
   agentDefinitionId?: string;

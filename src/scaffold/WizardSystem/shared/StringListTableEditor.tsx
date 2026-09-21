@@ -4,13 +4,12 @@
  */
 import React, { useMemo } from "react";
 
-import Button from "@src/components/Button";
+import DeleteIconButton from "@src/components/Button/DeleteIconButton";
 import Input from "@src/components/Input";
 import SettingsTable, {
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
-import { Delete02Icon, HugeiconsIcon } from "@src/icons";
 
 interface IndexedStringRow {
   index: number;
@@ -71,19 +70,8 @@ export const StringListTableEditor: React.FC<StringListTableEditorProps> = ({
         label: "",
         width: SETTINGS_TABLE_COL.hug,
         renderCell: (row) => (
-          <Button
-            variant="secondary"
-            size="default"
-            icon={
-              <HugeiconsIcon
-                icon={Delete02Icon}
-                data-icon="trash-2"
-                size={14}
-                className="text-danger-6"
-              />
-            }
-            iconOnly
-            onClick={() => {
+          <DeleteIconButton
+            onDelete={() => {
               const list = listForEdit(values);
               onChange(list.filter((_, rowIndex) => rowIndex !== row.index));
             }}

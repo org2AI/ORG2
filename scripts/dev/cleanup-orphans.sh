@@ -22,7 +22,9 @@ fi
 # Count processes before cleanup
 BUILD_COUNT=$(ps aux | grep "build.js --watch" | grep -v grep | wc -l | xargs)
 ESBUILD_COUNT=$(ps aux | grep "esbuild --service" | grep -v grep | wc -l | xargs)
-ORGII_COUNT=$(pgrep -f "ORG2 Dev" | wc -l | xargs)
+# Match the Node process.title exactly; the native dev executable now has
+# an absolute command path ending in /ORG2 Dev and must not match this sweep.
+ORGII_COUNT=$(pgrep -f "^ORG2 Dev$" | wc -l | xargs)
 CARGO_ORPHAN_COUNT=$(ps aux | grep "cargo run.*no-default-features" | grep -v grep | wc -l | xargs)
 PORT_PID=$(lsof -ti :1998 2>/dev/null | head -1)
 
@@ -72,7 +74,7 @@ if [ "$ESBUILD_COUNT" -gt 0 ]; then
 fi
 
 if [ "$ORGII_COUNT" -gt 0 ]; then
-    pkill -f "ORG2 Dev" 2>/dev/null || true
+    pkill -f "^ORG2 Dev$" 2>/dev/null || true
     [ "$QUIET" != "true" ] && echo "  ✓ Killed $ORGII_COUNT ORG2 Dev processes"
 fi
 
@@ -96,7 +98,7 @@ if [ "$QUIET" != "true" ]; then
 fi
 BUILD_AFTER=$(ps aux | grep "build.js --watch" | grep -v grep | wc -l | xargs)
 ESBUILD_AFTER=$(ps aux | grep "esbuild --service" | grep -v grep | wc -l | xargs)
-ORGII_AFTER=$(pgrep -f "ORG2 Dev" | wc -l | xargs)
+ORGII_AFTER=$(pgrep -f "^ORG2 Dev$" | wc -l | xargs)
 PORT_AFTER=$(lsof -ti :1998 2>/dev/null | head -1)
 
 if [ "$QUIET" != "true" ]; then

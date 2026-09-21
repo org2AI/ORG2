@@ -18,13 +18,12 @@
  *     the slot derives both from `useLocation()` and writes back with
  *     `navigate(..., { replace: true })` on user interaction.
  */
-import { ResponsiveContainer } from "@/src/modules/shared/layouts/NarrowPlaceholder";
 import {
   DETAIL_PANEL_TOKENS,
   InternalHeader,
   ScrollFadeContainer,
-  SettingsBreadcrumb,
-} from "@/src/modules/shared/layouts/blocks";
+} from "@/src/components/layout/blocks";
+import { ResponsiveContainer } from "@/src/components/layout/blocks/NarrowPlaceholder";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,8 +32,11 @@ import { Navigate, useLocation } from "react-router-dom";
 import Button from "@src/components/Button";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import { Placeholder } from "@src/components/Placeholder";
-import TabPill, { type TabPillItem } from "@src/components/TabPill";
+import type { TabPillItem } from "@src/components/TabPill";
 import Tooltip from "@src/components/Tooltip";
+// AGENT_ORGS and MY_ROLE roots host larger surfaces that already exist
+// as full-page modules; the slot lazy-loads them on demand.
+import { getPagePanelBackgroundStyle } from "@src/components/layout/tokens/viewContainerTokens";
 import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import {
   SETTINGS_ROUTE_ROOT,
@@ -63,19 +65,18 @@ import IntegrationsDetailPanel from "@src/modules/MainApp/Integrations/Integrati
 import { IntegrationsPageListColumn } from "@src/modules/MainApp/Integrations/IntegrationsPageListColumn";
 import { useIntegrationsPage } from "@src/modules/MainApp/Integrations/useIntegrationsPage";
 import MainAppPageHeader from "@src/modules/MainApp/shared/MainAppPageHeader";
-import SplitViewLayout from "@src/modules/shared/layouts/SplitViewLayout";
-// AGENT_ORGS and MY_ROLE roots host larger surfaces that already exist
-// as full-page modules; the slot lazy-loads them on demand.
-import { getPagePanelBackgroundStyle } from "@src/modules/shared/layouts/viewContainerTokens";
 import { AgentOrgsPage, MyRolePage } from "@src/router/lazy/pages";
 import { VerticalResizeHandle } from "@src/scaffold/Resize";
+import SplitViewLayout from "@src/scaffold/layouts/SplitViewLayout";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { resolvedBackgroundConfigAtom } from "@src/store/ui/backgroundConfigAtom";
 import { toggleChatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { settingsReturnPathAtom } from "@src/store/ui/settingsNavigationAtom";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
+import { wizardBreadcrumbTitleAtom } from "@src/store/ui/wizardBreadcrumbAtom";
 import type { ChatPanelPosition } from "@src/store/ui/workStationLayout/chatPositionAtoms";
 
+import SettingsBreadcrumb from "./SettingsBreadcrumb";
 import SettingsHeaderActions from "./components/SettingsHeaderActions";
 import { APP_SECTIONS, SECTION_IDS, SECTION_TAB_META } from "./config";
 import SettingsSectionRenderer from "./renderer/SettingsSectionRenderer";
@@ -85,8 +86,6 @@ interface SettingsSlotProps {
   maximized: boolean;
   /** Which side of the workbench the slot sits on. */
   position: ChatPanelPosition;
-  /** True when hosted as a flex sibling (full/compact); false when inset. */
-  embedded: boolean;
   /** Unclipped boundary host for the centered resize indicator. */
   resizeIndicatorHost?: HTMLElement | null;
 }
@@ -145,18 +144,9 @@ const SettingsSlotAppBody: React.FC = () => {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <InternalHeader
             noPanelHeader
-            contentPadding
-            className={DETAIL_PANEL_TOKENS.headerWidth}
-            tabs={
-              <TabPill
-                tabs={tabs}
-                activeTab={activeTab}
-                onChange={handleTabChange}
-                variant="simple"
-                fillWidth={false}
-                size="large"
-              />
-            }
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
           />
           <ScrollFadeContainer
             className={`scroll-fade-at-top ${DETAIL_PANEL_TOKENS.scrollContentNoTop}`}
@@ -252,17 +242,20 @@ function isAgentOrgsRoute(pathname: string): boolean {
 const SettingsSlot: React.FC<SettingsSlotProps> = ({
   maximized,
   position,
-  embedded,
   resizeIndicatorHost,
 }) => {
   const { t } = useTranslation("settings");
   const { t: tCommon } = useTranslation("common");
+  const { t: tNavigation } = useTranslation("navigation");
   const toggleMaximized = useSetAtom(toggleChatPanelMaximizedAtom);
   const location = useLocation();
   const navigate = useNavigate();
   const settingsReturnPath = useAtomValue(settingsReturnPathAtom);
   const sidebarCollapsed = useAtomValue(sidebarCollapsedAtom);
   const devModeEnabled = useAtomValue(devModeEnabledAtom);
+  // An open wizard holds unsaved form state; revealing the workstation from
+  // here would let the user wander off mid-flow, so the toggle is hidden.
+  const wizardOpen = useAtomValue(wizardBreadcrumbTitleAtom) !== null;
   const backgroundConfig = useAtomValue(resolvedBackgroundConfigAtom);
   const pageOpacityStyle = getPagePanelBackgroundStyle(
     backgroundConfig.pageOpacity
@@ -273,7 +266,6 @@ const SettingsSlot: React.FC<SettingsSlotProps> = ({
   });
   const { isDragging, panelRef, handleMouseDown } = useChatPanelResize({
     useExternalWidth: maximized,
-    embedded,
     position,
   });
 
@@ -293,6 +285,16 @@ const SettingsSlot: React.FC<SettingsSlotProps> = ({
     }
     navigate(settingsReturnPath || ROUTES.workStation.base.path);
   }, [location.pathname, navigate, settingsReturnPath]);
+
+  // The collapsed-sidebar home button stands in for the sidebar's
+  // close-Settings row, so it carries the same copy and ⌘W row — except on
+  // Agent & Team routes, where `handleBack` drills up to the Settings root
+  // instead of leaving Settings, and advertising the close shortcut would
+  // describe something the button does not do.
+  const drillsUpToSettingsRoot = isAgentOrgsRoute(location.pathname);
+  const backLabel = drillsUpToSettingsRoot
+    ? tCommon("actions.back")
+    : tNavigation("labels.closeSettings");
 
   // Mirror ChatPanel's tooltip: same shortcut, same restore copy
   // (`sessions:chat.restoreSplitView` = "Show Workstation") — only the
@@ -332,8 +334,7 @@ const SettingsSlot: React.FC<SettingsSlotProps> = ({
                 : "end"
           }
           onMouseDown={handleMouseDown}
-          variant={embedded ? "border" : "transparent"}
-          noAccent={!embedded}
+          variant="border"
         />
       )}
       <div
@@ -341,10 +342,6 @@ const SettingsSlot: React.FC<SettingsSlotProps> = ({
         className="relative flex h-full max-w-full min-w-0 flex-1 flex-col overflow-hidden"
         style={
           {
-            // Match ChatPanel: inset/comfort mode rounds the slot; full/
-            // compact mode hosts the slot edge-to-edge and the wrapper
-            // owns the radius.
-            borderRadius: embedded ? 0 : "var(--radius-page)",
             contain: isDragging ? "strict" : undefined,
             willChange: isDragging ? "width" : undefined,
             WebkitAppRegion: "no-drag",
@@ -360,23 +357,36 @@ const SettingsSlot: React.FC<SettingsSlotProps> = ({
           breadcrumb={
             <>
               {sidebarCollapsed ? (
-                <Button
-                  htmlType="button"
-                  variant="tertiary"
-                  size="small"
-                  iconOnly
-                  onClick={handleBack}
-                  aria-label={tCommon("actions.back")}
-                  title={tCommon("actions.back")}
-                  icon={
-                    <HugeiconsIcon
-                      icon={Home01Icon}
-                      data-icon="home"
-                      size={16}
-                      strokeWidth={2}
+                <Tooltip
+                  content={
+                    <KeyboardShortcutTooltipContent
+                      label={backLabel}
+                      shortcutId={
+                        drillsUpToSettingsRoot ? undefined : "close_tab"
+                      }
                     />
                   }
-                />
+                  position="bottom-start"
+                  kind="button"
+                  framedPanel
+                  smartPlacement
+                >
+                  <Button
+                    variant="tertiary"
+                    size="small"
+                    iconOnly
+                    onClick={handleBack}
+                    aria-label={backLabel}
+                    icon={
+                      <HugeiconsIcon
+                        icon={Home01Icon}
+                        data-icon="home"
+                        size={16}
+                        strokeWidth={2}
+                      />
+                    }
+                  />
+                </Tooltip>
               ) : null}
               <SettingsBreadcrumb className={sidebarCollapsed ? "" : "px-1!"} />
             </>
@@ -384,40 +394,41 @@ const SettingsSlot: React.FC<SettingsSlotProps> = ({
           actions={
             <>
               <SettingsHeaderActions />
-              <Tooltip
-                content={maximizeTooltip}
-                position="bottom-end"
-                mouseEnterDelay={200}
-                framedPanel
-              >
-                <span className="inline-flex">
-                  <Button
-                    htmlType="button"
-                    variant="tertiary"
-                    size="small"
-                    iconOnly
-                    onClick={() => toggleMaximized()}
-                    aria-label={maximizeLabel}
-                    icon={
-                      maximized ? (
-                        <HugeiconsIcon
-                          icon={GalleryThumbnailsIcon}
-                          data-icon="gallery-thumbnails"
-                          size={14}
-                          strokeWidth={2}
-                        />
-                      ) : (
-                        <HugeiconsIcon
-                          icon={ArrowExpand01Icon}
-                          data-icon="maximize-2"
-                          size={14}
-                          strokeWidth={2}
-                        />
-                      )
-                    }
-                  />
-                </span>
-              </Tooltip>
+              {!wizardOpen && (
+                <Tooltip
+                  content={maximizeTooltip}
+                  position="bottom-end"
+                  kind="button"
+                  framedPanel
+                >
+                  <span className="inline-flex">
+                    <Button
+                      variant="tertiary"
+                      size="small"
+                      iconOnly
+                      onClick={() => toggleMaximized()}
+                      aria-label={maximizeLabel}
+                      icon={
+                        maximized ? (
+                          <HugeiconsIcon
+                            icon={GalleryThumbnailsIcon}
+                            data-icon="gallery-thumbnails"
+                            size={14}
+                            strokeWidth={2}
+                          />
+                        ) : (
+                          <HugeiconsIcon
+                            icon={ArrowExpand01Icon}
+                            data-icon="maximize-2"
+                            size={14}
+                            strokeWidth={2}
+                          />
+                        )
+                      }
+                    />
+                  </span>
+                </Tooltip>
+              )}
             </>
           }
         />

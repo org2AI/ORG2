@@ -3,24 +3,10 @@ import { useAtomValue } from "jotai";
 import React, { useCallback, useState } from "react";
 
 import SegmentedTextPill from "@src/components/SegmentedTextPill";
-import Select, { type SelectOption } from "@src/components/Select";
-import TabPill from "@src/components/TabPill";
-import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
+import type { SelectOption } from "@src/components/Select";
 import { CREATOR_COMPOSER_POSITION } from "@src/config/sessionCreatorConfig";
 import ImportSharedSessionDialog from "@src/features/Org2Cloud/ImportSharedSessionDialog";
-import {
-  type LaunchpadAction,
-  LaunchpadActionCard,
-} from "@src/features/SessionCreator/components/LaunchpadActionGrid";
-import {
-  Coins01Icon,
-  Download01Icon,
-  HugeiconsIcon,
-  ImportIcon,
-  Key02Icon,
-} from "@src/icons";
-import { CreatorContentLayout } from "@src/modules/shared/layouts/blocks";
-import { useAvailableAppUpdate } from "@src/scaffold/AppUpdater/state";
+import { LaunchpadActionCard } from "@src/features/SessionCreator/components/LaunchpadActionGrid";
 import { creatorComposerPositionAtom } from "@src/store/session/creatorComposerPositionAtom";
 import { creatorLaunchpadActionsVisibleAtom } from "@src/store/session/creatorLaunchpadActionsVisibleAtom";
 import {
@@ -28,9 +14,11 @@ import {
   type ChatPanelCreateTarget,
 } from "@src/store/ui/chatPanel/selectionAtoms";
 
+import { StartPageActiveLauncher } from "./StartPageActiveLauncher";
 import { StartPageQuotaModal } from "./StartPageQuotaModal";
-
-type StartPageView = "session" | "work-item" | "more";
+import { StartPageTabs } from "./StartPageTabs";
+import { buildStartPageUtilityActions } from "./startPageUtilityActions";
+import { type StartPageView, resolveStartPageView } from "./startPageView";
 
 interface StartPageAgentLauncherOptions {
   createTarget:
@@ -52,7 +40,6 @@ interface ChatPanelStartPageProps {
   ) => React.ReactNode;
   onAddApiKey: () => void;
   onCreateTarget: (target: string) => void;
-  onInstallLatestUpdate: () => void;
   onProjectAgentModeChange: (enabled: boolean) => void;
   onWorkItemAgentModeChange: (enabled: boolean) => void;
   projectAgentMode: boolean;
@@ -101,7 +88,6 @@ export function ChatPanelStartPage({
   moreLauncher,
   onAddApiKey,
   onCreateTarget,
-  onInstallLatestUpdate,
   onProjectAgentModeChange,
   onWorkItemAgentModeChange,
   projectAgentMode,
@@ -116,81 +102,13 @@ export function ChatPanelStartPage({
   const [isImportSessionDialogOpen, setIsImportSessionDialogOpen] =
     useState(false);
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
-  const availableUpdate = useAvailableAppUpdate();
-  const importSessionAction: LaunchpadAction = {
-    id: "import-session",
-    title: t("navigation:cloud.share.importEntry"),
-    icon: (
-      <HugeiconsIcon
-        icon={ImportIcon}
-        data-icon="import"
-        size={16}
-        strokeWidth={1.8}
-      />
-    ),
-    onClick: () => setIsImportSessionDialogOpen(true),
-    tone: "neutral",
-  };
-  const addApiKeyAction: LaunchpadAction = {
-    id: "add-api-key",
-    title: t("chat.startPage.addApiKey.title"),
-    icon: (
-      <HugeiconsIcon
-        icon={Key02Icon}
-        data-icon="key-round"
-        size={16}
-        strokeWidth={1.8}
-      />
-    ),
-    onClick: onAddApiKey,
-    tone: "neutral",
-  };
-  const showQuotaAction: LaunchpadAction = {
-    id: "show-quota",
-    title: t("chat.startPage.showQuota.title"),
-    icon: (
-      <HugeiconsIcon
-        icon={Coins01Icon}
-        data-icon="coins"
-        size={16}
-        strokeWidth={1.8}
-      />
-    ),
-    onClick: () => setIsQuotaModalOpen(true),
-    tone: "neutral",
-  };
-  const utilityActions: LaunchpadAction[] = availableUpdate?.available
-    ? [
-        {
-          id: "install-latest-update",
-          title: t("chat.startPage.installLatestUpdate.title"),
-          icon: (
-            <HugeiconsIcon
-              icon={Download01Icon}
-              data-icon="download"
-              size={16}
-              strokeWidth={1.8}
-            />
-          ),
-          onClick: onInstallLatestUpdate,
-          tone: "warning",
-        },
-        importSessionAction,
-        addApiKeyAction,
-        showQuotaAction,
-      ]
-    : [importSessionAction, addApiKeyAction, showQuotaAction];
-  const selectedMoreTarget = createTargetOptions.some(
-    (option) => option.value === createTarget
-  )
-    ? createTarget
-    : createTargetOptions[0]?.value;
-  const activeView: StartPageView =
-    createTarget === CHAT_PANEL_CREATE_TARGET.AGENT_SESSION
-      ? "session"
-      : createTarget === CHAT_PANEL_CREATE_TARGET.WORK_ITEM
-        ? "work-item"
-        : "more";
+  const utilityActions = buildStartPageUtilityActions({
+    onAddApiKey,
+    setIsImportSessionDialogOpen,
+    setIsQuotaModalOpen,
+    t,
+  });
+  const activeView: StartPageView = resolveStartPageView(createTarget);
   const suggestionActions = launchpadActionsVisible
     ? utilityActions.map((action) => (
         <LaunchpadActionCard
@@ -284,109 +202,21 @@ export function ChatPanelStartPage({
       className={`flex w-full flex-col overflow-hidden ${className ?? ""}`}
       data-testid="chat-panel-start-page"
     >
-      <div
-        className="shrink-0 bg-chat-pane"
-        data-testid="chat-panel-start-page-tabs"
-      >
-        <div
-          className={`${CHAT_PANEL_WIDTH_TOKENS.headerWidth} flex h-14 items-center justify-center gap-3 px-4 pt-1`}
-        >
-          <TabPill
-            activeTab={activeView}
-            tabs={[
-              {
-                key: "session",
-                label: t("chat.startPage.tabs.session"),
-                dataTestId: "chat-panel-start-page-tab-session",
-              },
-              {
-                key: "work-item",
-                label: t("chat.startPage.tabs.workItem"),
-                dataTestId: "chat-panel-start-page-tab-work-item",
-              },
-              {
-                key: "more",
-                label: t("chat.startPage.tabs.more"),
-                dataTestId: "chat-panel-start-page-tab-more",
-              },
-            ]}
-            onChange={handleViewChange}
-            variant="simple"
-            size="large"
-            fillWidth={false}
-            className="h-10"
-          />
-          {activeView === "more" ? (
-            <div
-              className="flex -translate-y-1 items-center gap-2"
-              data-testid="chat-panel-start-page-trailing-control"
-            >
-              <span
-                className="h-5 w-px shrink-0 bg-border-2"
-                role="separator"
-                aria-hidden
-                data-testid="chat-panel-start-page-trailing-separator"
-              />
-              <Select
-                value={selectedMoreTarget}
-                options={createTargetOptions}
-                onChange={(value) => {
-                  if (!Array.isArray(value)) {
-                    onCreateTarget(String(value));
-                  }
-                }}
-                size="large"
-                appearance="bare"
-                radius="pill"
-                dropdownMinWidth={168}
-                dropdownWidthMode="auto"
-                className="select-title-row w-auto"
-                selectorClassName="max-w-[240px] gap-2! px-1! text-[16px]! leading-6! [&_.select-suffix]:ml-0!"
-                dataTestId="chat-panel-start-page-create-target-select"
-              />
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {showManualWorkItem ? (
-          <div
-            className="flex h-full min-h-0 w-full"
-            data-testid="chat-panel-start-page-work-item-launcher"
-          >
-            {manualWorkItemLauncherContent}
-          </div>
-        ) : activeView === "more" ? (
-          <div
-            className="flex h-full min-h-0 w-full flex-col overflow-hidden"
-            data-testid="chat-panel-start-page-more-launcher"
-          >
-            {moreLauncherContent}
-          </div>
-        ) : (
-          <CreatorContentLayout
-            placement="fill"
-            contentDataTestId={
-              activeView === "work-item"
-                ? "chat-panel-start-page-work-item-content"
-                : "chat-panel-start-page-session-content"
-            }
-          >
-            {agentLauncherContent ? (
-              <div
-                className="h-full w-full"
-                data-testid={
-                  activeView === "work-item"
-                    ? "chat-panel-start-page-work-item-launcher"
-                    : "chat-panel-start-page-session-launcher"
-                }
-              >
-                {agentLauncherContent}
-              </div>
-            ) : null}
-          </CreatorContentLayout>
-        )}
-      </div>
+      <StartPageTabs
+        activeView={activeView}
+        createTarget={createTarget}
+        createTargetOptions={createTargetOptions}
+        onCreateTarget={onCreateTarget}
+        onViewChange={handleViewChange}
+        t={t}
+      />
+      <StartPageActiveLauncher
+        activeView={activeView}
+        agentLauncherContent={agentLauncherContent}
+        manualWorkItemLauncherContent={manualWorkItemLauncherContent}
+        moreLauncherContent={moreLauncherContent}
+        showManualWorkItem={showManualWorkItem}
+      />
       {isImportSessionDialogOpen && (
         <ImportSharedSessionDialog
           visible

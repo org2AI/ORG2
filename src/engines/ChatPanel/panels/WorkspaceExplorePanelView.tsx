@@ -12,12 +12,10 @@
  * clone form uses — so cloned repos automatically register as ORGII
  * workspaces.
  */
-import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
 import {
   type RepoSearchResponse,
   type RepoSearchSort,
@@ -40,12 +38,14 @@ import {
   SquareArrowUpRight02Icon,
   StarIcon,
 } from "@src/icons";
+import { zodActionRegistry } from "@src/scaffold/ActionSystem/schema/zodRegistry";
 import {
   effectiveWorkspaceDefaultRepoLocationAtom,
   workspaceCustomDefaultRepoPathAtom,
 } from "@src/store/config/configAtom";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
+import { openLink } from "@src/util/ui/openLink";
 import { resolveDefaultRepoParentPath } from "@src/util/workspace/defaultRepoPath";
 
 const logger = createLogger("WorkspaceExplorePanelView");
@@ -250,9 +250,7 @@ const WorkspaceExplorePanelView: React.FC = () => {
   );
 
   const handleOpen = useCallback((repo: SearchRepo) => {
-    void openExternal(repo.html_url).catch((err) => {
-      logger.warn("failed to open repo URL:", err);
-    });
+    openLink(repo.html_url, { navigate: true });
   }, []);
 
   const handleClone = useCallback(
@@ -321,7 +319,6 @@ const WorkspaceExplorePanelView: React.FC = () => {
   const searchButton = (
     <Button
       layout="custom"
-      appearance="custom"
       htmlType="submit"
       disabled={!canSubmit}
       aria-label={t("explore.search", { defaultValue: "Search" })}

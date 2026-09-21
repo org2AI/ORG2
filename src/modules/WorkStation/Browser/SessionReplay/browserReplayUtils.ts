@@ -4,13 +4,14 @@
  * Pure utility functions and constants for the Browser SessionReplay component.
  * Extracted to keep index.tsx under the 600-line limit.
  */
-import type { BrowserReplaySidebarCategory } from "./BrowserSidebar";
 import { categorizeBrowserEntry } from "./entryUtils";
 import type { BrowserEntry, InternalBrowserEntry } from "./types";
 
 // ============================================
 // Tab ID constants
 // ============================================
+
+export type BrowserReplayCategory = "agent_browser" | "search_fetch";
 
 export const MY_TABS_BROWSER_TAB_ID = "browser:my-tabs";
 export const AGENT_BROWSER_TAB_ID = "browser:agent-browser";
@@ -20,7 +21,7 @@ export const TAB_ICON_CLASS = "shrink-0";
 
 export const BROWSER_CATEGORY_BY_TAB_ID: ReadonlyMap<
   string,
-  BrowserReplaySidebarCategory
+  BrowserReplayCategory
 > = new Map([
   [AGENT_BROWSER_TAB_ID, "agent_browser"],
   [SEARCH_FETCH_TAB_ID, "search_fetch"],
@@ -90,26 +91,6 @@ export function getNewestSearchFetchTimestamp(
     const category = categorizeBrowserEntry(entry as BrowserEntry);
     return category === "web_search" || category === "web_fetch";
   });
-}
-
-// ============================================
-// Entry helpers
-// ============================================
-
-export function getEntryCategory(
-  entryId: string,
-  browserEntries: BrowserEntry[],
-  internalBrowserEntries: InternalBrowserEntry[]
-): string | null {
-  const nativeEntry = internalBrowserEntries.find(
-    (entry) => entry.entryId === entryId
-  );
-  if (nativeEntry) return "internal_browser";
-
-  const browserEntry = browserEntries.find(
-    (entry) => entry.entryId === entryId
-  );
-  return browserEntry ? categorizeBrowserEntry(browserEntry) : null;
 }
 
 export function labelWithCount(label: string, count: number): string {

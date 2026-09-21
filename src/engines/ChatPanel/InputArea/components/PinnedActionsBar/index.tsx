@@ -83,7 +83,6 @@ const ActionPill: React.FC<ActionPillProps> = memo(
     const button = (
       <Button
         ref={buttonRef}
-        variant="secondary"
         size="small"
         shape="round"
         title={displayLabel}
@@ -355,8 +354,6 @@ const PinnedActionsBar: React.FC<PinnedActionsBarProps> = memo(
     const manageButton = (
       <Button
         ref={moreButtonRef}
-        variant="secondary"
-        appearance="outline"
         size="small"
         shape="round"
         icon={
@@ -371,7 +368,7 @@ const PinnedActionsBar: React.FC<PinnedActionsBarProps> = memo(
         title={t("input.pinnedActions.manage")}
         aria-label={t("input.pinnedActions.manage")}
         onClick={handleOpenPanel}
-        className={`shrink-0 ${pillControlStateClass(panelOpen)}`}
+        className={`shrink-0 ${pillControlStateClass(panelOpen, "background", "border")}`}
       />
     );
 

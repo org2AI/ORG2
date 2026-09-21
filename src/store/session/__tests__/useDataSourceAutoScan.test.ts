@@ -8,6 +8,7 @@ import {
   dataSourceConfigAtom,
   dataSourceGlobalFrequencyAtom,
   dataSourcePresenceAtom,
+  dataSourceScanFailureAtom,
   externalSessionsEnabledAtom,
 } from "../dataSourceConfigAtom";
 import {
@@ -493,6 +494,143 @@ describe("runDataSourceAutoScan", () => {
     await runDataSourceAutoScan();
 
     expect(mocks.loadSessionRoster).toHaveBeenCalledOnce();
+  });
+
+  describe("when one source's importer fails", () => {
+    const WARP_ERROR = "Failed to open Warp database: unable to open database";
+
+    function enableCodexAndWarp(): void {
+      const config: DataSourceConfigMap = Object.fromEntries(
+        IMPORTED_HISTORY_SOURCE_DESCRIPTORS.map(({ sourceId }) => [
+          sourceId,
+          {
+            enabled: false,
+            frequency: "default" as const,
+            lastScannedAt: null,
+          },
+        ])
+      );
+      config.codex_app = {
+        enabled: true,
+        frequency: "10m",
+        lastScannedAt: NOW - 10 * 60_000,
+      };
+      config.warp = {
+        enabled: true,
+        frequency: "10m",
+        lastScannedAt: NOW - 10 * 60_000,
+      };
+      mocks.store?.set(dataSourceConfigAtom, config);
+    }
+
+    function nextDelay(now: number): number | null {
+      const store = mocks.store!;
+      return nextDataSourceAutoScanDelay(
+        now,
+        true,
+        true,
+        store.get(dataSourceConfigAtom),
+        store.get(dataSourcePresenceAtom),
+        "10m",
+        store.get(dataSourceProbeRetryAtAtom),
+        store.get(dataSourceScanFailureAtom)
+      );
+    }
+
+    it("still stamps and reloads the sources that scanned", async () => {
+      enableCodexAndWarp();
+      mocks.externalHistoryRescanSources.mockResolvedValueOnce({
+        changedSources: ["codex_app"],
+        sourceSignatures: { codex_app: "1:2026-09-16T02:03:00Z:1" },
+        failedSources: { warp: WARP_ERROR },
+      });
+
+      await runDataSourceAutoScan();
+
+      expect(mocks.externalHistoryRescanSources).toHaveBeenCalledWith([
+        "codex_app",
+        "warp",
+      ]);
+      expect(mocks.loadSessionRoster).toHaveBeenCalledOnce();
+      const config = mocks.store!.get(dataSourceConfigAtom);
+      expect(config.codex_app.lastScannedAt).toBe(NOW);
+      // A failed importer run is not a scan: the stamp must not move.
+      expect(config.warp.lastScannedAt).toBe(NOW - 10 * 60_000);
+      expect(mocks.store!.get(dataSourceScanFailureAtom)).toEqual({
+        warp: { failures: 1, lastAttemptAt: NOW, error: WARP_ERROR },
+      });
+    });
+
+    it("retries only the failing source, on a doubling backoff capped at its cadence", async () => {
+      enableCodexAndWarp();
+      mocks.externalHistoryRescanSources.mockImplementation(
+        async (sourceIds: string[]) => ({
+          changedSources: [],
+          failedSources: sourceIds.includes("warp") ? { warp: WARP_ERROR } : {},
+        })
+      );
+
+      await runDataSourceAutoScan();
+      // Not 0: the unstamped source must not leave the scheduler permanently
+      // due, which re-ran the whole batch every 30 s.
+      expect(nextDelay(NOW)).toBe(30_000);
+
+      // Before the retry deadline nothing is due — no importer runs at all.
+      await runDataSourceAutoScan();
+      expect(mocks.externalHistoryRescanSources).toHaveBeenCalledTimes(1);
+
+      vi.spyOn(Date, "now").mockReturnValue(NOW + 30_000);
+      await runDataSourceAutoScan();
+      expect(mocks.externalHistoryRescanSources).toHaveBeenCalledTimes(2);
+      expect(mocks.externalHistoryRescanSources).toHaveBeenLastCalledWith([
+        "warp",
+      ]);
+      expect(nextDelay(NOW + 30_000)).toBe(60_000);
+
+      // A long-broken source settles at its configured cadence.
+      mocks.store!.set(dataSourceScanFailureAtom, {
+        warp: { failures: 12, lastAttemptAt: NOW, error: WARP_ERROR },
+      });
+      mocks.store!.set(dataSourceConfigAtom, (previous) => ({
+        ...previous,
+        codex_app: { ...previous.codex_app, enabled: false },
+      }));
+      expect(nextDelay(NOW)).toBe(10 * 60_000);
+    });
+
+    it("drops the failure and resumes stamping once the source recovers", async () => {
+      enableCodexAndWarp();
+      mocks.store!.set(dataSourceScanFailureAtom, {
+        warp: { failures: 3, lastAttemptAt: NOW - 120_000, error: WARP_ERROR },
+      });
+
+      await runDataSourceAutoScan();
+
+      expect(mocks.store!.get(dataSourceScanFailureAtom)).toEqual({});
+      expect(mocks.store!.get(dataSourceConfigAtom).warp.lastScannedAt).toBe(
+        NOW
+      );
+    });
+
+    it("ignores the backoff for an explicit forced pass", async () => {
+      enableCodexAndWarp();
+      mocks.store!.set(dataSourceScanFailureAtom, {
+        warp: { failures: 5, lastAttemptAt: NOW, error: WARP_ERROR },
+      });
+      mocks.store!.set(dataSourceConfigAtom, (previous) => ({
+        ...previous,
+        codex_app: { ...previous.codex_app, lastScannedAt: NOW },
+      }));
+
+      await runDataSourceAutoScan();
+      expect(mocks.externalHistoryRescanSources).not.toHaveBeenCalled();
+
+      await runDataSourceAutoScan(true);
+      expect(mocks.externalHistoryRescanSources).toHaveBeenCalledWith([
+        "codex_app",
+        "warp",
+      ]);
+    });
   });
 
   it("deduplicates overlapping startup passes", async () => {

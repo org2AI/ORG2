@@ -1,4 +1,4 @@
-import { normalizePrStatus } from "@src/shared/pr/prStatus";
+import { normalizePrStatus } from "@src/util/git/pr/prStatus";
 
 const WORKSTATION_PR_STORAGE_PREFIX = "orgii.workstation.pr";
 

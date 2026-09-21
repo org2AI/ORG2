@@ -101,9 +101,12 @@ export interface IntegrationsPathOptions {
   category?: IntegrationsCategorySegment;
 }
 
-const CODEX_REAUTH_PARAM = "reauth";
-const CODEX_REAUTH_VALUE = "codex";
-const CODEX_REAUTH_AUTO_START_PARAM = "autoStart";
+const REAUTH_PARAM = "reauth";
+const REAUTH_AUTO_START_PARAM = "autoStart";
+
+/** OAuth agents whose local account can be repaired in place. */
+export const REAUTH_AGENTS = ["codex", "claude_code"] as const;
+export type ReauthAgent = (typeof REAUTH_AGENTS)[number];
 
 export const CODEX_REAUTH_RETURN_TO_STATE_KEY = "codexReauthReturnTo";
 
@@ -114,8 +117,14 @@ export function buildIntegrationsPath(
   return `${SETTINGS_BASE}/integrations/${toCategoryUrlSegment(category)}`;
 }
 
-/** Build the direct Key Vault route used to repair a Codex OAuth account. */
-export function buildCodexReauthPath(accountId?: string): string {
+/**
+ * Build the direct Key Vault route used to repair an OAuth account. Only the
+ * Codex sign-in can start on its own, so only Codex asks for `autoStart`.
+ */
+export function buildAccountReauthPath(
+  agent: ReauthAgent,
+  accountId?: string
+): string {
   const wizardPath = buildWizardPath(
     buildIntegrationsPath({ category: "models" }),
     WIZARD_IDS.KEY_ADD,
@@ -123,21 +132,28 @@ export function buildCodexReauthPath(accountId?: string): string {
   );
   const [pathname, search = ""] = wizardPath.split("?");
   const params = new URLSearchParams(search);
-  params.set(CODEX_REAUTH_PARAM, CODEX_REAUTH_VALUE);
-  params.set(CODEX_REAUTH_AUTO_START_PARAM, "true");
+  params.set(REAUTH_PARAM, agent);
+  if (agent === "codex") params.set(REAUTH_AUTO_START_PARAM, "true");
   return `${pathname}?${params.toString()}`;
 }
 
-export function parseCodexReauthIntent(search: string): {
-  active: boolean;
+export function parseAccountReauthIntent(search: string): {
+  agent: ReauthAgent | null;
   autoStart: boolean;
 } {
   const params = new URLSearchParams(search);
-  const active = params.get(CODEX_REAUTH_PARAM) === CODEX_REAUTH_VALUE;
+  const requested = params.get(REAUTH_PARAM);
+  const agent =
+    REAUTH_AGENTS.find((candidate) => candidate === requested) ?? null;
   return {
-    active,
-    autoStart: active && params.get(CODEX_REAUTH_AUTO_START_PARAM) === "true",
+    agent,
+    autoStart: agent !== null && params.get(REAUTH_AUTO_START_PARAM) === "true",
   };
+}
+
+/** Build the direct Key Vault route used to repair a Codex OAuth account. */
+export function buildCodexReauthPath(accountId?: string): string {
+  return buildAccountReauthPath("codex", accountId);
 }
 
 export function parseIntegrationsPath(pathname: string): {

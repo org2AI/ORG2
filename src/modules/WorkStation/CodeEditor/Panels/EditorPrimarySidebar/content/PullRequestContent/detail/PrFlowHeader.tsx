@@ -13,8 +13,8 @@ import type { PrFile } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
 import PrStatusBadge from "@src/components/PrStatusBadge";
+import GitHubFlowHeader from "@src/features/GitHubWork/GitHubFlowHeader";
 import { Copy01Icon, HugeiconsIcon } from "@src/icons";
-import GitHubFlowHeader from "@src/modules/shared/components/GitHubFlowHeader";
 import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import { copyText } from "@src/util/data/clipboard";
 
@@ -129,7 +129,6 @@ export function PrFlowHeader({
         onClick={() => void copyHeadBranch()}
         data-testid="pr-flow-copy-branch"
         variant="tertiary"
-        appearance="soft"
         iconOnly
         icon={
           <HugeiconsIcon

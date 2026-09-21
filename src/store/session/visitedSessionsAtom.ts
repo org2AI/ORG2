@@ -22,6 +22,7 @@ const MAX_VISITED_IDS = 5_000;
 const VisitedSessionIdsStorageSchema = z
   .array(z.string().min(1))
   .transform((ids) => [...new Set(ids)].slice(0, MAX_VISITED_IDS));
+const visitedStorage = createZodJsonStorage(VisitedSessionIdsStorageSchema);
 
 /**
  * Raw localStorage-backed list of visited session IDs.
@@ -30,7 +31,7 @@ const VisitedSessionIdsStorageSchema = z
 export const visitedSessionIdsAtom = atomWithStorage<string[]>(
   STORAGE_KEY,
   [],
-  createZodJsonStorage(VisitedSessionIdsStorageSchema),
+  visitedStorage,
   { getOnInit: true }
 );
 visitedSessionIdsAtom.debugLabel = "visitedSessionIdsAtom";
@@ -68,14 +69,16 @@ export function markAllSessionsVisited(sessionIds: readonly string[]): void {
   if (sessionIds.length === 0) return;
   const store = getInstrumentedStore();
   store.set(visitedSessionIdsAtom, (prev) => {
-    const incoming = sessionIds.filter(Boolean);
+    const incoming = [...new Set(sessionIds.filter(Boolean))];
     if (incoming.length === 0) return prev;
     const incomingSet = new Set(incoming);
     const carryOver = prev.filter((id) => !incomingSet.has(id));
     const next = [...incoming, ...carryOver];
-    return next.length > MAX_VISITED_IDS
-      ? next.slice(0, MAX_VISITED_IDS)
-      : next;
+    const bounded = next.slice(0, MAX_VISITED_IDS);
+    return bounded.length === prev.length &&
+      bounded.every((id, index) => id === prev[index])
+      ? prev
+      : bounded;
   });
 }
 
@@ -83,3 +86,20 @@ export const __VISITED_SESSIONS_INTERNALS = {
   STORAGE_KEY,
   MAX_VISITED_IDS,
 };
+
+/** Remote callers need a durable acknowledgment, unlike local navigation
+ * which intentionally remains usable under a storage-quota failure. */
+export function markAllSessionsVisitedPersisted(
+  sessionIds: readonly string[]
+): void {
+  markAllSessionsVisited(sessionIds);
+  const ids = getInstrumentedStore().get(visitedSessionIdsAtom);
+  const serialized = JSON.stringify(ids);
+  if (localStorage.getItem(STORAGE_KEY) !== serialized) {
+    // A retry must persist even when the in-memory mark is already present.
+    visitedStorage.setItem(STORAGE_KEY, ids);
+  }
+  if (localStorage.getItem(STORAGE_KEY) !== serialized) {
+    throw new Error("Could not persist visited sessions");
+  }
+}

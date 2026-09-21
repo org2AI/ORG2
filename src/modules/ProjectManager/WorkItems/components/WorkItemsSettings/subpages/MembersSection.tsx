@@ -13,14 +13,14 @@ import type { MemberEntry } from "@src/api/http/project";
 import Button from "@src/components/Button";
 import PersonAvatar from "@src/components/PersonAvatar";
 import Switch from "@src/components/Switch";
-import { HugeiconsIcon, SquareArrowUpRight02Icon } from "@src/icons";
 import {
   SECTION_DESCRIPTION_CLASSES,
   SectionContainer,
   SectionHeading,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { CARD_ROW_TOKENS } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/Section";
+import { CARD_ROW_TOKENS } from "@src/components/layout/blocks";
+import { HugeiconsIcon, SquareArrowUpRight02Icon } from "@src/icons";
 import type { Person } from "@src/types/core/shared";
 
 export interface MembersSectionProps {

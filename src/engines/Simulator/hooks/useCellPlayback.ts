@@ -1,23 +1,13 @@
 /**
  * useCellPlayback Hook
  *
- * Manages auto-play timer and global replay state synchronization for a
- * single grid cell. Separated from useCellReplayState for maintainability.
+ * Manages the auto-play timer for a single grid cell. Separated from
+ * useCellReplayState for maintainability.
  */
-import { useAtomValue } from "jotai";
-import {
-  type Dispatch,
-  type SetStateAction,
-  useCallback,
-  useEffect,
-  useRef,
-} from "react";
+import { type Dispatch, type SetStateAction, useEffect, useRef } from "react";
 
 import type { SessionEvent } from "@src/engines/SessionCore";
-import {
-  type CellReplayPersistState,
-  globalReplayStateAtom,
-} from "@src/store/ui/simulatorAtom";
+import type { CellReplayPersistState } from "@src/store/ui/simulatorAtom";
 
 export interface UseCellPlaybackOptions {
   events: SessionEvent[];
@@ -28,11 +18,10 @@ export interface UseCellPlaybackOptions {
   setCurrentIndexLocal: Dispatch<SetStateAction<number>>;
   setIsPlayingLocal: Dispatch<SetStateAction<boolean>>;
   patchCellState: (patch: Partial<CellReplayPersistState>) => void;
-  setLocalPlaybackSpeed: Dispatch<SetStateAction<number>>;
 }
 
 /**
- * Runs the auto-play timer and responds to global replay commands.
+ * Runs the auto-play timer (independent mode only).
  */
 export function useCellPlayback({
   events,
@@ -43,7 +32,6 @@ export function useCellPlayback({
   setCurrentIndexLocal,
   setIsPlayingLocal,
   patchCellState,
-  setLocalPlaybackSpeed,
 }: UseCellPlaybackOptions): void {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -80,51 +68,5 @@ export function useCellPlayback({
     patchCellState,
     setCurrentIndexLocal,
     setIsPlayingLocal,
-  ]);
-
-  // Global replay state synchronization
-  const globalReplayState = useAtomValue(globalReplayStateAtom);
-  const lastGlobalTriggerRef = useRef(0);
-
-  const setCurrentIndexLocalCb = useCallback(
-    (val: number) => setCurrentIndexLocal(val),
-    [setCurrentIndexLocal]
-  );
-  const setIsPlayingLocalCb = useCallback(
-    (val: boolean) => setIsPlayingLocal(val),
-    [setIsPlayingLocal]
-  );
-
-  useEffect(() => {
-    if (globalReplayState.triggerTime > lastGlobalTriggerRef.current) {
-      lastGlobalTriggerRef.current = globalReplayState.triggerTime;
-
-      queueMicrotask(() => {
-        if (globalReplayState.isPlaying) {
-          setCurrentIndexLocalCb(0);
-          setIsPlayingLocalCb(true);
-          setLocalPlaybackSpeed(globalReplayState.speed);
-          patchCellState({
-            currentIndex: 0,
-            isPlaying: true,
-            hasUserOverride: true,
-          });
-        } else {
-          setCurrentIndexLocalCb(0);
-          setIsPlayingLocalCb(false);
-          patchCellState({
-            currentIndex: 0,
-            isPlaying: false,
-            hasUserOverride: true,
-          });
-        }
-      });
-    }
-  }, [
-    globalReplayState,
-    patchCellState,
-    setCurrentIndexLocalCb,
-    setIsPlayingLocalCb,
-    setLocalPlaybackSpeed,
   ]);
 }

@@ -7,10 +7,12 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::Duration;
 
+mod claude_cli_auth;
 mod claude_oauth;
+mod codex_cli_auth;
 mod codex_oauth;
 mod keys;
 mod oauth_health;
@@ -22,7 +24,7 @@ const OAUTH_REFRESH_EXPIRY_SKEW_SECONDS: i64 = 60;
 /// Shared HTTP timeout for the Claude Code / Codex refresh-token exchanges.
 const OAUTH_REFRESH_REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
 
-type OAuthRefreshLockMap = Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>;
+type OAuthRefreshLockMap = Mutex<HashMap<String, std::sync::Weak<tokio::sync::Mutex<()>>>>;
 
 /// Thread-safe key storage service (`~/.orgii/credentials.json`)
 pub struct KeyService {
@@ -77,7 +79,9 @@ impl KeyService {
     }
 }
 
-pub use token_sync::{CliOAuthTokenSync, CliOAuthTokenSyncOutcome};
+#[cfg(test)]
+pub(crate) use claude_cli_auth::ClaudeCliLoginSource;
+pub use token_sync::{codex_access_token_is_newer, CliOAuthTokenSync, CliOAuthTokenSyncOutcome};
 
 // ============================================
 // Global Instance

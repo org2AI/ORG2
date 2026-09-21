@@ -3,8 +3,6 @@
     "customCommandUpdated": "カスタムコマンドを更新しました",
     "shellSettingUpdated": "シェル設定を更新しました"
   },
-  "noSettingsFound": "「{{query}}」に一致する設定が見つかりません",
-  "searchPlaceholder": "設定を検索...",
   "panel": {
     "maximizeSettings": "設定を最大化"
   },
@@ -15,10 +13,13 @@
     "editorAndWorkspace": "エディタ & Workspace",
     "appUpdate": "アプリの更新",
     "security": "セキュリティ",
+    "appLock": "アプリロック",
     "storage": "ストレージ",
     "agentOrg": "Agent チーム",
     "harnessConnections": "アプリ接続",
-    "mobileRemote": "Mobile Remote"
+    "import": "インポート",
+    "mobileRemote": "Mobile Remote",
+    "development": "開発モード"
   },
   "coreSidebar": {
     "groups": {
@@ -54,6 +55,52 @@
     "customPatternsPlaceholder": "例: MYCORP_[A-Z0-9]{20}",
     "invalidPatterns": "{{count}} 個のパターンが無効なため無視されます：{{patterns}}"
   },
+  "appLock": {
+    "password": "パスワードロック",
+    "setPassword": "パスワードを設定",
+    "changePassword": "パスワードを変更",
+    "removePassword": "パスワードを削除",
+    "currentPassword": "現在のパスワード",
+    "newPassword": "新しいパスワード",
+    "confirmPassword": "新しいパスワードを確認",
+    "passwordSet": "パスワードを設定しました",
+    "passwordChanged": "パスワードを変更しました",
+    "passwordRemoved": "パスワードを削除しました",
+    "lockNow": "今すぐロック",
+    "lockNowDesc": "パスワードが入力されるまで ORG2 のすべてのウインドウをロックします",
+    "shortcut": "ロックのショートカット",
+    "hint": "パスワードのヒント",
+    "hintPlaceholder": "ロック画面に表示されます",
+    "hintOptionalPlaceholder": "パスワードのヒント（任意）",
+    "autoLock": "自動ロック",
+    "autoLockDesc": "ORG2 でキーボードやマウスの操作がこの時間ないとロックします",
+    "autoLockNever": "しない",
+    "autoLockMinutes": "{{count}} 分後",
+    "autoLockHour": "1 時間後",
+    "lockOnLaunch": "ORG2 の起動時にロック",
+    "lockOnLaunchDesc": "アプリを開くたびにパスワードを求めます",
+    "scopeNote": "ロックの対象は ORG2 のウインドウだけです。データは暗号化されず、Mobile Remote も停止しません。また、ファイルにアクセスできる人なら誰でもロックを解除できます。パスワードを忘れた場合は、ORG2 を終了し、ホームディレクトリの .orgii フォルダから app-lock.json を削除してください",
+    "errors": {
+      "tooShort": "{{count}} 文字以上にしてください",
+      "tooLong": "パスワードが長すぎます",
+      "mismatch": "パスワードが一致しません",
+      "incorrectCurrent": "現在のパスワードが正しくありません",
+      "throttled": "誤った入力が多すぎます。しばらくしてからもう一度お試しください",
+      "generic": "アプリロックを更新できませんでした",
+      "hintTooLong": "ヒントが長すぎます",
+      "hintRevealsPassword": "ヒントにパスワードを含めることはできません"
+    },
+    "screen": {
+      "title": "ORG2 はロックされています",
+      "passwordPlaceholder": "パスワード",
+      "incorrect": "パスワードが正しくありません",
+      "failed": "ロックを解除できませんでした。もう一度お試しください",
+      "throttled": "試行回数が多すぎます。{{time}} 後にもう一度お試しください",
+      "working": "作業中のセッション: {{count}}",
+      "showHint": "ヒントを表示",
+      "hint": "ヒント: {{hint}}"
+    }
+  },
   "myRoles": {
     "currentStatus": "現在のステータス",
     "tabs": {
@@ -86,6 +133,10 @@
     }
   },
   "general": {
+    "myStationSharing": "Workstation の共有範囲",
+    "myStationSharingDesc": "作業ディレクトリごとに Workstation のタブと表示状態を共有するか、チャットタブごとに個別に保存",
+    "myStationSharingDirectory": "作業ディレクトリ",
+    "myStationSharingTab": "チャットタブ",
     "login": "ログイン",
     "tabGeneral": "一般",
     "tabSelfHosted": "セルフホスト",
@@ -117,8 +168,6 @@
     "usePointerCursorsDesc": "インタラクティブな要素にカーソルを合わせたときにポインターへ変更します",
     "timezoneAuto": "自動（ブラウザ）",
     "timezoneSearchPlaceholder": "近くの都市を検索",
-    "sendOnEnter": "Enter でメッセージを送信",
-    "sendOnEnterDesc": "有効にすると Enter で送信し、Shift+Enter と Ctrl/Cmd+Enter で改行します。無効の場合は Ctrl/Cmd+Enter で送信します",
     "language": "言語",
     "languageSearchPlaceholder": "言語を検索...",
     "languageNames": {
@@ -135,7 +184,9 @@
       "vi": "ベトナム語",
       "pt": "ポルトガル語",
       "pl": "ポーランド語",
-      "zh-Hant": "繁体中国語"
+      "zh-Hant": "繁体中国語",
+      "hi": "ヒンディー語",
+      "id": "インドネシア語"
     },
     "layout": "レイアウト",
     "sidebar": "サイドバー",
@@ -143,6 +194,8 @@
     "sidebarEdgeDepth": "サイドバー境界の奥行き",
     "selectedItemTransparency": "選択項目の透明度",
     "spotlightPlacement": "Spotlight の位置",
+    "spotlightDimBackground": "背景を暗くする",
+    "spotlightDetailCard": "ホバー詳細カード",
     "spotlightPlacementOptions": {
       "top": "上部",
       "center": "中央"
@@ -179,6 +232,8 @@
     "voiceInputPermissionOpenFailed": "システム設定を開けませんでした",
     "preventSleep": "セッション実行中のスリープを防止",
     "preventSleepDesc": "いずれかの Agent セッションが作動している間、Mac または PC をスリープさせません。すべてのセッションが終了すると自動的に解除されます",
+    "highRefreshRate": "高リフレッシュレート",
+    "highRefreshRateDesc": "ディスプレイの最大リフレッシュレート（ProMotion ディスプレイでは最大 120 Hz）で描画します。スクロール、サイズ変更、アニメーションが滑らかになりますが、動作中はより多くの電力を消費します",
     "devMode": "開発者モード",
     "devModeDesc": "ネイティブの Inspect Element コンテキストメニューとブラウザ DevTools を有効にします。開発とデバッグ専用",
     "presenceGuidanceOnline": "オンライン — Agent への指示",
@@ -200,7 +255,6 @@
       "codex": "Codex"
     },
     "iconStyle": "アイコンスタイル",
-    "iconStyleDesc": "モノクロはファイル種別とモデルのアイコンの彩度を落とし、ロゴではなくインターフェースとして見えるようにします",
     "iconStyleOptions": {
       "colorful": "カラー",
       "monochrome": "モノクロ"
@@ -212,10 +266,22 @@
       "light": "ライトタイル"
     },
     "translucentSidebar": "半透明のサイドバー",
+    "sessionBranchTags": "セッションのブランチと PR タグ",
     "skin": "スキン",
     "accent": "アクセント",
     "linkSkinVariants": "ライトとダークを連動",
-    "linkSkinVariantsDesc": "両方のモードで 1 つのスキンとアクセントを使用します。ライトとダークの両バリアントを備えたスキンのみ連動できます"
+    "linkSkinVariantsDesc": "両方のモードで 1 つのスキンとアクセントを使用します。ライトとダークの両バリアントを備えたスキンのみ連動できます",
+    "license": "ライセンス",
+    "licenseTitle": "ORG2 のライセンス",
+    "licenseLoading": "ライセンスを読み込み中…",
+    "licenseLoadFailed": "アプリのライセンスを読み込めません",
+    "tooltips": "ツールチップ",
+    "buttonTooltipsEnabled": "ボタンのツールチップを表示",
+    "buttonTooltipsEnabledDesc": "ボタンにカーソルを合わせたときに名前とキーボードショートカットを表示します。情報アイコンのツールチップは常に表示されます",
+    "buttonTooltipDelayMs": "ツールチップの遅延",
+    "buttonTooltipDelayImmediate": "すぐに",
+    "buttonTooltipDelaySeconds": "{{seconds}} 秒",
+    "modelPickerStyle": "モデルピッカー"
   },
   "background": {
     "title": "背景",
@@ -383,13 +449,13 @@
     "desktopConfig": {
       "title": "Desktop Safety",
       "hideBeforeAction": "デスクトップ制御中に ORG2 を隠す",
-      "hideBeforeActionHelper": "Peekaboo の操作中は ORG2 のメインウィンドウを隠し、Wingman バーとフローティングキャプションを表示して、Agent がフォーカスを管理しなくて済むようにします。",
+      "hideBeforeActionHelper": "Peekaboo の操作中は ORG2 のメインウィンドウを隠し、Wingman バーとフローティングキャプションを表示して、Agent がフォーカスを管理しなくて済むようにします",
       "antiDetection": "HID 自動化検出対策の強化",
-      "antiDetectionHelper": "Peekaboo がクリックやキー入力に対し、純粋なアクセシビリティ操作ではなく実際の CGEvent（HID）入力を送出するようにします。これにより自動化検出を備えたアプリ（例: WeChat）がデスクトップ制御をブロックしにくくなります。",
+      "antiDetectionHelper": "Peekaboo がクリックやキー入力に対し、純粋なアクセシビリティ操作ではなく実際の CGEvent（HID）入力を送出するようにします。これにより自動化検出を備えたアプリ（例: WeChat）がデスクトップ制御をブロックしにくくなります",
       "humanInputProfile": "人間的な入力リズム",
-      "humanInputProfileHelper": "合成したキー入力に人間らしいタイミングプロファイルを適用します。無効にすると最高速度で入力します。",
+      "humanInputProfileHelper": "合成したキー入力に人間らしいタイミングプロファイルを適用します。無効にすると最高速度で入力します",
       "escapeAbort": "System Escape key aborts",
-      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded."
+      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded"
     },
     "skillMissingBins": "不足：{{bins}}",
     "skillMissingEnv": "不足する環境変数：{{vars}}",
@@ -458,7 +524,6 @@
     "gitOperations": "Git 操作",
     "gitOperationsDesc": "Git Pull、Push、同期の通知",
     "soundPreset": "通知音",
-    "soundPresetDesc": "通知で再生する音を選択します",
     "previewSound": "試聴",
     "soundPresets": {
       "classic": "クラシック",
@@ -517,6 +582,9 @@
     "indentGuides": "インデントガイド",
     "treeIndentGuides": "ツリー インデントガイド",
     "highlightActiveLine": "現在行のハイライト",
+    "diffViewMode": "差分表示",
+    "gitBlame": "Git blame",
+    "splitDiffCenteredLineNumbers": "分割差分の行番号中央揃え",
     "shellsOpenWith": "Shell の開き方",
     "shellsOpenWithDesc": "新しい Terminal の初期作業ディレクトリ",
     "repoPath": "リポジトリパス",
@@ -551,7 +619,7 @@
       "title": "Git",
       "pullStrategy": "Pull 戦略",
       "pullStrategyDesc": "同期時に git pull が remote の変更をどう統合するか",
-      "pullStrategyHint": "Rebase（デフォルト）：あなたの commit を remote の上に replay。linear history を作成。\n\nMerge：branch が diverge した場合に merge commit を作成。完全な history を保持。\n\nFast-forward only：merge が不要な場合のみ pull を許可。branch が diverge している場合は拒否。",
+      "pullStrategyHint": "Rebase（デフォルト）：あなたの commit を remote の上に replay。linear history を作成。\n\nMerge：branch が diverge した場合に merge commit を作成。完全な history を保持。\n\nFast-forward only：merge が不要な場合のみ pull を許可。branch が diverge している場合は拒否",
       "strategyMerge": "Merge",
       "strategyRebase": "Rebase（デフォルト）",
       "strategyFfOnly": "Fast-forward のみ（厳格）",
@@ -585,20 +653,44 @@
     "fontFamilyCustom": "カスタム"
   },
   "update": {
+    "downloading": "更新をダウンロード中…",
+    "downloadingPercent": "更新をダウンロード中… {{percent}}%",
+    "preparingDownload": "ダウンロードを準備中…",
+    "downloadBytes": "{{total}} 中 {{downloaded}}",
+    "downloadedBytes": "{{downloaded}} ダウンロード済み",
+    "downloadProgress": "更新のダウンロード進捗",
+    "inProgress": "進行中",
+    "openProgressLabel": "更新のダウンロード：{{progress}}。進捗通知を開きます。",
+    "openProgress": "更新のダウンロード進捗を開く",
+    "available": "更新があります",
+    "availableVersion": "バージョン {{version}} をインストールできます。",
+    "updateNow": "今すぐ更新",
+    "checkFailed": "更新の確認に失敗しました",
+    "checking": "更新を確認中…",
+    "officialInstalled": "公式アプリをインストールしました",
+    "officialInstalledDesc": "{{version}} を {{path}} にインストールしました。このローカルビルドは変更されず、引き続き実行されます",
+    "downloadFailed": "更新のダウンロードに失敗しました",
+    "retryNow": "今すぐ再試行",
+    "downloadTimeout": "ダウンロードがタイムアウトしました。ネットワークまたはプロキシを確認して再試行してください。",
+    "installUnavailable": "このプラットフォームでは、ローカルビルドから公開版を安全にインストールできません。",
+    "installing": "更新をインストール中",
+    "preparingInstall": "v{{version}} を準備中…",
+    "installed": "更新をインストールしました",
+    "installFailed": "更新のインストールに失敗しました",
+    "checked": "更新を確認しました",
     "detectUpdate": "更新を検出",
     "currentVersion": "現在のバージョン",
     "channel": "更新チャンネル",
     "channelDesc": "ベータは安定版リリースに先立ってプレリリースビルドを受け取ります。安定版に戻してもダウングレードはされず、次の安定版リリースから有効になります",
     "channelStable": "安定版",
     "channelBeta": "ベータ",
-    "installConfirmTitle": "更新をインストールできます",
-    "installConfirmDesc": "バージョン {{version}} をダウンロードしました。ORG2 をインストールして再起動する前に、進行中の作業を保存してください",
+    "installConfirmTitle": "更新の準備完了",
+    "installConfirmDesc": "バージョン {{version}} の準備ができました。再起動前に作業を保存してください",
     "installAndRestart": "インストールして再起動",
-    "installOfficialConfirmTitle": "公式アプリをインストールできます",
-    "installOfficialConfirmDesc": "公式バージョン {{version}} を /Applications/ORG2.app にインストールします。このローカルビルドは開いたまま変更されません",
-    "installOfficial": "公式アプリをインストール",
+    "installOfficialConfirmTitle": "正式版の準備完了",
+    "installOfficialConfirmDesc": "{{version}} を別途インストールします。このビルドは起動したままです",
+    "installOfficial": "正式版をインストール",
     "localBuild": "ローカル",
-    "skipVersion": "このバージョンをスキップ",
     "upToDate": "ORG2 は最新です。",
     "upToDateVersion": "ORG2 は最新です（v{{version}}）。",
     "officialAlreadyInstalled": "公式版 ORG2 v{{version}} は /Applications にインストール済みです。",
@@ -712,7 +804,7 @@
     "tableVersion": "バージョン",
     "tableStatus": "ステータス",
     "installSection": "インストール",
-    "installHintNote": "お使いのプラットフォーム向けに推奨されるインストールコマンドです。ほとんどのシステム依存は管理者権限が必要なため、自動実行はしません — terminal にコピー & ペーストしてください。"
+    "installHintNote": "お使いのプラットフォーム向けに推奨されるインストールコマンドです。ほとんどのシステム依存は管理者権限が必要なため、自動実行はしません — terminal にコピー & ペーストしてください"
   },
   "storage": {
     "dataDirectory": "データディレクトリ",
@@ -746,10 +838,8 @@
     "typingAnimationDesc": "Agent メッセージにタイプライターアニメーションを有効にする",
     "typingSpeed": "タイピング速度",
     "typingSpeedDesc": "1文字あたりのミリ秒（1ms = 最速、50ms = 最遅）",
-    "decryptEffect": "Decrypt エフェクト",
-    "decryptEffectDesc": "Agent メッセージに Decrypt アニメーションを有効にする",
-    "sendOnEnter": "Enter でメッセージを送信",
-    "sendOnEnterDesc": "有効にすると Enter で送信し、Shift+Enter と Ctrl/Cmd+Enter で改行します。無効の場合は Ctrl/Cmd+Enter で送信します"
+    "sendOnEnter": "メッセージ送信キー",
+    "sendOnEnterDesc": "メッセージを送信するショートカットを選択します。その他の Enter キーの組み合わせは改行を挿入します"
   },
   "indexing": {
     "noWorkspaceMemories": "Workspaceメモリはまだありません。セッションがこのワークスペースの情報を抽出すると表示されます。",
@@ -798,7 +888,7 @@
   "agentEvolution": {
     "enableForAgent": "{{agentName}} の進化を有効化",
     "noAgentsTitle": "利用可能な Agent はありません",
-    "noAgentsSubtitle": "進化を設定するには Agent を作成またはインポートしてください。"
+    "noAgentsSubtitle": "進化を設定するには Agent を作成またはインポートしてください"
   },
   "org": {},
   "learningsBrowser": {
@@ -864,7 +954,10 @@
   "appearance": {
     "tabApp": "アプリ",
     "tabCodeEditor": "コードエディタ",
-    "tabChatPanel": "チャットパネル"
+    "tabChatPanel": "チャットパネル",
+    "chatHistory": "チャット履歴",
+    "composer": "入力欄",
+    "newChatPage": "新規チャットページ"
   },
   "harnessConnections": {
     "description": "各コーディングツールで使う接続を選択",
@@ -891,6 +984,8 @@
     "apply": "この接続を使用",
     "applied": "設定を保存しました。新しいツールセッションを開始してください",
     "restore": "元の設定に戻す",
+    "disconnect": "接続解除",
+    "overlayHelp": "接続設定は {{path}} に別途保存されます。「ターミナルを開く」はこの設定と既存の会話履歴で Claude Code を起動します。セッション追跡フックは別の設定で管理されます",
     "restored": "元の設定に戻しました。新しいツールセッションを開始してください",
     "refresh": "更新",
     "refreshed": "ツールの接続を更新しました",
@@ -904,7 +999,35 @@
     "authentication": "認証方式",
     "desktopScope": "Claude Code CLI とは別に Claude Desktop を設定します。適用後は完全に終了して再起動してください",
     "desktopApplied": "設定を保存しました。Claude Desktop を完全に終了して再起動してください",
-    "desktopRestored": "以前の設定を復元しました。Claude Desktop を完全に終了して再起動してください"
+    "desktopRestored": "以前の設定を復元しました。Claude Desktop を完全に終了して再起動してください",
+    "advancedDescription": "カスタム API 接続と一度限りの認証情報移行",
+    "marketApps": {
+      "isolatedStorage": "この公式アプリは独立した設定と会話ストレージを使用します。メインアプリと CLI の設定は変更されません。以前の会話は自動でインポートされません",
+      "isolatedClaudeStorage": "このアプリを開くと Code の履歴がコピーされ、新しいメッセージはこのアプリ内に保存されます。メインアプリと CLI の設定は変更されません。インポートした会話が表示されない場合は Claude を再起動してください",
+      "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
+      "loading": "Loading official packages…",
+      "loadFailed": "Official packages could not be loaded",
+      "nonePurchased": "No official packages are currently available",
+      "checking": "アプリを確認中…",
+      "unavailable": "このインストール済みバージョンでは利用できません",
+      "notInstalled": "未インストール",
+      "original": "アプリ本来の設定を使用中",
+      "open": "アプリを開く",
+      "connected": "アプリが現在の ORG2 ワークスペースに追従します",
+      "opened": "アプリを開きました",
+      "disconnected": "以前のアプリ設定を復元しました",
+      "actionFailed": "このアプリ接続を更新できませんでした",
+      "openFailed": "このアプリを開けませんでした",
+      "restoreRequired": "このアプリの元の設定を復元してから、パッケージを選び直して接続を適用してください",
+      "workspaceNumber": "サービス {{index}} / {{count}}",
+      "openTerminal": "ターミナルを開く",
+      "terminalOpened": "ターミナルを開きました",
+      "provider": "ORG2 Market",
+      "multiPackageHelp": "最大 8 個のパッケージと既定のモデルを選択すると、アプリ内でパッケージを切り替えられます",
+      "auxiliaryBilling": "Claude Code のタイトル・メモリ・コンパクション自動呼び出しはデフォルトのパッケージに課金されます。/model で選んだパッケージに従うのはチャット本体のみです",
+      "defaultModel": "既定のモデル",
+      "packageLimit": "パッケージは最大 8 個まで選択できます"
+    }
   },
   "claudeProfiles": {
     "new": "新しいプロファイル",
@@ -945,10 +1068,10 @@
     "developerOptions": "開発者向けオプション",
     "retryConnection": "接続を再試行",
     "enabled": "Mobile Remote",
-    "enabledDesc": "ペアリングしたスマートフォンから、同じ Wi‑Fi LAN または公開リレー経由でこのデスクトップの Agent セッションを操作できるようにします",
+    "enabledDesc": "スマートフォンでこのコンピューター上のセッションを表示・操作",
     "securityNotice": "LAN 公開がオンの場合、接続 URL とトークンを知っているネットワーク上の誰もがセッションを操作できます。漏洩が疑われる場合はトークンを再生成してください",
-    "outdoorTitle": "外出先からの接続",
-    "outdoorDesc": "デスクトップから公開リレーへ外向きに接続し、4G、5G、または別のネットワークからスマートフォンで利用できるようにします",
+    "outdoorTitle": "インターネット接続を許可",
+    "outdoorDesc": "オフの場合、スマートフォンからインターネット経由でこのコンピューターに接続できません",
     "relayEnabled": "公開リレーに接続",
     "relayEnabledDesc": "デスクトップが外向きの WSS 接続を開くため、ルーターのポート転送は不要です",
     "relayUrl": "リレーアドレス",
@@ -957,7 +1080,7 @@
     "relayPresetLocal": "ローカル",
     "relayPresetProduction": "本番",
     "cloudLoginTitle": "ORG2 Cloud ログイン",
-    "cloudLoginDescSignedIn": "{{identity}} としてログイン中 — リレーはこのアカウントを外出先ペアリングに使用します",
+    "cloudLoginDescSignedIn": "{{identity}} としてログイン済み",
     "cloudLoginDescSignedOut": "公開リレー経由でペアリングする前に ORG2 Cloud にログインしてください",
     "relayStatusCloudLoginRequired": "設定 → 一般で ORG2 Cloud にログインしてから、リレーの状態を更新してください",
     "relayStatusAuthFailedSignedIn": "リレーが接続を拒否しました — 設定 → 一般でログアウトして再度ログインしてください",
@@ -968,7 +1091,7 @@
     "relayStatus_disabled": "無効",
     "relayStatus_config_error": "設定エラー",
     "relayStatus_stopped": "停止",
-    "startOutdoorPairing": "外出先用ペアリングコードを生成",
+    "startOutdoorPairing": "ペアリングコードを生成",
     "fullAccess": "操作を許可",
     "fullAccessDesc": "オンにすると、スマートフォンからメッセージの送信、セッションの停止、権限への応答ができます。オフの場合は閲覧のみです",
     "pairingExpires": "ペアリングコードは {{seconds}} 秒後に期限切れになります",
@@ -1003,16 +1126,36 @@
     "pairedDevicesDesc": "リレー経由で認可されたスマートフォン。アクセスはいつでも取り消せます",
     "devicesLoadFailed": "ペアリング済みデバイスを読み込めませんでした",
     "noDevices": "ペアリング済みデバイスはありません",
-    "noDevicesDesc": "外出先用ペアリングコードを生成し、Mobile Remote PWA でスキャンまたは貼り付けてください",
+    "noDevicesDesc": "スマートフォンを追加すると、このコンピューター上のセッションにアクセスできます",
     "deviceLabel": "デバイス",
     "deviceTier": "権限",
-    "deviceTierFull": "フルアクセス",
-    "deviceTierReadOnly": "閲覧のみ",
+    "deviceTierFull": "操作可能",
+    "deviceTierReadOnly": "表示のみ",
     "deviceLastSeen": "最終接続",
     "devicePairedAt": "ペアリング {{time}}",
     "deviceLastSeenValue": "最終接続 {{time}}",
     "deviceNeverSeen": "未接続",
     "deviceOnline": "オンライン",
-    "deviceOffline": "オフライン"
+    "deviceOffline": "オフライン",
+    "addPhone": "スマートフォンを追加",
+    "pairingPermission": "スマートフォンの権限",
+    "relayDisabledHint": "インターネット接続はオフです。詳細設定で有効にできます"
+  },
+  "development": {
+    "updateAvailable": "アップデートあり",
+    "updateAvailableDesc": "バージョン 99.0.0 の更新表示をアプリ全体に表示 — 更新操作はダイアログのプレビューのみ",
+    "illustrations": "イラスト",
+    "illustrationsDesc": "テーマを変更せずに、すべてのイラストをライトとダークで比較"
+  },
+  "managedUsage": {
+    "cancel": "キャンセル",
+    "authorize": "パッケージを有効にする",
+    "rates": "100万トークンあたりの入力 / 出力",
+    "wallet": "ウォレットを開く",
+    "priceRange": "パッケージ価格帯：公式価格の {{min}}%～{{max}}%",
+    "rangeUnavailable": "パッケージの価格帯を取得できません。有効にする前にカタログを更新してください。",
+    "walletIncluded": "含まれるすべてのモデルでウォレット残高を使用します。",
+    "walletUnavailable": "ウォレット課金はまだ利用できません。サービスの更新後に再読み込みしてください。",
+    "walletConsent": "表示された価格帯で、このパッケージのすべてのモデルを有効にします。実際の使用量に応じてウォレット残高から直接請求されます。パッケージごとの予算設定は不要です。"
   }
 }

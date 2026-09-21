@@ -3,23 +3,15 @@ import { createPortal } from "react-dom";
 
 import { PILL_SM_ICON_SIZE } from "@src/components/CompoundPill/config";
 import DropdownItem from "@src/components/Dropdown/DropdownItem";
+import { MenuSegmentedRow } from "@src/components/Dropdown/MenuControlRows";
 import type { SubmenuAnchor } from "@src/components/Dropdown/submenuLayout";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import SegmentedTextPill from "@src/components/SegmentedTextPill";
-import {
-  APPEARANCE_MODE,
-  type AppearanceMode,
-} from "@src/config/appearance/globalThemes";
-import {
-  ArrowUpRight01Icon,
-  HugeiconsIcon,
-  MonitorIcon,
-  MoonIcon,
-  Sun01Icon,
-} from "@src/icons";
+import type { AppearanceMode } from "@src/config/appearance/globalThemes";
+import { APPEARANCE_MODE_ICONS } from "@src/config/appearance/quickMenuOptions";
+import { ArrowUpRight01Icon, HugeiconsIcon } from "@src/icons";
 
 import { PresenceMenuItems } from "./SidebarBottomBar";
 import { SidebarLayoutSettingsSubmenu } from "./SidebarLayoutSettingsSubmenu";
@@ -43,7 +35,6 @@ interface SidebarSettingsMenuSubmenusProps {
   submenuPanelRef: React.Ref<HTMLDivElement>;
   submenuPosition: SubmenuPosition | null;
   onModifyAppearance: () => void;
-  onPresenceSelectionComplete: () => void;
   onSelectAppearanceMode: (mode: AppearanceMode) => void;
   onSubmenuMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onSubmenuPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
@@ -58,7 +49,6 @@ export function SidebarSettingsMenuSubmenus({
   submenuPanelRef,
   submenuPosition,
   onModifyAppearance,
-  onPresenceSelectionComplete,
   onSelectAppearanceMode,
   onSubmenuMouseDown,
   onSubmenuPointerDown,
@@ -74,7 +64,7 @@ export function SidebarSettingsMenuSubmenus({
         onPointerDown={onSubmenuPointerDown}
         onMouseDown={onSubmenuMouseDown}
       >
-        <PresenceMenuItems onSelectionComplete={onPresenceSelectionComplete} />
+        <PresenceMenuItems />
       </div>,
       document.body
     );
@@ -94,19 +84,12 @@ export function SidebarSettingsMenuSubmenus({
 
   if (activeSubmenu === "appearance") {
     const appearanceModePillOptions = appearanceModeOptions.map((option) => {
-      const icon =
-        option.value === APPEARANCE_MODE.SYSTEM
-          ? MonitorIcon
-          : option.value === APPEARANCE_MODE.LIGHT
-            ? Sun01Icon
-            : MoonIcon;
-
       return {
         value: option.value,
         ariaLabel: option.label,
         label: (
           <HugeiconsIcon
-            icon={icon}
+            icon={APPEARANCE_MODE_ICONS[option.value]}
             data-icon={`theme-${option.value}`}
             size={PILL_SM_ICON_SIZE}
             strokeWidth={1.75}
@@ -128,16 +111,12 @@ export function SidebarSettingsMenuSubmenus({
         <div
           className={`${DROPDOWN_CLASSES.itemsColumnPadded} scrollbar-overlay max-h-80 overflow-y-auto`}
         >
-          <div className={DROPDOWN_CLASSES.menuControlItem}>
-            <span className="min-w-0 flex-1 truncate">{themeLabel}</span>
-            <SegmentedTextPill
-              ariaLabel={themeLabel}
-              size="small"
-              value={appearanceMode}
-              options={appearanceModePillOptions}
-              onChange={onSelectAppearanceMode}
-            />
-          </div>
+          <MenuSegmentedRow
+            label={themeLabel}
+            value={appearanceMode}
+            options={appearanceModePillOptions}
+            onChange={onSelectAppearanceMode}
+          />
           <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
           <DropdownItem
             fullWidth

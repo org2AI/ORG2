@@ -20,71 +20,26 @@
  * - types.ts     - TypeScript types
  * - config.ts    - Constants and configuration
  */
-import { useAtom, useAtomValue } from "jotai";
-import React, {
-  Suspense,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useAtomValue } from "jotai";
+import React, { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useActionSystem } from "@src/ActionSystem";
-import { Placeholder } from "@src/components/Placeholder";
 import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
-import { useSourceControlAttention } from "@src/hooks/git/useSourceControlAttention";
 import { useWorkStationTabShortcutBridge } from "@src/hooks/tabHost/useWorkStationTabShortcutBridge";
-import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
-import UnifiedTabContent from "@src/modules/WorkStation/TabContent/UnifiedTabContent";
-import { NoTabsPlaceholder } from "@src/modules/WorkStation/shared";
-import { FileHeaderToolbarContext } from "@src/modules/shared/components/FileHeader/FileHeaderToolbarContext";
+import { useActionSystem } from "@src/scaffold/ActionSystem";
 import { workStationPrimarySidebarCollapsedAtom } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
-import { diffViewModeAtom } from "@src/store/workstation/codeEditor";
-import { workstationSelectedIssueAtomFamily } from "@src/store/workstation/codeEditor/workstationIssueAtom";
-import { workstationRepoScopeKey } from "@src/store/workstation/codeEditor/workstationPrAtom";
-import { isRetainedTabType } from "@src/store/workstation/tabs/tabRetention";
-import type { GitFile } from "@src/types/git/types";
 
+import { EditorPaneLayers } from "./EditorPaneLayers";
 import { CodeEditorDefaultHeader } from "./components/CodeEditorDefaultHeader";
-import { SourceControlHeaderContent } from "./components/SourceControlHeaderContent";
 import { createEditorQuickActions } from "./config";
-import type { SourceControlMainTabData } from "./content/sourceControlMainProps";
-import {
-  type EditorHostContextValue,
-  EditorHostProvider,
-} from "./context/editorHostContext";
-import {
-  type UseFileContentManagerReturn,
-  useEditorPaneState,
-  useFileContentManager,
-  useSourceControlPaneActions,
-  useTabContentSync,
-  useUnsavedChangeHandlers,
-} from "./hooks";
+import { EditorHostProvider } from "./context/editorHostContext";
+import { useTabContentSync, useUnsavedChangeHandlers } from "./hooks";
 import "./index.scss";
 import type { EditorContentProps } from "./types";
-
-const TerminalMainContent = React.lazy(
-  () => import("./content/TerminalMainContent")
-);
-
-// Empty read-only editor shown in the rare tabs-exist-but-activeTab-null window
-// (see the `!activeTab` guard below). Mirrors the old TabContentRenderer's
-// `!activeTab` branch.
-const CodeViewerContent = React.lazy(
-  () => import("./content/CodeViewerContent")
-);
-const SourceControlMainPane = React.lazy(
-  () => import("./content/SourceControlMainPane")
-);
-
-/** Lightweight fallback shown while lazy chunks load */
-const LazyFallback = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
+import { useEditorHostValue } from "./useEditorHostValue";
+import { useEditorPaneFileState } from "./useEditorPaneFileState";
+import { useEditorPaneLayers } from "./useEditorPaneLayers";
+import { useSourceControlTabHeader } from "./useSourceControlTabHeader";
 
 const NO_RETAINED_TABS: ReadonlySet<string> = new Set();
 
@@ -119,105 +74,29 @@ const EditorContent: React.FC<EditorContentProps> = memo(
     const { t } = useTranslation();
     const { dispatch } = useActionSystem();
     const { forceRefresh } = useGitStatus();
-    const scopeKey = workstationRepoScopeKey(repoId, repoPath);
-    const selectedIssueState = useAtomValue(
-      workstationSelectedIssueAtomFamily(scopeKey)
-    );
-    const [diffViewMode, setDiffViewMode] = useAtom(diffViewModeAtom);
 
     // ============================================
-    // Pane State Management (extracted hook)
+    // Pane State + File Content Manager (extracted hook)
     // ============================================
 
-    // Refs for the pane state hook (needed for save-on-close). Declared ahead
-    // of it so the hook is called exactly once: they are only dereferenced
-    // inside closeTab's async body, never during render, so the effect below
-    // populates them well before any user interaction can reach them.
-    const fileContentStateRef = useRef<UseFileContentManagerReturn | null>(
-      null
-    );
-    const forceRefreshRef = useRef(forceRefresh);
-
-    const { tabs, activeTabId, activeTab, closeTab, updatePaneState } =
-      useEditorPaneState(fileContentStateRef, forceRefreshRef);
-
-    // ============================================
-    // File Content Manager (extracted hook)
-    // ============================================
-
-    const activeFilePath = useMemo(() => {
-      if (activeTab?.type === "file") {
-        return activeTab.data.filePath as string;
-      }
-      return null;
-    }, [activeTab]);
-
-    const activeFileIsCsvTable = useMemo(() => {
-      if (!activeFilePath) return false;
-      const lowerPath = activeFilePath.toLowerCase();
-      return lowerPath.endsWith(".csv") || lowerPath.endsWith(".tsv");
-    }, [activeFilePath]);
-
-    // File content manager with handlers
-    const fileContentManager = useFileContentManager({
+    const {
+      tabs,
+      activeTabId,
+      activeTab,
+      closeTab,
+      updatePaneState,
       activeFilePath,
-      onSaveSuccess: forceRefresh,
+      activeFileIsCsvTable,
+      fileContentManager,
+    } = useEditorPaneFileState({ forceRefresh });
+
+    // Terminal / Source Control / retained-tab layer visibility (extracted hook)
+    const paneLayers = useEditorPaneLayers({
+      tabs,
+      activeTab,
+      retainedTabIds,
+      gitFilesByPath,
     });
-
-    // Update refs in effect (not during render)
-    useEffect(() => {
-      fileContentStateRef.current = fileContentManager;
-      forceRefreshRef.current = forceRefresh;
-    });
-
-    const isTerminalTabActive = activeTab?.type === "terminal";
-    const isSourceControlActive = activeTab?.type === "source-control";
-    // While the Source Control page is on screen, the git watcher polls at
-    // its fast interval; otherwise it relaxes to halve idle git load.
-    useSourceControlAttention(isSourceControlActive);
-
-    // The Source Control tab is pinned, so it is normally always present. The
-    // main pane is driven from the persisted tab (not `activeTab`) because
-    // the retention policy keeps it mounted while another tab is on screen.
-    const sourceControlTab = useMemo(
-      () => tabs.find((tab) => tab.type === "source-control") ?? null,
-      [tabs]
-    );
-    // Mounted while active or retained (`tabRetention.ts`: hidden for a
-    // bounded grace window after leaving, then released and rebuilt from
-    // view state on the next visit).
-    const mountSourceControlPane =
-      sourceControlTab !== null &&
-      (isSourceControlActive || retainedTabIds.has(sourceControlTab.id));
-    const sourceControlPaneVisible =
-      isSourceControlActive && !isTerminalTabActive;
-
-    // Kept populated while the pane is mounted so a hidden Review does not
-    // flash empty when it comes back.
-    const sourceControlBaseFiles = useMemo(() => {
-      if (!sourceControlTab || !mountSourceControlPane) return [];
-      const gitStatusFiles = Array.from(gitFilesByPath.values());
-      if (gitStatusFiles.length > 0) return gitStatusFiles;
-      return (sourceControlTab.data.files ?? []) as GitFile[];
-    }, [sourceControlTab, mountSourceControlPane, gitFilesByPath]);
-
-    // Registry-rendered tabs the policy retains (none today in the editor
-    // host — the table in `tabRetention.ts` is the switch). Each gets its
-    // own keyed layer so activating it reuses the mounted instance.
-    const retainedRegistryTabs = useMemo(
-      () =>
-        tabs.filter(
-          (tab) =>
-            retainedTabIds.has(tab.id) &&
-            isRetainedTabType(tab.type) &&
-            tab.type !== "source-control" &&
-            tab.type !== "terminal"
-        ),
-      [retainedTabIds, tabs]
-    );
-    const activeTabHasRetainedLayer =
-      activeTab !== null &&
-      retainedRegistryTabs.some((tab) => tab.id === activeTab.id);
 
     // ============================================
     // Tab Content Sync (extracted hook - side effects only)
@@ -248,7 +127,7 @@ const EditorContent: React.FC<EditorContentProps> = memo(
     // palette). In All-Tabs mode the unified `+` menu (TabBarPlusMenu)
     // claims ⌘T directly via its own `workstation-new-tab` listener.
     useWorkStationTabShortcutBridge({
-      enabled: true,
+      host: "code",
       onCloseActiveTab: handleWorkStationCloseActiveEditorTab,
     });
 
@@ -256,108 +135,25 @@ const EditorContent: React.FC<EditorContentProps> = memo(
     // Tab Bar Handlers
     // ============================================
 
-    const handleSearchTabTitleChange = useCallback(
-      (tabId: string, query: string) => {
-        const trimmedQuery = query.trim();
-        const nextTitle = trimmedQuery ? `Search: ${trimmedQuery}` : "Search";
-
-        updatePaneState((state) => {
-          const tabs = state.tabs;
-          const targetTab = tabs.find((tab) => tab.id === tabId);
-          if (!targetTab || targetTab.title === nextTitle) {
-            return state;
-          }
-
-          return {
-            ...state,
-            tabs: tabs.map((tab) =>
-              tab.id === tabId ? { ...tab, title: nextTitle } : tab
-            ),
-          };
-        });
-      },
-      [updatePaneState]
-    );
-
     const { handleGitDiffUnsavedChange, handleBinaryUnsavedChange } =
       useUnsavedChangeHandlers({ activeTabId, updatePaneState });
 
     // ============================================
-    // Source Control actions (extracted hook)
+    // Source Control actions + tab header (extracted hook)
     // ============================================
 
-    const {
-      sourceControlRefreshSpinClass,
-      handleSourceControlRefresh,
-      sourceControlCollapseAllSignal,
-      handleSourceControlModeChange,
-      handleSourceControlCollapseAll,
-      handleSourceControlCloseFocus,
-      gitReviewNavigation,
-      handleReviewPrevFile,
-      handleReviewNextFile,
-      handleOpenSourceControlHistoryInNewTab,
-      sourceControlQuickActions,
-    } = useSourceControlPaneActions({
+    const sourceControlHeader = useSourceControlTabHeader({
       t,
+      activeTab,
+      repoId,
+      repoPath,
       updatePaneState,
       forceRefresh,
       gitDiffLoading,
       sourceControlFilterMode,
-    });
-
-    const [focusToolbarTarget, setFocusToolbarTarget] =
-      useState<HTMLSpanElement | null>(null);
-
-    // Memoized so `usePublishWorkstationTabHeader` sees a stable `content`
-    // identity — a fresh element every render would re-publish the global
-    // header slot on each pass.
-    const sourceControlHeaderContent = useMemo(() => {
-      if (activeTab?.type !== "source-control") return null;
-      return (
-        <SourceControlHeaderContent
-          activeTab={activeTab}
-          focusToolbarRef={setFocusToolbarTarget}
-          sourceControlFilterMode={sourceControlFilterMode}
-          showSourceControlModePill={showSourceControlModePill}
-          gitReviewNavigationTotal={gitReviewNavigation.total}
-          selectedIssue={selectedIssueState.issue}
-          sourceControlHeaderLeadingSlot={sourceControlHeaderLeadingSlot}
-          sourceControlHeaderTrailingSlot={sourceControlHeaderTrailingSlot}
-          sourceControlRefreshSpinClass={sourceControlRefreshSpinClass}
-          diffViewMode={diffViewMode}
-          t={t}
-          onDiffViewModeChange={setDiffViewMode}
-          onModeChange={handleSourceControlModeChange}
-          onReviewPrevFile={handleReviewPrevFile}
-          onReviewNextFile={handleReviewNextFile}
-          onCollapseAll={handleSourceControlCollapseAll}
-          onRefresh={handleSourceControlRefresh}
-        />
-      );
-    }, [
-      activeTab,
-      diffViewMode,
-      gitReviewNavigation.total,
-      handleReviewNextFile,
-      handleReviewPrevFile,
-      handleSourceControlCollapseAll,
-      handleSourceControlModeChange,
-      handleSourceControlRefresh,
-      selectedIssueState,
       showSourceControlModePill,
-      sourceControlFilterMode,
       sourceControlHeaderLeadingSlot,
       sourceControlHeaderTrailingSlot,
-      sourceControlRefreshSpinClass,
-      setDiffViewMode,
-      t,
-    ]);
-
-    usePublishWorkstationTabHeader({
-      host: "code",
-      content: sourceControlHeaderContent,
-      enabled: activeTab?.type === "source-control",
     });
 
     const isExplorerHome = activeTab?.type === "explorer";
@@ -382,50 +178,27 @@ const EditorContent: React.FC<EditorContentProps> = memo(
     // Host context (Phase 2.4)
     // ============================================
 
-    // Publish the exact 14-field prop bag `TabContentRenderer` receives so
-    // editor tab renderers mounted through `UnifiedTabContent` can consume it
-    // via `useEditorHostContext`. Sourced from the SAME live instances the host
-    // already holds — `fileContentManager` (live file-content manager) and
-    // `terminalState` (live PTY) are passed by reference, never recreated.
-    const editorHostValue = useMemo<EditorHostContextValue>(
-      () => ({
-        fileContentState: fileContentManager,
-        gitFilesByPath,
-        gitDiffLoading,
-        forceRefresh,
-        onFileSelect,
-        onFileSelectWithLine,
-        onCursorPositionChange,
-        onSearchTabTitleChange: handleSearchTabTitleChange,
-        onGitDiffUnsavedChange: handleGitDiffUnsavedChange,
-        onBinaryUnsavedChange: handleBinaryUnsavedChange,
-        terminalState,
-        repoPath,
-        repoId: repoId ?? null,
-      }),
-      [
-        fileContentManager,
-        gitFilesByPath,
-        gitDiffLoading,
-        forceRefresh,
-        onFileSelect,
-        onFileSelectWithLine,
-        onCursorPositionChange,
-        handleSearchTabTitleChange,
-        handleGitDiffUnsavedChange,
-        handleBinaryUnsavedChange,
-        terminalState,
-        repoPath,
-        repoId,
-      ]
-    );
+    const editorHostValue = useEditorHostValue({
+      fileContentManager,
+      gitFilesByPath,
+      gitDiffLoading,
+      forceRefresh,
+      onFileSelect,
+      onFileSelectWithLine,
+      onCursorPositionChange,
+      handleGitDiffUnsavedChange,
+      handleBinaryUnsavedChange,
+      terminalState,
+      repoPath,
+      repoId,
+    });
 
     // ============================================
     // Render
     // ============================================
 
     const hasNoTabs = tabs.length === 0;
-    const shouldMountTerminalContent = isTerminalTabActive;
+    const shouldMountTerminalContent = paneLayers.isTerminalTabActive;
     // Explorer is the pinned "home" tab — its main pane reuses the same
     // empty-state placeholder we show when there are no tabs at all, so the
     // user always sees the same per-app icon + shortcut hints when they
@@ -443,133 +216,28 @@ const EditorContent: React.FC<EditorContentProps> = memo(
             onRefresh={onExplorerRefresh}
             loading={explorerLoading}
           />
-          <div className="relative min-h-0 flex-1 overflow-hidden">
-            {shouldMountTerminalContent && (
-              <div
-                className={`absolute inset-0 ${
-                  isTerminalTabActive
-                    ? "z-10 opacity-100"
-                    : "pointer-events-none z-0 opacity-0"
-                }`}
-                aria-hidden={!isTerminalTabActive}
-              >
-                <Suspense fallback={null}>
-                  <TerminalMainContent
-                    terminalState={terminalState}
-                    repoPath={repoPath}
-                    onFileSelect={onFileSelect}
-                    onFileSelectWithLine={onFileSelectWithLine}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {!isTerminalTabActive && (
-              <div className="absolute inset-0 z-10 flex min-h-0 flex-col">
-                {showAppPlaceholder ? (
-                  <NoTabsPlaceholder
-                    icon="editor"
-                    actions={editorQuickActions}
-                  />
-                ) : activeTab ? (
-                  activeTabHasRetainedLayer ? null : (
-                    <UnifiedTabContent tab={activeTab} isActive />
-                  )
-                ) : (
-                  // Preserve TabContentRenderer's `!activeTab` branch: an empty
-                  // read-only editor. `showAppPlaceholder` already covers
-                  // `hasNoTabs`; this guards the rare tabs-exist-but-activeTab-null
-                  // window so we don't render a blank pane.
-                  <Suspense fallback={<LazyFallback />}>
-                    <CodeViewerContent
-                      selectedFile={null}
-                      fileContent=""
-                      loading={false}
-                      error={null}
-                      repoPath={repoPath}
-                      onFileSelect={onFileSelect}
-                      onContentChange={fileContentManager.handleContentChange}
-                      onSave={fileContentManager.handleSave}
-                      onDiscard={fileContentManager.handleDiscard}
-                      onReload={fileContentManager.handleReload}
-                      hasUnsavedChanges={false}
-                      saving={false}
-                      requiresFilePreviewRoute={false}
-                      onCursorPositionChange={onCursorPositionChange}
-                    />
-                  </Suspense>
-                )}
-              </div>
-            )}
-
-            {retainedRegistryTabs.map((tab) => {
-              const visible = tab.id === activeTabId && !isTerminalTabActive;
-              return (
-                <div
-                  key={tab.id}
-                  className={`absolute inset-0 flex min-h-0 flex-col ${
-                    visible
-                      ? "z-10 opacity-100"
-                      : "pointer-events-none z-0 opacity-0"
-                  }`}
-                  aria-hidden={!visible}
-                >
-                  <UnifiedTabContent tab={tab} isActive={visible} />
-                </div>
-              );
-            })}
-
-            {/*
-              Retained Source Control main pane: shown/hidden (opacity, not
-              display:none, so its scroll offsets survive) rather than
-              unmounted while the policy keeps it warm.
-            */}
-            {mountSourceControlPane && sourceControlTab && (
-              <div
-                className={`absolute inset-0 flex min-h-0 flex-col ${
-                  sourceControlPaneVisible
-                    ? "z-20 opacity-100"
-                    : "pointer-events-none z-0 opacity-0"
-                }`}
-                aria-hidden={!sourceControlPaneVisible}
-              >
-                <Suspense fallback={<LazyFallback />}>
-                  <FileHeaderToolbarContext.Provider
-                    value={
-                      sourceControlPaneVisible
-                        ? (focusToolbarTarget ?? "host")
-                        : "host"
-                    }
-                  >
-                    <SourceControlMainPane
-                      tabData={
-                        sourceControlTab.data as SourceControlMainTabData
-                      }
-                      repoPath={repoPath}
-                      repoId={repoId ?? null}
-                      gitFilesByPath={gitFilesByPath}
-                      sourceControlFiles={sourceControlBaseFiles}
-                      sourceControlFilterMode={sourceControlFilterMode}
-                      activeRepoRoot={sourceControlActiveRepoRoot}
-                      gitDiffLoading={gitDiffLoading}
-                      sourceControlCollapseAllSignal={
-                        sourceControlCollapseAllSignal
-                      }
-                      sourceControlQuickActions={sourceControlQuickActions}
-                      onForceReload={forceRefresh}
-                      onFileSelect={onFileSelect}
-                      onCloseFocus={handleSourceControlCloseFocus}
-                      onOpenHistoryInNewTab={
-                        handleOpenSourceControlHistoryInNewTab
-                      }
-                      onGitDiffUnsavedChange={handleGitDiffUnsavedChange}
-                      viewStateKey={sourceControlTab.id}
-                    />
-                  </FileHeaderToolbarContext.Provider>
-                </Suspense>
-              </div>
-            )}
-          </div>
+          <EditorPaneLayers
+            {...paneLayers}
+            {...sourceControlHeader}
+            shouldMountTerminalContent={shouldMountTerminalContent}
+            showAppPlaceholder={showAppPlaceholder}
+            editorQuickActions={editorQuickActions}
+            activeTab={activeTab}
+            activeTabId={activeTabId}
+            fileContentManager={fileContentManager}
+            terminalState={terminalState}
+            repoPath={repoPath}
+            repoId={repoId}
+            gitFilesByPath={gitFilesByPath}
+            gitDiffLoading={gitDiffLoading}
+            sourceControlFilterMode={sourceControlFilterMode}
+            sourceControlActiveRepoRoot={sourceControlActiveRepoRoot}
+            onFileSelect={onFileSelect}
+            onFileSelectWithLine={onFileSelectWithLine}
+            onCursorPositionChange={onCursorPositionChange}
+            forceRefresh={forceRefresh}
+            handleGitDiffUnsavedChange={handleGitDiffUnsavedChange}
+          />
         </div>
       </EditorHostProvider>
     );

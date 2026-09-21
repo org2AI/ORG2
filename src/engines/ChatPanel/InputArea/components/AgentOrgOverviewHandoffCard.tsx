@@ -80,7 +80,6 @@ const AgentOrgOverviewHandoffCard: React.FC<
         <div className="flex flex-wrap items-center gap-1">
           <Button
             size="mini"
-            variant="secondary"
             disabled={
               requestedResolution === "continue_replacement" &&
               receipt.localEffectCount !== 0
@@ -100,7 +99,6 @@ const AgentOrgOverviewHandoffCard: React.FC<
           {requestedResolution !== "continue_replacement" && (
             <Button
               size="mini"
-              variant="secondary"
               disabled={receipt.localEffectCount !== 0}
               onClick={() =>
                 onRequestResolution({
@@ -135,7 +133,8 @@ const AgentOrgOverviewHandoffCard: React.FC<
           {requestedResolution !== "abandon_episode" && (
             <Button
               size="mini"
-              variant="danger"
+              variant="primary"
+              tone="danger"
               onClick={() =>
                 onRequestResolution({
                   receipt,
@@ -155,7 +154,6 @@ const AgentOrgOverviewHandoffCard: React.FC<
         <div className="flex flex-wrap items-center gap-1">
           <Button
             size="mini"
-            variant="secondary"
             disabled={receipt.localEffectCount !== 0}
             onClick={() =>
               onRequestResolution({
@@ -186,7 +184,8 @@ const AgentOrgOverviewHandoffCard: React.FC<
           </Button>
           <Button
             size="mini"
-            variant="danger"
+            variant="primary"
+            tone="danger"
             onClick={() =>
               onRequestResolution({
                 receipt,

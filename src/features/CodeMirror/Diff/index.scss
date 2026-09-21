@@ -135,11 +135,12 @@
 
     .cm-lineNumbers {
       border-right: none !important;
-      padding-left: var(--cm-line-number-padding-left, 8px);
+      padding-left: 0;
     }
 
     .cm-lineNumbers .cm-gutterElement {
       border-right: none !important;
+      padding-left: calc(var(--cm-line-number-padding-left, 8px) + 5px);
     }
 
     .cm-editor .cm-gutters .cm-gutterElement,
@@ -317,7 +318,7 @@
   // (MergeView library requirement — it scrolls as a single unit).
   &--split {
     overflow: auto;
-    padding-bottom: 80px;
+    padding-bottom: 24px;
 
     &.codemirror-diff--no-bottom-padding {
       padding-bottom: 0;
@@ -329,10 +330,6 @@
 
         .cm-mergeViewEditor {
           min-width: 0;
-
-          &:first-child {
-            border-right: 1px solid var(--color-border-2);
-          }
         }
 
         .cm-editor {
@@ -388,6 +385,10 @@
 // paints behind the other gutters and is clipped to their combined width.
 .codemirror-diff .cm-editor .cm-gutters {
   --cm-diff-fold-gutter-width: calc(var(--cm-icon-size, 14px) + 2px);
+  // The rail's real width, stated once: the expansion arrows are offset from
+  // it to sit exactly on the collapsed bar. (`--diff-gutter-width` is wider
+  // and is not what this rail uses.)
+  --cm-diff-rail-width: 3px;
   overflow: hidden;
 
   .cm-lineNumbers {
@@ -408,6 +409,7 @@
     --diff-row-color: var(--diff-added-color);
     --diff-row-marker: var(--diff-added-color);
     order: -1;
+    width: var(--cm-diff-rail-width);
     padding-left: 0;
 
     .cm-gutterElement {
@@ -464,12 +466,8 @@
   // Match the rounded backdrop across the number and fold columns.
   // The marker's containing block is only the line-number cell.
   inset-block: 2px;
-  left: calc(
-    8px - var(--diff-gutter-width, 7px) - var(
-        --cm-line-number-padding-left,
-        8px
-      )
-  );
+  // Same leading edge as the bar, which starts 8px into the rail's cell.
+  left: calc(8px - var(--cm-diff-rail-width));
   right: calc(-1 * var(--cm-diff-fold-gutter-width));
   z-index: 2;
   display: flex;
@@ -506,11 +504,49 @@
   }
 }
 
+// A two-arrow row offers three actions (step down, step up, expand all via
+// the label), so each part highlights alone instead of lighting the whole row.
+.codemirror-diff .cm-editor .cm-collapsedGutter--split .cm-collapseArrow {
+  color: var(--color-text-3);
+
+  // Follow the bar's rounded leading corners.
+  &:first-child {
+    border-top-left-radius: 10px;
+  }
+
+  &:last-child {
+    border-bottom-left-radius: 10px;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-fill-3);
+    color: var(--color-text-2);
+  }
+}
+
+// Stacked arrows read as two buttons: the same gap as button | label.
+.codemirror-diff .cm-editor .cm-collapseArrow + .cm-collapseArrow {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: -2px;
+    height: 2px;
+    background: var(--cm-editor-gutter-bg, var(--cm-editor-background));
+    pointer-events: none;
+  }
+}
+
 .codemirror-diff .cm-editor .cm-collapsedLines {
-  // Both halves paint an inset pseudo-element. Prevent merge theme defaults
-  // from painting a second, full-height background behind the right half.
+  // The gutter cell and the content row each paint an inset pseudo-element.
+  // Prevent merge theme defaults from painting a second, full-height
+  // background behind the content half.
   background: transparent !important;
   border-block: 0 !important;
+  // The one gap in the bar: between the expand button and the label.
   border-left: 2px solid var(--cm-editor-background);
 }
 
@@ -519,10 +555,11 @@
 }
 
 .codemirror-diff .cm-editor .cm-collapsedLines::after {
-  // The merge theme adds a 7px decorative margin; the divider owns this gap.
+  // The merge theme adds a 7px decorative margin; the bar owns this space.
   margin: 0;
 }
 
+// Hover paints the whole row, including both stacked arrows of a split row.
 .codemirror-diff
   .cm-editor
   .cm-changeGutter
@@ -530,27 +567,71 @@
   background-color: var(--color-fill-3);
 }
 
-.codemirror-diff .cm-editor .cm-changeGutter .cm-collapsedGutter--split::after {
-  background: linear-gradient(
-    to bottom,
-    var(--cm-collapse-top-fill, var(--color-fill-1)) 0 calc(50% - 1px),
-    var(--cm-editor-background) calc(50% - 1px) calc(50% + 1px),
-    var(--cm-collapse-bottom-fill, var(--color-fill-1)) calc(50% + 1px) 100%
-  );
-}
-
-.codemirror-diff .cm-collapsedRowHovered,
-.codemirror-diff .cm-collapsedRowHoverTop {
-  --cm-collapse-top-fill: var(--color-fill-3);
-}
-
-.codemirror-diff .cm-collapsedRowHovered,
-.codemirror-diff .cm-collapsedRowHoverBottom {
-  --cm-collapse-bottom-fill: var(--color-fill-3);
-}
-
 .codemirror-diff .cm-editor .cm-collapsedRowHovered .cm-collapseControl {
   color: var(--color-text-2);
+}
+
+// Split view shows one shared collapsed row across both panes: the left half
+// carries the arrows and label, the right half is a plain continuation of the
+// same bar (clicks there still expand both panes).
+.codemirror-diff--split .cm-editor.cm-merge-a .cm-collapsedLines {
+  width: 100%;
+  margin-right: 0;
+
+  &::after {
+    border-radius: 0;
+  }
+}
+
+.codemirror-diff--split .cm-editor.cm-merge-b {
+  .cm-collapsedLines {
+    // The right half has no button, so it continues the bar without a gap.
+    border-left: 0;
+    color: transparent;
+
+    &::before {
+      visibility: hidden;
+    }
+  }
+
+  .cm-collapseControl {
+    visibility: hidden;
+  }
+
+  .cm-changeGutter .cm-collapsedGutter::after {
+    left: 0;
+    border-radius: 0;
+  }
+}
+
+// Centered split numbers: the old pane's numbers sit at its trailing edge,
+// beside the new pane's. Its expansion arrows stay at the leading edge in a
+// slim gutter of their own, overlaying the fold column as the number column's do.
+.codemirror-diff .cm-editor .cm-gutters .cm-collapseControlGutter {
+  // Wide enough that the arrows are a comfortable target beside the fold column.
+  width: 16px;
+  overflow: visible;
+}
+
+.codemirror-diff .cm-editor .cm-gutters-after {
+  border-left: none !important;
+
+  .cm-lineNumbers .cm-gutterElement {
+    padding-inline: 8px;
+  }
+
+  // The shared collapsed bar continues through the number column.
+  .cm-collapsedGutter::after {
+    content: "";
+    position: absolute;
+    inset: 2px 0;
+    background: var(--color-fill-1);
+    pointer-events: none;
+  }
+
+  .cm-collapsedGutter.cm-collapsedRowHovered::after {
+    background: var(--color-fill-3);
+  }
 }
 
 .codemirror-diff .cm-editor:not(:has(.cm-lineNumbers)) .cm-collapsedLines {
@@ -585,12 +666,54 @@
   );
 }
 
+// The current row keeps its diff colour on added and deleted rows: a stronger
+// tint of the same hue, not the neutral fill used on unchanged rows (which
+// would erase the +/- colour exactly where the cursor is).
+.codemirror-diff {
+  --diff-added-active-bg: color-mix(
+    in srgb,
+    var(--diff-added-color) 22%,
+    var(--diff-added-bg)
+  );
+  --diff-deleted-active-bg: color-mix(
+    in srgb,
+    var(--diff-deleted-color) 22%,
+    var(--diff-deleted-bg)
+  );
+}
+
+.codemirror-diff .cm-editor .cm-line.cm-activeLine.cm-changedLine,
+.codemirror-diff
+  .cm-editor
+  .cm-gutters
+  .cm-gutterElement.cm-activeChangedGutter {
+  background-color: var(--diff-added-active-bg) !important;
+}
+
+.codemirror-diff .cm-editor.cm-merge-a .cm-line.cm-activeLine.cm-changedLine,
+.codemirror-diff
+  .cm-editor.cm-merge-a
+  .cm-gutters
+  .cm-gutterElement.cm-activeChangedGutter {
+  background-color: var(--diff-deleted-active-bg) !important;
+}
+
+// The merge view wraps changed text in <ins>/<del> marks that carry the
+// normal tint; on the current row they would read as a box inside the
+// stronger one.
+.codemirror-diff
+  .cm-editor
+  .cm-line.cm-activeLine.cm-changedLine
+  :is(.cm-insertedLine, .cm-deletedLine) {
+  background-color: transparent !important;
+}
+
 .cm-review-search-match {
   outline: 2px solid var(--color-primary-6);
   outline-offset: -2px;
 }
 
 ::highlight(orgii-review-search) {
-  background-color: var(--color-warning-3);
+  background-color: var(--text-selection, var(--color-primary-2));
   color: var(--color-text-1);
 }

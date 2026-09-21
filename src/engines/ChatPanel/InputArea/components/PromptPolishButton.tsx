@@ -38,8 +38,6 @@ const PromptPolishButton: React.FC<PromptPolishButtonProps> = memo(
     const button = (
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         aria-label={tooltip}
         aria-pressed={control.isPolished}
         disabled={isDisabled}
@@ -73,7 +71,7 @@ const PromptPolishButton: React.FC<PromptPolishButtonProps> = memo(
     );
 
     return (
-      <Tooltip content={tooltip} position="top-end" mouseEnterDelay={200}>
+      <Tooltip content={tooltip} position="top-end" kind="button">
         <span className="inline-flex">{button}</span>
       </Tooltip>
     );

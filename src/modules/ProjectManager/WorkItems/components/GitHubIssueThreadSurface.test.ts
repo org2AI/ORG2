@@ -27,7 +27,7 @@ vi.mock("@src/components/MarkDown", () => ({
     React.createElement("div", { "data-testid": "markdown" }, textContent),
 }));
 
-vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
+vi.mock("@src/components/MarkdownTextareaEditor", () => ({
   default: ({ dataTestId }: { dataTestId?: string }) =>
     React.createElement("div", { "data-testid": dataTestId }),
 }));

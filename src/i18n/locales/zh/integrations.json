@@ -17,7 +17,7 @@
     "removeLocal": "移除本地",
     "unlist": "下架",
     "confirmRemoveTitle": "移除 \"{{name}}\"？",
-    "confirmRemoveMessage": "这将移除本地账户配置，此操作无法撤销。",
+    "confirmRemoveMessage": "这将移除本地账户配置，此操作无法撤销",
     "confirmRemoveActiveSessions_other": "仍有 {{count}} 个活跃会话在使用此账号，移除后它们的下一轮将失败：",
     "toasts": {
       "refreshed": "{{name}} 刷新成功",
@@ -69,10 +69,10 @@
       "accountEmail": "账户邮箱"
     },
     "customModels": {
-      "manualSetupHint": "填写端点接受的实际模型 ID 和可选显示名称。模型发现可选；启用模型不代表已验证端点兼容性。",
+      "manualSetupHint": "填写端点接受的实际模型 ID 和可选显示名称。模型发现可选；启用模型不代表已验证端点兼容性",
       "modelNamePlaceholder": "输入模型 id...",
       "displayNamePlaceholder": "可选标签",
-      "emptyHint": "尚未添加自定义模型。",
+      "emptyHint": "尚未添加自定义模型",
       "addModel": "添加模型",
       "testRequiresEndpoint": "输入端点和 API 密钥以测试此模型",
       "invalidModelId": "模型 ID 必须为 1–256 字节，且不能包含空白或控制字符。",
@@ -146,18 +146,16 @@
       "keysVerified": "密钥已验证",
       "failedMessage": "您的 API Key 和 Session Token 似乎不属于同一 Cursor 账户。",
       "failedError": "错误：{{error}}",
-      "failedHint": "请使用来自同一 Cursor 账户的匹配密钥创建新列表。",
+      "failedHint": "请使用来自同一 Cursor 账户的匹配密钥创建新列表",
       "listingRejected": "列表被拒绝",
       "rejectedByAdmin": "此列表已被管理员拒绝。"
     },
     "apiKeyLabel": "API Key",
-    "apiKeyDesc": "用于向 API 服务商发送请求的密钥",
     "baseUrlLabel": "Base URL",
-    "baseUrlDesc": "API 端点地址 — 仅在使用代理、自定义部署或自建服务器时修改",
     "apiProtocolLabel": "API 协议",
     "apiProtocolDesc": "选择内置 Rust Agent 使用的线路协议",
-    "officialUrl": "官方 URL",
-    "customUrl": "自定义 URL",
+    "officialUrl": "官方",
+    "customUrl": "自定义",
     "customBaseUrlNoteTitle": "关于自定义端点",
     "customBaseUrlNoteBody": "您的 API 密钥和请求数据会发送到您输入的 URL。请仅将自定义 URL 用于可信代理、自建部署或您控制的端点",
     "localModel": {
@@ -172,14 +170,12 @@
       "validateDesc": "如果端点正在运行，可进行探测；也可以手动添加模型后直接保存"
     },
     "validate": "验证",
-    "validateDesc": "在继续之前验证密钥",
     "validated": "已验证",
     "validationSuccessModels": "检测到 {{count}} 个模型 — 在下一步中配置",
     "validationSuccessNoModels": "Key 验证成功 — 未自动检测到模型，请在下方手动添加模型",
     "addCliAgent": "添加 Agent",
     "accountName": "账户名称（可选）",
     "accountNameDesc": "留空则使用 {{provider}}，之后依次使用 {{provider}}-1、{{provider}}-2 等",
-    "selectorDesc": "选择要连接的服务",
     "accountNamePlaceholder": "自动：{{provider}}",
     "descriptionOptional": "描述（选填）",
     "descriptionPlaceholder": "输入描述",
@@ -246,8 +242,8 @@
     "claudeCodeSignInDesc": "在内置浏览器中登录 Claude Code。ORG2 会捕获 authorization code，并将 OAuth Token 保存在本地",
     "claudeCodeReadyToSignIn": "准备登录 Claude Code",
     "claudeCodeSignedIn": "Claude Code 已连接",
-    "claudeCodeOAuthHint": "这会保存一个 claude_code OAuth 账户，供使用 anthropic_native 的 Rust agents 使用。",
-    "claudeCodeBrowserHint": "请在内置浏览器中完成 Claude Code 授权。",
+    "claudeCodeOAuthHint": "这会保存一个 claude_code OAuth 账户，供使用 anthropic_native 的 Rust agents 使用",
+    "claudeCodeBrowserHint": "请在内置浏览器中完成 Claude Code 授权",
     "claudeCodeSignInErrorHint": "关闭浏览器后重试登录。没有 Token 被保存",
     "connectedViaChatGpt": "已通过 ChatGPT Plus/Pro 登录连接",
     "apiKeyDetectedFromConfig": "已从本地配置检测到 API Key",
@@ -270,7 +266,7 @@
     "opensEmbeddedBrowser": "使用内置浏览器连接你的 Cursor 账号。",
     "loggedIn": "已登录",
     "loginStep": "登录",
-    "signInToCursorHint": "登录你的 Cursor 账号。登录完成后此窗口会自动关闭。",
+    "signInToCursorHint": "登录你的 Cursor 账号。登录完成后此窗口会自动关闭",
     "copilotCreatePat": "创建 GitHub Personal Access Token",
     "copilotCreatePatDesc": "打开内置浏览器创建 GitHub PAT",
     "copilotTokenValidated": "Token 已验证",
@@ -304,7 +300,7 @@
     "cursorLoginBrowserTitle": "Cursor 登录",
     "modelCount": "{{count}} 个模型",
     "cursorLoginReadyTitle": "Cursor 账号已连接",
-    "cursorLoginReadyDesc": "请在下方生成并粘贴 Cursor API Key。没有这个 API Key，Cursor agent 无法使用。",
+    "cursorLoginReadyDesc": "请在下方生成并粘贴 Cursor API Key。没有这个 API Key，Cursor agent 无法使用",
     "cursorApiKeyBrowserHint": "登录后，ORG2 会打开 Cursor dashboard。请在那里生成 User API Key，然后粘贴到下方",
     "cursorApiKeyRecommendedTitle": "建议提供 Cursor API Key",
     "cursorApiKeyRecommendedDesc": "如果你只想把 Cursor 用于 ORG2 的 Rust agents，可以不提供 Cursor API Key；只需通过内置浏览器登录，或提供 session token",
@@ -316,8 +312,8 @@
     "signInWithCodex": "使用 Codex 登录",
     "codexReadyToSignIn": "准备登录 Codex",
     "codexSignedIn": "Codex 已连接",
-    "codexOAuthHint": "这会保存一个用于 ChatGPT Codex 后端访问的 codex OAuth 账号。",
-    "codexBrowserHint": "请在内嵌浏览器中完成 Codex 授权。",
+    "codexOAuthHint": "这会保存一个用于 ChatGPT Codex 后端访问的 codex OAuth 账号",
+    "codexBrowserHint": "请在内嵌浏览器中完成 Codex 授权",
     "codexSignInErrorHint": "关闭浏览器并重新登录。没有保存任何 Token",
     "codexAutodetectTitle": "检测 Codex 会话",
     "codexAutodetectDesc": "从本地环境读取 ~/.codex/auth.json 和 OPENAI_API_KEY",
@@ -331,7 +327,7 @@
     "claudeCodeDetectErrorHint": "请使用内嵌浏览器登录，或运行 claude auth login 后重新检测",
     "refreshModels": {
       "button": "刷新模型",
-      "failed": "刷新模型失败：{{error}}"
+      "failed": "这个 Market 工作区目前不可用。请重新打开 Market 以刷新授权。"
     },
     "revalidate": "重新验证",
     "confirmRemoveActiveSessions_one": "仍有 {{count}} 个活跃会话在使用此账号，移除后它的下一轮将失败："
@@ -573,7 +569,7 @@
     },
     "gateway": {
       "title": "Gateway Agent",
-      "description": "Gateway 负责路由所有渠道的入站消息，请选择用于语义路由的 API 密钥和模型。",
+      "description": "Gateway 负责路由所有渠道的入站消息，请选择用于语义路由的 API 密钥和模型",
       "statusReady": "已配置",
       "statusUnconfigured": "未配置",
       "account": "API 密钥账户",
@@ -581,7 +577,7 @@
       "model": "模型",
       "modelPlaceholder": "选择模型",
       "groupPerUser": "按用户隔离群聊会话",
-      "groupPerUserDesc": "群聊中每位参与者都有独立的会话上下文。"
+      "groupPerUserDesc": "群聊中每位参与者都有独立的会话上下文"
     },
     "emailProtocol": "协议",
     "matrixDeviceNamePlaceholder": "ORG2 机器人"
@@ -621,7 +617,6 @@
     "collapseAllRows": "全部折叠",
     "orgiiMarketGroup": "ORG2 市场",
     "variantSpeed": "Speed",
-    "variantOptions": "版本选项",
     "variantDefault": "默认",
     "variantCount": "{{count}} 个版本",
     "selectedVersion": "已选版本",
@@ -629,8 +624,6 @@
     "keyDefaultVersionOnly": "此 key 仅有默认版本 {{model}}",
     "selectedVersionFor": "{{model}} 的已选版本",
     "preferredVersion": "首选版本",
-    "reasoningLevel": "Reasoning level",
-    "effort": "Effort",
     "addNewKey": "添加新的 key",
     "availableKeys": "已启用 {{enabled}}/{{total}} 个可用 keys",
     "availableModels": "已启用 {{enabled}}/{{total}} 个可用模型",
@@ -770,28 +763,28 @@
     "tokenRequired": "Personal access token 是必填项",
     "oauthWaiting": "正在等待 OAuth",
     "oauthDeviceDesc": "打开验证 URL 并输入此代码以授权 GitHub",
-    "oauthBrowserDesc": "在已打开的浏览器窗口中完成授权。",
-    "oauthBrowserOpened": "已打开浏览器窗口。请在那里完成授权，然后此向导会继续。"
+    "oauthBrowserDesc": "在已打开的浏览器窗口中完成授权",
+    "oauthBrowserOpened": "已打开浏览器窗口。请在那里完成授权，然后此向导会继续"
   },
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "自动检测",
     "methodOAuth": "使用 GitHub 登录",
-    "methodPickerDesc": "选择向 GitHub 进行身份验证的方式。",
-    "oauthDeviceDesc": "打开验证 URL 并输入此代码以授权 GitHub。",
+    "methodPickerDesc": "选择向 GitHub 进行身份验证的方式",
+    "oauthDeviceDesc": "打开验证 URL 并输入此代码以授权 GitHub",
     "scanCredHelper": "Git 凭据助手（{{name}}）",
     "scanEmpty": "未检测到任何凭据",
-    "scanEmptyDesc": "未找到 gh CLI token、凭据助手或 SSH 密钥。请在上方选择其他方式。",
+    "scanEmptyDesc": "未找到 gh CLI token、凭据助手或 SSH 密钥。请在上方选择其他方式",
     "scanGhCli": "GitHub CLI（gh）",
     "scanResults": "检测到的凭据",
-    "scanResultsDesc": "选择一项导入。保存前我们会向 GitHub 验证 token。",
+    "scanResultsDesc": "选择一项导入。保存前我们会向 GitHub 验证 token",
     "scanSshKey": "SSH 密钥 — {{name}}",
     "scanning": "正在扫描…",
-    "scanningDesc": "正在本机查找 gh CLI token、凭据助手和 SSH 密钥。",
+    "scanningDesc": "正在本机查找 gh CLI token、凭据助手和 SSH 密钥",
     "sshKeyPath": "SSH 密钥路径",
-    "sshKeyPathDesc": "私钥的绝对路径（例如 ~/.ssh/id_ed25519）。对应的公钥必须已在 GitHub 上注册。",
-    "scanSelectRequired": "请选择一个检测到的凭据进行导入。",
-    "sshKeyPathRequired": "SSH 密钥路径为必填项。"
+    "sshKeyPathDesc": "私钥的绝对路径（例如 ~/.ssh/id_ed25519）。对应的公钥必须已在 GitHub 上注册",
+    "scanSelectRequired": "请选择一个检测到的凭据进行导入",
+    "sshKeyPathRequired": "SSH 密钥路径为必填项"
   },
   "builtInTools": {
     "tabTools": "内置工具",
@@ -821,9 +814,9 @@
     "agentBrowserRestartPromptMessage": "更改 Browser CLI 提供方后，需要重启 ORG2，Agent 才能看到所选工具。现在重启吗？",
     "sidecarDownloadsSectionTitle": "Sidecar 下载",
     "sidecarAgentBrowserLabel": "Agent Browser CLI",
-    "sidecarAgentBrowserDesc": "将适用于当前平台的 Agent Browser 二进制文件下载到 ~/.orgii/bin。ORG2 启动时绝不会自动下载。",
+    "sidecarAgentBrowserDesc": "将适用于当前平台的 Agent Browser 二进制文件下载到 ~/.orgii/bin。ORG2 启动时绝不会自动下载",
     "sidecarPeekabooLabel": "Peekaboo CLI",
-    "sidecarPeekabooDesc": "将 macOS Peekaboo 桌面自动化二进制文件下载到 ~/.orgii/bin。不支持的平台会保持禁用。",
+    "sidecarPeekabooDesc": "将 macOS Peekaboo 桌面自动化二进制文件下载到 ~/.orgii/bin。不支持的平台会保持禁用",
     "sidecarUnsupported": "不支持",
     "sidecarInstalled": "已安装",
     "sidecarNotInstalled": "未安装",
@@ -886,7 +879,7 @@
     "connectMethodDesc": "选择连接 GitHub 账户的方式",
     "githubApp": "GitHub App",
     "detectFromSystem": "从系统检测",
-    "detectFromSystemDesc": "使用 gh CLI、SSH 密钥或 Git 凭证助手。",
+    "detectFromSystemDesc": "使用 gh CLI、SSH 密钥或 Git 凭证助手",
     "credentialsDetected": "已检测到凭证",
     "detectedVia": "通过 {{source}} 检测",
     "sshKeyLabel": "SSH 密钥",
@@ -906,7 +899,7 @@
     "noCredentialsFound": "未找到 GitHub 凭证",
     "noCredentialsHint": "安装 GitHub CLI (gh) 或设置 SSH 密钥以使用本地检测",
     "manuallyAddToken": "手动添加 Token",
-    "manualTokenDesc": "粘贴用于 HTTPS Git 操作的 GitHub PAT。",
+    "manualTokenDesc": "粘贴用于 HTTPS Git 操作的 GitHub PAT",
     "autoDetect": "自动检测",
     "autoDetectTokenSaved": "GitHub token 已保存",
     "autoDetectSshSwitched": "Remote 已切换为 SSH",
@@ -925,7 +918,7 @@
     "coauthor": "Co-authored-by",
     "coauthorDesc": "为 ORG2 创建的 Git Commit 添加 {{name}} <{{email}}>",
     "noTokenYet": "需要 Token？",
-    "createTokenDesc": "打开 GitHub，创建带 repo 权限的 PAT。",
+    "createTokenDesc": "打开 GitHub，创建带 repo 权限的 PAT",
     "accountConnected": "GitHub 账户已连接",
     "disconnectMsg": "确定要断开连接吗？这将移除此账户对所有仓库的访问权限。",
     "disconnectTitle": "断开 GitHub 账户",
@@ -934,7 +927,7 @@
     "connectRepoDesc": "连接 GitHub 账户以访问仓库",
     "github": "GitHub",
     "signInWithGithub": "使用 GitHub 登录",
-    "signInWithGithubDesc": "通过 GitHub 设备流授权 ORG2，无需自建服务器。",
+    "signInWithGithubDesc": "通过 GitHub 设备流授权 ORG2，无需自建服务器",
     "oauthWaiting": "等待授权",
     "oauthDeviceCodeDesc": "打开下方 URL 并输入此代码",
     "oauthOpenGithub": "打开 GitHub",
@@ -976,8 +969,8 @@
     "contentLabel": "内容",
     "contentDesc": "用 Markdown 编写 SKILL.md 内容，这是 Agent 读取的内容",
     "scopeLabel": "范围",
-    "scopeDesc": "User Skill 对所有仓库可用。Repo-specific Skill 只会在对应仓库中加载。",
-    "scopeDescEdit": "保存时切换范围会在用户级存储和仓库专属存储之间移动 Skill 文件夹。",
+    "scopeDesc": "User Skill 对所有仓库可用。Repo-specific Skill 只会在对应仓库中加载",
+    "scopeDescEdit": "保存时切换范围会在用户级存储和仓库专属存储之间移动 Skill 文件夹",
     "scopeGlobal": "User",
     "binsLabel": "所需可执行文件",
     "binsDesc": "此技能需要的 CLI 程序（如 git、python、docker）",
@@ -997,7 +990,7 @@
     "filePathPlaceholder": "如 scripts/validate.py",
     "removeFile": "移除文件",
     "editorNoDraftTitle": "当前没有进行中的 Skill 草稿",
-    "editorNoDraftDesc": "请先在 Skills 页点击「创建」，或选择一个 Skill 进行编辑。",
+    "editorNoDraftDesc": "请先在 Skills 页点击「创建」，或选择一个 Skill 进行编辑",
     "scopeWorkspace": "Repo-specific",
     "deleteConfirmTitle": "删除 Skill「{{name}}」？",
     "deleteConfirmMessage": "这将移除该 Skill 及其所有文件，操作不可撤销。"
@@ -1006,7 +999,7 @@
     "tab": "MCP",
     "searchPlaceholder": "搜索 MCP 服务器...",
     "noServers": "未配置 MCP 服务器",
-    "noServersDesc": "添加 MCP 服务器以使用外部工具扩展 Agent 功能。",
+    "noServersDesc": "添加 MCP 服务器以使用外部工具扩展 Agent 功能",
     "addServer": "添加 MCP 服务器",
     "editServer": "编辑 MCP 服务器",
     "serverName": "服务器名称",
@@ -1161,7 +1154,7 @@
         }
       },
       "membersLabel": "团队成员",
-      "membersDesc": "每一行都是一位 Member；Writer 权限与通信设置彼此独立。名称必须唯一，角色只用于描述专长。",
+      "membersDesc": "每一行都是一位 Member；Writer 权限与通信设置彼此独立。名称必须唯一，角色只用于描述专长",
       "memberName": "名称",
       "memberNamePlaceholder": "唯一的路由名（如 SDE-1）",
       "memberNameDuplicate": "已有其他成员使用此 name。组织内 name 必须唯一。",
@@ -1198,9 +1191,9 @@
       "descriptionPlaceholder": "这个 Agent 的职责是什么？（可选）",
       "subAgentsTab": "Subagents",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
-      "maxToolUseConcurrencyDesc": "每条 assistant message 的并发 Tool 调用数上限。默认：10。",
+      "maxToolUseConcurrencyDesc": "每条 assistant message 的并发 Tool 调用数上限。默认：10",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
-      "subAgentWorktreeIsolationDesc": "在临时 Git Worktree 中运行（文件和 Shell 访问相互隔离）。",
+      "subAgentWorktreeIsolationDesc": "在临时 Git Worktree 中运行（文件和 Shell 访问相互隔离）",
       "addSubAgent": "添加 Sub-Agent...",
       "noSubAgents": "未配置 Sub-Agent。"
     },
@@ -1236,30 +1229,30 @@
     "applicableAgentsDesc": "此规则适用于哪些 Agent（留空 = 全部）",
     "selectAgents": "选择 Agent…",
     "ruleSource": "来源",
-    "ruleSourceDesc": "选择 User 表示所有仓库的用户偏好，选择 Repo 表示某个仓库专属指南。",
+    "ruleSourceDesc": "选择 User 表示所有仓库的用户偏好，选择 Repo 表示某个仓库专属指南",
     "ruleSourceUser": "User",
-    "ruleSourceUserDesc": "适用于所有仓库的用户偏好。",
+    "ruleSourceUserDesc": "适用于所有仓库的用户偏好",
     "ruleSourceRepo": "Repo",
-    "ruleSourceRepoDesc": "存储到单个仓库的专属指南。",
+    "ruleSourceRepoDesc": "存储到单个仓库的专属指南",
     "ruleRepo": "仓库",
     "ruleRepoDesc": "此指南适用的唯一仓库",
     "selectRepo": "选择仓库…",
     "ruleSourcePersonal": "个人",
-    "ruleSourcePersonalDesc": "存储在 ~/.orgii/personal/rules/。仅 OS Agent / channel session 加载。",
+    "ruleSourcePersonalDesc": "存储在 ~/.orgii/personal/rules/。仅 OS Agent / channel session 加载",
     "findSkills": {
       "title": "搜索 Skills",
       "placeholder": "搜索 Skills...",
       "installs": "Installs",
       "emptyTitle": "搜索 Skills",
-      "emptySubtitle": "输入至少 2 个字符，然后按 Enter 查找 Skills。",
+      "emptySubtitle": "输入至少 2 个字符，然后按 Enter 查找 Skills",
       "noResults": "未找到 Skills",
-      "noResultsDesc": "请尝试其他搜索词。"
+      "noResultsDesc": "请尝试其他搜索词"
     },
     "importAgentTitle": "从其他应用导入 Agents",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agents",
     "emptySelectionTitle": "选择成员或 Agent 团队",
-    "emptySelectionSubtitle": "从侧边栏选择一个 Agent 或 Agent 团队以查看和配置。",
+    "emptySelectionSubtitle": "从侧边栏选择一个 Agent 或 Agent 团队以查看和配置",
     "applicableWorkspace": "适用 Workspace",
     "tableTabs": {
       "agents": "Agents",
@@ -1288,18 +1281,18 @@
     "cliManagedConfig": {
       "title": "CLI 配置切换",
       "modeLabel": "模式",
-      "modeDesc": "默认配置会恢复 CLI 原有设置；ORG2 托管会在备份后写入本地代理配置。",
+      "modeDesc": "默认配置会恢复 CLI 原有设置；ORG2 托管会在备份后写入本地代理配置",
       "modeDefault": "默认配置",
       "modeOrgii": "ORG2 托管",
       "conflict": "外部修改",
       "conflictTitle": "配置冲突",
-      "conflictDesc": "ORG2 写入后，当前 CLI 配置又被其他程序修改。",
+      "conflictDesc": "ORG2 写入后，当前 CLI 配置又被其他程序修改",
       "proxyStatus": "本地代理",
       "proxyDefault": "默认配置模式",
       "proxyReady": "代理已就绪",
       "proxyNotReady": "代理未就绪",
       "keyLabel": "密钥",
-      "keyDesc": "仅显示与当前 CLI 和托管代理兼容的 API Key。",
+      "keyDesc": "仅显示与当前 CLI 和托管代理兼容的 API Key",
       "selectKey": "选择密钥",
       "modelLabel": "模型",
       "selectModel": "选择模型",
@@ -1312,12 +1305,12 @@
       "forceRestore": "强制恢复",
       "applySuccess": "已应用 ORG2 托管配置",
       "restoreSuccess": "已恢复 CLI 默认配置",
-      "proxyLifecycleDesc": "使用此模式时请保持 ORG2 运行。关闭窗口后代理会留在托盘；完全退出时会安全恢复默认配置，外部修改不会被覆盖。"
+      "proxyLifecycleDesc": "使用此模式时请保持 ORG2 运行。关闭窗口后代理会留在托盘；完全退出时会安全恢复默认配置，外部修改不会被覆盖"
     },
     "sessionProvenance": {
       "title": "Session Provenance",
       "capture": "采集文件交互记录",
-      "description": "以 metadata 形式记录文件读写；不会存储提示词、工具输出或文件内容。",
+      "description": "以 metadata 形式记录文件读写；不会存储提示词、工具输出或文件内容",
       "installDrift": "保存的开关状态与实际安装的 hook 不一致。切换一次即可修复 ORG2 管理的 hook。配置：{{path}}",
       "copyPath": "复制",
       "col": {
@@ -1361,11 +1354,11 @@
       "masterToggle": "溯源 Hooks",
       "masterToggleDesc": "关闭后将卸载所有托管 hook,不再采集任何信号;各平台的选择会保留,重新开启时恢复",
       "liveStatusToggle": "实时 Agent 状态",
-      "liveStatusToggleDesc": "显示运行中 CLI Agent 的工作或等待状态；关闭后仍会采集溯源记录。",
+      "liveStatusToggleDesc": "显示运行中 CLI Agent 的工作或等待状态；关闭后仍会采集溯源记录",
       "codexApproval": {
         "title": "在 Codex 中验证 ORG2 hooks",
-        "description": "正在等待 Codex 授权并执行当前的 ORG2 hooks。",
-        "instructions": "打开 Codex，检查 ORG2 hooks，然后选择 Trust all and continue。会话启动时，SessionStart hook 会自动验证是否已启用。",
+        "description": "正在等待 Codex 授权并执行当前的 ORG2 hooks",
+        "instructions": "打开 Codex，检查 ORG2 hooks，然后选择 Trust all and continue。会话启动时，SessionStart hook 会自动验证是否已启用",
         "review": "在 Codex 中检查",
         "verified": "已通过真实 Codex hook 信号验证（{{time}}）。"
       }
@@ -1519,7 +1512,7 @@
   },
   "housekeeper": {
     "title": "常驻管家",
-    "description": "本地 MiniCPM 只处理输入润色、短步骤解释和轻量 UI 控制；编码任务和复杂 ADE 配置仍然交给主 Agent 模型。",
+    "description": "本地 MiniCPM 只处理输入润色、短步骤解释和轻量 UI 控制；编码任务和复杂 ADE 配置仍然交给主 Agent 模型",
     "addModel": "添加模型",
     "autoAccount": "自动选择 MiniCPM vLLM 账号",
     "tiles": {
@@ -1530,37 +1523,37 @@
     "settings": {
       "enabled": {
         "title": "启用常驻管家",
-        "description": "关闭后，输入润色、步骤解释和轻量 UI 控制都不会使用 MiniCPM。"
+        "description": "关闭后，输入润色、步骤解释和轻量 UI 控制都不会使用 MiniCPM"
       },
       "account": {
         "title": "vLLM MiniCPM 账号",
-        "description": "复用 KeyVault 里的 vllm_api 账号，不单独创建 credential store。"
+        "description": "复用 KeyVault 里的 vllm_api 账号，不单独创建 credential store"
       },
       "model": {
         "title": "模型 ID",
-        "description": "Docker vLLM MiniCPM5-1B 默认使用 openbmb/MiniCPM5-1B。"
+        "description": "Docker vLLM MiniCPM5-1B 默认使用 openbmb/MiniCPM5-1B"
       },
       "context": {
         "title": "上下文安全预算",
-        "description": "4GB GPU 按 10000 token 保守预算处理，不相信理论 32k 上限。"
+        "description": "4GB GPU 按 10000 token 保守预算处理，不相信理论 32k 上限"
       }
     },
     "features": {
       "promptPolish": {
         "title": "输入内容润色",
-        "description": "手动点击输入框润色按钮时，先用 MiniCPM 整理要发给强代码模型的指令。"
+        "description": "手动点击输入框润色按钮时，先用 MiniCPM 整理要发给强代码模型的指令"
       },
       "stepExplain": {
         "title": "Agent 步骤解释",
-        "description": "在 session replay 里，为当前步骤生成 1-2 句简短中文解释。"
+        "description": "在 session replay 里，为当前步骤生成 1-2 句简短中文解释"
       },
       "uiControl": {
         "title": "轻量 ADE/UI 控制",
-        "description": "MiniCPM 只能把请求识别成严格白名单里的本地 action。"
+        "description": "MiniCPM 只能把请求识别成严格白名单里的本地 action"
       },
       "contextCompact": {
         "title": "自动压缩上下文",
-        "description": "会话空闲时由 MiniCPM 分段维护旧上下文，独立于原有手动和自动压缩。"
+        "description": "会话空闲时由 MiniCPM 分段维护旧上下文，独立于原有手动和自动压缩"
       }
     },
     "health": {
@@ -1657,13 +1650,21 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "导入失败：{{message}}",
-    "partialFailure": "部分凭据无法导入："
+    "partialFailure": "部分凭据无法导入：",
+    "importSucceeded": "已保存到“账号”：{{names}}。这些凭据现在可作为连接重复使用。"
   },
   "skills": {
     "shareToOrg": "共享到组织",
     "share": "共享",
     "sharedToOrg": "技能已共享到组织",
-    "shareToOrgHint": "组织成员会收到该技能当前的快照；编辑后再次共享即发布更新。",
+    "shareToOrgHint": "组织成员会收到该技能当前的快照；编辑后再次共享即发布更新",
     "shareOrgPlaceholder": "组织"
+  },
+  "marketConnection": {
+    "loadingPurchases": "正在读取官方套餐…",
+    "purchasesFailed": "无法读取官方套餐，请重试。",
+    "failed": "无法连接到 Market，请重试。",
+    "title": "官方套餐",
+    "launchFailed": "无法启用所选套餐。请刷新套餐，检查钱包余额和用量授权后重试。"
   }
 }

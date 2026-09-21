@@ -200,10 +200,49 @@ mod tests {
         assert_eq!(chunks[0].result["success"], true);
 
         let usage = parser.token_usage().expect("Should have token usage");
-        assert_eq!(usage.input_tokens, 1500);
+        assert_eq!(usage.input_tokens, 1000);
         assert_eq!(usage.output_tokens, 300);
         assert_eq!(usage.cache_read_tokens, 500);
         assert_eq!(usage.total_tokens, 1800);
+    }
+
+    #[test]
+    fn test_codex_exec_cache_hit_uses_same_fresh_input_contract() {
+        for (usage, fresh, cached, total) in [
+            (
+                serde_json::json!({"input_tokens": 9660, "cached_input_tokens": 8704, "output_tokens": 9}),
+                956,
+                8704,
+                9669,
+            ),
+            (
+                serde_json::json!({"input_tokens": 100, "cached_input_tokens": 120, "output_tokens": 9}),
+                0,
+                100,
+                109,
+            ),
+            (
+                serde_json::json!({"input_tokens": 100, "output_tokens": 9}),
+                100,
+                0,
+                109,
+            ),
+            (
+                serde_json::json!({"cached_input_tokens": 120, "output_tokens": 9}),
+                0,
+                0,
+                9,
+            ),
+        ] {
+            let mut parser = CodexParser::new("test-session");
+            parser.parse_line(
+                &serde_json::json!({"type": "turn.completed", "usage": usage}).to_string(),
+            );
+            let usage = parser.token_usage().expect("usage");
+            assert_eq!(usage.input_tokens, fresh);
+            assert_eq!(usage.cache_read_tokens, cached);
+            assert_eq!(usage.total_tokens, total);
+        }
     }
 
     #[test]

@@ -5,7 +5,7 @@ import Message from "@src/components/Message";
 import {
   issueHasAssigneeLogins,
   resolveGitHubAssigneeUsers,
-} from "@src/modules/shared/githubIssueAssignees";
+} from "@src/features/GitHubWork/githubIssueAssignees";
 import {
   updateCachedClosedIssues,
   updateCachedOpenIssues,

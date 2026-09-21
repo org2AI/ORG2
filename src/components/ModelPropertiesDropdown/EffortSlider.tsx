@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import SegmentedTextPill from "@src/components/SegmentedTextPill";
 import Tooltip from "@src/components/Tooltip";
 import {
   MODEL_REASONING_LEVEL,
@@ -88,10 +89,12 @@ export const EffortSlider: React.FC<EffortSliderProps> = ({
   const maxIndex = Math.max(0, levels.length - 1);
   const selectedLevel = levels[selectedIndex];
   const hasRange = levels.length > 1;
+  const showTabs = levels.length === 2;
+  const shouldAnimate = animate && levels.length > 2 && selectedIndex > 0;
 
   useEffect(() => {
     const slider = sliderRef.current;
-    if (!slider || !hasRange || !animate) return;
+    if (!slider || !shouldAnimate) return;
 
     // CSS owns the motion; this popover-scoped listener only gates it when
     // the document hides. No animation frames, timers, or particle buffers.
@@ -105,7 +108,7 @@ export const EffortSlider: React.FC<EffortSliderProps> = ({
       document.removeEventListener("visibilitychange", syncVisibility);
       slider.dataset.motion = "paused";
     };
-  }, [animate, hasRange]);
+  }, [shouldAnimate]);
 
   if (!selectedLevel) return null;
 
@@ -116,7 +119,7 @@ export const EffortSlider: React.FC<EffortSliderProps> = ({
   });
 
   return (
-    <div className="px-1.5 py-1">
+    <div className="py-1">
       {showLabel && (
         <div className="mb-1 flex items-center justify-between gap-3 text-xs leading-4">
           <span className="font-medium text-text-3">{effortLabel}</span>
@@ -127,132 +130,151 @@ export const EffortSlider: React.FC<EffortSliderProps> = ({
           </span>
         </div>
       )}
-      {hasRange && (
-        <div
-          ref={sliderRef}
-          className="effort-slider"
-          data-fast={fast}
-          data-effort={selectedLevel}
-          style={
-            {
-              "--effort-progress": selectedIndex / maxIndex,
-            } as React.CSSProperties
-          }
-        >
-          <div className="effort-slider__rail bg-fill-2" aria-hidden="true">
-            <div className="effort-slider__fill">
-              {COMET_INDICES.map((index) => (
-                <span key={index} className="effort-slider__comet" />
-              ))}
+      {showTabs ? (
+        <SegmentedTextPill
+          ariaLabel={effortLabel}
+          value={selectedLevel}
+          options={levels.map((level) => ({
+            value: level,
+            label: formatReasoningLevel(level),
+          }))}
+          onChange={(level) => {
+            if (level !== selectedLevel) onChange(level);
+          }}
+          className="w-full [&>button]:min-w-0 [&>button]:flex-1"
+        />
+      ) : (
+        hasRange && (
+          <div
+            ref={sliderRef}
+            className="effort-slider"
+            data-fast={fast}
+            data-effort={selectedLevel}
+            style={
+              {
+                "--effort-progress": selectedIndex / maxIndex,
+              } as React.CSSProperties
+            }
+          >
+            <div className="effort-slider__rail bg-fill-2" aria-hidden="true">
+              <div className="effort-slider__fill">
+                {shouldAnimate &&
+                  COMET_INDICES.map((index) => (
+                    <span key={index} className="effort-slider__comet" />
+                  ))}
+              </div>
+              <div className="effort-slider__stages">
+                {levels.map((level, index) => (
+                  <Tooltip
+                    key={level}
+                    content={formatReasoningLevel(level)}
+                    open={hoveredLevel === level}
+                    style={{ translate: "0 -8px" }}
+                  >
+                    <span
+                      data-effort-stage={level}
+                      className={`h-1 w-1 rounded-full transition-transform duration-150 motion-reduce:transition-none ${hoveredLevel === level ? "scale-150" : "scale-100"} ${index < selectedIndex ? "bg-white/80" : "bg-text-3"}`}
+                    />
+                  </Tooltip>
+                ))}
+              </div>
             </div>
-            <div className="effort-slider__stages">
-              {levels.map((level, index) => (
-                <Tooltip
-                  key={level}
-                  content={formatReasoningLevel(level)}
-                  open={hoveredLevel === level}
-                >
-                  <span
-                    data-effort-stage={level}
-                    className={`h-1 w-1 rounded-full ${index < selectedIndex ? "bg-white/80" : "bg-text-3"}`}
-                  />
-                </Tooltip>
-              ))}
-            </div>
-          </div>
-          <input
-            className="effort-slider__input"
-            type="range"
-            min={0}
-            max={maxIndex}
-            step={1}
-            value={selectedIndex}
-            aria-label={effortLabel}
-            aria-valuetext={levelLabel}
-            onPointerMove={(event) => {
-              if (event.pointerType === "touch") return;
-              // Hit-test the painted dots through the native input so neither
-              // tooltips nor extra targets interfere with thumb dragging.
-              const stages = sliderRef.current?.querySelectorAll<HTMLElement>(
-                "[data-effort-stage]"
-              );
-              const index = stages
-                ? Array.from(stages).findIndex((stage) => {
-                    const rect = stage.getBoundingClientRect();
-                    return (
-                      Math.abs(event.clientX - (rect.left + rect.width / 2)) <=
-                        8 &&
-                      Math.abs(event.clientY - (rect.top + rect.height / 2)) <=
-                        8
-                    );
-                  })
-                : -1;
-              const nextLevel = levels[index];
-              if (nextLevel !== hoveredLevel) setHoveredLevel(nextLevel);
-            }}
-            onPointerLeave={() => setHoveredLevel(undefined)}
-            onChange={(event) => {
-              const nextLevel = levels[event.currentTarget.valueAsNumber];
-              if (!nextLevel || nextLevel === selectedLevel) return;
-              if (interactionRef.current) {
-                interactionRef.current.level = nextLevel;
-                setPreview({
-                  level: nextLevel,
-                  sourceValue: interactionRef.current.sourceValue,
-                });
-                onPreviewChange?.(nextLevel);
-              } else {
-                // Assistive input without pointer/key events still commits.
-                onChange(nextLevel);
-              }
-            }}
-            // Keep rapid input local; persist only the completed gesture.
-            // Let the native thumb own capture, including outside releases.
-            // Capturing on the input prevents WebKit from dragging its thumb.
-            onPointerDown={(event) => {
-              setHoveredLevel(undefined);
-              if (event.button !== 0 || interactionRef.current) return;
-              interactionRef.current = {
-                kind: "pointer",
-                pointerId: event.pointerId,
-                level: value,
-                sourceValue: value,
-              };
-            }}
-            onPointerUp={(event) => {
-              if (interactionRef.current?.pointerId === event.pointerId) {
-                finishInteraction(true);
-              }
-            }}
-            onPointerCancel={() => finishInteraction(false)}
-            onLostPointerCapture={() => {
-              if (interactionRef.current?.kind === "pointer")
-                finishInteraction(true);
-            }}
-            onKeyDown={(event) => {
-              if (RANGE_KEYS.has(event.key) && !interactionRef.current) {
+            <input
+              className="effort-slider__input"
+              type="range"
+              min={0}
+              max={maxIndex}
+              step={1}
+              value={selectedIndex}
+              aria-label={effortLabel}
+              aria-valuetext={levelLabel}
+              onPointerMove={(event) => {
+                if (event.pointerType === "touch") return;
+                // Hit-test the painted dots through the native input so neither
+                // tooltips nor extra targets interfere with thumb dragging.
+                const stages = sliderRef.current?.querySelectorAll<HTMLElement>(
+                  "[data-effort-stage]"
+                );
+                const index = stages
+                  ? Array.from(stages).findIndex((stage) => {
+                      const rect = stage.getBoundingClientRect();
+                      return (
+                        Math.abs(
+                          event.clientX - (rect.left + rect.width / 2)
+                        ) <= 8 &&
+                        Math.abs(
+                          event.clientY - (rect.top + rect.height / 2)
+                        ) <= 8
+                      );
+                    })
+                  : -1;
+                const nextLevel = levels[index];
+                if (nextLevel !== hoveredLevel) setHoveredLevel(nextLevel);
+              }}
+              onPointerLeave={() => setHoveredLevel(undefined)}
+              onChange={(event) => {
+                const nextLevel = levels[event.currentTarget.valueAsNumber];
+                if (!nextLevel || nextLevel === selectedLevel) return;
+                if (interactionRef.current) {
+                  interactionRef.current.level = nextLevel;
+                  setPreview({
+                    level: nextLevel,
+                    sourceValue: interactionRef.current.sourceValue,
+                  });
+                  onPreviewChange?.(nextLevel);
+                } else {
+                  // Assistive input without pointer/key events still commits.
+                  onChange(nextLevel);
+                }
+              }}
+              // Keep rapid input local; persist only the completed gesture.
+              // Let the native thumb own capture, including outside releases.
+              // Capturing on the input prevents WebKit from dragging its thumb.
+              onPointerDown={(event) => {
+                setHoveredLevel(undefined);
+                if (event.button !== 0 || interactionRef.current) return;
                 interactionRef.current = {
-                  kind: "keyboard",
+                  kind: "pointer",
+                  pointerId: event.pointerId,
                   level: value,
                   sourceValue: value,
                 };
-              }
-            }}
-            onKeyUp={(event) => {
-              if (
-                RANGE_KEYS.has(event.key) &&
-                interactionRef.current?.kind === "keyboard"
-              ) {
-                finishInteraction(true);
-              }
-            }}
-            onBlur={() => finishInteraction(true)}
-          />
-          <span
-            className="effort-slider__thumb bg-white shadow-dropdown-soft"
-            aria-hidden="true"
-          />
-        </div>
+              }}
+              onPointerUp={(event) => {
+                if (interactionRef.current?.pointerId === event.pointerId) {
+                  finishInteraction(true);
+                }
+              }}
+              onPointerCancel={() => finishInteraction(false)}
+              onLostPointerCapture={() => {
+                if (interactionRef.current?.kind === "pointer")
+                  finishInteraction(true);
+              }}
+              onKeyDown={(event) => {
+                if (RANGE_KEYS.has(event.key) && !interactionRef.current) {
+                  interactionRef.current = {
+                    kind: "keyboard",
+                    level: value,
+                    sourceValue: value,
+                  };
+                }
+              }}
+              onKeyUp={(event) => {
+                if (
+                  RANGE_KEYS.has(event.key) &&
+                  interactionRef.current?.kind === "keyboard"
+                ) {
+                  finishInteraction(true);
+                }
+              }}
+              onBlur={() => finishInteraction(true)}
+            />
+            <span
+              className="effort-slider__thumb bg-white shadow-dropdown-soft"
+              aria-hidden="true"
+            />
+          </div>
+        )
       )}
     </div>
   );

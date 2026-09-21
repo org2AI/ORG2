@@ -14,12 +14,10 @@ import React, { memo, useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
 import {
   PILL_CONTROL_ACTIVE_SURFACE_CLASS,
   PILL_CONTROL_HOVER_CLASS,
 } from "@src/components/CompoundPill/config";
-import Textarea from "@src/components/Textarea";
 import { useConversationExecutionBinding } from "@src/engines/ChatPanel/ConversationExecutionBindingContext";
 import {
   manualCompactInFlightSessionAtom,
@@ -27,24 +25,18 @@ import {
   useManualCompact,
 } from "@src/engines/ChatPanel/hooks/useManualCompact";
 import { useSessionId } from "@src/engines/SessionCore/hooks/session";
-import { useHousekeeperConfig } from "@src/hooks/housekeeper";
 import { useSetting } from "@src/hooks/settings/useSettings";
-import {
-  ArchiveIcon,
-  Cancel01Icon,
-  ChevronsDownUpIcon,
-  HugeiconsIcon,
-  Refresh04Icon,
-  UnfoldMoreIcon,
-} from "@src/icons";
 
-import ContextBreakdownBar from "./ContextBreakdownBar";
-import ContextCategoryRow from "./ContextCategoryRow";
-import MiniCpmCompactCard from "./MiniCpmCompactCard";
-import ProgressRing from "./ProgressRing";
+import {
+  ContextInfoCategoryList,
+  ContextInfoManualCompactSection,
+  ContextInfoPanelSummary,
+} from "./ContextInfoPanelSections";
+import { ContextInfoTrigger } from "./ContextInfoTrigger";
+import { buildContextInfoCategories } from "./contextInfoCategories";
 import { type PanelCategory, ringToneForPercentage } from "./contextInfoTypes";
 import { useContextPanel } from "./useContextPanel";
-import { formatTokenCount, useContextUsageInfo } from "./useContextUsageInfo";
+import { useContextUsageInfo } from "./useContextUsageInfo";
 import { useRefreshContextUsage } from "./useRefreshContextUsage";
 
 export interface ContextInfoButtonProps {
@@ -59,107 +51,6 @@ export interface ContextInfoButtonProps {
    * progress ring. Use when horizontal space is tight (inline/compact row).
    */
   compact?: boolean;
-}
-
-const ConfiguredMiniCpmCompactCard: React.FC<{ sessionId: string }> = memo(
-  ({ sessionId }) => {
-    const housekeeper = useHousekeeperConfig();
-    if (!housekeeper.isConfigured) return null;
-    return (
-      <div className="mt-2">
-        <MiniCpmCompactCard sessionId={sessionId} />
-      </div>
-    );
-  }
-);
-
-ConfiguredMiniCpmCompactCard.displayName = "ConfiguredMiniCpmCompactCard";
-
-function normalizeCategoryTokens(
-  categories: PanelCategory[],
-  totalTokens: number
-): PanelCategory[] {
-  const rawTotal = categories.reduce(
-    (sum, category) => sum + category.tokens,
-    0
-  );
-  if (rawTotal <= 0 || totalTokens <= 0 || rawTotal <= totalTokens) {
-    return categories;
-  }
-
-  const scaled = categories.map((category, index) => {
-    const exact = (category.tokens / rawTotal) * totalTokens;
-    const tokens = Math.floor(exact);
-    return {
-      category: { ...category, tokens },
-      index,
-      remainder: exact - tokens,
-    };
-  });
-
-  const assigned = scaled.reduce(
-    (sum, entry) => sum + entry.category.tokens,
-    0
-  );
-  let remaining = Math.max(0, totalTokens - assigned);
-
-  scaled
-    .sort((a, b) => b.remainder - a.remainder || a.index - b.index)
-    .forEach((entry) => {
-      if (remaining <= 0) return;
-      entry.category.tokens += 1;
-      remaining -= 1;
-    });
-
-  return scaled
-    .sort((a, b) => a.index - b.index)
-    .map((entry) => entry.category)
-    .filter((category) => category.tokens > 0);
-}
-
-function applyCategoryPercents(
-  categories: PanelCategory[],
-  totalTokens: number
-): PanelCategory[] {
-  if (totalTokens <= 0) return categories;
-
-  const exactPercentages = categories.map((category, index) => {
-    const exact = (category.tokens / totalTokens) * 100;
-    const percent = Math.floor(exact);
-    return {
-      index,
-      percent,
-      remainder: exact - percent,
-    };
-  });
-
-  const currentTotal = exactPercentages.reduce(
-    (sum, entry) => sum + entry.percent,
-    0
-  );
-  const targetTotal =
-    categories.reduce((sum, category) => sum + category.tokens, 0) >=
-    totalTokens
-      ? 100
-      : currentTotal;
-  let remaining = Math.max(0, targetTotal - currentTotal);
-
-  exactPercentages
-    .sort((a, b) => b.remainder - a.remainder || a.index - b.index)
-    .forEach((entry) => {
-      if (remaining <= 0) return;
-      entry.percent += 1;
-      remaining -= 1;
-    });
-
-  const percentsByIndex = exactPercentages
-    .sort((a, b) => a.index - b.index)
-    .map((entry) => entry.percent);
-
-  return categories.map((category, index) => ({
-    ...category,
-    percent: percentsByIndex[index] ?? 0,
-  }));
 }
 
 const ContextInfoButton: React.FC<ContextInfoButtonProps> = memo(
@@ -211,74 +102,10 @@ const ContextInfoButton: React.FC<ContextInfoButtonProps> = memo(
     // actually approaching the auto-compaction zone.
     const showCornerPercent = percentage >= 90;
 
-    const categories: PanelCategory[] = useMemo(() => {
-      const colors: Record<string, string> = {
-        stable_prompt: "#9ca3af",
-        dynamic_prompt: "#a78bfa",
-        rules: "#34d399",
-        skills: "#fbbf24",
-        memory: "#22c55e",
-        conversation: "#fb923c",
-        tool_results: "#60a5fa",
-        attachments: "#e879f9",
-        other: "#94a3b8",
-        unattributed: "#f87171",
-      };
-      const rawCategories = (contextUsage?.sections ?? [])
-        .filter((section) => section.estimatedTokens > 0)
-        .map((section) => ({
-          key: section.category,
-          label: section.label,
-          tokens: section.estimatedTokens,
-          percent: 0,
-          hex: colors[section.category] ?? colors.other,
-        }));
-
-      const totalTokens = displayTokens;
-      if (rawCategories.length === 0 || totalTokens <= 0) {
-        return rawCategories.map((category) => ({
-          ...category,
-          percent: category.percent,
-        }));
-      }
-
-      const rawTotal = rawCategories.reduce(
-        (sum, category) => sum + category.tokens,
-        0
-      );
-      const categories =
-        rawTotal > totalTokens
-          ? normalizeCategoryTokens(rawCategories, totalTokens)
-          : rawCategories;
-      const categoryTotal = categories.reduce(
-        (sum, category) => sum + category.tokens,
-        0
-      );
-      if (categoryTotal > 0 && categoryTotal < totalTokens) {
-        const delta = totalTokens - categoryTotal;
-        const unattributedIndex = categories.findIndex(
-          (category) => category.key === "unattributed"
-        );
-        if (unattributedIndex >= 0) {
-          categories[unattributedIndex] = {
-            ...categories[unattributedIndex],
-            tokens: categories[unattributedIndex].tokens + delta,
-          };
-        } else {
-          categories.push({
-            key: "unattributed",
-            label: t("contextInfo.categories.unattributed", {
-              defaultValue: "Unattributed",
-            }),
-            tokens: delta,
-            percent: 0,
-            hex: colors.unattributed,
-          });
-        }
-      }
-
-      return applyCategoryPercents(categories, totalTokens);
-    }, [contextUsage, displayTokens, t]);
+    const categories: PanelCategory[] = useMemo(
+      () => buildContextInfoCategories(contextUsage, displayTokens, t),
+      [contextUsage, displayTokens, t]
+    );
 
     const handleMouseEnter = useCallback(
       (key: string) => () => setHoveredKey(key),
@@ -326,40 +153,20 @@ const ContextInfoButton: React.FC<ContextInfoButtonProps> = memo(
 
     return (
       <>
-        {variant === "corner" ? (
-          <Button
-            layout="custom"
-            appearance="custom"
-            ref={triggerRef}
-            data-testid="context-info-button"
-            className={`flex h-[28px] shrink-0 items-center gap-1.5 rounded-full text-text-3 transition-colors duration-200 ${triggerSurfaceClass} ${compact ? "w-[28px] justify-center px-0" : "px-2"}`}
-            onClick={toggle}
-            aria-label={t("contextInfo.ariaLabel")}
-            aria-expanded={panelPos !== null}
-          >
-            <ProgressRing percentage={displayPct} tone={ringTone} />
-            {!compact && showCornerPercent && (
-              <span
-                className={`text-[12px] leading-none tabular-nums ${cornerLabelClass}`}
-              >
-                {percentage.toFixed(0)}%
-              </span>
-            )}
-          </Button>
-        ) : (
-          <Button
-            layout="custom"
-            appearance="custom"
-            ref={triggerRef}
-            data-testid="context-info-button"
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-3 transition-colors duration-150 hover:text-text-2 ${triggerSurfaceClass}`}
-            onClick={toggle}
-            aria-label={t("contextInfo.ariaLabel")}
-            aria-expanded={panelPos !== null}
-          >
-            <ProgressRing percentage={displayPct} tone={ringTone} />
-          </Button>
-        )}
+        <ContextInfoTrigger
+          compact={compact}
+          cornerLabelClass={cornerLabelClass}
+          displayPct={displayPct}
+          panelPos={panelPos}
+          percentage={percentage}
+          ringTone={ringTone}
+          showCornerPercent={showCornerPercent}
+          t={t}
+          toggle={toggle}
+          triggerRef={triggerRef}
+          triggerSurfaceClass={triggerSurfaceClass}
+          variant={variant}
+        />
 
         {panelPos &&
           createPortal(
@@ -369,197 +176,52 @@ const ContextInfoButton: React.FC<ContextInfoButtonProps> = memo(
               className="fixed z-99999 w-[320px] overflow-hidden rounded-xl border border-border-2 bg-bg-2 shadow-2xl"
               style={{ bottom: panelPos.bottom, right: panelPos.right }}
             >
-              <div className="px-4 pt-3.5 pb-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-semibold text-text-1">
-                    {t("contextInfo.title")}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="tertiary"
-                      size="small"
-                      shape="square"
-                      iconOnly
-                      aria-label={t("common:actions.refresh")}
-                      title={t("common:actions.refresh")}
-                      loading={refreshing}
-                      disabled={!sessionId || refreshing}
-                      onClick={refresh}
-                      icon={<HugeiconsIcon icon={Refresh04Icon} size={14} />}
-                    />
-                    <Button
-                      variant="tertiary"
-                      size="small"
-                      shape="square"
-                      iconOnly
-                      onClick={close}
-                      aria-label={t("common:actions.close")}
-                      title={t("common:actions.close")}
-                      icon={
-                        <HugeiconsIcon
-                          icon={Cancel01Icon}
-                          data-icon="x"
-                          size={14}
-                        />
-                      }
-                    />
-                  </div>
-                </div>
-                {refreshError && (
-                  <p role="alert" className="mt-1 text-xs text-text-3">
-                    {refreshError}
-                  </p>
-                )}
-
-                <p className="mt-0.5 text-[13px] text-text-3">{tokenLabel}</p>
-
-                {!manualCompactExpanded &&
-                  (showCacheHero ? (
-                    <div className="mt-2 rounded-lg bg-green-500/10 px-2.5 py-1.5">
-                      <p className="text-[12px] font-semibold text-green-600">
-                        {t("contextInfo.cacheHero", {
-                          pct: Math.round(cacheHitRate * 100),
-                          tokens: formatTokenCount(cacheSavedTokens),
-                        })}
-                      </p>
-                      <p className="mt-0.5 text-[10.5px] leading-snug text-text-3">
-                        {t("contextInfo.cacheHeroSub")}
-                      </p>
-                    </div>
-                  ) : (
-                    hasCache && (
-                      <p className="mt-0.5 text-[11px] text-green-600">
-                        {t("contextInfo.cacheSaved", {
-                          read: formatTokenCount(cacheReadTokens),
-                          write: formatTokenCount(cacheWriteTokens),
-                        })}
-                      </p>
-                    )
-                  ))}
-
-                {ringTone !== "unused" && ringTone !== "normal" && (
-                  <p className="mt-1 text-[11px] leading-snug text-text-3">
-                    {t("contextInfo.autoCompactNote")}
-                  </p>
-                )}
-
-                <div className="mt-3">
-                  <ContextBreakdownBar
-                    categories={categories}
-                    maxTokens={maxTokens}
-                    hoveredKey={hoveredKey}
-                    fallbackPercentage={percentage}
-                  />
-                </div>
-              </div>
+              <ContextInfoPanelSummary
+                cacheHitRate={cacheHitRate}
+                cacheReadTokens={cacheReadTokens}
+                cacheSavedTokens={cacheSavedTokens}
+                cacheWriteTokens={cacheWriteTokens}
+                categories={categories}
+                close={close}
+                hasCache={hasCache}
+                hoveredKey={hoveredKey}
+                manualCompactExpanded={manualCompactExpanded}
+                maxTokens={maxTokens}
+                percentage={percentage}
+                refresh={refresh}
+                refreshError={refreshError}
+                refreshing={refreshing}
+                ringTone={ringTone}
+                sessionId={sessionId}
+                showCacheHero={showCacheHero}
+                t={t}
+                tokenLabel={tokenLabel}
+              />
 
               {!manualCompactExpanded && categories.length > 0 && (
-                <div className="px-4 py-2">
-                  <div className="flex flex-col">
-                    {categories.map((cat) => (
-                      <ContextCategoryRow
-                        key={cat.key}
-                        categoryKey={cat.key}
-                        label={cat.label}
-                        tokens={cat.tokens}
-                        percent={cat.percent}
-                        hex={cat.hex}
-                        isHovered={hoveredKey === cat.key}
-                        onMouseEnter={handleMouseEnter(cat.key)}
-                        onMouseLeave={handleMouseLeave}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <ContextInfoCategoryList
+                  categories={categories}
+                  handleMouseEnter={handleMouseEnter}
+                  handleMouseLeave={handleMouseLeave}
+                  hoveredKey={hoveredKey}
+                />
               )}
 
               {manualCompactSupported && (
-                <div className="border-t border-border-2 bg-fill-1/30 px-3.5 py-2">
-                  <div className="flex items-center justify-between px-1 py-1">
-                    <Button
-                      layout="custom"
-                      appearance="custom"
-                      htmlType="button"
-                      onClick={() => setManualCompactOpen((open) => !open)}
-                      aria-expanded={manualCompactOpen}
-                      className="flex-1 self-stretch text-left text-[13px] font-semibold text-text-1"
-                    >
-                      {t("contextInfo.manualCompactSectionTitle")}
-                    </Button>
-                    <Button
-                      variant="tertiary"
-                      size="small"
-                      shape="square"
-                      iconOnly
-                      data-testid="context-info-manual-compact-toggle"
-                      onClick={() => setManualCompactOpen((open) => !open)}
-                      aria-expanded={manualCompactOpen}
-                      aria-label={t(
-                        manualCompactOpen
-                          ? "common:actions.collapse"
-                          : "common:actions.expand"
-                      )}
-                      icon={
-                        <HugeiconsIcon
-                          icon={
-                            manualCompactOpen
-                              ? ChevronsDownUpIcon
-                              : UnfoldMoreIcon
-                          }
-                          data-icon={
-                            manualCompactOpen
-                              ? "chevrons-down-up"
-                              : "chevrons-up-down"
-                          }
-                          size={14}
-                        />
-                      }
-                    />
-                  </div>
-
-                  {manualCompactOpen && (
-                    <div className="mt-2">
-                      <Textarea
-                        size="small"
-                        autoSize={{ minRows: 2, maxRows: 5 }}
-                        data-testid="context-info-compact-instructions-input"
-                        value={compactInstructions}
-                        onChange={(value) => setCompactInstructions(value)}
-                        onKeyDown={handleInstructionsKeyDown}
-                        placeholder={t(
-                          "contextInfo.manualCompactInstructionsPlaceholder"
-                        )}
-                      />
-                      <Button
-                        long
-                        variant="secondary"
-                        size="small"
-                        className="mt-2"
-                        data-testid="context-info-manual-compact-button"
-                        icon={
-                          <HugeiconsIcon
-                            icon={ArchiveIcon}
-                            data-icon="archive"
-                            size={14}
-                          />
-                        }
-                        loading={manualCompacting}
-                        disabled={compactDisabled}
-                        onClick={runManualCompact}
-                      >
-                        {manualCompacting
-                          ? t("contextInfo.manualCompactRunning")
-                          : t("contextInfo.manualCompactAction")}
-                      </Button>
-
-                      {housekeeperEnabled &&
-                        contextCompactEnabled &&
-                        sessionId && (
-                          <ConfiguredMiniCpmCompactCard sessionId={sessionId} />
-                        )}
-                    </div>
-                  )}
-                </div>
+                <ContextInfoManualCompactSection
+                  compactDisabled={compactDisabled}
+                  compactInstructions={compactInstructions}
+                  contextCompactEnabled={contextCompactEnabled}
+                  handleInstructionsKeyDown={handleInstructionsKeyDown}
+                  housekeeperEnabled={housekeeperEnabled}
+                  manualCompactOpen={manualCompactOpen}
+                  manualCompacting={manualCompacting}
+                  runManualCompact={runManualCompact}
+                  sessionId={sessionId}
+                  setCompactInstructions={setCompactInstructions}
+                  setManualCompactOpen={setManualCompactOpen}
+                  t={t}
+                />
               )}
             </div>,
             document.body

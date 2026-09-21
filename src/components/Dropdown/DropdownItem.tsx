@@ -95,6 +95,13 @@ export interface DropdownItemProps {
   highlighted?: boolean;
 
   /**
+   * Whether pointer hover fills the row. Embedded controls such as switches
+   * own their hover feedback, so their containing row should remain clear.
+   * @default true
+   */
+  hoverable?: boolean;
+
+  /**
    * Click handler
    */
   onClick?: () => void;
@@ -172,6 +179,7 @@ const DropdownItemInner = forwardRef<HTMLDivElement, DropdownItemProps>(
       selectedCheckPlacement = "trailing",
       disabled = false,
       highlighted = false,
+      hoverable = true,
       onClick,
       onMouseEnter,
       className = "",
@@ -207,7 +215,7 @@ const DropdownItemInner = forwardRef<HTMLDivElement, DropdownItemProps>(
     const itemClasses = [
       DROPDOWN_CLASSES.item,
       fullWidth && "w-full justify-start whitespace-nowrap text-left",
-      !disabled && DROPDOWN_CLASSES.itemHover,
+      hoverable && !disabled && DROPDOWN_CLASSES.itemHover,
       // Only keyboard `highlighted` gets a filled background. The `selected`
       // state is shown by the checkmark + primary-6 text only (no bg fill).
       highlighted && !disabled && "bg-fill-2",

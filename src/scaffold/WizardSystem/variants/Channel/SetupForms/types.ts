@@ -1,14 +1,10 @@
 /**
  * Shared types for channel wizard setup forms.
  */
-import type { FC } from "react";
-
 export interface ChannelFormProps {
   config: Record<string, unknown>;
   onChange: (updates: Record<string, unknown>) => void;
 }
-
-export type ChannelFormComponent = FC<ChannelFormProps>;
 
 export const getString = (
   config: Record<string, unknown>,

@@ -54,10 +54,10 @@ axum = { workspace = true }
 bytes = "1"
 futures-util = "0.3"
 
-# `github::profile` future combinators
+# `github::commands` and `github::detect` future combinators
 futures = "0.3"
 
-# Date helpers — `github::profile` formats GitHub timestamps
+# Date helpers — GitHub and external-IDE timestamps
 chrono = { workspace = true }
 
 # MITM proxy plumbing

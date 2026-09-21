@@ -5,8 +5,8 @@ import { type Root, createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CreatorContentLayout } from "@src/components/layout/blocks";
 import { CREATOR_COMPOSER_POSITION } from "@src/config/sessionCreatorConfig";
-import { CreatorContentLayout } from "@src/modules/shared/layouts/blocks";
 import {
   changeCreatorComposerPositionAtom,
   creatorRepoChromePositionAtom,

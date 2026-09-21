@@ -495,7 +495,6 @@ const FileSidebarComponent: React.FC<FileSidebarProps> = ({
         tabs={tabs}
         activeTab={fileViewMode}
         onTabChange={handleTabChange}
-        tabIconOnly={true}
       />
     </div>
   );

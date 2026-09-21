@@ -1,4 +1,3 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useSetAtom } from "jotai";
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,6 +21,7 @@ import {
 import { openGitHubPrInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { copyText } from "@src/util/data/clipboard";
 import { parseGitHubPullRequestUrl } from "@src/util/git/githubPullRequestUrl";
+import { openInBrowserApp, openInSystemBrowser } from "@src/util/ui/openLink";
 
 import {
   type HttpLinkPreview,
@@ -30,7 +30,6 @@ import {
   remoteUrlsMatchGitHubPullRequest,
 } from "./LinkHoverCard.helpers";
 import LinkPullRequestSummary from "./LinkPullRequestSummary";
-import { openUrlInBrowserApp } from "./markdownUtils";
 import { useLinkPullRequest } from "./useLinkPullRequest";
 
 interface LinkHoverCardProps {
@@ -77,7 +76,7 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
   }, [preview.url, t]);
 
   const handleOpenAsWebPage = useCallback(() => {
-    openUrlInBrowserApp(preview.url, { navigate: true });
+    openInBrowserApp(preview.url);
     setOpenOptionsVisible(false);
   }, [preview.url]);
 
@@ -131,12 +130,6 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
     workspaceRootRepoUrl,
   ]);
 
-  const handleOpenExternal = useCallback(() => {
-    void openUrl(preview.url).catch(() => {
-      Message.error(t("cards.url.openExternalFailed"));
-    });
-  }, [preview.url, t]);
-
   return (
     <HoverCardPanel
       width={pullRequest ? "wide" : "default"}
@@ -189,7 +182,7 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
           iconOnly
           aria-label={t("cards.actions.openWithDefaultBrowser")}
           title={t("cards.actions.openWithDefaultBrowser")}
-          onClick={handleOpenExternal}
+          onClick={() => openInSystemBrowser(preview.url)}
         />
         {pullRequest && workspaceRootPath ? (
           <SplitButton

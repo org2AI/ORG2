@@ -180,7 +180,6 @@ const TurnPaginationControls: React.FC<TurnPaginationControlsProps> = memo(
         {hasAgentOrgOverview && (
           <>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
@@ -211,9 +210,7 @@ const TurnPaginationControls: React.FC<TurnPaginationControlsProps> = memo(
           <>
             <Button
               layout="custom"
-              appearance="custom"
               ref={memberSwitcherTriggerRef}
-              htmlType="button"
               data-testid="agent-org-member-switcher-trigger"
               className={`${SELECT_TRIGGER_BASE} disabled:cursor-default ${
                 canSwitchAgentOrgMember
@@ -262,8 +259,6 @@ const TurnPaginationControls: React.FC<TurnPaginationControlsProps> = memo(
                       <>
                         <Button
                           layout="custom"
-                          appearance="custom"
-                          htmlType="button"
                           role="menuitem"
                           data-testid="agent-org-group-chat-toggle"
                           className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} ${
@@ -314,9 +309,7 @@ const TurnPaginationControls: React.FC<TurnPaginationControlsProps> = memo(
                       return (
                         <Button
                           layout="custom"
-                          appearance="custom"
                           key={member.memberId}
-                          htmlType="button"
                           role="menuitem"
                           data-testid={`agent-org-member-switcher-option-${member.memberId}`}
                           className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} ${

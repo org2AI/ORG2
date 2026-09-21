@@ -66,14 +66,14 @@ pub(super) fn build_context_bridge(session_id: &str) -> Option<String> {
         .flatten()
         .map(|mutation| {
             format!(
-                "\nORGII history mutation marker: epoch={}, reason={}, mutated_at={}. The native CLI conversation state was intentionally discarded after this mutation; treat the ORGII conversation context below as authoritative.",
+                "\nORG2 history mutation marker: epoch={}, reason={}, mutated_at={}. The native CLI conversation state was intentionally discarded after this mutation; treat the ORG2 conversation context below as authoritative.",
                 mutation.epoch, mutation.reason, mutation.mutated_at
             )
         })
         .unwrap_or_default();
 
     Some(format!(
-        "<orgii_context_bridge>\nThis CLI profile has no native conversation for this ORGII session yet. Continue using the ORGII conversation context below; do not repeat or summarize it unless the user asks.{}\n\n{}\n</orgii_context_bridge>",
+        "<orgii_context_bridge>\nThis CLI profile has no native conversation for this ORG2 session yet. Continue using the ORG2 conversation context below; do not repeat or summarize it unless the user asks.{}\n\n{}\n</orgii_context_bridge>",
         mutation_note, body
     ))
 }

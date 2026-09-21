@@ -15,8 +15,9 @@ import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import Select from "@src/components/Select";
-import { ClipboardIcon, HugeiconsIcon, Refresh04Icon } from "@src/icons";
+import { ClipboardIcon, HugeiconsIcon } from "@src/icons";
 import type { Session } from "@src/store/session";
 
 import { useSessionTurnIndex } from "../../hooks/useSessionTurnIndex";
@@ -120,23 +121,12 @@ export const SessionRawToolbarActions: React.FC<SessionRawToolbarActionsProps> =
 
     return (
       <>
-        <Button
-          size="small"
-          variant="tertiary"
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={RAW_ACTION_ICON_SIZE}
-              strokeWidth={2}
-            />
-          }
+        <RefreshButton
+          label={refreshLabel}
           iconOnly
-          loading={transcript.loading}
-          aria-label={refreshLabel}
-          title={refreshLabel}
-          data-testid={`${testIdPrefix}-raw-refresh-button`}
-          onClick={() => void transcript.loadTranscript()}
+          refreshing={transcript.loading}
+          onRefresh={() => void transcript.loadTranscript()}
+          dataTestId={`${testIdPrefix}-raw-refresh-button`}
         />
         <Button
           size="small"

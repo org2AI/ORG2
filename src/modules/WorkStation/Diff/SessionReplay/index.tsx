@@ -220,7 +220,6 @@ const SessionReplayDiff: React.FC<SimulatorAppProps> = ({
             />
             {canUndoAll ? (
               <Button
-                htmlType="button"
                 variant="tertiary"
                 size="small"
                 iconOnly
@@ -238,7 +237,6 @@ const SessionReplayDiff: React.FC<SimulatorAppProps> = ({
             ) : null}
             {canUndoAll ? <div className="mx-2 h-5 w-px bg-border-2" /> : null}
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly

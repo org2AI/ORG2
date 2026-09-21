@@ -218,6 +218,8 @@ export interface KeyDownHandlerContext {
   getText: () => string;
   /** Insert a literal newline at the caret. Used for Shift+Enter / bare Enter. */
   insertNewline: () => void;
+  /** Capture the document before an edit this handler performs itself. */
+  markHistoryBoundary: () => void;
   undo: () => boolean;
   redo: () => boolean;
   /** Whether bare Enter inserts a newline (false) or submits (true). */
@@ -342,11 +344,21 @@ function removePillAndPlaceCaret(
   return true;
 }
 
+/**
+ * `beforeRemove` runs once a removal is certain and before the DOM changes —
+ * the caller's chance to open the undo step the removal belongs to.
+ */
 export function removePillForDeleteDirection(
   host: HTMLElement,
   direction: PillDeleteDirection,
-  dispatchInput = true
+  dispatchInput = true,
+  beforeRemove?: () => void
 ): boolean {
+  const removePill = (pill: HTMLElement) => {
+    beforeRemove?.();
+    return removePillAndPlaceCaret(host, pill, direction, dispatchInput);
+  };
+
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) return false;
 
@@ -363,6 +375,7 @@ export function removePillForDeleteDirection(
       host.querySelectorAll<HTMLElement>(`[${PILL_DATA_ATTR}]`)
     ).some((pill) => range.intersectsNode(pill));
     if (!includesPill) return false;
+    beforeRemove?.();
     range.deleteContents();
     if (dispatchInput) {
       host.dispatchEvent(
@@ -373,14 +386,7 @@ export function removePillForDeleteDirection(
   }
 
   const pillAncestor = findPillAncestor(range.startContainer);
-  if (pillAncestor) {
-    return removePillAndPlaceCaret(
-      host,
-      pillAncestor,
-      direction,
-      dispatchInput
-    );
-  }
+  if (pillAncestor) return removePill(pillAncestor);
 
   const container = range.startContainer;
   const offset = range.startOffset;
@@ -397,15 +403,13 @@ export function removePillForDeleteDirection(
     if (direction === "backward") {
       const prev = container.previousSibling;
       const pill = findPillAncestor(prev);
-      if (pill && (offset === 0 || isShortSpacer)) {
-        return removePillAndPlaceCaret(host, pill, direction, dispatchInput);
-      }
+      if (pill && (offset === 0 || isShortSpacer)) return removePill(pill);
     }
     if (direction === "forward") {
       const next = container.nextSibling;
       const pill = findPillAncestor(next);
       if (pill && (offset === text.length || isShortSpacer)) {
-        return removePillAndPlaceCaret(host, pill, direction, dispatchInput);
+        return removePill(pill);
       }
     }
   }
@@ -415,14 +419,7 @@ export function removePillForDeleteDirection(
     const siblingIndex = direction === "backward" ? offset - 1 : offset;
     const candidate = element.childNodes[siblingIndex] ?? null;
     const adjacentPill = findPillAncestor(candidate);
-    if (adjacentPill) {
-      return removePillAndPlaceCaret(
-        host,
-        adjacentPill,
-        direction,
-        dispatchInput
-      );
-    }
+    if (adjacentPill) return removePill(adjacentPill);
   }
 
   return false;
@@ -430,13 +427,20 @@ export function removePillForDeleteDirection(
 
 function removePillForDeleteKey(
   host: HTMLElement,
-  event: KeyboardEvent
+  event: KeyboardEvent,
+  markHistoryBoundary: () => void
 ): boolean {
   if (event.key !== "Backspace" && event.key !== "Delete") return false;
   if (event.altKey || event.ctrlKey || event.metaKey) return false;
+  // Handling the key here cancels it, so no `beforeinput` follows to open an
+  // undo step. Open one ourselves; the `input` event the removal dispatches
+  // closes it. Without this Cmd+Z could not bring the pill back, and undid
+  // the edit before it instead.
   return removePillForDeleteDirection(
     host,
-    event.key === "Backspace" ? "backward" : "forward"
+    event.key === "Backspace" ? "backward" : "forward",
+    true,
+    markHistoryBoundary
   );
 }
 
@@ -478,7 +482,7 @@ export function createKeyDownHandler(ctx: KeyDownHandlerContext) {
       }
     }
 
-    if (removePillForDeleteKey(host, event)) {
+    if (removePillForDeleteKey(host, event, ctx.markHistoryBoundary)) {
       event.preventDefault();
       ctx.setAtMention({ active: false, startOffset: 0 });
       ctx.setSlashCommand({ active: false, startOffset: 0 });
@@ -514,7 +518,13 @@ export function createKeyDownHandler(ctx: KeyDownHandlerContext) {
     // Cmd/Ctrl+A → select all editor content. WebKit-based contenteditable
     // hosts can refuse the native shortcut in some embedded layouts, so we
     // drive the selection ourselves to guarantee parity with ComposerInput.
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+    // Only the bare chord: Cmd+Shift+A and Cmd+Alt+A belong to other shortcuts.
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      !event.shiftKey &&
+      !event.altKey &&
+      event.key.toLowerCase() === "a"
+    ) {
       event.preventDefault();
       const range = document.createRange();
       range.selectNodeContents(host);

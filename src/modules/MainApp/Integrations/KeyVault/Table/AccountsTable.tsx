@@ -11,15 +11,14 @@ import { saveKey } from "@src/api/services/keyValidation";
 import { formatModelAgentType, isApiKeyProvider } from "@src/assets/providers";
 import type { SelectOption } from "@src/components/Select";
 import type { SettingsTableSelectFilter } from "@src/components/SettingsTable";
-import TabPill from "@src/components/TabPill";
-import type { AvailableAgent } from "@src/config/cliAgents";
-import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import type { AvailableAgent } from "@src/config/cliAgents";
+import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import {
   accountMatchesBrandFilter,
   buildBrandProviderFilterOptions,
@@ -531,18 +530,9 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
     <DetailPanelContainer>
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tabs}
-            activeTab={activeTab}
-            onChange={setActiveTab}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>

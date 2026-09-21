@@ -6,16 +6,25 @@ import {
 } from "@src/contracts/mobile-relay/v1/relay";
 
 import { buildMobileWsUrl } from "../../connection/buildMobileWsUrl";
-import { MobileConnectionAuthorizationError } from "../../connection/types";
+import {
+  MobileConnectionAuthorizationError,
+  MobileConnectionTicketError,
+} from "../../connection/types";
 import type {
   MobileRemoteConnectionPort,
   MobileRemoteRuntimePort,
 } from "../types";
 
+const CONNECT_TICKET_MAX_TTL_MS = 60_000;
+// Relay timestamps come from its clock. A small offset must not reject every
+// freshly issued ticket; the Relay still enforces actual expiry and single use.
+const CONNECT_TICKET_CLOCK_SKEW_MS = 5_000;
+
 async function readTicket(
   response: Response
 ): Promise<Partial<MobileConnectTicketResponse>> {
-  if (!response.body) throw new Error("Invalid Relay connection ticket");
+  if (!response.body)
+    throw new MobileConnectionTicketError("Invalid Relay connection ticket");
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -27,7 +36,10 @@ async function readTicket(
     ) {
       const { value } = result;
       size += value.byteLength;
-      if (size > 4096) throw new Error("Invalid Relay connection ticket");
+      if (size > 4096)
+        throw new MobileConnectionTicketError(
+          "Invalid Relay connection ticket"
+        );
       chunks.push(value);
     }
   } catch (error) {
@@ -49,7 +61,7 @@ async function readTicket(
   } catch {
     /* Do not echo a server-controlled payload in parse errors. */
   }
-  throw new Error("Invalid Relay connection ticket");
+  throw new MobileConnectionTicketError("Invalid Relay connection ticket");
 }
 
 /** Only build-configured Relays may receive a Cloud Bearer. Never trust a QR
@@ -132,9 +144,14 @@ export function createNativeSocketPreparation(options: {
         !Number.isSafeInteger(grant.authExpiresAtMs) ||
         grant.authExpiresAtMs! > session.expiresAt * 1000 ||
         grant.expiresAtMs! > grant.authExpiresAtMs! ||
-        grant.expiresAtMs! > options.runtime.now() + 60_000
+        grant.expiresAtMs! >
+          options.runtime.now() +
+            CONNECT_TICKET_MAX_TTL_MS +
+            CONNECT_TICKET_CLOCK_SKEW_MS
       )
-        throw new Error("Invalid Relay connection ticket");
+        throw new MobileConnectionTicketError(
+          "Invalid Relay connection ticket"
+        );
       ws.search = "";
       ws.hash = "";
       ws.searchParams.set("ticket", grant.ticket);

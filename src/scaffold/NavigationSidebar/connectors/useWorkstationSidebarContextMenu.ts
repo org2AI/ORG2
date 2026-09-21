@@ -23,6 +23,7 @@ import type { UseRenameSessionModalResult } from "./useRenameSessionModal";
 const log = createLogger("WorkstationSidebar");
 
 interface UseWorkstationSidebarContextMenuParams {
+  sectionMenuItems?: (sessionId: string) => NativeMenuItemOptions[];
   sessionMap: Map<string, Session>;
   rename: UseRenameSessionModalResult;
   handleDeleteSession: (sessionId: string) => Promise<void>;
@@ -63,6 +64,7 @@ interface UseWorkstationSidebarContextMenuParams {
 
 export function useWorkstationSidebarContextMenu({
   sessionMap,
+  sectionMenuItems,
   rename,
   handleDeleteSession,
   handleDeleteDraft,
@@ -146,6 +148,7 @@ export function useWorkstationSidebarContextMenu({
           openInNewWindowItem,
           openInMyStationItem,
           pinItem,
+          ...(sectionMenuItems?.(item.id) ?? []),
         ];
       }
 
@@ -209,12 +212,23 @@ export function useWorkstationSidebarContextMenu({
       // Session Delete is intentionally absent so it cannot bypass Archive or
       // the quiesced-runtime receipt.
       if (session?.agentOrgId) {
-        return [...primaryItems, pinItem];
+        return [
+          ...primaryItems,
+          pinItem,
+          ...(sectionMenuItems?.(item.id) ?? []),
+        ];
       }
-      return [...primaryItems, pinItem, { item: "Separator" }, deleteItem];
+      return [
+        ...primaryItems,
+        pinItem,
+        ...(sectionMenuItems?.(item.id) ?? []),
+        { item: "Separator" },
+        deleteItem,
+      ];
     },
     [
       sessionMap,
+      sectionMenuItems,
       tCommon,
       rename,
       handleDeleteSession,

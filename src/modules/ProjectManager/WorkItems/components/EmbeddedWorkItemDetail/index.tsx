@@ -5,7 +5,7 @@ import type { WorkstationTabHeaderHost } from "@src/hooks/tabHost/useWorkstation
 import type { ProjectManagerBreadcrumbSegment } from "@src/modules/ProjectManager/shared/components/ProjectManagerBreadcrumb";
 import DetailPaneLayout, {
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
+} from "@src/scaffold/layouts/DetailPaneLayout";
 import type { Person } from "@src/types/core/shared";
 import type {
   WorkItem as WorkItemExtended,

@@ -7,18 +7,210 @@
  * - Wrapper (.input-wrapper) handles ALL visual styling
  * - Input element (.input) is completely transparent
  * - This prevents double borders and conflicting styles
+ *
+ * Cascade layers:
+ * Tailwind v4 emits utilities in `@layer utilities`, and unlayered CSS beats
+ * every layered rule regardless of specificity. The defaults callers style
+ * through props live in `@layer components`, below utilities:
+ * - the wrapper's box (width, height, display, min/max width, radius,
+ *   font-size), overridden through `className`;
+ * - the `<input>` element itself (padding, border, background, font-size,
+ *   color, placeholder, height), overridden through `inputClassName`.
+ * `.input-inner` and the state / surface modifiers stay unlayered on purpose:
+ * they must keep beating Input's own `rounded-lg bg-bg-2` utilities on
+ * `.input-inner`.
  */
 
-.input-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 100%;
-  box-sizing: border-box;
-  background: transparent;
-  border: none;
-  transition: all 0.1s cubic-bezier(0, 0, 1, 1);
+// The order `@import "tailwindcss"` (src/tailwind.css) declares: `@layer
+// properties;` then `@layer theme, base, components, utilities;`. Repeating it
+// keeps `components` below `utilities` even if this sheet is inserted first.
+@layer properties, theme, base, components, utilities;
 
+@layer components {
+  .input-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    background: transparent;
+    border: none;
+    transition: all 0.1s cubic-bezier(0, 0, 1, 1);
+
+    &.input-size-mini {
+      height: 24px;
+      font-size: 12px;
+    }
+
+    &.input-size-small {
+      height: 28px;
+      font-size: 14px;
+    }
+
+    &.input-size-default {
+      height: 32px;
+      font-size: 14px;
+    }
+
+    &.input-size-large {
+      height: 36px;
+      font-size: 14px;
+    }
+
+    // After the sizes so auto-height wins, and before ghost so ghost's fixed
+    // height still wins over it (the pre-layer source order).
+    &.input-auto-height {
+      height: auto;
+    }
+
+    &.input-field-ghost {
+      height: 28px;
+      min-width: 0;
+      max-width: 100%;
+      border-radius: 8px;
+      transition: background-color 0.1s cubic-bezier(0, 0, 1, 1);
+    }
+  }
+
+  .input-wrapper {
+    &.input-size-mini .input {
+      font-size: 12px;
+    }
+
+    &.input-size-small .input,
+    &.input-size-default .input,
+    &.input-size-large .input {
+      font-size: 14px;
+    }
+
+    // Same order as the wrapper rules above: sizes, then auto-height, then
+    // ghost.
+    &.input-auto-height .input {
+      height: auto;
+      line-height: inherit;
+    }
+
+    &.input-field-ghost .input {
+      height: 100%;
+      transform: translateY(-1px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--color-text-1);
+    }
+  }
+
+  .input {
+    // Internal input - completely transparent, no visual effects
+    // The wrapper handles ALL visual styling
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    outline: none;
+    color: var(--color-text-1);
+    caret-color: var(--color-primary-6);
+    font-family: inherit;
+    line-height: 1.5;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    // Placeholder styling
+    &::placeholder {
+      color: var(--color-text-3);
+    }
+
+    // Remove all default browser styles
+    &::-webkit-search-decoration,
+    &::-webkit-search-cancel-button,
+    &::-webkit-search-results-button,
+    &::-webkit-search-results-decoration {
+      -webkit-appearance: none;
+    }
+
+    // Number input arrows
+    &[type="number"]::-webkit-inner-spin-button,
+    &[type="number"]::-webkit-outer-spin-button {
+      appearance: none;
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    &[type="number"] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    // Password reveal button (native browser)
+    &::-ms-reveal,
+    &::-ms-clear {
+      display: none;
+    }
+
+    // Remove focus ring - wrapper handles focus styling
+    &:focus {
+      outline: none;
+      box-shadow: none;
+      border: none;
+      background: transparent;
+    }
+
+    // Remove any inherited styles
+    &:hover {
+      border: none;
+      outline: none;
+      box-shadow: none;
+    }
+
+    &:active {
+      border: none;
+      outline: none;
+      box-shadow: none;
+    }
+  }
+
+  // Beat global element resets (the `@layer base` preflight) on the input element.
+  .input-wrapper input.input,
+  .input-wrapper input.input[type="text"],
+  .input-wrapper input.input[type="password"],
+  .input-wrapper input.input[type="email"],
+  .input-wrapper input.input[type="number"],
+  .input-wrapper input.input[type="search"],
+  .input-wrapper input.input[type="tel"],
+  .input-wrapper input.input[type="url"] {
+    // Override any global input styles through specificity
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    background-color: transparent;
+    box-shadow: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+
+    &:hover,
+    &:focus,
+    &:active {
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      background-color: transparent;
+      box-shadow: none;
+      outline: none;
+    }
+  }
+}
+
+.input-wrapper {
   // Inner wrapper handles the visual styling
   .input-inner {
     display: inline-flex;
@@ -34,54 +226,34 @@
 
   // Size variants
   &.input-size-mini {
-    height: 24px;
-    font-size: 12px;
-
     .input-inner {
       padding: 0 8px;
-    }
-
-    .input {
-      font-size: 12px;
     }
   }
 
   &.input-size-small {
-    height: 28px;
-    font-size: 14px;
-
     .input-inner {
       padding: 0 12px;
-    }
-
-    .input {
-      font-size: 14px;
     }
   }
 
   &.input-size-default {
-    height: 32px;
-    font-size: 14px;
-
     .input-inner {
       padding: 0 12px;
-    }
-
-    .input {
-      font-size: 14px;
     }
   }
 
   &.input-size-large {
-    height: 36px;
-    font-size: 14px;
-
     .input-inner {
       padding: 0 16px;
     }
+  }
 
-    .input {
-      font-size: 14px;
+  // Pill: the curve eats into both ends, so text needs more room than the
+  // square field's 12px. After the sizes so it wins on equal specificity.
+  &.input-shape-round:not(.input-size-mini) {
+    .input-inner {
+      padding: 0 16px;
     }
   }
 
@@ -143,12 +315,6 @@
     }
   }
 
-  &.input-sidebar-surface {
-    .input-inner {
-      background: var(--sidebar-selected-row-bg);
-    }
-  }
-
   &.input-sidebar-search {
     // The inner keeps a 1px transparent border at rest, so 7px padding aligns
     // its content with the navigation rows' 8px inset in every state.
@@ -202,154 +368,25 @@
   }
 
   &.input-auto-height {
-    height: auto;
-
     .input-inner {
       min-height: 0;
       padding: 0;
     }
-
-    .input {
-      height: auto;
-      line-height: inherit;
-    }
   }
 
   &.input-field-ghost {
-    height: 28px;
-    min-width: 0;
-    max-width: 100%;
+    // Stays unlayered: it must keep beating `.input-disabled`'s cursor, as it
+    // did before the box rules moved into a layer.
     cursor: default;
-    border-radius: 8px;
-    transition: background-color 0.1s cubic-bezier(0, 0, 1, 1);
 
     .input-inner {
       padding: 0 6px;
-    }
-
-    .input {
-      height: 100%;
-      transform: translateY(-1px);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 13px;
-      font-weight: 400;
-      color: var(--color-text-1);
     }
 
     &:hover:not(.input-disabled),
     &.input-focused {
       background: var(--color-surface-hover);
     }
-  }
-}
-
-.input {
-  // Internal input - completely transparent, no visual effects
-  // The wrapper handles ALL visual styling
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  background-color: transparent;
-  border: none;
-  border-radius: 0;
-  outline: none;
-  color: var(--color-text-1);
-  caret-color: var(--color-primary-6);
-  font-family: inherit;
-  line-height: 1.5;
-  box-shadow: none;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-
-  // Placeholder styling
-  &::placeholder {
-    color: var(--color-text-3);
-  }
-
-  // Remove all default browser styles
-  &::-webkit-search-decoration,
-  &::-webkit-search-cancel-button,
-  &::-webkit-search-results-button,
-  &::-webkit-search-results-decoration {
-    -webkit-appearance: none;
-  }
-
-  // Number input arrows
-  &[type="number"]::-webkit-inner-spin-button,
-  &[type="number"]::-webkit-outer-spin-button {
-    appearance: none;
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  &[type="number"] {
-    appearance: textfield;
-    -moz-appearance: textfield;
-  }
-
-  // Password reveal button (native browser)
-  &::-ms-reveal,
-  &::-ms-clear {
-    display: none;
-  }
-
-  // Remove focus ring - wrapper handles focus styling
-  &:focus {
-    outline: none;
-    box-shadow: none;
-    border: none;
-    background: transparent;
-  }
-
-  // Remove any inherited styles
-  &:hover {
-    border: none;
-    outline: none;
-    box-shadow: none;
-  }
-
-  &:active {
-    border: none;
-    outline: none;
-    box-shadow: none;
-  }
-}
-
-// Override any global input styles that might interfere
-// Higher specificity ensures our styles take precedence
-.input-wrapper input.input,
-.input-wrapper input.input[type="text"],
-.input-wrapper input.input[type="password"],
-.input-wrapper input.input[type="email"],
-.input-wrapper input.input[type="number"],
-.input-wrapper input.input[type="search"],
-.input-wrapper input.input[type="tel"],
-.input-wrapper input.input[type="url"] {
-  // Override any global input styles through specificity
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  background-color: transparent;
-  box-shadow: none;
-  outline: none;
-  padding: 0;
-  margin: 0;
-
-  &:hover,
-  &:focus,
-  &:active {
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    background-color: transparent;
-    box-shadow: none;
-    outline: none;
   }
 }
 
@@ -424,6 +461,29 @@
   svg {
     width: 16px;
     height: 16px;
+  }
+}
+
+// Inline confirm / cancel actions. The trailing padding equals the gap between
+// the action buttons and the field border (see InputEditActions sizes), so the
+// buttons sit evenly inset against the end of the field.
+.input-edit-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+  margin-left: 6px;
+}
+
+.input-wrapper.input-has-edit-actions {
+  &.input-size-mini .input-inner {
+    padding-right: 1px;
+  }
+
+  &.input-size-small .input-inner,
+  &.input-size-default .input-inner,
+  &.input-size-large .input-inner {
+    padding-right: 3px;
   }
 }
 

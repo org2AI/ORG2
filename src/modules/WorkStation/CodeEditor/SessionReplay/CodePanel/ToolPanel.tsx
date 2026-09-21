@@ -11,9 +11,9 @@ import {
   statusToLifecycle,
   useLifecycleLabels,
 } from "@src/engines/SessionCore/rendering/registry";
+import { FileHeader } from "@src/features/FileHeader";
 import { useTerminalSurfaceStyle } from "@src/hooks/terminal/useTerminalSurfaceStyle";
 import { HugeiconsIcon, Wrench01Icon } from "@src/icons";
-import { FileHeader } from "@src/modules/shared/components/FileHeader";
 import { getToolDisplayLabelFromRegistry } from "@src/util/ui/rendering/registryToolLabel";
 
 import type { ToolOperationEntry } from "../types";

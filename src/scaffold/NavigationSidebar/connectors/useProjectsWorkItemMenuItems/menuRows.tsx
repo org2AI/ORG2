@@ -10,29 +10,6 @@ export function separator(id: string, title = ""): NavigationMenuItem {
   return { id: `separator-${id}`, key: `separator-${id}`, label: title };
 }
 
-export function buildProjectOverviewRow(
-  t: TFunction,
-  projectSlug: string,
-  projectName?: string,
-  _projectSyncAdapterId?: string | null
-): NavigationMenuItem {
-  const id = getProjectOverviewMenuItemId(projectSlug);
-  return {
-    id,
-    key: id,
-    label: t("projects:orgs.management.overview"),
-    icon: DeliveryBox01Icon,
-    iconName: "box",
-    dataTestId: `sidebar-project-overview-${projectSlug}`,
-    opensChatPanelTab: true,
-    dragPayload: {
-      path: projectSlug,
-      name: projectName ?? projectSlug,
-      iconType: "project",
-    },
-  };
-}
-
 function pendingSyncIndicator(t: TFunction): React.ReactElement {
   const label = t("projects:orgs.pendingSync");
   return (

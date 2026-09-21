@@ -6,7 +6,7 @@ import {
   AGENT_ORG_TASK_STATUS,
   type AgentOrgRunView,
 } from "@src/api/tauri/agent";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { HierarchyCircle01Icon, HugeiconsIcon } from "@src/icons";
 import { activeSessionIdAtom } from "@src/store/session";
 

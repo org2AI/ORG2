@@ -6,15 +6,8 @@
  * failure — the sync engine needs the server's error codes to drive its OCC
  * re-anchor and backoff paths.
  */
-import {
-  type CloudEndpoint,
-  ORG2_CLOUD_POSTGREST_SCHEMA,
-  getCloudEndpoint,
-} from "./config";
-import {
-  fetchWithTransportRetry,
-  runCloudRequestWithTimeout,
-} from "./org2CloudFetchRetry";
+import { type CloudEndpoint, getCloudEndpoint } from "./config";
+import { callOrg2CloudRpc } from "./org2CloudRpc";
 
 // ---------------------------------------------------------------------------
 // Error model
@@ -63,23 +56,6 @@ export function isOrg2SyncErrorCode(
 // RPC plumbing (throwing variant of the org2CloudClient idiom)
 // ---------------------------------------------------------------------------
 
-function rpcUrl(functionName: string, endpoint: CloudEndpoint): string {
-  return `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`;
-}
-
-function rpcHeaders(
-  accessToken: string,
-  endpoint: CloudEndpoint
-): Record<string, string> {
-  const { anonKey } = endpoint;
-  return {
-    apikey: anonKey,
-    authorization: `Bearer ${accessToken}`,
-    "content-type": "application/json",
-    "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-  };
-}
-
 export async function callSyncRpc(
   functionName: string,
   accessToken: string,
@@ -88,37 +64,19 @@ export async function callSyncRpc(
   signal?: AbortSignal,
   timeoutMs?: number
 ): Promise<unknown> {
-  const execute = async (requestSignal?: AbortSignal): Promise<unknown> => {
-    const response = await fetchWithTransportRetry(
-      rpcUrl(functionName, endpoint),
-      {
-        method: "POST",
-        headers: rpcHeaders(accessToken, endpoint),
-        body: JSON.stringify(body),
-        signal: requestSignal,
-      }
-    );
-    const text = await response.text();
-    let payload: unknown = null;
-    try {
-      payload = text ? JSON.parse(text) : null;
-    } catch {
-      payload = null;
-    }
-    if (!response.ok) {
-      const message =
-        payload && typeof payload === "object" && "message" in payload
-          ? String((payload as { message: unknown }).message)
-          : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-      throw new Org2CloudSyncError(message, response.status);
-    }
-    return payload;
-  };
+  // Unlike the other clients this one refuses an already-aborted request
+  // before it reaches the transport at all: the sync engine cancels in-flight
+  // batches and must not emit a dead POST on the way down.
   if (signal?.aborted) {
     throw new DOMException("The operation was aborted.", "AbortError");
   }
-  if (timeoutMs === undefined) return execute(signal);
-  return runCloudRequestWithTimeout(execute, timeoutMs, signal);
+  return callOrg2CloudRpc(functionName, body, {
+    accessToken,
+    endpoint,
+    signal,
+    timeoutMs,
+    createError: (message, status) => new Org2CloudSyncError(message, status),
+  });
 }
 
 /**

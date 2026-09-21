@@ -22,6 +22,7 @@ import {
   flushBacklog,
   isPaneForeground,
   notifyUserInput,
+  ownsPane,
   registerPane,
   resumePane,
   scheduleWrite,
@@ -29,11 +30,17 @@ import {
   suspendPane,
   unregisterPane,
 } from "./terminalOutputScheduler";
+import { formatLastLogin, resolvePtyLaunchOptions } from "./terminalPtyLaunch";
 import { writeWithRenderSettle } from "./terminalRenderSettle";
 import type { TerminalViewProps } from "./types";
 import { writeBrowserModeMessage } from "./utils/browserModeMessage";
 
 const log = createLogger("TerminalView");
+let lastOwnerId = 0;
+function nextOwnerId(): number {
+  lastOwnerId = Math.max(lastOwnerId + 1, Date.now() * 1000);
+  return lastOwnerId;
+}
 
 /**
  * Estimate UTF-8 byte length of a string without a TextEncoder allocation.
@@ -61,7 +68,16 @@ function estimateByteLength(s: string): number {
   return len;
 }
 
-interface AttachPtyStreamResponse {
+interface PtySessionIdentity {
+  session_generation: string;
+}
+
+interface PtyExitEvent extends PtySessionIdentity {
+  owner_id: number;
+}
+
+interface AttachPtyStreamResponse extends Partial<PtySessionIdentity> {
+  pending_utf8_b64?: string;
   output: string;
   covers_seq: number;
   missed_output: boolean;
@@ -128,58 +144,6 @@ export function notifyPtyUserInput(sessionId: string): void {
   notifyUserInput(sessionId);
 }
 
-function resolvePtyLaunchOptions({
-  repoPath,
-  shellType,
-  customShellPath,
-  shellOverride,
-  forceRepoCwd,
-}: {
-  repoPath?: string;
-  shellType: ShellType;
-  customShellPath?: string;
-  shellOverride?: string;
-  forceRepoCwd?: boolean;
-}) {
-  let cwd: string | null = null;
-  let shell: string | null = shellOverride || null;
-
-  if (shell) {
-    cwd = repoPath || null;
-  } else if (shellType === "repo" && repoPath) {
-    cwd = repoPath;
-  } else if (shellType === "default") {
-    cwd = null;
-  } else if (shellType === "custom") {
-    if (customShellPath) shell = customShellPath;
-    cwd = repoPath || null;
-  }
-
-  // CLI-agent terminals must start where their session lives (worktree /
-  // repo) regardless of the user's shellType cwd preference — `default`
-  // would otherwise drop the agent into the home directory.
-  if (forceRepoCwd && repoPath) {
-    cwd = repoPath;
-  }
-
-  return { cwd, shell };
-}
-
-function formatLastLogin(sessionKey: string) {
-  const now = new Date();
-  const timeStr = now.toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-
-  return `Last login: ${timeStr} on ${sessionKey}`;
-}
-
 async function fetchPtyInfo(
   sessionId: string,
   sessionKey: string,
@@ -209,8 +173,10 @@ async function fetchPtyInfo(
 }
 
 async function reconnectOrCreatePty({
-  cols,
-  rows,
+  ownerId,
+  onSessionIdentity,
+  restorePendingUtf8,
+  getSize,
   sessionId,
   sessionKey,
   repoPath,
@@ -225,8 +191,10 @@ async function reconnectOrCreatePty({
   writeToTerminal,
   onSessionInfoReady,
 }: {
-  cols: number;
-  rows: number;
+  ownerId: number;
+  onSessionIdentity: (identity: Partial<PtySessionIdentity> | void) => void;
+  restorePendingUtf8: (b64: string) => void;
+  getSize: () => { cols: number; rows: number };
   sessionId: string;
   sessionKey: string;
   repoPath?: string;
@@ -246,8 +214,7 @@ async function reconnectOrCreatePty({
     await invokeTauri("resize_pty", {
       request: {
         session_id: sessionId,
-        rows: rows || 20,
-        cols: cols || 80,
+        ...getSize(),
       },
     });
     ptyExists = true;
@@ -268,11 +235,12 @@ async function reconnectOrCreatePty({
       forceRepoCwd,
     });
 
-    await invokeTauri("create_pty", {
+    const launchSize = getSize();
+    const created = await invokeTauri<PtySessionIdentity | void>("create_pty", {
       request: {
         session_id: sessionId,
-        rows: rows || 20,
-        cols: cols || 80,
+        owner_id: ownerId,
+        ...launchSize,
         cwd,
         shell,
         args: argsOverride || null,
@@ -281,7 +249,20 @@ async function reconnectOrCreatePty({
       },
     });
 
+    onSessionIdentity(created);
     if (!isTerminalLive()) return;
+    // Fits during native creation can send resize_pty before the session is
+    // registered. Reconcile that lost resize before releasing queued output.
+    const currentSize = getSize();
+    if (
+      currentSize.cols !== launchSize.cols ||
+      currentSize.rows !== launchSize.rows
+    ) {
+      await invokeTauri("resize_pty", {
+        request: { session_id: sessionId, ...currentSize },
+      });
+      if (!isTerminalLive()) return;
+    }
     await fetchPtyInfo(
       sessionId,
       sessionKey,
@@ -298,9 +279,10 @@ async function reconnectOrCreatePty({
   try {
     const attach = await invokeTauri<AttachPtyStreamResponse>(
       "attach_pty_stream",
-      { sessionId }
+      { sessionId, ownerId }
     );
 
+    onSessionIdentity(attach);
     if (!isTerminalLive()) return attach.covers_seq;
     const cachedBuffer = getTerminalBuffer(sessionId);
     deleteTerminalBuffer(sessionId);
@@ -311,6 +293,7 @@ async function reconnectOrCreatePty({
     } else if (attach.output) {
       writeToTerminal(attach.output);
     }
+    if (attach.pending_utf8_b64) restorePendingUtf8(attach.pending_utf8_b64);
     return attach.covers_seq;
   } catch (error) {
     // Backend without attach_pty_stream (hot-reload version skew) — legacy
@@ -365,6 +348,7 @@ async function reconnectOrCreatePty({
  */
 async function attachPtyOutputChannel(
   sessionId: string,
+  ownerId: number,
   isAborted: () => boolean,
   consumePtyBytes: (chunk: Uint8Array, byteCount: number, seq?: number) => void
 ): Promise<void> {
@@ -379,7 +363,11 @@ async function attachPtyOutputChannel(
       consumePtyBytes(frame.bytes, frame.bytes.length, frame.seq);
     });
 
-    await invokeTauri("attach_pty_output_channel", { sessionId, channel });
+    await invokeTauri("attach_pty_output_channel", {
+      sessionId,
+      ownerId,
+      channel,
+    });
   } catch (error) {
     log.warn(
       "[TerminalView] Binary output channel unavailable, using event transport:",
@@ -426,13 +414,17 @@ export async function initPtyConnection({
 
   const sessionId = `terminal-pty-${sessionKey}`;
   sessionIdRef.current = sessionId;
+  let releaseConnection: (() => void) | undefined;
+  let ownsConnection = () => !isAborted();
 
   try {
     const terminal = terminalRef.current;
     if (!terminal || isAborted()) return;
+    const ownerId = nextOwnerId();
     const isTerminalLive = () =>
-      !isAborted() && terminalRef.current === terminal;
+      !isAborted() && terminalRef.current === terminal && ownsPane(pane);
 
+    ownsConnection = isTerminalLive;
     const utf8Decoder = new TextDecoder("utf-8", { fatal: false });
 
     // Stable write callback — captured once per session so the hot IPC
@@ -446,7 +438,37 @@ export async function initPtyConnection({
     // arrive during connect queue up in order but nothing is written until
     // the restore base (snapshot or cached buffer) is in place — otherwise
     // live output interleaves with the restore and garbles the screen.
-    registerPane(sessionId, terminalWrite);
+    const pane = registerPane(sessionId, terminalWrite, ownerId);
+    let ownOutputUnlisten: (() => void) | undefined;
+    let ownExitUnlisten: (() => void) | undefined;
+    const pendingChunks: {
+      chunk: Uint8Array;
+      byteCount: number;
+      seq?: number;
+    }[] = [];
+    const release = () => {
+      abortSignal?.removeEventListener("abort", release);
+      pendingChunks.length = 0;
+      ownOutputUnlisten?.();
+      ownOutputUnlisten = undefined;
+      ownExitUnlisten?.();
+      ownExitUnlisten = undefined;
+      unregisterPane(sessionId, pane);
+      void invokeTauri("detach_pty_stream", { sessionId, ownerId }).catch(
+        () => undefined
+      );
+    };
+    releaseConnection = release;
+    abortSignal?.addEventListener("abort", release, { once: true });
+    let restoring = true;
+    let restoredThrough: number | undefined;
+    let sessionGeneration: string | undefined;
+    const restorePendingUtf8 = (b64: string) => {
+      utf8Decoder.decode(
+        Uint8Array.from(atob(b64), (char) => char.charCodeAt(0)),
+        { stream: true }
+      );
+    };
     suspendPane(sessionId);
     setPaneForeground(sessionId, isForeground);
 
@@ -458,6 +480,22 @@ export async function initPtyConnection({
       byteCount: number,
       seq?: number
     ) => {
+      if (!isTerminalLive()) return;
+      if (restoring) {
+        pendingChunks.push({ chunk, byteCount, seq });
+        return;
+      }
+      if (
+        seq !== undefined &&
+        restoredThrough !== undefined &&
+        seq < restoredThrough
+      ) {
+        const covered = Math.min(chunk.length, restoredThrough - seq);
+        chunk = chunk.subarray(covered);
+        byteCount = Math.max(0, byteCount - covered);
+        seq += covered;
+        if (chunk.length === 0) return;
+      }
       const decoded = utf8Decoder.decode(chunk, { stream: true });
       if (decoded) {
         // Observers (advertised-URL sniffing, status indicators) read the
@@ -473,36 +511,56 @@ export async function initPtyConnection({
       }
     };
 
-    const unlistenOutput = await listenTauri<PtyOutputPayload>(
-      `pty-output-${sessionId}`,
-      (event) => {
-        if (isAborted()) return;
+    const unlistenOutput = await listenTauri<
+      PtyOutputPayload & { owner_id?: number }
+    >(`pty-output-${sessionId}`, (event) => {
+      if (!isTerminalLive()) return;
 
-        const { byte_count: byteCount, seq, data } = event.payload;
-        const chunk = ptyPayloadBytes(event.payload);
+      if (
+        event.payload.owner_id !== undefined &&
+        event.payload.owner_id !== ownerId
+      )
+        return;
+      const { byte_count: byteCount, seq, data } = event.payload;
+      const chunk = ptyPayloadBytes(event.payload);
 
-        if (chunk && chunk.length > 0) {
-          consumePtyBytes(chunk, byteCount ?? chunk.length, seq);
-        } else if (data) {
-          // Backward-compat branch (no byte_count from backend): estimate byte
-          // length without a TextEncoder allocation. ASCII is 1 byte/char;
-          // non-ASCII (rare in terminal hot path) inflates slightly — the
-          // scheduler treats byte_count as a flow-control hint, not an exact
-          // invariant, so a cheap over-estimate is correct.
-          const encodedLen = estimateByteLength(data);
-          publishPtyOutput(sessionId, data);
-          scheduleWrite(sessionId, data, encodedLen, terminalWrite, seq);
-        }
+      if (chunk && chunk.length > 0) {
+        consumePtyBytes(chunk, byteCount ?? chunk.length, seq);
+      } else if (data) {
+        // Backward-compat branch (no byte_count from backend): estimate byte
+        // length without a TextEncoder allocation. ASCII is 1 byte/char;
+        // non-ASCII (rare in terminal hot path) inflates slightly — the
+        // scheduler treats byte_count as a flow-control hint, not an exact
+        // invariant, so a cheap over-estimate is correct.
+        const bytes = new TextEncoder().encode(data);
+        consumePtyBytes(bytes, estimateByteLength(data), seq);
       }
-    );
-    if (isAborted()) {
-      unlistenOutput();
-      unregisterPane(sessionId);
+    });
+    ownOutputUnlisten = unlistenOutput;
+    if (!isTerminalLive()) {
+      release();
       return;
     }
-    unlistenOutputRef.current = unlistenOutput;
+    unlistenOutputRef.current = () => {
+      abortSignal?.removeEventListener("abort", release);
+      release();
+    };
 
-    const unlistenExit = await listenTauri(`pty-exit-${sessionId}`, () => {
+    // Owner filtering below confines this slot to this connection's native
+    // exit (duplicates coalesce). Keep identity until the handshake resolves.
+    let exitPending: { payload: PtyExitEvent | null } | undefined;
+    const matchesExit = (payload: PtyExitEvent | null) => {
+      if (sessionGeneration !== undefined) {
+        return (
+          payload?.session_generation === sessionGeneration &&
+          payload.owner_id === ownerId
+        );
+      }
+      // Only a legacy handshake may accept an unversioned legacy exit.
+      // Paired releases always require both generation and attachment owner.
+      return payload === null;
+    };
+    const finishExit = () => {
       if (!isTerminalLive()) return;
 
       // Drain any still-queued output before the banner so the final bytes
@@ -515,23 +573,46 @@ export async function initPtyConnection({
         terminalWrite(trailingOutput);
       }
       terminalWrite("\r\n\x1b[33m[Session ended]\x1b[0m\r\n");
-      unregisterPane(sessionId);
-    });
-    if (isAborted()) {
-      unlistenExit();
-      unlistenOutputRef.current?.();
-      unlistenOutputRef.current = null;
-      unregisterPane(sessionId);
+      unregisterPane(sessionId, pane);
+    };
+    const unlistenExit = await listenTauri<PtyExitEvent | null>(
+      `pty-exit-${sessionId}`,
+      (event) => {
+        if (!isTerminalLive()) return;
+        const payload = event.payload ?? null;
+        if (payload && payload.owner_id !== ownerId) return;
+        if (restoring) {
+          exitPending = { payload };
+          return;
+        }
+        if (matchesExit(payload)) finishExit();
+      }
+    );
+    ownExitUnlisten = unlistenExit;
+    if (!isTerminalLive()) {
+      release();
       return;
     }
-    unlistenExitRef.current = unlistenExit;
+    unlistenExitRef.current = () => {
+      ownExitUnlisten?.();
+      ownExitUnlisten = undefined;
+    };
 
     if (isAborted()) return;
     let coversSeq: number | undefined;
     try {
       coversSeq = await reconnectOrCreatePty({
-        cols,
-        rows,
+        ownerId,
+        onSessionIdentity: (identity) => {
+          sessionGeneration = identity?.session_generation;
+        },
+        restorePendingUtf8,
+        // Listener registration and the existence probe are asynchronous;
+        // the fitted grid may have changed since initPtyConnection was called.
+        getSize: () => ({
+          cols: terminal.cols || cols || 80,
+          rows: terminal.rows || rows || 20,
+        }),
         sessionId,
         sessionKey,
         repoPath: repoPathRef.current,
@@ -551,19 +632,38 @@ export async function initPtyConnection({
       // the transport swap queue in arrival order instead of racing the
       // restore snapshot onto the screen.
       if (!isAborted()) {
-        await attachPtyOutputChannel(sessionId, isAborted, consumePtyBytes);
+        await attachPtyOutputChannel(
+          sessionId,
+          ownerId,
+          () => !isTerminalLive(),
+          consumePtyBytes
+        );
       }
     } finally {
       // Always lift the suspension — a pane left suspended never renders.
       // Queued chunks the snapshot already covers are dropped here.
-      resumePane(sessionId, coversSeq);
+      if (isTerminalLive()) {
+        restoredThrough = coversSeq;
+        restoring = false;
+        for (const pending of pendingChunks)
+          consumePtyBytes(pending.chunk, pending.byteCount, pending.seq);
+        pendingChunks.length = 0;
+        resumePane(sessionId);
+        if (exitPending && matchesExit(exitPending.payload)) finishExit();
+        exitPending = undefined;
+      } else {
+        pendingChunks.length = 0;
+        release();
+      }
     }
 
     if (!isTerminalLive()) return;
     setIsConnecting(false);
     terminal.focus();
   } catch (error) {
-    if (isAborted()) return;
+    const owned = ownsConnection();
+    releaseConnection?.();
+    if (!owned) return;
     log.error("Failed to create/connect PTY session:", error);
     setIsConnecting(false);
     const liveTerminal = terminalRef.current;

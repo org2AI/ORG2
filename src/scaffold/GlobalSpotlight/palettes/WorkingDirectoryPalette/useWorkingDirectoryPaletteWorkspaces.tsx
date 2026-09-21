@@ -369,12 +369,10 @@ export function useWorkingDirectoryPaletteWorkspaces({
         <div className="flex items-center gap-1">
           <Button
             variant="tertiary"
-            appearance="soft"
             size="mini"
             aria-label={t("actions.edit", "Edit")}
             iconOnly
             icon={<HugeiconsIcon icon={ICONS.editRepo} size={14} />}
-            htmlType="button"
             onClick={(e) => {
               e.stopPropagation();
               handleEditWorkspace(ws);
@@ -383,18 +381,16 @@ export function useWorkingDirectoryPaletteWorkspaces({
             title={t("actions.edit", "Edit")}
           />
           <Button
-            variant="danger"
-            appearance="soft"
+            variant="tertiary"
+            tone="danger"
             size="mini"
             aria-label={t("actions.delete", "Delete")}
             iconOnly
             icon={<HugeiconsIcon icon={ICONS.removeRepo} size={14} />}
-            htmlType="button"
             onClick={(e) => {
               e.stopPropagation();
               void handleDeleteWorkspace(ws);
             }}
-            className="hover:text-error-6 hover:bg-fill-3"
             title={t("actions.delete", "Delete")}
           />
         </div>

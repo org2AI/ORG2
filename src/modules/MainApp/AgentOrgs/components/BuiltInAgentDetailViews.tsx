@@ -5,7 +5,8 @@ import type { RustAgentType } from "@src/api/tauri/agent/types";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
-} from "@src/modules/shared/layouts/blocks";
+  InternalHeader,
+} from "@src/components/layout/blocks";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import {
   BUILTIN_OS_DEF_ID,
@@ -22,7 +23,6 @@ import { useOSAgentConfig } from "../config/osAgent/useOSAgentConfig";
 import { useSdeAgentConfig } from "../config/sdeAgent/useSdeAgentConfig";
 import AgentSkillsetsSection from "../config/skills/AgentSkillsetsSection";
 import { agentOrgsActiveTabAtom } from "../store/agentOrgsActiveTabAtom";
-import AgentDetailHeader from "./AgentDetailHeader";
 
 interface BuiltInAgentDetailViewProps {
   variant: RustAgentType;
@@ -55,7 +55,8 @@ export const BuiltInAgentDetailView: React.FC<BuiltInAgentDetailViewProps> = ({
 
   const headerElement = useMemo(
     () => (
-      <AgentDetailHeader
+      <InternalHeader
+        noPanelHeader
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}

@@ -27,6 +27,14 @@ export const GIT_SETTINGS_REGISTRY = {
     description: "Interval in seconds between automatic fetches (30-3600)",
     category: "git",
   },
+  "git.sourceControl.colorFileNames": {
+    // Settings → Appearance → Code Editor; also the Source Control menu.
+    schema: z.boolean(),
+    default: false,
+    description:
+      "Color Source Control file names using their diff status color",
+    category: "git",
+  },
   "git.prompts.commitInstructions": {
     schema: z.string().max(4000),
     default: "",

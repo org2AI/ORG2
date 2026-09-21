@@ -47,9 +47,11 @@ const apiMocks = vi.hoisted(() => ({
   createPrReviewCommentLocal: vi.fn(),
   createPrReviewLocal: vi.fn(),
   getChecksLocal: vi.fn(),
+  getDeploymentsLocal: vi.fn(),
   getGitRemotes: vi.fn(),
   getPRLocal: vi.fn(),
   listIssueCommentsLocal: vi.fn(),
+  listIssueTimelineLocal: vi.fn(),
   listPRCommitsLocal: vi.fn(),
   listPRFilesLocal: vi.fn(),
   listPrReviewCommentsLocal: vi.fn(),
@@ -73,8 +75,10 @@ vi.mock("@src/api/tauri/github", () => ({
   createPrReviewCommentLocal: apiMocks.createPrReviewCommentLocal,
   createPrReviewLocal: apiMocks.createPrReviewLocal,
   getChecksLocal: apiMocks.getChecksLocal,
+  getDeploymentsLocal: apiMocks.getDeploymentsLocal,
   getPRLocal: apiMocks.getPRLocal,
   listIssueCommentsLocal: apiMocks.listIssueCommentsLocal,
+  listIssueTimelineLocal: apiMocks.listIssueTimelineLocal,
   listPRCommitsLocal: apiMocks.listPRCommitsLocal,
   listPRFilesLocal: apiMocks.listPRFilesLocal,
   listPrReviewCommentsLocal: apiMocks.listPrReviewCommentsLocal,
@@ -171,6 +175,7 @@ describe("useWorkstationPrDetail cache mutations", () => {
       base: { ref: "develop" },
     });
     apiMocks.listIssueCommentsLocal.mockResolvedValue([]);
+    apiMocks.listIssueTimelineLocal.mockResolvedValue([]);
     apiMocks.listPrReviewsLocal.mockResolvedValue([]);
     apiMocks.listPrReviewCommentsLocal.mockResolvedValue([]);
     apiMocks.listPRCommitsLocal.mockResolvedValue([]);
@@ -193,6 +198,8 @@ describe("useWorkstationPrDetail cache mutations", () => {
     // `undefined`, and `fetchPrDetailBundle` immediately calls `.catch()`
     // on the result).
     apiMocks.getChecksLocal.mockResolvedValue(null);
+    // Same contract, keyed on the bundle's head branch instead of its sha.
+    apiMocks.getDeploymentsLocal.mockResolvedValue(null);
 
     store = createStore();
     container = document.createElement("div");

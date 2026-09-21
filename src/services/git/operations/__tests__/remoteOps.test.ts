@@ -135,7 +135,7 @@ function structuredError(message: string, errorType: string): Error {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   execute.mockResolvedValue(undefined);
   gitPush.mockResolvedValue({ success: true });
   gitPull.mockResolvedValue({ success: true });
@@ -1443,5 +1443,173 @@ describe("operations with an error dialog", () => {
       force: true,
       set_upstream: true,
     });
+  });
+});
+
+describe("operation identity across repository switches", () => {
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  }
+
+  it.each(["push", "pull", "fetch"] as const)(
+    "keeps %s authentication retry on A after switching to B",
+    async (operation) => {
+      const remoteOps = await loadRemoteOps({ repo: REPO });
+      const { setRepoContext } = await import("../types");
+      const api = { push: gitPush, pull: gitPull, fetch: gitFetch }[operation];
+      api.mockRejectedValueOnce(
+        structuredError("Authentication failed", "authentication_failed")
+      );
+      getGitRemotes.mockResolvedValue(
+        remotes([{ name: "origin", url: ORIGIN_URL }])
+      );
+      const credential = deferred<{ username: string; token: string }>();
+      getGitHubGitCredentialForRemote.mockReturnValueOnce(credential.promise);
+      const running = remoteOps[operation]();
+      await vi.waitFor(() =>
+        expect(getGitHubGitCredentialForRemote).toHaveBeenCalledWith(ORIGIN_URL)
+      );
+      setRepoContext("B", "/tmp/B");
+      credential.resolve({ username: "audit", token: "synthetic-A-only" });
+      expect((await running).success).toBe(true);
+      expect(api).toHaveBeenCalledTimes(2);
+      for (const [request] of api.mock.calls)
+        expect(request).toMatchObject({
+          repo_id: REPO.repoId,
+          repo_path: REPO.repoPath,
+        });
+      expect(api.mock.calls[1][0].authToken).toBe("synthetic-A-only");
+    }
+  );
+
+  it("keeps sync's original repo through A to B to A and overlapping new B operation", async () => {
+    const remoteOps = await loadRemoteOps({ repo: REPO });
+    const { setRepoContext } = await import("../types");
+    const fetch = deferred<unknown>();
+    const pull = deferred<unknown>();
+    gitFetch.mockReturnValueOnce(fetch.promise);
+    gitPull.mockReturnValueOnce(pull.promise);
+    const running = remoteOps.sync();
+    setRepoContext("B", "/tmp/B");
+    await remoteOps.push(); // An independent new operation still uses current B.
+    fetch.resolve({});
+    await vi.waitFor(() => expect(gitPull).toHaveBeenCalledTimes(1));
+    expect(gitPull.mock.calls[0][0].repo_id).toBe(REPO.repoId);
+    setRepoContext(REPO.repoId, REPO.repoPath);
+    pull.resolve({});
+    await running;
+    expect(gitPush.mock.calls.map(([request]) => request.repo_id)).toEqual([
+      "B",
+      REPO.repoId,
+    ]);
+  });
+
+  it("retains the original integration callbacks across sync steps", async () => {
+    const fetch = deferred<GitOperationResult>();
+    const original = {
+      fetchWithOutput: vi.fn().mockReturnValue(fetch.promise),
+      pullWithOutput: vi
+        .fn()
+        .mockResolvedValue({ success: true, errorType: "none" }),
+      pushWithOutput: vi
+        .fn()
+        .mockResolvedValue({ success: true, errorType: "none" }),
+    };
+    const remoteOps = await loadRemoteOps({
+      repo: REPO,
+      integration: original,
+    });
+    const { setRepoContext, getStore } = await import("../types");
+    const { gitOutputIntegrationAtom } =
+      await import("@src/store/workstation/codeEditor/outputIntegration");
+    const next = {
+      fetchWithOutput: vi.fn(),
+      pullWithOutput: vi.fn(),
+      pushWithOutput: vi.fn(),
+    };
+    const running = remoteOps.sync();
+    setRepoContext("B", "/tmp/B");
+    getStore().set(gitOutputIntegrationAtom, makeIntegration(next));
+    fetch.resolve({ success: true, errorType: "none" });
+    await running;
+    expect(original.pullWithOutput).toHaveBeenCalledTimes(1);
+    expect(original.pushWithOutput).toHaveBeenCalledTimes(1);
+    expect(next.pullWithOutput).not.toHaveBeenCalled();
+    expect(next.pushWithOutput).not.toHaveBeenCalled();
+  });
+
+  it("pins authentication fallback after an in-flight output integration fails", async () => {
+    const streaming = deferred<GitOperationResult>();
+    const original = {
+      pushWithOutput: vi.fn().mockReturnValue(streaming.promise),
+    };
+    const remoteOps = await loadRemoteOps({
+      repo: REPO,
+      integration: original,
+    });
+    const { setRepoContext } = await import("../types");
+    getGitRemotes.mockResolvedValue(
+      remotes([{ name: "origin", url: ORIGIN_URL }])
+    );
+    getGitHubGitCredentialForRemote.mockResolvedValueOnce({
+      username: "audit",
+      token: "synthetic-A",
+    });
+    const params = { remote: "origin", branch: "main" };
+    const running = remoteOps.push(params);
+    setRepoContext("B", "/tmp/B");
+    params.remote = "changed-after-start";
+    streaming.resolve({ success: false, errorType: "authentication_failed" });
+    expect((await running).success).toBe(true);
+    expect(getGitRemotes).toHaveBeenCalledWith({
+      repo_id: REPO.repoId,
+      repo_path: REPO.repoPath,
+    });
+    expect(gitPush).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo_id: REPO.repoId,
+        repo_path: REPO.repoPath,
+        remote: "origin",
+        branch: "main",
+        authToken: "synthetic-A",
+      })
+    );
+  });
+
+  it("pins dialog remote and stored credential lookup while repository selection changes", async () => {
+    const remoteOps = await loadRemoteOps({ repo: REPO });
+    const { setRepoContext } = await import("../types");
+    gitPush.mockRejectedValueOnce(
+      structuredError("Authentication failed", "authentication_failed")
+    );
+    getGitRemotes.mockResolvedValue(
+      remotes([{ name: "origin", url: ORIGIN_URL }])
+    );
+    const dialog = deferred<unknown>();
+    showGitAuthenticationDialog.mockReturnValueOnce(dialog.promise);
+    const running = remoteOps.push();
+    await vi.waitFor(() =>
+      expect(showGitAuthenticationDialog).toHaveBeenCalledTimes(1)
+    );
+    setRepoContext("B", "/tmp/B");
+    const options = showGitAuthenticationDialog.mock.calls[0][0];
+    expect(options).toMatchObject({
+      repoPath: REPO.repoPath,
+      remote: ORIGIN_URL,
+    });
+    await options.onLoadStoredCredential();
+    expect(fillGitCredentials).toHaveBeenCalledWith({
+      repo_id: REPO.repoId,
+      repo_path: REPO.repoPath,
+      remoteUrl: ORIGIN_URL,
+    });
+    expect(getGitRemotes).toHaveBeenCalledTimes(1);
+    dialog.resolve(null);
+    expect((await running).success).toBe(false);
+    expect(gitPush).toHaveBeenCalledTimes(1);
   });
 });

@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   LATEST_ROUND_SELECTION,
   resolveRoundSelectionIndex,
-  roundSelectionToUnboundedIndex,
   selectLatestRound,
   selectNextRound,
   selectPreviousRound,
@@ -13,9 +12,6 @@ import {
 describe("roundSelection", () => {
   it("resolves the null selection to the latest round", () => {
     expect(resolveRoundSelectionIndex(LATEST_ROUND_SELECTION, 4)).toBe(3);
-    expect(roundSelectionToUnboundedIndex(LATEST_ROUND_SELECTION)).toBe(
-      Number.MAX_SAFE_INTEGER
-    );
     expect(selectLatestRound()).toBeNull();
   });
 

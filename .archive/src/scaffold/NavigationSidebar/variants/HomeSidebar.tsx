@@ -45,7 +45,7 @@ import SettingsSidebar from "./SettingsSidebar";
 const HOME_SIDEBAR_TABS: SidebarTab[] = [];
 const noopSidebarTabChange = () => undefined;
 
-const ORGII_GITHUB_URL = "https://github.com/YORG-AI/ORGII";
+const ORGII_GITHUB_URL = "https://github.com/org2AI/ORG2";
 const GITHUB_MENU_ITEM_KEY = "external-github";
 
 // ============================================

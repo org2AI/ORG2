@@ -99,7 +99,6 @@ export const WebInspector: React.FC<WebInspectorProps> = memo(
           <ToolbarTooltip label={t("titleBar.showDevTools")}>
             <Button
               variant="tertiary"
-              appearance="soft"
               size="small"
               iconOnly
               icon={
@@ -109,7 +108,6 @@ export const WebInspector: React.FC<WebInspectorProps> = memo(
                   size={16}
                 />
               }
-              htmlType="button"
               onClick={onToggleCollapse}
               aria-label={t("titleBar.showDevTools")}
             />

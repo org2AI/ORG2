@@ -17,7 +17,7 @@ import WorkItemsPageHeader from "@src/modules/ProjectManager/WorkItems/component
 import { useProjectManagerWorkItemsTabBarRegistration } from "@src/modules/ProjectManager/hooks/useProjectManagerWorkItemsTabBarRegistration";
 import DetailPaneLayout, {
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
+} from "@src/scaffold/layouts/DetailPaneLayout";
 import {
   getProjectLinearProjectsTabChrome,
   getProjectLinearWorkItemsTabChrome,

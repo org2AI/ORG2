@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   externalHistoryRescanSource,
   externalHistoryRescanSources,
+  splitScanSourcesByOutcome,
 } from "../../rescan";
 
 const { invokeMock } = vi.hoisted(() => ({
@@ -95,6 +96,7 @@ describe("external history rescans", () => {
     await expect(second).resolves.toEqual({
       changedSources: ["cline"],
       sourceSignatures: {},
+      failedSources: {},
     });
     expect(invokeMock.mock.calls[1]).toEqual([
       "external_history_rescan_sources",
@@ -115,8 +117,16 @@ describe("external history rescans", () => {
 
     active.resolve({ changedSources: ["codex_app"] });
     await expect(Promise.all([first, joined])).resolves.toEqual([
-      { changedSources: ["codex_app"], sourceSignatures: {} },
-      { changedSources: ["codex_app"], sourceSignatures: {} },
+      {
+        changedSources: ["codex_app"],
+        sourceSignatures: {},
+        failedSources: {},
+      },
+      {
+        changedSources: ["codex_app"],
+        sourceSignatures: {},
+        failedSources: {},
+      },
     ]);
   });
 
@@ -159,6 +169,59 @@ describe("external history rescans", () => {
     await expect(pending).resolves.toEqual({
       changedSources: [],
       sourceSignatures: {},
+      failedSources: {},
+    });
+  });
+
+  it("resolves a batch whose importer failed for only one source", async () => {
+    invokeMock.mockResolvedValueOnce({
+      changedSources: ["codex_app"],
+      sourceSignatures: { codex_app: "codex-signature" },
+      failedSources: { warp: "unable to open database file" },
+    });
+
+    const result = await externalHistoryRescanSources(["warp", "codex_app"]);
+
+    expect(result).toEqual({
+      changedSources: ["codex_app"],
+      sourceSignatures: { codex_app: "codex-signature" },
+      failedSources: { warp: "unable to open database file" },
+    });
+    expect(splitScanSourcesByOutcome(["warp", "codex_app"], result)).toEqual({
+      succeeded: ["codex_app"],
+      failed: [{ sourceId: "warp", error: "unable to open database file" }],
+    });
+  });
+
+  it("fails only the coalesced caller whose own source failed", async () => {
+    invokeMock.mockResolvedValueOnce({
+      changedSources: ["codex_app"],
+      sourceSignatures: { codex_app: "codex-signature" },
+      failedSources: { warp: "unable to open database file" },
+    });
+
+    const healthy = externalHistoryRescanSource("codex_app");
+    const broken = externalHistoryRescanSource("warp");
+
+    await expect(broken).rejects.toThrow("unable to open database file");
+    await expect(healthy).resolves.toMatchObject({
+      changedSources: ["codex_app"],
+    });
+    expect(invokeMock).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a failed clear rebuild from rejecting the rest of its batch", async () => {
+    invokeMock
+      .mockRejectedValueOnce("unable to open database file")
+      .mockResolvedValueOnce({ changedSources: ["codex_app"] });
+
+    const rebuild = externalHistoryRescanSource("warp", { clear: true });
+    const batch = externalHistoryRescanSources(["codex_app"]);
+
+    await expect(rebuild).rejects.toThrow("unable to open database file");
+    await expect(batch).resolves.toMatchObject({
+      changedSources: ["codex_app"],
+      failedSources: { warp: "unable to open database file" },
     });
   });
 });

@@ -13,6 +13,10 @@ import {
 } from "vitest";
 
 import MarkdownLocalImage, { openLocalMarkdownRef } from "./MarkdownLocalImage";
+import {
+  registerMarkdownExtensions,
+  resetMarkdownExtensions,
+} from "./extensions";
 
 const mocks = vi.hoisted(() => ({
   readFile: vi.fn(),
@@ -37,11 +41,6 @@ vi.mock("@tauri-apps/api/path", () => ({
 
 vi.mock("@src/util/ui/openFileInWorkStation", () => ({
   openFileInWorkStation: mocks.openFileInWorkStation,
-}));
-
-vi.mock("@src/components/ImagePreviewOverlay", () => ({
-  default: () =>
-    createElement("div", { "data-testid": "image-preview-overlay" }),
 }));
 
 vi.mock("@src/components/FileTypeIcon", () => ({
@@ -99,6 +98,12 @@ describe("MarkdownLocalImage", () => {
   });
 
   beforeEach(() => {
+    // The lightbox is a registered extension slot — the app fills it with the
+    // shared image-preview overlay; the renderer only knows the slot.
+    registerMarkdownExtensions({
+      ImageOverlay: () =>
+        createElement("div", { "data-testid": "image-preview-overlay" }),
+    });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -108,6 +113,7 @@ describe("MarkdownLocalImage", () => {
     act(() => root.unmount());
     container.remove();
     vi.clearAllMocks();
+    resetMarkdownExtensions();
   });
 
   afterAll(() => {

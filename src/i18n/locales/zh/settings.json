@@ -3,8 +3,6 @@
     "customCommandUpdated": "自定义命令已更新",
     "shellSettingUpdated": "Shell 设置已更新"
   },
-  "noSettingsFound": "未找到\"{{query}}\"相关设置",
-  "searchPlaceholder": "搜索设置...",
   "panel": {
     "maximizeSettings": "最大化设置"
   },
@@ -15,10 +13,13 @@
     "editorAndWorkspace": "编辑器 & 工作区",
     "appUpdate": "应用更新",
     "security": "安全",
+    "appLock": "应用锁",
     "storage": "存储",
     "agentOrg": "Agent 团队",
     "mobileRemote": "移动遥控",
-    "harnessConnections": "应用连接"
+    "harnessConnections": "应用连接",
+    "import": "导入",
+    "development": "开发模式"
   },
   "coreSidebar": {
     "groups": {
@@ -54,12 +55,58 @@
     "customPatternsPlaceholder": "例如 MYCORP_[A-Z0-9]{20}",
     "invalidPatterns": "{{count}} 个模式无效，将被忽略：{{patterns}}"
   },
+  "appLock": {
+    "password": "密码锁",
+    "setPassword": "设置密码",
+    "changePassword": "更改密码",
+    "removePassword": "移除密码",
+    "currentPassword": "当前密码",
+    "newPassword": "新密码",
+    "confirmPassword": "确认新密码",
+    "passwordSet": "密码已设置",
+    "passwordChanged": "密码已更改",
+    "passwordRemoved": "密码已移除",
+    "lockNow": "立即锁定",
+    "lockNowDesc": "锁定所有 ORG2 窗口，直到输入密码",
+    "shortcut": "锁定快捷键",
+    "hint": "密码提示",
+    "hintPlaceholder": "会显示在锁定界面上",
+    "hintOptionalPlaceholder": "密码提示（可选）",
+    "autoLock": "自动锁定",
+    "autoLockDesc": "在 ORG2 中无键盘或鼠标操作达到此时长后锁定",
+    "autoLockNever": "永不",
+    "autoLockMinutes": "{{count}} 分钟后",
+    "autoLockHour": "1 小时后",
+    "lockOnLaunch": "启动 ORG2 时锁定",
+    "lockOnLaunchDesc": "每次打开应用时都要求输入密码",
+    "scopeNote": "应用锁仅覆盖 ORG2 的窗口，不会加密你的数据，也不会暂停 Mobile Remote；任何能访问你文件的人都可以移除它。如果忘记密码，请退出 ORG2，并删除主目录下 .orgii 文件夹中的 app-lock.json",
+    "errors": {
+      "tooShort": "至少使用 {{count}} 个字符",
+      "tooLong": "密码过长",
+      "mismatch": "两次输入的密码不一致",
+      "incorrectCurrent": "当前密码不正确",
+      "throttled": "错误次数过多，请稍后再试",
+      "generic": "无法更新应用锁",
+      "hintTooLong": "提示过长",
+      "hintRevealsPassword": "提示中不能包含密码"
+    },
+    "screen": {
+      "title": "ORG2 已锁定",
+      "passwordPlaceholder": "密码",
+      "incorrect": "密码不正确",
+      "failed": "无法解锁，请重试",
+      "throttled": "尝试次数过多，请在 {{time}} 后重试",
+      "working": "仍在工作的会话：{{count}}",
+      "showHint": "显示提示",
+      "hint": "提示：{{hint}}"
+    }
+  },
   "mobileRemote": {
     "enabled": "移动遥控",
-    "enabledDesc": "让已配对的手机通过同一 Wi‑Fi 局域网或公网 Relay 遥控本机 Agent 会话",
+    "enabledDesc": "用手机查看和操作此电脑上的会话",
     "securityNotice": "开启局域网暴露后，同一网络内持有连接 URL 和 token 的任何人都可以控制会话。若怀疑泄露，请重新生成 token",
-    "outdoorTitle": "户外连接",
-    "outdoorDesc": "让桌面主动连接 Relay，手机使用 4G/5G 或其他网络也能访问",
+    "outdoorTitle": "允许公网连接",
+    "outdoorDesc": "关闭后，手机无法通过互联网连接此电脑",
     "relayEnabled": "连接 Relay",
     "relayEnabledDesc": "无需配置路由器",
     "relayUrl": "Relay 地址",
@@ -68,7 +115,7 @@
     "relayPresetLocal": "本地",
     "relayPresetProduction": "生产",
     "cloudLoginTitle": "ORG2 Cloud 登录",
-    "cloudLoginDescSignedIn": "已登录 {{identity}} — Relay 使用此账号进行户外配对",
+    "cloudLoginDescSignedIn": "已登录 {{identity}}",
     "cloudLoginDescSignedOut": "通过 Relay 配对前，请先登录 ORG2 Cloud",
     "relayStatusCloudLoginRequired": "请在设置 → 通用中登录 ORG2 Cloud，然后刷新 Relay 状态",
     "relayStatusAuthFailedSignedIn": "Relay 拒绝了连接 — 请在设置 → 通用中退出后重新登录",
@@ -79,7 +126,7 @@
     "relayStatus_disabled": "未启用",
     "relayStatus_config_error": "配置有误",
     "relayStatus_stopped": "已停止",
-    "startOutdoorPairing": "生成户外配对码",
+    "startOutdoorPairing": "生成配对码",
     "fullAccess": "允许执行操作",
     "fullAccessDesc": "开启后手机可发送消息、停止会话和处理权限；关闭后仅可查看",
     "pairingExpires": "配对码将在 {{seconds}} 秒后过期",
@@ -114,11 +161,11 @@
     "pairedDevicesDesc": "通过 Relay 获得访问权限的手机，可随时撤销",
     "devicesLoadFailed": "无法加载已配对设备",
     "noDevices": "暂无已配对设备",
-    "noDevicesDesc": "生成户外配对码，并在移动遥控 PWA 中扫描或粘贴",
+    "noDevicesDesc": "添加手机后，即可查看和操作此电脑上的会话",
     "deviceLabel": "设备",
     "deviceTier": "权限",
-    "deviceTierFull": "完整访问",
-    "deviceTierReadOnly": "只读",
+    "deviceTierFull": "可操作",
+    "deviceTierReadOnly": "仅查看",
     "deviceLastSeen": "最后在线",
     "devicePairedAt": "配对于 {{time}}",
     "deviceLastSeenValue": "最后在线 {{time}}",
@@ -130,7 +177,10 @@
     "hideAdvanced": "收起",
     "restoreDefaultRelay": "恢复默认地址",
     "developerOptions": "开发者选项",
-    "retryConnection": "重试"
+    "retryConnection": "重试",
+    "addPhone": "添加手机",
+    "pairingPermission": "手机权限",
+    "relayDisabledHint": "公网连接已关闭，可在高级设置中开启"
   },
   "myRoles": {
     "currentStatus": "我的当前状态",
@@ -164,6 +214,10 @@
     }
   },
   "general": {
+    "myStationSharing": "Workstation 共享范围",
+    "myStationSharingDesc": "按工作目录共享 Workstation 标签页和视图状态，或为每个聊天标签页单独保存",
+    "myStationSharingDirectory": "工作目录",
+    "myStationSharingTab": "聊天标签页",
     "login": "登录",
     "tabGeneral": "通用",
     "tabSelfHosted": "自托管",
@@ -195,8 +249,6 @@
     "usePointerCursorsDesc": "悬停在交互元素上时将光标更改为指针",
     "timezoneAuto": "自动（浏览器）",
     "timezoneSearchPlaceholder": "搜索附近城市",
-    "sendOnEnter": "Enter 发送消息",
-    "sendOnEnterDesc": "启用后 Enter 发送，Shift+Enter 与 Ctrl/Cmd+Enter 换行；关闭后 Ctrl/Cmd+Enter 发送",
     "language": "语言",
     "languageSearchPlaceholder": "搜索语言...",
     "languageNames": {
@@ -213,7 +265,9 @@
       "vi": "越南语",
       "pt": "葡萄牙语",
       "pl": "波兰语",
-      "zh-Hant": "繁体中文"
+      "zh-Hant": "繁体中文",
+      "hi": "印地语",
+      "id": "印度尼西亚语"
     },
     "layout": "布局",
     "sidebar": "侧边栏",
@@ -221,6 +275,8 @@
     "sidebarEdgeDepth": "侧边栏边缘层次",
     "selectedItemTransparency": "选中项目透明度",
     "spotlightPlacement": "Spotlight 位置",
+    "spotlightDimBackground": "背景变暗",
+    "spotlightDetailCard": "悬浮详情卡片",
     "spotlightPlacementOptions": {
       "top": "顶部",
       "center": "居中"
@@ -257,6 +313,8 @@
     "voiceInputPermissionOpenFailed": "无法打开系统设置",
     "preventSleep": "会话运行时阻止系统休眠",
     "preventSleepDesc": "在任何 Agent 会话正在工作时,保持 Mac 或 PC 处于唤醒状态。所有会话结束后自动释放",
+    "highRefreshRate": "高刷新率",
+    "highRefreshRateDesc": "以显示器的最高刷新率渲染界面，ProMotion 显示器上最高 120 Hz。滚动、调整大小和动画更流畅，但运行时耗电更多",
     "devMode": "开发者模式",
     "devModeDesc": "启用原生 Inspect Element 右键菜单和浏览器 DevTools。仅供开发和调试使用",
     "presenceGuidanceOnline": "在线 — Agent 行为指引",
@@ -278,12 +336,12 @@
       "codex": "Codex"
     },
     "iconStyle": "图标风格",
-    "iconStyleDesc": "单色模式会去除文件类型与模型图标的颜色，使其融入界面而非作为标识出现",
     "iconStyleOptions": {
       "colorful": "彩色",
       "monochrome": "单色"
     },
     "translucentSidebar": "半透明侧边栏",
+    "sessionBranchTags": "会话上的分支和 PR 标签",
     "skin": "皮肤",
     "accent": "强调色",
     "linkSkinVariants": "统一浅色与深色",
@@ -293,7 +351,18 @@
       "rainbow": "彩虹",
       "dark": "深色",
       "light": "浅色"
-    }
+    },
+    "license": "许可证",
+    "licenseTitle": "ORG2 许可证",
+    "licenseLoading": "正在加载许可证…",
+    "licenseLoadFailed": "无法加载应用许可证",
+    "tooltips": "提示",
+    "buttonTooltipsEnabled": "显示按钮提示",
+    "buttonTooltipsEnabledDesc": "悬停按钮时显示名称和快捷键。信息图标提示始终显示",
+    "buttonTooltipDelayMs": "提示延迟",
+    "buttonTooltipDelayImmediate": "立即",
+    "buttonTooltipDelaySeconds": "{{seconds}} 秒",
+    "modelPickerStyle": "模型选择器"
   },
   "background": {
     "title": "背景",
@@ -461,13 +530,13 @@
     "desktopConfig": {
       "title": "Desktop Safety",
       "hideBeforeAction": "桌面控制时隐藏 ORG2",
-      "hideBeforeActionHelper": "Peekaboo 操作期间隐藏 ORG2 主窗口，并显示 Wingman 栏和浮动提示，避免 Agent 手动管理焦点。",
+      "hideBeforeActionHelper": "Peekaboo 操作期间隐藏 ORG2 主窗口，并显示 Wingman 栏和浮动提示，避免 Agent 手动管理焦点",
       "antiDetection": "HID 反自动化加固",
-      "antiDetectionHelper": "让 Peekaboo 通过真实的 CGEvent（HID）事件来执行点击和按键，而非纯粹的辅助功能操作，从而降低带有反自动化检测的应用（如微信）阻止桌面控制的可能性。",
+      "antiDetectionHelper": "让 Peekaboo 通过真实的 CGEvent（HID）事件来执行点击和按键，而非纯粹的辅助功能操作，从而降低带有反自动化检测的应用（如微信）阻止桌面控制的可能性",
       "humanInputProfile": "拟人化输入节奏",
-      "humanInputProfileHelper": "为合成按键应用拟人化的时间节奏。关闭后将以最高速度输入。",
+      "humanInputProfileHelper": "为合成按键应用拟人化的时间节奏。关闭后将以最高速度输入",
       "escapeAbort": "System Escape key aborts",
-      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded."
+      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded"
     },
     "skillMissingBins": "缺少命令：{{bins}}",
     "skillMissingEnv": "缺少环境变量：{{vars}}",
@@ -535,7 +604,6 @@
     "gitOperations": "Git 操作",
     "gitOperationsDesc": "Git pull、push 和同步通知",
     "soundPreset": "通知音效",
-    "soundPresetDesc": "选择通知提醒时播放的声音",
     "previewSound": "试听",
     "soundPresets": {
       "classic": "经典双音",
@@ -595,6 +663,9 @@
     "indentGuides": "缩进参考线",
     "treeIndentGuides": "树视图缩进参考线",
     "highlightActiveLine": "当前行高亮",
+    "diffViewMode": "差异视图",
+    "gitBlame": "Git Blame",
+    "splitDiffCenteredLineNumbers": "并排差异视图行号居中",
     "shellsOpenWith": "Shell 打开方式",
     "shellsOpenWithDesc": "新终端的初始工作目录",
     "repoPath": "仓库路径",
@@ -629,7 +700,7 @@
       "title": "Git",
       "pullStrategy": "Pull 策略",
       "pullStrategyDesc": "同步时 git pull 如何整合 remote 更改",
-      "pullStrategyHint": "Rebase（默认）：将你的 commit replay 到 remote 之上，创建 linear history。\n\nMerge：branch 有 diverge 时创建 merge commit，保留完整 history。\n\nFast-forward only：仅在不需要 merge 时允许 pull，若 branch 已 diverge 则拒绝。",
+      "pullStrategyHint": "Rebase（默认）：将你的 commit replay 到 remote 之上，创建 linear history。\n\nMerge：branch 有 diverge 时创建 merge commit，保留完整 history。\n\nFast-forward only：仅在不需要 merge 时允许 pull，若 branch 已 diverge 则拒绝",
       "strategyMerge": "Merge",
       "strategyRebase": "Rebase（默认）",
       "strategyFfOnly": "仅 Fast-forward（严格）",
@@ -663,20 +734,44 @@
     "fontFamilyCustom": "自定义"
   },
   "update": {
+    "downloading": "正在下载更新…",
+    "downloadingPercent": "正在下载更新… {{percent}}%",
+    "preparingDownload": "正在准备下载…",
+    "downloadBytes": "{{downloaded}} / {{total}}",
+    "downloadedBytes": "已下载 {{downloaded}}",
+    "downloadProgress": "更新下载进度",
+    "inProgress": "进行中",
+    "openProgressLabel": "更新下载{{progress}}，打开进度通知",
+    "openProgress": "打开更新下载进度",
+    "available": "有可用更新",
+    "availableVersion": "版本 {{version}} 已可安装",
+    "updateNow": "立即更新",
+    "checkFailed": "检查更新失败",
+    "checking": "正在检查更新…",
+    "officialInstalled": "正式版已安装",
+    "officialInstalledDesc": "{{version}} 已安装到 {{path}}，当前本地构建继续运行且不受影响",
+    "downloadFailed": "更新下载失败",
+    "retryNow": "立即重试",
+    "downloadTimeout": "下载超时，请检查网络或代理后重试",
+    "installUnavailable": "当前平台上的本地构建无法安全安装发布版本",
+    "installing": "正在安装更新",
+    "preparingInstall": "正在准备 v{{version}}…",
+    "installed": "更新已安装",
+    "installFailed": "更新安装失败",
+    "checked": "已检查更新",
     "channel": "更新通道",
     "channelDesc": "Beta 通道会先于正式版收到预发布版本。切换回正式版不会降级，将在下一个正式版本发布时生效",
     "channelStable": "正式版",
     "channelBeta": "Beta",
     "detectUpdate": "检测更新",
     "currentVersion": "当前版本",
-    "installConfirmTitle": "更新已准备好安装",
-    "installConfirmDesc": "版本 {{version}} 已下载。安装并重新启动 ORG2 前，请保存正在进行的工作",
+    "installConfirmTitle": "更新已就绪",
+    "installConfirmDesc": "版本 {{version}} 已就绪，重启前请保存工作",
     "installAndRestart": "安装并重新启动",
-    "installOfficialConfirmTitle": "正式版已准备好安装",
-    "installOfficialConfirmDesc": "将正式版 {{version}} 安装到 /Applications/ORG2.app。当前本地构建会保持打开且不受影响",
-    "installOfficial": "安装正式版 App",
+    "installOfficialConfirmTitle": "正式版已就绪",
+    "installOfficialConfirmDesc": "独立安装 {{version}}，当前构建保持运行",
+    "installOfficial": "安装正式版",
     "localBuild": "本地构建",
-    "skipVersion": "跳过此版本",
     "upToDate": "ORG2 已是最新版本。",
     "upToDateVersion": "ORG2 已是最新版本（v{{version}}）。",
     "officialAlreadyInstalled": "官方 ORG2 v{{version}} 已安装在 /Applications 中。",
@@ -814,7 +909,7 @@
     "tableVersion": "版本",
     "tableStatus": "状态",
     "installSection": "安装",
-    "installHintNote": "针对你当前平台的建议安装命令。大多数系统依赖需要管理员权限，所以我们不会自动执行——请复制到你的 terminal 中运行。"
+    "installHintNote": "针对你当前平台的建议安装命令。大多数系统依赖需要管理员权限，所以我们不会自动执行——请复制到你的 terminal 中运行"
   },
   "agentSessions": {
     "chatFontSize": "聊天字体大小",
@@ -824,10 +919,8 @@
     "typingAnimationDesc": "为 Agent 消息启用打字机动画",
     "typingSpeed": "打字速度",
     "typingSpeedDesc": "每个字符的毫秒数（1ms = 最快，50ms = 最慢）",
-    "decryptEffect": "打字机效果",
-    "decryptEffectDesc": "Agent 消息逐字显示",
-    "sendOnEnter": "Enter 发送消息",
-    "sendOnEnterDesc": "启用后 Enter 发送，Shift+Enter 与 Ctrl/Cmd+Enter 换行；关闭后 Ctrl/Cmd+Enter 发送"
+    "sendOnEnter": "发送消息快捷键",
+    "sendOnEnterDesc": "选择发送消息的快捷键；其他 Enter 组合键用于换行"
   },
   "indexing": {
     "noWorkspaceMemories": "暂无工作区记忆。会话提取工作区信息后，记忆将出现在这里。",
@@ -876,7 +969,7 @@
   "agentEvolution": {
     "enableForAgent": "为 {{agentName}} 启用进化",
     "noAgentsTitle": "没有可用 Agent",
-    "noAgentsSubtitle": "创建或导入 Agent 以配置进化。"
+    "noAgentsSubtitle": "创建或导入 Agent 以配置进化"
   },
   "org": {},
   "learningsBrowser": {
@@ -942,7 +1035,10 @@
   "appearance": {
     "tabApp": "应用",
     "tabCodeEditor": "代码编辑器",
-    "tabChatPanel": "聊天面板"
+    "tabChatPanel": "聊天面板",
+    "chatHistory": "聊天记录",
+    "composer": "输入框",
+    "newChatPage": "新聊天页面"
   },
   "harnessConnections": {
     "description": "选择各编程工具使用的连接",
@@ -969,6 +1065,8 @@
     "apply": "使用此连接",
     "applied": "配置已保存，请新建工具会话以使用此配置",
     "restore": "恢复原始配置",
+    "disconnect": "断开",
+    "overlayHelp": "连接配置单独保存在 {{path}}。「打开终端」会使用这份配置启动 Claude Code，并保留已有对话历史。会话追踪 hooks 由独立设置控制",
     "restored": "原始配置已恢复，请新建工具会话",
     "refresh": "刷新",
     "refreshed": "工具连接已刷新",
@@ -982,7 +1080,35 @@
     "authentication": "认证方式",
     "desktopScope": "单独配置 Claude Desktop，不影响 Claude Code CLI；应用后需完全退出并重新打开桌面应用",
     "desktopApplied": "桌面配置已保存，请完全退出并重新打开 Claude Desktop",
-    "desktopRestored": "已恢复之前的桌面配置，请完全退出并重新打开 Claude Desktop"
+    "desktopRestored": "已恢复之前的桌面配置，请完全退出并重新打开 Claude Desktop",
+    "advancedDescription": "自定义 API 连接和一次性凭据迁移",
+    "marketApps": {
+      "isolatedStorage": "此官方 App 使用独立配置和对话存储，不会更改主 App 或 CLI 的配置。旧对话不会自动导入",
+      "isolatedClaudeStorage": "打开此 App 时复制 Code 历史，新消息保存在此独立 App 内，主 App 和 CLI 配置不变；若导入的对话尚未显示，请退出并重开 Claude",
+      "workspaceHelp": "为当前 App 选择套餐和模型。各 App 独立保存选择，切换 ORG2 聊天来源不会修改 App。",
+      "loading": "正在加载官方套餐…",
+      "loadFailed": "无法加载官方套餐",
+      "nonePurchased": "暂时没有可用的官方套餐",
+      "checking": "正在检查应用…",
+      "unavailable": "当前安装版本暂不可用",
+      "notInstalled": "尚未安装",
+      "original": "正在使用应用原有配置",
+      "open": "打开应用",
+      "connected": "应用已开始跟随 ORG2 当前工作区",
+      "opened": "应用已打开",
+      "disconnected": "已恢复应用之前的配置",
+      "actionFailed": "无法更新此应用连接",
+      "openFailed": "无法打开此应用",
+      "restoreRequired": "请先恢复此应用的原始设置，然后重新选择套餐并应用连接",
+      "workspaceNumber": "服务 {{index}} / {{count}}",
+      "openTerminal": "打开终端",
+      "terminalOpened": "已打开终端",
+      "provider": "ORG2 Market",
+      "multiPackageHelp": "可同时选择最多 8 个套餐和一个默认模型，连接后可在 App 内切换套餐",
+      "auxiliaryBilling": "Claude Code 自动生成标题、记忆和压缩上下文的调用计入默认套餐；只有对话本身跟随你用 /model 选择的套餐",
+      "defaultModel": "默认模型",
+      "packageLimit": "最多选择 8 个套餐"
+    }
   },
   "claudeProfiles": {
     "new": "新建配置",
@@ -1014,5 +1140,22 @@
     "fetchDone": "模型列表已加载，可选择或手动输入 ID",
     "testDone": "工具调用往返和流式响应测试通过；测试凭证在 15 分钟后过期",
     "role": "模型角色"
+  },
+  "development": {
+    "updateAvailable": "有可用更新",
+    "updateAvailableDesc": "在整个应用中显示版本 99.0.0 的更新提示 — 更新操作仅预览对话框",
+    "illustrations": "插画预览",
+    "illustrationsDesc": "同时预览所有应用插画的浅色和深色效果，无需更改应用主题"
+  },
+  "managedUsage": {
+    "cancel": "取消",
+    "authorize": "启用套餐",
+    "rates": "每百万输入 / 输出 token 价格",
+    "wallet": "打开钱包",
+    "priceRange": "套餐价格区间：官方价的 {{min}}%–{{max}}%",
+    "rangeUnavailable": "套餐价格区间暂不可用，请刷新目录后再启用套餐。",
+    "walletIncluded": "包含全部模型，直接使用钱包余额。",
+    "walletUnavailable": "钱包直扣暂不可用，请在服务更新后刷新。",
+    "walletConsent": "按所示价格区间启用此套餐的全部模型，实际用量直接从钱包余额扣费，无需为套餐单独预存或设置额度。"
   }
 }

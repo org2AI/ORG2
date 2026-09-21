@@ -46,17 +46,10 @@ import { useTranslation } from "react-i18next";
 
 import { TAB_PILL_DRAG_OVERLAY_CLASS } from "@src/components/TabPill/TabPillSurface";
 import { TAB_PAIR_SEPARATOR_SLOT_CLASS } from "@src/components/TabPill/config";
+import { useSessionTabDropTarget } from "@src/components/dnd/useSessionTabDropTarget";
+import { useTabInsertionIndicator } from "@src/components/dnd/useTabInsertionIndicator";
 import { HugeiconsIcon, MessageAdd01Icon } from "@src/icons";
 import { requestTeamInboxSessionHandoffAtom } from "@src/modules/MainApp/TeamInbox/store";
-import {
-  SESSION_TAB_DROP_TARGET_HIGHLIGHT_CLASS,
-  type SessionReferenceOpen,
-  dispatchSessionTabDragCancel,
-  dispatchSessionTabDragEnd,
-  dispatchSessionTabDragStart,
-} from "@src/shared/dnd/sessionTabDrag";
-import { useSessionTabDropTarget } from "@src/shared/dnd/useSessionTabDropTarget";
-import { useTabInsertionIndicator } from "@src/shared/dnd/useTabInsertionIndicator";
 import { openTeamInboxInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabOpen/integrations";
 import {
   activateChatPanelTabAtom,
@@ -69,6 +62,13 @@ import {
 import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { moveSessionTabAtom } from "@src/store/session/sessionTabPlacementAtom";
 import { openSideChatAtom } from "@src/store/ui/sideChatAtom";
+import {
+  SESSION_TAB_DROP_TARGET_HIGHLIGHT_CLASS,
+  type SessionReferenceOpen,
+  dispatchSessionTabDragCancel,
+  dispatchSessionTabDragEnd,
+  dispatchSessionTabDragStart,
+} from "@src/util/dnd/sessionTabDrag";
 
 import ChatPanelTabContextMenu from "../ChatPanelTabContextMenu";
 import { CHAT_PANEL_HEADER_DRAG_STYLE } from "../header";

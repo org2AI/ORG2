@@ -14,6 +14,7 @@ import {
   makeAwaitItem,
   makeBrowserItem,
   makeCliAliasItem,
+  makeCodexPollItem,
   makeDeleteFileItem,
   makeEditFileItem,
   makeInspectTerminalsItem,
@@ -445,6 +446,87 @@ describe("processChatItems", () => {
 
       expect(items).toHaveLength(2);
       expect(items.every((item) => item.type === "activity")).toBe(true);
+    });
+
+    it("collapses consecutive polls with no command row into a wait stack", () => {
+      const polls = [
+        makeCodexPollItem("10689", 5),
+        makeCodexPollItem("10689", 0),
+        makeCodexPollItem("78912", 1),
+      ];
+
+      const { items, stats } = processChatItems(polls, {
+        preFilterEmptyActivities: false,
+      });
+
+      expect(items).toHaveLength(1);
+      expect(items[0].type).toBe("activityStackGroup");
+      expect(items[0].activityStackGroup).toEqual({
+        category: "wait",
+        events: polls,
+        closedByBoundary: false,
+      });
+      expect(stats.totalActivities).toBe(3);
+      expect(stats.successCount).toBe(0);
+    });
+
+    it("collapses a standalone run that mixes shell and subagent waits", () => {
+      const waits = [
+        makeCodexPollItem("10689", 5),
+        makeAwaitItem("subagent", "agent-builtin:explore-abc123"),
+        makeAwaitItem("shell", "48291"),
+      ];
+      const search = makeSearchItem("done");
+
+      const { items } = processChatItems([...waits, search], {
+        preFilterEmptyActivities: false,
+      });
+
+      expect(items).toHaveLength(2);
+      expect(items[0].activityStackGroup).toEqual({
+        category: "wait",
+        events: waits,
+        closedByBoundary: true,
+      });
+      expect(items[1].event?.id).toBe(search.id);
+    });
+
+    it("keeps a single standalone wait as its own row", () => {
+      const wait = makeCodexPollItem("10689", 5);
+
+      const { items } = processChatItems([wait, makeSearchItem("done")], {
+        preFilterEmptyActivities: false,
+      });
+
+      expect(items.map((item) => item.type)).toEqual(["activity", "activity"]);
+      expect(items[0].event?.id).toBe(wait.id);
+    });
+
+    it("leaves waits beside a command in the terminal stack", () => {
+      const events = [
+        makeShellItem("pnpm test"),
+        makeCodexPollItem("10689", 5),
+        makeCodexPollItem("10689", 1),
+      ];
+
+      const { items } = processChatItems(events, {
+        preFilterEmptyActivities: false,
+      });
+
+      expect(items).toHaveLength(1);
+      expect(items[0].activityStackGroup?.category).toBe("terminal");
+      expect(items[0].activityStackGroup?.events).toEqual(events);
+    });
+
+    it("keeps standalone waits as rows when wait grouping is off", () => {
+      const polls = [makeCodexPollItem("1", 1), makeCodexPollItem("1", 2)];
+
+      const { items } = processChatItems(polls, {
+        preFilterEmptyActivities: false,
+        groupWaitActivities: false,
+      });
+
+      expect(items.map((item) => item.type)).toEqual(["activity", "activity"]);
     });
 
     it("closes a terminal stack when a different event follows", () => {

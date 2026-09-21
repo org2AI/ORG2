@@ -5,12 +5,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useMarkdownEditorTabs } from "@src/components/MarkdownEditor/useMarkdownEditorTabs";
 import type {
   AgentDefinition,
   CapabilitySet,
   SubAgentRef,
 } from "@src/modules/MainApp/AgentOrgs/types";
-import { useMarkdownEditorTabs } from "@src/modules/shared/components/MarkdownEditor/useMarkdownEditorTabs";
 
 interface UseAgentWizardReturn {
   // Navigation

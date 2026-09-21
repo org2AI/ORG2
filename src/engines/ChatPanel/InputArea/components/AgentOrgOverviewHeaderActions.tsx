@@ -47,7 +47,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
     <div className="flex items-center gap-0.5">
       {canNavigateToCoordinator && (
         <Button
-          htmlType="button"
           variant="tertiary"
           size="mini"
           iconOnly
@@ -67,8 +66,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
       )}
       {isRunning && (
         <Button
-          htmlType="button"
-          variant="secondary"
           size="mini"
           iconOnly
           disabled={isTogglingPause}
@@ -88,7 +85,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
       )}
       {isPaused && (
         <Button
-          htmlType="button"
           variant="tertiary"
           size="mini"
           iconOnly
@@ -109,7 +105,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
       )}
       {canArchive && (
         <Button
-          htmlType="button"
           variant="tertiary"
           size="mini"
           iconOnly
@@ -133,7 +128,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
         />
       )}
       <Button
-        htmlType="button"
         variant="tertiary"
         size="mini"
         iconOnly

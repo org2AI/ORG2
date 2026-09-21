@@ -40,12 +40,14 @@ pub fn augment_path_from_shell() {
         // plain login as fallback. Each probe is wrapped in a timeout so a
         // misbehaving rc file (one that blocks on a prompt / network call)
         // can't hang app startup forever.
-        let shell_path_str = [
-            vec!["-i", "-l", "-c", "echo $PATH"],
-            vec!["-l", "-c", "echo $PATH"],
-        ]
-        .iter()
-        .find_map(|args| run_shell_path_probe(&shell, args));
+        // Both probes run CONCURRENTLY, and the interactive one — the only
+        // one that sources ~/.zshrc, i.e. nvm, pyenv and keg-only Homebrew —
+        // wins whenever it answers at all. Serially it was capped at 5 s and
+        // the fallback could not start until it gave up; an interactive zsh
+        // costs ~3 s from a GUI process here against ~0.45 s from a terminal,
+        // and when it exceeded the cap during bootstrap the app came up with
+        // a login-only PATH and no way to tell. See PATH_PROBE_BUDGET.
+        let shell_path_str = run_shell_path_probes(&shell);
 
         if shell_path_str.is_none() {
             tracing::warn!(
@@ -105,40 +107,131 @@ pub fn augment_path_from_shell() {
     }
 }
 
-/// Run a single `$SHELL <args>` PATH probe with a hard timeout so a blocking
-/// rc file cannot wedge startup. Returns the trimmed `$PATH` on success.
+/// How long BOTH probes together may take.
+///
+/// Serially this was 5 s EACH — the login-only fallback could not even start
+/// until the interactive probe had given up, so the real worst case was ~10 s
+/// and the interactive probe never got more than 5 s. Running them together
+/// banks the fallback's answer immediately, which is what makes it safe to be
+/// more patient with the probe that actually sees `~/.zshrc`: 8 s here is
+/// strictly less than the old worst case while giving an interactive zsh that
+/// costs ~3 s from a GUI process (nvm's auto-use spawns node) the headroom it
+/// needs under bootstrap load. Nothing waits on this once either probe wins.
 #[cfg(unix)]
-fn run_shell_path_probe(shell: &str, args: &[&str]) -> Option<String> {
+const PATH_PROBE_BUDGET: Duration = Duration::from_secs(8);
+
+/// What each probe did, kept for the diagnostic line emitted once tracing is
+/// up (`augment_path_from_shell` runs before the log file exists).
+#[cfg(unix)]
+static PROBE_DIAGNOSTICS: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+
+/// One line per PATH probe attempt: which arguments, whether it answered, how
+/// long it took and how many directories it yielded. Empty until
+/// `augment_path_from_shell` has run. Safe to call at any later point.
+#[cfg(unix)]
+pub fn shell_path_probe_diagnostics() -> Vec<String> {
+    PROBE_DIAGNOSTICS.get().cloned().unwrap_or_default()
+}
+
+#[cfg(not(unix))]
+pub fn shell_path_probe_diagnostics() -> Vec<String> {
+    Vec::new()
+}
+
+/// Race `$SHELL -i -l -c` against `$SHELL -l -c` and return the better answer.
+///
+/// The interactive probe is what sees `~/.zshrc` (nvm, pyenv, keg-only
+/// Homebrew), so it is preferred whenever it answers within the budget; the
+/// login-only probe is the fallback. Running them together means a slow
+/// `~/.zshrc` no longer costs the interactive probe its chance.
+#[cfg(unix)]
+fn run_shell_path_probes(shell: &str) -> Option<String> {
     use std::sync::mpsc;
 
+    let attempts: [Vec<&str>; 2] = [
+        vec!["-i", "-l", "-c", "echo $PATH"],
+        vec!["-l", "-c", "echo $PATH"],
+    ];
+    let started = std::time::Instant::now();
     let (tx, rx) = mpsc::channel();
-    let shell = shell.to_string();
-    let args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
-    std::thread::spawn(move || {
-        let output = Command::new(&shell)
-            .args(&args)
-            .stdin(Stdio::null())
-            .stderr(Stdio::null())
-            .output();
-        let _ = tx.send(output);
-    });
+    for (index, args) in attempts.iter().enumerate() {
+        let tx = tx.clone();
+        let shell = shell.to_string();
+        let args: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
+        std::thread::spawn(move || {
+            let output = Command::new(&shell)
+                .args(&args)
+                .stdin(Stdio::null())
+                .stderr(Stdio::null())
+                .output();
+            let _ = tx.send((index, output, started.elapsed()));
+        });
+    }
+    drop(tx);
 
-    let output = match rx.recv_timeout(Duration::from_secs(5)) {
-        Ok(Ok(output)) => output,
-        _ => return None,
-    };
+    let mut results: [Option<String>; 2] = [None, None];
+    let mut diagnostics: Vec<String> = attempts
+        .iter()
+        .map(|args| format!("{} {:?}: no answer within the budget", shell, args))
+        .collect();
+    // Take whatever lands before the shared deadline; stop early once the
+    // preferred probe has answered.
+    while let Ok((index, output, elapsed)) = rx.recv_timeout(
+        PATH_PROBE_BUDGET.saturating_sub(started.elapsed()),
+    ) {
+        let parsed = output.as_ref().ok().and_then(usable_path);
+        diagnostics[index] = match (&output, &parsed) {
+            (Ok(o), Some(path)) => format!(
+                "{} {:?}: ok in {} ms, exit {:?}, {} dirs",
+                shell,
+                attempts[index],
+                elapsed.as_millis(),
+                o.status.code(),
+                path.split(':').filter(|d| !d.is_empty()).count()
+            ),
+            (Ok(o), None) => format!(
+                "{} {:?}: unusable after {} ms, exit {:?}, {} stdout bytes",
+                shell,
+                attempts[index],
+                elapsed.as_millis(),
+                o.status.code(),
+                o.stdout.len()
+            ),
+            (Err(err), _) => format!(
+                "{} {:?}: could not start after {} ms: {err}",
+                shell,
+                attempts[index],
+                elapsed.as_millis()
+            ),
+        };
+        results[index] = parsed;
+        if results[0].is_some() {
+            break;
+        }
+    }
+    let _ = PROBE_DIAGNOSTICS.set(diagnostics);
+    results[0].take().or_else(|| results[1].take())
+}
 
+/// The `$PATH` a probe printed, or None when it is not usable.
+///
+/// Only the LAST non-empty line is read: a chatty rc file prints banners
+/// before `echo $PATH` runs, and taking the whole of stdout would splice a
+/// banner onto the first directory and silently corrupt it.
+#[cfg(unix)]
+fn usable_path(output: &std::process::Output) -> Option<String> {
     if !output.status.success() {
         return None;
     }
-
-    let raw = String::from_utf8(output.stdout).ok()?;
-    let trimmed = raw.trim().to_string();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed)
+    let raw = std::str::from_utf8(&output.stdout).ok()?;
+    let last = raw.lines().rev().find(|line| !line.trim().is_empty())?;
+    let trimmed = last.trim();
+    // A PATH is absolute, colon-separated directories; anything else is a
+    // banner or a prompt and must not be spliced into the process PATH.
+    if trimmed.is_empty() || !trimmed.split(':').any(|dir| dir.starts_with('/')) {
+        return None;
     }
+    Some(trimmed.to_string())
 }
 
 /// Well-known executable directories that login-shell PATH probes commonly
@@ -160,4 +253,63 @@ fn well_known_bin_dirs() -> Vec<String> {
         }
     }
     dirs
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::usable_path;
+    use std::os::unix::process::ExitStatusExt;
+    use std::process::{ExitStatus, Output};
+
+    fn output(code: i32, stdout: &str) -> Output {
+        Output {
+            status: ExitStatus::from_raw(code << 8),
+            stdout: stdout.as_bytes().to_vec(),
+            stderr: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_plain_path_is_taken_as_is() {
+        let out = output(0, "/opt/homebrew/bin:/usr/bin:/bin\n");
+        assert_eq!(
+            usable_path(&out).as_deref(),
+            Some("/opt/homebrew/bin:/usr/bin:/bin")
+        );
+    }
+
+    #[test]
+    fn an_rc_file_banner_before_the_path_is_ignored() {
+        // A chatty ~/.zshrc prints before `echo $PATH` runs. Reading all of
+        // stdout would splice the banner onto the first directory.
+        let out = output(
+            0,
+            "nvm: using node v22\nsome plugin loaded\n/opt/homebrew/opt/node@22/bin:/usr/bin\n",
+        );
+        assert_eq!(
+            usable_path(&out).as_deref(),
+            Some("/opt/homebrew/opt/node@22/bin:/usr/bin")
+        );
+    }
+
+    #[test]
+    fn trailing_blank_lines_do_not_hide_the_path() {
+        let out = output(0, "/usr/bin:/bin\n\n\n");
+        assert_eq!(usable_path(&out).as_deref(), Some("/usr/bin:/bin"));
+    }
+
+    #[test]
+    fn a_failed_probe_is_never_used() {
+        let out = output(1, "/usr/bin:/bin\n");
+        assert_eq!(usable_path(&out), None);
+    }
+
+    #[test]
+    fn output_without_any_absolute_directory_is_rejected() {
+        // A prompt or an error line is not a PATH; splicing it in would put
+        // garbage at the front of the process PATH.
+        assert_eq!(usable_path(&output(0, "command not found: nvm\n")), None);
+        assert_eq!(usable_path(&output(0, "   \n")), None);
+        assert_eq!(usable_path(&output(0, "")), None);
+    }
 }

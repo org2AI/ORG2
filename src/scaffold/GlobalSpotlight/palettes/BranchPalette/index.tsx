@@ -122,18 +122,17 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
   const renderWorktreeTrashAction = React.useCallback(
     (worktreePath: string, isRemoving: boolean): React.ReactNode => (
       <Button
-        variant="danger"
-        appearance="soft"
+        variant="tertiary"
+        tone="danger"
         size="mini"
         iconOnly
         icon={<HugeiconsIcon icon={ICONS.removeRepo} size={14} />}
-        htmlType="button"
         disabled={isRemoving}
         onClick={(event) => {
           event.stopPropagation();
           void handleRemoveWorktree(worktreePath);
         }}
-        className="hover:bg-danger-6/10 disabled:cursor-not-allowed disabled:opacity-50"
+        className="disabled:cursor-not-allowed disabled:opacity-50"
         title={t("selectors.branch.actions.removeWorktree", "Remove Worktree")}
         aria-label={t(
           "selectors.branch.actions.removeWorktree",
@@ -452,8 +451,4 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
 
 export { BranchPalette } from "./BranchPalette";
 
-export type {
-  BranchPaletteMode,
-  WorktreePaletteMode,
-  WorktreePaletteProps,
-} from "./types";
+export type { BranchPaletteMode, WorktreePaletteProps } from "./types";

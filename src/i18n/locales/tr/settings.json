@@ -3,8 +3,6 @@
     "customCommandUpdated": "Özel komut güncellendi",
     "shellSettingUpdated": "Shell ayarı güncellendi"
   },
-  "noSettingsFound": "\"{{query}}\" için ayar bulunamadı",
-  "searchPlaceholder": "Ayarlarda ara...",
   "panel": {
     "maximizeSettings": "Ayarları büyüt"
   },
@@ -15,10 +13,13 @@
     "editorAndWorkspace": "Editör & Workspace",
     "appUpdate": "Uygulama Güncellemesi",
     "security": "Güvenlik",
+    "appLock": "Uygulama Kilidi",
     "storage": "Depolama",
     "agentOrg": "Agent Ekibi",
     "harnessConnections": "Uygulama bağlantıları",
-    "mobileRemote": "Mobil Uzaktan Erişim"
+    "import": "İçe aktarma",
+    "mobileRemote": "Mobil Uzaktan Erişim",
+    "development": "Geliştirici modu"
   },
   "coreSidebar": {
     "groups": {
@@ -54,6 +55,52 @@
     "customPatternsPlaceholder": "örn. MYCORP_[A-Z0-9]{20}",
     "invalidPatterns": "{{count}} desen geçersiz ve yoksayılacak: {{patterns}}"
   },
+  "appLock": {
+    "password": "Parola kilidi",
+    "setPassword": "Parola belirle",
+    "changePassword": "Parolayı değiştir",
+    "removePassword": "Parolayı kaldır",
+    "currentPassword": "Geçerli parola",
+    "newPassword": "Yeni parola",
+    "confirmPassword": "Yeni parolayı onayla",
+    "passwordSet": "Parola belirlendi",
+    "passwordChanged": "Parola değiştirildi",
+    "passwordRemoved": "Parola kaldırıldı",
+    "lockNow": "Şimdi kilitle",
+    "lockNowDesc": "Parola girilene kadar tüm ORG2 pencerelerini kilitler",
+    "shortcut": "Kilitleme kısayolu",
+    "hint": "Parola ipucu",
+    "hintPlaceholder": "Kilit ekranında gösterilir",
+    "hintOptionalPlaceholder": "Parola ipucu (isteğe bağlı)",
+    "autoLock": "Otomatik kilitle",
+    "autoLockDesc": "ORG2'de bu süre boyunca klavye veya fare girişi olmazsa kilitle",
+    "autoLockNever": "Asla",
+    "autoLockMinutes": "{{count}} dk sonra",
+    "autoLockHour": "1 saat sonra",
+    "lockOnLaunch": "ORG2 başlarken kilitle",
+    "lockOnLaunchDesc": "Uygulama her açıldığında parolayı sor",
+    "scopeNote": "Kilit yalnızca ORG2 pencerelerini kapsar. Verilerinizi şifrelemez veya Mobile Remote'u duraklatmaz; dosyalarınıza erişebilen herkes kilidi kaldırabilir. Parolayı unutursanız ORG2'den çıkın ve ana dizininizdeki .orgii klasöründen app-lock.json dosyasını silin",
+    "errors": {
+      "tooShort": "En az {{count}} karakter kullanın",
+      "tooLong": "Bu parola çok uzun",
+      "mismatch": "Parolalar eşleşmiyor",
+      "incorrectCurrent": "Geçerli parola yanlış",
+      "throttled": "Çok fazla hatalı deneme. Daha sonra tekrar deneyin",
+      "generic": "Uygulama kilidi güncellenemedi",
+      "hintTooLong": "Bu ipucu çok uzun",
+      "hintRevealsPassword": "İpucu parolayı içeremez"
+    },
+    "screen": {
+      "title": "ORG2 kilitli",
+      "passwordPlaceholder": "Parola",
+      "incorrect": "Yanlış parola",
+      "failed": "Kilit açılamadı. Tekrar deneyin",
+      "throttled": "Çok fazla deneme. {{time}} sonra tekrar deneyin",
+      "working": "Hâlâ çalışan oturumlar: {{count}}",
+      "showHint": "İpucunu göster",
+      "hint": "İpucu: {{hint}}"
+    }
+  },
   "myRoles": {
     "currentStatus": "Mevcut durumum",
     "tabs": {
@@ -86,6 +133,10 @@
     }
   },
   "general": {
+    "myStationSharing": "Workstation paylaşımı",
+    "myStationSharingDesc": "Workstation sekmelerini ve görünüm durumunu çalışma dizinine göre paylaşın veya her sohbet sekmesi için ayrı tutun",
+    "myStationSharingDirectory": "Çalışma dizini",
+    "myStationSharingTab": "Sohbet sekmesi",
     "login": "Giriş",
     "tabGeneral": "Genel",
     "tabSelfHosted": "Kendi kendine barındırılan",
@@ -117,8 +168,6 @@
     "usePointerCursorsDesc": "Etkileşimli öğelerin üzerine gelindiğinde imleci işaretçiye dönüştürür",
     "timezoneAuto": "Otomatik (Tarayıcı)",
     "timezoneSearchPlaceholder": "En yakın şehirleri ara",
-    "sendOnEnter": "Mesajları Enter ile gönder",
-    "sendOnEnterDesc": "Etkinleştirildiğinde Enter gönderir; Shift+Enter ve Ctrl/Cmd+Enter yeni satır ekler. Devre dışıysa Ctrl/Cmd+Enter gönderir",
     "language": "Dil",
     "languageSearchPlaceholder": "Dillerde ara...",
     "languageNames": {
@@ -135,7 +184,9 @@
       "vi": "Vietnamca",
       "pt": "Portekizce",
       "pl": "Lehçe",
-      "zh-Hant": "Geleneksel Çince"
+      "zh-Hant": "Geleneksel Çince",
+      "hi": "Hintçe",
+      "id": "Endonezce"
     },
     "layout": "Düzen",
     "sidebar": "Kenar çubuğu",
@@ -143,6 +194,8 @@
     "sidebarEdgeDepth": "Kenar çubuğu kenar derinliği",
     "selectedItemTransparency": "Seçili öğe şeffaflığı",
     "spotlightPlacement": "Spotlight konumu",
+    "spotlightDimBackground": "Arka planı karart",
+    "spotlightDetailCard": "Üzerine gelince ayrıntı kartı",
     "spotlightPlacementOptions": {
       "top": "Üst",
       "center": "Orta"
@@ -179,6 +232,8 @@
     "voiceInputPermissionOpenFailed": "Sistem Ayarları açılamadı",
     "preventSleep": "Oturumlar sırasında sistem uykusunu engelle",
     "preventSleepDesc": "Herhangi bir Agent oturumu çalışırken Mac veya PC'nizin uyumasını engeller. Tüm oturumlar bittiğinde otomatik olarak serbest bırakılır",
+    "highRefreshRate": "Yüksek yenileme hızı",
+    "highRefreshRateDesc": "Arayüzü ekranınızın tam yenileme hızında, ProMotion ekranlarda 120 Hz'ye kadar işler. Kaydırma, yeniden boyutlandırma ve animasyonlar daha akıcı görünür ancak çalışırken daha fazla enerji kullanır",
     "devMode": "Geliştirici Modu",
     "devModeDesc": "Yerel Inspect Element bağlam menüsünü ve tarayıcı DevTools'u etkinleştirir. Yalnızca geliştirme ve hata ayıklama için",
     "presenceGuidanceOnline": "Çevrimiçi — Agent'lar için yönerge",
@@ -200,7 +255,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Simge stili",
-    "iconStyleDesc": "Tek renkli, dosya türü ve model simgelerinin doygunluğunu azaltarak logo yerine arayüz gibi görünmelerini sağlar",
     "iconStyleOptions": {
       "colorful": "Renkli",
       "monochrome": "Tek renkli"
@@ -212,10 +266,22 @@
       "light": "Açık kutucuk"
     },
     "translucentSidebar": "Yarı saydam kenar çubuğu",
+    "sessionBranchTags": "Oturumlarda dal ve PR etiketleri",
     "skin": "Skin",
     "accent": "Vurgu rengi",
     "linkSkinVariants": "Açık ve koyuyu bağla",
-    "linkSkinVariantsDesc": "Her iki mod için tek bir skin ve vurgu rengi kullan. Yalnızca hem açık hem koyu varyantı olan skin'ler bağlanabilir"
+    "linkSkinVariantsDesc": "Her iki mod için tek bir skin ve vurgu rengi kullan. Yalnızca hem açık hem koyu varyantı olan skin'ler bağlanabilir",
+    "license": "Lisans",
+    "licenseTitle": "ORG2 lisansı",
+    "licenseLoading": "Lisans yükleniyor…",
+    "licenseLoadFailed": "Uygulama lisansı yüklenemedi",
+    "tooltips": "İpuçları",
+    "buttonTooltipsEnabled": "Düğme ipuçlarını göster",
+    "buttonTooltipsEnabledDesc": "Düğmelerin üzerine gelindiğinde adı ve klavye kısayolunu gösterir. Bilgi simgesi ipuçları her zaman gösterilir",
+    "buttonTooltipDelayMs": "İpucu gecikmesi",
+    "buttonTooltipDelayImmediate": "Hemen",
+    "buttonTooltipDelaySeconds": "{{seconds}} sn",
+    "modelPickerStyle": "Model seçici"
   },
   "background": {
     "title": "Arka Plan",
@@ -383,13 +449,13 @@
     "desktopConfig": {
       "title": "Desktop Safety",
       "hideBeforeAction": "Masaüstü kontrolü sırasında ORG2’yi gizle",
-      "hideBeforeActionHelper": "Peekaboo çalışırken ana ORG2 penceresini gizler ve Wingman çubuğu ile yüzen açıklamayı gösterir; böylece Agent odağı yönetmek zorunda kalmaz.",
+      "hideBeforeActionHelper": "Peekaboo çalışırken ana ORG2 penceresini gizler ve Wingman çubuğu ile yüzen açıklamayı gösterir; böylece Agent odağı yönetmek zorunda kalmaz",
       "antiDetection": "HID otomasyon karşıtı sertleştirme",
-      "antiDetectionHelper": "Peekaboo’nun tıklamalar ve tuş vuruşları için saf Erişilebilirlik eylemleri yerine gerçek CGEvent (HID) girişleri göndermesini sağlar; böylece otomasyon algılama özelliği olan uygulamaların (ör. WeChat) masaüstü kontrolünü engelleme olasılığı azalır.",
+      "antiDetectionHelper": "Peekaboo’nun tıklamalar ve tuş vuruşları için saf Erişilebilirlik eylemleri yerine gerçek CGEvent (HID) girişleri göndermesini sağlar; böylece otomasyon algılama özelliği olan uygulamaların (ör. WeChat) masaüstü kontrolünü engelleme olasılığı azalır",
       "humanInputProfile": "İnsansı yazma temposu",
-      "humanInputProfileHelper": "Sentezlenen tuş vuruşlarına insana benzer bir zamanlama profili uygular. En yüksek hızda yazmak için devre dışı bırakın.",
+      "humanInputProfileHelper": "Sentezlenen tuş vuruşlarına insana benzer bir zamanlama profili uygular. En yüksek hızda yazmak için devre dışı bırakın",
       "escapeAbort": "System Escape key aborts",
-      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded."
+      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded"
     },
     "skillMissingBins": "Eksik: {{bins}}",
     "skillMissingEnv": "Eksik ortam değişkenleri: {{vars}}",
@@ -458,7 +524,6 @@
     "gitOperations": "Git İşlemleri",
     "gitOperationsDesc": "Git pull, push ve senkronizasyon bildirimleri",
     "soundPreset": "Bildirim sesi",
-    "soundPresetDesc": "Sesli bildirimlerde çalınacak sesi seçin",
     "previewSound": "Önizle",
     "soundPresets": {
       "classic": "Klasik",
@@ -517,6 +582,9 @@
     "indentGuides": "Girinti kılavuzları",
     "treeIndentGuides": "Ağaç girinti kılavuzları",
     "highlightActiveLine": "Geçerli satırı vurgula",
+    "diffViewMode": "Fark görünümü",
+    "gitBlame": "Git blame",
+    "splitDiffCenteredLineNumbers": "Bölünmüş fark görünümünde ortalanmış satır numaraları",
     "shellsOpenWith": "Kabuklar şununla açılır",
     "shellsOpenWithDesc": "Yeni terminaller için başlangıç çalışma dizini",
     "repoPath": "Depo yolu",
@@ -551,7 +619,7 @@
       "title": "Git",
       "pullStrategy": "Pull stratejisi",
       "pullStrategyDesc": "Senkronizasyon sırasında git pull'un remote değişiklikleri nasıl entegre edeceği",
-      "pullStrategyHint": "Rebase (varsayılan): Commit'lerinizi remote üzerine replays. Linear history oluşturur.\n\nMerge: Branches diverged olduğunda merge commit oluşturur. Tam history'yi korur.\n\nFast-forward only: Merge gerekmediğinde pull'a izin verir. Branches diverged ise reddeder.",
+      "pullStrategyHint": "Rebase (varsayılan): Commit'lerinizi remote üzerine replays. Linear history oluşturur.\n\nMerge: Branches diverged olduğunda merge commit oluşturur. Tam history'yi korur.\n\nFast-forward only: Merge gerekmediğinde pull'a izin verir. Branches diverged ise reddeder",
       "strategyMerge": "Merge",
       "strategyRebase": "Rebase (varsayılan)",
       "strategyFfOnly": "Yalnızca Fast-forward (katı)",
@@ -585,20 +653,44 @@
     "fontFamilyCustom": "Özel"
   },
   "update": {
+    "downloading": "Güncelleme indiriliyor…",
+    "downloadingPercent": "Güncelleme indiriliyor… %{{percent}}",
+    "preparingDownload": "İndirme hazırlanıyor…",
+    "downloadBytes": "{{downloaded}} / {{total}}",
+    "downloadedBytes": "{{downloaded}} indirildi",
+    "downloadProgress": "Güncelleme indirme ilerlemesi",
+    "inProgress": "devam ediyor",
+    "openProgressLabel": "Güncelleme indirmesi {{progress}}. İlerleme bildirimini aç.",
+    "openProgress": "Güncelleme indirme ilerlemesini aç",
+    "available": "Güncelleme mevcut",
+    "availableVersion": "{{version}} sürümü yüklenmeye hazır.",
+    "updateNow": "Şimdi güncelle",
+    "checkFailed": "Güncelleme denetimi başarısız",
+    "checking": "Güncellemeler denetleniyor…",
+    "officialInstalled": "Resmi uygulama yüklendi",
+    "officialInstalledDesc": "{{version}}, {{path}} konumuna yüklendi. Bu yerel derleme değişmeden çalışmaya devam ediyor",
+    "downloadFailed": "Güncelleme indirmesi başarısız",
+    "retryNow": "Şimdi yeniden dene",
+    "downloadTimeout": "İndirme zaman aşımına uğradı. Ağınızı veya proxy ayarlarınızı kontrol edip yeniden deneyin.",
+    "installUnavailable": "Bu yerel derleme, bu platformda yayımlanmış bir sürümü güvenli şekilde yükleyemez.",
+    "installing": "Güncelleme yükleniyor",
+    "preparingInstall": "v{{version}} hazırlanıyor…",
+    "installed": "Güncelleme yüklendi",
+    "installFailed": "Güncelleme yüklemesi başarısız",
+    "checked": "Güncellemeler denetlendi",
     "detectUpdate": "Güncelleme Algıla",
     "currentVersion": "Mevcut Sürüm",
     "channel": "Güncelleme kanalı",
     "channelDesc": "Beta, kararlı sürümden önce ön sürüm yapılarını alır. Kararlı sürüme geri dönmek asla sürüm düşürmez — bir sonraki kararlı sürümde geçerli olur",
     "channelStable": "Kararlı",
     "channelBeta": "Beta",
-    "installConfirmTitle": "Güncelleme yüklenmeye hazır",
-    "installConfirmDesc": "{{version}} sürümü indirildi. ORG2'yi yükleyip yeniden başlatmadan önce devam eden çalışmalarınızı kaydedin",
+    "installConfirmTitle": "Güncelleme hazır",
+    "installConfirmDesc": "{{version}} sürümü hazır. Yeniden başlatmadan önce çalışmanızı kaydedin",
     "installAndRestart": "Yükle ve yeniden başlat",
-    "installOfficialConfirmTitle": "Resmi uygulama yüklenmeye hazır",
-    "installOfficialConfirmDesc": "Resmi {{version}} sürümünü /Applications/ORG2.app konumuna yükleyin. Bu yerel yapı açık ve değişmeden kalır",
-    "installOfficial": "Resmi uygulamayı yükle",
+    "installOfficialConfirmTitle": "Resmi sürüm hazır",
+    "installOfficialConfirmDesc": "{{version}} sürümünü ayrı yükleyin. Bu derleme açık kalır",
+    "installOfficial": "Resmi sürümü yükle",
     "localBuild": "Yerel",
-    "skipVersion": "Bu sürümü atla",
     "upToDate": "ORG2 güncel.",
     "upToDateVersion": "ORG2 güncel (v{{version}}).",
     "officialAlreadyInstalled": "Resmî ORG2 v{{version}}, /Applications içinde zaten yüklü.",
@@ -736,7 +828,7 @@
     "tableVersion": "Sürüm",
     "tableStatus": "Durum",
     "installSection": "Yükle",
-    "installHintNote": "Platformunuz için önerilen yükleme komutu. Çoğu sistem bağımlılığı yönetici izni gerektirir, bu yüzden otomatik çalıştırmıyoruz — kopyalayıp terminal'inize yapıştırın."
+    "installHintNote": "Platformunuz için önerilen yükleme komutu. Çoğu sistem bağımlılığı yönetici izni gerektirir, bu yüzden otomatik çalıştırmıyoruz — kopyalayıp terminal'inize yapıştırın"
   },
   "agentSessions": {
     "chatFontSize": "Sohbet Yazı Boyutu",
@@ -746,10 +838,8 @@
     "typingAnimationDesc": "Agent mesajları için daktilo animasyonunu etkinleştir",
     "typingSpeed": "Yazma Hızı",
     "typingSpeedDesc": "Karakter başına milisaniye (1ms = en hızlı, 50ms = en yavaş)",
-    "decryptEffect": "Decrypt Efekti",
-    "decryptEffectDesc": "Agent mesajları için Decrypt animasyonunu etkinleştir",
-    "sendOnEnter": "Mesajları Enter ile gönder",
-    "sendOnEnterDesc": "Etkinleştirildiğinde Enter gönderir; Shift+Enter ve Ctrl/Cmd+Enter yeni satır ekler. Devre dışıysa Ctrl/Cmd+Enter gönderir"
+    "sendOnEnter": "Mesaj gönderme kısayolu",
+    "sendOnEnterDesc": "Mesaj gönderen kısayolu seçin; diğer Enter kombinasyonları yeni satır ekler"
   },
   "indexing": {
     "noWorkspaceMemories": "Henüz Workspace belleği yok. Oturumlar bu çalışma alanından bilgi çıkardıktan sonra görünecektir.",
@@ -798,7 +888,7 @@
   "agentEvolution": {
     "enableForAgent": "{{agentName}} için Evrim’i etkinleştir",
     "noAgentsTitle": "Kullanılabilir Agent yok",
-    "noAgentsSubtitle": "Evrim’i yapılandırmak için bir Agent oluşturun veya içe aktarın."
+    "noAgentsSubtitle": "Evrim’i yapılandırmak için bir Agent oluşturun veya içe aktarın"
   },
   "org": {},
   "learningsBrowser": {
@@ -864,7 +954,10 @@
   "appearance": {
     "tabApp": "Uygulama",
     "tabCodeEditor": "Kod Düzenleyici",
-    "tabChatPanel": "Sohbet Paneli"
+    "tabChatPanel": "Sohbet Paneli",
+    "chatHistory": "Sohbet geçmişi",
+    "composer": "Yazma alanı",
+    "newChatPage": "Yeni sohbet sayfası"
   },
   "harnessConnections": {
     "description": "Her kodlama aracının kullanacağı bağlantıyı seçin",
@@ -891,6 +984,8 @@
     "apply": "Bu bağlantıyı kullan",
     "applied": "Yapılandırma kaydedildi — yeni bir araç oturumu başlatın",
     "restore": "Özgün kurulumu geri yükle",
+    "disconnect": "Bağlantıyı kes",
+    "overlayHelp": "Bağlantı ayarları {{path}} içinde ayrı saklanır. \"Terminali aç\", Claude Code’u bu ayarlarla ve mevcut konuşma geçmişiyle başlatır. Oturum izleme hook’ları ayrı kontrol edilir",
     "restored": "Özgün kurulum geri yüklendi — yeni bir araç oturumu başlatın",
     "refresh": "Yenile",
     "refreshed": "Araç bağlantıları yenilendi",
@@ -904,7 +999,35 @@
     "authentication": "Kimlik doğrulama",
     "desktopScope": "Claude Desktop, Claude Code CLI’den ayrı yapılandırılır; uyguladıktan sonra Desktop’ı tamamen kapatıp yeniden açın",
     "desktopApplied": "Yapılandırma kaydedildi — Claude Desktop’ı tamamen kapatıp yeniden açın",
-    "desktopRestored": "Önceki yapılandırma geri yüklendi — Claude Desktop’ı tamamen kapatıp yeniden açın"
+    "desktopRestored": "Önceki yapılandırma geri yüklendi — Claude Desktop’ı tamamen kapatıp yeniden açın",
+    "advancedDescription": "Özel API bağlantıları ve tek seferlik kimlik bilgisi taşıma",
+    "marketApps": {
+      "isolatedStorage": "Bu resmi uygulama ayrı ayarlar ve konuşma depolaması kullanır. Ana uygulamanız ve CLI ayarlarını korur. Önceki konuşmalar otomatik olarak içe aktarılmaz",
+      "isolatedClaudeStorage": "Bu uygulama açılırken Code geçmişi kopyalanır; yeni mesajlar burada kalır. Ana uygulama ve CLI ayarları değişmez. İçe aktarılan konuşmalar görünmüyorsa Claude’u yeniden açın",
+      "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
+      "loading": "Loading official packages…",
+      "loadFailed": "Official packages could not be loaded",
+      "nonePurchased": "No official packages are currently available",
+      "checking": "Uygulama denetleniyor…",
+      "unavailable": "Bu yüklü sürüm için kullanılamıyor",
+      "notInstalled": "Yüklü değil",
+      "original": "Uygulamanın özgün ayarını kullanıyor",
+      "open": "Uygulamayı aç",
+      "connected": "Uygulama artık geçerli ORG2 çalışma alanını izliyor",
+      "opened": "Uygulama açıldı",
+      "disconnected": "Uygulamanın önceki ayarı geri yüklendi",
+      "actionFailed": "Bu uygulama bağlantısı güncellenemedi",
+      "openFailed": "Bu uygulama açılamadı",
+      "restoreRequired": "Önce bu uygulamanın özgün ayarlarını geri yükleyin, ardından paketlerinizi seçip bağlantıyı yeniden uygulayın",
+      "workspaceNumber": "Hizmet {{index}} / {{count}}",
+      "openTerminal": "Terminali aç",
+      "terminalOpened": "Terminal açıldı",
+      "provider": "ORG2 Market",
+      "multiPackageHelp": "En fazla 8 paket ve varsayılan bir model seçin, ardından uygulama içinde paketler arasında geçiş yapın",
+      "auxiliaryBilling": "Claude Code'un otomatik başlık, bellek ve sıkıştırma çağrıları varsayılan pakete faturalanır; yalnızca sohbet /model ile seçtiğiniz paketi izler",
+      "defaultModel": "Varsayılan model",
+      "packageLimit": "En fazla 8 paket seçin"
+    }
   },
   "claudeProfiles": {
     "new": "Yeni profil",
@@ -945,10 +1068,10 @@
     "developerOptions": "Geliştirici seçenekleri",
     "retryConnection": "Bağlantıyı yeniden dene",
     "enabled": "Mobil Uzaktan Erişim",
-    "enabledDesc": "Eşleştirilmiş bir telefonun bu masaüstündeki agent oturumlarını aynı Wi‑Fi LAN üzerinden veya genel aktarıcı aracılığıyla yönetmesine izin ver",
+    "enabledDesc": "Bu bilgisayardaki oturumları telefonunuzdan görüntüleyin ve yönetin",
     "securityNotice": "LAN erişimi açıkken ağınızdaki bağlantı URL'si ve token'ına sahip herkes oturumları kontrol edebilir. Sızdığını düşünüyorsanız token'ı yeniden oluşturun",
-    "outdoorTitle": "Dış bağlantı",
-    "outdoorDesc": "Telefonunuzun 4G, 5G veya başka bir ağ üzerinden çalışması için masaüstünü genel bir aktarıcıya giden yönde bağlayın",
+    "outdoorTitle": "İnternet bağlantılarına izin ver",
+    "outdoorDesc": "Kapalıyken telefonlar bu bilgisayara internet üzerinden bağlanamaz",
     "relayEnabled": "Genel aktarıcıya bağlan",
     "relayEnabledDesc": "Masaüstü giden bir WSS bağlantısı açar; yönlendiricide port yönlendirme gerekmez",
     "relayUrl": "Aktarıcı adresi",
@@ -957,7 +1080,7 @@
     "relayPresetLocal": "Yerel",
     "relayPresetProduction": "Üretim",
     "cloudLoginTitle": "ORG2 Cloud girişi",
-    "cloudLoginDescSignedIn": "{{identity}} olarak giriş yapıldı — aktarıcı dış eşleştirme için bu hesabı kullanır",
+    "cloudLoginDescSignedIn": "{{identity}} olarak oturum açıldı",
     "cloudLoginDescSignedOut": "Genel aktarıcı üzerinden eşleştirmeden önce ORG2 Cloud'a giriş yapın",
     "relayStatusCloudLoginRequired": "Ayarlar → Genel bölümünden ORG2 Cloud'a giriş yapın, ardından aktarıcı durumunu yenileyin",
     "relayStatusAuthFailedSignedIn": "Aktarıcı bağlantıyı reddetti — Ayarlar → Genel altında çıkış yapıp yeniden giriş yapın",
@@ -968,7 +1091,7 @@
     "relayStatus_disabled": "Devre dışı",
     "relayStatus_config_error": "Yapılandırma hatası",
     "relayStatus_stopped": "Durduruldu",
-    "startOutdoorPairing": "Dış eşleştirme kodu oluştur",
+    "startOutdoorPairing": "Eşleştirme kodu oluştur",
     "fullAccess": "Eylemlere izin ver",
     "fullAccessDesc": "Açıkken telefon mesaj gönderebilir, oturumları durdurabilir ve izinleri yanıtlayabilir; kapalıyken yalnızca görüntüleme yapabilir",
     "pairingExpires": "Eşleştirme kodunun süresi {{seconds}} saniye içinde doluyor",
@@ -1003,16 +1126,36 @@
     "pairedDevicesDesc": "Aktarıcı üzerinden yetkilendirilen telefonlar; erişim istediğiniz zaman iptal edilebilir",
     "devicesLoadFailed": "Eşleştirilmiş cihazlar yüklenemedi",
     "noDevices": "Eşleştirilmiş cihaz yok",
-    "noDevicesDesc": "Bir dış eşleştirme kodu oluşturun, ardından Mobil Uzaktan Erişim PWA'sında tarayın veya yapıştırın",
+    "noDevicesDesc": "Bir telefon ekledikten sonra bu bilgisayardaki oturumlara erişebilirsiniz",
     "deviceLabel": "Cihaz",
     "deviceTier": "Düzey",
-    "deviceTierFull": "Tam erişim",
-    "deviceTierReadOnly": "Salt okunur",
+    "deviceTierFull": "Kontrol edebilir",
+    "deviceTierReadOnly": "Yalnızca görüntüleme",
     "deviceLastSeen": "Son görülme",
     "devicePairedAt": "Eşleştirilme: {{time}}",
     "deviceLastSeenValue": "Son görülme: {{time}}",
     "deviceNeverSeen": "Hiç bağlanmadı",
     "deviceOnline": "Çevrimiçi",
-    "deviceOffline": "Çevrimdışı"
+    "deviceOffline": "Çevrimdışı",
+    "addPhone": "Telefon ekle",
+    "pairingPermission": "Telefon izinleri",
+    "relayDisabledHint": "İnternet bağlantıları kapalı. Gelişmiş ayarlardan etkinleştirebilirsiniz"
+  },
+  "development": {
+    "updateAvailable": "Güncelleme mevcut",
+    "updateAvailableDesc": "Uygulama genelinde 99.0.0 sürümü için güncelleme göstergelerini göster — güncelleme işlemleri yalnızca önizlemeyi açar",
+    "illustrations": "Çizimler",
+    "illustrationsDesc": "Temanızı değiştirmeden tüm uygulama çizimlerini açık ve koyu modda karşılaştırın"
+  },
+  "managedUsage": {
+    "cancel": "İptal",
+    "authorize": "Paketi etkinleştir",
+    "rates": "Milyon token başına girdi / çıktı",
+    "wallet": "Cüzdanı aç",
+    "priceRange": "Paket aralığı: resmî fiyatın %{{min}}–%{{max}} oranı",
+    "rangeUnavailable": "Paket fiyat aralığı kullanılamıyor. Paketi etkinleştirmeden önce kataloğu yenileyin.",
+    "walletIncluded": "Dahil olan tüm modeller cüzdan bakiyenizi kullanır.",
+    "walletUnavailable": "Cüzdan faturalandırması henüz kullanılamıyor. Hizmet güncellendikten sonra yenileyin.",
+    "walletConsent": "Bu paketteki tüm modelleri gösterilen fiyat aralığında etkinleştirin. Gerçek kullanım doğrudan cüzdan bakiyenizden tahsil edilir; ayrı bir paket bütçesi gerekmez."
   }
 }

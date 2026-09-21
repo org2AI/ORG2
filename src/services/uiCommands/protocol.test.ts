@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
-import { uiCatalog } from "@src/ActionSystem/publicUi/catalog";
+import { uiCatalog } from "@src/scaffold/ActionSystem/publicUi/catalog";
 
 import catalog from "../../../src-tauri/crates/app-ui/catalog.json";
 import fixture from "../../../src-tauri/crates/app-ui/protocol.fixture.json";

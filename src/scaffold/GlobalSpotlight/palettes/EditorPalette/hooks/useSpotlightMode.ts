@@ -46,5 +46,3 @@ export function useSpotlightMode(
 ): ModeDetectionResult {
   return useMemo(() => detectMode(query, defaultMode), [query, defaultMode]);
 }
-
-export default useSpotlightMode;

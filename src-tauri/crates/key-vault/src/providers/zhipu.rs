@@ -6,16 +6,20 @@
 //!
 //! Auth uses the raw API key in the `Authorization` header (no `Bearer` prefix).
 //!
-//! The endpoint returns two `TOKENS_LIMIT` windows — the 5-hour window (first)
-//! and the weekly window (second) — plus a `TIME_LIMIT` monthly MCP allowance
-//! that we ignore. Pay-as-you-go API keys have no coding-plan quota; for those
-//! the endpoint returns 4xx or empty limits and we surface a "Pay-as-you-go"
-//! `QuotaInfo` (unlimited, no usage bar) instead of an error.
+//! The endpoint returns two prompt windows — the 5-hour window and the weekly
+//! window — plus a `TIME_LIMIT` monthly MCP allowance that we ignore. Each
+//! window carries its length as a `(unit, number)` pair and, once the window
+//! has been touched, a `nextResetTime` in epoch milliseconds. Pay-as-you-go API
+//! keys have no coding-plan quota; for those the endpoint returns 4xx or empty
+//! limits and we surface a "Pay-as-you-go" `QuotaInfo` (unlimited, no usage
+//! bar) instead of an error.
 
+use chrono::{DateTime, TimeDelta, Utc};
 use serde::Deserialize;
+use serde_json::Value;
 use std::time::Duration;
 
-use crate::providers::quota_windows::{quota_from_windows, QuotaWindow};
+use crate::providers::quota_windows::{json_time_to_rfc3339, quota_from_windows, QuotaWindow};
 use crate::types::QuotaInfo;
 
 const HTTP_TIMEOUT_SECS: u64 = 15;
@@ -25,10 +29,31 @@ const DEFAULT_HOST: &str = "https://open.bigmodel.cn";
 /// Global (Z.ai) host.
 const ZAI_HOST: &str = "https://api.z.ai";
 
-/// The monitor endpoint returns the 5-hour and weekly prompt windows both typed
-/// as `TOKENS_LIMIT` (the weekly one is the second entry). `TIME_LIMIT` is the
-/// monthly MCP allowance, which we intentionally do not surface.
+/// The monitor endpoint types the 5-hour and weekly prompt windows as
+/// `CREDIT_LIMIT`; older plans still answer with the previous `TOKENS_LIMIT`
+/// name for the same shape. `TIME_LIMIT` is the monthly MCP allowance, which we
+/// intentionally do not surface.
+const CREDIT_LIMIT_TYPE: &str = "CREDIT_LIMIT";
 const TOKENS_LIMIT_TYPE: &str = "TOKENS_LIMIT";
+
+/// Window-length unit codes used by the `(unit, number)` pair on each limit.
+///
+/// Only the units actually observed on a prompt window are mapped. Unit `5` is
+/// deliberately absent: it appears solely on the `TIME_LIMIT` MCP allowance we
+/// ignore, and independent implementations disagree on whether it means minutes
+/// or months. Guessing would misfile a window; leaving it unknown falls back to
+/// the payload order instead.
+const UNIT_HOURS: i64 = 3;
+const UNIT_DAYS: i64 = 4;
+const UNIT_WEEKS: i64 = 6;
+
+const MINUTES_PER_HOUR: f64 = 60.0;
+const MINUTES_PER_DAY: f64 = 24.0 * MINUTES_PER_HOUR;
+const MINUTES_PER_WEEK: f64 = 7.0 * MINUTES_PER_DAY;
+
+/// Slack allowed when checking a reset against its own window, so a reset that
+/// lands exactly at the window edge is not discarded by clock skew.
+const RESET_PLAUSIBILITY_MARGIN_MINUTES: i64 = 1;
 
 const SESSION_USAGE_TYPE: &str = "session";
 const WEEKLY_USAGE_TYPE: &str = "weekly";
@@ -52,13 +77,86 @@ struct QuotaLimitData {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct QuotaLimit {
-    /// `TOKENS_LIMIT` (5-hour and weekly prompt windows) or `TIME_LIMIT`
-    /// (monthly MCP allowance, which we ignore).
+    /// `CREDIT_LIMIT`/`TOKENS_LIMIT` (the 5-hour and weekly prompt windows) or
+    /// `TIME_LIMIT` (monthly MCP allowance, which we ignore).
     #[serde(default)]
     r#type: Option<String>,
+    /// Some revisions carry the limit kind under `name` instead of `type`.
+    #[serde(default)]
+    name: Option<String>,
     /// Percentage of the window consumed (0-100).
     #[serde(default)]
     percentage: Option<f64>,
+    /// Unit of the window length: hours (3), days (4), months (5), weeks (6).
+    #[serde(default)]
+    unit: Option<f64>,
+    /// Window length, counted in `unit`s (e.g. `unit: 3, number: 5` = 5 hours).
+    #[serde(default)]
+    number: Option<f64>,
+    /// When the window next refills, as epoch milliseconds. Absent while a
+    /// window is untouched — there is nothing to reset until it is first used.
+    #[serde(default, alias = "next_reset_time")]
+    next_reset_time: Option<Value>,
+}
+
+impl QuotaLimit {
+    fn limit_type(&self) -> &str {
+        self.r#type
+            .as_deref()
+            .or(self.name.as_deref())
+            .map(str::trim)
+            .unwrap_or_default()
+    }
+
+    /// True for the percentage prompt windows, under either type name.
+    fn is_prompt_window(&self) -> bool {
+        let limit_type = self.limit_type();
+        limit_type.eq_ignore_ascii_case(CREDIT_LIMIT_TYPE)
+            || limit_type.eq_ignore_ascii_case(TOKENS_LIMIT_TYPE)
+    }
+
+    /// The window length in minutes, or `None` when the payload omits the pair
+    /// or uses a unit we do not know.
+    fn window_minutes(&self) -> Option<f64> {
+        let unit = self.unit.filter(|unit| unit.is_finite())?;
+        let number = self
+            .number
+            .filter(|number| number.is_finite() && *number > 0.0)?;
+        let minutes_per_unit = match unit as i64 {
+            UNIT_HOURS => MINUTES_PER_HOUR,
+            UNIT_DAYS => MINUTES_PER_DAY,
+            UNIT_WEEKS => MINUTES_PER_WEEK,
+            _ => return None,
+        };
+        Some(number * minutes_per_unit)
+    }
+
+    /// The window's reset instant as RFC 3339, normalized from epoch
+    /// milliseconds (seconds and RFC 3339 strings are tolerated too).
+    ///
+    /// A reset further out than the window is long is dropped rather than
+    /// shown: Zhipu has been observed answering a 5-hour window with a reset
+    /// roughly ten hours away, and a window cannot outlast its own length. We
+    /// do not try to correct it — an absent reset falls back to the
+    /// "next use +5h" hint, which is honest; a wrong timestamp is not.
+    fn reset_time(&self, now: DateTime<Utc>) -> Option<String> {
+        let reset = self
+            .next_reset_time
+            .as_ref()
+            .and_then(json_time_to_rfc3339)?;
+        let Some(window_minutes) = self.window_minutes() else {
+            // No declared length, so nothing to judge the reset against.
+            return Some(reset);
+        };
+        let horizon = TimeDelta::try_minutes(
+            (window_minutes.ceil() as i64).saturating_add(RESET_PLAUSIBILITY_MARGIN_MINUTES),
+        )
+        .map(|delta| now + delta)?;
+        let parsed = DateTime::parse_from_rfc3339(&reset)
+            .ok()?
+            .with_timezone(&Utc);
+        (parsed <= horizon).then_some(reset)
+    }
 }
 
 /// Zhipu GLM Coding Plan quota fetcher.
@@ -161,37 +259,68 @@ fn payg_quota() -> QuotaInfo {
 
 /// Parse the monitor `limits[]` into a `QuotaInfo`.
 ///
-/// The two `TOKENS_LIMIT` windows map to `session` (5-hour, first) and `weekly`
-/// (second). `TIME_LIMIT` (monthly MCP) is ignored.
+/// The prompt windows map to `session` (sub-daily) and `weekly` (multi-day),
+/// each carrying its own `nextResetTime`. Windows are classified by their
+/// declared `(unit, number)` length so a reset lands on the right bar; payloads
+/// that omit the pair fall back to the documented order (5-hour first, weekly
+/// second). `TIME_LIMIT` (monthly MCP) is ignored.
 fn parse_quota_limits(limits: Vec<QuotaLimit>) -> QuotaInfo {
-    // Collect the prompt windows in order; the first is the 5-hour window and
-    // the second is the weekly window.
-    let token_windows: Vec<f64> = limits
+    parse_quota_limits_at(limits, Utc::now())
+}
+
+fn parse_quota_limits_at(limits: Vec<QuotaLimit>, now: DateTime<Utc>) -> QuotaInfo {
+    let prompt_windows: Vec<&QuotaLimit> = limits
         .iter()
-        .filter(|limit| limit.r#type.as_deref() == Some(TOKENS_LIMIT_TYPE))
-        .map(|limit| limit.percentage.unwrap_or(0.0))
+        .filter(|limit| limit.is_prompt_window())
         .collect();
 
     // No prompt windows → pay-as-you-go (no coding-plan quota).
-    if token_windows.is_empty() {
+    if prompt_windows.is_empty() {
         return payg_quota();
     }
 
-    let mut windows: Vec<QuotaWindow> = Vec::new();
-    if let Some(used_percent) = token_windows.first() {
-        windows.push(QuotaWindow {
-            usage_type: SESSION_USAGE_TYPE,
-            used_percent: *used_percent,
-            reset_time: None,
-        });
+    let mut session: Option<&QuotaLimit> = None;
+    let mut weekly: Option<&QuotaLimit> = None;
+    let mut unclassified: Vec<&QuotaLimit> = Vec::new();
+
+    for limit in prompt_windows {
+        let slot = match limit.window_minutes() {
+            Some(minutes) if minutes < MINUTES_PER_DAY => &mut session,
+            Some(_) => &mut weekly,
+            None => {
+                unclassified.push(limit);
+                continue;
+            }
+        };
+        if slot.is_none() {
+            *slot = Some(limit);
+        } else {
+            unclassified.push(limit);
+        }
     }
-    if let Some(used_percent) = token_windows.get(1) {
-        windows.push(QuotaWindow {
-            usage_type: WEEKLY_USAGE_TYPE,
-            used_percent: *used_percent,
-            reset_time: None,
-        });
+
+    // Older payloads carry no `(unit, number)` pair; they list the 5-hour window
+    // first and the weekly window second.
+    for limit in unclassified {
+        if session.is_none() {
+            session = Some(limit);
+        } else if weekly.is_none() {
+            weekly = Some(limit);
+        }
     }
+
+    let windows: Vec<QuotaWindow> = [
+        session.map(|limit| (SESSION_USAGE_TYPE, limit)),
+        weekly.map(|limit| (WEEKLY_USAGE_TYPE, limit)),
+    ]
+    .into_iter()
+    .flatten()
+    .map(|(usage_type, limit)| QuotaWindow {
+        usage_type,
+        used_percent: limit.percentage.unwrap_or(0.0),
+        reset_time: limit.reset_time(now),
+    })
+    .collect();
 
     quota_from_windows(PLAN_TYPE_CODING, QUOTA_SOURCE, windows)
 }
@@ -199,6 +328,32 @@ fn parse_quota_limits(limits: Vec<QuotaLimit>) -> QuotaInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    /// Parse a captured `data` object the way `fetch_quota` does.
+    fn limits_from(data: serde_json::Value) -> Vec<QuotaLimit> {
+        serde_json::from_value::<QuotaLimitData>(data)
+            .expect("limits payload should deserialize")
+            .limits
+    }
+
+    /// A fixed clock, so the reset-plausibility check does not drift with the
+    /// wall clock. Each test pins one consistent with its payload's capture.
+    fn at(now: &str) -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(now)
+            .expect("fixture clock should parse")
+            .with_timezone(&Utc)
+    }
+
+    /// Parse against a pinned clock.
+    fn parse_at(now: &str, data: serde_json::Value) -> QuotaInfo {
+        parse_quota_limits_at(limits_from(data), at(now))
+    }
+
+    /// Parse a payload that carries no reset, where the clock cannot matter.
+    fn parse(data: serde_json::Value) -> QuotaInfo {
+        parse_at("2026-06-29T09:00:00Z", data)
+    }
 
     #[test]
     fn resolve_host_defaults_to_bigmodel() {
@@ -227,7 +382,7 @@ mod tests {
 
     #[test]
     fn empty_limits_is_payg() {
-        let quota = parse_quota_limits(Vec::new());
+        let quota = parse_quota_limits_at(Vec::new(), at("2026-06-29T09:00:00Z"));
         assert_eq!(quota.plan_type.as_deref(), Some(PLAN_TYPE_PAYG));
         assert!(quota.is_unlimited);
         assert!(quota.usage_items.is_empty());
@@ -235,10 +390,9 @@ mod tests {
 
     #[test]
     fn tokens_limit_drives_session_window() {
-        let quota = parse_quota_limits(vec![QuotaLimit {
-            r#type: Some(TOKENS_LIMIT_TYPE.to_string()),
-            percentage: Some(25.0),
-        }]);
+        let quota = parse(json!({
+            "limits": [{ "type": TOKENS_LIMIT_TYPE, "percentage": 25.0 }]
+        }));
         assert_eq!(quota.plan_type.as_deref(), Some(PLAN_TYPE_CODING));
         assert!(!quota.is_unlimited);
         assert!((quota.remaining_percentage - 75.0).abs() < f64::EPSILON);
@@ -248,21 +402,15 @@ mod tests {
 
     #[test]
     fn two_windows_map_to_session_and_weekly() {
-        // First TOKENS_LIMIT → session (5h), second → weekly. TIME_LIMIT ignored.
-        let quota = parse_quota_limits(vec![
-            QuotaLimit {
-                r#type: Some(TOKENS_LIMIT_TYPE.to_string()),
-                percentage: Some(0.0),
-            },
-            QuotaLimit {
-                r#type: Some(TOKENS_LIMIT_TYPE.to_string()),
-                percentage: Some(72.0),
-            },
-            QuotaLimit {
-                r#type: Some("TIME_LIMIT".to_string()),
-                percentage: Some(3.0),
-            },
-        ]);
+        // Without a `(unit, number)` pair the order decides: first TOKENS_LIMIT
+        // → session (5h), second → weekly. TIME_LIMIT ignored.
+        let quota = parse(json!({
+            "limits": [
+                { "type": TOKENS_LIMIT_TYPE, "percentage": 0.0 },
+                { "type": TOKENS_LIMIT_TYPE, "percentage": 72.0 },
+                { "type": "TIME_LIMIT", "percentage": 3.0 }
+            ]
+        }));
         assert_eq!(quota.usage_items.len(), 2);
         assert_eq!(quota.usage_items[0].usage_type, SESSION_USAGE_TYPE);
         assert!((quota.usage_items[0].remaining_percentage - 100.0).abs() < f64::EPSILON);
@@ -278,12 +426,221 @@ mod tests {
     #[test]
     fn time_limit_only_is_payg() {
         // Only a monthly MCP window and no prompt windows → pay-as-you-go.
-        let quota = parse_quota_limits(vec![QuotaLimit {
-            r#type: Some("TIME_LIMIT".to_string()),
-            percentage: Some(40.0),
-        }]);
+        let quota = parse(json!({
+            "limits": [{ "type": "TIME_LIMIT", "percentage": 40.0 }]
+        }));
         assert_eq!(quota.plan_type.as_deref(), Some(PLAN_TYPE_PAYG));
         assert!(quota.is_unlimited);
         assert!(quota.usage_items.is_empty());
+    }
+
+    #[test]
+    fn reset_times_come_from_next_reset_time_in_epoch_millis() {
+        // Shape captured from a live GLM Coding Pro response: both prompt
+        // windows carry their own epoch-millisecond `nextResetTime`.
+        let quota = parse_at(
+            "2026-06-29T09:00:00Z",
+            json!({
+            "limits": [
+                {
+                    "type": TOKENS_LIMIT_TYPE,
+                    "unit": 3,
+                    "number": 5,
+                    "percentage": 17,
+                    "nextResetTime": 1782724971179u64
+                },
+                {
+                    "type": TOKENS_LIMIT_TYPE,
+                    "unit": 6,
+                    "number": 1,
+                    "percentage": 3,
+                    "nextResetTime": 1783305486997u64
+                },
+                {
+                    "type": "TIME_LIMIT",
+                    "unit": 5,
+                    "number": 1,
+                    "percentage": 0,
+                    "nextResetTime": 1785292686976u64
+                }
+            ]
+            }),
+        );
+
+        assert_eq!(quota.usage_items.len(), 2);
+        assert_eq!(quota.usage_items[0].usage_type, SESSION_USAGE_TYPE);
+        assert_eq!(
+            quota.usage_items[0].reset_time.as_deref(),
+            Some("2026-06-29T09:22:51Z")
+        );
+        assert_eq!(quota.usage_items[1].usage_type, WEEKLY_USAGE_TYPE);
+        assert_eq!(
+            quota.usage_items[1].reset_time.as_deref(),
+            Some("2026-07-06T02:38:06Z")
+        );
+        // The card-level reset falls back to the first window that has one.
+        assert_eq!(quota.reset_time.as_deref(), Some("2026-06-29T09:22:51Z"));
+    }
+
+    #[test]
+    fn credit_limit_windows_are_classified_by_declared_length() {
+        // Shape captured from a live GLM Coding Lite response: the newer
+        // CREDIT_LIMIT type, weekly window listed second, and an untouched
+        // 5-hour window with no reset yet.
+        let quota = parse_at(
+            "2026-08-13T06:00:00Z",
+            json!({
+                "limits": [
+                    {
+                        "type": CREDIT_LIMIT_TYPE,
+                        "unit": 6,
+                        "number": 1,
+                        "percentage": 98,
+                        "nextResetTime": 1786685679998u64
+                    },
+                    {
+                        "type": CREDIT_LIMIT_TYPE,
+                        "unit": 3,
+                        "number": 5,
+                        "percentage": 0
+                    }
+                ]
+            }),
+        );
+
+        assert_eq!(quota.plan_type.as_deref(), Some(PLAN_TYPE_CODING));
+        assert_eq!(quota.usage_items.len(), 2);
+        // Declared window length wins over payload order.
+        assert_eq!(quota.usage_items[0].usage_type, SESSION_USAGE_TYPE);
+        assert!((quota.usage_items[0].remaining_percentage - 100.0).abs() < f64::EPSILON);
+        assert!(quota.usage_items[0].reset_time.is_none());
+        assert_eq!(quota.usage_items[1].usage_type, WEEKLY_USAGE_TYPE);
+        assert!((quota.usage_items[1].remaining_percentage - 2.0).abs() < f64::EPSILON);
+        assert_eq!(
+            quota.usage_items[1].reset_time.as_deref(),
+            Some("2026-08-14T05:34:39Z")
+        );
+        assert_eq!(quota.reset_time.as_deref(), Some("2026-08-14T05:34:39Z"));
+    }
+
+    #[test]
+    fn unknown_window_units_fall_back_to_payload_order() {
+        // A unit we do not recognize must not drop the window; it keeps its
+        // documented position instead.
+        let quota = parse(json!({
+            "limits": [
+                { "type": CREDIT_LIMIT_TYPE, "unit": 99, "number": 1, "percentage": 10 },
+                { "type": CREDIT_LIMIT_TYPE, "unit": 99, "number": 1, "percentage": 40 }
+            ]
+        }));
+
+        assert_eq!(quota.usage_items.len(), 2);
+        assert_eq!(quota.usage_items[0].usage_type, SESSION_USAGE_TYPE);
+        assert!((quota.usage_items[0].remaining_percentage - 90.0).abs() < f64::EPSILON);
+        assert_eq!(quota.usage_items[1].usage_type, WEEKLY_USAGE_TYPE);
+        assert!((quota.usage_items[1].remaining_percentage - 60.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn limit_kind_under_name_is_still_a_prompt_window() {
+        let quota = parse(json!({
+            "limits": [{ "name": CREDIT_LIMIT_TYPE, "unit": 3, "number": 5, "percentage": 12 }]
+        }));
+        assert_eq!(quota.usage_items.len(), 1);
+        assert_eq!(quota.usage_items[0].usage_type, SESSION_USAGE_TYPE);
+    }
+
+    #[test]
+    fn reset_time_accepts_seconds_and_rfc3339_strings() {
+        let quota = parse_at(
+            "2026-07-07T08:00:00Z",
+            json!({
+                "limits": [
+                    {
+                        "type": CREDIT_LIMIT_TYPE,
+                        "unit": 3,
+                        "number": 5,
+                        "percentage": 5,
+                        "nextResetTime": 1783418400u64
+                    },
+                    {
+                        "type": CREDIT_LIMIT_TYPE,
+                        "unit": 6,
+                        "number": 1,
+                        "percentage": 5,
+                        "next_reset_time": "2026-07-10T18:00:00+08:00"
+                    }
+                ]
+            }),
+        );
+
+        assert_eq!(
+            quota.usage_items[0].reset_time.as_deref(),
+            Some("2026-07-07T10:00:00Z")
+        );
+        assert_eq!(
+            quota.usage_items[1].reset_time.as_deref(),
+            Some("2026-07-10T10:00:00Z")
+        );
+    }
+
+    #[test]
+    fn reset_further_out_than_its_own_window_is_dropped() {
+        // Zhipu has been seen answering a 5-hour window with a reset roughly
+        // ten hours out. A window cannot outlast its own length, so the bogus
+        // timestamp is dropped rather than shown or timezone-corrected.
+        let quota = parse_at(
+            "2026-07-07T08:00:00Z",
+            json!({
+                "limits": [
+                    {
+                        "type": CREDIT_LIMIT_TYPE,
+                        "unit": 3,
+                        "number": 5,
+                        "percentage": 40,
+                        "nextResetTime": 1783454400000u64
+                    },
+                    {
+                        "type": CREDIT_LIMIT_TYPE,
+                        "unit": 6,
+                        "number": 1,
+                        "percentage": 60,
+                        "nextResetTime": 1783454400000u64
+                    }
+                ]
+            }),
+        );
+
+        // The usage bars survive; only the implausible reset is withheld.
+        assert_eq!(quota.usage_items.len(), 2);
+        assert_eq!(quota.usage_items[0].usage_type, SESSION_USAGE_TYPE);
+        assert!((quota.usage_items[0].remaining_percentage - 60.0).abs() < f64::EPSILON);
+        assert!(quota.usage_items[0].reset_time.is_none());
+        // The same instant is well inside the weekly window, so it is kept.
+        assert_eq!(
+            quota.usage_items[1].reset_time.as_deref(),
+            Some("2026-07-07T20:00:00Z")
+        );
+    }
+
+    #[test]
+    fn reset_is_kept_when_the_window_length_is_unknown() {
+        // Without a `(unit, number)` pair there is nothing to judge the reset
+        // against, so it is reported as given rather than second-guessed.
+        let quota = parse_at(
+            "2026-07-07T08:00:00Z",
+            json!({
+                "limits": [{
+                    "type": CREDIT_LIMIT_TYPE,
+                    "percentage": 40,
+                    "nextResetTime": 1784059200000u64
+                }]
+            }),
+        );
+
+        assert_eq!(
+            quota.usage_items[0].reset_time.as_deref(),
+            Some("2026-07-14T20:00:00Z")
+        );
     }
 }

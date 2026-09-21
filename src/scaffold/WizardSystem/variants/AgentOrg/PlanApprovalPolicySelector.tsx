@@ -2,12 +2,12 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Select from "@src/components/Select";
+import { SECTION_CONTROL_STYLE } from "@src/components/layout/Section/tokens";
+import { HintWithInfo } from "@src/components/layout/blocks";
 import {
   PLAN_APPROVAL_POLICIES,
   type PlanApprovalPolicy,
 } from "@src/modules/MainApp/AgentOrgs/types";
-import { SECTION_CONTROL_STYLE } from "@src/modules/shared/layouts/SectionLayout/tokens";
-import { HintWithInfo } from "@src/modules/shared/layouts/blocks";
 
 interface PlanApprovalPolicySelectorProps {
   value: PlanApprovalPolicy;

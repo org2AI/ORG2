@@ -1,9 +1,9 @@
 ---
 name: create-orgii-agent
-description: Create or modify a custom ORGII agent definition (and the org it belongs to). Use when the user wants to create, configure, retune, rename, or delete an agent, define an agent's soul / capabilities / tools, organise agents into an org, or asks about agent-definitions.json.
+description: Create or modify a custom ORG2 agent definition (and the org it belongs to). Use when the user wants to create, configure, retune, rename, or delete an agent, define an agent's soul / capabilities / tools, organise agents into an org, or asks about agent-definitions.json.
 ---
 
-# Creating Agents (and Orgs) in ORGII
+# Creating Agents (and Orgs) in ORG2
 
 The canonical way to create or modify an agent is the **`manage_agent_def`**
 tool. It is gated by `ManagementCapability` — if it is in your tool list,

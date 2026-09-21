@@ -26,7 +26,9 @@ import React, { memo, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
+import { getPrimaryPaneBackgroundStyle } from "@src/components/layout/tokens/viewContainerTokens";
 import { hasMacWindowChrome } from "@src/config/windowChromeRadius";
+import { WINDOW_CHROME_TOKENS } from "@src/config/windowChromeTokens";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
 import { DataProvider } from "@src/contexts/workspace/DataContext";
 import { useReloadSession } from "@src/engines/ChatPanel/ChatHistory/hooks/useReloadSession";
@@ -53,8 +55,8 @@ import SessionSyncProvider from "@src/engines/SessionCore/sync/SessionSyncProvid
 import { dispatchQueuedCanonicalConversation } from "@src/features/ConversationContinuation/canonicalConversationDispatcher";
 import SessionViewersIndicator from "@src/features/Org2Cloud/SessionViewersIndicator";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
+import { useMacosPageBackdropSurface } from "@src/hooks/platform/useMacosPageBackdropSurface";
 import { useNativeSessionStatusMonitor } from "@src/hooks/session/useNativeSessionStatusMonitor";
-import { getPrimaryPaneBackgroundStyle } from "@src/modules/shared/layouts/viewContainerTokens";
 import { sessionByIdAtom } from "@src/store/session";
 import type { SessionContinuation } from "@src/store/session/sessionTabPlacementAtom";
 import { resolvedBackgroundConfigAtom } from "@src/store/ui/backgroundConfigAtom";
@@ -68,11 +70,6 @@ import { isHumanSession } from "@src/util/session/sessionDispatch";
 export function getSessionWindowPath(sessionId: string): string {
   return `/orgii/app/session/${encodeURIComponent(sessionId)}`;
 }
-
-/** Width reserved for the macOS overlay traffic lights (x=20 + 3 buttons),
- *  mirroring MACOS_TRAFFIC_LIGHTS_RESERVED_WIDTH in
- *  useCollapsedSidebarChromeOffset. */
-const MACOS_TRAFFIC_LIGHTS_INSET_PX = 84;
 
 /** The EventStore→Jotai and queue bridges this window needs from
  *  `GlobalSessionSync`, plus the native session-status monitor with
@@ -98,6 +95,7 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
     const session = useAtomValue(sessionByIdAtom(sessionId));
     const conversationTargetBinding = useConversationTargetBinding(sessionId);
     const backgroundConfig = useAtomValue(resolvedBackgroundConfigAtom);
+    const paneSurfaceRef = useMacosPageBackdropSurface<HTMLDivElement>();
     const primaryPaneSurfaceStyle = useMemo(
       () => getPrimaryPaneBackgroundStyle(backgroundConfig.pageOpacity),
       [backgroundConfig.pageOpacity]
@@ -172,6 +170,7 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
     if (!sessionId) return null;
     return (
       <div
+        ref={paneSurfaceRef}
         data-chat-panel
         className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-chat-pane text-sm"
         style={primaryPaneSurfaceStyle}
@@ -187,7 +186,7 @@ const SessionWindowContent: React.FC<{ sessionId: string }> = memo(
           style={{
             paddingLeft:
               hasMacWindowChrome() && !isFullscreen
-                ? MACOS_TRAFFIC_LIGHTS_INSET_PX
+                ? WINDOW_CHROME_TOKENS.macTrafficLightsLeadingInset
                 : 12,
             ...(windowsHost
               ? CHAT_PANEL_HEADER_NO_DRAG_STYLE

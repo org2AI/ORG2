@@ -26,6 +26,12 @@ import Select from "@src/components/Select";
 import Switch from "@src/components/Switch";
 import Textarea from "@src/components/Textarea";
 import {
+  SECTION_CONTROL_STYLE,
+  SectionContainer,
+  SectionHeading,
+  SectionRow,
+} from "@src/components/layout/Section";
+import {
   Add01Icon,
   CircleIcon,
   Delete02Icon,
@@ -34,12 +40,6 @@ import {
   type IconSvgElement,
   MoonIcon,
 } from "@src/icons";
-import {
-  SECTION_CONTROL_STYLE,
-  SectionContainer,
-  SectionHeading,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import {
   CUSTOM_ROLE_ICON_IDS,
   resolveCustomRoleIcon,
@@ -620,8 +620,6 @@ const MyRolePage: React.FC = () => {
             )}
             <div className="flex pt-2">
               <Button
-                variant="secondary"
-                size="default"
                 icon={
                   <HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />
                 }

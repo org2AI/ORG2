@@ -366,10 +366,7 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
                 : ""}
             </span>
             <Button
-              variant="secondary"
-              appearance="outline"
               size="mini"
-              htmlType="button"
               className="hover:bg-fill-2"
               onClick={() => {
                 unloadPayload(payloadKey);
@@ -388,10 +385,7 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
               {payloadRef?.fullSizeBytes.toLocaleString()} bytes previewed
             </span>
             <Button
-              variant="secondary"
-              appearance="outline"
               size="mini"
-              htmlType="button"
               className="hover:bg-fill-2 disabled:opacity-60"
               disabled={isLoadingPayload}
               onClick={handleLoadFullPayload}

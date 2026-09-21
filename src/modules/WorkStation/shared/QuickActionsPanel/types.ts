@@ -1,7 +1,7 @@
 /**
- * QuickActionsPanel Types
+ * Quick action types
  *
- * Shared types for the quick actions panel used across work station.
+ * Shared quick-action item type used by the work station placeholders.
  */
 import type { IconSvgElement } from "@src/icons";
 
@@ -21,22 +21,4 @@ export interface QuickAction {
   onAction?: () => void;
   /** Whether the action is disabled */
   disabled?: boolean;
-}
-
-/**
- * Props for the QuickActionsPanel component
- */
-export interface QuickActionsPanelProps {
-  /** Whether the panel is visible */
-  visible: boolean;
-  /** List of quick actions to display */
-  actions: QuickAction[];
-  /** Callback to close the panel */
-  onClose: () => void;
-  /** Optional title for the panel */
-  title?: string;
-  /** Optional subtitle/description */
-  subtitle?: string;
-  /** Whether to show the app logo */
-  showLogo?: boolean;
 }

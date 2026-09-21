@@ -31,7 +31,7 @@ it("routes customized rename and delete through file actions and retains deletio
       baseFlattenedNodes: [],
       onToggleDirectory: vi.fn(),
       dispatch: run,
-      virtuosoRef: { current: null },
+      listRef: { current: null },
     });
     return createElement("div", {
       onKeyDown: state.handleKeyDown,

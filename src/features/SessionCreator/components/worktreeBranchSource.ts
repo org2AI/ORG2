@@ -215,40 +215,33 @@ function refToLaunchSource(ref: string): WorktreeLaunchSource {
 }
 
 /** Section key for a grouped branch list (mirrors the Spotlight selector). */
-export type BranchGroupKey = "recent" | "worktrees" | "other";
+export type BranchGroupKey = "default" | "recent" | "worktrees" | "other";
 
 /** A labelled section of branch options for the grouped Branch-tab list. */
 export interface BranchOptionGroup {
   key: BranchGroupKey;
   /**
    * i18n label key under `selectors.branch.labels` (common namespace) —
-   * `recent` → "Recent", `worktrees` → "Worktrees", `otherBranches` → "Other
-   * Branches". Reuses the same section labels the Spotlight branch selector
-   * renders so the two pickers stay in sync.
+   * `defaultBranches` → "Default Branches", `recent` → "Recent", `worktrees`
+   * → "Worktrees", `otherBranches` → "Other Branches". Reuses the same
+   * section labels the Spotlight branch selector renders so the two pickers
+   * stay in sync.
    */
-  labelKey: "recent" | "worktrees" | "otherBranches";
+  labelKey: "defaultBranches" | "recent" | "worktrees" | "otherBranches";
   options: WorktreeBranchOption[];
 }
 
-const DEFAULT_BRANCH_NAMES = ["main", "master", "develop", "dev"] as const;
-
-function isDefaultBranch(option: WorktreeBranchOption): boolean {
-  return DEFAULT_BRANCH_NAMES.includes(
-    option.name.toLowerCase() as (typeof DEFAULT_BRANCH_NAMES)[number]
-  );
-}
-
 /**
- * Group branch options into **Recent** / **Worktrees** / **Other** sections,
- * reusing the exact bucketing (`categorizeBranches`) the Spotlight
- * `BranchPalette` / `BranchDropdown` use — so the worktree-source picker and
- * the "Switch Session Branch" selector categorise identically.
+ * Group branch options into **Default Branches** / **Recent** / **Worktrees**
+ * / **Other** sections, reusing the exact bucketing (`categorizeBranches`)
+ * the Spotlight `BranchPalette` / `BranchDropdown` use — so the
+ * worktree-source picker and the "Switch Session Branch" selector categorise
+ * identically.
  *
  * `worktreePaths` (branch name → worktree path, from `getGitWorktrees`) is
  * merged onto matching **local** options so they land in the Worktrees bucket.
- * The current branch and conventional default branches are promoted to the
- * top of Recent. Remaining `default` + `other` branches are flattened into a
- * single "Other Branches" tail (same as `BranchDropdown`).
+ * Default branches (main/master/develop/dev, local and remote) are pinned in
+ * their own section at the top; the current branch leads Recent otherwise.
  */
 export function groupBranchOptions(
   options: readonly WorktreeBranchOption[],
@@ -267,47 +260,30 @@ export function groupBranchOptions(
 
   const categorized = categorizeBranches(withPaths);
   const groups: BranchOptionGroup[] = [];
-
-  const preferred = sortBranchOptions(
-    withPaths.filter((option) => option.isCurrent)
-  );
-  const preferredNames = new Set(preferred.map((option) => option.name));
-  for (const option of sortBranchOptions(withPaths.filter(isDefaultBranch))) {
-    if (!preferredNames.has(option.name)) {
-      preferred.push(option);
-      preferredNames.add(option.name);
-    }
-  }
-
-  const recent = [
-    ...preferred,
-    ...categorized.recent.filter((option) => !preferredNames.has(option.name)),
-  ];
-
-  if (recent.length > 0) {
+  if (categorized.default.length > 0)
+    groups.push({
+      key: "default",
+      labelKey: "defaultBranches",
+      options: categorized.default,
+    });
+  if (categorized.recent.length > 0)
     groups.push({
       key: "recent",
       labelKey: "recent",
-      options: recent,
+      options: categorized.recent,
     });
-  }
-  const worktrees = categorized.worktrees.filter(
-    (option) => !preferredNames.has(option.name)
-  );
-  if (worktrees.length > 0) {
+  if (categorized.worktrees.length > 0)
     groups.push({
       key: "worktrees",
       labelKey: "worktrees",
-      options: worktrees,
+      options: categorized.worktrees,
     });
-  }
-  const tail = [...categorized.default, ...categorized.other].filter(
-    (option) => !preferredNames.has(option.name)
-  );
-  if (tail.length > 0) {
-    groups.push({ key: "other", labelKey: "otherBranches", options: tail });
-  }
-
+  if (categorized.other.length > 0)
+    groups.push({
+      key: "other",
+      labelKey: "otherBranches",
+      options: categorized.other,
+    });
   return groups;
 }
 

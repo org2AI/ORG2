@@ -11,7 +11,21 @@ import Input from "@src/components/Input";
 import Select from "@src/components/Select";
 import type { SelectOption } from "@src/components/Select/types";
 import Switch from "@src/components/Switch";
-import TabPill from "@src/components/TabPill";
+import {
+  SECTION_ACTION_GAP_CLASSES,
+  SECTION_CONTROL_STYLE,
+  SECTION_VALUE_SMALL_MUTED_CLASSES,
+  SECTION_VALUE_SMALL_SECONDARY_CLASSES,
+  SECTION_VALUE_TEXT_CLASSES,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
+import {
+  DETAIL_PANEL_TOKENS,
+  DetailPanelContainer,
+  InternalHeader,
+  ScrollFadeContainer,
+} from "@src/components/layout/blocks";
 import {
   WIZARD_IDS,
   buildIntegrationsPath,
@@ -23,21 +37,6 @@ import {
   useHousekeeperConfig,
 } from "@src/hooks/housekeeper";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
-import {
-  SECTION_ACTION_GAP_CLASSES,
-  SECTION_CONTROL_STYLE,
-  SECTION_VALUE_SMALL_MUTED_CLASSES,
-  SECTION_VALUE_SMALL_SECONDARY_CLASSES,
-  SECTION_VALUE_TEXT_CLASSES,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import {
-  DETAIL_PANEL_TOKENS,
-  DetailPanelContainer,
-  InternalHeader,
-  ScrollFadeContainer,
-} from "@src/modules/shared/layouts/blocks";
 
 type HealthState =
   | { status: "idle" }
@@ -198,7 +197,7 @@ export const HousekeeperCategoryView: React.FC = () => {
           description={formatDescription(t("housekeeper.description"))}
           align="start"
         >
-          <Button variant="secondary" onClick={openAddMiniCPMAccount}>
+          <Button onClick={openAddMiniCPMAccount}>
             {t("housekeeper.addModel")}
           </Button>
         </SectionRow>
@@ -365,7 +364,6 @@ export const HousekeeperCategoryView: React.FC = () => {
                 : t("housekeeper.health.status")}
             </StatusValue>
             <Button
-              variant="secondary"
               loading={health.status === "checking"}
               onClick={runHealthCheck}
             >
@@ -385,7 +383,6 @@ export const HousekeeperCategoryView: React.FC = () => {
                 : t("housekeeper.benchmark.status")}
             </StatusValue>
             <Button
-              variant="secondary"
               loading={benchmark.status === "running"}
               onClick={runTokenBenchmark}
             >
@@ -429,18 +426,9 @@ export const HousekeeperCategoryView: React.FC = () => {
     <DetailPanelContainer>
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tabs}
-            activeTab={HOUSEKEEPER_TAB}
-            onChange={() => undefined}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tabs}
+        activeTab={HOUSEKEEPER_TAB}
+        onTabChange={() => undefined}
       />
       <ScrollFadeContainer
         className={`scroll-fade-at-top ${DETAIL_PANEL_TOKENS.scrollContentNoTop}`}

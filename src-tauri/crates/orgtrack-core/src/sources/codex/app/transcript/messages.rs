@@ -11,14 +11,13 @@ const CODEX_EMBEDDED_IMAGE_MARKER: &str = "\"image_url\":\"data:image/";
 const CODEX_OMITTED_IMAGE_VALUE: &str = "[embedded image omitted]";
 
 /// Codex can repeat a screenshot's base64 payload in thousands of tool-output
-/// rows. The replay projection only consumes each output part's text field, so
-/// deserializing the image bytes into `serde_json::Value` is pure allocation
-/// churn. Remove the ignored payload in-place before JSON parsing while
-/// preserving the surrounding output array and text parts.
+/// rows. Remove those bytes before JSON parsing while preserving the typed
+/// image parts. Replay replaces the marker with an offset-based lazy reference;
+/// the on-demand reader retrieves the original bytes directly from the source.
 pub(crate) fn strip_ignored_embedded_images(line: &mut String) {
     // User-authored image blocks are part of the portable conversation and
     // must survive a Codex -> canonical -> target-native round trip. Only
-    // provider/tool output images are projection-irrelevant. Inspect the
+    // provider/tool output bytes can be recovered lazily. Inspect the
     // compact JSON envelope before the first image rather than deserializing
     // every repeated screenshot payload just to classify the line.
     if preserves_user_embedded_images(line) {

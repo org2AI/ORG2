@@ -142,9 +142,7 @@ resetChatPanelSessionSurfaceAtom.debugLabel =
 
 /**
  * The user's persisted preference for whether the chat-panel slot covers the
- * entire main content area. The active tab and viewport may force the effective
- * layout full-screen temporarily, but that layout is derived without mutating
- * this preference or the underlying Station mode.
+ * entire main content area. Tab navigation never changes this preference or the underlying Station mode.
  */
 const persistedChatPanelMaximizedAtom = atomWithStorage<boolean>(
   "orgii:chatPanelMaximized",

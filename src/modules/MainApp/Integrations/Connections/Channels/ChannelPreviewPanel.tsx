@@ -7,15 +7,15 @@ import { useTranslation } from "react-i18next";
 
 import { PLACEHOLDER_TOKENS, Placeholder } from "@src/components/Placeholder";
 import Switch from "@src/components/Switch";
-import { ChevronsLeftRightEllipsisIcon, HugeiconsIcon } from "@src/icons";
-import type { useChannelState } from "@src/modules/MainApp/Integrations/hooks/useChannelState";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   PanelFooter,
   PanelHeader,
-} from "@src/modules/shared/layouts/blocks";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
+} from "@src/components/layout/blocks";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
+import { ChevronsLeftRightEllipsisIcon, HugeiconsIcon } from "@src/icons";
+import type { useChannelState } from "@src/modules/MainApp/Integrations/hooks/useChannelState";
 
 import { ChannelDetailContent, ChannelWizard } from ".";
 import { DetailHeaderClose } from "../../shared/DetailHeaderClose";
@@ -173,8 +173,8 @@ const ChannelPreviewPanel: React.FC<ChannelPreviewPanelProps> = ({
           {
             label: tIntegrations("common:actions.remove"),
             onClick: handleRemoveChannel,
-            variant: "danger",
-            appearance: "outline",
+            variant: "secondary",
+            tone: "danger",
           },
         ]}
       />

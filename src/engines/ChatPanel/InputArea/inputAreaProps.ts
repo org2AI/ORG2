@@ -32,7 +32,6 @@ export interface InputAreaProps {
   onRemoveEditImage?: (index: number) => void;
   surfaceBg?: boolean;
   omitChatHeader?: boolean;
-  chatPanelPosition?: "left" | "right";
   sessionId?: string;
   /** Optional native execution episode for Stop/status; messages stay on sessionId. */
   controlSessionId?: string | null;
@@ -41,6 +40,11 @@ export interface InputAreaProps {
   topRowPills?: React.ReactNode;
   topRowTrailingContent?: React.ReactNode;
   statusBanners?: React.ReactNode;
+  /**
+   * Tray tucked behind the top edge of the composer shell (queued messages).
+   * Rendered directly above the shell so the shell overlaps its bottom edge.
+   */
+  composerTray?: React.ReactNode;
   followUpSuggestions?: ReadonlyArray<SessionFollowUpSuggestion>;
   onFollowUpSuggestionSent?: () => void;
   composerShellRef?: React.Ref<HTMLDivElement>;

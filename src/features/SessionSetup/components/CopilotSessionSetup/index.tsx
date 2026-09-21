@@ -19,6 +19,7 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import SessionSetupStepIndicator from "@src/features/SessionSetup/components/SessionSetupStepIndicator";
 import { useWebviewPositionSync } from "@src/features/SessionSetup/hooks/useWebviewPositionSync";
 import {
@@ -28,10 +29,6 @@ import {
   HugeiconsIcon,
   Refresh04Icon,
 } from "@src/icons";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import { toNativeFrame } from "@src/util/platform/tauri/nativeFrame";
 
 // ============================================
@@ -289,9 +286,8 @@ const CopilotSessionSetup: React.FC<CopilotSessionSetupProps> = ({
             required
           >
             <Button
-              variant={isTokenValid ? "success" : "primary"}
-              appearance={isTokenValid ? "outline" : "solid"}
-              size="default"
+              variant={isTokenValid ? "secondary" : "primary"}
+              tone={isTokenValid ? "success" : undefined}
               onClick={() => setShowBrowser(true)}
               className="h-8 min-h-8"
             >

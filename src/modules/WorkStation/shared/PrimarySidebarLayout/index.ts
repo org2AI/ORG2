@@ -1,13 +1,8 @@
 /**
  * PrimarySidebarLayout - Shared primary sidebar layout components
  *
- * Provides consistent sidebar structure for Workstation apps:
- * - CodeEditor (EditorPrimarySidebar)
- * - DatabaseManager (DatabasePrimarySidebar)
- * - Browser (BrowserPrimarySidebar)
+ * Provides consistent sidebar structure for Workstation apps.
  */
-
-export { CollapsibleSection } from "./CollapsibleSection";
 
 export {
   PrimarySidebarLayoutWithSections,
@@ -17,5 +12,3 @@ export type {
   PrimarySidebarTab,
   PanelSection,
 } from "./PrimarySidebarLayoutWithSections";
-
-export { PanelSectionHeader } from "./PanelSectionHeader";

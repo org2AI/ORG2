@@ -1,8 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import { PILL_CONTROL_HOVER_CLASS } from "@src/components/CompoundPill/config";
 import {
   ActionMenuSurface,
   ActionSubmenu,
@@ -12,9 +13,9 @@ import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
   DROPDOWN_PANEL,
-  DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
 import EffortSlider from "@src/components/ModelPropertiesDropdown/EffortSlider";
+import Tooltip from "@src/components/Tooltip";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import {
   ArrowLeft01Icon,
@@ -40,22 +41,27 @@ import type {
  */
 const COMPACT_ACTION_ICON_SIZE = 16;
 
-/**
- * Anchor gap. Wider than the 4px dropdown default because this panel opens
- * directly over the pill it edits, and the pill has to stay readable while
- * the slider is dragged.
- */
-const COMPACT_PANEL_ANCHOR_GAP = 10;
+export interface HarnessSwitchAction {
+  label: string;
+  icon?: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}
 
 export interface ModelSettingsMenuProps {
   anchorRef: React.RefObject<HTMLButtonElement | null>;
   modelLabel: string;
-  value: string;
+  value?: string;
+  harnessSwitch?: HarnessSwitchAction;
+  showVariantControls?: boolean;
   variantOptions: VariantEditOptions;
   onModelClick: () => void;
   onChange: (modelId: string) => void;
+  /** Reports open/close so a host segment can hold its active styling. */
+  onOpenChange?: (open: boolean) => void;
   /** Open the detailed Effort/Speed rows instead of the compact slider. */
   defaultAdvanced?: boolean;
+  className?: string;
   renderTrigger: (props: {
     open: boolean;
     onClick: React.MouseEventHandler<HTMLButtonElement>;
@@ -69,11 +75,15 @@ export interface ModelSettingsMenuProps {
 export default function ModelSettingsMenu({
   anchorRef,
   modelLabel,
-  value,
+  value = "",
+  harnessSwitch,
+  showVariantControls = true,
   variantOptions,
   onModelClick,
   onChange,
+  onOpenChange,
   defaultAdvanced = false,
+  className = "",
   renderTrigger,
 }: ModelSettingsMenuProps) {
   const { t } = useTranslation();
@@ -91,11 +101,13 @@ export default function ModelSettingsMenu({
     anchorRef,
     align: "left",
     placement: "auto",
-    gap: COMPACT_PANEL_ANCHOR_GAP,
     captureKeyboardFocus: true,
     autoKeyboardNavigation: false,
     closeOnEsc: false,
   });
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
   const selection = variantOptions.parseSelection(value);
   const levels = variantOptions.availableLevels;
   const effortLabel = selection.level
@@ -160,6 +172,48 @@ export default function ModelSettingsMenu({
     </DropdownItem>
   );
 
+  const harnessButton = harnessSwitch ? (
+    <Tooltip
+      content={t("sessions:creator.switchAgent")}
+      position="top"
+      framedPanel
+      kind="button"
+    >
+      <Button
+        variant="tertiary"
+        size="small"
+        className="w-max shrink-0 px-1.5!"
+        style={{ fontSize: "var(--dropdown-font-size, 13px)" }}
+        icon={
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            size={COMPACT_ACTION_ICON_SIZE}
+          />
+        }
+        iconPosition="right"
+        disabled={harnessSwitch.disabled}
+        aria-label={`${t("sessions:creator.switchAgent")}: ${harnessSwitch.label}`}
+        data-testid="model-selector-switch-harness"
+        onClick={() => {
+          closeDropdown();
+          harnessSwitch.onClick();
+        }}
+      >
+        <span className="flex items-center gap-1.5 leading-none">
+          {harnessSwitch.icon && (
+            <span
+              aria-hidden="true"
+              className="flex size-3.5 shrink-0 items-center justify-center leading-none [&>svg]:block"
+            >
+              {harnessSwitch.icon}
+            </span>
+          )}
+          <span>{harnessSwitch.label}</span>
+        </span>
+      </Button>
+    </Tooltip>
+  ) : null;
+
   return (
     <>
       {renderTrigger({
@@ -178,7 +232,7 @@ export default function ModelSettingsMenu({
             role="dialog"
             tabIndex={-1}
             aria-label={text("settings")}
-            className={DROPDOWN_WIDTHS.fixedStatusPanelClass}
+            className={`w-max min-w-[250px] ${className}`}
             style={{
               position: "fixed",
               top: panelPosition.top,
@@ -190,14 +244,17 @@ export default function ModelSettingsMenu({
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => {
-              if (!advanced && event.key === "Escape") {
+              if (
+                (!advanced || !showVariantControls) &&
+                event.key === "Escape"
+              ) {
                 event.preventDefault();
                 event.stopPropagation();
                 close();
               }
             }}
           >
-            {advanced ? (
+            {advanced && showVariantControls ? (
               <ActionMenuSurface
                 panelRef={menuRef}
                 onClose={close}
@@ -205,6 +262,7 @@ export default function ModelSettingsMenu({
                 aria-label={text("settings")}
                 className={DROPDOWN_CLASSES.menuPanelBase}
               >
+                {harnessButton}
                 <DropdownItem
                   role="menuitem"
                   tabIndex={0}
@@ -217,7 +275,7 @@ export default function ModelSettingsMenu({
                   }}
                   suffix={
                     <span className="inline-flex items-center gap-2">
-                      <span className="max-w-36 truncate">{modelLabel}</span>
+                      <span>{modelLabel}</span>
                       {/* Search, not a chevron: this row dismisses the menu
                           for the spotlight model picker instead of opening a
                           flyout the way every ActionSubmenu row below does. */}
@@ -258,28 +316,29 @@ export default function ModelSettingsMenu({
                     )
                   )}
                 </ActionSubmenu>
-                {variantOptions.fastAvailableAnywhere && (
-                  <ActionSubmenu
-                    label={text("speed")}
-                    value={speedLabel}
-                    icon={null}
-                    dataTestId="model-settings-speed"
-                  >
-                    {choice(
-                      "speed-standard",
-                      text("standard"),
-                      { ...selection, fast: false },
-                      !selection.fast
-                    )}
-                    {choice(
-                      "speed-fast",
-                      text("fast"),
-                      { ...selection, fast: true },
-                      selection.fast,
-                      !variantOptions.fastAvailable(selection)
-                    )}
-                  </ActionSubmenu>
-                )}
+                {showVariantControls &&
+                  variantOptions.fastAvailableAnywhere && (
+                    <ActionSubmenu
+                      label={text("speed")}
+                      value={speedLabel}
+                      icon={null}
+                      dataTestId="model-settings-speed"
+                    >
+                      {choice(
+                        "speed-standard",
+                        text("standard"),
+                        { ...selection, fast: false },
+                        !selection.fast
+                      )}
+                      {choice(
+                        "speed-fast",
+                        text("fast"),
+                        { ...selection, fast: true },
+                        selection.fast,
+                        !variantOptions.fastAvailable(selection)
+                      )}
+                    </ActionSubmenu>
+                  )}
                 {variantOptions.thinkingToggleable && (
                   <ActionSubmenu
                     label={text("thinking")}
@@ -321,11 +380,13 @@ export default function ModelSettingsMenu({
                 </div>
               </ActionMenuSurface>
             ) : (
-              <div className={`${DROPDOWN_CLASSES.menuPanelBase} p-1`}>
-                <div className="flex items-center justify-between gap-2">
+              <div className={`${DROPDOWN_CLASSES.menuPanelBase} px-2 py-1`}>
+                <div className="flex items-center justify-start gap-1">
                   <Button
                     size="small"
                     variant="tertiary"
+                    className="w-max shrink-0 px-1.5!"
+                    style={{ fontSize: "var(--dropdown-font-size, 13px)" }}
                     icon={
                       <HugeiconsIcon
                         icon={ArrowRight01Icon}
@@ -341,46 +402,78 @@ export default function ModelSettingsMenu({
                   >
                     {t("sessions:creator.switchModel")}
                   </Button>
-                  {variantOptions.fastAvailableAnywhere && (
-                    <Button
-                      htmlType="button"
-                      variant="tertiary"
-                      size="small"
-                      className="rounded-lg"
-                      aria-label={text("fast")}
-                      aria-pressed={selection.fast}
-                      disabled={!variantOptions.fastAvailable(selection)}
-                      data-testid="model-settings-fast-toggle"
-                      onClick={() =>
-                        change({ ...selection, fast: !selection.fast })
-                      }
-                      appearance="soft"
-                      iconOnly
-                      icon={
-                        <HugeiconsIcon
-                          icon={FlashIcon}
-                          data-icon="fast"
-                          size={COMPACT_ACTION_ICON_SIZE}
-                          // Solid bolt while Fast is on. FlashIcon's path is an
-                          // outline with no fill of its own, so it inherits the
-                          // svg fill; dropping the stroke keeps the silhouette
-                          // clean instead of a filled shape with a heavy edge.
-                          fill={selection.fast ? "currentColor" : "none"}
-                          strokeWidth={selection.fast ? 0 : undefined}
-                        />
-                      }
-                    />
+                  {harnessButton && (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="h-3 w-px shrink-0 bg-border-2"
+                      />
+                      {harnessButton}
+                    </>
                   )}
+                  {showVariantControls &&
+                    variantOptions.fastAvailableAnywhere && (
+                      <Tooltip
+                        content={`${text("speed")}: ${speedLabel}`}
+                        position="top"
+                        framedPanel
+                        kind="button"
+                      >
+                        <Button
+                          variant="tertiary"
+                          size="small"
+                          className={`ml-auto shrink-0 rounded-lg ${PILL_CONTROL_HOVER_CLASS}`}
+                          aria-label={text("fast")}
+                          aria-pressed={selection.fast}
+                          disabled={!variantOptions.fastAvailable(selection)}
+                          data-testid="model-settings-fast-toggle"
+                          onClick={() =>
+                            change({ ...selection, fast: !selection.fast })
+                          }
+                          iconOnly
+                          icon={
+                            <HugeiconsIcon
+                              icon={FlashIcon}
+                              data-icon="fast"
+                              size={COMPACT_ACTION_ICON_SIZE}
+                              // Solid bolt while Fast is on. FlashIcon's path is an
+                              // outline with no fill of its own, so it inherits the
+                              // svg fill; dropping the stroke keeps the silhouette
+                              // clean instead of a filled shape with a heavy edge.
+                              fill={selection.fast ? "currentColor" : "none"}
+                              strokeWidth={selection.fast ? 0 : undefined}
+                            />
+                          }
+                        />
+                      </Tooltip>
+                    )}
                 </div>
-                <EffortSlider
-                  levels={levels}
-                  value={selection.level}
-                  onChange={(level) => change({ ...selection, level })}
-                  onPreviewChange={setPreviewLevel}
-                  fast={selection.fast}
-                  animate={isPositioned}
-                  showLabel={false}
-                />
+                {showVariantControls && variantOptions.thinkingToggleable && (
+                  <Button
+                    variant="tertiary"
+                    size="small"
+                    aria-pressed={selection.thinking}
+                    style={{ fontSize: "var(--dropdown-font-size, 13px)" }}
+                    data-testid="model-settings-thinking-toggle"
+                    onClick={() =>
+                      change({ ...selection, thinking: !selection.thinking })
+                    }
+                  >
+                    {text("thinking")}:{" "}
+                    {text(selection.thinking ? "on" : "off")}
+                  </Button>
+                )}
+                {showVariantControls && levels.length > 1 && (
+                  <EffortSlider
+                    levels={levels}
+                    value={selection.level}
+                    onChange={(level) => change({ ...selection, level })}
+                    onPreviewChange={setPreviewLevel}
+                    fast={selection.fast}
+                    animate={isPositioned}
+                    showLabel={false}
+                  />
+                )}
               </div>
             )}
           </div>,

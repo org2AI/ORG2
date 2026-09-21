@@ -9,7 +9,7 @@
  *   - useBrowserTabSync    — bidirectional sessions ↔ tab strip sync
  */
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import Message from "@src/components/Message";
@@ -82,8 +82,6 @@ export function useBrowserLayoutState({
     currentSessionIndex: browser.currentSessionIndex,
     selectedElement: browser.selectedElement,
     handleToggleDevTools,
-    handlePrevSession: browser.handlePrevSession,
-    handleNextSession: browser.handleNextSession,
     clearSelection: browser.clearSelection,
     setAddToAgent,
     toastSuccess: Message.success,
@@ -130,6 +128,7 @@ export function useBrowserLayoutState({
   // — Browser mode renders a single-item variant pinned to "New Browser
   // Tab". The bridge still wires ⌘W so the active tab can be closed.
   useWorkStationTabShortcutBridge({
+    host: "browser",
     enabled: isActive,
     onCloseActiveTab: handleWorkStationCloseActiveBrowserTab,
   });
@@ -155,26 +154,11 @@ export function useBrowserLayoutState({
     navigate(ROUTES.workStation.code.path);
   }, [navigate]);
 
-  // ============================================
-  // Tab bar props
-  // ============================================
-
-  const tabBarProps = useMemo(
-    () => ({
-      ...browserPane.tabBarProps,
-      paneId: "browser",
-      onTabClose: handleTabClose,
-      onNewTab: browser.handleNewSession,
-    }),
-    [browserPane.tabBarProps, handleTabClose, browser.handleNewSession]
-  );
-
   return {
     browser,
     automation,
     activeTab,
     hasOpenTabs,
-    tabBarProps,
     isShowingBrowserSession,
     showBrowserViewport,
     hasBrowserSessions,

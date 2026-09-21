@@ -6,6 +6,7 @@ import type { TreePanelNode } from "@src/components/TreePanelSidebar/types";
 export type { GitFileInfo };
 
 export interface TreeNodeProps {
+  showNativeTitle?: boolean;
   node: TreePanelNode;
   depth: number;
   onSelectNode: (path: string, node: TreePanelNode) => void;

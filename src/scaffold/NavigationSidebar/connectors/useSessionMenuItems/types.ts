@@ -27,6 +27,9 @@ export interface WorkspaceGroupActions {
 }
 
 export interface UseSessionMenuItemsParams {
+  /** View-only PR/child-row enrichment stops when all sidebar views close. */
+  enrichVisibleRows?: boolean;
+  customSections?: import("../sections/useSidebarSections").SidebarSectionsController;
   sortedSessions: Session[];
   visitedSessions: ReadonlySet<string>;
   repoPathToName: Map<string, string>;

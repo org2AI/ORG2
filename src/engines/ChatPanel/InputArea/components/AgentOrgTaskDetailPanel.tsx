@@ -82,10 +82,8 @@ export const AgentOrgTaskDetailPanel: React.FC<
           ))}
           {annotationPages[task.id].hasMore && (
             <Button
-              variant="primary"
-              appearance="ghost"
+              variant="ghost"
               size="inline"
-              htmlType="button"
               className="focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none disabled:opacity-40"
               disabled={annotationLoadingTaskId === task.id}
               onClick={() => void onLoadMoreAnnotations(task.id)}

@@ -1,0 +1,14 @@
+# Wiki removal UI audit
+
+| Line                                                                      | Element                       | Verdict          | Reason                                                                                                                                                                                                             | Suggested change |
+| ------------------------------------------------------------------------- | ----------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| `src/scaffold/NavigationSidebar/blocks/SidebarSettingsMenuItems.tsx:80`   | Wiki menu action              | keep with reason | Shared Button retains the dropdown row's token-owned geometry and direct icon/label children, which justify custom layout and appearance. The dialog popup attribute is removed because this now opens a web page. | None             |
+| `src/scaffold/NavigationSidebar/blocks/SidebarSettingsMenuButton.tsx:110` | Menu composition              | keep with reason | Removes the lazy WikiModal and visibility props; existing shared menu and account dialogs keep their owners.                                                                                                       | None             |
+| `src/components/WindowChrome/WindowsTopBar.tsx:239`                       | Documentation and issue links | keep with reason | URL-only changes retain the shared menu control and existing openLink navigation behavior.                                                                                                                         | None             |
+| `src/modules/AppLogin/index.tsx:157`                                      | License link                  | keep with reason | A text hyperlink retains native anchor semantics and existing text tokens; only its repository URL changes.                                                                                                        | None             |
+
+Verdict totals: **0 fix**, **4 keep with reason**, **0 abstract**.
+
+Reviewed D1–D5 over the changed controls: no new raw controls, arbitrary styling, hardcoded geometry/colors, or repeated visual structures. TypeScript AST inspection of the four changed production TSX files found zero native button/input/select/textarea sites, native createElement controls, or clickable div/span substitutes. Archived source receives only a repository URL correction.
+
+Verification: sidebar menu and adjacent link/onboarding tests pass; scoped ESLint and TypeScript check pass. No visual capture or desktop control was performed, per the user's computer-control preference. The surviving menu row has no visual styling changes.

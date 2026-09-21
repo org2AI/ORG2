@@ -33,6 +33,7 @@ import {
   getSyncJournalSnapshot,
   resetSyncJournalForTests,
 } from "./org2CloudSyncJournal";
+import { seedSidebarCloudScope } from "./sidebarCloudScope.testUtils";
 
 const parkKey = retentionParkKey(
   org2CloudAuthIdentityKey(AUTH),
@@ -261,6 +262,10 @@ describe("Org2CloudSyncEngine retention parking", () => {
     engine.stop();
     expect(fixture.store.get(org2CloudRetentionParkedAtom)).toEqual({});
     engine.start(fixture.store);
+    await engine.runSyncPass();
+    // The new account cannot reuse membership confirmed for the old identity.
+    expect(fixture.client.upsertSessionMetadata).toHaveBeenCalledTimes(1);
+    seedSidebarCloudScope(fixture.store, "corg-1");
     await engine.runSyncPass();
     expect(fixture.client.upsertSessionMetadata).toHaveBeenCalledTimes(2);
   });

@@ -15,7 +15,11 @@ import {
   CursorInWindowIcon,
   ThirdBracketIcon,
 } from "@src/icons";
+import { chatSendOnEnterAtom } from "@src/store/config/configAtom";
+import { compactComposerInputAtom } from "@src/store/session/compactComposerInputAtom";
+import { composerGlowVisibleAtom } from "@src/store/session/composerGlowVisibleAtom";
 import { collapseToolActivityAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
+import { linkOpenTargetAtom } from "@src/store/ui/linkOpenTargetAtom";
 
 import {
   SessionHeaderActionsMenu,
@@ -33,6 +37,14 @@ const mocks = vi.hoisted(() => ({
   pinnedActionsVisible: false,
   setPinnedActionsVisible: vi.fn(),
   setCollapseToolActivity: vi.fn(),
+  linkOpenTarget: "internal",
+  setLinkOpenTarget: vi.fn(),
+  setCompactComposerInput: vi.fn(),
+  setComposerGlowVisible: vi.fn(),
+  sendOnEnter: false,
+  setSendOnEnter: vi.fn(),
+  typingEffectEnabled: true,
+  setTypingEffectEnabled: vi.fn(),
 }));
 
 vi.mock("@src/api/tauri/externalHistory/appOpen", () => ({
@@ -55,9 +67,21 @@ vi.mock("jotai", async (importOriginal) => ({
   useAtom: (atom: unknown) =>
     atom === collapseToolActivityAtom
       ? [false, mocks.setCollapseToolActivity]
-      : [mocks.pinnedActionsVisible, mocks.setPinnedActionsVisible],
+      : atom === linkOpenTargetAtom
+        ? [mocks.linkOpenTarget, mocks.setLinkOpenTarget]
+        : atom === compactComposerInputAtom
+          ? [false, mocks.setCompactComposerInput]
+          : atom === composerGlowVisibleAtom
+            ? [true, mocks.setComposerGlowVisible]
+            : atom === chatSendOnEnterAtom
+              ? [mocks.sendOnEnter, mocks.setSendOnEnter]
+              : [mocks.pinnedActionsVisible, mocks.setPinnedActionsVisible],
   useAtomValue: () => mocks.session,
   useSetAtom: () => mocks.openWindow,
+}));
+vi.mock("@src/hooks/settings/useSettings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@src/hooks/settings/useSettings")>()),
+  useSetting: () => [mocks.typingEffectEnabled, mocks.setTypingEffectEnabled],
 }));
 vi.mock("@src/util/ui/theme/themeUtils", () => ({
   useCurrentTheme: () => "light",
@@ -150,6 +174,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.eligible = true;
   mocks.pinnedActionsVisible = false;
+  mocks.sendOnEnter = false;
+  mocks.linkOpenTarget = "internal";
   mocks.appOpenPlan.mockResolvedValue(null);
   mocks.openInApp.mockResolvedValue(undefined);
   container = document.createElement("div");
@@ -237,6 +263,7 @@ describe("SessionHeaderActionsMenu", () => {
       "session-project-links-submenu",
       "session-ui-settings-submenu",
       "session-input-settings-submenu",
+      "session-navigation-submenu",
     ]) {
       const suffix = element(testId).lastElementChild;
       const chevron = suffix?.querySelector("svg");
@@ -344,6 +371,7 @@ describe("SessionHeaderActionsMenu", () => {
       "session-project-links-submenu",
       "session-ui-settings-submenu",
       "session-input-settings-submenu",
+      "session-navigation-submenu",
     ]);
     expect(
       document.querySelector('[data-testid="session-track-as-project-button"]')
@@ -423,11 +451,12 @@ describe("SessionHeaderActionsMenu", () => {
     expect(
       [...switches].map((control) => control.getAttribute("aria-label"))
     ).toEqual([
-      "common:pagination.title",
+      "common:layoutSettings.paginateChatHistory",
       "chat.showTokenUsage",
       "chat.showTurnMetadata",
       "chat.showInlineDiffs",
       "chat.collapseToolActivity",
+      "settings:agentSessions.typingAnimation",
     ]);
     expect(panel.children[1].getAttribute("role")).toBe("separator");
     expect(panel.children[1].className).toBe(
@@ -460,6 +489,11 @@ describe("SessionHeaderActionsMenu", () => {
       true,
       expect.anything()
     );
+    expect(switches[5].getAttribute("aria-checked")).toBe("true");
+    expect(mocks.setTypingEffectEnabled).toHaveBeenCalledWith(
+      false,
+      expect.anything()
+    );
     expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
     expect(
       element("session-ui-settings-submenu").getAttribute("aria-expanded")
@@ -471,12 +505,46 @@ describe("SessionHeaderActionsMenu", () => {
 
     click("session-input-settings-submenu");
     const inputPanel = element("session-input-settings-submenu-panel");
-    expect(inputPanel.querySelectorAll('[role="switch"]')).toHaveLength(1);
+    const inputSwitches =
+      inputPanel.querySelectorAll<HTMLButtonElement>('[role="switch"]');
+    expect(
+      [...inputSwitches].map((control) => [
+        control.getAttribute("aria-label"),
+        control.getAttribute("aria-checked"),
+      ])
+    ).toEqual([
+      ["chat.startPage.showSkills", "false"],
+      ["chat.compactInput", "false"],
+      ["chat.composerGlow", "true"],
+      ["chat.separateEffortPill", "false"],
+    ]);
+    const sendPill = element("session-menu-send-on-enter");
+    expect(sendPill.getAttribute("aria-label")).toBe("chat.sendMethod");
+    const sendOptions = sendPill.querySelectorAll<HTMLButtonElement>(
+      "button[aria-pressed]"
+    );
+    expect(
+      [...sendOptions].map((option) => option.getAttribute("aria-pressed"))
+    ).toEqual(["false", "true"]);
+    act(() => sendOptions[0]?.click());
+    expect(mocks.setSendOnEnter).toHaveBeenCalledWith(true);
+
     click("session-menu-show-skills-toggle");
     expect(mocks.setPinnedActionsVisible).toHaveBeenCalledWith(
       true,
       expect.anything()
     );
+    click("session-menu-compact-input-toggle");
+    expect(mocks.setCompactComposerInput).toHaveBeenCalledWith(
+      true,
+      expect.anything()
+    );
+    click("session-menu-composer-glow-toggle");
+    expect(mocks.setComposerGlowVisible).toHaveBeenCalledWith(
+      false,
+      expect.anything()
+    );
+    expect(mocks.setPinnedActionsVisible).toHaveBeenCalledOnce();
     expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
 
     render({ showTranscriptActions: false });
@@ -493,6 +561,75 @@ describe("SessionHeaderActionsMenu", () => {
     expect(toggle.getAttribute("aria-checked")).toBe("false");
     act(() => toggle.click());
     expect(props.handleCompactDisplayModeToggle).toHaveBeenCalledWith(false);
+  });
+
+  it("picks where links open from Navigation without closing the menu", () => {
+    render();
+    expect(element("session-navigation-submenu").textContent).toBe(
+      "chat.navigation.title"
+    );
+    click("session-navigation-submenu");
+    const panel = element("session-navigation-submenu-panel");
+    expect(panel.firstElementChild?.className).toBe(
+      DROPDOWN_CLASSES.sectionLabel
+    );
+    expect(panel.firstElementChild?.textContent).toBe(
+      "chat.navigation.openLinksIn"
+    );
+    const options = [
+      ...panel.querySelectorAll<HTMLElement>('[role="menuitemradio"]'),
+    ];
+    expect(
+      options.map((option) => [
+        option.getAttribute("data-testid"),
+        option.textContent,
+        option.getAttribute("aria-checked"),
+      ])
+    ).toEqual([
+      [
+        "session-menu-link-target-internal",
+        "chat.navigation.internalBrowser",
+        "true",
+      ],
+      [
+        "session-menu-link-target-external",
+        "chat.navigation.externalBrowser",
+        "false",
+      ],
+    ]);
+
+    key("ArrowDown");
+    expect(document.activeElement).toBe(options[0]);
+    key("ArrowDown");
+    expect(document.activeElement).toBe(options[1]);
+    key("Enter");
+    expect(mocks.setLinkOpenTarget).toHaveBeenCalledWith("external");
+    expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
+
+    mocks.linkOpenTarget = "external";
+    render();
+    expect(
+      element("session-menu-link-target-external").getAttribute("aria-checked")
+    ).toBe("true");
+    click("session-menu-link-target-internal");
+    expect(mocks.setLinkOpenTarget).toHaveBeenLastCalledWith("internal");
+    expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
+  });
+
+  it("keeps Navigation for human sessions, which hide the transcript settings", () => {
+    render({ showTranscriptActions: false });
+    expect(submenuIds()).toEqual([
+      "session-move-submenu",
+      "session-copy-submenu",
+      "session-project-links-submenu",
+      "session-navigation-submenu",
+    ]);
+    const navigationGroup = element(
+      "session-navigation-submenu"
+    ).parentElement!;
+    expect(navigationGroup.previousElementSibling?.className).toBe(
+      DROPDOWN_CLASSES.menuGroupSeparator
+    );
   });
 
   it("preserves copy eligibility and disabled states", () => {
@@ -727,6 +864,7 @@ describe("SessionHeaderActionsMenu native app action", () => {
         "session-project-links-submenu",
         "session-ui-settings-submenu",
         "session-input-settings-submenu",
+        "session-navigation-submenu",
       ]);
       expect(
         document.querySelector('[data-testid="session-open-in-app-submenu"]')
@@ -902,6 +1040,7 @@ describe("SessionHeaderActionsMenu native app action", () => {
     for (const testId of [
       "session-ui-settings-submenu",
       "session-input-settings-submenu",
+      "session-navigation-submenu",
       "session-project-links-submenu",
       "session-copy-submenu",
       "session-move-submenu",

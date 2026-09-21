@@ -2,8 +2,8 @@
  * WorkStation editor repo cache.
  *
  * File-tab caches and the active editor repo are partitioned by the presented
- * WorkStation workspace. A session and the Global Workspace may therefore use
- * the same repository without restoring or overwriting each other's file tabs.
+ * WorkStation workspace. Directory sharing reuses one cache across matching
+ * chats; per-chat-tab sharing retains separate session caches.
  * Shared resource tabs (Browser, Terminal, Database, etc.) are not stored here.
  *
  * Persistence uses new v3 keys. On the first v3 read, a valid legacy v2 cache
@@ -19,10 +19,10 @@ import type { EditorCacheMap, EditorRepoCache, WorkStationTab } from "./types";
 import type { WorkstationWorkspaceId } from "./types";
 
 /** Maximum repos cached independently in each WorkStation workspace. */
-export const MAX_EDITOR_CACHE_REPOS = 5;
+const MAX_EDITOR_CACHE_REPOS = 5;
 
 /** Maximum file tabs cached for one workspace/repository pair. */
-export const MAX_FILE_TABS_PER_REPO = 20;
+const MAX_FILE_TABS_PER_REPO = 20;
 
 const STORAGE_KEY_CACHE = "orgii-v3-editor-cache-by-workspace";
 const STORAGE_KEY_ACTIVE_REPO = "orgii-v3-active-repo-by-workspace";
@@ -95,7 +95,11 @@ function sanitizeCacheByWorkspace(value: unknown): EditorCacheByWorkspace {
   if (!isRecord(value)) return {};
   const result: EditorCacheByWorkspace = {};
   for (const [workspaceId, cache] of Object.entries(value)) {
-    if (workspaceId !== "global" && !workspaceId.startsWith("session:")) {
+    if (
+      workspaceId !== "global" &&
+      !workspaceId.startsWith("session:") &&
+      !workspaceId.startsWith("directory:")
+    ) {
       continue;
     }
     result[workspaceId as WorkstationWorkspaceId] =
@@ -110,7 +114,11 @@ function sanitizeActiveReposByWorkspace(
   if (!isRecord(value)) return {};
   const result: ActiveEditorRepoByWorkspace = {};
   for (const [workspaceId, repoPath] of Object.entries(value)) {
-    if (workspaceId !== "global" && !workspaceId.startsWith("session:")) {
+    if (
+      workspaceId !== "global" &&
+      !workspaceId.startsWith("session:") &&
+      !workspaceId.startsWith("directory:")
+    ) {
       continue;
     }
     if (repoPath === null || typeof repoPath === "string") {
@@ -218,19 +226,6 @@ export const activeEditorRepoAtom = atom(
 );
 activeEditorRepoAtom.debugLabel = "activeEditorRepoAtom";
 
-export const activeRepoCacheAtom = atom((get) => {
-  const cache = get(editorCacheAtom);
-  const activeRepo = get(activeEditorRepoAtom);
-  return activeRepo ? cache[activeRepo] : undefined;
-});
-activeRepoCacheAtom.debugLabel = "activeRepoCacheAtom";
-
-/** Number of repos cached in the currently presented workspace. */
-export const editorCacheSizeAtom = atom(
-  (get) => Object.keys(get(editorCacheAtom)).length
-);
-editorCacheSizeAtom.debugLabel = "editorCacheSizeAtom";
-
 export const saveRepoCacheAtom = atom(
   null,
   (get, set, cacheEntry: EditorRepoCache) => {
@@ -257,19 +252,6 @@ export const saveRepoCacheAtom = atom(
   }
 );
 saveRepoCacheAtom.debugLabel = "saveRepoCacheAtom";
-
-export const clearRepoCacheAtom = atom(null, (get, set, repoPath: string) => {
-  const cache = { ...get(editorCacheAtom) };
-  delete cache[repoPath];
-  set(editorCacheAtom, cache);
-});
-clearRepoCacheAtom.debugLabel = "clearRepoCacheAtom";
-
-/** Clears every repo cache in the currently presented workspace only. */
-export const clearAllEditorCacheAtom = atom(null, (_get, set) => {
-  set(editorCacheAtom, {});
-});
-clearAllEditorCacheAtom.debugLabel = "clearAllEditorCacheAtom";
 
 /**
  * Drop a session workspace's editor cache (repo tab layouts) and its

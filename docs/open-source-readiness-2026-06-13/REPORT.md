@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-13
 **Scope:** Read-only publishability audit of the working tree (tracked files) plus a bounded git-history spot-check.
-**Repo:** `git@github.com:YORG-AI/ORGII.git` (1,213 commits)
+**Repo:** `git@github.com:org2AI/ORG2.git` (1,213 commits)
 **License:** AGPL-3.0-or-later
 
 > This report does **not** modify source code. It flags what should not be published as-is and what is missing for a healthy OSS project. No git-history-rewriting commands were run.
@@ -13,7 +13,7 @@
 
 - **CRITICAL (blocking) findings: 0.** No live secrets, private keys, cloud credentials, or hardcoded tokens were found in the tracked tree. `.env` is gitignored, never committed, and locally empty. CI workflows correctly source all credentials from `${{ secrets.* }}`.
 - The repo is in **good** OSS shape: LICENSE, README, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY.md, CLA, and issue/PR templates are all present, and `.gitignore` is comprehensive.
-- The main pre-publish cleanups are **cosmetic/correctness**, not security: stale GitHub org/repo URLs (`soyd-app/…`, `yorgai/soyd`) that will 404, a leftover `soyd` codename in `package.json`, and a developer's personal name/email in two spots.
+- The main pre-publish cleanups are **cosmetic/correctness**, not security: stale GitHub org/repo URLs (corrected to the current repository on 2026-09-15), a leftover `soyd` codename in `package.json`, and a developer's personal name/email in two spots.
 
 ---
 
@@ -72,16 +72,16 @@ No GPL/AGPL-incompatible bundled third-party source was identified. AGPL is the 
 
 ## 4. Project Hygiene for OSS
 
-| Sev    | Item                                                                                              | Finding                                                                                                                                                                                                    | Recommended action                                                                                           |
-| ------ | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| medium | `.github/ISSUE_TEMPLATE/config.yml:5,8,11`                                                        | Links point to **wrong org** `https://github.com/soyd-app/ORGII/...` (wiki, discussions, security advisories). Will 404 once public; the security-advisory link is the worst since it blocks vuln reports. | Update to `YORG-AI/ORGII`.                                                                                   |
-| medium | `src-tauri/crates/system-services/src/app_menu.rs:572`                                            | In-app **"Report Issue" menu** opens `https://github.com/yorgai/soyd/issues` — wrong repo, user-facing broken link.                                                                                        | Update to `https://github.com/YORG-AI/ORGII/issues`.                                                         |
-| low    | `src/modules/AppLogin/index.tsx:22`, `src/scaffold/NavigationSidebar/variants/HomeSidebar.tsx:60` | GitHub URL hardcoded as lowercase `yorg-ai/orgii`. GitHub redirects case-insensitively so it resolves, but it is inconsistent with the canonical `YORG-AI/ORGII`.                                          | Normalize to `YORG-AI/ORGII`.                                                                                |
-| low    | `package.json`                                                                                    | `"name": "com.soyd.app"` (legacy codename), `"description": ""` empty, `"author": ""` empty.                                                                                                               | Set name/description/author to ORGII values before publishing to a registry.                                 |
-| low    | Legacy codename                                                                                   | ~19 tracked files still reference `soyd`/`SOYD`. Most are internal (test configs, dev scripts, parser strings); a few are user/contributor-facing (the URLs above).                                        | Sweep and decide whether to fully rename or keep internal references; prioritize the user-facing URLs above. |
-| none   | README / CONTRIBUTING / CODE_OF_CONDUCT / SECURITY.md                                             | All present and substantive. README has product description + Quick start; SECURITY.md has `security@orgii.ai` + coordinated-disclosure policy.                                                            | No action.                                                                                                   |
-| none   | Issue/PR templates                                                                                | Full set present (`bug_report`, `feature_request`, `performance_report`, `agent_behavior`, `security_vulnerability`, `translation_issue`, `config.yml`, `PULL_REQUEST_TEMPLATE.md`).                       | No action (aside from the `config.yml` URL fix above).                                                       |
-| none   | `.gitignore`                                                                                      | Comprehensive — ignores `.env`, build artifacts, model files, agent transcript dumps, sidecar binaries, IDE files. `build/` confirmed **not** tracked.                                                     | No action.                                                                                                   |
+| Sev    | Item                                                                                                 | Finding                                                                                                                                                                              | Recommended action                                                                                           |
+| ------ | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| medium | `.github/ISSUE_TEMPLATE/config.yml`                                                                  | Historical finding: outdated repository links affected wiki, discussions, and security advisory links.                                                                               | Resolved: links now use `org2AI/ORG2`.                                                                       |
+| medium | `src-tauri/crates/system-services/src/app_menu.rs`                                                   | Historical finding: the Report Issue menu used an outdated repository link.                                                                                                          | Resolved: opens `https://github.com/org2AI/ORG2/issues`.                                                     |
+| low    | `src/modules/AppLogin/index.tsx`, `.archive/src/scaffold/NavigationSidebar/variants/HomeSidebar.tsx` | Historical finding: hardcoded GitHub links used an outdated repository identity.                                                                                                     | Resolved: links use `org2AI/ORG2`.                                                                           |
+| low    | `package.json`                                                                                       | `"name": "com.soyd.app"` (legacy codename), `"description": ""` empty, `"author": ""` empty.                                                                                         | Set name/description/author to ORGII values before publishing to a registry.                                 |
+| low    | Legacy codename                                                                                      | ~19 tracked files still reference `soyd`/`SOYD`. Most are internal (test configs, dev scripts, parser strings); a few are user/contributor-facing (the URLs above).                  | Sweep and decide whether to fully rename or keep internal references; prioritize the user-facing URLs above. |
+| none   | README / CONTRIBUTING / CODE_OF_CONDUCT / SECURITY.md                                                | All present and substantive. README has product description + Quick start; SECURITY.md has `security@orgii.ai` + coordinated-disclosure policy.                                      | No action.                                                                                                   |
+| none   | Issue/PR templates                                                                                   | Full set present (`bug_report`, `feature_request`, `performance_report`, `agent_behavior`, `security_vulnerability`, `translation_issue`, `config.yml`, `PULL_REQUEST_TEMPLATE.md`). | No action (aside from the `config.yml` URL fix above).                                                       |
+| none   | `.gitignore`                                                                                         | Comprehensive — ignores `.env`, build artifacts, model files, agent transcript dumps, sidecar binaries, IDE files. `build/` confirmed **not** tracked.                               | No action.                                                                                                   |
 
 ---
 
@@ -104,13 +104,13 @@ No GPL/AGPL-incompatible bundled third-party source was identified. AGPL is the 
 
 **Strongly recommended (correctness / will break for users):**
 
-- [ ] Fix `.github/ISSUE_TEMPLATE/config.yml` URLs from `soyd-app/ORGII` → `YORG-AI/ORGII` (esp. the security-advisory link).
-- [ ] Fix in-app "Report Issue" URL `src-tauri/crates/system-services/src/app_menu.rs:572` from `yorgai/soyd` → `YORG-AI/ORGII`.
+- [x] Update issue-template repository links to `org2AI/ORG2`, including security advisories.
+- [x] Update the in-app Report Issue URL to `https://github.com/org2AI/ORG2/issues`.
 - [ ] Decide on the Apple signing identity exposing personal name `HOUYi HE` (`tauri.macos.conf.json:10`, `release.yaml:15`) — accept as already-public, or move to an org Developer ID.
 
 **Recommended (polish / consistency):**
 
-- [ ] Normalize hardcoded GitHub URLs to `YORG-AI/ORGII` (`AppLogin/index.tsx:22`, `HomeSidebar.tsx:60`).
+- [x] Normalize hardcoded GitHub URLs to `org2AI/ORG2` (`AppLogin/index.tsx`, archived `HomeSidebar.tsx`).
 - [ ] Update `package.json` `name` (`com.soyd.app`), `description`, and `author`.
 - [ ] Genericize the personal email in `useCurrentUserMemberId.ts:142` (`leeyyi@vip.qq.com` → `user@example.com`).
 - [ ] Add a project copyright line / `NOTICE` for the AGPL license; consider AGPL source headers.

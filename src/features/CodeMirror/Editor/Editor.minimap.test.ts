@@ -114,6 +114,7 @@ function render(enableMinimap?: boolean) {
           enableMinimap,
           enableFindReplace: false,
           enableGoToLine: false,
+          enableCodeNavigation: false,
           enableDirtyDiff: false,
         })
       )

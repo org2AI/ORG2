@@ -174,26 +174,3 @@ export function makeTrajectoryInput(
     ...overrides,
   };
 }
-
-// ============================================
-// Real-World Payload Samples
-// ============================================
-
-export const APPLY_PATCH_PAYLOAD = {
-  action_type: "tool_call",
-  function: "apply_patch",
-  args: {
-    patch_text: [
-      "*** Begin Patch",
-      "*** Add File: src/newFile.ts",
-      "+export const greeting = 'hello';",
-      "+export const farewell = 'bye';",
-      "*** Modify File: src/existing.ts",
-      "-const old = true;",
-      "+const updated = true;",
-      " const unchanged = 42;",
-      "*** End Patch",
-    ].join("\n"),
-  },
-  result: { content: "Patch applied successfully" },
-};

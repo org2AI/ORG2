@@ -26,7 +26,10 @@ import {
 import type { UniversalEventProps } from "@src/engines/SessionCore/rendering/types/universalProps";
 import { deriveToolAction } from "@src/util/ui/rendering/toolAction";
 
+import { useAgentTurnContext } from "../ChatHistory/AgentTurnContext";
+import OutputImageGallery from "../ChatItems/OutputImageGallery";
 import { CHAT_BLOCKS, FALLBACK_BLOCK } from "./chatBlocks";
+import { outputImages, textOnlyOutputResult } from "./outputImages";
 
 export type RecipeRendererProps = RawEventInput;
 
@@ -73,6 +76,7 @@ function extractAction(normalizedProps: UniversalEventProps): string {
 }
 
 export const RecipeRenderer: React.FC<RecipeRendererProps> = (props) => {
+  const turn = useAgentTurnContext();
   const toolName = extractActualToolName(props);
   const eventUiCanonical = props.event?.uiCanonical;
   const directUiCanonical = (props as Record<string, unknown>).uiCanonical as
@@ -86,6 +90,15 @@ export const RecipeRenderer: React.FC<RecipeRendererProps> = (props) => {
         : getCliUiCanonical(toolName);
   const normalizedProps = useNormalizedEventProps(props, uiCanonical);
 
+  const result = normalizedProps?.result;
+  const media = React.useMemo(
+    () => ({
+      images: turn?.outputImagesAtEnd ? [] : outputImages(result ?? {}),
+      textResult: textOnlyOutputResult(result ?? {}),
+    }),
+    [result, turn?.outputImagesAtEnd]
+  );
+
   if (!normalizedProps) return null;
 
   const action = extractAction(normalizedProps);
@@ -95,7 +108,15 @@ export const RecipeRenderer: React.FC<RecipeRendererProps> = (props) => {
     getActionChatBlock(normalizedProps.functionName ?? "", action || undefined);
   const Block = chatBlock ? CHAT_BLOCKS[chatBlock] : FALLBACK_BLOCK;
 
-  return <Block {...normalizedProps} />;
+  const { images, textResult } = media;
+  return (
+    <>
+      <Block {...normalizedProps} result={textResult} />
+      {!turn?.outputImagesAtEnd &&
+        chatBlock !== "hidden" &&
+        images.length > 0 && <OutputImageGallery images={images} />}
+    </>
+  );
 };
 
 RecipeRenderer.displayName = "RecipeRenderer";

@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import { ActivityTimestamp } from "@src/modules/shared/components/ActivityTimeline";
-import DetailFlowHeader from "@src/modules/shared/components/DetailFlowHeader";
+import DetailFlowHeader from "@src/components/DetailFlowHeader";
+import { ActivityTimestamp } from "@src/features/GitHubWork/ActivityTimeline";
 import type { WorkItem } from "@src/types/core/workItem";
 
 import { formatWorkItemShortId } from "../workItemIdentity";

@@ -201,9 +201,7 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
   const renderBranchDeleteAction = useCallback(
     (branch: { name: string }) =>
       createElement(Button, {
-        htmlType: "button",
         variant: "tertiary",
-        appearance: "soft",
         size: "sidebar",
         iconOnly: true,
         icon: createElement(HugeiconsIcon, { icon: Delete02Icon, size: 14 }),

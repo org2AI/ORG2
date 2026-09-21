@@ -4,7 +4,7 @@ use shared_state::{AgentBrowserConfig, BrowserAutomationProvider};
 
 const DESCRIPTION: &str = r#"Control a real Chrome browser through Vercel's `agent-browser` CLI.
 
-Pass the CLI subcommand in `command`; ORGII adds the executable, `--session orgii`, `--json`, and real-Chrome environment automatically.
+Pass the CLI subcommand in `command`; ORG2 adds the executable, `--session orgii`, `--json`, and real-Chrome environment automatically.
 
 Examples:
 - `open https://example.com`

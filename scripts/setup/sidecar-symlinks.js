@@ -50,7 +50,12 @@ const SIDECARS = [
   {
     name: "ORG2 Helper (Backend)",
     target: process.execPath, // Current Node.js binary path
-    path: path.join(PROJECT_ROOT, `ORG2 Helper (Backend)-${ARCH}`),
+    path: path.join(
+      PROJECT_ROOT,
+      "src-tauri",
+      "bin",
+      `ORG2 Helper (Backend)-${ARCH}`
+    ),
   },
   {
     name: "ORG2 Helper (Semantic)",

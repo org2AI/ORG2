@@ -2,8 +2,8 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AgentOrgRunView } from "@src/api/tauri/agent";
-import Button from "@src/components/Button";
 import Select from "@src/components/Select";
+import PanelFooter from "@src/components/layout/blocks/PanelFooter";
 import Modal from "@src/scaffold/ModalSystem";
 
 import type {
@@ -50,38 +50,35 @@ export const AgentOrgOverviewTaskActionDialog: React.FC<
       maskClosable={!isMutatingTask}
       closable={!isMutatingTask}
       onCancel={() => !isMutatingTask && onClose()}
-      bodyClassName="space-y-3 px-5 py-4"
+      bodyClassName="space-y-3 p-3"
       footer={
-        <div className="flex h-12 items-center justify-end gap-2 px-3">
-          <Button
-            variant="tertiary"
-            disabled={isMutatingTask}
-            onClick={onClose}
-          >
-            {t("common:actions.cancel")}
-          </Button>
-          <Button
-            variant={
-              taskActionDialog?.action === "cancel" ? "danger" : "primary"
-            }
-            disabled={
+        <PanelFooter
+          secondaryActions={[
+            {
+              label: t("common:actions.cancel"),
+              onClick: onClose,
+              disabled: isMutatingTask,
+            },
+          ]}
+          primaryAction={{
+            label:
+              taskActionDialog?.action === "reassign"
+                ? t("planner.agentOrgTasks.reassign", {
+                    defaultValue: "Reassign",
+                  })
+                : t("planner.agentOrgTasks.cancelTask", {
+                    defaultValue: "Cancel Task",
+                  }),
+            onClick: () => void onConfirm(),
+            tone: taskActionDialog?.action === "cancel" ? "danger" : undefined,
+            disabled:
               isMutatingTask ||
               (taskActionDialog?.action === "reassign" &&
-                !selectedReplacementOwner)
-            }
-            loading={isMutatingTask}
-            onClick={() => void onConfirm()}
-            data-testid="agent-org-task-handoff-confirm-button"
-          >
-            {taskActionDialog?.action === "reassign"
-              ? t("planner.agentOrgTasks.reassign", {
-                  defaultValue: "Reassign",
-                })
-              : t("planner.agentOrgTasks.cancelTask", {
-                  defaultValue: "Cancel Task",
-                })}
-          </Button>
-        </div>
+                !selectedReplacementOwner),
+            loading: isMutatingTask,
+            dataTestId: "agent-org-task-handoff-confirm-button",
+          }}
+        />
       }
     >
       <div className="text-[12px] leading-5 text-text-2">
@@ -148,44 +145,42 @@ export const AgentOrgOverviewHandoffResolutionDialog: React.FC<
       maskClosable={!isMutatingTask}
       closable={!isMutatingTask}
       onCancel={() => !isMutatingTask && onClose()}
-      bodyClassName="space-y-3 px-5 py-4"
+      bodyClassName="space-y-3 p-3"
       footer={
-        <div className="flex h-12 items-center justify-end gap-2 px-3">
-          <Button
-            variant="tertiary"
-            disabled={isMutatingTask}
-            onClick={onClose}
-          >
-            {t("common:actions.cancel")}
-          </Button>
-          <Button
-            variant={
+        <PanelFooter
+          secondaryActions={[
+            {
+              label: t("common:actions.cancel"),
+              onClick: onClose,
+              disabled: isMutatingTask,
+            },
+          ]}
+          primaryAction={{
+            label:
+              handoffResolutionDialog?.resolution === "continue_replacement"
+                ? t("planner.agentOrgTasks.continueReplacement", {
+                    defaultValue: "Continue replacement",
+                  })
+                : handoffResolutionDialog?.resolution === "keep_stopped"
+                  ? t("planner.agentOrgTasks.keepStopped", {
+                      defaultValue: "Keep stopped",
+                    })
+                  : t("planner.agentOrgTasks.abandonEpisode", {
+                      defaultValue: "Abandon episode",
+                    }),
+            onClick: () => void onConfirm(),
+            tone:
               handoffResolutionDialog?.resolution === "abandon_episode"
                 ? "danger"
-                : "primary"
-            }
-            disabled={
+                : undefined,
+            disabled:
               isMutatingTask ||
               (handoffResolutionDialog?.resolution === "continue_replacement" &&
-                handoffResolutionDialog.receipt.localEffectCount !== 0)
-            }
-            loading={isMutatingTask}
-            onClick={() => void onConfirm()}
-            data-testid="agent-org-handoff-resolution-confirm-button"
-          >
-            {handoffResolutionDialog?.resolution === "continue_replacement"
-              ? t("planner.agentOrgTasks.continueReplacement", {
-                  defaultValue: "Continue replacement",
-                })
-              : handoffResolutionDialog?.resolution === "keep_stopped"
-                ? t("planner.agentOrgTasks.keepStopped", {
-                    defaultValue: "Keep stopped",
-                  })
-                : t("planner.agentOrgTasks.abandonEpisode", {
-                    defaultValue: "Abandon episode",
-                  })}
-          </Button>
-        </div>
+                handoffResolutionDialog.receipt.localEffectCount !== 0),
+            loading: isMutatingTask,
+            dataTestId: "agent-org-handoff-resolution-confirm-button",
+          }}
+        />
       }
     >
       <div

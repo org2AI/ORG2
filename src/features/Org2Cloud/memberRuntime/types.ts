@@ -9,7 +9,7 @@
  *   1. cloud RPCs (orgii-cloud-infra migration 0010_member_runtime.sql)
  *   2. Tauri collector commands (src-tauri: perf-utils + orgtrack)
  *   3. the push scheduler + RPC client (features/Org2Cloud/memberRuntime/)
- *   4. the Team section of the Runtime tab (modules/shared/dataSource/)
+ *   4. the Team section of the Runtime tab (features/RuntimeDataSource/)
  *
  * FROZEN CONTRACT: the exported names/shapes here are pinned so the four
  * implementation sites can land independently. Additive evolution only.

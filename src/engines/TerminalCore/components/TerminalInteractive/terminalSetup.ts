@@ -11,6 +11,7 @@ import { ShellIntegrationAddon } from "@src/engines/TerminalCore/addons/ShellInt
 // Direct leaf import to avoid pulling @src/store's barrel — which transitively
 // reaches SidebarModules/Terminal → engines/TerminalCore → this file.
 import type { TerminalThemeName } from "@src/store/ui/uiAtom";
+import { openLink } from "@src/util/ui/openLink";
 
 import type { TerminalViewProps } from "./types";
 import { getXTermTheme } from "./utils/theme";
@@ -78,7 +79,9 @@ export function createTerminalInstance({
   terminal.loadAddon(searchAddon);
   terminal.loadAddon(serializeAddon);
   terminal.loadAddon(unicode11Addon);
-  terminal.loadAddon(new WebLinksAddon());
+  // The addon's default handler uses `window.open`, which the app window does
+  // not hand to a browser; open terminal links like every other link.
+  terminal.loadAddon(new WebLinksAddon((_event, uri) => openLink(uri)));
 
   if (shellIntegration) {
     terminal.loadAddon(
@@ -120,8 +123,10 @@ export function initializeWhenContainerVisible({
     resizeObserver?.disconnect();
     resizeObserver = null;
 
-    fitTerminal();
+    // Fit using the renderer that will draw the first prompt. WebGL and DOM
+    // round cell widths differently, especially at fractional display scales.
     loadWebGL();
+    fitTerminal();
 
     setIsReady(true);
     initPty(terminal.cols, terminal.rows);

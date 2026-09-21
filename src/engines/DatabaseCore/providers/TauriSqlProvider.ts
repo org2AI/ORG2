@@ -11,6 +11,10 @@ import type {
   QueryResult,
   TableInfo,
 } from "../types";
+import {
+  ConnectionLifecycle,
+  requireConnectionLease,
+} from "./ConnectionLifecycle";
 
 type TauriSqlConnectionConfig =
   | PostgresConnectionConfig
@@ -58,8 +62,9 @@ export abstract class TauriSqlProvider<
   readonly type: Config["type"];
   readonly config: Config;
 
-  private _status: ConnectionStatus = { state: "disconnected" };
-  private _connected = false;
+  private lifecycle = new ConnectionLifecycle<string>((connectionId) =>
+    invoke<void>("db_sql_disconnect", { connectionId }).catch(() => {})
+  );
 
   protected constructor(
     config: Config,
@@ -70,53 +75,32 @@ export abstract class TauriSqlProvider<
   }
 
   get status(): ConnectionStatus {
-    return this._status;
+    return this.lifecycle.status;
   }
 
-  async connect(): Promise<void> {
-    if (this._connected) return;
-
-    this._status = { state: "connecting" };
-
-    try {
-      await invoke("db_sql_connect", {
+  connect(): Promise<void> {
+    return this.lifecycle.connect(() =>
+      invoke<string>("db_sql_connect", {
         connectionId: this.config.id,
         dbType: this.type,
         connectionString: this.dialect.buildConnectionString(this.config),
-      });
-      this._connected = true;
-      this._status = { state: "connected", connectedAt: Date.now() };
-    } catch (error) {
-      this._connected = false;
-      const message = error instanceof Error ? error.message : String(error);
-      this._status = { state: "error", error: message };
-      throw new Error(message);
-    }
+      }).then(requireConnectionLease)
+    );
   }
 
-  async disconnect(): Promise<void> {
-    if (this._connected) {
-      try {
-        await invoke("db_sql_disconnect", {
-          connectionId: this.config.id,
-        });
-      } catch {
-        // Best-effort disconnect
-      }
-    }
-    this._connected = false;
-    this._status = { state: "disconnected" };
+  disconnect(): Promise<void> {
+    return this.lifecycle.disconnect();
   }
 
   isConnected(): boolean {
-    return this._connected && this._status.state === "connected";
+    return this.lifecycle.current !== null;
   }
 
   async getTables(): Promise<TableInfo[]> {
     this.ensureConnected();
 
     const result = await invoke<TauriTableInfo[]>("db_sql_get_tables", {
-      connectionId: this.config.id,
+      connectionId: this.lifecycle.current,
     });
 
     return result.map((table) => ({
@@ -131,7 +115,7 @@ export abstract class TauriSqlProvider<
     this.ensureConnected();
 
     const result = await invoke<TauriColumnInfo[]>("db_sql_get_table_schema", {
-      connectionId: this.config.id,
+      connectionId: this.lifecycle.current,
       tableName,
     });
 
@@ -171,7 +155,7 @@ export abstract class TauriSqlProvider<
     sql += ` LIMIT ${pageSize} OFFSET ${offset}`;
 
     const result = await invoke<TauriQueryResult>("db_sql_query", {
-      connectionId: this.config.id,
+      connectionId: this.lifecycle.current,
       sql,
     });
     const duration = performance.now() - startTime;
@@ -179,7 +163,7 @@ export abstract class TauriSqlProvider<
     let totalCount: number | undefined;
     try {
       const countResult = await invoke<TauriQueryResult>("db_sql_query", {
-        connectionId: this.config.id,
+        connectionId: this.lifecycle.current,
         sql: `SELECT COUNT(*) as count FROM ${table}`,
       });
       if (countResult.rows.length > 0) {
@@ -203,7 +187,7 @@ export abstract class TauriSqlProvider<
 
     const startTime = performance.now();
     const result = await invoke<TauriQueryResult>("db_sql_query", {
-      connectionId: this.config.id,
+      connectionId: this.lifecycle.current,
       sql,
     });
 
@@ -295,7 +279,7 @@ export abstract class TauriSqlProvider<
   ): Promise<ExecuteResult> {
     try {
       const result = await invoke<TauriExecuteResult>("db_sql_execute", {
-        connectionId: this.config.id,
+        connectionId: this.lifecycle.current,
         sql,
       });
       return {
@@ -314,7 +298,7 @@ export abstract class TauriSqlProvider<
   }
 
   private ensureConnected(): void {
-    if (!this._connected) {
+    if (this.lifecycle.current === null) {
       throw new Error("Database not connected. Call connect() first.");
     }
   }

@@ -123,13 +123,38 @@ pub fn parse_response(resp: ResponsesResponse) -> Result<LLMResponse, ProviderEr
 
     let mut usage = HashMap::new();
     if let Some(u) = resp.usage {
+        let cached = u
+            .input_tokens_details
+            .and_then(|details| details.cached_tokens)
+            .unwrap_or(0)
+            .max(0);
+        // A cache hit is a subset of reported input, including malformed
+        // upstream counters; never let it inflate reconstructed context.
+        let cached = u
+            .input_tokens
+            .map_or(cached, |input| cached.min(input.max(0)));
         if let Some(input) = u.input_tokens {
-            usage.insert(usage_key::PROMPT_TOKENS.to_string(), input);
+            // Responses input includes cache hits. The internal usage contract
+            // keeps uncached prompt and cache reads disjoint, so downstream
+            // context/cost accounting must not add the cached prefix twice.
+            usage.insert(
+                usage_key::PROMPT_TOKENS.to_string(),
+                input.max(0).saturating_sub(cached).max(0),
+            );
+        }
+        if cached > 0 {
+            usage.insert(usage_key::CACHE_READ_TOKENS.to_string(), cached);
         }
         if let Some(output) = u.output_tokens {
             usage.insert(usage_key::COMPLETION_TOKENS.to_string(), output);
         }
-        if let Some(total) = u.total_tokens {
+        if let Some(total) = u.total_tokens.or_else(|| {
+            // If a compatible relay omits total, derive it from inclusive
+            // input before splitting cache hits out of the prompt counter.
+            u.input_tokens
+                .zip(u.output_tokens)
+                .map(|(input, output)| input.max(0).saturating_add(output.max(0)))
+        }) {
             usage.insert(usage_key::TOTAL_TOKENS.to_string(), total);
         }
     }
@@ -164,6 +189,7 @@ mod tests {
             })],
             usage: Some(ResponsesUsage {
                 input_tokens: Some(10),
+                input_tokens_details: None,
                 output_tokens: Some(5),
                 total_tokens: Some(15),
             }),
@@ -176,6 +202,102 @@ mod tests {
         assert_eq!(result.finish_reason, "stop");
         assert_eq!(result.usage.get("prompt_tokens"), Some(&10));
         assert_eq!(result.usage.get("completion_tokens"), Some(&5));
+    }
+
+    #[test]
+    fn wire_responses_usage_normalizes_cached_input_without_double_counting() {
+        for (input, output, cached) in [(4544, 265, 3584), (4966, 427, 3584), (3584, 10, 3584)] {
+            let wire = serde_json::json!({
+                "output": [],
+                "usage": {
+                    "input_tokens": input,
+                    "output_tokens": output,
+                    "total_tokens": input + output,
+                    "input_tokens_details": {"cached_tokens": cached}
+                }
+            });
+            let parsed = parse_response(serde_json::from_value(wire).unwrap()).unwrap();
+            assert_eq!(parsed.usage[usage_key::PROMPT_TOKENS], input - cached);
+            assert_eq!(parsed.usage[usage_key::CACHE_READ_TOKENS], cached);
+            assert_eq!(parsed.usage[usage_key::COMPLETION_TOKENS], output);
+            assert_eq!(parsed.usage[usage_key::TOTAL_TOKENS], input + output);
+            assert_eq!(
+                parsed.usage[usage_key::PROMPT_TOKENS] + parsed.usage[usage_key::CACHE_READ_TOKENS],
+                input
+            );
+        }
+    }
+
+    #[test]
+    fn optional_cache_details_preserve_legacy_input_and_malformed_counts_cannot_underflow() {
+        for (details, prompt, cache) in [
+            (serde_json::Value::Null, 100, None),
+            (serde_json::json!({}), 100, None),
+            (serde_json::json!({"cached_tokens": 0}), 100, None),
+            (serde_json::json!({"cached_tokens": -10}), 100, None),
+            (serde_json::json!({"cached_tokens": i64::MAX}), 0, Some(100)),
+        ] {
+            let wire = serde_json::json!({"usage": {"input_tokens": 100, "input_tokens_details": details}});
+            let parsed = parse_response(serde_json::from_value(wire).unwrap()).unwrap();
+            assert_eq!(parsed.usage[usage_key::PROMPT_TOKENS], prompt);
+            assert_eq!(
+                parsed.usage.get(usage_key::CACHE_READ_TOKENS).copied(),
+                cache
+            );
+        }
+        let parsed = parse_response(
+            serde_json::from_value(serde_json::json!({
+                "usage": {"input_tokens": 100}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(parsed.usage[usage_key::PROMPT_TOKENS], 100);
+        assert!(!parsed.usage.contains_key(usage_key::CACHE_READ_TOKENS));
+    }
+
+    #[test]
+    fn absent_total_still_counts_cached_input_once() {
+        let parsed = parse_response(
+            serde_json::from_value(serde_json::json!({
+                "usage": {"input_tokens": 4544, "output_tokens": 265,
+                          "input_tokens_details": {"cached_tokens": 3584}}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(parsed.usage[usage_key::PROMPT_TOKENS], 960);
+        assert_eq!(parsed.usage[usage_key::CACHE_READ_TOKENS], 3584);
+        assert_eq!(parsed.usage[usage_key::TOTAL_TOKENS], 4809);
+    }
+
+    #[test]
+    fn completed_sse_frame_preserves_cached_input_through_shared_normalizer() {
+        use crate::providers::responses_common::{
+            ResponsesStreamNormalizer, ResponsesStreamOutput,
+        };
+        let wire = serde_json::json!({
+            "type": "response.completed",
+            "response": {
+                "output": [],
+                "usage": {"input_tokens": 4966, "output_tokens": 427, "total_tokens": 5393,
+                          "input_tokens_details": {"cached_tokens": 3584}}
+            }
+        });
+        let frames = ResponsesStreamNormalizer::new()
+            .ingest_json_str(&wire.to_string())
+            .unwrap();
+        let response = frames
+            .into_iter()
+            .find_map(|frame| match frame {
+                ResponsesStreamOutput::ResponseCompleted(response) => Some(response),
+                _ => None,
+            })
+            .expect("completed response");
+        let parsed = parse_response(response).unwrap();
+        assert_eq!(parsed.usage[usage_key::PROMPT_TOKENS], 1382);
+        assert_eq!(parsed.usage[usage_key::CACHE_READ_TOKENS], 3584);
+        assert_eq!(parsed.usage[usage_key::TOTAL_TOKENS], 5393);
     }
 
     #[test]

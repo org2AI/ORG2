@@ -13,16 +13,13 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
 import SettingsTable from "@src/components/SettingsTable";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import {
   ChevronsDownUpIcon,
   HugeiconsIcon,
   ImportIcon,
   UnfoldMoreIcon,
 } from "@src/icons";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 import { credentialImportRowKey } from "./credentialImportUtils";
 import { useCredentialImport } from "./useCredentialImport";
@@ -49,6 +46,7 @@ const InlineCredentialImport: React.FC<InlineCredentialImportProps> = ({
     importing,
     importError,
     importErrors,
+    importSuccess,
     importColumns,
     handleRowClick,
     handleImport,
@@ -64,7 +62,6 @@ const InlineCredentialImport: React.FC<InlineCredentialImportProps> = ({
     <SectionContainer>
       <SectionRow label={title}>
         <Button
-          variant="secondary"
           icon={
             expanded ? (
               <HugeiconsIcon
@@ -112,6 +109,13 @@ const InlineCredentialImport: React.FC<InlineCredentialImportProps> = ({
             {importError && (
               <PageNotice type="danger" role="alert">
                 {t("credentialImport.applyFailed", { message: importError })}
+              </PageNotice>
+            )}
+            {importSuccess && (
+              <PageNotice type="success" role="status">
+                {t("credentialImport.importSucceeded", {
+                  names: importSuccess.displayNames.join(", "),
+                })}
               </PageNotice>
             )}
             {importErrors.length > 0 && (

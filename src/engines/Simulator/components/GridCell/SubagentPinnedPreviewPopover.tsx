@@ -121,7 +121,6 @@ function PlanPreview({ todos }: { todos: TodoItem[] }) {
     <>
       <Button
         ref={buttonRef}
-        htmlType="button"
         variant="tertiary"
         size="small"
         aria-expanded={isOpen}

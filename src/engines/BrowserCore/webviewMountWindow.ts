@@ -6,8 +6,8 @@
  * else unmounts, which is what actually destroys the native webview:
  * `useInlineWebview` calls `destroy()` from its unmount cleanup only, so a
  * session that merely goes inactive is not released — it is parked offscreen
- * at `(-10000, -10000)` sized `1x1` and keeps running (see
- * `useInlineWebviewNativeVisibility`). A parked webview is a full live page:
+ * at `(-10000, -10000)`, keeping its size, and keeps running (see
+ * `useWebviewLayout`'s `parkOffscreen`). A parked webview is a full live page:
  * its own WebContent process on macOS, holding page JS, timers, and media.
  *
  * `recentIdWindow.ts` already named browser-tab webviews as an intended

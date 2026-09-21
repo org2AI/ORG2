@@ -1,0 +1,47 @@
+// Mobile-only semantic scale. rem values follow the root text size; do not
+// override desktop --text-* tokens or shrink text at narrow breakpoints.
+@mixin tokens {
+  --mobile-type-large-title-size: 2.125rem;
+  --mobile-type-title-size: 1.25rem;
+  --mobile-type-heading-size: 1.0625rem;
+  --mobile-type-body-size: 1rem;
+  --mobile-type-control-size: 1rem;
+  --mobile-type-secondary-size: 0.875rem;
+  --mobile-type-caption-size: 0.8125rem;
+  --mobile-type-micro-size: 0.6875rem;
+  --mobile-type-code-size: 0.8125rem;
+  --mobile-type-regular-weight: 400;
+  --mobile-type-medium-weight: 500;
+  --mobile-type-emphasis-weight: 600;
+  --mobile-type-strong-weight: 700;
+  --mobile-type-title-leading: 1.2;
+  --mobile-type-heading-leading: 1.3;
+  --mobile-type-control-leading: 1.4;
+  --mobile-type-caption-leading: 1.4;
+  --mobile-type-body-leading: 1.5;
+  --mobile-type-reading-leading: 1.6;
+  --mobile-type-code-leading: 1.6;
+}
+
+// These names describe content roles, unlike shared desktop density utilities.
+@mixin utilities {
+  @each $role,
+    $leading
+      in (
+        large-title: title,
+        title: title,
+        heading: heading,
+        body: body,
+        control: control,
+        secondary: body,
+        caption: caption,
+        micro: caption,
+        code: code
+      )
+  {
+    .mobile-type-#{$role} {
+      font-size: var(--mobile-type-#{$role}-size);
+      line-height: var(--mobile-type-#{$leading}-leading);
+    }
+  }
+}

@@ -74,3 +74,60 @@ describe("ActivityChatItem error routing", () => {
     );
   });
 });
+
+describe("ActivityChatItem unloaded response expansion", () => {
+  it("routes unloaded assistant previews through the existing fade and expand overlay", () => {
+    const event = makeSessionEvent({
+      action_type: "assistant",
+      function: "assistant",
+      args: { turnPreviewOnly: true },
+      result: {
+        observation: "| Column |\n|---|\n| excerpt…",
+        unloadedTurn: {
+          turnId: "first-turn",
+          bodyEventCount: 12,
+          previewTruncated: true,
+        },
+      },
+      displayVariant: "message",
+      displayStatus: "completed",
+    });
+    const markup = renderToStaticMarkup(
+      createElement(ActivityChatItem, { event })
+    );
+    expect(markup).toContain('data-testid="expand-overlay-toggle"');
+    expect(markup).toContain("from-chat-pane");
+    expect(markup).toContain("<table");
+    expect(markup).not.toContain("Response preview");
+    expect(markup).not.toContain("Load full response");
+  });
+});
+
+describe("ActivityChatItem complete catalog response", () => {
+  it.each([false, undefined])(
+    "shows a short complete reply without an expand overlay (metadata: %s)",
+    (previewTruncated) => {
+      const event = makeSessionEvent({
+        action_type: "assistant",
+        function: "assistant",
+        args: { turnPreviewOnly: true },
+        result: {
+          observation: "Short complete response ending naturally…",
+          unloadedTurn: {
+            turnId: "first-turn",
+            bodyEventCount: 12,
+            previewTruncated,
+          },
+        },
+        displayVariant: "message",
+        displayStatus: "completed",
+      });
+      const markup = renderToStaticMarkup(
+        createElement(ActivityChatItem, { event })
+      );
+      expect(markup).toContain("Short complete response ending naturally…");
+      expect(markup).not.toContain('data-testid="expand-overlay-toggle"');
+      expect(markup).not.toContain("from-chat-pane");
+    }
+  );
+});

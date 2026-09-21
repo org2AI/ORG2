@@ -211,34 +211,14 @@ pub(super) fn resolve_tool_timeout() -> std::time::Duration {
     std::time::Duration::from_millis(100_000_000)
 }
 
-/// Flatten rmcp's `PromptMessageContent` into a plain string. Text
-/// passes through; images/resources/links become bracketed placeholders
+/// Flatten a prompt message's `ContentBlock` into a plain string. Text
+/// passes through; media/resources/links become bracketed placeholders
 /// so the chat input always ends up with a printable body.
-pub(super) fn render_prompt_content(content: &rmcp::model::PromptMessageContent) -> String {
-    use rmcp::model::{PromptMessageContent, ResourceContents};
-
-    match content {
-        PromptMessageContent::Text { text } => text.clone(),
-        PromptMessageContent::Image { image } => format!(
-            "[Image: {} ({} bytes base64)]",
-            image.mime_type,
-            image.data.len()
-        ),
-        PromptMessageContent::Resource { resource } => match &resource.resource {
-            ResourceContents::TextResourceContents { uri, text, .. } => {
-                format!("[Resource: {}]\n{}", uri, text)
-            }
-            ResourceContents::BlobResourceContents { uri, blob, .. } => {
-                format!("[Resource: {} ({} bytes base64)]", uri, blob.len())
-            }
-        },
-        PromptMessageContent::ResourceLink { link } => {
-            format!("[ResourceLink: {}]", link.raw.uri)
-        }
-    }
+pub(super) fn render_prompt_content(content: &rmcp::model::ContentBlock) -> String {
+    render_content(std::slice::from_ref(content), &None)
 }
 
-/// Flatten rmcp's `Vec<Content>` into a string.
+/// Flatten rmcp's `Vec<ContentBlock>` into a string.
 ///
 /// - `text`            → push verbatim
 /// - `image` / `audio` → `[Image|Audio mime (N bytes base64)]` placeholder
@@ -248,40 +228,46 @@ pub(super) fn render_prompt_content(content: &rmcp::model::PromptMessageContent)
 /// When *all* blocks are unrenderable we fall back to pretty-printing
 /// `structured_content` so the agent never sees an empty result.
 pub(super) fn render_content(
-    content: &[rmcp::model::Content],
+    content: &[rmcp::model::ContentBlock],
     structured: &Option<Value>,
 ) -> String {
-    use rmcp::model::{RawContent, ResourceContents};
+    use rmcp::model::{ContentBlock, ResourceContents};
 
     let mut parts: Vec<String> = Vec::new();
     for block in content {
-        match &block.raw {
-            RawContent::Text(text) => parts.push(text.text.clone()),
-            RawContent::Image(image) => {
+        match block {
+            ContentBlock::Text(text) => parts.push(text.text.clone()),
+            ContentBlock::Image(image) => {
                 parts.push(format!(
                     "[Image: {} ({} bytes base64)]",
                     image.mime_type,
                     image.data.len()
                 ));
             }
-            RawContent::Audio(audio) => {
+            ContentBlock::Audio(audio) => {
                 parts.push(format!(
                     "[Audio: {} ({} bytes base64)]",
                     audio.mime_type,
                     audio.data.len()
                 ));
             }
-            RawContent::Resource(embedded) => match &embedded.resource {
+            ContentBlock::Resource(embedded) => match &embedded.resource {
                 ResourceContents::TextResourceContents { uri, text, .. } => {
                     parts.push(format!("[Resource: {}]\n{}", uri, text));
                 }
                 ResourceContents::BlobResourceContents { uri, blob, .. } => {
                     parts.push(format!("[Resource: {} ({} bytes base64)]", uri, blob.len()));
                 }
+                // `ResourceContents` is `#[non_exhaustive]`; unknown shapes
+                // have nothing printable.
+                _ => {}
             },
-            RawContent::ResourceLink(link) => {
+            ContentBlock::ResourceLink(link) => {
                 parts.push(format!("[ResourceLink: {}]", link.uri));
             }
+            // `ContentBlock` is `#[non_exhaustive]`; skip future variants
+            // rather than guess a rendering for them.
+            _ => {}
         }
     }
 
@@ -300,7 +286,7 @@ pub(super) fn render_content(
     parts.join("\n")
 }
 
-/// Lossless projection of rmcp `Content` blocks into the
+/// Lossless projection of rmcp `ContentBlock`s into the
 /// provider-agnostic `ToolContentBlock` enum used by `ToolExecuteResult`.
 ///
 /// The resulting vector preserves every block (text, image, audio,
@@ -310,29 +296,29 @@ pub(super) fn render_content(
 ///
 /// Unknown `rmcp` content variants are skipped (they would also be
 /// skipped by `render_content`); the `non_exhaustive` nature of `rmcp`'s
-/// `RawContent` enum is the reason we do *not* panic on unrecognized
+/// `ContentBlock` enum is the reason we do *not* panic on unrecognized
 /// variants.
 pub(super) fn extract_content_blocks(
-    content: &[rmcp::model::Content],
+    content: &[rmcp::model::ContentBlock],
 ) -> Vec<crate::tools::traits::ToolContentBlock> {
     use crate::tools::traits::ToolContentBlock;
-    use rmcp::model::{RawContent, ResourceContents};
+    use rmcp::model::{ContentBlock, ResourceContents};
 
     let mut out = Vec::with_capacity(content.len());
     for block in content {
-        match &block.raw {
-            RawContent::Text(text) => out.push(ToolContentBlock::Text {
+        match block {
+            ContentBlock::Text(text) => out.push(ToolContentBlock::Text {
                 text: text.text.clone(),
             }),
-            RawContent::Image(image) => out.push(ToolContentBlock::Image {
+            ContentBlock::Image(image) => out.push(ToolContentBlock::Image {
                 mime_type: image.mime_type.clone(),
                 data: image.data.clone(),
             }),
-            RawContent::Audio(audio) => out.push(ToolContentBlock::Audio {
+            ContentBlock::Audio(audio) => out.push(ToolContentBlock::Audio {
                 mime_type: audio.mime_type.clone(),
                 data: audio.data.clone(),
             }),
-            RawContent::Resource(embedded) => match &embedded.resource {
+            ContentBlock::Resource(embedded) => match &embedded.resource {
                 ResourceContents::TextResourceContents {
                     uri,
                     mime_type,
@@ -350,12 +336,14 @@ pub(super) fn extract_content_blocks(
                         text: None,
                     });
                 }
+                _ => {}
             },
-            RawContent::ResourceLink(link) => out.push(ToolContentBlock::ResourceLink {
+            ContentBlock::ResourceLink(link) => out.push(ToolContentBlock::ResourceLink {
                 uri: link.uri.clone(),
                 name: Some(link.name.clone()),
                 description: link.description.clone(),
             }),
+            _ => {}
         }
     }
     out
@@ -370,11 +358,11 @@ mod extract_content_blocks_tests {
     //! Anthropic-native wire consumes.
     use super::extract_content_blocks;
     use crate::tools::traits::ToolContentBlock;
-    use rmcp::model::{Content, RawResource, ResourceContents};
+    use rmcp::model::{ContentBlock, Resource, ResourceContents};
 
     #[test]
     fn text_block_round_trips() {
-        let blocks = extract_content_blocks(&[Content::text("hello")]);
+        let blocks = extract_content_blocks(&[ContentBlock::text("hello")]);
         assert_eq!(blocks.len(), 1);
         match &blocks[0] {
             ToolContentBlock::Text { text } => assert_eq!(text, "hello"),
@@ -384,7 +372,7 @@ mod extract_content_blocks_tests {
 
     #[test]
     fn image_preserves_base64_and_mime() {
-        let blocks = extract_content_blocks(&[Content::image("ZmFrZQ==", "image/png")]);
+        let blocks = extract_content_blocks(&[ContentBlock::image("ZmFrZQ==", "image/png")]);
         match &blocks[0] {
             ToolContentBlock::Image { mime_type, data } => {
                 assert_eq!(mime_type, "image/png");
@@ -396,7 +384,7 @@ mod extract_content_blocks_tests {
 
     #[test]
     fn text_resource_preserves_uri_mime_and_text() {
-        let resource = Content::resource(ResourceContents::TextResourceContents {
+        let resource = ContentBlock::resource(ResourceContents::TextResourceContents {
             uri: "file:///etc/hosts".into(),
             mime_type: Some("text/plain".into()),
             text: "127.0.0.1 localhost".into(),
@@ -419,7 +407,7 @@ mod extract_content_blocks_tests {
 
     #[test]
     fn blob_resource_becomes_uri_without_blob() {
-        let resource = Content::resource(ResourceContents::BlobResourceContents {
+        let resource = ContentBlock::resource(ResourceContents::BlobResourceContents {
             uri: "mcp://data/pic.png".into(),
             mime_type: Some("image/png".into()),
             blob: "EQUALSEQUALSEQUALSEQUALS".into(),
@@ -442,16 +430,9 @@ mod extract_content_blocks_tests {
 
     #[test]
     fn resource_link_preserves_uri_and_name() {
-        let link = Content::resource_link(RawResource {
-            uri: "mcp://link/item".into(),
-            name: "item".into(),
-            title: None,
-            description: Some("a test item".into()),
-            mime_type: None,
-            size: None,
-            icons: None,
-            meta: None,
-        });
+        let link = ContentBlock::resource_link(
+            Resource::new("mcp://link/item", "item").with_description("a test item"),
+        );
         let blocks = extract_content_blocks(&[link]);
         match &blocks[0] {
             ToolContentBlock::ResourceLink {
@@ -470,9 +451,9 @@ mod extract_content_blocks_tests {
     #[test]
     fn mixed_blocks_keep_order() {
         let blocks = extract_content_blocks(&[
-            Content::text("first"),
-            Content::image("b64", "image/png"),
-            Content::text("last"),
+            ContentBlock::text("first"),
+            ContentBlock::image("b64", "image/png"),
+            ContentBlock::text("last"),
         ]);
         assert_eq!(blocks.len(), 3);
         matches!(blocks[0], ToolContentBlock::Text { .. });

@@ -16,11 +16,6 @@ import { AgentControlStatus } from "./AgentControlStatus";
 import { AgentControlToolbar } from "./AgentControlToolbar";
 import { useAgentControlPalette } from "./useAgentControlPalette";
 
-export {
-  ADE_MANAGER_SUBMIT_EVENT,
-  ADE_MANAGER_TOGGLE_SHORTCUT_ID,
-} from "./constants";
-
 // ── Proposal creator panel ────────────────────────────────────────────────────
 
 const TOTAL_MS = 5 * 60 * 1000;
@@ -223,5 +218,3 @@ export const AgentControlPalette: React.FC<AgentControlPaletteProps> = ({
     </>
   );
 };
-
-export default AgentControlPalette;

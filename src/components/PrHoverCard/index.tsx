@@ -21,7 +21,7 @@ import {
 import {
   getPrStatusLabelKey,
   getPrStatusVariant,
-} from "@src/shared/pr/prStatus";
+} from "@src/util/git/pr/prStatus";
 
 export interface PrHoverCardData {
   number: number;

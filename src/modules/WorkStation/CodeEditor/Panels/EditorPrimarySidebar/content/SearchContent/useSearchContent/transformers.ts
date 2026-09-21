@@ -65,56 +65,6 @@ export function parseFilePatterns(patternsString?: string): string[] {
 }
 
 /**
- * Apply include/exclude glob patterns to filter results (client-side).
- */
-export function filterResultsByGlob(
-  results: StoreSearchResultFile[],
-  repoPath: string,
-  includePatterns: string[],
-  excludePatterns: string[]
-): StoreSearchResultFile[] {
-  let filtered = results;
-
-  // Apply include patterns (if specified)
-  if (includePatterns.length > 0) {
-    filtered = filtered.filter((result) => {
-      const relativePath = result.file_path.replace(repoPath + "/", "");
-      return includePatterns.some((pattern) => {
-        const regex = new RegExp(
-          "^" +
-            pattern
-              .replace(/\*\*/g, ".*")
-              .replace(/\*/g, "[^/]*")
-              .replace(/\?/g, ".") +
-            "$"
-        );
-        return regex.test(relativePath);
-      });
-    });
-  }
-
-  // Apply exclude patterns
-  if (excludePatterns.length > 0) {
-    filtered = filtered.filter((result) => {
-      const relativePath = result.file_path.replace(repoPath + "/", "");
-      return !excludePatterns.some((pattern) => {
-        const regex = new RegExp(
-          "^" +
-            pattern
-              .replace(/\*\*/g, ".*")
-              .replace(/\*/g, "[^/]*")
-              .replace(/\?/g, ".") +
-            "$"
-        );
-        return regex.test(relativePath);
-      });
-    });
-  }
-
-  return filtered;
-}
-
-/**
  * Build search filter options for the Rust backend.
  */
 export function buildSearchFilters(
@@ -127,14 +77,18 @@ export function buildSearchFilters(
     whole_word: storeOptions.wholeWord,
     use_regex: storeOptions.useRegex,
     file_extensions:
-      includePatterns.length > 0
-        ? includePatterns.filter((pattern) => pattern.startsWith("."))
-        : storeOptions.fileExtensions.length > 0
-          ? storeOptions.fileExtensions
-          : undefined,
+      includePatterns.length === 0 && storeOptions.fileExtensions.length > 0
+        ? storeOptions.fileExtensions
+        : undefined,
+    include_globs: includePatterns.length
+      ? includePatterns.map((pattern) =>
+          /^\.[a-zA-Z0-9]+$/.test(pattern) ? `*${pattern}` : pattern
+        )
+      : undefined,
+    exclude_globs: excludePatterns.length ? excludePatterns : undefined,
     exclude_dirs: [
       ...storeOptions.excludeDirs,
-      ...excludePatterns.filter((pattern) => !pattern.includes("*")),
+      ...excludePatterns.filter((pattern) => !/[*/?]/.test(pattern)),
     ],
   };
 }

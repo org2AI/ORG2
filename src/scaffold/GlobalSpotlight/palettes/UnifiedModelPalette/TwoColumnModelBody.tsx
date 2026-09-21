@@ -3,7 +3,7 @@
  *
  * Renders the UnifiedModelPalette content area:
  *
- *   │ Recent Models (full width, no divider)       │
+ *   │ Pinned + Recent Models (full width)          │
  *   ├──────────────────────┬──────────────────────┤
  *   │ Choose model (left)  │ Choose key (right)    │
  *   └──────────────────────┴──────────────────────┘
@@ -12,7 +12,7 @@
  * the focused key's models on the right. The data flow is unchanged —
  * `items` still drives the left column and `sourceItems` the right one.
  *
- * The left column (recents + models) is keyboard-driven by the shared
+ * The left column (pins + recents + models) is keyboard-driven by the shared
  * selector kernel; `selectedIndex` indexes the flat `items` array. The
  * right column is a manual list keyed by `selectedSourceIndex`.
  */
@@ -24,11 +24,15 @@ import { useKeyboardMouseMode } from "@src/hooks/keyboard";
 
 import { SpotlightItemRow } from "../../components/SpotlightItemRow";
 import type { SpotlightItem } from "../../types";
+import { MODEL_SECTION } from "./modelSection";
 
 // ============ TYPES ============
 
 interface TwoColumnModelBodyProps {
-  /** Flat kernel list: [recent header?, recents…, all header, models…]. */
+  /**
+   * Flat kernel list:
+   * [pinned header?, pins…, recent header?, recents…, all header, models…].
+   */
   items: SpotlightItem[];
   /** Kernel cursor over `items`. */
   selectedIndex: number;
@@ -67,6 +71,16 @@ function isHeader(item: SpotlightItem): boolean {
   return Boolean((item.data as Record<string, unknown> | undefined)?.isHeader);
 }
 
+const QUICK_PICK_SECTIONS: ReadonlySet<string> = new Set([
+  MODEL_SECTION.PINNED,
+  MODEL_SECTION.RECENT,
+]);
+
+interface IndexedRow {
+  item: SpotlightItem;
+  index: number;
+}
+
 function getSection(item: SpotlightItem): string | undefined {
   return (item.data as Record<string, unknown> | undefined)?.modelSection as
     | string
@@ -75,49 +89,57 @@ function getSection(item: SpotlightItem): string | undefined {
 
 // ============ SUB-COMPONENTS ============
 
-/** A vertically-scrolling column of rows that carry their flat-array index. */
-const RowColumn: React.FC<{
-  rows: { item: SpotlightItem; index: number }[];
+interface RowListProps {
+  rows: IndexedRow[];
   selectedIndex: number;
   isKeyboardMode: boolean;
   searchQuery: string;
-  maxHeight: number;
   onSelect: (item: SpotlightItem, index: number) => void;
   onHover: (index: number) => void;
-  onMouseMove: (event: React.MouseEvent) => void;
-  dataKeyboardMode: string;
-}> = ({
+}
+
+const RowList: React.FC<RowListProps> = ({
   rows,
   selectedIndex,
   isKeyboardMode,
   searchQuery,
-  maxHeight,
   onSelect,
   onHover,
-  onMouseMove,
-  dataKeyboardMode,
-}) => (
+}) =>
+  rows.map(({ item, index }) => (
+    <SpotlightItemRow
+      key={item.id}
+      item={item}
+      selectionState={item.data?.selectionState}
+      index={index}
+      isSelected={selectedIndex === index}
+      isKeyboardMode={isKeyboardMode}
+      onSelect={() => onSelect(item, index)}
+      onHover={onHover}
+      searchQuery={searchQuery}
+      showDetailPane={false}
+    />
+  ));
+
+/** A vertically-scrolling column of indexed rows. */
+const ScrollColumn: React.FC<{
+  maxHeight: number;
+  onMouseMove: (event: React.MouseEvent) => void;
+  dataKeyboardMode: string;
+  children: React.ReactNode;
+}> = ({ maxHeight, onMouseMove, dataKeyboardMode, children }) => (
   <div
     className="spotlight-scrollable overflow-y-auto"
     style={{ maxHeight }}
     onMouseMove={onMouseMove}
     data-keyboard-mode={dataKeyboardMode}
   >
-    {rows.map(({ item, index }) => (
-      <SpotlightItemRow
-        key={item.id}
-        item={item}
-        selectionState={item.data?.selectionState}
-        index={index}
-        isSelected={selectedIndex === index}
-        isKeyboardMode={isKeyboardMode}
-        onSelect={() => onSelect(item, index)}
-        onHover={onHover}
-        searchQuery={searchQuery}
-      />
-    ))}
+    {children}
   </div>
 );
+
+const SECTION_LABEL_CLASS =
+  "px-3 pt-2 pb-1 text-[11px] font-medium tracking-wide text-text-3 uppercase";
 
 // ============ MAIN COMPONENT ============
 
@@ -142,37 +164,51 @@ export const TwoColumnModelBody: React.FC<TwoColumnModelBodyProps> = ({
   const { isKeyboardMode, handleMouseMove, dataKeyboardMode } =
     useKeyboardMouseMode();
 
-  // Split the flat list into Recent vs All-Models rows, preserving each
-  // row's index into the flat `items` array (kernel cursor space).
-  // The "All Models" header stays in `items` only as a non-selectable
-  // kernel divider; it is not rendered — the Step 1 / Step 2 titles
-  // already label the two columns.
-  const { recentRows, modelRows, recentHeader } = useMemo(() => {
-    const recents: { item: SpotlightItem; index: number }[] = [];
-    const models: { item: SpotlightItem; index: number }[] = [];
-    let recentH: SpotlightItem | null = null;
+  // Split the flat list into quick-pick groups (Pinned, Recent) vs
+  // All-Models rows, preserving each row's index into the flat `items`
+  // array (kernel cursor space). The "All Models" header stays in `items`
+  // only as a non-selectable kernel divider; it is not rendered — the
+  // Step 1 / Step 2 titles already label the two columns.
+  const { quickPickGroups, modelRows } = useMemo(() => {
+    const groups = new Map<
+      string,
+      { header: SpotlightItem | null; rows: IndexedRow[] }
+    >();
+    const groupFor = (section: string) => {
+      let group = groups.get(section);
+      if (!group) {
+        group = { header: null, rows: [] };
+        groups.set(section, group);
+      }
+      return group;
+    };
+    const models: IndexedRow[] = [];
 
     items.forEach((item, index) => {
       if (isHeader(item)) {
-        if (item.id.endsWith(":recent")) recentH = item;
+        const section = item.id.slice(item.id.lastIndexOf(":") + 1);
+        if (QUICK_PICK_SECTIONS.has(section)) groupFor(section).header = item;
         return;
       }
-      if (getSection(item) === "recent") {
-        recents.push({ item, index });
+      const section = getSection(item);
+      if (section && QUICK_PICK_SECTIONS.has(section)) {
+        groupFor(section).rows.push({ item, index });
       } else {
         models.push({ item, index });
       }
     });
 
     return {
-      recentRows: recents,
+      quickPickGroups: Array.from(groups, ([section, group]) => ({
+        section,
+        ...group,
+      })).filter((group) => group.rows.length > 0),
       modelRows: models,
-      recentHeader: recentH as SpotlightItem | null,
     };
   }, [items]);
 
   const sourcesColumnActive = activeColumn === "sources";
-  const hasQuickPickSection = recentRows.length > 0;
+  const hasQuickPickSection = quickPickGroups.length > 0;
 
   const leftTitle = keyFirst
     ? t("selectors.modelSelector.chooseKey")
@@ -190,25 +226,30 @@ export const TwoColumnModelBody: React.FC<TwoColumnModelBodyProps> = ({
 
   return (
     <div className="flex flex-col">
-      {/* ── Recent (full width, one-click) ───────────────────────────── */}
+      {/* ── Pinned + Recent (full width, one-click) ─────────────────── */}
       {hasQuickPickSection && (
         <div className="border-b border-border-1">
-          {recentHeader && (
-            <div className="px-3 pt-2 pb-1 text-[11px] font-medium tracking-wide text-text-3 uppercase">
-              {recentHeader.label}
-            </div>
-          )}
-          <RowColumn
-            rows={recentRows}
-            selectedIndex={selectedIndex}
-            isKeyboardMode={isKeyboardMode}
-            searchQuery={searchQuery}
+          <ScrollColumn
             maxHeight={RECENT_MAX_HEIGHT}
-            onSelect={onItemSelect}
-            onHover={onItemHover}
             onMouseMove={handleMouseMove}
             dataKeyboardMode={dataKeyboardMode}
-          />
+          >
+            {quickPickGroups.map(({ section, header, rows }) => (
+              <React.Fragment key={section}>
+                {header && (
+                  <div className={SECTION_LABEL_CLASS}>{header.label}</div>
+                )}
+                <RowList
+                  rows={rows}
+                  selectedIndex={selectedIndex}
+                  isKeyboardMode={isKeyboardMode}
+                  searchQuery={searchQuery}
+                  onSelect={onItemSelect}
+                  onHover={onItemHover}
+                />
+              </React.Fragment>
+            ))}
+          </ScrollColumn>
         </div>
       )}
 
@@ -216,21 +257,22 @@ export const TwoColumnModelBody: React.FC<TwoColumnModelBodyProps> = ({
       <div className="flex items-stretch">
         {/* Left: models (or keys in key-first mode) */}
         <div className="flex w-2/5 flex-col">
-          <div className="px-3 pt-2 pb-1 text-[11px] font-medium tracking-wide text-text-3 uppercase">
-            {`Step 1 - ${leftTitle}`}
-          </div>
+          <div className={SECTION_LABEL_CLASS}>{`Step 1 - ${leftTitle}`}</div>
           {modelRows.length > 0 ? (
-            <RowColumn
-              rows={modelRows}
-              selectedIndex={selectedIndex}
-              isKeyboardMode={isKeyboardMode}
-              searchQuery={searchQuery}
+            <ScrollColumn
               maxHeight={COLUMN_HEIGHT}
-              onSelect={onItemSelect}
-              onHover={() => undefined}
               onMouseMove={handleMouseMove}
               dataKeyboardMode={dataKeyboardMode}
-            />
+            >
+              <RowList
+                rows={modelRows}
+                selectedIndex={selectedIndex}
+                isKeyboardMode={isKeyboardMode}
+                searchQuery={searchQuery}
+                onSelect={onItemSelect}
+                onHover={() => undefined}
+              />
+            </ScrollColumn>
           ) : (
             <div
               className="flex items-center justify-center"
@@ -303,6 +345,7 @@ export const TwoColumnModelBody: React.FC<TwoColumnModelBodyProps> = ({
                   onSelect={() => onSourceSelect(index)}
                   onHover={() => onSourceHover(index)}
                   searchQuery=""
+                  showDetailPane={false}
                 />
               ))}
             </div>
@@ -312,5 +355,3 @@ export const TwoColumnModelBody: React.FC<TwoColumnModelBodyProps> = ({
     </div>
   );
 };
-
-export default TwoColumnModelBody;

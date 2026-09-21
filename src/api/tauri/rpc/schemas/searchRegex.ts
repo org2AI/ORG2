@@ -14,6 +14,8 @@ import { z } from "zod/v4";
 // ── Shared value objects ────────────────────────────────────────────────────
 
 export const SearchFiltersSchema = z.object({
+  include_globs: z.array(z.string()).nullish(),
+  exclude_globs: z.array(z.string()).nullish(),
   file_extensions: z.array(z.string()).nullish(),
   exclude_dirs: z.array(z.string()).nullish(),
   case_sensitive: z.boolean().nullish(),
@@ -44,6 +46,8 @@ export type CodeSearchResult = z.output<typeof CodeSearchResultSchema>;
 // ── Input schemas ───────────────────────────────────────────────────────────
 
 export const SearchCodeRegexInput = z.object({
+  searchId: z.string().optional(),
+  repoRoot: z.string().optional(),
   query: z.string(),
   repoPaths: z.array(z.string()),
   filters: SearchFiltersSchema.optional(),

@@ -1,7 +1,7 @@
 import React, { Component, ReactNode } from "react";
 
+import ErrorPage from "@src/app/root/ErrorPage";
 import { createLogger } from "@src/hooks/logger";
-import ErrorPage from "@src/modules/shared/Error";
 import {
   hasGlobalErrorAtom,
   isAppQuittingAtom,

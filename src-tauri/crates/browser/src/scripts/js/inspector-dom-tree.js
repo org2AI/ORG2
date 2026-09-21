@@ -14,6 +14,8 @@
 // within the tree but cannot be selected in the webview.
 window.__ORGII_GET_DOM_TREE__ = function (maxDepth) {
   maxDepth = maxDepth || 12;
+  // Before the walk, so no mutation can land between snapshot and observer.
+  ensureDomDirtyObserver();
 
   function makePseudoNode(parentXPath, kind, childEls) {
     var suffix = kind === "shadow-root" ? "__shadow__" : "__iframedoc__";
@@ -159,39 +161,33 @@ window.__ORGII_GET_DOM_TREE__ = function (maxDepth) {
 // cost of attaching observers to every shadow root and iframe at runtime
 // outweighs the benefit; users can always hit the refresh button. The
 // initial `__ORGII_GET_DOM_TREE__` walk still traverses both.
-(function () {
+//
+// Installed by the first `__ORGII_GET_DOM_TREE__` call rather than at document
+// start: this script is injected into every page, and a document-wide subtree
+// observer makes WebKit build mutation records for all DOM churn on pages whose
+// inspector panel is never opened. The flag starts dirty, so a poll that runs
+// before the first export still triggers that export.
+window.__ORGII_DOM_DIRTY__ = true;
+
+function ensureDomDirtyObserver() {
   if (window.__ORGII_DOM_DIRTY_OBSERVER__) return;
+  if (!document.documentElement) return;
   window.__ORGII_DOM_DIRTY_OBSERVER__ = true;
-  // Start dirty so the first poll guarantees an initial paint even if the
-  // tree was fetched before any mutations.
-  window.__ORGII_DOM_DIRTY__ = true;
-
-  var setupObserver = function () {
-    if (!document.documentElement) return;
-    try {
-      var observer = new MutationObserver(function () {
-        window.__ORGII_DOM_DIRTY__ = true;
-      });
-      observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-      });
-    } catch (e) {
-      // If MutationObserver isn't available (extremely old WebKit), fall
-      // back to "always dirty" — React polling will refetch every tick,
-      // which is the pre-MutationObserver behaviour.
+  try {
+    var observer = new MutationObserver(function () {
       window.__ORGII_DOM_DIRTY__ = true;
-    }
-  };
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupObserver, {
-      once: true,
     });
-  } else {
-    setupObserver();
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  } catch (e) {
+    // If MutationObserver isn't available (extremely old WebKit), fall
+    // back to "always dirty" — React polling will refetch every tick,
+    // which is the pre-MutationObserver behaviour.
+    window.__ORGII_DOM_DIRTY__ = true;
   }
-})();
+}
 
 // Highlight by XPath (hover preview from React)
 window.__ORGII_HIGHLIGHT_BY_XPATH__ = function (xpath) {

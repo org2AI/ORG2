@@ -347,11 +347,6 @@ export const ScanCliVersionInput = z.object({
   force: z.boolean().nullable().optional(),
 });
 
-export const ExtractKeysFromTextInput = z.object({
-  input: z.string(),
-  agentType: z.string().nullable().optional(),
-});
-
 export const AutoInstallCliInput = z.object({
   agent: z.string(),
 });

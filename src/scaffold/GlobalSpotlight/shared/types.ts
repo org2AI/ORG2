@@ -28,6 +28,16 @@ export type StatusType = "ongoing" | "completed" | "failed";
 
 /** Data object attached to SpotlightItem */
 export interface SpotlightItemData {
+  testId?: string;
+  labelContent?: React.ReactNode;
+  statusContent?: React.ReactNode;
+  descTitle?: string;
+  description?: string;
+  iconTone?: "primary" | "text1";
+  /** Domain adapters expose DOM metadata without coupling the renderer to that domain. */
+  domAttributes?: Partial<
+    Record<`data-${string}`, string | number | boolean | undefined>
+  >;
   /** Stable identity across main and recent command sections. */
   pinId?: string;
   pinState?: { pinned: boolean; disabled?: boolean; onToggle: () => void };

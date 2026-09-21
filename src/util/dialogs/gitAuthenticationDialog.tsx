@@ -2,9 +2,9 @@ import React, { useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 
+import { PanelFooter } from "@src/components/layout/blocks";
 import { buildIntegrationsPath } from "@src/config/mainAppPaths";
 import { HugeiconsIcon, Settings01Icon } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 import { navigateApp } from "@src/router/navigateApp";
 import Modal from "@src/scaffold/ModalSystem";
 

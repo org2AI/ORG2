@@ -164,6 +164,7 @@ pub async fn save_key(request: SaveKeyRequest) -> Result<KeyInfo, String> {
         }
         if let Some(enabled) = request.enabled {
             entry.enabled = enabled;
+            entry.oauth_auto_disabled = false;
             if enabled && entry.auth_method == AuthMethod::Oauth {
                 entry.oauth_refresh_failure_count = 0;
                 entry.last_oauth_refresh_failed_at = None;

@@ -12,6 +12,7 @@ import {
   vi,
 } from "vitest";
 
+import { DEFAULT_BUTTON_TOOLTIP_DELAY_MS } from "@src/config/tooltip";
 import {
   ClipboardListIcon,
   HugeiconsIcon,
@@ -206,7 +207,7 @@ describe("TeamInboxDetailLayout header actions", () => {
       )?.parentElement;
       act(() => {
         trigger?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-        vi.advanceTimersByTime(200);
+        vi.advanceTimersByTime(DEFAULT_BUTTON_TOOLTIP_DELAY_MS);
       });
 
       expect(document.body.textContent).toContain("Mark unread");

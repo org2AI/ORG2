@@ -154,8 +154,6 @@ export function useSearchTabConfig({
         title: (
           <Button
             layout="custom"
-            appearance="custom"
-            htmlType="button"
             className="flex min-w-0 items-center gap-1.5 normal-case"
             onClick={onBack}
             aria-label={t("labels.files")}

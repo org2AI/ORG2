@@ -1,5 +1,5 @@
 /**
- * useVoiceInput — push-to-talk dictation hook backed by the Web Speech API.
+ * useVoiceInput — push-to-talk dictation for browser/desktop and native iOS.
  *
  * Voice input: user clicks the mic (or hits ⌃M) to start, sees a
  * waveform UI while speaking, then stops to accept (transcription is committed
@@ -7,14 +7,22 @@
  * yields plain transcript strings; wiring into a contenteditable / ComposerInput host
  * lives in the consumer.
  *
- * Transcription runs entirely in the Chromium webview via `webkitSpeechRecognition`
- * (no Tauri / backend dependency). Network access is still required because
- * Chromium streams audio to Google's recognition endpoint.
+ * Chromium uses `webkitSpeechRecognition`. ORG2 Remote uses the iOS Speech
+ * framework through a Tauri plugin because WKWebView does not expose that API.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createLogger } from "@src/hooks/logger";
 
+import {
+  type NativeSpeechEvent,
+  cancelNativeSpeech,
+  isNativeIosSpeechRuntime,
+  listenToNativeSpeech,
+  queryNativeSpeechSupport,
+  startNativeSpeech,
+  stopNativeSpeech,
+} from "./nativeSpeech";
 import {
   mapGetUserMediaError,
   queryMicrophonePermission,
@@ -128,7 +136,7 @@ export interface UseVoiceInputOptions {
 export interface UseVoiceInputResult {
   /** True while microphone is capturing audio. */
   isRecording: boolean;
-  /** True if the Web Speech API is available in this browser. */
+  /** True if the current runtime provides a speech recognizer. */
   isSupported: boolean;
   /** Live partial transcript while speaking (resets when recording stops). */
   liveTranscript: string;
@@ -148,7 +156,10 @@ function mapErrorCode(raw: string): VoiceInputErrorCode {
   switch (raw) {
     case "not-allowed":
     case "service-not-allowed":
+    case "permission-denied":
       return "permission-denied";
+    case "unsupported":
+      return "unsupported";
     case "no-speech":
       return "no-speech";
     case "audio-capture":
@@ -156,18 +167,41 @@ function mapErrorCode(raw: string): VoiceInputErrorCode {
     case "network":
       return "network";
     case "aborted":
+    case "cancelled":
       return "aborted";
     default:
       return "unknown";
   }
 }
 
+function mapNativeFailure(error: unknown): VoiceInputError {
+  const value =
+    error && typeof error === "object"
+      ? (error as { code?: unknown; message?: unknown })
+      : undefined;
+  const rawCode = typeof value?.code === "string" ? value.code : "unknown";
+  const message =
+    typeof value?.message === "string" ? value.message : String(error);
+  return { code: mapErrorCode(rawCode), message };
+}
+
 export function useVoiceInput(
   options: UseVoiceInputOptions
 ): UseVoiceInputResult {
   const { lang, onCommit, onCancel, onError } = options;
+  const nativeRuntime = isNativeIosSpeechRuntime();
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const nativeSessionRef = useRef<string | null>(null);
+  const nativeListenerRef = useRef<Awaited<
+    ReturnType<typeof listenToNativeSpeech>
+  > | null>(null);
+  const nativeListenerPromiseRef = useRef<ReturnType<
+    typeof listenToNativeSpeech
+  > | null>(null);
+  const nativeEventHandlerRef = useRef<(event: NativeSpeechEvent) => void>(
+    () => undefined
+  );
   const transcriptRef = useRef<string>("");
   // When cancel() is called we still receive an `onend` event from the
   // recognizer; this flag tells the end handler whether to commit or discard.
@@ -175,13 +209,17 @@ export function useVoiceInput(
   const startTimeRef = useRef<number>(0);
   const tickIntervalRef = useRef<number | null>(null);
   const startSessionRef = useRef(0);
+  const startPendingRef = useRef(false);
+  const callbacksRef = useRef({ onCommit, onCancel, onError });
+  callbacksRef.current = { onCommit, onCancel, onError };
 
   const [isRecording, setIsRecording] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  const [isSupported] = useState<boolean>(() => {
+  const [isSupported, setIsSupported] = useState<boolean>(() => {
     probeSpeechRecognitionOnce();
+    if (nativeRuntime) return true;
     // Tauri dev shows a preview UI even without a native recognizer.
     if (isTauriRuntime() && !isTauriProduction()) {
       return true;
@@ -196,8 +234,20 @@ export function useVoiceInput(
     }
   }, []);
 
+  const startTimer = useCallback(() => {
+    clearTimer();
+    startTimeRef.current = Date.now();
+    setIsRecording(true);
+    setElapsedSeconds(0);
+    tickIntervalRef.current = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setElapsedSeconds(elapsed);
+    }, 250);
+  }, [clearTimer]);
+
   const teardown = useCallback(() => {
     clearTimer();
+    startPendingRef.current = false;
     setIsRecording(false);
     setElapsedSeconds(0);
     setLiveTranscript("");
@@ -210,6 +260,57 @@ export function useVoiceInput(
       recognitionRef.current = null;
     }
   }, [clearTimer]);
+
+  nativeEventHandlerRef.current = (event) => {
+    if (event.sessionId !== nativeSessionRef.current) return;
+
+    if (event.kind === "started") {
+      startPendingRef.current = false;
+      startTimer();
+      return;
+    }
+    if (event.kind === "partial" || event.kind === "final") {
+      const transcript = event.transcript?.trim() ?? "";
+      transcriptRef.current = transcript;
+      setLiveTranscript(transcript);
+      return;
+    }
+
+    const transcript = (event.transcript ?? transcriptRef.current).trim();
+    const commit = shouldCommitRef.current;
+    nativeSessionRef.current = null;
+    teardown();
+
+    if (event.kind === "error") {
+      callbacksRef.current.onError?.({
+        code: mapErrorCode(event.code ?? "unknown"),
+        message: event.message ?? "Speech recognition failed.",
+      });
+      callbacksRef.current.onCancel?.();
+    } else if (event.kind === "cancelled" || !commit) {
+      callbacksRef.current.onCancel?.();
+    } else if (event.kind === "ended" && transcript.length > 0) {
+      callbacksRef.current.onCommit(transcript);
+    }
+  };
+
+  const ensureNativeListener = useCallback(async () => {
+    if (nativeListenerRef.current) return nativeListenerRef.current;
+    if (nativeListenerPromiseRef.current) {
+      return nativeListenerPromiseRef.current;
+    }
+    const pending = listenToNativeSpeech((event) => {
+      nativeEventHandlerRef.current(event);
+    });
+    nativeListenerPromiseRef.current = pending;
+    try {
+      const listener = await pending;
+      nativeListenerRef.current = listener;
+      return listener;
+    } finally {
+      nativeListenerPromiseRef.current = null;
+    }
+  }, []);
 
   const beginRecognition = useCallback(
     (Ctor: NonNullable<ReturnType<typeof getSpeechRecognitionCtor>>) => {
@@ -226,15 +327,7 @@ export function useVoiceInput(
       setLiveTranscript("");
 
       recognition.onstart = () => {
-        startTimeRef.current = Date.now();
-        setIsRecording(true);
-        setElapsedSeconds(0);
-        tickIntervalRef.current = window.setInterval(() => {
-          const elapsed = Math.floor(
-            (Date.now() - startTimeRef.current) / 1000
-          );
-          setElapsedSeconds(elapsed);
-        }, 250);
+        startTimer();
         logger.debug("recognition started", { lang: recognition.lang });
       };
 
@@ -259,7 +352,10 @@ export function useVoiceInput(
         const code = mapErrorCode(event.error);
         logger.warn("recognition error", event.error, event.message);
         shouldCommitRef.current = false;
-        onError?.({ code, message: event.message || event.error });
+        callbacksRef.current.onError?.({
+          code,
+          message: event.message || event.error,
+        });
       };
 
       recognition.onend = () => {
@@ -268,9 +364,9 @@ export function useVoiceInput(
         logger.debug("recognition ended", { commit, length: final.length });
         teardown();
         if (commit && final.length > 0) {
-          onCommit(final);
+          callbacksRef.current.onCommit(final);
         } else if (!commit) {
-          onCancel?.();
+          callbacksRef.current.onCancel?.();
         }
       };
 
@@ -296,27 +392,53 @@ export function useVoiceInput(
             : "";
         const message = err instanceof Error ? err.message : String(err);
         logger.error("failed to start recognition", { name, message, err });
-        onError?.({
+        callbacksRef.current.onError?.({
           code: "unknown",
           message,
         });
         teardown();
       }
     },
-    [lang, onCancel, onCommit, onError, teardown]
+    [lang, startTimer, teardown]
   );
 
   const start = useCallback(() => {
-    if (isRecording) return;
+    if (isRecording || startPendingRef.current) return;
+
+    if (nativeRuntime) {
+      const sessionId = `speech-${Date.now()}-${startSessionRef.current + 1}`;
+      startSessionRef.current += 1;
+      nativeSessionRef.current = sessionId;
+      startPendingRef.current = true;
+      shouldCommitRef.current = true;
+      transcriptRef.current = "";
+      setLiveTranscript("");
+
+      void (async () => {
+        try {
+          await ensureNativeListener();
+          if (nativeSessionRef.current !== sessionId) return;
+          const detectedLang =
+            lang ??
+            (typeof navigator !== "undefined"
+              ? navigator.language
+              : undefined) ??
+            "en-US";
+          await startNativeSpeech(detectedLang, sessionId);
+        } catch (error) {
+          if (nativeSessionRef.current !== sessionId) return;
+          nativeSessionRef.current = null;
+          const failure = mapNativeFailure(error);
+          logger.warn("native speech start failed", failure);
+          teardown();
+          callbacksRef.current.onError?.(failure);
+        }
+      })().catch((error) => logger.warn("Background operation failed", error));
+      return;
+    }
 
     if (isTauriRuntime() && !isTauriProduction()) {
-      startTimeRef.current = Date.now();
-      setIsRecording(true);
-      setElapsedSeconds(0);
-      tickIntervalRef.current = window.setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        setElapsedSeconds(elapsed);
-      }, 250);
+      startTimer();
       void showVoiceInputDevModeDialog();
       return;
     }
@@ -328,7 +450,7 @@ export function useVoiceInput(
         message: "Speech recognition is not available in this environment.",
       };
       logger.warn(err.message);
-      onError?.(err);
+      callbacksRef.current.onError?.(err);
       return;
     }
 
@@ -347,7 +469,7 @@ export function useVoiceInput(
       const permissionState = await queryMicrophonePermission();
       if (startSessionRef.current !== sessionId) return;
       if (permissionState === "denied") {
-        onError?.({
+        callbacksRef.current.onError?.({
           code: "permission-denied",
           message: "Microphone permission denied.",
         });
@@ -362,14 +484,14 @@ export function useVoiceInput(
           if (startSessionRef.current !== sessionId) return;
           const access = mapGetUserMediaError(err);
           if (access === "denied") {
-            onError?.({
+            callbacksRef.current.onError?.({
               code: "permission-denied",
               message: "Microphone permission denied.",
             });
             return;
           }
           if (access === "unsupported") {
-            onError?.({
+            callbacksRef.current.onError?.({
               code: "audio-capture",
               message: "No microphone detected.",
             });
@@ -380,10 +502,34 @@ export function useVoiceInput(
 
       if (startSessionRef.current !== sessionId) return;
       beginRecognition(Ctor);
-    })();
-  }, [beginRecognition, isRecording, onError]);
+    })().catch((error) => {
+      if (startSessionRef.current !== sessionId) return;
+      teardown();
+      callbacksRef.current.onError?.(mapNativeFailure(error));
+    });
+  }, [
+    beginRecognition,
+    ensureNativeListener,
+    isRecording,
+    lang,
+    nativeRuntime,
+    startTimer,
+    teardown,
+  ]);
 
   const stop = useCallback(() => {
+    const nativeSessionId = nativeSessionRef.current;
+    if (nativeSessionId) {
+      shouldCommitRef.current = true;
+      void stopNativeSpeech(nativeSessionId).catch((error) => {
+        if (nativeSessionRef.current !== nativeSessionId) return;
+        nativeSessionRef.current = null;
+        const failure = mapNativeFailure(error);
+        teardown();
+        callbacksRef.current.onError?.(failure);
+      });
+      return;
+    }
     if (!recognitionRef.current) {
       if (!isRecording) {
         startSessionRef.current += 1;
@@ -402,6 +548,17 @@ export function useVoiceInput(
   }, [isRecording, teardown]);
 
   const cancel = useCallback(() => {
+    const nativeSessionId = nativeSessionRef.current;
+    if (nativeSessionId) {
+      nativeSessionRef.current = null;
+      shouldCommitRef.current = false;
+      teardown();
+      callbacksRef.current.onCancel?.();
+      void cancelNativeSpeech(nativeSessionId).catch((error) => {
+        logger.warn("native speech cancel failed", error);
+      });
+      return;
+    }
     if (!recognitionRef.current) {
       if (!isRecording) {
         startSessionRef.current += 1;
@@ -430,7 +587,29 @@ export function useVoiceInput(
   }, [isRecording, start, stop]);
 
   useEffect(() => {
+    if (!nativeRuntime) return;
+    let disposed = false;
+    void queryNativeSpeechSupport()
+      .then((supported) => {
+        if (!disposed) setIsSupported(supported);
+      })
+      .catch((error) => {
+        logger.warn("native speech support probe failed", error);
+        if (!disposed) setIsSupported(false);
+      });
     return () => {
+      disposed = true;
+    };
+  }, [nativeRuntime]);
+
+  useEffect(() => {
+    return () => {
+      const nativeSessionId = nativeSessionRef.current;
+      nativeSessionRef.current = null;
+      if (nativeSessionId)
+        void cancelNativeSpeech(nativeSessionId).catch((error) =>
+          logger.warn("Background operation failed", error)
+        );
       if (recognitionRef.current) {
         shouldCommitRef.current = false;
         try {
@@ -440,6 +619,20 @@ export function useVoiceInput(
         }
       }
       clearTimer();
+      const listener = nativeListenerRef.current;
+      nativeListenerRef.current = null;
+      if (listener)
+        void listener
+          .unregister()
+          .catch((error) => logger.warn("Background operation failed", error));
+      const pendingListener = nativeListenerPromiseRef.current;
+      if (pendingListener) {
+        void pendingListener
+          .then((value) => value.unregister())
+          .catch((error) =>
+            logger.warn("native listener cleanup failed", error)
+          );
+      }
     };
   }, [clearTimer]);
 

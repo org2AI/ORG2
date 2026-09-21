@@ -10,6 +10,7 @@
  * - Use `deferAfterPaint()` for one-time deferred operations
  */
 import { createLogger } from "@src/hooks/logger";
+import { syncMacosPageBackdrop } from "@src/util/platform/macosPageBackdrop";
 import { syncMacosRootTint } from "@src/util/platform/macosRootTint";
 
 const log = createLogger("DeferredInit");
@@ -47,6 +48,10 @@ export function signalFirstPaintComplete(): void {
     // macOS: move the CSS root tint into a native layer under the webview so
     // the strip exposed by a live resize matches the page.
     .then(() => syncMacosRootTint());
+
+  // macOS: re-read the page colour the resize backdrop mirrors, in case the
+  // theme stylesheet landed after the page surface was first measured.
+  syncMacosPageBackdrop();
 
   // Resolve the promise
   if (firstPaintResolver) {

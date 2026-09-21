@@ -16,9 +16,9 @@ import Dropdown from "@src/components/Dropdown";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import type { DropdownOption } from "@src/components/Dropdown/types";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import Select from "@src/components/Select";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   Archive03Icon,
   CircleDotIcon,
@@ -226,8 +226,6 @@ const SourceControlFilterHeader: React.FC<SourceControlFilterHeaderProps> =
                 <div className={DROPDOWN_CLASSES.menuPanel}>
                   <Button
                     layout="custom"
-                    appearance="custom"
-                    htmlType="button"
                     onClick={handleRefreshMenuClick}
                     className={DROPDOWN_CLASSES.menuActionItem}
                   >
@@ -253,7 +251,6 @@ const SourceControlFilterHeader: React.FC<SourceControlFilterHeaderProps> =
                 disabled={moreMenuVisible}
               >
                 <Button
-                  htmlType="button"
                   variant="tertiary"
                   size="small"
                   iconOnly

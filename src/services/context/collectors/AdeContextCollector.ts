@@ -41,9 +41,9 @@ import { activeWorkspaceRootAtom } from "@src/store/workspace";
 import "@src/store/workstation/codeEditor/workstationPrAtom";
 import {
   selectWorkstationPanel,
-  sessionWorkstationWorkspaceKey,
   workstationTabsStateAtom,
 } from "@src/store/workstation/tabs";
+import { resolveSessionWorkstationWorkspaceKey } from "@src/store/workstation/tabs/workspaceScope";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 export type { WorkspaceSnapshot };
@@ -161,7 +161,7 @@ export function collectAdeContext(
     const workspacePanel = workspaceSessionId
       ? selectWorkstationPanel(
           store.get(workstationTabsStateAtom),
-          sessionWorkstationWorkspaceKey(workspaceSessionId)
+          resolveSessionWorkstationWorkspaceKey(store.get, workspaceSessionId)
         )
       : null;
     const presentedSessionId = store.get(workstationActiveSessionIdAtom);

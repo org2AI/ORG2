@@ -33,6 +33,27 @@ describe("mobile transcript bubbles", () => {
     expect(html).not.toContain("Generated browser state");
   });
 
+  it("hides a request-only transport heading", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(UserBubble, {
+        text: "<in-app-browser-context>Generated state</in-app-browser-context>\n## My request:\n好的 启动一下ios移动端吧",
+      })
+    );
+
+    expect(html).toContain("好的 启动一下ios移动端吧");
+    expect(html).not.toContain("My request");
+  });
+
+  it("preserves an authored request heading without envelope provenance", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(UserBubble, {
+        text: "## My request:\nKeep this heading.",
+      })
+    );
+    expect(html).toContain("My request");
+    expect(html).toContain("Keep this heading.");
+  });
+
   it("renders writing-block content through the desktop Markdown renderer", () => {
     const html = renderToStaticMarkup(
       React.createElement(AgentBubble, {

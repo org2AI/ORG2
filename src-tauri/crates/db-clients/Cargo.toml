@@ -59,10 +59,12 @@ tokio = { workspace = true }
 # The whole point of this crate. `default-features = false` strips out
 # sqlx's native-tls path; `tls-rustls` keeps everything ring-based.
 # `json` is needed for `try_get::<serde_json::Value, _>` against
-# Postgres JSONB / MySQL JSON columns. The actual `postgres` /
+# Postgres JSONB / MySQL JSON columns; `chrono` / `uuid` decode the
+# date/time and UUID columns that `SELECT *` table browsing returns (both
+# crates are already in the workspace graph). The actual `postgres` /
 # `mysql` engine features come from THIS crate's [features] block
 # above, not enabled here directly.
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "json"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "json", "chrono", "uuid"] }
 
 [lib]
 path = "src/lib.rs"

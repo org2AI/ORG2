@@ -136,7 +136,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
       : variantConfig.containerClass,
     !hasButton && variantConfig.containerHoverClass,
     disabled && "opacity-50 cursor-not-allowed",
-    compact && layout === "inline" && "h-9 px-2 py-0",
+    compact && layout === "inline" && "h-8 px-2 py-0",
     className
   );
 
@@ -310,8 +310,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
   return (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className={cn(
         "w-full focus-visible:ring-2 focus-visible:ring-primary-6 focus-visible:ring-offset-2 focus-visible:outline-none",
         containerClass

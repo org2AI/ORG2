@@ -46,7 +46,6 @@ export * from "./guideHighlightAtom";
 // WorkStation / Chat / Simulator / Workspace Folders (formerly workspaceAtom barrel)
 export * from "./simulatorAtom";
 export * from "./overlayAtom";
-export { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 
 export * from "./chatPanel/widthAtoms";
 export * from "./chatPanel/visibilityAtoms";

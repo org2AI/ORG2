@@ -31,7 +31,7 @@ const BlockSection: React.FC<BlockSectionProps> = memo(
       }
     >
       <div className={SECTION_HEADER_CLASSES}>
-        <span className="font-bold uppercase select-text">{label}</span>
+        <span className="font-bold uppercase select-none">{label}</span>
         {headerAction && (
           <div className="ml-auto flex items-center gap-0.5 select-none">
             {headerAction}

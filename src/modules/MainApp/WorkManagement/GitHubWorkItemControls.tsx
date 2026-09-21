@@ -3,74 +3,23 @@ import React, { useCallback, useState } from "react";
 import type { GitHubIssueUser } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
 import Dropdown from "@src/components/Dropdown";
+import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import {
-  DROPDOWN_CLASSES,
-  DROPDOWN_WIDTHS,
-} from "@src/components/Dropdown/tokens";
-import type { SelectOption } from "@src/components/Select";
+  WorkManagementAssigneeCell,
+  toggleWorkManagementAssigneeIds,
+} from "@src/features/GitHubWork/WorkManagementAssigneeCell";
 import {
   BubbleChatIcon,
-  FunnelIcon,
   GitPullRequestIcon,
   HugeiconsIcon,
   Link02Icon,
   MoreHorizontalIcon,
 } from "@src/icons";
-import {
-  WorkManagementAssigneeCell,
-  toggleWorkManagementAssigneeIds,
-} from "@src/modules/shared/components/WorkManagementAssigneeCell";
 
 import {
   type ManagedIssueItem,
   type ManagedPrItem,
 } from "./githubManagedItemModel";
-
-export function IssuePersonalFilterDropdown({
-  options,
-  selectedFilters,
-  filterLabel,
-  onSelect,
-}: {
-  options: SelectOption[];
-  selectedFilters: string[];
-  filterLabel: string;
-  onSelect: (values: (string | number)[]) => void;
-}): React.ReactNode {
-  const hasSelectedFilters = selectedFilters.length > 0;
-  const accessibleLabel = hasSelectedFilters
-    ? `${filterLabel} (${selectedFilters.length})`
-    : filterLabel;
-
-  return (
-    <Dropdown
-      options={options}
-      value={selectedFilters}
-      mode="multiple"
-      position="bottom-end"
-      className={`${DROPDOWN_CLASSES.panelAnimated} ${DROPDOWN_WIDTHS.fileTreeClass}`}
-      onSelect={(value) => onSelect(Array.isArray(value) ? value : [value])}
-    >
-      <Button
-        htmlType="button"
-        variant="tertiary"
-        size="small"
-        className={hasSelectedFilters ? "bg-fill-1! text-primary-6!" : ""}
-        icon={
-          <HugeiconsIcon
-            icon={FunnelIcon}
-            data-icon="funnel"
-            size={14}
-            strokeWidth={1.8}
-          />
-        }
-        iconOnly
-        aria-label={accessibleLabel}
-        aria-pressed={hasSelectedFilters}
-      />
-    </Dropdown>
-  );
-}
 
 export function ManagedIssueContextMeta({
   issue,
@@ -191,8 +140,6 @@ export function ManagedIssueActionsCell({
     <div className={`${DROPDOWN_CLASSES.menuPanelBase} min-w-[180px]`}>
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         className={DROPDOWN_CLASSES.menuActionItem}
         onClick={() => {
           onOpenIssueInBrowser(issue);
@@ -207,9 +154,7 @@ export function ManagedIssueActionsCell({
   return (
     <div className="flex items-center justify-end gap-1.5">
       <Button
-        htmlType="button"
         variant="tertiary"
-        appearance="ghost"
         size="mini"
         icon={<HugeiconsIcon icon={Link02Icon} data-icon="link-2" size={12} />}
         onClick={() => onAddIssue(issue)}
@@ -227,9 +172,7 @@ export function ManagedIssueActionsCell({
         avoidViewportOverflow
       >
         <Button
-          htmlType="button"
           variant="tertiary"
-          appearance="ghost"
           size="mini"
           icon={
             <HugeiconsIcon
@@ -259,9 +202,7 @@ export function ManagedPrActionsCell({
   return (
     <div className="flex items-center justify-end gap-1.5">
       <Button
-        htmlType="button"
         variant="tertiary"
-        appearance="ghost"
         size="mini"
         icon={<HugeiconsIcon icon={Link02Icon} data-icon="link-2" size={12} />}
         onClick={() => onAddPr(pr)}

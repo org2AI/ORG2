@@ -306,7 +306,6 @@ const GanttTaskTooltip: React.FC<GanttTaskTooltipProps> = ({
                   {onEdit && (
                     <Button
                       layout="custom"
-                      appearance="custom"
                       className="gantt-task-tooltip__action"
                       onClick={() => {
                         onEdit(task);
@@ -325,7 +324,6 @@ const GanttTaskTooltip: React.FC<GanttTaskTooltipProps> = ({
                   {onDelete && (
                     <Button
                       layout="custom"
-                      appearance="custom"
                       className="gantt-task-tooltip__action gantt-task-tooltip__action--danger"
                       onClick={() => {
                         onDelete(task.id);

@@ -51,6 +51,46 @@ Initial main-window setup, main-window recovery, and detached session and
 station windows continue to call the same apply helper. The startup opaque cover remains until
 the frontend is ready.
 
+## Live resize surfaces
+
+WebKit on macOS 14+ composites web content in the UI process. A window resize
+reaches the WKWebView immediately, but the new size is sent to the WebContent
+process without a CoreAnimation fence, so the page is repainted at that size one
+or more frames later. Until then, the strip at the trailing edges shows the native
+views under the transparent webview. From bottom to top, all inside the content
+view:
+
+1. **Material** (`org2.window.menu-vibrancy`): the Menu `NSVisualEffectView`.
+2. **Root tint** (`org2.window.root-tint`): the composite of the translucent
+   `html` / `body` / `#root` tints, mirrored by `src/util/platform/macosRootTint.ts`
+   so the CSS tints can go transparent.
+3. **Page backdrop** (`org2.window.page-backdrop`): an opaque layer in the page
+   colour, under the page surface's region. `src/util/platform/macosPageBackdrop.ts`
+   measures the registered page surface (`useMacosPageBackdropSurface`: its insets
+   from the viewport edges and its colour) and sends it through
+   `set_window_page_backdrop`; only opaque surfaces are mirrored.
+
+The page backdrop is hidden except while the window resizes.
+`NSWindowWillStartLiveResizeNotification` and `NSWindowDidResizeNotification`
+reveal it synchronously, in the same CoreAnimation transaction as the new frame.
+It hides again after 500 ms without a resize, and stays revealed while a live resize
+is still tracking. Tauri's `WindowEvent::Resized` is not used for the reveal: tao
+drains its event queue after CoreAnimation's commit, so a reveal from it reaches
+the screen one frame late. The layer cannot stay visible either. Sidebar geometry
+reaches native a frame or two after the page repaints, so a visible layer would sit
+under the translucent sidebar while it grows. Implicit layer animations are
+disabled so the reveal does not fade in.
+
+Measured in a standalone AppKit + WKWebView harness on macOS 26 with this stack
+(programmatic 10 pt growth steps over a text-heavy page, capturing the window after
+each step):
+
+| Configuration                                   | Trailing strip in page colour | Growing-sidebar artifacts             |
+| ----------------------------------------------- | ----------------------------- | ------------------------------------- |
+| Material + root tint only (before)              | 18% of samples                | n/a                                   |
+| Page backdrop always visible                    | 100%                          | up to 54 pt band (16–33 ms IPC delay) |
+| Page backdrop revealed from resize notification | 100%, first step included     | none                                  |
+
 ## Dependency choice
 
 The implementation uses the workspace's existing `objc2`, `objc2-app-kit`,
@@ -79,6 +119,10 @@ remain necessary on representative older and current macOS releases:
   material view and unrelated subviews remain intact.
 - Focus changes, minimize/restore, resize/fullscreen, and Retina/external-display
   changes.
+- Dragging each window edge and corner, zoom (double-click title bar, green button),
+  and window tiling. The trailing strip should show the page colour beside the page
+  and the translucent root surface under the sidebar, and the sidebar should never
+  turn opaque while it expands or is dragged.
 - Visible/hidden idle and active CPU/GPU behavior; source shape alone is not
   performance evidence.
 

@@ -255,6 +255,7 @@ export function buildSessionLaunchPayload(
     workspacePath: sessionRepoPath || undefined,
     keySource: resolvedKeys.keySource,
     accountId: resolvedKeys.accountId,
+    credentialSource: resolvedKeys.credentialSource,
     model: resolvedKeys.model,
     platform: resolvedKeys.cliAgentType,
     branch: sessionBranch,
@@ -308,6 +309,7 @@ export function buildSessionFromLaunchResult(options: {
   isBackgroundLaunch: boolean;
   launchAgentDefinitionId?: string;
   launchCliAgentType?: SessionLaunchResult["cliAgentType"];
+  launchCredentialSource?: string;
   launchOrgContext?: Partial<SessionLaunchOrgContext>;
   result: SessionLaunchResult;
 }): Session {
@@ -317,6 +319,7 @@ export function buildSessionFromLaunchResult(options: {
     isBackgroundLaunch,
     launchAgentDefinitionId,
     launchCliAgentType,
+    launchCredentialSource,
     launchOrgContext,
     result,
   } = options;
@@ -337,6 +340,9 @@ export function buildSessionFromLaunchResult(options: {
       | typeof DISPATCH_CATEGORY.CLI_AGENT,
     model: result.model ?? undefined,
     cliAgentType: result.cliAgentType ?? launchCliAgentType ?? undefined,
+    ...((result.credentialSource ?? launchCredentialSource)
+      ? { credentialSource: result.credentialSource ?? launchCredentialSource }
+      : {}),
     ...(launchAgentDefinitionId
       ? { agentDefinitionId: launchAgentDefinitionId }
       : {}),

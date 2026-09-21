@@ -18,6 +18,11 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
+import {
+  SECTION_GAP_CLASSES,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import { useCursorSessionCapture } from "@src/features/SessionSetup/hooks/useCursorSessionCapture";
 import { useWebviewPositionSync } from "@src/features/SessionSetup/hooks/useWebviewPositionSync";
@@ -28,11 +33,6 @@ import {
   Loading03Icon,
   Refresh04Icon,
 } from "@src/icons";
-import {
-  SECTION_GAP_CLASSES,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 const CURSOR_API_KEYS_URL = "https://cursor.com/dashboard/integrations";
 
@@ -177,9 +177,8 @@ const CursorSessionSetup: React.FC<CursorSessionSetupProps> = ({
             >
               <div className="flex items-center gap-2">
                 <Button
-                  variant={sessionToken ? "success" : "primary"}
-                  appearance={sessionToken ? "outline" : "solid"}
-                  size="default"
+                  variant={sessionToken ? "secondary" : "primary"}
+                  tone={sessionToken ? "success" : undefined}
                   onClick={openLoginBrowser}
                   disabled={Boolean(sessionToken)}
                   className="h-8 min-h-8"
@@ -191,8 +190,6 @@ const CursorSessionSetup: React.FC<CursorSessionSetupProps> = ({
                 {sessionToken && (
                   <Button
                     variant="primary"
-                    appearance="solid"
-                    size="default"
                     onClick={openApiKeysPage}
                     className="h-8 min-h-8"
                   >
@@ -252,12 +249,7 @@ const CursorSessionSetup: React.FC<CursorSessionSetupProps> = ({
               </span>
             </div>
             {sessionToken && (
-              <Button
-                variant="secondary"
-                appearance="outline"
-                size="mini"
-                onClick={openApiKeysPage}
-              >
+              <Button size="mini" onClick={openApiKeysPage}>
                 {t("keyVault.openCursorApiKeys")}
               </Button>
             )}
@@ -294,10 +286,8 @@ const CursorSessionSetup: React.FC<CursorSessionSetupProps> = ({
                 <div className="mb-4 text-[12px] text-text-3">{error}</div>
                 <Button
                   variant="primary"
-                  appearance="solid"
-                  size="default"
                   onClick={startCapture}
-                  className="text-sm font-medium text-text-white hover:bg-primary-7"
+                  className="text-sm font-medium text-text-white"
                 >
                   {t("common:actions.retry")}
                 </Button>

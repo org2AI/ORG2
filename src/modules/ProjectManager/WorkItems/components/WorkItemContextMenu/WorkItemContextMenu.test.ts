@@ -28,6 +28,12 @@ describe("WorkItemContextMenu hover navigation", () => {
         },
         { id: "second", label: "Second" },
         { id: "third", label: "Third", action: selectThird },
+        {
+          id: "terminal",
+          label: "Terminal",
+          action: selectThird,
+          closeMenuOnSelect: true,
+        },
       ],
     },
     { id: "sibling", label: "Sibling" },
@@ -93,6 +99,18 @@ describe("WorkItemContextMenu hover navigation", () => {
     advance(1000);
     expect(panels()).toHaveLength(1);
     act(() => third.click());
+    expect(selectThird).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(panels()).toHaveLength(1);
+  });
+
+  it("allows an explicitly terminal submenu action to dismiss the menu", () => {
+    const terminal = panels()[0].querySelector<HTMLElement>(
+      "button:nth-child(4)"
+    )!;
+
+    act(() => terminal.click());
+
     expect(selectThird).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
   });

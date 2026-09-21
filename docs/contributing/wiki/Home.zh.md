@@ -27,8 +27,8 @@
 
 ## 下载
 
-从 [Releases](https://github.com/YORG-AI/ORGII/releases) 页面下载最新桌面版本。
+从 [Releases](https://github.com/org2AI/ORG2/releases) 页面下载最新桌面版本。
 
 ## 许可证
 
-ORGII 采用 [AGPL-3.0-or-later](https://github.com/YORG-AI/ORGII/blob/main/LICENSE) 许可证。
+ORGII 采用 [AGPL-3.0-or-later](https://github.com/org2AI/ORG2/blob/main/LICENSE) 许可证。

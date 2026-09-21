@@ -185,17 +185,12 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <Button
-              variant="secondary"
-              size="small"
-              onClick={() => handleView(row)}
-            >
+            <Button size="small" onClick={() => handleView(row)}>
               {t("common:actions.view", { defaultValue: "View" })}
             </Button>
             {row.__category === "custom" ? (
               <Button
-                variant="danger"
-                appearance="outline"
+                tone="danger"
                 size="small"
                 icon={
                   <HugeiconsIcon
@@ -252,8 +247,6 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
   const addAgentLabel = t("agentOrgs.addAgent", { defaultValue: "Add Agent" });
   const addButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       iconOnly
       aria-label={addAgentLabel}

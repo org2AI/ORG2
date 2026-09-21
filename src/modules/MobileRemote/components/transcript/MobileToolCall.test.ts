@@ -1,4 +1,6 @@
-import React from "react";
+// @vitest-environment jsdom
+import React, { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -7,15 +9,18 @@ import { _resetToolRegistry } from "@src/engines/SessionCore/rendering/registry/
 import { BookOpen02Icon, Search01Icon, Wrench01Icon } from "@src/icons";
 
 import type { TranscriptItem } from "../../lib/transcriptReducer";
+import { MobileToolCall } from "./MobileToolCall";
 import {
-  MobileToolCall,
   mobileToolSummary,
   normalizeMobileToolLifecycle,
   resolveMobileToolIconName,
-} from "./MobileToolCall";
+} from "./mobileToolPresentation";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { tool?: string }) =>
+      options?.tool ? `${key}: ${options.tool}` : key,
+  }),
 }));
 
 afterEach(() => {
@@ -58,6 +63,60 @@ describe("resolveMobileToolIconName", () => {
 });
 
 describe("MobileToolCall", () => {
+  it("keeps tool target and current status in its accessible name across updates", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const env = globalThis as typeof globalThis & {
+      IS_REACT_ACT_ENVIRONMENT?: boolean;
+    };
+    const previous = env.IS_REACT_ACT_ENVIRONMENT;
+    env.IS_REACT_ACT_ENVIRONMENT = true;
+    const onOpenDetails = vi.fn();
+    try {
+      for (const [command, status, expectedStatus] of [
+        ["pnpm test", "running", "running"],
+        ["pnpm test", "failed", "failed"],
+        ["pnpm build", "completed", "done"],
+      ] as const) {
+        await act(async () =>
+          root.render(
+            React.createElement(MobileToolCall, {
+              item: {
+                id: "command",
+                kind: "tool",
+                text: "run_shell",
+                toolName: "run_shell",
+                toolSummary: command,
+                toolStatus: status,
+                toolData: {
+                  kind: "shell",
+                  command,
+                  output: "Output stays in details",
+                  isFailure: status === "failed",
+                },
+              },
+              onOpenDetails,
+            })
+          )
+        );
+        const trigger = host.querySelector("button")!;
+        expect(trigger.getAttribute("aria-label")).toBe(
+          `transcript.tools.openDetails: transcript.tools.labels.runCommand · ${command} · transcript.tools.status.${expectedStatus}`
+        );
+        expect(trigger.getAttribute("aria-label")).not.toContain(
+          "Output stays in details"
+        );
+        await act(async () => trigger.click());
+      }
+      expect(onOpenDetails).toHaveBeenCalledTimes(3);
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+      env.IS_REACT_ACT_ENVIRONMENT = previous;
+    }
+  });
+
   it("renders distinct icons per tool without the desktop tool registry", () => {
     const readItem: TranscriptItem = {
       id: "file-1",
@@ -206,16 +265,29 @@ describe("MobileToolCall", () => {
       React.createElement(MobileToolCall, { item: longSummaryItem })
     );
 
-    expect(shortHtml).toContain('data-mobile-tool-status-trailing="true"');
-    expect(longHtml).toContain('data-mobile-tool-status-trailing="true"');
-    expect(shortHtml).toMatch(
-      /data-mobile-tool-status-trailing="true"[\s\S]*transcript\.tools\.status\.done/
-    );
-    const leftSection = shortHtml.match(
-      /<div class="flex min-w-0 flex-1 items-center gap-2 leading-tight">([\s\S]*?)<\/div><div class="flex shrink-0 items-center gap-1 select-none">/
-    )?.[1];
-    expect(leftSection).toContain("&quot;would_downgrade_terminal&quot;");
-    expect(leftSection).not.toContain("transcript.tools.status.done");
+    for (const [html, summary] of [
+      [shortHtml, '"would_downgrade_terminal"'],
+      [longHtml, "src/modules/MobileRemote/MobileRemoteApp.tsx"],
+    ]) {
+      const container = document.createElement("div");
+      container.innerHTML = html;
+      const status = container.querySelector(
+        '[data-mobile-tool-status-trailing="true"]'
+      );
+      expect(status?.textContent).toContain("transcript.tools.status.done");
+
+      // Assert the two layout columns, independent of wrappers used to size
+      // the icon/text hover target inside the flexible content column.
+      const trailingColumn = status?.parentElement;
+      const contentColumn = trailingColumn?.previousElementSibling;
+      expect(trailingColumn?.classList.contains("shrink-0")).toBe(true);
+      expect(contentColumn?.classList.contains("flex-1")).toBe(true);
+      expect(contentColumn?.textContent).toContain(summary);
+      expect(contentColumn?.textContent).not.toContain(
+        "transcript.tools.status.done"
+      );
+      expect(trailingColumn?.textContent).not.toContain(summary);
+    }
   });
 
   it("formats grep alternation queries as readable comma-separated subtitles", () => {

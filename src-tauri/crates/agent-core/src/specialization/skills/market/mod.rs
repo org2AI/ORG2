@@ -9,7 +9,7 @@
 //! - `detail`  — `skills_hub_detail`
 //! - `install` — `skills_hub_install` / `skills_hub_uninstall`
 //! - `cache`   — per-skill on-disk detail cache
-//! - `update`  — `skills_check_updates` / `skills_hub_update`
+//! - `update`  — `skills_check_updates` / `skills_refresh`
 
 mod http;
 mod types;

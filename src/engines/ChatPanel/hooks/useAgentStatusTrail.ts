@@ -12,10 +12,10 @@
  *   - phase    — the SESSION's own status, read through the same helpers the
  *     sidebar row uses (`isSessionInProgress`, `isSessionPendingAsking`) and
  *     combined in the same order (`resolveTrailPhase`). Liveness itself goes
- *     through `resolveTailTurnAgentWorking`, so the trail, the tail-turn
- *     collapse phase, and the sidebar dot all read one rule: the foreground
- *     runtime atom for a native session, the persisted status for an
- *     external-history one.
+ *     through `resolveTailTurnAgentWorking`: native sessions use the supplied
+ *     foreground signal (including live children); external history uses its
+ *     session status. Turn collapse checks parent completion and the current
+ *     session's live child jobs separately.
  *   - elapsed  — anchored to the tail turn's start (`ChatGroupMeta.startMs`),
  *     the same instant `TurnCollapsePinBar` measures from once the round
  *     ends, so the live trail and the finished "Agent worked for X" bar
@@ -115,9 +115,8 @@ export function useAgentStatusTrail({
   const pendingAsking =
     !scoped && session !== undefined && isSessionPendingAsking(session);
   // ONE timer armed for the remainder of the quiet window, re-armed whenever
-  // activity moves — not a poll. Written only from the timeout callback so
-  // the render below stays pure, the same discipline `useTailTurnPhase` uses
-  // for its own stale latch.
+  // activity moves — not a poll. The timeout only changes the trail label;
+  // turn collapse is independently driven by engine completion.
   const [staleKey, setStaleKey] = useState<string | null>(null);
   const activityKey =
     sessionId !== null && lastActivityAtMs !== null

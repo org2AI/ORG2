@@ -24,6 +24,12 @@ import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import Select from "@src/components/Select";
+import {
+  SECTION_CONTROL_STYLE,
+  SECTION_GAP_CLASSES,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import { useKiroSessionCapture } from "@src/features/SessionSetup/hooks/useKiroSessionCapture";
 import { useWebviewPositionSync } from "@src/features/SessionSetup/hooks/useWebviewPositionSync";
@@ -34,12 +40,6 @@ import {
   Loading03Icon,
   Refresh04Icon,
 } from "@src/icons";
-import {
-  SECTION_CONTROL_STYLE,
-  SECTION_GAP_CLASSES,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import { copyText } from "@src/util/data/clipboard";
 
 // ============================================
@@ -262,7 +262,6 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
               title={t("common:actions.refresh")}
               size="mini"
               variant="tertiary"
-              appearance="soft"
               iconOnly
               icon={
                 <HugeiconsIcon
@@ -277,7 +276,6 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
               title={t("keyVault.kiroCloseBrowser")}
               size="mini"
               variant="tertiary"
-              appearance="soft"
               iconOnly
               icon={
                 <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
@@ -300,7 +298,6 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
                   title={t("keyVault.kiroCopyCode")}
                   size="mini"
                   variant="tertiary"
-                  appearance="soft"
                   iconOnly
                   icon={
                     <HugeiconsIcon
@@ -385,7 +382,6 @@ const KiroSessionSetup: React.FC<KiroSessionSetupProps> = ({
             <SectionRow label="" showHeader={false}>
               <Button
                 variant="primary"
-                size="default"
                 disabled={!isFormValid}
                 onClick={handleLogin}
               >

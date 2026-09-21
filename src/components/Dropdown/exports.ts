@@ -37,6 +37,8 @@ export { default as DropdownPanel } from "./DropdownPanel";
 
 export { default as DropdownItem, DropdownItemGroup } from "./DropdownItem";
 
+export { default as DropdownActionItem } from "./DropdownActionItem";
+
 export { default as DropdownSearch } from "./DropdownSearch";
 
 export { default as DropdownSelectedCheck } from "./DropdownSelectedCheck";

@@ -4,6 +4,7 @@ import type {
   NativeHarnessType,
 } from "@src/api/tauri/rpc/schemas/validation";
 import type { DispatchCategory, KeySource } from "@src/api/tauri/session/index";
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 
 import type { BasePaletteProps } from "../../shared";
@@ -15,6 +16,10 @@ export interface SourceOption {
   type: KeySource;
   accountId?: string;
   nativeHarnessType?: NativeHarnessType;
+  /** Purchased profile metadata; never contains a static API key. */
+  marketSource?: MarketProfileSource;
+  /** Concrete models this source can launch. */
+  modelIds?: string[];
 }
 
 export interface UnifiedModelPaletteProps extends BasePaletteProps {

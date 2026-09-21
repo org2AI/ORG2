@@ -4,21 +4,20 @@
  * Workspace/branch/worktree selection and CRUD action handlers for
  * `GlobalSpotlightInner` — select workspace, select/create/remove a
  * worktree, select/create/delete a branch, checkout detached HEAD.
- * Extracted verbatim from `GlobalSpotlight/index.tsx`; no behavior changes.
+ * Domain operations close the host; route state belongs to the host alone.
  */
-import type { TFunction } from "i18next";
-import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 
 import { gitApi, removeGitWorktree } from "@src/api/http/git";
 import type { GitWorktreeEntry } from "@src/api/http/git";
+import i18n from "@src/i18n";
+import { performBranchSwitch } from "@src/services/git/operations/performBranchSwitch";
 import type { Repo } from "@src/store/repo";
 import type { WorktreeLaunchSource } from "@src/store/session/worktreeLaunchSourceAtom";
 import type { ActiveWorktreeSelection } from "@src/store/workspace";
 import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
 
 import {
-  type WorkingDirectoryPickerMode,
   getWorktreeBaseRef,
   getWorktreeCreateName,
 } from "../../globalSpotlight.helpers";
@@ -43,14 +42,8 @@ interface UseSpotlightPickerActionsOptions {
   selectBranch: (branch: string) => Promise<void>;
   refreshBranches: () => Promise<void>;
   closeModal: () => void;
-  t: TFunction;
   setActiveWorktree: (selection: ActiveWorktreeSelection | null) => void;
   setCurrentBranch: (branch: string) => void;
-  setWorkingDirectoryPickerMode: Dispatch<
-    SetStateAction<WorkingDirectoryPickerMode | null>
-  >;
-  setBranchPickerOpen: Dispatch<SetStateAction<boolean>>;
-  setWorktreePickerOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 interface UseSpotlightPickerActionsResult {
@@ -88,21 +81,16 @@ export function useSpotlightPickerActions(
     selectBranch,
     refreshBranches,
     closeModal,
-    t,
     setActiveWorktree,
     setCurrentBranch,
-    setWorkingDirectoryPickerMode,
-    setBranchPickerOpen,
-    setWorktreePickerOpen,
   } = deps;
 
   const handleWorkspaceSelect = useCallback(
     (repoId: string, _repo: RepoItem) => {
       selectRepo(repoId);
-      setWorkingDirectoryPickerMode(null);
       closeModal();
     },
-    [closeModal, selectRepo, setWorkingDirectoryPickerMode]
+    [closeModal, selectRepo]
   );
 
   const handleWorktreePickerSelect = useCallback(
@@ -115,16 +103,9 @@ export function useSpotlightPickerActions(
         isMain: worktree.is_main,
       });
       setCurrentBranch(worktree.branch);
-      setWorktreePickerOpen(false);
       closeModal();
     },
-    [
-      closeModal,
-      selectedRepoId,
-      setActiveWorktree,
-      setCurrentBranch,
-      setWorktreePickerOpen,
-    ]
+    [closeModal, selectedRepoId, setActiveWorktree, setCurrentBranch]
   );
 
   const handleWorktreePickerCreate = useCallback(
@@ -163,10 +144,9 @@ export function useSpotlightPickerActions(
       // Await the guarded checkout BEFORE tearing down the modal — otherwise
       // closeModal() races the CheckoutConflictDialog selectBranch may open.
       await selectBranch(branchName);
-      setBranchPickerOpen(false);
       closeModal();
     },
-    [closeModal, selectBranch, setBranchPickerOpen]
+    [closeModal, selectBranch]
   );
 
   const handleCreateBranch = useCallback(
@@ -176,31 +156,20 @@ export function useSpotlightPickerActions(
         return;
       }
 
-      // Create WITHOUT checking out, then route the checkout through
-      // selectBranch so a dirty working tree surfaces the CheckoutConflictDialog
-      // instead of the raw create+checkout bypassing the guard.
-      const result = await gitApi.gitCreateBranch({
-        repo_id: selectedRepoId,
-        repo_path: currentRepo.path,
-        name: branchName,
-        start_point: startPoint ?? null,
-        checkout: false,
-      });
+      const result = await performBranchSwitch(
+        {
+          repoId: selectedRepoId,
+          repoPath: currentRepoPath || currentRepo.path,
+        },
+        branchName,
+        true,
+        startPoint
+      );
+      if (!result.success) return;
 
-      if (!result.success) {
-        showGitActionDialogSafely(
-          result.error || `Failed to create branch "${branchName}"`,
-          "error"
-        );
-        return;
-      }
-
-      showGitActionDialogSafely(`Branch "${branchName}" created`, "info");
-      await selectBranch(branchName);
-      setBranchPickerOpen(false);
       closeModal();
     },
-    [closeModal, currentRepo, selectBranch, selectedRepoId, setBranchPickerOpen]
+    [closeModal, currentRepo, currentRepoPath, selectedRepoId]
   );
 
   const handleDeleteBranch = useCallback(
@@ -224,7 +193,11 @@ export function useSpotlightPickerActions(
 
       if (!result.success) {
         const message =
-          result.error || `Failed to delete branch "${branchName}"`;
+          result.error ||
+          i18n.t("common:selectors.branch.messages.failedDelete", {
+            defaultValue: 'Failed to delete branch "{{branch}}"',
+            branch: branchName,
+          });
         if (!options?.silent) {
           showGitActionDialogSafely(message, "error");
         }
@@ -287,27 +260,20 @@ export function useSpotlightPickerActions(
       return;
     }
 
-    // Route through the guarded checkout flow (selectBranch special-cases
-    // HEAD-style refs) so a dirty tree surfaces the CheckoutConflictDialog
-    // rather than bypassing it with a raw gitCheckout. selectBranch reports its
-    // own failures; we keep the detached-HEAD success copy.
-    await selectBranch("HEAD");
-
-    showGitActionDialogSafely(
-      t("selectors.branch.actions.checkoutDetachedSuccess"),
-      "info"
+    const result = await performBranchSwitch(
+      { repoId: selectedRepoId, repoPath: currentRepoPath || currentRepo.path },
+      "HEAD"
     );
+    if (!result.success) return;
     await refreshBranches();
-    setBranchPickerOpen(false);
+
     closeModal();
   }, [
     closeModal,
     currentRepo,
+    currentRepoPath,
     refreshBranches,
-    selectBranch,
     selectedRepoId,
-    setBranchPickerOpen,
-    t,
   ]);
 
   return {

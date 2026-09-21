@@ -17,7 +17,7 @@ import React, { Suspense } from "react";
 import { ChatLoadingBlock } from "@src/engines/ChatPanel/blocks/primitives";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { getChatLazyComponent } from "@src/engines/SessionCore/rendering/registry/events";
-import { getRegistryEventType } from "@src/lib/activityData/activityNormalizers";
+import { getRegistryEventType } from "@src/util/data/activityData/activityNormalizers";
 
 export interface ActivityGroupEventItem {
   event: SessionEvent;

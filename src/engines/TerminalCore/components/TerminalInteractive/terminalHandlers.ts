@@ -3,7 +3,7 @@ import type { IDisposable, Terminal } from "@xterm/xterm";
 import type { MutableRefObject } from "react";
 
 import { createLogger } from "@src/hooks/logger";
-import { getUiScaleFromCssVar } from "@src/lib/dndKit";
+import { getUiScaleFromCssVar } from "@src/util/dom/uiScale";
 import { isMacOS } from "@src/util/platform/tauri";
 import { invokeTauri, isTauriReady } from "@src/util/platform/tauri/init";
 
@@ -173,32 +173,17 @@ function registerResizeHandler(
   terminal: Terminal,
   sessionIdRef: MutableRefObject<string | null>
 ) {
-  let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-
-  const resizeHandler = terminal.onResize(({ cols, rows }) => {
-    if (resizeTimer !== null) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      resizeTimer = null;
-      if (isTauriReady() && sessionIdRef.current) {
-        invokeTauri("resize_pty", {
-          request: {
-            session_id: sessionIdRef.current,
-            rows,
-            cols,
-          },
-        }).catch((error) => {
-          log.error("Failed to resize PTY:", error);
-        });
-      }
-    }, 50);
+  // Container/window events already coalesce before FitAddon resizes xterm.
+  // Delaying here lets zsh draw at the old width into the new display grid.
+  return terminal.onResize(({ cols, rows }) => {
+    if (isTauriReady() && sessionIdRef.current) {
+      invokeTauri("resize_pty", {
+        request: { session_id: sessionIdRef.current, rows, cols },
+      }).catch((error) => {
+        log.error("Failed to resize PTY:", error);
+      });
+    }
   });
-
-  return {
-    resizeHandler,
-    clearResizeTimer: () => {
-      if (resizeTimer !== null) clearTimeout(resizeTimer);
-    },
-  };
 }
 
 function registerSelectionHandlers({
@@ -288,10 +273,7 @@ export function registerTerminalEventHandlers({
     workingDirectoryRef,
     onOpenFileLinkRef,
   });
-  const { resizeHandler, clearResizeTimer } = registerResizeHandler(
-    terminal,
-    sessionIdRef
-  );
+  const resizeHandler = registerResizeHandler(terminal, sessionIdRef);
   const { selectionHandler, cleanupSelectionHandlers } =
     registerSelectionHandlers({
       terminal,
@@ -311,7 +293,6 @@ export function registerTerminalEventHandlers({
 
   return () => {
     cleanupSelectionHandlers();
-    clearResizeTimer();
     cleanupCmdArrowHandler();
     fileLinkProvider.dispose();
     inputHandler.dispose();

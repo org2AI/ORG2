@@ -86,14 +86,29 @@ describe("TerminalBlock collapse policy", () => {
     expect(commandBody()).toBeNull();
   });
 
-  it("keeps a running command expanded", () => {
+  it("keeps a running command collapsed by default", () => {
     renderTerminal({ isLoading: true });
+
+    expect(commandBody()).toBeNull();
+  });
+
+  it("still lets users expand a running command manually", () => {
+    renderTerminal({ isLoading: true });
+
+    act(() =>
+      container.querySelector<HTMLElement>(".chat-block-header")?.click()
+    );
 
     expect(commandBody()?.textContent).toBe("gh pr checks 964");
   });
 
   it("collapses a live command when it settles as failed", () => {
     renderTerminal({ isLoading: true });
+    expect(commandBody()).toBeNull();
+
+    act(() =>
+      container.querySelector<HTMLElement>(".chat-block-header")?.click()
+    );
     expect(commandBody()).not.toBeNull();
 
     renderTerminal({ exitCode: 8, isError: true });

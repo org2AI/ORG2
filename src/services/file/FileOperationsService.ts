@@ -18,7 +18,14 @@
 import { copyFile, mkdir, readDir } from "@tauri-apps/plugin-fs";
 
 import { createLogger } from "@src/hooks/logger";
+// Imported from the module rather than the barrel: the barrel also exports
+// CodeNavigationService, which imports this file.
+import { NavigationHistory } from "@src/services/navigation/NavigationHistory";
 import { EditorTabService } from "@src/services/workStation/EditorTabService";
+// The caret is read from the status bar's mirror of it rather than from
+// EditorService: this module is reachable from the startup graph, and
+// EditorService pulls the CodeMirror stack in with it.
+import { activeStatusBarStateAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { fileClipboardAtom } from "@src/store/workstation/codeEditor/file/clipboardAtom";
 import { createFileTab } from "@src/store/workstation/tabs";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
@@ -26,6 +33,15 @@ import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import { FileService } from "./FileService";
 
 const log = createLogger("FileOperationsService");
+
+/** Caret position of the active editor, or null when there is nothing to read. */
+function currentCursor(): { line: number; column: number } | null {
+  try {
+    return getInstrumentedStore().get(activeStatusBarStateAtom).cursor;
+  } catch {
+    return null;
+  }
+}
 
 // ============================================
 // Types
@@ -68,12 +84,31 @@ export const FileOperationsService = {
    */
   async openAtLine(path: string, line: number): Promise<FileOperationResult> {
     try {
+      // Every deliberate cross-file jump passes through here, so this is where
+      // navigation history is produced. Capture where the caret is leaving
+      // from before the file switches, so back/forward has an origin even when
+      // the jump came from the browser or source control rather than from a
+      // navigation command.
+      const origin = FileService.getSelectedFile();
+      const originCursor = origin ? currentCursor() : null;
+
       // First, load the file content via FileService
       await FileService.open(path);
 
       // Create a tab with targetLine for navigation
       const tab = createFileTab(path, line);
       EditorTabService.openTab(tab);
+
+      // Only a jump that landed becomes history. NavigationHistory ignores
+      // both calls while it is replaying a back/forward step.
+      if (origin) {
+        NavigationHistory.recordVisit({
+          filePath: origin,
+          line: originCursor?.line ?? 1,
+          column: originCursor?.column ?? 1,
+        });
+      }
+      NavigationHistory.recordVisit({ filePath: path, line, column: 1 });
 
       // Also emit event for editor to handle (in case tab already exists)
       setTimeout(() => {

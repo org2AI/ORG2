@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "整体布局教程",
-      "description": "了解聊天面板、运行时、工作站模式切换器和 Dock。",
+      "description": "了解聊天面板、运行时、工作站模式切换器和 Dock",
       "duration": "1 分钟",
       "steps": {
         "chat-panel": {
           "title": "聊天面板",
-          "body": "在这里与 Agent 对话、查看活动，并发送后续指令。"
+          "body": "在这里与 Agent 对话、查看活动，并发送后续指令"
         },
         "runtime": {
           "title": "运行时",
-          "body": "在这里查看个人用量与运行状态；切换到工作空间后，还可以查看成员同步状态，并进入成员详情查看 Codex、Claude 和 Cursor 用量。"
+          "body": "在这里查看个人用量与运行状态；切换到工作空间后，还可以查看成员同步状态，并进入成员详情查看 Codex、Claude 和 Cursor 用量"
         },
         "station-mode-pill": {
           "title": "切换工作站模式",
-          "body": "使用此按钮切换工作站模式。桌面代表“我的工作站”，也就是你的 Workspace；无限代表“Agent 工作站”，用于查看 Agent 活动。"
+          "body": "使用此按钮切换工作站模式。桌面代表“我的工作站”，也就是你的 Workspace；无限代表“Agent 工作站”，用于查看 Agent 活动"
         },
         "dock": {
           "title": "Agent 工作站 Dock",
-          "body": "Dock 用于切换工作站内的应用。教程期间会暂时关闭自动隐藏，让这些控件保持可见。"
+          "body": "Dock 用于切换工作站内的应用。教程期间会暂时关闭自动隐藏，让这些控件保持可见"
         }
       }
     },
     "codeEditor": {
       "title": "代码编辑器教程",
-      "description": "了解标签页、编辑器工作区、源代码管理和 Git 历史。",
+      "description": "了解标签页、编辑器工作区、源代码管理和 Git 历史",
       "duration": "2 分钟",
       "steps": {
         "tabs": {
           "title": "代码编辑器标签页",
-          "body": "标签页集中承载你在仓库工作时打开的文件、Diff、终端、源代码管理视图和看板。"
+          "body": "标签页集中承载你在仓库工作时打开的文件、Diff、终端、源代码管理视图和看板"
         },
         "editor-surface": {
           "title": "编辑器 Workspace",
-          "body": "这是代码编辑器的主要工作区。你可以在这里打开文件、检查 Diff、运行终端并审核生成的变更。"
+          "body": "这是代码编辑器的主要工作区。你可以在这里打开文件、检查 Diff、运行终端并审核生成的变更"
         },
         "create-tabs": {
           "title": "创建新标签页",
-          "body": "使用“全部标签页”中的加号菜单创建终端、浏览器标签页、文件、看板和仓库工具。"
+          "body": "使用“全部标签页”中的加号菜单创建终端、浏览器标签页、文件、看板和仓库工具"
         },
         "source-control": {
           "title": "Git 变更",
-          "body": "打开源代码管理以查看变更文件、暂存或取消暂存、提交，以及执行拉取、推送、获取和远程同步。"
+          "body": "打开源代码管理以查看变更文件、暂存或取消暂存、提交，以及执行拉取、推送、获取和远程同步"
         },
         "git-history": {
           "title": "Git 历史",
-          "body": "Git 历史会把源代码管理切换到提交历史模式，供你检查过去的提交及相关变更。"
+          "body": "Git 历史会把源代码管理切换到提交历史模式，供你检查过去的提交及相关变更"
         }
       }
     }
   },
   "discovery": {
-    "title": "新手入门与新功能",
-    "getStarted": "开始使用",
-    "newFeatures": "新功能",
-    "branchesTitle": "仓库分支",
-    "branchesDescription": "直接在 Spotlight 中切换仓库分支。"
+    "getStarted": "开始使用"
   }
 }

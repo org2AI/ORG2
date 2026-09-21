@@ -60,7 +60,7 @@
     },
     "loadingConnections": "Loading GitHub connections...",
     "noConnectionTitle": "No GitHub connection found",
-    "noConnectionDescription": "Add a GitHub connection in Integrations first, then return here to import GitHub Issues.",
+    "noConnectionDescription": "Add a GitHub connection in Integrations first, then return here to import GitHub Issues",
     "linkedRepoHint": "This project will also be linked to the current workspace repo: {{repoName}}",
     "errors": {
       "invalidRepo": "Use owner/repo or a GitHub repository URL."
@@ -80,7 +80,7 @@
     "importLinearOrgs": "Import Linear Workspaces",
     "gitFolderPath": "Git folder path (optional)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Bind this workspace to an existing Git working tree for folder sync.",
+    "gitFolderPathHint": "Bind this workspace to an existing Git working tree for folder sync",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Synced with a Git folder",
     "pendingSync": "Sync pending",
@@ -123,7 +123,7 @@
     "addTeams": "Add teams",
     "addLabels": "Add labels",
     "addRepos": "Link repos",
-    "noReposHint": "No repos available. Add a repo to your workspace first.",
+    "noReposHint": "No repos available. Add a repo to your workspace first",
     "addDate": "Add date",
     "clearDate": "Clear date",
     "noStatus": "No status",
@@ -371,10 +371,7 @@
       "moreProperties": "More properties"
     },
     "propertyFields": {
-      "assignee": "Assignee",
-      "project": "Project",
-      "milestone": "Milestone",
-      "dueDate": "Due Date"
+      "project": "Project"
     },
     "addWorkItem": "Add Work Item",
     "agentWorkflow": {
@@ -405,8 +402,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "Not available yet",
-      "prPendingHint": "PR will be created after agent completes.",
-      "prNeutralHint": "No PR has been created.",
+      "prPendingHint": "PR will be created after agent completes",
+      "prNeutralHint": "No PR has been created",
       "prCreatingHint": "Creating pull request...",
       "prCreateButton": "Create Pull Request",
       "prCreateError": "Failed to create pull request",
@@ -416,7 +413,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "File diff is clean",
-      "fileDiffCleanHint": "No file changes detected.",
+      "fileDiffCleanHint": "No file changes detected",
       "costSummary": "Cost Summary",
       "totalCost": "Total",
       "tokens": "tokens",
@@ -445,7 +442,7 @@
       "save": "Save current view",
       "saveTitle": "Save view",
       "namePlaceholder": "View name",
-      "saveHint": "Captures the current filters; layout seeds the first open.",
+      "saveHint": "Captures the current filters; layout seeds the first open",
       "delete": "Delete view"
     },
     "table": {
@@ -463,13 +460,13 @@
     },
     "batchProperty": {
       "title": "Set property",
-      "hint": "Applies one property value to {{count}} selected items. Leave the value empty to clear it.",
+      "hint": "Applies one property value to {{count}} selected items. Leave the value empty to clear it",
       "propertyPlaceholder": "Property",
       "valuePlaceholder": "Value",
       "applied": "Updated {{count}} items"
     },
     "batchField": {
-      "hint": "Applies to {{count}} selected items."
+      "hint": "Applies to {{count}} selected items"
     },
     "batchStatus": {
       "title": "Set status"
@@ -482,7 +479,7 @@
     },
     "revisionConflict": {
       "title": "Resolve edit conflict",
-      "description": "{{field}} changed after revision {{expected}}. Compare your edit with revision {{actual}}, then choose which version to keep.",
+      "description": "{{field}} changed after revision {{expected}}. Compare your edit with revision {{actual}}, then choose which version to keep",
       "mine": "My version",
       "latest": "Latest version",
       "useLatest": "Use latest",
@@ -573,7 +570,7 @@
     "confirmDelete": "I understand, delete this project",
     "sync": {
       "title": "External Sync",
-      "description": "Mirror this project's work items to an external system like Linear or GitHub.",
+      "description": "Mirror this project's work items to an external system like Linear or GitHub",
       "adapterPicker": {
         "title": "Adapter",
         "notAttached": "Not attached",
@@ -581,7 +578,7 @@
         "detach": "Detach",
         "detachProjectMenuLabel": "Unlink GitHub",
         "detachProjectTitle": "Unlink GitHub from {{project}}?",
-        "detachProjectDescription": "GitHub Issues sync will stop. The local project and imported work items will stay in ORG2.",
+        "detachProjectDescription": "GitHub Issues sync will stop. The local project and imported work items will stay in ORG2",
         "detachProjectAction": "Unlink GitHub from {{project}}",
         "detachProjectSuccess": "GitHub unlinked from {{project}}",
         "changeWarning": "Detach the current adapter before attaching a new one."
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "Loading webhook status…",
-        "notInstalledDescription": "Install a webhook secret to let this provider push changes directly instead of waiting for the next poll.",
+        "notInstalledDescription": "Install a webhook secret to let this provider push changes directly instead of waiting for the next poll",
         "install": "Install webhook",
-        "installedDescription": "Paste the URL into your provider's webhook configuration and use the secret below to sign deliveries.",
+        "installedDescription": "Paste the URL into your provider's webhook configuration and use the secret below to sign deliveries",
         "indicatorFresh": "Recent delivery",
         "indicatorStale": "No recent delivery",
         "lastDeliveryNever": "No deliveries yet",
@@ -627,7 +624,7 @@
         "copyUrl": "Copy URL",
         "rotate": "Rotate secret",
         "secretTitle": "Copy this secret now — it won't be shown again",
-        "secretDescription": "Paste this signing secret into your provider's webhook configuration. We don't store the plaintext value once you dismiss this panel.",
+        "secretDescription": "Paste this signing secret into your provider's webhook configuration. We don't store the plaintext value once you dismiss this panel",
         "copySecret": "Copy secret",
         "dismissSecret": "I've saved it",
         "secretCopied": "Secret copied to clipboard",
@@ -653,9 +650,9 @@
         "progressNoTotal": "{{count}} items imported",
         "completedSummary": "Imported {{count}} items from the remote.",
         "cancelledSummary": "Cancelled after importing {{count}} items.",
-        "pendingDescription": "The first sync will walk the full remote history once. Subsequent syncs use the normal incremental cycle.",
-        "runningDescription": "Walking the remote history one page at a time. You can keep working while this runs.",
-        "failedDescription": "The last page failed permanently. Resume picks up where the cursor left off.",
+        "pendingDescription": "The first sync will walk the full remote history once. Subsequent syncs use the normal incremental cycle",
+        "runningDescription": "Walking the remote history one page at a time. You can keep working while this runs",
+        "failedDescription": "The last page failed permanently. Resume picks up where the cursor left off",
         "cancel": "Cancel import",
         "retry": "Retry",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "Statuses",
     "statusesBuiltin": "Built-in statuses",
-    "statusesBuiltinDescription": "The standard workflow buckets. Always available.",
+    "statusesBuiltinDescription": "The standard workflow buckets. Always available",
     "statusesCustom": "Custom statuses",
-    "statusesCustomDescription": "Named aliases over a built-in bucket. Filters, counts, and boards treat them as their bucket.",
+    "statusesCustomDescription": "Named aliases over a built-in bucket. Filters, counts, and boards treat them as their bucket",
     "statusNamePlaceholder": "Status name",
     "noCustomStatuses": "No custom statuses yet.",
     "statusArchive": "Archive status",
@@ -793,11 +790,11 @@
     "unknownState": "Unknown state",
     "emptyConnections": {
       "title": "No Linear connections",
-      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
+      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear"
     },
     "emptySelection": {
       "title": "Select a Linear Project",
-      "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
+      "description": "Choose a Project from the left to view live Linear Issues and edit Project details"
     },
     "forms": {
       "createProjectTitle": "Create Linear Project",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder sync complete",
     "syncFailed": "Git folder sync failed: {{message}}",
     "noResultTitle": "No Git sync result",
-    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
+    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts"
   }
 }

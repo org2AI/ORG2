@@ -10,7 +10,8 @@ describe("ChatLoadingBlock", () => {
 
     expect(markup).toContain("mx-auto w-full max-w-[800px]");
     expect(markup).toContain("rounded bg-fill-2");
-    expect(markup).toContain("h-8");
+    expect(markup).toContain("h-4");
+    expect(markup).not.toContain("h-8");
     expect(markup).toContain('data-testid="chat-loading-block"');
     // Static by design: a pulse on a placeholder that resolves in a few
     // hundred milliseconds reads as a flash, not as progress.

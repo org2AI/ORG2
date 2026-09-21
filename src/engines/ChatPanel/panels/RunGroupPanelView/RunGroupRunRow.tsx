@@ -180,8 +180,6 @@ const RunGroupRunRow: React.FC<RunGroupRunRowProps> = memo(
           {sessionId !== undefined && (
             <div className="flex flex-wrap gap-2 pt-1">
               <Button
-                variant="secondary"
-                appearance="outline"
                 size="small"
                 shape="round"
                 onClick={() => onOpen(sessionId)}

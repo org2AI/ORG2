@@ -15,8 +15,8 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
-import ComposerBar from "@src/components/ComposerBar";
 import ComposerShell from "@src/components/ComposerShell";
+import ComposerBar from "@src/engines/ChatPanel/ComposerBar";
 import { HugeiconsIcon, LockIcon } from "@src/icons";
 
 import ContextInfoButton from "./ContextInfoButton";

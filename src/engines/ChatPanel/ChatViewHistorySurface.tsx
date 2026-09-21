@@ -34,7 +34,6 @@ interface ChatViewHistorySurfaceProps {
   ) => Promise<void>;
   agentMessageClampEligible: boolean;
   surfaceBgClass: string;
-  position: "left" | "right";
   currentAgentOrgMember: AgentOrgRunMemberView | null;
   agentOrgRunView: AgentOrgRunView | null;
   agentOrgRunViewError: string | null;
@@ -79,7 +78,6 @@ export function ChatViewHistorySurface({
   handleRetryGroupDelivery,
   agentMessageClampEligible,
   surfaceBgClass,
-  position,
   currentAgentOrgMember,
   agentOrgRunView,
   agentOrgRunViewError,
@@ -138,7 +136,6 @@ export function ChatViewHistorySurface({
       <AgentMessageClampProvider value={agentMessageClampEligible}>
         <ChatHistory
           surfaceBgClass={surfaceBgClass}
-          chatPanelPosition={position}
           agentOrgCurrentMemberName={currentAgentOrgMember?.name ?? null}
           agentOrgCurrentMemberId={currentAgentOrgMember?.memberId ?? null}
           agentOrgMembers={agentOrgRunView?.members ?? []}

@@ -33,6 +33,7 @@ import { useAtom, useAtomValue, useStore } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { dismissCloudReferenceOpeningToast } from "@src/features/Org2Cloud/cloudReferenceOpeningToast";
 import { cloudDownloadStartRequestAtom } from "@src/features/Org2Cloud/cloudSessionDownloadControlAtoms";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
@@ -46,7 +47,6 @@ import {
   type CloudSessionReplayOptions,
   useCloudSessionActions,
 } from "@src/features/Org2Cloud/useCloudSessionActions";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 
 import { useCloudMemberFilterDropdown } from "./cloudSessionsSection.MemberFilterDropdown";

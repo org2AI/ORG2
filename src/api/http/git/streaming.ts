@@ -5,25 +5,12 @@
  * Provides real-time output from git commands via Server-Sent Events.
  */
 import { createSSEStream } from "@src/api/realtime/sseStream";
+import type { GitErrorType } from "@src/contracts/git/streaming";
 import { shouldIncludeGitCoauthor } from "@src/services/git/operations/commitAttribution";
 
 import { gitRepoUrl } from "./client";
 
-/**
- * Git error types detected by the backend
- * These map to specific dialogs in the frontend
- */
-export type GitErrorType =
-  | "none"
-  | "non_fast_forward" // Push rejected - remote has changes
-  | "protected_branch" // Target branch is protected
-  | "authentication_failed" // Auth failed
-  | "remote_branch_deleted" // Remote branch was deleted
-  | "uncommitted_changes" // Local changes would be overwritten
-  | "network_error" // Network/connection error
-  | "merge_conflicts" // Merge conflicts
-  | "permission_denied" // Permission denied
-  | "unknown"; // Unknown error
+export type { GitErrorType } from "@src/contracts/git/streaming";
 
 export interface GitStreamCallbacks {
   onStart?: () => void;

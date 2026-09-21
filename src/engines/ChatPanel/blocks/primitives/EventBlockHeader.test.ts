@@ -50,7 +50,7 @@ describe("EventBlockHeader text selection", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps title text selectable without making the whole header selectable", () => {
+  it("keeps header chrome out of the selection range", () => {
     act(() => {
       root.render(
         createElement(
@@ -63,8 +63,9 @@ describe("EventBlockHeader text selection", () => {
 
     const header = container.firstElementChild;
     const title = container.querySelector("span");
-    expect(header?.classList.contains("select-none")).toBe(false);
-    expect(title?.classList.contains("select-text")).toBe(true);
+    expect(header?.classList.contains("chat-block-header")).toBe(true);
+    expect(title?.classList.contains("select-none")).toBe(true);
+    expect(title?.classList.contains("select-text")).toBe(false);
   });
 
   it("does not toggle the header after dragging across its title", () => {

@@ -323,6 +323,7 @@ fn turn_plan_updated_maps_to_update_todos() {
 #[test]
 fn token_usage_updated_captures_last_breakdown() {
     let mut p = parser();
+    notif(&mut p, "turn/started", json!({"turn": {"id": "u"}}));
     let chunks = notif(
         &mut p,
         "thread/tokenUsage/updated",
@@ -336,7 +337,7 @@ fn token_usage_updated_captures_last_breakdown() {
     );
     assert!(chunks.is_empty());
     let usage = p.usage().expect("usage captured");
-    assert_eq!(usage.input_tokens, 12076);
+    assert_eq!(usage.input_tokens, 9644);
     assert_eq!(usage.output_tokens, 22);
     assert_eq!(usage.cache_read_tokens, 2432);
     assert_eq!(usage.total_tokens, 12098);
@@ -345,6 +346,7 @@ fn token_usage_updated_captures_last_breakdown() {
 #[test]
 fn token_usage_derives_total_when_provider_omits_it() {
     let mut p = parser();
+    notif(&mut p, "turn/started", json!({"turn": {"id": "u"}}));
     let chunks = notif(
         &mut p,
         "thread/tokenUsage/updated",
@@ -362,7 +364,125 @@ fn token_usage_derives_total_when_provider_omits_it() {
     assert!(chunks.is_empty());
     let usage = p.usage().expect("usage captured");
     assert_eq!(usage.total_tokens, 93009);
+    assert_eq!(usage.input_tokens, 14845);
     assert_eq!(usage.cache_read_tokens, 76288);
+}
+
+#[test]
+fn token_usage_splits_real_cache_hit_and_clamps_malformed_counters() {
+    for (last, fresh, cached, total) in [
+        (
+            json!({"inputTokens": 9660, "cachedInputTokens": 8704, "outputTokens": 9, "totalTokens": 9669}),
+            956,
+            8704,
+            9669,
+        ),
+        (
+            json!({"inputTokens": 100, "cachedInputTokens": 120, "outputTokens": 9}),
+            0,
+            100,
+            109,
+        ),
+        (json!({"inputTokens": 100, "outputTokens": 9}), 100, 0, 109),
+        (
+            json!({"cachedInputTokens": 120, "outputTokens": 9}),
+            0,
+            0,
+            9,
+        ),
+        (
+            json!({"inputTokens": 100, "cachedInputTokens": -1, "outputTokens": 9, "totalTokens": 0}),
+            100,
+            0,
+            109,
+        ),
+    ] {
+        let mut p = parser();
+        notif(&mut p, "turn/started", json!({"turn": {"id": "u"}}));
+        notif(
+            &mut p,
+            "thread/tokenUsage/updated",
+            json!({
+                "threadId": "t", "turnId": "u", "tokenUsage": {"last": last}
+            }),
+        );
+        let usage = p.usage().expect("current turn usage");
+        assert_eq!(usage.input_tokens, fresh);
+        assert_eq!(usage.cache_read_tokens, cached);
+        assert_eq!(usage.total_tokens, total);
+        assert_eq!(
+            usage.input_tokens + usage.cache_read_tokens + usage.output_tokens,
+            total
+        );
+    }
+}
+
+#[test]
+fn failed_resumed_turn_does_not_reuse_historical_usage() {
+    let mut p = parser();
+    p.on_thread_response(&json!({"thread": {"id": "t"}}));
+    let historical = json!({
+        "threadId": "t", "turnId": "old",
+        "tokenUsage": {"last": {"inputTokens": 9660, "cachedInputTokens": 8704, "outputTokens": 9}}
+    });
+    notif(&mut p, "thread/tokenUsage/updated", historical.clone());
+    assert!(p.usage().is_none(), "resume replay is not a new request");
+    notif(&mut p, "turn/started", json!({"turn": {"id": "new"}}));
+    notif(&mut p, "thread/tokenUsage/updated", historical);
+    notif(
+        &mut p,
+        "turn/completed",
+        json!({"turn": {
+            "id": "new", "status": "failed", "error": {"message": "502 Bad Gateway"}
+        }}),
+    );
+    assert_eq!(p.turn_status(), Some("failed"));
+    assert!(p.usage().is_none(), "no fresh usage means no usage row");
+}
+
+#[test]
+fn current_usage_survives_duplicate_start_and_failed_terminal_but_not_next_turn() {
+    let mut p = parser();
+    p.on_thread_response(&json!({"thread": {"id": "t"}}));
+    notif(&mut p, "turn/started", json!({"turn": {"id": "u"}}));
+    notif(
+        &mut p,
+        "thread/tokenUsage/updated",
+        json!({
+            "threadId": "t", "turnId": "u",
+            "tokenUsage": {"last": {"inputTokens": 100, "cachedInputTokens": 40, "outputTokens": 9}}
+        }),
+    );
+    // The turn/start response and turn/started notification can both arrive.
+    notif(&mut p, "turn/started", json!({"turn": {"id": "u"}}));
+    notif(
+        &mut p,
+        "turn/started",
+        json!({"threadId": "other", "turn": {"id": "foreign"}}),
+    );
+    assert_eq!(p.turn_id(), Some("u"));
+    for ids in [
+        json!({"threadId": "other", "turnId": "u"}),
+        json!({"threadId": "t"}),
+    ] {
+        let mut params = ids;
+        params["tokenUsage"] = json!({"last": {"inputTokens": 999}});
+        notif(&mut p, "thread/tokenUsage/updated", params);
+    }
+    notif(
+        &mut p,
+        "turn/completed",
+        json!({"turn": {
+            "id": "u", "status": "failed", "error": {"message": "failure after usage"}
+        }}),
+    );
+    let usage = p
+        .usage()
+        .expect("actual usage is retained even when a turn fails");
+    assert_eq!(usage.input_tokens, 60);
+    assert_eq!(usage.cache_read_tokens, 40);
+    notif(&mut p, "turn/started", json!({"turn": {"id": "next"}}));
+    assert!(p.usage().is_none());
 }
 
 #[test]
@@ -1307,4 +1427,50 @@ async fn live_native_question_round_trip_in_plan_mode() {
         text.contains("Beta"),
         "model did not consume selected answer: {text}"
     );
+}
+
+#[test]
+fn proxy_capability_is_redacted_before_error_chunks_and_turn_state() {
+    let mut p = parser();
+    let token = format!("session_{}", "a".repeat(32));
+    let message = format!("unexpected status 412 Precondition Failed: credential_store_read_failed, url: http://127.0.0.1:17930/cli/codex/{token}/v1/responses");
+    assert!(notif(
+        &mut p,
+        "error",
+        json!({"error":{"message":message},"willRetry":false})
+    )
+    .is_empty());
+    let chunks = notif(
+        &mut p,
+        "turn/completed",
+        json!({"turn":{"id":"failed-turn","status":"failed","error":{"message":message}}}),
+    );
+    let serialized = serde_json::to_string(&chunks).unwrap();
+    assert!(!serialized.contains(&token));
+    assert!(serialized.contains("credential_store_read_failed"));
+    assert!(serialized.contains("/cli/codex/secret_*******/v1/responses"));
+    assert!(!p.turn_error().unwrap().contains(&token));
+}
+
+#[test]
+fn completed_image_generation_preserves_output() {
+    let mut p = parser();
+    let chunks = notif(
+        &mut p,
+        "item/completed",
+        json!({"item": {
+            "type":"imageGeneration", "id":"image-1", "status":"completed", "result":"AVATAR"
+        }}),
+    );
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(
+        chunks[0].result["images"][0],
+        "data:image/png;base64,AVATAR"
+    );
+    assert!(notif(
+        &mut p,
+        "item/started",
+        json!({"item": {"type":"imageGeneration","id":"image-2","result":""}})
+    )
+    .is_empty());
 }

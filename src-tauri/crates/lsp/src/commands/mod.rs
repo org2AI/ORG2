@@ -1,9 +1,9 @@
-//! LSP Tauri Commands
+//! LSP command helpers
 //!
-//! Exposes LSP functionality to the frontend via Tauri commands.
+//! Library helpers used by agent-core (`manage_lsp`) and tests. These
+//! functions are not registered as Tauri IPC commands.
 //!
 //! Organized into submodules by responsibility:
-//! - `server`: LSP server lifecycle (start/stop/status/notifications)
 //! - `discovery`: Detect installed LSP servers
 //! - `cache`: Persistent cache for LSP server scan results
 //! - `package_manager`: Package manager detection and command generation
@@ -11,7 +11,6 @@
 
 mod cache;
 mod install;
-mod server;
 
 // Public modules for reuse in other LSP modules
 pub mod discovery;
@@ -25,9 +24,5 @@ use super::manager::LspManager;
 // Re-export state type
 pub type LspManagerState = Arc<Mutex<LspManager>>;
 
-// Re-export all items from submodules to ensure Tauri command macros work correctly.
-// The #[tauri::command] macro generates __cmd__ prefixed functions that need to be
-// accessible from the parent module for generate_handler! to work.
 pub use discovery::*;
 pub use install::*;
-pub use server::*;

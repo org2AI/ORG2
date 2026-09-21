@@ -47,8 +47,8 @@ import {
   deliverSessionTerminalNotification,
   shouldDeliverSessionTerminalNotification,
 } from "@src/hooks/session/sessionTerminalNotifications";
+import { activeChatPanelSessionIdAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import {
-  activeSessionIdAtom,
   sessionByIdAtom,
   setSessionRuntimeStatusAtom,
   updateSessionStatus,
@@ -86,17 +86,12 @@ export function useNativeSessionStatusMonitor(options?: {
   const notificationsEnabled = options?.notifications !== false;
   const { t } = useTranslation();
   const notificationSettings = useAtomValue(notificationSettingsAtom);
-  const activeSessionId = useAtomValue(activeSessionIdAtom);
   const settingsRef = useRef(notificationSettings);
   const translationRef = useRef(t);
-  const activeSessionIdRef = useRef(activeSessionId);
 
   useEffect(() => {
     settingsRef.current = notificationSettings;
   }, [notificationSettings]);
-  useEffect(() => {
-    activeSessionIdRef.current = activeSessionId;
-  }, [activeSessionId]);
 
   useEffect(() => {
     translationRef.current = t;
@@ -107,9 +102,8 @@ export function useNativeSessionStatusMonitor(options?: {
     ({ sessionId, status }) => {
       const cliStatus = toCliSessionStatus(status);
       const completedTurn = isSuccessfulNotificationTurnStatus(status);
-      const session = isStoreInitialized()
-        ? getInstrumentedStore().get(sessionByIdAtom(sessionId))
-        : undefined;
+      const store = isStoreInitialized() ? getInstrumentedStore() : null;
+      const session = store?.get(sessionByIdAtom(sessionId));
       let lifecycleAccepted = true;
       if (completedTurn) {
         lifecycleAccepted = markTurnTerminal(sessionId, "completed");
@@ -149,9 +143,10 @@ export function useNativeSessionStatusMonitor(options?: {
         completedBoundary ||
         shouldDeliverSessionTerminalNotification(session?.status, status);
       if (notificationsEnabled && session && notificationBoundary) {
-        const outsideActiveSession =
-          session.background === true ||
-          activeSessionIdRef.current !== sessionId;
+        const sessionInActiveTab =
+          store?.get(activeChatPanelSessionIdAtom) === sessionId;
+        const outsideActiveTab =
+          session.background === true || !sessionInActiveTab;
         deliverSessionTerminalNotification(
           {
             sessionId,
@@ -159,8 +154,9 @@ export function useNativeSessionStatusMonitor(options?: {
             sessionName:
               session.name ||
               translationRef.current("notifications.backgroundSession"),
+            sessionInActiveTab,
             attentionRequired:
-              isNotificationAttentionRequired(outsideActiveSession),
+              isNotificationAttentionRequired(outsideActiveTab),
             errorMessage: session.error_message,
           },
           settingsRef.current,

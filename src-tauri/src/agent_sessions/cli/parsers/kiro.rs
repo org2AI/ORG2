@@ -130,8 +130,14 @@ fn kiro_sessions_dir() -> PathBuf {
 
 /// Remove stale `.lock` file if the owning process is dead.
 /// Call before `session/load` to prevent "session locked" errors.
-pub fn clean_stale_lock(session_id: &str) {
-    let lock_path = kiro_sessions_dir().join(format!("{}.lock", session_id));
+pub fn clean_stale_lock_in(home: &std::path::Path, session_id: &str) {
+    // Native session IDs are UUIDs, not paths supplied to the filesystem.
+    if uuid::Uuid::parse_str(session_id).is_err() {
+        return;
+    }
+    let lock_path = home
+        .join(".kiro/sessions/cli")
+        .join(format!("{}.lock", session_id));
     if !lock_path.exists() {
         return;
     }
@@ -169,7 +175,8 @@ pub fn clean_stale_lock(session_id: &str) {
     }
     // Check if process is still alive
     #[cfg(unix)]
-    let is_dead = unsafe { libc::kill(pid, 0) } != 0;
+    let is_dead = unsafe { libc::kill(pid, 0) } != 0
+        && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH);
     #[cfg(windows)]
     let is_dead = {
         let mut command = std::process::Command::new("tasklist");

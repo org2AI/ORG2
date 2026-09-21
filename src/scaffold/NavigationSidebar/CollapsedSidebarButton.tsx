@@ -1,37 +1,26 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import React, { memo, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import { useAtomValue } from "jotai";
+import React, { memo } from "react";
 
-import Button from "@src/components/Button";
-import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import SessionHistoryNav from "@src/components/SessionHistoryNav";
-import Tooltip from "@src/components/Tooltip";
-import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import { hasMacWindowChrome } from "@src/config/windowChromeRadius";
 import {
   COLLAPSED_SIDEBAR_CHROME_CENTER_TOP,
   useCollapsedSidebarButtonLeft,
 } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
-import { HugeiconsIcon, LayoutAlignLeftIcon, PanelLeftIcon } from "@src/icons";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
 import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
-import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "./config";
+import { SidebarChromeToggle } from "./SidebarChromeToggle";
 
+/**
+ * Windows / Linux / web: the sidebar toggle plus Back / Forward, drawn in the
+ * leading host's chrome row while the sidebar is collapsed. It is the same
+ * `SidebarChromeToggle` the open sidebar and the macOS pinned group use, so
+ * hover-to-peek and expand-from-peek behave identically on every host.
+ */
 const CollapsedSidebarButtonComponent: React.FC = () => {
-  const { t } = useTranslation("sessions");
   const collapsed = useAtomValue(sidebarCollapsedAtom);
-  const setSidebarCollapsed = useSetAtom(sidebarCollapsedAtom);
-  const label = t("common:tooltips.showSidebar");
-  const shortcut = useShortcutKeys("toggle_sidebar");
   const left = useCollapsedSidebarButtonLeft();
-  const tooltipContent = (
-    <KeyboardShortcutTooltipContent label={label} shortcut={shortcut} />
-  );
-
-  const handleClick = useCallback(() => {
-    setSidebarCollapsed(false);
-  }, [setSidebarCollapsed]);
 
   // On macOS the group is drawn once, pinned in window space by
   // `PinnedSidebarChrome`; hosts only reserve the space under it. A detached
@@ -53,46 +42,8 @@ const CollapsedSidebarButtonComponent: React.FC = () => {
         } as React.CSSProperties & { WebkitAppRegion: string }
       }
     >
-      <Tooltip
-        content={tooltipContent}
-        position="bottom"
-        mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
-        framedPanel
-      >
-        <span className="inline-flex">
-          <Button
-            htmlType="button"
-            variant="tertiary"
-            size="small"
-            iconOnly
-            className="group/collapsed-sidebar"
-            onClick={handleClick}
-            aria-label={label}
-            icon={
-              <>
-                <HugeiconsIcon
-                  icon={LayoutAlignLeftIcon}
-                  data-icon="layout-align-left"
-                  size={16}
-                  strokeWidth={2}
-                  className="group-hover/collapsed-sidebar:hidden"
-                />
-                <HugeiconsIcon
-                  icon={PanelLeftIcon}
-                  data-icon="panel-left"
-                  size={16}
-                  strokeWidth={2}
-                  className="hidden group-hover/collapsed-sidebar:block"
-                />
-              </>
-            }
-          />
-        </span>
-      </Tooltip>
-      <SessionHistoryNav
-        variant="chat"
-        tooltipMouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
-      />
+      <SidebarChromeToggle variant="chat" />
+      <SessionHistoryNav variant="chat" />
     </div>
   );
 };

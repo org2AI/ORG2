@@ -1,0 +1,14 @@
+# OutputImageGallery UI audit
+
+| Line                                                                    | Element                   | Verdict          | Reason                                                                                                                                                                                           | Suggested change |
+| ----------------------------------------------------------------------- | ------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| `src/engines/ChatPanel/ChatItems/OutputImageGallery.tsx:23`             | Thumbnail selection       | keep with reason | Shared Button with a native accessible name, aria-pressed and focus indication. Custom layout is documented: selectable image cards require square caller-owned geometry and a selection border. | None             |
+| `src/engines/ChatPanel/ChatItems/OutputImageGallery.tsx:66`             | Gallery and left rail     | keep with reason | Standard spacing/width tokens and semantic theme colors; left rail precedes the main preview in DOM and keyboard order. Bounded rail height avoids extending an unbounded vertical list.         | None             |
+| `src/engines/ChatPanel/ChatItems/OutputImageGallery.tsx:88`             | Main image                | keep with reason | Reuses ChatImageThumbnail and its existing full-image viewer; contain fit preserves the complete generated composition. No duplicated overlay or image-loading implementation.                   | None             |
+| `src/engines/ChatPanel/ChatHistory/renderers/GroupItemRenderer.tsx:264` | End-of-response placement | keep with reason | Uses ChatItemWrap and sits after text, outside collapse and structural-only guards. Turn context prevents duplicate galleries inside tool cards.                                                 | None             |
+
+Verdict totals: **0 fix**, **4 keep with reason**, **0 abstract**.
+
+No raw button, native button creation, substitute clickable element, or form input was introduced. The shared thumbnail's existing Button is unchanged except for an optional contain-fit presentation prop. No config-level sweep candidates were identified.
+
+Verification: DOM interaction test checks left-rail order, selection, full-image source, contain fit, and selection recovery when images are removed. Pure production projection tests check expanded/collapsed turns, activity grouping, image-only turns, deduplication, input-image exclusion, and separation between turns. Server-render tests check gallery placement below response text and suppression inside tool cards. No desktop UI control or screenshot capture was used.

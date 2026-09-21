@@ -1,13 +1,43 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 
 import {
   buildKeyItems,
   buildKeyModelItems,
+  buildMarketProfileItems,
+  buildMarketProfileModelItems,
   enabledAccountModelIds,
   selectableKeyAccounts,
 } from "../keyFirstItems";
+
+function marketSource(): MarketProfileSource {
+  return {
+    id: "market:user:entitlement:claude_code",
+    label: "Purchased Claude",
+    modelType: "claude_code",
+    cliAgentType: "claude_code",
+    modelIds: ["claude-sonnet-5-high", "claude-sonnet-5-low"],
+    profile: {
+      id: "market:user:entitlement",
+      label: "Purchased Claude",
+      connection: {
+        identity_user_id: "11111111-1111-4111-8111-111111111111",
+        workspace_id: "ws_buyer",
+        target: "org2",
+      },
+      entitlementWorkspaceId: "ws_entitlement",
+      entitlementId: "entitlement",
+      serviceId: "service",
+      modelsByAgent: {
+        claude_code: ["claude-sonnet-5-high", "claude-sonnet-5-low"],
+        codex: [],
+      },
+      expiresAt: null,
+    },
+  };
+}
 
 function makeAccount(overrides: Partial<KeyVaultAccount>): KeyVaultAccount {
   const models = overrides.availableModels ?? [];
@@ -171,6 +201,36 @@ describe("buildKeyModelItems", () => {
         persistDefaultVariantForAccount: vi.fn(),
       })
     ).toEqual([]);
+  });
+});
+
+describe("Market profiles in key-first mode", () => {
+  it("lists a purchase as a profile without a Key Vault account", () => {
+    const source = marketSource();
+    const onSelect = vi.fn();
+    const [row] = buildMarketProfileItems({
+      sources: [source],
+      onSelect,
+      marketLabel: "Market services",
+    });
+
+    row.action?.();
+    expect(row.label).toBe("Purchased Claude");
+    expect(row.data?.testId).toBe("unified-model-market-profile-option");
+    expect(onSelect).toHaveBeenCalledWith(source.id);
+  });
+
+  it("offers the same editable variant family as a local profile", () => {
+    const source = marketSource();
+    const onCommit = vi.fn();
+    const [row] = buildMarketProfileModelItems({ source, onCommit });
+
+    expect(row.data?.groupModelIds).toEqual(
+      expect.arrayContaining(["claude-sonnet-5-high", "claude-sonnet-5-low"])
+    );
+    expect(row.data?.rightContent).toBeTruthy();
+    row.action?.();
+    expect(onCommit).toHaveBeenCalledWith(source, expect.any(String));
   });
 });
 

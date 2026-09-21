@@ -271,6 +271,15 @@ describe("WorkItemsHeaderContent", () => {
     expect(markup).toContain('data-split-list-header-row="primary"');
     expect(markup).toContain('data-split-list-header-row="secondary"');
     expect(markup).toContain('data-testid="work-dataset-work-items"');
+    const topRow = markup.slice(
+      markup.indexOf('data-split-list-header-row="secondary"'),
+      markup.indexOf('data-split-list-header-row="primary"')
+    );
+    expect(topRow).toContain('data-testid="work-dataset-work-items"');
+    expect(topRow).toContain('data-testid="inline-search"');
+    expect(
+      topRow.indexOf('data-testid="work-dataset-work-items"')
+    ).toBeLessThan(topRow.indexOf('data-testid="inline-search"'));
     expect(markup).toContain('data-testid="inline-search"');
     expect(markup).toContain('class="flex min-w-0 items-center gap-px flex-1"');
   });

@@ -54,9 +54,9 @@ import {
   resolveTrailElapsedMs,
   resolveTrailRestLabel,
 } from "@src/engines/ChatPanel/hooks/agentStatusTrailMath";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import { CHAT_ITEM_GAP, CHAT_ITEM_PADDING_X } from "./config";
 

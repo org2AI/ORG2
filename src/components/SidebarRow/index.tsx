@@ -46,7 +46,6 @@ export const SidebarRow = forwardRef<HTMLButtonElement, SidebarRowProps>(
         {...props}
         ref={ref}
         layout="custom"
-        appearance="custom"
         disabled={disabled}
         aria-pressed={selected}
         className={`flex w-full gap-1.5 text-left transition-colors ${compact ? "h-9 items-center" : "items-start py-1.5"} ${getSidebarRowSurface({ selected, interactive: !disabled })} ${disabled ? "cursor-default" : "cursor-pointer"} ${className}`}

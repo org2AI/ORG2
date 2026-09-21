@@ -41,13 +41,13 @@
 # Recommended GitHub/Azure OIDC setup for scalable tag releases:
 #   GitHub Environment: code-signing
 #   Azure Federated Credential subject:
-#     repo:YORG-AI/ORGII:environment:code-signing
+#     repo:org2AI/ORG2:environment:code-signing
 #
 # Azure Trusted Signing config (already provisioned):
 #   Account:  orgii-codesign  (East US — https://eus.codesigning.azure.net/)
 #   Profile:  orgii-windows   (Public Trust, SHA256)
 
-name: "Release ORGII"
+name: "Release ORG2"
 
 on:
   push:
@@ -158,7 +158,7 @@ jobs:
       - name: Stage org2-pm sidecar
         run: node scripts/tauri/prepare-sidecars.cjs --profile release --target aarch64-apple-darwin
 
-      - name: Build ORGII
+      - name: Build ORG2
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -251,7 +251,7 @@ jobs:
     runs-on: windows-latest
     needs: build-and-release
     # This makes GitHub's OIDC subject stable across all release tags:
-    # repo:YORG-AI/ORGII:environment:code-signing
+    # repo:org2AI/ORG2:environment:code-signing
     environment: code-signing
     env:
       HAS_AZURE_SIGNING: ${{ secrets.AZURE_CLIENT_ID != '' }}
@@ -315,7 +315,7 @@ jobs:
       - name: Stage org2-pm sidecar
         run: node scripts/tauri/prepare-sidecars.cjs --profile release --target x86_64-pc-windows-msvc
 
-      - name: Build ORGII
+      - name: Build ORG2
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -532,7 +532,7 @@ jobs:
       - name: Stage org2-pm sidecar
         run: node scripts/tauri/prepare-sidecars.cjs --profile release --target x86_64-unknown-linux-gnu
 
-      - name: Build ORGII
+      - name: Build ORG2
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}

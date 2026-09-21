@@ -1,0 +1,43 @@
+@use "../../mobileUiTokens" as tokens;
+.mobile-loading-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: tokens.$space-2;
+  min-height: tokens.$touch-target;
+  color: var(--color-text-3);
+  > span {
+    width: tokens.$space-2;
+    height: tokens.$space-2;
+    border-radius: 50%;
+    background: currentColor;
+    animation: mobile-loading-dot 1.2s ease-in-out infinite;
+    &:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+  }
+  &[data-paused="true"] > span {
+    animation-play-state: paused;
+  }
+}
+@keyframes mobile-loading-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-#{tokens.$space-1});
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-loading-dots > span {
+    animation: none;
+    opacity: 0.65;
+  }
+}

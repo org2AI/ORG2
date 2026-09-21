@@ -7,4 +7,3 @@ allowBuilds:
   core-js-pure: true
   dugite: true
   esbuild: true
-  node-sass: true

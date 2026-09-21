@@ -242,7 +242,7 @@ export const AccountInlineEditFooter: React.FC<
           {t("keyVault.edit.saved")}
         </span>
       ) : null}
-      <Button variant="secondary" size="small" onClick={onCancel}>
+      <Button size="small" onClick={onCancel}>
         {tCommon("actions.cancel")}
       </Button>
       <Button

@@ -3,11 +3,11 @@
  *
  * Detects internal vs external drag operations
  */
+import { reorderActiveRef } from "@src/store/ui/queueReorderState";
 import {
   isInternalFileTreeDragActive,
   isWorkstationTabDragActive,
-} from "@src/shared/dnd/dragSideChannel";
-import { reorderActiveRef } from "@src/store/ui/queueReorderState";
+} from "@src/util/dnd/dragSideChannel";
 import { getNativeFrameScale } from "@src/util/platform/tauri/nativeFrame";
 
 /**

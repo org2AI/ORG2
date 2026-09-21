@@ -2,10 +2,6 @@ import React from "react";
 
 import { SETTINGS_TABLE_CELL } from "@src/components/SettingsTable/tokens";
 
-export function formatEnabledFraction(enabled: number, total: number): string {
-  return `${enabled}/${total}`;
-}
-
 interface EnabledFractionTextProps {
   enabled: number;
   total: number;

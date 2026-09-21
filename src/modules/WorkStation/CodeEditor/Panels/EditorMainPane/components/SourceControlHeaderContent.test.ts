@@ -1,4 +1,5 @@
 import type { TFunction } from "i18next";
+import type React from "react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -26,6 +27,24 @@ vi.mock("@src/components/Button", () => ({
       "aria-label": label,
       disabled,
     }),
+}));
+
+// The header's own icon buttons are named by their tooltip alone.
+vi.mock("@src/components/KeyboardShortcut/ToolbarTooltip", () => ({
+  ToolbarTooltip: ({
+    label,
+    noShortcut,
+    children,
+  }: {
+    label: string;
+    noShortcut?: boolean;
+    children: React.ReactNode;
+  }) =>
+    createElement(
+      "span",
+      { "data-tooltip": label, "data-no-shortcut": String(!!noShortcut) },
+      children
+    ),
 }));
 
 vi.mock("@src/components/TabPill", () => ({
@@ -97,17 +116,17 @@ function renderHeader(
 
 describe("SourceControlHeaderContent diff view controls", () => {
   it.each(["stashed", "history", "pr", "issues"] as const)(
-    "keeps Split, More, and Refresh in order in %s mode before selection",
+    "keeps Split, Refresh, and More in order in %s mode before selection",
     (filter) => {
       const markup = renderHeader("focus", null, 0, null, false, filter);
       const split = markup.indexOf(
         'aria-label="workstation.switchToUnifiedDiff"'
       );
       const menu = markup.indexOf('data-menu="diff-settings"');
-      const refresh = markup.indexOf('aria-label="common:actions.refresh"');
+      const refresh = markup.indexOf('data-tooltip="common:actions.refresh"');
       expect(split).toBeGreaterThan(-1);
-      expect(menu).toBeGreaterThan(split);
-      expect(refresh).toBeGreaterThan(menu);
+      expect(refresh).toBeGreaterThan(split);
+      expect(menu).toBeGreaterThan(refresh);
       expect(markup.match(/data-menu="diff-settings"/g)).toHaveLength(1);
     }
   );
@@ -149,7 +168,7 @@ describe("SourceControlHeaderContent diff view controls", () => {
 
   it("places focused diff controls after navigation and its separator", () => {
     const markup = renderHeader("focus", "src/index.ts");
-    const next = markup.indexOf('aria-label="common:actions.reviewNextFile"');
+    const next = markup.indexOf('data-tooltip="common:actions.reviewNextFile"');
     const separator = markup.indexOf('role="separator"', next);
     const split = markup.indexOf(
       'aria-label="workstation.switchToUnifiedDiff"'
@@ -161,18 +180,20 @@ describe("SourceControlHeaderContent diff view controls", () => {
     expect(markup.slice(split)).not.toContain('role="separator"');
   });
 
-  it("keeps aggregate split and menu adjacent after collapse controls", () => {
+  it("places the aggregate menu after refresh", () => {
     const markup = renderHeader("all-changes");
-    const collapse = markup.indexOf('data-title="actions.collapseAll"');
+    const collapse = markup.indexOf('data-tooltip="actions.collapseAll"');
     const separator = markup.indexOf('role="separator"', collapse);
     const split = markup.indexOf(
       'aria-label="workstation.switchToUnifiedDiff"'
     );
+    const refresh = markup.indexOf('data-tooltip="common:actions.refresh"');
     const menu = markup.indexOf('data-menu="diff-settings"');
     expect(separator).toBeGreaterThan(collapse);
     expect(split).toBeGreaterThan(separator);
-    expect(menu).toBeGreaterThan(split);
-    expect(markup.slice(split, menu)).not.toContain('role="separator"');
+    expect(refresh).toBeGreaterThan(split);
+    expect(menu).toBeGreaterThan(refresh);
+    expect(markup.slice(split, refresh)).not.toContain('role="separator"');
   });
 
   it.each([0, 3])(
@@ -181,7 +202,7 @@ describe("SourceControlHeaderContent diff view controls", () => {
       const markup = renderHeader("focus", null, total);
       for (const action of ["reviewPreviousFile", "reviewNextFile"]) {
         expect(markup).toContain(
-          `aria-label="common:actions.${action}" disabled=""`
+          `data-tooltip="common:actions.${action}" data-no-shortcut="true"><button disabled=""`
         );
       }
       expect(markup).toContain('data-menu="diff-settings"');
@@ -194,9 +215,25 @@ describe("SourceControlHeaderContent diff view controls", () => {
   it("disables navigation when a selected file has no review sequence", () => {
     const markup = renderHeader("focus", "src/index.ts", 0);
     expect(markup).toContain(
-      'aria-label="common:actions.reviewNextFile" disabled=""'
+      'data-tooltip="common:actions.reviewNextFile" data-no-shortcut="true"><button disabled=""'
     );
     expect(markup).not.toContain('data-menu="diff-settings"');
+  });
+
+  it("names its own icon buttons with a no-shortcut tooltip, not title or aria-label", () => {
+    const markup = renderHeader("all-changes") + renderHeader("focus");
+    for (const label of [
+      "common:actions.reviewPreviousFile",
+      "common:actions.reviewNextFile",
+      "actions.collapseAll",
+      "common:actions.refresh",
+    ]) {
+      expect(markup).toContain(
+        `data-tooltip="${label}" data-no-shortcut="true"`
+      );
+      expect(markup).not.toContain(`aria-label="${label}"`);
+      expect(markup).not.toContain(`data-title="${label}"`);
+    }
   });
 
   it("keeps the full toolbar visible before a file is selected", () => {

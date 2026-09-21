@@ -87,6 +87,7 @@ export function useChatViewportController({
     followTail,
     handleScroll,
     preserveForLayoutMutation,
+    reconcileLayout,
     setScrollRoot,
     showScrollToBottom,
   } = useTranscriptViewport({
@@ -157,6 +158,7 @@ export function useChatViewportController({
     scrollAreaRef,
     scrollToBottom: followTail,
     preserveForLayoutMutation,
+    reconcileLayout,
     setScrollRoot,
     staticScrollerRef,
     virtuosoScrollerRef,

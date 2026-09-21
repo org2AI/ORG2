@@ -134,6 +134,25 @@ describe("ensureFreshSession", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("refreshes a server-rejected token even when its persisted expiry is fresh", async () => {
+    const state = { ...baseState, expiresAt: Date.now() / 1000 + 3600 };
+    localStorage.setItem(ORG2_CLOUD_AUTH_STORAGE_KEY, JSON.stringify(state));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        access_token: "replacement",
+        refresh_token: "rotated",
+        expires_in: 3600,
+      })
+    );
+    try {
+      const fresh = await ensureFreshSession(state, { forceRefresh: true });
+      expect(fresh?.accessToken).toBe("replacement");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      localStorage.removeItem(ORG2_CLOUD_AUTH_STORAGE_KEY);
+    }
+  });
+
   it("refreshes when the token expires within the skew window", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
@@ -321,6 +340,48 @@ describe("ensureFreshSession cross-window refresh lock", () => {
     await expect(ensureFreshSession(stale)).resolves.toEqual(rotated);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(requestedNames).toEqual(["orgii:org2cloud-token-refresh"]);
+  });
+
+  it("adopts another window's replacement instead of forcing a second rotation", async () => {
+    stubWebLocks();
+    const rotated = {
+      ...stale,
+      accessToken: "replacement",
+      refreshToken: "rotated",
+      expiresAt: Date.now() / 1000 + 3600,
+    };
+    localStorage.setItem(ORG2_CLOUD_AUTH_STORAGE_KEY, JSON.stringify(rotated));
+    expect(await ensureFreshSession(stale, { forceRefresh: true })).toEqual(
+      rotated
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the latest refresh token when a forced rotation retains the access token bytes", async () => {
+    stubWebLocks();
+    const persisted = {
+      ...stale,
+      refreshToken: "latest-refresh",
+      expiresAt: Date.now() / 1000 + 3600,
+    };
+    localStorage.setItem(
+      ORG2_CLOUD_AUTH_STORAGE_KEY,
+      JSON.stringify(persisted)
+    );
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        access_token: "replacement",
+        refresh_token: "next-refresh",
+        expires_in: 3600,
+      })
+    );
+    expect(
+      (await ensureFreshSession(stale, { forceRefresh: true }))?.accessToken
+    ).toBe("replacement");
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      refresh_token: "latest-refresh",
+    });
   });
 
   it("still runs the exchange under the lock when the persisted copy is stale", async () => {
@@ -605,4 +666,36 @@ describe("listMyOrgs runtimeTelemetry (0010 member runtime)", () => {
       { orgId: "org-1", name: "Acme", role: "owner" },
     ]);
   });
+});
+
+it("refreshes OAuth Server sessions with their public client and retains provenance", async () => {
+  localStorage.removeItem(ORG2_CLOUD_AUTH_STORAGE_KEY);
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse({
+      access_token: "oauth-at-2",
+      refresh_token: "oauth-rt-2",
+      expires_in: 3600,
+    })
+  );
+  const state: Org2CloudAuthState = {
+    kind: "org2_cloud",
+    supabaseUrl: ORG2_CLOUD_OFFICIAL_SUPABASE_URL,
+    supabaseAnonKey: ORG2_CLOUD_OFFICIAL_ANON_KEY,
+    userId: "oauth-user",
+    accessToken: "old",
+    refreshToken: "oauth-rt-1",
+    expiresAt: 0,
+    oauthClientId: "desktop-client",
+  };
+  const fresh = await ensureFreshSession(state);
+  expect(fresh?.oauthClientId).toBe("desktop-client");
+  expect(fresh?.refreshToken).toBe("oauth-rt-2");
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe(`${ORG2_CLOUD_OFFICIAL_SUPABASE_URL}/auth/v1/oauth/token`);
+  expect(new URLSearchParams(init.body).get("client_id")).toBe(
+    "desktop-client"
+  );
+  expect(new URLSearchParams(init.body).get("refresh_token")).toBe(
+    "oauth-rt-1"
+  );
 });

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import PersonAvatar from "@src/components/PersonAvatar";
 import Textarea from "@src/components/Textarea";
+import { MarkdownContent } from "@src/features/GitHubWork/ActivityTimeline";
 import {
   CheckmarkCircle01Icon,
   CornerUpLeftIcon,
@@ -12,7 +13,6 @@ import {
   HugeiconsIcon,
   RotateLeft01Icon,
 } from "@src/icons";
-import { MarkdownContent } from "@src/modules/shared/components/ActivityTimeline";
 import type { Person } from "@src/types/core/shared";
 import type { WorkItemComment } from "@src/types/core/workItem";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
@@ -124,7 +124,6 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
               (!root.resolved_at && onResolve) ? (
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
                   icon={
                     root.resolved_at ? (
@@ -220,7 +219,6 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                         <div className="flex justify-end gap-1.5">
                           <Button
                             variant="tertiary"
-                            appearance="ghost"
                             size="mini"
                             onClick={() => setEditingCommentId(null)}
                           >
@@ -259,7 +257,6 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                         {isOwn && onEdit ? (
                           <Button
                             variant="tertiary"
-                            appearance="ghost"
                             size="mini"
                             icon={
                               <HugeiconsIcon
@@ -283,7 +280,6 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                         {isOwn && onDelete ? (
                           <Button
                             variant="tertiary"
-                            appearance="ghost"
                             size="mini"
                             icon={
                               <HugeiconsIcon
@@ -304,7 +300,6 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                         {onReply ? (
                           <Button
                             variant="tertiary"
-                            appearance="ghost"
                             size="mini"
                             icon={
                               <HugeiconsIcon

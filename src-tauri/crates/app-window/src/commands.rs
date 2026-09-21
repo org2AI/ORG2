@@ -95,6 +95,43 @@ pub async fn set_window_root_tint(
     Ok(())
 }
 
+/// Back the CALLING window's opaque page surface with a native layer that is
+/// revealed while the window resizes.
+///
+/// macOS only; a no-op elsewhere. `insets` are the page surface's distances
+/// from the viewport's top, right, bottom and left edges in CSS px, and
+/// `color` the opaque sRGB `[r, g, b, a]` it paints. The frontend sends both
+/// whenever either changes, and neither when no opaque page surface is
+/// mounted, which removes the layer. While a resize is in flight the band the
+/// page has not painted yet then shows the page colour instead of the
+/// translucent material; see `app_window::page_backdrop`.
+#[tauri::command]
+pub async fn set_window_page_backdrop(
+    window: tauri::WebviewWindow,
+    insets: Option<[f64; 4]>,
+    color: Option<[f64; 4]>,
+) -> Result<(), String> {
+    let backdrop = match (insets, color) {
+        (Some(insets), Some(color)) => Some(super::page_backdrop::normalize_page_backdrop(
+            insets, color,
+        )?),
+        (None, None) => None,
+        (insets, color) => {
+            return Err(format!(
+                "Page backdrop insets and colour must be sent together: insets {insets:?}, colour {color:?}"
+            ))
+        }
+    };
+
+    #[cfg(target_os = "macos")]
+    super::set_macos_window_page_backdrop(&window, backdrop);
+
+    #[cfg(not(target_os = "macos"))]
+    let _ = (window, backdrop);
+
+    Ok(())
+}
+
 /// Switch the icon the running app shows in the Dock / taskbar.
 ///
 /// `variant` is the `general.dockIcon` setting value (`"dark"` | `"light"` | `"rainbow"`).
@@ -289,6 +326,7 @@ fn build_detached_app_window(
         super::set_traffic_light_position(&window, super::TRAFFIC_LIGHT_X, super::TRAFFIC_LIGHT_Y);
         super::apply_macos_window_material(&window);
         super::remove_window_background_color(&window);
+        super::rendering_rate::apply_stored_rendering_rate(&window);
     }
 
     super::apply_host_desktop_decorated_window_corners(&window);

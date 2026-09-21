@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Provider, atom } from "jotai";
+import { Provider } from "jotai";
 import { act, createElement, useEffect } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import {
@@ -37,7 +37,6 @@ vi.mock("@src/api/http/project", () => ({
     readMembers: mocks.readMembers,
     readWorkItemsViewData: mocks.readWorkItemsViewData,
   },
-  enrichedWorkItemToUI: vi.fn(),
   projectDataToUI: vi.fn(),
 }));
 vi.mock("@src/api/http/project/sync", () => ({
@@ -51,29 +50,6 @@ vi.mock("@src/hooks/project", () => ({
 }));
 vi.mock("@src/hooks/project/useCollabOutboxPending", () => ({
   useCollabOutboxPending: () => ({ pendingProjectIds: new Set() }),
-}));
-vi.mock(
-  "@src/modules/ProjectManager/LinearProjects/linearProjectsCache",
-  () => ({
-    cachedLinearProjectsApi: {
-      listProjects: vi.fn(),
-      listProjectIssues: vi.fn(),
-    },
-  })
-);
-vi.mock("@src/modules/ProjectManager/LinearProjects/utils", () => ({
-  linearIssueToWorkItem: vi.fn(),
-}));
-vi.mock("@src/store/workstation/tabs", () => ({
-  PROJECT_ORG_SURFACE_VIEW: { WORK_ITEMS: "work-items" },
-  STORY_ORG_SCOPE: {
-    PERSONAL_ORG: "personal-org",
-    PROJECT_ORG: "project-org",
-  },
-  createProjectLinearWorkItemsTab: vi.fn(),
-  createProjectOrgTab: vi.fn(),
-  openWorkstationTabAtom: atom(null, () => undefined),
-  presentedWorkstationWorkspaceKeyAtom: atom({ kind: "global" }),
 }));
 vi.mock("@src/store/workstation/tabs/factories/project", () => ({
   STORY_PERSONAL_ORG_FILTER_ID: "personal",
@@ -103,7 +79,6 @@ describe("useProjectsWorkItemMenuItems", () => {
   function Probe() {
     const value = useProjectsWorkItemMenuItems({
       enabled: true,
-      groupVisibleCounts: new Map(),
       searchQuery: "",
     });
     useEffect(() => {
@@ -147,6 +122,5 @@ describe("useProjectsWorkItemMenuItems", () => {
       "separator-recent-projects",
       "projects-project-overview:orgii-issues",
     ]);
-    expect(result?.workItemMap.size).toBe(0);
   });
 });

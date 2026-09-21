@@ -28,6 +28,22 @@ pub(crate) struct OpenAIConfig {
 // Path Helpers
 // ============================================
 
+pub(crate) fn codex_auth_path_in(codex_home: Option<&str>, home: Option<&Path>) -> Option<PathBuf> {
+    codex_home
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| home.map(|home| home.join(".codex")))
+        .map(|dir| dir.join("auth.json"))
+}
+
+pub(crate) fn local_codex_auth_path() -> Option<PathBuf> {
+    codex_auth_path_in(
+        std::env::var("CODEX_HOME").ok().as_deref(),
+        get_home_dir().as_deref(),
+    )
+}
+
 pub(crate) fn get_home_dir() -> Option<PathBuf> {
     dirs::home_dir()
 }
@@ -200,4 +216,22 @@ pub(crate) async fn validate_github_token(token: &str) -> (bool, Option<String>)
             Some(result.message)
         },
     )
+}
+
+#[cfg(test)]
+mod codex_path_tests {
+    use super::*;
+    #[test]
+    fn scan_and_refresh_use_the_same_codex_home_resolution() {
+        let home = Path::new("/fixture/user");
+        assert_eq!(
+            codex_auth_path_in(Some(" /fixture/custom "), Some(home)),
+            Some(PathBuf::from("/fixture/custom/auth.json"))
+        );
+        assert_eq!(
+            codex_auth_path_in(Some("  "), Some(home)),
+            Some(home.join(".codex/auth.json"))
+        );
+        assert_eq!(codex_auth_path_in(None, None), None);
+    }
 }

@@ -17,6 +17,8 @@ import Button from "@src/components/Button";
 import {
   CHAT_COMPOSER_STACK_BAR_INNER_PADDING_X_CLASS,
   CHAT_COMPOSER_STACK_BAR_SURFACE_BG_CLASS,
+  COMPOSER_STACK_CONTAINER_RADIUS_CLASS,
+  COMPOSER_STACK_INSET_X_CLASS,
   COMPOSER_STACK_ROW_ACTIONS,
   COMPOSER_STACK_ROW_BASE,
   COMPOSER_STACK_ROW_HOVER,
@@ -30,7 +32,6 @@ import {
   SquareTerminalIcon,
 } from "@src/icons";
 import { killAgentShellProcess } from "@src/services/terminal";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import { activeSessionIdAtom } from "@src/store/session";
 import {
   type ShellProcessState,
@@ -42,6 +43,7 @@ import {
   subagentJobMapAtom,
 } from "@src/store/session/subagentJobAtom";
 import { invokeTauri } from "@src/util/platform/tauri/init";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import ComposerStackHeader from "./ComposerStackHeader";
 
@@ -90,14 +92,13 @@ const ProcessRow: React.FC<ProcessRowProps> = memo(({ process, onStop }) => {
       <span className={COMPOSER_STACK_ROW_LABEL}>{process.command}</span>
       <span className={COMPOSER_STACK_ROW_ACTIONS}>
         <Button
-          htmlType="button"
           variant="tertiary"
           size="mini"
           icon={
             <HugeiconsIcon icon={Delete02Icon} data-icon="trash-2" size={12} />
           }
           iconOnly
-          className="enabled:hover:bg-fill-3 enabled:hover:text-danger-6"
+          hoverTone="danger"
           onClick={handleStop}
           title={t("actions.stop")}
         />
@@ -150,14 +151,13 @@ const SubagentRow: React.FC<SubagentRowProps> = memo(({ job, now, onStop }) => {
       </span>
       <span className={COMPOSER_STACK_ROW_ACTIONS}>
         <Button
-          htmlType="button"
           variant="tertiary"
           size="mini"
           icon={
             <HugeiconsIcon icon={Delete02Icon} data-icon="trash-2" size={12} />
           }
           iconOnly
-          className="enabled:hover:bg-fill-3 enabled:hover:text-danger-6"
+          hoverTone="danger"
           onClick={handleStop}
           title={t("actions.stop")}
         />
@@ -262,7 +262,7 @@ const ActiveProcesses: React.FC<ActiveProcessesProps> = memo(
 
     return (
       <div
-        className={`${CHAT_COMPOSER_STACK_BAR_SURFACE_BG_CLASS} overflow-hidden rounded-lg border border-solid border-border-2`}
+        className={`${CHAT_COMPOSER_STACK_BAR_SURFACE_BG_CLASS} ${COMPOSER_STACK_CONTAINER_RADIUS_CLASS} ${COMPOSER_STACK_INSET_X_CLASS} overflow-hidden border border-solid border-border-2`}
       >
         <ComposerStackHeader
           icon={

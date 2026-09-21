@@ -61,6 +61,17 @@ pub fn codex_cli_profile_dir(account_id: &str) -> PathBuf {
     codex_cli_profile_root().join(sanitize_path_segment(account_id))
 }
 
+/// A reconnect gets a separate auth.json; history remains account-scoped.
+pub fn codex_cli_profile_dir_for_generation(account_id: &str, generation: u64) -> PathBuf {
+    let root = codex_cli_profile_dir(account_id);
+    if generation == 0 {
+        root
+    } else {
+        root.join("credential-generations")
+            .join(generation.to_string())
+    }
+}
+
 /// Session-scoped Codex CLI profile root for hosted-key sessions.
 pub fn codex_hosted_cli_profile_root() -> PathBuf {
     orgii_root().join("codex-hosted-cli-profiles")
@@ -79,6 +90,19 @@ pub fn kiro_cli_profile_root() -> PathBuf {
 /// Account-scoped Kiro CLI HOME dir.
 pub fn kiro_cli_profile_dir(account_id: &str) -> PathBuf {
     kiro_cli_profile_root().join(sanitize_path_segment(account_id))
+}
+
+/// OAuth generations have distinct auth databases: an old running CLI must
+/// never write credentials into a newly reconnected login. Generation zero
+/// retains the pre-existing profile and its conversation history.
+pub fn kiro_cli_profile_dir_for_generation(account_id: &str, generation: u64) -> PathBuf {
+    let root = kiro_cli_profile_dir(account_id);
+    if generation == 0 {
+        root
+    } else {
+        root.join("credential-generations")
+            .join(generation.to_string())
+    }
 }
 
 /// Account-scoped OpenCode CLI profile root: `~/.orgii/opencode-cli-profiles/`.
@@ -115,6 +139,12 @@ pub fn cli_config_profile_orgii_dir(agent_name: &str) -> PathBuf {
     cli_config_profile_agent_dir(agent_name).join("orgii")
 }
 
+/// ORG2-owned overlay config dir for agents that are never rewritten in place:
+/// the app is launched with this file layered over its own configuration.
+pub fn cli_config_profile_overlay_dir(agent_name: &str) -> PathBuf {
+    cli_config_profile_agent_dir(agent_name).join("overlay")
+}
+
 /// CLI config manager manifest path for one agent.
 pub fn cli_config_profile_manifest(agent_name: &str) -> PathBuf {
     cli_config_profile_agent_dir(agent_name).join("manifest.json")
@@ -138,4 +168,9 @@ pub fn tool_results_dir(session_id: &str) -> PathBuf {
 /// this root.
 pub fn agent_worktrees_root() -> PathBuf {
     orgii_root().join("agent-worktrees")
+}
+
+/// Session-scoped managed CLI homes. Native history outlives temporary config.
+pub fn managed_cli_launch_root() -> PathBuf {
+    orgii_root().join("managed-cli-launches")
 }

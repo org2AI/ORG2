@@ -13,13 +13,13 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
-import { KiroSessionSetup } from "@src/features/SessionSetup";
-import { Login01Icon, SearchAreaIcon } from "@src/icons";
 import {
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { KiroSessionSetup } from "@src/features/SessionSetup";
+import { Login01Icon, SearchAreaIcon } from "@src/icons";
 import {
   SelectionGrid,
   type SelectionGridOption,
@@ -97,9 +97,8 @@ const KiroSetup: React.FC<KiroSetupProps> = ({
               required
             >
               <Button
-                variant={tokenDetected ? "success" : "primary"}
-                appearance={tokenDetected ? "outline" : undefined}
-                size="default"
+                variant={tokenDetected ? "secondary" : "primary"}
+                tone={tokenDetected ? "success" : undefined}
                 loading={detectingToken}
                 disabled={detectingToken}
                 onClick={onDetectToken}

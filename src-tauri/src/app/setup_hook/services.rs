@@ -61,6 +61,28 @@ pub(crate) fn start_backend_services(
                 "[CLI Sessions] reconciled pending native App catalog refreshes"
             );
         }
+        // Same startup slot: list everyday Claude Code sessions in Claude
+        // Desktop's gateway-mode profile. Bounded, additive and a no-op for
+        // anyone who has never opened that profile.
+        match tokio::task::spawn_blocking(
+            agent_sessions::cli::native_materializer::backfill_claude_desktop_gateway_catalog,
+        )
+        .await
+        {
+            Ok(Ok(0)) => {}
+            Ok(Ok(added)) => tracing::info!(
+                added,
+                "[CLI Sessions] listed Claude Code sessions in Claude Desktop gateway mode"
+            ),
+            Ok(Err(error)) => tracing::warn!(
+                error = %error,
+                "[CLI Sessions] Claude Desktop gateway catalog backfill failed"
+            ),
+            Err(error) => tracing::warn!(
+                error = %error,
+                "[CLI Sessions] Claude Desktop gateway catalog backfill task failed"
+            ),
+        }
     });
 
     system_services::app_menu::setup_menu_events(app.handle());
@@ -142,9 +164,44 @@ pub(crate) fn start_backend_services(
 
     // Start the local managed-config proxy used by supported CLI agents.
     // Direct-only installations do not start a proxy listener.
-    if agent_cli::managed_config::has_active_managed_profiles() {
-        cli_managed_proxy::start_cli_managed_proxy_thread();
-    }
+    // Registration has completed in bootstrap. Recover profiles left by a
+    // removed module after an unclean exit before starting any proxy listener.
+    // Use the same hash-checked restoration as shutdown, off the setup thread.
+    tauri::async_runtime::spawn_blocking(|| {
+        match agent_cli::managed_config::migrate_native_overlay_targets() {
+            Ok(report) => {
+                if !report.restored_agents.is_empty() || !report.failed_agents.is_empty() {
+                    tracing::info!(
+                        restored = report.restored_agents.len(),
+                        conflicts = report.failed_agents.len(),
+                        "[CLI Managed Config] restored native files replaced by overlays"
+                    );
+                }
+            }
+            Err(_) => tracing::warn!(
+                "[CLI Managed Config] overlay migration failed; native configurations retained"
+            ),
+        }
+        match agent_cli::managed_config::restore_managed_configs_matching(
+            crate::dynamic_credentials::is_unavailable,
+        ) {
+            Ok(report) => {
+                if !report.restored_agents.is_empty() || !report.failed_agents.is_empty() {
+                    tracing::info!(
+                        restored = report.restored_agents.len(),
+                        conflicts = report.failed_agents.len(),
+                        "[CLI Managed Config] reconciled unavailable credential modules"
+                    );
+                }
+            }
+            Err(_) => tracing::warn!(
+                "[CLI Managed Config] unavailable-module recovery failed; configurations retained"
+            ),
+        }
+        if agent_cli::managed_config::has_active_managed_profiles() {
+            cli_managed_proxy::start_cli_managed_proxy_thread();
+        }
+    });
 
     // First launch defaults session-provenance capture on for supported
     // external agents. Later launches reconcile the platform hook

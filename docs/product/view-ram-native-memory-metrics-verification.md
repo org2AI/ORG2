@@ -1,6 +1,6 @@
 # App memory metrics verification
 
-Issue: [#435](https://github.com/yorgai/ORG2/issues/435)
+Issue: [#435](https://github.com/org2AI/ORG2/issues/435)
 
 ## Product boundary
 

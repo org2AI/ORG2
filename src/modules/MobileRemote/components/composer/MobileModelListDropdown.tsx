@@ -2,25 +2,22 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import Button from "@src/components/Button";
+import DropdownItem from "@src/components/Dropdown/DropdownItem";
+import DropdownPanel from "@src/components/Dropdown/DropdownPanel";
 import DropdownSearch from "@src/components/Dropdown/DropdownSearch";
 import {
   DROPDOWN_CLASSES,
-  DROPDOWN_ITEM,
   DROPDOWN_PANEL,
 } from "@src/components/Dropdown/tokens";
 import ModelIcon from "@src/components/ModelIcon";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { useFilteredItems } from "@src/hooks/search";
-import { HugeiconsIcon, Tick01Icon } from "@src/icons";
 import type { MobileModelOption } from "@src/modules/MobileRemote/connection/types";
 import { useMobileRemotePlatform } from "@src/modules/MobileRemote/platform";
 import { formatModelName } from "@src/util/formatModelName";
-import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import { mobileModelOptionsShareFamily } from "./collapseMobileModelOptions";
-
-const DROPDOWN_WIDTH = 380;
-const VIEWPORT_MARGIN = 12;
+import "./mobileComposerResponsive.scss";
 
 function formatModelLabel(modelId: string): string {
   return formatModelName(modelId) || modelId;
@@ -36,6 +33,9 @@ export interface MobileModelListDropdownProps {
   currentModelId?: string;
   currentAccountId?: string;
   loading?: boolean;
+  error?: string;
+  onRetry?: () => void;
+  retryLabel?: string;
   patching?: boolean;
   loadingLabel: string;
   emptyLabel: string;
@@ -52,6 +52,9 @@ export function MobileModelListDropdown({
   currentModelId,
   currentAccountId,
   loading = false,
+  error,
+  onRetry,
+  retryLabel,
   patching = false,
   loadingLabel,
   emptyLabel,
@@ -97,7 +100,7 @@ export function MobileModelListDropdown({
     onOpenChange: (nextOpen) => {
       if (!nextOpen) onClose();
     },
-    placement: "top",
+    placement: "auto",
     gap: DROPDOWN_PANEL.triggerGap,
     listNavigation: {
       items: filteredItems,
@@ -112,30 +115,21 @@ export function MobileModelListDropdown({
     return () => cancelAnimationFrame(frame);
   }, [isPositioned, open]);
 
-  if (!open || !isPositioned || !portalContainer) return null;
-
-  const { width: viewportWidth } = getViewportSize();
-  const panelWidth = Math.min(
-    DROPDOWN_WIDTH,
-    viewportWidth - VIEWPORT_MARGIN * 2
-  );
-  const left = Math.max(
-    VIEWPORT_MARGIN,
-    Math.min(panelPosition.left, viewportWidth - VIEWPORT_MARGIN - panelWidth)
-  );
+  // Mount hidden while positioning so the shared engine can measure the panel
+  // on its first pass and attach its existing resize observer to real content.
+  if (!open || !portalContainer) return null;
 
   return createPortal(
-    <div
+    <DropdownPanel
       ref={panelRef}
       role="listbox"
       aria-label={loadingLabel}
       data-testid="mobile-model-picker-dropdown"
-      className={`${DROPDOWN_CLASSES.panelAnimated} fixed flex flex-col overflow-hidden p-1`}
+      className="mobile-model-menu fixed flex flex-col overflow-hidden p-1"
       style={{
         top: panelPosition.top,
         bottom: panelPosition.bottom,
-        left,
-        width: panelWidth,
+        left: panelPosition.left,
         maxHeight: panelPosition.maxHeight,
         visibility: isPositioned ? "visible" : "hidden",
       }}
@@ -151,7 +145,16 @@ export function MobileModelListDropdown({
         className={`${DROPDOWN_CLASSES.optionsContainerOverlay} min-h-0 flex-1`}
         style={{ maxHeight: panelPosition.maxHeight }}
       >
-        {filteredItems.length === 0 ? (
+        {error ? (
+          <div className={DROPDOWN_CLASSES.listMessage}>
+            <p role="alert">{error}</p>
+            {onRetry && (
+              <Button size="small" onClick={onRetry} disabled={loading}>
+                {retryLabel}
+              </Button>
+            )}
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className={DROPDOWN_CLASSES.listMessage}>
             {loading ? loadingLabel : emptyLabel}
           </div>
@@ -171,42 +174,35 @@ export function MobileModelListDropdown({
               );
             const showSelected = selected || selectedByFamily;
             const label = formatModelLabel(option.id);
+            const navigation = keyboard.getItemProps(index);
             return (
-              <Button
-                layout="custom"
-                appearance="custom"
+              <DropdownItem
                 key={`${option.accountId}:${option.id}`}
-                htmlType="button"
-                role="option"
                 disabled={patching}
-                {...keyboard.getItemProps(index)}
-                className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full justify-start`}
+                dataDropdownItemIndex={index}
+                onClick={navigation.onClick}
+                onMouseEnter={navigation.onMouseEnter}
+                highlighted={
+                  navigation["data-dropdown-keyboard-highlight"] === "true"
+                }
+                selected={showSelected}
+                selectedCheckPlacement="icon"
+                fullWidth
+                className="min-h-11"
+                icon={<ModelIcon modelName={option.id} size={14} />}
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center text-text-1">
-                  {showSelected ? (
-                    <HugeiconsIcon
-                      icon={Tick01Icon}
-                      data-icon="check"
-                      size={DROPDOWN_ITEM.iconSize}
-                      strokeWidth={2.25}
-                      className="text-primary-6"
-                    />
-                  ) : (
-                    <ModelIcon modelName={option.id} size={14} />
-                  )}
+                <span className="mobile-model-menu__label">
+                  <span>{label}</span>
+                  <span className="mobile-type-caption text-text-3">
+                    {option.accountLabel}
+                  </span>
                 </span>
-                <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate overflow-hidden text-[13px]">
-                  {label}
-                </span>
-                <span className="relative z-10 ml-1 shrink-0 truncate text-[12px] text-text-3">
-                  {option.accountLabel}
-                </span>
-              </Button>
+              </DropdownItem>
             );
           })
         )}
       </div>
-    </div>,
+    </DropdownPanel>,
     portalContainer
   );
 }

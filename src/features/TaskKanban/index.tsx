@@ -189,9 +189,7 @@ const Kanban: React.FC<TaskKanbanProps> = ({
       }
       return (
         <Button
-          htmlType="button"
           size="small"
-          variant="secondary"
           disabled={busySessionRows.has(remoteSession.id)}
           loading={busySessionRows.has(remoteSession.id)}
           data-testid={`kanban-list-session-take-over-${remoteSession.sourceSessionId}`}

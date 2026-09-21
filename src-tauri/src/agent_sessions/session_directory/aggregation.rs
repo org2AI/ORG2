@@ -30,6 +30,8 @@ mod sorting;
 #[cfg(test)]
 mod test_support;
 
+pub(super) use agent_org::annotate_agent_org_root_rows;
+
 pub use external_history::resync_external_history_source;
 pub use merge::list_all_sessions;
 pub use native_sidebar::{list_native_sidebar_sessions, NATIVE_SIDEBAR_PAGE_MAX_LIMIT};

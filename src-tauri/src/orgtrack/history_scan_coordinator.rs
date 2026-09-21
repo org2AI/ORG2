@@ -238,16 +238,21 @@ impl ExternalHistoryScanCoordinator {
 }
 
 impl ExternalHistoryScanWaiter {
+    /// Resolves every requested source to its own outcome. One source's
+    /// importer failure must not abort the request: the other sources already
+    /// ran and wrote their cache rows, so dropping their results would strand
+    /// every caller's freshness bookkeeping behind the one broken store.
+    /// `Err` is reserved for the coordinator itself going away.
     pub async fn wait(
         mut self,
-    ) -> Result<HashMap<String, ExternalHistorySourceScanResult>, String> {
+    ) -> Result<HashMap<String, ExternalHistorySourceScanOutcome>, String> {
         let mut results = HashMap::with_capacity(self.sources.len());
         for (source, receiver) in &mut self.sources {
             loop {
                 let snapshot = receiver.borrow_and_update().clone();
                 if snapshot.phase == ScanPhase::Completed {
                     if let Some(outcome) = snapshot.outcome {
-                        results.insert(source.clone(), outcome?);
+                        results.insert(source.clone(), outcome);
                         break;
                     }
                 }
@@ -278,6 +283,48 @@ mod tests {
         )]);
     }
 
+    async fn signature(waiter: ExternalHistoryScanWaiter, source: &str) -> String {
+        waiter.wait().await.expect("coordinator open")[source]
+            .clone()
+            .expect("scan succeeded")
+            .signature
+    }
+
+    #[tokio::test]
+    async fn one_failed_source_does_not_discard_the_other_sources_results() {
+        let coordinator = ExternalHistoryScanCoordinator::new(1);
+        let schedule = coordinator.schedule(
+            vec!["warp".to_string(), "codex".to_string()],
+            ExternalHistoryScanMode::Incremental,
+        );
+        let mut jobs = coordinator.begin_current_jobs(schedule.jobs);
+        let codex_job = jobs.pop().expect("codex job");
+        let warp_job = jobs.pop().expect("warp job");
+        coordinator.complete_jobs(vec![(
+            warp_job,
+            Err("Failed to open Warp database: unable to open database file".to_string()),
+        )]);
+        finish(&coordinator, codex_job, "codex-signature");
+
+        let outcomes = schedule
+            .waiter
+            .wait()
+            .await
+            .expect("a source failure is not a request failure");
+
+        assert_eq!(
+            outcomes["warp"],
+            Err("Failed to open Warp database: unable to open database file".to_string())
+        );
+        assert_eq!(
+            outcomes["codex"],
+            Ok(ExternalHistorySourceScanResult {
+                changed: true,
+                signature: "codex-signature".to_string(),
+            })
+        );
+    }
+
     #[tokio::test]
     async fn concurrent_incremental_requests_share_one_source_flight() {
         let coordinator = ExternalHistoryScanCoordinator::new(1);
@@ -296,14 +343,8 @@ mod tests {
         let job = jobs.pop().expect("one shared job");
         finish(&coordinator, job, "shared");
 
-        assert_eq!(
-            first.waiter.wait().await.expect("first result")["cursor_ide"].signature,
-            "shared"
-        );
-        assert_eq!(
-            second.waiter.wait().await.expect("second result")["cursor_ide"].signature,
-            "shared"
-        );
+        assert_eq!(signature(first.waiter, "cursor_ide").await, "shared");
+        assert_eq!(signature(second.waiter, "cursor_ide").await, "shared");
     }
 
     #[test]
@@ -361,12 +402,9 @@ mod tests {
             .expect("one rebuild job");
         finish(&coordinator, rebuild_job, "rebuilt");
 
+        assert_eq!(signature(incremental.waiter, "cursor_ide").await, "rebuilt");
         assert_eq!(
-            incremental.waiter.wait().await.expect("incremental join")["cursor_ide"].signature,
-            "rebuilt"
-        );
-        assert_eq!(
-            repeated_rebuild.waiter.wait().await.expect("rebuild join")["cursor_ide"].signature,
+            signature(repeated_rebuild.waiter, "cursor_ide").await,
             "rebuilt"
         );
     }
@@ -397,19 +435,8 @@ mod tests {
             .expect("rebuild job");
         finish(&coordinator, rebuild_job, "rebuilt");
 
-        assert_eq!(
-            incremental
-                .waiter
-                .wait()
-                .await
-                .expect("incremental follows rebuild")["cursor_ide"]
-                .signature,
-            "rebuilt"
-        );
-        assert_eq!(
-            rebuild.waiter.wait().await.expect("rebuild result")["cursor_ide"].signature,
-            "rebuilt"
-        );
+        assert_eq!(signature(incremental.waiter, "cursor_ide").await, "rebuilt");
+        assert_eq!(signature(rebuild.waiter, "cursor_ide").await, "rebuilt");
     }
 
     #[tokio::test]

@@ -160,6 +160,36 @@ describe("ChatProjectionRuntime", () => {
     }
   });
 
+  it("collapses on completion without a new transcript version", () => {
+    const runtime = new ChatProjectionRuntime();
+    const initial = runtime.handle({
+      ...envelope,
+      type: "initSnapshot",
+      sourceVersion: 20,
+      requestId: 1,
+      events: [event("1"), event("2"), event("3")],
+      toolRegistry,
+      options: { groups: { tailTurnPhase: "running" } },
+    });
+    expect(initial.type).toBe("projection");
+    if (initial.type !== "projection")
+      throw new Error("Missing initial projection");
+    expect(initial.result.groups?.groupCounts).toEqual([2]);
+    const completed = runtime.handle({
+      ...envelope,
+      type: "setProjectionOptions",
+      sourceVersion: 20,
+      requestId: 2,
+      options: { groups: { tailTurnPhase: "complete" } },
+    });
+    expect(completed.type).toBe("projection");
+    if (completed.type !== "projection")
+      throw new Error("Missing completed projection");
+    expect(completed.sourceVersion).toBe(20);
+    expect(completed.result.groups?.groupCounts).toEqual([1]);
+    expect(completed.result.groups?.flatItems[0].event?.id).toBe("3");
+  });
+
   it("evicts old sessions and asks them to resync", () => {
     const runtime = new ChatProjectionRuntime(1);
     for (const sessionId of ["a", "b"]) {

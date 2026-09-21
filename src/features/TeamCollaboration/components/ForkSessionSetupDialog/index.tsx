@@ -269,9 +269,7 @@ const ForkSessionSetupForm: React.FC<ForkSessionSetupFormProps> = ({
                 return (
                   <Button
                     layout="custom"
-                    appearance="custom"
                     key={repo.id}
-                    htmlType="button"
                     onClick={() => setWorkspaceRepoPath(repo.fs_uri ?? null)}
                     className={`flex flex-col px-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none focus-visible:ring-inset ${
                       selected ? "bg-fill-2" : "hover:bg-fill-2"
@@ -293,7 +291,6 @@ const ForkSessionSetupForm: React.FC<ForkSessionSetupFormProps> = ({
             <Button
               size="small"
               variant="tertiary"
-              appearance="ghost"
               onClick={() => setWorkspaceRepoPath(null)}
             >
               {t("collaboration.session.forkSetupNoWorkspace")}
@@ -347,7 +344,7 @@ const ForkSessionSetupForm: React.FC<ForkSessionSetupFormProps> = ({
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={cancel}>
+          <Button onClick={cancel}>
             {t("common:actions.cancel", { defaultValue: "Cancel" })}
           </Button>
           <Button

@@ -11,15 +11,22 @@
  * when active, and `SidebarSlot` resolves it. Tabs
  * without a registered sidebar fall through to the host's default sidebar.
  */
+// Side-effect only: evaluating `./Terminal` runs
+// `registerTabSidebar("terminal", …)`. `TerminalTabSidebar` is resolved
+// through the registry, never imported by name, so there is nothing to
+// re-export — but deleting this line silently unregisters the terminal
+// sidebar and the tab falls back to the host's default sidebar at runtime.
+import "./Terminal";
+
+// Evaluating `./SourceControl` is what runs
+// `registerTabSidebar("source-control", …)`; `SidebarSlot` resolves the
+// component out of the registry, so the component itself is never imported
+// by name. Keep this import even if every named export below goes away.
 export {
   SourceControlFilterHeader,
-  SourceControlTabSidebar,
   type SourceControlFilterCounts,
   type SourceControlFilterMode,
 } from "./SourceControl";
-
-// Importing terminal installs its tab-specific sidebar in the registry.
-export { TerminalTabSidebar } from "./Terminal";
 
 export {
   registerTabSidebar,

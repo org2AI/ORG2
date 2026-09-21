@@ -12,17 +12,17 @@ import type {
 } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { WorkStationTab } from "@src/store/workstation/tabs";
 import {
   clearWorkstationTabDrag,
   setWorkstationTabDrag,
-} from "@src/shared/dnd/dragSideChannel";
+} from "@src/util/dnd/dragSideChannel";
 import {
   type SessionTabTransfer,
   dispatchSessionTabDragCancel,
   dispatchSessionTabDragEnd,
   dispatchSessionTabDragStart,
-} from "@src/shared/dnd/sessionTabDrag";
-import type { WorkStationTab } from "@src/store/workstation/tabs";
+} from "@src/util/dnd/sessionTabDrag";
 
 import type { TabDragEventDetail, TabDragPillPayload } from "../tabDragTypes";
 

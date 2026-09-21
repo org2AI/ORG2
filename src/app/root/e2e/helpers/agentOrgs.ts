@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { ideServerAuthHeaders } from "@src/config/ideServer";
+
 import { asError } from "../result";
 import type { E2EHelpers, Json, Result } from "../types";
 import { e2eUrl } from "./e2eBaseUrl";
@@ -408,7 +410,13 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
     try {
       const response = await fetch(
         e2eUrl("/agent/test/agent-org/simulate-app-restart"),
-        { method: "POST", headers: { "Content-Type": "application/json" } }
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...ideServerAuthHeaders(),
+          },
+        }
       );
       const body = (await response.json()) as {
         ok: boolean;

@@ -122,7 +122,7 @@ const SessionHandoffComposer: React.FC<SessionHandoffComposerProps> = ({
         data-testid="team-inbox-session-handoff-composer"
         className="flex flex-col"
       >
-        <div className="border-b border-border-2 bg-bg-2 px-5 py-4">
+        <div className="border-b border-border-2 bg-bg-2 p-3">
           <div className="flex items-center gap-2 text-xs text-text-3">
             <span className="font-medium text-text-2">
               {selectedDestination?.sender.name ??
@@ -181,7 +181,7 @@ const SessionHandoffComposer: React.FC<SessionHandoffComposerProps> = ({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-4 px-5 py-4">
+        <div className="flex flex-col gap-4 p-3">
           {!draft.sourceDestinationKey ? (
             <label className="flex flex-col gap-1.5 text-xs font-medium text-text-2">
               {t("teamInbox.handoff.destination")}

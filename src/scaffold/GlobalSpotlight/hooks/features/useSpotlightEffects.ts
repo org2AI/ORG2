@@ -1,165 +1,36 @@
-/**
- * useSpotlightEffects Hook
- *
- * State-level side effects for GlobalSpotlight:
- * - Reset reducer state on close
- * - Apply initial action / initial query atoms on open
- *
- * Input focus + selected-index management are owned by the shared selector
- * kernel. Domain form state stays inside each routed Spotlight form.
- */
 import { useAtom } from "jotai";
-import { type Dispatch, useEffect, useLayoutEffect, useRef } from "react";
+import { type Dispatch, useEffect, useLayoutEffect } from "react";
 
 import {
-  type SpotlightCollabOrgContext,
-  type SpotlightGitHubIssuesImportContext,
-  type SpotlightInitialEditorMode,
-  spotlightInitialActionAtom,
+  type SpotlightInitialQuery,
   spotlightInitialQueryAtom,
 } from "@src/store/ui/uiAtom";
 
-import { getActionById } from "../../config";
 import type { SpotlightAction } from "../core/types";
 
-// ============================================
-// Types
-// ============================================
-
-export interface UseSpotlightEffectsOptions {
+interface UseSpotlightEffectsOptions {
   isOpen: boolean;
   dispatch: Dispatch<SpotlightAction>;
-  closeModal: () => void;
-  onOpenWorkingDirectoryLayer?: (
-    mode: "switch" | "open" | "add" | "create"
-  ) => void;
-  onOpenCollabOrgLayer?: (context?: SpotlightCollabOrgContext) => void;
-  onOpenGitHubIssuesImportLayer?: (
-    context?: SpotlightGitHubIssuesImportContext
-  ) => void;
-  onOpenBranchLayer?: (repoId?: string) => void;
-  onOpenWorktreeLayer?: () => void;
-  onOpenEditorLayer?: (
-    query: string,
-    mode?: SpotlightInitialEditorMode
-  ) => void;
-  onOpenAgentSessionSearchLayer?: () => void;
-  onOpenAllSessionsSearchLayer?: () => void;
-  onOpenAgentControlLayer?: () => void;
-  onOpenSessionCreatorLayer?: () => void;
-  onOpenSessionImportLayer?: () => void;
+  onRequest: (request: SpotlightInitialQuery) => void;
 }
 
-// ============================================
-// Hook
-// ============================================
-
-export function useSpotlightEffects(options: UseSpotlightEffectsOptions): void {
-  const {
-    isOpen,
-    dispatch,
-    onOpenBranchLayer,
-    onOpenWorktreeLayer,
-    onOpenEditorLayer,
-    onOpenWorkingDirectoryLayer,
-    onOpenCollabOrgLayer,
-    onOpenGitHubIssuesImportLayer,
-    onOpenAgentSessionSearchLayer,
-    onOpenAllSessionsSearchLayer,
-    onOpenAgentControlLayer,
-    onOpenSessionCreatorLayer,
-    onOpenSessionImportLayer,
-  } = options;
-
-  // Reset state on close
+/** Consume requests using dialog visibility, even while a child owns the body. */
+export function useSpotlightEffects({
+  isOpen,
+  dispatch,
+  onRequest,
+}: UseSpotlightEffectsOptions): void {
+  const [request, setRequest] = useAtom(spotlightInitialQueryAtom);
   useEffect(() => {
-    if (!isOpen) {
-      dispatch({ type: "RESET" });
-    }
+    if (!isOpen) dispatch({ type: "RESET" });
   }, [isOpen, dispatch]);
-
-  // Handle initial action from atom (for opening with specific action prefilled)
-  // Use useLayoutEffect to dispatch BEFORE browser paint, preventing flash
-  const [initialAction, setInitialAction] = useAtom(spotlightInitialActionAtom);
-  const hasHandledInitialActionRef = useRef(false);
-
   useLayoutEffect(() => {
-    // When spotlight opens with an initial action, dispatch it immediately
-    if (isOpen && initialAction && !hasHandledInitialActionRef.current) {
-      hasHandledInitialActionRef.current = true;
-
-      // Look up the action by ID and dispatch immediately (no delay)
-      const action = getActionById(initialAction);
-      if (action) {
-        dispatch({ type: "PUSH_ACTION", payload: { action } });
-      }
-
-      // Clear the initial action atom
-      setInitialAction(null);
+    if (!isOpen || !request) return;
+    setRequest(null);
+    dispatch({ type: "RESET" });
+    onRequest(request);
+    if (!request.layer || request.layer.kind === "default") {
+      dispatch({ type: "SET_SEARCH_QUERY", payload: { query: request.query } });
     }
-
-    // Reset the ref when spotlight closes
-    if (!isOpen) {
-      hasHandledInitialActionRef.current = false;
-    }
-  }, [isOpen, initialAction, setInitialAction, dispatch]);
-
-  // Handle initial query/layer requests. Runs whenever a new request lands
-  // in the atom while the spotlight is open, so external openers can
-  // re-target the visible layer. Atom is cleared after applying so stale
-  // values don't leak into the next open.
-  const [initialQuery, setInitialQuery] = useAtom(spotlightInitialQueryAtom);
-
-  useLayoutEffect(() => {
-    if (!isOpen || !initialQuery) return;
-
-    if (initialQuery.layer?.kind === "workspace") {
-      onOpenWorkingDirectoryLayer?.(initialQuery.layer.mode);
-    } else if (initialQuery.layer?.kind === "collabOrg") {
-      onOpenCollabOrgLayer?.(initialQuery.layer.context);
-    } else if (initialQuery.layer?.kind === "githubIssuesImport") {
-      onOpenGitHubIssuesImportLayer?.(initialQuery.layer.context);
-    } else if (initialQuery.layer?.kind === "branch") {
-      onOpenBranchLayer?.(initialQuery.layer.repoId);
-    } else if (initialQuery.layer?.kind === "worktree") {
-      onOpenWorktreeLayer?.();
-    } else if (initialQuery.layer?.kind === "editor") {
-      onOpenEditorLayer?.(initialQuery.query, initialQuery.layer.mode);
-    } else if (initialQuery.layer?.kind === "agentSessionSearch") {
-      onOpenAgentSessionSearchLayer?.();
-    } else if (initialQuery.layer?.kind === "allSessionsSearch") {
-      onOpenAllSessionsSearchLayer?.();
-    } else if (initialQuery.layer?.kind === "agentControl") {
-      onOpenAgentControlLayer?.();
-    } else if (initialQuery.layer?.kind === "sessionCreator") {
-      onOpenSessionCreatorLayer?.();
-    } else if (initialQuery.layer?.kind === "sessionImport") {
-      onOpenSessionImportLayer?.();
-    } else if (initialQuery.query) {
-      dispatch({
-        type: "SET_SEARCH_QUERY",
-        payload: { query: initialQuery.query },
-      });
-    }
-
-    setInitialQuery(null);
-  }, [
-    isOpen,
-    initialQuery,
-    onOpenAgentControlLayer,
-    onOpenAgentSessionSearchLayer,
-    onOpenAllSessionsSearchLayer,
-    onOpenBranchLayer,
-    onOpenWorktreeLayer,
-    onOpenEditorLayer,
-    onOpenCollabOrgLayer,
-    onOpenGitHubIssuesImportLayer,
-    onOpenWorkingDirectoryLayer,
-    onOpenSessionCreatorLayer,
-    onOpenSessionImportLayer,
-    setInitialQuery,
-    dispatch,
-  ]);
+  }, [isOpen, request, setRequest, dispatch, onRequest]);
 }
-
-export default useSpotlightEffects;

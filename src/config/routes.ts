@@ -177,6 +177,11 @@ export function isStationWindowPath(pathname: string): boolean {
   return isWithinRoute(pathname, ROUTES.app.stationWindow.path);
 }
 
+/** Whether a pathname is owned by the Settings surface. */
+export function isSettingsPath(pathname: string): boolean {
+  return isWithinRoute(pathname, ROUTES.app.settings.path);
+}
+
 /**
  * Whether a pathname is owned by a Workbench surface: the persistent
  * Workbench shell, or a detached station window, which renders the same
@@ -185,7 +190,7 @@ export function isStationWindowPath(pathname: string): boolean {
 export function isWorkbenchPath(pathname: string): boolean {
   return (
     isWithinRoute(pathname, ROUTES.workStation.base.path) ||
-    isWithinRoute(pathname, ROUTES.app.settings.path) ||
+    isSettingsPath(pathname) ||
     isStationWindowPath(pathname)
   );
 }

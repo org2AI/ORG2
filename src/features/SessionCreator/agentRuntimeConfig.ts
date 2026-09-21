@@ -37,6 +37,9 @@ export function toAgentRuntimeConfig(
   return {
     keySource: config.keySource,
     accountId: cleanValue(config.selectedAccountId),
+    credentialSource: config.credentialSource,
+    marketProfileId: cleanValue(config.marketProfileId),
+    cliAgentType: config.cliAgentType,
     model: cleanValue(config.model),
     nativeHarnessType: config.nativeHarnessType,
     tier: cleanValue(config.tier),
@@ -54,13 +57,27 @@ export function applyAgentRuntimeConfig(
   runtimeConfig: OrgMemberRuntimeConfig | undefined
 ): AdvancedConfig {
   if (!runtimeConfig) return base;
+  const ownsSource =
+    runtimeConfig.accountId !== undefined ||
+    runtimeConfig.credentialSource !== undefined ||
+    isHostedKey(runtimeConfig.keySource);
   return {
     ...base,
     keySource: runtimeConfig.keySource ?? base.keySource,
-    selectedAccountId: runtimeConfig.accountId ?? base.selectedAccountId,
+    selectedAccountId: ownsSource
+      ? runtimeConfig.accountId
+      : base.selectedAccountId,
+    credentialSource: ownsSource
+      ? runtimeConfig.credentialSource
+      : base.credentialSource,
+    marketProfileId: ownsSource
+      ? runtimeConfig.marketProfileId
+      : base.marketProfileId,
+    cliAgentType: ownsSource ? runtimeConfig.cliAgentType : base.cliAgentType,
     model: runtimeConfig.model ?? base.model,
-    nativeHarnessType:
-      runtimeConfig.nativeHarnessType ?? base.nativeHarnessType,
+    nativeHarnessType: ownsSource
+      ? runtimeConfig.nativeHarnessType
+      : base.nativeHarnessType,
     tier: runtimeConfig.tier ?? base.tier,
     listingModel: runtimeConfig.listingModel ?? base.listingModel,
     listingModelDisplay:
@@ -177,6 +194,30 @@ export function resolveAgentRuntimeSelection({
 
     const model = cleanValue(candidate.model);
     const accountId = cleanValue(candidate.selectedAccountId);
+    if (candidate.credentialSource !== undefined) {
+      const source = candidate.credentialSource;
+      const compatible =
+        selection.category === "rust_agent"
+          ? candidate.cliAgentType === undefined
+          : candidate.cliAgentType === selection.cliAgentType &&
+            (selection.cliAgentType === "claude_code" ||
+              selection.cliAgentType === "codex");
+      if (
+        compatible &&
+        !candidate.selectedAccountId &&
+        model &&
+        source.startsWith("market:") &&
+        source.length <= 1024 &&
+        source === source.trim()
+      ) {
+        return {
+          status: "ready",
+          config: { ...candidate, keySource: KEY_SOURCE.OWN, model },
+        };
+      }
+      // A persisted dynamic selection must never fall back to ambient CLI auth.
+      return { status: "needs_model_picker" };
+    }
     if (!model || !accountId) continue;
 
     if (accounts) {

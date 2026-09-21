@@ -190,11 +190,12 @@
 
     .cm-lineNumbers {
       border-right: none !important;
-      padding-left: var(--cm-line-number-padding-left, 8px);
+      padding-left: 0;
     }
 
     .cm-lineNumbers .cm-gutterElement {
       border-right: none !important;
+      padding-left: calc(var(--cm-line-number-padding-left, 8px) + 5px);
     }
 
     // Autocomplete popup - use design system colors

@@ -117,6 +117,7 @@ pub(crate) struct LaunchOrgContext {
 
 #[derive(Debug, Clone)]
 pub(crate) struct LaunchResourceSelection {
+    pub credential_source: Option<String>,
     pub key_source: Option<String>,
     pub account_id: Option<String>,
     pub model: Option<String>,
@@ -394,6 +395,7 @@ pub async fn launch_agent_session(
                 agent_definition_id: agent_definition_id.map(str::to_string),
             },
             resources: LaunchResourceSelection {
+                credential_source: None,
                 key_source: Some(
                     core_types::key_source::KeySource::OwnKey
                         .as_ref()
@@ -660,6 +662,7 @@ pub(crate) async fn launch_rust_agent_run(
         workspace_path.clone(),
         request.resources.model.clone(),
         request.resources.account_id.clone(),
+        request.resources.credential_source.clone(),
         Some(name.clone()),
         Some(request.org_context.org_id.clone()),
         request.org_context.project_id.clone(),
@@ -763,6 +766,7 @@ pub(crate) async fn launch_rust_agent_run(
         let work_item_id_for_background = work_item_id.clone();
         let app_handle_for_background = state.app_handle.clone();
         let request_key_source_for_background = request.resources.key_source.clone();
+        let credential_source_for_background = request.resources.credential_source.clone();
         let request_native_harness_for_background = request.resources.native_harness_type.clone();
         let org_for_background = crate::definitions::orgs::AgentOrgLaunchSnapshot::from(
             effective_org_definition
@@ -832,6 +836,7 @@ pub(crate) async fn launch_rust_agent_run(
                 &workspace_path_for_send,
                 model_for_send.clone(),
                 account_id_for_send.clone(),
+                credential_source_for_background.clone(),
                 request_key_source_for_background.clone(),
                 mode_for_send.clone(),
                 request_native_harness_for_background.clone(),
@@ -1480,6 +1485,7 @@ async fn recover_agent_org_starting_runs(state: &AgentAppState) -> Result<(), St
             &workspace_path,
             root.model.clone(),
             root.account_id.clone(),
+            root.credential_source.clone(),
             Some(root.key_source.as_ref().to_string()),
             root.agent_exec_mode.clone(),
             root.native_harness_type.clone(),

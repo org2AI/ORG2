@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import WorkstationTrailSurface, {
   WorkstationTrailIconButton,
-} from "@src/modules/shared/layouts/blocks/WorkstationTrailSurface";
+} from "@src/components/layout/blocks/WorkstationTrailSurface";
 
 import PropertiesPanel from ".";
 

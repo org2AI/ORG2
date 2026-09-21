@@ -30,7 +30,10 @@ import SessionContentView from "@src/engines/ChatPanel/SessionContentView";
 import { SessionService } from "@src/engines/SessionCore/services/SessionService";
 import type { KanbanTask } from "@src/features/KanbanBoard/types";
 import { sessionMapAtom } from "@src/store/session";
-import { chatTurnPaginationEnabledAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
+import {
+  chatHistoryDisplayModeAtom,
+  chatTurnPaginationEnabledAtom,
+} from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 import TaskDetailHeader from "./TaskDetailHeader";
 import type { TaskDetailNavigationDirection } from "./TaskDetailHeader";
@@ -112,6 +115,7 @@ const SessionTaskPanel: React.FC<SessionTaskPanelProps> = ({
   const sessionMap = useAtomValue(sessionMapAtom);
   const session = sessionMap.get(sessionId);
   const turnPaginationEnabled = useAtomValue(chatTurnPaginationEnabledAtom);
+  const displayMode = useAtomValue(chatHistoryDisplayModeAtom);
 
   const [detailView, setDetailView] = useState<TaskDetailView>("trajectory");
   const touchedFiles = session?.touchedFiles ?? [];
@@ -237,6 +241,7 @@ const SessionTaskPanel: React.FC<SessionTaskPanelProps> = ({
             key={sessionId}
             sessionId={sessionId}
             secondary
+            displayMode={displayMode}
             turnPaginationEnabled={turnPaginationEnabled}
           />
         </div>

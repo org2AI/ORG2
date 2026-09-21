@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
 import { projectApi } from "@src/api/http/project";
 import { linkSessionToWorkItem } from "@src/api/tauri/agent/session";
@@ -9,6 +8,7 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import PageNotice from "@src/components/PageNotice";
+import { VirtualList } from "@src/components/VirtualList";
 import {
   Cancel01Icon,
   HugeiconsIcon,
@@ -164,9 +164,7 @@ const LinkSessionToWorkItemModal: React.FC<LinkSessionToWorkItemModalProps> = ({
           </div>
           <Button
             variant="tertiary"
-            appearance="ghost"
             size="small"
-            htmlType="button"
             icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={15} />}
             onClick={onClose}
             aria-label={t("common:actions.close")}
@@ -206,12 +204,12 @@ const LinkSessionToWorkItemModal: React.FC<LinkSessionToWorkItemModalProps> = ({
               {t("chat.linkWorkItem.empty")}
             </div>
           ) : (
-            <Virtuoso
+            <VirtualList
               data={filteredItems}
               data-testid="session-link-work-item-virtual-list"
               style={{ height: "100%" }}
-              defaultItemHeight={58}
-              increaseViewportBy={{ top: 116, bottom: 232 }}
+              estimatedItemHeight={58}
+              overscanPx={232}
               computeItemKey={(_index, option) =>
                 `${option.project.slug}:${option.item.shortId}`
               }
@@ -220,8 +218,6 @@ const LinkSessionToWorkItemModal: React.FC<LinkSessionToWorkItemModalProps> = ({
                 return (
                   <Button
                     layout="custom"
-                    appearance="custom"
-                    htmlType="button"
                     className="mb-2 flex w-full items-start justify-between gap-3 rounded-xl border border-solid border-border-1 bg-bg-1 px-3 py-2 text-left transition-colors hover:border-border-2 hover:bg-surface-hover disabled:cursor-wait disabled:opacity-60"
                     data-testid={`session-link-work-item-option-${option.item.shortId}`}
                     onClick={() => void handleLink(option)}

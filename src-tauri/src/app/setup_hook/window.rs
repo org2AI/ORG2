@@ -113,6 +113,10 @@ pub(crate) fn init_runtime_profile_and_window(
                 );
                 app_window::apply_macos_window_material(&main_window);
                 app_window::remove_window_background_color(&main_window);
+                // WebKit samples its rendering pace when the page first
+                // becomes visible, so `general.highRefreshRate` goes in
+                // before the show.
+                app_window::rendering_rate::apply_stored_rendering_rate(&main_window);
                 app_window::show_after_queued_native_layout(&main_window);
             }
         }

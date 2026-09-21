@@ -3,8 +3,10 @@
  *
  * Ultra-optimized resize logic using RAF (requestAnimationFrame).
  * - Only updates once per frame
- * - Updates one live width channel during drag: CHAT_WIDTH_CSS_VAR
- * - Persists the CSS variable width to atom/storage only on mouseup
+ * - Updates one live width channel during drag: CHAT_LIVE_WIDTH_CSS_VAR, on
+ *   the pane and its layout slot only
+ * - Persists the width to atom/storage (and the root CHAT_WIDTH_CSS_VAR) only
+ *   on mouseup
  * - Ignores clicks without actual drag to prevent accidental resize
  *
  * INVARIANT: drag minimizes, never closes. The handle clamps to MIN_WIDTH
@@ -33,6 +35,7 @@ import {
 } from "@src/store/ui/chatPanel/widthAtoms";
 
 import {
+  CHAT_LIVE_WIDTH_CSS_VAR,
   CHAT_WIDTH_CSS_VAR,
   MIN_WIDTH,
   RAPID_CLICK_THRESHOLD_MS,
@@ -43,8 +46,6 @@ import {
 export interface UseChatPanelResizeOptions {
   /** Whether using external width control */
   useExternalWidth?: boolean;
-  /** Whether the panel is rendered inside another app surface */
-  embedded?: boolean;
   /** Panel position: left or right */
   position?: "left" | "right";
 }
@@ -122,11 +123,18 @@ export function useChatPanelResize(
       pendingWidthRef.current = currentWidth;
       hasDraggedRef.current = false;
 
+      // The pane and its layout slot are the only elements sized from the
+      // width, so the live value is written on them rather than on the root.
+      const panel = panelRef.current;
+      const liveWidthTargets = [
+        panel,
+        panel?.closest<HTMLElement>("[data-fullmode-chat-wrapper]") ?? null,
+      ].filter((element): element is HTMLElement => element !== null);
+
       const applyLiveWidth = (width: number) => {
-        document.documentElement.style.setProperty(
-          CHAT_WIDTH_CSS_VAR,
-          `${width}px`
-        );
+        for (const element of liveWidthTargets) {
+          element.style.setProperty(CHAT_LIVE_WIDTH_CSS_VAR, `${width}px`);
+        }
       };
 
       const commitPendingWidth = () => {
@@ -137,8 +145,12 @@ export function useChatPanelResize(
             : MIN_WIDTH
         );
 
-        applyLiveWidth(finalWidth);
+        // The atom writes the root variable synchronously, so dropping the
+        // live override lands in the same frame as the committed width.
         setChatWidth(finalWidth);
+        for (const element of liveWidthTargets) {
+          element.style.removeProperty(CHAT_LIVE_WIDTH_CSS_VAR);
+        }
       };
 
       const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
@@ -205,6 +217,9 @@ export function useChatPanelResize(
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
         if (hasDraggedRef.current) {
+          // A frame still queued would re-apply the live override after the
+          // commit clears it, pinning the pane against later width changes.
+          cancelAnimationFrame(rafRef.current);
           commitPendingWidth();
         }
         hasDraggedRef.current = false;

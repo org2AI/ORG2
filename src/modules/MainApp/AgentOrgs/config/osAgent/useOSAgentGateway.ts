@@ -12,7 +12,7 @@ import {
   stopGateway,
 } from "@src/api/tauri/agent";
 import { createLogger } from "@src/hooks/logger";
-import { startVisibilityAwarePoller } from "@src/shared/scheduling/visibilityAwarePoller";
+import { startVisibilityAwarePoller } from "@src/util/time/scheduling/visibilityAwarePoller";
 
 import type { GatewayStatusInfo } from "./types";
 

@@ -8,7 +8,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { getPrStatusVariant } from "@src/shared/pr/prStatus";
+import { getPrStatusVariant } from "@src/util/git/pr/prStatus";
 
 import { SubmissionPullRequestsContent } from "../SubmissionsContent";
 import type { PullRequestSubmission } from "../submissionsData";

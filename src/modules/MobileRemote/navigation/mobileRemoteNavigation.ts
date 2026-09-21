@@ -1,5 +1,5 @@
 /**
- * Mobile Remote demo navigation — pure state machine for Phase 0 screens.
+ * Mobile Remote navigation — pairing, primary tabs and settings destinations.
  * @see docs/mobile-remote-2026-08-28/UI-SPEC.md §1.6 Flow A/B
  */
 import type { MobileConnectionConfig } from "../connection/types";
@@ -10,12 +10,14 @@ export type MobileRemoteScreen =
   | "sas"
   | "connecting"
   | "sessions"
-  | "chat";
+  | "chat"
+  | "connection_devices";
 
-export type MobileRemoteTab = "sessions" | "devices" | "settings";
+export type MobileRemoteTab = "sessions" | "settings";
 
 export interface MobileRemoteNavState {
   screen: MobileRemoteScreen;
+  pairingReturnScreen: "welcome" | "connection_devices";
   sasPhrase: string;
   pendingConfig: MobileConnectionConfig | null;
   requiresSas: boolean;
@@ -25,6 +27,8 @@ export interface MobileRemoteNavState {
 }
 
 export type MobileRemoteNavAction =
+  | { type: "open_devices" }
+  | { type: "back_from_devices" }
   | { type: "open_qr_scan" }
   | { type: "back_from_qr_scan" }
   | { type: "back_to_welcome" }
@@ -50,6 +54,7 @@ export function createInitialMobileRemoteNavState(
 ): MobileRemoteNavState {
   return {
     screen: "welcome",
+    pairingReturnScreen: "welcome",
     sasPhrase: "",
     pendingConfig: null,
     requiresSas: false,
@@ -65,15 +70,36 @@ export function reduceMobileRemoteNav(
   action: MobileRemoteNavAction
 ): MobileRemoteNavState {
   switch (action.type) {
+    case "open_devices":
+      return {
+        ...state,
+        screen: "connection_devices",
+        activeTab: "settings",
+        selectedSessionId: null,
+      };
+    case "back_from_devices":
+      return { ...state, screen: "sessions", activeTab: "settings" };
     case "open_qr_scan":
       return {
         ...state,
         screen: "qr_scan",
+        pairingReturnScreen:
+          state.screen === "connection_devices"
+            ? "connection_devices"
+            : "welcome",
       };
     case "back_from_qr_scan":
+      return {
+        ...state,
+        screen: state.pairingReturnScreen,
+        sasPhrase: "",
+        pendingConfig: null,
+        requiresSas: false,
+      };
     case "back_to_welcome":
       return {
         ...state,
+        pairingReturnScreen: "welcome",
         screen: "welcome",
         sasPhrase: "",
         pendingConfig: null,
@@ -126,8 +152,15 @@ export function reduceMobileRemoteNav(
     case "connecting_complete":
       return {
         ...state,
-        screen: "sessions",
-        activeTab: "sessions",
+        screen:
+          state.pairingReturnScreen === "connection_devices"
+            ? "connection_devices"
+            : "sessions",
+        activeTab:
+          state.pairingReturnScreen === "connection_devices"
+            ? "settings"
+            : "sessions",
+        pairingReturnScreen: "welcome",
         pendingConfig: null,
         requiresSas: false,
         sasPhrase: "",

@@ -68,8 +68,6 @@ const AgentErrorChatItem: React.FC<AgentErrorChatItemProps> = memo(
               <div>{t("errors.codexLoginExpiredDescription")}</div>
               <Button
                 layout="custom"
-                appearance="custom"
-                htmlType="button"
                 onClick={() => setDetailsExpanded((expanded) => !expanded)}
                 aria-expanded={detailsExpanded}
                 className="mt-2 flex items-center gap-1 text-text-3 transition-colors select-none hover:text-text-1"

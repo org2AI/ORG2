@@ -1,19 +1,16 @@
 import React from "react";
 
-import {
-  useCollapsedSidebarChromeOffset,
-  useShouldOffsetMainAppHeader,
-} from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
-import { PageBreadcrumb } from "@src/modules/shared/layouts/blocks";
-import { CHROME_INSET_TRANSITION_CLASSES } from "@src/modules/shared/layouts/viewContainerTokens";
+import { CHROME_INSET_TRANSITION_CLASSES } from "@src/components/layout/tokens/viewContainerTokens";
+import { useCollapsedSidebarChromeOffset } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
 import { CollapsedSidebarButton } from "@src/scaffold/NavigationSidebar/CollapsedSidebarButton";
 
 interface MainAppPageHeaderProps {
-  breadcrumb?: React.ReactNode;
+  breadcrumb: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
-  offsetForCollapsedSidebar?: boolean;
+  /** Pad for, and render, the collapsed-sidebar chrome group. */
+  offsetForCollapsedSidebar: boolean;
 }
 
 const DRAG_STYLE = { WebkitAppRegion: "drag" } as React.CSSProperties;
@@ -26,10 +23,7 @@ const MainAppPageHeader: React.FC<MainAppPageHeaderProps> = ({
   style,
   offsetForCollapsedSidebar,
 }) => {
-  const defaultOffsetForCollapsedSidebar = useShouldOffsetMainAppHeader();
   const collapsedSidebarChromeOffset = useCollapsedSidebarChromeOffset();
-  const shouldOffsetHeaderForCollapsedSidebar =
-    offsetForCollapsedSidebar ?? defaultOffsetForCollapsedSidebar;
 
   return (
     <div
@@ -38,14 +32,14 @@ const MainAppPageHeader: React.FC<MainAppPageHeaderProps> = ({
       style={
         {
           ...style,
-          paddingLeft: shouldOffsetHeaderForCollapsedSidebar
+          paddingLeft: offsetForCollapsedSidebar
             ? collapsedSidebarChromeOffset
             : undefined,
           ...DRAG_STYLE,
         } as React.CSSProperties
       }
     >
-      {shouldOffsetHeaderForCollapsedSidebar ? (
+      {offsetForCollapsedSidebar ? (
         <div style={NO_DRAG_STYLE}>
           <CollapsedSidebarButton />
         </div>
@@ -54,7 +48,7 @@ const MainAppPageHeader: React.FC<MainAppPageHeaderProps> = ({
         className="flex h-9 min-w-0 shrink items-center gap-1"
         style={NO_DRAG_STYLE}
       >
-        {breadcrumb ?? <PageBreadcrumb />}
+        {breadcrumb}
       </div>
       <div
         className="min-w-0 flex-1"

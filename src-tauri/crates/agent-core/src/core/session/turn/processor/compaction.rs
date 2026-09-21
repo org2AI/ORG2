@@ -106,13 +106,19 @@ impl UnifiedMessageProcessor {
         tail: &[Value],
         budget_tokens: usize,
     ) -> (Vec<Value>, CompactionOutcome) {
+        let attributed = crate::session::auxiliary_usage::AuxiliaryUsageProvider::borrowed(
+            self.runtime.provider.as_ref(),
+            session_id,
+            "compaction",
+            self.runtime.account_id.as_deref(),
+        );
         let mut state = self.compaction_state.lock().await;
         let (compacted, outcome) = ContextCompactor::compact(
             tail,
             budget_tokens,
             &self.runtime.resolved.compaction,
             &mut state,
-            self.runtime.provider.as_ref(),
+            &attributed,
             &self.runtime.model,
         )
         .await;
@@ -130,7 +136,7 @@ impl UnifiedMessageProcessor {
             budget_tokens,
             &self.runtime.resolved.compaction,
             &mut state,
-            self.runtime.provider.as_ref(),
+            &attributed,
             &self.runtime.model,
             None,
         )
@@ -501,13 +507,19 @@ impl UnifiedMessageProcessor {
                 temperature: self.runtime.resolved.temperature as f32,
             };
 
+            let attributed = crate::session::auxiliary_usage::AuxiliaryUsageProvider::borrowed(
+                self.runtime.provider.as_ref(),
+                session_id,
+                "compaction",
+                self.runtime.account_id.as_deref(),
+            );
             let mut state = self.compaction_state.lock().await;
             let (compacted, outcome) = ContextCompactor::compact_with_fork(
                 &compactable_tail,
                 budget_tokens,
                 &self.runtime.resolved.compaction,
                 &mut state,
-                self.runtime.provider.as_ref(),
+                &attributed,
                 &self.runtime.model,
                 Some(&fork_inputs),
             )

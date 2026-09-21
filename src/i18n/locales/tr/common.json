@@ -18,6 +18,11 @@
     "file": "Dosyada ara",
     "named": "{{name}} içinde ara"
   },
+  "sidebarSettings": {
+    "title": "Kenar çubuğu ayarları",
+    "showSidebar": "Kenar çubuğunu göster",
+    "colorSourceControlFiles": "Dosyalarda fark renkleri"
+  },
   "teamInbox": {
     "title": "Ekip Gelen Kutusu",
     "listLabel": "Ekip Gelen Kutusu listesi",
@@ -371,7 +376,6 @@
     "restart": "Yeniden Başlat",
     "switchToStation": "{{station}} moduna geç",
     "discard": "Vazgeç",
-    "run": "Çalıştır",
     "clone": "Klonla",
     "send": "Gönder",
     "sendMessageQueued": "Gönder (sırada)",
@@ -401,13 +405,12 @@
     "link": "Bağla",
     "copyName": "Adı Kopyala",
     "switchMethod": "Yöntemi değiştir",
-    "dismiss": "Yoksay",
     "clearSelection": "Seçimi temizle",
-    "clearAll": "Tümünü temizle",
     "openOnGitHub": "GitHub'da aç",
     "createPullRequest": "Pull request oluştur",
     "expandView": "Görünümü genişlet",
-    "restoreSplitView": "Bölünmüş görünümü geri yükle"
+    "restoreSplitView": "Bölünmüş görünümü geri yükle",
+    "overwrite": "Üzerine yaz"
   },
   "status": {
     "yes": "Evet",
@@ -483,7 +486,6 @@
     "nextPage": "Sonraki sayfa",
     "lastPage": "Son sayfa",
     "selectPage": "Sayfa seç",
-    "title": "Sayfalama",
     "round": "Round {{current}}",
     "previousRound": "Önceki round",
     "nextRound": "Sonraki round",
@@ -491,7 +493,7 @@
   },
   "optional": "isteğe bağlı",
   "common": {
-    "display": "Görünüm",
+    "display": "Arayüz ayarları",
     "on": "Açık",
     "off": "Kapalı",
     "default": "Varsayılan",
@@ -560,7 +562,6 @@
     "globPatternsHint": "Glob desenleri, virgülle ayrılmış",
     "outline": "Anahat",
     "timeline": "Zaman çizelgesi",
-    "indexing": "İndeksleme",
     "testExplorer": "Test Gezgini",
     "installed": "Yüklü",
     "extensionViews": "Uzantı Görünümleri",
@@ -678,7 +679,6 @@
     "explorer": "Gezgin",
     "search": "Ara",
     "sourceControl": "Kaynak Denetimi",
-    "sessions": "Session",
     "myTabs": "Sekmelerim ({{count}})",
     "design": "Tasarım",
     "settings": "Ayarlar",
@@ -773,7 +773,7 @@
     "nextMatchLabel": "Sonraki eşleşme",
     "clearSearch": "Aramayı temizle",
     "openFile": "Dosyayı aç",
-    "openNativeDevTools": "Yerel tarayıcı DevTools'u aç",
+    "openNativeDevTools": "DevTools'u aç",
     "captureScreenshot": "Ekran görüntüsü",
     "enableInspectMode": "Öğeyi incele",
     "disableInspectMode": "İncelemeyi kapat (Esc)",
@@ -789,7 +789,6 @@
     "closePanel": "Paneli kapat",
     "showSidebar": "Kenar çubuğunu göster",
     "hideSidebar": "Kenar çubuğunu gizle",
-    "moreOptions": "Daha fazla seçenek",
     "zoomIn": "Yakınlaştır",
     "zoomOut": "Uzaklaştır",
     "goBack": "Geri",
@@ -807,10 +806,9 @@
     "replaceAll": "Tümünü değiştir (Ctrl+Alt+Enter)",
     "replaceAllLabel": "Tümünü değiştir",
     "moreActions": "Daha fazla işlem...",
-    "formatSql": "SQL'i formatla",
-    "queryHistory": "Sorgu geçmişi",
-    "executeQuery": "Sorguyu çalıştır ({{shortcut}})",
     "startVoiceInput": "Sesli girişi başlat",
+    "expandInput": "Giriş alanını genişlet",
+    "collapseInput": "Giriş alanını daralt",
     "cancelRecording": "Kaydı iptal et",
     "stopAndTranscribe": "Durdur ve yazıya dök",
     "htmlPreview": "HTML önizleme",
@@ -820,7 +818,6 @@
     "movePanelToRight": "Paneli sağa taşı",
     "movePanelToBottom": "Paneli alta taşı",
     "domTree": "DOM ağacı",
-    "closeSession": "Session kapat",
     "clearNetworkLogs": "Ağ günlüklerini temizle",
     "clearConsole": "Konsolu temizle",
     "copyToClipboard": "Panoya kopyala",
@@ -871,7 +868,6 @@
     "pleaseTryAgain": "Lütfen tekrar deneyin",
     "noFileOpen": "Düzenlemeye başlamak için dosya açın",
     "selectFileToEdit": "Gezginden bir dosya seçin",
-    "noTabs": "Başlamak için bir sekme açın",
     "noTabsOpen": "Başlamak için bir öğe açın",
     "selectItemToStart": "Kenar çubuğundan bir öğe seçin",
     "noDatabaseConnected": "Bağlı veritabanı yok",
@@ -883,7 +879,7 @@
     "chatHistoryReloadHint": "Session verileri yüklenmemiş olabilir",
     "chatHistoryAgentWorking": "Agent çalışıyor",
     "chatHistoryAgentWorkingHint": "İlk yanıtla mesajlar görünür; o zamana kadar araç çubuğu boşta görünebilir",
-    "pleaseSelect": "Lütfen seçin",
+    "pleaseSelect": "Seç",
     "noSessionsFound": "Session bulunamadı",
     "typeToSearchFiles": "Dosyaları aramak için yazın...",
     "selectFileToViewChanges": "Değişiklikleri görmek için bir dosya seçin",
@@ -953,7 +949,8 @@
     "selectSidebarStash": "Bir stash seçin",
     "selectSidebarCommit": "Bir commit seçin",
     "selectSidebarPullRequest": "Bir pull request seçin",
-    "selectSidebarIssue": "Bir issue seçin"
+    "selectSidebarIssue": "Bir issue seçin",
+    "pressEnterToSearch": "Aramak için Enter tuşuna basın"
   },
   "inbox": {
     "scrollToBottom": "Alta kaydır",
@@ -982,7 +979,6 @@
     "notGitInitialized": "Git başlatılmadı",
     "notGitInitializedTooltip": "Bu çalışma dizini henüz .git dizinine sahip değil.",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "scanningFiles": "Scanning files...",
     "branchTooltipSwitching": "Dal: {{branch}} (geçiş yapılıyor…)",
     "switchWorkspaceTooltip": "Çalışma dizinini değiştir",
     "switchWorktreeTooltip": "Worktree değiştir",
@@ -993,12 +989,6 @@
     "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Git eylemleri",
     "switchToSessionRepo": "{{name}} konumuna geç",
-    "embeddingProgress": "Embedding: {{count}} chunk işlendi",
-    "embeddingProgressWithPercent": "Embedding: {{count}} chunk işlendi ({{percent}}%)",
-    "embeddingShort": "Embedding {{percent}}%",
-    "embeddingLabel": "Embedding",
-    "indexingProgress": "İndeksleme: {{processed}}/{{total}} dosya ({{percent}}%)",
-    "indexingProgressWithFile": "İndeksleme: {{processed}}/{{total}} dosya ({{percent}}%)\nGeçerli: {{file}}",
     "ports": {
       "workspaceSection": "Geçerli çalışma alanı",
       "externalSection": "Harici",
@@ -1051,9 +1041,8 @@
       "siteUnreachableTitle": "Bu siteye ulaşılamıyor",
       "webviewHiddenTitle": "Web görünümü geçici olarak gizlendi",
       "webviewHiddenBody": "Yeniden göstermek için menüyü veya iletişim kutusunu kapatın.",
-      "embeddedFallbackTitle": "Bu site gömülü tarayıcıda çalışmayabilir",
-      "embeddedFallbackBody": "Bazı siteler uygulama WebView'leri içinde engellenir veya görüntülenemez. Sayfa boş kalırsa sistem tarayıcınızda açın.",
-      "currentUrl": "Geçerli URL"
+      "loadStalledTitle": "Bu sayfanın yüklenmesi tamamlanmadı",
+      "copyUrl": "URL'yi kopyala"
     },
     "unsavedChangesTitle": "Unsaved Changes",
     "ci": {
@@ -1069,7 +1058,9 @@
         "skipped": "Atlandı",
         "passed": "Geçti"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Dosya diskte değişti",
+    "fileChangedOnDiskBody": "\"{{name}}\" siz açtıktan sonra diskte değişti. Kendi sürümünüzle üzerine yazılsın mı?"
   },
   "git": {
     "loading": "Git durumu yükleniyor...",
@@ -1096,7 +1087,7 @@
       "createTokenButton": "Token oluştur",
       "openGitSettingsButton": "Ayarları aç",
       "configureInSettings": "Git’i ayarlarda yapılandır",
-      "configureInSettingsDesc": "Ayarlar → Bağlantılar içinde GitHub App erişimi ekleyin, token kaydedin veya yerel kimlik bilgilerini tarayın; ardından bu Git işlemini yeniden deneyin."
+      "configureInSettingsDesc": "Ayarlar → Bağlantılar içinde GitHub App erişimi ekleyin, token kaydedin veya yerel kimlik bilgilerini tarayın; ardından bu Git işlemini yeniden deneyin"
     },
     "actions": {
       "publish": "Publish",
@@ -1134,7 +1125,12 @@
       "returnFromMiniTerminal": "Burada göster",
       "resizeTerminal": "Terminali yeniden boyutlandır",
       "terminalProcessCount_one": "{{count}} işlem",
-      "terminalProcessCount_other": "{{count}} işlem"
+      "terminalProcessCount_other": "{{count}} işlem",
+      "sources": "Kaynaklar",
+      "sourcesCount_one": "{{count}} kaynak",
+      "sourcesCount_other": "{{count}} kaynak",
+      "loadMoreSources": "Daha fazla yükle (+{{count}})",
+      "sourceImage": "Görsel"
     },
     "pr": {
       "title": "Pull request",
@@ -1217,6 +1213,93 @@
         "checkingConflicts": "Çakışmalar kontrol ediliyor…",
         "autoMergeEnabled": "Otomatik birleştirme etkin",
         "inMergeQueue": "Birleştirme kuyruğunda bekliyor"
+      },
+      "mergeBox": {
+        "checksFailed": "Bazı kontroller başarılı olmadı",
+        "checksPending": "Bazı kontroller henüz tamamlanmadı",
+        "checksPassed": "Tüm kontroller başarılı",
+        "checksSkipped": "Tüm kontroller atlandı",
+        "counts": {
+          "failing": "{{count}} başarısız",
+          "inProgress": "{{count}} devam ediyor",
+          "skipped": "{{count}} atlandı",
+          "successful": "{{count}} başarılı",
+          "summary_one": "Kontrol: {{parts}}",
+          "summary_other": "Kontroller: {{parts}}"
+        },
+        "check": {
+          "queued": "Kuyrukta",
+          "started": "{{time}} başladı",
+          "successfulIn": "{{duration}} içinde başarılı",
+          "failingAfter": "{{duration}} sonra başarısız",
+          "skipped": "Atlandı",
+          "successful": "Başarılı",
+          "failing": "Başarısız"
+        },
+        "deployments": {
+          "label": "Dağıtımlar",
+          "none": "Dağıtım yok",
+          "active_one": "{{count}} etkin dağıtım",
+          "active_other": "{{count}} etkin dağıtım",
+          "view": "Dağıtımı görüntüle",
+          "notDeployed": "Bu dal dağıtılmadı",
+          "deployed": "Bu dal başarıyla dağıtıldı",
+          "deploying": "Bu dal dağıtılıyor",
+          "deployFailed": "Bu dal dağıtılırken bir hata oluştu",
+          "deployInactive": "Bu dal artık dağıtımda değil",
+          "state": {
+            "active": "Etkin",
+            "pending": "Devam ediyor",
+            "failure": "Başarısız",
+            "inactive": "Etkin değil"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Değişiklikler onaylandı",
+            "detail": "Onaylayan bir inceleme gönderildi"
+          },
+          "reviewRequired": {
+            "title": "İnceleme gerekli",
+            "detail": "Birleştirmek için en az bir onaylayan inceleme gerekli"
+          },
+          "reviewChangesRequested": {
+            "title": "Değişiklik istendi",
+            "detail": "Bir inceleyici birleştirmeden önce değişiklik istedi"
+          },
+          "noConflicts": {
+            "title": "Temel dal ile çakışma yok",
+            "detail": "Birleştirme otomatik olarak yapılabilir"
+          },
+          "hasConflicts": {
+            "title": "Bu dalda çözülmesi gereken çakışmalar var",
+            "detail": "Çakışmaları kaynak dalda çözün, ardından gönderin"
+          },
+          "outOfDate": {
+            "title": "Bu dal temel dala göre güncel değil",
+            "detail": "Temel daldaki en son değişiklikleri bu dala birleştirin"
+          },
+          "checkingConflicts": {
+            "title": "Otomatik birleştirilebilirlik kontrol ediliyor…",
+            "detail": "GitHub dalın durumunu kontrol ederken lütfen bekleyin"
+          },
+          "autoMergeEnabled": {
+            "title": "Otomatik birleştirme etkin",
+            "detail": "Bu pull request, gereksinimleri karşılandığında birleştirilir"
+          },
+          "inMergeQueue": {
+            "title": "Birleştirme kuyruğunda bekliyor",
+            "detail": "Kuyruğun başına geldiğinde GitHub onu birleştirir"
+          }
+        },
+        "merged": {
+          "title": "Pull request başarıyla birleştirildi ve kapatıldı",
+          "detail": "Kaynak dal güvenle silinebilir"
+        },
+        "closed": {
+          "title": "Birleştirilmemiş commit'lerle kapatıldı",
+          "detail": "Bu pull request kapalı. Birleştirmek için yeniden açın"
+        }
       },
       "commits": {
         "backToList": "Tüm commitler",
@@ -1335,7 +1418,7 @@
       "cannotParseRepoName": "Depo adı origin remote'tan çözümlenemedi",
       "authRequired": {
         "title": "GitHub'ı bağla",
-        "description": "GitHub hesabınızı bağlamak için Ayarlar → Bağlantılar bölümüne gidin."
+        "description": "GitHub hesabınızı bağlamak için Ayarlar → Bağlantılar bölümüne gidin"
       },
       "navigationTrail": "Pull request gezinmesi",
       "failedToLoad": "Pull requestler yüklenemedi",
@@ -1505,15 +1588,112 @@
       "newIssueBodyPlaceholder": "Issue’yu açıklayın (isteğe bağlı)…",
       "authRequired": {
         "title": "GitHub'ı bağla",
-        "description": "GitHub hesabınızı bağlamak için Ayarlar → Bağlantılar bölümüne gidin."
+        "description": "GitHub hesabınızı bağlamak için Ayarlar → Bağlantılar bölümüne gidin"
       },
       "reAuthRequired": "GitHub yetkilendirmesi gerekli",
-      "reAuthDescription": "GitHub token'ınızın süresi doldu. Yeniden bağlanmak için Ayarlar → Bağlantılar bölümüne gidin.",
+      "reAuthDescription": "GitHub token'ınızın süresi doldu. Yeniden bağlanmak için Ayarlar → Bağlantılar bölümüne gidin",
       "goToSettings": "Ayarlara git",
       "loadingTimeline": "Etkinlik yükleniyor…",
       "label": "Issue",
       "linkedLoading": "Bağlı öğeler yükleniyor",
       "detailNavigation": "Issue gezinmesi"
+    },
+    "branchSwitch": {
+      "title": "Dal değiştir",
+      "conflictsTitle": "Değişikliklerle ilgilenilmesi gerekiyor",
+      "blockedTitle": "Dal değiştirme işlemiyle ilgilenilmesi gerekiyor",
+      "working": "Kaydediliyor ve değiştiriliyor…",
+      "current": "Geçerli dal: {{branch}}",
+      "changedFiles": "{{count}} dosya değiştirildi",
+      "question": "Değişikliklerinizle ne yapmak istersiniz?",
+      "leave": "Değişiklikleri {{branch}} dalında bırak",
+      "leaveDescription": "Daha sonra devam etmek üzere çalışmanızı kaydedin ve temiz bir çalışma ağacıyla dal değiştirin",
+      "bring": "Değişiklikleri {{branch}} dalına taşı",
+      "bringDescription": "Commit edilmemiş değişikliklerinizi hedef dala taşıyın",
+      "worktreeTitle": "Dal başka bir çalışma ağacında açık",
+      "openWorktree": "Çalışma ağacını aç",
+      "activeTask": "Bu çalışma ağacında bir görev çalışıyor",
+      "activeTaskDescription": "Şimdi geçiş yapmak, ajanın üzerinde çalıştığı dosyaları değiştirir",
+      "switchAnyway": "Yine de geç",
+      "switchedTo": "{{branch}} dalına geçildi",
+      "saveTitle": "Dal değiştirmeden önce dosyaları kaydet",
+      "saveDescription": "Açık dosyalarda kaydedilmemiş düzenlemeler var. Değişikliklerinizi nerede tutacağınızı seçmeden önce bunları kaydedin",
+      "saveContinue": "Tümünü kaydet ve devam et",
+      "saveFailed": "Tüm dosyalar kaydedilemedi",
+      "multipleBuffers": "Bu dosya birden fazla düzenleyicide değiştirildi. Dal değiştirmeden önce bu düzenleyicilerde kaydedin veya onları kapatın",
+      "editedWhileSaving": "Kaydetme sırasında dosyalar düzenlendi. Son değişiklikleri gözden geçirip tekrar deneyin",
+      "savePreview": "Dal değiştirmeden önce hesap tablosu düzenleyicisindeki düzenlemeleri kaydedin veya atın",
+      "messages": {
+        "detached_head": "Geçiş yapmadan önce geçerli commit'ten bir dal oluşturun, böylece ayrılmış çalışma erişilebilir kalır",
+        "unborn": "Kaydedilmiş dal değişikliklerini kullanmadan önce ilk commit'i oluşturun",
+        "ignored_collision": "Yoksayılan bir dosyanın üzerine yazılır. Geçiş yapmadan önce onu başka bir yere taşıyın",
+        "worktree_branch_in_use": "Bu dal zaten başka bir çalışma ağacında açık",
+        "invalid_branch_name": "Geçerli bir dal adı seçin",
+        "branch_exists": "Bu dal zaten var",
+        "branch_not_found": "Dal bulunamadı veya belirsiz. Dalları yenileyin ve açık bir uzak dal seçin",
+        "upstream_mismatch": "Bu ada sahip yerel bir dal farklı bir upstream'i izliyor. Yerel dalı açıkça seçin",
+        "operation_merge": "Dal değiştirmeden önce birleştirmeyi tamamlayın veya iptal edin",
+        "operation_rebase": "Dal değiştirmeden önce rebase'i tamamlayın veya iptal edin",
+        "operation_cherry_pick": "Dal değiştirmeden önce cherry-pick'i tamamlayın veya iptal edin",
+        "operation_revert": "Dal değiştirmeden önce revert'i tamamlayın veya iptal edin",
+        "operation_other": "Dal değiştirmeden önce geçerli Git işlemini tamamlayın",
+        "stale": "İletişim kutusu açıkken dosyalar veya dallar değişti. Son değişiklikleri gözden geçirip tekrar deneyin",
+        "save_failed": "Değişiklikler kaydedilemedi: {{detail}}. Yeniden denemeden önce çalışma ağacını ve kaydedilen değişiklikleri gözden geçirin",
+        "changed_while_saving": "Kaydetme sırasında dosyalar değişti. Checkout denenmedi; snapshot'ınız kullanılabilir",
+        "checkout_failed_restored": "Checkout başarısız oldu; değişiklikleriniz geri yüklendi: {{detail}}",
+        "checkout_failed_saved": "Checkout başarısız oldu. Değişiklikleriniz kaydedildi: {{detail}}",
+        "worktree_changed": "Checkout sırasında çalışma ağacı değişti. Orijinal değişiklikleriniz kaydedildi; geri yüklemeden önce güncel dosyaları gözden geçirin",
+        "restore_conflicts": "{{branch}} dalına geçildi. Bazı değişiklikler geri yüklenemedi: {{detail}}. Orijinal değişiklikleriniz kaydedildi",
+        "saved_on_previous": "Değişiklikler önceki dalda kaydedildi",
+        "brought": "Değişiklikleriniz sizinle bu dala kadar geldi",
+        "worktree_missing": "Çalışma ağacı artık yok. Yenileyip tekrar deneyin"
+      }
+    },
+    "dialogs": {
+      "detachedHead": {
+        "title": "Detached HEAD durumu",
+        "body": "{{shortHash}} commit'inde detached HEAD durumundasınız.\n\nHerhangi bir dalda değilsiniz. Önce yeni bir dal oluşturmadan başka bir dala checkout yaparsanız, oluşturduğunuz commit'ler kaybolabilir.\n\n⚠️ Detached HEAD durumundaki commit'ler çöp toplayıcı tarafından silinebilir.",
+        "createBranch": "Dal oluştur",
+        "continueWithoutBranch": "Dal olmadan devam et"
+      },
+      "largePush": {
+        "title": "Büyük push algılandı",
+        "body": "{{remote}}/{{branch}} hedefine {{commitCount}} commit push etmek üzeresiniz.\n\nBu her zamankinden fazla. Devam etmek istediğinizden emin misiniz?\n\n💡 Büyük değişiklikleri daha küçük ve daha odaklı commit'lere bölmeyi düşünün.",
+        "confirm": "Tüm commit'leri push et"
+      },
+      "protectedBranch": {
+        "title": "Korumalı dal",
+        "body": "{{remote}} üzerindeki \"{{branch}}\" dalı korumalıdır ve doğrudan push yapılamaz.\n\nKorumalı dallarda değişikliklerin pull request üzerinden geçmesi gerekir.",
+        "createPr": "Pull request oluştur"
+      },
+      "pullConflict": {
+        "title": "Yerel değişikliklerle pull yapılamıyor",
+        "body": "\"{{branch}}\" dalından gelen değişiklikler yerel değişikliklerinizin üzerine yazacak.{{fileInfo}}\n\nNasıl devam edeceğinizi seçin:",
+        "fileInfo_one": " ({{count}} dosya etkileniyor)",
+        "fileInfo_other": " ({{count}} dosya etkileniyor)",
+        "stashAndPull": "Stash ve Pull",
+        "discardAndPull": "Değişiklikleri at ve Pull"
+      },
+      "pushRejected": {
+        "title": "Push reddedildi",
+        "body": "{{remote}}/{{branch}} hedefine push yapılamıyor.\n\nUzak dal, yerelde bulunmayan commit'ler içeriyor.{{behindInfo}}\n\n⚠️ Force push, uzaktaki değişikliklerin üzerine kalıcı olarak yazar.",
+        "behindInfo_one": " ({{count}} commit geride)",
+        "behindInfo_other": " ({{count}} commit geride)",
+        "pullAndPush": "Pull ve Push",
+        "forcePush": "Force Push"
+      },
+      "conflict": {
+        "titleMerge": "Merge çakışması",
+        "titleRebase": "Rebase çakışması",
+        "bodyMerge": "\"{{branch}}\" dalı merge edilirken çakışmalar oluştu.{{progress}}{{files}}\n\n⚠️ İptal etmek merge işlemini geri alır ve dalınızı eski haline getirir.",
+        "bodyRebase": "\"{{branch}}\" üzerine rebase yapılırken çakışmalar oluştu.{{progress}}{{files}}\n\n⚠️ İptal etmek dalınızı rebase öncesindeki durumuna geri döndürür.",
+        "progress": " (Adım {{current}}/{{total}})",
+        "files_one": "\n\n{{count}} dosyada çakışma var.",
+        "files_other": "\n\n{{count}} dosyada çakışma var.",
+        "resolve": "Çakışmaları çöz",
+        "abortMerge": "Merge'i iptal et",
+        "abortRebase": "Rebase'i iptal et"
+      }
     }
   },
   "selectors": {
@@ -1568,7 +1748,6 @@
         "createWorkspace": "Yeni çalışma dizini oluştur"
       },
       "sources": {
-        "cloningFromGitHub": "GitHub'dan klonlanıyor",
         "cloningFromGitHubUrl": "GitHub URL'sinden klonla",
         "cloningFromMyGitHub": "GitHub hesabımdan klonla",
         "creatingWorkspace": "yeni çalışma dizini oluşturuluyor",
@@ -1629,7 +1808,6 @@
         "createFrom": "Branch'ten oluştur",
         "deleteBranch": "Branch sil",
         "refresh": "Branch yenile",
-        "checkoutDetachedSuccess": "Mevcut commit'te detached HEAD durumunda",
         "removeWorktree": "Worktree kaldır",
         "newWorktree": "Yeni worktree...",
         "refreshPullRequests": "Pull requests yenile"
@@ -1637,9 +1815,15 @@
       "messages": {
         "deletedCount_one": "{{count}} branch silindi",
         "deletedCount_other": "{{count}} branch silindi",
-        "failedDeleteList": "Silinemedi: {{branches}}"
+        "failedDeleteList": "Silinemedi: {{branches}}",
+        "failedDelete": "\"{{branch}}\" dalı silinemedi",
+        "prNoHeadBranch": "Pull request'in head dalı yok",
+        "readBranchesFailed": "Yerel dallar okunamadı",
+        "createPrBranchFailed": "PR dalı oluşturulamadı",
+        "readRemotesFailed": "Deponun uzak kaynakları okunamadı"
       },
       "labels": {
+        "defaultBranches": "Varsayılan dallar",
         "otherBranches": "Diğer Branch'ler",
         "current": "Geçerli",
         "recent": "Son",
@@ -1687,6 +1871,8 @@
       "selectWorktreeSource": "Worktree branch'i veya pull request seç"
     },
     "spotlightFooter": {
+      "settings": "Spotlight ayarları",
+      "unpinAll": "Tümünün sabitlemesini kaldır",
       "navigate": "Gezin",
       "select": "Seç",
       "switchColumn": "Sütun değiştir",
@@ -1770,11 +1956,6 @@
         "integrations": "Agent ve Entegrasyonlar",
         "market": "Pazar",
         "actions": "Eylemler"
-      },
-      "paramLabels": {
-        "repo": "Repo",
-        "folder": "Klasör",
-        "branch": "Dal"
       },
       "actions": {
         "showInFinder": {
@@ -1879,7 +2060,7 @@
     "chatRight": "Sohbet sağda",
     "sidebarPosition": "Workstation kenar çubuğu",
     "modelPickerStyle": "Seçici",
-    "paginateChatHistory": "Sohbet geçmişini sayfalandır",
+    "paginateChatHistory": "Sohbet geçmişi sayfalama",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "Menü",
     "left": "Sol",
@@ -2128,13 +2309,29 @@
   "selectionMenu": {
     "addToChat": "Sohbete ekle",
     "addThisFile": "Bu dosyayı ekle",
-    "addLines": "{{from}} – {{to}} satırlarını ekle"
+    "addLines": "{{from}} – {{to}} satırlarını ekle",
+    "replyToSelection": "Yanıtla",
+    "clearQuotedSelection": "Alıntıyı kaldır",
+    "pinSelection": "Sabitle"
   },
   "browser": {
     "screenshot": {
       "added": "Ekran görüntüsü sohbete eklendi",
       "failed": "Ekran görüntüsü alınamadı: {{reason}}",
-      "noActivePage": "Yakalanacak aktif sayfa yok"
+      "noActivePage": "Yakalanacak aktif sayfa yok",
+      "saved": "Ekran görüntüsü kaydedildi",
+      "saveFailed": "Ekran görüntüsü kaydedilemedi: {{reason}}"
+    },
+    "menu": {
+      "pageTheme": "Sayfa teması",
+      "themeAuto": "Otomatik",
+      "themeLight": "Açık",
+      "themeDark": "Koyu",
+      "saveScreenshot": "Ekran görüntüsünü kaydet...",
+      "openHtmlFile": "HTML dosyası aç..."
+    },
+    "openHtmlFile": {
+      "failed": "Dosya açılamadı: {{reason}}"
     },
     "selectedElement": {
       "addElement": "Öğe ekle",
@@ -2154,7 +2351,7 @@
   "globalToolbar": {},
   "quitConfirmation": {
     "title": "ORG2'den çıkılsın mı?",
-    "subtitle": "Çalışan oturumlar mevcut durumunu korur. ORG2'yi daha sonra yeniden açabilirsiniz.",
+    "subtitle": "Çalışan oturumlar mevcut durumunu korur. ORG2'yi daha sonra yeniden açabilirsiniz",
     "cancel": "İptal",
     "confirm": "Çık"
   },
@@ -2184,7 +2381,7 @@
   "browserCookieImport": {
     "safari": {
       "needsFullDiskAccess": "Needs Full Disk Access",
-      "explain": "Safari, çerezleri macOS tarafından korunan bir klasörde tutar. Sistem Ayarları’ndaki Tam Disk Erişimi bölümünde ORG2’ye izin verin, ardından yeniden kontrol edin.",
+      "explain": "{{browser}}, çerezleri macOS tarafından korunan bir klasörde tutar. Sistem Ayarları’ndaki Tam Disk Erişimi bölümünde ORG2’ye izin verin, ardından yeniden kontrol edin",
       "openSettings": "Open System Settings",
       "checkAgain": "Check again"
     },
@@ -2209,7 +2406,7 @@
     "doneSkipped_other": "{{count}} cookies were skipped",
     "empty": {
       "title": "No supported browsers found",
-      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from"
     },
     "category": {
       "banking": "Bank",
@@ -2218,7 +2415,7 @@
     },
     "errors": {
       "openSettingsFailed": "Couldn't open System Settings",
-      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow",
       "listFailed": "Couldn't find browsers to import from",
       "previewFailed": "Couldn't read cookies from that browser",
       "importFailed": "Couldn't import the selected cookies"
@@ -2247,22 +2444,6 @@
     "openFailed": "Belge açılamadı",
     "saveFirst": "Başka bir uygulamada açmadan önce değişiklikleri kaydedin veya atın"
   },
-  "sqlEditor": {
-    "placeholder": "SQL sorgusu girin...",
-    "format": "Biçimlendir",
-    "runQueryToSeeResults": "Sonuçları görmek için bir sorgu çalıştırın",
-    "executingQuery": "Sorgu yürütülüyor...",
-    "queryFailed": "Sorgu başarısız",
-    "queryCompleted": "Sorgu tamamlandı",
-    "noResults": "Sorgu sonuç döndürmedi",
-    "rowCount_one": "{{count}} satır",
-    "rowCount_other": "{{count}} satır",
-    "press": "Çalıştırmak için",
-    "toRun": "tuşuna basın",
-    "nullValue": "NULL",
-    "booleanTrue": "true",
-    "booleanFalse": "false"
-  },
   "chatImage": {
     "maxReached": "En fazla {{max}} görsele izin verilir",
     "remainingWarning": "Yalnızca {{remaining}} görsel daha eklenebilir (en fazla {{max}})",
@@ -2280,5 +2461,11 @@
     "sessionJsonFile": "ORG2 oturumu JSON",
     "skillsSource": "ORG2 becerileri",
     "gitServiceUnavailable": "Yerel Git hizmetine ulaşılamıyor. Uygulama başlatıldıktan sonra tekrar deneyin veya sorun sürerse ORG2’yi yeniden başlatın."
+  },
+  "imageActions": {
+    "addToChat": "Sohbete ekle",
+    "added": "Sohbete eklendi",
+    "failed": "Görsel işlemi tamamlanamadı",
+    "downloadCopy": "Kopyasını indir"
   }
 }

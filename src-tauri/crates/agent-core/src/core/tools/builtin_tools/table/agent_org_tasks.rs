@@ -40,7 +40,7 @@ pub(super) static TOOLS: &[ToolEntry] = &[
         description: "Apply one authorized Task operation.",
         description_detail: "Applies one tagged graph-admin or Owner-lifecycle operation; mixed authority fields and terminal rewrites are rejected.",
         category: tool_categories::ORCHESTRATION,
-        icon_id: "clipboard-pen",
+        icon_id: "calendar-sync",
         simulator_app: AppChannels,
         app_subtool: SubTodo,
         chat_block: CbOrgTask,

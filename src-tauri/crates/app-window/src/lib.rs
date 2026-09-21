@@ -20,6 +20,8 @@ mod macos_material;
 mod windows_corner;
 
 pub mod dock_icon;
+pub mod page_backdrop;
+pub mod rendering_rate;
 pub mod root_tint;
 pub mod shortcut_preferences;
 pub mod startup_backdrop;
@@ -228,6 +230,27 @@ pub fn set_macos_window_root_tint(window: &tauri::WebviewWindow, color: Option<[
     }
 }
 
+/// Mount, update or (`None`) remove the native page backdrop revealed under
+/// the page while the window resizes (see [`page_backdrop`]).
+#[cfg(target_os = "macos")]
+pub fn set_macos_window_page_backdrop(
+    window: &tauri::WebviewWindow,
+    backdrop: Option<page_backdrop::PageBackdrop>,
+) {
+    if let Err(error) = page_backdrop::native::set_page_backdrop(window, backdrop) {
+        tracing::warn!(%error, "Failed to apply macOS page backdrop");
+    }
+}
+
+/// Drop the resize observers a window's page backdrop installed. Call from the
+/// `Destroyed` window event; a no-op off macOS and for windows without one.
+pub fn release_page_backdrop(label: &str) {
+    #[cfg(target_os = "macos")]
+    page_backdrop::native::release_page_backdrop(label);
+    #[cfg(not(target_os = "macos"))]
+    let _ = label;
+}
+
 /// Remove the native macOS material on AppKit's main thread.
 #[cfg(target_os = "macos")]
 pub fn clear_macos_window_material(window: &tauri::WebviewWindow) {
@@ -280,6 +303,7 @@ pub fn recreate_main_window(app: &AppHandle) -> Result<(), String> {
         set_traffic_light_position(&window, TRAFFIC_LIGHT_X, TRAFFIC_LIGHT_Y);
         apply_macos_window_material(&window);
         remove_window_background_color(&window);
+        rendering_rate::apply_stored_rendering_rate(&window);
     }
 
     apply_host_desktop_window_chrome(&window);

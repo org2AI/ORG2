@@ -18,48 +18,37 @@ import type {
   SqliteConnectionConfig,
   TableInfo,
 } from "../types";
+import {
+  ConnectionLifecycle,
+  requireConnectionLease,
+} from "./ConnectionLifecycle";
 
 export class TauriSqliteProvider implements IDatabaseService {
   readonly type = "sqlite" as const;
   readonly config: SqliteConnectionConfig;
 
-  private _status: ConnectionStatus = { state: "disconnected" };
-  private connectionId: string | null = null;
-
+  private lifecycle = new ConnectionLifecycle<string>((connectionId) =>
+    invoke("db_close", { connectionId })
+  );
   constructor(config: SqliteConnectionConfig) {
     this.config = config;
   }
 
   get status(): ConnectionStatus {
-    return this._status;
+    return this.lifecycle.status;
   }
-
-  async connect(): Promise<void> {
-    if (this.connectionId) return;
-    this._status = { state: "connecting" };
-    try {
-      this.connectionId = await invoke<string>("db_open", {
-        filePath: this.config.filePath,
-      });
-      this._status = { state: "connected", connectedAt: Date.now() };
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to connect";
-      this._status = { state: "error", error: message };
-      throw error;
-    }
+  connect(): Promise<void> {
+    return this.lifecycle.connect(() =>
+      invoke<string>("db_open", { filePath: this.config.filePath }).then(
+        requireConnectionLease
+      )
+    );
   }
-
-  async disconnect(): Promise<void> {
-    if (this.connectionId) {
-      await invoke("db_close", { connectionId: this.connectionId });
-      this.connectionId = null;
-    }
-    this._status = { state: "disconnected" };
+  disconnect(): Promise<void> {
+    return this.lifecycle.disconnect();
   }
-
   isConnected(): boolean {
-    return this.connectionId !== null && this._status.state === "connected";
+    return this.lifecycle.current !== null;
   }
 
   async getTables(): Promise<TableInfo[]> {
@@ -140,10 +129,10 @@ export class TauriSqliteProvider implements IDatabaseService {
   }
 
   private requireConnectionId(): string {
-    if (!this.connectionId) {
+    if (!this.lifecycle.current) {
       throw new Error("Database not connected. Call connect() first.");
     }
-    return this.connectionId;
+    return this.lifecycle.current;
   }
 }
 

@@ -17,6 +17,7 @@ import {
 import { isCliSession } from "@src/util/session/sessionDispatch";
 
 import { mergeInterruptedConversationProjection } from "./nativeConversationMaterializer";
+import { retryLineageEvents } from "./queuedRetryLineage";
 
 export async function loadCanonicalConversationEvents(
   sessionId: string,
@@ -37,11 +38,29 @@ export async function loadCanonicalConversationEvents(
     // still require the provider-native transcript above.
     const projected = await eventStoreProxy.getPersistedEvents(sessionId);
     return {
-      events: mergeInterruptedConversationProjection([], projected),
+      events: [
+        ...mergeInterruptedConversationProjection([], projected),
+        ...retryLineageEvents(projected),
+      ],
       source: "cli_history",
     };
   }
-  if (!isCliSession(sessionId) || signal.aborted) return authoritative;
+  if (signal.aborted) return authoritative;
+  const lineage = retryLineageEvents(
+    await rpc.sessionCore.cache.loadEvents({
+      sessionId,
+      eventType: "queued_retry_lineage",
+    })
+  );
+  const lineageIds = new Set(lineage.map((event) => event.id));
+  authoritative = {
+    ...authoritative,
+    events: [
+      ...authoritative.events.filter((event) => !lineageIds.has(event.id)),
+      ...lineage,
+    ],
+  };
+  if (!isCliSession(sessionId)) return authoritative;
   // Completed native turns have already flushed their provider transcript and
   // should stay on the cheap native-only path, especially for large Sessions.
   // Only a killed/failed turn can own a durable EventStore suffix that is not

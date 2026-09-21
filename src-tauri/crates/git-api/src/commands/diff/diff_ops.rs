@@ -185,6 +185,9 @@ pub fn get_file_diff(
 
     let mut diff_opts = DiffOptions::new();
     diff_opts.context_lines(context_lines);
+    // The selected name is a literal path; libgit2 treats pathspecs as
+    // fnmatch patterns unless matching is disabled.
+    diff_opts.disable_pathspec_match(true);
     diff_opts.pathspec(file_path);
     if empty_base {
         diff_opts.include_untracked(true);
@@ -291,6 +294,9 @@ pub fn get_file_diff_with_rename(
 
     let mut diff_opts = DiffOptions::new();
     diff_opts.context_lines(context_lines);
+    // The selected name is a literal path; libgit2 treats pathspecs as
+    // fnmatch patterns unless matching is disabled.
+    diff_opts.disable_pathspec_match(true);
     diff_opts.pathspec(file_path);
     let compares_to_workdir = new_tree.is_none();
     if empty_base || (original_path.is_some() && compares_to_workdir) {
@@ -425,6 +431,9 @@ fn diff_single_file_in_repo(
 
     let mut diff_opts = DiffOptions::new();
     diff_opts.context_lines(context_lines);
+    // The selected name is a literal path; libgit2 treats pathspecs as
+    // fnmatch patterns unless matching is disabled.
+    diff_opts.disable_pathspec_match(true);
     diff_opts.pathspec(file_path);
     let compares_to_workdir = new_tree.is_none();
     if empty_base || (original_path.is_some() && compares_to_workdir) {

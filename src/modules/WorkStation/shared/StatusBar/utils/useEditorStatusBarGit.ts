@@ -8,9 +8,10 @@ import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { PushRejectedDialog } from "@src/components/GitDialogs";
 import Message from "@src/components/Message";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
+import { PushRejectedDialog } from "@src/features/GitDialogs";
 import { showGitErrorAndHandle } from "@src/hooks/git/gitErrorDialog";
 import {
   type GitOperationResult,
@@ -18,7 +19,6 @@ import {
 } from "@src/hooks/git/useGitOperations";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
 import { useWorkingTreeDiffTotals } from "@src/hooks/git/useWorkingTreeDiffTotals";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { workspaceGitStatusMapAtom } from "@src/store/git";
 import type { GitPullStrategy } from "@src/store/ui/editorSettingsAtom";
 import {

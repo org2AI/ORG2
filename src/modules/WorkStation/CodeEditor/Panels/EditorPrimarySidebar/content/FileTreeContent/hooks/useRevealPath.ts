@@ -18,9 +18,9 @@ import {
   useEffect,
   useRef,
 } from "react";
-import type { VirtuosoHandle } from "react-virtuoso";
 
 import { TREE_ROW_HEIGHT } from "@src/components/TreeRow";
+import type { VirtualListHandle } from "@src/components/VirtualList";
 
 import type { FlattenedNode } from "../types";
 import { findFileInNodes } from "../utils/treeUtils";
@@ -29,7 +29,7 @@ export interface UseRevealPathOptions {
   revealPath: string | null;
   revealKey: number | null;
   selectedPath: string | null;
-  virtuosoRef: RefObject<VirtuosoHandle | null>;
+  listRef: RefObject<VirtualListHandle | null>;
   useVirtualization: boolean;
   flattenedNodesRef: MutableRefObject<FlattenedNode[]>;
   lastScrollTopRef: MutableRefObject<number>;
@@ -64,7 +64,7 @@ export function useRevealPath({
   revealPath,
   revealKey,
   selectedPath,
-  virtuosoRef,
+  listRef,
   useVirtualization,
   flattenedNodesRef,
   lastScrollTopRef,
@@ -95,8 +95,8 @@ export function useRevealPath({
       }
 
       requestAnimationFrame(() => {
-        if (useVirtualization && virtuosoRef.current) {
-          virtuosoRef.current.scrollToIndex({
+        if (useVirtualization && listRef.current) {
+          listRef.current.scrollToIndex({
             index,
             align: "center",
             behavior: "smooth",
@@ -131,7 +131,7 @@ export function useRevealPath({
     revealKey,
     revealPath,
     selectedPath,
-    virtuosoRef,
+    listRef,
     useVirtualization,
     flattenedNodesRef,
     lastScrollTopRef,

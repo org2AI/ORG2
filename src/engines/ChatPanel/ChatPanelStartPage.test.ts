@@ -35,7 +35,6 @@ const createTargetProps = {
   moreLauncher: (...content: React.ReactNode[]) =>
     createElement("div", null, ...content),
   onAddApiKey: vi.fn(),
-  onInstallLatestUpdate: vi.fn(),
 };
 
 describe("ChatPanelStartPage", () => {
@@ -70,7 +69,7 @@ describe("ChatPanelStartPage", () => {
       'data-testid="chat-panel-start-page-utility-actions"'
     );
     expect(markup).not.toContain(
-      'data-testid="chat-panel-start-page-install-latest-update"'
+      'data-testid="chat-panel-start-page-update-notice"'
     );
     expect(markup).not.toContain("Install latest update");
     expect(markup).not.toContain(
@@ -146,7 +145,7 @@ describe("ChatPanelStartPage", () => {
     );
 
     expect(markup).not.toContain(
-      'data-testid="chat-panel-start-page-install-latest-update"'
+      'data-testid="chat-panel-start-page-update-notice"'
     );
   });
 
@@ -179,11 +178,11 @@ describe("ChatPanelStartPage", () => {
       'data-testid="chat-panel-start-page-show-quota"'
     );
     expect(markup).not.toContain(
-      'data-testid="chat-panel-start-page-install-latest-update"'
+      'data-testid="chat-panel-start-page-update-notice"'
     );
   });
 
-  it("renders install, import session, add API key then quota on Session", () => {
+  it("renders only utility cards even when an update is available", () => {
     mocks.useAvailableAppUpdate.mockReturnValue({
       available: true,
       version: "1.1.20",
@@ -212,12 +211,14 @@ describe("ChatPanelStartPage", () => {
       'data-testid="chat-panel-start-page-show-quota"'
     );
 
-    const updateIndex = markup.indexOf(
+    expect(markup).not.toContain(
+      'data-testid="chat-panel-start-page-update-notice"'
+    );
+    expect(markup).not.toContain(
       'data-testid="chat-panel-start-page-install-latest-update"'
     );
-
-    expect(updateIndex).toBeGreaterThanOrEqual(0);
-    expect(importSessionIndex).toBeGreaterThan(updateIndex);
+    expect(markup).not.toContain("chat.startPage.installLatestUpdate.title");
+    expect(importSessionIndex).toBeGreaterThanOrEqual(0);
     expect(addApiKeyIndex).toBeGreaterThan(importSessionIndex);
     expect(showQuotaIndex).toBeGreaterThan(addApiKeyIndex);
     expect(markup).toContain("navigation:cloud.share.importEntry");
@@ -267,7 +268,7 @@ describe("ChatPanelStartPage", () => {
     expect(receivedVisibility).toBe(false);
     expect(markup).toContain('data-quick-actions-visible="false"');
     expect(markup).not.toContain(
-      'data-testid="chat-panel-start-page-install-latest-update"'
+      'data-testid="chat-panel-start-page-update-notice"'
     );
     expect(markup).not.toContain(
       'data-testid="chat-panel-start-page-import-session"'
@@ -341,7 +342,7 @@ describe("ChatPanelStartPage", () => {
       'data-testid="chat-panel-start-page-import-session"'
     );
     expect(markup).not.toContain(
-      'data-testid="chat-panel-start-page-install-latest-update"'
+      'data-testid="chat-panel-start-page-update-notice"'
     );
     expect(markup).not.toContain(
       'data-testid="chat-panel-start-page-new-work-item"'

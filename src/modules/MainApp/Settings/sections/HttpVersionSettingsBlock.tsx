@@ -5,13 +5,13 @@
 import {
   SECTION_CONTROL_STYLE,
   SectionRow,
-} from "@/src/modules/shared/layouts/SectionLayout";
+} from "@/src/components/layout/Section";
 import { useAtomValue, useSetAtom } from "jotai";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Select from "@src/components/Select";
-import { HintWithInfo } from "@src/modules/shared/layouts/blocks/HintWithInfo";
+import { HintWithInfo } from "@src/components/layout/blocks/HintWithInfo";
 import {
   settingsAtom,
   updateSettingAtom,

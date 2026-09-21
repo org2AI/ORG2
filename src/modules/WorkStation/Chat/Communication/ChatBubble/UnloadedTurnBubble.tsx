@@ -231,8 +231,6 @@ const UnloadedTurnBubbleContent: React.FC<UnloadedTurnBubbleContentProps> = ({
         {showRetryAffordance ? (
           <Button
             layout="custom"
-            appearance="custom"
-            htmlType="button"
             onClick={handleManualRetry}
             data-testid="communication-unloaded-turn-retry"
             className={`flex w-full items-center gap-2 rounded border-0 bg-transparent p-0 text-left text-text-3 italic transition-colors hover:text-text-1 ${SESSION_UI_TOKENS.TEXT.BODY_BASE}`}

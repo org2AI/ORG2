@@ -17,7 +17,6 @@ export function RowChevron({ onClick }: { onClick: () => void }) {
   return (
     <Button
       variant="tertiary"
-      appearance="soft-no-drop"
       size="mini"
       iconOnly
       icon={

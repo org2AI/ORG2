@@ -148,6 +148,18 @@ export const anySessionWorkingAtom = atom((get) =>
 anySessionWorkingAtom.debugLabel = "anySessionWorkingAtom";
 
 /**
+ * How many sessions are doing in-flight work. Same predicate as
+ * `anySessionWorkingAtom`; the app lock page shows it so a locked screen still
+ * says whether agents are busy, without revealing anything about them.
+ */
+export const workingSessionCountAtom = atom(
+  (get) =>
+    get(sessionsAtom).filter((session) => WORKING_STATUSES.has(session.status))
+      .length
+);
+workingSessionCountAtom.debugLabel = "workingSessionCountAtom";
+
+/**
  * Most recently updated sessions (last 10).
  *
  * NOTE: Sessions from Rust backend are already sorted by updated_at desc,

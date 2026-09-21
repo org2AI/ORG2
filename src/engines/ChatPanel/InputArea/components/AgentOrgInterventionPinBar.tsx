@@ -163,7 +163,6 @@ const AgentOrgInterventionPinBar: React.FC<AgentOrgInterventionPinBarProps> =
                         variant="tertiary"
                         shape="round"
                         size="mini"
-                        htmlType="button"
                         data-testid="agent-org-stop-user-directed-work-button"
                         disabled={stopping || returning}
                         loading={stopping}
@@ -193,10 +192,8 @@ const AgentOrgInterventionPinBar: React.FC<AgentOrgInterventionPinBarProps> =
                     className: "shrink-0 px-0",
                     content: (
                       <Button
-                        variant="secondary"
                         shape="round"
                         size="mini"
-                        htmlType="button"
                         data-testid={returnControlTestId}
                         disabled={
                           !canResolveDirectWork || returning || stopping

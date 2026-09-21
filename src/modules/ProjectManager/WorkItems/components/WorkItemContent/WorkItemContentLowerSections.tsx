@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import TabPill from "@src/components/TabPill";
-import { ScrollTrailTarget } from "@src/modules/shared/layouts/blocks";
+import { ScrollTrailTarget } from "@src/components/layout/blocks";
 import type { WorkItem } from "@src/types/core/workItem";
 
 import { LinkedSessionsList } from "./LinkedSessionsList";

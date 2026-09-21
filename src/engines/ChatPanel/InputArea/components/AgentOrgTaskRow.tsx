@@ -167,7 +167,6 @@ export const AgentOrgTaskRow: React.FC<AgentOrgTaskRowProps> = ({
             <Button
               size="mini"
               variant="tertiary"
-              appearance="ghost"
               icon={
                 <HugeiconsIcon
                   icon={Refresh04Icon}
@@ -186,8 +185,8 @@ export const AgentOrgTaskRow: React.FC<AgentOrgTaskRowProps> = ({
           )}
           <Button
             size="mini"
-            variant="danger"
-            appearance="ghost"
+            variant="tertiary"
+            tone="danger"
             icon={
               <HugeiconsIcon
                 icon={Cancel01Icon}
@@ -207,10 +206,8 @@ export const AgentOrgTaskRow: React.FC<AgentOrgTaskRowProps> = ({
       )}
       {terminal && currentSessionId && (
         <Button
-          variant="tertiary"
-          appearance="ghost"
+          variant="ghost"
           size="inline"
-          htmlType="button"
           className="mt-2 gap-1 text-[10px] hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
           aria-expanded={expandedTaskId === task.id}
           onClick={() => void onToggleDetail(task)}

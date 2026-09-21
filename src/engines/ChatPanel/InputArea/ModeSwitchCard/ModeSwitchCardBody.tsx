@@ -7,7 +7,7 @@ import {
   ChatStatusTwoLineContent,
 } from "@src/engines/ChatPanel/components/ChatStatusBanners";
 import { ArrowLeftRightIcon, HugeiconsIcon } from "@src/icons";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import { MODE_LABELS } from "./useModeSwitchActions";
 

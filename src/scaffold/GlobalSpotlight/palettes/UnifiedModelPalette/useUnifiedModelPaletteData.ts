@@ -13,6 +13,10 @@ import type { CliAgentType } from "@src/api/tauri/rpc/schemas/validation";
 import type { DispatchCategory } from "@src/api/tauri/session";
 import Message from "@src/components/Message";
 import {
+  type MarketProfileSource,
+  useMarketExecutionProfiles,
+} from "@src/features/MarketConnect/marketProfiles";
+import {
   type KeyVaultAccount,
   type UseKeyVaultReturn,
   useKeyVault,
@@ -60,6 +64,10 @@ interface UseUnifiedModelPaletteDataOptions {
 export interface UnifiedModelPaletteData {
   accounts: KeyVaultAccount[];
   accountLookup: ReturnType<typeof buildAccountLookup>;
+  marketSources: MarketProfileSource[];
+  marketProfilesLoading: boolean;
+  marketProfilesError: string | null;
+  refreshMarketProfiles: () => Promise<void>;
   orgiiCategories: ReturnType<typeof useOrgiiPoolCategories>["orgiiCategories"];
   orgiiModelSet: ReturnType<typeof useOrgiiPoolCategories>["orgiiModelSet"];
   orgiiCategoryIds: ReturnType<
@@ -127,10 +135,42 @@ export function useUnifiedModelPaletteData({
     return withNativeHarnessModels(allAccounts, dispatchCategory);
   }, [dispatchCategory, cliAgentType, allAccounts, registry]);
 
+  const {
+    sources: marketSources,
+    loading: marketProfilesLoading,
+    error: marketProfilesError,
+    refresh: refreshMarketProfiles,
+  } = useMarketExecutionProfiles({
+    enabled:
+      isOpen &&
+      (dispatchCategory === "cli_agent" || dispatchCategory === "rust_agent"),
+    cliAgentType:
+      dispatchCategory === "rust_agent" ? "rust_agent" : cliAgentType,
+  });
+
   const { orgiiCategories, orgiiModelSet, orgiiCategoryIds } =
     useOrgiiPoolCategories();
 
-  const accountLookup = useMemo(() => buildAccountLookup(accounts), [accounts]);
+  const accountLookup = useMemo(() => {
+    const lookup = buildAccountLookup(accounts);
+    for (const source of marketSources) {
+      for (const modelId of source.modelIds) {
+        const existing = lookup.get(modelId);
+        if (existing) {
+          existing.totalKeys += 1;
+          if (!existing.agentTypes.includes(source.modelType)) {
+            existing.agentTypes.push(source.modelType);
+          }
+        } else {
+          lookup.set(modelId, {
+            totalKeys: 1,
+            agentTypes: [source.modelType],
+          });
+        }
+      }
+    }
+    return lookup;
+  }, [accounts, marketSources]);
 
   const recentEntries = useAtomValue(recentModelEntriesAtom);
   const setRecentEntries = useSetAtom(recentModelEntriesAtom);
@@ -145,7 +185,10 @@ export function useUnifiedModelPaletteData({
   const refreshAllModels = useCallback(async () => {
     setRefreshingAllModels(true);
     try {
-      const summary = await refreshModelAccounts(allAccounts, refresh);
+      const [summary] = await Promise.all([
+        refreshModelAccounts(allAccounts, refresh),
+        refreshMarketProfiles(),
+      ]);
       if (summary) {
         Message[refreshSummaryTone(summary)](
           formatRefreshSummary(summary, t),
@@ -161,11 +204,15 @@ export function useUnifiedModelPaletteData({
     } finally {
       setRefreshingAllModels(false);
     }
-  }, [allAccounts, refresh, t]);
+  }, [allAccounts, refresh, refreshMarketProfiles, t]);
 
   return {
     accounts,
     accountLookup,
+    marketSources,
+    marketProfilesLoading,
+    marketProfilesError,
+    refreshMarketProfiles,
     orgiiCategories,
     orgiiModelSet,
     orgiiCategoryIds,

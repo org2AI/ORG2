@@ -7,6 +7,11 @@ import Input from "@src/components/Input";
 import Select from "@src/components/Select";
 import Textarea from "@src/components/Textarea";
 import TimePicker from "@src/components/TimePicker";
+import {
+  SECTION_CONTROL_STYLE,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
 import { resolveAgentIcon } from "@src/config/agentIcons";
 import { useTimezoneSelect } from "@src/hooks/geo/useTimezoneSelect";
 import {
@@ -21,11 +26,6 @@ import {
   buildCron,
   parseCron,
 } from "@src/modules/ProjectManager/WorkItems/components/ScheduleEditor/cronUtils";
-import {
-  SECTION_CONTROL_STYLE,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 import SpotlightSelectTrigger from "./SpotlightSelectTrigger";
 import {
@@ -352,11 +352,9 @@ const RoutineBasicsSection: React.FC<RoutineBasicsSectionProps> = ({
             )}
             <SectionRow label="" indent>
               <Button
-                variant="primary"
-                appearance="ghost"
+                variant="ghost"
                 size="inline"
-                htmlType="button"
-                className="text-[11px] hover:underline"
+                className="text-[11px]"
                 onClick={() => {
                   // Entering builder mode discards an unparseable custom cron
                   // because the builder always emits valid expressions.
@@ -387,7 +385,6 @@ const RoutineBasicsSection: React.FC<RoutineBasicsSectionProps> = ({
         >
           <Button
             variant="tertiary"
-            appearance="ghost"
             size="small"
             icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={13} />}
             onClick={() =>
@@ -514,7 +511,6 @@ const RoutineBasicsSection: React.FC<RoutineBasicsSectionProps> = ({
                 ) : null}
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="small"
                   iconOnly
                   icon={

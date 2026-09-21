@@ -28,20 +28,10 @@ export function isEmptyRunningEvent(event: SessionEvent): boolean {
 }
 
 /**
- * Given a current event and full event list, skip forward/backward past
- * empty running events to find the nearest event with content.
+ * Given a current event and the ordered event ids (with an id lookup map),
+ * skip forward/backward past empty running events to find the nearest event
+ * with content.
  */
-export function resolveNonEmptyEvent(
-  rawCurrentEvent: SessionEvent | null,
-  events: SessionEvent[]
-): SessionEvent | null {
-  return resolveNonEmptyEventFromIds(
-    rawCurrentEvent,
-    events.map((event) => event.id),
-    new Map(events.map((event) => [event.id, event]))
-  );
-}
-
 export function resolveNonEmptyEventFromIds(
   rawCurrentEvent: SessionEvent | null,
   eventIds: string[],

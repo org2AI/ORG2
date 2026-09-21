@@ -90,7 +90,8 @@ describe("SessionFilterButton", () => {
     expect(queryTestId("sidebar-sort-updated")).not.toBeNull();
     await act(async () => queryTestId("sidebar-sort-manual")?.click());
     expect(localStorage.getItem("orgii:sidebarSessionSort")).toBe('"manual"');
-    expect(mocks.closeDropdown).toHaveBeenCalled();
+    expect(mocks.closeDropdown).not.toHaveBeenCalled();
+    expect(queryTestId("sidebar-sort-submenu")).not.toBeNull();
   });
 
   afterEach(() => {
@@ -133,9 +134,14 @@ describe("SessionFilterButton", () => {
   it("gives Include External a leading icon like every other action row", () => {
     const includeExternal = queryTestId("sidebar-include-external");
 
+    expect(includeExternal?.className).not.toContain("hover:bg-surface-hover");
     expect(
       includeExternal?.querySelector('[data-icon="folder-symlink"]')
     ).not.toBeNull();
+    expect(
+      includeExternal?.querySelector('[role="switch"]')?.parentElement
+        ?.className
+    ).toContain("items-center");
     const toggle = includeExternal?.querySelector('[role="switch"]');
     expect(toggle?.getAttribute("aria-checked")).toBe("true");
     expect(toggle?.getAttribute("aria-label")).toBe(
@@ -194,7 +200,7 @@ describe("SessionFilterButton", () => {
     expect(queryTestId("sidebar-group-by-submenu")).toBeNull();
   });
 
-  it("selects a mode from the second level and closes the whole menu", async () => {
+  it("selects a mode from the second level without closing the menu tree", async () => {
     await act(async () => {
       queryTestId("sidebar-group-by-trigger")?.click();
     });
@@ -203,8 +209,8 @@ describe("SessionFilterButton", () => {
     });
 
     expect(onSelect).toHaveBeenCalledWith("byWorkspace");
-    expect(mocks.closeDropdown).toHaveBeenCalledTimes(1);
-    expect(queryTestId("sidebar-group-by-submenu")).toBeNull();
+    expect(mocks.closeDropdown).not.toHaveBeenCalled();
+    expect(queryTestId("sidebar-group-by-submenu")).not.toBeNull();
   });
 
   it("selects how many recent sessions each group shows", async () => {
@@ -228,8 +234,8 @@ describe("SessionFilterButton", () => {
     });
 
     expect(onSelectGroupVisibleCount).toHaveBeenCalledWith(5);
-    expect(mocks.closeDropdown).toHaveBeenCalledTimes(1);
-    expect(queryTestId("sidebar-show-submenu")).toBeNull();
+    expect(mocks.closeDropdown).not.toHaveBeenCalled();
+    expect(queryTestId("sidebar-show-submenu")).not.toBeNull();
   });
 
   it("switches directly between the two setting submenus", async () => {

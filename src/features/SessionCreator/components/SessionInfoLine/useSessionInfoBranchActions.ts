@@ -8,9 +8,8 @@
 import { useCallback } from "react";
 
 import { gitApi } from "@src/api/http/git";
-import { CheckoutBlockedDialog } from "@src/components/GitDialogs/CheckoutBlockedDialog";
-import { CheckoutConflictDialog } from "@src/components/GitDialogs/CheckoutConflictDialog";
-import { runGuardedCheckout } from "@src/services/git/operations/guardedCheckout";
+import i18n from "@src/i18n";
+import { performBranchSwitch } from "@src/services/git/operations/performBranchSwitch";
 import { REPO_KIND, type RepoKind } from "@src/store/repo/types";
 import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
 
@@ -37,33 +36,14 @@ export function useSessionInfoBranchActions({
         return true;
       }
 
-      const result = await runGuardedCheckout({
-        repoId,
-        repoPath: branchRepoPath,
-        ref: branch,
-        onConflict: (name) => CheckoutConflictDialog.open({ branchName: name }),
-        onBlocked: ({ branch: name, errorType, message }) =>
-          CheckoutBlockedDialog.open({
-            branchName: name,
-            errorType,
-            message,
-          }),
-      });
-
+      const result = await performBranchSwitch(
+        { repoId, repoPath: branchRepoPath },
+        branch
+      );
+      if (result.currentBranch) onBranchChange?.(result.currentBranch);
       if (result.success) {
-        onBranchChange?.(branch);
-        if (result.outcome !== "checked-out" && result.message) {
-          showGitActionDialogSafely(result.message, "info");
-        }
         setIsBranchSelectorOpen(false);
         return true;
-      }
-
-      if (result.outcome !== "cancelled" && !result.blocked) {
-        showGitActionDialogSafely(
-          result.message || `Failed to checkout branch "${branch}"`,
-          "error"
-        );
       }
       return false;
     },
@@ -80,23 +60,16 @@ export function useSessionInfoBranchActions({
   const handleCreateBranch = useCallback(
     async (branch: string, startPoint?: string) => {
       if (!repoId || !branchRepoPath) return;
-      const result = await gitApi.gitCreateBranch({
-        repo_id: repoId,
-        repo_path: branchRepoPath,
-        name: branch,
-        start_point: startPoint ?? null,
-        checkout: false,
-      });
-      if (!result.success) {
-        showGitActionDialogSafely(
-          result.error || `Failed to create branch "${branch}"`,
-          "error"
-        );
-        return;
-      }
-      await handleBranchSelect(branch);
+      const result = await performBranchSwitch(
+        { repoId, repoPath: branchRepoPath },
+        branch,
+        true,
+        startPoint
+      );
+      if (result.currentBranch) onBranchChange?.(result.currentBranch);
+      if (result.success) setIsBranchSelectorOpen(false);
     },
-    [branchRepoPath, handleBranchSelect, repoId]
+    [branchRepoPath, onBranchChange, repoId, setIsBranchSelectorOpen]
   );
 
   const handleDeleteBranch = useCallback(
@@ -119,7 +92,12 @@ export function useSessionInfoBranchActions({
       });
 
       if (!result.success) {
-        const message = result.error || `Failed to delete branch "${branch}"`;
+        const message =
+          result.error ||
+          i18n.t("common:selectors.branch.messages.failedDelete", {
+            defaultValue: 'Failed to delete branch "{{branch}}"',
+            branch: branch,
+          });
         if (!options?.silent) {
           showGitActionDialogSafely(message, "error");
         }

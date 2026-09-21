@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import { DETAIL_PANEL_TOKENS } from "@src/modules/shared/layouts/blocks";
+import { DETAIL_PANEL_TOKENS } from "@src/components/layout/blocks";
 
 import { type UseAgentConfig } from "../mcp/AgentMcpSection";
 import AgentMcpSection from "../mcp/AgentMcpSection";

@@ -96,14 +96,6 @@ export interface ChannelInstance {
   connectionError?: string;
 }
 
-/** Shared props for all per-channel config components */
-export interface ChannelConfigProps {
-  config: Record<string, unknown>;
-  update: (path: string, value: unknown) => void;
-  /** Config path prefix, e.g. "channels.telegram.accounts.default" */
-  pathPrefix: string;
-}
-
 /** Selection state for the left panel */
 export interface ChannelSelection {
   type: string;

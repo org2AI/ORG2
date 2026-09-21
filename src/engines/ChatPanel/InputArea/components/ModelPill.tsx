@@ -30,7 +30,6 @@ import AnyIcon from "@src/components/AnyIcon";
 import { Message } from "@src/components/Message";
 import ModelIcon from "@src/components/ModelIcon";
 import ModelSelectorPill from "@src/components/ModelSelectorPill";
-import SelectorPill from "@src/components/SelectorPill";
 import { resolveAgentIcon } from "@src/config/agentIcons";
 import { useConversationExecutionBinding } from "@src/engines/ChatPanel/ConversationExecutionBindingContext";
 import { useSessionId } from "@src/engines/SessionCore/hooks/session";
@@ -49,6 +48,10 @@ import {
   creatorDefaultModelSelectionAtom,
   extractModelPair,
 } from "@src/store/session/creatorDefaultModelAtom";
+import {
+  findRecentByCredentialSource,
+  recentModelEntriesAtom,
+} from "@src/store/session/recentModelEntriesAtom";
 import { modelPickerStyleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 import { isActiveStatus } from "@src/types/session/session";
@@ -82,7 +85,6 @@ const ModelPillComponent: React.FC = () => {
   const { t } = useTranslation();
   const modelPickerStyle = useAtomValue(modelPickerStyleAtom);
   const modelSegmentRef = useRef<HTMLButtonElement>(null);
-  const runtimeSegmentRef = useRef<HTMLButtonElement>(null);
   const [isRuntimeOpen, setIsRuntimeOpen] = useState(false);
   const [pendingRuntimePick, setPendingRuntimePick] = useState<{
     sessionId: string | null | undefined;
@@ -107,6 +109,7 @@ const ModelPillComponent: React.FC = () => {
   }
   const isInSession = Boolean(sessionId);
   const session = useAtomValue(sessionByIdAtom(sessionId ?? ""));
+  const recentModelEntries = useAtomValue(recentModelEntriesAtom);
   const runtimeStatus = useAtomValue(sessionRuntimeStatusAtom);
   const { setModel: setSessionModel } = useSessionModelField(sessionId ?? "");
   // Team-conversation composers (imported copies) execute member turns via
@@ -171,6 +174,10 @@ const ModelPillComponent: React.FC = () => {
     if (!session) return creatorDefaultLastModel;
 
     const isHosted = isHostedKey(session.keySource);
+    const marketRecent = findRecentByCredentialSource(
+      recentModelEntries,
+      session.credentialSource
+    );
     return {
       keySource: session.keySource,
       cliAgentType: session.cliAgentType,
@@ -178,8 +185,18 @@ const ModelPillComponent: React.FC = () => {
       model: isHosted ? undefined : session.model,
       listingModel: isHosted ? session.model : undefined,
       selectedAccountId: session.accountId,
+      credentialSource: session.credentialSource,
+      marketProfileId: marketRecent?.marketProfileId,
+      selectedSourceLabel: marketRecent?.accountName,
+      selectedSourceModelType: marketRecent?.modelType,
     };
-  }, [isInSession, session, creatorDefaultLastModel, conversationBinding]);
+  }, [
+    isInSession,
+    session,
+    creatorDefaultLastModel,
+    conversationBinding,
+    recentModelEntries,
+  ]);
 
   const isActiveSession = isInSession ? isActiveStatus(session?.status) : false;
 
@@ -205,6 +222,8 @@ const ModelPillComponent: React.FC = () => {
       provider: lastModel.provider,
       model: lastModel.model,
       selectedAccountId: lastModel.selectedAccountId,
+      credentialSource: lastModel.credentialSource,
+      marketProfileId: lastModel.marketProfileId,
       cliAgentType: lastModel.cliAgentType,
       selectedSourceLabel: lastModel.selectedSourceLabel,
       selectedSourceModelType: lastModel.selectedSourceModelType,
@@ -237,10 +256,12 @@ const ModelPillComponent: React.FC = () => {
         const sessionKeySource = session.keySource;
         const sessionAgent = session.cliAgentType;
         const sessionTier = session.tier;
+        const sessionCredentialSource = session.credentialSource;
 
         const incomingKeySource = config.keySource;
         const incomingAgent = config.cliAgentType;
         const incomingTier = config.tier;
+        const incomingCredentialSource = config.credentialSource;
 
         const keySourceDiffers =
           incomingKeySource !== undefined &&
@@ -254,8 +275,17 @@ const ModelPillComponent: React.FC = () => {
           incomingTier !== undefined &&
           sessionTier !== undefined &&
           incomingTier !== sessionTier;
+        const credentialSourceDiffers =
+          (incomingCredentialSource !== undefined ||
+            sessionCredentialSource !== undefined) &&
+          incomingCredentialSource !== sessionCredentialSource;
 
-        if (keySourceDiffers || agentDiffers || tierDiffers) {
+        if (
+          keySourceDiffers ||
+          agentDiffers ||
+          tierDiffers ||
+          credentialSourceDiffers
+        ) {
           Message.warning(t("sessions:modelPill.immutableInSession"));
           return;
         }
@@ -303,9 +333,19 @@ const ModelPillComponent: React.FC = () => {
   );
 
   const handleOpenModelSelector = useCallback(() => {
+    if (
+      conversationBinding?.readiness === "ready" &&
+      !conversationBinding.target &&
+      !conversationBinding.runtimeSelection &&
+      !pendingRuntimeSelection
+    ) {
+      setSelectorState({ isOpen: false });
+      setIsRuntimeOpen(true);
+      return;
+    }
     setIsRuntimeOpen(false);
     setSelectorState({ isOpen: true });
-  }, [setSelectorState]);
+  }, [conversationBinding, pendingRuntimeSelection, setSelectorState]);
 
   const handleToggleRuntimeSelector = useCallback(() => {
     if (!isRuntimeOpen) setSelectorState({ isOpen: false });
@@ -385,17 +425,6 @@ const ModelPillComponent: React.FC = () => {
     conversationBinding?.readiness === "loading"
       ? t("common:actions.loading")
       : (runtimeSelection?.agentName ?? t("sessions:creator.selectAgent"));
-  const runtimeIcon = runtimeSelection?.cliAgentType ? (
-    <ModelIcon agentType={runtimeSelection.cliAgentType} size={14} />
-  ) : runtimeSelection ? (
-    <AnyIcon
-      icon={resolveAgentIcon(runtimeSelection?.agentIconId)}
-      size={14}
-      className="text-text-2"
-    />
-  ) : (
-    <HugeiconsIcon icon={Infinity01Icon} size={14} className="text-text-2" />
-  );
   const paletteAdvancedConfig = pendingRuntimeSelection
     ? {
         keySource: KEY_SOURCE.OWN,
@@ -413,6 +442,29 @@ const ModelPillComponent: React.FC = () => {
       }
     >
       <ModelSelectorPill
+        harnessSwitch={
+          conversationBinding
+            ? {
+                label: runtimeLabel,
+                icon: runtimeSelection?.cliAgentType ? (
+                  <ModelIcon
+                    agentType={runtimeSelection.cliAgentType}
+                    size={14}
+                  />
+                ) : runtimeSelection ? (
+                  <AnyIcon
+                    icon={resolveAgentIcon(runtimeSelection.agentIconId)}
+                    size={14}
+                  />
+                ) : (
+                  <HugeiconsIcon icon={Infinity01Icon} size={14} />
+                ),
+                disabled: !runtimeReady,
+                onClick: handleToggleRuntimeSelector,
+              }
+            : undefined
+        }
+        paddingX="compact"
         ref={modelSegmentRef}
         selection={visiblePillSelection}
         defaultLabel={modelDefaultLabel}
@@ -423,7 +475,7 @@ const ModelPillComponent: React.FC = () => {
         dataTestId="chat-model-pill-model"
         ariaLabel={t("sessions:creator.selectModel")}
         isActiveSession={isActiveSession}
-        disabled={!conversationTargetReady}
+        disabled={!conversationTargetReady && !runtimeReady}
         disabledTooltip={
           conversationBinding?.readiness === "loading"
             ? t("common:actions.loading")
@@ -445,19 +497,6 @@ const ModelPillComponent: React.FC = () => {
     <>
       {conversationBinding && (
         <>
-          <SelectorPill
-            ref={runtimeSegmentRef}
-            icon={runtimeIcon}
-            label={runtimeLabel}
-            tooltip={t("sessions:creator.switchAgent")}
-            tooltipPosition="top"
-            active={effectiveRuntimeOpen}
-            disabled={!runtimeReady}
-            onClick={handleToggleRuntimeSelector}
-            size="sm"
-            ariaLabel={runtimeLabel}
-            dataTestId="chat-runtime-pill"
-          />
           <DispatchCategoryPicker
             style={modelPickerStyle}
             isOpen={effectiveRuntimeOpen}
@@ -468,7 +507,7 @@ const ModelPillComponent: React.FC = () => {
             currentCliAgentType={runtimeSelection?.cliAgentType}
             hideOrgs
             allowedCliAgentTypes={conversationBinding.nativeCliTargets}
-            anchorRef={runtimeSegmentRef}
+            anchorRef={modelSegmentRef}
             placement="top"
           />
         </>

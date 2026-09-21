@@ -10,7 +10,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 import { rpc } from "@src/api/tauri/rpc";
-import { normalizeFunctionName } from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 import { imageRefToRustPath } from "@src/util/file/imageRefs";
 
 import { parseJsonRecord, parseJsonStringArray } from "../core/schemas";

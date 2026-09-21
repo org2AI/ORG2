@@ -108,7 +108,6 @@ export function SettingsTablePagination({
         {canJump ? (
           <Button
             variant="tertiary"
-            appearance="soft"
             size="mini"
             iconOnly
             icon={
@@ -127,7 +126,6 @@ export function SettingsTablePagination({
         ) : null}
         <Button
           variant="tertiary"
-          appearance="soft"
           size="mini"
           iconOnly
           icon={
@@ -158,7 +156,6 @@ export function SettingsTablePagination({
         )}
         <Button
           variant="tertiary"
-          appearance="soft"
           size="mini"
           iconOnly
           icon={
@@ -177,7 +174,6 @@ export function SettingsTablePagination({
         {canJump ? (
           <Button
             variant="tertiary"
-            appearance="soft"
             size="mini"
             iconOnly
             icon={

@@ -29,7 +29,6 @@ export const PanelPositionToggle: React.FC<PanelPositionToggleProps> = memo(
 
     return (
       <Button
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly

@@ -38,7 +38,7 @@ describe("scrollbar style contract", () => {
   it.each([
     "src/engines/ChatPanel/ChatHistory/components/ChatHistoryList.tsx",
     "src/engines/ChatPanel/ChatPanelTabBar/index.tsx",
-    "src/modules/shared/components/FileHeader/BreadcrumbFileHeader.tsx",
+    "src/features/FileHeader/BreadcrumbFileHeader.tsx",
     "src/modules/WorkStation/shared/TabBar/index.tsx",
     "src/modules/WorkStation/shared/SessionReplay/ReplayTabBar.tsx",
   ])("keeps %s on the shared no-scrollbar policy", (relativePath) => {

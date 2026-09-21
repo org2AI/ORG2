@@ -16,15 +16,7 @@ import { TOOL_NAMES } from "@src/api/tauri/agent/toolNames";
 import { getEventIcon } from "@src/config/toolIcons";
 import type { ToolUsageMetadata } from "@src/engines/SessionCore/core/types";
 
-import ToolUsageBadge from "../ToolCallBlock/ToolUsageBadge";
-import {
-  EventBlockHeader,
-  EventBlockHeaderIcon,
-  EventBlockHeaderSubtitle,
-  EventBlockHeaderTitle,
-  getEventBlockContainerClasses,
-} from "../primitives";
-import { useBlockHeader } from "../useBlockLocate";
+import { HeaderOnlyBlock } from "../primitives";
 
 interface SkillBlockProps {
   /** Skill name from `args.skill`. */
@@ -40,12 +32,6 @@ const SKILL_ICON = getEventIcon(TOOL_NAMES.SKILL);
 const SkillBlock: React.FC<SkillBlockProps> = React.memo(
   ({ skillName, isLoading = false, isFailed = false, eventId, toolUsage }) => {
     const { t } = useTranslation("sessions");
-    const {
-      isHeaderHovered,
-      handleHeaderMouseEnter,
-      handleHeaderMouseLeave,
-      handleLocate,
-    } = useBlockHeader({ eventId });
 
     const title = isLoading
       ? t("tools.readFileSkillRunning")
@@ -54,39 +40,22 @@ const SkillBlock: React.FC<SkillBlockProps> = React.memo(
         : t("tools.readFileSkillDone");
 
     return (
-      <div
-        className={`${getEventBlockContainerClasses(false)} animate-fade-in`}
-        data-tool-call-event-id={eventId}
-        data-tool-call-name={TOOL_NAMES.SKILL}
-      >
-        <EventBlockHeader
-          isCollapsed
-          withHover={false}
-          onNavigate={handleLocate}
-          onMouseEnter={handleHeaderMouseEnter}
-          onMouseLeave={handleHeaderMouseLeave}
-          rightContent={
-            toolUsage ? <ToolUsageBadge usage={toolUsage} /> : undefined
-          }
-        >
-          <EventBlockHeaderIcon
-            icon={SKILL_ICON}
-            isCollapsed
-            isHeaderHovered={isHeaderHovered}
-            hasContent={false}
-            isLoading={isLoading}
-            isFailed={isFailed}
-          />
-          <EventBlockHeaderTitle isLoading={isLoading}>
-            {title}
-          </EventBlockHeaderTitle>
-          {skillName && (
-            <EventBlockHeaderSubtitle isLoading={isLoading}>
-              {skillName}
-            </EventBlockHeaderSubtitle>
-          )}
-        </EventBlockHeader>
-      </div>
+      <HeaderOnlyBlock
+        icon={SKILL_ICON}
+        title={title}
+        subtitle={skillName}
+        isLoading={isLoading}
+        isFailed={isFailed}
+        eventId={eventId}
+        toolUsage={toolUsage}
+        animate
+        containerProps={
+          {
+            "data-tool-call-event-id": eventId,
+            "data-tool-call-name": TOOL_NAMES.SKILL,
+          } as React.HTMLAttributes<HTMLDivElement>
+        }
+      />
     );
   }
 );

@@ -98,7 +98,7 @@ pub fn ade_manager() -> AgentDefinition {
         name: "ADE Manager".to_string(),
         description: Some(
             "Manages the Agentic Development Environment (agents, orgs, skills, rules, \
-             workspaces, repo setup) and controls the ORGII app UI."
+             workspaces, repo setup) and controls the ORG2 app UI."
                 .to_string(),
         ),
         built_in: true,

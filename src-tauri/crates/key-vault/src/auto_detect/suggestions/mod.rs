@@ -27,8 +27,6 @@ use super::claude::{
 };
 use super::copilot::extract_github_token_from_config;
 use super::cursor::{cursor_state_db_path_in, read_cursor_access_token};
-use cc_switch::{cc_switch_db_path_in, read_cc_switch_credentials};
-use codex_config::{codex_config_path_in, parse_codex_model_providers};
 use super::helpers::{
     claude_config_paths_in, extract_export_value, get_home_dir, openai_config_paths_in,
     ClaudeConfig, OpenAIConfig,
@@ -38,6 +36,8 @@ use crate::commands::{OPENCODE_GO_BASE_URL, OPENCODE_ZEN_BASE_URL};
 use crate::key_store::{AuthMethod, ModelKey, ModelType};
 use crate::provider_config::get_provider_config;
 use crate::providers::kiro::KIRO_TOKEN_KEY;
+use cc_switch::{cc_switch_db_path_in, read_cc_switch_credentials};
+use codex_config::{codex_config_path_in, parse_codex_model_providers};
 
 // ============================================
 // Public types
@@ -469,14 +469,13 @@ pub(crate) fn probe_with(ctx: &ProbeContext<'_>, stored: &[ModelKey]) -> Vec<Cre
     probe_cc_switch(home, &mut candidates);
     probe_claude(ctx, home, &mut candidates);
     probe_claude_settings(ctx, home, &mut candidates);
-    probe_codex(home, &mut candidates);
+    probe_codex(ctx, home, &mut candidates);
     probe_cursor(home, &mut candidates);
     probe_copilot(home, &mut candidates);
     probe_kiro(ctx, home, &mut candidates);
     probe_opencode(home, &mut candidates);
     probe_config_files(home, &mut candidates);
     probe_env(ctx, home, &mut candidates);
-
 
     let known = stored_fingerprints(stored);
     let mut seen: HashSet<(String, String)> = HashSet::new();
@@ -544,7 +543,11 @@ fn probe_claude(ctx: &ProbeContext<'_>, home: Option<&Path>, out: &mut Vec<Candi
     }
 
     let mut config_dirs: Vec<PathBuf> = Vec::new();
-    if let Some(dir) = config_dir.as_deref().map(str::trim).filter(|d| !d.is_empty()) {
+    if let Some(dir) = config_dir
+        .as_deref()
+        .map(str::trim)
+        .filter(|d| !d.is_empty())
+    {
         config_dirs.push(PathBuf::from(dir));
     }
     if let Some(home) = home {
@@ -567,9 +570,11 @@ fn probe_claude(ctx: &ProbeContext<'_>, home: Option<&Path>, out: &mut Vec<Candi
     }
 }
 
-fn probe_codex(home: Option<&Path>, out: &mut Vec<Candidate>) {
-    let Some(home) = home else { return };
-    let path = home.join(".codex/auth.json");
+fn probe_codex(ctx: &ProbeContext<'_>, home: Option<&Path>, out: &mut Vec<Candidate>) {
+    let Some(path) = super::helpers::codex_auth_path_in((ctx.env)("CODEX_HOME").as_deref(), home)
+    else {
+        return;
+    };
     let Some(content) = read_if_present(&path) else {
         return;
     };
@@ -577,7 +582,7 @@ fn probe_codex(home: Option<&Path>, out: &mut Vec<Candidate>) {
     else {
         return;
     };
-    let label = abbreviate_home(&path, Some(home));
+    let label = abbreviate_home(&path, home);
 
     if let Some(token) = config
         .tokens
@@ -657,7 +662,10 @@ fn probe_copilot(home: Option<&Path>, out: &mut Vec<Candidate>) {
 }
 
 /// Kiro state stores whose presence means `kiro-cli login` has run.
-pub(crate) fn kiro_state_db_candidates(ctx: &ProbeContext<'_>, home: Option<&Path>) -> Vec<PathBuf> {
+pub(crate) fn kiro_state_db_candidates(
+    ctx: &ProbeContext<'_>,
+    home: Option<&Path>,
+) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     if let Some(home) = home {
         paths.push(home.join("Library/Application Support/kiro-cli/data.sqlite3"));
@@ -714,7 +722,9 @@ pub(crate) const OPENCODE_AUTH_RELATIVE: &str = ".local/share/opencode/auth.json
 /// OpenCode's own Zen/Go keys stay on the `opencode` agent (validated via
 /// its detector); third-party keys land on the matching API provider so
 /// every compatible CLI can reuse them.
-pub(crate) fn opencode_provider_target(provider_id: &str) -> Option<(&'static str, Option<&'static str>)> {
+pub(crate) fn opencode_provider_target(
+    provider_id: &str,
+) -> Option<(&'static str, Option<&'static str>)> {
     Some(match provider_id {
         "opencode" => ("opencode", Some(OPENCODE_ZEN_BASE_URL)),
         "opencode-go" => ("opencode", Some(OPENCODE_GO_BASE_URL)),
@@ -801,7 +811,10 @@ fn probe_cc_switch(home: Option<&Path>, out: &mut Vec<Candidate>) {
 /// `$CLAUDE_CONFIG_DIR/settings.json`, `~/.claude/settings.json`,
 /// `~/.claude/settings.local.json`. This is where cc-switch and every relay
 /// guide put `ANTHROPIC_AUTH_TOKEN` + `ANTHROPIC_BASE_URL`.
-pub(crate) fn claude_settings_paths_in(config_dir: Option<&str>, home: Option<&Path>) -> Vec<PathBuf> {
+pub(crate) fn claude_settings_paths_in(
+    config_dir: Option<&str>,
+    home: Option<&Path>,
+) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     if let Some(dir) = config_dir.map(str::trim).filter(|d| !d.is_empty()) {
         paths.push(PathBuf::from(dir).join("settings.json"));
@@ -1175,7 +1188,11 @@ mod tests {
         fs::write(path, body).unwrap();
     }
 
-    fn stored_key(agent: ModelType, api_key: Option<&str>, session_token: Option<&str>) -> ModelKey {
+    fn stored_key(
+        agent: ModelType,
+        api_key: Option<&str>,
+        session_token: Option<&str>,
+    ) -> ModelKey {
         let mut key = ModelKey::new(agent);
         key.api_key = api_key.map(str::to_string);
         key.session_token = session_token.map(str::to_string);
@@ -1201,8 +1218,14 @@ mod tests {
         assert!(agents.contains(&"anthropic_api"), "{agents:?}");
         assert!(agents.contains(&"openai_api"), "{agents:?}");
         assert!(agents.contains(&"deepseek_api"), "{agents:?}");
-        assert!(!agents.contains(&"cline"), "cline must not claim ANTHROPIC_API_KEY");
-        assert!(!agents.contains(&"aider"), "aider must not claim OPENAI_API_KEY");
+        assert!(
+            !agents.contains(&"cline"),
+            "cline must not claim ANTHROPIC_API_KEY"
+        );
+        assert!(
+            !agents.contains(&"aider"),
+            "aider must not claim OPENAI_API_KEY"
+        );
         assert!(out.iter().all(|s| s.fingerprint.is_some()));
         assert!(out
             .iter()
@@ -1215,7 +1238,10 @@ mod tests {
         let env = HashMap::from([
             ("OPENCODE_GO_API_KEY", "opencode-go-test"),
             ("GH_TOKEN", "gho_test"),
-            ("CURSOR_API_KEY", "key_cursor_should_be_skipped_because_session_is_required"),
+            (
+                "CURSOR_API_KEY",
+                "key_cursor_should_be_skipped_because_session_is_required",
+            ),
         ]);
         let out = run(dir.path(), &env, &HashSet::new(), &[]);
 
@@ -1242,7 +1268,11 @@ mod tests {
             .iter()
             .filter(|s| s.agent_type == "anthropic_api")
             .collect();
-        assert_eq!(anthropic.len(), 1, "same secret in env + profile is one row");
+        assert_eq!(
+            anthropic.len(),
+            1,
+            "same secret in env + profile is one row"
+        );
         assert_eq!(anthropic[0].source_kind, SuggestionSourceKind::Env);
 
         let xai = out
@@ -1328,7 +1358,10 @@ mod tests {
             .find(|s| s.source_kind == SuggestionSourceKind::OauthStore)
             .expect("file row");
         assert!(file.fingerprint.is_some());
-        assert!(!file.already_imported, "different token than the stored one");
+        assert!(
+            !file.already_imported,
+            "different token than the stored one"
+        );
 
         let keychain_row = claude
             .iter()
@@ -1410,7 +1443,10 @@ mod tests {
             "export ANTHROPIC_API_KEY=sk-ant-api03-profile\nexport ANTHROPIC_BASE_URL=https://proxy.example\n",
         );
         let out = run(dir.path(), &HashMap::new(), &HashSet::new(), &[]);
-        let row = out.iter().find(|s| s.agent_type == "anthropic_api").unwrap();
+        let row = out
+            .iter()
+            .find(|s| s.agent_type == "anthropic_api")
+            .unwrap();
 
         let empty_env = HashMap::new();
         let empty_keychain = HashSet::new();
@@ -1462,10 +1498,7 @@ mod tests {
         );
     }
 
-    fn probe_ctx<'a>(
-        home: &Path,
-        env: &'a HashMap<&'static str, &'static str>,
-    ) -> TestProbe<'a> {
+    fn probe_ctx<'a>(home: &Path, env: &'a HashMap<&'static str, &'static str>) -> TestProbe<'a> {
         let env_fn = move |name: &str| env.get(name).map(|v| v.to_string());
         let keychain_fn = |_: &str, _: Option<&str>| false;
         (home.to_path_buf(), Box::new(env_fn), Box::new(keychain_fn))
@@ -1486,7 +1519,11 @@ mod tests {
             .collect();
         let mut labels: Vec<&str> = rows.iter().map(|s| s.source_label.as_str()).collect();
         labels.sort();
-        assert_eq!(labels, vec!["Codex Relay", "Gemini Key", "Longcat"], "{out:?}");
+        assert_eq!(
+            labels,
+            vec!["Codex Relay", "Gemini Key", "Longcat"],
+            "{out:?}"
+        );
 
         let longcat = rows.iter().find(|s| s.source_label == "Longcat").unwrap();
         assert_eq!(longcat.agent_type, "claude_code");
@@ -1502,9 +1539,15 @@ mod tests {
         };
         let (secret, base_url) = resolve_generic_secret_with(&ctx, longcat).unwrap();
         assert_eq!(secret, "ak_longcat_relay_token_0001");
-        assert_eq!(base_url.as_deref(), Some("https://api.longcat.chat/anthropic"));
+        assert_eq!(
+            base_url.as_deref(),
+            Some("https://api.longcat.chat/anthropic")
+        );
 
-        let codex = rows.iter().find(|s| s.source_label == "Codex Relay").unwrap();
+        let codex = rows
+            .iter()
+            .find(|s| s.source_label == "Codex Relay")
+            .unwrap();
         let (secret, base_url) = resolve_generic_secret_with(&ctx, codex).unwrap();
         assert_eq!(secret, "sk-relay-codex-0001");
         assert_eq!(base_url.as_deref(), Some("https://relay.example/v1"));
@@ -1523,7 +1566,10 @@ mod tests {
             r#"{"env":{"ANTHROPIC_AUTH_TOKEN":"ak_longcat_relay_token_0001","ANTHROPIC_BASE_URL":"https://api.longcat.chat/anthropic"},"hooks":{}}"#,
         );
         let out = run(dir.path(), &HashMap::new(), &HashSet::new(), &[]);
-        let claude: Vec<_> = out.iter().filter(|s| s.agent_type == "claude_code").collect();
+        let claude: Vec<_> = out
+            .iter()
+            .filter(|s| s.agent_type == "claude_code")
+            .collect();
         assert_eq!(claude.len(), 1, "same token appears once: {claude:?}");
         assert_eq!(claude[0].source_kind, SuggestionSourceKind::CcSwitch);
         assert_eq!(claude[0].source_label, "Longcat");

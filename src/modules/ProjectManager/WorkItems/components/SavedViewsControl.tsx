@@ -237,7 +237,6 @@ export const SavedViewsControl: React.FC<SavedViewsControlProps> = ({
       <>
         <Button
           variant="tertiary"
-          appearance="ghost"
           size="small"
           iconOnly
           icon={
@@ -308,7 +307,6 @@ export const SavedViewsControl: React.FC<SavedViewsControlProps> = ({
       />
       <Button
         variant="tertiary"
-        appearance="ghost"
         size="small"
         iconOnly
         icon={
@@ -327,7 +325,6 @@ export const SavedViewsControl: React.FC<SavedViewsControlProps> = ({
       {selectedId ? (
         <Button
           variant="tertiary"
-          appearance="ghost"
           size="small"
           iconOnly
           icon={

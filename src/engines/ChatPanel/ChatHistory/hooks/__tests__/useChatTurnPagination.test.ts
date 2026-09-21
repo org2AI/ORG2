@@ -40,7 +40,7 @@ function fakeHeader(): OptimizedChatItem {
  * with `agentItems` agent-side items and whether it has a user header.
  */
 function paginate(
-  groups: Array<{ agentItems: number; userHeader: boolean }>,
+  groups: Array<{ agentItems: number; userHeader: boolean; retryAudit?: true }>,
   options: { mergeUserOnlyPages?: boolean; activePageIndex?: number } = {}
 ) {
   const groupCounts = groups.map((group) => group.agentItems);
@@ -48,9 +48,10 @@ function paginate(
     group.userHeader ? fakeHeader() : null
   );
   const groupMeta = groups.map(
-    (_, index) =>
+    (group, index) =>
       ({
         turnId: `turn-${index}`,
+        retryAudit: group.retryAudit,
       }) as unknown as ChatGroupMeta
   );
   const flatItems = groups.flatMap((group) =>
@@ -161,5 +162,43 @@ describe("useChatTurnPagination — mergeUserOnlyPages", () => {
 
     expect(result.pageCount).toBe(3);
     expect(result.displayFlatItems).toHaveLength(3);
+  });
+});
+
+describe("retry audit pagination", () => {
+  it("keeps consecutive audits between users on the following turn page", () => {
+    const result = paginate([
+      { agentItems: 1, userHeader: true },
+      { agentItems: 1, userHeader: false, retryAudit: true },
+      { agentItems: 1, userHeader: false, retryAudit: true },
+      { agentItems: 1, userHeader: true },
+    ]);
+    expect(result.pageCount).toBe(2);
+    expect(result.pages[1]).toMatchObject({
+      startGroupIndex: 1,
+      endGroupIndex: 3,
+    });
+    expect(result.displayGroupCounts).toEqual([1, 1, 1]);
+    expect(result.displayGroupHeaders.slice(0, 2)).toEqual([null, null]);
+    expect(result.displayFlatItems).toHaveLength(3);
+  });
+
+  it("keeps a trailing retry diagnostic visible without adding a logical turn", () => {
+    const result = paginate([
+      { agentItems: 1, userHeader: true },
+      { agentItems: 1, userHeader: false, retryAudit: true },
+    ]);
+    expect(result.pageCount).toBe(1);
+    expect(result.pages[0].endGroupIndex).toBe(1);
+    expect(result.displayFlatItems).toHaveLength(2);
+    expect(result.displayGroupHeaders).toHaveLength(2);
+  });
+
+  it("renders audit-only content without inventing a user-turn page", () => {
+    const result = paginate([
+      { agentItems: 1, userHeader: false, retryAudit: true },
+    ]);
+    expect(result.pageCount).toBe(0);
+    expect(result.displayFlatItems).toHaveLength(1);
   });
 });

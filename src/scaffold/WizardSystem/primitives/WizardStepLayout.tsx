@@ -24,12 +24,12 @@ import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import { TYPOGRAPHY } from "@src/config/workstation/tokens";
-import { SECTION_GAP_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
+import { SECTION_GAP_CLASSES } from "@src/components/layout/Section";
 import {
   DETAIL_PANEL_TOKENS,
   PANEL_FOOTER_TOKENS,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { TYPOGRAPHY } from "@src/config/workstation/tokens";
 
 // ============================================
 // Types
@@ -187,12 +187,7 @@ const WizardStepLayout: React.FC<WizardStepLayoutProps> = ({
           </div>
           <div className="flex gap-2">
             {onCancel && (
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={onCancel}
-                data-testid={cancelTestId}
-              >
+              <Button onClick={onCancel} data-testid={cancelTestId}>
                 {cancelLabel ?? t("common:actions.cancel")}
               </Button>
             )}

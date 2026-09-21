@@ -13,6 +13,13 @@ import Message from "@src/components/Message";
 import ModelIcon from "@src/components/ModelIcon";
 import StatusDot from "@src/components/StatusDot";
 import TabPill from "@src/components/TabPill";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
+import {
+  DETAIL_PANEL_TOKENS,
+  DetailPanelContainer,
+  InternalHeader,
+  PANEL_HEADER_TOKENS,
+} from "@src/components/layout/blocks";
 import { buildIntegrationsPath } from "@src/config/mainAppPaths";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import {
@@ -28,19 +35,9 @@ import {
 } from "@src/icons";
 import { CliLaunchProfileSection } from "@src/modules/MainApp/Integrations/KeyVault/CliClients/Preview/CliLaunchProfileSection";
 import HarnessConnectionEditor from "@src/modules/MainApp/Settings/sections/HarnessConnections/HarnessConnectionEditor";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import {
-  DETAIL_PANEL_TOKENS,
-  DetailPanelContainer,
-  PANEL_HEADER_TOKENS,
-} from "@src/modules/shared/layouts/blocks";
-import { openExternalLink } from "@src/util/platform/ipcRenderer";
+import { openLink } from "@src/util/ui/openLink";
 
 import type { AvailableCliAgent } from "../types";
-import AgentDetailHeader from "./AgentDetailHeader";
 import CliConfigSwitchCard from "./CliConfigSwitchCard";
 import CliRawConfigFileEditor from "./CliRawConfigFileEditor";
 
@@ -158,7 +155,7 @@ const CliAgentDetailView: React.FC<CliAgentDetailViewProps> = ({
   }, [agent.name, onRefresh, t]);
 
   const handleOpenDocs = useCallback(() => {
-    if (docsUrl) openExternalLink(docsUrl);
+    if (docsUrl) openLink(docsUrl, { navigate: true });
   }, [docsUrl]);
 
   const openCredentialInIntegrations = useCallback(() => {
@@ -248,7 +245,8 @@ const CliAgentDetailView: React.FC<CliAgentDetailViewProps> = ({
 
   return (
     <DetailPanelContainer>
-      <AgentDetailHeader
+      <InternalHeader
+        noPanelHeader
         tabs={tabs}
         activeTab="core"
         onTabChange={() => undefined}

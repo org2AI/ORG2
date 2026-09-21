@@ -3,6 +3,8 @@ export { externalCliSourceProbe, externalCliSourcesDetect } from "./detection";
 export {
   externalHistoryRescanSource,
   externalHistoryRescanSources,
+  splitScanSourcesByOutcome,
+  type ExternalHistoryScanResult,
 } from "./rescan";
 export {
   externalHistoryAppOpenPlan,

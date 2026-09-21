@@ -146,8 +146,8 @@ pub fn build_initial_window(
 
 /// [`build_initial_window`] with caller-supplied turn projections, for
 /// sources whose reduced streams under-report unloaded-round metadata (the
-/// Claude index overlays its cheap body-line counts so placeholders always
-/// advertise a fetchable body). `turns[i]` must correspond to the i-th user
+/// Claude index overlays its cheap body-line counts so placeholders advertise
+/// whether a fetchable body exists). `turns[i]` must correspond to the i-th user
 /// chunk of `chunks` in stream order.
 pub fn build_initial_window_from_turns(
     session_id: &str,

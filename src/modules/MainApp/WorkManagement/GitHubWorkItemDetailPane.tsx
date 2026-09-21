@@ -1,24 +1,24 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import DetailHeaderIconAction from "@src/components/DetailHeaderIconAction";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import GitHubPrDetailTabs from "@src/features/GitHubWork/GitHubPrDetailTabs";
+import { useGitHubIssueDetailState } from "@src/features/GitHubWork/useGitHubIssueDetailState";
 import { HugeiconsIcon, LinkSquare02Icon } from "@src/icons";
 import {
   IssueDetailPanel,
   IssueDetailTabs,
 } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/IssuesContent/IssueDetailPanel";
 import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
-import DetailHeaderIconAction from "@src/modules/shared/components/DetailHeaderIconAction";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import GitHubPrDetailTabs from "@src/modules/shared/components/GitHubPrDetailTabs";
-import { useGitHubIssueDetailState } from "@src/modules/shared/hooks/useGitHubIssueDetailState";
 import DetailPaneLayout, {
   DetailPaneCloseAction,
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
-import { normalizePrStatus } from "@src/shared/pr/prStatus";
+} from "@src/scaffold/layouts/DetailPaneLayout";
 import { workstationIssueDetailScopeKey } from "@src/store/workstation/codeEditor/workstationIssueAtom";
 import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
+import { normalizePrStatus } from "@src/util/git/pr/prStatus";
 
 import {
   GITHUB_ITEM_KIND,

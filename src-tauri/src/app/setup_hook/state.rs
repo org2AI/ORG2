@@ -278,6 +278,11 @@ pub(crate) fn init_settings_and_stores(app: &tauri::App) {
     // `general.preventSleepWhileRunning` setting is enabled.
     app.manage(system_services::power::PowerState::new());
 
+    // App lock — load the persisted lock (so a relaunch of a locked app, or
+    // lock-on-launch, is in force before the first window asks) and start
+    // the idle auto-lock watcher.
+    system_services::app_lock::init(app.handle());
+
     // Apply HTTP version preference from settings.jsonc so the
     // provider HTTP clients (created lazily per-session) honor it.
     if let Ok(settings) = settings::file_io::read_settings() {

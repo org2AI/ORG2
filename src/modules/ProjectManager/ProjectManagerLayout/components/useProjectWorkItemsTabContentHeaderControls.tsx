@@ -9,13 +9,13 @@ import { useTranslation } from "react-i18next";
 import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import TabPill from "@src/components/TabPill";
 import type { TabPillItem } from "@src/components/TabPill";
+import { WorkManagementSearchInput } from "@src/features/GitHubWork/WorkManagementSearchInput";
 import type { StatusFilterType } from "@src/modules/ProjectManager/WorkItems/types";
 import {
   WORK_ITEMS_KANBAN_GROUP,
   type WorkItemsKanbanGroup,
 } from "@src/modules/ProjectManager/WorkItems/workItemsViewModel";
-import { WorkManagementSearchInput } from "@src/modules/shared/components/WorkManagementSearchInput";
-import SplitListFullscreenButton from "@src/modules/shared/layouts/SplitListFullscreenButton";
+import SplitListFullscreenButton from "@src/scaffold/layouts/SplitListFullscreenButton";
 
 import { STORY_WORK_ITEMS_VISIBLE_TABS } from "./ProjectWorkItemsTabContentConstants";
 import type {

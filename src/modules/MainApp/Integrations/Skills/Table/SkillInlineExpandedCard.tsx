@@ -2,10 +2,10 @@ import { readTextFile } from "@tauri-apps/plugin-fs";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { InlineInfoCard } from "@src/components/layout/blocks";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
 import { createLogger } from "@src/hooks/logger";
 import type { CursorRepo } from "@src/hooks/policies";
-import { InlineInfoCard } from "@src/modules/shared/layouts/blocks";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
 import { SKILL_SOURCE } from "@src/types/extensions";
 import type { HubSkillDetail, InstalledSkill } from "@src/types/extensions";
 import { parseSkillFrontmatter } from "@src/util/skills/skillFrontmatter";

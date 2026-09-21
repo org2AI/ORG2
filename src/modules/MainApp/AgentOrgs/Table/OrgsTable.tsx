@@ -114,7 +114,6 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
             onKeyDown={(event) => event.stopPropagation()}
           >
             <Button
-              variant="secondary"
               size="small"
               data-testid={`agent-orgs-org-view-button-${row.id}`}
               onClick={() => handleView(row)}
@@ -122,8 +121,7 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
               {t("common:actions.view", { defaultValue: "View" })}
             </Button>
             <Button
-              variant="danger"
-              appearance="outline"
+              tone="danger"
               size="small"
               icon={
                 <HugeiconsIcon
@@ -150,8 +148,6 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
   const addOrgLabel = t("agentOrgs.addOrg", { defaultValue: "Add Agent Team" });
   const addButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       iconOnly
       aria-label={addOrgLabel}

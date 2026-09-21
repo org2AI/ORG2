@@ -13,7 +13,7 @@ import ToolUsageBadge from "@src/engines/ChatPanel/blocks/ToolCallBlock/ToolUsag
 import { StackedBlock } from "@src/engines/ChatPanel/blocks/primitives";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { extractEditData } from "@src/engines/SessionCore/rendering/props/editExtractors";
-import { normalizeFunctionName } from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 
 import {
   buildActivityGroupItems,

@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { PanelRefreshButton } from "@src/components/layout/blocks";
 import { Coins01Icon } from "@src/icons";
-import { PanelRefreshButton } from "@src/modules/shared/layouts/blocks";
 import {
   SpotlightFormBody,
   SpotlightFormShell,

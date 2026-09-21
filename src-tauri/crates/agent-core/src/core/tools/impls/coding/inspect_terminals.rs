@@ -54,6 +54,7 @@ fn require_session_id(params: &InspectTerminalsParams, action: &str) -> Result<S
 struct TerminalOutputSnapshot {
     session_id: String,
     redacted: bool,
+    withheld_partial_output: bool,
     truncated: bool,
     chars_returned: usize,
     output: String,
@@ -91,12 +92,7 @@ impl InspectTerminalsTool {
             unacked_bytes: session
                 .unacked_bytes
                 .load(std::sync::atomic::Ordering::Relaxed),
-            redacted_output_chars: session
-                .redacted_output
-                .lock()
-                .expect("redacted_output mutex poisoned")
-                .chars()
-                .count(),
+            redacted_output_chars: session.inspection_chars(),
         }
     }
 
@@ -158,17 +154,14 @@ impl Tool for InspectTerminalsTool {
                 let session = sessions.get(&session_id).ok_or_else(|| {
                     ToolError::ExecutionFailed(format!("Terminal session not found: {session_id}"))
                 })?;
-                let redacted_output = session
-                    .redacted_output
-                    .lock()
-                    .expect("redacted_output mutex poisoned")
-                    .clone();
+                let (redacted_output, withheld_partial_output) = session.inspection_snapshot();
                 drop(sessions);
 
                 let (output, truncated) = Self::trailing_chars(&redacted_output, max_chars);
                 let snapshot = TerminalOutputSnapshot {
                     session_id,
                     redacted: true,
+                    withheld_partial_output,
                     truncated,
                     chars_returned: output.chars().count(),
                     output,

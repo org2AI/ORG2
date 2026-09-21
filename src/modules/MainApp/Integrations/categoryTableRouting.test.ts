@@ -55,7 +55,7 @@ vi.mock("@src/util/ui/openFileInWorkStation", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   DETAIL_PANEL_TOKENS: { headerWidth: "header-width" },
   DetailPanelContainer: ({ children }: { children: ReactNode }) => children,
   InternalHeader: leaf("header"),

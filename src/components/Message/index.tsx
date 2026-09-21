@@ -18,6 +18,9 @@
  * Message.error("Something went wrong");
  * Message.warning("Please be careful");
  * Message.info({ content: "Info message", closable: true });
+ * Message.spotlight("Centered top message");
+ * Message.spotlight("Saved", { variant: "success" });
+ * Message.spotlight({ content: "Could not save", variant: "danger" });
  * ```
  */
 import type { ReactNode } from "react";
@@ -28,6 +31,7 @@ import {
   DEFAULT_DURATION,
   type MessageConfig,
   type MessageType,
+  type SpotlightMessageConfig,
 } from "./types";
 
 // The toast renderer (framer-motion + icons) is loaded on the first toast so
@@ -50,8 +54,7 @@ class MessageManager {
   private ensureContainer() {
     if (!this.container) {
       this.container = document.createElement("div");
-      this.container.className =
-        "pointer-events-none fixed right-4 bottom-4 left-auto z-10000 flex flex-col items-end max-[480px]:right-2 max-[480px]:bottom-2 max-[480px]:left-2";
+      this.container.className = "pointer-events-none fixed inset-0 z-10000";
       this.container.setAttribute("data-message-root", "true");
       document.body.appendChild(this.container);
       this.root = createRoot(this.container);
@@ -70,7 +73,7 @@ class MessageManager {
       typeof config.content === "string"
         ? config.content
         : JSON.stringify(config.content);
-    return `${config.type || "info"}:${config.title || ""}:${contentStr}`;
+    return `${config.placement || "bottom"}:${config.type || "info"}:${config.title || ""}:${contentStr}`;
   }
 
   private render() {
@@ -155,6 +158,43 @@ class MessageManager {
   public error = this.createMethod("error");
   public warning = this.createMethod("warning");
   public info = this.createMethod("info");
+
+  /** Show a Spotlight-style message centered at the top of the viewport. */
+  public spotlight = (
+    content: ReactNode | SpotlightMessageConfig,
+    durationOrConfig?: number | Partial<SpotlightMessageConfig>
+  ): string => {
+    let config: SpotlightMessageConfig;
+
+    if (
+      typeof content === "object" &&
+      content !== null &&
+      "content" in content
+    ) {
+      config = { ...content, placement: "spotlight" };
+    } else if (typeof durationOrConfig === "object") {
+      config = {
+        content,
+        type: "regular",
+        ...durationOrConfig,
+        placement: "spotlight",
+      };
+    } else {
+      config = {
+        content,
+        type: "regular",
+        duration: durationOrConfig,
+        placement: "spotlight",
+      };
+    }
+
+    const { variant, ...message } = config;
+    return this.add({
+      ...message,
+      type:
+        variant === "danger" ? "error" : (variant ?? message.type ?? "regular"),
+    });
+  };
 
   public remove(id: string): void {
     this.messages.delete(id);

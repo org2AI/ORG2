@@ -14,9 +14,9 @@ it("consumes each repo-scoped branch request once and does not replay it on reop
   const store = createStore();
   const onOpenBranchLayer = vi.fn();
   const dispatch = vi.fn();
-  const closeModal = vi.fn();
+  const onRequest = vi.fn((request) => onOpenBranchLayer(request.layer.repoId));
   function Harness({ isOpen }: { isOpen: boolean }) {
-    useSpotlightEffects({ isOpen, dispatch, closeModal, onOpenBranchLayer });
+    useSpotlightEffects({ isOpen, dispatch, onRequest });
     return null;
   }
   const root = createRoot(document.createElement("div"));

@@ -4,11 +4,12 @@
  * Handles loading, saving, updating, and discarding file content.
  * Manages binary file detection and unsaved changes tracking.
  */
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { useAtom, useAtomValue } from "jotai";
+import { readTextFile } from "@tauri-apps/plugin-fs";
+import { useAtom, useAtomValue, useStore } from "jotai";
 import { useCallback } from "react";
 
 import { createLogger } from "@src/hooks/logger";
+import { writeTextFileSerial } from "@src/services/file/writeTextFileSerial";
 import {
   fileContentAtom,
   fileContentErrorAtom,
@@ -18,6 +19,7 @@ import {
   fileSaveErrorAtom,
   fileSavedContentAtom,
   fileSavingAtom,
+  fileSelectedPathAtom,
 } from "@src/store/workstation/codeEditor/file";
 import {
   getBinaryFileMessage,
@@ -52,6 +54,7 @@ export interface UseFileContentReturn {
 // ============================================
 
 export function useFileContent(): UseFileContentReturn {
+  const store = useStore();
   // State
   const [fileContent, setFileContent] = useAtom(fileContentAtom);
   const [savedContent, setSavedContent] = useAtom(fileSavedContentAtom);
@@ -131,8 +134,9 @@ export function useFileContent(): UseFileContentReturn {
       setSaveError(null);
 
       try {
-        await writeTextFile(filePath, content);
-        setSavedContent(content);
+        await writeTextFileSerial(filePath, content);
+        if (store.get(fileSelectedPathAtom) === filePath)
+          setSavedContent(content);
 
         // Dispatch event for Filesync channel logging
         window.dispatchEvent(
@@ -152,7 +156,7 @@ export function useFileContent(): UseFileContentReturn {
         setSaving(false);
       }
     },
-    [setSaving, setSaveError, setSavedContent]
+    [setSaving, setSaveError, setSavedContent, store]
   );
 
   // ============================================

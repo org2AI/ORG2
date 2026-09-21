@@ -9,7 +9,6 @@ import {
   formatPairedDeviceTitle,
   isGenericPairedDeviceLabel,
   isPairedDeviceOnline,
-  isPairedDeviceReadOnlyTier,
   resolvePairedDevicePresence,
   shortDeviceIdSuffix,
   sortPairedDevicesByLastSeen,
@@ -62,19 +61,20 @@ describe("formatPairedDeviceTitle", () => {
 });
 
 describe("formatPairedDeviceSubtitle", () => {
-  it("includes paired time, suffix, and last seen", () => {
+  it("shows last seen without repeating the pairing time", () => {
     const subtitle = formatPairedDeviceSubtitle(
       device({ lastSeenMs: 1_700_000_100_000 }),
       (ms) => (ms == null ? "—" : `t:${ms}`),
       t
     );
-    expect(subtitle).toContain("mobileRemote.devicePairedAt");
-    expect(subtitle).toContain("mobileRemote.deviceLastSeenValue");
+    expect(subtitle).toBe(
+      'mobileRemote.deviceLastSeenValue:{"time":"t:1700000100000"}'
+    );
   });
 
   it("shows never seen when lastSeenMs is missing", () => {
     const subtitle = formatPairedDeviceSubtitle(device(), () => "never", t);
-    expect(subtitle).toContain("mobileRemote.deviceNeverSeen");
+    expect(subtitle).toBe("mobileRemote.deviceNeverSeen");
   });
 });
 
@@ -122,8 +122,6 @@ describe("formatPairedDeviceTierLabel", () => {
     expect(formatPairedDeviceTierLabel("read_only", t)).toBe(
       "mobileRemote.deviceTierReadOnly"
     );
-    expect(isPairedDeviceReadOnlyTier("read_only")).toBe(true);
-    expect(isPairedDeviceReadOnlyTier("full")).toBe(false);
   });
 });
 

@@ -2,18 +2,18 @@
  * useCloneForm Hook
  *
  * Manages clone repository form state and GitHub repository fetching.
- * Handles both "myGitHub" and "githubUrl" workflows.
+ * Handles the GitHub repository picker and URL clone forms.
  */
 import { open } from "@tauri-apps/plugin-dialog";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
 import type { GitHubRepo } from "@src/api/http/github/types";
 import Message from "@src/components/Message";
 import { useGitHubConnections } from "@src/hooks/git";
 import { createLogger } from "@src/hooks/logger";
+import { zodActionRegistry } from "@src/scaffold/ActionSystem/schema/zodRegistry";
 import {
   effectiveWorkspaceDefaultRepoLocationAtom,
   workspaceCustomDefaultRepoPathAtom,
@@ -34,9 +34,7 @@ interface UseCloneFormOptions {
 }
 
 export interface UseCloneFormReturn {
-  // Sub-tab state
-  subTab: "myGitHub" | "githubUrl";
-  setSubTab: (tab: "myGitHub" | "githubUrl") => void;
+  loading: boolean;
 
   // Search/filter
   filterText: string;
@@ -78,9 +76,6 @@ export function useCloneForm(
     workspaceCustomDefaultRepoPathAtom
   );
 
-  // Sub-tab state
-  const [subTab, setSubTab] = useState<"myGitHub" | "githubUrl">("myGitHub");
-
   // Search/filter
   const [filterText, setFilterText] = useState("");
 
@@ -90,7 +85,8 @@ export function useCloneForm(
   // URL clone
   const [repoUrl, setRepoUrl] = useState("");
   const [localPath, setLocalPath] = useState("");
-  const [, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const cloning = useRef(false);
 
   // Use GitHub connections hook
   const {
@@ -99,7 +95,7 @@ export function useCloneForm(
     getReposForConnection,
     reposCache: githubReposCache,
   } = useGitHubConnections({
-    autoFetch: subTab === "myGitHub",
+    autoFetch: false,
   });
 
   // Collect all GitHub repos from all connections
@@ -173,7 +169,6 @@ export function useCloneForm(
 
   // Reset form
   const resetForm = useCallback(() => {
-    setSubTab("myGitHub");
     setFilterText("");
     setSelectedRepo(null);
     setRepoUrl("");
@@ -203,14 +198,14 @@ export function useCloneForm(
 
   // Fetch repos for all connections when needed
   useEffect(() => {
-    if (subTab === "myGitHub" && githubConnections.length > 0) {
+    if (githubConnections.length > 0) {
       for (const connection of githubConnections) {
         if (!githubReposCache.has(connection.id)) {
           getReposForConnection(connection.id);
         }
       }
     }
-  }, [subTab, githubConnections, githubReposCache, getReposForConnection]);
+  }, [githubConnections, githubReposCache, getReposForConnection]);
 
   // Fetch GitHub repositories (stable callback for manual refresh)
   const fetchGitHubRepos = useCallback(async () => {
@@ -223,7 +218,8 @@ export function useCloneForm(
   // Clone repository
   const handleClone = useCallback(
     async (url: string, path: string): Promise<string | undefined> => {
-      if (!url.trim() || !path.trim()) return undefined;
+      if (cloning.current || !url.trim() || !path.trim()) return undefined;
+      cloning.current = true;
 
       setLoading(true);
       try {
@@ -266,6 +262,7 @@ export function useCloneForm(
         );
         return undefined;
       } finally {
+        cloning.current = false;
         setLoading(false);
       }
     },
@@ -280,9 +277,7 @@ export function useCloneForm(
   );
 
   return {
-    // Sub-tab
-    subTab,
-    setSubTab,
+    loading,
 
     // Search/filter
     filterText,
@@ -308,5 +303,3 @@ export function useCloneForm(
     resetForm,
   };
 }
-
-export default useCloneForm;

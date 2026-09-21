@@ -347,7 +347,6 @@ export function useProjectWorkItems(
           shortcutId="workitems_search"
         >
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             iconOnly

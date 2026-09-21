@@ -86,12 +86,14 @@ export function getXTermTheme(
   const bg = backgroundOverride
     ? resolveColorValue(backgroundOverride, getBgColor(themeName))
     : getBgColor(themeName);
+  const selection = getSelectionColor(themeName);
   return {
     background: bg,
     foreground: theme.foreground,
     cursor: getCursorColor(themeName),
     cursorAccent: bg,
-    selectionBackground: getSelectionColor(themeName),
+    selectionBackground: selection,
+    selectionInactiveBackground: selection,
     black: theme.black,
     red: theme.red,
     green: theme.green,

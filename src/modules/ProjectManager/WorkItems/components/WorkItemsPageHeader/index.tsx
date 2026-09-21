@@ -8,7 +8,7 @@ import {
 } from "@src/config/workstation/tokens";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
 import { DeliveryBox01Icon, HugeiconsIcon } from "@src/icons";
-import SplitListHeader from "@src/modules/shared/layouts/SplitListHeader";
+import SplitListHeader from "@src/scaffold/layouts/SplitListHeader";
 
 import { WorkItemsHeaderContent } from "./WorkItemsHeaderContent";
 import type { WorkItemsPageHeaderProps } from "./types";
@@ -117,16 +117,16 @@ const WorkItemsPageHeader = ({
   if (splitListHeader) {
     return (
       <SplitListHeader
-        primary={
+        primary={headerContent}
+        secondary={
           <>
             {splitHeaderLeading}
             {splitHeaderLeading ? (
               <HeaderSectionSeparator className="mx-0.5" />
             ) : null}
-            {headerContent}
+            {headerTrailing}
           </>
         }
-        secondary={headerTrailing}
       />
     );
   }

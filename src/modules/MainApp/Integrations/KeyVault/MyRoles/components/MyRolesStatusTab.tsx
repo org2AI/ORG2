@@ -11,7 +11,7 @@ import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
 import { resolveCustomRoleIcon } from "@src/scaffold/NavigationSidebar/blocks/customRoleIcons";
 import { updateSettingAtom, useAllSettings } from "@src/store/settings";
 import { userPresenceAtom } from "@src/store/user/userPresenceAtom";

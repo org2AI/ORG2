@@ -7,11 +7,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import { Placeholder } from "@src/components/Placeholder";
-import {
-  FileHeader,
-  TabBarBottomPanelToggle,
-  UnsavedChangesBar,
-} from "@src/modules/WorkStation/shared";
+import { FileHeader, UnsavedChangesBar } from "@src/modules/WorkStation/shared";
 
 import type { LoadingViewProps } from "../types";
 
@@ -43,7 +39,6 @@ export const LoadingView: React.FC<LoadingViewProps> = ({
         isMarkdownFile={isPreviewable}
         isPreviewMode={isPreviewMode}
         onTogglePreview={onTogglePreview}
-        beforeMoreMenuSlot={<TabBarBottomPanelToggle />}
       />
       <div className="relative flex flex-1 flex-col">
         <Placeholder

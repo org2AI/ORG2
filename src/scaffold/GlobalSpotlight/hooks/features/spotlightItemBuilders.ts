@@ -105,24 +105,6 @@ export function buildActionItems(
   }));
 }
 
-export function buildRepoActionItems(
-  onSelectAction: (action: ActionDefinition) => void,
-  translate: Translator
-): SpotlightItem[] {
-  return ACTIONS.filter((actionDef) =>
-    actionDef.requiredParams.includes("repo")
-  ).map((action) => ({
-    id: action.id,
-    label: resolveActionLabel(action, translate),
-    icon: action.icon,
-    type: "action" as const,
-    data: {
-      showDisclosureChevron: action.requiredParams.length > 0,
-    },
-    action: () => onSelectAction(action),
-  }));
-}
-
 export function buildStaticActionItems(
   actions: SpotlightStaticActionDefinition[],
   onSelectStaticAction: (action: SpotlightStaticActionDefinition) => void,

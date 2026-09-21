@@ -308,7 +308,6 @@ const ModelTable: React.FC<ModelTableProps> = ({
     if (hideViewToggle) return null;
     return (
       <Button
-        variant="secondary"
         iconOnly
         onClick={() =>
           setViewMode((prev) => (prev === "flat" ? "group" : "flat"))
@@ -348,7 +347,6 @@ const ModelTable: React.FC<ModelTableProps> = ({
     );
     return (
       <Button
-        variant="secondary"
         iconOnly
         onClick={() => {
           if (someGroupExpanded) {
@@ -427,7 +425,6 @@ const ModelTable: React.FC<ModelTableProps> = ({
       <div className="flex items-center">
         <Button
           variant="tertiary"
-          size="default"
           icon={<HugeiconsIcon icon={Plus} data-icon="plus" size={14} />}
           onClick={handleAddModel}
           className="text-text-3 hover:text-text-1"

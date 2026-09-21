@@ -335,7 +335,6 @@ export const SidebarRamMonitorButton: React.FC = React.memo(() => {
     <>
       <div ref={triggerRef} title={triggerTitle}>
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly

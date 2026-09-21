@@ -18,7 +18,6 @@ import {
   Search01Icon,
   Tick01Icon,
 } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 import { REPO_KIND } from "@src/store/repo";
 
 import { ICONS } from "../../config";
@@ -28,6 +27,8 @@ import {
   SpotlightFormShell,
   SpotlightModalHeader,
 } from "../shared";
+import { SpotlightFormActions } from "../shared/SpotlightFormActions";
+import { SpotlightFormField } from "../shared/SpotlightFormField";
 
 const MAX_WORKSPACE_REPOS = 5;
 
@@ -168,10 +169,10 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
       />
       <SpotlightFormShell>
         <SpotlightFormBody>
-          <div className="mb-3">
-            <label className="mb-2 block text-[14px] font-normal text-text-2">
-              {t("workspaceForm.workspaceName", "Working Directory Name")}
-            </label>
+          <SpotlightFormField
+            label={t("workspaceForm.workspaceName", "Working Directory Name")}
+            className="mb-3"
+          >
             <Input
               placeholder={
                 effectiveName ||
@@ -187,7 +188,7 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
                   name.trim() !== generatedWorkspaceName
                 );
               }}
-              className="h-[32px] rounded-lg bg-fill-1 text-[14px]"
+              className="h-[32px] rounded-lg text-[14px]"
               prefix={
                 <HugeiconsIcon
                   icon={ICONS.workspace}
@@ -196,7 +197,7 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
                 />
               }
             />
-          </div>
+          </SpotlightFormField>
 
           <div className="mb-3">
             <Input
@@ -208,7 +209,7 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
               value={repoSearchQuery}
               onChange={setRepoSearchQuery}
               allowClear
-              className="h-[32px] rounded-lg bg-fill-1 text-[14px]"
+              className="h-[32px] rounded-lg text-[14px]"
               prefix={
                 <HugeiconsIcon
                   icon={Search01Icon}
@@ -307,27 +308,11 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
           </div>
         </SpotlightFormBody>
 
-        <PanelFooter
-          secondaryButtonSize="default"
-          primaryButtonSize="default"
-          left={
-            selectedIds.size >= 2 ? (
-              <span className="truncate text-[14px] text-text-1">
-                {t("workspaceForm.willInclude", {
-                  count: selectedIds.size,
-                })}
-              </span>
-            ) : undefined
-          }
-          secondaryActions={[
-            {
-              label: t("actions.back"),
-              onClick: onCancel,
-              variant: "secondary",
-              disabled: loading,
-            },
-          ]}
-          primaryAction={{
+        <SpotlightFormActions
+          backLabel={t("actions.back")}
+          onBack={onCancel}
+          busy={loading}
+          submit={{
             label: loading
               ? `${
                   isEditing
@@ -339,9 +324,16 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
                 : t("actions.create", "Create"),
             onClick: handleSubmit,
             disabled: isSubmitDisabled,
-            loading,
-            variant: "primary",
           }}
+          left={
+            selectedIds.size >= 2 ? (
+              <span className="truncate text-[14px] text-text-1">
+                {t("workspaceForm.willInclude", {
+                  count: selectedIds.size,
+                })}
+              </span>
+            ) : undefined
+          }
         />
       </SpotlightFormShell>
     </div>

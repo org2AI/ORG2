@@ -70,6 +70,14 @@ pub fn create_session(
     session_id: &str,
     params: &CreateCodeSessionParams,
 ) -> SqliteResult<CodeSession> {
+    create_session_with_source(session_id, params, None)
+}
+
+pub fn create_session_with_source(
+    session_id: &str,
+    params: &CreateCodeSessionParams,
+    source: Option<&str>,
+) -> SqliteResult<CodeSession> {
     let ts = now_iso();
     let name = params
         .name
@@ -146,7 +154,8 @@ pub fn create_session(
     with_create_session_write_retry(
         || {
             let conn = get_connection()?;
-            conn.execute(
+            let tx = database::db::begin_immediate(&conn)?;
+            tx.execute(
                 "INSERT INTO code_sessions
                     (session_id, name, status, flow, runner, cli_agent_type, model, tier,
                      account_id, repo_path, branch, proxy_token, proxy_url, hosted_token,
@@ -166,7 +175,17 @@ pub fn create_session(
                     product_mode, AgentExecMode::Build.as_str(), params.agent_definition_id,
                 ],
             )?;
-            Ok(())
+            if let Some(source) = source {
+                super::super::credential_source::bind_for_runner(
+                    &tx,
+                    session_id,
+                    source,
+                    &params.cli_agent_type,
+                    params.model.as_deref().unwrap_or(""),
+                    "local",
+                )?;
+            }
+            tx.commit()
         },
         std::thread::sleep,
     )?;

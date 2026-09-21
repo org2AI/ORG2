@@ -166,6 +166,9 @@ describe("TeamInboxList pagination", () => {
     const markup = renderEmptyList("", true);
 
     expect(markup).toContain('data-testid="list-panel-skeleton-rows"');
+    expect(markup).toContain("teamInbox.filters.mentions");
+    expect(markup).toContain("teamInbox.filters.assigned");
+    expect(markup).toContain("teamInbox.sections.updates");
     expect(markup).not.toContain("animate-pulse");
     expect(markup).not.toContain('data-testid="team-inbox-row"');
     expect(markup).not.toContain("teamInbox.empty.");
@@ -188,6 +191,29 @@ describe("TeamInboxList pagination", () => {
     expect(markup).toContain("Existing assigned work");
     expect(markup).toContain('role="progressbar"');
     expect(markup).not.toContain('data-testid="list-panel-skeleton-rows"');
+  });
+
+  it("keeps titled PR placeholders beside loaded notifications", () => {
+    const markup = renderToStaticMarkup(
+      createElement(TeamInboxList, {
+        filter: "all",
+        items: [assignedItem],
+        selectedItemId: null,
+        unreadCounts: { all: 0, mentions: 0, assigned: 0 },
+        query: "",
+        loading: true,
+        inboxLoading: false,
+        pullRequestsLoading: true,
+        onQueryChange: vi.fn(),
+        onSelectItem: vi.fn(),
+      })
+    );
+    expect(markup).toContain("Existing assigned work");
+    expect(markup).toContain(
+      'data-testid="team-inbox-pr-review-requested-loading"'
+    );
+    expect(markup).toContain('data-testid="team-inbox-pr-authored-loading"');
+    expect(markup).not.toContain('data-testid="team-inbox-mentions-loading"');
   });
 
   it("temporarily hides pull-request refresh warnings", () => {

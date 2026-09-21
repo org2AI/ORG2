@@ -300,7 +300,7 @@ impl McpClient {
                 )
             })??;
 
-        let server_info = service.peer_info().cloned();
+        let server_info = service.peer_info();
         // `InitializeResult.instructions` is the server's usage guidance for
         // the model (tool ordering, batching, safety rules). Captured here so
         // the manager can publish it into the `mcp_instructions` prompt section.

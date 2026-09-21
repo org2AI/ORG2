@@ -4,6 +4,10 @@ import { useTranslation } from "react-i18next";
 import AnyIcon from "@src/components/AnyIcon";
 import Avatar from "@src/components/Avatar";
 import Button from "@src/components/Button";
+import CompactListPanel, {
+  type CompactListPanelEntry,
+} from "@src/components/CompactListPanel";
+import { compactRepositoryLabel } from "@src/features/GitHubWork/githubRepositoryLabel";
 import {
   CheckmarkCircle01Icon,
   CircleDotIcon,
@@ -14,16 +18,12 @@ import {
   HugeiconsIcon,
   type IconSvgElement,
 } from "@src/icons";
-import CompactListPanel, {
-  type CompactListPanelEntry,
-} from "@src/modules/shared/components/CompactListPanel";
-import { compactRepositoryLabel } from "@src/modules/shared/githubRepositoryLabel";
 import {
   type PrStatusIconName,
   getPrStatusIconName,
   getPrStatusVariant,
   normalizePrStatus,
-} from "@src/shared/pr/prStatus";
+} from "@src/util/git/pr/prStatus";
 
 import {
   GITHUB_ITEM_KIND,

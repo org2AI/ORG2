@@ -7,6 +7,7 @@
 //! - [`windows`]: Standalone browser windows for external sites
 //! - [`inline`]: Embedded webviews within the main app window
 //! - [`logging`]: Console and network log capture from webviews
+//! - [`color_scheme`]: Force the `prefers-color-scheme` browsed pages see
 //! - [`cookies`]: Native cookie access (including HttpOnly)
 //! - [`cookie_import`]: Import saved logins from other installed browsers
 //! - [`scripts`]: JavaScript injection scripts for anti-bot detection, etc.
@@ -36,6 +37,7 @@
 
 pub mod automation;
 pub mod capture;
+pub mod color_scheme;
 pub mod cookie_import;
 pub mod cookies;
 pub mod dom_editor;
@@ -51,6 +53,7 @@ pub mod windows;
 
 // Re-export all public items for convenient access
 pub use capture::*;
+pub use color_scheme::*;
 pub use cookies::*;
 pub use dom_editor::*;
 pub use inline::*;

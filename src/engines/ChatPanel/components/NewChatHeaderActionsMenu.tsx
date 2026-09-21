@@ -9,13 +9,15 @@ import {
   ActionSubmenu,
 } from "@src/components/Dropdown/ActionMenuSurface";
 import {
+  MenuSegmentedRow,
+  MenuSwitchRow,
+} from "@src/components/Dropdown/MenuControlRows";
+import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
   DROPDOWN_PANEL,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import SegmentedTextPill from "@src/components/SegmentedTextPill";
-import Switch from "@src/components/Switch";
 import { CREATOR_COMPOSER_POSITION } from "@src/config/sessionCreatorConfig";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { getDropdownPanelStyle, useDropdownEngine } from "@src/hooks/dropdown";
@@ -23,11 +25,10 @@ import { HugeiconsIcon, Layers01Icon, MoreHorizontalIcon } from "@src/icons";
 import { cliUpdateAlertsEnabledAtom } from "@src/store/session/cliUpdateAlertsAtom";
 import { creatorComposerPositionAtom } from "@src/store/session/creatorComposerPositionAtom";
 import { creatorLaunchpadActionsVisibleAtom } from "@src/store/session/creatorLaunchpadActionsVisibleAtom";
-import {
-  changeCreatorComposerPositionAtom,
-  creatorRepoChromePositionAtom,
-} from "@src/store/session/creatorRepoChromePositionAtom";
-import { pinnedActionsVisibleAtom } from "@src/store/session/pinnedActionsVisibleAtom";
+import { creatorLaunchpadSearchVisibleAtom } from "@src/store/session/creatorLaunchpadSearchVisibleAtom";
+import { changeCreatorComposerPositionAtom } from "@src/store/session/creatorRepoChromePositionAtom";
+
+import { SessionInputSettingsSubmenu } from "./SessionInputSettingsSubmenu";
 
 export function NewChatHeaderActionsMenu(): React.ReactNode {
   const { t } = useTranslation(["sessions", "common"]);
@@ -36,14 +37,11 @@ export function NewChatHeaderActionsMenu(): React.ReactNode {
   );
   const composerPosition = useAtomValue(creatorComposerPositionAtom);
   const setComposerPosition = useSetAtom(changeCreatorComposerPositionAtom);
-  const [trailPosition, setTrailPosition] = useAtom(
-    creatorRepoChromePositionAtom
-  );
   const [launchpadActionsVisible, setLaunchpadActionsVisible] = useAtom(
     creatorLaunchpadActionsVisibleAtom
   );
-  const [pinnedActionsVisible, setPinnedActionsVisible] = useAtom(
-    pinnedActionsVisibleAtom
+  const [launchpadSearchVisible, setLaunchpadSearchVisible] = useAtom(
+    creatorLaunchpadSearchVisibleAtom
   );
   const {
     isOpen,
@@ -61,15 +59,11 @@ export function NewChatHeaderActionsMenu(): React.ReactNode {
     autoKeyboardNavigation: false,
     closeOnEsc: false,
   });
-  const showQuickActionsLabel = t("chat.startPage.showQuickActions");
-  const showSkillsLabel = t("chat.startPage.showSkills");
-  const showCliUpdateLabel = t("chat.startPage.showCliUpdate");
 
   return (
     <>
       <Button
         ref={triggerRef}
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly
@@ -105,7 +99,7 @@ export function NewChatHeaderActionsMenu(): React.ReactNode {
             }}
           >
             <ActionSubmenu
-              label={t("chat.startPage.uiControls")}
+              label={t("common:common.display")}
               icon={
                 <HugeiconsIcon
                   icon={Layers01Icon}
@@ -113,86 +107,48 @@ export function NewChatHeaderActionsMenu(): React.ReactNode {
                   strokeWidth={1.75}
                 />
               }
-              dataTestId="new-chat-ui-controls-submenu"
+              dataTestId="new-chat-ui-settings-submenu"
             >
-              <div className={DROPDOWN_CLASSES.menuControlItem}>
-                <span className="min-w-0 flex-1 truncate">
-                  {t("chat.startPage.inputPosition")}
-                </span>
-                <SegmentedTextPill
-                  size="small"
-                  ariaLabel={t("chat.startPage.inputPosition")}
-                  dataTestId="new-chat-composer-position"
-                  value={composerPosition}
-                  options={[
-                    {
-                      value: CREATOR_COMPOSER_POSITION.BOTTOM,
-                      label: t("chat.startPage.positionBottom"),
-                    },
-                    {
-                      value: CREATOR_COMPOSER_POSITION.MIDDLE,
-                      label: t("chat.startPage.positionMiddle"),
-                    },
-                  ]}
-                  onChange={setComposerPosition}
-                />
-              </div>
-              <div className={DROPDOWN_CLASSES.menuControlItem}>
-                <span className="min-w-0 flex-1 truncate">
-                  {t("chat.startPage.trailPosition")}
-                </span>
-                <SegmentedTextPill
-                  size="small"
-                  ariaLabel={t("chat.startPage.trailPosition")}
-                  dataTestId="new-chat-trail-position"
-                  value={trailPosition}
-                  options={[
-                    { value: "top", label: t("chat.startPage.positionUp") },
-                    {
-                      value: "bottom",
-                      label: t("chat.startPage.positionDown"),
-                    },
-                  ]}
-                  onChange={setTrailPosition}
-                />
-              </div>
-              <div className={DROPDOWN_CLASSES.menuControlItem}>
-                <span className="min-w-0 flex-1 truncate">
-                  {showQuickActionsLabel}
-                </span>
-                <Switch
-                  checked={launchpadActionsVisible}
-                  onCheckedChange={setLaunchpadActionsVisible}
-                  size="small"
-                  ariaLabel={showQuickActionsLabel}
-                  dataTestId="new-chat-show-quick-actions-toggle"
-                />
-              </div>
-              <div className={DROPDOWN_CLASSES.menuControlItem}>
-                <span className="min-w-0 flex-1 truncate">
-                  {showSkillsLabel}
-                </span>
-                <Switch
-                  checked={pinnedActionsVisible}
-                  onCheckedChange={setPinnedActionsVisible}
-                  size="small"
-                  ariaLabel={showSkillsLabel}
-                  dataTestId="new-chat-show-skills-toggle"
-                />
-              </div>
-              <div className={DROPDOWN_CLASSES.menuControlItem}>
-                <span className="min-w-0 flex-1 truncate">
-                  {showCliUpdateLabel}
-                </span>
-                <Switch
-                  checked={cliUpdateAlertsEnabled}
-                  onCheckedChange={setCliUpdateAlertsEnabled}
-                  size="small"
-                  ariaLabel={showCliUpdateLabel}
-                  dataTestId="new-chat-show-cli-update-toggle"
-                />
-              </div>
+              <MenuSwitchRow
+                label={t("chat.startPage.showSpotlight")}
+                checked={launchpadSearchVisible}
+                onCheckedChange={setLaunchpadSearchVisible}
+                dataTestId="new-chat-show-spotlight-toggle"
+              />
+              <div
+                role="separator"
+                className={DROPDOWN_CLASSES.menuGroupSeparator}
+              />
+              <MenuSegmentedRow
+                label={t("chat.startPage.inputPosition")}
+                dataTestId="new-chat-composer-position"
+                value={composerPosition}
+                options={[
+                  {
+                    value: CREATOR_COMPOSER_POSITION.BOTTOM,
+                    label: t("chat.startPage.positionBottom"),
+                  },
+                  {
+                    value: CREATOR_COMPOSER_POSITION.MIDDLE,
+                    label: t("chat.startPage.positionMiddle"),
+                  },
+                ]}
+                onChange={setComposerPosition}
+              />
+              <MenuSwitchRow
+                label={t("chat.startPage.showQuickActions")}
+                checked={launchpadActionsVisible}
+                onCheckedChange={setLaunchpadActionsVisible}
+                dataTestId="new-chat-show-quick-actions-toggle"
+              />
+              <MenuSwitchRow
+                label={t("chat.startPage.showCliUpdate")}
+                checked={cliUpdateAlertsEnabled}
+                onCheckedChange={setCliUpdateAlertsEnabled}
+                dataTestId="new-chat-show-cli-update-toggle"
+              />
             </ActionSubmenu>
+            <SessionInputSettingsSubmenu variant="launchpad" />
           </ActionMenuSurface>,
           document.body
         )}

@@ -259,7 +259,7 @@ export function useCloudSessionRowItemBuilder({
         // Prefer the source/agent brand used by regular sessions. Cloud
         // scope is context, not the session's icon identity.
         icon: sessionIcon,
-        shortcut: relativeTime,
+        trailingLabel: relativeTime,
         trailingElement,
         disabled,
       };

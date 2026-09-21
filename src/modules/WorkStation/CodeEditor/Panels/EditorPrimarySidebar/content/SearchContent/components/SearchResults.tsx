@@ -21,6 +21,7 @@ import React, {
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import { TREE_ROW_HEIGHT, TreeRowBase } from "@src/components/TreeRow";
 import type { TreeRowNode } from "@src/components/TreeRow";
@@ -41,7 +42,6 @@ import {
   COUNT_BADGE,
   getCountBadgeSizeClass,
 } from "@src/config/workstation/tokens";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import { usePrimarySidebarSurface } from "@src/modules/WorkStation/shared/hooks/usePrimarySidebarSurface";
 import {
   searchResultSelectedKeyAtom,
@@ -137,21 +137,11 @@ const FileHeader: React.FC<FileHeaderProps> = React.memo(
         icon: (
           <div className="flex items-center gap-1.5">
             <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-              {isExpanded ? (
-                <HugeiconsIcon
-                  icon={ArrowDown01Icon}
-                  data-icon="chevron-down"
-                  size={14}
-                  className="text-text-3"
-                />
-              ) : (
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  data-icon="chevron-right"
-                  size={14}
-                  className="text-text-3"
-                />
-              )}
+              <DisclosureChevron
+                expanded={isExpanded}
+                size={14}
+                className="text-text-3"
+              />
             </div>
             <FileTypeIcon
               fileName={node.fileName || node.name}
@@ -212,7 +202,6 @@ const MatchLine: React.FC<MatchLineProps> = React.memo(({ node, onClick }) => {
     <div className={`${TREE_ROW_INSET_CLASS} ${SIDEBAR_ROW_GAP_CLASS}`}>
       <Button
         layout="custom"
-        appearance="custom"
         aria-pressed={isSelected}
         className={`flex h-7 w-full cursor-pointer items-center gap-1.5 text-left transition-colors ${getSidebarRowSurface({ selected: isSelected })}`}
         style={getTreeRowPadding(1)}

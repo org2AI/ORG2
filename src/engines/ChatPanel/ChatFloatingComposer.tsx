@@ -2,83 +2,45 @@ import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { SessionFollowUpSuggestion } from "@src/api/services/sessionFollowUpSuggestions";
-import type {
-  AgentOrgMemberIntervention,
-  AgentOrgRunMemberView,
-  AgentOrgRunStatus,
-  ReturnToWorkResult,
-} from "@src/api/tauri/agent";
-import Button from "@src/components/Button";
-import { PILL_CONTROL_IDLE_SURFACE_CLASS } from "@src/components/CompoundPill/config";
 import {
   COMPOSER_BOTTOM_DOCK_PADDING_CLASS,
   COMPOSER_HORIZONTAL_GUTTER_CLASS,
 } from "@src/config/composerStackTokens";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
-import {
-  ChatRetryBanner,
-  toChatRetryKind,
-} from "@src/engines/ChatPanel/components/ChatStatusBanners";
-import { ArrowDown02Icon, HugeiconsIcon } from "@src/icons";
 import type { PendingPlanApproval } from "@src/store/session/planApprovalAtom";
 
 import type { ScrollNavState } from "./ChatHistory";
 import InputArea from "./InputArea";
-import AskQuestionCard from "./InputArea/AskQuestionCard";
-import { ModeSwitchInputCard } from "./InputArea/ModeSwitchCard";
-import PermissionCard from "./InputArea/PermissionCard";
-import ActiveProcesses from "./InputArea/components/ActiveProcesses";
-import AgentOrgInterventionPinBar from "./InputArea/components/AgentOrgInterventionPinBar";
 import CollapsedInlineRow, {
   type InlineSection,
 } from "./InputArea/components/CollapsedInlineRow";
-import CompactFileChanges, {
-  type FileChangeVisibleStats,
-  type FileChangesResult,
-} from "./InputArea/components/CompactFileChanges";
+import type { FileChangeVisibleStats } from "./InputArea/components/CompactFileChanges";
 import QueueEditModeCard from "./InputArea/components/QueueEditModeCard";
 import QueuedMessages from "./InputArea/components/QueuedMessages";
 import { createFileInlineSection } from "./InputArea/hooks/useComposerSections";
 import type { QueueEditInputAreaProps } from "./InputArea/hooks/useQueueEditMode";
-import CreatePlanCard from "./blocks/CreatePlanCard";
+import type CreatePlanCard from "./blocks/CreatePlanCard";
+import type {
+  AgentOrgInterventionView,
+  CanvasPreviewPillView,
+  GroupChatPendingMessageView,
+  StreamRetryInfo,
+} from "./chatFloatingComposerTypes";
+import {
+  ComposerActivityTrackers,
+  ComposerInteractionCards,
+  ComposerScrollToBottomButton,
+  ComposerStatusBanners,
+  GroupChatPendingMessagePill,
+} from "./components/ChatFloatingComposerSections";
 import type {
   CustomMentionOption,
   SubmitOverrideInput,
 } from "./hooks/useInputArea/types";
 
-interface StreamRetryInfo {
-  kind: string;
-  attempt: number;
-  maxAttempts: number;
-}
-
-interface AgentOrgInterventionView {
-  intervention: AgentOrgMemberIntervention | null;
-  member: AgentOrgRunMemberView;
-  runStatus: AgentOrgRunStatus | null;
-  error: string | null;
-  returning: boolean;
-  stopping: boolean;
-  onReturnToWork: () => Promise<ReturnToWorkResult | null>;
-  onStopUserDirectedWork: () => Promise<boolean>;
-}
-
-interface GroupChatPendingMessageView {
-  targetMemberName: string;
-  retryError: string | null;
-  retrying: boolean;
-  onRetry: () => Promise<void>;
-}
-
-interface CanvasPreviewPillView {
-  label: string;
-  onOpen: () => void;
-}
-
 interface ChatFloatingComposerProps {
   composerRef: React.Ref<HTMLDivElement>;
   inputBoxRef?: React.Ref<HTMLDivElement>;
-  chatPanelPosition: "left" | "right";
   sessionId: string;
   inputAreaSessionId: string;
   controlSessionId?: string | null;
@@ -96,19 +58,17 @@ interface ChatFloatingComposerProps {
   onQuestionDataChange: (hasData: boolean) => void;
   onPermissionDataChange: (hasData: boolean) => void;
   onModeSwitchDataChange: (hasData: boolean) => void;
-  queueExpanded: boolean;
   processExpanded: boolean;
   queuedMessages: Parameters<typeof QueuedMessages>[0]["messages"];
   onCancelQueuedMessage: Parameters<typeof QueuedMessages>[0]["onCancel"];
-  onClearQueuedMessages: Parameters<typeof QueuedMessages>[0]["onClear"];
   onSendQueuedMessageNow: Parameters<typeof QueuedMessages>[0]["onSendNow"];
   onReorderQueuedMessages: Parameters<typeof QueuedMessages>[0]["onReorder"];
-  onToggleQueue: () => void;
   onToggleProcess: () => void;
   onProcessVisibleCountChange: (count: number) => void;
   onFilesExpand: () => void;
   filesMenu?: React.ReactNode;
-  initialFileChanges?: FileChangesResult;
+  /** Host-resolved files-pill stats; when set no artifact tracker mounts. */
+  resolvedFileChangeStats?: FileChangeVisibleStats;
   /** Idle-reload signal for the files pill (session/round/idle transitions). */
   filesReloadKey: string;
   groupChatPendingMessage: GroupChatPendingMessageView | null;
@@ -134,7 +94,6 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
   ({
     composerRef,
     inputBoxRef,
-    chatPanelPosition,
     sessionId,
     inputAreaSessionId,
     controlSessionId,
@@ -152,19 +111,16 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
     onQuestionDataChange,
     onPermissionDataChange,
     onModeSwitchDataChange,
-    queueExpanded,
     processExpanded,
     queuedMessages,
     onCancelQueuedMessage,
-    onClearQueuedMessages,
     onSendQueuedMessageNow,
     onReorderQueuedMessages,
-    onToggleQueue,
     onToggleProcess,
     onProcessVisibleCountChange,
     onFilesExpand,
     filesMenu,
-    initialFileChanges,
+    resolvedFileChangeStats,
     filesReloadKey,
     groupChatPendingMessage,
     groupChatViewActive,
@@ -207,42 +163,28 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
       );
     }, []);
 
+    // Host-resolved stats render in the same commit; tracker-reported stats
+    // arrive one effect later.
+    const visibleFileChangeStats = resolvedFileChangeStats ?? fileChangeStats;
+
     const localInlineSections = useMemo<InlineSection[]>(() => {
       const fileSection = createFileInlineSection({
-        fileChangeStats,
+        fileChangeStats: visibleFileChangeStats,
         onFilesExpand,
         filesMenu,
       });
       return fileSection ? [...inlineSections, fileSection] : inlineSections;
-    }, [fileChangeStats, filesMenu, inlineSections, onFilesExpand]);
+    }, [visibleFileChangeStats, filesMenu, inlineSections, onFilesExpand]);
 
     const hasLocalInlineSection =
-      hasAnyInlineSection || fileChangeStats.count > 0;
+      hasAnyInlineSection || visibleFileChangeStats.count > 0;
     const showTopRowPills =
       hasLocalInlineSection ||
       scrollNav?.showFollowAgent ||
       scrollNav?.showAddToConversation ||
       canvasPreview;
     const trailingScrollButton = scrollNav?.showScrollToBottom ? (
-      <Button
-        variant="secondary"
-        appearance="outline"
-        size="small"
-        shape="round"
-        icon={
-          <HugeiconsIcon
-            icon={ArrowDown02Icon}
-            data-icon="arrow-down"
-            size={14}
-          />
-        }
-        iconOnly
-        data-testid="chat-scroll-to-bottom"
-        aria-label={t("common:inbox.scrollToBottom")}
-        title={t("common:inbox.scrollToBottom")}
-        onClick={scrollNav.onScrollToBottom}
-        className={`shrink-0 ${PILL_CONTROL_IDLE_SURFACE_CLASS}`}
-      />
+      <ComposerScrollToBottomButton scrollNav={scrollNav} t={t} />
     ) : null;
 
     return (
@@ -258,127 +200,43 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
         <div
           className={`pointer-events-auto relative z-10 flex w-full flex-col gap-1.5 ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
         >
-          {currentPlanApproval && shouldShowCurrentPlanSurface && (
-            <CreatePlanCard
-              key={`current-plan-${currentPlanApproval.planRevisionId ?? currentPlanApproval.toolCallId ?? currentPlanApproval.planPath}`}
-              content={currentPlanApproval.planContent}
-              title={currentPlanApproval.planTitle}
-              isStreaming={false}
-              toolCallId={currentPlanApproval.toolCallId}
-              planId={currentPlanApproval.planId}
-              planRevisionId={currentPlanApproval.planRevisionId}
-              sessionId={sessionId}
-              surface="current"
-              surfaceState={currentPlanSurfaceState}
-              collapsed={planCollapsed}
-              onCollapse={onPlanCollapse}
-            />
-          )}
-
-          <AskQuestionCard
-            key={`ask-${sessionId}`}
-            collapsed={questionCollapsed}
-            onCollapse={onQuestionCollapse}
-            onHasDataChange={onQuestionDataChange}
-          />
-          <PermissionCard
-            key={`permission-${sessionId}`}
+          <ComposerInteractionCards
             sessionId={sessionId}
-            collapsed={permissionCollapsed}
-            onCollapse={onPermissionCollapse}
-            onHasDataChange={onPermissionDataChange}
-          />
-          <ModeSwitchInputCard
-            key={`mode-switch-tracker-${sessionId}`}
-            collapsed
-            onHasDataChange={onModeSwitchDataChange}
+            currentPlanApproval={currentPlanApproval}
+            shouldShowCurrentPlanSurface={shouldShowCurrentPlanSurface}
+            currentPlanSurfaceState={currentPlanSurfaceState}
+            planCollapsed={planCollapsed}
+            onPlanCollapse={onPlanCollapse}
+            questionCollapsed={questionCollapsed}
+            permissionCollapsed={permissionCollapsed}
+            onQuestionCollapse={onQuestionCollapse}
+            onPermissionCollapse={onPermissionCollapse}
+            onQuestionDataChange={onQuestionDataChange}
+            onPermissionDataChange={onPermissionDataChange}
+            onModeSwitchDataChange={onModeSwitchDataChange}
           />
 
-          {queueExpanded && (
-            <QueuedMessages
-              messages={queuedMessages}
-              onCancel={onCancelQueuedMessage}
-              onClear={onClearQueuedMessages}
-              onSendNow={onSendQueuedMessageNow}
-              onReorder={onReorderQueuedMessages}
-              onToggle={onToggleQueue}
-            />
-          )}
-          {processExpanded && (
-            <ActiveProcesses
-              key={`process-expanded-${sessionId}`}
-              sessionId={sessionId}
-              onToggle={onToggleProcess}
-              onVisibleCountChange={onProcessVisibleCountChange}
-            />
-          )}
-          {!processExpanded && (
-            <ActiveProcesses
-              key={`process-hidden-${sessionId}`}
-              sessionId={sessionId}
-              onToggle={onToggleProcess}
-              onVisibleCountChange={onProcessVisibleCountChange}
-              hidden
-            />
-          )}
-          <CompactFileChanges
-            key={`files-tracker-${inputAreaSessionId}`}
-            sessionIdOverride={inputAreaSessionId}
-            initialData={initialFileChanges}
-            reloadKey={filesReloadKey}
-            onVisibleStatsChange={setFileChangeStats}
+          <ComposerActivityTrackers
+            sessionId={sessionId}
+            inputAreaSessionId={inputAreaSessionId}
+            processExpanded={processExpanded}
+            onToggleProcess={onToggleProcess}
+            onProcessVisibleCountChange={onProcessVisibleCountChange}
+            trackFileChanges={!resolvedFileChangeStats}
+            filesReloadKey={filesReloadKey}
+            onFileChangeStatsChange={setFileChangeStats}
           />
 
           <QueueEditModeCard />
           {groupChatPendingMessage && groupChatViewActive && (
-            <div
-              data-testid="agent-org-group-chat-pending"
-              data-target-name={groupChatPendingMessage.targetMemberName}
-              data-delivery-state={
-                groupChatPendingMessage.retryError ? "unknown" : "pending"
-              }
-              className="bg-background-2 mx-auto flex items-center gap-2 rounded-full border border-solid border-border-2 px-3 py-1 text-[12px] text-text-2 shadow-xs"
-            >
-              {groupChatPendingMessage.retryError ? (
-                <>
-                  <span className="h-1.5 w-1.5 rounded-full bg-warning-6" />
-                  <span>
-                    {t("groupChat.userMessageOutcomeUnknown", {
-                      defaultValue:
-                        "Delivery outcome unknown. Retry with the same IDs.",
-                    })}
-                  </span>
-                  <Button
-                    data-testid="agent-org-group-chat-retry"
-                    variant="secondary"
-                    appearance="outline"
-                    size="mini"
-                    shape="round"
-                    htmlType="button"
-                    loading={groupChatPendingMessage.retrying}
-                    disabled={groupChatPendingMessage.retrying}
-                    onClick={() => void groupChatPendingMessage.onRetry()}
-                  >
-                    {t("common:actions.retry", { defaultValue: "Retry" })}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-6" />
-                  <span>
-                    {t("groupChat.userMessagePending", {
-                      member: groupChatPendingMessage.targetMemberName,
-                      defaultValue: "{{member}} is picking up your message",
-                    })}
-                  </span>
-                </>
-              )}
-            </div>
+            <GroupChatPendingMessagePill
+              groupChatPendingMessage={groupChatPendingMessage}
+              t={t}
+            />
           )}
 
           <InputArea
             omitChatHeader
-            chatPanelPosition={chatPanelPosition}
             sessionId={inputAreaSessionId}
             controlSessionId={controlSessionId}
             onSubmitOverride={onSubmitOverride}
@@ -394,38 +252,24 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
               ) : null
             }
             topRowTrailingContent={trailingScrollButton}
+            composerTray={
+              <QueuedMessages
+                messages={queuedMessages}
+                onCancel={onCancelQueuedMessage}
+                onSendNow={onSendQueuedMessageNow}
+                onReorder={onReorderQueuedMessages}
+              />
+            }
             statusBanners={
-              <>
-                {hasModeSwitch && !modeSwitchCollapsed && (
-                  <ModeSwitchInputCard
-                    key={`mode-switch-status-${sessionId}`}
-                    collapsed={false}
-                    onCollapse={onModeSwitchCollapse}
-                  />
-                )}
-                {agentOrgIntervention && (
-                  <AgentOrgInterventionPinBar
-                    intervention={agentOrgIntervention.intervention}
-                    member={agentOrgIntervention.member}
-                    runStatus={agentOrgIntervention.runStatus}
-                    error={agentOrgIntervention.error}
-                    returning={agentOrgIntervention.returning}
-                    stopping={agentOrgIntervention.stopping}
-                    onReturnToWork={agentOrgIntervention.onReturnToWork}
-                    onStopUserDirectedWork={
-                      agentOrgIntervention.onStopUserDirectedWork
-                    }
-                  />
-                )}
-                {streamRetry && (
-                  <ChatRetryBanner
-                    kind={toChatRetryKind(streamRetry.kind)}
-                    attempt={streamRetry.attempt}
-                    maxAttempts={streamRetry.maxAttempts}
-                  />
-                )}
-                {groupChatPausedBottomContent}
-              </>
+              <ComposerStatusBanners
+                sessionId={sessionId}
+                hasModeSwitch={hasModeSwitch}
+                modeSwitchCollapsed={modeSwitchCollapsed}
+                onModeSwitchCollapse={onModeSwitchCollapse}
+                agentOrgIntervention={agentOrgIntervention}
+                streamRetry={streamRetry}
+                groupChatPausedBottomContent={groupChatPausedBottomContent}
+              />
             }
             followUpSuggestions={followUpSuggestions}
             onFollowUpSuggestionSent={onFollowUpSuggestionSent}

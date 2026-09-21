@@ -10,6 +10,7 @@ import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
 } from "@src/components/Dropdown/tokens";
+import { insertPillFromTabPayload } from "@src/components/dnd/dropTargetUtils";
 import type { SessionLaunchWorkItemContext } from "@src/engines/SessionCore/hooks/session/useSessionCreator/useSessionLaunch/types";
 import {
   LaunchpadActionCard,
@@ -25,7 +26,6 @@ import {
   Link02Icon,
   ListTodoIcon,
 } from "@src/icons";
-import { insertPillFromTabPayload } from "@src/shared/dnd/dropTargetUtils";
 
 export interface WorkItemAttachmentControlProps {
   composerInputRef?: React.RefObject<ComposerInputRef | null>;
@@ -169,8 +169,6 @@ const WorkItemAttachmentControl: React.FC<WorkItemAttachmentControlProps> = ({
     ) : (
       <Button
         ref={triggerRef}
-        variant="secondary"
-        appearance="outline"
         size="small"
         shape="round"
         icon={
@@ -232,8 +230,6 @@ const WorkItemAttachmentControl: React.FC<WorkItemAttachmentControlProps> = ({
               {currentWorkItemContext ? (
                 <Button
                   layout="custom"
-                  appearance="custom"
-                  htmlType="button"
                   className={DROPDOWN_CLASSES.menuActionItem}
                   role="menuitem"
                   onClick={handleRemoveWorkItem}
@@ -253,8 +249,6 @@ const WorkItemAttachmentControl: React.FC<WorkItemAttachmentControlProps> = ({
               ) : null}
               <Button
                 layout="custom"
-                appearance="custom"
-                htmlType="button"
                 className={DROPDOWN_CLASSES.menuActionItem}
                 role="menuitem"
                 onClick={handleOpenPicker}

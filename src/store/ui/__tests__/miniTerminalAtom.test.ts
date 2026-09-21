@@ -1,14 +1,16 @@
 import { createStore } from "jotai";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   activeTerminalIdAtom,
   terminalSessionsAtom,
 } from "@src/store/workstation/codeEditor/terminal";
+import * as tauri from "@src/util/platform/tauri/init";
 
 import {
   MINI_TERMINAL_SESSION_LIMIT,
   closeMiniTerminalAtom,
+  closeMiniTerminalSessionAtom,
   miniTerminalActiveIdAtom,
   miniTerminalClaimedIdsAtom,
   miniTerminalHostMountedAtom,
@@ -188,5 +190,114 @@ describe("mini terminal claims", () => {
     expect(
       saved.sessions.map((session: { isActive: boolean }) => session.isActive)
     ).toEqual([false, true]);
+  });
+});
+
+describe("mini terminal stop lifecycle", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(["resolve", "reject"] as const)(
+    "keeps the claim until session removal when native close will %s",
+    async (result) => {
+      const store = seedStore(["a", "b"]);
+      store.set(openMiniTerminalAtom, "a");
+      let finish!: () => void;
+      const nativeClose = new Promise<void>((resolve, reject) => {
+        finish = () =>
+          result === "resolve"
+            ? resolve()
+            : reject(new Error("PTY already exited"));
+      });
+      vi.spyOn(tauri, "isTauriReady").mockReturnValue(true);
+      const invoke = vi
+        .spyOn(tauri, "invokeTauri")
+        .mockReturnValue(nativeClose);
+      const exposed: string[] = [];
+      const inspect = () => {
+        if (
+          store.get(terminalSessionsAtom).some(({ id }) => id === "a") &&
+          !store.get(miniTerminalClaimedIdsAtom).includes("a")
+        )
+          exposed.push("a");
+      };
+      const unsubClaims = store.sub(miniTerminalClaimedIdsAtom, inspect);
+      const unsubSessions = store.sub(terminalSessionsAtom, inspect);
+      const closing = store.set(closeMiniTerminalSessionAtom, "a");
+      // A second Stop click must not send a second kill while the tab remains.
+      const duplicate = store.set(closeMiniTerminalSessionAtom, "a");
+      try {
+        expect(store.get(miniTerminalClaimedIdsAtom)).toEqual(["a"]);
+        expect(store.get(miniTerminalSuppressedIdsAtom).has("a")).toBe(true);
+        expect(store.get(miniTerminalVisibleAtom)).toBe(true);
+        expect(invoke).toHaveBeenCalledTimes(1);
+      } finally {
+        finish();
+        await Promise.all([closing, duplicate]);
+        unsubClaims();
+        unsubSessions();
+      }
+      expect(exposed).toEqual([]);
+      expect(store.get(terminalSessionsAtom).map(({ id }) => id)).toEqual([
+        "b",
+      ]);
+      expect(store.get(miniTerminalClaimedIdsAtom)).toEqual([]);
+      expect(store.get(miniTerminalVisibleAtom)).toBe(false);
+
+      // Pending state belongs to this operation, not to the reusable ID.
+      store.set(terminalSessionsAtom, (sessions) => [
+        ...sessions,
+        { id: "a", name: "a", isActive: false },
+      ]);
+      store.set(openMiniTerminalAtom, "a");
+      invoke.mockResolvedValue(undefined);
+      await store.set(closeMiniTerminalSessionAtom, "a");
+      expect(invoke).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it("scopes pending kills to each store", async () => {
+    const stores = [seedStore(["a", "b"]), seedStore(["a", "b"])];
+    let finish!: () => void;
+    vi.spyOn(tauri, "isTauriReady").mockReturnValue(true);
+    const invoke = vi.spyOn(tauri, "invokeTauri").mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const closing = stores.map((store) => {
+      store.set(openMiniTerminalAtom, "a");
+      return store.set(closeMiniTerminalSessionAtom, "a");
+    });
+    try {
+      expect(invoke).toHaveBeenCalledTimes(2);
+    } finally {
+      finish();
+      await Promise.all(closing);
+    }
+    for (const store of stores) {
+      expect(store.get(miniTerminalClaimedIdsAtom)).toEqual([]);
+      expect(store.get(terminalSessionsAtom).map(({ id }) => id)).toEqual([
+        "b",
+      ]);
+    }
+  });
+
+  it("preserves a newly opened dock session when an earlier kill completes", async () => {
+    const store = seedStore(["a", "b"]);
+    store.set(openMiniTerminalAtom, "a");
+    let finish!: () => void;
+    vi.spyOn(tauri, "isTauriReady").mockReturnValue(true);
+    vi.spyOn(tauri, "invokeTauri").mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const closing = store.set(closeMiniTerminalSessionAtom, "a");
+    store.set(openMiniTerminalAtom, "b");
+    finish();
+    await closing;
+    expect(store.get(miniTerminalClaimedIdsAtom)).toEqual(["b"]);
+    expect(store.get(miniTerminalActiveIdAtom)).toBe("b");
+    expect(store.get(miniTerminalVisibleAtom)).toBe(true);
   });
 });

@@ -32,6 +32,7 @@ import {
   nativeConversationItemsEqual,
   nativeConversationMismatch,
 } from "./nativeConversationSemantics";
+import { retryLineageOf } from "./queuedRetryLineage";
 
 export {
   MAX_NATIVE_CONVERSATION_ITEMS,
@@ -110,9 +111,21 @@ export async function materializeNativeConversation(params: {
 }): Promise<{ events: SessionEvent[]; receipt: NativeMaterializationReceipt }> {
   const { items, fidelity } = projectNativeConversation(params.timeline);
   if (params.timeline.length > 0 && items.length === 0) {
-    throw new Error(
-      "conversation has no portable native role/tool transcript to materialize"
+    // The first turn can fail empty and then be explicitly retried. Its
+    // proved superseded prompt remains in audit history, but there is no
+    // effective prefix to materialize. A lineage marker alone, or genuinely
+    // unportable history, is not evidence for bypassing this integrity gate.
+    const withoutRetryLineage = params.timeline.filter(
+      (event) => retryLineageOf(event) === null
     );
+    const supersededAllPortableHistory =
+      withoutRetryLineage.length < params.timeline.length &&
+      projectNativeConversationItems(withoutRetryLineage).length > 0;
+    if (!supersededAllPortableHistory) {
+      throw new Error(
+        "conversation has no portable native role/tool transcript to materialize"
+      );
+    }
   }
   // With no history there is nothing to migrate. Leave the fresh target
   // unbound so its normal first send creates the provider-native session.

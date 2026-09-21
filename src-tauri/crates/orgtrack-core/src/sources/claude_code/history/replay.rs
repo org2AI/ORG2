@@ -9,8 +9,13 @@ use serde_json::{json, Value};
 use crate::sources::imported_history::{self, ImportedToolCall};
 
 use super::discovery::{claude_file_stem_from_session_id, resolve_claude_session_path};
-use super::tools::{apply_claude_edit_diff, apply_claude_question_result, claude_tool_call_from_item};
-use super::types::{is_claude_compact_summary, is_harness_injected_user_line, ClaudeJsonlLine};
+use super::tools::{
+    apply_claude_edit_diff, apply_claude_question_result, claude_tool_call_from_item,
+};
+use super::types::{
+    is_claude_compact_summary, is_harness_injected_user_line, ClaudeControlEnvelope,
+    ClaudeJsonlLine,
+};
 use super::CLAUDE_CODE_PROVIDER_SLUG;
 
 pub fn load_claude_code_history_for_session(
@@ -76,6 +81,7 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
     let mut forced_first_user_id = forced_first_user_id;
     let mut pending_compact_boundary: Option<(String, String)> = None;
     let mut awaiting_local_command_output = false;
+    let mut control_envelope = ClaudeControlEnvelope::default();
 
     for line in reader.lines() {
         let line = line.map_err(|err| format!("Failed to read Claude history line: {err}"))?;
@@ -87,6 +93,9 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
             Ok(parsed) => parsed,
             Err(_) => continue,
         };
+        if control_envelope.observe(&parsed) {
+            continue;
+        }
         let created_at = parsed
             .timestamp
             .as_deref()
@@ -212,6 +221,24 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
                                 &call,
                                 &output,
                             );
+                            let images = message
+                                .content
+                                .as_array()
+                                .into_iter()
+                                .flatten()
+                                .filter(|part| {
+                                    part.get("tool_use_id").and_then(Value::as_str)
+                                        == Some(&call_id)
+                                })
+                                .flat_map(|part| {
+                                    imported_history::images::content_image_refs(
+                                        part.get("content"),
+                                    )
+                                })
+                                .collect::<Vec<_>>();
+                            if !images.is_empty() {
+                                chunk.result["images"] = json!(images);
+                            }
                             if is_error {
                                 chunk.result["success"] = Value::Bool(false);
                                 chunk.result["status"] = Value::String("failed".to_string());
@@ -221,7 +248,11 @@ fn visit_claude_code_history_from_reader<R: BufRead>(
                             // `structuredPatch`; attach it as the exact diff so
                             // the edit card renders the real change.
                             apply_claude_edit_diff(&mut chunk, parsed.tool_use_result.as_ref());
-                            apply_claude_question_result(&mut chunk, parsed.tool_use_result.as_ref(), is_error);
+                            apply_claude_question_result(
+                                &mut chunk,
+                                parsed.tool_use_result.as_ref(),
+                                is_error,
+                            );
                             chunks.push(chunk);
                             sequence += 1;
                         }

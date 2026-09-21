@@ -1,6 +1,7 @@
 import React, { type ReactNode } from "react";
 
 import Button from "@src/components/Button";
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import { TreeRowActionGroup } from "@src/components/TreeRow/TreeRowActionGroup";
 import {
   SIDEBAR_ROW_GAP_CLASS,
@@ -9,7 +10,6 @@ import {
   getTreeRowPadding,
 } from "@src/components/TreeRow/config";
 import { HEADER_CLASSES } from "@src/config/workstation/tokens";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
 interface SidebarSectionHeaderProps {
   title: ReactNode;
@@ -59,10 +59,9 @@ export function SidebarSectionHeader({
     <>
       {onToggle && (
         <span className="flex w-3.5 shrink-0 items-center justify-center">
-          <HugeiconsIcon
-            icon={expanded ? ArrowDown01Icon : ArrowRight01Icon}
+          <DisclosureChevron
+            expanded={Boolean(expanded)}
             size={14}
-            data-icon={expanded ? "chevron-down" : "chevron-right"}
             className={warning ? "text-warning-6" : "text-text-3"}
           />
         </span>
@@ -92,7 +91,6 @@ export function SidebarSectionHeader({
         {onToggle ? (
           <Button
             layout="custom"
-            appearance="custom"
             className="flex h-full min-w-0 flex-1 items-center gap-1.5 text-left"
             aria-expanded={expanded}
             data-testid={toggleTestId}

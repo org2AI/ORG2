@@ -148,7 +148,6 @@ export function PermissionCardBody({
             </Button>
             {showAlwaysAllow && (
               <Button
-                variant="secondary"
                 size="mini"
                 onClick={onAlwaysAllow ?? noop}
                 disabled={disabled}

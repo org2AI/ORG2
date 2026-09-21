@@ -3,7 +3,10 @@
 import { createRoot } from "react-dom/client";
 
 import { initializeSharedServiceAuthStorage } from "@src/api/http/auth/sharedAuthStorage";
-import { configureIdeServerForIdentifier } from "@src/config/ideServer";
+import {
+  configureIdeServerForIdentifier,
+  configureIdeServerToken,
+} from "@src/config/ideServer";
 import {
   applyHostDesktopWindowChromeRadius,
   applyWindowsNativeChromeAttribute,
@@ -164,6 +167,12 @@ async function initializeRuntimeInstanceIdentity(): Promise<void> {
     configureCloudAuthCallbackForIdentifier(identifier);
   } catch {
     // Browser/unit-test builds retain the compile-time/default callback.
+  }
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    configureIdeServerToken(await invoke<string>("ide_server_token"));
+  } catch {
+    // Browser/unit-test builds never reach the local IDE server.
   }
 }
 

@@ -39,8 +39,12 @@ export function StopConfirmModal({
       onClose={handleCancel}
       bodyClassName="px-5 py-4"
       footer={
-        <div className="flex items-center justify-end gap-2 px-3 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 px-3 py-3">
           <Button
+            style={{
+              fontSize: "var(--mobile-type-control-size)",
+              lineHeight: "var(--mobile-type-control-leading)",
+            }}
             variant="tertiary"
             onClick={handleCancel}
             disabled={confirming}
@@ -48,7 +52,12 @@ export function StopConfirmModal({
             {t("stopConfirm.cancel")}
           </Button>
           <Button
-            variant="danger"
+            style={{
+              fontSize: "var(--mobile-type-control-size)",
+              lineHeight: "var(--mobile-type-control-leading)",
+            }}
+            variant="primary"
+            tone="danger"
             onClick={handleConfirm}
             loading={confirming}
             data-modal-primary-action
@@ -58,11 +67,16 @@ export function StopConfirmModal({
         </div>
       }
     >
-      <div className="text-[13px] leading-5 text-text-3">
+      <div className="mobile-type-caption text-text-3">
         {t("stopConfirm.body")}
       </div>
       {failed ? (
-        <PageNotice type="danger" role="alert" className="mt-3">
+        <PageNotice
+          type="danger"
+          role="alert"
+          className="mt-3"
+          bodyClassName="mobile-type-secondary"
+        >
           {t("stopConfirm.failed")}
         </PageNotice>
       ) : null}

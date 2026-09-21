@@ -71,7 +71,6 @@ import {
   shouldShowExternalHistoryContinuationComposer,
   shouldShowMainChatComposer,
 } from "./chatViewComposerVisibility";
-import { resolveInitialFileChanges } from "./chatViewFileChanges";
 import type { ConversationTargetBinding } from "./conversationTargetSelection";
 import { useConversationSubmitRouter } from "./hooks/conversationSubmit/useConversationSubmitRouter";
 import { useBrowserAddToConversationAction } from "./hooks/useBrowserAddToConversationAction";
@@ -79,10 +78,10 @@ import { useChatViewAgentOrgSurface } from "./hooks/useChatViewAgentOrgSurface";
 import { useChatViewAgentStationDiff } from "./hooks/useChatViewAgentStationDiff";
 import { useChatViewFilesMenu } from "./hooks/useChatViewFilesMenu";
 import { useChatViewFloatingComposerInset } from "./hooks/useChatViewFloatingComposerInset";
-import { useChatViewOrgtrackSummary } from "./hooks/useChatViewOrgtrackSummary";
 import { useChatViewPipelineClaim } from "./hooks/useChatViewPipelineClaim";
 import { useChatViewPlanPillState } from "./hooks/useChatViewPlanPillState";
 import { useChatViewScrollToBottom } from "./hooks/useChatViewScrollToBottom";
+import { useChatViewSessionImpact } from "./hooks/useChatViewSessionImpact";
 import { useConversationTargetBinding } from "./hooks/useConversationTargetBinding";
 import { useFollowAgent } from "./hooks/useFollowAgent";
 import {
@@ -105,7 +104,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
     conversationTargetBinding,
     displayMode = "full",
     turnPaginationEnabled = true,
-    position = "right",
     surfaceBgClass = "bg-chat-pane",
     readOnly = false,
     secondary = false,
@@ -123,7 +121,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
     );
 
     const isCursorIde = isCursorIdeSession(sessionId);
-    const isExternalHistory = isExternalHistorySession(sessionId);
     const isImportedHistory = isImportedHistorySession(sessionId);
     const isReadOnlySurface = readOnly || isImportedHistory;
 
@@ -148,18 +145,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       hydratedSessionIdsRef.current.add(sessionId);
       void loadSessions({ forceRefresh: true });
     }, [currentSession?.productMode, isImportedHistory, sessionId]);
-    const orgtrackSummary = useChatViewOrgtrackSummary(sessionId);
-
-    const initialFileChanges = useMemo(
-      () =>
-        resolveInitialFileChanges({
-          currentSession,
-          isCursorIde,
-          isExternalHistory,
-          orgtrackSummary,
-        }),
-      [currentSession, isCursorIde, isExternalHistory, orgtrackSummary]
-    );
 
     // Backend `agent_session_list_workspaces` only resolves sessions whose
     // runtime is currently attached. Historical sessions (status
@@ -241,6 +226,15 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       [sessionId]
     );
     const followUpEvents = useAtomValue(followUpEventsAtom);
+    const { orgtrackSummary, resolvedFileChangeStats } =
+      useChatViewSessionImpact({
+        sessionId,
+        isImportedHistory,
+        session: currentSession,
+        assistantFingerprint: isImportedHistory
+          ? latestCompletedAssistantFingerprint(followUpEvents)
+          : null,
+      });
     const showCurrentPlanSurfaceAtom = useMemo(
       () =>
         selectAtom(
@@ -313,8 +307,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       handleAgentOrgMemberSessionJump,
       handleMainComposerSubmitOverride,
       cancelQueuedMessage,
-      queueTailKey,
-      handleClearSessionQueue,
       handleReorderSessionQueue,
       handleSendNow,
       queueEditProps,
@@ -391,17 +383,13 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       collapsePermission,
       collapseModeSwitch,
       collapsePlan,
-      queueExpanded,
       processExpanded,
-      toggleQueue,
       toggleProcess,
       hasAny,
       inlineSections,
       setProcessVisibleCount,
     } = useComposerSections({
       sessionId,
-      queueCount: sessionMessageQueue.length,
-      queueTailKey,
       hasQuestion,
       hasPermission,
       hasModeSwitch,
@@ -444,7 +432,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         showMainComposer,
         composerRef: setMeasuredFloatingComposerRef,
         inputBoxRef,
-        chatPanelPosition: position,
         planCollapsed,
         onPlanCollapse: collapsePlan,
         questionCollapsed,
@@ -456,19 +443,16 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         onQuestionDataChange: setHasQuestion,
         onPermissionDataChange: setHasPermission,
         onModeSwitchDataChange: setHasModeSwitch,
-        queueExpanded,
         processExpanded,
         queuedMessages: sessionMessageQueue,
         onCancelQueuedMessage: cancelQueuedMessage,
-        onClearQueuedMessages: handleClearSessionQueue,
         onSendQueuedMessageNow: handleSendNow,
         onReorderQueuedMessages: handleReorderSessionQueue,
-        onToggleQueue: toggleQueue,
         onToggleProcess: toggleProcess,
         onProcessVisibleCountChange: setProcessVisibleCount,
         onFilesExpand: openAgentStationDiff,
         filesMenu,
-        initialFileChanges,
+        resolvedFileChangeStats,
         groupChatPendingMessage,
         groupChatViewActive,
         hasAnyInlineSection: hasAny,
@@ -496,7 +480,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         inputAreaSessionId,
         showMainComposer,
         setMeasuredFloatingComposerRef,
-        position,
         planCollapsed,
         collapsePlan,
         questionCollapsed,
@@ -505,19 +488,16 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         collapseQuestion,
         collapsePermission,
         collapseModeSwitch,
-        queueExpanded,
         processExpanded,
         sessionMessageQueue,
         cancelQueuedMessage,
-        handleClearSessionQueue,
         handleSendNow,
         handleReorderSessionQueue,
-        toggleQueue,
         toggleProcess,
         setProcessVisibleCount,
         openAgentStationDiff,
         filesMenu,
-        initialFileChanges,
+        resolvedFileChangeStats,
         groupChatPendingMessage,
         groupChatViewActive,
         currentAgentOrgMember,
@@ -606,7 +586,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                     handleRetryGroupDelivery={handleRetryGroupDelivery}
                     agentMessageClampEligible={agentMessageClampEligible}
                     surfaceBgClass={surfaceBgClass}
-                    position={position}
                     currentAgentOrgMember={currentAgentOrgMember}
                     agentOrgRunView={agentOrgRunView}
                     agentOrgRunViewError={agentOrgRunViewError}

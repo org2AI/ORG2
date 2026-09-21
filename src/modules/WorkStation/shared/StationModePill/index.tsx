@@ -45,8 +45,7 @@ const IconSwitchButton: React.FC<IconSwitchButtonProps> = ({
     >
       <span className="inline-flex">
         <Button
-          appearance={selected ? "solid" : "ghost"}
-          variant={selected ? "primary" : "secondary"}
+          variant={selected ? "primary" : "tertiary"}
           size="mini"
           shape="round"
           iconOnly
@@ -83,7 +82,7 @@ const StationModePill: React.FC = () => {
 
   return (
     <div
-      className="flex items-center gap-px rounded-[100px] border border-border-2 bg-fill-1 p-0.5"
+      className="flex h-7 items-center gap-px rounded-[100px] border border-border-2 bg-fill-1 p-px"
       data-tour-target={GENERAL_LAYOUT_TOUR_TARGETS.stationModePill}
     >
       <IconSwitchButton

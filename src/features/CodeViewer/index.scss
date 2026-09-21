@@ -319,7 +319,7 @@ $font-mono: var(
     &,
     * {
       &::selection {
-        background: var(--color-fill-2);
+        background: var(--text-selection, var(--color-primary-2));
         color: var(--color-text-1);
       }
     }
@@ -545,43 +545,6 @@ $font-mono: var(
         padding-left: 12px;
       }
     }
-
-    // Context lines - no border
-    &.diff-line-context {
-      border-left: 2px solid transparent;
-      padding-left: 0;
-
-      .diff-line-content {
-        padding-left: 12px;
-      }
-    }
-  }
-}
-
-// Empty state
-.modern-diff-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
-  color: var(--color-text-3);
-
-  &-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-  }
-
-  &-text {
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  &-subtext {
-    font-size: 12px;
-    margin-top: 4px;
-    opacity: 0.7;
   }
 }
 
@@ -595,10 +558,6 @@ $font-mono: var(
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.diff-line-context {
-  animation: expand-in 0.2s ease-out;
 }
 
 // ============================================
@@ -676,7 +635,7 @@ $font-mono: var(
     &,
     * {
       &::selection {
-        background: var(--color-fill-2);
+        background: var(--text-selection, var(--color-primary-2));
         color: var(--color-text-1);
       }
     }

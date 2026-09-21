@@ -17,6 +17,7 @@ import Button from "@src/components/Button";
 import PersonAvatar from "@src/components/PersonAvatar";
 import { Placeholder } from "@src/components/Placeholder";
 import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
+import { ActivityHeaderActionButton } from "@src/features/GitHubWork/ActivityTimeline";
 import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
   ArrowLeft01Icon,
@@ -31,7 +32,6 @@ import {
   Tick01Icon,
 } from "@src/icons";
 import GitCommitDetailContent from "@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/GitCommitDetailContent";
-import { ActivityHeaderActionButton } from "@src/modules/shared/components/ActivityTimeline";
 import { copyText } from "@src/util/data/clipboard";
 import { formatDate, toIntlLocaleTag } from "@src/util/data/formatters/date";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
@@ -198,8 +198,6 @@ function PrCommitCard({
     <article className="group flex min-w-0 items-center overflow-hidden rounded-xl border border-border-1 bg-primary-container transition-colors hover:border-border-2">
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         className="min-w-0 flex-1 px-3 py-3 text-left"
         onClick={() => onSelect(commit)}
         title={commit.message || commit.summary}
@@ -383,9 +381,7 @@ export const PrCommitsTab: React.FC<PrCommitsTabProps> = ({
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="flex shrink-0 items-center gap-2 border-b border-border-1 px-3 py-2">
           <Button
-            htmlType="button"
             variant="tertiary"
-            appearance="ghost"
             size="mini"
             icon={
               <HugeiconsIcon

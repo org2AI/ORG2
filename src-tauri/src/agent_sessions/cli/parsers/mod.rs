@@ -128,7 +128,7 @@ pub(crate) fn canonicalize_cli_error_message(message: &str) -> String {
         normalized = &normalized[..cutoff];
     }
 
-    normalized.trim().to_string()
+    terminal::redaction::redact_terminal_text(normalized.trim())
 }
 
 /// Trait for parsing a CLI agent's stdout line by line.

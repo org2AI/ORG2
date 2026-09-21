@@ -12,6 +12,8 @@ export function buildMobileWsUrl(config: MobileConnectionConfig): string {
     url.searchParams.set("token", config.deviceToken.trim());
     if (config.pairingCode?.trim()) {
       url.searchParams.set("pairingCode", config.pairingCode.trim());
+    } else {
+      url.searchParams.delete("pairingCode");
     }
     if (config.deviceLabel?.trim()) {
       url.searchParams.set("deviceLabel", config.deviceLabel.trim());

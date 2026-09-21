@@ -132,7 +132,6 @@ export const EditableStyleRow: React.FC<EditableStyleRowProps> = memo(
           <Button
             variant="tertiary"
             size="sidebar"
-            appearance="soft"
             icon={
               copied ? (
                 <HugeiconsIcon

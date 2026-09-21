@@ -7,6 +7,7 @@
  * All functions here are pure or depend only on stable external APIs
  * (no React hooks, no atoms).
  */
+import { retryLineageEvents } from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import {
@@ -139,8 +140,8 @@ export async function loadOwnSessionInitialEvents(
   // Both registered-agent and not-yet-registered imports use this loader.
   // Round windows omit local delivery sidecars; restore them here rather
   // than making adapter registration determine whether Retry is visible.
-  const failedProjection = await loadFailedUserDeliveryProjection(sessionId);
-  return mergeFailedUserDeliveryProjection(history, failedProjection);
+  const projection = await loadLocalHistoryProjection(sessionId);
+  return mergeLocalHistoryProjection(history, projection, sessionId);
 }
 
 /**
@@ -148,12 +149,19 @@ export async function loadOwnSessionInitialEvents(
  * acceptance. EventStore persists that one terminal delivery projection so
  * Retry/Edit remains visible after restart; merge only those rows back into
  * the UI history. Pending dispatch still belongs to the durable queue and
- * accepted turns still belong to the provider transcript.
+ * accepted turns still belong to the provider transcript. Retry lineage is
+ * durable control metadata too: dropping it during native replacement revives
+ * superseded prompts even though canonical continuation excludes them.
  */
-export function mergeFailedUserDeliveryProjection(
+export function mergeLocalHistoryProjection(
   history: readonly SessionEvent[],
-  projected: readonly SessionEvent[]
+  projected: readonly SessionEvent[],
+  sessionId: string
 ): SessionEvent[] {
+  const lineage = retryLineageEvents(projected).filter(
+    (event) => event.sessionId === sessionId
+  );
+  const lineageIds = new Set(lineage.map((event) => event.id));
   const historyIds = new Set(history.map((event) => event.id));
   const failed = projected.filter(
     (event) =>
@@ -163,9 +171,13 @@ export function mergeFailedUserDeliveryProjection(
       typeof event.result?.turnIntentId === "string" &&
       event.result.turnIntentId.length > 0
   );
-  if (failed.length === 0) return history as SessionEvent[];
+  if (failed.length === 0 && lineage.length === 0) {
+    return history as SessionEvent[];
+  }
 
-  const merged = [...history];
+  // The cached control row is the durable latest verdict. Replace a stale
+  // same-id window copy, while retaining every provider-native audit event.
+  const merged = history.filter((event) => !lineageIds.has(event.id));
   for (const event of failed) {
     const insertAt = merged.findIndex(
       (candidate) => candidate.createdAt > event.createdAt
@@ -173,22 +185,17 @@ export function mergeFailedUserDeliveryProjection(
     if (insertAt < 0) merged.push(event);
     else merged.splice(insertAt, 0, event);
   }
-  return merged;
+  return [...merged, ...lineage];
 }
 
-async function loadFailedUserDeliveryProjection(
+async function loadLocalHistoryProjection(
   sessionId: string
 ): Promise<SessionEvent[]> {
   // Avoid cache_load_session_events' provider fallback when no SQLite rows
   // exist; a large native transcript must be parsed exactly once per load.
   const metadata = await getSessionMetadata(sessionId);
   if (!metadata || metadata.eventCount === 0) return [];
-  const cached = await loadEvents(sessionId);
-  return cached.filter(
-    (event) =>
-      isSyntheticUserInputEvent(event) &&
-      event.result?.deliveryStatus === "failed"
-  );
+  return loadEvents(sessionId);
 }
 
 export async function loadPersistedHistory(
@@ -205,9 +212,9 @@ export async function loadPersistedHistory(
   }
   const history = await adapter.loadHistory(sessionId, signal);
   if (signal.aborted || adapter.category !== "cli") return history;
-  const failedProjection = await loadFailedUserDeliveryProjection(sessionId);
+  const projection = await loadLocalHistoryProjection(sessionId);
   if (signal.aborted) return [];
-  return mergeFailedUserDeliveryProjection(history, failedProjection);
+  return mergeLocalHistoryProjection(history, projection, sessionId);
 }
 
 export async function hydrateSessionStoreBeforeDisplay(

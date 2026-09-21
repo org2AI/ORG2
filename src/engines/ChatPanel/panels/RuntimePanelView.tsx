@@ -1,6 +1,6 @@
 import React from "react";
 
-import RuntimeDataSourcePanel from "@src/modules/shared/dataSource";
+import RuntimeDataSourcePanel from "@src/features/RuntimeDataSource";
 
 /** First-class Runtime surface: usage, quota, local sources, hooks, and assets. */
 export default function RuntimePanelView(): React.ReactElement {

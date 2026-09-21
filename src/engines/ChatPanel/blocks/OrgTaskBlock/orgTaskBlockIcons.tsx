@@ -14,7 +14,7 @@ import type { OrgTaskAction } from "./orgTaskBlockTypes";
 
 /**
  * Resolve the header icon from the Rust tool registry (`task_create`
- * → `clipboard-copy`, `task_update` → `clipboard-pen`). Keeping this in
+ * → `clipboard-copy`, `task_update` → `calendar-sync`). Keeping this in
  * sync with Rust `icon_id` per the frontend ↔ backend alignment rule —
  * we deliberately do not hardcode glyph bindings here.
  */

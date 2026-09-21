@@ -12,10 +12,10 @@
 import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { getToolIcon } from "@src/config/toolIcons";
 import ToolUsageBadge from "@src/engines/ChatPanel/blocks/ToolCallBlock/ToolUsageBadge";
 import { StackedBlock } from "@src/engines/ChatPanel/blocks/primitives";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { HugeiconsIcon, WaypointsIcon } from "@src/icons";
 
 import type { ActionSummaryCategory } from "../../ChatHistory/chatItemPipeline/classifiers";
 import type { ActionSummaryEntry } from "../../ChatHistory/chatItemPipeline/types";
@@ -125,14 +125,7 @@ const ActionSummaryGroup: React.FC<ActionSummaryGroupProps> = ({
     >
       <StackedBlock
         items={orderedItems}
-        icon={
-          <HugeiconsIcon
-            icon={WaypointsIcon}
-            data-icon="waypoints"
-            size={14}
-            className="text-text-2"
-          />
-        }
+        icon={getToolIcon("read_file")}
         label={t("tools.explore")}
         groupSummary={groupSummary}
         defaultCollapsed={closedByBoundary}

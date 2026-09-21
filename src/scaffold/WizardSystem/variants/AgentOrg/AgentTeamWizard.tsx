@@ -3,9 +3,10 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import { SECTION_GAP_CLASSES } from "@src/components/layout/Section";
+import { DETAIL_PANEL_TOKENS } from "@src/components/layout/blocks";
 import type { TeamMember } from "@src/modules/MainApp/AgentOrgs/components/TeamMemberTable";
 import { buildAgentOptions } from "@src/modules/MainApp/AgentOrgs/components/org/config";
-import "@src/modules/MainApp/AgentOrgs/components/org/index.css";
 import { builtInAgentsAtom } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
 import {
   type AgentDefinition,
@@ -13,8 +14,6 @@ import {
   type OrgDefinition,
   type PlanApprovalPolicy,
 } from "@src/modules/MainApp/AgentOrgs/types";
-import { SECTION_GAP_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
-import { DETAIL_PANEL_TOKENS } from "@src/modules/shared/layouts/blocks";
 import {
   WizardShell,
   WizardStepLayout,
@@ -138,8 +137,6 @@ const AgentTeamWizard: React.FC<AgentTeamWizardProps> = ({
         actions={
           <>
             <Button
-              variant="secondary"
-              size="small"
               data-testid="agent-orgs-org-wizard-cancel-button"
               onClick={onCancel}
             >
@@ -147,7 +144,6 @@ const AgentTeamWizard: React.FC<AgentTeamWizardProps> = ({
             </Button>
             <Button
               variant="primary"
-              size="small"
               disabled={!canSave}
               data-testid="agent-orgs-org-wizard-save-button"
               onClick={handleSave}

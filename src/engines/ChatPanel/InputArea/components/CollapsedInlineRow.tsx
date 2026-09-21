@@ -19,12 +19,8 @@ import {
 import Dropdown from "@src/components/Dropdown";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
-import {
-  Add01Icon,
-  BrushCleaningIcon,
-  HugeiconsIcon,
-  Layout01Icon,
-} from "@src/icons";
+import { INPUT_AREA_PILL_MENU_GAP } from "@src/config/inputAreaTokens";
+import { Add01Icon, CleanIcon, HugeiconsIcon, Layout01Icon } from "@src/icons";
 
 import type { ScrollNavState } from "../../ChatHistory";
 
@@ -70,7 +66,7 @@ function renderSectionContent(section: InlineSection) {
 function getButtonClassName(section: InlineSection, menuOpen: boolean) {
   const primaryClassName =
     section.variant === "primary" ? "border-primary-5! text-primary-6!" : "";
-  return `${pillControlStateClass(section.active || menuOpen)} ${primaryClassName}`.trim();
+  return `${pillControlStateClass(section.active || menuOpen, "background", "border")} ${primaryClassName}`.trim();
 }
 
 const CollapsedInlineRow: React.FC<CollapsedInlineRowProps> = memo(
@@ -99,12 +95,10 @@ const CollapsedInlineRow: React.FC<CollapsedInlineRowProps> = memo(
                 />
               }
               position="top"
-              mouseEnterDelay={250}
+              kind="button"
               framedPanel
             >
               <Button
-                variant="secondary"
-                appearance="outline"
                 size="small"
                 shape="round"
                 icon={
@@ -124,14 +118,12 @@ const CollapsedInlineRow: React.FC<CollapsedInlineRowProps> = memo(
               </Button>
             </Tooltip>
             <Button
-              variant="secondary"
-              appearance="outline"
               size="small"
               shape="round"
               icon={
                 <HugeiconsIcon
-                  icon={BrushCleaningIcon}
-                  data-icon="brush-cleaning"
+                  icon={CleanIcon}
+                  data-icon="clean"
                   size={13}
                   strokeWidth={2}
                 />
@@ -152,8 +144,6 @@ const CollapsedInlineRow: React.FC<CollapsedInlineRowProps> = memo(
           const button = (
             <Button
               key={section.key}
-              variant="secondary"
-              appearance="outline"
               size="small"
               shape="round"
               icon={section.icon}
@@ -181,7 +171,8 @@ const CollapsedInlineRow: React.FC<CollapsedInlineRowProps> = memo(
             <Dropdown
               key={section.key}
               trigger="click"
-              position="top"
+              position="top-start"
+              gap={INPUT_AREA_PILL_MENU_GAP}
               avoidViewportOverflow
               getPopupContainer={() => document.body}
               droplist={droplist}
@@ -197,8 +188,6 @@ const CollapsedInlineRow: React.FC<CollapsedInlineRowProps> = memo(
 
         {canvasPreview && (
           <Button
-            variant="secondary"
-            appearance="outline"
             size="small"
             shape="round"
             icon={
@@ -226,13 +215,11 @@ const CollapsedInlineRow: React.FC<CollapsedInlineRowProps> = memo(
               />
             }
             position="top"
-            mouseEnterDelay={250}
+            kind="button"
             framedPanel
           >
             <span className="inline-flex">
               <Button
-                variant="secondary"
-                appearance="outline"
                 size="small"
                 shape="round"
                 onClick={scrollNav!.onFollowAgent}

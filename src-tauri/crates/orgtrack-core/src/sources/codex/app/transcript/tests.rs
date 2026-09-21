@@ -11,6 +11,74 @@ use super::{
 };
 
 #[test]
+fn codex_terminal_error_receipt_has_provenance_without_becoming_assistant_content() {
+    // Shared with the TS settled-tail/projection/queue integration tests. The
+    // real task_complete.error envelope must produce this exact contract.
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("../../../fixtures/codex_terminal_error.json")).unwrap();
+    let dir = std::env::temp_dir().join(format!(
+        "orgii-codex-terminal-receipt-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("rollout.jsonl");
+    let rows = fixture["rollout"].as_array().unwrap();
+    let lines = rows
+        .iter()
+        .map(|row| row.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&path, format!("{lines}\n")).unwrap();
+    let chunks = load_codex_app_from_path("runner", &path).unwrap();
+    let error = chunks
+        .iter()
+        .find(|chunk| chunk.action_type == "error")
+        .unwrap();
+    let expected = &fixture["diagnostic"];
+    assert_eq!(error.chunk_id, expected["id"].as_str().unwrap());
+    assert_eq!(error.action_type, expected["actionType"].as_str().unwrap());
+    assert_eq!(error.function, expected["functionName"].as_str().unwrap());
+    assert_eq!(error.args, expected["args"]);
+    assert_eq!(error.result, expected["result"]);
+    let lifecycle = chunks.last().unwrap();
+    assert_eq!(
+        lifecycle.action_type,
+        fixture["failedLifecycle"]["actionType"].as_str().unwrap()
+    );
+    assert_eq!(
+        lifecycle.function,
+        fixture["failedLifecycle"]["functionName"].as_str().unwrap()
+    );
+    assert_eq!(lifecycle.args, fixture["failedLifecycle"]["args"]);
+    let user = chunks
+        .iter()
+        .find(|chunk| chunk.function == "user_message")
+        .unwrap();
+    assert_eq!(user.result["turnIntentId"], "failed-intent");
+    assert_eq!(
+        user.result["message"]["content"],
+        "Recall the remembered marker. No tools."
+    );
+    assert!(!chunks.iter().any(|chunk| chunk.function == "assistant"));
+
+    // An uncorrelated terminal stays a visible ordinary error and cannot
+    // acquire an empty-failure proof through this typed contract.
+    let mut orphan = rows[2].clone();
+    orphan["payload"].as_object_mut().unwrap().remove("turn_id");
+    std::fs::write(&path, format!("{orphan}\n")).unwrap();
+    let orphan_chunks = load_codex_app_from_path("runner", &path).unwrap();
+    let orphan_error = orphan_chunks
+        .iter()
+        .find(|chunk| chunk.action_type == "error")
+        .unwrap();
+    assert!(orphan_error
+        .args
+        .get("__orgiiNativeTerminalDiagnostic")
+        .is_none());
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn current_codex_model_switch_context_and_user_mirrors_are_not_conversation_turns() {
     let dir = std::env::temp_dir().join(format!("orgii-codex-current-user-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
@@ -39,6 +107,59 @@ fn current_codex_model_switch_context_and_user_mirrors_are_not_conversation_turn
     assert_eq!(users[1].result["message"]["content"], "Disable placeholder titles");
     assert_eq!(users[1].result["images"][0], "data:image/png;base64,QUJD");
     assert_eq!(chunks.iter().filter(|c| c.function == "context_compacted").count(), 1);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn codex_failed_user_native_contract_matches_retry_projection_fixture() {
+    // Redacted 7e06 outage: response_item + item_completed mirror followed by
+    // task_complete.error. Native readers do not use Agent bridge metadata.
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../fixtures/codex_native_failed_user.json"
+    ))
+    .unwrap();
+    let dir = std::env::temp_dir().join(format!("orgii-codex-failed-user-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("rollout.jsonl");
+    let lines = fixture["rollout"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&path, format!("{lines}\n")).unwrap();
+    let chunks = load_codex_app_from_path("runner", &path).unwrap();
+    let users = chunks
+        .iter()
+        .filter(|chunk| chunk.function == "user_message")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        users.len(),
+        1,
+        "native UserMessage mirror must not create another turn"
+    );
+    let user = users[0];
+    let expected = &fixture["user"];
+    assert_eq!(user.chunk_id, expected["id"].as_str().unwrap());
+    assert_eq!(user.action_type, expected["actionType"].as_str().unwrap());
+    assert_eq!(user.function, expected["functionName"].as_str().unwrap());
+    assert_eq!(user.result, expected["result"]);
+    assert!(user.result.get("backendPersisted").is_none());
+    assert!(user.result.get("deliveryStatus").is_none());
+    assert_eq!(chunks.last().unwrap().action_type, "task_failed");
+    assert!(!chunks.iter().any(|chunk| chunk.function == "assistant"));
+    let preview = super::load_codex_app_initial_window_from_path("runner", &path, 1).unwrap();
+    let preview_users = preview
+        .chunks
+        .iter()
+        .filter(|chunk| chunk.function == "user_message")
+        .collect::<Vec<_>>();
+    assert_eq!(preview_users.len(), 1);
+    assert_eq!(
+        preview_users[0].result, expected["result"],
+        "preview user ownership contract"
+    );
     std::fs::remove_dir_all(dir).unwrap();
 }
 

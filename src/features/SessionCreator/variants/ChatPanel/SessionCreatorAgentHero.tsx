@@ -71,7 +71,7 @@ const SessionCreatorAgentHero = memo(
                   danger
                     ? "text-primary-6!"
                     : active
-                      ? "text-text-1! underline underline-offset-4"
+                      ? "text-text-1!"
                       : "text-text-2! group-hover/pill:text-text-1!"
                 }`}
                 chevronClassName={`transition-colors ${
@@ -95,9 +95,7 @@ const SessionCreatorAgentHero = memo(
       return (
         <Button
           layout="custom"
-          appearance="custom"
           ref={ref}
-          htmlType="button"
           onClick={onClick}
           aria-expanded={active}
           data-testid="session-creator-agent-selector"

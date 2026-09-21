@@ -4,7 +4,7 @@
  * Renders the org hub (`ProjectOrgHubContent`) through the unified dispatcher,
  * pulling org-scope navigation + tab mutators from the hoisted Project host
  * context — mirroring `ProjectManagerContentRouter`. The org view is derived
- * from tab data (see `projectOrgSettings` for the settings-forced variant).
+ * from tab data.
  */
 import { useSetAtom } from "jotai";
 import React, { memo } from "react";

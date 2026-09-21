@@ -99,7 +99,7 @@ flowchart TD
 
 拟新增模块边界（目录名是提案）：
 
-- `src/ActionSystem/publicUi/`：无 React/DOM 初始化依赖的 Zod capability 定义、对外命令到 action 的绑定、生成器。action 参数引用同一个 schema，禁止 CLI 再手写一份。
+- `src/scaffold/ActionSystem/publicUi/`：无 React/DOM 初始化依赖的 Zod capability 定义、对外命令到 action 的绑定、生成器。action 参数引用同一个 schema，禁止 CLI 再手写一份。
 - `src/services/uiCommands/`：`resolveTarget`、执行 context、scoped service adapter、应用结果投影。`useUiCommandRuntime` 只负责挂载、ready、接收及清理。
 - `src-tauri/crates/app-ui/`：versioned envelope、broker、pending 生命周期、target window registration；不依赖 agent-core，也不执行 agent tool。通过 transport trait 注入发送能力。
 - `src-tauri/src/api/ui_commands/`：认证、JSON 解码、body limit、deadline、broker 调用。API 不复制前端业务逻辑。

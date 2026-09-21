@@ -137,6 +137,9 @@ impl PtyState {
         // Drop kills each shell synchronously (required at app exit, where
         // detached threads are never joined). Windows tree cleanup beyond
         // the shell/conhost pair would need Job Objects; not covered here.
+        for session in &drained {
+            session.terminate_child_sync();
+        }
         drop(drained);
     }
 }

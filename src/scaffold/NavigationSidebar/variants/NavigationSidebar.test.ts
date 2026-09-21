@@ -3,6 +3,10 @@ import { type ReactNode, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import {
+  SIDEBAR_SECTION_LABEL_CLASS,
+  SIDEBAR_SECTION_LABEL_ROW_CLASS,
+} from "../blocks/SidebarSectionLabel";
 import type { NavigationMenuItem } from "../components/NavigationMenu/config";
 import NavigationSidebar from "./NavigationSidebar";
 
@@ -43,10 +47,12 @@ describe("NavigationSidebar", () => {
       })
     );
 
+    // A separator renders the shared sidebar section label, the same block the
+    // settings sidebar uses — so both sidebars stay one family by construction.
+    expect(markup).toContain(`class="${SIDEBAR_SECTION_LABEL_ROW_CLASS}"`);
     expect(markup).toContain(
-      'class="mb-1 flex items-center gap-1.5 px-2 text-[11px] font-medium tracking-wider text-text-2 uppercase"'
+      `<span class="${SIDEBAR_SECTION_LABEL_CLASS}">Browse</span>`
     );
-    expect(markup).toContain('<span class="min-w-0 truncate">Browse</span>');
     expect(markup).toContain('class="flex flex-col gap-2 px-3 pt-1"');
     expect(markup).toContain('data-sidebar-section-id="work-items-browse"');
     expect(markup).not.toContain(
@@ -160,6 +166,39 @@ describe("NavigationSidebar", () => {
       expect(action?.parentElement?.className).toBe("inline-flex");
     }
     expect(markup).not.toContain("group-hover/sidebar:inline-flex");
+  });
+
+  it("renders pinned and list sections through the same section block", () => {
+    // The pinned strip and the scrolling list used to be two copies of the
+    // section markup and had already drifted apart. Both now render
+    // NavigationSidebarSection, so a titled section produces identical markup
+    // in either place — this is the invariant that makes the single copy safe.
+    const section = [
+      {
+        id: "separator-today",
+        key: "separator-today",
+        label: "Today",
+      },
+      { id: "alpha", key: "alpha", label: "Alpha" },
+    ];
+    const render = (placement: "pinned" | "list") =>
+      renderToStaticMarkup(
+        createElement(NavigationSidebar, {
+          menuItems: placement === "list" ? section : [],
+          pinnedMenuItems: placement === "pinned" ? section : [],
+          collapsibleSections: true,
+        })
+      );
+
+    const extract = (markup: string) =>
+      markup.slice(
+        markup.indexOf('<div data-sidebar-section-id="today"'),
+        markup.indexOf('data-test-menu-item="alpha"')
+      );
+
+    const pinned = extract(render("pinned"));
+    expect(pinned).toContain('data-sidebar-section-toggle="today"');
+    expect(pinned).toBe(extract(render("list")));
   });
 
   it("renders the standard loading state without dummy rows", () => {

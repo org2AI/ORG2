@@ -2,7 +2,7 @@ import React, { memo, useMemo } from "react";
 
 import type { AgentOrgRunMemberView } from "@src/api/tauri/agent";
 import { extractTodoData } from "@src/engines/SessionCore/rendering/props";
-import { normalizeActivity } from "@src/lib/activityData";
+import { normalizeActivity } from "@src/util/data/activityData";
 
 import type { MessageEntry } from "../types";
 import { AgentFramedBubble } from "./AgentFramedBubble";

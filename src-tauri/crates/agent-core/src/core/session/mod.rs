@@ -12,6 +12,7 @@
 //! Post-session L3 reflection lives in
 //! `crate::memory::reflection`, not here.
 
+pub(crate) mod auxiliary_usage;
 pub mod compaction;
 pub mod exec_modes;
 pub(crate) mod file_registry;

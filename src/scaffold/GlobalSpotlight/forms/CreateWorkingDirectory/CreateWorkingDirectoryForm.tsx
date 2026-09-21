@@ -3,13 +3,11 @@
  *
  * Form for creating a new local working directory.
  */
-import Button from "@/src/components/Button";
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import Input from "@src/components/Input";
-import { CodeXmlIcon, FolderClosedIcon, HugeiconsIcon } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
+import { CodeXmlIcon, HugeiconsIcon } from "@src/icons";
 import { joinPathForDisplay } from "@src/util/file/pathUtils";
 
 import { ICONS } from "../../config";
@@ -18,6 +16,9 @@ import {
   SpotlightFormShell,
   SpotlightModalHeader,
 } from "../shared";
+import { DirectoryPathField } from "../shared/DirectoryPathField";
+import { SpotlightFormActions } from "../shared/SpotlightFormActions";
+import { SpotlightFormField } from "../shared/SpotlightFormField";
 
 interface CreateWorkingDirectoryFormProps {
   directoryName: string;
@@ -87,15 +88,15 @@ const CreateWorkingDirectoryForm: React.FC<CreateWorkingDirectoryFormProps> = ({
       />
       <SpotlightFormShell>
         <SpotlightFormBody>
-          <div className="mb-3">
-            <label className="mb-2 block text-[14px] font-normal text-text-2">
-              {t("selectors.repo.forms.workspaceName")}
-            </label>
+          <SpotlightFormField
+            label={t("selectors.repo.forms.workspaceName")}
+            className="mb-3"
+          >
             <Input
               placeholder={t("selectors.repo.forms.workspaceNamePlaceholder")}
               value={directoryName}
               onChange={handleDirectoryNameChange}
-              className="h-[32px] rounded-lg bg-fill-1 text-[14px]"
+              className="h-[32px] rounded-lg text-[14px]"
               prefix={
                 <HugeiconsIcon
                   icon={CodeXmlIcon}
@@ -109,44 +110,28 @@ const CreateWorkingDirectoryForm: React.FC<CreateWorkingDirectoryFormProps> = ({
               autoCapitalize="off"
               spellCheck={false}
             />
-          </div>
-          <div className="mb-3">
-            <label className="mb-2 block text-[14px] font-normal text-text-2">
-              {t("selectors.repo.forms.localPath")}
-            </label>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  value={parentDirectoryPath}
-                  onChange={onParentDirectoryPathChange}
-                  placeholder={t("selectors.repo.forms.chooseDestinationPath")}
-                  className="h-[32px] rounded-lg bg-fill-1 text-[14px]"
-                  prefix={
-                    <HugeiconsIcon
-                      icon={FolderClosedIcon}
-                      data-icon="folder"
-                      className="text-[16px] text-text-2"
-                      size={16}
-                    />
-                  }
-                />
-              </div>
-              <Button
-                onClick={async () => {
-                  const path = await onChoosePath();
-                  if (path) onParentDirectoryPathChange(path);
-                }}
-                className="h-[32px] rounded-lg border border-border-2 bg-bg-2 px-4 text-[14px] text-text-1 hover:bg-bg-3"
-              >
-                {t("selectors.repo.forms.choose")}
-              </Button>
-            </div>
-          </div>
+          </SpotlightFormField>
+          <DirectoryPathField
+            label={t("selectors.repo.forms.localPath")}
+            value={parentDirectoryPath}
+            onChange={onParentDirectoryPathChange}
+            onChoosePath={onChoosePath}
+            chooseLabel={t("selectors.repo.forms.choose")}
+            placeholder={t("selectors.repo.forms.chooseDestinationPath")}
+            disabled={loading}
+            textAction
+          />
         </SpotlightFormBody>
 
-        <PanelFooter
-          secondaryButtonSize="default"
-          primaryButtonSize="default"
+        <SpotlightFormActions
+          backLabel={t("actions.cancel")}
+          onBack={onCancel}
+          busy={loading}
+          submit={{
+            label: loading ? `${t("actions.create")}...` : t("actions.create"),
+            onClick: onSubmit,
+            disabled: !directoryName.trim() || !parentDirectoryPath.trim(),
+          }}
           left={
             parentDirectoryPath && directoryName ? (
               <span className="truncate text-[14px] text-text-1">
@@ -156,21 +141,6 @@ const CreateWorkingDirectoryForm: React.FC<CreateWorkingDirectoryFormProps> = ({
               </span>
             ) : undefined
           }
-          secondaryActions={[
-            {
-              label: t("actions.cancel"),
-              onClick: onCancel,
-              variant: "secondary",
-              disabled: loading,
-            },
-          ]}
-          primaryAction={{
-            label: loading ? `${t("actions.create")}...` : t("actions.create"),
-            onClick: onSubmit,
-            disabled: !directoryName.trim() || !parentDirectoryPath.trim(),
-            loading,
-            variant: "primary",
-          }}
         />
       </SpotlightFormShell>
     </div>

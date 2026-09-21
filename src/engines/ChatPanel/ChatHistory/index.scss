@@ -37,11 +37,7 @@
   .chat-block-header,
   .chat-block-header *,
   .chat-block-icon,
-  .chat-block-icon *,
-  .event-block-content,
-  .event-block-content > *,
-  .event-block-shell,
-  .event-block-shell > * {
+  .chat-block-icon * {
     user-select: none !important;
     -webkit-user-select: none !important;
   }
@@ -53,11 +49,7 @@
   .chat-block-header::selection,
   .chat-block-header *::selection,
   .chat-block-icon::selection,
-  .chat-block-icon *::selection,
-  .event-block-content::selection,
-  .event-block-content *::selection,
-  .event-block-shell::selection,
-  .event-block-shell *::selection {
+  .chat-block-icon *::selection {
     background: transparent !important;
     background-color: transparent !important;
   }
@@ -147,10 +139,6 @@
     ),
   .question-text,
   .question-text :is(span, strong, em, b, i, a),
-  .terminal-output__pre,
-  .terminal-output__pre span,
-  .terminal-output__error,
-  .terminal-output__error span,
   .simulator-shell-plain-pre,
   .simulator-shell-plain-pre span,
   pre,
@@ -178,6 +166,25 @@
   .allow-select-deep .select-none * {
     user-select: none !important;
     -webkit-user-select: none !important;
+  }
+
+  // Event rows are chrome, not transcript text. The `.chat-block-header` reset
+  // at the top of this file is (0,2,0); the semantic allowlist above resolves
+  // to `.wp__chat__history .allow-select-deep :is(span, …)` = (0,2,1), and
+  // `ChatItemWrap` puts `.allow-select-deep` on every chat item — so drag
+  // selection used to paint block-header titles and summaries ("执行命令 5 个
+  // 命令", "运行命令 cd, grep, +2"). Re-assert the reset at (0,3,0) so headers
+  // stay inert while expanded bodies (pre/code/markdown) stay selectable.
+  .allow-select-deep .chat-block-header,
+  .allow-select-deep .chat-block-header * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+
+  .allow-select-deep .chat-block-header::selection,
+  .allow-select-deep .chat-block-header *::selection {
+    background: transparent !important;
+    background-color: transparent !important;
   }
 
   .chat-markdown-body
@@ -242,10 +249,6 @@
     )::selection,
   .question-text::selection,
   .question-text :is(span, strong, em, b, i, a)::selection,
-  .terminal-output__pre::selection,
-  .terminal-output__pre span::selection,
-  .terminal-output__error::selection,
-  .terminal-output__error span::selection,
   .simulator-shell-plain-pre::selection,
   .simulator-shell-plain-pre span::selection,
   pre::selection,
@@ -358,14 +361,6 @@
       pre,
       code {
         font-size: var(--chat-code-font-size, 13px) !important;
-      }
-    }
-
-    // Ask user chat item text
-    .ask-user-chat-item {
-      .question-text {
-        font-size: inherit !important;
-        line-height: var(--chat-line-height, 1.6);
       }
     }
   }

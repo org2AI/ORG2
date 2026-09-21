@@ -3,11 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import { ChevronsDownUpIcon, HugeiconsIcon, UnfoldMoreIcon } from "@src/icons";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 import { FindSkillsResults } from "./FindSkillsSection/FindSkillsResults";
 import { useFindSkills } from "./FindSkillsSection/hooks/useFindSkills";
@@ -25,7 +22,6 @@ const FindSkillsSection: React.FC<FindSkillsSectionProps> = ({ onPreview }) => {
     <SectionContainer>
       <SectionRow label={t("agentOrgs.findSkills.title")}>
         <Button
-          variant="secondary"
           icon={
             expanded ? (
               <HugeiconsIcon

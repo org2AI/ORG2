@@ -23,14 +23,19 @@ import { resolveVoicePermissionErrorMessage } from "@src/hooks/voice/voicePermis
 import type { MobileSendAttachment } from "@src/modules/MobileRemote/connection/types";
 
 import { MobileComposerAttachmentButton } from "./MobileComposerAttachmentButton";
+import { useMobileComposerDraft } from "./MobileComposerDraftContext";
 import { MobileComposerImagePreview } from "./MobileComposerImagePreview";
 import { MobileModelPicker } from "./MobileModelPicker";
 import type { MobileModelPickerProps } from "./MobileModelPicker";
+import { MOBILE_DRAFT_TEXT_LIMIT } from "./mobileComposerDraftStore";
+import "./mobileComposerResponsive.scss";
 import { useMobileComposerImages } from "./useMobileComposerImages";
 
 const MOBILE_COMPOSER_EDITOR_MIN_HEIGHT = 36;
 
 export interface MobileComposerProps {
+  /** Account/endpoint are owned by the provider; this identifies desktop + session. */
+  draftScope?: string;
   disabled?: boolean;
   disabledReason?: string;
   statusMessage?: string;
@@ -52,27 +57,47 @@ export function MobileComposer({
   statusTone = "neutral",
   onSend,
   modelPicker,
+  draftScope,
 }: MobileComposerProps) {
   const { t } = useTranslation("sessions");
   const { t: tCommon } = useTranslation("common");
   const { t: tVoice } = useTranslation("sessions", { keyPrefix: "input" });
-  const [draft, setDraft] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string>();
+  const { handle: draftHandle, snapshot } = useMobileComposerDraft(draftScope);
+  const { text: draft, submitting, submitError } = snapshot;
+  const setDraft = useCallback(
+    (value: string | ((text: string) => string)) => {
+      draftHandle.update((current) => {
+        const text = typeof value === "function" ? value(current.text) : value;
+        return text.length <= MOBILE_DRAFT_TEXT_LIMIT
+          ? { ...current, text }
+          : {
+              ...current,
+              submitError: t("chat.draftTooLong", {
+                defaultValue: "Draft is too long (maximum {{max}} characters)",
+                max: MOBILE_DRAFT_TEXT_LIMIT,
+              }),
+            };
+      });
+    },
+    [draftHandle, t]
+  );
   const [voiceError, setVoiceError] = useState<string>();
   const [voicePermissionSheetOpen, setVoicePermissionSheetOpen] =
     useState(false);
 
-  const handleVoiceCommit = useCallback((transcript: string) => {
-    const trimmed = transcript.trim();
-    if (!trimmed) return;
-    setVoiceError(undefined);
-    setDraft((existing) => {
-      const separator =
-        existing.length === 0 || /\s$/.test(existing) ? "" : " ";
-      return `${existing}${separator}${trimmed}`;
-    });
-  }, []);
+  const handleVoiceCommit = useCallback(
+    (transcript: string) => {
+      const trimmed = transcript.trim();
+      if (!trimmed) return;
+      setVoiceError(undefined);
+      setDraft((existing) => {
+        const separator =
+          existing.length === 0 || /\s$/.test(existing) ? "" : " ";
+        return `${existing}${separator}${trimmed}`;
+      });
+    },
+    [setDraft]
+  );
 
   const handleVoiceError = useCallback(
     (err: VoiceInputError) => {
@@ -107,29 +132,46 @@ export function MobileComposer({
     voice.start();
   }, [voice]);
 
-  const attachments = useMobileComposerImages();
+  const attachments = useMobileComposerImages(draftHandle);
+  const { toSendAttachments } = attachments;
 
   const handleSend = useCallback(async () => {
-    if (disabled || submitting || attachments.processing) return;
-    const trimmed = draft.trim();
-    const pendingAttachments = attachments.toSendAttachments();
+    const submitted = draftHandle.getSnapshot();
+    if (disabled || submitted.submitting || submitted.processing || !onSend)
+      return;
+    const trimmed = submitted.text.trim();
+    const pendingAttachments = toSendAttachments();
     if (!trimmed && pendingAttachments.length === 0) return;
-    setSubmitting(true);
-    setSubmitError(undefined);
+    const entry = draftHandle.capture();
+    draftHandle.updateIfCurrent(entry, (current) => ({
+      ...current,
+      submitting: true,
+      submitError: undefined,
+    }));
     try {
-      await onSend?.(trimmed, pendingAttachments);
-      setDraft((current) => (current === draft ? "" : current));
-      attachments.clearImages();
+      await onSend(trimmed, pendingAttachments);
+      const sentImages = new Set(submitted.images.map((image) => image.id));
+      draftHandle.updateIfCurrent(entry, (current) => ({
+        ...current,
+        text:
+          current.textRevision === submitted.textRevision ? "" : current.text,
+        images: current.images.filter((image) => !sentImages.has(image.id)),
+      }));
     } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : t("chat.sendFailed", "Message could not be sent")
-      );
+      draftHandle.updateIfCurrent(entry, (current) => ({
+        ...current,
+        submitError:
+          error instanceof Error
+            ? error.message
+            : t("chat.sendFailed", "Message could not be sent"),
+      }));
     } finally {
-      setSubmitting(false);
+      draftHandle.updateIfCurrent(entry, (current) => ({
+        ...current,
+        submitting: false,
+      }));
     }
-  }, [attachments, disabled, draft, onSend, submitting, t]);
+  }, [toSendAttachments, disabled, draftHandle, onSend, t]);
 
   const visibleStatus =
     attachments.error ??
@@ -177,6 +219,8 @@ export function MobileComposer({
       >
         {showVoiceUi ? (
           <VoiceRecordingBar
+            className="mobile-composer-recording"
+            elapsedClassName="mobile-type-caption"
             elapsedSeconds={voice.elapsedSeconds}
             onCancel={voice.cancel}
             onAccept={voice.stop}
@@ -190,10 +234,12 @@ export function MobileComposer({
               />
             ) : null}
             <ComposerBarLayout
+              toolbarClassName="mobile-composer-toolbar"
               toolbarPaddingClassName={MOBILE_COMPOSER_CONTENT_INSET_X_CLASS}
               editorSlot={
                 <Textarea
                   value={draft}
+                  maxLength={MOBILE_DRAFT_TEXT_LIMIT}
                   onChange={(value) => setDraft(value)}
                   placeholder={t("chat.typeMessage", "Type a message…")}
                   autoSize={{ minRows: 1, maxRows: 4 }}
@@ -205,6 +251,8 @@ export function MobileComposer({
                   className="min-w-0"
                   textareaClassName={`!${MOBILE_COMPOSER_CONTENT_INSET_X_CLASS} !py-1.5`}
                   textareaStyle={{
+                    fontSize: "var(--mobile-type-body-size)",
+                    lineHeight: "var(--mobile-type-body-leading)",
                     minHeight: MOBILE_COMPOSER_EDITOR_MIN_HEIGHT,
                     maxHeight: INPUT_AREA_EDITOR_HEIGHT.max,
                     paddingLeft: MOBILE_COMPOSER_CONTENT_INSET_PX,
@@ -230,13 +278,15 @@ export function MobileComposer({
                 </div>
               }
               rightContent={
-                <div className="flex h-7 items-center gap-0.5">
+                <div className="flex items-center gap-0.5">
                   <VoiceInputButton
+                    className="mobile-composer-icon-action"
                     onPressStart={handleVoiceStart}
                     onPressEnd={voice.stop}
                     disabled={disabled || !voice.isSupported}
                   />
                   <ComposerSubmitButton
+                    className="mobile-composer-icon-action mobile-composer-submit"
                     active={hasSendableContent && !submitDisabled}
                     disabled={submitDisabled}
                     busy={submitting}
@@ -260,10 +310,11 @@ export function MobileComposer({
         footer={
           <Button
             variant="primary"
-            appearance="solid"
-            size="default"
-            htmlType="button"
-            className="w-full text-sm font-medium"
+            className="min-h-11 w-full"
+            style={{
+              fontSize: "var(--mobile-type-control-size)",
+              lineHeight: "var(--mobile-type-control-leading)",
+            }}
             onClick={() => {
               setVoicePermissionSheetOpen(false);
               handleVoiceStart();
@@ -273,7 +324,7 @@ export function MobileComposer({
           </Button>
         }
       >
-        <p className="text-sm leading-relaxed text-text-2">{voiceError}</p>
+        <p className="mobile-type-secondary text-text-2">{voiceError}</p>
       </BottomSheet>
     </div>
   );

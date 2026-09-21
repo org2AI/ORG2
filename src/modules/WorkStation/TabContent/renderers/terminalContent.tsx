@@ -7,42 +7,22 @@
  * it derives everything from `tab.data` and needs no host context (the viewer
  * takes `repoPath=""`).
  */
-import React, { Suspense, memo } from "react";
+import { createLazyTabRenderer } from "./createLazyTabRenderer";
 
-import { Placeholder } from "@src/components/Placeholder";
-
-import type { UnifiedTabContentProps } from "../types";
-
-const CodeViewerContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/CodeViewerContent")
-);
-
-const LazyFallback = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
-
-const TerminalContentTabRenderer: React.FC<UnifiedTabContentProps> = memo(
-  ({ tab }) => {
-    const terminalContent = String(tab.data.content || "");
-    const terminalName =
-      tab.data.terminalName || tab.title || "Terminal Output";
-
-    return (
-      <Suspense fallback={<LazyFallback />}>
-        <CodeViewerContent
-          selectedFile={String(terminalName)}
-          fileContent={terminalContent}
-          loading={false}
-          error={null}
-          repoPath=""
-          readOnly={true}
-        />
-      </Suspense>
-    );
-  }
-);
-
-TerminalContentTabRenderer.displayName = "TerminalContentTabRenderer";
+const TerminalContentTabRenderer = createLazyTabRenderer({
+  displayName: "TerminalContentTabRenderer",
+  load: () =>
+    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/CodeViewerContent"),
+  useProps: ({ tab }) => ({
+    selectedFile: String(
+      tab.data.terminalName || tab.title || "Terminal Output"
+    ),
+    fileContent: String(tab.data.content || ""),
+    loading: false,
+    error: null,
+    repoPath: "",
+    readOnly: true,
+  }),
+});
 
 export default TerminalContentTabRenderer;

@@ -31,6 +31,7 @@ pub(super) async fn try_reuse_existing(
     state: &AgentAppState,
     session_id: &str,
     account_id: Option<&str>,
+    credential_source: Option<&str>,
     requested_model: Option<&str>,
     workspace_root: &Path,
 ) -> Option<Arc<SessionRuntime>> {
@@ -48,7 +49,8 @@ pub(super) async fn try_reuse_existing(
     };
     let project_matches = existing.workspace_state.read().working_dir() == workspace_root;
 
-    if account_matches && model_matches && project_matches {
+    let source_matches = existing.provider.credential_source() == credential_source;
+    if account_matches && source_matches && model_matches && project_matches {
         Some(existing)
     } else {
         tracing::info!("[init] Session {} needs reinitialization", session_id);

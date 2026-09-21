@@ -101,6 +101,40 @@ describe("keyHelpers", () => {
     expect(merged.auth_method).toBe("oauth");
   });
 
+  it("leaves the account name to the wizard when applying an OAuth detection", () => {
+    const updates: Partial<WizardData>[] = [];
+
+    applyKey(
+      {
+        id: "codex_oauth",
+        name: "OpenAI",
+        auth_method: "oauth",
+        session_token: "oauth-token",
+        available_models: ["gpt-5.4"],
+        validated: true,
+      },
+      {
+        onChange: (update) => updates.push(update),
+        setTokenDetected: () => {},
+        setCursorSessionToken: () => {},
+        setTokenError: () => {},
+        setShowKeySelection: () => {},
+        isCursor: false,
+        isOAuthAgent: true,
+        noValidTokenMsg: "No valid token",
+        validationFailedMsg: "Validation failed",
+      }
+    );
+
+    // `cred.name` is a fixed source label. Writing it into the form makes a
+    // second detected account collide with the first and disables Done; an
+    // empty name instead resolves through `nextDefaultName` in submit().
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).not.toHaveProperty("name");
+    const merged = { ...{ name: "Work account" }, ...updates[0] };
+    expect(merged.name).toBe("Work account");
+  });
+
   it("uses the resolved OAuth catalog instead of a separate detected model list", () => {
     const updates: Partial<WizardData>[] = [];
     const catalog: OAuthModelCatalog = {

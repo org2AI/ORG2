@@ -4,6 +4,11 @@ import React, { act } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  type ChatHistoryDisplayMode,
+  chatHistoryDisplayModeAtom,
+} from "@src/store/ui/chatPanel/displayPrefsAtoms";
+
 import { SideChatSessionBody } from ".";
 
 const fixture = vi.hoisted(() => ({
@@ -156,4 +161,46 @@ describe("SideChatSessionBody direct Member ownership", () => {
       source: "dispatch",
     });
   });
+});
+
+describe("SideChatSessionBody chat display preferences", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    fixture.chatHistoryProps = undefined;
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    localStorage.removeItem("orgii:chatHistoryDisplayMode");
+    Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it.each<ChatHistoryDisplayMode>(["compact", "full"])(
+    "passes the user's %s history display mode to ChatHistory",
+    (mode) => {
+      const store = createStore();
+      store.set(chatHistoryDisplayModeAtom, mode);
+      act(() => {
+        root.render(
+          React.createElement(
+            Provider,
+            { store },
+            React.createElement(SideChatSessionBody, {
+              sessionId: "side-session",
+              isLive: false,
+            })
+          )
+        );
+      });
+
+      expect(fixture.chatHistoryProps).toMatchObject({ displayMode: mode });
+    }
+  );
 });

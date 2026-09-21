@@ -28,10 +28,6 @@ export function getSessionSectionVisibleCountKey(
   }
 }
 
-export function getProjectsSectionVisibleCountKey(sectionId: string): string {
-  return sectionId;
-}
-
 export function resetNewlyCollapsedSectionVisibleCounts({
   currentVisibleCounts,
   previousCollapsedSectionIds,

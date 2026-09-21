@@ -207,10 +207,7 @@ function getActiveOrgScope(activeTab: WorkStationTab | null): string | null {
 }
 
 function getActiveOrgHubId(activeTab: WorkStationTab | null): string | null {
-  if (
-    activeTab?.type === "project-org" ||
-    activeTab?.type === "project-org-settings"
-  ) {
+  if (activeTab?.type === "project-org") {
     const orgId = activeTab.data.orgId;
     return typeof orgId === "string" && orgId ? orgId : null;
   }
@@ -244,8 +241,7 @@ function getActiveRepoView(activeTab: WorkStationTab | null): ActiveRepoView {
       return "linear-work-items";
     case "project-settings":
       return "settings";
-    case "project-org":
-    case "project-org-settings": {
+    case "project-org": {
       const orgView = normalizeProjectOrgSurfaceView(activeTab.data.orgView);
       if (orgView === PROJECT_ORG_SURFACE_VIEW.PROJECTS) return "projects";
       if (orgView === PROJECT_ORG_SURFACE_VIEW.WORK_ITEMS) return "work-items";

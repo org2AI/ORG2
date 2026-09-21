@@ -358,11 +358,13 @@ export async function continueLocalConversationAfterTimelineLoad(
     }
   }
   if (matchingCandidates.length === 0) {
-    // No native episode could possibly be reused. Create the ordinary Session
-    // before parsing a potentially large imported transcript so its pending
-    // row, footer and follow-up queue appear through the existing UI path.
+    // Snapshot while the singleton queue owns this root, before publishing a
+    // new native child. An unmaterialized child has no transcript revision;
+    // including it in its own source snapshot would make that snapshot
+    // permanently unstable and strand the turn before provider dispatch.
+    const timeline = await loadTimeline();
     return runCreatedConversationTurn(continuationParams, {
-      loadTimeline,
+      loadTimeline: async () => timeline,
       onSessionCreated: params.onSessionPreparing,
     });
   }

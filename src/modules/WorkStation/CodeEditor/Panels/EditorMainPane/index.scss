@@ -117,27 +117,7 @@
       }
     }
 
-    table {
-      width: 100%;
-      margin-bottom: 16px;
-      border-collapse: collapse;
-      border-spacing: 0;
-
-      th,
-      td {
-        padding: 8px 16px;
-        border: 1px solid var(--color-border-2);
-      }
-
-      th {
-        font-weight: 600;
-        background-color: var(--color-fill-1);
-      }
-
-      tr:nth-child(even) {
-        background-color: var(--color-fill-1);
-      }
-    }
+    // Tables use the shared Markdown renderer's layout and presentation.
 
     hr {
       height: 1px;

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ImportedHistorySource } from "@src/api/tauri/externalHistory";
 import { rpc } from "@src/api/tauri/rpc";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import { seedSidebarCloudScope } from "@src/features/Org2Cloud/sidebarCloudScope.testUtils";
 import { openOrganizationInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import type { Session } from "@src/store/session/sessionAtom/types";
 
@@ -42,7 +43,6 @@ const {
   org2CloudRepoScopesAtom,
   org2CloudSharingFloorAtom,
   org2CloudSyncEnabledAtom,
-  sidebarActiveCloudOrgIdAtom,
   sessionOrgTagsAtom,
   sessionsAtom,
 } = engineTestDeps;
@@ -252,7 +252,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
       "corg-personal": "full_replay",
       "corg-team": "full_replay",
     });
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-team");
+    seedSidebarCloudScope(store, "corg-team");
 
     await engine.runSyncPass();
 
@@ -523,7 +523,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
   });
 
   it("backs off the org and toasts once on ORG2_QUOTA_EXCEEDED", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+    seedSidebarCloudScope(store, "corg-1");
     client.rewriteSessionEvents.mockRejectedValue(
       new Org2CloudSyncError("ORG2_QUOTA_EXCEEDED", 403)
     );
@@ -543,7 +543,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
   });
 
   it("does not publish sessions for an inactive org", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
     client.upsertSessionMetadata.mockRejectedValue(
       new Org2CloudSyncError("ORG2_QUOTA_EXCEEDED", 403)
     );
@@ -552,14 +552,14 @@ describe("Org2CloudSyncEngine session publishing", () => {
     expect(messageMock.warning).not.toHaveBeenCalled();
     expect(client.upsertSessionMetadata).not.toHaveBeenCalled();
 
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+    seedSidebarCloudScope(store, "corg-1");
     await engine.runSyncPass();
     expect(client.upsertSessionMetadata).toHaveBeenCalledTimes(1);
     expect(messageMock.warning).toHaveBeenCalledTimes(1);
   });
 
   it("applies the org minimum while publishing a background org", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
     store.set(org2CloudOrgsAtom, [
       {
         orgId: "corg-1",
@@ -582,7 +582,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
   });
 
   it("treats the visible management org as active for retry and toast policy", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
     store.set(openOrganizationInChatPanelTabAtom, {
       organization: { kind: "cloud", cloudOrg: { orgId: "corg-1" } },
     });
@@ -599,7 +599,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
   });
 
   it("starts publishing and warns when an inactive org becomes active", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
     client.upsertSessionMetadata.mockRejectedValue(
       new Org2CloudSyncError("ORG2_QUOTA_EXCEEDED", 403)
     );
@@ -609,7 +609,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
     expect(client.upsertSessionMetadata).not.toHaveBeenCalled();
 
     client.upsertSessionMetadata.mockClear();
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+    seedSidebarCloudScope(store, "corg-1");
     await engine.runSyncPass();
     expect(client.upsertSessionMetadata).toHaveBeenCalledTimes(1);
     expect(messageMock.warning).toHaveBeenCalledTimes(1);
@@ -620,7 +620,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
   });
 
   it("does not repeat the active-org toast on automatic cooldown retries", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+    seedSidebarCloudScope(store, "corg-1");
     client.upsertSessionMetadata.mockRejectedValue(
       new Org2CloudSyncError("ORG2_QUOTA_EXCEEDED", 403)
     );
@@ -635,7 +635,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
   });
 
   it("evicts the backoff episode when an org membership is removed", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+    seedSidebarCloudScope(store, "corg-1");
     client.upsertSessionMetadata.mockRejectedValue(
       new Org2CloudSyncError("ORG2_QUOTA_EXCEEDED", 403)
     );
@@ -1660,7 +1660,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
     const loadFullTranscriptChunks = vi
       .spyOn(source!, "loadFullTranscriptChunks")
       .mockResolvedValue([] as never);
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
     store.set(org2CloudOrgsAtom, [
       {
         orgId: "corg-1",

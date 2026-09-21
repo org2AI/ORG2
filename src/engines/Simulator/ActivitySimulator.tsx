@@ -23,15 +23,12 @@ import type { ReplayMode } from "@src/engines/SessionCore/core/types";
 import { chatVisibleAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import {
   bumpSimulatorDiffRefreshNonceAtom,
-  simulatorAutoLayoutAtom,
   simulatorDiffScopeRequestAtom,
   simulatorEffectiveDockAppAtom,
   simulatorFollowAppLockAtom,
   simulatorInlineChatInputCollapsedAtom,
-  simulatorLayoutAtom,
   simulatorMiniCPMStepExplanationVisibleAtom,
   simulatorSelectedAppAtom,
-  simulatorShowDockAtom,
 } from "@src/store/ui/simulatorAtom";
 import { workStationLayoutModeAtom } from "@src/store/ui/workStationLayout/splitLayoutAtoms";
 
@@ -55,9 +52,6 @@ import { AppType } from "./types/appTypes";
 const ActivitySimulator: React.FC = memo(() => {
   const { t } = useTranslation("sessions");
   // ── Atoms (same set as original ActivitySimulator) ─────────────────────
-  const manualLayout = useAtomValue(simulatorLayoutAtom);
-  const autoLayoutEnabled = useAtomValue(simulatorAutoLayoutAtom);
-  const showDock = useAtomValue(simulatorShowDockAtom);
   const workStationLayoutMode = useAtomValue(workStationLayoutModeAtom);
   const chatVisible = useAtomValue(chatVisibleAtom);
   const simulatorInputCollapsed = useAtomValue(
@@ -118,8 +112,6 @@ const ActivitySimulator: React.FC = memo(() => {
     executionThreadCount,
     executionThreads,
     replayMode,
-    autoLayoutEnabled,
-    manualLayout,
   });
 
   // Sync effective dock app to atom for app mode controls.
@@ -241,9 +233,8 @@ const ActivitySimulator: React.FC = memo(() => {
     taskThreads: [],
   };
   const showFloatingInputOverlay =
-    showDock && !chatVisible && hasSession && !simulatorInputCollapsed;
+    !chatVisible && hasSession && !simulatorInputCollapsed;
   const showReplayBar =
-    showDock &&
     Boolean(sessionId) &&
     replayMode !== "follow" &&
     dockActiveApp !== AppType.DIFF;
@@ -298,24 +289,21 @@ const ActivitySimulator: React.FC = memo(() => {
           </div>
 
           {/* ── Dock (replay bar + app icons) ── */}
-          {showDock && (
-            <div className="flex shrink-0 flex-col overflow-visible">
-              {showReplayBar && (
-                <div className="overflow-visible border-t border-border-2">
-                  <MusicPlayerReplayBar />
-                </div>
-              )}
-              <StationDockChrome autoHide={false}>
-                <DockReplayControl
-                  activeApp={dockActiveApp}
-                  currentWorkingApp={currentWorkingApp}
-                  showDock={showDock}
-                  onAppClick={handleDockAppClick}
-                  onAppContextMenu={handleDockAppContextMenu}
-                />
-              </StationDockChrome>
-            </div>
-          )}
+          <div className="flex shrink-0 flex-col overflow-visible">
+            {showReplayBar && (
+              <div className="overflow-visible border-t border-border-2">
+                <MusicPlayerReplayBar />
+              </div>
+            )}
+            <StationDockChrome>
+              <DockReplayControl
+                activeApp={dockActiveApp}
+                currentWorkingApp={currentWorkingApp}
+                onAppClick={handleDockAppClick}
+                onAppContextMenu={handleDockAppContextMenu}
+              />
+            </StationDockChrome>
+          </div>
         </div>
       </div>
 

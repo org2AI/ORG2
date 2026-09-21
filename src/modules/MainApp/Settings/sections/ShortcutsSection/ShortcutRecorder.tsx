@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import KeyBadge from "@src/components/KeyBadge";
+import {
+  KEYBOARD_SHORTCUT_VARIANT,
+  KeyboardShortcut,
+} from "@src/components/KeyboardShortcut";
 import { syncNativeShortcuts } from "@src/config/keyboard/nativeShortcutSync";
 import {
   type ShortcutPlatform,
@@ -18,18 +21,30 @@ import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import { useShortcutBindings } from "@src/config/keyboard/useShortcutBindings";
 import { HugeiconsIcon, PencilEdit02Icon } from "@src/icons";
 
+/**
+ * In the Shortcuts table the edit / reset buttons stay out of the way until
+ * the row is hovered or focused — a hundred pencils would be noise. A lone
+ * recorder in a settings row has no such crowd, so it can ask for them to be
+ * shown as ordinary, always-visible buttons.
+ */
+const HOVER_REVEAL_CLASSES =
+  "opacity-0 group-focus-within/shortcut-row:opacity-100 group-hover/shortcut-row:opacity-100 focus-visible:opacity-100";
+
 export default function ShortcutRecorder({
   id,
   command,
   platform,
   recording,
   onRecord,
+  actions = "hover",
 }: {
   id: string;
   command: string;
   platform: ShortcutPlatform;
   recording: boolean;
   onRecord: (id: string | null) => void;
+  /** `"visible"` keeps the edit / reset buttons on screen as secondary buttons. */
+  actions?: "hover" | "visible";
 }) {
   const { t } = useTranslation("settings");
   useShortcutBindings();
@@ -97,22 +112,38 @@ export default function ShortcutRecorder({
     };
   }, [recording, id, platform, t, onRecord]);
   const keys = getShortcutKeys(id, { platform });
+  const actionsVisible = actions === "visible";
   if (!canCustomizeShortcut(id))
-    return <KeyBadge keys={keys} showSeparator={false} />;
+    return (
+      <KeyboardShortcut
+        shortcut={keys}
+        variant={KEYBOARD_SHORTCUT_VARIANT.prominent}
+      />
+    );
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <div className="flex items-center gap-2">
-        <KeyBadge keys={keys} showSeparator={false} />
+        <KeyboardShortcut
+          shortcut={keys}
+          variant={KEYBOARD_SHORTCUT_VARIANT.prominent}
+        />
         <Button
           ref={buttonRef}
           className={
-            recording
-              ? undefined
-              : "opacity-0 group-focus-within/shortcut-row:opacity-100 group-hover/shortcut-row:opacity-100 focus-visible:opacity-100"
+            recording || actionsVisible ? undefined : HOVER_REVEAL_CLASSES
           }
           size="small"
-          appearance={recording ? "outline" : "ghost"}
+          variant={recording || actionsVisible ? "secondary" : "tertiary"}
           iconOnly={!recording}
+          icon={
+            recording ? undefined : (
+              <HugeiconsIcon
+                icon={PencilEdit02Icon}
+                data-icon="edit-shortcut"
+                size={14}
+              />
+            )
+          }
           aria-label={t("shortcuts.editCommand", { command })}
           aria-pressed={recording}
           onClick={() => {
@@ -120,16 +151,12 @@ export default function ShortcutRecorder({
             onRecord(id);
           }}
         >
-          {recording ? (
-            t("shortcuts.pressShortcut")
-          ) : (
-            <HugeiconsIcon icon={PencilEdit02Icon} size={14} />
-          )}
+          {recording ? t("shortcuts.pressShortcut") : null}
         </Button>
         {recording ? (
           <Button
+            variant="tertiary"
             size="small"
-            appearance="ghost"
             onClick={() => onRecord(null)}
           >
             {t("common:actions.cancel")}
@@ -137,9 +164,9 @@ export default function ShortcutRecorder({
         ) : (
           getOverride(id, platform) && (
             <Button
+              variant={actionsVisible ? "secondary" : "tertiary"}
               size="small"
-              appearance="ghost"
-              className="opacity-0 group-focus-within/shortcut-row:opacity-100 group-hover/shortcut-row:opacity-100 focus-visible:opacity-100"
+              className={actionsVisible ? undefined : HOVER_REVEAL_CLASSES}
               onClick={() => {
                 try {
                   resetShortcutBindings(platform, id);

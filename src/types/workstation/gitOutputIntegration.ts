@@ -13,7 +13,7 @@
  */
 import type { MutableRefObject } from "react";
 
-import type { GitErrorType } from "@src/api/http/git/streaming";
+import type { GitErrorType } from "@src/contracts/git";
 
 // ============================================
 // Result Types

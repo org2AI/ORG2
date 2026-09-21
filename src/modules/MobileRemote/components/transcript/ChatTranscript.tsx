@@ -1,15 +1,28 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import ChatLoadingBlock from "@src/components/ChatLoadingBlock";
 import { Placeholder } from "@src/components/Placeholder";
 import ScrollToBottomButton from "@src/components/ScrollToBottomButton";
 import { CHAT_ITEM_PADDING_X } from "@src/engines/ChatPanel/blocks/primitives/config";
 
-import type { TranscriptLoadPhase } from "../../lib/transcriptLoadState";
+import type {
+  TranscriptLoadPhase,
+  TranscriptRoundSummary,
+} from "../../lib/transcriptLoadState";
 import type { TranscriptItem } from "../../lib/transcriptReducer";
 import { AgentBubble } from "./AgentBubble";
-import { MobileToolCall, MobileToolDetailSheet } from "./MobileToolCall";
+import {
+  type LoadMessageImage,
+  MobileMessageImages,
+  createImageRetention,
+} from "./MobileMessageImages";
+import { MobileToolCall } from "./MobileToolCall";
+import { MobileToolDetailModal } from "./MobileToolDetailModal";
+import {
+  MobileLoadingDots,
+  MobileTranscriptLoading,
+} from "./MobileTranscriptLoading";
+import { MobileTurnBody } from "./MobileTurnBody";
 import { UserBubble } from "./UserBubble";
 import {
   MOBILE_CHAT_ITEM_GAP,
@@ -21,6 +34,7 @@ import { useMobileChatScroll } from "./useMobileChatScroll";
 export interface ChatTranscriptProps {
   sessionId: string;
   roundId?: string | null;
+  round?: TranscriptRoundSummary;
   items: TranscriptItem[];
   phase: TranscriptLoadPhase;
   error?: string;
@@ -29,12 +43,17 @@ export interface ChatTranscriptProps {
   /** Show ChatPanel's loading block until the active turn paints output. */
   waitingForAgent?: boolean;
   onRetry: () => void;
+  loadImage?: LoadMessageImage;
+  /** Endpoint + authenticated user + desktop identity, independent of connectivity. */
+  imageScope?: string;
   onOpenFile?: (eventId: string, target: MobileFileTarget) => Promise<void>;
+  footer?: React.ReactNode;
 }
 
 export function ChatTranscript({
   sessionId,
   roundId,
+  round,
   items,
   phase,
   error,
@@ -42,9 +61,19 @@ export function ChatTranscript({
   waitingForAgent = false,
   onRetry,
   onOpenFile,
+  loadImage,
+  imageScope,
+  footer,
 }: ChatTranscriptProps) {
   const { t } = useTranslation("mobileRemote");
   const transcriptScope = `${sessionId}:${roundId ?? "no-round"}`;
+  const imageResourceScope = JSON.stringify([imageScope, sessionId, roundId]);
+  const retention = useMemo(
+    () => createImageRetention(),
+    // A new authenticated resource owns a fresh retention scope, not each RPC.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [imageResourceScope]
+  );
   const [toolDetail, setToolDetail] = useState<{
     scope: string;
     itemId: string;
@@ -69,13 +98,18 @@ export function ChatTranscript({
     phase !== "error" &&
     phase !== "empty" &&
     (phase !== "loading" || items.length > 0);
-  const { contentRef, scrollRef, scrollToBottom, showScrollToBottom } =
-    useMobileChatScroll({
-      sessionId: `${sessionId}:${roundId ?? "no-round"}`,
-      contentKey,
-      enabled: transcriptVisible,
-      forceFollowKey,
-    });
+  const {
+    contentRef,
+    scrollRef,
+    scrollToBottom,
+    showScrollToBottom,
+    pauseTailFollow,
+  } = useMobileChatScroll({
+    sessionId: `${sessionId}:${roundId ?? "no-round"}`,
+    contentKey,
+    enabled: transcriptVisible,
+    forceFollowKey,
+  });
 
   if (phase === "error") {
     return (
@@ -95,19 +129,7 @@ export function ChatTranscript({
   }
 
   if (phase === "loading" && items.length === 0) {
-    return (
-      <div
-        className="flex min-h-0 flex-1"
-        data-mobile-transcript-loading="true"
-      >
-        <Placeholder
-          fillParentHeight
-          placement="sidebar"
-          title={t("transcript.loading")}
-          variant="loading"
-        />
-      </div>
-    );
+    return <MobileTranscriptLoading label={t("transcript.loading")} />;
   }
 
   if (phase === "empty") {
@@ -123,58 +145,84 @@ export function ChatTranscript({
   }
 
   return (
-    <div className="relative min-h-0 flex-1">
+    <div className="mobile-chat-transcript relative min-h-0 min-w-0 flex-1">
       <div
         ref={scrollRef}
-        className="h-full min-h-0 overflow-y-auto px-2 py-3"
+        className="h-full min-h-0 min-w-0 overflow-y-auto px-2 py-3"
         role="log"
         aria-live="polite"
       >
         <div ref={contentRef} className="flex w-full min-w-0 flex-col">
-          {items.map((item, index) => {
-            const previousItem = index > 0 ? items[index - 1] : undefined;
-            const itemGapClass = mobileTranscriptItemGapClass(
-              item,
-              previousItem
-            );
-            let content: React.ReactNode;
-            if (item.kind === "user") {
-              content = <UserBubble text={item.text} />;
-            } else if (item.kind === "agent") {
-              content = (
-                <AgentBubble text={item.text} streaming={item.streaming} />
+          <MobileTurnBody
+            key={`${imageScope}:${transcriptScope}`}
+            items={items}
+            round={round}
+            busy={waitingForAgent || phase !== "ready"}
+            onBeforeToggle={pauseTailFollow}
+            renderItem={(item, index) => {
+              const previousItem = index > 0 ? items[index - 1] : undefined;
+              const itemGapClass = mobileTranscriptItemGapClass(
+                item,
+                previousItem
               );
-            } else {
-              content = (
-                <MobileToolCall
-                  item={item}
-                  detailsOpen={toolDetailOpen && selectedTool?.id === item.id}
-                  onOpenDetails={() =>
-                    setToolDetail({
-                      scope: transcriptScope,
-                      itemId: item.id,
-                      open: true,
-                    })
-                  }
-                />
+              let content: React.ReactNode;
+              if (item.kind === "user") {
+                content = (
+                  <UserBubble text={item.text}>
+                    <MobileMessageImages
+                      key={imageResourceScope}
+                      eventId={item.id}
+                      count={item.imageCount ?? 0}
+                      loadImage={loadImage}
+                      retention={retention}
+                    />
+                  </UserBubble>
+                );
+              } else if (item.kind === "agent") {
+                content = (
+                  <AgentBubble text={item.text} streaming={item.streaming}>
+                    <MobileMessageImages
+                      key={imageResourceScope}
+                      eventId={item.id}
+                      count={item.imageCount ?? 0}
+                      loadImage={loadImage}
+                      retention={retention}
+                    />
+                  </AgentBubble>
+                );
+              } else {
+                content = (
+                  <MobileToolCall
+                    item={item}
+                    detailsOpen={toolDetailOpen && selectedTool?.id === item.id}
+                    onOpenDetails={() =>
+                      setToolDetail({
+                        scope: transcriptScope,
+                        itemId: item.id,
+                        open: true,
+                      })
+                    }
+                  />
+                );
+              }
+              return (
+                <div
+                  key={item.id}
+                  className={`${itemGapClass} ${CHAT_ITEM_PADDING_X}`}
+                  data-transcript-item-kind={item.kind}
+                >
+                  {content}
+                </div>
               );
-            }
-            return (
-              <div
-                key={item.id}
-                className={`${itemGapClass} ${CHAT_ITEM_PADDING_X}`}
-                data-transcript-item-kind={item.kind}
-              >
-                {content}
-              </div>
-            );
-          })}
+            }}
+          />
+          {footer}
           {waitingForAgent ? (
             <div
               className={`${MOBILE_CHAT_ITEM_GAP} ${CHAT_ITEM_PADDING_X}`}
               data-mobile-agent-loading="true"
             >
-              <ChatLoadingBlock />
+              <MobileLoadingDots label={t("composerAccepted")} />
             </div>
           ) : null}
         </div>
@@ -188,7 +236,7 @@ export function ChatTranscript({
         </div>
       ) : null}
       {selectedTool ? (
-        <MobileToolDetailSheet
+        <MobileToolDetailModal
           key={`${transcriptScope}:${selectedTool.id}`}
           item={selectedTool}
           open={toolDetailOpen}

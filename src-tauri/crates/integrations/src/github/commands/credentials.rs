@@ -1,16 +1,17 @@
-//! Git credential lookup, repository cloning, and token validation.
+//! Git credential lookup.
 
+#[cfg(test)]
 use std::ffi::OsString;
+#[cfg(test)]
 use std::path::Path;
 
 use serde::Serialize;
 use tauri::command;
 
-use git::git_command;
 use project_management::sync::git_credentials::find_https_credential;
 
 use super::repos::github_repo_full_name_from_remote;
-use super::shared::{make_client, resolve_token};
+use super::shared::make_client;
 
 #[derive(Debug, Serialize)]
 pub struct GitHubGitCredential {
@@ -19,7 +20,7 @@ pub struct GitHubGitCredential {
     pub repo_full_name: String,
 }
 
-/// Build the argv that `github_clone_repo` will pass to `git`.
+/// Build the argv a GitHub clone would pass to `git`.
 ///
 /// Pulled out as a pure function so the unit tests below can assert that
 /// (a) the OAuth token only ever appears inside the
@@ -28,6 +29,7 @@ pub struct GitHubGitCredential {
 /// `--branch <b> --single-branch` (when a branch is requested) are wired
 /// correctly. Returns `OsString` so paths with non-UTF-8 components round
 /// trip cleanly.
+#[cfg(test)]
 pub(crate) fn build_clone_argv(
     token: &str,
     repo_full_name: &str,
@@ -54,6 +56,7 @@ pub(crate) fn build_clone_argv(
 /// Format a clone-failure error string, redacting the token if `git`
 /// happened to echo it back. Pulled out so the redaction logic is unit-
 /// testable without spawning a subprocess.
+#[cfg(test)]
 pub(crate) fn clean_git_clone_error(token: &str, exit_code: Option<i32>, stderr: &[u8]) -> String {
     let stderr_str = String::from_utf8_lossy(stderr).replace(token, "***");
     format!(
@@ -95,72 +98,6 @@ fn viewer_login_from_user(user: &serde_json::Value) -> Result<String, String> {
         .filter(|login| !login.is_empty())
         .map(str::to_owned)
         .ok_or_else(|| "Missing login in GitHub /user response".to_string())
-}
-
-/// Clone a GitHub repository by shelling out to the system `git` CLI.
-///
-/// Why subprocess instead of libgit2:
-/// - libgit2's HTTPS transport requires the `https` feature, which pulls
-///   in `openssl-sys` + `openssl-src` (vendored OpenSSL build, ~1–2 GB of
-///   C artifacts and a 30–60 s compile). ORGII already requires `git` on
-///   PATH (every coding-agent flow assumes it; `git/bundle.rs` shells out
-///   for `git bundle create`), so the in-process clone bought us nothing
-///   except dep weight.
-/// - The OAuth token is passed via `http.extraHeader` instead of being
-///   embedded in the URL (`https://x-access-token:TOKEN@github.com/…`).
-///   That keeps the token out of:
-///   * the URL itself,
-///   * `git`'s own log output and any inadvertent re-prints,
-///   * the process command line visible in `ps`.
-/// - `git` CLI auto-honors `~/.gitconfig`, `HTTP_PROXY`, system proxy
-///   settings — strictly better proxy support than libgit2 had.
-#[command]
-pub async fn github_clone_repo(
-    repo_full_name: String,
-    target_dir: String,
-    branch: Option<String>,
-) -> Result<String, String> {
-    log::info!("[GitHub][Cmd] clone_repo repo={repo_full_name} target={target_dir}");
-    let token = resolve_token()?;
-    let target = target_dir.clone();
-    tokio::task::spawn_blocking(move || -> Result<String, String> {
-        let argv = build_clone_argv(
-            &token,
-            &repo_full_name,
-            Path::new(&target),
-            branch.as_deref(),
-        );
-        let output = git_command()?
-            .args(&argv)
-            .output()
-            .map_err(|err| format!("Failed to spawn bundled git clone: {err}"))?;
-        if !output.status.success() {
-            return Err(clean_git_clone_error(
-                &token,
-                output.status.code(),
-                &output.stderr,
-            ));
-        }
-        Ok(target)
-    })
-    .await
-    .map_err(|err| format!("Clone task panicked: {err}"))?
-}
-
-/// Check whether a GitHub token is on file and accepted by `GET /user`.
-#[command]
-pub async fn github_check_token() -> Result<bool, String> {
-    log::info!("[GitHub][Cmd] check_token");
-    let client = match make_client() {
-        Ok(client) => client,
-        Err(err) if err.contains("GitHubReAuthRequired") => return Ok(false),
-        Err(err) => return Err(err),
-    };
-    match client.get("/user").await {
-        Ok(_) => Ok(true),
-        Err(err) if err.contains("GitHubReAuthRequired") => Ok(false),
-        Err(err) => Err(err),
-    }
 }
 
 #[cfg(test)]

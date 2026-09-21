@@ -8,6 +8,7 @@ import { atom } from "jotai";
 
 import { WORKSPACE_DEFAULT_REPO_LOCATION } from "@src/config/workspaceDefaultRepoPaths";
 import type { WorkspaceDefaultRepoLocation } from "@src/config/workspaceDefaultRepoPaths";
+import { createLogger } from "@src/hooks/logger";
 import {
   settingsAtom,
   updateSettingAtom,
@@ -80,8 +81,6 @@ export interface ChatAppearanceSettings {
   typingEffectEnabled: boolean;
   /** Typing speed in milliseconds per character */
   typingSpeed: number;
-  /** Enable decrypt text animation effect */
-  decryptEffectEnabled: boolean;
   /** Send messages with Enter instead of Ctrl/Cmd+Enter */
   sendOnEnter: boolean;
 }
@@ -92,7 +91,6 @@ export const DEFAULT_CHAT_APPEARANCE: ChatAppearanceSettings = {
   lineHeight: 1.6,
   typingEffectEnabled: true,
   typingSpeed: 5,
-  decryptEffectEnabled: false,
   sendOnEnter: false,
 };
 
@@ -110,14 +108,13 @@ export const chatAppearanceAtom = atom<ChatAppearanceSettings>((get) => {
       DEFAULT_CHAT_APPEARANCE.typingEffectEnabled,
     typingSpeed:
       settings["chat.typingSpeed"] ?? DEFAULT_CHAT_APPEARANCE.typingSpeed,
-    decryptEffectEnabled:
-      settings["chat.decryptEffectEnabled"] ??
-      DEFAULT_CHAT_APPEARANCE.decryptEffectEnabled,
     sendOnEnter:
       settings["chat.sendOnEnter"] ?? DEFAULT_CHAT_APPEARANCE.sendOnEnter,
   };
 });
 chatAppearanceAtom.debugLabel = "chatAppearanceAtom";
+
+const chatAppearanceLog = createLogger("ChatAppearance");
 
 /** Persisted chat appearance atom - saves to settings.jsonc */
 export const chatAppearancePersistAtom = atom(
@@ -131,12 +128,29 @@ export const chatAppearancePersistAtom = atom(
       "chat.lineHeight": merged.lineHeight,
       "chat.typingEffectEnabled": merged.typingEffectEnabled,
       "chat.typingSpeed": merged.typingSpeed,
-      "chat.decryptEffectEnabled": merged.decryptEffectEnabled,
       "chat.sendOnEnter": merged.sendOnEnter,
+    }).catch((error: unknown) => {
+      chatAppearanceLog.warn("Failed to persist chat appearance:", error);
     });
   }
 );
 chatAppearancePersistAtom.debugLabel = "chatAppearancePersistAtom";
+
+/**
+ * Send-message shortcut on its own: reading it does not pull the rest of the
+ * chat appearance in, so a header menu re-renders only when this key changes.
+ * Writing goes through the same persist atom Settings uses, so both surfaces
+ * land on the single `chat.sendOnEnter` key with no menu-local copy.
+ */
+export const chatSendOnEnterAtom = atom(
+  (get) =>
+    get(settingsAtom)["chat.sendOnEnter"] ??
+    DEFAULT_CHAT_APPEARANCE.sendOnEnter,
+  (_get, set, value: boolean) => {
+    set(chatAppearancePersistAtom, { sendOnEnter: value });
+  }
+);
+chatSendOnEnterAtom.debugLabel = "chatSendOnEnterAtom";
 
 // ============================================
 // Focused Layout Atoms (selectAtom)

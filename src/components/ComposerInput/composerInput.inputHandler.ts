@@ -68,24 +68,50 @@ export interface InputHandlerContext {
 }
 
 /**
+ * Input types an IME emits while swapping its marked text. They are always
+ * followed by an insertion within the same composition step.
+ */
+const COMPOSITION_REPLACEMENT_INPUT_TYPES: ReadonlySet<string> = new Set([
+  "deleteCompositionText",
+  "deleteByComposition",
+]);
+
+/**
  * Returns the contenteditable host's native `input` event handler.
  */
 export function createInputHandler(ctx: InputHandlerContext) {
   return (nativeEvent?: Event) => {
     const host = ctx.host();
     if (!host) return;
+
+    const inputType =
+      nativeEvent && "inputType" in nativeEvent
+        ? String(nativeEvent.inputType)
+        : undefined;
+
+    // An IME replaces its marked text as a delete/insert pair on every
+    // keystroke. The delete half momentarily empties an otherwise-empty
+    // editor, and treating that gap as the user clearing it wiped the host —
+    // detaching the IME's marked-text node — and flashed the placeholder, so
+    // the caret jumped to the start and back on each keystroke. The paired
+    // insert follows immediately and brings the state up to date.
+    if (COMPOSITION_REPLACEMENT_INPUT_TYPES.has(inputType ?? "")) return;
+
     ctx.reconcilePillsFromDom();
     ctx.commitHistoryBoundary();
 
     const text = extractPlainText(host);
     const hasPills = host.querySelector(`[${PILL_DATA_ATTR}]`) != null;
-    const inputType =
-      nativeEvent && "inputType" in nativeEvent
-        ? String(nativeEvent.inputType)
-        : undefined;
     const isDeletion = inputType?.startsWith("delete") ?? false;
+    // A cancelled composition (Esc) removes the marked text with no insert
+    // after it, so its end is the moment to settle an emptied editor.
+    const compositionEnded = nativeEvent?.type === "compositionend";
 
-    if (isDeletion && !hasPills && text.trim().length === 0) {
+    if (
+      (isDeletion || compositionEnded) &&
+      !hasPills &&
+      text.trim().length === 0
+    ) {
       ctx.clearHost();
       ctx.updateEmptyState();
       ctx.getOnContentChange()?.("");

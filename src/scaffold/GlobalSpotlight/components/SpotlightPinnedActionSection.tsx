@@ -2,6 +2,7 @@ import React from "react";
 
 import { useKeyboardMouseMode } from "@src/hooks/keyboard";
 
+import { SPOTLIGHT_TOKENS } from "../constants";
 import type { SpotlightItem } from "../types";
 import { SpotlightItemRow } from "./SpotlightItemRow";
 
@@ -53,7 +54,10 @@ export const SpotlightPinnedActionSection: React.FC<
 
   return (
     <div
-      className={`border-t border-border-2 py-1 ${layoutClassName}`}
+      className={`border-t border-border-2 pb-1 ${layoutClassName}`}
+      // Every row ends with an `itemGap` margin, so the bottom edge already
+      // shows pb-1 + itemGap; pad the top by the same amount to match.
+      style={{ paddingTop: 4 + SPOTLIGHT_TOKENS.itemGap }}
       onMouseMove={handleMouseMove}
       data-keyboard-mode={dataKeyboardMode}
     >
@@ -76,5 +80,3 @@ export const SpotlightPinnedActionSection: React.FC<
     </div>
   );
 };
-
-export default SpotlightPinnedActionSection;

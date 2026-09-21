@@ -1,5 +1,4 @@
 import { LogicalPosition } from "@tauri-apps/api/dpi";
-import { open } from "@tauri-apps/plugin-shell";
 import type { TFunction } from "i18next";
 import React, { memo, useCallback, useMemo, useSyncExternalStore } from "react";
 
@@ -22,6 +21,7 @@ import {
   type NativeMenuItemOptions,
   popupNativeMenu,
 } from "@src/util/platform/tauri/nativeMenuPopup";
+import { openLink } from "@src/util/ui/openLink";
 
 import { NoDragRegion } from "./NoDragRegion";
 
@@ -235,12 +235,18 @@ function getMenuItems(menu: NativeMenuKey, t: TFunction): NativeMenuItem[] {
         {
           type: "item",
           text: t("windowChrome.items.documentation"),
-          action: () => open("https://github.com/YORG-AI/ORGII/wiki"),
+          action: () =>
+            openLink("https://github.com/org2AI/ORG2/wiki", {
+              navigate: true,
+            }),
         },
         {
           type: "item",
           text: t("windowChrome.items.reportIssue"),
-          action: () => open("https://github.com/YORG-AI/ORGII/issues"),
+          action: () =>
+            openLink("https://github.com/org2AI/ORG2/issues", {
+              navigate: true,
+            }),
         },
       ];
   }
@@ -318,9 +324,7 @@ const WindowsTopBarComponent: React.FC = () => {
           return (
             <Button
               layout="custom"
-              appearance="custom"
               key={menuKey}
-              htmlType="button"
               className={MENU_BUTTON_CLASS}
               onClick={(event) => handleOpenMenu(menuKey, event)}
               aria-label={t("windowChrome.menus.aria", { label })}
@@ -339,8 +343,6 @@ const WindowsTopBarComponent: React.FC = () => {
       >
         <Button
           layout="custom"
-          appearance="custom"
-          htmlType="button"
           className={WINDOW_CONTROL_BUTTON_CLASS}
           onClick={handleMinimize}
           aria-label={t("windowChrome.controls.minimizeWindow")}
@@ -355,8 +357,6 @@ const WindowsTopBarComponent: React.FC = () => {
         </Button>
         <Button
           layout="custom"
-          appearance="custom"
-          htmlType="button"
           className={WINDOW_CONTROL_BUTTON_CLASS}
           onClick={handleMaximize}
           aria-label={t("windowChrome.controls.maximizeRestoreWindow")}
@@ -371,8 +371,6 @@ const WindowsTopBarComponent: React.FC = () => {
         </Button>
         <Button
           layout="custom"
-          appearance="custom"
-          htmlType="button"
           className={CLOSE_BUTTON_CLASS}
           onClick={handleClose}
           aria-label={t("windowChrome.controls.closeWindow")}

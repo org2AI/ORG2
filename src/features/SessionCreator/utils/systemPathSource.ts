@@ -10,7 +10,6 @@ import {
 
 export const SYSTEM_PATH_SOURCE_ID_PREFIX = "__orgii_system_path__";
 export const SYSTEM_HOME_SOURCE_ID = `${SYSTEM_PATH_SOURCE_ID_PREFIX}:${SYSTEM_PATH_ID.HOME}`;
-export const SYSTEM_DOCUMENTS_SOURCE_ID = `${SYSTEM_PATH_SOURCE_ID_PREFIX}:${SYSTEM_PATH_ID.DOCUMENTS}`;
 
 export function isSystemPathSource(
   source: SessionSource | null | undefined

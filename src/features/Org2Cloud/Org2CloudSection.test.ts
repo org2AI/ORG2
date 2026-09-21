@@ -9,6 +9,7 @@ import {
   ORG2_CLOUD_AUTH_STORAGE_KEY,
   org2CloudAuthAtom,
 } from "./org2CloudAuthAtom";
+import * as org2CloudClient from "./org2CloudClient";
 import * as entitlementCoordinator from "./org2CloudEntitlementCoordinator";
 
 const mocks = vi.hoisted(() => ({ signIn: vi.fn() }));
@@ -90,8 +91,88 @@ it("settings preserves auth on cancel and clears it only after confirmation", as
     expect(mocks.signIn).not.toHaveBeenCalled();
     await act(async () => login());
     await act(async () => clickAction("cloud.signIn"));
-    expect(dialog()).toBeNull();
+    expect(dialog()?.textContent).toContain("auth:loading.waiting");
     expect(mocks.signIn).toHaveBeenCalledOnce();
+  } finally {
+    act(() => root.unmount());
+    container.remove();
+    vi.restoreAllMocks();
+    delete environment.IS_REACT_ACT_ENVIRONMENT;
+  }
+});
+
+it("user name is an always-editable field whose actions appear only after an edit", async () => {
+  const environment = globalThis as typeof globalThis & {
+    IS_REACT_ACT_ENVIRONMENT?: boolean;
+  };
+  environment.IS_REACT_ACT_ENVIRONMENT = true;
+  const store = createStore();
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  const updateName = vi
+    .spyOn(org2CloudClient, "updateCloudProfileDisplayName")
+    .mockImplementation(async (_token, name) => name);
+  try {
+    store.set(org2CloudAuthAtom, {
+      kind: "org2_cloud",
+      supabaseUrl: "https://cloud.example.test",
+      supabaseAnonKey: "test-anon-key",
+      userId: "user-1",
+      accessToken: "test-access-token",
+      refreshToken: "test-refresh-token",
+      expiresAt: 2_000_000_000,
+      profile: { displayName: "Harry-He", primaryEmail: "h@example.test" },
+    });
+    await act(async () =>
+      root.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(Org2CloudLoginRows)
+        )
+      )
+    );
+    const input = () =>
+      container.querySelector<HTMLInputElement>(
+        '[data-testid="org2-cloud-rename-input"]'
+      )!;
+    const actions = () => container.querySelector(".input-edit-actions");
+    const type = (value: string) =>
+      act(() => {
+        Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value"
+        )?.set?.call(input(), value);
+        input().dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    const press = (key: string) =>
+      act(async () => {
+        input().dispatchEvent(
+          new KeyboardEvent("keydown", { key, bubbles: true })
+        );
+      });
+
+    expect(input().value).toBe("Harry-He");
+    expect(actions()).toBeNull();
+
+    type("  Harry-He ");
+    expect(actions()).not.toBeNull();
+    expect(
+      container.querySelector<HTMLButtonElement>(".input-confirm")?.disabled
+    ).toBe(true);
+
+    type("Harry");
+    await press("Escape");
+    expect(input().value).toBe("Harry-He");
+    expect(actions()).toBeNull();
+
+    type("Harry");
+    await press("Enter");
+    expect(updateName).toHaveBeenCalledWith("test-access-token", "Harry");
+    expect(store.get(org2CloudAuthAtom)?.profile?.displayName).toBe("Harry");
+    expect(input().value).toBe("Harry");
+    expect(actions()).toBeNull();
   } finally {
     act(() => root.unmount());
     container.remove();

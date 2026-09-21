@@ -14,9 +14,10 @@ import {
   isCliSession,
 } from "@src/util/session/sessionDispatch";
 
-import type {
-  ConversationRootLocator,
-  LocalConversationTarget,
+import {
+  type ConversationRootLocator,
+  type LocalConversationTarget,
+  isLocalConversationTarget,
 } from "./conversationTypes";
 import { conversationExecutionParentId } from "./localConversationExecutionIdentity";
 import {
@@ -27,6 +28,7 @@ import {
   QueuedConversationRecoveryBlockedError,
   QueuedConversationRecoveryPendingError,
 } from "./queuedConversationContract";
+import { effectiveQueuedRetryEvents } from "./queuedRetryLineage";
 
 const log = createLogger("localConversationContinuation");
 
@@ -187,20 +189,28 @@ async function readExecutionRow(
     if (!row) return null;
     const cliAgentType = optionalString(row.cliAgentType);
     const accountId = optionalString(row.accountId);
+    const credentialSource = optionalString(row.credentialSource);
     const updatedAt = optionalString(row.updatedAt);
-    if (!cliAgentType || (!accountId && cliAgentType !== "claude_code")) {
+    if (
+      !cliAgentType ||
+      (!accountId && !credentialSource && cliAgentType !== "claude_code")
+    ) {
       return null;
     }
-    return {
-      target: {
-        cliAgentType,
-        accountId,
-        model: optionalString(row.model),
-        workspaceRepoPath:
-          optionalString(row.worktreePath) ?? optionalString(row.repoPath),
-      },
-      updatedAt,
+    const target = {
+      cliAgentType,
+      accountId,
+      credentialSource,
+      model: optionalString(row.model),
+      workspaceRepoPath:
+        optionalString(row.worktreePath) ?? optionalString(row.repoPath),
     };
+    if (
+      row.credentialSource != null &&
+      (!credentialSource || !isLocalConversationTarget(target))
+    )
+      return null;
+    return { target, updatedAt };
   }
 
   const row = await getAgentSession(sessionId);
@@ -209,16 +219,14 @@ async function readExecutionRow(
   const accountId = optionalString(row.accountId);
   const model = optionalString(row.model);
   const updatedAt = optionalString(row.updatedAt);
-  if (!agentDefinitionId || !accountId || !model) return null;
-  return {
-    target: {
-      agentDefinitionId,
-      accountId,
-      model,
-      workspaceRepoPath: optionalString(row.workspacePath),
-    },
-    updatedAt,
+  const target = {
+    agentDefinitionId,
+    accountId,
+    credentialSource: row.credentialSource ?? undefined,
+    model,
+    workspaceRepoPath: optionalString(row.workspacePath),
   };
+  return isLocalConversationTarget(target) ? { target, updatedAt } : null;
 }
 
 /**
@@ -277,6 +285,7 @@ export async function candidateMatchesTarget(
       target.workspaceRepoPath ?? undefined
     ) &&
     sameOptional(existing.accountId, target.accountId) &&
+    sameOptional(existing.credentialSource, target.credentialSource) &&
     sameOptional(existing.agentDefinitionId, target.agentDefinitionId);
   if (!matches) {
     log.info(
@@ -327,11 +336,14 @@ export async function findCompatibleExecution(
       const loaded = await loadAuthoritativeSessionEvents(candidate.sessionId);
       const events = loaded.events;
       const executionItems = projectNativeConversationItems(events);
+      const effectiveEvents = effectiveQueuedRetryEvents(events, timeline);
+      const containsSupersededPrompt = effectiveEvents.length !== events.length;
       // A newly-created child may legitimately be empty if the renderer died
       // between Session creation and native materialization. Empty is the
       // canonical zero-length prefix: synchronizeNativeConversation rebuilds
       // the provider transcript before sending the same durable turn intent.
       if (
+        !containsSupersededPrompt &&
         nativeConversationItemsAreProviderPortablePrefix(
           executionItems,
           canonicalItems
@@ -341,6 +353,20 @@ export async function findCompatibleExecution(
           sessionId: candidate.sessionId,
           events,
         };
+      }
+      if (
+        containsSupersededPrompt &&
+        nativeConversationItemsAreProviderPortablePrefix(
+          projectNativeConversationItems(effectiveEvents),
+          canonicalItems
+        )
+      ) {
+        // Check durable retry identity even when the raw text is a prefix:
+        // an old failed prompt can have exactly the retried prompt's text.
+        // Resuming it would append only the successful assistant and bind it
+        // to the superseded user. Leave that audit intact and use an episode
+        // without the superseded prompt (or materialize a fresh one).
+        continue;
       }
       // A compatible execution may contain unpublished partial/tool output.
       // Selecting an older UUID (or creating a fresh one) would silently omit

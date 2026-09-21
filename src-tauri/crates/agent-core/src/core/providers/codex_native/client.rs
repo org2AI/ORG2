@@ -93,7 +93,7 @@ impl CodexNativeClient {
     pub(super) fn required_instructions(instructions: Option<String>) -> String {
         instructions
             .filter(|value| !value.trim().is_empty())
-            .unwrap_or_else(|| "You are Codex, a coding agent running in ORGII.".to_string())
+            .unwrap_or_else(|| "You are Codex, a coding agent running in ORG2.".to_string())
     }
 
     fn codex_reasoning_effort(
@@ -323,7 +323,7 @@ mod tests {
         assert_eq!(req.service_tier.as_deref(), Some("priority"));
         assert_eq!(
             req.instructions,
-            "You are Codex, a coding agent running in ORGII."
+            "You are Codex, a coding agent running in ORG2."
         );
     }
 

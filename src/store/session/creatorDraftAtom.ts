@@ -10,8 +10,8 @@ import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 
 import type { CliAgentType } from "@src/api/tauri/rpc/schemas/validation";
-import type { ComposerSnapshot } from "@src/components/ComposerInput";
-import type { UploadedFile } from "@src/features/SessionCreator/types";
+import type { ComposerSnapshot } from "@src/contracts/composer";
+import type { UploadedFile } from "@src/contracts/session";
 import { createLogger } from "@src/hooks/logger";
 
 const log = createLogger("SessionCreatorDraft");

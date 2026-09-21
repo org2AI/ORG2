@@ -27,18 +27,8 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@src/components/Tooltip", () => ({
-  default: ({
-    children,
-    mouseEnterDelay,
-  }: {
-    children: React.ReactNode;
-    mouseEnterDelay?: number;
-  }) =>
-    createElement(
-      "span",
-      { "data-tooltip-enter-delay": mouseEnterDelay },
-      children
-    ),
+  default: ({ children, kind }: { children: React.ReactNode; kind?: string }) =>
+    createElement("span", { "data-tooltip-kind": kind }, children),
 }));
 
 const actEnvironment = globalThis as typeof globalThis & {
@@ -121,9 +111,7 @@ describe("SessionSidebarViewSwitcher", () => {
     ).toBe(true);
     expect(container.querySelector("[title]")).toBeNull();
     expect(
-      Array.from(
-        container.querySelectorAll('[data-tooltip-enter-delay="1000"]')
-      )
+      Array.from(container.querySelectorAll('[data-tooltip-kind="button"]'))
     ).toHaveLength(3);
     expect(
       Array.from(container.querySelectorAll("button")).map((button) =>

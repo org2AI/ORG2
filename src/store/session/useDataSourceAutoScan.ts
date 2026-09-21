@@ -12,6 +12,9 @@
  * the roster's last reload — detected via the rescan's own writes OR a drift
  * in the per-source cache signature (covering writes other surfaces' syncs
  * made between ticks).
+ * A source whose importer fails (e.g. a store the OS refuses to open) is
+ * isolated: the sources that did scan are still stamped and reloaded, while
+ * the failing one is left unstamped and retried on its own doubling backoff.
  * Sources set to "manual" are never auto-scanned or presence-probed, including
  * at startup.
  *
@@ -32,7 +35,9 @@ import {
   IMPORTED_HISTORY_SOURCE_DESCRIPTORS,
   externalCliSourceProbe,
   externalHistoryRescanSources,
+  splitScanSourcesByOutcome,
 } from "@src/api/tauri/externalHistory";
+import { createLogger } from "@src/hooks/logger";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import {
   isWindowFocused,
@@ -41,20 +46,26 @@ import {
 import { isMainAppWindow } from "@src/util/platform/tauri/windowIdentity";
 
 import {
+  type DataSourceConfig,
   type DataSourceConfigMap,
   type DataSourcePresence,
+  type DataSourceScanFailure,
   FREQUENCY_INTERVAL_MS,
   type ScanFrequency,
   dataSourceConfigAtom,
   dataSourceGlobalFrequencyAtom,
   dataSourcePresenceAtom,
   dataSourceRosterSignaturesAtom,
+  dataSourceScanFailureAtom,
   effectiveFrequency,
   externalHistoryBackgroundScanEnabledAtom,
   externalSessionsEnabledAtom,
   getSourceConfig,
+  reduceDataSourceScanFailures,
 } from "./dataSourceConfigAtom";
 import { loadSessionRoster } from "./sessionAtom/loaders";
+
+const logger = createLogger("DataSourceAutoScan");
 
 // While the window is unfocused, every source's effective cadence is stretched
 // to at least this floor (mirrors the backend git poller's focus-adaptive
@@ -66,6 +77,9 @@ const UNFOCUSED_SCAN_INTERVAL_MS = 10 * 60_000;
 /** Cadence for refreshing the lightweight store-presence snapshot. */
 const SOURCE_PRESENCE_PROBE_INTERVAL_MS = 30 * 60_000;
 const FAILED_SCAN_RETRY_MS = 30_000;
+// 2 ** 16 * 30s already exceeds every cadence; the cap only keeps the
+// exponent finite for a source that stays broken for weeks.
+const MAX_FAILED_SCAN_BACKOFF_DOUBLINGS = 16;
 
 // Runtime-only, per-store retry deadlines. Never convert a failed probe into
 // a negative presence result or persist transient failures as user policy.
@@ -102,6 +116,31 @@ async function mapSettledWithConcurrency<T, R>(
   return results;
 }
 
+/**
+ * When a source's importer should next run. A healthy source follows its
+ * cadence from `lastScannedAt`. A failing source is never stamped, so without
+ * its own deadline it would stay perpetually due and pull the scheduler into
+ * a tight loop; it retries on a doubling backoff from its last attempt
+ * instead — quickly at first for transient errors, then never more often
+ * than the cadence it would have had while healthy.
+ */
+function nextSourceScanDeadline(
+  cfg: DataSourceConfig,
+  failure: DataSourceScanFailure | undefined,
+  effectiveInterval: number,
+  now: number
+): number {
+  if (failure) {
+    const backoff =
+      FAILED_SCAN_RETRY_MS *
+      2 ** Math.min(failure.failures - 1, MAX_FAILED_SCAN_BACKOFF_DOUBLINGS);
+    return failure.lastAttemptAt + Math.min(effectiveInterval, backoff);
+  }
+  return cfg.lastScannedAt == null
+    ? now
+    : cfg.lastScannedAt + effectiveInterval;
+}
+
 export function nextDataSourceAutoScanDelay(
   now: number,
   focused: boolean,
@@ -109,7 +148,8 @@ export function nextDataSourceAutoScanDelay(
   cfgMap: DataSourceConfigMap,
   previousPresence: Record<string, DataSourcePresence>,
   global: ScanFrequency,
-  probeRetryAt: Record<string, number> = {}
+  probeRetryAt: Record<string, number> = {},
+  scanFailures: Record<string, DataSourceScanFailure> = {}
 ): number | null {
   if (!enabled) return null;
   let earliestDeadline: number | null = null;
@@ -129,8 +169,12 @@ export function nextDataSourceAutoScanDelay(
     const effectiveInterval = focused
       ? interval
       : Math.max(interval, UNFOCUSED_SCAN_INTERVAL_MS);
-    const scanDeadline =
-      cfg.lastScannedAt == null ? now : cfg.lastScannedAt + effectiveInterval;
+    const scanDeadline = nextSourceScanDeadline(
+      cfg,
+      scanFailures[sourceId],
+      effectiveInterval,
+      now
+    );
     const deadline =
       presence?.historyFound === false
         ? probeDeadline
@@ -150,6 +194,7 @@ async function performDataSourceAutoScan(force: boolean): Promise<void> {
   const cfgMap = store.get(dataSourceConfigAtom);
   const previousPresence = store.get(dataSourcePresenceAtom);
   const global = store.get(dataSourceGlobalFrequencyAtom);
+  const scanFailures = store.get(dataSourceScanFailureAtom);
   const now = Date.now();
 
   const focused =
@@ -167,8 +212,13 @@ async function performDataSourceAutoScan(force: boolean): Promise<void> {
         : Math.max(interval, UNFOCUSED_SCAN_INTERVAL_MS);
       const due =
         force ||
-        cfg.lastScannedAt == null ||
-        now - cfg.lastScannedAt >= effectiveInterval;
+        now >=
+          nextSourceScanDeadline(
+            cfg,
+            scanFailures[sourceId],
+            effectiveInterval,
+            now
+          );
       return [{ sourceId, scanDue: due }];
     }
   );
@@ -258,6 +308,21 @@ async function performDataSourceAutoScan(force: boolean): Promise<void> {
 
   if (dueSourceIds.length === 0) return;
   const scanResult = await externalHistoryRescanSources(dueSourceIds);
+  // One broken store must not hide the sources that did scan. Record the
+  // failures first so their backoff holds even if the roster reload throws.
+  const { succeeded, failed } = splitScanSourcesByOutcome(
+    dueSourceIds,
+    scanResult
+  );
+  for (const { sourceId, error } of failed) {
+    // Warn once per distinct error, not on every backoff retry.
+    if (scanFailures[sourceId]?.error !== error) {
+      logger.warn(`Rescan failed for external source ${sourceId}:`, error);
+    }
+  }
+  store.set(dataSourceScanFailureAtom, (previous) =>
+    reduceDataSourceScanFailures(previous, succeeded, failed, Date.now())
+  );
   // `changedSources` only covers writes made by THIS rescan. Other surfaces
   // (kanban, usage, an open transcript's pager) sync the same backend cache
   // between ticks — e.g. a continuation demotion applied during a foreign
@@ -277,10 +342,11 @@ async function performDataSourceAutoScan(force: boolean): Promise<void> {
     }));
   }
 
+  if (succeeded.length === 0) return;
   const scannedAt = Date.now();
   store.set(dataSourceConfigAtom, (prev) => {
     const next = { ...prev };
-    for (const sourceId of dueSourceIds) {
+    for (const sourceId of succeeded) {
       next[sourceId] = {
         ...getSourceConfig(prev, sourceId),
         lastScannedAt: scannedAt,
@@ -294,7 +360,12 @@ async function performDataSourceAutoScan(force: boolean): Promise<void> {
 export async function runDataSourceAutoScan(force = false): Promise<void> {
   if (autoScanInFlight) return autoScanInFlight;
 
-  const pass = performDataSourceAutoScan(force);
+  const pass = performDataSourceAutoScan(force).catch((error: unknown) => {
+    // The scheduler retries a rejected pass on its own timer; without this
+    // line a pass that fails every time is invisible.
+    logger.warn("External source auto-scan pass failed:", error);
+    throw error;
+  });
   autoScanInFlight = pass;
   try {
     await pass;
@@ -411,7 +482,8 @@ export function useDataSourceAutoScan(): void {
           store.get(dataSourceConfigAtom),
           store.get(dataSourcePresenceAtom),
           store.get(dataSourceGlobalFrequencyAtom),
-          store.get(dataSourceProbeRetryAtAtom)
+          store.get(dataSourceProbeRetryAtAtom),
+          store.get(dataSourceScanFailureAtom)
         ),
       FAILED_SCAN_RETRY_MS,
       () => store.get(externalHistoryBackgroundScanEnabledAtom)
@@ -425,6 +497,7 @@ export function useDataSourceAutoScan(): void {
       store.sub(dataSourceConfigAtom, scheduler.schedule),
       store.sub(dataSourcePresenceAtom, scheduler.schedule),
       store.sub(dataSourceProbeRetryAtAtom, scheduler.schedule),
+      store.sub(dataSourceScanFailureAtom, scheduler.schedule),
       store.sub(dataSourceGlobalFrequencyAtom, scheduler.schedule),
       store.sub(externalSessionsEnabledAtom, scheduler.schedule),
       store.sub(externalHistoryBackgroundScanEnabledAtom, scheduler.schedule),

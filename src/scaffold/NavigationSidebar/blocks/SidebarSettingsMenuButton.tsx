@@ -1,103 +1,34 @@
 import { useAtomValue } from "jotai";
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { createPortal, flushSync } from "react-dom";
+import React from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
-import {
-  clampSubmenuTop,
-  getSubmenuAnchor,
-} from "@src/components/Dropdown/submenuLayout";
 import {
   DROPDOWN_CLASSES,
-  DROPDOWN_ITEM,
-  DROPDOWN_PANEL,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import {
-  KEYBOARD_SHORTCUT_VARIANT,
-  KeyboardShortcut,
-} from "@src/components/KeyboardShortcut";
-import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
-import type { AppearanceMode } from "@src/config/appearance/globalThemes";
 import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import { SignInModal } from "@src/features/Org2Cloud/SignInModal";
 import { SignOutConfirmationModal } from "@src/features/Org2Cloud/SignOutConfirmationModal";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
-import {
-  type DropdownEnginePosition,
-  useDropdownEngine,
-} from "@src/hooks/dropdown";
 import { useAppNavigation } from "@src/hooks/navigation";
-import {
-  ArrowRight01Icon,
-  BookOpen01Icon,
-  CircleIcon,
-  ContrastIcon,
-  GaugeIcon,
-  HugeiconsIcon,
-  Layout01Icon,
-  Login02Icon,
-  Logout02Icon,
-  RocketIcon,
-  Settings01Icon,
-} from "@src/icons";
 import { useAppearanceState } from "@src/modules/MainApp/Settings/sections/useAppearanceState";
-import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "@src/scaffold/NavigationSidebar/config";
-import { TUTORIALS_OPEN_EVENT } from "@src/scaffold/Tutorials/tutorialRegistry";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
-import { getViewportSize } from "@src/util/ui/window/viewport";
 
-import HoverAnimatedIcon, {
-  triggerIconAnimation,
-} from "../components/HoverAnimatedIcon";
 import { SidebarRamMonitorPanel } from "../connectors/SidebarRamMonitorButton/index";
 import {
-  type SettingsSubmenu,
-  SidebarSettingsMenuSubmenus,
-  type SubmenuPosition,
-} from "./SidebarSettingsMenuSubmenus";
-
-const WikiModal = React.lazy(() => import("@src/features/Wiki/WikiModal"));
-
-const MENU_ICON_CLASS_NAME = "shrink-0 text-text-2";
-const MENU_ARROW_CLASS_NAME = "shrink-0 text-text-3";
-type SettingsUtilityPanel = "ram";
-
-interface SidebarSettingsMenuTriggerProps {
-  isOpen: boolean;
-  onClick: () => void;
-}
-
-interface SidebarSettingsMenuButtonProps {
-  /** Replaces the compact gear trigger while preserving this menu's behavior. */
-  renderTrigger?: (props: SidebarSettingsMenuTriggerProps) => React.ReactNode;
-  /** Adds a login action when the account trigger represents a signed-out user. */
-  onSignIn?: () => void;
-}
-
-function getSubmenuPosition(
-  trigger: HTMLElement,
-  parentPanel: HTMLElement | null,
-  opensUpward: boolean
-): SubmenuPosition {
-  const { width: viewportWidth, height: viewportHeight } = getViewportSize();
-  return getSubmenuAnchor({
-    triggerRect: trigger.getBoundingClientRect(),
-    parentRect: parentPanel?.getBoundingClientRect() ?? null,
-    submenuWidth: DROPDOWN_WIDTHS.panelWidth,
-    viewportWidth,
-    viewportHeight,
-    opensUpward,
-  });
-}
+  SidebarSettingsMenuLeadingItems,
+  SidebarSettingsMenuSubmenuTriggers,
+  SidebarSettingsMenuTrailingItems,
+} from "./SidebarSettingsMenuItems";
+import { SidebarSettingsMenuSubmenus } from "./SidebarSettingsMenuSubmenus";
+import { SidebarSettingsMenuTriggerSlot } from "./SidebarSettingsMenuTriggerSlot";
+import type { SidebarSettingsMenuButtonProps } from "./sidebarSettingsMenuTypes";
+import { useSidebarSettingsMenuActions } from "./useSidebarSettingsMenuActions";
+import {
+  useSidebarSettingsMenuPopovers,
+  useSidebarUtilityPanelDismiss,
+} from "./useSidebarSettingsMenuPopovers";
 
 const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
   renderTrigger,
@@ -105,234 +36,67 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
 }) => {
   const { t } = useTranslation("navigation");
   const { t: tSettings } = useTranslation("settings");
-  const { t: tOnboarding } = useTranslation("onboarding");
   const { goToSettings } = useAppNavigation();
-  const [showWiki, setShowWiki] = useState(false);
-  const [showSignInModal, setShowSignInModal] = useState(false);
-  const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
   const signedIn = useAtomValue(org2CloudAuthAtom) !== null;
   const devModeEnabled = useAtomValue(devModeEnabledAtom);
-  const utilityPanelRef = useRef<HTMLDivElement | null>(null);
-  const submenuPanelRef = useRef<HTMLDivElement | null>(null);
-  const preserveUtilityPanelOnMenuCloseRef = useRef(false);
-  const dropdownInsideRefs = useMemo(() => [submenuPanelRef], []);
-  const [activeSubmenu, setActiveSubmenu] = useState<SettingsSubmenu | null>(
-    null
-  );
-  const [submenuPosition, setSubmenuPosition] =
-    useState<SubmenuPosition | null>(null);
-  const [utilityPanel, setUtilityPanel] = useState<SettingsUtilityPanel | null>(
-    null
-  );
-  const [utilityPanelPosition, setUtilityPanelPosition] =
-    useState<DropdownEnginePosition | null>(null);
-
-  useLayoutEffect(() => {
-    if (!activeSubmenu || !submenuPosition || !submenuPanelRef.current) return;
-
-    const { height: submenuHeight } =
-      submenuPanelRef.current.getBoundingClientRect();
-    const { height: viewportHeight } = getViewportSize();
-    const clampedTop = clampSubmenuTop({
-      anchor: submenuPosition,
-      submenuHeight,
-      viewportHeight,
-    });
-
-    if (clampedTop === submenuPosition.top) return;
-    setSubmenuPosition((current) =>
-      current ? { ...current, top: clampedTop } : current
-    );
-  }, [activeSubmenu, submenuPosition]);
-
-  const handleSettingsMenuOpenChange = useCallback((open: boolean) => {
-    if (open) return;
-    setActiveSubmenu(null);
-    setSubmenuPosition(null);
-    if (preserveUtilityPanelOnMenuCloseRef.current) {
-      preserveUtilityPanelOnMenuCloseRef.current = false;
-      return;
-    }
-    setUtilityPanel(null);
-  }, []);
   const {
+    utilityPanelRef,
+    submenuPanelRef,
+    activeSubmenu,
+    setActiveSubmenu,
+    submenuPosition,
+    utilityPanel,
+    setUtilityPanel,
+    utilityPanelPosition,
     isOpen,
     isPositioned,
-    toggle,
-    close,
     triggerRef,
     panelRef,
     panelPosition,
-  } = useDropdownEngine<HTMLDivElement>({
-    placement: "top",
-    align: renderTrigger ? "left" : "right",
-    gap: DROPDOWN_PANEL.triggerGap,
-    onOpenChange: handleSettingsMenuOpenChange,
-    additionalInsideRefs: dropdownInsideRefs,
-  });
+    closeAll,
+    handleToggle,
+    openSubmenu,
+    handleViewRam,
+    handleSubmenuPointerDown,
+    handleSubmenuMouseDown,
+  } = useSidebarSettingsMenuPopovers({ renderTrigger });
   const { appearanceMode, appearanceModeOptions, handleAppearanceModeChange } =
     useAppearanceState();
 
   const openSettingsShortcut = useShortcutKeys("open_settings");
-  const settingsButtonClassName = isOpen ? "text-text-1" : "text-text-2";
 
-  useEffect(() => {
-    if (!utilityPanel) return;
+  useSidebarUtilityPanelDismiss({
+    utilityPanel,
+    utilityPanelRef,
+    setUtilityPanel,
+  });
 
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (utilityPanelRef.current?.contains(target)) return;
-      setUtilityPanel(null);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setUtilityPanel(null);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [utilityPanel]);
-
-  const closeAll = useCallback(() => {
-    setActiveSubmenu(null);
-    setSubmenuPosition(null);
-    setUtilityPanel(null);
-    close();
-  }, [close]);
-
-  const handleToggle = useCallback(() => {
-    if (isOpen) {
-      closeAll();
-      return;
-    }
-    setUtilityPanel(null);
-    toggle();
-  }, [closeAll, isOpen, toggle]);
-
-  const openSubmenu = useCallback(
-    (submenu: SettingsSubmenu, target: HTMLElement) => {
-      setActiveSubmenu(submenu);
-      setSubmenuPosition(
-        getSubmenuPosition(
-          target,
-          panelRef.current,
-          panelPosition.bottom !== undefined
-        )
-      );
-    },
-    [panelPosition.bottom, panelRef]
-  );
-
-  const handleOpenOnboarding = useCallback(() => {
-    flushSync(closeAll);
-    window.dispatchEvent(new CustomEvent(TUTORIALS_OPEN_EVENT));
-  }, [closeAll]);
-
-  const handleOpenSettings = useCallback(() => {
-    closeAll();
-    goToSettings();
-  }, [closeAll, goToSettings]);
-
-  const handleModifyAppearance = useCallback(() => {
-    closeAll();
-    goToSettings({ section: "appearance" });
-  }, [closeAll, goToSettings]);
-
-  const handleOpenUtilityPanel = useCallback(
-    (panel: SettingsUtilityPanel) => {
-      setActiveSubmenu(null);
-      setSubmenuPosition(null);
-      preserveUtilityPanelOnMenuCloseRef.current = true;
-      setUtilityPanelPosition({ ...panelPosition });
-      setUtilityPanel(panel);
-      close();
-    },
-    [close, panelPosition]
-  );
-
-  const handleViewRam = useCallback(() => {
-    handleOpenUtilityPanel("ram");
-  }, [handleOpenUtilityPanel]);
-
-  const handleSignIn = useCallback(() => {
-    closeAll();
-    setShowSignInModal(true);
-  }, [closeAll]);
-
-  const handleSignOut = useCallback(() => {
-    closeAll();
-    setShowSignOutConfirmation(true);
-  }, [closeAll]);
-
-  const handleSelectAppearanceMode = useCallback(
-    async (mode: AppearanceMode) => {
-      await handleAppearanceModeChange(mode);
-      closeAll();
-    },
-    [closeAll, handleAppearanceModeChange]
-  );
-
-  const handleSubmenuPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      event.stopPropagation();
-    },
-    []
-  );
-
-  const handleSubmenuMouseDown = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      event.stopPropagation();
-    },
-    []
-  );
+  const {
+    handleOpenWiki,
+    showSignInModal,
+    setShowSignInModal,
+    showSignOutConfirmation,
+    setShowSignOutConfirmation,
+    handleOpenSettings,
+    handleModifyAppearance,
+    handleSignIn,
+    handleSignOut,
+    handleSelectAppearanceMode,
+  } = useSidebarSettingsMenuActions({
+    closeAll,
+    goToSettings,
+    handleAppearanceModeChange,
+  });
 
   return (
     <>
-      {renderTrigger ? (
-        <div ref={triggerRef} className="flex min-w-0 flex-1">
-          {renderTrigger({ isOpen, onClick: handleToggle })}
-        </div>
-      ) : (
-        <ToolbarTooltip
-          label={t("sidebar.bottomBar.settings")}
-          shortcut={openSettingsShortcut}
-          position="top"
-          mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
-          disabled={isOpen}
-        >
-          <div ref={triggerRef} className="inline-flex">
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              aria-label={t("sidebar.bottomBar.settings")}
-              className={`${
-                isOpen
-                  ? "bg-sidebar-selected! text-text-1!"
-                  : "hover:bg-sidebar-selected!"
-              }`}
-              onClick={handleToggle}
-              onMouseEnter={(event) =>
-                triggerIconAnimation(event.currentTarget)
-              }
-              icon={
-                <HoverAnimatedIcon
-                  icon={Settings01Icon}
-                  iconName="settings"
-                  size={16}
-                  strokeWidth={2}
-                  className={settingsButtonClassName}
-                />
-              }
-            />
-          </div>
-        </ToolbarTooltip>
-      )}
+      <SidebarSettingsMenuTriggerSlot
+        renderTrigger={renderTrigger}
+        isOpen={isOpen}
+        handleToggle={handleToggle}
+        triggerRef={triggerRef}
+        openSettingsShortcut={openSettingsShortcut}
+      />
 
       {isOpen &&
         isPositioned &&
@@ -347,239 +111,32 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
             }}
           >
             <div className={DROPDOWN_CLASSES.itemsColumn}>
-              {signedIn && (
-                <>
-                  <Button
-                    layout="custom"
-                    appearance="custom"
-                    htmlType="button"
-                    className={`${DROPDOWN_CLASSES.menuActionItem} gap-2`}
-                    onMouseEnter={() => setActiveSubmenu(null)}
-                    onFocus={() => setActiveSubmenu(null)}
-                    onClick={handleSignOut}
-                    data-testid="sidebar-menu-sign-out"
-                  >
-                    <HugeiconsIcon
-                      icon={Logout02Icon}
-                      data-icon="log-out"
-                      size={DROPDOWN_ITEM.iconSize}
-                      className={MENU_ICON_CLASS_NAME}
-                    />
-                    <span>{t("cloud.signOut")}</span>
-                  </Button>
-                  <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-                </>
-              )}
-              <Button
-                layout="custom"
-                appearance="custom"
-                htmlType="button"
-                className={`${DROPDOWN_CLASSES.menuActionItem} gap-2`}
-                onMouseEnter={() => setActiveSubmenu(null)}
-                onFocus={() => setActiveSubmenu(null)}
-                onClick={() => {
-                  flushSync(closeAll);
-                  setShowWiki(true);
-                }}
-                aria-haspopup="dialog"
-                data-testid="sidebar-menu-wiki"
-              >
-                <HugeiconsIcon
-                  icon={BookOpen01Icon}
-                  size={DROPDOWN_ITEM.iconSize}
-                  className={MENU_ICON_CLASS_NAME}
-                />
-                <span className="truncate">Wiki</span>
-              </Button>
-              {devModeEnabled && (
-                <Button
-                  layout="custom"
-                  appearance="custom"
-                  htmlType="button"
-                  className={`${DROPDOWN_CLASSES.menuActionItem} gap-2`}
-                  onMouseEnter={() => setActiveSubmenu(null)}
-                  onFocus={() => setActiveSubmenu(null)}
-                  onClick={handleViewRam}
-                >
-                  <HugeiconsIcon
-                    icon={GaugeIcon}
-                    data-icon="gauge"
-                    size={DROPDOWN_ITEM.iconSize}
-                    className={MENU_ICON_CLASS_NAME}
-                  />
-                  <span>{t("sidebar.settingsMenu.viewRam")}</span>
-                </Button>
-              )}
-              <Button
-                layout="custom"
-                appearance="custom"
-                htmlType="button"
-                className={`${DROPDOWN_CLASSES.menuActionItem} ${activeSubmenu === "presence" ? DROPDOWN_CLASSES.itemActive : ""}`}
-                onMouseEnter={(event) =>
-                  openSubmenu("presence", event.currentTarget)
-                }
-                onFocus={(event) =>
-                  openSubmenu("presence", event.currentTarget)
-                }
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <HugeiconsIcon
-                    icon={CircleIcon}
-                    data-icon="circle"
-                    size={DROPDOWN_ITEM.iconSize}
-                    className="shrink-0 text-success-6"
-                  />
-                  <span className="truncate">
-                    {tSettings("myRoles.tabs.presence")}
-                  </span>
-                </span>
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  data-icon="chevron-right"
-                  size={DROPDOWN_ITEM.iconSize}
-                  className={MENU_ARROW_CLASS_NAME}
-                />
-              </Button>
-              <Button
-                layout="custom"
-                appearance="custom"
-                htmlType="button"
-                className={`${DROPDOWN_CLASSES.menuActionItem} ${activeSubmenu === "appearance" ? DROPDOWN_CLASSES.itemActive : ""}`}
-                onMouseEnter={(event) =>
-                  openSubmenu("appearance", event.currentTarget)
-                }
-                onFocus={(event) =>
-                  openSubmenu("appearance", event.currentTarget)
-                }
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <HugeiconsIcon
-                    icon={ContrastIcon}
-                    data-icon="contrast"
-                    size={DROPDOWN_ITEM.iconSize}
-                    className={MENU_ICON_CLASS_NAME}
-                  />
-                  <span className="truncate">
-                    {t("sidebar.settingsMenu.appearance")}
-                  </span>
-                </span>
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  data-icon="chevron-right"
-                  size={DROPDOWN_ITEM.iconSize}
-                  className={MENU_ARROW_CLASS_NAME}
-                />
-              </Button>
-              <Button
-                layout="custom"
-                appearance="custom"
-                htmlType="button"
-                className={`${DROPDOWN_CLASSES.menuActionItem} ${activeSubmenu === "layout" ? DROPDOWN_CLASSES.itemActive : ""}`}
-                onMouseEnter={(event) =>
-                  openSubmenu("layout", event.currentTarget)
-                }
-                onFocus={(event) => openSubmenu("layout", event.currentTarget)}
-                data-testid="sidebar-settings-layout"
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <HugeiconsIcon
-                    icon={Layout01Icon}
-                    data-icon="layout"
-                    size={DROPDOWN_ITEM.iconSize}
-                    className={MENU_ICON_CLASS_NAME}
-                  />
-                  <span className="truncate">
-                    {tSettings("general.layout")}
-                  </span>
-                </span>
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  data-icon="chevron-right"
-                  size={DROPDOWN_ITEM.iconSize}
-                  className={MENU_ARROW_CLASS_NAME}
-                />
-              </Button>
+              <SidebarSettingsMenuLeadingItems
+                signedIn={signedIn}
+                devModeEnabled={devModeEnabled}
+                setActiveSubmenu={setActiveSubmenu}
+                handleOpenWiki={handleOpenWiki}
+                handleSignOut={handleSignOut}
+                handleViewRam={handleViewRam}
+              />
+              <SidebarSettingsMenuSubmenuTriggers
+                activeSubmenu={activeSubmenu}
+                openSubmenu={openSubmenu}
+              />
               <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-              {devModeEnabled && (
-                <Button
-                  layout="custom"
-                  appearance="custom"
-                  htmlType="button"
-                  className={`${DROPDOWN_CLASSES.menuActionItem} gap-2`}
-                  onMouseEnter={() => setActiveSubmenu(null)}
-                  onFocus={() => setActiveSubmenu(null)}
-                  onClick={handleOpenOnboarding}
-                  aria-haspopup="dialog"
-                  data-testid="sidebar-menu-onboarding"
-                >
-                  <HugeiconsIcon
-                    icon={RocketIcon}
-                    size={DROPDOWN_ITEM.iconSize}
-                    className={MENU_ICON_CLASS_NAME}
-                  />
-                  <span className="truncate">
-                    {tOnboarding("discovery.title")}
-                  </span>
-                </Button>
-              )}
-              <Button
-                layout="custom"
-                appearance="custom"
-                htmlType="button"
-                className={`${DROPDOWN_CLASSES.menuActionItem} justify-between`}
-                onMouseEnter={() => setActiveSubmenu(null)}
-                onFocus={() => setActiveSubmenu(null)}
-                onClick={handleOpenSettings}
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <HugeiconsIcon
-                    icon={Settings01Icon}
-                    data-icon="settings"
-                    size={DROPDOWN_ITEM.iconSize}
-                    className={MENU_ICON_CLASS_NAME}
-                  />
-                  <span className="truncate">
-                    {t("sidebar.settingsMenu.openSettings")}
-                  </span>
-                </span>
-                <KeyboardShortcut
-                  shortcut={openSettingsShortcut}
-                  variant={KEYBOARD_SHORTCUT_VARIANT.dropdown}
-                />
-              </Button>
-              {!signedIn && onSignIn && (
-                <>
-                  <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-                  <Button
-                    layout="custom"
-                    appearance="custom"
-                    htmlType="button"
-                    className={`${DROPDOWN_CLASSES.menuActionItem} gap-2`}
-                    onMouseEnter={() => setActiveSubmenu(null)}
-                    onFocus={() => setActiveSubmenu(null)}
-                    onClick={handleSignIn}
-                    data-testid="sidebar-menu-sign-in"
-                  >
-                    <HugeiconsIcon
-                      icon={Login02Icon}
-                      data-icon="log-in"
-                      size={DROPDOWN_ITEM.iconSize}
-                      className={MENU_ICON_CLASS_NAME}
-                    />
-                    <span>{t("cloud.signIn")}</span>
-                  </Button>
-                </>
-              )}
+              <SidebarSettingsMenuTrailingItems
+                signedIn={signedIn}
+                onSignIn={onSignIn}
+                openSettingsShortcut={openSettingsShortcut}
+                setActiveSubmenu={setActiveSubmenu}
+                handleOpenSettings={handleOpenSettings}
+                handleSignIn={handleSignIn}
+              />
             </div>
           </div>,
           document.body
         )}
-      {showWiki && (
-        <React.Suspense fallback={null}>
-          <WikiModal open onClose={() => setShowWiki(false)} />
-        </React.Suspense>
-      )}
-      {showSignInModal && onSignIn && (
+      {showSignInModal && (
         <SignInModal
           onClose={() => setShowSignInModal(false)}
           onSignIn={onSignIn}
@@ -599,7 +156,6 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
         submenuPanelRef={submenuPanelRef}
         submenuPosition={submenuPosition}
         onModifyAppearance={handleModifyAppearance}
-        onPresenceSelectionComplete={closeAll}
         onSelectAppearanceMode={(mode) => void handleSelectAppearanceMode(mode)}
         onSubmenuMouseDown={handleSubmenuMouseDown}
         onSubmenuPointerDown={handleSubmenuPointerDown}

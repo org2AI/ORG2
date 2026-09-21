@@ -191,7 +191,6 @@ export const DockContextMenu: React.FC<DockContextMenuProps> = ({
             <React.Fragment key={item.id}>
               <Button
                 layout="custom"
-                appearance="custom"
                 className={`${DROPDOWN_CLASSES.menuActionItem} ${
                   isDisabled
                     ? `${DROPDOWN_CLASSES.itemDisabled} text-text-3`

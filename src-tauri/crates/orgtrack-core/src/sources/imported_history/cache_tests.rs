@@ -70,6 +70,37 @@ fn cache_query_paginates_newest_first() {
 }
 
 #[test]
+fn session_impact_lookup_reads_one_row_by_app_session_id() {
+    let mut conn = fixture_conn();
+    let mut edited = input(SOURCE_CODEX_APP, "edited", 200);
+    edited.impact = ImportedHistoryImpactStats {
+        files_changed: 5,
+        lines_added: 4,
+        lines_removed: 3,
+        touched_files: vec!["src/a.rs".to_string()],
+    };
+    let untouched = input(SOURCE_CODEX_APP, "untouched", 100);
+    upsert_imported_session_cache_from_conn(&mut conn, &[edited, untouched]).expect("upsert");
+
+    let impact = query_cached_session_impact_by_session_id_from_conn(&conn, "codex_app-edited")
+        .expect("query")
+        .expect("cached impact");
+    assert_eq!(impact.files_changed, 5);
+    assert_eq!(impact.lines_added, 4);
+    assert_eq!(impact.lines_removed, 3);
+    let untouched =
+        query_cached_session_impact_by_session_id_from_conn(&conn, "codex_app-untouched")
+            .expect("query")
+            .expect("cached row");
+    assert_eq!(untouched.files_changed, 0);
+    assert!(
+        query_cached_session_impact_by_session_id_from_conn(&conn, "codex_app-missing")
+            .expect("query")
+            .is_none()
+    );
+}
+
+#[test]
 fn source_stats_batch_counts_roots_children_and_last_activity() {
     let mut conn = fixture_conn();
     let root = input(SOURCE_CODEX_APP, "root", 100);

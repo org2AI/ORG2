@@ -8,6 +8,7 @@ import { DropdownItem, DropdownPanel } from "@src/components/Dropdown/exports";
 import { DROPDOWN_WIDTHS } from "@src/components/Dropdown/tokens";
 import Message from "@src/components/Message";
 import SelectorPill from "@src/components/SelectorPill";
+import { INPUT_AREA_PILL_MENU_GAP } from "@src/config/inputAreaTokens";
 import { useSessionId } from "@src/engines/SessionCore/hooks/session";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { HugeiconsIcon, Shield01Icon } from "@src/icons";
@@ -27,7 +28,7 @@ export default function CliPermissionPill() {
   const [saving, setSaving] = useState(false);
   const generation = useRef(0);
   const dropdown = useDropdownEngine<HTMLButtonElement>({
-    gap: 6,
+    gap: INPUT_AREA_PILL_MENU_GAP,
     align: "left",
     placement: "top",
   });
@@ -103,6 +104,7 @@ export default function CliPermissionPill() {
         active={dropdown.isOpen}
         dataTestId="cli-permission-pill"
         size="sm"
+        paddingX="compact"
       />
       {dropdown.isOpen &&
         dropdown.isPositioned &&

@@ -2,8 +2,10 @@
 import React, { act, createElement } from "react";
 import type { ComponentProps, ComponentType, PropsWithChildren } from "react";
 import { type Root, createRoot } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import * as keyValidation from "@src/api/services/keyValidation";
+import * as sharedLocalKeys from "@src/hooks/keyVault/sharedLocalKeyStore";
 import { MobileRemotePlatformProvider } from "@src/modules/MobileRemote/platform";
 import { createBrowserMobileRemotePlatform } from "@src/modules/MobileRemote/platform/browser";
 
@@ -55,15 +57,18 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@src/hooks/models", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@src/hooks/models")>();
-  return {
-    ...actual,
-    useModelAccountLookup: () => ({
-      accounts: [],
-      accountLookup: new Map(),
-    }),
-  };
+// Keep the actual model and KeyVault hooks. Spies observe the owning desktop
+// resource boundaries so an accidentally mounted adapter cannot silently pass.
+const subscribeLocalKeys = vi.spyOn(
+  sharedLocalKeys,
+  "subscribeSharedLocalKeys"
+);
+const listLocalKeys = vi.spyOn(keyValidation, "listKeys");
+const saveLocalKey = vi.spyOn(keyValidation, "saveKey");
+beforeEach(() => {
+  subscribeLocalKeys.mockClear();
+  listLocalKeys.mockClear();
+  saveLocalKey.mockClear();
 });
 
 (
@@ -81,6 +86,9 @@ afterEach(() => {
   root = null;
   host = null;
   dropdownTestState.isOpen = false;
+  expect(subscribeLocalKeys).not.toHaveBeenCalled();
+  expect(listLocalKeys).not.toHaveBeenCalled();
+  expect(saveLocalKey).not.toHaveBeenCalled();
 });
 
 // The dropdown portals through the platform port, so the unit test needs a
@@ -161,6 +169,104 @@ async function renderPicker(
 }
 
 describe("MobileModelPicker", () => {
+  it("uses only the remote account after scope replacement and repeated remounts", async () => {
+    const select = vi.fn();
+    await renderPicker({ onSelect: select });
+    const nextProps: React.ComponentProps<typeof MobileModelPicker> = {
+      config: {
+        sessionId: "session-b",
+        model: "gpt-5.6-sol-low",
+        accountId: "remote-b",
+        modelEditable: true,
+      },
+      options: ["low", "high"].map((level) => ({
+        id: `gpt-5.6-sol-${level}`,
+        accountId: "remote-b",
+        accountLabel: "Remote B",
+      })),
+      open: false,
+      onOpen: vi.fn(),
+      onClose: vi.fn(),
+      onSelect: select,
+    };
+    const renderNext = () =>
+      root!.render(
+        createElement(
+          TestMobileRemotePlatformProvider,
+          { platform: testPlatform },
+          createElement(MobileModelPicker, nextProps)
+        )
+      );
+    await act(async () => renderNext());
+    expect(host!.textContent).toContain("GPT");
+    expect(host!.textContent).not.toContain("Sonnet");
+    await act(async () => {
+      host!
+        .querySelector<HTMLButtonElement>(
+          "[data-testid=mobile-model-picker-pill]"
+        )!
+        .click();
+      renderNext();
+    });
+    await act(async () =>
+      document
+        .querySelector<HTMLButtonElement>(
+          "[data-testid=model-settings-effort]"
+        )!
+        .click()
+    );
+    const high = document.querySelector<HTMLButtonElement>(
+      "[data-testid=model-settings-effort-high]"
+    );
+    expect(high).not.toBeNull();
+    await act(async () => high!.click());
+    expect(select).toHaveBeenCalledExactlyOnceWith({
+      id: "gpt-5.6-sol-high",
+      accountId: "remote-b",
+      accountLabel: "Remote B",
+    });
+    // Publication into the desktop credential store cannot override remote props.
+    await act(async () => sharedLocalKeys.publishSharedLocalKeys([]));
+    expect(host!.textContent).toContain("GPT");
+    for (let index = 0; index < 3; index++) {
+      await act(async () => root!.render(null));
+      await act(async () => renderNext());
+    }
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a catalog failure with retry while retaining the current model", async () => {
+    const retry = vi.fn();
+    await renderPicker({
+      open: true,
+      options: [],
+      error: "catalog unavailable",
+      onRetry: retry,
+    });
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(
+      "catalog unavailable"
+    );
+    const button = Array.from(document.querySelectorAll("button")).find(
+      (item) => item.textContent === "transcript.retry"
+    );
+    expect(button).toBeDefined();
+    await act(async () => button!.click());
+    expect(retry).toHaveBeenCalledOnce();
+    expect(host?.textContent).toContain("Sonnet");
+  });
+
+  it("keeps the shared settings trigger interactive while its catalog is loading", async () => {
+    const activate = vi.fn();
+    await renderPicker({ optionsLoading: true, onActivate: activate });
+    const trigger = host!.querySelector(
+      '[data-testid="mobile-model-picker-trigger"]'
+    )!;
+    expect(trigger.querySelector(".pointer-events-none")).toBeNull();
+    const button = trigger.querySelector("button")!;
+    await act(async () => button.focus());
+    expect(activate).toHaveBeenCalled();
+  });
+
   it("renders a desktop-style model pill with the formatted current model", async () => {
     await renderPicker();
     const trigger = host?.querySelector(

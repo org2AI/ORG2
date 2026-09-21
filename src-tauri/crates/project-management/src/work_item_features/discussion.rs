@@ -948,7 +948,7 @@ pub(crate) fn post_child_terminal_system_comment_in_transaction(
             scope,
             comment_id: format!("system-child-terminal:{child_short_id}:{child_revision}"),
             author_id: "ORGII".to_string(),
-            author_name: "ORGII".to_string(),
+            author_name: "ORG2".to_string(),
             content: format!(
                 "Child {child_short_id} \u{201c}{child_title}\u{201d} reached {status}."
             ),

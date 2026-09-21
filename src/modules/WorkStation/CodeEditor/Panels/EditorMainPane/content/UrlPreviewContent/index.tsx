@@ -12,15 +12,16 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { useInlineWebview } from "@src/hooks/platform/useInlineWebview";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   HugeiconsIcon,
   Refresh04Icon,
   SquareArrowUpRight02Icon,
 } from "@src/icons";
 import { isTauriDesktop } from "@src/util/platform/tauri";
+import { openLink } from "@src/util/ui/openLink";
 
 interface UrlPreviewContentProps {
   url: string;
@@ -52,10 +53,7 @@ const UrlPreviewContent: React.FC<UrlPreviewContentProps> = memo(
       incognito: false,
       debug: false,
       pollInterval: 500,
-      onNewWindow: (newUrl: string) => {
-        // Open new windows in external browser
-        window.open(newUrl, "_blank", "noopener,noreferrer");
-      },
+      onNewWindow: (newUrl: string) => openLink(newUrl),
     });
 
     // Update position when mounted
@@ -78,8 +76,8 @@ const UrlPreviewContent: React.FC<UrlPreviewContentProps> = memo(
       !isWebviewCreated
     );
 
-    const handleOpenExternal = useCallback(() => {
-      window.open(url, "_blank", "noopener,noreferrer");
+    const handleOpenInBrowser = useCallback(() => {
+      openLink(url, { navigate: true });
     }, [url]);
 
     // Extract hostname for display
@@ -123,7 +121,7 @@ const UrlPreviewContent: React.FC<UrlPreviewContentProps> = memo(
           <Button
             variant="tertiary"
             size="small"
-            onClick={handleOpenExternal}
+            onClick={handleOpenInBrowser}
             icon={
               <HugeiconsIcon
                 icon={SquareArrowUpRight02Icon}
@@ -142,7 +140,7 @@ const UrlPreviewContent: React.FC<UrlPreviewContentProps> = memo(
         title,
         hostname,
         url,
-        handleOpenExternal,
+        handleOpenInBrowser,
         t,
       ]
     );

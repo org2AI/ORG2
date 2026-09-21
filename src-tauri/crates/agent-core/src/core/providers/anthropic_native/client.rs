@@ -39,6 +39,7 @@ struct AnthropicAuthState {
 pub enum AnthropicAuthMode {
     ApiKey,
     AzureBearer,
+    Bearer,
     ClaudeOauth,
 }
 

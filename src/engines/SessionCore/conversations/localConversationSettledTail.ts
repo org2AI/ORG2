@@ -6,6 +6,7 @@
 import type { TurnTerminalStatus } from "@src/engines/SessionCore/control/turnLifecycle";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import { isInternalLifecycleEvent } from "@src/engines/SessionCore/ingestion/visibilityFilters";
 import {
   reconcileNativeTranscript,
   recoverNativeTranscriptAfterMismatch,
@@ -25,6 +26,10 @@ import {
   removeKnownNativeConversationEchoes,
   sourceEventIdOfNativeItem,
 } from "./nativeConversationMaterializer";
+import {
+  isNativeTerminalDiagnosticOrEcho,
+  nativeTerminalDiagnosticSources,
+} from "./nativeTerminalDiagnostic";
 import { QueuedConversationRecoveryPendingError } from "./queuedConversationContract";
 
 const log = createLogger("localConversationContinuation");
@@ -174,7 +179,22 @@ function resolveSettledTail(
   logMismatch: boolean
 ): SessionEvent[] | null {
   const identifiedTail = sliceTurnTail(before, events, turnIntentId);
-  if (identifiedTail && identifiedTail.length > 0) return identifiedTail;
+  // Native readers retain task_completed/task_failed after the user anchor,
+  // even when the provider emitted no reply. Those execution receipts alone
+  // must not make a failed turn look answered and retire its Retry owner.
+  // Keep tool, private reasoning, partial replies and ordinary errors; only
+  // lifecycle/typed-terminal-receipt tails fall through to portable-prefix
+  // proof. Raw retry proof separately checks the matching failed native turn.
+  const diagnosticSources = nativeTerminalDiagnosticSources(events);
+  if (
+    identifiedTail?.some(
+      (event) =>
+        !isInternalLifecycleEvent(event) &&
+        !isNativeTerminalDiagnosticOrEcho(event, diagnosticSources)
+    )
+  ) {
+    return identifiedTail;
+  }
   return sliceProviderNativeTail(
     before,
     events,

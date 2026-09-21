@@ -62,12 +62,16 @@ export const EventBlockHeader: React.FC<EventBlockHeaderProps> = ({
           : undefined
       }
       onClick={rowAction ? handleClick : undefined}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
     >
-      {/* Left content */}
-      <div className="flex min-w-0 flex-1 items-center gap-2 leading-tight">
-        {children}
+      {/* Keep spare row width outside the icon/text hover target. */}
+      <div className="min-w-0 flex-1">
+        <div
+          className="flex w-fit max-w-full items-center gap-2 leading-tight"
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+        >
+          {children}
+        </div>
       </div>
 
       {/* Right content + navigate icon */}

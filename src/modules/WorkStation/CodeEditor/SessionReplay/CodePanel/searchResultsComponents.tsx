@@ -11,13 +11,13 @@ import {
   COUNT_BADGE,
   getCountBadgeSizeClass,
 } from "@src/config/workstation/tokens";
+import BreadcrumbFileHeader from "@src/features/FileHeader/BreadcrumbFileHeader";
 import {
   File01Icon,
   FolderOpenIcon,
   HugeiconsIcon,
   Search01Icon,
 } from "@src/icons";
-import BreadcrumbFileHeader from "@src/modules/shared/components/FileHeader/BreadcrumbFileHeader";
 
 import { getBasename, toRepoFirstDisplayPath } from "./pathUtils";
 import { SEARCH_ROW_ICON_CLASS } from "./searchIcons";

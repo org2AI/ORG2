@@ -34,8 +34,8 @@ import { ArrowDown01Icon, ArrowUp01Icon, HugeiconsIcon } from "@src/icons";
 // "xl" — large hero button           28px icon  (ChatPanel session creator)
 
 const SIZE_CLASSES = {
-  sm: `${PILL_SM_HEIGHT_CLASS} px-3 text-[12px]`,
-  md: "h-[32px] px-3 text-[14px]",
+  sm: `${PILL_SM_HEIGHT_CLASS} text-[12px]`,
+  md: "h-[32px] text-[14px]",
   lg: "min-h-[42px] px-1.5 text-[24px] font-medium tracking-wide leading-[1.2] overflow-visible",
   xl: "px-4 py-2 text-[28px] font-bold tracking-wide overflow-visible",
 } as const;
@@ -63,14 +63,28 @@ const ICON_SIZES = {
 
 type SelectorPillSize = keyof typeof SIZE_CLASSES;
 
+/** Compact uses a tight leading inset with more label-end space; standard preserves session-info row spacing. */
+export type SelectorPillPaddingX = "compact" | "standard";
+
 function resolveHorizontalPaddingClass(
   size: SelectorPillSize,
-  leadingFlush: boolean
+  leadingFlush: boolean,
+  paddingX: SelectorPillPaddingX
 ): string {
-  if (!leadingFlush) return SIZE_CLASSES[size];
-  if (size === "sm") return `${PILL_SM_HEIGHT_CLASS} pl-0 pr-3 text-[12px]`;
-  if (size === "md") return "h-[32px] pl-0 pr-3 text-[14px]";
-  return SIZE_CLASSES[size];
+  if (size !== "sm" && size !== "md") return SIZE_CLASSES[size];
+  const paddingClass =
+    paddingX === "compact"
+      ? size === "sm"
+        ? leadingFlush
+          ? "pl-0 pr-2.5"
+          : "pl-1.5 pr-2.5"
+        : leadingFlush
+          ? "pl-0 pr-3"
+          : "pl-2 pr-3"
+      : leadingFlush
+        ? "pl-0 pr-3"
+        : "px-3";
+  return `${SIZE_CLASSES[size]} ${paddingClass}`;
 }
 
 interface SelectorPillContentProps {
@@ -228,8 +242,6 @@ interface SelectorPillProps {
   tooltipFramedWide?: boolean;
   /** Tooltip position — defaults to "top" */
   tooltipPosition?: TooltipPosition;
-  /** Delay before showing the tooltip. Defaults to 400 ms. */
-  tooltipMouseEnterDelay?: number;
   /** Whether the pill is in an open/active state */
   active?: boolean;
   /** Color treatment for the open/active state. */
@@ -238,6 +250,8 @@ interface SelectorPillProps {
   danger?: boolean;
   /** Size variant */
   size?: SelectorPillSize;
+  /** Horizontal inset for sm/md pills; larger hero sizes keep their own spacing. */
+  paddingX?: SelectorPillPaddingX;
   /** Visual appearance */
   appearance?: BareControlAppearance;
   /** Show a persistent right-side chevron instead of swapping the leading icon on hover */
@@ -276,11 +290,11 @@ export const SelectorPill = forwardRef<HTMLButtonElement, SelectorPillProps>(
       tooltipFramed = false,
       tooltipFramedWide = false,
       tooltipPosition = "top",
-      tooltipMouseEnterDelay = 400,
       active = false,
       activeTone = "primary",
       danger = false,
       size = "sm",
+      paddingX = "standard",
       appearance = "default",
       trailingChevron = false,
       textOnly = false,
@@ -337,15 +351,13 @@ export const SelectorPill = forwardRef<HTMLButtonElement, SelectorPillProps>(
     }, []);
 
     const buttonSizeClass = label
-      ? resolveHorizontalPaddingClass(size, leadingFlush)
+      ? resolveHorizontalPaddingClass(size, leadingFlush, paddingX)
       : "h-[28px] w-[28px] justify-center px-0";
 
     const button = (
       <Button
         layout="custom"
-        appearance="custom"
         ref={ref}
-        htmlType="button"
         onClick={onClick}
         onMouseDown={onMouseDown}
         onMouseEnter={onMouseEnter}
@@ -384,7 +396,7 @@ export const SelectorPill = forwardRef<HTMLButtonElement, SelectorPillProps>(
         <Tooltip
           content={tooltip}
           position={tooltipPosition}
-          mouseEnterDelay={tooltipMouseEnterDelay}
+          kind="button"
           open={tooltipOpen}
           onOpenChange={handleTooltipOpenChange}
           framedPanel={tooltipFramed}

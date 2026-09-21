@@ -24,6 +24,7 @@ import {
 } from "react";
 
 import { useListNavigation } from "@src/hooks/keyboard";
+import { useDeferredFocus } from "@src/hooks/keyboard/useDeferredFocus";
 
 import type { SpotlightItem } from "../../types";
 
@@ -199,29 +200,30 @@ export function useSelector(options: UseSelectorOptions): UseSelectorReturn {
     return 0;
   }, []);
 
-  const focusInput = useCallback(() => {
-    setTimeout(() => inputRef.current?.focus(), 0);
-  }, []);
+  const focusInput = useDeferredFocus(inputRef, isOpen);
 
   // ============ EFFECTS ============
 
   // Reset state and focus input on open (only when transitioning from closed to open)
   useEffect(() => {
+    let cancelled = false;
     if (isOpen && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
 
-      Promise.resolve().then(() => {
+      queueMicrotask(() => {
+        if (cancelled) return;
         setSearchQueryState("");
         setSelectedIndex(findFirstSelectable());
         onResetRef.current?.();
       });
-
-      // Focus input after state reset
-      setTimeout(() => inputRef.current?.focus(), 50);
     } else if (!isOpen) {
       // Reset flag when closed so next open triggers reset
       hasInitializedRef.current = false;
     }
+    return () => {
+      cancelled = true;
+      hasInitializedRef.current = false;
+    };
   }, [isOpen, findFirstSelectable]);
 
   // ============ KEYBOARD HANDLING ============
@@ -249,14 +251,18 @@ export function useSelector(options: UseSelectorOptions): UseSelectorReturn {
   );
   const prevItemsIdentityRef = useRef(itemsIdentityKey);
   useEffect(() => {
+    let cancelled = false;
     if (prevItemsIdentityRef.current !== itemsIdentityKey) {
       prevItemsIdentityRef.current = itemsIdentityKey;
       if (resetSelectionOnItemsChange) {
-        Promise.resolve().then(() => {
-          setSelectedIndex(findFirstSelectable());
+        queueMicrotask(() => {
+          if (!cancelled) setSelectedIndex(findFirstSelectable());
         });
       }
     }
+    return () => {
+      cancelled = true;
+    };
   }, [itemsIdentityKey, findFirstSelectable, resetSelectionOnItemsChange]);
 
   // Refocus input after DOM commits when the view changes. Two guards keep

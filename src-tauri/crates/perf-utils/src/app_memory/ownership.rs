@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use super::inventory::collect_process_inventory;
 #[cfg(not(any(target_os = "macos", windows)))]
 use super::inventory::descendant_depth;
+#[cfg(not(windows))]
 use super::platform::process_instance_key;
 use super::types::{
     AppMemoryProcessRole, AttributionStatus, ProcessDescriptor, ProcessInstanceKey,

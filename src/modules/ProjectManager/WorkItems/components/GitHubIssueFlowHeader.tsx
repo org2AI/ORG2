@@ -9,13 +9,13 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
+import { ActivityTimestamp } from "@src/features/GitHubWork/ActivityTimeline";
+import GitHubFlowHeader from "@src/features/GitHubWork/GitHubFlowHeader";
 import {
   CheckmarkCircle01Icon,
   CircleDotIcon,
   HugeiconsIcon,
 } from "@src/icons";
-import { ActivityTimestamp } from "@src/modules/shared/components/ActivityTimeline";
-import GitHubFlowHeader from "@src/modules/shared/components/GitHubFlowHeader";
 
 export function GitHubIssueFlowHeader({
   issue,

@@ -22,6 +22,13 @@ import type {
 import Dropdown from "@src/components/Dropdown";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import PersonAvatar from "@src/components/PersonAvatar";
+import {
+  WorkstationTrailBody,
+  WorkstationTrailEmptyText,
+  WorkstationTrailIconButton,
+  WorkstationTrailSection,
+  WorkstationTrailSurface,
+} from "@src/components/layout/blocks";
 import { WORKSTATION_TRAIL_CONTENT } from "@src/config/workstation/tokens";
 import {
   BubbleChatIcon,
@@ -30,19 +37,12 @@ import {
   Settings01Icon,
   Tick01Icon,
 } from "@src/icons";
-import {
-  WorkstationTrailBody,
-  WorkstationTrailEmptyText,
-  WorkstationTrailIconButton,
-  WorkstationTrailSection,
-  WorkstationTrailSurface,
-} from "@src/modules/shared/layouts/blocks";
+import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import {
   presentPullRequestActions,
   readRequestedReviewers,
-} from "@src/shared/pr/prLevelActions";
-import { latestReviewVerdicts } from "@src/shared/pr/prReviewRollup";
-import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
+} from "@src/util/git/pr/prLevelActions";
+import { latestReviewVerdicts } from "@src/util/git/pr/prReviewRollup";
 
 import { PrLevelActions, reportPrAction } from "./PrLevelActions";
 import { PrMergeStatusList } from "./PrMergeStatusList";

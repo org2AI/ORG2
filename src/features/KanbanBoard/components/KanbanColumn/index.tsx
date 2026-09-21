@@ -27,7 +27,7 @@ import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { Add01Icon, HugeiconsIcon } from "@src/icons";
-import { getUiScaleFromCssVar } from "@src/lib/dndKit";
+import { getUiScaleFromCssVar } from "@src/util/dom/uiScale";
 
 import type { KanbanColumnConfig, KanbanTask } from "../../types";
 import TaskCard from "../TaskCard";
@@ -257,7 +257,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
         {showAddButton && (
           <Button
             variant="tertiary"
-            appearance="soft"
             size="sidebar"
             iconOnly
             icon={
@@ -267,7 +266,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
                 size={HEADER_ICON_SIZE.sm}
               />
             }
-            htmlType="button"
             className={`kanban-column__add-btn`}
             onClick={handleAddTask}
           />

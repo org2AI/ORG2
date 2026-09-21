@@ -75,9 +75,7 @@ const AgentOrgOverviewTaskHistorySection: React.FC<
             ).map((status) => (
               <Button
                 layout="custom"
-                appearance="custom"
                 key={status}
-                htmlType="button"
                 className={`rounded-full px-2 py-0.5 text-[10px] focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none ${historyStatus === status ? "bg-primary-6/10 text-primary-6" : "bg-bg-1 text-text-3"}`}
                 aria-pressed={historyStatus === status}
                 onClick={() => onHistoryStatus(status)}
@@ -123,9 +121,7 @@ const AgentOrgOverviewTaskHistorySection: React.FC<
               <div className="flex items-center justify-end gap-1 px-1">
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
-                  htmlType="button"
                   className="text-[10px] focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none disabled:opacity-40"
                   data-testid="agent-org-task-history-previous-page"
                   disabled={!historyPage.previousCursor || historyLoading}
@@ -141,9 +137,7 @@ const AgentOrgOverviewTaskHistorySection: React.FC<
                 </Button>
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
-                  htmlType="button"
                   className="text-[10px] focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none disabled:opacity-40"
                   data-testid="agent-org-task-history-next-page"
                   disabled={!historyPage.nextCursor || historyLoading}

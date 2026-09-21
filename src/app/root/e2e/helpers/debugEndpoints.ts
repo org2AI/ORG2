@@ -1,3 +1,5 @@
+import { ideServerAuthHeaders } from "@src/config/ideServer";
+
 import { asError } from "../result";
 import type { Json, Result } from "../types";
 import { e2eUrl } from "./e2eBaseUrl";
@@ -11,7 +13,10 @@ export function createDebugEndpointHelpers() {
         e2eUrl("/agent/test/session/prompt/environment-block"),
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...ideServerAuthHeaders(),
+          },
           body: JSON.stringify({ session_id: sessionId }),
         }
       );
@@ -27,7 +32,8 @@ export function createDebugEndpointHelpers() {
   ): Promise<Result<{ result: Json }>> => {
     try {
       const response = await fetch(
-        e2eUrl(`/agent/test/sde/transcript/${encodeURIComponent(sessionId)}`)
+        e2eUrl(`/agent/test/sde/transcript/${encodeURIComponent(sessionId)}`),
+        { headers: ideServerAuthHeaders() }
       );
       const result = (await response.json()) as Json;
       return { ok: true, result };

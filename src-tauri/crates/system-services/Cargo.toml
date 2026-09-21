@@ -41,11 +41,23 @@ serde_json = "1"
 # Logging
 tracing = "0.1"
 
+# App lock: PBKDF2-HMAC-SHA256 password digest, random salt, constant-time
+# compare. Same versions the workspace already resolves (browser, key-vault,
+# project-management), so the lockfile gains edges, not packages.
+base64 = { workspace = true }
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+rand = { workspace = true }
+sha2 = "0.10"
+subtle = "2.6"
+
 # Open URLs/files in default app
 open = "5"
 
 # Advertised URL origin parsing for workspace ports
 url = "2"
+
+[dev-dependencies]
+tempfile = "3.13"
 
 # SIGTERM for workspace port kill on Unix
 [target.'cfg(unix)'.dependencies]

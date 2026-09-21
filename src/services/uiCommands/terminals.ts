@@ -17,6 +17,7 @@ import {
   presentedWorkstationWorkspaceKeyAtom,
   selectWorkstationPanel,
   workstationTabsStateAtom,
+  workstationWorkspaceId,
 } from "@src/store/workstation/tabs";
 import type { WorkstationWorkspaceKey } from "@src/store/workstation/tabs/types";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
@@ -26,8 +27,10 @@ import { isAgentPtySessionId } from "@src/util/ui/terminal/ptySessionId";
 
 import type { UiRequest } from "./protocol";
 
+// The store owns the key-to-id mapping, so a new workspace kind cannot drift
+// between remembered terminal selections and the rest of Workstation.
 const key = (workspace: WorkstationWorkspaceKey): TerminalTargetWorkspaceId =>
-  workspace.kind === "global" ? "global" : `session:${workspace.sessionId}`;
+  workstationWorkspaceId(workspace);
 const eligible = (session: TerminalSession) =>
   !session.readOnly &&
   !session.agentSessionId &&

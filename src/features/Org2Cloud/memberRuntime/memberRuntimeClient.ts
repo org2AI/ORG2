@@ -16,12 +16,8 @@
  */
 import { z } from "zod/v4";
 
-import { type CloudEndpoint, ORG2_CLOUD_POSTGREST_SCHEMA } from "../config";
-import {
-  fetchWithTransportRetry,
-  runCloudRequestWithTimeout,
-} from "../org2CloudFetchRetry";
 import { endpointForOrg } from "../org2CloudOrgEndpointRouter";
+import { callOrg2CloudRpc } from "../org2CloudRpc";
 import type {
   MemberBuilderProfile,
   MemberRuntimeListEntry,
@@ -73,57 +69,18 @@ export function isMemberRuntimeErrorCode(
 /** Bound every member-runtime RPC below the managed statement timeout. */
 const MEMBER_RUNTIME_RPC_TIMEOUT_MS = 15_000;
 
-function rpcUrl(functionName: string, endpoint: CloudEndpoint): string {
-  return `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`;
-}
-
-function rpcHeaders(
-  accessToken: string,
-  endpoint: CloudEndpoint
-): Record<string, string> {
-  const { anonKey } = endpoint;
-  return {
-    apikey: anonKey,
-    authorization: `Bearer ${accessToken}`,
-    "content-type": "application/json",
-    "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-  };
-}
-
 async function callMemberRuntimeRpc(
   functionName: string,
   accessToken: string,
   orgId: string,
   body: Record<string, unknown>
 ): Promise<unknown> {
-  const endpoint = endpointForOrg(orgId);
-  const execute = async (requestSignal: AbortSignal): Promise<unknown> => {
-    const response = await fetchWithTransportRetry(
-      rpcUrl(functionName, endpoint),
-      {
-        method: "POST",
-        headers: rpcHeaders(accessToken, endpoint),
-        body: JSON.stringify(body),
-        signal: requestSignal,
-      }
-    );
-    const text = await response.text();
-    let payload: unknown = null;
-    try {
-      payload = text ? JSON.parse(text) : null;
-    } catch {
-      payload = null;
-    }
-    if (!response.ok) {
-      const message =
-        payload && typeof payload === "object" && "message" in payload
-          ? String((payload as { message: unknown }).message)
-          : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-      throw new MemberRuntimeError(message, response.status);
-    }
-    return payload;
-  };
-  return runCloudRequestWithTimeout(execute, MEMBER_RUNTIME_RPC_TIMEOUT_MS);
+  return callOrg2CloudRpc(functionName, body, {
+    accessToken,
+    endpoint: endpointForOrg(orgId),
+    timeoutMs: MEMBER_RUNTIME_RPC_TIMEOUT_MS,
+    createError: (message, status) => new MemberRuntimeError(message, status),
+  });
 }
 
 // ---------------------------------------------------------------------------

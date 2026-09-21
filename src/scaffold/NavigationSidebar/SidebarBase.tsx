@@ -13,8 +13,11 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import AnyIcon from "@src/components/AnyIcon";
 import Button from "@src/components/Button";
 import SessionHistoryNav from "@src/components/SessionHistoryNav";
-import { SIDEBAR_CHROME_BUTTON_HOVER_CLASS } from "@src/components/SidebarChromeIconButton";
 import Tooltip from "@src/components/Tooltip";
+import {
+  PANE_WIDTH_TRANSITION_CLASSES,
+  getSidebarSurfaceBackgroundStyle,
+} from "@src/components/layout/tokens/viewContainerTokens";
 import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import {
   HOST_DESKTOP,
@@ -25,10 +28,7 @@ import { useSettingValue } from "@src/hooks/settings/useSettings";
 import { useCollapsedSidebarChromeOffset } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
 import { useSidebarState } from "@src/hooks/ui/sidebar/useSidebarState";
 import { Add01Icon } from "@src/icons";
-import {
-  PANE_WIDTH_TRANSITION_CLASSES,
-  getSidebarSurfaceBackgroundStyle,
-} from "@src/modules/shared/layouts/viewContainerTokens";
+import { SIDEBAR_CHROME_BUTTON_HOVER_CLASS } from "@src/scaffold/NavigationSidebar/components/SidebarChromeIconButton";
 import { VerticalResizeHandle } from "@src/scaffold/Resize";
 import { resolvedBackgroundConfigAtom } from "@src/store/ui/backgroundConfigAtom";
 import {
@@ -38,7 +38,7 @@ import {
 import { popupNativeMenu } from "@src/util/platform/tauri/nativeMenuPopup";
 
 import { SidebarChromeToggle } from "./SidebarChromeToggle";
-import { SIDEBAR_STYLE, SIDEBAR_TOOLTIP_HOVER_DELAY } from "./config";
+import { SIDEBAR_STYLE } from "./config";
 import { useForceVisibleSidebar } from "./contexts/ForceVisibleContext";
 import type { SidebarBaseProps } from "./types";
 
@@ -230,10 +230,7 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
               style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             >
               <SidebarChromeToggle variant="sidebar" />
-              <SessionHistoryNav
-                variant="sidebar"
-                tooltipMouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
-              />
+              <SessionHistoryNav variant="sidebar" />
             </div>
           ) : null}
           <div className="pointer-events-auto flex shrink-0 items-center gap-px opacity-100">
@@ -258,13 +255,12 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
                     i18next.t("navigation:sidebar.actions.addNew")
                   }
                   position="bottom"
-                  mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
+                  kind="button"
                   showArrow={false}
                   framedPanel={!!addTooltipContent}
                 >
                   <span className="inline-flex">
                     <Button
-                      htmlType="button"
                       variant="tertiary"
                       size="small"
                       iconOnly
@@ -320,10 +316,9 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
     );
 
     // Content
-    // Modern layout: the sidebar surface itself reaches the top window edge
-    // (no outer `pt-2`), so we move the 8px top breathing room inside via a
-    // spacer div. This keeps the header / icons at the same vertical position
-    // as the previous alternatives while letting the surface cover the full sidebar column.
+    // The sidebar surface itself reaches the top window edge (no outer
+    // `pt-2`), so the 8px top breathing room lives inside via a spacer div,
+    // letting the surface cover the full sidebar column.
     const content = (
       <>
         <div
@@ -338,7 +333,7 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
       </>
     );
 
-    // Modern layout: the sidebar is flush with the rounded window edge
+    // Docked sidebar: flush with the rounded window edge
     // (top-left + bottom-left curves match `--border-radius-window`). Avoid
     // a broad docked drop shadow because it traces the window corner. On
     // macOS, use a narrow inset edge shadow instead: it creates the vertical
@@ -349,8 +344,8 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
     // a transient overlay. It should feel solid (so it's legible against
     // whatever's behind it) and should ignore the user's sidebarOpacity
     // setting. We paint `--color-bg-1` (the design-system solid raised
-    // surface) and keep the floating drop shadow regardless of the
-    // current layout mode so it visually detaches from the workspace.
+    // surface) and keep the floating drop shadow so it visually detaches
+    // from the workspace.
     const sidebarBoxShadow = shouldForceVisible
       ? "var(--sidebar-shadow)"
       : IS_MACOS_HOST && sidebarEdgeDepthEnabled
@@ -383,16 +378,14 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
     };
 
     // Wrapped content
-    // Modern layout: sidebar is flush with the top/left/bottom window edge —
-    // no outer padding, no border radius on the right (it butts against the
-    // content panel). The top-left and bottom-left corners follow the window
-    // radius (`--border-radius-window`) so the sidebar surface aligns with
-    // the rounded window/body clip instead of leaving a sliver of the body
-    // Modern chrome keeps the sidebar flush against the rounded window edge.
-    // On macOS the native AbuttedSidebar material already defines the shared
+    // The sidebar is flush with the top/left/bottom window edge — no outer
+    // padding, no border radius on the right (it butts against the content
+    // panel). The top-left and bottom-left corners follow the window radius
+    // (`--border-radius-window`) so the surface aligns with the rounded
+    // window/body clip. On macOS the native AbuttedSidebar material already defines the shared
     // edge, while on Windows the rounded content surface owns it. Drawing a
     // separate separator on either platform creates a redundant vertical line.
-    const modernSurfaceStyle = {
+    const flushSurfaceStyle = {
       // The Windows header spans the full native top edge and owns both top
       // radii. Rounding the sidebar again below it creates a detached inner
       // curve; macOS has no HTML topbar, so its sidebar still owns this corner.
@@ -411,7 +404,7 @@ const SidebarBase: React.FC<SidebarBaseProps> = React.memo(
           className="flex h-full flex-none flex-col overflow-hidden"
           style={{
             ...surfaceStyle,
-            ...modernSurfaceStyle,
+            ...flushSurfaceStyle,
             width: `${surfaceWidth}px`,
           }}
         >

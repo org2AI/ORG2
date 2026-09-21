@@ -110,7 +110,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: var(--modal-chrome-padding);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 
   [data-theme="dark"] & {
@@ -177,8 +177,8 @@
   overflow-y: auto;
   overflow-x: hidden;
   color: var(--color-text-1);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 13px;
+  line-height: 20px;
 
   // Smooth scroll behavior
   scroll-behavior: smooth;
@@ -316,7 +316,7 @@
   }
 
   .liquid-modal-header {
-    padding: 16px 20px;
+    padding: var(--modal-chrome-padding);
   }
 
   .liquid-modal-title {

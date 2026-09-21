@@ -43,7 +43,11 @@ pub(super) fn chunk_error_message(chunk: &ActivityChunk) -> Option<String> {
     // Retry signals belong to provider failures. Successful replies and tool
     // results may quote status codes or authentication errors as ordinary text.
     let failed_session_end = chunk.action_type == "session_end"
-        && chunk.result.get("success").and_then(serde_json::Value::as_bool) == Some(false);
+        && chunk
+            .result
+            .get("success")
+            .and_then(serde_json::Value::as_bool)
+            == Some(false);
     if chunk.action_type != "error" && !failed_session_end {
         return None;
     }
@@ -229,25 +233,12 @@ pub(super) fn write_codex_cli_auth_file(
     selected_key: &ModelKey,
     env_vars: &HashMap<String, String>,
 ) -> Result<(), String> {
-    let codex_home = app_paths::codex_cli_profile_dir(account_id);
-    std::fs::create_dir_all(&codex_home)
-        .map_err(|err| format!("Failed to create Codex home: {err}"))?;
-
-    let home_path = codex_home.to_string_lossy().to_string();
-    tracing::info!("[CodeSession] CODEX_HOME={}", home_path);
-
-    let auth_path = codex_home.join("auth.json");
+    let codex_home = app_paths::codex_cli_profile_dir_for_generation(
+        account_id,
+        selected_key.credential_generation,
+    );
     let auth_json = codex_cli_auth_payload(selected_key, env_vars)?;
-    let bytes = serde_json::to_vec_pretty(&auth_json).map_err(|err| err.to_string())?;
-    // Atomic replace: a crash mid-write must not leave a truncated auth.json
-    // that silently downgrades the next launch to unauthenticated. The chmod
-    // stays fatal here — this file holds the credential itself.
-    agent_cli::managed_config::write_cli_profile_file_atomic(&auth_path, &bytes)
-        .map_err(|err| format!("Failed to write Codex auth.json: {err}"))?;
-    app_paths::set_sensitive_file_permissions(&auth_path)
-        .map_err(|err| format!("Failed to secure Codex auth.json: {err}"))?;
-    tracing::info!("[CodeSession] Wrote Codex auth.json to {:?}", auth_path);
-    Ok(())
+    super::codex_profile::write_auth(&codex_home, &auth_json)
 }
 
 // ── OAuth refresh for retry ───────────────────────────────────────────────────
@@ -291,7 +282,19 @@ pub(super) async fn refresh_cli_oauth_for_retry(
         return Ok(false);
     };
 
-    let refreshed_env = KEY_SERVICE.get_env_for_agent(agent, Some(account_id));
+    if matches!(agent, ModelType::Codex) {
+        let expected_home = app_paths::codex_cli_profile_dir_for_generation(
+            account_id,
+            refreshed_key.credential_generation,
+        );
+        if env_vars
+            .get("CODEX_HOME")
+            .is_some_and(|home| std::path::Path::new(home) != expected_home)
+        {
+            return Err("Account changed during this turn; retry with the new login".to_string());
+        }
+    }
+    let refreshed_env = key_vault::key_store::KeyService::env_for_key(agent, &refreshed_key);
     for (key, value) in refreshed_env {
         env_vars.insert(key, value);
     }

@@ -4,7 +4,6 @@ import type {
   NotificationSettings,
 } from "@src/types/ui/notification";
 
-const MINUTES_PER_DAY = 24 * 60;
 const DEFAULT_EVENT_DEDUPE_TTL_MS = 30_000;
 const DEFAULT_EVENT_DEDUPE_MAX_ENTRIES = 512;
 const DEFAULT_RUN_TRACKER_MAX_ENTRIES = 512;
@@ -288,5 +287,3 @@ export function evaluateNotificationPolicy(
     reason: "quiet-hours",
   };
 }
-
-export const NOTIFICATION_DAY_MINUTES = MINUTES_PER_DAY;

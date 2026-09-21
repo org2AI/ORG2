@@ -20,3 +20,6 @@ compile_error!(
 
 pub mod commands;
 pub use commands::*;
+
+#[cfg(any(feature = "postgres", feature = "mysql"))]
+mod row_values;

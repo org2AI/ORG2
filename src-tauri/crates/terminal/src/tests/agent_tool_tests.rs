@@ -606,3 +606,17 @@ fn agent_detached_process_helper() {
     }
     std::thread::sleep(std::time::Duration::from_secs(30));
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn cancelled_preparation_terminates_and_reaps_its_unpublished_child() {
+    let (child, kills, waits) = test_child(TestChildPoll::Failed);
+    drop(PreparedChild { child: child.clone(), armed: true });
+    tokio::time::timeout(std::time::Duration::from_secs(1), async {
+        while waits.load(Ordering::SeqCst) == 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        }
+    }).await.unwrap();
+    assert!(child.lock().unwrap().is_none());
+    assert_eq!(kills.load(Ordering::SeqCst), 1);
+    assert_eq!(waits.load(Ordering::SeqCst), 1);
+}

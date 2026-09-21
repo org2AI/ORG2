@@ -28,16 +28,19 @@ vi.mock("../SelectedTextAddToChat", () => ({
   SelectedTextAddToChat: ({
     children,
     displayName,
+    filePath,
     enabled,
   }: {
     children?: React.ReactNode;
     displayName: string;
+    filePath?: string;
     enabled?: boolean;
   }) =>
     React.createElement(
       "div",
       {
         "data-selected-text-owner": displayName,
+        "data-selection-file-path": filePath,
         "data-selection-enabled": enabled,
       },
       children
@@ -118,6 +121,7 @@ describe("DiffFileSection selected-text ownership", () => {
     );
 
     expect(markup).toContain('data-selected-text-owner="index.tsx"');
+    expect(markup).toContain('data-selection-file-path="src/index.tsx"');
     expect(markup).toContain('data-selection-enabled="true"');
   });
 });

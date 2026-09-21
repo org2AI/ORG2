@@ -26,7 +26,6 @@ schema = []
 [dependencies]
 core_types = { path = "../types" }
 orgtrack_protocol = { path = "../orgtrack-protocol" }
-orgtrack_sync = { path = "../orgtrack-sync" }
 # Leaf crate (no back-edge): managed CLI profile roots for the
 # imported-history readers' extra discovery roots.
 app_paths = { path = "../app-paths" }

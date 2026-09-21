@@ -2,10 +2,9 @@ import { Cell, Row, flexRender } from "@tanstack/react-table";
 import React, { useState } from "react";
 
 import Button from "@src/components/Button";
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import { Placeholder } from "@src/components/Placeholder";
 import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
   ChevronsDownUpIcon,
   HugeiconsIcon,
   InboxIcon,
@@ -209,20 +208,23 @@ export function TableBody<T>({
         const canExpand =
           expandable?.rowExpandable?.(row.original) ?? !!expandable;
         const isExpanded = expandedRows.has(rowKey);
-        const expandIcon = settings
-          ? isExpanded
-            ? ArrowDown01Icon
-            : ArrowRight01Icon
-          : isExpanded
-            ? ChevronsDownUpIcon
-            : UnfoldMoreIcon;
-        const expandIconName = settings
-          ? isExpanded
-            ? "chevron-down"
-            : "chevron-right"
-          : isExpanded
-            ? "chevrons-down-up"
-            : "chevrons-up-down";
+        // Settings tables disclose with a chevron that rotates from ">" to "v";
+        // data tables use the unfold/fold pair, which is two distinct glyphs
+        // with no rotation between them.
+        const expandIcon = settings ? (
+          <DisclosureChevron
+            expanded={isExpanded}
+            size={14}
+            className="shrink-0"
+          />
+        ) : (
+          <HugeiconsIcon
+            icon={isExpanded ? ChevronsDownUpIcon : UnfoldMoreIcon}
+            data-icon={isExpanded ? "chevrons-down-up" : "chevrons-up-down"}
+            size={14}
+            className="shrink-0"
+          />
+        );
 
         return (
           <React.Fragment key={rowKey}>
@@ -260,20 +262,11 @@ export function TableBody<T>({
                     {canExpand ? (
                       <Button
                         variant="tertiary"
-                        appearance="ghost"
                         size="sidebar"
                         iconOnly
-                        icon={
-                          <HugeiconsIcon
-                            icon={expandIcon}
-                            data-icon={expandIconName}
-                            size={14}
-                            className="shrink-0"
-                          />
-                        }
+                        icon={expandIcon}
                         style={{ width: 14, height: 14 }}
-                        htmlType="button"
-                        className="shrink-0 hover:text-text-1"
+                        className="table-expand-button shrink-0 hover:text-text-1"
                         onClick={(event) => {
                           event.stopPropagation();
                           event.currentTarget.blur();

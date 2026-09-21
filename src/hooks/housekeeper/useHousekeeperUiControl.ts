@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { useLocation } from "react-router-dom";
 
-import { useActionSystemOptional } from "@src/ActionSystem";
 import { housekeeperUiIntent } from "@src/api/services/keyValidation";
 import Message from "@src/components/Message";
+import { useActionSystemOptional } from "@src/scaffold/ActionSystem";
 
 import {
   HOUSEKEEPER_ALLOWED_ACTION_IDS,

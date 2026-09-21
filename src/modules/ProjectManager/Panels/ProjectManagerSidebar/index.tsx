@@ -108,7 +108,6 @@ export const ProjectManagerSidebar: React.FC<ProjectManagerSidebarProps> = memo(
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        tabIconOnly={true}
         hideTabs={true}
       />
     );

@@ -1,7 +1,11 @@
 import React, { forwardRef } from "react";
 
 import Button from "@src/components/Button";
-import type { ButtonProps } from "@src/components/Button";
+import type {
+  ButtonProps,
+  ButtonTone,
+  ButtonVariant,
+} from "@src/components/Button";
 import { useButtonPresentation } from "@src/components/Button/presentation";
 import { ArrowDown01Icon, HugeiconsIcon } from "@src/icons";
 
@@ -37,11 +41,35 @@ interface SplitButtonProps extends Omit<
   widthMode?: "fill" | "hug";
 }
 
+/**
+ * The surface each variant draws, in the terms the split coloring below was
+ * written for: a primary is filled, a secondary outlined, a tertiary the
+ * transparent no-drop surface (a toned tertiary the tinted soft one), and a
+ * ghost stays transparent.
+ */
+type SplitSurface = "solid" | "outline" | "soft" | "soft-no-drop" | "ghost";
+
+function splitSurface(
+  variant: ButtonVariant,
+  tone: ButtonTone | undefined
+): SplitSurface {
+  switch (variant) {
+    case "primary":
+      return "solid";
+    case "secondary":
+      return "outline";
+    case "tertiary":
+      return tone ? "soft" : "soft-no-drop";
+    case "ghost":
+      return "ghost";
+  }
+}
+
 const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
   (
     {
       variant = "secondary",
-      appearance,
+      tone,
       size = "default",
       shape = "square",
       loading = false,
@@ -72,14 +100,13 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
     const {
       sizeConfig,
       isDisabled,
-      resolvedAppearance,
       borderRadius,
       buttonStyles,
       buttonContent,
       buttonClassName,
     } = useButtonPresentation({
       variant,
-      appearance,
+      tone,
       size,
       shape,
       loading,
@@ -94,6 +121,11 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
       className,
       style,
     });
+
+    const resolvedAppearance = splitSurface(variant, tone);
+    // The menu segment mirrors the main segment's color: its tone when set,
+    // otherwise the variant.
+    const colorKey = tone ?? variant;
 
     const highlightOpenMenu =
       menuOpen &&
@@ -115,7 +147,7 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
     const menuColorClass = (() => {
       if (highlightOpenMenu) return "text-primary-6";
       if (resolvedAppearance === "solid") {
-        switch (variant) {
+        switch (colorKey) {
           case "primary":
           case "danger":
           case "warning":
@@ -126,10 +158,11 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
           case "secondary":
             return "text-text-1";
           case "tertiary":
+          case "ghost":
             return "text-text-2 group-hover/button-split:text-text-1";
         }
       }
-      switch (variant) {
+      switch (colorKey) {
         case "primary":
           return "text-primary-6";
         case "danger":
@@ -143,6 +176,7 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
         case "secondary":
           return "text-text-1";
         case "tertiary":
+        case "ghost":
           return "text-text-2 group-hover/button-split:text-text-1";
       }
     })();
@@ -155,7 +189,7 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
           : "enabled:hover:bg-button-hover focus-visible:bg-button-hover";
       }
       if (resolvedAppearance === "solid") {
-        switch (variant) {
+        switch (colorKey) {
           case "primary":
             return menuOpen
               ? "bg-primary-5 enabled:hover:bg-primary-5"
@@ -170,14 +204,15 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
               : "enabled:hover:bg-warning-5";
           case "success":
             return menuOpen
-              ? "bg-success-5 enabled:hover:bg-success-5"
-              : "enabled:hover:bg-success-5";
+              ? "bg-success-fill-hover enabled:hover:bg-success-fill-hover"
+              : "enabled:hover:bg-success-fill-hover";
           case "merged":
             return menuOpen
               ? "bg-merged-hover enabled:hover:bg-merged-hover"
               : "enabled:hover:bg-merged-hover";
           case "secondary":
           case "tertiary":
+          case "ghost":
             break;
         }
       }
@@ -215,7 +250,6 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
         >
           <Button
             layout="custom"
-            appearance="custom"
             ref={ref}
             htmlType={htmlType}
             disabled={isDisabled}
@@ -257,8 +291,6 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
 
           <Button
             layout="custom"
-            appearance="custom"
-            htmlType="button"
             disabled={isDisabled}
             aria-label={menuButtonLabel}
             aria-haspopup="menu"
@@ -285,6 +317,11 @@ const SplitButton = forwardRef<HTMLButtonElement, SplitButtonProps>(
             }}
             onClick={onMenuButtonClick}
           >
+            <span
+              aria-hidden
+              data-split-divider
+              className="pointer-events-none absolute top-1/4 bottom-1/4 left-0 w-[0.5px] bg-border-1"
+            />
             <HugeiconsIcon
               icon={ArrowDown01Icon}
               data-icon="chevron-down"

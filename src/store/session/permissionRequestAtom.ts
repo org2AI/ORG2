@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import { atomFamily } from "jotai-family";
 
-import type { PermissionRequestEvent } from "@src/engines/SessionCore/sync/adapters/shared";
+import type { PermissionRequestEvent } from "@src/contracts/session";
 
 export type PendingPermissionRequestMap = Map<
   string,

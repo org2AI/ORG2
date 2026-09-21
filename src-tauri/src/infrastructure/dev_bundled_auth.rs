@@ -22,7 +22,7 @@ const ORG2_CLOUD_AUTH_STORAGE_KEY: &str = "orgii:org2-cloud-v1:auth";
 /// Import the installed app's ORG2 Cloud auth record into a development UI.
 ///
 /// The command is rejected in release builds. On macOS it inspects only the
-/// current bundle identifier's WebKit data, only the `tauri://localhost`
+/// corresponding bundled identifier's WebKit data, only the `tauri://localhost`
 /// origin, and only the fixed ORG2 Cloud auth key.
 #[tauri::command]
 pub async fn debug_import_bundled_org2_cloud_auth(
@@ -43,13 +43,21 @@ pub async fn debug_import_bundled_org2_cloud_auth(
         let webkit_root = app_paths::home_dir()
             .join("Library")
             .join("WebKit")
-            .join(&app.config().identifier)
+            .join(bundled_auth_identifier(&app.config().identifier))
             .join("WebsiteData")
             .join("Default");
 
         tauri::async_runtime::spawn_blocking(move || find_bundled_auth(&webkit_root))
             .await
             .map_err(|_| "bundled auth import task failed".to_string())?
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn bundled_auth_identifier(identifier: &str) -> &str {
+    match identifier {
+        "org2ai.org2.dev" => "org2ai.org2",
+        _ => identifier,
     }
 }
 
@@ -234,6 +242,16 @@ fn compare_candidates(left: &AuthCandidate, right: &AuthCandidate) -> Ordering {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+
+    #[test]
+    fn only_the_dedicated_dev_identity_imports_primary_bundled_auth() {
+        assert_eq!(bundled_auth_identifier("org2ai.org2.dev"), "org2ai.org2");
+        assert_eq!(bundled_auth_identifier("org2ai.org2"), "org2ai.org2");
+        assert_eq!(
+            bundled_auth_identifier("org2ai.org2.instance2"),
+            "org2ai.org2.instance2"
+        );
+    }
 
     const VALID_AUTH: &str = r#"{"kind":"org2_cloud","supabaseUrl":"https://example.supabase.co","supabaseAnonKey":"anon","userId":"user-1","accessToken":"access","refreshToken":"refresh","expiresAt":200}"#;
 

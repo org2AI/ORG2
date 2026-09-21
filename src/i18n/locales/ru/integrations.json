@@ -17,7 +17,7 @@
     "removeLocal": "Удалить локальный",
     "unlist": "Снять с публикации",
     "confirmRemoveTitle": "Удалить \"{{name}}\"?",
-    "confirmRemoveMessage": "Локальные учётные данные будут удалены. Это действие нельзя отменить.",
+    "confirmRemoveMessage": "Локальные учётные данные будут удалены. Это действие нельзя отменить",
     "toasts": {
       "refreshed": "{{name}} успешно обновлён",
       "refreshError": "Не удалось обновить {{name}}: {{error}}",
@@ -68,10 +68,10 @@
       "accountEmail": "Email аккаунта"
     },
     "customModels": {
-      "manualSetupHint": "Укажите точный ID модели для вашей конечной точки и необязательное имя. Обнаружение моделей необязательно; включение не проверяет совместимость.",
+      "manualSetupHint": "Укажите точный ID модели для вашей конечной точки и необязательное имя. Обнаружение моделей необязательно; включение не проверяет совместимость",
       "modelNamePlaceholder": "Введите id модели...",
       "displayNamePlaceholder": "Необязательная метка",
-      "emptyHint": "Пользовательские модели ещё не добавлены.",
+      "emptyHint": "Пользовательские модели ещё не добавлены",
       "addModel": "Добавить модель",
       "testRequiresEndpoint": "Укажите конечную точку и ключ API, чтобы протестировать эту модель",
       "invalidModelId": "Идентификатор модели должен быть длиной от 1 до 256 байт без пробелов и управляющих символов.",
@@ -145,14 +145,12 @@
       "keysVerified": "Учётные данные проверены",
       "failedMessage": "Ваш API Key и Session Token, похоже, не принадлежат одному аккаунту Cursor.",
       "failedError": "Ошибка: {{error}}",
-      "failedHint": "Пожалуйста, создайте новое предложение с совпадающими учётными данными из одного аккаунта Cursor.",
+      "failedHint": "Пожалуйста, создайте новое предложение с совпадающими учётными данными из одного аккаунта Cursor",
       "listingRejected": "Предложение отклонено",
       "rejectedByAdmin": "Это предложение было отклонено администратором."
     },
     "apiKeyLabel": "API Key",
-    "apiKeyDesc": "Секретный ключ для аутентификации запросов к API провайдера",
     "baseUrlLabel": "Base URL",
-    "baseUrlDesc": "URL эндпоинта API — изменяйте только при использовании прокси, пользовательского развёртывания или локального сервера",
     "apiProtocolLabel": "Протокол API",
     "apiProtocolDesc": "Выберите протокол для встроенного Rust-агента",
     "officialUrl": "Официальный URL",
@@ -171,14 +169,12 @@
       "validateDesc": "Проверьте endpoint, если он запущен, или сохраните после ручного добавления моделей"
     },
     "validate": "Проверить",
-    "validateDesc": "Проверьте учетные данные перед продолжением",
     "validated": "Проверено",
     "validationSuccessModels": "Обнаружено {{count}} моделей — настройте на следующем шаге",
     "validationSuccessNoModels": "Key подтверждён — модели не обнаружены автоматически, добавьте их вручную ниже",
     "addCliAgent": "Добавить Agent",
     "accountName": "Имя аккаунта (необязательно)",
     "accountNameDesc": "Оставьте пустым, чтобы использовать {{provider}}, затем {{provider}}-1, {{provider}}-2 и так далее",
-    "selectorDesc": "Выберите сервис для подключения",
     "accountNamePlaceholder": "Авто: {{provider}}",
     "descriptionOptional": "Описание (необязательно)",
     "descriptionPlaceholder": "Введите описание",
@@ -245,8 +241,8 @@
     "claudeCodeSignInDesc": "Войдите в Claude Code во встроенном браузере. ORG2 получит authorization code и сохранит OAuth Token локально",
     "claudeCodeReadyToSignIn": "Готово к входу в Claude Code",
     "claudeCodeSignedIn": "Claude Code подключен",
-    "claudeCodeOAuthHint": "Это сохранит учетную запись claude_code OAuth для Rust agents, использующих anthropic_native.",
-    "claudeCodeBrowserHint": "Завершите авторизацию Claude Code во встроенном браузере.",
+    "claudeCodeOAuthHint": "Это сохранит учетную запись claude_code OAuth для Rust agents, использующих anthropic_native",
+    "claudeCodeBrowserHint": "Завершите авторизацию Claude Code во встроенном браузере",
     "claudeCodeSignInErrorHint": "Закройте браузер и попробуйте войти снова. Token не был сохранен",
     "connectedViaChatGpt": "Подключено через ChatGPT Plus/Pro",
     "apiKeyDetectedFromConfig": "API Key обнаружен в локальной конфигурации",
@@ -269,7 +265,7 @@
     "opensEmbeddedBrowser": "Используйте встроенный браузер, чтобы подключить аккаунт Cursor.",
     "loggedIn": "Вход выполнен",
     "loginStep": "Вход",
-    "signInToCursorHint": "Войдите в аккаунт Cursor. Это окно автоматически закроется после входа.",
+    "signInToCursorHint": "Войдите в аккаунт Cursor. Это окно автоматически закроется после входа",
     "copilotCreatePat": "Создать GitHub Personal Access Token",
     "copilotCreatePatDesc": "Открывает встроенный браузер для создания GitHub PAT",
     "copilotTokenValidated": "Token подтверждён",
@@ -303,7 +299,7 @@
     "cursorLoginBrowserTitle": "Вход в Cursor",
     "modelCount": "{{count}} моделей",
     "cursorLoginReadyTitle": "Аккаунт Cursor подключён",
-    "cursorLoginReadyDesc": "Создайте и вставьте Cursor API Key ниже. Cursor agent не будет работать без этого API Key.",
+    "cursorLoginReadyDesc": "Создайте и вставьте Cursor API Key ниже. Cursor agent не будет работать без этого API Key",
     "cursorApiKeyBrowserHint": "После входа ORG2 откроет Cursor dashboard. Создайте там User API Key и вставьте его ниже",
     "cursorApiKeyRecommendedTitle": "Рекомендуется Cursor API Key",
     "cursorApiKeyRecommendedDesc": "Вы можете продолжить без Cursor API Key, если хотите использовать Cursor только с Rust agents ORG2; просто войдите через внутренний браузер или укажите session token",
@@ -315,8 +311,8 @@
     "signInWithCodex": "Войти через Codex",
     "codexReadyToSignIn": "Готово ко входу в Codex",
     "codexSignedIn": "Codex подключен",
-    "codexOAuthHint": "Это сохранит учетную запись OAuth codex для доступа к backend ChatGPT Codex.",
-    "codexBrowserHint": "Завершите авторизацию Codex во встроенном браузере.",
+    "codexOAuthHint": "Это сохранит учетную запись OAuth codex для доступа к backend ChatGPT Codex",
+    "codexBrowserHint": "Завершите авторизацию Codex во встроенном браузере",
     "codexSignInErrorHint": "Закройте браузер и попробуйте войти снова. Token не был сохранен",
     "codexAutodetectTitle": "Обнаружить сессию Codex",
     "codexAutodetectDesc": "Читает ~/.codex/auth.json и OPENAI_API_KEY из локального окружения",
@@ -330,7 +326,7 @@
     "claudeCodeDetectErrorHint": "Войдите через встроенный браузер или выполните claude auth login и повторите обнаружение",
     "refreshModels": {
       "button": "Обновить список моделей Cursor",
-      "failed": "Сбой обновления из Cursor: {{error}}"
+      "failed": "Это рабочее пространство Market недоступно. Снова откройте Market, чтобы обновить авторизацию."
     },
     "revalidate": "Перепроверить",
     "confirmRemoveActiveSessions_one": "{{count}} активная сессия всё ещё использует этот аккаунт и завершится ошибкой на следующем ходе:",
@@ -573,7 +569,7 @@
     },
     "gateway": {
       "title": "Gateway Agent",
-      "description": "Gateway маршрутизирует входящие сообщения от всех каналов. Выберите API-ключ и модель для семантической маршрутизации.",
+      "description": "Gateway маршрутизирует входящие сообщения от всех каналов. Выберите API-ключ и модель для семантической маршрутизации",
       "statusReady": "Настроено",
       "statusUnconfigured": "Не настроено",
       "account": "Аккаунт API-ключа",
@@ -581,7 +577,7 @@
       "model": "Модель",
       "modelPlaceholder": "Выбрать модель",
       "groupPerUser": "Изолировать сессии группового чата по пользователям",
-      "groupPerUserDesc": "Каждый участник группового чата получает собственный контекст сессии."
+      "groupPerUserDesc": "Каждый участник группового чата получает собственный контекст сессии"
     },
     "emailProtocol": "Протокол",
     "matrixDeviceNamePlaceholder": "Бот ORG2"
@@ -621,7 +617,6 @@
     "collapseAllRows": "Свернуть все",
     "orgiiMarketGroup": "Рынок ORG2",
     "variantSpeed": "Speed",
-    "variantOptions": "Параметры версии",
     "variantDefault": "Default",
     "variantCount": "{{count}} версий",
     "selectedVersion": "Выбранная версия",
@@ -629,8 +624,6 @@
     "keyDefaultVersionOnly": "У этого key только версия по умолчанию: {{model}}",
     "selectedVersionFor": "Выбранная версия для {{model}}",
     "preferredVersion": "Предпочтительная версия",
-    "reasoningLevel": "Reasoning level",
-    "effort": "Effort",
     "addNewKey": "Добавить новый key",
     "availableKeys": "Включено {{enabled}}/{{total}} доступных keys",
     "availableModels": "Включено {{enabled}}/{{total}} доступных моделей",
@@ -758,28 +751,28 @@
     "tokenRequired": "Personal access token обязателен",
     "oauthWaiting": "Ожидание OAuth",
     "oauthDeviceDesc": "Откройте URL проверки и введите этот код для авторизации GitHub",
-    "oauthBrowserDesc": "Завершите авторизацию в открытом окне браузера.",
-    "oauthBrowserOpened": "Открыто окно браузера. Завершите авторизацию там, затем мастер продолжит работу."
+    "oauthBrowserDesc": "Завершите авторизацию в открытом окне браузера",
+    "oauthBrowserOpened": "Открыто окно браузера. Завершите авторизацию там, затем мастер продолжит работу"
   },
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "Автообнаружение",
     "methodOAuth": "Войти через GitHub",
-    "methodPickerDesc": "Выберите способ аутентификации в GitHub.",
-    "oauthDeviceDesc": "Откройте URL подтверждения и введите этот код, чтобы авторизовать GitHub.",
+    "methodPickerDesc": "Выберите способ аутентификации в GitHub",
+    "oauthDeviceDesc": "Откройте URL подтверждения и введите этот код, чтобы авторизовать GitHub",
     "scanCredHelper": "Git credential helper ({{name}})",
     "scanEmpty": "Ничего не обнаружено",
-    "scanEmptyDesc": "Token gh CLI, credential helpers или SSH-ключи не найдены. Выберите другой способ выше.",
+    "scanEmptyDesc": "Token gh CLI, credential helpers или SSH-ключи не найдены. Выберите другой способ выше",
     "scanGhCli": "GitHub CLI (gh)",
     "scanResults": "Обнаруженные учётные данные",
-    "scanResultsDesc": "Выберите одни для импорта. Перед сохранением мы проверяем token в GitHub.",
+    "scanResultsDesc": "Выберите одни для импорта. Перед сохранением мы проверяем token в GitHub",
     "scanSshKey": "SSH-ключ — {{name}}",
     "scanning": "Сканирование…",
-    "scanningDesc": "Поиск token gh CLI, credential helpers и SSH-ключей на этом компьютере.",
+    "scanningDesc": "Поиск token gh CLI, credential helpers и SSH-ключей на этом компьютере",
     "sshKeyPath": "Путь к SSH-ключу",
-    "sshKeyPathDesc": "Абсолютный путь к закрытому ключу (напр. ~/.ssh/id_ed25519). Соответствующий открытый ключ уже должен быть зарегистрирован на GitHub.",
-    "scanSelectRequired": "Выберите обнаруженные учётные данные для импорта.",
-    "sshKeyPathRequired": "Путь к SSH-ключу обязателен."
+    "sshKeyPathDesc": "Абсолютный путь к закрытому ключу (напр. ~/.ssh/id_ed25519). Соответствующий открытый ключ уже должен быть зарегистрирован на GitHub",
+    "scanSelectRequired": "Выберите обнаруженные учётные данные для импорта",
+    "sshKeyPathRequired": "Путь к SSH-ключу обязателен"
   },
   "builtInTools": {
     "tabTools": "Встроенные инструменты",
@@ -809,9 +802,9 @@
     "agentBrowserRestartPromptMessage": "После смены провайдера Browser CLI нужно перезапустить ORG2, чтобы агенты увидели выбранный инструмент. Перезапустить сейчас?",
     "sidecarDownloadsSectionTitle": "Загрузки sidecar",
     "sidecarAgentBrowserLabel": "Agent Browser CLI",
-    "sidecarAgentBrowserDesc": "Загрузить бинарный файл Agent Browser для этой платформы в ~/.orgii/bin. ORG2 никогда не загружает его при запуске.",
+    "sidecarAgentBrowserDesc": "Загрузить бинарный файл Agent Browser для этой платформы в ~/.orgii/bin. ORG2 никогда не загружает его при запуске",
     "sidecarPeekabooLabel": "Peekaboo CLI",
-    "sidecarPeekabooDesc": "Загрузить macOS-бинарный файл Peekaboo для автоматизации рабочего стола в ~/.orgii/bin. Неподдерживаемые платформы остаются отключенными.",
+    "sidecarPeekabooDesc": "Загрузить macOS-бинарный файл Peekaboo для автоматизации рабочего стола в ~/.orgii/bin. Неподдерживаемые платформы остаются отключенными",
     "sidecarUnsupported": "Не поддерживается",
     "sidecarInstalled": "Установлено",
     "sidecarNotInstalled": "Не установлено",
@@ -874,7 +867,7 @@
     "connectMethodDesc": "Выберите способ подключения учётной записи GitHub",
     "githubApp": "GitHub App",
     "detectFromSystem": "Обнаружить в системе",
-    "detectFromSystemDesc": "Используйте gh CLI, SSH-ключи или Git credential helpers.",
+    "detectFromSystemDesc": "Используйте gh CLI, SSH-ключи или Git credential helpers",
     "credentialsDetected": "Учётные данные обнаружены",
     "detectedVia": "Обнаружено через {{source}}",
     "sshKeyLabel": "SSH-ключ",
@@ -894,7 +887,7 @@
     "noCredentialsFound": "Учётные данные GitHub не найдены",
     "noCredentialsHint": "Установите GitHub CLI (gh) или настройте SSH-ключи для локального обнаружения",
     "manuallyAddToken": "Добавить token вручную",
-    "manualTokenDesc": "Вставьте GitHub PAT для HTTPS-операций Git.",
+    "manualTokenDesc": "Вставьте GitHub PAT для HTTPS-операций Git",
     "autoDetect": "Автообнаружение",
     "autoDetectTokenSaved": "GitHub token сохранён",
     "autoDetectSshSwitched": "Remote переключён на SSH",
@@ -920,7 +913,7 @@
     "coauthor": "Co-authored-by",
     "coauthorDesc": "Добавлять {{name}} <{{email}}> в Git commit, созданные из ORG2",
     "noTokenYet": "Нужен Token?",
-    "createTokenDesc": "Откройте GitHub и создайте PAT с доступом repo.",
+    "createTokenDesc": "Откройте GitHub и создайте PAT с доступом repo",
     "accountConnected": "Аккаунт GitHub подключён",
     "disconnectMsg": "Вы уверены, что хотите отключить? Это удалит доступ ко всем репо этого аккаунта.",
     "disconnectTitle": "Отключить аккаунт GitHub",
@@ -929,7 +922,7 @@
     "connectRepoDesc": "Подключите аккаунт GitHub для доступа к репо",
     "github": "GitHub",
     "signInWithGithub": "Войти через GitHub",
-    "signInWithGithubDesc": "Авторизуйте ORG2 через GitHub Device Flow. Свой сервер не нужен.",
+    "signInWithGithubDesc": "Авторизуйте ORG2 через GitHub Device Flow. Свой сервер не нужен",
     "oauthWaiting": "Ожидание авторизации",
     "oauthDeviceCodeDesc": "Откройте URL ниже и введите этот код",
     "oauthOpenGithub": "Открыть GitHub",
@@ -964,8 +957,8 @@
     "contentLabel": "Содержимое",
     "contentDesc": "Напишите тело SKILL.md в Markdown. Это то, что читает Agent",
     "scopeLabel": "Область",
-    "scopeDesc": "Skills уровня User доступны во всех репозиториях. Skills для repo загружаются только для этого repo.",
-    "scopeDescEdit": "При смене области при сохранении папка skill будет перемещена между пользовательским и repo-специфичным хранилищем.",
+    "scopeDesc": "Skills уровня User доступны во всех репозиториях. Skills для repo загружаются только для этого repo",
+    "scopeDescEdit": "При смене области при сохранении папка skill будет перемещена между пользовательским и repo-специфичным хранилищем",
     "scopeGlobal": "User",
     "binsLabel": "Необходимые программы",
     "binsDesc": "CLI-программы, необходимые для этого навыка (напр. git, python, docker)",
@@ -985,7 +978,7 @@
     "filePathPlaceholder": "напр. scripts/validate.py",
     "removeFile": "Удалить файл",
     "editorNoDraftTitle": "Нет активного черновика Skill",
-    "editorNoDraftDesc": "Нажмите «Создать» на странице Skills или выберите Skill для редактирования.",
+    "editorNoDraftDesc": "Нажмите «Создать» на странице Skills или выберите Skill для редактирования",
     "scopeWorkspace": "Для repo",
     "deleteConfirmTitle": "Удалить навык «{{name}}»?",
     "deleteConfirmMessage": "Это удалит навык и все его файлы. Действие необратимо."
@@ -994,7 +987,7 @@
     "tab": "MCP",
     "searchPlaceholder": "Поиск MCP серверов...",
     "noServers": "Нет настроенных MCP серверов",
-    "noServersDesc": "Добавьте MCP сервер для расширения возможностей агента внешними инструментами.",
+    "noServersDesc": "Добавьте MCP сервер для расширения возможностей агента внешними инструментами",
     "addServer": "Добавить MCP сервер",
     "editServer": "Редактировать MCP сервер",
     "serverName": "Имя сервера",
@@ -1117,12 +1110,12 @@
     },
     "sessionProvenance": {
       "masterToggle": "Хуки происхождения",
-      "masterToggleDesc": "При отключении все управляемые хуки удаляются и сигналы не собираются; выбор для каждой платформы сохраняется и восстанавливается при повторном включении.",
+      "masterToggleDesc": "При отключении все управляемые хуки удаляются и сигналы не собираются; выбор для каждой платформы сохраняется и восстанавливается при повторном включении",
       "liveStatusToggle": "Статус агента в реальном времени",
-      "liveStatusToggleDesc": "Показывает, работают или ожидают запущенные CLI-агенты. При отключении сбор данных о происхождении продолжается.",
+      "liveStatusToggleDesc": "Показывает, работают или ожидают запущенные CLI-агенты. При отключении сбор данных о происхождении продолжается",
       "title": "Происхождение сессий",
       "capture": "Записывать взаимодействия с файлами",
-      "description": "Записывает чтение и запись файлов как метаданные. Запросы, вывод инструментов и содержимое файлов не сохраняются.",
+      "description": "Записывает чтение и запись файлов как метаданные. Запросы, вывод инструментов и содержимое файлов не сохраняются",
       "installDrift": "Сохранённая настройка не совпадает с установленным hook. Переключите запись, чтобы восстановить управляемый hook. Конфигурация: {{path}}",
       "copyPath": "Копировать",
       "col": {
@@ -1139,8 +1132,8 @@
       },
       "codexApproval": {
         "title": "Проверить хуки ORG2 в Codex",
-        "description": "Ожидание, пока Codex одобрит и выполнит текущие хуки ORG2.",
-        "instructions": "Откройте Codex, проверьте хуки ORG2 и выберите Trust all and continue. Хук SessionStart автоматически подтвердит активацию при запуске сессии.",
+        "description": "Ожидание, пока Codex одобрит и выполнит текущие хуки ORG2",
+        "instructions": "Откройте Codex, проверьте хуки ORG2 и выберите Trust all and continue. Хук SessionStart автоматически подтвердит активацию при запуске сессии",
         "review": "Проверить в Codex",
         "verified": "Проверено реальным сигналом хука Codex ({{time}})."
       },
@@ -1185,7 +1178,7 @@
       "addMember": "Добавить участника",
       "noMembers": "Добавьте участников для построения иерархии Org",
       "membersLabel": "Участники команды",
-      "membersDesc": "Каждая строка — участник с независимыми правом Writer и настройками связи. Имена должны быть уникальны; роль только описывает специализацию.",
+      "membersDesc": "Каждая строка — участник с независимыми правом Writer и настройками связи. Имена должны быть уникальны; роль только описывает специализацию",
       "memberName": "Имя",
       "memberNamePlaceholder": "Уникальное имя маршрутизации (напр. SDE-1)",
       "memberNameDuplicate": "Другой участник уже использует это name. Name должны быть уникальны в рамках организации.",
@@ -1238,9 +1231,9 @@
       "descriptionPlaceholder": "Что делает этот агент? (необязательно)",
       "subAgentsTab": "Subagents",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
-      "maxToolUseConcurrencyDesc": "Одновременных вызовов инструментов на сообщение. По умолчанию: 10.",
+      "maxToolUseConcurrencyDesc": "Одновременных вызовов инструментов на сообщение. По умолчанию: 10",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
-      "subAgentWorktreeIsolationDesc": "Запуск во временном Git Worktree (изолированный доступ к файлам и Shell).",
+      "subAgentWorktreeIsolationDesc": "Запуск во временном Git Worktree (изолированный доступ к файлам и Shell)",
       "addSubAgent": "Добавить Sub-Agent...",
       "noSubAgents": "Sub-agents не настроены."
     },
@@ -1276,30 +1269,30 @@
     "applicableAgentsDesc": "К каким агентам применяется правило (пусто = все)",
     "selectAgents": "Выбрать агентов…",
     "ruleSource": "Источник",
-    "ruleSourceDesc": "Выберите User для всех репозиториев или Repo для правила одного репозитория.",
+    "ruleSourceDesc": "Выберите User для всех репозиториев или Repo для правила одного репозитория",
     "ruleSourceUser": "User",
-    "ruleSourceUserDesc": "Пользовательское предпочтение, доступное во всех репозиториях.",
+    "ruleSourceUserDesc": "Пользовательское предпочтение, доступное во всех репозиториях",
     "ruleSourceRepo": "Repo",
-    "ruleSourceRepoDesc": "Правило, сохранённое для одного выбранного репозитория.",
+    "ruleSourceRepoDesc": "Правило, сохранённое для одного выбранного репозитория",
     "ruleRepo": "Repo",
     "ruleRepoDesc": "Единственный репозиторий, к которому применяется это правило",
     "selectRepo": "Выберите repo…",
     "ruleSourcePersonal": "Персональное",
-    "ruleSourcePersonalDesc": "Хранится в ~/.orgii/personal/rules/. Только OS Agent / channel.",
+    "ruleSourcePersonalDesc": "Хранится в ~/.orgii/personal/rules/. Только OS Agent / channel",
     "findSkills": {
       "title": "Поиск Skills",
       "placeholder": "Поиск Skills...",
       "installs": "Installs",
       "emptyTitle": "Поиск Skills",
-      "emptySubtitle": "Введите минимум 2 символа, затем нажмите Enter, чтобы найти Skills.",
+      "emptySubtitle": "Введите минимум 2 символа, затем нажмите Enter, чтобы найти Skills",
       "noResults": "Skills не найдены",
-      "noResultsDesc": "Попробуйте другой поисковый запрос."
+      "noResultsDesc": "Попробуйте другой поисковый запрос"
     },
     "importAgentTitle": "Импортировать Agents из других apps",
     "importAgentColumn": "Агент",
     "importedItemAgents": "агенты",
     "emptySelectionTitle": "Выберите участника или Команду Agent",
-    "emptySelectionSubtitle": "Выберите Agent или Команду Agent на боковой панели, чтобы просмотреть и настроить его.",
+    "emptySelectionSubtitle": "Выберите Agent или Команду Agent на боковой панели, чтобы просмотреть и настроить его",
     "applicableWorkspace": "Применимый Workspace",
     "tableTabs": {
       "agents": "Agents",
@@ -1332,18 +1325,18 @@
     "cliManagedConfig": {
       "title": "Переключение конфигурации CLI",
       "modeLabel": "Режим",
-      "modeDesc": "«По умолчанию» восстанавливает собственную конфигурацию CLI. «Управляется ORG2» записывает прокси-конфигурацию с резервной копией.",
+      "modeDesc": "«По умолчанию» восстанавливает собственную конфигурацию CLI. «Управляется ORG2» записывает прокси-конфигурацию с резервной копией",
       "modeDefault": "По умолчанию",
       "modeOrgii": "Управляется ORG2",
       "conflict": "Внешнее изменение",
       "conflictTitle": "Конфликт",
-      "conflictDesc": "Активная конфигурация CLI изменилась после того, как ORG2 записал её.",
+      "conflictDesc": "Активная конфигурация CLI изменилась после того, как ORG2 записал её",
       "proxyStatus": "Прокси",
       "proxyDefault": "Режим по умолчанию",
       "proxyReady": "Прокси готов",
       "proxyNotReady": "Прокси не готов",
       "keyLabel": "Ключ",
-      "keyDesc": "Показаны только API-ключи, совместимые с этим CLI и управляемым прокси.",
+      "keyDesc": "Показаны только API-ключи, совместимые с этим CLI и управляемым прокси",
       "selectKey": "Выберите ключ",
       "modelLabel": "Модель",
       "selectModel": "Выберите модель",
@@ -1356,7 +1349,7 @@
       "forceRestore": "Восстановить принудительно",
       "applySuccess": "Управляемая конфигурация ORG2 применена",
       "restoreSuccess": "Конфигурация по умолчанию восстановлена",
-      "proxyLifecycleDesc": "Не закрывайте ORG2, пока используете этот режим. При закрытии окна прокси остаётся в трее; при выходе из ORG2 конфигурация по умолчанию безопасно восстанавливается, если она не была изменена извне."
+      "proxyLifecycleDesc": "Не закрывайте ORG2, пока используете этот режим. При закрытии окна прокси остаётся в трее; при выходе из ORG2 конфигурация по умолчанию безопасно восстанавливается, если она не была изменена извне"
     }
   },
   "databases": {
@@ -1546,7 +1539,7 @@
       "elapsed": "Общее время: {{value}}s"
     },
     "title": "Резидентный Housekeeper",
-    "description": "Локальный MiniCPM выполняет доработку промптов, короткие пояснения шагов и лёгкое управление UI. Задачи кодирования и сложная настройка ADE по-прежнему используют основную модель агента.",
+    "description": "Локальный MiniCPM выполняет доработку промптов, короткие пояснения шагов и лёгкое управление UI. Задачи кодирования и сложная настройка ADE по-прежнему используют основную модель агента",
     "autoAccount": "Автовыбор аккаунта MiniCPM vLLM",
     "tiles": {
       "model": "Модель",
@@ -1556,37 +1549,37 @@
     "settings": {
       "enabled": {
         "title": "Включить Housekeeper",
-        "description": "Когда отключено, доработка промптов, пояснения шагов и лёгкое управление UI не будут использовать MiniCPM."
+        "description": "Когда отключено, доработка промптов, пояснения шагов и лёгкое управление UI не будут использовать MiniCPM"
       },
       "account": {
         "title": "Аккаунт vLLM MiniCPM",
-        "description": "Повторно использует существующий аккаунт KeyVault vllm_api; отдельное хранилище учётных данных не создаётся."
+        "description": "Повторно использует существующий аккаунт KeyVault vllm_api; отдельное хранилище учётных данных не создаётся"
       },
       "model": {
         "title": "ID модели",
-        "description": "Docker vLLM MiniCPM5-1B по умолчанию использует openbmb/MiniCPM5-1B."
+        "description": "Docker vLLM MiniCPM5-1B по умолчанию использует openbmb/MiniCPM5-1B"
       },
       "context": {
         "title": "Безопасный бюджет контекста",
-        "description": "Использовать консервативный бюджет в 10000 token на GPU с 4 ГБ вместо теоретического лимита 32k."
+        "description": "Использовать консервативный бюджет в 10000 token на GPU с 4 ГБ вместо теоретического лимита 32k"
       }
     },
     "features": {
       "promptPolish": {
         "title": "Доработка промптов",
-        "description": "Вручную дорабатывать ввод перед отправкой более сильной модели для кодирования."
+        "description": "Вручную дорабатывать ввод перед отправкой более сильной модели для кодирования"
       },
       "stepExplain": {
         "title": "Пояснения шагов Agent",
-        "description": "Генерировать одно-два коротких пояснения на китайском для шагов воспроизведения сессии."
+        "description": "Генерировать одно-два коротких пояснения на китайском для шагов воспроизведения сессии"
       },
       "uiControl": {
         "title": "Лёгкое управление ADE/UI",
-        "description": "MiniCPM может только классифицировать запросы по строгому локальному белому списку действий."
+        "description": "MiniCPM может только классифицировать запросы по строгому локальному белому списку действий"
       },
       "contextCompact": {
         "title": "Автоматическое обслуживание контекста",
-        "description": "Позволить MiniCPM поддерживать изолированное скользящее резюме старого контекста, пока включённые сессии простаивают."
+        "description": "Позволить MiniCPM поддерживать изолированное скользящее резюме старого контекста, пока включённые сессии простаивают"
       }
     }
   },
@@ -1657,13 +1650,21 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "Ошибка импорта: {{message}}",
-    "partialFailure": "Некоторые учётные данные не удалось импортировать:"
+    "partialFailure": "Некоторые учётные данные не удалось импортировать:",
+    "importSucceeded": "Сохранено в разделе «Учётные записи»: {{names}}. Импортированные учётные данные теперь доступны как повторно используемые подключения."
   },
   "skills": {
     "shareToOrg": "Поделиться с организацией",
     "share": "Поделиться",
     "sharedToOrg": "Skill доступен организации",
-    "shareToOrgHint": "Участники организации получат текущий снимок этого Skill; после редактирования поделитесь снова, чтобы опубликовать обновление.",
+    "shareToOrgHint": "Участники организации получат текущий снимок этого Skill; после редактирования поделитесь снова, чтобы опубликовать обновление",
     "shareOrgPlaceholder": "Организация"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Loading official packages…",
+    "purchasesFailed": "Could not load official packages. Try again.",
+    "failed": "Не удалось подключиться к Market. Повторите попытку.",
+    "title": "Official packages",
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

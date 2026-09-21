@@ -9,7 +9,7 @@ import type { ReviewSearchFile } from "./reviewSearchTypes";
 import { useReviewSearch } from "./useReviewSearch";
 
 const mocks = vi.hoisted(() => ({ card: vi.fn(), navigate: vi.fn() }));
-vi.mock("@src/components/FindCard", () => ({
+vi.mock("@src/scaffold/GlobalSpotlight/FindCard", () => ({
   default: (props: unknown) => {
     mocks.card(props);
     return null;
@@ -175,13 +175,14 @@ describe("review search lifecycle", () => {
     expect(mocks.navigate).toHaveBeenCalledOnce();
     expect(card().search.resultCount).toBe(1);
   });
-  it("always searches all review files without a scope switch and supports immediate Enter flush", async () => {
+  it("always searches all review files without a review-only switch and supports immediate Enter flush", async () => {
     act(() => card().search.setQuery("old"));
     act(() => card().search.nextResult());
     await advance(0);
     expect(workers[0].postMessage.mock.calls.at(-1)![0].path).toBeUndefined();
     expect(workers[0].postMessage.mock.calls[0][0].files).toEqual(files);
-    expect(card().scopeControls).toBe(false);
+    // Review keeps the shared chat/file pill; it no longer has its own switch.
+    expect(card().scopeControls).toBeUndefined();
     expect(card().targetName).toBe("actions.review");
   });
   it("releases work on close and pauses while hidden", async () => {

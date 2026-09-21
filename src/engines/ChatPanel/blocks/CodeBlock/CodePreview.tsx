@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import {
   ArrowExpand01Icon,
-  ArrowShrink01Icon,
+  ArrowShrink02Icon,
   Cancel01Icon,
   HugeiconsIcon,
   SquareArrowUpRight02Icon,
@@ -116,7 +116,6 @@ const CodePreview: React.FC<CodePreviewProps> = ({
         <div className="flex items-center gap-1">
           <Button
             variant="tertiary"
-            appearance="soft"
             size="mini"
             aria-label={
               isMaxHeight ? t("codePreview.shrink") : t("codePreview.expand")
@@ -125,7 +124,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({
             icon={
               isMaxHeight ? (
                 <HugeiconsIcon
-                  icon={ArrowShrink01Icon}
+                  icon={ArrowShrink02Icon}
                   data-icon="minimize-2"
                   size={12}
                 />
@@ -137,7 +136,6 @@ const CodePreview: React.FC<CodePreviewProps> = ({
                 />
               )
             }
-            htmlType="button"
             onClick={handleToggleSize}
             className="hover:bg-fill-3 hover:text-text-2"
             title={
@@ -146,7 +144,6 @@ const CodePreview: React.FC<CodePreviewProps> = ({
           />
           <Button
             variant="tertiary"
-            appearance="soft"
             size="mini"
             aria-label={t("codePreview.openExternal")}
             iconOnly
@@ -157,19 +154,16 @@ const CodePreview: React.FC<CodePreviewProps> = ({
                 size={12}
               />
             }
-            htmlType="button"
             onClick={handleOpenExternal}
             className="hover:bg-fill-3 hover:text-text-2"
             title={t("codePreview.openExternal")}
           />
           <Button
             variant="tertiary"
-            appearance="soft"
             size="mini"
             aria-label={t("codePreview.close")}
             iconOnly
             icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />}
-            htmlType="button"
             onClick={onClose}
             className="hover:bg-fill-3 hover:text-text-2"
             title={t("codePreview.close")}

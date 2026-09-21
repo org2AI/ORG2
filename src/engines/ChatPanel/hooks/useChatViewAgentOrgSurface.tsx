@@ -100,8 +100,6 @@ export function useChatViewAgentOrgSurface({
 
   const {
     cancelQueuedMessage,
-    queueTailKey,
-    handleClearSessionQueue,
     handleReorderSessionQueue,
     handleSendNow,
     queueEditProps,
@@ -178,8 +176,6 @@ export function useChatViewAgentOrgSurface({
     handleAgentOrgMemberSessionJump,
     handleMainComposerSubmitOverride: handleGroupChatSubmitOverride,
     cancelQueuedMessage,
-    queueTailKey,
-    handleClearSessionQueue,
     handleReorderSessionQueue,
     handleSendNow,
     queueEditProps,

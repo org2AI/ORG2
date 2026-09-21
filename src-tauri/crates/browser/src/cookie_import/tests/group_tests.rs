@@ -56,3 +56,27 @@ fn sample_hosts_are_capped_and_deduped() {
     assert!(sites[0].sample_hosts.len() <= 4);
     assert!(sites[0].sample_hosts.iter().all(|host| !host.starts_with('.')));
 }
+
+#[test]
+fn reading_a_blocked_source_reports_full_disk_access() {
+    use super::sources::SourceLocation;
+    use super::{read_source_cookies, CookieReadError, CookieSourceKind, SourceUnavailableReason};
+
+    // Shaped like the scan's blocked Chromium row: no keychain, and a store
+    // path that is a folder rather than a cookie database.
+    let blocked = SourceLocation {
+        id: "chromium:chrome:<blocked>".to_string(),
+        kind: CookieSourceKind::Chromium,
+        browser_id: "chrome".to_string(),
+        browser_label: "Google Chrome".to_string(),
+        profile_label: None,
+        store_path: std::env::temp_dir(),
+        keychain: None,
+        unavailable_reason: Some(SourceUnavailableReason::NeedsFullDiskAccess),
+    };
+
+    assert!(matches!(
+        read_source_cookies(&blocked),
+        Err(CookieReadError::FullDiskAccess)
+    ));
+}

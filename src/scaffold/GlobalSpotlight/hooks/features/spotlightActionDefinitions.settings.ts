@@ -9,7 +9,6 @@
  * - `buildChatPanelSettingsActions` — chat panel position, pagination, and
  *   model-picker style toggles.
  */
-import { ACTION_ID } from "@src/ActionSystem";
 import {
   ArrowBigLeftDashIcon,
   ArrowBigRightDashIcon,
@@ -19,6 +18,7 @@ import {
   Menu01Icon,
   SparklesIcon,
 } from "@src/icons";
+import { ACTION_ID } from "@src/scaffold/ActionSystem";
 
 import type { SpotlightStaticActionDefinition } from "./spotlightActionDefinitions.types";
 

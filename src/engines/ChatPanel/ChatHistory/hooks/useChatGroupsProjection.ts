@@ -1,3 +1,4 @@
+import { isRetryAuditBoundary } from "@src/engines/SessionCore/conversations/retryAuditBoundary";
 import { isInternalLifecycleEvent } from "@src/engines/SessionCore/ingestion/visibilityFilters";
 
 import {
@@ -8,6 +9,7 @@ import {
 import { isAgentErrorEvent } from "../chatItemPipeline/classifiers";
 import { isAssistantMessageEvent } from "../chatItemPipeline/dedup";
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
+import { turnOutputImages } from "./turnOutputImages";
 
 export interface UnloadedTurnMeta {
   turnId: string;
@@ -20,6 +22,8 @@ export interface UnloadedTurnMeta {
 }
 
 export interface ChatGroupMeta {
+  /** Structural failed-attempt audit, never a logical user turn. */
+  retryAudit?: true;
   turnId: string | null;
   /** Provider-exact model recorded on this turn's assistant LLM span. */
   assistantModelId?: string | null;
@@ -32,6 +36,12 @@ export interface ChatGroupMeta {
    * tool calls into a single row.
    */
   bodyEventCount: number;
+  /**
+   * Whether the round holds anything besides internal lifecycle markers.
+   * False for a turn the agent never worked in: every loaded body item is a
+   * lifecycle marker, or the source measured the unloaded body as empty.
+   */
+  hasBody: boolean;
   previewText: string;
   startMs: number | null;
   endMs: number | null;
@@ -53,15 +63,8 @@ export type TurnGroupingPolicy =
   | { mode: "agent-org-member" }
   | { mode: "agent-org"; coordinatorSessionId: string };
 
-/**
- * Lifecycle phase of the tail (latest) turn, produced by `useTailTurnPhase`:
- * `"running"` while the round is in flight (no collapse bar, no folding);
- * `"complete"` once it ends (bar renders immediately, turn stays expanded by
- * default); `"stale"` once the session's newest event is older than the
- * stale window (the turn also DEFAULTS to collapsed like a historical one).
- * Stale implies complete, so the illegal combination cannot exist.
- */
-export type TailTurnPhase = "running" | "complete" | "stale";
+/** Running turns stay inline; completed turns show a summary and default closed. */
+export type TailTurnPhase = "running" | "complete";
 
 export interface ChatGroupsProjectionOptions {
   collapseOverrides?: ReadonlyMap<string, boolean>;
@@ -274,16 +277,15 @@ export function isTurnCollapseEligible(
   } = {}
 ): boolean {
   if (!meta || meta.turnId === null) return false;
+  // A historical round the agent never worked in has nothing to fold, and its
+  // bar would sit alone between two user messages. The tail keeps the rules
+  // below: its agent may simply not have started yet.
+  if (!meta.hasBody && groupIndex < groupCount - 1) return false;
   const bodyItemCount =
     meta.unloadedTurn?.bodyEventCount ?? meta.bodyEventCount;
-  // Loaded turns render their items inline, so a trivial (≤1 event) body has
-  // nothing to collapse. Measured in EVENTS, not rendered rows: a round whose
-  // whole body is one grouped tool stack renders as a single row but still
-  // holds every command in it. An UNLOADED turn renders nothing inline — the
-  // collapse bar is its only expand affordance (and, with turn pagination
-  // off, the only way to fetch the body at all), so any nonzero count must
-  // show it. Zero means the source measured a genuinely bodyless round.
-  if (meta.unloadedTurn ? bodyItemCount < 1 : bodyItemCount <= 1) return false;
+  // Every nonempty completed turn gets its timing summary, even when its
+  // body is just one reply or one tool call. Empty turns have no work to fold.
+  if (bodyItemCount < 1) return false;
   if (options.forceCollapseAllTurns === true) return true;
   if (groupIndex < groupCount - 1) return true;
   // The tail round shows its bar as soon as it ends; whether it defaults to
@@ -291,14 +293,7 @@ export function isTurnCollapseEligible(
   return (options.tailTurnPhase ?? "running") !== "running";
 }
 
-/**
- * Default collapse state for one turn group. Shared by `projectChatGroups`
- * and the pin bar's chevron mirror in `GroupHeaderRenderer` so the two can
- * never drift: a completed tail turn is collapse-ELIGIBLE (bar renders,
- * manual toggles and collapse-all work) before it is collapse-DEFAULTED —
- * it only folds on its own once the session goes stale, so finishing a
- * round never hides its content abruptly.
- */
+/** Shared by the body projection and header chevron; explicit overrides win. */
 export function resolveTurnDefaultCollapsed(
   isTailGroup: boolean,
   options: {
@@ -310,7 +305,7 @@ export function resolveTurnDefaultCollapsed(
   if (options.defaultTurnCollapsed === false) return false;
   if (!isTailGroup) return true;
   if (options.forceCollapseAllTurns === true) return true;
-  return options.tailTurnPhase === "stale";
+  return options.tailTurnPhase === "complete";
 }
 
 /** Pure grouping/collapse projection. It has no React, Jotai, or DOM dependency. */
@@ -331,7 +326,10 @@ export function projectChatGroups(
   let current: ChatGroup = { header: null, items: [] };
 
   for (const item of optimizedChatHistory) {
-    if (isHeader(item) || isBoundary(item)) {
+    if (item.event && isRetryAuditBoundary(item.event)) {
+      if (current.header || current.items.length > 0) groups.push(current);
+      current = { header: null, items: [item] };
+    } else if (isHeader(item) || isBoundary(item)) {
       if (current.header || current.items.length > 0) groups.push(current);
       current = { header: item, items: [] };
     } else {
@@ -375,6 +373,11 @@ export function projectChatGroups(
       (item) => !isUnloadedTurnItem(item) && !isTurnPreviewItem(item)
     );
     const unloadedTurn = hasLoadedBodyItem ? null : unloadedTurnPlaceholder;
+    const hasBody = unloadedTurn
+      ? unloadedTurn.bodyEventCount !== 0 || group.items.some(isTurnPreviewItem)
+      : group.items.some(
+          (item) => !isLifecycleItem(item) && !isUnloadedTurnItem(item)
+        );
     const unloadedStartMs = parseEpochMs(unloadedTurn?.startedAt);
     const unloadedEndMs = parseEpochMs(unloadedTurn?.endedAt);
     const durationMs =
@@ -383,6 +386,9 @@ export function projectChatGroups(
         : 0;
 
     return {
+      ...(group.items[0]?.event && isRetryAuditBoundary(group.items[0].event)
+        ? { retryAudit: true as const }
+        : {}),
       turnId,
       assistantModelId: assistantModelIdForGroup(group),
       durationMs: unloadedTurn?.durationMs ?? durationMs,
@@ -391,6 +397,7 @@ export function projectChatGroups(
         (total, item) => total + countItemBodyEvents(item),
         0
       ),
+      hasBody,
       previewText: headerEvent?.displayText ?? "",
       startMs: unloadedStartMs ?? startMs,
       endMs: unloadedEndMs ?? endMs,
@@ -427,7 +434,10 @@ export function projectChatGroups(
         }));
 
     if (!isCollapsed) {
-      const keepStructuralPlaceholder = meta.unloadedTurn !== null;
+      // An empty round's placeholder stands for nothing; keeping it would
+      // leave a blank turn gap between the user messages around it.
+      const keepStructuralPlaceholder =
+        meta.unloadedTurn !== null && meta.hasBody;
       const shouldKeep = (item: OptimizedChatItem) =>
         !isLifecycleItem(item) &&
         (keepStructuralPlaceholder || !isUnloadedTurnItem(item));
@@ -534,6 +544,18 @@ export function projectChatGroups(
       keptIndexSet.has(index) ? null : keptFlatIndex
     );
     runningFlatIdx += kept.length;
+  }
+
+  // Gallery ownership is independent of the activity/text collapse policy.
+  // Attach it to the final surviving row so virtualization and search indices
+  // remain unchanged, including image-only turns with a structural row.
+  for (let index = 0; index < groups.length; index++) {
+    const images = turnOutputImages(groups[index].items);
+    const surviving = survivingPerGroup[index];
+    if (images.length && surviving.length) {
+      const last = surviving.length - 1;
+      surviving[last] = { ...surviving[last], outputImages: images };
+    }
   }
 
   const flatItems = survivingPerGroup.flat();

@@ -412,9 +412,7 @@ const IssuesContent: React.FC<IssuesContentProps> = memo(
               <div className="flex justify-center py-1.5">
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
-                  htmlType="button"
                   className="text-[11px] font-medium hover:bg-fill-1 disabled:cursor-default disabled:opacity-60"
                   disabled={isLoading}
                   onClick={isOpenSection ? loadMoreOpen : loadMoreClosed}

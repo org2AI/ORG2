@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 
-import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+import { listenForDrag } from "@src/util/dom/dragLifecycle";
 
 import { getMsPerColumn, getStartOfPeriod } from "../config";
 import type { GanttTimeScale, GanttViewScope } from "../types";

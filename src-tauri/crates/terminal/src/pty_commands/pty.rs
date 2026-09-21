@@ -56,6 +56,6 @@ pub use output_frame::{encode_pty_output_frame, PTY_FRAME_HEADER_BYTES};
 pub use session::PtySession;
 pub use state::PtyState;
 pub use types::{
-    AttachPtyStream, CreatePtyRequest, ForegroundProcessInfo, PtyInfo, PtyMemoryInfo,
-    PtyOutputSnapshot, ResizePtyRequest,
+    AttachPtyStream, CreatePtyRequest, ForegroundProcessInfo, PtyExitEvent, PtyInfo, PtyMemoryInfo,
+    PtyOutputSnapshot, PtySessionIdentity, ResizePtyRequest,
 };

@@ -15,41 +15,20 @@
  * To add theme support, override the color maps in this file.
  * All components using this config will automatically update.
  */
-
 // ============================================
 // Types
 // ============================================
+import type {
+  GitApiStatus,
+  GitFileStatus,
+  GitStatusLetter,
+} from "@src/contracts/git/status";
 
-/**
- * Git file status as returned by backend API
- */
-export type GitApiStatus =
-  | "M"
-  | "A"
-  | "D"
-  | "R"
-  | "C"
-  | "U"
-  | "?"
-  | "!"
-  | string;
-
-/**
- * Normalized git file status used in frontend
- */
-export type GitFileStatus =
-  | "modified"
-  | "added"
-  | "deleted"
-  | "renamed"
-  | "conflict"
-  | "ignored";
-
-/**
- * Display status letter (VSCode style)
- * I = Ignored (dimmed, low opacity)
- */
-export type GitStatusLetter = "M" | "U" | "A" | "D" | "R" | "C" | "I" | "?";
+export type {
+  GitApiStatus,
+  GitFileStatus,
+  GitStatusLetter,
+} from "@src/contracts/git/status";
 
 // ============================================
 // Status Letter Mapping (API → Display)

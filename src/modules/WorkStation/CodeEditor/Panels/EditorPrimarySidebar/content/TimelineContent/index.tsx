@@ -11,12 +11,12 @@ import { useTranslation } from "react-i18next";
 import AnyIcon from "@src/components/AnyIcon";
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { buildCloudRemoteItemId } from "@src/features/Org2Cloud/cloudRemoteItemId";
 import { useFileHistory } from "@src/hooks/git/useFileHistory";
 import { useOrgtrackFileSessionHistory } from "@src/hooks/git/useOrgtrackFileSessionHistory";
 import { useOrgtrackFileTimeline } from "@src/hooks/git/useOrgtrackFileTimeline";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { getBasename } from "@src/modules/WorkStation/CodeEditor/SessionReplay/CodePanel/pathUtils";
 import { SectionHeaderActions } from "@src/modules/WorkStation/shared/PrimarySidebarLayout/SectionHeaderActions";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
@@ -267,10 +267,8 @@ export const TimelineContent: React.FC<TimelineContentProps> = memo(
                 <div className="px-4 py-1">
                   <Button
                     variant="tertiary"
-                    appearance="soft-no-drop"
                     size="sidebar"
                     long
-                    htmlType="button"
                     disabled={fileSessionsLoadingMore}
                     data-testid="session-blame-load-more"
                     onClick={() => void loadMoreFileSessions()}
@@ -344,7 +342,6 @@ export const TimelineContent: React.FC<TimelineContentProps> = memo(
           <SectionHeaderActions>
             <Button
               variant="tertiary"
-              appearance="soft-no-drop"
               size="sidebar"
               iconOnly
               icon={
@@ -355,7 +352,6 @@ export const TimelineContent: React.FC<TimelineContentProps> = memo(
                   className={sessionRefreshSpinClass}
                 />
               }
-              htmlType="button"
               disabled={sessionHistoryLoading || !relativeFilePath}
               onClick={handleSessionRefresh}
               title={t("actions.refresh")}

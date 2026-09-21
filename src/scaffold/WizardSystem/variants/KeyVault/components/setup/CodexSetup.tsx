@@ -4,14 +4,14 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
-import { CodexSessionSetup } from "@src/features/SessionSetup";
-import { KeyboardIcon, Login01Icon, SearchAreaIcon } from "@src/icons";
 import {
   SECTION_CONTROL_STYLE,
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { CodexSessionSetup } from "@src/features/SessionSetup";
+import { InputShortTextIcon, Login01Icon, SearchAreaIcon } from "@src/icons";
 import {
   SelectionGrid,
   type SelectionGridOption,
@@ -53,7 +53,7 @@ const CodexSetup: React.FC<CodexSetupProps> = ({
       {
         key: "enter_token",
         label: t("keyVault.enterToken"),
-        icon: KeyboardIcon,
+        icon: InputShortTextIcon,
       },
     ],
     [t]
@@ -132,9 +132,8 @@ const CodexSetup: React.FC<CodexSetupProps> = ({
             required
           >
             <Button
-              variant={tokenDetected ? "success" : "primary"}
-              appearance={tokenDetected ? "outline" : undefined}
-              size="default"
+              variant={tokenDetected ? "secondary" : "primary"}
+              tone={tokenDetected ? "success" : undefined}
               loading={detectingToken}
               disabled={detectingToken}
               onClick={onDetectToken}
@@ -167,9 +166,8 @@ const CodexSetup: React.FC<CodexSetupProps> = ({
                 style={{ ...SECTION_CONTROL_STYLE, flex: 1 }}
               />
               <Button
-                variant={keyValidated ? "success" : "primary"}
-                appearance={keyValidated ? "outline" : undefined}
-                size="default"
+                variant={keyValidated ? "secondary" : "primary"}
+                tone={keyValidated ? "success" : undefined}
                 loading={validatingKey}
                 disabled={validatingKey}
                 onClick={handleValidateManualCredential}

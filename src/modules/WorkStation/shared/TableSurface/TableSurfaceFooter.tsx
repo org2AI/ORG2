@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 
 import { TABLE_ROW_HEIGHT } from "./tableSurfaceUtils";
-import type { TableSurfacePagination } from "./types";
 
 interface TableSurfaceFooterProps {
   hasMoreRows: boolean;
@@ -11,7 +10,6 @@ interface TableSurfaceFooterProps {
   loadMoreTop: number;
   scrollLeft: number;
   viewportWidth: number;
-  pagination?: TableSurfacePagination;
   onLoadMoreRows?: () => void | Promise<void>;
 }
 
@@ -21,52 +19,15 @@ export function TableSurfaceFooter({
   loadMoreTop,
   scrollLeft,
   viewportWidth,
-  pagination,
   onLoadMoreRows,
 }: TableSurfaceFooterProps) {
   const { t } = useTranslation();
-
-  if (pagination) {
-    const totalPages = Math.max(
-      1,
-      Math.ceil(pagination.totalCount / pagination.pageSize)
-    );
-    return (
-      <div className="table-surface__pagination">
-        <Button
-          layout="custom"
-          appearance="custom"
-          htmlType="button"
-          className="table-surface__pagination-button"
-          disabled={pagination.page <= 1}
-          onClick={() => pagination.onPageChange(pagination.page - 1)}
-        >
-          {t("common:actions.previous")}
-        </Button>
-        <span className="table-surface__pagination-label">
-          {pagination.page} / {totalPages}
-        </span>
-        <Button
-          layout="custom"
-          appearance="custom"
-          htmlType="button"
-          className="table-surface__pagination-button"
-          disabled={pagination.page >= totalPages}
-          onClick={() => pagination.onPageChange(pagination.page + 1)}
-        >
-          {t("common:actions.next")}
-        </Button>
-      </div>
-    );
-  }
 
   if (!hasMoreRows || !onLoadMoreRows) return null;
 
   return (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className="table-surface__load-more-row"
       style={{
         width: viewportWidth,

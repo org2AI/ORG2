@@ -58,7 +58,7 @@ describe("ModelPropertiesDropdown immediate changes", () => {
     vi.useRealTimers();
   });
 
-  function render(value: string, models = MODELS) {
+  function render(value: string, models = MODELS, confirmChanges = false) {
     const options = buildVariantEditOptions(models);
     act(() =>
       root.render(
@@ -68,9 +68,10 @@ describe("ModelPropertiesDropdown immediate changes", () => {
           React.createElement(ModelPropertiesDropdown, {
             value,
             variantOptions: options,
+            confirmChanges,
             onChange: (modelId) => {
               save(modelId);
-              render(modelId, models);
+              render(modelId, models, confirmChanges);
             },
             renderTrigger: ({ ref, onClick, ariaExpanded }) =>
               React.createElement(
@@ -112,6 +113,15 @@ describe("ModelPropertiesDropdown immediate changes", () => {
       )!.set!.call(input, value);
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
+  }
+  function effortTab(label: string) {
+    const button = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(
+        '[role="group"][aria-label="Effort"] button'
+      )
+    ).find((candidate) => candidate.textContent === label);
+    if (!button) throw new Error(`${label} effort tab is missing`);
+    return button;
   }
   function toggle(label: string) {
     const button = document.querySelector<HTMLButtonElement>(
@@ -181,7 +191,8 @@ describe("ModelPropertiesDropdown immediate changes", () => {
       "gpt-5.6-sol-ultra",
     ]);
     open();
-    changeRange("1");
+    act(() => effortTab("Ultra").click());
+    expect(effortTab("Ultra").getAttribute("aria-pressed")).toBe("true");
     expect(save).toHaveBeenCalledOnce();
     expect(save).toHaveBeenCalledWith("gpt-5.6-sol-ultra");
     expect(
@@ -200,9 +211,10 @@ describe("ModelPropertiesDropdown immediate changes", () => {
     toggle("Thinking");
     expect(save).toHaveBeenCalledOnce();
     expect(save).toHaveBeenCalledWith("claude-opus-4-7-thinking-low");
-    changeRange("1");
+    act(() => effortTab("High").click());
     expect(save).toHaveBeenCalledTimes(1);
-    expect(range().getAttribute("aria-valuetext")).toBe("Light");
+    expect(effortTab("Light").getAttribute("aria-pressed")).toBe("true");
+    expect(effortTab("High").getAttribute("aria-pressed")).toBe("false");
   });
 
   it("uses refreshed values without writing and closes outside without reverting", () => {
@@ -221,6 +233,63 @@ describe("ModelPropertiesDropdown immediate changes", () => {
     expect(store.get(activeOverlayCountAtom)).toBe(0);
     open();
     expect(range().getAttribute("aria-valuetext")).toBe("Medium");
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  function clickTestId(id: string) {
+    const button = document.querySelector<HTMLButtonElement>(
+      `[data-testid="${id}"]`
+    );
+    if (!button) throw new Error(`${id} is missing`);
+    act(() => button.click());
+  }
+
+  it("stages confirmed edits until Apply and separates groups with the menu rule", () => {
+    render("gpt-5.6-sol-high", MODELS, true);
+    open();
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.querySelectorAll('[role="separator"]')).toHaveLength(2);
+    changeRange("5");
+    toggle("Fast");
+    expect(save).not.toHaveBeenCalled();
+    expect(range().getAttribute("aria-valuetext")).toBe("Ultra");
+
+    // Neither an outside press nor a host close request dismisses it.
+    act(() =>
+      document.body.dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true })
+      )
+    );
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("model-properties-dropdown-close", {
+          detail: { hoveredElement: document.body.firstElementChild },
+        })
+      );
+    });
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+
+    clickTestId("model-properties-apply");
+    expect(save).toHaveBeenCalledOnce();
+    expect(save).toHaveBeenCalledWith("gpt-5.6-sol-ultra-fast");
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(store.get(activeOverlayCountAtom)).toBe(0);
+  });
+
+  it("drops confirmed edits on Cancel and Escape", () => {
+    render("gpt-5.6-sol-high", MODELS, true);
+    open();
+    changeRange("5");
+    clickTestId("model-properties-cancel");
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    open();
+    expect(range().getAttribute("aria-valuetext")).toBe("High");
+    changeRange("0");
+    escape();
+    open();
+    expect(range().getAttribute("aria-valuetext")).toBe("High");
+    expect(save).not.toHaveBeenCalled();
+    clickTestId("model-properties-apply");
     expect(save).not.toHaveBeenCalled();
   });
 

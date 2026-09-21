@@ -248,7 +248,19 @@ pub async fn persist_session_error_event(
     session_id: &str,
     message: &str,
 ) -> Result<(), String> {
-    let event = build_session_error_event(session_id, message);
+    persist_session_error_event_for_intent(app_handle, session_id, message, None).await
+}
+
+async fn persist_session_error_event_for_intent(
+    app_handle: Option<&tauri::AppHandle>,
+    session_id: &str,
+    message: &str,
+    turn_intent_id: Option<&str>,
+) -> Result<(), String> {
+    let mut event = build_session_error_event(session_id, message);
+    if let Some(intent_id) = turn_intent_id {
+        event.result["turnIntentId"] = serde_json::Value::String(intent_id.to_owned());
+    }
 
     // Lifecycle errors are terminal user-visible facts, not high-frequency
     // streaming updates. Persist synchronously before notifying any UI so a
@@ -721,7 +733,16 @@ pub async fn finalize_session(
     // function. Status broadcasts can be missed; the EventStore row is the
     // authoritative replay path after a window reload or app restart.
     if let Err(message) = response {
-        if let Err(err) = persist_session_error_event(app_handle, session_id, message).await {
+        if let Err(err) = persist_session_error_event_for_intent(
+            app_handle,
+            session_id,
+            message,
+            terminal_turn
+                .as_ref()
+                .and_then(|turn| turn.turn_intent_id.as_deref()),
+        )
+        .await
+        {
             tracing::warn!(
                 session_id = %session_id,
                 error = %err,

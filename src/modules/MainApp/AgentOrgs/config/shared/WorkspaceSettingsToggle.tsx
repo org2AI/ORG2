@@ -2,10 +2,7 @@ import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import Switch from "@src/components/Switch";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 
 interface WorkspaceSettingsToggleProps {
   config: Record<string, unknown>;

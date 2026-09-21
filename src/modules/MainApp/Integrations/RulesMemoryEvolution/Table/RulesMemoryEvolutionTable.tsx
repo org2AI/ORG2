@@ -18,18 +18,18 @@ import SettingsTable, {
 } from "@src/components/SettingsTable";
 import Switch from "@src/components/Switch";
 import TabPill, { type TabPillItem } from "@src/components/TabPill";
-import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
-import type { CursorRepo, PolicyInfo } from "@src/hooks/policies";
-import { Add01Icon, Delete02Icon, HugeiconsIcon, Pen01Icon } from "@src/icons";
-import SecuritySection from "@src/modules/MainApp/Settings/sections/SecuritySection";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InlineInfoCard,
   InternalHeader,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
+} from "@src/components/layout/blocks";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
+import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
+import type { CursorRepo, PolicyInfo } from "@src/hooks/policies";
+import { Add01Icon, Delete02Icon, HugeiconsIcon, Pen01Icon } from "@src/icons";
+import SecuritySection from "@src/modules/MainApp/Settings/sections/SecuritySection";
 import { openFileInWorkStation } from "@src/util/ui/openFileInWorkStation";
 
 import {
@@ -251,7 +251,6 @@ export const RulesMemoryEvolutionTable: React.FC<
               }
             />
             <Button
-              variant="secondary"
               size="small"
               icon={
                 <HugeiconsIcon icon={Pen01Icon} data-icon="pencil" size={14} />
@@ -263,8 +262,7 @@ export const RulesMemoryEvolutionTable: React.FC<
             />
             {onDeleteMarkdownRule ? (
               <Button
-                variant="danger"
-                appearance="outline"
+                tone="danger"
                 size="small"
                 icon={
                   <HugeiconsIcon
@@ -308,8 +306,6 @@ export const RulesMemoryEvolutionTable: React.FC<
 
   const addRuleButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       onClick={onAdd}
     >
@@ -321,18 +317,9 @@ export const RulesMemoryEvolutionTable: React.FC<
     <DetailPanelContainer>
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tabs}
-            activeTab={activeTab}
-            onChange={(key) => setActiveTab(key as RulesMemoryEvolutionPageTab)}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={(key) => setActiveTab(key as RulesMemoryEvolutionPageTab)}
       />
       {activeTab === "memory" ? (
         <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>

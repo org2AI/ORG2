@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import BottomSheet from "@src/components/BottomSheet";
 import Button from "@src/components/Button";
+import InlineAlert from "@src/components/PageNotice";
 import { HugeiconsIcon, NotificationBubbleIcon } from "@src/icons";
 
 import { PermissionPromptActions } from "./PermissionPromptActions";
@@ -21,6 +22,7 @@ export interface PermissionSheetRequest {
   toolName: string;
   toolCallId?: string;
   toolArgs: Record<string, unknown>;
+  toolArgsTruncated?: boolean;
   origin?: "rust_agent" | "cli_hook" | "acp";
 }
 
@@ -30,6 +32,8 @@ export interface PermissionSheetProps {
   desktopName?: string;
   queueDepth?: number;
   submitting?: boolean;
+  notice?: string;
+  error?: string;
   onDeny: () => void;
   onAllow: () => void;
   onAlwaysAllow: () => void;
@@ -48,6 +52,8 @@ export function PermissionSheet({
   desktopName,
   queueDepth = 0,
   submitting = false,
+  notice,
+  error,
   onDeny,
   onAllow,
   onAlwaysAllow,
@@ -82,7 +88,12 @@ export function PermissionSheet({
 
   const badge =
     queueDepth > 1 ? (
-      <span className="ml-2 text-xs text-text-3">+{queueDepth - 1}</span>
+      <span
+        style={{ fontSize: "var(--mobile-type-caption-size, 12px)" }}
+        className="ml-2 text-xs text-text-3"
+      >
+        +{queueDepth - 1}
+      </span>
     ) : null;
 
   return (
@@ -95,7 +106,10 @@ export function PermissionSheet({
           <span>{viewModel.label}</span>
           {badge}
           {!viewModel.commandText && request.toolName ? (
-            <span className="rounded bg-fill-2 px-1.5 py-0.5 text-xs font-medium text-text-2">
+            <span
+              style={{ fontSize: "var(--mobile-type-caption-size, 12px)" }}
+              className="rounded bg-fill-2 px-1.5 py-0.5 text-xs font-medium text-text-2"
+            >
               {request.toolName}
             </span>
           ) : null}
@@ -104,7 +118,7 @@ export function PermissionSheet({
       footer={
         <PermissionPromptActions
           layout="mobile"
-          disabled={submitting}
+          disabled={submitting || request.toolArgsTruncated === true}
           onDeny={onDeny}
           onAllow={onAllow}
           onAlwaysAllow={onAlwaysAllow}
@@ -112,17 +126,44 @@ export function PermissionSheet({
       }
     >
       <PermissionPromptContent
+        typography="mobile"
         commandText={viewModel.commandText}
         description={viewModel.description}
         argsPreview={viewModel.argsPreview as PermissionArgPreview[]}
         footerNote={footerNote || undefined}
       />
+      {notice ? (
+        <p
+          style={{
+            fontSize: "var(--mobile-type-secondary-size, 14px)",
+            lineHeight: "var(--mobile-type-body-leading, 1.5)",
+          }}
+          role="status"
+          className="mt-3 text-sm text-text-2"
+        >
+          {notice}
+        </p>
+      ) : null}
+      {error ? (
+        <InlineAlert
+          type="danger"
+          role="alert"
+          className="mt-3"
+          bodyClassName="mobile-type-secondary"
+        >
+          {error}
+        </InlineAlert>
+      ) : null}
       {onDismiss ? (
         <Button
           variant="tertiary"
-          appearance="ghost"
           size="mini"
-          htmlType="button"
+          style={{
+            minHeight: "var(--modal-action-size, 24px)",
+            height: "auto",
+            fontSize: "var(--mobile-type-caption-size, 12px)",
+            lineHeight: "var(--mobile-type-caption-leading, 1.4)",
+          }}
           className="mt-3 w-full text-center text-xs"
           onClick={onDismiss}
         >

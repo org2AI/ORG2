@@ -3,7 +3,8 @@ import React from "react";
 import DiffStatsBadge from "@src/components/DiffStatsBadge";
 import PrStatusBadge from "@src/components/PrStatusBadge";
 import { HugeiconsIcon, SquareArrowUpRight02Icon } from "@src/icons";
-import { formatStatNumber } from "@src/shared/pr/formatStatNumber";
+import { formatStatNumber } from "@src/util/git/pr/formatStatNumber";
+import { linkAnchorProps } from "@src/util/ui/openLink";
 
 import { ToolResultCardFrameLink } from "./ToolResultCardFrame";
 
@@ -27,9 +28,7 @@ interface SessionLinkCardProps {
 const SessionLinkCard: React.FC<SessionLinkCardProps> = ({ card }) => {
   return (
     <ToolResultCardFrameLink
-      href={card.prUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...linkAnchorProps(card.prUrl)}
       className="block cursor-pointer"
       aria-label={`PR #${card.prNumber}: ${card.prTitle}`}
     >

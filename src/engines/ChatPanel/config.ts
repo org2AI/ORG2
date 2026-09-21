@@ -5,6 +5,12 @@
 // CSS variable for chat width
 export const CHAT_WIDTH_CSS_VAR = "--orgii-chat-width";
 
+// Width written only while the divider is dragged, on the elements that size
+// the pane. Registered non-inherited in index.scss: a per-frame write to the
+// inherited root variable restyles every element in the app.
+export const CHAT_LIVE_WIDTH_CSS_VAR = "--orgii-chat-live-width";
+export const CHAT_WIDTH_STYLE_VALUE = `var(${CHAT_LIVE_WIDTH_CSS_VAR}, var(${CHAT_WIDTH_CSS_VAR}))`;
+
 // Resize constraints
 export const MIN_WIDTH = 420;
 export const MAX_WIDTH_RATIO = 0.5;

@@ -51,15 +51,11 @@ describe("global settings search catalog", () => {
       "general.githubStarPromptNextEligibleValueCount",
       "mobileRemote.desktopToken",
       "general.userDisplayName",
-      "general.chatPanelPosition",
-      "general.chatTurnPaginationEnabled",
-      "general.modelPickerStyle",
       "privacy.diagnosticsLevel",
       "privacy.diagnosticsUploadIntervalHours",
       "privacy.offlineMode",
       "privacy.shareRuntimeWithOrg",
       "editor.showIndentGuides",
-      "editor.showBlame",
       "terminal.letterSpacing",
       "mobileRemote.desktopId",
       "mobileRemote.allowLanExposure",
@@ -127,6 +123,21 @@ describe("global settings search catalog", () => {
       label: "字体大小",
       path: "/orgii/app/settings/app/appearance/code-editor",
     });
+    expect(
+      items.find((item) => item.key === "general.chatPanelPosition")
+    ).toMatchObject({ path: "/orgii/app/settings/app/appearance/app" });
+    expect(
+      items.find((item) => item.key === "general.modelPickerStyle")
+    ).toMatchObject({ path: "/orgii/app/settings/app/appearance/app" });
+    expect(
+      items.find((item) => item.key === "general.chatTurnPaginationEnabled")
+    ).toMatchObject({ path: "/orgii/app/settings/app/appearance/chat-panel" });
+    expect(items.find((item) => item.key === "editor.showBlame")).toMatchObject(
+      { path: "/orgii/app/settings/app/appearance/code-editor" }
+    );
+    expect(
+      items.find((item) => item.key === "git.sourceControl.colorFileNames")
+    ).toMatchObject({ path: "/orgii/app/settings/app/appearance/code-editor" });
   });
 });
 

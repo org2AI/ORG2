@@ -10,7 +10,6 @@ import { Provider, useAtomValue } from "jotai";
 import React from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { useWorkStationPanels } from "@src/hooks/tabHost/useWorkStationPanels";
 import {
   spotlightInitialQueryAtom,
   spotlightOpenAtom,
@@ -23,21 +22,12 @@ import { useAppShellStatusBar } from "./useAppShellStatusBar";
 
 const store = createInstrumentedStore();
 
-const panels = {
-  togglePrimarySidebar: () => {},
-  toggleBottomPanel: () => {},
-  layoutMode: "left",
-  bottomPanelCollapsed: false,
-} as unknown as ReturnType<typeof useWorkStationPanels>;
-
 const handleOpenSettings = () => {};
 
 function Harness() {
   useAppShellStatusBar({
-    primaryPanelCollapsed: false,
     showSettingsButton: false,
     handleOpenSettings,
-    workStationPanels: panels,
   });
   const callbacks = useAtomValue(perAppStatusBarCallbacksAtom).code;
   return React.createElement(

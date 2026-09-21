@@ -7,10 +7,6 @@
 
 export { useColumnResize } from "./hooks";
 
-export {
-  HorizontalResizeHandle,
-  ResizeHandle,
-  VerticalResizeHandle,
-} from "./components";
+export { HorizontalResizeHandle, VerticalResizeHandle } from "./components";
 
 export { default as ResizableSplitPanel } from "./components/ResizableSplitPanel";

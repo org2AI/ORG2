@@ -60,7 +60,7 @@
     },
     "loadingConnections": "GitHub bağlantıları yükleniyor...",
     "noConnectionTitle": "GitHub bağlantısı bulunamadı",
-    "noConnectionDescription": "Önce Integrations içinde bir GitHub bağlantısı ekleyin, ardından GitHub Issues içe aktarmak için buraya dönün.",
+    "noConnectionDescription": "Önce Integrations içinde bir GitHub bağlantısı ekleyin, ardından GitHub Issues içe aktarmak için buraya dönün",
     "linkedRepoHint": "Bu Project ayrıca geçerli Workspace repo ile ilişkilendirilecek: {{repoName}}",
     "errors": {
       "invalidRepo": "owner/repo veya GitHub depo URL'si kullanın."
@@ -80,7 +80,7 @@
     "importLinearOrgs": "Linear çalışma alanlarını içe aktar",
     "gitFolderPath": "Git klasör yolu (isteğe bağlı)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Klasör senkronizasyonu için bu çalışma alanını mevcut bir Git çalışma ağacına bağlayın.",
+    "gitFolderPathHint": "Klasör senkronizasyonu için bu çalışma alanını mevcut bir Git çalışma ağacına bağlayın",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Bir Git klasörüyle senkronize edildi",
     "pendingSync": "Senkronizasyon bekleniyor",
@@ -123,7 +123,7 @@
     "addTeams": "Takım ekle",
     "addLabels": "Etiket ekle",
     "addRepos": "Depoları bağla",
-    "noReposHint": "Kullanılabilir depo yok. Önce çalışma alanına bir depo ekleyin.",
+    "noReposHint": "Kullanılabilir depo yok. Önce çalışma alanına bir depo ekleyin",
     "addDate": "Tarih ekle",
     "clearDate": "Tarihi temizle",
     "noStatus": "Durum yok",
@@ -358,10 +358,7 @@
       "moreProperties": "Daha fazla özellik"
     },
     "propertyFields": {
-      "assignee": "Atanan",
-      "project": "Project",
-      "milestone": "Kilometre taşı",
-      "dueDate": "Son Tarih"
+      "project": "Project"
     },
     "addWorkItem": "İş Öğesi Ekle",
     "agentWorkflow": {
@@ -392,8 +389,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "Henüz mevcut değil",
-      "prPendingHint": "Agent tamamlandıktan sonra PR oluşturulacak.",
-      "prNeutralHint": "Henüz PR oluşturulmadı.",
+      "prPendingHint": "Agent tamamlandıktan sonra PR oluşturulacak",
+      "prNeutralHint": "Henüz PR oluşturulmadı",
       "prCreatingHint": "Pull Request oluşturuluyor...",
       "prCreateButton": "Pull Request Oluştur",
       "prCreateError": "Pull Request oluşturulamadı",
@@ -403,7 +400,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "Dosya değişikliği yok",
-      "fileDiffCleanHint": "Dosya değişikliği algılanmadı.",
+      "fileDiffCleanHint": "Dosya değişikliği algılanmadı",
       "costSummary": "Maliyet özeti",
       "totalCost": "Toplam",
       "tokens": "Token",
@@ -413,7 +410,7 @@
     "viewWorkItems": "Work Item'ları görüntüle",
     "fromRoutine": "From routine: {{name}}",
     "batchField": {
-      "hint": "Seçilen {{count}} öğeye uygulanır."
+      "hint": "Seçilen {{count}} öğeye uygulanır"
     },
     "batchStatus": {
       "title": "Durumu ayarla"
@@ -457,7 +454,7 @@
       "save": "Geçerli görünümü kaydet",
       "saveTitle": "Görünümü kaydet",
       "namePlaceholder": "Görünüm adı",
-      "saveHint": "Geçerli filtreleri yakalar; düzen ilk açılışı belirler.",
+      "saveHint": "Geçerli filtreleri yakalar; düzen ilk açılışı belirler",
       "delete": "Görünümü sil"
     },
     "table": {
@@ -475,14 +472,14 @@
     },
     "batchProperty": {
       "title": "Özellik ayarla",
-      "hint": "Seçili {{count}} öğeye tek bir özellik değeri uygular. Temizlemek için değeri boş bırakın.",
+      "hint": "Seçili {{count}} öğeye tek bir özellik değeri uygular. Temizlemek için değeri boş bırakın",
       "propertyPlaceholder": "Özellik",
       "valuePlaceholder": "Değer",
       "applied": "{{count}} öğe güncellendi"
     },
     "revisionConflict": {
       "title": "Düzenleme çakışmasını çöz",
-      "description": "{{field}}, {{expected}} revizyonundan sonra değişti. Düzenlemenizi {{actual}} revizyonuyla karşılaştırın, ardından hangi sürümün korunacağını seçin.",
+      "description": "{{field}}, {{expected}} revizyonundan sonra değişti. Düzenlemenizi {{actual}} revizyonuyla karşılaştırın, ardından hangi sürümün korunacağını seçin",
       "mine": "Benim sürümüm",
       "latest": "En son sürüm",
       "useLatest": "En sonu kullan",
@@ -573,7 +570,7 @@
     "sidebarSync": "Senkronizasyon",
     "sync": {
       "title": "Harici Senkronizasyon",
-      "description": "Bu Projectnin iş öğelerini Linear veya GitHub gibi harici bir sisteme yansıtın.",
+      "description": "Bu Projectnin iş öğelerini Linear veya GitHub gibi harici bir sisteme yansıtın",
       "adapterPicker": {
         "title": "Adaptör",
         "notAttached": "Bağlı değil",
@@ -582,7 +579,7 @@
         "changeWarning": "Yeni bir adaptör bağlamadan önce mevcut adaptörü ayırın.",
         "detachProjectMenuLabel": "GitHub bağlantısını kaldır",
         "detachProjectTitle": "{{project}} için GitHub bağlantısı kaldırılsın mı?",
-        "detachProjectDescription": "GitHub Issues senkronizasyonu duracak. Yerel proje ve içe aktarılan iş öğeleri ORG2'de kalacak.",
+        "detachProjectDescription": "GitHub Issues senkronizasyonu duracak. Yerel proje ve içe aktarılan iş öğeleri ORG2'de kalacak",
         "detachProjectAction": "{{project}} için GitHub bağlantısını kaldır",
         "detachProjectSuccess": "{{project}} için GitHub bağlantısı kaldırıldı"
       },
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "Webhook durumu yükleniyor…",
-        "notInstalledDescription": "Sağlayıcının değişiklikleri bir sonraki yoklamayı beklemeden doğrudan göndermesi için bir webhook gizli anahtarı kurun.",
+        "notInstalledDescription": "Sağlayıcının değişiklikleri bir sonraki yoklamayı beklemeden doğrudan göndermesi için bir webhook gizli anahtarı kurun",
         "install": "Webhook'u kur",
-        "installedDescription": "URL'yi sağlayıcınızın webhook yapılandırmasına yapıştırın ve aşağıdaki gizli anahtarla teslimleri imzalayın.",
+        "installedDescription": "URL'yi sağlayıcınızın webhook yapılandırmasına yapıştırın ve aşağıdaki gizli anahtarla teslimleri imzalayın",
         "indicatorFresh": "Yakın zamanda teslim",
         "indicatorStale": "Yakın zamanda teslim yok",
         "lastDeliveryNever": "Henüz teslim yok",
@@ -627,7 +624,7 @@
         "copyUrl": "URL'yi kopyala",
         "rotate": "Gizli anahtarı yenile",
         "secretTitle": "Bu gizli anahtarı şimdi kopyalayın — tekrar gösterilmeyecek",
-        "secretDescription": "Bu imza gizli anahtarını sağlayıcınızın webhook yapılandırmasına yapıştırın. Bu paneli kapattıktan sonra düz metin değerini saklamayız.",
+        "secretDescription": "Bu imza gizli anahtarını sağlayıcınızın webhook yapılandırmasına yapıştırın. Bu paneli kapattıktan sonra düz metin değerini saklamayız",
         "copySecret": "Gizli anahtarı kopyala",
         "dismissSecret": "Kaydettim",
         "secretCopied": "Gizli anahtar panoya kopyalandı",
@@ -653,9 +650,9 @@
         "progressNoTotal": "{{count}} öğe içe aktarıldı",
         "completedSummary": "Uzak kaynaktan {{count}} öğe içe aktarıldı.",
         "cancelledSummary": "{{count}} öğe içe aktarıldıktan sonra iptal edildi.",
-        "pendingDescription": "İlk senkronizasyon uzak geçmişi bir kez tarar. Sonraki senkronizasyonlar olağan artımlı döngüyü kullanır.",
-        "runningDescription": "Uzak geçmiş sayfa sayfa taranıyor. Bu sırada çalışmaya devam edebilirsiniz.",
-        "failedDescription": "Son sayfa kalıcı bir hatayla başarısız oldu. Yeniden deneme imleç konumundan devam eder.",
+        "pendingDescription": "İlk senkronizasyon uzak geçmişi bir kez tarar. Sonraki senkronizasyonlar olağan artımlı döngüyü kullanır",
+        "runningDescription": "Uzak geçmiş sayfa sayfa taranıyor. Bu sırada çalışmaya devam edebilirsiniz",
+        "failedDescription": "Son sayfa kalıcı bir hatayla başarısız oldu. Yeniden deneme imleç konumundan devam eder",
         "cancel": "İçe aktarımı iptal et",
         "retry": "Yeniden dene",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "Durumlar",
     "statusesBuiltin": "Yerleşik durumlar",
-    "statusesBuiltinDescription": "Standart iş akışı grupları. Her zaman kullanılabilir.",
+    "statusesBuiltinDescription": "Standart iş akışı grupları. Her zaman kullanılabilir",
     "statusesCustom": "Özel durumlar",
-    "statusesCustomDescription": "Yerleşik bir grup üzerindeki adlandırılmış takma adlar. Filtreler, sayımlar ve panolar bunları grupları gibi ele alır.",
+    "statusesCustomDescription": "Yerleşik bir grup üzerindeki adlandırılmış takma adlar. Filtreler, sayımlar ve panolar bunları grupları gibi ele alır",
     "statusNamePlaceholder": "Durum adı",
     "noCustomStatuses": "Henüz özel durum yok.",
     "statusArchive": "Durumu arşivle",
@@ -793,11 +790,11 @@
     "unknownState": "Unknown state",
     "emptyConnections": {
       "title": "No Linear connections",
-      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
+      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear"
     },
     "emptySelection": {
       "title": "Select a Linear Project",
-      "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
+      "description": "Choose a Project from the left to view live Linear Issues and edit Project details"
     },
     "forms": {
       "createProjectTitle": "Create Linear Project",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder sync complete",
     "syncFailed": "Git folder sync failed: {{message}}",
     "noResultTitle": "No Git sync result",
-    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
+    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts"
   }
 }

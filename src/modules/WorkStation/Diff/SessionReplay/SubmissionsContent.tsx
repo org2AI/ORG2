@@ -11,7 +11,8 @@ import {
 } from "@src/icons";
 import GitCommitRow from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/GitHistoryContent/GitCommitRow";
 import { truncateBranchLabel } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/PullRequestContent/prCardHelpers";
-import { PR_STATUS_UNKNOWN } from "@src/shared/pr/prStatus";
+import { PR_STATUS_UNKNOWN } from "@src/util/git/pr/prStatus";
+import { linkAnchorProps } from "@src/util/ui/openLink";
 
 import type {
   PullRequestSubmission,
@@ -87,9 +88,7 @@ const PullRequestSubmissionRow: React.FC<{
         )}
         {pullRequest.url && (
           <a
-            href={pullRequest.url}
-            target="_blank"
-            rel="noreferrer"
+            {...linkAnchorProps(pullRequest.url, { navigate: true })}
             className={`${HEADER_BUTTON.action} ml-auto`}
             aria-label={t("actions.openOnGitHub", "Open on GitHub")}
             title={t("actions.openOnGitHub", "Open on GitHub")}

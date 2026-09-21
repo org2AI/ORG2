@@ -1,11 +1,16 @@
 import type { MobileRemoteRuntimePort } from "../platform/types";
+import { invalidateMobileSessionIdentities } from "./mobileSessionIdentityCache";
 import type {
   JsonRpcInbound,
   JsonRpcNotification,
   JsonRpcRequest,
   MobileRpcError,
 } from "./types";
-import { isJsonRpcResponse } from "./types";
+import {
+  MobileConnectionAuthorizationError,
+  MobileConnectionTicketError,
+  isJsonRpcResponse,
+} from "./types";
 
 export type RpcNotificationHandler = (
   method: string,
@@ -13,7 +18,11 @@ export type RpcNotificationHandler = (
 ) => void;
 
 export interface MobileRpcClient {
-  call<T>(method: string, params?: Record<string, unknown>): Promise<T>;
+  call<T>(
+    method: string,
+    params?: Record<string, unknown>,
+    signal?: AbortSignal
+  ): Promise<T>;
   notify(method: string, params?: Record<string, unknown>): void;
   onNotification(handler: RpcNotificationHandler): () => void;
   close(): void;
@@ -24,6 +33,7 @@ interface PendingCall {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timeoutId: number;
+  cleanup: () => void;
 }
 
 const CLOSED = 3;
@@ -41,6 +51,7 @@ export function createMobileRpcClient(
   const flushPending = (error: Error) => {
     for (const entry of pending.values()) {
       runtime.clearTimeout(entry.timeoutId);
+      entry.cleanup();
       entry.reject(error);
     }
     pending.clear();
@@ -59,9 +70,13 @@ export function createMobileRpcClient(
       if (!waiter) return;
       pending.delete(parsed.id);
       runtime.clearTimeout(waiter.timeoutId);
+      waiter.cleanup();
       if (parsed.error) {
         waiter.reject(
-          new Error(parsed.error.message || `RPC error ${parsed.error.code}`)
+          Object.assign(
+            new Error(parsed.error.message || `RPC error ${parsed.error.code}`),
+            { code: parsed.error.code }
+          )
         );
         return;
       }
@@ -70,20 +85,34 @@ export function createMobileRpcClient(
     }
 
     const notification = parsed as JsonRpcNotification;
+    if (
+      notification.method === "session/list_changed" ||
+      (notification.method === "relay/presence" &&
+        notification.params?.online === false)
+    )
+      invalidateMobileSessionIdentities(client);
     for (const handler of notificationHandlers) {
       handler(notification.method, notification.params);
     }
   });
 
   socket.addEventListener("close", () => {
+    invalidateMobileSessionIdentities(client);
     flushPending(new Error("WebSocket closed"));
   });
 
-  return {
+  const client: MobileRpcClient = {
     get readyState() {
       return socket.readyState;
     },
-    call<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+    call<T>(
+      method: string,
+      params: Record<string, unknown> = {},
+      signal?: AbortSignal
+    ): Promise<T> {
+      const abortError = () =>
+        new DOMException("RPC call aborted", "AbortError");
+      if (signal?.aborted) return Promise.reject(abortError());
       if (socket.readyState !== 1) {
         return Promise.reject(new Error("WebSocket is not open"));
       }
@@ -98,16 +127,43 @@ export function createMobileRpcClient(
         params,
       };
       return new Promise<T>((resolve, reject) => {
+        const cleanup = () => signal?.removeEventListener("abort", onAbort);
+        const onAbort = () => {
+          const entry = pending.get(id);
+          if (!entry) return;
+          cleanup();
+          // Local cancellation cannot stop work already sent to Desktop.
+          // Retain a bounded tombstone until reply/timeout, so repeated aborts
+          // cannot bypass the outstanding-wire-request limit.
+          pending.set(id, {
+            timeoutId: entry.timeoutId,
+            resolve: () => {},
+            reject: () => {},
+            cleanup: () => {},
+          });
+          reject(abortError());
+        };
         const timeoutId = runtime.setTimeout(() => {
+          const entry = pending.get(id);
           pending.delete(id);
-          reject(new Error(`RPC call timed out: ${method}`));
+          entry?.cleanup();
+          entry?.reject(new Error(`RPC call timed out: ${method}`));
         }, RPC_TIMEOUT_MS);
         pending.set(id, {
           resolve: (value) => resolve(value as T),
           reject,
           timeoutId,
+          cleanup,
         });
-        socket.send(JSON.stringify(request));
+        signal?.addEventListener("abort", onAbort, { once: true });
+        try {
+          socket.send(JSON.stringify(request));
+        } catch (error) {
+          pending.delete(id);
+          runtime.clearTimeout(timeoutId);
+          cleanup();
+          reject(error);
+        }
       });
     },
     notify(method: string, params: Record<string, unknown> = {}) {
@@ -119,15 +175,27 @@ export function createMobileRpcClient(
       return () => notificationHandlers.delete(handler);
     },
     close() {
+      invalidateMobileSessionIdentities(client);
       if (socket.readyState !== CLOSED) {
         socket.close();
       }
       flushPending(new Error("RPC client closed"));
     },
   };
+  return client;
 }
 
 export function toMobileRpcError(error: unknown): MobileRpcError {
+  if (error instanceof MobileConnectionTicketError) {
+    return { code: -1, message: error.message, connectionIssue: "ticket" };
+  }
+  if (error instanceof MobileConnectionAuthorizationError) {
+    return {
+      code: -1,
+      message: error.message,
+      connectionIssue: "authorization",
+    };
+  }
   if (error instanceof Error) {
     return { code: -1, message: error.message };
   }

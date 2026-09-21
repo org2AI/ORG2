@@ -116,7 +116,6 @@ const WorkItemHandoffNotice: React.FC<WorkItemHandoffNoticeProps> = ({
         {canAct ? (
           <div className="ml-11 flex w-full items-center justify-end gap-2">
             <Button
-              variant="secondary"
               size="mini"
               onClick={() => setReturnOpen(true)}
               disabled={responding != null}

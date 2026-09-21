@@ -18,15 +18,14 @@ import { useTranslation } from "react-i18next";
 import { CompassIcon, HugeiconsIcon, Search01Icon } from "@src/icons";
 import type { TimestampedReplayTab } from "@src/modules/WorkStation/shared";
 import {
-  closeBrowserTabAtom,
   createBrowserSessionTabId,
   switchBrowserTabAtom,
 } from "@src/store/workstation/browser/tabs";
 
-import type { BrowserReplaySidebarCategory } from "./BrowserSidebar";
 import {
   AGENT_BROWSER_TAB_ID,
   BROWSER_CATEGORY_BY_TAB_ID,
+  type BrowserReplayCategory,
   MY_TABS_BROWSER_TAB_ID,
   SEARCH_FETCH_TAB_ID,
   TAB_ICON_CLASS,
@@ -51,25 +50,18 @@ export interface UseBrowserReplayTabsOptions {
   activeSubtool: "browser" | "internal_browser" | null;
   myTabsBrowserState: {
     sessions: unknown[];
-    activeSessionId: string | null;
     addSession: (url?: string, isPrivate?: boolean) => string;
-    setActiveSession: (id: string) => void;
-    closeSession: (id: string) => void;
   };
 }
 
 export interface UseBrowserReplayTabsResult {
   activeBrowserTabId: string;
   visibleActiveTabId: string;
-  activeBrowserCategory: BrowserReplaySidebarCategory | null;
   showMyTabsBrowser: boolean;
   showAgentBrowserCategory: boolean;
   browserTabs: TimestampedReplayTab[];
   handleBrowserTabClick: (tabId: string) => void;
   handleNewMyTabsSession: () => void;
-  handleNewPrivateMyTabsSession: () => void;
-  handleSelectMyTabsSession: (sessionId: string) => void;
-  handleCloseMyTabsSession: (sessionId: string) => void;
 }
 
 // ============================================
@@ -90,10 +82,9 @@ export function useBrowserReplayTabs({
     MY_TABS_BROWSER_TAB_ID
   );
   const switchBrowserTab = useSetAtom(switchBrowserTabAtom);
-  const closeBrowserTab = useSetAtom(closeBrowserTabAtom);
 
   const browserCategoryCounts = useMemo(() => {
-    const counts: Record<BrowserReplaySidebarCategory, number> = {
+    const counts: Record<BrowserReplayCategory, number> = {
       agent_browser: internalBrowserEntries.length,
       search_fetch: 0,
     };
@@ -239,27 +230,6 @@ export function useBrowserReplayTabs({
     switchBrowserTab(createBrowserSessionTabId(sessionId));
   }, [myTabsBrowserState, switchBrowserTab]);
 
-  const handleNewPrivateMyTabsSession = useCallback(() => {
-    const sessionId = myTabsBrowserState.addSession(undefined, true);
-    switchBrowserTab(createBrowserSessionTabId(sessionId));
-  }, [myTabsBrowserState, switchBrowserTab]);
-
-  const handleSelectMyTabsSession = useCallback(
-    (sessionId: string) => {
-      switchBrowserTab(createBrowserSessionTabId(sessionId));
-      myTabsBrowserState.setActiveSession(sessionId);
-    },
-    [myTabsBrowserState, switchBrowserTab]
-  );
-
-  const handleCloseMyTabsSession = useCallback(
-    (sessionId: string) => {
-      closeBrowserTab(createBrowserSessionTabId(sessionId));
-      myTabsBrowserState.closeSession(sessionId);
-    },
-    [closeBrowserTab, myTabsBrowserState]
-  );
-
   const handleBrowserTabClick = useCallback((tabId: string) => {
     if (
       tabId === MY_TABS_BROWSER_TAB_ID ||
@@ -272,14 +242,10 @@ export function useBrowserReplayTabs({
   return {
     activeBrowserTabId,
     visibleActiveTabId: activeBrowserTabId,
-    activeBrowserCategory,
     showMyTabsBrowser,
     showAgentBrowserCategory,
     browserTabs,
     handleBrowserTabClick,
     handleNewMyTabsSession,
-    handleNewPrivateMyTabsSession,
-    handleSelectMyTabsSession,
-    handleCloseMyTabsSession,
   };
 }

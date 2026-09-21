@@ -74,7 +74,7 @@ vi.mock("@src/api/services/notification", () => ({
   unlockNotificationSound: vi.fn(),
 }));
 
-vi.mock("@/src/modules/shared/layouts/SectionLayout", () => ({
+vi.mock("@/src/components/layout/Section", () => ({
   SectionContainer: ({ children }: { children?: React.ReactNode }) =>
     createElement("section", null, children),
   SectionRow: ({

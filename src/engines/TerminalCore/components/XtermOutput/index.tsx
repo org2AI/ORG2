@@ -30,6 +30,7 @@ import {
 
 import { TERMINAL_LINE_HEIGHT } from "@src/config/terminalAppearance";
 import { createLogger } from "@src/hooks/logger";
+import { resolvedCodeFontFamilyAtom } from "@src/store/ui/editorSettingsAtom";
 import {
   primaryColorPresetAtom,
   terminalFontSizeAtom,
@@ -84,6 +85,7 @@ const XtermOutput = memo(function XtermOutput({
   // The cursor color resolves from --terminal-caret (an alias of
   // --color-primary-6); tracking the preset re-resolves it on accent change.
   const primaryColorPreset = useAtomValue(primaryColorPresetAtom);
+  const fontFamily = useAtomValue(resolvedCodeFontFamilyAtom);
   const fontSize = useAtomValue(terminalFontSizeAtom);
   const letterSpacing = useAtomValue(terminalLetterSpacingAtom);
 
@@ -106,6 +108,9 @@ const XtermOutput = memo(function XtermOutput({
     const terminal = new Terminal({
       theme: getXTermTheme(terminalTheme),
       fontSize,
+      fontFamily,
+      fontWeight: "400",
+      fontWeightBold: "700",
       letterSpacing,
       lineHeight: TERMINAL_LINE_HEIGHT,
       cursorBlink: false,
@@ -244,11 +249,17 @@ const XtermOutput = memo(function XtermOutput({
   useEffect(() => {
     const terminal = terminalRef.current;
     if (!terminal) return;
+    terminal.options.fontFamily = fontFamily;
     terminal.options.fontSize = fontSize;
     terminal.options.letterSpacing = letterSpacing;
     terminal.clearTextureAtlas?.();
-    requestAnimationFrame(measureHeight);
-  }, [fontSize, letterSpacing, measureHeight]);
+    const frameId = requestAnimationFrame(() => {
+      if (terminalRef.current !== terminal) return;
+      fitAddonRef.current?.fit();
+      measureHeight();
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [fontFamily, fontSize, letterSpacing, measureHeight]);
 
   const resolvedHeight = height ?? computedHeight;
 

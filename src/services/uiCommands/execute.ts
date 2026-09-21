@@ -1,4 +1,7 @@
-import { uiCommands, uiSchemas } from "@src/ActionSystem/publicUi/catalog";
+import {
+  uiCommands,
+  uiSchemas,
+} from "@src/scaffold/ActionSystem/publicUi/catalog";
 import type {
   WorkStationTab,
   WorkstationWorkspaceKey,

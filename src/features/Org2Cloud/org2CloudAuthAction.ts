@@ -9,6 +9,7 @@
  */
 import {
   type Org2CloudAuthState,
+  clearRejectedAuth,
   commitRefreshedAuth,
 } from "./org2CloudAuthAtom";
 import { ensureFreshSession } from "./org2CloudClient";
@@ -39,11 +40,7 @@ export async function refreshOrg2CloudAuthForAction(
   const fresh = await ensureFreshSession(current, {
     onRefreshRejected: () => {
       refreshRejected = true;
-      setAuth((latest) => {
-        if (latest !== current) return latest;
-        rejectedSessionCleared = true;
-        return null;
-      });
+      rejectedSessionCleared = clearRejectedAuth(setAuth, current);
     },
   });
 

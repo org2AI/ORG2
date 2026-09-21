@@ -53,11 +53,9 @@ const ListPanelItem = forwardRef<HTMLButtonElement, ListPanelItemProps>(
   ) => (
     <Button
       layout="custom"
-      appearance="custom"
       {...dataAttributes}
       ref={ref}
       id={id}
-      htmlType="button"
       role={role}
       aria-label={ariaLabel}
       aria-selected={role === "option" ? selected : undefined}

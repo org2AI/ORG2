@@ -7,7 +7,7 @@
  */
 import { useState } from "react";
 
-import type { MarkdownEditorMode } from "@src/modules/shared/components/MarkdownTextareaEditor";
+import type { MarkdownEditorMode } from "@src/components/MarkdownTextareaEditor";
 
 import type { GitHubIssueInteractionConfig } from "../types";
 

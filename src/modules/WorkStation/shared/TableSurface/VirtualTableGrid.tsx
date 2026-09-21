@@ -34,7 +34,6 @@ import type {
   TableCellAddress,
   TableCellRange,
   TableSurfaceColumn,
-  TableSurfacePagination,
   TableSurfaceRow,
   TableSurfaceSortState,
 } from "./types";
@@ -45,7 +44,6 @@ interface VirtualTableGridProps {
   editable: boolean;
   hasMoreRows: boolean;
   loadingMoreRows: boolean;
-  pagination?: TableSurfacePagination;
   sortState?: TableSurfaceSortState;
   onSortColumn?: (columnId: string) => void;
   formatCellValue?: (value: unknown, address: TableCellAddress) => string;
@@ -74,7 +72,6 @@ export function VirtualTableGrid({
   editable,
   hasMoreRows,
   loadingMoreRows,
-  pagination,
   sortState,
   onSortColumn,
   formatCellValue = defaultFormatTableCellValue,
@@ -396,9 +393,7 @@ export function VirtualTableGrid({
           return (
             <Button
               layout="custom"
-              appearance="custom"
               key={`header-${column.id}`}
-              htmlType="button"
               className={[
                 "table-surface__column-header",
                 onSortColumn ? "table-surface__column-header--sortable" : null,
@@ -522,7 +517,6 @@ export function VirtualTableGrid({
           loadMoreTop={loadMoreTop}
           scrollLeft={scrollLeft}
           viewportWidth={viewportSize.width}
-          pagination={pagination}
           onLoadMoreRows={onLoadMoreRows}
         />
       </div>

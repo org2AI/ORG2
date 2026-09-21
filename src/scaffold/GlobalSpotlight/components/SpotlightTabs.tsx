@@ -121,9 +121,7 @@ export function SpotlightTabs<T extends string>({
             const tab = (
               <Button
                 layout="custom"
-                appearance="custom"
                 key={option.value}
-                htmlType="button"
                 role="tab"
                 aria-selected={active}
                 aria-label={option.ariaLabel}
@@ -141,6 +139,7 @@ export function SpotlightTabs<T extends string>({
             );
             return option.tooltip ? (
               <Tooltip
+                kind="button"
                 key={option.value}
                 content={option.tooltip}
                 position="top"

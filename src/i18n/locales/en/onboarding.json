@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "General layout tour",
-      "description": "Learn the Chat Panel, Runtime, station mode switcher, and dock.",
+      "description": "Learn the Chat Panel, Runtime, station mode switcher, and dock",
       "duration": "1 min",
       "steps": {
         "chat-panel": {
           "title": "Chat Panel",
-          "body": "This is where users have conversations with agents, review activity, and send follow-up instructions."
+          "body": "This is where users have conversations with agents, review activity, and send follow-up instructions"
         },
         "runtime": {
           "title": "Runtime",
-          "body": "View your own usage and runtime status here. In a workspace, you can also inspect member sync status and open a member to review Codex, Claude, and Cursor usage."
+          "body": "View your own usage and runtime status here. In a workspace, you can also inspect member sync status and open a member to review Codex, Claude, and Cursor usage"
         },
         "station-mode-pill": {
           "title": "Switch station modes",
-          "body": "Use this pill to switch station modes. Desktop means My Station, your workspace. Infinity means Agent Station, the agent activity view."
+          "body": "Use this pill to switch station modes. Desktop means My Station, your workspace. Infinity means Agent Station, the agent activity view"
         },
         "dock": {
           "title": "Agent Station dock",
-          "body": "The dock switches apps inside the station. The tour temporarily disables auto-hide so these controls stay visible."
+          "body": "The dock switches apps inside the station. The tour temporarily disables auto-hide so these controls stay visible"
         }
       }
     },
     "codeEditor": {
       "title": "Code Editor tour",
-      "description": "Learn tabs, the editor workspace, Source Control, and Git History.",
+      "description": "Learn tabs, the editor workspace, Source Control, and Git History",
       "duration": "2 min",
       "steps": {
         "tabs": {
           "title": "Code Editor tabs",
-          "body": "Tabs collect the files, diffs, terminals, source control views, and dashboards you open while working in the repo."
+          "body": "Tabs collect the files, diffs, terminals, source control views, and dashboards you open while working in the repo"
         },
         "editor-surface": {
           "title": "Editor workspace",
-          "body": "This is the main Code Editor surface. Open files, inspect diffs, run terminals, and review generated changes here."
+          "body": "This is the main Code Editor surface. Open files, inspect diffs, run terminals, and review generated changes here"
         },
         "create-tabs": {
           "title": "Create new tabs",
-          "body": "Use the plus menu in All Tabs to create terminals, browser tabs, files, dashboards, and repo utilities."
+          "body": "Use the plus menu in All Tabs to create terminals, browser tabs, files, dashboards, and repo utilities"
         },
         "source-control": {
           "title": "Git changes",
-          "body": "Open Source Control to review changed files, stage or unstage work, commit, pull, push, fetch, and sync with the remote."
+          "body": "Open Source Control to review changed files, stage or unstage work, commit, pull, push, fetch, and sync with the remote"
         },
         "git-history": {
           "title": "Git history",
-          "body": "Git History switches Source Control into commit history mode so you can inspect previous commits and related changes."
+          "body": "Git History switches Source Control into commit history mode so you can inspect previous commits and related changes"
         }
       }
     }
   },
   "discovery": {
-    "title": "Onboarding & new features",
-    "getStarted": "Get started",
-    "newFeatures": "New features",
-    "branchesTitle": "Repository branches",
-    "branchesDescription": "Switch repository branches directly from Spotlight."
+    "getStarted": "Get started"
   }
 }

@@ -8,7 +8,7 @@ import { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { MutableRefObject, useEffect, useRef, useState } from "react";
 
-import { getUiScaleFromCssVar } from "@src/lib/dndKit";
+import { getUiScaleFromCssVar } from "@src/util/dom/uiScale";
 
 import {
   MIN_HOLD_DURATION_MS,

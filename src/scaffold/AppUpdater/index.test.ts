@@ -1,7 +1,21 @@
 import type { DownloadEvent, Update } from "@tauri-apps/plugin-updater";
 import { type ReactElement, type ReactNode, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+import i18n from "@src/i18n";
+import enCommon from "@src/i18n/locales/en/common.json";
+import enSettings from "@src/i18n/locales/en/settings.json";
+import zhCommon from "@src/i18n/locales/zh/common.json";
+import zhSettings from "@src/i18n/locales/zh/settings.json";
 
 import {
   AppUpdateDownloadNoticeContent,
@@ -12,6 +26,7 @@ import {
   checkForUpdatesManually,
   installAvailableAppUpdate,
   resetAppUpdaterForTests,
+  skipAppUpdateVersion,
 } from "./service";
 import type { AppUpdateDownloadProgress } from "./state";
 
@@ -68,13 +83,6 @@ vi.mock("react-i18next", () => ({
     },
   }),
 }));
-
-vi.mock("@src/components/AppMark", async () => {
-  const React = await import("react");
-  return {
-    default: () => React.createElement("span", { "data-testid": "app-mark" }),
-  };
-});
 
 vi.mock("@src/components/Button", async () => {
   const React = await import("react");
@@ -159,6 +167,17 @@ function createUpdate(overrides: Partial<Update> = {}): Update {
 }
 
 describe("AppUpdater", () => {
+  beforeAll(() => {
+    i18n.addResourceBundle("en", "settings", enSettings);
+    i18n.addResourceBundle("en", "common", enCommon);
+    i18n.addResourceBundle("zh", "settings", zhSettings);
+    i18n.addResourceBundle("zh", "common", zhCommon);
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.buttons.length = 0;
@@ -196,6 +215,117 @@ describe("AppUpdater", () => {
     expect(button, `Missing ${label} button`).toBeDefined();
     return button as CapturedButtonProps;
   }
+
+  it("localizes the actual check and available-update notifications", async () => {
+    await i18n.changeLanguage("zh");
+    mocks.check.mockResolvedValue(createUpdate());
+
+    await checkForUpdatesManually();
+
+    expect(mocks.messageInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "正在检查更新…",
+      })
+    );
+    expect(mocks.messageInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "有可用更新",
+        content: "版本 1.1.22 已可安装",
+        action: expect.objectContaining({ label: "立即更新" }),
+      })
+    );
+  });
+
+  it("localizes timeout and retry text at the download failure boundary", async () => {
+    await i18n.changeLanguage("zh");
+    mocks.check.mockResolvedValue(
+      createUpdate({
+        download: vi.fn().mockRejectedValue(new Error("request timed out")),
+      })
+    );
+
+    await installAvailableAppUpdate();
+
+    expect(mocks.messageError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "更新下载失败",
+        content: "下载超时，请检查网络或代理后重试",
+        cancel: expect.objectContaining({ label: zhCommon.actions.retry }),
+      })
+    );
+  });
+
+  it("localizes indeterminate, byte-count, and accessibility progress text", async () => {
+    await i18n.changeLanguage("zh");
+    const progress: AppUpdateDownloadProgress = {
+      active: true,
+      collapsed: true,
+      downloadedBytes: 0,
+      totalBytes: null,
+      percent: null,
+    };
+    const render = (value: AppUpdateDownloadProgress) =>
+      renderToStaticMarkup(
+        createElement(AppUpdateDownloadNoticeContent, { progress: value })
+      );
+    expect(render(progress)).toContain("正在准备下载…");
+    expect(render(progress)).toContain('aria-label="更新下载进度"');
+    expect(render({ ...progress, downloadedBytes: 2048 })).toContain(
+      "已下载 2 KB"
+    );
+    expect(
+      render({
+        ...progress,
+        downloadedBytes: 2048,
+        totalBytes: 4096,
+        percent: 50,
+      })
+    ).toContain("2 KB / 4 KB");
+    const orb = renderToStaticMarkup(
+      createElement(DownloadProgressOrb, {
+        progress,
+        onExpand: vi.fn(),
+      })
+    );
+    expect(orb).toContain("更新下载进行中，打开进度通知");
+    expect(orb).toContain('title="打开更新下载进度"');
+  });
+
+  it("localizes install and restart notifications while preserving the version", async () => {
+    await i18n.changeLanguage("zh");
+    mocks.check.mockResolvedValue(createUpdate());
+    await installAvailableAppUpdate();
+    expect(mocks.messageInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "正在下载更新…",
+      })
+    );
+    await installAvailableAppUpdate({ confirmed: true });
+    expect(mocks.messageInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "正在安装更新",
+        content: "正在准备 v1.1.22…",
+      })
+    );
+    expect(mocks.messageSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "更新已安装",
+        content: zhSettings.update.restarting,
+      })
+    );
+  });
+
+  it("localizes check failures and the unknown-error fallback", async () => {
+    await i18n.changeLanguage("zh");
+    mocks.check.mockRejectedValue({ code: "unrecognized" });
+    await checkForUpdatesManually();
+    expect(mocks.messageError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "检查更新失败",
+        content: zhCommon.errors.unknownError,
+      })
+    );
+  });
 
   it("checks for updates without requiring a browser-exposed Tauri global", async () => {
     const update = createUpdate();
@@ -376,7 +506,7 @@ describe("AppUpdater", () => {
     const markup = renderPreparedUpdate(update);
 
     expect(markup).toContain("Version 1.1.22 is ready.");
-    expect(markup).toContain("Skip this version");
+    expect(markup).not.toContain("Skip this version");
     expect(markup).toContain("Later");
     expect(markup).toContain("Install and restart");
     expect(markup).not.toContain("Automatically download future updates");
@@ -401,16 +531,13 @@ describe("AppUpdater", () => {
     const update = createUpdate();
     mocks.check.mockResolvedValue(update);
     await installAvailableAppUpdate();
-    renderPreparedUpdate(update);
-
-    capturedButton("Skip this version").onClick?.();
+    skipAppUpdateVersion(update.version);
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
       "orgii:updater:skipped-update-version",
       "1.1.22"
     );
     expect(update.close).toHaveBeenCalledOnce();
-    expect(mocks.setInstallPromptVisible).toHaveBeenCalledWith(false);
     expect(update.install).not.toHaveBeenCalled();
     expect(mocks.relaunch).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
@@ -422,11 +549,13 @@ describe("AppUpdater", () => {
     await installAvailableAppUpdate();
     renderPreparedUpdate(update);
 
-    await capturedButton("Install and restart").onClick?.();
+    capturedButton("Install and restart").onClick?.();
 
-    expect(update.install).toHaveBeenCalledOnce();
-    expect(mocks.relaunch).toHaveBeenCalledOnce();
-    expect(mocks.setInstallPromptVisible).toHaveBeenCalledWith(false);
+    await vi.waitFor(() => {
+      expect(update.install).toHaveBeenCalledOnce();
+      expect(mocks.relaunch).toHaveBeenCalledOnce();
+      expect(mocks.setInstallPromptVisible).toHaveBeenCalledWith(false);
+    });
   });
 
   it("keeps one progress notice alive and updates it in place", async () => {

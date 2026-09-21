@@ -25,7 +25,7 @@ import {
   CHANNEL_TOPIC_MAX_LENGTH,
   normalizeChannelName,
   validateChannelName,
-} from "@src/features/DiscussionChannels/channelContract";
+} from "@src/contracts/channels";
 import { createLogger } from "@src/hooks/logger";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
@@ -102,12 +102,6 @@ let localChannelRegistryHydrationDegraded = false;
 export function isLocalChannelRegistryHydrationDegraded(): boolean {
   return localChannelRegistryHydrationDegraded;
 }
-
-export const __LOCAL_CHANNELS_TEST_INTERNALS = {
-  setRegistryHydrationDegraded(value: boolean): void {
-    localChannelRegistryHydrationDegraded = value;
-  },
-};
 
 export const localChannelsAtom = atomWithStorage<LocalChannel[]>(
   LOCAL_CHANNELS_STORAGE_KEY,

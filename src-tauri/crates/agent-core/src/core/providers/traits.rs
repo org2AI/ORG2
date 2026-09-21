@@ -510,6 +510,11 @@ pub trait LLMProvider: Send + Sync {
         super::auxiliary_model::AuxiliaryModel::default()
     }
 
+    /// Non-secret durable selector; account-backed providers leave this absent.
+    fn credential_source(&self) -> Option<&str> {
+        None
+    }
+
     /// Get the default model for this provider.
     fn default_model(&self) -> &str;
 

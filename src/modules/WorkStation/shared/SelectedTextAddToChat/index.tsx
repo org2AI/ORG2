@@ -16,23 +16,24 @@ import { addToAgentAtom } from "@src/store/ui/addToAgentAtom";
 interface SelectionControllerProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
   displayName: string;
+  filePath?: string;
 }
 
 const SelectionController: React.FC<SelectionControllerProps> = memo(
-  ({ containerRef, displayName }) => {
+  ({ containerRef, displayName, filePath }) => {
     const setAddToAgent = useSetAtom(addToAgentAtom);
     const { visible, position, selectedText, hideDropdown } =
       useTextSelectionDropdown({ containerRef });
 
     const handleAddToChat = useCallback(
       (text: string, _sessionId: string | null) => {
-        setAddToAgent({
-          type: "terminal",
-          text,
-          displayName,
-        });
+        setAddToAgent(
+          filePath
+            ? { type: "file-selection", filePath, fileName: displayName, text }
+            : { type: "terminal", text, displayName }
+        );
       },
-      [displayName, setAddToAgent]
+      [displayName, filePath, setAddToAgent]
     );
 
     return (
@@ -53,6 +54,7 @@ SelectionController.displayName = "SelectedTextAddToChatController";
 interface SelectedTextAddToChatProps {
   children?: React.ReactNode;
   displayName: string;
+  filePath?: string;
   enabled?: boolean;
   /** Remounts only the selection controller when the rendered scope changes. */
   scopeKey?: string | number;
@@ -60,7 +62,14 @@ interface SelectedTextAddToChatProps {
 }
 
 export const SelectedTextAddToChat: React.FC<SelectedTextAddToChatProps> = memo(
-  ({ children, displayName, enabled = true, scopeKey, className }) => {
+  ({
+    children,
+    displayName,
+    filePath,
+    enabled = true,
+    scopeKey,
+    className,
+  }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     return (
@@ -73,6 +82,7 @@ export const SelectedTextAddToChat: React.FC<SelectedTextAddToChatProps> = memo(
             key={scopeKey ?? "default"}
             containerRef={containerRef}
             displayName={displayName}
+            filePath={filePath}
           />
         ) : null}
       </>

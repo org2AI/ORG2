@@ -1,8 +1,8 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
-import SessionHoverCard from "@src/components/SessionHoverCard";
 import { SidebarRow } from "@src/components/SidebarRow";
+import SessionHoverCard from "@src/features/SessionHoverCard";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
 import type {

@@ -2,6 +2,10 @@ use super::staging::{stage_all_files, stage_file};
 use super::utils::{get_current_branch, run_git};
 use crate::types::*;
 
+#[cfg(test)]
+#[path = "tests/commit_tests.rs"]
+mod tests;
+
 const ORGII_COAUTHOR_TRAILER: &str = "Co-authored-by: ORG2 <ORGII-agent@users.noreply.github.com>";
 const LEGACY_ORGII_COAUTHOR_TRAILER: &str =
     "Co-authored-by: ORGII <ORGII-agent@users.noreply.github.com>";
@@ -49,8 +53,11 @@ pub fn list_commits(
     let format_arg =
         "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%aI%x1f%cn%x1f%ce%x1f%cI%x1f%s%x1f%b%x1f%P%x1e";
 
-    // Store file_path as owned String for lifetime
-    let file_filter: String = file_path.unwrap_or("").to_string();
+    // The timeline filter is a selected filename, never a pathspec pattern.
+    let file_filter: String = file_path
+        .filter(|path| !path.is_empty())
+        .map(super::utils::literal_pathspec)
+        .unwrap_or_default();
 
     // Build git log command
     let mut args = vec!["log", &limit_str, format_arg];
@@ -62,7 +69,7 @@ pub fn list_commits(
 
     // Add file path filter if provided (like VSCode Timeline)
     // This uses git's pathspec to filter commits that touched the file
-    if file_path.is_some() && !file_filter.is_empty() {
+    if !file_filter.is_empty() {
         args.push("--");
         args.push(&file_filter);
     }

@@ -262,14 +262,6 @@ export interface ProjectSettingsTabData {
   section: string;
 }
 
-export interface ProjectOrgSettingsTabData extends ProjectOrgFilterTabData {
-  orgScope: typeof STORY_ORG_SCOPE.PROJECT_ORG;
-  orgId: string;
-  orgName?: string;
-  orgSyncProvider?: string | null;
-  section?: string;
-}
-
 export interface ProjectGitSyncReviewTabData extends ProjectOrgFilterTabData {
   orgScope: typeof STORY_ORG_SCOPE.PROJECT_ORG;
   orgId: string;
@@ -288,18 +280,6 @@ export const projectSettingsTabFactory =
 export function createProjectSettingsTab(section?: string): WorkStationTab {
   return projectSettingsTabFactory({ section: section ?? "general" });
 }
-
-export const projectOrgSettingsTabFactory =
-  defineTabFactory<ProjectOrgSettingsTabData>({
-    tabType: "project-org-settings",
-    idStrategy: {
-      type: "keyed",
-      prefix: "project-org-settings",
-      getKey: (data) => data.orgId,
-    },
-    getTitle: (data) => `${data.orgName ?? "Org"} Settings`,
-    icon: "Settings",
-  });
 
 export interface ProjectOrgTabData extends ProjectOrgFilterTabData {
   orgView?: ProjectOrgSurfaceView;

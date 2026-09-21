@@ -3,10 +3,14 @@ import React, { act } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { StopConfirmModal } from "../components/modals/StopConfirmModal";
+import type { MobileConnectionConfig } from "../connection/types";
 import { useMobileRemoteCoordinator } from "./useMobileRemoteCoordinator";
 
-const mocks = vi.hoisted(() => ({ stopSession: vi.fn(), disconnect: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  stopSession: vi.fn(),
+  disconnect: vi.fn(),
+  connectionConfig: null as MobileConnectionConfig | null,
+}));
 vi.mock("../app", () => ({
   useMobileRemote: () => ({
     connection: { status: "disconnected", demoMode: false },
@@ -15,37 +19,21 @@ vi.mock("../app", () => ({
   }),
 }));
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
-
 describe("useMobileRemoteCoordinator", () => {
   let root: Root;
   let container: HTMLDivElement;
   let current: ReturnType<typeof useMobileRemoteCoordinator>;
+  let renderedScreens: string[];
   const environment = globalThis as typeof globalThis & {
     IS_REACT_ACT_ENVIRONMENT?: boolean;
   };
   let previous: boolean | undefined;
-  function Probe({
-    intent = null,
-    modal = false,
-  }: {
-    intent?: string | null;
-    modal?: boolean;
-  }) {
+  function Probe({ intent = null }: { intent?: string | null }) {
     const value = useMobileRemoteCoordinator(intent);
+    renderedScreens.push(value.nav.screen);
     React.useEffect(() => {
       current = value;
     });
-    if (modal)
-      return React.createElement(StopConfirmModal, {
-        visible: value.nav.stopModalOpen,
-        confirming: value.stopConfirming,
-        failed: value.stopFailed,
-        onConfirm: () => void value.handleConfirmStop(),
-        onCancel: () => value.dispatch({ type: "close_stop_modal" }),
-      });
     return React.createElement("div", null, value.nav.screen);
   }
   beforeEach(() => {
@@ -53,6 +41,8 @@ describe("useMobileRemoteCoordinator", () => {
     environment.IS_REACT_ACT_ENVIRONMENT = true;
     mocks.stopSession.mockReset().mockResolvedValue(undefined);
     mocks.disconnect.mockReset().mockResolvedValue(undefined);
+    mocks.connectionConfig = null;
+    renderedScreens = [];
     container = document.createElement("div");
     root = createRoot(container);
     act(() => root.render(React.createElement(Probe)));
@@ -60,6 +50,45 @@ describe("useMobileRemoteCoordinator", () => {
   afterEach(() => {
     act(() => root.unmount());
     environment.IS_REACT_ACT_ENVIRONMENT = previous;
+  });
+  it("opens sessions for a restored device before the transport connects", () => {
+    renderedScreens = [];
+    mocks.connectionConfig = { wsUrl: "wss://relay.example.com/mobile/ws" };
+    act(() => root.render(React.createElement(Probe)));
+    expect(renderedScreens[0]).toBe("sessions");
+    expect(container.textContent).toBe("sessions");
+    expect(current.showTabBar).toBe(true);
+  });
+  it("keeps first-time devices on welcome", () => {
+    expect(container.textContent).toBe("welcome");
+  });
+  it("does not treat a fresh pairing code as a restored device", () => {
+    mocks.connectionConfig = {
+      wsUrl: "wss://relay.example.com/mobile/ws",
+      pairingCode: "fresh-code",
+    };
+    act(() => root.render(React.createElement(Probe)));
+    expect(container.textContent).toBe("welcome");
+    act(() =>
+      current.handleAcceptPairing({
+        config: mocks.connectionConfig!,
+        requiresSas: true,
+        sasPhrase: "verify-me",
+      })
+    );
+    expect(container.textContent).toBe("sas");
+  });
+  it("keeps an explicit new pairing intent ahead of a restored device", () => {
+    mocks.connectionConfig = { wsUrl: "wss://old.example.com/mobile/ws" };
+    act(() =>
+      root.render(
+        React.createElement(Probe, {
+          intent: "wss://relay.example.com/mobile/ws?token=test",
+        })
+      )
+    );
+    expect(container.textContent).toBe("connecting");
+    expect(current.nav.pendingConfig?.wsUrl).toContain("relay.example.com");
   });
   it("consumes a recovered pairing link once and preserves subsequent navigation", () => {
     const intent = "wss://relay.example.com/mobile/ws?token=test";
@@ -118,44 +147,65 @@ describe("useMobileRemoteCoordinator", () => {
     expect(current.stopConfirming).toBe(false);
   });
   it("releases the stop lock after rejection so another attempt is possible", async () => {
-    act(() => current.dispatch({ type: "select_session", sessionId: "a" }));
+    act(() => {
+      current.dispatch({ type: "select_session", sessionId: "a" });
+      current.dispatch({ type: "open_stop_modal" });
+    });
     mocks.stopSession.mockRejectedValueOnce(new Error("offline"));
     await act(async () => {
       await expect(current.handleConfirmStop()).resolves.toBeUndefined();
     });
     expect(current.stopConfirming).toBe(false);
     expect(current.stopFailed).toBe(true);
+    expect(current.nav.stopModalOpen).toBe(true);
     await act(async () => {
       await current.handleConfirmStop();
     });
     expect(mocks.stopSession).toHaveBeenCalledTimes(2);
+    expect(current.stopFailed).toBe(false);
+    expect(current.nav.stopModalOpen).toBe(false);
   });
-  it("keeps the rendered stop dialog open on failure and retries the desktop command", async () => {
-    await act(async () =>
-      root.render(React.createElement(Probe, { modal: true }))
+  it("clears a stop failure when dismissed and does not leak it to another session", async () => {
+    act(() => {
+      current.dispatch({ type: "select_session", sessionId: "a" });
+      current.dispatch({ type: "open_stop_modal" });
+    });
+    mocks.stopSession.mockRejectedValueOnce(new Error("private-token"));
+    await act(async () => current.handleConfirmStop());
+    expect(current.stopFailed).toBe(true);
+    act(() => current.dispatch({ type: "close_stop_modal" }));
+    expect(current.stopFailed).toBe(false);
+    act(() => {
+      current.dispatch({ type: "select_session", sessionId: "b" });
+      current.dispatch({ type: "open_stop_modal" });
+    });
+    expect(current.stopFailed).toBe(false);
+  });
+  it("ignores a late stop failure after switching the connection scope", async () => {
+    let reject!: (reason: Error) => void;
+    mocks.stopSession.mockImplementationOnce(
+      () =>
+        new Promise<void>((_, fail) => {
+          reject = fail;
+        })
     );
     act(() => {
       current.dispatch({ type: "select_session", sessionId: "a" });
       current.dispatch({ type: "open_stop_modal" });
     });
-    mocks.stopSession.mockRejectedValueOnce(new Error("offline"));
-    const clickStop = async () => {
-      const button = document.querySelector<HTMLButtonElement>(
-        "[data-modal-primary-action]"
-      );
-      expect(button).not.toBeNull();
-      await act(async () => button!.click());
+    let pending!: Promise<void>;
+    await act(async () => {
+      pending = current.handleConfirmStop();
+    });
+    mocks.connectionConfig = {
+      wsUrl: "wss://another-desktop.example/mobile/ws",
     };
-    await clickStop();
-    expect(current.nav.stopModalOpen).toBe(true);
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain(
-      "stopConfirm.failed"
-    );
-    expect(mocks.stopSession).toHaveBeenCalledTimes(1);
-    await clickStop();
-    expect(mocks.stopSession).toHaveBeenCalledTimes(2);
-    expect(mocks.stopSession).toHaveBeenLastCalledWith("a");
-    expect(current.nav.stopModalOpen).toBe(false);
-    expect(document.querySelector('[role="alert"]')).toBeNull();
+    act(() => root.render(React.createElement(Probe)));
+    await act(async () => {
+      reject(new Error("old desktop rejected"));
+      await pending;
+    });
+    expect(current.stopFailed).toBe(false);
+    expect(current.stopConfirming).toBe(false);
   });
 });

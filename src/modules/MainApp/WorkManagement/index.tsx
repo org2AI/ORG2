@@ -19,7 +19,7 @@ import { usePublishChatPanelHeader } from "@src/engines/ChatPanel/header";
 import FactoryViewPill from "@src/features/TaskKanban/components/FactoryViewPill";
 import KanbanOrgScopeSelect from "@src/features/TaskKanban/components/KanbanOrgScopeSelect";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
-import SplitListHeader from "@src/modules/shared/layouts/SplitListHeader";
+import SplitListHeader from "@src/scaffold/layouts/SplitListHeader";
 import { setActiveWorkManagementSectionAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { activeWorkManagementSectionAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import {

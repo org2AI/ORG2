@@ -24,9 +24,9 @@ export function MobileTopBar({
     >
       {onBack ? (
         <Button
-          htmlType="button"
           size="mini"
           variant="tertiary"
+          shape="circle"
           className="mobile-chrome-icon-button"
           aria-label={backAriaLabel}
           onClick={onBack}
@@ -34,7 +34,6 @@ export function MobileTopBar({
             width: "var(--mobile-touch-size)",
             height: "var(--mobile-touch-size)",
           }}
-          appearance="soft"
           iconOnly
           icon={<HugeiconsIcon icon={ArrowLeft01Icon} size={22} />}
         />

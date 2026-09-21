@@ -19,8 +19,12 @@ pub const CODEX_OAUTH_MODELS: &[&str] = &[
     "codex-auto-review",
 ];
 
-pub const CODEX_OAUTH_DEFAULT_ENABLED_MODELS: &[&str] =
-    &["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+pub const CODEX_OAUTH_DEFAULT_ENABLED_MODELS: &[&str] = &[
+    "gpt-6-astra",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+];
 
 /// Complete a Codex OAuth catalog without disturbing provider ordering.
 ///

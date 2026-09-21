@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "Visite générale de la présentation",
-      "description": "Découvrez le panneau de discussion, Runtime, le sélecteur de mode et le dock.",
+      "description": "Découvrez le panneau de discussion, Runtime, le sélecteur de mode et le dock",
       "duration": "1 minute",
       "steps": {
         "chat-panel": {
           "title": "Panneau de discussion",
-          "body": "C'est ici que les utilisateurs discutent avec les agents, examinent leurs activités et envoient des instructions de suivi."
+          "body": "C'est ici que les utilisateurs discutent avec les agents, examinent leurs activités et envoient des instructions de suivi"
         },
         "runtime": {
           "title": "Exécution",
-          "body": "Consultez ici votre utilisation et l’état d’exécution. Dans un espace de travail, vous pouvez aussi vérifier la synchronisation des membres et ouvrir leurs détails d’utilisation de Codex, Claude et Cursor."
+          "body": "Consultez ici votre utilisation et l’état d’exécution. Dans un espace de travail, vous pouvez aussi vérifier la synchronisation des membres et ouvrir leurs détails d’utilisation de Codex, Claude et Cursor"
         },
         "station-mode-pill": {
           "title": "Changer de station modes",
-          "body": "Utilisez cette pilule pour changer de mode de station. Bureau signifie Ma Station, votre espace de travail. Infinity signifie Agent Station, la vue de l'activité de l'agent."
+          "body": "Utilisez cette pilule pour changer de mode de station. Bureau signifie Ma Station, votre espace de travail. Infinity signifie Agent Station, la vue de l'activité de l'agent"
         },
         "dock": {
           "title": "Dock Agent Station",
-          "body": "Le dock change d'application à l'intérieur de la station. La visite guidée désactive temporairement le masquage automatique afin que ces contrôles restent visibles."
+          "body": "Le dock change d'application à l'intérieur de la station. La visite guidée désactive temporairement le masquage automatique afin que ces contrôles restent visibles"
         }
       }
     },
     "codeEditor": {
       "title": "Visite de l'éditeur de code",
-      "description": "Découvrez les onglets, l’espace de travail de l’éditeur, le contrôle de source et l’historique Git.",
+      "description": "Découvrez les onglets, l’espace de travail de l’éditeur, le contrôle de source et l’historique Git",
       "duration": "2 minutes",
       "steps": {
         "tabs": {
           "title": "Onglets de l'éditeur de code",
-          "body": "Les onglets collectent les fichiers, les différences, les terminaux, les vues de contrôle de source et les tableaux de bord que vous ouvrez lorsque vous travaillez. le dépôt."
+          "body": "Les onglets collectent les fichiers, les différences, les terminaux, les vues de contrôle de source et les tableaux de bord que vous ouvrez lorsque vous travaillez. le dépôt"
         },
         "editor-surface": {
           "title": "Espace de travail de l'éditeur",
-          "body": "Il s'agit de la surface principale de l'éditeur de code. Ouvrez les fichiers, inspectez les différences, exécutez les terminaux et examinez les modifications générées ici."
+          "body": "Il s'agit de la surface principale de l'éditeur de code. Ouvrez les fichiers, inspectez les différences, exécutez les terminaux et examinez les modifications générées ici"
         },
         "create-tabs": {
           "title": "Créez de nouveaux onglets",
-          "body": "Utilisez le menu plus dans Tous les onglets pour créer des terminaux, des onglets de navigateur, des fichiers, des tableaux de bord et des utilitaires de dépôt."
+          "body": "Utilisez le menu plus dans Tous les onglets pour créer des terminaux, des onglets de navigateur, des fichiers, des tableaux de bord et des utilitaires de dépôt"
         },
         "source-control": {
           "title": "Modifications Git",
-          "body": "Contrôle Open Source pour examiner les fichiers modifiés, organiser ou annuler le travail, valider, extraire, pousser, récupérer et synchroniser. avec la télécommande."
+          "body": "Contrôle Open Source pour examiner les fichiers modifiés, organiser ou annuler le travail, valider, extraire, pousser, récupérer et synchroniser. avec la télécommande"
         },
         "git-history": {
           "title": "Historique Git",
-          "body": "L'historique Git fait passer le contrôle de source en mode historique des validations afin que vous puissiez inspecter les validations précédentes et les modifications associées."
+          "body": "L'historique Git fait passer le contrôle de source en mode historique des validations afin que vous puissiez inspecter les validations précédentes et les modifications associées"
         }
       }
     }
   },
   "discovery": {
-    "title": "Prise en main et nouveautés",
-    "getStarted": "Bien démarrer",
-    "newFeatures": "Nouveautés",
-    "branchesTitle": "Branches du dépôt",
-    "branchesDescription": "Changez de branche de dépôt directement depuis Spotlight."
+    "getStarted": "Bien démarrer"
   }
 }

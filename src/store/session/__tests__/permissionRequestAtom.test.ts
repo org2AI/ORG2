@@ -1,7 +1,7 @@
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 
-import type { PermissionRequestEvent } from "@src/engines/SessionCore/sync/adapters/shared";
+import type { PermissionRequestEvent } from "@src/contracts/session";
 
 import {
   pendingPermissionRequestsAtom,

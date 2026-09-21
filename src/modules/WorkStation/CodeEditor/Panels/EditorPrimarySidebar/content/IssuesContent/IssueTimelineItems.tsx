@@ -2,7 +2,6 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitHubIssueTimelineItem } from "@src/api/tauri/github";
-import { projectMarkdownSessionReferences } from "@src/components/MarkDown/sessionReferenceProjection";
 import PersonAvatar from "@src/components/PersonAvatar";
 import {
   ConnectedTimelineItem,
@@ -10,9 +9,14 @@ import {
   TimelineCard,
   TimelineCardHeader,
   TimelineLoadingSkeleton,
-} from "@src/modules/shared/components/ActivityTimeline";
+} from "@src/features/GitHubWork/ActivityTimeline";
+import { projectMarkdownSessionReferences } from "@src/features/Org2Cloud/markdown/sessionReferenceProjection";
 
-import { IssueTimelineEventRow } from "./IssueTimelineEvent";
+import {
+  IssueTimelineEventRow,
+  IssueTimelineLabelGroupRow,
+} from "./IssueTimelineEvent";
+import { groupIssueTimelineRows } from "./issueTimelineGrouping";
 
 interface IssueTimelineItemsProps {
   timeline: GitHubIssueTimelineItem[];
@@ -66,8 +70,33 @@ export function IssueTimelineItems({
     );
   }
 
-  return timeline.map((item, index) => {
-    const isLast = index === timeline.length - 1;
+  const rows = groupIssueTimelineRows(timeline);
+
+  return rows.map((row, index) => {
+    const isLast = index === rows.length - 1;
+
+    if (row.kind === "labelGroup") {
+      const latest = row.items[row.items.length - 1];
+      const key = `group-${row.event}-${latest.id ?? latest.created_at ?? index}-${index}`;
+      const actorLogin = row.actor?.login ?? "GitHub";
+      return (
+        <ConnectedTimelineItem
+          key={key}
+          isLast={isLast}
+          trailLabel={
+            navigationEnabled ? `${actorLogin} · ${row.event}` : undefined
+          }
+        >
+          <IssueTimelineLabelGroupRow
+            event={row.event}
+            actor={row.actor}
+            items={row.items}
+          />
+        </ConnectedTimelineItem>
+      );
+    }
+
+    const item = row.item;
     const key = `${item.event}-${item.id ?? item.created_at ?? index}-${index}`;
 
     if (item.event !== "commented") {

@@ -10,15 +10,14 @@ import SettingsTable, {
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
-import TabPill from "@src/components/TabPill";
-import type { DependencyStatus } from "@src/modules/MainApp/Integrations/hooks/useSystemDependencies";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
+} from "@src/components/layout/blocks";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
+import type { DependencyStatus } from "@src/modules/MainApp/Integrations/hooks/useSystemDependencies";
 
 import {
   InlineCardBody,
@@ -184,18 +183,9 @@ export const DatabasesTable: React.FC<DatabasesTableProps> = ({
     <DetailPanelContainer>
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tabs}
-            activeTab={activeTab}
-            onChange={setActiveTab}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>
@@ -330,7 +320,6 @@ export const DatabasesTable: React.FC<DatabasesTableProps> = ({
                             <InlineCardFooter>
                               {onProbe && (
                                 <Button
-                                  variant="secondary"
                                   size="small"
                                   onClick={() => {
                                     onSelect(row.id);
@@ -343,8 +332,7 @@ export const DatabasesTable: React.FC<DatabasesTableProps> = ({
                               )}
                               {onRemove && (
                                 <Button
-                                  variant="danger"
-                                  appearance="outline"
+                                  tone="danger"
                                   size="small"
                                   onClick={() => {
                                     onSelect(row.id);

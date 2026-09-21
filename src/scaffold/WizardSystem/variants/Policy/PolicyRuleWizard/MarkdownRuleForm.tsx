@@ -6,17 +6,14 @@ import {
   MULTI_SELECT_TOKENS,
 } from "@src/components/Dropdown/exports";
 import Input from "@src/components/Input";
+import MarkdownEditor from "@src/components/MarkdownEditor";
+import { useMarkdownEditorTabs } from "@src/components/MarkdownEditor/useMarkdownEditorTabs";
 import Select from "@src/components/Select";
 import TabPill from "@src/components/TabPill";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
+import { SECTION_CONTROL_STYLE } from "@src/components/layout/Section/tokens";
 import type { CursorRepo, PolicySource } from "@src/hooks/policies";
 import type { AgentDefinition } from "@src/modules/MainApp/AgentOrgs/types";
-import MarkdownEditor from "@src/modules/shared/components/MarkdownEditor";
-import { useMarkdownEditorTabs } from "@src/modules/shared/components/MarkdownEditor/useMarkdownEditorTabs";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { SECTION_CONTROL_STYLE } from "@src/modules/shared/layouts/SectionLayout/tokens";
 import { BUILTIN_OS_DEF_ID } from "@src/util/session/sessionDispatch";
 
 import type { MarkdownRuleState } from "./types";

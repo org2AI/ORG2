@@ -13,11 +13,7 @@ interface AppShellStationModeState {
   illuminateAgentStationChrome: boolean;
 }
 
-export function useAppShellStationMode({
-  followAgentHighlightEnabled,
-}: {
-  followAgentHighlightEnabled: boolean;
-}): AppShellStationModeState {
+export function useAppShellStationMode(): AppShellStationModeState {
   const stationMode = useAtomValue(stationModeAtom);
   const isAgentStation = stationMode === "agent-station";
   const replayMode = useAtomValue(replayModeAtom);
@@ -25,9 +21,8 @@ export function useAppShellStationMode({
     simulatorSessionPlaybackPlayingAtom
   );
 
-  const showAgentStationChrome = followAgentHighlightEnabled && isAgentStation;
   const illuminateAgentStationChrome =
-    showAgentStationChrome &&
+    isAgentStation &&
     (replayMode === "follow" ||
       (replayMode === "replay" && sessionPlaybackPlaying));
 

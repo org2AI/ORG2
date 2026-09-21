@@ -1,4 +1,4 @@
-import type { CloudChannelVisibility } from "@src/features/Org2Cloud/channels/types";
+import type { CloudChannelVisibility } from "@src/contracts/channels";
 import type {
   ChatPanelSelectedOrganization,
   ChatPanelSelectedProject,

@@ -32,9 +32,9 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-const openExternalLink = vi.fn();
-vi.mock("@src/util/platform/ipcRenderer", () => ({
-  openExternalLink: (url: string) => openExternalLink(url),
+const openLink = vi.fn();
+vi.mock("@src/util/ui/openLink", () => ({
+  openLink: (url: string, options?: unknown) => openLink(url, options),
 }));
 
 function checkRun(
@@ -76,7 +76,7 @@ describe("PrMergeStatusList", () => {
   });
 
   beforeEach(() => {
-    openExternalLink.mockClear();
+    openLink.mockClear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);

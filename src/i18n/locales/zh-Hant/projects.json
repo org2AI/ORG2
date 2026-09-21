@@ -60,7 +60,7 @@
     },
     "loadingConnections": "正在載入 GitHub 連線...",
     "noConnectionTitle": "找不到 GitHub 連線",
-    "noConnectionDescription": "請先在 Integrations 中新增 GitHub 連線，然後回到此處匯入 GitHub Issues。",
+    "noConnectionDescription": "請先在 Integrations 中新增 GitHub 連線，然後回到此處匯入 GitHub Issues",
     "linkedRepoHint": "此 Project 也會連結到目前 Workspace repo：{{repoName}}",
     "errors": {
       "invalidRepo": "請使用 owner/repo 或 GitHub repo URL。"
@@ -80,7 +80,7 @@
     "importLinearOrgs": "匯入 Linear 工作空間",
     "gitFolderPath": "Git 資料夾路徑（可選）",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "將此工作空間綁定到既有 Git 工作區，用於資料夾同步。",
+    "gitFolderPathHint": "將此工作空間綁定到既有 Git 工作區，用於資料夾同步",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "已與 Git 資料夾同步",
     "pendingSync": "等待同步",
@@ -123,7 +123,7 @@
     "addTeams": "添加團隊",
     "addLabels": "添加標籤",
     "addRepos": "關聯倉庫",
-    "noReposHint": "暫無可關聯倉庫,請先將倉庫添加到工作區。",
+    "noReposHint": "暫無可關聯倉庫,請先將倉庫添加到工作區",
     "addDate": "添加日期",
     "clearDate": "清除日期",
     "noStatus": "無狀態",
@@ -358,10 +358,7 @@
       "moreProperties": "更多屬性"
     },
     "propertyFields": {
-      "assignee": "負責人",
-      "project": "專案",
-      "milestone": "里程碑",
-      "dueDate": "截止日期"
+      "project": "專案"
     },
     "addWorkItem": "添加工作項",
     "agentWorkflow": {
@@ -392,8 +389,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "暫不可用",
-      "prPendingHint": "Agent 完成後將創建 PR。",
-      "prNeutralHint": "尚未創建 PR。",
+      "prPendingHint": "Agent 完成後將創建 PR",
+      "prNeutralHint": "尚未創建 PR",
       "prCreatingHint": "正在創建 Pull Request...",
       "prCreateButton": "創建 Pull Request",
       "prCreateError": "創建 Pull Request 失敗",
@@ -403,7 +400,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "無文件變更",
-      "fileDiffCleanHint": "未檢測到文件變更。",
+      "fileDiffCleanHint": "未檢測到文件變更",
       "costSummary": "費用摘要",
       "totalCost": "總計",
       "tokens": "Token",
@@ -428,7 +425,7 @@
       "createError": "無法建立子任務，請重試。"
     },
     "batchField": {
-      "hint": "套用到選取的 {{count}} 個事項。"
+      "hint": "套用到選取的 {{count}} 個事項"
     },
     "batchStatus": {
       "title": "設定狀態"
@@ -457,7 +454,7 @@
       "save": "儲存目前檢視",
       "saveTitle": "儲存檢視",
       "namePlaceholder": "檢視名稱",
-      "saveHint": "儲存目前的篩選條件；版面配置只作為首次開啟的初始值。",
+      "saveHint": "儲存目前的篩選條件；版面配置只作為首次開啟的初始值",
       "delete": "刪除檢視"
     },
     "table": {
@@ -475,14 +472,14 @@
     },
     "batchProperty": {
       "title": "設定屬性",
-      "hint": "將一個屬性值套用到選取的 {{count}} 個工作項；留空表示清除該屬性。",
+      "hint": "將一個屬性值套用到選取的 {{count}} 個工作項；留空表示清除該屬性",
       "propertyPlaceholder": "屬性",
       "valuePlaceholder": "值",
       "applied": "已更新 {{count}} 個工作項"
     },
     "revisionConflict": {
       "title": "處理編輯衝突",
-      "description": "{{field}} 在版本 {{expected}} 之後已被修改。請將你的編輯與版本 {{actual}} 比較，再選擇要保留哪一版。",
+      "description": "{{field}} 在版本 {{expected}} 之後已被修改。請將你的編輯與版本 {{actual}} 比較，再選擇要保留哪一版",
       "mine": "我的版本",
       "latest": "最新版本",
       "useLatest": "使用最新版本",
@@ -573,7 +570,7 @@
     "sidebarSync": "同步",
     "sync": {
       "title": "外部同步",
-      "description": "將此專案的工作項鏡像到外部系統，例如 Linear 或 GitHub。",
+      "description": "將此專案的工作項鏡像到外部系統，例如 Linear 或 GitHub",
       "adapterPicker": {
         "title": "適配器",
         "notAttached": "未綁定",
@@ -581,7 +578,7 @@
         "detach": "解綁",
         "detachProjectMenuLabel": "解除 GitHub 關聯",
         "detachProjectTitle": "解除 {{project}} 與 GitHub 的關聯？",
-        "detachProjectDescription": "GitHub Issues 同步將停止。本地專案和已匯入的工作項會保留在 ORG2 中。",
+        "detachProjectDescription": "GitHub Issues 同步將停止。本地專案和已匯入的工作項會保留在 ORG2 中",
         "detachProjectAction": "解除 {{project}} 與 GitHub 的關聯",
         "detachProjectSuccess": "已解除 {{project}} 與 GitHub 的關聯",
         "changeWarning": "在綁定新適配器前，請先解綁當前適配器。"
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "正在加載 Webhook 狀態…",
-        "notInstalledDescription": "安裝 Webhook 密鑰後，提供方可直接推送變更，無需等待下次輪詢。",
+        "notInstalledDescription": "安裝 Webhook 密鑰後，提供方可直接推送變更，無需等待下次輪詢",
         "install": "安裝 Webhook",
-        "installedDescription": "將下方 URL 粘貼到提供方的 Webhook 配置中，並使用密鑰對交付內容進行簽名。",
+        "installedDescription": "將下方 URL 粘貼到提供方的 Webhook 配置中，並使用密鑰對交付內容進行簽名",
         "indicatorFresh": "最近有交付",
         "indicatorStale": "無最近交付",
         "lastDeliveryNever": "尚無交付",
@@ -627,7 +624,7 @@
         "copyUrl": "複製 URL",
         "rotate": "輪換密鑰",
         "secretTitle": "立即複製此密鑰 — 僅顯示一次",
-        "secretDescription": "將該簽名密鑰粘貼到提供方的 Webhook 配置中。關閉此面板後我們不會保留明文值。",
+        "secretDescription": "將該簽名密鑰粘貼到提供方的 Webhook 配置中。關閉此面板後我們不會保留明文值",
         "copySecret": "複製密鑰",
         "dismissSecret": "我已保存",
         "secretCopied": "密鑰已複製到剪貼板",
@@ -653,9 +650,9 @@
         "progressNoTotal": "已導入 {{count}} 項",
         "completedSummary": "已從遠端導入 {{count}} 項。",
         "cancelledSummary": "已取消，已導入 {{count}} 項。",
-        "pendingDescription": "首次同步會完整遍歷遠端歷史記錄一次，之後的同步使用常規增量循環。",
-        "runningDescription": "正在分頁遍歷遠端歷史記錄。導入期間你可以繼續工作。",
-        "failedDescription": "上一頁發生永久性失敗。重試將從游標位置繼續。",
+        "pendingDescription": "首次同步會完整遍歷遠端歷史記錄一次，之後的同步使用常規增量循環",
+        "runningDescription": "正在分頁遍歷遠端歷史記錄。導入期間你可以繼續工作",
+        "failedDescription": "上一頁發生永久性失敗。重試將從游標位置繼續",
         "cancel": "取消導入",
         "retry": "重試",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "狀態",
     "statusesBuiltin": "內建狀態",
-    "statusesBuiltinDescription": "標準工作流程分類，始終可用。",
+    "statusesBuiltinDescription": "標準工作流程分類，始終可用",
     "statusesCustom": "自訂狀態",
-    "statusesCustomDescription": "對應到某個內建分類的別名；篩選、計數與看板會按其所屬分類處理。",
+    "statusesCustomDescription": "對應到某個內建分類的別名；篩選、計數與看板會按其所屬分類處理",
     "statusNamePlaceholder": "狀態名稱",
     "noCustomStatuses": "尚無自訂狀態。",
     "statusArchive": "封存狀態",
@@ -793,11 +790,11 @@
     "unknownState": "未知狀態",
     "emptyConnections": {
       "title": "沒有 Linear 連線",
-      "description": "在 Integrations 中創建 Linear 連線，然後返回這裡直接瀏覽 Linear 專案。"
+      "description": "在 Integrations 中創建 Linear 連線，然後返回這裡直接瀏覽 Linear 專案"
     },
     "emptySelection": {
       "title": "選擇 Linear 專案",
-      "description": "從左側選擇一個專案，以查看即時 Linear Issues 並編輯專案詳情。"
+      "description": "從左側選擇一個專案，以查看即時 Linear Issues 並編輯專案詳情"
     },
     "forms": {
       "createProjectTitle": "創建 Linear 專案",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder 同步完成",
     "syncFailed": "Git folder 同步失敗：{{message}}",
     "noResultTitle": "暫無 Git 同步結果",
-    "noResultSubtitle": "從狀態列執行 Git folder 同步後即可檢查衝突。",
+    "noResultSubtitle": "從狀態列執行 Git folder 同步後即可檢查衝突",
     "noConflictsTitle": "沒有衝突",
-    "noConflictsSubtitle": "這個工作空間目前沒有待處理的 Git folder 衝突。"
+    "noConflictsSubtitle": "這個工作空間目前沒有待處理的 Git folder 衝突"
   }
 }

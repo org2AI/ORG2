@@ -29,7 +29,7 @@ async function connected(
   overrides: Partial<MySQLConnectionConfig> = {}
 ): Promise<MySQLProvider> {
   const provider = makeProvider(overrides);
-  invokeMock.mockResolvedValueOnce(undefined);
+  invokeMock.mockResolvedValueOnce(baseConfig.id);
   await provider.connect();
   invokeMock.mockClear();
   return provider;
@@ -51,7 +51,7 @@ beforeEach(() => {
 describe("MySQLProvider connection string", () => {
   it("uses the mysql scheme and ssl-mode=REQUIRED when ssl is on", async () => {
     const provider = makeProvider({ password: "s3cret", ssl: true });
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
 
     await provider.connect();
 
@@ -65,7 +65,7 @@ describe("MySQLProvider connection string", () => {
 
   it("defaults to ssl-mode=PREFERRED and omits an absent password", async () => {
     const provider = makeProvider();
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
 
     await provider.connect();
 
@@ -79,7 +79,7 @@ describe("MySQLProvider connection string", () => {
 
   it("uses MySQL's ssl-mode key, not Postgres's sslmode", async () => {
     const provider = makeProvider({ ssl: true });
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
 
     await provider.connect();
 

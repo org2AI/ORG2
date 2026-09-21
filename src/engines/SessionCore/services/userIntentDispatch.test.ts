@@ -8,6 +8,7 @@ import {
   confirmUserIntentPreparation,
   dispatchUserIntent,
   optimisticQueueUserEventId,
+  prepareOptimisticQueueUserRetry,
   prepareUserIntent,
   removeOptimisticQueueUserDelivery,
   setOptimisticQueueUserDelivery,
@@ -315,6 +316,48 @@ describe("userIntentDispatch", () => {
       optimisticQueueUserEventId("queue-canonical"),
       "imported-session"
     );
+  });
+
+  it("prepares a durable held retry through the same stable projection identity", async () => {
+    const actual = await vi.importActual<
+      typeof import("@src/engines/SessionCore/sync/adapters/shared/eventFactories")
+    >("@src/engines/SessionCore/sync/adapters/shared/eventFactories");
+    mocks.createSyntheticUserEvent.mockImplementation(
+      actual.createSyntheticUserEvent
+    );
+    const params = {
+      sessionId: "cliagent-root",
+      queueMessageId: "retry-owner",
+      turnIntentId: "new-retry-intent",
+      visibleText: "preserved display prompt",
+      imageDataUrls: ["data:image/png;base64,preserved"],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    mocks.updateById.mockResolvedValueOnce(true);
+    await prepareOptimisticQueueUserRetry(params);
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    mocks.updateById.mockResolvedValue(false);
+    await prepareOptimisticQueueUserRetry(params);
+    expect(mocks.upsert).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        id: optimisticQueueUserEventId(params.queueMessageId),
+        sessionId: params.sessionId,
+        displayText: params.visibleText,
+        displayStatus: "pending",
+        result: expect.objectContaining({
+          images: params.imageDataUrls,
+          queueMessageId: params.queueMessageId,
+          turnIntentId: params.turnIntentId,
+          deliveryStatus: "pending",
+        }),
+      }),
+      params.sessionId
+    );
+    mocks.upsert.mockRejectedValueOnce(new Error("projection write failed"));
+    await expect(prepareOptimisticQueueUserRetry(params)).rejects.toThrow(
+      "projection write failed"
+    );
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
   });
 
   it("adopts an accepted turn through the shared intent/generation mapping", () => {

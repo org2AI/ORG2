@@ -31,7 +31,7 @@ it("keeps panel titles plain, group headers inset, and actions independent of co
               {
                 onClick: refresh,
                 "aria-label": "Refresh",
-                appearance: "soft-no-drop",
+                variant: "tertiary",
               },
               "Refresh"
             ),

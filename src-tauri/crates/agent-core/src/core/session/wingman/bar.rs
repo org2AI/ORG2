@@ -63,12 +63,12 @@ pub(crate) fn is_wingman_bar_visible(
 ) -> bool {
     #[cfg(all(target_os = "macos", feature = "wingman-bar-native"))]
     {
-        return wingman_bar_native::is_visible();
+        wingman_bar_native::is_visible()
     }
 
     #[cfg(target_os = "windows")]
     {
-        return windows_bar::is_visible();
+        windows_bar::is_visible()
     }
 
     #[cfg(not(any(

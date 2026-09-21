@@ -1,0 +1,371 @@
+@use "./mobileUiTokens" as mobile;
+
+// Mobile presentation only: data, pagination and permission ownership stay in
+// the existing hooks. Shared controls keep their keyboard/disabled behavior.
+.mobile-discovery {
+  @include mobile.search-field;
+
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+
+  .mobile-top-bar--root {
+    display: grid;
+    grid-template-columns: var(--mobile-touch-size) minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 10px 20px mobile.$space-3;
+    gap: mobile.$space-3;
+  }
+  .mobile-top-bar__title {
+    order: 0;
+    grid-column: 2;
+    font-size: var(--mobile-type-title-size);
+    font-weight: var(--mobile-type-emphasis-weight);
+    letter-spacing: -0.02em;
+    text-align: center;
+  }
+  .mobile-top-bar__trailing {
+    min-width: var(--mobile-touch-size);
+    justify-self: end;
+  }
+  .mobile-discovery-cancel {
+    width: auto;
+    min-width: mobile.$touch-target;
+    min-height: mobile.$touch-target;
+    padding: 0 mobile.$space-2;
+    font-size: var(--mobile-type-body-size);
+    box-shadow: none;
+    border: 0;
+    border-radius: mobile.$space-3;
+    background: transparent;
+  }
+}
+
+.mobile-discovery-scroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding: mobile.$space-2 20px mobile.$space-4;
+  overscroll-behavior-y: contain;
+}
+.mobile-discovery-section-label {
+  padding: mobile.$space-4 0 6px;
+  color: var(--color-text-3);
+  font-size: var(--mobile-type-caption-size);
+  font-weight: var(--mobile-type-medium-weight);
+}
+.mobile-discovery-inbox-entry {
+  padding: 0 20px mobile.$space-2;
+}
+.mobile-inbox-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: mobile.$touch-target;
+  border: 0;
+  border-radius: mobile.$space-3;
+  padding: mobile.$space-2 mobile.$space-3;
+  background: var(--color-fill-1);
+  color: var(--color-text-1);
+  text-align: left;
+  font-size: var(--mobile-type-control-size);
+  cursor: pointer;
+  > svg {
+    flex-shrink: 0;
+  }
+}
+.mobile-inbox-entry__label {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--mobile-type-medium-weight);
+}
+.mobile-inbox-entry__count {
+  font-size: var(--mobile-type-caption-size);
+  color: var(--color-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.mobile-session-list {
+  display: flex;
+  flex-direction: column;
+}
+.mobile-session-row {
+  position: relative;
+  align-items: center;
+  border: 0;
+  border-radius: mobile.$space-3;
+  background: transparent;
+  color: var(--color-text-1);
+  // Extend the hit/highlight surface into the list gutter, not the content:
+  // icons, titles and status dots keep their existing column alignment.
+  width: calc(100% + #{2 * mobile.$space-2});
+  margin-inline: -#{mobile.$space-2};
+  padding: mobile.$space-3 mobile.$space-2;
+  cursor: pointer;
+  min-width: 0;
+}
+.mobile-session-row__content {
+  align-items: flex-start;
+  gap: mobile.$space-3;
+}
+.mobile-session-row__content > :first-child {
+  margin-top: mobile.$space-1;
+}
+.mobile-session-row__heading {
+  display: flex;
+  align-items: center;
+  gap: mobile.$space-3;
+  min-width: 0;
+}
+.mobile-session-row__title {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--mobile-type-body-size);
+  line-height: var(--mobile-type-control-leading);
+  font-weight: var(--mobile-type-medium-weight);
+}
+.mobile-session-row__meta {
+  display: flex;
+  align-items: center;
+  gap: mobile.$space-2;
+  min-width: 0;
+  min-height: 17px;
+  margin-top: mobile.$space-1;
+  font-size: var(--mobile-type-caption-size);
+  line-height: var(--mobile-type-control-leading);
+  color: var(--color-text-3);
+}
+.mobile-session-row__workspace {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mobile-session-row__time {
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.mobile-session-row--compact {
+  min-height: mobile.$touch-target;
+  padding-block: mobile.$space-2;
+
+  .mobile-session-row__content {
+    align-items: center;
+  }
+  .mobile-session-row__content > :first-child {
+    margin-top: 0;
+  }
+  .mobile-session-row__heading {
+    gap: mobile.$space-2;
+  }
+}
+.mobile-discovery .mobile-discovery-more {
+  min-height: mobile.$touch-target;
+  width: 100%;
+  margin-top: mobile.$space-4;
+  font-size: var(--mobile-type-control-size);
+}
+.mobile-discovery-search {
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 10px 20px;
+  background: var(--mobile-canvas);
+  border-top: 0;
+}
+.mobile-discovery .mobile-search-launcher {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: var(--mobile-search-height);
+  border: 1px solid var(--mobile-search-border);
+  background: var(--mobile-search-surface);
+  color: var(--color-text-3);
+  font-weight: var(--mobile-type-regular-weight);
+  box-shadow: var(--mobile-search-shadow);
+}
+.mobile-search-icon {
+  width: var(--mobile-search-icon-size);
+  height: var(--mobile-search-icon-size);
+  color: var(--color-text-1);
+}
+.mobile-discovery-notice {
+  margin: 0;
+  padding: 6px 20px;
+  color: var(--color-text-2);
+  font-size: var(--mobile-type-caption-size);
+  line-height: var(--mobile-type-body-leading);
+}
+.mobile-session-device-tabs {
+  flex-shrink: 0;
+  padding: 2px 20px 10px;
+}
+.mobile-session-device-tabs__list {
+  width: max-content;
+  min-width: 100%;
+
+  [data-active="true"] {
+    background: var(--mobile-pill-selected);
+  }
+}
+@media (max-width: 360px) {
+  .mobile-discovery {
+    .mobile-top-bar--root {
+      padding-inline: 14px;
+    }
+    .mobile-discovery-scroll,
+    .mobile-discovery-search,
+    .mobile-session-device-tabs {
+      padding-inline: 14px;
+    }
+  }
+}
+.mobile-search-input {
+  .mobile-search-clear {
+    width: mobile.$touch-target;
+    height: mobile.$touch-target;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+}
+.mobile-search-form {
+  display: flex;
+  align-items: center;
+  gap: var(--mobile-search-gap);
+}
+.mobile-discovery .mobile-search-input.input-wrapper {
+  height: var(--mobile-search-height);
+  .input-inner {
+    padding-inline: var(--mobile-search-padding-x);
+    border-radius: var(--mobile-search-radius);
+    background: var(--mobile-search-surface);
+    box-shadow: var(--mobile-search-shadow);
+  }
+  &:not(.input-focused) .input-inner {
+    border-color: var(--mobile-search-border);
+  }
+  .input-prefix {
+    margin-right: var(--mobile-search-gap);
+  }
+  .input {
+    font-size: var(--mobile-search-font-size);
+  }
+}
+.mobile-pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: mobile.$space-2;
+  font-size: var(--mobile-type-control-size);
+  line-height: var(--mobile-type-body-leading);
+}
+.mobile-pending-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 18px;
+  background: var(--color-bg-2);
+  color: var(--color-text-1);
+  text-align: left;
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+.mobile-pending-card__title {
+  font-size: var(--mobile-type-body-size);
+  font-weight: var(--mobile-type-emphasis-weight);
+  line-height: var(--mobile-type-control-leading);
+  overflow-wrap: anywhere;
+}
+.mobile-pending-card__request {
+  padding: 10px mobile.$space-3;
+  border-radius: 10px;
+  background: var(--color-fill-1);
+  font-size: var(--mobile-type-caption-size);
+  line-height: var(--mobile-type-body-leading);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  max-height: 8em;
+  overflow-y: auto;
+}
+.mobile-discovery
+  :is(.mobile-inbox-entry, .mobile-session-row, .mobile-pending-card) {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-6);
+    outline-offset: 3px;
+  }
+  &:active:not(:disabled) {
+    background: var(--color-fill-2);
+  }
+}
+
+// Reuse Desktop round-list layout and typography; mobile only adapts the sheet
+// and touch targets. No raw preview text is hidden.
+.mobile-round-sheet {
+  border-radius: 24px 24px 0 0;
+  .orgii-bottom-sheet-header {
+    padding: 10px 20px;
+  }
+  .orgii-bottom-sheet-close {
+    width: mobile.$touch-target;
+    height: mobile.$touch-target;
+    border-radius: 50%;
+    background: var(--color-fill-1);
+  }
+  .orgii-bottom-sheet-body {
+    padding: 0 20px mobile.$space-4;
+  }
+}
+.mobile-round-sheet__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: mobile.$space-2;
+  button {
+    min-height: mobile.$touch-target;
+    font-size: var(--mobile-type-secondary-size);
+  }
+}
+[data-mobile-round-list="true"] {
+  max-height: none;
+  > button {
+    min-height: mobile.$touch-target;
+  }
+}
+.mobile-shell [data-turn-navigation-toolbar="mobile"] {
+  padding: 0 mobile.$space-3;
+  background: transparent;
+  button {
+    min-height: mobile.$touch-target;
+    min-width: mobile.$touch-target;
+  }
+}
+
+.mobile-chat-transcript {
+  overflow-wrap: anywhere;
+}
+.mobile-chat-transcript [data-transcript-item-kind] {
+  min-width: 0;
+  max-width: 100%;
+}
+.mobile-chat-transcript [data-transcript-item-kind="user"] > div {
+  min-width: 0;
+}

@@ -22,6 +22,7 @@ import ActionSummaryGroup from "../../ChatItems/ActionSummaryGroup";
 import EditActivityGroup from "../../ChatItems/EditActivityGroup";
 import ReadFileGroup from "../../ChatItems/ReadFileGroup";
 import TerminalActivityGroup from "../../ChatItems/TerminalActivityGroup";
+import WaitActivityGroup from "../../ChatItems/WaitActivityGroup";
 import WorkActivityGroup from "../../ChatItems/WorkActivityGroup";
 import { getBrowserGroupPresentation } from "../../ChatItems/browserGroupPresentation";
 import ActivityChatItem from "../ActivityRouter";
@@ -169,6 +170,17 @@ export function renderActivityStackGroup(
     return (
       <ChatItemWrap key={itemKey}>
         <TerminalActivityGroup
+          events={stackGroup.events}
+          closedByBoundary={stackGroup.closedByBoundary}
+        />
+      </ChatItemWrap>
+    );
+  }
+
+  if (stackGroup.category === "wait") {
+    return (
+      <ChatItemWrap key={itemKey}>
+        <WaitActivityGroup
           events={stackGroup.events}
           closedByBoundary={stackGroup.closedByBoundary}
         />

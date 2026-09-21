@@ -14,6 +14,7 @@ const { spawn, execFileSync, execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const { tauriFeatureList } = require("../tauri/features.cjs");
+const { applyDevInstanceEnv } = require("../tauri/instance-profile.cjs");
 const {
   applyDefaultDiagnosticsEndpoint,
 } = require("../tauri/diagnostics-endpoint.cjs");
@@ -85,11 +86,11 @@ function logoInnerLine(content) {
 
 function printBanner(features) {
   if (!isTTY) {
-    console.log("ORG II Tauri Dev");
+    console.log("ORG2 Tauri Dev");
     return;
   }
 
-  const title = `${paint("ORG", STYLE.muted, STYLE.bold)} ${paint("II", STYLE.white, STYLE.bold)}`;
+  const title = `${paint("ORG", STYLE.muted, STYLE.bold)}${paint("2", STYLE.white, STYLE.bold)}`;
   const subtitle = paint("Tauri Dev", STYLE.muted);
   const lightDevLabel =
     process.env.ORGII_LIGHT_DEV === "true" ? "light dev, " : "";
@@ -97,7 +98,7 @@ function printBanner(features) {
     ? `${lightDevLabel}features: ${features.join(", ")}`
     : `${lightDevLabel}default desktop profile`;
   const logoText = paint(
-    "   II   ",
+    "   2    ",
     STYLE.white,
     STYLE.bold,
     STYLE.logoInnerBg
@@ -396,7 +397,7 @@ function cleanChildEnv() {
       delete env[key];
     }
   }
-  return applyDefaultDiagnosticsEndpoint(env);
+  return applyDefaultDiagnosticsEndpoint(applyDevInstanceEnv(env));
 }
 
 function createBinPath(name) {

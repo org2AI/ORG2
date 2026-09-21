@@ -32,13 +32,6 @@ import { Org2CloudChannelMessagesError } from "@src/features/Org2Cloud/channels/
 import type { CloudChannelMessage } from "@src/features/Org2Cloud/channels/channelMessagesTypes";
 import type { CloudChannelMessagesState } from "@src/features/Org2Cloud/channels/useCloudChannelMessages";
 import type { TabDragEventDetail } from "@src/modules/WorkStation/shared/TabBar/tabDragTypes";
-import {
-  SESSION_TAB_DRAG_END_EVENT,
-  SESSION_TAB_DRAG_START_EVENT,
-  type SessionTabDragEndDetail,
-  type SessionTabDragStartDetail,
-  type SessionTabTransfer,
-} from "@src/shared/dnd/sessionTabDrag";
 import type { ChatPanelSelectedChannel } from "@src/store/chatPanel/chatPanelTabsModel";
 import {
   LOCAL_CHANNEL_MESSAGES_STORAGE_KEY,
@@ -50,6 +43,13 @@ import {
   type LocalChannel,
   localChannelsAtom,
 } from "@src/store/ui/localChannelsAtom";
+import {
+  SESSION_TAB_DRAG_END_EVENT,
+  SESSION_TAB_DRAG_START_EVENT,
+  type SessionTabDragEndDetail,
+  type SessionTabDragStartDetail,
+  type SessionTabTransfer,
+} from "@src/util/dnd/sessionTabDrag";
 
 import DiscussionChannelPanelView from "./index";
 

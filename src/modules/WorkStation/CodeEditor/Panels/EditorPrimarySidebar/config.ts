@@ -60,21 +60,10 @@ export const TAB_LABELS: Record<string, string> = {
 // ============================================
 
 export const PANEL_CONSTANTS = {
-  // Width
-  DEFAULT_WIDTH: "w-[240px]",
-  WIDTH_PX: 240,
-
   // Icon sizes
   TAB_ICON_SIZE: 16,
   ACTION_ICON_SIZE: 14,
   ACTION_ICON_STROKE: 1.75,
-
-  // Heights
-  TAB_ROW_HEIGHT: 36,
-  HEADER_HEIGHT: 36,
-
-  // Virtualization threshold
-  VIRTUALIZATION_THRESHOLD: 100,
 } as const;
 
 // ============================================

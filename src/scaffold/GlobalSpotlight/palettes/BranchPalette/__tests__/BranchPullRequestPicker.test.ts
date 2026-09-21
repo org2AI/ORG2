@@ -42,15 +42,23 @@ vi.mock("@src/hooks/dropdown", async () => {
     await import("@src/hooks/dropdown/useDropdownListNavigation");
   return {
     useDropdownEngine: (options: {
-      open: boolean;
-      listNavigation: Parameters<typeof useDropdownListNavigation>[0];
+      open?: boolean;
+      listNavigation?: Parameters<typeof useDropdownListNavigation>[0];
     }) => ({
-      isPositioned: options.open,
+      isPositioned: Boolean(options.open),
+      triggerRef: React.useRef(null),
       panelRef: React.useRef(null),
       panelPosition: { top: 20, left: 20, width: 420 },
+      toggle: () => {},
+      close: () => {},
+      // The shell footer's settings menu calls the engine without list
+      // navigation; give it an empty, closed list.
       keyboard: useDropdownListNavigation({
+        items: [],
+        onSelect: () => {},
+        disableGlobalListener: !options.listNavigation,
         ...options.listNavigation,
-        isOpen: options.open,
+        isOpen: Boolean(options.open) && Boolean(options.listNavigation),
       }),
     }),
   };

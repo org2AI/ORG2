@@ -77,7 +77,6 @@ const DetailPanelHeader: React.FC<DetailPanelHeaderProps> = ({
           <>
             <Button
               variant="tertiary"
-              appearance="soft"
               size="sidebar"
               aria-label="Previous"
               iconOnly
@@ -94,7 +93,6 @@ const DetailPanelHeader: React.FC<DetailPanelHeaderProps> = ({
             />
             <Button
               variant="tertiary"
-              appearance="soft"
               size="sidebar"
               aria-label="Next"
               iconOnly
@@ -113,7 +111,6 @@ const DetailPanelHeader: React.FC<DetailPanelHeaderProps> = ({
         )}
         <Button
           variant="tertiary"
-          appearance="soft"
           size="sidebar"
           aria-label="Close"
           iconOnly

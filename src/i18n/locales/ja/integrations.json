@@ -17,7 +17,7 @@
     "removeLocal": "ローカルを削除",
     "unlist": "リストから削除",
     "confirmRemoveTitle": "\"{{name}}\" を削除しますか？",
-    "confirmRemoveMessage": "ローカル認証情報が削除されます。この操作は元に戻せません。",
+    "confirmRemoveMessage": "ローカル認証情報が削除されます。この操作は元に戻せません",
     "toasts": {
       "refreshed": "{{name}} の更新が完了しました",
       "refreshError": "{{name}} の更新に失敗しました: {{error}}",
@@ -68,10 +68,10 @@
       "accountEmail": "アカウントメール"
     },
     "customModels": {
-      "manualSetupHint": "エンドポイントが受け付けるモデル ID と任意の表示名を入力します。モデル検出は任意です。有効化しても互換性は検証されません。",
+      "manualSetupHint": "エンドポイントが受け付けるモデル ID と任意の表示名を入力します。モデル検出は任意です。有効化しても互換性は検証されません",
       "modelNamePlaceholder": "モデル id を入力...",
       "displayNamePlaceholder": "任意のラベル",
-      "emptyHint": "カスタムモデルはまだ追加されていません。",
+      "emptyHint": "カスタムモデルはまだ追加されていません",
       "addModel": "モデルを追加",
       "testRequiresEndpoint": "このモデルをテストするにはエンドポイントと API キーを入力してください",
       "invalidModelId": "モデル ID は空白や制御文字を含まない 1〜256 バイトである必要があります。",
@@ -145,14 +145,12 @@
       "keysVerified": "認証情報検証済み",
       "failedMessage": "API Key と Session Token が同じ Cursor アカウントに属していないようです。",
       "failedError": "エラー：{{error}}",
-      "failedHint": "同じ Cursor アカウントの一致する認証情報で新しいリスティングを作成してください。",
+      "failedHint": "同じ Cursor アカウントの一致する認証情報で新しいリスティングを作成してください",
       "listingRejected": "リスティング拒否",
       "rejectedByAdmin": "このリスティングは管理者によって拒否されました。"
     },
     "apiKeyLabel": "API Key",
-    "apiKeyDesc": "プロバイダーの API にリクエストを認証するための秘密キー",
     "baseUrlLabel": "Base URL",
-    "baseUrlDesc": "API エンドポイント URL — プロキシ、カスタムデプロイ、セルフホストサーバーを使用する場合のみ変更",
     "apiProtocolLabel": "API プロトコル",
     "apiProtocolDesc": "組み込み Rust Agent のワイヤプロトコルを選択",
     "officialUrl": "公式 URL",
@@ -171,14 +169,12 @@
       "validateDesc": "エンドポイントが起動中ならプローブし、または手動でモデルを追加して保存します"
     },
     "validate": "検証",
-    "validateDesc": "続行前に認証情報を検証します",
     "validated": "検証済み",
     "validationSuccessModels": "{{count}} 個のモデルを検出 — 次のステップで設定",
     "validationSuccessNoModels": "Key 検証成功 — モデルが自動検出されませんでした。以下から手動で追加してください",
     "addCliAgent": "Agent を追加",
     "accountName": "アカウント名（任意）",
     "accountNameDesc": "空欄にすると {{provider}}、次に {{provider}}-1、{{provider}}-2 のように使用します",
-    "selectorDesc": "接続するサービスを選択",
     "accountNamePlaceholder": "自動: {{provider}}",
     "descriptionOptional": "説明（任意）",
     "descriptionPlaceholder": "説明を入力",
@@ -245,8 +241,8 @@
     "claudeCodeSignInDesc": "内蔵ブラウザで Claude Code にサインインします。ORG2 が authorization code を取得し、OAuth Token をローカルに保存します",
     "claudeCodeReadyToSignIn": "Claude Code にサインインする準備ができました",
     "claudeCodeSignedIn": "Claude Code 接続済み",
-    "claudeCodeOAuthHint": "anthropic_native を使用する Rust agents 向けに claude_code OAuth アカウントを保存します。",
-    "claudeCodeBrowserHint": "内蔵ブラウザで Claude Code の認可を完了してください。",
+    "claudeCodeOAuthHint": "anthropic_native を使用する Rust agents 向けに claude_code OAuth アカウントを保存します",
+    "claudeCodeBrowserHint": "内蔵ブラウザで Claude Code の認可を完了してください",
     "claudeCodeSignInErrorHint": "ブラウザを閉じてもう一度サインインしてください。Token は保存されていません",
     "connectedViaChatGpt": "ChatGPT Plus/Pro ログインで接続済み",
     "apiKeyDetectedFromConfig": "ローカル設定から API Key を検出しました",
@@ -269,7 +265,7 @@
     "opensEmbeddedBrowser": "内蔵ブラウザで Cursor アカウントを接続します。",
     "loggedIn": "ログイン済み",
     "loginStep": "ログイン",
-    "signInToCursorHint": "Cursor アカウントにサインインしてください。ログイン後、このウィンドウは自動的に閉じます。",
+    "signInToCursorHint": "Cursor アカウントにサインインしてください。ログイン後、このウィンドウは自動的に閉じます",
     "copilotCreatePat": "GitHub Personal Access Token を作成",
     "copilotCreatePatDesc": "GitHub PAT 作成用の内蔵ブラウザを開きます",
     "copilotTokenValidated": "Token 検証済み",
@@ -303,7 +299,7 @@
     "cursorLoginBrowserTitle": "Cursor ログイン",
     "modelCount": "{{count}} モデル",
     "cursorLoginReadyTitle": "Cursor アカウントが接続されました",
-    "cursorLoginReadyDesc": "下で Cursor API Key を生成して貼り付けてください。この API Key がないと Cursor agent は使用できません。",
+    "cursorLoginReadyDesc": "下で Cursor API Key を生成して貼り付けてください。この API Key がないと Cursor agent は使用できません",
     "cursorApiKeyBrowserHint": "サインイン後、ORG2 は Cursor dashboard を開きます。そこで User API Key を生成し、下に貼り付けてください",
     "cursorApiKeyRecommendedTitle": "Cursor API Key を推奨します",
     "cursorApiKeyRecommendedDesc": "Cursor を ORG2 の Rust agents でのみ使用する場合は、Cursor API Key なしで続行できます。内蔵ブラウザでサインインするか、session token を指定してください",
@@ -315,8 +311,8 @@
     "signInWithCodex": "Codex でサインイン",
     "codexReadyToSignIn": "Codex にサインインする準備ができました",
     "codexSignedIn": "Codex に接続済み",
-    "codexOAuthHint": "ChatGPT Codex バックエンドにアクセスするための codex OAuth アカウントを保存します。",
-    "codexBrowserHint": "内蔵ブラウザで Codex の認可を完了してください。",
+    "codexOAuthHint": "ChatGPT Codex バックエンドにアクセスするための codex OAuth アカウントを保存します",
+    "codexBrowserHint": "内蔵ブラウザで Codex の認可を完了してください",
     "codexSignInErrorHint": "ブラウザを閉じてもう一度サインインしてください。Token は保存されませんでした",
     "codexAutodetectTitle": "Codex セッションを検出",
     "codexAutodetectDesc": "ローカル環境から ~/.codex/auth.json と OPENAI_API_KEY を読み取ります",
@@ -330,7 +326,7 @@
     "claudeCodeDetectErrorHint": "内蔵ブラウザでサインインするか、claude auth login を実行してから再検出してください",
     "refreshModels": {
       "button": "Cursor モデル一覧を更新",
-      "failed": "Cursor からの更新に失敗しました: {{error}}"
+      "failed": "この Market ワークスペースは利用できません。Market をもう一度開いて認証を更新してください。"
     },
     "revalidate": "再検証",
     "confirmRemoveActiveSessions_one": "{{count}} 件のアクティブなセッションがまだこのアカウントを使用しており、次のターンで失敗します:",
@@ -573,7 +569,7 @@
     },
     "gateway": {
       "title": "Gateway Agent",
-      "description": "Gateway はすべてのチャネルからの受信メッセージをルーティングします。セマンティックルーティングに使用する API キーとモデルを選択してください。",
+      "description": "Gateway はすべてのチャネルからの受信メッセージをルーティングします。セマンティックルーティングに使用する API キーとモデルを選択してください",
       "statusReady": "設定済み",
       "statusUnconfigured": "未設定",
       "account": "API キーアカウント",
@@ -581,7 +577,7 @@
       "model": "モデル",
       "modelPlaceholder": "モデルを選択",
       "groupPerUser": "ユーザーごとにグループチャットセッションを分離",
-      "groupPerUserDesc": "グループチャットの各参加者が独自のセッションコンテキストを持ちます。"
+      "groupPerUserDesc": "グループチャットの各参加者が独自のセッションコンテキストを持ちます"
     },
     "emailProtocol": "プロトコル",
     "matrixDeviceNamePlaceholder": "ORG2 ボット"
@@ -621,7 +617,6 @@
     "collapseAllRows": "すべて折りたたむ",
     "orgiiMarketGroup": "ORG2 マーケット",
     "variantSpeed": "Speed",
-    "variantOptions": "バージョンオプション",
     "variantDefault": "Default",
     "variantCount": "{{count}} 件のバージョン",
     "selectedVersion": "選択中のバージョン",
@@ -629,8 +624,6 @@
     "keyDefaultVersionOnly": "この key にはデフォルト版 {{model}} のみあります",
     "selectedVersionFor": "{{model}} の選択中のバージョン",
     "preferredVersion": "推奨バージョン",
-    "reasoningLevel": "Reasoning level",
-    "effort": "Effort",
     "addNewKey": "新しい key を追加",
     "availableKeys": "利用可能な keys {{enabled}}/{{total}} 個を有効化",
     "availableModels": "利用可能なモデル {{enabled}}/{{total}} 個を有効化",
@@ -758,28 +751,28 @@
     "tokenRequired": "Personal access token は必須です",
     "oauthWaiting": "OAuth を待機中",
     "oauthDeviceDesc": "検証 URL を開き、このコードを入力して GitHub を承認してください",
-    "oauthBrowserDesc": "開いたブラウザウィンドウで承認を完了してください。",
-    "oauthBrowserOpened": "ブラウザウィンドウが開きました。そこで承認を完了すると、このウィザードが続行します。"
+    "oauthBrowserDesc": "開いたブラウザウィンドウで承認を完了してください",
+    "oauthBrowserOpened": "ブラウザウィンドウが開きました。そこで承認を完了すると、このウィザードが続行します"
   },
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "自動検出",
     "methodOAuth": "GitHub でサインイン",
-    "methodPickerDesc": "GitHub への認証方法を選択してください。",
-    "oauthDeviceDesc": "確認用 URL を開き、このコードを入力して GitHub を認証してください。",
+    "methodPickerDesc": "GitHub への認証方法を選択してください",
+    "oauthDeviceDesc": "確認用 URL を開き、このコードを入力して GitHub を認証してください",
     "scanCredHelper": "Git credential helper（{{name}}）",
     "scanEmpty": "何も検出されませんでした",
-    "scanEmptyDesc": "gh CLI トークン、credential helper、SSH キーは見つかりませんでした。上の別の方法を選択してください。",
+    "scanEmptyDesc": "gh CLI トークン、credential helper、SSH キーは見つかりませんでした。上の別の方法を選択してください",
     "scanGhCli": "GitHub CLI (gh)",
     "scanResults": "検出された認証情報",
-    "scanResultsDesc": "インポートするものを 1 つ選択してください。保存前にトークンを GitHub で検証します。",
+    "scanResultsDesc": "インポートするものを 1 つ選択してください。保存前にトークンを GitHub で検証します",
     "scanSshKey": "SSH キー — {{name}}",
     "scanning": "スキャン中…",
-    "scanningDesc": "このマシン上の gh CLI トークン、credential helper、SSH キーを探しています。",
+    "scanningDesc": "このマシン上の gh CLI トークン、credential helper、SSH キーを探しています",
     "sshKeyPath": "SSH キーのパス",
-    "sshKeyPathDesc": "秘密鍵の絶対パス（例: ~/.ssh/id_ed25519）。対応する公開鍵が GitHub に登録済みである必要があります。",
-    "scanSelectRequired": "インポートする認証情報を選択してください。",
-    "sshKeyPathRequired": "SSH キーのパスは必須です。"
+    "sshKeyPathDesc": "秘密鍵の絶対パス（例: ~/.ssh/id_ed25519）。対応する公開鍵が GitHub に登録済みである必要があります",
+    "scanSelectRequired": "インポートする認証情報を選択してください",
+    "sshKeyPathRequired": "SSH キーのパスは必須です"
   },
   "builtInTools": {
     "tabTools": "組み込みツール",
@@ -809,9 +802,9 @@
     "agentBrowserRestartPromptMessage": "Browser CLI プロバイダーを変更した場合、Agent が選択したツールを認識するには ORG2 の再起動が必要です。今すぐ再起動しますか？",
     "sidecarDownloadsSectionTitle": "Sidecar ダウンロード",
     "sidecarAgentBrowserLabel": "Agent Browser CLI",
-    "sidecarAgentBrowserDesc": "このプラットフォーム用の Agent Browser バイナリを ~/.orgii/bin にダウンロードします。ORG2 は起動時に自動ダウンロードしません。",
+    "sidecarAgentBrowserDesc": "このプラットフォーム用の Agent Browser バイナリを ~/.orgii/bin にダウンロードします。ORG2 は起動時に自動ダウンロードしません",
     "sidecarPeekabooLabel": "Peekaboo CLI",
-    "sidecarPeekabooDesc": "デスクトップ自動化用の macOS Peekaboo バイナリを ~/.orgii/bin にダウンロードします。未対応プラットフォームでは無効のままです。",
+    "sidecarPeekabooDesc": "デスクトップ自動化用の macOS Peekaboo バイナリを ~/.orgii/bin にダウンロードします。未対応プラットフォームでは無効のままです",
     "sidecarUnsupported": "未対応",
     "sidecarInstalled": "インストール済み",
     "sidecarNotInstalled": "未インストール",
@@ -874,7 +867,7 @@
     "connectMethodDesc": "GitHub アカウントの接続方法を選択",
     "githubApp": "GitHub App",
     "detectFromSystem": "システムから検出",
-    "detectFromSystemDesc": "gh CLI、SSH キー、または Git 認証ヘルパーを使用します。",
+    "detectFromSystemDesc": "gh CLI、SSH キー、または Git 認証ヘルパーを使用します",
     "credentialsDetected": "認証情報を検出しました",
     "detectedVia": "{{source}} で検出",
     "sshKeyLabel": "SSH キー",
@@ -894,7 +887,7 @@
     "noCredentialsFound": "GitHub 認証情報が見つかりません",
     "noCredentialsHint": "GitHub CLI (gh) をインストールするか SSH キーを設定してください",
     "manuallyAddToken": "Token を手動追加",
-    "manualTokenDesc": "HTTPS Git 操作用の GitHub PAT を貼り付けます。",
+    "manualTokenDesc": "HTTPS Git 操作用の GitHub PAT を貼り付けます",
     "autoDetect": "自動検出",
     "autoDetectTokenSaved": "GitHub token を保存しました",
     "autoDetectSshSwitched": "Remote を SSH に切り替えました",
@@ -920,7 +913,7 @@
     "coauthor": "Co-authored-by",
     "coauthorDesc": "ORG2 から作成した Git Commit に {{name}} <{{email}}> を追加します",
     "noTokenYet": "Token が必要ですか？",
-    "createTokenDesc": "GitHub を開き、repo アクセス権を持つ PAT を作成します。",
+    "createTokenDesc": "GitHub を開き、repo アクセス権を持つ PAT を作成します",
     "accountConnected": "GitHub アカウントを接続しました",
     "disconnectMsg": "切断してもよろしいですか？このアカウントのすべてのリポジトリへのアクセスが削除されます。",
     "disconnectTitle": "GitHubアカウントを切断",
@@ -929,7 +922,7 @@
     "connectRepoDesc": "GitHubアカウントを接続してリポジトリにアクセス",
     "github": "GitHub",
     "signInWithGithub": "GitHub でサインイン",
-    "signInWithGithubDesc": "GitHub のデバイスフローで ORG2 を認証します。サーバー不要。",
+    "signInWithGithubDesc": "GitHub のデバイスフローで ORG2 を認証します。サーバー不要",
     "oauthWaiting": "認証を待っています",
     "oauthDeviceCodeDesc": "下記の URL を開き、このコードを入力してください",
     "oauthOpenGithub": "GitHub を開く",
@@ -964,8 +957,8 @@
     "contentLabel": "コンテンツ",
     "contentDesc": "SKILL.md の本文を Markdown で記述してください。Agent が読み取る内容です",
     "scopeLabel": "スコープ",
-    "scopeDesc": "User Skill はすべての Repo で利用できます。Repo-specific Skill はその Repo でのみ読み込まれます。",
-    "scopeDescEdit": "保存時にスコープを切り替えると、Skill フォルダが User レベル保存と Repo-specific 保存の間で移動します。",
+    "scopeDesc": "User Skill はすべての Repo で利用できます。Repo-specific Skill はその Repo でのみ読み込まれます",
+    "scopeDescEdit": "保存時にスコープを切り替えると、Skill フォルダが User レベル保存と Repo-specific 保存の間で移動します",
     "scopeGlobal": "User",
     "binsLabel": "必要な実行ファイル",
     "binsDesc": "このスキルに必要な CLI プログラム（例: git、python、docker）",
@@ -985,7 +978,7 @@
     "filePathPlaceholder": "例: scripts/validate.py",
     "removeFile": "ファイルを削除",
     "editorNoDraftTitle": "進行中の Skill ドラフトはありません",
-    "editorNoDraftDesc": "Skills ページで「作成」をクリックするか、編集する Skill を選択してください。",
+    "editorNoDraftDesc": "Skills ページで「作成」をクリックするか、編集する Skill を選択してください",
     "scopeWorkspace": "Repo-specific",
     "deleteConfirmTitle": "スキル「{{name}}」を削除しますか？",
     "deleteConfirmMessage": "スキルとそのファイルがすべて削除されます。この操作は元に戻せません。"
@@ -994,7 +987,7 @@
     "tab": "MCP",
     "searchPlaceholder": "MCP サーバーを検索...",
     "noServers": "MCP サーバーが設定されていません",
-    "noServersDesc": "MCP サーバーを追加して、外部ツールで Agent の機能を拡張しましょう。",
+    "noServersDesc": "MCP サーバーを追加して、外部ツールで Agent の機能を拡張しましょう",
     "addServer": "MCP サーバーを追加",
     "editServer": "MCP サーバーを編集",
     "serverName": "サーバー名",
@@ -1117,12 +1110,12 @@
     },
     "sessionProvenance": {
       "masterToggle": "プロベナンス hooks",
-      "masterToggleDesc": "オフにすると、管理対象の hooks がすべてアンインストールされ、シグナルは取得されません。プラットフォームごとの選択は保持され、再度オンにすると復元されます。",
+      "masterToggleDesc": "オフにすると、管理対象の hooks がすべてアンインストールされ、シグナルは取得されません。プラットフォームごとの選択は保持され、再度オンにすると復元されます",
       "liveStatusToggle": "エージェントのライブ状態",
-      "liveStatusToggleDesc": "実行中の CLI エージェントが作業中か待機中かを表示します。オフでも来歴の記録は続きます。",
+      "liveStatusToggleDesc": "実行中の CLI エージェントが作業中か待機中かを表示します。オフでも来歴の記録は続きます",
       "title": "セッションの来歴",
       "capture": "ファイル操作を記録",
-      "description": "ファイルの読み取りと書き込みをメタデータとして記録します。プロンプト、ツール出力、ファイル内容は保存されません。",
+      "description": "ファイルの読み取りと書き込みをメタデータとして記録します。プロンプト、ツール出力、ファイル内容は保存されません",
       "installDrift": "保存された設定とインストール済み hook が一致しません。記録を切り替えて管理対象の hook を修復してください。設定: {{path}}",
       "copyPath": "コピー",
       "col": {
@@ -1139,8 +1132,8 @@
       },
       "codexApproval": {
         "title": "Codex で ORG2 hooks を検証",
-        "description": "Codex が現在の ORG2 hooks を承認して実行するのを待っています。",
-        "instructions": "Codex を開いて ORG2 hooks を確認し、Trust all and continue を選択してください。セッションの開始時に SessionStart hook が有効化を自動検証します。",
+        "description": "Codex が現在の ORG2 hooks を承認して実行するのを待っています",
+        "instructions": "Codex を開いて ORG2 hooks を確認し、Trust all and continue を選択してください。セッションの開始時に SessionStart hook が有効化を自動検証します",
         "review": "Codex で確認",
         "verified": "実際の Codex hook シグナルで検証済み（{{time}}）。"
       },
@@ -1185,7 +1178,7 @@
       "addMember": "メンバーを追加",
       "noMembers": "メンバーを追加して Org の階層を構築してください",
       "membersLabel": "チームメンバー",
-      "membersDesc": "各行はメンバーを表し、Writer 権限と通信設定は互いに独立しています。名前は一意である必要があり、役割は専門性の説明にのみ使われます。",
+      "membersDesc": "各行はメンバーを表し、Writer 権限と通信設定は互いに独立しています。名前は一意である必要があり、役割は専門性の説明にのみ使われます",
       "memberName": "名前",
       "memberNamePlaceholder": "一意のルーティング名（例：SDE-1）",
       "memberNameDuplicate": "別のメンバーがすでにこの name を使用しています。組織内で name は一意である必要があります。",
@@ -1238,9 +1231,9 @@
       "descriptionPlaceholder": "この Agent は何をしますか？（任意）",
       "subAgentsTab": "Subagents",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
-      "maxToolUseConcurrencyDesc": "メッセージごとの同時 Tool 呼び出し数。デフォルト：10。",
+      "maxToolUseConcurrencyDesc": "メッセージごとの同時 Tool 呼び出し数。デフォルト：10",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
-      "subAgentWorktreeIsolationDesc": "一時 Git Worktree で実行（ファイルと Shell のアクセスを分離）。",
+      "subAgentWorktreeIsolationDesc": "一時 Git Worktree で実行（ファイルと Shell のアクセスを分離）",
       "addSubAgent": "Sub-Agent を追加...",
       "noSubAgents": "Sub-Agent は設定されていません。"
     },
@@ -1276,30 +1269,30 @@
     "applicableAgentsDesc": "このルールを適用する Agent（空 = 全 Agent）",
     "selectAgents": "Agent を選択…",
     "ruleSource": "ソース",
-    "ruleSourceDesc": "すべての Repo 向けの User 設定、または 1 つの Repo 専用ガイドラインを選択します。",
+    "ruleSourceDesc": "すべての Repo 向けの User 設定、または 1 つの Repo 専用ガイドラインを選択します",
     "ruleSourceUser": "User",
-    "ruleSourceUserDesc": "すべての Repo で利用できるユーザー設定です。",
+    "ruleSourceUserDesc": "すべての Repo で利用できるユーザー設定です",
     "ruleSourceRepo": "Repo",
-    "ruleSourceRepoDesc": "選択した 1 つの Repo に保存されるガイドラインです。",
+    "ruleSourceRepoDesc": "選択した 1 つの Repo に保存されるガイドラインです",
     "ruleRepo": "Repo",
     "ruleRepoDesc": "このガイドラインを適用する唯一の Repo",
     "selectRepo": "Repo を選択…",
     "ruleSourcePersonal": "パーソナル",
-    "ruleSourcePersonalDesc": "~/.orgii/personal/rules/ に保存。OS Agent / channel セッション専用。",
+    "ruleSourcePersonalDesc": "~/.orgii/personal/rules/ に保存。OS Agent / channel セッション専用",
     "findSkills": {
       "title": "Skillsを検索",
       "placeholder": "Skillsを検索...",
       "installs": "Installs",
       "emptyTitle": "Skillsを検索",
-      "emptySubtitle": "2文字以上入力してEnterキーを押すと、Skillsを検索できます。",
+      "emptySubtitle": "2文字以上入力してEnterキーを押すと、Skillsを検索できます",
       "noResults": "Skillsが見つかりません",
-      "noResultsDesc": "別の検索語を試してください。"
+      "noResultsDesc": "別の検索語を試してください"
     },
     "importAgentTitle": "他の apps から Agents をインポート",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agents",
     "emptySelectionTitle": "メンバーまたは Agent チームを選択",
-    "emptySelectionSubtitle": "サイドバーから Agent または Agent チームを選択して表示・設定します。",
+    "emptySelectionSubtitle": "サイドバーから Agent または Agent チームを選択して表示・設定します",
     "applicableWorkspace": "適用 Workspace",
     "tableTabs": {
       "agents": "Agents",
@@ -1332,18 +1325,18 @@
     "cliManagedConfig": {
       "title": "CLI 設定の切り替え",
       "modeLabel": "モード",
-      "modeDesc": "デフォルトは CLI 自身の設定を復元します。ORG2 管理はバックアップ付きのプロキシ設定を書き込みます。",
+      "modeDesc": "デフォルトは CLI 自身の設定を復元します。ORG2 管理はバックアップ付きのプロキシ設定を書き込みます",
       "modeDefault": "デフォルト",
       "modeOrgii": "ORG2 管理",
       "conflict": "外部変更",
       "conflictTitle": "競合",
-      "conflictDesc": "ORG2 が書き込んだ後にアクティブな CLI 設定が変更されました。",
+      "conflictDesc": "ORG2 が書き込んだ後にアクティブな CLI 設定が変更されました",
       "proxyStatus": "プロキシ",
       "proxyDefault": "デフォルトモード",
       "proxyReady": "プロキシ準備完了",
       "proxyNotReady": "プロキシ未準備",
       "keyLabel": "キー",
-      "keyDesc": "この CLI と管理プロキシに対応する API キーのみ表示されます。",
+      "keyDesc": "この CLI と管理プロキシに対応する API キーのみ表示されます",
       "selectKey": "キーを選択",
       "modelLabel": "モデル",
       "selectModel": "モデルを選択",
@@ -1356,7 +1349,7 @@
       "forceRestore": "強制復元",
       "applySuccess": "ORG2 管理設定を適用しました",
       "restoreSuccess": "デフォルト設定を復元しました",
-      "proxyLifecycleDesc": "このモードの使用中は ORG2 を起動したままにしてください。ウィンドウを閉じてもプロキシはトレイで動作し続けます。ORG2 を終了すると、設定が外部で変更されていない限りデフォルトに安全に復元されます。"
+      "proxyLifecycleDesc": "このモードの使用中は ORG2 を起動したままにしてください。ウィンドウを閉じてもプロキシはトレイで動作し続けます。ORG2 を終了すると、設定が外部で変更されていない限りデフォルトに安全に復元されます"
     }
   },
   "databases": {
@@ -1546,7 +1539,7 @@
       "elapsed": "合計時間: {{value}}s"
     },
     "title": "常駐 Housekeeper",
-    "description": "ローカルの MiniCPM がプロンプトの推敲、短いステップ説明、軽量な UI 操作を担当します。コーディングタスクや複雑な ADE 設定は引き続きメインの Agent モデルを使用します。",
+    "description": "ローカルの MiniCPM がプロンプトの推敲、短いステップ説明、軽量な UI 操作を担当します。コーディングタスクや複雑な ADE 設定は引き続きメインの Agent モデルを使用します",
     "autoAccount": "MiniCPM vLLM アカウントを自動選択",
     "tiles": {
       "model": "モデル",
@@ -1556,37 +1549,37 @@
     "settings": {
       "enabled": {
         "title": "Housekeeper を有効にする",
-        "description": "無効にすると、プロンプトの推敲、ステップ説明、軽量な UI 操作に MiniCPM を使用しません。"
+        "description": "無効にすると、プロンプトの推敲、ステップ説明、軽量な UI 操作に MiniCPM を使用しません"
       },
       "account": {
         "title": "vLLM MiniCPM アカウント",
-        "description": "既存の KeyVault vllm_api アカウントを再利用します。別の認証情報ストアは作成されません。"
+        "description": "既存の KeyVault vllm_api アカウントを再利用します。別の認証情報ストアは作成されません"
       },
       "model": {
         "title": "モデル ID",
-        "description": "Docker vLLM MiniCPM5-1B のデフォルトは openbmb/MiniCPM5-1B です。"
+        "description": "Docker vLLM MiniCPM5-1B のデフォルトは openbmb/MiniCPM5-1B です"
       },
       "context": {
         "title": "安全なコンテキスト予算",
-        "description": "理論上の 32k 上限を信頼せず、4GB GPU では控えめな 10000 トークンの予算を使用します。"
+        "description": "理論上の 32k 上限を信頼せず、4GB GPU では控えめな 10000 トークンの予算を使用します"
       }
     },
     "features": {
       "promptPolish": {
         "title": "プロンプトの推敲",
-        "description": "より高性能なコーディングモデルに送信する前に、入力を手動で推敲します。"
+        "description": "より高性能なコーディングモデルに送信する前に、入力を手動で推敲します"
       },
       "stepExplain": {
         "title": "Agent ステップの説明",
-        "description": "セッション再生のステップに対して 1〜2 文の短い中国語の説明を生成します。"
+        "description": "セッション再生のステップに対して 1〜2 文の短い中国語の説明を生成します"
       },
       "uiControl": {
         "title": "軽量な ADE/UI 操作",
-        "description": "MiniCPM はリクエストを厳格なローカル操作ホワイトリストに分類することのみ許可されます。"
+        "description": "MiniCPM はリクエストを厳格なローカル操作ホワイトリストに分類することのみ許可されます"
       },
       "contextCompact": {
         "title": "コンテキストの自動メンテナンス",
-        "description": "有効化されたセッションがアイドル中に、MiniCPM が古いコンテキストの独立したローリング要約を維持します。"
+        "description": "有効化されたセッションがアイドル中に、MiniCPM が古いコンテキストの独立したローリング要約を維持します"
       }
     }
   },
@@ -1657,13 +1650,21 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "インポートに失敗しました: {{message}}",
-    "partialFailure": "一部の認証情報をインポートできませんでした:"
+    "partialFailure": "一部の認証情報をインポートできませんでした:",
+    "importSucceeded": "アカウントに保存しました：{{names}}。インポートした認証情報は再利用可能な接続として使用できます。"
   },
   "skills": {
     "shareToOrg": "組織に共有",
     "share": "共有",
     "sharedToOrg": "Skill を組織に共有しました",
-    "shareToOrgHint": "組織のメンバーはこの Skill の現在のスナップショットを受け取ります。編集後に再度共有すると更新が公開されます。",
+    "shareToOrgHint": "組織のメンバーはこの Skill の現在のスナップショットを受け取ります。編集後に再度共有すると更新が公開されます",
     "shareOrgPlaceholder": "組織"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Loading official packages…",
+    "purchasesFailed": "Could not load official packages. Try again.",
+    "failed": "Market に接続できませんでした。もう一度お試しください。",
+    "title": "Official packages",
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

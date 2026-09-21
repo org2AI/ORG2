@@ -6,7 +6,6 @@ pub mod symbol_search;
 pub mod text_search;
 pub mod types;
 
-pub use cache::*;
 pub use helpers::*;
 pub use symbol_search::*;
 pub use text_search::*;

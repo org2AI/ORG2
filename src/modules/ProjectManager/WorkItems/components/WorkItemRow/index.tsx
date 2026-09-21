@@ -359,8 +359,6 @@ const WorkItemRow: React.FC<WorkItemRowProps> = React.memo(
           {isInteractive ? (
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               className="min-w-0 flex-1 text-left"
               aria-label={workItem.name || t("workItems.untitledWorkItem")}
               onClick={(event) => {
@@ -412,9 +410,9 @@ const WorkItemRow: React.FC<WorkItemRowProps> = React.memo(
 
           {isDeleted && onRestore && (
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
+              hoverTone="primary"
               className="ml-2 inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary-6 transition-colors hover:bg-primary-1"
               onClick={handleRestore}
               icon={

@@ -1,6 +1,5 @@
 import type { ReactNode, RefObject } from "react";
 
-import ComposerSurface from "@src/components/ComposerSurface";
 import Input from "@src/components/Input";
 import { GHOST_INPUT_PLACEHOLDER_CLASS } from "@src/components/Input/tokens";
 import {
@@ -9,6 +8,7 @@ import {
 } from "@src/components/PropertyField/PropertyDropdownDirection";
 import { COMPOSER_HORIZONTAL_GUTTER_CLASS } from "@src/config/composerStackTokens";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
+import ComposerSurface from "@src/engines/ChatPanel/ComposerSurface";
 
 export interface CreateComposerTitleInputProps {
   /**

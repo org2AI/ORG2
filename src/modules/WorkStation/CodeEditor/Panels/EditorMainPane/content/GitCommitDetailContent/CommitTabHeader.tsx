@@ -1,15 +1,11 @@
 import { useAtom, useAtomValue } from "jotai";
-import React, { memo, useCallback, useMemo } from "react";
+import React, { memo, useMemo } from "react";
 
 import type { CommitDiffResult } from "@src/api/http/git/types";
 import DiffStatsBadge from "@src/components/DiffStatsBadge";
+import BreadcrumbFileHeader from "@src/features/FileHeader/BreadcrumbFileHeader";
+import { useEditorDisplayToggles } from "@src/hooks/settings/useEditorDisplayToggles";
 import { FileHeader } from "@src/modules/WorkStation/shared";
-import BreadcrumbFileHeader from "@src/modules/shared/components/FileHeader/BreadcrumbFileHeader";
-import {
-  editorHighlightActiveLineAtom,
-  editorLineNumbersAtom,
-  editorWordWrapAtom,
-} from "@src/store/ui/editorSettingsAtom";
 import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { diffViewModeAtom } from "@src/store/workstation/codeEditor";
 import { formatCompactAge } from "@src/util/time/formatRelativeTime";
@@ -37,16 +33,8 @@ export const CommitTabHeader: React.FC<CommitTabHeaderProps> = memo(
     onOpenInNewTab,
   }) {
     const [viewMode, setViewMode] = useAtom(diffViewModeAtom);
-    const [lineNumbers, setLineNumbers] = useAtom(editorLineNumbersAtom);
-    const [wordWrap, setWordWrap] = useAtom(editorWordWrapAtom);
-    const [highlightActiveLine, setHighlightActiveLine] = useAtom(
-      editorHighlightActiveLineAtom
-    );
+    const toggles = useEditorDisplayToggles();
     const { onOpenSettings } = useAtomValue(activeStatusBarCallbacksAtom);
-    const handleLineNumbersChange = useCallback(
-      (enabled: boolean) => setLineNumbers(enabled ? "on" : "off"),
-      [setLineNumbers]
-    );
     const metadata = useMemo(
       () =>
         commitDiff?.author || commitDiff?.stats ? (
@@ -94,13 +82,14 @@ export const CommitTabHeader: React.FC<CommitTabHeaderProps> = memo(
         metadata={metadata}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        lineNumbersEnabled={lineNumbers !== "off"}
-        onLineNumbersChange={handleLineNumbersChange}
-        wordWrapEnabled={wordWrap}
-        onWordWrapChange={setWordWrap}
-        highlightActiveLineEnabled={highlightActiveLine}
-        onHighlightActiveLineChange={setHighlightActiveLine}
+        lineNumbersEnabled={toggles.lineNumbersEnabled}
+        onLineNumbersChange={toggles.onLineNumbersChange}
+        wordWrapEnabled={toggles.wordWrapEnabled}
+        onWordWrapChange={toggles.onWordWrapChange}
+        highlightActiveLineEnabled={toggles.highlightActiveLineEnabled}
+        onHighlightActiveLineChange={toggles.onHighlightActiveLineChange}
         onMoreSettings={onOpenSettings}
+        showSidebarSettings={publishToWorkstationHeader}
         onClose={onClose}
         onOpenInNewTab={onOpenInNewTab}
         publishToHost={publishToWorkstationHeader ? "code" : undefined}

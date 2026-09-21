@@ -35,6 +35,7 @@ pub(crate) async fn create_session_impl(
     workspace_path: String,
     model: Option<String>,
     account_id: Option<String>,
+    credential_source: Option<String>,
     name: Option<String>,
     org_id: Option<String>,
     project_id: Option<String>,
@@ -148,7 +149,15 @@ pub(crate) async fn create_session_impl(
     } else {
         None
     };
+    if credential_source.is_some() && (account_id.is_some() || native_harness_type.is_some()) {
+        return Err("Conflicting session credential owners".into());
+    }
     let resolved_product_mode = if let Some(existing) = existing {
+        if existing.credential_source != credential_source
+            || (credential_source.is_some() && existing.account_id != account_id)
+        {
+            return Err("Durable session belongs to a different credential source".into());
+        }
         if existing.work_item_id != wid_for_link || existing.project_slug != slug_for_link {
             return Err(format!(
                 "durable session {} belongs to a different Work Item",
@@ -180,6 +189,7 @@ pub(crate) async fn create_session_impl(
             status: crate::session::SessionStatus::Idle.as_str().to_owned(),
             model: Some(effective_model.clone()),
             account_id,
+            credential_source,
             workspace_path: Some(workspace_path.clone()),
             org_id: Some(resolved_org_id),
             project_id,

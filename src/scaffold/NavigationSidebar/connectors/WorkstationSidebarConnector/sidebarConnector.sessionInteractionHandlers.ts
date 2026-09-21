@@ -2,7 +2,7 @@
  * Session-row interaction handlers for `WorkstationSidebarConnector`
  * (`index.tsx`): the cloud "My Conversations" pagination click (wrapping
  * `useWorkstationSidebarHandlers`' generic click routing), open-in-new-tab
- * / open-in-My-Station / open-linked-work-item-session, and the subagent
+ * / open-in-My-Station / open-in-new-window, and the subagent
  * fork-thread expand/collapse toggle.
  */
 import { useCallback } from "react";
@@ -212,26 +212,6 @@ export function useWorkstationSidebarSessionInteractionHandlers({
     [openSessionInNewWindow, sessionMap]
   );
 
-  const handleOpenLinkedWorkItemSession = useCallback(
-    (item: NavigationMenuItem) => {
-      if (sessionMap.has(item.id)) {
-        handleMenuItemClick(item.key, item);
-        return;
-      }
-      activateMyStationRouteForProjectTabContent();
-      openSessionInWorkstation({
-        sessionId: item.id,
-        title: item.label,
-      });
-    },
-    [
-      activateMyStationRouteForProjectTabContent,
-      handleMenuItemClick,
-      openSessionInWorkstation,
-      sessionMap,
-    ]
-  );
-
   const handleToggleSubagentExpansion = useCallback(
     (sessionId: string) => {
       setExpandedSubagentParentIds((previousIds) => {
@@ -255,7 +235,6 @@ export function useWorkstationSidebarSessionInteractionHandlers({
     handleOpenInNewTab,
     handleOpenInMyStation,
     handleOpenInNewWindow,
-    handleOpenLinkedWorkItemSession,
     handleToggleSubagentExpansion,
   };
 }

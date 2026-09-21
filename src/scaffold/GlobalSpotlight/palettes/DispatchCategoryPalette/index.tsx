@@ -20,6 +20,7 @@ import { CLI_LAUNCH_MODE, type CliLaunchMode } from "@src/store/session";
 
 import { ManageAgentsFooterAction } from "../../components";
 import { useAccountFooterForHovered } from "../../hooks";
+import { usePinnedSpotlightItems } from "../../pinning/usePinnedSpotlightItems";
 import { PaletteBody, ShellFooterAction, SpotlightShell } from "../../shell";
 import type { PathSegment, SpotlightItem } from "../../types";
 import { CliAgentListFilterSwitch } from "./CliAgentListFilterSwitch";
@@ -89,13 +90,15 @@ export const DispatchCategoryPalette: React.FC<
 
   const isSearching = searchQuery.trim().length > 0;
 
-  const items = useMemo(
+  const groupedItems = useMemo(
     (): SpotlightItem[] =>
       isSearching
         ? filteredOptions.map((option) => optionToItem(option))
         : buildGroupedSpotlightItems(groups, optionToItem),
     [isSearching, filteredOptions, groups, optionToItem]
   );
+  // Search results stay in match order; pins lead the grouped list only.
+  const items = usePinnedSpotlightItems(groupedItems, "agents", !isSearching);
 
   // ============ KERNEL ============
 
@@ -195,7 +198,7 @@ export const DispatchCategoryPalette: React.FC<
   }, [titleLabel, titleIcon, tCommon]);
 
   return (
-    <SpotlightShell isOpen={isOpen} onClose={onClose}>
+    <SpotlightShell isOpen={isOpen} onClose={onClose} pinScope="agents">
       <PaletteBody
         kernel={kernel}
         items={items}

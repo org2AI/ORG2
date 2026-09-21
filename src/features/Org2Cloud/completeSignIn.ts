@@ -53,6 +53,9 @@ export function completeOrg2CloudSignIn(
     accessToken: callback.accessToken,
     refreshToken: callback.refreshToken,
     expiresAt: callback.expiresAt,
+    ...(callback.oauthClientId
+      ? { oauthClientId: callback.oauthClientId }
+      : {}),
   };
   setAuth(state);
   Message.success(i18n.t("navigation:cloud.signedInToast"));

@@ -11,68 +11,26 @@
  * - Intersection observer for lazy syntax highlighting
  * - Virtual scrolling for large code blocks (>100 lines)
  */
-import React, { Suspense, lazy, memo, useCallback } from "react";
+import React, { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
-import DiffStatsBadge from "@src/components/DiffStatsBadge";
-import ExpandOverlay from "@src/components/ExpandOverlay";
-import { FileTreeHoverPreview } from "@src/components/FileTreePreview/exports";
-import FileTypeIcon from "@src/components/FileTypeIcon";
 import {
   useIsSessionFileShared,
   useOpenSessionSharedFile,
 } from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
-import {
-  Copy01Icon,
-  HugeiconsIcon,
-  SquareArrowUpRight02Icon,
-  Tick01Icon,
-  ViewIcon,
-  ViewOffIcon,
-} from "@src/icons";
 import { copyText } from "@src/util/data/clipboard";
 import { openFileInEditor as openLocalFileInEditor } from "@src/util/ui/openFileInEditor";
 
-import {
-  EVENT_BLOCK_FADE_FROM,
-  EVENT_BLOCK_TRANSPARENT_EXPANDED_SHELL_CLASSES,
-  EVENT_LOADING_SHIMMER_TEXT_CLASSES,
-  EVENT_SNIPPET_INNER_PADDING_CLASS,
-  EventBlockHeader,
-  EventBlockHeaderIcon,
-  EventBlockHeaderSubtitle,
-  getEventBlockContainerClasses,
-} from "../primitives";
+import { getEventBlockContainerClasses } from "../primitives";
 import { useBlockHeader } from "../useBlockLocate";
+import { CodeBlockBody } from "./CodeBlockBody";
+import { CodeBlockHeader } from "./CodeBlockHeader";
+import { CodeBlockFloatingToolbar } from "./CodeBlockToolbarButtons";
 import CodePreview from "./CodePreview";
-import { STYLE_CONFIG } from "./config";
 import type { ParsedDiff } from "./diffParser";
 import "./index.scss";
 import { useCodeBlockState } from "./useCodeBlockState";
-
-// Lazy so the highlight engine (react-syntax-highlighter / Prism) loads
-// with the first rendered code block, not with the ChatPanel startup graph.
-const ModernCodeViewer = lazy(
-  () => import("@src/features/CodeViewer/ModernCodeViewer")
-);
-const VirtualizedModernDiff = lazy(() =>
-  import("@src/features/CodeViewer/VirtualizedModernDiff").then((module) => ({
-    default: module.VirtualizedModernDiff,
-  }))
-);
-
-// ============================================
-// Constants
-// ============================================
-
-const TRAILING_TAG_TONE_CLASS = {
-  success: "font-medium text-success-6",
-  danger: "font-medium text-danger-6",
-  muted: "font-medium text-text-3",
-  secondary: "font-medium text-text-2",
-} as const;
 
 // ============================================
 // Types
@@ -230,433 +188,78 @@ const ChatCodeBlock: React.FC<ChatCodeBlockProps> = memo(
     return (
       <div className={containerClass}>
         {!hideHeader && (
-          <EventBlockHeader
+          <CodeBlockHeader
+            actionIcon={actionIcon}
+            actionTitle={actionTitle}
+            addedLines={addedLines}
+            code={code}
+            copied={copied}
+            displayTitle={displayTitle}
+            eventId={eventId}
+            filePath={filePath}
+            handleCopyContent={handleCopyContent}
+            handleHeaderClick={handleHeaderClick}
+            handleHeaderMouseEnter={handleHeaderMouseEnter}
+            handleHeaderMouseLeave={handleHeaderMouseLeave}
+            handleLocate={handleLocate}
+            handleOpenFile={handleOpenFile}
+            handleTogglePreview={handleTogglePreview}
+            hasContent={hasContent}
+            iconFileName={iconFileName}
             isCollapsed={isCollapsed}
-            className={
-              useTerminalLayout || isCollapsed || (isLoading && !code)
-                ? "border-b border-solid border-transparent"
-                : "border-b border-solid border-border-1"
-            }
-            onToggleCollapse={hasContent ? handleHeaderClick : undefined}
-            onNavigate={
-              eventId && !shouldShowCopyButton ? handleLocate : undefined
-            }
-            onMouseEnter={handleHeaderMouseEnter}
-            onMouseLeave={handleHeaderMouseLeave}
-            withHover={!useTerminalLayout && hasContent}
-          >
-            <EventBlockHeaderIcon
-              icon={
-                actionIcon || (
-                  <FileTypeIcon
-                    fileName={iconFileName}
-                    size="small"
-                    className="text-primary-6"
-                  />
-                )
-              }
-              isCollapsed={isCollapsed}
-              isHeaderHovered={isHeaderHovered}
-              iconSize={16}
-              hasContent={hasContent}
-              isLoading={isLoading}
-              isFailed={isFailed}
-            />
-
-            {actionTitle && (
-              <span
-                className={`shrink-0 ${isLoading ? `font-bold ${EVENT_LOADING_SHIMMER_TEXT_CLASSES}` : "font-medium text-text-1"}`}
-              >
-                {actionTitle}
-              </span>
-            )}
-
-            {!useTerminalLayout && (
-              <>
-                {filePath ? (
-                  showFileTreeHover && !shared ? (
-                    <FileTreeHoverPreview
-                      path={filePath}
-                      itemType="file"
-                      className="flex-initial"
-                    >
-                      <div
-                        className={`min-w-0 cursor-pointer truncate hover:underline ${
-                          isLoading
-                            ? `font-bold ${EVENT_LOADING_SHIMMER_TEXT_CLASSES}`
-                            : actionTitle
-                              ? "text-text-2"
-                              : "font-medium text-text-1"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openFileInEditor(filePath);
-                        }}
-                      >
-                        {displayTitle}
-                      </div>
-                    </FileTreeHoverPreview>
-                  ) : (
-                    <div
-                      className={`min-w-0 flex-initial cursor-pointer truncate hover:underline ${
-                        isLoading
-                          ? `font-bold ${EVENT_LOADING_SHIMMER_TEXT_CLASSES}`
-                          : actionTitle
-                            ? "text-text-2"
-                            : "font-medium text-text-1"
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openFileInEditor(filePath);
-                      }}
-                    >
-                      {displayTitle}
-                    </div>
-                  )
-                ) : (
-                  <div
-                    className={`min-w-0 flex-initial truncate ${
-                      isLoading
-                        ? `font-bold ${EVENT_LOADING_SHIMMER_TEXT_CLASSES}`
-                        : actionTitle
-                          ? "text-text-2"
-                          : "font-medium text-text-1"
-                    }`}
-                  >
-                    {displayTitle}
-                  </div>
-                )}
-
-                {subtitle && (
-                  <EventBlockHeaderSubtitle
-                    isLoading={isLoading}
-                    title={subtitle}
-                  >
-                    {subtitle}
-                  </EventBlockHeaderSubtitle>
-                )}
-
-                {(shouldShowLineCount ||
-                  (trailingTags && trailingTags.length > 0)) && (
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    {shouldShowLineCount && (
-                      <DiffStatsBadge
-                        additions={addedLines}
-                        deletions={removedLines}
-                        variant="plain"
-                        gapClassName="gap-0"
-                        className="translate-y-px"
-                      />
-                    )}
-                    {trailingTags?.map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className={TRAILING_TAG_TONE_CLASS[tag.tone]}
-                      >
-                        {tag.text}
-                      </span>
-                    ))}
-                  </span>
-                )}
-
-                {shouldShowOpenButton && (
-                  <Button
-                    variant="tertiary"
-                    appearance="soft"
-                    size="mini"
-                    iconOnly
-                    icon={
-                      <HugeiconsIcon
-                        icon={SquareArrowUpRight02Icon}
-                        data-icon="square-arrow-out-up-right"
-                        size={14}
-                        strokeWidth={1.75}
-                      />
-                    }
-                    htmlType="button"
-                    title={t("common:actions.open")}
-                    aria-label={t("common:actions.open")}
-                    className="ml-auto shrink-0 bg-event-block hover:bg-fill-3 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
-                    onClick={handleOpenFile}
-                  />
-                )}
-
-                {shouldShowCopyButton && (
-                  <Button
-                    variant="tertiary"
-                    appearance="soft"
-                    size="mini"
-                    iconOnly
-                    icon={
-                      copied ? (
-                        <HugeiconsIcon
-                          icon={Tick01Icon}
-                          data-icon="check"
-                          size={14}
-                          strokeWidth={1.75}
-                        />
-                      ) : (
-                        <HugeiconsIcon
-                          icon={Copy01Icon}
-                          data-icon="copy"
-                          size={14}
-                          strokeWidth={1.75}
-                        />
-                      )
-                    }
-                    htmlType="button"
-                    title={
-                      copied
-                        ? t("common:status.copied")
-                        : t("common:actions.copy")
-                    }
-                    aria-label={
-                      copied
-                        ? t("common:status.copied")
-                        : t("common:actions.copy")
-                    }
-                    className={`inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-event-block p-0 text-text-3 transition-colors hover:bg-fill-3 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none ${
-                      shouldShowOpenButton ? "" : "ml-auto"
-                    }`}
-                    onClick={handleCopyContent}
-                  />
-                )}
-
-                {isPreviewable && (
-                  <Button
-                    layout="custom"
-                    appearance="custom"
-                    htmlType="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTogglePreview();
-                    }}
-                    className={`flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium transition-colors ${
-                      shouldShowCopyButton || shouldShowOpenButton
-                        ? ""
-                        : "ml-auto"
-                    } ${
-                      isPreviewOpen
-                        ? "bg-primary-6/15 text-primary-6 hover:bg-primary-6/25"
-                        : "text-text-4 hover:bg-fill-3 hover:text-text-2"
-                    }`}
-                    title={
-                      isPreviewOpen
-                        ? t("codePreview.hidePreview")
-                        : t("codePreview.showPreview")
-                    }
-                  >
-                    {isPreviewOpen ? (
-                      <HugeiconsIcon
-                        icon={ViewOffIcon}
-                        data-icon="eye-off"
-                        size={11}
-                      />
-                    ) : (
-                      <HugeiconsIcon
-                        icon={ViewIcon}
-                        data-icon="eye"
-                        size={11}
-                      />
-                    )}
-                    {t("codePreview.preview")}
-                  </Button>
-                )}
-              </>
-            )}
-          </EventBlockHeader>
+            isFailed={isFailed}
+            isHeaderHovered={isHeaderHovered}
+            isLoading={isLoading}
+            isPreviewOpen={isPreviewOpen}
+            isPreviewable={isPreviewable}
+            openFileInEditor={openFileInEditor}
+            removedLines={removedLines}
+            shared={shared}
+            shouldShowCopyButton={shouldShowCopyButton}
+            shouldShowLineCount={shouldShowLineCount}
+            shouldShowOpenButton={shouldShowOpenButton}
+            showFileTreeHover={showFileTreeHover}
+            subtitle={subtitle}
+            t={t}
+            trailingTags={trailingTags}
+            useTerminalLayout={useTerminalLayout}
+          />
         )}
 
         {shouldShowFloatingToolbar && (
-          <div className="absolute top-[16px] right-1.5 z-10 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-            <div className="flex items-center gap-1">
-              {shouldShowOpenButton && (
-                <Button
-                  variant="tertiary"
-                  appearance="soft"
-                  size="mini"
-                  iconOnly
-                  icon={
-                    <HugeiconsIcon
-                      icon={SquareArrowUpRight02Icon}
-                      data-icon="square-arrow-out-up-right"
-                      size={14}
-                      strokeWidth={1.75}
-                    />
-                  }
-                  htmlType="button"
-                  title={t("common:actions.open")}
-                  aria-label={t("common:actions.open")}
-                  className="bg-event-block hover:bg-fill-3 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
-                  onClick={handleOpenFile}
-                />
-              )}
-              {shouldShowCopyButton && (
-                <Button
-                  variant="tertiary"
-                  appearance="soft"
-                  size="mini"
-                  iconOnly
-                  icon={
-                    copied ? (
-                      <HugeiconsIcon
-                        icon={Tick01Icon}
-                        data-icon="check"
-                        size={14}
-                        strokeWidth={1.75}
-                      />
-                    ) : (
-                      <HugeiconsIcon
-                        icon={Copy01Icon}
-                        data-icon="copy"
-                        size={14}
-                        strokeWidth={1.75}
-                      />
-                    )
-                  }
-                  htmlType="button"
-                  title={
-                    copied
-                      ? t("common:status.copied")
-                      : t("common:actions.copy")
-                  }
-                  aria-label={
-                    copied
-                      ? t("common:status.copied")
-                      : t("common:actions.copy")
-                  }
-                  className="bg-event-block hover:bg-fill-3 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
-                  onClick={handleCopyContent}
-                />
-              )}
-            </div>
-          </div>
+          <CodeBlockFloatingToolbar
+            copied={copied}
+            handleCopyContent={handleCopyContent}
+            handleOpenFile={handleOpenFile}
+            shouldShowCopyButton={shouldShowCopyButton}
+            shouldShowOpenButton={shouldShowOpenButton}
+            t={t}
+          />
         )}
 
         {hasContent && !isCollapsed && !(isLoading && !code) && (
-          <div
-            ref={
-              isLoading && !useTerminalLayout ? streamingWrapperRef : undefined
-            }
-            className={
-              useTerminalLayout
-                ? EVENT_BLOCK_TRANSPARENT_EXPANDED_SHELL_CLASSES
-                : `group/expand relative ${isLoading ? "scrollbar-hide" : isExpanded && needsExpand ? "scrollbar-hide" : ""}`
-            }
-            style={
-              useTerminalLayout
-                ? undefined
-                : isLoading
-                  ? {
-                      maxHeight: (visibleLines ?? 15) * 18 + 16,
-                      overflowY: "auto",
-                      overflowX: "hidden",
-                      transition: `opacity ${STYLE_CONFIG.animationDuration}ms ease-out`,
-                    }
-                  : {
-                      opacity: isCollapsed ? 0 : 1,
-                      overflow:
-                        isExpanded && needsExpand ? undefined : "hidden",
-                      maxHeight:
-                        isExpanded && needsExpand
-                          ? "40vh"
-                          : needsExpand
-                            ? contentHeight
-                            : undefined,
-                      overflowY: isExpanded && needsExpand ? "auto" : undefined,
-                      overflowX:
-                        isExpanded && needsExpand ? "hidden" : undefined,
-                      transition: `opacity ${STYLE_CONFIG.animationDuration}ms ease-out`,
-                    }
-            }
-          >
-            {useTerminalLayout && filePath && (
-              <div
-                className={`flex items-center gap-2 ${EVENT_SNIPPET_INNER_PADDING_CLASS}`}
-              >
-                <FileTypeIcon
-                  fileName={filePath}
-                  size="small"
-                  className="shrink-0 text-text-2"
-                />
-                <span
-                  className="min-w-0 flex-1 cursor-pointer truncate text-text-1 hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openFileInEditor(filePath);
-                  }}
-                >
-                  {displayTitle}
-                </span>
-              </div>
-            )}
-
-            <div
-              className={
-                useTerminalLayout
-                  ? "relative border-t border-solid border-border-1 pt-1"
-                  : "py-1"
-              }
-            >
-              <div className="chat-code-block__code-container scrollbar-overlay w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden">
-                <Suspense
-                  fallback={
-                    <div
-                      aria-hidden
-                      style={{
-                        height:
-                          isDiff || !useVirtualScroll
-                            ? contentHeight
-                            : virtualListHeight,
-                      }}
-                    />
-                  }
-                >
-                  {isDiff && displayedDiff ? (
-                    <VirtualizedModernDiff
-                      oldValue={displayedDiff.oldValue}
-                      newValue={displayedDiff.newValue}
-                      filePath={filePath}
-                      height={contentHeight}
-                      width={containerWidth}
-                      collapseUnchanged={true}
-                      contextLines={2}
-                      showFilePath={false}
-                      showStatsBar={false}
-                      showLineNumbers={false}
-                      internalScroll={false}
-                      noWrapper={true}
-                      allowExpand={false}
-                      indicatorStyle="border"
-                      className="chat-event-diff"
-                      oldStartLine={displayedDiff.oldStartLine}
-                      newStartLine={displayedDiff.newStartLine}
-                    />
-                  ) : (
-                    <ModernCodeViewer
-                      content={useVirtualScroll ? code : displayedCode}
-                      language={detectedLanguage}
-                      showLineNumbers={false}
-                      internalScroll={useVirtualScroll}
-                      height={
-                        useVirtualScroll ? virtualListHeight : contentHeight
-                      }
-                      width={containerWidth}
-                      noWrapper={true}
-                    />
-                  )}
-                </Suspense>
-              </div>
-
-              {needsExpand && !isLoading && (
-                <ExpandOverlay
-                  isExpanded={isExpanded}
-                  onToggle={() => setIsExpanded(!isExpanded)}
-                  fadeFrom={EVENT_BLOCK_FADE_FROM}
-                />
-              )}
-            </div>
-          </div>
+          <CodeBlockBody
+            code={code}
+            containerWidth={containerWidth}
+            contentHeight={contentHeight}
+            detectedLanguage={detectedLanguage}
+            displayTitle={displayTitle}
+            displayedCode={displayedCode}
+            displayedDiff={displayedDiff}
+            filePath={filePath}
+            isCollapsed={isCollapsed}
+            isDiff={isDiff}
+            isExpanded={isExpanded}
+            isLoading={isLoading}
+            needsExpand={needsExpand}
+            openFileInEditor={openFileInEditor}
+            setIsExpanded={setIsExpanded}
+            streamingWrapperRef={streamingWrapperRef}
+            useTerminalLayout={useTerminalLayout}
+            useVirtualScroll={useVirtualScroll}
+            virtualListHeight={virtualListHeight}
+            visibleLines={visibleLines}
+          />
         )}
 
         {isPreviewable && isPreviewOpen && (

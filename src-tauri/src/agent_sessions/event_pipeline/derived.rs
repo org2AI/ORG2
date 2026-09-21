@@ -61,6 +61,14 @@ fn is_live_runtime_resource_event(event: &SessionEvent) -> bool {
 ///
 /// Mirrors JS `isVisibleInChat` from `normalizers.ts`.
 pub fn is_visible_in_chat(event: &SessionEvent) -> bool {
+    if event.action_type == "queued_retry_audit_boundary"
+        && event.source == EventSource::System
+        && event.function_name == "system"
+        && event.result["retryAuditBoundary"]["version"] == 1
+        && event.result["retryAuditBoundary"]["sourceEventId"].as_str() == Some(event.id.as_str())
+    {
+        return true;
+    }
     // NOTE: thinking deltas (is_delta=true, variant=Thinking) are now allowed
     // through so the chat panel can show a live streaming cursor while the
     // model reasons. The ThinkingEvent component already supports isStreaming.
@@ -73,10 +81,7 @@ pub fn is_visible_in_chat(event: &SessionEvent) -> bool {
     }
 
     // Hide task lifecycle and stage errors from chat (no UI components)
-    if matches!(
-        event.action_type.as_str(),
-        "native_command_catalog" | "task_start" | "task_completed" | "task_failed" | "stage_error"
-    ) {
+    if core_types::session_event::is_internal_lifecycle_action_type(&event.action_type) {
         return false;
     }
 
@@ -283,6 +288,137 @@ fn build_simulator_preview_indexes_from_iter<'a>(
     }
 }
 
+/// A queue retry may replace only explicitly linked empty failed attempts.
+/// This mirrors effectiveQueuedRetryEvents; equal message text is irrelevant.
+pub(crate) type RetryPromptIdentities<'a> = (
+    std::collections::HashSet<(&'a str, &'a str)>,
+    std::collections::HashSet<&'a str>,
+);
+
+pub(crate) fn superseded_retry_intents(events: &[SessionEvent]) -> RetryPromptIdentities<'_> {
+    let mut sources = std::collections::HashSet::new();
+    let mut owners = std::collections::HashSet::new();
+    for event in events
+        .iter()
+        .filter(|event| event.action_type == "queued_retry_lineage")
+    {
+        let Some(lineage) = core_types::session_event::queued_retry_lineage_data(
+            &event.action_type,
+            &event.id,
+            &event.result,
+        ) else {
+            continue;
+        };
+        let Some(attempts) = lineage
+            .get("superseded")
+            .and_then(serde_json::Value::as_array)
+        else {
+            continue;
+        };
+        for attempt in attempts {
+            let Some(intent) = attempt
+                .get("turnIntentId")
+                .and_then(serde_json::Value::as_str)
+                .filter(|value| !value.is_empty())
+            else {
+                continue;
+            };
+            let Some(runner) = attempt
+                .get("sessionId")
+                .and_then(serde_json::Value::as_str)
+                .filter(|value| !value.is_empty())
+            else {
+                continue;
+            };
+            if let Some(ids) = attempt
+                .get("sourceEventIds")
+                .and_then(serde_json::Value::as_array)
+            {
+                sources.extend(ids.iter().filter_map(serde_json::Value::as_str));
+            }
+            owners.insert((runner, intent));
+            owners.insert((event.session_id.as_str(), intent));
+        }
+    }
+    (owners, sources)
+}
+
+pub(crate) fn is_superseded_retry_prompt(
+    event: &SessionEvent,
+    identities: &RetryPromptIdentities<'_>,
+) -> bool {
+    let (owners, sources) = identities;
+    if event.source != EventSource::User || (owners.is_empty() && sources.is_empty()) {
+        return false;
+    }
+    let intent = event
+        .result
+        .get("turnIntentId")
+        .and_then(serde_json::Value::as_str)
+        .filter(|id| !id.is_empty())
+        .or_else(|| {
+            event
+                .args
+                .get("conversationTurnId")
+                .and_then(serde_json::Value::as_str)
+                .filter(|id| !id.is_empty())
+        });
+    if intent.is_some_and(|intent| owners.contains(&(event.session_id.as_str(), intent))) {
+        return true;
+    }
+    // Mirrors nativeSourceEventId: preserve already-global provider identities,
+    // otherwise scope the raw event id by its original native session once.
+    let carried = event
+        .args
+        .get("__orgiiSourceEventId")
+        .and_then(serde_json::Value::as_str)
+        .filter(|id| id.starts_with("orgii_evt_"))
+        .or_else(|| {
+            event
+                .id
+                .starts_with("orgii_evt_")
+                .then_some(event.id.as_str())
+        });
+    if let Some(source) = carried {
+        return sources.contains(source);
+    }
+    let namespace = uuid::Uuid::from_u128(0x45de8858_d25d_51df_a7cf_c7dedcb6d0f1);
+    let identity = uuid::Uuid::new_v5(
+        &namespace,
+        format!("{}\0{}", event.session_id, event.id).as_bytes(),
+    );
+    sources.contains(format!("orgii_evt_{}", identity.simple()).as_str())
+}
+
+/// Replace a proven superseded prompt only in the effective snapshot. Keeping its
+/// structural position prevents the failed attempt's audit from moving to the
+/// preceding valid turn. EventStore/native history remains untouched.
+pub(crate) fn compact_retry_event_for_snapshot(
+    event: &SessionEvent,
+    superseded: bool,
+) -> SessionEvent {
+    let mut projected = compact_event_for_snapshot(event);
+    if superseded {
+        projected.source = EventSource::System;
+        projected.function_name = "system".into();
+        projected.action_type = "queued_retry_audit_boundary".into();
+        projected.ui_canonical = String::new();
+        projected.extracted = None;
+        projected.payload_refs.clear();
+        projected.display_text = String::new();
+        projected.display_variant = EventDisplayVariant::Session;
+        projected.display_status = EventDisplayStatus::Completed;
+        projected.args = serde_json::json!({});
+        if let Some(source_id) = event.args.get("__orgiiSourceEventId") {
+            projected.args["__orgiiSourceEventId"] = source_id.clone();
+        }
+        projected.result = serde_json::json!({
+            "retryAuditBoundary": {"version": 1, "sourceEventId": event.id}
+        });
+    }
+    projected
+}
+
 /// Compute all derived data in a single pass over the events.
 ///
 /// Produces `DerivedSnapshot` containing:
@@ -293,6 +429,7 @@ fn build_simulator_preview_indexes_from_iter<'a>(
 /// - `last_event`
 /// - `event_index` (id → index in events vec)
 pub fn compute_derived(events: &[SessionEvent], version: u64) -> DerivedSnapshot {
+    let superseded = superseded_retry_intents(events);
     let event_count = events.len();
     let mut compacted_events = Vec::with_capacity(event_count);
     let mut chat_event_indexes = Vec::with_capacity(event_count / 2);
@@ -308,17 +445,18 @@ pub fn compute_derived(events: &[SessionEvent], version: u64) -> DerivedSnapshot
             has_running_event = true;
         }
 
-        if is_visible_in_chat(event) {
+        let is_superseded = is_superseded_retry_prompt(event, &superseded);
+        if is_visible_in_chat(event) || is_superseded {
             chat_event_indexes.push(idx);
         }
-        if is_visible_in_simulator(event) {
+        if is_visible_in_simulator(event) && !is_superseded {
             simulator_event_indexes.push(idx);
         }
-        if is_visible_in_messages(event) {
+        if is_visible_in_messages(event) && !is_superseded {
             messages_event_indexes.push(idx);
         }
 
-        compacted_events.push(compact_event_for_snapshot(event));
+        compacted_events.push(compact_retry_event_for_snapshot(event, is_superseded));
     }
 
     let mut chat_events = chat_event_indexes

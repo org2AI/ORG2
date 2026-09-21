@@ -278,13 +278,17 @@ impl CodexParser {
                         .get("output_tokens")
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0);
+                    let cache_read_tokens = usage
+                        .get("cached_input_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                        .min(input_tokens);
                     self.usage = Some(TokenUsage {
-                        input_tokens,
+                        // Codex reports cache-inclusive input; the native usage
+                        // contract keeps fresh input and cache reads disjoint.
+                        input_tokens: input_tokens - cache_read_tokens,
                         output_tokens,
-                        cache_read_tokens: usage
-                            .get("cached_input_tokens")
-                            .and_then(|v| v.as_u64())
-                            .unwrap_or(0),
+                        cache_read_tokens,
                         cache_write_tokens: 0,
                         total_tokens: usage
                             .get("total_tokens")

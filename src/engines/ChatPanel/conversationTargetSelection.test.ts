@@ -461,3 +461,76 @@ describe("canonical conversation target selection", () => {
     });
   });
 });
+
+describe("retained dynamic source selection", () => {
+  it("keeps a restored source without requiring a KeyVault inventory entry", () => {
+    for (const cliAgentType of ["codex", "claude_code"] as const) {
+      const target = {
+        cliAgentType,
+        credentialSource: "market:workspace",
+        model: "selected-model",
+        workspaceRepoPath: "/repo",
+      };
+      const input = {
+        preferredTarget: target,
+        initialTarget: null,
+        workspaceRepoPath: "/repo",
+        accounts: [],
+        nativeCliTargets: [cliAgentType],
+      };
+      expect(resolveDefaultConversationTarget(input)).toEqual(target);
+      expect(
+        resolveDefaultConversationTarget({ ...input, nativeCliTargets: [] })
+      ).toBeNull();
+      expect(
+        resolveConversationTargetPillPresentation({ target }).selection
+          ?.selectedSourceLabel
+      ).toBe("ORG2 Market");
+      expect(
+        resolveConversationRuntimeTarget({
+          selection: {
+            category: "cli_agent",
+            targetKind: "cli_agent",
+            cliAgentType,
+            agentName: "client",
+          },
+          current: target,
+          workspaceRepoPath: "/repo",
+          accounts: [],
+          nativeCliTargets: [cliAgentType],
+        })
+      ).toEqual(target);
+      expect(
+        resolveDefaultConversationTarget({
+          ...input,
+          preferredTarget: { ...target, accountId: "other" },
+        })
+      ).toBeNull();
+      const explicit = account("explicit", cliAgentType, "replacement-model");
+      expect(
+        resolvePickedConversationRuntimeTarget({
+          selection: {
+            category: "cli_agent",
+            targetKind: "cli_agent",
+            cliAgentType,
+            agentName: "client",
+          },
+          config: {
+            keySource: "own_key",
+            selectedAccountId: "explicit",
+            model: "replacement-model",
+            cliAgentType,
+          },
+          workspaceRepoPath: "/repo",
+          accounts: [explicit],
+          registry,
+          nativeCliTargets: [cliAgentType],
+        })
+      ).toMatchObject({
+        cliAgentType,
+        accountId: "explicit",
+        model: "replacement-model",
+      });
+    }
+  });
+});

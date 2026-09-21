@@ -50,6 +50,7 @@ mod capture;
 mod cleanup;
 mod inspect;
 mod paths;
+mod review;
 mod rewind;
 mod types;
 
@@ -63,6 +64,7 @@ pub use cleanup::{
 };
 pub use inspect::{has_changes_after_message, session_numstat, session_unified_diff};
 pub use paths::read_snapshot_created_at as get_snapshot_created_at;
+pub use review::read_pre_tool_file;
 pub use rewind::{
     restore_snapshot, rewind_file, rewind_file_to_message, rewind_to_message,
     REDO_SNAPSHOT_TOOL_CALL_ID,

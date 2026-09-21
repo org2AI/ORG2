@@ -29,7 +29,7 @@ import { isSessionEngineActiveStatus } from "@src/util/session/sessionRuntimeExe
 import { clearLoadedTurnRegistry } from "../turns/loadedTurnRegistry";
 import { loadCliPreviewHistory } from "./adapters/cli/cliHistory";
 import { loadAuthoritativeSessionEvents } from "./authoritativeSessionEvents";
-import { mergeFailedUserDeliveryProjection } from "./sessionSyncUtils";
+import { mergeLocalHistoryProjection } from "./sessionSyncUtils";
 
 const MISMATCH_RECOVERY_DELAYS_MS = [250, 750] as const;
 const log = createLogger("NativeTranscriptReconcile");
@@ -61,6 +61,7 @@ function delay(ms: number): Promise<void> {
 }
 
 function mergeProjection(
+  sessionId: string,
   nativeEvents: readonly SessionEvent[],
   projectedEvents: readonly SessionEvent[],
   preserveInterruptedSuffix: boolean
@@ -69,9 +70,10 @@ function mergeProjection(
     preserveInterruptedSuffix && projectedEvents.length > 0
       ? mergeInterruptedConversationProjection(nativeEvents, projectedEvents)
       : [...nativeEvents];
-  return mergeFailedUserDeliveryProjection(
+  return mergeLocalHistoryProjection(
     preserveAcceptedTurnIdentity(interrupted, projectedEvents),
-    projectedEvents
+    projectedEvents,
+    sessionId
   );
 }
 
@@ -151,6 +153,7 @@ async function publishNativeProjection(
   expectedVersion?: number
 ): Promise<SessionEvent[]> {
   const events = mergeProjection(
+    sessionId,
     nativeEvents,
     projectedEvents,
     preserveInterruptedSuffix

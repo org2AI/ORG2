@@ -76,7 +76,6 @@ export function useChatViewMessageQueue({
   const editQueuedMessage = useSetAtom(editMessageAtom);
   const reorderQueue = useSetAtom(reorderQueueAtom);
   const forceSendQueuedMessage = useSetAtom(forceSendMessageAtom);
-  const queueTailKey = sessionMessageQueue.at(-1)?.turnIntentId ?? null;
 
   const cancelQueuedMessage = useCallback(
     (messageId: string) => {
@@ -123,18 +122,6 @@ export function useChatViewMessageQueue({
     [messageQueue, reorderQueue, sessionMessageQueue]
   );
 
-  const handleClearSessionQueue = useCallback(() => {
-    void cancelQueuedMessageDeliveries(
-      store,
-      sessionMessageQueue.map((message) => message.id)
-    ).catch((error) =>
-      log.error(
-        "[useChatViewMessageQueue] failed to clear queued messages",
-        error
-      )
-    );
-  }, [sessionMessageQueue, store]);
-
   const queueEditProps = useQueueEditMode({
     onCommit: handleCommitQueueEdit,
     onCommitSendNow: handleSendNow,
@@ -142,8 +129,6 @@ export function useChatViewMessageQueue({
 
   return {
     cancelQueuedMessage,
-    queueTailKey,
-    handleClearSessionQueue,
     handleReorderSessionQueue,
     handleSendNow,
     queueEditProps,

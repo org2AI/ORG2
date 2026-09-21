@@ -316,5 +316,3 @@ export function useSymbolMode({
     isLoading: symbolState.isLoading,
   };
 }
-
-export default useSymbolMode;

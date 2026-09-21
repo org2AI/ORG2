@@ -159,11 +159,17 @@ export function useSourceControlSetup({
 
   const { filesByPath: gitFilesByPath } = gitDiffState.state;
   const clearGitDiffFiles = gitDiffState.clearFiles;
+  // Both the switch-clear below and every sidebar file report carry this key.
+  // The sidebar's report effect runs before this (parent) effect in the same
+  // commit, and its file array keeps its identity while the working tree is
+  // unchanged — so an unkeyed clear wiped the fresh report and nothing ever
+  // re-sent it, leaving All Changes with only individually clicked files.
+  const gitDiffRepoKey = JSON.stringify([repoId, repoPath]);
 
   useEffect(() => {
-    clearGitDiffFiles();
+    clearGitDiffFiles(gitDiffRepoKey);
     setSourceControlFocusTarget(null);
-  }, [clearGitDiffFiles, repoId, repoPath, setSourceControlFocusTarget]);
+  }, [clearGitDiffFiles, gitDiffRepoKey, setSourceControlFocusTarget]);
 
   const sourceControlFileCounts = useMemo<
     Pick<SourceControlFilterCounts, "uncommitted" | "unstaged" | "staged">
@@ -341,9 +347,9 @@ export function useSourceControlSetup({
   const handleGitFilesChange = useCallback(
     (files: GitFile[], scopeRepoRoot?: string) => {
       const filesMap = new Map(files.map((file) => [file.path, file]));
-      setGitDiffFiles(filesMap, scopeRepoRoot);
+      setGitDiffFiles(filesMap, scopeRepoRoot, gitDiffRepoKey);
     },
-    [setGitDiffFiles]
+    [gitDiffRepoKey, setGitDiffFiles]
   );
 
   // `handleDiffSidebarFileSelect` is consumed by the memoized SidebarSlot

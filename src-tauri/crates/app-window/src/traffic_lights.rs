@@ -58,10 +58,12 @@ pub const TRAFFIC_LIGHT_CENTER_Y: f64 = 26.0;
 /// width, used only if the native spacing cannot be read (buttons
 /// overlapping mid-layout). 9 is the macOS 26 measurement (14 pt buttons,
 /// 23 pt pitch).
+#[cfg(any(target_os = "macos", test))]
 const FALLBACK_BUTTON_GAP_BEYOND_WIDTH: f64 = 9.0;
 
 /// Target frames for the title-bar container and the three buttons, in
 /// AppKit's bottom-left coordinates.
+#[cfg(any(target_os = "macos", test))]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct TrafficLightLayout {
     /// Height of the `NSTitlebarContainerView`.
@@ -80,6 +82,7 @@ pub(crate) struct TrafficLightLayout {
 /// native value (see [`native_button_gap`]) so the trio keeps the system
 /// spacing. The result is independent of where the buttons currently are,
 /// which is what makes a re-apply idempotent.
+#[cfg(any(target_os = "macos", test))]
 pub(crate) fn traffic_light_layout(
     window_height: f64,
     button_height: f64,
@@ -100,6 +103,7 @@ pub(crate) fn traffic_light_layout(
 /// AppKit's own pitch between the buttons, read from a pristine layout; the
 /// fallback derives it from the button width when the two frames read
 /// inconsistent (a partially re-laid-out title bar).
+#[cfg(any(target_os = "macos", test))]
 pub(crate) fn native_button_gap(
     close_origin_x: f64,
     miniaturize_origin_x: f64,

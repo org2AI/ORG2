@@ -20,8 +20,8 @@ import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 
 import { useStreamingDeltaForSession } from "@src/engines/SessionCore";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import { isSessionEngineActiveAtom } from "@src/store/session/cliSessionStatusAtom";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import {
   IDLE_HUD_STATE,

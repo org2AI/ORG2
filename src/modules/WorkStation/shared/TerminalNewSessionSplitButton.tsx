@@ -88,9 +88,7 @@ const TerminalNewSessionSplitButtonComponent: React.FC<
             .map((profile) => (
               <Button
                 layout="custom"
-                appearance="custom"
                 key={profile.id}
-                htmlType="button"
                 className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
                 onClick={() => handlePickProfile(profile)}
               >
@@ -110,9 +108,7 @@ const TerminalNewSessionSplitButtonComponent: React.FC<
                 .map((profile) => (
                   <Button
                     layout="custom"
-                    appearance="custom"
                     key={profile.id}
-                    htmlType="button"
                     className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
                     onClick={() => handlePickProfile(profile)}
                   >
@@ -138,10 +134,8 @@ const TerminalNewSessionSplitButtonComponent: React.FC<
   if (!hasProfilePicker) {
     return (
       <Button
-        htmlType="button"
         variant="tertiary"
         size={density === "sidebar" ? "sidebar" : "small"}
-        appearance="soft-no-drop"
         iconOnly
         aria-label={terminalTitle}
         onClick={(event) => {
@@ -164,10 +158,8 @@ const TerminalNewSessionSplitButtonComponent: React.FC<
   return (
     <SplitButton
       ref={shellPickerTriggerRef}
-      htmlType="button"
       variant="tertiary"
       size={density === "sidebar" ? "sidebar" : "small"}
-      appearance="soft-no-drop"
       iconOnly
       onClick={(event) => {
         event.stopPropagation();

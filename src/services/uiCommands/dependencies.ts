@@ -44,6 +44,10 @@ export function createUiDependencies(
         return {
           repoPath: store.get(activeWorkspaceRootPathAtom) || undefined,
         };
+      // A directory workspace already names its own root; there is no session
+      // to look up.
+      if (workspace.kind === "directory")
+        return { repoPath: workspace.directory };
       const session = store.get(sessionMapAtom).get(workspace.sessionId);
       if (!session)
         throw new Error(

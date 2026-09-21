@@ -8,24 +8,6 @@ import ClampedContent, {
 } from "@src/components/ClampedContent";
 import Markdown from "@src/components/MarkDown";
 
-// ============================================
-// Helpers
-// ============================================
-
-export function extractSummary(content: string): string {
-  if (!content) return "";
-  const lines = content.split("\n").filter((line) => line.trim().length > 0);
-  if (lines.length === 0) return "";
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (/^#{1,4}\s/.test(trimmed)) continue;
-    if (trimmed.startsWith("|")) continue;
-    if (/^[-*]\s/.test(trimmed)) continue;
-    return trimmed.length > 120 ? trimmed.slice(0, 120) + "..." : trimmed;
-  }
-  return lines[0].trim();
-}
-
 export function formatElapsedTime(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   const seconds = Math.round(ms / 1000);

@@ -23,7 +23,7 @@ function showStartupError(error: unknown): void {
   const panel = document.createElement("main");
   panel.setAttribute("role", "alert");
   panel.style.cssText =
-    "min-height:100dvh;display:grid;place-items:center;padding:24px;background:#f4f4f4;color:#202124;font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+    "min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--color-bg-2,#f4f4f4);color:var(--color-text-1,#202124);font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 
   const message = document.createElement("p");
   message.textContent =

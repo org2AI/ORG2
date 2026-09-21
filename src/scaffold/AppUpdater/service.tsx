@@ -29,6 +29,7 @@ import {
   appUpdateDownloadProgressAtom,
   appUpdateInstallPromptAtom,
   appUpdaterStateAtom,
+  mockAppUpdateEnabledAtom,
   separateAppUpdateInstallingAtom,
 } from "./state";
 
@@ -226,13 +227,15 @@ let activeAutomaticScheduler: AppUpdaterScheduler | null = null;
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
-  return typeof error === "string" ? error : "Unknown error";
+  return typeof error === "string"
+    ? error
+    : i18n.t("common:errors.unknownError");
 }
 
 function getDownloadErrorMessage(error: unknown): string {
   const message = getErrorMessage(error);
   if (/timed?\s*out|timeout/i.test(message)) {
-    return "The download timed out. Check your network or proxy, then retry.";
+    return i18n.t("settings:update.downloadTimeout");
   }
   return message;
 }
@@ -248,13 +251,15 @@ function notifyCheckSuccess(
   if (update) {
     Message.info({
       id: CHECK_TOAST_ID,
-      title: "Update available",
-      content: `Version ${update.version} is ready to install.`,
+      title: i18n.t("settings:update.available"),
+      content: i18n.t("settings:update.availableVersion", {
+        version: update.version,
+      }),
       duration: UPDATE_TOAST_DURATION_MS,
       action: {
         label: usesSeparateApplicationInstall(provenance)
-          ? "Install official app"
-          : "Update now",
+          ? i18n.t("settings:update.installOfficial")
+          : i18n.t("settings:update.updateNow"),
         onClick: () => void installAvailableAppUpdate(),
       },
     });
@@ -277,7 +282,7 @@ function notifyCheckFailure(error: unknown, notify: boolean): void {
   if (!notify) return;
   Message.error({
     id: CHECK_TOAST_ID,
-    title: "Update check failed",
+    title: i18n.t("settings:update.checkFailed"),
     content: message,
     duration: UPDATE_TOAST_DURATION_MS,
   });
@@ -291,7 +296,7 @@ export async function checkForAppUpdates(
   if (notify) {
     Message.info({
       id: CHECK_TOAST_ID,
-      content: "Checking for updates…",
+      content: i18n.t("settings:update.checking"),
       duration: 0,
     });
   }
@@ -449,8 +454,11 @@ async function installOfficialApplicationBesideLocal(
       coordinator.clearAvailableUpdate();
       Message.success({
         id: INSTALL_TOAST_ID,
-        title: "Official app installed",
-        content: `${result.version} is installed at ${result.targetPath}. This local build is still running and unchanged.`,
+        title: i18n.t("settings:update.officialInstalled"),
+        content: i18n.t("settings:update.officialInstalledDesc", {
+          version: result.version,
+          path: result.targetPath,
+        }),
         duration: 6000,
       });
     } catch (error) {
@@ -478,13 +486,15 @@ function showDownloadFailure(
   const errorContent = getDownloadErrorMessage(error);
   Message.error({
     id: INSTALL_TOAST_ID,
-    title: "Update download failed",
+    title: i18n.t("settings:update.downloadFailed"),
     content: options.automatic
       ? i18n.t("settings:update.automaticRetry", { error: errorContent })
       : errorContent,
     duration: 0,
     cancel: {
-      label: options.automatic ? "Retry now" : "Retry",
+      label: options.automatic
+        ? i18n.t("settings:update.retryNow")
+        : i18n.t("common:actions.retry"),
       onClick: options.retry,
       closeOnClick: false,
     },
@@ -494,6 +504,10 @@ function showDownloadFailure(
 export async function installAvailableAppUpdate(
   options: InstallAvailableAppUpdateOptions = {}
 ): Promise<void> {
+  if (store().get(mockAppUpdateEnabledAtom)) {
+    store().set(appUpdateInstallPromptAtom, !options.confirmed);
+    return;
+  }
   const { confirmed = false, silentDownload = false } = options;
   const update =
     coordinator.getAvailableUpdate() ?? (await checkForUpdatesManually());
@@ -525,15 +539,15 @@ export async function installAvailableAppUpdate(
       return;
     }
     if (provenance.installStrategy === "unavailable") {
-      throw new Error(
-        "This local build cannot safely install a published release on this platform."
-      );
+      throw new Error(i18n.t("settings:update.installUnavailable"));
     }
 
     Message.info({
       id: INSTALL_TOAST_ID,
-      title: "Installing update",
-      content: `Preparing v${update.version}…`,
+      title: i18n.t("settings:update.installing"),
+      content: i18n.t("settings:update.preparingInstall", {
+        version: update.version,
+      }),
       duration: 0,
     });
 
@@ -542,7 +556,7 @@ export async function installAvailableAppUpdate(
 
     Message.success({
       id: INSTALL_TOAST_ID,
-      title: "Update installed",
+      title: i18n.t("settings:update.installed"),
       content: i18n.t("settings:update.restarting"),
       duration: 2500,
     });
@@ -550,7 +564,7 @@ export async function installAvailableAppUpdate(
   } catch (error) {
     Message.error({
       id: INSTALL_TOAST_ID,
-      title: "Update install failed",
+      title: i18n.t("settings:update.installFailed"),
       content: getErrorMessage(error),
       duration: 6000,
     });
@@ -652,7 +666,8 @@ export function startAutomaticAppUpdates(): () => void {
 }
 
 export function postponeAppUpdate(version: string | undefined): void {
-  if (version) deferUpdateReminder(version);
+  if (version && !store().get(mockAppUpdateEnabledAtom))
+    deferUpdateReminder(version);
   store().set(appUpdateInstallPromptAtom, false);
 }
 

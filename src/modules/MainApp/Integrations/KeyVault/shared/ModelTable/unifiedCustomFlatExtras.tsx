@@ -46,6 +46,7 @@ const ICON_PROVIDER_DISPLAY_LABELS: Partial<Record<IconProvider, string>> = {
   kiro: "Kiro",
   longcat: "LongCat",
   meta: "Meta",
+  meta_ai: "Meta AI",
   minimax: "Minimax",
   mistral: "Mistral",
   openai: "OpenAI",

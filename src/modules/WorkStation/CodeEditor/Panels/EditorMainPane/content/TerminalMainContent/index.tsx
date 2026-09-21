@@ -184,7 +184,6 @@ const TerminalMainContent: React.FC<TerminalMainContentProps> = ({
           >
             {isAgentTerminal ? (
               <Button
-                htmlType="button"
                 variant="tertiary"
                 size="small"
                 iconOnly

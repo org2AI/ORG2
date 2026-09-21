@@ -1,6 +1,7 @@
 import { createStore } from "jotai/vanilla";
 import { beforeEach } from "vitest";
 
+import { hoverSidebarOpenAtom } from "../hoverSidebarAtom";
 import {
   SESSION_BRANCH_TAGS_VISIBLE_STORAGE_KEY,
   clearSessionSidebarRevealAtom,
@@ -174,5 +175,40 @@ describe("responsive sidebar", () => {
     expect(changes).toBe(1);
     expect(second.get(sidebarCollapsedAtom)).toBe(false);
     unsubscribe();
+  });
+});
+
+describe("sidebarCollapsedAtom and the hover preview", () => {
+  function collapsedWithPreview() {
+    const store = createStore();
+    store.set(updateSidebarViewportAtom, 1200);
+    store.set(sidebarCollapsedAtom, true);
+    store.set(hoverSidebarOpenAtom, true);
+    return store;
+  }
+
+  it("ends the hover preview when the sidebar is expanded by any path", () => {
+    // Shortcut / menu expansion unmounts the preview without its mouse-leave.
+    const store = collapsedWithPreview();
+    store.set(sidebarCollapsedAtom, false);
+    expect(store.get(hoverSidebarOpenAtom)).toBe(false);
+
+    // So collapsing again shows the collapsed chrome, not the floating sidebar.
+    store.set(sidebarCollapsedAtom, true);
+    expect(store.get(hoverSidebarOpenAtom)).toBe(false);
+  });
+
+  it("ends the hover preview for a manual expansion in a narrow window too", () => {
+    const store = collapsedWithPreview();
+    store.set(updateSidebarViewportAtom, 700);
+    store.set(hoverSidebarOpenAtom, true);
+    store.set(sidebarCollapsedAtom, false);
+    expect(store.get(hoverSidebarOpenAtom)).toBe(false);
+  });
+
+  it("leaves an open preview alone when the sidebar is collapsed again", () => {
+    const store = collapsedWithPreview();
+    store.set(sidebarCollapsedAtom, true);
+    expect(store.get(hoverSidebarOpenAtom)).toBe(true);
   });
 });

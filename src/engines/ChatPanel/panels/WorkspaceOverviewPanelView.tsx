@@ -4,14 +4,14 @@ import { useTranslation } from "react-i18next";
 
 import TabPill from "@src/components/TabPill";
 import type { TabPillItem } from "@src/components/TabPill";
-import WorkItemContentStack from "@src/modules/ProjectManager/WorkItems/components/WorkItemContentStack";
-import { RepoDetailPage } from "@src/modules/shared/launchpad/components";
-import RepoActionButtons from "@src/modules/shared/launchpad/components/RepoActionButtons";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   PanelFooter,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { RepoDetailPage } from "@src/features/Launchpad/components";
+import RepoActionButtons from "@src/features/Launchpad/components/RepoActionButtons";
+import WorkItemContentStack from "@src/modules/ProjectManager/WorkItems/components/WorkItemContentStack";
 import { reposAtom } from "@src/store/repo";
 import type { Repo } from "@src/store/repo/types";
 import {

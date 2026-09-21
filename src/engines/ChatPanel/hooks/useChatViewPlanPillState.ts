@@ -7,8 +7,8 @@
  */
 import { useEffect, useMemo, useState } from "react";
 
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import type { PendingPlanApproval } from "@src/store/session/planApprovalAtom";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 function formatPlanPillLabel(
   autoApproveAt: number | null | undefined,

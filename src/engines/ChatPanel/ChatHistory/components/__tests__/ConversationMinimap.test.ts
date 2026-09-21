@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   CONVERSATION_MINIMAP_FLUSH_CONTAINER_PX,
+  CONVERSATION_PREVIEW_POSITION_CLASS,
   findNearestConversationMarker,
   getConversationMarkerWidthClass,
   getConversationMinimapPlacementClasses,
-  getConversationPreviewPositionClass,
   getNavigableConversationGroupIndices,
   hasConversationMinimapRail,
   resolveActiveConversationMarker,
@@ -98,20 +98,12 @@ describe("resolveConversationMinimapVisibilityClass", () => {
   });
 });
 
-describe("getConversationPreviewPositionClass", () => {
-  it("opens a left-docked chat preview into the chat interior (not outward)", () => {
-    const positionClass = getConversationPreviewPositionClass("left");
-
+describe("CONVERSATION_PREVIEW_POSITION_CLASS", () => {
+  it("opens the preview into the chat interior regardless of dock side", () => {
     // Minimap is pinned to the chat's right edge, so the preview opens left
     // (into the chat) rather than outward where the pane edge would clip it.
-    expect(positionClass).toContain("right-full");
-    expect(positionClass).not.toContain("left-full");
-  });
-
-  it("keeps a right-docked chat preview opening to the left", () => {
-    expect(getConversationPreviewPositionClass("right")).toContain(
-      "right-full"
-    );
+    expect(CONVERSATION_PREVIEW_POSITION_CLASS).toContain("right-full");
+    expect(CONVERSATION_PREVIEW_POSITION_CLASS).not.toContain("left-full");
   });
 });
 
@@ -149,6 +141,25 @@ describe("getConversationMarkerWidthClass", () => {
 });
 
 describe("hasConversationMinimapRail", () => {
+  it("counts logical turns without promoting a retry audit group to a turn", () => {
+    const headers = [{}, null, {}, {}, {}];
+    const counts = [1, 1, 1, 1, 1];
+    expect(
+      getNavigableConversationGroupIndices(headers, counts, [
+        {},
+        { retryAudit: true },
+        {},
+        {},
+        {},
+      ])
+    ).toEqual([0, 2, 3, 4]);
+    expect(getNavigableConversationGroupIndices(headers, counts)).toEqual([
+      0, 1, 2, 3, 4,
+    ]);
+    expect(
+      hasConversationMinimapRail([{}, null], [1, 1], [{}, { retryAudit: true }])
+    ).toBe(false);
+  });
   it("shows the rail once two rounds are navigable", () => {
     expect(hasConversationMinimapRail([{}, {}], [1, 1])).toBe(true);
   });

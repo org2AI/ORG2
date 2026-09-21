@@ -133,6 +133,7 @@ impl UnifiedMessageProcessor {
         let fork_provider = post_turn_jobs::ForkProviderSpec {
             model: self.runtime.model.clone(),
             account_id: self.runtime.account_id.clone(),
+            credential_source: self.runtime.provider.credential_source().map(str::to_owned),
             reliability: self.runtime.resolved.reliability.clone(),
             native_harness_type: self.runtime.native_harness_type,
             workspace: self.runtime.workspace_state.read().clone(),
@@ -245,6 +246,7 @@ impl UnifiedMessageProcessor {
                     response_text: response_text.to_string(),
                     model: self.runtime.model.clone(),
                     account_id: self.runtime.account_id.clone(),
+                    credential_source: self.runtime.provider.credential_source().map(str::to_owned),
                     reliability: self.runtime.resolved.reliability.clone(),
                     native_harness_type: self.runtime.native_harness_type,
                     workspace: self.runtime.workspace_state.read().clone(),

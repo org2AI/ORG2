@@ -129,7 +129,7 @@ export const DROPDOWN_ITEM = {
 
   /** Font size */
   fontSize: 13,
-  fontSizeClass: "text-[13px]",
+  fontSizeClass: "text-[length:var(--dropdown-font-size,13px)]",
 
   /**
    * Hover background. Hover only changes the surface fill — the selected
@@ -175,7 +175,7 @@ export const DROPDOWN_SEARCH = {
 
   /** Font size */
   fontSize: 13,
-  fontSizeClass: "text-[13px]",
+  fontSizeClass: "text-[length:var(--dropdown-font-size,13px)]",
 
   /** Icon size */
   iconSize: 13,
@@ -432,7 +432,7 @@ export const DROPDOWN_CLASSES = {
     "bg-transparent",
     "border-none",
     "outline-none",
-    DROPDOWN_ITEM.fontSizeClass,
+    "text-[length:var(--dropdown-input-font-size,var(--dropdown-font-size,13px))]",
     "text-text-1",
     "placeholder:text-text-3",
   ].join(" "),
@@ -488,7 +488,7 @@ export const DROPDOWN_CLASSES = {
 
   /** Empty/loading message inside a dropdown list. */
   listMessage:
-    "flex items-center justify-center gap-2 px-3 py-6 text-center text-[13px] text-text-3",
+    "flex items-center justify-center gap-2 px-3 py-6 text-center text-[length:var(--dropdown-font-size,13px)] text-text-3",
 
   /** Footer container (Select All, actions) — flex, border-t, p-1 */
   footerContainer: [

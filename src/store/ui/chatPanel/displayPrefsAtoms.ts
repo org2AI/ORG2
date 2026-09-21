@@ -65,7 +65,8 @@ chatTokenUsageVisibleAtom.debugLabel = "chatTokenUsageVisibleAtom";
  * Whether the per-round edits/reads summary card (`TurnMetadataFooter`)
  * renders at the end of each agent turn. On by default; turning it off
  * only hides the card — turn metadata is still indexed and still backs
- * the composer files pill and Agent Station diff scoping.
+ * Agent Station diff scoping. (The composer files pill reads orgtrack edit
+ * artifacts or the session summary, never turn metadata.)
  */
 export const chatTurnMetadataVisibleAtom = atomWithStorage<boolean>(
   "orgii:chatTurnMetadataVisible",

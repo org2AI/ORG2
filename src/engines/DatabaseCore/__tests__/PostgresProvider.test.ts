@@ -30,7 +30,7 @@ async function connected(
   overrides: Partial<PostgresConnectionConfig> = {}
 ): Promise<PostgresProvider> {
   const provider = makeProvider(overrides);
-  invokeMock.mockResolvedValueOnce(undefined);
+  invokeMock.mockResolvedValueOnce(baseConfig.id);
   await provider.connect();
   invokeMock.mockClear();
   return provider;
@@ -53,7 +53,7 @@ beforeEach(() => {
 describe("PostgresProvider connection string", () => {
   it("includes user:password and sslmode=require when ssl is on", async () => {
     const provider = makeProvider({ password: "s3cret", ssl: true });
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
 
     await provider.connect();
 
@@ -67,7 +67,7 @@ describe("PostgresProvider connection string", () => {
 
   it("omits the colon when no password is configured and defaults to sslmode=prefer", async () => {
     const provider = makeProvider();
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
 
     await provider.connect();
 
@@ -81,7 +81,7 @@ describe("PostgresProvider connection string", () => {
 
   it("treats an empty-string password as absent", async () => {
     const provider = makeProvider({ password: "" });
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
 
     await provider.connect();
 
@@ -97,7 +97,7 @@ describe("PostgresProvider connection string", () => {
     // KNOWN DEFECT (reported): buildConnectionString interpolates the raw
     // password, so reserved URI characters silently redirect the host.
     const provider = makeProvider({ password: "p@ss/word" });
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
 
     await provider.connect();
 
@@ -116,7 +116,7 @@ describe("PostgresProvider connection lifecycle", () => {
     expect(provider.isConnected()).toBe(false);
     expect(provider.status).toEqual({ state: "disconnected" });
 
-    invokeMock.mockResolvedValue(undefined);
+    invokeMock.mockResolvedValue(baseConfig.id);
     await provider.connect();
 
     expect(provider.isConnected()).toBe(true);

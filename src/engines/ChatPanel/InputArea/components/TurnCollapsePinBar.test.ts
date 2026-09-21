@@ -249,6 +249,9 @@ describe("TurnCollapsePinBar", () => {
     );
     const timing = container.querySelector<HTMLSpanElement>("button > span");
     expect(onExpand).toHaveBeenCalledOnce();
+    expect(setOverride).not.toHaveBeenCalled();
+    await act(async () => button?.click());
+    expect(onExpand).toHaveBeenCalledOnce();
     expect(timing?.lastElementChild).toBe(loading);
     expect(loading?.classList.contains("text-primary-6")).toBe(true);
     expect(loading?.getAttribute("aria-label")).toBe("common:status.loading");
@@ -260,5 +263,9 @@ describe("TurnCollapsePinBar", () => {
     expect(
       container.querySelector('[data-testid="turn-collapse-loading"]')
     ).toBeNull();
+    expect(setOverride).toHaveBeenCalledWith({
+      turnId: "turn-1",
+      collapsed: false,
+    });
   });
 });

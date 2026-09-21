@@ -38,7 +38,7 @@ vi.mock("@src/router/lazy/pages", () => {
   };
 });
 
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   Placeholder: () => null,
 }));
 

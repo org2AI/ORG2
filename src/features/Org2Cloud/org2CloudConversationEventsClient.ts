@@ -21,16 +21,9 @@ import { SessionEventSchema } from "@src/engines/SessionCore/core/schemas";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { createLogger } from "@src/hooks/logger";
 
-import {
-  type CloudEndpoint,
-  ORG2_CLOUD_POSTGREST_SCHEMA,
-  getCloudEndpoint,
-} from "./config";
-import {
-  fetchWithTransportRetry,
-  runCloudRequestWithTimeout,
-} from "./org2CloudFetchRetry";
+import { type CloudEndpoint, getCloudEndpoint } from "./config";
 import { sha256Hex } from "./org2CloudOrgManagement";
+import { callOrg2CloudRpc } from "./org2CloudRpc";
 
 const log = createLogger("Org2CloudConversationEvents");
 
@@ -98,37 +91,13 @@ async function callConversationRpc(
   body: Record<string, unknown>,
   endpoint: Pick<CloudEndpoint, "supabaseUrl" | "anonKey"> = getCloudEndpoint()
 ): Promise<unknown> {
-  return runCloudRequestWithTimeout(async (signal) => {
-    const response = await fetchWithTransportRetry(
-      `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`,
-      {
-        method: "POST",
-        headers: {
-          apikey: endpoint.anonKey,
-          authorization: `Bearer ${accessToken}`,
-          "content-type": "application/json",
-          "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-        },
-        body: JSON.stringify(body),
-        signal,
-      }
-    );
-    const text = await response.text();
-    let payload: unknown = null;
-    try {
-      payload = text ? JSON.parse(text) : null;
-    } catch {
-      payload = null;
-    }
-    if (!response.ok) {
-      const message =
-        payload && typeof payload === "object" && "message" in payload
-          ? String((payload as { message: unknown }).message)
-          : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-      throw new Org2CloudConversationError(message, response.status);
-    }
-    return payload;
-  }, CONVERSATION_EVENTS_RPC_TIMEOUT_MS);
+  return callOrg2CloudRpc(functionName, body, {
+    accessToken,
+    endpoint,
+    timeoutMs: CONVERSATION_EVENTS_RPC_TIMEOUT_MS,
+    createError: (message, status) =>
+      new Org2CloudConversationError(message, status),
+  });
 }
 
 const CloudConversationEventWireSchema = z.object({

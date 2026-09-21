@@ -44,17 +44,11 @@ vi.mock("@src/components/Button", () => ({
     children,
     htmlType,
     loading: _loading,
-    href: _href,
-    target: _target,
-    rel: _rel,
     ...props
   }: {
     children?: ReactNode;
     htmlType?: "button";
     loading?: boolean;
-    href?: string;
-    target?: string;
-    rel?: string;
   }) => createElement("button", { type: htmlType, ...props }, children),
 }));
 

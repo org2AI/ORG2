@@ -31,7 +31,7 @@ import {
 } from "@src/api/http/project/sync";
 import Button from "@src/components/Button";
 import { Message } from "@src/components/Message";
-import { SectionRow } from "@src/modules/shared/layouts/SectionLayout";
+import { SectionRow } from "@src/components/layout/Section";
 
 import { formatErrorMessage } from "./shared";
 

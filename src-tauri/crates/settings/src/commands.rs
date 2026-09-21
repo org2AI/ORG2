@@ -86,6 +86,14 @@ mod tests {
 
         assert!(result.is_ok());
     }
+
+    #[test]
+    fn app_license_reads_the_repository_license() {
+        let license = app_license_read();
+
+        assert!(license.starts_with("GNU AFFERO GENERAL PUBLIC LICENSE"));
+        assert!(license.contains("Version 3, 19 November 2007"));
+    }
 }
 
 /// Reset settings by deleting the file.
@@ -106,6 +114,16 @@ pub async fn settings_reset() -> Result<(), String> {
 #[tauri::command]
 pub async fn settings_get_path() -> Result<String, String> {
     Ok(file_io::get_settings_path().to_string_lossy().to_string())
+}
+
+/// Return the license shipped with the application.
+///
+/// Embedding the repository's root LICENSE at compile time keeps the viewer
+/// synchronized with the license that is shipped in each build without
+/// duplicating its contents in frontend code.
+#[tauri::command]
+pub fn app_license_read() -> String {
+    include_str!("../../../../LICENSE").to_string()
 }
 
 /// Write the JSON Schema file alongside the settings file.

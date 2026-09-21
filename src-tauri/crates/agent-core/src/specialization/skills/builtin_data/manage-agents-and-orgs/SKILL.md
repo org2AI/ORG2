@@ -1,9 +1,9 @@
 ---
 name: manage-agents-and-orgs
-description: Create, update, or delete custom ORGII agent definitions and agent organizations. Use when the user wants to create an agent, update an agent's soul or tools, rename or remove an agent, manage org membership, list agents or orgs, or asks about agent-definitions.json. Triggers include "创建 agent", "更新 agent 配置", "管理 org", "add agent to org", "delete agent".
+description: Create, update, or delete custom ORG2 agent definitions and agent organizations. Use when the user wants to create an agent, update an agent's soul or tools, rename or remove an agent, manage org membership, list agents or orgs, or asks about agent-definitions.json. Triggers include "创建 agent", "更新 agent 配置", "管理 org", "add agent to org", "delete agent".
 ---
 
-# Managing Agents and Orgs in ORGII
+# Managing Agents and Orgs in ORG2
 
 This skill covers the full CRUD lifecycle for custom **agent definitions** and **agent organizations** (orgs). It extends `create-orgii-agent` with explicit update, remove, and org-management workflows.
 

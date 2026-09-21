@@ -91,14 +91,6 @@ export async function deleteRepo(repoId: string) {
   return wrapResponse(null);
 }
 
-/** Update repository visibility (public/private) by path */
-export async function updateRepoVisibility(
-  path: string,
-  visibility: "public" | "private"
-) {
-  await invokeTauri("server_update_repo_visibility", { path, visibility });
-}
-
 // ============================================
 // Repository Creation (via Tauri commands)
 // ============================================
@@ -218,31 +210,6 @@ export async function createWorkFolder(data: {
   return wrapResponse(repo);
 }
 
-// ============================================
-// IDE Detection (via Tauri command)
-// ============================================
-
-/** Detect installed IDEs on the system */
-export async function detectIDEs() {
-  const ides = await invokeTauri<
-    Array<{
-      id: string;
-      name: string;
-      installed: boolean;
-      path?: string;
-      category?: string;
-    }>
-  >("server_detect_ides");
-  const mapped = ides.map((ide) => ({
-    name: ide.name,
-    path: ide.path || ide.id,
-    id: ide.id,
-    installed: ide.installed,
-    category: ide.category ?? "ide",
-  }));
-  return wrapResponse({ ides: mapped, preferred_ide: null });
-}
-
 /**
  * Check if a directory is a git repository (has .git subdirectory).
  */
@@ -278,12 +245,6 @@ export const repoApi = {
 
   // Delete Repository
   deleteRepo,
-
-  // Update
-  updateRepoVisibility,
-
-  // IDE Detection
-  detectIDEs,
 };
 
 export default repoApi;

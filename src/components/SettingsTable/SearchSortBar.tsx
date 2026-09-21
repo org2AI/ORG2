@@ -72,7 +72,6 @@ const SearchSortBar: React.FC<SearchSortBarProps> = ({
     rightContent ??
     (filterConfig ? (
       <Button
-        variant="secondary"
         iconOnly
         onClick={filterConfig.onToggle}
         icon={

@@ -166,7 +166,7 @@ describe("DatabaseServiceFactory.create — provider selection", () => {
 });
 
 describe("DatabaseServiceFactory cache eviction", () => {
-  it("evicts the oldest entry once 50 services are cached and disconnects it", async () => {
+  it("evicts an idle entry without disconnecting an active owner", async () => {
     const oldest = await DatabaseServiceFactory.create(sqlite("evict-0"));
     await oldest.connect();
     expect(oldest.isConnected()).toBe(true);
@@ -180,12 +180,11 @@ describe("DatabaseServiceFactory cache eviction", () => {
     invokeMock.mockClear();
     await DatabaseServiceFactory.create(sqlite("evict-50"));
 
-    expect(DatabaseServiceFactory.has("evict-0")).toBe(false);
+    expect(DatabaseServiceFactory.has("evict-0")).toBe(true);
+    expect(DatabaseServiceFactory.has("evict-1")).toBe(false);
     expect(DatabaseServiceFactory.has("evict-50")).toBe(true);
     expect(DatabaseServiceFactory.getConnectionIds()).toHaveLength(50);
-    expect(invokeMock).toHaveBeenCalledWith("db_close", {
-      connectionId: "conn-token",
-    });
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 
   it("does not attempt to disconnect an evicted service that never connected", async () => {
@@ -207,11 +206,11 @@ describe("DatabaseServiceFactory.getOrReconnect", () => {
     await service.connect();
     invokeMock.mockClear();
 
-    const loader = vi.fn(() => [] as DatabaseConnectionConfig[]);
+    const loader = vi.fn(() => [sqlite("live")]);
     const result = await DatabaseServiceFactory.getOrReconnect("live", loader);
 
     expect(result).toBe(service);
-    expect(loader).not.toHaveBeenCalled();
+    expect(loader).toHaveBeenCalledTimes(1);
     expect(invokeMock).not.toHaveBeenCalled();
   });
 
@@ -219,12 +218,12 @@ describe("DatabaseServiceFactory.getOrReconnect", () => {
     const service = await DatabaseServiceFactory.create(sqlite("stale"));
     expect(service.isConnected()).toBe(false);
 
-    const loader = vi.fn(() => [] as DatabaseConnectionConfig[]);
+    const loader = vi.fn(() => [sqlite("stale")]);
     const result = await DatabaseServiceFactory.getOrReconnect("stale", loader);
 
     expect(result).toBe(service);
     expect(result!.isConnected()).toBe(true);
-    expect(loader).not.toHaveBeenCalled();
+    expect(loader).toHaveBeenCalledTimes(1);
     expect(invokeMock).toHaveBeenCalledWith("db_open", {
       filePath: "/tmp/stale.db",
     });
@@ -310,4 +309,65 @@ describe("DatabaseServiceFactory.remove / clearAll", () => {
     await expect(DatabaseServiceFactory.clearAll()).resolves.toBeUndefined();
     expect(DatabaseServiceFactory.getConnectionIds()).toEqual([]);
   });
+});
+
+it("single-flights concurrent creation and refuses to resurrect a removed flight", async () => {
+  const [first, second] = await Promise.all([
+    DatabaseServiceFactory.create(sqlite("shared")),
+    DatabaseServiceFactory.create(sqlite("shared")),
+  ]);
+  expect(first).toBe(second);
+  const creating = DatabaseServiceFactory.create(sqlite("removed"));
+  DatabaseServiceFactory.remove("removed");
+  await expect(creating).rejects.toThrow("cancelled");
+  expect(DatabaseServiceFactory.has("removed")).toBe(false);
+});
+
+it("replaces a changed identity only after closing its old resource", async () => {
+  const first = await DatabaseServiceFactory.create(sqlite("replace"));
+  await first.connect();
+  invokeMock.mockClear();
+  const next = await DatabaseServiceFactory.create({
+    ...sqlite("replace"),
+    filePath: "/tmp/new.db",
+  });
+  expect(first.isConnected()).toBe(false);
+  expect(invokeMock).toHaveBeenCalledWith("db_close", {
+    connectionId: "conn-token",
+  });
+  expect(next).not.toBe(first);
+  expect(next.config).toMatchObject({ filePath: "/tmp/new.db" });
+});
+
+it("rejects capacity overflow when all cached services are active", async () => {
+  for (let i = 0; i < 50; i++) {
+    const service = await DatabaseServiceFactory.create(sqlite(`active-${i}`));
+    await service.connect();
+  }
+  await expect(
+    DatabaseServiceFactory.create(sqlite("overflow"))
+  ).rejects.toThrow("limit");
+  expect(DatabaseServiceFactory.getAllServices()).toHaveLength(50);
+  expect(
+    DatabaseServiceFactory.getAllServices().every((service) =>
+      service.isConnected()
+    )
+  ).toBe(true);
+});
+
+it("bounds in-flight creation even when repeated force-new requests replace one identity", async () => {
+  const flights = Array.from({ length: 50 }, () =>
+    DatabaseServiceFactory.create(sqlite("burst"), true)
+  );
+  const settled = Promise.allSettled(flights);
+  await expect(
+    DatabaseServiceFactory.create(sqlite("overflow"))
+  ).rejects.toThrow("creation limit");
+  const results = await settled;
+  expect(
+    results.filter((result) => result.status === "fulfilled")
+  ).toHaveLength(1);
+  await expect(
+    DatabaseServiceFactory.create(sqlite("recovered"))
+  ).resolves.toBeDefined();
 });

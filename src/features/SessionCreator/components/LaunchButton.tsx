@@ -77,8 +77,6 @@ const LaunchButton: React.FC<LaunchButtonProps> = ({
   const button = (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className={`${ICON_BASE_CLASS} ${stateClass} leading-none`}
       style={{ lineHeight: 0 }}
       onClick={disabled ? undefined : onClick}
@@ -120,7 +118,7 @@ const LaunchButton: React.FC<LaunchButtonProps> = ({
         />
       }
       position="top-end"
-      mouseEnterDelay={200}
+      kind="button"
       framedPanel
     >
       {button}

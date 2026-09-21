@@ -15,16 +15,16 @@
 import { defaultUrlTransform } from "react-markdown";
 
 import { isInternalComposerReferenceHref } from "@src/components/ComposerInput/postedReferenceHref";
-import { parseCloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
-import { parseSharedSessionFileReference } from "@src/features/Org2Cloud/sharedSessionFileReference";
 
+import { markdownExtensions } from "./extensions";
 import { classifyMarkdownImageSrc } from "./markdownImageSrc";
 import { isWorkspaceRelativeMarkdownFileHref } from "./markdownLinkTarget";
 
 export function markdownUrlTransform(value: string, key?: string): string {
   if (key === "href") {
-    if (parseSharedSessionFileReference(value)) return value;
-    if (parseCloudSessionReference(value)) return value;
+    // Domain reference schemes are declared by the tier that renders them;
+    // with nothing registered they sanitize like any other unknown scheme.
+    if (markdownExtensions().ownsReferenceHref?.(value) === true) return value;
     if (isInternalComposerReferenceHref(value)) return value;
     if (classifyMarkdownImageSrc(value).kind === "local") return value;
     if (isWorkspaceRelativeMarkdownFileHref(value)) return value;

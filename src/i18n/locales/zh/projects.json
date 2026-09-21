@@ -60,7 +60,7 @@
     },
     "loadingConnections": "正在加载 GitHub 连接...",
     "noConnectionTitle": "未找到 GitHub 连接",
-    "noConnectionDescription": "请先在 Integrations 中添加 GitHub 连接，然后返回此处导入 GitHub Issues。",
+    "noConnectionDescription": "请先在 Integrations 中添加 GitHub 连接，然后返回此处导入 GitHub Issues",
     "linkedRepoHint": "此 Project 也会关联到当前 Workspace repo：{{repoName}}",
     "errors": {
       "invalidRepo": "请使用 owner/repo 或 GitHub 仓库 URL。"
@@ -80,7 +80,7 @@
     "importLinearOrgs": "导入 Linear 工作空间",
     "gitFolderPath": "Git 文件夹路径（可选）",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "将此工作空间绑定到已有 Git 工作区，用于文件夹同步。",
+    "gitFolderPathHint": "将此工作空间绑定到已有 Git 工作区，用于文件夹同步",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "已与 Git 文件夹同步",
     "pendingSync": "等待同步",
@@ -123,7 +123,7 @@
     "addTeams": "添加团队",
     "addLabels": "添加标签",
     "addRepos": "关联仓库",
-    "noReposHint": "暂无可关联仓库,请先将仓库添加到工作区。",
+    "noReposHint": "暂无可关联仓库,请先将仓库添加到工作区",
     "addDate": "添加日期",
     "clearDate": "清除日期",
     "noStatus": "无状态",
@@ -371,10 +371,7 @@
       "moreProperties": "更多属性"
     },
     "propertyFields": {
-      "assignee": "负责人",
-      "project": "项目",
-      "milestone": "里程碑",
-      "dueDate": "截止日期"
+      "project": "项目"
     },
     "addWorkItem": "添加工作项",
     "agentWorkflow": {
@@ -405,8 +402,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "暂不可用",
-      "prPendingHint": "Agent 完成后将创建 PR。",
-      "prNeutralHint": "尚未创建 PR。",
+      "prPendingHint": "Agent 完成后将创建 PR",
+      "prNeutralHint": "尚未创建 PR",
       "prCreatingHint": "正在创建 Pull Request...",
       "prCreateButton": "创建 Pull Request",
       "prCreateError": "创建 Pull Request 失败",
@@ -416,7 +413,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "无文件变更",
-      "fileDiffCleanHint": "未检测到文件变更。",
+      "fileDiffCleanHint": "未检测到文件变更",
       "costSummary": "费用摘要",
       "totalCost": "总计",
       "tokens": "Token",
@@ -445,7 +442,7 @@
       "save": "保存当前视图",
       "saveTitle": "保存视图",
       "namePlaceholder": "视图名称",
-      "saveHint": "保存当前筛选条件；布局只作为首次打开的种子。",
+      "saveHint": "保存当前筛选条件；布局只作为首次打开的种子",
       "delete": "删除视图"
     },
     "table": {
@@ -463,14 +460,14 @@
     },
     "batchProperty": {
       "title": "设置属性",
-      "hint": "将一个属性值应用到选中的 {{count}} 个事项；留空表示清除该属性。",
+      "hint": "将一个属性值应用到选中的 {{count}} 个事项；留空表示清除该属性",
       "propertyPlaceholder": "属性",
       "valuePlaceholder": "值",
       "applied": "已更新 {{count}} 个事项"
     },
     "revisionConflict": {
       "title": "处理编辑冲突",
-      "description": "{{field}} 在版本 {{expected}} 之后已被修改。请将你的编辑与最新版本 {{actual}} 对比，再选择保留哪一版。",
+      "description": "{{field}} 在版本 {{expected}} 之后已被修改。请将你的编辑与最新版本 {{actual}} 对比，再选择保留哪一版",
       "mine": "我的版本",
       "latest": "最新版本",
       "useLatest": "使用最新版本",
@@ -494,7 +491,7 @@
       "started": "快捷指令“{{name}}”已启动"
     },
     "batchField": {
-      "hint": "应用到选中的 {{count}} 个事项。"
+      "hint": "应用到选中的 {{count}} 个事项"
     },
     "batchStatus": {
       "title": "设置状态"
@@ -573,7 +570,7 @@
     "sidebarSync": "同步",
     "sync": {
       "title": "外部同步",
-      "description": "将此项目的工作项镜像到外部系统，例如 Linear 或 GitHub。",
+      "description": "将此项目的工作项镜像到外部系统，例如 Linear 或 GitHub",
       "adapterPicker": {
         "title": "适配器",
         "notAttached": "未绑定",
@@ -581,7 +578,7 @@
         "detach": "解绑",
         "detachProjectMenuLabel": "解除 GitHub 关联",
         "detachProjectTitle": "解除 {{project}} 与 GitHub 的关联？",
-        "detachProjectDescription": "GitHub Issues 同步将停止。本地项目和已导入的工作项会保留在 ORG2 中。",
+        "detachProjectDescription": "GitHub Issues 同步将停止。本地项目和已导入的工作项会保留在 ORG2 中",
         "detachProjectAction": "解除 {{project}} 与 GitHub 的关联",
         "detachProjectSuccess": "已解除 {{project}} 与 GitHub 的关联",
         "changeWarning": "在绑定新适配器前，请先解绑当前适配器。"
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "正在加载 Webhook 状态…",
-        "notInstalledDescription": "安装 Webhook 密钥后，提供方可直接推送变更，无需等待下次轮询。",
+        "notInstalledDescription": "安装 Webhook 密钥后，提供方可直接推送变更，无需等待下次轮询",
         "install": "安装 Webhook",
-        "installedDescription": "将下方 URL 粘贴到提供方的 Webhook 配置中，并使用密钥对交付内容进行签名。",
+        "installedDescription": "将下方 URL 粘贴到提供方的 Webhook 配置中，并使用密钥对交付内容进行签名",
         "indicatorFresh": "最近有交付",
         "indicatorStale": "无最近交付",
         "lastDeliveryNever": "尚无交付",
@@ -627,7 +624,7 @@
         "copyUrl": "复制 URL",
         "rotate": "轮换密钥",
         "secretTitle": "立即复制此密钥 — 仅显示一次",
-        "secretDescription": "将该签名密钥粘贴到提供方的 Webhook 配置中。关闭此面板后我们不会保留明文值。",
+        "secretDescription": "将该签名密钥粘贴到提供方的 Webhook 配置中。关闭此面板后我们不会保留明文值",
         "copySecret": "复制密钥",
         "dismissSecret": "我已保存",
         "secretCopied": "密钥已复制到剪贴板",
@@ -653,9 +650,9 @@
         "progressNoTotal": "已导入 {{count}} 项",
         "completedSummary": "已从远端导入 {{count}} 项。",
         "cancelledSummary": "已取消，已导入 {{count}} 项。",
-        "pendingDescription": "首次同步会完整遍历远端历史记录一次，之后的同步使用常规增量循环。",
-        "runningDescription": "正在分页遍历远端历史记录。导入期间你可以继续工作。",
-        "failedDescription": "上一页发生永久性失败。重试将从游标位置继续。",
+        "pendingDescription": "首次同步会完整遍历远端历史记录一次，之后的同步使用常规增量循环",
+        "runningDescription": "正在分页遍历远端历史记录。导入期间你可以继续工作",
+        "failedDescription": "上一页发生永久性失败。重试将从游标位置继续",
         "cancel": "取消导入",
         "retry": "重试",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "状态",
     "statusesBuiltin": "内置状态",
-    "statusesBuiltinDescription": "标准工作流状态，始终可用。",
+    "statusesBuiltinDescription": "标准工作流状态，始终可用",
     "statusesCustom": "自定义状态",
-    "statusesCustomDescription": "映射到某个内置状态桶的别名；筛选、计数与看板按其所属桶处理。",
+    "statusesCustomDescription": "映射到某个内置状态桶的别名；筛选、计数与看板按其所属桶处理",
     "statusNamePlaceholder": "状态名称",
     "noCustomStatuses": "还没有自定义状态。",
     "statusArchive": "归档状态",
@@ -793,11 +790,11 @@
     "unknownState": "未知状态",
     "emptyConnections": {
       "title": "没有 Linear 连接",
-      "description": "在 Integrations 中创建 Linear 连接，然后返回这里直接浏览 Linear 项目。"
+      "description": "在 Integrations 中创建 Linear 连接，然后返回这里直接浏览 Linear 项目"
     },
     "emptySelection": {
       "title": "选择 Linear 项目",
-      "description": "从左侧选择一个项目，以查看实时 Linear Issues 并编辑项目详情。"
+      "description": "从左侧选择一个项目，以查看实时 Linear Issues 并编辑项目详情"
     },
     "forms": {
       "createProjectTitle": "创建 Linear 项目",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder 同步完成",
     "syncFailed": "Git folder 同步失败：{{message}}",
     "noResultTitle": "暂无 Git 同步结果",
-    "noResultSubtitle": "从状态栏运行 Git folder 同步后即可检查冲突。",
+    "noResultSubtitle": "从状态栏运行 Git folder 同步后即可检查冲突",
     "noConflictsTitle": "没有冲突",
-    "noConflictsSubtitle": "这个工作空间目前没有待处理的 Git folder 冲突。"
+    "noConflictsSubtitle": "这个工作空间目前没有待处理的 Git folder 冲突"
   }
 }

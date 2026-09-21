@@ -58,6 +58,12 @@ export interface UseTranscriptViewportReturn {
   followTail: () => void;
   detachForNavigation: () => void;
   preserveForLayoutMutation: () => void;
+  /**
+   * Apply the follow/anchor policy to the layout that is about to paint.
+   * For content owners that commit geometry outside the observed elements
+   * (a virtualizer flushing re-measured rows from its own ResizeObserver).
+   */
+  reconcileLayout: () => void;
   showScrollToBottom: boolean;
   mode: TranscriptFollowMode;
 }
@@ -194,8 +200,12 @@ export function restoreTranscriptAnchor(
 
 /**
  * Source-neutral viewport owner for ordinary, Member, and Group transcripts.
- * All content/resize signals coalesce into one pending animation frame, and
- * every frame is fenced to the session generation that scheduled it.
+ * React content signals coalesce into one pending animation frame, fenced to
+ * the session generation that scheduled it. Resize signals reconcile inside
+ * the ResizeObserver callback instead: it runs after layout and before paint,
+ * whereas a frame requested there runs only after this frame has painted the
+ * reflowed transcript at its stale offset — a visible bounce on every frame
+ * of a pane resize. WebKit has no CSS scroll anchoring to absorb that gap.
  */
 export function useTranscriptViewport({
   sessionKey,
@@ -332,6 +342,11 @@ export function useTranscriptViewport({
   useLayoutEffect(() => {
     reconcileRef.current = reconcile;
   }, [reconcile]);
+
+  const reconcileLayout = useCallback(() => {
+    cancelPendingFrame();
+    reconcileRef.current();
+  }, [cancelPendingFrame]);
 
   const handleScroll = useCallback(
     (reportedAtTail?: boolean) => {
@@ -549,7 +564,7 @@ export function useTranscriptViewport({
     window.addEventListener("pointercancel", handlePointerUp);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    const resizeObserver = new ResizeObserver(scheduleReconcile);
+    const resizeObserver = new ResizeObserver(reconcileLayout);
     resizeObserver.observe(scrollRoot);
     if (scrollRoot.firstElementChild) {
       resizeObserver.observe(scrollRoot.firstElementChild);
@@ -573,6 +588,7 @@ export function useTranscriptViewport({
     cancelPendingFrame,
     followTail,
     handleScroll,
+    reconcileLayout,
     scheduleReconcile,
     scrollRoot,
     transition,
@@ -592,6 +608,7 @@ export function useTranscriptViewport({
     followTail,
     detachForNavigation,
     preserveForLayoutMutation,
+    reconcileLayout,
     showScrollToBottom:
       itemCount > 0 && (mode === "detached_reading" || !atTail),
     mode,

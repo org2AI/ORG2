@@ -119,10 +119,10 @@ export function countChatRounds(events: ReadonlyArray<ChatRoundEvent>): number {
 }
 
 /**
- * Build the composer files pill's reload signal. Shaped like the per-round
- * footer's `turnFilesReloadKey` (`${sessionId}:${roundCount}:${working|idle}`)
- * so the orgtrack snapshot is refetched when the session changes, a new round
- * appears, or the agent transitions to idle — never on every streamed tick.
+ * Build the composer files pill's reload signal
+ * (`${sessionId}:${roundCount}:${working|idle}`) so the orgtrack snapshot is
+ * refetched when the session changes, a new round appears, or the agent
+ * transitions to idle — never on every streamed tick.
  */
 export function buildCompactFilesReloadKey(
   sessionId: string | null,

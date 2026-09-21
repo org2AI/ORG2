@@ -6,9 +6,6 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 
-/** Keys of the four letter-bearing axes, in code order. */
-export const AXIS_ORDER = ["ME", "DA", "FW", "SH"] as const;
-
 export interface AxisEvidence {
   label: string;
   signal: string;

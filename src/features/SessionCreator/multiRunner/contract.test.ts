@@ -359,3 +359,29 @@ describe("resolveRunnerConfig", () => {
     });
   });
 });
+
+it("keeps simultaneous SDE runner purchases distinct when the model overlaps", () => {
+  const rows = ["market:first", "market:second"].map(
+    (credentialSource, index) => ({
+      id: `sde-${index}`,
+      dispatchCategory: DISPATCH_CATEGORY.RUST_AGENT,
+      agentDefinitionId: "builtin:sde",
+      runtimeConfig: {
+        keySource: "own_key" as const,
+        model: "shared-model",
+        credentialSource,
+        marketProfileId: `${credentialSource}:profile`,
+      },
+    })
+  );
+  const configs = rows.map(resolveRunnerConfig);
+  expect(configs.map((config) => config.credentialSource)).toEqual([
+    "market:first",
+    "market:second",
+  ]);
+  for (const config of configs) {
+    expect(config.model).toBe("shared-model");
+    expect(config.selectedAccountId).toBeUndefined();
+    expect(config.cliAgentType).toBeUndefined();
+  }
+});

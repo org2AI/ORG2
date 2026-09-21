@@ -11,12 +11,6 @@ export const CHART_AXIS_TICK = {
   fontSize: 11,
 } as const;
 
-export const CHART_AXIS_TICK_BOLD = {
-  fill: "var(--color-text-1)",
-  fontSize: 11,
-  fontWeight: 600,
-} as const;
-
 export const CHART_TOOLTIP = {
   content: {
     background: "var(--color-bg-2)",

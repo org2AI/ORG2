@@ -7,6 +7,7 @@
 const { spawnSync } = require("child_process");
 const path = require("path");
 const { tauriFeatureString } = require("./features.cjs");
+const { applyDevInstanceEnv } = require("./instance-profile.cjs");
 const {
   applyDefaultDiagnosticsEndpoint,
 } = require("./diagnostics-endpoint.cjs");
@@ -15,7 +16,9 @@ require("dotenv").config({ path: path.join(__dirname, "..", "..", ".env") });
 
 const subcommand = process.argv[2];
 if (!subcommand) {
-  console.error("Usage: node scripts/tauri/run-with-features.cjs <dev|build|...> [extra tauri args...]");
+  console.error(
+    "Usage: node scripts/tauri/run-with-features.cjs <dev|build|...> [extra tauri args...]"
+  );
   process.exit(1);
 }
 
@@ -25,6 +28,12 @@ const extraArgs = rawExtraArgs;
 const args = [subcommand];
 if (featureString.length > 0) {
   args.push("--features", featureString);
+}
+if (subcommand === "dev") {
+  args.push(
+    "--config",
+    path.join(__dirname, "../../src-tauri/tauri.dev.conf.json")
+  );
 }
 args.push(...extraArgs);
 
@@ -56,7 +65,9 @@ const result = spawnSync("tauri", args, {
   stdio: "inherit",
   shell: true,
   cwd: rootDir,
-  env: applyDefaultDiagnosticsEndpoint({ ...process.env }),
+  env: applyDefaultDiagnosticsEndpoint(
+    subcommand === "dev" ? applyDevInstanceEnv(process.env) : { ...process.env }
+  ),
 });
 
 process.exit(result.status ?? 1);

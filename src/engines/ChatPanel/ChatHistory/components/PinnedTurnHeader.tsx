@@ -48,6 +48,7 @@ function samePinnedMeta(
     left.durationMs === right.durationMs &&
     left.itemCount === right.itemCount &&
     left.bodyEventCount === right.bodyEventCount &&
+    left.hasBody === right.hasBody &&
     left.previewText === right.previewText &&
     left.startMs === right.startMs &&
     left.endMs === right.endMs &&

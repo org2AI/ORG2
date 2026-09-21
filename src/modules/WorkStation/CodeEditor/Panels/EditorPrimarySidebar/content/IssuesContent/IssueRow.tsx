@@ -2,6 +2,8 @@ import React, { memo, useCallback, useMemo } from "react";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
 import { TreeRowBase, type TreeRowNode } from "@src/components/TreeRow";
+import { ReferenceDragGhost } from "@src/components/dnd/ReferenceDragGhost";
+import { useReferencePillDrag } from "@src/components/dnd/useReferencePillDrag";
 import { TYPOGRAPHY } from "@src/config/workstation/tokens";
 import {
   CancelCircleIcon,
@@ -12,9 +14,7 @@ import {
   Message01Icon,
 } from "@src/icons";
 import type { TabDragPillPayload } from "@src/modules/WorkStation/shared/TabBar/tabDragTypes";
-import { ReferenceDragGhost } from "@src/shared/dnd/ReferenceDragGhost";
-import { setIssueDragStash } from "@src/shared/dnd/dragSideChannel";
-import { useReferencePillDrag } from "@src/shared/dnd/useReferencePillDrag";
+import { setIssueDragStash } from "@src/util/dnd/dragSideChannel";
 
 import IssueHoverCard from "./IssueHoverCard";
 

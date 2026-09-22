@@ -2173,9 +2173,7 @@
       "activeMembers": "सक्रिय सदस्य",
       "inFlightTurns": "चल रहे टर्न",
       "openTasks": "खुले कार्य",
-      "blockingInbox": "अवरोधक इनबॉक्स",
-      "blockersTitle": "पूर्णता में अभी भी क्या बाधा है",
-      "unknownBlocker": "अज्ञात सिस्टम अवरोध"
+      "blockingInbox": "अवरोधक इनबॉक्स"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} के साथ प्रत्यक्ष काम",
@@ -2282,7 +2280,6 @@
   },
   "groupChat": {
     "triggerLabel": "समूह चैट",
-    "coordinatorLabel": "समन्वयक",
     "youLabel": "आप",
     "retry": "फिर से प्रयास करें",
     "memberCount_one": "{{count}} सदस्य",

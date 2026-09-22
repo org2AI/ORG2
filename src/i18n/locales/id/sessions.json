@@ -2173,9 +2173,7 @@
       "activeMembers": "Anggota aktif",
       "inFlightTurns": "Giliran berjalan",
       "openTasks": "Tugas terbuka",
-      "blockingInbox": "Kotak masuk yang memblokir",
-      "blockersTitle": "Hal yang masih menghalangi penyelesaian",
-      "unknownBlocker": "Penghalang sistem tidak dikenal"
+      "blockingInbox": "Kotak masuk yang memblokir"
     },
     "agentOrgIntervention": {
       "directTitle": "Kerja langsung dengan {{member}}",
@@ -2282,7 +2280,6 @@
   },
   "groupChat": {
     "triggerLabel": "Chat grup",
-    "coordinatorLabel": "Koordinator",
     "youLabel": "Anda",
     "retry": "Coba lagi",
     "memberCount_one": "{{count}} anggota",

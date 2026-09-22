@@ -85,6 +85,53 @@ mod tests {
         }
     }
 
+    /// Transcripts are the only place a user sees these calls happen, and
+    /// `write_org2_terminal` is the first surface that lets an agent type
+    /// into their shell. It must not render identically to a docs read.
+    #[test]
+    fn transcript_labels_separate_open_terminal_read_and_terminal_write() {
+        let entry = |kind: &Kind| {
+            crate::tools::builtin_tools::BUILTIN_TOOLS
+                .iter()
+                .find(|entry| entry.name == kind.name())
+                .unwrap()
+        };
+        let labels = |kind: &Kind| {
+            let e = entry(kind);
+            (e.icon_id, e.label_running, e.label_done, e.label_failed)
+        };
+        let inspect = [Kind::Context, Kind::Tabs, Kind::Terminals, Kind::Docs];
+        for kind in inspect {
+            assert_eq!(labels(&kind), labels(&Kind::Result), "{}", kind.name());
+        }
+        let groups = [
+            Kind::Open,
+            Kind::ReadTerminal,
+            Kind::WriteTerminal,
+            Kind::Result,
+        ];
+        for (index, kind) in groups.iter().enumerate() {
+            for other in &groups[index + 1..] {
+                assert_ne!(
+                    labels(kind),
+                    labels(other),
+                    "{} and {} share transcript labels",
+                    kind.name(),
+                    other.name()
+                );
+            }
+        }
+        // Every key the table names must resolve; the i18n key check owns
+        // the catalog, this owns the shape the frontend reads.
+        for kind in agent_tools::ALL {
+            let e = entry(kind);
+            for key in [e.label_running, e.label_done, e.label_failed] {
+                assert!(key.starts_with("tools.orgiiGui"), "{key}");
+            }
+            assert!(!e.icon_id.is_empty());
+        }
+    }
+
     #[test]
     fn responses_and_codex_wire_schemas_make_optional_arguments_nullable() {
         use crate::providers::responses_common::convert_tools;

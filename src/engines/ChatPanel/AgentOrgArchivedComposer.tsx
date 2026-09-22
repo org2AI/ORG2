@@ -27,9 +27,7 @@ const AgentOrgArchivedComposer: React.FC<AgentOrgArchivedComposerProps> = memo(
           className={`relative z-10 w-full ${DETAIL_PANEL_TOKENS.contentMaxWidth}`}
         >
           <SessionReadOnlyBar
-            label={t("planner.agentOrgOverview.archivedReadOnly", {
-              defaultValue: "Archived — history is read-only",
-            })}
+            label={t("planner.agentOrgOverview.archivedReadOnly")}
           />
         </div>
       </div>

@@ -52,7 +52,6 @@ export {
   validRepoIdsAtom,
   // Persisted atoms (window-scoped)
   selectedRepoIdAtom,
-  selectedBranchAtom,
   // Persisted atoms (global)
   lastUsedRepoAtom,
   cachedReposAtom,
@@ -64,8 +63,6 @@ export {
   // Loading states
   repoLoadingAtom,
   branchLoadingAtom,
-  // Search
-  repoFilterAtom,
 } from "./atoms";
 
 // ============================================
@@ -106,5 +103,4 @@ export {
   registerOpenedRepo,
   unregisterWindow,
   clearAllOpenedRepos,
-  isMainAppWindowLabel,
 } from "./storage";

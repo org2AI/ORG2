@@ -138,7 +138,3 @@ export const LearningsStatusReportSchema = z.object({
 });
 
 export type LearningRecord = z.output<typeof LearningRecordSchema>;
-
-export type LearningsStatusReport = z.output<
-  typeof LearningsStatusReportSchema
->;

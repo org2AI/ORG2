@@ -86,7 +86,8 @@ const TaskDetailHeaderActions: React.FC<TaskDetailHeaderActionsProps> = ({
           {strategyOpen && (
             <div className="absolute top-full right-0 z-50 mt-1 min-w-[140px] rounded-md border border-border-1 bg-bg-1 py-1 shadow-lg">
               {MERGE_STRATEGY_OPTIONS.map((strategy) => (
-                <button
+                <Button
+                  layout="custom"
                   key={strategy}
                   className={`flex w-full items-center px-3 py-1.5 text-left text-[12px] hover:bg-bg-2 ${
                     mergeStrategy === strategy
@@ -96,7 +97,7 @@ const TaskDetailHeaderActions: React.FC<TaskDetailHeaderActionsProps> = ({
                   onClick={() => onSelectStrategy(strategy)}
                 >
                   {getMergeStrategyLabel(strategy, t)}
-                </button>
+                </Button>
               ))}
             </div>
           )}

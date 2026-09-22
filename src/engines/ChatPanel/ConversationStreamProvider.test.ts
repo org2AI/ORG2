@@ -388,7 +388,9 @@ describe("local execution-child hydration lifecycle", () => {
         ],
         "local-root"
       ).map((event) => [event.id, event.displayText])
-    ).toEqual([["runlive-current-assistant", "working"]]);
+    ).toEqual([
+      [`runlive-${nativeSourceEventId(currentAssistant)}`, "working"],
+    ]);
   });
 
   it("verifies a child against raw native history before applying chat visibility", () => {
@@ -465,6 +467,174 @@ describe("local execution history hydration", () => {
 });
 
 describe("native child and cloud plane ownership", () => {
+  it("retains distinct Codex turns when a rebuilt episode reuses parser row ids", () => {
+    const native = (
+      sessionId: string,
+      id: string,
+      source: "user" | "assistant",
+      text: string,
+      time: string
+    ): SessionEvent => ({
+      ...messageEvent(id, source, text, time),
+      sessionId,
+    });
+    const original = [
+      native("root", "codex-user-0", "user", "A", "2026-09-18T17:15:24Z"),
+      native(
+        "root",
+        "codex-asst-2",
+        "assistant",
+        "READY",
+        "2026-09-18T17:15:27Z"
+      ),
+    ];
+    const landed = [
+      native(
+        "first-child",
+        "codex-user-2",
+        "user",
+        "B",
+        "2026-09-18T17:17:47Z"
+      ),
+      native(
+        "first-child",
+        "codex-asst-4",
+        "assistant",
+        "B reply",
+        "2026-09-18T17:17:49Z"
+      ),
+      native(
+        "first-child",
+        "codex-user-6",
+        "user",
+        "C",
+        "2026-09-18T17:18:48Z"
+      ),
+      native(
+        "first-child",
+        "codex-asst-8",
+        "assistant",
+        "C reply",
+        "2026-09-18T17:18:51Z"
+      ),
+    ];
+    const copy = (
+      event: SessionEvent,
+      sessionId: string,
+      index: number
+    ): SessionEvent => ({
+      ...event,
+      sessionId,
+      id: `codex-${event.source === "user" ? "user" : "asst"}-${index}`,
+      createdAt: "2026-09-18T17:21:41Z",
+      args: { [NATIVE_SOURCE_EVENT_ID_ARG]: nativeSourceEventId(event) },
+    });
+    // Native materialization copies just provider context, not lifecycle
+    // rows. D's parser sequence is therefore 6, already used by child one's C.
+    const newest = [
+      native(
+        "second-child",
+        "codex-user-6",
+        "user",
+        "D",
+        "2026-09-18T17:21:42Z"
+      ),
+      native(
+        "second-child",
+        "codex-asst-8",
+        "assistant",
+        "D reply",
+        "2026-09-18T17:21:44Z"
+      ),
+    ];
+    const segments = [
+      {
+        child: {
+          session_id: "first-child",
+          created_at: "2026-09-18T17:17:46Z",
+        },
+        events: [
+          ...original.map((event, index) => copy(event, "first-child", index)),
+          ...landed,
+        ],
+      },
+      {
+        child: {
+          session_id: "second-child",
+          created_at: "2026-09-18T17:21:40Z",
+        },
+        events: [
+          ...[...original, ...landed].map((event, index) =>
+            copy(event, "second-child", index)
+          ),
+          ...newest,
+        ],
+      },
+    ];
+    const tails = projectVisibleLocalExecutionTail(original, segments, "root");
+    const assembled = assembleConversationWithLocalExecution(
+      {
+        family: null,
+        anchorBareSessionId: "root",
+        anchorEvents: original,
+        planeEvents: [],
+        comments: [],
+        streamSessionId: "root",
+        viewer: { status: "loading" },
+      },
+      tails
+    );
+    expect(assembled.map((event) => event.displayText)).toEqual([
+      "A",
+      "READY",
+      "B",
+      "B reply",
+      "C",
+      "C reply",
+      "D",
+      "D reply",
+    ]);
+    expect(new Set(tails.map((event) => event.id)).size).toBe(tails.length);
+    expect(tails.map(nativeSourceEventId)).toEqual(
+      [...landed, ...newest].map(nativeSourceEventId)
+    );
+    // Cold/repeated hydration computes the same identities without a registry
+    // or changing any provider-owned event.
+    expect(
+      projectVisibleLocalExecutionTail(original, segments, "root")
+    ).toEqual(tails);
+    expect(newest[0].sessionId).toBe("second-child");
+    expect(newest[0].id).toBe("codex-user-6");
+    const live = buildConversationRunnerOverlay(
+      {
+        runnerSessionId: "second-child",
+        turnId: "D-intent",
+        eventStartIndex: 0,
+      },
+      [
+        {
+          ...newest[1],
+          result: { ...newest[1].result, turnIntentId: "D-intent" },
+        },
+      ],
+      "root"
+    );
+    expect(
+      assembleConversationWithLocalExecution(
+        {
+          family: null,
+          anchorBareSessionId: "root",
+          anchorEvents: assembled,
+          planeEvents: [],
+          comments: [],
+          streamSessionId: "root",
+          viewer: { status: "loading" },
+        },
+        live
+      ).map((event) => event.displayText)
+    ).toEqual(assembled.map((event) => event.displayText));
+  });
+
   it("merges a landed child through plane identity once while retaining external App turns", () => {
     const first = messageEvent(
       "root-answer",

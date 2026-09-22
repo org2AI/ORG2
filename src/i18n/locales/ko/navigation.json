@@ -46,7 +46,8 @@
     "colleagues": "Colleagues",
     "terminals": "터미널",
     "openSourceRepo": "오픈 소스 Repo",
-    "teamInbox": "Team Inbox"
+    "teamInbox": "Team Inbox",
+    "closeSettings": "설정 닫기"
   },
   "routes": {
     "session": "채팅",
@@ -74,12 +75,7 @@
       "manual": "수동 순서"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "관리",
-      "core": "코어",
-      "agent": "Agent",
-      "org": "팀",
-      "agentOrgs": "Agent & 팀"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "그룹 없음",
@@ -101,57 +97,23 @@
       "untitledSession": "제목 없는 Session",
       "enterSessionName": "Session 이름 입력"
     },
-    "groups": {
-      "economy": "이코노미",
-      "myServices": "내 서비스",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Hosted Key",
-      "cloud": "Cloud",
-      "openSource": "오픈소스",
-      "timeline": "Timeline"
-    },
     "actions": {
       "addNew": "새로 추가",
       "collapseAll": "모두 접기",
-      "markAllRead": "모두 읽음으로 표시",
-      "toggleGroup": "섹션 전환"
+      "markAllRead": "모두 읽음으로 표시"
     },
     "search": {
-      "folders": "워크스페이스 검색...",
-      "sessions": "세션 검색...",
-      "projects": "프로젝트 검색...",
-      "colleagues": "Search colleagues..."
-    },
-    "folderCounts": {
-      "repo": "{{count}}개 Repo",
-      "multiRepoWorkspace": "{{count}}개 멀티 Repo Workspace",
-      "repo_other": "{{count}} repos",
-      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
-      "repo_plural": "{{count}} repos",
-      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
+      "sessions": "세션 검색..."
     },
     "bottomBar": {
       "settings": "설정",
-      "clockLabel": "현재 시각",
       "updateAvailable": "업데이트 v{{version}} 다운로드"
     },
     "settingsMenu": {
       "appearance": "모양",
       "modifyAppearance": "모양 수정",
-      "language": "언어",
       "viewRam": "RAM 보기",
-      "tutorials": "튜토리얼",
       "openSettings": "설정 열기"
-    },
-    "empty": {
-      "noItems": "항목 없음",
-      "noSessions": "Session 없음",
-      "noSessionsDesc": "새 Session을 시작하세요",
-      "noResultsFor": "\"{{query}}\"에 대한 결과 없음",
-      "noSearchResults": "결과를 찾을 수 없음"
     },
     "presence": {
       "tooltip": "상태를 설정 — Agent가 사용자가 키보드 앞에 있는지에 따라 행동을 조정합니다.",
@@ -169,9 +131,18 @@
       "durationTomorrow": "내일",
       "unknownRole": "알 수 없는 역할"
     },
-    "guide": {
-      "startSession": "세션 시작",
-      "connectOrganization": "워크스페이스 연결 또는 만들기"
+    "sections": {
+      "section": "섹션",
+      "create": "새 섹션",
+      "name": "섹션 이름",
+      "rename": "섹션 이름 변경",
+      "delete": "섹션 삭제 (세션 유지)",
+      "remove": "섹션에서 제거",
+      "up": "위로 이동",
+      "down": "아래로 이동",
+      "manage": "섹션 관리",
+      "more": "더 불러오기",
+      "retry": "다시 시도"
     }
   },
   "launchpad": {
@@ -275,9 +246,9 @@
       "switchToRepo": "열기",
       "startSession": "세션 시작",
       "openDetails": "세부 정보 표시",
-      "remove": "Remove from ORGII",
-      "removeSuccess": "Linkage to ORGII removed",
-      "removeFailed": "Failed to remove linkage to ORGII"
+      "remove": "ORG2에서 제거",
+      "removeSuccess": "ORG2 연결이 해제되었습니다",
+      "removeFailed": "ORG2 연결을 해제하지 못했습니다"
     },
     "addWorkspace": "Workspace 추가"
   },
@@ -323,11 +294,11 @@
       "forkModelFallback": "소유자의 모델 {{model}}은(는) 내 키로 사용할 수 없습니다 — 이 포크는 대신 {{fallback}}을(를) 사용합니다.",
       "forkModelUnavailable": "소유자의 모델 {{model}}은(는) 내 키로 사용할 수 없습니다 — 실행하기 전에 모델을 선택하세요.",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -484,7 +455,6 @@
       "showHidden": "숨긴 세션 표시 ({{count}})",
       "viewerTooltip": "{{name}} 님이 이 세션을 보고 있습니다",
       "viewerOverflow": "외 {{count}}명이 보고 있습니다",
-      "memberViewing": "보는 중: {{title}}",
       "viewerOverflow_one": "and 1 more viewer",
       "viewerOverflow_other": "and {{count}} more viewers",
       "loadingSession": "세션 불러오는 중…",
@@ -666,7 +636,7 @@
       "selectAll": "전원 ({{count}})",
       "incomingEndpointMismatch": "이 공유는 다른 사용자 지정 클라우드에 속합니다. 가져오기 전에 해당 엔드포인트를 구성하세요.",
       "incomingConnectionError": "클라우드 서비스에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도하세요.",
-      "incomingIncompatibleError": "클라우드가 호환되지 않는 공유 응답을 반환했습니다. ORGII를 업데이트하거나 배포를 확인하세요.",
+      "incomingIncompatibleError": "클라우드가 호환되지 않는 공유 응답을 반환했습니다. ORG2를 업데이트하거나 배포를 확인하세요.",
       "incomingServerError": "클라우드 서비스가 이 공유를 확인하지 못했습니다. 다시 시도하세요.",
       "incomingAlreadyOnDevice": "이 세션은 이미 이 기기에 있습니다. 중복으로 가져오지 말고 원본을 여세요.",
       "incomingOpenExisting": "세션 열기",
@@ -678,32 +648,16 @@
       "unresolvedBadge": "미해결 댓글 {{count}}개",
       "unreadBadge_one": "읽지 않은 메시지 {{count}}개",
       "unreadBadge": "읽지 않은 메시지 {{count}}개",
-      "addError": "등록하지 못했습니다 — 초안은 유지됩니다",
-      "addPlaceholder": "댓글 추가…",
-      "agentAddressing": "에이전트가 처리 중…",
       "agentAuthor": "에이전트 @{{name}}",
-      "cancel": "취소",
-      "delete": "삭제",
       "deletedComment": "삭제된 댓글입니다",
       "earlierVersion": "이 세션의 이전 버전에서",
-      "edit": "수정",
       "editedMarker": "수정됨",
       "empty": "아직 댓글이 없습니다",
       "loadError": "댓글을 불러오지 못했습니다",
-      "mentionMembers": "멤버 언급",
       "notesButton": "세션 노트",
       "notesTitle": "세션 노트",
-      "reply": "답글",
-      "replyPlaceholder": "답글…",
       "resolved": "해결됨",
       "resolvedToggle": "해결됨 ({{count}})",
-      "save": "저장",
-      "searchMembers": "멤버 검색",
-      "send": "등록",
-      "task": {
-        "assignFailed": "댓글은 등록되었지만 에이전트 할당에 실패했습니다 — 스레드에서 다시 시도하세요",
-        "mentionSuggestion": "이 댓글을 에이전트에게 할당"
-      },
       "wontFix": "수정 안 함"
     },
     "sharingFloor": {
@@ -841,7 +795,6 @@
         "errorChannelMissing": "이 채널은 더 이상 사용할 수 없습니다",
         "errorMessageMissing": "이 메시지는 더 이상 사용할 수 없습니다",
         "loadError": "메시지를 불러오지 못했습니다",
-        "loadingMessages": "메시지를 불러오는 중…",
         "loadOlder": "이전 메시지 불러오기",
         "unknownAuthor": "팀원"
       }
@@ -866,26 +819,26 @@
     "deleteRoleCancel": "취소",
     "deleteRoleOk": "삭제",
     "deleteRoleTitle": "역할을 삭제할까요?",
-    "followUpSuggestionsDesc": "작업 항목 턴이 완료된 뒤 가능한 다음 단계를 제안합니다. 추가 모델 요청이 사용됩니다.",
+    "followUpSuggestionsDesc": "작업 항목 턴이 완료된 뒤 가능한 다음 단계를 제안합니다. 추가 모델 요청이 사용됩니다",
     "followUpSuggestionsLabel": "Agent 후속 제안",
-    "goalMaxTurnsDesc": "Agent가 보통 멈추는 시점 이후에도 마지막 요청을 향해 최대 N턴 더 계속 작업합니다 (0 = 끄기).",
+    "goalMaxTurnsDesc": "Agent가 보통 멈추는 시점 이후에도 마지막 요청을 향해 최대 N턴 더 계속 작업합니다 (0 = 끄기)",
     "goalMaxTurnsLabel": "목표 지속 예산",
     "guidanceLabel": "Agent 지침",
     "guidancePlaceholder": "이 역할이 활성화되면 Agent가 동작을 어떻게 조정해야 하나요?",
-    "modeSwitchAutoPlanDesc": "확인 타이머가 만료되면 대기 중인 Plan 모드 제안으로 자동 전환합니다.",
+    "modeSwitchAutoPlanDesc": "확인 타이머가 만료되면 대기 중인 Plan 모드 제안으로 자동 전환합니다",
     "modeSwitchAutoPlanLabel": "모드 전환 자동 Plan",
     "newRoleDefaultLabel": "사용자 지정 역할",
-    "pageDescription": "지금 맡고 있는 역할을 정의하세요. Agent는 활성 역할의 지침을 읽고 그에 맞게 동작을 조정합니다 — 예를 들어 집중 작업 중에는 확인 질문을 줄이고, 자리를 비운 동안에는 요약을 모아서 전달합니다.",
+    "pageDescription": "지금 맡고 있는 역할을 정의하세요. Agent는 활성 역할의 지침을 읽고 그에 맞게 동작을 조정합니다 — 예를 들어 집중 작업 중에는 확인 질문을 줄이고, 자리를 비운 동안에는 요약을 모아서 전달합니다",
     "pageTitle": "내 역할",
-    "planAutoApproveDesc": "대기 중인 계획을 N초 후 자동 승인합니다 (0 = 내 응답 대기).",
+    "planAutoApproveDesc": "대기 중인 계획을 N초 후 자동 승인합니다 (0 = 내 응답 대기)",
     "planAutoApproveLabel": "계획 자동 승인",
-    "questionAutoSkipDesc": "대기 중인 Agent 질문을 N초 후 자동으로 건너뜁니다 (0 = 내 응답 대기).",
+    "questionAutoSkipDesc": "대기 중인 Agent 질문을 N초 후 자동으로 건너뜁니다 (0 = 내 응답 대기)",
     "questionAutoSkipLabel": "질문 자동 건너뛰기",
     "roleNameLabel": "이름",
     "roleNamePlaceholder": "역할 이름",
     "stanceAutonomous": "자율 — 나를 기다리지 않음",
     "stanceDeferAndBatch": "보류 & 일괄 — 먼저 작업하고 나중에 질문",
-    "stanceDesc": "이 역할이 활성화된 동안 Agent가 차단 결정을 처리하는 방식입니다.",
+    "stanceDesc": "이 역할이 활성화된 동안 Agent가 차단 결정을 처리하는 방식입니다",
     "stanceInteractive": "대화형 — 자유롭게 질문",
     "stanceLabel": "행동 태도"
   },
@@ -973,5 +926,10 @@
     "sidebar": {
       "signOut": "Sign out {{name}}"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "결과나 파일이 변경되었거나 쓰기에 실패하여 바꾸기를 중지했습니다. 일부 파일은 이미 업데이트되었을 수 있습니다. 다시 검색한 후 재시도하세요.",
+    "budgetExceeded": "검색 리소스 한도에 도달했습니다. 일부 결과만 표시됩니다. 검색 범위를 줄여 주세요.",
+    "timeout": "검색 시간이 초과되었습니다. 검색 범위를 줄이고 다시 시도해 주세요."
   }
 }

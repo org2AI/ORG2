@@ -82,3 +82,48 @@ pub fn native_transcript_ids_newest_first(
     let rows = stmt.query_map(params![session_id, source], |row| row.get(0))?;
     rows.collect()
 }
+
+/// A terminal native child can have a stable empty transcript only when no
+/// durable evidence of dispatch, materialization, history, or usage exists.
+/// Read the entire proof in one SQLite snapshot; never infer emptiness from a
+/// missing provider file or an error-message string. This does not write data.
+pub fn unstarted_native_child_revision(session_id: &str) -> SqliteResult<Option<String>> {
+    let conn = get_connection()?;
+    conn.query_row(
+        "SELECT session_id, parent_session_id, status, created_at, updated_at
+         FROM code_sessions cs
+         WHERE cs.session_id = ?1
+           AND cs.transcript_source = 'native'
+           AND length(trim(cs.parent_session_id)) > 0
+           AND cs.status IN ('failed', 'cancelled')
+           AND cs.user_input IS NULL AND cs.cli_session_id IS NULL
+           AND cs.pid IS NULL AND cs.token_usage IS NULL
+           AND NOT EXISTS (SELECT 1 FROM events WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM sessions WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM session_turns WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM session_turn_intents WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM code_session_chunks WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM code_session_cli_resume_state WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM code_session_native_transcript_ids WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM code_session_history_mutations WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM code_session_image_refs WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM shell_replays WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM session_llm_usage_spans WHERE session_id = cs.session_id)
+           AND NOT EXISTS (SELECT 1 FROM session_token_usage WHERE session_id = cs.session_id)",
+        params![session_id],
+        |row| {
+            // String fields serialize infallibly. Identity and catalog timestamps
+            // make the opaque token change if the terminal child is replaced.
+            Ok(serde_json::json!([
+                "unstarted-native-child-v1",
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+            ])
+            .to_string())
+        },
+    )
+    .optional()
+}

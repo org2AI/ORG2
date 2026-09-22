@@ -38,7 +38,7 @@ const ClaimIdentityModal: React.FC<ClaimIdentityModalProps> = ({
       cancelText={t("common:actions.cancel")}
       width={420}
     >
-      <div className="space-y-4 px-2 py-1">
+      <div className="space-y-4">
         <div>
           <div className="text-[13px] text-text-2">
             {t("settings.claimIdentityYoureClaming")}

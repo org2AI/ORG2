@@ -12,6 +12,7 @@ import {
   getManagedIssueStatusAccent,
 } from "./GitHubWorkItemsView";
 import { GITHUB_ITEM_KIND, type ManagedPrItem } from "./githubManagedItemModel";
+import { EMPTY_GITHUB_WORK_ITEM_FACETS } from "./githubWorkItemsFilterFacets";
 import { parseGitHubSearchQuery } from "./githubWorkItemsSearchQuery";
 import { DEFAULT_GITHUB_ISSUES_SORT } from "./githubWorkItemsSort";
 import { WorkManagementSplitHeaderContext } from "./workManagementSplitHeaderContext";
@@ -101,8 +102,7 @@ function createEmptyViewProps(): React.ComponentProps<
     selectedRepoSourceForCreate: null,
     searchQuery: "is:issue is:open",
     parsedSearchQuery: parseGitHubSearchQuery("is:issue is:open"),
-    issuePersonalFilterOptions: [],
-    selectedIssuePersonalFilters: [],
+    filterFacets: EMPTY_GITHUB_WORK_ITEM_FACETS,
     currentPage: 1,
     totalLoadedPages: 1,
     hasMoreFilteredIssues: false,
@@ -112,7 +112,6 @@ function createEmptyViewProps(): React.ComponentProps<
     updateSearchQuery: vi.fn(),
     onSearchQueryChange: vi.fn(),
     onRepoSelect: vi.fn(),
-    onIssuePersonalFiltersSelect: vi.fn(),
     onRefresh: vi.fn(),
     onGoToPage: vi.fn(),
     onNextPage: vi.fn().mockResolvedValue(undefined),
@@ -248,8 +247,7 @@ describe("GitHubWorkItemsView pull requests", () => {
           selectedRepoSourceForCreate: null,
           searchQuery: "is:pr is:open",
           parsedSearchQuery: parseGitHubSearchQuery("is:pr is:open"),
-          issuePersonalFilterOptions: [],
-          selectedIssuePersonalFilters: [],
+          filterFacets: EMPTY_GITHUB_WORK_ITEM_FACETS,
           currentPage: 1,
           totalLoadedPages: 1,
           hasMoreFilteredIssues: false,
@@ -259,7 +257,6 @@ describe("GitHubWorkItemsView pull requests", () => {
           updateSearchQuery: vi.fn(),
           onSearchQueryChange: vi.fn(),
           onRepoSelect: vi.fn(),
-          onIssuePersonalFiltersSelect: vi.fn(),
           onRefresh: vi.fn(),
           onGoToPage: vi.fn(),
           onNextPage: vi.fn().mockResolvedValue(undefined),
@@ -528,6 +525,17 @@ describe("GitHubWorkItemsView pull requests", () => {
     expect(markup).toContain('data-split-list-header-row="primary"');
     expect(markup).toContain('data-split-list-header-row="secondary"');
     expect(markup).toContain('data-testid="work-dataset-reviews"');
+    const topRow = markup.slice(
+      markup.indexOf('data-split-list-header-row="secondary"'),
+      markup.indexOf('data-split-list-header-row="primary"')
+    );
+    expect(topRow).toContain('data-testid="work-dataset-reviews"');
+    expect(topRow).toContain('data-testid="github-work-items-search"');
+    expect(topRow.indexOf('data-testid="work-dataset-reviews"')).toBeLessThan(
+      topRow.indexOf('data-testid="github-work-items-search"')
+    );
+    expect(topRow).not.toContain('data-testid="github-work-items-repository"');
+
     expect(markup).toContain('data-testid="github-work-items-repository"');
     expect(
       markup.match(/data-testid="github-work-items-state-open"/g)
@@ -658,8 +666,7 @@ describe("GitHubWorkItemsView pull requests", () => {
         selectedRepoSourceForCreate: null,
         searchQuery: "is:pr is:open",
         parsedSearchQuery: parseGitHubSearchQuery("is:pr is:open"),
-        issuePersonalFilterOptions: [],
-        selectedIssuePersonalFilters: [],
+        filterFacets: EMPTY_GITHUB_WORK_ITEM_FACETS,
         currentPage: 1,
         totalLoadedPages: 1,
         hasMoreFilteredIssues: false,
@@ -669,7 +676,6 @@ describe("GitHubWorkItemsView pull requests", () => {
         updateSearchQuery: vi.fn(),
         onSearchQueryChange: vi.fn(),
         onRepoSelect: vi.fn(),
-        onIssuePersonalFiltersSelect: vi.fn(),
         onRefresh: vi.fn(),
         onGoToPage: vi.fn(),
         onNextPage: vi.fn().mockResolvedValue(undefined),

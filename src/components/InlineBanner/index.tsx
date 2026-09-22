@@ -13,6 +13,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
 
 type InlineBannerTone = "danger" | "warning" | "info";
@@ -55,22 +56,26 @@ export const InlineBanner: React.FC<InlineBannerProps> = ({
         {children}
       </span>
       {onDismiss ? (
-        <button
-          type="button"
+        <Button
+          variant="tertiary"
+          size="sidebar"
+          iconOnly
+          icon={
+            <HugeiconsIcon
+              icon={Cancel01Icon}
+              data-icon="x"
+              size={12}
+              strokeWidth={2}
+              aria-hidden
+            />
+          }
+          style={{ width: 16, height: 16 }}
           onClick={onDismiss}
-          aria-label={t("actions.close", "Close")}
-          title={t("actions.close", "Close")}
+          aria-label={t("actions.close")}
+          title={t("actions.close")}
           data-testid={dataTestId ? `${dataTestId}-dismiss` : undefined}
-          className="mt-px -mr-1 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-colors hover:bg-fill-2"
-        >
-          <HugeiconsIcon
-            icon={Cancel01Icon}
-            data-icon="x"
-            size={12}
-            strokeWidth={2}
-            aria-hidden
-          />
-        </button>
+          className="mt-px -mr-1 shrink-0 hover:bg-fill-2"
+        />
       ) : null}
     </div>
   );

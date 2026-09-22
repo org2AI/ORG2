@@ -30,9 +30,9 @@ import {
   type EntityType,
 } from "@src/api/http/project/sync";
 import Button from "@src/components/Button";
+import DisclosureChevron from "@src/components/DisclosureChevron";
+import { SECTION_ACTION_GAP_CLASSES } from "@src/components/layout/Section";
 import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
   File02Icon,
   FolderClosedIcon,
   HugeiconsIcon,
@@ -40,7 +40,6 @@ import {
   Tag01Icon,
   UserIcon,
 } from "@src/icons";
-import { SECTION_ACTION_GAP_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
 const ENTITY_ICON_CLASS = "mt-0.5 flex-none text-text-3";
@@ -272,8 +271,7 @@ const ConflictRowComponent: React.FC<ConflictRowProps> = ({
               {t("settings.sync.conflicts.actions.useRemote")}
             </Button>
             <Button
-              variant="danger"
-              appearance="outline"
+              tone="danger"
               size="small"
               onClick={() => onDismiss(row.id)}
               loading={busy?.kind === "dismiss"}
@@ -284,30 +282,19 @@ const ConflictRowComponent: React.FC<ConflictRowProps> = ({
           </div>
         )}
       </div>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="inline"
         onClick={() => setShowDiff((prev) => !prev)}
-        className="flex items-center gap-1 self-start text-[12px] text-text-3 hover:text-text-2"
+        className="gap-1 self-start text-[12px] hover:text-text-2"
       >
-        {showDiff ? (
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            data-icon="chevron-down"
-            size={12}
-          />
-        ) : (
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            data-icon="chevron-right"
-            size={12}
-          />
-        )}
+        <DisclosureChevron expanded={showDiff} size={12} />
         <span>
           {showDiff
             ? t("settings.sync.conflicts.actions.hideDiff")
             : t("settings.sync.conflicts.actions.showDiff")}
         </span>
-      </button>
+      </Button>
       {showDiff && (
         <div className="flex flex-col gap-2">
           {fieldEntries.map(([fieldName, delta]) => (

@@ -105,6 +105,34 @@ function nodeMatchesQuery(
 // Tree Filtering
 // ============================================
 
+/** Combine single-directory search branches without changing filesystem names. */
+function compactSearchDirectories(nodes: TreePanelNode[]): TreePanelNode[] {
+  return nodes.map((node) => {
+    if (node.type !== "directory") return node;
+
+    let target = node;
+    const names = [node.name];
+    while (
+      target.expanded &&
+      !target.isSymlink &&
+      target.children?.length === 1 &&
+      target.children[0].type === "directory" &&
+      !target.children[0].isSymlink
+    ) {
+      target = target.children[0];
+      names.push(target.name);
+    }
+
+    return {
+      ...target,
+      ...(names.length > 1 ? { compactName: names.join("/") } : {}),
+      ...(target.children
+        ? { children: compactSearchDirectories(target.children) }
+        : {}),
+    };
+  });
+}
+
 /**
  * Recursively filter tree nodes, keeping directories that contain matches
  *
@@ -219,7 +247,7 @@ export function filterTree(
   }
 
   return {
-    filteredTree,
+    filteredTree: compactSearchDirectories(filteredTree),
     matchCount,
     matchingPaths,
   };
@@ -359,5 +387,5 @@ export function buildTreeFromSearchResults(
     }
   }
 
-  return root;
+  return compactSearchDirectories(root);
 }

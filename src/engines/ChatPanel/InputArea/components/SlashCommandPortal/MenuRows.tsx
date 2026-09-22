@@ -57,9 +57,7 @@ export const SlashItemRow: React.FC<SlashItemRowProps> = React.memo(
           trailingContent={
             <Button
               variant="tertiary"
-              appearance="ghost"
               size="mini"
-              shape="square"
               iconOnly
               icon={
                 <HugeiconsIcon

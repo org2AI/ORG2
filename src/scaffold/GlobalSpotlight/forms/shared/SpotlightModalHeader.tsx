@@ -7,6 +7,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { Cancel01Icon, HugeiconsIcon, type IconSvgElement } from "@src/icons";
 
 interface SpotlightModalHeaderProps {
@@ -85,13 +86,16 @@ const SpotlightModalHeader: React.FC<SpotlightModalHeaderProps> = ({
         {actions && (
           <div className="mx-2 h-5 w-px bg-border-2 opacity-50"></div>
         )}
-        <button
+        <Button
+          variant="tertiary"
+          size="mini"
+          aria-label={t("actions.close")}
+          iconOnly
+          icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={18} />}
           onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-text-2 hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-500"
+          hoverTone="danger"
           title={t("actions.close")}
-        >
-          <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={18} />
-        </button>
+        />
       </div>
     </div>
   );

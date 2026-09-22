@@ -3,7 +3,7 @@ name = "orgii-mobile-relay"
 version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-or-later"
-description = "Self-hostable, payload-opaque relay for ORGII Mobile Remote"
+description = "Self-hostable, payload-opaque relay for ORG2 Mobile Remote"
 
 [dependencies]
 axum = { workspace = true }

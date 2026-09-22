@@ -7,8 +7,8 @@
 import React, { memo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
-import { HEADER_BUTTON } from "@src/config/workstation/tokens";
 import {
   EclipseIcon,
   HugeiconsIcon,
@@ -99,19 +99,25 @@ export const DesignPanel: React.FC<DesignPanelProps> = memo(
 
     // Link toggle button component
     const renderLinkButton = (isLinked: boolean, onToggle: () => void) => (
-      <button
+      <Button
+        variant="tertiary"
+        size="sidebar"
+        aria-pressed={!isLinked}
+        aria-label={isLinked ? "Unlink values" : "Link values"}
+        iconOnly
+        icon={
+          <HugeiconsIcon
+            icon={MoreHorizontalIcon}
+            data-icon="ellipsis"
+            size={12}
+          />
+        }
         onClick={onToggle}
-        className={`${HEADER_BUTTON.action} ${
-          isLinked ? "text-text-2" : "text-primary-6"
-        }`}
+        className={
+          isLinked ? "text-text-2" : "text-primary-6 hover:text-primary-6"
+        }
         title={isLinked ? "Unlink values" : "Link values"}
-      >
-        <HugeiconsIcon
-          icon={MoreHorizontalIcon}
-          data-icon="ellipsis"
-          size={12}
-        />
-      </button>
+      />
     );
 
     if (!styles) {
@@ -272,21 +278,31 @@ export const DesignPanel: React.FC<DesignPanelProps> = memo(
             <SubSection
               title="Corners"
               headerActions={
-                <button
+                <Button
+                  variant="tertiary"
+                  size="sidebar"
+                  aria-pressed={radiusExpanded}
+                  aria-label={
+                    radiusExpanded ? "Use single radius" : "Customize corners"
+                  }
+                  iconOnly
+                  icon={
+                    <HugeiconsIcon
+                      icon={MoreHorizontalIcon}
+                      data-icon="ellipsis"
+                      size={12}
+                    />
+                  }
                   onClick={() => setRadiusExpanded(!radiusExpanded)}
-                  className={`${HEADER_BUTTON.action} ${
-                    radiusExpanded ? "text-primary-6" : "text-text-2"
+                  className={`${
+                    radiusExpanded
+                      ? "text-primary-6 hover:text-primary-6"
+                      : "text-text-2"
                   }`}
                   title={
                     radiusExpanded ? "Use single radius" : "Customize corners"
                   }
-                >
-                  <HugeiconsIcon
-                    icon={MoreHorizontalIcon}
-                    data-icon="ellipsis"
-                    size={12}
-                  />
-                </button>
+                />
               }
             >
               {radiusExpanded ? (

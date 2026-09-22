@@ -12,6 +12,12 @@ const enSupport = {
       back: "Back",
       search: "Search",
       add: "Add",
+      copy: "Copy",
+    },
+    status: {
+      copied: "Copied",
+      loading: "Loading…",
+      copyFailed: "Copy failed",
     },
     tooltips: {
       startVoiceInput: "Start voice input",
@@ -47,6 +53,7 @@ const enSupport = {
     },
     chat: {
       typeMessage: "Type a message…",
+      draftTooLong: "Draft is too long (maximum {{max}} characters)",
       send: "Send",
       permissionPrompt: "Your permission is needed",
       commandConfirmTitle: "Command Requires Approval",
@@ -62,7 +69,7 @@ const enSupport = {
       voiceErrorPermissionIosSafari:
         "Microphone access denied. Open Settings → Safari → Microphone, then return and try again.",
       voiceErrorPermissionIosPwa:
-        "Microphone access denied. Open Settings → ORGII Mobile → Microphone, then return and try again.",
+        "Microphone access denied. Open Settings → ORG2 Mobile → Microphone, then return and try again.",
       voiceErrorUnsupported: "Voice input is not supported in this build.",
       voiceErrorAudio: "No microphone detected.",
       voiceErrorGeneric: "Voice input failed. Please try again.",
@@ -76,6 +83,7 @@ const enMobileRemoteResources = {
   ...enMobileRemote,
   selectors: enSupport.common.selectors,
   rounds: {
+    ...enMobileRemote.rounds,
     navigationLabel: "Conversation rounds",
     label: "Round {{current}} of {{total}}",
     previous: "Previous",
@@ -94,6 +102,12 @@ const zhSupport = {
       back: "返回",
       search: "搜索",
       add: "添加",
+      copy: "复制",
+    },
+    status: {
+      copied: "已复制",
+      loading: "加载中…",
+      copyFailed: "复制失败",
     },
     tooltips: {
       startVoiceInput: "开始语音输入",
@@ -129,6 +143,7 @@ const zhSupport = {
     },
     chat: {
       typeMessage: "输入消息…",
+      draftTooLong: "草稿过长（最多 {{max}} 个字符）",
       send: "发送",
       permissionPrompt: "需要你的授权",
       commandConfirmTitle: "命令需要审批",
@@ -143,7 +158,7 @@ const zhSupport = {
       voiceErrorPermissionIosSafari:
         "麦克风权限被拒绝。请打开 设置 → Safari → 麦克风，然后返回重试。",
       voiceErrorPermissionIosPwa:
-        "麦克风权限被拒绝。请打开 设置 → ORGII Mobile → 麦克风，然后返回重试。",
+        "麦克风权限被拒绝。请打开 设置 → ORG2 Mobile → 麦克风，然后返回重试。",
       voiceErrorUnsupported: "当前版本不支持语音输入。",
       voiceErrorAudio: "未检测到麦克风。",
       voiceErrorGeneric: "语音输入失败，请重试。",
@@ -157,6 +172,7 @@ const zhMobileRemoteResources = {
   ...zhMobileRemote,
   selectors: zhSupport.common.selectors,
   rounds: {
+    ...zhMobileRemote.rounds,
     navigationLabel: "会话轮次",
     label: "第 {{current}} / {{total}} 轮",
     previous: "上一轮",

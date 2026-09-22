@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement, createRef } from "react";
+import { act, createElement, createRef, useEffect } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -87,6 +87,30 @@ describe.each(["standalone", "main-repo"] as const)(
       act(() => root.unmount());
       container.remove();
       Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
+    });
+
+    it("reports ready data before passive effects so the overlay clears before paint", () => {
+      const phases: string[] = [];
+      const state = mocks.state.getMockImplementation()!;
+      mocks.state.mockImplementation((...args) => {
+        useEffect(() => {
+          phases.push("passive");
+        }, []);
+        return state(...args);
+      });
+      act(() =>
+        root.render(
+          createElement(SourceControlTabContent, {
+            repoId: "repo-1",
+            repoPath: "/workspace/repo",
+            showFilter: false,
+            viewMode: "list",
+            onLoadingChange: (loading) =>
+              phases.push(loading ? "loading" : "ready"),
+          })
+        )
+      );
+      expect(phases).toEqual(["ready", "passive"]);
     });
 
     it.each([false, true])(

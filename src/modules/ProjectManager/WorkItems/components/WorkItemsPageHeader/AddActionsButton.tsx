@@ -55,7 +55,6 @@ export function AddActionsButton({
     return (
       <ToolbarTooltip label={label}>
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly
@@ -84,7 +83,6 @@ export function AddActionsButton({
       <ToolbarTooltip label={addWorkItemLabel} disabled={isOpen}>
         <Button
           ref={triggerRef}
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly
@@ -119,8 +117,8 @@ export function AddActionsButton({
             }}
             role="menu"
           >
-            <button
-              type="button"
+            <Button
+              layout="custom"
               onClick={handleAddWorkItem}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"
@@ -136,9 +134,9 @@ export function AddActionsButton({
               <span className="min-w-0 flex-1 truncate">
                 {addWorkItemLabel}
               </span>
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              layout="custom"
               onClick={handleAddProject}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"
@@ -152,7 +150,7 @@ export function AddActionsButton({
                 className="text-text-2"
               />
               <span className="min-w-0 flex-1 truncate">{addProjectLabel}</span>
-            </button>
+            </Button>
           </div>,
           document.body
         )}

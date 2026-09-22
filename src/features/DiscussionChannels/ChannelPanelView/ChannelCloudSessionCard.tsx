@@ -3,7 +3,6 @@ import { atom, useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import React, { useMemo } from "react";
 
-import { LocalSessionReferenceCard } from "@src/components/SessionReferenceCard";
 import CloudSessionReferenceCard from "@src/features/Org2Cloud/CloudSessionReferenceCard";
 import type { CloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
 import {
@@ -14,6 +13,7 @@ import {
   org2CloudRemoteSessionsAtom,
   remoteSessionsEntryForIdentity,
 } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
+import { LocalSessionReferenceCard } from "@src/features/SessionReferenceCard";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 
 const cloudAuthIdentityAtom = atom((get) => {

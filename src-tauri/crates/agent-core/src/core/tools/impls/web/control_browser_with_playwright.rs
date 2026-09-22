@@ -4,7 +4,7 @@ use shared_state::{AgentBrowserConfig, BrowserAutomationProvider};
 
 const DESCRIPTION: &str = r#"Control a browser through `playwright-cli`.
 
-Pass the CLI subcommand in `command`; ORGII adds the executable and `-s=orgii` session flag automatically. In development, ORGII can run the local `playwright-cli.js` with Node when no path is configured.
+Pass the CLI subcommand in `command`; ORG2 adds the executable and `-s=orgii` session flag automatically. In development, ORG2 can run the local `playwright-cli.js` with Node when no path is configured.
 
 Examples:
 - `open https://example.com`

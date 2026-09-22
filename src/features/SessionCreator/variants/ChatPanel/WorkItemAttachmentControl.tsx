@@ -10,6 +10,7 @@ import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
 } from "@src/components/Dropdown/tokens";
+import { insertPillFromTabPayload } from "@src/components/dnd/dropTargetUtils";
 import type { SessionLaunchWorkItemContext } from "@src/engines/SessionCore/hooks/session/useSessionCreator/useSessionLaunch/types";
 import {
   LaunchpadActionCard,
@@ -25,7 +26,6 @@ import {
   Link02Icon,
   ListTodoIcon,
 } from "@src/icons";
-import { insertPillFromTabPayload } from "@src/shared/dnd/dropTargetUtils";
 
 export interface WorkItemAttachmentControlProps {
   composerInputRef?: React.RefObject<ComposerInputRef | null>;
@@ -134,9 +134,7 @@ const WorkItemAttachmentControl: React.FC<WorkItemAttachmentControlProps> = ({
 
   const solveMode = mode === "solve";
   const triggerLabel = solveMode
-    ? t("sessions:creator.solveWorkItem", {
-        defaultValue: "Solve Work Item",
-      })
+    ? t("sessions:creator.solveWorkItem")
     : t("projects:workItems.addWorkItem");
   const showDropdown =
     presentation === "button" &&
@@ -169,8 +167,6 @@ const WorkItemAttachmentControl: React.FC<WorkItemAttachmentControlProps> = ({
     ) : (
       <Button
         ref={triggerRef}
-        variant="secondary"
-        appearance="outline"
         size="small"
         shape="round"
         icon={
@@ -230,8 +226,8 @@ const WorkItemAttachmentControl: React.FC<WorkItemAttachmentControlProps> = ({
           >
             <div className={DROPDOWN_CLASSES.itemsColumnPadded}>
               {currentWorkItemContext ? (
-                <button
-                  type="button"
+                <Button
+                  layout="custom"
                   className={DROPDOWN_CLASSES.menuActionItem}
                   role="menuitem"
                   onClick={handleRemoveWorkItem}
@@ -247,10 +243,10 @@ const WorkItemAttachmentControl: React.FC<WorkItemAttachmentControlProps> = ({
                   <span className="ml-auto text-[11px] text-text-3">
                     {currentWorkItemContext.workItemId}
                   </span>
-                </button>
+                </Button>
               ) : null}
-              <button
-                type="button"
+              <Button
+                layout="custom"
                 className={DROPDOWN_CLASSES.menuActionItem}
                 role="menuitem"
                 onClick={handleOpenPicker}
@@ -263,7 +259,7 @@ const WorkItemAttachmentControl: React.FC<WorkItemAttachmentControlProps> = ({
                   className="text-text-2"
                 />
                 <span>{t("common:actions.link")}</span>
-              </button>
+              </Button>
             </div>
           </DropdownPanel>,
           document.body

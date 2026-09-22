@@ -8,12 +8,18 @@ import type { FC } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
+import {
+  SPOTLIGHT_TOP_OFFSET,
+  readSpotlightAnchorStyle,
+} from "@src/util/ui/spotlightAnchor";
 
 import {
   DEFAULT_DURATION,
   type MessageConfig,
   type MessageItemProps,
+  type MessagePlacement,
   type MessageType,
 } from "./types";
 
@@ -22,6 +28,9 @@ import {
 // ============================================
 
 const TYPE_STYLES: Record<MessageType, { border: string }> = {
+  regular: {
+    border: "border-border-2",
+  },
   success: {
     border: "border-success-6/30",
   },
@@ -143,31 +152,34 @@ const MessageItem = ({
         {(download || cancel || action) && (
           <div className="mt-2 flex justify-end gap-3">
             {cancel && (
-              <button
-                type="button"
-                className="cursor-pointer border-none bg-transparent p-0 text-xs leading-[1.2] font-medium text-primary-6 hover:text-primary-5 hover:underline"
+              <Button
+                variant="ghost"
+                size="inline"
+                className="text-xs leading-[1.2] font-medium"
                 onClick={handleCancelAction}
               >
                 {cancel.label ?? t("actions.cancel")}
-              </button>
+              </Button>
             )}
             {download && (
-              <button
-                type="button"
-                className="cursor-pointer border-none bg-transparent p-0 text-xs leading-[1.2] font-medium text-primary-6 hover:text-primary-5 hover:underline"
+              <Button
+                variant="ghost"
+                size="inline"
+                className="text-xs leading-[1.2] font-medium"
                 onClick={handleDownload}
               >
                 {download.label ?? t("actions.download")}
-              </button>
+              </Button>
             )}
             {action && (
-              <button
-                type="button"
-                className="cursor-pointer border-none bg-transparent p-0 text-xs leading-[1.2] font-semibold text-primary-6 hover:text-primary-5 hover:underline"
+              <Button
+                variant="ghost"
+                size="inline"
+                className="text-xs leading-[1.2] font-semibold"
                 onClick={handlePrimaryAction}
               >
                 {action.label}
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -175,13 +187,15 @@ const MessageItem = ({
 
       {/* Close button */}
       {closable && (
-        <button
-          className="ml-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-3 opacity-60 transition-all duration-150 ease-out hover:bg-white/10 hover:text-text-1 hover:opacity-100 active:scale-95"
+        <Button
+          variant="tertiary"
+          size="mini"
+          iconOnly
+          icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />}
+          className="ml-1 shrink-0 opacity-60 transition-all ease-out hover:text-text-1 hover:opacity-100 active:scale-95"
           onClick={handleClose}
           aria-label={t("actions.close")}
-        >
-          <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
-        </button>
+        />
       )}
     </motion.div>
   );
@@ -202,15 +216,42 @@ const MessageContainer: FC<MessageContainerProps> = ({
   messages,
   onRemove,
 }) => {
-  const messageArray = Array.from(messages.entries());
+  const messagesByPlacement = (placement: MessagePlacement) =>
+    Array.from(messages.entries()).filter(
+      ([, config]) => (config.placement ?? "bottom") === placement
+    );
 
-  return (
-    <div className="flex w-auto max-w-[380px] flex-col-reverse items-end gap-2 max-[480px]:max-w-full">
+  const renderMessages = (placement: MessagePlacement) => {
+    const messageArray = messagesByPlacement(placement);
+    if (messageArray.length === 0) return null;
+
+    return (
       <AnimatePresence>
         {messageArray.map(([id, config]) => (
           <MessageItem key={id} id={id} {...config} onRemove={onRemove} />
         ))}
       </AnimatePresence>
+    );
+  };
+
+  return (
+    <div className="h-full w-full">
+      {/* Anchored like the Spotlight palette: over the content area, same width. */}
+      {messagesByPlacement("spotlight").length > 0 && (
+        <div
+          data-message-placement="spotlight"
+          className="pointer-events-none absolute flex -translate-x-1/2 flex-col gap-2"
+          style={{ top: SPOTLIGHT_TOP_OFFSET, ...readSpotlightAnchorStyle() }}
+        >
+          {renderMessages("spotlight")}
+        </div>
+      )}
+      <div
+        data-message-placement="bottom"
+        className="pointer-events-none absolute right-4 bottom-4 flex w-auto max-w-[380px] flex-col-reverse items-end gap-2 max-[480px]:right-2 max-[480px]:bottom-2 max-[480px]:left-2 max-[480px]:max-w-full"
+      >
+        {renderMessages("bottom")}
+      </div>
     </div>
   );
 };

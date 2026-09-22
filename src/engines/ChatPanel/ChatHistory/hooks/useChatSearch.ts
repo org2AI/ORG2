@@ -16,7 +16,7 @@ import {
 
 import { useChatCollapseState } from "@src/engines/ChatPanel/ChatCollapseScope";
 import { useEventNavigation } from "@src/engines/SessionCore";
-import { useDebouncedCallback } from "@src/hooks/perf";
+import { DEBOUNCE_DELAYS, useDebouncedCallback } from "@src/hooks/perf";
 import {
   chatFindInChatOpenAtomFamily,
   chatSearchSyncAtomFamily,
@@ -46,6 +46,7 @@ import {
   toDisplayFlatIndex,
 } from "./chatSearchProjection";
 import type { ChatGroupMeta } from "./useChatGroups";
+import { useChatSearchShortcut } from "./useChatSearchShortcut";
 import type { ChatTurnPage } from "./useChatTurnPagination";
 
 export type SearchResult = MappedSearchResult;
@@ -67,6 +68,7 @@ export interface UseChatSearchOptions {
   setTurnPageSelection: Dispatch<SetStateAction<TurnPageSelection>>;
   virtualListRef: RefObject<ChatHistoryListHandle | null>;
   chatContainerRef: RefObject<HTMLDivElement | null>;
+  onExplicitNavigation: () => void;
   debounceMs?: number;
   maxResults?: number;
 }
@@ -154,7 +156,8 @@ export function useChatSearch(
     setTurnPageSelection,
     virtualListRef,
     chatContainerRef,
-    debounceMs = 150,
+    onExplicitNavigation,
+    debounceMs = DEBOUNCE_DELAYS.EXPENSIVE,
     maxResults = 100,
   } = options;
 
@@ -163,8 +166,12 @@ export function useChatSearch(
     chatFindInChatOpenAtomFamily(sessionKey)
   );
   const setChatSearchSync = useSetAtom(chatSearchSyncAtomFamily(sessionKey));
+  useChatSearchShortcut(chatContainerRef, setIsSearchVisible, isSearchVisible);
 
   const [query, setQueryState] = useState("");
+  // Only publish a query alongside the results that were computed for it.
+  // Draft input must not trigger DOM highlighting in every replay pane.
+  const [appliedQuery, setAppliedQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
@@ -201,6 +208,8 @@ export function useChatSearch(
 
   const resetLocalSearch = useCallback(() => {
     setQueryState("");
+    setAppliedQuery("");
+    setIsSearching(false);
     setResults([]);
     setCurrentResultIndex(0);
     setModes(DEFAULT_CHAT_SEARCH_MODES);
@@ -251,6 +260,7 @@ export function useChatSearch(
 
   const scrollToSearchResult = useCallback(
     (result: SearchResult) => {
+      onExplicitNavigation();
       const eventId = result.item.id || result.item.chunk_id || "";
       const projection = eventId
         ? projectionIndexRef.current.get(eventId)
@@ -298,6 +308,7 @@ export function useChatSearch(
     [
       finishPendingScroll,
       navigateToEvent,
+      onExplicitNavigation,
       sessionId,
       setCollapseState,
       setTurnCollapseOverride,
@@ -326,6 +337,7 @@ export function useChatSearch(
     ) => {
       const trimmedQuery = searchQuery.trim();
       if (!trimmedQuery || chatHistory.length === 0 || !sessionId) {
+        setAppliedQuery("");
         setResults([]);
         setCurrentResultIndex(0);
         setIsSearching(false);
@@ -346,6 +358,7 @@ export function useChatSearch(
 
         if (generation !== searchGenerationRef.current) return;
 
+        setAppliedQuery(trimmedQuery);
         setResults(searchResults);
         setCurrentResultIndex(0);
         setIsSearching(false);
@@ -354,6 +367,7 @@ export function useChatSearch(
         if (first) scrollToSearchResult(first);
       } catch {
         if (generation !== searchGenerationRef.current) return;
+        setAppliedQuery("");
         setResults([]);
         setCurrentResultIndex(0);
         setIsSearching(false);
@@ -372,16 +386,35 @@ export function useChatSearch(
     debouncedPerformSearch.cancel();
   }, [sessionId, resetLocalSearch, debouncedPerformSearch]);
 
+  useEffect(() => {
+    if (!isSearchVisible) {
+      debouncedPerformSearch.cancel();
+      resetLocalSearch();
+    }
+  }, [isSearchVisible, debouncedPerformSearch, resetLocalSearch]);
+
+  useEffect(
+    () => () => {
+      searchGenerationRef.current += 1;
+    },
+    []
+  );
+
   const handleQueryChange = useCallback(
     (newQuery: string) => {
       setQueryState(newQuery);
+      queryRef.current = newQuery;
+      // Invalidate requests immediately, including during the debounce window.
+      searchGenerationRef.current += 1;
       if (!newQuery.trim()) {
+        setAppliedQuery("");
         debouncedPerformSearch.cancel();
         setResults([]);
         setCurrentResultIndex(0);
         setIsSearching(false);
         return;
       }
+      setIsSearching(true);
       debouncedPerformSearch(newQuery);
     },
     [debouncedPerformSearch]
@@ -398,18 +431,38 @@ export function useChatSearch(
   );
 
   const nextResult = useCallback(() => {
-    if (results.length === 0) return;
+    if (debouncedPerformSearch.pending()) {
+      debouncedPerformSearch.flush();
+      return;
+    }
+    if (isSearching || results.length === 0) return;
     navigateToResult(
       wrapNextSearchResultIndex(currentResultIndex, results.length, 1)
     );
-  }, [currentResultIndex, navigateToResult, results.length]);
+  }, [
+    currentResultIndex,
+    debouncedPerformSearch,
+    isSearching,
+    navigateToResult,
+    results.length,
+  ]);
 
   const prevResult = useCallback(() => {
-    if (results.length === 0) return;
+    if (debouncedPerformSearch.pending()) {
+      debouncedPerformSearch.flush();
+      return;
+    }
+    if (isSearching || results.length === 0) return;
     navigateToResult(
       wrapNextSearchResultIndex(currentResultIndex, results.length, -1)
     );
-  }, [currentResultIndex, navigateToResult, results.length]);
+  }, [
+    currentResultIndex,
+    debouncedPerformSearch,
+    isSearching,
+    navigateToResult,
+    results.length,
+  ]);
 
   const closeSearch = useCallback(() => {
     debouncedPerformSearch.cancel();
@@ -419,15 +472,15 @@ export function useChatSearch(
 
   const toggleSearchMode = useCallback(
     (key: keyof ChatSearchModes) => {
-      setModes((previous) => {
-        const next = { ...previous, [key]: !previous[key] };
-        if (queryRef.current.trim()) {
-          void performSearch(queryRef.current, next);
-        }
-        return next;
-      });
+      const next = { ...modesRef.current, [key]: !modesRef.current[key] };
+      modesRef.current = next;
+      setModes(next);
+      debouncedPerformSearch.cancel();
+      if (queryRef.current.trim()) {
+        void performSearch(queryRef.current, next);
+      }
     },
-    [performSearch]
+    [debouncedPerformSearch, performSearch]
   );
 
   useChatSearchPanePresentation({
@@ -440,12 +493,18 @@ export function useChatSearch(
       setChatSearchSync,
       buildChatSearchSyncState({
         isOpen: isSearchVisible,
-        query,
+        query: appliedQuery,
         results,
         currentResultIndex,
       })
     );
-  }, [currentResultIndex, isSearchVisible, query, results, setChatSearchSync]);
+  }, [
+    appliedQuery,
+    currentResultIndex,
+    isSearchVisible,
+    results,
+    setChatSearchSync,
+  ]);
 
   useEffect(() => {
     if (!isSearchVisible || results.length === 0) return;

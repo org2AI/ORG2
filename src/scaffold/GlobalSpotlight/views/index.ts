@@ -5,5 +5,3 @@
  */
 
 export { SpotlightModalView } from "./SpotlightModalView";
-
-export { SpotlightConfirmationView } from "./SpotlightConfirmationView";

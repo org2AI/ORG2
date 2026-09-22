@@ -4,13 +4,13 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
-import type { ScopeQuotaView } from "@src/features/Org2Cloud/org2CloudScopeQuota";
-import RepoScopePicker from "@src/features/TeamCollaboration/components/RepoScopePicker";
 import {
   SECTION_DESCRIPTION_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import type { ScopeQuotaView } from "@src/features/Org2Cloud/org2CloudScopeQuota";
+import RepoScopePicker from "@src/features/TeamCollaboration/components/RepoScopePicker";
 
 interface CloudOrgRepoScopesSectionProps {
   t: TFunction<"navigation">;
@@ -122,9 +122,6 @@ export function CloudOrgRepoScopesSection({
                         </span>
                       ) : null}
                       <Button
-                        htmlType="button"
-                        size="default"
-                        variant="secondary"
                         disabled={savingScopes}
                         data-testid={
                           pendingRemoval
@@ -166,9 +163,6 @@ export function CloudOrgRepoScopesSection({
                 <div className="flex w-full flex-wrap items-center justify-between gap-2">
                   {!isAddingScope ? (
                     <Button
-                      htmlType="button"
-                      size="default"
-                      variant="secondary"
                       disabled={savingScopes || Boolean(scopeQuota?.atCap)}
                       data-testid="cloud-org-add-repo-scope"
                       aria-expanded={false}
@@ -178,9 +172,6 @@ export function CloudOrgRepoScopesSection({
                     </Button>
                   ) : (
                     <Button
-                      htmlType="button"
-                      size="default"
-                      variant="secondary"
                       disabled={savingScopes}
                       data-testid="cloud-org-cancel-add-repo-scope"
                       onClick={() => setIsAddingScope(false)}
@@ -203,9 +194,6 @@ export function CloudOrgRepoScopesSection({
                         </span>
                       )}
                       <Button
-                        htmlType="button"
-                        size="default"
-                        variant="secondary"
                         disabled={savingScopes}
                         data-testid="cloud-org-cancel-repo-scopes"
                         onClick={() => {
@@ -216,8 +204,6 @@ export function CloudOrgRepoScopesSection({
                         {tCommon("actions.cancel")}
                       </Button>
                       <Button
-                        htmlType="button"
-                        size="default"
                         variant="primary"
                         onClick={() => void onSaveScopes()}
                         disabled={savingScopes}
@@ -250,9 +236,7 @@ export function CloudOrgRepoScopesSection({
                   dataTestId="cloud-org-scope-cap-upgrade"
                   action={
                     <Button
-                      htmlType="button"
                       size="small"
-                      variant="secondary"
                       onClick={openCloudBillingPage}
                       data-testid="cloud-org-scope-cap-upgrade-link"
                     >

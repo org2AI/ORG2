@@ -15,10 +15,11 @@ use super::types::{
 // ============================================
 
 /// Open a SQLite file. Returns a `connection_id` string.
-/// If the file is already open the existing ID is returned.
+/// Each caller receives an independent opaque lease, even for the same file.
 #[tauri::command]
-pub async fn db_open(file_path: String) -> Result<String, String> {
-    tokio::task::spawn_blocking(move || pool::open(&file_path))
+pub async fn db_open(window: tauri::Window, file_path: String) -> Result<String, String> {
+    let owner = window.label().to_string();
+    tokio::task::spawn_blocking(move || pool::open(&owner, &file_path))
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())

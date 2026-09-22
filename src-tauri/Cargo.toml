@@ -23,6 +23,7 @@ members = [
     "crates/inbox",
     "crates/integrations",
     "crates/key-vault",
+    "crates/market-connect",
     "crates/lsp",
     "crates/mobile-relay-protocol",
     "crates/mobile-relay-server",
@@ -30,8 +31,6 @@ members = [
     "crates/orgtrack-core",
     "crates/orgtrack-pm-cli",
     "crates/orgtrack-protocol",
-    "crates/orgtrack-graph",
-    "crates/orgtrack-sync",
     "crates/perf-utils",
     "crates/project-management",
     "crates/search",
@@ -59,12 +58,9 @@ members = [
 # member adds locally.
 # ---------------------------------------------------------------------------
 [workspace.dependencies]
-# Pinned to =2.10.3: tauri-macros 2.6 (in tauri 2.11) introduced a new
-# `__tauri_command_name_*` companion to the existing `__cmd__*` symbol
-# that `generate_handler!` resolves alongside, breaking 13 handler
-# entries in `handler_list.inc` that re-export only `__cmd__*`. Bump
-# to 2.11+ once those re-exports are extended (tracked separately).
-tauri = { version = "=2.10.3", features = [
+# Keep Tauri command re-exports paired: generate_handler! needs both
+# __cmd__* and __tauri_command_name_* on each public command path.
+tauri = { version = "=2.11.1", features = [
     "protocol-asset",
     "macos-private-api",
     "tray-icon",
@@ -84,7 +80,7 @@ reqwest = { version = "0.13", default-features = false, features = [
     "form",
     "http2",
 ] }
-rmcp = { version = "1.5", default-features = false, features = [
+rmcp = { version = "2.0", default-features = false, features = [
     "client",
     "base64",
     "macros",
@@ -131,7 +127,7 @@ dispatch2 = "0.3"
 zip = "2"                # ZIP compression — used by app, agent-core, extensions, lsp
 lzma-sys = { version = "0.1.20", features = ["static"] } # Static liblzma so distributed macOS apps do not depend on Homebrew xz
 sysinfo = "0.38"         # CPU / memory / process metrics — used by perf-utils and terminal
-rand = "0.9"             # CSPRNG — used by app, project-management
+rand = "0.10"             # CSPRNG — used by app, project-management
 webpki-roots = "1.0"     # TLS root certs — used by integrations
 base64 = "0.22"          # Base64 codec — used by 8 crates (app, agent-core, app-window, browser, extensions, git, key-vault, project-management, shared-state)
 thiserror = "2"          # Derive macros for error types — used by app, agent-core, cursor-bridge, lsp
@@ -182,6 +178,10 @@ tauri-build = { version = "2.5.6", features = [] }
 cc = "1.0"
 
 [dependencies]
+fs2 = "0.4" # Profile/source coordination and macOS singleton admission
+async-trait = "0.1"
+market-connect = { path = "crates/market-connect", optional = true }
+notify = { workspace = true, optional = true }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
@@ -434,6 +434,7 @@ dirs = "6.0"             # Get user directories (~/.orgii/data)
 chrono = { workspace = true }  # Date/time handling
 zip = { workspace = true }
 base64 = { workspace = true }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 
 # AWS SDK for SSO OIDC archived alongside `crates/cursor-bridge` notes.
 # `aws-config` + `aws-sdk-ssooidc` (and the transitive `aws-lc-sys` BoringSSL
@@ -517,13 +518,15 @@ rust_xlsxwriter = "0.95.0"
 libc = "0.2"
 
 [features]
-default = []
+default = ["market-connect"]
+market-connect = ["dep:market-connect", "dep:notify"]
 # E2E WebDriver automation plugin (debug/test only). Enable with --features webdriver.
 webdriver = ["dep:tauri-plugin-webdriver-automation", "agent_core/webdriver"]
 [target."cfg(any(target_os = \"macos\", windows, target_os = \"linux\"))".dependencies]
 tauri-plugin-single-instance = { version = "2.0.0", features = ["deep-link"] }
 
 [target.'cfg(windows)'.dependencies]
+junction = "1" # Share native history without requiring symlink privileges
 windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
@@ -531,6 +534,7 @@ windows = { version = "0.61", features = [
 ] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+socket2 = "0.6" # Bounded local IPC connect before the async runtime exists
 objc2 = { workspace = true }
 objc2-foundation = { workspace = true }
 objc2-app-kit = { workspace = true }

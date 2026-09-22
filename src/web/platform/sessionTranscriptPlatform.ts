@@ -25,7 +25,6 @@ export function useSessionTranscriptPlatform(
     isCursorIde: false,
     isAgentWorking: runtime.isAgentWorking,
     isAgentWorkingRef,
-    isExploring: runtime.isExploring ?? false,
     loadStatus: runtime.loadStatus,
     loadError: runtime.loadError,
     isPendingCancel: false,

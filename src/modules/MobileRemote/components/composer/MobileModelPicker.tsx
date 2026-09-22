@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import ModelIcon from "@src/components/ModelIcon";
-import ModelSelectorPill from "@src/components/ModelSelectorPill";
+import ModelSelectorPillView from "@src/components/ModelSelectorPill/ModelSelectorPillView";
 import SelectorPill from "@src/components/SelectorPill";
 import type {
   MobileModelOption,
@@ -11,6 +11,8 @@ import type {
 import {
   formatModelName,
   formatModelNameFull,
+  resolveModelFullLabel,
+  resolveModelPillDisplayParts,
 } from "@src/util/formatModelName";
 
 import { MobileModelListDropdown } from "./MobileModelListDropdown";
@@ -27,6 +29,10 @@ export interface MobileModelPickerProps {
   config: MobileSessionModelConfig | null;
   options: MobileModelOption[];
   loading?: boolean;
+  optionsLoading?: boolean;
+  error?: string;
+  onActivate?: () => void;
+  onRetry?: () => void;
   patching?: boolean;
   disabled?: boolean;
   /** When true, render inline in the composer footer without outer padding. */
@@ -65,6 +71,10 @@ export function MobileModelPicker({
   config,
   options,
   loading = false,
+  optionsLoading = false,
+  error,
+  onActivate,
+  onRetry,
   patching = false,
   disabled = false,
   embedded = false,
@@ -87,6 +97,23 @@ export function MobileModelPicker({
     () => (config ? toMobileLastModelSelection(config) : null),
     [config]
   );
+  const defaultLabel = loading
+    ? t("modelPicker.loading")
+    : t("modelPicker.selectModel");
+  const modelLabel = useMemo(() => {
+    const displayParts = resolveModelPillDisplayParts(
+      selection ?? {},
+      defaultLabel
+    );
+    return {
+      label: displayParts.label,
+      title: resolveModelFullLabel(selection ?? {}, defaultLabel),
+      accountName: options.find(
+        (option) => option.accountId === config?.accountId
+      )?.accountLabel,
+      displayParts,
+    };
+  }, [selection, defaultLabel, options, config?.accountId]);
   const pickerDisabled = disabled || loading || patching;
 
   const listOptions = useMemo(
@@ -142,6 +169,7 @@ export function MobileModelPicker({
         icon={<ModelIcon modelName={currentModelId} size={14} />}
         label={currentLabel}
         size="sm"
+        className="mobile-composer-model-trigger"
         active={false}
         disabled
         ariaLabel={currentLabel}
@@ -159,22 +187,24 @@ export function MobileModelPicker({
       <div
         className={triggerWrapperClass}
         data-testid="mobile-model-picker-trigger"
+        // Observe intent on the shared button, including its advanced menu.
+        onPointerDownCapture={onActivate}
+        onFocusCapture={onActivate}
       >
-        <ModelSelectorPill
+        <ModelSelectorPillView
           ref={pillRef}
-          selection={selection}
-          defaultLabel={
-            loading ? t("modelPicker.loading") : t("modelPicker.selectModel")
-          }
+          displaySelection={selection}
+          modelLabel={modelLabel}
+          defaultLabel={defaultLabel}
           active={open}
           onClick={handleOpenModelList}
-          onVariantApply={handleVariantApply}
-          effortSegmentOverride={effortSegment}
+          effortSegment={effortSegment}
           preferCombinedSettingsMenu
           settingsMenuDefaultAdvanced
+          settingsMenuClassName="mobile-model-settings-menu"
           dataTestId="mobile-model-picker-pill"
+          triggerClassName="mobile-composer-model-trigger"
           ariaLabel={t("modelPicker.selectModel")}
-          isActiveSession
           className={`max-w-full ${pickerDisabled ? "pointer-events-none opacity-60" : ""}`}
         />
       </div>
@@ -186,8 +216,11 @@ export function MobileModelPicker({
         allOptions={options}
         currentModelId={currentModelId}
         currentAccountId={config.accountId}
-        loading={loading}
+        loading={loading || optionsLoading}
         patching={patching}
+        error={error}
+        onRetry={onRetry}
+        retryLabel={t("transcript.retry")}
         loadingLabel={t("modelPicker.loading")}
         emptyLabel={t("modelPicker.empty")}
         onSelect={handleSelectOption}

@@ -27,7 +27,11 @@ const platform = {
 };
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-let accept: ReturnType<typeof vi.fn>;
+let accept: ReturnType<
+  typeof vi.fn<
+    NonNullable<React.ComponentProps<typeof QRScanScreen>["onAcceptPairing"]>
+  >
+>;
 let resolveScan: (value: string) => void;
 let rejectScan: (error: unknown) => void;
 const click = async (text: string) =>

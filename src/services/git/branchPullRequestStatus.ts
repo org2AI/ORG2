@@ -177,7 +177,22 @@ export function nextBranchCiPollDelayMs({
   checksUnavailable,
   pr,
 }: BranchPullRequestStatusSnapshot & { attempt: number }): number | null {
-  if (!pr || checksUnavailable || !checks) return BRANCH_CI_SAFETY_POLL_MS;
+  if (!pr || checksUnavailable) return BRANCH_CI_SAFETY_POLL_MS;
+  return nextChecksPollDelayMs({ attempt, checks });
+}
+
+/**
+ * The same schedule for a surface that already knows its pull request — the PR
+ * detail view — and so only has the head commit's checks to go on.
+ */
+export function nextChecksPollDelayMs({
+  attempt,
+  checks,
+}: {
+  attempt: number;
+  checks: GitHubChecksSummary | null;
+}): number {
+  if (!checks) return BRANCH_CI_SAFETY_POLL_MS;
 
   if (checks.check_runs.length === 0 && checks.statuses.length === 0) {
     // CI may not have registered its runs yet; give it a bounded grace period

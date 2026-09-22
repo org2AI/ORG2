@@ -1,12 +1,12 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 
+import { isWorkbenchPath } from "@src/config/routes";
 import {
   ACTION_ID,
   type ActionId,
   useActionSystemOptional,
-} from "@src/ActionSystem";
-import { isWorkbenchPath } from "@src/config/routes";
+} from "@src/scaffold/ActionSystem";
 import {
   createAgentSessionSearchSpotlightRequest,
   createEditorSpotlightRequest,
@@ -14,6 +14,10 @@ import {
 } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import { AppViewService } from "@src/services/app";
 import { WorkStationViewService } from "@src/services/workStation/WorkStationViewService";
+import {
+  CLOSE_TAB_CHORD_FALLBACK,
+  closeTabChordFallbackAtom,
+} from "@src/store/chatPanel/chatPanelLayoutAtoms";
 import { openOrFocusChatPanelStartPageTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 import {
@@ -27,6 +31,12 @@ import {
   spotlightOpenAtom,
 } from "@src/store/ui/uiAtom";
 import { closeActiveWorkStationTabAtom } from "@src/store/workstation/tabRegistry";
+import {
+  CHAT_PANE_SURFACE_SELECTOR,
+  closeOpenDetailPane,
+} from "@src/util/dom/detailPaneClose";
+
+import { closeCurrentWindow } from "./closeCurrentWindow";
 
 /**
  * Tab navigation, sidebar, spotlight, and close-tab shortcut handlers
@@ -42,6 +52,7 @@ export function useTabShortcuts() {
   const closeActiveWorkStationTab = useSetAtom(closeActiveWorkStationTabAtom);
   const openStartPageTab = useSetAtom(openOrFocusChatPanelStartPageTabAtom);
   const actionSystem = useActionSystemOptional();
+  const store = useStore();
 
   // Refs to avoid listener re-registration
   const sidebarCollapsedRef = useRef(sidebarCollapsed);
@@ -243,12 +254,32 @@ export function useTabShortcuts() {
     dispatchWorkStationAction(ACTION_ID.WORKSTATION_TOGGLE_CHAT_FOCUS);
   }, [dispatchWorkStationAction]);
 
+  // ⌘W / Ctrl+W. Settings owns the whole slot while it is open, so it is what
+  // the chord closes — before this, the settings pathname passed
+  // `isWorkbenchPath` and the chord silently closed the WorkStation tab
+  // hidden behind Settings. Once only Launchpads are left the active tab is
+  // My Station's Launchpad, whose close closes My Station; the Agent Station
+  // owns no tabs, so it closes on the first press. With the Station closed
+  // too, the chord closes the window like any other app would.
+  // A list/detail tab (Inbox, work items, pull requests) gives up its open
+  // detail first, as its "x" would; the next press closes the tab.
   const handleCloseCurrentTab = useCallback(() => {
     const pathname = window.location.pathname;
+    if (AppViewService.closeSettings(pathname)) return true;
     if (!isWorkbenchPath(pathname)) return false;
+    if (closeOpenDetailPane({ outside: CHAT_PANE_SURFACE_SELECTOR })) {
+      return true;
+    }
+    if (
+      store.get(closeTabChordFallbackAtom) ===
+      CLOSE_TAB_CHORD_FALLBACK.CLOSE_WINDOW
+    ) {
+      closeCurrentWindow();
+      return true;
+    }
 
     return closeActiveWorkStationTab();
-  }, [closeActiveWorkStationTab]);
+  }, [closeActiveWorkStationTab, store]);
 
   return {
     spotlightOpen,

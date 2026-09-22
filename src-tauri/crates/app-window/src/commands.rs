@@ -46,9 +46,9 @@ pub async fn set_webview_zoom(webview: tauri::Webview, scale_factor: f64) -> Res
 /// Remove the startup background from the CALLING window. Every window's
 /// frontend invokes this once React finishes loading and CSS backgrounds are
 /// painted — restoring the transparent glass appearance and re-asserting the
-/// traffic-light inset (the post-paint re-apply is what keeps the buttons
-/// stable on macOS). Tauri injects the invoking window, so main and detached
-/// session windows each clear their own backdrop.
+/// traffic-light inset once more (stability itself comes from the observers
+/// `app_window::traffic_lights` keeps per window). Tauri injects the invoking
+/// window, so main and detached session windows each clear their own backdrop.
 #[tauri::command]
 pub async fn remove_window_background(window: tauri::WebviewWindow) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -95,6 +95,43 @@ pub async fn set_window_root_tint(
     Ok(())
 }
 
+/// Back the CALLING window's opaque page surface with a native layer that is
+/// revealed while the window resizes.
+///
+/// macOS only; a no-op elsewhere. `insets` are the page surface's distances
+/// from the viewport's top, right, bottom and left edges in CSS px, and
+/// `color` the opaque sRGB `[r, g, b, a]` it paints. The frontend sends both
+/// whenever either changes, and neither when no opaque page surface is
+/// mounted, which removes the layer. While a resize is in flight the band the
+/// page has not painted yet then shows the page colour instead of the
+/// translucent material; see `app_window::page_backdrop`.
+#[tauri::command]
+pub async fn set_window_page_backdrop(
+    window: tauri::WebviewWindow,
+    insets: Option<[f64; 4]>,
+    color: Option<[f64; 4]>,
+) -> Result<(), String> {
+    let backdrop = match (insets, color) {
+        (Some(insets), Some(color)) => Some(super::page_backdrop::normalize_page_backdrop(
+            insets, color,
+        )?),
+        (None, None) => None,
+        (insets, color) => {
+            return Err(format!(
+                "Page backdrop insets and colour must be sent together: insets {insets:?}, colour {color:?}"
+            ))
+        }
+    };
+
+    #[cfg(target_os = "macos")]
+    super::set_macos_window_page_backdrop(&window, backdrop);
+
+    #[cfg(not(target_os = "macos"))]
+    let _ = (window, backdrop);
+
+    Ok(())
+}
+
 /// Switch the icon the running app shows in the Dock / taskbar.
 ///
 /// `variant` is the `general.dockIcon` setting value (`"dark"` | `"light"` | `"rainbow"`).
@@ -111,13 +148,28 @@ pub async fn set_dock_icon(app: AppHandle, variant: String) -> Result<(), String
 }
 
 // ============================================
-// Detached session windows
+// Detached app windows (session / station)
 // ============================================
 
 /// Label prefix for detached session windows. Matches the `app-window-*`
 /// glob in `capabilities/default.json`, so these windows inherit the full
 /// default permission set without a capability (and thus Rust schema) change.
 pub const SESSION_WINDOW_LABEL_PREFIX: &str = "app-window-session-";
+
+/// Label prefix for detached station windows (`app-window-station-<mode>`).
+/// Same capability glob as session windows; one window per station mode.
+pub const STATION_WINDOW_LABEL_PREFIX: &str = "app-window-station-";
+
+/// Station modes the frontend knows (`STATION_MODES` in
+/// `src/types/ui/workstation.ts`). The mode is embedded verbatim in the
+/// window label and the route, so anything else is refused.
+const STATION_WINDOW_MODES: [&str; 2] = ["my-station", "agent-station"];
+
+/// Tauri event the main window receives when a station window is destroyed
+/// (payload: the window label). Emitted from the app's `WindowEvent::Destroyed`
+/// handler so a crash or programmatic close still reaches the main window,
+/// which uses it to give the surface back to its in-window station.
+pub const STATION_WINDOW_CLOSED_EVENT: &str = "orgii:station-window-closed";
 
 /// Session ids are `<source-prefix>-<uuid>` shaped. The id is embedded
 /// verbatim in both the window label and the app-route path, so anything
@@ -134,58 +186,86 @@ fn session_window_label(session_id: &str) -> String {
     format!("{SESSION_WINDOW_LABEL_PREFIX}{session_id}")
 }
 
-/// Open (or focus) the detached window showing exactly one session.
+fn is_station_window_mode(mode: &str) -> bool {
+    STATION_WINDOW_MODES.contains(&mode)
+}
+
+fn station_window_label(mode: &str) -> String {
+    format!("{STATION_WINDOW_LABEL_PREFIX}{mode}")
+}
+
+/// Whether `label` names a detached station window.
+pub fn is_station_window_label(label: &str) -> bool {
+    label
+        .strip_prefix(STATION_WINDOW_LABEL_PREFIX)
+        .is_some_and(is_station_window_mode)
+}
+
+/// App route a station window loads: the standalone
+/// `/orgii/app/station/<mode>` page, seeded with the session the opener was
+/// showing so the window converges on it before the live follow event
+/// (`orgii:station-window:session`) can reach a listener.
+fn station_window_route(mode: &str, session_id: Option<&str>) -> String {
+    match session_id {
+        Some(id) => format!("orgii/app/station/{mode}?session={id}"),
+        None => format!("orgii/app/station/{mode}"),
+    }
+}
+
+fn normalize_window_title(title: Option<String>) -> String {
+    title
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+        .unwrap_or_else(|| "ORG2".to_string())
+}
+
+/// Focus an already-open detached window, refreshing its title. Returns the
+/// label so callers can short-circuit their own build.
+fn focus_existing_detached_window(
+    app: &AppHandle,
+    label: &str,
+    title: &str,
+) -> Result<Option<String>, String> {
+    let Some(existing) = app.get_webview_window(label) else {
+        return Ok(None);
+    };
+    let _ = existing.set_title(title);
+    existing
+        .show()
+        .map_err(|e| format!("Failed to show {label}: {e}"))?;
+    existing
+        .set_focus()
+        .map_err(|e| format!("Failed to focus {label}: {e}"))?;
+    Ok(Some(label.to_string()))
+}
+
+/// Build and show a detached app window — the same bundle as the main
+/// window, loading one standalone app route. Shared by session and station
+/// windows so both get the identical chrome contract.
 ///
-/// The window loads the standalone `/orgii/app/session/<id>` route — the same
-/// bundle as the main window, rendering only the session surface. There is no
-/// prewarmed window pool: the window is built on demand and shown as soon as
-/// its chrome is in place, which is the fastest honest feedback we can give.
-/// It is built hidden (not `visible(true)`) only so the frames between
-/// `build()` and the chrome below never reach the screen — the `show()` is
-/// synchronous with creation, NOT deferred to the frontend's first paint.
+/// There is no prewarmed window pool: the window is built on demand and
+/// shown as soon as its chrome is in place, which is the fastest honest
+/// feedback we can give. It is built hidden (not `visible(true)`) only so
+/// the frames between `build()` and the chrome below never reach the screen
+/// — the `show()` is synchronous with creation, NOT deferred to the
+/// frontend's first paint.
 ///
 /// Chrome follows the decorated-secondary-window recipe used by
 /// `browser::open_browser_window`: native decorations everywhere, macOS
 /// overlay title bar with repositioned traffic lights (the builder option
 /// alone is unreliable for dynamically created windows — see
 /// `set_traffic_light_position`), and Win11 DWM rounded corners.
-///
-/// `async` on purpose: on Windows, building a window from a synchronous
-/// command deadlocks the main thread.
-#[tauri::command]
-pub async fn open_session_window(
-    app: AppHandle,
-    session_id: String,
-    title: Option<String>,
-) -> Result<String, String> {
-    if !is_window_safe_session_id(&session_id) {
-        return Err(format!(
-            "Session id contains characters unsafe for a window label: {session_id}"
-        ));
-    }
-
-    let label = session_window_label(&session_id);
-    let window_title = title
-        .map(|t| t.trim().to_string())
-        .filter(|t| !t.is_empty())
-        .unwrap_or_else(|| "ORG2".to_string());
-
-    if let Some(existing) = app.get_webview_window(&label) {
-        let _ = existing.set_title(&window_title);
-        existing
-            .show()
-            .map_err(|e| format!("Failed to show session window: {e}"))?;
-        existing
-            .set_focus()
-            .map_err(|e| format!("Failed to focus session window: {e}"))?;
-        return Ok(label);
-    }
-
-    let route = format!("orgii/app/session/{session_id}");
-    let backdrop = super::startup_backdrop::startup_backdrop(&app);
-    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(route.into()))
-        .title(&window_title)
-        .inner_size(1100.0, 800.0)
+fn build_detached_app_window(
+    app: &AppHandle,
+    label: &str,
+    route: String,
+    title: &str,
+    inner_size: (f64, f64),
+) -> Result<tauri::WebviewWindow, String> {
+    let backdrop = super::startup_backdrop::startup_backdrop(app);
+    let builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App(route.into()))
+        .title(title)
+        .inner_size(inner_size.0, inner_size.1)
         .min_inner_size(450.0, 300.0)
         .resizable(true)
         // Shown explicitly after the chrome below is applied, so the window
@@ -218,10 +298,11 @@ pub async fn open_session_window(
             super::TRAFFIC_LIGHT_Y,
         )));
 
-    let ownership_observation = perf_utils::begin_webview_ownership_observation(label.clone());
+    let ownership_observation =
+        perf_utils::begin_webview_ownership_observation(label.to_string());
     let window = builder
         .build()
-        .map_err(|e| format!("Failed to create session window: {e}"))?;
+        .map_err(|e| format!("Failed to create {label}: {e}"))?;
     ownership_observation.commit();
 
     // Reposition the traffic lights (the builder option alone is unreliable
@@ -237,13 +318,15 @@ pub async fn open_session_window(
     // plate off every macOS window to match (`html[data-host-desktop="macos"]`).
     //
     // The frontend still invokes `remove_window_background` once React paints;
-    // the background clear is then a no-op and the call's remaining job is the
-    // post-paint traffic-light re-apply.
+    // the background clear is then a no-op and the call only re-asserts the
+    // traffic-light inset (which the observers installed by the first call
+    // below already keep in place).
     #[cfg(target_os = "macos")]
     {
         super::set_traffic_light_position(&window, super::TRAFFIC_LIGHT_X, super::TRAFFIC_LIGHT_Y);
         super::apply_macos_window_material(&window);
         super::remove_window_background_color(&window);
+        super::rendering_rate::apply_stored_rendering_rate(&window);
     }
 
     super::apply_host_desktop_decorated_window_corners(&window);
@@ -252,9 +335,85 @@ pub async fn open_session_window(
     // first paint — the click that opened it must get immediate feedback.
     window
         .show()
-        .map_err(|e| format!("Failed to show session window: {e}"))?;
+        .map_err(|e| format!("Failed to show {label}: {e}"))?;
 
     let _ = window.set_focus();
+
+    Ok(window)
+}
+
+/// Open (or focus) the detached window showing exactly one session.
+///
+/// The window loads the standalone `/orgii/app/session/<id>` route — the same
+/// bundle as the main window, rendering only the session surface. See
+/// [`build_detached_app_window`] for the chrome and show contract.
+///
+/// `async` on purpose: on Windows, building a window from a synchronous
+/// command deadlocks the main thread.
+#[tauri::command]
+pub async fn open_session_window(
+    app: AppHandle,
+    session_id: String,
+    title: Option<String>,
+) -> Result<String, String> {
+    if !is_window_safe_session_id(&session_id) {
+        return Err(format!(
+            "Session id contains characters unsafe for a window label: {session_id}"
+        ));
+    }
+
+    let label = session_window_label(&session_id);
+    let window_title = normalize_window_title(title);
+
+    if let Some(label) = focus_existing_detached_window(&app, &label, &window_title)? {
+        return Ok(label);
+    }
+
+    let route = format!("orgii/app/session/{session_id}");
+    build_detached_app_window(&app, &label, route, &window_title, (1100.0, 800.0))?;
+
+    Ok(label)
+}
+
+/// Open (or focus) the detached window showing one station — My Station
+/// (`my-station`) or Agent Station (`agent-station`) — without the chat
+/// panel or sidebar. One window per mode: a second request focuses the
+/// existing window and the frontend retargets its session over the
+/// `orgii:station-window:session` event.
+///
+/// The window loads the standalone `/orgii/app/station/<mode>` route,
+/// seeded with `session_id` so the station converges on the opener's
+/// session before any listener could receive the live follow event.
+///
+/// `async` on purpose: on Windows, building a window from a synchronous
+/// command deadlocks the main thread.
+#[tauri::command]
+pub async fn open_station_window(
+    app: AppHandle,
+    station_mode: String,
+    session_id: Option<String>,
+    title: Option<String>,
+) -> Result<String, String> {
+    if !is_station_window_mode(&station_mode) {
+        return Err(format!("Unknown station mode: {station_mode:?}"));
+    }
+    if let Some(id) = session_id.as_deref() {
+        if !is_window_safe_session_id(id) {
+            return Err(format!(
+                "Session id contains characters unsafe for a window route: {id}"
+            ));
+        }
+    }
+
+    let label = station_window_label(&station_mode);
+    let window_title = normalize_window_title(title);
+
+    if let Some(label) = focus_existing_detached_window(&app, &label, &window_title)? {
+        return Ok(label);
+    }
+
+    let route = station_window_route(&station_mode, session_id.as_deref());
+    build_detached_app_window(&app, &label, route, &window_title, (1280.0, 860.0))?;
 
     Ok(label)
 }
@@ -287,6 +446,48 @@ mod session_window_tests {
             "app-window-session-osagent-1"
         );
         assert!(session_window_label("x").starts_with("app-window-"));
+    }
+}
+
+#[cfg(test)]
+mod station_window_tests {
+    use super::{
+        is_station_window_label, is_station_window_mode, station_window_label,
+        station_window_route,
+    };
+
+    #[test]
+    fn accepts_only_the_two_station_modes() {
+        assert!(is_station_window_mode("my-station"));
+        assert!(is_station_window_mode("agent-station"));
+        assert!(!is_station_window_mode(""));
+        assert!(!is_station_window_mode("My-Station"));
+        assert!(!is_station_window_mode("my-station/../x"));
+    }
+
+    #[test]
+    fn label_matches_the_capability_glob_and_round_trips() {
+        assert_eq!(
+            station_window_label("agent-station"),
+            "app-window-station-agent-station"
+        );
+        assert!(station_window_label("my-station").starts_with("app-window-"));
+        assert!(is_station_window_label("app-window-station-my-station"));
+        assert!(!is_station_window_label("app-window-station-kanban"));
+        assert!(!is_station_window_label("app-window-session-osagent-1"));
+        assert!(!is_station_window_label("main"));
+    }
+
+    #[test]
+    fn route_carries_the_seed_session_only_when_given() {
+        assert_eq!(
+            station_window_route("my-station", None),
+            "orgii/app/station/my-station"
+        );
+        assert_eq!(
+            station_window_route("agent-station", Some("osagent-1")),
+            "orgii/app/station/agent-station?session=osagent-1"
+        );
     }
 }
 

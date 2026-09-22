@@ -320,3 +320,60 @@ pub async fn claude_code_context_usage(
     .await
     .map_err(|err| format!("Task join error: {err}"))?
 }
+
+/// Local, demand-driven attachment read. Never accepts an arbitrary source path.
+#[tauri::command]
+pub async fn session_history_image(
+    session_id: String,
+    turn_id: String,
+    original_ref: String,
+) -> Result<Option<String>, String> {
+    if session_id.len() > 512 || turn_id.len() > 128 || original_ref.len() > 2048 {
+        return Err("Invalid history image reference".into());
+    }
+    static IMAGE_READS: OnceLock<std::sync::Arc<tokio::sync::Semaphore>> = OnceLock::new();
+    let permit = IMAGE_READS
+        .get_or_init(|| std::sync::Arc::new(tokio::sync::Semaphore::new(2)))
+        .clone()
+        .acquire_owned()
+        .await
+        .map_err(|err| format!("Image reader closed: {err}"))?;
+    tokio::task::spawn_blocking(move || {
+        // Keep the permit with the actual blocking read even if its caller exits.
+        let _permit = permit;
+        let (provider, path) = if let Some(native) =
+            crate::agent_sessions::cli::commands::native_history_path(&session_id)?
+        {
+            native
+        } else if let Some(native_id) =
+            session_id.strip_prefix(orgtrack_core::sources::codex::SESSION_PREFIX)
+        {
+            let conn = open_cache_conn()?;
+            (
+                "codex".to_string(),
+                codex_app::resolve_codex_session_path(&conn, native_id)?,
+            )
+        } else if let Some(file_stem) =
+            session_id.strip_prefix(orgtrack_core::sources::claude_code::SESSION_PREFIX)
+        {
+            let conn = open_cache_conn()?;
+            (
+                "claude_code".to_string(),
+                claude_code_history::resolve_claude_session_path(&conn, file_stem)?,
+            )
+        } else {
+            return Err("Unsupported history image session".into());
+        };
+        match provider.as_str() {
+            "codex" => codex_app::load_codex_image_from_path(&path, &turn_id, &original_ref),
+            "claude_code" => claude_code_history::load_claude_code_image_from_path(
+                &path,
+                &turn_id,
+                &original_ref,
+            ),
+            _ => Err("Unsupported history image provider".into()),
+        }
+    })
+    .await
+    .map_err(|err| format!("Read history image: {err}"))?
+}

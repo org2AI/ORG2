@@ -1,5 +1,4 @@
 {
-  "title": "Рантайм команды",
   "refresh": "Обновить",
   "loadError": "Не удалось загрузить рантайм команды",
   "overview": {
@@ -67,7 +66,7 @@
     "memory": "Память",
     "unified": "унифицированная",
     "gpu": "GPU",
-    "appVersion": "Версия ORGII",
+    "appVersion": "Версия ORG2",
     "totalSessions": "Всего сессий",
     "lastSynced": "Последняя синхронизация"
   },

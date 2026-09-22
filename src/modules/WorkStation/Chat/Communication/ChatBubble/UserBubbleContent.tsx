@@ -5,8 +5,8 @@ import {
   CHAT_BUBBLE_WIDTH_TOKENS,
   ChatBubbleCopyButton,
 } from "@src/components/ChatBubble";
-import { ChatImageThumbnailRow } from "@src/components/ChatImageThumbnail";
 import UserMessageContent from "@src/engines/ChatPanel/ChatHistory/components/UserMessageContent";
+import { ChatImageThumbnailRow } from "@src/engines/ChatPanel/ChatImageThumbnail";
 import { stripExpandedPillContent } from "@src/engines/ChatPanel/InputArea/utils/pillContentParser";
 import { ClipboardCheckIcon, HugeiconsIcon } from "@src/icons";
 
@@ -53,11 +53,8 @@ export const UserBubbleContent: React.FC<{
             />
             <span className="text-[13px] font-medium text-text-1">
               {planApprovedEdited
-                ? t(
-                    "chat.planApprovedEditedLabel",
-                    "Implementing approved plan (edited)"
-                  )
-                : t("chat.planApprovedLabel", "Implementing approved plan")}
+                ? t("chat.planApprovedEditedLabel")
+                : t("chat.planApprovedLabel")}
             </span>
           </div>
         </div>

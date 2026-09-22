@@ -10,12 +10,9 @@
  * Uses useSelectorKernel for unified state management.
  */
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { repoApi } from "@src/api/tauri/repo";
-import Message from "@src/components/Message";
-import { HugeiconsIcon } from "@src/icons";
 import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { cachedReposAtom } from "@src/store/repo";
 import { workingDirectoryInitialStageAtom } from "@src/store/ui/overlayAtom";
@@ -24,35 +21,30 @@ import {
   isMultiRootWorkspaceAtom,
   setWorkspaceFoldersAtom,
 } from "@src/store/ui/workspaceFoldersAtom";
-import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
 
 import {
   SPOTLIGHT_FOOTER_ACTIVE_CHIP,
   SpotlightFooterToggle,
   SpotlightPinnedActionSection,
 } from "../../components";
-import { ICONS } from "../../config";
 import {
   type AddWorkingDirectoryModalStage,
-  useAddWorkingDirectoryFlow,
   useExternalRecentPaths,
   useSharedRepoList,
 } from "../../hooks";
 import { usePathSegment } from "../../hooks/usePathSegment";
 import { PaletteBody, ShellFooterAction, SpotlightShell } from "../../shell";
-import type { RepoItem, SpotlightItem } from "../../types";
 import { AddWorkingDirectoryModalShell } from "../AddWorkingDirectoryModalShell";
 import { REPO_PALETTE_CONFIG } from "../config";
-import { buildOpenPathItem } from "./pathActionItem";
-import { buildPinnedWorkingDirectoryActions } from "./pinnedActions";
 import type { AddMenuKind, WorkingDirectoryPaletteProps } from "./types";
+import { useWorkingDirectoryManageMode } from "./useWorkingDirectoryManageMode";
+import { useWorkingDirectoryPaletteItems } from "./useWorkingDirectoryPaletteItems";
 import { useWorkingDirectoryPaletteNavigation } from "./useWorkingDirectoryPaletteNavigation";
+import { useWorkingDirectoryPaletteOpenReset } from "./useWorkingDirectoryPaletteOpenReset";
+import { useWorkingDirectoryPaletteSectionTab } from "./useWorkingDirectoryPaletteSectionTab";
+import { useWorkingDirectoryPaletteSelection } from "./useWorkingDirectoryPaletteSelection";
+import { useWorkingDirectoryPaletteText } from "./useWorkingDirectoryPaletteText";
 import { useWorkingDirectoryPaletteWorkspaces } from "./useWorkingDirectoryPaletteWorkspaces";
-import {
-  buildSectionedAddItems,
-  buildSectionedWorkingDirectoryItems,
-} from "./workingDirectoryPaletteItems";
-import { importWorkingDirectoryPath } from "./workingDirectoryPathImport";
 
 // ============ COMPONENT ============
 
@@ -92,111 +84,36 @@ export const WorkingDirectoryPalette: React.FC<
   const [addMenuKind, setAddMenuKind] = useState<AddMenuKind>(
     effectiveInitialStage ? null : initialAddMenu ? "add" : null
   );
-  const [isManageMode, setIsManageMode] = useState(initialManageMode);
-  /** Set of selected item IDs in manage mode. Workspaces use the
-   *  `workspace-${ws.workspaceId}` form; repos use the raw `repo.id`. */
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const {
+    isManageMode,
+    setIsManageMode,
+    selectedIds,
+    setSelectedIds,
+    selectedCount,
+    toggleManageMode,
+    toggleSelection,
+    clearSelection,
+  } = useWorkingDirectoryManageMode({ initialManageMode, setSearchQuery });
 
-  const paletteText = useMemo(
-    () => ({
-      switchPathLabel:
-        switchPathLabel ??
-        (isManageMode
-          ? t("selectors.repo.path.manageWorkspace")
-          : t("selectors.spotlight.actions.switchWorkspace.label")),
-      switchPathTemplate: isManageMode
-        ? t("selectors.repo.path.manageWorkspace")
-        : t("selectors.spotlight.actions.switchWorkspace.label"),
-      switchPlaceholder: t("selectors.spotlight.placeholders.workspace"),
-      invalidPathTitle: t("selectors.repo.pathImport.invalidTitle"),
-      invalidPathMessage: (path: string) =>
-        t("selectors.repo.pathImport.invalidMessage", { path }),
-      addPathLabel: t("selectors.spotlight.actions.addWorkspace.label"),
-      addPathTemplate: t("selectors.repo.path.addByTemplate"),
-      addPlaceholder: t("selectors.spotlight.placeholders.source"),
-      addEntryLabel: t("selectors.repo.addEntry"),
-      openFolderLabel: t("actions.openFolder"),
-      addFolderLabel: t("selectors.repo.pathImport.addLabel"),
-      sectionCurrentLabel: t("selectors.repo.sections.current"),
-      sectionRecentLabel: t("selectors.repo.sections.recent", "Recent"),
-      sectionSystemPathsLabel: t("selectors.repo.sections.systemPaths"),
-      sectionExternalRecentLabel: t("selectors.repo.sections.usedElsewhere"),
-      sectionRepoLabel: t("selectors.repo.sections.repo"),
-      sectionWorkingDirectoryLabel: t("selectors.repo.sections.workspace"),
-      sectionMultiRepoWorkingDirectoryLabel: t(
-        "workspaceForm.multiRepoWorkspace",
-        "Multi-Repo Working Directory"
-      ),
-      sectionThisOrgLabel:
-        orgScopeName ??
-        t("selectors.repo.sections.thisOrg", "This organization"),
-      sectionOutsideOrgLabel: orgScopeName
-        ? t("selectors.repo.sections.outsideNamedOrg", {
-            org: orgScopeName,
-            defaultValue: "Outside {{org}}",
-          })
-        : t("selectors.repo.sections.outsideOrg", "Outside this organization"),
-    }),
-    [t, isManageMode, switchPathLabel, orgScopeName]
-  );
+  const paletteText = useWorkingDirectoryPaletteText({
+    isManageMode,
+    switchPathLabel,
+    orgScopeName,
+  });
 
-  const wasOpenRef = React.useRef(false);
-
-  useEffect(() => {
-    const wasOpen = wasOpenRef.current;
-    let cancelled = false;
-
-    if (isOpen) {
-      wasOpenRef.current = true;
-
-      Promise.resolve().then(() => {
-        if (cancelled) return;
-
-        if (effectiveInitialStage) {
-          setModalStage(effectiveInitialStage);
-          setAddMenuKind(null);
-          setSearchQuery("");
-          if (initialAddStageAtom) {
-            setInitialAddStageAtom(null);
-          }
-        } else if (initialAddMenu) {
-          setModalStage(null);
-          setAddMenuKind("add");
-          setSearchQuery("");
-        } else if (!wasOpen) {
-          setModalStage(null);
-          setAddMenuKind(null);
-        }
-
-        if (initialManageMode) {
-          setIsManageMode(true);
-        }
-      });
-    }
-
-    if (!isOpen && wasOpen) {
-      wasOpenRef.current = false;
-      Promise.resolve().then(() => {
-        if (cancelled) return;
-        setSearchQuery("");
-        setModalStage(null);
-        setAddMenuKind(null);
-        setIsManageMode(false);
-        setSelectedIds(new Set());
-      });
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
+  useWorkingDirectoryPaletteOpenReset({
     isOpen,
     effectiveInitialStage,
     initialAddMenu,
     initialManageMode,
     initialAddStageAtom,
     setInitialAddStageAtom,
-  ]);
+    setSearchQuery,
+    setModalStage,
+    setAddMenuKind,
+    setIsManageMode,
+    setSelectedIds,
+  });
 
   // ============ DATA ============
   const { repos, filteredRepos, repoLoading, refreshReposForce } =
@@ -218,97 +135,19 @@ export const WorkingDirectoryPalette: React.FC<
   const isMultiRoot = useAtomValue(isMultiRootWorkspaceAtom);
   const dispatchSetFolders = useSetAtom(setWorkspaceFoldersAtom);
 
-  const handleRepoSelectWithWorkspaceExit = useCallback(
-    (repoId: string, repo: RepoItem) => {
-      if (isMultiRoot) {
-        dispatchSetFolders([], null);
-      }
-      onSelect(repoId, repo);
-      onClose();
-    },
-    [isMultiRoot, dispatchSetFolders, onSelect, onClose]
-  );
-
-  const handleAddedRepoSelect = useCallback(
-    async (repoId?: string) => {
-      if (!repoId) return;
-      const result = await repoApi.getRepoById(repoId);
-      const repo = result.data;
-      const repoItem: RepoItem = {
-        id: repo.repo_id,
-        name: repo.name,
-        fs_uri: repo.path,
-        kind: repo.kind,
-      };
-      onSelect(repoItem.id, repoItem);
-      onClose();
-    },
-    [onClose, onSelect]
-  );
-
-  // ============ ADD WORKSPACE FLOW ============
-  const workingDirectoryFlow = useAddWorkingDirectoryFlow({
+  const {
+    handleRepoSelectWithWorkspaceExit,
+    workingDirectoryFlow,
+    handleExternalRecentSelect,
+  } = useWorkingDirectoryPaletteSelection({
+    isMultiRoot,
+    dispatchSetFolders,
+    onSelect,
+    onClose,
     modalStage,
     setModalStage,
-    onSuccess: handleAddedRepoSelect,
-    onModalClose: () => {
-      setModalStage(null);
-    },
+    refreshReposForce,
   });
-
-  const handleExternalRecentSelect = useCallback(
-    async (repo: RepoItem) => {
-      const path = repo.fs_uri;
-      if (!path) return;
-      if (isMultiRoot) {
-        dispatchSetFolders([], null);
-      }
-      await workingDirectoryFlow.workingDirectoryForm.handleImportWorkingDirectory(
-        path
-      );
-      await refreshReposForce();
-    },
-    [
-      workingDirectoryFlow.workingDirectoryForm,
-      dispatchSetFolders,
-      isMultiRoot,
-      refreshReposForce,
-    ]
-  );
-
-  // ============ ITEMS ============
-  const sectionedAddItems = useMemo(
-    (): SpotlightItem[] =>
-      buildSectionedAddItems(workingDirectoryFlow.addWorkingDirectoryItems),
-    [workingDirectoryFlow.addWorkingDirectoryItems]
-  );
-
-  const toggleManageMode = useCallback(() => {
-    setIsManageMode((prev) => {
-      if (prev) {
-        setSelectedIds(new Set());
-        return false;
-      }
-      setSearchQuery("");
-      return true;
-    });
-  }, []);
-
-  const toggleSelection = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const selectedCount = selectedIds.size;
-
-  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   // ============ WORKSPACE MANAGEMENT ============
   const { workspaceItems, handleBulkDelete } =
@@ -343,215 +182,44 @@ export const WorkingDirectoryPalette: React.FC<
     }
   );
 
-  const handleRemoveRepo = useCallback(
-    async (repo: RepoItem) => {
-      const confirmed = await confirmDestructiveAction({
-        title: t("confirmation.removeTitle", { name: repo.name }),
-        message: t("confirmation.removeMessage"),
-        okLabel: t("actions.removeFromOrgii", "Remove from ORGII"),
-        cancelLabel: t("actions.cancel"),
-      });
-      if (!confirmed) return;
-
-      try {
-        await repoApi.deleteRepo(repo.id);
-        await refreshReposForce();
-        setSelectedIds((prev) => {
-          if (!prev.has(repo.id)) return prev;
-          const next = new Set(prev);
-          next.delete(repo.id);
-          return next;
-        });
-        Message.success(
-          t("selectors.spotlight.toast.repoRemoved", "Linkage to ORGII removed")
-        );
-      } catch (error) {
-        Message.error(
-          error instanceof Error
-            ? error.message
-            : t(
-                "selectors.spotlight.toast.repoRemoveFailed",
-                "Failed to remove linkage to ORGII"
-              )
-        );
-      }
-    },
-    [refreshReposForce, t]
-  );
-
-  const openPathItem = useMemo(
-    () =>
-      buildOpenPathItem({
-        searchQuery,
-        addLabel: paletteText.addFolderLabel,
-        onOpenPath: (candidatePath) => {
-          void importWorkingDirectoryPath({
-            candidatePath,
-            invalidPathTitle: paletteText.invalidPathTitle,
-            invalidPathMessage: paletteText.invalidPathMessage,
-            onImportWorkingDirectory:
-              workingDirectoryFlow.workingDirectoryForm
-                .handleImportWorkingDirectory,
-          });
-        },
-      }),
-    [
-      workingDirectoryFlow.workingDirectoryForm.handleImportWorkingDirectory,
-      paletteText.invalidPathMessage,
-      paletteText.invalidPathTitle,
-      paletteText.addFolderLabel,
+  // ============ ITEMS ============
+  const { pinnedActionItems, mainItems, pinnedActionStartIndex, items } =
+    useWorkingDirectoryPaletteItems({
       searchQuery,
-    ]
-  );
-
-  const pinnedActionItems = useMemo(
-    (): SpotlightItem[] =>
-      buildPinnedWorkingDirectoryActions({
-        isManageMode,
-        selectedCount,
-        paletteText,
-        t,
-        onOpenWorkingDirectory: () =>
-          void workingDirectoryFlow.workingDirectoryForm.handleOpenWorkingDirectory(),
-        onOpenAddMenu: () => setAddMenuKind("add"),
-        onCreateWorkspace: () => setModalStage("create-workspace"),
-        onBulkDelete: () => void handleBulkDelete(),
-        onToggleManageMode: toggleManageMode,
-      }),
-    [
-      workingDirectoryFlow.workingDirectoryForm,
+      paletteText,
+      workingDirectoryFlow,
       handleBulkDelete,
       isManageMode,
-      paletteText,
       selectedCount,
-      t,
+      selectedIds,
       toggleManageMode,
-    ]
-  );
-
-  const renderRepoTrashAction = useCallback(
-    (repo: RepoItem): React.ReactNode => (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          void handleRemoveRepo(repo);
-        }}
-        className="flex items-center justify-center rounded-md p-1 text-danger-6 transition-colors hover:bg-danger-6/10"
-        title={t("actions.removeFromOrgii", "Remove from ORGII")}
-      >
-        <HugeiconsIcon icon={ICONS.removeRepo} size={14} />
-      </button>
-    ),
-    [handleRemoveRepo, t]
-  );
-
-  const mainItems = useMemo((): SpotlightItem[] => {
-    return buildSectionedWorkingDirectoryItems({
-      addMenuActive: !!addMenuKind,
-      sectionedAddItems,
+      toggleSelection,
+      setSelectedIds,
+      setAddMenuKind,
+      setModalStage,
+      refreshReposForce,
+      addMenuKind,
       workspaceItems,
-      openPathItem,
       filteredRepos,
       externalRecentRepos,
-      recentCachedRepos: cachedRepos,
+      cachedRepos,
       currentRepoId,
       isMultiRoot,
-      isManageMode,
       leadingRepos,
-      selectedIds,
-      searchQuery,
-      paletteText,
-      orgScopeFilter: repoFilter ?? null,
+      repoFilter,
       showPath,
-      onRepoAction: (repo) => {
-        if (isManageMode) {
-          toggleSelection(repo.id);
-        } else {
-          handleRepoSelectWithWorkspaceExit(repo.id, repo);
-        }
-      },
-      onLeadingRepoAction: (repo) => {
-        if (repo.id.startsWith("external-recent:")) {
-          void handleExternalRecentSelect(repo);
-        } else {
-          handleRepoSelectWithWorkspaceExit(repo.id, repo);
-        }
-      },
-      toggleSelection,
-      renderRepoTrashAction,
+      handleRepoSelectWithWorkspaceExit,
+      handleExternalRecentSelect,
     });
-  }, [
-    addMenuKind,
-    cachedRepos,
-    currentRepoId,
-    externalRecentRepos,
-    filteredRepos,
-    handleExternalRecentSelect,
-    handleRepoSelectWithWorkspaceExit,
-    isManageMode,
-    isMultiRoot,
-    leadingRepos,
-    openPathItem,
-    paletteText,
-    renderRepoTrashAction,
-    repoFilter,
-    searchQuery,
-    sectionedAddItems,
-    selectedIds,
-    showPath,
-    toggleSelection,
-    workspaceItems,
-  ]);
-
-  const pinnedActionStartIndex = mainItems.length;
-  const items = useMemo(
-    () => (addMenuKind ? mainItems : [...mainItems, ...pinnedActionItems]),
-    [addMenuKind, mainItems, pinnedActionItems]
-  );
 
   // ============ KERNEL ============
-  const isItemSelectable = useCallback((item: SpotlightItem) => {
-    const data = item.data as Record<string, unknown> | undefined;
-    return !data?.isHeader && !data?.disabled;
-  }, []);
-
-  const handleSectionTab = useCallback(
-    (
-      forward: boolean,
-      selectedIndex: number,
-      setSelectedIndex: React.Dispatch<React.SetStateAction<number>>
-    ) => {
-      if (addMenuKind || pinnedActionItems.length === 0) return;
-
-      const firstMainItemIndex = mainItems.findIndex(isItemSelectable);
-      const firstPinnedItemIndex = pinnedActionStartIndex;
-      const selectedPinnedActionIndex = selectedIndex - pinnedActionStartIndex;
-      const selectedWithinPinnedActions =
-        selectedPinnedActionIndex >= 0 &&
-        selectedPinnedActionIndex < pinnedActionItems.length;
-      const nextIndex = forward
-        ? selectedWithinPinnedActions
-          ? firstMainItemIndex >= 0
-            ? firstMainItemIndex
-            : firstPinnedItemIndex
-          : firstPinnedItemIndex
-        : selectedWithinPinnedActions
-          ? firstMainItemIndex >= 0
-            ? firstMainItemIndex
-            : firstPinnedItemIndex
-          : firstPinnedItemIndex;
-
-      setSelectedIndex(nextIndex);
-    },
-    [
-      addMenuKind,
-      isItemSelectable,
+  const { isItemSelectable, handleSectionTab } =
+    useWorkingDirectoryPaletteSectionTab({
+      addMenuActive: !!addMenuKind,
       mainItems,
-      pinnedActionItems.length,
+      pinnedActionCount: pinnedActionItems.length,
       pinnedActionStartIndex,
-    ]
-  );
+    });
 
   const { handleGoBack, handleExternalKeyDown } =
     useWorkingDirectoryPaletteNavigation({
@@ -605,8 +273,6 @@ export const WorkingDirectoryPalette: React.FC<
       <AddWorkingDirectoryModalShell
         isOpen={isOpen}
         onClose={onClose}
-        inputRef={kernel.inputRef}
-        handleKeyDown={kernel.handleKeyDown}
         modalStage={modalStage}
         workingDirectoryFlow={workingDirectoryFlow}
         currentRepoId={currentRepoId}
@@ -651,7 +317,7 @@ export const WorkingDirectoryPalette: React.FC<
   const showPathToggle = addMenuKind ? null : (
     <ShellFooterAction placement="inline">
       <SpotlightFooterToggle
-        label={t("selectors.spotlightFooter.showPath", "Show path")}
+        label={t("selectors.spotlightFooter.showPath")}
         checked={showPath}
         onCheckedChange={setShowPath}
       />
@@ -692,6 +358,7 @@ export const WorkingDirectoryPalette: React.FC<
       onClose={onClose}
       hasActiveAction={!addMenuKind && pinnedActionItems.length > 0}
       activeActionChip={SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchSection}
+      pinScope="directories"
     >
       {palette}
     </SpotlightShell>

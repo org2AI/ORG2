@@ -17,15 +17,17 @@ import {
 
 import {
   currentEventIdAtom,
-  navigateToEventAtom,
   replayModeAtom,
   sessionIdAtom,
 } from "../core/atoms";
 import {
   derivedSnapshotAtom,
-  eventIndexAtom,
   streamingDeltaContentAtom,
 } from "../core/atoms/events";
+import {
+  getFallbackSimulatorEventFilterCategory,
+  isSimulatorEventVisibleForFilters,
+} from "../core/simulatorEventFilters";
 import type { DerivedSnapshot } from "../core/store/EventStoreProxy";
 import type {
   ReplayMode,
@@ -34,10 +36,6 @@ import type {
 } from "../core/types";
 import { isSubagentSpawningTool } from "../sync/adapters/shared/subagentTracking";
 import { appendLiveAssistantEvent } from "./chatEvents";
-import {
-  getFallbackSimulatorEventFilterCategory,
-  isSimulatorEventVisibleForFilters,
-} from "./simulatorEventFilters";
 
 function buildSimulatorEventPreview(
   event: SessionEvent
@@ -197,21 +195,6 @@ export const threadIdByIdAtom = atom((get) => {
 threadIdByIdAtom.debugLabel = "session/threadIdById";
 
 /**
- * Sorted simulator-visible events.
- * Compatibility selector for consumers that still need full SessionEvent bodies.
- */
-export const sortedSimulatorEventsAtom = atom((get) => {
-  const snap = get(derivedSnapshotAtom);
-
-  if (snap && "sortedSimulatorEvents" in snap) {
-    return (snap as DerivedSnapshot).sortedSimulatorEvents;
-  }
-
-  return get(simulatorEventsAtom);
-});
-sortedSimulatorEventsAtom.debugLabel = "session/sortedSimulatorEvents";
-
-/**
  * Simulator event IDs filtered by current thread selection.
  */
 export const simulatorThreadFilteredEventIdsAtom = atom((get) => {
@@ -224,19 +207,6 @@ export const simulatorThreadFilteredEventIdsAtom = atom((get) => {
 });
 simulatorThreadFilteredEventIdsAtom.debugLabel =
   "session/simulatorThreadFilteredEventIds";
-
-/**
- * Simulator events filtered by current thread selection.
- * Compatibility selector for full-event consumers.
- */
-export const simulatorThreadFilteredEventsAtom = atom((get) => {
-  const eventIndex = get(eventIndexAtom);
-  return get(simulatorThreadFilteredEventIdsAtom)
-    .map((eventId) => eventIndex.get(eventId))
-    .filter((event): event is SessionEvent => Boolean(event));
-});
-simulatorThreadFilteredEventsAtom.debugLabel =
-  "session/simulatorThreadFilteredEvents";
 
 /**
  * Effective simulator event IDs for replay — thread/app filter when selected,
@@ -269,18 +239,6 @@ export const effectiveSimulatorEventIdsAtom = atom((get) => {
 effectiveSimulatorEventIdsAtom.debugLabel =
   "session/effectiveSimulatorEventIds";
 
-/**
- * Effective simulator events for replay.
- * Compatibility selector for unmigrated consumers that still need full events.
- */
-export const effectiveSimulatorEventsAtom = atom((get) => {
-  const eventIndex = get(eventIndexAtom);
-  return get(effectiveSimulatorEventIdsAtom)
-    .map((eventId) => eventIndex.get(eventId))
-    .filter((event): event is SessionEvent => Boolean(event));
-});
-effectiveSimulatorEventsAtom.debugLabel = "session/effectiveSimulatorEvents";
-
 let _prevEffSimIds: ReadonlyArray<string> = [];
 let _prevEffSimIndexMap = new Map<string, number>();
 
@@ -295,16 +253,6 @@ const effectiveSimulatorEventIndexMapAtom = atom((get) => {
   _prevEffSimIndexMap = map;
   return map;
 });
-
-/**
- * Current event preview for simulator navigation/status consumers.
- */
-export const currentSimulatorPreviewAtom = atom((get) => {
-  const currentId = get(currentEventIdAtom);
-  if (!currentId) return null;
-  return get(simulatorEventPreviewByIdAtom)[currentId] ?? null;
-});
-currentSimulatorPreviewAtom.debugLabel = "session/currentSimulatorPreview";
 
 /**
  * Current event index in effective simulator events.
@@ -366,25 +314,6 @@ navigateToSimulatorEventByIndexAtom.debugLabel =
   "session/navigateToSimulatorEventByIndex";
 
 /**
- * Navigate to event by ID.
- * Uses O(1) Map lookup instead of O(n) findIndex.
- */
-export const navigateToSimulatorEventAtom = atom(
-  null,
-  (get, set, eventId: string) => {
-    const indexMap = get(effectiveSimulatorEventIndexMapAtom);
-    const targetIndex = indexMap.get(eventId);
-
-    if (targetIndex !== undefined) {
-      set(navigateToSimulatorEventByIndexAtom, targetIndex);
-      return;
-    }
-    set(navigateToEventAtom, eventId);
-  }
-);
-navigateToSimulatorEventAtom.debugLabel = "session/navigateToSimulatorEvent";
-
-/**
  * Navigate to next simulator event (index + 1).
  * If current event is not in the filtered list, start from the first event.
  */
@@ -436,14 +365,3 @@ export const navigateToFirstSimulatorEventAtom = atom(null, (_get, set) => {
 });
 navigateToFirstSimulatorEventAtom.debugLabel =
   "session/navigateToFirstSimulatorEvent";
-
-/**
- * Navigate to last simulator event.
- */
-export const navigateToLastSimulatorEventAtom = atom(null, (get, set) => {
-  const eventIds = get(effectiveSimulatorEventIdsAtom);
-  if (eventIds.length === 0) return;
-  set(navigateToSimulatorEventByIndexAtom, eventIds.length - 1);
-});
-navigateToLastSimulatorEventAtom.debugLabel =
-  "session/navigateToLastSimulatorEvent";

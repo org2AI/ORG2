@@ -10,7 +10,6 @@ import {
 import { eventStoreProxy } from "../../store/EventStoreProxy";
 import type { SessionEvent } from "../../types";
 import type {
-  appendEventsAtom as AppendEventsAtomType,
   clearSessionAtom as ClearSessionAtomType,
   loadSessionAtom as LoadSessionAtomType,
 } from "../actions";
@@ -47,7 +46,6 @@ vi.stubGlobal("localStorage", {
   },
 });
 
-let appendEventsAtom: typeof AppendEventsAtomType;
 let clearSessionAtom: typeof ClearSessionAtomType;
 let loadSessionAtom: typeof LoadSessionAtomType;
 let eventsAtom: typeof EventsAtomType;
@@ -55,8 +53,7 @@ let pendingSyntheticEventAtom: typeof PendingSyntheticEventAtomType;
 let transcriptReplaceEpochAtom: typeof TranscriptReplaceEpochAtomType;
 
 beforeAll(async () => {
-  ({ appendEventsAtom, clearSessionAtom, loadSessionAtom } =
-    await import("../actions"));
+  ({ clearSessionAtom, loadSessionAtom } = await import("../actions"));
   ({ eventsAtom } = await import("../events"));
   ({ pendingSyntheticEventAtom, transcriptReplaceEpochAtom } =
     await import("../metadata"));
@@ -612,28 +609,5 @@ describe("loadSessionAtom", () => {
       "user-input-next",
     ]);
     expect(store.get(pendingSyntheticEventAtom)?.id).toBe("user-input-next");
-  });
-
-  it("carries optimistic user images onto a live persisted echo", () => {
-    const store = createStore();
-    const images = ["data:image/png;base64,BBB"];
-    const optimistic = makeUserMessageEvent("user-input-1", "see this", {
-      images,
-      synthetic: true,
-    });
-    const persisted = makeUserMessageEvent("user-message-1", "see this");
-
-    store.set(loadSessionAtom, {
-      sessionId: "session-1",
-      events: [optimistic],
-    });
-    store.set(appendEventsAtom, [persisted]);
-
-    expect(eventStoreProxy.append).toHaveBeenLastCalledWith([
-      expect.objectContaining({
-        id: "user-message-1",
-        result: expect.objectContaining({ images }),
-      }),
-    ]);
   });
 });

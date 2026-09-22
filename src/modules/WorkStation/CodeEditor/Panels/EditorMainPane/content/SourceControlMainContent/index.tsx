@@ -11,12 +11,12 @@
 import React, { Suspense, memo, useMemo } from "react";
 
 import { Placeholder } from "@src/components/Placeholder";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import { useGitHubIssueDetailState } from "@src/features/GitHubWork/useGitHubIssueDetailState";
 import {
   NoTabsPlaceholder,
   type QuickAction,
 } from "@src/modules/WorkStation/shared";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import { useGitHubIssueDetailState } from "@src/modules/shared/hooks/useGitHubIssueDetailState";
 import { workstationRepoScopeKey } from "@src/store/workstation/codeEditor/workstationPrAtom";
 import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import type { SourceControlHistorySelection } from "@src/store/workstation/tabs";
@@ -54,8 +54,9 @@ interface SourceControlMainContentProps {
   onForceReload?: () => void;
   /** Open the focused file as a regular file tab */
   onFileSelect?: (path: string) => void;
-  /** Clear the focused file without closing Source Control. */
+  /** Clear the focused file or history selection without closing Source Control. */
   onCloseFocus?: () => void;
+  onOpenHistoryInNewTab?: (selection: SourceControlHistorySelection) => void;
   /** Sync git-diff local edits to tab bar unsaved indicator */
   onGitDiffUnsavedChange?: (hasUnsaved: boolean) => void;
   /** Selected commit/stash rendered in the Source Control right pane. */
@@ -85,6 +86,7 @@ const SourceControlMainContent: React.FC<SourceControlMainContentProps> = ({
   onForceReload,
   onFileSelect,
   onCloseFocus,
+  onOpenHistoryInNewTab,
   onGitDiffUnsavedChange,
   historySelection,
   files,
@@ -208,12 +210,10 @@ const SourceControlMainContent: React.FC<SourceControlMainContentProps> = ({
             repoId={resolvedRepoId ?? ""}
             isRepoReady={repoReady}
             onFileSelect={onFileSelect}
-            headerVariant={
-              historySelection.type === "stash" ? "stash" : "commit"
-            }
-            headerRootLabel={
-              historySelection.type === "stash"
-                ? historySelection.stashRef
+            onClose={onCloseFocus}
+            onOpenInNewTab={
+              onOpenHistoryInNewTab
+                ? () => onOpenHistoryInNewTab(historySelection)
                 : undefined
             }
             publishHeaderToWorkstation={false}

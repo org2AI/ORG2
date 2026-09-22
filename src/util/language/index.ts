@@ -4,14 +4,6 @@
  * Exports language detection functions and mappings for use across components.
  */
 
-export {
-  detectLanguageFromPath,
-  detectLanguageFromExtension,
-  isDiffFile,
-  isCodeLanguage,
-} from "./detectLanguage";
+export { detectLanguageFromPath } from "./detectLanguage";
 
-export {
-  getLanguageDisplayName,
-  getLanguageIconFile,
-} from "@src/config/languageMap";
+export { getLanguageDisplayName } from "@src/config/languageMap";

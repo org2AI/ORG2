@@ -64,10 +64,9 @@ export async function loadAuthoritativeSessionEvents(
       `No authoritative full-history reader is registered for ${sessionId}`
     );
   }
-  const events =
-    adapter.category === "external_history"
-      ? await adapter.loadAuthoritativeHistory!(sessionId, signal)
-      : await adapter.loadHistory(sessionId, signal);
+  const events = adapter.loadAuthoritativeHistory
+    ? await adapter.loadAuthoritativeHistory(sessionId, signal)
+    : await adapter.loadHistory(sessionId, signal);
   return {
     events,
     source:

@@ -88,7 +88,6 @@ export function FindSkillsResults({
         align: "right",
         renderCell: (result) => (
           <Button
-            variant="secondary"
             size="small"
             icon={<HugeiconsIcon icon={ViewIcon} data-icon="eye" size={14} />}
             loading={previewingSlug === result.slug}
@@ -131,7 +130,6 @@ export function FindSkillsResults({
           rightContent: (
             <Button
               variant="primary"
-              size="default"
               loading={searching}
               disabled={!canSearch}
               htmlType="submit"

@@ -26,7 +26,7 @@ export const AGENT_BROWSER_SETTINGS_REGISTRY = {
     schema: z.enum(AGENT_BROWSER_PROVIDER_VALUES),
     default: AGENT_BROWSER_PROVIDER.AGENT_BROWSER,
     description:
-      "Computer Use browser CLI provider used by agent browser tools. Changes require restarting ORGII",
+      "Computer Use browser CLI provider used by agent browser tools. Changes require restarting ORG2",
     category: "agentBrowser",
     enumLabels: {
       [AGENT_BROWSER_PROVIDER.AGENT_BROWSER]: "Agent Browser CLI",
@@ -37,14 +37,14 @@ export const AGENT_BROWSER_SETTINGS_REGISTRY = {
     schema: z.string(),
     default: "",
     description:
-      "Optional path to the Agent Browser CLI binary. Leave empty to resolve from the vendored binary or PATH. Changes require restarting ORGII",
+      "Optional path to the Agent Browser CLI binary. Leave empty to resolve from the vendored binary or PATH. Changes require restarting ORG2",
     category: "agentBrowser",
   },
   [AGENT_BROWSER_SETTING_KEYS.PLAYWRIGHT_CLI_PATH]: {
     schema: z.string(),
     default: "",
     description:
-      "Optional path to the Playwright CLI command or script. Leave empty to resolve from the development checkout or PATH. Changes require restarting ORGII",
+      "Optional path to the Playwright CLI command or script. Leave empty to resolve from the development checkout or PATH. Changes require restarting ORG2",
     category: "agentBrowser",
   },
 } as const satisfies Record<string, SettingDefinition>;

@@ -26,7 +26,7 @@ import {
 } from "@src/engines/SessionCore/rendering/registry";
 import { getToolLabel } from "@src/engines/SessionCore/rendering/registry/initToolRegistry";
 import type { UniversalEventProps } from "@src/engines/SessionCore/rendering/types/universalProps";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import TitleOnlyBlock from "../../blocks/TitleOnlyBlock";
 import {
@@ -34,6 +34,7 @@ import {
   type AwaitMeta,
   formatDurationShort,
   readAwaitMetaFromResult,
+  resolveAwaitWaitedMs,
   tallyItems,
 } from "./awaitMeta";
 
@@ -73,26 +74,6 @@ function resolveAwaitCommand(
     return "wait_for";
   }
   return "monitor";
-}
-
-/** Read Codex's wall-time line, falling back to the requested yield window. */
-function readCodexWaitedMs(
-  args: Record<string, unknown> | undefined,
-  result: Record<string, unknown> | undefined
-): number | undefined {
-  if (args?.cell_id === undefined && args?.yield_time_ms === undefined) {
-    return undefined;
-  }
-
-  for (const value of [result?.output, result?.content, result?.observation]) {
-    if (typeof value !== "string") continue;
-    const match = value.match(/Wall time\s+([\d.]+)\s+seconds?/i);
-    if (match) return Number.parseFloat(match[1]) * 1000;
-  }
-
-  return typeof args?.yield_time_ms === "number"
-    ? args.yield_time_ms
-    : undefined;
 }
 
 /** Format a remaining-ms value for `Waiting {{countdown}} ...` titles. */
@@ -159,8 +140,13 @@ function buildSummary(
   t: (key: string, opts?: Record<string, unknown>) => string
 ): string {
   const tally = tallyItems(items);
-  if (tally.total === 0) {
-    return t("tools.awaitOutputSummaryUnknown", { count: 1 });
+  // Do not rely on plural rules for the count-free singular label:
+  // Chinese, Japanese, and Korean use the "other" form even for count=1.
+  if (tally.total <= 1) {
+    if (tally.shell === 1) return t("tools.awaitOutputSummaryShellSingle");
+    if (tally.subagent === 1)
+      return t("tools.awaitOutputSummarySubagentSingle");
+    return t("tools.awaitOutputSummaryUnknownSingle");
   }
   if (tally.shell > 0 && tally.subagent > 0) {
     // Build each side through its own plural rule, then join with the
@@ -218,8 +204,7 @@ function useAwaitExtras(
   const items = meta?.items ?? [];
   const representative =
     items.find((it) => it.status !== "running") ?? items[0];
-  const waitedMs =
-    representative?.waitedMs ?? readCodexWaitedMs(props.args, props.result);
+  const waitedMs = resolveAwaitWaitedMs(props.args, props.result, meta);
 
   const summary = buildSummary(items, t);
 

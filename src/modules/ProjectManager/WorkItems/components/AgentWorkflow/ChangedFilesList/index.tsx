@@ -144,17 +144,22 @@ const ChangedFilesList: React.FC<ChangedFilesListProps> = ({
         </Button>
 
         {(onReviewAllFiles || onOpenFileDiff) && reviewableFiles.length > 0 && (
-          <button
+          <Button
+            variant="tertiary"
+            size="mini"
+            aria-label={t("workItems.changedFiles.reviewInEditor")}
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={SquareArrowUpRight02Icon}
+                data-icon="square-arrow-out-up-right"
+                size={13}
+              />
+            }
             onClick={handleReviewAll}
             title={t("workItems.changedFiles.reviewInEditor")}
-            className="mr-2 shrink-0 rounded-md p-1.5 text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1"
-          >
-            <HugeiconsIcon
-              icon={SquareArrowUpRight02Icon}
-              data-icon="square-arrow-out-up-right"
-              size={13}
-            />
-          </button>
+            className="mr-2 shrink-0 hover:bg-fill-2 hover:text-text-1"
+          />
         )}
       </div>
 

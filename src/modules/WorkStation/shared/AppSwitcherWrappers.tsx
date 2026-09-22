@@ -152,9 +152,7 @@ const SimulatorAgentChipComponent: React.FC = () => {
 
   // Read "No tasks" from the sessions namespace so it stays in lockstep
   // with the same label used by ChatHistory's TurnPaginationControls.
-  const noTasksLabel = t("sessions:planner.agentOrgMemberStatus.noTasks", {
-    defaultValue: "No tasks",
-  });
+  const noTasksLabel = t("sessions:planner.agentOrgMemberStatus.noTasks");
 
   const items = useMemo(() => {
     if (switchableMembers.length <= 1) return [];

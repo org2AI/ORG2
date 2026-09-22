@@ -1,8 +1,8 @@
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import {
   presentedWorkstationWorkspaceKeyAtom,
   queueFileOpens,

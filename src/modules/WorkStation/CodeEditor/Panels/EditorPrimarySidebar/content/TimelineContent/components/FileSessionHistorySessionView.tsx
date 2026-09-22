@@ -1,8 +1,8 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
-import SessionHoverCard from "@src/components/SessionHoverCard";
-import { PRIMARY_SIDEBAR_HOVER } from "@src/config/workstation/tokens";
+import { SidebarRow } from "@src/components/SidebarRow";
+import SessionHoverCard from "@src/features/SessionHoverCard";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
 import type {
@@ -50,8 +50,7 @@ export const FileSessionHistorySessionView: React.FC<FileSessionHistorySessionPr
     const hasRootTranscript = Boolean(session.transcriptSessionId);
 
     const row = (
-      <button
-        type="button"
+      <SidebarRow
         data-testid="session-blame-session-header"
         data-session-id={session.sessionId}
         data-transcript-session-id={session.transcriptSessionId ?? undefined}
@@ -61,7 +60,6 @@ export const FileSessionHistorySessionView: React.FC<FileSessionHistorySessionPr
         data-attribution-precision={session.attributionPrecision}
         data-read-count={session.actionCounts.read ?? 0}
         data-write-count={session.actionCounts.write ?? 0}
-        className={`flex w-full items-start gap-1.5 px-4 py-1.5 pr-3 text-left transition-colors ${hasRootTranscript ? PRIMARY_SIDEBAR_HOVER.row : "cursor-default"}`}
         disabled={!hasRootTranscript}
         onClick={() => {
           if (!session.transcriptSessionId) return;
@@ -73,22 +71,15 @@ export const FileSessionHistorySessionView: React.FC<FileSessionHistorySessionPr
             session.collaborationOrigin ?? undefined
           );
         }}
-      >
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+        label={session.sessionLabel}
+        metadata={meta.join(" · ")}
+        icon={
           <FileSessionHistoryIcon
             sessionId={session.sessionId}
             isOrg2Session={Boolean(session.collaborationOrigin)}
           />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-[13px] font-medium text-text-2">
-            {session.sessionLabel}
-          </span>
-          <span className="truncate text-[11px] text-text-3">
-            {meta.join(" · ")}
-          </span>
-        </span>
-      </button>
+        }
+      />
     );
 
     return (

@@ -26,7 +26,6 @@ import { LOCATION_ICONS } from "./locationConfig";
  * shared pill styles apply overflow ellipsis.
  */
 const SESSION_INFO_FIXED_LABEL_MAX_WIDTH = 180;
-const SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS = 2000;
 
 interface SessionInfoDisplayParams {
   isMultiRoot: boolean;
@@ -134,14 +133,16 @@ export function buildSessionInfoSegments({
       active: isRepoSelectorOpen,
       danger: !hasSource,
       tooltip: disabled ? undefined : (
-        <KeyboardShortcutTooltipContent
-          label={t("selectors.sessionInfo.switchWorkspace")}
-          shortcutId={"open_workspace_selector"}
-        />
+        <div className="flex max-w-72 flex-col gap-1 whitespace-normal">
+          <span className="wrap-anywhere">{sourceDisplayName}</span>
+          <KeyboardShortcutTooltipContent
+            label={t("selectors.sessionInfo.switchWorkspace")}
+            shortcutId={"open_workspace_selector"}
+          />
+        </div>
       ),
       tooltipFramed: true,
-      tooltipPosition: "bottom",
-      tooltipMouseEnterDelay: SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS,
+      tooltipPosition: "top",
       ariaLabel: t("selectors.sessionInfo.sourceAria"),
       disabled,
       onClick: handleRepoTriggerClick,
@@ -152,24 +153,27 @@ export function buildSessionInfoSegments({
     const locationEntry = RUNNING_LOCATIONS.find(
       (location) => location.id === worktreeLocation
     )!;
+    const locationLabel =
+      worktreeLocation === "worktree" && worktreeLocationLabel
+        ? worktreeLocationLabel
+        : t(locationEntry.i18nKey);
     segments.push({
       id: "location",
       icon: LOCATION_ICONS[worktreeLocation],
-      label:
-        worktreeLocation === "worktree" && worktreeLocationLabel
-          ? worktreeLocationLabel
-          : t(locationEntry.i18nKey),
+      label: locationLabel,
       maxLabelWidth: SESSION_INFO_FIXED_LABEL_MAX_WIDTH,
       active: isLocationDropdownOpen,
       tooltip: disabled ? undefined : (
-        <KeyboardShortcutTooltipContent
-          label={t("selectors.sessionInfo.switchLocation")}
-          shortcutId={"open_location_selector"}
-        />
+        <div className="flex max-w-72 flex-col gap-1 whitespace-normal">
+          <span className="wrap-anywhere">{locationLabel}</span>
+          <KeyboardShortcutTooltipContent
+            label={t("selectors.sessionInfo.switchLocation")}
+            shortcutId={"open_location_selector"}
+          />
+        </div>
       ),
       tooltipFramed: true,
-      tooltipPosition: "bottom",
-      tooltipMouseEnterDelay: SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS,
+      tooltipPosition: "top",
       ariaLabel: t("selectors.sessionInfo.locationAria"),
       disabled,
       buttonRef: locationTriggerRef,
@@ -178,6 +182,11 @@ export function buildSessionInfoSegments({
   }
 
   if (showBranchRow) {
+    const branchLabel = branchLoading
+      ? t("status.loading")
+      : worktreeLocation === "worktree" && worktreeSourceLabel
+        ? worktreeSourceLabel
+        : branchName || "";
     segments.push({
       id: "branch",
       flexible: true,
@@ -190,25 +199,23 @@ export function buildSessionInfoSegments({
           className="text-text-1"
         />
       ),
-      label: branchLoading
-        ? t("status.loading")
-        : worktreeLocation === "worktree" && worktreeSourceLabel
-          ? worktreeSourceLabel
-          : branchName || "",
+      label: branchLabel,
       active: isBranchSelectorOpen,
       tooltip: disabled ? undefined : (
-        <KeyboardShortcutTooltipContent
-          label={
-            worktreeLocation === "worktree"
-              ? t("selectors.sessionInfo.selectWorktreeSource")
-              : t("selectors.sessionInfo.switchBranch")
-          }
-          shortcutId={"open_branch_selector"}
-        />
+        <div className="flex max-w-72 flex-col gap-1 whitespace-normal">
+          {branchLabel && <span className="wrap-anywhere">{branchLabel}</span>}
+          <KeyboardShortcutTooltipContent
+            label={
+              worktreeLocation === "worktree"
+                ? t("selectors.sessionInfo.selectWorktreeSource")
+                : t("selectors.sessionInfo.switchBranch")
+            }
+            shortcutId={"open_branch_selector"}
+          />
+        </div>
       ),
       tooltipFramed: true,
-      tooltipPosition: "bottom",
-      tooltipMouseEnterDelay: SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS,
+      tooltipPosition: "top",
       ariaLabel: t("selectors.sessionInfo.branchAria"),
       disabled: disabled || branchLoading,
       onClick: handleBranchTriggerClick,

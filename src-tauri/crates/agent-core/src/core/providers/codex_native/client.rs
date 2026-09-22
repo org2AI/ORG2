@@ -93,7 +93,7 @@ impl CodexNativeClient {
     pub(super) fn required_instructions(instructions: Option<String>) -> String {
         instructions
             .filter(|value| !value.trim().is_empty())
-            .unwrap_or_else(|| "You are Codex, a coding agent running in ORGII.".to_string())
+            .unwrap_or_else(|| "You are Codex, a coding agent running in ORG2.".to_string())
     }
 
     fn codex_reasoning_effort(
@@ -274,6 +274,36 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn build_responses_request_preserves_system_prompt_after_memory_prefetch() {
+        let stable = serde_json::json!({"role":"system", "content":[
+            {"type":"text", "text":"Stable agent instructions", "orgii_system_cache_scope":"session"}
+        ]});
+        let user = serde_json::json!({"role":"user", "content":"Read the fixture"});
+        let initial = CodexNativeClient::build_responses_request(
+            &[stable.clone(), user.clone()],
+            None,
+            "gpt-5.6-luna-medium",
+            true,
+        );
+        let with_memory = CodexNativeClient::build_responses_request(
+            &[
+                stable,
+                serde_json::json!({"role":"system", "content":"Selected workspace memory"}),
+                user,
+            ],
+            None,
+            "gpt-5.6-luna-medium",
+            true,
+        );
+        assert_eq!(initial.instructions, "Stable agent instructions");
+        assert_eq!(
+            with_memory.instructions,
+            "Stable agent instructions\n\nSelected workspace memory"
+        );
+        assert_eq!(with_memory.input, initial.input);
+    }
+
+    #[test]
     fn build_responses_request_strips_reasoning_and_fast_variant_suffixes() {
         let messages = [json!({
             "role": "user",
@@ -293,7 +323,7 @@ mod tests {
         assert_eq!(req.service_tier.as_deref(), Some("priority"));
         assert_eq!(
             req.instructions,
-            "You are Codex, a coding agent running in ORGII."
+            "You are Codex, a coding agent running in ORG2."
         );
     }
 

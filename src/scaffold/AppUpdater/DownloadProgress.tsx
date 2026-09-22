@@ -1,9 +1,11 @@
 import type { CSSProperties, FC } from "react";
 
+import Button from "@src/components/Button";
 import ProgressBar from "@src/components/ProgressBar";
+import i18n from "@src/i18n";
 import { Download01Icon, HugeiconsIcon } from "@src/icons";
 
-import "./DownloadProgress.scss";
+import "./DownloadProgress.css";
 import type { AppUpdateDownloadProgress } from "./state";
 
 function formatBytes(bytes: number): string {
@@ -16,22 +18,27 @@ export function getDownloadProgressTitle(
   progress: AppUpdateDownloadProgress
 ): string {
   return progress.percent === null
-    ? "Downloading update…"
-    : `Downloading update… ${progress.percent}%`;
+    ? i18n.t("settings:update.downloading")
+    : i18n.t("settings:update.downloadingPercent", {
+        percent: progress.percent,
+      });
 }
 
 function getDownloadProgressDetail(
   progress: AppUpdateDownloadProgress
 ): string {
   if (progress.totalBytes) {
-    return `${formatBytes(progress.downloadedBytes)} of ${formatBytes(
-      progress.totalBytes
-    )}`;
+    return i18n.t("settings:update.downloadBytes", {
+      downloaded: formatBytes(progress.downloadedBytes),
+      total: formatBytes(progress.totalBytes),
+    });
   }
   if (progress.downloadedBytes > 0) {
-    return `${formatBytes(progress.downloadedBytes)} downloaded`;
+    return i18n.t("settings:update.downloadedBytes", {
+      downloaded: formatBytes(progress.downloadedBytes),
+    });
   }
-  return "Preparing download…";
+  return i18n.t("settings:update.preparingDownload");
 }
 
 export const AppUpdateDownloadNoticeContent: FC<{
@@ -45,7 +52,7 @@ export const AppUpdateDownloadNoticeContent: FC<{
         percent={progress.percent ?? 0}
         indeterminate={progress.percent === null}
         height="h-1.5"
-        ariaLabel="Update download progress"
+        ariaLabel={i18n.t("settings:update.downloadProgress")}
         ariaValuetext={detail}
       />
       <div className="mt-2 flex items-center justify-between gap-3 text-xs text-text-3">
@@ -73,22 +80,26 @@ export const DownloadProgressOrb: FC<DownloadProgressOrbProps> = ({
 
   const liquidPercent = progress.percent ?? 28;
   const progressLabel =
-    progress.percent === null ? "in progress" : `${progress.percent}%`;
+    progress.percent === null
+      ? i18n.t("settings:update.inProgress")
+      : `${progress.percent}%`;
   const style: OrbStyle = {
     "--download-progress": `${liquidPercent}%`,
   };
 
   return (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       className={`app-update-download-orb ${
         progress.percent === null
           ? "app-update-download-orb--indeterminate"
           : ""
       }`}
       style={style}
-      aria-label={`Update download ${progressLabel}. Open progress notice.`}
-      title="Open update download progress"
+      aria-label={i18n.t("settings:update.openProgressLabel", {
+        progress: progressLabel,
+      })}
+      title={i18n.t("settings:update.openProgress")}
       onClick={onExpand}
     >
       <span className="app-update-download-orb__liquid" aria-hidden>
@@ -102,6 +113,6 @@ export const DownloadProgressOrb: FC<DownloadProgressOrbProps> = ({
           strokeWidth={2.2}
         />
       </span>
-    </button>
+    </Button>
   );
 };

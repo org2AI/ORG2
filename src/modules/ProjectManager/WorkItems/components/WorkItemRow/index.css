@@ -1,0 +1,6 @@
+.work-item-row .checkbox-cell [data-checkbox],
+.work-item-row .checkbox-cell [data-checkbox-icon],
+.work-item-row .checkbox-cell [data-checkbox-icon] svg,
+.work-item-row .checkbox-cell [data-checkbox-label] {
+  transition: none !important;
+}

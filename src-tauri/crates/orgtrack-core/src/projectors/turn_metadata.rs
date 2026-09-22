@@ -309,6 +309,11 @@ pub fn project_activity_chunks(chunks: &[ActivityChunk]) -> Vec<ProjectedTurnMet
             }
             _ => {}
         }
+        // A blank reply or thought renders nothing — the chat drops it — so
+        // it must not make a round the agent never answered look worked.
+        if is_blank_text_chunk(chunk) {
+            continue;
+        }
 
         turn.event_count = turn.event_count.saturating_add(1);
         turn.body_event_count = turn.body_event_count.saturating_add(1);
@@ -336,6 +341,25 @@ pub fn project_activity_chunks(chunks: &[ActivityChunk]) -> Vec<ProjectedTurnMet
         rounds.push(completed.finish());
     }
     rounds
+}
+
+/// Assistant replies and thoughts with no text in any field the chat reads
+/// (some providers write whitespace-only content parts).
+fn is_blank_text_chunk(chunk: &ActivityChunk) -> bool {
+    use crate::sources::imported_history::{FUNCTION_ASSISTANT, FUNCTION_THINKING};
+
+    let is_blank = |value: Option<&Value>| {
+        value
+            .and_then(Value::as_str)
+            .is_none_or(|text| text.trim().is_empty())
+    };
+    (chunk.function == FUNCTION_ASSISTANT || chunk.function == FUNCTION_THINKING)
+        && ["content", "observation", "thought"]
+            .into_iter()
+            .all(|field| is_blank(chunk.result.get(field)))
+        && ["content", "task_description"]
+            .into_iter()
+            .all(|field| is_blank(chunk.args.get(field)))
 }
 
 fn activity_chunk_text(chunk: &ActivityChunk) -> String {
@@ -963,5 +987,33 @@ mod tests {
             Some("2026-07-15T00:00:02Z")
         );
         assert_eq!(completed[0].event_count, 2);
+    }
+
+    #[test]
+    fn blank_replies_and_thoughts_are_not_round_body() {
+        use crate::sources::imported_history::{
+            assistant_message_chunk, thinking_chunk, user_message_chunk,
+        };
+
+        // Some providers write whitespace-only content parts. The chat drops
+        // them, so a round holding nothing else must advertise no body.
+        let chunks = vec![
+            user_message_chunk("session-1", "test", 0, "2026-09-14T00:00:00Z", "first"),
+            assistant_message_chunk("session-1", "test", 1, "2026-09-14T00:00:01Z", "\n\n"),
+            thinking_chunk("session-1", "test", 2, "2026-09-14T00:00:02Z", " "),
+            user_message_chunk("session-1", "test", 3, "2026-09-14T00:01:00Z", "second"),
+            thinking_chunk("session-1", "test", 4, "2026-09-14T00:01:01Z", "planning"),
+            assistant_message_chunk("session-1", "test", 5, "2026-09-14T00:01:02Z", "done"),
+        ];
+
+        let rounds = project_activity_chunks(&chunks);
+
+        assert_eq!(
+            rounds
+                .iter()
+                .map(|round| round.body_event_count)
+                .collect::<Vec<_>>(),
+            vec![0, 2]
+        );
     }
 }

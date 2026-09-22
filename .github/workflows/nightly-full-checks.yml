@@ -8,8 +8,9 @@
 # without any diff to hang the check on. This job is the clock that catches
 # them, inside 24h rather than at release.
 #
-# It also runs the full unit suite on develop. CI is pull_request-only, so
-# until now nothing ever ran the suite against a merged result.
+# It also runs the full unit suite on develop, alongside lint, so one nightly
+# run answers both. unit-tests-develop.yml already runs the suite against each
+# merged result.
 #
 # The cargo-audit job below doubles as this repository's cache producer for
 # the cargo-audit binary: GitHub scopes a cache saved during a PR run to that

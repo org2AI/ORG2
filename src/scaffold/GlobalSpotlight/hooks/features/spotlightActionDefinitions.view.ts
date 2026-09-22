@@ -6,7 +6,6 @@
  * function rather than a static table. Split out of
  * `spotlightActionDefinitions.ts`.
  */
-import { ACTION_ID } from "@src/ActionSystem";
 import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import {
   BubbleChatIcon,
@@ -19,6 +18,7 @@ import {
   ZoomInAreaIcon,
   ZoomOutAreaIcon,
 } from "@src/icons";
+import { ACTION_ID } from "@src/scaffold/ActionSystem";
 
 import type { SpotlightStaticActionDefinition } from "./spotlightActionDefinitions.types";
 

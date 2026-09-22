@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -9,10 +9,10 @@ import type {
 } from "@src/api/tauri/agent";
 import { isAgentOrgGroupConversationItem } from "@src/api/tauri/agent";
 import Button from "@src/components/Button";
-import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
+import { ViewportLayoutMutationProvider } from "@src/components/ViewportLayoutMutationContext";
+import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import {
   AlertCircleIcon,
-  HierarchyCircle01Icon,
   HugeiconsIcon,
   InformationCircleIcon,
   RotateLeft01Icon,
@@ -20,6 +20,15 @@ import {
 } from "@src/icons";
 import { formatShortLocalTime } from "@src/util/data/formatters/date";
 
+import {
+  EMPTY_BROWSER_ADD_TO_CONVERSATION_NAV,
+  EMPTY_FOLLOW_AGENT_NAV,
+  type ScrollNavState,
+} from "../ChatHistory.types";
+import AgentOrgOverviewTray from "../components/AgentOrgOverviewTray";
+import AgentOrgSurfaceSwitcher from "../components/AgentOrgSurfaceSwitcher";
+import { useAgentOrgOverviewDisclosure } from "../hooks/useAgentOrgOverviewDisclosure";
+import { useTranscriptViewport } from "../viewport/useTranscriptViewport";
 import GroupChatMessageBubble from "./GroupChatMessageBubble";
 
 interface AgentOrgGroupProjectionViewProps {
@@ -32,7 +41,11 @@ interface AgentOrgGroupProjectionViewProps {
   actionError: string | null;
   actionPendingTurns: ReadonlySet<string>;
   overviewPanel: React.ReactNode;
+  overviewScopeKey: string;
+  surfaceBgClass: string;
   bottomInset: number;
+  viewportSessionKey: string;
+  onScrollNavChange: (state: ScrollNavState) => void;
   onExitGroup: () => void;
   onMemberSelect: (member: AgentOrgRunMemberView) => void;
   onLoadOlder: () => Promise<void>;
@@ -86,7 +99,11 @@ const AgentOrgGroupProjectionView: React.FC<
   actionError,
   actionPendingTurns,
   overviewPanel,
+  overviewScopeKey,
+  surfaceBgClass,
   bottomInset,
+  viewportSessionKey,
+  onScrollNavChange,
   onExitGroup,
   onMemberSelect,
   onLoadOlder,
@@ -95,323 +112,362 @@ const AgentOrgGroupProjectionView: React.FC<
   onRetry,
 }) => {
   const { t } = useTranslation("sessions");
-  const [overviewOpen, setOverviewOpen] = useState(false);
+  const { open: overviewOpen, setOpen: setOverviewOpen } =
+    useAgentOrgOverviewDisclosure({
+      available: Boolean(overviewPanel),
+      scopeKey: overviewScopeKey,
+    });
+  const handleGroupChatToggle = useCallback(
+    (active: boolean) => {
+      if (!active) onExitGroup();
+    },
+    [onExitGroup]
+  );
   const archived = runStatus === "archived";
+  const tailItem = items.at(-1);
+  const tailContentFingerprint =
+    tailItem && isAgentOrgGroupConversationItem(tailItem)
+      ? `${tailItem.text.length}:${tailItem.state ?? ""}`
+      : "";
+  const contentKey = useMemo(
+    () =>
+      [
+        items.length,
+        items[0]?.id ?? "",
+        tailItem?.id ?? "",
+        tailItem?.kind ?? "",
+        tailContentFingerprint,
+      ].join(":"),
+    [items, tailContentFingerprint, tailItem]
+  );
+  // ChatView explicitly follows before Send. Pending-row acknowledgement is
+  // projection maintenance, not a new submission or permission to move a reader.
+  const {
+    followTail,
+    handleScroll,
+    preserveForLayoutMutation,
+    setScrollRoot,
+    showScrollToBottom,
+  } = useTranscriptViewport({
+    sessionKey: viewportSessionKey,
+    contentKey,
+    itemCount: items.length,
+  });
+
+  useEffect(() => {
+    onScrollNavChange({
+      showScrollToBottom,
+      onScrollToBottom: followTail,
+      ...EMPTY_FOLLOW_AGENT_NAV,
+      ...EMPTY_BROWSER_ADD_TO_CONVERSATION_NAV,
+    });
+  }, [followTail, onScrollNavChange, showScrollToBottom]);
 
   return (
-    <section
-      className="flex h-full min-h-0 flex-col bg-chat-pane"
-      data-testid="agent-org-group-projection"
-      aria-label={t("groupChat.projection.title")}
-    >
-      <header className="flex min-h-10 flex-wrap items-center gap-1 border-b border-border-1 px-2 py-1">
-        <Button size="small" variant="primary" disabled>
-          {t("groupChat.triggerLabel")}
-        </Button>
-        {members
-          .filter((member) => member.sessionRuntime)
-          .map((member) => (
-            <Button
-              key={member.memberId}
-              size="small"
-              variant="tertiary"
-              appearance="ghost"
-              onClick={() => {
-                onExitGroup();
-                onMemberSelect(member);
-              }}
-            >
-              {member.isCoordinator
-                ? t("groupChat.coordinatorLabel")
-                : member.name}
-            </Button>
-          ))}
-        <Button
-          size="small"
-          variant="tertiary"
-          appearance="ghost"
-          icon={
-            <HugeiconsIcon
-              icon={HierarchyCircle01Icon}
-              data-icon="network"
-              size={14}
-            />
-          }
-          aria-expanded={overviewOpen}
-          onClick={() => setOverviewOpen((open) => !open)}
-        >
-          {t("planner.agentOrgOverview.title")}
-        </Button>
-      </header>
-
-      {overviewOpen && (
-        <div className="max-h-96 flex-shrink-0 overflow-y-auto border-b border-border-1 p-2">
-          {overviewPanel}
-        </div>
-      )}
-
-      <div
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-3 py-3"
-        style={{ paddingBottom: Math.max(bottomInset, 16) }}
+    <ViewportLayoutMutationProvider value={preserveForLayoutMutation}>
+      <section
+        className={`flex h-full min-h-0 flex-col ${surfaceBgClass}`}
+        data-testid="agent-org-group-projection"
+        aria-label={t("groupChat.projection.title")}
       >
-        <div
-          className={`mx-auto w-full ${DETAIL_PANEL_TOKENS.contentMaxWidth}`}
-        >
-          <div className="mb-3 flex items-center gap-2 px-2 text-xs text-text-3">
-            <HugeiconsIcon
-              icon={InformationCircleIcon}
-              data-icon="info"
-              size={14}
-              className="shrink-0"
-              aria-hidden
+        <header className="shrink-0 border-b border-border-1">
+          <div
+            className={`flex h-10 min-h-10 max-w-full min-w-0 items-center gap-1.5 overflow-hidden px-2 text-xs text-text-3 ${CHAT_PANEL_WIDTH_TOKENS.contentWidth}`}
+          >
+            <AgentOrgSurfaceSwitcher
+              members={members}
+              overviewAvailable={Boolean(overviewPanel)}
+              overviewOpen={overviewOpen}
+              setOverviewOpen={setOverviewOpen}
+              onMemberSelect={onMemberSelect}
+              groupChatActive
+              groupChatAvailable
+              onGroupChatToggle={handleGroupChatToggle}
             />
-            {t("groupChat.projection.queueGuidance")}
           </div>
+        </header>
 
-          {archived && (
-            <div
-              role="status"
-              className="mb-3 border-l-2 border-border-2 px-3 py-1 text-xs text-text-3"
-            >
-              {t("groupChat.projection.archived")}
+        {overviewOpen && overviewPanel && (
+          <AgentOrgOverviewTray surfaceBgClass={surfaceBgClass}>
+            {overviewPanel}
+          </AgentOrgOverviewTray>
+        )}
+
+        <div
+          ref={setScrollRoot}
+          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-3 py-3"
+          style={{ paddingBottom: Math.max(bottomInset, 16) }}
+          data-testid="agent-org-group-projection-scroll-container"
+          tabIndex={0}
+          onScroll={() => handleScroll()}
+        >
+          <div
+            data-testid="agent-org-group-projection-content"
+            className={`mx-auto w-full ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
+          >
+            <div className="mb-3 flex items-center gap-2 px-2 text-xs text-text-3">
+              <HugeiconsIcon
+                icon={InformationCircleIcon}
+                data-icon="info"
+                size={14}
+                className="shrink-0"
+                aria-hidden
+              />
+              {t("groupChat.projection.queueGuidance")}
             </div>
-          )}
 
-          {hasMore && (
-            <Button
-              size="small"
-              variant="tertiary"
-              loading={loading}
-              data-testid="agent-org-group-projection-load-older"
-              onClick={() => void onLoadOlder()}
-            >
-              {t("groupChat.projection.loadOlder")}
-            </Button>
-          )}
+            {archived && (
+              <div
+                role="status"
+                className="mb-3 border-l-2 border-border-2 px-3 py-1 text-xs text-text-3"
+              >
+                {t("groupChat.projection.archived")}
+              </div>
+            )}
 
-          {error && (
-            <div
-              role="alert"
-              className="flex items-center justify-between gap-3 rounded-lg border border-danger-3 bg-danger-1 px-3 py-2 text-sm text-danger-6"
-            >
-              <span className="flex items-center gap-2">
-                <HugeiconsIcon
-                  icon={AlertCircleIcon}
-                  data-icon="alert-circle"
-                  size={16}
-                />
-                {t("groupChat.projection.loadError")}
-              </span>
-              <Button size="small" onClick={() => void onRetryLoad()}>
-                {t("groupChat.retry")}
+            {hasMore && (
+              <Button
+                size="small"
+                variant="tertiary"
+                loading={loading}
+                data-testid="agent-org-group-projection-load-older"
+                onClick={() => {
+                  preserveForLayoutMutation();
+                  onLoadOlder().catch(() => undefined);
+                }}
+              >
+                {t("groupChat.projection.loadOlder")}
               </Button>
-            </div>
-          )}
+            )}
 
-          {actionError && (
-            <div
-              role="alert"
-              className="rounded-lg bg-danger-1 px-3 py-2 text-sm text-danger-6"
-            >
-              {t("groupChat.projection.actionError")}
-            </div>
-          )}
-
-          {loading && items.length === 0 && (
-            <div
-              className="py-8 text-center text-sm text-text-3"
-              data-testid="agent-org-group-projection-loading"
-            >
-              {t("groupChat.projection.loading")}
-            </div>
-          )}
-
-          {!loading && !error && items.length === 0 && (
-            <div
-              className="py-8 text-center text-sm text-text-3"
-              data-testid="agent-org-group-projection-empty"
-            >
-              {t("groupChat.projection.empty")}
-            </div>
-          )}
-
-          {items.map((item, index) => {
-            if (item.kind === "team_activity") {
-              const memberName =
-                item.memberName?.trim() || t("groupChat.memberFallback");
-              const previousMemberName =
-                item.previousMemberName?.trim() ||
-                t("groupChat.memberFallback");
-              const taskSubject =
-                item.taskSubject?.trim() ||
-                t("groupChat.projection.activity.taskFallback");
-              const replacedTaskSubject =
-                item.replacedTaskSubject?.trim() ||
-                t("groupChat.projection.activity.taskFallback");
-              return (
-                <div
-                  key={item.id}
-                  role="status"
-                  className="mx-2 my-2 flex items-start gap-2 border-l-2 border-border-2 px-3 py-1.5 text-xs text-text-3"
-                  data-testid="agent-org-group-projection-activity"
-                  data-item-kind={item.kind}
-                  data-activity-kind={item.activityKind}
-                >
-                  <HugeiconsIcon
-                    icon={InformationCircleIcon}
-                    data-icon="info"
-                    size={14}
-                    className="mt-0.5 shrink-0"
-                    aria-hidden
-                  />
-                  <span className="min-w-0 flex-1">
-                    {t(`groupChat.projection.activity.${item.activityKind}`, {
-                      member: memberName,
-                      previousMember: previousMemberName,
-                      task: taskSubject,
-                      replacedTask: replacedTaskSubject,
-                      outcome: item.outcome ?? "",
-                    })}
-                  </span>
-                  <time className="shrink-0" dateTime={item.createdAt}>
-                    {formatShortLocalTime(new Date(item.createdAt))}
-                  </time>
-                </div>
-              );
-            }
-
-            if (item.kind === "diagnostic") {
-              return (
-                <div
-                  key={item.id}
-                  role="status"
-                  className="bg-secondary-1 mx-2 my-2 flex items-center gap-2 rounded-md px-3 py-2 text-xs text-text-3"
-                  data-testid="agent-org-group-projection-diagnostic"
-                  data-item-kind={item.kind}
-                >
+            {error && (
+              <div
+                role="alert"
+                className="flex items-center justify-between gap-3 rounded-lg border border-danger-3 bg-danger-1 px-3 py-2 text-sm text-danger-6"
+              >
+                <span className="flex items-center gap-2">
                   <HugeiconsIcon
                     icon={AlertCircleIcon}
                     data-icon="alert-circle"
-                    size={14}
-                    className="shrink-0"
-                    aria-hidden
+                    size={16}
                   />
-                  <span>{t("groupChat.projection.unavailable")}</span>
+                  {t("groupChat.projection.loadError")}
+                </span>
+                <Button size="small" onClick={() => void onRetryLoad()}>
+                  {t("groupChat.retry")}
+                </Button>
+              </div>
+            )}
+
+            {actionError && (
+              <div
+                role="alert"
+                className="rounded-lg bg-danger-1 px-3 py-2 text-sm text-danger-6"
+              >
+                {t("groupChat.projection.actionError")}
+              </div>
+            )}
+
+            {loading && items.length === 0 && (
+              <div
+                className="py-8 text-center text-sm text-text-3"
+                data-testid="agent-org-group-projection-loading"
+              >
+                {t("groupChat.projection.loading")}
+              </div>
+            )}
+
+            {!loading && !error && items.length === 0 && (
+              <div
+                className="py-8 text-center text-sm text-text-3"
+                data-testid="agent-org-group-projection-empty"
+              >
+                {t("groupChat.projection.empty")}
+              </div>
+            )}
+
+            {items.map((item, index) => {
+              if (item.kind === "team_activity") {
+                const memberName =
+                  item.memberName?.trim() || t("groupChat.memberFallback");
+                const previousMemberName =
+                  item.previousMemberName?.trim() ||
+                  t("groupChat.memberFallback");
+                const taskSubject =
+                  item.taskSubject?.trim() ||
+                  t("groupChat.projection.activity.taskFallback");
+                const replacedTaskSubject =
+                  item.replacedTaskSubject?.trim() ||
+                  t("groupChat.projection.activity.taskFallback");
+                return (
+                  <div
+                    key={item.id}
+                    role="status"
+                    className="mx-2 my-2 flex items-start gap-2 border-l-2 border-border-2 px-3 py-1.5 text-xs text-text-3"
+                    data-testid="agent-org-group-projection-activity"
+                    data-item-kind={item.kind}
+                    data-activity-kind={item.activityKind}
+                    data-transcript-anchor-id={item.id}
+                  >
+                    <HugeiconsIcon
+                      icon={InformationCircleIcon}
+                      data-icon="info"
+                      size={14}
+                      className="mt-0.5 shrink-0"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1">
+                      {t(`groupChat.projection.activity.${item.activityKind}`, {
+                        member: memberName,
+                        previousMember: previousMemberName,
+                        task: taskSubject,
+                        replacedTask: replacedTaskSubject,
+                        outcome: item.outcome ?? "",
+                      })}
+                    </span>
+                    <time className="shrink-0" dateTime={item.createdAt}>
+                      {formatShortLocalTime(new Date(item.createdAt))}
+                    </time>
+                  </div>
+                );
+              }
+
+              if (item.kind === "diagnostic") {
+                return (
+                  <div
+                    key={item.id}
+                    role="status"
+                    className="bg-secondary-1 mx-2 my-2 flex items-center gap-2 rounded-md px-3 py-2 text-xs text-text-3"
+                    data-testid="agent-org-group-projection-diagnostic"
+                    data-item-kind={item.kind}
+                    data-transcript-anchor-id={item.id}
+                  >
+                    <HugeiconsIcon
+                      icon={AlertCircleIcon}
+                      data-icon="alert-circle"
+                      size={14}
+                      className="shrink-0"
+                      aria-hidden
+                    />
+                    <span>{t("groupChat.projection.unavailable")}</span>
+                  </div>
+                );
+              }
+
+              const pending = actionPendingTurns.has(item.turnIntentId);
+              const targetName =
+                item.targetName.trim() || t("groupChat.memberFallback");
+              const responderName = item.responderName?.trim() || targetName;
+              const reply = isReplyItem(item);
+              const sender = reply ? responderName : t("groupChat.youLabel");
+              const previousCandidate = index > 0 ? items[index - 1] : null;
+              const previous =
+                previousCandidate &&
+                isAgentOrgGroupConversationItem(previousCandidate)
+                  ? previousCandidate
+                  : null;
+              const previousTargetName =
+                previous?.targetName.trim() || t("groupChat.memberFallback");
+              const previousSender = previous
+                ? isReplyItem(previous)
+                  ? previous.responderName?.trim() || previousTargetName
+                  : t("groupChat.youLabel")
+                : null;
+              const showSenderChrome =
+                previousSender !== sender ||
+                !previous ||
+                !isContinuation(previous.createdAt, item.createdAt);
+              const state = item.state ?? "unknown";
+              return (
+                <div
+                  key={item.id}
+                  className={showSenderChrome ? "pt-2" : "pt-1"}
+                  data-testid="agent-org-group-projection-item"
+                  data-turn-intent-id={item.turnIntentId}
+                  data-item-kind={item.kind}
+                  data-route={item.route}
+                  data-target-name={targetName}
+                  data-responder-name={responderName}
+                  data-state={state}
+                  data-transcript-anchor-id={item.id}
+                >
+                  <GroupChatMessageBubble
+                    senderName={sender}
+                    recipientName={reply ? null : targetName}
+                    bodyMarkdown={item.text}
+                    timestamp={item.createdAt}
+                    showSenderChrome={showSenderChrome}
+                    clampContent={false}
+                    footer={
+                      <>
+                        <span className="inline-flex items-center gap-1">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${stateDotClass(state)}`}
+                            aria-hidden
+                          />
+                          <span>{reply ? responderName : targetName}</span>
+                          <span aria-hidden>·</span>
+                          <span>
+                            {t(`groupChat.projection.state.${state}`)}
+                          </span>
+                        </span>
+                        {!archived &&
+                          !reply &&
+                          (item.canStop || item.retryMode) && (
+                            <span className="inline-flex items-center gap-1">
+                              {item.canStop && (
+                                <Button
+                                  size="mini"
+                                  variant="tertiary"
+                                  tone="danger"
+                                  icon={
+                                    <HugeiconsIcon
+                                      icon={SquareIcon}
+                                      data-icon="square"
+                                      size={12}
+                                    />
+                                  }
+                                  loading={pending}
+                                  disabled={pending}
+                                  data-testid="agent-org-group-projection-stop"
+                                  onClick={() => void onStop(item)}
+                                >
+                                  {t("groupChat.projection.stop")}
+                                </Button>
+                              )}
+                              {item.retryMode && (
+                                <Button
+                                  size="mini"
+                                  variant="tertiary"
+                                  icon={
+                                    <HugeiconsIcon
+                                      icon={RotateLeft01Icon}
+                                      data-icon="rotate-ccw"
+                                      size={13}
+                                    />
+                                  }
+                                  loading={pending}
+                                  disabled={pending}
+                                  data-testid="agent-org-group-projection-retry"
+                                  onClick={() => void onRetry(item)}
+                                >
+                                  {item.retryMode === "rekick"
+                                    ? t("groupChat.projection.retryDelivery")
+                                    : t("groupChat.projection.retryNewTurn")}
+                                </Button>
+                              )}
+                            </span>
+                          )}
+                      </>
+                    }
+                  />
                 </div>
               );
-            }
-
-            const pending = actionPendingTurns.has(item.turnIntentId);
-            const targetName =
-              item.targetName.trim() || t("groupChat.memberFallback");
-            const responderName = item.responderName?.trim() || targetName;
-            const reply = isReplyItem(item);
-            const sender = reply ? responderName : t("groupChat.youLabel");
-            const previousCandidate = index > 0 ? items[index - 1] : null;
-            const previous =
-              previousCandidate &&
-              isAgentOrgGroupConversationItem(previousCandidate)
-                ? previousCandidate
-                : null;
-            const previousTargetName =
-              previous?.targetName.trim() || t("groupChat.memberFallback");
-            const previousSender = previous
-              ? isReplyItem(previous)
-                ? previous.responderName?.trim() || previousTargetName
-                : t("groupChat.youLabel")
-              : null;
-            const showSenderChrome =
-              previousSender !== sender ||
-              !previous ||
-              !isContinuation(previous.createdAt, item.createdAt);
-            const state = item.state ?? "unknown";
-            return (
-              <div
-                key={item.id}
-                className={showSenderChrome ? "pt-2" : "pt-1"}
-                data-testid="agent-org-group-projection-item"
-                data-turn-intent-id={item.turnIntentId}
-                data-item-kind={item.kind}
-                data-route={item.route}
-                data-target-name={targetName}
-                data-responder-name={responderName}
-                data-state={state}
-              >
-                <GroupChatMessageBubble
-                  senderName={sender}
-                  recipientName={reply ? null : targetName}
-                  bodyMarkdown={item.text}
-                  timestamp={item.createdAt}
-                  showSenderChrome={showSenderChrome}
-                  clampContent={false}
-                  footer={
-                    <>
-                      <span className="inline-flex items-center gap-1">
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${stateDotClass(state)}`}
-                          aria-hidden
-                        />
-                        <span>{reply ? responderName : targetName}</span>
-                        <span aria-hidden>·</span>
-                        <span>{t(`groupChat.projection.state.${state}`)}</span>
-                      </span>
-                      {!archived &&
-                        !reply &&
-                        (item.canStop || item.retryMode) && (
-                          <span className="inline-flex items-center gap-1">
-                            {item.canStop && (
-                              <Button
-                                size="mini"
-                                variant="danger"
-                                appearance="ghost"
-                                icon={
-                                  <HugeiconsIcon
-                                    icon={SquareIcon}
-                                    data-icon="square"
-                                    size={12}
-                                  />
-                                }
-                                loading={pending}
-                                disabled={pending}
-                                data-testid="agent-org-group-projection-stop"
-                                onClick={() => void onStop(item)}
-                              >
-                                {t("groupChat.projection.stop")}
-                              </Button>
-                            )}
-                            {item.retryMode && (
-                              <Button
-                                size="mini"
-                                variant="tertiary"
-                                appearance="ghost"
-                                icon={
-                                  <HugeiconsIcon
-                                    icon={RotateLeft01Icon}
-                                    data-icon="rotate-ccw"
-                                    size={13}
-                                  />
-                                }
-                                loading={pending}
-                                disabled={pending}
-                                data-testid="agent-org-group-projection-retry"
-                                onClick={() => void onRetry(item)}
-                              >
-                                {item.retryMode === "rekick"
-                                  ? t("groupChat.projection.retryDelivery")
-                                  : t("groupChat.projection.retryNewTurn")}
-                              </Button>
-                            )}
-                          </span>
-                        )}
-                    </>
-                  }
-                />
-              </div>
-            );
-          })}
+            })}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </ViewportLayoutMutationProvider>
   );
 };
 

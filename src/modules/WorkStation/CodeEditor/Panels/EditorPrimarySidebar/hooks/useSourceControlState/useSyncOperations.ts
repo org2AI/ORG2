@@ -9,19 +9,19 @@
 import { type MutableRefObject, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useActionSystemOptional } from "@src/ActionSystem";
 import { getGitRemotes } from "@src/api/http/git/remotes";
 import {
   LARGE_PUSH_THRESHOLD,
   LargePushConfirmDialog,
   ProtectedBranchDialog,
   PushRejectedDialog,
-} from "@src/components/GitDialogs";
+} from "@src/features/GitDialogs";
 import {
   type GitOperationResult,
   useGitOperations,
 } from "@src/hooks/git/useGitOperations";
 import { createLogger } from "@src/hooks/logger";
+import { useActionSystemOptional } from "@src/scaffold/ActionSystem";
 import type { GitFile } from "@src/types/git/types";
 import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
 

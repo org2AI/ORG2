@@ -96,6 +96,10 @@ pub const CONTINUATION_GROUP_KEY_FIELD: &str = "continuationGroupKey";
 pub const CONTINUATION_MARKERS_FIELD: &str = "continuationMarkers";
 /// Stable component id elected after every source sync.
 pub const CONTINUATION_LINEAGE_ID_FIELD: &str = "continuationLineageId";
+/// Set on a row the election hid because a newer sibling existed. Only rows
+/// carrying this flag are re-promoted when they win a later election, so a
+/// row hidden for another reason (managed mirror) never resurfaces here.
+pub const CONTINUATION_SUPERSEDED_FIELD: &str = "continuationSuperseded";
 /// Hard cap for source-controlled marker arrays read from cache metadata.
 pub const MAX_CONTINUATION_MARKERS: usize = 64;
 
@@ -105,6 +109,7 @@ struct ContinuationMetadata {
     group_key: Option<String>,
     markers: Vec<String>,
     lineage_id: Option<String>,
+    superseded: bool,
 }
 
 fn metadata_string(value: Option<&serde_json::Value>) -> Option<String> {
@@ -122,6 +127,10 @@ fn parse_continuation_metadata(metadata_json: &str) -> Option<ContinuationMetada
     }
     let group_key = metadata_string(value.get(CONTINUATION_GROUP_KEY_FIELD));
     let lineage_id = metadata_string(value.get(CONTINUATION_LINEAGE_ID_FIELD));
+    let superseded = value
+        .get(CONTINUATION_SUPERSEDED_FIELD)
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
     let mut markers = Vec::with_capacity(MAX_CONTINUATION_MARKERS);
     let mut seen = HashSet::new();
     if let Some(group_key) = group_key.as_ref() {
@@ -152,6 +161,7 @@ fn parse_continuation_metadata(metadata_json: &str) -> Option<ContinuationMetada
         group_key,
         markers,
         lineage_id,
+        superseded,
     })
 }
 
@@ -213,10 +223,12 @@ pub fn continuation_metadata_json(
 /// `updated_at_ms`, then `source_session_id`) stays listable; every other
 /// currently-listable sibling flips to `listable = 0`.
 ///
-/// Demote-only by design: winners are never promoted here, so a winner that
-/// is unlistable for another reason (managed mirror, subagent) stays hidden.
-/// Runs after every sync; if a demoted file later changes on disk its
-/// re-parse resets `listable = 1` and the next election re-demotes it.
+/// A demoted sibling is stamped `continuationSuperseded`; when it later wins
+/// (the newer generation was pruned) that stamp is what allows re-promotion.
+/// A winner hidden for any other reason (managed mirror, subagent) carries no
+/// stamp and stays hidden. Runs after every sync; if a demoted file later
+/// changes on disk its re-parse resets `listable = 1` and the next election
+/// re-demotes it.
 pub fn demote_superseded_continuations_from_conn(
     conn: &Connection,
     source: &str,
@@ -334,6 +346,7 @@ pub fn demote_superseded_continuations_from_conn(
     }
 
     let mut losers = Vec::new();
+    let mut promoted = Vec::new();
     let mut metadata_updates = Vec::new();
     for member_indices in families.values() {
         let winner_index = *member_indices
@@ -365,24 +378,54 @@ pub fn demote_superseded_continuations_from_conn(
 
         for index in member_indices {
             let row = &election_rows[*index];
-            if row.listable && *index != winner_index {
+            let is_winner = *index == winner_index;
+            let demote = row.listable && !is_winner;
+            let promote = is_winner && !row.listable && row.metadata.superseded;
+            if demote {
                 losers.push(row.source_session_id.clone());
             }
-            if row.metadata.lineage_id.as_deref() != Some(lineage_id.as_str()) {
-                let mut metadata = row.metadata.value.clone();
-                if let Some(object) = metadata.as_object_mut() {
-                    object.insert(
-                        CONTINUATION_LINEAGE_ID_FIELD.to_string(),
-                        serde_json::Value::String(lineage_id.clone()),
-                    );
-                    metadata_updates.push((row.source_session_id.clone(), metadata.to_string()));
-                }
+            if promote {
+                promoted.push(row.source_session_id.clone());
             }
+            let superseded_after = if demote {
+                true
+            } else if is_winner {
+                false
+            } else {
+                row.metadata.superseded
+            };
+            let lineage_changed = row.metadata.lineage_id.as_deref() != Some(lineage_id.as_str());
+            if !lineage_changed && superseded_after == row.metadata.superseded {
+                continue;
+            }
+            let mut metadata = row.metadata.value.clone();
+            let Some(object) = metadata.as_object_mut() else {
+                continue;
+            };
+            object.insert(
+                CONTINUATION_LINEAGE_ID_FIELD.to_string(),
+                serde_json::Value::String(lineage_id.clone()),
+            );
+            if superseded_after {
+                object.insert(
+                    CONTINUATION_SUPERSEDED_FIELD.to_string(),
+                    serde_json::Value::Bool(true),
+                );
+            } else {
+                object.remove(CONTINUATION_SUPERSEDED_FIELD);
+            }
+            metadata_updates.push((row.source_session_id.clone(), metadata.to_string()));
         }
     }
 
+    // Stamp, demote and re-promote together: a promotion whose stamp removal
+    // landed but whose listable flip did not would leave the winner hidden
+    // with no marker for the next election to recover from.
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|err| format!("Failed to begin continuation election: {err}"))?;
     for (source_session_id, metadata_json) in metadata_updates {
-        conn.execute(
+        tx.execute(
             "UPDATE imported_history_session_cache
              SET source_metadata_json = ?3
              WHERE source = ?1 AND source_session_id = ?2",
@@ -391,7 +434,7 @@ pub fn demote_superseded_continuations_from_conn(
         .map_err(|err| format!("Failed to stamp continuation lineage: {err}"))?;
     }
     for source_session_id in &losers {
-        conn.execute(
+        tx.execute(
             "UPDATE imported_history_session_cache
              SET listable = 0
              WHERE source = ?1 AND source_session_id = ?2",
@@ -399,5 +442,16 @@ pub fn demote_superseded_continuations_from_conn(
         )
         .map_err(|err| format!("Failed to demote superseded continuation: {err}"))?;
     }
+    for source_session_id in &promoted {
+        tx.execute(
+            "UPDATE imported_history_session_cache
+             SET listable = 1
+             WHERE source = ?1 AND source_session_id = ?2",
+            rusqlite::params![source, source_session_id],
+        )
+        .map_err(|err| format!("Failed to re-promote continuation winner: {err}"))?;
+    }
+    tx.commit()
+        .map_err(|err| format!("Failed to commit continuation election: {err}"))?;
     Ok(losers.len())
 }

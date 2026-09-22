@@ -1,8 +1,8 @@
 import { LogicalPosition } from "@tauri-apps/api/dpi";
-import { open } from "@tauri-apps/plugin-shell";
 import type { TFunction } from "i18next";
 import React, { memo, useCallback, useMemo, useSyncExternalStore } from "react";
 
+import Button from "@src/components/Button";
 import { getShortcutAccelerator } from "@src/config/keyboard/shortcutDisplay";
 import i18n from "@src/i18n";
 import {
@@ -21,6 +21,7 @@ import {
   type NativeMenuItemOptions,
   popupNativeMenu,
 } from "@src/util/platform/tauri/nativeMenuPopup";
+import { openLink } from "@src/util/ui/openLink";
 
 import { NoDragRegion } from "./NoDragRegion";
 
@@ -234,12 +235,12 @@ function getMenuItems(menu: NativeMenuKey, t: TFunction): NativeMenuItem[] {
         {
           type: "item",
           text: t("windowChrome.items.documentation"),
-          action: () => open("https://github.com/YORG-AI/ORGII/wiki"),
+          action: () => openLink("https://github.com/org2AI/ORG2/wiki"),
         },
         {
           type: "item",
           text: t("windowChrome.items.reportIssue"),
-          action: () => open("https://github.com/YORG-AI/ORGII/issues"),
+          action: () => openLink("https://github.com/org2AI/ORG2/issues"),
         },
       ];
   }
@@ -315,15 +316,15 @@ const WindowsTopBarComponent: React.FC = () => {
         {MENU_KEYS.map((menuKey) => {
           const label = t(`windowChrome.menus.${menuKey}`);
           return (
-            <button
+            <Button
+              layout="custom"
               key={menuKey}
-              type="button"
               className={MENU_BUTTON_CLASS}
               onClick={(event) => handleOpenMenu(menuKey, event)}
               aria-label={t("windowChrome.menus.aria", { label })}
             >
               {label}
-            </button>
+            </Button>
           );
         })}
       </NoDragRegion>
@@ -334,8 +335,8 @@ const WindowsTopBarComponent: React.FC = () => {
         className="flex h-full shrink-0 items-center"
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
-        <button
-          type="button"
+        <Button
+          layout="custom"
           className={WINDOW_CONTROL_BUTTON_CLASS}
           onClick={handleMinimize}
           aria-label={t("windowChrome.controls.minimizeWindow")}
@@ -347,9 +348,9 @@ const WindowsTopBarComponent: React.FC = () => {
             size={ICON_SIZE}
             strokeWidth={2}
           />
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          layout="custom"
           className={WINDOW_CONTROL_BUTTON_CLASS}
           onClick={handleMaximize}
           aria-label={t("windowChrome.controls.maximizeRestoreWindow")}
@@ -361,9 +362,9 @@ const WindowsTopBarComponent: React.FC = () => {
             size={12}
             strokeWidth={2}
           />
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          layout="custom"
           className={CLOSE_BUTTON_CLASS}
           onClick={handleClose}
           aria-label={t("windowChrome.controls.closeWindow")}
@@ -375,7 +376,7 @@ const WindowsTopBarComponent: React.FC = () => {
             size={ICON_SIZE}
             strokeWidth={2}
           />
-        </button>
+        </Button>
       </div>
     </div>
   );

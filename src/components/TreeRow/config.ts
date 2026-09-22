@@ -3,8 +3,11 @@
  */
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 
-/** Height of each tree row in pixels */
-export const TREE_ROW_HEIGHT = 28;
+/** Space after each navigation row, included in virtual item measurements. */
+export const SIDEBAR_ROW_GAP = 1;
+export const SIDEBAR_ROW_GAP_CLASS = "pb-px";
+/** Tree row pitch: 28px content plus the shared 1px gap. */
+export const TREE_ROW_HEIGHT = 28 + SIDEBAR_ROW_GAP;
 
 /** Indentation per depth level in pixels */
 export const TREE_INDENT_PX = 8;
@@ -43,3 +46,27 @@ export const TREE_INDENT_GUIDE_CLASS =
  *   guideX(level) = TREE_GUIDE_OFFSET_BASE + level * TREE_INDENT_PX
  */
 export const TREE_GUIDE_OFFSET_BASE = TREE_PADDING_X + 3; // 19
+
+/** Keep text aligned when the row owns an inset or its host supplies it. */
+export function getTreeRowPadding(depth: number, inset = true) {
+  const rowInset = inset ? TREE_ROW_INSET_X : 0;
+  return {
+    paddingLeft: `${depth * TREE_INDENT_PX + TREE_PADDING_X - rowInset}px`,
+    paddingRight: `${TREE_PADDING_RIGHT - rowInset}px`,
+  };
+}
+
+/** Shared navigation surface; inset belongs to each row primitive's outer box. */
+export function getSidebarRowSurface({
+  selected = false,
+  interactive = true,
+  rounded = true,
+}: { selected?: boolean; interactive?: boolean; rounded?: boolean } = {}) {
+  return `${rounded ? TREE_ROW_ROUNDED_CLASS : ""} ${
+    selected
+      ? `${SURFACE_TOKENS.selected} ${SURFACE_TOKENS.selectedHover}`
+      : interactive
+        ? TREE_ROW_HOVER_BG_CLASS
+        : ""
+  }`;
+}

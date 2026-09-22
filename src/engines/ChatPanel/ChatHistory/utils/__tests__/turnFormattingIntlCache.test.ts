@@ -9,7 +9,12 @@ describe("turn clock formatting", () => {
   it("shares one bounded Intl formatter across page and timing labels", async () => {
     vi.resetModules();
     const rawLocaleTimeSpy = vi.spyOn(Date.prototype, "toLocaleTimeString");
-    const formatterConstructor = vi.spyOn(Intl, "DateTimeFormat");
+    const NativeDateTimeFormat = Intl.DateTimeFormat;
+    const formatterConstructor = vi
+      .spyOn(Intl, "DateTimeFormat")
+      .mockImplementation(function (locales, options) {
+        return new NativeDateTimeFormat(locales, options);
+      });
     const [{ formatTurnPageTimeLabel }, { getTurnTimingLabels }] =
       await Promise.all([
         import("../turnPageFormatting"),

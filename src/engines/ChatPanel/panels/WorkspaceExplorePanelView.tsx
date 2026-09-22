@@ -12,12 +12,10 @@
  * clone form uses — so cloned repos automatically register as ORGII
  * workspaces.
  */
-import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
 import {
   type RepoSearchResponse,
   type RepoSearchSort,
@@ -40,12 +38,14 @@ import {
   SquareArrowUpRight02Icon,
   StarIcon,
 } from "@src/icons";
+import { zodActionRegistry } from "@src/scaffold/ActionSystem/schema/zodRegistry";
 import {
   effectiveWorkspaceDefaultRepoLocationAtom,
   workspaceCustomDefaultRepoPathAtom,
 } from "@src/store/config/configAtom";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
+import { openLink } from "@src/util/ui/openLink";
 import { resolveDefaultRepoParentPath } from "@src/util/workspace/defaultRepoPath";
 
 const logger = createLogger("WorkspaceExplorePanelView");
@@ -158,7 +158,7 @@ const SearchRepoCard: React.FC<SearchRepoCardProps> = ({
               />
             }
             onClick={() => onOpen(repo)}
-            aria-label={t("explore.openOnGithub", { defaultValue: "GitHub" })}
+            aria-label={t("explore.openOnGithub")}
           />
           <Button
             variant="primary"
@@ -174,11 +174,7 @@ const SearchRepoCard: React.FC<SearchRepoCardProps> = ({
             }
             onClick={() => onClone(repo)}
             disabled={cloning}
-            aria-label={
-              cloning
-                ? t("explore.cloning", { defaultValue: "Cloning..." })
-                : t("explore.clone", { defaultValue: "Clone" })
-            }
+            aria-label={cloning ? t("explore.cloning") : t("explore.clone")}
           />
         </div>
       </div>
@@ -250,9 +246,7 @@ const WorkspaceExplorePanelView: React.FC = () => {
   );
 
   const handleOpen = useCallback((repo: SearchRepo) => {
-    void openExternal(repo.html_url).catch((err) => {
-      logger.warn("failed to open repo URL:", err);
-    });
+    openLink(repo.html_url);
   }, []);
 
   const handleClone = useCallback(
@@ -265,12 +259,7 @@ const WorkspaceExplorePanelView: React.FC = () => {
           ensureDirectory: true,
         });
         if (!targetDir) {
-          Message.error(
-            t("explore.cloneNoTarget", {
-              defaultValue:
-                "No default workspace folder configured. Set one in Settings.",
-            })
-          );
+          Message.error(t("explore.cloneNoTarget"));
           return;
         }
         const result = await zodActionRegistry.execute("repo.clone", {
@@ -280,15 +269,11 @@ const WorkspaceExplorePanelView: React.FC = () => {
         if (result.success) {
           Message.success(
             t("explore.cloneSuccess", {
-              defaultValue: "Cloned {{name}}",
               name: repo.full_name,
             })
           );
         } else {
-          Message.error(
-            result.message ||
-              t("explore.cloneFailed", { defaultValue: "Clone failed" })
-          );
+          Message.error(result.message || t("explore.cloneFailed"));
         }
       } catch (err) {
         Message.error(err instanceof Error ? err.message : String(err));
@@ -301,10 +286,10 @@ const WorkspaceExplorePanelView: React.FC = () => {
 
   const sortLabel = useMemo<Record<RepoSearchSort, string>>(
     () => ({
-      best_match: t("explore.sort.bestMatch", { defaultValue: "Best match" }),
-      stars: t("explore.sort.stars", { defaultValue: "Stars" }),
-      updated: t("explore.sort.updated", { defaultValue: "Recently updated" }),
-      forks: t("explore.sort.forks", { defaultValue: "Forks" }),
+      best_match: t("explore.sort.bestMatch"),
+      stars: t("explore.sort.stars"),
+      updated: t("explore.sort.updated"),
+      forks: t("explore.sort.forks"),
     }),
     [t]
   );
@@ -319,10 +304,11 @@ const WorkspaceExplorePanelView: React.FC = () => {
 
   const canSubmit = query.trim().length > 0 && !loading;
   const searchButton = (
-    <button
-      type="submit"
+    <Button
+      layout="custom"
+      htmlType="submit"
       disabled={!canSubmit}
-      aria-label={t("explore.search", { defaultValue: "Search" })}
+      aria-label={t("explore.search")}
       data-state={canSubmit ? "search" : "idle"}
       className={`${INPUT_AREA_BUTTONS.iconButtonSizeClass} flex shrink-0 items-center justify-center rounded-full leading-none transition-colors duration-200 focus:outline-none ${
         canSubmit
@@ -338,7 +324,7 @@ const WorkspaceExplorePanelView: React.FC = () => {
         strokeWidth={2}
         className="block text-[#fff]"
       />
-    </button>
+    </Button>
   );
 
   const heroSection = (
@@ -359,10 +345,7 @@ const WorkspaceExplorePanelView: React.FC = () => {
           type="search"
           value={query}
           onChange={setQuery}
-          placeholder={t("explore.searchPlaceholder", {
-            defaultValue:
-              "Search GitHub repositories (e.g. language:rust tauri)",
-          })}
+          placeholder={t("explore.searchPlaceholder")}
           suffix={searchButton}
           allowClear
           size="large"
@@ -381,7 +364,7 @@ const WorkspaceExplorePanelView: React.FC = () => {
           />
           {loading ? (
             <span className="ml-2 text-[11px] text-text-3">
-              {t("explore.searching", { defaultValue: "Searching..." })}
+              {t("explore.searching")}
             </span>
           ) : null}
         </div>
@@ -401,12 +384,7 @@ const WorkspaceExplorePanelView: React.FC = () => {
 
               {error ? (
                 <div className="w-full max-w-[640px] text-left">
-                  <PageNotice
-                    type="danger"
-                    title={t("explore.errorTitle", {
-                      defaultValue: "Search failed",
-                    })}
-                  >
+                  <PageNotice type="danger" title={t("explore.errorTitle")}>
                     {error}
                   </PageNotice>
                 </div>
@@ -414,21 +392,15 @@ const WorkspaceExplorePanelView: React.FC = () => {
 
               {loading && !response ? (
                 <div className="text-[12px] text-text-3">
-                  {t("explore.searching", { defaultValue: "Searching..." })}
+                  {t("explore.searching")}
                 </div>
               ) : null}
 
               {response && !loading && !error ? (
                 <div className="flex flex-col items-center gap-1 text-[12px] text-text-3">
-                  <span>
-                    {t("explore.noResultsTitle", {
-                      defaultValue: "No repositories matched",
-                    })}
-                  </span>
+                  <span>{t("explore.noResultsTitle")}</span>
                   <span className="text-[11px]">
-                    {t("explore.noResultsSubtitle", {
-                      defaultValue: "Try a different query or sort.",
-                    })}
+                    {t("explore.noResultsSubtitle")}
                   </span>
                 </div>
               ) : null}
@@ -440,12 +412,7 @@ const WorkspaceExplorePanelView: React.FC = () => {
               </div>
 
               {error ? (
-                <PageNotice
-                  type="danger"
-                  title={t("explore.errorTitle", {
-                    defaultValue: "Search failed",
-                  })}
-                >
+                <PageNotice type="danger" title={t("explore.errorTitle")}>
                   {error}
                 </PageNotice>
               ) : null}
@@ -454,17 +421,12 @@ const WorkspaceExplorePanelView: React.FC = () => {
                 <div className="flex items-center justify-between text-[11px] text-text-3">
                   <span>
                     {t("explore.resultsCount", {
-                      defaultValue: "{{shown}} of {{total}} repositories",
                       shown: response.items.length,
                       total: response.total_count.toLocaleString(),
                     })}
                   </span>
                   {response.incomplete_results ? (
-                    <span>
-                      {t("explore.partial", {
-                        defaultValue: "(partial — search timed out)",
-                      })}
-                    </span>
+                    <span>{t("explore.partial")}</span>
                   ) : null}
                 </div>
               ) : null}

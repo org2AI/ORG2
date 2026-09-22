@@ -25,7 +25,9 @@ class FakeWebglAddon {
 }
 
 vi.mock("@xterm/addon-webgl", () => ({
-  WebglAddon: vi.fn(() => new FakeWebglAddon()),
+  WebglAddon: vi.fn(function () {
+    return new FakeWebglAddon();
+  }),
 }));
 
 vi.mock("../terminalRendererPolicy", () => ({

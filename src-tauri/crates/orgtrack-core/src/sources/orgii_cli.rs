@@ -7,7 +7,7 @@ impl SourceAdapter for OrgiiCliSessionsSource {
     fn descriptor(&self) -> SourceDescriptor {
         SourceDescriptor {
             id: SOURCE_ORGII_CLI_SESSIONS.to_string(),
-            label: "ORGII CLI Sessions".to_string(),
+            label: "ORG2 CLI Sessions".to_string(),
             parser_version: 1,
         }
     }

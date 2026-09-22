@@ -6,8 +6,8 @@ import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { DETAIL_PANEL_TOKENS } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/Section";
+import { DETAIL_PANEL_TOKENS } from "@src/components/layout/blocks";
 
 import type { WizardData } from "../types";
 

@@ -6,19 +6,73 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#f4f4f4" />
     <meta name="referrer" content="no-referrer" />
     <title>ORG2 Mobile Remote</title>
     <link
       rel="stylesheet"
       href="/orgii_main.css"
-      media="(prefers-color-scheme: light)"
+      media="all"
+      data-orgii-mobile-theme="light"
     />
     <link
       rel="stylesheet"
       href="/orgii_dark.css"
-      media="(prefers-color-scheme: dark)"
+      media="not all"
+      data-orgii-mobile-theme="dark"
     />
+    <script>
+      // Resolve the persisted preference before React paints. Mobile owns a
+      // local preference, isolated from Desktop even on a shared origin.
+      // Do not migrate "theme": that value may belong to Desktop.
+      (function () {
+        var preference = "system";
+        try {
+          preference = localStorage.getItem("mobileRemote.theme") || "system";
+        } catch (error) {
+          // Restricted WebViews may reject storage; follow the OS instead.
+        }
+        var colorScheme =
+          preference === "dark" ||
+          (preference !== "light" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches)
+            ? "dark"
+            : "light";
+        document
+          .querySelectorAll("link[data-orgii-mobile-theme]")
+          .forEach(function (link) {
+            link.media =
+              link.getAttribute("data-orgii-mobile-theme") === colorScheme
+                ? "all"
+                : "not all";
+          });
+        var root = document.documentElement;
+        root.dataset.theme = colorScheme;
+        root.dataset.themeId = colorScheme;
+        root.style.colorScheme = colorScheme;
+        root.classList.toggle("theme-dark", colorScheme === "dark");
+        // Browser chrome follows the same palette after stylesheet readiness.
+        // Do not hardcode a second light/dark palette in bootstrap HTML.
+        function synchronizeCanvas() {
+          var color = getComputedStyle(root)
+            .getPropertyValue("--color-chat-container")
+            .trim();
+          if (!color) return;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (!meta) {
+            meta = document.createElement("meta");
+            meta.name = "theme-color";
+            document.head.appendChild(meta);
+          }
+          meta.content = color;
+        }
+        document
+          .querySelectorAll("link[data-orgii-mobile-theme]")
+          .forEach(function (link) {
+            link.addEventListener("load", synchronizeCanvas, { once: true });
+          });
+        synchronizeCanvas();
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

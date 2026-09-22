@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { DispatchCategory } from "@src/api/tauri/session";
 import type { CliAgentType } from "@src/api/types/keys";
 import { formatAgentType } from "@src/assets/providers";
@@ -23,8 +25,6 @@ const NO_AGENT_DESCRIPTION = "Select agent to see its capabilities";
 const GENERIC_DESCRIPTION =
   "Ready to help with your next task in this workspace";
 
-const CURSOR_IDE_DESCRIPTION =
-  "Browse and continue Cursor IDE chat sessions inside ORGII";
 const HUMAN_SESSION_DESCRIPTION =
   "Start with one note, then keep appending updates over time";
 
@@ -86,6 +86,7 @@ function resolveOrgDescription(
 }
 
 export function resolveSessionCreatorAgentHeroContent(options: {
+  t: TFunction<"sessions">;
   hasAgentSelected: boolean;
   dispatchCategory: DispatchCategory;
   targetKind: SessionTargetKind;
@@ -98,6 +99,7 @@ export function resolveSessionCreatorAgentHeroContent(options: {
   isOSMode: boolean;
 }): SessionCreatorAgentHeroContent {
   const {
+    t,
     hasAgentSelected,
     dispatchCategory,
     targetKind,
@@ -141,7 +143,7 @@ export function resolveSessionCreatorAgentHeroContent(options: {
   if (dispatchCategory === "cursor_ide") {
     return {
       name: resolvedAgentName ?? "Cursor IDE",
-      description: CURSOR_IDE_DESCRIPTION,
+      description: t("creator.cursorIdeDescription"),
       danger: false,
     };
   }

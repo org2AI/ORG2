@@ -8,42 +8,16 @@
  * `useSlashCommand`, `inputPreparation`, `useInputFormatter`, etc.) keep
  * working without ProseMirror.
  */
-/**
- * Icon type for special pill items. Drives icon rendering in `ComposerPill`
- * and how `serializePillNode` formats the agent-side payload.
- */
-export type PillIconType =
-  | "file"
-  | "folder"
-  | "terminal"
-  | "session"
-  | "browser"
-  | "repo"
-  | "branch"
-  | "project"
-  | "workitem"
-  | "dom-element"
-  | "dom-component"
-  | "skill"
-  | "member"
-  | "paste"
-  | "link"
-  | "pr"
-  | "issue";
+import type {
+  ComposerSnapshot,
+  PillIconType,
+} from "@src/contracts/composer/snapshot";
 
-/**
- * Persisted pill payload. This is the canonical, in-memory description of a
- * pill. The DOM serialization mirrors the same keys via `data-*` attributes
- * so a snapshot round-trip preserves the pill exactly.
- */
-export interface ComposerPillAttrs {
-  filePath: string;
-  fileName: string;
-  isFolder: boolean;
-  iconType: PillIconType | null;
-  lineStart: number | null;
-  lineEnd: number | null;
-}
+export type {
+  ComposerPillAttrs,
+  ComposerSnapshot,
+  PillIconType,
+} from "@src/contracts/composer/snapshot";
 
 export interface ComposerInputProps {
   /** Placeholder text shown while the editor is empty */
@@ -98,20 +72,6 @@ export interface ComposerInputProps {
   slashTriggerMode?: "command" | "context";
   /** Called for clipboard image attachments */
   onImagePaste?: (files: File[]) => void;
-}
-
-/**
- * Opaque snapshot used to round-trip composer state across an in-flight
- * submit so we can restore the editor (text + pills + line ranges) if the
- * request fails. Returned from `getSnapshot()`; consumed by `setContent()`.
- */
-export interface ComposerSnapshot {
-  /** Linear sequence of text nodes and pill references, in DOM order. */
-  parts: Array<
-    | { kind: "text"; text: string }
-    | { kind: "newline" }
-    | { kind: "pill"; attrs: ComposerPillAttrs }
-  >;
 }
 
 export interface ComposerInputRef {

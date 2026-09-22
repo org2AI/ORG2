@@ -1,7 +1,7 @@
 import React from "react";
 
 import DiffStatsBadge from "@src/components/DiffStatsBadge";
-import { formatStatNumber } from "@src/shared/pr/formatStatNumber";
+import { formatStatNumber } from "@src/util/git/pr/formatStatNumber";
 
 interface DiffSummaryProps {
   added: number;

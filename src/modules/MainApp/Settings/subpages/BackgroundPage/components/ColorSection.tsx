@@ -3,10 +3,11 @@
  * Preset solid colors, saved DIY hex colors, and + picker in one row.
  */
 import Button from "@/src/components/Button";
-import { SectionRow } from "@/src/modules/shared/layouts/SectionLayout";
+import { SectionRow } from "@/src/components/layout/Section";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import SharedButton from "@src/components/Button";
 import { BACKGROUND_COLOR_PRESETS } from "@src/config/appearance/backgroundColors";
 import { normalizeHexColor } from "@src/config/appearance/backgroundConfig";
 import { Add01Icon, Cancel01Icon, HugeiconsIcon } from "@src/icons";
@@ -64,9 +65,9 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
           const isSelected = config.backgroundColorId === preset.id;
 
           return (
-            <button
+            <SharedButton
+              layout="custom"
               key={preset.id}
-              type="button"
               title={preset.description}
               className={`${SWATCH_BASE} ${isSelected ? SWATCH_SELECTED : SWATCH_IDLE}`}
               style={{ backgroundColor: `var(${preset.cssVar})` }}
@@ -81,18 +82,17 @@ export const ColorSection: React.FC<ColorSectionProps> = ({
 
           return (
             <div key={hex} className="group relative shrink-0">
-              <button
-                type="button"
+              <SharedButton
+                layout="custom"
                 title={hex}
                 className={`${SWATCH_BASE} ${isSelected ? SWATCH_SELECTED : SWATCH_IDLE}`}
                 style={{ backgroundColor: hex }}
                 onClick={() => onSelectCustomHex(hex)}
               />
               <Button
-                className="absolute -top-0.5 -right-0.5 z-10 opacity-0 shadow-xs transition-opacity group-hover:opacity-100"
+                className="absolute -top-0.5 -right-0.5 z-10 bg-fill-2 text-text-1 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 hover:bg-fill-3"
                 style={{ width: 18, height: 18, minWidth: 18 }}
-                variant="secondary"
-                appearance="solid"
+                variant="tertiary"
                 size="mini"
                 shape="circle"
                 icon={

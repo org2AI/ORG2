@@ -35,7 +35,7 @@ fn native_transcript_home_override() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-fn external_history_home_override() -> Option<PathBuf> {
+pub(crate) fn external_history_home_override() -> Option<PathBuf> {
     std::env::var_os("ORGII_EXTERNAL_HISTORY_HOME")
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
@@ -153,43 +153,7 @@ fn external_history_xdg_dir(var: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Mutex, MutexGuard};
-
-    /// Serializes tests that mutate process environment variables. Env vars
-    /// are process-global, so parallel test threads would otherwise race.
-    fn env_lock() -> MutexGuard<'static, ()> {
-        static LOCK: Mutex<()> = Mutex::new(());
-        LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
-
-    /// Sets or unsets one env var and restores the original value on drop.
-    struct EnvVarGuard {
-        key: &'static str,
-        original: Option<std::ffi::OsString>,
-    }
-
-    impl EnvVarGuard {
-        fn set(key: &'static str, value: &str) -> Self {
-            let original = std::env::var_os(key);
-            std::env::set_var(key, value);
-            Self { key, original }
-        }
-
-        fn unset(key: &'static str) -> Self {
-            let original = std::env::var_os(key);
-            std::env::remove_var(key);
-            Self { key, original }
-        }
-    }
-
-    impl Drop for EnvVarGuard {
-        fn drop(&mut self) {
-            match self.original.take() {
-                Some(value) => std::env::set_var(self.key, value),
-                None => std::env::remove_var(self.key),
-            }
-        }
-    }
+    use crate::test_env::{env_lock, EnvVarGuard};
 
     #[test]
     fn xdg_config_dir_reads_env_without_isolation_override() {

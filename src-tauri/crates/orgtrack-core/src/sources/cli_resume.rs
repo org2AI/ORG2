@@ -368,14 +368,19 @@ pub fn cli_resume_plan_for_cached_session(
     Ok(plan.map(|plan| (plan, session)))
 }
 
-/// `rollout-<timestamp>-<thread-uuid>` → `<thread-uuid>`. Accepts a bare
+/// `rollout-<timestamp>-<thread-uuid>[_<rollout-uuid>]` → `<thread-uuid>`. Accepts a bare
 /// uuid too (runner bindings and older imports carry that form).
 pub(super) fn codex_thread_uuid_from_stem(stem: &str) -> Option<&str> {
+    // Desktop resend rotates the physical rollout while retaining the thread.
+    let stem = match stem.rsplit_once('_') {
+        Some((prefix, rollout_id)) if is_uuid_like(rollout_id) => prefix,
+        _ => stem,
+    };
     if is_uuid_like(stem) {
         return Some(stem);
     }
     if stem.len() > 37 {
-        let (head, tail) = stem.split_at(stem.len() - 36);
+        let (head, tail) = stem.split_at_checked(stem.len() - 36)?;
         if head.ends_with('-') && is_uuid_like(tail) {
             return Some(tail);
         }

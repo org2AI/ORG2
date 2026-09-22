@@ -16,42 +16,18 @@ import {
 import type { GitHubPrDetailTabData } from "@src/types/githubDetail";
 
 import { closeChatPanelTabAtom } from "./chatPanelTabLifecycleAtoms";
-import type { ChatPanelTab, ChatPanelTabType } from "./chatPanelTabsModel";
+import {
+  CHAT_PANEL_TAB_TYPE_POLICY,
+  type ChatPanelTab,
+} from "./chatPanelTabsModel";
 import { chatPanelTabsAtom } from "./chatPanelTabsState";
-
-type WorkstationTransferKind = "session" | "github-issue" | "github-pr";
-
-/**
- * Lossless Chat Panel -> My Station mappings. The record is exhaustive so a
- * new Chat Panel tab type must make an explicit transfer decision.
- */
-const WORKSTATION_TRANSFER_KIND: Record<
-  ChatPanelTabType,
-  WorkstationTransferKind | null
-> = {
-  session: "session",
-  terminal: null,
-  "start-page": null,
-  runtime: null,
-  "team-inbox": null,
-  "work-management": null,
-  workspace: null,
-  organization: null,
-  "work-item": null,
-  "github-issue": "github-issue",
-  "github-pr": "github-pr",
-  project: null,
-  explore: null,
-  channel: null,
-  "run-group": null,
-};
 
 export function canMoveChatPanelTabToWorkstation(
   tab: ChatPanelTab | undefined
 ): boolean {
   if (!tab) return false;
 
-  switch (WORKSTATION_TRANSFER_KIND[tab.type]) {
+  switch (CHAT_PANEL_TAB_TYPE_POLICY[tab.type].workstationTransfer) {
     case "session":
       return Boolean(tab.sessionId?.trim());
     case "github-issue":
@@ -64,7 +40,7 @@ export function canMoveChatPanelTabToWorkstation(
 }
 
 function createWorkstationDetailTab(tab: ChatPanelTab): WorkStationTab | null {
-  switch (WORKSTATION_TRANSFER_KIND[tab.type]) {
+  switch (CHAT_PANEL_TAB_TYPE_POLICY[tab.type].workstationTransfer) {
     case "github-issue":
       return tab.githubIssue
         ? githubIssueDetailTabFactory(tab.githubIssue)

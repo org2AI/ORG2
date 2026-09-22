@@ -25,16 +25,10 @@ const ExplorerTabRenderer: React.FC<UnifiedTabContentProps> = memo(() => {
     <Placeholder
       variant="empty"
       placement="detail-panel"
-      title={t("placeholders.noWorkspaceExplorerTitle", {
-        defaultValue: "No working directory open",
-      })}
-      subtitle={t("placeholders.noWorkspaceExplorerSubtitle", {
-        defaultValue: "Open a working directory to view files",
-      })}
+      title={t("placeholders.noWorkspaceExplorerTitle")}
+      subtitle={t("placeholders.noWorkspaceExplorerSubtitle")}
       action={{
-        label: t("actions.openWorkspace", {
-          defaultValue: "Open Working Directory",
-        }),
+        label: t("actions.openWorkspace"),
         onClick: handleAddWorkspace,
       }}
       fillParentHeight

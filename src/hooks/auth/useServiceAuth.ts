@@ -1,6 +1,6 @@
 import { useAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { synchronizeSharedServiceAuthStorage } from "@src/api/http/auth/sharedAuthStorage";
 import {
@@ -21,6 +21,7 @@ import {
   verifyHostedToken,
 } from "@src/config/serviceAuth";
 import { createLogger } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 
 import {
   hostedTokenAtom,
@@ -405,5 +406,3 @@ export function useServiceAuth(): UseServiceAuthReturn {
     refreshToken,
   };
 }
-
-export default useServiceAuth;

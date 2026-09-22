@@ -1,9 +1,4 @@
 {
-  "name": "Tên",
   "genderOptions": {},
-  "role": "Vai trò",
-  "location": "Vị trí",
-  "commits": "commit",
-  "activity": "Hoạt động",
   "social": {}
 }

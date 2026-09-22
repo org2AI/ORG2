@@ -119,7 +119,7 @@ export function SessionExportModal({
       maskClosable={!loading}
       escToExit={!loading}
     >
-      <div className="flex flex-col gap-4 p-1">
+      <div className="flex flex-col gap-4">
         {exportPreview && (
           <div className="flex flex-col gap-2">
             <InfoRow

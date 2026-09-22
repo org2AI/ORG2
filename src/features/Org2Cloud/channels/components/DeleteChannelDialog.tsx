@@ -90,7 +90,7 @@ const DeleteChannelDialog: React.FC<DeleteChannelDialogProps> = ({
           onSubmit={() => void handleDelete()}
           cancelTestId="channel-delete-cancel"
           submitTestId="channel-delete-confirm"
-          submitVariant="danger"
+          submitTone="danger"
           loading={deleting}
           disabled={!acknowledged || deleting || !channel || !orgId}
         />

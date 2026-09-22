@@ -7,7 +7,7 @@ impl SourceAdapter for OrgiiRustAgentsSource {
     fn descriptor(&self) -> SourceDescriptor {
         SourceDescriptor {
             id: SOURCE_ORGII_RUST_AGENTS.to_string(),
-            label: "ORGII Rust Agents".to_string(),
+            label: "ORG2 Rust Agents".to_string(),
             parser_version: 1,
         }
     }

@@ -4,34 +4,26 @@
  * Groups file edits and the reads performed after them into one collapsible
  * stack. Each event still renders through the event registry.
  */
-import React, { Suspense, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getToolIcon } from "@src/config/toolIcons";
 import { DIFF_STATS } from "@src/config/workstation/tokens";
 import ToolUsageBadge from "@src/engines/ChatPanel/blocks/ToolCallBlock/ToolUsageBadge";
-import {
-  ChatLoadingBlock,
-  StackedBlock,
-} from "@src/engines/ChatPanel/blocks/primitives";
+import { StackedBlock } from "@src/engines/ChatPanel/blocks/primitives";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { extractEditData } from "@src/engines/SessionCore/rendering/props/editExtractors";
-import { getChatLazyComponent } from "@src/engines/SessionCore/rendering/registry/events";
-import {
-  getRegistryEventType,
-  normalizeFunctionName,
-} from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 
+import {
+  buildActivityGroupItems,
+  renderActivityGroupEvent,
+} from "../activityGroupProjection";
 import { readToolUsage, sumToolUsage } from "../toolUsage";
 
 interface EditActivityGroupProps {
   events: SessionEvent[];
   closedByBoundary?: boolean;
-}
-
-interface EditEventItem {
-  event: SessionEvent;
-  isLastItem: boolean;
 }
 
 function getCanonicalName(event: SessionEvent): string {
@@ -86,52 +78,12 @@ export function sumEditDiffStats(events: readonly SessionEvent[]): {
   );
 }
 
-function ActivityBlock({ event }: { event: SessionEvent }) {
-  const eventType = getRegistryEventType(
-    event as unknown as Record<string, unknown>
-  );
-  const EventComponent = getChatLazyComponent(eventType);
-  return (
-    <Suspense fallback={<ChatLoadingBlock />}>
-      {React.createElement(EventComponent, { event })}
-    </Suspense>
-  );
-}
-
-function suppressLoadingForNonLastRunningEvent(
-  event: SessionEvent,
-  isLastItem: boolean
-): SessionEvent {
-  if (isLastItem || event.displayStatus !== "running") return event;
-  return {
-    ...event,
-    displayStatus: "completed",
-    activityStatus: "processed",
-    isDelta: false,
-  };
-}
-
-function renderEditEvent({ event, isLastItem }: EditEventItem) {
-  return (
-    <ActivityBlock
-      event={suppressLoadingForNonLastRunningEvent(event, isLastItem)}
-    />
-  );
-}
-
 const EditActivityGroup: React.FC<EditActivityGroupProps> = ({
   events,
   closedByBoundary = true,
 }) => {
   const { t } = useTranslation("sessions");
-  const items = useMemo<EditEventItem[]>(
-    () =>
-      events.map((event, index) => ({
-        event,
-        isLastItem: index === events.length - 1,
-      })),
-    [events]
-  );
+  const items = useMemo(() => buildActivityGroupItems(events), [events]);
 
   if (items.length === 0) return null;
 
@@ -195,7 +147,7 @@ const EditActivityGroup: React.FC<EditActivityGroupProps> = ({
         rightContent={
           groupToolUsage ? <ToolUsageBadge usage={groupToolUsage} /> : undefined
         }
-        renderItem={renderEditEvent}
+        renderItem={renderActivityGroupEvent}
       />
     </div>
   );

@@ -66,7 +66,7 @@ describe("Tag", () => {
     expect(container.querySelector(".tag")).toBeNull();
   });
 
-  it("lets the close affordance dismiss a tag with the keyboard", () => {
+  it("renders close as a focusable native button with independent activation", () => {
     const onClose = vi.fn();
 
     act(() => {
@@ -74,20 +74,16 @@ describe("Tag", () => {
     });
 
     const close = container.querySelector<HTMLElement>('[aria-label="Close"]');
-    const event = new KeyboardEvent("keydown", {
-      bubbles: true,
-      cancelable: true,
-      key: "Enter",
-    });
+    expect(close?.tagName).toBe("BUTTON");
+    expect(close?.getAttribute("type")).toBe("button");
+    expect(close?.tabIndex).toBe(0);
+    act(() => close?.click());
 
-    act(() => close?.dispatchEvent(event));
-
-    expect(event.defaultPrevented).toBe(true);
     expect(onClose).toHaveBeenCalledOnce();
     expect(container.querySelector(".tag")).toBeNull();
   });
 
-  it("toggles an uncontrolled checkable tag by click and keyboard activation", () => {
+  it("toggles an uncontrolled checkable tag through its native button", () => {
     const onCheck = vi.fn();
 
     act(() => {
@@ -100,21 +96,17 @@ describe("Tag", () => {
       );
     });
 
-    const body = container.querySelector<HTMLElement>('[role="button"]');
+    const body = container.querySelector<HTMLElement>("button.tag-body");
     expect(body?.tabIndex).toBe(0);
 
     act(() => body?.click());
     expect(onCheck).toHaveBeenLastCalledWith(true);
     expect(container.querySelector(".tag")?.classList).toContain("tag-checked");
 
-    const event = new KeyboardEvent("keydown", {
-      bubbles: true,
-      cancelable: true,
-      key: " ",
-    });
-    act(() => body?.dispatchEvent(event));
+    expect(body?.getAttribute("aria-pressed")).toBe("true");
+    act(() => body?.click());
+    expect(body?.getAttribute("aria-pressed")).toBe("false");
 
-    expect(event.defaultPrevented).toBe(true);
     expect(onCheck).toHaveBeenLastCalledWith(false);
     expect(container.querySelector(".tag")?.classList).not.toContain(
       "tag-checked"
@@ -134,7 +126,7 @@ describe("Tag", () => {
       );
     });
 
-    const body = container.querySelector<HTMLElement>('[role="button"]');
+    const body = container.querySelector<HTMLElement>("button.tag-body");
     act(() => body?.click());
 
     expect(onCheck).toHaveBeenCalledWith(false);

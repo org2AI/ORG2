@@ -23,8 +23,6 @@ export function useChatViewScrollToBottom() {
   }, []);
   const externalScrollToBottomButton = scrollNav?.showScrollToBottom ? (
     <Button
-      variant="secondary"
-      appearance="outline"
       size="small"
       shape="round"
       icon={
@@ -35,6 +33,7 @@ export function useChatViewScrollToBottom() {
         />
       }
       iconOnly
+      data-testid="chat-scroll-to-bottom"
       aria-label={t("common:inbox.scrollToBottom")}
       title={t("common:inbox.scrollToBottom")}
       onClick={scrollNav.onScrollToBottom}

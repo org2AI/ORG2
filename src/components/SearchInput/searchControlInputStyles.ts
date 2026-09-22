@@ -93,6 +93,8 @@ export function searchControlMultilineInputStyle(
     display: "block",
     width: "100%",
     height: "auto",
+    minHeight: 0,
+    maxHeight: 120,
     padding: 0,
     paddingTop: SEARCH_ROW_TOP_OFFSET_PX,
     margin: 0,

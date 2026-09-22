@@ -4,17 +4,13 @@
  * Single-file working-tree diff for the unified Source Control tab.
  */
 import React, { Suspense, memo } from "react";
-import { useTranslation } from "react-i18next";
 
-import { Placeholder } from "@src/components/Placeholder";
-import { NoTabsPlaceholder } from "@src/modules/WorkStation/shared";
+import LazyDetailFallback from "@src/components/layout/blocks/LazyDetailFallback";
 import type { GitFile } from "@src/types/git/types";
 
-const GitDiffContent = React.lazy(() => import("../GitDiffContent"));
+import { SourceControlSelectionPlaceholder } from "../SourceControlSelectionPlaceholder";
 
-const LazyFallback: React.FC = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
+const GitDiffContent = React.lazy(() => import("../GitDiffContent"));
 
 export interface FocusViewProps {
   /** Selected file's git diff record (resolved by the renderer) */
@@ -48,13 +44,7 @@ const FocusView: React.FC<FocusViewProps> = ({
   onUnsavedChange,
   inlineFileHeader = true,
 }) => {
-  const { t } = useTranslation();
-  const emptyPlaceholder = (
-    <NoTabsPlaceholder
-      icon="source-control"
-      caption={t("placeholders.selectSidebarFileToViewChanges")}
-    />
-  );
+  const emptyPlaceholder = <SourceControlSelectionPlaceholder />;
 
   if (!hasFocus) {
     return emptyPlaceholder;
@@ -62,7 +52,7 @@ const FocusView: React.FC<FocusViewProps> = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <Suspense fallback={<LazyFallback />}>
+      <Suspense fallback={<LazyDetailFallback />}>
         <GitDiffContent
           gitFile={gitFile}
           loading={loading}

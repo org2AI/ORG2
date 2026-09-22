@@ -33,14 +33,6 @@ export const CHAT_SETTINGS_REGISTRY = {
     description: "Typing effect speed in milliseconds per character (1-50)",
     category: "chat",
   },
-  // Key name kept for settings-file compatibility; the effect is now a plain
-  // typewriter reveal (the old scramble/decrypt animation was removed).
-  "chat.decryptEffectEnabled": {
-    schema: z.boolean(),
-    default: false,
-    description: "Reveal agent responses with a typewriter animation",
-    category: "chat",
-  },
   "chat.sendOnEnter": {
     schema: z.boolean(),
     default: false,

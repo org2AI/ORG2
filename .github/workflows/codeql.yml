@@ -1,0 +1,82 @@
+# Replaces managed default setup; see docs/development/codeql.md for rollout.
+name: CodeQL
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+  schedule:
+    - cron: "23 21 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect CodeQL languages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      languages: ${{ steps.scope.outputs.languages }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Test language selection
+        run: node --test scripts/ci/detect-codeql-changes.test.cjs
+      - name: Select languages
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          paths="${RUNNER_TEMP}/codeql-paths"
+          : > "$paths"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            # Disabling rename detection includes both sides of moves, even
+            # moves between language extensions. Deletions also count.
+            if ! git diff --no-renames --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "$paths"; then
+              echo "::warning::Could not determine PR diff; scanning all languages"
+              : > "$paths"
+            fi
+          fi
+          # Non-PR events deliberately use the empty-input full-scan fallback
+          # to maintain complete default-branch baselines and refresh queries.
+          languages="$(node scripts/ci/detect-codeql-changes.cjs < "$paths")"
+          echo "languages=${languages}" >> "$GITHUB_OUTPUT"
+          echo "Selected languages: ${languages}"
+
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    needs: changes
+    if: needs.changes.outputs.languages != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ${{ fromJSON(needs.changes.outputs.languages) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}

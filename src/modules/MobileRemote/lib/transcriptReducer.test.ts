@@ -8,6 +8,34 @@ import {
 } from "./transcriptReducer";
 
 describe("transcriptReducer", () => {
+  it("replaces projected titles by event identity without retaining a stale title", () => {
+    const base = { id: "js", functionName: "js", actionType: "tool_call" };
+    let state = reduceTranscriptFromUpserts(createInitialTranscriptState(), [
+      {
+        ...base,
+        toolArgumentTitle: "  Inspect window  ",
+        displayStatus: "running",
+      },
+    ]);
+    expect(state.items[0].toolArgumentTitle).toBe("Inspect window");
+    state = reduceTranscriptFromUpserts(state, [
+      { ...base, toolArgumentTitle: "Inspect again", displayStatus: "failed" },
+    ]);
+    expect(state.items).toHaveLength(1);
+    expect(state.items[0].toolArgumentTitle).toBe("Inspect again");
+    state = reduceTranscriptFromUpserts(state, [base]);
+    expect(state.items[0].toolArgumentTitle).toBeUndefined();
+  });
+
+  it("preserves bounded image metadata without accepting image payloads", () => {
+    const next = reduceTranscriptFromUpserts(createInitialTranscriptState(), [
+      { id: "image", source: "user", imageCount: 2, displayText: "screenshot" },
+      { id: "many", source: "user", imageCount: 999 },
+      { id: "bad", source: "user", imageCount: -1 },
+    ]);
+    expect(next.items.map((item) => item.imageCount)).toEqual([2, 8, 0]);
+    expect(next.items[0].text).toBe("screenshot");
+  });
   it("projects user and agent upserts", () => {
     const next = reduceTranscriptFromUpserts(createInitialTranscriptState(), [
       {

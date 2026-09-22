@@ -15,7 +15,7 @@ import {
   getPrStatusIconName,
   getPrStatusLabelKey,
   getPrStatusVariant,
-} from "@src/shared/pr/prStatus";
+} from "@src/util/git/pr/prStatus";
 import { classNames } from "@src/util/ui/classNames";
 
 interface PrStatusBadgeProps {

@@ -4,6 +4,7 @@
  * Utility for handling SSE streams from Rust HTTP server.
  * Provides a simple interface for connecting to SSE endpoints and handling events.
  */
+import { withIdeServerToken } from "@src/config/ideServer";
 import { createLogger } from "@src/hooks/logger";
 import { recordPushEvent } from "@src/util/monitoring/apiTracker";
 
@@ -44,7 +45,9 @@ export interface SSEStreamOptions {
 export function createSSEStream(options: SSEStreamOptions): () => void {
   const { url, onStart, onOutput, onEnd, onError } = options;
 
-  const eventSource = new EventSource(url);
+  // `EventSource` cannot set headers, so the local IDE server token rides in
+  // the query string.
+  const eventSource = new EventSource(withIdeServerToken(url));
 
   // Handle start event
   eventSource.addEventListener("start", (event) => {

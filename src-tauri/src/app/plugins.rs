@@ -7,6 +7,26 @@ use tauri::Manager;
 
 use crate::infrastructure;
 
+/// Restore the main window for an explicit external open request.
+pub(super) fn restore_main_window(app: &tauri::AppHandle) {
+    if let Some(main_window) = app.get_webview_window("main") {
+        if let Err(error) = main_window.unminimize() {
+            tracing::warn!(?error, "failed to restore the main window");
+        }
+        if let Err(error) = main_window.show() {
+            tracing::warn!(?error, "failed to show the main window");
+        }
+        if let Err(error) = main_window.set_focus() {
+            tracing::warn!(?error, "failed to focus the main window");
+        }
+    } else if let Err(error) = app_window::recreate_main_window(app) {
+        tracing::warn!(
+            %error,
+            "failed to recreate the main window for an external open request"
+        );
+    }
+}
+
 /// Builds the `tauri::Builder` with every plugin, managed store, and custom URI
 /// scheme registered in its original order.
 pub(crate) fn configure() -> tauri::Builder<tauri::Wry> {
@@ -19,6 +39,11 @@ pub(crate) fn configure() -> tauri::Builder<tauri::Wry> {
     // `onOpenUrl` listener remains the single owner of invite routing.
     #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        // The macOS ownership probe sends no argv. It must not recreate a
+        // window before the application setup hook has initialized its state.
+        if argv.iter().all(String::is_empty) {
+            return;
+        }
         // Never log argv: deep-link query/fragment values can contain invite
         // codes, share capabilities, or OAuth tokens.
         tracing::info!(
@@ -26,23 +51,18 @@ pub(crate) fn configure() -> tauri::Builder<tauri::Wry> {
             "external open request forwarded to the running app"
         );
 
-        if let Some(main_window) = app.get_webview_window("main") {
-            if let Err(error) = main_window.unminimize() {
-                tracing::warn!(?error, "failed to restore the main window");
-            }
-            if let Err(error) = main_window.show() {
-                tracing::warn!(?error, "failed to show the main window");
-            }
-            if let Err(error) = main_window.set_focus() {
-                tracing::warn!(?error, "failed to focus the main window");
-            }
-        } else if let Err(error) = app_window::recreate_main_window(app) {
-            tracing::warn!(
-                %error,
-                "failed to recreate the main window for an external open request"
-            );
-        }
+        restore_main_window(app);
     }));
+
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(
+        tauri::plugin::Builder::<_, ()>::new("single-instance-owner")
+            .setup(|app, _| {
+                crate::single_instance_gate::verify_listener(&app.config().identifier)?;
+                Ok(())
+            })
+            .build(),
+    );
 
     // E2E WebDriver automation — only when built with `--features webdriver` (debug/test only).
     #[cfg(all(debug_assertions, feature = "webdriver"))]

@@ -15,10 +15,6 @@ export { CodeMirrorDiff } from "./Diff";
 export { CodeMirrorConflictEditor, hasConflictMarkers } from "./ConflictEditor";
 export type { ConflictResolutionChoice } from "./ConflictEditor";
 
-// SqlEditor component
-export { SqlQueryEditor } from "./SqlEditor";
-export { QueryResults } from "./SqlEditor/QueryResults";
-
 // Shared config
 export { createCodeMirrorTheme, getCodeMirrorTheme } from "./config";
 

@@ -43,7 +43,7 @@ function getTreeFingerprint<TNode extends TreeNodeBase>(
 
 export function useScrollPreservation<TNode extends TreeNodeBase>({
   flattenedNodes,
-  virtuosoRef,
+  listRef,
   lastScrollTopRef,
   rowHeight,
   scrollerDomRef,
@@ -112,7 +112,7 @@ export function useScrollPreservation<TNode extends TreeNodeBase>({
     }
 
     // Skip if no virtuoso ref
-    if (!virtuosoRef.current) {
+    if (!listRef.current) {
       return;
     }
 
@@ -141,7 +141,7 @@ export function useScrollPreservation<TNode extends TreeNodeBase>({
 
       // Scroll to the calculated position
       // Using scrollTop directly instead of scrollToIndex for precise positioning
-      virtuosoRef.current.scrollToIndex({
+      listRef.current.scrollToIndex({
         index: newIndex,
         align: "start",
         behavior: "auto",
@@ -194,7 +194,7 @@ export function useScrollPreservation<TNode extends TreeNodeBase>({
           const currentRestorationId = ++restorationIdRef.current;
           isRestoringRef.current = true;
 
-          virtuosoRef.current.scrollToIndex({
+          listRef.current.scrollToIndex({
             index: parentIndex,
             align: "start",
             behavior: "auto",
@@ -226,7 +226,7 @@ export function useScrollPreservation<TNode extends TreeNodeBase>({
     }
   }, [
     flattenedNodes,
-    virtuosoRef,
+    listRef,
     lastScrollTopRef,
     rowHeight,
     scrollerDomRef,

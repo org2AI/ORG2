@@ -24,6 +24,7 @@ import { HugeiconsIcon, type IconSvgElement } from "@src/icons";
 export interface TreeRowActionProps {
   /** Hugeicons glyph data to render */
   icon: IconSvgElement;
+  iconSize?: number;
   /** Click handler */
   onClick: (event: React.MouseEvent) => void;
   /** Tooltip text */
@@ -39,29 +40,32 @@ export interface TreeRowActionProps {
 // ============================================
 
 export const TreeRowAction: React.FC<TreeRowActionProps> = memo(
-  ({ icon, onClick, title, variant = "default", showOnRowHover = true }) => {
+  ({
+    icon,
+    iconSize = HEADER_ICON_SIZE.sm,
+    onClick,
+    title,
+    variant = "default",
+    showOnRowHover = true,
+  }) => {
     const visibilityClass = showOnRowHover
       ? "hidden! group-hover/item:flex! group-focus-within/item:flex!"
       : "flex";
 
     return (
       <Button
-        htmlType="button"
         size="sidebar"
-        variant={variant === "default" ? "tertiary" : variant}
-        appearance="soft"
+        variant="tertiary"
+        tone={
+          variant === "danger" || variant === "success" ? variant : undefined
+        }
+        hoverTone={variant === "primary" ? "primary" : undefined}
         iconOnly
         aria-label={title}
         className={`action-btn group/action ${visibilityClass}`}
         onClick={onClick}
         title={title}
-        icon={
-          <HugeiconsIcon
-            icon={icon}
-            size={HEADER_ICON_SIZE.sm}
-            strokeWidth={1.75}
-          />
-        }
+        icon={<HugeiconsIcon icon={icon} size={iconSize} strokeWidth={1.75} />}
       />
     );
   }

@@ -285,7 +285,6 @@ export function captureCanvasRegion(
     targets.length === 1
       ? primaryCapture.label
       : i18n.t("sessions:domSelection.elementsCount", {
-          defaultValue: "{{count}} elements",
           count: targets.length,
         });
 
@@ -294,7 +293,6 @@ export function captureCanvasRegion(
     kind: "region",
     label,
     tooltipLabel: i18n.t("sessions:domSelection.regionLabel", {
-      defaultValue: "Region · {{label}}",
       label,
     }),
     rect: region,

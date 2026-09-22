@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+
+import { createLogger } from "@src/hooks/logger";
 
 import { useMobileRemote } from "../app";
 import type { MobileConnectionConfig } from "../connection/types";
@@ -17,9 +19,12 @@ export function ConnectingLiveBridge({
   demoMode,
   onComplete,
 }: ConnectingLiveBridgeProps) {
-  const { connectLive } = useMobileRemote();
+  const { connectLive, connection } = useMobileRemote();
   const { runtime } = useMobileRemotePlatform();
   const startedRef = useRef(false);
+  const [failedAttempt, setFailedAttempt] =
+    useState<MobileConnectionConfig | null>(null);
+  const completedRef = useRef(false);
 
   const runDemoConnecting = useCallback(() => {
     const timer = runtime.setTimeout(onComplete, 900);
@@ -28,7 +33,20 @@ export function ConnectingLiveBridge({
 
   useEffect(() => {
     startedRef.current = false;
+    completedRef.current = false;
   }, [pendingConfig]);
+
+  useEffect(() => {
+    if (
+      failedAttempt &&
+      failedAttempt === pendingConfig &&
+      !completedRef.current &&
+      connection.status === "connected"
+    ) {
+      completedRef.current = true;
+      onComplete();
+    }
+  }, [failedAttempt, pendingConfig, connection.status, onComplete]);
 
   // The demo timer and the live connect are separate attempts with separate
   // inputs. Keeping them in one effect put demoMode in the live path's
@@ -52,11 +70,14 @@ export function ConnectingLiveBridge({
       try {
         await connectLive(pendingConfig);
         if (cancelled) return;
+        completedRef.current = true;
         onComplete();
       } catch {
         // ConnectionErrorScreen handles connection.status === "error".
+        // A confirmed device may instead be waiting for Desktop to restart.
+        if (!cancelled) setFailedAttempt(pendingConfig);
       }
-    })();
+    })().catch((error) => logger.warn("Background operation failed", error));
 
     return () => {
       cancelled = true;
@@ -67,3 +88,5 @@ export function ConnectingLiveBridge({
 }
 
 ConnectingLiveBridge.displayName = "ConnectingLiveBridge";
+
+const logger = createLogger("ConnectingLiveBridge");

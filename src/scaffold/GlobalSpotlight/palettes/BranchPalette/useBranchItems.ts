@@ -51,6 +51,7 @@ export function useBranchItems(
       otherBranches:
         t("selectors.branch.labels.otherBranches") ||
         getLabel(BRANCH_PALETTE_CONFIG, "otherBranches"),
+      defaultBranches: t("selectors.branch.labels.defaultBranches"),
       current: t("selectors.branch.labels.current"),
       recent: t("selectors.branch.labels.recent"),
       currentCommit: t("selectors.branch.labels.currentCommit"),
@@ -214,6 +215,22 @@ export function useBranchItems(
       filteredBranches.filter((branch) => !branch.worktreePath)
     );
 
+    // Default branches (main/master/develop/dev) pinned above everything.
+    if (categorized.default.length > 0) {
+      result.push({
+        id: "__header_default__",
+        label: labels.defaultBranches,
+        desc: "",
+        icon: "",
+        type: "option" as const,
+        data: { isHeader: true },
+        action: () => {},
+      });
+      categorized.default.forEach((branch) => {
+        result.push(createBranchItem(branch));
+      });
+    }
+
     if (categorized.recent.length > 0) {
       result.push({
         id: "__header_recent__",
@@ -230,7 +247,7 @@ export function useBranchItems(
     }
 
     // Other branches
-    if (categorized.other.length > 0 || categorized.default.length > 0) {
+    if (categorized.other.length > 0) {
       result.push({
         id: "__header_other__",
         label: labels.otherBranches,
@@ -239,11 +256,6 @@ export function useBranchItems(
         type: "option" as const,
         data: { isHeader: true },
         action: () => {},
-      });
-      // Default branches (main/master/develop/dev) above the alphabetical
-      // tail so they're still findable without scrolling all the way.
-      categorized.default.forEach((branch) => {
-        result.push(createBranchItem(branch));
       });
       categorized.other.forEach((branch) => {
         result.push(createBranchItem(branch));

@@ -8,22 +8,19 @@
 import { useAtomValue } from "jotai";
 import React, { memo, useCallback, useMemo, useRef, useState } from "react";
 
-import { useActionSystemOptional } from "@src/ActionSystem";
 import Button from "@src/components/Button";
+import { FileTreeHoverPreview } from "@src/components/FileTreePreview/exports";
+import { SidebarSectionHeader } from "@src/components/SidebarSectionHeader";
 import {
   GitStatusBadge,
-  TREE_INDENT_PX,
-  TREE_PADDING_X,
-  TREE_ROW_INSET_CLASS,
-  TREE_ROW_INSET_X,
-  TREE_ROW_ROUNDED_CLASS,
   TreeRowAction,
+  TreeRowActionGroup,
   TreeRowBase,
 } from "@src/components/TreeRow";
 import type { GitStatusInfo, TreeRowNode } from "@src/components/TreeRow";
 import {
   COUNT_BADGE,
-  PRIMARY_SIDEBAR_HOVER,
+  HEADER_ICON_SIZE,
   getCountBadgeSizeClass,
 } from "@src/config/workstation/tokens";
 import {
@@ -33,21 +30,21 @@ import {
 import {
   Add01Icon,
   Archive03Icon,
-  ArrowDown01Icon,
-  ArrowRight01Icon,
   FileDiffIcon,
   HugeiconsIcon,
   MinusSignIcon,
   Tick01Icon,
   Undo03Icon,
 } from "@src/icons";
+import { useActionSystemOptional } from "@src/scaffold/ActionSystem";
+import { gitSourceControlColorFileNamesAtom } from "@src/store/ui/editorSettingsAtom";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import type { GitFile } from "@src/types/git/types";
 
 import { SHORTCUTS } from "../../../hooks/useSourceControlShortcuts";
 import { GIT_LABELS } from "../config";
 import type { SourceControlNode } from "../utils/virtualizedTreeUtils";
-import type { GitFileTreeNode } from "./GitFileTreeItem";
+import type { GitFileTreeNode } from "./GitFileTreeNode";
 import SourceControlContextMenu from "./SourceControlContextMenu";
 
 // ============================================
@@ -129,8 +126,6 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
       : sectionCount === 0
         ? COUNT_BADGE.muted
         : COUNT_BADGE.primary;
-    const paddingLeft =
-      depth * TREE_INDENT_PX + TREE_PADDING_X - TREE_ROW_INSET_X;
 
     const handleToggle = useCallback(() => {
       if (onSectionToggle && node.section) {
@@ -138,6 +133,8 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
       }
     }, [onSectionToggle, node.section]);
 
+    // Match TreeRowAction: reveal every action together without an opacity fade.
+    // Mixing fading and display-hidden buttons makes Discard move during reveal.
     // Section-specific actions
     let actions: React.ReactNode = null;
 
@@ -145,28 +142,28 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
       actions = (
         <>
           <Button
-            className={`group/discard opacity-0 group-hover/header:opacity-100`}
+            className="shrink-0"
             onClick={(event) => {
               event.stopPropagation();
               onDiscardAll?.();
             }}
             title={GIT_LABELS.discardAllChanges}
             size="sidebar"
-            variant="danger"
-            appearance="soft"
+            variant="tertiary"
+            tone="danger"
             iconOnly
             icon={
               <HugeiconsIcon
                 icon={Undo03Icon}
                 data-icon="undo-3"
-                size={14}
+                size={HEADER_ICON_SIZE.discard}
                 strokeWidth={1.75}
               />
             }
           />
           {onStashPush && hasChangesToStash && (
             <Button
-              className={`hidden! shrink-0 group-hover/header:flex! disabled:opacity-50`}
+              className="shrink-0 disabled:opacity-50"
               onClick={(event) => {
                 event.stopPropagation();
                 onStashPush();
@@ -175,7 +172,6 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
               title={GIT_LABELS.stashAllChanges}
               size="sidebar"
               variant="tertiary"
-              appearance="soft"
               iconOnly
               icon={
                 <HugeiconsIcon
@@ -188,7 +184,7 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
             />
           )}
           <Button
-            className={`hidden! shrink-0 group-hover/header:flex!`}
+            className="shrink-0"
             onClick={(event) => {
               event.stopPropagation();
               onStageAll?.();
@@ -196,7 +192,6 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
             title={GIT_LABELS.stageChanges}
             size="sidebar"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               <HugeiconsIcon
@@ -213,7 +208,7 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
       actions = (
         <>
           <Button
-            className={`opacity-0 group-hover/header:opacity-100`}
+            className="shrink-0"
             onClick={(event) => {
               event.stopPropagation();
               onUnstageAll?.();
@@ -221,7 +216,6 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
             title={`Unstage All Changes\n\nShortcut: ${SHORTCUTS.unstageAll}`}
             size="sidebar"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               <HugeiconsIcon
@@ -233,7 +227,7 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
             }
           />
           <Button
-            className={`opacity-0 group-hover/header:opacity-100`}
+            className="shrink-0"
             onClick={(event) => {
               event.stopPropagation();
               onOpenStagedChanges?.();
@@ -241,7 +235,6 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
             title={GIT_LABELS.openStagedChanges}
             size="sidebar"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               <HugeiconsIcon
@@ -257,54 +250,21 @@ const SectionHeaderRow: React.FC<SectionHeaderRowProps> = memo(
     }
 
     return (
-      <div
-        className={`group/header ${TREE_ROW_INSET_CLASS} flex h-[28px] cursor-pointer items-center gap-1.5 ${TREE_ROW_ROUNDED_CLASS} ${PRIMARY_SIDEBAR_HOVER.row}`}
-        style={{
-          paddingLeft: `${paddingLeft}px`,
-          paddingRight: `${12 - TREE_ROW_INSET_X}px`,
-        }}
-        onClick={handleToggle}
-      >
-        {/* Chevron */}
-        {node.expanded ? (
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            data-icon="chevron-down"
-            size={14}
-            className="text-text-3"
-          />
-        ) : (
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            data-icon="chevron-right"
-            size={14}
-            className="text-text-3"
-          />
-        )}
-
-        {/* Title */}
-        <span className="relative min-w-0 truncate text-[11px] font-medium text-text-2 uppercase">
-          {node.name}
-          {/* Loading indicator */}
-          {node.loading && (
-            <span className="absolute -bottom-0.5 left-0 h-[2px] w-full overflow-hidden rounded-full bg-fill-3">
-              <span className="absolute h-full w-1/3 animate-progress-slide rounded-full bg-primary-6" />
-            </span>
-          )}
-        </span>
-
-        <div className="flex-1" />
-
-        {/* Action buttons */}
-        {actions}
-
-        {/* Count badge */}
-        <span
-          className={`${COUNT_BADGE.base} ${getCountBadgeSizeClass(sectionCount)} ${countBadgeVariant}`}
-        >
-          {sectionCount}
-        </span>
-      </div>
+      <SidebarSectionHeader
+        title={node.name}
+        depth={depth}
+        expanded={Boolean(node.expanded)}
+        onToggle={handleToggle}
+        loading={node.loading}
+        actions={actions}
+        badge={
+          <span
+            className={`${COUNT_BADGE.base} ${getCountBadgeSizeClass(sectionCount)} ${countBadgeVariant}`}
+          >
+            {sectionCount}
+          </span>
+        }
+      />
     );
   }
 );
@@ -352,6 +312,7 @@ const FileDirectoryRow: React.FC<FileDirectoryRowProps> = memo(
     const isStaged = node.file?.staged ?? false;
     const rowRef = useRef<HTMLDivElement>(null);
     const activeWorkspaceRootPath = useAtomValue(activeWorkspaceRootPathAtom);
+    const colorFileNames = useAtomValue(gitSourceControlColorFileNamesAtom);
     const actionSystem = useActionSystemOptional();
     const [showContextMenu, setShowContextMenu] = useState(false);
 
@@ -497,59 +458,77 @@ const FileDirectoryRow: React.FC<FileDirectoryRowProps> = memo(
 
     return (
       <>
-        <TreeRowBase
-          ref={rowRef}
-          node={treeRowNode}
-          depth={depth}
-          isSelected={isSelected}
-          isMultiSelected={isMultiSelected}
-          gitStatus={null}
-          onClick={handleClick}
-          onContextMenu={handleContextMenu}
-          rounded={shouldRound}
-          onMouseDown={handleMouseDown}
-          showPathHint={showPathHint}
+        <FileTreeHoverPreview
+          path={absolutePath}
+          itemType={isDirectory ? "folder" : "file"}
+          repoPath={effectiveRepoPath ?? undefined}
+          as="div"
+          display="block"
+          placement="right"
         >
-          {/* Action buttons for files (shown on hover) */}
-          {!isDirectory && node.file && (
-            <>
-              {/* Discard action button */}
-              {onDiscard && (
-                <TreeRowAction
-                  icon={Undo03Icon}
-                  variant="danger"
-                  onClick={handleDiscard}
-                  title={GIT_LABELS.discardChanges}
-                />
+          <TreeRowBase
+            ref={rowRef}
+            node={treeRowNode}
+            depth={depth}
+            isSelected={isSelected}
+            isMultiSelected={isMultiSelected}
+            gitStatus={gitStatus}
+            colorLabelByGitStatus={!isDirectory && colorFileNames}
+            onClick={handleClick}
+            onContextMenu={handleContextMenu}
+            rounded={shouldRound}
+            onMouseDown={handleMouseDown}
+            showPathHint={showPathHint}
+            showNativeTitle={false}
+          >
+            {/* Action buttons for files (shown on hover) */}
+            {!isDirectory &&
+              node.file &&
+              (onDiscard ||
+                onStageToggle ||
+                (isConflictFile && onStageResolved)) && (
+                <TreeRowActionGroup>
+                  {/* Discard action button */}
+                  {onDiscard && (
+                    <TreeRowAction
+                      showOnRowHover={false}
+                      icon={Undo03Icon}
+                      iconSize={HEADER_ICON_SIZE.discard}
+                      variant="danger"
+                      onClick={handleDiscard}
+                      title={GIT_LABELS.discardChanges}
+                    />
+                  )}
+                  {/* Stage/Unstage/Resolve action button */}
+                  {(onStageToggle || (isConflictFile && onStageResolved)) && (
+                    <TreeRowAction
+                      showOnRowHover={false}
+                      icon={
+                        isConflictFile
+                          ? Tick01Icon
+                          : isStaged
+                            ? MinusSignIcon
+                            : Add01Icon
+                      }
+                      variant={isConflictFile ? "success" : "default"}
+                      onClick={
+                        isConflictFile ? handleStageResolved : handleStageToggle
+                      }
+                      title={
+                        isConflictFile
+                          ? "Mark as Resolved (Stage)"
+                          : isStaged
+                            ? "Unstage Changes"
+                            : "Stage Changes"
+                      }
+                    />
+                  )}
+                </TreeRowActionGroup>
               )}
-              {/* Stage/Unstage/Resolve action button */}
-              {(onStageToggle || (isConflictFile && onStageResolved)) && (
-                <TreeRowAction
-                  icon={
-                    isConflictFile
-                      ? Tick01Icon
-                      : isStaged
-                        ? MinusSignIcon
-                        : Add01Icon
-                  }
-                  variant={isConflictFile ? "success" : "default"}
-                  onClick={
-                    isConflictFile ? handleStageResolved : handleStageToggle
-                  }
-                  title={
-                    isConflictFile
-                      ? "Mark as Resolved (Stage)"
-                      : isStaged
-                        ? "Unstage Changes"
-                        : "Stage Changes"
-                  }
-                />
-              )}
-            </>
-          )}
-          {/* Git status badge */}
-          <GitStatusBadge status={gitStatus} isDirectory={isDirectory} />
-        </TreeRowBase>
+            {/* Git status badge */}
+            <GitStatusBadge status={gitStatus} isDirectory={isDirectory} />
+          </TreeRowBase>
+        </FileTreeHoverPreview>
         {showContextMenu && contextMenuFile && actionSystem?.dispatch && (
           <SourceControlContextMenu
             file={contextMenuFile}

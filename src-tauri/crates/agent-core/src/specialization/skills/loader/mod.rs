@@ -29,10 +29,17 @@ pub use skill_env_storage::load_and_apply_skill_env;
 pub use types::{DescriptionQuality, SkillInfo, SkillListingEntry};
 
 // Re-export Tauri command handler items so `generate_handler!` can find them
-// at the `loader::` path (it looks for `__cmd__*` siblings of the function).
-pub use bundled_files::{__cmd__skills_read_files_batch, __cmd__skills_write_files_batch};
+// at the `loader::` path (it looks for `__cmd__*` and `__tauri_command_name_*` siblings of the function).
+pub use bundled_files::{
+    __cmd__skills_read_files_batch, __cmd__skills_write_files_batch,
+    __tauri_command_name_skills_read_files_batch, __tauri_command_name_skills_write_files_batch,
+};
 pub use commands::{
     __cmd__skills_create, __cmd__skills_list, __cmd__skills_move, __cmd__skills_read,
     __cmd__skills_share_to_org, __cmd__skills_toggle, __cmd__skills_update,
-    __cmd__skills_validate_name,
+    __cmd__skills_validate_name, __tauri_command_name_skills_create,
+    __tauri_command_name_skills_list, __tauri_command_name_skills_move,
+    __tauri_command_name_skills_read, __tauri_command_name_skills_share_to_org,
+    __tauri_command_name_skills_toggle, __tauri_command_name_skills_update,
+    __tauri_command_name_skills_validate_name,
 };

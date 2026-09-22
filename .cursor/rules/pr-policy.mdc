@@ -12,7 +12,8 @@ Before creating or updating any pull request, read and follow
 
 Hard gates:
 
-- One pull request has one responsibility.
+- One pull request has one coherent theme or objective; related changes may
+  be grouped as described in `.github/PR_RULES.md`.
 - The title uses `type(lowercase-kebab-scope): summary`.
 - The description begins with `Problem`, `Solution`, and `Potential risks` in
   that exact order and includes a non-empty `Verification` section.

@@ -62,7 +62,10 @@ export interface BuildLocalChannelsMenuItemsParams {
   tCommon: TFunction;
   onCreateClick: (event: MouseEvent<HTMLButtonElement>) => void;
   /** Opens the row's overflow (native context) menu. */
-  onOpenChannelMenu: (channel: LocalChannel) => void;
+  onOpenChannelMenu: (
+    channel: LocalChannel,
+    event: MouseEvent<HTMLButtonElement>
+  ) => void;
   onUnarchive: (channel: LocalChannel) => void;
   onDeleteChannel: (channel: LocalChannel) => void;
 }
@@ -102,7 +105,7 @@ export function buildLocalChannelsMenuItems({
             icon: MoreHorizontalIcon,
             label: tCommon("actions.more"),
             dataTestId: `local-channel-more-${channel.id}`,
-            onClick: () => onOpenChannelMenu(channel),
+            onClick: (event) => onOpenChannelMenu(channel, event),
           },
         ],
       })

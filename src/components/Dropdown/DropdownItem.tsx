@@ -88,11 +88,21 @@ export interface DropdownItemProps {
    */
   disabled?: boolean;
 
+  /** Destructive action styling; disabled rows retain the standard muted state. */
+  danger?: boolean;
+
   /**
    * Whether this item is highlighted (keyboard navigation)
    * @default false
    */
   highlighted?: boolean;
+
+  /**
+   * Whether pointer hover fills the row. Embedded controls such as switches
+   * own their hover feedback, so their containing row should remain clear.
+   * @default true
+   */
+  hoverable?: boolean;
 
   /**
    * Click handler
@@ -171,7 +181,9 @@ const DropdownItemInner = forwardRef<HTMLDivElement, DropdownItemProps>(
       showCheckmark = true,
       selectedCheckPlacement = "trailing",
       disabled = false,
+      danger = false,
       highlighted = false,
+      hoverable = true,
       onClick,
       onMouseEnter,
       className = "",
@@ -207,11 +219,15 @@ const DropdownItemInner = forwardRef<HTMLDivElement, DropdownItemProps>(
     const itemClasses = [
       DROPDOWN_CLASSES.item,
       fullWidth && "w-full justify-start whitespace-nowrap text-left",
-      !disabled && DROPDOWN_CLASSES.itemHover,
+      hoverable && !disabled && DROPDOWN_CLASSES.itemHover,
       // Only keyboard `highlighted` gets a filled background. The `selected`
       // state is shown by the checkmark + primary-6 text only (no bg fill).
-      highlighted && !disabled && "bg-fill-2",
-      selected && DROPDOWN_CLASSES.itemSelected,
+      highlighted &&
+        !disabled &&
+        (danger ? DROPDOWN_CLASSES.itemDangerActive : "bg-fill-2"),
+      selected && !danger && DROPDOWN_CLASSES.itemSelected,
+      danger && !disabled && DROPDOWN_CLASSES.itemDanger,
+      danger && hoverable && !disabled && DROPDOWN_CLASSES.itemDangerHover,
       disabled && DROPDOWN_CLASSES.itemDisabled,
       className,
     ]
@@ -244,7 +260,7 @@ const DropdownItemInner = forwardRef<HTMLDivElement, DropdownItemProps>(
         {/* Icon */}
         {icon && (
           <span
-            className={`shrink-0 ${selected ? "text-primary-6" : "text-text-2"}`}
+            className={`shrink-0 ${danger && !disabled ? DROPDOWN_CLASSES.itemDangerIcon : selected && !danger ? "text-primary-6" : "text-text-2"}`}
           >
             {showCheckmark && selected && selectedCheckPlacement === "icon" ? (
               <HugeiconsIcon
@@ -261,7 +277,9 @@ const DropdownItemInner = forwardRef<HTMLDivElement, DropdownItemProps>(
         )}
 
         {/* Label */}
-        <span className={`flex-1 truncate ${selected ? "text-primary-6" : ""}`}>
+        <span
+          className={`flex-1 truncate ${selected && !danger ? "text-primary-6" : ""}`}
+        >
           {children}
         </span>
 

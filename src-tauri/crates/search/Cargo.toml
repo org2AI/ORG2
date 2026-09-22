@@ -18,6 +18,7 @@ tracing = "0.1"
 anyhow = "1.0"
 regex = "1.9.5"
 ignore = "0.4"
+globset = "0.4"
 rayon = "1.8"
 scopeguard = "1.2"
 
@@ -29,7 +30,7 @@ grep-searcher = "0.1"
 grep-regex = "0.1"
 
 # LRU cache for keyword/regex search result memoization.
-lru = "0.12"
+lru = "0.16"
 
 # Tree-sitter for symbol indexing (TS, JS, Python, Rust grammars).
 tree-sitter = "0.24"

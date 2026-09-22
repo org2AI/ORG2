@@ -99,7 +99,6 @@ export const OrgSendMessageBubble: React.FC<OrgSendMessageBubbleProps> = memo(
         return t("simulator.replay.messages.bubble.senderTitle.sentBroadcast", {
           ns: "sessions",
           subject: rawAgentName,
-          defaultValue: "{{subject}} sent a message to multiple agents",
         });
       }
       const recipient = resolveRecipientLabel(card.recipient, orgMembers);
@@ -108,13 +107,11 @@ export const OrgSendMessageBubble: React.FC<OrgSendMessageBubbleProps> = memo(
           ns: "sessions",
           subject: rawAgentName,
           recipient,
-          defaultValue: "{{subject}} sent a message to {{recipient}}",
         });
       }
       return t("simulator.replay.messages.bubble.senderTitle.sentMessage", {
         ns: "sessions",
         subject: rawAgentName,
-        defaultValue: "{{subject}} sent a message",
       });
     }, [args, orgMembers, rawAgentName, result, t]);
 

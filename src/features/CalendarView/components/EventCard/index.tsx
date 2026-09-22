@@ -6,7 +6,8 @@
  */
 import React from "react";
 
-import SessionHoverCard from "@src/components/SessionHoverCard";
+import Button from "@src/components/Button";
+import SessionHoverCard from "@src/features/SessionHoverCard";
 import {
   STATUS_COLORS,
   WORK_ITEM_STATUS_COLOR,
@@ -74,7 +75,8 @@ const EventCard: React.FC<EventCardProps> = ({
   if (variant === "month") {
     return (
       <SessionHoverCard sessionId={event.id} position="right-start">
-        <button
+        <Button
+          layout="custom"
           onClick={handleClick}
           className={`group flex w-full items-center gap-1.5 rounded px-1.5 py-0.5 text-left text-xs transition-all hover:brightness-110 ${
             isSelected ? "ring-1 ring-primary-6" : ""
@@ -89,7 +91,7 @@ const EventCard: React.FC<EventCardProps> = ({
             style={{ backgroundColor: colors.dot }}
           />
           <span className="truncate">{event.title}</span>
-        </button>
+        </Button>
       </SessionHoverCard>
     );
   }
@@ -107,7 +109,8 @@ const EventCard: React.FC<EventCardProps> = ({
 
   return (
     <SessionHoverCard sessionId={event.id} position="right-start">
-      <button
+      <Button
+        layout="custom"
         onClick={handleClick}
         className={`absolute overflow-hidden rounded text-left text-xs transition-all hover:brightness-110 ${
           isSelected ? "ring-1 ring-primary-6" : ""
@@ -132,7 +135,7 @@ const EventCard: React.FC<EventCardProps> = ({
             </div>
           )}
         </div>
-      </button>
+      </Button>
     </SessionHoverCard>
   );
 };

@@ -297,6 +297,18 @@ pub(super) fn resolve_batch_provider_info(
     batch: &[Learning],
     batch_account_id: Option<&str>,
 ) -> Result<BatchProviderInfo, String> {
+    // A batch can contain learnings from more than its first session. An
+    // ordinary first row (or explicit batch account) must not conceal a later
+    // dynamic purchase and silently charge that row to the ordinary account.
+    let mut checked = std::collections::HashSet::new();
+    for session_id in batch
+        .iter()
+        .filter_map(|learning| learning.source_session_id.as_deref())
+    {
+        if checked.insert(session_id) {
+            crate::memory::reflection::ensure_account_background_session(conn, session_id)?;
+        }
+    }
     if let Some(first) = batch.first() {
         if let Some(session_id) = first.source_session_id.as_deref() {
             // Distinguish `QueryReturnedNoRows` (legitimate — the
@@ -382,6 +394,54 @@ mod tests {
     use crate::providers::traits::LLMResponse;
     use crate::specialization::memory::consolidation::tests_support::{pending, setup_conn};
     use crate::specialization::memory::learnings::LearningStatus;
+
+    #[test]
+    fn dynamic_learning_batch_cannot_borrow_another_sessions_account() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE agent_sessions(session_id TEXT, model TEXT, account_id TEXT, credential_source TEXT);
+            INSERT INTO agent_sessions VALUES('package','model',NULL,'market:private-selection');
+            INSERT INTO agent_sessions VALUES('ordinary','model','ordinary-account',NULL);").unwrap();
+        for sessions in [["package", "ordinary"], ["ordinary", "package"]] {
+            let batch: Vec<_> = sessions
+                .into_iter()
+                .map(|session| {
+                    let mut learning = pending("agent:test", "observation");
+                    learning.source_session_id = Some(session.into());
+                    learning
+                })
+                .collect();
+            for account in [None, Some("explicit-batch-account")] {
+                let error = resolve_batch_provider_info(&conn, "agent:test", &batch, account)
+                    .err()
+                    .expect("dynamic batch must be skipped before constructing a provider");
+                assert!(error.contains("no authorized auxiliary provider"));
+                assert!(!error.contains("private-selection"));
+            }
+        }
+    }
+
+    #[test]
+    fn ordinary_learning_batch_retains_its_explicit_account_precedence() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE agent_sessions(session_id TEXT, model TEXT, account_id TEXT, credential_source TEXT);
+            INSERT INTO agent_sessions VALUES('ordinary','selected-model','session-account',NULL);").unwrap();
+        let mut learning = pending("agent:test", "ordinary observation");
+        learning.source_session_id = Some("ordinary".into());
+        for (override_account, expected) in [
+            (None, "session-account"),
+            (Some("batch-account"), "batch-account"),
+        ] {
+            let info = resolve_batch_provider_info(
+                &conn,
+                "agent:test",
+                std::slice::from_ref(&learning),
+                override_account,
+            )
+            .unwrap();
+            assert_eq!(info.model, "selected-model");
+            assert_eq!(info.account_id.as_deref(), Some(expected));
+        }
+    }
 
     struct RateLimitedProvider {
         calls: Arc<AtomicUsize>,

@@ -13,6 +13,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import Dropdown, { type DropdownPosition } from "@src/components/Dropdown";
 import DropdownSelectedCheck from "@src/components/Dropdown/DropdownSelectedCheck";
 import {
@@ -204,9 +205,9 @@ export const PresenceMenuItems: React.FC<PresenceMenuItemsProps> = ({
       {PRESENCE_MENU_ORDER.map((option) => {
         const OptionIcon = PRESENCE_ICON[option];
         return (
-          <button
+          <Button
+            layout="custom"
             key={option}
-            type="button"
             onClick={() => handleSelectMode(option)}
             className={DROPDOWN_CLASSES.menuActionItem}
           >
@@ -221,7 +222,7 @@ export const PresenceMenuItems: React.FC<PresenceMenuItemsProps> = ({
               label={t(`sidebar.presence.${option}`)}
               selected={option === mode}
             />
-          </button>
+          </Button>
         );
       })}
 
@@ -232,9 +233,9 @@ export const PresenceMenuItems: React.FC<PresenceMenuItemsProps> = ({
             const RoleIcon = resolveCustomRoleIcon(role.iconId);
             const roleMode = buildCustomRoleMode(role.id);
             return (
-              <button
+              <Button
+                layout="custom"
                 key={role.id}
-                type="button"
                 onClick={() => handleSelectMode(roleMode)}
                 className={DROPDOWN_CLASSES.menuActionItem}
               >
@@ -249,7 +250,7 @@ export const PresenceMenuItems: React.FC<PresenceMenuItemsProps> = ({
                   label={role.label}
                   selected={roleMode === mode}
                 />
-              </button>
+              </Button>
             );
           })}
         </>
@@ -262,9 +263,9 @@ export const PresenceMenuItems: React.FC<PresenceMenuItemsProps> = ({
             {t("sidebar.presence.awayDurationHeading")}
           </div>
           {AWAY_DURATIONS.map((entry) => (
-            <button
+            <Button
+              layout="custom"
               key={entry.id}
-              type="button"
               onClick={() => handleSelectAwayDuration(entry.id)}
               className={DROPDOWN_CLASSES.menuActionItem}
             >
@@ -272,7 +273,7 @@ export const PresenceMenuItems: React.FC<PresenceMenuItemsProps> = ({
                 label={t(entry.labelKey)}
                 selected={presence.awayDurationLabel === entry.id}
               />
-            </button>
+            </Button>
           ))}
         </>
       )}
@@ -313,12 +314,10 @@ export const PresenceMenuButton: React.FC<PresenceMenuButtonProps> = ({
     : CUSTOM_ROLE_COLOR_CLASS;
   const modeLabel = isBuiltInPresenceMode(mode)
     ? t(PRESENCE_LABEL_KEY[variant][mode])
-    : (activeCustomRole?.label ??
-      t("sidebar.presence.unknownRole", { defaultValue: "Unknown role" }));
+    : (activeCustomRole?.label ?? t("sidebar.presence.unknownRole"));
   const ariaLabel = isBuiltInPresenceMode(mode)
     ? t(PRESENCE_LABEL_KEY.concise[mode])
-    : (activeCustomRole?.label ??
-      t("sidebar.presence.unknownRole", { defaultValue: "Unknown role" }));
+    : (activeCustomRole?.label ?? t("sidebar.presence.unknownRole"));
 
   const backLabel = useMemo(() => {
     if (mode !== USER_PRESENCE_MODE.AWAY || !presence.backAtMs) return null;

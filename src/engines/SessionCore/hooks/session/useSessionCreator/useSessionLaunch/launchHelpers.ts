@@ -1,9 +1,8 @@
 /**
  * Shared helper functions for session launch.
  */
-import type { NavigateFunction } from "react-router-dom";
-
 import { ROUTES, isWorkbenchPath } from "@src/config/routes";
+import { type AppNavigateFunction as NavigateFunction } from "@src/hooks/navigation/useAppNavigate";
 import type { StationMode } from "@src/store/ui/simulatorAtom";
 
 import type { SessionLaunchSuccessInfo } from "./types";

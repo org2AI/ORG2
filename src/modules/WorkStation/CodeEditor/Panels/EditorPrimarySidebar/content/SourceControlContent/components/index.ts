@@ -2,11 +2,6 @@
  * Re-export components for SourceControlContent
  */
 
-// Git file display components
-export { default as GitFileListItem } from "./GitFileListItem";
-
-export { default as GitFileTreeItem } from "./GitFileTreeItem";
-
 // Virtualized tree row component
 export { default as SourceControlTreeRow } from "./SourceControlTreeRow";
 

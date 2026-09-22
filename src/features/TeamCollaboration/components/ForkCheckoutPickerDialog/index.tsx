@@ -13,6 +13,7 @@ import { useAtom } from "jotai";
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import useSharedRepoList from "@src/scaffold/GlobalSpotlight/hooks/data/useSharedRepoList";
 import type { RepoItem } from "@src/scaffold/GlobalSpotlight/types";
 
@@ -101,9 +102,9 @@ const ForkCheckoutPickerDialog: React.FC = () => {
               const localPath = repo.fs_uri;
               const selectable = matches && Boolean(localPath);
               return (
-                <button
+                <Button
+                  layout="custom"
                   key={repo.id}
-                  type="button"
                   disabled={!selectable}
                   onClick={() => {
                     if (!selectable || !localPath) return;
@@ -127,7 +128,7 @@ const ForkCheckoutPickerDialog: React.FC = () => {
                         ? t("collaboration.repoPicker.noRemote")
                         : keys.join(" · ")}
                   </span>
-                </button>
+                </Button>
               );
             })
           )}

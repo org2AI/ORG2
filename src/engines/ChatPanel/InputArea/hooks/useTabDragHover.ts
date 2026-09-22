@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useState } from "react";
 
-import { isWorkstationTabDragActive } from "@src/shared/dnd/dragSideChannel";
+import { isWorkstationTabDragActive } from "@src/util/dnd/dragSideChannel";
 
 /**
  * Tracks whether a WorkStation tab is being dragged over a given drop-target

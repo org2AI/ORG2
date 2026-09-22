@@ -21,6 +21,7 @@ fn with_test_home<T>(test: impl FnOnce(&Path) -> T) -> T {
     test(sandbox.path())
 }
 
+#[cfg(unix)]
 fn append_payload(writer: &mut ShellReplayWriter, total: usize, chunk_size: usize) {
     let chunk = vec![b'r'; chunk_size];
     let mut remaining = total;

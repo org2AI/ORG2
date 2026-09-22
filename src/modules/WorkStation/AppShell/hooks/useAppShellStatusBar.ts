@@ -1,7 +1,6 @@
 import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 
-import { useWorkStationPanels } from "@src/hooks/tabHost/useWorkStationPanels";
 import {
   openBranchSpotlight,
   openWorkingDirectorySpotlight,
@@ -25,49 +24,30 @@ const SPOTLIGHT_CALLBACKS = {
 } as const;
 
 interface UseAppShellStatusBarOptions {
-  primaryPanelCollapsed: boolean;
   showSettingsButton: boolean;
   handleOpenSettings: () => void;
-  workStationPanels: ReturnType<typeof useWorkStationPanels>;
 }
 
 export function useAppShellStatusBar({
-  primaryPanelCollapsed,
   showSettingsButton,
   handleOpenSettings,
-  workStationPanels,
 }: UseAppShellStatusBarOptions): void {
   const setPerAppStatusBarCallbacks = useSetAtom(perAppStatusBarCallbacksAtom);
 
   useEffect(() => {
-    // Panel callbacks tied to the shared `workStationPrimarySidebarCollapsedAtom`.
     // Browser registers its own status-bar callbacks from useBrowserLayoutState;
     // leave its independently owned slot untouched.
-    const sharedPanelCallbacks = {
-      onTogglePrimaryPanel: workStationPanels.togglePrimarySidebar,
-      primaryPanelCollapsed,
-      layoutMode: workStationPanels.layoutMode,
-    };
     setPerAppStatusBarCallbacks((prev) => ({
       ...prev,
       code: {
         ...prev.code,
         ...SPOTLIGHT_CALLBACKS,
         onOpenSettings: showSettingsButton ? handleOpenSettings : undefined,
-        ...sharedPanelCallbacks,
       },
       project: {
         ...prev.project,
         onOpenSettings: showSettingsButton ? handleOpenSettings : undefined,
-        ...sharedPanelCallbacks,
       },
     }));
-  }, [
-    handleOpenSettings,
-    showSettingsButton,
-    setPerAppStatusBarCallbacks,
-    workStationPanels.togglePrimarySidebar,
-    primaryPanelCollapsed,
-    workStationPanels.layoutMode,
-  ]);
+  }, [handleOpenSettings, showSettingsButton, setPerAppStatusBarCallbacks]);
 }

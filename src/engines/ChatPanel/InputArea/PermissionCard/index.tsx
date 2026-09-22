@@ -187,8 +187,8 @@ const PermissionCard: React.FC<PermissionCardProps> = ({
       onCollapse={onCollapse}
       label={
         isCommandConfirm
-          ? t("chat.commandConfirmTitle", "Command Requires Approval")
-          : t("chat.permissionPrompt", "Your permission is needed")
+          ? t("chat.commandConfirmTitle")
+          : t("chat.permissionPrompt")
       }
       badge={
         queue.length > 1 ? (

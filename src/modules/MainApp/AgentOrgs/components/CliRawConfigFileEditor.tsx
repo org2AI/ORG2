@@ -5,6 +5,12 @@ import { rpc } from "@src/api/tauri/rpc";
 import type { AvailableAgent } from "@src/api/tauri/rpc/schemas/validation";
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
+import {
+  SECTION_ACTION_GAP_CLASSES,
+  SECTION_PATH_TEXT_CLASSES,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
 import { CodeMirrorEditor } from "@src/features/CodeMirror/Editor";
 import {
   Copy01Icon,
@@ -12,12 +18,6 @@ import {
   HugeiconsIcon,
   Pen01Icon,
 } from "@src/icons";
-import {
-  SECTION_ACTION_GAP_CLASSES,
-  SECTION_PATH_TEXT_CLASSES,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import { copyText } from "@src/util/data/clipboard";
 
 type CliConfigFile = AvailableAgent["configFiles"][number];
@@ -162,7 +162,7 @@ const CliRawConfigFileEditor: React.FC<CliRawConfigFileEditorProps> = ({
           )}
           {saveStatus === "saved" && (
             <span className="text-xs text-success-6">
-              {t("common:status.saved", "Saved")}
+              {t("common:status.saved")}
             </span>
           )}
           {errorMessage && (
@@ -210,14 +210,12 @@ const CliRawConfigFileEditor: React.FC<CliRawConfigFileEditorProps> = ({
           {activeTab === "edit" && (
             <>
               <Button
-                size="default"
                 onClick={handleReset}
                 data-testid="agent-orgs-cli-config-cancel-button"
               >
                 {t("common:actions.cancel")}
               </Button>
               <Button
-                size="default"
                 variant="primary"
                 onClick={handleSave}
                 disabled={!hasChanges || saveStatus === "saving"}

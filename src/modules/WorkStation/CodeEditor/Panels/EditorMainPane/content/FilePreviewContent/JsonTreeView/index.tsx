@@ -18,7 +18,7 @@ import i18n from "@src/i18n";
 import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import { copyText } from "@src/util/data/clipboard";
 
-import "./index.scss";
+import "./index.css";
 
 // ============================================
 // Types

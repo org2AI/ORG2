@@ -6,8 +6,8 @@
  */
 import React from "react";
 
+import Button from "@src/components/Button";
 import {
-  HEADER_BUTTON,
   HEADER_CLASSES,
   HEADER_ICON_SIZE,
 } from "@src/config/workstation/tokens";
@@ -75,43 +75,55 @@ const DetailPanelHeader: React.FC<DetailPanelHeaderProps> = ({
         )}
         {onNavigate && (
           <>
-            <button
-              className={HEADER_BUTTON.actionDisabled}
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              aria-label="Previous"
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={ArrowUp01Icon}
+                  data-icon="chevron-up"
+                  size={HEADER_ICON_SIZE.sm}
+                />
+              }
               onClick={() => onNavigate("prev")}
               disabled={!hasPrev}
               title="Previous"
-            >
-              <HugeiconsIcon
-                icon={ArrowUp01Icon}
-                data-icon="chevron-up"
-                size={HEADER_ICON_SIZE.sm}
-              />
-            </button>
-            <button
-              className={HEADER_BUTTON.actionDisabled}
+            />
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              aria-label="Next"
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={ArrowDown01Icon}
+                  data-icon="chevron-down"
+                  size={HEADER_ICON_SIZE.sm}
+                />
+              }
               onClick={() => onNavigate("next")}
               disabled={!hasNext}
               title="Next"
-            >
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                data-icon="chevron-down"
-                size={HEADER_ICON_SIZE.sm}
-              />
-            </button>
+            />
           </>
         )}
-        <button
-          className={HEADER_BUTTON.action}
+        <Button
+          variant="tertiary"
+          size="sidebar"
+          aria-label="Close"
+          iconOnly
+          icon={
+            <HugeiconsIcon
+              icon={Cancel01Icon}
+              data-icon="x"
+              size={HEADER_ICON_SIZE.sm}
+            />
+          }
           onClick={onClose}
           title="Close"
-        >
-          <HugeiconsIcon
-            icon={Cancel01Icon}
-            data-icon="x"
-            size={HEADER_ICON_SIZE.sm}
-          />
-        </button>
+        />
       </div>
     </div>
   );

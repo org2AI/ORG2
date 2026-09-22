@@ -8,8 +8,7 @@ use crate::sources::imported_history::{self, metadata::ImportedHistoryImpactStat
 
 /// Tally impact from a `patch_apply_end` event — Codex's authoritative record
 /// of a successfully applied patch. `changes` maps each touched path to a
-/// `{ type, unified_diff }` object; the diff's `+`/`-` lines give exact
-/// add/remove counts regardless of how the edit was requested.
+/// file change; see [`accumulate_codex_file_changes`].
 pub(super) fn collect_codex_impact_from_patch_apply_end(
     payload: &Value,
     impact: &mut ImportedHistoryImpactStats,
@@ -22,11 +21,58 @@ pub(super) fn collect_codex_impact_from_patch_apply_end(
     if payload.get("success").and_then(Value::as_bool) == Some(false) {
         return;
     }
-    let Some(changes) = payload.get("changes").and_then(Value::as_object) else {
+    if let Some(changes) = payload.get("changes").and_then(Value::as_object) {
+        accumulate_codex_file_changes(changes, impact, touched_files);
+    }
+}
+
+/// Tally impact from a completed `FileChange` thread item. Codex Desktop
+/// rollouts never persist `patch_apply_end`: edits run inside the generated
+/// `exec` JavaScript wrapper (`tools.apply_patch(...)`), and the applied result
+/// is recorded only as `event_msg` → `item_completed` → `FileChange`. A wrapper
+/// whose patch failed verification writes no such item, so it is never counted.
+pub(super) fn collect_codex_impact_from_file_change_item(
+    payload: &Value,
+    impact: &mut ImportedHistoryImpactStats,
+    touched_files: &mut BTreeSet<String>,
+) {
+    if payload.get("type").and_then(Value::as_str) != Some("item_completed") {
+        return;
+    }
+    let Some(item) = payload.get("item") else {
         return;
     };
+    if item.get("type").and_then(Value::as_str) != Some("FileChange") {
+        return;
+    }
+    // `failed` / `declined` applies changed nothing.
+    let applied = item
+        .get("status")
+        .and_then(Value::as_str)
+        .is_none_or(|status| status.eq_ignore_ascii_case("completed"));
+    if !applied {
+        return;
+    }
+    if let Some(changes) = item.get("changes").and_then(Value::as_object) {
+        accumulate_codex_file_changes(changes, impact, touched_files);
+    }
+}
+
+/// Fold a Codex `path -> FileChange` map. Updates carry a `unified_diff` whose
+/// `+`/`-` lines are exact counts; adds and deletes carry the whole file as
+/// `content` instead. A rename (`move_path`) counts once, at its destination.
+fn accumulate_codex_file_changes(
+    changes: &serde_json::Map<String, Value>,
+    impact: &mut ImportedHistoryImpactStats,
+    touched_files: &mut BTreeSet<String>,
+) {
     for (path, change) in changes {
-        let path = path.trim();
+        let path = change
+            .get("move_path")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|move_path| !move_path.is_empty())
+            .unwrap_or_else(|| path.trim());
         if path.is_empty() {
             continue;
         }
@@ -38,6 +84,13 @@ pub(super) fn collect_codex_impact_from_patch_apply_end(
                 } else if line.starts_with('-') && !line.starts_with("---") {
                     impact.lines_removed += 1;
                 }
+            }
+        } else if let Some(content) = change.get("content").and_then(Value::as_str) {
+            let lines = content.lines().count() as i64;
+            match change.get("type").and_then(Value::as_str) {
+                Some("add") => impact.lines_added += lines,
+                Some("delete") => impact.lines_removed += lines,
+                _ => {}
             }
         }
     }
@@ -81,7 +134,7 @@ fn patch_from_codex_args(args: &Value) -> Option<String> {
         .map(str::to_string)
 }
 
-fn accumulate_patch_impact(
+pub(super) fn accumulate_patch_impact(
     patch: &str,
     impact: &mut ImportedHistoryImpactStats,
     touched_files: &mut BTreeSet<String>,

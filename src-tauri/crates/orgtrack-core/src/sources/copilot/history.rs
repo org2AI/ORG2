@@ -107,10 +107,12 @@ use discovery::{discover_copilot_history_records, is_plain_session_dir_name};
 use enrichment::{
     read_cached_copilot_fingerprints, read_copilot_store_enrichment, strip_managed_fingerprint,
 };
+#[cfg(all(test, unix))]
+use paths::ensure_exact_copilot_events_file;
 #[cfg(test)]
 use paths::{
     copilot_session_state_dir_candidates, copilot_session_state_dirs, copilot_session_store_db_path,
-    copilot_source_id_from_session_id, ensure_exact_copilot_events_file,
+    copilot_source_id_from_session_id,
 };
 #[cfg(test)]
 use replay::{events_to_chunks, load_copilot_history_from_path};

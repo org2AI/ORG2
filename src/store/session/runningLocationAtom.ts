@@ -7,7 +7,7 @@
  */
 import { atomWithStorage } from "jotai/utils";
 
-import type { RunningLocation } from "@src/features/SessionCreator/config";
+import type { RunningLocation } from "@src/contracts/session";
 
 const STORAGE_KEY = "orgii:runningLocation";
 

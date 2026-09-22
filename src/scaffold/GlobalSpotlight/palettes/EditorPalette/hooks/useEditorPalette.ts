@@ -5,14 +5,16 @@
  */
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
-import { ACTION_ID, useActionSystem } from "@src/ActionSystem";
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
+import { navigateApp } from "@src/router/navigateApp";
+import { ACTION_ID, useActionSystem } from "@src/scaffold/ActionSystem";
 import { FileOperationsService } from "@src/services/file";
 import { workspaceFoldersAtom } from "@src/store/ui/workspaceFoldersAtom";
 import { activeWorkspaceRootAtom } from "@src/store/workspace";
 import { activeWorkStationFilePathAtom } from "@src/store/workstation/tabs";
+import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 import type { SpotlightItem } from "../../../shared";
 import type { EditorPaletteMode, EditorPaletteState } from "../types";
@@ -39,7 +41,7 @@ interface UseEditorPaletteReturn {
 /**
  * Main hook to orchestrate EditorPalette functionality
  */
-export function useEditorPalette({
+function useEditorPalette({
   repoPath,
   initialMode = "file",
   initialQuery = "",
@@ -82,6 +84,10 @@ export function useEditorPalette({
   const { dispatch, isValidAction } = useActionSystem();
 
   const navigateToCodeEditor = useCallback(() => {
+    if (isStationWindow()) {
+      navigateApp(ROUTES.workStation.code.path);
+      return;
+    }
     if (window.location.pathname === ROUTES.workStation.code.path) return;
     navigate(ROUTES.workStation.code.path);
   }, [navigate]);
@@ -134,6 +140,9 @@ export function useEditorPalette({
 
   const commandMode = useCommandMode({
     enabled: isOpen && mode === "command",
+    searchTerm,
+    dispatch,
+    onClose,
   });
 
   const symbolMode = useSymbolMode({

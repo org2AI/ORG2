@@ -31,9 +31,14 @@ import { useTranslation } from "react-i18next";
 
 import ExpandOverlay from "@src/components/ExpandOverlay";
 import { useAgentTurnContext } from "@src/engines/ChatPanel/ChatHistory/AgentTurnContext";
+import { createLogger } from "@src/hooks/logger";
 
 import { EventNavigateIcon } from "../primitives";
 import { useBlockHeader } from "../useBlockLocate";
+import {
+  type MessageTurnIdentity,
+  useAgentMessageExpansion,
+} from "./useAgentMessageExpansion";
 
 // AgentMessageBlock renders flush in the chat panel — it has no container of
 // its own — so the expand-overlay fade must dissolve into the chat-pane
@@ -41,6 +46,7 @@ import { useBlockHeader } from "../useBlockLocate";
 // color that other blocks use. Without this, the fade looks like a colored
 // bar floating over the message.
 const CHAT_PANE_FADE_FROM = "from-chat-pane";
+const log = createLogger("AgentMessageBlock");
 
 // Twenty lines at ~24px line-height, matching the earlier long-message
 // preview depth used by the chat pane.
@@ -67,6 +73,8 @@ interface AgentMessageBlockProps {
   rightContent?: React.ReactNode;
   /** Leave live output unclamped and hide settled-only locate chrome. */
   isStreaming?: boolean;
+  /** Truncated response text needs hydration through the existing expand overlay. */
+  truncatedResponseTurn?: MessageTurnIdentity;
 }
 
 const AgentMessageBlock: React.FC<AgentMessageBlockProps> = ({
@@ -74,6 +82,7 @@ const AgentMessageBlock: React.FC<AgentMessageBlockProps> = ({
   eventId,
   rightContent,
   isStreaming = false,
+  truncatedResponseTurn,
 }) => {
   const { t } = useTranslation("common");
   const fallbackClampEligible = useContext(AgentMessageClampContext);
@@ -85,25 +94,35 @@ const AgentMessageBlock: React.FC<AgentMessageBlockProps> = ({
   const clampEligible =
     !isStreaming &&
     resolveAgentMessageClampEligibility(
-      turnContext !== null,
+      turnContext !== null || truncatedResponseTurn !== undefined,
       fallbackClampEligible
     );
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [overflows, setOverflows] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const replyIdentity =
+    truncatedResponseTurn ??
+    (turnContext?.isLastItemInGroup &&
+    turnContext.sessionId &&
+    turnContext.turnId
+      ? { sessionId: turnContext.sessionId, turnId: turnContext.turnId }
+      : undefined);
+  const {
+    isExpanded,
+    setExpanded: setIsExpanded,
+    toggle,
+  } = useAgentMessageExpansion(replyIdentity, truncatedResponseTurn);
 
-  // Reset clamp-derived state during render whenever clampEligibility flips,
-  // following React's "adjusting state during rendering" pattern. Doing this
-  // here (rather than in an effect) avoids a cascading render and keeps the
-  // first render after a layout change consistent — re-entering the docked
-  // layout always starts collapsed with no stale overflow signal.
+  // Reset local measurements when clamp eligibility changes. Expansion intent
+  // can also be observed by a hydrated replacement, so reset that after commit.
   const [prevClampEligible, setPrevClampEligible] = useState(clampEligible);
   if (prevClampEligible !== clampEligible) {
     setPrevClampEligible(clampEligible);
-    if (isExpanded) setIsExpanded(false);
     if (overflows) setOverflows(false);
   }
+  useLayoutEffect(() => {
+    if (!clampEligible) setIsExpanded(false);
+  }, [clampEligible, setIsExpanded]);
 
   // Reuse the shared header hook purely for its replay-locate wiring. We
   // don't render a header row here — `handleLocate` is the only piece we need.
@@ -150,7 +169,8 @@ const AgentMessageBlock: React.FC<AgentMessageBlockProps> = ({
     );
   }
 
-  const showOverlay = overflows || isExpanded;
+  const showOverlay =
+    overflows || isExpanded || truncatedResponseTurn !== undefined;
   return (
     <div
       className={`group/agent-message w-full min-w-0 px-2 py-0.5 ${isExpanded ? "overflow-visible" : "overflow-hidden"}`}
@@ -173,7 +193,9 @@ const AgentMessageBlock: React.FC<AgentMessageBlockProps> = ({
             isExpanded={isExpanded}
             onToggle={(event) => {
               event.stopPropagation();
-              setIsExpanded((prev) => !prev);
+              toggle().catch((error: unknown) => {
+                log.warn("Could not toggle message expansion", error);
+              });
             }}
             collapsedLabel={t("actions.expand")}
             expandedLabel={t("actions.collapse")}

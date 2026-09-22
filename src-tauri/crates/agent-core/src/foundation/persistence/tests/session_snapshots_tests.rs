@@ -273,3 +273,34 @@ fn serde_round_trip() {
     let parsed: AgentSessionStatus = serde_json::from_str(&json).unwrap();
     assert_eq!(parsed, status);
 }
+
+#[test]
+fn tool_error_column_migration_preserves_old_rows_and_is_idempotent() {
+    let conn = Connection::open_in_memory().unwrap();
+    ensure_tables_with(&conn).unwrap();
+    conn.execute("ALTER TABLE agent_messages DROP COLUMN tool_is_error", [])
+        .unwrap();
+    conn.execute("INSERT INTO agent_messages (id,session_id,role,content,sequence,created_at,tool_output) VALUES ('old','session','tool','original',1,'2026-09-14','unchanged')", []).unwrap();
+    ensure_tables_with(&conn).unwrap();
+    let old: (String, String, bool) = conn
+        .query_row(
+            "SELECT content,tool_output,tool_is_error FROM agent_messages WHERE id='old'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(old, ("original".into(), "unchanged".into(), false));
+    conn.execute(
+        "UPDATE agent_messages SET tool_is_error=1 WHERE id='old'",
+        [],
+    )
+    .unwrap();
+    ensure_tables_with(&conn).unwrap();
+    assert!(conn
+        .query_row(
+            "SELECT tool_is_error FROM agent_messages WHERE id='old'",
+            [],
+            |row| row.get::<_, bool>(0)
+        )
+        .unwrap());
+}

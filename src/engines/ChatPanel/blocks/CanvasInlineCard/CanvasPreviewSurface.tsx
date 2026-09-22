@@ -18,6 +18,7 @@ import {
   Layout01Icon,
   SquareArrowUpRight02Icon,
 } from "@src/icons";
+import { openLink } from "@src/util/ui/openLink";
 
 import type { A2UIActionHandler } from "./A2UIActionContext";
 import type { A2UIRendererHandle } from "./A2UIRenderer";
@@ -76,19 +77,15 @@ const NonEmbeddedUrlNotice: React.FC<{ url: string }> = ({ url }) => {
         />
         <div className="space-y-1">
           <div className="text-sm font-medium text-text-2">
-            {t("canvasCard.openUrlTitle", "Preview not embedded")}
+            {t("canvasCard.openUrlTitle")}
           </div>
           <div className="text-xs leading-5 text-text-4">
-            {t(
-              "canvasCard.openUrlDescription",
-              "External URLs are not embedded to avoid iframe memory overhead."
-            )}
+            {t("canvasCard.openUrlDescription")}
           </div>
         </div>
         <Button
-          variant="secondary"
           size="small"
-          onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+          onClick={() => openLink(url)}
           icon={
             <HugeiconsIcon
               icon={SquareArrowUpRight02Icon}
@@ -97,7 +94,7 @@ const NonEmbeddedUrlNotice: React.FC<{ url: string }> = ({ url }) => {
             />
           }
         >
-          {t("canvasCard.openExternal", "Open in Browser")}
+          {t("canvasCard.openExternal")}
         </Button>
       </div>
     </div>

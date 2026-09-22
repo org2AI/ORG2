@@ -108,7 +108,7 @@ describe("raw session transcript loading", () => {
 
     expect(snapshot.source).toEqual({
       kind: "orgii-event-store",
-      displayName: "ORGII EventStore",
+      displayName: "ORG2 EventStore",
     });
     expect(
       (snapshot.entries as SessionEvent[]).map((item) => [

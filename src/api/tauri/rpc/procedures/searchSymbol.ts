@@ -23,8 +23,4 @@ export const searchSymbol = {
     .input(schemas.searchSymbol.FindReferencesInput)
     .output(z.array(schemas.searchSymbol.LocationSchema))
     .build(),
-
-  getSupportedLanguages: defineProcedure("get_supported_languages")
-    .output(z.array(z.record(z.string(), z.array(z.string()))))
-    .build(),
 } as const;

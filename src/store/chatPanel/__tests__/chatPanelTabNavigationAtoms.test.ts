@@ -40,7 +40,6 @@ describe("chat panel tab navigation history", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     resetInstrumentedStore();
-    localStorage.removeItem("orgii:chatPanelTabs:v2");
     localStorage.removeItem("orgii-v2-session-view");
   });
 

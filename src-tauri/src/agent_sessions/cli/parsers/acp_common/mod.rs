@@ -20,7 +20,9 @@ use serde_json::Value;
 
 use core_types::activity::ActivityChunk;
 
-pub use approval::{resolve_approval, ApprovalResponse, ACP_APPROVAL_TIMEOUT};
+pub use approval::{
+    pending_snapshot_for_session, resolve_approval, ApprovalResponse, ACP_APPROVAL_TIMEOUT,
+};
 pub(crate) use parser::AcpNotificationParser;
 pub use protocol::run_acp_protocol;
 

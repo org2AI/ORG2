@@ -408,5 +408,3 @@ export function useDropdownListNavigation<TItem>(
     clearKeyboardNavigation,
   };
 }
-
-export default useDropdownListNavigation;

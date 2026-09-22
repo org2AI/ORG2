@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import IntegrationIcon from "@src/components/IntegrationIcon";
 import { ListPanelItem } from "@src/components/ListPanel";
+import { compactRepositoryLabel } from "@src/features/GitHubWork/githubRepositoryLabel";
 import {
   AlertCircleIcon,
   CircleCheckBigIcon,
@@ -11,7 +12,6 @@ import {
   MessageSquareMoreIcon,
   Notification01Icon,
 } from "@src/icons";
-import { compactRepositoryLabel } from "@src/modules/shared/githubRepositoryLabel";
 import { formatCompactAge } from "@src/util/time/formatRelativeTime";
 
 import {

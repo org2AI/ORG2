@@ -84,13 +84,12 @@ export function useSearchContent(
     actualTotalMatches,
     actualTotalFiles,
     isTruncated,
-    clearResults,
-    loadMore: loadMoreInternal,
+    totalMatches: currentMatches,
     actions,
   } = useSearchResults();
 
   // Search execution + debounced trigger + cleanup
-  const { search } = useSearchExecution({
+  const { search, clear: clearResults } = useSearchExecution({
     query,
     searchMode,
     repoPath: opts.repoPath,
@@ -101,8 +100,8 @@ export function useSearchContent(
 
   // Wrap loadMore to bind required params from query state
   const loadMore = useCallback(async () => {
-    await loadMoreInternal(query, opts.repoPath, storeOptions);
-  }, [loadMoreInternal, query, opts.repoPath, storeOptions]);
+    if (hasMore && !loading) await search(currentMatches + 1000, true);
+  }, [hasMore, loading, search, currentMatches]);
 
   return {
     query,

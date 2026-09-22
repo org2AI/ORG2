@@ -158,6 +158,9 @@ const CollapseItem: React.FC<CollapseItemProps> = ({
         aria-expanded={isActive}
         aria-disabled={disabled}
         onKeyDown={(event) => {
+          // Secondary actions own their keyboard events.
+          if (event.target !== event.currentTarget) return;
+
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             handleClick();

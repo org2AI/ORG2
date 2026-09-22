@@ -9,15 +9,16 @@ import Button from "@/src/components/Button";
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import SharedButton from "@src/components/Button";
 import Input from "@src/components/Input";
 import { Placeholder } from "@src/components/Placeholder";
+import { ListPanelScrollArea } from "@src/components/layout/blocks";
 import {
   Add01Icon,
   ArrowLeft02Icon,
   HugeiconsIcon,
   Search01Icon,
 } from "@src/icons";
-import { ListPanelScrollArea } from "@src/modules/shared/layouts/blocks";
 
 export interface DrillDownItem {
   id: string;
@@ -60,17 +61,20 @@ const DrillDownListPanel: React.FC<DrillDownListPanelProps> = ({
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-10 shrink-0 items-center gap-2 px-3">
-        <button
-          type="button"
+        <SharedButton
+          variant="tertiary"
+          size="mini"
+          iconOnly
+          icon={
+            <HugeiconsIcon
+              icon={ArrowLeft02Icon}
+              data-icon="arrow-left"
+              size={16}
+            />
+          }
           onClick={onBack}
-          className="flex items-center justify-center rounded-md p-1 text-text-2 transition-colors hover:bg-fill-2 hover:text-text-1"
-        >
-          <HugeiconsIcon
-            icon={ArrowLeft02Icon}
-            data-icon="arrow-left"
-            size={16}
-          />
-        </button>
+          className="hover:bg-fill-2 hover:text-text-1"
+        />
         <span className="text-[13px] font-medium text-text-1">{title}</span>
       </div>
 
@@ -101,9 +105,9 @@ const DrillDownListPanel: React.FC<DrillDownListPanelProps> = ({
             {filteredItems.map((item) => {
               const isSelected = item.id === selectedId;
               return (
-                <button
+                <SharedButton
+                  layout="custom"
                   key={item.id}
-                  type="button"
                   onClick={() => onSelect(item.id)}
                   className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors ${
                     isSelected
@@ -122,7 +126,7 @@ const DrillDownListPanel: React.FC<DrillDownListPanelProps> = ({
                       className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.statusDot}`}
                     />
                   )}
-                </button>
+                </SharedButton>
               );
             })}
           </div>

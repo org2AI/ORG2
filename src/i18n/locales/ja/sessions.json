@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "新しいメッセージとして送信しますか？",
+    "body": "このメッセージは実行セッションに属します。ここで編集しても会話を巻き戻せません。代わりに会話の末尾へ新しいメッセージとして送信しますか？既存のメッセージとファイルの変更は保持されます。",
+    "sendNew": "新しいメッセージを送信"
+  },
   "tray": {
     "markAllRead": "すべて既読にする",
     "showKanban": "カンバンを表示",
@@ -50,7 +55,7 @@
     },
     "dataSource": {
       "title": "データソース",
-      "description": "ORGII が検出する外部コーディングツール。インポート可能なアプリはセッション数を表示し、再スキャンできます。その他はインストール状況と履歴の保存場所を表示します。",
+      "description": "ORG2 が検出する外部コーディングツール。インポート可能なアプリはセッション数を表示し、再スキャンできます。その他はインストール状況と履歴の保存場所を表示します。",
       "rescanAll": "すべて再スキャン",
       "rescan": "再スキャン",
       "rescanning": "再スキャン中…",
@@ -88,8 +93,7 @@
       "openFolder": "フォルダを開く",
       "tabs": {
         "all": "すべて",
-        "apps": "アプリ",
-        "clis": "CLI"
+        "apps": "アプリ"
       },
       "views": {
         "scanning": "スキャン",
@@ -97,7 +101,6 @@
         "usage": "使用量",
         "team": "チーム",
         "quota": "クォータ",
-        "assets": "アセット",
         "profile": "プロファイル"
       },
       "usage": {
@@ -174,7 +177,8 @@
           "output": "出力",
           "cache": "キャッシュ読み取り",
           "cost": "コスト",
-          "filterBySession": "このセッションで絞り込む"
+          "filterBySession": "このセッションで絞り込む",
+          "purpose": "用途"
         },
         "pricing": {
           "input": "入力",
@@ -190,7 +194,7 @@
           "perTurn": "LLM 呼び出し",
           "perTool": "ツール呼び出し",
           "close": "閉じる",
-          "noData": "このセッションにはセッション単位の合計のみがあります。呼び出し単位の内訳は、ORGII 独自エージェントの実行で記録されます。",
+          "noData": "このセッションにはセッション単位の合計のみがあります。呼び出し単位の内訳は、ORG2 独自エージェントの実行で記録されます。",
           "turnHeader": "ターン {{turn}}",
           "promptTokens": "プロンプト",
           "completionTokens": "補完"
@@ -199,7 +203,17 @@
           "title": "使用量はまだありません",
           "subtitle": "コーディングセッションを実行またはスキャンすると、トークン使用量がここに表示されます。"
         },
-        "loadError": "使用量データを読み込めませんでした"
+        "loadError": "使用量データを読み込めませんでした",
+        "purposes": {
+          "main": "メイン応答",
+          "session_title": "セッションタイトル",
+          "session_memory": "セッションメモリ",
+          "workspace_memory": "ワークスペースメモリ",
+          "auto_dream": "メモリ統合",
+          "skill_prefetch": "スキル選択",
+          "memory_prefetch": "メモリ検索",
+          "compaction": "コンテキスト圧縮"
+        }
       },
       "sessions_other": "{{count}} 件のセッション",
       "details": {
@@ -307,7 +321,6 @@
   },
   "simulator": {
     "captionBarToggleTooltip": "Agent メッセージバーを表示",
-    "noActiveSession": "アクティブなセッションがありません",
     "tabs": {
       "kanban": "カンバン"
     },
@@ -324,18 +337,6 @@
           "agentBrowser": "Agent ブラウザ",
           "searchFetch": "検索と取得"
         },
-        "sections": {
-          "browserTitle": "ブラウザアクティビティ",
-          "interactionsTitle": "インタラクション",
-          "webSearchesTitle": "ウェブ検索",
-          "pagesFetchedTitle": "取得したページ"
-        },
-        "empty": {
-          "noBrowserActivity": "ブラウザのアクティビティはありません",
-          "noBrowserInteractions": "ブラウザのインタラクションはありません",
-          "noWebSearches": "ウェブ検索はありません",
-          "noPagesFetched": "取得したページはありません"
-        },
         "header": {
           "categoryBrowser": "ブラウザ",
           "categoryLiveBrowser": "ライブブラウザ",
@@ -346,7 +347,6 @@
       },
       "ide": {
         "shell": {
-          "emptyNoCommands": "コマンドがありません",
           "noCommand": "（コマンドなし）",
           "outputInProgress": "… 出力中",
           "exitCode": "[終了コード: {{code}}]"
@@ -520,8 +520,7 @@
     },
     "titleBar": {
       "showSidebar": "サイドバーを表示",
-      "hideSidebar": "サイドバーを非表示",
-      "showBottomPanel": "下部パネルを表示"
+      "hideSidebar": "サイドバーを非表示"
     },
     "multiTask": {
       "monitoringProgress": "{{count}} 体の Subagent の進捗を監視中",
@@ -554,22 +553,6 @@
     "addedToContext": "Session コンテキストに追加しました",
     "creatingWithContext": "コンテキスト付きの新しい Session を作成中",
     "creationCooldown": "しばらく待ってから新しいターミナルを作成してください。"
-  },
-  "scope": {
-    "applicableScope": "適用範囲",
-    "for": "の",
-    "selectCategory": "カテゴリを選択",
-    "selectScope": "範囲を選択",
-    "allRepos": "すべてのリポジトリ",
-    "allSessions": "すべての Session",
-    "allProjects": "すべてのProject",
-    "allWorkItems": "すべての作業項目",
-    "categories": {
-      "repo": "リポジトリ",
-      "session": "Session",
-      "projects": "Project",
-      "workItems": "作業項目"
-    }
   },
   "editor": {
     "loading": "エディタを読み込み中..."
@@ -608,6 +591,7 @@
     "voicePermissionSheetTitle": "マイクへのアクセスが必要です"
   },
   "chat": {
+    "draftTooLong": "下書きが長すぎます（最大 {{max}} 文字）",
     "cliPermissions": {
       "ask": "承認を求める",
       "workspace": "ワークスペースへのアクセス",
@@ -642,23 +626,18 @@
       "inputPosition": "入力欄",
       "positionBottom": "下部",
       "positionMiddle": "中央",
-      "trailPosition": "コンテキストバー",
+      "repoBarPosition": "リポジトリバー",
       "positionUp": "上",
       "positionDown": "下",
-      "uiControls": "UI コントロール",
-      "showQuickActions": "クイックアクションを表示",
+      "showQuickActions": "クイックアクション",
       "showSkills": "ピン留めしたスキル",
-      "showCliUpdate": "CLI の更新を表示",
-      "title": "何をしますか？",
-      "back": "スタートページに戻る",
+      "showCliUpdate": "CLI の更新",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新しいセッション"
       },
       "newWorkItem": {
         "title": "新しい work item"
-      },
-      "setupRepo": {
-        "title": "Repo をセットアップ"
       },
       "addApiKey": {
         "title": "API キーを追加"
@@ -669,59 +648,27 @@
       "installLatestUpdate": {
         "title": "最新アップデートをインストール"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "セッション",
         "workItem": "作業項目",
         "more": "その他",
-        "work": "作業",
         "manage": "管理",
-        "heatmap": "トレンド",
         "runtime": "ランタイム"
       },
       "quota": {
         "empty": "Quota データはまだありません。Key Vault で使用量を更新してください。",
         "refresh": "更新",
-        "justNow": "たった今",
-        "minutesAgo": "{{count}}分前",
-        "hoursAgo": "{{count}}時間前",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7d",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Weekly",
           "monthly": "Monthly"
         }
       },
-      "exploreRepos": {
-        "title": "Repo を探索"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "Issues を管理"
       }
     },
     "defaultTitle": "チャット",
@@ -732,8 +679,17 @@
     "performActions_one": "{{count}} 件の操作を実行",
     "performActions_other": "{{count}} 件の操作を実行",
     "showInlineDiffs": "インライン差分",
-    "pageSettings": "ページ表示",
     "inputSettings": "入力設定",
+    "sendMethod": "送信キー",
+    "navigation": {
+      "title": "ナビゲーション",
+      "openLinksIn": "リンクを開く場所",
+      "internalBrowser": "内蔵ブラウザ",
+      "externalBrowser": "外部ブラウザ"
+    },
+    "compactInput": "コンパクト入力欄",
+    "composerGlow": "入力欄のグロー",
+    "separateEffortPill": "独立した Effort ボタン",
     "replay": {
       "follow": "フォロー"
     },
@@ -759,15 +715,11 @@
       "modeSourceBundled": "バンドルされたフォールバックからモードを読み込みました(Cursor プローブはまだ起動していません)。",
       "modeRefresh": "モードを更新"
     },
-    "hideSimulator": "シミュレーターを非表示",
-    "showSimulator": "シミュレーターを表示",
-    "fullScreenChat": "Chat パネルにフォーカス（Workstation を非表示）",
     "maximizeChatPanel": "Chat パネルを最大化",
     "showWorkstation": "Workstation を表示",
     "workstationUnavailableForPage": "このページでは Workstation を利用できません",
     "hideWorkstation": "Workstation を非表示",
     "restoreSplitView": "Workstation を表示",
-    "shrinkToWorkstation": "Chat パネルを縮小（Workstation を表示）",
     "tuiModeOn": "TUI モード（クリックで無効化）",
     "tuiModeOff": "TUI モードを有効にする",
     "tabs": {
@@ -919,10 +871,10 @@
       "exportJson": "JSON をエクスポート",
       "importAction": "Session をインポート",
       "exportDescription": "アクティブな Session をポータブルな JSON スナップショットとしてエクスポートします",
-      "importDescription": "Session JSON スナップショットをサイドバーにインポートします。",
+      "importDescription": "Session JSON スナップショットをサイドバーにインポートします",
       "jsonSnapshotNote": "インポートされた Session は読み取り専用スナップショットで、元のイベント履歴を保持します",
       "chooseJson": "JSON ファイルを選択",
-      "chooseJsonHint": ".orgii-session.json エクスポートファイルを選択してください。",
+      "chooseJsonHint": ".orgii-session.json エクスポートファイルを選択してください",
       "loadingPreview": "Session イベントを集計中…",
       "noActiveSession": "アクティブな Session が選択されていません。",
       "importedName": "インポート済み Session: {{name}}",
@@ -971,22 +923,9 @@
       "showMore_one": "残り {{count}} 件を表示",
       "showMore_other": "残り {{count}} 件を表示"
     },
-    "manageIssues": {
-      "title": "Issues を管理",
-      "myWork": "自分の作業",
-      "allRepositories": "すべての Repos",
-      "newIssue": "新しい Issue",
-      "tabs": {
-        "recent": "最近",
-        "assigned": "自分に割り当て",
-        "byMe": "自分が作成",
-        "mentioned": "メンション"
-      }
-    },
     "readOnly": "読み取り専用",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "GitHub issue を作成",
         "issueTitlePlaceholder": "issue のタイトル",
@@ -996,28 +935,40 @@
         "addToChat": "Add",
         "repositoryLabel": "リポジトリ",
         "createIssueFailed": "issue を作成できませんでした",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "すべての状態",
         "closeAsCompleted": "完了として閉じる",
         "closeAsNotPlanned": "計画外として閉じる",
         "statusUpdateFailed": "GitHub のステータスを更新できませんでした",
         "assignedToMe": "自分に割り当て済み",
         "createdByMe": "自分が作成",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "レビュー依頼",
-          "authoredByMe": "自分が作成",
-          "otherTodos": "その他の To-do"
-        },
         "assigneeUpdateNotApplied": "GitHub は担当者の変更を適用しませんでした",
         "assigneeUpdateSuccess": "GitHub で担当者を更新しました",
         "updateIssueFailed": "GitHub issue を更新できませんでした",
-        "refreshIssues": "Issue を更新",
-        "refreshPullRequests": "プルリクエストを更新"
+        "filters": {
+          "searchPlaceholder": "フィルターを検索",
+          "noMatches": "一致するフィルターがありません",
+          "activeCount": "有効なフィルター: {{count}}",
+          "clear": "フィルターをクリア",
+          "reviewRequestedFromMe": "自分にレビュー依頼あり",
+          "noAssignee": "担当者なし",
+          "noLabel": "ラベルなし",
+          "linkedPullRequest": "リンクされたプルリクエストあり",
+          "draft": "ドラフト",
+          "readyForReview": "レビュー可能",
+          "recentlyUpdated": "過去 7 日間に更新",
+          "stale": "30 日間更新なし",
+          "facetAuthor": "作成者",
+          "facetAssignee": "担当者",
+          "facetLabel": "ラベル",
+          "facetMilestone": "マイルストーン",
+          "facetReviewRequested": "レビュー依頼先",
+          "facetBaseBranch": "ベースブランチ",
+          "facetCiStatus": "チェック",
+          "ciSuccess": "成功",
+          "ciFailure": "失敗",
+          "ciPending": "保留中"
+        }
       }
     },
     "sessionViews": {
@@ -1051,7 +1002,9 @@
     "typeMessage": "メッセージを入力…",
     "session": "セッション",
     "history": "セッション",
-    "agentFallback": "Agent"
+    "agentFallback": "Agent",
+    "goToPinnedPassage": "ピン留めした箇所へ移動: {{preview}}",
+    "unpinPassage": "ピン留めを解除"
   },
   "tools": {
     "noResultsFound": "結果が見つかりません",
@@ -1148,6 +1101,7 @@
     "terminalWaitRunning": "Terminal の完了を待機中",
     "runShellFailed": "コマンド実行に失敗しました",
     "runCommands": "コマンドを実行",
+    "waitBackgroundTasks": "バックグラウンドタスクを待機",
     "terminalSummary": {
       "command_one": "{{count}} 件のコマンド",
       "command_other": "{{count}} 件のコマンド",
@@ -1158,6 +1112,10 @@
       "check_one": "{{count}} 件の確認",
       "check_other": "{{count}} 件の確認",
       "separator": "、"
+    },
+    "waitSummary": {
+      "count_one": "{{count}} 回",
+      "count_other": "{{count}} 回"
     },
     "inspectTerminalsRunning": "Terminal を確認中",
     "inspectTerminalsDone": "Terminal を確認しました",
@@ -1467,10 +1425,13 @@
     "awaitOutputListFailed": "バックグラウンドタスクの一覧表示に失敗しました",
     "awaitOutputKeepWaiting": "実行中",
     "awaitOutputStillRunning": "実行中",
+    "awaitOutputSummaryShellSingle": "ターミナルプロセス",
     "awaitOutputSummaryShell_one": "ターミナルプロセス1件",
     "awaitOutputSummaryShell_other": "ターミナルプロセス{{count}}件",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "Subagent 1件",
     "awaitOutputSummarySubagent_other": "Subagent {{count}}件",
+    "awaitOutputSummaryUnknownSingle": "バックグラウンドタスク",
     "awaitOutputSummaryUnknown_one": "バックグラウンドタスク1件",
     "awaitOutputSummaryUnknown_other": "バックグラウンドタスク{{count}}件",
     "awaitOutputSummaryMixed": "{{shell}}、{{subagent}}",
@@ -1924,13 +1885,12 @@
     "start": "開始",
     "missingGit": {
       "title": "Git が見つかりません",
-      "body": "Git がインストールされていないか、見つかりません。ADE Manager または SDE Agent にこのマシンへ Git をインストールしてもらい、その後 ORGII を再起動してください。"
+      "body": "Git がインストールされていないか、見つかりません。ADE Manager または SDE Agent にこのマシンへ Git をインストールしてもらい、その後 ORG2 を再起動してください"
     },
     "model": "モデル",
     "contextMenu": {
       "filesAndFolders": "ファイルとフォルダー",
       "workItems": "作業項目",
-      "back": "戻る",
       "recent": "最近使用した項目",
       "showMore": "あと{{remaining}}件を表示",
       "session": "セッション"
@@ -1988,9 +1948,9 @@
       "formatting": "テキストの書式"
     },
     "regionNoticeTitle": "地域制限の可能性",
-    "regionNoticeBodyProvider": "お住まいの地域：{{location}}。一部のモデルはお住まいの地域で利用できない場合があります。",
-    "regionNoticeBodySanctions": "お住まいの地域：{{location}}。GitHub、npm、Docker Hub などのサービスが利用できない場合があります。",
-    "regionNoticeBodyBoth": "お住まいの地域：{{location}}。地域政策と貿易規制により、一部のモデルや GitHub、npm、Docker Hub などのサービスが利用できない場合があります。",
+    "regionNoticeBodyProvider": "お住まいの地域：{{location}}。一部のモデルはお住まいの地域で利用できない場合があります",
+    "regionNoticeBodySanctions": "お住まいの地域：{{location}}。GitHub、npm、Docker Hub などのサービスが利用できない場合があります",
+    "regionNoticeBodyBoth": "お住まいの地域：{{location}}。地域政策と貿易規制により、一部のモデルや GitHub、npm、Docker Hub などのサービスが利用できない場合があります",
     "selectAgent": "エージェントを選択",
     "placeholderDefault": "メッセージを入力、@ でファイルを追加、/ で skills を使用",
     "wingmanPlaceholder": "ミッションを説明してください — Wingman は何を監視すべきですか？",
@@ -2022,12 +1982,19 @@
       }
     },
     "cliVersionOutdated": {
-      "title": "{{cli}} のアップグレードが必要です（{{installed}} > {{latest}}）",
+      "title": "{{cli}} の更新があります",
+      "versions": "現在：{{installed}} · 最新：{{latest}}",
+      "upgrade": "ターミナルで更新",
+      "upgradeHint": "別のターミナルで Cursor CLI を更新します。完了後にバージョンを再確認してください。",
+      "upgradeTerminal": "Cursor CLI を更新",
+      "upgradeStarted": "ターミナルで更新を開始しました。完了後にバージョンを再確認してください。",
+      "upgradeFailed": "更新用のターミナルを開けませんでした。もう一度お試しください。",
       "muteUntilNextVersion": "次のバージョンまで通知しない",
       "refresh": "{{cli}} CLI のバージョンを再確認",
       "unknownVersion": "不明"
     },
-    "mode": "エディタモード"
+    "mode": "エディタモード",
+    "cursorIdeDescription": "ORG2 内で Cursor IDE のチャットセッションを閲覧・再開"
   },
   "planner": {
     "modes": {
@@ -2117,7 +2084,7 @@
         "cancelled": "キャンセル済み",
         "failed": "失敗"
       },
-      "title": "Agent チーム概要",
+      "title": "チーム概要",
       "summary": "稼働中 {{active}} · 要対応 {{pending}}",
       "loadFailed": "チーム概要を読み込めませんでした",
       "tasks": "タスク",
@@ -2138,7 +2105,7 @@
       "archiveTeardownRetained": "アーカイブ済みですが、{{count}} 個のランタイムを解放できませんでした。削除は引き続きブロックされます。",
       "archiveTeardownQuiesced": "アーカイブ済みで完全に停止しました。完全削除が可能です。",
       "dangerZone": "危険な操作",
-      "deleteDescription": "このチームとすべてのセッションおよび履歴を完全に削除します。",
+      "deleteDescription": "このチームとすべてのセッションおよび履歴を完全に削除します",
       "deleteTeam": "チームを削除",
       "deleteTitle": "このチームを完全に削除しますか？",
       "deleteWarning": "チームのすべてのセッションと履歴が完全に削除されます。元に戻せません。",
@@ -2192,9 +2159,7 @@
       "activeMembers": "アクティブなメンバー",
       "inFlightTurns": "実行中のターン",
       "openTasks": "未完了のタスク",
-      "blockingInbox": "ブロック中の受信メッセージ",
-      "blockersTitle": "完了を妨げている項目",
-      "unknownBlocker": "不明なシステムブロッカー"
+      "blockingInbox": "ブロック中の受信メッセージ"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} への直接作業",
@@ -2266,7 +2231,7 @@
     "noSessionIdFound": "Session ID が見つかりません",
     "failedToResume": "Session の再開に失敗しました",
     "failedToCheckChanges": "ファイルの変更を確認できませんでした。変更を元に戻して続行します。",
-    "insufficientBalance": "ホスト型 ORGII サービスの残高が不足しています。orgii.ai/wallet でチャージしてください。",
+    "insufficientBalance": "ホスト型 ORG2 サービスの残高が不足しています。orgii.ai/wallet でチャージしてください。",
     "runQueuedBehindCheckout": "キュー待ち: 別の実行がこのチェックアウトを使用中です。完了次第開始します。"
   },
   "planning": {
@@ -2359,7 +2324,6 @@
     },
     "triggerLabel": "グループチャット",
     "userMessageOutcomeUnknown": "配信結果は不明です。元の配信を再試行してください。",
-    "coordinatorLabel": "コーディネーター",
     "youLabel": "あなた",
     "retry": "再試行",
     "memberCount_one": "{{count}} 人のメンバー",

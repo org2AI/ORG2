@@ -53,6 +53,8 @@ import { useCurrentTheme } from "@src/util/ui/theme/themeUtils";
 import "./index.scss";
 
 interface SliderProps {
+  /** Accessible name for the slider handle(s). */
+  "aria-label"?: string;
   /**
    * Current value (controlled)
    */
@@ -150,6 +152,7 @@ interface SliderProps {
 }
 
 const Slider: React.FC<SliderProps> = ({
+  "aria-label": ariaLabel,
   value: controlledValue,
   defaultValue,
   min = 0,
@@ -496,6 +499,8 @@ const Slider: React.FC<SliderProps> = ({
         onMouseEnter={() => setShowTooltipFor(handleIndex)}
         onMouseLeave={() => setShowTooltipFor(null)}
         role="slider"
+        aria-label={ariaLabel}
+        aria-valuetext={formatTooltip?.(handleValue)}
         aria-valuenow={handleValue}
         aria-valuemin={min}
         aria-valuemax={max}

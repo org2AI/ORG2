@@ -5,10 +5,8 @@
  * Helpers are in actionsUtils.ts. Simulator-preview projection lives in
  * actions.simulatorPreview.ts, user-message reconciliation helpers in
  * actions.userMessageSync.ts, departing-session cache release in
- * actions.snapshotLifecycle.ts, event-mutation atoms in
- * actions.eventUpdates.ts, and replay-navigation atoms in
- * actions.navigation.ts — all re-exported below to keep a single import
- * surface at this path.
+ * actions.snapshotLifecycle.ts, and replay-navigation atoms in
+ * actions.navigation.ts — re-exported below for this import surface.
  */
 import { atom } from "jotai";
 
@@ -485,17 +483,6 @@ export const loadSessionAtom = atom(
   }
 );
 loadSessionAtom.debugLabel = "session/load";
-
-// ============================================
-// Re-exports (moved to sibling modules; kept importable from this path)
-// ============================================
-
-export {
-  appendEventsAtom,
-  updateEventAtom,
-  updateEventByIdAtom,
-  updateEventByPredicateAtom,
-} from "./actions.eventUpdates";
 export {
   goLiveAtom,
   navigateNextAtom,

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import BottomSheet from "@src/components/BottomSheet";
+import Button from "@src/components/Button";
 import {
   TurnNavigationRoundList,
   TurnNavigationToolbar,
@@ -106,11 +107,25 @@ export function RoundNavigator({
       <BottomSheet
         open={listOpen}
         onClose={() => setListOpen(false)}
-        title={t("common:pagination.latestRound")}
+        title={t("mobileRemote:rounds.navigationLabel")}
+        className="mobile-round-sheet"
         showCloseButton
         closeLabel={t("common:actions.close")}
       >
+        <div className="mobile-round-sheet__actions">
+          <Button
+            variant="tertiary"
+            onClick={() => setSortAscending((ascending) => !ascending)}
+          >
+            {t(
+              sortAscending
+                ? "mobileRemote:rounds.oldestFirst"
+                : "mobileRemote:rounds.newestFirst"
+            )}
+          </Button>
+        </div>
         <TurnNavigationRoundList
+          mobile
           items={roundItems}
           currentPageIndex={currentIndex}
           onSelect={(pageIndex) => {

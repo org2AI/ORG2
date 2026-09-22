@@ -5,6 +5,7 @@ import {
   APPEARANCE_MODE_OPTIONS,
   GLOBAL_THEMES,
   getAppearanceModeForTheme,
+  getFollowSystemThemeLabel,
   getGlobalTheme,
   isThemeCssPathDark,
   normalizeAppearanceMode,
@@ -13,6 +14,17 @@ import {
 } from "./globalThemes";
 
 describe("global themes", () => {
+  it.each([
+    [APPEARANCE_MODE.LIGHT, "跟随系统 (浅色)"],
+    [APPEARANCE_MODE.DARK, "跟随系统 (深色)"],
+  ])("localizes the system theme suffix for %s", (scheme, expected) => {
+    expect(
+      getFollowSystemThemeLabel(scheme, "跟随系统", {
+        light: "浅色",
+        dark: "深色",
+      })
+    ).toBe(expected);
+  });
   it("ships exactly one stylesheet per variant", () => {
     expect(Object.keys(GLOBAL_THEMES).sort()).toEqual(["dark", "light"]);
     expect(GLOBAL_THEMES.light.baseCssPath).toBe("/orgii_main.css");

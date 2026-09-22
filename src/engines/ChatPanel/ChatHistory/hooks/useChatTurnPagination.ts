@@ -44,7 +44,6 @@ export interface UseChatTurnPaginationReturn {
   displayFlatItems: OptimizedChatItem[];
   displayTotalFlatItems: number;
   displaySourceGroupIndices: number[];
-  displayLastGroupFirstFlatIndex: number | null;
 }
 
 export function projectChatTurnPagination({
@@ -61,7 +60,8 @@ export function projectChatTurnPagination({
     groupCounts,
     groupHeaders,
     cursorIdeTurnSummaries,
-    mergeUserOnlyPages
+    mergeUserOnlyPages,
+    groupMeta
   );
   const pageCount = pages.length;
   const currentPageIndex = clampPageIndex(activePageIndex, pageCount);
@@ -77,10 +77,6 @@ export function projectChatTurnPagination({
       displayFlatItems: flatItems,
       displayTotalFlatItems: flatItems.length,
       displaySourceGroupIndices: groupCounts.map((_, groupIndex) => groupIndex),
-      displayLastGroupFirstFlatIndex: computeLastGroupFirstFlatIndex(
-        groupCounts,
-        flatItems.length
-      ),
     };
   }
 
@@ -96,7 +92,6 @@ export function projectChatTurnPagination({
       displayFlatItems: [],
       displayTotalFlatItems: 0,
       displaySourceGroupIndices: [],
-      displayLastGroupFirstFlatIndex: null,
     };
   }
 
@@ -126,10 +121,6 @@ export function projectChatTurnPagination({
     displayTotalFlatItems: displayFlatItems.length,
     displaySourceGroupIndices: displayGroupCounts.map(
       (_, offset) => page.startGroupIndex + offset
-    ),
-    displayLastGroupFirstFlatIndex: computeLastGroupFirstFlatIndex(
-      displayGroupCounts,
-      displayFlatItems.length
     ),
   };
 }
@@ -173,7 +164,8 @@ function buildTurnPages(
   groupCounts: number[],
   groupHeaders: (OptimizedChatItem | null)[],
   cursorIdeTurnSummaries: CursorIdeTurnSummary[],
-  mergeUserOnlyPages = false
+  mergeUserOnlyPages = false,
+  groupMeta: readonly ChatGroupMeta[] = []
 ): ChatTurnPage[] {
   if (cursorIdeTurnSummaries.length > 0) {
     return buildCursorIdeTurnPages(
@@ -199,9 +191,13 @@ function buildTurnPages(
     // page — the group is folded into the next contentful page so that
     // surfaces hiding user-message cards never produce a blank page.
     // Trailing user-only groups are folded backwards after the loop.
-    const closesPage = mergeUserOnlyPages
-      ? hasAgentItems
-      : hasUserHeader || hasAgentItems || isLastGroup;
+    // Failed-attempt audit remains its own body group but belongs to the
+    // following logical turn's page. It must not invent a Round N entry.
+    const closesPage =
+      !groupMeta[groupIndex]?.retryAudit &&
+      (mergeUserOnlyPages
+        ? hasAgentItems
+        : hasUserHeader || hasAgentItems || isLastGroup);
 
     if (closesPage) {
       rawPages.push({
@@ -218,16 +214,19 @@ function buildTurnPages(
     flatCursor = nextFlatCursor;
   }
 
-  if (mergeUserOnlyPages) {
-    // Fold any trailing user-only groups into the final contentful page
-    // (or into a single page when no contentful page exists at all) so
-    // the tail of the timeline is never a structurally blank page.
+  if (mergeUserOnlyPages || groupMeta.at(-1)?.retryAudit) {
+    // A trailing retry audit stays visible on the last page without becoming
+    // a logical turn. Existing user-only merging still creates a page when
+    // needed; audit-only history remains visible through the unpaged fallback.
     if (startGroupIndex <= groupCounts.length - 1) {
       const lastPage = rawPages[rawPages.length - 1];
       if (lastPage) {
         lastPage.endGroupIndex = groupCounts.length - 1;
         lastPage.flatEndIndex = flatCursor;
-      } else if (groupCounts.length > 0) {
+      } else if (
+        groupCounts.length > 0 &&
+        groupCounts.some((_, index) => !groupMeta[index]?.retryAudit)
+      ) {
         rawPages.push({
           startGroupIndex: 0,
           endGroupIndex: groupCounts.length - 1,
@@ -270,6 +269,17 @@ function buildCursorIdeTurnPages(
   });
 }
 
+/** A page may start with retry audit; its label comes from the real turn. */
+export function getTurnPageHeaderGroupIndex(
+  page: ChatTurnPage,
+  groupHeaders: readonly (OptimizedChatItem | null)[]
+): number {
+  for (let index = page.startGroupIndex; index <= page.endGroupIndex; index++) {
+    if (groupHeaders[index]) return index;
+  }
+  return page.startGroupIndex;
+}
+
 function computeGroupFlatStartIndices(groupCounts: number[]): number[] {
   const indices: number[] = [];
   let flatStartIndex = 0;
@@ -283,14 +293,4 @@ function computeGroupFlatStartIndices(groupCounts: number[]): number[] {
 function clampPageIndex(pageIndex: number, pageCount: number): number {
   if (pageCount <= 0) return 0;
   return Math.min(Math.max(pageIndex, 0), pageCount - 1);
-}
-
-function computeLastGroupFirstFlatIndex(
-  groupCounts: number[],
-  flatItemCount: number
-): number | null {
-  if (groupCounts.length === 0) return null;
-  const tailCount = groupCounts[groupCounts.length - 1] ?? 0;
-  if (tailCount <= 0) return null;
-  return flatItemCount - tailCount;
 }

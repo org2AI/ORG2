@@ -70,5 +70,3 @@ export function useReferencePrices(
     [getCreditPrice, getPricingModel, refresh]
   );
 }
-
-export default useReferencePrices;

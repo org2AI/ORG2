@@ -4,6 +4,7 @@ import Button from "@src/components/Button";
 import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
+import { WorkManagementRefreshButton } from "@src/features/GitHubWork/WorkManagementRefreshButton";
 import {
   HugeiconsIcon,
   InformationCircleIcon,
@@ -11,7 +12,6 @@ import {
   Search01Icon,
 } from "@src/icons";
 import ProjectManagerBreadcrumb from "@src/modules/ProjectManager/shared/components/ProjectManagerBreadcrumb";
-import { WorkManagementRefreshButton } from "@src/modules/shared/components/WorkManagementRefreshButton";
 
 import type { StatusFilterType } from "../../types";
 import WorkItemsStatusFilterSelect from "../WorkItemsStatusFilterSelect";
@@ -96,7 +96,6 @@ export function WorkItemsHeaderActions({
       {onSearch && (
         <ToolbarTooltip label={t("common:actions.search")}>
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             iconOnly
@@ -126,7 +125,6 @@ export function WorkItemsHeaderActions({
           {showCollapseAll && (
             <ToolbarTooltip label={t("common:actions.collapseAll")}>
               <Button
-                htmlType="button"
                 variant="tertiary"
                 size="small"
                 iconOnly
@@ -162,7 +160,6 @@ export function WorkItemsHeaderActions({
           <HeaderSectionSeparator className="mx-0.5" />
           <ToolbarTooltip label={propertiesLabel}>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly

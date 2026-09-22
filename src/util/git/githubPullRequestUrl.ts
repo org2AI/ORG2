@@ -1,5 +1,5 @@
 /**
- * github.com pull-request URL detection shared by chat link handling and the
+ * github.com pull-request URL parsing shared by chat link handling and the
  * turn-metadata footer. Host-strict on purpose: GitHub Enterprise hosts are
  * not routed through the in-app PR flows.
  */
@@ -22,8 +22,4 @@ export function parseGitHubPullRequestUrl(
   const number = Number(match[3]);
   if (!Number.isSafeInteger(number) || number <= 0) return null;
   return { owner: match[1], repo: match[2], number };
-}
-
-export function isGitHubPullRequestUrl(url: string): boolean {
-  return parseGitHubPullRequestUrl(url) !== null;
 }

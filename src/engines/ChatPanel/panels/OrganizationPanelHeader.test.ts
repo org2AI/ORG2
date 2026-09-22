@@ -40,11 +40,13 @@ describe("OrganizationPanelHeader", () => {
     expect(markup).toContain("-translate-y-1");
     expect(markup).toContain('data-testid="organization-tabs"');
     expect(markup).toContain('data-testid="organization-picker-separator"');
-    expect(markup).toContain('data-testid="organization-picker"');
-    expect(markup).toContain("orgs.personalOrg");
-    expect(markup.indexOf('data-testid="organization-picker"')).toBeLessThan(
-      markup.indexOf('data-testid="organization-tabs"')
-    );
+    // The personal workspace is the only local organization here, so the
+    // local | cloud switch names the scope on its own.
+    expect(markup).toContain('data-testid="organization-picker-scope"');
+    expect(markup).not.toContain('data-testid="organization-picker"><');
+    expect(
+      markup.indexOf('data-testid="organization-picker-scope"')
+    ).toBeLessThan(markup.indexOf('data-testid="organization-tabs"'));
     expect(markup).not.toContain("chat-panel-published-header");
   });
 });

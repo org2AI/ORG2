@@ -5,16 +5,10 @@
  * Provides navigation between different simulator tools and apps.
  * The dock appearance is consistent in both Live and Replay modes.
  *
- * Note: Replay bar is now handled by SimulatorContentArea component.
+ * Note: The replay bar is rendered separately (MusicPlayerReplayBar in
+ * ActivitySimulator).
  */
-import {
-  type FC,
-  Fragment,
-  type MouseEvent,
-  type ReactNode,
-  memo,
-  useCallback,
-} from "react";
+import { type FC, Fragment, type MouseEvent, memo, useCallback } from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
 
@@ -34,25 +28,14 @@ interface DockReplayControlProps {
   activeApp: AppType | null;
   /** Current app the agent is working on (shows blue dot indicator) */
   currentWorkingApp?: AppType;
-  /** Whether to show the dock icons */
-  showDock?: boolean;
   /** Callback when a dock app is clicked */
   onAppClick?: (appId: string, event?: MouseEvent) => void;
   /** Callback when a dock app is right-clicked */
   onAppContextMenu?: (appId: string, event: MouseEvent) => void;
-  /** Element rendered immediately to the right of the dock icon strip */
-  trailing?: ReactNode;
 }
 
 export const DockReplayControl: FC<DockReplayControlProps> = memo(
-  ({
-    activeApp,
-    currentWorkingApp,
-    showDock = true,
-    onAppClick,
-    onAppContextMenu,
-    trailing,
-  }) => {
+  ({ activeApp, currentWorkingApp, onAppClick, onAppContextMenu }) => {
     const isInDock =
       activeApp != null && DOCK_APPS.some((app) => app.id === activeApp);
     const showActive = activeApp != null && !isInDock;
@@ -79,12 +62,8 @@ export const DockReplayControl: FC<DockReplayControlProps> = memo(
       [onAppContextMenu]
     );
 
-    if (!showDock) {
-      return null;
-    }
-
     return (
-      <StationDockRow trailing={trailing}>
+      <StationDockRow>
         <StationDockIconStrip>
           {DOCK_APP_SEGMENTS.map((segment, segmentIndex) => (
             <Fragment key={segmentIndex}>

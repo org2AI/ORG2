@@ -8,13 +8,13 @@
  * - @src/store/git/gitStatusAtom.ts
  * - @src/engines/Simulator/
  */
-import type { GitFileStatus } from "@src/config/gitStatus";
+import type { GitFileStatus } from "@src/contracts/git";
 
 /** Shared presentation mode for Git review diff surfaces. */
 export type DiffViewMode = "unified" | "split";
 
 // Re-export GitFileStatus for convenience
-export type { GitFileStatus } from "@src/config/gitStatus";
+export type { GitFileStatus } from "@src/contracts/git";
 
 // Re-export status helpers
 export {

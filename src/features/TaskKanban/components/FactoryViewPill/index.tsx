@@ -11,9 +11,10 @@
 import { useSetAtom } from "jotai";
 import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import TabPill, { type TabPillItem } from "@src/components/TabPill";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { HugeiconsIcon, LinkSquare02Icon } from "@src/icons";
 import { openRuntimeInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 

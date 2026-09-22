@@ -11,13 +11,13 @@ import type { GitFile } from "@src/types/git/types";
 
 import { handlePullError } from "./pullErrorHandlers";
 
-vi.mock("@src/components/GitDialogs", () => ({
+vi.mock("@src/features/GitDialogs", () => ({
   PullConflictDialog: { open: vi.fn() },
   RebaseConflictDialog: { open: vi.fn() },
 }));
 
 const { PullConflictDialog, RebaseConflictDialog } =
-  await import("@src/components/GitDialogs");
+  await import("@src/features/GitDialogs");
 
 const pullConflictOpen = vi.mocked(PullConflictDialog.open);
 const rebaseConflictOpen = vi.mocked(RebaseConflictDialog.open);

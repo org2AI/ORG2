@@ -3,12 +3,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { SearchInput } from "@src/components/SearchInput";
 import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
-import {
-  HEADER_BUTTON,
-  HEADER_ICON_SIZE,
-} from "@src/config/workstation/tokens";
+import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { Cancel01Icon, HashtagIcon, HugeiconsIcon } from "@src/icons";
 
 interface GoToLinePanelProps {
@@ -96,18 +94,21 @@ const GoToLinePanel: React.FC<GoToLinePanelProps> = ({ view, onClose }) => {
 
       <div className="flex items-start py-1.5 pr-3">
         <div className="flex h-7 items-center">
-          <button
-            type="button"
+          <Button
+            variant="tertiary"
+            size="sidebar"
+            aria-label={t("tooltips.closeEsc")}
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                data-icon="x"
+                size={HEADER_ICON_SIZE.sm}
+              />
+            }
             onClick={onClose}
-            className={HEADER_BUTTON.action}
             title={t("tooltips.closeEsc")}
-          >
-            <HugeiconsIcon
-              icon={Cancel01Icon}
-              data-icon="x"
-              size={HEADER_ICON_SIZE.sm}
-            />
-          </button>
+          />
         </div>
       </div>
     </div>

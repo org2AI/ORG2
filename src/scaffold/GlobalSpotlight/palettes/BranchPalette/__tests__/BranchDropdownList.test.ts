@@ -83,7 +83,11 @@ describe("shared picker virtualization", () => {
     expect(
       container.querySelectorAll("[data-spotlight-item-index]").length
     ).toBeLessThan(25);
-    await act(async () => last!.click());
+    await act(async () =>
+      last!
+        .querySelector<HTMLButtonElement>("[data-spotlight-row-action]")!
+        .click()
+    );
     expect(onItemSelect).toHaveBeenCalledWith(items[9999]);
     await act(async () =>
       root.render(

@@ -1,82 +1,61 @@
 import type { CoreSessionSummary } from "@src/api/tauri/lineage";
 import type { Session } from "@src/store/session";
-import { getFileName } from "@src/util/file/pathUtils";
 
-import type { FileChangesResult } from "./InputArea/components/CompactFileChanges";
+import type { FileChangeVisibleStats } from "./InputArea/components/CompactFileChanges";
 
-function impactFileChanges(input: {
-  filesChanged?: number;
-  linesAdded?: number;
-  linesRemoved?: number;
-  touchedFiles?: readonly string[];
-}): FileChangesResult | undefined {
-  const touchedFiles = input.touchedFiles ?? [];
-  const filesChanged = input.filesChanged ?? touchedFiles.length;
-  const totalAdditions = input.linesAdded ?? 0;
-  const totalDeletions = input.linesRemoved ?? 0;
-  if (filesChanged === 0 && totalAdditions === 0 && totalDeletions === 0) {
-    return undefined;
-  }
+type SummaryImpact = Pick<
+  CoreSessionSummary,
+  "filesChanged" | "linesAdded" | "linesRemoved"
+>;
+type SessionRowImpact = Pick<
+  Session,
+  "filesChanged" | "linesAdded" | "linesRemoved" | "touchedFiles"
+>;
 
-  const displayPaths =
-    touchedFiles.length > 0
-      ? touchedFiles
-      : Array.from(
-          { length: filesChanged },
-          (_unused, fileIndex) => `Changed file ${fileIndex + 1}`
-        );
-  const files = displayPaths.map((path, fileIndex) => ({
-    path,
-    fileName: getFileName(path),
-    status: "M",
-    additions: fileIndex === 0 ? totalAdditions : 0,
-    deletions: fileIndex === 0 ? totalDeletions : 0,
-    lineCount: fileIndex === 0 ? totalAdditions + totalDeletions : 0,
-  }));
+export const NO_FILE_CHANGE_STATS: FileChangeVisibleStats = {
+  count: 0,
+  additions: 0,
+  deletions: 0,
+};
 
-  return {
-    files,
-    totalAdditions,
-    totalDeletions,
-    stats: { added: 0, modified: filesChanged, deleted: 0 },
-  };
-}
-
-function sourceImpactFileChanges(
-  session: Session | undefined
-): FileChangesResult | undefined {
-  return impactFileChanges({
-    filesChanged: session?.filesChanged,
-    linesAdded: session?.linesAdded,
-    linesRemoved: session?.linesRemoved,
-    touchedFiles: session?.touchedFiles,
-  });
-}
-
-function summaryImpactFileChanges(
-  summary: CoreSessionSummary | null
-): FileChangesResult | undefined {
-  if (!summary) return undefined;
-  return impactFileChanges({
-    filesChanged: summary.filesChanged,
-    linesAdded: summary.linesAdded,
-    linesRemoved: summary.linesRemoved,
-  });
-}
-
-export function resolveInitialFileChanges({
-  currentSession,
-  isCursorIde,
-  isExternalHistory,
-  orgtrackSummary,
-}: {
-  currentSession: Session | undefined;
-  isCursorIde: boolean;
-  isExternalHistory: boolean;
-  orgtrackSummary: CoreSessionSummary | null;
-}): FileChangesResult | undefined {
-  return isCursorIde || isExternalHistory
-    ? (summaryImpactFileChanges(orgtrackSummary) ??
-        sourceImpactFileChanges(currentSession))
+function impactStats(
+  count: number,
+  additions: number,
+  deletions: number
+): FileChangeVisibleStats | undefined {
+  return count > 0 || additions > 0 || deletions > 0
+    ? { count, additions, deletions }
     : undefined;
+}
+
+/**
+ * Composer files-pill stats for an imported (external-history or Cursor IDE)
+ * session. The session summary is authoritative — the backend folds the
+ * source parser's cached tally into it — and the sidebar row, when paged in,
+ * is the instant value while the summary loads. Neither holding impact is a
+ * final answer: imported sessions have no orgtrack edit artifacts to read.
+ */
+export function resolveImportedFileChangeStats({
+  summary,
+  session,
+}: {
+  summary: SummaryImpact | null;
+  session: SessionRowImpact | undefined;
+}): FileChangeVisibleStats {
+  const touchedFileCount = session?.touchedFiles?.length ?? 0;
+  return (
+    (summary
+      ? impactStats(
+          summary.filesChanged,
+          summary.linesAdded,
+          summary.linesRemoved
+        )
+      : undefined) ??
+    impactStats(
+      touchedFileCount > 0 ? touchedFileCount : (session?.filesChanged ?? 0),
+      session?.linesAdded ?? 0,
+      session?.linesRemoved ?? 0
+    ) ??
+    NO_FILE_CHANGE_STATS
+  );
 }

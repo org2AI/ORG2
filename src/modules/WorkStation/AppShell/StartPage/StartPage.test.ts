@@ -33,10 +33,39 @@ vi.mock("@src/hooks/git/useWorkingTreeDiffTotals", () => ({
   useWorkingTreeDiffTotals: () => ({ additions: 0, deletions: 0 }),
 }));
 
-vi.mock("../useWorkStationLaunchActions", () => ({
-  LAUNCHPAD_ACTION_IDS: [],
-  useWorkStationLaunchActions: () => [],
-}));
+vi.mock("../useWorkStationLaunchActions", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../useWorkStationLaunchActions")>();
+  const { FolderClosedIcon } = await import("@src/icons");
+  const labels: Record<string, string> = {
+    explorer: "Files",
+    sourceControl: "Review",
+    terminal: "Terminal",
+    newBrowserTab: "Browser",
+    searchFile: "Search file",
+    searchSessions: "Kanban",
+    workItems: "Work items",
+    projects: "Projects",
+  };
+  const secondaryIds = new Set([
+    "searchFile",
+    "searchSessions",
+    "workItems",
+    "projects",
+  ]);
+
+  return {
+    ...actual,
+    useWorkStationLaunchActions: () =>
+      actual.LAUNCHPAD_ACTION_IDS.map((id) => ({
+        id,
+        sectionId: secondaryIds.has(id) ? "secondary" : "primary",
+        icon: FolderClosedIcon,
+        label: labels[id],
+        onClick: vi.fn(),
+      })),
+  };
+});
 
 const reactActEnvironment = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
@@ -70,7 +99,7 @@ describe("WorkStationStartPage", () => {
     Reflect.deleteProperty(reactActEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
 
-  it("shows the Agent Station action and divider for a selected session", async () => {
+  it("shows the Agent Station action and both dividers for a selected session", async () => {
     await act(async () => {
       root.render(
         createElement(Provider, { store }, createElement(WorkStationStartPage))
@@ -86,13 +115,13 @@ describe("WorkStationStartPage", () => {
 
     expect(action).toBeDefined();
     expect(action?.textContent).toContain("2");
-    expect(container.querySelector('[role="separator"]')).not.toBeNull();
+    expect(container.querySelectorAll('[role="separator"]')).toHaveLength(2);
 
     await act(async () => action?.click());
     expect(store.get(stationModeAtom)).toBe("agent-station");
   });
 
-  it("hides the Agent Station action when no session is selected", async () => {
+  it("hides the Agent Station action but keeps the launch-section divider", async () => {
     await act(async () => {
       root.render(
         createElement(Provider, { store }, createElement(WorkStationStartPage))
@@ -100,6 +129,34 @@ describe("WorkStationStartPage", () => {
     });
 
     expect(container.textContent).not.toContain("Go to Agent Station");
-    expect(container.querySelector('[role="separator"]')).toBeNull();
+    expect(container.querySelectorAll('[role="separator"]')).toHaveLength(1);
+  });
+
+  it("places the launch-section divider between Browser and Search file", async () => {
+    await act(async () => {
+      root.render(
+        createElement(Provider, { store }, createElement(WorkStationStartPage))
+      );
+    });
+
+    const buttons = Array.from(container.querySelectorAll("button"));
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "Files",
+      "Review",
+      "Terminal",
+      "Browser",
+      "Search file",
+      "Kanban",
+      "Work items",
+      "Projects",
+    ]);
+
+    const browserButton = buttons.find(
+      (button) => button.textContent === "Browser"
+    );
+    const separator = browserButton?.nextElementSibling;
+
+    expect(separator?.getAttribute("role")).toBe("separator");
+    expect(separator?.nextElementSibling?.textContent).toBe("Search file");
   });
 });

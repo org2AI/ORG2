@@ -3,11 +3,19 @@
  */
 import type { ReactNode, Ref } from "react";
 
-export type MessageType = "success" | "error" | "warning" | "info";
+export type MessageType = "success" | "error" | "warning" | "info" | "regular";
+export type MessagePlacement = "bottom" | "spotlight";
+
+export interface SpotlightMessageConfig extends MessageConfig {
+  /** Visual tone. Overrides type when supplied; defaults to regular. */
+  variant?: "success" | "danger" | "regular";
+}
 
 export interface MessageConfig {
   content: ReactNode;
   type?: MessageType;
+  /** Where the message is presented. Defaults to the bottom toast stack. */
+  placement?: MessagePlacement;
   duration?: number;
   closable?: boolean;
   onClose?: () => void;

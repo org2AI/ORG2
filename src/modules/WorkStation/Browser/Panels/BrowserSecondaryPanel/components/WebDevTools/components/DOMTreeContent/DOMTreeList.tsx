@@ -1,7 +1,7 @@
 import { useCallback } from "react";
-import { Virtuoso } from "react-virtuoso";
 
 import { TREE_ROW_HEIGHT } from "@src/components/TreeRow";
+import { VirtualList } from "@src/components/VirtualList";
 
 import { DOMTreeNodeRow } from "./DOMTreeNodeRow";
 import { useDOMTreeReveal } from "./hooks/useDOMTreeReveal";
@@ -32,7 +32,7 @@ export function DOMTreeList({
   onSelect,
   onHover,
 }: DOMTreeListProps) {
-  const { virtuosoRef, scrollContainerRef } = useDOMTreeReveal({
+  const { listRef, scrollContainerRef } = useDOMTreeReveal({
     flattenedNodes: nodes,
     virtualized,
     revealXPath,
@@ -65,15 +65,14 @@ export function DOMTreeList({
   return (
     <div className="h-full overflow-hidden">
       {virtualized ? (
-        <Virtuoso
-          ref={virtuosoRef}
+        <VirtualList
+          ref={listRef}
           totalCount={nodes.length}
           itemContent={(index) => renderNode(nodes[index])}
           computeItemKey={(index) => nodes[index].node.xpath}
-          overscan={30}
-          increaseViewportBy={{ top: 200, bottom: 200 }}
+          overscanPx={200}
           className="scrollbar-hide h-full"
-          defaultItemHeight={TREE_ROW_HEIGHT}
+          estimatedItemHeight={TREE_ROW_HEIGHT}
         />
       ) : (
         <div

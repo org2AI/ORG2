@@ -4,17 +4,16 @@
  * Core types for terminal sessions and state management.
  */
 import type { CliAgentType } from "@src/api/types/keys";
+import type {
+  AddSessionOptions,
+  TerminalAgentStatus,
+} from "@src/contracts/terminal/session";
 import type { ShellKind } from "@src/types/terminal";
 
-export const TERMINAL_AGENT_STATUS = {
-  STARTING: "starting",
-  RUNNING: "running",
-  WAITING: "waiting",
-  DONE: "done",
-} as const;
-
-type TerminalAgentStatus =
-  (typeof TERMINAL_AGENT_STATUS)[keyof typeof TERMINAL_AGENT_STATUS];
+export {
+  TERMINAL_AGENT_STATUS,
+  type TerminalAgentStatus,
+} from "@src/contracts/terminal/session";
 
 export interface TerminalSession {
   id: string;
@@ -64,24 +63,7 @@ export function getTerminalDisplayTitle(session: TerminalSession): string {
   );
 }
 
-export interface AddSessionOptions {
-  /** Internal setup flows may require a dedicated session immediately after
-   * the Terminal tab mounts its default session. User-initiated creation must
-   * leave this false so rapid clicks remain throttled. */
-  bypassCreationCooldown?: boolean;
-  /** Shell profile ID to use (if omitted, uses default profile) */
-  profileId?: string;
-  /** Shell executable path override */
-  shell?: string;
-  /** Shell arguments override */
-  args?: string[];
-  /** Custom environment variables */
-  env?: Record<string, string>;
-  /** Initial working directory for the terminal session */
-  cwd?: string;
-  /** User-assigned name for this terminal */
-  name?: string;
-}
+export type { AddSessionOptions } from "@src/contracts/terminal/session";
 
 export interface UseTerminalStateReturn {
   /** All terminal sessions */

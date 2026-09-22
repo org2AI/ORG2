@@ -41,7 +41,7 @@ describe("OrgDangerZone", () => {
       /disabled=""[^>]*data-testid="local-org-delete-confirm-input"/
     );
     expect(markup).toMatch(
-      /disabled=""[^>]*data-testid="local-org-delete-confirm"/
+      /<button(?=[^>]*disabled="")(?=[^>]*data-testid="local-org-delete-confirm")/
     );
   });
 

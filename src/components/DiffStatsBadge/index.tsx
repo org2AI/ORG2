@@ -31,7 +31,7 @@ interface DiffStatsBadgeProps {
    * container gap and lose to Tailwind source-order.
    */
   gapClassName?: string;
-  /** Reserve a 3ch column for each value so additions/deletions align. */
+  /** Opt in to aligned 3ch columns; defaults to a compact inline label. */
   reserveValueWidth?: boolean;
   className?: string;
   valueClassName?: string;
@@ -62,7 +62,7 @@ const DiffStatsBadge = memo(function DiffStatsBadge({
   size = "inherit",
   weight = "medium",
   gapClassName = "gap-1",
-  reserveValueWidth = true,
+  reserveValueWidth = false,
   className,
   valueClassName,
   formatValue = String,

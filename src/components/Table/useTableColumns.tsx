@@ -38,6 +38,7 @@ import {
 import { useMemo } from "react";
 
 import Checkbox from "@src/components/Checkbox";
+import Radio from "@src/components/Radio";
 
 import { IndeterminateCheckbox } from "./helpers";
 import type { TableColumn, TableProps } from "./types";
@@ -84,11 +85,13 @@ export function useTableColumns<T>(
           ) : null,
         cell: ({ row }: { row: Row<T> }) =>
           rowSelection.type === "radio" ? (
-            <input
-              type="radio"
-              checked={row.getIsSelected()}
-              onChange={row.getToggleSelectedHandler()}
+            <Radio
+              size="small"
               className="table-checkbox"
+              checked={row.getIsSelected()}
+              onChange={(_checked, event) =>
+                row.getToggleSelectedHandler()(event)
+              }
             />
           ) : (
             <Checkbox

@@ -13,6 +13,7 @@ import { TOOL_USAGE_ARGS_KEY } from "@src/engines/SessionCore/core/types";
 import { formatToolName } from "@src/util/ui/rendering/formatToolName";
 import { getRegistryToolLabelText } from "@src/util/ui/rendering/registryToolLabel";
 import { deriveToolAction } from "@src/util/ui/rendering/toolAction";
+import { getToolCallTitle } from "@src/util/ui/rendering/toolCallTitle";
 
 import {
   hasStyledOutput,
@@ -146,7 +147,9 @@ const ToolCallBlock: React.FC<ToolCallBlockProps> = React.memo(
           : undefined);
       return getToolIcon(toolName, { action });
     }, [toolName, args, iconOverride, derivedAction]);
+    const callTitle = getToolCallTitle(toolName, args);
     const displayName = useMemo(() => {
+      if (callTitle) return callTitle;
       if (title) return title;
       const action = derivedAction;
       const registryLabel = getRegistryToolLabelText(
@@ -156,7 +159,7 @@ const ToolCallBlock: React.FC<ToolCallBlockProps> = React.memo(
       );
       if (registryLabel) return registryLabel;
       return formatToolName(toolName);
-    }, [title, toolName, isLoading, isError, derivedAction]);
+    }, [callTitle, title, toolName, isLoading, isError, derivedAction]);
     const argsSummary = useMemo(
       () => extractArgsSummary(toolName, args),
       [toolName, args]
@@ -352,7 +355,11 @@ const ToolCallBlock: React.FC<ToolCallBlockProps> = React.memo(
             hasContent={hasContent}
             isLoading={isLoading}
           />
-          <EventBlockHeaderTitle isLoading={isLoading}>
+          <EventBlockHeaderTitle
+            isLoading={isLoading}
+            truncate={Boolean(callTitle)}
+            title={callTitle}
+          >
             {displayName}
           </EventBlockHeaderTitle>
           {argsSummary && (

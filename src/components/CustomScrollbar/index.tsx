@@ -14,13 +14,13 @@
  */
 import React, { useCallback, useEffect, useRef } from "react";
 
-import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+import { listenForDrag } from "@src/util/dom/dragLifecycle";
 import {
   clearTransientScrollbar,
   revealTransientScrollbar,
 } from "@src/util/ui/transientScrollbars";
 
-import "./index.scss";
+import "./index.css";
 
 // ============================================
 // Types

@@ -13,6 +13,7 @@ import {
 } from "vitest";
 
 import { resolvePrWorktreeBase } from "@src/api/tauri/github";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import WorktreeSourceSelector from "../WorktreeSourceSelector";
 
@@ -21,10 +22,8 @@ const testState = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { defaultValue?: string; value?: string }) =>
-      options?.defaultValue ?? key,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 vi.mock("@src/api/tauri/github", () => ({
@@ -169,8 +168,8 @@ const reactActEnvironment = globalThis as typeof globalThis & {
 describe("WorktreeSourceSelector", () => {
   let container: HTMLDivElement;
   let root: Root;
-  let onClose: ReturnType<typeof vi.fn>;
-  let onSelect: ReturnType<typeof vi.fn>;
+  let onClose: ReturnType<typeof vi.fn<() => void>>;
+  let onSelect: ReturnType<typeof vi.fn<() => void>>;
 
   beforeAll(() => {
     reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;

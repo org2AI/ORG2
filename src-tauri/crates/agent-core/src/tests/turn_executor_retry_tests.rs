@@ -559,6 +559,12 @@ async fn owned_background_result_converges_inside_the_same_turn() {
 
 #[tokio::test]
 async fn task_terminal_mutation_waits_for_owned_job_result_consumption() {
+    // The owned-job finality check snapshots the Task through
+    // `AgentOrgTaskStore::get` -> `database::db::get_connection()`, which
+    // resolves `ORGII_HOME` at call time. Hold the sandbox so this test never
+    // opens a sibling test's fresh sandbox database (a race SQLite reports as
+    // an immediate "database is locked") or the real `~/.orgii`.
+    let _sandbox = test_helpers::test_env::sandbox();
     let owner = TurnProcessOwner {
         session_id: "owned-task-finality-session".to_string(),
         turn_intent_id: "owned-task-finality-intent".to_string(),

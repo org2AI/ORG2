@@ -36,6 +36,7 @@ tracing = "0.1"
 objc2 = { workspace = true }
 objc2-foundation = { workspace = true }
 objc2-app-kit = { workspace = true }
+block2 = { workspace = true }
 dispatch2 = { workspace = true }
 
 # Windows-specific DWM rounded corners + acrylic backdrop + OS version

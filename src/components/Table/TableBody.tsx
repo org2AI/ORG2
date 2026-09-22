@@ -1,10 +1,10 @@
 import { Cell, Row, flexRender } from "@tanstack/react-table";
 import React, { useState } from "react";
 
+import Button from "@src/components/Button";
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import { Placeholder } from "@src/components/Placeholder";
 import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
   ChevronsDownUpIcon,
   HugeiconsIcon,
   InboxIcon,
@@ -47,7 +47,9 @@ const INTERACTIVE_TABLE_TARGET_SELECTOR = [
   ".dropdown-trigger-wrapper",
 ].join(", ");
 
-function isInteractiveTableTarget(target: EventTarget | null): boolean {
+/** Shared with SettingsTable's card grid so both presentations ignore clicks
+ *  that land on a control inside the row. */
+export function isInteractiveTableTarget(target: EventTarget | null): boolean {
   return target instanceof Element
     ? target.closest(INTERACTIVE_TABLE_TARGET_SELECTOR) !== null
     : false;
@@ -208,20 +210,23 @@ export function TableBody<T>({
         const canExpand =
           expandable?.rowExpandable?.(row.original) ?? !!expandable;
         const isExpanded = expandedRows.has(rowKey);
-        const expandIcon = settings
-          ? isExpanded
-            ? ArrowDown01Icon
-            : ArrowRight01Icon
-          : isExpanded
-            ? ChevronsDownUpIcon
-            : UnfoldMoreIcon;
-        const expandIconName = settings
-          ? isExpanded
-            ? "chevron-down"
-            : "chevron-right"
-          : isExpanded
-            ? "chevrons-down-up"
-            : "chevrons-up-down";
+        // Settings tables disclose with a chevron that rotates from ">" to "v";
+        // data tables use the unfold/fold pair, which is two distinct glyphs
+        // with no rotation between them.
+        const expandIcon = settings ? (
+          <DisclosureChevron
+            expanded={isExpanded}
+            size={14}
+            className="shrink-0"
+          />
+        ) : (
+          <HugeiconsIcon
+            icon={isExpanded ? ChevronsDownUpIcon : UnfoldMoreIcon}
+            data-icon={isExpanded ? "chevrons-down-up" : "chevrons-up-down"}
+            size={14}
+            className="shrink-0"
+          />
+        );
 
         return (
           <React.Fragment key={rowKey}>
@@ -257,9 +262,13 @@ export function TableBody<T>({
                 <td className="table-td table-expand-cell">
                   <div className="flex h-full items-center justify-end">
                     {canExpand ? (
-                      <button
-                        type="button"
-                        className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded text-text-3 transition-colors hover:text-text-1"
+                      <Button
+                        variant="tertiary"
+                        size="sidebar"
+                        iconOnly
+                        icon={expandIcon}
+                        style={{ width: 14, height: 14 }}
+                        className="table-expand-button shrink-0 hover:text-text-1"
                         onClick={(event) => {
                           event.stopPropagation();
                           event.currentTarget.blur();
@@ -268,14 +277,7 @@ export function TableBody<T>({
                         }}
                         aria-label={isExpanded ? "Collapse row" : "Expand row"}
                         aria-expanded={isExpanded}
-                      >
-                        <HugeiconsIcon
-                          icon={expandIcon}
-                          data-icon={expandIconName}
-                          size={14}
-                          className="shrink-0"
-                        />
-                      </button>
+                      />
                     ) : (
                       <span
                         className="inline-flex h-3.5 w-3.5 shrink-0"

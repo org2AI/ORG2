@@ -1,6 +1,8 @@
-import { type ReactNode, createElement, createRef } from "react";
+import { type ReactNode, createElement, createRef, useContext } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+
+import { ChatPanelFullScreenContext } from "./chatPanelFullScreenContext";
 
 vi.mock("./TabContent/UnifiedChatPanelTabContent", () => ({
   UnifiedChatPanelTabContent: ({
@@ -14,6 +16,7 @@ vi.mock("./TabContent/UnifiedChatPanelTabContent", () => ({
       "div",
       {
         "data-has-tab-bar": String(hasTabBar),
+        "data-full-screen": String(useContext(ChatPanelFullScreenContext)),
         "data-unified-content": "true",
       },
       chatColumn
@@ -22,7 +25,11 @@ vi.mock("./TabContent/UnifiedChatPanelTabContent", () => ({
 
 const { ChatPanelShell } = await import("./ChatPanelShell");
 
-function render(focusedWorkstationRail?: ReactNode, hasTabBar = true): string {
+function render(
+  focusedWorkstationRail?: ReactNode,
+  hasTabBar = true,
+  fullScreen = true
+): string {
   return renderToStaticMarkup(
     createElement(ChatPanelShell, {
       activeTab: null,
@@ -31,8 +38,8 @@ function render(focusedWorkstationRail?: ReactNode, hasTabBar = true): string {
       chatPanelOpacityStyle: {},
       chatWidth: 1200,
       chatWidthStyleValue: "100%",
-      embedded: true,
       focusedWorkstationRail,
+      fullScreen,
       hasTabBar,
       headerSection: createElement("header", {
         "data-chat-header": "true",
@@ -78,5 +85,12 @@ describe("ChatPanelShell focused workstation layout", () => {
   it("passes the folded tab-row state to hosted surfaces", () => {
     expect(render(undefined, false)).toContain('data-has-tab-bar="false"');
     expect(render(undefined, true)).toContain('data-has-tab-bar="true"');
+  });
+
+  it("tells hosted surfaces whether the pane fills the window", () => {
+    expect(render(undefined, true, true)).toContain('data-full-screen="true"');
+    expect(render(undefined, true, false)).toContain(
+      'data-full-screen="false"'
+    );
   });
 });

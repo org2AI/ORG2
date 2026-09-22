@@ -12,8 +12,9 @@
  */
 import React from "react";
 
-import { codeMirrorPrismTheme } from "@src/features/CodeMirror/themes/prism";
 import { PrismLight as SyntaxHighlighterPrism } from "@src/util/language/prismLight";
+
+import { markdownExtensions } from "./extensions";
 
 const SyntaxHighlighter =
   SyntaxHighlighterPrism as unknown as React.ComponentType<
@@ -39,9 +40,11 @@ const MarkdownCodeHighlighter: React.FC<MarkdownCodeHighlighterProps> = ({
   code,
   language,
 }) => (
+  // With no palette registered the highlighter keeps its own default colours;
+  // the fence is coloured either way, never blank.
   <SyntaxHighlighter
     customStyle={CODE_CUSTOM_STYLE}
-    style={codeMirrorPrismTheme}
+    style={markdownExtensions().syntaxTheme}
     language={language}
     PreTag="div"
     showLineNumbers={false}

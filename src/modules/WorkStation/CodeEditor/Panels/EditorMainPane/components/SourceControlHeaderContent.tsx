@@ -13,6 +13,8 @@ import type { ReactNode } from "react";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
+import { DiffViewModeToggle } from "@src/components/DiffViewModeToggle";
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import TabPill from "@src/components/TabPill";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import {
@@ -20,18 +22,18 @@ import {
   ArrowUp01Icon,
   CircleDotIcon,
   HugeiconsIcon,
-  LinkSquare02Icon,
   ListChevronsDownUpIcon,
   Refresh04Icon,
 } from "@src/icons";
 import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
 import type { SourceControlFilterMode } from "@src/modules/WorkStation/shared/SidebarModules";
-import { DiffViewModeToggle } from "@src/modules/shared/components/DiffViewModeToggle";
 import type {
   SourceControlHistorySelection,
   WorkStationTab,
 } from "@src/store/workstation/tabs";
 import type { DiffViewMode } from "@src/types/git/types";
+
+import { SourceControlDiffSettingsMenu } from "./SourceControlDiffSettingsMenu";
 
 export interface SourceControlHeaderContentProps {
   /** The active `source-control` tab (host guarantees the type). */
@@ -44,11 +46,11 @@ export interface SourceControlHeaderContentProps {
   sourceControlHeaderLeadingSlot?: ReactNode;
   sourceControlHeaderTrailingSlot?: ReactNode;
   sourceControlRefreshSpinClass: string | undefined;
+  focusToolbarRef?: React.Ref<HTMLSpanElement>;
   diffViewMode: DiffViewMode;
   t: TFunction;
   onDiffViewModeChange: (mode: DiffViewMode) => void;
   onModeChange: (mode: "focus" | "all-changes") => void;
-  onOpenHistoryInNewTab: (selection: SourceControlHistorySelection) => void;
   onReviewPrevFile: () => void;
   onReviewNextFile: () => void;
   onCollapseAll: () => void;
@@ -66,11 +68,11 @@ export const SourceControlHeaderContent: React.FC<
   sourceControlHeaderLeadingSlot,
   sourceControlHeaderTrailingSlot,
   sourceControlRefreshSpinClass,
+  focusToolbarRef,
   diffViewMode,
   t,
   onDiffViewModeChange,
   onModeChange,
-  onOpenHistoryInNewTab,
   onReviewPrevFile,
   onReviewNextFile,
   onCollapseAll,
@@ -83,6 +85,8 @@ export const SourceControlHeaderContent: React.FC<
     | null
     | undefined;
   const isIssuesMode = sourceControlFilterMode === "issues";
+  const showHistoryDiff =
+    historySelection?.type === "commit" || historySelection?.type === "stash";
   const showModePill =
     showSourceControlModePill && !isIssuesMode && !historySelection;
   const sourceControlModeTabs = [
@@ -94,23 +98,20 @@ export const SourceControlHeaderContent: React.FC<
   ];
   const showCollapseAll =
     showModePill && mode === "all-changes" && !historySelection;
-  const showReviewNavigation =
-    showModePill &&
-    mode === "focus" &&
-    !historySelection &&
-    hasFocusPath &&
-    gitReviewNavigationTotal > 0;
+  const showReviewNavigation = showModePill && mode === "focus";
+  const showDetailToolbar =
+    showHistoryDiff || (showModePill && mode === "focus" && hasFocusPath);
+  const reviewNavigationDisabled =
+    !hasFocusPath || gitReviewNavigationTotal === 0;
   const showIssueHeader = isIssuesMode && selectedIssue;
   return (
     <div className="flex min-w-0 flex-1 items-center gap-1.5">
-      {sourceControlHeaderLeadingSlot}
-      {sourceControlHeaderLeadingSlot && sourceControlHeaderTrailingSlot ? (
-        <span
-          className="pointer-events-none mx-0.5 h-4 w-px shrink-0 bg-border-2"
-          aria-hidden
-        />
-      ) : null}
-      {sourceControlHeaderTrailingSlot}
+      {(sourceControlHeaderLeadingSlot || sourceControlHeaderTrailingSlot) && (
+        <div className="flex min-w-0 shrink-0 items-center gap-px">
+          {sourceControlHeaderLeadingSlot}
+          {sourceControlHeaderTrailingSlot}
+        </div>
+      )}
       {showIssueHeader && (
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span
@@ -135,118 +136,81 @@ export const SourceControlHeaderContent: React.FC<
         </div>
       )}
       {showModePill && (
-        <>
-          <span
-            className="pointer-events-none mx-1.5 h-4 w-px shrink-0 bg-border-2"
-            aria-hidden
-          />
-          <TabPill
-            activeTab={mode}
-            tabs={sourceControlModeTabs}
-            onChange={(key) => onModeChange(key as "focus" | "all-changes")}
-            variant="pill"
-            color="fill"
-            fillWidth={false}
-            size="small"
-          />
-        </>
+        <TabPill
+          activeTab={mode}
+          tabs={sourceControlModeTabs}
+          onChange={(key) => onModeChange(key as "focus" | "all-changes")}
+          variant="pill"
+          color="fill"
+          fillWidth={false}
+          size="small"
+        />
       )}
 
       <span className="ml-auto flex h-7 shrink-0 items-center gap-px">
         {showIssueHeader && (
           <ExternalBrowserButton
             href={selectedIssue.html_url}
-            label={t(
-              "common:previews.openInExternalBrowser",
-              "Open in external browser"
-            )}
+            label={t("common:previews.openInExternalBrowser")}
             className="shrink-0"
             onClick={(e) => e.stopPropagation()}
           />
         )}
-        {historySelection &&
-          (historySelection.type === "commit" ||
-            historySelection.type === "stash") && (
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              className="shrink-0"
-              onClick={() => onOpenHistoryInNewTab(historySelection)}
-              title={t("common:actions.openInNewTab")}
-              aria-label={t("common:actions.openInNewTab")}
-              icon={
-                <HugeiconsIcon
-                  icon={LinkSquare02Icon}
-                  data-icon="link-square-02"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              }
-            />
-          )}
-
         {showReviewNavigation && (
           <>
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              onClick={onReviewPrevFile}
-              title={t("common:actions.reviewPreviousFile")}
-              aria-label={t("common:actions.reviewPreviousFile")}
-              className="shrink-0"
-              icon={
-                <HugeiconsIcon
-                  icon={ArrowUp01Icon}
-                  data-icon="chevron-up"
-                  size={HEADER_ICON_SIZE.sm}
-                  strokeWidth={1.75}
-                />
-              }
-            />
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              onClick={onReviewNextFile}
-              title={t("common:actions.reviewNextFile")}
-              aria-label={t("common:actions.reviewNextFile")}
-              className="shrink-0"
-              icon={
-                <HugeiconsIcon
-                  icon={ArrowDown01Icon}
-                  data-icon="chevron-down"
-                  size={HEADER_ICON_SIZE.sm}
-                  strokeWidth={1.75}
-                />
-              }
-            />
+            <ToolbarTooltip
+              label={t("common:actions.reviewPreviousFile")}
+              noShortcut
+            >
+              <Button
+                variant="tertiary"
+                size="small"
+                iconOnly
+                disabled={reviewNavigationDisabled}
+                onClick={onReviewPrevFile}
+                className="shrink-0"
+                icon={
+                  <HugeiconsIcon
+                    icon={ArrowUp01Icon}
+                    data-icon="chevron-up"
+                    size={HEADER_ICON_SIZE.sm}
+                    strokeWidth={1.75}
+                  />
+                }
+              />
+            </ToolbarTooltip>
+            <ToolbarTooltip
+              label={t("common:actions.reviewNextFile")}
+              noShortcut
+            >
+              <Button
+                variant="tertiary"
+                size="small"
+                iconOnly
+                disabled={reviewNavigationDisabled}
+                onClick={onReviewNextFile}
+                className="shrink-0"
+                icon={
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    data-icon="chevron-down"
+                    size={HEADER_ICON_SIZE.sm}
+                    strokeWidth={1.75}
+                  />
+                }
+              />
+            </ToolbarTooltip>
           </>
         )}
 
         {showCollapseAll && (
-          <>
-            <DiffViewModeToggle
-              viewMode={diffViewMode}
-              onChange={onDiffViewModeChange}
-              t={t}
-            />
-            <span
-              className="mx-1.5 h-4 w-px shrink-0 bg-border-2"
-              role="separator"
-              aria-hidden
-            />
+          <ToolbarTooltip label={t("actions.collapseAll")} noShortcut>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
               className="shrink-0"
               onClick={onCollapseAll}
-              title={t("actions.collapseAll")}
               icon={
                 <HugeiconsIcon
                   icon={ListChevronsDownUpIcon}
@@ -255,26 +219,49 @@ export const SourceControlHeaderContent: React.FC<
                 />
               }
             />
-          </>
+          </ToolbarTooltip>
         )}
-        <Button
-          htmlType="button"
-          variant="tertiary"
-          size="small"
-          iconOnly
-          className="shrink-0"
-          onClick={onRefresh}
-          title={t("common:actions.refresh")}
-          aria-label={t("common:actions.refresh")}
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={HEADER_ICON_SIZE.sm}
-              className={sourceControlRefreshSpinClass}
-            />
-          }
+        {(showReviewNavigation || showCollapseAll) && (
+          <span
+            className="mx-1.5 h-4 w-px shrink-0 bg-border-2"
+            role="separator"
+            aria-hidden
+          />
+        )}
+        <DiffViewModeToggle
+          viewMode={diffViewMode}
+          onChange={onDiffViewModeChange}
+          t={t}
         />
+        <ToolbarTooltip label={t("common:actions.refresh")} noShortcut>
+          <Button
+            variant="tertiary"
+            size="small"
+            iconOnly
+            className="shrink-0"
+            onClick={onRefresh}
+            icon={
+              <HugeiconsIcon
+                icon={Refresh04Icon}
+                data-icon="refresh-cw"
+                size={HEADER_ICON_SIZE.sm}
+                strokeWidth={2}
+                className={sourceControlRefreshSpinClass}
+              />
+            }
+          />
+        </ToolbarTooltip>
+        {showDetailToolbar ? (
+          <span
+            ref={focusToolbarRef}
+            className="flex shrink-0 items-center gap-px"
+          />
+        ) : (
+          <SourceControlDiffSettingsMenu
+            onRefresh={onRefresh}
+            refreshSpinClass={sourceControlRefreshSpinClass}
+          />
+        )}
       </span>
     </div>
   );

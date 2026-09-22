@@ -27,7 +27,6 @@
  */
 import { useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 
 import {
   type ExternalSkillsetsTab,
@@ -39,7 +38,9 @@ import {
 } from "@src/config/mainAppPaths";
 import { ROUTES } from "@src/config/routes";
 import { clearSessionAtom } from "@src/engines/SessionCore/core/atoms";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { preloadRouteByPath } from "@src/router/lazy/preload";
+import { navigateApp } from "@src/router/navigateApp";
 import {
   activeSessionIdAtom,
   promoteActiveSessionCreatorDraftAtom,
@@ -47,8 +48,8 @@ import {
   startNewSessionCreatorDraftAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session";
-import { chatPanelNavigateAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
-import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
+import { resetChatPanelSessionSurfaceAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 // ============================================
 // Types
@@ -96,7 +97,9 @@ export function useAppNavigation(): UseAppNavigationReturn {
   const setWorkstationActiveSessionId = useSetAtom(
     workstationActiveSessionIdAtom
   );
-  const navigateChatPanel = useSetAtom(chatPanelNavigateAtom);
+  const resetChatPanelSessionSurface = useSetAtom(
+    resetChatPanelSessionSurfaceAtom
+  );
   const startNewSessionCreatorDraft = useSetAtom(
     startNewSessionCreatorDraftAtom
   );
@@ -114,6 +117,10 @@ export function useAppNavigation(): UseAppNavigationReturn {
    */
   const navigateTo = useCallback(
     (path: string, options?: NavigateOptions) => {
+      if (isStationWindow()) {
+        navigateApp(path, options?.replace);
+        return;
+      }
       promoteActiveSessionCreatorDraft();
       preloadRouteByPath(path);
       navigate(path, {
@@ -166,7 +173,7 @@ export function useAppNavigation(): UseAppNavigationReturn {
   const goToNewSession = useCallback(
     (options?: GoToNewSessionOptions) => {
       dispatchClearSession();
-      navigateChatPanel({ kind: CHAT_PANEL_SURFACE_KIND.SESSION });
+      resetChatPanelSessionSurface();
       // Starting a session changes chat identity, not the WorkStation layout.
       setActiveSessionId(null);
       setWorkstationActiveSessionId(null);
@@ -189,14 +196,16 @@ export function useAppNavigation(): UseAppNavigationReturn {
         params.set("workflowId", options.workflowId);
       }
       const query = params.toString();
+      // Host-specific routes reopen My Station on entry. Session creation must
+      // preserve the current station and the user's chat-only/split layout.
       const path = query
-        ? `${ROUTES.workStation.code.path}?${query}`
-        : ROUTES.workStation.code.path;
+        ? `${ROUTES.workStation.base.path}?${query}`
+        : ROUTES.workStation.base.path;
       navigate(path);
     },
     [
       dispatchClearSession,
-      navigateChatPanel,
+      resetChatPanelSessionSurface,
       setActiveSessionId,
       setWorkstationActiveSessionId,
       promoteActiveSessionCreatorDraft,
@@ -220,5 +229,3 @@ export function useAppNavigation(): UseAppNavigationReturn {
     goToNewSession,
   };
 }
-
-export default useAppNavigation;

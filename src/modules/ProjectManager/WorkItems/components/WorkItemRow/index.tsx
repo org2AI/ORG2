@@ -24,7 +24,7 @@ import { DueDateCell } from "./DueDateCell";
 import { LeadingCells } from "./LeadingCells";
 import { MetadataCells } from "./MetadataCells";
 import { TitleCell } from "./TitleCell";
-import "./index.scss";
+import "./index.css";
 import type { WorkItemRowProps } from "./types";
 import { useWorkItemDueDate } from "./useWorkItemDueDate";
 import { deriveDisplayId, getDueDateColorClass } from "./utils";
@@ -357,8 +357,8 @@ const WorkItemRow: React.FC<WorkItemRowProps> = React.memo(
           ) : null}
 
           {isInteractive ? (
-            <button
-              type="button"
+            <Button
+              layout="custom"
               className="min-w-0 flex-1 text-left"
               aria-label={workItem.name || t("workItems.untitledWorkItem")}
               onClick={(event) => {
@@ -370,7 +370,7 @@ const WorkItemRow: React.FC<WorkItemRowProps> = React.memo(
                 name={workItem.name}
                 untitledLabel={t("workItems.untitledWorkItem")}
               />
-            </button>
+            </Button>
           ) : (
             <TitleCell
               name={workItem.name}
@@ -410,9 +410,9 @@ const WorkItemRow: React.FC<WorkItemRowProps> = React.memo(
 
           {isDeleted && onRestore && (
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
+              hoverTone="primary"
               className="ml-2 inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary-6 transition-colors hover:bg-primary-1"
               onClick={handleRestore}
               icon={

@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 import { runtimeInstanceProfileForIdentifier } from "./runtimeInstance";
 
 describe("runtimeInstanceProfileForIdentifier", () => {
+  it("routes dev HTTP, WebSocket and login away from the bundled app", () => {
+    expect(runtimeInstanceProfileForIdentifier("org2ai.org2.dev")).toEqual({
+      instanceId: 100,
+      ideServerPort: 13_946,
+      cliProxyPort: 17_987,
+      authDeepLinkScheme: "orgii-dev",
+    });
+  });
   it("keeps the primary runtime coordinates together", () => {
     expect(runtimeInstanceProfileForIdentifier("org2ai.org2")).toEqual({
       instanceId: 1,

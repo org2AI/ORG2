@@ -1,6 +1,7 @@
 /** Group-view columns for the Key Vault ModelTable. */
 import React from "react";
 
+import Button from "@src/components/Button";
 import ModelPropertiesDropdown from "@src/components/ModelPropertiesDropdown";
 import type { SettingsTableColumn } from "@src/components/SettingsTable";
 import { SETTINGS_TABLE_COL } from "@src/components/SettingsTable/tokens";
@@ -147,9 +148,9 @@ function renderPreferredVersionCell(
           args.onChangeDefaultVariant?.(canonicalBaseModel, modelId)
         }
         renderTrigger={({ ref, onClick, ariaExpanded }) => (
-          <button
+          <Button
+            layout="custom"
             ref={ref}
-            type="button"
             onClick={onClick}
             aria-expanded={ariaExpanded}
             aria-label="Edit preferred version"
@@ -162,7 +163,7 @@ function renderPreferredVersionCell(
               size={12}
               className="text-text-3"
             />
-          </button>
+          </Button>
         )}
       />
     </div>

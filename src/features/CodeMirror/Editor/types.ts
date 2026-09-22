@@ -51,12 +51,14 @@ export interface CodeMirrorEditorProps {
   onTextSelection?: (selection: TextSelectionInfo | null) => void;
   /** Custom class name */
   className?: string;
-  /** Enable minimap (default: false) */
+  /** Opt out with false; true/undefined follow the global minimap setting. */
   enableMinimap?: boolean;
   /** Enable indent guides (default: true) */
   enableIndentGuides?: boolean;
   /** Enable go to line with Cmd+G (default: true) */
   enableGoToLine?: boolean;
+  /** Enable code navigation: definition, references, back/forward (default: true) */
+  enableCodeNavigation?: boolean;
   /** Enable find & replace with Cmd+F/Cmd+H (default: true) */
   enableFindReplace?: boolean;
   /** Enable dirty diff gutter (default: true when originalValue provided) */

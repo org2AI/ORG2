@@ -19,6 +19,11 @@ export const Org2CloudAuthStateSchema = z.object({
   /** Access-token expiry, unix epoch seconds. */
   expiresAt: z.number(),
   profile: Org2CloudProfileSchema.optional(),
+  /** OAuth Server public client. Absent for legacy GoTrue sessions. */
+  oauthClientId: z
+    .string()
+    .regex(/^[A-Za-z0-9._~-]{8,256}$/)
+    .optional(),
 });
 
 export type Org2CloudAuthState = z.infer<typeof Org2CloudAuthStateSchema>;

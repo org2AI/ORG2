@@ -1,19 +1,26 @@
+import { useAtom, useAtomValue } from "jotai";
 import React, { memo, useMemo } from "react";
 
 import type { CommitDiffResult } from "@src/api/http/git/types";
 import DiffStatsBadge from "@src/components/DiffStatsBadge";
+import BreadcrumbFileHeader from "@src/features/FileHeader/BreadcrumbFileHeader";
+import { useEditorDisplayToggles } from "@src/hooks/settings/useEditorDisplayToggles";
 import { FileHeader } from "@src/modules/WorkStation/shared";
-import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
+import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
+import { diffViewModeAtom } from "@src/store/workstation/codeEditor";
+import { formatCompactAge } from "@src/util/time/formatRelativeTime";
 
 interface CommitTabHeaderProps {
   shortSha: string;
   commitMessage: string;
   commitDiff: CommitDiffResult | null;
   publishToWorkstationHeader: boolean;
+  onClose?: () => void;
+  onOpenInNewTab?: () => void;
 }
 
 /**
- * Renders the commit breadcrumb (shortSha › message [author + stats]) either
+ * Renders the commit SHA and plain-text summary with author and stats either
  * inline as a 36px file bar or in the global Workstation tab-header strip.
  */
 export const CommitTabHeader: React.FC<CommitTabHeaderProps> = memo(
@@ -22,8 +29,13 @@ export const CommitTabHeader: React.FC<CommitTabHeaderProps> = memo(
     commitMessage,
     commitDiff,
     publishToWorkstationHeader,
+    onClose,
+    onOpenInNewTab,
   }) {
-    const extraActions = useMemo(
+    const [viewMode, setViewMode] = useAtom(diffViewModeAtom);
+    const toggles = useEditorDisplayToggles();
+    const { onOpenSettings } = useAtomValue(activeStatusBarCallbacksAtom);
+    const metadata = useMemo(
       () =>
         commitDiff?.author || commitDiff?.stats ? (
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -34,7 +46,7 @@ export const CommitTabHeader: React.FC<CommitTabHeaderProps> = memo(
             )}
             {commitDiff?.author?.date && (
               <span className="shrink-0 text-[12px] text-text-3">
-                {formatRelativeTime(commitDiff.author.date, "nano")}
+                {formatCompactAge(commitDiff.author.date)}
               </span>
             )}
             {commitDiff?.stats && (
@@ -48,25 +60,38 @@ export const CommitTabHeader: React.FC<CommitTabHeaderProps> = memo(
       [commitDiff]
     );
 
-    // The caller-supplied `commitMessage` can be a placeholder (the short SHA
-    // itself) when the commit was selected before its `summary` had resolved
-    // — that would render the breadcrumb as `21b1bc64 / 21b1bc64`. Prefer the
-    // authoritative message from `commitDiff` once it has loaded, and fall
-    // back to the caller's value only while the diff is still in flight.
+    // The loaded summary is authoritative; the caller may only have a SHA.
     const resolvedMessage = commitDiff?.summary?.trim() || commitMessage;
-    const breadcrumbTitle =
-      resolvedMessage && resolvedMessage !== shortSha ? resolvedMessage : "";
-    const breadcrumbPath = breadcrumbTitle
-      ? `${shortSha}/${breadcrumbTitle}`
-      : shortSha;
+    const title = resolvedMessage !== shortSha ? resolvedMessage : "";
 
     return (
       <FileHeader
-        filePath={breadcrumbPath}
+        filePath={shortSha}
         useFileTypeIcon={false}
-        disableNavigation
-        plainTitle={false}
-        extraActions={extraActions}
+        titleSlot={
+          <BreadcrumbFileHeader
+            filePath={shortSha}
+            displaySegments={
+              title
+                ? [{ label: shortSha }, { label: title, title }]
+                : [{ label: shortSha }]
+            }
+            disableNavigation
+          />
+        }
+        metadata={metadata}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        lineNumbersEnabled={toggles.lineNumbersEnabled}
+        onLineNumbersChange={toggles.onLineNumbersChange}
+        wordWrapEnabled={toggles.wordWrapEnabled}
+        onWordWrapChange={toggles.onWordWrapChange}
+        highlightActiveLineEnabled={toggles.highlightActiveLineEnabled}
+        onHighlightActiveLineChange={toggles.onHighlightActiveLineChange}
+        onMoreSettings={onOpenSettings}
+        showSidebarSettings={publishToWorkstationHeader}
+        onClose={onClose}
+        onOpenInNewTab={onOpenInNewTab}
         publishToHost={publishToWorkstationHeader ? "code" : undefined}
       />
     );

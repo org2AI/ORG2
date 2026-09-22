@@ -20,11 +20,11 @@ describe("Modal action status", () => {
     vi.unstubAllGlobals();
   });
   it.each([
-    ["danger", "bg-danger-6"],
-    ["warning", "bg-warning-6"],
-    ["success", "bg-success-6"],
-    ["default", "bg-primary-6"],
-    [undefined, "bg-primary-6"],
+    ["danger", "btn:bg-danger-6"],
+    ["warning", "btn:bg-warning-6"],
+    ["success", "btn:bg-success-fill"],
+    ["default", "btn:bg-primary-6"],
+    [undefined, "btn:bg-primary-6"],
   ] as const)(
     "renders the requested %s status on the actual action",
     (status, color) => {

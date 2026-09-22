@@ -69,6 +69,7 @@ export interface RecentUsageSnapshot {
 
 /** One per-round request-log row. `inputTokens` is FRESH (cache excluded). */
 export interface UsageRoundRow {
+  usagePurpose?: string | null;
   roundId: string;
   sessionId: string;
   sessionName: string;

@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "作为新消息发送？",
+    "body": "这条消息来自执行会话，无法在此编辑并回退对话。是否改为将这段文字作为新消息发送到对话末尾？现有消息和文件更改都会保留。",
+    "sendNew": "发送新消息"
+  },
   "tray": {
     "markAllRead": "全部标为已读",
     "showKanban": "显示看板",
@@ -50,7 +55,7 @@
     },
     "dataSource": {
       "title": "数据源",
-      "description": "ORGII 检测到的外部编程工具。可导入的应用会显示会话数并可重新扫描；其余仅显示安装状态和历史记录所在位置。",
+      "description": "ORG2 检测到的外部编程工具。可导入的应用会显示会话数并可重新扫描；其余仅显示安装状态和历史记录所在位置。",
       "rescanAll": "全部重新扫描",
       "rescan": "重新扫描",
       "rescanning": "正在重新扫描…",
@@ -90,8 +95,7 @@
       "openFolder": "打开文件夹",
       "tabs": {
         "all": "全部",
-        "apps": "应用",
-        "clis": "命令行"
+        "apps": "应用"
       },
       "views": {
         "scanning": "扫描",
@@ -99,7 +103,6 @@
         "usage": "用量",
         "team": "团队",
         "quota": "配额",
-        "assets": "资产",
         "profile": "画像"
       },
       "usage": {
@@ -176,7 +179,8 @@
           "output": "输出",
           "cache": "缓存读取",
           "cost": "成本",
-          "filterBySession": "筛选此会话"
+          "filterBySession": "筛选此会话",
+          "purpose": "用途"
         },
         "pricing": {
           "input": "输入",
@@ -192,7 +196,7 @@
           "perTurn": "LLM 调用",
           "perTool": "工具调用",
           "close": "关闭",
-          "noData": "此会话仅包含会话级总计；单次调用归因仅针对 ORGII 自有智能体的运行进行记录。",
+          "noData": "此会话仅包含会话级总计；单次调用归因仅针对 ORG2 自有智能体的运行进行记录。",
           "turnHeader": "轮次 {{turn}}",
           "promptTokens": "提示词",
           "completionTokens": "补全"
@@ -201,7 +205,17 @@
           "title": "暂无用量",
           "subtitle": "运行或扫描一些编码会话后，其 Token 用量会显示在这里。"
         },
-        "loadError": "加载用量数据失败"
+        "loadError": "加载用量数据失败",
+        "purposes": {
+          "main": "主回复",
+          "session_title": "会话标题",
+          "session_memory": "会话记忆",
+          "workspace_memory": "工作区记忆",
+          "auto_dream": "记忆整理",
+          "skill_prefetch": "技能选择",
+          "memory_prefetch": "记忆检索",
+          "compaction": "上下文压缩"
+        }
       },
       "sessions_other": "{{count}} 个会话",
       "details": {
@@ -307,7 +321,6 @@
   },
   "simulator": {
     "captionBarToggleTooltip": "显示 Agent 消息浮窗",
-    "noActiveSession": "无活动 Agent 会话",
     "tabs": {
       "kanban": "看板"
     },
@@ -337,18 +350,6 @@
           "agentBrowser": "Agent 浏览器",
           "searchFetch": "搜索与抓取"
         },
-        "sections": {
-          "browserTitle": "浏览器活动",
-          "interactionsTitle": "交互操作",
-          "webSearchesTitle": "网页搜索",
-          "pagesFetchedTitle": "已抓取页面"
-        },
-        "empty": {
-          "noBrowserActivity": "暂无浏览器活动",
-          "noBrowserInteractions": "暂无浏览器交互",
-          "noWebSearches": "暂无网页搜索",
-          "noPagesFetched": "暂无已抓取页面"
-        },
         "header": {
           "categoryBrowser": "浏览器",
           "categoryLiveBrowser": "实时浏览器",
@@ -359,7 +360,6 @@
       },
       "ide": {
         "shell": {
-          "emptyNoCommands": "暂无命令",
           "noCommand": "（无命令）",
           "outputInProgress": "… 输出进行中",
           "exitCode": "[退出码: {{code}}]"
@@ -520,8 +520,7 @@
     },
     "titleBar": {
       "showSidebar": "显示侧边栏",
-      "hideSidebar": "隐藏侧边栏",
-      "showBottomPanel": "显示底部面板"
+      "hideSidebar": "隐藏侧边栏"
     },
     "multiTask": {
       "monitoringProgress": "正在监控 {{count}} 个 Subagent 的进度",
@@ -554,22 +553,6 @@
     "addedToContext": "添加到 Session 上下文",
     "creatingWithContext": "正在使用上下文创建新 Session",
     "creationCooldown": "请稍后再创建新终端。"
-  },
-  "scope": {
-    "applicableScope": "适用范围",
-    "for": "的",
-    "selectCategory": "选择类别",
-    "selectScope": "选择范围",
-    "allRepos": "所有仓库",
-    "allSessions": "所有 Session",
-    "allProjects": "所有项目",
-    "allWorkItems": "所有工作项",
-    "categories": {
-      "repo": "仓库",
-      "session": "Session",
-      "projects": "项目",
-      "workItems": "工作项"
-    }
   },
   "editor": {
     "loading": "正在加载编辑器..."
@@ -615,6 +598,7 @@
       "full": "完全访问",
       "nextTurn": "权限设置从下一轮开始生效"
     },
+    "draftTooLong": "草稿过长（最多 {{max}} 个字符）",
     "planApprovedLabel": "执行已批准的计划",
     "planApprovedEditedLabel": "执行已批准的计划（已编辑）",
     "restoreCheckpoint": "恢复到此检查点",
@@ -643,23 +627,18 @@
       "inputPosition": "输入框",
       "positionBottom": "底部",
       "positionMiddle": "居中",
-      "trailPosition": "轨迹栏",
+      "repoBarPosition": "仓库栏",
       "positionUp": "上方",
       "positionDown": "下方",
-      "uiControls": "界面控制",
-      "showQuickActions": "显示快捷操作",
+      "showQuickActions": "快捷操作",
       "showSkills": "固定 Skills",
-      "showCliUpdate": "显示 CLI 更新",
-      "title": "你想做什么？",
-      "back": "返回起始页",
+      "showCliUpdate": "CLI 更新",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新建会话"
       },
       "newWorkItem": {
         "title": "新建工作项"
-      },
-      "setupRepo": {
-        "title": "设置 Repo"
       },
       "addApiKey": {
         "title": "添加 API 密钥"
@@ -670,59 +649,27 @@
       "installLatestUpdate": {
         "title": "安装最新更新"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "会话",
         "workItem": "工作项",
         "more": "更多",
-        "work": "工作",
         "manage": "管理",
-        "heatmap": "趋势",
         "runtime": "运行时"
       },
       "quota": {
         "empty": "暂无配额数据。请在 Key Vault 中刷新用量。",
         "refresh": "刷新",
-        "justNow": "刚刚",
-        "minutesAgo": "{{count}}分钟前",
-        "hoursAgo": "{{count}}小时前",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7d",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Weekly",
           "monthly": "Monthly"
         }
       },
-      "exploreRepos": {
-        "title": "探索 Repos"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "管理 Issues"
       }
     },
     "defaultTitle": "Session",
@@ -733,8 +680,17 @@
     "performActions_one": "执行 {{count}} 项操作",
     "performActions_other": "执行 {{count}} 项操作",
     "showInlineDiffs": "行内差异",
-    "pageSettings": "页面显示",
     "inputSettings": "输入设置",
+    "sendMethod": "发送方式",
+    "navigation": {
+      "title": "导航",
+      "openLinksIn": "链接打开方式",
+      "internalBrowser": "内置浏览器",
+      "externalBrowser": "外部浏览器"
+    },
+    "compactInput": "紧凑输入框",
+    "composerGlow": "输入框光晕",
+    "separateEffortPill": "独立 Effort 按钮",
     "replay": {
       "follow": "跟随"
     },
@@ -760,15 +716,11 @@
       "modeSourceBundled": "模式加载自内置回退(Cursor 探针尚未运行)。",
       "modeRefresh": "刷新模式"
     },
-    "hideSimulator": "隐藏模拟器",
-    "showSimulator": "显示模拟器",
-    "fullScreenChat": "聚焦聊天面板（隐藏工作站）",
     "maximizeChatPanel": "最大化聊天面板",
     "showWorkstation": "显示工作站",
     "workstationUnavailableForPage": "此页面不支持使用工作站",
     "hideWorkstation": "隐藏工作站",
     "restoreSplitView": "显示工作站",
-    "shrinkToWorkstation": "缩小聊天面板（显示工作站）",
     "tuiModeOn": "TUI 模式（点击关闭）",
     "tuiModeOff": "启用 TUI 模式",
     "tabs": {
@@ -924,10 +876,10 @@
       "exportJson": "导出 JSON",
       "importAction": "导入 Session",
       "exportDescription": "将当前 Session 导出为可移植的 JSON 快照",
-      "importDescription": "将 Session JSON 快照导入到侧边栏。",
+      "importDescription": "将 Session JSON 快照导入到侧边栏",
       "jsonSnapshotNote": "导入的 Session 是只读快照，并保留原始事件历史",
       "chooseJson": "选择 JSON 文件",
-      "chooseJsonHint": "选择一个 .orgii-session.json 导出文件。",
+      "chooseJsonHint": "选择一个 .orgii-session.json 导出文件",
       "loadingPreview": "正在统计 Session 事件…",
       "noActiveSession": "未选择活动 Session。",
       "importedName": "导入 Session：{{name}}",
@@ -976,22 +928,9 @@
       "showMore_one": "显示其余 {{count}} 个",
       "showMore_other": "显示其余 {{count}} 个"
     },
-    "manageIssues": {
-      "title": "管理 Issues",
-      "myWork": "我的工作",
-      "allRepositories": "所有 Repos",
-      "newIssue": "新建 Issue",
-      "tabs": {
-        "recent": "最近",
-        "assigned": "分配给我",
-        "byMe": "由我创建",
-        "mentioned": "提及我"
-      }
-    },
     "readOnly": "只读",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "创建 GitHub issue",
         "issueTitlePlaceholder": "issue 标题",
@@ -1001,28 +940,40 @@
         "addToChat": "Add",
         "repositoryLabel": "仓库",
         "createIssueFailed": "创建 issue 失败",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "所有状态",
         "closeAsCompleted": "以已完成关闭",
         "closeAsNotPlanned": "以不计划关闭",
         "statusUpdateFailed": "无法更新 GitHub 状态",
         "assignedToMe": "分配给我的",
         "createdByMe": "由我创建",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "待我评审",
-          "authoredByMe": "由我创建",
-          "otherTodos": "其他待办"
-        },
         "assigneeUpdateNotApplied": "GitHub 未应用指派人变更",
         "assigneeUpdateSuccess": "已在 GitHub 上更新指派人",
         "updateIssueFailed": "更新 GitHub issue 失败",
-        "refreshIssues": "刷新议题",
-        "refreshPullRequests": "刷新拉取请求"
+        "filters": {
+          "searchPlaceholder": "搜索筛选条件",
+          "noMatches": "没有匹配的筛选条件",
+          "activeCount": "已启用筛选：{{count}}",
+          "clear": "清除筛选",
+          "reviewRequestedFromMe": "请求我审查",
+          "noAssignee": "无负责人",
+          "noLabel": "无标签",
+          "linkedPullRequest": "已关联拉取请求",
+          "draft": "草稿",
+          "readyForReview": "可供审查",
+          "recentlyUpdated": "最近 7 天内更新",
+          "stale": "30 天未更新",
+          "facetAuthor": "作者",
+          "facetAssignee": "负责人",
+          "facetLabel": "标签",
+          "facetMilestone": "里程碑",
+          "facetReviewRequested": "请求审查",
+          "facetBaseBranch": "目标分支",
+          "facetCiStatus": "检查",
+          "ciSuccess": "通过",
+          "ciFailure": "失败",
+          "ciPending": "进行中"
+        }
       }
     },
     "sessionViews": {
@@ -1051,7 +1002,9 @@
     "typeMessage": "输入消息…",
     "session": "会话",
     "history": "会话",
-    "agentFallback": "Agent"
+    "agentFallback": "Agent",
+    "goToPinnedPassage": "跳转到固定段落：{{preview}}",
+    "unpinPassage": "取消固定"
   },
   "tools": {
     "noResultsFound": "未找到结果",
@@ -1148,6 +1101,7 @@
     "terminalWaitRunning": "正在等待终端完成",
     "runShellFailed": "命令执行失败",
     "runCommands": "执行命令",
+    "waitBackgroundTasks": "等待后台任务",
     "terminalSummary": {
       "command_one": "{{count}} 个命令",
       "command_other": "{{count}} 个命令",
@@ -1158,6 +1112,10 @@
       "check_one": "{{count}} 次检查",
       "check_other": "{{count}} 次检查",
       "separator": "、"
+    },
+    "waitSummary": {
+      "count_one": "{{count}} 次",
+      "count_other": "{{count}} 次"
     },
     "inspectTerminalsRunning": "正在检查终端",
     "inspectTerminalsDone": "检查终端",
@@ -1456,21 +1414,24 @@
     "webFetchRunning": "获取网页中",
     "webFetchDone": "获取网页",
     "webFetchFailed": "网页获取失败",
-    "awaitOutputWaitForRunning": "等待 {{summary}}（{{countdown}}）",
-    "awaitOutputWaitForDone": "等待 {{summary}} {{waited}}",
-    "awaitOutputWaitForFailed": "等待 {{summary}} 失败",
-    "awaitOutputMonitorRunning": "正在查看 {{summary}}",
-    "awaitOutputMonitorDone": "查看 {{summary}}",
-    "awaitOutputMonitorFailed": "检查 {{summary}} 失败",
+    "awaitOutputWaitForRunning": "等待{{summary}}（{{countdown}}）",
+    "awaitOutputWaitForDone": "等待{{summary}}{{waited}}",
+    "awaitOutputWaitForFailed": "等待{{summary}}失败",
+    "awaitOutputMonitorRunning": "正在查看{{summary}}",
+    "awaitOutputMonitorDone": "查看{{summary}}",
+    "awaitOutputMonitorFailed": "检查{{summary}}失败",
     "awaitOutputListRunning": "列出后台任务",
     "awaitOutputListDone": "列出后台任务",
     "awaitOutputListFailed": "列出后台任务失败",
     "awaitOutputKeepWaiting": "仍在运行",
     "awaitOutputStillRunning": "运行中",
+    "awaitOutputSummaryShellSingle": "终端进程",
     "awaitOutputSummaryShell_one": "1个终端进程",
     "awaitOutputSummaryShell_other": "{{count}}个终端进程",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1个 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}}个 Subagent",
+    "awaitOutputSummaryUnknownSingle": "后台任务",
     "awaitOutputSummaryUnknown_one": "1个后台任务",
     "awaitOutputSummaryUnknown_other": "{{count}}个后台任务",
     "awaitOutputSummaryMixed": "{{shell}}、{{subagent}}",
@@ -1924,10 +1885,16 @@
     "start": "开始",
     "missingGit": {
       "title": "缺少 Git",
-      "body": "未安装 Git 或无法找到 Git。请让 ADE Manager 或 SDE Agent 为这台机器安装 Git，然后重启 ORGII。"
+      "body": "未安装 Git 或无法找到 Git。请让 ADE Manager 或 SDE Agent 为这台机器安装 Git，然后重启 ORG2"
     },
     "cliVersionOutdated": {
-      "title": "{{cli}} 需要升级（{{installed}} > {{latest}}）",
+      "title": "{{cli}} 有新版本",
+      "versions": "当前版本：{{installed}} · 最新版本：{{latest}}",
+      "upgrade": "在终端升级",
+      "upgradeHint": "在独立终端升级 Cursor 命令行工具，完成后点击重新检查",
+      "upgradeTerminal": "升级 Cursor 命令行工具",
+      "upgradeStarted": "已在终端启动升级，完成后点击重新检查",
+      "upgradeFailed": "无法打开升级终端，请重试",
       "muteUntilNextVersion": "下一版本前不再提醒",
       "refresh": "重新检查 {{cli}} CLI 版本",
       "unknownVersion": "未知"
@@ -1937,7 +1904,6 @@
       "filesAndFolders": "文件和文件夹",
       "session": "会话",
       "workItems": "工作项",
-      "back": "返回",
       "recent": "最近使用",
       "showMore": "再显示 {{remaining}} 项"
     },
@@ -1994,9 +1960,9 @@
       "formatting": "文本格式"
     },
     "regionNoticeTitle": "可能存在地区限制",
-    "regionNoticeBodyProvider": "您所在位置：{{location}}。某些模型在您所在地区可能不可用。",
-    "regionNoticeBodySanctions": "您所在位置：{{location}}。GitHub、npm、Docker Hub 等服务可能不可用。",
-    "regionNoticeBodyBoth": "您所在位置：{{location}}。因地区政策与贸易规则，某些模型以及 GitHub、npm、Docker Hub 等服务可能不可用。",
+    "regionNoticeBodyProvider": "您所在位置：{{location}}。某些模型在您所在地区可能不可用",
+    "regionNoticeBodySanctions": "您所在位置：{{location}}。GitHub、npm、Docker Hub 等服务可能不可用",
+    "regionNoticeBodyBoth": "您所在位置：{{location}}。因地区政策与贸易规则，某些模型以及 GitHub、npm、Docker Hub 等服务可能不可用",
     "selectAgent": "选择 Agent",
     "placeholderDefault": "输入消息，使用 @ 添加文件，使用 / 调用 skills",
     "wingmanPlaceholder": "描述你的任务 — Wingman 应该关注什么？",
@@ -2027,7 +1993,8 @@
         "notEnoughRunners": "请至少配置两个可运行的执行器"
       }
     },
-    "mode": "编辑器模式"
+    "mode": "编辑器模式",
+    "cursorIdeDescription": "在 ORG2 中浏览并继续 Cursor IDE 聊天会话"
   },
   "planner": {
     "modes": {
@@ -2117,7 +2084,7 @@
         "cancelled": "已取消",
         "failed": "失败"
       },
-      "title": "Agent 团队概览",
+      "title": "团队概览",
       "summary": "{{active}} 个活跃 · {{pending}} 条待处理",
       "loadFailed": "团队概览加载失败",
       "tasks": "任务",
@@ -2139,7 +2106,7 @@
       "archiveTeardownRetained": "已归档，但有 {{count}} 个运行时未能释放，仍无法删除。",
       "archiveTeardownQuiesced": "已归档并完全停止，现在可以永久删除。",
       "dangerZone": "危险区域",
-      "deleteDescription": "永久删除这个团队及其所有会话和历史记录。",
+      "deleteDescription": "永久删除这个团队及其所有会话和历史记录",
       "deleteTeam": "删除团队",
       "deleteTitle": "永久删除这个团队？",
       "deleteWarning": "这会永久删除团队的所有会话和历史记录，且无法撤销。",
@@ -2192,9 +2159,7 @@
       "activeMembers": "活跃成员",
       "inFlightTurns": "进行中的轮次",
       "openTasks": "未完成任务",
-      "blockingInbox": "阻塞中的收件箱",
-      "blockersTitle": "仍在阻碍完成的事项",
-      "unknownBlocker": "未知系统阻塞项"
+      "blockingInbox": "阻塞中的收件箱"
     },
     "agentOrgIntervention": {
       "directTitle": "直接交给 {{member}} 工作",
@@ -2265,7 +2230,7 @@
     "noSessionIdFound": "未找到 Session ID",
     "failedToResume": "恢复 Session 失败",
     "failedToCheckChanges": "无法检查文件变更，将自动还原。",
-    "insufficientBalance": "ORGII 托管服务余额不足，请前往 orgii.ai/wallet 充值。",
+    "insufficientBalance": "ORG2 托管服务余额不足，请前往 orgii.ai/wallet 充值。",
     "runQueuedBehindCheckout": "已排队：另一个运行正在使用此检出目录，待其结束后将自动开始。"
   },
   "planning": {
@@ -2320,7 +2285,6 @@
   },
   "groupChat": {
     "triggerLabel": "群聊",
-    "coordinatorLabel": "协调者",
     "youLabel": "你",
     "retry": "重试",
     "memberCount_one": "{{count}} 位成员",

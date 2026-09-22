@@ -6,22 +6,24 @@ import {
   type SyncConnection,
 } from "@src/api/http/integrations";
 import Button from "@src/components/Button";
+import DeleteIconButton from "@src/components/Button/DeleteIconButton";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import IntegrationIcon from "@src/components/IntegrationIcon";
+import Message from "@src/components/Message";
 import { Placeholder } from "@src/components/Placeholder";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
-import TabPill from "@src/components/TabPill";
-import { Delete02Icon, HugeiconsIcon } from "@src/icons";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
+} from "@src/components/layout/blocks";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
+import { Add01Icon, HugeiconsIcon } from "@src/icons";
 
 import {
   InlineCardBody,
@@ -87,6 +89,7 @@ interface ConnectionsTableProps {
   selectedRowId?: string | null;
   onSelectChannel: (compositeId: string | null, mode?: DetailMode) => void;
   onAdd: () => void;
+  onRefresh: () => Promise<void>;
   onRemoveChannel?: (channelType: string, accountId: string) => Promise<void>;
   onRemoveProjectConnection?: (
     connectionId: string,
@@ -101,6 +104,7 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
   selectedRowId,
   onSelectChannel,
   onAdd,
+  onRefresh,
   onRemoveChannel,
   onRemoveProjectConnection,
 }) => {
@@ -252,23 +256,11 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
         align: "right",
         renderCell: (row) => (
           <div className="flex h-full min-w-[44px] items-center justify-end gap-2">
-            <Button
-              variant="secondary"
+            <DeleteIconButton
               size="small"
-              icon={
-                <HugeiconsIcon
-                  icon={Delete02Icon}
-                  data-icon="trash-2"
-                  size={14}
-                  className="text-danger-6"
-                />
-              }
-              iconOnly
-              loading={removingRowId === row.id}
-              disabled={removingRowId === row.id}
-              aria-label={tCommon("actions.remove")}
-              title={tCommon("actions.remove")}
-              onClick={(event) => {
+              deleting={removingRowId === row.id}
+              label={tCommon("actions.remove")}
+              onDelete={(event) => {
                 event.stopPropagation();
                 void handleRemoveRow(row);
               }}
@@ -284,18 +276,9 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
     <DetailPanelContainer>
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={connectionsTabs}
-            activeTab={connectionsActiveTab}
-            onChange={setConnectionsActiveTab}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={connectionsTabs}
+        activeTab={connectionsActiveTab}
+        onTabChange={setConnectionsActiveTab}
       />
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>
@@ -325,6 +308,40 @@ export const ConnectionsTable: React.FC<ConnectionsTableProps> = ({
                   searchValue: searchQuery,
                   onSearchChange: setSearchQuery,
                   searchPlaceholder: t("integrations.searchPlaceholder"),
+                  rightContent: (
+                    <>
+                      <RefreshButton
+                        variant="secondary"
+                        iconOnly
+                        label={tCommon("actions.refresh")}
+                        refreshing={loading}
+                        onRefresh={() => {
+                          void onRefresh().catch((error: unknown) => {
+                            Message.error(
+                              error instanceof Error
+                                ? error.message
+                                : String(error)
+                            );
+                          });
+                        }}
+                        dataTestId="connections-refresh-button"
+                      />
+                      <Button
+                        icon={
+                          <HugeiconsIcon
+                            icon={Add01Icon}
+                            data-icon="plus"
+                            size={14}
+                          />
+                        }
+                        iconOnly
+                        onClick={onAdd}
+                        aria-label={t("integrations.addAccount")}
+                        title={t("integrations.addAccount")}
+                        data-testid="connections-add-button"
+                      />
+                    </>
+                  ),
                 }}
                 emptyTitle={t("integrations.noConnections")}
                 emptyAction={{

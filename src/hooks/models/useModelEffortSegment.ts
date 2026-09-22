@@ -103,7 +103,14 @@ export function useModelEffortSegment({
     [groupModelIds, modelId]
   );
 
-  const variant = modelId ? parseModelVariant(modelId) : undefined;
+  const effectiveModelId = modelId
+    ? (variantOptions.resolveVariantId(
+        variantOptions.parseSelection(modelId)
+      ) ?? modelId)
+    : undefined;
+  const variant = effectiveModelId
+    ? parseModelVariant(effectiveModelId)
+    : undefined;
 
   const effortLabel = useMemo(() => {
     const parts: string[] = [];

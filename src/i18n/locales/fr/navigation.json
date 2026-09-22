@@ -46,7 +46,8 @@
     "colleagues": "Collègues",
     "terminals": "Terminaux",
     "openSourceRepo": "Ouvrir le repo source",
-    "teamInbox": "Team Inbox"
+    "teamInbox": "Team Inbox",
+    "closeSettings": "Fermer les paramètres"
   },
   "routes": {
     "session": "Chat",
@@ -74,12 +75,7 @@
       "manual": "Ordre manuel"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "Gérer",
-      "core": "Cœur",
-      "agent": "Agent",
-      "org": "Équipe",
-      "agentOrgs": "Agent et équipe"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "Sans regroupement",
@@ -101,57 +97,23 @@
       "untitledSession": "Session sans titre",
       "enterSessionName": "Entrez le nom de la Session"
     },
-    "groups": {
-      "economy": "Économie",
-      "myServices": "Mes services",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Hosted Key",
-      "cloud": "Cloud",
-      "openSource": "Open Source",
-      "timeline": "Timeline"
-    },
     "actions": {
       "addNew": "Ajouter nouveau",
       "collapseAll": "Tout réduire",
-      "markAllRead": "Tout marquer comme lu",
-      "toggleGroup": "Basculer la section"
+      "markAllRead": "Tout marquer comme lu"
     },
     "search": {
-      "folders": "Rechercher dans l’espace de travail...",
-      "sessions": "Rechercher des sessions...",
-      "projects": "Rechercher des projets...",
-      "colleagues": "Rechercher des collègues..."
-    },
-    "folderCounts": {
-      "repo": "{{count}} Repo",
-      "repo_plural": "{{count}} Repos",
-      "multiRepoWorkspace": "{{count}} Workspace multi-Repo",
-      "multiRepoWorkspace_plural": "{{count}} Workspaces multi-Repo",
-      "repo_other": "{{count}} Repos",
-      "multiRepoWorkspace_other": "{{count}} Workspaces multi-Repo"
+      "sessions": "Rechercher des sessions..."
     },
     "bottomBar": {
       "settings": "Paramètres",
-      "clockLabel": "Heure actuelle",
       "updateAvailable": "Télécharger la mise à jour v{{version}}"
     },
     "settingsMenu": {
       "appearance": "Apparence",
       "modifyAppearance": "Modifier l’apparence",
-      "language": "Langue",
       "viewRam": "Voir la RAM",
-      "tutorials": "Tutoriels",
       "openSettings": "Ouvrir les paramètres"
-    },
-    "empty": {
-      "noItems": "Aucun élément",
-      "noSessions": "Aucune Session",
-      "noSessionsDesc": "Démarrez une nouvelle Session pour commencer",
-      "noResultsFor": "Aucun résultat pour \"{{query}}\"",
-      "noSearchResults": "Aucun résultat trouvé"
     },
     "presence": {
       "tooltip": "Définis ta disponibilité — les agents s'adapteront selon que tu es ou non au clavier.",
@@ -169,9 +131,18 @@
       "durationTomorrow": "Demain",
       "unknownRole": "Rôle inconnu"
     },
-    "guide": {
-      "startSession": "Démarrer une session",
-      "connectOrganization": "Connecter ou créer un espace de travail"
+    "sections": {
+      "section": "Section",
+      "create": "Nouvelle section",
+      "name": "Nom de la section",
+      "rename": "Renommer la section",
+      "delete": "Supprimer la section (conserver les sessions)",
+      "remove": "Retirer de la section",
+      "up": "Monter",
+      "down": "Descendre",
+      "manage": "Gérer la section",
+      "more": "Charger plus",
+      "retry": "Réessayer"
     }
   },
   "launchpad": {
@@ -275,9 +246,9 @@
       "switchToRepo": "Ouvrir",
       "startSession": "Démarrer la session",
       "openDetails": "Afficher les détails",
-      "remove": "Remove from ORGII",
-      "removeSuccess": "Linkage to ORGII removed",
-      "removeFailed": "Failed to remove linkage to ORGII"
+      "remove": "Retirer d’ORG2",
+      "removeSuccess": "Lien avec ORG2 supprimé",
+      "removeFailed": "Impossible de supprimer le lien avec ORG2"
     },
     "addWorkspace": "Ajouter un espace de travail"
   },
@@ -323,11 +294,11 @@
       "forkModelFallback": "Le modèle {{model}} du propriétaire n'est pas disponible avec vos clés — ce fork utilisera {{fallback}} à la place.",
       "forkModelUnavailable": "Le modèle {{model}} du propriétaire n'est pas disponible avec vos clés — choisissez un modèle avant d'exécuter ce fork.",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -484,7 +455,6 @@
       "showHidden": "Afficher les sessions masquées ({{count}})",
       "viewerTooltip": "{{name}} consulte cette session",
       "viewerOverflow": "et {{count}} autres spectateurs",
-      "memberViewing": "regarde : {{title}}",
       "viewerOverflow_one": "and 1 more viewer",
       "viewerOverflow_other": "and {{count}} more viewers",
       "loadingSession": "Chargement de la session…",
@@ -666,7 +636,7 @@
       "selectAll": "Tout le monde ({{count}})",
       "incomingEndpointMismatch": "Ce partage appartient à un autre cloud personnalisé. Configurez ce point de terminaison avant l'import.",
       "incomingConnectionError": "Connexion au service cloud impossible. Vérifiez le réseau et réessayez.",
-      "incomingIncompatibleError": "Ce cloud a renvoyé une réponse de partage incompatible. Mettez ORGII à jour ou vérifiez le déploiement.",
+      "incomingIncompatibleError": "Ce cloud a renvoyé une réponse de partage incompatible. Mettez ORG2 à jour ou vérifiez le déploiement.",
       "incomingServerError": "Le service cloud n'a pas pu résoudre ce partage. Réessayez.",
       "incomingAlreadyOnDevice": "Cette session est déjà sur cet appareil. Ouvrez l'original au lieu d'importer un doublon.",
       "incomingOpenExisting": "Ouvrir la session",
@@ -678,32 +648,16 @@
       "unresolvedBadge": "{{count}} commentaires non résolus",
       "unreadBadge_one": "{{count}} message non lu",
       "unreadBadge": "{{count}} messages non lus",
-      "addError": "Échec de l'envoi — votre brouillon a été conservé",
-      "addPlaceholder": "Ajouter un commentaire…",
-      "agentAddressing": "L'agent s'en occupe…",
       "agentAuthor": "Agent @{{name}}",
-      "cancel": "Annuler",
-      "delete": "Supprimer",
       "deletedComment": "Commentaire supprimé",
       "earlierVersion": "D'une version antérieure de cette session",
-      "edit": "Modifier",
       "editedMarker": "modifié",
       "empty": "Aucun commentaire pour l'instant",
       "loadError": "Impossible de charger les commentaires",
-      "mentionMembers": "Mentionner",
       "notesButton": "Notes de session",
       "notesTitle": "Notes de session",
-      "reply": "Répondre",
-      "replyPlaceholder": "Répondre…",
       "resolved": "Résolu",
       "resolvedToggle": "Résolus ({{count}})",
-      "save": "Enregistrer",
-      "searchMembers": "Rechercher des membres",
-      "send": "Commenter",
-      "task": {
-        "assignFailed": "Commentaire publié, mais l'assignation de l'agent a échoué — réessayez depuis le fil",
-        "mentionSuggestion": "Attribuer ce commentaire à un agent"
-      },
       "wontFix": "Ne sera pas corrigé"
     },
     "sharingFloor": {
@@ -841,7 +795,6 @@
         "errorChannelMissing": "Ce canal n'est plus disponible",
         "errorMessageMissing": "Ce message n'est plus disponible",
         "loadError": "Impossible de charger les messages",
-        "loadingMessages": "Chargement des messages…",
         "loadOlder": "Charger les messages précédents",
         "unknownAuthor": "Coéquipier"
       }
@@ -866,26 +819,26 @@
     "deleteRoleCancel": "Annuler",
     "deleteRoleOk": "Supprimer",
     "deleteRoleTitle": "Supprimer le rôle ?",
-    "followUpSuggestionsDesc": "Suggérer de possibles prochaines étapes après un tour d’élément de travail terminé. Cela utilise une requête modèle supplémentaire.",
+    "followUpSuggestionsDesc": "Suggérer de possibles prochaines étapes après un tour d’élément de travail terminé. Cela utilise une requête modèle supplémentaire",
     "followUpSuggestionsLabel": "Suggestions de suite de l’Agent",
-    "goalMaxTurnsDesc": "Continuer à travailler sur ma dernière demande pendant jusqu’à N tours supplémentaires après le moment où l’agent s’arrêterait normalement (0 = désactivé).",
+    "goalMaxTurnsDesc": "Continuer à travailler sur ma dernière demande pendant jusqu’à N tours supplémentaires après le moment où l’agent s’arrêterait normalement (0 = désactivé)",
     "goalMaxTurnsLabel": "Budget de poursuite de l’objectif",
     "guidanceLabel": "Consignes pour l’Agent",
     "guidancePlaceholder": "Comment l’agent doit-il adapter son comportement quand ce rôle est actif ?",
-    "modeSwitchAutoPlanDesc": "Basculer automatiquement les suggestions de mode Plan en attente à l’expiration de leur délai de confirmation.",
+    "modeSwitchAutoPlanDesc": "Basculer automatiquement les suggestions de mode Plan en attente à l’expiration de leur délai de confirmation",
     "modeSwitchAutoPlanLabel": "Plan automatique au changement de mode",
     "newRoleDefaultLabel": "Rôle personnalisé",
-    "pageDescription": "Définissez le rôle que vous jouez en ce moment. L’agent lit les consignes du rôle actif et adapte son comportement en conséquence — par exemple en posant moins de questions de clarification quand vous êtes concentré, ou en regroupant les résumés quand vous êtes absent.",
+    "pageDescription": "Définissez le rôle que vous jouez en ce moment. L’agent lit les consignes du rôle actif et adapte son comportement en conséquence — par exemple en posant moins de questions de clarification quand vous êtes concentré, ou en regroupant les résumés quand vous êtes absent",
     "pageTitle": "Mes rôles",
-    "planAutoApproveDesc": "Approuver automatiquement les plans en attente après N secondes (0 = m’attendre).",
+    "planAutoApproveDesc": "Approuver automatiquement les plans en attente après N secondes (0 = m’attendre)",
     "planAutoApproveLabel": "Approbation automatique des plans",
-    "questionAutoSkipDesc": "Ignorer automatiquement les questions de l’agent en attente après N secondes (0 = m’attendre).",
+    "questionAutoSkipDesc": "Ignorer automatiquement les questions de l’agent en attente après N secondes (0 = m’attendre)",
     "questionAutoSkipLabel": "Saut automatique des questions",
     "roleNameLabel": "Nom",
     "roleNamePlaceholder": "Nom du rôle",
     "stanceAutonomous": "Autonome — ne jamais m’attendre",
     "stanceDeferAndBatch": "Différer et regrouper — travailler d’abord, demander ensuite",
-    "stanceDesc": "Comment l’agent gère les décisions bloquantes quand ce rôle est actif.",
+    "stanceDesc": "Comment l’agent gère les décisions bloquantes quand ce rôle est actif",
     "stanceInteractive": "Interactif — me demander librement",
     "stanceLabel": "Posture de comportement"
   },
@@ -973,5 +926,10 @@
     "sidebar": {
       "signOut": "Sign out {{name}}"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Le remplacement a été arrêté : les résultats ou le fichier ont changé, ou une écriture a échoué. Certains fichiers ont peut-être déjà été modifiés. Relancez la recherche avant de réessayer.",
+    "budgetExceeded": "La recherche a atteint sa limite de ressources. Les résultats sont partiels ; réduisez la portée.",
+    "timeout": "La recherche a expiré. Réduisez la portée et réessayez."
   }
 }

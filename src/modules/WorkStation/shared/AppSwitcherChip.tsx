@@ -13,6 +13,7 @@
 import React, { memo, useEffect } from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { DROPDOWN_PANEL } from "@src/components/Dropdown/tokens";
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 import { useDropdownEngine } from "@src/hooks/dropdown/useDropdownEngine";
@@ -127,8 +128,8 @@ const AppSwitcherChipComponent: React.FC<AppSwitcherChipProps> = ({
     <>
       <div ref={triggerRef} className={containerClass}>
         {hasDropdown || isDirectClick ? (
-          <button
-            type="button"
+          <Button
+            layout="custom"
             className={innerInteractiveClass}
             onClick={hasDropdown ? toggle : onClick}
             title={label}
@@ -136,7 +137,7 @@ const AppSwitcherChipComponent: React.FC<AppSwitcherChipProps> = ({
             data-testid={testId}
           >
             {labelContent}
-          </button>
+          </Button>
         ) : (
           <div className={innerStaticClass} data-testid={testId}>
             {labelContent}

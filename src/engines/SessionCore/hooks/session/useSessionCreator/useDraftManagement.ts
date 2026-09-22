@@ -6,7 +6,7 @@
  * materializes into storage once the user types meaningful content.
  */
 import { useAtom, useAtomValue } from "jotai";
-import { type RefObject, useEffect, useRef } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef } from "react";
 
 import type { CliAgentType } from "@src/api/tauri/rpc/schemas/validation";
 import type { ComposerInputRef } from "@src/components/ComposerInput";
@@ -62,7 +62,9 @@ export function useDraftManagement(options: UseDraftManagementOptions) {
   // depending on the draft object itself (which changes on every save tick
   // and would re-trigger the load, calling setContent while the user types).
   const draftRef = useRef(draft);
-  useEffect(() => {
+  // Layout effects, like the two below: the load effect runs before paint and
+  // must see this render's draft and flags, not the previous slot's.
+  useLayoutEffect(() => {
     draftRef.current = draft;
   }, [draft]);
   // Mirror uploadedFiles into a ref so the save effect does not need it in
@@ -74,7 +76,7 @@ export function useDraftManagement(options: UseDraftManagementOptions) {
     uploadedFilesRef.current = uploadedFiles;
   }, [uploadedFiles]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Reset both flags so the load effect re-runs for the new draft slot, and
     // the save effect waits until after load has seeded the editor before it
     // starts persisting (prevents the 500 ms save tick from writing stale
@@ -83,7 +85,12 @@ export function useDraftManagement(options: UseDraftManagementOptions) {
     loadedDraftIdRef.current = null;
   }, [activeDraftId]);
 
-  useEffect(() => {
+  // Restore before the first paint. This used to run on a 50 ms timer, so a
+  // remounted composer painted empty — placeholder showing, caret at the start
+  // — and then jumped to the end when the draft arrived. The draft is already
+  // in memory and the child composer's ref is attached before a parent layout
+  // effect runs, so there is nothing to wait for.
+  useLayoutEffect(() => {
     if (skipDraftLoading) {
       draftLoadedRef.current = true;
       loadedDraftIdRef.current = activeDraftId;
@@ -142,6 +149,7 @@ export function useDraftManagement(options: UseDraftManagementOptions) {
         }
       };
 
+      // A composer mounted in a later commit than this hook has no ref yet.
       if (!composerInputRef.current) {
         retryTimeoutId = setTimeout(() => {
           if (composerInputRef.current) {
@@ -153,20 +161,17 @@ export function useDraftManagement(options: UseDraftManagementOptions) {
       applyRestore(composerInputRef.current);
     };
 
-    const mainTimeoutId = setTimeout(() => {
-      setSessionName(currentDraft.sessionName);
-      setEditorContent(currentDraft.editorContent);
-      restoreEditorContent();
-      setUploadedFiles(
-        currentDraft.uploadedFiles.map((file) => ({
-          ...file,
-          file: undefined,
-        }))
-      );
-    }, 50);
+    setSessionName(currentDraft.sessionName);
+    setEditorContent(currentDraft.editorContent);
+    restoreEditorContent();
+    setUploadedFiles(
+      currentDraft.uploadedFiles.map((file) => ({
+        ...file,
+        file: undefined,
+      }))
+    );
 
     return () => {
-      clearTimeout(mainTimeoutId);
       if (retryTimeoutId) clearTimeout(retryTimeoutId);
     };
   }, [

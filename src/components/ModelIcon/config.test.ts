@@ -6,7 +6,11 @@ import { describe, expect, it } from "vitest";
 import { ICON_MAP, THEMEABLE_ICONS, toIconComponent } from "./config";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CONFIG_SOURCE = readFileSync(join(HERE, "config.ts"), "utf8");
+// The glyph imports live in the icon provider registry that `config.ts` re-exports.
+const ICON_PROVIDERS_SOURCE = readFileSync(
+  join(HERE, "iconProviders.ts"),
+  "utf8"
+);
 const MODEL_ICONS_DIR = resolve(HERE, "../../assets/modelIcons");
 
 describe("OpenAI icon consolidation", () => {
@@ -22,7 +26,7 @@ describe("OpenAI icon consolidation", () => {
 
 describe("model icon asset routing", () => {
   const imports = [
-    ...CONFIG_SOURCE.matchAll(
+    ...ICON_PROVIDERS_SOURCE.matchAll(
       /import \w+ from "@src\/assets\/modelIcons\/([^"?]+\.svg)(\?url)?";/g
     ),
   ].map((match) => ({ file: match[1], asUrl: match[2] === "?url" }));

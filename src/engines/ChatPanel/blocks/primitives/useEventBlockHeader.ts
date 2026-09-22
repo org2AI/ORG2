@@ -155,5 +155,3 @@ export function useEventBlockHeader(
     handleLocate: undefined,
   };
 }
-
-export default useEventBlockHeader;

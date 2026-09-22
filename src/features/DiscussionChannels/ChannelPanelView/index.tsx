@@ -45,7 +45,6 @@ import {
 } from "@src/features/Org2Cloud/channels/useCloudChannelMessages";
 import { useOrgChannels } from "@src/features/Org2Cloud/channels/useOrgChannels";
 import { HugeiconsIcon, MessageMultiple01Icon } from "@src/icons";
-import { SESSION_TAB_DROP_TARGET_HIGHLIGHT_CLASS } from "@src/shared/dnd/sessionTabDrag";
 import type { ChatPanelSelectedChannel } from "@src/store/chatPanel/chatPanelTabsModel";
 import {
   deleteLocalChannelMessageAtom,
@@ -54,6 +53,7 @@ import {
   postLocalChannelMessageAtom,
 } from "@src/store/ui/localChannelMessagesAtom";
 import { localChannelsAtom } from "@src/store/ui/localChannelsAtom";
+import { SESSION_TAB_DROP_TARGET_HIGHLIGHT_CLASS } from "@src/util/dnd/sessionTabDrag";
 
 import ChannelComposer from "./ChannelComposer";
 import ChannelMessageList from "./ChannelMessageList";
@@ -481,7 +481,6 @@ const CloudChannelPanel: React.FC<CloudChannelPanelProps> = ({
               hasOlder ? (
                 <div className="flex justify-center pb-2">
                   <Button
-                    htmlType="button"
                     variant="tertiary"
                     size="mini"
                     loading={loadingOlder}

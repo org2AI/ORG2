@@ -18,7 +18,6 @@ const api = vi.hoisted(() => ({
   getSnapshots: vi.fn(),
   getSession: vi.fn(),
   getSessionFiles: vi.fn(),
-  getFileResolutions: vi.fn(),
   resolveReview: vi.fn(),
   revertToSnapshot: vi.fn(),
   restoreSnapshot: vi.fn(),
@@ -113,7 +112,6 @@ it("loads active review data without resolutions and ignores old session results
     );
     expect(store.get(pendingSnapshotAnchorsAtom)[0].sessionId).toBe("current");
     expect(api.getSnapshots).toHaveBeenCalledTimes(2);
-    expect(api.getFileResolutions).not.toHaveBeenCalled();
     expect(unsubscribe).toHaveBeenCalledTimes(2);
   } finally {
     await act(async () => root.unmount());
@@ -179,7 +177,6 @@ it("preserves Keep, Undo and Redo through their existing backend actions", async
     await act(async () => actions.onRedo());
     expect(api.restoreSnapshot).toHaveBeenCalledWith("current", "redo-hash");
     expect(actions.redoSnapshotAnchors).toEqual([]);
-    expect(api.getFileResolutions).not.toHaveBeenCalled();
   } finally {
     await act(async () => root.unmount());
   }

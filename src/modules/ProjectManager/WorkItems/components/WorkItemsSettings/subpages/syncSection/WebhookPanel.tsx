@@ -29,8 +29,8 @@ import Button from "@src/components/Button";
 import { Message } from "@src/components/Message";
 import PageNotice from "@src/components/PageNotice";
 import StatusDot from "@src/components/StatusDot";
+import { SectionRow } from "@src/components/layout/Section";
 import { Copy01Icon, HugeiconsIcon, Refresh04Icon } from "@src/icons";
-import { SectionRow } from "@src/modules/shared/layouts/SectionLayout";
 import { copyText } from "@src/util/data/clipboard";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 

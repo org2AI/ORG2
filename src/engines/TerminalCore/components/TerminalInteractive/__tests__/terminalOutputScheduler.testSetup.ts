@@ -57,7 +57,9 @@ export async function flushTimers() {
 }
 
 beforeEach(() => {
+  // Start beyond the scheduler's initial no-input timestamp before registering panes.
   vi.useFakeTimers();
+  vi.advanceTimersByTime(1000);
 
   // restoreAllMocks strips these implementations after every case.
   vi.mocked(isTauriReady).mockReturnValue(true);

@@ -5,6 +5,7 @@ import type { ItemKind } from "@src/api/types/externalImport";
 import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
 import SettingsTable from "@src/components/SettingsTable";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import type { CursorRepo } from "@src/hooks/policies";
 import {
   ChevronsDownUpIcon,
@@ -12,10 +13,6 @@ import {
   ImportIcon,
   UnfoldMoreIcon,
 } from "@src/icons";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 import {
   inlineExternalImportRowKey,
@@ -107,7 +104,6 @@ const InlineExternalImport: React.FC<InlineExternalImportProps> = ({
     <SectionContainer>
       <SectionRow label={labels.title}>
         <Button
-          variant="secondary"
           icon={
             expanded ? (
               <HugeiconsIcon

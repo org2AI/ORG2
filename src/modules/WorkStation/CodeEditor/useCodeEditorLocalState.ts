@@ -39,7 +39,6 @@ export function useCodeEditorLocalState({
 }: UseCodeEditorLocalStateOptions) {
   // ── UI state ──────────────────────────────────────────────────────────────
 
-  const [searchPanelVisible, setSearchPanelVisible] = useState(false);
   const [cursorPosition, setCursorPosition] = useState<CursorPosition | null>(
     null
   );
@@ -146,8 +145,6 @@ export function useCodeEditorLocalState({
 
   return {
     // State
-    searchPanelVisible,
-    setSearchPanelVisible,
     cursorPosition,
     // Layout
     setPrimaryPanel,

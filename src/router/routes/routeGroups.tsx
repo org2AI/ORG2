@@ -9,6 +9,7 @@ import {
   LoginPage,
   MobileRemotePage,
   SessionWindowPage,
+  StationWindowPage,
 } from "@src/router/lazy/pages";
 import { WorkStationRoutePlaceholder } from "@src/router/routes/placeholders";
 
@@ -105,6 +106,13 @@ export const appStandaloneRouteGroup: RouteObject[] = [
   {
     path: "app/session/:sessionId",
     element: lazy(<SessionWindowPage />, false),
+  },
+  // Detached station window route — loaded by `open_station_window` (Rust)
+  // with the label `app-window-station-<mode>`. Keep the path in sync with
+  // that command and `getStationWindowPath`.
+  {
+    path: "app/station/:stationMode",
+    element: lazy(<StationWindowPage />, false),
   },
   { path: "marketplace/callback", element: lazy(<AuthCallback />) },
   {

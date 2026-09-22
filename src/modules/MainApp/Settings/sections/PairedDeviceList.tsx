@@ -4,13 +4,13 @@ import { useTranslation } from "react-i18next";
 import type { PairedDeviceInfo } from "@src/api/tauri/mobileRemote";
 import Button from "@src/components/Button";
 import StatusDot from "@src/components/StatusDot";
-import { SECTION_VALUE_SMALL_MUTED_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
+import { SECTION_VALUE_SMALL_MUTED_CLASSES } from "@src/components/layout/Section";
+import { TYPOGRAPHY } from "@src/config/workstation/tokens";
 
 import {
   formatPairedDeviceSubtitle,
   formatPairedDeviceTierLabel,
   formatPairedDeviceTitle,
-  isPairedDeviceReadOnlyTier,
   resolvePairedDevicePresence,
   sortPairedDevicesByLastSeen,
 } from "./pairedDeviceDisplay";
@@ -39,9 +39,11 @@ const PairedDeviceList: React.FC<PairedDeviceListProps> = ({
     >
       {sortedDevices.map((device) => {
         const presence = resolvePairedDevicePresence(device.lastSeenMs);
-        const showTierBadge = isPairedDeviceReadOnlyTier(device.tier);
         const title = formatPairedDeviceTitle(device);
-        const subtitle = formatPairedDeviceSubtitle(device, formatTimestamp, t);
+        const subtitle = `${formatPairedDeviceTierLabel(device.tier, t)} · ${formatPairedDeviceSubtitle(device, formatTimestamp, t)}`;
+        const pairedAt = t("mobileRemote.devicePairedAt", {
+          time: formatTimestamp(device.pairedAtMs),
+        });
 
         return (
           <div
@@ -61,29 +63,22 @@ const PairedDeviceList: React.FC<PairedDeviceListProps> = ({
                   }
                 />
                 <span
-                  className="min-w-0 truncate text-[13px] font-medium text-text-1"
+                  className={`min-w-0 truncate text-text-1 ${TYPOGRAPHY.listItem}`}
                   title={title}
                 >
                   {title}
                 </span>
-                {showTierBadge ? (
-                  <span
-                    className={`shrink-0 rounded-md border border-border-2 bg-fill-1 px-1.5 py-0.5 text-[10px] leading-none text-text-2`}
-                  >
-                    {formatPairedDeviceTierLabel(device.tier, t)}
-                  </span>
-                ) : null}
               </div>
               <p
                 className={`mt-0.5 truncate pl-4.5 ${SECTION_VALUE_SMALL_MUTED_CLASSES}`}
-                title={subtitle}
+                title={`${pairedAt} · ${subtitle}`}
               >
                 {subtitle}
               </p>
             </div>
             <Button
-              variant="danger"
-              appearance="ghost"
+              variant="tertiary"
+              tone="danger"
               size="small"
               className="shrink-0"
               onClick={() => onRevoke(device.deviceId)}

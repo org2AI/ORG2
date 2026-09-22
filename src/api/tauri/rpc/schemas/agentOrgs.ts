@@ -1,6 +1,10 @@
 import { z } from "zod/v4";
 
-import { ModelTypeSchema, NativeHarnessTypeSchema } from "./validation";
+import {
+  CliAgentTypeSchema,
+  ModelTypeSchema,
+  NativeHarnessTypeSchema,
+} from "./validation";
 
 const JsonRecordSchema = z.record(z.string(), z.unknown());
 
@@ -128,6 +132,9 @@ export const PlanApprovalPolicySchema = z.enum([
   "automatic",
 ]);
 export const OrgMemberRuntimeConfigSchema = z.object({
+  credentialSource: z.string().startsWith("market:").max(1024).optional(),
+  marketProfileId: z.string().startsWith("market:").max(512).optional(),
+  cliAgentType: CliAgentTypeSchema.optional(),
   keySource: z.enum(["own_key", "hosted_key"]).optional(),
   accountId: z.string().optional(),
   model: z.string().optional(),
@@ -270,14 +277,24 @@ export const CliConfigTargetFileStatusSchema = z.object({
   lastAppliedHash: z.string().nullable().optional(),
   currentHash: z.string().nullable().optional(),
   conflict: z.boolean(),
+  overlay: z.boolean().optional(),
 });
 
 export const CliConfigManagedStatusSchema = z.object({
+  nativeApp: z
+    .object({
+      version: z.literal(1),
+      agent: z.enum(["codex", "claude_desktop"]),
+      scope: z.string(),
+    })
+    .nullable()
+    .optional(),
   agentName: z.string(),
   supported: z.boolean(),
   mode: CliConfigModeSchema,
   hasDefaultBackup: z.boolean(),
   conflict: z.boolean(),
+  overlay: z.boolean().optional(),
   selectedKeyId: z.string().nullable().optional(),
   selectedProvider: z.string().nullable().optional(),
   selectedModel: z.string().nullable().optional(),

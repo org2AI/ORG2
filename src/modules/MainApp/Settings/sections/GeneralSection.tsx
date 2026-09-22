@@ -1,11 +1,12 @@
 /**
  * General Settings Section
  *
- * Hosts five tabs:
+ * Hosts six tabs:
  *   - `general` — ORG2 login, language/date, input, app behavior, update,
  *     settings file
  *   - `notifications` — master toggle + advanced blocks (lazy)
  *   - `shortcuts` — keyboard shortcuts viewer (lazy)
+ *   - `app-lock` — password lock screen (lazy)
  *   - `storage` — disk usage and cleanup
  *   - `self-hosted` — custom ORG2 Cloud backend endpoint
  *
@@ -20,7 +21,7 @@ import {
   SECTION_PATH_TEXT_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@/src/modules/shared/layouts/SectionLayout";
+} from "@/src/components/layout/Section";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { useAtom } from "jotai";
@@ -44,8 +45,10 @@ import {
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
 import { Placeholder } from "@src/components/Placeholder";
+import SegmentedTextPill from "@src/components/SegmentedTextPill";
 import Select from "@src/components/Select";
 import Switch from "@src/components/Switch";
+import { HintWithInfo } from "@src/components/layout/blocks/HintWithInfo";
 import type { TimezoneOption } from "@src/config/timezone";
 import CloudEndpointCard from "@src/features/Org2Cloud/CloudEndpointCard";
 import { Org2CloudLoginRows } from "@src/features/Org2Cloud/Org2CloudSection";
@@ -62,13 +65,11 @@ import {
 } from "@src/i18n";
 import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import { NAV_BUTTON_PROPS } from "@src/modules/MainApp/Settings/config";
-import { HintWithInfo } from "@src/modules/shared/layouts/blocks/HintWithInfo";
 import {
   checkForAppUpdates,
   checkForUpdatesManually,
 } from "@src/scaffold/AppUpdater/actions";
 import { useAppBuildProvenance } from "@src/scaffold/AppUpdater/state";
-import { chatAppearancePersistAtom } from "@src/store/config/configAtom";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { preventSleepWhileRunningAtom } from "@src/store/platform/preventSleepAtom";
 import {
@@ -79,14 +80,21 @@ import {
 import { voiceInputEnabledAtom } from "@src/store/platform/voiceInputAtom";
 import { languageAtom } from "@src/store/ui/languageAtom";
 import { timezoneAtom } from "@src/store/ui/timezoneAtom";
+import { myStationSharingAtom } from "@src/store/workstation/tabs/workspaceScope";
 import { copyText } from "@src/util/data/clipboard";
 
+import {
+  HIGH_REFRESH_RATE_SUPPORTED,
+  HighRefreshRateRow,
+} from "./HighRefreshRateRow";
 import HttpVersionSettingsBlock from "./HttpVersionSettingsBlock";
+import LicenseModal from "./LicenseModal";
 
 export const GENERAL_TAB_KEYS = {
   GENERAL: "general",
   NOTIFICATIONS: "notifications",
   SHORTCUTS: "shortcuts",
+  APP_LOCK: "app-lock",
   STORAGE: "storage",
   SELF_HOSTED: "self-hosted",
 } as const;
@@ -94,6 +102,7 @@ export const GENERAL_TAB_KEYS = {
 const StorageTab = lazy(() => import("./StorageSection"));
 const NotificationsTab = lazy(() => import("./NotificationsTab"));
 const ShortcutsTab = lazy(() => import("./ShortcutsSection"));
+const AppLockTab = lazy(() => import("./AppLockSection"));
 
 interface GeneralSectionProps {
   activeTab?: string;
@@ -122,6 +131,16 @@ const GeneralSection: React.FC<GeneralSectionProps> = ({
     );
   }
 
+  if (activeTab === GENERAL_TAB_KEYS.APP_LOCK) {
+    return (
+      <Suspense
+        fallback={<Placeholder variant="loading" placement="detail-panel" />}
+      >
+        <AppLockTab />
+      </Suspense>
+    );
+  }
+
   if (activeTab === GENERAL_TAB_KEYS.STORAGE) {
     return (
       <Suspense
@@ -141,10 +160,9 @@ const GeneralSection: React.FC<GeneralSectionProps> = ({
 
 const GeneralTabBody: React.FC = () => {
   const { t, i18n } = useTranslation("settings");
+  const [myStationSharing, setMyStationSharing] = useAtom(myStationSharingAtom);
+  const [licenseModalVisible, setLicenseModalVisible] = useState(false);
   const [timezone, setTimezone] = useAtom(timezoneAtom);
-  const [chatAppearance, updateChatAppearance] = useAtom(
-    chatAppearancePersistAtom
-  );
   const [languagePreference, setLanguagePreference] = useAtom(languageAtom);
   const [settingsFilePath, setSettingsFilePath] = useState(
     "~/.orgii/settings.jsonc"
@@ -319,19 +337,19 @@ const GeneralTabBody: React.FC = () => {
   );
 
   const updateChannelOptions = useMemo(
-    () => [
+    (): { value: UpdateChannel; label: string }[] => [
       { value: "stable", label: t("update.channelStable") },
       { value: "beta", label: t("update.channelBeta") },
     ],
     [t]
   );
 
-  // The Select shows the resolved channel, so an untouched "auto" preference
+  // The pill shows the resolved channel, so an untouched "auto" preference
   // renders as what the build actually tracks (beta for prerelease installs).
   // Picking an option pins the preference explicitly.
   const handleUpdateChannelChange = useCallback(
-    (value: string | number | (string | number)[]) => {
-      setUpdateChannelPreference(String(value) as UpdateChannel);
+    (value: UpdateChannel) => {
+      setUpdateChannelPreference(value);
       // Re-check against the new channel so an available update from the
       // previous channel doesn't linger in the install prompt.
       void checkForAppUpdates({ force: true });
@@ -360,18 +378,29 @@ const GeneralTabBody: React.FC = () => {
         <SectionRow label={t("common:common.timezone")}>
           <Select {...timezoneSelectProps} />
         </SectionRow>
-        <HttpVersionSettingsBlock />
       </SectionContainer>
       <SectionContainer>
         <SectionRow
-          label={t("general.sendOnEnter")}
-          description={t("general.sendOnEnterDesc")}
+          label={t("general.myStationSharing")}
+          description={t("general.myStationSharingDesc")}
         >
-          <Switch
-            checked={chatAppearance.sendOnEnter}
-            onCheckedChange={(checked) => {
-              updateChatAppearance({ sendOnEnter: checked });
+          <Select
+            ariaLabel={t("general.myStationSharing")}
+            value={myStationSharing}
+            onChange={(value) => {
+              if (value === "working-directory" || value === "chat-tab") {
+                setMyStationSharing(value);
+              }
             }}
+            options={[
+              {
+                value: "working-directory",
+                label: t("general.myStationSharingDirectory"),
+              },
+              { value: "chat-tab", label: t("general.myStationSharingTab") },
+            ]}
+            size="default"
+            style={SECTION_CONTROL_STYLE}
           />
         </SectionRow>
       </SectionContainer>
@@ -391,7 +420,6 @@ const GeneralTabBody: React.FC = () => {
               {micPermissionStatus !== "granted" &&
                 micPermissionStatus !== "unsupported" && (
                   <Button
-                    size="default"
                     loading={micPermissionRequesting}
                     onClick={handleRequestMicPermission}
                   >
@@ -425,6 +453,7 @@ const GeneralTabBody: React.FC = () => {
             onCheckedChange={setPreventSleepWhileRunning}
           />
         </SectionRow>
+        {HIGH_REFRESH_RATE_SUPPORTED && <HighRefreshRateRow />}
       </SectionContainer>
 
       <SectionContainer>
@@ -439,15 +468,15 @@ const GeneralTabBody: React.FC = () => {
             </span>
           }
         >
-          <Select
+          <SegmentedTextPill<UpdateChannel>
+            ariaLabel={t("update.channel")}
             value={resolveUpdateChannel(
               updateChannelPreference,
               appVersion || undefined
             )}
             onChange={handleUpdateChannelChange}
             options={updateChannelOptions}
-            size="default"
-            style={SECTION_CONTROL_STYLE}
+            size="large"
           />
         </SectionRow>
         <SectionRow label={t("update.currentVersion")}>
@@ -460,7 +489,6 @@ const GeneralTabBody: React.FC = () => {
                 : "—"}
             </span>
             <Button
-              size="default"
               onClick={checkForUpdatesManually}
               icon={
                 <HugeiconsIcon
@@ -477,6 +505,7 @@ const GeneralTabBody: React.FC = () => {
       </SectionContainer>
 
       <SectionContainer>
+        <HttpVersionSettingsBlock />
         <SectionRow
           label={
             <span className="inline-flex items-center gap-1">
@@ -493,10 +522,7 @@ const GeneralTabBody: React.FC = () => {
             onCheckedChange={setDevModeEnabled}
           />
         </SectionRow>
-      </SectionContainer>
-
-      {devModeEnabled && (
-        <SectionContainer>
+        {devModeEnabled && (
           <PathCopyOpenRow
             label={t("general.settingsFile")}
             path={settingsFilePath}
@@ -509,7 +535,16 @@ const GeneralTabBody: React.FC = () => {
             copyTitle={t("common:actions.copy")}
             openTitle={t("storage.openFolder")}
           />
-        </SectionContainer>
+        )}
+        <SectionRow label={t("general.license")}>
+          <Button onClick={() => setLicenseModalVisible(true)}>
+            {t("common:actions.view")}
+          </Button>
+        </SectionRow>
+      </SectionContainer>
+
+      {licenseModalVisible && (
+        <LicenseModal visible onClose={() => setLicenseModalVisible(false)} />
       )}
     </>
   );

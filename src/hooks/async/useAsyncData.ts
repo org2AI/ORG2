@@ -149,9 +149,3 @@ export function useAsyncData<TData, TKey>({
     refresh,
   };
 }
-
-// ============================================
-// Utility: useAsyncAction (for mutations)
-// ============================================
-
-export default useAsyncData;

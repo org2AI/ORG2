@@ -1,7 +1,10 @@
 import { useAtomValue } from "jotai";
 import React, { memo } from "react";
 
-import { type ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
+import {
+  CHAT_PANEL_TAB_TYPE_POLICY,
+  type ChatPanelTab,
+} from "@src/store/chatPanel/chatPanelTabsModel";
 import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 
 import { ChatPanelTabIcon } from "../ChatPanelTabBar/ChatPanelTabIcon";
@@ -9,15 +12,7 @@ import { useChatPanelTabDisplayTitle } from "../hooks/useChatPanelTabDisplayTitl
 
 const CollapsedTabHeadingLabel: React.FC<{ tab: ChatPanelTab }> = ({ tab }) => {
   const title = useChatPanelTabDisplayTitle(tab);
-  // Other surfaces publish their own entity header; preserve their existing
-  // collapsed-heading omission instead of adding a second identity icon.
-  const showIcon = [
-    "start-page",
-    "runtime",
-    "team-inbox",
-    "work-management",
-    "organization",
-  ].includes(tab.type);
+  const showIcon = CHAT_PANEL_TAB_TYPE_POLICY[tab.type].collapsedHeadingIcon;
 
   return (
     <span className="flex min-w-0 items-center gap-2 px-1 text-[13px] font-medium text-text-1">

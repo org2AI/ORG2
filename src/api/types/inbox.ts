@@ -45,9 +45,3 @@ export interface InboxMessage {
   }>;
   workItem?: WorkItem;
 }
-
-export interface DateGroup {
-  dateKey: string;
-  label: string;
-  messages: InboxMessage[];
-}

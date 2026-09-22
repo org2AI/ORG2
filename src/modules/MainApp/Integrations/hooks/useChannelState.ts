@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import {
   type SyncConnection,
@@ -15,8 +15,10 @@ import {
 } from "@src/api/http/integrations";
 import { toggleChannel } from "@src/api/tauri/agent";
 import { WIZARD_IDS, buildWizardPath } from "@src/config/mainAppPaths";
+import { parseSettingsSetupProvider } from "@src/config/settingsSetupActions";
 import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import type { WizardCategory } from "@src/scaffold/WizardSystem/variants/Channel/channelWizardTypes";
 import { showChannelActionDialogSafely } from "@src/util/dialogs/channelActionDialog";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
@@ -76,6 +78,10 @@ export function useChannelState(options: UseChannelStateOptions = {}) {
   const { channelStatuses } = options;
   const { t: tIntegrations } = useTranslation("integrations");
   const navigate = useNavigate();
+  const location = useLocation();
+  const setupProvider = parseSettingsSetupProvider(
+    location.search
+  ).connectionProvider;
   const { config, loaded, update, rawUpdate } = useOSAgentConfig();
 
   // ── Selection ──
@@ -410,7 +416,9 @@ export function useChannelState(options: UseChannelStateOptions = {}) {
     // Selection
     selectedChannel,
     channelWizardMode,
-    channelWizardInitialSelection,
+    channelWizardInitialSelection: setupProvider
+      ? { category: "projects" as const, type: setupProvider }
+      : channelWizardInitialSelection,
     selectedChannelPath,
     isSelectedChannelEnabled,
     selectedChannelStatus,

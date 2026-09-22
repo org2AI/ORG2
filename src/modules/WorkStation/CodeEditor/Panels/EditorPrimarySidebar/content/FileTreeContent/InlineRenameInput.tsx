@@ -10,6 +10,8 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import Input from "@src/components/Input";
+
 export interface InlineRenameInputProps {
   /** Current name of the file/folder */
   initialName: string;
@@ -167,14 +169,25 @@ export function InlineRenameInput({
   }, [handleConfirm]);
 
   return (
-    <input
+    <Input
+      appearance="bare"
+      size="small"
+      autoHeight
+      className="min-w-0 flex-1 [&>.input-inner]:border-0!"
+      inputStyle={{
+        height: 22,
+        fontSize: 13,
+        padding: "0 4px",
+        border: "1px solid var(--color-primary-6)",
+        background: "var(--color-pane-input)",
+      }}
       ref={inputRef}
       type="text"
       value={value}
-      onChange={handleChange}
+      onChange={(_value, event) => handleChange(event)}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
-      className="h-[22px] w-full min-w-0 rounded border border-primary-6 bg-pane-input px-1 text-[13px] text-text-1 ring-1 ring-primary-6/30 outline-none"
+      inputClassName="h-[22px] w-full min-w-0 rounded border border-primary-6 bg-pane-input px-1 text-[13px] text-text-1 ring-1 ring-primary-6/30 outline-none"
       autoComplete="off"
       autoCorrect="off"
       autoCapitalize="off"

@@ -16,14 +16,7 @@
 .chat-markdown-body pre {
   margin-top: 8px;
   margin-bottom: 0;
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    SF Mono,
-    Menlo,
-    Consolas,
-    Liberation Mono,
-    monospace;
+  font-family: var(--code-font-family);
   font-size: var(--chat-code-font-size, 13px);
   word-wrap: normal;
   width: 100%;

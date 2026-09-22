@@ -20,7 +20,6 @@ export interface UseBulkOperationsOptions {
   onDiscard?: (fileId: string) => Promise<void>;
   onFileSelect: (fileId: string) => void;
   handleFileClick: (fileId: string, event?: MouseEvent) => void;
-  navigateWithoutSelecting?: boolean;
 }
 
 export interface UseBulkOperationsResult {
@@ -47,7 +46,6 @@ export function useBulkOperations(
     onDiscard,
     onFileSelect,
     handleFileClick,
-    navigateWithoutSelecting = false,
   } = options;
 
   // Handle bulk stage
@@ -104,12 +102,12 @@ export function useBulkOperations(
         handleFileClick(fileId, event);
       } else {
         onFileSelect(fileId);
-        if (!navigateWithoutSelecting) {
-          handleFileClick(fileId, event);
-        }
+        // Combined-diff navigation still owns a normal sidebar selection.
+        // The pane's onFileSelect decides whether to open or reveal the diff.
+        handleFileClick(fileId, event);
       }
     },
-    [onFileSelect, handleFileClick, navigateWithoutSelecting]
+    [onFileSelect, handleFileClick]
   );
 
   // Wrap stage toggle to handle multi-selection

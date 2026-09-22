@@ -16,8 +16,8 @@ export type PrimarySidebarTabKey =
   (typeof PRIMARY_SIDEBAR_TABS)[keyof typeof PRIMARY_SIDEBAR_TABS];
 
 /**
- * Primary sidebar selected tab. Session-only — not persisted across
- * restarts because the default Search tab is the active primary sidebar entry.
+ * Primary sidebar selected tab. Session-only — every launch starts on the
+ * Files tab.
  */
 export const workStationPrimarySidebarTabAtom = atom<PrimarySidebarTabKey>(
   PRIMARY_SIDEBAR_TABS.FILES

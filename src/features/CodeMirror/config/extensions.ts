@@ -9,6 +9,10 @@ import { Extension, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
 
+import { ArrowDown01Icon, ArrowRight01Icon } from "@src/icons";
+
+import { createGutterIcon } from "../shared/createGutterIcon";
+
 // Re-export find/replace extension from Workstation CodeEditor
 export { findReplaceExtension } from "@/src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/components/CodeMirrorSearchPanel";
 
@@ -57,9 +61,9 @@ export function customFoldGutter(): Extension {
   return foldGutter({
     markerDOM: (open: boolean) => {
       const span = document.createElement("span");
-      span.textContent = open ? "⌄" : "›";
-      // Different vertical offset for each icon due to different baselines
-      const translateY = open ? "-3px" : "0px";
+      span.appendChild(
+        createGutterIcon(open ? ArrowDown01Icon : ArrowRight01Icon)
+      );
       span.style.cssText = `
         display: inline-flex;
         align-items: center;
@@ -69,7 +73,6 @@ export function customFoldGutter(): Extension {
         line-height: 1;
         cursor: var(--interactive-cursor, default);
         user-select: none;
-        transform: translateY(${translateY});
       `;
       span.setAttribute("title", open ? "Fold line" : "Unfold line");
       return span;

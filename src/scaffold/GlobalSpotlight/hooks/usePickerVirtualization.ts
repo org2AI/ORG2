@@ -5,6 +5,8 @@ import {
 } from "@tanstack/react-virtual";
 import { useCallback, useLayoutEffect, useRef } from "react";
 
+import { observePickerScrollOffset } from "./observePickerScrollOffset";
+
 const NO_STICKY_INDICES: number[] = [];
 
 export function findStickyIndex(indices: number[], startIndex: number): number {
@@ -67,6 +69,7 @@ export function usePickerVirtualization({
     getItemKey,
     estimateSize,
     getScrollElement: () => containerRef.current,
+    observeElementOffset: observePickerScrollOffset,
     overscan: 5,
     rangeExtractor,
     enabled: enabled && count > 0,

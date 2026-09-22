@@ -13,7 +13,7 @@ import type {
   SessionEventSegmentsSummary,
 } from "@src/features/TeamCollaboration/sync/CollabSyncBackend";
 import { createLogger } from "@src/hooks/logger";
-import { startVisibilityAwarePoller } from "@src/shared/scheduling/visibilityAwarePoller";
+import { startVisibilityAwarePoller } from "@src/util/time/scheduling/visibilityAwarePoller";
 
 import { useFreshWebCloudSession } from "../auth/useFreshWebCloudSession";
 import type { CloudSessionEventSnapshot } from "./cloudSessionSegments";

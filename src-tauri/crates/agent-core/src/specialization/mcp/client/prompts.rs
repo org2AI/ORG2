@@ -103,8 +103,8 @@ impl McpClient {
             .into_iter()
             .map(|m| McpPromptMessage {
                 role: match m.role {
-                    rmcp::model::PromptMessageRole::User => McpPromptMessageRole::User,
-                    rmcp::model::PromptMessageRole::Assistant => McpPromptMessageRole::Assistant,
+                    rmcp::model::Role::User => McpPromptMessageRole::User,
+                    rmcp::model::Role::Assistant => McpPromptMessageRole::Assistant,
                 },
                 text: render_prompt_content(&m.content),
             })

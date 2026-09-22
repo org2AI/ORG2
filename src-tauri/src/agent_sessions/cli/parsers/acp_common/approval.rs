@@ -25,6 +25,10 @@ pub struct ApprovalResponse {
 struct PendingAcpApproval {
     session_id: String,
     sender: oneshot::Sender<ApprovalResponse>,
+    tool_name: String,
+    tool_args: Value,
+    tool_call_id: String,
+    created_at_ms: i64,
 }
 
 type PendingApprovalsMap = HashMap<String, PendingAcpApproval>;
@@ -34,6 +38,48 @@ type PendingApprovalsMap = HashMap<String, PendingAcpApproval>;
 /// via [`resolve_approval`] — external callers never touch the map directly.
 static PENDING_APPROVALS: std::sync::LazyLock<Arc<Mutex<PendingApprovalsMap>>> =
     std::sync::LazyLock::new(|| Arc::new(Mutex::new(HashMap::new())));
+
+pub fn pending_snapshot_for_session(
+    session_id: Option<&str>,
+    limit: usize,
+) -> Result<Vec<Value>, String> {
+    let pending = PENDING_APPROVALS
+        .lock()
+        .map_err(|_| "ACP approval registry lock is poisoned")?;
+    Ok(pending
+        .iter()
+        .filter(|(_, entry)| session_id.is_none_or(|id| entry.session_id == id))
+        .take(limit)
+        .map(|(id, entry)| {
+            serde_json::json!({
+                "kind": "permission", "origin": "acp", "sessionId": entry.session_id,
+                "requestId": id, "toolName": entry.tool_name, "toolCallId": entry.tool_call_id,
+                "toolArgs": entry.tool_args, "createdAtMs": entry.created_at_ms,
+            })
+        })
+        .collect())
+}
+
+fn pending_changed(session_id: &str) {
+    crate::api::websocket_handler::broadcast(
+        serde_json::json!({"type": "permission:pending_changed", "session_id": session_id})
+            .to_string(),
+    );
+}
+
+/// Lives with the protocol wait, including cancellation of its owning future.
+pub(super) struct AcpApprovalGuard(String);
+impl Drop for AcpApprovalGuard {
+    fn drop(&mut self) {
+        let entry = PENDING_APPROVALS
+            .lock()
+            .ok()
+            .and_then(|mut pending| pending.remove(&self.0));
+        if let Some(entry) = entry {
+            pending_changed(&entry.session_id);
+        }
+    }
+}
 
 /// How long an ACP permission request waits for the user before the
 /// legacy auto-approve fallback fires.
@@ -55,7 +101,7 @@ pub async fn resolve_approval(
     let entry = {
         let mut pending = PENDING_APPROVALS
             .lock()
-            .expect("ACP approval registry poisoned");
+            .map_err(|_| "ACP approval registry lock is poisoned")?;
         let key = match request_id {
             Some(request_id) => pending
                 .get(request_id)
@@ -69,6 +115,7 @@ pub async fn resolve_approval(
         let key = key.ok_or_else(|| format!("No pending approval for session {}", session_id))?;
         pending.remove(&key).expect("key was just found")
     };
+    pending_changed(session_id);
     entry
         .sender
         .send(ApprovalResponse {
@@ -83,6 +130,9 @@ pub async fn resolve_approval(
 /// the protocol loop awaits on.
 pub(super) async fn register_acp_approval(
     session_id: &str,
+    tool_name: &str,
+    tool_args: &Value,
+    tool_call_id: Option<&str>,
 ) -> (
     String,
     oneshot::Receiver<ApprovalResponse>,
@@ -98,21 +148,21 @@ pub(super) async fn register_acp_approval(
             PendingAcpApproval {
                 session_id: session_id.to_string(),
                 sender: tx,
+                tool_name: tool_name.to_string(),
+                tool_args: tool_args.clone(),
+                tool_call_id: tool_call_id.unwrap_or(&request_id).to_string(),
+                created_at_ms: chrono::Utc::now().timestamp_millis(),
             },
         );
+    pending_changed(session_id);
     let lifetime = crate::agent_sessions::cli::permission_lifecycle::PermissionLifetime::new(
-        session_id,
-        &request_id,
-        remove_pending_acp_approval,
+        session_id, &request_id, remove_pending_acp_approval,
     );
     (request_id, rx, lifetime)
 }
 
 fn remove_pending_acp_approval(request_id: &str) {
-    PENDING_APPROVALS
-        .lock()
-        .expect("ACP approval registry poisoned")
-        .remove(request_id);
+    drop(AcpApprovalGuard(request_id.to_string()));
 }
 
 /// Await a parked approval. On timeout or a dropped sender the legacy
@@ -126,10 +176,7 @@ pub(super) async fn await_acp_approval(
         Ok(Ok(resp)) => resp,
         _ => {
             tracing::info!("[ACP] Approval timed out or channel closed — auto-approving");
-            PENDING_APPROVALS
-                .lock()
-                .expect("ACP approval registry poisoned")
-                .remove(request_id);
+            drop(AcpApprovalGuard(request_id.to_string()));
             ApprovalResponse {
                 approved: true,
                 always_allow: false,
@@ -297,7 +344,7 @@ mod lifecycle_tests {
     async fn permission_lifetime_cleans_timeout_response_and_cancel() {
         for mode in ["timeout", "response", "cancel"] {
             let session = format!("acp-lifetime-{}", uuid::Uuid::new_v4());
-            let (id, rx, lifetime) = register_acp_approval(&session).await;
+            let (id, rx, lifetime) = register_acp_approval(&session, "read_file", &Value::Null, None).await;
             assert!(resolve_approval(&session, Some("stale-id"), true, false)
                 .await
                 .is_err());
@@ -333,5 +380,60 @@ mod lifecycle_tests {
                         && event["sessionId"] == session
                 }));
         }
+    }
+}
+
+#[cfg(test)]
+mod pending_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn scoped_snapshot_rejects_stale_foreign_and_duplicate_replies() {
+        let session = format!("acp-test-{}", uuid::Uuid::new_v4());
+        let (id, rx, guard) = register_acp_approval(
+            &session,
+            "read_file",
+            &serde_json::json!({"path":"a.rs"}),
+            Some("call-a"),
+        )
+        .await;
+        let rows = pending_snapshot_for_session(Some(&session), 10).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0]["toolCallId"], "call-a");
+        assert!(resolve_approval(&session, Some("stale"), true, true)
+            .await
+            .is_err());
+        assert!(resolve_approval("foreign", Some(&id), true, true)
+            .await
+            .is_err());
+        assert_eq!(
+            pending_snapshot_for_session(Some(&session), 10)
+                .unwrap()
+                .len(),
+            1
+        );
+        resolve_approval(&session, Some(&id), false, false)
+            .await
+            .unwrap();
+        assert!(!rx.await.unwrap().approved);
+        assert!(resolve_approval(&session, Some(&id), true, true)
+            .await
+            .is_err());
+        drop(guard);
+        assert!(pending_snapshot_for_session(Some(&session), 10)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[tokio::test]
+    async fn dropped_owner_removes_recoverable_request() {
+        let session = format!("acp-test-{}", uuid::Uuid::new_v4());
+        let (_id, rx, guard) =
+            register_acp_approval(&session, "read_file", &Value::Null, None).await;
+        drop(guard);
+        assert!(rx.await.is_err());
+        assert!(pending_snapshot_for_session(Some(&session), 10)
+            .unwrap()
+            .is_empty());
     }
 }

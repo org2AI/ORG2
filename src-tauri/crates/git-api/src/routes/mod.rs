@@ -11,6 +11,7 @@
 //! - merge: Merge, rebase, cherry-pick, revert, reset
 //! - file: File status and metadata
 
+pub mod branch_switch;
 pub mod branches;
 pub mod commits;
 pub mod diff;
@@ -35,6 +36,7 @@ pub fn create_routes() -> Router {
         // Merge domain-specific routes
         .merge(status::routes())
         .merge(branches::routes())
+        .merge(branch_switch::routes())
         .merge(commits::routes())
         .merge(remotes::routes())
         .merge(staging::routes())

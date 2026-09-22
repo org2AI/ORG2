@@ -3,10 +3,12 @@ import { useLayoutEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 import {
+  buildCloudOrgSelectorValue,
   org2CloudOrgsAtom,
-  sidebarActiveCloudOrgIdAtom,
 } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { useOrg2CloudRealtime } from "@src/features/Org2Cloud/useOrg2CloudRealtime";
+import { sidebarSelectedOrgIdAtom } from "@src/features/Organizations/sidebarOrgScopeAtom";
+import { DEFAULT_SESSION_ORG_ID } from "@src/store/session/creatorStateAtom";
 
 function decodedPathSegment(value: string | undefined): string | null {
   if (!value) return null;
@@ -46,7 +48,7 @@ export function resolveWebActiveCloudOrgId({
 export function WebCloudRealtimeScope() {
   const location = useLocation();
   const orgs = useAtomValue(org2CloudOrgsAtom);
-  const setActiveOrgId = useSetAtom(sidebarActiveCloudOrgIdAtom);
+  const setActiveOrgId = useSetAtom(sidebarSelectedOrgIdAtom);
   const activeOrgId = resolveWebActiveCloudOrgId({
     pathname: location.pathname,
     search: location.search,
@@ -54,12 +56,16 @@ export function WebCloudRealtimeScope() {
   });
 
   useLayoutEffect(() => {
-    setActiveOrgId(activeOrgId);
+    setActiveOrgId(
+      activeOrgId
+        ? buildCloudOrgSelectorValue(activeOrgId)
+        : DEFAULT_SESSION_ORG_ID
+    );
   }, [activeOrgId, setActiveOrgId]);
 
   useLayoutEffect(
     () => () => {
-      setActiveOrgId(null);
+      setActiveOrgId(DEFAULT_SESSION_ORG_ID);
     },
     [setActiveOrgId]
   );

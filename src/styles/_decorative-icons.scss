@@ -14,20 +14,47 @@
  * Applied by class rather than by descendant selector so an icon deliberately
  * kept in color (a status badge, a live preview) can simply opt out.
  */
+@mixin monochrome-icon {
+  filter: grayscale(1) contrast(0.82) brightness(1.06);
+  opacity: 0.9;
+}
+
+// Dark surfaces need the opposite correction: brand marks average darker than
+// the ink around them once desaturated.
+@mixin monochrome-icon-dark {
+  filter: grayscale(1) contrast(0.78) brightness(1.55);
+  opacity: 0.88;
+}
+
 :root[data-icon-style="monochrome"] {
   .orgii-decorative-icon {
-    filter: grayscale(1) contrast(0.82) brightness(1.06);
-    opacity: 0.9;
+    @include monochrome-icon;
   }
 }
 
 :root[data-icon-style="monochrome"][data-theme="dark"] {
   .orgii-decorative-icon {
-    // Dark surfaces need the opposite correction: brand marks average darker
-    // than the ink around them once desaturated.
-    filter: grayscale(1) contrast(0.78) brightness(1.55);
-    opacity: 0.88;
+    @include monochrome-icon-dark;
   }
+}
+
+// The Settings "Icon style" preview shows both treatments side by side, so
+// each half pins its own regardless of the active setting.
+[data-icon-style-preview="monochrome"] .orgii-decorative-icon {
+  @include monochrome-icon;
+}
+
+:root[data-theme="dark"]
+  [data-icon-style-preview="monochrome"]
+  .orgii-decorative-icon {
+  @include monochrome-icon-dark;
+}
+
+:root[data-icon-style="monochrome"]
+  [data-icon-style-preview="colorful"]
+  .orgii-decorative-icon {
+  filter: none;
+  opacity: 1;
 }
 
 // A selected or hovered row already carries emphasis from its own background;

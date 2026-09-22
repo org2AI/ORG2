@@ -24,7 +24,7 @@ vi.mock("../WorkItemProperties", () => ({
   default: () => createElement("div", { "data-testid": "properties" }),
 }));
 
-vi.mock("@src/modules/shared/components/GitHubLinkedReferences/lazy", () => ({
+vi.mock("@src/features/GitHubWork/GitHubLinkedReferences/lazy", () => ({
   default: ({ references }: { references: readonly unknown[] }) =>
     createElement("div", {
       "data-testid": "linked",

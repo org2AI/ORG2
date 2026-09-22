@@ -26,6 +26,7 @@ export const SECTION_IDS = {
   EDITOR: "editor",
   SECURITY: "security",
   MOBILE_REMOTE: "mobile-remote",
+  IMPORT: "import",
 } as const;
 
 // App sections (left sidebar items)
@@ -56,10 +57,15 @@ export interface SectionTabMeta {
 export const SECTION_TAB_META: Partial<
   Record<string, ReadonlyArray<SectionTabMeta>>
 > = {
+  development: [
+    { key: "controls", labelKey: "sections.development" },
+    { key: "illustrations", labelKey: "development.illustrations" },
+  ],
   [SECTION_IDS.GENERAL]: [
     { key: "general", labelKey: "general.tabGeneral" },
     { key: "notifications", labelKey: "sections.notifications" },
     { key: "shortcuts", labelKey: "shortcuts.title" },
+    { key: "app-lock", labelKey: "sections.appLock" },
     { key: "storage", labelKey: "sections.storage" },
     { key: "self-hosted", labelKey: "general.tabSelfHosted" },
   ],
@@ -69,12 +75,15 @@ export const SECTION_TAB_META: Partial<
     { key: "chat-panel", labelKey: "appearance.tabChatPanel" },
   ],
   [SECTION_IDS.EDITOR]: [{ key: "editor", labelKey: "editor.tabEditor" }],
+  // Same labels as Runtime's Scanning / Hooks tabs, which render the same bodies.
+  [SECTION_IDS.IMPORT]: [
+    { key: "scanning", labelKey: "sessions:kanban.dataSource.views.scanning" },
+    { key: "hooks", labelKey: "sessions:kanban.dataSource.views.hooks" },
+  ],
 };
 
 /** Shared props for buttons that navigate to another page (outside settings) */
 export const NAV_BUTTON_PROPS = {
-  variant: "secondary" as const,
-  size: "default" as const,
   icon: createElement(HugeiconsIcon, {
     icon: SquareArrowUpRight02Icon,
     size: 14,

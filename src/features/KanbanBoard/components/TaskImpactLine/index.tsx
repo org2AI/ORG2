@@ -9,7 +9,7 @@ import {
 } from "@src/icons";
 
 import type { KanbanTask } from "../../types";
-import "./index.scss";
+import "./index.css";
 
 interface TaskImpactLineProps {
   task: KanbanTask;

@@ -45,6 +45,10 @@ fn try_migrate(conn: &Connection, sql: &str) {
 pub fn ensure_unified_schema(conn: &Connection) -> SqliteResult<()> {
     try_migrate(
         conn,
+        "ALTER TABLE agent_sessions ADD COLUMN credential_source TEXT",
+    );
+    try_migrate(
+        conn,
         "ALTER TABLE agent_sessions ADD COLUMN session_type TEXT NOT NULL DEFAULT 'agent'",
     );
     try_migrate(conn, "ALTER TABLE agent_sessions ADD COLUMN channel TEXT");

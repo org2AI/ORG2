@@ -1,8 +1,10 @@
 import React from "react";
 
 import ModelIcon from "@src/components/ModelIcon";
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
+import type { ModelAccountInfo } from "@src/hooks/models/types";
 import { accountHasModel } from "@src/hooks/models/useModelAccountLookup";
 import type { RecentModelEntry } from "@src/store/session/recentModelEntriesAtom";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
@@ -18,6 +20,7 @@ import {
 
 import type { SpotlightItem } from "../../types";
 import { VariantPill } from "./VariantPill";
+import { withModelRowAttributes } from "./modelRowAttributes";
 import { MODEL_SECTION, type ModelSection } from "./modelSection";
 
 interface BuildModelSelectionRowParams {
@@ -62,10 +65,13 @@ export function buildModelSelectionSpotlightItem({
     ? accounts.find((account) => account.id === entry.accountId)
     : undefined;
   const family = groupByModel.get(entry.modelId) ?? [entry.modelId];
+  // The recent entry records which agent ran it — the hint a routing-tier id
+  // needs before it can be named.
+  const entryAgentType = entry.cliAgentType ?? entry.modelType;
   const concreteModelDisplay =
     getModelAliasDisplayName(entry.modelId) ??
-    formatModelNameFull(entry.modelId);
-  const groupedModel = groupModels([...family])[0];
+    formatModelNameFull(entry.modelId, entryAgentType);
+  const groupedModel = groupModels([...family], entryAgentType)[0];
   const modelDisplay =
     groupedModel && groupedModel.label !== "Other"
       ? groupedModel.label
@@ -83,7 +89,11 @@ export function buildModelSelectionSpotlightItem({
       </span>
       <span className={`mx-0.5 shrink-0 ${selectedDividerClassName}`}>›</span>
       <span className="shrink-0 text-text-1">
-        <ModelIcon modelName={entry.modelId} size={14} />
+        <ModelIcon
+          modelName={entry.modelId}
+          agentType={entry.cliAgentType ?? entry.modelType}
+          size={14}
+        />
       </span>
       <span
         className={`min-w-0 truncate font-semibold ${selectedTextClassName}`}
@@ -147,7 +157,7 @@ export function buildModelSelectionSpotlightItem({
       <VariantPill modelId={variant?.baseModel ?? entry.modelId} />
     );
 
-  return {
+  return withModelRowAttributes({
     id: `${idPrefix}:${entry.modelId}:${entry.accountId ?? entry.sourceType}`,
     label: searchableLabel,
     icon: AccountListIcon,
@@ -163,12 +173,13 @@ export function buildModelSelectionSpotlightItem({
       searchAlias: `${concreteModelDisplay} ${entry.modelId}`,
     },
     action: () => onSelect(entry),
-  };
+  });
 }
 
 interface BuildAllModelItemsParams {
-  accountLookup: ReadonlyMap<string, unknown>;
+  accountLookup: ReadonlyMap<string, ModelAccountInfo>;
   accounts: KeyVaultAccount[];
+  marketSources?: MarketProfileSource[];
   handleModelSelect: (
     modelId: string,
     modelLabel: string,
@@ -181,6 +192,7 @@ interface BuildAllModelItemsParams {
 export function buildAllModelItems({
   accountLookup,
   accounts,
+  marketSources = [],
   handleModelSelect,
   modelAliasVersion,
   resolveGroupLaunchModel,
@@ -197,6 +209,9 @@ export function buildAllModelItems({
         account.status === "ready" &&
         account.hasKey &&
         modelIdsForRow.some((modelId) => accountHasModel(account, modelId))
+    ).length +
+    marketSources.filter((source) =>
+      modelIdsForRow.some((modelId) => source.modelIds.includes(modelId))
     ).length;
 
   const renderAccountCount = (count: number) => (
@@ -211,11 +226,19 @@ export function buildAllModelItems({
       const info = accountLookup.get(modelId);
       if (!info) continue;
       const aliasDisplayName = getModelAliasDisplayName(modelId);
-      const displayLabel = aliasDisplayName ?? formatModelNameFull(modelId);
 
-      void info;
+      // Only an unambiguous owner can act as the agent hint: "default" means
+      // Cursor's tier on a Cursor key and "whatever the CLI picks" elsewhere,
+      // so a model exposed by several agents gets no hint at all. The label
+      // needs it for the same reason the mark does.
+      const soleAgentType =
+        info.agentTypes.length === 1 ? info.agentTypes[0] : undefined;
+      const displayLabel =
+        aliasDisplayName ?? formatModelNameFull(modelId, soleAgentType);
 
-      const ModelItemIcon = () => <ModelIcon modelName={modelId} size={14} />;
+      const ModelItemIcon = () => (
+        <ModelIcon modelName={modelId} agentType={soleAgentType} size={14} />
+      );
       const accountCount = getAccountCount([modelId]);
 
       const labelContent = aliasDisplayName ? (
@@ -231,23 +254,25 @@ export function buildAllModelItems({
         <span className="shrink-0 font-normal text-text-1">{displayLabel}</span>
       );
 
-      items.push({
-        id: modelId,
-        label: displayLabel,
-        icon: ModelItemIcon,
-        type: "action" as const,
-        data: {
-          isSelector: true,
-          modelSection: MODEL_SECTION.ALL,
-          modelId,
-          groupModelIds: [modelId],
-          rightContent: renderAccountCount(accountCount),
-          showDisclosureChevron: true,
-          labelContent,
-          searchAlias: aliasDisplayName ? modelId : undefined,
-        },
-        action: () => handleModelSelect(modelId, displayLabel, [modelId]),
-      });
+      items.push(
+        withModelRowAttributes({
+          id: modelId,
+          label: displayLabel,
+          icon: ModelItemIcon,
+          type: "action" as const,
+          data: {
+            isSelector: true,
+            modelSection: MODEL_SECTION.ALL,
+            modelId,
+            groupModelIds: [modelId],
+            rightContent: renderAccountCount(accountCount),
+            showDisclosureChevron: true,
+            labelContent,
+            searchAlias: aliasDisplayName ? modelId : undefined,
+          },
+          action: () => handleModelSelect(modelId, displayLabel, [modelId]),
+        })
+      );
       continue;
     }
 
@@ -277,28 +302,30 @@ export function buildAllModelItems({
     const launchModel = resolveGroupLaunchModel(sortedVariants);
     const accountCount = getAccountCount(sortedVariants);
 
-    items.push({
-      id: `group:${group.label}:${group.sortVersion}`,
-      label: searchableLabel,
-      icon: GroupItemIcon,
-      type: "action" as const,
-      data: {
-        isSelector: true,
-        modelSection: MODEL_SECTION.ALL,
-        modelId: launchModel,
-        groupModelIds: sortedVariants,
-        labelContent,
-        rightContent: renderAccountCount(accountCount),
-        showDisclosureChevron: true,
-      },
-      action: () =>
-        handleModelSelect(
-          launchModel,
-          getModelAliasDisplayName(launchModel) ??
-            formatModelNameFull(launchModel),
-          sortedVariants
-        ),
-    });
+    items.push(
+      withModelRowAttributes({
+        id: `group:${group.label}:${group.sortVersion}`,
+        label: searchableLabel,
+        icon: GroupItemIcon,
+        type: "action" as const,
+        data: {
+          isSelector: true,
+          modelSection: MODEL_SECTION.ALL,
+          modelId: launchModel,
+          groupModelIds: sortedVariants,
+          labelContent,
+          rightContent: renderAccountCount(accountCount),
+          showDisclosureChevron: true,
+        },
+        action: () =>
+          handleModelSelect(
+            launchModel,
+            getModelAliasDisplayName(launchModel) ??
+              formatModelNameFull(launchModel),
+            sortedVariants
+          ),
+      })
+    );
   }
 
   return items;

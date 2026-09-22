@@ -9,6 +9,7 @@ import React, { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { KeyboardShortcut } from "@src/components/KeyboardShortcut";
@@ -20,6 +21,8 @@ import {
   HugeiconsIcon,
   InformationCircleIcon,
   LockIcon,
+  PinIcon,
+  PinOffIcon,
   Tick01Icon,
 } from "@src/icons";
 import { copyText } from "@src/util/data/clipboard";
@@ -30,7 +33,7 @@ import {
 } from "@src/util/platform/tauri/nativeMenuPopup";
 
 import { ICONS } from "../config";
-import { SPOTLIGHT_TOKENS } from "../constants";
+import { SPOTLIGHT_CLASSES, SPOTLIGHT_TOKENS } from "../constants";
 import type { SpotlightItem, SpotlightItemData } from "../types";
 import { SpotlightDetailPane } from "./SpotlightDetailPane";
 import { HighlightText } from "./highlightUtils";
@@ -128,11 +131,6 @@ export function getItemHeight(item: SpotlightItem): number {
   return item.desc ? ITEM_HEIGHT_WITH_DESC : ITEM_HEIGHT;
 }
 
-/** Type-safe accessor for item data */
-function getItemData(item: SpotlightItem): SpotlightItemData {
-  return (item.data || {}) as SpotlightItemData;
-}
-
 // ============ TYPES ============
 
 export interface SpotlightItemRowProps {
@@ -146,13 +144,15 @@ export interface SpotlightItemRowProps {
   onHover: (index: number) => void;
   onHoverEnd?: () => void;
   searchQuery: string;
+  /** Show the hover detail card for rows with extra metadata. */
+  showDetailPane?: boolean;
 }
 
 // ============ DESC LINE ============
 
 /** Renders the desc text. When descTitle is set, the "+ N more" suffix becomes
  *  a hoverable pill with an info icon that shows the full list in a tooltip. */
-const DescLine = memo<{ desc: string; descTitle: unknown }>(
+const DescLine = memo<{ desc: string; descTitle?: string }>(
   ({ desc, descTitle }) => {
     if (typeof descTitle !== "string" || !descTitle) {
       return (
@@ -197,7 +197,7 @@ const DescLine = memo<{ desc: string; descTitle: unknown }>(
           position="bottom-start"
           style={{ zIndex: 10000 }}
         >
-          <span className="inline-flex shrink-0 cursor-default items-center gap-0.5 rounded-full bg-fill-2 px-1.5 py-px text-[10px] text-text-3 hover:bg-fill-2 hover:text-text-2">
+          <span className="pointer-events-auto relative inline-flex shrink-0 cursor-default items-center gap-0.5 rounded-full bg-fill-2 px-1.5 py-px text-[10px] text-text-3 hover:bg-fill-2 hover:text-text-2">
             <HugeiconsIcon
               icon={InformationCircleIcon}
               data-icon="info"
@@ -253,9 +253,10 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
     onHover,
     onHoverEnd,
     searchQuery,
+    showDetailPane = true,
   }) => {
     const { t } = useTranslation();
-    const data = getItemData(item);
+    const data = item.data ?? {};
     const isChildItem = data.parentAction && item.type === "option";
     const isCurrentSelection = data.isCurrentSelection;
     const isHeader = data.isHeader;
@@ -265,37 +266,21 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
     const ArrowRightIcon = ICONS.arrowRight;
     const DisclosureIcon =
       data.disclosureIcon === "arrowRight" ? ArrowRightIcon : ArrowRight01Icon;
-    const itemTextClassName = isDanger ? "text-danger-6" : "text-text-1";
-    const iconTone =
-      typeof data.iconTone === "string" ? data.iconTone : undefined;
+    const itemTextClassName = isDanger
+      ? "text-danger-6"
+      : SPOTLIGHT_CLASSES.itemLabelTone;
+    const iconTone = data.iconTone;
     const itemIconClassName = isDanger
       ? "text-danger-6"
       : iconTone === "primary"
         ? "text-primary-6"
         : iconTone === "text1"
           ? "text-text-1"
-          : "text-text-2";
+          : SPOTLIGHT_CLASSES.itemIconTone;
     // Only the currently-checked option uses medium weight; regular rows are normal.
-    const labelWeightClass = isCurrentSelection ? "font-medium" : "font-normal";
-    const modelSection =
-      typeof data.modelSection === "string" ? data.modelSection : undefined;
-    const modelId = typeof data.modelId === "string" ? data.modelId : undefined;
-    const groupModelIds = Array.isArray(data.groupModelIds)
-      ? data.groupModelIds
-          .filter((value): value is string => typeof value === "string")
-          .join(" ")
-      : undefined;
-    const testId = typeof data.testId === "string" ? data.testId : undefined;
-    const sourceAccountId =
-      typeof data.sourceAccountId === "string"
-        ? data.sourceAccountId
-        : undefined;
-    const sourceModelType =
-      typeof data.sourceModelType === "string"
-        ? data.sourceModelType
-        : undefined;
-    const sourceType =
-      typeof data.sourceType === "string" ? data.sourceType : undefined;
+    const labelWeightClass = isCurrentSelection
+      ? "font-medium"
+      : SPOTLIGHT_CLASSES.itemLabelWeight;
     const copyName = data.contextMenuCopy?.name;
     const copyPath = data.contextMenuCopy?.path;
 
@@ -330,8 +315,8 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         void showSpotlightContextMenu({
           name: copyName,
           path: copyPath,
-          copyNameLabel: t("actions.copyName", "Copy Name"),
-          copyPathLabel: t("actions.copyPath", "Copy Path"),
+          copyNameLabel: t("actions.copyName"),
+          copyPathLabel: t("actions.copyPath"),
           revealLabel: t(getFileManagerRevealLabelKey()),
         }).catch((error: unknown) => {
           log.error("Failed to show context menu:", error);
@@ -357,7 +342,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
       !data.statusContent && data.tagLabel && item.type !== "branch" ? (
         <span
           className={`${TAG_BASE_CLASSES} shrink-0 px-[10px] py-1.5 text-[11px] ${
-            isDisabled ? "bg-fill-2 text-text-3" : "text-slate-600"
+            isDisabled ? "bg-fill-2 text-text-3" : "text-text-2"
           }`}
         >
           {isDisabled && (
@@ -370,16 +355,11 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
 
     const row = (
       <div
-        data-testid={testId}
+        data-testid={data.testId}
+        {...data.domAttributes}
         data-spotlight-item-index={index}
         data-spotlight-item-id={item.id}
-        data-spotlight-model-section={modelSection}
-        data-spotlight-model-id={modelId}
-        data-spotlight-group-model-ids={groupModelIds}
-        data-source-account-id={sourceAccountId}
-        data-source-model-type={sourceModelType}
-        data-source-type={sourceType}
-        className={`spotlight-item group relative mx-2 flex items-center gap-2.5 rounded-lg px-2 ${
+        className={`spotlight-item group relative mx-2 [&_button]:pointer-events-auto [&_input]:pointer-events-auto [&_label]:pointer-events-auto [&>*]:pointer-events-none ${SPOTLIGHT_CLASSES.itemRow} ${
           isDisabled
             ? "cursor-not-allowed opacity-50"
             : `cursor-pointer ${isCurrentSelection ? "is-current-selection" : ""} ${isSelected ? "selected" : ""}`
@@ -388,13 +368,24 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
           height: getItemHeight(item),
           marginBottom: SPOTLIGHT_TOKENS.itemGap,
         }}
-        onClick={handleClick}
         onContextMenu={handleContextMenu}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
+        {/* A sibling hit area keeps nested variant/pin/checkbox controls out of a button.
+            This compound row owns geometry; the shared Button owns activation semantics. */}
+        <Button
+          layout="custom"
+          className="absolute inset-0 h-full w-full rounded-lg focus-visible:ring-1 focus-visible:ring-primary-6 focus-visible:outline-none"
+          data-spotlight-row-action
+          aria-label={item.label}
+          disabled={isDisabled}
+          tabIndex={-1}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={handleClick}
+        />
         {selectionState && !isDisabled && (
-          <div className="flex shrink-0 items-center justify-center">
+          <div className="pointer-events-auto! relative flex shrink-0 items-center justify-center">
             <Checkbox
               size="small"
               checked={selectionState.checked}
@@ -420,7 +411,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         )}
 
         {item.icon && (
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+          <div className={SPOTLIGHT_CLASSES.itemIcon}>
             {isCurrentSelection ? (
               <HugeiconsIcon
                 icon={Tick01Icon}
@@ -464,7 +455,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
               <span
                 className={`flex min-w-0 items-center gap-1.5 truncate ${SPOTLIGHT_TOKENS.labelFontSize}`}
               >
-                {data.labelContent as React.ReactNode}
+                {data.labelContent}
               </span>
             ) : item.type === "command" && item.label.includes(": ") ? (
               <span
@@ -497,6 +488,41 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
                 {data.tagLabel}
               </span>
             )}
+            {data.pinState && !isDisabled && (
+              <Button
+                variant="tertiary"
+                size="sidebar"
+                iconOnly
+                aria-label={t(
+                  data.pinState.pinned
+                    ? "sessions:chat.unpinSession"
+                    : "sessions:chat.pinSession"
+                )}
+                aria-pressed={data.pinState.pinned}
+                disabled={data.pinState.disabled}
+                title={t(
+                  data.pinState.pinned
+                    ? "sessions:chat.unpinSession"
+                    : "sessions:chat.pinSession"
+                )}
+                className="relative shrink-0 opacity-0 group-hover:opacity-100 focus-visible:bg-fill-3 focus-visible:opacity-100 enabled:hover:bg-fill-3 enabled:active:bg-fill-4"
+                icon={
+                  <HugeiconsIcon
+                    icon={data.pinState.pinned ? PinOffIcon : PinIcon}
+                    size={14}
+                  />
+                }
+                onMouseDown={(event) => event.preventDefault()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ")
+                    event.stopPropagation();
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  data.pinState?.onToggle();
+                }}
+              />
+            )}
           </div>
           {item.desc && (
             <DescLine desc={item.desc} descTitle={data.descTitle} />
@@ -520,7 +546,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
 
           {data.statusContent ? (
             <span className="flex h-6 w-6 items-center justify-center">
-              {data.statusContent as React.ReactNode}
+              {data.statusContent}
             </span>
           ) : (
             !showSecondaryStatus && tagBadge
@@ -546,6 +572,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         </div>
       </div>
     );
+    if (!showDetailPane) return row;
     return <SpotlightDetailPane item={item}>{row}</SpotlightDetailPane>;
   }
 );

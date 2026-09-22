@@ -12,9 +12,9 @@ export interface MobileShellProps {
  */
 export function MobileShell({ children, footer }: MobileShellProps) {
   return (
-    <div className="mobile-shell flex h-full justify-center overflow-hidden pt-[env(safe-area-inset-top)]">
+    <div className="mobile-shell flex h-full justify-center overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <div className="mobile-shell__viewport flex h-full min-h-0 w-full flex-col overflow-hidden">
-        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
         {footer}
       </div>
     </div>

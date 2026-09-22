@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { createLogger } from "@src/hooks/logger";
 import { useSettingValue } from "@src/hooks/settings";
-import { startVisibilityAwarePoller } from "@src/shared/scheduling/visibilityAwarePoller";
 import { sessionsAtom } from "@src/store/session/sessionAtom";
 import type { Session } from "@src/store/session/sessionAtom";
 import { settingsLoadedAtom } from "@src/store/settings/settingsAtom";
 import { workspaceFoldersAtom } from "@src/store/ui/workspaceFoldersAtom";
 import type { WorkspaceFolder } from "@src/types/workspace";
+import { startVisibilityAwarePoller } from "@src/util/time/scheduling/visibilityAwarePoller";
 
 import { createDiagnosticsUsageSnapshot } from "./aggregate";
 import {

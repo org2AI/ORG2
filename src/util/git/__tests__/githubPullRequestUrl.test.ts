@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  isGitHubPullRequestUrl,
-  parseGitHubPullRequestUrl,
-} from "../githubPullRequestUrl";
+import { parseGitHubPullRequestUrl } from "../githubPullRequestUrl";
 
 describe("parseGitHubPullRequestUrl", () => {
   it("parses a canonical pull request URL", () => {
@@ -42,14 +39,5 @@ describe("parseGitHubPullRequestUrl", () => {
       parseGitHubPullRequestUrl("https://github.com/org2AI/ORG2/pull/abc")
     ).toBeNull();
     expect(parseGitHubPullRequestUrl("not a url")).toBeNull();
-  });
-});
-
-describe("isGitHubPullRequestUrl", () => {
-  it("mirrors the parser", () => {
-    expect(
-      isGitHubPullRequestUrl("https://github.com/org2AI/ORG2/pull/851")
-    ).toBe(true);
-    expect(isGitHubPullRequestUrl("https://example.com/pull/851")).toBe(false);
   });
 });

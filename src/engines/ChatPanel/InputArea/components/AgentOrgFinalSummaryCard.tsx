@@ -68,23 +68,16 @@ const AgentOrgFinalSummaryCard: React.FC<AgentOrgFinalSummaryCardProps> = memo(
           />
           <div className="min-w-0 flex-1">
             <div className="text-xs font-medium text-text-1">
-              {t("planner.agentOrgOverview.finalSummary.failedTitle", {
-                defaultValue: "Final report was not saved",
-              })}
+              {t("planner.agentOrgOverview.finalSummary.failedTitle")}
             </div>
             <div className="mt-1 text-[11px] text-text-3">
-              {t("planner.agentOrgOverview.finalSummary.evidencePreserved", {
-                defaultValue:
-                  "The completion evidence and Task outputs are preserved.",
-              })}
+              {t("planner.agentOrgOverview.finalSummary.evidencePreserved")}
             </div>
           </div>
         </div>
         {error ? (
           <div className="text-error-6 mt-2 text-xs" role="alert">
-            {t("planner.agentOrgOverview.finalSummary.retryFailed", {
-              defaultValue: "The final report retry could not be started.",
-            })}
+            {t("planner.agentOrgOverview.finalSummary.retryFailed")}
           </div>
         ) : null}
         {receipt.canRetry ? (
@@ -97,9 +90,7 @@ const AgentOrgFinalSummaryCard: React.FC<AgentOrgFinalSummaryCardProps> = memo(
               onClick={() => void handleRetry()}
               data-testid="agent-org-final-summary-retry"
             >
-              {t("planner.agentOrgOverview.finalSummary.retry", {
-                defaultValue: "Retry final report",
-              })}
+              {t("planner.agentOrgOverview.finalSummary.retry")}
             </Button>
           </div>
         ) : null}

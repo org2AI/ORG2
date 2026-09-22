@@ -1,0 +1,29 @@
+.work-management-page
+  .kanban-board.kanban-board--linear
+  .kanban-board__columns {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  justify-content: flex-start;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.work-management-page
+  .kanban-board.kanban-board--linear
+  .kanban-board__columns::-webkit-scrollbar {
+  display: none;
+}
+.work-management-page .kanban-board.kanban-board--linear .kanban-column {
+  flex: 1 0 300px;
+  min-width: 300px;
+  height: 100%;
+}
+.work-management-page .kanban-board.kanban-board--linear .kanban-task-card {
+  background: var(--color-fill-1);
+}
+.work-management-page
+  .kanban-board.kanban-board--linear
+  .kanban-task-card:hover {
+  background: var(--color-fill-1);
+}

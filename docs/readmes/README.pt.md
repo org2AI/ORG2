@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.pl.md">Polski</a>
+  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.id.md">Bahasa Indonesia</a> · <a href="README.pl.md">Polski</a>
 </p>
 
 <p align="center">
@@ -34,19 +34,19 @@ Responder por que um trecho de código existe — e se ele funcionou — sempre 
 
 O ORG-2 é onde sua equipe executa seus Agents de código — um harness nativo em Rust mais lançadores para mais de 20 CLIs de Agents — e constrói esse registro automaticamente. Cada sessão vira uma trajetória que os colegas reproduzem como um vídeo: revisam como o trabalho foi realmente construído, não apenas o diff, e comentam em contexto. Sessões executadas em outras ferramentas são ingeridas e preenchidas a partir do histórico delas, de modo que o registro cobre também trabalho que nunca passou pelo aplicativo. O registro liga o que a pessoa pediu, o que o Agent entendeu e o que ele de fato fez, então qualquer linha publicada é rastreável até a sessão que a escreveu.
 
-Não é apenas mais uma ferramenta de programação com IA; é um experimento sobre organizações humano/Agent e alinhamento em nível organizacional. O ORG-II trata os Agents como colegas persistentes e observáveis dentro de uma organização estruturada — execução reproduzível, memória entre sessões, AI blame e um runtime Rust local-first para que humanos, Agents e equipes colaborem em torno de contexto compartilhado e objetivos alinhados.
+Não é apenas mais uma ferramenta de programação com IA; é um experimento sobre organizações humano/Agent e alinhamento em nível organizacional. O ORG2 trata os Agents como colegas persistentes e observáveis dentro de uma organização estruturada — execução reproduzível, memória entre sessões, AI blame e um runtime Rust local-first para que humanos, Agents e equipes colaborem em torno de contexto compartilhado e objetivos alinhados.
 
 ## Recursos
 
 <table>
-<tr><td width="50%" valign="middle"><h3>Harness Rust integrado</h3><p>Execute Agents nativos rápidos, personalizáveis e econômicos em tokens com suas chaves de API e assinaturas de Agents existentes.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="Executar Agents com o harness Rust do ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Gerencie sessões em mais de 10 apps e CLIs</h3><p>Carregue e gerencie em um só lugar as sessões de Agent de todas as suas ferramentas. Examine o histórico, inspecione subagents e controle cada fonte sem trocar de app.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="Gerenciar fontes de sessões de Agent de apps e CLIs no ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Monte sua equipe e revise trajetórias, não apenas PRs</h3><p>Monte sua equipe e compartilhe sessões entre dispositivos e colegas. Revise toda a trajetória do Agent, não apenas o diff resultante, e deixe comentários no contexto.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="Gerenciar colegas e permissões de replay de trajetórias no ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Tool calls, agora como vídeos</h3><p>Reproduza o trabalho do harness Rust nativo e de mais de 15 CLI Agents. Mensagens, tool calls, edições de arquivos e saída de comandos permanecem sincronizados em uma timeline revisável.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="Reproduzir uma sessão de Agent no ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>AI blame, não apenas Git blame</h3><p>Não pare em quem alterou uma linha. Rastreie-a até as sessões de Agent, tool calls e decisões que levaram à mudança.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="Rastrear mudanças de código até sessões e decisões de Agent no ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Mantenha o foco</h3><p>Veja como seu tempo é distribuído entre tarefas e sessões de Agent. Uma timeline diária mantém visíveis a duração, as mudanças de código e as prioridades.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="Revisar o tempo gasto em tarefas e sessões de Agent no ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Workspace de desenvolvimento completo</h3><p>Use o terminal, gerencie o controle de versão, percorra o histórico do Git e revise pull requests sem sair do seu workspace de Agent.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="Controle de versão, histórico do Git e revisão de código no ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Modo Design</h3><p>Inspecione páginas ao vivo no navegador WebKit nativo. Selecione um elemento e envie seu contexto exato de página diretamente ao Agent para uma correção simples.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="Inspecionar um elemento web com o Modo Design do ORG-II" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Harness Rust integrado</h3><p>Execute Agents nativos rápidos, personalizáveis e econômicos em tokens com suas chaves de API e assinaturas de Agents existentes.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="Executar Agents com o harness Rust do ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Gerencie sessões em mais de 10 apps e CLIs</h3><p>Carregue e gerencie em um só lugar as sessões de Agent de todas as suas ferramentas. Examine o histórico, inspecione subagents e controle cada fonte sem trocar de app.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="Gerenciar fontes de sessões de Agent de apps e CLIs no ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Monte sua equipe e revise trajetórias, não apenas PRs</h3><p>Monte sua equipe e compartilhe sessões entre dispositivos e colegas. Revise toda a trajetória do Agent, não apenas o diff resultante, e deixe comentários no contexto.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="Gerenciar colegas e permissões de replay de trajetórias no ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Tool calls, agora como vídeos</h3><p>Reproduza o trabalho do harness Rust nativo e de mais de 15 CLI Agents. Mensagens, tool calls, edições de arquivos e saída de comandos permanecem sincronizados em uma timeline revisável.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="Reproduzir uma sessão de Agent no ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>AI blame, não apenas Git blame</h3><p>Não pare em quem alterou uma linha. Rastreie-a até as sessões de Agent, tool calls e decisões que levaram à mudança.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="Rastrear mudanças de código até sessões e decisões de Agent no ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Mantenha o foco</h3><p>Veja como seu tempo é distribuído entre tarefas e sessões de Agent. Uma timeline diária mantém visíveis a duração, as mudanças de código e as prioridades.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="Revisar o tempo gasto em tarefas e sessões de Agent no ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Workspace de desenvolvimento completo</h3><p>Use o terminal, gerencie o controle de versão, percorra o histórico do Git e revise pull requests sem sair do seu workspace de Agent.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="Controle de versão, histórico do Git e revisão de código no ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Modo Design</h3><p>Inspecione páginas ao vivo no navegador WebKit nativo. Selecione um elemento e envie seu contexto exato de página diretamente ao Agent para uma correção simples.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="Inspecionar um elemento web com o Modo Design do ORG2" width="100%" /></td></tr>
 </table>
 
 ## Mais capacidades
@@ -61,7 +61,7 @@ Não é apenas mais uma ferramenta de programação com IA; é um experimento so
 
 ## Agents compatíveis
 
-Use o harness Rust integrado do ORG-II ou inicie estas CLIs de coding Agents compatíveis pelo app de desktop.
+Use o harness Rust integrado do ORG2 ou inicie estas CLIs de coding Agents compatíveis pelo app de desktop.
 
 ### GUI + TUI
 
@@ -73,6 +73,7 @@ Use o harness Rust integrado do ORG-II ou inicie estas CLIs de coding Agents com
   <a href="https://kiro.dev/docs/cli/installation"><kbd><img src="../../src/assets/modelIcons/kiro.svg" alt="Kiro CLI logo" width="16" valign="middle" /> Kiro CLI</kbd></a> &nbsp;
   <a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-in-the-cli"><kbd><img src="../../src/assets/modelIcons/copilot.svg" alt="GitHub Copilot logo" width="16" valign="middle" /> GitHub Copilot</kbd></a> &nbsp;
   <a href="https://opencode.ai/docs/config/"><kbd><img src="../../src/assets/modelIcons/opencode.svg" alt="OpenCode logo" width="16" valign="middle" /> OpenCode</kbd></a> &nbsp;
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><kbd><img src="../../src/assets/modelIcons/deepseek.svg" alt="DeepSeek Harness logo" width="16" valign="middle" /> DeepSeek Harness</kbd></a> &nbsp;
   <a href="https://antigravity.google/docs/cli/getting-started"><kbd><img src="../../src/assets/modelIcons/antigravity.svg" alt="Antigravity logo" width="16" valign="middle" /> Antigravity</kbd></a>
 </p>
 
@@ -102,9 +103,7 @@ Use o harness Rust integrado do ORG-II ou inicie estas CLIs de coding Agents com
 
 ## Download
 
-Versão atual do build: v1.1.24 (2026-07-16)
-
-Baixe o app desktop ORGII mais recente com um clique:
+Baixe o app desktop ORG2 mais recente com um clique:
 
 - [macOS Apple Silicon](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-mac-apple-silicon.dmg)
 - [Instalador do Windows x64](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-windows-x64-setup.exe)
@@ -152,4 +151,4 @@ Tem dúvidas, feedback ou quer acompanhar a evolução do ORG-2? Junte-se a nós
 
 ## Licença
 
-ORGII é licenciado sob a GNU Affero General Public License v3.0 ou posterior (`AGPL-3.0-or-later`). Consulte [`LICENSE`](../../LICENSE) para o texto completo da licença.
+ORG2 é licenciado sob a GNU Affero General Public License v3.0 ou posterior (`AGPL-3.0-or-later`). Consulte [`LICENSE`](../../LICENSE) para o texto completo da licença.

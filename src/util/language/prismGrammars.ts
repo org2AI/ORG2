@@ -147,10 +147,6 @@ for (const grammar of Object.values(PRISM_GRAMMARS)) {
   refractor.register(grammar);
 }
 
-/** Registered Prism grammar names (canonical names only, aliases excluded). */
-export const PRISM_LIGHT_LANGUAGES: readonly string[] =
-  Object.keys(PRISM_GRAMMARS);
-
 /**
  * Map a language name from any of the app's sources (file extension
  * mapper, fence info string, tool metadata) to a registered Prism language,

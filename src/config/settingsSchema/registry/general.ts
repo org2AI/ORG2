@@ -17,11 +17,13 @@ import {
   FAMILIAR_LANGUAGE_TECH_STACKS,
   TECH_SAVVY_LEVELS,
 } from "@src/config/profile/userProfile";
-import {
-  DEFAULT_SIDEBAR_GUIDE_PROGRESS,
-  SidebarGuideProgressSchema,
-} from "@src/config/settingsSchema/sidebarGuideProgress";
 import type { SettingDefinition } from "@src/config/settingsSchema/types";
+import { DEFAULT_BUTTON_TOOLTIP_DELAY_MS } from "@src/config/tooltip";
+import {
+  CHAT_SPLIT_RATIO_LABELS,
+  CHAT_SPLIT_RATIO_VALUES,
+  DEFAULT_CHAT_SPLIT_RATIO,
+} from "@src/engines/ChatPanel/config";
 
 /**
  * Skins are declared per variant, so each picker only offers ids that actually
@@ -71,6 +73,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
       "zh",
       "zh-Hant",
       "es",
+      "hi",
       "ru",
       "pt",
       "de",
@@ -78,6 +81,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
       "ko",
       "tr",
       "vi",
+      "id",
       "pl",
     ]),
     default: "system",
@@ -91,6 +95,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
       zh: "简体中文",
       "zh-Hant": "繁體中文",
       es: "Español",
+      hi: "हिन्दी",
       ru: "Русский",
       pt: "Português",
       de: "Deutsch",
@@ -98,6 +103,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
       ko: "한국어",
       tr: "Türkçe",
       vi: "Tiếng Việt",
+      id: "Bahasa Indonesia",
       pl: "Polski",
     },
   },
@@ -227,6 +233,40 @@ export const GENERAL_SETTINGS_REGISTRY = {
       center: "Page center",
     },
   },
+  "general.spotlightDimBackground": {
+    schema: z.boolean(),
+    default: true,
+    description:
+      "Dim and slightly blur the rest of the window while Spotlight is open",
+    category: "general",
+  },
+  "general.spotlightDetailCard": {
+    schema: z.boolean(),
+    default: true,
+    description:
+      "Show the hover detail card next to a Spotlight row (path, description, current-selection state)",
+    category: "general",
+  },
+  "general.buttonTooltipsEnabled": {
+    schema: z.boolean(),
+    default: true,
+    description:
+      "Show the label and keyboard shortcut tooltip when hovering toolbar and icon buttons. Info-icon tooltips are unaffected.",
+    category: "general",
+  },
+  "general.buttonTooltipDelayMs": {
+    schema: z.union([
+      z.literal(0),
+      z.literal(250),
+      z.literal(500),
+      z.literal(750),
+      z.literal(1000),
+    ]),
+    default: DEFAULT_BUTTON_TOOLTIP_DELAY_MS,
+    description:
+      "Hover time in milliseconds before a button tooltip appears (0, 250, 500, 750 or 1000)",
+    category: "general",
+  },
   "layout.sidebarSelectedRowOpacity": {
     schema: z.number().min(0).max(20),
     default: 5,
@@ -240,7 +280,19 @@ export const GENERAL_SETTINGS_REGISTRY = {
       "Show a theme-aware depth edge between the macOS sidebar and content panel",
     category: "general",
   },
+  "general.myStationSharing": {
+    schema: z.enum(["working-directory", "chat-tab"]),
+    default: "working-directory",
+    description:
+      "Share Workstation tabs and view state across chat tabs in the same working directory, or keep a separate workspace for each chat tab",
+    category: "general",
+    enumLabels: {
+      "working-directory": "Working directory",
+      "chat-tab": "Chat tab",
+    },
+  },
   "general.chatPanelPosition": {
+    // Settings → Appearance → App → Layout; also the sidebar layout menu.
     schema: z.enum(["left", "right"]),
     default: "left" as const,
     description: "Chat panel side shared by My Station and Agent Station",
@@ -250,7 +302,20 @@ export const GENERAL_SETTINGS_REGISTRY = {
       right: "Right",
     },
   },
+  "general.chatPaneSplitRatio": {
+    // Settings → Appearance → App → Layout; also the sidebar layout menu.
+    // The chat pane's share of the width it splits with the station. Seeds
+    // the width on first run and re-applies when picked; dragging the divider
+    // afterwards still wins.
+    schema: z.enum(CHAT_SPLIT_RATIO_VALUES),
+    default: DEFAULT_CHAT_SPLIT_RATIO,
+    description:
+      "Default share of the workbench width given to the chat pane, with My Station or Agent Station taking the rest",
+    category: "general",
+    enumLabels: CHAT_SPLIT_RATIO_LABELS,
+  },
   "general.chatTurnPaginationEnabled": {
+    // Settings → Appearance → Chat Panel → Chat history; also quick menus.
     schema: z.boolean(),
     default: false,
     description:
@@ -258,6 +323,7 @@ export const GENERAL_SETTINGS_REGISTRY = {
     category: "general",
   },
   "general.modelPickerStyle": {
+    // Settings → Appearance → App → Layout; also the sidebar layout menu.
     schema: z.enum(["spotlight", "dropdown"]),
     default: "spotlight" as const,
     description:
@@ -269,6 +335,8 @@ export const GENERAL_SETTINGS_REGISTRY = {
     },
   },
   "general.userDisplayName": {
+    // Used as a Task Kanban creator-name fallback; no settings-page editor.
+    settingsSearch: false,
     schema: z.string(),
     default: "",
     description: "User display name shown in the app",
@@ -320,52 +388,19 @@ export const GENERAL_SETTINGS_REGISTRY = {
       "Prevent the system from sleeping while any agent session is actively working. Releases automatically when all sessions finish or the toggle is turned off",
     category: "general",
   },
+  "general.highRefreshRate": {
+    schema: z.boolean(),
+    default: true,
+    description:
+      "macOS only: render the interface at the display's full refresh rate (up to 120 Hz on ProMotion displays) instead of WebKit's default pace near 60 Hz. " +
+      "Scrolling, resizing and animations are smoother and use more energy while they run; an idle window costs the same either way",
+    category: "general",
+  },
   "general.updateChannel": {
     schema: z.enum(["auto", "stable", "beta"]),
     default: "auto",
     description:
       "Release channel for app updates. auto follows the installed build (prerelease builds track beta, release builds track stable); stable and beta pin the channel explicitly. Switching from beta to stable never downgrades — it takes effect at the next stable release",
-    category: "general",
-  },
-  "general.setupWalkthroughProgress": {
-    schema: SidebarGuideProgressSchema,
-    default: DEFAULT_SIDEBAR_GUIDE_PROGRESS,
-    description:
-      "Retired sidebar-guide progress, retained only to read existing settings. The onboarding discovery modal does not read or write this value",
-    category: "general",
-  },
-  "general.githubStarPromptCompleted": {
-    schema: z.boolean(),
-    default: false,
-    description:
-      "Whether GitHub has confirmed that the current user starred the canonical ORG2 repository",
-    category: "general",
-  },
-  "general.githubStarPromptDisabled": {
-    schema: z.boolean(),
-    default: false,
-    description: "Permanently disable the optional GitHub Star reminder",
-    category: "general",
-  },
-  "general.githubStarPromptDeferredUntil": {
-    schema: z.number().nonnegative(),
-    default: 0,
-    description:
-      "Unix timestamp in milliseconds before the GitHub Star reminder may appear again",
-    category: "general",
-  },
-  "general.githubStarPromptLastShownAt": {
-    schema: z.number().nonnegative(),
-    default: 0,
-    description:
-      "Unix timestamp in milliseconds when the GitHub Star reminder was last shown",
-    category: "general",
-  },
-  "general.githubStarPromptNextEligibleValueCount": {
-    schema: z.number().int().positive(),
-    default: 1,
-    description:
-      "Value-moment count required before the optional GitHub Star reminder is eligible",
     category: "general",
   },
   "general.voiceInputEnabled": {

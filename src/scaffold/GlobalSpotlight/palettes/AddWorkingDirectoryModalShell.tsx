@@ -6,7 +6,7 @@
  */
 import React from "react";
 
-import { SpotlightSearchBar } from "../components";
+import { SpotlightFormLayout } from "../forms/shared/SpotlightFormLayout";
 import type {
   AddWorkingDirectoryModalStage,
   UseAddWorkingDirectoryFlowReturn,
@@ -17,8 +17,6 @@ import { SpotlightModalView } from "../views";
 interface AddWorkingDirectoryModalShellProps {
   isOpen: boolean;
   onClose: () => void;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   modalStage: AddWorkingDirectoryModalStage;
   workingDirectoryFlow: UseAddWorkingDirectoryFlowReturn;
   currentRepoId?: string;
@@ -31,8 +29,6 @@ export const AddWorkingDirectoryModalShell: React.FC<
 > = ({
   isOpen,
   onClose,
-  inputRef,
-  handleKeyDown,
   modalStage,
   workingDirectoryFlow,
   currentRepoId,
@@ -59,23 +55,16 @@ export const AddWorkingDirectoryModalShell: React.FC<
   ];
 
   const body = (
-    <>
-      <SpotlightSearchBar
-        inputRef={inputRef}
-        searchQuery=""
-        onSearchQueryChange={() => {}}
-        onKeyDown={handleKeyDown}
-        placeholder=""
-        isLoading={workingDirectoryFlow.isLoading}
-        isCountingDown={false}
-        hideActionClose={false}
-        hideInput
-        path={searchPath}
-        onRemoveSegment={(index) => {
+    <SpotlightFormLayout
+      header={{
+        path: searchPath,
+        isLoading: workingDirectoryFlow.isLoading,
+        onRemoveSegment: (index) => {
           if (index === 0) (onGoBack ?? onClose)();
           if (index === 1) workingDirectoryFlow.handleGoBack();
-        }}
-      />
+        },
+      }}
+    >
       <SpotlightModalView
         sourceSegment={sourceSegment}
         workingDirectoryForm={workingDirectoryFlow.workingDirectoryForm}
@@ -84,7 +73,7 @@ export const AddWorkingDirectoryModalShell: React.FC<
         currentRepoId={currentRepoId}
         onCancel={onGoBack ?? workingDirectoryFlow.handleGoBack}
       />
-    </>
+    </SpotlightFormLayout>
   );
 
   if (asBody) return body;

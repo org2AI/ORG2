@@ -56,13 +56,14 @@ import {
 } from "@src/store/session/viewAtom";
 import { chatImageAttachmentsAtom } from "@src/store/ui/chatImageAtom";
 import {
-  CHAT_PANEL_CONTENT_MODE,
   DEFAULT_CHAT_PANEL_CREATE_TARGET,
-  chatPanelContentModeAtom,
   chatPanelCreateTargetAtom,
   chatPanelSelectedWorkItemAtom,
 } from "@src/store/ui/chatPanel/selectionAtoms";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import {
+  chatPanelContentModeAtom,
+  chatPanelMaximizedAtom,
+} from "@src/store/ui/chatPanel/surfaceAtoms";
 import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import {
   messageQueueAtom,
@@ -279,13 +280,11 @@ export function createSessionHelpers(store: E2EStore) {
       // the empty WorkStation tab-pool start page, so resetting there no
       // longer mounts SessionCreator even after all session atoms are clear.
       store.set(stationModeAtom, "agent-station");
-      store.set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.SESSION);
       // New-session creation now lives inside the singleton Launchpad's Work
       // tab. Focus that canonical tab instead of forcing the legacy bare
       // session surface, which no longer mounts SessionCreator by itself.
       store.set(openOrFocusChatPanelStartPageTabAtom, {});
       store.set(chatPanelCreateTargetAtom, DEFAULT_CHAT_PANEL_CREATE_TARGET);
-      store.set(chatPanelSelectedWorkItemAtom, null);
       store.set(chatPanelMaximizedAtom, true);
       store.set(chatWidthAtom, 560);
       store.set(sessionIdAtom, null);
@@ -449,9 +448,7 @@ export function createSessionHelpers(store: E2EStore) {
           : undefined;
 
       store.set(stationModeAtom, "my-station");
-      store.set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.SESSION);
       store.set(chatPanelCreateTargetAtom, DEFAULT_CHAT_PANEL_CREATE_TARGET);
-      store.set(chatPanelSelectedWorkItemAtom, null);
       store.set(chatPanelMaximizedAtom, true);
       store.set(chatWidthAtom, 560);
       // Keep the canonical tab identity and the legacy session atoms in one
@@ -840,6 +837,7 @@ export function createSessionHelpers(store: E2EStore) {
     seedSessionContextUsage,
     seedPersistedCachedSession,
     seedChatEvents: seeders.seedChatEvents,
+    streamChatEventText: seeders.streamChatEventText,
     seedSidebarSession: seeders.seedSidebarSession,
     openWorkManagementTab: seeders.openWorkManagementTab,
     seedModeSwitchSession: seeders.seedModeSwitchSession,

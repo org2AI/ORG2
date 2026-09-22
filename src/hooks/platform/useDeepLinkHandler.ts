@@ -25,9 +25,9 @@
 import { emit } from "@tauri-apps/api/event";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
+import { handleMarketConnectionUrl } from "@src/features/MarketConnect/deepLink";
 import {
   isOrg2CloudAuthCallback,
   parseAuthCallbackFragment,
@@ -45,6 +45,7 @@ import {
   schedulePendingOrg2CloudAuthLoopbackExpiry,
 } from "@src/features/Org2Cloud/org2CloudAuthLoopback";
 import { resetOrgEntitlementCoordinator } from "@src/features/Org2Cloud/org2CloudEntitlementCoordinator";
+import { org2CloudOAuth } from "@src/features/Org2Cloud/org2CloudOAuth";
 import {
   CLOUD_INVITE_DEEP_LINK_HOST,
   type CloudInviteDeepLink,
@@ -59,6 +60,7 @@ import {
 } from "@src/features/Org2Cloud/org2CloudPendingShareAtom";
 import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
 import { log, logDebug, logError, logWarn } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { isTauriReady } from "@src/util/platform/tauri/init";
@@ -284,6 +286,15 @@ export function useDeepLinkHandler(): void {
       try {
         const { onUrl } = await import("@fabianlars/tauri-plugin-oauth");
         const unlisten = await onUrl((url: string) => {
+          if (org2CloudOAuth.isCallback(url)) {
+            void org2CloudOAuth.complete(url).catch(() => {
+              logWarn(
+                "DeepLinkHandler",
+                "ORG2 OAuth sign-in failed; start sign-in again"
+              );
+            });
+            return;
+          }
           const pending = readPendingOrg2CloudAuthLoopback();
           if (!pending) return;
           if (handleOrg2CloudAuthUrl(url, pending.callbackUrl)) {
@@ -318,6 +329,7 @@ export function useDeepLinkHandler(): void {
     void setupOAuthListener();
     return () => {
       disposed = true;
+      org2CloudOAuth.cancel();
       oauthUnlistenRef.current?.();
       oauthUnlistenRef.current = null;
     };
@@ -362,6 +374,10 @@ export function useDeepLinkHandler(): void {
           for (const url of urls) {
             if (processedDeepLinks.current.has(url)) {
               continue;
+            }
+
+            if (handleMarketConnectionUrl(url)) {
+              break;
             }
 
             if (handleOrg2CloudAuthUrl(url)) {
@@ -501,6 +517,10 @@ export function useDeepLinkHandler(): void {
               continue;
             }
 
+            if (handleMarketConnectionUrl(url)) {
+              break;
+            }
+
             if (handleOrg2CloudAuthUrl(url)) {
               processedDeepLinks.current.add(url);
               break;
@@ -599,5 +619,3 @@ export function useDeepLinkHandler(): void {
     handleBillingCompleteUrl,
   ]);
 }
-
-export default useDeepLinkHandler;

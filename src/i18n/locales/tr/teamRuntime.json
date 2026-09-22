@@ -1,5 +1,4 @@
 {
-  "title": "Ekip çalışma zamanı",
   "refresh": "Yenile",
   "loadError": "Ekip çalışma zamanı yüklenemedi",
   "overview": {
@@ -67,7 +66,7 @@
     "memory": "Bellek",
     "unified": "birleşik bellek",
     "gpu": "GPU",
-    "appVersion": "ORGII sürümü",
+    "appVersion": "ORG2 sürümü",
     "totalSessions": "Toplam oturum",
     "lastSynced": "Son eşitleme"
   },

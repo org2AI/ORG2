@@ -1,22 +1,36 @@
 use std::path::Path;
-use std::process::Stdio;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use core_types::session_event::ShellReplayStatus;
 use tokio::sync::watch;
-use tokio_util::sync::CancellationToken;
 
-use super::super::registry;
 use super::super::shell_replay::{
     active_state, ShellReplayStream, ShellReplayTarget, ShellReplayWriter,
 };
-use super::background::{
-    bounded_background_result, handle_backgrounded, SHELL_TOOL_RESULT_MAX_BYTES,
-};
-use super::output_runtime::{drain_output, spawn_output_runtime, OutputRuntime};
+use super::background::{bounded_background_result, SHELL_TOOL_RESULT_MAX_BYTES};
+use super::output_runtime::{drain_output, OutputRuntime};
 use super::stall_watchdog::looks_like_interactive_prompt;
+
+// The real-subprocess tests below drive Unix process groups and are
+// `#[cfg(unix)]`; their imports are gated the same way so a warnings-denied
+// Windows clippy run stays clean.
+#[cfg(unix)]
+use std::process::Stdio;
+#[cfg(unix)]
+use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(unix)]
+use std::sync::Arc;
+#[cfg(unix)]
+use std::time::{Duration, Instant};
+#[cfg(unix)]
+use tokio_util::sync::CancellationToken;
+
+#[cfg(unix)]
+use super::super::registry;
+#[cfg(unix)]
+use super::background::handle_backgrounded;
+#[cfg(unix)]
+use super::output_runtime::spawn_output_runtime;
+#[cfg(unix)]
 use super::{execute_via_command, BackgroundReason, ExecIdentity, ExecMode};
 
 #[cfg(unix)]
@@ -177,6 +191,7 @@ async fn writer_join_failure_marks_exact_replay_incomplete_without_panicking() {
     assert!(active_state(&target.session_id, &target.call_id).is_none());
 }
 
+#[cfg(unix)]
 async fn wait_for_terminal_replay(session_id: &str, call_id: &str) -> ShellReplayStatus {
     for _ in 0..100 {
         if let Some(state) =

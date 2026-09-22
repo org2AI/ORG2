@@ -27,7 +27,6 @@ export function useChatPanelTabDisplayTitle(tab: ChatPanelTab): string {
     newSession: t("sessions:chat.startPage.newSession.title"),
     runtime: t("sessions:chat.startPage.tabs.runtime"),
     organization: t("navigation:collaboration.manageOrg"),
-    teamInbox: t("navigation:labels.inbox"),
     channelFallback: t("navigation:cloud.channels.title"),
     workManagement: {
       kanban: t("sessions:simulator.tabs.kanban"),

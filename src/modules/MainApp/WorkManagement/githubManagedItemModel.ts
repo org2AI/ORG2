@@ -2,6 +2,11 @@ import type { GitHubIssue, OpenPRItem } from "@src/api/tauri/github";
 import { formatCompactAge } from "@src/util/time/formatRelativeTime";
 
 import {
+  matchesGitHubDateRange,
+  matchesGitHubNumberRange,
+} from "./githubWorkItemsQueryRanges";
+import {
+  GITHUB_QUERY_MISSING,
   GITHUB_QUERY_SCOPE,
   GITHUB_QUERY_STATE,
 } from "./githubWorkItemsSearchQuery";
@@ -167,9 +172,130 @@ function getSearchableParts(item: ManagedGitHubItem): string[] {
   ];
 }
 
-export function managedItemMatchesQuery(
+function matchesAnyLogin(
+  candidates: string[],
+  expected: string[],
+  viewerLogin: string | null
+): boolean {
+  return expected.some((login) => {
+    const resolved = login === "@me" ? viewerLogin : login;
+    return candidates.some((candidate) =>
+      isSameGitHubLogin(candidate, resolved)
+    );
+  });
+}
+
+function matchesAnyName(candidate: string, expected: string[]): boolean {
+  return expected.some(
+    (name) => name.toLowerCase() === candidate.toLowerCase()
+  );
+}
+
+function getItemAssigneeLogins(item: ManagedGitHubItem): string[] {
+  return item.kind === GITHUB_ITEM_KIND.ISSUE
+    ? item.rawIssue.assignees.map((assignee) => assignee.login)
+    : [];
+}
+
+function getItemLabelNames(item: ManagedGitHubItem): Set<string> {
+  return new Set(
+    item.kind === GITHUB_ITEM_KIND.ISSUE
+      ? item.labels.map((label) => label.name.toLowerCase())
+      : []
+  );
+}
+
+/** Qualifiers only an issue carries; a pull request never satisfies them. */
+function issueMatchesQuery(
   item: ManagedGitHubItem,
   query: ParsedGitHubSearchQuery
+): boolean {
+  const usesIssueFields =
+    query.assignees.length > 0 ||
+    query.labels.length > 0 ||
+    query.milestones.length > 0 ||
+    query.missing.length > 0 ||
+    query.linkedPullRequest !== null ||
+    query.comments !== null;
+  if (item.kind !== GITHUB_ITEM_KIND.ISSUE) return !usesIssueFields;
+
+  const assignees = getItemAssigneeLogins(item);
+  if (
+    query.assignees.length > 0 &&
+    !matchesAnyLogin(assignees, query.assignees, item.viewerLogin)
+  )
+    return false;
+  const labels = getItemLabelNames(item);
+  if (!query.labels.every((label) => labels.has(label.toLowerCase())))
+    return false;
+  const milestone = item.rawIssue.milestone;
+  if (
+    query.milestones.length > 0 &&
+    (!milestone || !matchesAnyName(milestone, query.milestones))
+  )
+    return false;
+  if (
+    query.missing.includes(GITHUB_QUERY_MISSING.ASSIGNEE) &&
+    assignees.length > 0
+  )
+    return false;
+  if (query.missing.includes(GITHUB_QUERY_MISSING.LABEL) && labels.size > 0)
+    return false;
+  if (query.missing.includes(GITHUB_QUERY_MISSING.MILESTONE) && milestone)
+    return false;
+  if (
+    query.linkedPullRequest !== null &&
+    item.linkedPullRequests > 0 !== query.linkedPullRequest
+  )
+    return false;
+  return (
+    !query.comments || matchesGitHubNumberRange(item.comments, query.comments)
+  );
+}
+
+/** Qualifiers only a pull request carries; an issue never satisfies them. */
+function pullRequestMatchesQuery(
+  item: ManagedGitHubItem,
+  query: ParsedGitHubSearchQuery
+): boolean {
+  const usesPrFields =
+    query.draft !== null ||
+    query.reviewRequested.length > 0 ||
+    query.baseBranches.length > 0 ||
+    query.headBranches.length > 0 ||
+    query.ciStatuses.length > 0;
+  if (item.kind !== GITHUB_ITEM_KIND.PR) return !usesPrFields;
+
+  if (query.draft !== null && item.rawPr.draft !== query.draft) return false;
+  if (
+    query.reviewRequested.length > 0 &&
+    !matchesAnyLogin(
+      item.rawPr.requested_reviewer_logins,
+      query.reviewRequested,
+      item.viewerLogin
+    )
+  )
+    return false;
+  if (
+    query.baseBranches.length > 0 &&
+    !matchesAnyName(item.targetBranch, query.baseBranches)
+  )
+    return false;
+  if (
+    query.headBranches.length > 0 &&
+    !matchesAnyName(item.sourceBranch, query.headBranches)
+  )
+    return false;
+  return (
+    query.ciStatuses.length === 0 ||
+    matchesAnyName(item.rawPr.ci_status, query.ciStatuses)
+  );
+}
+
+export function managedItemMatchesQuery(
+  item: ManagedGitHubItem,
+  query: ParsedGitHubSearchQuery,
+  now: number = Date.now()
 ): boolean {
   if (
     query.scope === GITHUB_QUERY_SCOPE.ISSUE &&
@@ -186,32 +312,37 @@ export function managedItemMatchesQuery(
       if (!matchesOpsPrQueryState(item.state, query.state)) return false;
     } else if (item.state !== query.state) return false;
   }
-  if (query.author) {
-    const author = item.author;
-    const expected = query.author === "@me" ? item.viewerLogin : query.author;
-    if (!expected || author.toLowerCase() !== expected.toLowerCase())
-      return false;
-  }
-  if (query.assignee) {
-    if (item.kind !== GITHUB_ITEM_KIND.ISSUE) return false;
-    const expected =
-      query.assignee === "@me" ? item.viewerLogin : query.assignee;
-    if (
-      !expected ||
-      !item.rawIssue.assignees.some(
-        (assignee) => assignee.login.toLowerCase() === expected.toLowerCase()
-      )
+  if (
+    query.authors.length > 0 &&
+    !matchesAnyLogin([item.author], query.authors, item.viewerLogin)
+  )
+    return false;
+  if (matchesAnyLogin([item.author], query.excludedAuthors, item.viewerLogin))
+    return false;
+  if (
+    matchesAnyLogin(
+      getItemAssigneeLogins(item),
+      query.excludedAssignees,
+      item.viewerLogin
     )
-      return false;
-  }
-  if (query.labels.length > 0) {
-    if (item.kind !== GITHUB_ITEM_KIND.ISSUE) return false;
-    const labels = new Set(
-      item.labels.map((label) => label.name.toLowerCase())
-    );
-    if (!query.labels.every((label) => labels.has(label.toLowerCase())))
-      return false;
-  }
+  )
+    return false;
+  const labels = getItemLabelNames(item);
+  if (query.excludedLabels.some((label) => labels.has(label.toLowerCase())))
+    return false;
+  if (!issueMatchesQuery(item, query)) return false;
+  if (!pullRequestMatchesQuery(item, query)) return false;
+  const createdAt =
+    item.kind === GITHUB_ITEM_KIND.ISSUE
+      ? item.rawIssue.created_at
+      : item.rawPr.created_at;
+  if (
+    query.updated &&
+    !matchesGitHubDateRange(item.updatedAt, query.updated, now)
+  )
+    return false;
+  if (query.created && !matchesGitHubDateRange(createdAt, query.created, now))
+    return false;
   const freeText = query.freeText.toLowerCase();
   return (
     !freeText ||

@@ -120,6 +120,18 @@ fn build_user_preview_chunk(
             "role": "user",
         },
     });
+    let image_refs = super::images::bounded_image_refs(
+        source
+            .result
+            .get("images")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str),
+    );
+    if !image_refs.is_empty() {
+        chunk.result["images"] = json!(image_refs);
+    }
     chunk
 }
 
@@ -134,8 +146,8 @@ pub fn build_initial_window(
 
 /// [`build_initial_window`] with caller-supplied turn projections, for
 /// sources whose reduced streams under-report unloaded-round metadata (the
-/// Claude index overlays its cheap body-line counts so placeholders always
-/// advertise a fetchable body). `turns[i]` must correspond to the i-th user
+/// Claude index overlays its cheap body-line counts so placeholders advertise
+/// whether a fetchable body exists). `turns[i]` must correspond to the i-th user
 /// chunk of `chunks` in stream order.
 pub fn build_initial_window_from_turns(
     session_id: &str,

@@ -1,5 +1,4 @@
 {
-  "title": "Runtime zespołu",
   "refresh": "Odśwież",
   "loadError": "Nie udało się wczytać danych runtime zespołu",
   "overview": {
@@ -67,7 +66,7 @@
     "memory": "Pamięć",
     "unified": "zunifikowana",
     "gpu": "GPU",
-    "appVersion": "Wersja ORGII",
+    "appVersion": "Wersja ORG2",
     "totalSessions": "Łącznie sesji",
     "lastSynced": "Ostatnia synchronizacja"
   },

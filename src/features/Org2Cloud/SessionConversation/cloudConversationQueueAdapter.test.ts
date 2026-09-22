@@ -5,6 +5,7 @@ import {
   QueuedConversationBlockedError,
   QueuedConversationRecoveryPendingError,
   QueuedConversationTurnClosedError,
+  QueuedConversationTurnFailedError,
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { Org2CloudConversationError } from "@src/features/Org2Cloud/org2CloudConversationEventsClient";
@@ -38,6 +39,11 @@ const mocks = vi.hoisted(() => ({
   renewTurn: vi.fn(),
   markAccepted: vi.fn(),
   finishTurn: vi.fn(),
+  prepareRetry: vi.fn(),
+}));
+
+vi.mock("./cloudConversationRetry", () => ({
+  prepareCloudConversationRetry: mocks.prepareRetry,
 }));
 
 vi.mock("@src/features/Org2Cloud/org2CloudClient", async (importOriginal) => ({
@@ -162,6 +168,10 @@ const MESSAGE = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.prepareRetry.mockImplementation(async (message) => ({
+    message,
+    lineage: { version: 1, queueMessageId: message.id, superseded: [] },
+  }));
   mocks.syncFiles.mockReset();
   mocks.runConversationTurn.mockReset();
   mocks.refreshAuth.mockImplementation(async (auth) => ({
@@ -322,6 +332,84 @@ const ASSISTANT_TAIL_EVENT = {
 } as const;
 
 describe("dispatchQueuedCloudConversation coordination", () => {
+  it("finishes an empty failed Cloud turn before returning its queue owner to explicit Retry", async () => {
+    enableTurnCoordination();
+    const failure = new QueuedConversationTurnFailedError(
+      "Agent request failed"
+    );
+    mocks.runConversationTurn.mockRejectedValueOnce(failure);
+    await expect(
+      dispatchQueuedCloudConversation(readyStore(), MESSAGE, ROOT, {
+        onAccepted: vi.fn(),
+      })
+    ).rejects.toBe(failure);
+    expect(mocks.finishTurn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        turnId: MESSAGE.turnIntentId,
+        status: "failed",
+      }),
+      expect.any(Object)
+    );
+    expect(mocks.pushEvents).not.toHaveBeenCalled();
+  });
+
+  it("retains the failed owner after a lost finish response and restores Retry from durable proof", async () => {
+    enableTurnCoordination();
+    mocks.runConversationTurn.mockRejectedValueOnce(
+      new QueuedConversationTurnFailedError("Agent request failed")
+    );
+    mocks.finishTurn.mockRejectedValueOnce(new Error("lost finish response"));
+    const store = readyStore();
+    await expect(
+      dispatchQueuedCloudConversation(store, MESSAGE, ROOT, {
+        onAccepted: vi.fn(),
+      })
+    ).rejects.toBeInstanceOf(QueuedConversationRecoveryPendingError);
+    mocks.prepareRetry.mockResolvedValueOnce({
+      message: MESSAGE,
+      lineage: {
+        version: 1,
+        queueMessageId: MESSAGE.id,
+        superseded: [],
+        failed: {
+          turnIntentId: MESSAGE.turnIntentId,
+          sessionId: "runner",
+          sourceEventIds: [],
+          payloadId: "proof",
+        },
+      },
+    });
+    mocks.claimTurn.mockResolvedValueOnce({
+      outcome: "terminal",
+      status: "failed",
+    });
+    await expect(
+      dispatchQueuedCloudConversation(
+        store,
+        { ...MESSAGE, status: "accepted", runnerSessionId: "runner" },
+        ROOT,
+        { onAccepted: vi.fn() }
+      )
+    ).rejects.toBeInstanceOf(QueuedConversationTurnFailedError);
+    expect(mocks.runConversationTurn).toHaveBeenCalledOnce();
+    expect(mocks.finishTurn).toHaveBeenCalledOnce();
+  });
+
+  it("does not infer empty retry proof from a failed Cloud ledger alone", async () => {
+    enableTurnCoordination();
+    mocks.claimTurn.mockResolvedValueOnce({
+      outcome: "terminal",
+      status: "failed",
+    });
+    await expect(
+      dispatchQueuedCloudConversation(readyStore(), MESSAGE, ROOT, {
+        onAccepted: vi.fn(),
+      })
+    ).rejects.toBeInstanceOf(QueuedConversationTurnClosedError);
+    expect(mocks.runConversationTurn).not.toHaveBeenCalled();
+  });
+
   it("loads missing family metadata for an explicit continuation without a mounted sidebar", async () => {
     const store = readyStore();
     const rows = store.get(org2CloudRemoteSessionsAtom)["org-1"].rows;

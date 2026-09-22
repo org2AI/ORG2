@@ -42,8 +42,7 @@ const SettingsSectionRenderer: React.FC<SettingsSectionRendererProps> = ({
           <SectionSlot activeTab={activeTab} />
         ) : (
           <div className="text-xs text-danger-6">
-            {t("common:status.error", "Error")}: section renderer is not
-            configured.
+            {t("common:status.error")}: section renderer is not configured.
           </div>
         )}
       </div>

@@ -11,10 +11,10 @@ import {
   getAppTypeForTool,
 } from "@src/engines/SessionCore/rendering/registry/initToolRegistry";
 import { resolveToolName } from "@src/engines/SessionCore/rendering/registry/toolAliases";
-import { defineSimulatorAppConfig } from "@src/engines/Simulator/apps/core/configFactory";
 import { matchesByAppType } from "@src/engines/Simulator/apps/core/matchers";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
 import { getToolDisplayLabelFromRegistry } from "@src/util/ui/rendering/registryToolLabel";
+import { getToolCallTitle } from "@src/util/ui/rendering/toolCallTitle";
 
 import {
   convertShellSearchOperation,
@@ -159,15 +159,12 @@ export function deriveIDEState(
       }
     } else {
       // Unclassified CODE_EDITOR tools (MCP, etc.) → Other Tools.
-      // Display name goes through the shared English-only formatter so the
-      // simulator sidebar reads consistently with chat-panel headers and
-      // doesn't depend on locale JSON (which tends to drift for uncommon
-      // tool names). See `.cursor/rules/orgii-frontend.mdc` §Terminology.
+      // Invocation titles take priority; other tools retain registry labels.
       toolOperations.push({
         toolName: event.functionName,
-        displayName: getToolDisplayLabelFromRegistry(
-          resolveToolName(event.functionName)
-        ),
+        displayName:
+          getToolCallTitle(event.functionName, event.args) ||
+          getToolDisplayLabelFromRegistry(resolveToolName(event.functionName)),
         event,
         eventId: event.id,
         isCurrent,
@@ -249,18 +246,3 @@ export function deriveIDEState(
     fileViewMode,
   };
 }
-
-// ============================================
-// App Configuration
-// ============================================
-
-/**
- * IDE simulator app config.
- * Uses Rust registry for event matching.
- */
-export const IDE_APP_CONFIG = defineSimulatorAppConfig<SimulatorIDEState>({
-  appType: AppType.CODE_EDITOR,
-  name: "IDE",
-  icon: "Code2",
-  deriveState: deriveIDEState,
-});

@@ -33,6 +33,7 @@ describe("DropdownSearch", () => {
   });
 
   beforeEach(() => {
+    vi.useFakeTimers();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -41,10 +42,64 @@ describe("DropdownSearch", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.useRealTimers();
   });
 
   afterAll(() => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it("focuses by default on each mount without refocusing on updates", () => {
+    const renderSearch = (value: string) =>
+      root.render(createElement(DropdownSearch, { value, onChange: vi.fn() }));
+
+    act(() => renderSearch(""));
+    act(() => vi.advanceTimersByTime(10));
+    expect(document.activeElement).toBe(container.querySelector("input"));
+
+    const button = document.createElement("button");
+    container.appendChild(button);
+    button.focus();
+    act(() => renderSearch("query"));
+    act(() => vi.advanceTimersByTime(10));
+    expect(document.activeElement).toBe(button);
+    button.remove();
+
+    act(() => root.render(null));
+    act(() => renderSearch(""));
+    act(() => vi.advanceTimersByTime(10));
+    expect(document.activeElement).toBe(container.querySelector("input"));
+    act(() => vi.runAllTimers());
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("allows callers to opt out of autofocus", () => {
+    act(() => {
+      root.render(
+        createElement(DropdownSearch, {
+          value: "",
+          onChange: vi.fn(),
+          autoFocus: false,
+        })
+      );
+    });
+    act(() => vi.advanceTimersByTime(10));
+    expect(document.activeElement).not.toBe(container.querySelector("input"));
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("cancels pending focus when closed before the delay finishes", () => {
+    act(() => {
+      root.render(
+        createElement(DropdownSearch, { value: "", onChange: vi.fn() })
+      );
+    });
+    const input = container.querySelector("input")!;
+    const focus = vi.spyOn(input, "focus");
+    act(() => root.render(null));
+    act(() => vi.advanceTimersByTime(10));
+    expect(focus).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("uses the concise localized search label by default", () => {

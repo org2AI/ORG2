@@ -1,6 +1,7 @@
 import { createStore } from "jotai/vanilla";
 import { describe, expect, it } from "vitest";
 
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { workstationActiveSessionIdAtom } from "@src/store/session/viewAtom";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
@@ -241,6 +242,63 @@ describe("live shared-resource close semantics", () => {
     expect(store.set(closeActiveWorkStationTabAtom)).toBe(true);
 
     expect(store.get(workstationTabsStateAtom).shared.tabs).toEqual([]);
+  });
+
+  it("closes the Agent Station instead of a My Station tab nobody can see", () => {
+    const store = createStore();
+    const browser = createBrowserSessionTab("browser-1", "Example");
+    store.set(workstationLayoutAtom, {
+      mainPane: { tabs: [browser], activeTabId: browser.id },
+    });
+    store.set(stationModeAtom, "agent-station");
+    store.set(chatPanelMaximizedAtom, false);
+
+    expect(store.set(closeActiveWorkStationTabAtom)).toBe(true);
+
+    expect(store.get(chatPanelMaximizedAtom)).toBe(true);
+    expect(store.get(workstationLayoutAtom).mainPane.tabs).toEqual([browser]);
+  });
+
+  it("closes an Agent Station with no session and no tabs behind it", () => {
+    const store = createStore();
+    store.set(workstationLayoutAtom, {
+      mainPane: { tabs: [], activeTabId: null },
+    });
+    store.set(stationModeAtom, "agent-station");
+    store.set(chatPanelMaximizedAtom, false);
+
+    expect(store.set(closeActiveWorkStationTabAtom)).toBe(true);
+
+    expect(store.get(chatPanelMaximizedAtom)).toBe(true);
+  });
+
+  it("falls through when a chat tab already denies the Agent Station its slot", () => {
+    const store = createStore();
+    const browser = createBrowserSessionTab("browser-1", "Example");
+    store.set(workstationLayoutAtom, {
+      mainPane: { tabs: [browser], activeTabId: browser.id },
+    });
+    store.set(stationModeAtom, "agent-station");
+    store.set(chatPanelMaximizedAtom, false);
+    store.set(chatPanelTabsAtom, {
+      tabs: [{ id: "runtime", type: "runtime", title: "Runtime" }],
+      activeTabId: "runtime",
+    });
+
+    expect(store.set(closeActiveWorkStationTabAtom)).toBe(false);
+
+    expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+  });
+
+  it("leaves a closed Agent Station to the window-closing fallback", () => {
+    const store = createStore();
+    store.set(workstationLayoutAtom, {
+      mainPane: { tabs: [createStartTab()], activeTabId: null },
+    });
+    store.set(stationModeAtom, "agent-station");
+    store.set(chatPanelMaximizedAtom, true);
+
+    expect(store.set(closeActiveWorkStationTabAtom)).toBe(false);
   });
 
   it("batch-closes live resources once while retaining hidden lightweight shared tabs", () => {

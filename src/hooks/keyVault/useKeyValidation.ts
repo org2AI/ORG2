@@ -419,5 +419,3 @@ export function useKeyValidation(
     resetValidation,
   };
 }
-
-export default useKeyValidation;

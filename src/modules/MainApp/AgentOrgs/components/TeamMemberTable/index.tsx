@@ -74,8 +74,8 @@ const AgentSelect: React.FC<AgentSelectProps> = ({
         {menu}
         {onAddAgent ? (
           <DropdownFooter>
-            <button
-              type="button"
+            <Button
+              layout="custom"
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full justify-start`}
               onMouseDown={(event) => {
                 event.preventDefault();
@@ -90,7 +90,7 @@ const AgentSelect: React.FC<AgentSelectProps> = ({
                 strokeWidth={1.75}
               />
               <span>{t("common:actions.add")} Agent</span>
-            </button>
+            </Button>
           </DropdownFooter>
         ) : null}
       </div>
@@ -242,7 +242,6 @@ const TeamMemberTable: React.FC<TeamMemberTableProps> = ({
                 `${labels.connected ?? "Connected"} ${connectedCountByMemberId.get(row.id) ?? 0}`}
             </span>
             <Button
-              variant="secondary"
               size="small"
               onClick={() => onManageCommunication(row.id)}
               data-testid={buildDataTestId(row, "manage-communication")}
@@ -257,8 +256,6 @@ const TeamMemberTable: React.FC<TeamMemberTableProps> = ({
         width: 48,
         renderCell: (row) => (
           <Button
-            variant="secondary"
-            size="default"
             icon={
               <HugeiconsIcon
                 icon={Delete02Icon}

@@ -110,9 +110,6 @@
   user-select: none;
 }
 
-// Import shared custom scrollbar styles
-@import "../../../components/CustomScrollbar/index.scss";
-
 // ============================================
 // Dark Mode Adjustments
 // Colors are handled by the active public theme CSS
@@ -127,5 +124,3 @@
     color: var(--color-primary-5);
   }
 }
-
-// Dark mode custom scrollbar styles are imported from CustomScrollbar.scss

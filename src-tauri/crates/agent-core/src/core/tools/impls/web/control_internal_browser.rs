@@ -599,7 +599,7 @@ impl Tool for InternalBrowserTool {
     }
 
     fn description(&self) -> &str {
-        "Inspect and control the currently visible ORGII internal Browser WebView. Resolves only the active internal browser target and supports list, is_ready, get_state, click, input, select, scroll, show_mask, hide_mask, and clean_up. Call get_state before indexed actions; indexes are page-state snapshots and may become stale after DOM changes, scrolling, or navigation."
+        "Inspect and control the currently visible ORG2 internal Browser WebView. Resolves only the active internal browser target and supports list, is_ready, get_state, click, input, select, scroll, show_mask, hide_mask, and clean_up. Call get_state before indexed actions; indexes are page-state snapshots and may become stale after DOM changes, scrolling, or navigation."
     }
 
     fn is_ready(&self) -> bool {

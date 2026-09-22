@@ -7,11 +7,11 @@
 import React, { useId } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ButtonVariant } from "@src/components/Button";
+import type { ButtonTone } from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
+import { PanelFooter } from "@src/components/layout/blocks";
 
 import {
   CHANNEL_NAME_MAX_LENGTH,
@@ -197,7 +197,8 @@ export interface ChannelDialogFooterProps {
   onSubmit: () => void;
   cancelTestId: string;
   submitTestId: string;
-  submitVariant?: Extract<ButtonVariant, "primary" | "danger">;
+  /** Tone for a destructive submit; the submit stays a primary button. */
+  submitTone?: Extract<ButtonTone, "danger">;
   loading?: boolean;
   disabled?: boolean;
 }
@@ -210,7 +211,7 @@ export const ChannelDialogFooter: React.FC<ChannelDialogFooterProps> = ({
   onSubmit,
   cancelTestId,
   submitTestId,
-  submitVariant = "primary",
+  submitTone,
   loading = false,
   disabled = false,
 }) => (
@@ -219,7 +220,6 @@ export const ChannelDialogFooter: React.FC<ChannelDialogFooterProps> = ({
       {
         label: cancelLabel,
         onClick: onCancel,
-        variant: "secondary",
         disabled: loading,
         dataTestId: cancelTestId,
       },
@@ -227,7 +227,7 @@ export const ChannelDialogFooter: React.FC<ChannelDialogFooterProps> = ({
     primaryAction={{
       label: submitLabel,
       onClick: onSubmit,
-      variant: submitVariant,
+      tone: submitTone,
       loading,
       disabled,
       dataTestId: submitTestId,

@@ -1,6 +1,12 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import {
+  DetailHeaderTabs,
+  DetailPanelContainer,
+  DetailTabStrip,
+  PersistentDetailTabPanel,
+} from "@src/components/layout/blocks";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { usePublishChatPanelHeader } from "@src/engines/ChatPanel/header";
 import {
@@ -12,12 +18,6 @@ import {
 } from "@src/icons";
 import WorkItemContentStack from "@src/modules/ProjectManager/WorkItems/components/WorkItemContentStack";
 import ProjectManagerBreadcrumb from "@src/modules/ProjectManager/shared/components/ProjectManagerBreadcrumb";
-import {
-  DetailHeaderTabs,
-  DetailPanelContainer,
-  DetailTabStrip,
-  PersistentDetailTabPanel,
-} from "@src/modules/shared/layouts/blocks";
 import type { ChatPanelSelectedProject } from "@src/store/ui/chatPanel/selectionAtoms";
 
 import type { ProjectPanelTab } from "./projectPanel/types";

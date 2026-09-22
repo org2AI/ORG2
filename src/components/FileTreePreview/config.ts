@@ -2,6 +2,9 @@
  * FileTreePreview Configuration
  */
 
+/** Require a deliberate hover before showing a file-path card. */
+export const FILE_TREE_HOVER_DELAY_MS = 500;
+
 // ============================================
 // Style Configuration
 // ============================================

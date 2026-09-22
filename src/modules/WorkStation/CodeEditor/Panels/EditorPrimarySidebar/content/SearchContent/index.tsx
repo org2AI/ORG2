@@ -12,7 +12,6 @@
  * Exposes methods via ref:
  * - collapseAll(): Collapse all search result file headers
  */
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   forwardRef,
@@ -26,15 +25,10 @@ import {
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import { Placeholder } from "@src/components/Placeholder";
-import { HEADER_BUTTON } from "@src/config/workstation/tokens";
 import { createLogger } from "@src/hooks/logger";
-import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
-  HugeiconsIcon,
-  LinkSquare02Icon,
-} from "@src/icons";
+import { HugeiconsIcon, LinkSquare02Icon } from "@src/icons";
 import { HUMANTOOLS_TEXT_KEYS } from "@src/modules/WorkStation/shared";
 import { workStationSearchFocusSignalAtom } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import {
@@ -56,6 +50,7 @@ import {
 } from "../../../shared";
 import { SearchResults, type SearchResultsHandle } from "./components";
 import { SEARCH_CONSTANTS } from "./config";
+import { replaceSearchResults } from "./replaceSearchFile";
 import type { SearchContentHandle, SearchContentProps } from "./types";
 import { useSearchContent } from "./useSearchContent";
 
@@ -197,6 +192,15 @@ export const SearchContent = forwardRef<
     }, []);
 
     const [isReplacingAll, setIsReplacingAll] = useState(false);
+    const [replaceFailure, setReplaceFailure] = useState<{
+      key: string;
+    } | null>(null);
+    const replacementKey = JSON.stringify([repoPath, query, options]);
+    const replacementError =
+      replaceFailure?.key === replacementKey
+        ? t("fileSearch.replaceFailed", { ns: "navigation" })
+        : null;
+    const replacementIncomplete = loading || hasMore || isTruncated || !!error;
 
     const handleReplaceAll = useCallback(async () => {
       if (
@@ -207,39 +211,32 @@ export const SearchContent = forwardRef<
       )
         return;
       setIsReplacingAll(true);
+      setReplaceFailure(null);
       try {
-        for (const file of results) {
-          try {
-            const content = await readTextFile(file.file_path);
-            let updated: string;
-            if (options.useRegex) {
-              const flags = options.caseSensitive ? "g" : "gi";
-              updated = content.replace(new RegExp(query, flags), replaceText);
-            } else {
-              const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-              const flags = options.caseSensitive ? "g" : "gi";
-              const boundary = options.wholeWord ? `\\b${escaped}\\b` : escaped;
-              updated = content.replace(
-                new RegExp(boundary, flags),
-                replaceText
-              );
-            }
-            if (updated !== content) {
-              await writeTextFile(file.file_path, updated);
-            }
-          } catch (fileErr) {
-            log.warn(
-              `[SearchContent] replaceAll: failed to process ${file.file_path}:`,
-              fileErr
-            );
-          }
-        }
+        await replaceSearchResults(results, query, replaceText, options, {
+          loading,
+          hasMore,
+          isTruncated,
+          error,
+        });
       } catch (err) {
-        log.warn("[SearchContent] replaceAll: unexpected error:", err);
+        setReplaceFailure({ key: replacementKey });
+        log.warn("[SearchContent] replaceAll failed:", err);
       } finally {
         setIsReplacingAll(false);
       }
-    }, [query, replaceText, results, options, isReplacingAll]);
+    }, [
+      query,
+      replaceText,
+      results,
+      options,
+      isReplacingAll,
+      loading,
+      hasMore,
+      isTruncated,
+      error,
+      replacementKey,
+    ]);
 
     const handleFilesToIncludeChange = useCallback(
       (value: string) => {
@@ -306,29 +303,24 @@ export const SearchContent = forwardRef<
         {/* Search/Replace section with chevron layout */}
         <div className="flex gap-1.5 px-3">
           {/* Left column - Chevron toggle (centered vertically) */}
-          <button
+          <Button
+            variant="tertiary"
+            size="mini"
+            aria-label={
+              showReplace
+                ? t(HUMANTOOLS_TEXT_KEYS.search.collapseReplace)
+                : t(HUMANTOOLS_TEXT_KEYS.search.expandReplace)
+            }
+            iconOnly
+            icon={<DisclosureChevron expanded={showReplace} size={14} />}
             onClick={handleExpandToggle}
-            className="flex items-center justify-center self-center text-text-3"
+            className="self-center"
             title={
               showReplace
                 ? t(HUMANTOOLS_TEXT_KEYS.search.collapseReplace)
                 : t(HUMANTOOLS_TEXT_KEYS.search.expandReplace)
             }
-          >
-            {showReplace ? (
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                data-icon="chevron-down"
-                size={14}
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                data-icon="chevron-right"
-                size={14}
-              />
-            )}
-          </button>
+          />
 
           {/* Center column - Input fields (stacked, left-aligned) */}
           <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1.5">
@@ -360,7 +352,10 @@ export const SearchContent = forwardRef<
                 placeholder={t("actions.replace")}
                 onReplaceAll={handleReplaceAll}
                 disabled={
-                  !query || loading || isReplacingAll || results.length === 0
+                  !query ||
+                  replacementIncomplete ||
+                  isReplacingAll ||
+                  results.length === 0
                 }
                 multiline
                 hideSpacer
@@ -387,19 +382,22 @@ export const SearchContent = forwardRef<
             <div className="flex items-center justify-between gap-2">
               <p className="text-[12px] text-text-3">{resultText}</p>
               {results.length > 0 && !loading && !loadingMore && (
-                <button
+                <Button
+                  variant="tertiary"
+                  size="sidebar"
+                  iconOnly
+                  icon={
+                    <HugeiconsIcon
+                      icon={LinkSquare02Icon}
+                      data-icon="link-square-02"
+                      size={14}
+                      strokeWidth={1.75}
+                    />
+                  }
                   onClick={handleOpenInTab}
-                  className={HEADER_BUTTON.actionTreeRow}
                   title={t("common:actions.openInNewTab")}
                   aria-label={t("common:actions.openInNewTab")}
-                >
-                  <HugeiconsIcon
-                    icon={LinkSquare02Icon}
-                    data-icon="link-square-02"
-                    size={14}
-                    strokeWidth={1.75}
-                  />
-                </button>
+                />
               )}
             </div>
             {showRefineHint && !loading && !loadingMore && (
@@ -410,6 +408,23 @@ export const SearchContent = forwardRef<
           </div>
         )}
 
+        {showReplace &&
+          replacementIncomplete &&
+          results.length > 0 &&
+          !loading && (
+            <p role="status" className="px-4 py-2 text-[12px] text-text-3">
+              {t("fileSearch.budgetExceeded", { ns: "navigation" })}
+            </p>
+          )}
+        {replacementError && (
+          <div role="alert">
+            <Placeholder
+              variant="error"
+              placement="sidebar"
+              title={replacementError}
+            />
+          </div>
+        )}
         {/* Results list - virtualized for performance */}
         <div className="min-h-0 flex-1 overflow-hidden">
           {/* No loading spinner — search is fast (<200ms). Error and no-results

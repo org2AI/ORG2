@@ -93,8 +93,6 @@ export const FieldRow: React.FC<FieldRowProps> = ({
     return (
       <div className="flex min-h-7 shrink-0 items-center overflow-visible">
         <Button
-          htmlType="button"
-          variant="secondary"
           size="small"
           shape="round"
           icon={iconContent}
@@ -133,8 +131,8 @@ export const FieldRow: React.FC<FieldRowProps> = ({
         data-field-row
         className={`group/field flex min-w-0 flex-1 items-center ${isWorkstationTrail ? "h-full rounded-lg" : "rounded-md"} transition-colors hover:bg-surface-hover ${isActive ? "bg-surface-hover" : "bg-transparent"}`}
       >
-        <button
-          type="button"
+        <Button
+          layout="custom"
           className={
             isWorkstationTrail
               ? `${WORKSTATION_TRAIL_CONTENT.rowContent} cursor-pointer border-none bg-transparent outline-none`
@@ -150,17 +148,21 @@ export const FieldRow: React.FC<FieldRowProps> = ({
             {value}
           </span>
           {suffix}
-        </button>
+        </Button>
         {showChevron && (
-          <button
-            type="button"
+          <Button
+            variant="tertiary"
+            size="mini"
+            style={{ width: 20 }}
+            iconOnly
+            icon={
+              <HugeiconsIcon icon={EditIcon} size={DROPDOWN_ITEM.iconSize} />
+            }
             aria-label="Open"
             onClick={onClick}
             disabled={disabled}
             className={`mr-1 flex h-6 w-5 shrink-0 items-center justify-center rounded-md border-none bg-transparent text-text-3 ${isActive ? "flex" : "hidden group-hover/field:flex"}`}
-          >
-            <HugeiconsIcon icon={EditIcon} size={DROPDOWN_ITEM.iconSize} />
-          </button>
+          />
         )}
       </div>
     </div>
@@ -168,7 +170,7 @@ export const FieldRow: React.FC<FieldRowProps> = ({
 };
 
 // ============================================
-// Dropdown - Container for options (relative positioning)
+// Dropdown alignment helpers
 // ============================================
 
 export type DropdownWidthMode = "match-parent" | "menu";
@@ -215,43 +217,6 @@ function useResolvedDropdownAlign(align: DropdownAlign) {
     isPositioned: align !== "auto" || isAutoPositioned,
   };
 }
-
-export interface DropdownProps {
-  children: React.ReactNode;
-  className?: string;
-  align?: DropdownAlign;
-  widthMode?: DropdownWidthMode;
-}
-
-export const Dropdown: React.FC<DropdownProps> = ({
-  children,
-  className = "",
-  align = "left",
-  widthMode = "match-parent",
-}) => {
-  const { dropdownRef, resolvedAlign, isPositioned } =
-    useResolvedDropdownAlign(align);
-  const positionClass =
-    widthMode === "menu"
-      ? resolvedAlign === "right"
-        ? "right-0"
-        : "left-0"
-      : resolvedAlign === "right"
-        ? "right-2"
-        : "left-2 right-2";
-  const widthClass = widthMode === "menu" ? DROPDOWN_WIDTHS.wideMenuClass : "";
-
-  return (
-    <div
-      ref={dropdownRef}
-      data-property-dropdown
-      className={`absolute ${positionClass} top-full mt-1 flex flex-col ${widthClass} ${DROPDOWN_CLASSES.panelAnimated} ${className}`}
-      style={getPositionedOverlayVisibilityStyle(isPositioned)}
-    >
-      {children}
-    </div>
-  );
-};
 
 // ============================================
 // SearchableDropdown - Dropdown with search input (relative positioning)
@@ -406,8 +371,8 @@ export const Option: React.FC<OptionProps> = ({
   children,
   dataTestId,
 }) => (
-  <button
-    type="button"
+  <Button
+    layout="custom"
     data-testid={dataTestId}
     className={[
       DROPDOWN_CLASSES.item,
@@ -441,79 +406,5 @@ export const Option: React.FC<OptionProps> = ({
         {isSelected && <DropdownSelectedCheck />}
       </>
     )}
-  </button>
+  </Button>
 );
-
-// ============================================
-// TextEditOption - Text area option in dropdown
-// ============================================
-
-export interface TextEditOptionProps {
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit?: () => void;
-  onCancel?: () => void;
-  placeholder?: string;
-  rows?: number;
-}
-
-export const TextEditOption: React.FC<TextEditOptionProps> = ({
-  value,
-  onChange,
-  onSubmit,
-  onCancel,
-  placeholder = "Enter custom text...",
-  rows = 3,
-}) => {
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      onSubmit?.();
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onCancel?.();
-    }
-    // Prevent dropdown from closing when typing
-    event.stopPropagation();
-  };
-
-  return (
-    <div className="px-2.5 py-2">
-      <textarea
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={handleKeyDown}
-        onClick={(event) => event.stopPropagation()}
-        placeholder={placeholder}
-        rows={rows}
-        className="w-full resize-none rounded-md border border-border-2 bg-bg-1 px-2 py-1.5 text-xs text-text-1 transition-colors outline-none placeholder:text-text-3 focus:border-primary-6"
-      />
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <div className="flex gap-1">
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              onSubmit?.();
-            }}
-            className="rounded bg-primary-6 px-2 py-0.5 text-[11px] text-white transition-colors hover:bg-primary-5"
-          >
-            Save
-          </button>
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              onCancel?.();
-            }}
-            className="rounded bg-fill-2 px-2 py-0.5 text-[11px] text-text-2 transition-colors hover:bg-fill-2"
-          >
-            Cancel
-          </button>
-        </div>
-        <div className="text-[11px] text-text-3">
-          {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter
-        </div>
-      </div>
-    </div>
-  );
-};

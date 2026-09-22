@@ -36,4 +36,3 @@ export {
 export { buildIssuePayload } from "./payloadBuilder";
 
 // Preview generation
-export { generatePreviewHtml } from "./previewGenerator";

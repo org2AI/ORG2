@@ -1,401 +1,52 @@
-import { type Store, load } from "@tauri-apps/plugin-store";
-
-import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
+/**
+ * Durable message queue repository: the per-window queued partition, the
+ * unified active-delivery registry and the handoff/return/update mutations
+ * between them. Store access, row validation, locked reads and the canonical
+ * conversation lock live in sibling modules and are re-exported here.
+ */
+import { conversationRootKey } from "@src/contracts/conversation";
 import {
-  MAX_QUEUED_CONVERSATION_MESSAGE_CHARS_TOTAL,
   QueuedConversationBusyError,
   QueuedConversationRecoveryPendingError,
-  isQueuedConversationMessagePayload,
-  queuedConversationMessageCharSize,
-} from "@src/engines/SessionCore/conversations/queuedConversationContract";
-import { createLogger } from "@src/hooks/logger";
+} from "@src/contracts/conversation";
 
 import {
   type ActiveMessageDelivery,
-  MAX_QUEUED_MESSAGE_CHARS,
   type QueuedMessage,
   boundQueuedMessages,
   queueAdmissionResult,
-  queuedMessageCharSize,
 } from "./messageQueueAtom";
+import {
+  DELIVERY_RECORDS_KEY,
+  type DurableMessageDeliverySnapshot,
+  readDeliveriesLocked,
+  readDeliverySnapshotLocked,
+  resetMessageQueueDeliveryRecordsForTests,
+} from "./messageQueueDeliveryRecords";
+import {
+  type DurableQueuedMessage,
+  isActiveDelivery,
+  toQueuedMessage,
+  validatedActiveMessageDeliveries,
+  validatedDurableMessageDeliveries,
+} from "./messageQueueRecordValidation";
+import {
+  resetMessageQueueStoreForTests,
+  serializeMessageQueueStoreMutation,
+  withMessageQueueStoreTransaction,
+} from "./messageQueueStore";
 
-const log = createLogger("messageQueueRepository");
-const STORE_PATH = "chat-message-queue.json";
-const STORE_KEY_PREFIX = "queue";
-const DELIVERY_RECORDS_KEY = "deliveries";
-const STORE_LOCK_NAME = "orgii:chat-message-queue-store";
-const CONVERSATION_TURN_LOCK_PREFIX = "orgii:canonical-conversation:";
-const MAX_ACTIVE_DELIVERIES = 100;
-
-function isMissingStoreFileError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("No such file or directory") ||
-    message.includes("os error 2")
-  );
-}
-
-let storePromise: Promise<Store | null> | null = null;
-let queueKeyPromise: Promise<string> | null = null;
-let mutationChain: Promise<unknown> = Promise.resolve();
-let fallbackStoreLock: Promise<unknown> = Promise.resolve();
-let legacyQueueMigrationComplete = false;
-
-async function withStoreLock<T>(operation: () => Promise<T>): Promise<T> {
-  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
-  if (locks?.request) {
-    return await locks.request(
-      STORE_LOCK_NAME,
-      { mode: "exclusive" },
-      operation
-    );
-  }
-  const next = fallbackStoreLock.catch(() => undefined).then(operation);
-  fallbackStoreLock = next;
-  return await next;
-}
-
-function isQueuedMessage(value: unknown): value is QueuedMessage {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<QueuedMessage>;
-  const validConversationDispatch = item.conversationDispatch
-    ? isQueuedConversationMessagePayload(item)
-    : true;
-  return (
-    typeof item.id === "string" &&
-    typeof item.turnIntentId === "string" &&
-    typeof item.sessionId === "string" &&
-    typeof item.content === "string" &&
-    typeof item.displayContent === "string" &&
-    validConversationDispatch &&
-    (item.imageDataUrls === undefined ||
-      (Array.isArray(item.imageDataUrls) &&
-        item.imageDataUrls.every((image) => typeof image === "string"))) &&
-    (item.deliveryError === undefined ||
-      typeof item.deliveryError === "string") &&
-    (item.priority === "now" || item.priority === "next") &&
-    item.status === "queued" &&
-    typeof item.createdAt === "string" &&
-    queuedMessageCharSize(item as QueuedMessage) <= MAX_QUEUED_MESSAGE_CHARS
-  );
-}
-
-type DurableQueuedMessage = QueuedMessage & { originQueueKey: string };
-type DurableMessageDelivery = DurableQueuedMessage | ActiveMessageDelivery;
-
-function hasQueueOwner(value: unknown): value is { originQueueKey: string } {
-  return Boolean(
-    value &&
-    typeof value === "object" &&
-    typeof (value as { originQueueKey?: unknown }).originQueueKey ===
-      "string" &&
-    (value as { originQueueKey: string }).originQueueKey.startsWith("queue:")
-  );
-}
-
-function isDurableQueuedMessage(value: unknown): value is DurableQueuedMessage {
-  return isQueuedMessage(value) && hasQueueOwner(value);
-}
-
-function toQueuedMessage(record: DurableQueuedMessage): QueuedMessage {
-  const { originQueueKey: _originQueueKey, ...message } = record;
-  return message;
-}
-
-export function validatedDurableMessageQueue(value: unknown): QueuedMessage[] {
-  if (value === undefined || value === null) return [];
-  if (!Array.isArray(value) || !value.every(isQueuedMessage)) {
-    throw new Error("durable message queue contains an invalid row");
-  }
-  const ids = new Set<string>();
-  const intents = new Set<string>();
-  for (const message of value) {
-    if (ids.has(message.id) || intents.has(message.turnIntentId)) {
-      throw new Error("durable message queue contains duplicate identity");
-    }
-    ids.add(message.id);
-    intents.add(message.turnIntentId);
-  }
-  const bounded = boundQueuedMessages(value);
-  if (bounded.length !== value.length) {
-    throw new Error("durable message queue exceeds its safety limits");
-  }
-  return value;
-}
-
-function isActiveDelivery(value: unknown): value is ActiveMessageDelivery {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<ActiveMessageDelivery>;
-  const retryAt = candidate.retryAt;
-  const retryAttempt = candidate.retryAttempt;
-  const validMetadata = Boolean(
-    typeof candidate.id === "string" &&
-    (candidate.status === "preparing" || candidate.status === "accepted") &&
-    (candidate.priority === "now" || candidate.priority === "next") &&
-    (candidate.runnerSessionId === undefined ||
-      (typeof candidate.runnerSessionId === "string" &&
-        candidate.runnerSessionId.length > 0)) &&
-    (candidate.status !== "accepted" ||
-      typeof candidate.runnerSessionId === "string") &&
-    (candidate.runnerEventStartIndex === undefined ||
-      (typeof candidate.runnerEventStartIndex === "number" &&
-        Number.isSafeInteger(candidate.runnerEventStartIndex) &&
-        candidate.runnerEventStartIndex >= 0)) &&
-    typeof candidate.createdAt === "string" &&
-    (candidate.deliveryError === undefined ||
-      typeof candidate.deliveryError === "string") &&
-    (retryAt === undefined || typeof retryAt === "string") &&
-    (retryAttempt === undefined ||
-      (typeof retryAttempt === "number" &&
-        Number.isSafeInteger(retryAttempt) &&
-        retryAttempt >= 0))
-  );
-  return (
-    validMetadata &&
-    hasQueueOwner(value) &&
-    isQueuedConversationMessagePayload(value)
-  );
-}
-
-export function validatedActiveMessageDeliveries(
-  value: unknown
-): ActiveMessageDelivery[] {
-  if (value === undefined || value === null) return [];
-  if (!Array.isArray(value)) {
-    throw new Error("active message delivery store is not an array");
-  }
-  if (!value.every(isActiveDelivery)) {
-    throw new Error("active message delivery store contains an invalid row");
-  }
-  const rows = value as ActiveMessageDelivery[];
-  if (rows.length > MAX_ACTIVE_DELIVERIES) {
-    throw new Error("active message delivery store exceeds its row limit");
-  }
-  const ids = new Set<string>();
-  const intentIds = new Set<string>();
-  for (const delivery of rows) {
-    if (ids.has(delivery.id) || intentIds.has(delivery.turnIntentId)) {
-      throw new Error(
-        "active message delivery store contains duplicate ownership"
-      );
-    }
-    ids.add(delivery.id);
-    intentIds.add(delivery.turnIntentId);
-  }
-  const totalChars = rows.reduce(
-    (total, delivery) => total + queuedConversationMessageCharSize(delivery),
-    0
-  );
-  if (totalChars > MAX_QUEUED_CONVERSATION_MESSAGE_CHARS_TOTAL) {
-    throw new Error("active message delivery store exceeds its payload limit");
-  }
-  return rows;
-}
-
-function validatedDurableMessageDeliveries(
-  value: unknown
-): DurableMessageDelivery[] {
-  if (value === undefined || value === null) return [];
-  if (
-    !Array.isArray(value) ||
-    !value.every(
-      (record) => isDurableQueuedMessage(record) || isActiveDelivery(record)
-    )
-  ) {
-    throw new Error("durable message delivery store contains an invalid row");
-  }
-  const records = value as DurableMessageDelivery[];
-  const intentIds = new Set<string>();
-  const queuedIds = new Set<string>();
-  for (const record of records) {
-    if (intentIds.has(record.turnIntentId)) {
-      throw new Error(
-        "durable message delivery store contains duplicate identity"
-      );
-    }
-    intentIds.add(record.turnIntentId);
-    if (record.status === "queued") {
-      if (queuedIds.has(record.id)) {
-        throw new Error(
-          "durable message delivery store contains duplicate identity"
-        );
-      }
-      queuedIds.add(record.id);
-    }
-  }
-  const active = records.filter(isActiveDelivery);
-  validatedActiveMessageDeliveries(active);
-  const queuedByOwner = new Map<string, DurableQueuedMessage[]>();
-  for (const record of records) {
-    if (record.status !== "queued") continue;
-    const ownerQueue = queuedByOwner.get(record.originQueueKey) ?? [];
-    ownerQueue.push(record);
-    queuedByOwner.set(record.originQueueKey, ownerQueue);
-  }
-  for (const queue of queuedByOwner.values()) {
-    validatedDurableMessageQueue(queue);
-  }
-  const totalChars = records.reduce(
-    (total, record) => total + queuedConversationMessageCharSize(record),
-    0
-  );
-  if (totalChars > MAX_QUEUED_CONVERSATION_MESSAGE_CHARS_TOTAL) {
-    throw new Error("durable message delivery store exceeds its payload limit");
-  }
-  return records;
-}
-
-async function durableStore(): Promise<Store | null> {
-  if (storePromise) return storePromise;
-  storePromise = load(STORE_PATH, {
-    defaults: {},
-    autoSave: false,
-  }).catch((error) => {
-    log.warn("[messageQueueRepository] durable store unavailable", error);
-    storePromise = null;
-    return null;
-  });
-  return storePromise;
-}
-
-async function queueKey(): Promise<string> {
-  if (queueKeyPromise) return queueKeyPromise;
-  queueKeyPromise = import("@tauri-apps/api/window")
-    .then(
-      ({ getCurrentWindow }) =>
-        `${STORE_KEY_PREFIX}:${getCurrentWindow().label}`
-    )
-    .catch(() => `${STORE_KEY_PREFIX}:browser`);
-  return queueKeyPromise;
-}
-
-export async function getMessageQueueOwnerKey(): Promise<string> {
-  return await queueKey();
-}
-
-export function isPrimaryMessageQueueOwnerKey(key: string): boolean {
-  return (
-    key === `${STORE_KEY_PREFIX}:main` || key === `${STORE_KEY_PREFIX}:browser`
-  );
-}
-
-export async function withMessageQueueStoreTransaction<T>(
-  operation: (store: Store, windowQueueKey: string) => Promise<T>
-): Promise<T> {
-  const store = await durableStore();
-  if (!store) {
-    throw new Error("durable message queue store is unavailable");
-  }
-  return await withStoreLock(async () => {
-    try {
-      await store.reload();
-    } catch (error) {
-      if (!isMissingStoreFileError(error)) throw error;
-      // Store.load() supplies the empty in-memory defaults when its file does
-      // not exist, but reload() reports ENOENT. Persist that initial snapshot
-      // once so the normal reload-before-transaction contract can begin.
-      await store.save();
-    }
-    return await operation(store, await queueKey());
-  });
-}
-
-export function serializeMessageQueueStoreMutation<T>(
-  operation: (store: Store, windowQueueKey: string) => Promise<T>
-): Promise<T> {
-  const next = mutationChain
-    .catch((error) => {
-      log.warn("[messageQueueRepository] previous mutation failed", error);
-    })
-    .then(() => withMessageQueueStoreTransaction(operation));
-  mutationChain = next;
-  return next;
-}
-
-async function readDeliveriesLocked(
-  store: Store
-): Promise<DurableMessageDelivery[]> {
-  const deliveries = validatedDurableMessageDeliveries(
-    await store.get<unknown>(DELIVERY_RECORDS_KEY)
-  );
-  if (legacyQueueMigrationComplete) return deliveries;
-  const legacyKeys = (await store.keys())
-    .filter((key) => key.startsWith(`${STORE_KEY_PREFIX}:`))
-    .sort();
-  if (legacyKeys.length === 0) {
-    legacyQueueMigrationComplete = true;
-    return deliveries;
-  }
-
-  const legacyEntries = await Promise.all(
-    legacyKeys.map(async (key) => [key, await store.get<unknown>(key)] as const)
-  );
-  const seenIds = new Set(deliveries.map((record) => record.id));
-  const seenIntentIds = new Set(
-    deliveries.map((record) => record.turnIntentId)
-  );
-  const migrated = [...deliveries];
-  for (const [key, stored] of legacyEntries) {
-    if (!Array.isArray(stored)) continue;
-    const recovered = boundQueuedMessages(stored.filter(isQueuedMessage));
-    for (const message of recovered) {
-      if (seenIds.has(message.id) || seenIntentIds.has(message.turnIntentId)) {
-        continue;
-      }
-      seenIds.add(message.id);
-      seenIntentIds.add(message.turnIntentId);
-      migrated.push({ ...message, originQueueKey: key });
-    }
-  }
-  const validated = validatedDurableMessageDeliveries(migrated);
-
-  // Commit the unified registry before removing any legacy owner. If this
-  // save fails, every queue:<window> key remains available for a later retry.
-  await store.set(DELIVERY_RECORDS_KEY, validated);
-  await store.save();
-
-  try {
-    for (const key of legacyKeys) await store.delete(key);
-    await store.save();
-  } catch (error) {
-    // Cleanup is best-effort but must not leave an in-memory Store instance
-    // pretending the legacy rows were removed when its save failed. Restore
-    // them so the next hydrate can retry the same idempotent migration.
-    for (const [key, stored] of legacyEntries) await store.set(key, stored);
-    try {
-      await store.save();
-    } catch (restoreError) {
-      log.warn(
-        "[messageQueueRepository] failed to restore legacy queue keys after cleanup failure",
-        restoreError
-      );
-    }
-    throw error;
-  }
-  legacyQueueMigrationComplete = true;
-  return validated;
-}
-
-interface DurableMessageDeliverySnapshot {
-  queue: QueuedMessage[];
-  active: ActiveMessageDelivery[];
-}
-
-async function readDeliverySnapshotLocked(
-  store: Store,
-  windowQueueKey: string
-): Promise<DurableMessageDeliverySnapshot> {
-  const records = await readDeliveriesLocked(store);
-  return {
-    queue: records
-      .filter(
-        (record): record is DurableQueuedMessage =>
-          record.status === "queued" && record.originQueueKey === windowQueueKey
-      )
-      .map(toQueuedMessage),
-    active: records.filter(isActiveDelivery),
-  };
-}
+export { withCanonicalConversationTurnLock } from "./canonicalConversationTurnLock";
+export {
+  validatedActiveMessageDeliveries,
+  validatedDurableMessageQueue,
+} from "./messageQueueRecordValidation";
+export {
+  getMessageQueueOwnerKey,
+  isPrimaryMessageQueueOwnerKey,
+  serializeMessageQueueStoreMutation,
+  withMessageQueueStoreTransaction,
+} from "./messageQueueStore";
 
 export async function loadDurableMessageDeliveries(): Promise<DurableMessageDeliverySnapshot> {
   return await withMessageQueueStoreTransaction(readDeliverySnapshotLocked);
@@ -700,50 +351,7 @@ export function assertDurableActiveDeliveryIsRootHead(
   });
 }
 
-export async function withCanonicalConversationTurnLock<T>(
-  root: import("@src/engines/SessionCore/conversations/conversationTypes").ConversationRootLocator,
-  run: () => Promise<T>
-): Promise<T> {
-  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
-  if (!locks?.request) {
-    throw new Error("canonical conversation lock is unavailable");
-  }
-  const name = `${CONVERSATION_TURN_LOCK_PREFIX}${conversationRootKey(root)}`;
-  let result:
-    | { ok: true; value: T }
-    | { ok: false; error: unknown }
-    | undefined;
-  try {
-    result = (await locks.request(
-      name,
-      { mode: "exclusive", ifAvailable: true },
-      async (lock) => {
-        if (!lock) {
-          return {
-            ok: false as const,
-            error: new QueuedConversationBusyError(),
-          };
-        }
-        try {
-          return { ok: true as const, value: await run() };
-        } catch (error) {
-          return { ok: false as const, error };
-        }
-      }
-    )) as typeof result;
-  } catch {
-    throw new Error("canonical conversation lock acquisition failed");
-  }
-  if (!result)
-    throw new Error("canonical conversation lock returned no result");
-  if (!result.ok) throw result.error;
-  return result.value;
-}
-
 export function resetMessageQueueRepositoryForTests(): void {
-  storePromise = null;
-  queueKeyPromise = null;
-  mutationChain = Promise.resolve();
-  fallbackStoreLock = Promise.resolve();
-  legacyQueueMigrationComplete = false;
+  resetMessageQueueStoreForTests();
+  resetMessageQueueDeliveryRecordsForTests();
 }

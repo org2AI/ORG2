@@ -2,133 +2,83 @@
  * useOpenUrlInBrowser
  *
  * Single always-mounted listener for the "open-url-in-browser" CustomEvent.
- * Adds the URL as a Browser tab in the background without navigating away
- * from the current page. A toast notification lets the user know a tab was
- * opened; they can switch to Browser (My Station or Agent Station) at will.
+ * Opening a URL means showing it: the tab is added (or the open one focused)
+ * and My Station is brought on screen through {@link revealMyStation} — the
+ * shared reveal every workstation-opening path uses. There is no notification
+ * to dismiss and no "Go to Browser" step.
+ *
+ * Taking a request calls `preventDefault()` on the event: that is how
+ * `openLink` (`@src/util/ui/openLink`) knows this document has a Browser,
+ * and it sends the URL to the system browser when none takes it.
  *
  * Mount this hook exactly once, at the app root (inside BrowserProvider).
  * All per-surface ad-hoc listeners should be removed in favour of this hook.
  */
-import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useEffectEvent } from "react";
 
-import Message from "@src/components/Message";
 import { ROUTES } from "@src/config/routes";
 import { useBrowserContext } from "@src/contexts/workstation";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
-import { stationModeAtom } from "@src/store/ui/simulatorAtom";
+import { createBrowserSessionTabId } from "@src/store/workstation/browser/tabs";
+import { focusTabAtom } from "@src/store/workstation/tabRegistry";
+import {
+  getInstrumentedStore,
+  isStoreInitialized,
+} from "@src/util/core/state/instrumentedStore";
+import {
+  OPEN_URL_IN_BROWSER_EVENT,
+  type OpenUrlInBrowserDetail,
+} from "@src/util/ui/openLink";
+import { revealMyStation } from "@src/util/ui/revealMyStation";
 import {
   comparableBrowserUrl,
   normalizeBrowserInput,
 } from "@src/util/url/browserUrl";
 
+/**
+ * Make the session's tab the active workstation tab, so the content host
+ * follows it to the Browser. A brand-new session has no tab yet — the
+ * sessions → tabs sync in `useBrowserTabSync` creates and activates it — and
+ * `focusTabAtom` ignores a tab id that is not in the pool.
+ */
+function focusBrowserSessionTab(sessionId: string): void {
+  if (!isStoreInitialized()) return;
+  getInstrumentedStore().set(focusTabAtom, {
+    tabId: createBrowserSessionTabId(sessionId),
+  });
+}
+
 export function useOpenUrlInBrowser(): void {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const stationMode = useAtomValue(stationModeAtom);
-  const setStationMode = useSetAtom(stationModeAtom);
-  const setChatPanelMaximized = useSetAtom(chatPanelMaximizedAtom);
   const { sessions, handleAddSession, handleSessionClick } =
     useBrowserContext();
 
-  const sessionsRef = useRef(sessions);
-  useEffect(() => {
-    sessionsRef.current = sessions;
-  }, [sessions]);
+  // An Effect Event reads the latest render's values, so the listener below
+  // subscribes once without mirroring each value into a ref.
+  const openUrl = useEffectEvent((event: Event) => {
+    const { url } = (event as CustomEvent<OpenUrlInBrowserDetail>).detail;
+    const normalized = normalizeBrowserInput(url);
+    if (!normalized) return;
+    event.preventDefault();
 
-  const stationModeRef = useRef(stationMode);
-  useEffect(() => {
-    stationModeRef.current = stationMode;
-  }, [stationMode]);
+    const comparableUrl = comparableBrowserUrl(normalized);
+    const existing = sessions.find(
+      (session) => comparableBrowserUrl(session.url) === comparableUrl
+    );
 
-  const setStationModeRef = useRef(setStationMode);
-  useEffect(() => {
-    setStationModeRef.current = setStationMode;
-  }, [setStationMode]);
-
-  const setChatPanelMaximizedRef = useRef(setChatPanelMaximized);
-  useEffect(() => {
-    setChatPanelMaximizedRef.current = setChatPanelMaximized;
-  }, [setChatPanelMaximized]);
-
-  const pathnameRef = useRef(location.pathname);
-  useEffect(() => {
-    pathnameRef.current = location.pathname;
-  }, [location.pathname]);
-
-  const navigateRef = useRef(navigate);
-  useEffect(() => {
-    navigateRef.current = navigate;
-  }, [navigate]);
-
-  const tRef = useRef(t);
-  useEffect(() => {
-    tRef.current = t;
-  }, [t]);
-
-  useEffect(() => {
-    function handleEvent(event: Event): void {
-      const { url, navigate: shouldNavigate } = (
-        event as CustomEvent<{ url: string; navigate?: boolean }>
-      ).detail;
-      if (!url) return;
-
-      const normalized = normalizeBrowserInput(url);
-      if (!normalized) return;
-
-      const comparableUrl = comparableBrowserUrl(normalized);
-      const existing = sessionsRef.current.find(
-        (session) => comparableBrowserUrl(session.url) === comparableUrl
-      );
-
-      if (existing) {
-        handleSessionClick(existing.id);
-      } else {
-        handleAddSession(normalized);
-      }
-
-      const alreadyOnBrowser =
-        stationModeRef.current === "my-station" &&
-        pathnameRef.current === ROUTES.workStation.browser.path;
-
-      if (shouldNavigate) {
-        setChatPanelMaximizedRef.current(false);
-        setStationModeRef.current("my-station");
-        navigateRef.current(ROUTES.workStation.browser.path);
-        return;
-      }
-
-      if (alreadyOnBrowser) {
-        // Already on the Browser page — tab switch is enough, no toast needed.
-        return;
-      }
-
-      // Stay on the current page; show a toast with a "Go to Browser" button.
-      Message.info({
-        content: normalized,
-        title: tRef.current("browser.openedInBrowser"),
-        closable: true,
-        duration: 6000,
-        cancel: {
-          label: tRef.current("browser.goToBrowser"),
-          closeOnClick: true,
-          onClick: () => {
-            setChatPanelMaximizedRef.current(false);
-            setStationModeRef.current("my-station");
-            navigateRef.current(ROUTES.workStation.browser.path);
-          },
-        },
-      });
+    if (existing) {
+      handleSessionClick(existing.id);
+      focusBrowserSessionTab(existing.id);
+    } else {
+      focusBrowserSessionTab(handleAddSession(normalized));
     }
 
-    window.addEventListener("open-url-in-browser", handleEvent);
+    revealMyStation({ path: ROUTES.workStation.browser.path });
+  });
+
+  useEffect(() => {
+    const handleEvent = (event: Event) => openUrl(event);
+    window.addEventListener(OPEN_URL_IN_BROWSER_EVENT, handleEvent);
     return () => {
-      window.removeEventListener("open-url-in-browser", handleEvent);
+      window.removeEventListener(OPEN_URL_IN_BROWSER_EVENT, handleEvent);
     };
-    // handleAddSession and handleSessionClick are stable useCallback refs from
-    // BrowserContext, so this effect only mounts/unmounts once.
-  }, [handleAddSession, handleSessionClick]);
+  }, []);
 }

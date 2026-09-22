@@ -29,6 +29,10 @@ const SCENARIO_FILTER = (process.env.E2E_CHAT_RENDERING_SCENARIOS ?? "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
+const EXPAND_KIND_FILTER = (process.env.E2E_EXPAND_KINDS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 function shouldRunScenario(name, aliases = []) {
   return (
@@ -54,6 +58,31 @@ const SKIP_CHAT_TOOLS = new Set([
 
 async function execJS(script) {
   return browser.executeScript(script, []);
+}
+
+async function exposeVisibleViewportLifecycleToDriver() {
+  const visibility = await execJS(`
+    // macOS leaves the temporary WebDriver app behind the invoking app. The
+    // production controller correctly suspends work for a hidden document;
+    // these rendered interaction cases need the active-document lifecycle.
+    if (document.visibilityState === 'hidden') {
+      // A background WebView also throttles requestAnimationFrame even after
+      // its visibility contract is exposed. Drive the controller's normal
+      // coalesced callback through a zero-delay task for this test process.
+      window.requestAnimationFrame = (callback) =>
+        window.setTimeout(() => callback(performance.now()), 0);
+      window.cancelAnimationFrame = (id) => window.clearTimeout(id);
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+    return document.visibilityState;
+  `);
+  if (visibility !== "visible") {
+    throw new Error(`viewport test document stayed ${visibility}`);
+  }
 }
 
 async function waitForFrontendReady() {
@@ -3155,6 +3184,608 @@ async function assertKanbanSessionSearchRendered() {
   );
 }
 
+const VISIBLE_TRANSCRIPT_SCROLLER_EXPRESSION = `Array.from(
+  document.querySelectorAll('[data-testid="chat-history-scroll-container"]')
+).find((element) => {
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+})`;
+
+function makeLongRenderedText(marker, lineCount = 72) {
+  return Array.from(
+    { length: lineCount },
+    (_, index) => `${marker}_${String(index).padStart(3, "0")} rendered line`
+  ).join("\n\n");
+}
+
+function setUserEventText(event, text) {
+  event.displayText = text;
+  event.result = { ...event.result, message: text };
+  return event;
+}
+
+function setAssistantEventText(event, text, status = "completed") {
+  event.displayText = text;
+  event.displayStatus = status;
+  event.result = {
+    ...event.result,
+    content: text,
+    observation: text,
+    status,
+  };
+  return event;
+}
+
+function makeExpandFixtureEvents(sessionId, kind, marker) {
+  const inConversationOrder = (events) => {
+    const firstCreatedAt = Date.now() - events.length * 1_000;
+    events.forEach((event, index) => {
+      event.createdAt = new Date(firstCreatedAt + index * 1_000).toISOString();
+    });
+    return events;
+  };
+  const filler = Array.from({ length: 8 }, (_, index) => [
+    makeUserEvent(sessionId, `expand-filler-${kind}-${index}`),
+    makeAssistantEvent(sessionId, `expand-filler-${kind}-${index}`),
+  ]).flat();
+  const targetUser = makeUserEvent(sessionId, `expand-target-${kind}`);
+  const runningTail = setAssistantEventText(
+    makeAssistantEvent(sessionId, `expand-tail-${kind}`),
+    makeLongRenderedText(`EXPAND_RUNNING_TAIL_${kind}_${RUN_ID}`, 40),
+    "running"
+  );
+
+  if (kind === "user") {
+    return {
+      events: inConversationOrder([
+        ...filler,
+        setUserEventText(targetUser, makeLongRenderedText(marker)),
+        runningTail,
+      ]),
+      runningTail,
+      targetSelector: '[data-testid="chat-message-user-editable"]',
+    };
+  }
+
+  if (kind === "code") {
+    const code = Array.from(
+      { length: 90 },
+      (_, index) => `const ${marker}_${index} = ${index};`
+    ).join("\n");
+    return {
+      events: inConversationOrder([
+        ...filler,
+        targetUser,
+        setAssistantEventText(
+          makeAssistantEvent(sessionId, `expand-target-${kind}`),
+          `\`\`\`ts\n${code}\n\`\`\``
+        ),
+        runningTail,
+      ]),
+      runningTail,
+      targetSelector: ".chat-code-block__code-container",
+    };
+  }
+
+  if (kind === "tool") {
+    const tool = makeToolEvent(sessionId, `expand-target-${kind}`, 0, {
+      name: "manage_file_history",
+      actions: [{ name: "list" }],
+      chatBlock: "fallback",
+    });
+    const output = makeLongRenderedText(marker, 96);
+    tool.uiCanonical = "manage_file_history";
+    tool.displayText = output;
+    tool.result = {
+      ...tool.result,
+      content: output,
+      observation: output,
+      output,
+      stdout: output,
+    };
+    const closingAssistant = setAssistantEventText(
+      makeAssistantEvent(sessionId, `expand-target-${kind}-done`),
+      `Tool output fixture complete: ${marker}`
+    );
+    const events = inConversationOrder([
+      ...filler,
+      targetUser,
+      tool,
+      closingAssistant,
+    ]);
+    return {
+      events,
+      runningTail: closingAssistant,
+      runtimeStatus: "idle",
+      targetSelector: ".block-output__pre",
+      toolEventId: tool.id,
+    };
+  }
+
+  return {
+    events: inConversationOrder([
+      ...filler,
+      targetUser,
+      setAssistantEventText(
+        makeAssistantEvent(sessionId, `expand-target-${kind}`),
+        makeLongRenderedText(marker)
+      ),
+      runningTail,
+    ]),
+    runningTail,
+    targetSelector: '[data-testid="chat-message-assistant"]',
+  };
+}
+
+async function locateExpandTarget(targetSelector, marker, controlTag) {
+  return execJS(`
+    const scroller = ${VISIBLE_TRANSCRIPT_SCROLLER_EXPRESSION};
+    const target = Array.from(document.querySelectorAll(${JSON.stringify(
+      targetSelector
+    )})).find((candidate) =>
+      (candidate.textContent || '').includes(${JSON.stringify(marker)})
+    );
+    if (!scroller || !target) return null;
+    let owner = target;
+    let control = null;
+    while (owner && owner !== scroller) {
+      control = owner.querySelector('[data-testid="expand-overlay-toggle"]');
+      if (control) break;
+      owner = owner.parentElement;
+    }
+    const rootTop = scroller.getBoundingClientRect().top;
+    const anchors = Array.from(
+      scroller.querySelectorAll('[data-transcript-anchor-id]')
+    );
+    let closestAbove = null;
+    let firstBelow = null;
+    for (const candidate of anchors) {
+      const rect = candidate.getBoundingClientRect();
+      if (rect.bottom <= rootTop) continue;
+      if (rect.top <= rootTop) {
+        closestAbove = candidate;
+        continue;
+      }
+      firstBelow = candidate;
+      break;
+    }
+    const anchor = closestAbove || firstBelow;
+    if (!control || !anchor) return null;
+    const controlTag = ${JSON.stringify(controlTag)};
+    control.setAttribute('data-e2e-expand-control', controlTag);
+    control.__e2eExpandClickTags = control.__e2eExpandClickTags || new Set();
+    if (!control.__e2eExpandClickTags.has(controlTag)) {
+      control.__e2eExpandClickTags.add(controlTag);
+      control.addEventListener('click', () => {
+        const clickScroller = ${VISIBLE_TRANSCRIPT_SCROLLER_EXPRESSION};
+        if (!clickScroller) return;
+        const clickRootTop = clickScroller.getBoundingClientRect().top;
+        const clickAnchors = Array.from(
+          clickScroller.querySelectorAll('[data-transcript-anchor-id]')
+        );
+        let clickClosestAbove = null;
+        let clickFirstBelow = null;
+        for (const candidate of clickAnchors) {
+          const rect = candidate.getBoundingClientRect();
+          if (rect.bottom <= clickRootTop) continue;
+          if (rect.top <= clickRootTop) {
+            clickClosestAbove = candidate;
+            continue;
+          }
+          clickFirstBelow = candidate;
+          break;
+        }
+        const clickAnchor = clickClosestAbove || clickFirstBelow;
+        if (!clickScroller || !clickAnchor) return;
+        window.__e2eExpandClickPositions = window.__e2eExpandClickPositions || {};
+        window.__e2eExpandClickPositions[controlTag] = {
+          anchorId: clickAnchor.getAttribute('data-transcript-anchor-id'),
+          anchorOffset:
+            clickAnchor.getBoundingClientRect().top -
+            clickScroller.getBoundingClientRect().top,
+          scrollTop: clickScroller.scrollTop,
+        };
+      }, { capture: true, once: true });
+    }
+    return {
+      anchorId: anchor.getAttribute('data-transcript-anchor-id'),
+      anchorOffset: anchor.getBoundingClientRect().top - rootTop,
+      expanded: control.getAttribute('aria-expanded'),
+      scrollTop: scroller.scrollTop,
+      tailTop: Math.max(0, scroller.scrollHeight - scroller.clientHeight),
+    };
+  `);
+}
+
+async function openToolOutput(toolEventId, label) {
+  const headerTag = `tool-header-${label}-${RUN_ID}`;
+  try {
+    await browser.waitUntil(
+      async () =>
+        execJS(`
+          const roots = Array.from(document.querySelectorAll(
+            '[data-tool-call-event-id=${JSON.stringify(toolEventId)}]'
+          ));
+          const header = roots
+            .flatMap((root) => Array.from(root.querySelectorAll('[role="button"][aria-expanded]')))
+            .find((candidate) => candidate.getAttribute('aria-expanded') === 'false');
+          if (!header) return false;
+          header.setAttribute('data-e2e-tool-output-header', ${JSON.stringify(
+            headerTag
+          )});
+          return true;
+        `),
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 100,
+        timeoutMsg: `${label} did not render its collapsed tool header`,
+      }
+    );
+  } catch (error) {
+    const diagnostics = await execJS(`
+      return {
+        toolRoots: Array.from(document.querySelectorAll('[data-tool-call-event-id]')).map((node) => ({
+          id: node.getAttribute('data-tool-call-event-id'),
+          name: node.getAttribute('data-tool-call-name'),
+          text: (node.textContent || '').slice(0, 160),
+        })),
+        expandableHeaders: Array.from(document.querySelectorAll('[role="button"][aria-expanded]')).map((node) => ({
+          expanded: node.getAttribute('aria-expanded'),
+          text: (node.textContent || '').slice(0, 160),
+        })),
+        bodyTail: (document.body.innerText || '').slice(-2000),
+      };
+    `);
+    throw new Error(
+      `${label} did not render its collapsed tool header: ${JSON.stringify(diagnostics)}`,
+      { cause: error }
+    );
+  }
+  const header = await browser.$(
+    `[data-e2e-tool-output-header="${headerTag}"]`
+  );
+  await header.click();
+  await browser.waitUntil(
+    async () =>
+      execJS(`
+        const header = document.querySelector(
+          '[data-e2e-tool-output-header=${JSON.stringify(headerTag)}]'
+        );
+        return header?.getAttribute('aria-expanded') === 'true';
+      `),
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: `${label} did not open its tool output`,
+    }
+  );
+}
+
+async function locateTurnCollapseControl(expanded, controlTag) {
+  return execJS(`
+    const scroller = ${VISIBLE_TRANSCRIPT_SCROLLER_EXPRESSION};
+    if (!scroller) return null;
+    const controls = Array.from(
+      document.querySelectorAll('[data-testid="turn-collapse-toggle"]')
+    ).filter((candidate) => {
+      const rect = candidate.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    const control = controls
+      .filter((candidate) => candidate.getAttribute('aria-expanded') === ${JSON.stringify(
+        String(expanded)
+      )})
+      .at(-1);
+    if (!control) return null;
+    const rootTop = scroller.getBoundingClientRect().top;
+    const anchors = Array.from(
+      scroller.querySelectorAll('[data-transcript-anchor-id]')
+    );
+    let closestAbove = null;
+    let firstBelow = null;
+    for (const candidate of anchors) {
+      const rect = candidate.getBoundingClientRect();
+      if (rect.bottom <= rootTop) continue;
+      if (rect.top <= rootTop) {
+        closestAbove = candidate;
+        continue;
+      }
+      firstBelow = candidate;
+      break;
+    }
+    const anchor = closestAbove || firstBelow;
+    if (!anchor) return null;
+    const controlTag = ${JSON.stringify(controlTag)};
+    control.setAttribute('data-e2e-turn-collapse-control', controlTag);
+    control.__e2eTurnCollapseTags = control.__e2eTurnCollapseTags || new Set();
+    if (!control.__e2eTurnCollapseTags.has(controlTag)) {
+      control.__e2eTurnCollapseTags.add(controlTag);
+      control.addEventListener('click', () => {
+        const clickScroller = ${VISIBLE_TRANSCRIPT_SCROLLER_EXPRESSION};
+        if (!clickScroller) return;
+        const clickRootTop = clickScroller.getBoundingClientRect().top;
+        const clickAnchors = Array.from(
+          clickScroller.querySelectorAll('[data-transcript-anchor-id]')
+        );
+        let clickClosestAbove = null;
+        let clickFirstBelow = null;
+        for (const candidate of clickAnchors) {
+          const rect = candidate.getBoundingClientRect();
+          if (rect.bottom <= clickRootTop) continue;
+          if (rect.top <= clickRootTop) {
+            clickClosestAbove = candidate;
+            continue;
+          }
+          clickFirstBelow = candidate;
+          break;
+        }
+        const clickAnchor = clickClosestAbove || clickFirstBelow;
+        if (!clickAnchor) return;
+        window.__e2eTurnCollapseClickPositions =
+          window.__e2eTurnCollapseClickPositions || {};
+        window.__e2eTurnCollapseClickPositions[controlTag] = {
+          anchorId: clickAnchor.getAttribute('data-transcript-anchor-id'),
+          anchorOffset:
+            clickAnchor.getBoundingClientRect().top -
+            clickScroller.getBoundingClientRect().top,
+          scrollTop: clickScroller.scrollTop,
+        };
+      }, { capture: true, once: true });
+    }
+    return {
+      anchorId: anchor.getAttribute('data-transcript-anchor-id'),
+      anchorOffset: anchor.getBoundingClientRect().top - rootTop,
+      expanded: control.getAttribute('aria-expanded'),
+      scrollTop: scroller.scrollTop,
+      tailTop: Math.max(0, scroller.scrollHeight - scroller.clientHeight),
+    };
+  `);
+}
+
+async function clickTurnCollapseControl({ expanded, label }) {
+  const controlTag = `turn-collapse-${label}-${expanded}-${RUN_ID}`;
+  let before = null;
+  await browser.waitUntil(
+    async () => {
+      before = await locateTurnCollapseControl(!expanded, controlTag);
+      return Boolean(before?.anchorId);
+    },
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: `${label} turn collapse control was not ready`,
+    }
+  );
+  if (!before?.anchorId) {
+    throw new Error(
+      `${label} turn collapse control was not ready: ${JSON.stringify(before)}`
+    );
+  }
+  const control = await browser.$(
+    `[data-e2e-turn-collapse-control="${controlTag}"]`
+  );
+  await control.moveTo();
+  await control.click();
+  const clickPosition = await execJS(`
+    return window.__e2eTurnCollapseClickPositions?.[${JSON.stringify(
+      controlTag
+    )}] ?? null;
+  `);
+  if (!clickPosition?.anchorId) {
+    throw new Error(`${label} did not record its click-time reading anchor`);
+  }
+  let latest = null;
+  await browser.waitUntil(
+    async () => {
+      latest = await locateTurnCollapseControl(expanded, `wait-${controlTag}`);
+      return Boolean(
+        latest &&
+        latest.anchorId === clickPosition.anchorId &&
+        Math.abs(
+          latest.anchorOffset -
+            (clickPosition.anchorOffset +
+              Math.max(0, clickPosition.scrollTop - latest.tailTop))
+        ) <= 2
+      );
+    },
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: `${label} did not preserve its reading anchor`,
+    }
+  );
+  return clickPosition;
+}
+
+async function waitForLatestTurnCollapseState(label) {
+  let state = null;
+  await browser.waitUntil(
+    async () => {
+      state = await execJS(`
+        const controls = Array.from(
+          document.querySelectorAll('[data-testid="turn-collapse-toggle"]')
+        ).filter((candidate) => {
+          const rect = candidate.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        return controls.at(-1)?.getAttribute('aria-expanded') ?? null;
+      `);
+      return state === "true" || state === "false";
+    },
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: `${label} did not render its turn collapse control`,
+    }
+  );
+  return state === "true";
+}
+
+async function waitForTranscriptTail(label) {
+  try {
+    await browser.waitUntil(
+      async () =>
+        execJS(`
+          const scroller = ${VISIBLE_TRANSCRIPT_SCROLLER_EXPRESSION};
+          return Boolean(
+            scroller &&
+            scroller.scrollTop >= scroller.scrollHeight - scroller.clientHeight - 40
+          );
+        `),
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 100,
+        timeoutMsg: `${label} did not settle at the transcript tail`,
+      }
+    );
+  } catch (error) {
+    const diagnostics = await execJS(`
+      const scroller = ${VISIBLE_TRANSCRIPT_SCROLLER_EXPRESSION};
+      return scroller ? {
+        clientHeight: scroller.clientHeight,
+        documentHasFocus: document.hasFocus(),
+        documentVisibility: document.visibilityState,
+        scrollHeight: scroller.scrollHeight,
+        scrollTop: scroller.scrollTop,
+        distanceFromNativeBottom:
+          scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop,
+        anchors: scroller.querySelectorAll('[data-transcript-anchor-id]').length,
+      } : null;
+    `);
+    throw new Error(
+      `${label} did not settle at the transcript tail: ${JSON.stringify(diagnostics)}`,
+      { cause: error }
+    );
+  }
+}
+
+async function waitForExpandAnchor({
+  targetSelector,
+  marker,
+  expanded,
+  anchorId,
+  anchorOffset,
+  anchorScrollTop,
+  label,
+}) {
+  let latest = null;
+  try {
+    await browser.waitUntil(
+      async () => {
+        latest = await locateExpandTarget(
+          targetSelector,
+          marker,
+          `wait-${label}-${expanded}`
+        );
+        return Boolean(
+          latest &&
+          latest.expanded === String(expanded) &&
+          latest.anchorId === anchorId &&
+          Math.abs(
+            latest.anchorOffset -
+              (anchorOffset + Math.max(0, anchorScrollTop - latest.tailTop))
+          ) <= 2
+        );
+      },
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 100,
+        timeoutMsg: `${label} did not preserve its reading anchor`,
+      }
+    );
+  } catch (error) {
+    const diagnostics = await execJS(`
+      const scroller = ${VISIBLE_TRANSCRIPT_SCROLLER_EXPRESSION};
+      return {
+        scroller: scroller ? {
+          clientHeight: scroller.clientHeight,
+          scrollHeight: scroller.scrollHeight,
+          scrollTop: scroller.scrollTop,
+          anchors: Array.from(scroller.querySelectorAll('[data-transcript-anchor-id]')).map((node) => ({
+            id: node.getAttribute('data-transcript-anchor-id'),
+            top: node.getBoundingClientRect().top - scroller.getBoundingClientRect().top,
+          })),
+          expandStates: Array.from(scroller.querySelectorAll('[data-testid="expand-overlay-toggle"]')).map((node) => node.getAttribute('aria-expanded')),
+        } : null,
+        markerPresent: (document.body.textContent || '').includes(${JSON.stringify(marker)}),
+      };
+    `);
+    throw new Error(
+      `${label} moved the reading anchor: expected=${JSON.stringify({ anchorId, anchorOffset, anchorScrollTop, expanded })} latest=${JSON.stringify(latest)} diagnostics=${JSON.stringify(diagnostics)}`,
+      { cause: error }
+    );
+  }
+}
+
+async function clickExpandControl({ targetSelector, marker, expanded, label }) {
+  const controlTag = `expand-${label}-${expanded}-${RUN_ID}`;
+  const before = await locateExpandTarget(targetSelector, marker, controlTag);
+  if (!before?.anchorId || before.expanded !== String(!expanded)) {
+    throw new Error(
+      `${label} expand control was not ready: ${JSON.stringify(before)}`
+    );
+  }
+  const control = await browser.$(`[data-e2e-expand-control="${controlTag}"]`);
+  await control.moveTo();
+  const settledBefore = await locateExpandTarget(
+    targetSelector,
+    marker,
+    controlTag
+  );
+  if (!settledBefore?.anchorId) {
+    throw new Error(`${label} lost its anchor before the click`);
+  }
+  await control.click();
+  const clickPosition = await execJS(`
+    return window.__e2eExpandClickPositions?.[${JSON.stringify(controlTag)}] ?? null;
+  `);
+  if (!clickPosition?.anchorId) {
+    throw new Error(`${label} did not record its click-time reading anchor`);
+  }
+  await waitForExpandAnchor({
+    targetSelector,
+    marker,
+    expanded,
+    anchorId: clickPosition.anchorId,
+    anchorOffset: clickPosition.anchorOffset,
+    anchorScrollTop: clickPosition.scrollTop,
+    label,
+  });
+  return clickPosition;
+}
+
+async function clickScrollToBottom(label) {
+  await browser.waitUntil(
+    async () =>
+      execJS(`
+        return Array.from(
+          document.querySelectorAll('[data-testid="chat-scroll-to-bottom"]')
+        ).some((button) => {
+          const rect = button.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+      `),
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: `${label} did not expose the scroll-to-bottom control`,
+    }
+  );
+  const clicked = await execJS(`
+    const button = Array.from(
+      document.querySelectorAll('[data-testid="chat-scroll-to-bottom"]')
+    ).find((candidate) => {
+      const rect = candidate.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    if (!button) return false;
+    button.click();
+    return true;
+  `);
+  if (!clicked) throw new Error(`${label} scroll-to-bottom click failed`);
+  await waitForTranscriptTail(`${label} explicit follow`);
+}
+
 describe("Core chat rendering UI", () => {
   before(async () => {
     await waitForApp();
@@ -3294,23 +3925,194 @@ describe("Core chat rendering UI", () => {
     await assertOneHundredRoundSkeletonRemainsNavigable();
   });
 
-  it("keeps manual scroll position while the active assistant event streams", async function () {
+  it("keeps the same reading anchor when rendered chat content expands or collapses", async function () {
+    if (!shouldRunScenario("expand-collapse-reading-anchor")) {
+      this.skip();
+      return;
+    }
+
+    await exposeVisibleViewportLifecycleToDriver();
+
+    const expandKinds =
+      EXPAND_KIND_FILTER.length > 0
+        ? EXPAND_KIND_FILTER
+        : ["agent", "user", "code", "tool"];
+    for (const kind of expandKinds) {
+      const sessionId = `sdeagent-e2e-expand-${kind}-${RUN_ID}`;
+      const marker = `EXPAND_${kind.toUpperCase()}_${RUN_ID}`;
+      const fixture = makeExpandFixtureEvents(sessionId, kind, marker);
+      const seeded = await invokeE2E(
+        "seedChatEvents",
+        sessionId,
+        fixture.events,
+        { runtimeStatus: fixture.runtimeStatus ?? "running" }
+      );
+      if (!seeded?.ok) {
+        throw new Error(
+          `${kind} expand seed failed: ${seeded?.error ?? "unknown"}`
+        );
+      }
+
+      if (fixture.toolEventId) {
+        const turnInitiallyExpanded = await waitForLatestTurnCollapseState(
+          `${kind} fixture`
+        );
+        if (turnInitiallyExpanded) {
+          await clickTurnCollapseControl({
+            expanded: false,
+            label: `${kind} initial turn collapse`,
+          });
+        }
+        await clickTurnCollapseControl({
+          expanded: true,
+          label: `${kind} turn expand`,
+        });
+        await openToolOutput(fixture.toolEventId, `${kind} fixture`);
+      }
+
+      try {
+        await browser.waitUntil(
+          async () => {
+            const state = await locateExpandTarget(
+              fixture.targetSelector,
+              marker,
+              `ready-${kind}-${RUN_ID}`
+            );
+            return state?.expanded === "false";
+          },
+          {
+            timeout: RENDER_TIMEOUT_MS,
+            interval: 100,
+            timeoutMsg: `${kind} did not render its real collapsed Expand control`,
+          }
+        );
+      } catch (error) {
+        const diagnostics = await execJS(`
+          const targets = Array.from(document.querySelectorAll(${JSON.stringify(
+            fixture.targetSelector
+          )})).filter((candidate) =>
+            (candidate.textContent || '').includes(${JSON.stringify(marker)})
+          );
+          return {
+            markerPresent: (document.body.textContent || '').includes(${JSON.stringify(marker)}),
+            targets: targets.map((target) => ({
+              clientHeight: target.clientHeight,
+              scrollHeight: target.scrollHeight,
+              textLength: (target.textContent || '').length,
+              toggles: target.querySelectorAll('[data-testid="expand-overlay-toggle"]').length,
+              ancestorToggles: target.closest('[data-transcript-anchor-id]')?.querySelectorAll('[data-testid="expand-overlay-toggle"]').length ?? 0,
+            })),
+            renderedUserMessages: document.querySelectorAll('[data-testid="chat-message-user-editable"]').length,
+          };
+        `);
+        throw new Error(
+          `${kind} did not render its real collapsed Expand control: ${JSON.stringify(diagnostics)}`,
+          { cause: error }
+        );
+      }
+      await clickExpandControl({
+        targetSelector: fixture.targetSelector,
+        marker,
+        expanded: true,
+        label: `${kind} expand`,
+      });
+
+      if (kind === "agent") {
+        const expandedPosition = await locateExpandTarget(
+          fixture.targetSelector,
+          marker,
+          `streaming-${kind}-${RUN_ID}`
+        );
+        if (!expandedPosition?.anchorId) {
+          throw new Error("agent expand lost its transcript anchor");
+        }
+        const streamedText = `${fixture.runningTail.displayText}\n\n${makeLongRenderedText(
+          `EXPAND_STREAM_AFTER_CLICK_${RUN_ID}`,
+          32
+        )}`;
+        const streamed = await invokeE2E(
+          "streamChatEventText",
+          sessionId,
+          fixture.runningTail.id,
+          streamedText
+        );
+        if (!streamed?.ok) {
+          throw new Error(
+            `agent post-expand stream failed: ${streamed?.error ?? "unknown"}`
+          );
+        }
+        await waitForExpandAnchor({
+          targetSelector: fixture.targetSelector,
+          marker,
+          expanded: true,
+          anchorId: expandedPosition.anchorId,
+          anchorOffset: expandedPosition.anchorOffset,
+          anchorScrollTop: expandedPosition.scrollTop,
+          label: "agent stream after historical expand",
+        });
+      }
+
+      await clickExpandControl({
+        targetSelector: fixture.targetSelector,
+        marker,
+        expanded: false,
+        label: `${kind} collapse`,
+      });
+      if (fixture.toolEventId) {
+        await clickTurnCollapseControl({
+          expanded: false,
+          label: `${kind} turn collapse`,
+        });
+      }
+      if (!fixture.toolEventId) {
+        await clickScrollToBottom(`${kind} collapse`);
+      }
+
+      if (kind === "agent") {
+        const resumedText = `${fixture.runningTail.displayText}\n\n${makeLongRenderedText(
+          `EXPAND_STREAM_AFTER_FOLLOW_${RUN_ID}`,
+          12
+        )}`;
+        const resumed = await invokeE2E(
+          "streamChatEventText",
+          sessionId,
+          fixture.runningTail.id,
+          resumedText
+        );
+        if (!resumed?.ok) {
+          throw new Error(
+            `agent resumed stream failed: ${resumed?.error ?? "unknown"}`
+          );
+        }
+        await waitForTranscriptTail("agent stream after explicit follow");
+      }
+    }
+  });
+
+  it("keeps manual scroll position while the rendered transcript grows", async function () {
     if (!shouldRunScenario("streaming-manual-scroll-pin")) {
       this.skip();
       return;
     }
 
+    await exposeVisibleViewportLifecycleToDriver();
+
     const sessionId = `sdeagent-e2e-stream-scroll-${RUN_ID}`;
-    const events = Array.from({ length: 48 }, (_, index) => [
-      makeUserEvent(sessionId, 10_000 + index),
-      makeAssistantEvent(sessionId, 10_000 + index),
-    ]).flat();
-    const last = events.at(-1);
-    last.displayStatus = "running";
-    last.result = { ...last.result, status: "running" };
-    const seeded = await invokeE2E("seedChatEvents", sessionId, events, {
-      runtimeStatus: "running",
-    });
+    const visibleScrollerExpression = `Array.from(
+      document.querySelectorAll('[data-testid="chat-history-scroll-container"]')
+    ).find((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    })`;
+    const marker = `STREAM_SCROLL_HISTORY_${RUN_ID}`;
+    const fixture = makeExpandFixtureEvents(sessionId, "agent", marker);
+    const last = fixture.runningTail;
+    const seeded = await invokeE2E(
+      "seedChatEvents",
+      sessionId,
+      fixture.events,
+      { runtimeStatus: "running" }
+    );
     if (!seeded?.ok) {
       throw new Error(
         `stream-scroll initial seed failed: ${seeded?.error ?? "unknown"}`
@@ -3318,70 +4120,126 @@ describe("Core chat rendering UI", () => {
     }
 
     await browser.waitUntil(
+      async () => {
+        const state = await locateExpandTarget(
+          fixture.targetSelector,
+          marker,
+          `ready-stream-scroll-${RUN_ID}`
+        );
+        return state?.expanded === "false";
+      },
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 100,
+        timeoutMsg: "stream-scroll history did not render its Expand control",
+      }
+    );
+    await clickExpandControl({
+      targetSelector: fixture.targetSelector,
+      marker,
+      expanded: true,
+      label: "stream-scroll history expand",
+    });
+    await clickScrollToBottom("stream-scroll setup");
+    const movedByWheel = await execJS(`
+      const scroller = ${visibleScrollerExpression};
+      if (!scroller) return false;
+      scroller.dispatchEvent(
+        new WheelEvent('wheel', { bubbles: true, deltaY: -120 })
+      );
+      scroller.scrollTo({
+        top: Math.max(0, scroller.scrollTop - scroller.clientHeight * 2.7),
+        behavior: 'auto',
+      });
+      scroller.dispatchEvent(new Event('scroll', { bubbles: true }));
+      return true;
+    `);
+    if (!movedByWheel) {
+      throw new Error("detached-reading setup could not find the transcript");
+    }
+    await browser.waitUntil(
       async () =>
         execJS(`
-          const scroller = document.querySelector('[data-testid="chat-history-scroll-container"]');
-          if (!scroller || scroller.scrollHeight <= scroller.clientHeight * 2) return false;
-          scroller.dispatchEvent(new WheelEvent('wheel', { deltaY: -120, bubbles: true }));
-          scroller.scrollTop = 0;
-          scroller.dispatchEvent(new Event('scroll', { bubbles: true }));
-          return scroller.scrollTop === 0;
+          const scroller = ${visibleScrollerExpression};
+          return Boolean(
+            scroller &&
+            scroller.scrollTop < scroller.scrollHeight - scroller.clientHeight - 100
+          );
         `),
       {
         timeout: RENDER_TIMEOUT_MS,
         interval: 100,
-        timeoutMsg: "stream-scroll transcript never exposed a scrollable history",
+        timeoutMsg: "detached-reading setup did not move the transcript reader",
       }
     );
     await browser.pause(250);
-
-    const streamedText = `STREAM_SCROLL_DELTA_${RUN_ID}`;
-    const streamedEvents = events.map((event, index) =>
-      index === events.length - 1
+    const readerPosition = await execJS(`
+      const scroller = ${visibleScrollerExpression};
+      if (!scroller) return null;
+      const rootTop = scroller.getBoundingClientRect().top;
+      const anchor = Array.from(scroller.querySelectorAll('[data-transcript-anchor-id]'))
+        .find((element) => element.getBoundingClientRect().bottom > rootTop);
+      return anchor
         ? {
-            ...event,
-            displayText: `${event.displayText}\n${streamedText}`,
-            result: {
-              ...event.result,
-              content: `${event.displayText}\n${streamedText}`,
-              status: "running",
-            },
+            id: anchor.getAttribute('data-transcript-anchor-id'),
+            offset: anchor.getBoundingClientRect().top - rootTop,
           }
-        : event
-    );
+        : null;
+    `);
+    if (!readerPosition?.id) {
+      throw new Error("stream-scroll could not resolve a stable reader anchor");
+    }
+
+    const streamedMarker = `STREAM_SCROLL_DELTA_${RUN_ID}`;
+    const streamedText = `${last.displayText}\n\n${Array.from(
+      { length: 24 },
+      (_, index) => `${streamedMarker}_${index}`
+    ).join("\n\n")}`;
     const updated = await invokeE2E(
-      "seedChatEvents",
+      "streamChatEventText",
       sessionId,
-      streamedEvents,
-      { runtimeStatus: "running" }
+      last.id,
+      streamedText
     );
     if (!updated?.ok) {
       throw new Error(
-        `stream-scroll delta seed failed: ${updated?.error ?? "unknown"}`
+        `stream-scroll delta update failed: ${updated?.error ?? "unknown"}`
       );
     }
 
     await browser.waitUntil(
       async () =>
         execJS(`
-          const scroller = document.querySelector('[data-testid="chat-history-scroll-container"]');
-          const scrollButton = Array.from(document.querySelectorAll('button'))
-            .find((button) => /scroll to bottom/i.test(button.getAttribute('aria-label') || ''));
+          const scroller = ${visibleScrollerExpression};
+          const scrollButton = document.querySelector(
+            '[data-testid="chat-scroll-to-bottom"]'
+          );
+          if (!scroller || !scrollButton) return false;
+          const rootTop = scroller.getBoundingClientRect().top;
+          const anchor = Array.from(scroller.querySelectorAll('[data-transcript-anchor-id]'))
+            .find((element) => element.getAttribute('data-transcript-anchor-id') === ${JSON.stringify(
+              readerPosition.id
+            )});
           return Boolean(
-            scroller &&
-            scroller.scrollTop <= 10 &&
-            scrollButton
+            anchor &&
+            Math.abs((anchor.getBoundingClientRect().top - rootTop) - ${JSON.stringify(
+              readerPosition.offset
+            )}) <= 2
           );
         `),
       {
         timeout: RENDER_TIMEOUT_MS,
         interval: 100,
         timeoutMsg:
-          "streaming output forced the manually-scrolled history back to the bottom",
+          "transcript growth forced the manually-scrolled history back to the bottom",
       }
     );
+    await clickScrollToBottom("stream-scroll detached reader");
     const finalState = await invokeE2E("inspectChatState");
-    if (!finalState?.ok || !JSON.stringify(finalState).includes(streamedText)) {
+    if (
+      !finalState?.ok ||
+      !JSON.stringify(finalState).includes(streamedMarker)
+    ) {
       throw new Error("stream-scroll delta never entered canonical chat state");
     }
   });

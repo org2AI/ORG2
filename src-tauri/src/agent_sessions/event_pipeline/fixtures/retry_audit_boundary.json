@@ -1,0 +1,156 @@
+[
+  {
+    "id": "A",
+    "chunk_id": "A",
+    "sessionId": "root",
+    "createdAt": "2026-09-18T17:15:00.000Z",
+    "functionName": "user_message",
+    "actionType": "raw",
+    "uiCanonical": "user",
+    "args": {},
+    "result": {
+      "turnIntentId": "A"
+    },
+    "source": "user",
+    "displayText": "Remember marker. Reply READY.",
+    "displayStatus": "completed",
+    "displayVariant": "message",
+    "activityStatus": "agent"
+  },
+  {
+    "id": "lazy-A",
+    "chunk_id": "lazy-A",
+    "sessionId": "root",
+    "createdAt": "2026-09-18T17:16:00.000Z",
+    "functionName": "assistant",
+    "actionType": "assistant",
+    "uiCanonical": "",
+    "args": {
+      "turnPreviewOnly": true
+    },
+    "result": {
+      "content": "READY",
+      "unloadedTurn": {
+        "turnId": "A",
+        "nextTurnId": "old-B",
+        "startedAt": "2026-09-18T17:15:00.000Z",
+        "endedAt": "2026-09-18T17:16:00.000Z",
+        "durationMs": null,
+        "eventCount": 4,
+        "bodyEventCount": 1
+      }
+    },
+    "source": "assistant",
+    "displayText": "READY",
+    "displayStatus": "completed",
+    "displayVariant": "message",
+    "activityStatus": "agent"
+  },
+  {
+    "id": "old-B",
+    "chunk_id": "old-B",
+    "sessionId": "root",
+    "createdAt": "2026-09-18T17:16:00.000Z",
+    "functionName": "user_message",
+    "actionType": "raw",
+    "uiCanonical": "user",
+    "args": {},
+    "result": {
+      "turnIntentId": "old-B"
+    },
+    "source": "user",
+    "displayText": "Return marker.",
+    "displayStatus": "completed",
+    "displayVariant": "message",
+    "activityStatus": "agent"
+  },
+  {
+    "id": "old-B-error",
+    "chunk_id": "old-B-error",
+    "sessionId": "root",
+    "createdAt": "2026-09-18T17:16:03.000Z",
+    "functionName": "error",
+    "actionType": "error",
+    "uiCanonical": "",
+    "args": {
+      "__orgiiNativeTerminalDiagnostic": {
+        "provider": "codex",
+        "event": "task_complete",
+        "providerTurnId": "provider-B"
+      }
+    },
+    "result": {
+      "success": false,
+      "error": "upstream unavailable"
+    },
+    "source": "assistant",
+    "displayText": "upstream unavailable",
+    "displayStatus": "failed",
+    "displayVariant": "error",
+    "activityStatus": "agent"
+  },
+  {
+    "id": "new-B",
+    "chunk_id": "new-B",
+    "sessionId": "root",
+    "createdAt": "2026-09-18T17:16:10.000Z",
+    "functionName": "user_message",
+    "actionType": "raw",
+    "uiCanonical": "user",
+    "args": {},
+    "result": {
+      "turnIntentId": "new-B"
+    },
+    "source": "user",
+    "displayText": "Return marker.",
+    "displayStatus": "completed",
+    "displayVariant": "message",
+    "activityStatus": "agent"
+  },
+  {
+    "id": "new-B-answer",
+    "chunk_id": "new-B-answer",
+    "sessionId": "root",
+    "createdAt": "2026-09-18T17:16:13.000Z",
+    "functionName": "assistant",
+    "actionType": "assistant",
+    "uiCanonical": "",
+    "args": {},
+    "result": {
+      "content": "marker"
+    },
+    "source": "assistant",
+    "displayText": "marker",
+    "displayStatus": "completed",
+    "displayVariant": "message",
+    "activityStatus": "agent"
+  },
+  {
+    "id": "queued-retry-lineage:queue:",
+    "chunk_id": "queued-retry-lineage:queue:",
+    "sessionId": "root",
+    "createdAt": "2026-09-18T17:16:14.000Z",
+    "functionName": "system",
+    "actionType": "queued_retry_lineage",
+    "uiCanonical": "",
+    "args": {},
+    "result": {
+      "retryLineage": {
+        "version": 1,
+        "queueMessageId": "queue",
+        "superseded": [
+          {
+            "sessionId": "root",
+            "turnIntentId": "old-B",
+            "sourceEventIds": []
+          }
+        ]
+      }
+    },
+    "source": "system",
+    "displayText": "",
+    "displayStatus": "completed",
+    "displayVariant": "session",
+    "activityStatus": "agent"
+  }
+]

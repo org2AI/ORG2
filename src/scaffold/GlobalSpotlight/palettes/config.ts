@@ -155,13 +155,13 @@ export const REPO_PALETTE_CONFIG: SelectorConfig = {
     {
       id: "remove",
       label: "Remove",
-      title: "Remove linkage to ORGII",
+      title: "Remove linkage to ORG2",
       icon: Delete02Icon,
       path: {
         id: "remove-repo",
         label: "Remove",
         icon: Delete02Icon,
-        template: "Remove {repo} linkage to ORGII",
+        template: "Remove {repo} linkage to ORG2",
         requiredParams: ["repo"],
       },
       placeholder: "repo",

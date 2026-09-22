@@ -87,6 +87,79 @@ describe("useWebviewCommands reload", () => {
   });
 });
 
+describe("useWebviewCommands navigate", () => {
+  beforeEach(() => {
+    invokeMock.mockReset();
+    invokeMock.mockResolvedValue(undefined);
+  });
+
+  it("loads the URL directly when the navigation is not a history step", async () => {
+    const { useWebviewCommands } = await import("../useWebviewCommands");
+    const commands = useWebviewCommands(
+      createParams({ resolveHistoryDirection: () => null })
+    );
+
+    await commands.navigate("https://next.example");
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith("navigate_inline_webview", {
+      label: "browser-session-test",
+      url: "https://next.example",
+    });
+  });
+
+  it("restores a Back step from the native list without loading the URL", async () => {
+    invokeMock.mockImplementation((command: string) =>
+      Promise.resolve(command === "traverse_inline_webview_history")
+    );
+    const { useWebviewCommands } = await import("../useWebviewCommands");
+    const onNavigate = vi.fn();
+    const commands = useWebviewCommands(
+      createParams({ onNavigate, resolveHistoryDirection: () => "back" })
+    );
+
+    await commands.navigate("https://previous.example");
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith("traverse_inline_webview_history", {
+      label: "browser-session-test",
+      url: "https://previous.example",
+      direction: "back",
+    });
+    expect(onNavigate).toHaveBeenCalledWith("https://previous.example");
+  });
+
+  it.each([
+    ["the native list does not hold the URL", () => Promise.resolve(false)],
+    ["the traversal command fails", () => Promise.reject(new Error("boom"))],
+  ])("loads the URL as before when %s", async (_case, traverse) => {
+    invokeMock.mockImplementation((command: string) =>
+      command === "traverse_inline_webview_history"
+        ? traverse()
+        : Promise.resolve(undefined)
+    );
+    const { useWebviewCommands } = await import("../useWebviewCommands");
+    const commands = useWebviewCommands(
+      createParams({ resolveHistoryDirection: () => "forward" })
+    );
+
+    await commands.navigate("https://next.example");
+
+    expect(invokeMock.mock.calls.map(([command]) => String(command))).toEqual([
+      "traverse_inline_webview_history",
+      "navigate_inline_webview",
+    ]);
+    expect(invokeMock).toHaveBeenLastCalledWith("navigate_inline_webview", {
+      label: "browser-session-test",
+      url: "https://next.example",
+    });
+    expect(invokeMock).not.toHaveBeenCalledWith(
+      "close_inline_webview",
+      expect.anything()
+    );
+  });
+});
+
 describe("useWebviewCommands lifecycle", () => {
   beforeEach(() => {
     invokeMock.mockReset();

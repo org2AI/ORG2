@@ -104,7 +104,11 @@ const DropdownOptionsRenderer: React.FC<DropdownOptionsRendererProps> = ({
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                onClick={() => onSelect(option)}
+                onClick={(event) => {
+                  // Selection owns closing; do not toggle the enclosing trigger.
+                  event.stopPropagation();
+                  onSelect(option);
+                }}
               >
                 {isMultiple && (
                   <Checkbox checked={isSelected} className="size-4 shrink-0" />

@@ -6,6 +6,3 @@
 
 // Step state
 export { useStepState } from "./useStepState";
-
-// Planning indicator
-export { usePlanningIndicator } from "./usePlanningIndicator";

@@ -4,7 +4,7 @@
  * Thin TypeScript wrappers around the `mobile_remote_*` Tauri commands
  * registered in `src-tauri/src/commands/handler_list.inc`. The Rust
  * commands return camelCase JSON (see `#[serde(rename_all = "camelCase")]`
- * on `PairingInitResponse` / `PairedDeviceInfo` / `RelayUrlInfo`). Shared
+ * on `PairingInitResponse` / `PairedDeviceInfo`). Shared
  * wire types are generated from Rust; no conversion layer is needed.
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -33,12 +33,6 @@ export const PERMISSION_TIER = {
   READ_ONLY: "read_only" as const,
   FULL: "full" as const,
 } as const;
-
-/** Snapshot of the relay URL config. */
-export interface RelayUrlInfo {
-  url: string;
-  isDefault: boolean;
-}
 
 export type RelayPhase =
   | "disabled"
@@ -100,12 +94,6 @@ export async function pairComplete(args: {
   });
 }
 
-/** Read the local cache of paired devices. */
-export async function listDevices(): Promise<PairedDeviceInfo[]> {
-  const result = await invoke<unknown>("mobile_remote_list_devices");
-  return result as PairedDeviceInfo[];
-}
-
 /**
  * Reconcile the local cache against the relay's authoritative list.
  * Returns the post-sync list.
@@ -120,20 +108,9 @@ export async function revokeDevice(deviceId: string): Promise<void> {
   await invoke<unknown>("mobile_remote_revoke_device", { deviceId });
 }
 
-/** Mark this desktop as the primary for the user account. */
-export async function setPrimaryDesktop(desktopId: string): Promise<void> {
-  await invoke<unknown>("mobile_remote_set_primary_desktop", { desktopId });
-}
-
 /** Persist a relay URL override (empty string resets to default). */
 export async function setRelayUrl(url: string): Promise<void> {
   await invoke<unknown>("mobile_remote_set_relay_url", { url });
-}
-
-/** Read the current relay URL and whether it is the built-in default. */
-export async function getRelayUrl(): Promise<RelayUrlInfo> {
-  const result = await invoke<unknown>("mobile_remote_get_relay_url");
-  return result as RelayUrlInfo;
 }
 
 export async function getRelayStatus(): Promise<RelayStatus> {
@@ -161,12 +138,9 @@ export async function syncSidebarSessions(
 export const mobileRemoteApi = {
   pairInit,
   pairComplete,
-  listDevices,
   syncDevices,
   revokeDevice,
-  setPrimaryDesktop,
   setRelayUrl,
-  getRelayUrl,
   getRelayStatus,
   notifyCloudAuthChanged,
   syncSidebarSessions,

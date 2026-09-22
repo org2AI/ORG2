@@ -1,5 +1,6 @@
 import React, { forwardRef, memo } from "react";
 
+import Button from "@src/components/Button";
 import SelectorPill from "@src/components/SelectorPill";
 import { ArrowDown01Icon, HugeiconsIcon } from "@src/icons";
 
@@ -70,7 +71,7 @@ const SessionCreatorAgentHero = memo(
                   danger
                     ? "text-primary-6!"
                     : active
-                      ? "text-text-1! underline underline-offset-4"
+                      ? "text-text-1!"
                       : "text-text-2! group-hover/pill:text-text-1!"
                 }`}
                 chevronClassName={`transition-colors ${
@@ -92,9 +93,9 @@ const SessionCreatorAgentHero = memo(
       }
 
       return (
-        <button
+        <Button
+          layout="custom"
           ref={ref}
-          type="button"
           onClick={onClick}
           aria-expanded={active}
           data-testid="session-creator-agent-selector"
@@ -129,7 +130,7 @@ const SessionCreatorAgentHero = memo(
               {description}
             </p>
           </div>
-        </button>
+        </Button>
       );
     }
   )

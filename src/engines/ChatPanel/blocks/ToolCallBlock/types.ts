@@ -10,7 +10,8 @@ export interface ToolCallBlockProps {
   /** Tool/function name (e.g. "git", "web_fetch", "session") */
   toolName: string;
   /**
-   * Pre-resolved header title. Built-in tool labels come from the Rust registry;
+   * Pre-resolved fallback title, used when no semantic per-call title exists.
+   * Built-in tool labels come from the Rust registry;
    * unregistered / MCP tools fall back to title-cased names.
    */
   title?: string;

@@ -1,6 +1,10 @@
 import type { TFunction } from "i18next";
 import { describe, expect, it, vi } from "vitest";
 
+import {
+  notifyError,
+  notifyTaskCompletion,
+} from "@src/api/services/notification";
 import Message from "@src/components/Message";
 import type { NotificationSettings } from "@src/types/ui/notification";
 
@@ -10,11 +14,10 @@ import {
 } from "../sessionTerminalNotifications";
 
 vi.mock("@src/components/Message", () => ({
-  default: { warning: vi.fn(), success: vi.fn() },
+  default: { warning: vi.fn(), success: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock("@src/api/services/notification", () => ({
-  TASK_FAILURE_NOTIFICATION_BODY: "Task failed",
   notifyError: vi.fn(),
   notifyTaskCompletion: vi.fn().mockResolvedValue({ disposition: "delivered" }),
 }));
@@ -68,6 +71,7 @@ describe("deliverSessionTerminalNotification", () => {
           sessionId: "session-a",
           sessionName: "Session A",
           status,
+          sessionInActiveTab: false,
           attentionRequired: true,
         },
         settings,
@@ -87,12 +91,69 @@ describe("deliverSessionTerminalNotification", () => {
     }
   );
 
+  it.each(["completed", "idle"])(
+    "does not create a %s message for the selected Session tab",
+    async (status) => {
+      vi.mocked(notifyTaskCompletion).mockClear();
+      vi.mocked(Message.success).mockClear();
+
+      deliverSessionTerminalNotification(
+        {
+          sessionId: "session-a",
+          sessionName: "Session A",
+          status,
+          sessionInActiveTab: true,
+          // Even if the document itself is hidden or unfocused, the selected
+          // tab must not accumulate a redundant completion message.
+          attentionRequired: true,
+        },
+        settings,
+        ((key: string) => key) as TFunction
+      );
+      await Promise.resolve();
+
+      expect(notifyTaskCompletion).not.toHaveBeenCalled();
+      expect(Message.success).not.toHaveBeenCalled();
+    }
+  );
+
+  it("contains native delivery rejection without showing a delivered failure toast", async () => {
+    vi.mocked(notifyError).mockRejectedValueOnce(
+      new Error("Native channel unavailable")
+    );
+    const translate = ((key: string) =>
+      key === "notifications.taskFailedPrivateBody"
+        ? "任务失败。请打开 ORG2 查看详情。"
+        : key) as TFunction;
+    deliverSessionTerminalNotification(
+      {
+        sessionId: "session-a",
+        sessionName: "Session A",
+        status: "failed",
+        sessionInActiveTab: false,
+        attentionRequired: true,
+        errorMessage: "Private task details",
+      },
+      settings,
+      translate
+    );
+    // Let a rejected delivery settle; Vitest also fails on any unhandled rejection.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(notifyError).toHaveBeenCalledWith(
+      "任务失败。请打开 ORG2 查看详情。",
+      settings,
+      expect.objectContaining({ title: "notifications.taskFailedTitle" })
+    );
+    expect(Message.error).not.toHaveBeenCalled();
+  });
+
   it("ignores removed mute preferences for cancellation while honoring the master toggle", () => {
     const obsoleteSettings = { ...settings, mutedSessionIds: ["session-a"] };
     const event = {
       sessionId: "session-a",
       sessionName: "Session A",
       status: "cancelled",
+      sessionInActiveTab: false,
       attentionRequired: true,
     };
     const translate = ((key: string) => key) as TFunction;

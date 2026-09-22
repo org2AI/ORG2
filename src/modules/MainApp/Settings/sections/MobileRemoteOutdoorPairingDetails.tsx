@@ -32,7 +32,7 @@ const MobileRemoteOutdoorPairingDetails: React.FC<
   }, [pairing.qrPayload, t]);
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+    <div className="flex flex-col gap-4 @2xl:flex-row @2xl:items-start">
       <MobileRemoteQrCodeDisplay
         value={pairing.qrPayload}
         size={180}
@@ -67,7 +67,6 @@ const MobileRemoteOutdoorPairingDetails: React.FC<
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Button
-              variant="secondary"
               size="small"
               disabled={regenerating}
               onClick={() => void handleCopyPayload()}
@@ -76,7 +75,6 @@ const MobileRemoteOutdoorPairingDetails: React.FC<
             </Button>
             <Button
               variant="tertiary"
-              appearance="ghost"
               size="small"
               disabled={regenerating || confirming}
               loading={regenerating}

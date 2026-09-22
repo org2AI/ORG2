@@ -90,6 +90,15 @@ pub fn is_compacted_event(event: &SessionEvent) -> bool {
 }
 
 fn compact_display_text(event: &mut SessionEvent, refs: &mut Vec<PayloadRef>) {
+    let full_size_bytes = event.display_text.len();
+    if event.source == crate::agent_sessions::event_pipeline::types::EventSource::User {
+        // Snapshot previews must not cut a generated context block before its
+        // closing tag. Keep the raw event/payload intact for full-output reads.
+        event.display_text =
+            orgtrack_core::sources::imported_history::strip_generated_prompt_context(
+                &event.display_text,
+            );
+    }
     if event.display_text.len() <= PAYLOAD_COMPACTION_THRESHOLD_BYTES {
         return;
     }
@@ -98,7 +107,7 @@ fn compact_display_text(event: &mut SessionEvent, refs: &mut Vec<PayloadRef>) {
         event_id: event.id.clone(),
         field_path: "displayText".to_string(),
         preview: preview.clone(),
-        full_size_bytes: event.display_text.len(),
+        full_size_bytes,
         truncated: true,
     });
     event.display_text = preview;
@@ -345,6 +354,41 @@ mod tests {
             shell_replay_bookmarks: None,
             last_extract_at: None,
         }
+    }
+
+    #[test]
+    fn user_snapshot_strips_context_before_preview_without_mutating_source_payload() {
+        let mut event = make_large_event();
+        event.source = EventSource::User;
+        let body = "\n## My request:\n  preserve code indentation\n";
+        let context = format!(
+            "<orgii_provider_context>{}</orgii_provider_context>",
+            "rules".repeat(20_000)
+        );
+        event.display_text = format!("{context}{body}");
+        let compacted = compact_event_for_snapshot(&event);
+        assert_eq!(compacted.display_text, "  preserve code indentation\n");
+        assert!(!compacted.display_text.contains("orgii_provider_context"));
+        assert!(!compacted
+            .payload_refs
+            .iter()
+            .any(|item| item.field_path == "displayText"));
+        assert_eq!(
+            load_event_payload_body(&event, "displayText").unwrap().body,
+            event.display_text
+        );
+        assert!(event.display_text.starts_with(&context));
+
+        event.display_text = format!("{context}{}", "user text ".repeat(10_000));
+        let compacted = compact_event_for_snapshot(&event);
+        let reference = compacted
+            .payload_refs
+            .iter()
+            .find(|item| item.field_path == "displayText")
+            .unwrap();
+        assert_eq!(reference.full_size_bytes, event.display_text.len());
+        assert!(reference.truncated);
+        assert!(!reference.preview.contains("orgii_provider_context"));
     }
 
     #[test]

@@ -3,7 +3,7 @@ import { useCallback, useLayoutEffect, useRef } from "react";
 import {
   type ReferencePillDragState,
   useReferencePillDrag,
-} from "@src/shared/dnd/useReferencePillDrag";
+} from "@src/components/dnd/useReferencePillDrag";
 
 import type { NavigationMenuItem } from "../config";
 

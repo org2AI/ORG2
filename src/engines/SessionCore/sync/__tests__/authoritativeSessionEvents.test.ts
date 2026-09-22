@@ -48,6 +48,23 @@ describe("loadAuthoritativeSessionEvents", () => {
     expect(mocks.loadCliHistory).not.toHaveBeenCalled();
   });
 
+  it("prefers the Agent lossless reader over its decorated display history", async () => {
+    const read = vi.fn().mockResolvedValue([EVENT]);
+    mocks.getAdapterForSession.mockReturnValue({
+      category: "agent",
+      loadHistory: mocks.loadAgentHistory,
+      loadAuthoritativeHistory: read,
+    });
+    await expect(
+      loadAuthoritativeSessionEvents("sdeagent-native")
+    ).resolves.toEqual({
+      events: [EVENT],
+      source: "agent_history",
+    });
+    expect(read).toHaveBeenCalledOnce();
+    expect(mocks.loadAgentHistory).not.toHaveBeenCalled();
+  });
+
   it("reads a managed CLI through its provider transcript adapter", async () => {
     mocks.loadCliHistory.mockResolvedValue([EVENT]);
 

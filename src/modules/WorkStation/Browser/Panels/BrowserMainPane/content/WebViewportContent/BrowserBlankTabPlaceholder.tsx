@@ -27,6 +27,8 @@ export function selectBlankTabPortOptions(
 interface BrowserBlankTabPlaceholderProps {
   isIncognito?: boolean;
   onOpen: (url: string) => void;
+  /** Pick a local HTML file and open it in this tab. Hidden when omitted. */
+  onOpenHtmlFile?: () => void;
   /**
    * Open the "import cookies from your browser" flow. When omitted (e.g. in
    * unit tests, or private windows) the action is not shown.
@@ -35,7 +37,7 @@ interface BrowserBlankTabPlaceholderProps {
 }
 
 const BrowserBlankTabPlaceholder: React.FC<BrowserBlankTabPlaceholderProps> =
-  memo(({ isIncognito = false, onOpen, onImportCookies }) => {
+  memo(({ isIncognito = false, onOpen, onOpenHtmlFile, onImportCookies }) => {
     const { t } = useTranslation();
     const scannedPorts = useAtomValue(workspacePortsAtom);
     const ports = useMemo(
@@ -66,8 +68,18 @@ const BrowserBlankTabPlaceholder: React.FC<BrowserBlankTabPlaceholderProps> =
             ]
           : [];
 
-      return [...importAction, ...portActions];
-    }, [isIncognito, onImportCookies, onOpen, ports, t]);
+      const openHtmlFileAction: QuickAction[] = onOpenHtmlFile
+        ? [
+            {
+              id: "open-local-html-file",
+              label: t("browser.menu.openHtmlFile"),
+              onAction: onOpenHtmlFile,
+            },
+          ]
+        : [];
+
+      return [...importAction, ...openHtmlFileAction, ...portActions];
+    }, [isIncognito, onImportCookies, onOpen, onOpenHtmlFile, ports, t]);
 
     return (
       <>

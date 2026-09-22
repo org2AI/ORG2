@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Placeholder } from "@src/components/Placeholder";
+import { LAZY_DETAIL_FALLBACK } from "@src/components/layout/blocks/LazyDetailFallback";
 import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
 import type { LinearProjectSelection } from "@src/modules/ProjectManager/Panels/ProjectManagerSidebar/content/WorkspaceTreeContent";
 import type { ProjectWorkItemSelection } from "@src/modules/ProjectManager/ProjectManagerLayout/components/ProjectWorkItemsTabContent";
@@ -49,9 +49,6 @@ const ProjectsPage = React.lazy(
 );
 const WorkItemsPage = React.lazy(
   () => import("@src/modules/ProjectManager/WorkItems")
-);
-const WORK_MANAGEMENT_PROJECTS_LOADING_FALLBACK = (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
 );
 
 interface SelectedProjectView {
@@ -385,9 +382,7 @@ const WorkManagementProjectsSurface: React.FC<{
 
   return (
     <div className="work-management-page flex h-full min-h-0 w-full flex-col overflow-hidden">
-      <Suspense fallback={WORK_MANAGEMENT_PROJECTS_LOADING_FALLBACK}>
-        {content}
-      </Suspense>
+      <Suspense fallback={LAZY_DETAIL_FALLBACK}>{content}</Suspense>
     </div>
   );
 });

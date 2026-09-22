@@ -1,14 +1,10 @@
+import { RUST_AGENT_TYPE } from "@src/contracts/agent/rustAgentType";
 import type { SessionStatus } from "@src/types/session/session";
 
-export const RUST_AGENT_TYPE = {
-  OS: "os",
-  SDE: "sde",
-  WINGMAN: "wingman",
-  CUSTOM: "custom",
-} as const;
-
-export type RustAgentType =
-  (typeof RUST_AGENT_TYPE)[keyof typeof RUST_AGENT_TYPE];
+export {
+  RUST_AGENT_TYPE,
+  type RustAgentType,
+} from "@src/contracts/agent/rustAgentType";
 
 export type AgentToolFilter =
   | typeof RUST_AGENT_TYPE.OS
@@ -114,12 +110,7 @@ export interface SessionMessage {
   compactFromSequence?: number | null;
 }
 
-export interface PendingQuestion {
-  id: string;
-  question: string;
-  options?: string[];
-  timestamp: string;
-}
+export type { PendingQuestionBatch } from "../rpc/schemas/agentSession";
 
 export interface TodoItem {
   id: string;
@@ -131,6 +122,7 @@ export interface TodoItem {
    * `content`.
    */
   activeForm?: string;
+  blockedBy?: number[];
   status: "pending" | "in_progress" | "completed" | "cancelled";
 }
 
@@ -143,6 +135,7 @@ export interface SessionMeta {
   workspacePath?: string;
   model?: string;
   accountId?: string;
+  credentialSource?: string;
   workItemId?: string;
   projectSlug?: string;
   agentDefinitionId?: string;

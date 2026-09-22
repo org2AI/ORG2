@@ -9,6 +9,7 @@ import { useAtomValue } from "jotai";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
 import { INPUT_AREA_BUTTONS } from "@src/config/inputAreaTokens";
@@ -74,8 +75,8 @@ const LaunchButton: React.FC<LaunchButtonProps> = ({
   // tooltip mount) nudges the icon vertically by a sub-pixel amount —
   // visually the ArrowUp "shakes" on hover.
   const button = (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       className={`${ICON_BASE_CLASS} ${stateClass} leading-none`}
       style={{ lineHeight: 0 }}
       onClick={disabled ? undefined : onClick}
@@ -101,7 +102,7 @@ const LaunchButton: React.FC<LaunchButtonProps> = ({
           className="block text-[#fff]"
         />
       )}
-    </button>
+    </Button>
   );
 
   // Only the idle Send state has a keyboard shortcut. The Loading state has
@@ -117,7 +118,7 @@ const LaunchButton: React.FC<LaunchButtonProps> = ({
         />
       }
       position="top-end"
-      mouseEnterDelay={200}
+      kind="button"
       framedPanel
     >
       {button}

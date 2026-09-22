@@ -27,15 +27,54 @@ export const appUpdaterStateAtom = atom<AppUpdaterState>(
   createInitialAppUpdaterState()
 );
 export const appBuildProvenanceAtom = atom<AppBuildProvenance | null>(null);
-export const availableAppUpdateAtom = atom(
-  (get) => get(appUpdaterStateAtom).update
+// Session-only UI override. Never create a fake native updater resource.
+const mockUpdateEnabledAtom = atom(false);
+const mockUpdatePromptAtom = atom(false);
+const realUpdatePromptAtom = atom(false);
+export const mockAppUpdateEnabledAtom = atom(
+  (get) => get(mockUpdateEnabledAtom) && process.env.NODE_ENV === "development",
+  (_get, set, enabled: boolean) => {
+    set(
+      mockUpdateEnabledAtom,
+      process.env.NODE_ENV === "development" && enabled
+    );
+    set(mockUpdatePromptAtom, false);
+  }
 );
-export const appUpdateInstallPromptAtom = atom(false);
+type AvailableAppUpdate = Pick<Update, "available" | "version"> & {
+  mock?: boolean;
+};
+const MOCK_APP_UPDATE: AvailableAppUpdate = {
+  available: true,
+  version: "99.0.0",
+  mock: true,
+};
+export const availableAppUpdateAtom = atom<AvailableAppUpdate | null>((get) =>
+  get(mockAppUpdateEnabledAtom)
+    ? MOCK_APP_UPDATE
+    : get(appUpdaterStateAtom).update
+);
+export const appUpdateInstallPromptAtom = atom(
+  (get) =>
+    get(
+      get(mockAppUpdateEnabledAtom)
+        ? mockUpdatePromptAtom
+        : realUpdatePromptAtom
+    ),
+  (get, set, visible: boolean) =>
+    set(
+      get(mockAppUpdateEnabledAtom)
+        ? mockUpdatePromptAtom
+        : realUpdatePromptAtom,
+      visible
+    )
+);
 export const separateAppUpdateInstallingAtom = atom(false);
 export const appUpdateDownloadProgressAtom = atom<AppUpdateDownloadProgress>(
   EMPTY_APP_UPDATE_DOWNLOAD_PROGRESS
 );
 export const isAppUpdateInstallingAtom = atom((get) => {
+  if (get(mockAppUpdateEnabledAtom)) return false;
   const phase = get(appUpdaterStateAtom).phase;
   return (
     get(separateAppUpdateInstallingAtom) ||
@@ -45,7 +84,7 @@ export const isAppUpdateInstallingAtom = atom((get) => {
   );
 });
 
-export function useAvailableAppUpdate(): Update | null {
+export function useAvailableAppUpdate(): AvailableAppUpdate | null {
   return useAtomValue(availableAppUpdateAtom);
 }
 

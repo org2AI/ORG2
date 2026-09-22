@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { SessionFollowUpSuggestion } from "@src/api/services/sessionFollowUpSuggestions";
 import Button from "@src/components/Button";
+import { COMPOSER_STACK_INSET_PX_CLASS } from "@src/config/composerStackTokens";
 
 interface FollowUpSuggestionBarProps {
   suggestions: ReadonlyArray<SessionFollowUpSuggestion>;
@@ -20,13 +21,12 @@ const FollowUpSuggestionBar: React.FC<FollowUpSuggestionBarProps> = memo(
         role="group"
         aria-label={t("input.followUpSuggestions.label")}
         data-testid="follow-up-suggestions"
-        className="flex max-w-full flex-wrap items-center gap-1.5 px-0.5 pb-0.5"
+        className={`flex max-w-full flex-wrap items-center gap-1.5 pb-0.5 ${COMPOSER_STACK_INSET_PX_CLASS}`}
       >
         {suggestions.map((suggestion) => (
           <Button
             key={`${suggestion.label}\0${suggestion.prompt}`}
-            variant={suggestion.primary ? "primary" : "secondary"}
-            appearance="outline"
+            hoverTone={suggestion.primary ? "primary" : undefined}
             size="mini"
             shape="round"
             disabled={disabled}

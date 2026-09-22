@@ -30,7 +30,7 @@ import type {
   AppSubtool,
 } from "@src/engines/SessionCore/rendering/registry/types";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
-import enSessions from "@src/i18n/locales/en/sessions.json";
+import { EN_RESOURCES } from "@src/test/i18nTestTranslate";
 
 vi.mock("@tauri-apps/api/webviewWindow", () => {
   const currentWindow = {
@@ -431,7 +431,7 @@ const BUILTIN_ACTIONS_FIXTURE: Map<string, ToolActionInfo[]> = new Map([
  * the frontend fallback chain, exactly as in production.
  */
 const BUILTIN_ICON_ID_FIXTURE: Map<string, string> = new Map([
-  ["read_file", "file-text"],
+  ["read_file", "book-open-02"],
   ["list_dir", "folder-open"],
   ["run_shell", "terminal"],
   ["await_output", "timer"],
@@ -444,7 +444,7 @@ const BUILTIN_ICON_ID_FIXTURE: Map<string, string> = new Map([
   ["manage_lsp", "braces"],
   ["manage_todo", "clipboard-list"],
   ["task_create", "clipboard-copy"],
-  ["task_update", "clipboard-pen"],
+  ["task_update", "calendar-sync"],
   ["task_list", "list-checks"],
   ["task_get", "clipboard-list"],
   ["setup_repo", "folder-cog"],
@@ -898,13 +898,12 @@ if (!i18next.isInitialized) {
     showSupportNotice: false,
     lng: "en",
     fallbackLng: "en",
-    ns: ["sessions"],
+    // Every shipped namespace, not just `sessions`: product code no longer
+    // passes a literal default to `t()`, so an unregistered namespace would
+    // surface as a raw key instead of the copy a test asserts on.
+    ns: Object.keys(EN_RESOURCES),
     defaultNS: "sessions",
-    resources: {
-      en: {
-        sessions: enSessions,
-      },
-    },
+    resources: { en: EN_RESOURCES },
     interpolation: { escapeValue: false },
   });
 }

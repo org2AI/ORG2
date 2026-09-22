@@ -6,7 +6,12 @@
  */
 import React, { memo, useCallback } from "react";
 
-import { TREE_INDENT_PX, TREE_PADDING_X } from "@src/components/TreeRow/config";
+import { SIDEBAR_ROW_GAP_CLASS } from "@src/components/TreeRow/config";
+import {
+  TREE_ROW_INSET_CLASS,
+  TREE_ROW_ROUNDED_CLASS,
+  getTreeRowPadding,
+} from "@src/components/TreeRow/config";
 import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import type { DOMTreeNode } from "@src/modules/WorkStation/Browser/hooks/useWebviewDOMTree";
 
@@ -57,7 +62,6 @@ export const DOMTreeNodeRow: React.FC<DOMTreeNodeRowProps> = memo(
     onSelect,
     onHover,
   }) => {
-    const paddingLeft = depth * TREE_INDENT_PX + TREE_PADDING_X;
     const isPseudo =
       node.nodeKind === "shadow-root" || node.nodeKind === "iframe-document";
 
@@ -106,10 +110,60 @@ export const DOMTreeNodeRow: React.FC<DOMTreeNodeRowProps> = memo(
 
     if (isPseudo) {
       return (
+        <div className={SIDEBAR_ROW_GAP_CLASS}>
+          <div
+            className={`${TREE_ROW_INSET_CLASS} ${TREE_ROW_ROUNDED_CLASS} group flex cursor-pointer gap-1 border-l-2 border-transparent py-0.5 text-xs transition-colors hover:bg-fill-2`}
+            style={getTreeRowPadding(depth)}
+            onClick={handleClick}
+          >
+            <span
+              className={`flex h-5 w-4 shrink-0 items-center justify-center rounded ${
+                hasChildren ? "cursor-pointer hover:bg-fill-2" : "invisible"
+              }`}
+              onClick={handleChevronClick}
+            >
+              {hasChildren &&
+                (isExpanded ? (
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    data-icon="chevron-down"
+                    size={CHEVRON_SIZE}
+                    className="text-text-3"
+                  />
+                ) : (
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    data-icon="chevron-right"
+                    size={CHEVRON_SIZE}
+                    className="text-text-3"
+                  />
+                ))}
+            </span>
+            <span className="flex min-w-0 flex-1 items-baseline gap-x-1 leading-relaxed">
+              <span className="rounded bg-bg-3 px-1 text-[10px] tracking-wide text-text-3 uppercase">
+                {node.nodeKind === "shadow-root" ? "shadow-root" : "iframe"}
+              </span>
+              <span className="text-text-3 italic">{node.tagName}</span>
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={SIDEBAR_ROW_GAP_CLASS}>
         <div
-          className="group flex cursor-pointer gap-1 border-l-2 border-transparent py-0.5 pr-2 text-xs transition-colors hover:bg-fill-2"
-          style={{ paddingLeft }}
+          className={`${TREE_ROW_INSET_CLASS} ${TREE_ROW_ROUNDED_CLASS} group flex cursor-pointer gap-1 py-0.5 text-xs transition-colors ${
+            isSelected ? "" : "hover:bg-fill-2"
+          } ${getBgClass()} ${
+            isSelected
+              ? "border-l-2 border-primary-6"
+              : "border-l-2 border-transparent"
+          }`}
+          style={getTreeRowPadding(depth)}
           onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           <span
             className={`flex h-5 w-4 shrink-0 items-center justify-center rounded ${
@@ -134,76 +188,30 @@ export const DOMTreeNodeRow: React.FC<DOMTreeNodeRowProps> = memo(
                 />
               ))}
           </span>
-          <span className="flex min-w-0 flex-1 items-baseline gap-x-1 leading-relaxed">
-            <span className="rounded bg-bg-3 px-1 text-[10px] tracking-wide text-text-3 uppercase">
-              {node.nodeKind === "shadow-root" ? "shadow-root" : "iframe"}
-            </span>
-            <span className="text-text-3 italic">{node.tagName}</span>
+
+          <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-0.5 leading-relaxed">
+            <span className="text-text-3">&lt;</span>
+            <span className="text-primary-6">{node.tagName}</span>
+            {node.id && (
+              <span className="text-warning-6">
+                <span className="text-text-4">#</span>
+                {node.id}
+              </span>
+            )}
+            {classes.map((className, index) => (
+              <span key={index} className="text-text-2">
+                <span className="text-text-4">.</span>
+                {className}
+              </span>
+            ))}
+            <span className="text-text-3">&gt;</span>
+            {node.rect.width > 0 && node.rect.height > 0 && (
+              <span className="ml-1 rounded bg-bg-3 px-1 text-[10px] text-text-3">
+                {node.rect.width}×{node.rect.height}
+              </span>
+            )}
           </span>
         </div>
-      );
-    }
-
-    return (
-      <div
-        className={`group flex cursor-pointer gap-1 py-0.5 pr-2 text-xs transition-colors ${
-          isSelected ? "" : "hover:bg-fill-2"
-        } ${getBgClass()} ${
-          isSelected
-            ? "border-l-2 border-primary-6"
-            : "border-l-2 border-transparent"
-        }`}
-        style={{ paddingLeft }}
-        onClick={handleClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <span
-          className={`flex h-5 w-4 shrink-0 items-center justify-center rounded ${
-            hasChildren ? "cursor-pointer hover:bg-fill-2" : "invisible"
-          }`}
-          onClick={handleChevronClick}
-        >
-          {hasChildren &&
-            (isExpanded ? (
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                data-icon="chevron-down"
-                size={CHEVRON_SIZE}
-                className="text-text-3"
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                data-icon="chevron-right"
-                size={CHEVRON_SIZE}
-                className="text-text-3"
-              />
-            ))}
-        </span>
-
-        <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-0.5 leading-relaxed">
-          <span className="text-text-3">&lt;</span>
-          <span className="text-primary-6">{node.tagName}</span>
-          {node.id && (
-            <span className="text-warning-6">
-              <span className="text-text-4">#</span>
-              {node.id}
-            </span>
-          )}
-          {classes.map((className, index) => (
-            <span key={index} className="text-text-2">
-              <span className="text-text-4">.</span>
-              {className}
-            </span>
-          ))}
-          <span className="text-text-3">&gt;</span>
-          {node.rect.width > 0 && node.rect.height > 0 && (
-            <span className="ml-1 rounded bg-bg-3 px-1 text-[10px] text-text-3">
-              {node.rect.width}×{node.rect.height}
-            </span>
-          )}
-        </span>
       </div>
     );
   }

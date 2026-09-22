@@ -129,7 +129,7 @@ vi.mock("@src/modules/ProjectManager/shared", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
+vi.mock("@src/components/MarkdownTextareaEditor", () => ({
   default: ({
     value,
     onChange,
@@ -180,7 +180,7 @@ vi.mock("../GitHubIssueComposer", () => ({
     }),
 }));
 
-vi.mock("@src/modules/shared/components/ActivityTimeline", () => ({
+vi.mock("@src/features/GitHubWork/ActivityTimeline", () => ({
   ActivityTimestamp: ({ timestamp }: { timestamp: string }) =>
     createElement("time", { dateTime: timestamp }, timestamp),
   ActivityHeaderActionButton: ({
@@ -226,12 +226,7 @@ vi.mock("@src/modules/shared/components/ActivityTimeline", () => ({
   }>) => createElement("div", null, actions, children, footer),
 }));
 
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
-  DetailPanelContainer: ({ children }: { children?: React.ReactNode }) =>
-    createElement("div", null, children),
-  ScrollTrail: () => null,
-  ScrollTrailTarget: ({ children }: { children?: React.ReactNode }) =>
-    createElement("div", null, children),
+vi.mock("@src/features/SessionTable", () => ({
   SessionTable: ({
     items,
     onSelect,
@@ -278,6 +273,14 @@ vi.mock("@src/modules/shared/layouts/blocks", () => ({
         )
       )
     ),
+}));
+
+vi.mock("@src/components/layout/blocks", () => ({
+  DetailPanelContainer: ({ children }: { children?: React.ReactNode }) =>
+    createElement("div", null, children),
+  ScrollTrail: () => null,
+  ScrollTrailTarget: ({ children }: { children?: React.ReactNode }) =>
+    createElement("div", null, children),
   PanelFooter: ({
     secondaryActions = [],
     primaryAction,

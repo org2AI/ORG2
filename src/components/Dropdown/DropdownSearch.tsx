@@ -12,7 +12,6 @@
  *     value={searchValue}
  *     onChange={setSearchValue}
  *     placeholder="Search options..."
- *     autoFocus
  *   />
  *   <div className="p-1">
  *     {filteredOptions.map(opt => (
@@ -78,8 +77,8 @@ export interface DropdownSearchProps extends NativeSearchInputProps {
   testId?: string;
 
   /**
-   * Auto-focus the input when mounted
-   * @default false
+   * Auto-focus the input when the dropdown mounts on open. Pass false to opt out.
+   * @default true
    */
   autoFocus?: boolean;
 
@@ -101,7 +100,7 @@ const DropdownSearch = forwardRef<HTMLInputElement, DropdownSearchProps>(
       leading,
       containerClassName,
       testId,
-      autoFocus = false,
+      autoFocus = true,
       stopMouseDownPropagation = true,
       type = "search",
       autoComplete = "off",

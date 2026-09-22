@@ -4,9 +4,14 @@ import { useTranslation } from "react-i18next";
 import type {
   GitHubIssueTimelineItem,
   GitHubIssueTimelineSource,
+  GitHubIssueUser,
 } from "@src/api/tauri/github";
 import Tag from "@src/components/Tag";
 import { TYPOGRAPHY } from "@src/config/workstation/tokens";
+import {
+  ActivityTimestamp,
+  TimelineEventCard,
+} from "@src/features/GitHubWork/ActivityTimeline";
 import {
   Activity01Icon,
   ArchiveArrowUpIcon,
@@ -43,53 +48,36 @@ import {
   WorkflowCircle05Icon,
 } from "@src/icons";
 import { getLabelColorStyle } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/hooks/workstationIssueHelpers";
-import {
-  ActivityTimestamp,
-  TimelineEventCard,
-} from "@src/modules/shared/components/ActivityTimeline";
+import { linkAnchorProps } from "@src/util/ui/openLink";
 
 const EVENT_ICON_PROPS = { size: 13, strokeWidth: 1.8 } as const;
 
-const LOCALIZED_EVENT_DESCRIPTIONS: Record<
-  string,
-  readonly [key: string, defaultValue: string]
-> = {
-  comment_deleted: ["commentDeleted", "deleted a comment"],
-  subscribed: ["subscribed", "subscribed to this issue"],
-  unsubscribed: ["unsubscribed", "unsubscribed from this issue"],
-  added_to_project: ["addedToProject", "added this issue to a project"],
-  moved_columns_in_project: ["movedInProject", "moved this issue in a project"],
-  removed_from_project: [
-    "removedFromProject",
-    "removed this issue from a project",
-  ],
-  archived: ["archived", "archived this issue"],
-  unarchived: ["unarchived", "unarchived this issue"],
-  merged: ["merged", "merged this pull request"],
-  committed: ["committed", "committed to this pull request"],
-  head_ref_deleted: ["headRefDeleted", "deleted the head branch"],
-  head_ref_restored: ["headRefRestored", "restored the head branch"],
-  head_ref_force_pushed: ["headRefForcePushed", "force-pushed the head branch"],
-  base_ref_changed: ["baseRefChanged", "changed the base branch"],
-  automatic_base_change_failed: [
-    "automaticBaseChangeFailed",
-    "could not automatically change the base branch",
-  ],
-  automatic_base_change_succeeded: [
-    "automaticBaseChangeSucceeded",
-    "automatically changed the base branch",
-  ],
-  deployed: ["deployed", "deployed this pull request"],
-  deployment_environment_changed: [
-    "deploymentEnvironmentChanged",
-    "changed the deployment environment",
-  ],
-  ready_for_review: ["readyForReview", "marked this pull request ready"],
-  review_requested: ["reviewRequested", "requested a review"],
-  review_request_removed: ["reviewRequestRemoved", "removed a review request"],
-  reviewed: ["reviewed", "reviewed these changes"],
-  review_dismissed: ["reviewDismissed", "dismissed a review"],
-  user_blocked: ["userBlocked", "blocked this user"],
+/** GitHub timeline events whose description comes from a key, not the raw id. */
+const LOCALIZED_EVENT_DESCRIPTIONS: Record<string, string> = {
+  comment_deleted: "commentDeleted",
+  subscribed: "subscribed",
+  unsubscribed: "unsubscribed",
+  added_to_project: "addedToProject",
+  moved_columns_in_project: "movedInProject",
+  removed_from_project: "removedFromProject",
+  archived: "archived",
+  unarchived: "unarchived",
+  merged: "merged",
+  committed: "committed",
+  head_ref_deleted: "headRefDeleted",
+  head_ref_restored: "headRefRestored",
+  head_ref_force_pushed: "headRefForcePushed",
+  base_ref_changed: "baseRefChanged",
+  automatic_base_change_failed: "automaticBaseChangeFailed",
+  automatic_base_change_succeeded: "automaticBaseChangeSucceeded",
+  deployed: "deployed",
+  deployment_environment_changed: "deploymentEnvironmentChanged",
+  ready_for_review: "readyForReview",
+  review_requested: "reviewRequested",
+  review_request_removed: "reviewRequestRemoved",
+  reviewed: "reviewed",
+  review_dismissed: "reviewDismissed",
+  user_blocked: "userBlocked",
 };
 
 function humanizeEventName(event: string): string {
@@ -387,9 +375,7 @@ function CrossReferenceLink({
 }): React.ReactNode {
   return (
     <a
-      href={source.html_url}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...linkAnchorProps(source.html_url)}
       className="inline-flex max-w-full min-w-0 items-center gap-1 overflow-hidden align-middle font-medium text-primary-6 hover:underline"
       title={source.title}
     >
@@ -427,28 +413,28 @@ export function IssueTimelineEventDescription({
     case "assigned":
       return item.assignee ? (
         <>
-          {t("git.issues.activity.assigned", "assigned")}{" "}
+          {t("git.issues.activity.assigned")}{" "}
           <TimelineUser login={item.assignee.login} />
         </>
       ) : (
-        <>{t("git.issues.activity.assignedIssue", "assigned this issue")}</>
+        <>{t("git.issues.activity.assignedIssue")}</>
       );
     case "unassigned":
       return item.assignee ? (
         <>
-          {t("git.issues.activity.unassigned", "unassigned")}{" "}
+          {t("git.issues.activity.unassigned")}{" "}
           <TimelineUser login={item.assignee.login} />
         </>
       ) : (
-        <>{t("git.issues.activity.removedAssignee", "removed an assignee")}</>
+        <>{t("git.issues.activity.removedAssignee")}</>
       );
     case "labeled":
     case "unlabeled":
       return (
         <>
           {item.event === "labeled"
-            ? t("git.issues.activity.added", "added")
-            : t("git.issues.activity.removed", "removed")}{" "}
+            ? t("git.issues.activity.added")
+            : t("git.issues.activity.removed")}{" "}
           {item.label ? (
             <Tag
               size="mini"
@@ -459,7 +445,7 @@ export function IssueTimelineEventDescription({
               {item.label.name}
             </Tag>
           ) : (
-            t("git.issues.activity.label", "a label")
+            t("git.issues.activity.label")
           )}
         </>
       );
@@ -468,7 +454,6 @@ export function IssueTimelineEventDescription({
         <>
           {t("git.issues.activity.milestoned", {
             milestone: item.milestone ?? "",
-            defaultValue: "added this issue to milestone {{milestone}}",
           })}
         </>
       );
@@ -477,7 +462,6 @@ export function IssueTimelineEventDescription({
         <>
           {t("git.issues.activity.demilestoned", {
             milestone: item.milestone ?? "",
-            defaultValue: "removed this issue from milestone {{milestone}}",
           })}
         </>
       );
@@ -486,119 +470,74 @@ export function IssueTimelineEventDescription({
         <>
           {t("git.issues.activity.closedViaCommit", {
             commit: item.commit_id.slice(0, 7),
-            defaultValue: "closed this issue via commit {{commit}}",
           })}
         </>
       ) : (
-        <>{t("git.issues.activity.closed", "closed this issue")}</>
+        <>{t("git.issues.activity.closed")}</>
       );
     case "reopened":
-      return <>{t("git.issues.activity.reopened", "reopened this issue")}</>;
+      return <>{t("git.issues.activity.reopened")}</>;
     case "renamed":
       return item.rename ? (
         <>
-          {t("git.issues.activity.renamedTo", "renamed this issue to")}{" "}
-          <q>{item.rename.to}</q>
+          {t("git.issues.activity.renamedTo")} <q>{item.rename.to}</q>
         </>
       ) : (
-        <>{t("git.issues.activity.renamed", "renamed this issue")}</>
+        <>{t("git.issues.activity.renamed")}</>
       );
     case "locked":
       return item.lock_reason ? (
         <>
           {t("git.issues.activity.lockedAs", {
             reason: item.lock_reason,
-            defaultValue: "locked this conversation as {{reason}}",
           })}
         </>
       ) : (
-        <>{t("git.issues.activity.locked", "locked this conversation")}</>
+        <>{t("git.issues.activity.locked")}</>
       );
     case "unlocked":
-      return (
-        <>{t("git.issues.activity.unlocked", "unlocked this conversation")}</>
-      );
+      return <>{t("git.issues.activity.unlocked")}</>;
     case "cross-referenced":
       return item.source ? (
         <>
-          {t(
-            "git.issues.activity.crossReferencedFrom",
-            "referenced this issue from"
-          )}{" "}
+          {t("git.issues.activity.crossReferencedFrom")}{" "}
           <CrossReferenceLink source={item.source} />
         </>
       ) : (
-        <>
-          {t(
-            "git.issues.activity.crossReferenced",
-            "cross-referenced this issue"
-          )}
-        </>
+        <>{t("git.issues.activity.crossReferenced")}</>
       );
     case "referenced":
       return item.commit_id ? (
         <>
           {t("git.issues.activity.referencedInCommit", {
             commit: item.commit_id.slice(0, 7),
-            defaultValue: "referenced this issue in commit {{commit}}",
           })}
         </>
       ) : (
-        <>
-          {t(
-            "git.issues.activity.referencedInACommit",
-            "referenced this issue in a commit"
-          )}
-        </>
+        <>{t("git.issues.activity.referencedInACommit")}</>
       );
     case "connected":
-      return <>{t("git.issues.activity.connected", "linked this issue")}</>;
+      return <>{t("git.issues.activity.connected")}</>;
     case "disconnected":
-      return (
-        <>{t("git.issues.activity.disconnected", "unlinked this issue")}</>
-      );
+      return <>{t("git.issues.activity.disconnected")}</>;
     case "marked_as_duplicate":
-      return (
-        <>
-          {t(
-            "git.issues.activity.markedAsDuplicate",
-            "marked this issue as a duplicate"
-          )}
-        </>
-      );
+      return <>{t("git.issues.activity.markedAsDuplicate")}</>;
     case "unmarked_as_duplicate":
-      return (
-        <>
-          {t(
-            "git.issues.activity.unmarkedAsDuplicate",
-            "removed the duplicate marking"
-          )}
-        </>
-      );
+      return <>{t("git.issues.activity.unmarkedAsDuplicate")}</>;
     case "pinned":
-      return <>{t("git.issues.activity.pinned", "pinned this issue")}</>;
+      return <>{t("git.issues.activity.pinned")}</>;
     case "unpinned":
-      return <>{t("git.issues.activity.unpinned", "unpinned this issue")}</>;
+      return <>{t("git.issues.activity.unpinned")}</>;
     case "transferred":
-      return (
-        <>{t("git.issues.activity.transferred", "transferred this issue")}</>
-      );
+      return <>{t("git.issues.activity.transferred")}</>;
     case "converted_to_discussion":
-      return (
-        <>
-          {t(
-            "git.issues.activity.convertedToDiscussion",
-            "converted this issue to a discussion"
-          )}
-        </>
-      );
+      return <>{t("git.issues.activity.convertedToDiscussion")}</>;
     case "mentioned":
-      return <>{t("git.issues.activity.mentioned", "mentioned this issue")}</>;
+      return <>{t("git.issues.activity.mentioned")}</>;
     default: {
       const localizedEvent = LOCALIZED_EVENT_DESCRIPTIONS[item.event];
       if (localizedEvent) {
-        const [key, defaultValue] = localizedEvent;
-        return <>{t(`git.issues.activity.${key}`, defaultValue)}</>;
+        return <>{t(`git.issues.activity.${localizedEvent}`)}</>;
       }
       return <>{humanizeEventName(item.event)}</>;
     }
@@ -621,6 +560,60 @@ export function IssueTimelineEventRow({
           <>
             <span className="mx-1">·</span>
             <ActivityTimestamp timestamp={item.created_at} />
+          </>
+        ) : null}
+      </>
+    </TimelineEventCard>
+  );
+}
+
+/**
+ * A run of `labeled`/`unlabeled` events from the same actor, grouped by
+ * `groupIssueTimelineRows`. GitHub's timeline emits one event per label even
+ * when they were all applied together, so this collapses that run into a
+ * single row.
+ */
+export function IssueTimelineLabelGroupRow({
+  event,
+  actor,
+  items,
+}: {
+  event: "labeled" | "unlabeled";
+  actor: GitHubIssueUser | null;
+  items: GitHubIssueTimelineItem[];
+}): React.ReactNode {
+  const { t } = useTranslation("common");
+  const actorName = actor?.login ?? "GitHub";
+  const latest = items[items.length - 1];
+
+  return (
+    <TimelineEventCard icon={<TimelineEventIcon event={event} />}>
+      <>
+        <span className="font-medium text-text-1">{actorName}</span>{" "}
+        {event === "labeled"
+          ? t("git.issues.activity.added")
+          : t("git.issues.activity.removed")}{" "}
+        {items.map((item, index) => (
+          <React.Fragment key={item.id ?? `${item.label?.name}-${index}`}>
+            {index > 0 ? " " : ""}
+            {item.label ? (
+              <Tag
+                size="mini"
+                pill
+                className={`${TYPOGRAPHY.badge} px-1.5! py-px! align-middle text-[10px]! leading-3!`}
+                style={getLabelColorStyle(item.label.color)}
+              >
+                {item.label.name}
+              </Tag>
+            ) : (
+              t("git.issues.activity.label")
+            )}
+          </React.Fragment>
+        ))}
+        {latest.created_at ? (
+          <>
+            <span className="mx-1">·</span>
+            <ActivityTimestamp timestamp={latest.created_at} />
           </>
         ) : null}
       </>

@@ -12,6 +12,8 @@ import {
   vi,
 } from "vitest";
 
+import type { GitWorktreeEntry } from "@src/api/http/git/types";
+
 import { useSourceControlTabConfig } from "../SourceControlTab";
 
 const mocks = vi.hoisted(() => ({
@@ -38,7 +40,7 @@ vi.mock("@src/hooks/git", () => ({
   useRepoGitInitialization: mocks.useRepoGitInitialization,
 }));
 
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   Placeholder: () => "loading-placeholder",
 }));
 
@@ -62,10 +64,17 @@ vi.mock("../../content/MultiRootSourceControlContent", () => ({
 vi.mock("../SourceControlTabPanels", () => ({
   NotGitInitializedContent: () => "not-git-initialized",
   SourceControlTabContent: () => "source-control-content",
-  SourceControlWithWorktrees: () => "worktree-source-control",
+  SourceControlWithWorktrees: () =>
+    createElement("div", null, "source-control-content"),
 }));
 
-function Harness() {
+function Harness({
+  worktrees = [],
+  loading = false,
+}: {
+  worktrees?: GitWorktreeEntry[];
+  loading?: boolean;
+}) {
   const tab = useSourceControlTabConfig({
     repoPath: "/workspace/repo",
     repoId: "repo-1",
@@ -73,9 +82,9 @@ function Harness() {
     viewMode: "list-tree",
     sourceControlRef: { current: null },
     actions: [],
-    worktrees: [],
-    hasWorktrees: false,
-    worktreesLoading: false,
+    worktrees,
+    hasWorktrees: worktrees.length > 0,
+    worktreesLoading: loading,
   });
 
   return createElement(Fragment, null, tab.sections?.[0]?.content);
@@ -125,5 +134,20 @@ describe("SourceControlTab initialization gate", () => {
     );
     expect(container.textContent).toBe("source-control-content");
     expect(container.textContent).not.toContain("loading-placeholder");
+  });
+  it("keeps the same pane through discovery, refresh and removal of worktrees", () => {
+    act(() => root.render(createElement(Harness, { loading: true })));
+    const pane = container.firstChild;
+    const worktrees = [
+      { path: "/workspace/linked", is_main: false },
+    ] as GitWorktreeEntry[];
+    act(() => root.render(createElement(Harness, { worktrees })));
+    expect(container.firstChild).toBe(pane);
+    act(() =>
+      root.render(createElement(Harness, { worktrees, loading: true }))
+    );
+    expect(container.firstChild).toBe(pane);
+    act(() => root.render(createElement(Harness)));
+    expect(container.firstChild).toBe(pane);
   });
 });

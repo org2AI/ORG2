@@ -23,7 +23,7 @@ export function isSessionPendingAsking(session: Session): boolean {
 }
 
 export function isSessionCompletedUnread(
-  session: Session,
+  session: { session_id: string; status: string; mergeStatus?: string | null },
   visitedSessions: ReadonlySet<string>
 ): boolean {
   if (!isTerminalStatus(session.status)) return false;

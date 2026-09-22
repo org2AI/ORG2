@@ -17,6 +17,12 @@ import { CURRENT_SHORTCUT_PLATFORM } from "@src/config/keyboard/shortcutBindings
 import { chatPanelTabHistoriesAtom } from "@src/store/chatPanel/chatPanelTabNavigationAtoms";
 import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { stationModeAtom } from "@src/store/ui/simulatorAtom";
+import {
+  createProjectSettingsTab,
+  createStartTab,
+  workstationLayoutAtom,
+} from "@src/store/workstation/tabs";
 import {
   createInstrumentedStore,
   resetInstrumentedStore,
@@ -102,6 +108,7 @@ describe("useChatPanelTabShortcuts", () => {
         activeTabId: "runtime",
       });
       store.set(chatPanelMaximizedAtom, false);
+      store.set(stationModeAtom, "my-station");
     });
   });
 
@@ -232,6 +239,69 @@ describe("useChatPanelTabShortcuts", () => {
     expect(event.defaultPrevented).toBe(true);
     expect(store.get(chatPanelTabsAtom).tabs.map((tab) => tab.id)).toEqual([
       "launchpad",
+    ]);
+  });
+
+  it("leaves the shortcut for the window close once only the Launchpad is left", async () => {
+    await act(async () => {
+      store.set(chatPanelTabsAtom, {
+        tabs: [{ id: "launchpad", type: "start-page", title: "Launchpad" }],
+        activeTabId: "launchpad",
+      });
+      store.set(chatPanelMaximizedAtom, true);
+    });
+    const appShortcut = vi.fn();
+    document.addEventListener("keydown", appShortcut, true);
+
+    const event = pressCloseShortcut(panelElement);
+    document.removeEventListener("keydown", appShortcut, true);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(appShortcut).toHaveBeenCalledTimes(1);
+    expect(store.get(chatPanelTabsAtom).tabs).toEqual([
+      { id: "launchpad", type: "start-page", title: "Launchpad" },
+    ]);
+  });
+
+  it("leaves the shortcut for My Station's Launchpad before its own", async () => {
+    await act(async () => {
+      store.set(chatPanelTabsAtom, {
+        tabs: [{ id: "launchpad", type: "start-page", title: "Launchpad" }],
+        activeTabId: "launchpad",
+      });
+      store.set(workstationLayoutAtom, {
+        mainPane: { tabs: [createStartTab()], activeTabId: "start:main" },
+      });
+    });
+    interactWith(panelElement);
+    const appShortcut = vi.fn();
+    document.addEventListener("keydown", appShortcut, true);
+
+    const event = pressCloseShortcut(panelElement);
+    document.removeEventListener("keydown", appShortcut, true);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(appShortcut).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps owning the shortcut on its Launchpad while the WorkStation holds a tab", async () => {
+    const settingsTab = createProjectSettingsTab();
+    await act(async () => {
+      store.set(chatPanelTabsAtom, {
+        tabs: [{ id: "launchpad", type: "start-page", title: "Launchpad" }],
+        activeTabId: "launchpad",
+      });
+      store.set(workstationLayoutAtom, {
+        mainPane: { tabs: [settingsTab], activeTabId: settingsTab.id },
+      });
+    });
+    interactWith(panelElement);
+
+    const event = pressCloseShortcut(panelElement);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(store.get(workstationLayoutAtom).mainPane.tabs).toEqual([
+      settingsTab,
     ]);
   });
 

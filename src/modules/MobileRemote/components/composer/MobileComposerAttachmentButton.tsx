@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { PILL_CONTROL_HOVER_CLASS } from "@src/components/CompoundPill/config";
+import Button from "@src/components/Button";
 import { INPUT_AREA_BUTTONS } from "@src/config/inputAreaTokens";
 import { Add01Icon, HugeiconsIcon } from "@src/icons";
 
@@ -45,27 +45,28 @@ export function MobileComposerAttachmentButton({
         data-testid="mobile-composer-file-input"
         onChange={handleChange}
       />
-      <button
-        type="button"
+      <Button
+        variant="tertiary"
+        shape="circle"
+        iconOnly
+        className="mobile-composer-icon-action"
+        style={{ padding: 0 }}
         onClick={handleClick}
         disabled={disabled || busy}
-        className={[
-          `flex items-center justify-center rounded-full text-text-1 transition-colors duration-200 focus:outline-none ${PILL_CONTROL_HOVER_CLASS}`,
-          INPUT_AREA_BUTTONS.iconButtonSizeClass,
-          disabled || busy ? "pointer-events-none opacity-50" : "",
-        ].join(" ")}
+        aria-busy={busy}
         aria-label={t("composer.attachments.addPhotos")}
         title={t("composer.attachments.addPhotos")}
         data-testid="mobile-composer-attach-button"
-      >
-        <HugeiconsIcon
-          icon={Add01Icon}
-          data-icon="plus"
-          size={INPUT_AREA_BUTTONS.iconSize}
-          strokeWidth={1.75}
-          className="text-text-1"
-        />
-      </button>
+        icon={
+          <HugeiconsIcon
+            icon={Add01Icon}
+            data-icon="plus"
+            size={INPUT_AREA_BUTTONS.iconSize}
+            strokeWidth={1.75}
+            className="text-text-1"
+          />
+        }
+      />
     </>
   );
 }

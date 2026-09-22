@@ -13,9 +13,11 @@ import {
   it,
 } from "vitest";
 
+import Button from "@src/components/Button";
 import { activeOverlayCountAtom } from "@src/store/ui/overlayLayerAtom";
 
 import Dropdown from ".";
+import DropdownSearch from "./DropdownSearch";
 
 describe("Dropdown", () => {
   let container: HTMLDivElement;
@@ -42,6 +44,179 @@ describe("Dropdown", () => {
   afterAll(() => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
+
+  it.each(["native", "design-system"])(
+    "reflects open state on %s button triggers and preserves selection on reopen",
+    async (kind) => {
+      const props: React.ComponentProps<typeof Dropdown> = {
+        options: [
+          { value: "one", label: "One" },
+          { value: "two", label: "Two" },
+        ],
+        mode: "multiple",
+        value: ["two"],
+        getPopupContainer: () => document.body,
+        children: React.createElement(
+          kind === "native" ? "button" : Button,
+          {
+            className: "existing-trigger",
+            "aria-label": "Notifications",
+          },
+          "Open"
+        ),
+      };
+      await act(async () => root.render(React.createElement(Dropdown, props)));
+      const trigger = container.querySelector("button")!;
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(trigger.getAttribute("aria-haspopup")).toBe("listbox");
+      expect(trigger.classList.contains("existing-trigger")).toBe(true);
+      expect(
+        trigger.classList.contains("aria-expanded:bg-surface-selected!")
+      ).toBe(true);
+      for (let cycle = 0; cycle < 2; cycle += 1) {
+        await act(async () => trigger.click());
+        expect(trigger.getAttribute("aria-expanded")).toBe("true");
+        const selected = document.body.querySelector(
+          '[role="option"][aria-selected="true"]'
+        );
+        expect(selected?.textContent).toBe("Two");
+        await act(async () => {
+          document.body.dispatchEvent(
+            new MouseEvent("mousedown", { bubbles: true })
+          );
+        });
+        expect(trigger.getAttribute("aria-expanded")).toBe("false");
+        expect(document.body.querySelector('[role="listbox"]')).toBeNull();
+      }
+    }
+  );
+
+  it("reflects controlled menu visibility without changing persistent pressed state", async () => {
+    const render = (popupVisible: boolean) => {
+      const props: React.ComponentProps<typeof Dropdown> = {
+        popupVisible,
+        droplist: React.createElement("div", null, "Actions"),
+        children: React.createElement(
+          Button,
+          { "aria-pressed": true },
+          "Filter"
+        ),
+      };
+      return React.createElement(Dropdown, props);
+    };
+    for (const visible of [false, true, false]) {
+      await act(async () => root.render(render(visible)));
+      const trigger = container.querySelector("button")!;
+      expect(trigger.getAttribute("aria-expanded")).toBe(String(visible));
+      expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+      expect(trigger.getAttribute("aria-pressed")).toBe("true");
+    }
+  });
+
+  it("filters multi-select choices without losing selections outside the search", async () => {
+    function SearchablePicker() {
+      const [value, setValue] = React.useState<(string | number)[]>([
+        "mention",
+      ]);
+      const props: React.ComponentProps<typeof Dropdown> = {
+        showSearch: true,
+        mode: "multiple",
+        value,
+        onSelect: (next) => setValue(Array.isArray(next) ? next : [next]),
+        options: [
+          { value: "mention", label: "评论中提及了你" },
+          { value: "status", label: "状态已变更" },
+        ],
+        children: React.createElement("button", null, "Open"),
+      };
+      return React.createElement(Dropdown, props);
+    }
+    await act(async () => root.render(React.createElement(SearchablePicker)));
+    const trigger = container.querySelector("button")!;
+    await act(async () => trigger.click());
+    const input = container.querySelector("input")!;
+    const setValue = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value"
+    )!.set!;
+    const search = async (value: string) => {
+      await act(async () => {
+        setValue.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    await search("状态");
+    expect(container.querySelectorAll('[role="option"]')).toHaveLength(1);
+    await act(async () =>
+      container.querySelector<HTMLElement>('[role="option"]')!.click()
+    );
+    await search("");
+    expect(
+      container.querySelectorAll('[role="option"][aria-selected="true"]')
+    ).toHaveLength(2);
+    await act(async () =>
+      document.body.dispatchEvent(
+        new MouseEvent("mousedown", { bubbles: true })
+      )
+    );
+    await act(async () => trigger.click());
+    expect(container.querySelector<HTMLInputElement>("input")!.value).toBe("");
+    expect(
+      container.querySelectorAll('[role="option"][aria-selected="true"]')
+    ).toHaveLength(2);
+  });
+
+  it("still closes single-select menus after choosing an option", async () => {
+    let selected: unknown;
+    const props: React.ComponentProps<typeof Dropdown> = {
+      options: [{ value: "one", label: "One" }],
+      onSelect: (value) => {
+        selected = value;
+      },
+      children: React.createElement("button", null, "Open"),
+    };
+    await act(async () => root.render(React.createElement(Dropdown, props)));
+    const trigger = container.querySelector("button")!;
+    await act(async () => trigger.click());
+    await act(async () =>
+      container.querySelector<HTMLElement>('[role="option"]')!.click()
+    );
+    expect(selected).toBe("one");
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it.each(["options", "custom"])(
+    "focuses search on click and reopen in %s dropdowns",
+    async (mode) => {
+      const props: React.ComponentProps<typeof Dropdown> = {
+        ...(mode === "options"
+          ? { options: [{ value: "one", label: "One" }], showSearch: true }
+          : {
+              droplist: React.createElement(DropdownSearch, {
+                value: "",
+                onChange: () => {},
+              }),
+            }),
+        children: React.createElement("button", null, "Open"),
+      };
+      await act(async () => {
+        root.render(React.createElement(Dropdown, props));
+      });
+      const trigger = container.querySelector("button")!;
+      for (let cycle = 0; cycle < 2; cycle += 1) {
+        act(() => trigger.click());
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        });
+        const input = container.querySelector("input");
+        expect(input).not.toBeNull();
+        expect(document.activeElement).toBe(input);
+        act(() => trigger.click());
+        expect(container.querySelector("input")).toBeNull();
+      }
+    }
+  );
 
   it.each([
     { label: "options", options: [{ value: "one", label: "One" }] },
@@ -129,7 +304,9 @@ describe("Dropdown", () => {
       0,
       markup.indexOf("No reviewers available")
     );
-    expect(emptyShell).toContain("text-[13px]");
+    expect(emptyShell).toContain(
+      "text-[length:var(--dropdown-font-size,13px)]"
+    );
     expect(emptyShell).toContain("text-text-3");
   });
 

@@ -1,15 +1,14 @@
 import type { TFunction } from "i18next";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import {
   WIZARD_IDS,
   buildIntegrationsPath,
   buildWizardPath,
 } from "@src/config/mainAppPaths";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { allAgentDefsAtom } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
-import { installAvailableAppUpdate } from "@src/scaffold/AppUpdater/actions";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { projectListRefreshAtom } from "@src/store/project/projectAtom";
 import { sessionCreatorStateAtom } from "@src/store/session";
@@ -17,8 +16,7 @@ import {
   CHAT_PANEL_CREATE_TARGET,
   chatPanelCreateProjectContextAtom,
   chatPanelCreateTargetAtom,
-  chatPanelSelectedProjectAtom,
-  chatPanelSelectedWorkItemAtom,
+  chatPanelCreatorWorkItemContextAtom,
 } from "@src/store/ui/chatPanel/selectionAtoms";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 
@@ -95,9 +93,6 @@ export function useChatPanelCreationContent({
     navigate(buildWizardPath(accountsPath, WIZARD_IDS.KEY_ADD));
   }, [navigate]);
 
-  const handleStartPageInstallLatestUpdate = useCallback(() => {
-    void installAvailableAppUpdate();
-  }, []);
   const { createTargetOptions, handleCreateTargetChange } =
     useChatPanelCreateTarget({
       sessionCreatorAvailable: Boolean(SessionCreatorSlot),
@@ -107,8 +102,9 @@ export function useChatPanelCreationContent({
       setWorkItemCreateDraft,
       t,
     });
-  const setSelectedProject = useSetAtom(chatPanelSelectedProjectAtom);
-  const setSelectedWorkItem = useSetAtom(chatPanelSelectedWorkItemAtom);
+  const setCreatorWorkItemContext = useSetAtom(
+    chatPanelCreatorWorkItemContextAtom
+  );
   const {
     handleCancelWorkItemCreate,
     handleChatPanelProjectCreated,
@@ -123,8 +119,7 @@ export function useChatPanelCreationContent({
     sessionCreatorAvailable: Boolean(SessionCreatorSlot),
     setActiveSessionId,
     setCreateTarget,
-    setSelectedProject,
-    setSelectedWorkItem,
+    setCreatorWorkItemContext,
     setShowProjectAgentCreator,
     setShowWorkItemAgentCreator,
     setWorkItemCreateDraft,
@@ -139,7 +134,6 @@ export function useChatPanelCreationContent({
     createProjectContext,
     creatorState,
     setActiveSessionId,
-    setSelectedProject,
     setWorkItemCreateDraft,
     setWorkstationActiveSessionId,
     workItemCreateDraft,
@@ -161,7 +155,6 @@ export function useChatPanelCreationContent({
       handleOpenCliTerminal={handleOpenCliTerminal}
       handleRegionNoticeChange={handleRegionNoticeChange}
       handleStartPageAddApiKey={handleStartPageAddApiKey}
-      handleStartPageInstallLatestUpdate={handleStartPageInstallLatestUpdate}
       handleStartPageSessionStart={handleStartPageSessionStart}
       handleProjectAgentCreatorToggle={handleProjectAgentCreatorToggle}
       handleWorkItemAgentCreatorToggle={handleWorkItemAgentCreatorToggle}

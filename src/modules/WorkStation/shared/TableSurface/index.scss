@@ -193,36 +193,4 @@
       background: var(--color-pane-raised);
     }
   }
-
-  &__pagination {
-    // Avoid position:sticky;bottom + CSS zoom: WebKit miscalculates sticky
-    // positions inside overflow:auto when the root has style.zoom set.
-    // The pagination bar stays at the bottom of the canvas content instead.
-    z-index: 7;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 36px;
-    border-top: 1px solid var(--color-border-2);
-    background: var(--color-pane-raised);
-  }
-
-  &__pagination-button {
-    border: 1px solid var(--color-border-2);
-    border-radius: 6px;
-    padding: 3px 8px;
-    color: var(--color-text-2);
-    background: var(--color-bg-1);
-    font-size: 12px;
-  }
-
-  &__pagination-button:disabled {
-    opacity: 0.5;
-  }
-
-  &__pagination-label {
-    color: var(--color-text-3);
-    font-size: 12px;
-  }
 }

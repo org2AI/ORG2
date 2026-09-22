@@ -1,0 +1,14 @@
+// The extra specificity preserves the entire scene inside existing media frames.
+img.app-illustration {
+  object-fit: contain;
+  filter: none;
+  mix-blend-mode: multiply;
+
+  // Preserve varied skin tones and dark eyes/hair. Never invert character artwork.
+  // Follow the app's selected theme, including manual OS-theme overrides.
+  [data-theme="dark"] &:not([data-illustration-theme="light"]),
+  &[data-illustration-theme="dark"] {
+    filter: brightness(0.96) contrast(0.8);
+    mix-blend-mode: normal;
+  }
+}

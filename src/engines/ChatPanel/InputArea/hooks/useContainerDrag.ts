@@ -8,15 +8,15 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import type { ComposerInputRef } from "@src/components/ComposerInput";
+import { insertPillFromTabPayload } from "@src/components/dnd/dropTargetUtils";
+import { useTabDragEndToPill } from "@src/components/dnd/useTabDragEndToPill";
+import { reorderActiveRef } from "@src/store/ui/queueReorderState";
 import {
   consumeWorkstationTabDragData,
   isInternalFileTreeDragActive,
   isWorkstationTabDragActive,
-} from "@src/shared/dnd/dragSideChannel";
-import { insertPillFromTabPayload } from "@src/shared/dnd/dropTargetUtils";
-import { hasReferenceDragData } from "@src/shared/dnd/referenceDragData";
-import { useTabDragEndToPill } from "@src/shared/dnd/useTabDragEndToPill";
-import { reorderActiveRef } from "@src/store/ui/queueReorderState";
+} from "@src/util/dnd/dragSideChannel";
+import { hasReferenceDragData } from "@src/util/dnd/referenceDragData";
 
 import { isInternalDropType } from "./containerDropHelpers";
 import { useTabDragHover } from "./useTabDragHover";

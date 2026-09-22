@@ -4,7 +4,7 @@
  * Parses conflict markers from file content and provides
  * utilities for conflict resolution.
  */
-import type { ConflictBlock, ConflictResolutionChoice } from "./types";
+import type { ConflictBlock } from "./types";
 
 // Conflict marker patterns (with multiline flag for proper detection)
 const MARKER_PATTERNS = {
@@ -101,58 +101,6 @@ function parseConflictBlocks(content: string): ConflictBlock[] {
 }
 
 /**
- * Apply a resolution choice to a conflict and return the new content
- */
-function applyResolution(
-  content: string,
-  conflict: ConflictBlock,
-  choice: ConflictResolutionChoice
-): string {
-  const lines = content.split("\n");
-  const result: string[] = [];
-
-  let skipUntilEnd = false;
-
-  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-    // Start skipping at conflict start
-    if (lineIdx === conflict.startLine) {
-      skipUntilEnd = true;
-
-      // Insert resolved content based on choice
-      if (choice === "current") {
-        if (conflict.currentContent) {
-          result.push(...conflict.currentContent.split("\n"));
-        }
-      } else if (choice === "incoming") {
-        if (conflict.incomingContent) {
-          result.push(...conflict.incomingContent.split("\n"));
-        }
-      } else if (choice === "both") {
-        if (conflict.currentContent) {
-          result.push(...conflict.currentContent.split("\n"));
-        }
-        if (conflict.incomingContent) {
-          result.push(...conflict.incomingContent.split("\n"));
-        }
-      }
-      continue;
-    }
-
-    // Skip conflict content
-    if (skipUntilEnd) {
-      if (lineIdx === conflict.endLine) {
-        skipUntilEnd = false;
-      }
-      continue;
-    }
-
-    result.push(lines[lineIdx]);
-  }
-
-  return result.join("\n");
-}
-
-/**
  * Check if content has conflict markers
  */
 function hasConflictMarkers(content: string): boolean {
@@ -164,4 +112,4 @@ function hasConflictMarkers(content: string): boolean {
 }
 
 // Export utilities for external use
-export { parseConflictBlocks, applyResolution, hasConflictMarkers };
+export { parseConflictBlocks, hasConflictMarkers };

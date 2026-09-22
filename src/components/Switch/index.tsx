@@ -35,6 +35,7 @@
  */
 import React, { forwardRef, useCallback, useState } from "react";
 
+import Button from "@src/components/Button";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import { HugeiconsIcon, Loading03Icon } from "@src/icons";
 import { useCurrentTheme } from "@src/util/ui/theme/themeUtils";
@@ -189,9 +190,9 @@ const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
     const currentText = currentChecked ? checkedText : uncheckedText;
 
     return (
-      <button
+      <Button
+        layout="custom"
         ref={ref}
-        type="button"
         role="switch"
         aria-checked={currentChecked}
         aria-label={ariaLabel}
@@ -224,7 +225,7 @@ const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
         {(currentText || (checkedText && uncheckedText)) && (
           <span className="switch-text">{currentText}</span>
         )}
-      </button>
+      </Button>
     );
   }
 );

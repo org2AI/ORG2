@@ -18,7 +18,7 @@ import { isChatPanelTuiSessionId } from "@src/util/ui/terminal/chatPanelTuiSessi
 
 import { getDraftIdFromMenuItemId } from "../sidebarConnectorUtils";
 
-type TCommon = (key: string, defaultValue?: string) => string;
+type TCommon = (key: string) => string;
 
 const SUBAGENT_SESSION_ID_SEGMENT = ":subagent:";
 

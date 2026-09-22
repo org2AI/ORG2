@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import Button from "@src/components/Button";
 import {
   PILL_CONTROL_FIELD_FOCUS_CLASS,
   type PillControlFocusTreatment,
@@ -189,8 +190,8 @@ export function PropertyDropdownField<T extends string>({
     .join(" ");
 
   const trigger = isIconTrigger ? (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       title={label}
       aria-label={label}
       aria-disabled={readonly || interactionDisabled}
@@ -220,7 +221,7 @@ export function PropertyDropdownField<T extends string>({
           />
         </span>
       ) : null}
-    </button>
+    </Button>
   ) : (
     <FieldRow
       icon={icon}

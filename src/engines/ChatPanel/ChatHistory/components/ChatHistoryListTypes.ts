@@ -28,6 +28,8 @@ export interface ChatHistoryListHandle {
     flatIndex?: number;
     behavior?: ScrollBehavior;
   }) => void;
+  /** Mount an off-screen virtual group before restoring its exact pixel anchor. */
+  revealTranscriptAnchor: (anchorId: string) => boolean;
 }
 
 export interface ChatHistoryListProps {
@@ -84,13 +86,15 @@ export interface ChatHistoryListProps {
     images?: string[]
   ) => void;
   virtualScrollerRef: React.MutableRefObject<HTMLDivElement | null>;
-  /**
-   * Ref that receives the static-path scroll container (used only when
-   * a page has no body items and Virtuoso is not mounted).
-   * Allows useChatScrollPin to fall back to scrolling this element on
-   * session switches instead of silently failing.
-   */
+  /** Ref that receives the static-path scroll container. */
   staticScrollerRef?: React.MutableRefObject<HTMLDivElement | null>;
+  /** Publishes the one active scroll root to the shared viewport owner. */
+  onScrollRootChange?: (node: HTMLDivElement | null) => void;
+  /**
+   * Called after re-measured virtual rows were committed synchronously, so the
+   * viewport owner can correct scroll against the offsets about to paint.
+   */
+  onRowLayoutCommit?: () => void;
   /**
    * When set, `GroupItemRenderer` paints a `NewEventDivider` with this
    * label above each group's last item. Subagent panes opt in so the

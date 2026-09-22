@@ -10,6 +10,7 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import DropdownSearch from "@src/components/Dropdown/DropdownSearch";
 import {
   DROPDOWN_CLASSES,
@@ -148,6 +149,7 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
         align,
         gap: DROPDOWN_PANEL.triggerGapTight,
         listNavigation: {
+          disableGlobalListener: true,
           items: filteredItems,
           onSelect: handleToggle,
           initialSelectedIndex: -1,
@@ -196,58 +198,58 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
       const isPinned = pinnedKeys.has(key);
       const renderKey = `${key}|${item.skillPath ?? item.source}`;
       return (
-        <button
-          key={renderKey}
-          type="button"
-          className={`${DROPDOWN_CLASSES.menuControlItem} min-w-0`}
-          {...keyboard.getItemProps(filteredItems.indexOf(item))}
-        >
-          <div className="flex min-w-0 items-center">
-            <span className="truncate text-[12px] font-medium text-text-1">
-              {item.name}
+        <div key={renderKey} className="relative">
+          <Button
+            layout="custom"
+            className={`${DROPDOWN_CLASSES.menuControlItem} min-w-0 pr-9!`}
+            {...keyboard.getItemProps(filteredItems.indexOf(item))}
+          >
+            <div className="flex min-w-0 items-center">
+              <span className="truncate text-[12px] font-medium text-text-1">
+                {item.name}
+              </span>
+            </div>
+            <span className="flex shrink-0 items-center gap-2">
+              <span
+                className={`transition-colors duration-150 ${
+                  isPinned ? "text-primary-6" : "text-text-3 hover:text-text-2"
+                }`}
+              >
+                {isPinned ? (
+                  <HugeiconsIcon
+                    icon={PinOffIcon}
+                    data-icon="pin-off"
+                    size={DROPDOWN_ITEM.iconSize}
+                    strokeWidth={1.75}
+                  />
+                ) : (
+                  <HugeiconsIcon
+                    icon={PinIcon}
+                    data-icon="pin"
+                    size={DROPDOWN_ITEM.iconSize}
+                    strokeWidth={1.75}
+                  />
+                )}
+              </span>
             </span>
-          </div>
-          <span className="flex shrink-0 items-center gap-2">
-            <span
-              role="button"
-              tabIndex={-1}
-              aria-label={t("input.pinnedActions.insert")}
-              className="text-text-3 transition-colors duration-150 hover:text-primary-6"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleInsert(item);
-              }}
-            >
+          </Button>
+
+          <Button
+            variant="tertiary"
+            size="sidebar"
+            iconOnly
+            className="absolute top-1/2 right-2 -translate-y-1/2"
+            aria-label={t("input.pinnedActions.insert")}
+            onClick={() => handleInsert(item)}
+            icon={
               <HugeiconsIcon
                 icon={ArrowUp02Icon}
-                data-icon="arrow-up"
                 size={DROPDOWN_ITEM.iconSize}
                 strokeWidth={2}
               />
-            </span>
-            <span
-              className={`transition-colors duration-150 ${
-                isPinned ? "text-primary-6" : "text-text-3 hover:text-text-2"
-              }`}
-            >
-              {isPinned ? (
-                <HugeiconsIcon
-                  icon={PinOffIcon}
-                  data-icon="pin-off"
-                  size={DROPDOWN_ITEM.iconSize}
-                  strokeWidth={1.75}
-                />
-              ) : (
-                <HugeiconsIcon
-                  icon={PinIcon}
-                  data-icon="pin"
-                  size={DROPDOWN_ITEM.iconSize}
-                  strokeWidth={1.75}
-                />
-              )}
-            </span>
-          </span>
-        </button>
+            }
+          />
+        </div>
       );
     };
 
@@ -266,6 +268,16 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
     return createPortal(
       <div
         ref={panelRef}
+        onKeyDown={(event) => {
+          // Focused buttons activate themselves; search and arrows navigate rows.
+          if (
+            event.key === "Enter" &&
+            event.target instanceof HTMLElement &&
+            event.target.closest("button")
+          )
+            return;
+          keyboard.handleKeyDown(event);
+        }}
         className={`fixed z-99999 flex flex-col ${DROPDOWN_CLASSES.menuPanelWithHeader}`}
         style={{
           top: panelPosition.top,
@@ -312,23 +324,18 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
             </div>
           )}
           {renderSection(
-            t("creator.slashMenu.workspaceSkills", {
-              defaultValue: "Workspace Skills",
-            }),
+            t("creator.slashMenu.workspaceSkills"),
             workspaceSkillItems
           )}
-          {renderSection(
-            t("creator.slashMenu.userSkills", { defaultValue: "User Skills" }),
-            userSkillItems
-          )}
+          {renderSection(t("creator.slashMenu.userSkills"), userSkillItems)}
           {nonSkillItems.map(renderItem)}
         </div>
 
         {/* Footer */}
         {pinnedActions.length > 0 && (
           <div className={DROPDOWN_CLASSES.footerContainer}>
-            <button
-              type="button"
+            <Button
+              layout="custom"
               onClick={onUnpinAll}
               className={`${DROPDOWN_CLASSES.menuActionItem} min-w-0`}
               data-dropdown-keyboard-skip="true"
@@ -336,7 +343,7 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
               <span className="truncate text-[12px] font-medium">
                 {t("input.pinnedActions.unpinAll")}
               </span>
-            </button>
+            </Button>
           </div>
         )}
       </div>,

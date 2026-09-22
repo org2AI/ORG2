@@ -13,6 +13,7 @@ export interface UseFileContentOptions {
 }
 
 export interface UseFileContentReturn {
+  documentPath: string | null;
   content: string;
   originalContent: string;
   loading: boolean;
@@ -29,7 +30,7 @@ export interface UseFileContentReturn {
   getExternalEdits: () => EditOperation[];
   reload: () => Promise<void>;
   updateContent: (newContent: string, source: EditSource) => void;
-  markSaved: () => void;
+  markSaved: () => boolean;
   discardChanges: () => void;
 }
 

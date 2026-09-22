@@ -23,9 +23,12 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
 } from "react";
+import { flushSync } from "react-dom";
 
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import { AgentStatusTrail } from "@src/engines/ChatPanel/blocks/primitives";
@@ -42,6 +45,7 @@ import { useChatHistoryListActiveGroupReporter } from "./ChatHistoryListActiveGr
 import { sameChatHistoryListProps } from "./ChatHistoryListEquality";
 import {
   EMPTY_ROW_GROUP_META,
+  buildChatGroupFallbackIds,
   buildChatGroupRenderKeys,
   buildRowGroupMeta,
   isScrolledToContentBottom,
@@ -94,6 +98,8 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
     onEditUserMessage,
     virtualScrollerRef,
     staticScrollerRef,
+    onScrollRootChange,
+    onRowLayoutCommit,
     newEventDividerLabel = null,
   }) => {
     // Planning indicator state in refs so polling ticks don't invalidate
@@ -144,9 +150,13 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
         return group;
       });
     }, [effectiveGroupCounts]);
+    const groupFallbackIds = useMemo(
+      () => buildChatGroupFallbackIds(flatItems, effectiveGroupCounts),
+      [effectiveGroupCounts, flatItems]
+    );
     const groupRenderKeys = useMemo(
-      () => buildChatGroupRenderKeys(turnIds),
-      [turnIds]
+      () => buildChatGroupRenderKeys(turnIds, groupFallbackIds),
+      [groupFallbackIds, turnIds]
     );
     const flatIndexToGroupIndex = useMemo(() => {
       const indexes: number[] = [];
@@ -167,44 +177,68 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
         groupRenderKeys[index] ?? `chat-group-index:${index}`,
     });
     const virtualItems = virtualizer.getVirtualItems();
+    // Row sizes the committed row offsets were computed from.
+    const committedRowSizesRef = useRef(new Map<number, number>());
+    useLayoutEffect(() => {
+      committedRowSizesRef.current = new Map(
+        virtualItems.map((item) => [item.index, item.size])
+      );
+    });
+    const [, commitRowLayout] = useReducer(
+      (revision: number) => revision + 1,
+      0
+    );
+    const onRowLayoutCommitRef = useRef(onRowLayoutCommit);
+    onRowLayoutCommitRef.current = onRowLayoutCommit;
     const rowResizeObserverRef = useRef<ResizeObserver | null>(null);
-    const measuredRowHeightsRef = useRef(new WeakMap<Element, number>());
-    const observedRowsRef = useRef(new Set<Element>());
     const measureVirtualRow = useCallback(
       (node: HTMLDivElement | null) => {
         virtualizer.measureElement(node);
         if (!node) return;
         if (!rowResizeObserverRef.current) {
           rowResizeObserverRef.current = new ResizeObserver((entries) => {
+            const resizedRows: Array<{ index: number; size: number }> = [];
             for (const entry of entries) {
-              const target = entry.target;
-              const nextHeight =
+              const blockSize =
                 entry.borderBoxSize[0]?.blockSize ??
-                target.getBoundingClientRect().height;
-              if (measuredRowHeightsRef.current.get(target) === nextHeight) {
-                continue;
-              }
-              measuredRowHeightsRef.current.set(target, nextHeight);
-              virtualizer.measureElement(target as HTMLElement);
+                entry.target.getBoundingClientRect().height;
+              const index = virtualizer.indexFromElement(
+                entry.target as HTMLDivElement
+              );
+              const size = Math.round(blockSize);
+              if (committedRowSizesRef.current.get(index) === size) continue;
+              resizedRows.push({ index, size });
             }
+            if (resizedRows.length === 0) return;
+            // Rows re-wrap on every frame of a pane resize. TanStack moves
+            // scrollTop as soon as it learns a size, but moves the rows only on
+            // its next asynchronous render, so this frame would paint shifted
+            // content at stale offsets. Commit the new offsets before paint and
+            // let the viewport owner correct against them.
+            flushSync(() => {
+              for (const { index, size } of resizedRows) {
+                virtualizer.resizeItem(index, size);
+              }
+              commitRowLayout();
+            });
+            onRowLayoutCommitRef.current?.();
           });
         }
-        if (!observedRowsRef.current.has(node)) {
-          observedRowsRef.current.add(node);
-          rowResizeObserverRef.current.observe(node);
-        }
+        const observer = rowResizeObserverRef.current;
+        observer.observe(node);
+        return () => {
+          observer.unobserve(node);
+        };
       },
       [virtualizer]
     );
 
     useEffect(() => {
-      const observedRows = observedRowsRef.current;
       return () => {
         rowResizeObserverRef.current?.disconnect();
         rowResizeObserverRef.current = null;
-        observedRows.clear();
       };
-    }, [virtualListDataKey]);
+    }, []);
 
     useEffect(() => {
       if (virtualItems.length === 0) return;
@@ -224,6 +258,30 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
     useImperativeHandle(
       virtualListRef,
       () => ({
+        revealTranscriptAnchor: (anchorId) => {
+          const scrollRoot =
+            virtualScrollerRef.current ?? staticScrollerRef?.current;
+          if (!scrollRoot) return false;
+          const mounted = Array.from(
+            scrollRoot.querySelectorAll<HTMLElement>(
+              "[data-transcript-anchor-id]"
+            )
+          ).some(
+            (element) =>
+              element.getAttribute("data-transcript-anchor-id") === anchorId
+          );
+          if (mounted) return true;
+
+          const groupIndex = groupRenderKeys.indexOf(anchorId);
+          if (groupIndex < 0 || scrollRoot !== virtualScrollerRef.current) {
+            return false;
+          }
+          virtualizer.scrollToIndex(groupIndex, {
+            align: "start",
+            behavior: "auto",
+          });
+          return false;
+        },
         scrollToGroup: ({ groupIndex, behavior = "smooth" }) => {
           const boundedGroupIndex = Math.max(
             0,
@@ -292,6 +350,7 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
       }),
       [
         flatIndexToGroupIndex,
+        groupRenderKeys,
         staticScrollerRef,
         virtualGroups.length,
         virtualizer,
@@ -407,18 +466,26 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
         if (useStaticRendering) {
           if (staticScrollerRef) staticScrollerRef.current = node;
           virtualScrollerRef.current = null;
+          onScrollRootChange?.(node);
           return;
         }
         if (staticScrollerRef) staticScrollerRef.current = null;
         virtualScrollerRef.current = node;
+        onScrollRootChange?.(node);
       },
-      [staticScrollerRef, useStaticRendering, virtualScrollerRef]
+      [
+        onScrollRootChange,
+        staticScrollerRef,
+        useStaticRendering,
+        virtualScrollerRef,
+      ]
     );
 
     return (
       <div
         ref={setScrollContainerRef}
         data-testid="chat-history-scroll-container"
+        tabIndex={0}
         className="allow-select-deep scrollbar-hide h-full w-full overflow-y-auto overscroll-contain"
         style={{ paddingTop: topPaddingPx }}
         onScroll={(event) => {
@@ -447,6 +514,7 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
                   key={groupKey}
                   className="relative"
                   data-chat-group-index={groupIndex}
+                  data-transcript-anchor-id={groupKey}
                 >
                   <div data-chat-group-header>
                     <div className="relative z-30">
@@ -469,6 +537,7 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
                     }
                     const itemKey =
                       flatItems[itemFlatIndex]?.chunk_id ??
+                      flatItems[itemFlatIndex]?.event?.id ??
                       `static-chat-${itemFlatIndex}`;
                     const rowMeta =
                       rowGroupMeta[itemFlatIndex] ?? EMPTY_ROW_GROUP_META;
@@ -503,6 +572,9 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
                     ref={measureVirtualRow}
                     data-index={virtualItem.index}
                     data-chat-group-index={group.groupIndex}
+                    data-transcript-anchor-id={
+                      groupRenderKeys[group.groupIndex]
+                    }
                     className="absolute top-0 left-0 w-full"
                     style={{
                       transform: `translateY(${virtualItem.start}px)`,
@@ -520,7 +592,11 @@ const ChatHistoryList: React.FC<ChatHistoryListProps> = memo(
                         const flatIndex = group.startFlatIndex + itemOffset;
                         return (
                           <div
-                            key={`virtual-item-${flatIndex}`}
+                            key={
+                              flatItemsRef.current[flatIndex]?.chunk_id ??
+                              flatItemsRef.current[flatIndex]?.event?.id ??
+                              `virtual-item-${flatIndex}`
+                            }
                             data-item-index={flatIndex}
                           >
                             {renderGroupItem(flatIndex, group.groupIndex)}

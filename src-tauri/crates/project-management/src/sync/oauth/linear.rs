@@ -44,7 +44,7 @@ use axum::Router;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use chrono::{DateTime, Utc};
-use rand::RngCore;
+use rand::Rng;
 use reqwest::Client;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -404,9 +404,9 @@ async fn callback_handler(
     }
 }
 
-const SUCCESS_PAGE_HTML: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Linear connected</title></head><body style=\"font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#1f2937;\"><h2>You can close this tab</h2><p>Linear is connected. Return to ORGII to finish setup.</p></body></html>";
-const DENIED_PAGE_HTML: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Linear connection cancelled</title></head><body style=\"font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#1f2937;\"><h2>Connection cancelled</h2><p>You can close this tab and try again from ORGII.</p></body></html>";
-const ERROR_PAGE_HTML: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Linear connection failed</title></head><body style=\"font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#1f2937;\"><h2>Connection failed</h2><p>Return to ORGII for the detailed error message.</p></body></html>";
+const SUCCESS_PAGE_HTML: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Linear connected</title></head><body style=\"font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#1f2937;\"><h2>You can close this tab</h2><p>Linear is connected. Return to ORG2 to finish setup.</p></body></html>";
+const DENIED_PAGE_HTML: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Linear connection cancelled</title></head><body style=\"font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#1f2937;\"><h2>Connection cancelled</h2><p>You can close this tab and try again from ORG2.</p></body></html>";
+const ERROR_PAGE_HTML: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Linear connection failed</title></head><body style=\"font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#1f2937;\"><h2>Connection failed</h2><p>Return to ORG2 for the detailed error message.</p></body></html>";
 const SETTLED_PAGE_HTML: &str = "<!doctype html><html><head><meta charset=\"utf-8\"><title>Linear</title></head><body style=\"font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:40px;color:#1f2937;\"><h2>You can close this tab</h2></body></html>";
 
 /// Linear `/oauth/token` happy-path response. We pull every field

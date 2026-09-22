@@ -6,6 +6,4 @@
 
 export { default as KeyVaultWizard } from "./components/KeyVaultWizard";
 
-export { useWizard } from "./hooks/useWizard";
-
 export type { WizardData } from "./types";

@@ -1,13 +1,14 @@
 //! Repository listing, search, and branch commands.
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use tauri::command;
 
 use project_management::sync::git_credentials::find_https_credential;
 
 use super::shared::make_client;
 
+#[cfg(test)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Repo {
     pub id: u64,
@@ -22,6 +23,7 @@ pub struct Repo {
     pub updated_at: String,
 }
 
+#[cfg(test)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Branch {
     pub name: String,
@@ -41,6 +43,7 @@ pub struct RepoPermissions {
     pub can_manage_pull_requests: bool,
 }
 
+#[cfg(test)]
 pub(crate) fn parse_repo(v: &Value) -> Repo {
     Repo {
         id: v["id"].as_u64().unwrap_or(0),
@@ -56,6 +59,7 @@ pub(crate) fn parse_repo(v: &Value) -> Repo {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn parse_branch(v: &Value) -> Branch {
     Branch {
         name: v["name"].as_str().unwrap_or("").to_string(),
@@ -347,68 +351,6 @@ pub async fn github_get_repo_permissions(
     let client = make_client()?;
     let payload = client.get(&format!("/repos/{repo_path}")).await?;
     Ok(parse_repo_permissions(&payload))
-}
-
-#[command]
-pub async fn github_list_repos(
-    page: Option<u32>,
-    per_page: Option<u32>,
-) -> Result<Vec<Repo>, String> {
-    log::info!("[GitHub][Cmd] list_repos page={page:?}");
-    let client = make_client()?;
-    let p = page.unwrap_or(1);
-    let pp = per_page.unwrap_or(30).min(100);
-    let data = client
-        .get(&format!(
-            "/user/repos?page={p}&per_page={pp}&sort=updated&affiliation=owner,collaborator"
-        ))
-        .await?;
-    let repos: Vec<Repo> = data
-        .as_array()
-        .map(|arr| arr.iter().map(parse_repo).collect())
-        .unwrap_or_default();
-    log::info!("[GitHub][Cmd] list_repos returned {} repos", repos.len());
-    Ok(repos)
-}
-
-#[command]
-pub async fn github_list_branches(repo_full_name: String) -> Result<Vec<Branch>, String> {
-    log::info!("[GitHub][Cmd] list_branches repo={repo_full_name}");
-    let client = make_client()?;
-    let data = client
-        .get(&format!("/repos/{repo_full_name}/branches?per_page=100"))
-        .await?;
-    let branches: Vec<Branch> = data
-        .as_array()
-        .map(|arr| arr.iter().map(parse_branch).collect())
-        .unwrap_or_default();
-    log::info!(
-        "[GitHub][Cmd] list_branches returned {} branches",
-        branches.len()
-    );
-    Ok(branches)
-}
-
-#[command]
-pub async fn github_create_branch(
-    repo_full_name: String,
-    branch_name: String,
-    from_sha: String,
-) -> Result<String, String> {
-    log::info!("[GitHub][Cmd] create_branch repo={repo_full_name} branch={branch_name}");
-    let client = make_client()?;
-    let data = client
-        .post(
-            &format!("/repos/{repo_full_name}/git/refs"),
-            json!({
-                "ref": format!("refs/heads/{branch_name}"),
-                "sha": from_sha
-            }),
-        )
-        .await?;
-    let sha = data["object"]["sha"].as_str().unwrap_or("").to_string();
-    log::info!("[GitHub][Cmd] create_branch done sha={sha}");
-    Ok(sha)
 }
 
 /// A file's raw content at a specific ref, for the PR "Files changed" diff

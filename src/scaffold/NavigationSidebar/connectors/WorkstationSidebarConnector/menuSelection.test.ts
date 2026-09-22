@@ -37,34 +37,4 @@ describe("resolveSessionSidebarMenuItemId", () => {
       })
     ).toBe("runtime");
   });
-
-  it("selects Team Inbox from the active team inbox tab", () => {
-    expect(
-      resolveSessionSidebarMenuItemId({
-        activeSessionCreatorDraftId: null,
-        activeSessionId: "session-1",
-        activeChatPanelTabType: "team-inbox",
-        chatPanelContentMode: CHAT_PANEL_CONTENT_MODE.SESSION,
-        chatPanelCreateTarget: CHAT_PANEL_CREATE_TARGET.AGENT_SESSION,
-        chatPanelSelectedProject: null,
-        chatPanelSelectedWorkItem: null,
-        sessionCreatorDrafts: [],
-      })
-    ).toBe("team-inbox");
-  });
-
-  it("keeps Team Inbox selected when project content exists", () => {
-    expect(
-      resolveSessionSidebarMenuItemId({
-        activeSessionCreatorDraftId: null,
-        activeSessionId: "session-1",
-        activeChatPanelTabType: "team-inbox",
-        chatPanelContentMode: CHAT_PANEL_CONTENT_MODE.NON_SESSION,
-        chatPanelCreateTarget: CHAT_PANEL_CREATE_TARGET.AGENT_SESSION,
-        chatPanelSelectedProject: null,
-        chatPanelSelectedWorkItem: null,
-        sessionCreatorDrafts: [],
-      })
-    ).toBe("team-inbox");
-  });
 });

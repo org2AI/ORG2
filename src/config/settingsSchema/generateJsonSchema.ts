@@ -49,9 +49,9 @@ export function generateSettingsJsonSchema(): string {
   const result = {
     ...jsonSchema,
     $schema: "http://json-schema.org/draft-07/schema#",
-    title: "ORGII Settings",
+    title: "ORG2 Settings",
     description:
-      "User settings for the ORGII application. Edit this file or use the Settings GUI.",
+      "User settings for the ORG2 application. Edit this file or use the Settings GUI.",
   };
 
   return JSON.stringify(result, null, 2);

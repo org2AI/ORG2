@@ -1,30 +1,25 @@
-import { atom, useAtom, useAtomValue, useStore } from "jotai";
-import isEqual from "lodash/isEqual";
+import { useAtom, useAtomValue, useStore } from "jotai";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
-import { invalidateProjectCache, projectApi } from "@src/api/http/project";
+import { invalidateProjectCache } from "@src/api/http/project";
 import type { MemberEntry } from "@src/api/http/project";
 import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
 } from "@src/features/Org2Cloud/org2CloudAuthAtom";
-import type { CloudOrgMember } from "@src/features/Org2Cloud/org2CloudClient";
 import {
   org2CloudCommentsSignalAtom,
   orgCommentsKey,
 } from "@src/features/Org2Cloud/org2CloudCommentsBus";
-import { loadCloudOrgMembers } from "@src/features/Org2Cloud/org2CloudMembersCoordinator";
 import {
   getSidebarActiveCloudOrg,
   org2CloudOrgsAtom,
   org2CloudRosterVersionAtom,
   sidebarActiveCloudOrgIdAtom,
 } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
-import { createLogger } from "@src/hooks/logger";
 import { useProjectDataChanged } from "@src/hooks/project";
 import { useCurrentUserMemberIds } from "@src/hooks/project/useCurrentUserMemberId";
 import { projectRosterChangedSignalAtom } from "@src/hooks/project/useProjectDataChanged";
-import { sessionByIdAtom } from "@src/store/session";
 
 import {
   archiveLocalTeamInboxItem,
@@ -33,192 +28,28 @@ import {
   setLocalTeamInboxKindMuted,
   unarchiveLocalTeamInboxItem,
 } from "./api";
-import { createWorkItemFromSession } from "./createWorkItemFromSession";
-import { sessionHandoffDraft } from "./createWorkItemFromSession";
 import { getTeamInboxItemKey } from "./domain";
-import type {
-  TeamInboxDataSource,
-  TeamInboxHandoffDestination,
-  TeamInboxIssue,
-  TeamInboxSessionHandoffDraft,
-} from "./domain";
-import { SessionHandoffPreparationError } from "./sessionHandoffError";
-import {
-  type SessionHandoffProjectRoster,
-  eligibleSessionHandoffProjects,
-  handoffCloudOrgFromRoster,
-  handoffProjectFromRoster,
-  teamInboxViewerIdentityIds,
-} from "./sessionHandoffProjects";
-import { observeSharedOperation } from "./sharedOperation";
+import type { TeamInboxDataSource } from "./domain";
+import { teamInboxViewerIdentityIds } from "./sessionHandoffProjects";
 import { teamInboxCacheAtom, teamInboxInvalidationAtom } from "./store";
 import {
   type TeamInboxCoordinatorScope,
   resolveTeamInboxMemberNames,
   teamInboxCoordinator,
 } from "./teamInboxCoordinator";
+import {
+  issueError,
+  pendingMembersRequest,
+  resetMembersRequest,
+  teamInboxCloudMemberSnapshotAtom,
+  teamInboxMemberSnapshotAtom,
+} from "./teamInboxMemberSnapshot";
+import { createTeamInboxSessionHandoffMethods } from "./teamInboxSessionHandoff";
+import { useTeamInboxMemberRosters } from "./useTeamInboxMemberRosters";
 
-const log = createLogger("TeamInboxDataSource");
-const MEMBER_READ_CONCURRENCY = 8;
+export { __TEAM_INBOX_MEMBER_INTERNALS } from "./teamInboxMemberSnapshot";
+
 const TEAM_INBOX_REFRESH_FLOOR_MS = 15_000;
-const sessionCreationFlights = new Map<
-  string,
-  ReturnType<typeof createWorkItemFromSession>
->();
-const sessionPreparationFlights = new Map<
-  string,
-  Promise<TeamInboxSessionHandoffDraft>
->();
-
-interface MemberSnapshot {
-  members: MemberEntry[];
-  projectRosters: SessionHandoffProjectRoster[];
-  issue: TeamInboxIssue | null;
-}
-
-interface RetainedMemberSnapshot {
-  members: MemberEntry[];
-  issue: TeamInboxIssue | null;
-  loadedForRosterVersion: number | null;
-}
-
-interface CloudMemberSnapshot {
-  key: string;
-  rosterVersion: number | null;
-  members: CloudOrgMember[];
-}
-
-const EMPTY_MEMBER_SNAPSHOT: MemberSnapshot = {
-  members: [],
-  projectRosters: [],
-  issue: null,
-};
-
-const EMPTY_RETAINED_MEMBER_SNAPSHOT: RetainedMemberSnapshot = {
-  members: [],
-  issue: null,
-  loadedForRosterVersion: null,
-};
-
-// Per-Jotai-store snapshots survive the rendered Inbox surface unmounting,
-// without sharing identity or roster data between app/store instances.
-const teamInboxMemberSnapshotAtom = atom<RetainedMemberSnapshot>(
-  EMPTY_RETAINED_MEMBER_SNAPSHOT
-);
-const teamInboxCloudMemberSnapshotAtom = atom<CloudMemberSnapshot>({
-  key: "",
-  rosterVersion: null,
-  members: [],
-});
-
-function retainMemberSnapshot(
-  current: RetainedMemberSnapshot,
-  incoming: MemberSnapshot,
-  loadedForRosterVersion: number | null
-): RetainedMemberSnapshot {
-  const dataUnchanged =
-    isEqual(current.members, incoming.members) &&
-    isEqual(current.issue, incoming.issue);
-  if (dataUnchanged) {
-    return current.loadedForRosterVersion === loadedForRosterVersion
-      ? current
-      : { ...current, loadedForRosterVersion };
-  }
-  return {
-    members: incoming.members,
-    issue: incoming.issue,
-    loadedForRosterVersion,
-  };
-}
-
-function retainCloudMemberSnapshot(
-  current: CloudMemberSnapshot,
-  incoming: CloudMemberSnapshot
-): CloudMemberSnapshot {
-  if (
-    current.key === incoming.key &&
-    isEqual(current.members, incoming.members)
-  ) {
-    return current.rosterVersion === incoming.rosterVersion
-      ? current
-      : { ...current, rosterVersion: incoming.rosterVersion };
-  }
-  return incoming;
-}
-
-let membersRequest: Promise<MemberSnapshot> | null = null;
-
-async function readAllProjectMembers(): Promise<MemberSnapshot> {
-  if (membersRequest) return membersRequest;
-  membersRequest = (async () => {
-    const projects = await projectApi.readProjects();
-    if (projects.length === 0) return EMPTY_MEMBER_SNAPSHOT;
-
-    const projectRosters: SessionHandoffProjectRoster[] = [];
-    const failures: unknown[] = [];
-    let nextIndex = 0;
-    const workerCount = Math.min(MEMBER_READ_CONCURRENCY, projects.length);
-    const workers = Array.from({ length: workerCount }, async () => {
-      while (nextIndex < projects.length) {
-        const index = nextIndex;
-        nextIndex += 1;
-        const project = projects[index];
-        try {
-          const file = await projectApi.readMembers(project.slug);
-          projectRosters.push({ project, members: file.members });
-        } catch (error) {
-          failures.push(error);
-        }
-      }
-    });
-    await Promise.all(workers);
-    if (projectRosters.length === 0 && failures.length > 0) {
-      throw failures[0];
-    }
-    if (failures.length > 0) {
-      log.warn(
-        `Skipped ${failures.length} project member file(s) while resolving Team Inbox identity`
-      );
-    }
-
-    const members = new Map<string, MemberEntry>();
-    for (const roster of projectRosters) {
-      for (const member of roster.members) {
-        const existing = members.get(member.id);
-        if (
-          !existing ||
-          (member.last_commit_date ?? "") > (existing.last_commit_date ?? "")
-        ) {
-          members.set(member.id, member);
-        }
-      }
-    }
-    return {
-      members: [...members.values()],
-      projectRosters,
-      issue:
-        failures.length > 0
-          ? {
-              code: "partial_load",
-              detail: `${failures.length} project member file(s) could not be read`,
-            }
-          : null,
-    };
-  })();
-  try {
-    return await membersRequest;
-  } finally {
-    membersRequest = null;
-  }
-}
-
-function issueError(issue: TeamInboxIssue): Error & {
-  issue: TeamInboxIssue;
-} {
-  return Object.assign(new Error(issue.detail ?? `Team Inbox ${issue.code}`), {
-    issue,
-  });
-}
 
 export function useTeamInboxDataSource(): {
   dataSource: TeamInboxDataSource;
@@ -319,85 +150,19 @@ export function useTeamInboxDataSource(): {
     teamInboxCoordinator.ensureScope(store, viewerKey);
   }, [store, viewerKey]);
 
-  useEffect(() => {
-    if (memberSnapshot.loadedForRosterVersion === localRosterVersion) return;
-    let cancelled = false;
-    void readAllProjectMembers()
-      .then((nextSnapshot) => {
-        if (!cancelled) {
-          setMemberSnapshot((current) => {
-            return retainMemberSnapshot(
-              current,
-              nextSnapshot,
-              localRosterVersion
-            );
-          });
-        }
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        log.warn("Failed to resolve Team Inbox member identity", error);
-        store.set(teamInboxCacheAtom, (current) => ({
-          ...current,
-          loading: false,
-          issue: {
-            code: "load_failed",
-            detail: error instanceof Error ? error.message : String(error),
-          },
-          revision: current.revision + 1,
-        }));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    localRosterVersion,
-    memberSnapshot.loadedForRosterVersion,
-    setMemberSnapshot,
+  useTeamInboxMemberRosters({
     store,
-  ]);
-
-  useEffect(() => {
-    if (!auth || !activeCloudOrgId) {
-      return;
-    }
-    if (
-      cloudMemberSnapshot.key === cloudRosterKey &&
-      cloudMemberSnapshot.rosterVersion === activeCloudRosterVersion
-    ) {
-      return;
-    }
-    let cancelled = false;
-    void loadCloudOrgMembers(
-      store,
-      auth,
-      activeCloudOrgId,
-      activeCloudRosterVersion
-    ).then((loaded) => {
-      if (!cancelled) {
-        setCloudMemberSnapshot((current) => {
-          return retainCloudMemberSnapshot(current, {
-            key: cloudRosterKey,
-            rosterVersion: activeCloudRosterVersion,
-            members: loaded?.members ?? [],
-          });
-        });
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [
+    auth,
     activeCloudOrgId,
     activeCloudRosterVersion,
-    auth,
     authIdentityKey,
-    cloudMemberSnapshot.key,
-    cloudMemberSnapshot.rosterVersion,
     cloudRosterKey,
+    localRosterVersion,
+    memberSnapshot,
+    setMemberSnapshot,
+    cloudMemberSnapshot,
     setCloudMemberSnapshot,
-    store,
-  ]);
+  });
 
   // The refresh is a full dual-source first-page listing and this hook is
   // permanently mounted via the sidebar connector, so invalidation bursts
@@ -480,103 +245,6 @@ export function useTeamInboxDataSource(): {
       };
     };
 
-    const prepareSessionHandoff = async ({
-      sessionId,
-      title,
-      signal,
-    }: {
-      sessionId: string;
-      title: string;
-      signal?: AbortSignal;
-    }): Promise<TeamInboxSessionHandoffDraft> => {
-      const session = store.get(sessionByIdAtom(sessionId));
-      if (!session) {
-        throw new SessionHandoffPreparationError("session_unavailable");
-      }
-      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-
-      let sourceDestinationKey: string | undefined;
-      const destinations: TeamInboxHandoffDestination[] = [];
-
-      if (auth && activeCloudOrg) {
-        const loaded = await loadCloudOrgMembers(
-          store,
-          auth,
-          activeCloudOrg.orgId,
-          activeCloudRosterVersion
-        );
-        const cloudDestination = loaded
-          ? handoffCloudOrgFromRoster(
-              activeCloudOrg,
-              loaded.members,
-              auth.userId
-            )
-          : null;
-        if (!cloudDestination) {
-          throw new SessionHandoffPreparationError("identity_unavailable");
-        }
-        destinations.push(cloudDestination);
-        sourceDestinationKey = cloudDestination.key;
-      }
-
-      if (
-        destinations.length === 0 &&
-        (session.projectSlug || session.projectId)
-      ) {
-        const project = await (session.projectSlug
-          ? projectApi.readProject(session.projectSlug)
-          : projectApi
-              .readProjects()
-              .then(
-                (entries) =>
-                  entries.find(
-                    (entry) => entry.meta.id === session.projectId
-                  ) ?? null
-              ));
-        if (!project && destinations.length === 0) {
-          throw new SessionHandoffPreparationError("project_unavailable");
-        }
-        if (project) {
-          const entries = (await projectApi.readMembers(project.slug)).members;
-          const candidate = handoffProjectFromRoster(
-            project,
-            entries,
-            viewerMemberIds
-          );
-          if (candidate) {
-            destinations.push(candidate);
-            sourceDestinationKey ??= candidate.key;
-          }
-        }
-      } else if (destinations.length === 0) {
-        // A standalone Session has no canonical project boundary. Resolve a
-        // fresh roster for both preview and submit so a removed membership or
-        // newly joined project cannot be accepted from a stale hook snapshot.
-        const latestMemberSnapshot = await readAllProjectMembers();
-        destinations.push(
-          ...eligibleSessionHandoffProjects(
-            latestMemberSnapshot.projectRosters,
-            viewerMemberIds
-          )
-        );
-      }
-      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-
-      if (destinations.length === 0) {
-        throw new SessionHandoffPreparationError(
-          session.projectSlug || session.projectId
-            ? "identity_unavailable"
-            : "no_project"
-        );
-      }
-      return sessionHandoffDraft(
-        session,
-        destinations,
-        title,
-        sourceDestinationKey
-      );
-    };
-
     return {
       scopeKey: scope.key,
       getSnapshot,
@@ -612,9 +280,9 @@ export function useTeamInboxDataSource(): {
       refresh: async () => {
         // Explicit refresh reuses any in-flight roster read, then fences the
         // API cache and lets the owning effect perform one fresh fan-out.
-        await membersRequest?.catch(() => undefined);
+        await pendingMembersRequest()?.catch(() => undefined);
         invalidateProjectCache();
-        membersRequest = null;
+        resetMembersRequest();
         setMemberSnapshot((current) => ({
           ...current,
           loadedForRosterVersion: null,
@@ -667,115 +335,14 @@ export function useTeamInboxDataSource(): {
         ? (kind, muted) =>
             setLocalTeamInboxKindMuted(viewerMemberIds, kind, muted)
         : undefined,
-      prepareSessionHandoff: viewerMemberIds[0]
-        ? ({ sessionId, title, signal }) => {
-            const flightKey = `${scope.key}:${sessionId}:${title.trim()}`;
-            const existing = sessionPreparationFlights.get(flightKey);
-            if (existing) return observeSharedOperation(existing, signal);
-            const flight = prepareSessionHandoff({
-              sessionId,
-              title,
-            }).finally(() => {
-              if (sessionPreparationFlights.get(flightKey) === flight) {
-                sessionPreparationFlights.delete(flightKey);
-              }
-            });
-            sessionPreparationFlights.set(flightKey, flight);
-            return observeSharedOperation(flight, signal);
-          }
-        : undefined,
-      createWorkItemFromSession: viewerMemberIds[0]
-        ? ({
-            sessionId,
-            title,
-            destinationKey,
-            assigneeMemberId,
-            status,
-            priority,
-            targetDate,
-            handoffNote,
-            signal,
-          }) => {
-            const flightKey = [
-              scope.key,
-              sessionId,
-              destinationKey,
-              assigneeMemberId,
-              status,
-              priority,
-              targetDate ?? "",
-              title.trim(),
-              handoffNote?.trim() ?? "",
-            ].join(":");
-            const existing = sessionCreationFlights.get(flightKey);
-            if (existing) return observeSharedOperation(existing, signal);
-
-            const session = store.get(sessionByIdAtom(sessionId));
-            if (!session) {
-              return Promise.reject(
-                new Error("The dropped Session is no longer available")
-              );
-            }
-
-            const flight = prepareSessionHandoff({
-              sessionId,
-              title,
-            })
-              .then((draft) => {
-                const destination = draft.destinations.find(
-                  (candidate) => candidate.key === destinationKey
-                );
-                if (!destination) {
-                  throw new Error(
-                    "The selected destination is no longer available"
-                  );
-                }
-                const recipient = destination.recipients.find(
-                  (member) => member.id === assigneeMemberId
-                );
-                if (!recipient) {
-                  throw new Error(
-                    "The selected recipient is no longer available"
-                  );
-                }
-                return createWorkItemFromSession({
-                  session,
-                  title,
-                  destination:
-                    destination.kind === "cloud_org"
-                      ? {
-                          kind: "cloud_org",
-                          orgId: destination.orgId,
-                        }
-                      : {
-                          kind: "project",
-                          projectSlug: destination.projectSlug,
-                        },
-                  assigneeMemberId: recipient.id,
-                  assigneeMemberName: recipient.name,
-                  senderMemberId: destination.sender.id,
-                  senderMemberName: destination.sender.name,
-                  recipientIsCurrentUser: recipient.isCurrentUser,
-                  status,
-                  priority,
-                  targetDate,
-                  handoffNote,
-                });
-              })
-              .then((result) => {
-                invalidateProjectCache();
-                teamInboxCoordinator.invalidate(store);
-                return result;
-              })
-              .finally(() => {
-                if (sessionCreationFlights.get(flightKey) === flight) {
-                  sessionCreationFlights.delete(flightKey);
-                }
-              });
-            sessionCreationFlights.set(flightKey, flight);
-            return observeSharedOperation(flight, signal);
-          }
-        : undefined,
+      ...createTeamInboxSessionHandoffMethods({
+        store,
+        scope,
+        auth,
+        activeCloudOrg,
+        activeCloudRosterVersion,
+        viewerMemberIds,
+      }),
       subscribe: (listener) => {
         let revision = store.get(teamInboxCacheAtom).revision;
         return store.sub(teamInboxCacheAtom, () => {
@@ -798,9 +365,3 @@ export function useTeamInboxDataSource(): {
 
   return { dataSource, viewerMemberIds };
 }
-
-export const __TEAM_INBOX_MEMBER_INTERNALS = {
-  resetRequest: () => {
-    membersRequest = null;
-  },
-};

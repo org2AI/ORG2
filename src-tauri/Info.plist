@@ -17,7 +17,7 @@
         `npm run tauri build -- --debug`.
     -->
     <key>NSMicrophoneUsageDescription</key>
-    <string>ORGII needs microphone access to transcribe your voice when you dictate prompts to agents.</string>
+    <string>ORG2 needs microphone access to transcribe your voice when you dictate prompts to agents.</string>
 
     <!--
         Speech recognition usage description.
@@ -25,6 +25,6 @@
         the on-device SFSpeechRecognizer; harmless to declare today.
     -->
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>ORGII uses speech recognition to turn your dictation into prompt text.</string>
+    <string>ORG2 uses speech recognition to turn your dictation into prompt text.</string>
 </dict>
 </plist>

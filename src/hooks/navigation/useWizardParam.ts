@@ -18,7 +18,7 @@
  *   <Button onClick={() => openWizard(WIZARD_IDS.MCP_ADD)}>+ MCP</Button>
  */
 import { useCallback, useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import {
   type WizardId,
@@ -26,6 +26,7 @@ import {
   parseWizardParam,
   stripWizardParams,
 } from "@src/config/mainAppPaths";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 
 export interface UseWizardParamReturn {
   /** Currently open wizard id, or `null`. */

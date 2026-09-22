@@ -16,7 +16,7 @@
 import { atom } from "jotai";
 
 import type { OpenPRItem } from "@src/api/tauri/github/pullRequests";
-import { normalizePrStatus } from "@src/shared/pr/prStatus";
+import { normalizePrStatus } from "@src/util/git/pr/prStatus";
 
 export const PR_STATUS_CACHE_CONFIG = {
   /** Refetch a repo once its snapshot is older than this. */

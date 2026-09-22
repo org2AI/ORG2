@@ -8,6 +8,8 @@
 //! shims.
 
 // Frontend log persistence (IPC → ~/.orgii/logs/frontend.log)
+pub mod clipboard_html;
+
 pub mod frontend_log;
 
 // Dev-only bridge from the bundled macOS WebKit origin to tauri dev auth.

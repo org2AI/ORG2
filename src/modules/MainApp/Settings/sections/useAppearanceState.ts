@@ -94,7 +94,8 @@ export function useAppearanceState() {
   const systemColorScheme = useAtomValue(systemColorSchemeAtom);
   const followSystemThemeLabel = getFollowSystemThemeLabel(
     systemColorScheme,
-    t("general.followSystem")
+    t("general.followSystem"),
+    { light: t("general.light"), dark: t("general.dark") }
   );
 
   const appearanceMode = useMemo(

@@ -23,15 +23,21 @@ fn exit_request_supports_bounded_shutdown(code: Option<i32>) -> bool {
     code != Some(tauri::RESTART_EXIT_CODE)
 }
 
-/// Keeps the macOS traffic lights pinned after scale-factor, theme, and focus
-/// changes.
+/// Re-places the macOS traffic lights after the window events tao delivers
+/// from the AppKit delegate *after* the theme frame has re-laid out the
+/// title bar: resize (also `zoom:` and native full-screen transitions),
+/// focus, scale-factor and theme changes. Synchronous, so a live resize
+/// never shows the default position. Resets without a delegate callback
+/// (`setTitle:`, appearance, de-miniaturise) are caught by the frame-change
+/// observers `app_window::traffic_lights` installs per window.
 pub(crate) fn sync_traffic_lights_on_window_event(
     _window: &tauri::Window,
     _event: &tauri::WindowEvent,
 ) {
     #[cfg(target_os = "macos")]
     match _event {
-        tauri::WindowEvent::ScaleFactorChanged { .. }
+        tauri::WindowEvent::Resized(_)
+        | tauri::WindowEvent::ScaleFactorChanged { .. }
         | tauri::WindowEvent::ThemeChanged(_)
         | tauri::WindowEvent::Focused(true) => {
             if let Some(webview_window) = _window.app_handle().get_webview_window(_window.label()) {
@@ -59,7 +65,14 @@ pub(crate) fn handle_window_close_and_destroy(
     // refcounted correctly — neither leaked until process exit nor
     // still attributed to a dead window.
     if let tauri::WindowEvent::Destroyed = _event {
+        app_window::unpin_traffic_lights(_window.label());
+        app_window::release_page_backdrop(_window.label());
         system_services::power::release_sleep_inhibitor_for_window_label(_window.label());
+        release_database_leases_for_window(_window.label());
+        if app_window::is_station_window_label(_window.label()) {
+            browser::inline::release_station_window_webview_state(_window.label());
+        }
+        notify_main_of_station_window_closed(_window);
     }
     if let tauri::WindowEvent::CloseRequested { api: _api, .. } = _event {
         // Only hide the "main" window — let auxiliary windows close normally
@@ -70,6 +83,46 @@ pub(crate) fn handle_window_close_and_destroy(
                 let _ = _window.hide();
             }
         }
+    }
+}
+
+/// Database leases are owned by the window whose webview opened them. A
+/// destroyed or reloaded webview never runs its JS disconnects, and the lease
+/// registries reject new opens at capacity rather than evicting live owners,
+/// so the orphans are released here.
+fn release_database_leases_for_window(label: &str) {
+    let sqlite = db_browser::release_owner(label);
+    if sqlite > 0 {
+        tracing::info!(label, count = sqlite, "[Database] Released SQLite leases");
+    }
+    let label = label.to_string();
+    tauri::async_runtime::spawn(async move {
+        let remote = db_clients::release_owner(&label).await;
+        if remote > 0 {
+            tracing::info!(label, count = remote, "[Database] Released SQL pool leases");
+        }
+    });
+}
+
+/// A detached station window (`app-window-station-<mode>`) going away is a
+/// layout event for the main window: it hid its own copy of that station
+/// when the window opened and must show it again. The frontend cannot
+/// observe another window's destruction reliably (a crash or programmatic
+/// close never runs that window's JS cleanup), so the signal is raised here
+/// and delivered only to `main`.
+fn notify_main_of_station_window_closed(window: &tauri::Window) {
+    use tauri::Emitter;
+
+    let label = window.label();
+    if !app_window::is_station_window_label(label) {
+        return;
+    }
+    if let Err(error) =
+        window
+            .app_handle()
+            .emit_to("main", app_window::STATION_WINDOW_CLOSED_EVENT, label)
+    {
+        tracing::warn!(label, error = %error, "[Window] failed to notify main of station window close");
     }
 }
 
@@ -100,9 +153,25 @@ pub(crate) fn handle_page_load(
             );
         }
     }
-    if webview.label() == "main" && matches!(payload.event(), PageLoadEvent::Started) {
+    // Only a window's own webview owns database leases and the window's
+    // sleep-inhibitor hold; inline browser webviews navigating inside it must
+    // not release them.
+    if webview.label() == webview.window().label()
+        && matches!(payload.event(), PageLoadEvent::Started)
+    {
+        release_database_leases_for_window(webview.window().label());
+        // A reload discards the page without running React cleanup, so the
+        // old page's hold would outlive it. The new page starts believing it
+        // holds nothing and re-acquires only if a session is still working —
+        // if the last one finished across the reload, nothing would ever
+        // release the hold and the machine would stay awake until quit.
+        system_services::power::release_sleep_inhibitor_for_window_label(webview.window().label());
+    }
+    if (webview.label() == "main" || app_window::is_station_window_label(webview.label()))
+        && matches!(payload.event(), PageLoadEvent::Started)
+    {
         let app = webview.app_handle().clone();
-        match browser::inline::close_all_inline_webviews(app) {
+        match browser::inline::close_inline_webviews_for_window(app, webview.window().label()) {
             Ok(closed) if !closed.is_empty() => {
                 tracing::info!(
                     count = closed.len(),
@@ -118,6 +187,40 @@ pub(crate) fn handle_page_load(
     }
 }
 
+#[cfg(all(target_os = "macos", feature = "market-connect"))]
+fn is_market_navigation(url: &url::Url, scheme: &str) -> bool {
+    url.scheme() == scheme
+        && url.host_str() == Some("market")
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.port().is_none()
+        && url.fragment().is_none()
+        && url.path() == "/connect"
+}
+
+#[cfg(all(test, target_os = "macos", feature = "market-connect"))]
+#[test]
+fn market_navigation_restores_only_the_configured_app_shortcuts() {
+    assert!(is_market_navigation(
+        &url::Url::parse("orgii://market/connect?workspace_id=ws_account&target=org2").unwrap(),
+        "orgii"
+    ));
+    for raw in [
+        "https://market/connect",
+        "orgii://other/connect",
+        "orgii://market/authorized?code=fixture",
+        "orgii://market/seller/authorized",
+        "orgii://market/seller/connect?provider=claude&region=sjc",
+        "orgii://user@market/connect",
+        "orgii://market/connect#fragment",
+    ] {
+        assert!(!is_market_navigation(
+            &url::Url::parse(raw).unwrap(),
+            "orgii"
+        ));
+    }
+}
+
 /// Process-level run-event loop: macOS open/reopen behavior and the ordered
 /// shutdown sequence on exit.
 pub(crate) fn handle_run_event(app_handle: &tauri::AppHandle, event: tauri::RunEvent) {
@@ -127,9 +230,21 @@ pub(crate) fn handle_run_event(app_handle: &tauri::AppHandle, event: tauri::RunE
     match event {
         #[cfg(target_os = "macos")]
         tauri::RunEvent::Opened { urls } => {
+            #[cfg(feature = "market-connect")]
+            if market_connect::app_scheme()
+                .is_ok_and(|scheme| urls.iter().any(|url| is_market_navigation(url, scheme)))
+            {
+                // AppKit delivered the URL to the existing process, without
+                // the single-instance callback that restores its window.
+                // Queue activation after this native open event has returned.
+                let app = app_handle.clone();
+                dispatch2::DispatchQueue::main().exec_async(move || {
+                    super::plugins::restore_main_window(&app);
+                });
+            }
             tracing::info!(
                 count = urls.len(),
-                "[OpenedFiles] Ignoring native macOS open event"
+                "[OpenedFiles] Native macOS open event delivered"
             );
         }
         // macOS: clicking the dock icon when all windows are closed should reopen the main window
@@ -279,6 +394,7 @@ async fn perform_bounded_shutdown(app_handle: &tauri::AppHandle) {
 }
 
 fn run_pre_database_shutdown(app_handle: &tauri::AppHandle) {
+    crate::market_connection::stop_history_sync();
     match agent_cli::managed_config::restore_managed_configs_for_shutdown() {
         Ok(report) => {
             if !report.restored_agents.is_empty() {

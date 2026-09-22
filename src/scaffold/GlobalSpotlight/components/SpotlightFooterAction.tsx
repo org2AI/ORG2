@@ -5,6 +5,7 @@
  */
 import React from "react";
 
+import Button from "@src/components/Button";
 import { ArrowUpRight01Icon, HugeiconsIcon } from "@src/icons";
 
 interface SpotlightFooterActionProps {
@@ -18,8 +19,8 @@ export const SpotlightFooterAction: React.FC<SpotlightFooterActionProps> = ({
 }) => {
   return (
     <div className="h-9 shrink-0 overflow-hidden rounded-full border border-border-2 bg-bg-2 shadow-lg">
-      <button
-        type="button"
+      <Button
+        layout="custom"
         onClick={onClick}
         className="flex h-full items-center gap-1.5 px-3 text-[11px] text-text-2 transition-colors hover:bg-fill-2 hover:text-text-1"
       >
@@ -30,7 +31,7 @@ export const SpotlightFooterAction: React.FC<SpotlightFooterActionProps> = ({
           size={10}
           strokeWidth={2.5}
         />
-      </button>
+      </Button>
     </div>
   );
 };

@@ -13,28 +13,24 @@
 import { useAtomValue } from "jotai";
 import React, { forwardRef, useCallback } from "react";
 
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import FileTypeIcon from "@src/components/FileTypeIcon";
-import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
+import { SidebarRowContent } from "@src/components/SidebarRow/SidebarRowContent";
+import { getStatusColorForFile } from "@src/config/gitStatus";
 import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
-import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
-  CornerDownRightIcon,
-  HugeiconsIcon,
-} from "@src/icons";
+import { CornerDownRightIcon, HugeiconsIcon } from "@src/icons";
 import { editorShowTreeIndentGuidesAtom } from "@src/store/ui/editorSettingsAtom";
 
 import {
   CHEVRON_SIZE,
+  SIDEBAR_ROW_GAP_CLASS,
   TREE_GUIDE_OFFSET_BASE,
   TREE_INDENT_GUIDE_CLASS,
   TREE_INDENT_PX,
-  TREE_PADDING_RIGHT,
-  TREE_PADDING_X,
-  TREE_ROW_HOVER_BG_CLASS,
   TREE_ROW_INSET_CLASS,
   TREE_ROW_INSET_X,
-  TREE_ROW_ROUNDED_CLASS,
+  getSidebarRowSurface,
+  getTreeRowPadding,
 } from "./config";
 import type { TreeRowBaseProps } from "./types";
 
@@ -46,6 +42,8 @@ export const TreeRowBase = React.memo(
         depth,
         isSelected = false,
         isMultiSelected = false,
+        gitStatus,
+        colorLabelByGitStatus = false,
         onClick,
         onContextMenu,
         className = "",
@@ -100,7 +98,6 @@ export const TreeRowBase = React.memo(
       // Keep content aligned whether the row owns its outer inset or the host
       // surface supplies that spacing (for example, a padded dropdown panel).
       const rowInsetX = inset ? TREE_ROW_INSET_X : 0;
-      const paddingLeft = depth * TREE_INDENT_PX + TREE_PADDING_X - rowInsetX;
 
       // Determine text color based on ignored state and selection
       const getTextColorClass = () => {
@@ -112,131 +109,125 @@ export const TreeRowBase = React.memo(
         }
         return "text-text-2";
       };
+      const labelTextColorClass =
+        !isIgnored && !isSelected && colorLabelByGitStatus && gitStatus
+          ? getStatusColorForFile(gitStatus.status, gitStatus.staged)
+          : getTextColorClass();
 
       return (
         <div
-          ref={ref}
-          data-tree-path={dataPath}
-          className={`tree-row-base group/item relative ${inset ? TREE_ROW_INSET_CLASS : ""} flex h-7 min-w-0 shrink-0 ${
-            isClickable && !cursorReset && !isHighlighted
-              ? "cursor-pointer"
-              : "cursor-default"
-          } items-center gap-1.5 overflow-hidden transition-colors ${rounded ? TREE_ROW_ROUNDED_CLASS : ""} ${
-            isHighlighted
-              ? `${SURFACE_TOKENS.selected} ${SURFACE_TOKENS.selectedHover}`
-              : TREE_ROW_HOVER_BG_CLASS
-          } ${className}`}
-          style={{
-            paddingLeft: `${paddingLeft}px`,
-            paddingRight: `${TREE_PADDING_RIGHT - rowInsetX}px`,
-          }}
-          onClick={isClickable ? handleRowClick : undefined}
-          onContextMenu={onContextMenu}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          draggable={draggable}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          onMouseDown={onMouseDown}
-          onPointerDown={onPointerDown}
+          className={`min-w-0 shrink-0 ${inset ? SIDEBAR_ROW_GAP_CLASS : ""}`}
         >
-          {/* VS Code-style vertical indent guide lines */}
-          {indentGuidesEnabled &&
-            depth > 0 &&
-            Array.from({ length: depth }, (_, level) => (
-              <span
-                key={level}
-                className={TREE_INDENT_GUIDE_CLASS}
-                style={{
-                  left: `${TREE_GUIDE_OFFSET_BASE - rowInsetX + level * TREE_INDENT_PX}px`,
-                }}
-              />
-            ))}
-          {/* Icon slot — chevron for directories, custom icon if provided,
+          <div
+            ref={ref}
+            data-tree-path={dataPath}
+            className={`tree-row-base group/item relative ${inset ? TREE_ROW_INSET_CLASS : ""} flex h-7 min-w-0 shrink-0 ${
+              isClickable && !cursorReset && !isHighlighted
+                ? "cursor-pointer"
+                : "cursor-default"
+            } items-center gap-1.5 overflow-hidden transition-colors ${getSidebarRowSurface({ selected: isHighlighted, rounded })} ${className}`}
+            style={getTreeRowPadding(depth, inset)}
+            onClick={isClickable ? handleRowClick : undefined}
+            onContextMenu={onContextMenu}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            draggable={draggable}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onMouseDown={onMouseDown}
+            onPointerDown={onPointerDown}
+          >
+            {/* VS Code-style vertical indent guide lines */}
+            {indentGuidesEnabled &&
+              depth > 0 &&
+              Array.from({ length: depth }, (_, level) => (
+                <span
+                  key={level}
+                  className={TREE_INDENT_GUIDE_CLASS}
+                  style={{
+                    left: `${TREE_GUIDE_OFFSET_BASE - rowInsetX + level * TREE_INDENT_PX}px`,
+                  }}
+                />
+              ))}
+            <SidebarRowContent
+              leading={
+                <>
+                  {/* Icon slot — chevron for directories, custom icon if provided,
               file-type icon for plain files. If `icon` is explicitly set on
               the node (including to `null`/`false`), that signal is honored
               verbatim — i.e. passing `icon: null` renders no icon at all,
               matching the file-tree convention where rows without a chevron
               and without a real icon show nothing in the leading slot. */}
-          {"icon" in node ? (
-            node.icon ? (
-              <span className={`shrink-0 ${getTextColorClass()}`}>
-                {node.icon}
-              </span>
-            ) : null
-          ) : isDirectory ? (
-            <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-              {isExpanded ? (
-                <HugeiconsIcon
-                  icon={ArrowDown01Icon}
-                  data-icon="chevron-down"
-                  size={CHEVRON_SIZE}
-                  className="text-text-3"
-                />
-              ) : (
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  data-icon="chevron-right"
-                  size={CHEVRON_SIZE}
-                  className="text-text-3"
-                />
-              )}
-            </div>
-          ) : (
-            <FileTypeIcon
-              fileName={node.name}
-              size="small"
-              className="shrink-0"
+                  {"icon" in node ? (
+                    node.icon ? (
+                      <span className={`shrink-0 ${getTextColorClass()}`}>
+                        {node.icon}
+                      </span>
+                    ) : null
+                  ) : isDirectory ? (
+                    <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                      <DisclosureChevron
+                        expanded={isExpanded}
+                        size={CHEVRON_SIZE}
+                        className="text-text-3"
+                      />
+                    </div>
+                  ) : (
+                    <FileTypeIcon
+                      fileName={node.name}
+                      size="small"
+                      className="shrink-0"
+                    />
+                  )}
+                  {/* Prefix icon (e.g. file type icon for Problems panel) */}
+                  {prefixIcon && (
+                    <span className={`shrink-0 ${getTextColorClass()}`}>
+                      {prefixIcon}
+                    </span>
+                  )}
+                </>
+              }
+              label={
+                <>
+                  {showPathHint && !isDirectory && node.path.includes("/") ? (
+                    <>
+                      <span className="max-w-[min(55%,14rem)] min-w-0 shrink truncate">
+                        {node.name}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[11px] text-text-3">
+                        {node.path.substring(0, node.path.lastIndexOf("/"))}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate">{node.name}</span>
+                  )}
+                </>
+              }
+              title={
+                showNativeTitle
+                  ? isSymlink
+                    ? `${node.name} (symlink)`
+                    : node.path || node.name
+                  : undefined
+              }
+              labelClassName={`text-[13px] ${isSelected ? "font-medium" : ""} ${labelTextColorClass}`}
+              trailing={
+                <>
+                  {/* Additional content (action buttons, status badge, etc.) */}
+                  {children}
+                  {/* Symlink indicator — pinned to right end */}
+                  {isSymlink && (
+                    <HugeiconsIcon
+                      icon={CornerDownRightIcon}
+                      data-icon="corner-down-right"
+                      size={12}
+                      className="shrink-0 text-text-3"
+                    />
+                  )}
+                </>
+              }
             />
-          )}
-
-          {/* Prefix icon (e.g. file type icon for Problems panel) */}
-          {prefixIcon && (
-            <span className={`shrink-0 ${getTextColorClass()}`}>
-              {prefixIcon}
-            </span>
-          )}
-
-          {/* Name - with path hint for flat list views (flex + per-segment truncate for ellipsis) */}
-          <div
-            className={`flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-[13px] ${
-              isSelected ? "font-medium" : ""
-            } ${getTextColorClass()}`}
-            title={
-              showNativeTitle
-                ? isSymlink
-                  ? `${node.name} (symlink)`
-                  : node.path || node.name
-                : undefined
-            }
-          >
-            {showPathHint && !isDirectory && node.path.includes("/") ? (
-              <>
-                <span className="max-w-[min(55%,14rem)] min-w-0 shrink truncate">
-                  {node.name}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[11px] text-text-3">
-                  {node.path.substring(0, node.path.lastIndexOf("/"))}
-                </span>
-              </>
-            ) : (
-              <span className="min-w-0 flex-1 truncate">{node.name}</span>
-            )}
           </div>
-
-          {/* Additional content (action buttons, status badge, etc.) */}
-          {children}
-
-          {/* Symlink indicator — pinned to right end */}
-          {isSymlink && (
-            <HugeiconsIcon
-              icon={CornerDownRightIcon}
-              data-icon="corner-down-right"
-              size={12}
-              className="shrink-0 text-text-3"
-              aria-label="symlink"
-            />
-          )}
         </div>
       );
     }

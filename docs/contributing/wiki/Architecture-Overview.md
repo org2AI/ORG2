@@ -35,7 +35,7 @@ The frontend is organized into several distinct layers, each with a clear owners
 Full application pages mounted by the router. The two primary modules are:
 
 - **`MainApp/`** — the left-side panel: agent config, integrations, key vault, settings, inbox, project ops.
-- **`WorkStation/`** — the main workspace: code editor, terminal, diff viewer, chat, browser, database manager, canvas.
+- **`WorkStation/`** — the main workspace: code editor, terminal, diff viewer, chat, browser, canvas.
 
 ### `src/features/` — Reusable domain UI
 
@@ -48,7 +48,6 @@ Self-contained feature components shared across modules:
 | `ChatPanel` (engine)    | Full chat UI — history, input, threading           |
 | `SessionCore` (engine)  | Session sync, ingestion, turns, rendering          |
 | `TerminalCore` (engine) | xterm.js terminal with addons                      |
-| `GitWorkflow` (engine)  | Git operations, diff viewing                       |
 | `BrowserCore` (engine)  | Embedded webview / browser use                     |
 
 ### `src/scaffold/` — App shell

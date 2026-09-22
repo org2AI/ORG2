@@ -431,7 +431,9 @@ async fn process_notification<A: AcpAgentAdapter>(
 
                 // Register the oneshot BEFORE broadcasting so a fast
                 // frontend response always finds the entry.
-                let (request_id, rx, permission_lifetime) = register_acp_approval(session_id).await;
+                let (request_id, rx, permission_lifetime) = register_acp_approval(
+                    session_id, &tool_name, &info.tool_args, info.tool_call_id.as_deref(),
+                ).await;
 
                 // Emit an ask_user_permissions chunk (transcript record)
                 let mut chunk =

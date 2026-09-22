@@ -1,6 +1,19 @@
 import type { Update } from "@tauri-apps/plugin-updater";
 import { createStore } from "jotai";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+import Message from "@src/components/Message";
+import i18n from "@src/i18n";
+import zhCommon from "@src/i18n/locales/zh/common.json";
+import zhSettings from "@src/i18n/locales/zh/settings.json";
 
 import * as actions from "./actions";
 import {
@@ -11,7 +24,11 @@ import {
   skipAppUpdateVersion,
   startAutomaticAppUpdates,
 } from "./service";
-import { appUpdateInstallPromptAtom, availableAppUpdateAtom } from "./state";
+import {
+  appUpdateInstallPromptAtom,
+  availableAppUpdateAtom,
+  mockAppUpdateEnabledAtom,
+} from "./state";
 
 const mocks = vi.hoisted(() => ({
   check: vi.fn(),
@@ -48,6 +65,10 @@ vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: mocks.relaunch }));
 const provenance = { kind: "release", installStrategy: "inPlace" };
 
 describe("AppUpdater service boundary", () => {
+  beforeAll(() => {
+    i18n.addResourceBundle("zh", "settings", zhSettings);
+    i18n.addResourceBundle("zh", "common", zhCommon);
+  });
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-10T00:00:00Z"));
@@ -81,10 +102,96 @@ describe("AppUpdater service boundary", () => {
     resetAppUpdaterForTests();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
     resetAppUpdaterForTests();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("routes mock install actions to the prompt without checking, installing, restarting or persisting", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const store = mocks.store!;
+      store.set(mockAppUpdateEnabledAtom, true);
+      const storageWrite = vi.spyOn(window.localStorage, "setItem");
+      await actions.installAvailableAppUpdate();
+      expect(store.get(appUpdateInstallPromptAtom)).toBe(true);
+      postponeAppUpdate("99.0.0");
+      expect(store.get(appUpdateInstallPromptAtom)).toBe(false);
+      await actions.installAvailableAppUpdate();
+      await installAvailableAppUpdate({ confirmed: true });
+      expect(store.get(appUpdateInstallPromptAtom)).toBe(false);
+      expect(store.get(mockAppUpdateEnabledAtom)).toBe(true);
+      expect(mocks.check).not.toHaveBeenCalled();
+      expect(mocks.provenance).not.toHaveBeenCalled();
+      expect(mocks.separateInstall).not.toHaveBeenCalled();
+      expect(mocks.relaunch).not.toHaveBeenCalled();
+      expect(storageWrite).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("localizes separate-install success without losing the destination", async () => {
+    await i18n.changeLanguage("zh");
+    mocks.provenance.mockResolvedValue({
+      kind: "local",
+      installStrategy: "separateMacosApplication",
+    });
+    mocks.check.mockResolvedValue(updateFixture("1.0.1"));
+    await installAvailableAppUpdate({ confirmed: true });
+    expect(Message.success).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "正式版已安装",
+        content:
+          "1.0.1 已安装到 /Applications/ORG2.app，当前本地构建继续运行且不受影响",
+      })
+    );
+    expect(mocks.relaunch).not.toHaveBeenCalled();
+  });
+
+  it("localizes an unsupported install without attempting installation", async () => {
+    await i18n.changeLanguage("zh");
+    mocks.provenance.mockResolvedValue({
+      kind: "local",
+      installStrategy: "unavailable",
+    });
+    const update = updateFixture("1.0.1");
+    mocks.check.mockResolvedValue(update);
+    await installAvailableAppUpdate({ confirmed: true });
+    expect(Message.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "更新安装失败",
+        content: "当前平台上的本地构建无法安全安装发布版本",
+      })
+    );
+    expect(update.install).not.toHaveBeenCalled();
+  });
+
+  it("localizes automatic retry notices through the scheduler", async () => {
+    await i18n.changeLanguage("zh");
+    const update = updateFixture();
+    vi.mocked(update.download).mockRejectedValue(
+      new Error("request timed out")
+    );
+    mocks.check.mockResolvedValue(update);
+    const stop = startAutomaticAppUpdates();
+    try {
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(Message.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "更新下载失败",
+          content: i18n.t("settings:update.automaticRetry", {
+            error: "下载超时，请检查网络或代理后重试",
+          }),
+          cancel: expect.objectContaining({ label: "立即重试" }),
+        })
+      );
+    } finally {
+      stop();
+    }
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   describe.each(["inPlace", "separateMacosApplication"])(

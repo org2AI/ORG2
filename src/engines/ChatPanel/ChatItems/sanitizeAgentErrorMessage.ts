@@ -47,7 +47,14 @@ export function sanitizeAgentErrorMessage(raw: string): string {
   if (!raw) return "";
 
   // Strip a leading "Error:" prefix the same way the previous inline logic did.
-  let message = raw.replace(/^\s*Error:\s*/i, "").trim();
+  // Defense for historical records produced before native redaction.
+  let message = raw
+    .replace(
+      /(\/cli\/(?:codex|claude_code)\/)session_[a-f0-9]{32}\b/g,
+      "$1[REDACTED]"
+    )
+    .replace(/^\s*Error:\s*/i, "")
+    .trim();
   if (!message) return "";
 
   if (looksLikeHtml(message)) {

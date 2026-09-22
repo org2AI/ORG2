@@ -3,24 +3,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { GitHubIssueTimelineItem } from "@src/api/tauri/github";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { IssueTimelineEventRow } from "../IssueTimelineEvent";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, unknown>) => {
-      if (key === "git.issues.activity.commentDeleted") {
-        return "localized deleted comment";
-      }
-      return typeof fallback === "string"
-        ? fallback
-        : typeof fallback?.defaultValue === "string"
-          ? fallback.defaultValue.replace(/{{(\w+)}}/g, (_, name: string) =>
-              String(fallback[name] ?? "")
-            )
-          : key;
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 function timelineItem(
@@ -148,7 +137,9 @@ describe("IssueTimelineEventRow", () => {
       })
     );
 
-    expect(markup).toContain("localized deleted comment");
+    expect(markup).toContain(
+      useTestTranslation("common").t("git.issues.activity.commentDeleted")
+    );
     expect(markup).not.toContain("comment deleted");
     expect(markup).toContain('data-icon="message-square"');
   });

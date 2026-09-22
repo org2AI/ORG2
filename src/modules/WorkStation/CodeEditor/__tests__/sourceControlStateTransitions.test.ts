@@ -7,6 +7,7 @@ import { deriveSourceControlMainProps } from "../Panels/EditorMainPane/content/s
 import {
   rememberSourceControlFocusPath,
   setSourceControlMainMode,
+  switchSourceControlCategory,
 } from "../sourceControlStateTransitions";
 
 function sourceControlTab(data: Record<string, unknown> = {}): WorkStationTab {
@@ -132,5 +133,56 @@ describe("Source Control Focus hand-off", () => {
     expect(setSourceControlMainMode(withoutSourceControl, "focus")).toBe(
       withoutSourceControl
     );
+  });
+});
+
+describe("Source Control category switching", () => {
+  const counts = { uncommitted: 86, unstaged: 80, staged: 6, stashed: 64 };
+  it.each([
+    "uncommitted",
+    "unstaged",
+    "staged",
+    "stashed",
+    "history",
+    "pr",
+    "issues",
+  ] as const)("clears the previous detail when switching to %s", (category) => {
+    const initial = panel({
+      mode: "all-changes",
+      focusPath: "/repo/src/a.ts",
+      historySelection: { type: "stash", commitSha: "abc" },
+      staged: false,
+      fileCount: 86,
+    });
+    const updated = switchSourceControlCategory(initial, category, counts);
+    expect(updated.tabs[0]).toBe(initial.tabs[0]);
+    expect(updated.activeTabId).toBe(initial.activeTabId);
+    expect(updated.tabs[1].data).toMatchObject({
+      mode: "focus",
+      focusPath: null,
+      historySelection: null,
+    });
+    if (category in counts) {
+      expect(updated.tabs[1].data.staged).toBe(category === "staged");
+      expect(updated.tabs[1].data.fileCount).toBe(
+        counts[category as keyof typeof counts]
+      );
+    }
+    const view = deriveSourceControlMainProps({
+      tabData: updated.tabs[1].data,
+      gitFilesByPath: new Map([["src/a.ts", changedFile()]]),
+      sourceControlFiles: [changedFile()],
+      sourceControlFilterMode: category,
+      repoPath: "/repo",
+      activeRepoRoot: "/repo",
+    });
+    expect(view.hasFocus).toBe(false);
+    expect(view.focusGitFile).toBeNull();
+    expect(view.historySelection).toBeNull();
+    expect(view.mode).toBe("focus");
+  });
+  it("does not create a Source Control tab when none is open", () => {
+    const state = { tabs: [fileTab()], activeTabId: "file:/repo/README.md" };
+    expect(switchSourceControlCategory(state, "stashed", counts)).toBe(state);
   });
 });

@@ -31,14 +31,13 @@ export function extractPayload(event: SessionEvent): CanvasPayload | null {
 
 export function getDefaultTitle(
   payload: CanvasPayload,
-  t: (key: string, fallback: string) => string
+  t: (key: string) => string
 ): string {
   if (payload.title) return payload.title;
-  if (payload.mode === "url") return t("canvasCard.titleUrl", "Web Page");
-  if (payload.mode === "a2ui") return t("canvasCard.titleA2ui", "Agent UI");
-  if (payload.mode === "react")
-    return t("canvasCard.titleReact", "React Preview");
-  return t("canvasCard.titleHtml", "Agent Preview");
+  if (payload.mode === "url") return t("canvasCard.titleUrl");
+  if (payload.mode === "a2ui") return t("canvasCard.titleA2ui");
+  if (payload.mode === "react") return t("canvasCard.titleReact");
+  return t("canvasCard.titleHtml");
 }
 
 export function formatEventTime(event: SessionEvent): string {

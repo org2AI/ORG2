@@ -18,6 +18,7 @@ import {
   deleteWorkspace,
   listWorkspaces,
 } from "@src/api/tauri/workspace";
+import Button from "@src/components/Button";
 import Message from "@src/components/Message";
 import { workspaceMatchesRepoFilter } from "@src/features/TeamCollaboration/orgScopeRepoFilter";
 import { createLogger } from "@src/hooks/logger";
@@ -177,18 +178,13 @@ export function useWorkingDirectoryPaletteWorkspaces({
         }
         const refreshed = await listWorkspaces();
         setSavedWorkspaces(refreshed);
-        Message.success(
-          t("selectors.spotlight.toast.workspaceRemoved", "Workspace deleted")
-        );
+        Message.success(t("selectors.spotlight.toast.workspaceRemoved"));
       } catch (error) {
         log.error("Error deleting workspace:", error);
         Message.error(
           error instanceof Error
             ? error.message
-            : t(
-                "selectors.spotlight.toast.workspaceRemoveFailed",
-                "Failed to delete workspace"
-              )
+            : t("selectors.spotlight.toast.workspaceRemoveFailed")
         );
       }
     },
@@ -223,10 +219,7 @@ export function useWorkingDirectoryPaletteWorkspaces({
       title: t("confirmation.deleteSelectedTitle", {
         count: total,
       }),
-      message: t(
-        "confirmation.deleteSelectedMessage",
-        "This only removes their linkage to ORGII. Nothing will be removed from disk."
-      ),
+      message: t("confirmation.deleteSelectedMessage"),
       okLabel: t("actions.removeFromOrgii"),
       cancelLabel: t("actions.cancel"),
     });
@@ -366,28 +359,32 @@ export function useWorkingDirectoryPaletteWorkspaces({
       );
       const manageActions = (
         <div className="flex items-center gap-1">
-          <button
-            type="button"
+          <Button
+            variant="tertiary"
+            size="mini"
+            aria-label={t("actions.edit")}
+            iconOnly
+            icon={<HugeiconsIcon icon={ICONS.editRepo} size={14} />}
             onClick={(e) => {
               e.stopPropagation();
               handleEditWorkspace(ws);
             }}
-            className="flex items-center justify-center rounded-md p-1 text-text-2 transition-colors hover:bg-fill-3 hover:text-text-1"
-            title={t("actions.edit", "Edit")}
-          >
-            <HugeiconsIcon icon={ICONS.editRepo} size={14} />
-          </button>
-          <button
-            type="button"
+            className="hover:bg-fill-3 hover:text-text-1"
+            title={t("actions.edit")}
+          />
+          <Button
+            variant="tertiary"
+            tone="danger"
+            size="mini"
+            aria-label={t("actions.delete")}
+            iconOnly
+            icon={<HugeiconsIcon icon={ICONS.removeRepo} size={14} />}
             onClick={(e) => {
               e.stopPropagation();
               void handleDeleteWorkspace(ws);
             }}
-            className="hover:text-error-6 flex items-center justify-center rounded-md p-1 text-text-2 transition-colors hover:bg-fill-3"
-            title={t("actions.delete", "Delete")}
-          >
-            <HugeiconsIcon icon={ICONS.removeRepo} size={14} />
-          </button>
+            title={t("actions.delete")}
+          />
         </div>
       );
       return {

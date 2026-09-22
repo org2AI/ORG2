@@ -16,7 +16,7 @@ app_platform = { path = "../app-platform" }
 app_utils = { path = "../app-utils" }
 
 # Tauri command macro surface only — no AppHandle / Manager / Emitter use.
-tauri = { version = "=2.10.3", default-features = false }
+tauri = { version = "=2.11.1", default-features = false }
 
 rusqlite = { workspace = true }
 chrono = { workspace = true }

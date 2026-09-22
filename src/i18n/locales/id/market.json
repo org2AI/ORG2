@@ -1,0 +1,8 @@
+{
+  "market": {
+    "auth": {
+      "noAuthCode": "Kode otorisasi tidak diterima",
+      "tokenExchangeFailed": "Pertukaran token gagal"
+    }
+  }
+}

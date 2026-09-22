@@ -55,8 +55,7 @@ vi.mock("@src/store/ui/chatPanel/selectionAtoms", async () => {
     chatPanelStartPageOpenAtom: atom(false),
     chatPanelCreateTargetAtom: atom("work-item"),
     chatPanelCreateProjectContextAtom: atom(null),
-    chatPanelSelectedProjectAtom: atom(null),
-    chatPanelSelectedWorkItemAtom: atom(null),
+    chatPanelCreatorWorkItemContextAtom: atom(null),
   };
 });
 vi.mock("@src/store/chatPanel/chatPanelTabsAtom", async () => {

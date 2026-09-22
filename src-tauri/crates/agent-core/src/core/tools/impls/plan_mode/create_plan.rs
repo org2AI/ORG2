@@ -781,6 +781,17 @@ mod tests {
     /// (`crates/e2e-test/src/sde/exec_modes.rs`), not here.
     #[tokio::test]
     async fn llm_description_includes_live_pending_plan_snapshot() {
+        // `mark_ready` reads and writes `pending_plan_approvals` through
+        // `database::db::get_connection()`, which resolves `ORGII_HOME` at
+        // call time. Without holding the sandbox this test opens whichever
+        // sibling sandbox is live (or the real `~/.orgii`) and races that
+        // sibling's fresh `PRAGMA journal_mode = WAL`, which SQLite refuses
+        // with an immediate "database is locked" (no busy handler) —
+        // observed as a `test_env::sandbox()` test failing on its first
+        // `get_connection()`. `lock_and_prepare` serializes on the same
+        // lock every other `mark_ready` test uses and primes the schema.
+        let _sandbox =
+            crate::interaction::plan_approval::persistence::test_support::lock_and_prepare();
         let manager = Arc::new(PlanApprovalManager::new());
         manager
             .mark_ready(

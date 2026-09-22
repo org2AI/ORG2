@@ -13,8 +13,12 @@ use super::discovery::{claude_file_stem_from_session_id, resolve_claude_session_
 use super::replay::{load_claude_code_history_from_path, load_claude_code_history_from_reader};
 use index::{claude_window_turn_offset, ClaudeIndexedTurn};
 pub(super) use index::{index_claude_user_turns, overlay_indexed_body_counts};
+pub use sources::{
+    load_claude_code_image_from_path, load_claude_code_user_source_messages_from_path,
+};
 
 mod index;
+mod sources;
 
 #[cfg(test)]
 pub(super) use index::{claude_window_turn_id, CLAUDE_WINDOW_TURN_ID_PREFIX};

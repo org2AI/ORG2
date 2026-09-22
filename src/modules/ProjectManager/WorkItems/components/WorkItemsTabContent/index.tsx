@@ -13,7 +13,7 @@ import type {
   LinkedRepoOption,
   ProjectData,
 } from "@src/modules/ProjectManager/shared";
-import InboxListDetailLayout from "@src/modules/shared/layouts/InboxListDetailLayout";
+import InboxListDetailLayout from "@src/scaffold/layouts/InboxListDetailLayout";
 import type { Label, Person, Team } from "@src/types/core/shared";
 import type {
   WorkItem as WorkItemExtended,

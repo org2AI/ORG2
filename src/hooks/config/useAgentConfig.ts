@@ -58,5 +58,3 @@ export function useAgentConfig(): UseAgentConfigReturn {
     updateChatAppearance,
   };
 }
-
-export default useAgentConfig;

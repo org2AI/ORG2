@@ -19,13 +19,13 @@ import {
   parsePillTextToSnapshot,
 } from "@src/engines/ChatPanel/InputArea/utils/pillContentParser";
 import type { SubmitOverrideInput } from "@src/engines/ChatPanel/hooks/useInputArea/types";
-import { HugeiconsIcon, Loading03Icon } from "@src/icons";
 import {
   ConnectedTimelineItem,
   TimelineCard,
   TimelineCardHeader,
   TimelineStack,
-} from "@src/modules/shared/components/ActivityTimeline";
+} from "@src/features/GitHubWork/ActivityTimeline";
+import { HugeiconsIcon, Loading03Icon } from "@src/icons";
 import { loadSessions } from "@src/store/session/sessionAtom/loaders";
 
 interface HumanSessionViewProps {

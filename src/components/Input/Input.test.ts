@@ -190,6 +190,201 @@ describe("Input", () => {
     expect(onBlur).toHaveBeenCalledOnce();
   });
 
+  it("renders inline confirm and cancel actions wired to Enter and Escape", () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+
+    act(() => {
+      root.render(
+        React.createElement(Input, {
+          defaultValue: "draft",
+          onConfirm,
+          onCancel,
+          confirmLabel: "Save name",
+          cancelLabel: "Discard",
+          id: "field",
+        })
+      );
+    });
+
+    const input = container.querySelector<HTMLInputElement>("#field");
+    const inner = container.querySelector(".input-inner");
+    const confirm =
+      container.querySelector<HTMLButtonElement>(".input-confirm");
+    const cancel = container.querySelector<HTMLButtonElement>(".input-cancel");
+
+    expect(
+      container
+        .querySelector(".input-wrapper")
+        ?.classList.contains("input-has-edit-actions")
+    ).toBe(true);
+    expect(
+      inner?.lastElementChild?.classList.contains("input-edit-actions")
+    ).toBe(true);
+    expect(
+      Array.from(
+        container.querySelectorAll(".input-edit-actions > button"),
+        (button) => button.getAttribute("aria-label")
+      )
+    ).toEqual(["Discard", "Save name"]);
+    expect(cancel?.classList.contains("btn-hover:text-danger-6")).toBe(true);
+    expect(confirm?.classList.contains("btn-hover:text-primary-6")).toBe(true);
+    for (const action of [cancel, confirm]) {
+      expect(action?.classList.contains("btn-hover:text-text-1")).toBe(false);
+    }
+    expect(confirm?.getAttribute("aria-label")).toBe("Save name");
+    expect(cancel?.getAttribute("aria-label")).toBe("Discard");
+    expect(confirm?.type).toBe("button");
+    expect(confirm?.tabIndex).toBe(-1);
+
+    act(() => {
+      if (input) setInputValue(input, "renamed");
+    });
+    act(() => confirm?.click());
+    expect(onConfirm).toHaveBeenLastCalledWith("renamed");
+
+    const enter = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      input?.dispatchEvent(enter);
+    });
+    expect(onConfirm).toHaveBeenCalledTimes(2);
+    expect(enter.defaultPrevented).toBe(true);
+
+    act(() => cancel?.click());
+    act(() => {
+      input?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+      );
+    });
+    expect(onCancel).toHaveBeenCalledTimes(2);
+  });
+
+  it("blocks confirm while disabled or loading and ignores composing Enter", () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const render = (props: Partial<React.ComponentProps<typeof Input>>) =>
+      act(() => {
+        root.render(
+          React.createElement(Input, {
+            value: "",
+            onConfirm,
+            onCancel,
+            id: "field",
+            ...props,
+          })
+        );
+      });
+    const pressKey = (key: string, init: KeyboardEventInit = {}) =>
+      act(() => {
+        container
+          .querySelector("#field")
+          ?.dispatchEvent(
+            new KeyboardEvent("keydown", { key, bubbles: true, ...init })
+          );
+      });
+    const button = (name: string) =>
+      container.querySelector<HTMLButtonElement>(`.input-${name}`);
+
+    render({ confirmDisabled: true });
+    expect(button("confirm")?.disabled).toBe(true);
+    expect(button("cancel")?.disabled).toBe(false);
+    pressKey("Enter");
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    render({ value: "name", confirmLoading: true });
+    expect(button("confirm")?.disabled).toBe(true);
+    expect(button("cancel")?.disabled).toBe(true);
+    pressKey("Enter");
+    pressKey("Escape");
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+
+    render({ value: "名前" });
+    pressKey("Enter", { isComposing: true });
+    expect(onConfirm).not.toHaveBeenCalled();
+    pressKey("Enter");
+    expect(onConfirm).toHaveBeenCalledWith("名前");
+  });
+
+  it("shows inline actions only while the value differs from savedValue", () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const render = (value: string) =>
+      act(() => {
+        root.render(
+          React.createElement(Input, {
+            value,
+            savedValue: "Harry",
+            onConfirm,
+            onCancel,
+            id: "field",
+          })
+        );
+      });
+    const pressKey = (key: string) => {
+      const event = new KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      act(() => {
+        container.querySelector("#field")?.dispatchEvent(event);
+      });
+      return event;
+    };
+
+    render("Harry");
+    expect(container.querySelector(".input-edit-actions")).toBeNull();
+    expect(
+      container
+        .querySelector(".input-wrapper")
+        ?.classList.contains("input-has-edit-actions")
+    ).toBe(false);
+    expect(pressKey("Enter").defaultPrevented).toBe(false);
+    expect(pressKey("Escape").defaultPrevented).toBe(false);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+
+    render("Harry He");
+    expect(container.querySelector(".input-edit-actions")).not.toBeNull();
+    pressKey("Enter");
+    pressKey("Escape");
+    expect(onConfirm).toHaveBeenCalledWith("Harry He");
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("lets a caller key handler pre-empt the inline actions", () => {
+    const onConfirm = vi.fn();
+
+    act(() => {
+      root.render(
+        React.createElement(Input, {
+          defaultValue: "draft",
+          onConfirm,
+          onKeyDown: (event) => event.preventDefault(),
+          id: "field",
+        })
+      );
+    });
+
+    act(() => {
+      container.querySelector("#field")?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(container.querySelector(".input-cancel")).toBeNull();
+    expect(container.querySelector(".input-confirm")).not.toBeNull();
+  });
+
   it("toggles password visibility without making the action a tab stop", () => {
     act(() => {
       root.render(

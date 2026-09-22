@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import type { VirtuosoHandle } from "react-virtuoso";
+
+import type { VirtualListHandle } from "@src/components/VirtualList";
 
 import type { FlattenedDOMNode } from "../types";
 import { findNodeIndex } from "../utils";
@@ -17,7 +18,7 @@ export function useDOMTreeReveal({
   revealXPath,
   revealKey,
 }: UseDOMTreeRevealOptions) {
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const listRef = useRef<VirtualListHandle>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastRevealKeyRef = useRef<number | undefined>(undefined);
 
@@ -35,8 +36,8 @@ export function useDOMTreeReveal({
       if (index === -1) return false;
 
       requestAnimationFrame(() => {
-        if (virtualized && virtuosoRef.current) {
-          virtuosoRef.current.scrollToIndex({
+        if (virtualized && listRef.current) {
+          listRef.current.scrollToIndex({
             index,
             align: "center",
             behavior: "smooth",
@@ -68,5 +69,5 @@ export function useDOMTreeReveal({
     return () => clearInterval(intervalId);
   }, [flattenedNodes, revealKey, revealXPath, virtualized]);
 
-  return { virtuosoRef, scrollContainerRef };
+  return { listRef, scrollContainerRef };
 }

@@ -4,7 +4,6 @@
 export {
   // Factories
   createLogger,
-  logger,
   // Top-level convenience helpers (variadic, namespace-first)
   log,
   logDebug,

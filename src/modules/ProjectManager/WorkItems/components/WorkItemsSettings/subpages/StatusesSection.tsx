@@ -13,6 +13,13 @@ import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import Select from "@src/components/Select";
 import {
+  SECTION_ACTION_GAP_CLASSES,
+  SectionContainer,
+  SectionHeading,
+  SectionRow,
+} from "@src/components/layout/Section";
+import { CARD_ROW_TOKENS } from "@src/components/layout/blocks";
+import {
   Add01Icon,
   ArchiveIcon,
   HugeiconsIcon,
@@ -20,13 +27,6 @@ import {
   RotateLeft01Icon,
 } from "@src/icons";
 import { WORK_ITEM_STATUS_OPTIONS } from "@src/modules/ProjectManager/config/manage";
-import {
-  SECTION_ACTION_GAP_CLASSES,
-  SectionContainer,
-  SectionHeading,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { CARD_ROW_TOKENS } from "@src/modules/shared/layouts/blocks";
 
 import {
   useCustomStatusDefinitions,
@@ -149,12 +149,8 @@ const StatusesSection: React.FC<StatusesSectionProps> = ({
   const sectionBody = (
     <SectionContainer>
       <SectionRow
-        label={t("settings.statusesBuiltin", {
-          defaultValue: "Built-in statuses",
-        })}
-        description={t("settings.statusesBuiltinDescription", {
-          defaultValue: "The standard workflow buckets. Always available.",
-        })}
+        label={t("settings.statusesBuiltin")}
+        description={t("settings.statusesBuiltinDescription")}
       >
         <span />
       </SectionRow>
@@ -179,13 +175,8 @@ const StatusesSection: React.FC<StatusesSectionProps> = ({
       </SectionRow>
 
       <SectionRow
-        label={t("settings.statusesCustom", {
-          defaultValue: "Custom statuses",
-        })}
-        description={t("settings.statusesCustomDescription", {
-          defaultValue:
-            "Named aliases over a built-in bucket. Filters, counts, and boards treat them as their bucket.",
-        })}
+        label={t("settings.statusesCustom")}
+        description={t("settings.statusesCustomDescription")}
       >
         <div className={SECTION_ACTION_GAP_CLASSES}>
           <span className="text-xs text-text-1">{definitions.length}</span>
@@ -206,9 +197,7 @@ const StatusesSection: React.FC<StatusesSectionProps> = ({
             <Input
               value={draftName}
               onChange={(value) => setDraftName(value)}
-              placeholder={t("settings.statusNamePlaceholder", {
-                defaultValue: "Status name",
-              })}
+              placeholder={t("settings.statusNamePlaceholder")}
               size="small"
               autoFocus
               data-testid="work-item-statuses-name-input"
@@ -228,15 +217,13 @@ const StatusesSection: React.FC<StatusesSectionProps> = ({
               size="small"
               data-testid="work-item-statuses-add-confirm"
             >
-              {t("common:actions.add", { defaultValue: "Add" })}
+              {t("common:actions.add")}
             </Button>
           </div>
         )}
         {definitions.length === 0 && !isAdding ? (
           <div className={CARD_ROW_TOKENS.emptyState}>
-            {t("settings.noCustomStatuses", {
-              defaultValue: "No custom statuses yet.",
-            })}
+            {t("settings.noCustomStatuses")}
           </div>
         ) : (
           definitions.map((definition) => (
@@ -282,16 +269,11 @@ const StatusesSection: React.FC<StatusesSectionProps> = ({
                 iconOnly
                 size="small"
                 variant="tertiary"
-                appearance="ghost"
                 onClick={() => void handleArchive(definition)}
                 aria-label={
                   definition.archivedAt != null
-                    ? t("settings.statusRestore", {
-                        defaultValue: "Restore status",
-                      })
-                    : t("settings.statusArchive", {
-                        defaultValue: "Archive status",
-                      })
+                    ? t("settings.statusRestore")
+                    : t("settings.statusArchive")
                 }
               />
             </div>
@@ -304,9 +286,7 @@ const StatusesSection: React.FC<StatusesSectionProps> = ({
   if (!showTitle) return sectionBody;
 
   return (
-    <SectionHeading
-      title={t("settings.sidebarStatuses", { defaultValue: "Statuses" })}
-    >
+    <SectionHeading title={t("settings.sidebarStatuses")}>
       {sectionBody}
     </SectionHeading>
   );

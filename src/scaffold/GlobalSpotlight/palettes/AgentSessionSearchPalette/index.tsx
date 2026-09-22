@@ -56,6 +56,7 @@ export const AgentSessionSearchPalette: React.FC<
   const cloudAuth = useAtomValue(org2CloudAuthAtom);
   const cloudRemoteSessions = useAtomValue(org2CloudRemoteSessionsAtom);
   const [query, setQuery] = useState("");
+  const hasSearchQuery = query.trim().length > 0;
   const resolvedSearchInput = useMemo(
     () => resolveAgentSessionSearchInput(query),
     [query]
@@ -78,7 +79,7 @@ export const AgentSessionSearchPalette: React.FC<
     [sessions]
   );
 
-  const fallbackSessionLabel = t("navigation:routes.session", "Session");
+  const fallbackSessionLabel = t("navigation:routes.session");
   const { filteredItems } = useFilteredItems({
     items: sortedSessions,
     searchQuery: resolvedSearchInput.query,
@@ -116,6 +117,7 @@ export const AgentSessionSearchPalette: React.FC<
   );
 
   const items = useMemo<SpotlightItem[]>(() => {
+    if (!hasSearchQuery) return [];
     if (resolvedSearchInput.reference) {
       const reference = resolvedSearchInput.reference;
       return [
@@ -123,10 +125,7 @@ export const AgentSessionSearchPalette: React.FC<
           reference,
           ...resolveSpotlightCloudSessionPresentation({
             reference,
-            fallbackLabel: t(
-              "navigation:cloud.sessionRef.chipLabel",
-              "Team session"
-            ),
+            fallbackLabel: t("navigation:cloud.sessionRef.chipLabel"),
             auth: cloudAuth,
             remoteEntries: cloudRemoteSessions,
             localSessions: sessions,
@@ -144,6 +143,7 @@ export const AgentSessionSearchPalette: React.FC<
       onSelect: handleOpenSession,
     });
   }, [
+    hasSearchQuery,
     fallbackSessionLabel,
     filteredItems,
     cloudAuth,
@@ -198,10 +198,7 @@ export const AgentSessionSearchPalette: React.FC<
       {
         type: "action",
         id: "search-agent-sessions",
-        label: t(
-          "selectors.spotlight.actions.searchAgentSessions.pillLabel",
-          "Search Sessions"
-        ),
+        label: t("selectors.spotlight.actions.searchAgentSessions.pillLabel"),
         icon: Search01Icon,
         color: "primary",
       },
@@ -214,12 +211,12 @@ export const AgentSessionSearchPalette: React.FC<
       kernel={kernel}
       items={items}
       placeholder={t(
-        "selectors.spotlight.actions.searchAgentSessions.placeholder",
-        "Search Agent sessions..."
+        "selectors.spotlight.actions.searchAgentSessions.placeholder"
       )}
       path={path}
       onRemoveSegment={handleGoBack}
-      isLoading={sessionsLoading && sessions.length === 0}
+      isLoading={hasSearchQuery && sessionsLoading && sessions.length === 0}
+      contentOverride={hasSearchQuery ? undefined : null}
       containerHeight={400}
     />
   );

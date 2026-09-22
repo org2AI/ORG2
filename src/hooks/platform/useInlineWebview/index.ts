@@ -1,1 +1,1 @@
-export { useInlineWebview, default } from "./useInlineWebview";
+export { useInlineWebview } from "./useInlineWebview";

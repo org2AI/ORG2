@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import Button from "@src/components/Button";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { classNames } from "@src/util/ui/classNames";
 import { getViewportSize } from "@src/util/ui/window/viewport";
@@ -205,7 +206,8 @@ const TabPill: React.FC<TabPillProps> = ({
 
     if (isSimple) {
       return (
-        <button
+        <Button
+          layout="custom"
           key={tab.key}
           ref={hasDropdown ? dropdownTriggerRef : undefined}
           data-active={isActive ? "true" : "false"}
@@ -256,12 +258,13 @@ const TabPill: React.FC<TabPillProps> = ({
               )}
             />
           )}
-        </button>
+        </Button>
       );
     }
 
     return (
-      <button
+      <Button
+        layout="custom"
         key={tab.key}
         ref={hasDropdown ? dropdownTriggerRef : undefined}
         data-active={isActive ? "true" : "false"}
@@ -281,7 +284,7 @@ const TabPill: React.FC<TabPillProps> = ({
             : "cursor-pointer",
           "whitespace-nowrap",
           !fillWidth && "shrink-0",
-          buttonStyle ? "rounded-lg" : "rounded-[100px]",
+          buttonStyle ? "rounded-md" : "rounded-[100px]",
           size === "mini"
             ? "text-[12px]"
             : size === "small"
@@ -318,7 +321,7 @@ const TabPill: React.FC<TabPillProps> = ({
             ? isActive || isDropdownOpen
               ? `bg-fill-2 font-medium ${
                   isActive ? selectedActiveTextClass : defaultActiveTextClass
-                } hover:bg-fill-3 ${
+                } hover:bg-fill-2 ${
                   isActive && activeTone === "neutral"
                     ? "hover:text-text-1"
                     : "hover:text-primary-5"
@@ -373,7 +376,7 @@ const TabPill: React.FC<TabPillProps> = ({
           isActive || isDropdownOpen,
           hoveredTabKey === tab.key
         )}
-      </button>
+      </Button>
     );
   });
 

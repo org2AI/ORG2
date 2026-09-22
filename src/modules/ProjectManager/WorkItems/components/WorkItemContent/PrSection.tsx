@@ -15,6 +15,7 @@ import {
   Loading03Icon,
   SquareArrowUpRight02Icon,
 } from "@src/icons";
+import { linkAnchorProps } from "@src/util/ui/openLink";
 
 import type { PrCreationState, PrSectionProps } from "./types";
 
@@ -84,12 +85,8 @@ const PrSection: React.FC<PrSectionProps> = ({
         type={readiness.canComplete ? "success" : "warning"}
         title={
           readiness.canComplete
-            ? t("workItems.outputTab.prReady", {
-                defaultValue: "Ready to complete",
-              })
-            : t("workItems.outputTab.prBlocked", {
-                defaultValue: "Completion is blocked",
-              })
+            ? t("workItems.outputTab.prReady")
+            : t("workItems.outputTab.prBlocked")
         }
       >
         {readiness.blockers.length > 0 ? (
@@ -146,9 +143,7 @@ const PrSection: React.FC<PrSectionProps> = ({
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <a
-                href={displayPrUrl}
-                target="_blank"
-                rel="noreferrer"
+                {...linkAnchorProps(displayPrUrl)}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-6 hover:underline"
               >
                 <HugeiconsIcon
@@ -251,8 +246,6 @@ const PrSection: React.FC<PrSectionProps> = ({
             )}
           </div>
           <Button
-            variant="primary"
-            appearance="outline"
             size="small"
             icon={
               <HugeiconsIcon

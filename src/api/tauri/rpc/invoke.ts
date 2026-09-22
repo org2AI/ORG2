@@ -34,7 +34,7 @@ export class RpcError extends Error {
  * A single RPC procedure definition: command name + optional Zod schemas.
  *
  * - `input` validates the payload sent to Rust (catches bad args before IPC)
- * - `output` validates the response from Rust (catches schema drift early)
+ * - `output` decodes the response from Rust, including transforms and defaults
  * - Both are optional: omit `input` for commands with no args,
  *   omit `output` for void commands.
  */
@@ -78,9 +78,8 @@ function recordE2ERpcInvoke(command: string): void {
 }
 
 /**
- * Type-safe invoke: validates input, calls Tauri, validates output.
- *
- * In production builds, output validation is skipped for performance.
+ * Type-safe invoke: validates input, calls Tauri, decodes output in every build.
+ * The returned value must satisfy z.output, including schema transformations.
  */
 export async function typedInvoke<
   TInput extends z.ZodType,
@@ -90,7 +89,7 @@ export async function typedInvoke<
   ...[payload]: z.input<TInput> extends void | undefined
     ? [payload?: undefined]
     : [payload: z.input<TInput>]
-): Promise<TOutput extends z.ZodType ? z.output<TOutput> : void> {
+): Promise<z.output<TOutput>> {
   const { command, input, output, transform } = procedure;
 
   // Validate input (always — catches caller bugs before IPC round-trip)
@@ -128,23 +127,18 @@ export async function typedInvoke<
   // Optional transform (snake_case → camelCase, etc.)
   const transformed = transform ? transform(raw) : raw;
 
-  // Validate output in dev (skip in prod for perf)
-  const isDev = process.env.NODE_ENV !== "production";
-  if (output && isDev) {
+  if (output) {
     const parsed = output.safeParse(transformed);
     if (!parsed.success) {
-      // Raw console.error kept intentionally: asserted by rpc/router.test.ts.
-      console.error(
-        `[RPC:${command}] Output validation failed`,
-        parsed.error.issues,
-        "Raw:",
-        raw
+      throw new RpcError(
+        command,
+        `Invalid output: ${JSON.stringify(parsed.error.issues, null, 2)}`
       );
-      // In dev, still return the data so the app doesn't break — just warn loudly
     }
+    return parsed.data;
   }
 
-  return transformed as TOutput extends z.ZodType ? z.output<TOutput> : void;
+  return transformed as z.output<TOutput>;
 }
 
 // ============================================================================

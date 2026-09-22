@@ -24,6 +24,20 @@ use crate::turn_executor::TurnResult;
 use super::super::post_turn as post_turn_jobs;
 use super::super::streaming::{broadcast_agent_complete, AgentCompleteParams};
 
+/// Last-request context includes cache reads/writes after provider normalization.
+/// Per-turn prompt totals are billing counters: they omit cached input and can
+/// also count the same context repeatedly across tool iterations.
+pub(super) fn session_memory_context_tokens(
+    result: &TurnResult,
+    messages: &[serde_json::Value],
+) -> usize {
+    if result.context_tokens > 0 {
+        result.context_tokens as usize
+    } else {
+        crate::model_context::tokenizer::count_messages_tokens(messages)
+    }
+}
+
 fn should_spawn_goal_loop(
     final_turn_state: DialogTurnState,
     is_stream_error: bool,
@@ -119,6 +133,7 @@ impl UnifiedMessageProcessor {
         let fork_provider = post_turn_jobs::ForkProviderSpec {
             model: self.runtime.model.clone(),
             account_id: self.runtime.account_id.clone(),
+            credential_source: self.runtime.provider.credential_source().map(str::to_owned),
             reliability: self.runtime.resolved.reliability.clone(),
             native_harness_type: self.runtime.native_harness_type,
             workspace: self.runtime.workspace_state.read().clone(),
@@ -131,15 +146,22 @@ impl UnifiedMessageProcessor {
         // queued can no longer lose them, and only due extractions are ever
         // submitted.
         if should_run_post_turn_work(self.sm_config.enabled, final_turn_state) {
+            let baseline_ready = post_turn_jobs::prepare_session_memory_baseline(
+                session_id,
+                self.sm_state.clone(),
+                sm_current_tokens,
+            )
+            .await;
             let should_extract_now = {
                 let mut sm_state = self.sm_state.lock().await;
                 sm_state.record_tool_calls(tool_calls_count as usize);
-                crate::model_context::session_memory::should_extract(
-                    &sm_state,
-                    &self.sm_config,
-                    sm_current_tokens,
-                    sm_last_turn_has_tool_calls,
-                )
+                baseline_ready
+                    && crate::model_context::session_memory::should_extract(
+                        &sm_state,
+                        &self.sm_config,
+                        sm_current_tokens,
+                        sm_last_turn_has_tool_calls,
+                    )
             };
             if should_extract_now {
                 post_turn_jobs::spawn_session_memory_extraction(
@@ -224,6 +246,7 @@ impl UnifiedMessageProcessor {
                     response_text: response_text.to_string(),
                     model: self.runtime.model.clone(),
                     account_id: self.runtime.account_id.clone(),
+                    credential_source: self.runtime.provider.credential_source().map(str::to_owned),
                     reliability: self.runtime.resolved.reliability.clone(),
                     native_harness_type: self.runtime.native_harness_type,
                     workspace: self.runtime.workspace_state.read().clone(),
@@ -238,6 +261,75 @@ impl UnifiedMessageProcessor {
 mod tests {
     use super::should_spawn_goal_loop;
     use crate::core::session::types::DialogTurnState;
+
+    fn usage_result(prompt: i64, context: i64) -> crate::turn_executor::TurnResult {
+        crate::turn_executor::TurnResult {
+            content: None,
+            messages: vec![],
+            is_stream_error: false,
+            hit_max_iterations: false,
+            prompt_tokens: prompt,
+            completion_tokens: 24,
+            total_tokens: prompt + 24,
+            context_tokens: context,
+            context_usage_snapshot: None,
+            cache_read_tokens: 30_961,
+            cache_write_tokens: 12_424,
+            usage_telemetry: Default::default(),
+        }
+    }
+
+    #[test]
+    fn session_memory_cached_context_crosses_initialization_gate() {
+        use crate::model_context::session_memory::{
+            should_extract, SessionMemoryConfig, SessionMemoryState,
+        };
+        // Real Anthropic usage: 1,668 uncached + 30,961 read + 12,424 write.
+        let result = usage_result(1_668, 45_053);
+        let tokens = super::session_memory_context_tokens(&result, &[]);
+        assert_eq!(tokens, 45_053);
+        assert!(should_extract(
+            &SessionMemoryState::default(),
+            &SessionMemoryConfig::default(),
+            tokens,
+            false
+        ));
+        // A fully cached response must not switch to the local fallback.
+        assert_eq!(
+            super::session_memory_context_tokens(&usage_result(0, 45_053), &[]),
+            45_053
+        );
+    }
+
+    #[test]
+    fn session_memory_does_not_sum_repeated_iteration_inputs() {
+        use crate::model_context::session_memory::{
+            should_extract, SessionMemoryConfig, SessionMemoryState,
+        };
+        let tokens = super::session_memory_context_tokens(&usage_result(60_000, 8_000), &[]);
+        assert_eq!(tokens, 8_000);
+        assert!(!should_extract(
+            &SessionMemoryState::default(),
+            &SessionMemoryConfig::default(),
+            tokens,
+            false
+        ));
+    }
+
+    #[test]
+    fn session_memory_missing_provider_context_uses_transcript() {
+        let messages = vec![
+            serde_json::json!({"role":"user", "content":"retain this local fallback context"}),
+        ];
+        let expected = crate::model_context::tokenizer::count_messages_tokens(&messages);
+        assert!(expected > 0);
+        for unavailable in [0, -1] {
+            assert_eq!(
+                super::session_memory_context_tokens(&usage_result(60_000, unavailable), &messages),
+                expected
+            );
+        }
+    }
 
     #[test]
     fn agent_org_turns_never_start_the_standalone_goal_loop() {

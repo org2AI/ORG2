@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import Button from "@src/components/Button";
 import Markdown from "@src/components/MarkDown";
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
@@ -109,13 +110,13 @@ const CaptionBar: React.FC<CaptionBarProps> = memo(
         data-testid="simulator-caption-bar"
       >
         {expandedPanel}
-        <button
-          type="button"
+        <Button
+          layout="custom"
           onClick={handleToggle}
           className="flex h-7 w-full max-w-full cursor-pointer items-center px-3 text-[13px] text-text-2 transition-colors hover:text-text-1"
         >
           <span className="truncate">{text}</span>
-        </button>
+        </Button>
       </div>
     );
   }

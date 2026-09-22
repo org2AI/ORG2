@@ -1,0 +1,12 @@
+# WorkStationStartPage UI audit
+
+| Line                                                      | Element                             | Verdict          | Reason                                                                                                                                                             | Suggested change                                             |
+| --------------------------------------------------------- | ----------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `src/modules/WorkStation/AppShell/StartPage/index.tsx:55` | Row geometry and label/icon styling | fix              | Launchpad duplicated Spotlight styling with different padding, weight and tones. Both now consume shared `SPOTLIGHT_CLASSES` and `SPOTLIGHT_TOKENS`.               | Applied shared row, icon, typography, height and gap tokens. |
+| `src/modules/WorkStation/AppShell/StartPage/index.tsx:52` | Native action button                | keep with reason | This full-width action row needs native keyboard activation and custom inline diff content; standard Button chrome would override the shared Spotlight row layout. | None.                                                        |
+| `src/modules/WorkStation/AppShell/StartPage/index.tsx:73` | Diff statistics                     | keep with reason | Uses the existing DiffStatsBadge primitive and preserves Review metadata.                                                                                          | None.                                                        |
+| `src/modules/WorkStation/AppShell/StartPage/index.tsx:84` | Shortcut hint                       | keep with reason | Uses KeyboardShortcut with Spotlight's default presentation and original rendering.                                                                                | None.                                                        |
+
+Verdict totals: **1 fix**, **3 keep with reason**, **0 abstract**.
+
+Scope: launchpad styling and the Spotlight row tokens extracted for it. No background work or state lifecycle changes. Existing Spotlight selection and danger overrides remain intact. Desktop visual verification was not performed because computer control was not requested.

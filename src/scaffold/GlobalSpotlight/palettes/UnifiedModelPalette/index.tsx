@@ -7,6 +7,11 @@
  * (`spotlightModelKeyFirstAtom`) flips the columns to Keys (left) |
  * Models (right).
  *
+ * The icon switch leading the search row (`spotlightModelSourceScopeAtom`)
+ * picks which kind of credential those two columns list — Key Vault keys or
+ * Market packages, never both. Pinned and Recent stay whole under either
+ * scope, and picking Market with nothing bought prompts the user to buy one.
+ *
  * Keyboard: the left column is driven by the shared selector kernel.
  * Enter / ArrowRight / Tab on a model row hands focus to the right column;
  * Tab / ArrowLeft / Escape returns focus to the left column.
@@ -22,12 +27,20 @@ import React, {
   useState,
 } from "react";
 
+import Button from "@src/components/Button";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
+import { marketConsoleUrl } from "@src/features/MarketConnect/urlPolicy";
 import { useFilteredItems } from "@src/hooks/search";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { agentNameAtom } from "@src/store/session/creatorStateAtom";
 import { spotlightModelKeyFirstAtom } from "@src/store/ui/spotlightModelKeyFirstAtom";
+import {
+  MODEL_SOURCE_SCOPE,
+  type ModelSourceScope,
+  spotlightModelSourceScopeAtom,
+} from "@src/store/ui/spotlightModelSourceScopeAtom";
+import { openLink } from "@src/util/ui/openLink";
 
 import {
   ManageKeysFooterAction,
@@ -37,6 +50,7 @@ import {
 } from "../../components";
 import { PaletteBody, ShellFooterAction, SpotlightShell } from "../../shell";
 import type { SpotlightItem } from "../../types";
+import { ModelSourceScopeSwitch } from "./ModelSourceScopeSwitch";
 import { TwoColumnModelBody } from "./TwoColumnModelBody";
 import { advancePaletteSearchState } from "./searchState";
 import type { UnifiedModelPaletteProps } from "./types";
@@ -44,9 +58,9 @@ import {
   MODEL_SECTION,
   useUnifiedModelPalette,
 } from "./useUnifiedModelPalette";
+import { VariantPillEditContext } from "./variantPillEditContext";
 
 export type { UnifiedModelPaletteProps } from "./types";
-export { UnifiedModelDropdown } from "./UnifiedModelDropdown";
 
 // ============ COMPONENT ============
 
@@ -62,6 +76,7 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
   const creatorAgentName = useAtomValue(agentNameAtom);
   const agentName = agentNameOverride ?? creatorAgentName;
   const [keyFirst, setKeyFirst] = useAtom(spotlightModelKeyFirstAtom);
+  const [sourceScope, setSourceScope] = useAtom(spotlightModelSourceScopeAtom);
 
   const {
     activeColumn,
@@ -69,8 +84,10 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
     selectedModelId,
     selectedSourceIndex,
     setSelectedSourceIndex,
+    pinnedItems,
     recentItems,
     allModelItems,
+    pinnedHeader,
     recentHeader,
     allHeader,
     sourceItems,
@@ -84,6 +101,8 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
     accountsError,
     refreshAllModels,
     refreshingAllModels,
+    hasMarketSources,
+    marketProfilesLoading,
     tCommon: tCommonHook,
   } = useUnifiedModelPalette({
     isOpen,
@@ -93,6 +112,7 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
     dispatchCategoryOverride,
     cliAgentTypeOverride,
     keyFirst,
+    sourceScope,
   });
 
   // ============ COLUMN ORIENTATION ============
@@ -144,6 +164,12 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
     return `${item.label} ${item.desc || ""} ${rightLabel} ${searchAlias}`;
   }, []);
 
+  const { filteredItems: filteredPinnedItems } = useFilteredItems({
+    items: pinnedItems,
+    searchQuery,
+    getSearchText,
+  });
+
   const { filteredItems: filteredRecentItems } = useFilteredItems({
     items: recentItems,
     searchQuery,
@@ -158,6 +184,10 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
 
   const filteredItems = useMemo<SpotlightItem[]>(() => {
     const out: SpotlightItem[] = [];
+    if (filteredPinnedItems.length > 0) {
+      out.push(pinnedHeader);
+      out.push(...filteredPinnedItems);
+    }
     if (filteredRecentItems.length > 0) {
       out.push(recentHeader);
       out.push(...filteredRecentItems);
@@ -168,9 +198,11 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
     }
     return out;
   }, [
+    filteredPinnedItems,
     filteredRecentItems,
     filteredAllModelItems,
     primaryItems.length,
+    pinnedHeader,
     recentHeader,
     allHeader,
   ]);
@@ -368,12 +400,35 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
   );
 
   // Hovering a left-column row returns keyboard ownership to that column.
+  // While a variant pill's Apply / Cancel popover is open, hovering other
+  // rows must not move the selection: that would swap the key column and
+  // unmount the row that owns the open popover.
+  const editingVariantPillsRef = useRef(new Set<string>());
+  const [variantEditing, setVariantEditing] = useState(false);
+  const handleVariantEditingChange = useCallback(
+    (pillId: string, open: boolean) => {
+      const editing = editingVariantPillsRef.current;
+      if (open) editing.add(pillId);
+      else editing.delete(pillId);
+      setVariantEditing(editing.size > 0);
+    },
+    []
+  );
+  const variantPillEditContext = useMemo(
+    () => ({
+      confirmChanges: true,
+      onEditingChange: handleVariantEditingChange,
+    }),
+    [handleVariantEditingChange]
+  );
+
   const handleItemHover = useCallback(
     (index: number) => {
+      if (variantEditing) return;
       kernel.setSelectedIndex(index);
       setActiveColumn("models");
     },
-    [kernel, setActiveColumn]
+    [kernel, setActiveColumn, variantEditing]
   );
 
   const handleItemSelect = useCallback(
@@ -390,23 +445,63 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
       void refreshAllModels();
     }, refreshingAllModels);
 
+  // Clicking a segment pulls focus out of the search input; hand it straight
+  // back so the arrow keys keep driving the rebuilt columns.
+  const handleSourceScopeChange = useCallback(
+    (scope: ModelSourceScope) => {
+      setSourceScope(scope);
+      focusModelInput();
+    },
+    [focusModelInput, setSourceScope]
+  );
+
+  // The Market scope stays selectable with nothing bought. Once the catalog
+  // has actually reported back, an empty one means "buy a package", which is
+  // what the left column offers in place of its empty state.
+  const marketScopeOnly = sourceScope === MODEL_SOURCE_SCOPE.MARKET;
+  const marketUrl = marketConsoleUrl("/");
+  const marketPurchaseHint = useMemo(
+    () =>
+      marketScopeOnly && !hasMarketSources && !marketProfilesLoading
+        ? {
+            host: new URL(marketUrl).host,
+            onOpenMarket: () => openLink(marketUrl),
+          }
+        : undefined,
+    [hasMarketSources, marketProfilesLoading, marketScopeOnly, marketUrl]
+  );
+
   const refreshModelsButton = (
-    <button
-      type="button"
+    <Button
+      variant="tertiary"
+      size="small"
+      shape="round"
+      iconOnly
+      icon={
+        <HugeiconsIcon
+          icon={Refresh04Icon}
+          data-icon="refresh-cw"
+          size={14}
+          className={refreshSpinClass}
+        />
+      }
       onClick={handleRefreshModelsClick}
       disabled={refreshingAllModels}
       aria-label={tCommonHook("actions.refresh")}
       title={tCommonHook("actions.refresh")}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1 disabled:opacity-60"
+      className="shrink-0 hover:bg-fill-2 hover:text-text-1 disabled:opacity-60"
       data-testid="model-spotlight-refresh-button"
-    >
-      <HugeiconsIcon
-        icon={Refresh04Icon}
-        data-icon="refresh-cw"
-        size={14}
-        className={refreshSpinClass}
-      />
-    </button>
+    />
+  );
+
+  // The search row's leading slot — the same position the GUI / TUI launch
+  // pill holds in the composer's info line. It takes over the magnifier's
+  // spot, which the placeholder text already makes redundant.
+  const inputLeadingSlot = (
+    <ModelSourceScopeSwitch
+      value={sourceScope}
+      onChange={handleSourceScopeChange}
+    />
   );
 
   const content = (
@@ -421,7 +516,14 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
       sourceItems={secondaryItems}
       selectedSourceIndex={selectedSourceIndex}
       hasFocusedModel={hasFocusedPrimary}
-      accountsLoading={accountsLoading || refreshingAllModels}
+      marketPurchaseHint={marketPurchaseHint}
+      // Under the Market scope the catalog is the whole list, so its load is
+      // the column's load; elsewhere it fills in behind what is already shown.
+      accountsLoading={
+        accountsLoading ||
+        refreshingAllModels ||
+        (marketScopeOnly && marketProfilesLoading)
+      }
       accountsError={accountsError}
       onRetryAccounts={() => {
         void refreshAllModels();
@@ -431,6 +533,7 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
         source?.action?.();
       }}
       onSourceHover={(index) => {
+        if (variantEditing) return;
         setSelectedSourceIndex(index);
         setActiveColumn("sources");
       }}
@@ -443,15 +546,19 @@ export const UnifiedModelPalette: React.FC<UnifiedModelPaletteProps> = ({
       onClose={onClose}
       hasActiveAction={activeColumn !== "models"}
       activeActionChip={SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchColumn}
+      pinScope="models"
     >
-      <PaletteBody
-        kernel={kernel}
-        items={filteredItems}
-        path={[]}
-        placeholder={placeholderModel}
-        contentOverride={content}
-        inputTrailingSlot={refreshModelsButton}
-      />
+      <VariantPillEditContext.Provider value={variantPillEditContext}>
+        <PaletteBody
+          kernel={kernel}
+          items={filteredItems}
+          path={[]}
+          placeholder={placeholderModel}
+          contentOverride={content}
+          inputLeadingSlot={inputLeadingSlot}
+          inputTrailingSlot={refreshModelsButton}
+        />
+      </VariantPillEditContext.Provider>
       <ShellFooterAction>{footerAction}</ShellFooterAction>
       {keyFirstToggle}
     </SpotlightShell>

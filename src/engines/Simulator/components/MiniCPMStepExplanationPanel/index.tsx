@@ -2,6 +2,7 @@ import { useAtomValue } from "jotai";
 import React, { memo, useEffect, useMemo, useReducer, useRef } from "react";
 
 import { sessionStepExplain } from "@src/api/services/keyValidation";
+import Button from "@src/components/Button";
 import {
   currentEventAtom,
   currentSimulatorEventIndexAtom,
@@ -232,20 +233,23 @@ const MiniCPMStepExplanationPanel: React.FC<MiniCPMStepExplanationPanelProps> =
           className={`absolute inset-x-0 top-0 h-0.5 ${isUnavailable ? "bg-danger-6/70" : "bg-primary-6/80"}`}
         />
         {onClose ? (
-          <button
-            type="button"
-            className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-md text-text-4 transition-colors hover:bg-fill-2 hover:text-text-1"
+          <Button
+            variant="tertiary"
+            size="mini"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                data-icon="x"
+                size={14}
+                strokeWidth={1.75}
+              />
+            }
+            className="absolute top-2 right-2 z-10 hover:bg-fill-2 hover:text-text-1"
             onClick={onClose}
             aria-label="关闭 MiniCPM 步骤解析"
             title="关闭 MiniCPM 步骤解析"
-          >
-            <HugeiconsIcon
-              icon={Cancel01Icon}
-              data-icon="x"
-              size={14}
-              strokeWidth={1.75}
-            />
-          </button>
+          />
         ) : null}
         <div className="flex min-h-[64px] min-w-0 items-start gap-3 px-3.5 py-3 pr-9">
           <div

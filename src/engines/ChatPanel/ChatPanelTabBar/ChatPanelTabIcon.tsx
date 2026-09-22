@@ -11,7 +11,6 @@ import {
   GitPullRequestIcon,
   HashtagIcon,
   HugeiconsIcon,
-  InboxIcon,
   InformationCircleIcon,
   KanbanIcon,
   ListChecksIcon,
@@ -76,8 +75,6 @@ export function ChatPanelTabIcon({
     }
   } else if (tab.type === "runtime") {
     icon = renderGlyph(GaugeIcon, "gauge");
-  } else if (tab.type === "team-inbox") {
-    icon = renderGlyph(InboxIcon, "inbox");
   } else if (tab.type === "channel") {
     // Private cloud channels carry the same lock the sidebar row uses.
     const ChannelIcon =

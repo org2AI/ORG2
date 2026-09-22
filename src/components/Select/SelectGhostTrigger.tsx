@@ -82,7 +82,6 @@ const SelectGhostTrigger = forwardRef<
     <Button
       ref={ref}
       variant="tertiary"
-      appearance="ghost"
       size={size}
       disabled={disabled}
       className={wrapperClasses}

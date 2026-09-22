@@ -1,5 +1,10 @@
 import type { PanelState } from "@src/store/workstation/tabs";
 
+import type {
+  SourceControlFilterCounts,
+  SourceControlFilterMode,
+} from "../shared/SidebarModules";
+
 export type SourceControlMainMode = "focus" | "all-changes";
 
 /**
@@ -60,4 +65,32 @@ export function setSourceControlMainMode(
   };
 
   return { ...state, tabs: nextTabs };
+}
+
+/** A category change dismisses detail from the previous category. */
+export function switchSourceControlCategory(
+  state: PanelState,
+  category: SourceControlFilterMode,
+  counts: SourceControlFilterCounts
+): PanelState {
+  const tabIndex = state.tabs.findIndex((tab) => tab.type === "source-control");
+  if (tabIndex === -1) return state;
+
+  const existing = state.tabs[tabIndex];
+  const isFileCategory =
+    category !== "history" && category !== "pr" && category !== "issues";
+  const tabs = [...state.tabs];
+  tabs[tabIndex] = {
+    ...existing,
+    data: {
+      ...existing.data,
+      ...(isFileCategory
+        ? { staged: category === "staged", fileCount: counts[category] }
+        : {}),
+      mode: "focus",
+      focusPath: null,
+      historySelection: null,
+    },
+  };
+  return { ...state, tabs };
 }

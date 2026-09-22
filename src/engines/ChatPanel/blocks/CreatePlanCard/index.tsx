@@ -18,6 +18,7 @@ import {
 import Button from "@src/components/Button";
 import Markdown from "@src/components/MarkDown";
 import Message from "@src/components/Message";
+import Textarea from "@src/components/Textarea";
 import { getToolIcon } from "@src/config/toolIcons";
 import {
   beginOptimisticTurn,
@@ -39,7 +40,6 @@ import {
 import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 import { usePendingPlanApproval } from "@src/hooks/session/usePendingPlanApproval";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
 import { sessionRuntimeStatusAtom } from "@src/store/session/cliSessionStatusAtom";
 import { creatorDefaultModelSelectionAtom } from "@src/store/session/creatorDefaultModelAtom";
 import {
@@ -50,6 +50,7 @@ import { sessionByIdAtom } from "@src/store/session/sessionAtom";
 import { activeSessionIdAtom } from "@src/store/session/viewAtom";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import { resolveModelForMessage } from "@src/util/session/resolveModelForMessage";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import ToolUsageBadge from "../ToolCallBlock/ToolUsageBadge";
 import {
@@ -526,11 +527,16 @@ const CreatePlanCard: React.FC<CreatePlanCardProps> = memo(
         {!isCollapsed &&
           (isEditing ? (
             <div className="px-3 py-2">
-              <textarea
+              <Textarea
+                size="small"
+                resize="vertical"
+                className="w-full"
+                textareaStyle={{ height: 280 }}
                 ref={textareaRef}
-                className="scrollbar-overlay h-[280px] w-full resize-y rounded-md border border-border-2 bg-bg-1 px-3 py-2 text-[13px] leading-relaxed text-text-1 outline-none focus:border-primary-6"
                 value={editedContent}
-                onChange={(event) => setEditedContent(event.target.value)}
+                onChange={(_value, event) =>
+                  setEditedContent(event.target.value)
+                }
                 spellCheck={false}
               />
             </div>

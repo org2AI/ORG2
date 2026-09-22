@@ -58,7 +58,7 @@ pub fn sync_project_org_git_folder(
     let orgii_path = folder_path.join(ORGII_DIR);
     let projects_path = orgii_path.join(PROJECTS_DIR);
     fs::create_dir_all(&projects_path)
-        .map_err(|err| format!("Failed to create ORGII projects folder: {}", err))?;
+        .map_err(|err| format!("Failed to create ORG2 projects folder: {}", err))?;
 
     write_json_file(&orgii_path.join(ORG_FILE), &org)?;
 
@@ -125,7 +125,7 @@ pub fn resolve_project_org_git_folder_conflict(
         return Err("Conflict file is outside the configured Git folder".to_string());
     }
     if !canonical_target.starts_with(&canonical_orgii) {
-        return Err("Conflict file is outside the ORGII sync folder".to_string());
+        return Err("Conflict file is outside the ORG2 sync folder".to_string());
     }
     fs::write(&canonical_target, &request.content).map_err(|err| {
         format!(

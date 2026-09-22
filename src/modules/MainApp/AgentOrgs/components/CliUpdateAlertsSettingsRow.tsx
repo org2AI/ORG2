@@ -3,10 +3,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Switch from "@src/components/Switch";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import { cliUpdateAlertsEnabledAtom } from "@src/store/session";
 
 const CliUpdateAlertsSettingsRow: React.FC = () => {

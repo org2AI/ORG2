@@ -44,7 +44,7 @@ interface ChatPinnedHeaderLayerProps {
   tailTurnPhase: GroupHeaderRendererProps["tailTurnPhase"];
   hideUserMessage: boolean;
   defaultTurnCollapsed: boolean;
-  turnCollapseInteractionAtRef: React.MutableRefObject<number>;
+  onBeforeTurnCollapseToggle?: () => void;
   onEditSubmit: GroupHeaderRendererProps["onEditSubmit"];
   onRestoreCheckpoint: GroupHeaderRendererProps["onRestoreCheckpoint"];
 }
@@ -86,7 +86,7 @@ const ChatPinnedHeaderLayer: React.FC<ChatPinnedHeaderLayerProps> = memo(
     tailTurnPhase,
     hideUserMessage,
     defaultTurnCollapsed,
-    turnCollapseInteractionAtRef,
+    onBeforeTurnCollapseToggle,
     onEditSubmit,
     onRestoreCheckpoint,
   }) => {
@@ -133,7 +133,7 @@ const ChatPinnedHeaderLayer: React.FC<ChatPinnedHeaderLayerProps> = memo(
           tailTurnPhase={tailTurnPhase}
           hideUserMessage={hideUserMessage}
           defaultTurnCollapsed={defaultTurnCollapsed}
-          turnCollapseInteractionAtRef={turnCollapseInteractionAtRef}
+          onBeforeTurnCollapseToggle={onBeforeTurnCollapseToggle}
           onEditSubmit={onEditSubmit}
           onRestoreCheckpoint={onRestoreCheckpoint}
         />

@@ -47,7 +47,7 @@ const AppUpdater = React.lazy(() =>
 
 const APICallPanelProvider = React.lazy(() =>
   import(
-    /* webpackChunkName: "deferred-services" */ "@src/modules/shared/DevTools/APICallPanel"
+    /* webpackChunkName: "deferred-services" */ "@src/scaffold/DevTools/APICallPanel"
   ).then((module) => ({ default: module.APICallPanelProvider }))
 );
 

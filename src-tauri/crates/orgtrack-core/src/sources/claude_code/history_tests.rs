@@ -377,7 +377,7 @@ fn harness_injected_user_lines_do_not_open_rounds() {
             .iter()
             .map(|turn| turn.following_line_count)
             .collect::<Vec<_>>(),
-        vec![5, 1]
+        vec![3, 1]
     );
 
     let chunks =
@@ -631,6 +631,84 @@ fn claude_initial_window_previews_skip_tool_use_only_assistant_lines() {
             )
             .count(),
         1 // the loaded newest round's single assistant reply
+    );
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn bookkeeping_only_rounds_advertise_no_body() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-claude-bodyless-rounds-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("claude-bodyless-rounds.jsonl");
+    // An interrupted exchange: the first prompt is followed only by a harness
+    // attachment and a file-history snapshot, the interruption marker only by
+    // an API-error retry (whose nested error carries a "message" key) and
+    // queue bookkeeping, and just the third prompt gets a reply (then a hook
+    // summary and a last-prompt marker). The parser renders none of the
+    // bookkeeping rows, so the first two rounds have no body to advertise.
+    std::fs::write(&path, r#"{"type":"user","timestamp":"2026-09-14T13:52:56.412Z","origin":{"kind":"human"},"message":{"role":"user","content":"update the PR"}}
+{"type":"attachment","timestamp":"2026-09-14T13:52:56.411Z","attachment":{"type":"total_tokens_reminder","text":"<total_tokens>1 tokens left</total_tokens>"},"rendered":[{"content":"<system-reminder>1 tokens left</system-reminder>"}]}
+{"type":"file-history-snapshot","messageId":"m-1","snapshot":{"messageId":"m-1","trackedFileBackups":{},"timestamp":"2026-09-14T13:52:56.500Z"},"isSnapshotUpdate":false}
+{"type":"user","timestamp":"2026-09-14T13:53:10.644Z","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user]"}]}}
+{"type":"system","subtype":"api_error","level":"error","error":{"message":"Connection error.","connection":{"code":"ECONNRESET","message":"socket closed"}},"retryInMs":597,"retryAttempt":1,"timestamp":"2026-09-14T13:53:15.000Z"}
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-09-14T13:53:21.220Z","content":"fix the conflict"}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2026-09-14T13:53:21.228Z"}
+{"type":"user","timestamp":"2026-09-14T13:53:21.303Z","message":{"role":"user","content":"fix the conflict"}}
+{"type":"assistant","timestamp":"2026-09-14T13:53:39.999Z","message":{"role":"assistant","content":[{"type":"text","text":"resolved"}]}}
+{"type":"system","subtype":"stop_hook_summary","timestamp":"2026-09-14T13:53:40.100Z","hookCount":1,"level":"suggestion"}
+{"type":"last-prompt","lastPrompt":"fix the conflict","sessionId":"s"}
+"#).expect("write fixture");
+
+    let indexed =
+        index_claude_user_turns("claudecodeapp-bodyless", &path).expect("index user turns");
+    assert_eq!(
+        indexed
+            .iter()
+            .map(|turn| turn.following_line_count)
+            .collect::<Vec<_>>(),
+        vec![0, 0, 1]
+    );
+    // The parser agrees: nothing renders between the three prompts.
+    let chunks =
+        load_claude_code_history_from_path("claudecodeapp-bodyless", &path).expect("parse");
+    assert_eq!(
+        chunks
+            .iter()
+            .map(|chunk| chunk.function.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            imported_history::FUNCTION_USER_MESSAGE,
+            imported_history::FUNCTION_USER_MESSAGE,
+            imported_history::FUNCTION_USER_MESSAGE,
+            imported_history::FUNCTION_ASSISTANT,
+        ]
+    );
+
+    let window = load_claude_code_initial_window_from_path("claudecodeapp-bodyless", &path, 1)
+        .expect("load initial window");
+    // Unloaded bodyless rounds must not claim a fetchable body; a nonzero
+    // count paints an empty "Agent worked for" bar between the prompts.
+    assert_eq!(
+        window
+            .chunks
+            .iter()
+            .filter(|chunk| chunk.chunk_id.starts_with("imported-unloaded-turn-"))
+            .map(|chunk| chunk.result["unloadedTurn"]["bodyEventCount"].as_i64())
+            .collect::<Vec<_>>(),
+        vec![Some(0), Some(0)]
+    );
+    assert_eq!(
+        window
+            .turns
+            .iter()
+            .map(|turn| turn.body_event_count)
+            .collect::<Vec<_>>(),
+        vec![0, 0, 1]
     );
 
     std::fs::remove_file(&path).expect("remove fixture");
@@ -2048,4 +2126,152 @@ fn claude_question_error_receipt_does_not_become_answered() {
         .unwrap();
     assert_ne!(question.result["status"], "answered");
     assert!(question.result.get("answers").is_none());
+}
+
+
+#[test]
+fn user_url_image_blocks_survive_replay_without_embedding_bytes() {
+    let dir = std::env::temp_dir().join(format!("orgii-claude-url-image-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("history.jsonl");
+    std::fs::write(&path, r#"{"type":"user","timestamp":"2026-04-01T07:00:00Z","message":{"role":"user","content":[{"type":"image","source":{"type":"url","url":"https://example.com/screenshot.png"}}]}}
+"#).unwrap();
+    let chunks = load_claude_code_history_from_path("claudecodeapp-url-image", &path).unwrap();
+    let user = chunks
+        .iter()
+        .find(|chunk| chunk.function == "user_message")
+        .unwrap();
+    assert_eq!(
+        user.result["images"],
+        serde_json::json!(["https://example.com/screenshot.png"])
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn claude_image_only_windows_remain_reachable_without_retaining_old_base64() {
+    let dir =
+        std::env::temp_dir().join(format!("orgii-claude-image-windows-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("history.jsonl");
+    let content = r#"{"type":"user","timestamp":"2026-04-01T07:00:00Z","message":{"role":"user","content":[{"type":"image","source":{"type":"url","url":"https://example.com/screenshot.png"}}]}}
+{"type":"user","timestamp":"2026-04-01T07:01:00Z","message":{"role":"user","content":[{"type":"image","source":{"type":"base64","media_type":"image/png","data":"QUJD"}}]}}
+{"type":"user","timestamp":"2026-04-01T07:02:00Z","message":{"role":"user","content":"continue"}}
+"#;
+    std::fs::write(&path, content).unwrap();
+    let window =
+        load_claude_code_initial_window_from_path("claudecodeapp-image-windows", &path, 1).unwrap();
+    let users = window
+        .chunks
+        .iter()
+        .filter(|c| c.function == "user_message")
+        .collect::<Vec<_>>();
+    assert_eq!(users.len(), 3);
+    assert_eq!(
+        users[0].result["images"][0],
+        "https://example.com/screenshot.png"
+    );
+    assert_eq!(users[1].result["message"]["content"], "(image)");
+    assert!(users[1].result.get("images").is_none());
+    let expanded = load_claude_code_turn_windows_from_path(
+        "claudecodeapp-image-windows",
+        &path,
+        &[users[1].chunk_id.clone()],
+    )
+    .unwrap();
+    let user = expanded[0]
+        .chunks
+        .iter()
+        .find(|c| c.function == "user_message")
+        .unwrap();
+    assert_eq!(user.result["images"][0], "data:image/png;base64,QUJD");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn resending_first_claude_message_updates_the_same_cached_session() {
+    // Claude rewinds within <sessionId>.jsonl, unlike Codex's rotated rollout.
+    // Even replacing the first user UUID must not create a second identity.
+    let temp_dir = std::env::temp_dir().join(format!("orgii-claude-resend-{}", std::process::id()));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+    let session = "d0641111-1111-4111-8111-111111111111";
+    let path = temp_dir.join(format!("{session}.jsonl"));
+    let mut conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::store::sqlite::SqliteRecordStore::init_tables(&conn).unwrap();
+    crate::store::sqlite::SqliteRecordStore::init_source_cache_tables(&conn).unwrap();
+    for (uuid, text) in [
+        ("first-user-uuid", "original"),
+        ("replacement-user-uuid", "resent"),
+        ("replacement-user-uuid", "resent"),
+    ] {
+        let user = serde_json::json!({"type":"user","uuid":uuid,"sessionId":session,
+            "cwd":"/tmp/project","timestamp":"2026-08-25T06:19:04Z",
+            "message":{"role":"user","content":text}});
+        std::fs::write(&path, format!("{user}\n")).unwrap();
+        let (source_mtime_ms, source_size_bytes) =
+            imported_paths::file_metadata_signature(&path, "Claude").unwrap();
+        let record = ImportedHistoryDiscoveredRecord {
+            source_session_id: session.to_string(),
+            source_path: path.clone(),
+            source_record_key: session.to_string(),
+            source_mtime_ms,
+            source_size_bytes,
+            source_fingerprint: String::new(),
+            parser_version: CLAUDE_CODE_METADATA_PARSER_VERSION,
+        };
+        let meta = parse_claude_session_meta(&record).unwrap().unwrap();
+        let input = session_meta_to_cache_input(meta);
+        let canonical_id = input.session_id.clone();
+        imported_cache::sync_source_cache_from_conn(
+            &mut conn,
+            SOURCE_CLAUDE_CODE,
+            vec![session.to_string()],
+            vec![input],
+        )
+        .unwrap();
+        imported_cache::demote_superseded_continuations_from_conn(&conn, SOURCE_CLAUDE_CODE)
+            .unwrap();
+        assert_eq!(
+            conn.query_row(
+                "SELECT count(*) FROM imported_history_session_cache WHERE listable=1",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            1
+        );
+        let (_, row) =
+            imported_cache::query_cached_session_by_session_id_from_conn(&conn, &canonical_id)
+                .unwrap()
+                .unwrap();
+        assert_eq!(row.name, text);
+    }
+    std::fs::remove_dir_all(temp_dir).unwrap();
+}
+
+#[test]
+fn tool_result_images_survive_claude_replay() {
+    let path = std::env::temp_dir().join(format!(
+        "orgii-claude-output-image-{}.jsonl",
+        std::process::id()
+    ));
+    let rows = [
+        serde_json::json!({"type":"user","message":{"role":"user","content":"draw an avatar"}}),
+        serde_json::json!({"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"draw","name":"mcp__images__generate","input":{}}]}}),
+        serde_json::json!({"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"draw","content":[{"type":"image","source":{"type":"base64","media_type":"image/png","data":"AVATAR"}}]}]}}),
+    ];
+    std::fs::write(
+        &path,
+        rows.iter()
+            .map(Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n",
+    )
+    .unwrap();
+    let chunks = load_claude_code_history_from_path("claude-images", &path).unwrap();
+    assert!(chunks
+        .iter()
+        .any(|c| c.result["images"][0] == "data:image/png;base64,AVATAR"));
+    std::fs::remove_file(path).unwrap();
 }

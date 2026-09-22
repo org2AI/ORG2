@@ -13,14 +13,13 @@ import {
 } from "vitest";
 
 import type { AgentOrgTask } from "@src/api/tauri/agent";
+import { testTranslate, useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { AgentOrgTaskList } from "./AgentOrgTaskList";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { defaultValue?: string }) =>
-      options?.defaultValue ?? key,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 vi.mock("@src/api/tauri/agent", () => ({
   AGENT_ORG_TASK_STATUS: {
@@ -111,7 +110,9 @@ describe("Agent Org Planning Task approval activity", () => {
     expect(
       row?.querySelector('[data-testid="agent-org-task-status-chip"]')
         ?.textContent
-    ).toContain("statusInProgress");
+    ).toContain(
+      testTranslate("sessions:planner.agentOrgTasks.statusInProgress")
+    );
     expect(
       row?.querySelector(
         '[data-testid="agent-org-task-awaiting-approval-chip"]'

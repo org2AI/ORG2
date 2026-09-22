@@ -61,3 +61,17 @@ export const SETTINGS_TABLE_COL = {
   /** Inline style for the Select/Input inside a control column */
   controlStyle: { width: 200 } as CSSProperties,
 } as const;
+
+/**
+ * Minimum width of a `selectFilters` dropdown panel. Filter options carry
+ * provider names and leading icons, so the panel is wider than a bare
+ * label list would need.
+ */
+export const SETTINGS_TABLE_FILTER_MIN_WIDTH = 200;
+
+/**
+ * Option count above which a `selectFilters` dropdown gets its own search box.
+ * Short, fixed lists (a status tri-state, a scope toggle) read faster without
+ * one; a provider list that grows with the user's keys does not.
+ */
+export const SETTINGS_TABLE_FILTER_SEARCH_THRESHOLD = 6;

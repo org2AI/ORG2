@@ -24,6 +24,7 @@ import { bumpOrg2CloudChannelsVersionAtom } from "@src/features/Org2Cloud/channe
 import type { CloudChannel } from "@src/features/Org2Cloud/channels/types";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
+import { popupSidebarMenu } from "@src/scaffold/NavigationSidebar/menus/SidebarMenu";
 
 import { useCloudChannelsSection } from "./channelsSection";
 import { CLOUD_CHANNELS_EMPTY_ID } from "./channelsSection.menuItems";
@@ -32,15 +33,14 @@ const mocks = vi.hoisted(() => ({
   listCloudChannels: vi.fn(),
   getCloudCapabilities: vi.fn(),
   loadCloudOrgMembers: vi.fn(),
-  menuNew: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@tauri-apps/api/menu", () => ({
-  Menu: { new: mocks.menuNew },
+vi.mock("@src/scaffold/NavigationSidebar/menus/SidebarMenu", () => ({
+  popupSidebarMenu: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock(
@@ -142,7 +142,6 @@ describe("useCloudChannelsSection create-dialog org keying", () => {
     vi.clearAllMocks();
     localStorage.clear();
     mocks.getCloudCapabilities.mockResolvedValue({ orgChannels: true });
-    mocks.menuNew.mockResolvedValue({ popup: vi.fn(), close: vi.fn() });
     mocks.listCloudChannels.mockResolvedValue({
       channels: [],
       serverTime: undefined,
@@ -260,18 +259,17 @@ describe("useCloudChannelsSection create-dialog org keying", () => {
         ?.click();
     });
     await flushAsync();
-    const settingsEntry = mocks.menuNew.mock.calls
-      .flatMap(
-        ([options]) =>
-          (
-            options as {
-              items?: Array<{ text?: string; action?: () => void }>;
-            }
-          ).items ?? []
-      )
-      .find((entry) => entry.text === "cloud.channels.settings.action");
+    const settingsEntry = vi
+      .mocked(popupSidebarMenu)
+      .mock.calls.flatMap(([, options]) => options.buildItems())
+      .find(
+        (entry) =>
+          "text" in entry && entry.text === "cloud.channels.settings.action"
+      );
+    if (!settingsEntry || !("action" in settingsEntry))
+      throw new Error("Channel settings action missing from sidebar menu");
     expect(settingsEntry?.action).toBeTypeOf("function");
-    act(() => settingsEntry?.action?.());
+    act(() => settingsEntry.action?.("settings"));
     expect(
       document.querySelector('[data-testid="channel-settings-dialog"]')
     ).not.toBeNull();

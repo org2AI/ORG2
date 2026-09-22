@@ -58,6 +58,30 @@ function renderRow(scenario: (typeof scenarios)[number]): string {
 }
 
 describe("SessionInfoPillGroup", () => {
+  it.each([false, true])(
+    "preserves the original surface by default and supports Spotlight (active=%s)",
+    (active) => {
+      const segments = [{ id: "branch", icon: null, label: "develop", active }];
+      const original = renderToStaticMarkup(
+        React.createElement(SessionInfoPillGroup, { segments })
+      );
+      const spotlight = renderToStaticMarkup(
+        React.createElement(SessionInfoPillGroup, {
+          segments,
+          strongSurface: false,
+        })
+      );
+
+      expect(original).toContain(
+        active ? "bg-fill-3!" : "enabled:hover:bg-fill-3!"
+      );
+      expect(spotlight).toContain(
+        active ? "bg-surface-hover!" : "enabled:hover:bg-surface-hover!"
+      );
+      expect(spotlight).not.toContain("bg-fill-3!");
+    }
+  );
+
   it("renders the production row with only the branch consuming remaining width", () => {
     const markup = renderRow(scenarios[0]);
     expect(markup).not.toContain("flex-wrap");

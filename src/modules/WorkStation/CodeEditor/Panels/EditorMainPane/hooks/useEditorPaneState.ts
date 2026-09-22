@@ -10,14 +10,15 @@
  * - Uses refs to avoid stale closures in callbacks
  * - Stable callback references to prevent child re-renders
  */
-import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { type MutableRefObject, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createLogger } from "@src/hooks/logger";
+import { confirmSaveOverDiskChanges } from "@src/modules/WorkStation/CodeEditor/hooks/fileContent/diskGuard";
 import { invalidateFileCache } from "@src/modules/WorkStation/CodeEditor/hooks/fileContent/useFileContent";
+import { writeTextFileSerial } from "@src/services/file/writeTextFileSerial";
 import { tabToHost } from "@src/store/workstation/tabHost";
 import {
   type PanelState,
@@ -44,10 +45,13 @@ function isCsvTableFile(filePath: string): boolean {
 // ============================================
 
 interface FileContentStateRef {
+  documentPath: string | null;
   content: string;
+  /** Bytes this buffer last agreed with on disk — the save-guard baseline. */
+  originalContent: string;
   hasUnsavedChanges: boolean;
   isBinary: boolean;
-  markSaved: () => void;
+  markSaved: () => boolean;
   discardChanges: () => void;
 }
 
@@ -174,15 +178,22 @@ export function useEditorPaneState(
               // User clicked "Save" - save the file then close.
               // Re-read after the dialog await so we persist the latest buffer.
               const contentState = fileContentStateRef.current;
-              if (!contentState) {
+              if (!contentState || contentState.documentPath !== filePath) {
                 log.error("[closeTab] File content unavailable; not closing");
                 return; // Same policy as a failed save: keep the tab open
               }
               if (filePath) {
                 try {
                   const contentToSave = contentState.content ?? "";
-                  await writeTextFile(filePath, contentToSave);
-                  contentState.markSaved();
+                  if (
+                    !(await confirmSaveOverDiskChanges(
+                      filePath,
+                      contentState.originalContent ?? ""
+                    ))
+                  )
+                    return;
+                  await writeTextFileSerial(filePath, contentToSave);
+                  if (!contentState.markSaved()) return;
                   invalidateFileCache(filePath);
                   forceRefreshRef?.current();
 

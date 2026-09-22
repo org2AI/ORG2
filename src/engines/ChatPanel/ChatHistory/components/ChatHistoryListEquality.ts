@@ -232,6 +232,14 @@ export function sameChatHistoryListProps(
       previous.staticScrollerRef === next.staticScrollerRef,
     ],
     [
+      "onScrollRootChange",
+      previous.onScrollRootChange === next.onScrollRootChange,
+    ],
+    [
+      "onRowLayoutCommit",
+      previous.onRowLayoutCommit === next.onRowLayoutCommit,
+    ],
+    [
       "newEventDividerLabel",
       previous.newEventDividerLabel === next.newEventDividerLabel,
     ],

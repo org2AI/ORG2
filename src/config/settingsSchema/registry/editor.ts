@@ -76,6 +76,8 @@ export const EDITOR_SETTINGS_REGISTRY = {
     category: "editor",
   },
   "editor.showIndentGuides": {
+    // Read by useEditorAppearance; no settings-page control.
+    settingsSearch: false,
     schema: z.boolean(),
     default: true,
     description: "Show indent guides (vertical lines for indentation levels)",
@@ -94,7 +96,15 @@ export const EDITOR_SETTINGS_REGISTRY = {
     description: "Highlight the active line in the editor",
     category: "editor",
   },
+  "editor.splitDiffCenteredLineNumbers": {
+    schema: z.boolean(),
+    default: false,
+    description:
+      "In split diffs, show both line-number columns between the two panes instead of at each pane's left edge",
+    category: "editor",
+  },
   "editor.showBlame": {
+    // Settings → Appearance → Code Editor; also the file header menu.
     schema: z.boolean(),
     default: false,
     description:

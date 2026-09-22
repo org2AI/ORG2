@@ -9,16 +9,16 @@
  * - `buildChatPanelSettingsActions` — chat panel position, pagination, and
  *   model-picker style toggles.
  */
-import { ACTION_ID } from "@src/ActionSystem";
 import {
   ArrowBigLeftDashIcon,
   ArrowBigRightDashIcon,
   ArrowLeftBigIcon,
   ArrowRightBigIcon,
-  LayoutTopIcon,
+  ChangeScreenModeIcon,
   Menu01Icon,
   SparklesIcon,
 } from "@src/icons";
+import { ACTION_ID } from "@src/scaffold/ActionSystem";
 
 import type { SpotlightStaticActionDefinition } from "./spotlightActionDefinitions.types";
 
@@ -66,7 +66,7 @@ export function buildChatPanelSettingsActions({
     labelKey: chatTurnPaginationEnabled
       ? "common:spotlightActions.disableChatPagination"
       : "common:spotlightActions.enableChatPagination",
-    icon: LayoutTopIcon,
+    icon: ChangeScreenModeIcon,
     keywords: ["chat pagination", "turn pagination", "chat rounds"],
     actionId: chatTurnPaginationEnabled
       ? ACTION_ID.CHAT_PANEL_DISABLE_PAGINATION

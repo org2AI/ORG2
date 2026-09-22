@@ -8,7 +8,6 @@
  */
 import type { AgentRole } from "@src/api/http/project";
 import type { CancelReason } from "@src/api/tauri/agent/session";
-import type { DispatchCategory } from "@src/api/tauri/session";
 import type { TurnIntentSource } from "@src/engines/SessionCore/control/turnIntentSource";
 
 // ============================================
@@ -30,6 +29,7 @@ export interface SessionCreateParams {
   model?: string;
   /** Override account ID (defaults to OS agent's account) */
   accountId?: string;
+  credentialSource?: string;
   /** Session name override */
   name?: string;
   /** Linked work item short ID (e.g. "PROJ-0042") */
@@ -131,27 +131,6 @@ export interface SessionSendMessageParams {
   isResume?: boolean;
 }
 
-export interface SessionAnswerQuestionParams {
-  /** Target session ID */
-  sessionId: string;
-  /** Question ID to answer */
-  questionId: string;
-  /** User's answer */
-  answer: string;
-}
-
-export interface SessionPauseResumeParams {
-  /** Target session ID */
-  sessionId: string;
-}
-
-export interface SessionCancelParams {
-  /** Target session ID */
-  sessionId: string;
-  /** Force cancel (skip graceful shutdown) */
-  force?: boolean;
-}
-
 export interface SessionInterruptParams {
   /** Target session ID */
   sessionId: string;
@@ -168,50 +147,7 @@ export interface SessionResumeCliParams {
   onError?: (msg: string) => void;
 }
 
-export interface SessionGetStatusParams {
-  /** Target session ID */
-  sessionId: string;
-}
-
-export interface SessionListParams {
-  /** Filter by status */
-  status?: string;
-  /** Filter by repository path (absolute path on disk) */
-  repoId?: string;
-  /** Maximum results */
-  limit?: number;
-}
-
 export interface SessionOpenParams {
   /** Target session ID */
   sessionId: string;
-}
-
-// ============================================
-// Result Types
-// ============================================
-
-export interface SessionInfo {
-  sessionId: string;
-  name: string;
-  status: string;
-  category: DispatchCategory;
-  createdAt: string;
-  updatedAt: string;
-  repoName?: string;
-  branch?: string;
-  pendingQuestionsCount?: number;
-  userInput?: string;
-}
-
-export interface SessionStatusInfo {
-  sessionId: string;
-  status: string;
-  waitingFor?: string | null;
-  pendingQuestions?: Array<{
-    questionId: string;
-    questionText: string;
-    rationale?: string;
-  }>;
-  pendingQuestionsCount?: number;
 }

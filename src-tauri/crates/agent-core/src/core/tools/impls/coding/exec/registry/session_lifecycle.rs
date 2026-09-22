@@ -14,10 +14,11 @@ use serde::Serialize;
 use tokio::task::AbortHandle;
 use tokio_util::sync::CancellationToken;
 
+#[cfg(unix)]
+use super::process_tree_exists;
 use super::{
-    broadcast_subagent_job_changed, process_tree_exists, remove, remove_indexed_handle,
-    terminate_shell_process_tree, BackgroundJob, JobKind, JobStatus, ShellCompletionState,
-    OWNER_INDEX, REGISTRY, TOMBSTONES,
+    broadcast_subagent_job_changed, remove, remove_indexed_handle, terminate_shell_process_tree,
+    BackgroundJob, JobKind, JobStatus, ShellCompletionState, OWNER_INDEX, REGISTRY, TOMBSTONES,
 };
 
 const FINALITY_OBSERVATION_INTERVAL: Duration = Duration::from_millis(25);
@@ -137,6 +138,23 @@ fn status_label(status: &JobStatus) -> String {
     }
 }
 
+/// Whether a shell job's process tree has fully exited.
+///
+/// Unix probes the process group directly. Windows has no process-group
+/// probe in this registry, so the job's own status is the only evidence and
+/// the `pid` is intentionally unused there. Both arms exist so callers never
+/// carry platform `cfg` attributes (the unconditional `process_tree_exists`
+/// import broke the Windows release build once already).
+#[cfg(unix)]
+fn shell_process_tree_gone(_job: &BackgroundJob, pid: u32) -> bool {
+    !process_tree_exists(pid)
+}
+
+#[cfg(windows)]
+fn shell_process_tree_gone(job: &BackgroundJob, _pid: u32) -> bool {
+    !job.is_running()
+}
+
 fn execution_state(job: &BackgroundJob) -> (&'static str, bool) {
     match &job.kind {
         JobKind::Shell { pid, .. } => match job.shell_completion.as_ref() {
@@ -152,12 +170,7 @@ fn execution_state(job: &BackgroundJob) -> (&'static str, bool) {
                 ShellCompletionState::Failed(_) => ("termination_unproven", false),
             },
             None => {
-                #[cfg(unix)]
-                let process_tree_gone = !process_tree_exists(*pid);
-                #[cfg(windows)]
-                let process_tree_gone = !job.is_running();
-
-                if !job.is_running() && process_tree_gone {
+                if !job.is_running() && shell_process_tree_gone(job, *pid) {
                     ("terminated", true)
                 } else if job.shell_kill_requested {
                     ("process_tree_draining", false)

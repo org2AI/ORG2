@@ -241,5 +241,3 @@ export class LRUCache<K, V> {
     };
   }
 }
-
-export default LRUCache;

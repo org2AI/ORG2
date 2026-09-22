@@ -2,11 +2,11 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import { Delete02Icon, HugeiconsIcon } from "@src/icons";
 import {
   PANEL_FOOTER_TOKENS,
   PanelFooter,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { Delete02Icon, HugeiconsIcon } from "@src/icons";
 
 interface MultiSelectBarProps {
   selectedCount: number;
@@ -45,9 +45,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
     ...(onSetStatus
       ? [
           {
-            label: t("workItems.batchStatus.title", {
-              defaultValue: "Set status",
-            }),
+            label: t("workItems.batchStatus.title"),
             onClick: onSetStatus,
           },
         ]
@@ -55,9 +53,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
     ...(onSetPriority
       ? [
           {
-            label: t("workItems.batchPriority.title", {
-              defaultValue: "Set priority",
-            }),
+            label: t("workItems.batchPriority.title"),
             onClick: onSetPriority,
           },
         ]
@@ -65,9 +61,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
     ...(onSetAssignee
       ? [
           {
-            label: t("workItems.batchAssignee.title", {
-              defaultValue: "Set assignee",
-            }),
+            label: t("workItems.batchAssignee.title"),
             onClick: onSetAssignee,
           },
         ]
@@ -75,9 +69,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
     ...(onSetProperty
       ? [
           {
-            label: t("workItems.batchProperty.title", {
-              defaultValue: "Set property",
-            }),
+            label: t("workItems.batchProperty.title"),
             onClick: onSetProperty,
           },
         ]
@@ -93,7 +85,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
   );
 
   const cancelButton = (
-    <Button size="small" variant="secondary" onClick={onUnselectAll}>
+    <Button size="small" onClick={onUnselectAll}>
       {t("common:actions.cancel")}
     </Button>
   );
@@ -101,8 +93,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
   const deleteButton = (
     <Button
       size="small"
-      variant="danger"
-      appearance="outline"
+      tone="danger"
       icon={<HugeiconsIcon icon={Delete02Icon} data-icon="trash-2" size={14} />}
       disabled={deleting}
       loading={deleting}
@@ -122,12 +113,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
         </div>
         <div className="flex items-center gap-2">
           {quickFieldButtons.map((action) => (
-            <Button
-              key={action.label}
-              size="small"
-              variant="secondary"
-              onClick={action.onClick}
-            >
+            <Button key={action.label} size="small" onClick={action.onClick}>
               {action.label}
             </Button>
           ))}
@@ -151,8 +137,8 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
         icon: (
           <HugeiconsIcon icon={Delete02Icon} data-icon="trash-2" size={14} />
         ),
-        variant: "danger",
-        appearance: "outline",
+        variant: "secondary",
+        tone: "danger",
         disabled: deleting,
         loading: deleting,
       }}

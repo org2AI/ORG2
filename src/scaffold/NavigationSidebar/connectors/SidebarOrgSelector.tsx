@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import Select, { type SelectOption } from "@src/components/Select";
@@ -11,7 +12,6 @@ import {
   Login01Icon,
   Settings02Icon,
 } from "@src/icons";
-import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "@src/scaffold/NavigationSidebar/config";
 
 export interface SidebarOrgSelectorProps {
   value: string;
@@ -92,8 +92,8 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
             className={`${DROPDOWN_CLASSES.itemsColumn} shrink-0 border-0 border-t border-solid border-border-2 p-1`}
           >
             {onManageOrg && manageLabel ? (
-              <button
-                type="button"
+              <Button
+                layout="custom"
                 className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full border-none bg-transparent text-text-1`}
                 onClick={handleManageOrg}
                 data-testid="sidebar-org-manage"
@@ -106,11 +106,11 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
                   className="shrink-0"
                 />
                 <span className="min-w-0 truncate">{manageLabel}</span>
-              </button>
+              </Button>
             ) : null}
             {onAddOrg && addOrgLabel ? (
-              <button
-                type="button"
+              <Button
+                layout="custom"
                 className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full border-none bg-transparent text-text-1`}
                 onClick={handleAddOrg}
                 data-testid="sidebar-add-org"
@@ -123,7 +123,7 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
                   className="shrink-0"
                 />
                 <span className="min-w-0 truncate">{addOrgLabel}</span>
-              </button>
+              </Button>
             ) : null}
             {cloudSignedInIdentity !== undefined &&
             cloudSignedInIdentity !== null ? (
@@ -148,8 +148,8 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
                 </span>
               </div>
             ) : shouldShowCloudSignIn && onCloudSignIn ? (
-              <button
-                type="button"
+              <Button
+                layout="custom"
                 className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full border-none bg-transparent text-text-1`}
                 onClick={handleCloudSignIn}
                 data-testid="sidebar-cloud-sign-in"
@@ -162,7 +162,7 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
                   className="shrink-0"
                 />
                 <span className="min-w-0 truncate">{t("cloud.signIn")}</span>
-              </button>
+              </Button>
             ) : null}
           </div>
         </>
@@ -192,7 +192,6 @@ const SidebarOrgSelector: React.FC<SidebarOrgSelectorProps> = React.memo(
         <ToolbarTooltip
           label={t("collaboration.switchOrg")}
           position="bottom"
-          mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
           disabled={menuOpen || !pointerMoved}
         >
           <div className="w-full min-w-0">

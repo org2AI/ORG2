@@ -7,7 +7,7 @@ use crate::session::persistence;
 
 const MAX_SESSION_TITLE_LEN: usize = 80;
 const TITLE_TOOL_NAME: &str = "emit_session_title";
-const TITLE_SYSTEM_PROMPT: &str = r#"Generate a concise display title for an ORGII agent session.
+const TITLE_SYSTEM_PROMPT: &str = r#"Generate a concise display title for an ORG2 agent session.
 
 Rules:
 - Return only the title in the structured `title` field.
@@ -126,7 +126,13 @@ pub async fn generate_and_persist_session_title(
     account_id: Option<&str>,
     content: &str,
 ) -> String {
-    let title = match generate_session_title(provider, model, account_id, content).await {
+    let attributed = super::auxiliary_usage::AuxiliaryUsageProvider::borrowed(
+        provider,
+        session_id,
+        "session_title",
+        account_id,
+    );
+    let title = match generate_session_title(&attributed, model, account_id, content).await {
         Ok(title) => title,
         Err(err) => {
             warn!(

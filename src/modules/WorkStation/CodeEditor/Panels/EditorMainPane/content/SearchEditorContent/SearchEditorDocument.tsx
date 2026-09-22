@@ -19,6 +19,7 @@ import {
   ViewUpdate,
 } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
+import { useAtomValue } from "jotai";
 import React, { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -33,6 +34,11 @@ import {
   findReplaceExtension,
   getCodeMirrorTheme,
 } from "@src/features/CodeMirror/config";
+import {
+  editorHighlightActiveLineAtom,
+  editorLineNumbersAtom,
+  editorWordWrapAtom,
+} from "@src/store/ui/editorSettingsAtom";
 import { useCurrentTheme } from "@src/util/ui/theme/themeUtils";
 
 import type { FilePathRange, MatchRange } from "./serialization";
@@ -296,6 +302,9 @@ export const SearchEditorDocument: React.FC<SearchEditorDocumentProps> = memo(
   }) => {
     const { t } = useTranslation();
     useCurrentTheme();
+    const lineNumbers = useAtomValue(editorLineNumbersAtom);
+    const wordWrap = useAtomValue(editorWordWrapAtom);
+    const highlightActiveLine = useAtomValue(editorHighlightActiveLineAtom);
     const filePathClickRef = useRef(onFilePathClick);
 
     // Keep ref updated
@@ -325,13 +334,15 @@ export const SearchEditorDocument: React.FC<SearchEditorDocumentProps> = memo(
         findReplaceExtension(),
       ];
 
+      if (wordWrap) exts.push(EditorView.lineWrapping);
+
       // Read-only mode
       if (readOnly) {
         exts.push(EditorView.editable.of(false));
       }
 
       return exts;
-    }, [matchRanges, filePathRanges, readOnly]);
+    }, [matchRanges, filePathRanges, readOnly, wordWrap]);
 
     // Handle content changes
     const handleChange = useCallback(
@@ -376,7 +387,12 @@ export const SearchEditorDocument: React.FC<SearchEditorDocumentProps> = memo(
             theme={theme}
             extensions={extensions}
             onChange={onChange ? handleChange : undefined}
-            basicSetup={BASIC_SETUP_CONFIG}
+            basicSetup={{
+              ...BASIC_SETUP_CONFIG,
+              lineNumbers: lineNumbers !== "off",
+              highlightActiveLine,
+              highlightActiveLineGutter: highlightActiveLine,
+            }}
           />
         </div>
       </div>

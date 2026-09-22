@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { PanelRefreshButton } from "@src/components/layout/blocks";
 import { Coins01Icon } from "@src/icons";
-import { PanelRefreshButton } from "@src/modules/shared/layouts/blocks";
-import { SpotlightPillBar } from "@src/scaffold/GlobalSpotlight/components/SpotlightPillBar";
 import {
   SpotlightFormBody,
   SpotlightFormShell,
 } from "@src/scaffold/GlobalSpotlight/forms/shared";
+import { SpotlightFormLayout } from "@src/scaffold/GlobalSpotlight/forms/shared/SpotlightFormLayout";
 import { SpotlightShell } from "@src/scaffold/GlobalSpotlight/shell";
 
 import {
@@ -43,13 +43,12 @@ export function StartPageQuotaModal({
       hasActiveAction
       hideFooter
     >
-      <section
+      <SpotlightFormLayout
         role="dialog"
         aria-modal="true"
         aria-label={t("kanban.dataSource.views.quota")}
-      >
-        <SpotlightPillBar
-          path={[
+        header={{
+          path: [
             {
               type: "action",
               id: "quota",
@@ -57,10 +56,9 @@ export function StartPageQuotaModal({
               icon: Coins01Icon,
               color: "primary",
             },
-          ]}
-          onRemoveSegment={onClose}
-          trailingSlotAlign="end"
-          trailingSlot={
+          ],
+          onRemoveSegment: onClose,
+          trailingSlot: (
             <div className="flex items-center gap-1">
               <div ref={setPaginationContainer} />
               <PanelRefreshButton
@@ -71,8 +69,9 @@ export function StartPageQuotaModal({
                 title={refreshLabel}
               />
             </div>
-          }
-        />
+          ),
+        }}
+      >
         <SpotlightFormShell>
           <div className="max-h-[70vh] overflow-y-auto">
             <SpotlightFormBody>
@@ -85,7 +84,7 @@ export function StartPageQuotaModal({
             </SpotlightFormBody>
           </div>
         </SpotlightFormShell>
-      </section>
+      </SpotlightFormLayout>
     </SpotlightShell>
   );
 }

@@ -8,6 +8,7 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
 import { cacheAdapter } from "@src/engines/SessionCore/storage/cacheAdapter";
 import { loadOwnSessionInitialEvents } from "@src/engines/SessionCore/sync/sessionSyncUtils";
+import i18n from "@src/i18n";
 import type { Session } from "@src/store/session";
 import type { ActivityChunk } from "@src/types/session/session";
 import {
@@ -233,9 +234,7 @@ export function formatCategoryLabel(
     case "rust_agent":
       return t("chat.importExport.categories.rust");
     case "human_session":
-      return t("chat.importExport.categories.human", {
-        defaultValue: "Work log",
-      });
+      return t("chat.importExport.categories.human");
     case "cursor_ide":
       return t("chat.importExport.categories.cursorIde");
     case "external_history":
@@ -257,6 +256,8 @@ export function stringifySessionExportFile(payload: SessionExportFile): string {
 }
 
 export const SESSION_JSON_FILTER = {
-  name: "ORGII Session JSON",
+  get name() {
+    return i18n.t("common:appMessages.sessionJsonFile");
+  },
   extensions: ["json"],
 };

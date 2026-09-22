@@ -340,6 +340,7 @@ pub async fn test_agent_org_launch_coordinator(
         workspace_path: Some(workspace_path),
         key_source: None,
         account_id,
+        credential_source: None,
         model,
         native_harness_type,
         platform: None,

@@ -1,14 +1,14 @@
 import { atom } from "jotai";
 
 import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
-import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
-import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
-import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import { conversationRootKey } from "@src/contracts/conversation";
+import type { QueuedConversationDispatch } from "@src/contracts/conversation";
 import {
   MAX_QUEUED_CONVERSATION_MESSAGE_CHARS,
   MAX_QUEUED_CONVERSATION_MESSAGE_CHARS_TOTAL,
   queuedConversationMessageCharSize,
-} from "@src/engines/SessionCore/conversations/queuedConversationContract";
+} from "@src/contracts/conversation";
+import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
 import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 import { isCliSession } from "@src/util/session/sessionDispatch";
@@ -274,14 +274,6 @@ export const enqueueMessageAtom = atom(
 );
 enqueueMessageAtom.debugLabel = "enqueueMessageAtom";
 
-export const dequeueMessageAtom = atom(null, (get, set, messageId: string) => {
-  if (get(messageQueueHandoffIdsAtom).has(messageId)) return;
-  set(messageQueueAtom, (prev) =>
-    prev.filter((msg) => msg.id !== messageId || msg.status !== "queued")
-  );
-});
-dequeueMessageAtom.debugLabel = "dequeueMessageAtom";
-
 /**
  * Send Now: promote a parked message to an explicit "now" dispatch. The
  * queue dispatcher interrupts the active turn (timeline boundary) if needed
@@ -360,33 +352,6 @@ export const parkSessionQueuedMessagesAfterStopAtom = atom(
 parkSessionQueuedMessagesAfterStopAtom.debugLabel =
   "parkSessionQueuedMessagesAfterStopAtom";
 
-export const clearSessionQueueAtom = atom(
-  null,
-  (get, set, sessionId: string) => {
-    const current = get(messageQueueAtom);
-    const conversationKeys = new Set(
-      current.flatMap((message) =>
-        message.sessionId === sessionId && message.conversationDispatch
-          ? [conversationRootKey(message.conversationDispatch.root)]
-          : []
-      )
-    );
-    set(messageQueueAtom, (prev) =>
-      prev.filter(
-        (msg) =>
-          get(messageQueueHandoffIdsAtom).has(msg.id) ||
-          msg.status !== "queued" ||
-          (msg.sessionId !== sessionId &&
-            (msg.conversationDispatch === undefined ||
-              !conversationKeys.has(
-                conversationRootKey(msg.conversationDispatch.root)
-              )))
-      )
-    );
-  }
-);
-clearSessionQueueAtom.debugLabel = "clearSessionQueueAtom";
-
 /** Remove an exact visible queue projection without touching other Sessions. */
 export const clearQueuedMessagesAtom = atom(
   null,
@@ -420,8 +385,8 @@ export const editMessageAtom = atom(
       agentExecMode?: AgentExecMode;
       /** Caller-owned retry intent when its EventStore projection must match. */
       turnIntentId?: string;
-      /** Re-resolved canonical runtime for a retry of a held canonical row. */
-      conversationDispatch?: QueuedConversationDispatch;
+      /** Re-resolved canonical runtime; null explicitly clears stale ownership. */
+      conversationDispatch?: QueuedConversationDispatch | null;
     }
   ) => {
     if (get(messageQueueHandoffIdsAtom).has(update.messageId)) return false;
@@ -452,8 +417,12 @@ export const editMessageAtom = atom(
             !(nextImageDataUrls && nextImageDataUrls.length > 0) &&
             !isCliSession(msg.sessionId),
         });
+        const dispatchBase = { ...msg };
+        if (update.conversationDispatch === null) {
+          delete dispatchBase.conversationDispatch;
+        }
         const next: QueuedMessage = {
-          ...msg,
+          ...dispatchBase,
           // Saving an edit is a new logical user intent. The previous id may
           // already be a durable stale/rejected pre-run terminal after a
           // crash; terminal intent ids are immutable and cannot be safely
@@ -470,9 +439,10 @@ export const editMessageAtom = atom(
           ...(update.agentExecMode !== undefined && {
             agentExecMode: update.agentExecMode,
           }),
-          ...(update.conversationDispatch !== undefined && {
-            conversationDispatch: update.conversationDispatch,
-          }),
+          ...(update.conversationDispatch !== undefined &&
+            update.conversationDispatch !== null && {
+              conversationDispatch: update.conversationDispatch,
+            }),
           deliveryError: undefined,
         };
         const siblings = prev.filter((item) => item.id !== msg.id);

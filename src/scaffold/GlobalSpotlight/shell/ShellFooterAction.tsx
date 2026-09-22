@@ -47,5 +47,3 @@ export const ShellFooterAction: React.FC<ShellFooterActionProps> = ({
   if (!target) return null;
   return createPortal(children, target);
 };
-
-export default ShellFooterAction;

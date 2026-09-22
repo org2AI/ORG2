@@ -9,7 +9,7 @@
  *
  * This replaces the unreliable Tauri event system for push notifications.
  */
-import { IDE_SERVER_WS_URL } from "@src/config/ideServer";
+import { IDE_SERVER_WS_URL, withIdeServerToken } from "@src/config/ideServer";
 import { createLogger } from "@src/hooks/logger";
 import { recordPushEvent } from "@src/util/monitoring/apiTracker";
 
@@ -49,7 +49,9 @@ export class CodeEditorWebSocketClient {
       this.isIntentionallyClosed = false;
 
       try {
-        this.ws = new WebSocket(this.url);
+        // `WebSocket` cannot set headers, so the local IDE server token rides
+        // in the query string. Appended per connect, never stored in `url`.
+        this.ws = new WebSocket(withIdeServerToken(this.url));
 
         this.ws.onopen = () => {
           this.reconnectAttempts = 0;

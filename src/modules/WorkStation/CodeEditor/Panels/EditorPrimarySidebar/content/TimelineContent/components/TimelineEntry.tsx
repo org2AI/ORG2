@@ -1,15 +1,7 @@
 import React, { memo } from "react";
-import { useTranslation } from "react-i18next";
 
-import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
-import {
-  HEADER_BUTTON,
-  PRIMARY_SIDEBAR_HOVER,
-} from "@src/config/workstation/tokens";
-import { HugeiconsIcon } from "@src/icons";
+import { SidebarRow } from "@src/components/SidebarRow";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
-
-import { TIMELINE_ICONS } from "../config";
 
 interface TimelineEntryProps {
   commitSha: string;
@@ -31,47 +23,13 @@ export const TimelineEntry: React.FC<TimelineEntryProps> = memo(
     onClick,
     commitSha: _commitSha,
   }) => {
-    const { t } = useTranslation();
-    const CommitIcon = TIMELINE_ICONS.commit;
-    const OpenIcon = TIMELINE_ICONS.openDiff;
-
     return (
-      <div
-        className={`group/timeline-item flex cursor-pointer items-start gap-1.5 px-4 py-1.5 pr-3 transition-colors ${
-          isSelected
-            ? `${SURFACE_TOKENS.selected} ${PRIMARY_SIDEBAR_HOVER.selectedRow}`
-            : PRIMARY_SIDEBAR_HOVER.row
-        }`}
+      <SidebarRow
+        selected={isSelected}
         onClick={onClick}
-      >
-        <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-          <HugeiconsIcon icon={CommitIcon} size={14} className="text-text-3" />
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div
-            className={`truncate text-[13px] ${isSelected ? "font-medium text-text-1" : "text-text-2"}`}
-            title={message}
-          >
-            {message}
-          </div>
-
-          <div className="truncate text-[11px] text-text-3">
-            {formatRelativeTime(timestamp, "compact")} · {author} · {shortSha}
-          </div>
-        </div>
-
-        <button
-          className={`${HEADER_BUTTON.actionTreeRow} hidden shrink-0 group-hover/timeline-item:flex`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onClick();
-          }}
-          title={t("tooltips.openDiff")}
-        >
-          <HugeiconsIcon icon={OpenIcon} size={14} />
-        </button>
-      </div>
+        label={message}
+        metadata={`${formatRelativeTime(timestamp, "compact")} · ${author} · ${shortSha}`}
+      />
     );
   }
 );

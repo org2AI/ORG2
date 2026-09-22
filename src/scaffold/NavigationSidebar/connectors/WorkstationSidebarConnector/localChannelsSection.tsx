@@ -15,6 +15,7 @@
  * settings, archive, and delete.
  */
 import { useAtomValue, useSetAtom } from "jotai";
+import type { MouseEvent } from "react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -24,7 +25,9 @@ import CreateLocalChannelDialog from "@src/features/LocalChannels/components/Cre
 import DeleteLocalChannelDialog from "@src/features/LocalChannels/components/DeleteLocalChannelDialog";
 import LocalChannelSettingsDialog from "@src/features/LocalChannels/components/LocalChannelSettingsDialog";
 import { createLogger } from "@src/hooks/logger";
+import { ArchiveArrowDownIcon, Delete02Icon, Settings01Icon } from "@src/icons";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
+import { popupSidebarMenu } from "@src/scaffold/NavigationSidebar/menus/SidebarMenu";
 import {
   closeOtherThanActiveChatPanelTabsAtom,
   openChannelInChatPanelTabAtom,
@@ -39,7 +42,6 @@ import {
   reconcileLocalChannelMessagesAtom,
   unarchiveLocalChannelAtom,
 } from "@src/store/ui/localChannelsAtom";
-import { popupNativeMenu } from "@src/util/platform/tauri/nativeMenuPopup";
 
 import {
   type SidebarTabDisposition,
@@ -177,22 +179,25 @@ export function useLocalChannelsSection({
   );
 
   const openChannelActionsMenu = useCallback(
-    (channel: LocalChannel) => {
+    (channel: LocalChannel, event: MouseEvent) => {
       const entries = [
         {
           text: t("cloud.channels.settings.action"),
+          icon: Settings01Icon,
           action: () => setDialogState({ kind: "settings", channel }),
         },
         {
           text: t("cloud.channels.archiveAction"),
+          icon: ArchiveArrowDownIcon,
           action: () => setDialogState({ kind: "archive", channel }),
         },
         {
           text: t("cloud.channels.deleteAction"),
+          icon: Delete02Icon,
           action: () => setDialogState({ kind: "delete", channel }),
         },
       ];
-      void popupNativeMenu({
+      void popupSidebarMenu(event, {
         source: "local-channel-row",
         buildItems: () => entries,
       }).catch((error) => {

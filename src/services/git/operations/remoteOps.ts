@@ -26,6 +26,25 @@ import {
 
 const logger = createLogger("GitRemoteOps");
 
+/** One user operation owns its original target through every await/retry.
+ * Integration callbacks capture their hook's repo at creation, so retain that
+ * same integration rather than picking up the newly selected editor's one.
+ */
+interface RemoteOperationScope {
+  readonly repo: ReturnType<typeof getRepoContext>;
+  readonly integration: ReturnType<typeof getOutputIntegration>;
+  remoteUrl?: Promise<string | undefined>;
+}
+
+function captureRemoteScope(): RemoteOperationScope {
+  const repo = getRepoContext();
+  const integration = getOutputIntegration();
+  return {
+    repo: repo ? { ...repo } : null,
+    integration: integration ? { ...integration } : integration,
+  };
+}
+
 // ============================================
 // Core Operations
 // ============================================
@@ -43,7 +62,20 @@ export async function push(
     showErrorDialog?: boolean;
   } = {}
 ): Promise<GitOperationResult> {
-  const integration = getOutputIntegration();
+  return pushForScope({ ...params }, captureRemoteScope());
+}
+
+async function pushForScope(
+  params: {
+    force?: boolean;
+    setUpstream?: boolean;
+    remote?: string;
+    branch?: string;
+    showErrorDialog?: boolean;
+  },
+  scope: RemoteOperationScope
+): Promise<GitOperationResult> {
+  const integration = scope.integration;
 
   if (integration) {
     const result = await integration.pushWithOutput({
@@ -54,12 +86,12 @@ export async function push(
       showErrorDialog: params.showErrorDialog,
     });
     if (!result.success && result.errorType === "authentication_failed") {
-      return (await retryPushWithAuth(params)) ?? result;
+      return (await retryPushWithAuth(scope, params)) ?? result;
     }
     return result;
   }
 
-  const repo = getRepoContext();
+  const repo = scope.repo;
   if (repo) {
     try {
       await gitApi.gitPush({
@@ -79,7 +111,7 @@ export async function push(
         message: parsed.message,
       };
       if (result.errorType === "authentication_failed") {
-        return (await retryPushWithAuth(params)) ?? result;
+        return (await retryPushWithAuth(scope, params)) ?? result;
       }
       return result;
     }
@@ -102,28 +134,36 @@ function getUserPullStrategy(): GitPullStrategy {
   return strategy ?? DEFAULT_PULL_STRATEGY;
 }
 
-async function getRemoteUrl(remoteName?: string): Promise<string | undefined> {
-  const repo = getRepoContext();
+async function getRemoteUrl(
+  scope: RemoteOperationScope,
+  remoteName?: string
+): Promise<string | undefined> {
+  const repo = scope.repo;
   if (!repo) return undefined;
 
-  const remotesData = await gitApi.getGitRemotes({
-    repo_id: repo.repoId,
-    repo_path: repo.repoPath,
-  });
-  const targetRemoteName = remoteName ?? "origin";
-  const remote = remotesData?.remotes.find(
-    (candidateRemote) => candidateRemote.name === targetRemoteName
-  );
-  return remote?.push_url ?? remote?.fetch_url ?? remote?.url;
+  scope.remoteUrl ??= gitApi
+    .getGitRemotes({
+      repo_id: repo.repoId,
+      repo_path: repo.repoPath,
+    })
+    .then((remotesData) => {
+      const targetRemoteName = remoteName ?? "origin";
+      const remote = remotesData?.remotes.find(
+        (candidateRemote) => candidateRemote.name === targetRemoteName
+      );
+      return remote?.push_url ?? remote?.fetch_url ?? remote?.url;
+    });
+  return scope.remoteUrl;
 }
 
 async function readStoredGitCredential(
+  scope: RemoteOperationScope,
   remoteName?: string
 ): Promise<GitAuthenticationDialogResult | null> {
-  const repo = getRepoContext();
+  const repo = scope.repo;
   if (!repo) return null;
 
-  const remoteUrl = await getRemoteUrl(remoteName);
+  const remoteUrl = await getRemoteUrl(scope, remoteName);
   if (!remoteUrl) return null;
 
   const credential = await gitApi.fillGitCredentials({
@@ -144,9 +184,10 @@ async function readStoredGitCredential(
 }
 
 async function readGitHubConnectionCredential(
+  scope: RemoteOperationScope,
   remoteName?: string
 ): Promise<GitAuthenticationDialogResult | null> {
-  const remoteUrl = await getRemoteUrl(remoteName);
+  const remoteUrl = await getRemoteUrl(scope, remoteName);
   if (!remoteUrl) return null;
 
   try {
@@ -164,20 +205,22 @@ async function readGitHubConnectionCredential(
 }
 
 async function requestGitAuthToken(
+  scope: RemoteOperationScope,
   operation: "push" | "pull" | "fetch" | "sync",
   remote?: string
 ): Promise<GitAuthenticationDialogResult | null> {
-  const repo = getRepoContext();
-  const remoteUrl = await getRemoteUrl(remote);
+  const repo = scope.repo;
+  const remoteUrl = await getRemoteUrl(scope, remote);
   return showGitAuthenticationDialog({
     operation,
     repoPath: repo?.repoPath,
     remote: remoteUrl ?? remote,
-    onLoadStoredCredential: () => readStoredGitCredential(remote),
+    onLoadStoredCredential: () => readStoredGitCredential(scope, remote),
   });
 }
 
 async function attemptPushWithAuth(
+  scope: RemoteOperationScope,
   params: {
     force?: boolean;
     setUpstream?: boolean;
@@ -186,7 +229,7 @@ async function attemptPushWithAuth(
   },
   auth: GitAuthenticationDialogResult
 ): Promise<GitOperationResult> {
-  const repo = getRepoContext();
+  const repo = scope.repo;
   if (!repo) return { success: false, errorType: "unknown" };
 
   try {
@@ -212,15 +255,18 @@ async function attemptPushWithAuth(
   }
 }
 
-async function retryPushWithAuth(params: {
-  force?: boolean;
-  setUpstream?: boolean;
-  remote?: string;
-  branch?: string;
-}): Promise<GitOperationResult | null> {
-  const githubAuth = await readGitHubConnectionCredential(params.remote);
+async function retryPushWithAuth(
+  scope: RemoteOperationScope,
+  params: {
+    force?: boolean;
+    setUpstream?: boolean;
+    remote?: string;
+    branch?: string;
+  }
+): Promise<GitOperationResult | null> {
+  const githubAuth = await readGitHubConnectionCredential(scope, params.remote);
   if (githubAuth) {
-    const githubResult = await attemptPushWithAuth(params, githubAuth);
+    const githubResult = await attemptPushWithAuth(scope, params, githubAuth);
     if (
       githubResult.success ||
       githubResult.errorType !== "authentication_failed"
@@ -229,13 +275,14 @@ async function retryPushWithAuth(params: {
     }
   }
 
-  const auth = await requestGitAuthToken("push", params.remote);
+  const auth = await requestGitAuthToken(scope, "push", params.remote);
   if (!auth) return null;
 
-  return attemptPushWithAuth(params, auth);
+  return attemptPushWithAuth(scope, params, auth);
 }
 
 async function attemptPullWithAuth(
+  scope: RemoteOperationScope,
   params: {
     remote?: string;
     branch?: string;
@@ -243,7 +290,7 @@ async function attemptPullWithAuth(
   },
   auth: GitAuthenticationDialogResult
 ): Promise<GitOperationResult> {
-  const repo = getRepoContext();
+  const repo = scope.repo;
   if (!repo) return { success: false, errorType: "unknown" };
 
   try {
@@ -268,14 +315,17 @@ async function attemptPullWithAuth(
   }
 }
 
-async function retryPullWithAuth(params: {
-  remote?: string;
-  branch?: string;
-  strategy: GitPullStrategy;
-}): Promise<GitOperationResult | null> {
-  const githubAuth = await readGitHubConnectionCredential(params.remote);
+async function retryPullWithAuth(
+  scope: RemoteOperationScope,
+  params: {
+    remote?: string;
+    branch?: string;
+    strategy: GitPullStrategy;
+  }
+): Promise<GitOperationResult | null> {
+  const githubAuth = await readGitHubConnectionCredential(scope, params.remote);
   if (githubAuth) {
-    const githubResult = await attemptPullWithAuth(params, githubAuth);
+    const githubResult = await attemptPullWithAuth(scope, params, githubAuth);
     if (
       githubResult.success ||
       githubResult.errorType !== "authentication_failed"
@@ -284,20 +334,21 @@ async function retryPullWithAuth(params: {
     }
   }
 
-  const auth = await requestGitAuthToken("pull", params.remote);
+  const auth = await requestGitAuthToken(scope, "pull", params.remote);
   if (!auth) return null;
 
-  return attemptPullWithAuth(params, auth);
+  return attemptPullWithAuth(scope, params, auth);
 }
 
 async function attemptFetchWithAuth(
+  scope: RemoteOperationScope,
   params: {
     remote?: string;
     prune?: boolean;
   },
   auth: GitAuthenticationDialogResult
 ): Promise<GitOperationResult> {
-  const repo = getRepoContext();
+  const repo = scope.repo;
   if (!repo) return { success: false, errorType: "unknown" };
 
   try {
@@ -321,13 +372,16 @@ async function attemptFetchWithAuth(
   }
 }
 
-async function retryFetchWithAuth(params: {
-  remote?: string;
-  prune?: boolean;
-}): Promise<GitOperationResult | null> {
-  const githubAuth = await readGitHubConnectionCredential(params.remote);
+async function retryFetchWithAuth(
+  scope: RemoteOperationScope,
+  params: {
+    remote?: string;
+    prune?: boolean;
+  }
+): Promise<GitOperationResult | null> {
+  const githubAuth = await readGitHubConnectionCredential(scope, params.remote);
   if (githubAuth) {
-    const githubResult = await attemptFetchWithAuth(params, githubAuth);
+    const githubResult = await attemptFetchWithAuth(scope, params, githubAuth);
     if (
       githubResult.success ||
       githubResult.errorType !== "authentication_failed"
@@ -336,10 +390,10 @@ async function retryFetchWithAuth(params: {
     }
   }
 
-  const auth = await requestGitAuthToken("fetch", params.remote);
+  const auth = await requestGitAuthToken(scope, "fetch", params.remote);
   if (!auth) return null;
 
-  return attemptFetchWithAuth(params, auth);
+  return attemptFetchWithAuth(scope, params, auth);
 }
 
 /**
@@ -355,18 +409,32 @@ export async function pull(
     showErrorDialog?: boolean;
   } = {}
 ): Promise<GitOperationResult> {
+  return pullForScope({ ...params }, captureRemoteScope());
+}
+
+async function pullForScope(
+  params: {
+    remote?: string;
+    branch?: string;
+    strategy?: GitPullStrategy;
+    showErrorDialog?: boolean;
+  },
+  scope: RemoteOperationScope
+): Promise<GitOperationResult> {
   const strategy = params.strategy ?? getUserPullStrategy();
-  const integration = getOutputIntegration();
+  const integration = scope.integration;
 
   if (integration) {
     const result = await integration.pullWithOutput({ ...params, strategy });
     if (!result.success && result.errorType === "authentication_failed") {
-      return (await retryPullWithAuth({ ...params, strategy })) ?? result;
+      return (
+        (await retryPullWithAuth(scope, { ...params, strategy })) ?? result
+      );
     }
     return result;
   }
 
-  const repo = getRepoContext();
+  const repo = scope.repo;
   if (repo) {
     try {
       await gitApi.gitPull({
@@ -385,7 +453,9 @@ export async function pull(
         message: parsed.message,
       };
       if (result.errorType === "authentication_failed") {
-        return (await retryPullWithAuth({ ...params, strategy })) ?? result;
+        return (
+          (await retryPullWithAuth(scope, { ...params, strategy })) ?? result
+        );
       }
       return result;
     }
@@ -405,17 +475,28 @@ export async function fetch(
     showErrorDialog?: boolean;
   } = {}
 ): Promise<GitOperationResult> {
-  const integration = getOutputIntegration();
+  return fetchForScope({ ...params }, captureRemoteScope());
+}
+
+async function fetchForScope(
+  params: {
+    remote?: string;
+    prune?: boolean;
+    showErrorDialog?: boolean;
+  },
+  scope: RemoteOperationScope
+): Promise<GitOperationResult> {
+  const integration = scope.integration;
 
   if (integration) {
     const result = await integration.fetchWithOutput(params);
     if (!result.success && result.errorType === "authentication_failed") {
-      return (await retryFetchWithAuth(params)) ?? result;
+      return (await retryFetchWithAuth(scope, params)) ?? result;
     }
     return result;
   }
 
-  const repo = getRepoContext();
+  const repo = scope.repo;
   if (repo) {
     try {
       await gitApi.gitFetch({
@@ -433,7 +514,7 @@ export async function fetch(
         message: parsed.message,
       };
       if (result.errorType === "authentication_failed") {
-        return (await retryFetchWithAuth(params)) ?? result;
+        return (await retryFetchWithAuth(scope, params)) ?? result;
       }
       return result;
     }
@@ -459,21 +540,31 @@ export async function publish(): Promise<GitOperationResult> {
 export async function sync(
   params: { showErrorDialog?: boolean } = {}
 ): Promise<GitOperationResult> {
-  const fetchResult = await fetch({
-    showErrorDialog: params.showErrorDialog,
-  });
+  const scope = captureRemoteScope();
+  const fetchResult = await fetchForScope(
+    {
+      showErrorDialog: params.showErrorDialog,
+    },
+    scope
+  );
   if (!fetchResult.success) {
     return fetchResult;
   }
-  const pullResult = await pull({
-    showErrorDialog: params.showErrorDialog,
-  });
+  const pullResult = await pullForScope(
+    {
+      showErrorDialog: params.showErrorDialog,
+    },
+    scope
+  );
   if (!pullResult.success) {
     return pullResult;
   }
-  return push({
-    showErrorDialog: params.showErrorDialog,
-  });
+  return pushForScope(
+    {
+      showErrorDialog: params.showErrorDialog,
+    },
+    scope
+  );
 }
 
 // ============================================

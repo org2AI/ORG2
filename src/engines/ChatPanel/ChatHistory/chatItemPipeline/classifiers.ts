@@ -132,6 +132,11 @@ export const isBrowserEvent = (event: SessionEvent): boolean => {
   );
 };
 
+/** Check if an event waits on, monitors, or lists background jobs. */
+export const isAwaitOutputEvent = (event: SessionEvent): boolean => {
+  return getUiCanonical(event) === "await_output";
+};
+
 /**
  * Check whether an await_output call targets at least one shell process.
  * Structured awaitMeta wins; live calls fall back to their numeric PID handles.

@@ -3,7 +3,7 @@ import { atom } from "jotai";
 import {
   type LocalConversationTarget,
   isLocalConversationTarget,
-} from "@src/engines/SessionCore/conversations/conversationTypes";
+} from "@src/contracts/conversation";
 
 const MAX_CONVERSATION_TARGET_OVERRIDES = 32;
 
@@ -38,6 +38,7 @@ function sameConversationTarget(
     left.cliAgentType === right.cliAgentType &&
     left.agentDefinitionId === right.agentDefinitionId &&
     left.accountId === right.accountId &&
+    left.credentialSource === right.credentialSource &&
     left.model === right.model &&
     (left.workspaceRepoPath ?? null) === (right.workspaceRepoPath ?? null)
   );

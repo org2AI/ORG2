@@ -13,12 +13,12 @@ export interface TabBarTrailingIconButtonProps extends Omit<
 > {
   title: string;
   onClick?: () => void;
-  /** Toggled / pressed appearance (`tabBarTrailingActive`) */
+  /** Toggled / pressed appearance */
   active?: boolean;
   shortcutId?: string;
   tooltipPosition?: "top" | "bottom" | "bottom-start" | "bottom-end";
-  tooltipMouseEnterDelay?: number;
   tooltipDisabled?: boolean;
+  /** Native fallback only when the styled tooltip is disabled. */
   nativeTitle?: boolean;
   className?: string;
   children: React.ReactNode;
@@ -32,7 +32,6 @@ export const TabBarTrailingIconButton: React.FC<TabBarTrailingIconButtonProps> =
       active = false,
       shortcutId,
       tooltipPosition = "bottom",
-      tooltipMouseEnterDelay,
       tooltipDisabled = false,
       nativeTitle = true,
       className = "",
@@ -41,12 +40,11 @@ export const TabBarTrailingIconButton: React.FC<TabBarTrailingIconButtonProps> =
     }) => {
       const button = (
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly
           className={`${active ? "bg-fill-1! text-primary-6!" : ""} ${className}`.trim()}
-          title={nativeTitle && !shortcutId ? title : undefined}
+          title={nativeTitle && tooltipDisabled ? title : undefined}
           aria-label={buttonProps["aria-label"] ?? title}
           onClick={onClick}
           icon={children}
@@ -59,7 +57,6 @@ export const TabBarTrailingIconButton: React.FC<TabBarTrailingIconButtonProps> =
           label={title}
           shortcutId={shortcutId}
           position={tooltipPosition}
-          mouseEnterDelay={tooltipMouseEnterDelay}
           disabled={tooltipDisabled}
         >
           {button}

@@ -5,7 +5,8 @@
 
 .native-tooltip {
   position: fixed;
-  z-index: 1060;
+  // Tooltips portal to body and must clear Spotlight (9999) and its menus (10000).
+  z-index: 10001;
   box-sizing: border-box;
   max-width: min(320px, calc(100vw - 16px));
   padding: 8px 12px;

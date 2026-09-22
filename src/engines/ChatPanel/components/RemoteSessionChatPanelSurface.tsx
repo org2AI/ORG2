@@ -180,8 +180,8 @@ export function RemoteSessionChatPanelSurface({
         chatPanelOpacityStyle={{}}
         chatWidth={0}
         chatWidthStyleValue="100%"
-        embedded
         headerSection={headerSection}
+        fullScreen={false}
         hasTabBar={false}
         isDragging={false}
         isLeftPosition={false}

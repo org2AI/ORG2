@@ -14,18 +14,23 @@
  * the Effort/Reasoning row list without baking model-family specifics
  * into the component.
  */
+import { computeSeedDefaultVariant } from "./defaultModelVariant";
 import {
   MODEL_REASONING_LEVEL,
   type ModelReasoningLevel,
   parseModelVariant,
 } from "./modelVariants";
+import {
+  getModelEffortBaseModel,
+  selectableModelVariants,
+} from "./selectableModelVariants";
 
 /**
  * Order in which reasoning levels are displayed in the dropdown. Levels
- * the family does not expose are filtered out before rendering. `Baseline`
+ * the family does not expose are filtered out before rendering. `Default`
  * represents the unsuffixed / no-effort variant (e.g. `claude-sonnet-4-6`
- * or `claude-opus-4-6-thinking` with no level token) and is treated as a
- * regular selectable effort alongside Low/Medium/High/etc.
+ * or `claude-opus-4-6-thinking` with no level token). It is retained only
+ * when no explicit effort ladder covers that thinking/speed combination.
  */
 const LEVEL_DISPLAY_ORDER: ModelReasoningLevel[] = [
   MODEL_REASONING_LEVEL.BASELINE,
@@ -99,8 +104,8 @@ function indexVariants(modelIds: readonly string[]): IndexedVariant[] {
       // thinking). Effort level is independent — a variant can have
       // a reasoning level without being a thinking variant. Variants
       // with no parsed level (e.g. `claude-opus-4-6-thinking`,
-      // `composer-2.5-fast`) are surfaced as the `Baseline` effort row
-      // so they appear alongside Low/Medium/High in the dropdown.
+      // `composer-2.5-fast`) are surfaced as the `Default` effort row
+      // only when concrete effort variants do not cover that combination.
       out.push({
         modelId,
         thinking: parsed.thinking,
@@ -110,7 +115,7 @@ function indexVariants(modelIds: readonly string[]): IndexedVariant[] {
       continue;
     }
     // Unparsed ids (e.g. `claude-sonnet-4-6`) are treated as the
-    // unsuffixed Baseline variant.
+    // unsuffixed Default variant.
     out.push({
       modelId,
       thinking: false,
@@ -137,7 +142,9 @@ function selectionKey(selection: {
 export function buildVariantEditOptions(
   modelIds: readonly string[]
 ): VariantEditOptions {
-  const indexed = indexVariants(modelIds);
+  const indexed = selectableModelVariants(
+    modelIds.map((model) => ({ model }))
+  ).flatMap(({ model }) => indexVariants([model]));
 
   // Effort levels are collected across BOTH thinking and non-thinking
   // variants. After the parser split, a non-thinking Claude variant
@@ -146,8 +153,12 @@ export function buildVariantEditOptions(
   for (const variant of indexed) {
     if (variant.level) levelSet.add(variant.level);
   }
-  const availableLevels = LEVEL_DISPLAY_ORDER.filter((level) =>
-    levelSet.has(level)
+  // Speed/thinking-only families have no effort control. The internal
+  // no-effort key still resolves their toggles, but is not an effort rung.
+  const availableLevels = LEVEL_DISPLAY_ORDER.filter(
+    (level) =>
+      levelSet.has(level) &&
+      !(level === MODEL_REASONING_LEVEL.BASELINE && levelSet.size === 1)
   );
 
   // Thinking is "toggleable" only when the family exposes both states
@@ -183,6 +194,32 @@ export function buildVariantEditOptions(
   };
 
   const parseSelection = (modelId: string): VariantSelection => {
+    // Previously saved bare family ids resolve through the same seed rule
+    // as family selection, rather than adding an invented effort rung.
+    if (
+      !parseModelVariant(modelId)?.reasoning &&
+      !indexed.some((variant) => variant.modelId === modelId)
+    ) {
+      const original = parseModelVariant(modelId);
+      const base = getModelEffortBaseModel(modelId);
+      const candidates = indexed.filter((variant) => {
+        return (
+          getModelEffortBaseModel(variant.modelId) === base &&
+          variant.thinking === (original?.thinking ?? false) &&
+          variant.fast === (original?.fast ?? false)
+        );
+      });
+      const resolved = computeSeedDefaultVariant(
+        base,
+        candidates.map((variant) => ({
+          model: variant.modelId,
+          base_model: base,
+          reasoning: variant.level,
+          fast: variant.fast,
+        }))
+      );
+      if (resolved) return parseSelection(resolved);
+    }
     const parsed = parseModelVariant(modelId);
     if (!parsed) {
       return {

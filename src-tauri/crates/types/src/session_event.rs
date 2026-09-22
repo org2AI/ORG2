@@ -44,6 +44,71 @@ pub enum EventSource {
     System,
 }
 
+/// Action types of internal execution bookkeeping: turn lifecycle markers,
+/// native command catalogs and stage errors. Chat never renders them, so turn
+/// indexes must not count them as round body either. TS twin:
+/// `INTERNAL_LIFECYCLE_ACTION_TYPES` in `visibilityFilters.ts`.
+pub const INTERNAL_LIFECYCLE_ACTION_TYPES: &[&str] = &[
+    "native_command_catalog",
+    "queued_retry_lineage",
+    "queued_retry_audit_boundary",
+    "task_start",
+    "task_completed",
+    "task_failed",
+    "stage_error",
+];
+
+/// Borrow validated queue retry control data; mirrors retryLineageOf in TS.
+pub fn queued_retry_lineage_data<'a>(
+    action: &str,
+    id: &str,
+    result: &'a serde_json::Value,
+) -> Option<&'a serde_json::Value> {
+    if action != "queued_retry_lineage" {
+        return None;
+    }
+    let value = result.get("retryLineage")?;
+    let queue_id = value.get("queueMessageId")?.as_str()?;
+    if value.get("version")?.as_u64()? != 1 || id != format!("queued-retry-lineage:{queue_id}:") {
+        return None;
+    }
+    let valid_attempt = |attempt: &serde_json::Value| {
+        ["turnIntentId", "sessionId"].iter().all(|key| {
+            attempt
+                .get(key)
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|id| !id.is_empty())
+        }) && attempt
+            .get("sourceEventIds")
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|ids| {
+                ids.len() <= 16
+                    && ids
+                        .iter()
+                        .all(|id| id.as_str().is_some_and(|id| id.starts_with("orgii_evt_")))
+            })
+    };
+    let attempts = value.get("superseded")?.as_array()?;
+    if attempts.len() > 64 || !attempts.iter().all(valid_attempt) {
+        return None;
+    }
+    if let Some(failed) = value.get("failed") {
+        if !valid_attempt(failed)
+            || failed
+                .get("payloadId")
+                .and_then(serde_json::Value::as_str)
+                .is_none()
+        {
+            return None;
+        }
+    }
+    Some(value)
+}
+
+pub fn is_internal_lifecycle_action_type(action_type: &str) -> bool {
+    INTERNAL_LIFECYCLE_ACTION_TYPES.contains(&action_type)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventDisplayVariant {

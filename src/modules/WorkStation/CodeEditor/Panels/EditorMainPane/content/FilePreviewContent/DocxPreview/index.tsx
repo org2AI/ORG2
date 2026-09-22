@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Placeholder } from "@src/components/Placeholder";
 import { getFileName } from "@src/util/file/pathUtils";
 
-import "./index.scss";
+import "./index.css";
 
 // ============================================
 // Types

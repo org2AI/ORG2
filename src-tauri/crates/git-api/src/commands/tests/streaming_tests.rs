@@ -328,3 +328,163 @@ fn non_transient_error() {
     assert!(!is_transient_error("No such file or directory"));
     assert!(!is_transient_error(""));
 }
+
+#[tokio::test]
+async fn stage_endpoint_uses_literal_files_and_preserves_explicit_bulk_request() {
+    use crate::commands::streaming::{stage_stream, StageStreamQuery};
+    use axum::{
+        body::to_bytes,
+        extract::{Path, Query},
+    };
+    struct Fixture(std::path::PathBuf);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    let fixture = Fixture(
+        std::env::temp_dir().join(format!(
+            "git-stage-stream-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        )),
+    );
+    std::fs::create_dir(&fixture.0).unwrap();
+    let init = std::process::Command::new("git")
+        .arg("-C")
+        .arg(&fixture.0)
+        .arg("init")
+        .output()
+        .unwrap();
+    assert!(init.status.success());
+    for name in ["--all", "private.txt"] {
+        std::fs::write(fixture.0.join(name), "content").unwrap();
+    }
+    for files in ["[]", "malformed", "[\"--all\"]", "[\".\"]"] {
+        let response = stage_stream(
+            Path("fixture".into()),
+            Query(StageStreamQuery {
+                path: fixture.0.to_string_lossy().into_owned(),
+                files: files.into(),
+            }),
+        )
+        .await;
+        let bytes = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            to_bytes(response.into_body(), 1024 * 1024),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+        let output = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&fixture.0)
+            .args(["ls-files", "-z"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        match files {
+            "[]" | "malformed" => {
+                assert!(body.contains("invalid_request"));
+                assert!(output.stdout.is_empty());
+            }
+            "[\"--all\"]" => {
+                assert!(body.contains("\"success\":true"));
+                assert_eq!(output.stdout, b"--all\0");
+                // The start event must echo the literal invocation, never the
+                // option the selected name resembles.
+                assert!(body.contains("git add -- :(literal)--all"));
+                assert!(!body.contains("git add --all"));
+            }
+            _ => {
+                assert!(body.contains("\"success\":true"));
+                assert_eq!(output.stdout, b"--all\0private.txt\0");
+            }
+        }
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn stream_handlers_reject_option_shaped_operands() {
+    use crate::commands::streaming::{
+        fetch_stream, pull_stream, push_stream, FetchStreamQuery, PullStreamQuery, PushStreamQuery,
+    };
+    use axum::extract::{Path, Query};
+    use axum::response::Response;
+
+    async fn body_text(response: Response) -> String {
+        let bytes = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            axum::body::to_bytes(response.into_body(), usize::MAX),
+        )
+        .await
+        .expect("stream must terminate")
+        .expect("read body");
+        String::from_utf8_lossy(&bytes).into_owned()
+    }
+
+    // Local-path origin: an injected --upload-pack/--receive-pack would run.
+    let root = std::env::temp_dir().join(format!(
+        "orgii-operand-stream-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock after epoch")
+            .as_nanos()
+    ));
+    let upstream = root.join("upstream");
+    let work = root.join("work");
+    git2::Repository::init(&upstream).expect("init upstream");
+    git2::Repository::init(&work)
+        .expect("init work repo")
+        .remote("origin", upstream.to_str().expect("utf8 path"))
+        .expect("add origin");
+    let marker = work.join("pwned");
+    let path = work.to_string_lossy().into_owned();
+    let payload = format!("--upload-pack=touch {}", marker.display());
+
+    let fetch = fetch_stream(
+        Path("repo".to_string()),
+        Query(FetchStreamQuery {
+            path: path.clone(),
+            remote: Some(payload.clone()),
+            prune: Some(false),
+            refspec: None,
+        }),
+    )
+    .await;
+    assert!(body_text(fetch).await.contains("invalid_argument"));
+
+    let pull = pull_stream(
+        Path("repo".to_string()),
+        Query(PullStreamQuery {
+            path: path.clone(),
+            remote: Some("origin".to_string()),
+            branch: Some(payload.clone()),
+            strategy: None,
+        }),
+    )
+    .await;
+    assert!(body_text(pull).await.contains("invalid_argument"));
+
+    let push = push_stream(
+        Path("repo".to_string()),
+        Query(PushStreamQuery {
+            path,
+            remote: Some(format!("--receive-pack=touch {}", marker.display())),
+            branch: None,
+            set_upstream: None,
+            force: None,
+        }),
+    )
+    .await;
+    assert!(body_text(push).await.contains("invalid_argument"));
+
+    assert!(!marker.exists(), "no injected program may run");
+    let _ = std::fs::remove_dir_all(&root);
+}

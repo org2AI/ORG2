@@ -11,11 +11,11 @@ import {
   useCallback,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
 import type { TaskStatus } from "@src/features/KanbanBoard";
 import { createLogger } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import type { ProjectData } from "@src/modules/ProjectManager/shared";
 import type {
   WorkItem as WorkItemExtended,

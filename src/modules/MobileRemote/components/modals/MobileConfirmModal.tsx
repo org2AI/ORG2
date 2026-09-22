@@ -42,23 +42,29 @@ export function MobileConfirmModal({
       visible
       title={title}
       size="small"
+      className="mobile-confirm-modal"
       closable={false}
       initialFocusRef={cancelRef}
       onClose={() => decide(false)}
-      bodyClassName="p-5"
       footer={
-        <div className="flex flex-wrap justify-end gap-2 px-5 py-4">
+        <div className="flex flex-wrap justify-end gap-2 p-3">
           <Button
+            style={{
+              fontSize: "var(--mobile-type-control-size)",
+              lineHeight: "var(--mobile-type-control-leading)",
+            }}
             ref={cancelRef}
-            htmlType="button"
-            variant="secondary"
             onClick={() => decide(false)}
           >
             {cancelLabel}
           </Button>
           <Button
-            htmlType="button"
-            variant={danger ? "danger" : "primary"}
+            style={{
+              fontSize: "var(--mobile-type-control-size)",
+              lineHeight: "var(--mobile-type-control-leading)",
+            }}
+            variant="primary"
+            tone={danger ? "danger" : undefined}
             onClick={() => decide(true)}
           >
             {confirmLabel}
@@ -66,7 +72,7 @@ export function MobileConfirmModal({
         </div>
       }
     >
-      <p className="text-sm leading-6 text-text-2">{description}</p>
+      <p className="mobile-type-secondary text-text-2">{description}</p>
     </Modal>
   );
 }

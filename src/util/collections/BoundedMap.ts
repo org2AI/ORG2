@@ -305,5 +305,3 @@ export class BoundedMap<K, V> {
     return Array.from(this.inner.entries());
   }
 }
-
-export default BoundedMap;

@@ -15,6 +15,7 @@ use serde_json::{json, Value};
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
 const CODEX_NATIVE_MODEL_PROVIDER: &str = "openai";
+const CODEX_MANAGED_MODEL_PROVIDER: &str = "orgii";
 
 pub(crate) fn native_codex_app_server_command() -> PathBuf {
     let mut preferred = Vec::new();
@@ -110,18 +111,87 @@ fn entry_from_thread(thread: &Value) -> Result<CodexCatalogEntry, String> {
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CatalogProfile {
+    NativeApp,
+    ManagedSession,
+}
+
+struct CatalogProvider {
+    id: String,
+    config: Option<Value>,
+}
+
+fn managed_model_provider(config: Option<&Value>) -> Result<CatalogProvider, String> {
+    if let Some(config) = config {
+        if config["model_provider"].as_str() != Some(CODEX_MANAGED_MODEL_PROVIDER) {
+            return Err("Managed Codex configuration must retain its orgii provider".into());
+        }
+    }
+    Ok(CatalogProvider {
+        id: CODEX_MANAGED_MODEL_PROVIDER.into(),
+        // The route owner removes its short-lived connection config after a
+        // turn, retaining the orgii transcript. Catalog maintenance precedes
+        // the next execution lease and must never infer an openai identity
+        // from that absence. Supply only an inert, request-local provider so
+        // supported metadata RPCs can resolve the persistent orgii identity.
+        // No credentials, connection config or model turn are created here.
+        config: config.is_none().then(|| {
+            json!({
+                "model_providers": {CODEX_MANAGED_MODEL_PROVIDER: {
+                    "name": "ORG2 managed history",
+                    "base_url": "http://127.0.0.1:9/v1",
+                    "wire_api": "responses",
+                    "requires_openai_auth": false,
+                    "supports_websockets": false
+                }}
+            })
+        }),
+    })
+}
+
+fn managed_provider_config_exists(codex_home: &Path) -> Result<bool, String> {
+    match std::fs::symlink_metadata(codex_home.join("config.toml")) {
+        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
+            Err("Managed Codex configuration must be a regular owned file".into())
+        }
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(format!("inspect managed Codex configuration: {error}")),
+    }
+}
+
 fn effective_model_provider(
+    profile: CatalogProfile,
     runtime: &tokio::runtime::Runtime,
     client: &mut super::CodexAppServerRpcClient,
+    codex_home: &Path,
     cwd: &Path,
-) -> Result<String, String> {
+) -> Result<CatalogProvider, String> {
+    if profile == CatalogProfile::ManagedSession {
+        // Only NativeStorageOwner's validated Session home selects this scope.
+        // An existing but changed config is not equivalent to normal release.
+        if !managed_provider_config_exists(codex_home)? {
+            return managed_model_provider(None);
+        }
+        let result = request(
+            runtime,
+            client,
+            "config/read",
+            json!({"cwd": cwd, "includeLayers": false}),
+        )?;
+        return managed_model_provider(Some(&result["config"]));
+    }
     let result = request(
         runtime,
         client,
         "config/read",
         json!({"cwd": cwd, "includeLayers": false}),
     )?;
-    Ok(allowlisted_native_model_provider(&result))
+    Ok(CatalogProvider {
+        id: allowlisted_native_model_provider(&result),
+        config: None,
+    })
 }
 
 fn allowlisted_native_model_provider(config_result: &Value) -> String {
@@ -377,7 +447,7 @@ pub(crate) fn ensure_project(codex_home: &Path, project_root: &Path) -> Result<S
                 let name = root
                     .file_name()
                     .and_then(|name| name.to_str())
-                    .unwrap_or("ORGII workspace");
+                    .unwrap_or("ORG2 workspace");
                 let key = format!(
                     "orgii-project-{:x}",
                     Sha256::digest(root.to_string_lossy().as_bytes())
@@ -406,6 +476,7 @@ pub(crate) fn ensure_project(codex_home: &Path, project_root: &Path) -> Result<S
 }
 
 pub(crate) fn register_thread(
+    profile: CatalogProfile,
     codex_home: &Path,
     cwd: &Path,
     title: &str,
@@ -416,14 +487,15 @@ pub(crate) fn register_thread(
     // the runner. Assign membership at creation, exactly like fresh runs.
     let project_id = ensure_project(codex_home, project_root)?;
     with_rpc(codex_home, cwd, |runtime, client| {
-        let model_provider = effective_model_provider(runtime, client, cwd)?;
+        let model_provider = effective_model_provider(profile, runtime, client, codex_home, cwd)?;
         let result = request(
             runtime,
             client,
             "thread/start",
             json!({
                 "cwd": cwd,
-                "modelProvider": model_provider,
+                "modelProvider": model_provider.id,
+                "config": model_provider.config,
                 "projectId": project_id,
                 "ephemeral": false,
                 "historyMode": "legacy",
@@ -439,7 +511,7 @@ pub(crate) fn register_thread(
             set_thread_name(runtime, client, &started_id, title)?;
             let registered = read_thread(runtime, client, &started_id)?;
             let registered =
-                validate_target_profile(registered, &started_id, cwd, title, &model_provider)?;
+                validate_target_profile(registered, &started_id, cwd, title, &model_provider.id)?;
             // Injection is deliberately last. Once this request succeeds there
             // are no later fallible validation steps that could make a caller
             // retry and duplicate the same canonical suffix.
@@ -459,6 +531,7 @@ pub(crate) fn register_thread(
 }
 
 pub(crate) fn synchronize_thread(
+    profile: CatalogProfile,
     codex_home: &Path,
     path: &Path,
     expected_id: &str,
@@ -472,7 +545,7 @@ pub(crate) fn synchronize_thread(
     // mixed/unknown suffix blindly.
     let suffix_application = inspect_suffix_application(path, items)?;
     with_rpc(codex_home, cwd, |runtime, client| {
-        let model_provider = effective_model_provider(runtime, client, cwd)?;
+        let model_provider = effective_model_provider(profile, runtime, client, codex_home, cwd)?;
         let result = request(
             runtime,
             client,
@@ -481,7 +554,8 @@ pub(crate) fn synchronize_thread(
                 "threadId": expected_id,
                 "path": path,
                 "cwd": cwd,
-                "modelProvider": model_provider
+                "modelProvider": model_provider.id,
+                "config": model_provider.config
             }),
         )?;
         let resumed = entry_from_thread(&result["thread"])?;
@@ -494,7 +568,7 @@ pub(crate) fn synchronize_thread(
         set_thread_name(runtime, client, expected_id, title)?;
         let synchronized = read_thread(runtime, client, expected_id)?;
         let synchronized =
-            validate_target_profile(synchronized, expected_id, cwd, title, &model_provider)?;
+            validate_target_profile(synchronized, expected_id, cwd, title, &model_provider.id)?;
         // Keep injection as the terminal mutation. If its response is lost, the
         // next call re-inspects the durable rollout before deciding to inject.
         if suffix_application == SuffixApplication::Missing {
@@ -505,13 +579,14 @@ pub(crate) fn synchronize_thread(
 }
 
 pub(crate) fn archive_thread(
+    profile: CatalogProfile,
     codex_home: &Path,
     path: &Path,
     expected_id: &str,
     cwd: &Path,
 ) -> Result<(), String> {
     with_rpc(codex_home, cwd, |runtime, client| {
-        let model_provider = effective_model_provider(runtime, client, cwd)?;
+        let model_provider = effective_model_provider(profile, runtime, client, codex_home, cwd)?;
         let result = request(
             runtime,
             client,
@@ -520,7 +595,8 @@ pub(crate) fn archive_thread(
                 "threadId": expected_id,
                 "path": path,
                 "cwd": cwd,
-                "modelProvider": model_provider
+                "modelProvider": model_provider.id,
+                "config": model_provider.config
             }),
         )?;
         let resumed = entry_from_thread(&result["thread"])?;
@@ -546,6 +622,144 @@ mod tests {
 
     #[test]
     #[ignore = "requires installed Codex app-server; isolated storage, no model requests"]
+    fn managed_thread_preserves_provider_after_launch_config_release() {
+        let _sandbox = crate::test_utils::test_env::sandbox();
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().canonicalize().unwrap();
+        let session = "catalog_released_managed_session";
+        let home = agent_cli::managed_config::launch::native_home(session).unwrap();
+        let _profile = agent_cli::managed_config::launch::restore_with_proxy_token(
+            "codex",
+            "gpt-5.6-terra",
+            session,
+            "http://127.0.0.1:9/v1",
+            "inert-fixture-token",
+        )
+        .unwrap();
+        let entry = register_thread(
+            CatalogProfile::ManagedSession,
+            &home,
+            &project,
+            "Managed fixture",
+            &[],
+            &project,
+        )
+        .unwrap();
+        assert_eq!(entry.model_provider, "orgii");
+        // This is the production RouteOwner::drop cleanup operation. History
+        // remains, while its short-lived connection config and marker vanish.
+        agent_cli::managed_config::launch::release(session).unwrap();
+        for _ in 0..2 {
+            assert!(!home.join("config.toml").exists());
+            assert!(!home.join(".org2-launch-config.json").exists());
+            let resumed = synchronize_thread(
+                CatalogProfile::ManagedSession,
+                &home,
+                &entry.path,
+                &entry.id,
+                &project,
+                "Managed fixture",
+                &[],
+            )
+            .unwrap();
+            assert_eq!(resumed.model_provider, "orgii");
+            assert_eq!(resumed.id, entry.id);
+            assert!(!home.join("config.toml").exists());
+            assert!(!home.join(".org2-launch-config.json").exists());
+        }
+        assert!(synchronize_thread(
+            CatalogProfile::NativeApp,
+            &home,
+            &entry.path,
+            &entry.id,
+            &project,
+            "Managed fixture",
+            &[],
+        )
+        .unwrap_err()
+        .contains("profile mismatch"));
+        std::fs::write(home.join("config.toml"), "model_provider = \"openai\"\n").unwrap();
+        assert!(synchronize_thread(
+            CatalogProfile::ManagedSession,
+            &home,
+            &entry.path,
+            &entry.id,
+            &project,
+            "Managed fixture",
+            &[],
+        )
+        .unwrap_err()
+        .contains("must retain its orgii provider"));
+        let rollout = std::fs::read_to_string(entry.path).unwrap();
+        for line in rollout.lines() {
+            let value: Value = serde_json::from_str(line).unwrap();
+            assert_ne!(value["payload"]["type"], "task_started");
+            assert_ne!(value["payload"]["type"], "token_count");
+        }
+    }
+
+    #[test]
+    fn managed_config_absence_is_distinct_from_replaced_config() {
+        let home = tempfile::tempdir().unwrap();
+        let config = home.path().join("config.toml");
+        assert!(!managed_provider_config_exists(home.path()).unwrap());
+        std::fs::create_dir(&config).unwrap();
+        assert!(managed_provider_config_exists(home.path()).is_err());
+        std::fs::remove_dir(&config).unwrap();
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(home.path().join("missing-target"), &config).unwrap();
+            assert!(managed_provider_config_exists(home.path()).is_err());
+            std::fs::remove_file(&config).unwrap();
+            let target = home.path().join("foreign.toml");
+            std::fs::write(&target, "model_provider = \"orgii\"").unwrap();
+            std::os::unix::fs::symlink(&target, &config).unwrap();
+            assert!(managed_provider_config_exists(home.path()).is_err());
+        }
+    }
+
+    #[test]
+    fn managed_provider_identity_survives_absent_config_but_rejects_changes() {
+        let released = managed_model_provider(None).unwrap();
+        assert_eq!(released.id, "orgii");
+        assert_eq!(
+            released.config.as_ref().unwrap()["model_providers"]["orgii"]["requires_openai_auth"],
+            false
+        );
+        assert_eq!(
+            released.config.as_ref().unwrap()["model_providers"]["orgii"]["base_url"],
+            "http://127.0.0.1:9/v1"
+        );
+        let active = managed_model_provider(Some(&json!({"model_provider": "orgii"}))).unwrap();
+        assert_eq!(active.id, "orgii");
+        assert!(active.config.is_none());
+        for changed in [
+            json!({}),
+            json!({"model_provider": "openai"}),
+            json!({"model_provider": "external"}),
+            json!({"model_provider": null}),
+        ] {
+            assert!(managed_model_provider(Some(&changed)).is_err());
+        }
+        let entry = CodexCatalogEntry {
+            id: "thread".into(),
+            path: PathBuf::from("/tmp/rollout"),
+            title: "Managed fixture".into(),
+            cwd: PathBuf::from("/tmp/project"),
+            model_provider: "openai".into(),
+        };
+        assert!(validate_target_profile(
+            entry,
+            "thread",
+            Path::new("/tmp/project"),
+            "Managed fixture",
+            &released.id
+        )
+        .is_err());
+    }
+
+    #[test]
+    #[ignore = "requires installed Codex app-server; isolated storage, no model requests"]
     fn converted_thread_preserves_repository_project_across_resume() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().canonicalize().unwrap();
@@ -559,10 +773,18 @@ mod tests {
         let items = vec![
             json!({"type":"message", "role":"user", "content":[{"type":"input_text","text":"conversion project fixture"}]}),
         ];
-        let entry =
-            register_thread(&home, &worktree, "Converted fixture", &items, &project).unwrap();
+        let entry = register_thread(
+            CatalogProfile::NativeApp,
+            &home,
+            &worktree,
+            "Converted fixture",
+            &items,
+            &project,
+        )
+        .unwrap();
         for _ in 0..2 {
             synchronize_thread(
+                CatalogProfile::NativeApp,
                 &home,
                 &entry.path,
                 &entry.id,

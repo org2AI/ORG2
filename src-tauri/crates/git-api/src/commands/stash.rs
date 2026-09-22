@@ -30,12 +30,15 @@ pub fn stash_push(
         args.push(msg);
     }
 
-    // If specific files are provided, add them
-    if let Some(file_list) = files {
+    // Selected files are literal names, never pathspec patterns.
+    let literal_files: Vec<String> = files
+        .unwrap_or_default()
+        .iter()
+        .map(|file| super::utils::literal_pathspec(file))
+        .collect();
+    if files.is_some() {
         args.push("--");
-        for file in file_list {
-            args.push(file);
-        }
+        args.extend(literal_files.iter().map(String::as_str));
     }
 
     let output = run_git(repo_path, &args)?;

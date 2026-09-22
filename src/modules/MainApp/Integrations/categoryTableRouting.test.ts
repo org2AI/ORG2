@@ -55,7 +55,7 @@ vi.mock("@src/util/ui/openFileInWorkStation", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   DETAIL_PANEL_TOKENS: { headerWidth: "header-width" },
   DetailPanelContainer: ({ children }: { children: ReactNode }) => children,
   InternalHeader: leaf("header"),
@@ -247,6 +247,7 @@ describe("integration category table contracts", () => {
         selectedChannel: { type: "telegram", accountId: "bot" },
         handleRemoveChannelRow: vi.fn(),
         handleRemoveProjectConnection: vi.fn(),
+        refreshProjectConnections: vi.fn().mockResolvedValue(undefined),
       });
       const onAddAction = vi.fn();
       const onSelectChannel = vi.fn();
@@ -273,6 +274,8 @@ describe("integration category table contracts", () => {
       );
       table.onSelectChannel("telegram:bot", "full");
       expect(onSelectChannel).toHaveBeenCalledWith("telegram:bot", "full");
+      await table.onRefresh();
+      expect(channels.refreshProjectConnections).toHaveBeenCalledOnce();
       table.onAdd();
       expect(onAddAction).toHaveBeenCalledWith("add-connection");
     }

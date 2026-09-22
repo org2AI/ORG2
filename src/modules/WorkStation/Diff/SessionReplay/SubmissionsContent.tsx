@@ -11,7 +11,8 @@ import {
 } from "@src/icons";
 import GitCommitRow from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/GitHistoryContent/GitCommitRow";
 import { truncateBranchLabel } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/PullRequestContent/prCardHelpers";
-import { PR_STATUS_UNKNOWN } from "@src/shared/pr/prStatus";
+import { PR_STATUS_UNKNOWN } from "@src/util/git/pr/prStatus";
+import { linkAnchorProps } from "@src/util/ui/openLink";
 
 import type {
   PullRequestSubmission,
@@ -61,7 +62,7 @@ const PullRequestSubmissionRow: React.FC<{
   pullRequest: PullRequestSubmission;
 }> = memo(({ pullRequest }) => {
   const { t } = useTranslation("common");
-  const title = pullRequest.prTitle || t("labels.pullRequest", "Pull request");
+  const title = pullRequest.prTitle || t("labels.pullRequest");
   const numberLabel = pullRequest.prNumber ? `#${pullRequest.prNumber}` : null;
   const branchLabel = pullRequest.sourceBranch
     ? pullRequest.targetBranch
@@ -87,12 +88,10 @@ const PullRequestSubmissionRow: React.FC<{
         )}
         {pullRequest.url && (
           <a
-            href={pullRequest.url}
-            target="_blank"
-            rel="noreferrer"
+            {...linkAnchorProps(pullRequest.url)}
             className={`${HEADER_BUTTON.action} ml-auto`}
-            aria-label={t("actions.openOnGitHub", "Open on GitHub")}
-            title={t("actions.openOnGitHub", "Open on GitHub")}
+            aria-label={t("actions.openOnGitHub")}
+            title={t("actions.openOnGitHub")}
           >
             <HugeiconsIcon
               icon={SquareArrowUpRight02Icon}

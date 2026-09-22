@@ -10,6 +10,7 @@ import React, { Suspense, memo, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { Placeholder } from "@src/components/Placeholder";
 import { ProcessStopButton } from "@src/components/ProcessStopButton";
 import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
@@ -158,10 +159,12 @@ const TerminalMainContent: React.FC<TerminalMainContentProps> = ({
         {!isAgentTerminal && (
           <>
             <span className="flex items-center gap-px">
-              <TerminalNewSessionSplitButton
-                onNewTerminal={handleNewTerminal}
-                splitMainWidth={24}
-              />
+              <ToolbarTooltip label={t("controlTower.sidebar.newTerminal")}>
+                <TerminalNewSessionSplitButton
+                  onNewTerminal={handleNewTerminal}
+                  splitMainWidth={24}
+                />
+              </ToolbarTooltip>
             </span>
             <span
               className="pointer-events-none mx-1 h-4 w-px shrink-0 bg-border-2"
@@ -170,26 +173,33 @@ const TerminalMainContent: React.FC<TerminalMainContentProps> = ({
           </>
         )}
         <span className="flex items-center gap-px">
-          {isAgentTerminal ? (
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              title={t("common:actions.close")}
-              aria-label={t("common:actions.close")}
-              onClick={handleKillTerminal}
-              icon={
-                <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
-              }
-            />
-          ) : (
-            <ProcessStopButton
-              label={t("common:tooltips.killTerminal")}
-              size="lg"
-              onClick={handleKillTerminal}
-            />
-          )}
+          <ToolbarTooltip
+            label={t(
+              isAgentTerminal
+                ? "common:actions.close"
+                : "common:tooltips.killTerminal"
+            )}
+          >
+            {isAgentTerminal ? (
+              <Button
+                variant="tertiary"
+                size="small"
+                iconOnly
+                aria-label={t("common:actions.close")}
+                onClick={handleKillTerminal}
+                icon={
+                  <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
+                }
+              />
+            ) : (
+              <ProcessStopButton
+                label={t("common:tooltips.killTerminal")}
+                title=""
+                size="lg"
+                onClick={handleKillTerminal}
+              />
+            )}
+          </ToolbarTooltip>
           {!isAgentTerminal && (
             <TerminalInfoButton
               name={displayTitle}

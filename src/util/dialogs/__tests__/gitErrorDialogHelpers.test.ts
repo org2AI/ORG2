@@ -4,7 +4,11 @@
  * Tests inferErrorTypeFromText, extractPrimaryErrorDetail, and buildGitErrorInfo
  * without invoking Tauri dialogs.
  */
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+
+import i18n from "@src/i18n";
+import enCommon from "@src/i18n/locales/en/common.json";
+import zhCommon from "@src/i18n/locales/zh/common.json";
 
 import { normalizeGitActionDialogMessage } from "../gitActionDialog";
 import {
@@ -291,6 +295,25 @@ describe("buildGitErrorInfo — basic fields", () => {
 });
 
 describe("normalizeGitActionDialogMessage", () => {
+  beforeAll(() => {
+    i18n.addResourceBundle("en", "common", enCommon, true, true);
+    i18n.addResourceBundle("zh", "common", zhCommon, true, true);
+  });
+
+  it("uses the active language for actionable Git service errors", async () => {
+    const previousLanguage = i18n.language;
+    try {
+      await i18n.changeLanguage("zh");
+      expect(normalizeGitActionDialogMessage("Load failed")).toContain(
+        "无法连接本地 Git 服务"
+      );
+      expect(normalizeGitActionDialogMessage("Branch not found")).toBe(
+        "Branch not found"
+      );
+    } finally {
+      await i18n.changeLanguage(previousLanguage);
+    }
+  });
   it("replaces WebKit fetch transport errors with actionable Git service text", () => {
     expect(normalizeGitActionDialogMessage("Load failed")).toContain(
       "local Git service"

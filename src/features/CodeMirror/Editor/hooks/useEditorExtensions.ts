@@ -15,6 +15,7 @@ import { useEditorAppearanceSettings } from "@src/hooks/settings";
 import type { BlameLineData } from "../../config";
 import {
   codeMirrorCspNonceExtension,
+  codeNavigationExtension,
   createCodeMirrorTheme,
   customFoldGutter,
   dirtyDiffGutter,
@@ -32,6 +33,7 @@ import {
 // ============================================
 
 export interface UseEditorExtensionsOptions {
+  filePath?: string;
   /** Original value ref for dirty diff */
   originalValueRef: RefObject<string>;
   /** Whether dirty diff is enabled */
@@ -42,6 +44,8 @@ export interface UseEditorExtensionsOptions {
   isDeletedFile: boolean;
   /** Whether go-to-line is enabled */
   enableGoToLine: boolean;
+  /** Whether code navigation shortcuts (definition/references/back/forward) are enabled */
+  enableCodeNavigation: boolean;
   /** Whether find/replace is enabled */
   enableFindReplace: boolean;
   /** Effective minimap setting (after large file check) */
@@ -79,11 +83,13 @@ export function useEditorExtensions(
   options: UseEditorExtensionsOptions
 ): Extension[] {
   const {
+    filePath,
     originalValueRef,
     enableDirtyDiff,
     originalValue,
     isDeletedFile,
     enableGoToLine,
+    enableCodeNavigation,
     enableFindReplace,
     effectiveMinimap,
     effectiveIndentGuides,
@@ -225,6 +231,10 @@ export function useEditorExtensions(
       exts.push(goToLineExtension());
     }
 
+    if (enableCodeNavigation) {
+      exts.push(codeNavigationExtension());
+    }
+
     if (effectiveIndentGuides) {
       exts.push(indentGuidesExtension());
     }
@@ -235,7 +245,7 @@ export function useEditorExtensions(
     }
 
     if (enableFindReplace) {
-      exts.push(findReplaceExtension());
+      exts.push(findReplaceExtension(filePath));
     }
 
     // Dirty diff gutter
@@ -250,12 +260,14 @@ export function useEditorExtensions(
 
     return exts;
   }, [
+    filePath,
     themeExtension,
     copyExtension,
     lazyLangExtension,
     cursorExtension,
     selectionExtension,
     enableGoToLine,
+    enableCodeNavigation,
     effectiveIndentGuides,
     effectiveMinimap,
     enableFindReplace,

@@ -23,7 +23,8 @@ use tokio::sync::{Notify, Semaphore};
 use tokio_util::sync::CancellationToken;
 use tracing::{info, warn};
 
-type JobFuture = Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'static>>;
+type JobFuture =
+    Pin<Box<dyn Future<Output = Result<MemoryJobCompletion, String>> + Send + 'static>>;
 type CleanupFuture = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 type JobRunner = Box<dyn FnOnce(CancellationToken) -> JobFuture + Send + 'static>;
 type JobCleanup = Box<dyn FnOnce(MemoryJobOutcome) -> CleanupFuture + Send + 'static>;
@@ -63,10 +64,19 @@ impl MemoryJobKind {
     }
 }
 
+/// A job may finish normally without doing work, for example during cooldown.
+/// Failure, cancellation and timeout remain owned by the coordinator.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemoryJobCompletion {
+    Completed,
+    Skipped,
+}
+
 /// Terminal status passed to the mandatory cleanup hook.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryJobOutcome {
     Completed,
+    Skipped,
     Failed,
     Cancelled,
     TimedOut,
@@ -79,6 +89,7 @@ pub struct MemoryJobMetricsSnapshot {
     pub coalesced: u64,
     pub started: u64,
     pub completed: u64,
+    pub skipped: u64,
     pub failed: u64,
     pub cancelled: u64,
     pub timed_out: u64,
@@ -90,6 +101,7 @@ struct MemoryJobMetrics {
     coalesced: AtomicU64,
     started: AtomicU64,
     completed: AtomicU64,
+    skipped: AtomicU64,
     failed: AtomicU64,
     cancelled: AtomicU64,
     timed_out: AtomicU64,
@@ -102,6 +114,7 @@ impl MemoryJobMetrics {
             coalesced: self.coalesced.load(Ordering::Relaxed),
             started: self.started.load(Ordering::Relaxed),
             completed: self.completed.load(Ordering::Relaxed),
+            skipped: self.skipped.load(Ordering::Relaxed),
             failed: self.failed.load(Ordering::Relaxed),
             cancelled: self.cancelled.load(Ordering::Relaxed),
             timed_out: self.timed_out.load(Ordering::Relaxed),
@@ -134,6 +147,27 @@ impl MemoryJob {
     where
         F: FnOnce(CancellationToken) -> Fut + Send + 'static,
         Fut: Future<Output = Result<(), String>> + Send + 'static,
+    {
+        Self::new_with_completion(
+            session_id,
+            agent_id,
+            kind,
+            timeout,
+            move |cancel| async move { run(cancel).await.map(|()| MemoryJobCompletion::Completed) },
+        )
+    }
+
+    /// Use an explicit completion when normal exits can skip the work.
+    pub fn new_with_completion<F, Fut>(
+        session_id: impl Into<String>,
+        agent_id: Option<String>,
+        kind: MemoryJobKind,
+        timeout: Duration,
+        run: F,
+    ) -> Self
+    where
+        F: FnOnce(CancellationToken) -> Fut + Send + 'static,
+        Fut: Future<Output = Result<MemoryJobCompletion, String>> + Send + 'static,
     {
         Self {
             session_id: session_id.into(),
@@ -347,6 +381,7 @@ impl MemoryJobCoordinator {
     ) -> MemoryJobOutcome {
         let counter = match outcome {
             MemoryJobOutcome::Completed => &self.metrics.completed,
+            MemoryJobOutcome::Skipped => &self.metrics.skipped,
             MemoryJobOutcome::Failed => &self.metrics.failed,
             MemoryJobOutcome::Cancelled => &self.metrics.cancelled,
             MemoryJobOutcome::TimedOut => &self.metrics.timed_out,
@@ -362,6 +397,7 @@ impl MemoryJobCoordinator {
             coalesced = metrics.coalesced,
             started = metrics.started,
             completed = metrics.completed,
+            skipped = metrics.skipped,
             failed = metrics.failed,
             cancelled = metrics.cancelled,
             timed_out = metrics.timed_out,
@@ -412,7 +448,10 @@ impl MemoryJobCoordinator {
         self.metrics.started.fetch_add(1, Ordering::Relaxed);
         let started_at = std::time::Instant::now();
         let run_cancel = slot_cancel.child_token();
-        let run = std::mem::replace(&mut job.run, Box::new(|_| Box::pin(async { Ok(()) })));
+        let run = std::mem::replace(
+            &mut job.run,
+            Box::new(|_| Box::pin(async { Ok(MemoryJobCompletion::Skipped) })),
+        );
         let mut future = Box::pin(run(run_cancel.clone()));
 
         let outcome = tokio::select! {
@@ -422,7 +461,8 @@ impl MemoryJobCoordinator {
                 MemoryJobOutcome::Cancelled
             }
             result = tokio::time::timeout(job.timeout, &mut future) => match result {
-                Ok(Ok(())) => MemoryJobOutcome::Completed,
+                Ok(Ok(MemoryJobCompletion::Completed)) => MemoryJobOutcome::Completed,
+                Ok(Ok(MemoryJobCompletion::Skipped)) => MemoryJobOutcome::Skipped,
                 Ok(Err(err)) => {
                     warn!(
                         session_id = %key.session_id,
@@ -564,6 +604,15 @@ fn configured_concurrency() -> usize {
 fn coordinator() -> &'static Arc<MemoryJobCoordinator> {
     static COORDINATOR: OnceLock<Arc<MemoryJobCoordinator>> = OnceLock::new();
     COORDINATOR.get_or_init(|| MemoryJobCoordinator::new(configured_concurrency()))
+}
+
+/// Exercise a production job through isolated coordinator accounting/cleanup.
+#[cfg(test)]
+pub(crate) async fn run_memory_job_for_test(job: MemoryJob) -> MemoryJobMetricsSnapshot {
+    let coordinator = MemoryJobCoordinator::new(1);
+    coordinator.submit(job);
+    coordinator.wait_for_idle().await;
+    coordinator.metrics()
 }
 
 /// Submit a memory job without blocking the caller.

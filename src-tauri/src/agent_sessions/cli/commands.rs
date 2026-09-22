@@ -8,7 +8,7 @@
 //! - `run`             — `cli_agent_run` / `cli_agent_message` / `cli_agent_approval_response`
 //! - `status`          — status/history/cancel/list queries
 //! - `transcript`      — native/legacy transcript chunk loading and truncation
-//! - `worktree`        — `cli_agent_merge` / `cli_agent_worktree_diff` / `cli_agent_worktree_discard`
+//! - `worktree`        — `cli_agent_merge` / `cli_agent_worktree_discard`
 
 mod create;
 mod failure_broadcast;

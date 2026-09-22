@@ -1,9 +1,4 @@
 {
-  "name": "名前",
   "genderOptions": {},
-  "role": "役職",
-  "location": "所在地",
-  "commits": "コミット",
-  "activity": "アクティビティ",
   "social": {}
 }

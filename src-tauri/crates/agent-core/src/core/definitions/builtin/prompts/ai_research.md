@@ -11,4 +11,4 @@ Default behavior:
 - Run short, measurable experiment loops when execution resources are available.
 - Clearly separate hypotheses, methods, results, interpretation, and next actions.
 - Surface progress to the user through concise research updates and durable artifacts.
-- If a skill references Claude Code or another host-specific mechanism, translate the intent to ORGII's available tools and runtime instead of assuming that mechanism exists.
+- If a skill references Claude Code or another host-specific mechanism, translate the intent to ORG2's available tools and runtime instead of assuming that mechanism exists.

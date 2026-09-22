@@ -29,11 +29,12 @@
  * to `detached` mode. This replaces the old `IndependentGridCell` 16 ms
  * `setTimeout` debounce + duplicated `isDraggingSlider` state.
  *
- * All cursor writes go through `commitIndex` — there is no `setCurrentIndexLocal`
- * bypass any more; persisted state and live state cannot diverge.
+ * User controls commit cursor and playback together; timer ticks likewise
+ * publish one complete replay transition to persistence.
  */
 import { useAtomValue } from "jotai";
 import {
+  type SetStateAction,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -42,10 +43,7 @@ import {
   useState,
 } from "react";
 
-import {
-  simulatorAutoScrollAtom,
-  simulatorPlaybackSpeedAtom,
-} from "@src/store/ui/simulatorAtom";
+import { simulatorPlaybackSpeedAtom } from "@src/store/ui/simulatorAtom";
 
 import { findIndexAtTime } from "../utils/findIndexAtTime";
 import type {
@@ -80,7 +78,7 @@ export function useCellReplayState(
   } = options;
 
   // ── Persistence ──────────────────────────────────────────────────────
-  const { persistedState, hasUserOverride, patchCellState } =
+  const { persistedState, hasUserOverride, patchCellState, isRemoved } =
     useCellPersistence(cellId);
 
   // `hasUserOverride` is the persisted "user has detached this cell" flag.
@@ -88,7 +86,7 @@ export function useCellReplayState(
   const isDetached = hasUserOverride;
 
   // ── Local cursor state ───────────────────────────────────────────────
-  const [currentIndex, setCurrentIndexLocal] = useState(() => {
+  const [currentIndex, setCurrentIndexValue] = useState(() => {
     if (persistedState?.currentIndex !== undefined) {
       return Math.min(
         persistedState.currentIndex,
@@ -97,6 +95,15 @@ export function useCellReplayState(
     }
     return startAtEnd && events.length > 0 ? events.length - 1 : 0;
   });
+  // Resolve updates at the event boundary, never inside a React state updater:
+  // those updaters can be replayed while rendering (including StrictMode).
+  const currentIndexRef = useRef(currentIndex);
+  const setCurrentIndexLocal = useCallback((update: SetStateAction<number>) => {
+    const next =
+      typeof update === "function" ? update(currentIndexRef.current) : update;
+    currentIndexRef.current = next;
+    setCurrentIndexValue(next);
+  }, []);
   const [isPlaying, setIsPlayingLocal] = useState(
     () => persistedState?.isPlaying ?? false
   );
@@ -135,6 +142,9 @@ export function useCellReplayState(
       updater: number | ((prev: number) => number),
       opts: { detach?: boolean; isPlayingOverride?: boolean } = {}
     ) => {
+      if (opts.isPlayingOverride !== undefined) {
+        setIsPlayingLocal(opts.isPlayingOverride);
+      }
       setCurrentIndexLocal((prev) => {
         const raw = typeof updater === "function" ? updater(prev) : updater;
         const newValue = clampIndex(raw, events.length);
@@ -146,23 +156,23 @@ export function useCellReplayState(
         return newValue;
       });
     },
-    [patchCellState, isPlaying, events.length]
+    [patchCellState, isPlaying, events.length, setCurrentIndexLocal]
   );
 
   const commitPlaying = useCallback(
     (value: boolean, opts: { detach?: boolean } = {}) => {
       setIsPlayingLocal(value);
       patchCellState({
-        currentIndex,
         isPlaying: value,
         ...(opts.detach ? { hasUserOverride: true } : {}),
       });
     },
-    [patchCellState, currentIndex]
+    [patchCellState]
   );
 
-  // ── Playback timer + global sync ─────────────────────────────────────
+  // ── Playback timer ───────────────────────────────────────────────────
   useCellPlayback({
+    enabled: !isRemoved,
     events,
     autoPlayInterval,
     isPlaying,
@@ -171,10 +181,7 @@ export function useCellReplayState(
     setCurrentIndexLocal,
     setIsPlayingLocal,
     patchCellState,
-    setLocalPlaybackSpeed,
   });
-
-  const autoScroll = useAtomValue(simulatorAutoScrollAtom);
 
   // ── Follow-mode tailing ───────────────────────────────────────────────
   // The ONLY place new events advance the cursor. Gated by mode AND scrub
@@ -187,25 +194,35 @@ export function useCellReplayState(
 
     if (events.length === prevLen) return;
     if (events.length === 0) {
+      let cancelled = false;
       queueMicrotask(() => {
+        if (cancelled) return;
         setCurrentIndexLocal(0);
         setIsPlayingLocal(false);
+        patchCellState({ currentIndex: 0, isPlaying: false });
       });
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
     if (isScrubbingRef.current) return;
     if (mode !== "follow") return;
     if (isPlaying) return; // playback timer owns the cursor while playing
 
     const newLen = events.length;
+    let cancelled = false;
     queueMicrotask(() => {
+      if (cancelled) return;
       // Use the persisted chokepoint so live + persisted stay in lockstep.
       // `markOverride` deliberately false — follow-mode tail is not a user
       // detach action.
       setCurrentIndexLocal(newLen - 1);
       patchCellState({ currentIndex: newLen - 1, isPlaying });
     });
-  }, [events.length, isPlaying, mode, patchCellState]);
+    return () => {
+      cancelled = true;
+    };
+  }, [events.length, isPlaying, mode, patchCellState, setCurrentIndexLocal]);
 
   // ── Follow-mode entry snap ────────────────────────────────────────────
   // When the cell TRANSITIONS into follow mode (e.g. the main session
@@ -224,11 +241,16 @@ export function useCellReplayState(
     if (isPlaying) return;
 
     const tail = events.length - 1;
+    let cancelled = false;
     queueMicrotask(() => {
+      if (cancelled) return;
       setCurrentIndexLocal(tail);
       patchCellState({ currentIndex: tail, isPlaying });
     });
-  }, [mode, events.length, isPlaying, patchCellState]);
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, events.length, isPlaying, patchCellState, setCurrentIndexLocal]);
 
   // ── Synced-mode external-cursor mapping ──────────────────────────────
   const safeIndex = useMemo(() => {
@@ -257,22 +279,15 @@ export function useCellReplayState(
 
   // ── Controls ─────────────────────────────────────────────────────────
   const play = useCallback(() => {
+    if (events.length === 0) return;
     const startFrom =
       mode === "synced"
         ? safeIndex
         : currentIndex >= events.length - 1
           ? 0
           : currentIndex;
-    commitIndex(startFrom, { detach: true });
-    commitPlaying(true, { detach: true });
-  }, [
-    mode,
-    safeIndex,
-    currentIndex,
-    events.length,
-    commitIndex,
-    commitPlaying,
-  ]);
+    commitIndex(startFrom, { detach: true, isPlayingOverride: true });
+  }, [mode, safeIndex, currentIndex, events.length, commitIndex]);
 
   const pause = useCallback(() => {
     commitPlaying(false);
@@ -314,14 +329,12 @@ export function useCellReplayState(
   }, []);
 
   const reset = useCallback(() => {
-    commitIndex(0, { detach: true });
-    commitPlaying(false, { detach: true });
-  }, [commitIndex, commitPlaying]);
+    commitIndex(0, { detach: true, isPlayingOverride: false });
+  }, [commitIndex]);
 
   const goToEnd = useCallback(() => {
-    commitIndex(events.length - 1, { detach: true });
-    commitPlaying(false, { detach: true });
-  }, [events.length, commitIndex, commitPlaying]);
+    commitIndex(events.length - 1, { detach: true, isPlayingOverride: false });
+  }, [events.length, commitIndex]);
 
   const syncToMain = useCallback(() => {
     setIsPlayingLocal(false);
@@ -360,30 +373,29 @@ export function useCellReplayState(
       });
       setCurrentIndexLocal(final);
     },
-    [events.length, patchCellState]
+    [events.length, patchCellState, setCurrentIndexLocal]
   );
 
   // ── Return ───────────────────────────────────────────────────────────
   const state: CellReplayState = useMemo(
     () => ({
       currentIndex: safeIndex,
-      isPlaying,
+      isPlaying: !isRemoved && isPlaying,
       playbackSpeed,
       currentEvent,
       totalEvents: events.length,
       progress,
-      autoScroll,
       mode,
       isDetached,
     }),
     [
       safeIndex,
       isPlaying,
+      isRemoved,
       playbackSpeed,
       currentEvent,
       events.length,
       progress,
-      autoScroll,
       mode,
       isDetached,
     ]

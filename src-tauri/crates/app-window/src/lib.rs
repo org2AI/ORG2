@@ -14,14 +14,14 @@ use objc2::msg_send;
 #[cfg(target_os = "macos")]
 use objc2::runtime::{AnyClass, AnyObject};
 #[cfg(target_os = "macos")]
-use objc2_app_kit::NSWindowButton;
-#[cfg(target_os = "macos")]
 mod macos_material;
 
 #[cfg(windows)]
 mod windows_corner;
 
 pub mod dock_icon;
+pub mod page_backdrop;
+pub mod rendering_rate;
 pub mod root_tint;
 pub mod shortcut_preferences;
 pub mod startup_backdrop;
@@ -141,86 +141,18 @@ unsafe fn set_webview_background_recursive(
 }
 
 // ============================================
-// Configuration Constants
-// ============================================
-
-/// Default traffic light position for native macOS window chrome.
-pub const TRAFFIC_LIGHT_X: f64 = 20.0;
-pub const TRAFFIC_LIGHT_Y: f64 = 28.0;
-
-// ============================================
 // macOS Traffic Light Positioning
 // ============================================
 
-/// Set the traffic light button positions on a macOS window.
-///
-/// This replicates tao's `inset_traffic_lights` function to position the buttons.
-/// Must be called AFTER window creation because Tauri's `traffic_light_position`
-/// doesn't reliably work for dynamically created windows.
-///
-/// The x/y coordinates are measured from the top-left of the window content area,
-/// matching Tauri's trafficLightPosition config format.
+/// Placement constants plus the macOS placement + pinning implementation.
+/// See the module docs for why a one-shot placement drifts and how the
+/// observers keep it stable.
+pub mod traffic_lights;
 #[cfg(target_os = "macos")]
-pub fn set_traffic_light_position(window: &tauri::WebviewWindow, x: f64, y: f64) {
-    let ns_window_ptr = match window.ns_window() {
-        Ok(ptr) => ptr,
-        Err(_) => return,
-    };
-
-    let ns_window_addr = ns_window_ptr as usize;
-    let run = move || {
-        let ns_window = ns_window_addr as *mut AnyObject;
-
-        unsafe {
-            use objc2_foundation::NSRect;
-
-            let close: *mut AnyObject =
-                msg_send![ns_window, standardWindowButton: NSWindowButton::CloseButton];
-            let miniaturize: *mut AnyObject =
-                msg_send![ns_window, standardWindowButton: NSWindowButton::MiniaturizeButton];
-            let zoom: *mut AnyObject =
-                msg_send![ns_window, standardWindowButton: NSWindowButton::ZoomButton];
-
-            if close.is_null() || miniaturize.is_null() || zoom.is_null() {
-                return;
-            }
-
-            let close_superview: *mut AnyObject = msg_send![close, superview];
-            if close_superview.is_null() {
-                return;
-            }
-            let title_bar_container_view: *mut AnyObject = msg_send![close_superview, superview];
-            if title_bar_container_view.is_null() {
-                return;
-            }
-
-            let window_frame: NSRect = msg_send![ns_window, frame];
-            let close_rect: NSRect = msg_send![close, frame];
-            let title_bar_frame_height = close_rect.size.height + y;
-
-            let mut title_bar_rect: NSRect = msg_send![title_bar_container_view, frame];
-            title_bar_rect.size.height = title_bar_frame_height;
-            title_bar_rect.origin.y = window_frame.size.height - title_bar_frame_height;
-            let _: () = msg_send![title_bar_container_view, setFrame: title_bar_rect];
-
-            let miniaturize_rect: NSRect = msg_send![miniaturize, frame];
-            let space_between = miniaturize_rect.origin.x - close_rect.origin.x;
-
-            let buttons = [close, miniaturize, zoom];
-            for (i, button) in buttons.iter().enumerate() {
-                let mut rect: NSRect = msg_send![*button, frame];
-                rect.origin.x = x + (i as f64 * space_between);
-                let _: () = msg_send![*button, setFrameOrigin: rect.origin];
-            }
-        }
-    };
-
-    if is_main_thread() {
-        run();
-    } else {
-        dispatch2::DispatchQueue::main().exec_sync(run);
-    }
-}
+pub use traffic_lights::set_traffic_light_position;
+pub use traffic_lights::{
+    unpin_traffic_lights, TRAFFIC_LIGHT_CENTER_Y, TRAFFIC_LIGHT_X, TRAFFIC_LIGHT_Y,
+};
 
 /// Show a window once the native work already queued on the main thread has
 /// run, so its first frame is at its final size.
@@ -298,6 +230,27 @@ pub fn set_macos_window_root_tint(window: &tauri::WebviewWindow, color: Option<[
     }
 }
 
+/// Mount, update or (`None`) remove the native page backdrop revealed under
+/// the page while the window resizes (see [`page_backdrop`]).
+#[cfg(target_os = "macos")]
+pub fn set_macos_window_page_backdrop(
+    window: &tauri::WebviewWindow,
+    backdrop: Option<page_backdrop::PageBackdrop>,
+) {
+    if let Err(error) = page_backdrop::native::set_page_backdrop(window, backdrop) {
+        tracing::warn!(%error, "Failed to apply macOS page backdrop");
+    }
+}
+
+/// Drop the resize observers a window's page backdrop installed. Call from the
+/// `Destroyed` window event; a no-op off macOS and for windows without one.
+pub fn release_page_backdrop(label: &str) {
+    #[cfg(target_os = "macos")]
+    page_backdrop::native::release_page_backdrop(label);
+    #[cfg(not(target_os = "macos"))]
+    let _ = label;
+}
+
 /// Remove the native macOS material on AppKit's main thread.
 #[cfg(target_os = "macos")]
 pub fn clear_macos_window_material(window: &tauri::WebviewWindow) {
@@ -350,6 +303,7 @@ pub fn recreate_main_window(app: &AppHandle) -> Result<(), String> {
         set_traffic_light_position(&window, TRAFFIC_LIGHT_X, TRAFFIC_LIGHT_Y);
         apply_macos_window_material(&window);
         remove_window_background_color(&window);
+        rendering_rate::apply_stored_rendering_rate(&window);
     }
 
     apply_host_desktop_window_chrome(&window);

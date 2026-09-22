@@ -1,7 +1,7 @@
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import { ORGII_ORCHESTRATOR } from "@src/assets/providers";
 import {
@@ -12,6 +12,7 @@ import {
   parseExternalSkillsetsTab,
   parseIntegrationsPath,
 } from "@src/config/mainAppPaths";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import {
   integrationsAddSignalAtom,
   integrationsToolbarAtom,

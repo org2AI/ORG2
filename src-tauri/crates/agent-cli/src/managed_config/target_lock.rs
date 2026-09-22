@@ -17,10 +17,16 @@ fn canonical_target(path: &Path) -> Result<PathBuf, String> {
 }
 
 pub(super) fn lock_targets(agent: &str) -> Result<Vec<File>, String> {
+    lock_app_targets(agent, None)
+}
+pub(super) fn lock_app_targets(
+    agent: &str,
+    profile: Option<&super::native_app::NativeAppProfile>,
+) -> Result<Vec<File>, String> {
     if !super::registry::supported_agent(agent) {
         return Ok(Vec::new());
     }
-    let mut paths = super::manifest::agent_manifest_targets(agent)?
+    let mut paths = super::manifest::app_targets(agent, profile)?
         .into_iter()
         .map(|target| canonical_target(Path::new(&target.target_path)))
         .collect::<Result<Vec<_>, _>>()?;
@@ -56,7 +62,7 @@ fn lock_paths(mut paths: Vec<PathBuf>) -> Result<Vec<File>, String> {
             options.mode(0o600);
         }
         let file = options.open(&lock_path).map_err(|_| "Cannot open CLI configuration lock")?;
-        file.try_lock_exclusive().map_err(|_| "Another ORGII process is changing this harness configuration. Try again when it finishes.")?;
+        file.try_lock_exclusive().map_err(|_| "Another ORG2 process is changing this harness configuration. Try again when it finishes.")?;
         Ok(file)
     }).collect()
 }

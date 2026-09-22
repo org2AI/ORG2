@@ -279,5 +279,3 @@ export function useCallbackRefEffect<T extends Element>(
 
   return handle;
 }
-
-export default useCallbackRefEffect;

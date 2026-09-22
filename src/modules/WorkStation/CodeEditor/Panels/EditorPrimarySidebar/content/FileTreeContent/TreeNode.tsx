@@ -15,6 +15,7 @@ import React, {
   useState,
 } from "react";
 
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import {
   GitStatusBadge,
@@ -31,11 +32,11 @@ import {
   TREE_ROW_INSET_X,
   TREE_ROW_ROUNDED_CLASS,
 } from "@src/components/TreeRow";
+import { SIDEBAR_ROW_GAP_CLASS } from "@src/components/TreeRow/config";
 import {
   type NativeDragItem,
   useNativeDrag,
 } from "@src/hooks/files/useNativeDrag";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import { useIsFileSelected } from "@src/store/ui/fileTreeSelectionAtom";
 
 import { InlineRenameInput } from "./InlineRenameInput";
@@ -49,6 +50,7 @@ const TreeNodeInner: React.FC<TreeNodeProps> = ({
   onSelectNode,
   onToggleDirectory,
   isRenaming = false,
+  showNativeTitle = true,
   onRenameConfirm,
   onRenameCancel,
 }) => {
@@ -80,7 +82,7 @@ const TreeNodeInner: React.FC<TreeNodeProps> = ({
   const treeRowNode: TreeRowNode = useMemo(
     () => ({
       id: node.path,
-      name: node.name,
+      name: node.compactName ?? node.name,
       path: node.path,
       type: node.type,
       expanded: node.expanded ?? false,
@@ -91,6 +93,7 @@ const TreeNodeInner: React.FC<TreeNodeProps> = ({
     [
       node.path,
       node.name,
+      node.compactName,
       node.type,
       node.expanded,
       node.icon,
@@ -146,56 +149,48 @@ const TreeNodeInner: React.FC<TreeNodeProps> = ({
     const isExpanded = node.expanded ?? false;
 
     return (
-      <div
-        ref={rowRef}
-        data-tree-path={node.path}
-        className={`tree-row-base group/item ${TREE_ROW_INSET_CLASS} flex h-7 shrink-0 items-center gap-1.5 ${TREE_ROW_ROUNDED_CLASS} bg-primary-1`}
-        style={{
-          paddingLeft: `${paddingLeft}px`,
-          paddingRight: `${TREE_PADDING_RIGHT - TREE_ROW_INSET_X}px`,
-        }}
-      >
-        {node.icon ? (
-          <span className="shrink-0">{node.icon}</span>
-        ) : isDirectory ? (
-          <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-            {isExpanded ? (
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                data-icon="chevron-down"
+      <div className={SIDEBAR_ROW_GAP_CLASS}>
+        <div
+          ref={rowRef}
+          data-tree-path={node.path}
+          className={`tree-row-base group/item ${TREE_ROW_INSET_CLASS} flex h-7 shrink-0 items-center gap-1.5 ${TREE_ROW_ROUNDED_CLASS} bg-primary-1`}
+          style={{
+            paddingLeft: `${paddingLeft}px`,
+            paddingRight: `${TREE_PADDING_RIGHT - TREE_ROW_INSET_X}px`,
+          }}
+        >
+          {node.icon ? (
+            <span className="shrink-0">{node.icon}</span>
+          ) : isDirectory ? (
+            <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+              <DisclosureChevron
+                expanded={isExpanded}
                 size={CHEVRON_SIZE}
                 className="text-text-3"
               />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                data-icon="chevron-right"
-                size={CHEVRON_SIZE}
-                className="text-text-3"
-              />
-            )}
+            </div>
+          ) : (
+            <FileTypeIcon
+              fileName={renameValue || node.name}
+              size="small"
+              className="shrink-0"
+            />
+          )}
+
+          <div className="min-w-0 flex-1">
+            <InlineRenameInput
+              initialName={node.name}
+              isDirectory={isDirectory}
+              onConfirm={handleRenameConfirm}
+              onCancel={handleRenameCancel}
+              onValueChange={handleRenameValueChange}
+            />
           </div>
-        ) : (
-          <FileTypeIcon
-            fileName={renameValue || node.name}
-            size="small"
-            className="shrink-0"
-          />
-        )}
 
-        <div className="min-w-0 flex-1">
-          <InlineRenameInput
-            initialName={node.name}
-            isDirectory={isDirectory}
-            onConfirm={handleRenameConfirm}
-            onCancel={handleRenameCancel}
-            onValueChange={handleRenameValueChange}
-          />
+          {(repoPath || isMultiRoot) && (
+            <GitStatusBadge status={gitStatus} isDirectory={isDirectory} />
+          )}
         </div>
-
-        {(repoPath || isMultiRoot) && (
-          <GitStatusBadge status={gitStatus} isDirectory={isDirectory} />
-        )}
       </div>
     );
   }
@@ -210,6 +205,7 @@ const TreeNodeInner: React.FC<TreeNodeProps> = ({
       onClick={handleClick}
       dataPath={node.path}
       onMouseDown={handleMouseDown}
+      showNativeTitle={showNativeTitle}
     >
       {node.isAgentSelected && (
         <div className="flex h-4 w-4 shrink-0 items-center justify-center">

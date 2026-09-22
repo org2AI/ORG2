@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ModelTableVariantInfo } from "@src/types/modelTable";
-import { formatModelNameFull } from "@src/util/formatModelName";
 import {
   groupHasParsedModelVariants,
   resolveModelVariantFields,
@@ -58,11 +57,6 @@ export function useModelGroupExpandable(args: UseModelGroupExpandableArgs) {
             <ModelVariantInlineCard
               variants={groupVariants}
               forceModelList={!hasParsedVariants}
-              defaultRowLabel={(baseModel) =>
-                t("modelsTable.selectedVersionFor", {
-                  model: formatModelNameFull(baseModel),
-                })
-              }
             />
           );
         }

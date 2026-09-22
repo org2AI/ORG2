@@ -54,13 +54,13 @@
       "connection": "Połączenie GitHub"
     },
     "placeholders": {
-      "projectName": "ORGII GitHub Issues",
+      "projectName": "Zgłoszenia GitHub ORG2",
       "repo": "owner/repo lub https://github.com/owner/repo",
       "connection": "Wybierz połączenie GitHub"
     },
     "loadingConnections": "Ładowanie połączeń GitHub...",
     "noConnectionTitle": "Nie znaleziono połączenia GitHub",
-    "noConnectionDescription": "Najpierw dodaj połączenie GitHub w Integrations, a potem wróć tutaj, aby zaimportować GitHub Issues.",
+    "noConnectionDescription": "Najpierw dodaj połączenie GitHub w Integrations, a potem wróć tutaj, aby zaimportować GitHub Issues",
     "linkedRepoHint": "Ten Project zostanie też połączony z bieżącym Workspace repo: {{repoName}}",
     "errors": {
       "invalidRepo": "Użyj owner/repo albo adresu URL repozytorium GitHub."
@@ -72,6 +72,11 @@
     "personalOrg": "Mój obszar roboczy",
     "linearOrg": "Obszar roboczy Linear",
     "noLinearOrgs": "Brak połączonych obszarów roboczych",
+    "scopeSwitch": "Zakres przestrzeni roboczej",
+    "scope": {
+      "local": "Lokalna",
+      "cloud": "Cloud"
+    },
     "sources": {
       "local": "Local",
       "cloud": "Cloud"
@@ -80,7 +85,7 @@
     "importLinearOrgs": "Importuj obszary robocze Linear",
     "gitFolderPath": "Ścieżka folderu Git (opcjonalnie)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Połącz ten obszar roboczy z istniejącym drzewem roboczym Git, aby synchronizować folder.",
+    "gitFolderPathHint": "Połącz ten obszar roboczy z istniejącym drzewem roboczym Git, aby synchronizować folder",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Synchronizowane z folderem Git",
     "pendingSync": "Oczekuje na synchronizację",
@@ -92,7 +97,7 @@
       "notConfigured": "Nie skonfigurowano",
       "syncNowDescription": "Importuj zdalne zmiany plików i eksportuj lokalne zmiany bazy danych",
       "syncSummary": "{{projects}} projektów, {{workItems}} work items, {{conflicts}} konfliktów",
-      "syncHowItWorks": "Synchronizacja folderu Git łączy ten obszar roboczy z istniejącym repozytorium Git. ORGII zapisuje wyeksportowane projekty i work items obszaru roboczego w `.orgii/projects/...` wewnątrz tego repozytorium, importuje stamtąd zmiany plików, eksportuje lokalne zmiany bazy danych z powrotem do plików i zatrzymuje się przy konfliktach, aby można je było sprawdzić przed nadpisaniem czegokolwiek",
+      "syncHowItWorks": "Synchronizacja folderu Git łączy ten obszar roboczy z istniejącym repozytorium Git. ORG2 zapisuje wyeksportowane projekty i work items obszaru roboczego w `.orgii/projects/...` wewnątrz tego repozytorium, importuje stamtąd zmiany plików, eksportuje lokalne zmiany bazy danych z powrotem do plików i zatrzymuje się przy konfliktach, aby można je było sprawdzić przed nadpisaniem czegokolwiek",
       "noProjectsForCatalog": "Ten obszar roboczy nie ma jeszcze projektów.",
       "noProjectsForCatalogHint": "Utwórz projekt w tym obszarze roboczym przed zarządzaniem wspólnymi etykietami",
       "dangerZone": "Strefa zagrożenia",
@@ -123,7 +128,7 @@
     "addTeams": "Dodaj zespoły",
     "addLabels": "Dodaj etykiety",
     "addRepos": "Połącz Repo",
-    "noReposHint": "Brak dostępnych Repo. Najpierw dodaj Repo do swojego Workspace.",
+    "noReposHint": "Brak dostępnych Repo. Najpierw dodaj Repo do swojego Workspace",
     "addDate": "Dodaj datę",
     "clearDate": "Wyczyść datę",
     "noStatus": "Brak statusu",
@@ -358,10 +363,7 @@
       "moreProperties": "Więcej właściwości"
     },
     "propertyFields": {
-      "assignee": "Przypisany",
-      "project": "Historia",
-      "milestone": "Kamień milowy",
-      "dueDate": "Termin"
+      "project": "Historia"
     },
     "addWorkItem": "Dodaj zadanie",
     "agentWorkflow": {
@@ -392,8 +394,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "Jeszcze niedostępny",
-      "prPendingHint": "PR zostanie utworzony po ukończeniu pracy Agenta.",
-      "prNeutralHint": "Nie utworzono żadnego PR.",
+      "prPendingHint": "PR zostanie utworzony po ukończeniu pracy Agenta",
+      "prNeutralHint": "Nie utworzono żadnego PR",
       "prCreatingHint": "Tworzenie pull request...",
       "prCreateButton": "Utwórz Pull Request",
       "prCreateError": "Nie udało się utworzyć pull request",
@@ -403,7 +405,7 @@
       "prDraft": "Szkic",
       "changedFilesSection": "Zmienione pliki",
       "fileDiffClean": "Diff pliku jest czysty",
-      "fileDiffCleanHint": "Nie wykryto zmian w plikach.",
+      "fileDiffCleanHint": "Nie wykryto zmian w plikach",
       "costSummary": "Podsumowanie kosztów",
       "totalCost": "Łącznie",
       "tokens": "Token",
@@ -413,7 +415,7 @@
     "viewWorkItems": "Pokaż Work Items",
     "fromRoutine": "From routine: {{name}}",
     "batchField": {
-      "hint": "Dotyczy {{count}} wybranych elementów."
+      "hint": "Dotyczy {{count}} wybranych elementów"
     },
     "batchStatus": {
       "title": "Ustaw status"
@@ -457,7 +459,7 @@
       "save": "Zapisz bieżący widok",
       "saveTitle": "Zapisz widok",
       "namePlaceholder": "Nazwa widoku",
-      "saveHint": "Zapisuje bieżące filtry; układ jest używany przy pierwszym otwarciu.",
+      "saveHint": "Zapisuje bieżące filtry; układ jest używany przy pierwszym otwarciu",
       "delete": "Usuń widok"
     },
     "table": {
@@ -475,14 +477,14 @@
     },
     "batchProperty": {
       "title": "Ustaw właściwość",
-      "hint": "Stosuje jedną wartość właściwości do {{count}} wybranych elementów. Pozostaw wartość pustą, aby ją wyczyścić.",
+      "hint": "Stosuje jedną wartość właściwości do {{count}} wybranych elementów. Pozostaw wartość pustą, aby ją wyczyścić",
       "propertyPlaceholder": "Właściwość",
       "valuePlaceholder": "Wartość",
       "applied": "Zaktualizowano {{count}} elementów"
     },
     "revisionConflict": {
       "title": "Rozwiąż konflikt edycji",
-      "description": "{{field}} zmieniło się po rewizji {{expected}}. Porównaj swoją edycję z rewizją {{actual}}, a następnie wybierz, którą wersję zachować.",
+      "description": "{{field}} zmieniło się po rewizji {{expected}}. Porównaj swoją edycję z rewizją {{actual}}, a następnie wybierz, którą wersję zachować",
       "mine": "Moja wersja",
       "latest": "Najnowsza wersja",
       "useLatest": "Użyj najnowszej",
@@ -573,7 +575,7 @@
     "confirmDelete": "Rozumiem, usuń tę historię",
     "sync": {
       "title": "Synchronizacja zewnętrzna",
-      "description": "Lustrzane odbicie zadań tej historii do zewnętrznego systemu, takiego jak Linear lub GitHub.",
+      "description": "Lustrzane odbicie zadań tej historii do zewnętrznego systemu, takiego jak Linear lub GitHub",
       "adapterPicker": {
         "title": "Adapter",
         "notAttached": "Nie podłączony",
@@ -582,7 +584,7 @@
         "changeWarning": "Odłącz bieżący adapter przed podłączeniem nowego.",
         "detachProjectMenuLabel": "Odłącz GitHub",
         "detachProjectTitle": "Odłączyć GitHub od {{project}}?",
-        "detachProjectDescription": "Synchronizacja GitHub Issues zostanie zatrzymana. Lokalny projekt i zaimportowane elementy pracy pozostaną w ORGII.",
+        "detachProjectDescription": "Synchronizacja GitHub Issues zostanie zatrzymana. Lokalny projekt i zaimportowane elementy pracy pozostaną w ORG2",
         "detachProjectAction": "Odłącz GitHub od {{project}}",
         "detachProjectSuccess": "Odłączono GitHub od {{project}}"
       },
@@ -617,9 +619,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "Ładowanie statusu webhook…",
-        "notInstalledDescription": "Zainstaluj sekret webhook, aby ten dostawca mógł bezpośrednio przesyłać zmiany zamiast czekać na kolejne odpytanie.",
+        "notInstalledDescription": "Zainstaluj sekret webhook, aby ten dostawca mógł bezpośrednio przesyłać zmiany zamiast czekać na kolejne odpytanie",
         "install": "Zainstaluj webhook",
-        "installedDescription": "Wklej URL do konfiguracji webhook swojego dostawcy i użyj poniższego sekretu do podpisywania dostarczeń.",
+        "installedDescription": "Wklej URL do konfiguracji webhook swojego dostawcy i użyj poniższego sekretu do podpisywania dostarczeń",
         "indicatorFresh": "Niedawne dostarczenie",
         "indicatorStale": "Brak niedawnego dostarczenia",
         "lastDeliveryNever": "Brak dostarczeń",
@@ -627,7 +629,7 @@
         "copyUrl": "Kopiuj URL",
         "rotate": "Rotuj sekret",
         "secretTitle": "Skopiuj ten sekret teraz — nie będzie wyświetlony ponownie",
-        "secretDescription": "Wklej ten sekret podpisu do konfiguracji webhook swojego dostawcy. Nie przechowujemy wartości w postaci jawnej po zamknięciu tego panelu.",
+        "secretDescription": "Wklej ten sekret podpisu do konfiguracji webhook swojego dostawcy. Nie przechowujemy wartości w postaci jawnej po zamknięciu tego panelu",
         "copySecret": "Kopiuj sekret",
         "dismissSecret": "Zapisałem go",
         "secretCopied": "Sekret skopiowany do schowka",
@@ -653,9 +655,9 @@
         "progressNoTotal": "Zaimportowano {{count}} elementów",
         "completedSummary": "Zaimportowano {{count}} elementów ze zdalnego źródła.",
         "cancelledSummary": "Anulowano po zaimportowaniu {{count}} elementów.",
-        "pendingDescription": "Pierwsza synchronizacja jednokrotnie przejdzie pełną historię zdalną. Kolejne synchronizacje używają normalnego cyklu inkrementalnego.",
-        "runningDescription": "Przechodzenie zdalnej historii strona po stronie. Możesz kontynuować pracę podczas działania.",
-        "failedDescription": "Ostatnia strona zakończyła się trwałym niepowodzeniem. Wznowienie podejmuje od miejsca, w którym kursor się zatrzymał.",
+        "pendingDescription": "Pierwsza synchronizacja jednokrotnie przejdzie pełną historię zdalną. Kolejne synchronizacje używają normalnego cyklu inkrementalnego",
+        "runningDescription": "Przechodzenie zdalnej historii strona po stronie. Możesz kontynuować pracę podczas działania",
+        "failedDescription": "Ostatnia strona zakończyła się trwałym niepowodzeniem. Wznowienie podejmuje od miejsca, w którym kursor się zatrzymał",
         "cancel": "Anuluj import",
         "retry": "Ponów",
         "errors": {
@@ -737,9 +739,9 @@
     },
     "sidebarStatuses": "Statusy",
     "statusesBuiltin": "Statusy wbudowane",
-    "statusesBuiltinDescription": "Standardowe grupy przepływu pracy. Zawsze dostępne.",
+    "statusesBuiltinDescription": "Standardowe grupy przepływu pracy. Zawsze dostępne",
     "statusesCustom": "Statusy własne",
-    "statusesCustomDescription": "Nazwane aliasy dla grupy wbudowanej. Filtry, liczniki i tablice traktują je jak ich grupę.",
+    "statusesCustomDescription": "Nazwane aliasy dla grupy wbudowanej. Filtry, liczniki i tablice traktują je jak ich grupę",
     "statusNamePlaceholder": "Nazwa statusu",
     "noCustomStatuses": "Brak własnych statusów.",
     "statusArchive": "Archiwizuj status",
@@ -793,11 +795,11 @@
     "unknownState": "Unknown state",
     "emptyConnections": {
       "title": "No Linear connections",
-      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
+      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear"
     },
     "emptySelection": {
       "title": "Select a Linear Project",
-      "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
+      "description": "Choose a Project from the left to view live Linear Issues and edit Project details"
     },
     "forms": {
       "createProjectTitle": "Create Linear Project",
@@ -834,7 +836,7 @@
       "updateWorkflowState": "Failed to update Linear workflow state",
       "archiveWorkflowState": "Failed to archive Linear workflow state",
       "statusStateMissing": "No matching Linear workflow state exists for this status",
-      "unsupportedIssueUpdate": "This Linear Issue field cannot be edited in ORGII yet"
+      "unsupportedIssueUpdate": "Tego pola zgłoszenia Linear nie można jeszcze edytować w ORG2"
     },
     "loadingConnections": "Wczytywanie połączeń Linear..."
   },
@@ -850,8 +852,8 @@
     "syncComplete": "Git folder sync complete",
     "syncFailed": "Git folder sync failed: {{message}}",
     "noResultTitle": "No Git sync result",
-    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
+    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts"
   }
 }

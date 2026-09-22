@@ -11,7 +11,7 @@
  * - No local state
  */
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 import {
   activeBrowserTabAtom,
@@ -62,17 +62,6 @@ export interface UseBrowserPaneStateReturn {
   ) => void;
   /** Update tab title */
   updateTabTitle: (tabId: string, title: string) => void;
-
-  /** Props to pass directly to TabBar component */
-  tabBarProps: {
-    tabs: WorkStationTab[];
-    activeTabId: string | null;
-    onTabClick: (tabId: string) => void;
-    onTabClose: (tabId: string) => void;
-    onTabReorder: (startIndex: number, endIndex: number) => void;
-    onCloseOtherTabs: (tabId: string) => void;
-    onCloseSavedTabs: () => void;
-  };
 }
 
 // ============================================
@@ -148,28 +137,6 @@ export function useBrowserPaneState(): UseBrowserPaneStateReturn {
     [updateTabTitleAction]
   );
 
-  // Tab bar props (for easy passing to TabBar)
-  const tabBarProps = useMemo(
-    () => ({
-      tabs: state.tabs,
-      activeTabId: state.activeTabId,
-      onTabClick: switchToTab,
-      onTabClose: closeTab,
-      onTabReorder: reorderTabs,
-      onCloseOtherTabs: closeOtherTabs,
-      onCloseSavedTabs: closeSavedTabs,
-    }),
-    [
-      state.tabs,
-      state.activeTabId,
-      switchToTab,
-      closeTab,
-      reorderTabs,
-      closeOtherTabs,
-      closeSavedTabs,
-    ]
-  );
-
   return {
     tabs: state.tabs,
     activeTabId: state.activeTabId,
@@ -183,7 +150,6 @@ export function useBrowserPaneState(): UseBrowserPaneStateReturn {
     closeSavedTabs,
     updateTabData,
     updateTabTitle,
-    tabBarProps,
   };
 }
 

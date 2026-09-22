@@ -1,6 +1,7 @@
 import React from "react";
 
 import { MobileRemoteApp } from "./MobileRemoteApp";
+import { MobileThemeProvider } from "./appearance";
 import { MobileAuthGate } from "./auth/MobileAuthGate";
 import {
   type MobileRemotePlatform,
@@ -19,15 +20,17 @@ export function MobileRemoteRoot({
 }: MobileRemoteRootProps) {
   return (
     <MobileRemotePlatformProvider platform={platform}>
-      <MobileAuthGate>
-        {({ authUserId, recoveredPairingIntent }) => (
-          <MobileRemoteApp
-            authUserId={authUserId}
-            recoveredPairingIntent={recoveredPairingIntent}
-            relayUrl={relayUrl}
-          />
-        )}
-      </MobileAuthGate>
+      <MobileThemeProvider platform={platform}>
+        <MobileAuthGate>
+          {({ authUserId, recoveredPairingIntent }) => (
+            <MobileRemoteApp
+              authUserId={authUserId}
+              recoveredPairingIntent={recoveredPairingIntent}
+              relayUrl={relayUrl}
+            />
+          )}
+        </MobileAuthGate>
+      </MobileThemeProvider>
     </MobileRemotePlatformProvider>
   );
 }

@@ -1,0 +1,24 @@
+[package]
+name = "market-connect"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+fs2 = "0.4.3"
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+url = "2"
+sha2 = "0.10"
+base64 = { workspace = true }
+rand = { workspace = true }
+serde_json = "1"
+chrono = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+
+[target.'cfg(any(target_os = "macos", windows))'.dependencies]
+keyring = { version = "=3.6.3", default-features = false, features = ["apple-native", "windows-native"] }
+
+[dev-dependencies]
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }

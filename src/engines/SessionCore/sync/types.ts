@@ -205,8 +205,8 @@ export interface SessionAdapter {
   /**
    * Load the complete, lossless persisted transcript for operations whose
    * correctness depends on the entire conversation (native materialization,
-   * migration, and canonical verification). Most managed adapters can omit
-   * this because `loadHistory` is already complete. Imported-history adapters
+   * migration, and canonical verification). Managed adapters must implement
+   * this when `loadHistory` enriches model input for display. Imported-history adapters
    * must implement it because their normal `loadHistory` is intentionally a
    * bounded UI preview.
    */

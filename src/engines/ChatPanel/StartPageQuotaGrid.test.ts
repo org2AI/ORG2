@@ -12,6 +12,8 @@ import {
   vi,
 } from "vitest";
 
+import { RUNTIME_SECTION_HEADER_HEIGHT } from "@src/features/RuntimeDataSource/RuntimeSectionHeader";
+
 import { StartPageQuotaGrid } from "./StartPageQuotaGrid";
 
 const keyVaultMocks = vi.hoisted(() => ({
@@ -111,13 +113,16 @@ describe("StartPageQuotaGrid", () => {
     expect(refreshIndex).toBeGreaterThanOrEqual(0);
     expect(quotaCardIndex).toBeGreaterThan(refreshIndex);
     expect(markup).toContain('data-testid="quota-refresh-controls"');
+    // The header keeps its edge-to-edge chat-pane backdrop, on the shared
+    // Runtime row height. It must carry no vertical padding of its own: this
+    // row leads the Usage tab, and padding here would drop the whole tab's
+    // content below where every other tab starts it.
     expect(markup).toContain(
-      'class="flex min-h-9 items-center justify-between gap-3 -mx-4 bg-chat-pane px-4 pt-2 pb-1"'
+      `class="${RUNTIME_SECTION_HEADER_HEIGHT} flex shrink-0 items-center justify-between gap-3 -mx-4 bg-chat-pane px-4"`
     );
     expect(markup).toContain("flex flex-col gap-3 @container/quota");
     expect(markup).toContain("kanban.dataSource.views.quota");
-    expect(markup).toContain("flex min-h-9 items-center justify-between gap-3");
-    expect(markup).toContain("border-0 bg-transparent text-text-2");
+    expect(markup).toContain("btn:border-0 btn:bg-transparent btn:text-text-2");
     expect(markup).toContain(
       "truncate text-sm leading-5 font-semibold text-text-1"
     );

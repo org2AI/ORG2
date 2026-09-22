@@ -13,7 +13,6 @@ import type {
   OrgtrackFileTimeline,
   OrgtrackSessionEditArtifact,
   OrgtrackSessionFinalDiff,
-  SessionImpact,
 } from "@src/api/tauri/rpc/schemas/lineage";
 
 // Re-export types for backward compat
@@ -24,18 +23,7 @@ export type {
   OrgtrackFileTimeline,
   OrgtrackSessionEditArtifact,
   OrgtrackSessionFinalDiff,
-  SessionImpact,
 };
-
-export async function getProvenanceSessionIds(): Promise<string[]> {
-  return rpc.lineage.getProvenanceSessionIds();
-}
-
-export async function getSessionImpact(
-  sessionId: string
-): Promise<SessionImpact> {
-  return rpc.lineage.getSessionImpact({ sessionId });
-}
 
 export async function getOrgtrackFileTimeline(input: {
   repoPath: string;

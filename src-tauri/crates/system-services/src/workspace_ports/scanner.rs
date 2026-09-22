@@ -349,6 +349,8 @@ impl std::fmt::Display for ScanError {
     }
 }
 
+// Exactly one arm survives `cfg` on any platform, so each block is that
+// platform's tail expression; a `return` inside one is a needless-return lint.
 fn scan_platform_listening_ports() -> Result<Vec<RawListeningPort>, ScanError> {
     #[cfg(target_os = "macos")]
     {
@@ -356,11 +358,11 @@ fn scan_platform_listening_ports() -> Result<Vec<RawListeningPort>, ScanError> {
     }
     #[cfg(target_os = "linux")]
     {
-        return scan_linux_proc_ports();
+        scan_linux_proc_ports()
     }
     #[cfg(windows)]
     {
-        return scan_windows_netstat_ports();
+        scan_windows_netstat_ports()
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
     {

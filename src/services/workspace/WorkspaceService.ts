@@ -7,6 +7,7 @@
  * - Recent workspace tracking (localStorage)
  */
 import { createLogger } from "@src/hooks/logger";
+import i18n from "@src/i18n";
 import type {
   RecentWorkspace,
   WorkspaceConfig,
@@ -72,7 +73,7 @@ export async function saveWorkspaceAs(
   const filePath = await save({
     filters: [
       {
-        name: "ORGII Workspace",
+        name: i18n.t("common:appMessages.workspaceFile"),
         extensions: [WORKSPACE_FILE_EXTENSION.replace(".", "")],
       },
     ],
@@ -92,7 +93,7 @@ export async function openWorkspaceFile(): Promise<{
   const filePath = await open({
     filters: [
       {
-        name: "ORGII Workspace",
+        name: i18n.t("common:appMessages.workspaceFile"),
         extensions: [WORKSPACE_FILE_EXTENSION.replace(".", "")],
       },
     ],

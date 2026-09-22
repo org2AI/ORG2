@@ -164,5 +164,3 @@ export function useKeyVault(
     deleteKey: local.deleteKey,
   };
 }
-
-export default useKeyVault;

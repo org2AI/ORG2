@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import Button from "@src/components/Button";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { Calendar01Icon, HugeiconsIcon } from "@src/icons";
 
@@ -48,8 +49,8 @@ export function DueDateCell({
   );
 
   const trigger = !endDate ? (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       className={`flex h-6 w-6 items-center justify-center rounded-full border border-solid bg-transparent text-text-3 transition-[border-color,background-color,color] ${
         isOpen
           ? "border-primary-5 bg-primary-1 text-primary-6"
@@ -66,10 +67,10 @@ export function DueDateCell({
         size={14}
         strokeWidth={1.75}
       />
-    </button>
+    </Button>
   ) : (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       className={`inline-flex h-7 items-center justify-center rounded-full border border-solid px-2 text-[12px] leading-[18px] font-medium transition-[border-color,background-color,color] ${colorClass} ${
         isOpen
           ? "border-primary-5 bg-primary-1"
@@ -81,7 +82,7 @@ export function DueDateCell({
       }}
     >
       {formattedDate}
-    </button>
+    </Button>
   );
 
   return (

@@ -100,17 +100,9 @@ export function useSessionRawTranscript(
   const copyTranscript = useCallback(async () => {
     try {
       await copyText(transcriptJson);
-      Message.success(
-        t("chat.rawTranscript.copySuccess", {
-          defaultValue: "Raw transcript copied",
-        })
-      );
+      Message.success(t("chat.rawTranscript.copySuccess"));
     } catch {
-      Message.error(
-        t("chat.rawTranscript.copyFailed", {
-          defaultValue: "Could not copy the raw transcript",
-        })
-      );
+      Message.error(t("chat.rawTranscript.copyFailed"));
     }
   }, [t, transcriptJson]);
 

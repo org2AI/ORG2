@@ -16,13 +16,13 @@ export const FileSessionHistoryIcon = memo(
     const session = useAtomValue(sessionByIdAtom(sessionId));
 
     if (isOrg2Session) {
-      return <Org2SessionIcon className="size-3.5" aria-hidden="true" />;
+      return <Org2SessionIcon className="size-3" aria-hidden="true" />;
     }
 
     return (
       <AnyIcon
         icon={resolveSessionRowIcon(session ?? sessionId)}
-        size={14}
+        size={12}
         className="text-text-1"
       />
     );

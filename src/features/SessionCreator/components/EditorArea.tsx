@@ -11,11 +11,14 @@ import { useAtomValue } from "jotai";
 import React, { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import ComposerBar from "@src/components/ComposerBar";
+import ComposerSendGroup from "@src/components/ComposerBar/ComposerSendGroup";
 import ComposerInput, { ComposerInputRef } from "@src/components/ComposerInput";
+import ComposerExpandToggle from "@src/components/ComposerInput/ComposerExpandToggle";
+import { useComposerExpansion } from "@src/components/ComposerInput/useComposerExpansion";
 import ComposerShell from "@src/components/ComposerShell";
 import Message from "@src/components/Message";
 import { VoiceInputButton, VoiceRecordingBar } from "@src/components/Voice";
+import { useTabDragEndToPill } from "@src/components/dnd/useTabDragEndToPill";
 import {
   INPUT_AREA,
   INPUT_AREA_EDITOR_CLASS,
@@ -23,6 +26,7 @@ import {
 } from "@src/config/inputAreaTokens";
 import { capPillText, storePillText } from "@src/config/pillTokens";
 import type { ComposerModeEntry } from "@src/config/sessionCreatorConfig";
+import ComposerBar from "@src/engines/ChatPanel/ComposerBar";
 import ContextMenuPortal from "@src/engines/ChatPanel/InputArea/components/ContextMenuPortal";
 import SlashCommandPortal from "@src/engines/ChatPanel/InputArea/components/SlashCommandPortal";
 import { useExternalFileDragOver } from "@src/engines/ChatPanel/InputArea/hooks/useContainerDrag";
@@ -30,17 +34,16 @@ import { useTabDragHover } from "@src/engines/ChatPanel/InputArea/hooks/useTabDr
 import { type VoiceInputError, useVoiceInput } from "@src/hooks/voice";
 import { useVoiceShortcut } from "@src/hooks/voice/useVoiceShortcut";
 import i18n from "@src/i18n";
-import {
-  clearReferenceDragData,
-  getReferenceDragPillData,
-  hasReferenceDragData,
-} from "@src/shared/dnd/referenceDragData";
-import { useTabDragEndToPill } from "@src/shared/dnd/useTabDragEndToPill";
 import { chatAppearanceAtom } from "@src/store/config/configAtom";
 import { voiceInputEnabledAtom } from "@src/store/platform/voiceInputAtom";
 import type { RepoKind } from "@src/store/repo/types";
 import type { ChatImageAttachment } from "@src/store/ui/chatImageAtom";
 import type { SlashItem } from "@src/types/extensions";
+import {
+  clearReferenceDragData,
+  getReferenceDragPillData,
+  hasReferenceDragData,
+} from "@src/util/dnd/referenceDragData";
 
 import type { AdvancedConfig, UploadedFile } from "../types";
 import ControlButtons, { type DropdownDirection } from "./ControlButtons";
@@ -270,6 +273,7 @@ const EditorArea: React.FC<EditorAreaProps> = ({
   }, [composerInputRef, onUploadClick]);
 
   const editorContainerRef = React.useRef<HTMLDivElement>(null);
+  const expansion = useComposerExpansion(editorContainerRef, true);
 
   // ============================================
   // Voice input (push-to-talk dictation)
@@ -534,7 +538,7 @@ const EditorArea: React.FC<EditorAreaProps> = ({
           onSubmit={onSubmit}
           requireCmdEnter={!sendOnEnter}
           autoFocus={autoFocus}
-          className={INPUT_AREA_EDITOR_CLASS}
+          className={`${INPUT_AREA_EDITOR_CLASS} ${expansion.editorClassName}`.trim()}
           minHeight={INPUT_AREA_EDITOR_HEIGHT.min}
           maxHeight={INPUT_AREA_EDITOR_HEIGHT.max}
           onKeyDownForDropdown={handleKeyDownForDropdown}
@@ -582,40 +586,50 @@ const EditorArea: React.FC<EditorAreaProps> = ({
             onAddContent={handleManualContextMenuClick}
           />
         ) : (
-          <ComposerBar
-            onAddContent={handleManualContextMenuClick}
-            repoPath={repoPath}
-            showContextInfo={false}
-            pills={
-              <ControlButtons
-                advancedConfig={advancedConfig}
-                onConfigChange={onAdvancedConfigChange}
-                dropdownDirection={resolvedDropdownDirection}
-                requestModelOpen={requestModelOpen}
-                onModelOpenHandled={onModelOpenHandled}
-                hideModelSourcePill={hideModelSourcePill}
+          <ControlButtons
+            advancedConfig={advancedConfig}
+            onConfigChange={onAdvancedConfigChange}
+            dropdownDirection={resolvedDropdownDirection}
+            requestModelOpen={requestModelOpen}
+            onModelOpenHandled={onModelOpenHandled}
+            hideModelSourcePill={hideModelSourcePill}
+          >
+            {(slots) => (
+              <ComposerBar
+                {...slots}
+                onAddContent={handleManualContextMenuClick}
+                repoPath={repoPath}
+                showContextInfo={false}
+                submitButton={
+                  <>
+                    {expansion.showToggle && (
+                      <ComposerExpandToggle
+                        expanded={expansion.expanded}
+                        onToggle={expansion.toggle}
+                      />
+                    )}
+                    {!hideLaunchButton && (
+                      <ComposerSendGroup>
+                        {voiceFeatureEnabled && (
+                          <VoiceInputButton
+                            onPressStart={voice.start}
+                            onPressEnd={voice.stop}
+                            disabled={!voice.isSupported}
+                          />
+                        )}
+                        <LaunchButton
+                          ariaLabel={launchAriaLabel}
+                          disabled={launchDisabled ?? false}
+                          loading={isLoading}
+                          onClick={onLaunch}
+                        />
+                      </ComposerSendGroup>
+                    )}
+                  </>
+                }
               />
-            }
-            submitButton={
-              !hideLaunchButton ? (
-                <>
-                  {voiceFeatureEnabled && (
-                    <VoiceInputButton
-                      onPressStart={voice.start}
-                      onPressEnd={voice.stop}
-                      disabled={!voice.isSupported}
-                    />
-                  )}
-                  <LaunchButton
-                    ariaLabel={launchAriaLabel}
-                    disabled={launchDisabled ?? false}
-                    loading={isLoading}
-                    onClick={onLaunch}
-                  />
-                </>
-              ) : undefined
-            }
-          />
+            )}
+          </ControlButtons>
         )}
       </ComposerShell>
     </div>

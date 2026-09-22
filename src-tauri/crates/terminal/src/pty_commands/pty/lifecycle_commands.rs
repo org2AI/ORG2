@@ -1,6 +1,7 @@
 //! Tauri commands driving a PTY session's life: spawn, write, resize, close,
 //! and the attach/detach/ack handshake that governs output flow control.
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use portable_pty::PtySize;
 use std::sync::atomic::Ordering;
 use tauri::{
@@ -9,7 +10,7 @@ use tauri::{
 };
 
 use super::state::PtyState;
-use super::types::{AttachPtyStream, CreatePtyRequest, ResizePtyRequest};
+use super::types::{AttachPtyStream, CreatePtyRequest, PtySessionIdentity, ResizePtyRequest};
 
 // ============================================
 // Tauri Commands
@@ -29,7 +30,7 @@ pub async fn create_pty(
     request: serde_json::Value,
     app: AppHandle,
     state: State<'_, PtyState>,
-) -> Result<(), String> {
+) -> Result<PtySessionIdentity, String> {
     // Handle both { request: {...} } and direct {...} formats
     let req: CreatePtyRequest = if request.get("request").is_some() {
         serde_json::from_value(request["request"].clone())
@@ -40,6 +41,7 @@ pub async fn create_pty(
     };
 
     crate::agent_tool::create_session(crate::agent_tool::CreateSessionParams {
+        owner_id: req.owner_id,
         session_id: req.session_id,
         rows: req.rows,
         cols: req.cols,
@@ -133,6 +135,7 @@ pub async fn check_pty_exists(
 #[tauri::command]
 pub async fn attach_pty_stream(
     session_id: String,
+    owner_id: Option<u64>,
     state: State<'_, PtyState>,
 ) -> Result<AttachPtyStream, String> {
     let sessions = state.inner().sessions.lock().await;
@@ -140,24 +143,23 @@ pub async fn attach_pty_stream(
         .get(&session_id)
         .ok_or_else(|| format!("Session {} not found", session_id))?;
 
-    // Resume emission before snapshotting: chunks emitted from here on are
-    // deduplicated by covers_seq, whereas chunks read after a
-    // snapshot-then-attach ordering would be in neither the snapshot nor the
-    // event stream (lost).
+    let snapshot = session.snapshot.lock().expect("snapshot mutex poisoned");
+    session.claim_stream(owner_id)?;
+    *session
+        .output_channel
+        .lock()
+        .expect("output channel mutex poisoned") = None;
     session.detached.store(false, Ordering::Relaxed);
     let missed_output = session.missed_while_detached.swap(0, Ordering::Relaxed) > 0;
     session.unacked_bytes.store(0, Ordering::Relaxed);
     session.ack_notify.notify_one();
-
-    let (output, covers_seq) = {
-        let snapshot = session
-            .redacted_output
-            .lock()
-            .expect("redacted_output mutex poisoned");
-        (snapshot.clone(), session.covers_seq.load(Ordering::Relaxed))
-    };
+    let output = snapshot.replay().to_string();
+    let covers_seq = snapshot.covers_seq();
+    let pending_utf8_b64 = STANDARD.encode(snapshot.pending_utf8());
 
     Ok(AttachPtyStream {
+        session_generation: session.identity.session_generation.clone(),
+        pending_utf8_b64,
         output,
         covers_seq,
         missed_output,
@@ -182,6 +184,7 @@ pub async fn attach_pty_stream(
 #[tauri::command]
 pub async fn attach_pty_output_channel(
     session_id: String,
+    owner_id: Option<u64>,
     channel: Channel<InvokeResponseBody>,
     state: State<'_, PtyState>,
 ) -> Result<(), String> {
@@ -190,6 +193,9 @@ pub async fn attach_pty_output_channel(
         .get(&session_id)
         .ok_or_else(|| format!("Session {} not found", session_id))?;
 
+    if !session.owns_stream(owner_id) {
+        return Err("PTY attachment superseded".into());
+    }
     *session
         .output_channel
         .lock()
@@ -208,11 +214,16 @@ pub async fn attach_pty_output_channel(
 #[tauri::command]
 pub async fn detach_pty_stream(
     session_id: String,
+    owner_id: Option<u64>,
     state: State<'_, PtyState>,
 ) -> Result<(), String> {
     let sessions = state.inner().sessions.lock().await;
     // A detach may race session exit — silently succeed if already gone.
     if let Some(session) = sessions.get(&session_id) {
+        if !session.owns_stream(owner_id) {
+            return Ok(());
+        }
+        let _snapshot = session.snapshot.lock().expect("snapshot mutex poisoned");
         session.detached.store(true, Ordering::Relaxed);
         session.unacked_bytes.store(0, Ordering::Relaxed);
         // Drop the departing webview's channel: a stale one would keep
@@ -237,6 +248,7 @@ pub async fn detach_pty_stream(
 #[tauri::command]
 pub async fn ack_pty_data(
     session_id: String,
+    owner_id: Option<u64>,
     byte_count: usize,
     queue_depth: Option<usize>,
     render_ms: Option<u32>,
@@ -244,9 +256,16 @@ pub async fn ack_pty_data(
 ) -> Result<(), String> {
     let sessions = state.inner().sessions.lock().await;
     if let Some(session) = sessions.get(&session_id) {
-        let prev = session.unacked_bytes.load(Ordering::Relaxed);
+        if !session.owns_stream(owner_id) {
+            return Ok(());
+        }
+        let prev = session
+            .unacked_bytes
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+                Some(value.saturating_sub(byte_count))
+            })
+            .unwrap_or(0);
         let new_val = prev.saturating_sub(byte_count);
-        session.unacked_bytes.store(new_val, Ordering::Relaxed);
 
         // Update render telemetry so the reader can adapt emit rate.
         if let Some(rms) = render_ms {

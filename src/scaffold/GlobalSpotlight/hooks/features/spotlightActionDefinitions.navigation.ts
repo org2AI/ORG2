@@ -15,11 +15,11 @@
  * - `EDITOR_ACTIONS`           — editor palette modes (file / command / symbol).
  * - `QUICK_NAVIGATION_ACTIONS` — work-station tab switchers (terminal, SCM).
  */
-import { ACTION_ID } from "@src/ActionSystem";
 import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import {
   Add01Icon,
   AiGenerativeIcon,
+  AppWindowIcon,
   DeliveryBox01Icon,
   DockIcon,
   FolderAddIcon,
@@ -38,6 +38,7 @@ import {
   SquareTerminalIcon,
   WorkflowCircle05Icon,
 } from "@src/icons";
+import { ACTION_ID } from "@src/scaffold/ActionSystem";
 
 import type {
   SpotlightEditorActionDefinition,
@@ -342,6 +343,40 @@ export const STATION_MODE_ACTIONS = [
     actionId: ACTION_ID.WORKSTATION_OPEN_AGENT_STATION,
     payload: {},
     fallback: "open-agent-station",
+    closeOnSuccess: true,
+  },
+  {
+    id: "open-my-station-window",
+    labelKey: "common:spotlightActions.openMyStationInNewWindow",
+    icon: AppWindowIcon,
+    keywords: [
+      "my station",
+      "new window",
+      "detach",
+      "pop out",
+      "separate window",
+      "workstation window",
+    ],
+    actionId: ACTION_ID.WORKSTATION_OPEN_MY_STATION_WINDOW,
+    payload: {},
+    fallback: "open-my-station-window",
+    closeOnSuccess: true,
+  },
+  {
+    id: "open-agent-station-window",
+    labelKey: "common:spotlightActions.openAgentStationInNewWindow",
+    icon: AppWindowIcon,
+    keywords: [
+      "agent station",
+      "new window",
+      "detach",
+      "pop out",
+      "separate window",
+      "simulator window",
+    ],
+    actionId: ACTION_ID.WORKSTATION_OPEN_AGENT_STATION_WINDOW,
+    payload: {},
+    fallback: "open-agent-station-window",
     closeOnSuccess: true,
   },
   {

@@ -3,66 +3,83 @@
  *
  * Two orthogonal axes describe a button's look:
  *
- *   variant     — importance / semantic role
- *                 "primary"   = call-to-action / brand color
- *                 "secondary" = regular action
- *                 "tertiary"  = supporting / inline action
- *                 "danger"    = destructive
- *                 "warning"   = caution-required
- *                 "success"   = positive confirmation
- *                 "merged"    = completed GitHub merge
+ *   variant  — importance
+ *              "primary"   = call to action, filled
+ *              "secondary" = regular action, outlined (default)
+ *              "tertiary"  = supporting action, transparent with a hover
+ *                            background
+ *              "ghost"     = inline action, transparent; hover changes only
+ *                            the text / icon color
  *
- *   appearance  — visual treatment
- *                 "solid"   = filled background
- *                 "outline" = bordered, transparent fill
- *                 "dashed"  = dashed border (typically for add/upload)
- *                 "soft"    = neutral or semantic hover fill for compact actions
- *                 "ghost"   = no border, no background — hover changes
- *                            only the text color
+ *   tone     — semantic color on top of the variant
+ *              "danger" | "warning" | "success" | "merged"
+ *              (hoverTone colors a neutral button only while hovered)
+ *
+ * A toggle is a tertiary or ghost with `aria-pressed`. `layout="custom"`
+ * hands both geometry and surface to the caller.
+ *
+ * Button's own utilities are emitted in a nested cascade layer (the `btn:`
+ * variant), so any class passed through `className` overrides them.
  *
  * @example
  * ```tsx
  * import Button from "@src/components/Button";
  *
  * <Button variant="primary">Submit</Button>
- * <Button variant="secondary" size="small">Cancel</Button>
- * <Button variant="danger" appearance="ghost">Remove</Button>
- * <Button variant="tertiary" appearance="ghost">Inline action</Button>
+ * <Button size="small">Cancel</Button>
+ * <Button variant="primary" tone="danger">Delete</Button>
+ * <Button variant="tertiary" tone="danger" iconOnly icon={<Trash />} />
+ * <Button variant="tertiary">More</Button>
+ * <Button variant="tertiary" aria-pressed={on}>Aa</Button>
+ * <Button variant="ghost" size="inline">View all</Button>
+ * <Button variant="tertiary" hoverTone="danger" iconOnly icon={<Trash />} />
  * <Button loading>Loading...</Button>
- * <Button variant="primary" icon={<Plus size={14} />}>Add</Button>
  * ```
  */
 import React, { forwardRef } from "react";
 
 import {
-  type ButtonAppearance,
+  type ButtonHoverTone,
   type ButtonShape,
   type ButtonSize,
+  type ButtonTone,
   type ButtonVariant,
   useButtonPresentation,
 } from "./presentation";
 
-export type { ButtonAppearance, ButtonVariant } from "./presentation";
+export type {
+  ButtonHoverTone,
+  ButtonTone,
+  ButtonVariant,
+} from "./presentation";
 
 export interface ButtonProps extends Omit<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
   "type"
 > {
   /**
-   * Importance / semantic role.
+   * Preserve direct children, CSS-owned geometry and CSS-owned surface for
+   * compound controls such as menu rows, switch tracks, tabs and selectable
+   * cards: Button draws no size, color or disabled styling. Ordinary actions
+   * use the default layout with variant, size, icon and iconOnly props.
+   */
+  layout?: "default" | "custom";
+  /**
+   * Importance: primary, secondary, tertiary or ghost. Color comes from `tone`.
    * @default "secondary"
    */
   variant?: ButtonVariant;
 
   /**
-   * Visual treatment.
-   * @default depends on variant — "solid" for primary/danger/warning/success,
-   *          "outline" for secondary, "solid" for tertiary
+   * Semantic color on top of the variant (see {@link ButtonTone}): filled on a
+   * primary, tone text on a secondary outline, tone text with a tinted hover
+   * on a tertiary.
    */
-  appearance?: ButtonAppearance;
+  tone?: ButtonTone;
 
   /**
-   * Button size; sidebar is 20px, reserved for compact sidebar/rail rows and headers
+   * Button size; inline inherits surrounding typography without a fixed height;
+   * sidebar is 20px, reserved for compact sidebar/rail rows and headers
    * @default "default"
    */
   size?: ButtonSize;
@@ -99,6 +116,17 @@ export interface ButtonProps extends Omit<
   iconOnly?: boolean;
 
   /**
+   * Color a neutral (secondary / tertiary) button shows only while hovered,
+   * pressed or keyboard-focused; it stays neutral at rest. Prefer it to
+   * hand-written hover color classes. Semantic variants already carry a color
+   * and ignore it.
+   */
+  hoverTone?: ButtonHoverTone;
+
+  /** Display-only shortcut hint; the caller owns keyboard handling. Hidden for icon-only buttons. */
+  shortcut?: string;
+
+  /**
    * Center the label on the button's own center, taking the icon out of flow so
    * it sits beside the centered label instead of shifting it. Intended for
    * full-width buttons — on a hug-width button the icon overhangs the edge.
@@ -128,8 +156,9 @@ export interface ButtonProps extends Omit<
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
+      layout = "default",
       variant = "secondary",
-      appearance,
+      tone,
       size = "default",
       shape = "square",
       loading = false,
@@ -138,6 +167,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       icon,
       iconPosition = "left",
       iconOnly = false,
+      hoverTone,
+      shortcut,
       centerLabel = false,
       long = false,
       htmlType = "button",
@@ -154,8 +185,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const { isDisabled, buttonStyles, buttonContent, buttonClassName } =
       useButtonPresentation({
+        layout,
         variant,
-        appearance,
+        tone,
         size,
         shape,
         loading,
@@ -164,6 +196,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         icon,
         iconPosition,
         iconOnly,
+        hoverTone,
+        shortcut,
         centerLabel,
         long,
         children,
@@ -191,13 +225,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     return (
       <button
+        {...rest}
         ref={ref}
         type={htmlType}
         disabled={isDisabled}
         className={buttonClassName}
         style={buttonStyles}
         onClick={onClick}
-        {...rest}
       >
         {buttonContent}
       </button>

@@ -1,10 +1,8 @@
 {
   "teamInbox": {
-    "title": "Общий почтовый ящик команды",
     "listLabel": "Список общего почтового ящика команды",
     "itemsLabel": "Элементы общего почтового ящика команды",
     "unreadCount": "Непрочитанных: {{count}}",
-    "allRead": "Всё прочитано",
     "loadMore": "Загрузить ещё",
     "filters": {
       "mentions": "Упоминания",
@@ -46,7 +44,6 @@
         "subtitle": "Архивированные элементы будут отображаться здесь."
       }
     },
-    "loading": "Загрузка общего почтового ящика команды…",
     "drop": {
       "title": "Перетащите сюда, чтобы создать рабочую задачу",
       "subtitle": "Просмотрите снимок сессии, затем создайте или передайте рабочую задачу.",
@@ -188,7 +185,7 @@
       "aria": "Меню «{{label}}»"
     },
     "items": {
-      "quitOrg2": "Выйти из ORG-2",
+      "quitOrg2": "Выйти из ORG2",
       "newSession": "Новый сеанс",
       "openFolder": "Открыть папку...",
       "addFolderToWorkspace": "Добавить папку в рабочую область...",
@@ -289,8 +286,8 @@
     "save": "Сохранить",
     "cancel": "Отмена",
     "delete": "Удалить",
-    "removeFromOrgii": "Убрать из ORGII",
-    "removeFromOrgiiCount": "Убрать из ORGII ({{count}})",
+    "removeFromOrgii": "Убрать из ORG2",
+    "removeFromOrgiiCount": "Убрать из ORG2 ({{count}})",
     "edit": "Редактировать",
     "write": "Запись",
     "close": "Закрыть",
@@ -352,7 +349,6 @@
     "restart": "Перезапустить",
     "switchToStation": "Переключиться на {{station}}",
     "discard": "Отменить",
-    "run": "Запустить",
     "clone": "Клонировать",
     "send": "Отправить",
     "sendMessageQueued": "Отправить (в очереди)",
@@ -382,13 +378,18 @@
     "link": "Связать",
     "copyName": "Копировать имя",
     "switchMethod": "Сменить способ",
-    "dismiss": "Отклонить",
     "clearSelection": "Очистить выбор",
-    "clearAll": "Очистить всё",
     "openOnGitHub": "Открыть на GitHub",
     "createPullRequest": "Создать pull request",
     "expandView": "Развернуть представление",
-    "restoreSplitView": "Восстановить разделённый вид"
+    "restoreSplitView": "Восстановить разделённый вид",
+    "resetFilters": "Сбросить фильтры",
+    "cardView": "Карточки",
+    "listView": "Список",
+    "exportAndSync": "Экспорт и синхронизация",
+    "export": "Экспорт",
+    "openIn": "Открыть в",
+    "overwrite": "Перезаписать"
   },
   "status": {
     "yes": "Да",
@@ -452,7 +453,8 @@
     "scanningFileExtensions": "Сканирование расширений файлов…",
     "testing": "Тестирование...",
     "empty": "Пусто",
-    "launching": "Запуск..."
+    "launching": "Запуск...",
+    "copiedFilePath": "Путь к файлу скопирован"
   },
   "pagination": {
     "totalItems": "{{count}} записей",
@@ -463,7 +465,6 @@
     "nextPage": "Следующая страница",
     "lastPage": "Последняя страница",
     "selectPage": "Выбрать страницу",
-    "title": "Пагинация",
     "round": "Round {{current}}",
     "previousRound": "Предыдущий раунд",
     "nextRound": "Следующий раунд",
@@ -504,13 +505,14 @@
     "error": "Ошибка",
     "pid": "PID",
     "shell": "Shell",
-    "source": "Источник"
+    "source": "Источник",
+    "display": "Настройки интерфейса"
   },
   "labels": {
     "accounts": "Аккаунты",
     "enabled": "Включено",
     "disabled": "Отключено",
-    "keys": "Keys",
+    "keys": "Ключи",
     "model": "Модель",
     "name": "Имя",
     "provider": "Провайдер",
@@ -536,7 +538,6 @@
     "globPatternsHint": "Glob-шаблоны, через запятую",
     "outline": "Структура",
     "timeline": "Хронология",
-    "indexing": "Индексация",
     "testExplorer": "Проводник тестов",
     "installed": "Установлено",
     "extensionViews": "Представления расширений",
@@ -552,7 +553,6 @@
     "pullRequest": "Pull request",
     "operationLog": "Журнал операций",
     "gitDashboard": "Панель",
-    "changedFiles": "Изменённые файлы",
     "colorTokens": "Цветовые Token",
     "terminalInfo": "Информация о терминале",
     "fileCount_one": "{{count}} файл",
@@ -644,7 +644,13 @@
     "issueComments_other": "{{count}} комментария",
     "tokens": "Токены",
     "actions": "Действия",
-    "all": "Все"
+    "all": "Все",
+    "stashesCount": "Стеши: {{count}}",
+    "stashesCount_one": "Стеши: {{count}}",
+    "stashesCount_other": "Стеши: {{count}}",
+    "changedFilesCount": "Изменено файлов: {{fileCount}}",
+    "changedFilesCount_one": "{{fileCount}} изменённый файл",
+    "changedFilesCount_other": "Изменено файлов: {{fileCount}}"
   },
   "searchModes": {},
   "tabs": {
@@ -652,7 +658,6 @@
     "explorer": "Проводник",
     "search": "Поиск",
     "sourceControl": "Управление версиями",
-    "sessions": "Сеансы",
     "myTabs": "Мои вкладки ({{count}})",
     "design": "Дизайн",
     "settings": "Настройки",
@@ -690,16 +695,17 @@
     "unknownError": "Произошла неизвестная ошибка",
     "componentLoadingFailed": "Не удалось загрузить компонент",
     "noLocalPath": "Локальный путь недоступен",
-    "openInFinderFailed": "Не удалось открыть в Finder"
+    "openInFinderFailed": "Не удалось открыть в Finder",
+    "failedToCopyFilePath": "Не удалось скопировать путь к файлу"
   },
   "confirmation": {
     "delete": "Вы уверены, что хотите удалить это?",
-    "removeTitle": "Удалить \"{{name}}\" из ORGII?",
-    "removeMessage": "Это только удалит связь с ORGII. Ничего не будет удалено с диска.",
+    "removeTitle": "Удалить \"{{name}}\" из ORG2?",
+    "removeMessage": "Это только удалит связь с ORG2. Ничего не будет удалено с диска.",
     "deleteWorkspaceTitle": "Удалить Workspace \"{{name}}\"?",
     "deleteWorkspaceMessage": "Удаляется только пресет Workspace. На входящие в него Repo и папки это не влияет.",
-    "deleteSelectedTitle": "Удалить {{count}} выбранных элементов из ORGII?",
-    "deleteSelectedMessage": "Это только удалит их связь с ORGII. Ничего не будет удалено с диска.",
+    "deleteSelectedTitle": "Удалить {{count}} выбранных элементов из ORG2?",
+    "deleteSelectedMessage": "Это только удалит их связь с ORG2. Ничего не будет удалено с диска.",
     "dropStashTitle": "Drop stash?",
     "dropStashMessage": "{{stashRef}} будет удалён навсегда. Это действие нельзя отменить.",
     "popAllStashesTitle": "Pop all stashes?",
@@ -743,9 +749,8 @@
     "previousMatch": "Предыдущее совпадение (Shift+Enter)",
     "nextMatch": "Следующее совпадение (Enter)",
     "clearSearch": "Очистить поиск",
-    "openInEditorTab": "Открыть во вкладке редактора",
     "openFile": "Открыть файл",
-    "openNativeDevTools": "Открыть нативные DevTools браузера",
+    "openNativeDevTools": "Открыть DevTools",
     "captureScreenshot": "Скриншот",
     "enableInspectMode": "Исследовать элемент",
     "disableInspectMode": "Выйти из инспектора (Esc)",
@@ -761,7 +766,6 @@
     "closePanel": "Закрыть панель",
     "showSidebar": "Показать боковую панель",
     "hideSidebar": "Скрыть боковую панель",
-    "moreOptions": "Больше опций",
     "zoomIn": "Увеличить",
     "zoomOut": "Уменьшить",
     "goBack": "Назад",
@@ -774,9 +778,6 @@
     "replace": "Заменить (Ctrl+Shift+1)",
     "replaceAll": "Заменить всё (Ctrl+Alt+Enter)",
     "moreActions": "Дополнительные действия...",
-    "formatSql": "Форматировать SQL",
-    "queryHistory": "История запросов",
-    "executeQuery": "Выполнить запрос ({{shortcut}})",
     "startVoiceInput": "Начать голосовой ввод",
     "cancelRecording": "Отменить запись",
     "stopAndTranscribe": "Остановить и транскрибировать",
@@ -787,11 +788,9 @@
     "movePanelToRight": "Переместить панель вправо",
     "movePanelToBottom": "Переместить панель вниз",
     "domTree": "DOM дерево",
-    "closeSession": "Закрыть Session",
     "clearNetworkLogs": "Очистить сетевые журналы",
     "clearConsole": "Очистить консоль",
     "copyToClipboard": "Копировать в буфер обмена",
-    "openDiff": "Открыть Diff",
     "popAllStashes": "Pop All Stashes (применить и удалить)",
     "applyStash": "Apply Stash (применить и сохранить stash)",
     "popStash": "Pop Stash (применить и удалить)",
@@ -799,7 +798,16 @@
     "scrollToItem": "Прокрутить к {{name}}",
     "containsStatusFiles": "Содержит файлы со статусом {{status}}",
     "showFileList": "Показать список файлов",
-    "copyValueRightClickForPath": "Нажмите, чтобы скопировать значение, правый клик — путь"
+    "copyValueRightClickForPath": "Нажмите, чтобы скопировать значение, правый клик — путь",
+    "previousMatchLabel": "Предыдущее совпадение",
+    "nextMatchLabel": "Следующее совпадение",
+    "matchCaseLabel": "Учитывать регистр",
+    "matchWholeWordLabel": "Слово целиком",
+    "useRegexLabel": "Использовать регулярное выражение",
+    "replaceLabel": "Заменить",
+    "replaceAllLabel": "Заменить всё",
+    "expandInput": "Развернуть поле ввода",
+    "collapseInput": "Свернуть поле ввода"
   },
   "placeholders": {
     "enterFileName": "Введите имя файла",
@@ -839,7 +847,6 @@
     "pleaseTryAgain": "Пожалуйста, попробуйте снова",
     "noFileOpen": "Откройте файл для начала редактирования",
     "selectFileToEdit": "Выберите файл в проводнике",
-    "noTabs": "Откройте вкладку, чтобы начать",
     "noTabsOpen": "Откройте элемент, чтобы начать",
     "selectItemToStart": "Выберите элемент на боковой панели",
     "noDatabaseConnected": "Нет подключённой базы данных",
@@ -851,7 +858,7 @@
     "chatHistoryReloadHint": "Данные сессии могли не загрузиться",
     "chatHistoryAgentWorking": "Agent выполняется",
     "chatHistoryAgentWorkingHint": "Сообщения появятся с первым ответом; до этого панель может выглядеть неактивной",
-    "pleaseSelect": "Пожалуйста, выберите",
+    "pleaseSelect": "Выбрать",
     "noSessionsFound": "Session не найдены",
     "typeToSearchFiles": "Введите для поиска файлов...",
     "selectFileToViewChanges": "Выберите файл для просмотра изменений",
@@ -916,9 +923,13 @@
     "selectRepositoryFromWorkspace": "Выберите репозиторий из рабочего пространства",
     "noData": "Нет данных",
     "noResults": "Нет результатов",
-    "noSessionHistoryForFile": "Активность сессий для {{file}} не найдена",
     "noSessionHistory": "Нет истории сессий",
-    "selectSidebarFileToViewChanges": "Выберите файл на боковой панели"
+    "selectSidebarFileToViewChanges": "Выберите один файл",
+    "selectSidebarStash": "Выберите один stash",
+    "selectSidebarCommit": "Выберите один commit",
+    "selectSidebarPullRequest": "Выберите один pull request",
+    "selectSidebarIssue": "Выберите один issue",
+    "pressEnterToSearch": "Нажмите Enter для поиска"
   },
   "inbox": {
     "scrollToBottom": "Вниз",
@@ -945,7 +956,6 @@
     "notGitInitialized": "Git не инициализирован",
     "notGitInitializedTooltip": "В этом рабочем каталоге пока нет каталога .git.",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "scanningFiles": "Scanning files...",
     "branchTooltipSwitching": "Ветка: {{branch}} (переключение…)",
     "switchWorkspaceTooltip": "Сменить рабочий каталог",
     "switchWorktreeTooltip": "Сменить worktree",
@@ -956,12 +966,6 @@
     "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Действия Git",
     "switchToSessionRepo": "Переключиться на {{name}}",
-    "embeddingProgress": "Embedding: обработано чанков — {{count}}",
-    "embeddingProgressWithPercent": "Embedding: обработано чанков — {{count}} ({{percent}}%)",
-    "embeddingShort": "Embedding {{percent}}%",
-    "embeddingLabel": "Embedding",
-    "indexingProgress": "Индексация: {{processed}}/{{total}} файлов ({{percent}}%)",
-    "indexingProgressWithFile": "Индексация: {{processed}}/{{total}} файлов ({{percent}}%)\nТекущий: {{file}}",
     "ports": {
       "workspaceSection": "Текущее рабочее пространство",
       "externalSection": "Внешние",
@@ -1009,13 +1013,11 @@
       "enterUrlToStart": "Введите URL, чтобы начать",
       "privateBrowsingEmptyTitle": "Приватный просмотр: Введите URL, чтобы начать",
       "simulatorBrowserNotice": "Этот браузер только для воспроизведения сессии. Для постоянного просмотра используйте браузер в главном приложении (Инструменты → Браузер).",
-      "tlsDevNote": "Примечание: на некоторых HTTPS-сайтах (например GitHub) в режиме разработки возможны ошибки TLS из‑за проверки сертификата. Попробуйте HTTP или простые HTTPS-сайты вроде example.com.",
       "siteUnreachableTitle": "Не удаётся открыть сайт",
       "webviewHiddenTitle": "Веб-представление временно скрыто",
       "webviewHiddenBody": "Закройте меню или диалог, чтобы снова его показать.",
-      "embeddedFallbackTitle": "Этот сайт может не работать во встроенном браузере",
-      "embeddedFallbackBody": "Некоторые сайты блокируют или не отображают содержимое внутри WebView приложения. Если страница остаётся пустой, откройте её в системном браузере.",
-      "currentUrl": "Текущий URL"
+      "loadStalledTitle": "Страница не загрузилась до конца",
+      "copyUrl": "Копировать URL"
     },
     "unsavedChangesTitle": "Unsaved Changes",
     "ci": {
@@ -1033,7 +1035,10 @@
       }
     },
     "switchToUnifiedDiff": "Переключить на единый diff",
-    "switchToSplitDiff": "Переключить на разделённый diff"
+    "switchToSplitDiff": "Переключить на разделённый diff",
+    "switchToGraphView": "Переключить на граф",
+    "fileChangedOnDiskTitle": "Файл изменён на диске",
+    "fileChangedOnDiskBody": "Файл «{{name}}» изменился на диске после открытия. Перезаписать его вашей версией?"
   },
   "git": {
     "loading": "Загрузка статуса Git...",
@@ -1060,7 +1065,7 @@
       "createTokenButton": "Создать token",
       "openGitSettingsButton": "Открыть настройки",
       "configureInSettings": "Настройте Git в настройках",
-      "configureInSettingsDesc": "Добавьте доступ GitHub App, сохраните token или просканируйте локальные учетные данные в Настройки → Подключения, затем повторите эту операцию Git."
+      "configureInSettingsDesc": "Добавьте доступ GitHub App, сохраните token или просканируйте локальные учетные данные в Настройки → Подключения, затем повторите эту операцию Git"
     },
     "actions": {
       "publish": "Publish",
@@ -1098,7 +1103,12 @@
       "returnFromMiniTerminal": "Показать здесь",
       "resizeTerminal": "Изменить размер терминала",
       "terminalProcessCount_one": "{{count}} процесс",
-      "terminalProcessCount_other": "{{count}} процесса"
+      "terminalProcessCount_other": "{{count}} процесса",
+      "sources": "Источники",
+      "sourcesCount_one": "Источники: {{count}}",
+      "sourcesCount_other": "Источники: {{count}}",
+      "loadMoreSources": "Показать ещё (+{{count}})",
+      "sourceImage": "Изображение"
     },
     "pr": {
       "title": "Pull request",
@@ -1299,11 +1309,98 @@
       "cannotParseRepoName": "Не удалось определить имя репозитория из remote origin",
       "authRequired": {
         "title": "Подключить GitHub",
-        "description": "Перейдите в Настройки → Подключения, чтобы подключить учётную запись GitHub."
+        "description": "Перейдите в Настройки → Подключения, чтобы подключить учётную запись GitHub"
       },
       "navigationTrail": "Навигация по pull request",
       "failedToLoad": "Не удалось загрузить pull requests",
-      "label": "Pull request"
+      "label": "Pull request",
+      "mergeBox": {
+        "checksFailed": "Некоторые проверки не пройдены",
+        "checksPending": "Некоторые проверки ещё не завершены",
+        "checksPassed": "Все проверки пройдены",
+        "checksSkipped": "Все проверки пропущены",
+        "counts": {
+          "failing": "{{count}} не пройдено",
+          "inProgress": "{{count}} выполняется",
+          "skipped": "{{count}} пропущено",
+          "successful": "{{count}} успешно",
+          "summary_one": "Проверки: {{parts}}",
+          "summary_other": "Проверки: {{parts}}"
+        },
+        "check": {
+          "queued": "В очереди",
+          "started": "Запущено {{time}}",
+          "successfulIn": "Успешно за {{duration}}",
+          "failingAfter": "Не пройдено через {{duration}}",
+          "skipped": "Пропущено",
+          "successful": "Успешно",
+          "failing": "Не пройдено"
+        },
+        "deployments": {
+          "label": "Развёртывания",
+          "none": "Нет развёртываний",
+          "active_one": "{{count}} активное развёртывание",
+          "active_other": "Активных развёртываний: {{count}}",
+          "view": "Открыть развёртывание",
+          "notDeployed": "Эта ветка не развёрнута",
+          "deployed": "Эта ветка успешно развёрнута",
+          "deploying": "Эта ветка развёртывается",
+          "deployFailed": "При развёртывании этой ветки произошла ошибка",
+          "deployInactive": "Эта ветка больше не развёрнута",
+          "state": {
+            "active": "Активно",
+            "pending": "Выполняется",
+            "failure": "Ошибка",
+            "inactive": "Неактивно"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Изменения одобрены",
+            "detail": "Отправлено одобряющее ревью"
+          },
+          "reviewRequired": {
+            "title": "Требуется ревью",
+            "detail": "Для слияния требуется хотя бы одно одобряющее ревью"
+          },
+          "reviewChangesRequested": {
+            "title": "Запрошены изменения",
+            "detail": "Ревьюер запросил изменения перед слиянием"
+          },
+          "noConflicts": {
+            "title": "Нет конфликтов с базовой веткой",
+            "detail": "Слияние можно выполнить автоматически"
+          },
+          "hasConflicts": {
+            "title": "В этой ветке есть конфликты, которые нужно разрешить",
+            "detail": "Разрешите конфликты в исходной ветке и отправьте изменения"
+          },
+          "outOfDate": {
+            "title": "Эта ветка отстаёт от базовой ветки",
+            "detail": "Выполните слияние последних изменений базовой ветки в эту ветку"
+          },
+          "checkingConflicts": {
+            "title": "Проверка возможности автоматического слияния…",
+            "detail": "Подождите, пока GitHub проверяет состояние ветки"
+          },
+          "autoMergeEnabled": {
+            "title": "Автоматическое слияние включено",
+            "detail": "Этот пул-реквест будет объединён, когда будут выполнены все требования"
+          },
+          "inMergeQueue": {
+            "title": "Ожидает в очереди слияния",
+            "detail": "GitHub выполнит слияние, когда он окажется в начале очереди"
+          }
+        },
+        "merged": {
+          "title": "Пул-реквест успешно объединён и закрыт",
+          "detail": "Исходную ветку можно безопасно удалить"
+        },
+        "closed": {
+          "title": "Закрыт с необъединёнными коммитами",
+          "detail": "Этот пул-реквест закрыт. Откройте его снова, чтобы выполнить слияние"
+        }
+      }
     },
     "messages": {
       "pushSuccess": "Push выполнен успешно",
@@ -1469,15 +1566,112 @@
       "newIssueBodyPlaceholder": "Опишите issue (необязательно)…",
       "authRequired": {
         "title": "Подключить GitHub",
-        "description": "Перейдите в Настройки → Подключения, чтобы подключить учётную запись GitHub."
+        "description": "Перейдите в Настройки → Подключения, чтобы подключить учётную запись GitHub"
       },
       "reAuthRequired": "Требуется авторизация GitHub",
-      "reAuthDescription": "Срок действия вашего token GitHub истёк. Перейдите в Настройки → Подключения, чтобы переподключиться.",
+      "reAuthDescription": "Срок действия вашего token GitHub истёк. Перейдите в Настройки → Подключения, чтобы переподключиться",
       "goToSettings": "Перейти в настройки",
       "loadingTimeline": "Загрузка активности…",
       "label": "Issue",
       "linkedLoading": "Загрузка связанных элементов",
       "detailNavigation": "Навигация по issue"
+    },
+    "branchSwitch": {
+      "title": "Переключить ветку",
+      "conflictsTitle": "Изменения требуют внимания",
+      "blockedTitle": "Переключение ветки требует внимания",
+      "working": "Сохранение и переключение…",
+      "current": "Текущая ветка: {{branch}}",
+      "changedFiles": "Изменённых файлов: {{count}}",
+      "question": "Что вы хотите сделать с изменениями?",
+      "leave": "Оставить изменения в {{branch}}",
+      "leaveDescription": "Сохраните работу на потом и переключитесь с чистым рабочим деревом",
+      "bring": "Перенести изменения в {{branch}}",
+      "bringDescription": "Перенесите незакоммиченные изменения в целевую ветку",
+      "worktreeTitle": "Ветка открыта в другом рабочем дереве",
+      "openWorktree": "Открыть рабочее дерево",
+      "activeTask": "В этом рабочем дереве выполняется задача",
+      "activeTaskDescription": "Переключение сейчас изменит файлы, с которыми работает агент",
+      "switchAnyway": "Всё равно переключить",
+      "switchedTo": "Переключено на {{branch}}",
+      "saveTitle": "Сохранить файлы перед переключением",
+      "saveDescription": "В открытых файлах есть несохранённые правки. Сохраните их, прежде чем выбрать, где оставить изменения",
+      "saveContinue": "Сохранить всё и продолжить",
+      "saveFailed": "Не удалось сохранить все файлы",
+      "multipleBuffers": "Этот файл изменён в нескольких редакторах. Сохраните или закройте эти редакторы перед переключением",
+      "editedWhileSaving": "Файлы были изменены во время сохранения. Проверьте последние изменения и повторите попытку",
+      "savePreview": "Сохраните или отмените правки в редакторе таблиц перед переключением ветки",
+      "messages": {
+        "detached_head": "Создайте ветку из текущего коммита перед переключением, чтобы отсоединённая работа осталась доступной",
+        "unborn": "Создайте первый коммит перед использованием сохранённых изменений ветки",
+        "ignored_collision": "Игнорируемый файл будет перезаписан. Переместите его перед переключением",
+        "worktree_branch_in_use": "Эта ветка уже открыта в другом рабочем дереве",
+        "invalid_branch_name": "Выберите допустимое имя ветки",
+        "branch_exists": "Такая ветка уже существует",
+        "branch_not_found": "Ветка не найдена или неоднозначна. Обновите ветки и выберите явную удалённую ветку",
+        "upstream_mismatch": "Локальная ветка с этим именем отслеживает другой upstream. Выберите локальную ветку явно",
+        "operation_merge": "Завершите или прервите слияние перед переключением ветки",
+        "operation_rebase": "Завершите или прервите rebase перед переключением ветки",
+        "operation_cherry_pick": "Завершите или прервите cherry-pick перед переключением ветки",
+        "operation_revert": "Завершите или прервите revert перед переключением ветки",
+        "operation_other": "Завершите текущую операцию Git перед переключением ветки",
+        "stale": "Файлы или ветки изменились, пока диалог был открыт. Просмотрите последние изменения и повторите попытку",
+        "save_failed": "Не удалось завершить сохранение изменений: {{detail}}. Просмотрите рабочее дерево и сохранённые изменения перед повторной попыткой",
+        "changed_while_saving": "Файлы изменились во время сохранения. Checkout не выполнялся; ваш снимок доступен",
+        "checkout_failed_restored": "Checkout не удался; ваши изменения восстановлены: {{detail}}",
+        "checkout_failed_saved": "Checkout не удался. Ваши изменения сохранены: {{detail}}",
+        "worktree_changed": "Рабочее дерево изменилось во время checkout. Ваши исходные изменения сохранены; просмотрите текущие файлы перед восстановлением",
+        "restore_conflicts": "Переключено на {{branch}}. Некоторые изменения не удалось восстановить: {{detail}}. Ваши исходные изменения сохранены",
+        "saved_on_previous": "Изменения сохранены в предыдущей ветке",
+        "brought": "Ваши изменения перешли вместе с вами в эту ветку",
+        "worktree_missing": "Рабочее дерево больше не существует. Обновите и повторите попытку"
+      }
+    },
+    "dialogs": {
+      "detachedHead": {
+        "title": "Состояние detached HEAD",
+        "body": "Вы находитесь в состоянии detached HEAD на коммите {{shortHash}}.\n\nВы не находитесь ни на одной ветке. Создаваемые коммиты могут быть потеряны, если вы выполните checkout другой ветки, не создав сначала новую ветку.\n\n⚠️ Коммиты в состоянии detached HEAD могут быть удалены сборщиком мусора.",
+        "createBranch": "Создать ветку",
+        "continueWithoutBranch": "Продолжить без ветки"
+      },
+      "largePush": {
+        "title": "Обнаружен большой push",
+        "body": "Вы собираетесь выполнить push {{commitCount}} коммитов в {{remote}}/{{branch}}.\n\nЭто больше, чем обычно. Вы уверены, что хотите продолжить?\n\n💡 Попробуйте разбить большие изменения на более мелкие и сфокусированные коммиты.",
+        "confirm": "Push всех коммитов"
+      },
+      "protectedBranch": {
+        "title": "Защищённая ветка",
+        "body": "Ветка \"{{branch}}\" в {{remote}} защищена, и push в неё напрямую невозможен.\n\nВ защищённых ветках изменения должны проходить через pull request.",
+        "createPr": "Создать pull request"
+      },
+      "pullConflict": {
+        "title": "Pull невозможен при локальных изменениях",
+        "body": "Ваши локальные изменения будут перезаписаны входящими изменениями из \"{{branch}}\".{{fileInfo}}\n\nВыберите, как продолжить:",
+        "fileInfo_one": " (затронут {{count}} файл)",
+        "fileInfo_other": " (затронуто файлов: {{count}})",
+        "stashAndPull": "Stash и Pull",
+        "discardAndPull": "Отбросить и Pull"
+      },
+      "pushRejected": {
+        "title": "Push отклонён",
+        "body": "Не удаётся выполнить push в {{remote}}/{{branch}}.\n\nУдалённая ветка содержит коммиты, которых нет локально.{{behindInfo}}\n\n⚠️ Force push безвозвратно перезапишет изменения в удалённом репозитории.",
+        "behindInfo_one": " (позади на {{count}} коммит)",
+        "behindInfo_other": " (позади коммитов: {{count}})",
+        "pullAndPush": "Pull и Push",
+        "forcePush": "Force Push"
+      },
+      "conflict": {
+        "titleMerge": "Конфликт merge",
+        "titleRebase": "Конфликт rebase",
+        "bodyMerge": "При merge ветки \"{{branch}}\" возникли конфликты.{{progress}}{{files}}\n\n⚠️ Прерывание отменит merge и восстановит вашу ветку.",
+        "bodyRebase": "При rebase на \"{{branch}}\" возникли конфликты.{{progress}}{{files}}\n\n⚠️ Прерывание восстановит вашу ветку в состояние до rebase.",
+        "progress": " (Шаг {{current}} из {{total}})",
+        "files_one": "\n\nКонфликты в {{count}} файле.",
+        "files_other": "\n\nКонфликты в файлах: {{count}}.",
+        "resolve": "Решить конфликты",
+        "abortMerge": "Прервать merge",
+        "abortRebase": "Прервать rebase"
+      }
     }
   },
   "selectors": {
@@ -1493,11 +1687,20 @@
       "noResults": "Нет подходящих моделей",
       "chooseModel": "Выберите модель",
       "chooseKey": "Выберите ключ",
-      "noCompatibleAccounts": "Нет совместимых ключей",
       "chooseModelHint": "Используйте клавиатуру для навигации или щелкните модель мышью",
       "chooseKeyHint": "Используйте клавиатуру для навигации или щелкните ключ мышью",
       "noModelsForKey": "Для этого ключа нет включённых моделей",
-      "selectAccount": "Выберите аккаунт"
+      "noCompatibleKeys": "Нет совместимых ключей",
+      "selectKey": "Выберите ключ",
+      "sourceScope": {
+        "label": "Источники моделей",
+        "keys": "Мои ключи"
+      },
+      "marketEmpty": {
+        "title": "Пакетов ORG2 Market пока нет",
+        "subtitle": "Купите его на {{host}}, чтобы использовать модели без собственного API-ключа.",
+        "action": "Открыть ORG2 Market"
+      }
     },
     "modelProperties": {
       "effort": "Усилие",
@@ -1532,7 +1735,6 @@
         "createWorkspace": "Создать новый рабочий каталог"
       },
       "sources": {
-        "cloningFromGitHub": "клонирование из GitHub",
         "cloningFromGitHubUrl": "клонирование по URL GitHub",
         "cloningFromMyGitHub": "клонирование из моего GitHub",
         "creatingWorkspace": "создание нового рабочего каталога",
@@ -1593,7 +1795,6 @@
         "createFrom": "Создать Branch из",
         "deleteBranch": "Удалить ветку",
         "refresh": "Обновить ветку",
-        "checkoutDetachedSuccess": "В состоянии detached HEAD на текущем коммите",
         "removeWorktree": "Удалить Worktree",
         "newWorktree": "Новый worktree...",
         "refreshPullRequests": "Обновить Pull requests"
@@ -1601,7 +1802,12 @@
       "messages": {
         "deletedCount_one": "Удалена {{count}} ветка",
         "deletedCount_other": "Удалено веток: {{count}}",
-        "failedDeleteList": "Не удалось удалить: {{branches}}"
+        "failedDeleteList": "Не удалось удалить: {{branches}}",
+        "failedDelete": "Не удалось удалить ветку «{{branch}}»",
+        "prNoHeadBranch": "У pull request нет head-ветки",
+        "readBranchesFailed": "Не удалось прочитать локальные ветки",
+        "createPrBranchFailed": "Не удалось создать ветку PR",
+        "readRemotesFailed": "Не удалось прочитать удалённые репозитории"
       },
       "labels": {
         "otherBranches": "Другие ветки",
@@ -1618,7 +1824,8 @@
         "prSearchScope": "Поиск среди {{count}} загруженных Pull requests",
         "prLimit": "Показано до {{count}} открытых PR",
         "noPullRequests": "Нет подходящих Pull requests",
-        "mainWorktree": "Основной"
+        "mainWorktree": "Основной",
+        "defaultBranches": "Основные ветки"
       },
       "placeholders": {
         "add": "имя новой ветки...",
@@ -1660,11 +1867,13 @@
       "showBranchInfo": "Показывать информацию о ветках",
       "compatibleKeys": "Совместимые",
       "planSupport": "Plan",
-      "byokSupport": "Keys",
+      "byokSupport": "Ключи",
       "incompatible": "Несовместимые",
       "manageModels": "Управление моделями",
       "manageKeys": "Управление ключами",
-      "manageAgents": "Управление Agents"
+      "manageAgents": "Управление Agents",
+      "settings": "Настройки Spotlight",
+      "unpinAll": "Открепить все"
     },
     "editorSpotlight": {
       "searchPlaceholder": "Поиск команд...",
@@ -1734,11 +1943,6 @@
         "integrations": "Agent и интеграции",
         "market": "Маркет",
         "actions": "Действия"
-      },
-      "paramLabels": {
-        "repo": "Репозиторий",
-        "folder": "Папка",
-        "branch": "Ветка"
       },
       "actions": {
         "showInFinder": {
@@ -1827,11 +2031,11 @@
         }
       },
       "toast": {
-        "repoRemoved": "Linkage to ORGII removed",
-        "repoRemoveFailed": "Failed to remove linkage to ORGII",
-        "workspaceRemoved": "Linkage to ORGII removed",
-        "workspaceRemoveFailed": "Failed to remove linkage to ORGII",
-        "bulkDeleted": "{{count}} linkages to ORGII removed",
+        "repoRemoved": "Связь с ORG2 удалена",
+        "repoRemoveFailed": "Не удалось удалить связь с ORG2",
+        "workspaceRemoved": "Связь с ORG2 удалена",
+        "workspaceRemoveFailed": "Не удалось удалить связь с ORG2",
+        "bulkDeleted": "Удалено связей с ORG2: {{count}}",
         "bulkDeleteFailed": "{{count}} linkages failed to remove"
       }
     }
@@ -1843,7 +2047,7 @@
     "chatRight": "Чат справа",
     "sidebarPosition": "Боковая панель Workstation",
     "modelPickerStyle": "Селектор",
-    "paginateChatHistory": "Разбивать историю чата на страницы",
+    "paginateChatHistory": "Постраничная история чата",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "Меню",
     "left": "Слева",
@@ -1868,7 +2072,9 @@
     "ramHydratedEvents": "Hydrated события",
     "ramTurnBodies": "Lazy-загрузки истории",
     "ramFileTrees": "Деревья файлов",
-    "ramCodeMirrors": "File rendering"
+    "ramCodeMirrors": "File rendering",
+    "chatSplitRatio": "Доля панели чата",
+    "chatSplitRatioHint": "Применяется сразу после выбора; перетаскивание разделителя после этого всё равно имеет приоритет."
   },
   "spotlightActions": {
     "enableChatPagination": "Включить пагинацию чата",
@@ -1886,7 +2092,9 @@
     "searchThemes": "Поиск тем...",
     "searchSkins": "Поиск вариантов оформления...",
     "detectUpdate": "Проверить обновления",
-    "recentlyUsed": "Недавно использованные"
+    "recentlyUsed": "Недавно использованные",
+    "openMyStationInNewWindow": "Открыть My Station в новом окне",
+    "openAgentStationInNewWindow": "Открыть Agent Station в новом окне"
   },
   "commands": {
     "showBottomPanel": "Показать нижнюю панель",
@@ -1895,7 +2103,8 @@
     "hidePrimarySidebar": "Скрыть боковую панель",
     "searchFiles": "Поиск файлов",
     "switchWorkspace": "Сменить / добавить рабочий каталог",
-    "newTab": "Новая вкладка"
+    "newTab": "Новая вкладка",
+    "searchSessions": "Поиск сессий"
   },
   "gitDashboard": {
     "author": "Автор",
@@ -1929,13 +2138,27 @@
       "viewPullRequests": "Просмотреть Pull Requests"
     },
     "pill": {
-      "focus": "Фокус",
-      "allChanges": "Все изменения"
+      "focus": "Один",
+      "allChanges": "Все"
     },
     "scope": {
       "main": "Основной checkout",
       "worktrees": "Worktree",
       "switchScopeActive": "Сменить область Source Control: {{repo}}, {{branch}}"
+    },
+    "fileMenu": {
+      "viewChanges": "Показать изменения",
+      "openFileInNewTab": "Открыть файл в новой вкладке",
+      "stageChanges": "Индексировать изменения",
+      "unstageChanges": "Убрать изменения из индекса",
+      "discardChanges": "Отменить изменения",
+      "markResolved": "Отметить как решённое (индексировать)",
+      "acceptCurrent": "Принять текущие изменения (наши)",
+      "acceptIncoming": "Принять входящие изменения (их)",
+      "stageChangesCount": "Индексировать изменения ({{count}})",
+      "unstageChangesCount": "Убрать изменения из индекса ({{count}})",
+      "discardChangesCount": "Отменить изменения ({{count}})",
+      "markResolvedCount": "Отметить как решённое ({{count}})"
     }
   },
   "contextInfo": {
@@ -2076,20 +2299,34 @@
   "selectionMenu": {
     "addToChat": "Добавить в чат",
     "addThisFile": "Добавить этот файл",
-    "addLines": "Добавить строки {{from}} – {{to}}"
+    "addLines": "Добавить строки {{from}} – {{to}}",
+    "replyToSelection": "Ответить",
+    "clearQuotedSelection": "Убрать цитату",
+    "pinSelection": "Закрепить"
   },
   "browser": {
     "screenshot": {
       "added": "Снимок прикреплён к чату",
       "failed": "Не удалось сделать снимок: {{reason}}",
-      "noActivePage": "Нет активной страницы для снимка"
+      "noActivePage": "Нет активной страницы для снимка",
+      "saved": "Снимок сохранён",
+      "saveFailed": "Не удалось сохранить снимок: {{reason}}"
     },
     "selectedElement": {
       "addElement": "Добавить элемент",
       "sentToChat": "Элемент прикреплён к чату"
     },
-    "openedInBrowser": "Открыто в браузере",
-    "goToBrowser": "Перейти к браузеру"
+    "menu": {
+      "pageTheme": "Тема страницы",
+      "themeAuto": "Авто",
+      "themeLight": "Светлая",
+      "themeDark": "Тёмная",
+      "saveScreenshot": "Сохранить снимок...",
+      "openHtmlFile": "Открыть HTML-файл..."
+    },
+    "openHtmlFile": {
+      "failed": "Не удалось открыть файл: {{reason}}"
+    }
   },
   "controlTower": {
     "sidebar": {
@@ -2101,8 +2338,8 @@
   },
   "globalToolbar": {},
   "quitConfirmation": {
-    "title": "Выйти из ORG-2?",
-    "subtitle": "Запущенные сеансы сохранят текущее состояние. Вы сможете открыть ORG-2 позже.",
+    "title": "Выйти из ORG2?",
+    "subtitle": "Запущенные сеансы сохранят текущее состояние. Вы сможете открыть ORG2 позже",
     "cancel": "Отмена",
     "confirm": "Выйти"
   },
@@ -2132,7 +2369,7 @@
   "browserCookieImport": {
     "safari": {
       "needsFullDiskAccess": "Needs Full Disk Access",
-      "explain": "Safari keeps its cookies in a folder macOS protects. Allow ORG2 under Full Disk Access in System Settings, then check again.",
+      "explain": "{{browser}} хранит файлы cookie в папке, защищённой macOS. Разрешите ORG2 полный доступ к диску в системных настройках и повторите проверку",
       "openSettings": "Open System Settings",
       "checkAgain": "Check again"
     },
@@ -2157,7 +2394,7 @@
     "doneSkipped_other": "{{count}} cookies were skipped",
     "empty": {
       "title": "No supported browsers found",
-      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from"
     },
     "category": {
       "banking": "Bank",
@@ -2166,7 +2403,7 @@
     },
     "errors": {
       "openSettingsFailed": "Couldn't open System Settings",
-      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow",
       "listFailed": "Couldn't find browsers to import from",
       "previewFailed": "Couldn't read cookies from that browser",
       "importFailed": "Couldn't import the selected cookies"
@@ -2180,7 +2417,8 @@
     "taskCompletedBody": "«{{name}}» завершена — готово к проверке",
     "openSessionAction": "Открыть сессию",
     "taskFailedTitle": "Задача не выполнена",
-    "taskFailedBody": "«{{name}}» не выполнена{{detail}}"
+    "taskFailedBody": "«{{name}}» не выполнена{{detail}}",
+    "taskFailedPrivateBody": "Задача завершилась с ошибкой. Откройте ORG2 для подробностей."
   },
   "documentOpen": {
     "openInDefault": "Открыть в {{name}}",
@@ -2194,22 +2432,6 @@
     "openFailed": "Не удалось открыть документ",
     "saveFirst": "Сохраните или отмените изменения, прежде чем открывать в другом приложении"
   },
-  "sqlEditor": {
-    "placeholder": "Введите SQL-запрос...",
-    "format": "Форматировать",
-    "runQueryToSeeResults": "Выполните запрос, чтобы увидеть результаты",
-    "executingQuery": "Выполнение запроса...",
-    "queryFailed": "Запрос не выполнен",
-    "queryCompleted": "Запрос выполнен",
-    "noResults": "Запрос не вернул результатов",
-    "rowCount_one": "{{count}} строка",
-    "rowCount_other": "{{count}} строк",
-    "press": "Нажмите",
-    "toRun": "для запуска",
-    "nullValue": "NULL",
-    "booleanTrue": "true",
-    "booleanFalse": "false"
-  },
   "chatImage": {
     "maxReached": "Максимум {{max}} изображений",
     "remainingWarning": "Можно добавить ещё только {{remaining}} изображений (максимум {{max}})",
@@ -2220,5 +2442,42 @@
     "goToSection": "Перейти к {{label}}, раздел {{current}} из {{total}}",
     "section": "Раздел {{current}}",
     "sectionPosition": "Раздел {{current}} из {{total}}"
+  },
+  "gitLabels": {
+    "contains": "Содержит файлы: {{status}}",
+    "staged": "{{status}} (в индексе)",
+    "additions": "Добавленные строки",
+    "deletions": "Удалённые строки",
+    "M": "Изменён",
+    "U": "Не отслеживается",
+    "A": "Добавлен",
+    "D": "Удалён",
+    "R": "Переименован",
+    "C": "Конфликт",
+    "I": "Игнорируется",
+    "?": "Неизвестный статус"
+  },
+  "findScope": {
+    "session": "Поиск в сеансе",
+    "file": "Поиск в файле",
+    "named": "Поиск в {{name}}"
+  },
+  "sidebarSettings": {
+    "title": "Боковая панель",
+    "showSidebar": "Показывать боковую панель",
+    "colorSourceControlFiles": "Цвета различий для файлов"
+  },
+  "appMessages": {
+    "testNotificationBody": "Это тестовое уведомление от ORG2",
+    "workspaceFile": "Рабочая область ORG2",
+    "sessionJsonFile": "Сессия ORG2 в формате JSON",
+    "skillsSource": "Навыки ORG2",
+    "gitServiceUnavailable": "Не удалось подключиться к локальному сервису Git. Повторите попытку после запуска приложения или перезапустите ORG2, если проблема сохраняется."
+  },
+  "imageActions": {
+    "addToChat": "Добавить в чат",
+    "added": "Добавлено в чат",
+    "failed": "Не удалось выполнить действие с изображением",
+    "downloadCopy": "Скачать копию"
   }
 }

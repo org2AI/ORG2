@@ -5,7 +5,6 @@
  */
 import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
 import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
@@ -13,17 +12,10 @@ import Input from "@src/components/Input";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { Placeholder } from "@src/components/Placeholder";
 import Select from "@src/components/Select";
-import {
-  HEADER_BUTTON,
-  HEADER_ICON_SIZE,
-} from "@src/config/workstation/tokens";
+import { VirtualList } from "@src/components/VirtualList";
+import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { useKeyedCopyCheck } from "@src/hooks/ui/useCopyCheck";
-import {
-  BrushCleaningIcon,
-  Copy01Icon,
-  HugeiconsIcon,
-  Tick01Icon,
-} from "@src/icons";
+import { CleanIcon, Copy01Icon, HugeiconsIcon, Tick01Icon } from "@src/icons";
 import { copyText } from "@src/util/data/clipboard";
 
 import type { ConsoleEntry, FilterLevel, LogLevel } from "../../types";
@@ -181,23 +173,25 @@ function ConsoleLogEntryRow({
         </div>
 
         {truncated && (
-          <button
-            type="button"
-            className="mt-0.5 text-[10px] text-primary-6 underline decoration-primary-6/50 underline-offset-2 select-none hover:text-primary-5"
+          <Button
+            variant="ghost"
+            size="inline"
+            className="mt-0.5 text-[10px] select-none"
             onClick={(event) => {
               event.stopPropagation();
               onToggleMessage();
             }}
           >
             {messageExpanded ? t("showLess") : t("showMore")}
-          </button>
+          </Button>
         )}
 
         {entry.stack && (
           <div className="mt-1">
-            <button
-              type="button"
-              className="text-[10px] text-primary-6 underline decoration-primary-6/50 underline-offset-2 select-none hover:text-primary-5"
+            <Button
+              variant="ghost"
+              size="inline"
+              className="text-[10px] select-none"
               onClick={(event) => {
                 event.stopPropagation();
                 onToggleStack();
@@ -206,7 +200,7 @@ function ConsoleLogEntryRow({
               {stackExpanded
                 ? t("workstation.consoleHideStackTrace")
                 : t("workstation.consoleShowStackTrace")}
-            </button>
+            </Button>
             {stackExpanded && (
               <pre className="mt-1 w-full overflow-x-auto rounded bg-bg-3 px-3 py-1.5 text-[10px] leading-relaxed break-all whitespace-pre-wrap text-text-2 select-text">
                 {entry.stack}
@@ -393,18 +387,20 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = memo(
 
           {/* Clear button */}
           <ToolbarTooltip label={t("tooltips.clearConsole")}>
-            <button
-              type="button"
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={CleanIcon}
+                  data-icon="clean"
+                  size={HEADER_ICON_SIZE.sm}
+                />
+              }
               onClick={handleClear}
-              className={HEADER_BUTTON.actionTreeRow}
               aria-label={t("tooltips.clearConsole")}
-            >
-              <HugeiconsIcon
-                icon={BrushCleaningIcon}
-                data-icon="brush-cleaning"
-                size={HEADER_ICON_SIZE.sm}
-              />
-            </button>
+            />
           </ToolbarTooltip>
         </div>
 
@@ -418,11 +414,11 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = memo(
               fillParentHeight
             />
           ) : filteredEntries.length > CONSOLE_VIRTUALIZATION_THRESHOLD ? (
-            <Virtuoso
+            <VirtualList
               className="h-full overflow-x-hidden"
               data={filteredEntries}
               computeItemKey={(_index, entry) => entry.id}
-              increaseViewportBy={200}
+              overscanPx={200}
               itemContent={(_index, entry) => renderEntry(entry)}
             />
           ) : (

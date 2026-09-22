@@ -18,12 +18,18 @@ import {
   QueuedConversationRecoveryBlockedError,
   QueuedConversationRecoveryPendingError,
   QueuedConversationTurnClosedError,
+  QueuedConversationTurnFailedError,
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import { retryLineageEvent } from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { createLogger } from "@src/hooks/logger";
 
 import { conversationEventsForPush } from "../org2CloudConversationEventsClient";
 import { isRetryableCloudRequestError } from "../org2CloudFetchRetry";
+import {
+  type CloudConversationRetry,
+  persistCloudEmptyFailure,
+} from "./cloudConversationRetry";
 
 const log = createLogger("ConversationTurnRunner");
 
@@ -121,6 +127,7 @@ interface RunConversationTurnParams {
   target: LocalConversationTarget;
   turnIntentId: string;
   queueMessageId?: string;
+  retry?: CloudConversationRetry;
   recovery?: {
     runnerSessionId: string;
     eventStartIndex?: number;
@@ -210,7 +217,16 @@ export async function runConversationTurn(
     const continuationParams = {
       root,
       title: params.conversationTitle,
-      timeline: params.timeline,
+      timeline:
+        params.retry && params.retry.lineage.superseded.length > 0
+          ? [
+              ...params.timeline,
+              retryLineageEvent(
+                params.retry.message.sessionId,
+                params.retry.lineage
+              ),
+            ]
+          : params.timeline,
       displayText: params.displayText,
       agentContent: params.agentContent,
       imageDataUrls: params.imageDataUrls,
@@ -268,6 +284,12 @@ export async function runConversationTurn(
     });
   }
 
+  const emptyFailure =
+    result.terminalStatus === "failed" && result.agentTail.length === 0;
+  const retryableEmptyFailure =
+    emptyFailure && params.retry
+      ? await persistCloudEmptyFailure(params.retry, result.sessionId)
+      : false;
   const terminalTail =
     result.terminalStatus === "failed" && result.agentTail.length === 0
       ? [
@@ -290,6 +312,9 @@ export async function runConversationTurn(
     // owner until this idempotent publish succeeds. A retry reconnects to the
     // same native turn and re-reads its tail; it never runs the provider twice.
     await params.publishTail(turnIntentId, agentTail);
+  }
+  if (retryableEmptyFailure) {
+    throw new QueuedConversationTurnFailedError("Agent request failed");
   }
   log.info(
     `continued ${rootLabel} in ${result.sessionId}; ` +

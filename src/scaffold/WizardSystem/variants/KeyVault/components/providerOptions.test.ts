@@ -1,11 +1,12 @@
 import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
 
+import { testTranslate } from "@src/test/i18nTestTranslate";
+
 import type { UnifiedProvider, UnifiedProviderVariant } from "../config";
 import { resolveVariantLabel } from "./providerOptions";
 
-const translate = ((key: string, fallback: string) =>
-  fallback ?? key) as TFunction;
+const translate = testTranslate as TFunction;
 
 const provider = { label: "OpenAI" } as UnifiedProvider;
 

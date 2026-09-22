@@ -11,7 +11,7 @@
  * @example
  * <AskQuestionEvent event={event} />
  */
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getEventIcon } from "@src/config/toolIcons";
@@ -330,11 +330,27 @@ const QuestionHistoryBlock: React.FC<{
     handleHeaderMouseEnter,
     handleHeaderMouseLeave,
     handleLocate,
+    setIsCollapsed,
   } = useBlockHeader({
     defaultCollapsed,
     eventId: locateEventId,
     collapseAllValue: true,
   });
+
+  const previousStatusRef = useRef(status);
+  useEffect(() => {
+    // The pending history row is mounted open so the active interaction can
+    // paint its state. Once the answer arrives, close that same row so the
+    // completed interaction does not remain expanded in the chat timeline.
+    if (
+      !isSimulator &&
+      previousStatusRef.current !== "answered" &&
+      status === "answered"
+    ) {
+      setIsCollapsed(true);
+    }
+    previousStatusRef.current = status;
+  }, [isSimulator, status, setIsCollapsed]);
 
   // In simulator mode the header acts as a static status row — body is
   // always rendered so users never have to expand to see their own answer.

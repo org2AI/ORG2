@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { useMobileRemote } from "../app";
 import { parseMobileRemoteWsUrl } from "../connection/parseMobileRemoteWsUrl";
@@ -10,49 +10,52 @@ import {
   reduceMobileRemoteNav,
 } from "./mobileRemoteNavigation";
 
-type CoordinatorState = {
-  nav: ReturnType<typeof createInitialMobileRemoteNavState>;
-  stopConfirming: boolean;
-  stopFailed: boolean;
-};
-type CoordinatorAction =
-  | MobileRemoteNavAction
-  | { type: "stop_pending" }
-  | { type: "stop_failed" };
-function reduceCoordinator(
-  state: CoordinatorState,
-  action: CoordinatorAction
-): CoordinatorState {
-  if (action.type === "stop_pending")
-    return { ...state, stopConfirming: true, stopFailed: false };
-  if (action.type === "stop_failed")
-    return { ...state, stopConfirming: false, stopFailed: true };
-  return {
-    nav: reduceMobileRemoteNav(state.nav, action),
-    stopConfirming: action.type === "open_stop_modal" && state.stopConfirming,
-    stopFailed: false,
-  };
-}
-
 /** Route intent owner; connection execution remains in ConnectingLiveBridge. */
 export function useMobileRemoteCoordinator(
   recoveredPairingIntent: string | null
 ) {
-  const { connection, sessions, stopSession, disconnect } = useMobileRemote();
-  const [{ nav, stopConfirming, stopFailed }, reduce] = useReducer(
-    reduceCoordinator,
-    undefined,
-    () => ({
-      nav: createInitialMobileRemoteNavState(),
-      stopConfirming: false,
-      stopFailed: false,
-    })
+  const {
+    connection,
+    connectionConfig,
+    sessions,
+    stopSession,
+    disconnect,
+    retryConnection,
+  } = useMobileRemote();
+  const [connectionRecovering, setConnectionRecovering] = useState(false);
+  const [connectionRecoveryError, setConnectionRecoveryError] = useState<
+    "retry" | "repair" | null
+  >(null);
+  const recoveryAttemptRef = useRef<symbol | null>(null);
+  useEffect(
+    () => () => {
+      recoveryAttemptRef.current = null;
+    },
+    []
   );
+  const [storedNav, reduce] = useReducer(
+    reduceMobileRemoteNav,
+    undefined,
+    createInitialMobileRemoteNavState
+  );
+  // Project the restored route during render, before effects: no welcome-frame flash.
+  const nav =
+    storedNav.screen === "welcome" &&
+    !recoveredPairingIntent &&
+    !connection.demoMode &&
+    (connection.status === "connected" ||
+      (connectionConfig && !connectionConfig.pairingCode))
+      ? reduceMobileRemoteNav(storedNav, { type: "connecting_complete" })
+      : storedNav;
+  const [stopConfirming, setStopConfirming] = useState(false);
+  const [stopFailed, setStopFailed] = useState(false);
   const stopAttemptRef = useRef<symbol | null>(null);
   const dispatch = useCallback((action: MobileRemoteNavAction) => {
     // Navigation supersedes modal-local work, but does not cancel the remote command.
     if (action.type !== "open_stop_modal") {
       stopAttemptRef.current = null;
+      setStopConfirming(false);
+      setStopFailed(false);
     }
     reduce(action);
   }, []);
@@ -62,12 +65,20 @@ export function useMobileRemoteCoordinator(
     },
     []
   );
+  useEffect(() => {
+    stopAttemptRef.current = null;
+    setStopConfirming(false);
+    setStopFailed(false);
+  }, [
+    connection.desktopId,
+    connectionConfig?.desktopId,
+    connectionConfig?.wsUrl,
+    connectionConfig?.host,
+    connectionConfig?.port,
+  ]);
   const consumedPairingLinkRef = useRef<string | null>(null);
 
-  const showTabBar =
-    nav.screen === "sessions" &&
-    connection.status === "connected" &&
-    !nav.selectedSessionId;
+  const showTabBar = nav.screen === "sessions" && !nav.selectedSessionId;
   const selectedSessionName = nav.selectedSessionId
     ? resolveMobileSessionTitle(sessions, nav.selectedSessionId)
     : "";
@@ -78,13 +89,22 @@ export function useMobileRemoteCoordinator(
 
   useEffect(() => {
     if (
-      connection.status === "connected" &&
+      (connection.status === "connected" ||
+        (connectionConfig && !connectionConfig.pairingCode)) &&
       !connection.demoMode &&
-      nav.screen === "welcome"
+      !recoveredPairingIntent &&
+      storedNav.screen === "welcome"
     ) {
       dispatch({ type: "connecting_complete" });
     }
-  }, [connection.demoMode, connection.status, nav.screen, dispatch]);
+  }, [
+    connection.demoMode,
+    connection.status,
+    connectionConfig,
+    recoveredPairingIntent,
+    storedNav.screen,
+    dispatch,
+  ]);
 
   useEffect(() => {
     if (
@@ -119,24 +139,61 @@ export function useMobileRemoteCoordinator(
     if (!nav.selectedSessionId || stopAttemptRef.current) return;
     const attempt = Symbol("mobile-stop");
     stopAttemptRef.current = attempt;
-    reduce({ type: "stop_pending" });
+    setStopConfirming(true);
+    setStopFailed(false);
     try {
       await stopSession(nav.selectedSessionId);
       if (stopAttemptRef.current === attempt) {
         dispatch({ type: "close_stop_modal" });
       }
     } catch {
+      if (stopAttemptRef.current === attempt) setStopFailed(true);
+    } finally {
       if (stopAttemptRef.current === attempt) {
         stopAttemptRef.current = null;
-        reduce({ type: "stop_failed" });
+        setStopConfirming(false);
       }
     }
   }, [nav.selectedSessionId, stopSession, dispatch]);
 
-  const handleConnectionRetry = useCallback(() => {
-    void disconnect().catch(() => undefined);
-    dispatch({ type: "back_to_welcome" });
-  }, [disconnect, dispatch]);
+  const recoverConnection = useCallback(
+    async (kind: "retry" | "repair") => {
+      if (recoveryAttemptRef.current) return;
+      const attempt = Symbol("connection-recovery");
+      recoveryAttemptRef.current = attempt;
+      setConnectionRecovering(true);
+      setConnectionRecoveryError(null);
+      try {
+        if (kind === "retry") {
+          // The provider now owns this attempt. Consume the old pairing intent
+          // before leaving the error gate so its bridge cannot start a second one.
+          if (nav.pendingConfig) dispatch({ type: "back_to_welcome" });
+          await retryConnection();
+        } else {
+          await disconnect();
+          if (recoveryAttemptRef.current === attempt)
+            dispatch({ type: "back_to_welcome" });
+        }
+      } catch {
+        if (recoveryAttemptRef.current === attempt)
+          setConnectionRecoveryError(kind);
+      } finally {
+        if (recoveryAttemptRef.current === attempt) {
+          recoveryAttemptRef.current = null;
+          setConnectionRecovering(false);
+        }
+      }
+    },
+    [disconnect, dispatch, nav.pendingConfig, retryConnection]
+  );
+  const handleConnectionRetry = useCallback(
+    () => recoverConnection("retry"),
+    [recoverConnection]
+  );
+  const handleConnectionRepair = useCallback(
+    () => recoverConnection("repair"),
+    [recoverConnection]
+  );
 
   return {
     connection,
@@ -151,5 +208,8 @@ export function useMobileRemoteCoordinator(
     handleAcceptPairing,
     handleConfirmStop,
     handleConnectionRetry,
+    handleConnectionRepair,
+    connectionRecovering,
+    connectionRecoveryError,
   };
 }

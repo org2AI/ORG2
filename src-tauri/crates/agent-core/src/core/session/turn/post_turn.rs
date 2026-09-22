@@ -20,16 +20,20 @@ use super::super::persistence as unified_persistence;
 use super::streaming::broadcast_agent_warning;
 use crate::config::ReliabilityConfig;
 use crate::memory::background::{
-    bridge_cancel_flag, memory_job_is_enabled, submit_memory_job, MemoryJob, MemoryJobKind,
-    MemoryJobOutcome,
+    bridge_cancel_flag, memory_job_is_enabled, submit_memory_job, MemoryJob, MemoryJobCompletion,
+    MemoryJobKind, MemoryJobOutcome,
 };
 use crate::memory::workspace_memory::auto_dream::{self as auto_dream, AutoDreamState};
 use crate::memory::workspace_memory::extract::{self as extract_memories, ExtractMemoriesState};
 use crate::model_context::session_memory::{self, SessionMemoryConfig, SessionMemoryState};
+use crate::providers::traits::ProviderError;
 use crate::providers::LLMProvider;
 use crate::session::workspace::SessionWorkspace;
 use crate::tools::registry::ToolRegistry;
 use core_types::providers::NativeHarnessType;
+
+#[path = "session_memory_commit.rs"]
+mod session_memory_commit;
 
 const SESSION_MEMORY_TIMEOUT: Duration = Duration::from_secs(60);
 const WORKSPACE_EXTRACTION_TIMEOUT: Duration = Duration::from_secs(180);
@@ -40,22 +44,65 @@ const MEMORY_TRANSCRIPT_MAX_BYTES: usize = 512 * 1024;
 pub(super) struct ForkProviderSpec {
     pub model: String,
     pub account_id: Option<String>,
+    pub credential_source: Option<String>,
     pub reliability: ReliabilityConfig,
     pub native_harness_type: Option<NativeHarnessType>,
     pub workspace: SessionWorkspace,
 }
 
-async fn fresh_fork_provider(spec: &ForkProviderSpec) -> Result<Arc<dyn LLMProvider>, String> {
-    crate::providers::factory::create_provider_with_native_harness_preflight(
+async fn fresh_fork_provider(
+    spec: &ForkProviderSpec,
+    session_id: &str,
+    purpose: &'static str,
+) -> Result<Arc<dyn LLMProvider>, ProviderError> {
+    crate::providers::factory::create_provider_with_selection_preflight(
         &spec.model,
         spec.account_id.as_deref(),
+        spec.credential_source.as_deref(),
         &spec.reliability,
         spec.native_harness_type,
         Some(spec.workspace.clone()),
     )
     .await
-    .map(Arc::from)
-    .map_err(|err| format!("Failed to create fork provider: {err}"))
+    .map(|provider| {
+        Arc::new(
+            crate::session::auxiliary_usage::AuxiliaryUsageProvider::owned(
+                Arc::from(provider),
+                session_id,
+                purpose,
+                spec.account_id.as_deref(),
+            ),
+        ) as Arc<dyn LLMProvider>
+    })
+}
+
+/// The future is not polled during cooldown, so neither OAuth preflight nor
+/// provider construction runs. Type information survives until retry state has
+/// recorded the failure; only the outer memory-job boundary renders a string.
+async fn acquire_session_memory_provider(
+    state: &Mutex<SessionMemoryState>,
+    scope: u64,
+    acquire: impl std::future::Future<Output = Result<Arc<dyn LLMProvider>, ProviderError>>,
+) -> Result<Option<Arc<dyn LLMProvider>>, ProviderError> {
+    {
+        let mut state = state.lock().await;
+        if !state
+            .auxiliary_retry
+            .begin_attempt(scope, std::time::Instant::now())
+        {
+            return Ok(None);
+        }
+    }
+    match acquire.await {
+        Ok(provider) => Ok(Some(provider)),
+        Err(error) => {
+            let mut state = state.lock().await;
+            state
+                .auxiliary_retry
+                .provider_failed(&error, std::time::Instant::now());
+            Err(error)
+        }
+    }
 }
 
 /// The bounded loader stops reading once the tail is guaranteed to exceed
@@ -157,6 +204,10 @@ pub(super) struct SessionMemoryExtractionInput<'a> {
 /// (`post_turn_dispatch` 9b), so the job body only loads, extracts, and
 /// persists. SM is context-pipeline state — no learnings policy check here.
 pub(super) fn spawn_session_memory_extraction(input: SessionMemoryExtractionInput<'_>) {
+    submit_memory_job(session_memory_job(input));
+}
+
+fn session_memory_job(input: SessionMemoryExtractionInput<'_>) -> MemoryJob {
     let SessionMemoryExtractionInput {
         session_id,
         agent_id,
@@ -170,62 +221,158 @@ pub(super) fn spawn_session_memory_extraction(input: SessionMemoryExtractionInpu
     let cleanup_sid = sid.clone();
     let cleanup_state = Arc::clone(&sm_state);
 
-    let job = MemoryJob::new(
+    MemoryJob::new_with_completion(
         sid,
         agent_id,
         MemoryJobKind::SessionMemory,
         SESSION_MEMORY_TIMEOUT,
         move |cancel| async move {
-            let (messages, start_seqs) = load_durable_history_blocking(job_sid.clone()).await?;
-
-            info!(
-                session_id = %job_sid,
-                current_tokens,
-                "[memory_background] starting session-memory extraction"
-            );
-            let provider = fresh_fork_provider(&fork_provider).await?;
+            let scope_spec = fork_provider.clone();
+            let scope = tokio::task::spawn_blocking(move || {
+                crate::providers::factory::provider_acquisition_scope(
+                    &scope_spec.model,
+                    scope_spec.account_id.as_deref(),
+                    scope_spec.native_harness_type,
+                )
+            })
+            .await
+            .map_err(|err| format!("Provider route worker failed: {err}"))?;
+            let Some(provider) = acquire_session_memory_provider(
+                &sm_state,
+                scope,
+                fresh_fork_provider(&fork_provider, &job_sid, "session_memory"),
+            )
+            .await
+            .map_err(|err| format!("Failed to create fork provider: {err}"))?
+            else {
+                return Ok(MemoryJobCompletion::Skipped);
+            };
             let cancel_bridge = bridge_cancel_flag(cancel);
-            let result = session_memory::extract_session_memory(
-                &messages,
-                &start_seqs,
-                Arc::clone(&sm_state),
+            extract_and_persist_session_memory(
+                &job_sid,
+                sm_state,
                 &sm_config,
                 provider.as_ref(),
                 &fork_provider.model,
                 current_tokens,
                 Some(cancel_bridge.flag()),
             )
-            .await;
-
-            let content = result?;
-            let last_seq = sm_state.lock().await.last_summarized_seq;
-            let persist_sid = job_sid.clone();
-            tokio::task::spawn_blocking(move || {
-                unified_persistence::save_session_memory_state(&persist_sid, &content, last_seq)
-            })
             .await
-            .map_err(|err| format!("SM persist worker failed: {err}"))?
-            .map_err(|err| format!("Failed to persist session memory state: {err}"))?;
-            Ok(())
         },
     )
     .with_cleanup(move |outcome| async move {
         match outcome {
-            MemoryJobOutcome::Completed | MemoryJobOutcome::Cancelled => {}
+            MemoryJobOutcome::Completed
+            | MemoryJobOutcome::Skipped
+            | MemoryJobOutcome::Cancelled => {}
             MemoryJobOutcome::Failed | MemoryJobOutcome::TimedOut => {
-                broadcast_agent_warning(
-                    &cleanup_sid,
-                    "Session memory extraction did not complete; it will retry on a later turn",
-                    "session_memory",
-                );
+                let warning = cleanup_state
+                    .lock()
+                    .await
+                    .auxiliary_retry
+                    .take_warning(std::time::Instant::now());
+                if let Some(warning) = warning {
+                    broadcast_agent_warning(&cleanup_sid, warning, "session_memory");
+                }
             }
         }
-        if outcome != MemoryJobOutcome::Completed {
-            cleanup_state.lock().await.extraction_in_progress = false;
-        }
-    });
-    submit_memory_job(job);
+    })
 }
+
+/// Complete the persisted baseline before evaluating extraction growth.
+/// Normally this is only an in-memory check; a write is needed after restore
+/// without a baseline, explicit compaction, or a lower observed context size.
+pub(super) async fn prepare_session_memory_baseline(
+    session_id: &str,
+    state: Arc<Mutex<SessionMemoryState>>,
+    current_tokens: usize,
+) -> bool {
+    {
+        let current = state.lock().await;
+        if !current.initialized
+            || current
+                .tokens_at_last_extraction
+                .is_some_and(|tokens| current_tokens >= tokens)
+        {
+            return true;
+        }
+    }
+    let lease = session_memory_commit::ExtractionLease::begin(state).await;
+    let result = lease.rebase(session_id.to_owned(), current_tokens).await;
+    lease.finish().await;
+    match result {
+        Ok(applied) => applied,
+        Err(error) => {
+            tracing::warn!(session_id, %error, "Session-memory baseline deferred");
+            false
+        }
+    }
+}
+
+/// Shared production boundary: load authoritative history, extract, then
+/// persist content and sequence together. A deferred/failed query never writes.
+pub(super) async fn extract_and_persist_session_memory(
+    session_id: &str,
+    sm_state: Arc<Mutex<SessionMemoryState>>,
+    config: &SessionMemoryConfig,
+    provider: &dyn LLMProvider,
+    model: &str,
+    current_tokens: usize,
+    cancel_flag: Option<&Arc<std::sync::atomic::AtomicBool>>,
+) -> Result<MemoryJobCompletion, String> {
+    if sm_state.lock().await.auxiliary_retry.is_cooling_down(
+        &provider.auxiliary_model(model),
+        model,
+        std::time::Instant::now(),
+    ) {
+        return Ok(MemoryJobCompletion::Skipped);
+    }
+    let lease = session_memory_commit::ExtractionLease::begin(Arc::clone(&sm_state)).await;
+    let result = async {
+        let snapshot_sid = session_id.to_owned();
+        let snapshot = tokio::task::spawn_blocking(move || {
+            unified_persistence::session_memory_commit_snapshot(&snapshot_sid)
+        })
+        .await
+        .map_err(|err| format!("SM snapshot worker failed: {err}"))?
+        .map_err(|err| format!("SM snapshot load failed: {err}"))?;
+        let (messages, start_seqs) = load_durable_history_blocking(session_id.to_owned()).await?;
+        info!(
+            session_id,
+            current_tokens, "[memory_background] starting session-memory extraction"
+        );
+        let Some(draft) = session_memory::extract_session_memory(
+            &messages,
+            &start_seqs,
+            Arc::clone(&sm_state),
+            config,
+            provider,
+            model,
+            current_tokens,
+            lease.generation,
+            cancel_flag,
+        )
+        .await?
+        else {
+            return Ok(MemoryJobCompletion::Skipped);
+        };
+        if lease
+            .commit(session_id.to_owned(), draft, snapshot, cancel_flag.cloned())
+            .await?
+        {
+            Ok(MemoryJobCompletion::Completed)
+        } else {
+            Ok(MemoryJobCompletion::Skipped)
+        }
+    }
+    .await;
+    lease.finish().await;
+    result
+}
+
+#[cfg(test)]
+#[path = "post_turn_memory_tests.rs"]
+mod memory_tests;
 
 // ── Workspace-memory extraction (step 9c) ──────────────────────────
 
@@ -289,7 +436,9 @@ pub(super) fn spawn_extract_memories(input: ExtractMemoriesInput<'_>) {
                 return Ok(());
             }
 
-            let provider = fresh_fork_provider(&fork_provider).await?;
+            let provider = fresh_fork_provider(&fork_provider, &job_sid, "workspace_memory")
+                .await
+                .map_err(|err| format!("Failed to create fork provider: {err}"))?;
             let cancel_bridge = bridge_cancel_flag(cancel);
             let params = crate::memory::MemoryAgentParams {
                 messages: &messages,
@@ -356,7 +505,9 @@ pub(super) fn spawn_auto_dream(input: AutoDreamInput<'_>) {
             }
 
             let (messages, _start_seqs) = load_durable_history_blocking(job_sid.clone()).await?;
-            let provider = fresh_fork_provider(&fork_provider).await?;
+            let provider = fresh_fork_provider(&fork_provider, &job_sid, "auto_dream")
+                .await
+                .map_err(|err| format!("Failed to create fork provider: {err}"))?;
             let cancel_bridge = bridge_cancel_flag(cancel);
             let params = crate::memory::MemoryAgentParams {
                 messages: &messages,
@@ -379,7 +530,7 @@ mod tests {
     use super::*;
     use test_helpers::test_env;
 
-    fn seed_agent_session(session_id: &str) {
+    pub(super) fn seed_agent_session(session_id: &str) {
         let conn = database::db::get_connection().expect("get_connection");
         crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
         conn.execute_batch(
@@ -398,14 +549,15 @@ mod tests {
                 images TEXT,
                 compact_from_sequence INTEGER,
                 compact_tokens_before INTEGER,
-                compact_tokens_after INTEGER
+                compact_tokens_after INTEGER,
+                tool_is_error INTEGER NOT NULL DEFAULT 0
              );",
         )
         .expect("create agent_messages table");
         conn.execute(
-            "INSERT OR IGNORE INTO agent_sessions
-             (session_id, session_type, status, created_at, updated_at)
-             VALUES (?1, 'agent', 'running', datetime('now'), datetime('now'))",
+            "INSERT INTO agent_sessions
+             (session_id, name, session_type, status, created_at, updated_at)
+             VALUES (?1, 'Memory test session', 'agent', 'running', datetime('now'), datetime('now'))",
             [session_id],
         )
         .expect("seed session row");

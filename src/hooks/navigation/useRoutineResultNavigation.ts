@@ -1,10 +1,10 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { projectApi, workItemDataToUI } from "@src/api/http/project";
 import { ROUTES } from "@src/config/routes";
 import { createLogger } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import {
   openOrFocusSessionInChatPanelTabAtom,
   openWorkItemInChatPanelTabAtom,

@@ -1,4 +1,3 @@
-export { default as ChartTooltip } from "./ChartTooltip";
 export {
   CHART_AXIS_TICK,
   CHART_MARGIN,

@@ -82,7 +82,8 @@ impl AgentTool {
             request.explicit_model.as_deref(),
             &parent_model,
             request.is_shadow,
-        );
+            self.config.provider.as_ref(),
+        )?;
 
         let parent_account_id_for_provider = self.config.session_account_id.clone().or_else(|| {
             crate::session::persistence::get_session(parent_session_id)
@@ -90,11 +91,17 @@ impl AgentTool {
                 .flatten()
                 .and_then(|parent| parent.account_id)
         });
+        let source = self.config.provider.credential_source();
+        if let Some(source) = source {
+            crate::providers::dynamic::build(source, &model)
+                .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
+        }
         let provider: Arc<dyn LLMProvider> = match sub_reliability_opt.as_ref() {
             Some(reliability) => {
-                match crate::providers::factory::create_provider_with_native_harness_preflight(
+                match crate::providers::factory::create_provider_with_selection_preflight(
                     &model,
                     parent_account_id_for_provider.as_deref(),
+                    source,
                     reliability,
                     self.config.native_harness_type,
                     Some(self.config.workspace.clone()),
@@ -102,7 +109,7 @@ impl AgentTool {
                 .await
                 {
                     Ok(boxed) => Arc::from(boxed),
-                    Err(err) if self.config.native_harness_type.is_some() => {
+                    Err(err) if self.config.native_harness_type.is_some() || source.is_some() => {
                         return Err(ToolError::ExecutionFailed(format!(
                             "Failed to build native sub-agent provider for '{}' with model '{}': {err}",
                             request.agent_id, model
@@ -120,9 +127,10 @@ impl AgentTool {
                 }
             }
             None if self.config.native_harness_type.is_some() => {
-                match crate::providers::factory::create_provider_with_native_harness_preflight(
+                match crate::providers::factory::create_provider_with_selection_preflight(
                     &model,
                     parent_account_id_for_provider.as_deref(),
+                    source,
                     &crate::config::ReliabilityConfig::default(),
                     self.config.native_harness_type,
                     Some(self.config.workspace.clone()),

@@ -20,6 +20,12 @@ import type { GitFile } from "@src/types/git/types";
 export interface GitDiffState {
   /** Map of file paths to their git file data */
   filesByPath: Map<string, GitFile>;
+  /**
+   * Identity of the repository `filesByPath` belongs to, or null until a
+   * repo-keyed write lands. Lets the repo-switch clear and the first file
+   * report for the new repo arrive in either order (see `repoKey` below).
+   */
+  repoKey: string | null;
   /** Set of tab IDs currently showing git diffs */
   openTabs: Set<string>;
   /** Whether diff content is currently loading */
@@ -39,9 +45,23 @@ export type GitDiffAction =
        * injected via `SET_FILE`.
        */
       scopeRepoRoot?: string;
+      /**
+       * Repository the report belongs to. A report for a different repo than
+       * the cached one starts from an empty map, so stale entries can never
+       * leak across a switch and no separate clear has to win a race.
+       */
+      repoKey?: string;
     }
   | { type: "REMOVE_FILE"; path: string }
-  | { type: "CLEAR_FILES" }
+  | {
+      type: "CLEAR_FILES";
+      /**
+       * Repository being switched to. When the cache already belongs to it
+       * (its file report was dispatched first — child effects run before the
+       * parent's), the clear is a no-op instead of wiping that fresh report.
+       */
+      repoKey?: string;
+    }
   | { type: "ADD_TAB"; tabId: string }
   | { type: "REMOVE_TAB"; tabId: string }
   | { type: "SET_TABS"; tabs: Set<string> }
@@ -105,13 +125,19 @@ export function gitDiffReducer(
     case "SET_FILES": {
       const mergedFiles = new Map<string, GitFile>();
       const scope = action.scopeRepoRoot;
+      const repoChanged =
+        action.repoKey !== undefined && action.repoKey !== state.repoKey;
+      const previousFiles = repoChanged
+        ? new Map<string, GitFile>()
+        : state.filesByPath;
+      const repoKey = action.repoKey ?? state.repoKey;
 
       // Carry over files from *other* repo scopes (typically worktrees) so a
       // host-repo refresh doesn't drop worktree-injected entries. Files
       // without a `repoRoot` are assumed to belong to the reporting scope —
       // so they get replaced like the rest.
       if (scope !== undefined) {
-        for (const [path, file] of state.filesByPath) {
+        for (const [path, file] of previousFiles) {
           const fileScope: string = file.repoRoot ?? scope;
           if (fileScope !== scope) {
             mergedFiles.set(path, file);
@@ -120,7 +146,7 @@ export function gitDiffReducer(
       }
 
       for (const [path, file] of action.files) {
-        const existingFile = state.filesByPath.get(path);
+        const existingFile = previousFiles.get(path);
         mergedFiles.set(path, {
           ...file,
           repoRoot: file.repoRoot ?? existingFile?.repoRoot ?? scope,
@@ -132,10 +158,10 @@ export function gitDiffReducer(
       }
 
       if (areGitFileMapsEqual(state.filesByPath, mergedFiles)) {
-        return state;
+        return repoKey === state.repoKey ? state : { ...state, repoKey };
       }
 
-      return { ...state, filesByPath: mergedFiles };
+      return { ...state, filesByPath: mergedFiles, repoKey };
     }
 
     case "REMOVE_FILE": {
@@ -145,7 +171,14 @@ export function gitDiffReducer(
     }
 
     case "CLEAR_FILES": {
-      return { ...state, filesByPath: new Map() };
+      if (action.repoKey !== undefined && action.repoKey === state.repoKey) {
+        return state;
+      }
+      return {
+        ...state,
+        filesByPath: new Map(),
+        repoKey: action.repoKey ?? null,
+      };
     }
 
     case "ADD_TAB": {
@@ -192,6 +225,7 @@ export function gitDiffReducer(
  */
 export const initialGitDiffState: GitDiffState = {
   filesByPath: new Map(),
+  repoKey: null,
   openTabs: new Set(),
   loading: false,
 };
@@ -212,15 +246,24 @@ export interface UseGitDiffStateReturn {
   /**
    * Set multiple files at once. When `scopeRepoRoot` is provided, only files
    * belonging to that repo scope are replaced; entries from other worktrees
-   * are preserved. Omit it for legacy full-replace behaviour.
+   * are preserved. Omit it for legacy full-replace behaviour. `repoKey` names
+   * the repository the report belongs to; a report for a new repository
+   * drops the previous repository's entries first.
    */
-  setFiles: (files: Map<string, GitFile>, scopeRepoRoot?: string) => void;
+  setFiles: (
+    files: Map<string, GitFile>,
+    scopeRepoRoot?: string,
+    repoKey?: string
+  ) => void;
 
   /** Remove a file from the cache */
   removeFile: (path: string) => void;
 
-  /** Clear all cached files */
-  clearFiles: () => void;
+  /**
+   * Clear all cached files. With `repoKey`, clears for a switch to that
+   * repository and is a no-op when its files were already reported.
+   */
+  clearFiles: (repoKey?: string) => void;
 
   /** Add a tab to the open set */
   addTab: (tabId: string) => void;
@@ -253,8 +296,8 @@ export function useGitDiffState(): UseGitDiffStateReturn {
   }, []);
 
   const setFiles = useCallback(
-    (files: Map<string, GitFile>, scopeRepoRoot?: string) => {
-      dispatch({ type: "SET_FILES", files, scopeRepoRoot });
+    (files: Map<string, GitFile>, scopeRepoRoot?: string, repoKey?: string) => {
+      dispatch({ type: "SET_FILES", files, scopeRepoRoot, repoKey });
     },
     []
   );
@@ -263,8 +306,8 @@ export function useGitDiffState(): UseGitDiffStateReturn {
     dispatch({ type: "REMOVE_FILE", path });
   }, []);
 
-  const clearFiles = useCallback(() => {
-    dispatch({ type: "CLEAR_FILES" });
+  const clearFiles = useCallback((repoKey?: string) => {
+    dispatch({ type: "CLEAR_FILES", repoKey });
   }, []);
 
   const addTab = useCallback((tabId: string) => {

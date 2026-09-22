@@ -19,6 +19,7 @@
 import React, { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { HugeiconsIcon, Tick01Icon } from "@src/icons";
 import useSharedRepoList from "@src/scaffold/GlobalSpotlight/hooks/data/useSharedRepoList";
 import type { RepoItem } from "@src/scaffold/GlobalSpotlight/types";
@@ -132,9 +133,9 @@ export function RepoScopePicker({
               ? t("collaboration.repoPicker.resolving")
               : (scopeKey ?? t("collaboration.repoPicker.noRemote"));
           return (
-            <button
+            <Button
+              layout="custom"
               key={repo.id}
-              type="button"
               disabled={!selectable}
               onClick={() => {
                 if (typeof scopeKey === "string") handleToggle(scopeKey);
@@ -165,7 +166,7 @@ export function RepoScopePicker({
                   className="shrink-0 text-primary-6"
                 />
               ) : null}
-            </button>
+            </Button>
           );
         })
       )}

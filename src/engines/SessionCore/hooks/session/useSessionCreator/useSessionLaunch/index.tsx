@@ -7,7 +7,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { sessionLaunch } from "@src/api/tauri/agent/session";
 import { DISPATCH_CATEGORY, KEY_SOURCE } from "@src/api/tauri/session";
@@ -20,6 +20,7 @@ import {
 import { SESSION_CREATOR_LAUNCH_MODE } from "@src/features/SessionCreator/types";
 import { autoTagLaunchedSessionToActiveCloudOrg } from "@src/features/TeamCollaboration/autoTagNewSession";
 import { createLogger } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useSecretScanGuard } from "@src/hooks/security/useSecretScanGuard";
 import { collectAdeContext } from "@src/services/context/collectors";
 import {
@@ -256,6 +257,7 @@ export function useSessionLaunch(
           isBackgroundLaunch,
           launchAgentDefinitionId: launchParams.agentDefinitionId,
           launchCliAgentType: launchParams.platform,
+          launchCredentialSource: launchParams.credentialSource,
           launchOrgContext: resolvedWorkItemContext ?? undefined,
           result,
         })

@@ -4,10 +4,8 @@
  * Hook for managing browser simulator state.
  * Handles both browser (external, Playwright/CDP) and internal_browser (DOM automation) subtools.
  */
-import { useSetAtom } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
-import { replayModeAtom } from "@src/engines/SessionCore/core/atoms";
 import { useSimulatorAppState } from "@src/engines/Simulator/apps/core/useSimulatorAppState";
 
 import { BROWSER_APP_CONFIG } from "./config";
@@ -36,18 +34,16 @@ export interface UseBrowserReturn {
   // Combined state
   activeSubtool: "browser" | "internal_browser" | null;
   selectedEntryId: string | null;
-  selectEntry: (entryId: string) => void;
   isReplaying: boolean;
   jumpToEvent: (eventId: string) => void;
 }
 
 export function useBrowser(options: UseBrowserOptions = {}): UseBrowserReturn {
-  const { state, selectedItemId, setSelectedItemId, isReplaying, jumpToEvent } =
+  const { state, selectedItemId, isReplaying, jumpToEvent } =
     useSimulatorAppState<SimulatorBrowserState>({
       config: BROWSER_APP_CONFIG as never,
       overrideEventId: options.overrideEventId,
     });
-  const setReplayMode = useSetAtom(replayModeAtom);
 
   const {
     browserEntries,
@@ -59,20 +55,6 @@ export function useBrowser(options: UseBrowserOptions = {}): UseBrowserReturn {
     isMaskShown,
     activeSubtool,
   } = state;
-
-  // Clicking a tab or sidebar entry within this app is free-browsing: the
-  // user is picking a past artifact to inspect, which is incompatible with
-  // follow-mode (where the agent decides what's on screen). Flip replayMode
-  // to "replay" and update the local selection only — do NOT move the
-  // replay bar or global currentEventId. Use `jumpToEvent` for explicit
-  // time-travel (e.g. the global event tab bar).
-  const selectEntry = useCallback(
-    (entryId: string) => {
-      setSelectedItemId(entryId);
-      setReplayMode("replay");
-    },
-    [setSelectedItemId, setReplayMode]
-  );
 
   // Display entry for external browser subtool
   const displayEntry = useMemo(() => {
@@ -116,7 +98,6 @@ export function useBrowser(options: UseBrowserOptions = {}): UseBrowserReturn {
     // Combined state
     activeSubtool,
     selectedEntryId: selectedItemId,
-    selectEntry,
     isReplaying,
     jumpToEvent,
   };

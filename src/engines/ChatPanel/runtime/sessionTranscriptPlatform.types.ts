@@ -10,7 +10,6 @@ export interface SessionTranscriptPlatformState {
   isCursorIde: boolean;
   isAgentWorking: boolean;
   isAgentWorkingRef: MutableRefObject<boolean>;
-  isExploring: boolean;
   loadStatus: SessionLoadStatus;
   loadError: string | null;
   isPendingCancel: boolean;

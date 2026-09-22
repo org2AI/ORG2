@@ -19,6 +19,7 @@ import {
   workstationPrScopeKey,
   workstationSelectedPrAtomFamily,
 } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
+import { testTranslate, useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { PrDetailPanel, PrDetailTabs } from "./PrDetailPanel";
 import { formatPrFilesCount } from "./prFilesDisplay";
@@ -30,27 +31,8 @@ const childProps = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, unknown>) => {
-      const localizedMergeMethod: Record<string, string> = {
-        "git.pr.actions.merge": "Localized merge",
-        "git.pr.actions.squash": "Localized squash and merge",
-        "git.pr.actions.rebase": "Localized rebase and merge",
-      };
-      if (localizedMergeMethod[key]) return localizedMergeMethod[key];
-      if (key === "git.pr.actions.resolveConflicts") {
-        return "Localized conflict label";
-      }
-      if (typeof fallback === "string") return fallback;
-      if (typeof fallback?.defaultValue !== "string") return key;
-      const count = Number(fallback.count ?? 0);
-      const template =
-        count === 1 || typeof fallback.defaultValue_other !== "string"
-          ? fallback.defaultValue
-          : fallback.defaultValue_other;
-      return template.replace("{{count}}", String(count));
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 vi.mock("@src/components/IntegrationIcon", () => ({
@@ -64,6 +46,7 @@ vi.mock("../../../hooks/useWorkstationPrDetail", () => ({
     submitReview: vi.fn(),
     replyInlineComment: vi.fn(),
     mergePullRequest: vi.fn(),
+    refreshChecks: vi.fn(() => Promise.resolve()),
     setPullRequestAutoMerge: vi.fn(),
     updatePullRequestDraft: vi.fn(),
     updatePullRequestState: vi.fn(),
@@ -83,9 +66,9 @@ vi.mock("../../../hooks/useWorkstationPrDetail", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/layouts/blocks", async (importOriginal) => {
+vi.mock("@src/components/layout/blocks", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@src/modules/shared/layouts/blocks")>();
+    await importOriginal<typeof import("@src/components/layout/blocks")>();
   return {
     ...actual,
     ScrollTrail: ({ testId }: { testId?: string }) =>
@@ -97,13 +80,17 @@ vi.mock("./PrConversationTab", () => ({
   PrConversationTab: (
     props: Record<string, unknown> & {
       flowHeader?: ReactNode;
+      inlineProperties?: ReactNode;
+      mergeBox?: ReactNode;
     }
   ) => {
     childProps.conversation = props;
     return createElement(
       "div",
       { "data-testid": "conversation-tab" },
-      props.flowHeader
+      props.flowHeader,
+      props.inlineProperties,
+      props.mergeBox
     );
   },
 }));
@@ -152,10 +139,81 @@ describe("PrDetailPanel tabs", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.restoreAllMocks();
   });
 
   afterAll(() => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
+  });
+
+  it("moves properties below the title on narrow panes and keeps one sidebar across tabs", () => {
+    let paneWidth = 699;
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(
+      () => paneWidth
+    );
+    const store = createStore();
+    const scopeKey = workstationPrScopeKey(undefined, "/repo", 42);
+    const stateAtom = workstationSelectedPrAtomFamily(scopeKey);
+    store.set(stateAtom, {
+      ...initialSelectedPrState,
+      detail: {},
+      loading: false,
+    });
+    act(() =>
+      root.render(
+        createElement(
+          Provider,
+          { store },
+          createElement(PrDetailPanel, {
+            identity: {
+              number: 42,
+              title: "Responsive PR",
+              headBranch: "feature/responsive",
+              url: "https://github.com/org/repo/pull/42",
+              status: "open",
+            },
+            repoPath: "/repo",
+          })
+        )
+      )
+    );
+    expect(
+      container.querySelector('[data-testid="pr-detail-sidebar-rail"]')
+    ).toBeNull();
+    expect(
+      container.querySelector(
+        '[data-testid="conversation-tab"] [data-testid="pr-sidebar"]'
+      )
+    ).not.toBeNull();
+    expect(
+      container.querySelectorAll('[data-testid="pr-sidebar"]')
+    ).toHaveLength(1);
+    act(() =>
+      store.set(stateAtom, (current) => ({
+        ...current,
+        viewState: { ...current.viewState, activeTab: "checks" },
+      }))
+    );
+    expect(
+      container.querySelectorAll('[data-testid="pr-sidebar"]')
+    ).toHaveLength(1);
+    expect(
+      container.querySelector(
+        '[data-testid="conversation-tab"] [data-testid="pr-sidebar"]'
+      )
+    ).toBeNull();
+    act(() => {
+      paneWidth = 700;
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(
+      container.querySelector(
+        '[data-testid="pr-detail-sidebar-rail"] [data-testid="pr-sidebar"]'
+      )
+    ).not.toBeNull();
+    expect(
+      container.querySelectorAll('[data-testid="pr-sidebar"]')
+    ).toHaveLength(1);
   });
 
   it("renders GitHub-style PR navigation with icons, counts, and tab semantics", () => {
@@ -530,7 +588,16 @@ describe("PrDetailPanel tabs", () => {
       );
     });
 
-    const actions = container.querySelector('[data-testid="pr-level-actions"]');
+    // It sits beside the merge button in the conversation's merge box; the
+    // rail keeps merge and close only.
+    expect(
+      container
+        .querySelector('[data-testid="pr-level-actions"]')
+        ?.querySelector('[data-testid="pr-convert-to-draft-action"]')
+    ).toBeNull();
+    const actions = container.querySelector(
+      '[data-testid="pr-merge-box-actions"]'
+    );
     const convertAction = actions?.querySelector(
       '[data-testid="pr-convert-to-draft-action"]'
     );
@@ -539,7 +606,7 @@ describe("PrDetailPanel tabs", () => {
       convertAction?.querySelector('[data-icon="git-pull-request-draft"]')
     ).not.toBeNull();
 
-    // The action moved out of the merge dropdown into the actions stack.
+    // The action is its own button, never an entry of the merge dropdown.
     const mergeAction = container.querySelector<HTMLButtonElement>(
       '[data-testid="pr-merge-action"]'
     );
@@ -679,14 +746,18 @@ describe("PrDetailPanel tabs", () => {
 
     expect(tabList?.className).toContain("border-b");
     const externalLink = tabList?.querySelector(
-      'button[aria-label="Open in external browser"]'
+      `button[aria-label="${testTranslate(
+        "common:previews.openInExternalBrowser"
+      )}"]`
     );
     expect(externalLink?.getAttribute("type")).toBe("button");
     expect(externalLink?.getAttribute("style")).toContain("height: 28px");
     expect(externalLink?.querySelector('[data-icon="chrome"]')).not.toBeNull();
     expect(
       container.querySelectorAll(
-        'button[aria-label="Open in external browser"]'
+        `button[aria-label="${testTranslate(
+          "common:previews.openInExternalBrowser"
+        )}"]`
       )
     ).toHaveLength(1);
     expect(tabList?.textContent).not.toContain("Use compact PR metadata");
@@ -704,7 +775,9 @@ describe("PrDetailPanel tabs", () => {
     const flowStatus = flowHeader?.querySelector(
       "[data-testid='pr-flow-status']"
     );
-    expect(flowStatus?.textContent).toContain("merged");
+    expect(flowStatus?.textContent).toContain(
+      testTranslate("common:git.pr.status.merged")
+    );
     expect(flowStatus?.querySelector('[data-icon="git-merge"]')).not.toBeNull();
     expect(flowStatus?.firstElementChild?.className).toContain("bg-purple-1");
     expect(flowStatus?.firstElementChild?.className).toContain("text-purple-6");

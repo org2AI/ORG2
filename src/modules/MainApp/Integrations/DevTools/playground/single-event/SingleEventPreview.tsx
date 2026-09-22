@@ -561,11 +561,6 @@ export function SingleEventPreview({ mode, onModeChange }: ModeControlProps) {
               onPresetToggle={handleStatusPresetToggle}
             />
           )}
-
-          {/* <PlaygroundChatExtrasSection
-            extras={chatExtras}
-            onToggle={handleChatExtrasToggle}
-          /> */}
         </PlaygroundSidebarShell>
 
         <PlaygroundPreviewMainArea

@@ -1,24 +1,33 @@
-import { type ReactNode, memo } from "react";
+import { Fragment, type ReactNode, memo } from "react";
 
 import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import {
   ArrowDown02Icon,
+  ArrowLeft02Icon,
+  ArrowRight02Icon,
+  ArrowUp01Icon,
   ArrowUp02Icon,
+  ArrowUpBigIcon,
+  CommandIcon,
   CornerDownLeftIcon,
+  Delete01Icon,
   HugeiconsIcon,
+  OptionIcon,
+  SaturnIcon,
 } from "@src/icons";
 
 export const KEYBOARD_SHORTCUT_VARIANT = {
   default: "default",
-  workStation: "workStation",
   dropdown: "dropdown",
   spotlightFooter: "spotlightFooter",
+  prominent: "prominent",
+  inline: "inline",
 } as const;
 
 export type KeyboardShortcutVariant =
   (typeof KEYBOARD_SHORTCUT_VARIANT)[keyof typeof KEYBOARD_SHORTCUT_VARIANT];
 
-export type KeyboardShortcutSize = "default" | "sm";
+export type KeyboardShortcutSize = "default" | "sm" | "lg" | "inline";
 
 export interface KeyboardShortcutProps {
   shortcut?: string;
@@ -26,7 +35,7 @@ export interface KeyboardShortcutProps {
   className?: string;
   variant?: KeyboardShortcutVariant;
   size?: KeyboardShortcutSize;
-  rendering?: "native" | "original";
+  rendering?: "native" | "original" | "icons";
 }
 
 interface KeyboardShortcutTooltipRow {
@@ -53,10 +62,13 @@ type ModifierType = "cmd" | "shift" | "option" | "ctrl";
 type SpecialKeyType =
   | "arrowUp"
   | "arrowDown"
+  | "arrowLeft"
+  | "arrowRight"
   | "enter"
   | "backspace"
   | "esc"
-  | "tab";
+  | "tab"
+  | "space";
 
 type KeyToken =
   | { type: "modifier"; modifier: ModifierType }
@@ -96,6 +108,12 @@ function normalizeSpecial(key: string): SpecialKeyType | null {
   if (lower === "down" || lower === "arrowdown" || lower === "↓") {
     return "arrowDown";
   }
+  if (lower === "left" || lower === "arrowleft" || lower === "←") {
+    return "arrowLeft";
+  }
+  if (lower === "right" || lower === "arrowright" || lower === "→") {
+    return "arrowRight";
+  }
   if (
     lower === "enter" ||
     lower === "return" ||
@@ -109,6 +127,7 @@ function normalizeSpecial(key: string): SpecialKeyType | null {
   }
   if (lower === "esc" || lower === "escape") return "esc";
   if (lower === "tab" || lower === "⇥") return "tab";
+  if (lower === "space" || lower === "spacebar") return "space";
   return null;
 }
 
@@ -148,13 +167,14 @@ function parseShortcut(shortcut: string): KeyToken[] {
     return tokens;
   }
 
-  // Whitespace-separated chord, e.g. "esc" or "enter" or "up down". Multi-char
-  // specials (esc, enter, backspace) only resolve when they are a standalone
-  // token — falling back to per-character parsing for legacy callers like
-  // "⌘N" or "⇧⌘F".
+  // Whitespace-separated chord, e.g. "esc", "enter", or "up down".
   const trimmed = shortcut.trim();
   const whitespaceParts = trimmed.split(/\s+/).filter(Boolean);
-  if (whitespaceParts.length > 1 || normalizeSpecial(trimmed)) {
+  if (
+    whitespaceParts.length > 1 ||
+    normalizeModifier(trimmed) ||
+    normalizeSpecial(trimmed)
+  ) {
     for (const part of whitespaceParts) {
       if (/^[⌃⌥⇧⌘]/.test(part) && part.length > 1)
         tokens.push(...parseShortcut(part));
@@ -163,12 +183,14 @@ function parseShortcut(shortcut: string): KeyToken[] {
     return tokens;
   }
 
-  let index = 0;
-  while (index < shortcut.length) {
-    const char = shortcut[index];
-    tokens.push(tokenizePart(char));
-    index++;
+  // Packed macOS chords keep each leading modifier as its own token while the
+  // remaining key stays whole (`⇧⌘F6` -> `⇧`, `⌘`, `F6`).
+  let remaining = trimmed;
+  while (/^[⌃⌥⇧⌘]/.test(remaining)) {
+    tokens.push(tokenizePart(remaining[0]));
+    remaining = remaining.slice(1);
   }
+  if (remaining) tokens.push(tokenizePart(remaining));
 
   return tokens;
 }
@@ -184,6 +206,36 @@ function ModifierKey({ modifier }: { modifier: ModifierType }) {
   return character;
 }
 
+function IconModifierKey({
+  modifier,
+  iconSize,
+}: {
+  modifier: ModifierType;
+  iconSize: number;
+}) {
+  const icon = {
+    cmd: CommandIcon,
+    shift: ArrowUpBigIcon,
+    option: OptionIcon,
+    ctrl: ArrowUp01Icon,
+  }[modifier];
+
+  return (
+    <HugeiconsIcon
+      icon={icon}
+      size={iconSize}
+      data-icon={
+        {
+          cmd: "command",
+          shift: "arrow-big-up",
+          option: "option",
+          ctrl: "chevron-up",
+        }[modifier]
+      }
+    />
+  );
+}
+
 function OriginalSpecialKey({
   special,
   iconSize,
@@ -191,13 +243,30 @@ function OriginalSpecialKey({
   special: SpecialKeyType;
   iconSize: number;
 }) {
-  if (special === "arrowUp" || special === "arrowDown") {
+  if (
+    special === "arrowUp" ||
+    special === "arrowDown" ||
+    special === "arrowLeft" ||
+    special === "arrowRight"
+  ) {
+    const icon = {
+      arrowUp: ArrowUp02Icon,
+      arrowDown: ArrowDown02Icon,
+      arrowLeft: ArrowLeft02Icon,
+      arrowRight: ArrowRight02Icon,
+    }[special];
+    const dataIcon = {
+      arrowUp: "arrow-up",
+      arrowDown: "arrow-down",
+      arrowLeft: "arrow-left",
+      arrowRight: "arrow-right",
+    }[special];
     return (
       <HugeiconsIcon
-        icon={special === "arrowUp" ? ArrowUp02Icon : ArrowDown02Icon}
+        icon={icon}
         size={iconSize}
         strokeWidth={2}
-        data-icon={special === "arrowUp" ? "arrow-up" : "arrow-down"}
+        data-icon={dataIcon}
       />
     );
   }
@@ -217,27 +286,53 @@ function OriginalSpecialKey({
     backspace: "⌫",
     esc: "esc",
     tab: "⇥",
+    space: "Space",
   }[special];
 
   return character;
+}
+
+function IconSpecialKey({
+  special,
+  iconSize,
+}: {
+  special: SpecialKeyType;
+  iconSize: number;
+}) {
+  if (special === "esc") return "Esc";
+  if (special === "tab") return "Tab";
+  if (special === "backspace") {
+    return (
+      <HugeiconsIcon icon={Delete01Icon} data-icon="delete" size={iconSize} />
+    );
+  }
+  if (special === "space") {
+    return (
+      <HugeiconsIcon icon={SaturnIcon} data-icon="space" size={iconSize} />
+    );
+  }
+  return <OriginalSpecialKey special={special} iconSize={iconSize} />;
 }
 
 function SpecialKey({ special }: { special: SpecialKeyType }) {
   const character = {
     arrowUp: "↑",
     arrowDown: "↓",
+    arrowLeft: "←",
+    arrowRight: "→",
     enter: "↩",
     backspace: "⌫",
     esc: "esc",
     tab: "⇥",
+    space: "Space",
   }[special];
 
   return character;
 }
 
 // A shortcut chord is one joined pill, matching the compact presentation used
-// by Codex. Individual tokens only own their typography; the shared `kbd`
-// owns the background, height, padding, and rounded capsule shape.
+// by Codex. Individual tokens own their typography and glyph slot; the shared
+// `kbd` owns the background, height, padding, and rounded capsule shape.
 const KEY_CAP_BASE =
   "inline-flex shrink-0 items-center justify-center rounded-full font-normal leading-none";
 const KEY_TOKEN_BASE =
@@ -245,27 +340,49 @@ const KEY_TOKEN_BASE =
 
 const KEY_CAP_SIZES: Record<
   KeyboardShortcutSize,
-  { cap: string; glyph: string; text: string; iconSize: number }
+  {
+    cap: string;
+    glyph: string;
+    glyphSlot: string;
+    text: string;
+    iconSize: number;
+  }
 > = {
   default: {
-    cap: "h-[18px] px-1.5",
-    glyph: "text-[13px]",
-    text: "text-[12px]",
+    cap: "h-[18px] pr-1.5 pl-2",
+    glyph: "text-[12px]",
+    glyphSlot: "w-[13px]",
+    text: "text-[11px]",
     iconSize: 13,
   },
   sm: {
-    cap: "h-4 px-1",
-    glyph: "text-[11px]",
-    text: "text-[10px]",
+    cap: "h-4 pr-1 pl-1.5",
+    glyph: "text-[10px]",
+    glyphSlot: "w-[11px]",
+    text: "text-[9px]",
     iconSize: 11,
+  },
+  lg: {
+    cap: "h-6 pr-2 pl-2.5",
+    glyph: "text-[11px]",
+    glyphSlot: "w-3.5",
+    text: "text-[11px]",
+    iconSize: 14,
+  },
+  inline: {
+    cap: "",
+    glyph: "text-[11px]",
+    glyphSlot: "w-3",
+    text: "text-[11px]",
+    iconSize: 12,
   },
 };
 
-const KEY_CAP_STYLES: Record<KeyboardShortcutVariant, { kbd: string }> = {
+const KEY_CAP_STYLES: Record<
+  KeyboardShortcutVariant,
+  { kbd: string; cap?: string }
+> = {
   default: {
-    kbd: "bg-fill-2 text-text-2",
-  },
-  workStation: {
     kbd: "bg-fill-2 text-text-2",
   },
   dropdown: {
@@ -273,9 +390,19 @@ const KEY_CAP_STYLES: Record<KeyboardShortcutVariant, { kbd: string }> = {
   },
   // Used on the Spotlight footer hint strip — the surrounding surface
   // panel is already `fill-2`, so pills bump one shade up to `fill-3` to
-  // stay readable against it.
+  // stay readable against it. Its chips hold one glyph each, so they drop
+  // the chord-balancing asymmetric padding for true centering, and grow to
+  // 19px so the 13px glyph slot has an even 3px above and below (measured:
+  // every chip's ink sits within 0.25px of center on both axes).
   spotlightFooter: {
     kbd: "bg-fill-3 text-text-2",
+    cap: "h-[19px] px-[7px]",
+  },
+  prominent: {
+    kbd: "bg-fill-2 font-medium text-text-2",
+  },
+  inline: {
+    kbd: "text-current opacity-70",
   },
 };
 
@@ -285,68 +412,115 @@ export const KeyboardShortcut = memo<KeyboardShortcutProps>(
     shortcutId,
     className = "",
     variant = KEYBOARD_SHORTCUT_VARIANT.default,
-    size = "default",
-    rendering = variant === KEYBOARD_SHORTCUT_VARIANT.spotlightFooter
-      ? "original"
-      : "native",
+    size,
+    rendering,
   }) => {
+    const resolvedSize =
+      size ??
+      (variant === KEYBOARD_SHORTCUT_VARIANT.prominent
+        ? "lg"
+        : variant === KEYBOARD_SHORTCUT_VARIANT.inline
+          ? "inline"
+          : "default");
+    const resolvedRendering =
+      rendering ??
+      (variant === KEYBOARD_SHORTCUT_VARIANT.prominent ||
+      variant === KEYBOARD_SHORTCUT_VARIANT.inline
+        ? "icons"
+        : variant === KEYBOARD_SHORTCUT_VARIANT.spotlightFooter
+          ? "original"
+          : "native");
     const resolvedShortcut = useShortcutKeys(shortcutId ?? "");
-    const tokens = parseShortcut(shortcutId ? resolvedShortcut : shortcut);
+    const shortcutValue = (shortcutId ? resolvedShortcut : shortcut).trim();
+    const alternatives = shortcutValue
+      .split(/\s+\/\s+/)
+      .filter(Boolean)
+      .map(parseShortcut);
     const cap = KEY_CAP_STYLES[variant];
-    const capSize = KEY_CAP_SIZES[size];
-    const isArrowPair =
-      tokens.length === 2 &&
-      tokens.every(
-        (token) =>
-          token.type === "special" &&
-          (token.special === "arrowUp" || token.special === "arrowDown")
-      );
+    const capSize = KEY_CAP_SIZES[resolvedSize];
+
+    if (alternatives.length === 0) return null;
 
     return (
       <div className={`flex items-center ${className}`}>
-        <kbd
-          className={`${KEY_CAP_BASE} ${capSize.cap} ${
-            isArrowPair ? "gap-0" : "gap-0.5"
-          } ${cap.kbd}`}
-        >
-          {tokens.map((token, index) => {
-            const isTextToken =
-              (token.type === "modifier" &&
-                token.modifier === "ctrl" &&
-                !IS_MAC) ||
-              (token.type === "special" &&
-                (token.special === "esc" || token.special === "tab")) ||
-              (token.type === "key" && token.label.length > 1);
-            return (
-              <span
-                key={index}
-                style={
-                  rendering === "native"
-                    ? {
-                        fontFamily:
-                          "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-                      }
-                    : undefined
-                }
-                className={`${KEY_TOKEN_BASE} ${rendering === "original" && isTextToken ? capSize.text : capSize.glyph}`}
-              >
-                {token.type === "modifier" && (
-                  <ModifierKey modifier={token.modifier} />
-                )}
-                {token.type === "special" &&
-                  (rendering === "original" ? (
-                    <OriginalSpecialKey
-                      special={token.special}
-                      iconSize={capSize.iconSize}
-                    />
-                  ) : (
-                    <SpecialKey special={token.special} />
-                  ))}
-                {token.type === "key" && token.label}
-              </span>
+        {alternatives.map((tokens, alternativeIndex) => {
+          const isArrowPair =
+            tokens.length === 2 &&
+            tokens.every(
+              (token) =>
+                token.type === "special" &&
+                (token.special === "arrowUp" || token.special === "arrowDown")
             );
-          })}
-        </kbd>
+
+          return (
+            <Fragment key={alternativeIndex}>
+              {alternativeIndex > 0 && (
+                <span className="mx-1 text-text-4">/</span>
+              )}
+              <kbd
+                className={`${KEY_CAP_BASE} ${cap.cap ?? capSize.cap} ${
+                  isArrowPair ? "gap-0" : "gap-0.5"
+                } ${cap.kbd}`}
+              >
+                {tokens.map((token, index) => {
+                  const isTextToken =
+                    (token.type === "modifier" &&
+                      token.modifier === "ctrl" &&
+                      !IS_MAC) ||
+                    (token.type === "special" &&
+                      (token.special === "esc" ||
+                        token.special === "tab" ||
+                        token.special === "space")) ||
+                    (token.type === "key" && token.label.length > 1);
+                  const usesGlyphSlot =
+                    token.type === "key" &&
+                    Array.from(token.label).length === 1;
+                  return (
+                    <span
+                      key={index}
+                      style={
+                        resolvedRendering === "native"
+                          ? {
+                              fontFamily:
+                                "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                            }
+                          : undefined
+                      }
+                      className={`${KEY_TOKEN_BASE} ${
+                        usesGlyphSlot ? capSize.glyphSlot : ""
+                      } ${resolvedRendering !== "native" && isTextToken ? capSize.text : capSize.glyph}`}
+                    >
+                      {token.type === "modifier" &&
+                        (resolvedRendering === "icons" ? (
+                          <IconModifierKey
+                            modifier={token.modifier}
+                            iconSize={capSize.iconSize}
+                          />
+                        ) : (
+                          <ModifierKey modifier={token.modifier} />
+                        ))}
+                      {token.type === "special" &&
+                        (resolvedRendering === "icons" ? (
+                          <IconSpecialKey
+                            special={token.special}
+                            iconSize={capSize.iconSize}
+                          />
+                        ) : resolvedRendering === "original" ? (
+                          <OriginalSpecialKey
+                            special={token.special}
+                            iconSize={capSize.iconSize}
+                          />
+                        ) : (
+                          <SpecialKey special={token.special} />
+                        ))}
+                      {token.type === "key" && token.label}
+                    </span>
+                  );
+                })}
+              </kbd>
+            </Fragment>
+          );
+        })}
       </div>
     );
   }

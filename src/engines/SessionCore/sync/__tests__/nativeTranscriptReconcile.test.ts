@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { retryLineageEvent } from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { selectConversationRunnerTail } from "@src/features/Org2Cloud/SessionConversation/conversationRunnerOverlay";
 
@@ -309,6 +310,25 @@ describe("single-owner native transcript reconcile", () => {
     expect(mocks.closeTerminalEvents.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.getPersisted.mock.invocationCallOrder[0]
     );
+  });
+
+  it("keeps retry control metadata across terminal native replacement without duplicate reads", async () => {
+    const sessionId = "reconcile-retry-lineage";
+    const native = [makeEvent("native-reply", sessionId)];
+    const lineage = retryLineageEvent(sessionId, {
+      version: 1,
+      queueMessageId: "owner",
+      superseded: [{ sessionId, turnIntentId: "old-C", sourceEventIds: [] }],
+    });
+    historySequence([native]);
+    mocks.getPersisted.mockResolvedValue([
+      lineage,
+      { ...lineage, id: "invalid" },
+    ]);
+    const result = await reconcileNativeTranscript(sessionId);
+    expect(result).toEqual([...native, lineage]);
+    expect(mocks.set).toHaveBeenCalledWith([...native, lineage], sessionId);
+    expect(mocks.getPersisted).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a durable failed user delivery across terminal native reconcile", async () => {

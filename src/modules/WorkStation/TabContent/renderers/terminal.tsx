@@ -14,32 +14,18 @@
  * exact switch behaviour so the spec stays faithful for any host that routes the
  * `terminal` type through the dispatcher.
  */
-import React, { Suspense, memo } from "react";
-
-import { Placeholder } from "@src/components/Placeholder";
 import { useEditorHostContext } from "@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/context/editorHostContext";
 
-import type { UnifiedTabContentProps } from "../types";
+import { createLazyTabRenderer } from "./createLazyTabRenderer";
 
-const TerminalMainContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/TerminalMainContent")
-);
-
-const LazyFallback = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
-
-const TerminalTabRenderer: React.FC<UnifiedTabContentProps> = memo(() => {
-  const { terminalState, repoPath } = useEditorHostContext();
-
-  return (
-    <Suspense fallback={<LazyFallback />}>
-      <TerminalMainContent terminalState={terminalState} repoPath={repoPath} />
-    </Suspense>
-  );
+const TerminalTabRenderer = createLazyTabRenderer({
+  displayName: "TerminalTabRenderer",
+  load: () =>
+    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/TerminalMainContent"),
+  useProps: () => {
+    const { terminalState, repoPath } = useEditorHostContext();
+    return { terminalState, repoPath };
+  },
 });
-
-TerminalTabRenderer.displayName = "TerminalTabRenderer";
 
 export default TerminalTabRenderer;

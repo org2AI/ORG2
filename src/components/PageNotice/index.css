@@ -1,0 +1,30 @@
+/* Give each copy block a local WebKit selection root. Otherwise wrapped-line
+ * selection gaps can paint out to a chat ancestor, beyond the notice padding.
+ * Positioning preserves text selection and leaves overflowing content visible. */
+.page-notice .page-notice__text {
+  position: relative;
+}
+
+/* Alert copy must remain selectable even inside chat's inert layout wrappers. */
+/* Scope this override to copy regions so pill toggles and actions stay controls. */
+.page-notice .page-notice__text.allow-select-deep,
+.page-notice .page-notice__text.allow-select-deep * {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  user-select: text !important;
+}
+.page-notice .page-notice__text.allow-select-deep::-moz-selection,
+.page-notice .page-notice__text.allow-select-deep *::-moz-selection {
+  background-color: var(--text-selection, var(--color-primary-2)) !important;
+}
+.page-notice .page-notice__text.allow-select-deep::selection,
+.page-notice .page-notice__text.allow-select-deep *::selection {
+  background-color: var(--text-selection, var(--color-primary-2)) !important;
+}
+.page-notice
+  .page-notice__text.allow-select-deep
+  :is(button, button *, .select-none, .select-none *) {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  user-select: none !important;
+}

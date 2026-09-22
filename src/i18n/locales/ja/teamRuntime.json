@@ -1,5 +1,4 @@
 {
-  "title": "チームランタイム",
   "refresh": "更新",
   "loadError": "チームランタイムの読み込みに失敗しました",
   "overview": {
@@ -67,7 +66,7 @@
     "memory": "メモリ",
     "unified": "ユニファイドメモリ",
     "gpu": "GPU",
-    "appVersion": "ORGII バージョン",
+    "appVersion": "ORG2 バージョン",
     "totalSessions": "合計セッション数",
     "lastSynced": "最終同期"
   },

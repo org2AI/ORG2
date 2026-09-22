@@ -1,108 +1,22 @@
-import React, {
-  Suspense,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import DiffStatsBadge from "@src/components/DiffStatsBadge";
-import FileTypeIcon from "@src/components/FileTypeIcon";
-import { Placeholder } from "@src/components/Placeholder";
-import {
-  type GitFileStatus,
-  getStatusColor,
-  getStatusLetterForFile,
-} from "@src/config/gitStatus";
-import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
-import { FileHeader } from "@src/modules/shared/components/FileHeader";
-import type { DiffViewMode } from "@src/types/git/types";
+import Message from "@src/components/Message";
+import { FileHeader } from "@src/features/FileHeader";
+import { copyText } from "@src/util/data/clipboard";
 import { isBinaryByExtension } from "@src/util/file/binaryDetection";
 import {
   getPreviewType,
   supportsSourceControlWorkingCopyPreview,
 } from "@src/util/file/previewTypes";
 
-import { SelectedTextAddToChat } from "../SelectedTextAddToChat";
+import { DiffFileSectionContent } from "./DiffFileSectionContent";
+import { DiffFileSectionHeader } from "./DiffFileSectionHeader";
+import { renderDiffFilePreviewContent } from "./diffFilePreview";
+import type { DiffFileSectionProps } from "./types";
+import { useDiffFileSectionExpansion } from "./useDiffFileSectionExpansion";
 
-const LazyImagePreview = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/FilePreviewContent/ImagePreview")
-);
-const LazyVideoPreview = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/FilePreviewContent/VideoPreview")
-);
-const LazyPdfPreview = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/FilePreviewContent/PdfPreview")
-);
-const LazyDocxPreview = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/FilePreviewContent/DocxPreview")
-);
-const LazyXlsxPreview = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/FilePreviewContent/XlsxPreview")
-);
-const LazyPptxPreview = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/FilePreviewContent/PptxPreview")
-);
-const LazyCodeMirrorDiff = React.lazy(
-  () => import("@src/features/CodeMirror/Diff")
-);
-
-export interface DiffFileSectionData {
-  path: string;
-  original_path?: string | null;
-  status: GitFileStatus;
-  staged: boolean;
-  additions?: number;
-  deletions?: number;
-  oldContent?: string;
-  newContent?: string;
-  oldStartLine?: number;
-  newStartLine?: number;
-  showLineNumbers?: boolean;
-  unifiedDiff?: string;
-  isBinary?: boolean;
-  /** True when the file was edited but content could not be retrieved (e.g. Cursor IDE blob pruned). */
-  isUnavailable?: boolean;
-}
-
-interface DiffFileSectionProps {
-  file: DiffFileSectionData;
-  viewMode: DiffViewMode;
-  defaultExpanded?: boolean;
-  expansionSignal?: number;
-  repoPath?: string;
-  sectionRef?: React.RefObject<HTMLDivElement | null>;
-  onFileSelect?: (path: string) => void;
-  onRequestContent?: (file: DiffFileSectionData) => void;
-  onExpansionChange?: (expanded: boolean) => void;
-  hideDirectory?: boolean;
-  showBottomBorder?: boolean;
-  dataPath?: string;
-  /** Show `current path ← original path` metadata for renamed files. */
-  showRenamePath?: boolean;
-  /**
-   * When true, renders a flat FileHeader (matching source control style)
-   * instead of the collapsible chevron button. Content is always expanded.
-   */
-  flat?: boolean;
-  /** Reduce the section-header gutter when adjacent pane chrome already supplies separation. */
-  compactHeaderGutter?: boolean;
-  /**
-   * When true, suppresses the bottom padding added by the diff viewer
-   * (used in contexts without a bottom panel, e.g. agent station diff).
-   */
-  noBottomPadding?: boolean;
-}
+export type { DiffFileSectionData } from "./types";
 
 function getDisplayPath(path: string, repoPath?: string): string {
   if (!repoPath || !path.startsWith(repoPath)) return path;
@@ -124,7 +38,9 @@ function getFileNameAndDir(path: string): {
 
 const DiffFileSection: React.FC<DiffFileSectionProps> = ({
   file,
+  reviewSearch,
   viewMode,
+  wordWrap,
   defaultExpanded = true,
   expansionSignal = 0,
   repoPath,
@@ -141,43 +57,16 @@ const DiffFileSection: React.FC<DiffFileSectionProps> = ({
   noBottomPadding = false,
 }) => {
   const { t } = useTranslation();
-  const [manualExpanded, setManualExpanded] = useState<{
-    signal: number;
-    value: boolean;
-  } | null>(null);
-  const expanded =
-    manualExpanded?.signal === expansionSignal
-      ? manualExpanded.value
-      : defaultExpanded;
-  const previousExpandedRef = useRef(expanded);
-
   const isDeleted = file.status === "deleted";
-
-  useEffect(() => {
-    if (!expanded) return;
-    if (isDeleted) return;
-    if (
-      file.oldContent !== undefined ||
-      file.newContent !== undefined ||
-      file.unifiedDiff !== undefined
-    ) {
-      return;
-    }
-    onRequestContent?.(file);
-  }, [expanded, file, isDeleted, onRequestContent]);
-
-  useEffect(() => {
-    if (previousExpandedRef.current === expanded) return;
-    previousExpandedRef.current = expanded;
-    onExpansionChange?.(expanded);
-  }, [expanded, onExpansionChange]);
-
-  const statusLetter = getStatusLetterForFile(file.status, file.staged);
-  const statusColor = getStatusColor(statusLetter);
-
-  const toggleExpanded = useCallback(() => {
-    setManualExpanded({ signal: expansionSignal, value: !expanded });
-  }, [expanded, expansionSignal]);
+  const { expanded, toggleExpanded } = useDiffFileSectionExpansion({
+    file,
+    reviewSearch,
+    defaultExpanded,
+    expansionSignal,
+    isDeleted,
+    onRequestContent,
+    onExpansionChange,
+  });
 
   const { additions, deletions } = useMemo(() => {
     if (file.additions !== undefined && file.deletions !== undefined) {
@@ -229,44 +118,22 @@ const DiffFileSection: React.FC<DiffFileSectionProps> = ({
     onFileSelect?.(absoluteFilePath);
   }, [absoluteFilePath, onFileSelect]);
 
-  function renderPreviewContent(): React.ReactNode {
-    if (!isPreviewable || file.status === "deleted") return null;
+  const handleCopyPath = useCallback(() => {
+    copyText(absoluteFilePath)
+      .then(() => {
+        Message.success(t("common:status.copiedFilePath"));
+      })
+      .catch(() => {
+        Message.error(t("common:errors.failedToCopyFilePath"));
+      });
+  }, [absoluteFilePath, t]);
 
-    switch (previewType) {
-      case "image":
-        return (
-          <LazyImagePreview filePath={absoluteFilePath} className="h-full" />
-        );
-      case "video":
-        return (
-          <LazyVideoPreview filePath={absoluteFilePath} className="h-full" />
-        );
-      case "pdf":
-        return (
-          <LazyPdfPreview filePath={absoluteFilePath} className="h-full" />
-        );
-      case "docx":
-        return (
-          <LazyDocxPreview filePath={absoluteFilePath} className="h-full" />
-        );
-      case "xlsx":
-        return (
-          <LazyXlsxPreview
-            filePath={absoluteFilePath}
-            className="h-full"
-            readOnly
-          />
-        );
-      case "pptx":
-        return (
-          <LazyPptxPreview filePath={absoluteFilePath} className="h-full" />
-        );
-      default:
-        return null;
-    }
-  }
-
-  const previewContent = renderPreviewContent();
+  const previewContent = renderDiffFilePreviewContent({
+    file,
+    isPreviewable,
+    previewType,
+    absoluteFilePath,
+  });
   const displayPath = getDisplayPath(file.path, repoPath);
   const { fileName, dirPath } = getFileNameAndDir(displayPath);
   const originalDisplayPath = file.original_path
@@ -281,71 +148,21 @@ const DiffFileSection: React.FC<DiffFileSectionProps> = ({
       : null;
 
   const diffContent = (
-    <SelectedTextAddToChat
-      displayName={fileName || file.path}
-      enabled={expanded}
-      scopeKey={file.path}
-    >
-      {previewContent ? (
-        <div className="h-[480px] min-h-[320px] overflow-hidden">
-          <Suspense
-            fallback={
-              <Placeholder
-                variant="loading"
-                placement="detail-panel"
-                fillParentHeight
-              />
-            }
-          >
-            {previewContent}
-          </Suspense>
-        </div>
-      ) : isBinary ? (
-        <Placeholder
-          variant="empty"
-          title={t("placeholders.previewUnavailable")}
-          subtitle={displayPath}
-        />
-      ) : hasContent ? (
-        <Suspense
-          fallback={
-            <Placeholder
-              variant="loading"
-              placement="detail-panel"
-              title={t("placeholders.loadingChanges")}
-            />
-          }
-        >
-          <LazyCodeMirrorDiff
-            oldValue={resolvedDiff.oldContent || ""}
-            newValue={resolvedDiff.newContent || ""}
-            filePath={file.path}
-            changeType={file.status}
-            oldStartLine={resolvedDiff.oldStartLine}
-            newStartLine={resolvedDiff.newStartLine}
-            showLineNumbers={file.showLineNumbers !== false}
-            viewMode={viewMode}
-            readOnly={true}
-            mergeControls={false}
-            collapseUnchanged={true}
-            noBottomPadding={noBottomPadding}
-            autoHeight
-          />
-        </Suspense>
-      ) : file.isUnavailable ? (
-        <Placeholder
-          variant="empty"
-          placement="detail-panel"
-          title={t("placeholders.diffContentUnavailable")}
-        />
-      ) : (
-        <Placeholder
-          variant="loading"
-          placement="detail-panel"
-          title={t("placeholders.loadingChanges")}
-        />
-      )}
-    </SelectedTextAddToChat>
+    <DiffFileSectionContent
+      file={file}
+      fileName={fileName}
+      displayPath={displayPath}
+      expanded={expanded}
+      previewContent={previewContent}
+      isBinary={isBinary}
+      hasContent={hasContent}
+      resolvedDiff={resolvedDiff}
+      reviewSearch={reviewSearch}
+      viewMode={viewMode}
+      wordWrap={wordWrap}
+      noBottomPadding={noBottomPadding}
+      t={t}
+    />
   );
 
   if (flat) {
@@ -373,86 +190,24 @@ const DiffFileSection: React.FC<DiffFileSectionProps> = ({
       className={showBottomBorder ? "border-b border-border-2" : undefined}
       data-diff-section-path={dataPath}
     >
-      <div
-        className={`group/diff-header sticky top-0 z-10 h-9 w-full min-w-0 ${isDeleted ? "" : "hover:bg-fill-2"} ${compactHeaderGutter ? "px-2" : "px-3"} ${EDITOR_TAB_CANVAS_BG_CLASS}`}
-      >
-        <button
-          type="button"
-          className="absolute inset-0 w-full cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none focus-visible:ring-inset disabled:cursor-default"
-          onClick={toggleExpanded}
-          disabled={isDeleted}
-          title={t(expanded ? "actions.collapse" : "actions.expand")}
-          aria-label={`${t(expanded ? "actions.collapse" : "actions.expand")} ${displayPath}`}
-          aria-expanded={isDeleted ? undefined : expanded}
-        />
-        <div className="pointer-events-none relative z-10 flex h-full min-w-0 items-center gap-2">
-          {isDeleted ? (
-            <span className="inline-block w-[14px] shrink-0" aria-hidden />
-          ) : expanded ? (
-            <HugeiconsIcon
-              icon={ArrowDown01Icon}
-              data-icon="chevron-down"
-              size={14}
-              className="shrink-0 text-text-3"
-            />
-          ) : (
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              data-icon="chevron-right"
-              size={14}
-              className="shrink-0 text-text-3"
-            />
-          )}
-          <FileTypeIcon
-            fileName={file.path}
-            size="small"
-            className="shrink-0 text-text-2"
-          />
-          <div className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden">
-            {canOpenFile ? (
-              <button
-                type="button"
-                className="pointer-events-auto shrink-0 text-left text-[13px] leading-normal font-medium text-text-1 underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-                onClick={handleOpenFile}
-                title={t("tooltips.openInEditorTab")}
-                aria-label={`${t("tooltips.openInEditorTab")}: ${displayPath}`}
-              >
-                {fileName}
-              </button>
-            ) : (
-              <span className="shrink-0 text-[13px] font-medium text-text-1">
-                {fileName}
-              </span>
-            )}
-            {!hideDirectory && dirPath ? (
-              <span className="min-w-0 truncate text-[11px] text-text-2">
-                {dirPath}
-              </span>
-            ) : null}
-            {renamePath ? (
-              <>
-                <span className="shrink-0 text-[11px] text-text-3" aria-hidden>
-                  ←
-                </span>
-                <span
-                  className="min-w-0 truncate text-[11px] text-text-2"
-                  title={`${displayPath} ← ${renamePath}`}
-                >
-                  {renamePath}
-                </span>
-              </>
-            ) : null}
-          </div>
-          <DiffStatsBadge
-            additions={additions}
-            deletions={deletions}
-            variant="compact"
-          />
-          <span className={`shrink-0 text-[11px] font-medium ${statusColor}`}>
-            {statusLetter}
-          </span>
-        </div>
-      </div>
+      <DiffFileSectionHeader
+        file={file}
+        fileName={fileName}
+        dirPath={dirPath}
+        displayPath={displayPath}
+        renamePath={renamePath}
+        hideDirectory={hideDirectory}
+        compactHeaderGutter={compactHeaderGutter}
+        isDeleted={isDeleted}
+        expanded={expanded}
+        canOpenFile={canOpenFile}
+        additions={additions}
+        deletions={deletions}
+        toggleExpanded={toggleExpanded}
+        handleCopyPath={handleCopyPath}
+        handleOpenFile={handleOpenFile}
+        t={t}
+      />
 
       {!isDeleted && expanded && diffContent}
     </div>

@@ -19,12 +19,9 @@ import { useBrowserSessions } from "@src/modules/WorkStation/Browser/hooks/useBr
 import {
   NoTabsPlaceholder,
   ReplayShellLayout,
-  buildPrimarySidebarConfig,
-  buildSecondaryPanelConfig,
   useSimulatorAwaitingAgentCaption,
   useSimulatorPlaceholderActions,
 } from "@src/modules/WorkStation/shared";
-import { useSimulatorReplaySidebar } from "@src/modules/WorkStation/shared/SessionReplay/useSimulatorReplaySidebar";
 import { BrowserStatusBar } from "@src/modules/WorkStation/shared/StatusBar";
 import { addToAgentAtom } from "@src/store/ui/addToAgentAtom";
 import { simulatorEffectiveDockAppAtom } from "@src/store/ui/simulatorAtom";
@@ -35,19 +32,14 @@ import {
 } from "@src/store/workstation/browser/browserAutomationAtom";
 import type { BackendEvent } from "@src/types/session/steps";
 
-import BrowserPrimarySidebar from "../Panels/BrowserPrimarySidebar";
 import {
   SHARED_BROWSER_HOST,
   SHARED_BROWSER_HOST_SCOPE,
   SharedBrowserDevToolsPanel,
   SharedBrowserWorkspace,
 } from "../shared";
+import { buildBrowserDevToolsPanelConfig } from "../shared/browserDevToolsPanelConfig";
 import { sendSelectedElementToChat } from "../shared/sendSelectedElementToChat";
-import BrowserSidebar from "./BrowserSidebar";
-import {
-  TAB_ID_BY_ENTRY_CATEGORY,
-  getEntryCategory,
-} from "./browserReplayUtils";
 import type { BrowserEntry } from "./types";
 import { useBrowser } from "./useBrowser";
 import { useBrowserReplayDisplay } from "./useBrowserReplayDisplay";
@@ -77,8 +69,6 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
   const myTabsBrowserState = myTabsBrowser.browserState;
   const setMyTabsDevToolsCollapsed = myTabsBrowser.setDevToolsCollapsed;
   const setMyTabsDevToolsPosition = myTabsBrowser.setDevToolsPosition;
-  const { layoutMode: primarySidebarPosition, sidebar } =
-    useSimulatorReplaySidebar();
   const setAddToAgent = useSetAtom(addToAgentAtom);
   const automation = useBrowserAutomation({ enabled: isBrowserReplayActive });
   const isAutomationActive = automation.isRunning;
@@ -88,7 +78,6 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
 
   const {
     browserEntries,
-    selectEntry,
     activeEntry,
     internalBrowserEntries,
     activeInternalEntry,
@@ -123,32 +112,22 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
     if (!hasScreenshotMarker(entry.event)) return;
   }, [activeEntry]);
 
-  const {
-    displayData,
-    headerInfo,
-    nativeHeaderInfo,
-    nativeDisplayContent,
-    activeEntryId,
-  } = useBrowserReplayDisplay({
-    activeEntry,
-    activeInternalEntry,
-    activeSubtool,
-    isAutomationActive,
-    automation,
-    cache,
-  });
+  const { displayData, headerInfo, nativeHeaderInfo, nativeDisplayContent } =
+    useBrowserReplayDisplay({
+      activeEntry,
+      activeInternalEntry,
+      isAutomationActive,
+      automation,
+      cache,
+    });
 
   const {
     visibleActiveTabId,
-    activeBrowserCategory,
     showMyTabsBrowser,
     showAgentBrowserCategory,
     browserTabs,
     handleBrowserTabClick,
     handleNewMyTabsSession,
-    handleNewPrivateMyTabsSession,
-    handleSelectMyTabsSession,
-    handleCloseMyTabsSession,
   } = useBrowserReplayTabs({
     browserEntries,
     internalBrowserEntries,
@@ -215,82 +194,6 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
     enabled: showActiveBrowserCategory && agentBrowserHeaderContent !== null,
   });
 
-  const handleSelectAgentEntry = useCallback(
-    (entryId: string) => {
-      const category = getEntryCategory(
-        entryId,
-        browserEntries,
-        internalBrowserEntries
-      );
-      const tabId = category ? TAB_ID_BY_ENTRY_CATEGORY.get(category) : null;
-      if (tabId) {
-        handleBrowserTabClick(tabId);
-      }
-      selectEntry(entryId);
-    },
-    [browserEntries, internalBrowserEntries, handleBrowserTabClick, selectEntry]
-  );
-
-  const primarySidebarConfig = useMemo(
-    () =>
-      buildPrimarySidebarConfig({
-        content: (
-          <div className="relative h-full w-full overflow-hidden">
-            <div
-              className={`absolute inset-0 ${
-                showActiveMyTabsBrowser
-                  ? "pointer-events-auto visible"
-                  : "pointer-events-none invisible"
-              }`}
-            >
-              <BrowserPrimarySidebar
-                sessions={myTabsBrowserState.sessions}
-                activeSessionId={myTabsBrowserState.activeSessionId}
-                onSelectSession={handleSelectMyTabsSession}
-                onNewSession={handleNewMyTabsSession}
-                onNewPrivateSession={handleNewPrivateMyTabsSession}
-                onCloseSession={handleCloseMyTabsSession}
-              />
-            </div>
-            <div
-              className={`absolute inset-0 ${
-                showActiveBrowserCategory
-                  ? "pointer-events-auto visible"
-                  : "pointer-events-none invisible"
-              }`}
-            >
-              {activeBrowserCategory && (
-                <BrowserSidebar
-                  category={activeBrowserCategory}
-                  entries={browserEntries}
-                  internalBrowserEntries={internalBrowserEntries}
-                  activeEntryId={activeEntryId}
-                  onSelectEntry={handleSelectAgentEntry}
-                />
-              )}
-            </div>
-          </div>
-        ),
-        ...sidebar,
-      }),
-    [
-      browserEntries,
-      internalBrowserEntries,
-      activeEntryId,
-      showActiveMyTabsBrowser,
-      showActiveBrowserCategory,
-      activeBrowserCategory,
-      myTabsBrowserState.sessions,
-      myTabsBrowserState.activeSessionId,
-      handleSelectMyTabsSession,
-      handleCloseMyTabsSession,
-      handleNewMyTabsSession,
-      handleNewPrivateMyTabsSession,
-      handleSelectAgentEntry,
-      sidebar,
-    ]
-  );
-
   const devToolsPosition = myTabsBrowser.devToolsPosition;
 
   const devToolsContent = useMemo(
@@ -335,21 +238,15 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
 
   const secondaryPanelConfig = useMemo(
     () =>
-      buildSecondaryPanelConfig({
+      buildBrowserDevToolsPanelConfig({
         content: devToolsContent,
         position: devToolsPosition,
         collapsed: myTabsBrowser.devToolsCollapsed || !showActiveMyTabsBrowser,
-        size:
-          devToolsPosition === "right"
-            ? myTabsBrowser.devToolsPanelWidth
-            : devToolsPanelHeight,
-        onSizeChange:
-          devToolsPosition === "right"
-            ? myTabsBrowser.setDevToolsPanelWidth
-            : setDevToolsPanelHeight,
+        width: myTabsBrowser.devToolsPanelWidth,
+        onWidthChange: myTabsBrowser.setDevToolsPanelWidth,
+        height: devToolsPanelHeight,
+        onHeightChange: setDevToolsPanelHeight,
         onClose: handleCloseDevTools,
-        minSize: devToolsPosition === "right" ? 200 : 160,
-        maxSize: devToolsPosition === "right" ? 400 : 600,
       }),
     [
       devToolsContent,
@@ -383,15 +280,9 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
 
     return (
       <BrowserStatusBar
-        url={myTabsBrowser.currentUrl}
-        isLoading={myTabsBrowser.isLoading}
         errorCount={myTabsBrowser.errorCount}
         warningCount={myTabsBrowser.warningCount}
-        isDevToolsOpen={!myTabsBrowser.devToolsCollapsed}
         onToggleDevTools={myTabsBrowser.handleToggleDevTools}
-        isPrivate={myTabsBrowser.isPrivate}
-        sessionCount={myTabsBrowser.sessionCount}
-        currentSessionIndex={myTabsBrowser.currentSessionIndex}
         hasSelectedElement={myTabsBrowser.selectedElement !== null}
         selectedElementLabel={
           myTabsBrowser.selectedElement
@@ -405,15 +296,9 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
     );
   }, [
     showActiveMyTabsBrowser,
-    myTabsBrowser.currentUrl,
-    myTabsBrowser.isLoading,
     myTabsBrowser.errorCount,
     myTabsBrowser.warningCount,
-    myTabsBrowser.devToolsCollapsed,
     myTabsBrowser.handleToggleDevTools,
-    myTabsBrowser.isPrivate,
-    myTabsBrowser.sessionCount,
-    myTabsBrowser.currentSessionIndex,
     myTabsBrowser.selectedElement,
     handleSendSelectedElementToChat,
     myTabsBrowser.clearSelection,
@@ -525,6 +410,7 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
 
   return (
     <ReplayShellLayout
+      showSidebarToggle={false}
       tabs={browserTabs}
       activeEventId={visibleActiveTabId}
       onTabClick={handleBrowserTabClick}
@@ -545,10 +431,11 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
       }
       eventWrapper={{ event: currentEvent as unknown as BackendEvent, mode }}
       workstation={{
-        primarySidebarConfig,
+        // The shared shell otherwise defaults to an expanded empty sidebar.
+        primarySidebarConfig: { content: null, collapsed: true, size: 0 },
         secondaryPanelConfig,
         statusBar: myTabsStatusBar,
-        layoutMode: primarySidebarPosition,
+        layoutMode: "left",
         appClassName: "session-replay-browser",
       }}
     >

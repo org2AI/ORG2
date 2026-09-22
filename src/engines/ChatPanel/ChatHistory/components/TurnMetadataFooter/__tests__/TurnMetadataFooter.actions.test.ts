@@ -49,6 +49,9 @@ describe("TurnMetadataFooter PR row", () => {
     const events: CustomEvent<{ url: string; navigate?: boolean }>[] = [];
     window.addEventListener("open-url-in-browser", (event) => {
       events.push(event as CustomEvent<{ url: string; navigate?: boolean }>);
+      // Acknowledge like the app's Browser host, or the link falls back to
+      // the system browser.
+      event.preventDefault();
     });
 
     const root = createSmokeRoot();
@@ -73,7 +76,7 @@ describe("TurnMetadataFooter PR row", () => {
     await dispatch(() => row?.click());
 
     expect(events).toHaveLength(1);
-    expect(events[0].detail).toEqual({ url: PR_URL, navigate: true });
+    expect(events[0].detail).toEqual({ url: PR_URL });
 
     await root.unmount();
   });

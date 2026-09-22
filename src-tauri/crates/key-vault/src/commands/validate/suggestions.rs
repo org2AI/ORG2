@@ -16,7 +16,9 @@ use crate::auto_detect::{
 };
 use crate::commands::validate::run_validate_key;
 use crate::commands::{save_key, KeyInfo, SaveKeyRequest};
-use crate::key_store::{ModelType, KEY_SERVICE};
+use crate::key_store::{
+    ModelType, ACCOUNT_SETUP_METHOD_AUTODETECT, ACCOUNT_SETUP_METHOD_METADATA_KEY, KEY_SERVICE,
+};
 
 /// Scan the machine for credentials other coding tools have left behind.
 /// Offline and cheap; safe to call on every Key Vault visit.
@@ -122,6 +124,20 @@ fn detected_key_matches(key: &DetectedKey, selection: &CredentialSuggestion) -> 
     }
 }
 
+/// Account metadata for a scanned credential: whatever the detector read, plus
+/// the setup method, so reconnect offers the scan again and the refresh path
+/// knows the tokens are shared with the tool they were copied from.
+fn scanned_account_metadata(
+    detected: Option<std::collections::HashMap<String, String>>,
+) -> Option<std::collections::HashMap<String, String>> {
+    let mut metadata = detected.unwrap_or_default();
+    metadata.insert(
+        ACCOUNT_SETUP_METHOD_METADATA_KEY.to_string(),
+        ACCOUNT_SETUP_METHOD_AUTODETECT.to_string(),
+    );
+    Some(metadata)
+}
+
 async fn import_via_detector(selection: &CredentialSuggestion) -> Result<KeyInfo, String> {
     let result = auto_detect_key(&selection.agent_type).await;
     let key = result
@@ -152,7 +168,7 @@ async fn import_via_detector(selection: &CredentialSuggestion) -> Result<KeyInfo
         base_url: key.base_url.clone(),
         protocol: None,
         env_vars: key.env_vars.clone(),
-        account_metadata: key.account_metadata.clone(),
+        account_metadata: scanned_account_metadata(key.account_metadata.clone()),
         available_models: Some(models.clone()),
         enabled_models: Some(models),
         model_aliases: None,
@@ -246,7 +262,7 @@ async fn import_generic(
         base_url,
         protocol: imported.map(|(_, protocol)| protocol),
         env_vars: None,
-        account_metadata: None,
+        account_metadata: scanned_account_metadata(None),
         available_models: Some(models.clone()),
         enabled_models: Some(models),
         model_aliases: None,

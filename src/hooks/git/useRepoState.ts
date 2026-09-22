@@ -122,5 +122,3 @@ export function useRepoState(): UseRepoStateReturn {
     validRepoIds,
   };
 }
-
-export default useRepoState;

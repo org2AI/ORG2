@@ -66,7 +66,7 @@ fn state_default_is_empty() {
     let state = SessionMemoryState::default();
     assert!(state.content.is_none());
     assert!(state.last_summarized_seq.is_none());
-    assert_eq!(state.tokens_at_last_extraction, 0);
+    assert_eq!(state.tokens_at_last_extraction, None);
     assert_eq!(state.tool_calls_since_extraction, 0);
     assert!(!state.initialized);
     assert!(!state.extraction_in_progress);
@@ -117,7 +117,7 @@ fn should_extract_below_update_threshold() {
     let config = SessionMemoryConfig::default();
     let state = SessionMemoryState {
         initialized: true,
-        tokens_at_last_extraction: 48_000,
+        tokens_at_last_extraction: Some(48_000),
         tool_calls_since_extraction: 5,
         ..Default::default()
     };
@@ -129,7 +129,7 @@ fn should_extract_tool_calls_threshold() {
     let config = SessionMemoryConfig::default();
     let state = SessionMemoryState {
         initialized: true,
-        tokens_at_last_extraction: 10_000,
+        tokens_at_last_extraction: Some(10_000),
         tool_calls_since_extraction: 3,
         ..Default::default()
     };
@@ -141,7 +141,7 @@ fn should_extract_natural_break() {
     let config = SessionMemoryConfig::default();
     let state = SessionMemoryState {
         initialized: true,
-        tokens_at_last_extraction: 10_000,
+        tokens_at_last_extraction: Some(10_000),
         tool_calls_since_extraction: 0,
         ..Default::default()
     };
@@ -412,7 +412,7 @@ fn restore_sm_state_from_persisted_data() {
     assert_eq!(state.content, persisted_content);
     assert_eq!(state.last_summarized_seq, Some(42));
     // Counters remain zero — they track in-session activity only
-    assert_eq!(state.tokens_at_last_extraction, 0);
+    assert_eq!(state.tokens_at_last_extraction, None);
     assert_eq!(state.tool_calls_since_extraction, 0);
 }
 

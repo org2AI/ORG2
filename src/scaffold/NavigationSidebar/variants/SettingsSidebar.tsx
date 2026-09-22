@@ -9,7 +9,7 @@
 import { useAtomValue } from "jotai";
 import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import Button from "@src/components/Button";
 import { ROUTES } from "@src/config/routes";
@@ -20,21 +20,15 @@ import {
   buildSettingsNavigationGroups,
   getActiveSettingsNavigationItemId,
 } from "@src/config/settingsNavigation";
-import { buildGlobalSettingsSearchGroups } from "@src/config/settingsSearch";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { useOrg2CloudSignIn } from "@src/features/Org2Cloud/useOrg2CloudSignIn";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { SIDEBAR_MEMORY_KIND, useSidebarMemoryEntry } from "@src/hooks/perf";
 import { ArrowLeft01Icon, Settings01Icon } from "@src/icons";
-import SettingsSearchDropdown, {
-  type SettingsSearchDropdownGroup,
-  type SettingsSearchDropdownItem,
-} from "@src/modules/shared/layouts/blocks/SettingsSearchDropdown";
 import {
-  type RenderedSettingsControl,
-  collectRenderedSettingsControls,
   revealRenderedSettingsControl,
   revealSettingsControlWhenRendered,
-} from "@src/modules/shared/layouts/blocks/SettingsSearchDropdown/settingsControlSearch";
+} from "@src/scaffold/NavigationSidebar/variants/SettingsSearchDropdown/settingsControlSearch";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { settingsReturnPathAtom } from "@src/store/ui/settingsNavigationAtom";
 
@@ -42,7 +36,7 @@ import SidebarBase from "../SidebarBase";
 import {
   SidebarBottomBar,
   SidebarHeaderNavButton,
-  SidebarList,
+  SidebarSectionLabel,
 } from "../blocks";
 import SidebarSettingsMenuButton from "../blocks/SidebarSettingsMenuButton";
 import HoverAnimatedIcon, {
@@ -51,6 +45,9 @@ import HoverAnimatedIcon, {
 import NavigationMenu from "../components/NavigationMenu";
 import type { NavigationMenuItem } from "../components/NavigationMenu/config";
 import SidebarAccountButton from "../connectors/SidebarAccountButton";
+import SettingsSidebarCount from "./SettingsSidebarCount";
+import SettingsSidebarSearch from "./SettingsSidebarSearch";
+import type { SettingsControlSearchItem } from "./settingsSidebarSearchPages";
 
 interface SettingsFooterBackButtonProps {
   label: string;
@@ -62,7 +59,6 @@ const SettingsFooterBackButton: React.FC<SettingsFooterBackButtonProps> = ({
   onClick,
 }) => (
   <Button
-    htmlType="button"
     variant="tertiary"
     size="small"
     iconOnly
@@ -178,6 +174,8 @@ const SettingsSidebar: React.FC = () => {
       <SidebarHeaderNavButton
         icon={ArrowLeft01Icon}
         label={t("navigation:labels.settings")}
+        ariaLabel={t("navigation:labels.closeSettings")}
+        shortcutId="close_tab"
         onClick={handleBack}
       />
     ),
@@ -220,21 +218,6 @@ interface SettingsRootBodyProps {
   onSelectControl?: (item: SettingsControlSearchItem) => void;
 }
 
-interface SettingsControlSearchItem extends SettingsSearchDropdownItem {
-  readonly kind: "control";
-  readonly targetId?: string;
-  readonly searchKey?: string;
-}
-
-interface SettingsNavigationSearchItem extends SettingsSearchDropdownItem {
-  readonly kind: "navigation";
-  readonly navigationItem: SettingsNavigationItem;
-}
-
-type SettingsSidebarSearchItem =
-  | SettingsControlSearchItem
-  | SettingsNavigationSearchItem;
-
 export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
   navigationGroups,
   activeItemId,
@@ -242,10 +225,6 @@ export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
   onSelect,
   onSelectControl,
 }) => {
-  const { t } = useTranslation();
-  const [renderedControls, setRenderedControls] = React.useState<
-    readonly RenderedSettingsControl[]
-  >([]);
   const appGroup = navigationGroups[0];
   const toMenuItems = useCallback(
     (items: readonly SettingsNavigationItem[]): NavigationMenuItem[] =>
@@ -256,6 +235,10 @@ export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
         icon: item.icon,
         dataTestId: item.dataTestId,
         routePath: item.path,
+        labelBadge:
+          item.id === "general" || item.id === "development" ? (
+            <SettingsSidebarCount section={item.id} />
+          ) : undefined,
       })),
     []
   );
@@ -280,96 +263,8 @@ export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
       ),
     [navigationGroups]
   );
-  const activeNavigationItem = itemById.get(activeItemId);
-
-  const globalControlSearchGroups = useMemo(
-    () =>
-      buildGlobalSettingsSearchGroups(t, navigationGroups).map(
-        (group): SettingsSearchDropdownGroup<SettingsControlSearchItem> => ({
-          id: group.id,
-          label: group.label,
-          items: group.items.map((item) => ({
-            id: item.id,
-            label: item.label,
-            path: item.path,
-            icon: item.navigationItem.icon,
-            groupId: group.id,
-            searchTerms: item.searchTerms,
-            kind: "control",
-            searchKey: item.key,
-          })),
-        })
-      ),
-    [navigationGroups, t]
-  );
-
-  const searchGroups = useMemo<
-    readonly SettingsSearchDropdownGroup<SettingsSidebarSearchItem>[]
-  >(() => {
-    const navigationSearchGroups = navigationGroups.map((group) => ({
-      ...group,
-      items: group.items.map<SettingsNavigationSearchItem>((item) => ({
-        ...item,
-        kind: "navigation",
-        navigationItem: item,
-      })),
-    }));
-    if (!activeNavigationItem) {
-      return [...navigationSearchGroups, ...globalControlSearchGroups];
-    }
-
-    const globalSearchKeys = new Set(
-      globalControlSearchGroups.flatMap((group) =>
-        group.items.flatMap((item) => item.searchKey ?? [])
-      )
-    );
-
-    const controlItems = renderedControls
-      .filter(
-        (control) =>
-          !control.searchKeys.some((key) => globalSearchKeys.has(key))
-      )
-      .map<SettingsControlSearchItem>((control) => ({
-        id: control.targetId,
-        label: control.label,
-        path: activeNavigationItem.path,
-        icon: activeNavigationItem.icon,
-        groupId: `controls-${activeNavigationItem.id}`,
-        searchTerms: control.description ? [control.description] : undefined,
-        kind: "control",
-        targetId: control.targetId,
-      }));
-
-    return controlItems.length > 0
-      ? [
-          ...navigationSearchGroups,
-          ...globalControlSearchGroups,
-          {
-            id: `controls-${activeNavigationItem.id}`,
-            label: activeNavigationItem.label,
-            items: controlItems,
-          },
-        ]
-      : [...navigationSearchGroups, ...globalControlSearchGroups];
-  }, [
-    activeNavigationItem,
-    globalControlSearchGroups,
-    navigationGroups,
-    renderedControls,
-  ]);
-
-  const handleSearchQueryChange = useCallback((query: string) => {
-    setRenderedControls(
-      query.trim().length > 0 ? collectRenderedSettingsControls() : []
-    );
-  }, []);
-
   const handleSelectSearchItem = useCallback(
-    (item: SettingsSidebarSearchItem) => {
-      if (item.kind === "navigation") {
-        onSelect(item.navigationItem);
-        return;
-      }
+    (item: SettingsControlSearchItem) => {
       if (onSelectControl) {
         onSelectControl(item);
         return;
@@ -380,7 +275,7 @@ export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
         );
       }
     },
-    [onSelect, onSelectControl]
+    [onSelectControl]
   );
 
   const handleItemClick = useCallback(
@@ -406,36 +301,29 @@ export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
   });
 
   return (
-    <>
-      <div className="shrink-0 px-3 pt-1 pb-2">
-        <SettingsSearchDropdown<SettingsSidebarSearchItem>
-          key={searchScopeKey}
-          variant="search-input"
-          groups={searchGroups}
-          onSelect={handleSelectSearchItem}
-          onSearchQueryChange={handleSearchQueryChange}
-          align="left"
-        />
-      </div>
-      <SidebarList>
-        <NavigationMenu
-          items={appSectionItems}
-          selectedKeys={selectedKeys}
-          onMenuItemClick={handleItemClick}
-        />
-        {namedSections.map((section) => (
-          <div key={section.id} className="mt-4">
-            <div className="mb-1 px-2 text-[11px] font-medium tracking-wider text-text-1 uppercase">
-              {section.label}
-            </div>
-            <NavigationMenu
-              items={section.items}
-              selectedKeys={selectedKeys}
-              onMenuItemClick={handleItemClick}
-            />
-          </div>
-        ))}
-      </SidebarList>
-    </>
+    <SettingsSidebarSearch
+      key={searchScopeKey}
+      navigationGroups={navigationGroups}
+      activeItemId={activeItemId}
+      currentPath={searchScopeKey}
+      onSelect={onSelect}
+      onSelectControl={handleSelectSearchItem}
+    >
+      <NavigationMenu
+        items={appSectionItems}
+        selectedKeys={selectedKeys}
+        onMenuItemClick={handleItemClick}
+      />
+      {namedSections.map((section) => (
+        <div key={section.id} className="mt-2">
+          <SidebarSectionLabel label={section.label} />
+          <NavigationMenu
+            items={section.items}
+            selectedKeys={selectedKeys}
+            onMenuItemClick={handleItemClick}
+          />
+        </div>
+      ))}
+    </SettingsSidebarSearch>
   );
 };

@@ -196,7 +196,6 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
           {onUnlinkSource && (
             <Button
               variant="tertiary"
-              appearance="ghost"
               size="mini"
               icon={
                 <HugeiconsIcon

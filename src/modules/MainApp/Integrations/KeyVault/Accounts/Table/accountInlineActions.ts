@@ -1,3 +1,4 @@
+import { REAUTH_AGENTS, type ReauthAgent } from "@src/config/mainAppPaths";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 
 type ReconnectableAccount = Pick<
@@ -13,16 +14,19 @@ export function areAccountRefreshActionsDisabled(
 }
 
 /**
- * Codex browser reauthentication updates an existing local OAuth credential.
+ * The agent whose reconnect flow repairs this account in place, if any: a
+ * failed local OAuth credential of an agent the Key Vault can reauthenticate.
  * API-key rows and manually disabled healthy rows use their existing edit flow.
  */
-export function shouldShowCodexReconnect(
+export function reconnectableOAuthAgent(
   account: ReconnectableAccount
-): boolean {
-  return (
-    account.hasLocalKey &&
-    account.modelType === "codex" &&
-    account.authMethod === "oauth" &&
-    (account.status === "error" || account.healthStatus === "invalid")
-  );
+): ReauthAgent | null {
+  if (
+    !account.hasLocalKey ||
+    account.authMethod !== "oauth" ||
+    !(account.status === "error" || account.healthStatus === "invalid")
+  ) {
+    return null;
+  }
+  return REAUTH_AGENTS.find((agent) => agent === account.modelType) ?? null;
 }

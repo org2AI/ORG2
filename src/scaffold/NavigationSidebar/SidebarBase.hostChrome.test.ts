@@ -43,8 +43,6 @@ vi.mock("@src/hooks/ui/sidebar/useSidebarState", () => ({
     isCollapsed: false,
     isDragging: false,
     handleMouseDown: () => undefined,
-    toggleCollapse: () => undefined,
-    expand: () => undefined,
     collapse: () => undefined,
     setWidth: () => undefined,
   }),
@@ -52,8 +50,9 @@ vi.mock("@src/hooks/ui/sidebar/useSidebarState", () => ({
 vi.mock("@src/scaffold/Resize", () => ({
   VerticalResizeHandle: () => null,
 }));
-vi.mock("@src/util/platform/tauri/nativeMenuPopup", () => ({
-  popupNativeMenu: async () => undefined,
+vi.mock("@src/scaffold/NavigationSidebar/menus/SidebarMenu", () => ({
+  SidebarMenuHost: () => null,
+  popupSidebarMenu: async () => undefined,
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),

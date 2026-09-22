@@ -65,13 +65,17 @@ export function useImageAttachment(ownerId?: string) {
    * warns the user if the incoming batch would exceed it).
    */
   const ingestFiles = useCallback(
-    async (files: File[]) => {
-      if (files.length === 0) return;
+    async (
+      files: File[],
+      signal?: AbortSignal,
+      localPath?: string
+    ): Promise<number> => {
+      if (files.length === 0 || signal?.aborted) return 0;
 
       const remaining = MAX_CHAT_IMAGES - imagesLengthRef.current;
       if (remaining <= 0) {
         Message.warning(t("chatImage.maxReached", { max: MAX_CHAT_IMAGES }));
-        return;
+        return 0;
       }
 
       const filesToProcess = files.slice(0, remaining);
@@ -87,6 +91,7 @@ export function useImageAttachment(ownerId?: string) {
       const newAttachments: ChatImageAttachment[] = [];
 
       for (const file of filesToProcess) {
+        if (signal?.aborted) return 0;
         const prepared = prepareChatImageFile(file);
         if (!prepared) continue;
 
@@ -102,28 +107,48 @@ export function useImageAttachment(ownerId?: string) {
             id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             dataUrl: result.dataUrl,
             fileName: prepared.name || "pasted-image.png",
+            ...(localPath ? { localPath } : {}),
             size: result.optimizedSize,
             width: result.finalDimensions.width,
             height: result.finalDimensions.height,
             ownerId,
           });
         } catch (error) {
+          if (signal?.aborted) return 0;
           log.error("Failed to optimize image", error);
           Message.error(t("chatImage.processFailed"));
         }
       }
 
+      if (signal?.aborted) return 0;
+      let added = 0;
       if (newAttachments.length > 0) {
-        setImages((prev) => [...prev, ...newAttachments]);
+        setImages((prev) => {
+          if (signal?.aborted) return prev;
+          // Recheck at the authoritative write: concurrent paste/menu imports
+          // can both have passed the preflight count before optimization.
+          const count = prev.filter(
+            (image) => image.ownerId === ownerId
+          ).length;
+          const accepted = newAttachments.slice(
+            0,
+            Math.max(0, MAX_CHAT_IMAGES - count)
+          );
+          added = accepted.length;
+          return [...prev, ...accepted];
+        });
+        if (added < newAttachments.length)
+          Message.warning(t("chatImage.maxReached", { max: MAX_CHAT_IMAGES }));
       }
+      return added;
     },
     [setImages, ownerId, t]
   );
 
   const handleImagePaste = useCallback(
-    async (files: File[]) => {
+    async (files: File[], signal?: AbortSignal) => {
       const validFiles = files.filter(isChatImageFile);
-      await ingestFiles(validFiles);
+      return ingestFiles(validFiles, signal);
     },
     [ingestFiles]
   );
@@ -214,7 +239,7 @@ export function useImageAttachment(ownerId?: string) {
         const bytes = await readFile(path);
         const name = fileName || basename(path);
         const file = new File([bytes as BlobPart], name, { type: mime });
-        await ingestFiles([file]);
+        await ingestFiles([file], undefined, path);
       } catch (error) {
         const name = fileName || basename(path);
         log.error("Failed to read image from path", { path, error });

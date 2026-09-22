@@ -20,14 +20,14 @@ import Button from "@src/components/Button";
 import Select from "@src/components/Select";
 import type { SelectOption } from "@src/components/Select/types";
 import Switch from "@src/components/Switch";
-import { loadSharedLocalKeys } from "@src/hooks/keyVault/sharedLocalKeyStore";
-import { createLogger } from "@src/hooks/logger";
 import {
   SECTION_ACTION_GAP_CLASSES,
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { loadSharedLocalKeys } from "@src/hooks/keyVault/sharedLocalKeyStore";
+import { createLogger } from "@src/hooks/logger";
 
 const log = createLogger("GatewayAgentCard");
 

@@ -3,9 +3,9 @@ import { Provider, createStore } from "jotai";
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { seedSidebarCloudScope } from "@src/features/Org2Cloud/sidebarCloudScope.testUtils";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import { activeSessionIdAtom } from "@src/store/session/viewAtom";
-import { chatPanelSelectedCloudOrgAtom } from "@src/store/ui/chatPanel/selectionAtoms";
 import { type SmokeRoot, createSmokeRoot } from "@src/test/reactSmokeHarness";
 
 import { conversationPlaneSignalAtom } from "./SessionConversation/conversationPlaneAtom";
@@ -15,11 +15,7 @@ import {
   sessionCommentsKey,
 } from "./org2CloudCommentsBus";
 import { ORG_DB_CHANGED_EVENT } from "./org2CloudControlBus";
-import {
-  type Org2CloudOrg,
-  org2CloudOrgsAtom,
-  sidebarActiveCloudOrgIdAtom,
-} from "./org2CloudOrgsAtom";
+import { type Org2CloudOrg, org2CloudOrgsAtom } from "./org2CloudOrgsAtom";
 import type {
   Org2CloudPresenceHandle,
   Org2CloudPresenceOptions,
@@ -104,27 +100,27 @@ vi.mock("./org2CloudSyncEngine", () => ({
 
 interface ControlledSubscription {
   options: Org2CloudSubscribeOptions;
-  unsubscribe: ReturnType<typeof vi.fn>;
+  unsubscribe: ReturnType<typeof vi.fn<() => void>>;
 }
 
 interface ControlledPresence {
   options: Org2CloudPresenceOptions;
   handle: Org2CloudPresenceHandle & {
-    update: ReturnType<typeof vi.fn>;
-    send: ReturnType<typeof vi.fn>;
-    leave: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn<() => void>>;
+    send: ReturnType<typeof vi.fn<() => void>>;
+    leave: ReturnType<typeof vi.fn<() => void>>;
   };
 }
 
 interface ControlledConnection extends Org2CloudRealtimeConnection {
   subscriptions: ControlledSubscription[];
   presences: ControlledPresence[];
-  setAuth: ReturnType<typeof vi.fn>;
-  dispose: ReturnType<typeof vi.fn>;
+  setAuth: ReturnType<typeof vi.fn<() => void>>;
+  dispose: ReturnType<typeof vi.fn<() => void>>;
 }
 
 const connections: ControlledConnection[] = [];
-const broadcasterUnregisters: Array<ReturnType<typeof vi.fn>> = [];
+const broadcasterUnregisters: Array<ReturnType<typeof vi.fn<() => void>>> = [];
 
 function createControlledConnection(): ControlledConnection {
   const subscriptions: ControlledSubscription[] = [];
@@ -206,8 +202,7 @@ describe("useOrg2CloudRealtime lifecycle", () => {
     store = createStore();
     store.set(org2CloudAuthAtom, AUTH);
     store.set(org2CloudOrgsAtom, [cloudOrg("org-a"), cloudOrg("org-b")]);
-    store.set(sidebarActiveCloudOrgIdAtom, "org-a");
-    store.set(chatPanelSelectedCloudOrgAtom, null);
+    seedSidebarCloudScope(store, "org-a");
     store.set(activeSessionIdAtom, null);
     store.set(sessionsAtom, []);
     root = createSmokeRoot();
@@ -255,7 +250,7 @@ describe("useOrg2CloudRealtime lifecycle", () => {
     });
 
     await act(async () => {
-      store.set(sidebarActiveCloudOrgIdAtom, "org-b");
+      seedSidebarCloudScope(store, "org-b");
     });
     await flushAsync();
 
@@ -302,6 +297,8 @@ describe("useOrg2CloudRealtime lifecycle", () => {
         accessToken: "access-b",
         refreshToken: "refresh-b",
       });
+      // The new identity must confirm its own membership before scope resumes.
+      seedSidebarCloudScope(store, "org-a");
     });
     await flushAsync();
 

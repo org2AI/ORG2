@@ -1,194 +1,33 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 
-import type { PermissionSheetRequest } from "@src/components/PermissionPrompt";
+import { createLogger } from "@src/hooks/logger";
 
-import { MobileAuthContext } from "../auth/MobileAuthContext";
-import {
-  type MobileRpcClient,
-  createMobileRpcClient,
-  toMobileRpcError,
-} from "../connection/mobileRpcClient";
-import { createRemoteReconnectController } from "../connection/remoteReconnectController";
-import { resolveMobileDeviceLabel } from "../connection/resolveMobileDeviceLabel";
+import { MobileComposerDraftContext } from "../components/composer/MobileComposerDraftContext";
+import { mobileComposerDesktopScope } from "../components/composer/mobileComposerDraftStore";
+import { toMobileRpcError } from "../connection/mobileRpcClient";
 import { MobileConnectionAuthorizationError } from "../connection/types";
-import type {
-  InitializeResult,
-  MobileConnectionConfig,
-  MobileConnectionState,
-  MobileModelOption,
-  MobilePairedDesktopSummary,
-  MobileSendAttachment,
-  MobileSessionModelState,
-  MobileSessionRow,
-} from "../connection/types";
+import type { MobileConnectionConfig } from "../connection/types";
+import { DEMO_DESKTOP_NAME, DEMO_SESSIONS } from "../demo/demoFixtures";
 import {
-  DEMO_DESKTOP_NAME,
-  DEMO_PERMISSION_REQUEST,
-  DEMO_SESSIONS,
-} from "../demo/demoFixtures";
-import type { PermissionBusEnvelope } from "../lib/interactionQueue";
-import type {
-  TranscriptLoadPhase,
-  TranscriptRoundSummary,
-  TranscriptSnapshotEnvelope,
-} from "../lib/transcriptLoadState";
-import type { TranscriptItem } from "../lib/transcriptReducer";
-import { useMobileRemotePlatform } from "../platform";
-import type { MobileRemoteRuntimePort } from "../platform/types";
-import { useMobilePermissions } from "./useMobilePermissions";
+  MobileRemoteContext,
+  type MobileRemoteContextValue,
+  type MobileRemoteProvidersProps,
+} from "./MobileRemoteContext";
 import {
-  type MobileSendStatus,
-  terminalSignalFromBusEvent,
-  useMobileSend,
-} from "./useMobileSend";
-import { useMobileSessionList } from "./useMobileSessionList";
-import { useMobileSessionModel } from "./useMobileSessionModel";
-import { useMobileTranscript } from "./useMobileTranscript";
+  SupersededConnectionError,
+  useMobileConnectionEstablish,
+} from "./useMobileConnectionEstablish";
+import { useMobileRemoteState } from "./useMobileRemoteState";
+import { useMobileRpcNotifications } from "./useMobileRpcNotifications";
+import { useMobileSessionActions } from "./useMobileSessionActions";
+
+export { useMobileRemote } from "./MobileRemoteContext";
+export type {
+  MobileRemoteContextValue,
+  MobileRemoteProvidersProps,
+} from "./MobileRemoteContext";
 
 export type { MobileSendStatus } from "./useMobileSend";
-
-const CONNECT_TIMEOUT_MS = 15_000;
-const PAIRING_TIMEOUT_MS = 130_000;
-
-export interface MobileRemoteContextValue {
-  connection: MobileConnectionState;
-  sessions: MobileSessionRow[];
-  transcriptItems: TranscriptItem[];
-  transcriptPhase: TranscriptLoadPhase;
-  transcriptError?: string;
-  transcriptTruncated: boolean;
-  transcriptRounds: TranscriptRoundSummary[];
-  transcriptRoundsComplete: boolean;
-  /** Null means follow the latest round as the index grows. */
-  selectedRoundId: string | null;
-  activeRoundId: string | null;
-  sendStatus: MobileSendStatus | null;
-  activePermission: PermissionSheetRequest | null;
-  permissionQueueDepth: number;
-  /** True while an answer is on the wire; the sheet must stay disabled. */
-  permissionSubmitting: boolean;
-  rpc: MobileRpcClient | null;
-  connectionConfig: MobileConnectionConfig | null;
-  pairedDesktops: MobilePairedDesktopSummary[];
-  connectLive: (config: MobileConnectionConfig) => Promise<void>;
-  switchPairedDesktop: (desktopId: string) => Promise<void>;
-  enterDemoMode: () => void;
-  disconnect: () => Promise<void>;
-  refreshSessions: () => Promise<void>;
-  loadMoreSessions: () => Promise<void>;
-  sessionsHasMore: boolean;
-  subscribeSession: (sessionId: string) => Promise<void>;
-  unsubscribeSession: () => Promise<void>;
-  selectRound: (roundId: string | null) => void;
-  retrySelectedRound: () => void;
-  sendMessage: (
-    sessionId: string,
-    content: string,
-    attachments?: MobileSendAttachment[]
-  ) => Promise<void>;
-  openSessionFileInDesktop: (
-    sessionId: string,
-    roundId: string,
-    eventId: string,
-    targetIndex: number
-  ) => Promise<void>;
-  respondPermission: (
-    response: "allow" | "deny" | "always_allow"
-  ) => Promise<void>;
-  dismissPermissionHead: () => void;
-  stopSession: (sessionId: string) => Promise<void>;
-  sessionModel: MobileSessionModelState;
-  refreshSessionModel: (sessionId: string) => Promise<void>;
-  setSessionModel: (
-    sessionId: string,
-    option: MobileModelOption
-  ) => Promise<void>;
-}
-
-const MobileRemoteContext = createContext<MobileRemoteContextValue | null>(
-  null
-);
-
-function waitForSocketOpen(
-  socket: WebSocket,
-  runtime: Pick<MobileRemoteRuntimePort, "setTimeout" | "clearTimeout">
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const cleanup = () => {
-      runtime.clearTimeout(timeoutId);
-      socket.removeEventListener("open", onOpen);
-      socket.removeEventListener("error", onError);
-      socket.removeEventListener("close", onClose);
-    };
-    const onOpen = () => {
-      cleanup();
-      resolve();
-    };
-    const onError = () => {
-      cleanup();
-      reject(new Error("WebSocket connection failed"));
-    };
-    const onClose = () => {
-      cleanup();
-      reject(new Error("WebSocket closed before connecting"));
-    };
-    const timeoutId = runtime.setTimeout(() => {
-      cleanup();
-      reject(new Error("WebSocket connection timed out"));
-    }, CONNECT_TIMEOUT_MS);
-    socket.addEventListener("open", onOpen, { once: true });
-    socket.addEventListener("error", onError, { once: true });
-    socket.addEventListener("close", onClose, { once: true });
-  });
-}
-
-function waitForPairingApproval(
-  socket: WebSocket,
-  client: MobileRpcClient,
-  runtime: Pick<MobileRemoteRuntimePort, "setTimeout" | "clearTimeout">
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    let unsubscribe: () => void = () => undefined;
-    const cleanup = () => {
-      runtime.clearTimeout(timeoutId);
-      unsubscribe();
-      socket.removeEventListener("close", onClose);
-    };
-    const onClose = () => {
-      cleanup();
-      reject(new Error("Connection closed before pairing was approved"));
-    };
-    const timeoutId = runtime.setTimeout(() => {
-      cleanup();
-      reject(new Error("Pairing confirmation expired"));
-    }, PAIRING_TIMEOUT_MS);
-    unsubscribe = client.onNotification((method) => {
-      if (method === "pairing/approved") {
-        cleanup();
-        resolve();
-      }
-    });
-    socket.addEventListener("close", onClose, { once: true });
-  });
-}
-
-export interface MobileRemoteProvidersProps {
-  children: React.ReactNode;
-  /** Authenticated ORG2 Cloud subject; scopes all retained pairing state. */
-  authUserId: string;
-  relayUrl?: string;
-  demoByDefault?: boolean;
-  /** A freshly scanned QR must take precedence over a stored old desktop. */
-  suppressInitialBootstrap?: boolean;
-}
 
 export function MobileRemoteProviders({
   children,
@@ -197,142 +36,100 @@ export function MobileRemoteProviders({
   demoByDefault = true,
   suppressInitialBootstrap = false,
 }: MobileRemoteProvidersProps) {
-  const platform = useMobileRemotePlatform();
-  const auth = useContext(MobileAuthContext);
-  const authRef = useRef(auth);
-  authRef.current = auth;
-  const preparationRef = useRef<AbortController | null>(null);
-  const clientRef = useRef<MobileRpcClient | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  const activeSessionRef = useRef<string | null>(null);
-  const unsubscribeRpcRef = useRef<(() => void) | null>(null);
-  const activeConfigRef = useRef<MobileConnectionConfig | null>(null);
-  const generationRef = useRef(0);
-  const selectionIntentRef = useRef(0);
-  const recoverRef = useRef<
-    (config: MobileConnectionConfig, generation: number) => Promise<void>
-  >(async () => undefined);
-  const reconnect = useMemo(
-    () =>
-      createRemoteReconnectController(
-        platform.runtime,
-        (generation) => generation === generationRef.current,
-        (config, generation) => recoverRef.current(config, generation)
-      ),
-    [platform.runtime]
-  );
-  const connectionWriteChainRef = useRef<Promise<void>>(Promise.resolve());
-  const scheduleReconnectRef = useRef<
-    (config: MobileConnectionConfig, generation: number) => void
-  >(() => undefined);
-
-  const [connection, setConnection] = useState<MobileConnectionState>({
-    status: "disconnected",
-    presence: "unknown",
-    demoMode: demoByDefault && !suppressInitialBootstrap,
+  const state = useMobileRemoteState({
+    authUserId,
+    relayUrl,
+    demoByDefault,
+    suppressInitialBootstrap,
   });
-  const [connectionConfig, setConnectionConfig] =
-    useState<MobileConnectionConfig | null>(null);
-  const [pairedDesktops, setPairedDesktops] = useState<
-    MobilePairedDesktopSummary[]
-  >([]);
-  const connectionRef = useRef(connection);
-  connectionRef.current = connection;
-  const { sessions, sessionsHasMore, requestSessionList, resetSessions } =
-    useMobileSessionList(clientRef);
   const {
+    platform,
+    draftStore,
+    preparationRef,
+    clientRef,
+    rpc,
+    setRpc,
+    socketRef,
+    activeSessionRef,
+    unsubscribeRpcRef,
+    activeConfigRef,
+    generationRef,
+    selectionIntentRef,
+    retryFlightRef,
+    recoverRef,
+    reconnect,
+    connectionWriteChainRef,
+    inventoryRevisionRef,
+    scheduleReconnectRef,
+    connection,
+    setConnection,
+    connectionConfig,
+    setConnectionConfig,
+    bootstrapPending,
+    setBootstrapPending,
+    pairedDesktops,
+    setPairedDesktops,
+    readStateSync,
+    sessions,
+    sessionsHasMore,
+    rosterPhase,
+    suspendSessionList,
+    resetSessions,
+    openingClient,
+    openedSession,
     transcript,
-    setTranscript,
     transcriptView,
-    beginLoad,
     resetTranscript,
     showDemoTranscript,
-    failLoad,
     invalidateTranscriptRequests,
-    requestSessionSnapshot,
-    refreshSubscribedSession,
-    receiveSnapshot,
     selectRound,
     retrySelectedRound,
-  } = useMobileTranscript({
-    clientRef,
-    connectionRef,
-    activeSessionRef,
-    connection,
-  });
-  const requireWritableClient = useCallback((): MobileRpcClient => {
-    const client = clientRef.current;
-    if (
-      !client ||
-      connection.status !== "connected" ||
-      connection.presence !== "online"
-    ) {
-      throw new Error("Desktop is offline");
-    }
-    if (connection.tier === "read_only") {
-      throw new Error("This device has read-only access");
-    }
-    return client;
-  }, [connection.presence, connection.status, connection.tier]);
-
-  const {
     activePermission,
+    focusPermission,
     permissionQueueDepth,
     permissionSubmitting,
+    permissionFailed,
     respondPermission,
     dismissPermissionHead,
     resetPermissions,
-    receivePermissionEvent,
-  } = useMobilePermissions({
-    sessionId: transcript.sessionId,
-    demoMode: connection.demoMode,
-    requireWritableClient,
-  });
-
-  const {
+    pendingInbox,
     sessionModel,
     refreshSessionModel,
+    loadSessionModels,
     setSessionModel,
-    resetSessionModel,
-  } = useMobileSessionModel({
-    clientRef,
-    connectionRef,
-    activeSessionRef,
-    requireWritableClient,
-  });
-
-  const onDemoSend = useCallback(
-    (sessionId: string) =>
-      resetPermissions([{ ...DEMO_PERMISSION_REQUEST, sessionId }]),
-    [resetPermissions]
-  );
-  const {
     sendStatus,
     resetSend,
-    receiveTerminal,
-    receiveSendStatus,
     sendMessage,
-  } = useMobileSend({
-    demoMode: connection.demoMode,
-    runtime: platform.runtime,
-    model: sessionModel.config?.model,
-    requireWritableClient,
-    setTranscript,
-    onDemoSend,
-  });
-
+  } = state;
   const persistConnection = useCallback(
     (config: MobileConnectionConfig | null) => {
+      const generation = generationRef.current;
+      const inventoryRevision = ++inventoryRevisionRef.current;
       const operation = connectionWriteChainRef.current.then(async () => {
+        if (generation !== generationRef.current) return;
         await platform.connection.save(authUserId, config);
-        setPairedDesktops(
-          await platform.connection.listPairedDesktops(authUserId)
-        );
+        void platform.connection
+          .listPairedDesktops(authUserId)
+          .then((inventory) => {
+            if (
+              generation === generationRef.current &&
+              inventoryRevision === inventoryRevisionRef.current
+            )
+              setPairedDesktops(inventory);
+          })
+          .catch(() => undefined);
       });
       connectionWriteChainRef.current = operation.catch(() => undefined);
       return operation;
     },
-    [authUserId, platform.connection]
+    [
+      authUserId,
+      connectionWriteChainRef,
+      generationRef,
+      inventoryRevisionRef,
+      platform.connection,
+      setPairedDesktops,
+    ]
   );
 
   const clearReconnectTimer = useCallback(() => reconnect.clear(), [reconnect]);
@@ -340,6 +137,7 @@ export function MobileRemoteProviders({
   const releaseTransport = useCallback(
     (close: boolean) => {
       reconnect.invalidate();
+      suspendSessionList();
       preparationRef.current?.abort();
       preparationRef.current = null;
       // Invalidate every in-flight subscribe/refresh from the old socket before
@@ -349,6 +147,7 @@ export function MobileRemoteProviders({
       unsubscribeRpcRef.current = null;
       const client = clientRef.current;
       clientRef.current = null;
+      setRpc(null);
       const socket = socketRef.current;
       socketRef.current = null;
       if (close) {
@@ -356,7 +155,16 @@ export function MobileRemoteProviders({
         else socket?.close();
       }
     },
-    [reconnect, invalidateTranscriptRequests]
+    [
+      reconnect,
+      suspendSessionList,
+      preparationRef,
+      invalidateTranscriptRequests,
+      unsubscribeRpcRef,
+      clientRef,
+      setRpc,
+      socketRef,
+    ]
   );
 
   const enterDemoMode = useCallback(() => {
@@ -379,218 +187,31 @@ export function MobileRemoteProviders({
     resetSend();
     resetPermissions();
   }, [
-    showDemoTranscript,
+    selectionIntentRef,
+    generationRef,
     clearReconnectTimer,
+    activeConfigRef,
+    setConnectionConfig,
     releaseTransport,
+    setConnection,
     resetSessions,
-    resetPermissions,
+    showDemoTranscript,
+    activeSessionRef,
     resetSend,
+    resetPermissions,
   ]);
 
-  const handleRpcNotification = useCallback(
-    (method: string, params: Record<string, unknown> | undefined) => {
-      if (method === "relay/presence") {
-        setConnection((prev) => ({
-          ...prev,
-          presence: params?.online === true ? "online" : "offline",
-        }));
-        return;
-      }
-      if (method === "orgii/event") {
-        const envelope = params?.envelope as PermissionBusEnvelope | undefined;
-        if (envelope) {
-          receivePermissionEvent(envelope);
-        }
-        const terminal = terminalSignalFromBusEvent(params);
-        if (terminal) {
-          if (terminal.sessionId === activeSessionRef.current) {
-            refreshSubscribedSession(terminal.sessionId);
-          }
-          receiveTerminal(terminal);
-        }
-        return;
-      }
-      if (method === "orgii/snapshot") {
-        receiveSnapshot(params as TranscriptSnapshotEnvelope);
-        return;
-      }
-      if (method === "session/send_status") {
-        const sessionId = receiveSendStatus(params);
-        if (sessionId) refreshSubscribedSession(sessionId);
-        return;
-      }
-      if (method === "session/list_changed") {
-        const client = clientRef.current;
-        if (client) {
-          // Keep the previous successful list visible during invalidation.
-          // A failed refresh is retried by the next change/reconnect/manual
-          // refresh; the generation guard prevents an older reply winning.
-          void requestSessionList(client).catch(() => undefined);
-        }
-      }
-    },
-    [
-      requestSessionList,
-      receivePermissionEvent,
-      receiveTerminal,
-      receiveSendStatus,
-      receiveSnapshot,
-      refreshSubscribedSession,
-    ]
+  const handleRpcNotification = useMobileRpcNotifications(
+    state,
+    releaseTransport
   );
-
-  const establishConnection = useCallback(
-    async (config: MobileConnectionConfig, generation: number) => {
-      const deviceLabel =
-        config.deviceLabel?.trim() ||
-        platform.clientInfo.defaultDeviceLabel ||
-        resolveMobileDeviceLabel();
-      const transportConfig = { ...config, deviceLabel };
-      preparationRef.current?.abort();
-      const preparation = new AbortController();
-      preparationRef.current = preparation;
-      let preparedUrl: string;
-      try {
-        preparedUrl = await platform.connection.prepareSocketUrl(
-          transportConfig,
-          {
-            authUserId,
-            signal: preparation.signal,
-            getSession: async () => {
-              const getSession = authRef.current?.getConnectionSession;
-              if (!getSession) throw new Error("Sign in to connect to Relay");
-              return getSession();
-            },
-          }
-        );
-        preparation.signal.throwIfAborted();
-        if (generation !== generationRef.current || platform.runtime.isHidden())
-          throw new Error("Connection was superseded");
-      } finally {
-        if (preparationRef.current === preparation)
-          preparationRef.current = null;
-      }
-      const socket = platform.connection.createSocket(preparedUrl);
-      let authenticated = false;
-      let intentionalClose = false;
-      socketRef.current = socket;
-
-      try {
-        await waitForSocketOpen(socket, platform.runtime);
-        if (generation !== generationRef.current) {
-          intentionalClose = true;
-          socket.close();
-          throw new Error("Connection was superseded");
-        }
-
-        const client = createMobileRpcClient(socket, platform.runtime);
-        clientRef.current = client;
-        unsubscribeRpcRef.current = client.onNotification(
-          handleRpcNotification
-        );
-        if (config.pairingCode) {
-          await waitForPairingApproval(socket, client, platform.runtime);
-        }
-
-        const init = await client.call<InitializeResult>("initialize", {
-          protocolVersion: 1,
-          clientInfo: {
-            name: platform.clientInfo.name,
-            version: platform.clientInfo.version,
-          },
-          capabilities: { interactions: ["permission"], streaming: true },
-          deviceLabel,
-        });
-        if (generation !== generationRef.current) {
-          intentionalClose = true;
-          client.close();
-          throw new Error("Connection was superseded");
-        }
-
-        authenticated = true;
-        reconnect.reset();
-        setConnection({
-          status: "connected",
-          presence: "online",
-          desktopId: init.desktopId ?? config.desktopId,
-          desktopName: init.desktopName ?? DEMO_DESKTOP_NAME,
-          // Authorization is server-owned. An older/incomplete initialize
-          // response must never silently upgrade the phone to write access.
-          tier: init.tier ?? "read_only",
-          capabilities: init.capabilities,
-          demoMode: false,
-        });
-        socket.addEventListener(
-          "close",
-          (event) => {
-            if (
-              intentionalClose ||
-              !authenticated ||
-              generation !== generationRef.current ||
-              socketRef.current !== socket
-            ) {
-              return;
-            }
-            releaseTransport(false);
-            if (event.code === 1008) {
-              activeConfigRef.current = null;
-              setConnection((prev) => ({
-                ...prev,
-                status: "error",
-                presence: "offline",
-                error: toMobileRpcError(
-                  new MobileConnectionAuthorizationError(
-                    "Device access was revoked or pairing expired"
-                  )
-                ),
-              }));
-              return;
-            }
-            setConnection((prev) => ({
-              ...prev,
-              status: "connecting",
-              presence: "offline",
-              error: undefined,
-            }));
-            scheduleReconnectRef.current(config, generation);
-          },
-          { once: true }
-        );
-        await requestSessionList(client);
-        if (
-          socketRef.current !== socket ||
-          generation !== generationRef.current
-        )
-          return;
-        if (activeSessionRef.current) {
-          const sessionId = activeSessionRef.current;
-          const subscriptionGeneration = beginLoad(sessionId);
-          await requestSessionSnapshot(
-            client,
-            sessionId,
-            subscriptionGeneration
-          ).catch(() => undefined);
-        }
-      } catch (error) {
-        intentionalClose = true;
-        if (socketRef.current === socket) releaseTransport(true);
-        throw error;
-      }
-    },
-    [
-      authUserId,
-      reconnect,
-      handleRpcNotification,
-      platform.clientInfo,
-      platform.connection,
-      platform.runtime,
-      releaseTransport,
-      requestSessionList,
-      requestSessionSnapshot,
-      beginLoad,
-    ]
+  const establishConnection = useMobileConnectionEstablish(
+    state,
+    authUserId,
+    persistConnection,
+    releaseTransport,
+    handleRpcNotification
   );
-
   const runReconnect = useCallback(
     async (config: MobileConnectionConfig, generation: number) => {
       if (generation !== generationRef.current || platform.runtime.isHidden()) {
@@ -600,24 +221,38 @@ export function MobileRemoteProviders({
         ...prev,
         status: "connecting",
         presence: "offline",
-        error: undefined,
+        // Preserve the last failure until initialize succeeds, so backoff and
+        // in-flight retries do not erase the user's explanation every attempt.
       }));
       try {
         await establishConnection(config, generation);
       } catch (error) {
-        if (generation !== generationRef.current) return;
+        if (
+          generation !== generationRef.current ||
+          error instanceof SupersededConnectionError
+        )
+          return;
+        const retryConfig = activeConfigRef.current;
         const denied = error instanceof MobileConnectionAuthorizationError;
-        if (denied) activeConfigRef.current = null;
+        const retryable = !denied && retryConfig && !retryConfig.pairingCode;
+        if (!retryable) activeConfigRef.current = null;
         setConnection((prev) => ({
           ...prev,
-          status: denied ? "error" : "connecting",
+          status: retryable ? "connecting" : "error",
           presence: "offline",
           error: toMobileRpcError(error),
         }));
-        if (!denied) scheduleReconnectRef.current(config, generation);
+        if (retryable) scheduleReconnectRef.current(retryConfig, generation);
       }
     },
-    [establishConnection, platform.runtime]
+    [
+      activeConfigRef,
+      establishConnection,
+      generationRef,
+      platform.runtime,
+      scheduleReconnectRef,
+      setConnection,
+    ]
   );
 
   recoverRef.current = runReconnect;
@@ -625,6 +260,7 @@ export function MobileRemoteProviders({
 
   const connectLive = useCallback(
     async (config: MobileConnectionConfig) => {
+      setBootstrapPending(false);
       selectionIntentRef.current += 1;
       generationRef.current += 1;
       const generation = generationRef.current;
@@ -636,10 +272,6 @@ export function MobileRemoteProviders({
       resetSend();
       activeConfigRef.current = config;
       setConnectionConfig(config);
-      await persistConnection(config);
-      if (generation !== generationRef.current) {
-        throw new Error("Connection was superseded");
-      }
       setConnection((prev) => ({
         ...prev,
         status: "connecting",
@@ -647,35 +279,119 @@ export function MobileRemoteProviders({
         demoMode: false,
         error: undefined,
       }));
+      let configurationSaved = false;
       try {
+        await persistConnection(config);
+        configurationSaved = true;
+        if (generation !== generationRef.current) {
+          throw new Error("Connection was superseded");
+        }
         await establishConnection(config, generation);
       } catch (error) {
-        if (generation === generationRef.current) {
-          if (error instanceof MobileConnectionAuthorizationError)
-            activeConfigRef.current = null;
+        if (
+          generation === generationRef.current &&
+          !(error instanceof SupersededConnectionError)
+        ) {
+          const retryConfig = activeConfigRef.current;
+          const retryable =
+            configurationSaved &&
+            !(error instanceof MobileConnectionAuthorizationError) &&
+            retryConfig &&
+            !retryConfig.pairingCode;
+          if (!retryable) activeConfigRef.current = null;
           setConnection({
-            status: "error",
+            status: retryable ? "connecting" : "error",
             presence: "offline",
             demoMode: false,
             error: toMobileRpcError(error),
           });
+          if (retryable) scheduleReconnectRef.current(retryConfig, generation);
         }
         throw error;
       }
     },
     [
+      setBootstrapPending,
+      selectionIntentRef,
+      generationRef,
       clearReconnectTimer,
-      reconnect,
-      establishConnection,
-      persistConnection,
       releaseTransport,
+      reconnect,
       resetSessions,
       resetPermissions,
       resetSend,
+      activeConfigRef,
+      setConnectionConfig,
+      setConnection,
+      persistConnection,
+      establishConnection,
+      scheduleReconnectRef,
     ]
   );
 
+  // User-directed recovery preserves the selected pairing. It deliberately uses
+  // the same authenticated handshake as first connect; policy errors never loop.
+  const retryConnection = useCallback((): Promise<boolean> => {
+    if (retryFlightRef.current) return retryFlightRef.current;
+    const intent = ++selectionIntentRef.current;
+    const operation = Promise.resolve().then(async () => {
+      if (intent !== selectionIntentRef.current) return false;
+      let config = connectionConfig;
+      if (!config) {
+        setBootstrapPending(true);
+        try {
+          config = relayUrl?.trim()
+            ? { wsUrl: relayUrl.trim() }
+            : await platform.connection.load(authUserId);
+        } catch (error) {
+          if (intent === selectionIntentRef.current) {
+            setBootstrapPending(false);
+            setConnection({
+              status: "error",
+              presence: "offline",
+              demoMode: false,
+              error: toMobileRpcError(error),
+            });
+          }
+          throw error;
+        }
+        if (intent !== selectionIntentRef.current) return false;
+        setBootstrapPending(false);
+      }
+      if (!config) {
+        setConnection({
+          status: "disconnected",
+          presence: "unknown",
+          demoMode: false,
+        });
+        return false;
+      }
+      await connectLive(config);
+      return true;
+    });
+    retryFlightRef.current = operation;
+    const settled = () => {
+      if (retryFlightRef.current === operation) retryFlightRef.current = null;
+    };
+    void operation.then(settled, settled);
+    return operation;
+  }, [
+    authUserId,
+    connectLive,
+    connectionConfig,
+    platform.connection,
+    relayUrl,
+    retryFlightRef,
+    selectionIntentRef,
+    setBootstrapPending,
+    setConnection,
+  ]);
+
   const disconnect = useCallback(async () => {
+    draftStore.clearDesktop(
+      mobileComposerDesktopScope(activeConfigRef.current, connection)
+    );
+    setBootstrapPending(false);
     selectionIntentRef.current += 1;
     generationRef.current += 1;
     clearReconnectTimer();
@@ -692,15 +408,37 @@ export function MobileRemoteProviders({
     resetTranscript();
     resetSend();
     resetPermissions();
-    await persistConnection(null);
+    const generation = generationRef.current;
+    try {
+      await persistConnection(null);
+    } catch (error) {
+      if (generation === generationRef.current) {
+        setConnection({
+          status: "error",
+          presence: "offline",
+          demoMode: false,
+          error: toMobileRpcError(error),
+        });
+      }
+      throw error;
+    }
   }, [
-    resetTranscript,
+    draftStore,
+    activeConfigRef,
+    connection,
+    setBootstrapPending,
+    selectionIntentRef,
+    generationRef,
     clearReconnectTimer,
-    persistConnection,
+    setConnectionConfig,
     releaseTransport,
+    activeSessionRef,
+    setConnection,
     resetSessions,
-    resetPermissions,
+    resetTranscript,
     resetSend,
+    resetPermissions,
+    persistConnection,
   ]);
 
   const switchPairedDesktop = useCallback(
@@ -714,107 +452,17 @@ export function MobileRemoteProviders({
       if (!config) throw new Error("Paired desktop is unavailable");
       await connectLive(config);
     },
-    [authUserId, connectLive, platform.connection]
+    [authUserId, connectLive, platform.connection, selectionIntentRef]
   );
 
-  const refreshSessions = useCallback(async () => {
-    if (connection.demoMode) {
-      resetSessions(DEMO_SESSIONS);
-      return;
-    }
-    const client = clientRef.current;
-    if (!client || connection.presence !== "online") return;
-    await requestSessionList(client);
-  }, [
-    connection.demoMode,
-    connection.presence,
-    requestSessionList,
-    resetSessions,
-  ]);
-
-  const loadMoreSessions = useCallback(async () => {
-    const client = clientRef.current;
-    if (!client || connection.presence !== "online" || !sessionsHasMore) return;
-    await requestSessionList(client, true);
-  }, [connection.presence, sessionsHasMore, requestSessionList]);
-
-  const subscribeSession = useCallback(
-    async (sessionId: string) => {
-      activeSessionRef.current = sessionId;
-      resetSend();
-      const subscriptionGeneration = beginLoad(sessionId);
-      const currentConnection = connectionRef.current;
-      if (currentConnection.demoMode) {
-        showDemoTranscript(sessionId);
-        await refreshSessionModel(sessionId);
-        return;
-      }
-      const client = clientRef.current;
-      if (!client || currentConnection.presence !== "online") {
-        const error = new Error("Desktop is offline");
-        failLoad(sessionId, subscriptionGeneration, error.message);
-        throw error;
-      }
-      const applied = await requestSessionSnapshot(
-        client,
-        sessionId,
-        subscriptionGeneration
-      );
-      if (!applied) return;
-      await refreshSessionModel(sessionId);
-    },
-    [
-      refreshSessionModel,
-      requestSessionSnapshot,
-      resetSend,
-      beginLoad,
-      failLoad,
-      showDemoTranscript,
-    ]
-  );
-
-  const unsubscribeSession = useCallback(async () => {
-    const sessionId = activeSessionRef.current;
-    activeSessionRef.current = null;
-    resetTranscript();
-    resetSend();
-    resetSessionModel();
-    const currentConnection = connectionRef.current;
-    if (currentConnection.demoMode || !sessionId) return;
-    if (clientRef.current && currentConnection.presence === "online") {
-      await clientRef.current.call("session/unsubscribe", { sessionId });
-    }
-  }, [resetSessionModel, resetSend, resetTranscript]);
-
-  const openSessionFileInDesktop = useCallback(
-    async (
-      sessionId: string,
-      roundId: string,
-      eventId: string,
-      targetIndex: number
-    ) => {
-      if (!sessionId || !roundId || !eventId) return;
-      if (connection.demoMode) {
-        throw new Error("Desktop file navigation is unavailable in demo mode");
-      }
-      await requireWritableClient().call("session/open_file", {
-        sessionId,
-        roundId,
-        eventId,
-        targetIndex,
-      });
-    },
-    [connection.demoMode, requireWritableClient]
-  );
-
-  const stopSession = useCallback(
-    async (sessionId: string) => {
-      if (connection.demoMode) return;
-      await requireWritableClient().call("session/cancel", { sessionId });
-    },
-    [connection.demoMode, requireWritableClient]
-  );
-
+  const {
+    refreshSessions,
+    loadMoreSessions,
+    subscribeSession,
+    unsubscribeSession,
+    openSessionFileInDesktop,
+    stopSession,
+  } = useMobileSessionActions(state);
   useEffect(() => {
     const handleVisible = () => {
       const config = activeConfigRef.current;
@@ -835,11 +483,22 @@ export function MobileRemoteProviders({
       if (config && !clientRef.current) {
         void reconnect
           .run(config, generationRef.current)
-          .catch(() => undefined);
+          .catch((error) => logger.warn("Background operation failed", error));
       }
     };
     return platform.runtime.subscribeVisibility(handleVisible);
-  }, [clearReconnectTimer, platform.runtime, releaseTransport, reconnect]);
+  }, [
+    clearReconnectTimer,
+    platform.runtime,
+    releaseTransport,
+    reconnect,
+    activeConfigRef,
+    clientRef,
+    preparationRef,
+    socketRef,
+    setConnection,
+    generationRef,
+  ]);
 
   useEffect(() => {
     if (suppressInitialBootstrap) {
@@ -853,23 +512,37 @@ export function MobileRemoteProviders({
     let disposed = false;
     const bootstrapGeneration = generationRef.current;
     void (async () => {
-      const inventoryPromise =
-        platform.connection.listPairedDesktops(authUserId);
+      // Inventory is ancillary; it must not delay restoration of the selected device.
+      void platform.connection
+        .listPairedDesktops(authUserId)
+        .then((inventory) => {
+          if (!disposed && bootstrapGeneration === generationRef.current)
+            setPairedDesktops(inventory);
+        })
+        .catch(() => undefined);
       const config = relayUrl?.trim()
         ? { wsUrl: relayUrl.trim() }
         : await platform.connection.load(authUserId);
-      const inventory = await inventoryPromise;
       if (disposed || bootstrapGeneration !== generationRef.current) {
         return;
       }
-      setPairedDesktops(inventory);
       setConnectionConfig(config);
+      setBootstrapPending(false);
       if (config?.wsUrl || config?.host) {
         await connectLive(config).catch(() => undefined);
       } else if (demoByDefault) {
         enterDemoMode();
       }
-    })();
+    })().catch((error) => {
+      if (disposed || bootstrapGeneration !== generationRef.current) return;
+      setBootstrapPending(false);
+      setConnection({
+        status: "error",
+        presence: "offline",
+        demoMode: false,
+        error: toMobileRpcError(error),
+      });
+    });
     return () => {
       disposed = true;
       selectionIntentRef.current += 1;
@@ -883,10 +556,20 @@ export function MobileRemoteProviders({
 
   const value = useMemo<MobileRemoteContextValue>(
     () => ({
+      pendingInbox,
+      focusPermission,
+      bootstrapPending,
       connection,
       sessions,
+      rosterPhase,
       transcriptItems: transcriptView.items,
       transcriptPhase: transcriptView.phase,
+      transcriptSessionId: transcript.sessionId,
+      openedSession,
+      openingReady:
+        openingClient === clientRef.current &&
+        (transcript.indexPhase === "ready" ||
+          transcript.indexPhase === "empty"),
       transcriptError: transcriptView.error,
       transcriptTruncated: transcriptView.truncated,
       transcriptRounds: transcript.rounds,
@@ -897,10 +580,13 @@ export function MobileRemoteProviders({
       activePermission,
       permissionQueueDepth,
       permissionSubmitting,
-      rpc: clientRef.current,
+      permissionFailed,
+      rpc,
+      readStateSync,
       connectionConfig,
       pairedDesktops,
       connectLive,
+      retryConnection,
       switchPairedDesktop,
       enterDemoMode,
       disconnect,
@@ -918,62 +604,71 @@ export function MobileRemoteProviders({
       stopSession,
       sessionModel,
       refreshSessionModel,
+      loadSessionModels,
       setSessionModel,
     }),
     [
-      activePermission,
-      connectLive,
-      connectionConfig,
+      pendingInbox,
+      focusPermission,
+      bootstrapPending,
       connection,
-      dismissPermissionHead,
-      disconnect,
-      enterDemoMode,
-      permissionQueueDepth,
-      permissionSubmitting,
-      refreshSessionModel,
-      refreshSessions,
-      loadMoreSessions,
-      sessionsHasMore,
-      openSessionFileInDesktop,
-      pairedDesktops,
-      respondPermission,
-      retrySelectedRound,
-      selectRound,
-      sendMessage,
-      sendStatus,
-      sessionModel,
       sessions,
-      setSessionModel,
-      stopSession,
-      subscribeSession,
-      switchPairedDesktop,
+      rosterPhase,
+      transcriptView.items,
+      transcriptView.phase,
+      transcriptView.error,
+      transcriptView.truncated,
+      transcriptView.roundId,
+      transcript.sessionId,
+      transcript.indexPhase,
       transcript.rounds,
       transcript.roundsComplete,
       transcript.selectedRoundId,
-      transcriptView.error,
-      transcriptView.items,
-      transcriptView.phase,
-      transcriptView.roundId,
-      transcriptView.truncated,
+      openedSession,
+      openingClient,
+      clientRef,
+      sendStatus,
+      activePermission,
+      permissionQueueDepth,
+      permissionSubmitting,
+      permissionFailed,
+      rpc,
+      readStateSync,
+      connectionConfig,
+      pairedDesktops,
+      connectLive,
+      retryConnection,
+      switchPairedDesktop,
+      enterDemoMode,
+      disconnect,
+      refreshSessions,
+      loadMoreSessions,
+      sessionsHasMore,
+      subscribeSession,
       unsubscribeSession,
+      selectRound,
+      retrySelectedRound,
+      sendMessage,
+      openSessionFileInDesktop,
+      respondPermission,
+      dismissPermissionHead,
+      stopSession,
+      sessionModel,
+      refreshSessionModel,
+      loadSessionModels,
+      setSessionModel,
     ]
   );
 
   return (
     <MobileRemoteContext.Provider value={value}>
-      {children}
+      <MobileComposerDraftContext.Provider value={draftStore}>
+        {children}
+      </MobileComposerDraftContext.Provider>
     </MobileRemoteContext.Provider>
   );
 }
 
-export function useMobileRemote(): MobileRemoteContextValue {
-  const value = useContext(MobileRemoteContext);
-  if (!value) {
-    throw new Error(
-      "useMobileRemote must be used within MobileRemoteProviders"
-    );
-  }
-  return value;
-}
-
 MobileRemoteProviders.displayName = "MobileRemoteProviders";
+
+const logger = createLogger("MobileRemoteProviders");

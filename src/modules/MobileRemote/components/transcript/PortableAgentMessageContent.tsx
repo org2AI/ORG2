@@ -6,6 +6,7 @@ import PortableMarkdown from "./PortableMarkdown";
 
 export interface PortableAgentMessageContentProps {
   text: string;
+  streaming?: boolean;
 }
 
 /**
@@ -15,7 +16,7 @@ export interface PortableAgentMessageContentProps {
  * rendering through the browser-safe Markdown subset.
  */
 const PortableAgentMessageContent: React.FC<PortableAgentMessageContentProps> =
-  memo(({ text }) => {
+  memo(({ text, streaming }) => {
     const projectedText = useMemo(
       () => projectPortableAgentMessageText(text),
       [text]
@@ -23,7 +24,9 @@ const PortableAgentMessageContent: React.FC<PortableAgentMessageContentProps> =
 
     if (!projectedText) return null;
 
-    return <PortableMarkdown textContent={projectedText} />;
+    return (
+      <PortableMarkdown textContent={projectedText} streaming={streaming} />
+    );
   });
 
 PortableAgentMessageContent.displayName = "PortableAgentMessageContent";

@@ -27,8 +27,8 @@
 
 ## Téléchargement
 
-Téléchargez la dernière version de bureau depuis la page [Releases](https://github.com/YORG-AI/ORGII/releases).
+Téléchargez la dernière version de bureau depuis la page [Releases](https://github.com/org2AI/ORG2/releases).
 
 ## Licence
 
-ORGII est distribué sous licence [AGPL-3.0-or-later](https://github.com/YORG-AI/ORGII/blob/main/LICENSE).
+ORGII est distribué sous licence [AGPL-3.0-or-later](https://github.com/org2AI/ORG2/blob/main/LICENSE).

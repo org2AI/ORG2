@@ -24,11 +24,7 @@ const SessionRawTranscriptContent: React.FC<SessionRawTranscriptContentProps> =
           </PageNotice>
         ) : null}
         <CodeMirrorEditor
-          value={
-            loading && !loaded
-              ? t("status.loading", { defaultValue: "Loading…" })
-              : transcriptJson
-          }
+          value={loading && !loaded ? t("status.loading") : transcriptJson}
           filePath={filePath}
           language="json"
           height="100%"

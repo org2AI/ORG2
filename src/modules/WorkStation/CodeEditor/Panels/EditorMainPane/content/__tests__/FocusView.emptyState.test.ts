@@ -8,24 +8,6 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@src/modules/WorkStation/shared", () => ({
-  NoTabsPlaceholder: ({
-    caption,
-    actions,
-  }: {
-    caption?: string;
-    actions?: unknown[];
-  }) =>
-    createElement("div", {
-      "data-caption": caption,
-      "data-action-count": actions?.length ?? 0,
-    }),
-}));
-
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
-  Placeholder: () => null,
-}));
-
 describe("FocusView empty state", () => {
   it("asks the user to select a file instead of showing unrelated navigation", () => {
     const markup = renderToStaticMarkup(
@@ -36,9 +18,10 @@ describe("FocusView empty state", () => {
       })
     );
 
-    expect(markup).toContain(
-      'data-caption="placeholders.selectSidebarFileToViewChanges"'
-    );
-    expect(markup).toContain('data-action-count="0"');
+    expect(markup).toContain("placeholders.selectSidebarFileToViewChanges");
+    expect(markup).toContain("h-full");
+    expect(markup).toContain("justify-center");
+    expect(markup).not.toContain("<button");
+    expect(markup).toContain("<svg");
   });
 });

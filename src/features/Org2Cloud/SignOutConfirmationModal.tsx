@@ -2,6 +2,7 @@ import { useStore } from "jotai";
 import { useTranslation } from "react-i18next";
 
 import signOutImage from "@src/assets/illustrations/sign-out.png";
+import Illustration from "@src/components/Illustration";
 import Modal from "@src/scaffold/ModalSystem";
 
 import { org2CloudAuthAtom } from "./org2CloudAuthAtom";
@@ -15,7 +16,9 @@ export function SignOutConfirmationModal({ onClose }: { onClose: () => void }) {
     <Modal
       visible
       size="medium"
-      image={{ src: signOutImage, alt: "" }}
+      headerMedia={
+        <Illustration className="liquid-modal-image" src={signOutImage} />
+      }
       title={t("cloud.signOutConfirmTitle")}
       onCancel={onClose}
       onOk={() => {

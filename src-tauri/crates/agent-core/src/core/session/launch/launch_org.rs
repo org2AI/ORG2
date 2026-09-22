@@ -73,6 +73,7 @@ pub(super) async fn materialize_org_member_sessions(
     workspace_path: &str,
     model: Option<String>,
     account_id: Option<String>,
+    credential_source: Option<String>,
     key_source: Option<String>,
     agent_exec_mode: Option<String>,
     native_harness_type: Option<String>,
@@ -169,17 +170,61 @@ pub(super) async fn materialize_org_member_sessions(
         let project_slug = project_slug.clone();
         let member_config = member.runtime_config.as_ref();
         let member_model = member_runtime_model(member_config, &model);
-        let member_account_id = member_runtime_account_id(member_config, &account_id);
-        let member_key_source =
-            member_runtime_key_source(member_config, &key_source).map_err(|error| {
-                AgentOrgMaterializationError::permanent("invalid_member_runtime_config", error)
+        let member_source = match member_config {
+            Some(cfg) if cfg.account_id.is_some() || cfg.native_harness_type.is_some() => {
+                cfg.credential_source.clone()
+            }
+            Some(cfg) => cfg
+                .credential_source
+                .clone()
+                .or_else(|| credential_source.clone()),
+            None => credential_source.clone(),
+        };
+        let member_account_id = if member_source.is_some() {
+            member_config.and_then(|cfg| cfg.account_id.clone())
+        } else {
+            member_runtime_account_id(member_config, &account_id)
+        };
+        let member_key_source = member_runtime_key_source(
+            member_config,
+            &if member_source.is_some() {
+                KeySource::OwnKey
+            } else {
+                key_source
+            },
+        )
+        .map_err(|error| {
+            AgentOrgMaterializationError::permanent("invalid_member_runtime_config", error)
+        })?;
+        let member_native_harness_type = member_runtime_native_harness_type(
+            member_config,
+            &if member_source.is_some() {
+                None
+            } else {
+                native_harness_type
+            },
+        )
+        .map_err(|error| {
+            AgentOrgMaterializationError::permanent("invalid_member_runtime_config", error)
+        })?;
+        if let Some(source) = member_source.as_deref() {
+            if member_account_id.is_some()
+                || member_native_harness_type.is_some()
+                || member_key_source != KeySource::OwnKey
+            {
+                return Err(AgentOrgMaterializationError::permanent(
+                    "invalid_member_runtime_config",
+                    "Conflicting Package and Account credential owners",
+                ));
+            }
+            crate::providers::dynamic::build(source, member_model.as_deref().unwrap_or_default())
+                .map_err(|e| {
+                AgentOrgMaterializationError::permanent(
+                    "invalid_member_runtime_config",
+                    e.to_string(),
+                )
             })?;
-        let member_native_harness_type =
-            member_runtime_native_harness_type(member_config, &native_harness_type).map_err(
-                |error| {
-                    AgentOrgMaterializationError::permanent("invalid_member_runtime_config", error)
-                },
-            )?;
+        }
         let persisted_session_id = tokio::task::spawn_blocking(move || {
             if let Some(existing) = session_persistence::get_session(&session_id)
                 .map_err(|error| AgentOrgMaterializationError::retryable(error.to_string()))?
@@ -187,7 +232,9 @@ pub(super) async fn materialize_org_member_sessions(
                 let identity_matches = existing.agent_definition_id.as_deref()
                     == Some(member.agent_id.as_str())
                     && existing.org_member_id.as_deref() == Some(member.member_id.as_str())
-                    && existing.parent_session_id.as_deref() == Some(root_session_id.as_str());
+                    && existing.parent_session_id.as_deref() == Some(root_session_id.as_str())
+                    && existing.credential_source == member_source
+                    && existing.account_id == member_account_id;
                 if !identity_matches {
                     return Err(AgentOrgMaterializationError::permanent(
                         "materialization_identity_mismatch",
@@ -203,6 +250,7 @@ pub(super) async fn materialize_org_member_sessions(
                 status: crate::session::SessionStatus::Idle.as_str().to_string(),
                 model: member_model,
                 account_id: member_account_id,
+                credential_source: member_source,
                 workspace_path: Some(workspace_path),
                 org_id: Some(project_management::projects::types::PERSONAL_ORG_ID.to_string()),
                 user_input: None,

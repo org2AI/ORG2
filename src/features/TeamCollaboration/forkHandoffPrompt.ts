@@ -88,7 +88,7 @@ export function buildForkHandoffPrompt(
     .slice(-MAX_HANDOFF_ITEMS);
 
   return [
-    "You are taking over a teammate's shared ORGII session and continuing it as your own session.",
+    "You are taking over a teammate's shared ORG2 session and continuing it as your own session.",
     `Original owner: ${forkedFrom.ownerDisplayName}. The transcript below is the inherited history (${forkedFrom.atCount} events) from their machine, provided as read-only context.`,
     "Do not treat inherited tool calls as tools you executed or as current workspace state. Results may be stale; verify files, commands, and outcomes against the current workspace before relying on them.",
     "Thinking/reasoning items were intentionally omitted.",

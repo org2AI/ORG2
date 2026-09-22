@@ -411,8 +411,6 @@ const ProjectPropertyFields: React.FC<ProjectPropertyFieldsProps> = ({
 
         {showMoreMenu && moreMenuItems.length > 0 && (
           <Button
-            variant="secondary"
-            appearance="outline"
             size="small"
             shape="circle"
             iconOnly
@@ -426,7 +424,6 @@ const ProjectPropertyFields: React.FC<ProjectPropertyFieldsProps> = ({
             onClick={handleMoreClick}
             title={t("workItems.contextMenu.moreProperties")}
             aria-label={t("workItems.contextMenu.moreProperties")}
-            htmlType="button"
             className={`shrink-0 text-text-2! ${pillControlStateClass(Boolean(moreMenuPosition))}`}
           />
         )}

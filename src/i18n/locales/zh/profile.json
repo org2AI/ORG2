@@ -1,9 +1,4 @@
 {
-  "name": "姓名",
   "genderOptions": {},
-  "role": "角色",
-  "location": "位置",
-  "commits": "次提交",
-  "activity": "活跃度",
   "social": {}
 }

@@ -132,11 +132,11 @@ describe("channel rows", () => {
     const moreAction = row.rowActions?.[0];
     expect(moreAction?.dataTestId).toBe("cloud-channel-more-ch-org");
     moreAction?.onClick({} as never);
-    expect(onOpenChannelMenu).toHaveBeenCalledWith(channel, [
-      "manageMembers",
-      "archive",
-      "delete",
-    ]);
+    expect(onOpenChannelMenu).toHaveBeenCalledWith(
+      channel,
+      ["manageMembers", "archive", "delete"],
+      {}
+    );
   });
 });
 

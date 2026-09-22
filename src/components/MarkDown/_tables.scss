@@ -1,32 +1,27 @@
 // Table cells
 .chat-markdown-body table th {
   font-weight: 600;
-  background: var(--color-fill-2);
   color: var(--color-text-1);
 }
 
 .chat-markdown-body table th,
 .chat-markdown-body table td {
-  padding: 8px 12px;
-  border-right: 1px solid var(--color-border-2);
+  padding: 12px 16px;
   border-bottom: 1px solid var(--color-border-2);
   text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
 
+  &:first-child {
+    padding-left: 0;
+  }
   &:last-child {
-    border-right: none;
+    padding-right: 0;
   }
 }
 
-.chat-markdown-body table tr {
-  transition: background 0.15s ease;
-}
-
-.chat-markdown-body table tbody tr {
-  background-color: var(--color-fill-1);
-
-  &:last-child td {
-    border-bottom: none;
-  }
+.chat-markdown-body table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .chat-markdown-body table img {

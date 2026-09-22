@@ -10,6 +10,28 @@ import {
 } from "@src/test/staticImportGraph";
 
 describe("mobile remote browser boundary", () => {
+  it("loads only browser-safe Workstation editor leaves for mobile documents", () => {
+    const editor = walkStaticImports([
+      "modules/MobileRemote/components/transcript/MobileReadonlyEditor.tsx",
+    ]);
+    expect(
+      reachableFilesMatching(
+        editor,
+        /^(modules\/WorkStation\/|features\/CodeMirror\/CodeMirrorEditor|services\/|api\/)/u
+      )
+    ).toEqual([]);
+    // The shared editor leaves no longer require the native logger backend.
+    expect(
+      importersOfPackage(editor, "@tauri-apps/api").map(
+        (chain) => chain.split("  <-  ")[0]
+      )
+    ).toEqual([]);
+    expect(
+      [...editor.packages].filter(
+        (name) => name.startsWith("@tauri-apps/") && name !== "@tauri-apps/api"
+      )
+    ).toEqual([]);
+  });
   const graph = walkStaticImports(["mobileRemoteEntry.tsx"]);
   const mobileAuthGraph = walkStaticImports([
     "modules/MobileRemote/auth/MobileAuthGate.tsx",

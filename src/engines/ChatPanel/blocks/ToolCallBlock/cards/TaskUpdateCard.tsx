@@ -14,9 +14,7 @@ import {
   CheckmarkCircle01Icon,
   CircleDotIcon,
   HugeiconsIcon,
-  ListChecksIcon,
   PlayCircleIcon,
-  WorkflowCircle05Icon,
 } from "@src/icons";
 
 import {
@@ -40,10 +38,6 @@ import type { TaskListCardData, TaskUpdateCardData } from "../types";
 
 const TASK_LIST_DEFAULT_VISIBLE = 3;
 
-interface TaskUpdateCardProps {
-  card: TaskUpdateCardData;
-}
-
 interface TaskListCardProps {
   card: TaskListCardData;
   /**
@@ -64,187 +58,6 @@ interface TaskListCardProps {
   /** Optional group-chat sender name merged into the task header title. */
   groupSenderName?: string | null;
 }
-
-function TaskDetailRows({ card }: { card: TaskUpdateCardData }) {
-  const dependencyText = [...card.blocks, ...card.blockedBy].join(", ");
-
-  return (
-    <div className="space-y-1 text-xs text-text-2">
-      <div
-        className="chat-block-content flex min-w-0 items-center gap-2"
-        data-testid="org-task-card-id"
-      >
-        <HugeiconsIcon
-          icon={CircleDotIcon}
-          data-icon="circle-dot"
-          size={11}
-          strokeWidth={1.75}
-          className="shrink-0 text-text-3"
-        />
-        <span className="shrink-0 text-[10px] text-text-3">ID</span>
-        <span className="min-w-0 truncate">{card.id}</span>
-      </div>
-
-      {card.owner && (
-        <div
-          className="chat-block-content flex min-w-0 items-center gap-2"
-          data-testid="org-task-card-owner"
-        >
-          <HugeiconsIcon
-            icon={CircleDotIcon}
-            data-icon="circle-dot"
-            size={11}
-            strokeWidth={1.75}
-            className="shrink-0 text-text-3"
-          />
-          <span className="shrink-0 text-[10px] text-text-3">Owner</span>
-          <span className="min-w-0 truncate">{card.owner}</span>
-        </div>
-      )}
-
-      {card.activeForm && (
-        <div
-          className="chat-block-content flex min-w-0 items-center gap-2"
-          data-testid="org-task-card-active"
-        >
-          <HugeiconsIcon
-            icon={ListChecksIcon}
-            data-icon="list-checks"
-            size={11}
-            strokeWidth={1.75}
-            className="shrink-0 text-text-3"
-          />
-          <span className="shrink-0 text-[10px] text-text-3">Active</span>
-          <span className="min-w-0 truncate">{card.activeForm}</span>
-        </div>
-      )}
-
-      {card.blocks.length > 0 && (
-        <div
-          className="chat-block-content flex min-w-0 items-center gap-2"
-          data-testid="org-task-card-blocks"
-        >
-          <HugeiconsIcon
-            icon={WorkflowCircle05Icon}
-            data-icon="git-branch"
-            size={11}
-            strokeWidth={1.75}
-            className="shrink-0 text-text-3"
-          />
-          <span className="shrink-0 text-[10px] text-text-3">Blocks</span>
-          <span className="min-w-0 truncate">{card.blocks.join(", ")}</span>
-        </div>
-      )}
-
-      {card.blockedBy.length > 0 && (
-        <div
-          className="chat-block-content flex min-w-0 items-center gap-2"
-          data-testid="org-task-card-blocked-by"
-        >
-          <HugeiconsIcon
-            icon={WorkflowCircle05Icon}
-            data-icon="git-branch"
-            size={11}
-            strokeWidth={1.75}
-            className="shrink-0 text-text-3"
-          />
-          <span className="shrink-0 text-[10px] text-text-3">Blocked by</span>
-          <span className="min-w-0 truncate">{card.blockedBy.join(", ")}</span>
-        </div>
-      )}
-
-      {dependencyText && <span className="sr-only">{dependencyText}</span>}
-    </div>
-  );
-}
-
-function TaskStatusBadges({ card }: { card: TaskUpdateCardData }) {
-  return (
-    <span className="flex shrink-0 items-center gap-1.5">
-      {card.status && (
-        <span
-          className="shrink-0 rounded-full bg-fill-3 px-1.5 py-0.5 text-[10px] text-text-2"
-          data-testid="org-task-card-status"
-        >
-          {card.status}
-        </span>
-      )}
-      {card.ownerChanged && (
-        <span
-          className="shrink-0 text-[10px] text-primary-6"
-          data-testid="org-task-card-owner-changed"
-        >
-          owner changed
-        </span>
-      )}
-      {card.taskAssignedDispatched && (
-        <span
-          className="inline-flex shrink-0 items-center gap-1 text-[10px] text-success-6"
-          data-testid="org-task-card-assigned"
-        >
-          <HugeiconsIcon
-            icon={CheckmarkCircle01Icon}
-            data-icon="check-circle-2"
-            size={10}
-          />{" "}
-          assigned
-        </span>
-      )}
-    </span>
-  );
-}
-
-const TaskUpdateCard: React.FC<TaskUpdateCardProps> = ({ card }) => {
-  const { t } = useTranslation("sessions");
-  const title = card.subject ?? card.activeForm ?? card.id;
-  const headerTitle =
-    card.action === "created"
-      ? t("orgTask.create.title", { title })
-      : t("orgTask.update.title", { title });
-
-  const {
-    isCollapsed,
-    isHeaderHovered,
-    handleHeaderClick,
-    handleHeaderMouseEnter,
-    handleHeaderMouseLeave,
-  } = useBlockHeader({ defaultCollapsed: true });
-
-  return (
-    <div
-      className={getEventBlockContainerClasses(true)}
-      data-testid="org-task-card"
-    >
-      <EventBlockHeader
-        isCollapsed={isCollapsed}
-        withHover
-        onToggleCollapse={handleHeaderClick}
-        onMouseEnter={handleHeaderMouseEnter}
-        onMouseLeave={handleHeaderMouseLeave}
-        rightContent={<TaskStatusBadges card={card} />}
-      >
-        <EventBlockHeaderIcon
-          icon={getToolIcon(
-            card.action === "created" ? "task_create" : "task_update",
-            { size: SESSION_UI_TOKENS.ICON.SIZE_SM }
-          )}
-          isCollapsed={isCollapsed}
-          isHeaderHovered={isHeaderHovered}
-          hasContent
-        />
-        <EventBlockHeaderTitle>{headerTitle}</EventBlockHeaderTitle>
-      </EventBlockHeader>
-
-      {!isCollapsed && (
-        <div
-          className={`border-t border-border-1 ${EVENT_SNIPPET_INNER_PADDING_CLASS}`}
-        >
-          <TaskDetailRows card={card} />
-        </div>
-      )}
-    </div>
-  );
-};
 
 function getListRowStatusIcon(status?: string): React.ReactNode {
   if (!status) return null;
@@ -291,7 +104,7 @@ function TaskListRow({ task }: { task: TaskUpdateCardData }) {
     ? t(`orgTask.status.${task.status}`, { defaultValue: task.status })
     : null;
   const assignedLabel = task.taskAssignedDispatched
-    ? t("orgTask.assignedBadge", { defaultValue: "Assigned" })
+    ? t("orgTask.assignedBadge")
     : null;
   const statusRowLabel = [assignedLabel, statusLabel]
     .filter(Boolean)
@@ -361,16 +174,13 @@ export const TaskListCard: React.FC<TaskListCardProps> = ({
       ? card.kind === "get"
         ? t("groupChat.taskHeader.get", {
             sender: groupSenderName,
-            defaultValue: "{{sender}} viewed task details",
           })
         : card.kind === "graph"
           ? t("groupChat.taskHeader.create", {
               sender: groupSenderName,
-              defaultValue: "{{sender}} assigned tasks",
             })
           : t("groupChat.taskHeader.list", {
               sender: groupSenderName,
-              defaultValue: "{{sender}} viewed task list",
             })
       : card.kind === "get"
         ? t("orgTask.get.title")
@@ -449,8 +259,8 @@ export const TaskListCard: React.FC<TaskListCardProps> = ({
           <div className="flex min-w-0 items-baseline gap-2">
             <span className="shrink-0 text-text-3">
               {observationLabel == null
-                ? t("orgTask.list.countLabel", { defaultValue: "Tasks" })
-                : t("orgTask.statusLabel", { defaultValue: "Status" })}
+                ? t("orgTask.list.countLabel")
+                : t("orgTask.statusLabel")}
             </span>
             <span
               className="min-w-0 flex-1 truncate text-text-1"
@@ -504,7 +314,4 @@ export const TaskListCard: React.FC<TaskListCardProps> = ({
   );
 };
 
-TaskUpdateCard.displayName = "TaskUpdateCard";
 TaskListCard.displayName = "TaskListCard";
-
-export default TaskUpdateCard;

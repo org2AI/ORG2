@@ -69,6 +69,37 @@ impl HookApprovalDecision {
 struct PendingHookApproval {
     session_id: String,
     sender: oneshot::Sender<HookApprovalDecision>,
+    tool_name: String,
+    tool_args: serde_json::Value,
+    created_at_ms: i64,
+}
+
+pub fn pending_snapshot_for_session(
+    session_id: Option<&str>,
+    limit: usize,
+) -> Result<Vec<serde_json::Value>, String> {
+    let pending = PENDING_HOOK_APPROVALS
+        .lock()
+        .map_err(|_| "Hook approval registry lock is poisoned")?;
+    Ok(pending
+        .iter()
+        .filter(|(_, entry)| session_id.is_none_or(|id| entry.session_id == id))
+        .take(limit)
+        .map(|(id, entry)| {
+            serde_json::json!({
+                "kind": "permission", "origin": "cli_hook", "sessionId": entry.session_id,
+                "requestId": id, "toolName": entry.tool_name, "toolCallId": id,
+                "toolArgs": entry.tool_args, "createdAtMs": entry.created_at_ms,
+            })
+        })
+        .collect())
+}
+
+fn pending_changed(session_id: &str) {
+    websocket_handler::broadcast(
+        serde_json::json!({"type": "permission:pending_changed", "session_id": session_id})
+            .to_string(),
+    );
 }
 
 /// Pending hook approvals keyed by `request_id`.
@@ -99,26 +130,7 @@ pub fn unregister_session(session_id: &str) {
     if let Ok(mut pending) = PENDING_HOOK_APPROVALS.lock() {
         pending.retain(|_, entry| entry.session_id != session_id);
     }
-}
-
-fn session_permission_mode(session_id: &str) -> Option<CliPermissionMode> {
-    SESSION_PERMISSION_MODES
-        .lock()
-        .ok()
-        .and_then(|map| map.get(session_id).copied())
-}
-
-/// Whether hook approvals should block for this session.
-///
-/// Only `Manual` launches get an interactive gate: AutoEdit /
-/// FullPermission / Plan flags already tell Claude what to auto-approve,
-/// and an unknown session (restarted desktop, external session that
-/// spoofed the env var) must never be blocked by a GUI it can't reach.
-fn session_wants_interactive_approval(session_id: &str) -> bool {
-    matches!(
-        session_permission_mode(session_id),
-        Some(CliPermissionMode::Manual)
-    )
+    pending_changed(session_id);
 }
 
 fn broadcast_permission_request(
@@ -154,23 +166,32 @@ pub async fn park_hook_approval(
     tool_args: serde_json::Value,
     timeout: Duration,
 ) -> HookApprovalDecision {
-    if !session_wants_interactive_approval(session_id) {
-        return HookApprovalDecision::Passthrough;
-    }
-
     let request_id = format!("hookperm-{}", uuid::Uuid::new_v4());
     let (tx, rx) = oneshot::channel::<HookApprovalDecision>();
-    match PENDING_HOOK_APPROVALS.lock() {
-        Ok(mut pending) => {
-            pending.insert(
-                request_id.clone(),
-                PendingHookApproval {
-                    session_id: session_id.to_string(),
-                    sender: tx,
-                },
-            );
+    {
+        // Hold launch ownership through insertion: unregister cannot finish
+        // between a Manual check and parking a new request for that session.
+        let Ok(modes) = SESSION_PERMISSION_MODES.lock() else {
+            return HookApprovalDecision::Passthrough;
+        };
+        if !matches!(modes.get(session_id), Some(CliPermissionMode::Manual)) {
+            return HookApprovalDecision::Passthrough;
         }
-        Err(_) => return HookApprovalDecision::Passthrough,
+        match PENDING_HOOK_APPROVALS.lock() {
+            Ok(mut pending) => {
+                pending.insert(
+                    request_id.clone(),
+                    PendingHookApproval {
+                        session_id: session_id.to_string(),
+                        sender: tx,
+                        tool_name: tool_name.to_string(),
+                        tool_args: tool_args.clone(),
+                        created_at_ms: chrono::Utc::now().timestamp_millis(),
+                    },
+                );
+            }
+            Err(_) => return HookApprovalDecision::Passthrough,
+        }
     }
 
     let _lifetime = super::permission_lifecycle::PermissionLifetime::new(
@@ -202,8 +223,9 @@ pub async fn park_hook_approval(
 }
 
 fn remove_pending_hook_approval(request_id: &str) {
-    if let Ok(mut pending) = PENDING_HOOK_APPROVALS.lock() {
-        pending.remove(request_id);
+    let removed = PENDING_HOOK_APPROVALS.lock().ok().and_then(|mut pending| pending.remove(request_id));
+    if let Some(approval) = removed {
+        pending_changed(&approval.session_id);
     }
 }
 
@@ -226,8 +248,7 @@ pub fn resolve_hook_approval(
                 .get(request_id)
                 .filter(|entry| entry.session_id == session_id)
                 .map(|_| request_id.to_string()),
-            // No request id: fall back to the session's only
-            // pending entry — Claude blocks on one permission at a time.
+            // Only legacy callers omitting an ID may select by session.
             None => pending
                 .iter()
                 .find(|(_, entry)| entry.session_id == session_id)
@@ -237,6 +258,7 @@ pub fn resolve_hook_approval(
             key.ok_or_else(|| format!("No pending hook approval for session {session_id}"))?;
         pending.remove(&key).expect("key was just found")
     };
+    pending_changed(session_id);
 
     let decision = if approved {
         HookApprovalDecision::Allow
@@ -459,5 +481,81 @@ mod tests {
         assert!(!has_pending_hook_approval(&session, None));
         assert_resolved(&session);
         unregister_session(&session);
+    }
+
+    #[tokio::test]
+    async fn stale_foreign_and_cancelled_requests_cannot_resolve_another_prompt() {
+        let session = unique_session("scoped-snapshot");
+        register_session_permission_mode(&session, CliPermissionMode::Manual);
+        let park = tokio::spawn({
+            let session = session.clone();
+            async move {
+                park_hook_approval(
+                    &session,
+                    "Bash",
+                    serde_json::json!({"command":"pwd"}),
+                    Duration::from_secs(10),
+                )
+                .await
+            }
+        });
+        for _ in 0..100 {
+            if has_pending_hook_approval(&session, None) {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        let rows = pending_snapshot_for_session(Some(&session), 10).unwrap();
+        assert_eq!(rows.len(), 1);
+        let id = rows[0]["requestId"].as_str().unwrap();
+        assert_eq!(rows[0]["toolArgs"]["command"], "pwd");
+        assert!(resolve_hook_approval(&session, Some("stale"), true).is_err());
+        assert!(resolve_hook_approval("foreign", Some(id), true).is_err());
+        assert!(!has_pending_hook_approval("foreign", Some(id)));
+        assert_eq!(
+            pending_snapshot_for_session(Some(&session), 10)
+                .unwrap()
+                .len(),
+            1
+        );
+        park.abort();
+        let _ = park.await;
+        assert!(pending_snapshot_for_session(Some(&session), 10)
+            .unwrap()
+            .is_empty());
+        unregister_session(&session);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn concurrent_session_end_cannot_leave_a_new_parked_request() {
+        for _ in 0..32 {
+            let session = unique_session("unregister-race");
+            register_session_permission_mode(&session, CliPermissionMode::Manual);
+            let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+            let park = tokio::spawn({
+                let session = session.clone();
+                let barrier = barrier.clone();
+                async move {
+                    barrier.wait();
+                    park_hook_approval(
+                        &session,
+                        "Bash",
+                        serde_json::json!({}),
+                        Duration::from_secs(5),
+                    )
+                    .await
+                }
+            });
+            barrier.wait();
+            unregister_session(&session);
+            let decision = tokio::time::timeout(Duration::from_secs(1), park)
+                .await
+                .expect("session end releases pending wait")
+                .unwrap();
+            assert_eq!(decision, HookApprovalDecision::Passthrough);
+            assert!(pending_snapshot_for_session(Some(&session), 10)
+                .unwrap()
+                .is_empty());
+        }
     }
 }

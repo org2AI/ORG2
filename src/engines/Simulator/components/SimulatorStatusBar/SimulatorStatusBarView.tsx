@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
@@ -94,42 +95,53 @@ export const SimulatorStatusBarView: React.FC<SimulatorStatusBarViewProps> =
                   mouseEnterDelay={200}
                   framedPanel
                 >
-                  <button
-                    type="button"
+                  <Button
+                    variant="tertiary"
+                    size="sidebar"
+                    shape="circle"
+                    iconOnly
                     data-testid="session-replay-free-browse"
                     onClick={onEnterReplay}
                     className="flex h-5 w-5 transform-gpu items-center justify-center rounded-full text-white hover:bg-white/15 hover:text-white"
                     aria-label={t("simulator.replay.freeBrowse")}
-                  >
-                    <HugeiconsIcon
-                      icon={Cursor02Icon}
-                      data-icon="cursor-2"
-                      size={12}
-                      strokeWidth={1.75}
-                    />
-                  </button>
+                    icon={
+                      <HugeiconsIcon
+                        icon={Cursor02Icon}
+                        data-icon="cursor-2"
+                        size={12}
+                        strokeWidth={1.75}
+                      />
+                    }
+                  />
                 </Tooltip>
               </>
             ) : (
               <>
-                <button
-                  type="button"
+                <Button
+                  variant="tertiary"
+                  size="sidebar"
+                  shape="circle"
+                  iconOnly
                   data-testid="session-replay-previous"
                   onClick={onPrevious}
                   disabled={eventCount === 0}
                   className={`ml-0.5 ${STATUS_BAR_ICON_BTN_20}`}
                   title={t("simulator.replay.previousEvent")}
                   aria-label={t("simulator.replay.previousEvent")}
-                >
-                  <HugeiconsIcon
-                    icon={ArrowLeft01Icon}
-                    data-icon="arrow-left-1"
-                    size={14}
-                    strokeWidth={1.5}
-                  />
-                </button>
-                <button
-                  type="button"
+                  icon={
+                    <HugeiconsIcon
+                      icon={ArrowLeft01Icon}
+                      data-icon="arrow-left-1"
+                      size={14}
+                      strokeWidth={1.5}
+                    />
+                  }
+                />
+                <Button
+                  variant="tertiary"
+                  size="sidebar"
+                  shape="circle"
+                  iconOnly
                   data-testid="session-replay-play-pause"
                   onClick={onPlayPause}
                   disabled={eventCount === 0}
@@ -148,31 +160,36 @@ export const SimulatorStatusBarView: React.FC<SimulatorStatusBarViewProps> =
                       ? t("simulator.replay.pause")
                       : t("simulator.replay.play")
                   }
-                >
-                  <HugeiconsIcon
-                    icon={isReplaying ? PauseIcon : PlayIcon}
-                    data-icon={isReplaying ? "pause" : "play"}
-                    size={12}
-                    fill="currentColor"
-                    strokeWidth={0}
-                  />
-                </button>
-                <button
-                  type="button"
+                  icon={
+                    <HugeiconsIcon
+                      icon={isReplaying ? PauseIcon : PlayIcon}
+                      data-icon={isReplaying ? "pause" : "play"}
+                      size={12}
+                      fill="currentColor"
+                      strokeWidth={0}
+                    />
+                  }
+                />
+                <Button
+                  variant="tertiary"
+                  size="sidebar"
+                  shape="circle"
+                  iconOnly
                   data-testid="session-replay-next"
                   onClick={onNext}
                   disabled={eventCount === 0}
                   className={STATUS_BAR_ICON_BTN_20}
                   title={t("simulator.replay.nextEvent")}
                   aria-label={t("simulator.replay.nextEvent")}
-                >
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    data-icon="arrow-right-1"
-                    size={14}
-                    strokeWidth={1.5}
-                  />
-                </button>
+                  icon={
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      data-icon="arrow-right-1"
+                      size={14}
+                      strokeWidth={1.5}
+                    />
+                  }
+                />
                 {playbackSpeed != null && onPlaybackSpeedChange != null ? (
                   <PlaybackSpeedInline
                     value={playbackSpeed}
@@ -182,14 +199,16 @@ export const SimulatorStatusBarView: React.FC<SimulatorStatusBarViewProps> =
                 ) : null}
                 {replayOptions}
                 <div className="ml-1 h-4 w-px shrink-0 bg-border-2" />
-                <button
-                  type="button"
+                <Button
+                  variant="tertiary"
+                  size="sidebar"
+                  shape="round"
                   onClick={onFollow}
                   title={t("simulator.replay.follow")}
                   className={`${STATUS_BAR_TEXT_20} shrink-0 transform-gpu rounded-full px-2 font-medium text-text-2 ${SURFACE_TOKENS.hover} hover:text-primary-6`}
                 >
                   {t("simulator.replay.follow")}
-                </button>
+                </Button>
               </>
             )}
           </div>

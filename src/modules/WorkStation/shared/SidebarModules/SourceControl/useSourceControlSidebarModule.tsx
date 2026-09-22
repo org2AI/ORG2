@@ -15,64 +15,31 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitWorktreeEntry } from "@src/api/http/git/types";
-import AnyIcon from "@src/components/AnyIcon";
-import { Placeholder } from "@src/components/Placeholder";
+import Button from "@src/components/Button";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
+import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
 import { sessionIdAtom } from "@src/engines/SessionCore";
 import { useFileReviewBatchActions } from "@src/hooks/fileReview";
 import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
-import {
-  ArrowLeft02Icon,
-  CircleDotIcon,
-  HugeiconsIcon,
-  Refresh04Icon,
-  RotateLeft01Icon,
-} from "@src/icons";
-import {
-  SectionFilterInput,
-  makeSectionFilterAction,
-} from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/components/SectionFilterInput";
-import {
-  ICON_CONFIG,
-  PANEL_CONSTANTS,
-} from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/config";
+import { ArrowLeft02Icon, HugeiconsIcon, RotateLeft01Icon } from "@src/icons";
+import { PANEL_CONSTANTS } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/config";
+import { StashHeaderContext } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/StashContent/StashHeaderContext";
 import { useSourceControlActions } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/hooks";
-import { useSectionFilter } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/hooks/useSectionFilter";
 import {
   type SourceControlTabHandle,
   useSourceControlTabConfig,
 } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/tabs/SourceControlTab";
 import type { PrimarySidebarTab } from "@src/modules/WorkStation/shared/PrimarySidebarLayout";
-import { workstationIssueCallbackAtomFamily } from "@src/store/workstation/codeEditor/workstationIssueAtom";
-import {
-  workstationPrCallbackAtomFamily,
-  workstationRepoScopeKey,
-} from "@src/store/workstation/codeEditor/workstationPrAtom";
+import { workstationRepoScopeKey } from "@src/store/workstation/codeEditor/workstationPrAtom";
 import type { SourceControlHistorySelection } from "@src/store/workstation/tabs";
 import type { GitFile } from "@src/types/git/types";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
 
 import type { SourceControlFilterMode } from "./SourceControlFilterHeader";
-
-const HistoryRefreshIcon = ICON_CONFIG.refresh;
-const GitHistoryContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/GitHistoryContent")
-);
-const PullRequestContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/PullRequestContent")
-);
-const IssuesContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/IssuesContent")
-);
-
-const AlternateModeFallback = () => (
-  <Placeholder variant="loading" placement="sidebar" fillParentHeight />
-);
+import { useSourceControlHistorySection } from "./useSourceControlHistorySection";
+import { useSourceControlIssuesSection } from "./useSourceControlIssuesSection";
+import { useSourceControlPrSection } from "./useSourceControlPrSection";
 
 export interface UseSourceControlSidebarModuleOptions {
   repoPath: string;
@@ -130,27 +97,11 @@ export function useSourceControlSidebarModule({
 }: UseSourceControlSidebarModuleOptions): UseSourceControlSidebarModuleResult {
   const { t } = useTranslation();
   const sourceControlRef = useRef<SourceControlTabHandle>(null);
-  const historyRefreshRef = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
   useMountedCleanup(mountedRef);
 
   const [showFilter, setShowFilter] = useState(false);
   const [viewMode, setViewMode] = useState<"list-tree" | "list">("list-tree");
-  const {
-    isOpen: showPrFilter,
-    query: prFilterQuery,
-    setQuery: setPrFilterQuery,
-    toggle: handleTogglePrFilter,
-    clear: clearPrFilter,
-  } = useSectionFilter();
-
-  const {
-    isOpen: showHistoryFilter,
-    query: historyFilterQuery,
-    setQuery: setHistoryFilterQuery,
-    toggle: handleToggleHistoryFilter,
-    clear: clearHistoryFilter,
-  } = useSectionFilter();
   const filterMode = controlledFilterMode ?? "uncommitted";
   const isHistoryMode = filterMode === "history";
   const isPrMode = filterMode === "pr";
@@ -169,61 +120,20 @@ export function useSourceControlSidebarModule({
   const handleToggleViewMode = useCallback(() => {
     setViewMode((prev) => (prev === "list-tree" ? "list" : "list-tree"));
   }, []);
-  const handleRefresh = useCallback(() => {
-    sourceControlRef.current?.refresh();
-  }, []);
-  const handleHistoryRefreshReady = useCallback((refresh: () => void) => {
-    historyRefreshRef.current = refresh;
-  }, []);
-  const handleHistoryRefresh = useCallback(() => {
-    historyRefreshRef.current?.();
-  }, []);
 
   const sourceControlActions = useSourceControlActions({
     showFilter,
     viewMode,
     onToggleFilter: handleToggleFilter,
     onToggleViewMode: handleToggleViewMode,
-    onRefresh: handleRefresh,
   });
 
-  const {
-    spinClass: historyRefreshSpinClass,
-    handleClick: handleHistoryRefreshClick,
-  } = useRefreshSpin(handleHistoryRefresh, false);
-
-  const historyActions = useMemo<SectionHeaderAction[]>(
-    () => [
-      makeSectionFilterAction({
-        key: "history-filter",
-        isOpen: showHistoryFilter,
-        hasQuery: historyFilterQuery.length > 0,
-        onToggle: handleToggleHistoryFilter,
-        tooltip: t("common:actions.search"),
-      }),
-      {
-        key: "refresh-git-history",
-        icon: (
-          <AnyIcon
-            icon={HistoryRefreshIcon}
-            size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
-            strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
-            className={historyRefreshSpinClass}
-          />
-        ),
-        tooltip: "",
-        onClick: handleHistoryRefreshClick,
-      },
-    ],
-    [
-      showHistoryFilter,
-      historyFilterQuery,
-      handleToggleHistoryFilter,
-      handleHistoryRefreshClick,
-      historyRefreshSpinClass,
-      t,
-    ]
-  );
+  const { historyActions, historyContent } = useSourceControlHistorySection({
+    t,
+    repoPath,
+    repoId,
+    onGitHistorySelectionChange,
+  });
 
   const globalSessionId = useAtomValue(sessionIdAtom);
   const { pendingCount, onUndoAll } =
@@ -257,7 +167,7 @@ export function useSourceControlSidebarModule({
         <HugeiconsIcon
           icon={RotateLeft01Icon}
           data-icon="rotate-ccw"
-          size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
+          size={HEADER_ICON_SIZE.discard}
           strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
         />
       ),
@@ -276,114 +186,23 @@ export function useSourceControlSidebarModule({
     [pendingCount, isUndoingAll, undoAllAction, sourceControlActions]
   );
 
-  const {
-    isOpen: showIssuesFilter,
-    query: issuesFilterQuery,
-    setQuery: setIssuesFilterQuery,
-    toggle: handleToggleIssuesFilter,
-    clear: clearIssuesFilter,
-  } = useSectionFilter();
-
   const scopeKey = workstationRepoScopeKey(repoId, repoPath);
-  const issueCallbacks = useAtomValue(
-    workstationIssueCallbackAtomFamily(scopeKey)
-  );
-  const handleIssuesRefresh = useCallback(() => {
-    issueCallbacks.refreshIssues?.();
-  }, [issueCallbacks]);
-  const {
-    spinClass: issuesRefreshSpinClass,
-    handleClick: handleIssuesRefreshClick,
-  } = useRefreshSpin(handleIssuesRefresh, false);
-  const issueActions = useMemo<SectionHeaderAction[]>(
-    () => [
-      makeSectionFilterAction({
-        key: "issues-filter",
-        isOpen: showIssuesFilter,
-        hasQuery: issuesFilterQuery.length > 0,
-        onToggle: handleToggleIssuesFilter,
-        tooltip: t("common:actions.search"),
-      }),
-      {
-        key: "refresh-issues",
-        icon: (
-          <HugeiconsIcon
-            icon={Refresh04Icon}
-            data-icon="refresh-cw"
-            size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
-            strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
-            className={issuesRefreshSpinClass}
-          />
-        ),
-        tooltip: t("common:actions.refresh", "Refresh"),
-        onClick: handleIssuesRefreshClick,
-      },
-      {
-        key: "new-issue",
-        icon: (
-          <HugeiconsIcon
-            icon={CircleDotIcon}
-            data-icon="circle-dot"
-            size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
-            strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
-          />
-        ),
-        tooltip: "New issue",
-        onClick: () => {
-          issueCallbacks.openNewIssueForm?.();
-        },
-      },
-    ],
-    [
-      showIssuesFilter,
-      issuesFilterQuery,
-      handleToggleIssuesFilter,
-      handleIssuesRefreshClick,
-      issuesRefreshSpinClass,
-      issueCallbacks,
-      t,
-    ]
-  );
+  const { issueActions, issuesContent } = useSourceControlIssuesSection({
+    t,
+    repoPath,
+    repoId,
+    branchName,
+    scopeKey,
+  });
 
-  const prCallbacks = useAtomValue(workstationPrCallbackAtomFamily(scopeKey));
-  const handlePrRefresh = useCallback(() => {
-    prCallbacks.refreshPrs?.();
-  }, [prCallbacks]);
-  const { spinClass: prRefreshSpinClass, handleClick: handlePrRefreshClick } =
-    useRefreshSpin(handlePrRefresh, false);
-  const prActions = useMemo<SectionHeaderAction[]>(
-    () => [
-      makeSectionFilterAction({
-        key: "pr-filter",
-        isOpen: showPrFilter,
-        hasQuery: prFilterQuery.length > 0,
-        onToggle: handleTogglePrFilter,
-        tooltip: t("common:actions.search"),
-      }),
-      {
-        key: "refresh-prs",
-        icon: (
-          <HugeiconsIcon
-            icon={Refresh04Icon}
-            data-icon="refresh-cw"
-            size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
-            strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
-            className={prRefreshSpinClass}
-          />
-        ),
-        tooltip: t("common:actions.refresh", "Refresh"),
-        onClick: handlePrRefreshClick,
-      },
-    ],
-    [
-      showPrFilter,
-      prFilterQuery,
-      handleTogglePrFilter,
-      handlePrRefreshClick,
-      prRefreshSpinClass,
-      t,
-    ]
-  );
+  const { prActions, prContent } = useSourceControlPrSection({
+    t,
+    repoPath,
+    repoId,
+    branchName,
+    scopeKey,
+    onGitHistorySelectionChange,
+  });
 
   const actions = isHistoryMode
     ? historyActions
@@ -395,14 +214,14 @@ export function useSourceControlSidebarModule({
   const sectionLabel = isHistoryMode
     ? t("common:labels.gitHistory")
     : isPrMode
-      ? t("common:labels.pullRequest", "Pull request")
+      ? t("common:labels.pullRequest")
       : isIssuesMode
-        ? t("common:git.issues.title", "Issues")
+        ? t("common:git.issues.title")
         : t("tabs.sourceControl");
   const isAlternateMode = isPrMode || isHistoryMode || isIssuesMode;
   const sectionTitle = isAlternateMode ? (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       className="flex min-w-0 items-center gap-1.5 normal-case"
       onClick={() => onFilterModeChange?.("uncommitted")}
       aria-label={t("tabs.sourceControl")}
@@ -417,103 +236,9 @@ export function useSourceControlSidebarModule({
         />
       </span>
       <span className="truncate uppercase">{sectionLabel}</span>
-    </button>
+    </Button>
   ) : (
     sectionLabel
-  );
-
-  const historyContent = useMemo(
-    () => (
-      <div className="flex h-full min-h-0 flex-col">
-        {showHistoryFilter && (
-          <SectionFilterInput
-            query={historyFilterQuery}
-            onChange={setHistoryFilterQuery}
-            onClose={clearHistoryFilter}
-          />
-        )}
-        <React.Suspense fallback={<AlternateModeFallback />}>
-          <GitHistoryContent
-            repoPath={repoPath}
-            repoId={repoId}
-            viewMode="graph"
-            onRefreshReady={handleHistoryRefreshReady}
-            onHistorySelectionChange={onGitHistorySelectionChange}
-            filterQuery={historyFilterQuery}
-          />
-        </React.Suspense>
-      </div>
-    ),
-    [
-      showHistoryFilter,
-      historyFilterQuery,
-      setHistoryFilterQuery,
-      clearHistoryFilter,
-      handleHistoryRefreshReady,
-      onGitHistorySelectionChange,
-      repoPath,
-      repoId,
-    ]
-  );
-
-  const prContent = useMemo(
-    () => (
-      <div className="flex h-full min-h-0 flex-col">
-        {showPrFilter && (
-          <SectionFilterInput
-            query={prFilterQuery}
-            onChange={setPrFilterQuery}
-            onClose={clearPrFilter}
-          />
-        )}
-        <React.Suspense fallback={<AlternateModeFallback />}>
-          <PullRequestContent
-            branchName={branchName}
-            filterQuery={prFilterQuery}
-            onHistorySelectionChange={onGitHistorySelectionChange}
-            repoId={repoId}
-            repoPath={repoPath}
-          />
-        </React.Suspense>
-      </div>
-    ),
-    [
-      showPrFilter,
-      prFilterQuery,
-      setPrFilterQuery,
-      clearPrFilter,
-      branchName,
-      onGitHistorySelectionChange,
-      repoId,
-      repoPath,
-    ]
-  );
-
-  const issuesContent = useMemo(
-    () => (
-      <div className="flex h-full min-h-0 flex-col">
-        <React.Suspense fallback={<AlternateModeFallback />}>
-          <IssuesContent
-            repoPath={repoPath}
-            repoId={repoId}
-            branchName={branchName}
-            showFilter={showIssuesFilter}
-            filterQuery={issuesFilterQuery}
-            onFilterQueryChange={setIssuesFilterQuery}
-            onFilterClose={clearIssuesFilter}
-          />
-        </React.Suspense>
-      </div>
-    ),
-    [
-      repoPath,
-      repoId,
-      branchName,
-      showIssuesFilter,
-      issuesFilterQuery,
-      setIssuesFilterQuery,
-      clearIssuesFilter,
-    ]
   );
 
   const tab = useSourceControlTabConfig({
@@ -546,5 +271,30 @@ export function useSourceControlSidebarModule({
           : undefined,
   });
 
-  return useMemo(() => ({ tab, ref: sourceControlRef }), [tab]);
+  const stashHeader = useMemo(
+    () => ({
+      onBack: () => onFilterModeChange?.("uncommitted"),
+      actions: actions.map((action) => ({ ...action, forceVisible: true })),
+    }),
+    [actions, onFilterModeChange]
+  );
+
+  return useMemo(
+    () => ({
+      tab:
+        filterMode === "stashed"
+          ? {
+              ...tab,
+              sections: undefined,
+              rawContent: (
+                <StashHeaderContext.Provider value={stashHeader}>
+                  {tab.sections?.[0]?.content}
+                </StashHeaderContext.Provider>
+              ),
+            }
+          : tab,
+      ref: sourceControlRef,
+    }),
+    [tab, filterMode, stashHeader]
+  );
 }

@@ -9,9 +9,17 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
+
 import UserMessageContent from "../UserMessageContent";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
+}));
 
 describe("UserMessageContent Canvas Design preview", () => {
   let container: HTMLDivElement;
@@ -39,7 +47,7 @@ describe("UserMessageContent Canvas Design preview", () => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
 
-  it("renders the captured preview above the dom-component link", () => {
+  it("renders the captured preview above the dom-component pill", () => {
     const jsonText = JSON.stringify({
       schemaVersion: 1,
       origin: "canvas-design",
@@ -55,7 +63,9 @@ describe("UserMessageContent Canvas Design preview", () => {
       container.querySelector("iframe[title='Canvas selection preview']")
     ).not.toBeNull();
     expect(
-      container.querySelector("a[href='paste://canvas-design/event-a/1']")
+      container.querySelector(
+        "[role='link'][title='paste://canvas-design/event-a/1']"
+      )
     ).not.toBeNull();
     expect(container.textContent).toContain("Stat");
     expect(container.textContent).toContain("字体变大一些");

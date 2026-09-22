@@ -46,7 +46,8 @@
     "colleagues": "同事",
     "terminals": "终端",
     "openSourceRepo": "打开源码仓库",
-    "teamInbox": "Team Inbox"
+    "teamInbox": "Team Inbox",
+    "closeSettings": "关闭设置"
   },
   "routes": {
     "session": "聊天",
@@ -74,12 +75,7 @@
       "manual": "手动排序"
     },
     "tabs": {
-      "workstation": "工作站",
-      "manage": "管理",
-      "core": "核心",
-      "agent": "Agent",
-      "org": "团队",
-      "agentOrgs": "Agent & 团队"
+      "workstation": "工作站"
     },
     "groupBy": {
       "none": "不分组",
@@ -101,57 +97,23 @@
       "untitledSession": "未命名 Session",
       "enterSessionName": "输入 Session 名称"
     },
-    "groups": {
-      "economy": "经济",
-      "myServices": "我的服务",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "托管密钥",
-      "cloud": "Cloud",
-      "openSource": "开源仓库",
-      "timeline": "时间线"
-    },
     "actions": {
       "addNew": "新建",
       "collapseAll": "全部折叠",
-      "markAllRead": "全部标为已读",
-      "toggleGroup": "切换分组"
+      "markAllRead": "全部标为已读"
     },
     "search": {
-      "folders": "搜索工作区...",
-      "sessions": "搜索会话...",
-      "projects": "搜索项目...",
-      "colleagues": "搜索同事..."
-    },
-    "folderCounts": {
-      "repo": "{{count}}个仓库",
-      "multiRepoWorkspace": "{{count}}个多仓库工作区",
-      "repo_other": "{{count}} repos",
-      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
-      "repo_plural": "{{count}} repos",
-      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
+      "sessions": "搜索会话..."
     },
     "bottomBar": {
       "settings": "设置",
-      "clockLabel": "当前时间",
       "updateAvailable": "下载更新 v{{version}}"
     },
     "settingsMenu": {
       "appearance": "外观",
       "modifyAppearance": "修改外观",
-      "language": "语言",
       "viewRam": "查看 RAM",
-      "tutorials": "教程",
       "openSettings": "打开设置"
-    },
-    "empty": {
-      "noItems": "暂无内容",
-      "noSessions": "暂无 Session",
-      "noSessionsDesc": "开始一个新 Session",
-      "noResultsFor": "未找到 \"{{query}}\" 的结果",
-      "noSearchResults": "未找到结果"
     },
     "presence": {
       "tooltip": "设置你的在线状态 — Agent 会根据你是否在键盘前调整行为。",
@@ -169,9 +131,18 @@
       "durationTomorrow": "明天",
       "unknownRole": "未知角色"
     },
-    "guide": {
-      "startSession": "创建第一个会话",
-      "connectOrganization": "连接或创建工作空间"
+    "sections": {
+      "section": "分区",
+      "create": "新建分区",
+      "name": "分区名称",
+      "rename": "重命名分区",
+      "delete": "删除分区（保留会话）",
+      "remove": "移出分区",
+      "up": "上移",
+      "down": "下移",
+      "manage": "管理分区",
+      "more": "加载更多",
+      "retry": "重试"
     }
   },
   "launchpad": {
@@ -275,9 +246,9 @@
       "switchToRepo": "切换",
       "startSession": "开始会话",
       "openDetails": "打开详情",
-      "remove": "Remove from ORGII",
-      "removeSuccess": "Linkage to ORGII removed",
-      "removeFailed": "Failed to remove linkage to ORGII"
+      "remove": "从 ORG2 移除",
+      "removeSuccess": "已解除与 ORG2 的关联",
+      "removeFailed": "无法解除与 ORG2 的关联"
     },
     "addWorkspace": "添加工作区"
   },
@@ -323,11 +294,11 @@
       "forkModelFallback": "所有者的模型 {{model}} 在你的密钥下不可用 — 此分叉将改用 {{fallback}}。",
       "forkModelUnavailable": "所有者的模型 {{model}} 在你的密钥下不可用 — 运行此分叉前请先选择模型。",
       "forkPickCheckoutTitle": "选择你本机的 {{repo}} 检出目录",
-      "forkPickCheckoutHint": "接力「{{session}}」将继续 {{repo}} 上的工作。请选择它运行的工作区仓库——只有该仓库的检出目录可选。",
+      "forkPickCheckoutHint": "接力「{{session}}」将继续 {{repo}} 上的工作。请选择它运行的工作区仓库——只有该仓库的检出目录可选",
       "forkPickCheckoutClone": "没看到？请先 clone 该仓库并添加为工作区，再重新接力。",
       "forkCheckoutMismatch": "所选文件夹不是 {{repo}} 的检出目录——已取消 fork「{{session}}」。请先 clone 该仓库再 fork。",
       "forkSetupTitle": "在本机继续",
-      "forkSetupHint": "使用你本机的检出目录和账户，为「{{session}}」创建可写的接力会话。",
+      "forkSetupHint": "使用你本机的检出目录和账户，为「{{session}}」创建可写的接力会话",
       "forkSetupWorkspace": "工作区",
       "forkSetupNoWorkspace": "不使用工作区继续",
       "forkSetupAccount": "账户",
@@ -483,7 +454,6 @@
       "showHidden": "显示已隐藏的会话（{{count}}）",
       "viewerTooltip": "{{name}} 正在看这个会话",
       "viewerOverflow": "还有 {{count}} 人正在看",
-      "memberViewing": "正在看：{{title}}",
       "viewerOverflow_one": "and 1 more viewer",
       "viewerOverflow_other": "and {{count}} more viewers",
       "loadingSession": "正在加载会话…",
@@ -665,7 +635,7 @@
       "selectAll": "所有人（{{count}}）",
       "incomingEndpointMismatch": "此分享来自另一套自定义云。请先配置对应的云端点再导入。",
       "incomingConnectionError": "无法连接云服务。请检查网络后重试。",
-      "incomingIncompatibleError": "云服务返回了不兼容的分享数据。请更新 ORGII 或检查云部署。",
+      "incomingIncompatibleError": "云服务返回了不兼容的分享数据。请更新 ORG2 或检查云部署。",
       "incomingServerError": "云服务暂时无法解析此分享，请重试。",
       "incomingAlreadyOnDevice": "此 session 已在本机，无需创建重复副本。",
       "incomingOpenExisting": "打开 session",
@@ -677,32 +647,16 @@
       "unresolvedBadge": "{{count}} 条未解决评论",
       "unreadBadge_one": "{{count}} 条未读消息",
       "unreadBadge": "{{count}} 条未读消息",
-      "addError": "发送失败——草稿已保留",
-      "addPlaceholder": "添加评论…",
-      "agentAddressing": "Agent 正在处理…",
       "agentAuthor": "Agent @{{name}}",
-      "cancel": "取消",
-      "delete": "删除",
       "deletedComment": "评论已删除",
       "earlierVersion": "来自此会话的早期版本",
-      "edit": "编辑",
       "editedMarker": "已编辑",
       "empty": "暂无评论",
       "loadError": "评论加载失败",
-      "mentionMembers": "提及成员",
       "notesButton": "会话备注",
       "notesTitle": "会话备注",
-      "reply": "回复",
-      "replyPlaceholder": "回复…",
       "resolved": "已解决",
       "resolvedToggle": "已解决（{{count}}）",
-      "save": "保存",
-      "searchMembers": "搜索成员",
-      "send": "发表",
-      "task": {
-        "assignFailed": "评论已发布，但指派 Agent 失败——请从讨论串重试",
-        "mentionSuggestion": "将这条评论指派给 Agent"
-      },
       "wontFix": "不修复"
     },
     "billing": {
@@ -841,7 +795,6 @@
         "errorChannelMissing": "此频道已不可用",
         "errorMessageMissing": "该消息已不可用",
         "loadError": "消息加载失败",
-        "loadingMessages": "正在加载消息…",
         "loadOlder": "加载更早的消息",
         "unknownAuthor": "团队成员"
       }
@@ -866,26 +819,26 @@
     "deleteRoleCancel": "取消",
     "deleteRoleOk": "删除",
     "deleteRoleTitle": "删除角色？",
-    "followUpSuggestionsDesc": "工作项的一轮完成后，建议可能的后续步骤。这会额外发起一次模型请求。",
+    "followUpSuggestionsDesc": "工作项的一轮完成后，建议可能的后续步骤。这会额外发起一次模型请求",
     "followUpSuggestionsLabel": "Agent 后续建议",
-    "goalMaxTurnsDesc": "在 Agent 通常会停下的时候，继续朝我最近的请求最多再工作 N 轮（0 = 关闭）。",
+    "goalMaxTurnsDesc": "在 Agent 通常会停下的时候，继续朝我最近的请求最多再工作 N 轮（0 = 关闭）",
     "goalMaxTurnsLabel": "目标续跑额度",
     "guidanceLabel": "Agent 指引",
     "guidancePlaceholder": "此角色生效时，Agent 应如何调整行为？",
-    "modeSwitchAutoPlanDesc": "待确认的 Plan 模式建议在确认计时结束后自动切换。",
+    "modeSwitchAutoPlanDesc": "待确认的 Plan 模式建议在确认计时结束后自动切换",
     "modeSwitchAutoPlanLabel": "模式切换自动进入 Plan",
     "newRoleDefaultLabel": "自定义角色",
-    "pageDescription": "定义你当前扮演的角色。Agent 会读取当前角色的指引并相应调整行为 — 例如在你专注工作时少问澄清问题，或在你离开时批量汇总。",
+    "pageDescription": "定义你当前扮演的角色。Agent 会读取当前角色的指引并相应调整行为 — 例如在你专注工作时少问澄清问题，或在你离开时批量汇总",
     "pageTitle": "我的角色",
-    "planAutoApproveDesc": "N 秒后自动批准待确认的计划（0 = 等我确认）。",
+    "planAutoApproveDesc": "N 秒后自动批准待确认的计划（0 = 等我确认）",
     "planAutoApproveLabel": "计划自动批准",
-    "questionAutoSkipDesc": "N 秒后自动跳过 Agent 的待答问题（0 = 等我回答）。",
+    "questionAutoSkipDesc": "N 秒后自动跳过 Agent 的待答问题（0 = 等我回答）",
     "questionAutoSkipLabel": "问题自动跳过",
     "roleNameLabel": "名称",
     "roleNamePlaceholder": "角色名称",
     "stanceAutonomous": "自主 — 从不等我",
     "stanceDeferAndBatch": "延后并批量 — 先干活，稍后再问",
-    "stanceDesc": "此角色生效时，Agent 如何处理需要阻塞等待的决策。",
+    "stanceDesc": "此角色生效时，Agent 如何处理需要阻塞等待的决策",
     "stanceInteractive": "交互 — 随时问我",
     "stanceLabel": "行为姿态"
   },
@@ -973,5 +926,10 @@
     "sidebar": {
       "signOut": "退出 {{name}}"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "替换已停止：结果或文件已变化，或写入失败。部分文件可能已更新，请重新搜索后重试。",
+    "budgetExceeded": "搜索已达到资源限制，结果不完整。请缩小搜索范围。",
+    "timeout": "搜索超时。请缩小搜索范围后重试。"
   }
 }

@@ -47,12 +47,8 @@ export {
   clearSessionLoadErrorAtom,
   failSessionLoadAtom,
   loadSessionAtom,
-  updateEventByIdAtom,
   navigateToEventAtom,
   navigateNextAtom,
   navigatePrevAtom,
   goLiveAtom,
 } from "./actions";
-
-// Context-Aware (Thread filtered) - Internal use only
-export { threadFilteredEventsAtom, effectiveEventsAtom } from "./context";

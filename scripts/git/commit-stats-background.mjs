@@ -3,7 +3,7 @@
  * Background stats collection - runs detached from pre-commit hook.
  * Collects project-wide eslint/circular stats without blocking commits.
  */
-import { spawn } from "child_process";
+import { execFileSync, spawn } from "child_process";
 import {
   closeSync,
   existsSync,
@@ -18,8 +18,36 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
-const STATS_FILE = join(ROOT, ".git", "COMMIT_STATS.json");
-const LOCK_FILE = join(ROOT, ".git", "COMMIT_STATS.lock");
+
+/**
+ * The git directory to keep the stats and lock in.
+ *
+ * Not `<root>/.git`: in a linked worktree that path is a *file* holding a
+ * `gitdir:` pointer, so assuming it is a directory made this script bail and
+ * left `prepare-commit-msg` with nothing to stamp. `--absolute-git-dir`
+ * resolves to the real directory in both layouts — `<root>/.git` in the main
+ * checkout, `<main>/.git/worktrees/<name>` in a worktree.
+ *
+ * Per-worktree rather than the common dir is deliberate: the numbers describe
+ * the tree that was just committed, and each worktree has its own. It also
+ * keeps the single-flight lock per tree, so one worktree's full-repo lint
+ * does not suppress another's.
+ */
+function resolveGitDir() {
+  try {
+    return execFileSync("git", ["rev-parse", "--absolute-git-dir"], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return join(ROOT, ".git");
+  }
+}
+
+const GIT_DIR = resolveGitDir();
+const STATS_FILE = join(GIT_DIR, "COMMIT_STATS.json");
+const LOCK_FILE = join(GIT_DIR, "COMMIT_STATS.lock");
 
 function isAlive(pid) {
   try {
@@ -58,8 +86,8 @@ function acquireLock() {
       }
       return true;
     } catch (err) {
-      // ENOENT/ENOTDIR: no .git directory to lock in (e.g. a linked worktree,
-      // where .git is a file). Nothing to collect into either — just bail.
+      // ENOENT/ENOTDIR: no git directory to lock in. Nothing to collect
+      // into either — just bail.
       if (err?.code !== "EEXIST") return false;
 
       let holder = NaN;
@@ -154,8 +182,7 @@ async function main() {
     const eslintCount = countEslint(eslintOut);
     const circularCount = countCircular(madgeOut);
 
-    const gitDir = join(ROOT, ".git");
-    if (existsSync(gitDir)) {
+    if (existsSync(GIT_DIR)) {
       writeFileSync(
         STATS_FILE,
         JSON.stringify({ eslint: eslintCount, circular: circularCount }) + "\n",

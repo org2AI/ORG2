@@ -48,10 +48,7 @@ const DiffView: React.FC<DiffViewProps> = ({
     return (
       <div className="flex h-full items-center justify-center p-4">
         <span className="text-xs text-text-4">
-          {t(
-            "canvasApp.compareTooLarge",
-            "These versions are too large to compare"
-          )}
+          {t("canvasApp.compareTooLarge")}
         </span>
       </div>
     );

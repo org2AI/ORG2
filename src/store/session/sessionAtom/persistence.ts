@@ -18,6 +18,8 @@
  *
  * Failure modes are silent: a corrupt cache yields `[]` and a fresh fetch.
  */
+import { getActiveDevMockScenarios } from "@src/store/dev/mockScenarios";
+
 import type { Session } from "./types";
 
 const STORAGE_KEY = "orgii:sessionsAtom:v1";
@@ -65,6 +67,11 @@ export function loadPersistedSessions(): Session[] {
 
 export function persistSessions(sessions: Session[]): void {
   if (typeof localStorage === "undefined") return;
+  // The `noSessions` dev mock scenario masks `sessionsAtom` to an empty list.
+  // Callers pass that masked view straight through, so refuse to write while
+  // the mask is on — otherwise toggling a dev switch would wipe the real
+  // cold-start cache. See `@src/store/dev/mockScenarios`.
+  if (getActiveDevMockScenarios().noSessions) return;
 
   // Sort + truncate before serializing so the persisted slice is the most
   // recently active rows. We don't mutate the caller's array.

@@ -39,7 +39,8 @@ import React, {
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
-import { scaleAwareModifier, useWebViewSensors } from "@src/lib/dndKit";
+import { useWebViewSensors } from "@src/components/dnd/useWebViewSensors";
+import { scaleAwareModifier } from "@src/util/dnd/scaleAwareModifier";
 
 import { KanbanColumn, TaskCard } from "./components";
 import { DEFAULT_KANBAN_COLUMNS } from "./config";

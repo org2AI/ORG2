@@ -10,7 +10,6 @@ import React, { memo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import ModelSelectorPill from "@src/components/ModelSelectorPill";
-import { INPUT_AREA_CONTROL_GROUP_CLASS } from "@src/config/inputAreaTokens";
 import ModePill from "@src/engines/ChatPanel/InputArea/components/ModePill";
 import type { AgentExecMode } from "@src/features/SessionCreator/config";
 import { UnifiedModelPalette } from "@src/scaffold/GlobalSpotlight/palettes/UnifiedModelPalette";
@@ -32,6 +31,7 @@ const ControlButtons: React.FC<ControlButtonsProps> = memo(
     onModelOpenHandled,
     hideModelSourcePill,
     hideModePill,
+    children,
   }) => {
     const { t: tSessions } = useTranslation("sessions");
 
@@ -75,55 +75,53 @@ const ControlButtons: React.FC<ControlButtonsProps> = memo(
       [advancedConfig, onConfigChange]
     );
 
-    return (
-      <div className={INPUT_AREA_CONTROL_GROUP_CLASS}>
-        {!hideModePill && usesOrgiiExecMode && (
-          <ModePill
-            forceVisible
-            hideWhenDefault
-            resetToDefaultOnClick
-            onModeChange={handleSdeModeChange}
-            placement={dropdownDirection === "up" ? "top" : "bottom"}
+    return children({
+      pills: !hideModePill && usesOrgiiExecMode && (
+        <ModePill
+          forceVisible
+          hideWhenDefault
+          resetToDefaultOnClick
+          onModeChange={handleSdeModeChange}
+          placement={dropdownDirection === "up" ? "top" : "bottom"}
+        />
+      ),
+      modelPill: !hideModelSourcePill && (
+        <>
+          <ModelSelectorPill
+            paddingX="compact"
+            ref={modelSegmentRef}
+            selection={advancedConfig}
+            defaultLabel={tSessions("creator.model")}
+            active={isModelOpen}
+            className="max-w-[360px] shrink-0"
+            onClick={handleOpenModelSelector}
+            onVariantApply={handleVariantApply}
+            dataTestId="session-creator-input-model-pill"
+            effortDataTestId="session-creator-input-effort-pill"
+            ariaLabel={tSessions("creator.selectModel")}
           />
-        )}
 
-        {!hideModelSourcePill && (
-          <>
-            <ModelSelectorPill
-              ref={modelSegmentRef}
-              selection={advancedConfig}
-              defaultLabel={tSessions("creator.model")}
-              active={isModelOpen}
-              className="max-w-[360px] shrink-0"
-              onClick={handleOpenModelSelector}
-              onVariantApply={handleVariantApply}
-              dataTestId="session-creator-input-model-pill"
-              effortDataTestId="session-creator-input-effort-pill"
-              ariaLabel={tSessions("creator.selectModel")}
-            />
-
-            {isModelOpen &&
-              (modelPickerStyle === "dropdown" ? (
-                <UnifiedModelDropdown
-                  isOpen={isModelOpen}
-                  onClose={handleCloseSelector}
-                  advancedConfig={advancedConfig}
-                  onConfigChange={onConfigChange}
-                  anchorRef={modelSegmentRef}
-                  placement={dropdownDirection === "up" ? "top" : "bottom"}
-                />
-              ) : (
-                <UnifiedModelPalette
-                  isOpen={isModelOpen}
-                  onClose={handleCloseSelector}
-                  advancedConfig={advancedConfig}
-                  onConfigChange={onConfigChange}
-                />
-              ))}
-          </>
-        )}
-      </div>
-    );
+          {isModelOpen &&
+            (modelPickerStyle === "dropdown" ? (
+              <UnifiedModelDropdown
+                isOpen={isModelOpen}
+                onClose={handleCloseSelector}
+                advancedConfig={advancedConfig}
+                onConfigChange={onConfigChange}
+                anchorRef={modelSegmentRef}
+                placement={dropdownDirection === "up" ? "top" : "bottom"}
+              />
+            ) : (
+              <UnifiedModelPalette
+                isOpen={isModelOpen}
+                onClose={handleCloseSelector}
+                advancedConfig={advancedConfig}
+                onConfigChange={onConfigChange}
+              />
+            ))}
+        </>
+      ),
+    });
   }
 );
 

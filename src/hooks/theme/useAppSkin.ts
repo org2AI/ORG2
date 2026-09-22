@@ -126,5 +126,3 @@ export function useAppSkin(): void {
     };
   }, [translucentSidebar]);
 }
-
-export default useAppSkin;

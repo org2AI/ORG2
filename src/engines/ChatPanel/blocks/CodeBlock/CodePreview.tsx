@@ -12,9 +12,10 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import {
   ArrowExpand01Icon,
-  ArrowShrink01Icon,
+  ArrowShrink02Icon,
   Cancel01Icon,
   HugeiconsIcon,
   SquareArrowUpRight02Icon,
@@ -113,48 +114,60 @@ const CodePreview: React.FC<CodePreviewProps> = ({
           {t("codePreview.label")}
         </span>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
+          <Button
+            variant="tertiary"
+            size="mini"
+            aria-label={
+              isMaxHeight ? t("codePreview.shrink") : t("codePreview.expand")
+            }
+            iconOnly
+            icon={
+              isMaxHeight ? (
+                <HugeiconsIcon
+                  icon={ArrowShrink02Icon}
+                  data-icon="minimize-2"
+                  size={12}
+                />
+              ) : (
+                <HugeiconsIcon
+                  icon={ArrowExpand01Icon}
+                  data-icon="maximize-2"
+                  size={12}
+                />
+              )
+            }
             onClick={handleToggleSize}
-            className="rounded p-1 text-text-4 transition-colors hover:bg-fill-3 hover:text-text-2"
+            className="hover:bg-fill-3 hover:text-text-2"
             title={
               isMaxHeight ? t("codePreview.shrink") : t("codePreview.expand")
             }
-          >
-            {isMaxHeight ? (
+          />
+          <Button
+            variant="tertiary"
+            size="mini"
+            aria-label={t("codePreview.openExternal")}
+            iconOnly
+            icon={
               <HugeiconsIcon
-                icon={ArrowShrink01Icon}
-                data-icon="minimize-2"
+                icon={SquareArrowUpRight02Icon}
+                data-icon="square-arrow-out-up-right"
                 size={12}
               />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowExpand01Icon}
-                data-icon="maximize-2"
-                size={12}
-              />
-            )}
-          </button>
-          <button
-            type="button"
+            }
             onClick={handleOpenExternal}
-            className="rounded p-1 text-text-4 transition-colors hover:bg-fill-3 hover:text-text-2"
+            className="hover:bg-fill-3 hover:text-text-2"
             title={t("codePreview.openExternal")}
-          >
-            <HugeiconsIcon
-              icon={SquareArrowUpRight02Icon}
-              data-icon="square-arrow-out-up-right"
-              size={12}
-            />
-          </button>
-          <button
-            type="button"
+          />
+          <Button
+            variant="tertiary"
+            size="mini"
+            aria-label={t("codePreview.close")}
+            iconOnly
+            icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />}
             onClick={onClose}
-            className="rounded p-1 text-text-4 transition-colors hover:bg-fill-3 hover:text-text-2"
+            className="hover:bg-fill-3 hover:text-text-2"
             title={t("codePreview.close")}
-          >
-            <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />
-          </button>
+          />
         </div>
       </div>
 

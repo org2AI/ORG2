@@ -1,5 +1,6 @@
 import { createStore } from "jotai/vanilla";
 
+import type { QueuedConversationDispatch } from "@src/contracts/conversation";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 
 import {
@@ -8,13 +9,10 @@ import {
   type QueueEditTarget,
   type QueuedMessage,
   clearQueuedMessagesAtom,
-  clearSessionQueueAtom,
-  dequeueMessageAtom,
   editMessageAtom,
   enqueueMessageAtom,
   forceSendMessageAtom,
   messageQueueAtom,
-  messageQueueHandoffIdsAtom,
   parkSessionQueuedMessagesAfterStopAtom,
   queueEditTargetAtom,
   queueEditingAtom,
@@ -36,6 +34,22 @@ function makeMessage(
     status: "queued",
     createdAt: "2026-01-01T00:00:00Z",
     ...overrides,
+  };
+}
+
+function makeConversationDispatch(model: string): QueuedConversationDispatch {
+  return {
+    kind: "canonical_conversation",
+    root: {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "root-session",
+    },
+    target: {
+      cliAgentType: "codex",
+      accountId: "openai-account",
+      model,
+    },
   };
 }
 
@@ -162,57 +176,6 @@ describe("messageQueueAtom", () => {
   });
 
   // =============================================
-  // dequeueMessageAtom
-  // =============================================
-
-  describe("dequeueMessageAtom", () => {
-    it("freezes queue mutations while ownership is being handed off", () => {
-      const message = makeMessage({ id: "m1" });
-      store.set(enqueueMessageAtom, message);
-      store.set(messageQueueHandoffIdsAtom, new Set([message.id]));
-
-      store.set(forceSendMessageAtom, message.id);
-      expect(
-        store.set(editMessageAtom, {
-          messageId: message.id,
-          content: "edited too late",
-        })
-      ).toBe(false);
-      store.set(dequeueMessageAtom, message.id);
-      store.set(clearQueuedMessagesAtom, [message.id]);
-
-      expect(store.get(messageQueueAtom)).toEqual([message]);
-    });
-
-    it("removes message by ID", () => {
-      store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
-      store.set(enqueueMessageAtom, makeMessage({ id: "m2" }));
-      store.set(enqueueMessageAtom, makeMessage({ id: "m3" }));
-
-      store.set(dequeueMessageAtom, "m2");
-
-      const ids = store.get(messageQueueAtom).map((m) => m.id);
-      expect(ids).toEqual(["m1", "m3"]);
-    });
-
-    it("is a no-op when ID not found", () => {
-      store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
-      store.set(dequeueMessageAtom, "unknown");
-      expect(store.get(messageQueueAtom)).toHaveLength(1);
-    });
-
-    it("removes promoted (priority now) messages too", () => {
-      store.set(enqueueMessageAtom, makeMessage({ id: "m1" }));
-      store.set(forceSendMessageAtom, "m1");
-
-      store.set(dequeueMessageAtom, "m1");
-
-      expect(store.get(messageQueueAtom)).toEqual([]);
-    });
-  });
-
-  // =============================================
-  // forceSendMessageAtom
   // =============================================
 
   describe("forceSendMessageAtom", () => {
@@ -360,62 +323,7 @@ describe("messageQueueAtom", () => {
   });
 
   // =============================================
-  // clearSessionQueueAtom
   // =============================================
-
-  describe("clearSessionQueueAtom", () => {
-    it("removes all messages for a given sessionId", () => {
-      store.set(
-        enqueueMessageAtom,
-        makeMessage({ id: "m1", sessionId: "sess-a" })
-      );
-      store.set(
-        enqueueMessageAtom,
-        makeMessage({ id: "m2", sessionId: "sess-a" })
-      );
-
-      store.set(clearSessionQueueAtom, "sess-a");
-      expect(store.get(messageQueueAtom)).toHaveLength(0);
-    });
-
-    it("leaves messages from other sessions intact", () => {
-      store.set(
-        enqueueMessageAtom,
-        makeMessage({ id: "m1", sessionId: "sess-a" })
-      );
-      store.set(
-        enqueueMessageAtom,
-        makeMessage({ id: "m2", sessionId: "sess-b" })
-      );
-      store.set(
-        enqueueMessageAtom,
-        makeMessage({ id: "m3", sessionId: "sess-a" })
-      );
-
-      store.set(clearSessionQueueAtom, "sess-a");
-
-      const remaining = store.get(messageQueueAtom);
-      expect(remaining).toHaveLength(1);
-      expect(remaining[0].id).toBe("m2");
-    });
-
-    it("also clears promoted (priority now) messages for the session", () => {
-      store.set(
-        enqueueMessageAtom,
-        makeMessage({ id: "m1", sessionId: "sess-a" })
-      );
-      store.set(
-        enqueueMessageAtom,
-        makeMessage({ id: "m2", sessionId: "sess-b" })
-      );
-      store.set(forceSendMessageAtom, "m1");
-      store.set(forceSendMessageAtom, "m2");
-
-      store.set(clearSessionQueueAtom, "sess-a");
-
-      expect(store.get(messageQueueAtom).map((msg) => msg.id)).toEqual(["m2"]);
-    });
-  });
 
   describe("clearQueuedMessagesAtom", () => {
     it("removes only the projected message ids", () => {
@@ -525,6 +433,62 @@ describe("messageQueueAtom", () => {
       );
       store.set(editMessageAtom, { messageId: "m1", content: "new" });
       expect(store.get(messageQueueAtom)[0].modelSelection).toEqual(selection);
+    });
+
+    it("preserves canonical dispatch when the retry resolution is omitted", () => {
+      const admittedDispatch = makeConversationDispatch("gpt-old");
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({ id: "m1", conversationDispatch: admittedDispatch })
+      );
+
+      store.set(editMessageAtom, { messageId: "m1", content: "retry" });
+
+      expect(store.get(messageQueueAtom)[0].conversationDispatch).toEqual(
+        admittedDispatch
+      );
+    });
+
+    it("replaces canonical dispatch with the retry-time runtime", () => {
+      const currentDispatch = makeConversationDispatch("gpt-current");
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({
+          id: "m1",
+          conversationDispatch: makeConversationDispatch("gpt-old"),
+        })
+      );
+
+      store.set(editMessageAtom, {
+        messageId: "m1",
+        content: "retry",
+        conversationDispatch: currentDispatch,
+      });
+
+      expect(store.get(messageQueueAtom)[0].conversationDispatch).toEqual(
+        currentDispatch
+      );
+    });
+
+    it("clears stale canonical dispatch for a direct Member retry", () => {
+      store.set(
+        enqueueMessageAtom,
+        makeMessage({
+          id: "m1",
+          sessionId: "member-session",
+          conversationDispatch: makeConversationDispatch("gpt-root"),
+        })
+      );
+
+      store.set(editMessageAtom, {
+        messageId: "m1",
+        content: "retry directly",
+        conversationDispatch: null,
+      });
+
+      const message = store.get(messageQueueAtom)[0];
+      expect(message.sessionId).toBe("member-session");
+      expect(message).not.toHaveProperty("conversationDispatch");
     });
 
     it("is a no-op for non-matching messageId", () => {

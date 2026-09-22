@@ -4,20 +4,20 @@ import type {
   GitHubIssue,
   GitHubIssueTimelineItem,
 } from "@src/api/tauri/github";
-import { GitHubIssueThreadSurface } from "@src/modules/ProjectManager/WorkItems/components";
-import type { GitHubIssueInteractionConfig } from "@src/modules/ProjectManager/WorkItems/components/WorkItemContent/types";
-import type { WorkItemExternalAssigneeConfig } from "@src/modules/ProjectManager/WorkItems/components/WorkItemProperties/types";
-import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
-import LazyGitHubLinkedReferences from "@src/modules/shared/components/GitHubLinkedReferences/lazy";
+import { PersistentDetailTabPanel } from "@src/components/layout/blocks";
+import LazyGitHubLinkedReferences from "@src/features/GitHubWork/GitHubLinkedReferences/lazy";
 import {
   extractGitHubReferences,
   getIssueReferenceText,
   parseGitHubRepoFromItemUrl,
-} from "@src/modules/shared/components/GitHubLinkedReferences/references";
+} from "@src/features/GitHubWork/GitHubLinkedReferences/references";
 import ThreadDetailTabs, {
   type ThreadDetailTab,
-} from "@src/modules/shared/components/ThreadDetailTabs";
-import { PersistentDetailTabPanel } from "@src/modules/shared/layouts/blocks";
+} from "@src/features/GitHubWork/ThreadDetailTabs";
+import { GitHubIssueThreadSurface } from "@src/modules/ProjectManager/WorkItems/components";
+import type { GitHubIssueInteractionConfig } from "@src/modules/ProjectManager/WorkItems/components/WorkItemContent/types";
+import type { WorkItemExternalAssigneeConfig } from "@src/modules/ProjectManager/WorkItems/components/WorkItemProperties/types";
+import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
 
 interface IssueDetailPanelProps {
   issue: GitHubIssue;

@@ -12,6 +12,13 @@ import Message from "@src/components/Message";
 import Select from "@src/components/Select";
 import StatusDot from "@src/components/StatusDot";
 import TabPill from "@src/components/TabPill";
+import {
+  SECTION_ACTION_GAP_CLASSES,
+  SECTION_CONTROL_STYLE,
+  SECTION_PATH_TEXT_CLASSES,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import {
   Alert01Icon,
@@ -20,14 +27,7 @@ import {
   RotateLeft01Icon,
   SecurityCheckIcon,
 } from "@src/icons";
-import {
-  SECTION_ACTION_GAP_CLASSES,
-  SECTION_CONTROL_STYLE,
-  SECTION_PATH_TEXT_CLASSES,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { startVisibilityAwarePoller } from "@src/shared/scheduling/visibilityAwarePoller";
+import { startVisibilityAwarePoller } from "@src/util/time/scheduling/visibilityAwarePoller";
 
 import type { AvailableCliAgent } from "../types";
 import {
@@ -210,7 +210,7 @@ const CliConfigSwitchCard: React.FC<CliConfigSwitchCardProps> = ({
         Message.success({
           content: tr(
             "agentOrgs.cliManagedConfig.applySuccess",
-            "ORGII managed config applied"
+            "ORG2 managed config applied"
           ),
         });
       } catch (err) {
@@ -304,7 +304,7 @@ const CliConfigSwitchCard: React.FC<CliConfigSwitchCardProps> = ({
   const isBusy = pendingAction !== null;
   const modeLabel =
     status?.mode === "orgii_managed"
-      ? tr("agentOrgs.cliManagedConfig.modeOrgii", "ORGII Managed")
+      ? tr("agentOrgs.cliManagedConfig.modeOrgii", "ORG2 Managed")
       : tr("agentOrgs.cliManagedConfig.modeDefault", "Default");
   const statusLabel = status?.conflict
     ? tr("agentOrgs.cliManagedConfig.conflict", "External change")
@@ -332,7 +332,7 @@ const CliConfigSwitchCard: React.FC<CliConfigSwitchCardProps> = ({
       ? proxyStatus.message
       : tr(
           "agentOrgs.cliManagedConfig.proxyLifecycleDesc",
-          "Keep ORGII running while using this mode. Closing the window keeps the proxy in the tray; quitting ORGII safely restores Default unless the config changed externally."
+          "Keep ORG2 running while using this mode. Closing the window keeps the proxy in the tray; quitting ORG2 safely restores Default unless the config changed externally."
         );
 
   return (
@@ -355,7 +355,7 @@ const CliConfigSwitchCard: React.FC<CliConfigSwitchCardProps> = ({
         label={tr("agentOrgs.cliManagedConfig.modeLabel", "Mode")}
         description={tr(
           "agentOrgs.cliManagedConfig.modeDesc",
-          "Default restores the CLI's own config. ORGII Managed writes a backed-up proxy config."
+          "Default restores the CLI's own config. ORG2 Managed writes a backed-up proxy config."
         )}
       >
         <div style={SECTION_CONTROL_STYLE}>
@@ -369,7 +369,7 @@ const CliConfigSwitchCard: React.FC<CliConfigSwitchCardProps> = ({
                 key: "orgii_managed",
                 label: tr(
                   "agentOrgs.cliManagedConfig.modeOrgii",
-                  "ORGII Managed"
+                  "ORG2 Managed"
                 ),
               },
             ]}
@@ -388,7 +388,7 @@ const CliConfigSwitchCard: React.FC<CliConfigSwitchCardProps> = ({
           label={tr("agentOrgs.cliManagedConfig.conflictTitle", "Conflict")}
           description={tr(
             "agentOrgs.cliManagedConfig.conflictDesc",
-            "The active CLI config changed after ORGII wrote it."
+            "The active CLI config changed after ORG2 wrote it."
           )}
           align="start"
         >
@@ -506,7 +506,8 @@ const CliConfigSwitchCard: React.FC<CliConfigSwitchCardProps> = ({
           </Button>
           {status?.conflict && managedActive && (
             <Button
-              variant="warning"
+              variant="primary"
+              tone="warning"
               size="small"
               icon={
                 <HugeiconsIcon
@@ -524,7 +525,8 @@ const CliConfigSwitchCard: React.FC<CliConfigSwitchCardProps> = ({
           )}
           {status?.conflict && (
             <Button
-              variant="warning"
+              variant="primary"
+              tone="warning"
               size="small"
               icon={
                 <HugeiconsIcon

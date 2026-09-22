@@ -18,10 +18,7 @@ import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import TabPill from "@src/components/TabPill";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
-import {
-  HEADER_BUTTON,
-  HEADER_ICON_SIZE,
-} from "@src/config/workstation/tokens";
+import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { useRatioResize } from "@src/hooks/ui/useRatioResize";
 import {
   Cancel01Icon,
@@ -190,7 +187,6 @@ const WebDevTools: React.FC<WebDevToolsProps> = memo(
               )}
               <ToolbarTooltip label={t("tooltips.closeDevTools")}>
                 <Button
-                  htmlType="button"
                   variant="tertiary"
                   size="small"
                   iconOnly
@@ -251,33 +247,37 @@ const WebDevTools: React.FC<WebDevToolsProps> = memo(
                         />
                       )}
                       <ToolbarTooltip label={t("tooltips.collapseAll")}>
-                        <button
-                          type="button"
+                        <Button
+                          variant="tertiary"
+                          size="sidebar"
+                          iconOnly
+                          icon={
+                            <HugeiconsIcon
+                              icon={ListChevronsDownUpIcon}
+                              data-icon="list-chevrons-down-up"
+                              size={HEADER_ICON_SIZE.md}
+                            />
+                          }
                           onClick={collapseAll}
-                          className={HEADER_BUTTON.actionTreeRow}
                           aria-label={t("tooltips.collapseAll")}
-                        >
-                          <HugeiconsIcon
-                            icon={ListChevronsDownUpIcon}
-                            data-icon="list-chevrons-down-up"
-                            size={HEADER_ICON_SIZE.md}
-                          />
-                        </button>
+                        />
                       </ToolbarTooltip>
                       <ToolbarTooltip label={t("tooltips.refreshTree")}>
-                        <button
-                          type="button"
+                        <Button
+                          variant="tertiary"
+                          size="sidebar"
+                          iconOnly
+                          icon={
+                            <HugeiconsIcon
+                              icon={Refresh04Icon}
+                              data-icon="refresh-cw"
+                              size={HEADER_ICON_SIZE.sm}
+                              className={refreshTreeSpinClass}
+                            />
+                          }
                           onClick={handleRefreshTreeClick}
-                          className={HEADER_BUTTON.actionTreeRow}
                           aria-label={t("tooltips.refreshTree")}
-                        >
-                          <HugeiconsIcon
-                            icon={Refresh04Icon}
-                            data-icon="refresh-cw"
-                            size={HEADER_ICON_SIZE.sm}
-                            className={refreshTreeSpinClass}
-                          />
-                        </button>
+                        />
                       </ToolbarTooltip>
                     </div>
                   </div>
@@ -347,8 +347,25 @@ const WebDevTools: React.FC<WebDevToolsProps> = memo(
                             : t("tooltips.collapseAll")
                         }
                       >
-                        <button
-                          type="button"
+                        <Button
+                          variant="tertiary"
+                          size="sidebar"
+                          iconOnly
+                          icon={
+                            isAllCollapsed ? (
+                              <HugeiconsIcon
+                                icon={CopyPlusIcon}
+                                data-icon="copy-plus"
+                                size={HEADER_ICON_SIZE.sm}
+                              />
+                            ) : (
+                              <HugeiconsIcon
+                                icon={ListChevronsDownUpIcon}
+                                data-icon="list-chevrons-down-up"
+                                size={HEADER_ICON_SIZE.md}
+                              />
+                            )
+                          }
                           onClick={() => {
                             if (isAllCollapsed) {
                               setExpandAllKey((prev) => prev + 1);
@@ -358,27 +375,12 @@ const WebDevTools: React.FC<WebDevToolsProps> = memo(
                               setIsAllCollapsed(true);
                             }
                           }}
-                          className={HEADER_BUTTON.actionTreeRow}
                           aria-label={
                             isAllCollapsed
                               ? t("tooltips.expandAll")
                               : t("tooltips.collapseAll")
                           }
-                        >
-                          {isAllCollapsed ? (
-                            <HugeiconsIcon
-                              icon={CopyPlusIcon}
-                              data-icon="copy-plus"
-                              size={HEADER_ICON_SIZE.sm}
-                            />
-                          ) : (
-                            <HugeiconsIcon
-                              icon={ListChevronsDownUpIcon}
-                              data-icon="list-chevrons-down-up"
-                              size={HEADER_ICON_SIZE.md}
-                            />
-                          )}
-                        </button>
+                        />
                       </ToolbarTooltip>
                     </div>
                   </div>

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { MOBILE_REMOTE_RELAY_PRODUCTION_URL } from "@src/config/mobileRemoteRelay";
 
 import type { MobileAuthSession } from "../../auth/mobileAuthState";
+import { toMobileRpcError } from "../../connection/mobileRpcClient";
 import { createNativeSocketPreparation } from "./nativeSocketPreparation";
 
 const now = 1_800_000_000_000;
@@ -74,6 +75,63 @@ describe("native Relay admission", () => {
       `wss://relay.example/v1/mobile/ws?ticket=${"a".repeat(64)}`
     );
     expect(result).not.toMatch(/cloud-secret|device-secret|refresh-secret/);
+  });
+  it.each([236, 5_000])(
+    "accepts a fresh ticket when Relay's clock is %i ms ahead",
+    async (skewMs) => {
+      const { prepare, context } = fixture(
+        vi.fn(async () =>
+          Response.json({
+            ticket: "a".repeat(64),
+            expiresAtMs: now + 60_000 + skewMs,
+            authExpiresAtMs: session.expiresAt * 1000,
+          })
+        )
+      );
+      await expect(prepare(config, context)).resolves.toBe(
+        `wss://relay.example/v1/mobile/ws?ticket=${"a".repeat(64)}`
+      );
+    }
+  );
+  it.each([
+    { expiresAtMs: now },
+    { expiresAtMs: now - 1 },
+    { expiresAtMs: now + 65_001 },
+    { expiresAtMs: Number.NaN },
+    { authExpiresAtMs: session.expiresAt * 1000 + 1 },
+    { authExpiresAtMs: now + 59_999 },
+    { authExpiresAtMs: undefined },
+    { ticket: "not-a-valid-ticket" },
+  ])("still rejects invalid admission bounds: %j", async (override) => {
+    vi.useFakeTimers();
+    const { prepare, context } = fixture(
+      vi.fn(async () =>
+        Response.json({
+          ticket: "a".repeat(64),
+          expiresAtMs: now + 60_000,
+          authExpiresAtMs: session.expiresAt * 1000,
+          ...override,
+        })
+      )
+    );
+    await expect(prepare(config, context)).rejects.toThrow(
+      "Invalid Relay connection ticket"
+    );
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("classifies invalid admission data at the producing boundary for recovery UI", async () => {
+    const { prepare, context } = fixture(
+      vi.fn(async () => Response.json({ ticket: "bad" }))
+    );
+    const failure = await prepare(config, context).catch(toMobileRpcError);
+    expect(failure).toEqual({
+      code: -1,
+      message: "Invalid Relay connection ticket",
+      connectionIssue: "ticket",
+    });
+    expect(
+      toMobileRpcError(new Error("Invalid Relay connection ticket"))
+    ).not.toHaveProperty("connectionIssue");
   });
   it("does not send Cloud credentials to a QR-controlled host or a switched account", async () => {
     const { prepare, fetcher, context } = fixture();

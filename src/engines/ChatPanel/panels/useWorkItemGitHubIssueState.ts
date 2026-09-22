@@ -2,11 +2,11 @@ import { useStore } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 
 import type { GitHubIssueTimelineItem } from "@src/api/tauri/github";
+import { loadGitHubRemoteUrl } from "@src/features/GitHubWork/githubIssueDetailCoordinator";
+import { useGitHubIssueDetailState } from "@src/features/GitHubWork/useGitHubIssueDetailState";
 import { parseGitHubIssueNumber } from "@src/modules/ProjectManager/WorkItems/components/WorkItemContent/hooks/useGitHubIssueTimeline";
 import type { GitHubIssueInteractionConfig } from "@src/modules/ProjectManager/WorkItems/components/WorkItemContent/types";
 import { resolveGitHubIssueRemoteUrl } from "@src/modules/ProjectManager/WorkItems/githubIssueRemote";
-import { loadGitHubRemoteUrl } from "@src/modules/shared/githubIssueDetailCoordinator";
-import { useGitHubIssueDetailState } from "@src/modules/shared/hooks/useGitHubIssueDetailState";
 import { workstationIssueDetailScopeKey } from "@src/store/workstation/codeEditor/workstationIssueAtom";
 
 interface RemoteResolutionState {

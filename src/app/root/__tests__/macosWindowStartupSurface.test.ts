@@ -292,17 +292,30 @@ describe("macOS window startup surface", () => {
     });
   });
 
-  describe("open_session_window native chrome", () => {
+  describe("detached window native chrome", () => {
+    // Session and station windows are both built by the shared
+    // `build_detached_app_window`; the chrome contract is asserted once there
+    // and each command is pinned to go through it.
     const source = readRepoFile("src-tauri/crates/app-window/src/commands.rs");
-    const openFn = rustFunction(
+    const builderFn = rustFunction(
+      source,
+      "fn build_detached_app_window",
+      "pub async fn open_session_window"
+    );
+    const openSessionFn = rustFunction(
       source,
       "pub async fn open_session_window",
+      "pub async fn open_station_window"
+    );
+    const openStationFn = rustFunction(
+      source,
+      "pub async fn open_station_window",
       "mod session_window_tests"
     );
 
     it("mounts vibrancy and clears the builder backdrop before showing", () => {
       expectVibrancyChromeBeforeShow(
-        macosBlock(openFn),
+        macosBlock(builderFn),
         /window\s*\n?\s*\.show\(\)/
       );
     });
@@ -311,8 +324,22 @@ describe("macOS window startup surface", () => {
       // Built hidden so the pre-chrome frames never reach the screen. The
       // show() is part of creation, not deferred to first paint — deferring
       // it would make the click that opened the window feel dead.
-      expect(openFn).toContain(".visible(false)");
-      expect(openFn).toMatch(/window\s*\n?\s*\.show\(\)/);
+      expect(builderFn).toContain(".visible(false)");
+      expect(builderFn).toMatch(/window\s*\n?\s*\.show\(\)/);
     });
+
+    it.each([
+      ["open_session_window", openSessionFn],
+      ["open_station_window", openStationFn],
+    ])(
+      "%s builds through the shared helper and never shows on its own",
+      (_name, fn) => {
+        expect(fn).toContain("build_detached_app_window(");
+        // No second, separately-chromed build path: everything the builder
+        // guarantees would be silently lost by an inline WebviewWindowBuilder.
+        expect(fn).not.toContain("WebviewWindowBuilder::new");
+        expect(fn).not.toMatch(/\.show\(\)/);
+      }
+    );
   });
 });

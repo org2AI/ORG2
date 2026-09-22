@@ -534,3 +534,172 @@ fn test_unloaded_placeholder_sorts_before_same_instant_next_header() {
         vec!["codex-unloaded-turn-codex-user-1", "codex-user-2"]
     );
 }
+
+#[test]
+fn retry_lineage_hides_only_proven_prompt_echoes_across_native_restart_shapes() {
+    let mut marker = make_event("queued-retry-lineage:queue:", EventDisplayVariant::Session);
+    marker.action_type = "queued_retry_lineage".into();
+    marker.source = EventSource::System;
+    marker.result = serde_json::json!({"retryLineage": {"version":1,"queueMessageId":"queue","superseded":[{
+        "turnIntentId":"failed", "sessionId":"runner", "sourceEventIds":["orgii_evt_original"]
+    }]}});
+    let mut root = make_event("root-user", EventDisplayVariant::Message);
+    root.source = EventSource::User;
+    root.result = serde_json::json!({"turnIntentId":"failed"});
+    let mut imported = root.clone();
+    imported.id = "native-copy".into();
+    imported.session_id = "new-child".into();
+    imported.result = serde_json::json!({});
+    imported.args = serde_json::json!({"__orgiiSourceEventId":"orgii_evt_original"});
+    let mut independent = root.clone();
+    independent.id = "independent".into();
+    independent.session_id = "other-root".into();
+    let mut fallback = root.clone();
+    fallback.id = "fallback".into();
+    fallback.result = serde_json::json!({"turnIntentId":""});
+    fallback.args = serde_json::json!({"conversationTurnId":"failed"});
+    let snapshot = compute_derived(&[marker, root, imported, independent, fallback], 1);
+    assert_eq!(
+        snapshot
+            .chat_events
+            .iter()
+            .filter(|event| event.source == EventSource::User)
+            .map(|event| event.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["independent"]
+    );
+}
+
+#[test]
+fn native_retry_reload_event_store_keeps_three_logical_turns_and_error_audit() {
+    use crate::agent_sessions::event_pipeline::store::EventStore;
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../crates/orgtrack-core/src/sources/fixtures/codex_native_failed_user.json"
+    ))
+    .unwrap();
+    let native_user = &fixture["normalizedUser"];
+    let mut events = Vec::new();
+    for (index, intent) in ["A", "B", "failed-C", "retry-C"].iter().enumerate() {
+        let mut event = make_user_message(&format!("native-{intent}"));
+        event.function_name = native_user["functionName"].as_str().unwrap().into();
+        event.ui_canonical = native_user["uiCanonical"].as_str().unwrap().into();
+        event.result = native_user["result"].clone();
+        event.result["turnIntentId"] = serde_json::json!(intent);
+        event.created_at = format!("2026-09-18T16:00:0{index}Z");
+        events.push(event);
+    }
+    let mut error = make_event("original-error", EventDisplayVariant::Error);
+    error.action_type = "error".into();
+    error.function_name = "error".into();
+    error.display_status = EventDisplayStatus::Failed;
+    error.result = serde_json::json!({"success": false, "error": "upstream unavailable"});
+    events.push(error);
+    let mut store = EventStore::new();
+    store.set(events.clone());
+    assert_eq!(
+        compute_derived(store.events(), store.version())
+            .chat_events
+            .iter()
+            .filter(|event| event.source == EventSource::User)
+            .count(),
+        4,
+        "a native replacement without its sidecar reproduces the stale fourth turn"
+    );
+    let mut lineage = make_event("queued-retry-lineage:owner:", EventDisplayVariant::Session);
+    lineage.action_type = "queued_retry_lineage".into();
+    lineage.source = EventSource::System;
+    lineage.result = serde_json::json!({"retryLineage": {
+        "version": 1, "queueMessageId": "owner", "superseded": [{
+            "sessionId": "test-session", "turnIntentId": "failed-C", "sourceEventIds": []
+        }]
+    }});
+    events.push(lineage);
+    for _ in 0..2 {
+        // es_set uses this same real store replacement and derived consumer.
+        store.set(events.clone());
+        let snapshot = compute_derived(store.events(), store.version());
+        assert_eq!(
+            snapshot
+                .chat_events
+                .iter()
+                .filter(|event| event.source == EventSource::User)
+                .map(|event| event.result["turnIntentId"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec!["A", "B", "retry-C"]
+        );
+        assert!(snapshot
+            .chat_events
+            .iter()
+            .any(|event| event.id == "original-error"));
+        assert_eq!(
+            store
+                .events()
+                .iter()
+                .filter(|event| event.source == EventSource::User)
+                .count(),
+            4
+        );
+    }
+}
+
+#[test]
+fn retry_audit_boundary_preserves_lazy_prior_turn_and_raw_attempt() {
+    use crate::agent_sessions::event_pipeline::store::EventStore;
+    let events: Vec<SessionEvent> =
+        serde_json::from_str(include_str!("../fixtures/retry_audit_boundary.json")).unwrap();
+    let mut store = EventStore::new();
+    store.set(events);
+    let snapshot = compute_derived(store.events(), store.version());
+    let ids = snapshot
+        .chat_events
+        .iter()
+        .map(|event| event.id.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        ids,
+        vec![
+            "A",
+            "lazy-A",
+            "old-B",
+            "old-B-error",
+            "new-B",
+            "new-B-answer"
+        ]
+    );
+    let boundary = snapshot
+        .events
+        .iter()
+        .find(|event| event.id == "old-B")
+        .unwrap();
+    assert_eq!(boundary.source, EventSource::System);
+    assert_eq!(boundary.action_type, "queued_retry_audit_boundary");
+    assert_eq!(
+        boundary.result["retryAuditBoundary"]["sourceEventId"],
+        "old-B"
+    );
+    assert!(core_types::session_event::is_internal_lifecycle_action_type(&boundary.action_type));
+    assert!(boundary.display_text.is_empty());
+    assert_eq!(
+        snapshot
+            .chat_events
+            .iter()
+            .filter(|event| event.source == EventSource::User)
+            .count(),
+        2
+    );
+    assert_eq!(store.get_by_id("old-B").unwrap().source, EventSource::User);
+    assert_eq!(
+        store.get_by_id("old-B").unwrap().display_text,
+        "Return marker."
+    );
+    for event in snapshot
+        .messages_events
+        .iter()
+        .chain(snapshot.sorted_simulator_events.iter())
+    {
+        assert_ne!(
+            event.id, "old-B",
+            "structural audit boundary is not a message or simulator action"
+        );
+    }
+}

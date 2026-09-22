@@ -12,9 +12,15 @@ static NEXT_CONN_ID: AtomicU64 = AtomicU64::new(1);
 struct MobileConnection {
     sender: mpsc::Sender<String>,
     subscribed_sessions: HashSet<String>,
+    opened_session: Option<(String, String)>,
 }
 
 static CONNECTIONS: OnceLock<RwLock<HashMap<u64, MobileConnection>>> = OnceLock::new();
+
+// Registry tests and transport tests share the real fanout registry. Serialize
+// only those tests so clear/broadcast assertions cannot disturb live fixtures.
+#[cfg(test)]
+pub(super) static TEST_REGISTRY_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 fn connections() -> &'static RwLock<HashMap<u64, MobileConnection>> {
     CONNECTIONS.get_or_init(|| RwLock::new(HashMap::new()))
@@ -29,6 +35,7 @@ pub fn register_connection(sender: mpsc::Sender<String>) -> u64 {
             MobileConnection {
                 sender,
                 subscribed_sessions: HashSet::new(),
+                opened_session: None,
             },
         );
     }
@@ -65,12 +72,45 @@ pub fn unsubscribe_session(conn_id: u64, session_id: &str) {
     }
 }
 
+/// The foreground chat owns one replaceable subscription lease. A late close
+/// from an older opening must not unsubscribe a newer opening of the same ID.
+pub fn open_session(conn_id: u64, token: &str, session_id: &str, limit: usize) -> bool {
+    if let Ok(mut map) = connections().write() {
+        if let Some(conn) = map.get_mut(&conn_id) {
+            if conn.subscribed_sessions.len() >= limit {
+                return false;
+            }
+            conn.opened_session = Some((token.to_owned(), session_id.to_owned()));
+            return true;
+        }
+    }
+    false
+}
+
+pub fn close_open_session(conn_id: u64, token: &str) {
+    if let Ok(mut map) = connections().write() {
+        if let Some(conn) = map.get_mut(&conn_id) {
+            if conn
+                .opened_session
+                .as_ref()
+                .is_some_and(|(current, _)| current == token)
+            {
+                conn.opened_session = None;
+            }
+        }
+    }
+}
+
 /// Number of sessions a connection is subscribed to.
 pub fn subscription_count(conn_id: u64) -> usize {
     connections()
         .read()
         .ok()
-        .and_then(|map| map.get(&conn_id).map(|conn| conn.subscribed_sessions.len()))
+        .and_then(|map| {
+            map.get(&conn_id).map(|conn| {
+                conn.subscribed_sessions.len() + usize::from(conn.opened_session.is_some())
+            })
+        })
         .unwrap_or(0)
 }
 
@@ -80,8 +120,13 @@ pub fn is_subscribed(conn_id: u64, session_id: &str) -> bool {
         .read()
         .ok()
         .and_then(|map| {
-            map.get(&conn_id)
-                .map(|conn| conn.subscribed_sessions.contains(session_id))
+            map.get(&conn_id).map(|conn| {
+                conn.subscribed_sessions.contains(session_id)
+                    || conn
+                        .opened_session
+                        .as_ref()
+                        .is_some_and(|(_, id)| id == session_id)
+            })
         })
         .unwrap_or(false)
 }
@@ -93,7 +138,13 @@ pub fn fanout_to_session(session_id: &str, message: &str) {
         .ok()
         .map(|map| {
             map.values()
-                .filter(|conn| conn.subscribed_sessions.contains(session_id))
+                .filter(|conn| {
+                    conn.subscribed_sessions.contains(session_id)
+                        || conn
+                            .opened_session
+                            .as_ref()
+                            .is_some_and(|(_, id)| id == session_id)
+                })
                 .map(|conn| conn.sender.clone())
                 .collect()
         })
@@ -138,6 +189,12 @@ pub fn on_bus_message(message: &str) {
         }
     });
     fanout_to_session(&session_id, &notification.to_string());
+    if matches!(
+        envelope.get("type").and_then(Value::as_str),
+        Some("permission:request" | "permission:pending_changed")
+    ) {
+        fanout_all(&serde_json::json!({"jsonrpc":"2.0", "method":"interaction/pending_changed", "params":{"sessionId":session_id}}).to_string());
+    }
 }
 
 /// Hook point: forward EventStore snapshot envelopes to mobile `orgii/snapshot` notifications.
@@ -163,13 +220,10 @@ pub fn on_snapshot_envelope(envelope: &Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Mutex, MutexGuard};
     use tokio::sync::mpsc::error::TryRecvError;
 
-    static TEST_REGISTRY_LOCK: Mutex<()> = Mutex::new(());
-
-    fn isolated_registry() -> MutexGuard<'static, ()> {
-        let guard = TEST_REGISTRY_LOCK.lock().expect("test registry lock");
+    fn isolated_registry() -> tokio::sync::MutexGuard<'static, ()> {
+        let guard = TEST_REGISTRY_LOCK.blocking_lock();
         connections().write().expect("connections lock").clear();
         guard
     }
@@ -178,6 +232,30 @@ mod tests {
         let (tx, rx) = mpsc::channel(8);
         let conn_id = register_connection(tx);
         (conn_id, rx)
+    }
+
+    #[test]
+    fn opening_lease_replaces_previous_and_ignores_late_or_foreign_close() {
+        let _guard = isolated_registry();
+        let (conn, _rx) = fresh_conn();
+        let (other, _other_rx) = fresh_conn();
+        assert!(open_session(conn, "a", "same", 4));
+        assert!(open_session(conn, "b", "same", 4));
+        close_open_session(conn, "a");
+        close_open_session(other, "b");
+        assert!(is_subscribed(conn, "same"));
+        assert_eq!(subscription_count(conn), 1);
+        assert!(open_session(conn, "c", "next", 4));
+        assert!(!is_subscribed(conn, "same"));
+        assert!(is_subscribed(conn, "next"));
+        close_open_session(conn, "c");
+        assert_eq!(subscription_count(conn), 0);
+        for id in ["1", "2", "3", "4"] {
+            subscribe_session(conn, id);
+        }
+        assert!(!open_session(conn, "overflow", "extra", 4));
+        unregister_connection(conn);
+        unregister_connection(other);
     }
 
     #[test]
@@ -248,6 +326,23 @@ mod tests {
         );
 
         unregister_connection(conn_id);
+    }
+
+    #[test]
+    fn approval_invalidation_reaches_unopened_sessions_but_other_bus_events_do_not() {
+        let _registry = isolated_registry();
+        let (_conn, mut rx) = fresh_conn();
+        for event_type in ["permission:request", "permission:pending_changed"] {
+            on_bus_message(
+                &serde_json::json!({"type":event_type,"payload":{"sessionId":"unopened"}})
+                    .to_string(),
+            );
+            let notification: Value = serde_json::from_str(&rx.try_recv().unwrap()).unwrap();
+            assert_eq!(notification["method"], "interaction/pending_changed");
+            assert_eq!(notification["params"]["sessionId"], "unopened");
+        }
+        on_bus_message(r#"{"type":"text:delta","payload":{"sessionId":"unopened"}}"#);
+        assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
     }
 
     #[test]

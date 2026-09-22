@@ -101,7 +101,6 @@ export const PaletteBody: React.FC<PaletteBodyProps> = ({
           onKeyDown={kernel.handleKeyDown}
           placeholder={placeholder}
           ariaLabel={inputAriaLabel}
-          isLoading={isLoading}
           icon={inputIcon}
           iconElement={inputIconElement}
           trailingSlot={inputTrailingSlot}
@@ -149,5 +148,3 @@ export const PaletteBody: React.FC<PaletteBodyProps> = ({
     </>
   );
 };
-
-export default PaletteBody;

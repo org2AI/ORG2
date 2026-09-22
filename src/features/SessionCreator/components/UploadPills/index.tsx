@@ -14,6 +14,7 @@
  */
 import React, { createElement, useCallback, useEffect, useMemo } from "react";
 
+import Button from "@src/components/Button";
 import { createLogger } from "@src/hooks/logger";
 import { Cancel01Icon, HugeiconsIcon, Image01Icon } from "@src/icons";
 import { getPreviewType } from "@src/util/file/previewTypes";
@@ -132,7 +133,8 @@ const ImagePill: React.FC<ImagePillProps> = ({
       )}
 
       {/* Remove Button - appears on hover */}
-      <button
+      <Button
+        layout="custom"
         className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-bg-overlay text-text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-bg-overlay-heavy"
         onClick={handleRemove}
         aria-label={`Remove ${file.name || "image"}`}
@@ -143,7 +145,7 @@ const ImagePill: React.FC<ImagePillProps> = ({
           size={12}
           strokeWidth={2}
         />
-      </button>
+      </Button>
 
       {/* File name tooltip on hover */}
       <div className="absolute right-0 bottom-0 left-0 bg-bg-overlay px-1 py-0.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -204,7 +206,8 @@ const UploadPill: React.FC<UploadPillProps> = ({
       </div>
 
       {/* Remove Button */}
-      <button
+      <Button
+        layout="custom"
         className="hover:bg-bg-4 absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-bg-3 text-text-3 opacity-0 transition-all group-hover:opacity-100 hover:text-text-1"
         onClick={handleRemove}
         aria-label={`Remove ${file.name}`}
@@ -215,7 +218,7 @@ const UploadPill: React.FC<UploadPillProps> = ({
           size={10}
           strokeWidth={2}
         />
-      </button>
+      </Button>
     </div>
   );
 };

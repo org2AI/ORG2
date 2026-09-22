@@ -22,6 +22,7 @@
 import React from "react";
 
 import FloatingExpandPill from "./FloatingExpandPill";
+import { useBeforeViewportLayoutMutation } from "./ViewportLayoutMutationContext";
 
 interface ExpandOverlayProps {
   isExpanded: boolean;
@@ -49,10 +50,15 @@ const ExpandOverlay: React.FC<ExpandOverlayProps> = ({
   alwaysShowControl = false,
   fadeFrom = "from-fill-2",
 }) => {
+  const beforeViewportLayoutMutation = useBeforeViewportLayoutMutation();
   const isTopFade = collapsedFadeEdge === "top";
   const collapsedOffsetStyle = isTopFade
     ? { transform: `translateY(${collapsedOffsetPx}px)` }
     : undefined;
+  const handleToggle = (event: React.MouseEvent) => {
+    beforeViewportLayoutMutation?.();
+    onToggle(event);
+  };
 
   if (!isExpanded) {
     return (
@@ -67,7 +73,7 @@ const ExpandOverlay: React.FC<ExpandOverlayProps> = ({
         >
           <FloatingExpandPill
             expanded={false}
-            onClick={onToggle}
+            onClick={handleToggle}
             label={collapsedLabel}
             showLabel={showLabel}
           />
@@ -82,7 +88,7 @@ const ExpandOverlay: React.FC<ExpandOverlayProps> = ({
     >
       <FloatingExpandPill
         expanded
-        onClick={onToggle}
+        onClick={handleToggle}
         label={expandedLabel}
         showLabel={showLabel}
       />

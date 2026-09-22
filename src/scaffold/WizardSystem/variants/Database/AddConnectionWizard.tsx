@@ -13,18 +13,19 @@ import { useTranslation } from "react-i18next";
 
 import { DatabaseIcon } from "@src/assets/databaseIcons";
 import Button from "@src/components/Button";
+import Checkbox from "@src/components/Checkbox";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
-import type {
-  DatabaseConnectionConfig,
-  DatabaseType,
-} from "@src/engines/DatabaseCore";
 import {
   SECTION_CONTROL_STYLE,
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import type {
+  DatabaseConnectionConfig,
+  DatabaseType,
+} from "@src/engines/DatabaseCore";
 import {
   SelectionGrid,
   type SelectionGridOption,
@@ -152,13 +153,12 @@ const AddConnectionWizard: React.FC<AddConnectionWizardProps> = ({
     ) : undefined;
 
   const stepActions = saved ? (
-    <Button variant="primary" size="small" onClick={onCancel}>
-      {t("common:actions.done", "Done")}
+    <Button variant="primary" onClick={onCancel}>
+      {t("common:actions.done")}
     </Button>
   ) : (
     <Button
       variant="primary"
-      size="small"
       onClick={() => handleSave(onSave)}
       disabled={!isFormValid}
     >
@@ -222,7 +222,7 @@ const AddConnectionWizard: React.FC<AddConnectionWizardProps> = ({
                     onChange={setFilePath}
                     placeholder="/path/to/database.sqlite"
                   />
-                  <Button variant="secondary" onClick={handleBrowseFile}>
+                  <Button onClick={handleBrowseFile}>
                     {t("common:actions.browse")}
                   </Button>
                 </div>
@@ -354,11 +354,10 @@ const AddConnectionWizard: React.FC<AddConnectionWizardProps> = ({
                   description={t("databases.wizard.pgSslDesc")}
                 >
                   <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      size="small"
                       checked={pgSsl}
-                      onChange={(event) => setPgSsl(event.target.checked)}
-                      className="h-4 w-4 rounded border-border-2"
+                      onCheckedChange={(checked) => setPgSsl(checked)}
                     />
                     <span className="text-[13px] text-text-2">SSL</span>
                   </label>
@@ -423,8 +422,8 @@ const AddConnectionWizard: React.FC<AddConnectionWizardProps> = ({
               required
             >
               <Button
-                variant={testStatus === "success" ? "success" : "primary"}
-                appearance={testStatus === "success" ? "outline" : undefined}
+                variant={testStatus === "success" ? "secondary" : "primary"}
+                tone={testStatus === "success" ? "success" : undefined}
                 size="default"
                 loading={testStatus === "testing"}
                 disabled={!isFormValid || testStatus === "testing"}

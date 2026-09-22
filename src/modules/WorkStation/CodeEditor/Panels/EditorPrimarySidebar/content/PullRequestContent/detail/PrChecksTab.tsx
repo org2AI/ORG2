@@ -8,16 +8,19 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitHubChecksSummary } from "@src/api/tauri/github";
+import CiCheckStateIcon from "@src/components/CiCheckStateIcon";
 import { Placeholder } from "@src/components/Placeholder";
 import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import { HugeiconsIcon, SquareArrowUpRight02Icon } from "@src/icons";
 import { formatTimeAgo } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/hooks/workstationIssueHelpers";
-import CiCheckStateIcon from "@src/modules/shared/components/CiCheckStateIcon";
 import {
   type CiCheckState,
   checkRunState,
   statusContextState,
 } from "@src/services/git/ciCheckState";
+import { linkAnchorProps } from "@src/util/ui/openLink";
+
+import { PrChecksRefreshButton } from "./PrChecksRefreshButton";
 
 interface CheckRowProps {
   state: CiCheckState;
@@ -55,11 +58,9 @@ function CheckRow({
       ) : null}
       {detailsUrl ? (
         <a
-          href={detailsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+          {...linkAnchorProps(detailsUrl)}
           className="shrink-0 text-text-3 hover:text-text-1"
-          title={t("git.pr.details", "Details")}
+          title={t("git.pr.details")}
         >
           <HugeiconsIcon
             icon={SquareArrowUpRight02Icon}
@@ -86,7 +87,12 @@ export const PrChecksTab: React.FC<PrChecksTabProps> = ({
 
   if (loading && !checks) {
     return (
-      <Placeholder variant="loading" placement="sidebar" fillParentHeight />
+      <Placeholder
+        loadingIconOnly
+        variant="loading"
+        placement="sidebar"
+        fillParentHeight
+      />
     );
   }
 
@@ -98,11 +104,8 @@ export const PrChecksTab: React.FC<PrChecksTabProps> = ({
       <Placeholder
         variant="empty"
         placement="sidebar"
-        title={t("git.pr.checks.none", "No checks reported")}
-        subtitle={t(
-          "git.pr.checks.noneHint",
-          "No CI checks or statuses ran on this pull request's head commit."
-        )}
+        title={t("git.pr.checks.none")}
+        subtitle={t("git.pr.checks.noneHint")}
         fillParentHeight
       />
     );
@@ -111,19 +114,20 @@ export const PrChecksTab: React.FC<PrChecksTabProps> = ({
   const overall = (checks?.state ?? "pending") as CiCheckState;
   const summaryLabel =
     overall === "success"
-      ? t("git.pr.checks.allPassed", "All checks passed")
+      ? t("git.pr.checks.allPassed")
       : overall === "failure"
-        ? t("git.pr.checks.someFailed", "Some checks failed")
-        : t("git.pr.checks.pending", "Checks in progress");
+        ? t("git.pr.checks.someFailed")
+        : t("git.pr.checks.pending");
 
   return (
     <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto">
       <div className={`${DETAIL_PANEL_TOKENS.headerWidth} px-4 py-4`}>
         <div className="mb-3 flex items-center gap-2">
           <CiCheckStateIcon state={overall} />
-          <span className="text-[13px] font-medium text-text-1">
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-1">
             {summaryLabel}
           </span>
+          <PrChecksRefreshButton testId="pr-checks-tab-refresh" />
         </div>
 
         <div className="overflow-hidden rounded-xl border border-border-1">

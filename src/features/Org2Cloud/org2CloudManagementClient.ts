@@ -17,8 +17,6 @@
  */
 import { z } from "zod/v4";
 
-import { ORG2_CLOUD_POSTGREST_SCHEMA, getCloudEndpoint } from "./config";
-import { fetchWithTransportRetry } from "./org2CloudFetchRetry";
 import {
   CLOUD_ASSIGNABLE_ROLES,
   type CloudAssignableRole,
@@ -29,6 +27,7 @@ import {
   generateCloudInviteCode,
   sha256Hex,
 } from "./org2CloudOrgManagement";
+import { callOrg2CloudRpc } from "./org2CloudRpc";
 
 // ---------------------------------------------------------------------------
 // Error model
@@ -58,44 +57,16 @@ export function isOrg2ManagementErrorCode(
 // RPC plumbing (throwing variant, same shape as org2CloudSyncClient)
 // ---------------------------------------------------------------------------
 
-function rpcUrl(functionName: string): string {
-  return `${getCloudEndpoint().supabaseUrl}/rest/v1/rpc/${functionName}`;
-}
-
-function rpcHeaders(accessToken: string): Record<string, string> {
-  return {
-    apikey: getCloudEndpoint().anonKey,
-    authorization: `Bearer ${accessToken}`,
-    "content-type": "application/json",
-    "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-  };
-}
-
 async function callManagementRpc(
   functionName: string,
   accessToken: string,
   body: Record<string, unknown>
 ): Promise<unknown> {
-  const response = await fetchWithTransportRetry(rpcUrl(functionName), {
-    method: "POST",
-    headers: rpcHeaders(accessToken),
-    body: JSON.stringify(body),
+  return callOrg2CloudRpc(functionName, body, {
+    accessToken,
+    createError: (message, status) =>
+      new Org2CloudManagementError(message, status),
   });
-  const text = await response.text();
-  let payload: unknown = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    payload = null;
-  }
-  if (!response.ok) {
-    const message =
-      payload && typeof payload === "object" && "message" in payload
-        ? String((payload as { message: unknown }).message)
-        : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-    throw new Org2CloudManagementError(message, response.status);
-  }
-  return payload;
 }
 
 // ---------------------------------------------------------------------------

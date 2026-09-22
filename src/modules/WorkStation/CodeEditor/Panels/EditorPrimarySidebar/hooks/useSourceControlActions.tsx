@@ -10,13 +10,11 @@ import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 
 import { ICON_CONFIG, PANEL_CONSTANTS } from "../config";
 
 const {
   search: SearchIcon,
-  refresh: RefreshIcon,
   listTree: ListTreeIcon,
   list: ListIcon,
 } = ICON_CONFIG;
@@ -26,9 +24,6 @@ export interface UseSourceControlActionsOptions {
   viewMode: "list-tree" | "list";
   onToggleFilter: () => void;
   onToggleViewMode: () => void;
-  onRefresh: () => void;
-  /** Whether refresh is in progress (drives spin animation). */
-  refreshLoading?: boolean;
 }
 
 export function useSourceControlActions({
@@ -36,12 +31,8 @@ export function useSourceControlActions({
   viewMode,
   onToggleFilter,
   onToggleViewMode,
-  onRefresh,
-  refreshLoading = false,
 }: UseSourceControlActionsOptions): SectionHeaderAction[] {
   const { t } = useTranslation("common");
-  const { spinClass: refreshSpinClass, handleClick: handleRefreshClick } =
-    useRefreshSpin(onRefresh, refreshLoading);
 
   return useMemo<SectionHeaderAction[]>(() => {
     const actions: SectionHeaderAction[] = [
@@ -80,29 +71,8 @@ export function useSourceControlActions({
             : "Switch to tree view",
         onClick: onToggleViewMode,
       },
-      {
-        key: "refresh-git",
-        icon: (
-          <AnyIcon
-            icon={RefreshIcon}
-            size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
-            strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
-            className={refreshSpinClass}
-          />
-        ),
-        tooltip: t("actions.refresh", "Refresh"),
-        onClick: handleRefreshClick,
-      },
     ];
 
     return actions;
-  }, [
-    showFilter,
-    viewMode,
-    onToggleFilter,
-    onToggleViewMode,
-    refreshSpinClass,
-    handleRefreshClick,
-    t,
-  ]);
+  }, [showFilter, viewMode, onToggleFilter, onToggleViewMode, t]);
 }

@@ -23,7 +23,6 @@ describe("shouldShowSideChatLauncher", () => {
       "explore",
       "channel",
       "run-group",
-      "team-inbox",
       "terminal",
     ];
 

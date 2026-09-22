@@ -21,16 +21,3 @@ export { useKeyboardMouseMode } from "./useKeyboardMouseMode";
 // ============================================
 
 export { shortcutRegistry } from "@src/config/keyboard/ShortcutRegistry";
-
-// ============================================
-// Shortcut Display (centralized lookup)
-// ============================================
-
-export {
-  getShortcutKeys,
-  getShortcutEntry,
-  getShortcutAccelerator,
-  labelWithShortcut,
-  isModifierPressed,
-  matchesKey,
-} from "@src/config/keyboard/shortcutDisplay";

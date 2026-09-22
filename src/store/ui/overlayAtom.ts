@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 
+import { appLockGateModeAtom } from "@src/store/appLock/appLockAtom";
 import { isMacOS } from "@src/util/platform/tauri";
 
 import { activeOverlayCountAtom } from "./overlayLayerAtom";
@@ -73,8 +74,12 @@ export const webviewOverlayBlockedAtom = atom((get) => {
   const isComponentIssueModalOpen = get(componentIssueModalOpenAtom);
   const isQuitConfirmationModalOpen = get(quitConfirmationModalOpenAtom);
   const isSpotlightOpen = get(spotlightOpenAtom);
+  // Native webviews paint above the DOM, so the lock page cannot cover them;
+  // a browser tab left showing would defeat the lock.
+  const isAppLockCovering = get(appLockGateModeAtom) !== "open";
 
   return (
+    isAppLockCovering ||
     hasNativeBlockingOverlay ||
     hasGlobalError ||
     isComponentIssueModalOpen ||

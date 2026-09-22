@@ -203,30 +203,6 @@ pub async fn skills_check_updates(
     Ok(updates)
 }
 
-/// Compatibility update entry point. Existing callers supply only `slug` and
-/// therefore target the user scope; workspace callers should also pass the
-/// stable installed `name` and `workspacePath`.
-#[tauri::command]
-pub async fn skills_hub_update(
-    app_state: tauri::State<'_, AgentAppState>,
-    slug: String,
-    name: Option<String>,
-    workspace_path: Option<String>,
-) -> Result<HubInstallResult, String> {
-    if slug.trim().is_empty() {
-        return Err("Skill slug is required".to_string());
-    }
-    if let Some(name) = name.as_deref() {
-        validate_skill_name(name)?;
-    }
-    let installed = find_installed(
-        workspace_path.as_deref(),
-        name.as_deref(),
-        Some(slug.trim().trim_matches('/')),
-    )?;
-    refresh_installed(&app_state, installed).await
-}
-
 /// Refresh by the recorded origin, so callers never need to trust a new slug
 /// or a name from the fetched bundle.
 #[tauri::command]

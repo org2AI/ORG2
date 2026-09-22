@@ -146,6 +146,48 @@ describe("Composer skills menu", () => {
     }
   });
 
+  it("stops accepting typing after a click outside the Launchpad composer", async () => {
+    const editor = await browser.$(INPUT_SELECTOR);
+    await editor.waitForDisplayed({ timeout: 60_000 });
+    expect(await execJS(js.clear(INPUT_SELECTOR))).toBe("");
+    // Real keyboard input is essential: a synthetic keydown does not expose
+    // WebKit restoring focus to a blurred contenteditable's retained selection.
+    await editor.click();
+    await browser.keys("focus regression draft");
+    await browser.waitUntil(
+      async () => (await editor.getText()) === "focus regression draft",
+      { timeout: 5000, timeoutMsg: "Keyboard input did not reach the composer" }
+    );
+
+    const background = await browser.$(
+      '[data-testid="chat-panel-start-page-session-content"]'
+    );
+    // The launcher's left inset is outside the composer shell and its controls.
+    await background.click({ x: 4, y: 90 });
+    await browser.waitUntil(
+      () =>
+        execJS(`
+        const editor = document.querySelector(${JSON.stringify(INPUT_SELECTOR)});
+        const selection = window.getSelection();
+        return document.activeElement !== editor &&
+          !editor.contains(selection?.anchorNode);
+      `),
+      {
+        timeout: 5000,
+        timeoutMsg: "Outside click retained composer focus or selection",
+      }
+    );
+    await browser.keys("LEAK");
+    expect(await editor.getText()).toBe("focus regression draft");
+    // Re-entry must still work, without losing the existing draft.
+    await editor.click();
+    await browser.keys("x");
+    expect((await editor.getText()).length).toBe(
+      "focus regression draft".length + 1
+    );
+    expect(await execJS(js.clear(INPUT_SELECTOR))).toBe("");
+  });
+
   it("offers commands in the slash menu and consumes the query on selection", async () => {
     await browser.waitUntil(
       async () =>

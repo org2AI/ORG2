@@ -12,13 +12,13 @@ import i18n from "@src/i18n";
 import {
   consumeInternalFileTreeDragData,
   isInternalFileTreeDragActive,
-} from "@src/shared/dnd/dragSideChannel";
+} from "@src/util/dnd/dragSideChannel";
 import {
   type ReferenceDragPillData,
   clearReferenceDragData,
   getReferenceDragPillData,
   hasReferenceDragData,
-} from "@src/shared/dnd/referenceDragData";
+} from "@src/util/dnd/referenceDragData";
 
 import type { DragDropHandlers } from "./types";
 

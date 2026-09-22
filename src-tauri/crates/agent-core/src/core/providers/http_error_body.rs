@@ -13,6 +13,40 @@ use crate::utils::safe_truncate_utf8;
 /// Max characters of a non-HTML error body we keep in the user-facing message.
 const MAX_BODY_CHARS: usize = 300;
 
+/// Recognize explicit model-access failures, not unsupported request options.
+/// Keep this at the HTTP ingestion boundary so typed errors survive wrappers.
+pub fn is_model_unavailable(status: u16, body: &str) -> bool {
+    if !matches!(status, 400 | 404) {
+        return false;
+    }
+    let value = serde_json::from_str::<serde_json::Value>(body).ok();
+    let error = value.as_ref().and_then(|v| v.get("error"));
+    if error
+        .and_then(|v| v.get("code"))
+        .and_then(|v| v.as_str())
+        .is_some_and(|code| matches!(code, "model_not_found" | "unsupported_model"))
+    {
+        return true;
+    }
+    let message = error
+        .and_then(|v| v.get("message"))
+        .and_then(|v| v.as_str())
+        .or_else(|| {
+            value
+                .as_ref()
+                .and_then(|v| v.get("detail"))
+                .and_then(|v| v.as_str())
+        })
+        .unwrap_or(body)
+        .to_ascii_lowercase();
+    // The Codex ChatGPT rejection quotes the model before this phrase. Do
+    // not match e.g. "temperature is not supported with this model".
+    (message.starts_with("the '")
+        && message.contains("' model is not supported when using codex with a chatgpt account"))
+        || message.starts_with("model not found")
+        || message.starts_with("unknown model:")
+}
+
 /// Produce a concise, human-readable message from an HTTP error response body.
 ///
 /// - Empty / whitespace-only bodies → standard reason phrase for the status.
@@ -158,5 +192,37 @@ mod tests {
         let body = "é".repeat(1000);
         let cleaned = clean_error_message(400, &body);
         assert!(cleaned.len() <= MAX_BODY_CHARS);
+    }
+}
+
+#[cfg(test)]
+mod model_access_tests {
+    use super::is_model_unavailable;
+
+    #[test]
+    fn explicit_model_access_errors_are_recognized() {
+        for body in [
+            r#"{"detail":"The 'gpt-5.4-mini' model is not supported when using Codex with a ChatGPT account."}"#,
+            r#"{"error":{"code":"model_not_found","message":"No access"}}"#,
+            r#"{"error":{"code":"unsupported_model","message":"No access"}}"#,
+        ] {
+            assert!(is_model_unavailable(400, body), "{body}");
+            assert!(!is_model_unavailable(401, body));
+            assert!(!is_model_unavailable(429, body));
+            assert!(!is_model_unavailable(500, body));
+        }
+    }
+
+    #[test]
+    fn model_option_rejections_do_not_trigger_model_fallback() {
+        for body in [
+            "temperature is not supported with this model",
+            "This model is not supported with tool_choice",
+            r#"{"error":{"message":"Unsupported parameter: temperature","param":"temperature"}}"#,
+            "HTTP 400: invalid tool schema",
+            "The model is not supported in this request format",
+        ] {
+            assert!(!is_model_unavailable(400, body), "{body}");
+        }
     }
 }

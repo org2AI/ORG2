@@ -1,55 +1,15 @@
-import React, {
-  type ReactNode,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import AnyIcon from "@src/components/AnyIcon";
-import Avatar from "@src/components/Avatar";
 import Button from "@src/components/Button";
-import Dropdown from "@src/components/Dropdown";
-import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import {
   LIST_PANEL_SECTIONS,
-  ListPanelItem,
   ListPanelSkeletonRows,
 } from "@src/components/ListPanel";
-import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
-import { WORKSTATION_TRAIL_SECTION_LABEL } from "@src/config/workstation/tokens";
-import {
-  GitMergeIcon,
-  GitPullRequestClosedIcon,
-  GitPullRequestDraftIcon,
-  GitPullRequestIcon,
-  HugeiconsIcon,
-  type IconSvgElement,
-  InformationCircleIcon,
-  NotificationOff01Icon,
-  TickDouble01Icon,
-} from "@src/icons";
-import {
-  type ManagedPrItem,
-  getManagedPullRequestKey,
-} from "@src/modules/MainApp/WorkManagement/githubManagedItemModel";
-import { WorkManagementRefreshButton } from "@src/modules/shared/components/WorkManagementRefreshButton";
-import { WorkManagementSearchInput } from "@src/modules/shared/components/WorkManagementSearchInput";
-import { compactRepositoryLabel } from "@src/modules/shared/githubRepositoryLabel";
-import CompactListHeader from "@src/modules/shared/layouts/CompactListHeader";
-import {
-  CollapsibleSection,
-  ListPanelScrollArea,
-  LoadingBar,
-} from "@src/modules/shared/layouts/blocks";
-import {
-  type PrStatusIconName,
-  getPrStatusIconName,
-  getPrStatusVariant,
-  normalizePrStatus,
-} from "@src/shared/pr/prStatus";
+import { ListPanelScrollArea, LoadingBar } from "@src/components/layout/blocks";
+import type { ManagedPrItem } from "@src/modules/MainApp/WorkManagement/githubManagedItemModel";
+import CompactListHeader from "@src/scaffold/layouts/CompactListHeader";
 
 import {
   type TeamInboxFilter,
@@ -58,7 +18,21 @@ import {
   type TeamInboxUnreadCounts,
   getTeamInboxItemKey,
 } from "../domain";
+import { TeamInboxListControls } from "./TeamInboxList/TeamInboxListControls";
+import { TeamInboxListSection } from "./TeamInboxList/TeamInboxListSection";
+import { TeamInboxPullRequestRows } from "./TeamInboxList/TeamInboxPullRequestRows";
+import { TeamInboxPullRequestsNotice } from "./TeamInboxList/TeamInboxPullRequestsNotice";
+import {
+  groupTeamInboxItems,
+  groupTeamInboxPullRequests,
+} from "./TeamInboxList/teamInboxListSections";
+import { useTeamInboxListKeyboard } from "./TeamInboxList/useTeamInboxListKeyboard";
 import TeamInboxRow from "./TeamInboxRow";
+
+export {
+  TeamInboxListControls,
+  type TeamInboxListControlsProps,
+} from "./TeamInboxList/TeamInboxListControls";
 
 export interface TeamInboxListProps {
   filter: TeamInboxFilter;
@@ -67,6 +41,8 @@ export interface TeamInboxListProps {
   unreadCounts: TeamInboxUnreadCounts;
   query: string;
   loading: boolean;
+  /** Notification-source loading, independent of GitHub requests. */
+  inboxLoading?: boolean;
   pullRequests?: readonly ManagedPrItem[];
   pullRequestsLoading?: boolean;
   pullRequestsError?: string | null;
@@ -87,247 +63,10 @@ export interface TeamInboxListProps {
   onSetKindMuted?: (kind: TeamInboxNotificationKind, muted: boolean) => void;
 }
 
-const PULL_REQUEST_ICONS: Record<PrStatusIconName, IconSvgElement> = {
-  "pull-request": GitPullRequestIcon,
-  merge: GitMergeIcon,
-  closed: GitPullRequestClosedIcon,
-  draft: GitPullRequestDraftIcon,
-};
-
-interface TeamInboxPullRequestSections {
-  reviewRequested: ManagedPrItem[];
-  authoredByViewer: ManagedPrItem[];
-}
-
-interface TeamInboxItemSections {
-  mentions: TeamInboxItem[];
-  assigned: TeamInboxItem[];
-  updates: TeamInboxItem[];
-}
-
-function groupTeamInboxPullRequests(
-  pullRequests: readonly ManagedPrItem[]
-): TeamInboxPullRequestSections {
-  return pullRequests.reduce<TeamInboxPullRequestSections>(
-    (sections, pullRequest) => {
-      if (pullRequest.state !== "open") return sections;
-      if (pullRequest.reviewRequestedFromViewer) {
-        sections.reviewRequested.push(pullRequest);
-      } else if (pullRequest.authoredByViewer) {
-        sections.authoredByViewer.push(pullRequest);
-      }
-      return sections;
-    },
-    { reviewRequested: [], authoredByViewer: [] }
-  );
-}
-
-function groupTeamInboxItems(
-  items: readonly TeamInboxItem[]
-): TeamInboxItemSections {
-  return items.reduce<TeamInboxItemSections>(
-    (sections, item) => {
-      if (item.kind === "comment_mention") sections.mentions.push(item);
-      else if (item.kind === "assigned_work_item") sections.assigned.push(item);
-      else sections.updates.push(item);
-      return sections;
-    },
-    { mentions: [], assigned: [], updates: [] }
-  );
-}
-
-const TEAM_INBOX_NOTIFICATION_KINDS: readonly TeamInboxNotificationKind[] = [
-  "mention",
-  "discussion_updated",
-  "run_failed",
-  "status_changed",
-  "assignee_changed",
-  "priority_changed",
-  "dates_changed",
-  "child_completed",
-];
-
-export interface TeamInboxListControlsProps {
-  filter: TeamInboxFilter;
-  unreadCounts: TeamInboxUnreadCounts;
-  query: string;
-  loading: boolean;
-  placement: "header" | "list";
-  /** A split-list header search grows before the action buttons. */
-  fillSearch?: boolean;
-  trailingActions?: ReactNode;
-  onQueryChange: (query: string) => void;
-  onRefresh?: () => void;
-  onMarkAllRead?: () => void;
-  mutedKinds?: readonly TeamInboxNotificationKind[];
-  mutePreferencesLoading?: boolean;
-  onLoadMutePreferences?: () => void;
-  onSetKindMuted?: (kind: TeamInboxNotificationKind, muted: boolean) => void;
-}
-
-/** Shared Inbox controls used in the page header or compact left pane. */
-export const TeamInboxListControls: React.FC<TeamInboxListControlsProps> = ({
-  filter,
-  unreadCounts,
-  query,
-  loading,
-  placement,
-  fillSearch = false,
-  trailingActions,
-  onQueryChange,
-  onRefresh,
-  onMarkAllRead,
-  mutedKinds = [],
-  mutePreferencesLoading = false,
-  onLoadMutePreferences,
-  onSetKindMuted,
-}) => {
-  const { t } = useTranslation();
-  const [muteMenuOpen, setMuteMenuOpen] = useState(false);
-  const activeFilterUnread = filter === "archived" ? 0 : unreadCounts[filter];
-  const muteOptions = useMemo(
-    () =>
-      TEAM_INBOX_NOTIFICATION_KINDS.map((kind) => ({
-        value: kind,
-        label: t(`teamInbox.events.${kind}`),
-      })),
-    [t]
-  );
-
-  return (
-    <div
-      className={`flex min-w-0 items-center gap-px ${
-        placement === "list" || fillSearch ? "flex-1" : ""
-      }`.trim()}
-    >
-      <WorkManagementSearchInput
-        value={query}
-        onChange={onQueryChange}
-        placement={placement}
-        fillWidth={fillSearch}
-        placeholder={t("common:actions.search")}
-        dataTestId="team-inbox-search"
-      />
-      {(activeFilterUnread > 0 && onMarkAllRead) ||
-      onRefresh ||
-      trailingActions ? (
-        <div className="flex shrink-0 items-center gap-px">
-          {activeFilterUnread > 0 && onMarkAllRead ? (
-            <ToolbarTooltip label={t("inbox.markAllAsRead")}>
-              <Button
-                htmlType="button"
-                variant="tertiary"
-                size="small"
-                icon={
-                  <HugeiconsIcon
-                    icon={TickDouble01Icon}
-                    data-icon="check-check"
-                    size={14}
-                    strokeWidth={2}
-                  />
-                }
-                iconOnly
-                className="shrink-0"
-                aria-label={t("inbox.markAllAsRead")}
-                data-testid="team-inbox-mark-all-read"
-                onClick={onMarkAllRead}
-              />
-            </ToolbarTooltip>
-          ) : null}
-          {onRefresh ? (
-            <WorkManagementRefreshButton
-              label={t("common:actions.refresh")}
-              loading={loading}
-              onRefresh={onRefresh}
-              dataTestId="team-inbox-refresh"
-            />
-          ) : null}
-          {onLoadMutePreferences && onSetKindMuted ? (
-            <Dropdown
-              options={muteOptions}
-              mode="multiple"
-              value={[...mutedKinds]}
-              loading={mutePreferencesLoading}
-              popupVisible={muteMenuOpen}
-              position="bottom-end"
-              getPopupContainer={() => document.body}
-              avoidViewportOverflow
-              onVisibleChange={(visible) => {
-                setMuteMenuOpen(visible);
-                if (visible) onLoadMutePreferences();
-              }}
-              onSelect={(nextValue) => {
-                const nextKinds = new Set(
-                  (Array.isArray(nextValue) ? nextValue : []).map(String)
-                );
-                const changedKind = TEAM_INBOX_NOTIFICATION_KINDS.find(
-                  (kind) => nextKinds.has(kind) !== mutedKinds.includes(kind)
-                );
-                if (changedKind) {
-                  onSetKindMuted(changedKind, nextKinds.has(changedKind));
-                }
-              }}
-            >
-              <Button
-                htmlType="button"
-                variant="tertiary"
-                size="small"
-                icon={
-                  <HugeiconsIcon
-                    icon={NotificationOff01Icon}
-                    data-icon="bell-off"
-                    size={14}
-                    strokeWidth={2}
-                  />
-                }
-                iconOnly
-                className="shrink-0"
-                title={t("teamInbox.mute.title")}
-                aria-label={t("teamInbox.mute.title")}
-                data-testid="team-inbox-mute-categories"
-              />
-            </Dropdown>
-          ) : null}
-          {trailingActions}
-        </div>
-      ) : null}
-    </div>
-  );
-};
-
 // Temporarily hidden until GitHub OAuth failures can name the affected
 // repositories and offer a useful recovery path. Keep the warning UI in place
 // so it can be restored without rebuilding its shared styling and behavior.
 const PULL_REQUEST_LOAD_WARNING_ENABLED = false;
-
-function TeamInboxListSection({
-  title,
-  testId,
-  children,
-}: {
-  title: string;
-  testId: string;
-  children: ReactNode;
-}): ReactNode {
-  return (
-    <section data-testid={testId} aria-label={title} className="mb-2 last:mb-0">
-      <CollapsibleSection
-        title={title}
-        compact
-        headerRowClassName="mb-px h-7"
-        titleButtonClassName="group/section-title h-7 w-full gap-2 pl-2 hover:text-text-1"
-        titleClassName={`order-first min-w-0 truncate ${WORKSTATION_TRAIL_SECTION_LABEL}`}
-        chevronContainerClassName="order-last hidden shrink-0 items-center leading-none group-hover/section-title:inline-flex group-focus-visible/section-title:inline-flex"
-        chevronSize={14}
-        chevronStrokeWidth={2}
-        chevronClassName="text-text-2"
-        titleButtonTestId={`${testId}-toggle`}
-      >
-        <div className={LIST_PANEL_SECTIONS.sectionGroupItems}>{children}</div>
-      </CollapsibleSection>
-    </section>
-  );
-}
 
 const TeamInboxList: React.FC<TeamInboxListProps> = ({
   filter,
@@ -345,6 +84,7 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
   onSelectPullRequest,
   onRefresh,
   onMarkAllRead,
+  inboxLoading = loading,
   hasMore = false,
   loadingMore = false,
   onLoadMore,
@@ -368,7 +108,6 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
       detailed: false,
     });
   }
-  const rowRefs = useRef(new Map<string, HTMLButtonElement>());
   const inboxItemSections = useMemo(() => groupTeamInboxItems(items), [items]);
   const orderedInboxItems = useMemo(
     () =>
@@ -424,11 +163,19 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
   const showPullRequestsErrorDetails =
     Boolean(pullRequestsError) && pullRequestsErrorUi.detailed;
   const showLoadingBar = loading || pullRequestsLoading || loadingMore;
-  // A load with nothing to show yet gets skeleton rows instead of a blank pane, so
-  // the list keeps its shape until the real rows arrive. Once any row exists,
-  // that content stays and the progress line alone carries the refresh.
-  const showSkeletonRows =
-    showLoadingBar && items.length === 0 && actionablePullRequestCount === 0;
+  const showInboxSkeletons = inboxLoading && items.length === 0;
+  const showPrSkeletons =
+    showPullRequests && pullRequestsLoading && actionablePullRequestCount === 0;
+  const showSkeletonRows = showInboxSkeletons || showPrSkeletons;
+  const renderSkeletonSection = (key: string, title: string) => (
+    <TeamInboxListSection
+      key={key}
+      title={title}
+      testId={`team-inbox-${key}-loading`}
+    >
+      <ListPanelSkeletonRows count={2} />
+    </TeamInboxListSection>
+  );
   const loadMoreAction =
     hasMore && onLoadMore ? (
       <div className="flex shrink-0 justify-center px-3 pt-1 pb-2">
@@ -442,88 +189,11 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
         </Button>
       </div>
     ) : null;
-  const selectAt = useCallback(
-    (index: number) => {
-      const item = orderedInboxItems[index];
-      if (!item) return;
-      onSelectItem(item);
-      rowRefs.current.get(getTeamInboxItemKey(item))?.focus();
-    },
-    [onSelectItem, orderedInboxItems]
-  );
-
-  const handleListKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (orderedInboxItems.length === 0) return;
-      const currentIndex = selectedIndex >= 0 ? selectedIndex : 0;
-      let nextIndex: number | null = null;
-      switch (event.key) {
-        case "ArrowDown":
-          nextIndex = Math.min(currentIndex + 1, orderedInboxItems.length - 1);
-          break;
-        case "ArrowUp":
-          nextIndex = Math.max(currentIndex - 1, 0);
-          break;
-        case "Home":
-          nextIndex = 0;
-          break;
-        case "End":
-          nextIndex = orderedInboxItems.length - 1;
-          break;
-        default:
-          return;
-      }
-      event.preventDefault();
-      selectAt(nextIndex);
-    },
-    [orderedInboxItems.length, selectAt, selectedIndex]
-  );
-  const renderPullRequestRows = (pullRequestItems: ManagedPrItem[]) =>
-    pullRequestItems.map((pullRequest) => {
-      const key = getManagedPullRequestKey(pullRequest);
-      const status = normalizePrStatus({
-        state: pullRequest.state,
-        merged: pullRequest.state === "merged",
-        draft: pullRequest.rawPr.draft,
-      });
-      const PullRequestIcon = PULL_REQUEST_ICONS[getPrStatusIconName(status)];
-      const statusIconClass = getPrStatusVariant(status).textClass;
-      return (
-        <ListPanelItem
-          key={key}
-          id={key}
-          selected={selectedPullRequestKey === key}
-          title={pullRequest.title}
-          titlePrefix={`#${pullRequest.id}`}
-          time={pullRequest.timeAgo}
-          metadata={
-            <>
-              <Avatar
-                size={16}
-                src={pullRequest.rawPr.author_avatar_url ?? undefined}
-                hideOnError
-              />
-              <span className="truncate">
-                {compactRepositoryLabel(pullRequest.repo)} ·{" "}
-                {pullRequest.sourceBranch}
-              </span>
-            </>
-          }
-          leading={
-            <AnyIcon icon={PullRequestIcon} size={14} strokeWidth={1.8} />
-          }
-          leadingClassName={statusIconClass}
-          ariaLabel={`${pullRequest.title}, #${pullRequest.id}, ${pullRequest.author}, ${pullRequest.repo}`}
-          ariaCurrent={selectedPullRequestKey === key ? "true" : undefined}
-          dataAttributes={{
-            "data-team-inbox-list-item": true,
-            "data-testid": "team-inbox-pr-row",
-            "data-pr-number": pullRequest.id,
-          }}
-          onClick={() => onSelectPullRequest?.(pullRequest)}
-        />
-      );
-    });
+  const { rowRefs, handleListKeyDown } = useTeamInboxListKeyboard({
+    orderedInboxItems,
+    selectedIndex,
+    onSelectItem,
+  });
   const renderInboxRows = (
     rowItems: readonly TeamInboxItem[],
     label: string,
@@ -612,56 +282,35 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
             {PULL_REQUEST_LOAD_WARNING_ENABLED &&
             showPullRequestsError &&
             pullRequestsError ? (
-              <PageNotice
-                type="warning"
-                className="mx-3 mb-2"
-                title={t("teamInbox.errors.pullRequestsPartialLoad")}
-                action={
-                  <Button
-                    htmlType="button"
-                    variant="tertiary"
-                    size="small"
-                    icon={
-                      <HugeiconsIcon
-                        icon={InformationCircleIcon}
-                        data-icon="info"
-                        size={14}
-                        strokeWidth={1.8}
-                      />
-                    }
-                    iconOnly
-                    className="h-7 w-7"
-                    aria-label={t("common:common.details")}
-                    title={t("common:common.details")}
-                    data-testid="team-inbox-partial-load-info"
-                    onClick={() =>
-                      setPullRequestsErrorUi((current) => ({
-                        ...current,
-                        detailed: !current.detailed,
-                      }))
-                    }
-                  />
+              <TeamInboxPullRequestsNotice
+                error={pullRequestsError}
+                detailed={showPullRequestsErrorDetails}
+                onToggleDetails={() =>
+                  setPullRequestsErrorUi((current) => ({
+                    ...current,
+                    detailed: !current.detailed,
+                  }))
                 }
-                onClose={() =>
+                onDismiss={() =>
                   setPullRequestsErrorUi((current) => ({
                     ...current,
                     dismissed: true,
                     detailed: false,
                   }))
                 }
-                closeAriaLabel={t("common:actions.close")}
-              >
-                {showPullRequestsErrorDetails ? (
-                  <div className="space-y-1 text-text-2">
-                    <div>
-                      {t("teamInbox.errors.pullRequestsPartialLoadHelp")}
-                    </div>
-                    <div className="text-[11px] wrap-break-word text-text-3">
-                      {pullRequestsError}
-                    </div>
-                  </div>
-                ) : null}
-              </PageNotice>
+              />
+            ) : null}
+            {showPrSkeletons ? (
+              <>
+                {renderSkeletonSection(
+                  "pr-review-requested",
+                  t("teamInbox.sections.reviewRequested")
+                )}
+                {renderSkeletonSection(
+                  "pr-authored",
+                  t("teamInbox.sections.authoredByMe")
+                )}
+              </>
             ) : null}
             {showPullRequests &&
             pullRequestSections.reviewRequested.length > 0 ? (
@@ -669,7 +318,11 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
                 title={t("teamInbox.sections.reviewRequested")}
                 testId="team-inbox-pr-review-requested"
               >
-                {renderPullRequestRows(pullRequestSections.reviewRequested)}
+                <TeamInboxPullRequestRows
+                  pullRequests={pullRequestSections.reviewRequested}
+                  selectedPullRequestKey={selectedPullRequestKey}
+                  onSelectPullRequest={onSelectPullRequest}
+                />
               </TeamInboxListSection>
             ) : null}
             {showPullRequests &&
@@ -678,7 +331,11 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
                 title={t("teamInbox.sections.authoredByMe")}
                 testId="team-inbox-pr-authored"
               >
-                {renderPullRequestRows(pullRequestSections.authoredByViewer)}
+                <TeamInboxPullRequestRows
+                  pullRequests={pullRequestSections.authoredByViewer}
+                  selectedPullRequestKey={selectedPullRequestKey}
+                  onSelectPullRequest={onSelectPullRequest}
+                />
               </TeamInboxListSection>
             ) : null}
             {filter === "all" ? (
@@ -723,7 +380,26 @@ const TeamInboxList: React.FC<TeamInboxListProps> = ({
             ) : items.length > 0 ? (
               renderInboxRows(items, t("teamInbox.itemsLabel"))
             ) : null}
-            {showSkeletonRows ? <ListPanelSkeletonRows /> : null}
+            {showInboxSkeletons ? (
+              filter === "all" ? (
+                <>
+                  {renderSkeletonSection(
+                    "mentions",
+                    t("teamInbox.filters.mentions")
+                  )}
+                  {renderSkeletonSection(
+                    "assigned",
+                    t("teamInbox.filters.assigned")
+                  )}
+                  {renderSkeletonSection(
+                    "updates",
+                    t("teamInbox.sections.updates")
+                  )}
+                </>
+              ) : (
+                renderSkeletonSection(filter, t(`teamInbox.filters.${filter}`))
+              )
+            ) : null}
           </div>
           {loadMoreAction}
         </ListPanelScrollArea>

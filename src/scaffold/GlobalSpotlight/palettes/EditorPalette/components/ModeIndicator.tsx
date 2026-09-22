@@ -32,5 +32,3 @@ export const ModeIndicator: React.FC<ModeIndicatorProps> = ({ mode }) => {
     </div>
   );
 };
-
-export default ModeIndicator;

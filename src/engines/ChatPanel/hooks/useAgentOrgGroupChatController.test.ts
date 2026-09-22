@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   groupChatRetryRequest,
-  isDirectAgentOrgMemberView,
   isDurableGroupDeliveryOutcomeUnknown,
   isGroupRetryEnvelopeDurable,
+} from "./agentOrgGroupChatRetry";
+import {
+  isDirectAgentOrgMemberView,
   shouldBlockPausedAgentOrgGroupChatSubmit,
   shouldRouteAgentOrgGroupChatSubmit,
   shouldUseAgentOrgMemberGroupTransport,
-} from "./useAgentOrgGroupChatController";
+} from "./agentOrgGroupChatRouting";
 
 describe("Agent Org group chat routing boundary", () => {
   it("treats a non-coordinator Member as a direct-work view", () => {

@@ -6,16 +6,16 @@ import Select, { type SelectOption } from "@src/components/Select";
 import TagsInput from "@src/components/TagsInput";
 import Textarea from "@src/components/Textarea";
 import {
+  SECTION_CONTROL_STYLE,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
+import {
   FAMILIAR_LANGUAGE_TECH_STACKS,
   type FamiliarLanguageTechStack,
   TECH_SAVVY_LEVELS,
   type UserTechSavvySelection,
 } from "@src/config/profile/userProfile";
-import {
-  SECTION_CONTROL_STYLE,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import { updateSettingAtom, useAllSettings } from "@src/store/settings";
 
 export const MyRolesProfileTab: React.FC = () => {

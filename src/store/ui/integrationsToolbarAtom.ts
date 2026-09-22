@@ -35,13 +35,4 @@ interface AddSignal {
   seq: number;
 }
 
-let addSignalSeq = 0;
-
 export const integrationsAddSignalAtom = atom<AddSignal | null>(null);
-
-export const dispatchIntegrationsAddAtom = atom(
-  null,
-  (_get, set, action: AddAction) => {
-    set(integrationsAddSignalAtom, { action, seq: ++addSignalSeq });
-  }
-);

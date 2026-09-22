@@ -1,0 +1,86 @@
+.json-tree-view__content {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.json-node__row {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 4px;
+  transition: background-color 0.1s;
+}
+.json-node__row:hover {
+  background-color: var(--color-fill-1);
+}
+.json-node__row--expandable {
+  cursor: var(--interactive-cursor, default);
+}
+.json-node__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex-shrink: 0;
+  color: var(--color-text-3);
+  transition: color 0.1s;
+}
+.json-node__toggle:hover {
+  color: var(--color-text-1);
+}
+.json-node__toggle-placeholder {
+  width: 20px;
+  flex-shrink: 0;
+}
+.json-node__more {
+  color: var(--color-text-3);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+/* Key styling */
+.json-key {
+  color: var(--color-primary-6);
+  font-weight: 500;
+}
+
+.json-colon {
+  color: var(--color-text-3);
+}
+
+/* Bracket styling */
+.json-bracket {
+  color: var(--color-text-2);
+}
+
+/* Collapsed preview */
+.json-preview {
+  color: var(--color-text-3);
+  margin-left: 4px;
+}
+
+/* Value styling with type-specific colors */
+.json-value {
+  cursor: var(--interactive-cursor, default);
+  border-radius: 2px;
+  transition: background-color 0.1s;
+}
+.json-value:hover {
+  background-color: var(--color-fill-2);
+}
+.json-value--null {
+  color: #7c7c7c;
+  font-style: italic;
+}
+.json-value--boolean {
+  color: #569cd6; /* Blue for booleans */
+}
+.json-value--number {
+  color: #b5cea8; /* Green for numbers */
+}
+.json-value--string {
+  color: #ce9178; /* Orange/brown for strings */
+  word-break: break-word;
+}
+
+/* Dark mode adjustments handled by CSS variables */

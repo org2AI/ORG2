@@ -46,7 +46,8 @@
     "projectManager": "Project Manager",
     "diff": "Diff",
     "terminals": "Terminals",
-    "teamInbox": "Team Inbox"
+    "teamInbox": "Team Inbox",
+    "closeSettings": "Close Settings"
   },
   "workstation": {
     "agentComputer": {
@@ -96,12 +97,7 @@
       "manual": "Manual order"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "Manage",
-      "core": "Core",
-      "agent": "Agent",
-      "org": "Team",
-      "agentOrgs": "Agent & Team"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "No grouping",
@@ -123,57 +119,23 @@
       "untitledSession": "Untitled Session",
       "enterSessionName": "Enter session name"
     },
-    "groups": {
-      "economy": "Economy",
-      "myServices": "My Services",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Hosted Key",
-      "cloud": "Cloud",
-      "openSource": "Open Source",
-      "timeline": "Timeline"
-    },
     "actions": {
       "addNew": "Add New",
       "collapseAll": "Collapse All",
-      "markAllRead": "Mark All Read",
-      "toggleGroup": "Toggle section"
+      "markAllRead": "Mark All Read"
     },
     "search": {
-      "folders": "Search Workspace...",
-      "sessions": "Search Sessions...",
-      "colleagues": "Search colleagues...",
-      "projects": "Search projects..."
-    },
-    "folderCounts": {
-      "repo": "{{count}} repo",
-      "repo_plural": "{{count}} repos",
-      "multiRepoWorkspace": "{{count}} Multi-Repo Workspace",
-      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces",
-      "repo_other": "{{count}} repos",
-      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces"
+      "sessions": "Search Sessions..."
     },
     "bottomBar": {
       "settings": "Settings",
-      "clockLabel": "Current time",
       "updateAvailable": "Download update v{{version}}"
     },
     "settingsMenu": {
       "appearance": "Appearance",
       "modifyAppearance": "Modify appearance",
-      "language": "Language",
       "viewRam": "View RAM",
-      "tutorials": "Tutorials",
       "openSettings": "Open Settings"
-    },
-    "empty": {
-      "noItems": "No items",
-      "noSessions": "No sessions",
-      "noSessionsDesc": "Start a new session to begin",
-      "noResultsFor": "No results for \"{{query}}\"",
-      "noSearchResults": "No results found"
     },
     "presence": {
       "tooltip": "Set your availability — agents will adapt to whether you're at the keyboard.",
@@ -191,9 +153,18 @@
       "durationTomorrow": "Tomorrow",
       "unknownRole": "Unknown role"
     },
-    "guide": {
-      "startSession": "Start a session",
-      "connectOrganization": "Connect or create a workspace"
+    "sections": {
+      "section": "Section",
+      "create": "New section",
+      "name": "Section name",
+      "rename": "Rename section",
+      "delete": "Delete section (keep sessions)",
+      "remove": "Remove from section",
+      "up": "Move up",
+      "down": "Move down",
+      "manage": "Manage section",
+      "more": "Load more",
+      "retry": "Retry"
     }
   },
   "collaboration": {
@@ -216,11 +187,11 @@
       "forkModelFallback": "The owner's model {{model}} isn't available with your keys — this fork will use {{fallback}} instead.",
       "forkModelUnavailable": "The owner's model {{model}} isn't available with your keys — choose a model before running this fork.",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -268,26 +239,26 @@
     "deleteRoleCancel": "Cancel",
     "deleteRoleOk": "Delete",
     "deleteRoleTitle": "Delete role?",
-    "followUpSuggestionsDesc": "Suggest possible next steps after a completed Work Item turn. This uses an additional model request.",
+    "followUpSuggestionsDesc": "Suggest possible next steps after a completed Work Item turn. This uses an additional model request",
     "followUpSuggestionsLabel": "Agent follow-up suggestions",
-    "goalMaxTurnsDesc": "Keep working toward my last request for up to N extra turns after the agent would normally stop (0 = off).",
+    "goalMaxTurnsDesc": "Keep working toward my last request for up to N extra turns after the agent would normally stop (0 = off)",
     "goalMaxTurnsLabel": "Goal continuation budget",
     "guidanceLabel": "Agent guidance",
     "guidancePlaceholder": "How should the agent adapt its behavior when this role is active?",
-    "modeSwitchAutoPlanDesc": "Auto-switch pending Plan mode suggestions when their confirmation timer expires.",
+    "modeSwitchAutoPlanDesc": "Auto-switch pending Plan mode suggestions when their confirmation timer expires",
     "modeSwitchAutoPlanLabel": "Mode switch auto-plan",
     "newRoleDefaultLabel": "Custom role",
-    "pageDescription": "Define the role you're playing right now. The agent reads the active role's guidance and adapts its behavior accordingly — for example, asking fewer clarifying questions when you're heads-down, or batching summaries when you're away.",
+    "pageDescription": "Define the role you're playing right now. The agent reads the active role's guidance and adapts its behavior accordingly — for example, asking fewer clarifying questions when you're heads-down, or batching summaries when you're away",
     "pageTitle": "My Roles",
-    "planAutoApproveDesc": "Auto-approve pending plans after N seconds (0 = wait for me).",
+    "planAutoApproveDesc": "Auto-approve pending plans after N seconds (0 = wait for me)",
     "planAutoApproveLabel": "Plan auto-approve",
-    "questionAutoSkipDesc": "Auto-skip pending agent questions after N seconds (0 = wait for me).",
+    "questionAutoSkipDesc": "Auto-skip pending agent questions after N seconds (0 = wait for me)",
     "questionAutoSkipLabel": "Question auto-skip",
     "roleNameLabel": "Name",
     "roleNamePlaceholder": "Role name",
     "stanceAutonomous": "Autonomous — never wait for me",
     "stanceDeferAndBatch": "Defer & batch — work first, ask later",
-    "stanceDesc": "How the agent treats blocking decisions while this role is active.",
+    "stanceDesc": "How the agent treats blocking decisions while this role is active",
     "stanceInteractive": "Interactive — ask me freely",
     "stanceLabel": "Behavior stance"
   },
@@ -392,9 +363,9 @@
       "switchToRepo": "Open",
       "startSession": "Start session",
       "openDetails": "Show details",
-      "remove": "Remove from ORGII",
-      "removeSuccess": "Linkage to ORGII removed",
-      "removeFailed": "Failed to remove linkage to ORGII"
+      "remove": "Remove from ORG2",
+      "removeSuccess": "Linkage to ORG2 removed",
+      "removeFailed": "Failed to remove linkage to ORG2"
     },
     "addWorkspace": "Add workspace"
   },
@@ -538,7 +509,6 @@
       "showHidden": "Show hidden sessions ({{count}})",
       "viewerTooltip": "{{name}} is viewing this session",
       "viewerOverflow": "and {{count}} more viewers",
-      "memberViewing": "viewing: {{title}}",
       "viewerOverflow_one": "and 1 more viewer",
       "viewerOverflow_other": "and {{count}} more viewers",
       "loadingSession": "Loading session…",
@@ -720,7 +690,7 @@
       "selectAll": "Everyone ({{count}})",
       "incomingEndpointMismatch": "This share belongs to a different custom cloud. Configure that cloud endpoint before importing.",
       "incomingConnectionError": "Couldn't connect to the cloud service. Check your network and try again.",
-      "incomingIncompatibleError": "This cloud returned an incompatible share response. Update ORGII or verify the cloud deployment.",
+      "incomingIncompatibleError": "This cloud returned an incompatible share response. Update ORG2 or verify the cloud deployment.",
       "incomingServerError": "The cloud service couldn't resolve this share. Try again.",
       "incomingAlreadyOnDevice": "This session is already on this device. Open the original instead of importing a duplicate.",
       "incomingOpenExisting": "Open session",
@@ -732,32 +702,16 @@
       "unresolvedBadge": "{{count}} unresolved comments",
       "unreadBadge_one": "{{count}} unread message",
       "unreadBadge": "{{count}} unread messages",
-      "addError": "Couldn't post — your draft was kept",
-      "addPlaceholder": "Add a comment…",
-      "agentAddressing": "Agent is addressing…",
       "agentAuthor": "Agent @{{name}}",
-      "cancel": "Cancel",
-      "delete": "Delete",
       "deletedComment": "Comment deleted",
       "earlierVersion": "From an earlier version of this session",
-      "edit": "Edit",
       "editedMarker": "edited",
       "empty": "No comments yet",
       "loadError": "Couldn't load comments",
-      "mentionMembers": "Mention",
       "notesButton": "Session notes",
       "notesTitle": "Session notes",
-      "reply": "Reply",
-      "replyPlaceholder": "Reply…",
       "resolved": "Resolved",
       "resolvedToggle": "Resolved ({{count}})",
-      "save": "Save",
-      "searchMembers": "Search members",
-      "send": "Comment",
-      "task": {
-        "assignFailed": "Comment posted, but assigning the agent failed — retry from the thread",
-        "mentionSuggestion": "Assign this comment to an agent"
-      },
       "wontFix": "Won't fix"
     },
     "billing": {
@@ -896,7 +850,6 @@
         "errorChannelMissing": "This channel is no longer available",
         "errorMessageMissing": "That message is no longer available",
         "loadError": "Couldn't load messages",
-        "loadingMessages": "Loading messages…",
         "loadOlder": "Load earlier messages",
         "unknownAuthor": "Teammate"
       }
@@ -973,5 +926,10 @@
     "sidebar": {
       "signOut": "Sign out {{name}}"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Replacement stopped because the results or file changed, or a write failed. Some files may already be updated. Search again before retrying.",
+    "budgetExceeded": "Search reached its resource budget. Results are partial; narrow the search scope.",
+    "timeout": "Search timed out. Narrow the search scope and try again."
   }
 }

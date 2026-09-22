@@ -95,7 +95,6 @@ function OrgShareSection({
             </div>
             <div>
               <Button
-                htmlType="button"
                 size="small"
                 loading={model.busy}
                 disabled={
@@ -117,7 +116,6 @@ function OrgShareSection({
         </div>
         <div>
           <Button
-            htmlType="button"
             size="small"
             loading={model.busy}
             disabled={!model.canShare}
@@ -143,7 +141,6 @@ function OrgShareSection({
                   : t("cloud.share.linkShownOnce")}
               </span>
               <Button
-                htmlType="button"
                 size="small"
                 variant="primary"
                 icon={
@@ -201,8 +198,6 @@ function OrgShareSection({
                   </span>
                 </span>
                 <Button
-                  htmlType="button"
-                  variant="secondary"
                   size="small"
                   disabled={model.busy}
                   onClick={() => void model.handleRevokeShare(share.id)}

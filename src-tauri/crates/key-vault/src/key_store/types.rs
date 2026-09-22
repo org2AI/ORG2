@@ -384,6 +384,14 @@ fn generate_key_id() -> String {
     Uuid::new_v4().to_string()[..8].to_string()
 }
 
+/// `account_metadata` key recording how the account was added, so reconnect
+/// can offer the same method again. Values mirror the wizard's setup methods
+/// (`signin`, `autodetect`, `enter_token`, ...).
+pub const ACCOUNT_SETUP_METHOD_METADATA_KEY: &str = "setup_method";
+/// Setup method of an account copied from another tool's local login (wizard
+/// auto-detect or the credential scan). Its tokens are shared with that tool.
+pub const ACCOUNT_SETUP_METHOD_AUTODETECT: &str = "autodetect";
+
 /// Stored API key / token entry for a CLI agent or provider.
 ///
 /// Two boolean flags express the listing state:
@@ -416,6 +424,20 @@ pub struct ModelKey {
     pub account_metadata: HashMap<String, String>,
     #[serde(default)]
     pub auth_method: AuthMethod,
+    /// Changes on explicit credential replacement, never on OAuth rotation.
+    /// Old managed profiles and in-flight results belong to their original generation.
+    #[serde(default)]
+    pub credential_generation: u64,
+    /// Exact local Codex login copied by the import; never exposed in KeyInfo.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codex_cli_auth_path: Option<std::path::PathBuf>,
+    /// Hash of the source refresh token awaiting a best-effort writeback.
+    /// Kept with private credentials; no background task or raw spent token.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codex_pending_source_token_hash: Option<String>,
+    /// Distinguishes refresh failure disablement from the user's master switch.
+    #[serde(default)]
+    pub oauth_auto_disabled: bool,
     #[serde(default)]
     pub available_models: Vec<String>,
     #[serde(default)]
@@ -523,6 +545,10 @@ impl ModelKey {
             env_vars: HashMap::new(),
             account_metadata: HashMap::new(),
             auth_method: AuthMethod::ApiKey,
+            credential_generation: 0,
+            codex_cli_auth_path: None,
+            codex_pending_source_token_hash: None,
+            oauth_auto_disabled: false,
             available_models: Vec::new(),
             quota_info: None,
             created_at: Utc::now(),
@@ -546,6 +572,24 @@ impl ModelKey {
             rate_limit_reset_at: None,
             enabled: true,
         }
+    }
+
+    /// Compare credential material, not quota/catalog/health metadata.
+    pub(crate) fn same_credential_material(&self, other: &Self) -> bool {
+        self.model_type == other.model_type
+            && self.auth_method == other.auth_method
+            && self.api_key == other.api_key
+            && self.session_token == other.session_token
+            && self.base_url == other.base_url
+            && self.env_vars == other.env_vars
+    }
+
+    /// Check under the persistence lock before refresh writes. Enable/disable
+    /// changes do not invalidate token rotation; completion preserves manual disable.
+    pub fn matches_oauth_snapshot(&self, expected: &Self) -> bool {
+        self.credential_generation == expected.credential_generation
+            && self.codex_cli_auth_path == expected.codex_cli_auth_path
+            && self.same_credential_material(expected)
     }
 
     /// Drop unfinished custom-row placeholders that older wizards persisted.
@@ -572,7 +616,8 @@ impl ModelKey {
         if stale.is_empty() {
             return;
         }
-        self.model_aliases.retain(|alias| !stale.contains(&alias.alias));
+        self.model_aliases
+            .retain(|alias| !stale.contains(&alias.alias));
         self.available_models.retain(|model| !stale.contains(model));
         self.enabled_models.retain(|model| !stale.contains(model));
     }

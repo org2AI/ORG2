@@ -1,11 +1,14 @@
 import type { ReactNode, RefObject } from "react";
 
-import ComposerSurface from "@src/components/ComposerSurface";
 import Input from "@src/components/Input";
 import { GHOST_INPUT_PLACEHOLDER_CLASS } from "@src/components/Input/tokens";
-import { PropertyDropdownDirectionProvider } from "@src/components/PropertyField/PropertyDropdownDirection";
+import {
+  type PropertyDropdownDirection,
+  PropertyDropdownDirectionProvider,
+} from "@src/components/PropertyField/PropertyDropdownDirection";
 import { COMPOSER_HORIZONTAL_GUTTER_CLASS } from "@src/config/composerStackTokens";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
+import ComposerSurface from "@src/engines/ChatPanel/ComposerSurface";
 
 export interface CreateComposerTitleInputProps {
   /**
@@ -61,14 +64,16 @@ export function CreateComposerHeader({
 }
 
 export function CreateComposerPinnedActions({
+  direction = "up",
   children,
   dataTestId,
 }: {
   children?: ReactNode;
   dataTestId: string;
+  direction?: PropertyDropdownDirection;
 }) {
   return (
-    <PropertyDropdownDirectionProvider direction="up">
+    <PropertyDropdownDirectionProvider direction={direction}>
       <div
         className="flex min-w-0 flex-nowrap items-center gap-1.5"
         data-testid={dataTestId}
@@ -109,7 +114,7 @@ export function ManualCreateComposer({
 }: ManualCreateComposerProps) {
   return (
     <div
-      className={`session-creator-chat-panel-wrapper ${CHAT_PANEL_WIDTH_TOKENS.headerWidth} w-full shrink-0 ${COMPOSER_HORIZONTAL_GUTTER_CLASS}`}
+      className={`session-creator-chat-panel-wrapper ${CHAT_PANEL_WIDTH_TOKENS.headerWidth} w-full shrink-0 ${spotlight ? "" : COMPOSER_HORIZONTAL_GUTTER_CLASS}`}
       data-testid={dataTestId}
     >
       <div

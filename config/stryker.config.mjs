@@ -8,7 +8,8 @@ export default {
   ],
   testRunner: "vitest",
   plugins: ["@stryker-mutator/vitest-runner"],
-  vitest: { configFile: "config/vitest.mutation.config.ts" },
+  // The dedicated config already selects exactly the mutation boundary tests.
+  vitest: { configFile: "config/vitest.mutation.config.ts", related: false },
   concurrency: 1,
   coverageAnalysis: "perTest",
   reporters: ["clear-text", "json"],

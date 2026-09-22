@@ -7,10 +7,11 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
+import Button from "@src/components/Button";
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import { Placeholder } from "@src/components/Placeholder";
+import { VirtualList } from "@src/components/VirtualList";
 import { ComposerStackListRow } from "@src/engines/ChatPanel/blocks/primitives";
 import { FileHeader } from "@src/modules/WorkStation/shared";
 import {
@@ -211,8 +212,8 @@ const DirectoryExplorerContent: React.FC<DirectoryExplorerContentProps> = memo(
           : undefined;
 
         return (
-          <button
-            type="button"
+          <Button
+            layout="custom"
             className="block w-full text-left"
             onClick={() => handleOpenItem(item)}
           >
@@ -240,7 +241,7 @@ const DirectoryExplorerContent: React.FC<DirectoryExplorerContentProps> = memo(
               layout="columns"
               columnsClassName="grid-cols-[minmax(180px,1fr)_minmax(280px,2fr)_120px]"
             />
-          </button>
+          </Button>
         );
       },
       [handleOpenItem]
@@ -313,12 +314,12 @@ const DirectoryExplorerContent: React.FC<DirectoryExplorerContentProps> = memo(
             fillParentHeight
           />
         ) : (
-          <Virtuoso
+          <VirtualList
             className="scrollbar-hide min-h-0 flex-1 pt-1"
             data={listItems}
             computeItemKey={(_index, item) => `${item.type}:${item.path}`}
             fixedItemHeight={DIRECTORY_ROW_HEIGHT}
-            overscan={DIRECTORY_ROW_HEIGHT * 8}
+            overscanPx={DIRECTORY_ROW_HEIGHT * 8}
             itemContent={(_index, item) => (
               <div className="px-1 pb-0.5">{renderDirectoryItem(item)}</div>
             )}

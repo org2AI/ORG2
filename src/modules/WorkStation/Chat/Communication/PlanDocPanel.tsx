@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Markdown from "@src/components/MarkDown";
+import Textarea from "@src/components/Textarea";
 import { SessionReplayCodeMirrorViewer } from "@src/modules/WorkStation/CodeEditor/SessionReplay/CodePanel";
 
 interface PlanDocPanelProps {
@@ -55,11 +56,20 @@ export const PlanDocPanel: React.FC<PlanDocPanelProps> = memo(
         ) : null}
         <div className="code-viewer-scroll-container relative min-h-0 flex-1 overflow-hidden">
           {editState ? (
-            <textarea
+            <Textarea
+              appearance="bare"
+              resize="none"
+              className="h-full w-full [&>.textarea-inner]:h-full"
+              textareaClassName="scrollbar-overlay"
+              textareaStyle={{
+                height: "100%",
+                maxHeight: "none",
+                padding: 16,
+                fontSize: 13,
+              }}
               data-testid="plan-doc-editor"
-              className="scrollbar-overlay h-full w-full resize-none bg-bg-1 p-4 text-[13px] leading-relaxed text-text-1 outline-none"
               value={editState.value}
-              onChange={(e) => editState.onChange(e.target.value)}
+              onChange={(_value, e) => editState.onChange(e.target.value)}
               spellCheck={false}
               autoFocus
             />

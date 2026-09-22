@@ -31,8 +31,8 @@ pub use range::{
 pub use recovery::recover_incomplete_replays;
 pub use writer::ShellReplayWriter;
 
-pub use range::__cmd__shell_replay_read_range;
 pub(super) use range::load_complete_replay_state_if_matches;
+pub use range::{__cmd__shell_replay_read_range, __tauri_command_name_shell_replay_read_range};
 pub(super) use text::complete_terminal_prefix_len;
 #[cfg(test)]
 pub(super) use text::complete_utf8_prefix_len;

@@ -1,0 +1,52 @@
+{
+  "rollout": [
+    {
+      "timestamp": "2026-09-18T15:28:50.000Z",
+      "type": "event_msg",
+      "payload": { "type": "task_started", "turn_id": "provider-failed-turn" }
+    },
+    {
+      "timestamp": "2026-09-18T15:28:50.100Z",
+      "type": "event_msg",
+      "payload": {
+        "type": "user_message",
+        "message": "<ide_context>\norgii-turn-intent:failed-intent\n</ide_context>\n\nRecall the remembered marker. No tools."
+      }
+    },
+    {
+      "timestamp": "2026-09-18T15:28:53.885Z",
+      "type": "event_msg",
+      "payload": {
+        "type": "task_complete",
+        "turn_id": "provider-failed-turn",
+        "last_agent_message": null,
+        "error": {
+          "message": "unexpected status 503 Service Unavailable: model_temporarily_unavailable",
+          "codex_error_info": "other"
+        }
+      }
+    }
+  ],
+  "diagnostic": {
+    "id": "codex-error-2",
+    "actionType": "error",
+    "functionName": "error",
+    "args": {
+      "__orgiiNativeTerminalDiagnostic": {
+        "provider": "codex",
+        "event": "task_complete",
+        "providerTurnId": "provider-failed-turn"
+      }
+    },
+    "result": {
+      "error": "unexpected status 503 Service Unavailable: model_temporarily_unavailable",
+      "observation": "unexpected status 503 Service Unavailable: model_temporarily_unavailable",
+      "success": false
+    }
+  },
+  "failedLifecycle": {
+    "actionType": "task_failed",
+    "functionName": "task_failed",
+    "args": { "providerTurnId": "provider-failed-turn" }
+  }
+}

@@ -17,8 +17,6 @@ export interface ChatViewProps {
   conversationTargetBinding?: ConversationTargetBinding | null;
   displayMode?: ChatHistoryDisplayMode;
   turnPaginationEnabled?: boolean;
-  /** Dock side for the containing chat panel, used to place side previews inward. */
-  position?: "left" | "right";
   /**
    * Height of the floating tab/published-header chrome overlaying the pane
    * top. The pinned-header host and transcript top padding clear this

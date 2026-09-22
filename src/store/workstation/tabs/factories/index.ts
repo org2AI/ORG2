@@ -20,7 +20,6 @@ export {
   createDirectoryTab,
   createExplorerTab,
   createStartTab,
-  createGitDiffTab,
   createTimelineDiffTab,
   createSourceControlTab,
   createGitLogTab,
@@ -73,9 +72,6 @@ export type {
   ProjectLinearSurfaceView,
   ProjectDetailSurfaceView,
 } from "./project";
-
-// Subagent
-export { createSubagentDetailTab } from "./subagent";
 
 // Agent Config
 export { agentConfigTabFactory, createAgentConfigTab } from "./agentConfig";

@@ -151,6 +151,26 @@ pub fn abandon_pending(conn: &Connection, learning_id: &str) -> SqliteResult<boo
     Ok(true)
 }
 
+/// Abandon every pending learning of `agent_scope` that is billed to
+/// `account_id`. Used when the key-vault account no longer exists: no
+/// consolidation model can ever be resolved for those rows, so leaving
+/// them pending would re-fail on every trigger forever. Returns the number
+/// of rows moved out of the queue.
+pub fn abandon_pending_for_account(
+    conn: &Connection,
+    agent_scope: &str,
+    account_id: &str,
+) -> SqliteResult<u64> {
+    let now = Utc::now().to_rfc3339();
+    let rows = conn.execute(
+        "UPDATE learnings
+         SET status = 'abandoned', updated_at = ?1
+         WHERE agent_scope = ?2 AND account_id = ?3 AND status = 'pending'",
+        params![now, agent_scope, account_id],
+    )?;
+    Ok(rows as u64)
+}
+
 /// Feedback loop — mark a learning as just-recalled. Updates
 /// `last_recalled_at` (and `updated_at`) so the §4.1 decay formula treats
 /// the learning as "fresh". Deliberately does NOT bump

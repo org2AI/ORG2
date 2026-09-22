@@ -21,7 +21,7 @@ export function WebShell() {
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-50 flex xl:hidden">
           <Button
-            appearance="ghost"
+            variant="ghost"
             className="absolute inset-0 h-full w-full rounded-none bg-black/30"
             aria-label={t("common:actions.close", "Close")}
             onClick={() => setMobileSidebarOpen(false)}
@@ -40,7 +40,7 @@ export function WebShell() {
           <Button
             iconOnly
             size="mini"
-            appearance="ghost"
+            variant="ghost"
             icon={
               <HugeiconsIcon
                 icon={mobileSidebarOpen ? Cancel01Icon : Menu01Icon}

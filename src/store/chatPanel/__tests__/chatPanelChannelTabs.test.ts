@@ -6,7 +6,6 @@ import {
   openChannelInChatPanelTabAtom,
   reconcileDiscussionChannelTabsAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
-import { normalizePersistedChatPanelTabsState } from "@src/store/chatPanel/chatPanelTabsModel";
 import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import {
   createInstrumentedStore,
@@ -18,7 +17,6 @@ function loadChannelTabAtoms() {
     buildChannelTabKey,
     chatPanelTabsAtom,
     closeChatPanelTabAtom,
-    normalizePersistedChatPanelTabsState,
     openChannelInChatPanelTabAtom,
     reconcileDiscussionChannelTabsAtom,
     store: createInstrumentedStore(),
@@ -132,21 +130,6 @@ describe("openChannelInChatPanelTabAtom", () => {
 
     atoms.store.set(atoms.openChannelInChatPanelTabAtom, LOCAL_CHANNEL);
     expect(channelTabs()).toHaveLength(1);
-  });
-
-  it("survives persistence normalization", () => {
-    const tabId = atoms.store.set(
-      atoms.openChannelInChatPanelTabAtom,
-      CLOUD_CHANNEL
-    );
-    const normalized = atoms.normalizePersistedChatPanelTabsState(
-      atoms.store.get(atoms.chatPanelTabsAtom)
-    );
-
-    expect(normalized?.tabs.find((tab) => tab.id === tabId)).toMatchObject({
-      type: "channel",
-      channel: CLOUD_CHANNEL,
-    });
   });
 
   it("closes inaccessible channel tabs without touching other scopes or orgs", () => {

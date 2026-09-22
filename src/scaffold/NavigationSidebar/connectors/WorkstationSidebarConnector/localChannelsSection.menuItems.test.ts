@@ -91,7 +91,7 @@ describe("local channel rows", () => {
     const moreAction = row.rowActions?.[0];
     expect(moreAction?.dataTestId).toBe("local-channel-more-ch-a");
     moreAction?.onClick({} as never);
-    expect(onOpenChannelMenu).toHaveBeenCalledWith(channel);
+    expect(onOpenChannelMenu).toHaveBeenCalledWith(channel, {});
   });
 
   it("shows a clickable muted create row when there are zero channels", () => {

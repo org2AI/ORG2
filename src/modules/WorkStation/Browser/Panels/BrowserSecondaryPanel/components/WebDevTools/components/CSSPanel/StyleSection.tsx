@@ -5,6 +5,7 @@
  */
 import React, { memo, useCallback, useState } from "react";
 
+import Button from "@src/components/Button";
 import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
 import { EditableStyleRow } from "./EditableStyleRow";
@@ -74,7 +75,8 @@ export const StyleSection: React.FC<StyleSectionProps> = memo(
     return (
       <div className="mb-1">
         {/* Section header */}
-        <button
+        <Button
+          layout="custom"
           onClick={handleToggle}
           className="flex w-full items-center gap-1.5 py-1.5 text-left"
         >
@@ -97,7 +99,7 @@ export const StyleSection: React.FC<StyleSectionProps> = memo(
             {title}
           </span>
           <span className="text-[11px] text-text-3">{entries.length}</span>
-        </button>
+        </Button>
 
         {/* Properties */}
         {isExpanded && (

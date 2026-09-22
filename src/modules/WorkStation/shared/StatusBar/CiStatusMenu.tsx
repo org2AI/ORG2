@@ -14,6 +14,8 @@ import React, { memo, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
+import { CiCheckStateIcon } from "@src/components/CiCheckStateIcon";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
@@ -26,13 +28,9 @@ import { useActiveRepoRef } from "@src/hooks/git/useActiveRepoRef";
 import { useBranchPullRequestStatus } from "@src/hooks/git/useBranchPullRequestStatus";
 import {
   ArrowUpRight01Icon,
-  CancelCircleIcon,
-  CheckmarkCircle01Icon,
   CircleDashedIcon,
-  CircleSlashIcon,
   GitPullRequestIcon,
   HugeiconsIcon,
-  Loading03Icon,
   Refresh04Icon,
 } from "@src/icons";
 import type { BranchCiStatus } from "@src/services/git/branchPullRequestStatus";
@@ -43,9 +41,9 @@ import {
   countCheckStates,
   flattenChecks,
 } from "@src/services/git/ciCheckState";
-import { openExternalLink } from "@src/util/platform/ipcRenderer";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 import { classNames } from "@src/util/ui/classNames";
+import { openLink } from "@src/util/ui/openLink";
 
 import { StatusBarButton, StatusBarLabel } from "./StatusBarBase";
 import { StatusBarTooltip } from "./StatusBarTooltip";
@@ -59,66 +57,15 @@ interface CiStatusMenuProps {
   headRevision?: string;
 }
 
-function CheckStateIcon({
-  state,
-  size = MENU_ICON_SIZE,
-}: {
-  state: CiCheckState;
-  size?: number;
-}): React.ReactNode {
-  switch (state) {
-    case "success":
-      return (
-        <HugeiconsIcon
-          icon={CheckmarkCircle01Icon}
-          data-icon="check-circle-2"
-          size={size}
-          strokeWidth={1.9}
-          className="text-success-6"
-        />
-      );
-    case "failure":
-      return (
-        <HugeiconsIcon
-          icon={CancelCircleIcon}
-          data-icon="xcircle"
-          size={size}
-          strokeWidth={1.9}
-          className="text-danger-6"
-        />
-      );
-    case "pending":
-      return (
-        <HugeiconsIcon
-          icon={Loading03Icon}
-          data-icon="loader"
-          size={size}
-          strokeWidth={1.9}
-          className="animate-spin text-warning-6"
-        />
-      );
-    default:
-      return (
-        <HugeiconsIcon
-          icon={CircleSlashIcon}
-          data-icon="circle-slash"
-          size={size}
-          strokeWidth={1.9}
-          className="text-text-3"
-        />
-      );
-  }
-}
-
 function BranchCiIcon({ status }: { status: BranchCiStatus }): React.ReactNode {
   switch (status) {
     case "success":
-      return <CheckStateIcon state="success" size={13} />;
+      return <CiCheckStateIcon state="success" size={13} />;
     case "failure":
-      return <CheckStateIcon state="failure" size={13} />;
+      return <CiCheckStateIcon state="failure" size={13} />;
     case "pending":
     case "checking":
-      return <CheckStateIcon state="pending" size={13} />;
+      return <CiCheckStateIcon state="pending" size={13} />;
     default:
       return (
         <HugeiconsIcon
@@ -158,7 +105,7 @@ const CheckRow: React.FC<CheckRowProps> = memo(({ item, onOpenDetails }) => {
     <div className={DROPDOWN_CLASSES.menuControlItem}>
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <span className="shrink-0">
-          <CheckStateIcon state={item.state} />
+          <CiCheckStateIcon state={item.state} size={MENU_ICON_SIZE} />
         </span>
         <span className="min-w-0 flex-1 truncate text-text-1" title={title}>
           {item.name}
@@ -174,22 +121,24 @@ const CheckRow: React.FC<CheckRowProps> = memo(({ item, onOpenDetails }) => {
       */}
       <div className="flex shrink-0 items-center gap-0.5">
         {item.detailsUrl && (
-          <button
-            type="button"
-            className="inline-flex h-6 w-6 items-center justify-center rounded text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1"
+          <Button
+            variant="tertiary"
+            size="mini"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={ArrowUpRight01Icon}
+                data-icon="arrow-up-right"
+                size={MENU_ICON_SIZE}
+              />
+            }
             title={t("workstation.ci.viewDetails")}
             aria-label={t("workstation.ci.viewDetails")}
             onClick={(event) => {
               event.stopPropagation();
               onOpenDetails(item.detailsUrl as string);
             }}
-          >
-            <HugeiconsIcon
-              icon={ArrowUpRight01Icon}
-              data-icon="arrow-up-right"
-              size={MENU_ICON_SIZE}
-            />
-          </button>
+          />
         )}
       </div>
     </div>
@@ -246,7 +195,7 @@ export const CiStatusMenu: React.FC<CiStatusMenuProps> = memo(
 
     const handleOpenDetails = useCallback(
       (url: string) => {
-        void openExternalLink(url);
+        openLink(url);
         close();
       },
       [close]
@@ -254,7 +203,7 @@ export const CiStatusMenu: React.FC<CiStatusMenuProps> = memo(
 
     const handleOpenPullRequest = useCallback(() => {
       if (!pr) return;
-      void openExternalLink(pr.url);
+      openLink(pr.url);
       close();
     }, [close, pr]);
 
@@ -358,14 +307,14 @@ export const CiStatusMenu: React.FC<CiStatusMenuProps> = memo(
                   size={MENU_ICON_SIZE}
                   className="shrink-0 text-text-3"
                 />
-                <button
-                  type="button"
+                <Button
+                  layout="custom"
                   className="min-w-0 flex-1 truncate text-left text-text-1 hover:underline"
                   title={t("workstation.ci.openPullRequest")}
                   onClick={handleOpenPullRequest}
                 >
                   {t("git.pr.linkedBranch", { number: pr.number })}
-                </button>
+                </Button>
                 <span className="shrink-0 text-text-3">{statusLabel}</span>
               </div>
 
@@ -397,8 +346,8 @@ export const CiStatusMenu: React.FC<CiStatusMenuProps> = memo(
               </div>
 
               <div className={STATUS_BAR_TOKENS.menuFooterClass}>
-                <button
-                  type="button"
+                <Button
+                  layout="custom"
                   className={classNames(
                     DROPDOWN_CLASSES.menuActionItem,
                     "min-w-0 flex-1 disabled:cursor-default disabled:text-text-3"
@@ -422,7 +371,7 @@ export const CiStatusMenu: React.FC<CiStatusMenuProps> = memo(
                       ? t("workstation.ci.refreshing")
                       : t("workstation.ci.refresh")}
                   </span>
-                </button>
+                </Button>
                 {lastFetchLabel && (
                   <span
                     className={STATUS_BAR_TOKENS.menuTimestampClass}

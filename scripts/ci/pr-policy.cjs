@@ -72,7 +72,19 @@ function validateDescription(body) {
   return errors;
 }
 
-function validatePullRequest({ title, body }) {
+// Use the PR author, never the workflow actor (a maintainer may rerun CI).
+function isDependabotPullRequest({ user, head, base }) {
+  return (
+    user?.login === "dependabot[bot]" &&
+    user?.type === "Bot" &&
+    head?.repo?.full_name != null &&
+    head.repo.full_name === base?.repo?.full_name &&
+    head?.ref?.startsWith("dependabot/") === true
+  );
+}
+
+function validatePullRequest(pullRequest) {
+  const { title, body } = pullRequest;
   const parsedTitle = parseTitle(title);
   const errors = [];
 
@@ -82,7 +94,11 @@ function validatePullRequest({ title, body }) {
     );
   }
 
-  errors.push(...validateDescription(body));
+  if (!isDependabotPullRequest(pullRequest)) {
+    errors.push(...validateDescription(body));
+  } else if (!hasMeaningfulContent(body || "")) {
+    errors.push("Dependabot descriptions must contain meaningful content.");
+  }
   return errors;
 }
 
@@ -106,10 +122,7 @@ async function main() {
     throw new Error("The PR policy workflow requires a pull_request event.");
   }
 
-  const errors = validatePullRequest({
-    title: event.pull_request.title,
-    body: event.pull_request.body || "",
-  });
+  const errors = validatePullRequest(event.pull_request);
 
   if (errors.length > 0) {
     errors.forEach(workflowError);

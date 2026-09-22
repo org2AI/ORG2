@@ -1,8 +1,8 @@
 import { useAtomValue } from "jotai";
 import React, { Suspense, lazy, useMemo } from "react";
 
+import { DetailPanelContainer } from "@src/components/layout/blocks";
 import type { CursorRepo } from "@src/hooks/policies";
-import { DetailPanelContainer } from "@src/modules/shared/layouts/blocks";
 import { reposAtom } from "@src/store/repo";
 
 import { SkillsTable } from "./Table/SkillsTable";

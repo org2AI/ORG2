@@ -38,10 +38,9 @@ describe("INTERNAL_FUNCTIONS set", () => {
     expect(INTERNAL_FUNCTIONS.has("useSetAtom")).toBe(true);
   });
 
-  it("includes axios/API layer names", () => {
-    expect(INTERNAL_FUNCTIONS.has("axios")).toBe(true);
+  it("includes API layer names", () => {
     expect(INTERNAL_FUNCTIONS.has("makeRequest")).toBe(true);
-    expect(INTERNAL_FUNCTIONS.has("captureApiCallStack")).toBe(true);
+    expect(INTERNAL_FUNCTIONS.has("makeDeleteRequest")).toBe(true);
   });
 });
 

@@ -23,7 +23,7 @@ class DiffNumberMarker extends GutterMarker {
   }
 }
 
-function changedNumberClass(state: EditorState, position: number) {
+export function changedNumberClass(state: EditorState, position: number) {
   const merge = getChunks(state);
   if (!merge) return "";
   const isOriginal = merge.side === "a";
@@ -43,10 +43,19 @@ function changedNumberClass(state: EditorState, position: number) {
   return "";
 }
 
+export type DiffLineNumberSide = "before" | "after";
+
 export function diffLineNumbers({
   formatNumber,
+  side = "before",
 }: {
   formatNumber: (line: number, state: EditorState) => string;
+  /**
+   * "after" puts the numbers at the pane's trailing edge (the old pane of a
+   * split diff with centered numbers). The expansion arrows then stay at the
+   * leading edge, in a slim gutter of their own.
+   */
+  side?: DiffLineNumberSide;
 }) {
   const spacer = (state: EditorState) => {
     let maximum = 9;
@@ -54,9 +63,11 @@ export function diffLineNumbers({
     return new DiffNumberMarker(formatNumber(maximum, state));
   };
 
-  return gutter({
+  const numbers = gutter({
     class: "cm-lineNumbers",
-    widgetMarker: collapsedNumberControl,
+    side,
+    // An explicit `undefined` would replace CodeMirror's default marker.
+    ...(side === "before" ? { widgetMarker: collapsedNumberControl } : {}),
     lineMarker: (view, line) =>
       new DiffNumberMarker(
         formatNumber(view.state.doc.lineAt(line.from).number, view.state),
@@ -71,4 +82,12 @@ export function diffLineNumbers({
       return previous.eq(next) ? previous : next;
     },
   });
+  if (side === "before") return numbers;
+  return [
+    gutter({
+      class: "cm-collapseControlGutter",
+      widgetMarker: collapsedNumberControl,
+    }),
+    numbers,
+  ];
 }

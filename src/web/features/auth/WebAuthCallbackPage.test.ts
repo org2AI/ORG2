@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
   setAuth: vi.fn(),
 }));
 
-vi.mock("jotai", () => ({
+vi.mock("jotai", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("jotai")>()),
   useSetAtom: () => mocks.setAuth,
 }));
 

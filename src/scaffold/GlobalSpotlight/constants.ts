@@ -5,12 +5,16 @@
  * chrome lives in SpotlightShell — constants here are the single source of
  * truth it reads from.
  */
+import {
+  SPOTLIGHT_TOP_OFFSET,
+  SPOTLIGHT_WIDTH,
+} from "@src/util/ui/spotlightAnchor";
 
 export const SPOTLIGHT_CONFIG = {
   /** Width of the spotlight in pixels */
-  width: 680,
+  width: SPOTLIGHT_WIDTH,
   /** Distance from top of viewport in pixels */
-  topOffset: 8,
+  topOffset: SPOTLIGHT_TOP_OFFSET,
   /** Z-index for backdrop overlay */
   backdropZIndex: 9998,
   /** Z-index for spotlight container */
@@ -41,6 +45,13 @@ export const SPOTLIGHT_TOKENS = {
 } as const;
 
 export const SPOTLIGHT_CLASSES = {
+  /** Shared option-row geometry and default typography, also used by launchpad. */
+  itemRow: "flex items-center gap-2.5 rounded-lg px-2",
+  itemIcon: "flex h-6 w-6 shrink-0 items-center justify-center",
+  itemIconTone: "text-text-2",
+  itemLabelWeight: "font-normal",
+  itemLabelTone: "text-text-1",
+  panel: "overflow-hidden rounded-2xl border border-border-2 bg-bg-2 shadow-xl",
   /** Primary contextual pill used by palette navigation and active state badges. */
   primaryPill:
     "flex items-center gap-1 rounded-full bg-primary-1 px-2.5 py-1 text-primary-6",

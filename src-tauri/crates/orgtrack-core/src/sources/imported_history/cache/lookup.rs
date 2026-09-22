@@ -2,6 +2,7 @@ use std::time::UNIX_EPOCH;
 
 use rusqlite::{params, types::Value as SqlValue, Connection, OptionalExtension};
 
+use super::super::metadata::ImportedHistoryImpactStats;
 use super::continuation::has_newer_continuation_sibling;
 use super::session_row::{query_cached_sessions_by_filter_from_conn, ImportedHistoryCachedSession};
 
@@ -24,7 +25,10 @@ pub fn get_cached_source_path_from_conn(
 /// `-`-bounded suffix of the cached key. Codex imports key on the rollout
 /// file stem (`rollout-<timestamp>-<thread-uuid>`) while runner bindings
 /// carry the bare thread uuid; newest wins when several rollouts share a
-/// thread (resume forks).
+/// thread (resend rotations), ordered exactly like the sidebar continuation
+/// election so both surfaces resolve the same generation on an activity tie.
+/// Rotated Codex records also match their parsed native thread identity,
+/// since the final filename UUID belongs to the rollout.
 pub fn get_cached_source_path_by_suffix_from_conn(
     conn: &Connection,
     source: &str,
@@ -33,13 +37,42 @@ pub fn get_cached_source_path_by_suffix_from_conn(
     conn.query_row(
         "SELECT source_path FROM imported_history_session_cache \
          WHERE source = ?1 \
-           AND (source_session_id = ?2 OR source_session_id LIKE '%-' || ?2) \
-         ORDER BY updated_at_ms DESC LIMIT 1",
+           AND (source_session_id = ?2 OR source_session_id LIKE '%-' || ?2 \
+                OR (source = 'codex_app' AND CASE WHEN json_valid(source_metadata_json) \
+                    THEN json_extract(source_metadata_json, '$.continuationGroupKey') END = ?2)) \
+         ORDER BY updated_at_ms DESC, source_session_id DESC LIMIT 1",
         params![source, source_session_id],
         |row| row.get::<_, String>(0),
     )
     .optional()
     .map_err(|err| format!("Failed to query imported history source path: {err}"))
+}
+
+/// Whole-session edit impact the source parser recorded for one imported
+/// session, keyed by the app-level (prefixed) session id. `touched_files` is
+/// left empty: this backs count-only surfaces (session summary, composer
+/// files pill), which must not depend on the paginated sidebar roster having
+/// loaded the row. Reads three integer columns through the session-id index.
+pub fn query_cached_session_impact_by_session_id_from_conn(
+    conn: &Connection,
+    session_id: &str,
+) -> Result<Option<ImportedHistoryImpactStats>, String> {
+    conn.query_row(
+        "SELECT files_changed, lines_added, lines_removed \
+         FROM imported_history_session_cache WHERE session_id = ?1 \
+         ORDER BY updated_at_ms DESC LIMIT 1",
+        params![session_id],
+        |row| {
+            Ok(ImportedHistoryImpactStats {
+                files_changed: row.get(0)?,
+                lines_added: row.get(1)?,
+                lines_removed: row.get(2)?,
+                touched_files: Vec::new(),
+            })
+        },
+    )
+    .optional()
+    .map_err(|err| format!("Failed to query imported history session impact: {err}"))
 }
 
 /// Freshness stat of one imported session's transcript source file, keyed by

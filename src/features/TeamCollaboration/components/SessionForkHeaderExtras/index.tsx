@@ -113,14 +113,14 @@ const SessionForkHeaderExtras: React.FC<SessionForkHeaderExtrasProps> = ({
             name: forkedFrom.ownerDisplayName,
           })}
           position="bottom-end"
-          mouseEnterDelay={200}
+          kind="button"
           framedPanel
         >
           {/* Tag owns the pill chrome; the wrapper button carries focus, testid
               and click affordance. The control is not a link because the
               resolver may need to open an already materialized local copy. */}
-          <button
-            type="button"
+          <Button
+            layout="custom"
             data-testid="session-forked-from-chip"
             className="mr-1 inline-flex cursor-pointer border-0 bg-transparent p-0"
             onClick={() => void handleOpenParent()}
@@ -144,19 +144,18 @@ const SessionForkHeaderExtras: React.FC<SessionForkHeaderExtrasProps> = ({
             >
               <span className="truncate">{forkedFrom.ownerDisplayName}</span>
             </Tag>
-          </button>
+          </Button>
         </Tooltip>
       )}
       {showForkButton && (
         <Tooltip
           content={t("collaboration.forkImported.headerTooltip")}
           position="bottom-end"
-          mouseEnterDelay={200}
+          kind="button"
           framedPanel
         >
           <span className="inline-flex">
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly

@@ -18,6 +18,9 @@ name = "git_api"
 path = "src/lib.rs"
 
 [dependencies]
+# Canonical filesystem path resolution (leaf crate, no domain deps)
+app_paths = { path = "../app-paths" }
+
 # Web framework
 axum = { workspace = true }
 utoipa = { version = "5", features = ["axum_extras"] }
@@ -40,6 +43,7 @@ tauri = { workspace = true }
 # Async + streaming
 async-stream = "0.3"
 futures = "0.3"
+fs2 = "0.4.3"
 tokio = { workspace = true }
 
 # Date/time handling

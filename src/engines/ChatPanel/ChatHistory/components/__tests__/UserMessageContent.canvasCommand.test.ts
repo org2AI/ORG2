@@ -43,24 +43,19 @@ describe("UserMessageContent command references", () => {
     act(() => root.render(createElement(UserMessageContent, { text })));
   }
 
-  it("renders the Canvas command as an ordinary link after it is sent", () => {
+  it("keeps the Canvas command's composer face after it is sent", () => {
     renderMessage("canvas [skill:/canvas] 看看这个是啥");
 
-    expect(container.querySelector("a[href='/canvas']")?.textContent).toBe(
-      "canvas"
-    );
-    expect(container.querySelector('[data-icon="panels-top-left"]')).toBeNull();
-    expect(container.querySelector('[data-icon="toolbox"]')).toBeNull();
+    const pill = container.querySelector("[role='link'][title='/canvas']");
+    expect(pill?.textContent).toContain("canvas");
     expect(container.textContent).toContain("看看这个是啥");
   });
 
-  it("renders other commands without toolbox tags", () => {
+  it("gives other commands the same skill pill the composer shows", () => {
     renderMessage("compact [skill:/compact] keep tests");
 
-    expect(container.querySelector("a[href='/compact']")?.textContent).toBe(
-      "compact"
-    );
-    expect(container.querySelector('[data-icon="toolbox"]')).toBeNull();
-    expect(container.querySelector('[data-icon="panels-top-left"]')).toBeNull();
+    const pill = container.querySelector("[role='link'][title='/compact']");
+    expect(pill?.textContent).toContain("compact");
+    expect(container.querySelector('[data-icon="toolbox"]')).not.toBeNull();
   });
 });

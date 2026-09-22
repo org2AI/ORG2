@@ -47,22 +47,18 @@ function WorktreeSourceModeSwitch({
   const { t } = useTranslation("sessions");
   return (
     <SegmentedTextPill
-      ariaLabel={t("creator.worktreeSource.sourceTypeAria", {
-        defaultValue: "Select branch or pull request",
-      })}
+      ariaLabel={t("creator.worktreeSource.sourceTypeAria")}
       dataTestId="worktree-source-mode-switch"
       value={mode}
       options={[
         {
           value: "branch",
-          label: t("creator.worktreeSource.tabs.branch", {
-            defaultValue: "Branch",
-          }),
+          label: t("creator.worktreeSource.tabs.branch"),
           disabled,
         },
         {
           value: "pr",
-          label: t("creator.worktreeSource.tabs.pr", { defaultValue: "PR" }),
+          label: t("creator.worktreeSource.tabs.pr"),
           disabled,
         },
       ]}
@@ -88,7 +84,6 @@ function SelectorError({
     >
       <span>{message}</span>
       <Button
-        variant="secondary"
         size="small"
         icon={
           <HugeiconsIcon
@@ -271,8 +266,8 @@ function WorktreeSourceDropdownRow({
 }) {
   const Icon = item.icon;
   return (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       data-testid={`worktree-source-row-${item.id}`}
       {...keyboardProps}
       disabled={disabled}
@@ -311,7 +306,7 @@ function WorktreeSourceDropdownRow({
           className="shrink-0 text-primary-6"
         />
       )}
-    </button>
+    </Button>
   );
 }
 

@@ -11,7 +11,7 @@ import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
 import { resolveCustomRoleIcon } from "@src/scaffold/NavigationSidebar/blocks/customRoleIcons";
 import { updateSettingAtom, useAllSettings } from "@src/store/settings";
 import { userPresenceAtom } from "@src/store/user/userPresenceAtom";
@@ -215,10 +215,7 @@ export const MyRolesStatusTab: React.FC = () => {
             status: statusLabel,
             defaultValue: `${statusLabel} plan auto-approve`,
           })}
-          description={t("sdeAgent.planAutoApproveTimeoutByStatusDesc", {
-            defaultValue:
-              "Auto-approve a pending plan after this many seconds in this status (0 = disabled)",
-          })}
+          description={t("sdeAgent.planAutoApproveTimeoutByStatusDesc")}
         >
           <NumberInput
             value={planAutoApproveTimeoutByPresence[mode]}
@@ -236,10 +233,7 @@ export const MyRolesStatusTab: React.FC = () => {
             status: statusLabel,
             defaultValue: `${statusLabel} goal continuation budget`,
           })}
-          description={t("sdeAgent.goalMaxTurnsByStatusDesc", {
-            defaultValue:
-              "Keep working toward your last request for up to this many extra turns after the agent would normally stop (0 = disabled)",
-          })}
+          description={t("sdeAgent.goalMaxTurnsByStatusDesc")}
         >
           <NumberInput
             value={goalMaxTurnsByPresence[mode]}
@@ -256,10 +250,7 @@ export const MyRolesStatusTab: React.FC = () => {
             status: statusLabel,
             defaultValue: `${statusLabel} mode switch auto-plan`,
           })}
-          description={t("sdeAgent.modeSwitchAutoPlanByStatusDesc", {
-            defaultValue:
-              "Auto-switch pending Plan mode suggestions when their confirmation timer expires",
-          })}
+          description={t("sdeAgent.modeSwitchAutoPlanByStatusDesc")}
         >
           <Switch
             checked={modeSwitchAutoPlanByPresence[mode]}

@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "새 메시지로 보내시겠습니까?",
+    "body": "이 메시지는 실행 세션에 속합니다. 여기서 편집해도 대화를 되돌릴 수 없습니다. 대신 대화 끝에 새 메시지로 보내시겠습니까? 기존 메시지와 파일 변경 사항은 유지됩니다.",
+    "sendNew": "새 메시지 보내기"
+  },
   "tray": {
     "markAllRead": "모두 읽음으로 표시",
     "showKanban": "칸반 표시",
@@ -50,7 +55,7 @@
     },
     "dataSource": {
       "title": "데이터 소스",
-      "description": "ORGII가 감지하는 외부 코딩 도구입니다. 가져올 수 있는 앱은 세션 수를 표시하고 다시 스캔할 수 있으며, 나머지는 설치 상태와 기록 위치를 표시합니다.",
+      "description": "ORG2가 감지하는 외부 코딩 도구입니다. 가져올 수 있는 앱은 세션 수를 표시하고 다시 스캔할 수 있으며, 나머지는 설치 상태와 기록 위치를 표시합니다.",
       "rescanAll": "모두 다시 스캔",
       "rescan": "다시 스캔",
       "rescanning": "다시 스캔 중…",
@@ -88,8 +93,7 @@
       "openFolder": "폴더 열기",
       "tabs": {
         "all": "전체",
-        "apps": "앱",
-        "clis": "CLI"
+        "apps": "앱"
       },
       "views": {
         "scanning": "스캔",
@@ -97,7 +101,6 @@
         "usage": "사용량",
         "team": "팀",
         "quota": "할당량",
-        "assets": "자산",
         "profile": "프로필"
       },
       "usage": {
@@ -174,7 +177,8 @@
           "output": "출력",
           "cache": "캐시 읽기",
           "cost": "비용",
-          "filterBySession": "이 세션으로 필터링"
+          "filterBySession": "이 세션으로 필터링",
+          "purpose": "용도"
         },
         "pricing": {
           "input": "입력",
@@ -190,7 +194,7 @@
           "perTurn": "LLM 호출",
           "perTool": "도구 호출",
           "close": "닫기",
-          "noData": "이 세션에는 세션 단위 합계만 있습니다. 호출별 사용량은 ORGII 자체 에이전트 실행에 대해 기록됩니다.",
+          "noData": "이 세션에는 세션 단위 합계만 있습니다. 호출별 사용량은 ORG2 자체 에이전트 실행에 대해 기록됩니다.",
           "turnHeader": "턴 {{turn}}",
           "promptTokens": "프롬프트",
           "completionTokens": "완료"
@@ -199,7 +203,17 @@
           "title": "아직 사용량이 없습니다",
           "subtitle": "코딩 세션을 실행하거나 스캔하면 토큰 사용량이 여기에 표시됩니다."
         },
-        "loadError": "사용량 데이터를 불러오지 못했습니다"
+        "loadError": "사용량 데이터를 불러오지 못했습니다",
+        "purposes": {
+          "main": "주 응답",
+          "session_title": "세션 제목",
+          "session_memory": "세션 메모리",
+          "workspace_memory": "워크스페이스 메모리",
+          "auto_dream": "메모리 통합",
+          "skill_prefetch": "스킬 선택",
+          "memory_prefetch": "메모리 검색",
+          "compaction": "컨텍스트 압축"
+        }
       },
       "sessions_other": "{{count}}개 세션",
       "details": {
@@ -307,7 +321,6 @@
   },
   "simulator": {
     "captionBarToggleTooltip": "Agent 메시지 표시줄 표시",
-    "noActiveSession": "활성 세션 없음",
     "tabs": {
       "kanban": "칸반"
     },
@@ -324,18 +337,6 @@
           "agentBrowser": "Agent 브라우저",
           "searchFetch": "검색 및 가져오기"
         },
-        "sections": {
-          "browserTitle": "브라우저 활동",
-          "interactionsTitle": "상호작용",
-          "webSearchesTitle": "웹 검색",
-          "pagesFetchedTitle": "가져온 페이지"
-        },
-        "empty": {
-          "noBrowserActivity": "브라우저 활동 없음",
-          "noBrowserInteractions": "브라우저 상호작용 없음",
-          "noWebSearches": "웹 검색 없음",
-          "noPagesFetched": "가져온 페이지 없음"
-        },
         "header": {
           "categoryBrowser": "브라우저",
           "categoryLiveBrowser": "라이브 브라우저",
@@ -346,7 +347,6 @@
       },
       "ide": {
         "shell": {
-          "emptyNoCommands": "명령 없음",
           "noCommand": "(명령 없음)",
           "outputInProgress": "… 출력 진행 중",
           "exitCode": "[종료 코드: {{code}}]"
@@ -520,8 +520,7 @@
     },
     "titleBar": {
       "showSidebar": "사이드바 표시",
-      "hideSidebar": "사이드바 숨기기",
-      "showBottomPanel": "하단 패널 표시"
+      "hideSidebar": "사이드바 숨기기"
     },
     "multiTask": {
       "monitoringProgress": "{{count}}개 Subagent의 진행 상황 모니터링 중",
@@ -554,22 +553,6 @@
     "addedToContext": "Session 컨텍스트에 추가됨",
     "creatingWithContext": "컨텍스트로 새 Session 생성 중",
     "creationCooldown": "잠시 후에 새 터미널을 만드세요."
-  },
-  "scope": {
-    "applicableScope": "적용 범위",
-    "for": "에 대해",
-    "selectCategory": "카테고리 선택",
-    "selectScope": "범위 선택",
-    "allRepos": "모든 저장소",
-    "allSessions": "모든 Session",
-    "allProjects": "모든 Project",
-    "allWorkItems": "모든 작업 항목",
-    "categories": {
-      "repo": "저장소",
-      "session": "Session",
-      "projects": "Project",
-      "workItems": "작업 항목"
-    }
   },
   "editor": {
     "loading": "에디터 로딩 중..."
@@ -608,6 +591,7 @@
     "voicePermissionSheetTitle": "마이크 접근 권한 필요"
   },
   "chat": {
+    "draftTooLong": "초안이 너무 깁니다(최대 {{max}}자)",
     "cliPermissions": {
       "ask": "승인 요청",
       "workspace": "작업 공간 접근",
@@ -642,23 +626,18 @@
       "inputPosition": "입력창",
       "positionBottom": "하단",
       "positionMiddle": "중앙",
-      "trailPosition": "컨텍스트 바",
+      "repoBarPosition": "저장소 바",
       "positionUp": "위",
       "positionDown": "아래",
-      "uiControls": "UI 컨트롤",
-      "showQuickActions": "빠른 작업 표시",
+      "showQuickActions": "빠른 작업",
       "showSkills": "고정된 스킬",
-      "showCliUpdate": "CLI 업데이트 표시",
-      "title": "무엇을 할까요?",
-      "back": "시작 페이지로 돌아가기",
+      "showCliUpdate": "CLI 업데이트",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "새 세션"
       },
       "newWorkItem": {
         "title": "새 work item"
-      },
-      "setupRepo": {
-        "title": "Repo 설정"
       },
       "addApiKey": {
         "title": "API 키 추가"
@@ -669,59 +648,27 @@
       "installLatestUpdate": {
         "title": "최신 업데이트 설치"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "세션",
         "workItem": "작업 항목",
         "more": "더 보기",
-        "work": "작업",
         "manage": "관리",
-        "heatmap": "추세",
         "runtime": "런타임"
       },
       "quota": {
         "empty": "Quota 데이터가 아직 없습니다. Key Vault에서 사용량을 새로고침하세요.",
         "refresh": "새로고침",
-        "justNow": "방금",
-        "minutesAgo": "{{count}}분 전",
-        "hoursAgo": "{{count}}시간 전",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7d",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Weekly",
           "monthly": "Monthly"
         }
       },
-      "exploreRepos": {
-        "title": "Repos 탐색"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "Issues 관리"
       }
     },
     "defaultTitle": "채팅",
@@ -732,8 +679,17 @@
     "performActions_one": "작업 {{count}}개 수행",
     "performActions_other": "작업 {{count}}개 수행",
     "showInlineDiffs": "인라인 변경 사항",
-    "pageSettings": "페이지 표시",
     "inputSettings": "입력 설정",
+    "sendMethod": "보내기 단축키",
+    "navigation": {
+      "title": "탐색",
+      "openLinksIn": "링크 열기 위치",
+      "internalBrowser": "내장 브라우저",
+      "externalBrowser": "외부 브라우저"
+    },
+    "compactInput": "컴팩트 입력창",
+    "composerGlow": "입력창 글로우",
+    "separateEffortPill": "Effort 버튼 분리",
     "replay": {
       "follow": "팔로우"
     },
@@ -759,15 +715,11 @@
       "modeSourceBundled": "번들 폴백에서 모드를 로드했습니다 (Cursor 프로브가 아직 실행 중이 아님).",
       "modeRefresh": "모드 새로 고침"
     },
-    "hideSimulator": "시뮬레이터 숨기기",
-    "showSimulator": "시뮬레이터 표시",
-    "fullScreenChat": "Chat 패널 포커스 (Workstation 숨기기)",
     "maximizeChatPanel": "Chat 패널 최대화",
     "showWorkstation": "Workstation 표시",
     "workstationUnavailableForPage": "이 페이지에서는 Workstation을 사용할 수 없습니다",
     "hideWorkstation": "Workstation 숨기기",
     "restoreSplitView": "Workstation 표시",
-    "shrinkToWorkstation": "Chat 패널 축소 (Workstation 표시)",
     "tuiModeOn": "TUI 모드 (클릭하여 비활성화)",
     "tuiModeOff": "TUI 모드 활성화",
     "tabs": {
@@ -919,10 +871,10 @@
       "exportJson": "JSON 내보내기",
       "importAction": "Session 가져오기",
       "exportDescription": "활성 Session을 휴대용 JSON 스냅샷으로 내보냅니다",
-      "importDescription": "Session JSON 스냅샷을 사이드바로 가져옵니다.",
+      "importDescription": "Session JSON 스냅샷을 사이드바로 가져옵니다",
       "jsonSnapshotNote": "가져온 Sessions는 읽기 전용 스냅샷이며 원본 이벤트 기록을 유지합니다",
       "chooseJson": "JSON 파일 선택",
-      "chooseJsonHint": ".orgii-session.json 내보내기 파일을 선택하세요.",
+      "chooseJsonHint": ".orgii-session.json 내보내기 파일을 선택하세요",
       "loadingPreview": "Session 이벤트 계산 중…",
       "noActiveSession": "활성 Session이 선택되지 않았습니다.",
       "importedName": "가져온 Session: {{name}}",
@@ -971,22 +923,9 @@
       "showMore_one": "{{count}}개 더 보기",
       "showMore_other": "{{count}}개 더 보기"
     },
-    "manageIssues": {
-      "title": "Issues 관리",
-      "myWork": "내 작업",
-      "allRepositories": "모든 Repos",
-      "newIssue": "새 Issue",
-      "tabs": {
-        "recent": "최근",
-        "assigned": "내게 할당됨",
-        "byMe": "내가 작성",
-        "mentioned": "멘션됨"
-      }
-    },
     "readOnly": "읽기 전용",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "GitHub issue 만들기",
         "issueTitlePlaceholder": "issue 제목",
@@ -996,28 +935,40 @@
         "addToChat": "Add",
         "repositoryLabel": "리포지토리",
         "createIssueFailed": "issue를 만들지 못했습니다",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "모든 상태",
         "closeAsCompleted": "완료로 닫기",
         "closeAsNotPlanned": "계획되지 않음으로 닫기",
         "statusUpdateFailed": "GitHub 상태를 업데이트하지 못했습니다",
         "assignedToMe": "나에게 할당됨",
         "createdByMe": "내가 생성함",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "리뷰 요청됨",
-          "authoredByMe": "내가 작성",
-          "otherTodos": "기타 할 일"
-        },
         "assigneeUpdateNotApplied": "GitHub에서 담당자 변경을 적용하지 않았습니다",
         "assigneeUpdateSuccess": "GitHub에서 담당자를 업데이트했습니다",
         "updateIssueFailed": "GitHub issue를 업데이트하지 못했습니다",
-        "refreshIssues": "이슈 새로고침",
-        "refreshPullRequests": "풀 리퀘스트 새로고침"
+        "filters": {
+          "searchPlaceholder": "필터 검색",
+          "noMatches": "일치하는 필터 없음",
+          "activeCount": "활성 필터: {{count}}",
+          "clear": "필터 지우기",
+          "reviewRequestedFromMe": "나에게 리뷰 요청됨",
+          "noAssignee": "담당자 없음",
+          "noLabel": "라벨 없음",
+          "linkedPullRequest": "연결된 풀 리퀘스트 있음",
+          "draft": "초안",
+          "readyForReview": "리뷰 준비 완료",
+          "recentlyUpdated": "최근 7일 내 업데이트",
+          "stale": "30일간 업데이트 없음",
+          "facetAuthor": "작성자",
+          "facetAssignee": "담당자",
+          "facetLabel": "라벨",
+          "facetMilestone": "마일스톤",
+          "facetReviewRequested": "리뷰 요청 대상",
+          "facetBaseBranch": "기준 브랜치",
+          "facetCiStatus": "검사",
+          "ciSuccess": "통과",
+          "ciFailure": "실패",
+          "ciPending": "대기 중"
+        }
       }
     },
     "sessionViews": {
@@ -1051,7 +1002,9 @@
     "typeMessage": "메시지를 입력하세요…",
     "session": "세션",
     "history": "세션",
-    "agentFallback": "Agent"
+    "agentFallback": "Agent",
+    "goToPinnedPassage": "고정한 구절로 이동: {{preview}}",
+    "unpinPassage": "고정 해제"
   },
   "tools": {
     "noResultsFound": "결과를 찾을 수 없습니다",
@@ -1148,6 +1101,7 @@
     "terminalWaitRunning": "터미널 완료 대기 중",
     "runShellFailed": "명령 실행 실패",
     "runCommands": "명령 실행",
+    "waitBackgroundTasks": "백그라운드 작업 대기",
     "terminalSummary": {
       "command_one": "명령 {{count}}개",
       "command_other": "명령 {{count}}개",
@@ -1158,6 +1112,10 @@
       "check_one": "확인 {{count}}회",
       "check_other": "확인 {{count}}회",
       "separator": ", "
+    },
+    "waitSummary": {
+      "count_one": "{{count}}회",
+      "count_other": "{{count}}회"
     },
     "inspectTerminalsRunning": "Terminal 검사 중",
     "inspectTerminalsDone": "Terminal 검사됨",
@@ -1466,10 +1424,13 @@
     "awaitOutputListFailed": "백그라운드 작업 목록을 가져오지 못했습니다",
     "awaitOutputKeepWaiting": "여전히 실행 중",
     "awaitOutputStillRunning": "실행 중",
+    "awaitOutputSummaryShellSingle": "터미널 프로세스",
     "awaitOutputSummaryShell_one": "터미널 프로세스 1개",
     "awaitOutputSummaryShell_other": "터미널 프로세스 {{count}}개",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "Subagent 1개",
     "awaitOutputSummarySubagent_other": "Subagent {{count}}개",
+    "awaitOutputSummaryUnknownSingle": "백그라운드 작업",
     "awaitOutputSummaryUnknown_one": "백그라운드 작업 1개",
     "awaitOutputSummaryUnknown_other": "백그라운드 작업 {{count}}개",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",
@@ -1924,13 +1885,12 @@
     "start": "시작",
     "missingGit": {
       "title": "Git 없음",
-      "body": "Git이 설치되어 있지 않거나 찾을 수 없습니다. ADE Manager 또는 SDE Agent에게 이 컴퓨터에 Git을 설치하도록 요청한 뒤 ORGII를 다시 시작하세요."
+      "body": "Git이 설치되어 있지 않거나 찾을 수 없습니다. ADE Manager 또는 SDE Agent에게 이 컴퓨터에 Git을 설치하도록 요청한 뒤 ORG2를 다시 시작하세요"
     },
     "model": "모델",
     "contextMenu": {
       "filesAndFolders": "파일 및 폴더",
       "workItems": "작업 항목",
-      "back": "뒤로",
       "recent": "최근 항목",
       "showMore": "{{remaining}}개 더 보기",
       "session": "세션"
@@ -1988,9 +1948,9 @@
       "formatting": "텍스트 서식"
     },
     "regionNoticeTitle": "지역 제한 가능성",
-    "regionNoticeBodyProvider": "위치: {{location}}. 일부 모델은 해당 지역에서 사용할 수 없을 수 있습니다.",
-    "regionNoticeBodySanctions": "위치: {{location}}. GitHub, npm, Docker Hub 및 유사 서비스가 사용할 수 없을 수 있습니다.",
-    "regionNoticeBodyBoth": "위치: {{location}}. 지역 정책 및 무역 규제로 인해 일부 모델과 GitHub, npm, Docker Hub 등 서비스가 사용할 수 없을 수 있습니다.",
+    "regionNoticeBodyProvider": "위치: {{location}}. 일부 모델은 해당 지역에서 사용할 수 없을 수 있습니다",
+    "regionNoticeBodySanctions": "위치: {{location}}. GitHub, npm, Docker Hub 및 유사 서비스가 사용할 수 없을 수 있습니다",
+    "regionNoticeBodyBoth": "위치: {{location}}. 지역 정책 및 무역 규제로 인해 일부 모델과 GitHub, npm, Docker Hub 등 서비스가 사용할 수 없을 수 있습니다",
     "selectAgent": "에이전트 선택",
     "placeholderDefault": "메시지를 입력하고 @로 파일 추가, /로 skills 사용",
     "wingmanPlaceholder": "미션을 설명하세요 — Wingman이 무엇을 감시해야 하나요?",
@@ -2022,12 +1982,19 @@
       }
     },
     "cliVersionOutdated": {
-      "title": "{{cli}} 업그레이드 필요 ({{installed}} > {{latest}})",
+      "title": "{{cli}} 업데이트가 있습니다",
+      "versions": "현재: {{installed}} · 최신: {{latest}}",
+      "upgrade": "터미널에서 업데이트",
+      "upgradeHint": "별도 터미널에서 Cursor CLI를 업데이트합니다. 완료 후 버전을 다시 확인하세요.",
+      "upgradeTerminal": "Cursor CLI 업데이트",
+      "upgradeStarted": "터미널에서 업데이트를 시작했습니다. 완료 후 버전을 다시 확인하세요.",
+      "upgradeFailed": "업데이트 터미널을 열지 못했습니다. 다시 시도하세요.",
       "muteUntilNextVersion": "다음 버전까지 알리지 않음",
       "refresh": "{{cli}} CLI 버전 다시 확인",
       "unknownVersion": "알 수 없음"
     },
-    "mode": "편집기 모드"
+    "mode": "편집기 모드",
+    "cursorIdeDescription": "ORG2에서 Cursor IDE 채팅 세션을 탐색하고 이어가기"
   },
   "planner": {
     "modes": {
@@ -2117,7 +2084,7 @@
         "cancelled": "취소됨",
         "failed": "실패"
       },
-      "title": "Agent 팀 개요",
+      "title": "팀 개요",
       "summary": "활성 {{active}}개 · 처리 대기 {{pending}}개",
       "loadFailed": "팀 개요 로드 실패",
       "tasks": "작업",
@@ -2138,7 +2105,7 @@
       "archiveTeardownRetained": "보관되었지만 런타임 {{count}}개를 해제하지 못했습니다. 삭제는 계속 차단됩니다.",
       "archiveTeardownQuiesced": "보관 및 완전 종료되었습니다. 이제 영구 삭제할 수 있습니다.",
       "dangerZone": "위험 영역",
-      "deleteDescription": "이 팀과 모든 세션 및 기록을 영구 삭제합니다.",
+      "deleteDescription": "이 팀과 모든 세션 및 기록을 영구 삭제합니다",
       "deleteTeam": "팀 삭제",
       "deleteTitle": "이 팀을 영구 삭제할까요?",
       "deleteWarning": "팀의 모든 세션과 기록이 영구 삭제됩니다. 이 작업은 취소할 수 없습니다.",
@@ -2192,9 +2159,7 @@
       "activeMembers": "활성 구성원",
       "inFlightTurns": "진행 중인 턴",
       "openTasks": "열린 작업",
-      "blockingInbox": "차단 중인 받은 편지함",
-      "blockersTitle": "완료를 계속 차단하는 항목",
-      "unknownBlocker": "알 수 없는 시스템 차단 요소"
+      "blockingInbox": "차단 중인 받은 편지함"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}}에게 직접 작업",
@@ -2266,7 +2231,7 @@
     "noSessionIdFound": "Session ID를 찾을 수 없습니다",
     "failedToResume": "Session 재개에 실패했습니다",
     "failedToCheckChanges": "파일 변경사항을 확인할 수 없습니다. 변경사항을 되돌립니다.",
-    "insufficientBalance": "ORGII 호스팅 서비스의 잔액이 부족합니다. orgii.ai/wallet에서 충전하세요.",
+    "insufficientBalance": "ORG2 호스팅 서비스의 잔액이 부족합니다. orgii.ai/wallet에서 충전하세요.",
     "runQueuedBehindCheckout": "대기 중: 다른 실행이 이 체크아웃을 사용 중입니다. 해당 실행이 끝나면 시작됩니다."
   },
   "planning": {
@@ -2359,7 +2324,6 @@
     },
     "triggerLabel": "그룹 채팅",
     "userMessageOutcomeUnknown": "전달 결과를 알 수 없습니다. 원래 전달을 다시 시도하세요.",
-    "coordinatorLabel": "코디네이터",
     "youLabel": "나",
     "retry": "다시 시도",
     "memberCount_one": "멤버 {{count}}명",

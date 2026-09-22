@@ -94,7 +94,7 @@ export function WebSessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const displayName =
     auth?.profile?.displayName || auth?.profile?.primaryEmail || "Cloud user";
   const searchPlaceholder = tCommon("common.searchPlaceholder", "Search...");
-  const noSearchResultsTitle = t("sidebar.empty.noSearchResults");
+  const noSearchResultsTitle = tCommon("placeholders.noResults");
 
   const handleOrgChange = useCallback(
     (orgId: string) => {
@@ -163,7 +163,7 @@ export function WebSessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
           rightActions={
             <Button
               size="mini"
-              appearance="ghost"
+              variant="ghost"
               iconOnly
               icon={
                 <HugeiconsIcon

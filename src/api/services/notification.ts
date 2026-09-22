@@ -7,6 +7,7 @@ import {
 } from "@tauri-apps/plugin-notification";
 
 import { createLogger } from "@src/hooks/logger";
+import i18n from "@src/i18n";
 import type {
   BackgroundCompletionSummary,
   NotificationCategory,
@@ -30,9 +31,6 @@ import { BackgroundCompletionSummaryCoordinator } from "./notificationSummaryCoo
 const log = createLogger("Notification");
 
 export type NotificationPermissionStatus = "granted" | "denied" | "unknown";
-
-export const TASK_FAILURE_NOTIFICATION_BODY =
-  "A task failed. Open ORGII for details.";
 
 export interface NotificationOptions {
   title: string;
@@ -444,8 +442,8 @@ export const sendTestNotification = async (
 ): Promise<boolean> => {
   const result = await deliverNotification(
     {
-      title: "Test Notification",
-      body: "This is a test notification from ORGII",
+      title: i18n.t("settings:notifications.testNotification"),
+      body: i18n.t("common:appMessages.testNotificationBody"),
       category: "taskCompletion",
       playSound: true,
     },

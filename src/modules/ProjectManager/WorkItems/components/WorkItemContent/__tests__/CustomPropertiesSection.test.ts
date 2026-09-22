@@ -13,6 +13,7 @@ import {
 } from "vitest";
 
 import { invalidateCache } from "@src/api/http/project/cache";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import CustomPropertiesSection from "../CustomPropertiesSection";
 
@@ -38,10 +39,8 @@ vi.mock("@src/api/http/project", async (importOriginal) => {
 });
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { defaultValue?: string }) =>
-      options?.defaultValue ?? key,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 describe("CustomPropertiesSection", () => {

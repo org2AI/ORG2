@@ -11,7 +11,7 @@ export function resolveVoicePermissionErrorMessage(
     if (isStandalonePWA()) {
       return tVoice(
         "voiceErrorPermissionIosPwa",
-        "Microphone access denied. Open Settings → ORGII Mobile → Microphone, then return and try again."
+        "Microphone access denied. Open Settings → ORG2 Mobile → Microphone, then return and try again."
       );
     }
     return tVoice(

@@ -1,18 +1,18 @@
 import { atom } from "jotai";
 
 import { getChatPanelWorkItemTabKey } from "@src/store/chatPanel/chatPanelTabFactories";
-import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
+import {
+  activeChatPanelTabAtom,
+  chatPanelTabsAtom,
+} from "@src/store/chatPanel/chatPanelTabsState";
 
 import {
-  CHAT_PANEL_CONTENT_MODE,
-  type ChatPanelContentMode,
   type ChatPanelCreateProjectContext,
   type ChatPanelCreateTarget,
   type ChatPanelSelectedCloudOrg,
   type ChatPanelSelectedProject,
   type ChatPanelSelectedProjectOrg,
   type ChatPanelSelectedWorkItem,
-  type ChatPanelSelectedWorkspace,
   DEFAULT_CHAT_PANEL_CREATE_TARGET,
   WORKSPACE_OVERVIEW_TAB,
   type WorkspaceOverviewTab,
@@ -20,6 +20,11 @@ import {
 
 // Preserve public import paths; tab models/factories import the types directly.
 export * from "./selectionTypes";
+
+// ---------------------------------------------------------------------------
+// Launchpad / creator axes — explicit state that is orthogonal to which tab
+// is active. Tab activation resets them (see `syncChatPanelTabNavigationAtom`).
+// ---------------------------------------------------------------------------
 
 export const chatPanelCreateTargetAtom = atom<ChatPanelCreateTarget>(
   DEFAULT_CHAT_PANEL_CREATE_TARGET
@@ -37,160 +42,94 @@ chatPanelCreateProjectContextAtom.debugLabel =
 chatPanelWorkspaceOverviewTabAtom.debugLabel =
   "chatPanelWorkspaceOverviewTabAtom";
 
-/** Exactly one non-session selection can own the slot. Creator controls and
- * workspace subnavigation remain orthogonal, independently retained axes. */
-interface SelectionPayloads {
-  project: ChatPanelSelectedProject;
-  projectOrg: ChatPanelSelectedProjectOrg;
-  workspace: ChatPanelSelectedWorkspace;
-  cloudOrg: ChatPanelSelectedCloudOrg;
-}
+/**
+ * Work item the Launchpad creator retains after "Create another": the creator
+ * stays open, so no work-item tab exists yet, but the session creator embedded
+ * beside it still needs the just-created item as its launch context. Cleared
+ * whenever a tab is activated or the session surface is reset.
+ */
+export const chatPanelCreatorWorkItemContextAtom =
+  atom<ChatPanelSelectedWorkItem | null>(null);
+chatPanelCreatorWorkItemContextAtom.debugLabel =
+  "chatPanelCreatorWorkItemContextAtom";
 
-type ChatPanelSelectionState =
-  | { kind: "session" | "creation" | "explore" }
-  | {
-      kind: "workItem";
-      target: { tabId: string } | { inline: ChatPanelSelectedWorkItem };
-    }
-  | {
-      [K in keyof SelectionPayloads]: { kind: K; value: SelectionPayloads[K] };
-    }[keyof SelectionPayloads];
+// ---------------------------------------------------------------------------
+// Selections — read-only projections of the active tab's payload. The tab is
+// the durable owner of every non-session surface; nothing else selects one.
+// ---------------------------------------------------------------------------
 
-export const chatPanelSelectionStateAtom = atom<ChatPanelSelectionState>({
-  kind: "session",
-});
-chatPanelSelectionStateAtom.debugLabel = "chatPanelSelectionStateAtom";
-
-type Update<T> = T | ((previous: T) => T);
-
-function selectionAtom<T extends object>(
-  read: (selection: ChatPanelSelectionState) => T | null,
-  select: (value: T) => ChatPanelSelectionState
-) {
-  return atom(
-    (get): T | null => read(get(chatPanelSelectionStateAtom)),
-    (get, set, update: Update<T | null>) => {
-      const previous = read(get(chatPanelSelectionStateAtom));
-      const value = typeof update === "function" ? update(previous) : update;
-      if (value === previous) return;
-      if (value) {
-        set(chatPanelSelectionStateAtom, select(value));
-      } else if (previous) {
-        set(chatPanelSelectionStateAtom, { kind: "creation" });
-      }
-    }
-  );
-}
-
-export const chatPanelSelectedProjectAtom = selectionAtom(
-  (state) => (state.kind === "project" ? state.value : null),
-  (value) => ({ kind: "project", value })
+/** Project shown by the active project tab, else null. */
+export const chatPanelSelectedProjectAtom = atom(
+  (get): ChatPanelSelectedProject | null => {
+    const tab = get(activeChatPanelTabAtom);
+    return tab?.type === "project" ? (tab.project ?? null) : null;
+  }
 );
-export const chatPanelSelectedProjectOrgAtom = selectionAtom(
-  (state) => (state.kind === "projectOrg" ? state.value : null),
-  (value) => ({ kind: "projectOrg", value })
+/** Local organization shown by the active organization tab, else null. */
+export const chatPanelSelectedProjectOrgAtom = atom(
+  (get): ChatPanelSelectedProjectOrg | null => {
+    const tab = get(activeChatPanelTabAtom);
+    return tab?.type === "organization" && tab.organization?.kind === "local"
+      ? tab.organization.projectOrg
+      : null;
+  }
 );
-export const chatPanelSelectedWorkspaceAtom = selectionAtom(
-  (state) => (state.kind === "workspace" ? state.value : null),
-  (value) => ({ kind: "workspace", value })
+/** Cloud organization shown by the active organization tab, else null. */
+export const chatPanelSelectedCloudOrgAtom = atom(
+  (get): ChatPanelSelectedCloudOrg | null => {
+    const tab = get(activeChatPanelTabAtom);
+    return tab?.type === "organization" && tab.organization?.kind === "cloud"
+      ? tab.organization.cloudOrg
+      : null;
+  }
 );
-export const chatPanelSelectedCloudOrgAtom = selectionAtom(
-  (state) => (state.kind === "cloudOrg" ? state.value : null),
-  (value) => ({ kind: "cloudOrg", value })
+/** Work item of the active work-item tab, else the creator's retained item. */
+export const chatPanelSelectedWorkItemAtom = atom(
+  (get): ChatPanelSelectedWorkItem | null => {
+    const tab = get(activeChatPanelTabAtom);
+    if (tab?.type === "work-item" && tab.workItem) return tab.workItem;
+    return get(chatPanelCreatorWorkItemContextAtom);
+  }
 );
 chatPanelSelectedProjectAtom.debugLabel = "chatPanelSelectedProjectAtom";
 chatPanelSelectedProjectOrgAtom.debugLabel = "chatPanelSelectedProjectOrgAtom";
-chatPanelSelectedWorkspaceAtom.debugLabel = "chatPanelSelectedWorkspaceAtom";
 chatPanelSelectedCloudOrgAtom.debugLabel = "chatPanelSelectedCloudOrgAtom";
+chatPanelSelectedWorkItemAtom.debugLabel = "chatPanelSelectedWorkItemAtom";
 
-/** Work-item tabs own their payload; selection retains only the tab ID.
- * Direct navigation without a tab retains one inline payload instead. */
-export const chatPanelSelectedWorkItemAtom = atom(
-  (get): ChatPanelSelectedWorkItem | null => {
-    const selection = get(chatPanelSelectionStateAtom);
-    if (selection.kind !== "workItem") return null;
-    const target = selection.target;
-    return "inline" in target
-      ? target.inline
-      : (get(chatPanelTabsAtom).tabs.find((tab) => tab.id === target.tabId)
-          ?.workItem ?? null);
-  },
+type Update<T> = T | ((previous: T) => T);
+
+/**
+ * Write an edited work-item payload back onto the tab that owns it. The tab is
+ * matched by org / project / short-id key, so a refresh that resolves after
+ * the user switched tabs still lands on the right pill. Functional updates
+ * receive the active work-item tab's payload; a null result or a key with no
+ * open tab is a no-op.
+ */
+export const updateChatPanelWorkItemTabAtom = atom(
+  null,
   (get, set, update: Update<ChatPanelSelectedWorkItem | null>) => {
-    const previous = get(chatPanelSelectedWorkItemAtom);
+    const activeTab = get(activeChatPanelTabAtom);
+    const previous =
+      activeTab?.type === "work-item" ? (activeTab.workItem ?? null) : null;
     const value = typeof update === "function" ? update(previous) : update;
-    if (!value) {
-      if (get(chatPanelSelectionStateAtom).kind === "workItem") {
-        set(chatPanelSelectionStateAtom, { kind: "creation" });
-      }
-      return;
-    }
-    const state = get(chatPanelTabsAtom);
+    if (!value || value === previous) return;
     const key = getChatPanelWorkItemTabKey(value);
+    const state = get(chatPanelTabsAtom);
     const target = state.tabs.find(
       (tab) =>
         tab.type === "work-item" &&
-        tab.workItem &&
+        tab.workItem !== undefined &&
         getChatPanelWorkItemTabKey(tab.workItem) === key
     );
-    if (target) {
-      if (target.workItem !== value) {
-        set(chatPanelTabsAtom, {
-          ...state,
-          tabs: state.tabs.map((tab) =>
-            tab.id === target.id
-              ? {
-                  ...tab,
-                  workItem: value,
-                  title: value.workItem.name || tab.title,
-                }
-              : tab
-          ),
-        });
-      }
-      const selection = get(chatPanelSelectionStateAtom);
-      if (
-        selection.kind === "workItem" &&
-        "tabId" in selection.target &&
-        selection.target.tabId === target.id
-      )
-        return;
-      set(chatPanelSelectionStateAtom, {
-        kind: "workItem",
-        target: { tabId: target.id },
-      });
-    } else if (value !== previous) {
-      set(chatPanelSelectionStateAtom, {
-        kind: "workItem",
-        target: { inline: value },
-      });
-    }
-  }
-);
-chatPanelSelectedWorkItemAtom.debugLabel = "chatPanelSelectedWorkItemAtom";
-
-export const chatPanelContentModeAtom = atom(
-  (get): ChatPanelContentMode =>
-    get(chatPanelSelectionStateAtom).kind === "session"
-      ? CHAT_PANEL_CONTENT_MODE.SESSION
-      : CHAT_PANEL_CONTENT_MODE.NON_SESSION,
-  (get, set, update: Update<ChatPanelContentMode>) => {
-    const previous = get(chatPanelContentModeAtom);
-    const mode = typeof update === "function" ? update(previous) : update;
-    if (mode === previous) return;
-    set(chatPanelSelectionStateAtom, {
-      kind: mode === CHAT_PANEL_CONTENT_MODE.SESSION ? "session" : "creation",
+    if (!target || target.workItem === value) return;
+    set(chatPanelTabsAtom, {
+      ...state,
+      tabs: state.tabs.map((tab) =>
+        tab.id === target.id
+          ? { ...tab, workItem: value, title: value.workItem.name || tab.title }
+          : tab
+      ),
     });
   }
 );
-chatPanelContentModeAtom.debugLabel = "chatPanelContentModeAtom";
-
-export const chatPanelExploreOpenAtom = atom(
-  (get) => get(chatPanelSelectionStateAtom).kind === "explore",
-  (get, set, update: Update<boolean>) => {
-    const previous = get(chatPanelExploreOpenAtom);
-    const open = typeof update === "function" ? update(previous) : update;
-    if (open === previous) return;
-    set(chatPanelSelectionStateAtom, { kind: open ? "explore" : "creation" });
-  }
-);
-chatPanelExploreOpenAtom.debugLabel = "chatPanelExploreOpenAtom";
+updateChatPanelWorkItemTabAtom.debugLabel = "updateChatPanelWorkItemTabAtom";

@@ -5,14 +5,14 @@ import type { GitHubIssueLabel, GitHubIssueUser } from "@src/api/tauri/github";
 import AvatarChip from "@src/components/AvatarChip";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
+import MarkdownTextareaEditor, {
+  type MarkdownEditorMode,
+} from "@src/components/MarkdownTextareaEditor";
+import MarkdownEditorModeSwitch from "@src/components/MarkdownTextareaEditor/ModeSwitch";
 import Tag from "@src/components/Tag";
 import { TYPOGRAPHY } from "@src/config/workstation/tokens";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
 import { getLabelColorStyle } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/hooks/workstationIssueHelpers";
-import MarkdownTextareaEditor, {
-  type MarkdownEditorMode,
-} from "@src/modules/shared/components/MarkdownTextareaEditor";
-import MarkdownEditorModeSwitch from "@src/modules/shared/components/MarkdownTextareaEditor/ModeSwitch";
 
 interface NewIssueFormProps {
   onSubmit: (
@@ -80,7 +80,7 @@ export const NewIssueForm: React.FC<NewIssueFormProps> = memo(
           ref={titleRef}
           value={title}
           onChange={(val) => setTitle(val)}
-          placeholder={t("git.issues.newIssueTitlePlaceholder", "Issue title")}
+          placeholder={t("git.issues.newIssueTitlePlaceholder")}
           size="small"
           required
         />
@@ -89,10 +89,7 @@ export const NewIssueForm: React.FC<NewIssueFormProps> = memo(
         <MarkdownTextareaEditor
           value={body}
           onChange={(markdown) => setBody(markdown)}
-          placeholder={t(
-            "git.issues.newIssueBodyPlaceholder",
-            "Describe the issue (optional)…"
-          )}
+          placeholder={t("git.issues.newIssueBodyPlaceholder")}
           minHeight={96}
           maxHeight={240}
           appearance="outlined"
@@ -176,7 +173,6 @@ export const NewIssueForm: React.FC<NewIssueFormProps> = memo(
           />
           <div className="flex items-center justify-end gap-2">
             <Button
-              htmlType="button"
               variant="tertiary"
               size="mini"
               icon={
@@ -185,7 +181,7 @@ export const NewIssueForm: React.FC<NewIssueFormProps> = memo(
               disabled={loading}
               onClick={onCancel}
             >
-              {t("actions.cancel", "Cancel")}
+              {t("actions.cancel")}
             </Button>
             <Button
               htmlType="submit"
@@ -194,7 +190,7 @@ export const NewIssueForm: React.FC<NewIssueFormProps> = memo(
               loading={loading}
               disabled={!title.trim() || loading}
             >
-              {t("actions.create", "Create")}
+              {t("actions.create")}
             </Button>
           </div>
         </div>

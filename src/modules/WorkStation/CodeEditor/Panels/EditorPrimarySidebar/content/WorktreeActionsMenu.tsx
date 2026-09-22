@@ -2,6 +2,7 @@ import React, { memo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { DropdownPanel } from "@src/components/Dropdown/exports";
 import {
   DROPDOWN_CLASSES,
@@ -9,11 +10,7 @@ import {
   DROPDOWN_PANEL,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import {
-  FOLDER_HEADER,
-  HEADER_BUTTON,
-  PRIMARY_SIDEBAR_HOVER,
-} from "@src/config/workstation/tokens";
+import { PRIMARY_SIDEBAR_HOVER } from "@src/config/workstation/tokens";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { Delete02Icon, EllipsisIcon, HugeiconsIcon } from "@src/icons";
 import { getViewportSize } from "@src/util/ui/window/viewport";
@@ -50,24 +47,28 @@ export const WorktreeActionsMenu: React.FC<WorktreeActionsMenuProps> = memo(
 
     return (
       <>
-        <button
+        <Button
+          variant="tertiary"
+          size="sidebar"
+          aria-pressed={isOpen}
+          aria-label={t("sourceControl.worktreeActions")}
+          iconOnly
+          icon={
+            <HugeiconsIcon
+              icon={EllipsisIcon}
+              data-icon="ellipsis"
+              size={14}
+              className={isOpen ? "text-primary-6" : "text-text-3"}
+            />
+          }
           ref={triggerRef}
-          type="button"
-          className={isOpen ? HEADER_BUTTON.active : FOLDER_HEADER.action}
           data-state={isOpen ? "open" : "closed"}
           title={t("sourceControl.worktreeActions")}
           onClick={(event) => {
             event.stopPropagation();
             toggle();
           }}
-        >
-          <HugeiconsIcon
-            icon={EllipsisIcon}
-            data-icon="ellipsis"
-            size={14}
-            className={isOpen ? "text-primary-6" : "text-text-3"}
-          />
-        </button>
+        />
 
         {isOpen &&
           isPositioned &&
@@ -85,8 +86,8 @@ export const WorktreeActionsMenu: React.FC<WorktreeActionsMenuProps> = memo(
               }}
             >
               <div className={DROPDOWN_CLASSES.itemsColumn}>
-                <button
-                  type="button"
+                <Button
+                  layout="custom"
                   className={`${DROPDOWN_CLASSES.item} ${PRIMARY_SIDEBAR_HOVER.row} w-full text-danger-6`}
                   onClick={handleRemove}
                 >
@@ -99,7 +100,7 @@ export const WorktreeActionsMenu: React.FC<WorktreeActionsMenuProps> = memo(
                   <span className="truncate">
                     {t("sourceControl.removeWorktree")}
                   </span>
-                </button>
+                </Button>
               </div>
             </DropdownPanel>,
             document.body
@@ -153,8 +154,8 @@ export function WorktreeContextMenu({
         onClick={(event) => event.stopPropagation()}
       >
         <div className={DROPDOWN_CLASSES.itemsColumn}>
-          <button
-            type="button"
+          <Button
+            layout="custom"
             className={`${DROPDOWN_CLASSES.item} ${PRIMARY_SIDEBAR_HOVER.row} w-full text-danger-6`}
             onClick={handleRemove}
           >
@@ -167,7 +168,7 @@ export function WorktreeContextMenu({
             <span className="truncate">
               {t("sourceControl.removeWorktree")}
             </span>
-          </button>
+          </Button>
         </div>
       </DropdownPanel>
     </div>,

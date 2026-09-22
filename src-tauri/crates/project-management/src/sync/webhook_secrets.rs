@@ -42,7 +42,7 @@
 //! tomorrow). The composite key lets us add rows without column churn
 //! and keeps the per-row rotation timestamp scoped correctly.
 
-use rand::RngCore;
+use rand::Rng;
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::io;

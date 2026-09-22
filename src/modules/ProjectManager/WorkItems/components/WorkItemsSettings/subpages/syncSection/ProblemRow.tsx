@@ -16,9 +16,9 @@ import type {
   OutboxProblemRow,
 } from "@src/api/http/project/sync";
 import Button from "@src/components/Button";
+import DisclosureChevron from "@src/components/DisclosureChevron";
+import { SECTION_ACTION_GAP_CLASSES } from "@src/components/layout/Section";
 import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
   File02Icon,
   FolderClosedIcon,
   HugeiconsIcon,
@@ -26,7 +26,6 @@ import {
   Tag01Icon,
   UserIcon,
 } from "@src/icons";
-import { SECTION_ACTION_GAP_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
 /**
@@ -272,8 +271,7 @@ const ProblemRow: React.FC<ProblemRowProps> = ({
             {t("settings.sync.problems.retryButton")}
           </Button>
           <Button
-            variant="danger"
-            appearance="outline"
+            tone="danger"
             size="small"
             onClick={handleDiscardClick}
             loading={isDiscarding}
@@ -290,30 +288,19 @@ const ProblemRow: React.FC<ProblemRowProps> = ({
           {row.last_error}
         </div>
       )}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="inline"
         onClick={() => setShowPayload((prev) => !prev)}
-        className="flex items-center gap-1 self-start text-[12px] text-text-3 hover:text-text-2"
+        className="gap-1 self-start text-[12px] hover:text-text-2"
       >
-        {showPayload ? (
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            data-icon="chevron-down"
-            size={12}
-          />
-        ) : (
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            data-icon="chevron-right"
-            size={12}
-          />
-        )}
+        <DisclosureChevron expanded={showPayload} size={12} />
         <span>
           {showPayload
             ? t("settings.sync.problems.hidePayload")
             : t("settings.sync.problems.showPayload")}
         </span>
-      </button>
+      </Button>
       {showPayload && (
         <pre className="max-h-[280px] overflow-auto rounded-lg bg-fill-2 px-3 py-2 text-[11px] wrap-break-word whitespace-pre-wrap text-text-3">
           {payloadPreview}

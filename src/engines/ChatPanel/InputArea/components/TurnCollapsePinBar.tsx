@@ -17,14 +17,8 @@
  * it subtle prevents the many per-event collapsible headers from visually
  * merging with the per-turn collapse affordance.
  *
- * Completed turns are collapsed by default; the override atom only
- * records explicit user toggles. The currently active (tail) turn is
- * never collapsed while the agent is still streaming; once its round ends
- * (tail phase "complete") the bar renders immediately — wall-clock
- * start→end duration, no wait, no size threshold — with the turn still
- * expanded, and once the session goes stale (phase "stale": last event
- * older than `TAIL_TURN_STALE_MS`, most likely finished) the turn defaults
- * to collapsed like a historical one.
+ * Completed turns collapse immediately; explicit user toggles take precedence.
+ * The currently active turn stays expanded while its engine is working.
  *
  * Hover reveals a navigate icon that jumps to this turn in WorkStation replay.
  * Hidden inside the Simulator Messages replay surface (no-op jump).
@@ -34,6 +28,7 @@ import React, { memo, useCallback, useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { useChatCollapseState } from "@src/engines/ChatPanel/ChatCollapseScope";
 import { getTurnTimingLabels } from "@src/engines/ChatPanel/ChatHistory/utils/turnTimingFormatting";
 import EventNavigateIcon from "@src/engines/ChatPanel/blocks/primitives/EventNavigateIcon";
@@ -64,7 +59,8 @@ export interface TurnCollapsePinBarProps {
   labelVariant?: "agent" | "agents";
   /** Default collapse state for this turn (true for completed turns). */
   defaultCollapsed: boolean;
-  turnCollapseInteractionAtRef: React.MutableRefObject<number>;
+  /** Captures the current reading anchor before this control changes layout. */
+  onBeforeToggle?: () => void;
   /** Called before expanding a lazy-loaded turn. */
   onExpand?: () => Promise<void> | void;
 }
@@ -80,7 +76,7 @@ const TurnCollapsePinBar: React.FC<TurnCollapsePinBarProps> = memo(
     showTimeRange = true,
     labelVariant = "agent",
     defaultCollapsed,
-    turnCollapseInteractionAtRef,
+    onBeforeToggle,
     onExpand,
   }) => {
     const {
@@ -107,7 +103,7 @@ const TurnCollapsePinBar: React.FC<TurnCollapsePinBarProps> = memo(
 
     const handleToggle = useCallback(async () => {
       if (isLoading) return;
-      turnCollapseInteractionAtRef.current = performance.now();
+      onBeforeToggle?.();
       const nextCollapsed = !collapsed;
       if (!nextCollapsed && onExpand) {
         setIsLoading(true);
@@ -140,9 +136,9 @@ const TurnCollapsePinBar: React.FC<TurnCollapsePinBarProps> = memo(
       defaultCollapsed,
       forcedCollapsed,
       isLoading,
+      onBeforeToggle,
       onExpand,
       setOverride,
-      turnCollapseInteractionAtRef,
       turnId,
     ]);
 
@@ -174,8 +170,9 @@ const TurnCollapsePinBar: React.FC<TurnCollapsePinBarProps> = memo(
     return (
       <div className="mt-1 pb-2">
         <div className="peer/turn-collapse group/turn-collapse group/chat-block-header chat-block-header relative flex h-8 w-full items-center rounded-lg transition-colors hover:bg-fill-2">
-          <button
-            type="button"
+          <Button
+            layout="custom"
+            data-testid="turn-collapse-toggle"
             aria-expanded={expanded}
             className={`flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-left select-none focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none ${showReplayNavigate ? "pr-9" : ""}`}
             onClick={(event) => {
@@ -209,7 +206,7 @@ const TurnCollapsePinBar: React.FC<TurnCollapsePinBarProps> = memo(
                 />
               )}
             </span>
-          </button>
+          </Button>
           {showReplayNavigate ? (
             <div className="absolute right-2 flex h-5 w-5 items-center justify-center opacity-0 transition-opacity group-focus-within/turn-collapse:opacity-100 group-hover/turn-collapse:opacity-100">
               <EventNavigateIcon

@@ -6,8 +6,8 @@
  * itself, so the button is reachable when the sidebar is collapsed.
  *
  * Two convenience variants:
- * - {@link WorkStationSidebarToggleButton} — reads the active My Station
- *   primary-sidebar callbacks via `activeStatusBarCallbacksAtom`.
+ * - {@link WorkStationSidebarToggleButton} — reads the shared My Station
+ *   `workStationPrimarySidebarCollapsedAtom`.
  * - {@link SimulatorSidebarToggleButton}   — reads `simulatorPrimarySidebarCollapsedAtom`
  *   directly (Agent Station replay views).
  *
@@ -41,10 +41,7 @@ import {
   workStationPrimarySidebarCollapsedPersistAtom,
 } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import { workStationLayoutModeAtom } from "@src/store/ui/workStationLayout/splitLayoutAtoms";
-import {
-  activeStatusBarAppAtom,
-  activeStatusBarCallbacksAtom,
-} from "@src/store/ui/workStationLayout/statusBarAtoms";
+import { activeStatusBarAppAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 
 // ============================================
 // View component
@@ -61,6 +58,8 @@ export interface SidebarToggleButtonProps {
   stableAlignmentIcon?: boolean;
   /** Tooltip placement. Defaults to the standard bottom command tooltip. */
   tooltipPosition?: TooltipProps["position"];
+  /** Never flip the tooltip to the other side (see ToolbarTooltip `pinned`). */
+  tooltipPinned?: boolean;
   /** Keep the button visible for layout consistency, but make it inactive. */
   disabled?: boolean;
   /**
@@ -79,6 +78,7 @@ const SidebarToggleButtonComponent: React.FC<SidebarToggleButtonProps> = ({
   iconSize = HEADER_ICON_SIZE.md,
   stableAlignmentIcon = false,
   tooltipPosition = "bottom",
+  tooltipPinned = false,
   disabled = false,
   showShortcut = true,
 }) => {
@@ -97,10 +97,10 @@ const SidebarToggleButtonComponent: React.FC<SidebarToggleButtonProps> = ({
       label={label}
       shortcut={shortcut}
       position={tooltipPosition}
+      pinned={tooltipPinned}
     >
       <span className="inline-flex">
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly
@@ -157,36 +157,34 @@ interface WorkStationSidebarToggleButtonProps {
 
 /**
  * Always renders the My Station primary-sidebar toggle in the 40px app header.
- * Active apps can override the callback/collapsed state; otherwise the shared
- * primary-sidebar atom is used so the header chrome never collapses away.
+ * Every My Station app shares one primary-sidebar atom, so the toggle reads and
+ * writes it directly and the header chrome never collapses away.
  */
 const WorkStationSidebarToggleButtonComponent: React.FC<
   WorkStationSidebarToggleButtonProps
 > = ({ iconSize, disabled = false }) => {
   const activeApp = useAtomValue(activeStatusBarAppAtom);
-  const callbacks = useAtomValue(activeStatusBarCallbacksAtom);
-  const fallbackCollapsed = useAtomValue(
-    workStationPrimarySidebarCollapsedAtom
-  );
-  const fallbackLayoutMode = useAtomValue(workStationLayoutModeAtom);
-  const setFallbackCollapsed = useSetAtom(
+  const collapsed = useAtomValue(workStationPrimarySidebarCollapsedAtom);
+  const layoutMode = useAtomValue(workStationLayoutModeAtom);
+  const setCollapsed = useSetAtom(
     workStationPrimarySidebarCollapsedPersistAtom
   );
 
-  const handleFallbackToggle = useCallback(() => {
-    setFallbackCollapsed("toggle");
-  }, [setFallbackCollapsed]);
+  const handleToggle = useCallback(() => {
+    setCollapsed("toggle");
+  }, [setCollapsed]);
 
-  const layoutMode = callbacks.layoutMode ?? fallbackLayoutMode;
   const position = layoutMode === "right" ? "right" : "left";
 
   return (
     <SidebarToggleButton
-      collapsed={callbacks.primaryPanelCollapsed ?? fallbackCollapsed}
-      onToggle={callbacks.onTogglePrimaryPanel ?? handleFallbackToggle}
+      collapsed={collapsed}
+      onToggle={handleToggle}
       position={position}
       iconSize={iconSize}
       tooltipPosition={activeApp === "browser" ? "top" : "bottom"}
+      // Below the Browser tab's bar is a native webview that covers tooltips.
+      tooltipPinned={activeApp === "browser"}
       disabled={disabled}
     />
   );

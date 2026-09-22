@@ -85,7 +85,6 @@ interface ChatPanelEmptyContentProps {
   handleRegionNoticeChange: (notice: ChatPanelRegionNotice | null) => void;
   handleStartPageAddApiKey: () => void;
   handleCreateTargetChange: (target: string) => void;
-  handleStartPageInstallLatestUpdate: () => void;
   handleStartPageSessionStart: (info: SessionLaunchSuccessInfo) => void;
   handleProjectAgentCreatorToggle: (enabled: boolean) => void;
   handleWorkItemAgentCreatorToggle: (enabled: boolean) => void;
@@ -115,7 +114,6 @@ export function ChatPanelEmptyContent({
   handleRegionNoticeChange,
   handleStartPageAddApiKey,
   handleCreateTargetChange,
-  handleStartPageInstallLatestUpdate,
   handleStartPageSessionStart,
   handleProjectAgentCreatorToggle,
   handleWorkItemAgentCreatorToggle,
@@ -338,7 +336,6 @@ export function ChatPanelEmptyContent({
         createTargetOptions={createTargetOptions}
         onAddApiKey={handleStartPageAddApiKey}
         onCreateTarget={handleCreateTargetChange}
-        onInstallLatestUpdate={handleStartPageInstallLatestUpdate}
         onProjectAgentModeChange={handleProjectAgentCreatorToggle}
         onWorkItemAgentModeChange={handleWorkItemAgentCreatorToggle}
         moreLauncher={moreLauncher}

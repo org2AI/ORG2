@@ -25,6 +25,13 @@ export type AddToAgentRequest =
       lineEnd: number;
     }
   | {
+      type: "file-selection";
+      filePath: string;
+      fileName: string;
+      /** Selected diff text, which may differ from the working copy. */
+      text: string;
+    }
+  | {
       type: "terminal";
       /**
        * Raw selected text from a terminal or read-only DOM surface. The

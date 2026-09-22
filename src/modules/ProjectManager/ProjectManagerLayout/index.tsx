@@ -1,6 +1,5 @@
 import { useSetAtom } from "jotai";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { PROJECT_ORG_SYNC_PROVIDER } from "@src/api/http/project";
 import {
@@ -8,6 +7,7 @@ import {
   buildIntegrationsPath,
   buildWizardPath,
 } from "@src/config/mainAppPaths";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useCloseTabWithGuard } from "@src/hooks/tabHost/useCloseTabWithGuard";
 import { usePrimarySidebarState } from "@src/hooks/tabHost/useWorkStationPanels";
 import { useWorkStationTabShortcutBridge } from "@src/hooks/tabHost/useWorkStationTabShortcutBridge";
@@ -18,7 +18,6 @@ import {
   openGitHubIssuesImportSpotlight,
 } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import { projectListRefreshAtom } from "@src/store/project/projectAtom";
-import { projectStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import {
   STORY_ORG_SCOPE,
   getProjectWorkItemsTabChrome,
@@ -47,7 +46,6 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
       primarySidebarWidth,
       setPrimarySidebarWidth,
       setPrimarySidebarCollapsed,
-      togglePrimarySidebar,
     } = usePrimarySidebarState();
 
     const {
@@ -91,28 +89,6 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
       projectOrgName: activeProjectOrgName,
       projectOrgGitFolderSyncEnabled: activeProjectOrgGitFolderSyncEnabled,
     });
-
-    const setProjectStatusBarCallbacks = useSetAtom(
-      projectStatusBarCallbacksAtom
-    );
-    useEffect(() => {
-      setProjectStatusBarCallbacks((prev) => ({
-        ...prev,
-        primaryPanelCollapsed: primarySidebarCollapsed,
-        onTogglePrimaryPanel: togglePrimarySidebar,
-      }));
-      return () => {
-        setProjectStatusBarCallbacks((prev) => ({
-          ...prev,
-          primaryPanelCollapsed: undefined,
-          onTogglePrimaryPanel: undefined,
-        }));
-      };
-    }, [
-      primarySidebarCollapsed,
-      setProjectStatusBarCallbacks,
-      togglePrimarySidebar,
-    ]);
 
     const bumpProjectListRefresh = useSetAtom(projectListRefreshAtom);
     const handleProjectListRefreshRequested = useCallback(() => {
@@ -176,7 +152,7 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
     // bridged here; `handleCreateProject` is still surfaced via the
     // ProjectManager trailing tab-bar action.
     useWorkStationTabShortcutBridge({
-      enabled: true,
+      host: "project",
       onCloseActiveTab: handleWorkStationCloseActiveProjectTab,
     });
 

@@ -21,17 +21,17 @@ struct BuiltinSkill {
 const BUILTIN_SKILLS: &[BuiltinSkill] = &[
     BuiltinSkill {
         name: "create-skill",
-        description: "Create Agent Skills for ORGII. Use when the user wants to create, write, or author a new skill, capture a workflow as a skill, or asks about SKILL.md format, skill structure, or best practices.",
+        description: "Create Agent Skills for ORG2. Use when the user wants to create, write, or author a new skill, capture a workflow as a skill, or asks about SKILL.md format, skill structure, or best practices.",
         content: include_str!("builtin_data/create-skill/SKILL.md"),
     },
     BuiltinSkill {
         name: "create-rule",
-        description: "Create persistent AI guidance rules for ORGII. Use when the user wants to create a rule, add coding standards, set up project conventions, configure file-specific patterns, or asks about .orgii/rules/ format.",
+        description: "Create persistent AI guidance rules for ORG2. Use when the user wants to create a rule, add coding standards, set up project conventions, configure file-specific patterns, or asks about .orgii/rules/ format.",
         content: include_str!("builtin_data/create-rule/SKILL.md"),
     },
     BuiltinSkill {
         name: "create-orgii-agent",
-        description: "Create or modify a custom ORGII agent definition and its org membership. Use when the user wants to create, configure, retune, rename, or delete an agent, define an agent's soul / capabilities / tools, organize agents into an org, or asks about agent-definitions.json.",
+        description: "Create or modify a custom ORG2 agent definition and its org membership. Use when the user wants to create, configure, retune, rename, or delete an agent, define an agent's soul / capabilities / tools, organize agents into an org, or asks about agent-definitions.json.",
         content: include_str!("builtin_data/create-orgii-agent/SKILL.md"),
     },
     BuiltinSkill {
@@ -41,12 +41,12 @@ const BUILTIN_SKILLS: &[BuiltinSkill] = &[
     },
     BuiltinSkill {
         name: "manage-skills",
-        description: "Create, read, update, enable, disable, or delete ORGII skills. Use when the user wants to create a new skill, edit an existing skill, list available skills, enable or disable a skill, rename a skill, or delete a skill. Triggers include \"创建 skill\", \"更新 skill\", \"删除 xxx skill\", \"list skills\", \"disable skill\".",
+        description: "Create, read, update, enable, disable, or delete ORG2 skills. Use when the user wants to create a new skill, edit an existing skill, list available skills, enable or disable a skill, rename a skill, or delete a skill. Triggers include \"创建 skill\", \"更新 skill\", \"删除 xxx skill\", \"list skills\", \"disable skill\".",
         content: include_str!("builtin_data/manage-skills/SKILL.md"),
     },
     BuiltinSkill {
         name: "manage-agents-and-orgs",
-        description: "Create, update, or delete custom ORGII agent definitions and agent organizations. Use when the user wants to create an agent, update an agent's soul or tools, rename or remove an agent, manage org membership, list agents or orgs, or asks about agent-definitions.json. Triggers include \"创建 agent\", \"更新 agent 配置\", \"管理 org\", \"add agent to org\", \"delete agent\".",
+        description: "Create, update, or delete custom ORG2 agent definitions and agent organizations. Use when the user wants to create an agent, update an agent's soul or tools, rename or remove an agent, manage org membership, list agents or orgs, or asks about agent-definitions.json. Triggers include \"创建 agent\", \"更新 agent 配置\", \"管理 org\", \"add agent to org\", \"delete agent\".",
         content: include_str!("builtin_data/manage-agents-and-orgs/SKILL.md"),
     },
 ];

@@ -9,15 +9,16 @@ import React, { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
-import { HEADER_BUTTON } from "@src/config/workstation/tokens";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import { buildCloudRemoteItemId } from "@src/features/Org2Cloud/cloudRemoteItemId";
 import { useFileHistory } from "@src/hooks/git/useFileHistory";
 import { useOrgtrackFileSessionHistory } from "@src/hooks/git/useOrgtrackFileSessionHistory";
 import { useOrgtrackFileTimeline } from "@src/hooks/git/useOrgtrackFileTimeline";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { getBasename } from "@src/modules/WorkStation/CodeEditor/SessionReplay/CodePanel/pathUtils";
+import { SectionHeaderActions } from "@src/modules/WorkStation/shared/PrimarySidebarLayout/SectionHeaderActions";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { requestSessionSidebarRevealAtom } from "@src/store/ui/sidebarAtom";
 
@@ -89,7 +90,7 @@ export const TimelineContent: React.FC<TimelineContentProps> = memo(
     });
 
     // Session history loads once on mount and only refreshes on demand — this
-    // button (and the empty/error-state actions below) is the sole refresh
+    // header button is the sole refresh
     // path now that the 5s revision poll is gone.
     const {
       spinClass: sessionRefreshSpinClass,
@@ -155,212 +156,210 @@ export const TimelineContent: React.FC<TimelineContentProps> = memo(
       [commits, filePath, onCommitClick]
     );
 
-    if (!filePath || !relativeFilePath) {
-      return (
-        <Placeholder
-          variant="empty"
-          title={t("placeholders.selectFileToViewChanges")}
-        />
-      );
-    }
+    const renderTimeline = () => {
+      if (!filePath || !relativeFilePath) {
+        return (
+          <Placeholder
+            variant="empty"
+            title={t("placeholders.selectFileToViewChanges")}
+          />
+        );
+      }
 
-    const orgtrackEntries = orgtrackTimeline?.entries ?? [];
-    const fileSessions = fileSessionHistory?.sessions ?? [];
-    const sessionBackfill = fileSessionHistory?.backfill;
-    const isSessionBackfillActive =
-      sessionBackfill &&
-      ["queued", "discovering", "indexing"].includes(sessionBackfill.status);
-    const isGitTimeline = variant === "git";
-    const hasNoEntries = isGitTimeline
-      ? commits.length === 0
-      : orgtrackEntries.length === 0 &&
-        fileSessions.length === 0 &&
-        !isSessionBackfillActive;
-    const isLoading = isGitTimeline
-      ? loading
-      : orgtrackLoading || sessionHistoryLoading;
-    const timelineError = isGitTimeline
-      ? error
-      : (orgtrackError ?? sessionHistoryError);
+      const orgtrackEntries = orgtrackTimeline?.entries ?? [];
+      const fileSessions = fileSessionHistory?.sessions ?? [];
+      const sessionBackfill = fileSessionHistory?.backfill;
+      const isSessionBackfillActive =
+        sessionBackfill &&
+        ["queued", "discovering", "indexing"].includes(sessionBackfill.status);
+      const isGitTimeline = variant === "git";
+      const hasNoEntries = isGitTimeline
+        ? commits.length === 0
+        : orgtrackEntries.length === 0 &&
+          fileSessions.length === 0 &&
+          !isSessionBackfillActive;
+      const isLoading = isGitTimeline
+        ? loading
+        : orgtrackLoading || sessionHistoryLoading;
+      const timelineError = isGitTimeline
+        ? error
+        : (orgtrackError ?? sessionHistoryError);
 
-    if (hasNoEntries && isLoading) {
-      return (
-        <Placeholder
-          variant="loading"
-          title={t("placeholders.loadingHistory")}
-        />
-      );
-    }
+      if (hasNoEntries && isLoading) {
+        return (
+          <Placeholder
+            variant="loading"
+            title={t("placeholders.loadingHistory")}
+          />
+        );
+      }
 
-    if (hasNoEntries && timelineError) {
-      return (
-        <Placeholder
-          variant="error"
-          title={t("placeholders.failedToLoadHistory")}
-          subtitle={timelineError ?? t("placeholders.failedToLoadHistory")}
-          onRetry={isGitTimeline ? undefined : handleSessionRefresh}
-        />
-      );
-    }
+      if (hasNoEntries && timelineError) {
+        return (
+          <Placeholder
+            variant="error"
+            title={t("placeholders.failedToLoadHistory")}
+            subtitle={timelineError ?? t("placeholders.failedToLoadHistory")}
+          />
+        );
+      }
 
-    if (hasNoEntries) {
+      if (hasNoEntries) {
+        return (
+          <Placeholder
+            variant="empty"
+            title={
+              isGitTimeline
+                ? t("placeholders.noGitHistory")
+                : t("placeholders.noSessionHistory")
+            }
+            subtitle={
+              isGitTimeline
+                ? `${getBasename(filePath)} is not tracked by Git`
+                : undefined
+            }
+          />
+        );
+      }
+
       return (
-        <Placeholder
-          variant="empty"
-          title={
-            isGitTimeline
-              ? t("placeholders.noGitHistory")
-              : t("placeholders.noSessionHistory", {
-                  defaultValue: "No session history",
-                })
-          }
-          subtitle={
-            isGitTimeline
-              ? `${getBasename(filePath)} is not tracked by Git`
-              : t("placeholders.noSessionHistoryForFile", {
-                  file: getBasename(filePath),
-                })
-          }
-          action={
-            isGitTimeline
-              ? undefined
-              : {
-                  label: t("actions.refresh"),
-                  onClick: handleSessionRefresh,
-                  disabled: sessionHistoryLoading,
-                  dataTestId: "session-blame-refresh-empty",
-                }
-          }
-        />
+        <div className="scrollbar-hide h-full overflow-y-auto pb-2">
+          {!isGitTimeline && (fileSessions.length > 0 || sessionBackfill) && (
+            <div
+              className="py-1"
+              data-testid="session-blame-section"
+              data-history-revision={fileSessionHistory?.revision ?? 0}
+              data-loaded-sessions={fileSessions.length}
+              data-total-sessions={fileSessionHistory?.page.totalSessions ?? 0}
+            >
+              {sessionBackfill &&
+                (isSessionBackfillActive ||
+                  sessionBackfill.status === "partial" ||
+                  sessionBackfill.status === "failed") && (
+                  <div
+                    className="px-4 pb-1 text-[11px] text-text-3"
+                    data-testid="session-blame-backfill"
+                    data-backfill-status={sessionBackfill.status}
+                  >
+                    {isSessionBackfillActive
+                      ? t("labels.sessionBlameBackfill.indexing", {
+                          indexed: sessionBackfill.indexedSessions,
+                          total: sessionBackfill.totalSessions,
+                        })
+                      : sessionBackfill.status === "partial"
+                        ? t("labels.sessionBlameBackfill.partial", {
+                            failed: sessionBackfill.failedSessions,
+                          })
+                        : t("labels.sessionBlameBackfill.failed")}
+                  </div>
+                )}
+              {fileSessions.map((session) => (
+                <FileSessionHistorySessionView
+                  key={session.sessionId}
+                  session={session}
+                  fallbackWorkspacePath={repoPath}
+                  onOpenSession={handleOpenSession}
+                />
+              ))}
+              {hasMoreFileSessions && (
+                <div className="px-4 py-1">
+                  <Button
+                    variant="tertiary"
+                    size="sidebar"
+                    long
+                    disabled={fileSessionsLoadingMore}
+                    data-testid="session-blame-load-more"
+                    onClick={() => void loadMoreFileSessions()}
+                  >
+                    {t("actions.loadMore")}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isGitTimeline && commits.length > 0 && (
+            <div className="py-1">
+              {commits.map((commit) => {
+                const cleanSha = commit.sha.split(/[\s\n]/)[0];
+                const isSelected = selectedCommitSha === cleanSha;
+
+                const commitInfo: TimelineCommitInfo = {
+                  sha: cleanSha,
+                  shortSha: commit.short_sha,
+                  message: commit.summary,
+                  author: commit.author.name,
+                  timestamp: commit.author.date,
+                };
+
+                return (
+                  <TimelineEntry
+                    key={cleanSha}
+                    commitSha={cleanSha}
+                    shortSha={commit.short_sha}
+                    message={commit.summary}
+                    author={commit.author.name}
+                    timestamp={commit.author.date}
+                    isSelected={isSelected}
+                    onClick={() => handleCommitClick(commitInfo)}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {!isGitTimeline && orgtrackEntries.length > 0 && (
+            <div className="py-1">
+              {orgtrackEntries.map((entry) => (
+                <OrgtrackTimelineEntryView
+                  key={entry.id}
+                  entry={entry}
+                  onCommitClick={handleOrgtrackCommitClick}
+                />
+              ))}
+            </div>
+          )}
+
+          {!isGitTimeline && orgtrackError && (
+            <div className="px-4 py-2 text-[11px] text-warning-6">
+              {orgtrackError}
+            </div>
+          )}
+          {!isGitTimeline && sessionHistoryError && (
+            <div className="px-4 py-2 text-[11px] text-warning-6">
+              {sessionHistoryError}
+            </div>
+          )}
+        </div>
       );
-    }
+    };
 
     return (
-      <div className="scrollbar-hide h-full overflow-y-auto pb-2">
-        {!isGitTimeline && (fileSessions.length > 0 || sessionBackfill) && (
-          <div
-            className="py-1"
-            data-testid="session-blame-section"
-            data-history-revision={fileSessionHistory?.revision ?? 0}
-            data-loaded-sessions={fileSessions.length}
-            data-total-sessions={fileSessionHistory?.page.totalSessions ?? 0}
-          >
-            <div className="flex items-center justify-end px-2 pb-1">
-              <button
-                type="button"
-                className={HEADER_BUTTON.actionDisabled}
-                disabled={sessionHistoryLoading}
-                onClick={handleSessionRefresh}
-                title={t("actions.refresh")}
-                aria-label={t("actions.refresh")}
-                data-testid="session-blame-refresh"
-              >
+      <>
+        {variant === "session" && (
+          <SectionHeaderActions>
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              iconOnly
+              icon={
                 <AnyIcon
                   icon={SessionRefreshIcon}
                   size={13}
                   strokeWidth={1.75}
                   className={sessionRefreshSpinClass}
                 />
-              </button>
-            </div>
-            {sessionBackfill &&
-              (isSessionBackfillActive ||
-                sessionBackfill.status === "partial" ||
-                sessionBackfill.status === "failed") && (
-                <div
-                  className="px-4 pb-1 text-[11px] text-text-3"
-                  data-testid="session-blame-backfill"
-                  data-backfill-status={sessionBackfill.status}
-                >
-                  {isSessionBackfillActive
-                    ? t("labels.sessionBlameBackfill.indexing", {
-                        indexed: sessionBackfill.indexedSessions,
-                        total: sessionBackfill.totalSessions,
-                      })
-                    : sessionBackfill.status === "partial"
-                      ? t("labels.sessionBlameBackfill.partial", {
-                          failed: sessionBackfill.failedSessions,
-                        })
-                      : t("labels.sessionBlameBackfill.failed")}
-                </div>
-              )}
-            {fileSessions.map((session) => (
-              <FileSessionHistorySessionView
-                key={session.sessionId}
-                session={session}
-                fallbackWorkspacePath={repoPath}
-                onOpenSession={handleOpenSession}
-              />
-            ))}
-            {hasMoreFileSessions && (
-              <div className="px-4 py-1">
-                <button
-                  type="button"
-                  className={`${HEADER_BUTTON} w-full justify-center text-xs text-text-2`}
-                  disabled={fileSessionsLoadingMore}
-                  data-testid="session-blame-load-more"
-                  onClick={() => void loadMoreFileSessions()}
-                >
-                  {t("actions.loadMore")}
-                </button>
-              </div>
-            )}
-          </div>
+              }
+              disabled={sessionHistoryLoading || !relativeFilePath}
+              onClick={handleSessionRefresh}
+              title={t("actions.refresh")}
+              aria-label={t("actions.refresh")}
+              data-testid="session-blame-refresh"
+            />
+          </SectionHeaderActions>
         )}
-
-        {isGitTimeline && commits.length > 0 && (
-          <div className="py-1">
-            {commits.map((commit) => {
-              const cleanSha = commit.sha.split(/[\s\n]/)[0];
-              const isSelected = selectedCommitSha === cleanSha;
-
-              const commitInfo: TimelineCommitInfo = {
-                sha: cleanSha,
-                shortSha: commit.short_sha,
-                message: commit.summary,
-                author: commit.author.name,
-                timestamp: commit.author.date,
-              };
-
-              return (
-                <TimelineEntry
-                  key={cleanSha}
-                  commitSha={cleanSha}
-                  shortSha={commit.short_sha}
-                  message={commit.summary}
-                  author={commit.author.name}
-                  timestamp={commit.author.date}
-                  isSelected={isSelected}
-                  onClick={() => handleCommitClick(commitInfo)}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {!isGitTimeline && orgtrackEntries.length > 0 && (
-          <div className="py-1">
-            {orgtrackEntries.map((entry) => (
-              <OrgtrackTimelineEntryView
-                key={entry.id}
-                entry={entry}
-                onCommitClick={handleOrgtrackCommitClick}
-              />
-            ))}
-          </div>
-        )}
-
-        {!isGitTimeline && orgtrackError && (
-          <div className="px-4 py-2 text-[11px] text-warning-6">
-            {orgtrackError}
-          </div>
-        )}
-        {!isGitTimeline && sessionHistoryError && (
-          <div className="px-4 py-2 text-[11px] text-warning-6">
-            {sessionHistoryError}
-          </div>
-        )}
-      </div>
+        {renderTimeline()}
+      </>
     );
   }
 );

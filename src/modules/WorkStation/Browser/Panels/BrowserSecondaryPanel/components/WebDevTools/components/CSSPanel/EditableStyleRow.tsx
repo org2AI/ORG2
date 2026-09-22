@@ -131,28 +131,23 @@ export const EditableStyleRow: React.FC<EditableStyleRowProps> = memo(
         <ToolbarTooltip label={t("tooltips.copy")}>
           <Button
             variant="tertiary"
-            size="mini"
+            size="sidebar"
             icon={
               copied ? (
                 <HugeiconsIcon
                   icon={Tick01Icon}
                   data-icon="check"
-                  size={10}
+                  size={14}
                   className="text-success-6"
                 />
               ) : (
-                <HugeiconsIcon
-                  icon={Copy01Icon}
-                  data-icon="copy"
-                  size={10}
-                  className="text-text-3"
-                />
+                <HugeiconsIcon icon={Copy01Icon} data-icon="copy" size={14} />
               )
             }
             iconOnly
             onClick={handleCopy}
             aria-label={t("tooltips.copy")}
-            className="shrink-0 opacity-0 group-hover:opacity-100"
+            className="shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
           />
         </ToolbarTooltip>
       </div>

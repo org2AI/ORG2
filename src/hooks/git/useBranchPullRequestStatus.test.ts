@@ -26,6 +26,10 @@ import {
   BRANCH_CI_SAFETY_POLL_MS,
   clearBranchPullRequestStatusCache,
 } from "@src/services/git/branchPullRequestStatus";
+import {
+  clearPullRequestHeadChecks,
+  loadPullRequestHeadChecks,
+} from "@src/services/git/pullRequestHeadChecks";
 import { announceBranchRemoteMutation } from "@src/util/git/branchRemoteMutation";
 
 import {
@@ -90,6 +94,7 @@ describe("useBranchPullRequestStatus", () => {
 
   beforeEach(() => {
     clearBranchPullRequestStatusCache();
+    clearPullRequestHeadChecks();
     visibilityState = "visible";
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -338,6 +343,66 @@ describe("useBranchPullRequestStatus", () => {
 
     expect(latest.pr?.number).toBe(22);
     expect(latest.compareUrl).toContain("feature-new");
+  });
+
+  it("takes the checks a pull-request panel fetched for the same pull request instead of fetching them again", async () => {
+    vi.useFakeTimers();
+    getChecksLocalMock.mockResolvedValue(runningChecks());
+    let latest: UseBranchPullRequestStatusResult | null = null;
+
+    await act(async () => {
+      root.render(
+        createElement(Probe, {
+          options: {
+            repoId: "repo-1",
+            repoPath: "/repo",
+            branchName: "feature",
+            poll: true,
+          },
+          onValue: (value) => {
+            latest = value;
+          },
+        })
+      );
+    });
+    expect(getChecksLocalMock).toHaveBeenCalledTimes(1);
+
+    // One second before the status bar's own poll, the panel showing pull
+    // request #12 reads its head through the shared reader.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(BRANCH_CI_POLL_BASE_MS - 1_000);
+    });
+    getChecksLocalMock.mockResolvedValue({
+      ...runningChecks(),
+      state: "failure",
+    });
+    await act(async () => {
+      await loadPullRequestHeadChecks("acme/repo", 12, { source: "panel" });
+    });
+    expect(getChecksLocalMock).toHaveBeenCalledTimes(2);
+    expect(
+      (latest as UseBranchPullRequestStatusResult | null)?.checks?.state
+    ).toBe("failure");
+
+    // The status bar's timer restarted from that answer, one backoff step on
+    // (a landed answer counts as a poll): nothing at the old due time, one
+    // poll a full second-step interval after the answer.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(BRANCH_CI_POLL_BASE_MS * 2 - 1);
+    });
+    expect(getChecksLocalMock).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(getChecksLocalMock).toHaveBeenCalledTimes(3);
+
+    // A different pull request's answer is not this branch's business.
+    await act(async () => {
+      await loadPullRequestHeadChecks("acme/repo", 13, { source: "panel" });
+    });
+    expect(
+      (latest as UseBranchPullRequestStatusResult | null)?.checks?.state
+    ).toBe("failure");
   });
 
   it("re-reads while checks run and stops once they settle", async () => {

@@ -1,5 +1,4 @@
 {
-  "title": "團隊執行狀態",
   "refresh": "重新整理",
   "loadError": "無法載入團隊執行狀態",
   "overview": {
@@ -67,7 +66,7 @@
     "memory": "記憶體",
     "unified": "統一記憶體",
     "gpu": "GPU",
-    "appVersion": "ORGII 版本",
+    "appVersion": "ORG2 版本",
     "totalSessions": "工作階段總數",
     "lastSynced": "最後同步"
   },

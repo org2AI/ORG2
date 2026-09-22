@@ -264,7 +264,28 @@ fn macos_current_process_has_physical_footprint() {
     let usage = macos_rusage(std::process::id()).expect("current process rusage");
     assert!(usage.ri_phys_footprint > 0);
     assert!(usage.ri_proc_start_abstime > 0);
-    assert!(usage.ri_lifetime_max_phys_footprint >= usage.ri_phys_footprint);
+    assert!(usage.ri_lifetime_max_phys_footprint > 0);
+
+    // Peak/current ordering is guaranteed by our conversion boundary,
+    // not by the kernel's separate reads of the live process counters.
+    let descriptor = ProcessDescriptor {
+        pid: std::process::id(),
+        parent_pid: None,
+        start_time_secs: 0,
+        name: "memory-test".to_string(),
+        executable: None,
+        rss_bytes: 0,
+        belongs_to_current_user: true,
+    };
+    let process = platform::build_process(&descriptor, AppMemoryProcessRole::Backend);
+    assert_eq!(process.metric_kind, MemoryMetricKind::PhysicalFootprint);
+    assert!(process.effective_memory_bytes > 0);
+    assert!(
+        process
+            .peak_effective_memory_bytes
+            .expect("current process lifetime peak")
+            >= process.effective_memory_bytes
+    );
 }
 
 #[cfg(target_os = "macos")]

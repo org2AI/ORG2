@@ -1,0 +1,65 @@
+# Whole unit suite on every push to develop.
+#
+# ci.yml runs only the unit tests a pull request can affect (see
+# scripts/ci/select-unit-tests.cjs). That selection covers what an import graph
+# and its full-run triggers can see; this workflow is the backstop for
+# anything else, and the whole-suite run against each merged result.
+#
+# `cancel-in-progress: false` keeps the running job and at most one pending
+# run: a burst of merges collapses into the newest pending push instead of
+# cancelling a run that is about to report, so a failure still points at a
+# short range of merges.
+#
+# docs/ cannot reach a unit test, so documentation-only pushes skip the run.
+#
+# Mirrors the frontend setup in ci.yml (pnpm action, Node 20, identical
+# node_modules key). If ci.yml's frontend setup changes, change this file to
+# match.
+
+name: "Unit tests (develop)"
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - "docs/**"
+  workflow_dispatch:
+
+concurrency:
+  group: unit-tests-develop
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Frontend (whole unit suite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Cache node_modules
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests (whole suite)
+        run: pnpm run test

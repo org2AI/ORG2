@@ -142,6 +142,7 @@ describe("PinnedSidebarChrome", () => {
   });
 
   it("previews the collapsed sidebar on hover and expands it on click", () => {
+    vi.useFakeTimers();
     act(() => store.set(sidebarCollapsedAtom, true));
     render();
 
@@ -151,12 +152,35 @@ describe("PinnedSidebarChrome", () => {
       );
     });
 
+    expect(store.get(hoverSidebarOpenAtom)).toBe(false);
+    act(() => vi.advanceTimersByTime(749));
+    expect(store.get(hoverSidebarOpenAtom)).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(store.get(hoverSidebarOpenAtom)).toBe(true);
+
+    act(() => {
+      store.set(hoverSidebarOpenAtom, false);
+      store.set(sidebarCollapsedAtom, false);
+    });
+    click("sidebar-chrome-hide");
+
+    act(() => {
+      query("sidebar-chrome-show")?.dispatchEvent(
+        new MouseEvent("mouseout", { bubbles: true })
+      );
+      query("sidebar-chrome-show")?.dispatchEvent(
+        new MouseEvent("mouseover", { bubbles: true })
+      );
+      vi.advanceTimersByTime(750);
+    });
+
     expect(store.get(hoverSidebarOpenAtom)).toBe(true);
     expect(store.get(sidebarCollapsedAtom)).toBe(true);
     expect(query("sidebar-chrome-expand")).not.toBeNull();
     click("sidebar-chrome-expand");
     expect(store.get(hoverSidebarOpenAtom)).toBe(false);
     expect(store.get(sidebarCollapsedAtom)).toBe(false);
+    vi.useRealTimers();
   });
 
   it("does not preview the sidebar when hovering its hide button", () => {

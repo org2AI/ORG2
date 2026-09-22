@@ -39,8 +39,6 @@ interface SortableTabProps {
   onCloseClick: (event: React.MouseEvent, tabId: string) => void;
   onContextMenu: (event: React.MouseEvent, tab: WorkStationTab) => void;
   gitInfo?: GitFileInfo | null;
-  /** Icon only (e.g. narrow tab strip); title still in native tooltip via getTabTitle(). */
-  hideLabel?: boolean;
 }
 
 // ============================================
@@ -56,7 +54,6 @@ export const SortableTab: React.FC<SortableTabProps> = memo(
     onCloseClick,
     onContextMenu,
     gitInfo = null,
-    hideLabel = false,
   }) => {
     const { t } = useTranslation();
     const [isTabHovered, setIsTabHovered] = useState(false);
@@ -140,7 +137,6 @@ export const SortableTab: React.FC<SortableTabProps> = memo(
         data-action-id={tab.id}
         isActive={isActive}
         isDragging={isDragging}
-        hideLabel={hideLabel}
         onClick={() => !isDragging && onTabClick(tab.id)}
         onContextMenu={(event) => {
           event.preventDefault();
@@ -154,7 +150,6 @@ export const SortableTab: React.FC<SortableTabProps> = memo(
           tab={tab}
           isActive={isActive}
           gitInfo={gitInfo}
-          hideLabel={hideLabel}
           showLabelRightScrim={showLabelRightScrim}
         />
 

@@ -56,7 +56,7 @@ describe("StartPageQuotaModal", () => {
     expect(markup).toContain('data-hide-footer="true"');
     expect(markup).toContain('role="dialog"');
     expect(markup).toContain('data-icon="chevron-left"');
-    expect(markup).toContain('class="p-3"');
+    expect(markup).toContain('class="px-3 pb-3"');
     expect(markup).toContain("kanban.dataSource.views.quota");
     expect(markup).toContain('data-testid="quota-modal-refresh"');
     expect(markup).toContain('data-show-header="false"');

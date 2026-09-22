@@ -22,6 +22,8 @@ export interface TaskThread {
 // ============================================
 
 export interface GridCellProps {
+  /** Owning session; names alone do not identify execution threads. */
+  sessionId: string;
   historyLoad?: import("../hooks/useMultiSessionSimulatorEvents").SubagentHistoryLoad;
   index: number;
   color: string;
@@ -73,6 +75,7 @@ export interface GridCellProps {
 // ============================================
 
 export interface ActivitySimulatorGridProps {
+  sessionId: string | null;
   /** Current grid layout */
   layout?: SimulatorGridLayout;
   /** Selected current event (optional) */

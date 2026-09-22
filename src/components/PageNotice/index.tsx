@@ -14,18 +14,24 @@
  * When action is an object, PageNotice builds a secondary Button at 28px height.
  */
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { DROPDOWN_PANEL } from "@src/components/Dropdown/tokens";
+import Message from "@src/components/Message";
 import {
   Cancel01Icon,
   ChevronsDownUpIcon,
+  Copy01Icon,
   HugeiconsIcon,
   InformationCircleIcon,
   Tick01Icon,
   TriangleAlertIcon,
   UnfoldMoreIcon,
 } from "@src/icons";
+import { copyText } from "@src/util/data/clipboard";
+
+import "./index.css";
 
 /**
  * Shared neutral surface — flat outline, no tone accent, and a half-strength
@@ -76,19 +82,7 @@ const DEFAULT_ICONS: Record<string, React.ReactNode> = {
  * global `* { user-select: none }` so users can select/copy titles, bodies and
  * technical details. Interactive children opt out again with `select-none`.
  */
-const SELECTABLE_TEXT_CLASS = "allow-select-deep";
-
-const PAGE_NOTICE_BASE_TEXT = {
-  title: "block text-[13px] font-medium leading-[14px]",
-  body: "text-[12px] font-normal leading-snug",
-  subtitle: "mt-1 block text-[11px] opacity-70",
-} as const;
-
-const PAGE_NOTICE_TOKENS = {
-  titleText: `${PAGE_NOTICE_BASE_TEXT.title} ${SELECTABLE_TEXT_CLASS}`,
-  bodyText: `${PAGE_NOTICE_BASE_TEXT.body} ${SELECTABLE_TEXT_CLASS}`,
-  subtitleText: `${PAGE_NOTICE_BASE_TEXT.subtitle} ${SELECTABLE_TEXT_CLASS}`,
-} as const;
+const SELECTABLE_TEXT_CLASS = "allow-select-deep page-notice__text";
 
 interface PageNoticeActionConfig {
   label: string;
@@ -126,10 +120,18 @@ interface PageNoticeProps {
   hideIcon?: boolean;
   /** Optional subtitle below the body */
   subtitle?: React.ReactNode;
+  /** Override title typography; block layout, weight and selection are preserved. */
+  titleClassName?: string;
+  /** Override body typography; weight and selection are preserved. */
+  bodyClassName?: string;
+  /** Override subtitle typography; layout, opacity and selection are preserved. */
+  subtitleClassName?: string;
   /** Extra className on the outer container */
   className?: string;
   /** Reduce default-card vertical and right padding without shrinking action buttons. */
   compact?: boolean;
+  /** Show the copy action. Disable for transient status guidance without useful copyable details. */
+  copyable?: boolean;
   /** Compact expandable pill that shows only title until expanded */
   presentation?: "default" | "pill";
   /** Optional action — object builds a 28px secondary Button; ReactNode for custom */
@@ -155,8 +157,12 @@ const PageNotice: React.FC<PageNoticeProps> = ({
   icon,
   hideIcon = false,
   subtitle,
+  titleClassName,
+  bodyClassName,
+  subtitleClassName,
   className,
   compact = false,
+  copyable = true,
   presentation = "default",
   action,
   onClose,
@@ -166,6 +172,34 @@ const PageNotice: React.FC<PageNoticeProps> = ({
   role,
   dataTestId,
 }) => {
+  const { t } = useTranslation("common");
+  const bodyRef = React.useRef<HTMLDivElement>(null);
+  const subtitleRef = React.useRef<HTMLSpanElement>(null);
+  const handleCopy = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const text = [
+      title,
+      bodyRef.current?.innerText ?? bodyRef.current?.textContent,
+      subtitleRef.current?.innerText ?? subtitleRef.current?.textContent,
+    ]
+      .filter((part) => part?.trim())
+      .join("\n\n");
+    if (!text) return;
+    copyText(text).then(
+      () => Message.success(t("status.copied")),
+      () => Message.error(t("status.copyFailed"))
+    );
+  };
+  const baseText = {
+    title: `block font-medium ${titleClassName ?? "text-[13px] leading-[14px]"}`,
+    body: `font-normal ${bodyClassName ?? "text-[12px] leading-snug"}`,
+    subtitle: `mt-1 block opacity-70 ${subtitleClassName ?? "text-[11px]"}`,
+  };
+  const textClasses = {
+    title: `${baseText.title} ${SELECTABLE_TEXT_CLASS}`,
+    body: `${baseText.body} ${SELECTABLE_TEXT_CLASS}`,
+    subtitle: `${baseText.subtitle} ${SELECTABLE_TEXT_CLASS}`,
+  };
   const [expanded, setExpanded] = React.useState(presentation !== "pill");
   const isPill = presentation === "pill";
   const cardPaddingClass = compact ? "py-1 pl-3 pr-1" : "p-3";
@@ -211,7 +245,6 @@ const PageNotice: React.FC<PageNoticeProps> = ({
     action &&
     (isActionConfig(action) ? (
       <Button
-        variant="secondary"
         size="small"
         href={action.href}
         target={action.href ? "_blank" : undefined}
@@ -238,20 +271,15 @@ const PageNotice: React.FC<PageNoticeProps> = ({
         {hasTitle ? (
           // Pill headers double as the expand/collapse hit area — keep their
           // text non-selectable so a drag doesn't fight the toggle.
-          <span
-            className={
-              isPill
-                ? PAGE_NOTICE_BASE_TEXT.title
-                : PAGE_NOTICE_TOKENS.titleText
-            }
-          >
+          <span className={isPill ? baseText.title : textClasses.title}>
             {title}
           </span>
         ) : (
           showContent &&
           children && (
             <div
-              className={`block ${isPill ? PAGE_NOTICE_BASE_TEXT.body : PAGE_NOTICE_TOKENS.bodyText}`}
+              ref={bodyRef}
+              className={`block ${isPill ? baseText.body : textClasses.body}`}
             >
               {children}
             </div>
@@ -265,23 +293,36 @@ const PageNotice: React.FC<PageNoticeProps> = ({
     <div
       role={role}
       data-testid={dataTestId}
-      className={`${ALERT_SURFACE_CLASS} ${isPill ? `inline-block w-fit max-w-full ${expanded ? ALERT_RADIUS_CLASS : "rounded-full"} px-3 py-2` : `${ALERT_RADIUS_CLASS} ${cardPaddingClass}`} ${className ?? ""}`}
+      className={`page-notice ${ALERT_SURFACE_CLASS} ${isPill ? `inline-block w-fit max-w-full ${expanded ? ALERT_RADIUS_CLASS : "rounded-full"} px-3 py-2` : `${ALERT_RADIUS_CLASS} ${cardPaddingClass}`} ${className ?? ""}`}
     >
       <div className={`flex items-center ${isPill ? "gap-1" : "gap-3"}`}>
         {isPill ? (
-          <button
-            type="button"
+          <Button
+            layout="custom"
             onClick={() => setExpanded((currentExpanded) => !currentExpanded)}
             aria-expanded={expanded}
             className="flex min-w-0 flex-1 items-center text-left"
           >
             {titleNode}
-          </button>
+          </Button>
         ) : (
           titleNode
         )}
-        {(action || onClose) && (
+        {((copyable && (title || children || subtitle)) ||
+          action ||
+          onClose) && (
           <div className="flex shrink-0 items-center gap-px">
+            {copyable && (
+              <Button
+                variant="tertiary"
+                size="small"
+                iconOnly
+                icon={<HugeiconsIcon icon={Copy01Icon} size={14} />}
+                title={t("actions.copy")}
+                aria-label={t("actions.copy")}
+                onClick={handleCopy}
+              />
+            )}
             {action && <div className="shrink-0">{actionNode}</div>}
             {onClose && (
               <Button
@@ -298,10 +339,14 @@ const PageNotice: React.FC<PageNoticeProps> = ({
         )}
       </div>
       {showContent && hasTitle && children && (
-        <div className={`mt-2 ${PAGE_NOTICE_TOKENS.bodyText}`}>{children}</div>
+        <div ref={bodyRef} className={`mt-2 ${textClasses.body}`}>
+          {children}
+        </div>
       )}
       {showContent && subtitle && (
-        <span className={PAGE_NOTICE_TOKENS.subtitleText}>{subtitle}</span>
+        <span ref={subtitleRef} className={textClasses.subtitle}>
+          {subtitle}
+        </span>
       )}
     </div>
   );

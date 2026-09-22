@@ -189,6 +189,44 @@ pub(super) fn write_file_atomically(
     })
 }
 
+/// Publish a complete file only if no writer has claimed the destination.
+/// Desktop does not participate in ORG2's advisory locks, so an existence
+/// check followed by rename cannot protect its concurrently created rows.
+/// Hard-linking a staged file is atomic and never replaces an existing name;
+/// this links files, never provider directories or profiles.
+pub(super) fn create_file_atomically(
+    destination: &Path,
+    label: &str,
+    write: impl FnOnce(&mut fs::File) -> Result<(), String>,
+) -> Result<bool, String> {
+    ensure_parent(destination, label)?;
+    let staged = staged_path(destination, "create.tmp");
+    let result = (|| {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&staged)
+            .map_err(|error| format!("create staged {label}: {error}"))?;
+        write(&mut file)?;
+        file.sync_all()
+            .map_err(|error| format!("sync staged {label}: {error}"))?;
+        drop(file);
+        match fs::hard_link(&staged, destination) {
+            Ok(()) => Ok(true),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
+            Err(error) => Err(format!(
+                "publish new {label} {}: {error}",
+                destination.display()
+            )),
+        }
+    })();
+    let _ = fs::remove_file(&staged);
+    if matches!(result, Ok(true)) {
+        sync_parent(destination, label)?;
+    }
+    result
+}
+
 /// Crash-safe copy into a provider-owned destination.
 pub(super) fn copy_file_atomically(
     source: &Path,
@@ -300,6 +338,59 @@ pub(super) fn append_suffix_atomically(path: &Path, suffix: &[u8]) -> Result<(),
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn create_file_atomically_preserves_a_concurrent_desktop_write() {
+        let temp = tempfile::tempdir().expect("temporary catalog");
+        let path = temp.path().join("local-session.json");
+        assert!(!path.exists());
+        let desktop_bytes = br#"{"title":"Desktop's latest title","permissionMode":"default"}"#;
+        let published = create_file_atomically(&path, "discovery row", |file| {
+            file.write_all(br#"{"title":"ORG2 projection"}"#)
+                .map_err(|error| error.to_string())?;
+            // Desktop writes after ORG2's inspection, without its advisory
+            // lock, but before the staged publication commits.
+            fs::write(&path, desktop_bytes).map_err(|error| error.to_string())
+        })
+        .expect("no-clobber publication");
+        assert!(!published);
+        assert_eq!(fs::read(&path).expect("Desktop row"), desktop_bytes);
+        assert_eq!(fs::read_dir(temp.path()).expect("catalog").count(), 1);
+    }
+
+    #[test]
+    fn concurrent_create_file_atomically_has_one_complete_winner() {
+        let temp = tempfile::tempdir().expect("temporary catalog");
+        let path = temp.path().join("local-session.json");
+        let ready = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let writers: Vec<_> = [
+            b"first complete row".as_slice(),
+            b"second complete row".as_slice(),
+        ]
+        .into_iter()
+        .map(|payload| {
+            let path = path.clone();
+            let ready = ready.clone();
+            std::thread::spawn(move || {
+                create_file_atomically(&path, "discovery row", |file| {
+                    file.write_all(payload).map_err(|error| error.to_string())?;
+                    ready.wait();
+                    Ok(())
+                })
+                .expect("concurrent publication")
+            })
+        })
+        .collect();
+        let inserted = writers
+            .into_iter()
+            .map(|writer| writer.join().expect("writer"))
+            .filter(|inserted| *inserted)
+            .count();
+        assert_eq!(inserted, 1);
+        let actual = fs::read(&path).expect("complete winner");
+        assert!(actual == b"first complete row" || actual == b"second complete row");
+        assert_eq!(fs::read_dir(temp.path()).expect("catalog").count(), 1);
+    }
 
     const LOCK_CHILD_PATH: &str = "ORGII_CLAUDE_TRANSCRIPT_LOCK_CHILD_PATH";
     const LOCK_CHILD_READY: &str = "ORGII_CLAUDE_TRANSCRIPT_LOCK_CHILD_READY";

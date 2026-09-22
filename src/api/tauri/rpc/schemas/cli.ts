@@ -43,6 +43,7 @@ export const CliStatusSchema = z
     errorMessage: z.string().nullable().optional(),
     totalTokens: z.number().optional(),
     transcriptSource: z.string().optional(),
+    credentialSource: z.string().min(1).max(1024).nullable().optional(),
   })
   .passthrough();
 

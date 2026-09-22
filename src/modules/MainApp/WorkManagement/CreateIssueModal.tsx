@@ -1,17 +1,17 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import ComposerSurface from "@src/components/ComposerSurface";
 import Input from "@src/components/Input";
-import Select from "@src/components/Select";
-import type { SelectOption } from "@src/components/Select";
-import { useSessionReferenceDropTarget } from "@src/features/Org2Cloud/useSessionReferenceDropTarget";
 import MarkdownTextareaEditor, {
   type MarkdownEditorMode,
   type MarkdownTextareaEditorRef,
-} from "@src/modules/shared/components/MarkdownTextareaEditor";
-import MarkdownEditorModeSwitch from "@src/modules/shared/components/MarkdownTextareaEditor/ModeSwitch";
-import { compactRepositoryLabel } from "@src/modules/shared/githubRepositoryLabel";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/MarkdownTextareaEditor";
+import MarkdownEditorModeSwitch from "@src/components/MarkdownTextareaEditor/ModeSwitch";
+import Select from "@src/components/Select";
+import type { SelectOption } from "@src/components/Select";
+import { PanelFooter } from "@src/components/layout/blocks";
+import ComposerSurface from "@src/engines/ChatPanel/ComposerSurface";
+import { compactRepositoryLabel } from "@src/features/GitHubWork/githubRepositoryLabel";
+import { useSessionReferenceDropTarget } from "@src/features/Org2Cloud/useSessionReferenceDropTarget";
 import Modal from "@src/scaffold/ModalSystem";
 
 import type { GitHubRepoSource } from "./githubWorkItemsTypes";
@@ -131,7 +131,6 @@ export function CreateIssueModal({
         />
       }
       width={640}
-      bodyClassName="p-4"
     >
       <div className="flex flex-col gap-3">
         <Select

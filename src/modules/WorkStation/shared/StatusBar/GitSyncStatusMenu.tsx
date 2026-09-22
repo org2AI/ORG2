@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
@@ -13,10 +14,8 @@ import { useDropdownEngine } from "@src/hooks/dropdown";
 import {
   ArrowDown01Icon,
   ArrowDown02Icon,
-  ArrowDownToLineIcon,
   ArrowUp02Icon,
-  ArrowUpFromLineIcon,
-  CloudDownloadIcon,
+  ArrowUpDownIcon,
   CloudUploadIcon,
   EllipsisIcon,
   GitCompareIcon,
@@ -108,20 +107,20 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
         {
           key: "fetch",
           label: "Fetch origin",
-          icon: CloudDownloadIcon,
+          icon: Refresh04Icon,
           onSelect: onFetch,
         },
         {
           key: "sync",
           label: "Pull then push",
-          icon: Refresh04Icon,
+          icon: ArrowUpDownIcon,
           disabled: needsPublish,
           onSelect: onSync,
         },
         {
           key: "pull",
           label: "Pull",
-          icon: ArrowDownToLineIcon,
+          icon: ArrowDown02Icon,
           disabled: needsPublish,
           onSelect: onPull,
         },
@@ -135,7 +134,7 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
         {
           key: "push",
           label: needsPublish ? "Publish" : "Push",
-          icon: needsPublish ? CloudUploadIcon : ArrowUpFromLineIcon,
+          icon: needsPublish ? CloudUploadIcon : ArrowUp02Icon,
           onSelect: onPush,
         },
       ],
@@ -154,7 +153,7 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
       return actions.find((action) => action.key === "fetch");
     }, [actions, aheadCount, behindCount, needsPublish]);
 
-    const gitActionsLabel = t("workstation.gitActionsTooltip", "Git actions");
+    const gitActionsLabel = t("workstation.gitActionsTooltip");
 
     return (
       <div ref={triggerRef} className="flex h-full">
@@ -258,9 +257,9 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
                       const disabled =
                         isSyncBusy || !canSyncDisplayedRepo || action.disabled;
                       return (
-                        <button
+                        <Button
+                          layout="custom"
                           key={action.key}
-                          type="button"
                           className={classNames(
                             DROPDOWN_CLASSES.menuActionItem,
                             disabled && DROPDOWN_CLASSES.itemDisabled
@@ -272,20 +271,18 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
                           <AnyIcon
                             icon={action.icon}
                             size={MENU_ICON_SIZE}
-                            className="shrink-0 text-text-1"
+                            className="shrink-0"
                           />
-                          <span className="font-medium text-text-1">
-                            {action.label}
-                          </span>
-                        </button>
+                          <span>{action.label}</span>
+                        </Button>
                       );
                     })}
                   </>
                 ) : (
                   <>
                     {suggestedAction && (
-                      <button
-                        type="button"
+                      <Button
+                        layout="custom"
                         className={classNames(
                           DROPDOWN_CLASSES.menuActionItem,
                           (isSyncBusy ||
@@ -304,16 +301,14 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
                         <AnyIcon
                           icon={suggestedAction.icon}
                           size={MENU_ICON_SIZE}
-                          className="shrink-0 text-text-1"
+                          className="shrink-0"
                         />
-                        <span className="font-medium text-text-1">
-                          {suggestedAction.label}
-                        </span>
-                      </button>
+                        <span>{suggestedAction.label}</span>
+                      </Button>
                     )}
                     <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
-                    <button
-                      type="button"
+                    <Button
+                      layout="custom"
                       className={DROPDOWN_CLASSES.menuActionItem}
                       onClick={() => setShowAllActions(true)}
                       role="menuitem"
@@ -324,10 +319,8 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
                         size={MENU_ICON_SIZE}
                         className="text-text-1"
                       />
-                      <span className="font-medium text-text-1">
-                        {t("common.more")}
-                      </span>
-                    </button>
+                      <span>{t("common.more")}</span>
+                    </Button>
                   </>
                 )}
               </div>

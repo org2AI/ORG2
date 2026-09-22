@@ -5,16 +5,25 @@ It applies to humans and to every coding agent, including Codex, Claude, and
 Cursor. Agent-specific instruction files may add implementation guidance, but
 they must not weaken or contradict this policy.
 
-## Single responsibility
+## Coherent scope
 
-- One pull request solves one problem or delivers one feature.
-- Do not combine unrelated features, bug fixes, refactors, cleanup,
-  formatting, or documentation.
-- Supporting tests and documentation belong in the same pull request only
-  when they directly verify or explain its single change.
+- One pull request may group related changes under one coherent theme or
+  user-facing objective. For example, update-dialog artwork, copy, controls,
+  and update-flow localization can ship together.
+- Explain the shared theme in the description and how each change supports it.
+  Do not force related fixes into separate PRs merely because they touch
+  different layers or could be implemented independently.
+- Split changes with unrelated themes or objectives into separate pull
+  requests. Sharing a repository or being requested together is not enough
+  to make unrelated features, fixes, cleanup, or formatting one theme.
+- Supporting tests and documentation belong with the theme they verify or
+  explain. Explicitly requested policy changes may accompany that work when
+  they define how the requested scope should be delivered; identify them in
+  the description.
 - Put unrelated follow-up work in a separate branch and pull request.
 - Before handoff, compare the final branch against its base and confirm every
-  changed file belongs to the stated problem or solution.
+  changed file belongs to the stated theme, problem, or solution, or an
+  explicitly requested delivery-policy change.
 
 ## Title
 
@@ -57,6 +66,15 @@ sections. It must list the exact commands and meaningful manual checks that
 actually ran, their outcomes, and any relevant checks that did not run.
 Additional sections such as `Audit`, screenshots, rollout notes, or rollback
 details may follow the required sections.
+
+### Dependabot-generated descriptions
+
+PRs authored by GitHub's `dependabot[bot]` account (type `Bot`), from a
+`dependabot/` branch in the same repository as the base, may retain their
+non-empty generated descriptions instead of the section template above.
+The scoped title requirement and all build, test, and security checks still
+apply. Human-authored PRs and other bots retain the full description contract.
+This exception does not authorize merging incompatible dependency updates.
 
 ## Base and diff integrity
 

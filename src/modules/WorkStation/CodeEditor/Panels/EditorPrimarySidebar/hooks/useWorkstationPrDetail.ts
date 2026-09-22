@@ -25,7 +25,7 @@ import {
   setCachedPrDetail,
 } from "@src/services/git/githubListCache";
 import { parseGithubRepoFullName } from "@src/services/git/operations/createPullRequest";
-import { readRequestedReviewers } from "@src/shared/pr/prLevelActions";
+import { invalidatePullRequestHeadChecks } from "@src/services/git/pullRequestHeadChecks";
 import {
   type PrIdentity,
   initialSelectedPrState,
@@ -34,7 +34,9 @@ import {
   workstationPrScopeKey,
   workstationSelectedPrAtomFamily,
 } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
+import { readRequestedReviewers } from "@src/util/git/pr/prLevelActions";
 
+import { useWorkstationPrChecksPolling } from "./useWorkstationPrChecksPolling";
 import { useWorkstationPrMutations } from "./useWorkstationPrMutations";
 import { useWorkstationPrPickerCandidates } from "./useWorkstationPrPickerCandidates";
 import {
@@ -49,12 +51,15 @@ export interface UseWorkstationPrDetailOptions {
   repoId?: string;
   /** The PR selected in the sidebar, or null when nothing is selected. */
   pr: PrIdentity | null;
+  /** The panel's root element; CI polling pauses while it is not rendered. */
+  visibilityRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function useWorkstationPrDetail({
   repoPath,
   repoId,
   pr,
+  visibilityRef,
 }: UseWorkstationPrDetailOptions) {
   const scopeKey = workstationPrScopeKey(repoId, repoPath, pr?.number);
   const setSelectedPr = useSetAtom(workstationSelectedPrAtomFamily(scopeKey));
@@ -141,6 +146,8 @@ export function useWorkstationPrDetail({
         commits: bundle.commits,
         files: bundle.files,
         checks: bundle.checks,
+        deployments: bundle.deployments,
+        timeline: bundle.timeline,
         loading: false,
         refreshing: false,
         error: null,
@@ -169,6 +176,13 @@ export function useWorkstationPrDetail({
       const key = prDetailKey(repoFullName, identity.number);
       const requestId = bumpRequestId(requestIdsRef.current, key);
       const isCurrent = () => requestIdsRef.current.get(key) === requestId;
+
+      // A reconcile follows a mutation and a forced load is an explicit
+      // refresh: either way, what any CI poller read before now is out of
+      // date for every surface sharing it, not just this panel.
+      if (opts?.reconcile || opts?.force) {
+        invalidatePullRequestHeadChecks(repoFullName, identity.number);
+      }
 
       if (opts?.reconcile) {
         setSelectedPr((prev) => ({ ...prev, refreshing: true }));
@@ -254,6 +268,23 @@ export function useWorkstationPrDetail({
     if (pr) loadDetail(pr, { force: true });
   }, [pr, loadDetail]);
 
+  // ── Live CI status ────────────────────────────────────────────────────────
+
+  const reconcile = useCallback(
+    (identity: PrIdentity) => loadDetail(identity, { reconcile: true }),
+    [loadDetail]
+  );
+  const { refreshChecks } = useWorkstationPrChecksPolling({
+    repoFullName,
+    pr,
+    scopeKey,
+    mountedRef,
+    requestIdsRef,
+    prActionPending,
+    reconcile,
+    visibilityRef,
+  });
+
   // Publish callbacks.
   useEffect(() => {
     setCallbacks({
@@ -335,6 +366,7 @@ export function useWorkstationPrDetail({
       labelCandidatesError,
       prActionPending,
       refresh,
+      refreshChecks,
       latestHeadShaRef,
     }),
     [
@@ -361,6 +393,7 @@ export function useWorkstationPrDetail({
       labelCandidatesError,
       prActionPending,
       refresh,
+      refreshChecks,
     ]
   );
 }

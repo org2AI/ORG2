@@ -278,5 +278,3 @@ export function debounceAsync<TArgs extends unknown[], TReturn>(
     });
   };
 }
-
-export default debounce;

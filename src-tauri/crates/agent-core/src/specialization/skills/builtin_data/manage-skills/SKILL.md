@@ -1,9 +1,9 @@
 ---
 name: manage-skills
-description: Create, read, update, enable, disable, or delete ORGII skills. Use when the user wants to create a new skill, edit an existing skill, list available skills, enable or disable a skill, rename a skill, or delete a skill. Triggers include "创建 skill", "更新 skill", "删除 xxx skill", "list skills", "disable skill".
+description: Create, read, update, enable, disable, or delete ORG2 skills. Use when the user wants to create a new skill, edit an existing skill, list available skills, enable or disable a skill, rename a skill, or delete a skill. Triggers include "创建 skill", "更新 skill", "删除 xxx skill", "list skills", "disable skill".
 ---
 
-# Managing Skills in ORGII
+# Managing Skills in ORG2
 
 Skills are markdown files that teach the agent how to perform specific tasks. This skill covers the full CRUD lifecycle: create, read, update, enable/disable, and delete.
 
@@ -38,7 +38,7 @@ compatibility: ">=0.1" # optional
 | `description`   | Yes      | Max 1024 chars. Include WHAT it does AND WHEN to trigger |
 | `version`       | No       | Semver string, e.g. `"1.0.0"`                            |
 | `license`       | No       | SPDX identifier, e.g. `"MIT"`                            |
-| `compatibility` | No       | Semver range for ORGII version compatibility             |
+| `compatibility` | No       | Semver range for ORG2 version compatibility              |
 
 **Description quality matters** — the agent reads the description to decide whether to activate the skill. Include concrete trigger terms, tool names, and a WHEN clause.
 

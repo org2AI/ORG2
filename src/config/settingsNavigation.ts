@@ -43,6 +43,13 @@ interface SettingsNavigationGroupDefinition {
 
 const SECURITY_ITEM_ID: SettingsSectionSegment = "security";
 
+/**
+ * App sections that product navigation files under the Core group, next to the
+ * agent configuration they belong with, instead of the app group.
+ */
+const CORE_GROUP_APP_SECTION_IDS: ReadonlySet<SettingsNavigationItemId> =
+  new Set<SettingsSectionSegment>(["harness-connections", "import"]);
+
 function asSettingsSectionSegment(id: string): SettingsSectionSegment {
   if (!(SETTINGS_SECTIONS as readonly string[]).includes(id)) {
     throw new Error(
@@ -57,7 +64,9 @@ const APP_SECTION_ITEM_IDS: readonly SettingsNavigationItemId[] =
     .map((section) => asSettingsSectionSegment(section.id))
     // Security is an app section, but product navigation shows it as the
     // fourth tab of Rules / Memory / Evolution, not as a sidebar item.
-    .filter((id) => id !== SECURITY_ITEM_ID && id !== "harness-connections")
+    .filter(
+      (id) => id !== SECURITY_ITEM_ID && !CORE_GROUP_APP_SECTION_IDS.has(id)
+    )
     // Profile is backed by the My Roles integration destination, but belongs
     // with the user-facing app settings rather than the Core group.
     .flatMap((id) => (id === "appearance" ? [id, "myRoles"] : [id]));
@@ -83,6 +92,7 @@ const SETTINGS_NAVIGATION_GROUP_DEFINITIONS: readonly SettingsNavigationGroupDef
         "models",
         AGENT_ORGS_SETTINGS_NAVIGATION_ID,
         "harness-connections",
+        "import",
         "rulesMemoryEvolution",
         "routines",
       ],
@@ -111,11 +121,9 @@ function buildSettingsNavigationItem(
       ? "navigation:labels.agentOrgs"
       : id === "myRoles" && groupId === "app"
         ? "settings:general.profile"
-        : id === "harness-connections"
-          ? "settings:sections.harnessConnections"
-          : groupId === "app"
-            ? getSegmentLabelKey(registrySegment)
-            : `settings:coreSidebar.items.${id}`;
+        : groupId === "app" || CORE_GROUP_APP_SECTION_IDS.has(id)
+          ? getSegmentLabelKey(registrySegment)
+          : `settings:coreSidebar.items.${id}`;
   const icon =
     id === AGENT_ORGS_SETTINGS_NAVIGATION_ID
       ? Infinity01Icon

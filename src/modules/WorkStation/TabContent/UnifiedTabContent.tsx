@@ -11,10 +11,11 @@
  */
 import React, { Suspense, memo } from "react";
 
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
+import LazyDetailFallback from "@src/components/layout/blocks/LazyDetailFallback";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import DetailPaneErrorBoundary from "@src/scaffold/layouts/DetailPaneErrorBoundary";
 import type { WorkStationTab } from "@src/store/workstation/tabs/types";
 
-import { TabLoadingPlaceholder } from "./TabLoadingPlaceholder";
 import { UnknownTabPlaceholder } from "./UnknownTabPlaceholder";
 import { REGISTRY } from "./registry";
 
@@ -42,12 +43,23 @@ export const UnifiedTabContent: React.FC<UnifiedTabContentDispatcherProps> =
       ) : tab.type === "github-pr-detail" ? (
         <GitHubDetailSkeleton kind="pr" showHeader={false} showTabs={false} />
       ) : (
-        <TabLoadingPlaceholder />
+        <LazyDetailFallback />
       );
+    // Keyed by tab id so the boundary resets when the pane is reused for a
+    // different tab, and so a retry remounts the renderer rather than
+    // re-rendering the failed tree.
+    //
+    // Without a boundary here the nearest ancestor is the application root:
+    // `tab.data` is an open record restored from localStorage and every
+    // renderer asserts its shape, so one tab written by an older build takes
+    // the whole window down — and because the failing tab is persisted as
+    // active, the next launch reproduces it.
     return (
-      <Suspense fallback={fallback}>
-        <Component tab={tab} isActive={isActive} />
-      </Suspense>
+      <DetailPaneErrorBoundary key={tab.id} label={tab.title || tab.type}>
+        <Suspense fallback={fallback}>
+          <Component tab={tab} isActive={isActive} />
+        </Suspense>
+      </DetailPaneErrorBoundary>
     );
   });
 

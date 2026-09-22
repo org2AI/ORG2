@@ -85,7 +85,7 @@ const RenameModal: React.FC<RenameModalProps> = ({
       style={{ maxWidth: 400 }}
       className="rename-modal"
     >
-      <div className="p-2">
+      <div>
         <Input
           value={name}
           onChange={setName}

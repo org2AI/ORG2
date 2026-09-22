@@ -10,8 +10,7 @@
  * Called from the Agent Teams page table rows (Agents / Teams / CLIs tabs)
  * and from the row "View" buttons.
  */
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
-import { stationModeAtom } from "@src/store/ui/simulatorAtom";
+import { ROUTES } from "@src/config/routes";
 import {
   createAgentConfigTab,
   openWorkstationTabAtom,
@@ -19,15 +18,13 @@ import {
 } from "@src/store/workstation/tabs";
 import type { AgentConfigTabData } from "@src/store/workstation/tabs";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
+import { revealMyStation } from "@src/util/ui/revealMyStation";
 
 export function openAgentConfigInWorkStation(data: AgentConfigTabData): void {
   if (!data.entityId || data.entityId.trim().length === 0) return;
 
   const store = getInstrumentedStore();
-  store.set(stationModeAtom, "my-station");
-  if (store.get(chatPanelMaximizedAtom)) {
-    store.set(chatPanelMaximizedAtom, false);
-  }
+  revealMyStation({ path: ROUTES.workStation.code.path });
 
   const tab = createAgentConfigTab(data);
   const workspace = store.get(presentedWorkstationWorkspaceKeyAtom);

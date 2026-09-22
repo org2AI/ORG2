@@ -2,7 +2,7 @@
  * useDbPreview Hook
  *
  * Manages SQLite database preview lifecycle for the code editor.
- * Opens a .db file read-only via SqliteProvider, lists tables,
+ * Opens a .db file for browsing via SqliteProvider, lists tables,
  * and loads table data on demand using the existing DataGrid-compatible format.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -14,6 +14,7 @@ import type {
   SqliteConnectionConfig,
   TableInfo,
 } from "@src/engines/DatabaseCore";
+import { createLogger } from "@src/hooks/logger";
 
 import {
   DB_PREVIEW_PAGE_SIZE,
@@ -21,6 +22,8 @@ import {
   getNextDbPreviewSortState,
   withUpdatedDbPreviewTableRowCount,
 } from "./dbPreviewUtils";
+
+const log = createLogger("DbPreview");
 
 interface DbPreviewState {
   tables: TableInfo[];
@@ -66,6 +69,9 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
   const [state, setState] = useState<DbPreviewState>(INITIAL_STATE);
   const serviceRef = useRef<SqliteService | null>(null);
   const filePathRef = useRef(filePath);
+  const generationRef = useRef(0);
+  const requestRef = useRef(0);
+  const stopRef = useRef<() => void>(() => {});
   const selectedTableRef = useRef<string | null>(null);
   const sortColumnRef = useRef<string | null>(null);
   const sortDirectionRef = useRef<DbPreviewSortDirection>("asc");
@@ -85,12 +91,18 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
     ) => {
       const service = serviceRef.current;
       if (!service) return;
+      const generation = generationRef.current;
+      const request = ++requestRef.current;
+      const current = () =>
+        generation === generationRef.current &&
+        request === requestRef.current &&
+        service === serviceRef.current;
 
       const nextSortColumn =
         sortColumn === undefined ? sortColumnRef.current : sortColumn;
       const nextSortDirection = sortDirection ?? sortDirectionRef.current;
 
-      setState((prev) => ({ ...prev, loading: true }));
+      setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
         const [schema, tableData] = await Promise.all([
@@ -103,9 +115,11 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
           }),
         ]);
 
+        if (!current()) return;
         setState((prev) => ({
           ...prev,
           loading: false,
+          error: null,
           schema,
           tableData,
           selectedTable: tableName,
@@ -119,6 +133,7 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
           sortDirection: nextSortDirection,
         }));
       } catch (err) {
+        if (!current()) return;
         setState((prev) => ({
           ...prev,
           loading: false,
@@ -162,6 +177,19 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
   );
 
   const connect = useCallback(async (path: string) => {
+    stopRef.current();
+    const generation = ++generationRef.current;
+    ++requestRef.current;
+    let active = true;
+    let owned: SqliteService | null = null;
+    const current = () => active && generation === generationRef.current;
+    const stop = () => {
+      active = false;
+      ++requestRef.current;
+      if (serviceRef.current === owned) serviceRef.current = null;
+      void owned?.disconnect().catch(log.warn);
+    };
+    stopRef.current = stop;
     setState((_prev) => ({
       ...INITIAL_STATE,
       connecting: true,
@@ -173,7 +201,9 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
       const { isValidSqliteFile } =
         await import("@src/engines/DatabaseCore/providers/isValidSqliteFile");
 
+      if (!current()) return;
       const valid = await isValidSqliteFile(path);
+      if (!current()) return;
       if (!valid) {
         setState((prev) => ({
           ...prev,
@@ -193,11 +223,16 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
       };
 
       const provider = new SqliteProvider(config);
+      owned = provider;
       await provider.connect();
-
+      if (!current()) {
+        await provider.disconnect();
+        return;
+      }
       serviceRef.current = provider;
 
       const tables = await provider.getTables();
+      if (!current()) return;
       const firstTable = tables[0];
       if (!firstTable) {
         setState((prev) => ({
@@ -217,6 +252,7 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
         }),
       ]);
 
+      if (!current()) return;
       setState((prev) => ({
         ...prev,
         connecting: false,
@@ -234,6 +270,8 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
         sortDirection: "asc",
       }));
     } catch (err) {
+      if (!current()) return;
+      stop();
       setState((prev) => ({
         ...prev,
         connecting: false,
@@ -243,9 +281,7 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
   }, []);
 
   const refresh = useCallback(() => {
-    serviceRef.current?.disconnect();
-    serviceRef.current = null;
-    connect(filePathRef.current);
+    void connect(filePathRef.current).catch(() => undefined);
   }, [connect]);
 
   useEffect(() => {
@@ -253,8 +289,7 @@ export function useDbPreview(filePath: string): UseDbPreviewReturn {
     connect(filePath);
 
     return () => {
-      serviceRef.current?.disconnect();
-      serviceRef.current = null;
+      stopRef.current();
     };
   }, [filePath, connect]);
 

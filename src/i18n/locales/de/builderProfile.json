@@ -48,8 +48,6 @@
     "title": "Builder-Typen",
     "howTitle": "So liest du den Code",
     "howBody": "Vier beobachtete Präferenzen ergeben einen Builder-Typ. Die Buchstaben beschreiben ein Arbeitsmuster, keine feste Identität – sie können sich mit deinen Gewohnheiten und Werkzeugen verändern.",
-    "galleryTitle": "Alle 16 Typen",
-    "galleryHint": "Wähle ein Porträt, um das vollständige Profil und praktische Tipps für die Zusammenarbeit mit Agenten zu sehen.",
     "knowMore": "Mehr erfahren",
     "family": "{{first}} · {{second}}",
     "letters": {

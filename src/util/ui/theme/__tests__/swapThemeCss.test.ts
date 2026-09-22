@@ -30,6 +30,9 @@ vi.mock("@tauri-apps/api/window", () => ({
 vi.mock("@src/util/platform/macosRootTint", () => ({
   syncMacosRootTint: vi.fn(async () => {}),
 }));
+vi.mock("@src/util/platform/macosPageBackdrop", () => ({
+  syncMacosPageBackdrop: vi.fn(),
+}));
 
 const THEME_LINK_SELECTOR = "link[data-orgii-theme]";
 

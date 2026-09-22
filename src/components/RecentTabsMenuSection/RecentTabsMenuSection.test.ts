@@ -6,6 +6,10 @@ import { WorkstationTabIcon } from "@src/modules/WorkStation/shared/TabBar/compo
 
 import { RecentTabsMenuSection } from ".";
 
+vi.mock("@src/assets/fileTypeIcons/json.svg?url", () => ({
+  default: "/src/assets/fileTypeIcons/json.svg",
+}));
+
 describe("RecentTabsMenuSection", () => {
   it("hides the section when the history is empty", () => {
     const markup = renderToStaticMarkup(

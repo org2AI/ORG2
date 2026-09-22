@@ -14,6 +14,7 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
 import { formatThreadDisplayName } from "./config";
@@ -118,8 +119,8 @@ const ThreadSelector: React.FC<ThreadSelectorProps> = memo(
         <div className="flex flex-wrap gap-1.5">
           {/* All button */}
           {showAllOption && threads.length > 1 && (
-            <button
-              type="button"
+            <Button
+              layout="custom"
               onClick={() => handleThreadClick(null)}
               className={`flex items-center rounded-md px-2 py-1 text-[11px] transition-all duration-150 ${
                 selectedThreadId === null
@@ -137,7 +138,7 @@ const ThreadSelector: React.FC<ThreadSelectorProps> = memo(
               >
                 {totalCount}
               </span>
-            </button>
+            </Button>
           )}
 
           {/* Thread buttons */}
@@ -147,9 +148,9 @@ const ThreadSelector: React.FC<ThreadSelectorProps> = memo(
               thread.displayName || formatThreadDisplayName(thread.threadId);
 
             return (
-              <button
+              <Button
+                layout="custom"
                 key={thread.threadId}
-                type="button"
                 onClick={() => handleThreadClick(thread.threadId)}
                 className={`group flex items-center rounded-md px-2 py-1 text-[11px] transition-all duration-150 ${
                   isSelected
@@ -167,7 +168,7 @@ const ThreadSelector: React.FC<ThreadSelectorProps> = memo(
                   count={thread.eventCount}
                   isSelected={isSelected}
                 />
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -190,13 +191,15 @@ const ThreadSelector: React.FC<ThreadSelectorProps> = memo(
                 · {t("chat.eventCount", { count: selectedThread.eventCount })}
               </span>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="inline"
               onClick={() => handleThreadClick(null)}
-              className="text-[10px] text-text-3 transition-colors hover:text-primary-6"
+              hoverTone="primary"
+              className="text-[10px]"
             >
               {t("chat.showAll")}
-            </button>
+            </Button>
           </div>
         )}
       </div>

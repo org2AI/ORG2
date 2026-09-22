@@ -42,6 +42,29 @@ describe("matchesIDEEvent", () => {
 });
 
 describe("deriveIDEState", () => {
+  it("preserves per-call titles through history and result-argument hydration", () => {
+    const call = minimalSessionEvent({
+      id: "js-call",
+      functionName: "js",
+      callId: "call-js",
+      args: { title: "Inspect window", code: "await app.getState()" },
+      displayStatus: "running",
+    });
+    const result = minimalSessionEvent({
+      id: "js-result",
+      functionName: "js",
+      callId: "call-js",
+      actionType: "tool_result",
+      args: {},
+      result: { observation: "Window details" },
+    });
+    const state = deriveIDEState([call, result], result.id);
+    expect(state.toolOperations.map((op) => op.displayName)).toEqual([
+      "Inspect window",
+      "Inspect window",
+    ]);
+  });
+
   it("collects file operations and sets file view mode from current event", () => {
     const read = minimalSessionEvent({
       id: "r1",

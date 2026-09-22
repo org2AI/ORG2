@@ -5,81 +5,58 @@ import type {
   FollowAgentNavState,
   ScrollNavState,
 } from "../ChatHistory.types";
-import { getChatContentBottomDistance } from "../config/chatFooterSpacer";
-import type { UseChatEmptyStateReturn } from "./useChatEmptyState";
+import { CHAT_FOOTER_SPACER } from "../config/chatFooterSpacer";
+import { useTranscriptViewport } from "../viewport/useTranscriptViewport";
 import { useChatFooterSpacer } from "./useChatFooterSpacer";
 import type { UseChatHistoryStateReturn } from "./useChatHistoryState";
 import { useChatPagination } from "./useChatPagination";
-import { useChatScroll } from "./useChatScroll";
-import { useChatScrollPin } from "./useChatScrollPin";
 
-const SCROLL_NAV_SHOW_THRESHOLD_PX = 48;
 const FLOATING_MINIMAP_IDLE_DELAY_MS = 1_200;
 
 interface UseChatViewportControllerOptions {
   activeId: string | null;
-  activeProjectionHistoryLength: number;
-  atBottom: UseChatHistoryStateReturn["atBottom"];
   bottomInset: number;
   browserAddToConversationNav: BrowserAddToConversationNavState;
-  currentPageIndex: number;
-  disableTailCollapse: boolean;
-  displayGroupCounts: number[];
-  displayLastGroupFirstFlatIndex: number | null;
   displayTotalFlatItems: number;
   followAgentNav: FollowAgentNavState;
-  isPendingCancelRef: UseChatEmptyStateReturn["isPendingCancelRef"];
   latestLocalSubmitId: string | null;
   onScrollNavChange?: (state: ScrollNavState) => void;
-  planningIndicatorCount: 0 | 1;
-  sessionLoadStatus: UseChatHistoryStateReturn["sessionLoadStatus"];
+  onSelectLatestTurnPage?: () => void;
   setAtBottom: UseChatHistoryStateReturn["setAtBottom"];
   setIsChatScrolledToBottom: UseChatHistoryStateReturn["setIsChatScrolledToBottom"];
   setVisibleRange: UseChatHistoryStateReturn["setVisibleRange"];
   tailFollowKey: string;
+  tailFollowMode: "reader-controlled" | "always";
   totalFlatItems: number;
   turnPaginationEnabled: boolean;
+  virtualListRef: UseChatHistoryStateReturn["virtualListRef"];
 }
 
 /**
- * Coordinates pagination range tracking, footer measurement, bottom-follow,
- * pinning and the external scroll-navigation controls around one scroll root.
+ * Coordinates pagination, footer layout and the single source-neutral
+ * transcript viewport owner around one chat scroll root.
  */
 export function useChatViewportController({
   activeId,
-  activeProjectionHistoryLength,
-  atBottom,
   bottomInset,
   browserAddToConversationNav,
-  currentPageIndex,
-  disableTailCollapse,
-  displayGroupCounts,
-  displayLastGroupFirstFlatIndex,
   displayTotalFlatItems,
   followAgentNav,
-  isPendingCancelRef,
   latestLocalSubmitId,
   onScrollNavChange,
-  planningIndicatorCount,
-  sessionLoadStatus,
+  onSelectLatestTurnPage,
   setAtBottom,
   setIsChatScrolledToBottom,
   setVisibleRange,
   tailFollowKey,
+  tailFollowMode,
   totalFlatItems,
   turnPaginationEnabled,
+  virtualListRef,
 }: UseChatViewportControllerOptions) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const staticScrollerRef = useRef<HTMLDivElement>(null);
   const visibleRangeEndRef = useRef(0);
-  const pinLastGroupRef = useRef(false);
-  const manualScrollAtRef = useRef(0);
-  const programmaticScrollAtRef = useRef(0);
-  const turnCollapseInteractionAtRef = useRef(0);
-  const [reservePinToTop, setReservePinToTop] = useState(false);
-  const handlePinToTopChange = useCallback((active: boolean) => {
-    setReservePinToTop(active);
-  }, []);
 
   const { isLoadingMore, handleRangeChanged, handleEndReached } =
     useChatPagination({
@@ -87,104 +64,50 @@ export function useChatViewportController({
       setVisibleRange,
       visibleRangeEndRef,
     });
-  const { footerSpacerHeight, virtuosoScrollerRef, isContentOverflowingRef } =
-    useChatFooterSpacer({
-      scrollAreaRef,
-      optimizedChatHistoryLength: activeProjectionHistoryLength,
-      totalFlatItems: displayTotalFlatItems,
-      planningIndicatorCount,
-      lastGroupFirstFlatIndex: displayLastGroupFirstFlatIndex,
-      bottomInset,
-      reservePinToTop,
-      manualScrollAtRef,
-    });
-  const [isBottomSentinelVisible, setIsBottomSentinelVisible] = useState(true);
-
-  useEffect(() => {
-    if (displayTotalFlatItems <= 0) return;
-    const root = staticScrollerRef.current ?? virtuosoScrollerRef.current;
-    if (!root) {
-      const rafId = requestAnimationFrame(() => {
-        setIsBottomSentinelVisible(false);
-      });
-      return () => cancelAnimationFrame(rafId);
-    }
-
-    let rafId = 0;
-    let lastMeasurementKey = "";
-    const updateBottomLineVisibility = () => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        const measurementKey = [
-          root.scrollTop,
-          root.scrollHeight,
-          root.clientHeight,
-          footerSpacerHeight,
-        ].join(":");
-        if (measurementKey === lastMeasurementKey) return;
-        lastMeasurementKey = measurementKey;
-
-        const nextVisible =
-          getChatContentBottomDistance({
-            scrollTop: root.scrollTop,
-            scrollHeight: root.scrollHeight,
-            clientHeight: root.clientHeight,
-            footerSpacerHeight,
-            bottomInset,
-          }) <= SCROLL_NAV_SHOW_THRESHOLD_PX;
-        setIsBottomSentinelVisible((previousVisible) =>
-          previousVisible === nextVisible ? previousVisible : nextVisible
-        );
-      });
-    };
-
-    updateBottomLineVisibility();
-    root.addEventListener("scroll", updateBottomLineVisibility, {
-      passive: true,
-    });
-    const resizeObserver = new ResizeObserver(updateBottomLineVisibility);
-    resizeObserver.observe(root);
-    if (root.firstElementChild) resizeObserver.observe(root.firstElementChild);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      root.removeEventListener("scroll", updateBottomLineVisibility);
-      resizeObserver.disconnect();
-    };
-  }, [
-    activeId,
+  const { footerSpacerHeight, virtuosoScrollerRef } = useChatFooterSpacer({
     bottomInset,
-    displayTotalFlatItems,
-    footerSpacerHeight,
-    virtuosoScrollerRef,
-  ]);
-
-  const { handleAtBottomStateChange, scrollToBottom } = useChatScroll({
-    optimizedChatHistoryLength: displayTotalFlatItems,
-    virtuosoScrollerRef,
-    atBottom,
-    setAtBottom,
-    setIsChatScrolledToBottom,
-    isPendingCancelRef,
-    visibleRangeEndRef,
-    pinLastGroupRef,
-    manualScrollAtRef,
-    programmaticScrollAtRef,
-    turnCollapseInteractionAtRef,
-    isContentOverflowingRef,
-    activeSessionId: activeId,
-    staticScrollerRef,
-    footerSpacerHeight,
-    bottomInset,
-    tailFollowKey,
-    alwaysFollowTail: disableTailCollapse,
   });
+
+  const handleAtTailChange = useCallback(
+    (nextAtBottom: boolean) => {
+      setAtBottom((previous) =>
+        previous === nextAtBottom ? previous : nextAtBottom
+      );
+      setIsChatScrolledToBottom(nextAtBottom);
+    },
+    [setAtBottom, setIsChatScrolledToBottom]
+  );
+  const ensureAnchorMounted = useCallback(
+    (anchorId: string) =>
+      virtualListRef.current?.revealTranscriptAnchor(anchorId) ?? true,
+    [virtualListRef]
+  );
+  const {
+    detachForNavigation,
+    followTail,
+    handleScroll,
+    preserveForLayoutMutation,
+    reconcileLayout,
+    setScrollRoot,
+    showScrollToBottom,
+  } = useTranscriptViewport({
+    sessionKey: activeId,
+    contentKey: tailFollowKey,
+    itemCount: displayTotalFlatItems,
+    tailGapPx: CHAT_FOOTER_SPACER.MIN_WHEN_FULL_PX,
+    localSubmitKey: latestLocalSubmitId,
+    followPolicy: tailFollowMode,
+    onAtTailChange: handleAtTailChange,
+    onExplicitFollow: onSelectLatestTurnPage,
+    ensureAnchorMounted,
+  });
+
   const [conversationMinimapScrolling, setConversationMinimapScrolling] =
     useState(false);
   const conversationMinimapIdleTimerRef = useRef<number | null>(null);
   const handleChatListScrollStateChange = useCallback(
     (nextAtBottom: boolean) => {
-      handleAtBottomStateChange(nextAtBottom);
+      handleScroll(nextAtBottom);
       setConversationMinimapScrolling(true);
       if (conversationMinimapIdleTimerRef.current !== null) {
         window.clearTimeout(conversationMinimapIdleTimerRef.current);
@@ -194,7 +117,7 @@ export function useChatViewportController({
         setConversationMinimapScrolling(false);
       }, FLOATING_MINIMAP_IDLE_DELAY_MS);
     },
-    [handleAtBottomStateChange]
+    [handleScroll]
   );
   useEffect(
     () => () => {
@@ -206,43 +129,9 @@ export function useChatViewportController({
   );
 
   useEffect(() => {
-    if (!disableTailCollapse || displayTotalFlatItems <= 0) return;
-    const handle = window.requestAnimationFrame(() => scrollToBottom());
-    return () => window.cancelAnimationFrame(handle);
-  }, [
-    disableTailCollapse,
-    activeId,
-    currentPageIndex,
-    displayTotalFlatItems,
-    scrollToBottom,
-  ]);
-
-  useChatScrollPin({
-    activeId,
-    groupCounts: displayGroupCounts,
-    totalFlatItems: displayTotalFlatItems,
-    footerSpacerHeight,
-    bottomInset,
-    sessionLoadStatus,
-    virtuosoScrollerRef,
-    atBottom,
-    isPendingCancelRef,
-    isContentOverflowingRef,
-    optimizedChatHistoryLength: activeProjectionHistoryLength,
-    latestLocalSubmitId,
-    pinLastGroupRef,
-    manualScrollAtRef,
-    programmaticScrollAtRef,
-    onPinToTopChange: handlePinToTopChange,
-    staticScrollerRef,
-  });
-
-  const showScrollToBottom =
-    displayTotalFlatItems > 0 && !isBottomSentinelVisible;
-  useEffect(() => {
     onScrollNavChange?.({
       showScrollToBottom,
-      onScrollToBottom: scrollToBottom,
+      onScrollToBottom: followTail,
       ...followAgentNav,
       ...browserAddToConversationNav,
     });
@@ -250,7 +139,7 @@ export function useChatViewportController({
     browserAddToConversationNav,
     followAgentNav,
     onScrollNavChange,
-    scrollToBottom,
+    followTail,
     showScrollToBottom,
   ]);
 
@@ -260,15 +149,18 @@ export function useChatViewportController({
 
   return {
     conversationMinimapScrolling,
+    detachForNavigation,
     footerSpacerHeight,
     handleChatListScrollStateChange,
     handleRangeChanged,
     handleTurnPageEndReached,
-    scrollAreaRef,
-    scrollToBottom,
-    staticScrollerRef,
-    turnCollapseInteractionAtRef,
-    virtuosoScrollerRef,
     isLoadingMore,
+    scrollAreaRef,
+    scrollToBottom: followTail,
+    preserveForLayoutMutation,
+    reconcileLayout,
+    setScrollRoot,
+    staticScrollerRef,
+    virtuosoScrollerRef,
   };
 }

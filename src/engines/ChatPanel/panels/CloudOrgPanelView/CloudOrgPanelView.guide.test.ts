@@ -45,7 +45,7 @@ vi.mock("./useOrgRuntimeTelemetry", () => ({
   useOrgRuntimeTelemetry: () => ({}),
 }));
 
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   DETAIL_PANEL_TOKENS: {
     scrollContentNoTop: "",
     contentWidthWithPaddingNoTop: "",

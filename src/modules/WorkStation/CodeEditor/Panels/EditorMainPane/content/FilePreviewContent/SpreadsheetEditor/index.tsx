@@ -5,7 +5,7 @@ import { Placeholder } from "@src/components/Placeholder";
 import Select, { type SelectOption } from "@src/components/Select";
 import { TableSurface } from "@src/modules/WorkStation/shared/TableSurface";
 
-import "./index.scss";
+import "./index.css";
 import type { SpreadsheetEditorProps, SpreadsheetSheet } from "./types";
 import { useSpreadsheetTableAdapter } from "./useSpreadsheetTableAdapter";
 

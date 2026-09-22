@@ -7,6 +7,7 @@ import {
 import { resolveToolName } from "@src/engines/SessionCore/rendering/registry/toolAliases";
 import { getEventStatus } from "@src/util/data/converters/eventStatus";
 import { getToolDisplayLabelFromRegistry } from "@src/util/ui/rendering/registryToolLabel";
+import { getToolCallTitle } from "@src/util/ui/rendering/toolCallTitle";
 
 import {
   convertShellSearchOperation,
@@ -92,9 +93,9 @@ function convertToToolOperation(
 
   return {
     toolName: event.functionName,
-    displayName: getToolDisplayLabelFromRegistry(
-      resolveToolName(event.functionName)
-    ),
+    displayName:
+      getToolCallTitle(event.functionName, event.args) ||
+      getToolDisplayLabelFromRegistry(resolveToolName(event.functionName)),
     event,
     eventId: event.id,
     isCurrent,

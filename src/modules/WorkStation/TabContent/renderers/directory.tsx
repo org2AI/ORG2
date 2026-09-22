@@ -11,40 +11,23 @@
  * `DirectoryExplorerContent` itself — so coupling this renderer to the editor
  * host is safe: it throws if mounted outside an `EditorHostProvider`.
  */
-import React, { Suspense, memo } from "react";
-
-import { Placeholder } from "@src/components/Placeholder";
 import { useEditorHostContext } from "@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/context/editorHostContext";
 
-import type { UnifiedTabContentProps } from "../types";
+import { createLazyTabRenderer } from "./createLazyTabRenderer";
 
-const DirectoryExplorerContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/DirectoryExplorerContent")
-);
-
-const LazyFallback = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
-
-const DirectoryTabRenderer: React.FC<UnifiedTabContentProps> = memo(
-  ({ tab }) => {
+const DirectoryTabRenderer = createLazyTabRenderer({
+  displayName: "DirectoryTabRenderer",
+  load: () =>
+    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/DirectoryExplorerContent"),
+  useProps: ({ tab }) => {
     const { repoPath, onFileSelect } = useEditorHostContext();
     const directoryPath = String(tab.data.directoryPath ?? "");
 
-    return (
-      <Suspense fallback={<LazyFallback />}>
-        <DirectoryExplorerContent
-          key={`${repoPath}:${directoryPath}`}
-          directoryPath={directoryPath}
-          repoPath={repoPath}
-          onFileSelect={onFileSelect}
-        />
-      </Suspense>
-    );
-  }
-);
-
-DirectoryTabRenderer.displayName = "DirectoryTabRenderer";
+    return { directoryPath, repoPath, onFileSelect };
+  },
+  // Remount when the repo or directory changes, as before.
+  getKey: (_tabProps, { repoPath, directoryPath }) =>
+    `${repoPath}:${directoryPath}`,
+});
 
 export default DirectoryTabRenderer;

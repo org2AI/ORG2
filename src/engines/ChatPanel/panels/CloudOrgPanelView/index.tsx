@@ -10,6 +10,11 @@ import { useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
+import {
+  DETAIL_PANEL_TOKENS,
+  ScrollFadeContainer,
+} from "@src/components/layout/blocks";
 import { ChatLoadingBlock } from "@src/engines/ChatPanel/blocks/primitives";
 import {
   buildCloudOrgSelectorValue,
@@ -17,14 +22,6 @@ import {
 } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { useOpenCloudBilling } from "@src/features/Org2Cloud/useOpenCloudBilling";
 import { sidebarSelectedOrgIdAtom } from "@src/features/Organizations/sidebarOrgScopeAtom";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import {
-  DETAIL_PANEL_TOKENS,
-  ScrollFadeContainer,
-} from "@src/modules/shared/layouts/blocks";
 import { GUIDE_TARGETS } from "@src/scaffold/Tutorials/guideTargets";
 import { openWorkManagementChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import type { ChatPanelSelectedCloudOrg } from "@src/store/ui/chatPanel/selectionAtoms";

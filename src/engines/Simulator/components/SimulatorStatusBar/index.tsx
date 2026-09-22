@@ -46,7 +46,6 @@ export interface SimulatorStatusBarProps {
 
 export const SimulatorStatusBar: React.FC<SimulatorStatusBarProps> = memo(
   ({
-    onToggleMode,
     isReplaying = false,
     onPlayPause,
     playbackSpeed,
@@ -66,8 +65,7 @@ export const SimulatorStatusBar: React.FC<SimulatorStatusBarProps> = memo(
 
     const handleToggleToReplay = useCallback(() => {
       setReplayMode("replay");
-      onToggleMode?.();
-    }, [setReplayMode, onToggleMode]);
+    }, [setReplayMode]);
 
     const handleToggleToFollow = useCallback(() => {
       setReplayMode("follow");
@@ -85,8 +83,6 @@ export const SimulatorStatusBar: React.FC<SimulatorStatusBarProps> = memo(
         setCurrentEventId(lastEventId);
         setReplayBarValue(REPLAY_CONFIG.MAX_VALUE);
       }
-
-      onToggleMode?.();
     }, [
       setReplayMode,
       setSelectedApp,
@@ -94,7 +90,6 @@ export const SimulatorStatusBar: React.FC<SimulatorStatusBarProps> = memo(
       effectiveSimulatorEventIds,
       setCurrentEventId,
       setReplayBarValue,
-      onToggleMode,
     ]);
 
     return (

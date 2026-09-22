@@ -1,0 +1,20 @@
+# Source control loading UI audit
+
+Scope: changed loading presentation across source control, history, pull requests, and shared diffs. Checked design-system reuse, tokens, sizes/colors, accessibility, and repeated patterns.
+
+| Line                                                                                                                    | Element              | Verdict          | Reason                                                                                                              | Suggested change |
+| ----------------------------------------------------------------------------------------------------------------------- | -------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `src/components/Placeholder/index.tsx:75`                                                                               | Loading presentation | keep with reason | Shared opt-in presentation prop retains localized accessible status labels and existing loading timing              | None             |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/tabs/SourceControlTab.tsx:149`                          | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/tabs/SourceControlTabPanels.tsx:105`                    | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/SourceControlContent/index.tsx:427`             | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/GitHistoryContent/index.tsx:487`                | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/PullRequestContent/index.tsx:439`               | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/PullRequestContent/detail/PrChangesTab.tsx:200` | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/PullRequestContent/detail/PrCommitsTab.tsx:427` | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+| `src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/PullRequestContent/detail/PrChecksTab.tsx:90`   | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+| `src/modules/WorkStation/shared/DiffFileSection/index.tsx:294`                                                          | Loading presentation | keep with reason | Uses the shared icon-only loading option requested for source control; keeps existing layout and non-loading states | None             |
+
+Verdict totals: **0 fix**, **10 keep with reason**, **0 abstract**.
+
+The existing Placeholder owns the shared presentation option. No timers, subscriptions, loading conditions, or data paths changed. Visual verification was not run because desktop computer control was not authorized.

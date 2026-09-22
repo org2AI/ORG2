@@ -12,6 +12,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import FileTypeIcon from "@src/components/FileTypeIcon";
+import Input from "@src/components/Input";
 import {
   CHEVRON_SIZE,
   TREE_INDENT_PX,
@@ -21,6 +22,7 @@ import {
   TREE_ROW_INSET_X,
   TREE_ROW_ROUNDED_CLASS,
 } from "@src/components/TreeRow";
+import { SIDEBAR_ROW_GAP_CLASS } from "@src/components/TreeRow/config";
 import { useMountedCleanup } from "@src/hooks/lifecycle/useMounted";
 import { ArrowDown01Icon, HugeiconsIcon } from "@src/icons";
 
@@ -120,46 +122,59 @@ export function NewItemInput({
     depth * TREE_INDENT_PX + TREE_PADDING_X - TREE_ROW_INSET_X;
 
   return (
-    <div
-      className={`tree-row-base group/item ${TREE_ROW_INSET_CLASS} flex h-7 shrink-0 items-center gap-1.5 ${TREE_ROW_ROUNDED_CLASS} bg-primary-1`}
-      style={{
-        paddingLeft: `${paddingLeft}px`,
-        paddingRight: `${TREE_PADDING_RIGHT - TREE_ROW_INSET_X}px`,
-      }}
-    >
-      {isFolder ? (
-        <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            data-icon="chevron-down"
-            size={CHEVRON_SIZE}
-            className="text-text-3"
+    <div className={SIDEBAR_ROW_GAP_CLASS}>
+      <div
+        className={`tree-row-base group/item ${TREE_ROW_INSET_CLASS} flex h-7 shrink-0 items-center gap-1.5 ${TREE_ROW_ROUNDED_CLASS} bg-primary-1`}
+        style={{
+          paddingLeft: `${paddingLeft}px`,
+          paddingRight: `${TREE_PADDING_RIGHT - TREE_ROW_INSET_X}px`,
+        }}
+      >
+        {isFolder ? (
+          <div className="flex h-4 w-4 shrink-0 items-center justify-center">
+            <HugeiconsIcon
+              icon={ArrowDown01Icon}
+              data-icon="chevron-down"
+              size={CHEVRON_SIZE}
+              className="text-text-3"
+            />
+          </div>
+        ) : (
+          <FileTypeIcon
+            fileName={value || "untitled"}
+            size="small"
+            className="shrink-0"
+          />
+        )}
+
+        <div className="min-w-0 flex-1">
+          <Input
+            appearance="bare"
+            size="small"
+            autoHeight
+            className="min-w-0 flex-1 [&>.input-inner]:border-0!"
+            inputStyle={{
+              height: 22,
+              fontSize: 13,
+              padding: "0 4px",
+              border: "1px solid var(--color-primary-6)",
+              background: "var(--color-pane-input)",
+            }}
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={(_value, event) => handleChange(event)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            placeholder={inputLabel}
+            aria-label={inputLabel}
+            inputClassName="h-[22px] w-full min-w-0 rounded border border-primary-6 bg-pane-input px-1 text-[13px] text-text-1 ring-1 ring-primary-6/30 outline-none placeholder:text-text-4"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
           />
         </div>
-      ) : (
-        <FileTypeIcon
-          fileName={value || "untitled"}
-          size="small"
-          className="shrink-0"
-        />
-      )}
-
-      <div className="min-w-0 flex-1">
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          placeholder={inputLabel}
-          aria-label={inputLabel}
-          className="h-[22px] w-full min-w-0 rounded border border-primary-6 bg-pane-input px-1 text-[13px] text-text-1 ring-1 ring-primary-6/30 outline-none placeholder:text-text-4"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-        />
       </div>
     </div>
   );

@@ -19,23 +19,16 @@ import {
 } from "../chatPanelTabPresentationAtoms";
 import type { ChatPanelTab } from "../chatPanelTabsModel";
 import { chatPanelTabsAtom } from "../chatPanelTabsState";
+import { openOrFocusChatPanelTab } from "./openOrFocus";
 
 /** Open or focus the singleton Runtime tab. */
 export const openRuntimeInChatPanelTabAtom = atom(
   null,
-  (get, set, title: string = "Runtime") => {
-    const existingTab = get(chatPanelTabsAtom).tabs.find(
-      (tab) => tab.type === "runtime"
-    );
-    if (existingTab) {
-      set(activateChatPanelTabAtom, existingTab.id);
-      return existingTab.id;
-    }
-
-    const tab = createRuntimeTab({ title });
-    set(appendAndActivateChatPanelTabAtom, { tab });
-    return tab.id;
-  }
+  (get, set, title: string = "Runtime") =>
+    openOrFocusChatPanelTab(get, set, {
+      isMatch: (tab) => tab.type === "runtime",
+      create: () => createRuntimeTab({ title }),
+    })
 );
 openRuntimeInChatPanelTabAtom.debugLabel = "openRuntimeInChatPanelTab";
 
@@ -215,17 +208,11 @@ addChatPanelTerminalTabAtom.debugLabel = "addChatPanelTerminalTab";
  */
 export const openRunGroupInChatPanelTabAtom = atom(
   null,
-  (get, set, input: { runGroupId: string; title: string }) => {
-    const existingTab = get(chatPanelTabsAtom).tabs.find(
-      (tab) => tab.type === "run-group" && tab.runGroupId === input.runGroupId
-    );
-    if (existingTab) {
-      set(activateChatPanelTabAtom, existingTab.id);
-      return existingTab.id;
-    }
-    const tab = createRunGroupTab(input);
-    set(appendAndActivateChatPanelTabAtom, { tab });
-    return tab.id;
-  }
+  (get, set, input: { runGroupId: string; title: string }) =>
+    openOrFocusChatPanelTab(get, set, {
+      isMatch: (tab) =>
+        tab.type === "run-group" && tab.runGroupId === input.runGroupId,
+      create: () => createRunGroupTab(input),
+    })
 );
 openRunGroupInChatPanelTabAtom.debugLabel = "openRunGroupInChatPanelTab";

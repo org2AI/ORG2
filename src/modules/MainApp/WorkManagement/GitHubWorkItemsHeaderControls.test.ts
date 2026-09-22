@@ -7,6 +7,8 @@ import {
   GitHubWorkItemsRepositorySelect,
   GitHubWorkItemsSearchAndActions,
 } from "./GitHubWorkItemsHeaderControls";
+import { EMPTY_GITHUB_WORK_ITEM_FACETS } from "./githubWorkItemsFilterFacets";
+import { parseGitHubSearchQuery } from "./githubWorkItemsSearchQuery";
 
 describe("GitHubWorkItemsHeaderControls", () => {
   it("keeps the repository selector in the leading header controls", () => {
@@ -24,21 +26,38 @@ describe("GitHubWorkItemsHeaderControls", () => {
     expect(markup).not.toContain("All repositories");
   });
 
+  it("shows a loading placeholder instead of a selection prompt while repos load", () => {
+    const markup = renderToStaticMarkup(
+      createElement(GitHubWorkItemsRepositorySelect, {
+        repoOptions: [],
+        selectedRepo: "",
+        loading: true,
+        onRepoSelect: vi.fn(),
+      })
+    );
+
+    expect(markup).toContain("placeholders.loading");
+    expect(markup).not.toContain("placeholders.pleaseSelect");
+    expect(markup).toContain('data-icon="loader-2"');
+  });
+
   it("groups the state and personal filters together", () => {
     const markup = renderToStaticMarkup(
       createElement(GitHubWorkItemsFilterControls, {
         stateTabs: [{ key: "open", label: "Open" }],
         activeState: "open",
-        personalFilterOptions: [{ value: "by_me", label: "Created by me" }],
-        selectedPersonalFilters: ["by_me"],
-        personalFilterLabel: "Filter",
+        filterMenu: {
+          scope: "issue",
+          facets: EMPTY_GITHUB_WORK_ITEM_FACETS,
+          parsedSearchQuery: parseGitHubSearchQuery("is:issue author:@me"),
+          updateSearchQuery: vi.fn(),
+        },
         onStateChange: vi.fn(),
-        onPersonalFiltersSelect: vi.fn(),
       })
     );
 
     expect(markup).toContain('data-testid="github-work-items-state-open"');
-    expect(markup).toContain('aria-label="Filter (1)"');
+    expect(markup).toContain('aria-label="actions.filter (1)"');
     expect(markup).toContain('class="flex shrink-0 items-center gap-px"');
   });
 

@@ -2,7 +2,7 @@
  * Session-row interaction handlers for `WorkstationSidebarConnector`
  * (`index.tsx`): the cloud "My Conversations" pagination click (wrapping
  * `useWorkstationSidebarHandlers`' generic click routing), open-in-new-tab
- * / open-in-My-Station / open-linked-work-item-session, and the subagent
+ * / open-in-My-Station / open-in-new-window, and the subagent
  * fork-thread expand/collapse toggle.
  */
 import { useCallback } from "react";
@@ -11,8 +11,6 @@ import Message from "@src/components/Message";
 import { createLogger } from "@src/hooks/logger";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import { loadMoreCategory } from "@src/store/session";
-import { type ChatPanelNavigateCommand } from "@src/store/ui/chatPanel/surfaceAtoms";
-import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 import {
   getChatPanelTabIdFromTuiSessionId,
   isChatPanelTuiSessionId,
@@ -59,7 +57,7 @@ interface UseWorkstationSidebarSessionInteractionHandlersParams {
   openOrReplaceSessionInChatPanelTab: SidebarHandlersParams["onOpenSessionChatPanelTab"];
   closeAndDestroyChatPanelTab: SidebarHandlersParams["onCloseChatPanelTab"];
   activateMyStationRouteForProjectTabContent: () => void;
-  navigateChatPanel: (command: ChatPanelNavigateCommand) => void;
+  resetChatPanelSessionSurface: () => void;
   openSessionInNewChatTab: (options: {
     sessionId: string;
     sessionName?: string;
@@ -99,7 +97,7 @@ export function useWorkstationSidebarSessionInteractionHandlers({
   openOrReplaceSessionInChatPanelTab,
   closeAndDestroyChatPanelTab,
   activateMyStationRouteForProjectTabContent,
-  navigateChatPanel,
+  resetChatPanelSessionSurface,
   openSessionInNewChatTab,
   openSessionInWorkstation,
   openSessionInNewWindow,
@@ -164,7 +162,7 @@ export function useWorkstationSidebarSessionInteractionHandlers({
   const handleOpenInNewTab = useCallback(
     (sessionId: string) => {
       activateMyStationRouteForProjectTabContent();
-      navigateChatPanel({ kind: CHAT_PANEL_SURFACE_KIND.SESSION });
+      resetChatPanelSessionSurface();
       if (isChatPanelTuiSessionId(sessionId)) {
         const tabId = getChatPanelTabIdFromTuiSessionId(sessionId);
         if (tabId) activateChatPanelTab(tabId);
@@ -180,7 +178,7 @@ export function useWorkstationSidebarSessionInteractionHandlers({
     [
       activateChatPanelTab,
       activateMyStationRouteForProjectTabContent,
-      navigateChatPanel,
+      resetChatPanelSessionSurface,
       openSessionInNewChatTab,
       sessionMap,
     ]
@@ -214,26 +212,6 @@ export function useWorkstationSidebarSessionInteractionHandlers({
     [openSessionInNewWindow, sessionMap]
   );
 
-  const handleOpenLinkedWorkItemSession = useCallback(
-    (item: NavigationMenuItem) => {
-      if (sessionMap.has(item.id)) {
-        handleMenuItemClick(item.key, item);
-        return;
-      }
-      activateMyStationRouteForProjectTabContent();
-      openSessionInWorkstation({
-        sessionId: item.id,
-        title: item.label,
-      });
-    },
-    [
-      activateMyStationRouteForProjectTabContent,
-      handleMenuItemClick,
-      openSessionInWorkstation,
-      sessionMap,
-    ]
-  );
-
   const handleToggleSubagentExpansion = useCallback(
     (sessionId: string) => {
       setExpandedSubagentParentIds((previousIds) => {
@@ -257,7 +235,6 @@ export function useWorkstationSidebarSessionInteractionHandlers({
     handleOpenInNewTab,
     handleOpenInMyStation,
     handleOpenInNewWindow,
-    handleOpenLinkedWorkItemSession,
     handleToggleSubagentExpansion,
   };
 }

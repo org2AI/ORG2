@@ -17,12 +17,4 @@ export const DATABASE_SHORTCUTS: ShortcutEntry[] = [
     scope: "database",
     category: "navigation",
   },
-  {
-    id: "db_run_query",
-    command: "Run query",
-    macKeys: "⌘+Enter",
-    winKeys: "Ctrl+Enter",
-    scope: "database",
-    category: "editing",
-  },
 ];

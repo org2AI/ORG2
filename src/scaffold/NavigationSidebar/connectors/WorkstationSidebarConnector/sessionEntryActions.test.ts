@@ -1,33 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanel/selectionAtoms";
-import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 
 import { openNewChatFromSidebar } from "./sessionEntryActions";
 
 describe("openNewChatFromSidebar", () => {
   it("activates a new ChatPanel tab after resetting the session draft", () => {
     const calls: string[] = [];
-    const navigateChatPanel = vi.fn(() => calls.push("navigate"));
+    const resetChatPanelSessionSurface = vi.fn(() => calls.push("reset"));
     const setChatPanelCreateTarget = vi.fn(() => calls.push("target"));
     const goToNewSession = vi.fn(() => calls.push("session"));
     const openNewChatTab = vi.fn(() => calls.push("tab"));
 
     openNewChatFromSidebar({
       goToNewSession,
-      navigateChatPanel,
+      resetChatPanelSessionSurface,
       openNewChatTab,
       setChatPanelCreateTarget,
     });
 
-    expect(navigateChatPanel).toHaveBeenCalledWith({
-      kind: CHAT_PANEL_SURFACE_KIND.SESSION,
-    });
+    expect(resetChatPanelSessionSurface).toHaveBeenCalledOnce();
     expect(setChatPanelCreateTarget).toHaveBeenCalledWith(
       CHAT_PANEL_CREATE_TARGET.AGENT_SESSION
     );
     expect(goToNewSession).toHaveBeenCalledOnce();
     expect(openNewChatTab).toHaveBeenCalledOnce();
-    expect(calls).toEqual(["navigate", "target", "session", "tab"]);
+    expect(calls).toEqual(["reset", "target", "session", "tab"]);
   });
 });

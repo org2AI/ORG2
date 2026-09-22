@@ -16,8 +16,8 @@
 import { useSetAtom } from "jotai";
 import { type FC, memo, useEffect } from "react";
 
-import { ACTION_ID, useActionSystem } from "@src/ActionSystem";
 import { useGitOutputIntegration } from "@src/modules/WorkStation/CodeEditor/hooks/gitOutputIntegration/useGitOutputIntegration";
+import { ACTION_ID, useActionSystem } from "@src/scaffold/ActionSystem";
 import { gitOutputIntegrationAtom } from "@src/store/workstation/codeEditor/outputIntegration";
 
 // ============================================

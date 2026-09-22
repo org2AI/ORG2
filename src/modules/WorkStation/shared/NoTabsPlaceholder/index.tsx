@@ -10,10 +10,8 @@
 import React, { memo } from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
-import {
-  KEYBOARD_SHORTCUT_VARIANT,
-  KeyboardShortcut,
-} from "@src/components/KeyboardShortcut";
+import Button from "@src/components/Button";
+import { KeyboardShortcut } from "@src/components/KeyboardShortcut";
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
 import {
@@ -29,6 +27,10 @@ import {
   SmartPhone01Icon,
   WorkflowCircle05Icon,
 } from "@src/icons";
+import {
+  SPOTLIGHT_CLASSES,
+  SPOTLIGHT_TOKENS,
+} from "@src/scaffold/GlobalSpotlight/constants";
 
 import type { QuickAction } from "../QuickActionsPanel/types";
 
@@ -55,8 +57,6 @@ interface NoTabsPlaceholderProps {
   caption?: string;
   /** Quick actions to display (omit for icon-only placeholder) */
   actions?: QuickAction[];
-  /** Optional click handler for actions */
-  onActionClick?: (action: QuickAction) => void;
   /** Optional contextual content rendered below the shortcut actions */
   children?: React.ReactNode;
 }
@@ -84,41 +84,38 @@ const ICON_MAP: Record<PlaceholderIcon, IconSvgElement> = {
 
 interface ActionItemProps {
   action: QuickAction;
-  onClick?: () => void;
 }
 
-const ActionItem = memo<ActionItemProps>(({ action, onClick }) => {
+const ActionItem = memo<ActionItemProps>(({ action }) => {
   const handleClick = () => {
     if (!action.disabled && action.onAction) {
       action.onAction();
     }
-    onClick?.();
   };
 
   return (
-    <button
+    <Button
+      layout="custom"
       onClick={handleClick}
       disabled={action.disabled}
-      className={`flex w-full items-center justify-between rounded-lg px-4 py-2.5 transition-colors ${
+      className={`${SPOTLIGHT_CLASSES.itemRow} w-full text-left transition-colors ${
         action.disabled
           ? "cursor-not-allowed opacity-50"
           : `${SURFACE_TOKENS.hover} active:bg-fill-3`
       }`}
+      style={{ height: SPOTLIGHT_TOKENS.itemHeight }}
     >
       <span
-        className={`text-[14px] font-medium ${
+        className={`min-w-0 flex-1 truncate text-[14px] font-medium ${
           action.disabled ? "text-text-4" : "text-text-3"
         }`}
       >
         {action.label}
       </span>
       {action.shortcut && (
-        <KeyboardShortcut
-          shortcut={action.shortcut}
-          variant={KEYBOARD_SHORTCUT_VARIANT.workStation}
-        />
+        <KeyboardShortcut shortcut={action.shortcut} rendering="original" />
       )}
-    </button>
+    </Button>
   );
 });
 
@@ -154,7 +151,7 @@ ToolIcon.displayName = "ToolIcon";
 // ============================================
 
 export const NoTabsPlaceholder: React.FC<NoTabsPlaceholderProps> = memo(
-  ({ icon, caption, actions, onActionClick, children }) => {
+  ({ icon, caption, actions, children }) => {
     return (
       <div
         className={`flex h-full w-full items-center justify-center ${EDITOR_TAB_CANVAS_BG_CLASS}`}
@@ -171,13 +168,12 @@ export const NoTabsPlaceholder: React.FC<NoTabsPlaceholderProps> = memo(
 
           {/* Actions list */}
           {actions && actions.length > 0 && (
-            <div className="flex flex-col">
+            <div
+              className="flex flex-col"
+              style={{ gap: SPOTLIGHT_TOKENS.itemGap }}
+            >
               {actions.map((action) => (
-                <ActionItem
-                  key={action.id}
-                  action={action}
-                  onClick={() => onActionClick?.(action)}
-                />
+                <ActionItem key={action.id} action={action} />
               ))}
             </div>
           )}

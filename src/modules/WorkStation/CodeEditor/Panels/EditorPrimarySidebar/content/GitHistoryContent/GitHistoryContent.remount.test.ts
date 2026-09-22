@@ -21,7 +21,7 @@ vi.mock("@src/api/http/git/commits", () => ({
   getGitCommits: vi.fn(),
 }));
 
-vi.mock("@src/ActionSystem", () => ({
+vi.mock("@src/scaffold/ActionSystem", () => ({
   useActionSystem: () => ({ dispatch: vi.fn() }),
 }));
 
@@ -33,7 +33,7 @@ vi.mock("@src/hooks/tabHost/useWorkStationTabs", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   Placeholder: ({ variant }: { variant: string }) =>
     createElement("div", { "data-placeholder": variant }, variant),
 }));
@@ -44,8 +44,8 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("react-virtuoso", () => ({
-  Virtuoso: ({
+vi.mock("@src/components/VirtualList", () => ({
+  VirtualList: ({
     data,
     itemContent,
   }: {
@@ -134,6 +134,27 @@ describe("GitHistoryContent remount continuity", () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain("Cached commit");
+
+    for (const viewMode of ["graph", "list"] as const) {
+      await act(async () => {
+        root.render(
+          createElement(GitHistoryContent, {
+            repoId: "repo-1",
+            repoPath: "/repo",
+            viewMode,
+          })
+        );
+      });
+      const row = container.querySelector<HTMLButtonElement>(
+        'button[title*="Cached commit"]'
+      )!;
+      expect(row.classList.contains("rounded-md")).toBe(true);
+      expect(row.parentElement!.classList.contains("mx-1")).toBe(true);
+      expect(Boolean(row.querySelector("svg circle"))).toBe(
+        viewMode === "graph"
+      );
+      expect(getGitCommitsMock).toHaveBeenCalledTimes(1);
+    }
 
     act(() => root.unmount());
     root = createRoot(container);

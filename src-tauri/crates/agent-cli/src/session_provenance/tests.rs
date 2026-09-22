@@ -674,7 +674,7 @@ fn zcode_plugin_hooks_value_carries_marker_and_post_tool_use() {
     assert!(command.contains(HOOK_MARKER));
     assert!(command.ends_with("zcode"));
     // ZCode plugin/data/marketplace paths stay inside its plugin store.
-    let plugins_root = app_paths::home_dir()
+    let plugins_root = app_paths::external_history_home_dir()
         .join(".zcode")
         .join("cli")
         .join("plugins");
@@ -695,7 +695,7 @@ fn zcode_plugin_id_is_name_at_marketplace() {
 #[test]
 fn zcode_config_path_is_under_zcode_cli() {
     let path = zcode_config_path();
-    let expected = app_paths::home_dir()
+    let expected = app_paths::external_history_home_dir()
         .join(".zcode")
         .join("cli")
         .join("config.json");
@@ -925,4 +925,95 @@ fn codex_session_activation_is_scoped_to_task_and_hook_fingerprint() {
         "task-a",
         Some(receipt)
     ));
+}
+
+// Run in a subprocess rather than changing global environment shared by the
+// other managed-config suites. This exercises actual install/remove writers.
+#[test]
+fn isolated_hook_writers_never_touch_inherited_agent_homes() {
+    const MARKER: &str = "ORG2_HOOK_ISOLATION_TEST";
+    if std::env::var_os(MARKER).is_some() {
+        let root = app_paths::external_history_home_dir();
+        let executable = std::env::current_exe().unwrap();
+        for platform in ALL_SESSION_PROVENANCE_HOOK_PLATFORMS {
+            let path = platform.config_path().unwrap();
+            assert!(path.starts_with(&root), "{platform:?}: {}", path.display());
+            update_platform(platform, true, true, &executable).unwrap();
+            assert!(config_has_managed_hooks(platform).unwrap(), "{platform:?}");
+            update_platform(platform, false, true, &executable).unwrap();
+            assert!(!config_has_managed_hooks(platform).unwrap(), "{platform:?}");
+        }
+        return;
+    }
+    let temp = tempfile::tempdir().unwrap();
+    let inherited = temp.path().join("inherited");
+    std::fs::create_dir(&inherited).unwrap();
+    std::fs::write(inherited.join("settings.json"), "primary settings").unwrap();
+    std::fs::write(inherited.join("hooks.json"), "primary hooks").unwrap();
+    let result = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "session_provenance::tests::isolated_hook_writers_never_touch_inherited_agent_homes",
+            "--nocapture",
+        ])
+        .env(MARKER, "1")
+        .env("ORGII_HOME", temp.path().join("orgii"))
+        .env("ORGII_EXTERNAL_HISTORY_HOME", temp.path().join("external"))
+        .env("CLAUDE_CONFIG_DIR", &inherited)
+        .env("CODEX_HOME", &inherited)
+        .env("XDG_CONFIG_HOME", &inherited)
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(
+        std::fs::read_to_string(inherited.join("settings.json")).unwrap(),
+        "primary settings"
+    );
+    assert_eq!(
+        std::fs::read_to_string(inherited.join("hooks.json")).unwrap(),
+        "primary hooks"
+    );
+    assert_eq!(std::fs::read_dir(inherited).unwrap().count(), 2);
+}
+
+#[test]
+fn hook_targets_honor_explicit_agent_homes_without_isolation() {
+    const MARKER: &str = "ORG2_HOOK_EXPLICIT_HOME_TEST";
+    if let Some(home) = std::env::var_os(MARKER) {
+        let home = std::path::PathBuf::from(home);
+        assert_eq!(
+            SessionProvenanceHookPlatform::ClaudeCode
+                .config_path()
+                .unwrap(),
+            home.join("settings.json")
+        );
+        assert_eq!(
+            SessionProvenanceHookPlatform::Codex.config_path().unwrap(),
+            home.join("hooks.json")
+        );
+        return;
+    }
+    let temp = tempfile::tempdir().unwrap();
+    let result = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "session_provenance::tests::hook_targets_honor_explicit_agent_homes_without_isolation",
+        ])
+        .env(MARKER, temp.path())
+        .env_remove("ORGII_EXTERNAL_HISTORY_HOME")
+        .env("CLAUDE_CONFIG_DIR", temp.path())
+        .env("CODEX_HOME", temp.path())
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
 }

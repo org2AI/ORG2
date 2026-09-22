@@ -134,13 +134,17 @@ const GroupChatMessageBubble: React.FC<GroupChatMessageBubbleProps> = ({
         <ChatBubbleBody variant="neutral" className="rounded-2xl! px-3! py-2!">
           {/* Clamp long agent messages to a ~20-line preview (ClampedContent's
               default); the expand/collapse pill fades into the neutral bubble. */}
-          <ClampedContent fadeFrom="from-fill-2" enabled={clampContent}>
+          <ClampedContent
+            fadeFrom="from-fill-2"
+            enabled={clampContent}
+            className="allow-select-deep"
+          >
             {trimmedRecipient ? (
               <>
                 <div className="wrap-break-word">
                   <span className="text-primary-6">@{trimmedRecipient}</span>
                   {"  "}
-                  {firstLine}
+                  <span>{firstLine}</span>
                 </div>
                 {restBody && (
                   <Markdown

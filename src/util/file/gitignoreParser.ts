@@ -88,21 +88,3 @@ export async function createGitignoreChecker(repoPath: string): Promise<{
     },
   };
 }
-
-/**
- * Check if a single path is ignored (one-off check, not cached)
- *
- * @param repoPath - Root path of the repository
- * @param relativePath - Path relative to repo root
- * @returns true if the path is ignored
- */
-export async function isPathIgnored(
-  repoPath: string,
-  relativePath: string
-): Promise<boolean> {
-  const ignorer = await createGitignore(repoPath);
-  const normalizedPath = relativePath.startsWith("/")
-    ? relativePath.slice(1)
-    : relativePath;
-  return ignorer.ignores(normalizedPath);
-}

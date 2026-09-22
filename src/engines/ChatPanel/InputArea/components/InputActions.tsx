@@ -19,6 +19,7 @@ import { useAtomValue } from "jotai";
 import React, { memo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Message from "@src/components/Message";
 import Tooltip from "@src/components/Tooltip";
@@ -207,8 +208,8 @@ const InputActions: React.FC<InputActionsProps> = memo(
     // toolbar re-layout (hover, tooltip mount, focus ring) nudges the
     // icon by a sub-pixel amount and the ArrowUp visually "shakes".
     const buttonNode = (
-      <button
-        type="button"
+      <Button
+        layout="custom"
         onClick={handleClick}
         disabled={disabled}
         className={`${baseClass} ${stateClass} leading-none`}
@@ -245,7 +246,7 @@ const InputActions: React.FC<InputActionsProps> = memo(
             className="block text-[#fff]"
           />
         )}
-      </button>
+      </Button>
     );
 
     // Stop / Retry / Working states have no keyboard shortcut — show a plain
@@ -272,7 +273,7 @@ const InputActions: React.FC<InputActionsProps> = memo(
       <Tooltip
         content={tooltipContent}
         position="top-end"
-        mouseEnterDelay={200}
+        kind="button"
         framedPanel={isSendLike}
       >
         {buttonNode}

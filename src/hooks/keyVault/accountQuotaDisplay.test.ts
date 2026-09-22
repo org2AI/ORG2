@@ -3,17 +3,23 @@ import { describe, expect, it } from "vitest";
 
 import en from "@src/i18n/locales/en/integrations.json";
 import zh from "@src/i18n/locales/zh/integrations.json";
+import {
+  type TestTranslateOptions,
+  testTranslate,
+} from "@src/test/i18nTestTranslate";
 
 import {
   collectAccountQuotaCards,
   formatQuotaResetHint,
   formatQuotaResetTime,
+  resolveAccountQuotaBalanceValue,
+  resolveKnownRemainingPercent,
   resolveQuotaPlanLabel,
 } from "./accountQuotaDisplay";
 import type { KeyVaultAccount } from "./types";
 
-const translate = ((key: string, options?: { defaultValue?: string }) =>
-  options?.defaultValue ?? key) as TFunction;
+const translate = ((key: string, options?: TestTranslateOptions) =>
+  testTranslate(`integrations:${key}`, options)) as TFunction;
 
 const chineseTranslations: Record<string, string> = {
   "keyVault.quota.balance": "余额",
@@ -23,7 +29,11 @@ const chineseTranslations: Record<string, string> = {
 const chineseTranslate = ((key: string, options?: { defaultValue?: string }) =>
   chineseTranslations[key] ?? options?.defaultValue ?? key) as TFunction;
 
-function deepSeekAccount(): KeyVaultAccount {
+type QuotaBalance = { amount: number; currency: string };
+
+function deepSeekAccount(
+  balance: QuotaBalance | null = { amount: 12.34, currency: "USD" }
+): KeyVaultAccount {
   return {
     id: "deepseek-account",
     hasLocalKey: true,
@@ -47,7 +57,7 @@ function deepSeekAccount(): KeyVaultAccount {
       is_unlimited: false,
       quota_source: "deepseek_balance",
       usage_items: [],
-      balance: { amount: 12.34, currency: "USD" },
+      balance,
       auto_message: null,
       named_message: null,
     },
@@ -62,7 +72,7 @@ describe("collectAccountQuotaCards", () => {
       translate
     );
 
-    expect(card.accountPlan).toBe("Pay As You Go");
+    expect(card.accountPlan).toBe("Pay as you go");
     expect(card.metrics).toHaveLength(1);
     expect(card.metrics[0]).toMatchObject({
       kind: "value",
@@ -90,6 +100,38 @@ describe("collectAccountQuotaCards", () => {
     expect(resolveQuotaPlanLabel(glmCodingPlanAccount, chineseTranslate)).toBe(
       "GLM Coding Plan"
     );
+  });
+});
+
+describe("balance-only quota snapshots", () => {
+  it("formats the exact provider balance", () => {
+    const value = resolveAccountQuotaBalanceValue(deepSeekAccount().quotaInfo);
+
+    expect(value).toContain("12.34");
+  });
+
+  it("rejects missing, negative, and currency-less balances", () => {
+    const unusableBalances: (QuotaBalance | null)[] = [
+      null,
+      { amount: -1, currency: "USD" },
+      { amount: Number.NaN, currency: "USD" },
+      { amount: 5, currency: " " },
+    ];
+
+    expect(resolveAccountQuotaBalanceValue(undefined)).toBeNull();
+    for (const balance of unusableBalances) {
+      expect(
+        resolveAccountQuotaBalanceValue(deepSeekAccount(balance).quotaInfo)
+      ).toBeNull();
+    }
+  });
+
+  it("treats the -1 sentinel and non-finite values as an unknown percentage", () => {
+    expect(resolveKnownRemainingPercent(-1)).toBeNull();
+    expect(resolveKnownRemainingPercent(Number.NaN)).toBeNull();
+    expect(resolveKnownRemainingPercent(undefined)).toBeNull();
+    expect(resolveKnownRemainingPercent(0)).toBe(0);
+    expect(resolveKnownRemainingPercent(42.5)).toBe(42.5);
   });
 });
 

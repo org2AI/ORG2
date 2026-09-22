@@ -10,7 +10,9 @@ import {
   ArrowRight02Icon,
   FileScriptIcon,
   type IconSvgElement,
+  MailReply01Icon,
   MessageCircleQuestionMarkIcon,
+  PinIcon,
   TextQuoteIcon,
   Tick01Icon,
   WorkHistoryIcon,
@@ -25,7 +27,9 @@ export type DropdownAction =
   | "add-to-chat"
   | "add-to-context"
   | "add-file"
-  | "add-lines";
+  | "add-lines"
+  | "pin"
+  | "reply-to-selection";
 
 export interface DropdownMenuItem {
   id: DropdownAction;
@@ -49,6 +53,8 @@ export const ICON_CONFIG = {
   addContext: Add01Icon,
   addFile: FileScriptIcon,
   addLines: TextQuoteIcon,
+  pin: PinIcon,
+  replyToSelection: MailReply01Icon,
   session: WorkHistoryIcon,
   newSession: Add01Icon,
   arrow: ArrowRight02Icon,
@@ -66,6 +72,23 @@ export const MENU_ITEMS: DropdownMenuItem[] = [
     id: "add-to-chat",
     label: "Add to Chat",
     icon: ICON_CONFIG.addContext,
+    hasSecondLayer: false,
+  },
+];
+
+// Menu items for a chat transcript selection — a mark in the conversation
+// navigator, or a quoted reply in the composer. Neither sends anything.
+export const CHAT_MENU_ITEMS: DropdownMenuItem[] = [
+  {
+    id: "pin",
+    label: "Pin",
+    icon: ICON_CONFIG.pin,
+    hasSecondLayer: false,
+  },
+  {
+    id: "reply-to-selection",
+    label: "Reply to selection",
+    icon: ICON_CONFIG.replyToSelection,
     hasSecondLayer: false,
   },
 ];
@@ -90,12 +113,30 @@ export const EDITOR_MENU_ITEMS: DropdownMenuItem[] = [
 // Style Configuration
 // ============================================
 
+/**
+ * Presentation of the menu.
+ * - `menu`: the stacked dropdown rows every context menu uses.
+ * - `inline`: one horizontal pill of text actions, floated over the
+ *   selection — for surfaces where a full menu would bury short text in
+ *   chrome, like a passage selected in the chat transcript.
+ */
+export type TextSelectionLayout = "menu" | "inline";
+
 export const STYLE_CONFIG = {
   dropdownWidth: "180px",
   secondLayerWidth: "240px",
   maxHeight: "240px",
   itemHeight: "36px",
   zIndex: 99999,
+  /** Gap between the inline bar and the selection it floats above. */
+  inlineOffsetY: 8,
+} as const;
+
+export const INLINE_CLASSES = {
+  bar: "flex items-center gap-0.5 p-0.5",
+  action:
+    "cursor-pointer rounded-[6px] px-2 py-1 text-[13px] whitespace-nowrap text-text-1 transition-colors",
+  divider: "mx-0.5 h-3.5 w-px shrink-0 bg-border-2",
 } as const;
 
 // ============================================

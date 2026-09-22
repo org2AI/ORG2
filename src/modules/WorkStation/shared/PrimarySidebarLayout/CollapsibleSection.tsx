@@ -5,21 +5,20 @@
  * Used to create multiple stacked sections (Files, Outline, etc.)
  * Uses grow for proportional space distribution.
  *
- * Shared by: CodeEditor, DatabaseManager, Browser
+ * Shared by: CodeEditor, Browser
  */
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useState } from "react";
 
+import Button from "@src/components/Button";
+import { SidebarSectionHeader } from "@src/components/SidebarSectionHeader";
 import {
   type SectionHeaderAction,
   isSectionHeaderCustomAction,
 } from "@src/components/TreePanelSidebar/types";
-import {
-  BUTTON_SIZE,
-  SECTION_ACTION_BUTTON,
-} from "@src/config/workstation/tokens";
-import { HEADER_CLASSES } from "@src/config/workstation/tokens";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
+import { TreeRowActionGroup } from "@src/components/TreeRow/TreeRowActionGroup";
 import { HorizontalResizeHandle } from "@src/scaffold/Resize";
+
+import { SectionHeaderActionsContext } from "./SectionHeaderActions";
 
 // ============================================
 // Types
@@ -48,8 +47,6 @@ export interface CollapsibleSectionProps {
   onResizeStart?: (event: React.MouseEvent) => void;
   /** Whether this section should use auto height instead of grow */
   autoHeight?: boolean;
-  /** Whether to show top border instead of bottom border (for global sections) */
-  showTopBorder?: boolean;
   hideSeparator?: boolean;
   /** Stable selector for automated interaction with the section toggle. */
   headerTestId?: string;
@@ -72,10 +69,10 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
     actions = [],
     onResizeStart,
     autoHeight = false,
-    showTopBorder = false,
     hideSeparator = false,
     headerTestId,
   }) => {
+    const [actionsHost, setActionsHost] = useState<HTMLDivElement | null>(null);
     const effectiveCollapsed = collapsible ? collapsed : false;
 
     // Handle collapse toggle
@@ -116,8 +113,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
             minHeight: "100px",
           };
 
-    const showSeparator = !hideSeparator && (showTopBorder || !isLast);
-    const separatorPositionClass = showTopBorder ? "top-0" : "bottom-0";
+    const showSeparator = !hideSeparator && !isLast;
 
     return (
       <div
@@ -128,99 +124,69 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
       >
         {showSeparator && (
           <div
-            className={`pointer-events-none absolute right-2 left-2 ${separatorPositionClass} h-px bg-border-1`}
+            className="pointer-events-none absolute right-2 bottom-0 left-2 h-px bg-border-1"
             aria-hidden
           />
         )}
         {/* Header */}
-        <div className={HEADER_CLASSES.sectionHeader}>
-          <div
-            data-testid={headerTestId}
-            data-collapsed={effectiveCollapsed ? "true" : "false"}
-            className={`flex min-w-0 flex-1 items-center gap-1.5 ${collapsible ? "cursor-pointer" : ""}`}
-            onClick={handleToggle}
-          >
-            {/* Chevron */}
-            {collapsible && (
-              <span
-                className={`${BUTTON_SIZE.sm} flex shrink-0 items-center justify-center`}
-              >
-                {effectiveCollapsed ? (
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    data-icon="chevron-right"
-                    size={14}
-                    className="text-text-3"
-                  />
-                ) : (
-                  <HugeiconsIcon
-                    icon={ArrowDown01Icon}
-                    data-icon="chevron-down"
-                    size={14}
-                    className="text-text-3"
-                  />
-                )}
-              </span>
-            )}
-
-            {/* Title */}
-            {typeof title === "string" ? (
-              <span className="truncate text-[12px] font-medium text-text-2 uppercase">
-                {title}
-              </span>
-            ) : (
-              <div className="truncate text-[12px] font-medium text-text-2 uppercase">
-                {title}
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons - show on hover, or always when forceVisible */}
-          {actions.length > 0 && (
-            <div
-              className={`items-center gap-0.5 ${
-                actions.some((action) => action.forceVisible)
-                  ? "flex"
-                  : "hidden group-focus-within/section:flex group-hover/section:flex"
-              }`}
-            >
-              {actions.map((action) => {
-                // Support custom rendering for complex actions (dropdowns, etc.)
-                if (isSectionHeaderCustomAction(action)) {
-                  return <div key={action.key}>{action.customRender}</div>;
-                }
-
-                const hasLabel = !!action.label;
-                const button = (
-                  <button
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      action.onClick();
-                    }}
-                    className={`${SECTION_ACTION_BUTTON.base} ${
-                      hasLabel
-                        ? SECTION_ACTION_BUTTON.withLabel
-                        : SECTION_ACTION_BUTTON.iconOnly
-                    }`}
-                    title={
-                      action.key === "refresh-git" ? undefined : action.tooltip
+        <SidebarSectionHeader
+          surface="panel"
+          title={title}
+          expanded={!effectiveCollapsed}
+          onToggle={collapsible ? handleToggle : undefined}
+          toggleTestId={headerTestId}
+          actionsAlwaysVisible
+          actions={
+            <>
+              <div
+                ref={setActionsHost}
+                className="flex shrink-0 items-center gap-px"
+              />
+              {/* Action buttons - show on hover, or always when forceVisible */}
+              {actions.length > 0 && (
+                <TreeRowActionGroup
+                  hoverGroup="section"
+                  alwaysVisible={actions.some((action) => action.forceVisible)}
+                >
+                  {actions.map((action) => {
+                    // Support custom rendering for complex actions (dropdowns, etc.)
+                    if (isSectionHeaderCustomAction(action)) {
+                      return <div key={action.key}>{action.customRender}</div>;
                     }
-                  >
-                    {action.icon}
-                    {action.label && <span>{action.label}</span>}
-                  </button>
-                );
 
-                return <div key={action.key}>{button}</div>;
-              })}
-            </div>
-          )}
-        </div>
+                    const hasLabel = !!action.label;
+                    const button = (
+                      <Button
+                        variant="tertiary"
+                        size="sidebar"
+                        iconOnly={!hasLabel}
+                        icon={action.icon}
+                        aria-label={action.tooltip}
+                        disabled={action.disabled}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          action.onClick();
+                        }}
+                        title={action.tooltip}
+                      >
+                        {action.label}
+                      </Button>
+                    );
+
+                    return <div key={action.key}>{button}</div>;
+                  })}
+                </TreeRowActionGroup>
+              )}
+            </>
+          }
+        />
 
         {/* Content - only render when not collapsed */}
         {!effectiveCollapsed && (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {children}
+            <SectionHeaderActionsContext.Provider value={actionsHost}>
+              {children}
+            </SectionHeaderActionsContext.Provider>
           </div>
         )}
 

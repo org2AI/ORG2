@@ -1,6 +1,7 @@
 import { memo } from "react";
 import type { MouseEventHandler, ReactNode } from "react";
 
+import Button from "@src/components/Button";
 import PersonAvatar from "@src/components/PersonAvatar";
 
 type AvatarChipVariant = "display" | "selectable";
@@ -84,15 +85,15 @@ const AvatarChip = memo(function AvatarChip({
 
   if (onClick) {
     return (
-      <button
-        type="button"
+      <Button
+        layout="custom"
         disabled={disabled}
         aria-pressed={variant === "selectable" ? selected : undefined}
         onClick={onClick}
         className={cx(rootClassName, BUTTON_CLASS)}
       >
         {content}
-      </button>
+      </Button>
     );
   }
 

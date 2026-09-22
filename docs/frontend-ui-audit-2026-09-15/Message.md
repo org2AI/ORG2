@@ -1,0 +1,10 @@
+# Message UI audit
+
+| Line                                              | Element                     | Verdict          | Reason                                                                                                                                                                                               | Suggested change |
+| ------------------------------------------------- | --------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `src/components/Message/MessageContainer.tsx:244` | Spotlight message placement | keep with reason | Uses Spotlight's current 8px top offset and 680px maximum width. This non-modal notice centers on the viewport; it does not inherit Spotlight's sidebar/trail insets or center-placement preference. | None.            |
+| `src/components/Message/MessageContainer.tsx:252` | Bottom message placement    | keep with reason | Retains the existing corner offsets, width limit, and mobile gutters for existing callers.                                                                                                           | None.            |
+| `src/components/Message/MessageContainer.tsx:192` | Action controls             | keep with reason | Existing close, cancel, download, and primary actions use shared Button controls; this change introduces no new action controls or native button bypasses.                                           | None.            |
+| `src/components/Message/MessageContainer.tsx:26`  | Message variants            | keep with reason | Regular uses the neutral border token; success and danger reuse existing success and error semantic border tokens.                                                                                   | None.            |
+
+Verdict totals: **0 fix**, **4 keep with reason**, **0 abstract**.

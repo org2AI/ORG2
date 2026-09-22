@@ -8,6 +8,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { memo, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
@@ -20,7 +21,10 @@ import {
 
 import { stripExpandedPillContent } from "../../InputArea/utils/pillContentParser";
 import type { ChatGroupMeta, UseChatGroupsReturn } from "../hooks";
-import type { UseChatTurnPaginationReturn } from "../hooks/useChatTurnPagination";
+import {
+  type UseChatTurnPaginationReturn,
+  getTurnPageHeaderGroupIndex,
+} from "../hooks/useChatTurnPagination";
 import {
   formatCursorIdeTurnPageTimeLabel,
   formatTurnPageTimeLabel,
@@ -69,8 +73,12 @@ const TurnPageList: React.FC<TurnPageListProps> = memo(
 
     const turnPageItems = useMemo<TurnPageItem[]>(() => {
       const items: TurnPageItem[] = pages.map((page, pageIndex) => {
-        const header = groupHeaders[page.startGroupIndex];
-        const meta = groupMeta[page.startGroupIndex];
+        const headerGroupIndex = getTurnPageHeaderGroupIndex(
+          page,
+          groupHeaders
+        );
+        const header = groupHeaders[headerGroupIndex];
+        const meta = groupMeta[headerGroupIndex];
         const rawPreviewText =
           page.cursorIdeSummary?.userPreview ??
           (header?.event?.displayText
@@ -178,8 +186,8 @@ const TurnPageList: React.FC<TurnPageListProps> = memo(
                         transform: `translateY(${virtualItem.start}px)`,
                       }}
                     >
-                      <button
-                        type="button"
+                      <Button
+                        layout="custom"
                         data-testid="turn-page-list-item"
                         data-page-index={pageIndex}
                         className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left ${
@@ -198,7 +206,7 @@ const TurnPageList: React.FC<TurnPageListProps> = memo(
                             {time}
                           </span>
                         )}
-                      </button>
+                      </Button>
                     </div>
                   );
                 })}

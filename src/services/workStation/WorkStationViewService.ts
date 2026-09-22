@@ -1,3 +1,4 @@
+import { navigateInMainWindow } from "@src/api/tauri/stationWindow";
 import { ROUTES, isWorkbenchPath } from "@src/config/routes";
 import { navigateApp as dispatchNavigate } from "@src/router/navigateApp";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
@@ -8,6 +9,7 @@ import type {
   WorkStationTabType,
 } from "@src/store/workstation/tabs/types";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
+import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 const getStore = () => getInstrumentedStore();
 
@@ -26,7 +28,7 @@ function isWorkStationRoute() {
 function isCodeEditorActive() {
   const store = getStore();
   return (
-    isWorkStationRoute() &&
+    (isWorkStationRoute() || isStationWindow()) &&
     store.get(stationModeAtom) === "my-station" &&
     store.get(activeHostAtom) === "code"
   );
@@ -40,7 +42,19 @@ function dispatchOpenCodeTab(tabId: string) {
   );
 }
 
+/**
+ * An open wizard (Add Account, Add Connection, etc.) owns the Settings slot
+ * and holds unsaved form state. Revealing the workstation would let the user
+ * wander off mid-flow, so Station-revealing actions refuse until it closes.
+ */
+async function isWizardOpen(): Promise<boolean> {
+  const { wizardBreadcrumbTitleAtom } =
+    await import("@src/store/ui/wizardBreadcrumbAtom");
+  return getStore().get(wizardBreadcrumbTitleAtom) !== null;
+}
+
 async function unmaximizeChatPanel(): Promise<void> {
+  if (isStationWindow()) return;
   const { chatPanelMaximizedAtom } =
     await import("@src/store/ui/chatPanel/surfaceAtoms");
   const store = getStore();
@@ -93,7 +107,11 @@ async function shouldToggleMaximizedForActiveTab(
   tabId: string,
   options?: NavigationOptions
 ): Promise<boolean> {
-  if (!options?.toggleChatPanelMaximizedWhenActive || !isCodeEditorActive()) {
+  if (
+    isStationWindow() ||
+    !options?.toggleChatPanelMaximizedWhenActive ||
+    !isCodeEditorActive()
+  ) {
     return false;
   }
   const { EditorTabService } =
@@ -113,46 +131,52 @@ export const WorkStationViewService = {
    * Station access. Slot mode (session vs. settings) is left untouched.
    */
   async toggleChatPanelMaximized(): Promise<boolean> {
+    if (isStationWindow()) return false;
     if (!isWorkbenchRoute()) return false;
+    if (await isWizardOpen()) return false;
 
     const { toggleActiveChatPanelMaximizedAtom } =
-      await import("@src/store/chatPanel/chatPanelTabsAtom");
+      await import("@src/store/chatPanel/chatPanelLayoutAtoms");
 
-    const store = getStore();
-    return store.set(toggleActiveChatPanelMaximizedAtom);
+    return getStore().set(toggleActiveChatPanelMaximizedAtom);
   },
 
   async showWorkStation(): Promise<boolean> {
+    if (isStationWindow()) return false;
     if (!isWorkbenchRoute()) return false;
+    if (await isWizardOpen()) return false;
 
     const [
-      { activeChatPanelTabAtom, isChatPanelTabStationAvailable },
+      { activeChatPanelTabStationAvailableAtom },
       { stationModeAtom },
       { activeStationChatVisibleAtom, stationChatVisibilityAtom },
       { chatPanelMaximizedAtom },
     ] = await Promise.all([
-      import("@src/store/chatPanel/chatPanelTabsAtom"),
+      import("@src/store/chatPanel/chatPanelLayoutAtoms"),
       import("@src/store/ui/simulatorAtom"),
       import("@src/store/ui/chatPanel/visibilityAtoms"),
       import("@src/store/ui/chatPanel/surfaceAtoms"),
     ]);
 
     const store = getStore();
-    if (!isChatPanelTabStationAvailable(store.get(activeChatPanelTabAtom))) {
-      return false;
-    }
+    if (!store.get(activeChatPanelTabStationAvailableAtom)) return false;
     if (store.get(chatPanelMaximizedAtom)) {
       store.set(chatPanelMaximizedAtom, false);
     }
     const mode = store.get(stationModeAtom);
-    if (mode === "my-station" || mode === "agent-station") {
-      const visibility = store.get(stationChatVisibilityAtom);
-      store.set(activeStationChatVisibleAtom, mode, !visibility[mode]);
-    }
+    const visibility = store.get(stationChatVisibilityAtom);
+    store.set(activeStationChatVisibleAtom, mode, !visibility[mode]);
     return true;
   },
 
   async openKanbanTab(): Promise<boolean> {
+    if (isStationWindow()) {
+      await navigateInMainWindow({
+        path: ROUTES.workStation.base.path,
+        action: "open-kanban",
+      });
+      return true;
+    }
     const [{ activeStationChatVisibleAtom }, { stationModeAtom }] =
       await Promise.all([
         import("@src/store/ui/chatPanel/visibilityAtoms"),
@@ -162,11 +186,7 @@ export const WorkStationViewService = {
     const store = getStore();
     const { openWorkManagementChatPanelTabAtom } =
       await import("@src/store/chatPanel/chatPanelTabsAtom");
-    const currentMode = store.get(stationModeAtom);
-    const chatStationMode =
-      currentMode === "agent-station" ? "agent-station" : "my-station";
-    store.set(stationModeAtom, chatStationMode);
-    store.set(activeStationChatVisibleAtom, chatStationMode, true);
+    store.set(activeStationChatVisibleAtom, store.get(stationModeAtom), true);
     store.set(openWorkManagementChatPanelTabAtom, {});
     if (!isWorkStationRoute()) {
       dispatchNavigate(ROUTES.workStation.base.path);
@@ -175,20 +195,26 @@ export const WorkStationViewService = {
   },
 
   async openStationMode(mode: StationMode): Promise<boolean> {
+    if (isStationWindow()) {
+      getStore().set(stationModeAtom, mode);
+      return true;
+    }
+
+    if (await isWizardOpen()) return false;
+
     const [
-      { activeChatPanelTabAtom, isChatPanelTabStationAvailable },
+      { activeChatPanelTabStationAvailableAtom },
       { activeStationChatVisibleAtom },
-      { stationModeAtom },
     ] = await Promise.all([
-      import("@src/store/chatPanel/chatPanelTabsAtom"),
+      import("@src/store/chatPanel/chatPanelLayoutAtoms"),
       import("@src/store/ui/chatPanel/visibilityAtoms"),
-      import("@src/store/ui/simulatorAtom"),
     ]);
 
     const store = getStore();
+
     if (
       isWorkbenchRoute() &&
-      !isChatPanelTabStationAvailable(store.get(activeChatPanelTabAtom))
+      !store.get(activeChatPanelTabStationAvailableAtom)
     ) {
       return false;
     }
@@ -201,6 +227,34 @@ export const WorkStationViewService = {
       dispatchNavigate(ROUTES.workStation.base.path);
     }
     return true;
+  },
+
+  /**
+   * Detach a station into its own OS window (or focus the one already
+   * open). Works from any route and any window: the atom seeds the window
+   * with the remembered session and, in the main window, hands the surface
+   * over to the chat panel when that station was the one on screen.
+   */
+  async openStationWindow(mode: StationMode): Promise<boolean> {
+    const [{ openStationInNewWindowAtom }, { default: i18n }] =
+      await Promise.all([
+        import("@src/store/workstation/stationWindowAtoms"),
+        import("@src/i18n"),
+      ]);
+    const title = i18n.t(
+      mode === "agent-station"
+        ? "common:terminology.agentStation"
+        : "common:terminology.myStation"
+    );
+    try {
+      await getStore().set(openStationInNewWindowAtom, {
+        stationMode: mode,
+        title,
+      });
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   async toggleStationMode(): Promise<boolean> {
@@ -218,22 +272,10 @@ export const WorkStationViewService = {
   async toggleWorkstationSidebar(): Promise<boolean> {
     if (!isWorkbenchRoute()) return false;
 
-    const [
-      { activeStatusBarCallbacksAtom },
-      { workStationPrimarySidebarCollapsedPersistAtom },
-    ] = await Promise.all([
-      import("@src/store/ui/workStationLayout/statusBarAtoms"),
-      import("@src/store/ui/workStationLayout/primarySidebarAtoms"),
-    ]);
+    const { workStationPrimarySidebarCollapsedPersistAtom } =
+      await import("@src/store/ui/workStationLayout/primarySidebarAtoms");
 
-    const store = getStore();
-    const callbacks = store.get(activeStatusBarCallbacksAtom);
-    if (callbacks.onTogglePrimaryPanel) {
-      callbacks.onTogglePrimaryPanel();
-      return true;
-    }
-
-    store.set(workStationPrimarySidebarCollapsedPersistAtom, "toggle");
+    getStore().set(workStationPrimarySidebarCollapsedPersistAtom, "toggle");
     return true;
   },
 
@@ -263,7 +305,11 @@ export const WorkStationViewService = {
     const { EditorTabService } =
       await import("@src/services/workStation/EditorTabService");
     const targetTabId = EditorTabService.getLastFileOrExplorerTabId();
-    if (options?.toggleChatPanelMaximizedWhenActive && isCodeEditorActive()) {
+    if (
+      !isStationWindow() &&
+      options?.toggleChatPanelMaximizedWhenActive &&
+      isCodeEditorActive()
+    ) {
       const activeTab = EditorTabService.getActiveTab();
       if (
         activeTab &&
@@ -320,6 +366,7 @@ export const WorkStationViewService = {
     const store = getStore();
     if (
       options?.toggleChatPanelMaximizedWhenActive &&
+      !isStationWindow() &&
       query === undefined &&
       isCodeEditorActive() &&
       store.get(workStationPrimarySidebarTabAtom) ===
@@ -366,7 +413,7 @@ export const WorkStationViewService = {
       store.get(stationModeAtom) === "agent-station" &&
       !options?.forceCodeEditorSurface
     ) {
-      store.set(chatPanelMaximizedAtom, false);
+      if (!isStationWindow()) store.set(chatPanelMaximizedAtom, false);
       store.set(simulatorSelectedAppAtom, AppType.CODE_EDITOR);
       store.set(
         simulatorIdeTerminalRevealRequestAtom,

@@ -147,5 +147,3 @@ export function useRatioResize(
 
   return { ratio, handleMouseDown };
 }
-
-export default useRatioResize;

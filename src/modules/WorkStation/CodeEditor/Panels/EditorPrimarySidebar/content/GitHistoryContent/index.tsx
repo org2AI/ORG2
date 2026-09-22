@@ -16,21 +16,18 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
-import { useActionSystem } from "@src/ActionSystem";
 import { getGitCommits } from "@src/api/http/git/commits";
 import type { GitCommitInfo } from "@src/api/http/git/types";
 import { Placeholder } from "@src/components/Placeholder";
+import { VirtualList } from "@src/components/VirtualList";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
-import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
-import { PRIMARY_SIDEBAR_HOVER } from "@src/config/workstation/tokens";
 import {
   type UseWorkStationTabsReturn,
   useWorkStationTabs,
 } from "@src/hooks/tabHost/useWorkStationTabs";
-import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
 import { HugeiconsIcon, Loading03Icon } from "@src/icons";
+import { useActionSystem } from "@src/scaffold/ActionSystem";
 import {
   type GitHistoryRequest,
   getCachedGitHistory,
@@ -42,12 +39,13 @@ import {
   type SourceControlHistorySelection,
   createGitCommitDetailTab,
 } from "@src/store/workstation/tabs";
-import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
+import GitCommitRow, {
+  GIT_COMMIT_ROW_PITCH as ROW_HEIGHT,
+} from "./GitCommitRow";
 import GitHistoryContextMenu from "./GitHistoryContextMenu";
 import {
   type CommitGraphNode,
-  DOT_RADIUS,
   LANE_WIDTH,
   assignLanesIncremental,
   createGraphState,
@@ -59,162 +57,6 @@ import {
 
 const COMMITS_PAGE_SIZE = 25;
 const NOOP_REFRESH = () => undefined;
-
-// ============================================
-// Helpers
-// ============================================
-
-// ============================================
-// Graph SVG Row Component
-// ============================================
-
-/** Row height must match the button's rendered height for lines to connect */
-const ROW_HEIGHT = 36;
-
-interface GraphSvgProps {
-  graphNode: CommitGraphNode;
-  svgWidth: number;
-  isFirst: boolean;
-}
-
-const GraphSvg: React.FC<GraphSvgProps> = memo(
-  ({ graphNode, svgWidth, isFirst }) => {
-    const centerY = ROW_HEIGHT / 2;
-    const dotX = graphNode.lane * LANE_WIDTH + LANE_WIDTH / 2;
-
-    return (
-      <svg width={svgWidth} height={ROW_HEIGHT} className="shrink-0">
-        {/* Lines */}
-        {graphNode.lines.map((line, lineIdx) => {
-          const fromX = line.fromLane * LANE_WIDTH + LANE_WIDTH / 2;
-          const toX = line.toLane * LANE_WIDTH + LANE_WIDTH / 2;
-
-          // Skip top lines on the very first commit row (nothing above)
-          if (
-            isFirst &&
-            line.segment === "top" &&
-            line.fromLane === graphNode.lane &&
-            line.toLane === graphNode.lane
-          ) {
-            return null;
-          }
-
-          if (line.segment === "top") {
-            return (
-              <line
-                key={`line-${lineIdx}`}
-                x1={fromX}
-                y1={0}
-                x2={toX}
-                y2={centerY}
-                stroke={line.color}
-                strokeWidth={1.5}
-              />
-            );
-          }
-          return (
-            <line
-              key={`line-${lineIdx}`}
-              x1={fromX}
-              y1={centerY}
-              x2={toX}
-              y2={ROW_HEIGHT}
-              stroke={line.color}
-              strokeWidth={1.5}
-            />
-          );
-        })}
-
-        {/* Commit dot */}
-        <circle cx={dotX} cy={centerY} r={DOT_RADIUS} fill={graphNode.color} />
-      </svg>
-    );
-  }
-);
-
-GraphSvg.displayName = "GraphSvg";
-
-// ============================================
-// Commit Row Component
-// ============================================
-
-interface CommitRowProps {
-  commit: GitCommitInfo;
-  isSelected: boolean;
-  graphNode?: CommitGraphNode;
-  svgWidth?: number;
-  isFirst?: boolean;
-  onSelect: (commit: GitCommitInfo) => void;
-  onContextMenu: (event: React.MouseEvent, commit: GitCommitInfo) => void;
-}
-
-const CommitRow: React.FC<CommitRowProps> = memo(
-  ({
-    commit,
-    isSelected,
-    graphNode,
-    svgWidth,
-    isFirst = false,
-    onSelect,
-    onContextMenu,
-  }) => {
-    const { cursorReset, markClicked, resetCursor } =
-      useImmediateCursorReset(isSelected);
-
-    const handleClick = useCallback(() => {
-      markClicked();
-      onSelect(commit);
-    }, [commit, markClicked, onSelect]);
-
-    const authorName = commit.author?.name ?? "Unknown";
-    const authorDate = commit.author?.date ?? "";
-
-    return (
-      <button
-        className={`group flex w-full items-center gap-1 pr-3 pl-2 text-left transition-colors ${
-          cursorReset || isSelected ? "cursor-default" : "cursor-pointer"
-        } ${isSelected ? SURFACE_TOKENS.selected : PRIMARY_SIDEBAR_HOVER.row}`}
-        style={{ height: `${ROW_HEIGHT}px` }}
-        onClick={handleClick}
-        onContextMenu={(event) => onContextMenu(event, commit)}
-        onMouseLeave={resetCursor}
-        title={`${commit.summary}\n\n${commit.short_sha} by ${authorName}`}
-      >
-        {/* Graph SVG column — all rows use same width for text alignment */}
-        {graphNode && svgWidth && (
-          <GraphSvg
-            graphNode={graphNode}
-            svgWidth={svgWidth}
-            isFirst={isFirst}
-          />
-        )}
-
-        {/* Commit info */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="min-w-0 flex-1 truncate text-[12px] leading-tight text-text-1">
-              {commit.summary}
-            </span>
-          </div>
-          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-text-3">
-            <span className="truncate">{authorName}</span>
-            {authorDate && (
-              <span className="shrink-0">
-                {formatRelativeTime(authorDate, "nano")}
-              </span>
-            )}
-          </div>
-        </div>
-      </button>
-    );
-  }
-);
-
-CommitRow.displayName = "CommitRow";
-
-// ============================================
-// Main Component
-// ============================================
 
 type GitHistoryViewMode = "list" | "graph";
 
@@ -483,7 +325,12 @@ const GitHistoryContentInner: React.FC<GitHistoryContentInnerProps> = ({
   // Loading state
   if (loading && commits.length === 0) {
     return (
-      <Placeholder variant="loading" placement="sidebar" fillParentHeight />
+      <Placeholder
+        loadingIconOnly
+        variant="loading"
+        placement="sidebar"
+        fillParentHeight
+      />
     );
   }
 
@@ -516,21 +363,21 @@ const GitHistoryContentInner: React.FC<GitHistoryContentInnerProps> = ({
         <Placeholder
           variant="empty"
           placement="sidebar"
-          title={t("placeholders.noResults", "No results")}
+          title={t("placeholders.noResults")}
           fillParentHeight
         />
       ) : (
-        <Virtuoso
+        <VirtualList
           className="scrollbar-hide min-h-0 flex-1"
           data={filteredCommits}
           computeItemKey={(_index, commit) => commit.sha}
           fixedItemHeight={ROW_HEIGHT}
-          overscan={ROW_HEIGHT * 8}
+          overscanPx={ROW_HEIGHT * 8}
           endReached={() => {
             void handleLoadMore();
           }}
           itemContent={(index, commit) => (
-            <CommitRow
+            <GitCommitRow
               commit={commit}
               isSelected={commit.sha === activeCommitSha}
               graphNode={
@@ -548,16 +395,14 @@ const GitHistoryContentInner: React.FC<GitHistoryContentInnerProps> = ({
       )}
 
       {/* Loading indicator remains outside the virtual window. */}
-      {hasMore && (
+      {loadingMore && (
         <div className="flex h-8 shrink-0 items-center justify-center">
-          {loadingMore && (
-            <HugeiconsIcon
-              icon={Loading03Icon}
-              data-icon="loader-2"
-              size={SPINNER_TOKENS.default}
-              className="animate-spin text-text-3"
-            />
-          )}
+          <HugeiconsIcon
+            icon={Loading03Icon}
+            data-icon="loader-2"
+            size={SPINNER_TOKENS.default}
+            className="animate-spin text-text-3"
+          />
         </div>
       )}
 

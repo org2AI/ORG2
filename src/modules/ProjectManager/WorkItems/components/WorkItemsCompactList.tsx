@@ -2,6 +2,9 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Avatar from "@src/components/Avatar";
+import CompactListPanel, {
+  type CompactListPanelEntry,
+} from "@src/components/CompactListPanel";
 import IntegrationIcon from "@src/components/IntegrationIcon";
 import { Placeholder } from "@src/components/Placeholder";
 import { HugeiconsIcon, ListChecksIcon } from "@src/icons";
@@ -9,9 +12,6 @@ import {
   GITHUB_ISSUE_STATUS_OPTIONS,
   WORK_ITEM_STATUS_OPTIONS,
 } from "@src/modules/ProjectManager/config/manage";
-import CompactListPanel, {
-  type CompactListPanelEntry,
-} from "@src/modules/shared/components/CompactListPanel";
 import type { WorkItem } from "@src/types/core/workItem";
 import { formatCompactAge } from "@src/util/time/formatRelativeTime";
 

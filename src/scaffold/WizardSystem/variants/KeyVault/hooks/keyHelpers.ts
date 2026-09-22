@@ -148,7 +148,11 @@ export function applyKey(
       enabled_models: modelsEnabled,
       validated: true,
       auth_method: "oauth",
-      name: cred.name,
+      // Intentionally do NOT set `name` from `cred.name`. It is a fixed
+      // credential-source label ("OpenAI", "Anthropic", ...), so a second
+      // detected account always trips `isDuplicateName` (disabling Done), and
+      // it shadows the `nextDefaultName` dedupe in `submit()`. Same rule as
+      // the sign-in paths in `AgentSetupRouter`.
       account_metadata: cred.account_metadata ?? {},
       env_vars: cred.env_vars
         ? Object.entries(cred.env_vars).map(([name, value]) => ({

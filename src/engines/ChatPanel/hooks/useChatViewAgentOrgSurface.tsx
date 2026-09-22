@@ -27,10 +27,12 @@ export function useChatViewAgentOrgSurface({
   sessionId,
   showCurrentPlanSurface,
   conversationRoot,
+  onBeforeMessageDispatch,
 }: {
   sessionId: string;
   showCurrentPlanSurface: boolean;
   conversationRoot: ConversationRootLocator | null;
+  onBeforeMessageDispatch?: () => void;
 }) {
   const {
     view: agentOrgRunView,
@@ -98,8 +100,6 @@ export function useChatViewAgentOrgSurface({
 
   const {
     cancelQueuedMessage,
-    queueTailKey,
-    handleClearSessionQueue,
     handleReorderSessionQueue,
     handleSendNow,
     queueEditProps,
@@ -108,6 +108,7 @@ export function useChatViewAgentOrgSurface({
     pipelineSessionId,
     queueSessionId,
     conversationRoot,
+    onBeforeMessageDispatch,
   });
 
   const groupChatPausedBottomContent = groupChatRunPaused ? (
@@ -175,8 +176,6 @@ export function useChatViewAgentOrgSurface({
     handleAgentOrgMemberSessionJump,
     handleMainComposerSubmitOverride: handleGroupChatSubmitOverride,
     cancelQueuedMessage,
-    queueTailKey,
-    handleClearSessionQueue,
     handleReorderSessionQueue,
     handleSendNow,
     queueEditProps,

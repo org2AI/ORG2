@@ -164,11 +164,7 @@ export function useRoutinesState(
           t("routineFields.fireAccepted", { status: result.fire.status })
         );
       } else {
-        Message.success(
-          t("routineFields.fireStarted", {
-            defaultValue: "Routine run started",
-          })
-        );
+        Message.success(t("routineFields.fireStarted"));
       }
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);

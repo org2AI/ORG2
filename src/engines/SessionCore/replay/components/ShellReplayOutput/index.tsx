@@ -109,8 +109,32 @@ const ShellReplayOutputComponent: React.FC<ShellReplayOutputProps> = ({
   const loadingRef = useRef(false);
   const followTailRef = useRef(true);
   const prependScrollHeightRef = useRef<number | null>(null);
+  const identity = rangeIdentity(replayRef, replayState, cursorEventId);
+  const scopeKey = shellReplayScopeKey(
+    replayRef.sessionId,
+    replayRef.callId,
+    replayState.bookmark.visibleThroughSequence,
+    replayState.bookmark.visibleBytes
+  );
+  const initialFrameState = useCallback((): FrameWindowState => {
+    const visibleBytes = replayState.bookmark.visibleBytes;
+    const cached = shellReplayRangeCache.findCoveringWindow(
+      scopeKey,
+      Math.max(0, visibleBytes - SHELL_REPLAY_RANGE_BYTES),
+      visibleBytes
+    );
+    return cached
+      ? {
+          ...EMPTY_FRAME_STATE,
+          identity,
+          windowKey: cached.key,
+          earliestOffset: cached.value.earliestOffset,
+          latestOffset: cached.value.latestOffset,
+        }
+      : { ...EMPTY_FRAME_STATE, identity };
+  }, [identity, scopeKey, replayState.bookmark.visibleBytes]);
   const [frameState, setFrameState] =
-    useState<FrameWindowState>(EMPTY_FRAME_STATE);
+    useState<FrameWindowState>(initialFrameState);
   const frameStateRef = useRef(frameState);
   frameStateRef.current = frameState;
   const cacheVersion = useSyncExternalStore(
@@ -119,7 +143,6 @@ const ShellReplayOutputComponent: React.FC<ShellReplayOutputProps> = ({
     shellReplayRangeCache.getVersion
   );
 
-  const identity = rangeIdentity(replayRef, replayState, cursorEventId);
   const replaySessionId = replayRef.sessionId;
   const replayCallId = replayRef.callId;
   const visibleThroughSequence = replayState.bookmark.visibleThroughSequence;
@@ -142,12 +165,6 @@ const ShellReplayOutputComponent: React.FC<ShellReplayOutputProps> = ({
     stateForCursor &&
     frameState.latestOffset < visibleBytes &&
     frames.length > 0;
-  const scopeKey = shellReplayScopeKey(
-    replaySessionId,
-    replayCallId,
-    visibleThroughSequence,
-    visibleBytes
-  );
 
   const loadRange = useCallback(
     async (offsetBytes: number, direction: ReplayWindowDirection) => {
@@ -295,14 +312,17 @@ const ShellReplayOutputComponent: React.FC<ShellReplayOutputProps> = ({
     loadingRef.current = false;
     followTailRef.current = true;
     prependScrollHeightRef.current = null;
-    setFrameState({ ...EMPTY_FRAME_STATE, identity });
+    const initial = initialFrameState();
+    setFrameState(initial);
 
-    if (visibleBytes === 0) return;
+    // A warm replay already has the final window; do not flash its preview
+    // or schedule an unnecessary read when the command is reopened.
+    if (initial.windowKey || visibleBytes === 0) return;
     return scheduleShellReplayPrefetch(() => {
       const offsetBytes = Math.max(0, visibleBytes - SHELL_REPLAY_RANGE_BYTES);
       void loadRange(offsetBytes, "initial");
     }, SHELL_REPLAY_SETTLE_MS);
-  }, [identity, loadRange, visibleBytes]);
+  }, [initialFrameState, loadRange, visibleBytes]);
 
   useLayoutEffect(() => {
     const element = scrollRef.current;
@@ -391,7 +411,7 @@ const ShellReplayOutputComponent: React.FC<ShellReplayOutputProps> = ({
       aria-label={displayCommand}
     >
       {!hideCommandLine ? (
-        <div className="mb-1 max-w-full min-w-0">
+        <div className="mb-5 max-w-full min-w-0">
           <TerminalCommand
             command={displayCommand}
             prefix="$"

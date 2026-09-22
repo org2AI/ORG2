@@ -6,7 +6,7 @@
  */
 import React, { useEffect } from "react";
 
-import "./index.scss";
+import "./index.css";
 import { useGlobalDragDrop } from "./useGlobalDragDrop/useGlobalDragDrop";
 
 const GlobalDragDrop: React.FC = () => {

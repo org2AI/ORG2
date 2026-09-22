@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   type DatabaseConnectionConfig,
@@ -92,6 +92,7 @@ export function useConnectionFormState(
   options: UseConnectionFormStateOptions = {}
 ): ConnectionFormState & ConnectionFormActions {
   const { existingConnectionNames = [] } = options;
+  const existingConnectionNamesKey = JSON.stringify(existingConnectionNames);
 
   const [dbType, setDbType] = useState<DatabaseType>("sqlite");
   const [connectionName, setConnectionName] = useState("");
@@ -205,7 +206,10 @@ export function useConnectionFormState(
       id: `${dbType}:${crypto.randomUUID()}`,
       name:
         connectionName.trim() ||
-        nextDefaultName(connectionNameBase, existingConnectionNames),
+        nextDefaultName(
+          connectionNameBase,
+          JSON.parse(existingConnectionNamesKey)
+        ),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -271,7 +275,7 @@ export function useConnectionFormState(
     dbType,
     connectionName,
     connectionNameBase,
-    existingConnectionNames,
+    existingConnectionNamesKey,
     filePath,
     supabaseUrl,
     supabaseToken,
@@ -291,29 +295,55 @@ export function useConnectionFormState(
     mysqlPassword,
   ]);
 
+  const testGeneration = useRef(0);
+  const stopTest = useRef<() => void>(() => {});
+  const cancelTest = useCallback(() => {
+    testGeneration.current++;
+    stopTest.current();
+  }, []);
+  useEffect(() => {
+    cancelTest();
+    setTestStatus("idle");
+    return cancelTest;
+  }, [buildConfig, cancelTest]);
+
   const handleTest = useCallback(async () => {
     const config = buildConfig();
     if (!config) return;
-
+    stopTest.current();
+    const generation = ++testGeneration.current;
+    let service:
+      | Awaited<ReturnType<typeof DatabaseServiceFactory.create>>
+      | undefined;
+    stopTest.current = () => {
+      if (DatabaseServiceFactory.get(config.id) === service)
+        DatabaseServiceFactory.remove(config.id);
+      else void service?.disconnect().catch(() => {});
+    };
     setTestStatus("testing");
     setTestError(null);
-
     try {
       if (config.type === "sqlite") {
-        const isValid = await isValidSqliteFile(config.filePath);
-        if (!isValid) throw new Error("Not a valid SQLite file");
+        if (!(await isValidSqliteFile(config.filePath)))
+          throw new Error("Not a valid SQLite file");
       }
-
-      const service = await DatabaseServiceFactory.create(config, true);
+      if (generation !== testGeneration.current) return;
+      service = await DatabaseServiceFactory.create(config, true);
+      if (generation !== testGeneration.current) return;
       await service.connect();
+      if (generation !== testGeneration.current) return;
       await service.getTables();
-      await service.disconnect();
-      DatabaseServiceFactory.remove(config.id);
-
-      setTestStatus("success");
+      if (generation === testGeneration.current) setTestStatus("success");
     } catch (err) {
+      if (generation !== testGeneration.current) return;
       setTestError(err instanceof Error ? err.message : String(err));
       setTestStatus("error");
+    } finally {
+      if (service) {
+        await service.disconnect().catch(() => {});
+        if (DatabaseServiceFactory.get(config.id) === service)
+          DatabaseServiceFactory.remove(config.id);
+      }
     }
   }, [buildConfig]);
 

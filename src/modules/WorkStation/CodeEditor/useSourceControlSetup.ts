@@ -38,7 +38,10 @@ import {
 import { useGitFiles } from "./hooks/sourceControl/useGitFiles";
 import type { UseGitDiffStateReturn } from "./hooks/useGitDiffState";
 import { resolveGitDiffSelection } from "./sourceControlSelection";
-import { rememberSourceControlFocusPath } from "./sourceControlStateTransitions";
+import {
+  rememberSourceControlFocusPath,
+  switchSourceControlCategory,
+} from "./sourceControlStateTransitions";
 import { useStashCount } from "./useStashCount";
 
 interface UseSourceControlSetupParams {
@@ -156,11 +159,17 @@ export function useSourceControlSetup({
 
   const { filesByPath: gitFilesByPath } = gitDiffState.state;
   const clearGitDiffFiles = gitDiffState.clearFiles;
+  // Both the switch-clear below and every sidebar file report carry this key.
+  // The sidebar's report effect runs before this (parent) effect in the same
+  // commit, and its file array keeps its identity while the working tree is
+  // unchanged — so an unkeyed clear wiped the fresh report and nothing ever
+  // re-sent it, leaving All Changes with only individually clicked files.
+  const gitDiffRepoKey = JSON.stringify([repoId, repoPath]);
 
   useEffect(() => {
-    clearGitDiffFiles();
+    clearGitDiffFiles(gitDiffRepoKey);
     setSourceControlFocusTarget(null);
-  }, [clearGitDiffFiles, repoId, repoPath, setSourceControlFocusTarget]);
+  }, [clearGitDiffFiles, gitDiffRepoKey, setSourceControlFocusTarget]);
 
   const sourceControlFileCounts = useMemo<
     Pick<SourceControlFilterCounts, "uncommitted" | "unstaged" | "staged">
@@ -196,40 +205,18 @@ export function useSourceControlSetup({
 
   const handleSourceControlFilterModeChange = useCallback(
     (mode: SourceControlFilterMode) => {
+      if (mode === sourceControlFilterMode) return;
       setSourceControlFilterMode(mode);
-      if (mode === "history" || mode === "pr" || mode === "issues") return;
-      setPrimaryPanel((prev: PanelState) => {
-        const tabIndex = prev.tabs.findIndex(
-          (item) => item.type === "source-control"
-        );
-        if (tabIndex === -1) return prev;
-        const existing = prev.tabs[tabIndex];
-        const nextStaged = mode === "staged";
-        const nextFileCount = sourceControlFilterCounts[mode];
-        const shouldUpdateStaged = existing.data.staged !== nextStaged;
-        const shouldUpdateFileCount = existing.data.fileCount !== nextFileCount;
-        const shouldClearHistory = Boolean(existing.data.historySelection);
-        if (
-          !shouldUpdateStaged &&
-          !shouldUpdateFileCount &&
-          !shouldClearHistory
-        ) {
-          return prev;
-        }
-        const nextTabs = [...prev.tabs];
-        nextTabs[tabIndex] = {
-          ...existing,
-          data: {
-            ...existing.data,
-            staged: nextStaged,
-            fileCount: nextFileCount,
-            historySelection: null,
-          },
-        };
-        return { ...prev, tabs: nextTabs };
-      });
+      setPrimaryPanel((prev) =>
+        switchSourceControlCategory(prev, mode, sourceControlFilterCounts)
+      );
     },
-    [setPrimaryPanel, setSourceControlFilterMode, sourceControlFilterCounts]
+    [
+      setPrimaryPanel,
+      setSourceControlFilterMode,
+      sourceControlFilterMode,
+      sourceControlFilterCounts,
+    ]
   );
 
   const setSourceControlFilterModeHandler = useSetAtom(
@@ -360,9 +347,9 @@ export function useSourceControlSetup({
   const handleGitFilesChange = useCallback(
     (files: GitFile[], scopeRepoRoot?: string) => {
       const filesMap = new Map(files.map((file) => [file.path, file]));
-      setGitDiffFiles(filesMap, scopeRepoRoot);
+      setGitDiffFiles(filesMap, scopeRepoRoot, gitDiffRepoKey);
     },
-    [setGitDiffFiles]
+    [gitDiffRepoKey, setGitDiffFiles]
   );
 
   // `handleDiffSidebarFileSelect` is consumed by the memoized SidebarSlot

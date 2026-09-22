@@ -72,7 +72,7 @@ export const LoginArtwork: React.FC = () => {
       />
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="text-5xl font-bold tracking-widest text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
-          ORG II
+          ORG2
         </span>
       </div>
     </div>

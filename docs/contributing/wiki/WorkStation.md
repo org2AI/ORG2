@@ -66,14 +66,6 @@ An embedded webview for Browser Use sessions:
 - Navigate, click, fill forms, and capture screenshots as part of an automated task
 - Session replay for browser interactions
 
-### Database Manager
-
-Connect to and query databases directly in the WorkStation:
-
-- SQLite (libSQL), PostgreSQL, MySQL
-- Schema browser and query editor
-- Agent can read schema and write/execute queries with your approval
-
 ### Canvas
 
 A visual canvas for flow diagrams, notes, and structured output:

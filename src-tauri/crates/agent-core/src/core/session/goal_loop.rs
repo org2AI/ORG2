@@ -242,6 +242,7 @@ pub struct GoalLoopTurnEnd {
     /// Fresh-provider spec (same model/account as the session).
     pub model: String,
     pub account_id: Option<String>,
+    pub credential_source: Option<String>,
     pub reliability: crate::config::ReliabilityConfig,
     pub native_harness_type: Option<core_types::providers::NativeHarnessType>,
     pub workspace: crate::session::workspace::SessionWorkspace,
@@ -346,9 +347,10 @@ async fn evaluate_turn_end(input: GoalLoopTurnEnd, max_turns: u32) {
 }
 
 async fn run_judge(input: &GoalLoopTurnEnd, goal_text: &str) -> JudgeVerdict {
-    let provider = crate::providers::factory::create_provider_with_native_harness_preflight(
+    let provider = crate::providers::factory::create_provider_with_selection_preflight(
         &input.model,
         input.account_id.as_deref(),
+        input.credential_source.as_deref(),
         &input.reliability,
         input.native_harness_type,
         Some(input.workspace.clone()),

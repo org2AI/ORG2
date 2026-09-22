@@ -33,7 +33,11 @@ describe("SearchInput surfaces", () => {
 
     expect(markup).toContain("border-transparent!");
     expect(markup).toContain("bg-transparent!");
-    expect(markup).not.toContain("border-0!");
+    const surfaceClass = markup.match(
+      /class="[^"]*border-transparent![^"]*"/
+    )?.[0];
+    expect(surfaceClass).toBeDefined();
+    expect(surfaceClass).not.toContain("border-0!");
     expect(markup).toContain("hover]:bg-fill-2!");
     expect(markup).toContain("focus-within:border-primary-6!");
     expect(markup).toContain("focus-within:bg-pane-input!");

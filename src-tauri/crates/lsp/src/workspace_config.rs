@@ -1,7 +1,7 @@
-//! Workspace LSP & Lint Configuration
+//! Workspace LSP Configuration
 //!
-//! Manages per-workspace LSP and lint tool settings stored in `.orgii/settings.json`.
-//! Allows users to enable/disable specific language servers and lint tools per project.
+//! Manages per-workspace LSP settings stored in `.orgii/settings.json`.
+//! Allows users to enable/disable specific language servers per project.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -23,7 +23,12 @@ pub struct LspSettings {
 }
 
 /// Lint tool settings within workspace config — same shape as
-/// [`LspSettings`]: `disabled` is the only field the runtime reads.
+/// [`LspSettings`].
+///
+/// Nothing in the backend reads this any more (the lint-tool surface was
+/// removed once the Problems panel went agent-only), but the field is kept
+/// so an existing `.orgii/settings.json` round-trips unchanged through
+/// [`save_workspace_settings`] instead of silently dropping the `lint` key.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LintSettings {
     #[serde(default)]
@@ -47,24 +52,9 @@ pub struct WorkspaceLspConfig {
     pub disabled: Vec<String>,
 }
 
-/// Lint config returned to frontend
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkspaceLintConfig {
-    pub disabled: Vec<String>,
-}
-
 impl From<LspSettings> for WorkspaceLspConfig {
     fn from(settings: LspSettings) -> Self {
         WorkspaceLspConfig {
-            disabled: settings.disabled,
-        }
-    }
-}
-
-impl From<LintSettings> for WorkspaceLintConfig {
-    fn from(settings: LintSettings) -> Self {
-        WorkspaceLintConfig {
             disabled: settings.disabled,
         }
     }
@@ -169,18 +159,16 @@ pub fn set_server_enabled(
 }
 
 // ============================================
-// Tauri Commands
+// Public helpers
 // ============================================
 
 /// Get the LSP configuration for a workspace
-#[tauri::command]
 pub fn lsp_get_workspace_config(workspace_path: String) -> WorkspaceLspConfig {
     let settings = load_workspace_settings(&workspace_path);
     settings.lsp.into()
 }
 
 /// Set whether a language server is enabled for a workspace
-#[tauri::command]
 pub fn lsp_set_server_enabled(
     workspace_path: String,
     language: String,
@@ -190,64 +178,8 @@ pub fn lsp_set_server_enabled(
 }
 
 /// Check if a specific language server is enabled for a workspace
-#[tauri::command]
 pub fn lsp_is_server_enabled(workspace_path: String, language: String) -> bool {
     is_server_enabled(&workspace_path, &language)
-}
-
-// ============================================
-// Lint Tool Functions
-// ============================================
-
-/// Check if a lint tool is enabled for a workspace
-pub fn is_lint_tool_enabled(workspace_path: &str, tool_id: &str) -> bool {
-    let settings = load_workspace_settings(workspace_path);
-    !settings.lint.disabled.contains(&tool_id.to_string())
-}
-
-/// Set whether a lint tool is enabled for a workspace
-pub fn set_lint_tool_enabled(
-    workspace_path: &str,
-    tool_id: &str,
-    enabled: bool,
-) -> Result<(), String> {
-    let mut settings = load_workspace_settings(workspace_path);
-    let tool_str = tool_id.to_string();
-
-    if enabled {
-        settings.lint.disabled.retain(|t| t != &tool_str);
-    } else if !settings.lint.disabled.contains(&tool_str) {
-        settings.lint.disabled.push(tool_str);
-    }
-
-    save_workspace_settings(workspace_path, &settings)
-}
-
-// ============================================
-// Lint Tool Tauri Commands
-// ============================================
-
-/// Get the lint tool configuration for a workspace
-#[tauri::command]
-pub fn lint_get_workspace_config(workspace_path: String) -> WorkspaceLintConfig {
-    let settings = load_workspace_settings(&workspace_path);
-    settings.lint.into()
-}
-
-/// Set whether a lint tool is enabled for a workspace
-#[tauri::command]
-pub fn lint_set_tool_enabled(
-    workspace_path: String,
-    tool_id: String,
-    enabled: bool,
-) -> Result<(), String> {
-    set_lint_tool_enabled(&workspace_path, &tool_id, enabled)
-}
-
-/// Check if a specific lint tool is enabled for a workspace
-#[tauri::command]
-pub fn lint_is_tool_enabled(workspace_path: String, tool_id: String) -> bool {
-    is_lint_tool_enabled(&workspace_path, &tool_id)
 }
 
 #[cfg(test)]

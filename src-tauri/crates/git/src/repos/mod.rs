@@ -48,39 +48,6 @@ pub async fn server_list_repos() -> Result<Vec<serde_json::Value>, String> {
     Ok(repos.iter().map(repo_record_to_json).collect())
 }
 
-/// Update repository visibility (public/private) by path.
-#[tauri::command]
-pub async fn server_update_repo_visibility(path: String, visibility: String) -> Result<(), String> {
-    repo_service::update_visibility(path, visibility).await
-}
-
-/// Check GitHub repo visibility via unauthenticated API (no CORS issues).
-/// Returns `"public"`, `"private"`, or `null` when uncertain.
-#[tauri::command]
-pub async fn server_check_github_visibility(owner_repo: String) -> Result<Option<String>, String> {
-    let url = format!("https://api.github.com/repos/{}", owner_repo);
-    let client = reqwest::Client::new();
-    let response = client
-        .head(&url)
-        .header("User-Agent", "orgii-app")
-        .send()
-        .await;
-
-    match response {
-        Ok(resp) => {
-            let status = resp.status().as_u16();
-            if status == 200 {
-                Ok(Some("public".to_string()))
-            } else if status == 404 {
-                Ok(Some("private".to_string()))
-            } else {
-                Ok(None)
-            }
-        }
-        Err(_) => Ok(None),
-    }
-}
-
 /// Import a local folder as a repository.
 /// Persists to DB, registers with git watcher, auto-inits git if needed.
 #[tauri::command]

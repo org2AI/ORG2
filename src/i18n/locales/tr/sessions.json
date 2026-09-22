@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Yeni mesaj olarak gönderilsin mi?",
+    "body": "Bu mesaj bir yürütme oturumuna ait. Burada düzenlemek konuşmayı geri alamaz. Bunun yerine bu metin sona yeni bir mesaj olarak gönderilsin mi? Mevcut mesajlar ve dosya değişiklikleri korunacak.",
+    "sendNew": "Yeni mesaj gönder"
+  },
   "tray": {
     "markAllRead": "Tümünü okundu olarak işaretle",
     "showKanban": "Kanban’ı göster",
@@ -50,7 +55,7 @@
     },
     "dataSource": {
       "title": "Veri kaynakları",
-      "description": "ORGII'nin algıladığı harici kodlama araçları. İçe aktarılabilir uygulamalar oturum sayısını gösterir ve yeniden taranabilir; diğerleri kurulum durumunu ve geçmişlerinin nerede olduğunu gösterir.",
+      "description": "ORG2'nin algıladığı harici kodlama araçları. İçe aktarılabilir uygulamalar oturum sayısını gösterir ve yeniden taranabilir; diğerleri kurulum durumunu ve geçmişlerinin nerede olduğunu gösterir.",
       "rescanAll": "Tümünü yeniden tara",
       "rescan": "Yeniden tara",
       "rescanning": "Yeniden taranıyor…",
@@ -88,8 +93,7 @@
       "openFolder": "Klasörü aç",
       "tabs": {
         "all": "Tümü",
-        "apps": "Uygulamalar",
-        "clis": "CLI'ler"
+        "apps": "Uygulamalar"
       },
       "views": {
         "scanning": "Tarama",
@@ -97,7 +101,6 @@
         "usage": "Kullanım",
         "team": "Ekip",
         "quota": "Kota",
-        "assets": "Varlıklar",
         "profile": "Profil"
       },
       "usage": {
@@ -174,7 +177,8 @@
           "output": "Çıktı",
           "cache": "Önbellekten okuma",
           "cost": "Maliyet",
-          "filterBySession": "Bu oturuma göre filtrele"
+          "filterBySession": "Bu oturuma göre filtrele",
+          "purpose": "Amaç"
         },
         "pricing": {
           "input": "Girdi",
@@ -190,7 +194,7 @@
           "perTurn": "LLM çağrıları",
           "perTool": "Araç çağrıları",
           "close": "Kapat",
-          "noData": "Bu oturumda yalnızca oturum düzeyi toplamlar var; çağrı başına ilişkilendirme ORGII'nin kendi agent çalıştırmaları için kaydedilir.",
+          "noData": "Bu oturumda yalnızca oturum düzeyi toplamlar var; çağrı başına ilişkilendirme ORG2'nin kendi agent çalıştırmaları için kaydedilir.",
           "turnHeader": "Tur {{turn}}",
           "promptTokens": "Prompt",
           "completionTokens": "Tamamlama"
@@ -199,7 +203,17 @@
           "title": "Henüz kullanım yok",
           "subtitle": "Kodlama oturumlarını çalıştırın veya tarayın; token kullanımları burada görünsün."
         },
-        "loadError": "Kullanım verileri yüklenemedi"
+        "loadError": "Kullanım verileri yüklenemedi",
+        "purposes": {
+          "main": "Ana yanıt",
+          "session_title": "Oturum başlığı",
+          "session_memory": "Oturum belleği",
+          "workspace_memory": "Çalışma alanı belleği",
+          "auto_dream": "Bellek birleştirme",
+          "skill_prefetch": "Beceri seçimi",
+          "memory_prefetch": "Bellekten getirme",
+          "compaction": "Bağlam sıkıştırma"
+        }
       },
       "sessions_one": "{{count}} oturum",
       "sessions_other": "{{count}} oturum",
@@ -307,7 +321,6 @@
   },
   "simulator": {
     "captionBarToggleTooltip": "Agent mesaj çubuğunu göster",
-    "noActiveSession": "Aktif oturum yok",
     "tabs": {
       "kanban": "Kanban"
     },
@@ -324,18 +337,6 @@
           "agentBrowser": "Agent Tarayıcısı",
           "searchFetch": "Ara ve Getir"
         },
-        "sections": {
-          "browserTitle": "Tarayıcı etkinliği",
-          "interactionsTitle": "Etkileşimler",
-          "webSearchesTitle": "Web aramaları",
-          "pagesFetchedTitle": "Getirilen sayfalar"
-        },
-        "empty": {
-          "noBrowserActivity": "Tarayıcı etkinliği yok",
-          "noBrowserInteractions": "Tarayıcı etkileşimi yok",
-          "noWebSearches": "Web araması yok",
-          "noPagesFetched": "Getirilen sayfa yok"
-        },
         "header": {
           "categoryBrowser": "Tarayıcı",
           "categoryLiveBrowser": "Canlı tarayıcı",
@@ -346,7 +347,6 @@
       },
       "ide": {
         "shell": {
-          "emptyNoCommands": "Komut yok",
           "noCommand": "(komut yok)",
           "outputInProgress": "… çıktı devam ediyor",
           "exitCode": "[çıkış kodu: {{code}}]"
@@ -520,8 +520,7 @@
     },
     "titleBar": {
       "showSidebar": "Kenar çubuğunu göster",
-      "hideSidebar": "Kenar çubuğunu gizle",
-      "showBottomPanel": "Alt paneli göster"
+      "hideSidebar": "Kenar çubuğunu gizle"
     },
     "multiTask": {
       "monitoringProgress": "{{count}} subagent'in ilerlemesi izleniyor",
@@ -554,22 +553,6 @@
     "addedToContext": "Session bağlamına eklendi",
     "creatingWithContext": "Bağlamla yeni Session oluşturuluyor",
     "creationCooldown": "Başka bir terminal oluşturmadan önce lütfen bir süre bekleyin."
-  },
-  "scope": {
-    "applicableScope": "Uygulanabilir kapsam",
-    "for": "için",
-    "selectCategory": "Kategori seçin",
-    "selectScope": "Kapsam seçin",
-    "allRepos": "Tüm depolar",
-    "allSessions": "Tüm Session'lar",
-    "allProjects": "Tüm Projects",
-    "allWorkItems": "Tüm iş öğeleri",
-    "categories": {
-      "repo": "Depo",
-      "session": "Session",
-      "projects": "Projects",
-      "workItems": "İş öğeleri"
-    }
   },
   "editor": {
     "loading": "Editör yükleniyor..."
@@ -608,6 +591,7 @@
     "voicePermissionSheetTitle": "Mikrofon erişimi gerekli"
   },
   "chat": {
+    "draftTooLong": "Taslak çok uzun (en fazla {{max}} karakter)",
     "cliPermissions": {
       "ask": "Onay iste",
       "workspace": "Çalışma alanı erişimi",
@@ -642,23 +626,18 @@
       "inputPosition": "Girdi",
       "positionBottom": "Alt",
       "positionMiddle": "Orta",
-      "trailPosition": "Bağlam çubuğu",
+      "repoBarPosition": "Depo çubuğu",
       "positionUp": "Üst",
       "positionDown": "Alt",
-      "uiControls": "Arayüz kontrolleri",
-      "showQuickActions": "Hızlı eylemleri göster",
+      "showQuickActions": "Hızlı eylemler",
       "showSkills": "Sabitlenmiş beceriler",
-      "showCliUpdate": "CLI güncellemelerini göster",
-      "title": "Ne yapmak istersiniz?",
-      "back": "Başlangıç sayfasına dön",
+      "showCliUpdate": "CLI güncellemeleri",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Yeni oturum"
       },
       "newWorkItem": {
         "title": "Yeni work item"
-      },
-      "setupRepo": {
-        "title": "Repo kur"
       },
       "addApiKey": {
         "title": "API key ekle"
@@ -669,59 +648,27 @@
       "installLatestUpdate": {
         "title": "En son güncellemeyi yükle"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "Oturum",
         "workItem": "İş öğesi",
         "more": "Daha fazla",
-        "work": "Çalışma",
         "manage": "Yönet",
-        "heatmap": "Trendler",
         "runtime": "Çalışma zamanı"
       },
       "quota": {
         "empty": "Henüz quota verisi yok. Key Vault'tan kullanımı yenileyin.",
         "refresh": "Yenile",
-        "justNow": "az önce",
-        "minutesAgo": "{{count}} dk önce",
-        "hoursAgo": "{{count}}s önce",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7g",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Haftalık",
           "monthly": "Aylık"
         }
       },
-      "exploreRepos": {
-        "title": "Repos keşfet"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "Issues yönet"
       }
     },
     "defaultTitle": "Sohbet",
@@ -732,8 +679,17 @@
     "performActions_one": "{{count}} işlem gerçekleştir",
     "performActions_other": "{{count}} işlem gerçekleştir",
     "showInlineDiffs": "Satır içi farklar",
-    "pageSettings": "Sayfa görünümü",
     "inputSettings": "Giriş ayarları",
+    "sendMethod": "Gönderme kısayolu",
+    "navigation": {
+      "title": "Gezinme",
+      "openLinksIn": "Bağlantıları şurada aç",
+      "internalBrowser": "Dahili tarayıcı",
+      "externalBrowser": "Harici tarayıcı"
+    },
+    "compactInput": "Kompakt giriş alanı",
+    "composerGlow": "Giriş parıltısı",
+    "separateEffortPill": "Effort ayrı düğmede",
     "replay": {
       "follow": "Takip et"
     },
@@ -759,15 +715,11 @@
       "modeSourceBundled": "Modlar yerleşik yedekten yüklendi (Cursor sondası henüz çalışmıyor).",
       "modeRefresh": "Modları yenile"
     },
-    "hideSimulator": "Simülatörü gizle",
-    "showSimulator": "Simülatörü göster",
-    "fullScreenChat": "Chat paneline odaklan (Workstation'i gizle)",
     "maximizeChatPanel": "Chat panelini büyüt",
     "showWorkstation": "Workstation'i göster",
     "workstationUnavailableForPage": "Workstation bu sayfada kullanılamaz",
     "hideWorkstation": "Workstation'i gizle",
     "restoreSplitView": "Workstation'i göster",
-    "shrinkToWorkstation": "Chat panelini küçült (Workstation'i göster)",
     "tuiModeOn": "TUI modu (devre dışı bırakmak için tıklayın)",
     "tuiModeOff": "TUI modunu etkinleştir",
     "tabs": {
@@ -919,10 +871,10 @@
       "exportJson": "JSON dışa aktar",
       "importAction": "Session içe aktar",
       "exportDescription": "Etkin Session'ı taşınabilir bir JSON anlık görüntüsü olarak dışa aktarın",
-      "importDescription": "Bir Session JSON anlık görüntüsünü kenar çubuğuna içe aktarın.",
+      "importDescription": "Bir Session JSON anlık görüntüsünü kenar çubuğuna içe aktarın",
       "jsonSnapshotNote": "İçe aktarılan Sessions salt okunur anlık görüntülerdir ve özgün olay geçmişini korur",
       "chooseJson": "JSON dosyası seç",
-      "chooseJsonHint": "Bir .orgii-session.json dışa aktarma dosyası seçin.",
+      "chooseJsonHint": "Bir .orgii-session.json dışa aktarma dosyası seçin",
       "loadingPreview": "Session olayları sayılıyor…",
       "noActiveSession": "Etkin Session seçilmedi.",
       "importedName": "İçe aktarılan Session: {{name}}",
@@ -971,22 +923,9 @@
       "showMore_one": "{{count}} tane daha göster",
       "showMore_other": "{{count}} tane daha göster"
     },
-    "manageIssues": {
-      "title": "Issues yönet",
-      "myWork": "Çalışmalarım",
-      "allRepositories": "Tüm repos",
-      "newIssue": "Yeni issue",
-      "tabs": {
-        "recent": "Son",
-        "assigned": "Atananlar",
-        "byMe": "Benim tarafımdan",
-        "mentioned": "Bahsedilenler"
-      }
-    },
     "readOnly": "Salt okunur",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "GitHub issue oluştur",
         "issueTitlePlaceholder": "Issue başlığı",
@@ -996,28 +935,40 @@
         "addToChat": "Add",
         "repositoryLabel": "Depo",
         "createIssueFailed": "Issue oluşturulamadı",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "Tüm durumlar",
         "closeAsCompleted": "Tamamlandı olarak kapat",
         "closeAsNotPlanned": "Planlanmadı olarak kapat",
         "statusUpdateFailed": "GitHub durumu güncellenemedi",
         "assignedToMe": "Bana atananlar",
         "createdByMe": "Benim oluşturduklarım",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "İnceleme istendi",
-          "authoredByMe": "Benim oluşturduklarım",
-          "otherTodos": "Diğer yapılacaklar"
-        },
         "assigneeUpdateNotApplied": "GitHub atanan kişi değişikliğini uygulamadı",
         "assigneeUpdateSuccess": "Atananlar GitHub'da güncellendi",
         "updateIssueFailed": "GitHub issue güncellenemedi",
-        "refreshIssues": "Issue listesini yenile",
-        "refreshPullRequests": "Pull request listesini yenile"
+        "filters": {
+          "searchPlaceholder": "Filtrelerde ara",
+          "noMatches": "Eşleşen filtre yok",
+          "activeCount": "Etkin filtreler: {{count}}",
+          "clear": "Filtreleri temizle",
+          "reviewRequestedFromMe": "Benden inceleme istendi",
+          "noAssignee": "Atanan yok",
+          "noLabel": "Etiket yok",
+          "linkedPullRequest": "Bağlı pull request var",
+          "draft": "Taslak",
+          "readyForReview": "İncelemeye hazır",
+          "recentlyUpdated": "Son 7 günde güncellendi",
+          "stale": "30 gündür güncellenmedi",
+          "facetAuthor": "Yazar",
+          "facetAssignee": "Atanan",
+          "facetLabel": "Etiket",
+          "facetMilestone": "Kilometre taşı",
+          "facetReviewRequested": "İnceleme istenen",
+          "facetBaseBranch": "Temel dal",
+          "facetCiStatus": "Kontroller",
+          "ciSuccess": "Başarılı",
+          "ciFailure": "Başarısız",
+          "ciPending": "Bekliyor"
+        }
       }
     },
     "sessionViews": {
@@ -1051,7 +1002,9 @@
     "typeMessage": "Bir mesaj yazın…",
     "session": "Oturum",
     "history": "Oturumlar",
-    "agentFallback": "Agent"
+    "agentFallback": "Agent",
+    "goToPinnedPassage": "Sabitlenen bölüme git: {{preview}}",
+    "unpinPassage": "Sabitlemeyi kaldır"
   },
   "tools": {
     "noResultsFound": "Sonuç bulunamadı",
@@ -1148,6 +1101,7 @@
     "terminalWaitRunning": "Terminalin bitmesi bekleniyor",
     "runShellFailed": "Komut başarısız",
     "runCommands": "Komutları çalıştır",
+    "waitBackgroundTasks": "Arka plan görevlerini bekle",
     "terminalSummary": {
       "command_one": "{{count}} komut",
       "command_other": "{{count}} komut",
@@ -1158,6 +1112,10 @@
       "check_one": "{{count}} kontrol",
       "check_other": "{{count}} kontrol",
       "separator": ", "
+    },
+    "waitSummary": {
+      "count_one": "{{count}} kez",
+      "count_other": "{{count}} kez"
     },
     "inspectTerminalsRunning": "Terminaller inceleniyor",
     "inspectTerminalsDone": "Terminaller incelendi",
@@ -1466,10 +1424,13 @@
     "awaitOutputListFailed": "Arka plan görevleri listelenemedi",
     "awaitOutputKeepWaiting": "Hâlâ çalışıyor",
     "awaitOutputStillRunning": "Çalışıyor",
+    "awaitOutputSummaryShellSingle": "terminal işlemi",
     "awaitOutputSummaryShell_one": "1 terminal işlemi",
     "awaitOutputSummaryShell_other": "{{count}} terminal işlemi",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}} Subagents",
+    "awaitOutputSummaryUnknownSingle": "bir arka plan görevi",
     "awaitOutputSummaryUnknown_one": "bir arka plan görevi",
     "awaitOutputSummaryUnknown_other": "{{count}} arka plan görevi",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",
@@ -1924,13 +1885,12 @@
     "start": "Başlat",
     "missingGit": {
       "title": "Git eksik",
-      "body": "Git yüklü değil veya bulunamadı. ADE Manager ya da SDE Agent’tan bu makineye Git kurmasını isteyin, ardından ORGII’yi yeniden başlatın."
+      "body": "Git yüklü değil veya bulunamadı. ADE Manager ya da SDE Agent’tan bu makineye Git kurmasını isteyin, ardından ORG2’yi yeniden başlatın"
     },
     "model": "Model",
     "contextMenu": {
       "filesAndFolders": "Dosyalar ve Klasörler",
       "workItems": "İş Öğeleri",
-      "back": "Geri",
       "recent": "Son Kullanılanlar",
       "showMore": "{{remaining}} tane daha göster",
       "session": "Oturum"
@@ -1988,9 +1948,9 @@
       "formatting": "Metin biçimlendirme"
     },
     "regionNoticeTitle": "Olası bölgesel kısıtlamalar",
-    "regionNoticeBodyProvider": "Bulunduğunuz yer: {{location}}. Bazı modeller bölgenizde kullanılamayabilir.",
-    "regionNoticeBodySanctions": "Bulunduğunuz yer: {{location}}. GitHub, npm, Docker Hub ve benzeri hizmetler kullanılamayabilir.",
-    "regionNoticeBodyBoth": "Bulunduğunuz yer: {{location}}. Bölgesel kurallar ve ticaret kısıtlamaları nedeniyle bazı modeller ve GitHub, npm, Docker Hub gibi hizmetler kullanılamayabilir.",
+    "regionNoticeBodyProvider": "Bulunduğunuz yer: {{location}}. Bazı modeller bölgenizde kullanılamayabilir",
+    "regionNoticeBodySanctions": "Bulunduğunuz yer: {{location}}. GitHub, npm, Docker Hub ve benzeri hizmetler kullanılamayabilir",
+    "regionNoticeBodyBoth": "Bulunduğunuz yer: {{location}}. Bölgesel kurallar ve ticaret kısıtlamaları nedeniyle bazı modeller ve GitHub, npm, Docker Hub gibi hizmetler kullanılamayabilir",
     "selectAgent": "Bir ajan seçin",
     "placeholderDefault": "Mesaj yazın, dosya eklemek için @ kullanın, skills kullanmak için / kullanın",
     "wingmanPlaceholder": "Görevinizi tanımlayın — Wingman neyi izlemeli?",
@@ -2022,12 +1982,19 @@
       }
     },
     "cliVersionOutdated": {
-      "title": "{{cli}} için yükseltme gerekiyor ({{installed}} > {{latest}})",
+      "title": "{{cli}} güncellemesi var",
+      "versions": "Mevcut: {{installed}} · En yeni: {{latest}}",
+      "upgrade": "Terminalde güncelle",
+      "upgradeHint": "Cursor CLI ayrı bir terminalde güncellenir. Tamamlandığında sürümü yeniden kontrol edin.",
+      "upgradeTerminal": "Cursor CLI güncellemesi",
+      "upgradeStarted": "Güncelleme terminalde başlatıldı. Tamamlandığında sürümü yeniden kontrol edin.",
+      "upgradeFailed": "Güncelleme terminali açılamadı. Tekrar deneyin.",
       "muteUntilNextVersion": "Sonraki sürüme kadar uyarı gösterme",
       "refresh": "{{cli}} CLI sürümünü yeniden denetle",
       "unknownVersion": "bilinmiyor"
     },
-    "mode": "Düzenleyici modu"
+    "mode": "Düzenleyici modu",
+    "cursorIdeDescription": "Cursor IDE sohbet oturumlarını ORG2 içinde inceleyin ve sürdürün"
   },
   "planner": {
     "modes": {
@@ -2117,7 +2084,7 @@
         "cancelled": "İptal edildi",
         "failed": "Başarısız"
       },
-      "title": "Agent Ekibi genel görünümü",
+      "title": "Ekip genel görünümü",
       "summary": "{{active}} aktif · {{pending}} bekleyen",
       "loadFailed": "Ekip genel görünümü yüklenemedi",
       "tasks": "Görevler",
@@ -2138,7 +2105,7 @@
       "archiveTeardownRetained": "Arşivlendi ancak {{count}} çalışma ortamı serbest bırakılamadı. Silme engelli kalır.",
       "archiveTeardownQuiesced": "Arşivlendi ve tamamen durduruldu. Kalıcı silme artık kullanılabilir.",
       "dangerZone": "Tehlikeli Bölge",
-      "deleteDescription": "Bu ekibi, tüm oturumlarını ve geçmişini kalıcı olarak sil.",
+      "deleteDescription": "Bu ekibi, tüm oturumlarını ve geçmişini kalıcı olarak sil",
       "deleteTeam": "Ekibi sil",
       "deleteTitle": "Bu ekip kalıcı olarak silinsin mi?",
       "deleteWarning": "Ekibin tüm oturumları ve geçmişi kalıcı olarak silinir. Bu işlem geri alınamaz.",
@@ -2192,9 +2159,7 @@
       "activeMembers": "Aktif üyeler",
       "inFlightTurns": "Devam eden turlar",
       "openTasks": "Açık görevler",
-      "blockingInbox": "Engelleyen gelen kutusu",
-      "blockersTitle": "Tamamlanmayı hâlâ engelleyenler",
-      "unknownBlocker": "Bilinmeyen sistem engeli"
+      "blockingInbox": "Engelleyen gelen kutusu"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} ile doğrudan çalışma",
@@ -2266,7 +2231,7 @@
     "noSessionIdFound": "Session ID bulunamadı",
     "failedToResume": "Session sürdürülemedi",
     "failedToCheckChanges": "Dosya değişiklikleri kontrol edilemedi. Geri alma işlemi gerçekleştirilecek.",
-    "insufficientBalance": "Barındırılan ORGII hizmeti için yetersiz bakiye. orgii.ai/wallet adresinden yükleyin.",
+    "insufficientBalance": "Barındırılan ORG2 hizmeti için yetersiz bakiye. orgii.ai/wallet adresinden yükleyin.",
     "runQueuedBehindCheckout": "Kuyrukta: başka bir çalıştırma bu checkout'u kullanıyor. O bitince başlayacak."
   },
   "planning": {
@@ -2359,7 +2324,6 @@
     },
     "triggerLabel": "Grup sohbeti",
     "userMessageOutcomeUnknown": "Teslimat sonucu bilinmiyor. Özgün teslimatı yeniden deneyin.",
-    "coordinatorLabel": "Koordinatör",
     "youLabel": "Siz",
     "retry": "Yeniden dene",
     "memberCount_one": "{{count}} üye",

@@ -36,6 +36,8 @@ export interface SessionCreatorChatPanelProps {
   footerSlot?: React.ReactNode;
   leadingActionSlot?: React.ReactNode;
   headerLayout?: SessionCreatorChatPanelHeaderLayout;
+  /** Opt into the embedded Spotlight spacing, surfaces, and 28px controls. */
+  spotlight?: boolean;
   hideRepoLine?: boolean;
   /** Hide the work-item attachment action when the composer already creates one. */
   hideWorkItemAttachmentControl?: boolean;

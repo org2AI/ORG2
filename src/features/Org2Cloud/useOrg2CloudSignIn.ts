@@ -4,18 +4,23 @@ import { useCallback } from "react";
 
 import { createLogger } from "@src/hooks/logger";
 
-import { buildOrg2CloudLoginUrl } from "./config";
+import { buildOrg2CloudLoginUrl, getCloudEndpoint } from "./config";
 import {
   beginOrg2CloudAuthLoopback,
   cancelPendingOrg2CloudAuthLoopback,
 } from "./org2CloudAuthLoopback";
+import { beginOrg2CloudOAuth, org2CloudOAuth } from "./org2CloudOAuth";
 
 const log = createLogger("Org2CloudSignIn");
 
 export interface Org2CloudSignInDependencies {
-  beginAuthLoopback?: () => Promise<string>;
-  cancelAuthLoopback?: () => Promise<void>;
+  beginAuthLoopback?: (onSignedIn?: () => void) => Promise<string>;
+  onSignedIn?: () => void;
+  cancelAuthLoopback?: (url: string) => Promise<void>;
   openExternalUrl?: (url: string) => Promise<void>;
+  isOfficial?: boolean;
+  beginLegacyLoopback?: () => Promise<string>;
+  cancelLegacyLoopback?: () => Promise<void>;
 }
 
 /**
@@ -27,25 +32,48 @@ export async function openOrg2CloudSignIn(
   dependencies: Org2CloudSignInDependencies = {}
 ): Promise<void> {
   const beginAuthLoopback =
-    dependencies.beginAuthLoopback ?? beginOrg2CloudAuthLoopback;
+    dependencies.beginAuthLoopback ?? beginOrg2CloudOAuth;
   const cancelAuthLoopback =
-    dependencies.cancelAuthLoopback ?? cancelPendingOrg2CloudAuthLoopback;
+    dependencies.cancelAuthLoopback ??
+    (async (url: string) => org2CloudOAuth.cancelAuthorization(url));
   const openExternalUrl = dependencies.openExternalUrl ?? openUrl;
 
+  // Self-hosted deployments retain their existing login contract. Only the
+  // managed service is guaranteed to expose the first-party OAuth server.
+  if (!(dependencies.isOfficial ?? getCloudEndpoint().isOfficial)) {
+    org2CloudOAuth.cancel();
+    const legacyCallback = await (
+      dependencies.beginLegacyLoopback ?? beginOrg2CloudAuthLoopback
+    )();
+    try {
+      await openExternalUrl(buildOrg2CloudLoginUrl(legacyCallback));
+    } catch (error) {
+      await (
+        dependencies.cancelLegacyLoopback ?? cancelPendingOrg2CloudAuthLoopback
+      )();
+      throw error;
+    }
+    return;
+  }
+
+  const callbackUrl = await beginAuthLoopback(dependencies.onSignedIn);
   try {
-    const callbackUrl = await beginAuthLoopback();
-    await openExternalUrl(buildOrg2CloudLoginUrl(callbackUrl));
+    await openExternalUrl(callbackUrl);
   } catch (error) {
-    await cancelAuthLoopback();
+    await cancelAuthLoopback(callbackUrl);
     throw error;
   }
 }
 
 /** Stable click handler shared by Settings, Add ORG, invite, and share flows. */
-export function useOrg2CloudSignIn(): () => void {
-  return useCallback(() => {
-    void openOrg2CloudSignIn().catch((error: unknown) => {
+export function useOrg2CloudSignIn(): () => Promise<boolean> {
+  return useCallback(async () => {
+    try {
+      await openOrg2CloudSignIn();
+      return true;
+    } catch (error: unknown) {
       log.error("failed to open ORG2 Cloud login in system browser", error);
-    });
+      return false;
+    }
   }, []);
 }

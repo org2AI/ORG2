@@ -51,7 +51,7 @@ vi.mock("@src/features/Org2Cloud/useOpenCloudSessionReference", () => ({
   useOpenCloudSessionReference: () => mocks.openCloudSession,
 }));
 
-vi.mock("@src/components/SessionHoverCard/useSessionTurnOverview", () => ({
+vi.mock("@src/features/SessionHoverCard/useSessionTurnOverview", () => ({
   useSessionTurnOverview: () => ({
     turnCount: mocks.turnCount,
     workedDurationMs: null,

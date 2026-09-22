@@ -20,3 +20,6 @@ mod create_session_input_guards;
 
 mod native_commands;
 pub use native_commands::{load_native_commands_for_provider, record_native_commands};
+
+mod credential_source;
+pub use credential_source::{bind_credential_source, credential_source};

@@ -27,6 +27,14 @@ export const GIT_SETTINGS_REGISTRY = {
     description: "Interval in seconds between automatic fetches (30-3600)",
     category: "git",
   },
+  "git.sourceControl.colorFileNames": {
+    // Settings → Appearance → Code Editor; also the Source Control menu.
+    schema: z.boolean(),
+    default: false,
+    description:
+      "Color Source Control file names using their diff status color",
+    category: "git",
+  },
   "git.prompts.commitInstructions": {
     schema: z.string().max(4000),
     default: "",
@@ -45,13 +53,13 @@ export const GIT_SETTINGS_REGISTRY = {
     schema: z.boolean(),
     default: true,
     description:
-      "Add an ORGII coauthor trailer to Git commits created from ORGII",
+      "Add an ORG2 coauthor trailer to Git commits created from ORG2",
     category: "git",
   },
   "git.attribution.prEnabled": {
     schema: z.boolean(),
     default: true,
-    description: "Add ORGII attribution to pull requests created from ORGII",
+    description: "Add ORG2 attribution to pull requests created from ORG2",
     category: "git",
   },
   "git.autoCreatePr": {

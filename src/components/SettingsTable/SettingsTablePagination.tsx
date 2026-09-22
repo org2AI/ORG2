@@ -12,6 +12,7 @@
 import { type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import Select from "@src/components/Select";
 import {
   ArrowLeft01Icon,
@@ -105,33 +106,41 @@ export function SettingsTablePagination({
 
       <div className="flex items-center justify-center gap-1">
         {canJump ? (
-          <button
+          <Button
+            variant="tertiary"
+            size="mini"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={ArrowLeftDoubleIcon}
+                data-icon="chevrons-left"
+                size={14}
+              />
+            }
             className={PAGE_ICON_BUTTON}
             disabled={!canPreviousPage}
             onClick={() => onPageChange(0)}
             aria-label={t("pagination.firstPage")}
             title={t("pagination.firstPage")}
-          >
+          />
+        ) : null}
+        <Button
+          variant="tertiary"
+          size="mini"
+          iconOnly
+          icon={
             <HugeiconsIcon
-              icon={ArrowLeftDoubleIcon}
-              data-icon="chevrons-left"
+              icon={ArrowLeft01Icon}
+              data-icon="chevron-left"
               size={14}
             />
-          </button>
-        ) : null}
-        <button
+          }
           className={PAGE_ICON_BUTTON}
           disabled={!canPreviousPage}
           onClick={() => onPageChange(currentPage - 2)}
           aria-label={t("pagination.previousPage")}
           title={t("pagination.previousPage")}
-        >
-          <HugeiconsIcon
-            icon={ArrowLeft01Icon}
-            data-icon="chevron-left"
-            size={14}
-          />
-        </button>
+        />
         {canJump ? (
           <Select
             value={Math.min(currentPage, safePageCount)}
@@ -145,33 +154,41 @@ export function SettingsTablePagination({
         ) : (
           <span className="text-xs text-text-1">{pageLabel}</span>
         )}
-        <button
+        <Button
+          variant="tertiary"
+          size="mini"
+          iconOnly
+          icon={
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              data-icon="chevron-right"
+              size={14}
+            />
+          }
           className={PAGE_ICON_BUTTON}
           disabled={!canNextPage}
           onClick={() => onPageChange(currentPage)}
           aria-label={t("pagination.nextPage")}
           title={t("pagination.nextPage")}
-        >
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            data-icon="chevron-right"
-            size={14}
-          />
-        </button>
+        />
         {canJump ? (
-          <button
+          <Button
+            variant="tertiary"
+            size="mini"
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={ArrowRightDoubleIcon}
+                data-icon="chevrons-right"
+                size={14}
+              />
+            }
             className={PAGE_ICON_BUTTON}
             disabled={currentPage >= safePageCount}
             onClick={() => onPageChange(safePageCount - 1)}
             aria-label={t("pagination.lastPage")}
             title={t("pagination.lastPage")}
-          >
-            <HugeiconsIcon
-              icon={ArrowRightDoubleIcon}
-              data-icon="chevrons-right"
-              size={14}
-            />
-          </button>
+          />
         ) : null}
       </div>
 

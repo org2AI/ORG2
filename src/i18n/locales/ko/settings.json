@@ -3,8 +3,6 @@
     "customCommandUpdated": "사용자 지정 명령이 업데이트되었습니다",
     "shellSettingUpdated": "셸 설정이 업데이트되었습니다"
   },
-  "noSettingsFound": "\"{{query}}\"에 대한 설정을 찾을 수 없습니다",
-  "searchPlaceholder": "설정 검색...",
   "panel": {
     "maximizeSettings": "설정 최대화"
   },
@@ -15,10 +13,13 @@
     "editorAndWorkspace": "에디터 & Workspace",
     "appUpdate": "앱 업데이트",
     "security": "보안",
+    "appLock": "앱 잠금",
     "storage": "스토리지",
     "agentOrg": "Agent 팀",
     "harnessConnections": "앱 연결",
-    "mobileRemote": "Mobile Remote"
+    "import": "가져오기",
+    "mobileRemote": "Mobile Remote",
+    "development": "개발 모드"
   },
   "coreSidebar": {
     "groups": {
@@ -54,6 +55,52 @@
     "customPatternsPlaceholder": "예: MYCORP_[A-Z0-9]{20}",
     "invalidPatterns": "{{count}}개 패턴이 잘못되어 무시됩니다: {{patterns}}"
   },
+  "appLock": {
+    "password": "비밀번호 잠금",
+    "setPassword": "비밀번호 설정",
+    "changePassword": "비밀번호 변경",
+    "removePassword": "비밀번호 제거",
+    "currentPassword": "현재 비밀번호",
+    "newPassword": "새 비밀번호",
+    "confirmPassword": "새 비밀번호 확인",
+    "passwordSet": "비밀번호가 설정되었습니다",
+    "passwordChanged": "비밀번호가 변경되었습니다",
+    "passwordRemoved": "비밀번호가 제거되었습니다",
+    "lockNow": "지금 잠그기",
+    "lockNowDesc": "비밀번호를 입력할 때까지 모든 ORG2 창을 잠급니다",
+    "shortcut": "잠금 단축키",
+    "hint": "비밀번호 힌트",
+    "hintPlaceholder": "잠금 화면에 표시됩니다",
+    "hintOptionalPlaceholder": "비밀번호 힌트(선택 사항)",
+    "autoLock": "자동 잠금",
+    "autoLockDesc": "ORG2에서 이 시간 동안 키보드나 마우스 입력이 없으면 잠급니다",
+    "autoLockNever": "안 함",
+    "autoLockMinutes": "{{count}}분 후",
+    "autoLockHour": "1시간 후",
+    "lockOnLaunch": "ORG2 시작 시 잠금",
+    "lockOnLaunchDesc": "앱을 열 때마다 비밀번호를 요청합니다",
+    "scopeNote": "잠금은 ORG2 창에만 적용됩니다. 데이터를 암호화하거나 Mobile Remote를 일시 중지하지 않으며, 파일에 접근할 수 있는 사람은 누구나 잠금을 제거할 수 있습니다. 비밀번호를 잊은 경우 ORG2를 종료하고 홈 디렉터리의 .orgii 폴더에서 app-lock.json을 삭제하세요",
+    "errors": {
+      "tooShort": "{{count}}자 이상 사용하세요",
+      "tooLong": "비밀번호가 너무 깁니다",
+      "mismatch": "비밀번호가 일치하지 않습니다",
+      "incorrectCurrent": "현재 비밀번호가 올바르지 않습니다",
+      "throttled": "잘못된 시도가 너무 많습니다. 나중에 다시 시도하세요",
+      "generic": "앱 잠금을 업데이트할 수 없습니다",
+      "hintTooLong": "힌트가 너무 깁니다",
+      "hintRevealsPassword": "힌트에 비밀번호를 포함할 수 없습니다"
+    },
+    "screen": {
+      "title": "ORG2가 잠겨 있습니다",
+      "passwordPlaceholder": "비밀번호",
+      "incorrect": "비밀번호가 올바르지 않습니다",
+      "failed": "잠금을 해제할 수 없습니다. 다시 시도하세요",
+      "throttled": "시도 횟수가 너무 많습니다. {{time}} 후에 다시 시도하세요",
+      "working": "아직 작업 중인 세션: {{count}}",
+      "showHint": "힌트 표시",
+      "hint": "힌트: {{hint}}"
+    }
+  },
   "myRoles": {
     "currentStatus": "내 현재 상태",
     "tabs": {
@@ -86,6 +133,10 @@
     }
   },
   "general": {
+    "myStationSharing": "Workstation 공유 범위",
+    "myStationSharingDesc": "작업 디렉터리별로 Workstation 탭과 보기 상태를 공유하거나 채팅 탭마다 별도로 저장",
+    "myStationSharingDirectory": "작업 디렉터리",
+    "myStationSharingTab": "채팅 탭",
     "login": "로그인",
     "tabGeneral": "일반",
     "tabSelfHosted": "자체 호스팅",
@@ -117,8 +168,6 @@
     "usePointerCursorsDesc": "대화형 요소 위에 마우스를 올리면 커서를 포인터로 변경합니다",
     "timezoneAuto": "자동 (브라우저)",
     "timezoneSearchPlaceholder": "가까운 도시 검색",
-    "sendOnEnter": "Enter로 메시지 보내기",
-    "sendOnEnterDesc": "활성화하면 Enter로 보내고, Shift+Enter와 Ctrl/Cmd+Enter로 줄바꿈합니다. 비활성화하면 Ctrl/Cmd+Enter로 보냅니다",
     "language": "언어",
     "languageSearchPlaceholder": "언어 검색...",
     "languageNames": {
@@ -135,7 +184,9 @@
       "vi": "베트남어",
       "pt": "포르투갈어",
       "pl": "폴란드어",
-      "zh-Hant": "중국어 번체"
+      "zh-Hant": "중국어 번체",
+      "hi": "힌디어",
+      "id": "인도네시아어"
     },
     "layout": "레이아웃",
     "sidebar": "사이드바",
@@ -143,9 +194,11 @@
     "sidebarEdgeDepth": "사이드바 경계 깊이",
     "selectedItemTransparency": "선택한 항목 투명도",
     "spotlightPlacement": "Spotlight 위치",
+    "spotlightDimBackground": "배경 어둡게",
+    "spotlightDetailCard": "호버 상세 카드",
     "spotlightPlacementOptions": {
       "top": "상단",
-      "center": "페이지 중앙"
+      "center": "중앙"
     },
     "left": "왼쪽",
     "right": "오른쪽",
@@ -179,6 +232,8 @@
     "voiceInputPermissionOpenFailed": "시스템 설정을 열 수 없습니다",
     "preventSleep": "세션 실행 중 시스템 절전 방지",
     "preventSleepDesc": "Agent 세션이 작업 중일 때 Mac 또는 PC가 절전 모드로 들어가지 않게 합니다. 모든 세션이 종료되면 자동으로 해제됩니다",
+    "highRefreshRate": "높은 주사율",
+    "highRefreshRateDesc": "디스플레이의 최대 주사율(ProMotion 디스플레이에서 최대 120Hz)로 렌더링합니다. 스크롤, 크기 조정, 애니메이션이 더 부드러워지지만 동작하는 동안 전력을 더 많이 사용합니다",
     "devMode": "개발자 모드",
     "devModeDesc": "네이티브 Inspect Element 컨텍스트 메뉴와 브라우저 DevTools를 활성화합니다. 개발 및 디버깅 전용",
     "presenceGuidanceOnline": "온라인 — Agent 행동 지침",
@@ -196,11 +251,10 @@
     "lightAccent": "라이트 강조색",
     "darkAccent": "다크 강조색",
     "skinGroups": {
-      "orgii": "ORGII",
+      "orgii": "ORG2",
       "codex": "Codex"
     },
     "iconStyle": "아이콘 스타일",
-    "iconStyleDesc": "단색은 파일 유형 및 모델 아이콘의 채도를 낮춰 로고가 아닌 인터페이스처럼 보이게 합니다",
     "iconStyleOptions": {
       "colorful": "컬러",
       "monochrome": "단색"
@@ -212,10 +266,22 @@
       "light": "밝은 타일"
     },
     "translucentSidebar": "반투명 사이드바",
+    "sessionBranchTags": "세션의 브랜치 및 PR 태그",
     "skin": "스킨",
     "accent": "강조색",
     "linkSkinVariants": "라이트와 다크 연동",
-    "linkSkinVariantsDesc": "두 모드에 하나의 스킨과 강조색을 사용합니다. 라이트와 다크 변형을 모두 제공하는 스킨만 연동할 수 있습니다"
+    "linkSkinVariantsDesc": "두 모드에 하나의 스킨과 강조색을 사용합니다. 라이트와 다크 변형을 모두 제공하는 스킨만 연동할 수 있습니다",
+    "license": "라이선스",
+    "licenseTitle": "ORG2 라이선스",
+    "licenseLoading": "라이선스 로드 중…",
+    "licenseLoadFailed": "앱 라이선스를 불러올 수 없습니다",
+    "tooltips": "툴팁",
+    "buttonTooltipsEnabled": "버튼 툴팁 표시",
+    "buttonTooltipsEnabledDesc": "버튼에 마우스를 올리면 이름과 키보드 단축키를 표시합니다. 정보 아이콘 툴팁은 항상 표시됩니다",
+    "buttonTooltipDelayMs": "툴팁 지연",
+    "buttonTooltipDelayImmediate": "즉시",
+    "buttonTooltipDelaySeconds": "{{seconds}}초",
+    "modelPickerStyle": "모델 선택기"
   },
   "background": {
     "title": "배경",
@@ -382,14 +448,14 @@
     "desktopSafetyDeepLinkAction": "Wingman → Safety 열기",
     "desktopConfig": {
       "title": "Desktop Safety",
-      "hideBeforeAction": "데스크톱 제어 중 ORGII 숨기기",
-      "hideBeforeActionHelper": "Peekaboo가 작업하는 동안 ORGII 기본 창을 숨기고 Wingman 바와 플로팅 캡션을 표시하여 Agent가 포커스를 직접 관리하지 않게 합니다.",
+      "hideBeforeAction": "데스크톱 제어 중 ORG2 숨기기",
+      "hideBeforeActionHelper": "Peekaboo가 작업하는 동안 ORG2 기본 창을 숨기고 Wingman 바와 플로팅 캡션을 표시하여 Agent가 포커스를 직접 관리하지 않게 합니다",
       "antiDetection": "HID 자동화 탐지 방지 강화",
-      "antiDetectionHelper": "Peekaboo가 클릭과 키 입력에 대해 순수 접근성 동작 대신 실제 CGEvent(HID) 입력을 전송하도록 하여, 자동화 탐지 기능이 있는 앱(예: WeChat)이 데스크톱 제어를 차단할 가능성을 줄입니다.",
+      "antiDetectionHelper": "Peekaboo가 클릭과 키 입력에 대해 순수 접근성 동작 대신 실제 CGEvent(HID) 입력을 전송하도록 하여, 자동화 탐지 기능이 있는 앱(예: WeChat)이 데스크톱 제어를 차단할 가능성을 줄입니다",
       "humanInputProfile": "사람 같은 입력 리듬",
-      "humanInputProfileHelper": "합성된 키 입력에 사람과 유사한 타이밍 프로필을 적용합니다. 비활성화하면 최고 속도로 입력합니다.",
+      "humanInputProfileHelper": "합성된 키 입력에 사람과 유사한 타이밍 프로필을 적용합니다. 비활성화하면 최고 속도로 입력합니다",
       "escapeAbort": "System Escape key aborts",
-      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded."
+      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded"
     },
     "skillMissingBins": "누락: {{bins}}",
     "skillMissingEnv": "누락된 환경 변수: {{vars}}",
@@ -458,7 +524,6 @@
     "gitOperations": "Git 작업",
     "gitOperationsDesc": "Git pull, push 및 동기화 알림",
     "soundPreset": "알림음",
-    "soundPresetDesc": "알림에 사용할 소리를 선택합니다",
     "previewSound": "미리 듣기",
     "soundPresets": {
       "classic": "클래식",
@@ -513,9 +578,13 @@
     "wordWrap": "자동 줄바꿈",
     "autoSave": "자동 저장",
     "minimap": "미니맵",
+    "hideMinimap": "미니맵 숨기기",
     "indentGuides": "들여쓰기 가이드",
     "treeIndentGuides": "트리 들여쓰기 가이드",
     "highlightActiveLine": "현재 줄 강조",
+    "diffViewMode": "Diff 보기",
+    "gitBlame": "Git blame",
+    "splitDiffCenteredLineNumbers": "분할 diff 줄 번호 가운데 정렬",
     "shellsOpenWith": "Shell 열기 방식",
     "shellsOpenWithDesc": "새 터미널의 초기 작업 디렉토리",
     "repoPath": "저장소 경로",
@@ -550,7 +619,7 @@
       "title": "Git",
       "pullStrategy": "Pull 전략",
       "pullStrategyDesc": "동기화 시 git pull이 remote 변경 사항을 통합하는 방법",
-      "pullStrategyHint": "Rebase（기본값）：당신의 commit을 remote 위에 replay. linear history 생성.\n\nMerge：branch가 diverge했을 때 merge commit 생성. 전체 history 보존.\n\nFast-forward only：merge가 필요 없을 때만 pull 허용. branch가 diverge하면 거부.",
+      "pullStrategyHint": "Rebase（기본값）：당신의 commit을 remote 위에 replay. linear history 생성.\n\nMerge：branch가 diverge했을 때 merge commit 생성. 전체 history 보존.\n\nFast-forward only：merge가 필요 없을 때만 pull 허용. branch가 diverge하면 거부",
       "strategyMerge": "Merge",
       "strategyRebase": "Rebase (기본값)",
       "strategyFfOnly": "Fast-forward만 (엄격)",
@@ -584,24 +653,53 @@
     "fontFamilyCustom": "사용자 지정"
   },
   "update": {
+    "downloading": "업데이트 다운로드 중…",
+    "downloadingPercent": "업데이트 다운로드 중… {{percent}}%",
+    "preparingDownload": "다운로드 준비 중…",
+    "downloadBytes": "{{total}} 중 {{downloaded}}",
+    "downloadedBytes": "{{downloaded}} 다운로드됨",
+    "downloadProgress": "업데이트 다운로드 진행률",
+    "inProgress": "진행 중",
+    "openProgressLabel": "업데이트 다운로드 {{progress}}. 진행 알림을 엽니다.",
+    "openProgress": "업데이트 다운로드 진행률 열기",
+    "available": "업데이트 사용 가능",
+    "availableVersion": "버전 {{version}}을(를) 설치할 수 있습니다.",
+    "updateNow": "지금 업데이트",
+    "checkFailed": "업데이트 확인 실패",
+    "checking": "업데이트 확인 중…",
+    "officialInstalled": "공식 앱 설치 완료",
+    "officialInstalledDesc": "{{version}}이(가) {{path}}에 설치되었습니다. 현재 로컬 빌드는 변경 없이 계속 실행됩니다",
+    "downloadFailed": "업데이트 다운로드 실패",
+    "retryNow": "지금 다시 시도",
+    "downloadTimeout": "다운로드 시간이 초과되었습니다. 네트워크 또는 프록시를 확인한 후 다시 시도하세요.",
+    "installUnavailable": "이 플랫폼에서는 로컬 빌드에서 배포 버전을 안전하게 설치할 수 없습니다.",
+    "installing": "업데이트 설치 중",
+    "preparingInstall": "v{{version}} 준비 중…",
+    "installed": "업데이트 설치 완료",
+    "installFailed": "업데이트 설치 실패",
+    "checked": "업데이트 확인 완료",
     "detectUpdate": "업데이트 감지",
     "currentVersion": "현재 버전",
     "channel": "업데이트 채널",
     "channelDesc": "베타는 정식 릴리스보다 먼저 프리릴리스 빌드를 받습니다. 안정 버전으로 되돌려도 다운그레이드되지 않으며, 다음 안정 릴리스부터 적용됩니다",
     "channelStable": "안정",
     "channelBeta": "베타",
-    "installConfirmTitle": "업데이트 설치 준비 완료",
-    "installConfirmDesc": "버전 {{version}}이(가) 다운로드되었습니다. ORGII를 설치하고 다시 시작하기 전에 진행 중인 작업을 저장하세요",
+    "installConfirmTitle": "업데이트 준비 완료",
+    "installConfirmDesc": "버전 {{version}} 준비 완료. 다시 시작하기 전에 작업을 저장하세요",
     "installAndRestart": "설치 후 다시 시작",
-    "installOfficialConfirmTitle": "공식 앱 설치 준비 완료",
-    "installOfficialConfirmDesc": "공식 버전 {{version}}을(를) /Applications/ORG2.app에 설치합니다. 이 로컬 빌드는 열린 상태로 변경 없이 유지됩니다",
-    "installOfficial": "공식 앱 설치",
+    "installOfficialConfirmTitle": "공식 버전 준비 완료",
+    "installOfficialConfirmDesc": "{{version}}을(를) 별도로 설치합니다. 현재 빌드는 계속 실행됩니다",
+    "installOfficial": "공식 버전 설치",
     "localBuild": "로컬",
-    "skipVersion": "이 버전 건너뛰기"
+    "upToDate": "ORG2가 최신 버전입니다.",
+    "upToDateVersion": "ORG2가 최신 버전입니다(v{{version}}).",
+    "officialAlreadyInstalled": "공식 ORG2 v{{version}}이 이미 /Applications에 설치되어 있습니다.",
+    "automaticRetry": "{{error}} ORG2가 간격을 점차 늘리며 백그라운드에서 다시 시도합니다.",
+    "restarting": "업데이트를 완료하기 위해 ORG2를 다시 시작하는 중입니다."
   },
   "monitor": {
     "appMemory": "App memory",
-    "appBackend": "ORG2 backend",
+    "appBackend": "ORG2 백엔드",
     "appWebviewHelpers": "Owned WebView helpers",
     "rssMappedDiagnostic": "RSS / mapped memory (diagnostic)",
     "measurement": "Measurement",
@@ -730,7 +828,7 @@
     "tableVersion": "버전",
     "tableStatus": "상태",
     "installSection": "설치",
-    "installHintNote": "현재 플랫폼에 권장되는 설치 명령어입니다. 대부분의 시스템 의존성은 관리자 권한이 필요하므로 자동으로 실행하지 않습니다 — terminal에 복사하여 붙여 넣으세요."
+    "installHintNote": "현재 플랫폼에 권장되는 설치 명령어입니다. 대부분의 시스템 의존성은 관리자 권한이 필요하므로 자동으로 실행하지 않습니다 — terminal에 복사하여 붙여 넣으세요"
   },
   "agentSessions": {
     "chatFontSize": "채팅 글꼴 크기",
@@ -740,10 +838,8 @@
     "typingAnimationDesc": "Agent 메시지에 타자기 애니메이션 활성화",
     "typingSpeed": "타이핑 속도",
     "typingSpeedDesc": "문자당 밀리초 (1ms = 가장 빠름, 50ms = 가장 느림)",
-    "decryptEffect": "Decrypt 효과",
-    "decryptEffectDesc": "Agent 메시지에 Decrypt 애니메이션 활성화",
-    "sendOnEnter": "Enter로 메시지 보내기",
-    "sendOnEnterDesc": "활성화하면 Enter로 보내고, Shift+Enter와 Ctrl/Cmd+Enter로 줄바꿈합니다. 비활성화하면 Ctrl/Cmd+Enter로 보냅니다"
+    "sendOnEnter": "메시지 보내기 단축키",
+    "sendOnEnterDesc": "메시지를 보내는 단축키를 선택하세요. 다른 Enter 키 조합은 줄바꿈을 삽입합니다"
   },
   "indexing": {
     "noWorkspaceMemories": "아직 Workspace 메모리가 없습니다. 세션이 이 워크스페이스에서 정보를 추출하면 표시됩니다.",
@@ -792,7 +888,7 @@
   "agentEvolution": {
     "enableForAgent": "{{agentName}}에 진화 활성화",
     "noAgentsTitle": "사용 가능한 Agent가 없습니다",
-    "noAgentsSubtitle": "진화를 구성하려면 Agent를 만들거나 가져오세요."
+    "noAgentsSubtitle": "진화를 구성하려면 Agent를 만들거나 가져오세요"
   },
   "org": {},
   "learningsBrowser": {
@@ -858,10 +954,12 @@
   "appearance": {
     "tabApp": "앱",
     "tabCodeEditor": "코드 편집기",
-    "tabChatPanel": "채팅 패널"
+    "tabChatPanel": "채팅 패널",
+    "chatHistory": "채팅 기록",
+    "composer": "입력창",
+    "newChatPage": "새 채팅 페이지"
   },
   "harnessConnections": {
-    "description": "각 코딩 도구에서 사용할 연결 선택",
     "current": "현재 설정된 연결",
     "scope": "이 컴퓨터의 CLI 기본 설정에 적용됩니다. 프로젝트 설정과 실행 중인 세션이 우선할 수 있습니다",
     "original": "원래 설정",
@@ -872,9 +970,9 @@
     "model": "모델",
     "routing": "연결 방식",
     "direct": "직접 연결",
-    "proxy": "ORGII 경유",
-    "directHelp": "ORGII를 닫아도 사용할 수 있습니다",
-    "proxyHelp": "ORGII를 계속 실행해야 합니다",
+    "proxy": "ORG2 경유",
+    "directHelp": "ORG2를 닫아도 사용할 수 있습니다",
+    "proxyHelp": "ORG2를 계속 실행해야 합니다",
     "advanced": "고급",
     "test": "연결 테스트",
     "testHelp": "선택한 제공업체에 작은 요청 두 개를 보내 도구 호출과 스트리밍을 확인합니다. 사용 요금이 발생할 수 있습니다",
@@ -885,12 +983,14 @@
     "apply": "이 연결 사용",
     "applied": "설정을 저장했습니다. 새 도구 세션을 시작하세요",
     "restore": "원래 설정 복원",
+    "disconnect": "연결 해제",
+    "overlayHelp": "연결 설정은 {{path}}에 별도로 저장됩니다. 터미널 열기는 이 설정과 기존 대화 기록으로 Claude Code를 시작합니다. 세션 추적 훅은 별도 설정으로 관리됩니다",
     "restored": "원래 설정을 복원했습니다. 새 도구 세션을 시작하세요",
     "refresh": "새로 고침",
     "refreshed": "도구 연결을 새로 고쳤습니다",
     "refreshFailed": "도구 연결을 새로 고칠 수 없습니다: {{error}}",
     "loading": "도구 설정 읽는 중…",
-    "conflict": "ORGII 외부에서 설정이 변경되었습니다. 적용하거나 복원하기 전에 변경 내용을 확인하세요. 변경 내용은 덮어쓰지 않습니다",
+    "conflict": "ORG2 외부에서 설정이 변경되었습니다. 적용하거나 복원하기 전에 변경 내용을 확인하세요. 변경 내용은 덮어쓰지 않습니다",
     "credentialsNote": "직접 연결 모드는 접근이 제한된 CLI 설정에 자격 증명을 기록합니다. 저장소에서 키를 삭제해도 내보낸 자격 증명은 취소되지 않습니다",
     "notInstalled": "연결을 테스트하거나 적용하기 전에 이 도구를 설치하세요",
     "appSelector": "앱",
@@ -898,7 +998,36 @@
     "authentication": "인증 방식",
     "desktopScope": "Claude Code CLI와 별도로 Claude Desktop을 설정합니다. 적용 후 앱을 완전히 종료하고 다시 여세요",
     "desktopApplied": "설정을 저장했습니다. Claude Desktop을 완전히 종료하고 다시 여세요",
-    "desktopRestored": "이전 설정을 복원했습니다. Claude Desktop을 완전히 종료하고 다시 여세요"
+    "desktopRestored": "이전 설정을 복원했습니다. Claude Desktop을 완전히 종료하고 다시 여세요",
+    "advancedDescription": "사용자 지정 API 연결 및 일회성 자격 증명 이전",
+    "marketApps": {
+      "isolatedStorage": "이 공식 앱은 별도의 설정과 대화 저장소를 사용합니다. 기본 앱과 CLI의 설정은 유지됩니다. 이전 대화는 자동으로 가져오지 않습니다",
+      "isolatedClaudeStorage": "Claude Desktop과 Claude Code를 종료하면 호환되는 대화가 자동으로 동기화됩니다",
+      "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
+      "loading": "ORG2 Market 패키지를 불러오는 중…",
+      "loadFailed": "ORG2 Market 패키지를 불러오지 못했습니다",
+      "nonePurchased": "현재 사용할 수 있는 ORG2 Market 패키지가 없습니다",
+      "checking": "앱 확인 중…",
+      "unavailable": "설치된 이 버전에서는 사용할 수 없음",
+      "notInstalled": "설치되지 않음",
+      "original": "앱의 원래 설정 사용 중",
+      "open": "앱 열기",
+      "connected": "앱이 현재 ORG2 작업 공간을 따릅니다",
+      "opened": "앱을 열었습니다",
+      "disconnected": "이전 앱 설정을 복원했습니다",
+      "actionFailed": "이 앱 연결을 업데이트할 수 없습니다",
+      "openFailed": "이 앱을 열 수 없습니다",
+      "restoreRequired": "먼저 이 앱의 원래 설정을 복원한 다음 패키지를 선택하고 연결을 다시 적용하세요",
+      "versionUnverified": "현재 ORG2 빌드에서는 이 데스크톱 앱 버전의 격리된 연결 호환성이 검증되지 않았습니다. ORG2를 업데이트하고 다시 시도하세요",
+      "workspaceNumber": "서비스 {{index}} / {{count}}",
+      "openTerminal": "터미널 열기",
+      "terminalOpened": "터미널을 열었습니다",
+      "provider": "ORG2 Market",
+      "multiPackageHelp": "최대 8개 패키지와 기본 모델을 선택한 후 앱 안에서 패키지를 전환하세요",
+      "auxiliaryBilling": "Claude Code의 자동 제목·메모리·컴팩션 호출은 기본 패키지에 청구됩니다. /model로 선택한 패키지를 따르는 것은 대화 자체만입니다",
+      "defaultModel": "기본 모델",
+      "packageLimit": "최대 8개 패키지를 선택하세요"
+    }
   },
   "claudeProfiles": {
     "new": "새 프로필",
@@ -939,10 +1068,10 @@
     "developerOptions": "개발자 옵션",
     "retryConnection": "연결 재시도",
     "enabled": "Mobile Remote",
-    "enabledDesc": "페어링된 휴대폰이 같은 Wi‑Fi LAN 또는 공개 릴레이를 통해 이 데스크톱의 Agent 세션을 조작할 수 있게 합니다",
+    "enabledDesc": "휴대폰으로 이 컴퓨터의 세션을 확인하고 제어",
     "securityNotice": "LAN 노출이 켜져 있으면 연결 URL과 토큰을 가진 네트워크상의 누구나 세션을 제어할 수 있습니다. 유출이 의심되면 토큰을 다시 생성하세요",
-    "outdoorTitle": "외부 연결",
-    "outdoorDesc": "데스크톱을 공개 릴레이에 아웃바운드로 연결하여 휴대폰이 4G, 5G 또는 다른 네트워크에서도 작동하게 합니다",
+    "outdoorTitle": "인터넷 연결 허용",
+    "outdoorDesc": "끄면 휴대폰에서 인터넷을 통해 이 컴퓨터에 연결할 수 없음",
     "relayEnabled": "공개 릴레이에 연결",
     "relayEnabledDesc": "데스크톱이 아웃바운드 WSS 연결을 열며, 라우터 포트 포워딩이 필요 없습니다",
     "relayUrl": "릴레이 주소",
@@ -951,7 +1080,7 @@
     "relayPresetLocal": "로컬",
     "relayPresetProduction": "프로덕션",
     "cloudLoginTitle": "ORG2 Cloud 로그인",
-    "cloudLoginDescSignedIn": "{{identity}}(으)로 로그인됨 — 릴레이는 외부 페어링에 이 계정을 사용합니다",
+    "cloudLoginDescSignedIn": "{{identity}} 계정으로 로그인됨",
     "cloudLoginDescSignedOut": "공개 릴레이로 페어링하기 전에 ORG2 Cloud에 로그인하세요",
     "relayStatusCloudLoginRequired": "설정 → 일반에서 ORG2 Cloud에 로그인한 뒤 릴레이 상태를 새로 고치세요",
     "relayStatusAuthFailedSignedIn": "릴레이가 연결을 거부했습니다 — 설정 → 일반에서 로그아웃 후 다시 로그인하세요",
@@ -962,7 +1091,7 @@
     "relayStatus_disabled": "비활성화됨",
     "relayStatus_config_error": "구성 오류",
     "relayStatus_stopped": "중지됨",
-    "startOutdoorPairing": "외부 페어링 코드 생성",
+    "startOutdoorPairing": "페어링 코드 생성",
     "fullAccess": "작업 허용",
     "fullAccessDesc": "켜면 휴대폰에서 메시지 전송, 세션 중지, 권한 응답을 할 수 있고, 끄면 보기 전용이 됩니다",
     "pairingExpires": "페어링 코드는 {{seconds}}초 후 만료됩니다",
@@ -997,16 +1126,50 @@
     "pairedDevicesDesc": "릴레이를 통해 승인된 휴대폰입니다. 언제든지 액세스를 해지할 수 있습니다",
     "devicesLoadFailed": "페어링된 기기를 불러올 수 없습니다",
     "noDevices": "페어링된 기기 없음",
-    "noDevicesDesc": "외부 페어링 코드를 생성한 뒤 Mobile Remote PWA에서 스캔하거나 붙여넣으세요",
+    "noDevicesDesc": "휴대폰을 추가하면 이 컴퓨터의 세션에 접근할 수 있음",
     "deviceLabel": "기기",
     "deviceTier": "등급",
-    "deviceTierFull": "전체 액세스",
-    "deviceTierReadOnly": "읽기 전용",
+    "deviceTierFull": "제어 가능",
+    "deviceTierReadOnly": "보기 전용",
     "deviceLastSeen": "마지막 접속",
     "devicePairedAt": "{{time}} 페어링됨",
     "deviceLastSeenValue": "마지막 접속 {{time}}",
     "deviceNeverSeen": "연결된 적 없음",
     "deviceOnline": "온라인",
-    "deviceOffline": "오프라인"
+    "deviceOffline": "오프라인",
+    "addPhone": "휴대폰 추가",
+    "pairingPermission": "휴대폰 권한",
+    "relayDisabledHint": "인터넷 연결이 꺼져 있음. 고급 설정에서 켤 수 있음"
+  },
+  "development": {
+    "updateAvailable": "업데이트 사용 가능",
+    "updateAvailableDesc": "전체를 99.0.0 버전으로 위장, 동작은 대화상자만 미리보기",
+    "illustrations": "일러스트",
+    "illustrationsDesc": "테마를 변경하지 않고 모든 앱 일러스트를 밝은 모드와 어두운 모드로 비교",
+    "emptyStates": "빈 상태",
+    "mockPanelTitle": "개발 모의 패널",
+    "mockPanelReset": "모두 초기화",
+    "mockPanelDone": "완료",
+    "scenario": {
+      "newUser": "신규 사용자",
+      "newUserDesc": "새로 설치한 상태: 키, 작업 디렉터리, 기록 모두 없음",
+      "noKeys": "키 없음",
+      "noKeysDesc": "저장된 계정과 모델을 숨겨 키 설정 안내를 표시",
+      "noWorkingDirectories": "작업 디렉터리 없음",
+      "noWorkingDirectoriesDesc": "저장소와 작업 영역 폴더를 숨겨 '폴더 열기' 상태를 표시",
+      "noSessions": "세션 없음",
+      "noSessionsDesc": "세션 기록을 숨겨 첫 실행의 빈 상태를 표시"
+    }
+  },
+  "managedUsage": {
+    "cancel": "취소",
+    "authorize": "패키지 활성화",
+    "rates": "백만 토큰당 입력 / 출력",
+    "wallet": "지갑 열기",
+    "priceRange": "패키지 가격 범위: 공식 가격의 {{min}}%–{{max}}%",
+    "rangeUnavailable": "패키지 가격 범위를 확인할 수 없습니다. 활성화하기 전에 카탈로그를 새로 고치세요.",
+    "walletIncluded": "포함된 모든 모델은 지갑 잔액을 사용합니다.",
+    "walletUnavailable": "지갑 결제는 아직 사용할 수 없습니다. 서비스 업데이트 후 새로 고치세요.",
+    "walletConsent": "표시된 가격 범위로 이 패키지의 모든 모델을 활성화합니다. 실제 사용량은 지갑 잔액에서 직접 차감되며 별도의 패키지 예산은 필요하지 않습니다."
   }
 }

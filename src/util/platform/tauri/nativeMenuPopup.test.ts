@@ -1,3 +1,8 @@
+import {
+  LogicalPosition,
+  PhysicalPosition,
+  Position,
+} from "@tauri-apps/api/dpi";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +18,14 @@ const tauriMenu = vi.hoisted(() => ({
 vi.mock("@tauri-apps/api/menu", () => ({
   Menu: {
     new: tauriMenu.create,
+  },
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args: { rid: number; at?: unknown }) => {
+    expect(command).toBe("popup_native_menu");
+    expect(args.rid).toBe(7);
+    return args.at === undefined ? tauriMenu.popup() : tauriMenu.popup(args.at);
   },
 }));
 
@@ -39,8 +52,8 @@ describe("popupNativeMenu", () => {
     tauriMenu.close.mockReset().mockResolvedValue(undefined);
     tauriMenu.popup.mockReset().mockResolvedValue(undefined);
     tauriMenu.create.mockReset().mockResolvedValue({
+      rid: 7,
       close: tauriMenu.close,
-      popup: tauriMenu.popup,
     });
   });
 
@@ -197,7 +210,7 @@ describe("popupNativeMenu", () => {
       })
     ).resolves.toEqual({ status: "closed" });
 
-    expect(tauriMenu.popup).toHaveBeenNthCalledWith(1, position);
+    expect(tauriMenu.popup).toHaveBeenNthCalledWith(1, new Position(position));
     expect(tauriMenu.popup).toHaveBeenNthCalledWith(2);
     expect(tauriMenu.close).toHaveBeenCalledOnce();
   });
@@ -218,6 +231,24 @@ describe("popupNativeMenu", () => {
     expect(tauriMenu.popup).toHaveBeenCalledOnce();
     expect(tauriMenu.close).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    [new LogicalPosition(10, 20), { Logical: { x: 10, y: 20 } }],
+    [new PhysicalPosition(30, 40), { Physical: { x: 30, y: 40 } }],
+    [new Position(new LogicalPosition(50, 60)), { Logical: { x: 50, y: 60 } }],
+  ] as const)(
+    "preserves Tauri position serialization for %s",
+    async (at, expected) => {
+      await popupNativeMenu({
+        source: "coordinates",
+        buildItems: () => [{ text: "Item" }],
+        at,
+      });
+      expect(
+        JSON.parse(JSON.stringify(tauriMenu.popup.mock.calls[0][0]))
+      ).toEqual(expected);
+    }
+  );
 
   it("shares the active gate across hot module reloads", async () => {
     const activeBuild = deferred<[{ text: string }]>();

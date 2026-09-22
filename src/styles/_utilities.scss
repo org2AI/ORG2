@@ -17,37 +17,6 @@
   --radius-page: 20px;
 }
 
-// ============================================
-// Button Utilities
-// ============================================
-
-/**
- * Danger Close Button
- * Red hover/active states for close buttons (X)
- * 
- * Usage: Add class to Button component
- * <Button className="btn-close-danger" ... />
- */
-.btn-close-danger {
-  &:hover:not(:disabled) {
-    background: color-mix(
-      in srgb,
-      var(--color-danger-6) 10%,
-      transparent
-    ) !important;
-    color: var(--color-danger-6) !important;
-  }
-
-  &:active:not(:disabled) {
-    background: color-mix(
-      in srgb,
-      var(--color-danger-6) 20%,
-      transparent
-    ) !important;
-    color: var(--color-danger-6) !important;
-  }
-}
-
 /**
  * Refresh Icon Animation
  *
@@ -88,15 +57,41 @@
 }
 
 /**
- * Fill-3 Hover Button
- * Subtle fill-3 hover state for navigation/secondary buttons
- * 
- * Usage: Add class to Button component
- * <Button className="btn-hover-fill-3" ... />
+ * Disclosure Chevron Rotation
+ *
+ * Collapsible rows in the workstation trail and in the sidebars used to swap
+ * ArrowRight01Icon for ArrowDown01Icon on toggle, which pops between two
+ * glyphs with no motion. ArrowDown01Icon is ArrowRight01Icon rotated 90deg
+ * clockwise about the centre of the 24x24 viewBox — every control point maps
+ * onto its counterpart — so rendering the right chevron and rotating it is
+ * pixel-identical to the swap while giving the toggle something to animate.
+ *
+ * - .chevron-disclosure      — always applied; owns the transition
+ * - .chevron-disclosure-open — applied while expanded; points the chevron down
+ *
+ * `color` rides along in the transition because these rules are unlayered and
+ * would otherwise beat Tailwind's `transition-colors` on hover-tinted
+ * chevrons; the duration and easing match Tailwind's defaults, so hover
+ * tinting behaves exactly as it did before.
+ *
+ * Usage: render <DisclosureChevron expanded={...} /> from
+ * @src/components/DisclosureChevron rather than composing these by hand.
  */
-.btn-hover-fill-2 {
-  &:hover:not(:disabled) {
-    background: var(--color-fill-2) !important;
+.chevron-disclosure {
+  transform: rotate(0deg);
+  transform-origin: 50% 50%;
+  transition:
+    transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chevron-disclosure-open {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron-disclosure {
+    transition: none;
   }
 }
 
@@ -226,54 +221,14 @@
   }
 }
 
-.composer-focus-breathing-light {
-  position: relative;
-
+// User preference (composerGlowVisibleAtom): drop only the primary glow. The
+// neutral edge shadow on `::before` and the focus ring stay.
+.composer-glow-hidden.composer-bottom-glow,
+.composer-glow-hidden.composer-breathing,
+.composer-glow-hidden .composer-breathing {
   &::after {
-    position: absolute;
-    bottom: -2px;
-    left: 25%;
-    width: 50%;
-    height: 1px;
-    pointer-events: none;
-    content: "";
-    border-radius: 999px;
-    opacity: 0;
-    transform: translateY(2px) scaleX(0.94);
-    box-shadow:
-      0 18px 46px -18px
-        color-mix(in srgb, var(--color-primary-6) 28%, transparent),
-      0 8px 24px -14px
-        color-mix(in srgb, var(--color-primary-6) 20%, transparent);
-    transition:
-      opacity 180ms ease,
-      transform 180ms ease,
-      box-shadow 180ms ease;
+    display: none;
   }
-
-  &:focus-within::after {
-    opacity: 1;
-    transform: translateY(3px) scaleX(1);
-    box-shadow:
-      0 24px 58px -18px
-        color-mix(in srgb, var(--color-primary-6) 58%, transparent),
-      0 10px 30px -14px
-        color-mix(in srgb, var(--color-primary-6) 40%, transparent);
-  }
-}
-
-// ============================================
-// Scroll Utilities
-// ============================================
-
-/**
- * Prevent layout shift when scrollbars appear/disappear by reserving gutter space.
- * Works in modern Chromium / Firefox; safely ignored elsewhere.
- *
- * Usage: add `scrollbar-gutter-stable` to a scroll container.
- */
-.scrollbar-gutter-stable {
-  scrollbar-gutter: stable;
 }
 
 /**

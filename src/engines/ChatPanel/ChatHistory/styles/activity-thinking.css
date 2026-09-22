@@ -1,0 +1,60 @@
+/**
+ * Activity Styles — Thinking / LLM Reasoning
+ *
+ * Minimal inline style for thinking/reasoning display. Includes the cursor
+ * blink used by live reasoning output.
+ */
+.activity-thinking {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0 8px;
+  font-size: inherit;
+  color: var(--color-text-4);
+}
+.activity-thinking p {
+  margin: 0;
+}
+/* Content wrapper for streaming */
+/* Text selection is handled by `allow-select-deep` on ChatItemWrap. */
+.activity-thinking__content {
+  flex: 1;
+  min-width: 0;
+  display: inline;
+  font-size: inherit;
+  /* Override markdown body color to be lighter */
+}
+.activity-thinking__content .chat-markdown-body {
+  color: var(--color-text-2);
+  font-size: inherit;
+}
+/* Smooth text appearance for streaming */
+.activity-thinking__content p {
+  display: inline;
+  font-size: inherit;
+}
+/* Blinking cursor for streaming state */
+.activity-thinking__cursor {
+  display: inline-block;
+  width: 2px;
+  height: 10px;
+  background: var(--color-text-4);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursor-blink 0.8s infinite;
+}
+
+/* ============================================ */
+/* Animations */
+/* ============================================ */
+/* Cursor blink animation */
+@keyframes cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}

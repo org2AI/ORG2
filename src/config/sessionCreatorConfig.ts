@@ -5,6 +5,10 @@
  * and ChatPanel (engines/). Moved from features/SessionCreator/config.ts
  * to break the cross-feature dependency.
  */
+import type {
+  AgentExecMode,
+  RunningLocation,
+} from "@src/contracts/session/execMode";
 import {
   Infinity01Icon,
   CloudIcon,
@@ -53,13 +57,7 @@ export type CreatorComposerPosition =
 // observer mode). Legacy `explore` values in localStorage are migrated to
 // `ask` at load time (see `creatorDefaultExecModeAtom`).
 
-export type AgentExecMode =
-  | "build"
-  | "ask"
-  | "plan"
-  | "debug"
-  | "review"
-  | "wingman";
+export type { AgentExecMode } from "@src/contracts/session/execMode";
 
 export const DEFAULT_AGENT_EXEC_MODE: AgentExecMode = "build";
 
@@ -182,7 +180,7 @@ export function execModeForComposerSelection(
 // Running location
 // ============================================
 
-export type RunningLocation = "local" | "worktree" | "cloud";
+export type { RunningLocation } from "@src/contracts/session/execMode";
 
 export interface RunningLocationEntry {
   id: RunningLocation;

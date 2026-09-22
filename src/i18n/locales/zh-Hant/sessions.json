@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "作為新訊息傳送？",
+    "body": "這則訊息來自執行工作階段，無法在此編輯並回退對話。是否改為將這段文字作為新訊息傳送到對話末尾？現有訊息和檔案變更都會保留。",
+    "sendNew": "傳送新訊息"
+  },
   "tray": {
     "markAllRead": "全部標為已讀",
     "showKanban": "顯示看板",
@@ -50,7 +55,7 @@
     },
     "dataSource": {
       "title": "資料來源",
-      "description": "ORGII 偵測到的外部程式設計工具。可匯入的應用程式會顯示工作階段數量並可重新掃描；其餘僅顯示安裝狀態和歷史記錄所在位置。",
+      "description": "ORG2 偵測到的外部程式設計工具。可匯入的應用程式會顯示工作階段數量並可重新掃描；其餘僅顯示安裝狀態和歷史記錄所在位置。",
       "rescanAll": "全部重新掃描",
       "rescan": "重新掃描",
       "rescanning": "正在重新掃描…",
@@ -88,8 +93,7 @@
       "openFolder": "開啟資料夾",
       "tabs": {
         "all": "全部",
-        "apps": "應用程式",
-        "clis": "命令列"
+        "apps": "應用程式"
       },
       "views": {
         "scanning": "掃描",
@@ -97,7 +101,6 @@
         "usage": "用量",
         "team": "團隊",
         "quota": "配額",
-        "assets": "資產",
         "profile": "輪廓"
       },
       "usage": {
@@ -174,7 +177,8 @@
           "output": "輸出",
           "cache": "快取讀取",
           "cost": "成本",
-          "filterBySession": "依此工作階段篩選"
+          "filterBySession": "依此工作階段篩選",
+          "purpose": "用途"
         },
         "pricing": {
           "input": "輸入",
@@ -190,7 +194,7 @@
           "perTurn": "LLM 呼叫",
           "perTool": "工具呼叫",
           "close": "關閉",
-          "noData": "此工作階段只有工作階段層級的總計；每次呼叫的歸屬資料僅針對 ORGII 自有 Agent 的執行進行記錄。",
+          "noData": "此工作階段只有工作階段層級的總計；每次呼叫的歸屬資料僅針對 ORG2 自有 Agent 的執行進行記錄。",
           "turnHeader": "回合 {{turn}}",
           "promptTokens": "提示詞",
           "completionTokens": "完成"
@@ -199,7 +203,17 @@
           "title": "尚無用量",
           "subtitle": "執行或掃描一些程式開發工作階段後，其 Token 用量將顯示在這裡。"
         },
-        "loadError": "無法載入用量資料"
+        "loadError": "無法載入用量資料",
+        "purposes": {
+          "main": "主回复",
+          "session_title": "会话标题",
+          "session_memory": "会话记忆",
+          "workspace_memory": "工作区记忆",
+          "auto_dream": "记忆整理",
+          "skill_prefetch": "技能选择",
+          "memory_prefetch": "记忆检索",
+          "compaction": "上下文压缩"
+        }
       },
       "sessions_other": "{{count}} 個工作階段",
       "details": {
@@ -307,7 +321,6 @@
   },
   "simulator": {
     "captionBarToggleTooltip": "顯示 Agent 訊息浮窗",
-    "noActiveSession": "無活動 Agent 會話",
     "tabs": {
       "kanban": "看板"
     },
@@ -327,18 +340,6 @@
           "agentBrowser": "Agent 瀏覽器",
           "searchFetch": "搜索與抓取"
         },
-        "sections": {
-          "browserTitle": "瀏覽器活動",
-          "interactionsTitle": "互動操作",
-          "webSearchesTitle": "網頁搜索",
-          "pagesFetchedTitle": "已抓取頁面"
-        },
-        "empty": {
-          "noBrowserActivity": "暫無瀏覽器活動",
-          "noBrowserInteractions": "暫無瀏覽器互動",
-          "noWebSearches": "暫無網頁搜索",
-          "noPagesFetched": "暫無已抓取頁面"
-        },
         "header": {
           "categoryBrowser": "瀏覽器",
           "categoryLiveBrowser": "實時瀏覽器",
@@ -349,7 +350,6 @@
       },
       "ide": {
         "shell": {
-          "emptyNoCommands": "暫無命令",
           "noCommand": "（無命令）",
           "outputInProgress": "… 輸出進行中",
           "exitCode": "[退出碼: {{code}}]"
@@ -520,8 +520,7 @@
     },
     "titleBar": {
       "showSidebar": "顯示側邊欄",
-      "hideSidebar": "隱藏側邊欄",
-      "showBottomPanel": "顯示底部面板"
+      "hideSidebar": "隱藏側邊欄"
     },
     "multiTask": {
       "monitoringProgress": "正在監控 {{count}} 個 Subagent 的進度",
@@ -554,22 +553,6 @@
     "addedToContext": "添加到 Session 上下文",
     "creatingWithContext": "正在使用上下文創建新 Session",
     "creationCooldown": "請稍後再創建新終端。"
-  },
-  "scope": {
-    "applicableScope": "適用範圍",
-    "for": "的",
-    "selectCategory": "選擇類別",
-    "selectScope": "選擇範圍",
-    "allRepos": "所有倉庫",
-    "allSessions": "所有 Session",
-    "allProjects": "所有專案",
-    "allWorkItems": "所有工作項",
-    "categories": {
-      "repo": "倉庫",
-      "session": "Session",
-      "projects": "專案",
-      "workItems": "工作項"
-    }
   },
   "editor": {
     "loading": "正在加載編輯器..."
@@ -608,6 +591,7 @@
     "voicePermissionSheetTitle": "需要麥克風存取權限"
   },
   "chat": {
+    "draftTooLong": "草稿過長（最多 {{max}} 個字元）",
     "cliPermissions": {
       "ask": "操作前審批",
       "workspace": "工作區權限",
@@ -642,23 +626,18 @@
       "inputPosition": "輸入框",
       "positionBottom": "底部",
       "positionMiddle": "置中",
-      "trailPosition": "軌跡列",
+      "repoBarPosition": "倉庫列",
       "positionUp": "上方",
       "positionDown": "下方",
-      "uiControls": "介面控制",
-      "showQuickActions": "顯示快捷操作",
+      "showQuickActions": "快捷操作",
       "showSkills": "釘選 Skills",
-      "showCliUpdate": "顯示 CLI 更新",
-      "title": "你想做什麼？",
-      "back": "返回起始頁",
+      "showCliUpdate": "CLI 更新",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新建會話"
       },
       "newWorkItem": {
         "title": "新建工作項目"
-      },
-      "setupRepo": {
-        "title": "設定 Repo"
       },
       "addApiKey": {
         "title": "新增 API 金鑰"
@@ -669,59 +648,27 @@
       "installLatestUpdate": {
         "title": "安裝最新更新"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "工作階段",
         "workItem": "工作項目",
         "more": "更多",
-        "work": "工作",
         "manage": "管理",
-        "heatmap": "趨勢",
         "runtime": "執行階段"
       },
       "quota": {
         "empty": "暫無配額資料。請在 Key Vault 中重新整理用量。",
         "refresh": "重新整理",
-        "justNow": "剛剛",
-        "minutesAgo": "{{count}}分鐘前",
-        "hoursAgo": "{{count}}小時前",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7d",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Weekly",
           "monthly": "Monthly"
         }
       },
-      "exploreRepos": {
-        "title": "探索 Repos"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "管理 Issues"
       }
     },
     "defaultTitle": "Session",
@@ -732,8 +679,17 @@
     "performActions_one": "執行 {{count}} 項操作",
     "performActions_other": "執行 {{count}} 項操作",
     "showInlineDiffs": "行內差異",
-    "pageSettings": "頁面顯示",
     "inputSettings": "輸入設定",
+    "sendMethod": "發送方式",
+    "navigation": {
+      "title": "導覽",
+      "openLinksIn": "連結開啟方式",
+      "internalBrowser": "內建瀏覽器",
+      "externalBrowser": "外部瀏覽器"
+    },
+    "compactInput": "緊湊輸入框",
+    "composerGlow": "輸入框光暈",
+    "separateEffortPill": "獨立 Effort 按鈕",
     "replay": {
       "follow": "跟隨"
     },
@@ -759,15 +715,11 @@
       "modeSourceBundled": "模式加載自內置回退(Cursor 探針尚未運行)。",
       "modeRefresh": "重新整理模式"
     },
-    "hideSimulator": "隱藏模擬器",
-    "showSimulator": "顯示模擬器",
-    "fullScreenChat": "聚焦聊天面板（隱藏工作站）",
     "maximizeChatPanel": "最大化聊天面板",
     "showWorkstation": "顯示工作站",
     "workstationUnavailableForPage": "此頁面不支援使用工作站",
     "hideWorkstation": "隱藏工作站",
     "restoreSplitView": "顯示工作站",
-    "shrinkToWorkstation": "縮小聊天面板（顯示工作站）",
     "tuiModeOn": "TUI 模式（點擊關閉）",
     "tuiModeOff": "啟用 TUI 模式",
     "tabs": {
@@ -919,10 +871,10 @@
       "exportJson": "匯出 JSON",
       "importAction": "匯入 Session",
       "exportDescription": "將目前 Session 匯出為可攜式 JSON 快照",
-      "importDescription": "將 Session JSON 快照匯入側邊欄。",
+      "importDescription": "將 Session JSON 快照匯入側邊欄",
       "jsonSnapshotNote": "匯入的 Session 是唯讀快照，並保留原始事件歷史",
       "chooseJson": "選擇 JSON 檔案",
-      "chooseJsonHint": "選擇一個 .orgii-session.json 匯出檔案。",
+      "chooseJsonHint": "選擇一個 .orgii-session.json 匯出檔案",
       "loadingPreview": "正在統計 Session 事件…",
       "noActiveSession": "未選取作用中 Session。",
       "importedName": "匯入 Session：{{name}}",
@@ -971,22 +923,9 @@
       "showMore_one": "顯示其餘 {{count}} 個",
       "showMore_other": "顯示其餘 {{count}} 個"
     },
-    "manageIssues": {
-      "title": "管理 Issues",
-      "myWork": "我的工作",
-      "allRepositories": "所有 Repos",
-      "newIssue": "新增 Issue",
-      "tabs": {
-        "recent": "最近",
-        "assigned": "指派給我",
-        "byMe": "由我建立",
-        "mentioned": "提及我"
-      }
-    },
     "readOnly": "唯讀",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "建立 GitHub issue",
         "issueTitlePlaceholder": "issue 標題",
@@ -996,28 +935,40 @@
         "addToChat": "Add",
         "repositoryLabel": "儲存庫",
         "createIssueFailed": "建立 issue 失敗",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "所有狀態",
         "closeAsCompleted": "以已完成關閉",
         "closeAsNotPlanned": "以不計畫關閉",
         "statusUpdateFailed": "無法更新 GitHub 狀態",
         "assignedToMe": "指派給我的",
         "createdByMe": "由我建立",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "待我審查",
-          "authoredByMe": "由我建立",
-          "otherTodos": "其他待辦"
-        },
         "assigneeUpdateNotApplied": "GitHub 未套用指派人變更",
         "assigneeUpdateSuccess": "已在 GitHub 上更新指派人",
         "updateIssueFailed": "更新 GitHub issue 失敗",
-        "refreshIssues": "重新整理議題",
-        "refreshPullRequests": "重新整理拉取請求"
+        "filters": {
+          "searchPlaceholder": "搜尋篩選條件",
+          "noMatches": "沒有符合的篩選條件",
+          "activeCount": "已啟用篩選：{{count}}",
+          "clear": "清除篩選",
+          "reviewRequestedFromMe": "請求我審查",
+          "noAssignee": "無負責人",
+          "noLabel": "無標籤",
+          "linkedPullRequest": "已連結拉取請求",
+          "draft": "草稿",
+          "readyForReview": "可供審查",
+          "recentlyUpdated": "最近 7 天內更新",
+          "stale": "30 天未更新",
+          "facetAuthor": "作者",
+          "facetAssignee": "負責人",
+          "facetLabel": "標籤",
+          "facetMilestone": "里程碑",
+          "facetReviewRequested": "請求審查",
+          "facetBaseBranch": "目標分支",
+          "facetCiStatus": "檢查",
+          "ciSuccess": "通過",
+          "ciFailure": "失敗",
+          "ciPending": "進行中"
+        }
       }
     },
     "sessionViews": {
@@ -1051,7 +1002,9 @@
     "typeMessage": "輸入訊息…",
     "session": "工作階段",
     "history": "工作階段",
-    "agentFallback": "Agent"
+    "agentFallback": "Agent",
+    "goToPinnedPassage": "跳至釘選段落：{{preview}}",
+    "unpinPassage": "取消釘選"
   },
   "tools": {
     "noResultsFound": "未找到結果",
@@ -1148,6 +1101,7 @@
     "terminalWaitRunning": "正在等待終端完成",
     "runShellFailed": "命令執行失敗",
     "runCommands": "執行命令",
+    "waitBackgroundTasks": "等待後臺任務",
     "terminalSummary": {
       "command_one": "{{count}} 個命令",
       "command_other": "{{count}} 個命令",
@@ -1158,6 +1112,10 @@
       "check_one": "{{count}} 次檢查",
       "check_other": "{{count}} 次檢查",
       "separator": "、"
+    },
+    "waitSummary": {
+      "count_one": "{{count}} 次",
+      "count_other": "{{count}} 次"
     },
     "inspectTerminalsRunning": "正在檢查終端",
     "inspectTerminalsDone": "檢查終端",
@@ -1456,21 +1414,24 @@
     "webFetchRunning": "獲取網頁中",
     "webFetchDone": "獲取網頁",
     "webFetchFailed": "網頁獲取失敗",
-    "awaitOutputWaitForRunning": "等待 {{summary}}（{{countdown}}）",
-    "awaitOutputWaitForDone": "等待 {{summary}} {{waited}}",
-    "awaitOutputWaitForFailed": "等待 {{summary}} 失敗",
-    "awaitOutputMonitorRunning": "正在查看 {{summary}}",
-    "awaitOutputMonitorDone": "查看 {{summary}}",
-    "awaitOutputMonitorFailed": "檢查 {{summary}} 失敗",
+    "awaitOutputWaitForRunning": "等待{{summary}}（{{countdown}}）",
+    "awaitOutputWaitForDone": "等待{{summary}}{{waited}}",
+    "awaitOutputWaitForFailed": "等待{{summary}}失敗",
+    "awaitOutputMonitorRunning": "正在查看{{summary}}",
+    "awaitOutputMonitorDone": "查看{{summary}}",
+    "awaitOutputMonitorFailed": "檢查{{summary}}失敗",
     "awaitOutputListRunning": "列出後臺任務",
     "awaitOutputListDone": "列出後臺任務",
     "awaitOutputListFailed": "列出後臺任務失敗",
     "awaitOutputKeepWaiting": "仍在運行",
     "awaitOutputStillRunning": "運行中",
+    "awaitOutputSummaryShellSingle": "終端進程",
     "awaitOutputSummaryShell_one": "1個終端進程",
     "awaitOutputSummaryShell_other": "{{count}}個終端進程",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1個 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}}個 Subagent",
+    "awaitOutputSummaryUnknownSingle": "後臺任務",
     "awaitOutputSummaryUnknown_one": "1個後臺任務",
     "awaitOutputSummaryUnknown_other": "{{count}}個後臺任務",
     "awaitOutputSummaryMixed": "{{shell}}、{{subagent}}",
@@ -1924,14 +1885,13 @@
     "start": "開始",
     "missingGit": {
       "title": "缺少 Git",
-      "body": "未安裝 Git 或找不到 Git。請讓 ADE Manager 或 SDE Agent 為這台機器安裝 Git，然後重新啟動 ORGII。"
+      "body": "未安裝 Git 或找不到 Git。請讓 ADE Manager 或 SDE Agent 為這台機器安裝 Git，然後重新啟動 ORG2"
     },
     "model": "模型",
     "contextMenu": {
       "filesAndFolders": "檔案與資料夾",
       "session": "會話",
       "workItems": "工作項目",
-      "back": "返回",
       "recent": "最近使用",
       "showMore": "再顯示 {{remaining}} 項"
     },
@@ -1988,9 +1948,9 @@
       "formatting": "文字格式"
     },
     "regionNoticeTitle": "可能存在地區限制",
-    "regionNoticeBodyProvider": "您所在位置：{{location}}。某些模型在您所在地區可能不可用。",
-    "regionNoticeBodySanctions": "您所在位置：{{location}}。GitHub、npm、Docker Hub 等服務可能不可用。",
-    "regionNoticeBodyBoth": "您所在位置：{{location}}。因地區政策與貿易規則，某些模型以及 GitHub、npm、Docker Hub 等服務可能不可用。",
+    "regionNoticeBodyProvider": "您所在位置：{{location}}。某些模型在您所在地區可能不可用",
+    "regionNoticeBodySanctions": "您所在位置：{{location}}。GitHub、npm、Docker Hub 等服務可能不可用",
+    "regionNoticeBodyBoth": "您所在位置：{{location}}。因地區政策與貿易規則，某些模型以及 GitHub、npm、Docker Hub 等服務可能不可用",
     "selectAgent": "選擇 Agent",
     "placeholderDefault": "輸入訊息，使用 @ 加入檔案，使用 / 呼叫 skills",
     "wingmanPlaceholder": "描述你的任務 — Wingman 應該關注什麼？",
@@ -2022,12 +1982,19 @@
       }
     },
     "cliVersionOutdated": {
-      "title": "{{cli}} 需要升級（{{installed}} > {{latest}}）",
+      "title": "{{cli}} 有新版本",
+      "versions": "目前版本：{{installed}} · 最新版本：{{latest}}",
+      "upgrade": "在終端機升級",
+      "upgradeHint": "在獨立終端機升級 Cursor 命令列工具，完成後點擊重新檢查",
+      "upgradeTerminal": "升級 Cursor 命令列工具",
+      "upgradeStarted": "已在終端機啟動升級，完成後點擊重新檢查",
+      "upgradeFailed": "無法開啟升級終端機，請重試",
       "muteUntilNextVersion": "下一版本前不再提醒",
       "refresh": "重新檢查 {{cli}} CLI 版本",
       "unknownVersion": "未知"
     },
-    "mode": "編輯器模式"
+    "mode": "編輯器模式",
+    "cursorIdeDescription": "在 ORG2 中瀏覽並繼續 Cursor IDE 聊天工作階段"
   },
   "planner": {
     "modes": {
@@ -2117,7 +2084,7 @@
         "cancelled": "已取消",
         "failed": "失敗"
       },
-      "title": "Agent 團隊概覽",
+      "title": "團隊概覽",
       "summary": "{{active}} 個活躍 · {{pending}} 則待處理",
       "loadFailed": "團隊概覽載入失敗",
       "tasks": "任務",
@@ -2138,7 +2105,7 @@
       "archiveTeardownRetained": "已封存，但有 {{count}} 個執行環境未能釋放，仍無法刪除。",
       "archiveTeardownQuiesced": "已封存並完全停止，現在可以永久刪除。",
       "dangerZone": "危險區域",
-      "deleteDescription": "永久刪除這個團隊及其所有工作階段與歷史記錄。",
+      "deleteDescription": "永久刪除這個團隊及其所有工作階段與歷史記錄",
       "deleteTeam": "刪除團隊",
       "deleteTitle": "永久刪除這個團隊？",
       "deleteWarning": "這會永久刪除團隊的所有工作階段與歷史記錄，且無法復原。",
@@ -2192,9 +2159,7 @@
       "activeMembers": "活躍成員",
       "inFlightTurns": "進行中的回合",
       "openTasks": "未完成任務",
-      "blockingInbox": "阻塞中的收件匣",
-      "blockersTitle": "仍在阻礙完成的項目",
-      "unknownBlocker": "未知系統阻塞項"
+      "blockingInbox": "阻塞中的收件匣"
     },
     "agentOrgIntervention": {
       "directTitle": "直接交給 {{member}} 工作",
@@ -2266,7 +2231,7 @@
     "noSessionIdFound": "未找到 Session ID",
     "failedToResume": "恢復 Session 失敗",
     "failedToCheckChanges": "無法檢查文件變更，將自動還原。",
-    "insufficientBalance": "ORGII 托管服務餘額不足，請前往 orgii.ai/wallet 儲值。",
+    "insufficientBalance": "ORG2 托管服務餘額不足，請前往 orgii.ai/wallet 儲值。",
     "runQueuedBehindCheckout": "已排隊：另一個執行正在使用此檢出目錄，待其結束後將自動開始。"
   },
   "planning": {
@@ -2359,7 +2324,6 @@
     },
     "triggerLabel": "群聊",
     "userMessageOutcomeUnknown": "訊息提交結果未知，請使用原請求重試。",
-    "coordinatorLabel": "協調者",
     "youLabel": "你",
     "retry": "重試",
     "memberCount_one": "{{count}} 位成員",

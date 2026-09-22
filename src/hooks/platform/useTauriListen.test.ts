@@ -40,6 +40,7 @@ interface HarnessProps {
   handler: (payload: unknown) => void;
   enabled?: boolean;
   onError?: (error: unknown) => void;
+  onReady?: () => void;
 }
 
 function Harness({
@@ -47,8 +48,9 @@ function Harness({
   handler,
   enabled,
   onError,
+  onReady,
 }: HarnessProps): null {
-  useTauriListen(event, handler, { enabled, onError });
+  useTauriListen(event, handler, { enabled, onError, onReady });
   return null;
 }
 
@@ -101,6 +103,7 @@ describe("useTauriListen", () => {
   });
 
   it("unlistens a registration that resolves after cleanup", async () => {
+    const onReady = vi.fn();
     let resolve!: (unlisten: () => void) => void;
     vi.mocked(listen).mockReturnValueOnce(
       new Promise((done) => {
@@ -108,13 +111,29 @@ describe("useTauriListen", () => {
       })
     );
 
-    await root.render(createElement(Harness, { handler: vi.fn() }));
+    await root.render(createElement(Harness, { handler: vi.fn(), onReady }));
     await root.unmount();
     expect(mocks.unlisten).not.toHaveBeenCalled();
 
     resolve(mocks.unlisten);
     await vi.advanceTimersByTimeAsync(0);
     expect(mocks.unlisten).toHaveBeenCalledTimes(1);
+    expect(onReady).not.toHaveBeenCalled();
+  });
+
+  it("requests a snapshot only after its listener has finished registering", async () => {
+    let resolve!: (unlisten: () => void) => void;
+    vi.mocked(listen).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    const onReady = vi.fn();
+    await root.render(createElement(Harness, { handler: vi.fn(), onReady }));
+    expect(onReady).not.toHaveBeenCalled();
+    resolve(mocks.unlisten);
+    await flushMicrotasks();
+    expect(onReady).toHaveBeenCalledTimes(1);
   });
 
   it("does not subscribe while disabled and follows enabled toggles", async () => {

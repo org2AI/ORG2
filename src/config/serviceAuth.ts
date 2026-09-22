@@ -64,10 +64,6 @@ export function setAuthSkipped(skipped: boolean): void {
   }
 }
 
-export const HOSTED_SERVICE_API_CONFIG = {
-  baseUrl: process.env.REACT_APP_MARKETPLACE_URL || "http://localhost:8001",
-} as const;
-
 export function parseAuthCallback(urlSearch: string): {
   code: string | null;
   error: string | null;

@@ -1,20 +1,35 @@
+import { useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 
 import { KEY_SOURCE } from "@src/api/tauri/session";
 import { ORGII_ORCHESTRATOR } from "@src/assets/providers";
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
+import { findMarketSourceForRecent } from "@src/features/MarketConnect/marketProfiles";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { isPairCompatible } from "@src/hooks/models/modelPairCompatibility";
 import { accountHasModel } from "@src/hooks/models/useModelAccountLookup";
 import type { RecentModelEntry } from "@src/store/session/recentModelEntriesAtom";
 import { recentEntriesEquivalent } from "@src/store/session/recentModelEntriesAtom";
+import type { ModelSourceScope } from "@src/store/ui/spotlightModelSourceScopeAtom";
+import {
+  MAX_SPOTLIGHT_MODEL_PINS,
+  spotlightModelPinsAtom,
+} from "@src/store/ui/spotlightPinsAtom";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
 import { resolveModelVariantFields } from "@src/util/modelVariants";
 
+import { isModelPinned, toggleModelPin } from "../../pinning/modelPins";
 import type { SpotlightItem } from "../../types";
-import { buildKeyItems, buildKeyModelItems } from "./keyFirstItems";
+import {
+  buildKeyItems,
+  buildKeyModelItems,
+  buildMarketProfileItems,
+  buildMarketProfileModelItems,
+} from "./keyFirstItems";
 import {
   MODEL_SECTION,
+  type ModelSection,
   buildGroupByModel,
   buildSectionHeader,
   entryMatchesActiveConfig,
@@ -24,6 +39,7 @@ import {
   buildAllModelItems,
   buildModelSelectionSpotlightItem,
 } from "./modelSelectionItems";
+import { scopeIncludesMarket } from "./modelSourceScope";
 import { buildSourceItems } from "./sourceItems";
 import type { SourceOption } from "./types";
 import type { UnifiedModelPaletteData } from "./useUnifiedModelPaletteData";
@@ -31,11 +47,25 @@ import type { UnifiedModelPaletteData } from "./useUnifiedModelPaletteData";
 interface UseUnifiedModelPaletteItemsParams {
   advancedConfig: AdvancedConfig;
   accounts: KeyVaultAccount[];
+  marketSources: MarketProfileSource[];
+  /**
+   * The scoped subset the Step 1 / Step 2 columns list. Pinned and Recent
+   * rows keep using the unscoped lists above, so narrowing the browse
+   * columns never hides a quick pick (see `modelSourceScope.ts`).
+   */
+  listingAccounts: KeyVaultAccount[];
+  listingMarketSources: MarketProfileSource[];
+  sourceScope?: ModelSourceScope;
+  marketProfilesLoading: boolean;
+  marketProfilesError: string | null;
+  refreshMarketProfiles: () => Promise<void>;
   accountLookup: UnifiedModelPaletteData["accountLookup"];
+  fullModelLookup: UnifiedModelPaletteData["fullModelLookup"];
   orgiiModelSet: UnifiedModelPaletteData["orgiiModelSet"];
   orgiiCategoryIds: UnifiedModelPaletteData["orgiiCategoryIds"];
   orgiiPoolEnabled: boolean;
   isCliAgent: boolean;
+  cliAgentType: UnifiedModelPaletteData["cliAgentType"];
   recentEntries: RecentModelEntry[];
   sourceOptions: SourceOption[];
   selectedModelId: string | null;
@@ -50,13 +80,17 @@ interface UseUnifiedModelPaletteItemsParams {
     modelLabel: string,
     groupModelIds: string[]
   ) => void;
-  handleSourceSelect: (source: SourceOption) => void;
+  handleSourceSelect: (source: SourceOption, modelOverride?: string) => void;
   handleRecentSelect: (entry: RecentModelEntry) => void;
   reselectVariant: (entry: RecentModelEntry, nextModelId: string) => void;
   /** Key-first mode inputs (see `keyFirstItems.tsx`). */
   selectedKeyAccountId: string | null;
   handleKeySelect: (accountId: string) => void;
   handleKeyModelSelect: (account: KeyVaultAccount, modelId: string) => void;
+  handleMarketModelSelect: (
+    source: MarketProfileSource,
+    modelId: string
+  ) => void;
   saveKey: UnifiedModelPaletteData["saveKey"];
   modelAliasVersion: number;
   tCommon: (key: string) => string;
@@ -65,11 +99,20 @@ interface UseUnifiedModelPaletteItemsParams {
 export function useUnifiedModelPaletteItems({
   advancedConfig,
   accounts,
+  marketSources,
+  listingAccounts,
+  listingMarketSources,
+  sourceScope,
+  marketProfilesLoading,
+  marketProfilesError,
+  refreshMarketProfiles,
   accountLookup,
+  fullModelLookup,
   orgiiModelSet,
   orgiiCategoryIds,
   orgiiPoolEnabled,
   isCliAgent,
+  cliAgentType,
   recentEntries,
   sourceOptions,
   selectedModelId,
@@ -82,21 +125,55 @@ export function useUnifiedModelPaletteItems({
   selectedKeyAccountId,
   handleKeySelect,
   handleKeyModelSelect,
+  handleMarketModelSelect,
   saveKey,
   modelAliasVersion,
   tCommon,
 }: UseUnifiedModelPaletteItemsParams) {
+  const isEntryCompatible = useCallback(
+    (entry: RecentModelEntry) => {
+      if (entry.credentialSource?.startsWith("market:")) {
+        return Boolean(findMarketSourceForRecent(marketSources, entry));
+      }
+      return isPairCompatible(entry, {
+        accounts,
+        orgiiPoolEnabled,
+        orgiiModelSet,
+        orgiiCategoryIds,
+        cliAgentType,
+      });
+    },
+    [
+      accounts,
+      orgiiPoolEnabled,
+      orgiiModelSet,
+      orgiiCategoryIds,
+      cliAgentType,
+      marketSources,
+    ]
+  );
+
   const compatibleRecentEntries = useMemo(
-    () =>
-      recentEntries.filter((entry) =>
-        isPairCompatible(entry, {
-          accounts,
-          orgiiPoolEnabled,
-          orgiiModelSet,
-          orgiiCategoryIds,
-        })
-      ),
-    [recentEntries, accounts, orgiiPoolEnabled, orgiiModelSet, orgiiCategoryIds]
+    () => recentEntries.filter(isEntryCompatible),
+    [recentEntries, isEntryCompatible]
+  );
+
+  const [modelPins, setModelPins] = useAtom(spotlightModelPinsAtom);
+  const compatiblePinnedEntries = useMemo(
+    () => modelPins.filter(isEntryCompatible),
+    [modelPins, isEntryCompatible]
+  );
+  const buildPinState = useCallback(
+    (entry: RecentModelEntry) => {
+      const pinned = isModelPinned(modelPins, entry);
+      return {
+        pinned,
+        disabled: !pinned && modelPins.length >= MAX_SPOTLIGHT_MODEL_PINS,
+        onToggle: () =>
+          setModelPins((previous) => toggleModelPin(previous, entry)),
+      };
+    },
+    [modelPins, setModelPins]
   );
 
   const persistDefaultVariantForAccount = useCallback(
@@ -118,9 +195,11 @@ export function useUnifiedModelPaletteItems({
     [accounts, saveKey]
   );
 
+  // Quick-pick rows group variants over every reachable model, not just the
+  // ones the active source scope lists.
   const groupByModel = useMemo(
-    () => buildGroupByModel(accountLookup.keys()),
-    [accountLookup]
+    () => buildGroupByModel(fullModelLookup.keys()),
+    [fullModelLookup]
   );
 
   const activeModelId = getActiveModelId(advancedConfig);
@@ -166,6 +245,8 @@ export function useUnifiedModelPaletteItems({
       sourceType: advancedConfig.keySource ?? KEY_SOURCE.OWN,
       accountId: inferredAccount?.id ?? advancedConfig.selectedAccountId,
       accountName: advancedConfig.selectedSourceLabel ?? inferredAccount?.name,
+      credentialSource: advancedConfig.credentialSource,
+      marketProfileId: advancedConfig.marketProfileId,
       modelType:
         advancedConfig.selectedSourceModelType ??
         advancedConfig.listingModelType ??
@@ -193,26 +274,38 @@ export function useUnifiedModelPaletteItems({
       entries.push(entry);
     };
 
+    // Pinned selections render in their own section, never twice.
+    const tryAddUnpinned = (entry: RecentModelEntry) => {
+      if (!isModelPinned(compatiblePinnedEntries, entry)) tryAdd(entry);
+    };
+
     if (currentModelEntry) {
-      tryAdd(currentModelEntry);
+      tryAddUnpinned(currentModelEntry);
     }
     for (const entry of compatibleRecentEntries) {
-      tryAdd(entry);
       if (entries.length >= MAX_RECENT_ITEMS) break;
+      tryAddUnpinned(entry);
     }
     return entries;
-  }, [compatibleRecentEntries, currentModelEntry]);
+  }, [compatibleRecentEntries, compatiblePinnedEntries, currentModelEntry]);
 
-  const recentItems = useMemo((): SpotlightItem[] => {
-    return recentEntriesForDisplay.map((entry, index) => {
+  const buildQuickPickItem = useCallback(
+    (entry: RecentModelEntry, section: ModelSection, index: number) => {
       const isCurrentSelection = entryMatchesActiveConfig(
         entry,
         advancedConfig
       );
-      return buildModelSelectionSpotlightItem({
-        entry,
-        section: MODEL_SECTION.RECENT,
-        idPrefix: isCurrentSelection ? "recent-current" : `recent-${index}`,
+      // The active config may hold another variant of a stored entry.
+      const rowEntry =
+        isCurrentSelection && activeModelId
+          ? { ...entry, modelId: activeModelId }
+          : entry;
+      const item = buildModelSelectionSpotlightItem({
+        entry: rowEntry,
+        section,
+        idPrefix: isCurrentSelection
+          ? `${section}-current`
+          : `${section}-${index}`,
         isCurrentSelection,
         accounts,
         groupByModel,
@@ -221,17 +314,39 @@ export function useUnifiedModelPaletteItems({
         onReselectVariant: isCurrentSelection ? reselectVariant : undefined,
         modelAliasVersion,
       });
-    });
-  }, [
-    accounts,
-    advancedConfig,
-    groupByModel,
-    handleRecentSelect,
-    modelAliasVersion,
-    persistDefaultVariantForAccount,
-    recentEntriesForDisplay,
-    reselectVariant,
-  ]);
+      return {
+        ...item,
+        data: { ...item.data, pinState: buildPinState(rowEntry) },
+      };
+    },
+    [
+      accounts,
+      activeModelId,
+      advancedConfig,
+      buildPinState,
+      groupByModel,
+      handleRecentSelect,
+      modelAliasVersion,
+      persistDefaultVariantForAccount,
+      reselectVariant,
+    ]
+  );
+
+  const pinnedItems = useMemo(
+    (): SpotlightItem[] =>
+      compatiblePinnedEntries.map((entry, index) =>
+        buildQuickPickItem(entry, MODEL_SECTION.PINNED, index)
+      ),
+    [buildQuickPickItem, compatiblePinnedEntries]
+  );
+
+  const recentItems = useMemo(
+    (): SpotlightItem[] =>
+      recentEntriesForDisplay.map((entry, index) =>
+        buildQuickPickItem(entry, MODEL_SECTION.RECENT, index)
+      ),
+    [buildQuickPickItem, recentEntriesForDisplay]
+  );
 
   const resolveGroupLaunchModel = useCallback(
     (sortedVariants: string[]): string => {
@@ -268,14 +383,16 @@ export function useUnifiedModelPaletteItems({
     (): SpotlightItem[] =>
       buildAllModelItems({
         accountLookup,
-        accounts,
+        accounts: listingAccounts,
+        marketSources: listingMarketSources,
         handleModelSelect,
         modelAliasVersion,
         resolveGroupLaunchModel,
       }),
     [
       accountLookup,
-      accounts,
+      listingAccounts,
+      listingMarketSources,
       handleModelSelect,
       modelAliasVersion,
       resolveGroupLaunchModel,
@@ -286,14 +403,16 @@ export function useUnifiedModelPaletteItems({
     (): SpotlightItem[] =>
       buildAllModelItems({
         accountLookup,
-        accounts,
+        accounts: listingAccounts,
+        marketSources: listingMarketSources,
         handleModelSelect: handleModelPreview ?? handleModelSelect,
         modelAliasVersion,
         resolveGroupLaunchModel,
       }),
     [
       accountLookup,
-      accounts,
+      listingAccounts,
+      listingMarketSources,
       handleModelPreview,
       handleModelSelect,
       modelAliasVersion,
@@ -301,57 +420,142 @@ export function useUnifiedModelPaletteItems({
     ]
   );
 
-  const sourceItems = useMemo(
-    (): SpotlightItem[] =>
-      buildSourceItems({
-        sourceOptions,
-        selectedModelId,
-        selectedGroupModelIds,
-        handleSourceSelect,
-        accounts,
-        persistDefaultVariantForAccount,
-      }),
-    [
+  // Market's own loading / error row, shown in whichever column lists sources.
+  // Suppressed while the scope excludes Market: the user asked not to see it.
+  const marketStatusItems = useMemo((): SpotlightItem[] => {
+    if (!scopeIncludesMarket(sourceScope)) return [];
+    if (marketProfilesLoading) {
+      return [
+        {
+          id: "market-profiles:loading",
+          label: tCommon("integrations:marketConnection.loadingPurchases"),
+          icon: "",
+          type: "action",
+          action: () => {},
+          data: { testId: "market-profiles-loading" },
+        },
+      ];
+    }
+    if (marketProfilesError) {
+      return [
+        {
+          id: "market-profiles:error",
+          label: tCommon("integrations:marketConnection.purchasesFailed"),
+          icon: "",
+          type: "action",
+          action: () => void refreshMarketProfiles(),
+          data: { testId: "market-profiles-error" },
+        },
+      ];
+    }
+    return [];
+  }, [
+    marketProfilesError,
+    marketProfilesLoading,
+    refreshMarketProfiles,
+    sourceScope,
+    tCommon,
+  ]);
+
+  const sourceItems = useMemo((): SpotlightItem[] => {
+    const items = buildSourceItems({
       sourceOptions,
       selectedModelId,
       selectedGroupModelIds,
       handleSourceSelect,
       accounts,
       persistDefaultVariantForAccount,
-    ]
-  );
+    });
+    items.push(...marketStatusItems);
+    return items;
+  }, [
+    sourceOptions,
+    selectedModelId,
+    selectedGroupModelIds,
+    handleSourceSelect,
+    accounts,
+    persistDefaultVariantForAccount,
+    marketStatusItems,
+  ]);
 
   // ── Key-first mode ────────────────────────────────────────────────────
   // Left column: keys. Right column: the focused key's model families.
-  const keyItems = useMemo(
-    (): SpotlightItem[] =>
-      buildKeyItems({
-        accounts,
+  const keyItems = useMemo((): SpotlightItem[] => {
+    const items: SpotlightItem[] = [
+      ...buildKeyItems({
+        accounts: listingAccounts,
         isCliAgent,
         onSelectKey: handleKeySelect,
         onCommit: handleKeyModelSelect,
       }),
-    [accounts, isCliAgent, handleKeySelect, handleKeyModelSelect]
-  );
+      ...buildMarketProfileItems({
+        sources: listingMarketSources,
+        onSelect: handleKeySelect,
+        marketLabel: tCommon("integrations:marketConnection.title"),
+      }),
+    ];
+    items.push(...marketStatusItems);
+    return items;
+  }, [
+    listingAccounts,
+    isCliAgent,
+    handleKeySelect,
+    handleKeyModelSelect,
+    listingMarketSources,
+    marketStatusItems,
+    tCommon,
+  ]);
 
+  // Resolved against the scoped lists: Step 2 must never expand a row the
+  // active scope removed from Step 1.
   const selectedKeyAccount = useMemo(
     () =>
       selectedKeyAccountId
-        ? accounts.find((account) => account.id === selectedKeyAccountId)
+        ? listingAccounts.find((account) => account.id === selectedKeyAccountId)
         : undefined,
-    [accounts, selectedKeyAccountId]
+    [listingAccounts, selectedKeyAccountId]
+  );
+
+  const selectedMarketSource = useMemo(
+    () =>
+      selectedKeyAccountId
+        ? listingMarketSources.find(
+            (source) => source.id === selectedKeyAccountId
+          )
+        : undefined,
+    [listingMarketSources, selectedKeyAccountId]
   );
 
   const keyModelItems = useMemo(
     (): SpotlightItem[] =>
-      selectedKeyAccount
-        ? buildKeyModelItems({
-            account: selectedKeyAccount,
-            onCommit: handleKeyModelSelect,
-            persistDefaultVariantForAccount,
+      selectedMarketSource
+        ? buildMarketProfileModelItems({
+            source: selectedMarketSource,
+            onCommit: handleMarketModelSelect,
           })
-        : [],
-    [selectedKeyAccount, handleKeyModelSelect, persistDefaultVariantForAccount]
+        : selectedKeyAccount
+          ? buildKeyModelItems({
+              account: selectedKeyAccount,
+              onCommit: handleKeyModelSelect,
+              persistDefaultVariantForAccount,
+            })
+          : [],
+    [
+      selectedKeyAccount,
+      selectedMarketSource,
+      handleKeyModelSelect,
+      handleMarketModelSelect,
+      persistDefaultVariantForAccount,
+    ]
+  );
+
+  const pinnedHeader = useMemo(
+    () =>
+      buildSectionHeader(
+        MODEL_SECTION.PINNED,
+        tCommon("selectors.repo.sections.pinned")
+      ),
+    [tCommon]
   );
 
   const recentHeader = useMemo(
@@ -398,8 +602,10 @@ export function useUnifiedModelPaletteItems({
     rawItems,
     sideMenuRawItems,
     sideMenuModelItems,
+    pinnedItems,
     recentItems,
     allModelItems,
+    pinnedHeader,
     recentHeader,
     allHeader,
     sourceItems,

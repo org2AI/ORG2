@@ -533,6 +533,8 @@ fn write_config_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
 }
 
 fn ensure_safe_config_parent(parent: &Path) -> Result<(), String> {
+    // Only the Unix mode-bit branch below distinguishes new from existing.
+    #[cfg(unix)]
     let existed = parent.exists();
     std::fs::create_dir_all(parent).map_err(|err| {
         format!(

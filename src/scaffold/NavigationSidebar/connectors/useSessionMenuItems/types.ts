@@ -1,3 +1,5 @@
+import type { MouseEvent } from "react";
+
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import type { Session, SessionListCategory } from "@src/store/session";
 
@@ -19,7 +21,7 @@ export interface WorkspaceGroupActions {
   /** Start a new session sourced at `workspaceKey` (a repo path). */
   onCreateSession: (workspaceKey: string) => void;
   /** Open the header's `…` menu (pin / hide) for `workspaceKey`. */
-  onOpenMenu: (workspaceKey: string) => void;
+  onOpenMenu: (workspaceKey: string, event: MouseEvent) => void;
   /** `+` tooltip/aria label. */
   createSessionLabel: string;
   /** `…` tooltip/aria label. */
@@ -27,6 +29,9 @@ export interface WorkspaceGroupActions {
 }
 
 export interface UseSessionMenuItemsParams {
+  /** View-only PR/child-row enrichment stops when all sidebar views close. */
+  enrichVisibleRows?: boolean;
+  customSections?: import("../sections/useSidebarSections").SidebarSectionsController;
   sortedSessions: Session[];
   visitedSessions: ReadonlySet<string>;
   repoPathToName: Map<string, string>;

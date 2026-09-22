@@ -54,8 +54,9 @@
 //! The mutex is **in-process only**. A second `orgii` instance running
 //! against the same `~/.orgii/sessions.db` would not be serialized by it
 //! and would fall back to `busy_timeout` (raised to 15s for that case).
-//! In practice ORGII is a single-instance Tauri app, so cross-process
-//! contention is limited to manual `sqlite3` inspection.
+//! The dedicated dev identity intentionally shares this database with the
+//! bundled app. SQLite serializes their transactions; this process-local
+//! mutex does not coordinate live session ownership between the two apps.
 
 use std::cell::Cell;
 use std::time::Duration;

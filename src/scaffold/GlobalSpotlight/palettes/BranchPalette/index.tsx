@@ -13,6 +13,7 @@ import { useAtom } from "jotai";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import WorktreeSourceModal from "@src/features/SessionCreator/components/WorktreeSourceModal";
 import { useFilteredItems } from "@src/hooks/search";
 import {
@@ -120,22 +121,21 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
   // trash button on the row instead of a "Remove Worktree" text label.
   const renderWorktreeTrashAction = React.useCallback(
     (worktreePath: string, isRemoving: boolean): React.ReactNode => (
-      <button
-        type="button"
+      <Button
+        variant="tertiary"
+        tone="danger"
+        size="mini"
+        iconOnly
+        icon={<HugeiconsIcon icon={ICONS.removeRepo} size={14} />}
         disabled={isRemoving}
         onClick={(event) => {
           event.stopPropagation();
           void handleRemoveWorktree(worktreePath);
         }}
-        className="flex items-center justify-center rounded-md p-1 text-danger-6 transition-colors hover:bg-danger-6/10 disabled:cursor-not-allowed disabled:opacity-50"
-        title={t("selectors.branch.actions.removeWorktree", "Remove Worktree")}
-        aria-label={t(
-          "selectors.branch.actions.removeWorktree",
-          "Remove Worktree"
-        )}
-      >
-        <HugeiconsIcon icon={ICONS.removeRepo} size={14} />
-      </button>
+        className="disabled:cursor-not-allowed disabled:opacity-50"
+        title={t("selectors.branch.actions.removeWorktree")}
+        aria-label={t("selectors.branch.actions.removeWorktree")}
+      />
     ),
     [handleRemoveWorktree, t]
   );
@@ -236,7 +236,7 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
       list.push(
         header(
           "worktree:header-main",
-          t("selectors.branch.labels.mainWorktreeSection", "Main worktree")
+          t("selectors.branch.labels.mainWorktreeSection")
         ),
         ...mainItems
       );
@@ -245,7 +245,7 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
       list.push(
         header(
           "worktree:header-linked",
-          t("selectors.branch.labels.linkedWorktrees", "Linked worktrees")
+          t("selectors.branch.labels.linkedWorktrees")
         ),
         ...linkedItems
       );
@@ -255,7 +255,7 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
   const createAction = React.useMemo<SpotlightItem>(
     () => ({
       id: "worktree:new",
-      label: t("selectors.branch.actions.newWorktree", "New Worktree..."),
+      label: t("selectors.branch.actions.newWorktree"),
       icon: FolderAddIcon,
       type: "action",
       data: { showDisclosureChevron: true },
@@ -268,7 +268,7 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
       return [
         {
           id: "worktree:remove-done",
-          label: t("actions.done", "Done"),
+          label: t("actions.done"),
           icon: Tick01Icon,
           type: "action",
           action: () => setMode("switch"),
@@ -281,7 +281,7 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
     if (onRemoveWorktree) {
       actions.push({
         id: "worktree:remove",
-        label: t("selectors.branch.actions.removeWorktree", "Remove Worktree"),
+        label: t("selectors.branch.actions.removeWorktree"),
         icon: FolderMinusIcon,
         type: "action",
         data: { showDisclosureChevron: true },
@@ -290,7 +290,7 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
     }
     actions.push({
       id: "worktree:refresh",
-      label: t("actions.refresh", "Refresh"),
+      label: t("actions.refresh"),
       icon: RefreshIcon,
       type: "action",
       action: triggerRefresh,
@@ -361,27 +361,21 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
     <PaletteBody
       kernel={kernel}
       items={sectionedItems}
-      placeholder={t(
-        "selectors.spotlight.placeholders.worktree",
-        "Search worktree..."
-      )}
+      placeholder={t("selectors.spotlight.placeholders.worktree")}
       path={[
         {
           type: "action",
           id: mode === "remove" ? "remove-worktree" : "switch-worktree",
           label:
             mode === "remove"
-              ? t("selectors.branch.actions.removeWorktree", "Remove Worktree")
-              : t("selectors.branch.path.switchWorktree", "Switch worktree"),
+              ? t("selectors.branch.actions.removeWorktree")
+              : t("selectors.branch.path.switchWorktree"),
           icon: mode === "remove" ? FolderMinusIcon : FolderClosedIcon,
           color: "",
           data:
             mode === "switch"
               ? {
-                  template: t(
-                    "selectors.branch.path.switchWorktreeTemplate",
-                    "Switch to {worktree}"
-                  ),
+                  template: t("selectors.branch.path.switchWorktreeTemplate"),
                   requiredParams: ["worktree"],
                 }
               : undefined,
@@ -397,7 +391,7 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
   const showPathToggle = (
     <ShellFooterAction placement="inline">
       <SpotlightFooterToggle
-        label={t("selectors.spotlightFooter.showPath", "Show path")}
+        label={t("selectors.spotlightFooter.showPath")}
         checked={showPath}
         onCheckedChange={setShowPath}
       />
@@ -448,8 +442,4 @@ export const WorktreePalette: React.FC<WorktreePaletteProps> = ({
 
 export { BranchPalette } from "./BranchPalette";
 
-export type {
-  BranchPaletteMode,
-  WorktreePaletteMode,
-  WorktreePaletteProps,
-} from "./types";
+export type { BranchPaletteMode, WorktreePaletteProps } from "./types";

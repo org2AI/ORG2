@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "整體佈局教學",
-      "description": "了解聊天面板、執行階段、工作站模式切換器與 Dock。",
+      "description": "了解聊天面板、執行階段、工作站模式切換器與 Dock",
       "duration": "1 分鐘",
       "steps": {
         "chat-panel": {
           "title": "聊天面板",
-          "body": "在這裡與 Agent 對話、查看活動，並發送後續指示。"
+          "body": "在這裡與 Agent 對話、查看活動，並發送後續指示"
         },
         "runtime": {
           "title": "執行階段",
-          "body": "在這裡查看個人用量與執行狀態；切換到工作空間後，還可以查看成員同步狀態，並進入成員詳情查看 Codex、Claude 和 Cursor 用量。"
+          "body": "在這裡查看個人用量與執行狀態；切換到工作空間後，還可以查看成員同步狀態，並進入成員詳情查看 Codex、Claude 和 Cursor 用量"
         },
         "station-mode-pill": {
           "title": "切換工作站模式",
-          "body": "使用此按鈕切換工作站模式。桌面代表“我的工作站”，也就是你的 Workspace；無限代表“Agent 工作站”，用於查看 Agent 活動。"
+          "body": "使用此按鈕切換工作站模式。桌面代表“我的工作站”，也就是你的 Workspace；無限代表“Agent 工作站”，用於查看 Agent 活動"
         },
         "dock": {
           "title": "Agent 工作站 Dock",
-          "body": "Dock 用於切換工作站內的應用。教學期間會暫時關閉自動隱藏，讓這些控制項保持可見。"
+          "body": "Dock 用於切換工作站內的應用。教學期間會暫時關閉自動隱藏，讓這些控制項保持可見"
         }
       }
     },
     "codeEditor": {
       "title": "程式碼編輯器教學",
-      "description": "了解分頁、編輯器工作區、原始碼管理與 Git 歷史。",
+      "description": "了解分頁、編輯器工作區、原始碼管理與 Git 歷史",
       "duration": "2 分鐘",
       "steps": {
         "tabs": {
           "title": "程式碼編輯器標籤頁",
-          "body": "標籤頁集中承載你在倉庫工作時開啟的檔案、Diff、終端機、原始碼管理檢視和看板。"
+          "body": "標籤頁集中承載你在倉庫工作時開啟的檔案、Diff、終端機、原始碼管理檢視和看板"
         },
         "editor-surface": {
           "title": "編輯器 Workspace",
-          "body": "這是程式碼編輯器的主要工作區。你可以在這裡開啟檔案、檢查 Diff、執行終端並審核產生的變更。"
+          "body": "這是程式碼編輯器的主要工作區。你可以在這裡開啟檔案、檢查 Diff、執行終端並審核產生的變更"
         },
         "create-tabs": {
           "title": "建立新標籤頁",
-          "body": "使用「全部標籤頁」中的加號選單建立終端機、瀏覽器標籤頁、檔案、看板和倉庫工具。"
+          "body": "使用「全部標籤頁」中的加號選單建立終端機、瀏覽器標籤頁、檔案、看板和倉庫工具"
         },
         "source-control": {
           "title": "Git 變更",
-          "body": "開啟原始碼管理以查看變更檔案、暫存或取消暫存、提交，以及執行拉取、推送、取得和遠端同步。"
+          "body": "開啟原始碼管理以查看變更檔案、暫存或取消暫存、提交，以及執行拉取、推送、取得和遠端同步"
         },
         "git-history": {
           "title": "Git 歷史",
-          "body": "Git 歷史會把原始碼管理切換到提交歷史模式，供你檢查過去的提交及相關變更。"
+          "body": "Git 歷史會把原始碼管理切換到提交歷史模式，供你檢查過去的提交及相關變更"
         }
       }
     }
   },
   "discovery": {
-    "title": "新手入門與新功能",
-    "getStarted": "開始使用",
-    "newFeatures": "新功能",
-    "branchesTitle": "儲存庫分支",
-    "branchesDescription": "直接在 Spotlight 中切換儲存庫分支。"
+    "getStarted": "開始使用"
   }
 }

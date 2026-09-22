@@ -1104,3 +1104,50 @@ fn daily_rollup_serializes_camel_case() {
     assert_eq!(json["recentUsage24h"]["endMs"], 1_784_419_200_000_i64);
     assert_eq!(json["recentUsage24h"]["trends"][0]["inputTokens"], 5);
 }
+
+#[test]
+fn auxiliary_rounds_preserve_parent_purpose_and_single_count_through_pagination() {
+    let conn = seeded_conn();
+    let baseline =
+        usage_rounds(&conn, &UsageFilter::default(), SessionSort::Recent, 0, 100).unwrap();
+    let parent = baseline
+        .iter()
+        .find(|r| r.session_id == "cli-claude")
+        .unwrap();
+    let parent_id = parent.session_id.clone();
+    conn.execute_batch(
+        "CREATE TABLE session_auxiliary_usage (
+        response_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, purpose TEXT NOT NULL,
+        token_usage_id INTEGER NOT NULL UNIQUE
+    );",
+    )
+    .unwrap();
+    insert_turn(
+        &conn,
+        &parent_id,
+        "claude-sonnet-4-5",
+        (2, 242, 7067, 518),
+        "2026-07-18T02:30:00Z",
+    );
+    let id = conn.last_insert_rowid();
+    conn.execute("INSERT INTO session_auxiliary_usage VALUES ('fixture-response', ?1, 'workspace_memory', ?2)", params![parent_id,id]).unwrap();
+    recompute_session_usage(&conn, &parent_id).unwrap();
+    let rows = usage_rounds(&conn, &UsageFilter::default(), SessionSort::Recent, 0, 100).unwrap();
+    assert_eq!(rows.len(), baseline.len() + 1);
+    let aux: Vec<_> = rows.iter().filter(|r| r.usage_purpose.is_some()).collect();
+    assert_eq!(aux.len(), 1);
+    assert_eq!(aux[0].session_id, parent_id);
+    assert_eq!(aux[0].usage_purpose.as_deref(), Some("workspace_memory"));
+    assert_eq!(
+        (
+            aux[0].input_tokens,
+            aux[0].output_tokens,
+            aux[0].cache_read_tokens,
+            aux[0].cache_write_tokens
+        ),
+        (2, 242, 7067, 518)
+    );
+    assert_eq!(aux[0].real_total_tokens, 7829);
+    let replay = usage_rounds(&conn, &UsageFilter::default(), SessionSort::Recent, 0, 100).unwrap();
+    assert_eq!(rows, replay, "refresh keeps receipt identity and totals");
+}

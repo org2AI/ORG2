@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { PullRequestCiStatus } from "@src/api/tauri/github";
 import PrCiStatusIndicator from "@src/components/PrCiStatusIndicator";
 
-import "./BranchPullRequestIcon.scss";
+import "./BranchPullRequestIcon.css";
 
 const LABEL_KEYS: Record<PullRequestCiStatus, string> = {
   success: "git.pr.checks.passedShort",

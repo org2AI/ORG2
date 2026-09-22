@@ -21,7 +21,7 @@ import { atomWithStorage } from "jotai/utils";
 import { z } from "zod/v4";
 
 import { ALL_AGENT_EXEC_MODES } from "@src/config/sessionCreatorConfig";
-import type { AgentExecMode } from "@src/features/SessionCreator/config";
+import type { AgentExecMode } from "@src/contracts/session";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 
 const STORAGE_KEY = "orgii:agentExecMode";

@@ -1,0 +1,18 @@
+[package]
+name = "tauri-plugin-speech"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85.0"
+links = "tauri-plugin-speech"
+
+[lib]
+name = "tauri_plugin_speech"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "=2.11.1", features = [] }
+thiserror = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

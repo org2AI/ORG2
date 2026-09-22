@@ -2,7 +2,10 @@ import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IMPORTED_HISTORY_SOURCE_DESCRIPTORS } from "@src/api/tauri/externalHistory";
-import { dataSourceConfigAtom } from "@src/store/session/dataSourceConfigAtom";
+import {
+  dataSourceConfigAtom,
+  dataSourceScanFailureAtom,
+} from "@src/store/session/dataSourceConfigAtom";
 
 import { rescanSidebarSessions } from "./sidebarSessionRefresh";
 
@@ -75,6 +78,30 @@ describe("rescanSidebarSessions", () => {
 
     expect(mocks.loadSessionRoster).toHaveBeenCalledWith({
       forceRefresh: true,
+    });
+  });
+
+  it("still refreshes and stamps the sources that scanned when one source fails", async () => {
+    mocks.externalHistoryRescanSources.mockResolvedValue({
+      changedSources: ["codex_app"],
+      sourceSignatures: { codex_app: "1:2026-07-24T05:43:08Z:1" },
+      failedSources: { warp: "unable to open database file" },
+    });
+
+    await rescanSidebarSessions();
+
+    expect(mocks.loadSessionRoster).toHaveBeenCalledWith({
+      forceRefresh: true,
+    });
+    const config = mocks.store!.get(dataSourceConfigAtom);
+    expect(config.codex_app.lastScannedAt).toEqual(expect.any(Number));
+    expect(config.warp).toBeUndefined();
+    expect(mocks.store!.get(dataSourceScanFailureAtom)).toEqual({
+      warp: {
+        failures: 1,
+        lastAttemptAt: expect.any(Number),
+        error: "unable to open database file",
+      },
     });
   });
 

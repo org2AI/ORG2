@@ -202,7 +202,7 @@ function workspaceHeaderActions(
       icon: MoreHorizontalIcon,
       label: actions.moreActionsLabel,
       dataTestId: `sidebar-workspace-more-${key}`,
-      onClick: () => actions.onOpenMenu(key),
+      onClick: (event) => actions.onOpenMenu(key, event),
     },
   ];
   if (key !== NO_WORKSPACE_KEY) {

@@ -2,12 +2,12 @@
  * CollapsibleSection Component
  *
  * A simple collapsible section for the DesignPanel.
- * Follows the same styling as PanelSectionHeader.
  */
 import React, { memo, useEffect } from "react";
 
+import Button from "@src/components/Button";
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import { useCollapsible } from "@src/hooks/ui/useCollapsible";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
 // ============================================
 // Types
@@ -18,12 +18,8 @@ export interface CollapsibleSectionProps {
   title: string;
   /** Optional right-side content (e.g., value badge) */
   rightContent?: React.ReactNode;
-  /** Header action buttons */
-  headerActions?: React.ReactNode;
   /** Section content */
   children: React.ReactNode;
-  /** Whether section starts expanded */
-  defaultExpanded?: boolean;
   /** Force all sections to collapse (increments to trigger) */
   collapseAllKey?: number;
   /** Force all sections to expand (increments to trigger) */
@@ -66,22 +62,14 @@ SubSection.displayName = "SubSection";
 // ============================================
 
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
-  ({
-    title,
-    rightContent,
-    headerActions,
-    children,
-    defaultExpanded = true,
-    collapseAllKey,
-    expandAllKey,
-  }) => {
+  ({ title, rightContent, children, collapseAllKey, expandAllKey }) => {
     const {
       isOpen: isExpanded,
       toggle: handleToggle,
       open,
       close,
     } = useCollapsible({
-      defaultOpen: defaultExpanded,
+      defaultOpen: true,
     });
 
     useEffect(() => {
@@ -96,35 +84,22 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = memo(
       <div className="mb-2 last:mb-0">
         {/* Header */}
         <div className="flex items-center gap-1.5 py-1.5">
-          <button
+          <Button
+            layout="custom"
             onClick={handleToggle}
             className="flex flex-1 items-center gap-1.5 text-left"
           >
-            {isExpanded ? (
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                data-icon="chevron-down"
-                size={14}
-                className="shrink-0 text-text-3"
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                data-icon="chevron-right"
-                size={14}
-                className="shrink-0 text-text-3"
-              />
-            )}
+            <DisclosureChevron
+              expanded={isExpanded}
+              className="shrink-0 text-text-3"
+            />
             <span className="flex-1 text-[12px] font-medium text-text-2 uppercase">
               {title}
             </span>
             {rightContent && (
               <span className="text-[11px] text-text-3">{rightContent}</span>
             )}
-          </button>
-          {headerActions && (
-            <div className="flex items-center">{headerActions}</div>
-          )}
+          </Button>
         </div>
 
         {/* Content */}

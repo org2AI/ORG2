@@ -8,9 +8,9 @@ import type React from "react";
 import type { CloudSessionFilter } from "@src/features/Org2Cloud/cloudSessionFilter";
 import type { Org2CloudPresenceEntry } from "@src/features/Org2Cloud/org2CloudPresenceAtom";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
+import type { SidebarMenuItem } from "@src/scaffold/NavigationSidebar/menus/types";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session";
-import type { NativeMenuItemOptions } from "@src/util/platform/tauri/nativeMenuPopup";
 
 import type { SidebarTabDisposition } from "../sidebarTabNavigation";
 import type { SessionGroupVisibleCount } from "../types";
@@ -66,7 +66,7 @@ export interface UseCloudSessionsSectionResult {
   /** Canonical Team Conversation menu shared by secondary-click and ellipsis. */
   buildCloudRemoteItemMenuItems: (
     item: NavigationMenuItem
-  ) => NativeMenuItemOptions[];
+  ) => SidebarMenuItem[];
   /** Member-filter dropdown portal — render once next to the sidebar. */
   cloudMemberFilterDropdown: React.ReactNode;
   /**

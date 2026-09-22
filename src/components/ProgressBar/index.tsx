@@ -6,7 +6,7 @@
  */
 import React, { memo } from "react";
 
-import "./ProgressBar.scss";
+import "./ProgressBar.css";
 
 export interface ProgressBarProps {
   /** Progress percentage (0-100) */

@@ -44,17 +44,6 @@ export function recordDiagnosticsRpc(
   addDurationSample(counter, durationMs);
 }
 
-export function recordDiagnosticsHttp(
-  target: string,
-  durationMs: number,
-  ok: boolean
-): void {
-  const counter = getCounter(httpCounters, target);
-  counter.total += 1;
-  if (!ok) counter.failure += 1;
-  addDurationSample(counter, durationMs);
-}
-
 function addDurationSample(counter: RuntimeCounter, durationMs: number): void {
   if (!Number.isFinite(durationMs)) return;
   counter.durationSumMs += durationMs;

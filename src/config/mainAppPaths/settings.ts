@@ -12,10 +12,13 @@ export type SettingsSectionSegment =
   | "editor"
   | "security"
   | "mobile-remote"
+  | "development"
   | "update"
-  | "harness-connections";
+  | "harness-connections"
+  | "import";
 
 export const SETTINGS_SECTIONS: readonly SettingsSectionSegment[] = [
+  ...(process.env.NODE_ENV === "development" ? ["development" as const] : []),
   "general",
   "appearance",
   "editor",
@@ -23,12 +26,22 @@ export const SETTINGS_SECTIONS: readonly SettingsSectionSegment[] = [
   "mobile-remote",
   "update",
   "harness-connections",
+  "import",
 ] as const;
 
 export const SETTINGS_SECTION_TABS = {
-  general: ["general", "notifications", "shortcuts", "storage", "self-hosted"],
+  development: ["controls", "illustrations"],
+  general: [
+    "general",
+    "notifications",
+    "shortcuts",
+    "app-lock",
+    "storage",
+    "self-hosted",
+  ],
   appearance: ["app", "code-editor", "chat-panel"],
   editor: ["editor"],
+  import: ["scanning", "hooks"],
 } as const satisfies Partial<Record<SettingsSectionSegment, readonly string[]>>;
 
 export type SettingsSectionWithTabs = keyof typeof SETTINGS_SECTION_TABS;

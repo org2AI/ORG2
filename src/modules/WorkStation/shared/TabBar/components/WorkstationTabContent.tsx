@@ -26,11 +26,12 @@ import type { WorkStationTab } from "@src/store/workstation/tabs";
 
 import { WorkstationTabIcon } from "./WorkstationTabIcon";
 
-// Only these singleton tools override their stored titles unconditionally.
+// These tools use localized labels, independent of stored titles or query data.
 const LOCALIZED_TOOL_TITLE_KEYS: Partial<
   Record<WorkStationTab["type"], string>
 > = {
   start: "navigation:routes.launchpad",
+  search: "common:tabs.search",
   "search-sessions": "navigation:workstation.plusMenu.searchSessions",
   explorer: "common:labels.files",
   "source-control": "common:actions.review",
@@ -66,13 +67,11 @@ export function WorkstationTabContent({
   tab,
   isActive,
   gitInfo = null,
-  hideLabel = false,
   showLabelRightScrim = false,
 }: {
   tab: WorkStationTab;
   isActive: boolean;
   gitInfo?: GitFileInfo | null;
-  hideLabel?: boolean;
   showLabelRightScrim?: boolean;
 }) {
   const { t } = useTranslation();
@@ -94,7 +93,7 @@ export function WorkstationTabContent({
         <WorkstationTabIcon tab={tab} isActive={isActive} />
       </div>
 
-      {!hideLabel && tab.type === "git-diff" && tab.data.isTimeline ? (
+      {tab.type === "git-diff" && tab.data.isTimeline ? (
         <div
           className={`relative flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-[13px] ${
             isActive ? "text-text-1" : "text-text-2"
@@ -120,7 +119,7 @@ export function WorkstationTabContent({
           />
           <TabLabelRowScrim visible={showLabelRightScrim} />
         </div>
-      ) : !hideLabel ? (
+      ) : (
         <div className="relative flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
           <span
             className={titleTextClass(
@@ -147,7 +146,7 @@ export function WorkstationTabContent({
           )}
           <TabLabelRowScrim visible={showLabelRightScrim} />
         </div>
-      ) : null}
+      )}
     </>
   );
 }

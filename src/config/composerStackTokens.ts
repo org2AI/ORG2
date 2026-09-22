@@ -26,6 +26,14 @@ export const COMPOSER_HORIZONTAL_GUTTER_CLASS = "px-2";
 export const MOBILE_COMPOSER_CONTENT_INSET_PX = 12;
 export const MOBILE_COMPOSER_CONTENT_INSET_X_CLASS = "px-3";
 
+/**
+ * Shared horizontal inset for every block stacked above the chat composer —
+ * cards, status bars, the queue tray (margin) and the pill rows (padding) —
+ * so their edges line up 12px in from the composer's own edges.
+ */
+export const COMPOSER_STACK_INSET_X_CLASS = "mx-3";
+export const COMPOSER_STACK_INSET_PX_CLASS = "px-3";
+
 /** Shell border — stacks above input; no bottom border. Matches composer card border weight. */
 export const CHAT_COMPOSER_STACK_BAR_SHELL_CLASSES =
   "border-x border-t border-solid border-border-2";
@@ -34,8 +42,26 @@ export const CHAT_COMPOSER_STACK_BAR_SHELL_CLASSES =
 export const CHAT_COMPOSER_STACK_BAR_SURFACE_BG_CLASS = "bg-chat-input";
 
 /** Standalone card shell — border + bg + radius. Applied to each full-card section (question, permission, mode-switch). */
-export const COMPOSER_CARD_SHELL_CLASSES =
-  "bg-chat-input rounded-lg border border-solid border-border-2 overflow-hidden";
+export const COMPOSER_CARD_SHELL_CLASSES = `${COMPOSER_STACK_INSET_X_CLASS} bg-chat-input rounded-lg border border-solid border-border-2 overflow-hidden`;
+
+/**
+ * Tray tucked behind the composer shell's top edge (queued messages).
+ * Inset from the shell's sides by {@link COMPOSER_STACK_INSET_X_CLASS}; the negative bottom margin (12px overlap +
+ * the 2px column gap) slides the bottom of the tray under the shell, which
+ * paints above it because the shell is positioned (`relative`) and the tray is
+ * not. Visible inset is 4px on every side: `pt-1` on top, the list's `px-1`
+ * on the sides, and `pb-4` = 12px hidden under the shell + 4px visible.
+ * Top radius matches the shell (`INPUT_AREA.borderRadiusClass`, 12px).
+ */
+export const COMPOSER_TRAY_SHELL_CLASSES = `${COMPOSER_STACK_INSET_X_CLASS} -mb-[14px] overflow-hidden rounded-t-xl border border-b-0 border-solid border-border-2 pt-1 pb-4`;
+
+/**
+ * Corner radius for every container that holds {@link COMPOSER_STACK_ROW_BASE}
+ * rows (process card, turn metadata footer, queue tray). Rows are 8px and sit
+ * 4px in from the container edge, so the container is 12px (8 + 4) to keep
+ * the corners concentric.
+ */
+export const COMPOSER_STACK_CONTAINER_RADIUS_CLASS = "rounded-xl";
 
 /** Inner horizontal padding for stack list bodies and headers. */
 export const CHAT_COMPOSER_STACK_BAR_INNER_PADDING_X_CLASS = "px-1";
@@ -55,7 +81,7 @@ export const CHAT_EXPANDABLE_STACK_LIST_BODY_CLASSES = `space-y-0.5 ${CHAT_COMPO
  * Consumers append hover, drag cursors, etc.
  */
 export const COMPOSER_STACK_ROW_BASE =
-  "group flex h-8 items-center gap-1.5 rounded px-1.5 transition-colors";
+  "group flex h-8 items-center gap-1.5 rounded-lg px-1.5 transition-colors";
 
 /** Default hover for non-active stack rows on composer stack surfaces. */
 export const COMPOSER_STACK_ROW_HOVER = "hover:bg-fill-1";

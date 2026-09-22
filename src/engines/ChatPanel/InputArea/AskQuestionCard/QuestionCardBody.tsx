@@ -10,6 +10,7 @@
  */
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import Textarea from "@src/components/Textarea";
 import { HugeiconsIcon, PenLineIcon } from "@src/icons";
 import { classNames } from "@src/util/ui/classNames";
@@ -99,9 +100,9 @@ export function QuestionCardBody({
                     const letter = OPTION_LABELS[optIdx] || String(optIdx + 1);
 
                     return (
-                      <button
+                      <Button
+                        layout="custom"
                         key={optIdx}
-                        type="button"
                         onClick={() =>
                           onOptionClick(qIdx, optIdx, question.multiSelect)
                         }
@@ -132,7 +133,7 @@ export function QuestionCardBody({
                             ? `${option.label} — ${option.description}`
                             : option.label}
                         </span>
-                      </button>
+                      </Button>
                     );
                   })}
 
@@ -143,8 +144,8 @@ export function QuestionCardBody({
                       isCustomSelected && ASK_QUESTION_CARD_OPTION_SELECTED
                     )}
                   >
-                    <button
-                      type="button"
+                    <Button
+                      layout="custom"
                       onClick={() => {
                         onOptionClick(
                           qIdx,
@@ -178,7 +179,7 @@ export function QuestionCardBody({
                       >
                         {t("chat.describeItYourself")}
                       </span>
-                    </button>
+                    </Button>
                     {isCustomSelected && (
                       <Textarea
                         ref={registerCustomInput(qIdx)}

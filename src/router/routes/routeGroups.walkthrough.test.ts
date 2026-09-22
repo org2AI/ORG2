@@ -34,10 +34,11 @@ vi.mock("@src/router/lazy/pages", () => {
     ProviderEarnings: Placeholder,
     PublicProfilePage: Placeholder,
     SessionWindowPage: Placeholder,
+    StationWindowPage: Placeholder,
   };
 });
 
-vi.mock("@src/modules/shared/layouts/blocks", () => ({
+vi.mock("@src/components/layout/blocks", () => ({
   Placeholder: () => null,
 }));
 
@@ -100,6 +101,12 @@ describe("standalone app routes", () => {
     expect(
       appStandaloneRouteGroup.some((route) => route.path === "app/walkthrough")
     ).toBe(false);
+  });
+
+  it("registers the detached session and station window routes", () => {
+    const paths = new Set(appStandaloneRouteGroup.map((route) => route.path));
+    expect(paths.has("app/session/:sessionId")).toBe(true);
+    expect(paths.has("app/station/:stationMode")).toBe(true);
   });
 
   it("registers the mobile remote demo route", () => {

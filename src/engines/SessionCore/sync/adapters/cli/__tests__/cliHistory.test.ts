@@ -134,3 +134,22 @@ describe("managed CLI history read ownership", () => {
     expect(mocks.history).toHaveBeenCalledTimes(2);
   });
 });
+
+it("preserves remote image URLs across CLI replay normalization", async () => {
+  const event = {
+    result: {
+      images: [
+        "https://example.com/shot.png",
+        "data:image/png;base64,AAA",
+        "blob:existing",
+        'orgii-transcript-image:["cliagent-one","codex-user-123","/tmp/shot.png"]',
+      ],
+    },
+  };
+  mocks.history.mockResolvedValueOnce([event]);
+  const [converted] = await loadCliPreviewHistory(
+    "cliagent-remote-images",
+    new AbortController().signal
+  );
+  expect(converted.result?.images).toEqual(event.result.images);
+});

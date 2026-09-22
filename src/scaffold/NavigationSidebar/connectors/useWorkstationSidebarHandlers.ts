@@ -41,14 +41,13 @@ import {
   syncSidebarSessionRoster,
   upsertSession,
 } from "@src/store/session";
-import { chatPanelNavigateAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { resetChatPanelSessionSurfaceAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import {
   clearPendingFileOpensForSession,
   disposeEditorCacheForSessionAtom,
   disposeWorkstationWorkspaceAtom,
 } from "@src/store/workstation/tabs";
 import { clearPendingCodeEditorTabForSession } from "@src/store/workstation/tabs/pendingCodeEditorTab";
-import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 import { invokeTauri } from "@src/util/platform/tauri/init";
 import {
   isCliSession,
@@ -92,7 +91,7 @@ interface UseWorkstationSidebarHandlersParams {
   groupByMode: GroupByMode;
   defaultGroupVisibleCount: SessionGroupVisibleCount;
   setGroupVisibleCounts: Dispatch<SetStateAction<Map<string, number>>>;
-  tCommon: (key: string, defaultValue?: string) => string;
+  tCommon: (key: string) => string;
   onOpenChatPanelTab: (tabId: string) => void;
   onOpenSessionChatPanelTab: (options: {
     sessionId: string;
@@ -138,7 +137,9 @@ export function useWorkstationSidebarHandlers({
   onCloseChatPanelTab,
   onCloudSidebarItemClick,
 }: UseWorkstationSidebarHandlersParams): UseWorkstationSidebarHandlersResult {
-  const navigateChatPanel = useSetAtom(chatPanelNavigateAtom);
+  const resetChatPanelSessionSurface = useSetAtom(
+    resetChatPanelSessionSurfaceAtom
+  );
   const disposeWorkstationTabsWorkspace = useSetAtom(
     disposeWorkstationWorkspaceAtom
   );
@@ -304,10 +305,10 @@ export function useWorkstationSidebarHandlers({
           sessionId,
           outputPath: filePath,
         });
-        Message.success(tCommon("sessions:chat.exportSuccess", "Exported!"));
+        Message.success(tCommon("sessions:chat.exportSuccess"));
       } catch (error) {
         log.error("[WorkstationSidebar] Export markdown failed:", error);
-        Message.error(tCommon("sessions:chat.exportFailed", "Export failed"));
+        Message.error(tCommon("sessions:chat.exportFailed"));
       }
     },
     [sessionMap, sessionRouteLabel, tCommon]
@@ -362,7 +363,7 @@ export function useWorkstationSidebarHandlers({
       if (isChatPanelTuiSessionId(item.id)) {
         const tabId = getChatPanelTabIdFromTuiSessionId(item.id);
         if (tabId) {
-          navigateChatPanel({ kind: CHAT_PANEL_SURFACE_KIND.SESSION });
+          resetChatPanelSessionSurface();
           onOpenChatPanelTab(tabId);
         }
         return;
@@ -380,7 +381,7 @@ export function useWorkstationSidebarHandlers({
         sessionRouteLabel
       );
 
-      navigateChatPanel({ kind: CHAT_PANEL_SURFACE_KIND.SESSION });
+      resetChatPanelSessionSurface();
       promoteActiveSessionCreatorDraft();
       onOpenSessionChatPanelTab({
         sessionId: item.id,
@@ -395,7 +396,7 @@ export function useWorkstationSidebarHandlers({
       sessionMap,
       openSession,
       goToNewSession,
-      navigateChatPanel,
+      resetChatPanelSessionSurface,
       navigateTo,
       onCloudSidebarItemClick,
       onOpenChatPanelTab,

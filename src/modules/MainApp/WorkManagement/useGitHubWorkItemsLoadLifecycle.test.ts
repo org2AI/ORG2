@@ -2,7 +2,7 @@ import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { GitHubRepoPermissions } from "@src/api/tauri/github";
-import { resetGitHubIssueDetailCoordinator } from "@src/modules/shared/githubIssueDetailCoordinator";
+import { resetGitHubIssueDetailCoordinator } from "@src/features/GitHubWork/githubIssueDetailCoordinator";
 
 import type { GitHubRepoSource } from "./githubWorkItemsTypes";
 import {

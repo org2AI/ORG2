@@ -14,8 +14,8 @@ import { remove } from "@tauri-apps/plugin-fs";
 import { type Dispatch, type SetStateAction, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useActionSystemOptional } from "@src/ActionSystem";
 import { createLogger } from "@src/hooks/logger";
+import { useActionSystemOptional } from "@src/scaffold/ActionSystem";
 import type { GitFile } from "@src/types/git/types";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
 

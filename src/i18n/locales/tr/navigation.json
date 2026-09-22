@@ -46,7 +46,8 @@
     "colleagues": "Ekip arkadaşları",
     "terminals": "Terminaller",
     "openSourceRepo": "Açık Kaynak Depo",
-    "teamInbox": "Team Inbox"
+    "teamInbox": "Team Inbox",
+    "closeSettings": "Ayarları kapat"
   },
   "routes": {
     "session": "Sohbet",
@@ -74,12 +75,7 @@
       "manual": "Manuel sıra"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "Yönet",
-      "core": "Çekirdek",
-      "agent": "Agent",
-      "org": "Ekip",
-      "agentOrgs": "Agent ve ekip"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "Gruplama yok",
@@ -101,57 +97,23 @@
       "untitledSession": "Başlıksız Session",
       "enterSessionName": "Session adını girin"
     },
-    "groups": {
-      "economy": "Ekonomi",
-      "myServices": "Hizmetlerim",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Hosted Key",
-      "cloud": "Cloud",
-      "openSource": "Açık Kaynak",
-      "timeline": "Timeline"
-    },
     "actions": {
       "addNew": "Yeni Ekle",
       "collapseAll": "Tümünü daralt",
-      "markAllRead": "Tümünü okundu olarak işaretle",
-      "toggleGroup": "Bölümü aç/kapat"
+      "markAllRead": "Tümünü okundu olarak işaretle"
     },
     "search": {
-      "folders": "Çalışma alanında ara...",
-      "sessions": "Oturum ara...",
-      "projects": "Projelerde ara...",
-      "colleagues": "Ekip arkadaşlarını ara..."
-    },
-    "folderCounts": {
-      "repo": "{{count}} Repo",
-      "multiRepoWorkspace": "{{count}} çoklu repo Workspace",
-      "repo_other": "{{count}} repos",
-      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
-      "repo_plural": "{{count}} repos",
-      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
+      "sessions": "Oturum ara..."
     },
     "bottomBar": {
       "settings": "Ayarlar",
-      "clockLabel": "Şu anki saat",
       "updateAvailable": "Güncelleme v{{version}} indir"
     },
     "settingsMenu": {
       "appearance": "Görünüm",
       "modifyAppearance": "Görünümü değiştir",
-      "language": "Dil",
       "viewRam": "RAM’i görüntüle",
-      "tutorials": "Eğitimler",
       "openSettings": "Ayarları aç"
-    },
-    "empty": {
-      "noItems": "Öğe yok",
-      "noSessions": "Session yok",
-      "noSessionsDesc": "Başlamak için yeni bir Session başlatın",
-      "noResultsFor": "\"{{query}}\" için sonuç bulunamadı",
-      "noSearchResults": "Sonuç bulunamadı"
     },
     "presence": {
       "tooltip": "Durumunu ayarla — Agent'lar klavyenin başında olup olmadığına göre davranır.",
@@ -169,9 +131,18 @@
       "durationTomorrow": "Yarın",
       "unknownRole": "Bilinmeyen rol"
     },
-    "guide": {
-      "startSession": "Oturum başlat",
-      "connectOrganization": "Bir çalışma alanı bağlayın veya oluşturun"
+    "sections": {
+      "section": "Bölüm",
+      "create": "Yeni bölüm",
+      "name": "Bölüm adı",
+      "rename": "Bölümü yeniden adlandır",
+      "delete": "Bölümü sil (oturumları koru)",
+      "remove": "Bölümden çıkar",
+      "up": "Yukarı taşı",
+      "down": "Aşağı taşı",
+      "manage": "Bölümü yönet",
+      "more": "Daha fazla yükle",
+      "retry": "Yeniden dene"
     }
   },
   "launchpad": {
@@ -275,9 +246,9 @@
       "switchToRepo": "Aç",
       "startSession": "Oturum başlat",
       "openDetails": "Detayları göster",
-      "remove": "Remove from ORGII",
-      "removeSuccess": "Linkage to ORGII removed",
-      "removeFailed": "Failed to remove linkage to ORGII"
+      "remove": "ORG2’den kaldır",
+      "removeSuccess": "ORG2 bağlantısı kaldırıldı",
+      "removeFailed": "ORG2 bağlantısı kaldırılamadı"
     },
     "addWorkspace": "Workspace ekle"
   },
@@ -323,11 +294,11 @@
       "forkModelFallback": "Sahibin modeli {{model}} anahtarlarınızla kullanılamıyor — bu çatal bunun yerine {{fallback}} kullanacak.",
       "forkModelUnavailable": "Sahibin modeli {{model}} anahtarlarınızla kullanılamıyor — bu çatalı çalıştırmadan önce bir model seçin.",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -376,7 +347,7 @@
     "signOutConfirmTitle": "Çıkış yapılsın mı?",
     "signOutConfirmBody": "Hesabınıza erişmek için yeniden giriş yapmanız gerekecek",
     "signedInAs": "{{name}} olarak giriş yapıldı",
-    "signedInToast": "Signed in to ORG2 Cloud",
+    "signedInToast": "ORG2 Cloud’a giriş yapıldı",
     "sessionExpired": "ORG2 Cloud oturumunuzun süresi doldu. Devam etmek için yeniden giriş yapın.",
     "customEndpoint": {
       "title": "Özel ORG2 Cloud arka ucu",
@@ -484,7 +455,6 @@
       "showHidden": "Gizlenen oturumları göster ({{count}})",
       "viewerTooltip": "{{name}} bu oturumu görüntülüyor",
       "viewerOverflow": "ve {{count}} kişi daha izliyor",
-      "memberViewing": "görüntülüyor: {{title}}",
       "viewerOverflow_one": "and 1 more viewer",
       "viewerOverflow_other": "and {{count}} more viewers",
       "loadingSession": "Oturum yükleniyor…",
@@ -501,15 +471,15 @@
       "opening": "Takım oturumu açılıyor…"
     },
     "sync": {
-      "quotaExceededToast": "ORG2 Cloud sync paused: this workspace's plan quota is exceeded",
-      "syncDisabledToast": "ORG2 Cloud sync paused: session sync is disabled for this workspace's plan",
+      "quotaExceededToast": "ORG2 Cloud eşitlemesi duraklatıldı: bu çalışma alanının plan kotası aşıldı",
+      "syncDisabledToast": "ORG2 Cloud eşitlemesi duraklatıldı: bu çalışma alanının planında oturum eşitlemesi devre dışı",
       "schemaMismatchToast": "ORG2 Cloud eşitlemesi duraklatıldı: arka uç şema sürümü {{backend}}, uygulama {{expected}} bekliyor"
     },
     "moveToOrg": {
       "menuItem": "Workspace tags…",
       "title": "Etiketler",
       "hint": "Bu oturumu paylaşmak için bir veya daha fazla çalışma alanını işaretleyin — aynı anda hem Personal'da hem de birden çok çalışma alanında olabilir. Normal bir yerel oturum olarak kalır; bu yalnızca oralarda görünür olmasını sağlar. Yalnızca repo kapsamı bu oturumun deposunu kapsayan çalışma alanılar seçilebilir.",
-      "noOrgs": "No cloud workspaces yet — sign in to ORG2 Cloud to create or join one.",
+      "noOrgs": "Henüz bulut çalışma alanı yok — bir alan oluşturmak veya bir alana katılmak için ORG2 Cloud’a giriş yapın.",
       "cloudBadge": "Cloud",
       "added": "Added to {{org}}",
       "removed": "Removed from {{org}}",
@@ -666,7 +636,7 @@
       "selectAll": "Herkes ({{count}})",
       "incomingEndpointMismatch": "Bu paylaşım farklı bir özel buluta ait. İçe aktarmadan önce o bulut uç noktasını yapılandırın.",
       "incomingConnectionError": "Bulut hizmetine bağlanılamadı. Ağınızı kontrol edip yeniden deneyin.",
-      "incomingIncompatibleError": "Bulut uyumsuz bir paylaşım yanıtı döndürdü. ORGII'yi güncelleyin veya dağıtımı kontrol edin.",
+      "incomingIncompatibleError": "Bulut uyumsuz bir paylaşım yanıtı döndürdü. ORG2'yi güncelleyin veya dağıtımı kontrol edin.",
       "incomingServerError": "Bulut hizmeti bu paylaşımı çözemedi. Yeniden deneyin.",
       "incomingAlreadyOnDevice": "Bu oturum zaten bu cihazda. Yinelenen kopya yerine özgün oturumu açın.",
       "incomingOpenExisting": "Oturumu aç",
@@ -678,32 +648,16 @@
       "unresolvedBadge": "{{count}} çözülmemiş yorum",
       "unreadBadge_one": "{{count}} okunmamış mesaj",
       "unreadBadge": "{{count}} okunmamış mesaj",
-      "addError": "Gönderilemedi — taslağınız korundu",
-      "addPlaceholder": "Yorum ekle…",
-      "agentAddressing": "Ajan ilgileniyor…",
       "agentAuthor": "Ajan @{{name}}",
-      "cancel": "İptal",
-      "delete": "Sil",
       "deletedComment": "Yorum silindi",
       "earlierVersion": "Bu oturumun daha eski bir sürümünden",
-      "edit": "Düzenle",
       "editedMarker": "düzenlendi",
       "empty": "Henüz yorum yok",
       "loadError": "Yorumlar yüklenemedi",
-      "mentionMembers": "Bahset",
       "notesButton": "Oturum notları",
       "notesTitle": "Oturum notları",
-      "reply": "Yanıtla",
-      "replyPlaceholder": "Yanıtla…",
       "resolved": "Çözüldü",
       "resolvedToggle": "Çözülenler ({{count}})",
-      "save": "Kaydet",
-      "searchMembers": "Üye ara",
-      "send": "Yorum yap",
-      "task": {
-        "assignFailed": "Yorum gönderildi ancak agent ataması başarısız oldu — diziden yeniden deneyin",
-        "mentionSuggestion": "Bu yorumu bir agent'a ata"
-      },
       "wontFix": "Düzeltilmeyecek"
     },
     "sharingFloor": {
@@ -841,7 +795,6 @@
         "errorChannelMissing": "Bu kanal artık kullanılamıyor",
         "errorMessageMissing": "Bu mesaj artık kullanılamıyor",
         "loadError": "Mesajlar yüklenemedi",
-        "loadingMessages": "Mesajlar yükleniyor…",
         "loadOlder": "Önceki mesajları yükle",
         "unknownAuthor": "Takım arkadaşı"
       }
@@ -866,26 +819,26 @@
     "deleteRoleCancel": "İptal",
     "deleteRoleOk": "Sil",
     "deleteRoleTitle": "Rol silinsin mi?",
-    "followUpSuggestionsDesc": "Tamamlanan bir iş öğesi turundan sonra olası sonraki adımları öner. Bu, ek bir model isteği kullanır.",
+    "followUpSuggestionsDesc": "Tamamlanan bir iş öğesi turundan sonra olası sonraki adımları öner. Bu, ek bir model isteği kullanır",
     "followUpSuggestionsLabel": "Agent takip önerileri",
-    "goalMaxTurnsDesc": "Agent normalde duracağı noktadan sonra son isteğim için en fazla N ek tur daha çalışmaya devam et (0 = kapalı).",
+    "goalMaxTurnsDesc": "Agent normalde duracağı noktadan sonra son isteğim için en fazla N ek tur daha çalışmaya devam et (0 = kapalı)",
     "goalMaxTurnsLabel": "Hedef sürdürme bütçesi",
     "guidanceLabel": "Agent yönlendirmesi",
     "guidancePlaceholder": "Bu rol etkinken agent davranışını nasıl uyarlamalı?",
-    "modeSwitchAutoPlanDesc": "Bekleyen Plan modu önerilerini onay süresi dolduğunda otomatik olarak değiştir.",
+    "modeSwitchAutoPlanDesc": "Bekleyen Plan modu önerilerini onay süresi dolduğunda otomatik olarak değiştir",
     "modeSwitchAutoPlanLabel": "Mod değişimi otomatik plan",
     "newRoleDefaultLabel": "Özel rol",
-    "pageDescription": "Şu anda üstlendiğiniz rolü tanımlayın. Agent, etkin rolün yönlendirmesini okur ve davranışını buna göre uyarlar — örneğin siz odaklanmışken daha az açıklayıcı soru sorar veya siz uzaktayken özetleri toplu halde sunar.",
+    "pageDescription": "Şu anda üstlendiğiniz rolü tanımlayın. Agent, etkin rolün yönlendirmesini okur ve davranışını buna göre uyarlar — örneğin siz odaklanmışken daha az açıklayıcı soru sorar veya siz uzaktayken özetleri toplu halde sunar",
     "pageTitle": "Rollerim",
-    "planAutoApproveDesc": "Bekleyen planları N saniye sonra otomatik onayla (0 = beni bekle).",
+    "planAutoApproveDesc": "Bekleyen planları N saniye sonra otomatik onayla (0 = beni bekle)",
     "planAutoApproveLabel": "Plan otomatik onayı",
-    "questionAutoSkipDesc": "Bekleyen agent sorularını N saniye sonra otomatik atla (0 = beni bekle).",
+    "questionAutoSkipDesc": "Bekleyen agent sorularını N saniye sonra otomatik atla (0 = beni bekle)",
     "questionAutoSkipLabel": "Soru otomatik atlama",
     "roleNameLabel": "Ad",
     "roleNamePlaceholder": "Rol adı",
     "stanceAutonomous": "Özerk — beni asla bekleme",
     "stanceDeferAndBatch": "Ertele ve topla — önce çalış, sonra sor",
-    "stanceDesc": "Bu rol etkinken agent'ın engelleyici kararları nasıl ele alacağı.",
+    "stanceDesc": "Bu rol etkinken agent'ın engelleyici kararları nasıl ele alacağı",
     "stanceInteractive": "Etkileşimli — bana serbestçe sor",
     "stanceLabel": "Davranış duruşu"
   },
@@ -973,5 +926,10 @@
     "sidebar": {
       "signOut": "Sign out {{name}}"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Sonuçlar veya dosya değiştiği ya da yazma başarısız olduğu için değiştirme durduruldu. Bazı dosyalar güncellenmiş olabilir. Yeniden denemeden önce tekrar arayın.",
+    "budgetExceeded": "Arama kaynak sınırına ulaştı. Sonuçlar kısmi; arama kapsamını daraltın.",
+    "timeout": "Arama zaman aşımına uğradı. Kapsamı daraltıp tekrar deneyin."
   }
 }

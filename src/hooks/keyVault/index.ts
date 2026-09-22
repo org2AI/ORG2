@@ -3,13 +3,6 @@
  *
  * Manages stored provider keys (API keys, OAuth tokens).
  */
-export { useKeyVault, default } from "./useKeyVault";
-export { useLocalKeys } from "./useLocalKeys";
+export { useKeyVault } from "./useKeyVault";
 
-export type {
-  ModelType,
-  KeyVaultAccount,
-  KeyInfo,
-  SaveKeyRequest,
-  UseKeyVaultReturn,
-} from "./types";
+export type { ModelType, KeyVaultAccount, UseKeyVaultReturn } from "./types";

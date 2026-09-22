@@ -8,7 +8,7 @@ import {
 } from "@src/api/tauri/agent";
 import Switch from "@src/components/Switch";
 import { HugeiconsIcon, SparklesIcon } from "@src/icons";
-import { startVisibilityAwarePoller } from "@src/shared/scheduling/visibilityAwarePoller";
+import { startVisibilityAwarePoller } from "@src/util/time/scheduling/visibilityAwarePoller";
 
 const EMPTY_STATE: HousekeeperContextCompactionState = {
   enabled: false,

@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.pl.md">Polski</a>
+  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.id.md">Bahasa Indonesia</a> · <a href="README.pl.md">Polski</a>
 </p>
 
 <p align="center">
@@ -34,19 +34,19 @@
 
 ORG-2 就是你的團隊執行編程 Agent 的地方——內建原生 Rust harness，外加 20+ 個 Agent CLI 的啟動器——並自動建構這份記錄。每個工作階段都會成為一條可以像影片一樣重播的軌跡，隊友據此審查工作究竟是如何完成的，而不只是看最終 diff，並在上下文中留下評論。在其他工具裡執行的工作階段也會被接入，並從它們的歷史中回填，因此這份記錄同樣涵蓋從未經過本應用的工作。記錄把人類提出的要求、Agent 的理解、以及它實際做了什麼連結在一起，因此任何上線的程式碼行都能追溯到寫下它的那次工作階段。
 
-它不只是另一個 AI 編程工具；它是一次關於人類/Agent 組織以及組織級對齊的實驗。ORG-II 把 Agent 視為結構化組織中持久、可觀測的同事——可重播的執行、跨工作階段記憶、AI blame，以及 local-first 的 Rust runtime，讓人類、Agent 與團隊能夠圍繞共享上下文與對齊目標協作。
+它不只是另一個 AI 編程工具；它是一次關於人類/Agent 組織以及組織級對齊的實驗。ORG2 把 Agent 視為結構化組織中持久、可觀測的同事——可重播的執行、跨工作階段記憶、AI blame，以及 local-first 的 Rust runtime，讓人類、Agent 與團隊能夠圍繞共享上下文與對齊目標協作。
 
 ## 功能
 
 <table>
-<tr><td width="50%" valign="middle"><h3>內建 Rust Harness</h3><p>使用你現有的 API 金鑰與 Agent 訂閱，執行快速、節省 token 且可自訂的原生 Agent。</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="使用 ORG-II Rust Harness 執行 Agent" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>管理超過 10 種應用程式與 CLI 的會話</h3><p>在同一處載入並管理所有工具的 Agent 會話。無需切換應用程式，即可掃描歷史記錄、檢查 subagent 並控制每個來源。</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="在 ORG-II 中管理應用程式與 CLI 的 Agent 會話來源" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>建立團隊並審查軌跡，而不只是 PR</h3><p>建立團隊，並在裝置與隊友之間共享會話。審查完整的 Agent 軌跡，而不只是最後的 diff，並在上下文中留下評論。</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="在 ORG-II 中管理隊友與軌跡重播權限" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>工具呼叫，現在可像影片一樣播放</h3><p>重播原生 Rust Harness 與超過 15 個 CLI Agent 的工作。訊息、工具呼叫、檔案編輯與指令輸出會同步在單一可審查的時間軸中。</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="在 ORG-II 中重播 Agent 會話" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>AI blame，而不只是 Git blame</h3><p>別只停在誰改了某一行。追溯到促成該變更的 Agent 會話、工具呼叫與決策。</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="在 ORG-II 中將程式碼變更追溯到 Agent 會話與決策" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>保持方向</h3><p>查看時間如何分配在任務與 Agent 會話上。每日活動時間軸讓耗時、程式碼變更與優先順序保持清楚可見。</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="在 ORG-II 中檢視任務與 Agent 會話所花費的時間" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>完整開發工作區</h3><p>無需離開 Agent 工作區，即可使用終端機、管理原始碼控制、追蹤 Git 歷史並審查 pull request。</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="ORG-II 中的原始碼控制、Git 歷史與程式碼審查工具" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>設計模式</h3><p>在原生 WebKit 瀏覽器中檢查即時頁面。選取元素，將其精確頁面上下文直接傳送給 Agent，快速完成修正。</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="使用 ORG-II 設計模式檢查網頁元素" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>內建 Rust Harness</h3><p>使用你現有的 API 金鑰與 Agent 訂閱，執行快速、節省 token 且可自訂的原生 Agent。</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="使用 ORG2 Rust Harness 執行 Agent" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>管理超過 10 種應用程式與 CLI 的會話</h3><p>在同一處載入並管理所有工具的 Agent 會話。無需切換應用程式，即可掃描歷史記錄、檢查 subagent 並控制每個來源。</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="在 ORG2 中管理應用程式與 CLI 的 Agent 會話來源" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>建立團隊並審查軌跡，而不只是 PR</h3><p>建立團隊，並在裝置與隊友之間共享會話。審查完整的 Agent 軌跡，而不只是最後的 diff，並在上下文中留下評論。</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="在 ORG2 中管理隊友與軌跡重播權限" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>工具呼叫，現在可像影片一樣播放</h3><p>重播原生 Rust Harness 與超過 15 個 CLI Agent 的工作。訊息、工具呼叫、檔案編輯與指令輸出會同步在單一可審查的時間軸中。</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="在 ORG2 中重播 Agent 會話" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>AI blame，而不只是 Git blame</h3><p>別只停在誰改了某一行。追溯到促成該變更的 Agent 會話、工具呼叫與決策。</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="在 ORG2 中將程式碼變更追溯到 Agent 會話與決策" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>保持方向</h3><p>查看時間如何分配在任務與 Agent 會話上。每日活動時間軸讓耗時、程式碼變更與優先順序保持清楚可見。</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="在 ORG2 中檢視任務與 Agent 會話所花費的時間" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>完整開發工作區</h3><p>無需離開 Agent 工作區，即可使用終端機、管理原始碼控制、追蹤 Git 歷史並審查 pull request。</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="ORG2 中的原始碼控制、Git 歷史與程式碼審查工具" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>設計模式</h3><p>在原生 WebKit 瀏覽器中檢查即時頁面。選取元素，將其精確頁面上下文直接傳送給 Agent，快速完成修正。</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="使用 ORG2 設計模式檢查網頁元素" width="100%" /></td></tr>
 </table>
 
 ## 更多能力
@@ -61,7 +61,7 @@ ORG-2 就是你的團隊執行編程 Agent 的地方——內建原生 Rust harn
 
 ## 支援的 Agent
 
-使用 ORG-II 內建的 Rust Harness，或從桌面應用程式啟動這些受支援的 coding-agent CLI。
+使用 ORG2 內建的 Rust Harness，或從桌面應用程式啟動這些受支援的 coding-agent CLI。
 
 ### GUI + TUI
 
@@ -73,6 +73,7 @@ ORG-2 就是你的團隊執行編程 Agent 的地方——內建原生 Rust harn
   <a href="https://kiro.dev/docs/cli/installation"><kbd><img src="../../src/assets/modelIcons/kiro.svg" alt="Kiro CLI logo" width="16" valign="middle" /> Kiro CLI</kbd></a> &nbsp;
   <a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-in-the-cli"><kbd><img src="../../src/assets/modelIcons/copilot.svg" alt="GitHub Copilot logo" width="16" valign="middle" /> GitHub Copilot</kbd></a> &nbsp;
   <a href="https://opencode.ai/docs/config/"><kbd><img src="../../src/assets/modelIcons/opencode.svg" alt="OpenCode logo" width="16" valign="middle" /> OpenCode</kbd></a> &nbsp;
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><kbd><img src="../../src/assets/modelIcons/deepseek.svg" alt="DeepSeek Harness logo" width="16" valign="middle" /> DeepSeek Harness</kbd></a> &nbsp;
   <a href="https://antigravity.google/docs/cli/getting-started"><kbd><img src="../../src/assets/modelIcons/antigravity.svg" alt="Antigravity logo" width="16" valign="middle" /> Antigravity</kbd></a>
 </p>
 
@@ -102,9 +103,7 @@ ORG-2 就是你的團隊執行編程 Agent 的地方——內建原生 Rust harn
 
 ## 下載
 
-目前 build 版本：v1.1.24 (2026-07-16)
-
-一鍵下載最新 ORGII 桌面應用程式：
+一鍵下載最新 ORG2 桌面應用程式：
 
 - [macOS Apple Silicon](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-mac-apple-silicon.dmg)
 - [Windows x64 安裝程式](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-windows-x64-setup.exe)
@@ -152,4 +151,4 @@ Computer Use 目前僅支援 macOS。Browser Use 可在受支援平台上使用 
 
 ## 授權
 
-ORGII 使用 GNU Affero General Public License v3.0 或更新版本（`AGPL-3.0-or-later`）授權。完整授權文字請參閱 [`LICENSE`](../../LICENSE)。
+ORG2 使用 GNU Affero General Public License v3.0 或更新版本（`AGPL-3.0-or-later`）授權。完整授權文字請參閱 [`LICENSE`](../../LICENSE)。

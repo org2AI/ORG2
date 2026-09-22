@@ -1,0 +1,266 @@
+@use "../../mobileUiTokens" as mobile;
+@reference "../../../../tailwind.css";
+
+.mobile-profile-trigger {
+  --mobile-profile-trigger-size: 48px;
+  --mobile-profile-trigger-padding: 3px;
+
+  width: var(--mobile-profile-trigger-size);
+  height: var(--mobile-profile-trigger-size);
+  flex-shrink: 0;
+  padding: var(--mobile-profile-trigger-padding);
+  border: 1px solid var(--color-border-2);
+  border-radius: 50%;
+  background: var(--color-bg-2);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-text-1) 8%, transparent);
+  touch-action: manipulation;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-6);
+    outline-offset: 3px;
+  }
+}
+
+.mobile-profile-settings-entry {
+  min-width: 0;
+  > span {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+// Scoped to Profile: shared Modal still owns portal, focus, Escape and scrolling.
+.liquid-modal-wrapper:has(.mobile-profile-sheet) {
+  @include mobile.sheet-surface;
+  align-items: flex-end;
+
+  > .liquid-modal-mask {
+    // Overlay is a Tailwind inline token, not a runtime CSS variable.
+    @apply bg-bg-overlay;
+  }
+  > .liquid-modal-container {
+    width: 100%;
+    padding: 0;
+  }
+
+  // Wrapper scope also beats the shared Modal's dark-theme shadow rule.
+  .liquid-modal-content.mobile-profile-sheet {
+    background: var(--mobile-sheet-surface);
+    border-color: var(--mobile-sheet-border);
+    box-shadow: var(--mobile-sheet-shadow);
+  }
+}
+
+.liquid-modal-content.mobile-profile-sheet {
+  min-width: 0;
+  width: 100%;
+  max-width: var(--mobile-sheet-width);
+  max-height: calc(
+    100dvh - max(var(--mobile-sheet-inset), env(safe-area-inset-top))
+  );
+  // Modal's radius prop is numeric/inline; this scoped override owns sheet geometry.
+  border-radius: var(--mobile-sheet-radius) var(--mobile-sheet-radius) 0 0 !important;
+  border-bottom: 0;
+  padding-top: mobile.$space-3;
+  animation: mobile-profile-enter var(--mobile-sheet-enter-duration) ease-out;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: mobile.$space-2;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(#{mobile.$space-4} * 2);
+    height: mobile.$space-1;
+    border-radius: mobile.$space-1;
+    background: var(--color-border-3);
+  }
+
+  // Retain Modal's accessible title, with balanced touch targets on either side.
+  > :first-child {
+    flex-shrink: 0;
+    min-height: calc(#{mobile.$touch-target} + #{mobile.$space-2});
+    height: auto;
+    padding: mobile.$space-1 mobile.$space-3 mobile.$space-2;
+    border: 0;
+    background: transparent;
+
+    > :first-child {
+      justify-content: center;
+      font-size: var(--mobile-type-heading-size);
+      font-weight: var(--mobile-type-emphasis-weight);
+      > span {
+        font-size: inherit !important;
+        font-weight: inherit;
+      }
+    }
+    > :last-child {
+      order: -1;
+    }
+    &::after {
+      content: "";
+      flex: 0 0 mobile.$touch-target;
+    }
+  }
+}
+
+.mobile-profile-body {
+  padding: mobile.$space-3 mobile.$space-3
+    max(#{mobile.$space-3}, env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
+}
+
+.mobile-profile-identity {
+  display: flex;
+  align-items: center;
+  gap: mobile.$space-3;
+  padding: mobile.$space-2 mobile.$space-1 mobile.$space-3;
+  h2 {
+    margin: 0;
+    font-size: var(--mobile-type-title-size);
+    font-weight: var(--mobile-type-emphasis-weight);
+    line-height: var(--mobile-type-heading-leading);
+    overflow-wrap: anywhere;
+  }
+  p {
+    margin: mobile.$space-1 0 0;
+    font-size: var(--mobile-type-secondary-size);
+    line-height: var(--mobile-type-body-leading);
+    color: var(--color-text-3);
+    overflow-wrap: anywhere;
+  }
+}
+
+.mobile-profile-group {
+  margin-top: var(--mobile-sheet-group-gap);
+  > h3 {
+    margin: 0 var(--mobile-sheet-row-padding) mobile.$space-2;
+    font-size: var(--mobile-type-caption-size);
+    line-height: var(--mobile-type-caption-leading);
+    font-weight: var(--mobile-type-medium-weight);
+    color: var(--color-text-3);
+  }
+}
+.mobile-profile-group-card {
+  border-radius: var(--mobile-sheet-card-radius);
+  background: var(--mobile-sheet-card);
+  // Keep the keyboard focus outline visible; child buttons own their corner shape.
+  > :first-child {
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+  }
+  > :last-child {
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+  }
+}
+
+.mobile-profile-row {
+  display: flex;
+  position: relative;
+  align-items: center;
+  width: 100%;
+  min-height: var(--mobile-sheet-row-height);
+  padding: mobile.$space-2 var(--mobile-sheet-row-padding);
+  border: 0;
+  background: transparent;
+  color: var(--color-text-1);
+  font-size: var(--mobile-type-control-size);
+  line-height: var(--mobile-type-control-leading);
+  font-weight: var(--mobile-type-regular-weight);
+  text-align: left;
+  touch-action: manipulation;
+
+  + .mobile-profile-row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: calc(var(--mobile-sheet-row-padding) + 1.25rem + #{mobile.$space-3});
+    right: var(--mobile-sheet-row-padding);
+    height: 1px;
+    background: var(--mobile-sheet-divider);
+  }
+  &:enabled:hover,
+  &:enabled:active {
+    background: var(--color-fill-2);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-6);
+    outline-offset: mobile.$space-1;
+  }
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  &--danger {
+    color: var(--color-danger-6);
+  }
+}
+.mobile-profile-row-content {
+  display: flex;
+  align-items: center;
+  gap: mobile.$space-3;
+  width: 100%;
+  min-width: 0;
+  > svg {
+    flex-shrink: 0;
+    color: var(--color-text-3);
+  }
+  .mobile-profile-row--danger & > svg {
+    color: inherit;
+  }
+  > span {
+    overflow-wrap: anywhere;
+  }
+}
+.mobile-profile-hint {
+  margin: mobile.$space-2 var(--mobile-sheet-row-padding) 0;
+  font-size: var(--mobile-type-caption-size);
+  line-height: var(--mobile-type-body-leading);
+  color: var(--color-text-3);
+}
+.mobile-profile-brand {
+  margin: var(--mobile-sheet-group-gap) 0 0;
+  text-align: center;
+  font-size: var(--mobile-type-caption-size);
+  line-height: var(--mobile-type-caption-leading);
+  color: var(--color-text-3);
+}
+.mobile-profile-help {
+  padding: mobile.$space-2 0 mobile.$space-4;
+  h2 {
+    margin: mobile.$space-4 0 mobile.$space-3;
+    font-size: var(--mobile-type-heading-size);
+    font-weight: var(--mobile-type-emphasis-weight);
+  }
+  ol {
+    list-style: decimal;
+    padding-left: calc(#{mobile.$space-3} * 2);
+  }
+  li {
+    padding: 0 0 mobile.$space-3 mobile.$space-1;
+  }
+  p,
+  li {
+    font-size: var(--mobile-type-body-size);
+    line-height: var(--mobile-type-reading-leading);
+    color: var(--color-text-2);
+  }
+}
+@keyframes mobile-profile-enter {
+  from {
+    transform: translateY(var(--mobile-sheet-inset));
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .liquid-modal-wrapper:has(.mobile-profile-sheet),
+  .liquid-modal-wrapper:has(.mobile-profile-sheet) .liquid-modal-mask,
+  .liquid-modal-content.mobile-profile-sheet {
+    animation: none;
+  }
+}

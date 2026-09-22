@@ -4,6 +4,8 @@ import type { SettingDefinition } from "@src/config/settingsSchema/types";
 
 export const PRIVACY_SETTINGS_REGISTRY = {
   "privacy.diagnosticsLevel": {
+    // Diagnostics bootstrap configuration; no settings-page control.
+    settingsSearch: false,
     schema: z.enum(["off", "performance-only", "default"]),
     default: "default" as const,
     description:
@@ -16,12 +18,16 @@ export const PRIVACY_SETTINGS_REGISTRY = {
     },
   },
   "privacy.diagnosticsUploadIntervalHours": {
+    // Diagnostics scheduler configuration; no settings-page control.
+    settingsSearch: false,
     schema: z.number().int().min(1).max(24),
     default: 12,
     description: "Diagnostics upload interval in hours",
     category: "privacy",
   },
   "privacy.offlineMode": {
+    // Outbound diagnostics configuration; no settings-page control.
+    settingsSearch: false,
     schema: z.boolean(),
     default: false,
     description:
@@ -29,6 +35,8 @@ export const PRIVACY_SETTINGS_REGISTRY = {
     category: "privacy",
   },
   "privacy.shareRuntimeWithOrg": {
+    // Runtime sharing configuration; no settings-page control.
+    settingsSearch: false,
     schema: z.boolean(),
     default: true,
     description:

@@ -17,6 +17,12 @@ import {
   supportsNativeConversationTarget,
   synchronizeNativeConversation,
 } from "./nativeConversationMaterializer";
+import {
+  beginQueuedRetry,
+  recordEmptyFailedAttempt,
+  retryLineageEvent,
+  retryLineageForMessage,
+} from "./queuedRetryLineage";
 
 const mocks = vi.hoisted(() => ({
   invokeTauri: vi.fn(),
@@ -751,6 +757,63 @@ describe("native conversation materialization", () => {
     expect(mocks.loadEvents).not.toHaveBeenCalled();
   });
 
+  it("leaves a first-turn empty failure fresh after its proved explicit Retry", async () => {
+    const failed = message("failed", "user", "hello");
+    failed.result = { ...failed.result, turnIntentId: "failed" };
+    const retryMessage = {
+      id: "queue-one",
+      turnIntentId: "failed",
+      content: "hello",
+      displayContent: "hello",
+    };
+    const proof = recordEmptyFailedAttempt(
+      retryLineageForMessage([], retryMessage),
+      retryMessage,
+      [failed]
+    );
+    const lineage = beginQueuedRetry(proof, {
+      ...retryMessage,
+      turnIntentId: "explicit-retry",
+    });
+    const marker = retryLineageEvent("source", lineage);
+    await expect(
+      materializeNativeConversation({
+        sessionId: "cli-session-empty",
+        timeline: [failed, marker],
+      })
+    ).resolves.toMatchObject({
+      events: [],
+      receipt: { nativeSessionId: "", itemCount: 0 },
+    });
+    expect(mocks.invokeTauri).not.toHaveBeenCalled();
+    expect(mocks.loadEvents).not.toHaveBeenCalled();
+    expect(failed.displayText).toBe("hello");
+  });
+
+  it("does not allow lineage-only or genuinely unportable history to bypass integrity checks", async () => {
+    const marker = retryLineageEvent("source", {
+      version: 1,
+      queueMessageId: "queue-one",
+      superseded: [],
+    });
+    const unportable = {
+      ...message("bad", "user", ""),
+      source: "system",
+      functionName: "error",
+      actionType: "error",
+      result: {},
+    } as SessionEvent;
+    for (const timeline of [[marker], [unportable], [unportable, marker]]) {
+      await expect(
+        materializeNativeConversation({
+          sessionId: "cli-session-empty",
+          timeline,
+        })
+      ).rejects.toThrow("no portable native role/tool transcript");
+    }
+    expect(mocks.invokeTauri).not.toHaveBeenCalled();
+  });
+
   it("lets Rust verify the authoritative native prefix before synchronizing", async () => {
     const existing = [message("u1", "user", "hello")];
     const timeline = [...existing, message("a1", "assistant", "done")];
@@ -841,5 +904,33 @@ describe("native conversation materialization", () => {
       "discard_native_conversation_materialization",
       { sessionId: "cliagent-target", nativeSessionId: "native-1" }
     );
+  });
+});
+
+describe("structured tool names and arguments", () => {
+  it("keeps tools whose names contain thinking or reasoning", () => {
+    for (const name of [
+      "mcp__sequentialthinking__sequentialthinking",
+      "inspect_reasoning",
+    ]) {
+      const event = {
+        ...tool(),
+        functionName: name,
+        args: { input: { query: "hello" }, options: { limit: 3 } },
+        result: { output: "ok" },
+      };
+      const items = projectNativeConversationItems([event]);
+      expect(items).toHaveLength(2);
+      expect(items[0]).toMatchObject({
+        kind: "tool_call",
+        name,
+        arguments: JSON.stringify(event.args),
+      });
+      expect(items[1]).toMatchObject({
+        kind: "tool_result",
+        name,
+        output: "ok",
+      });
+    }
   });
 });

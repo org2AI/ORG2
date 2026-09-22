@@ -27,20 +27,6 @@ export interface AgentMentionBodyParts {
 }
 
 /**
- * Composer suggestion is deliberately prefix-only and canonical: typing `@`
- * or any leading prefix of `@agent` offers the one supported agent target.
- * Once a space/body exists the suggestion closes; manual full-token input
- * continues through the same submit parser.
- */
-export function shouldShowAgentSuggestion(body: string): boolean {
-  return (
-    body.length > 0 &&
-    body.length <= "@agent".length &&
-    "@agent".startsWith(body)
-  );
-}
-
-/**
  * Splits the submitted sugar into a semantic mention token and its brief.
  * Keeping this beside the detector ensures the rendered pill and task
  * creation always use the exact same grammar.

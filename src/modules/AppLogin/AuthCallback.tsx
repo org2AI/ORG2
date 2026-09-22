@@ -1,7 +1,7 @@
 import { getDefaultStore } from "jotai";
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { exchangeSupabaseCodeForSession } from "@src/api/http/auth/supabase";
 import { ROUTES } from "@src/config/routes";
@@ -20,16 +20,19 @@ import {
   serviceValidatedAtom,
 } from "@src/hooks/auth";
 import { createLogger } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 
 import { LoginLoadingState } from "./index";
 
 const log = createLogger("AuthCallback");
+const AUTH_SUCCESS_REDIRECT_DELAY_MS = 2000;
 
 const AuthCallback: React.FC = () => {
   const { t } = useTranslation("market");
   const location = useLocation();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
   const isProcessingRef = useRef(false);
 
   useEffect(() => {
@@ -52,6 +55,13 @@ const AuthCallback: React.FC = () => {
           { replace: true }
         );
       }, 2000);
+    };
+
+    const redirectFromSuccessfulCallback = (redirectPath: string) => {
+      setIsComplete(true);
+      safeTimeout(() => {
+        navigate(redirectPath, { replace: true });
+      }, AUTH_SUCCESS_REDIRECT_DELAY_MS);
     };
 
     const handleCallback = async () => {
@@ -94,7 +104,7 @@ const AuthCallback: React.FC = () => {
           const storedRedirect = sessionStorage.getItem("login_redirect");
           sessionStorage.removeItem("login_redirect");
           const redirectPath = storedRedirect || ROUTES.workStation.base.path;
-          navigate(redirectPath, { replace: true });
+          redirectFromSuccessfulCallback(redirectPath);
         }
         return;
       }
@@ -119,7 +129,7 @@ const AuthCallback: React.FC = () => {
         const storedRedirect = sessionStorage.getItem("login_redirect");
         sessionStorage.removeItem("login_redirect");
         const redirectPath = storedRedirect || ROUTES.workStation.base.path;
-        navigate(redirectPath, { replace: true });
+        redirectFromSuccessfulCallback(redirectPath);
       } catch (exchangeError) {
         log.error("Token exchange failed:", exchangeError);
         const errorMessage =
@@ -138,7 +148,12 @@ const AuthCallback: React.FC = () => {
     };
   }, [location.search, navigate, t]);
 
-  return <LoginLoadingState error={error} />;
+  return (
+    <LoginLoadingState
+      error={error}
+      stage={isComplete ? "success" : "waiting"}
+    />
+  );
 };
 
 export default AuthCallback;

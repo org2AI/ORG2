@@ -11,7 +11,7 @@ import type {
   SessionEvent,
 } from "@src/engines/SessionCore/core/types";
 import { ID_PREFIX } from "@src/engines/SessionCore/sync/utils/activityIds";
-import { normalizeFunctionName } from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 
 import { stripThinkTags } from "./streamingParsers";
 

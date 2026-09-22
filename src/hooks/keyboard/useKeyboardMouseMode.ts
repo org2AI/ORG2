@@ -154,5 +154,3 @@ export function useKeyboardMouseMode(
     dataKeyboardMode: isKeyboardMode ? "true" : "false",
   };
 }
-
-export default useKeyboardMouseMode;

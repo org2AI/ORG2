@@ -15,6 +15,7 @@ import { RouterProvider } from "react-router-dom";
 
 import { DeferredGitStatusProvider } from "@src/contexts/git";
 import { useDiagnosticsBootstrap } from "@src/diagnostics";
+import { AppLockGate } from "@src/features/AppLock/AppLockGate";
 import { useGlobalFlowTracker } from "@src/hooks/flowAwareness";
 import { useModelAliasRegistry } from "@src/hooks/models";
 import {
@@ -33,18 +34,27 @@ import { hydrateCreatorDefaultModelAtom } from "@src/store/session/creatorDefaul
 import { useDataSourceAutoScan } from "@src/store/session/useDataSourceAutoScan";
 import { useSettingsSync } from "@src/store/settings";
 import { settingsLoadedAtom } from "@src/store/settings/settingsAtom";
+import { installBlurActiveComposerOnBackgroundMouseDown } from "@src/util/dom/blurActiveComposer";
 
 import { AppDeferredServices } from "./AppDeferredServices";
 import { AppGlobalRecovery } from "./AppGlobalRecovery";
 import ErrorBoundary from "./components/ErrorBoundary";
 import GlobalShortcuts from "./components/GlobalShortcuts";
+import { registerAppMarkdownExtensions } from "./registerMarkdownExtensions";
 import { RepoLoader } from "./services/RepoLoader";
 import { useAppDeferredInitialization } from "./useAppDeferredInitialization";
 import { useAppShellEffects } from "./useAppShellEffects";
 import { useFirstPaintSignal } from "./useFirstPaintSignal";
+import { useMarketCloudOwnerRefresh } from "./useMarketCloudOwnerRefresh";
 import { useMobileRelayCloudAuthSync } from "./useMobileRelayCloudAuthSync";
 import { useMobileRemoteDesktopActions } from "./useMobileRemoteDesktopActions";
+import { useMobileSessionReadStateSync } from "./useMobileSessionReadStateSync";
 import { usePostPaintGitProbe } from "./usePostPaintGitProbe";
+
+// Fill the Markdown renderer's extension slots before anything renders: the
+// renderer is a tier-1 primitive and cannot import the tiers that own chat
+// code blocks, canvas cards, cloud references or the image overlay.
+registerAppMarkdownExtensions();
 
 // The E2E bridge (`window.__e2e`) is dev-only and loads as its own chunk: its
 // helpers pull ~40 modules (session sync adapters, cloud client, agent-org
@@ -74,6 +84,7 @@ export const AppBootstrap: FC = () => {
     if (!settingsLoaded) return;
     hydrateLastModel();
   }, [settingsLoaded, hydrateLastModel]);
+  useEffect(installBlurActiveComposerOnBackgroundMouseDown, []);
   useCrossWindowSettingsSync();
   useEditorAppearanceStyles();
   useAppSkin();
@@ -88,12 +99,15 @@ export const AppBootstrap: FC = () => {
   useModelAliasRegistry();
   useDiagnosticsBootstrap();
   useMobileRemoteDesktopActions();
+  useMobileSessionReadStateSync();
   useMobileRelayCloudAuthSync();
+  useMarketCloudOwnerRefresh();
   useDataSourceAutoScan(); // Keep external-history sources fresh on their cadence
   useAgentLiveStatusSync(); // Hook-driven live agent status → sidebar dots
 
   return (
     <DeferredGitStatusProvider>
+      <AppLockGate />
       <GlobalShortcuts />
       <AppGlobalRecovery />
       {E2EBootstrap && (
@@ -102,7 +116,7 @@ export const AppBootstrap: FC = () => {
         </Suspense>
       )}
       <ErrorBoundary>
-        <RouterProvider router={router} future={{ v7_startTransition: true }} />
+        <RouterProvider router={router} />
         <RepoLoader />
         <QuitConfirmationModal />
         <AppDeferredServices ready={deferredComponentsReady} />

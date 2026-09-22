@@ -49,23 +49,3 @@ pub fn normalize_claude_shorthand(model: &str) -> String {
     }
     model.to_string()
 }
-
-pub fn fast_model_hint(parent_model: &str) -> String {
-    let lower = parent_model.to_lowercase();
-    if lower.contains("claude")
-        || lower.contains("anthropic")
-        || lower.contains("sonnet")
-        || lower.contains("haiku")
-        || lower.contains("opus")
-    {
-        "anthropic/claude-haiku-4.5".to_string()
-    } else if lower.contains("gpt") || lower.contains("openai") {
-        "openai/gpt-5.4-mini".to_string()
-    } else if lower.contains("gemini") {
-        "gemini/gemini-3.1-flash".to_string()
-    } else if lower.contains("deepseek") {
-        "deepseek/deepseek-chat".to_string()
-    } else {
-        parent_model.to_string()
-    }
-}

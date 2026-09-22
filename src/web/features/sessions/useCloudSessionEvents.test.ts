@@ -64,7 +64,7 @@ vi.mock("./webCloudSessionCachePolicy", () => ({
     mocks.shouldFetch(...args),
 }));
 
-vi.mock("@src/shared/scheduling/visibilityAwarePoller", () => ({
+vi.mock("@src/util/time/scheduling/visibilityAwarePoller", () => ({
   startVisibilityAwarePoller: (...args: unknown[]) =>
     mocks.startPoller(...args),
 }));

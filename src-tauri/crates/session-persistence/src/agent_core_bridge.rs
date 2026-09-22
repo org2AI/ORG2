@@ -245,6 +245,7 @@ fn mark_pending_turn_intents_stale_adapter(session_id: &str) {
 pub fn register() {
     db_bridge::register(super::get_connection);
     session_bridge::register_record_token_usage(record_token_usage_adapter);
+    session_bridge::register_record_auxiliary_usage(super::auxiliary_usage::record);
     session_bridge::register_record_usage_telemetry_batch(record_usage_telemetry_batch_adapter);
     session_bridge::register_upsert_turn_intent(upsert_turn_intent_adapter);
     session_bridge::register_upsert_turn_intent_with_connection(

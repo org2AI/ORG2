@@ -108,7 +108,7 @@ function makeRef(
 // ---------------------------------------------------------------------------
 
 describe("attachWebviewPositionSync", () => {
-  let updatePosition: ReturnType<typeof vi.fn>;
+  let updatePosition: ReturnType<typeof vi.fn<() => void>>;
   const defaultRect = { left: 10, top: 20, width: 300, height: 400 };
 
   beforeEach(() => {

@@ -1,8 +1,8 @@
 //! LSP Manager
 //!
 //! Manages multiple language server processes keyed by `(root, server_id)`.
-//! Today every caller (agent-core's `query_lsp` / `manage_lsp` tools, the
-//! post-edit hook, the Tauri `lsp_start_server` command) passes a single
+//! Today every caller (agent-core's `query_lsp` / `manage_lsp` tools and the
+//! post-edit hook) passes a single
 //! workspace root per session, so in practice the manager runs at most
 //! one process per `(language, root)` pair. The map is keyed on `ServerKey`
 //! to leave room for multi-root workspaces, but no producer attaches a

@@ -5,9 +5,9 @@
  */
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import {
   type SessionViewState,
@@ -19,9 +19,8 @@ import {
 } from "@src/store/session";
 import {
   chatPanelMaximizedAtom,
-  chatPanelNavigateAtom,
+  resetChatPanelSessionSurfaceAtom,
 } from "@src/store/ui/chatPanel/surfaceAtoms";
-import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 
 // ============================================
 // Types
@@ -64,7 +63,9 @@ export function useSessionView(): UseSessionViewReturn {
   const hasActiveSession = useAtomValue(hasActiveSessionAtom);
 
   const openSessionTab = useSetAtom(openOrReplaceSessionInChatPanelTabAtom);
-  const navigateChatPanel = useSetAtom(chatPanelNavigateAtom);
+  const resetChatPanelSessionSurface = useSetAtom(
+    resetChatPanelSessionSurfaceAtom
+  );
   const setChatPanelMaximized = useSetAtom(chatPanelMaximizedAtom);
   const closeSessionAction = useSetAtom(closeSessionAtom);
   const updateMetadataAction = useSetAtom(updateSessionMetadataAtom);
@@ -83,10 +84,15 @@ export function useSessionView(): UseSessionViewReturn {
 
   const closeSession = useCallback((): void => {
     setChatPanelMaximized(false);
-    navigateChatPanel({ kind: CHAT_PANEL_SURFACE_KIND.SESSION });
+    resetChatPanelSessionSurface();
     closeSessionAction();
     navigate(ROUTES.workStation.base.path);
-  }, [closeSessionAction, navigate, navigateChatPanel, setChatPanelMaximized]);
+  }, [
+    closeSessionAction,
+    navigate,
+    resetChatPanelSessionSurface,
+    setChatPanelMaximized,
+  ]);
 
   const updateMetadata = useCallback(
     (updates: { sessionName?: string; repoPath?: string }): void => {
@@ -116,5 +122,3 @@ export function useSessionView(): UseSessionViewReturn {
     ]
   );
 }
-
-export default useSessionView;

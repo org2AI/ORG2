@@ -9,10 +9,10 @@ import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
 import { repoApi } from "@src/api/tauri/repo";
 import Message from "@src/components/Message";
 import { createLogger } from "@src/hooks/logger";
+import { zodActionRegistry } from "@src/scaffold/ActionSystem/schema/zodRegistry";
 import {
   effectiveWorkspaceDefaultRepoLocationAtom,
   workspaceCustomDefaultRepoPathAtom,
@@ -266,5 +266,3 @@ export function useWorkingDirectoryForm(
     resetForm,
   };
 }
-
-export default useWorkingDirectoryForm;

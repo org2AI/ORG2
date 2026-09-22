@@ -10,7 +10,6 @@ import type { TFunction } from "i18next";
 import { useAtomValue, useStore } from "jotai";
 import { type RefObject, useCallback, useRef, useState } from "react";
 
-import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
 import {
   cliAgentCreateTuiSession,
   deriveExpectedProcess,
@@ -30,6 +29,7 @@ import type {
   SessionLaunchWorkItemContext,
 } from "@src/engines/SessionCore/hooks/session/useSessionCreator/useSessionLaunch/types";
 import { createLogger } from "@src/hooks/logger";
+import { zodActionRegistry } from "@src/scaffold/ActionSystem/schema/zodRegistry";
 import { worktreeLaunchSelectionAtom } from "@src/store/session";
 import { creatorDefaultExecModeAtom } from "@src/store/session/creatorDefaultExecModeAtom";
 import { creatorDefaultProductModeAtom } from "@src/store/session/creatorDefaultProductModeAtom";

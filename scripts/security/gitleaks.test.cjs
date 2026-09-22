@@ -26,8 +26,16 @@ function run(command, args, cwd) {
 
 function repository(t, files) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "org2-gitleaks-"));
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  for (const name of [".gitleaks.toml", ".gitleaksignore"]) {
+  t.after(() =>
+    fs.rmSync(directory, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    })
+  );
+  fs.mkdirSync(path.join(directory, "config"));
+  for (const name of ["config/gitleaks.toml", "config/gitleaksignore"]) {
     fs.copyFileSync(path.join(root, name), path.join(directory, name));
   }
   for (const [name, content] of Object.entries(files)) {
@@ -36,6 +44,10 @@ function repository(t, files) {
     fs.writeFileSync(target, content);
   }
   git(directory, ["init", "--quiet"]);
+  // A commit can leave detached gc/maintenance writing into .git, which races
+  // the cleanup above (ENOTEMPTY on CI).
+  git(directory, ["config", "gc.auto", "0"]);
+  git(directory, ["config", "maintenance.auto", "false"]);
   git(directory, ["config", "user.name", "Scanner Test"]);
   git(directory, ["config", "user.email", "scanner@example.invalid"]);
   commit(directory);
@@ -71,9 +83,9 @@ function scan(directory) {
     "--no-banner",
     "--redact",
     "--config",
-    `${target}/.gitleaks.toml`,
+    `${target}/config/gitleaks.toml`,
     "--gitleaks-ignore-path",
-    `${target}/.gitleaksignore`,
+    `${target}/config/gitleaksignore`,
     "--report-format",
     "json",
     "--report-path",

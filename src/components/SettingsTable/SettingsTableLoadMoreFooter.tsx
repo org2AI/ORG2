@@ -21,7 +21,6 @@ export function SettingsTableLoadMoreFooter({
     >
       <Button
         variant="tertiary"
-        size="default"
         onClick={onClick}
         disabled={disabled}
         className="text-text-3 hover:text-text-1"

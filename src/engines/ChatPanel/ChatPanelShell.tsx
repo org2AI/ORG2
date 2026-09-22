@@ -6,6 +6,7 @@ import { GUIDE_TARGETS } from "@src/scaffold/Tutorials/guideTargets";
 import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 
 import { UnifiedChatPanelTabContent } from "./TabContent/UnifiedChatPanelTabContent";
+import { ChatPanelFullScreenContext } from "./chatPanelFullScreenContext";
 
 type ChatPanelShellStyle = React.CSSProperties;
 
@@ -16,8 +17,9 @@ interface ChatPanelShellProps {
   chatPanelOpacityStyle: ChatPanelShellStyle;
   chatWidth: number;
   chatWidthStyleValue: string | number;
-  embedded: boolean;
   focusedWorkstationRail?: React.ReactNode;
+  /** The pane fills the app window; hosted tab content may use compact chrome. */
+  fullScreen: boolean;
   hasTabBar: boolean;
   headerSection: React.ReactNode;
   isDragging: boolean;
@@ -29,6 +31,8 @@ interface ChatPanelShellProps {
   panelOverlay?: React.ReactNode;
   resizeIndicatorHost?: HTMLElement | null;
   resizeTooltipLabel: React.ReactNode;
+  /** Controls hosted under the divider tooltip's label (the split presets). */
+  renderResizeTooltipExtra?: (close: () => void) => React.ReactNode;
   resizeTooltipShortcut: string;
   sessionModals: React.ReactNode;
   showResizeHandle: boolean;
@@ -43,8 +47,8 @@ export function ChatPanelShell({
   chatPanelOpacityStyle,
   chatWidth,
   chatWidthStyleValue,
-  embedded,
   focusedWorkstationRail,
+  fullScreen,
   hasTabBar,
   headerSection,
   isDragging,
@@ -55,6 +59,7 @@ export function ChatPanelShell({
   panelOverlay,
   resizeIndicatorHost,
   resizeTooltipLabel,
+  renderResizeTooltipExtra,
   resizeTooltipShortcut,
   sessionModals,
   showResizeHandle,
@@ -71,10 +76,9 @@ export function ChatPanelShell({
       }
       isResizing={isDragging}
       onMouseDown={onResizeMouseDown}
+      renderTooltipExtra={renderResizeTooltipExtra}
       tooltipLabel={resizeTooltipLabel}
       tooltipShortcut={resizeTooltipShortcut}
-      variant={embedded ? "border" : "transparent"}
-      noAccent={!embedded}
     />
   );
 
@@ -94,7 +98,7 @@ export function ChatPanelShell({
           : { width: chatWidthStyleValue }),
         minWidth:
           !useExternalWidth && chatWidth > 0 ? CHAT_MIN_WIDTH : undefined,
-        borderRadius: embedded ? 0 : "var(--radius-page)",
+        borderRadius: 0,
         contain: isDragging ? "strict" : undefined,
         willChange: isDragging ? "width" : undefined,
         ...chatPanelOpacityStyle,
@@ -103,13 +107,15 @@ export function ChatPanelShell({
       {headerSection}
       <div className="flex min-h-0 min-w-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1">
-          <UnifiedChatPanelTabContent
-            activeTab={activeTab}
-            chatColumn={chatColumn}
-            hasTabBar={hasTabBar}
-            isTerminalTabActive={isTerminalTabActive}
-            terminalTabs={terminalTabs}
-          />
+          <ChatPanelFullScreenContext.Provider value={fullScreen}>
+            <UnifiedChatPanelTabContent
+              activeTab={activeTab}
+              chatColumn={chatColumn}
+              hasTabBar={hasTabBar}
+              isTerminalTabActive={isTerminalTabActive}
+              terminalTabs={terminalTabs}
+            />
+          </ChatPanelFullScreenContext.Provider>
         </div>
         {focusedWorkstationRail}
       </div>

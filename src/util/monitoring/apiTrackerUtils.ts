@@ -36,16 +36,11 @@ export const getComponentInfo = () => {
 // Stack filtering sets
 // ============================================================================
 
-/** React/axios internal function names to skip in stack traces. */
+/** React internal function names to skip in stack traces. */
 export const INTERNAL_FUNCTIONS = new Set([
   "get",
   "set",
-  "axios",
   "request",
-  "dispatchRequest",
-  "xhrAdapter",
-  "settle",
-  "handleLoad",
   "promiseReactionJob",
   "mountReducer",
   "useReducer",
@@ -73,7 +68,6 @@ export const INTERNAL_FUNCTIONS = new Set([
   "deleteApi",
   "makeRequest",
   "makeDeleteRequest",
-  "captureApiCallStack",
 ]);
 
 /** Tauri internal function names to skip in stack traces. */
@@ -142,11 +136,7 @@ function getFilteredStack(
 
 /** Capture and filter a stack trace for HTTP API calls. */
 export const getApiStack = (): string =>
-  getFilteredStack(INTERNAL_FUNCTIONS, [
-    "apiTracker.ts",
-    "apiConfig.ts",
-    "axios",
-  ]);
+  getFilteredStack(INTERNAL_FUNCTIONS, ["apiTracker.ts"]);
 
 /** Capture and filter a stack trace for Tauri invoke calls. */
 export const getTauriStack = (): string =>

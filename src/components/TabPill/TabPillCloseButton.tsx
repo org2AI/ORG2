@@ -1,5 +1,6 @@
 import React from "react";
 
+import Button from "@src/components/Button";
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 
 export interface TabPillCloseButtonProps {
@@ -34,8 +35,42 @@ export const TabPillCloseButton: React.FC<TabPillCloseButtonProps> = ({
   "data-action": dataAction,
   "data-action-id": dataActionId,
 }) => (
-  <button
-    type="button"
+  <Button
+    variant="tertiary"
+    size="sidebar"
+    aria-label={title}
+    iconOnly
+    icon={
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        {hasUnsaved && (
+          <circle
+            cx="12"
+            cy="12"
+            r="7"
+            className="fill-text-1 transition-opacity duration-150"
+            style={{ opacity: showX ? 0 : 1 }}
+          />
+        )}
+        <g
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="transition-opacity duration-150"
+          style={{ opacity: showX ? 1 : 0 }}
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </g>
+      </svg>
+    }
     tabIndex={tabIndex}
     title={title}
     data-action={dataAction}
@@ -43,37 +78,7 @@ export const TabPillCloseButton: React.FC<TabPillCloseButtonProps> = ({
     onPointerDown={onPointerDown}
     onClick={onClick}
     className={`grid place-items-center rounded text-text-3 transition-[opacity,colors,background-color] duration-150 ${SURFACE_TOKENS.hover} hover:text-text-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-6 focus-visible:ring-offset-0 ${className} ${visible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
-  >
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      {hasUnsaved && (
-        <circle
-          cx="12"
-          cy="12"
-          r="7"
-          className="fill-text-1 transition-opacity duration-150"
-          style={{ opacity: showX ? 0 : 1 }}
-        />
-      )}
-      <g
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="transition-opacity duration-150"
-        style={{ opacity: showX ? 1 : 0 }}
-      >
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
-      </g>
-    </svg>
-  </button>
+  />
 );
 
 TabPillCloseButton.displayName = "TabPillCloseButton";

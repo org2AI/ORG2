@@ -37,10 +37,6 @@ export const CHAT_PANEL_TAB_SURFACE_REGISTRY: ChatPanelTabSurfaceRegistry = {
     Component: RuntimeSurfaceRenderer,
     debugLabel: "runtime",
   },
-  "team-inbox": {
-    render: "work-management",
-    debugLabel: "team-inbox",
-  },
   "work-management": {
     render: "work-management",
     debugLabel: "work-management",

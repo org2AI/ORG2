@@ -10,9 +10,6 @@ use crate::setup::*;
 
 use std::sync::{Mutex, OnceLock};
 
-#[cfg(target_os = "macos")]
-use crate::single_instance_focus;
-
 #[cfg(unix)]
 fn write_panic_report_to_stderr(report: &str) {
     unsafe {
@@ -87,16 +84,6 @@ fn apply_linux_webkit_cpu_guards() {}
 /// Runs every process-level initialization step that must precede the Tauri
 /// builder, given the identifier embedded in the generated Tauri context.
 pub(crate) fn bootstrap(identifier: &str) {
-    // A second launch on macOS (e.g. clicking the installed app while a dev
-    // instance is running) must hand focus to the primary instance from THIS
-    // process: since macOS 14 the primary cannot activate itself from the
-    // background, so the single-instance callback's show/focus is silently
-    // ignored and the click looks dead. This process still owns the user's
-    // activation intent, so activate the primary before the single-instance
-    // plugin forwards argv to it and exits this process.
-    #[cfg(target_os = "macos")]
-    single_instance_focus::activate_running_instance(identifier);
-
     let runtime_profile = runtime_instance::RuntimeInstanceProfile::from_identifier(identifier);
     if std::env::var_os("ORGII_HOME").is_none() {
         if let Some(data_home) = runtime_profile.default_orgii_home(&app_paths::home_dir()) {
@@ -193,6 +180,9 @@ pub(crate) fn bootstrap(identifier: &str) {
     // the `cli_agent_create` + `cli_agent_run` adapter. Required for any
     // CLI launch path (`launch_session` -> `launch_cli_agent`).
     register_cli_launch_bridge();
+    if let Err(error) = crate::market_connection::register_source() {
+        tracing::error!(%error,"Market credential source registration failed");
+    }
 
     // Install the process-wide rustls crypto provider before any TLS code
     // runs. We use the `rustls-no-provider` feature on reqwest (and on
@@ -249,6 +239,12 @@ pub(crate) fn bootstrap(identifier: &str) {
             "Tracing initialized — log file: {}/orgii.log",
             log_dir.display()
         );
+        // The login-shell PATH probes run before this point, so their outcome
+        // has nowhere to go until now. Replaying it here is what turns "the
+        // app cannot see my CLI" into a one-line answer about which probe won.
+        for line in app_paths::shell_path_probe_diagnostics() {
+            tracing::info!("[app_paths] PATH probe: {line}");
+        }
     }
 
     // Panic hook: ensure any panic — even one inside an FFI callback like

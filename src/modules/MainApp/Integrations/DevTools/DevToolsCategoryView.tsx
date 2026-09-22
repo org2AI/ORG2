@@ -1,13 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import TabPill from "@src/components/TabPill";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
 
 import { ThirdPartyDisclaimer } from "../Tables/TrademarkDisclaimer";
 import DependenciesPage from "./DependenciesPage";
@@ -26,24 +25,15 @@ const DevToolsCategoryView: React.FC = () => {
   return (
     <DetailPanelContainer>
       <InternalHeader
-        tabs={
-          <TabPill
-            tabs={[
-              {
-                key: "dependencies",
-                label: t("dependencies.systemDependencies"),
-              },
-            ]}
-            activeTab="dependencies"
-            onChange={() => {}}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
+        tabs={[
+          {
+            key: "dependencies",
+            label: t("dependencies.systemDependencies"),
+          },
+        ]}
+        activeTab="dependencies"
+        onTabChange={() => {}}
       />
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>

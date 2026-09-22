@@ -75,7 +75,6 @@ describe("TurnCollapsePinBar", () => {
           startMs: new Date("2026-08-28T14:27:00Z").getTime(),
           endMs: new Date("2026-08-28T14:27:42Z").getTime(),
           defaultCollapsed: true,
-          turnCollapseInteractionAtRef: { current: 0 },
         })
       );
     });
@@ -94,7 +93,6 @@ describe("TurnCollapsePinBar", () => {
           startMs: new Date("2026-08-28T14:27:00Z").getTime(),
           endMs: new Date("2026-08-28T14:27:42Z").getTime(),
           defaultCollapsed: true,
-          turnCollapseInteractionAtRef: { current: 0 },
         })
       );
     });
@@ -111,7 +109,6 @@ describe("TurnCollapsePinBar", () => {
           startMs: new Date("2026-08-28T14:27:00Z").getTime(),
           endMs: new Date("2026-08-28T14:27:42Z").getTime(),
           defaultCollapsed: true,
-          turnCollapseInteractionAtRef: { current: 0 },
         })
       );
     });
@@ -135,7 +132,6 @@ describe("TurnCollapsePinBar", () => {
             startMs: 1_000,
             endMs: 43_000,
             defaultCollapsed,
-            turnCollapseInteractionAtRef: { current: 0 },
           })
         );
       });
@@ -162,6 +158,31 @@ describe("TurnCollapsePinBar", () => {
     }
   );
 
+  it("captures the viewport anchor before changing collapse state", async () => {
+    const onBeforeToggle = vi.fn();
+    act(() => {
+      root.render(
+        createElement(TurnCollapsePinBar, {
+          turnId: "turn-1",
+          durationMs: 42_000,
+          startMs: 1_000,
+          endMs: 43_000,
+          defaultCollapsed: true,
+          onBeforeToggle,
+        })
+      );
+    });
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("button")?.click();
+    });
+
+    expect(onBeforeToggle).toHaveBeenCalledOnce();
+    expect(onBeforeToggle.mock.invocationCallOrder[0]).toBeLessThan(
+      setOverride.mock.invocationCallOrder[0]
+    );
+  });
+
   it("reserves a fixed right-side replay slot and keeps replay clicks separate", async () => {
     replayState.canReplay = true;
     for (const defaultCollapsed of [true, false]) {
@@ -173,7 +194,6 @@ describe("TurnCollapsePinBar", () => {
             startMs: 1_000,
             endMs: 43_000,
             defaultCollapsed,
-            turnCollapseInteractionAtRef: { current: 0 },
           })
         );
       });
@@ -211,7 +231,6 @@ describe("TurnCollapsePinBar", () => {
           startMs: new Date("2026-08-28T14:27:00Z").getTime(),
           endMs: new Date("2026-08-28T14:27:42Z").getTime(),
           defaultCollapsed: true,
-          turnCollapseInteractionAtRef: { current: 0 },
           onExpand,
         })
       );
@@ -230,6 +249,9 @@ describe("TurnCollapsePinBar", () => {
     );
     const timing = container.querySelector<HTMLSpanElement>("button > span");
     expect(onExpand).toHaveBeenCalledOnce();
+    expect(setOverride).not.toHaveBeenCalled();
+    await act(async () => button?.click());
+    expect(onExpand).toHaveBeenCalledOnce();
     expect(timing?.lastElementChild).toBe(loading);
     expect(loading?.classList.contains("text-primary-6")).toBe(true);
     expect(loading?.getAttribute("aria-label")).toBe("common:status.loading");
@@ -241,5 +263,9 @@ describe("TurnCollapsePinBar", () => {
     expect(
       container.querySelector('[data-testid="turn-collapse-loading"]')
     ).toBeNull();
+    expect(setOverride).toHaveBeenCalledWith({
+      turnId: "turn-1",
+      collapsed: false,
+    });
   });
 });

@@ -6,7 +6,7 @@ use super::macros::action_sub;
 pub(super) static TOOLS: &[ToolEntry] = &[ToolEntry {
     name: tool_names::CONTROL_DESKTOP_WITH_PEEKABOO,
     description: "Run raw macOS desktop automation commands through the bundled Peekaboo CLI.",
-    description_detail: "Executes the selected subcommand with ORGII's bundled Peekaboo binary. Use for see, image, app, open, click, type, paste, press, hotkey, scroll, drag, window, menu, menubar, dock, dialog, space, permissions, and other supported Peekaboo commands.",
+    description_detail: "Executes the selected subcommand with ORG2's bundled Peekaboo binary. Use for see, image, app, open, click, type, paste, press, hotkey, scroll, drag, window, menu, menubar, dock, dialog, space, permissions, and other supported Peekaboo commands.",
     category: tool_categories::DESKTOP,
     icon_id: "monitor",
     simulator_app: AppBrowser,

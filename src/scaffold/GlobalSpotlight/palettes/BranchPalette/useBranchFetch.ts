@@ -115,45 +115,44 @@ export function useBranchFetch(options: UseBranchFetchOptions) {
 
     const cacheKey = `${githubConnectionId}:${githubRepoFullName}`;
 
-    // Check cache first
-    const cached = githubBranchesCache.get(cacheKey);
-    if (cached && cached.length > 0) {
-      const branchItems: BranchItem[] = cached.map((branch) => ({
-        name: branch.name,
-        lastCommitDate: new Date().toISOString(),
-        isCurrent: branch.is_default,
-        isDefault: branch.is_default,
-        isRemote: true,
-        protected: branch.protected,
-      }));
-      setBranches(branchItems);
+    let cancelled = false;
+    const applyBranches = (
+      branches: Awaited<ReturnType<typeof getGitHubBranches>>
+    ) => {
+      if (cancelled) return;
+      setBranches(
+        branches.map((branch) => ({
+          name: branch.name,
+          lastCommitDate: new Date().toISOString(),
+          isCurrent: branch.is_default,
+          isDefault: branch.is_default,
+          isRemote: true,
+          protected: branch.protected,
+        }))
+      );
       setIsFetching(false);
-      return;
-    }
-
-    // Fetch from GitHub
-    if (hasFetchedRef.current !== cacheKey) {
-      hasFetchedRef.current = cacheKey;
+    };
+    const cached = githubBranchesCache.get(cacheKey);
+    if (cached) {
+      applyBranches(cached);
+    } else {
       setIsFetching(true);
       getGitHubBranches(githubConnectionId, githubRepoFullName)
-        .then((githubBranches) => {
-          const branchItems: BranchItem[] = githubBranches.map((branch) => ({
-            name: branch.name,
-            lastCommitDate: new Date().toISOString(),
-            isCurrent: branch.is_default,
-            isDefault: branch.is_default,
-            isRemote: true,
-            protected: branch.protected,
-          }));
-          setBranches(branchItems);
-        })
+        .then(applyBranches)
         .catch((error) => {
-          log.error("[useBranchFetch] Error fetching GitHub branches:", error);
+          if (!cancelled)
+            log.error(
+              "[useBranchFetch] Error fetching GitHub branches:",
+              error
+            );
         })
         .finally(() => {
-          setIsFetching(false);
+          if (!cancelled) setIsFetching(false);
         });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [
     isOpen,
     isGitHubRepo,

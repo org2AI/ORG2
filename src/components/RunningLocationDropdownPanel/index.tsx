@@ -13,6 +13,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import DropdownSelectedCheck from "@src/components/Dropdown/DropdownSelectedCheck";
 import {
   DROPDOWN_CLASSES,
@@ -118,8 +119,8 @@ const LocationOption: React.FC<LocationOptionProps> = ({
   // a hovered row is the current selection — see screenshot bug where
   // "New Worktree" looked picked just because the cursor was over it.
   return (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       {...interactionProps}
       disabled={disabled}
       className={`${DROPDOWN_CLASSES.item} ${
@@ -140,7 +141,7 @@ const LocationOption: React.FC<LocationOptionProps> = ({
         <span>{label}</span>
       </div>
       {isSelected && <DropdownSelectedCheck />}
-    </button>
+    </Button>
   );
 };
 

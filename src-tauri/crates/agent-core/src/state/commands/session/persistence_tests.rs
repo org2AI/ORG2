@@ -325,6 +325,17 @@ fn seed_session_owned_rows(session_id: &str) {
         rusqlite::params![session_id, "2026-07-16T00:00:00Z"],
     )
     .expect("seed usage");
+    conn.execute(
+        "INSERT INTO session_auxiliary_usage (
+             response_id, session_id, purpose, provider, provider_usage_json, token_usage_id
+         ) VALUES (?1, ?2, 'session_title', 'fixture', '{}', ?3)",
+        rusqlite::params![
+            format!("auxiliary-{session_id}"),
+            session_id,
+            conn.last_insert_rowid()
+        ],
+    )
+    .expect("seed auxiliary usage receipt");
     let orgtrack_source = "orgii_rust_agents";
     let now = "2026-07-16T00:00:00Z";
     conn.execute(
@@ -795,6 +806,7 @@ fn session_hierarchy_delete_removes_all_rust_descendants_and_run_history() {
             "session_turn_index_state",
             "session_turn_intents",
             "session_token_usage",
+            "session_auxiliary_usage",
             "orgtrack_core_activities",
             "orgtrack_core_file_changes",
             "orgtrack_core_edit_artifacts",
@@ -1252,6 +1264,7 @@ fn session_hierarchy_delete_rolls_back_on_midway_database_failure() {
             "session_turn_index_state",
             "session_turn_intents",
             "session_token_usage",
+            "session_auxiliary_usage",
             "orgtrack_core_activities",
             "orgtrack_core_file_changes",
             "orgtrack_core_edit_artifacts",

@@ -43,6 +43,7 @@ tracing = "0.1.37"
 uuid = { version = "1", features = ["v4"] }
 dirs = "6.0"
 sha2 = "0.10"
+fs2 = "0.4" # Coordinate ORG2 writers of linked CLI auth files
 
 # `auto_detect/cursor.rs` reads the Cursor IDE's SQLite vault to capture the
 # user's existing session token; the encoded value is base64.

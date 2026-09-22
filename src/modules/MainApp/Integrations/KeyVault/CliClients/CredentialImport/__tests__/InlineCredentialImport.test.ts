@@ -7,6 +7,7 @@ import InlineCredentialImport from "../InlineCredentialImport";
 
 const state = vi.hoisted(() => ({
   importError: "",
+  importSuccess: null as null | { displayNames: string[] },
   importErrors: [] as Array<{
     id: string;
     displayName: string;
@@ -17,8 +18,11 @@ const state = vi.hoisted(() => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, values?: { message?: string }) =>
-      values?.message ? `${key}: ${values.message}` : key,
+    t: (key: string, values?: { message?: string; names?: string }) => {
+      if (values?.message) return `${key}: ${values.message}`;
+      if (values?.names) return `${key}: ${values.names}`;
+      return key;
+    },
   }),
 }));
 vi.mock("../useCredentialImport", () => ({
@@ -38,6 +42,7 @@ vi.mock("@src/components/SettingsTable", () => ({ default: () => null }));
 
 beforeEach(() => {
   state.importError = "";
+  state.importSuccess = null;
   state.importErrors = [];
 });
 
@@ -75,6 +80,18 @@ describe("InlineCredentialImport notices", () => {
   it("does not announce an error before an import fails", () => {
     const markup = renderExpandedImport();
     expect(markup).not.toContain('role="alert"');
+  });
+
+  it("keeps imported credential names and their Accounts destination visible", () => {
+    state.importSuccess = {
+      displayNames: ["Claude Code", "Codex"],
+    };
+
+    const markup = renderExpandedImport();
+
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain("credentialImport.importSucceeded");
+    expect(markup).toContain("Claude Code, Codex");
   });
 });
 

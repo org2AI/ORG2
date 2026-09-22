@@ -33,6 +33,7 @@ import type {
 const { measureElementSpy } = vi.hoisted(() => ({
   measureElementSpy: vi.fn(),
 }));
+const resizeUnobserveSpy = vi.fn();
 
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: (options: {
@@ -73,6 +74,15 @@ describe("buildChatGroupRenderKeys", () => {
       "chat-turn:turn-with-image:occurrence:0",
       "chat-group-index:1",
       "chat-turn:turn-with-image:occurrence:1",
+    ]);
+  });
+
+  it("uses an immutable event identity for headerless groups", () => {
+    expect(
+      buildChatGroupRenderKeys([null, "turn-b"], ["event-a", "event-b"])
+    ).toEqual([
+      "chat-event:event-a:occurrence:0",
+      "chat-turn:turn-b:occurrence:0",
     ]);
   });
 });
@@ -189,11 +199,12 @@ describe("ChatHistoryList turn identity", () => {
     imageMounts = 0;
     imageUnmounts = 0;
     measureElementSpy.mockClear();
+    resizeUnobserveSpy.mockClear();
     vi.stubGlobal(
       "ResizeObserver",
       class ResizeObserverMock {
         observe = vi.fn();
-        unobserve = vi.fn();
+        unobserve = resizeUnobserveSpy;
         disconnect = vi.fn();
       }
     );
@@ -228,6 +239,11 @@ describe("ChatHistoryList turn identity", () => {
     const originalImage = container.querySelector(
       '[data-testid="appended-image"]'
     );
+    expect(
+      originalImage
+        ?.closest("[data-transcript-anchor-id]")
+        ?.getAttribute("data-transcript-anchor-id")
+    ).toBe("chat-turn:turn-with-image:occurrence:0");
 
     act(() =>
       root.render(
@@ -249,8 +265,6 @@ describe("ChatHistoryList turn identity", () => {
       originalImage
     );
     expect(measureElementSpy).toHaveBeenCalledWith(expect.any(HTMLDivElement));
-    expect(measureElementSpy.mock.calls.some(([node]) => node === null)).toBe(
-      true
-    );
+    expect(resizeUnobserveSpy).toHaveBeenCalledWith(expect.any(HTMLDivElement));
   });
 });

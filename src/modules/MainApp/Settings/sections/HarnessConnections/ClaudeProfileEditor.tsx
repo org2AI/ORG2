@@ -10,9 +10,10 @@ import {
   SECTION_DESCRIPTION_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
 
 import ClaudeModelMappings from "./ClaudeModelMappings";
+import ConnectionChoiceCard from "./ConnectionChoiceCard";
 import {
   newClaudeProfile,
   useClaudeProfileEditor,
@@ -91,7 +92,6 @@ export default function ClaudeProfileEditor({
               {t("claudeProfiles.new")}
             </Button>
             <Button
-              variant="secondary"
               disabled={
                 disabled ||
                 dirty ||
@@ -112,18 +112,10 @@ export default function ClaudeProfileEditor({
             >
               {t("claudeProfiles.copy")}
             </Button>
-            <Button
-              variant="secondary"
-              disabled={disabled || dirty}
-              onClick={onAdd}
-            >
+            <Button disabled={disabled || dirty} onClick={onAdd}>
               {t("harnessConnections.add")}
             </Button>
-            <Button
-              variant="secondary"
-              disabled={disabled}
-              onClick={() => void reload()}
-            >
+            <Button disabled={disabled} onClick={() => void reload()}>
               {t("harnessConnections.refresh")}
             </Button>
           </div>
@@ -143,14 +135,10 @@ export default function ClaudeProfileEditor({
           )}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {view?.profiles?.map((profile) => (
-              <Button
+              <ConnectionChoiceCard
                 key={profile.id}
-                variant={draft?.id === profile.id ? "primary" : "secondary"}
-                appearance="outline"
                 disabled={disabled || dirty}
                 aria-pressed={draft?.id === profile.id}
-                style={{ height: "auto" }}
-                className="min-w-0 justify-start p-3 text-left"
                 onClick={() => edit(profile)}
               >
                 <span className="flex min-w-0 flex-col gap-1">
@@ -170,7 +158,7 @@ export default function ClaudeProfileEditor({
                     {profile.endpoint}
                   </span>
                 </span>
-              </Button>
+              </ConnectionChoiceCard>
             ))}
           </div>
         </div>
@@ -293,7 +281,6 @@ export default function ClaudeProfileEditor({
                   {t("claudeProfiles.save")}
                 </Button>
                 <Button
-                  variant="secondary"
                   disabled={blocked || dirty || !valid}
                   loading={busy === "test"}
                   onClick={() => void act("test")}
@@ -307,15 +294,10 @@ export default function ClaudeProfileEditor({
                 >
                   {t("harnessConnections.apply")}
                 </Button>
-                <Button
-                  variant="secondary"
-                  disabled={disabled}
-                  onClick={() => edit(saved ?? null)}
-                >
+                <Button disabled={disabled} onClick={() => edit(saved ?? null)}>
                   {t("claudeProfiles.discard")}
                 </Button>
                 <Button
-                  variant="secondary"
                   disabled={
                     disabled || dirty || !saved || active?.id === draft.id
                   }
@@ -331,12 +313,9 @@ export default function ClaudeProfileEditor({
       <SectionRow showHeader={false}>
         <div className="flex flex-wrap gap-2">
           {(busy === "test" || busy === "fetch") && (
-            <Button variant="secondary" onClick={cancel}>
-              {t("harnessConnections.cancel")}
-            </Button>
+            <Button onClick={cancel}>{t("harnessConnections.cancel")}</Button>
           )}
           <Button
-            variant="secondary"
             disabled={
               disabled ||
               !view ||
@@ -346,7 +325,11 @@ export default function ClaudeProfileEditor({
             }
             onClick={() => void act("restore")}
           >
-            {t("harnessConnections.restore")}
+            {t(
+              view?.config.overlay
+                ? "harnessConnections.disconnect"
+                : "harnessConnections.restore"
+            )}
           </Button>
         </div>
       </SectionRow>

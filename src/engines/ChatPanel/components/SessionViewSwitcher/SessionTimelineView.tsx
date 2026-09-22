@@ -45,9 +45,7 @@ const TimelineRowView: React.FC<TimelineRowViewProps> = memo(
     const durationLabel =
       row.durationMs === null ? "—" : formatDuration(row.durationMs);
     const inferredTimingLabel = row.endInferred
-      ? t("chat.sessionViews.inferredTiming", {
-          defaultValue: "End inferred from the next turn",
-        })
+      ? t("chat.sessionViews.inferredTiming")
       : undefined;
 
     return (
@@ -115,14 +113,11 @@ const SessionTimelineView: React.FC<SessionDerivedViewProps> = memo(
         loading={loading}
         error={error}
         isEmpty={timeline.rows.length === 0}
-        emptyLabel={t("chat.sessionViews.timelineEmpty", {
-          defaultValue: "No turns to show yet.",
-        })}
+        emptyLabel={t("chat.sessionViews.timelineEmpty")}
         topInset={topInset}
         summary={t("chat.sessionViews.timelineSummary", {
           count: timeline.rows.length,
           duration: formatDuration(timeline.totalMs),
-          defaultValue: "{{count}} turns over {{duration}}",
         })}
       >
         <VirtualizedListBase<TimelineRow>

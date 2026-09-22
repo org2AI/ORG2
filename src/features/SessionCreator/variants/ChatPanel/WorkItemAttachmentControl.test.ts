@@ -301,7 +301,7 @@ describe("WorkItemAttachmentControl", () => {
       await act(async () => {
         dialog
           ?.querySelector<HTMLButtonElement>(
-            '[data-testid="session-creator-work-item-picker-refresh"]'
+            '[data-testid="session-creator-work-item-picker-refresh"] [data-spotlight-row-action]'
           )
           ?.click();
       });
@@ -405,7 +405,9 @@ describe("WorkItemAttachmentControl", () => {
 
     await act(async () => {
       document
-        .querySelector<HTMLElement>('[data-testid="work-item-picker-add"]')!
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="work-item-picker-add"] [data-spotlight-row-action]'
+        )!
         .click();
       await Promise.resolve();
     });
@@ -465,7 +467,9 @@ describe("WorkItemAttachmentControl", () => {
     }
     await act(async () =>
       document
-        .querySelector<HTMLElement>('[data-testid="work-item-picker-add"]')!
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="work-item-picker-add"] [data-spotlight-row-action]'
+        )!
         .click()
     );
     expect(insertFilePill).toHaveBeenCalledTimes(2);

@@ -11,21 +11,27 @@
  * layer. Only consumed by SpotlightShell; palettes never see this component.
  */
 import { useAtomValue } from "jotai";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useContext, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 
-import { getSidebarId } from "@src/config/sidebarRegistry";
 import { CODEMIRROR_STYLE_NONCE } from "@src/features/CodeMirror/config/nonce";
+import { useSettingValue } from "@src/hooks/settings/useSettings";
 import { useOverlayLayer } from "@src/store/ui/overlayLayerAtom";
 import {
   sidebarCollapsedAtom,
   sidebarWidthAtom,
 } from "@src/store/ui/sidebarAtom";
 import { spotlightPlacementAtom } from "@src/store/ui/uiAtom";
+import {
+  getSpotlightAnchorStyle,
+  getSpotlightSidebarInset,
+  measureSpotlightTrailInset,
+} from "@src/util/ui/spotlightAnchor";
 
-import { SPOTLIGHT_CONFIG } from "../constants";
+import { SPOTLIGHT_CLASSES, SPOTLIGHT_CONFIG } from "../constants";
 import { SPOTLIGHT_STYLES } from "../styles";
+import { SpotlightTransitionRefContext } from "../useLaunchpadTransition";
 
 // ============ TYPES ============
 
@@ -50,32 +56,27 @@ export const SpotlightShellChrome: React.FC<SpotlightShellChromeProps> = ({
   footer,
   children,
 }) => {
+  const transitionRef = useContext(SpotlightTransitionRefContext);
   const inputHostRef = useRef<HTMLDivElement | null>(null);
   const spotlightPlacement = useAtomValue(spotlightPlacementAtom);
   const location = useLocation();
   const sidebarWidth = useAtomValue(sidebarWidthAtom);
   const sidebarCollapsed = useAtomValue(sidebarCollapsedAtom);
+  const dimBackground = useSettingValue("general.spotlightDimBackground");
 
-  // Routes without a docked layout sidebar (and collapsed sidebars) reserve
-  // no horizontal space, so they contribute no centering inset.
-  const sidebarInset =
-    getSidebarId(location.pathname) !== null && !sidebarCollapsed
-      ? sidebarWidth
-      : 0;
+  const sidebarInset = getSpotlightSidebarInset(
+    location.pathname,
+    sidebarWidth,
+    sidebarCollapsed
+  );
 
-  // The focused-chat workstation trail (live rail or launchpad placeholder)
-  // reserves width at the right edge of the content area. Its visibility
-  // mixes chat-focus state, tab type, a container query, and rail-local
-  // collapse state that no atom exposes, so the rendered track is measured
-  // instead of mirrored. Measured once per open — the backdrop prevents the
+  // The focused-chat workstation trail reserves width at the right edge of
+  // the content area. Measured once per open — the backdrop prevents the
   // trail from changing while the spotlight is up.
-  const trailInset = useMemo(() => {
-    if (!isOpen || !asPortal) return 0;
-    const track = document.querySelector<HTMLElement>(
-      "[data-workstation-trail-track]"
-    );
-    return track ? track.getBoundingClientRect().width : 0;
-  }, [isOpen, asPortal]);
+  const trailInset = useMemo(
+    () => (isOpen && asPortal ? measureSpotlightTrailInset() : 0),
+    [isOpen, asPortal]
+  );
 
   useOverlayLayer(isOpen && asPortal);
 
@@ -126,7 +127,7 @@ export const SpotlightShellChrome: React.FC<SpotlightShellChromeProps> = ({
       {...(footer == null ? { "data-spotlight-detail-anchor": true } : {})}
     >
       <div
-        className="overflow-hidden rounded-2xl border border-border-2 bg-bg-2 shadow-xl"
+        className={SPOTLIGHT_CLASSES.panel}
         style={{
           width: "100%",
           maxWidth: `${width}px`,
@@ -163,6 +164,7 @@ export const SpotlightShellChrome: React.FC<SpotlightShellChromeProps> = ({
     <>
       <style nonce={CODEMIRROR_STYLE_NONCE}>{SPOTLIGHT_STYLES}</style>
       <div
+        className={dimBackground ? "spotlight-backdrop" : undefined}
         style={{
           position: "fixed",
           inset: 0,
@@ -176,6 +178,7 @@ export const SpotlightShellChrome: React.FC<SpotlightShellChromeProps> = ({
         }}
       />
       <div
+        ref={transitionRef}
         data-spotlight-container
         style={{
           position: "fixed",
@@ -183,13 +186,12 @@ export const SpotlightShellChrome: React.FC<SpotlightShellChromeProps> = ({
             spotlightPlacement === "center"
               ? "50%"
               : SPOTLIGHT_CONFIG.topOffset,
-          left: `calc(50% + ${(sidebarInset - trailInset) / 2}px)`,
+          ...getSpotlightAnchorStyle(width, sidebarInset, trailInset),
           transform:
             spotlightPlacement === "center"
               ? "translate(-50%, -50%)"
               : "translateX(-50%)",
           zIndex: SPOTLIGHT_CONFIG.containerZIndex,
-          width: `min(${width}px, calc(100vw - ${sidebarInset + trailInset}px - 160px))`,
         }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -199,5 +201,3 @@ export const SpotlightShellChrome: React.FC<SpotlightShellChromeProps> = ({
     document.body
   );
 };
-
-export default SpotlightShellChrome;

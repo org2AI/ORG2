@@ -39,7 +39,6 @@ describe("SimulatorSingleView replay host ownership", () => {
 
     await root.render(
       React.createElement(SimulatorSingleView, {
-        isBootingEvent: false,
         mainContentAppType: AppType.CODE_EDITOR,
         displayContent: content,
       })
@@ -59,8 +58,7 @@ describe("SimulatorSingleView replay host ownership", () => {
         ReplayControlHostContext.Provider,
         { value: true },
         React.createElement(SimulatorSingleView, {
-          isBootingEvent: false,
-          mainContentAppType: AppType.CODE_EDITOR,
+            mainContentAppType: AppType.CODE_EDITOR,
           displayContent: content,
         })
       )

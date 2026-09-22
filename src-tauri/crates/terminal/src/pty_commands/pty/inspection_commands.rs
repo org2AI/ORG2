@@ -47,11 +47,7 @@ pub async fn get_pty_output_snapshot(
         .get(&session_id)
         .ok_or_else(|| format!("Session {} not found", session_id))?;
 
-    let output = session
-        .redacted_output
-        .lock()
-        .expect("redacted_output mutex poisoned")
-        .clone();
+    let output = session.inspection_output();
     let unacked_bytes = session.unacked_bytes.load(Ordering::Relaxed);
 
     Ok(PtyOutputSnapshot {
@@ -132,36 +128,41 @@ pub async fn get_pty_memory_usage(
             .collect());
     }
 
-    // Query memory for each PID
-    let mut sys = System::new();
-    let pid_list: Vec<Pid> = pids_to_query
-        .iter()
-        .map(|(_, pid, _, _)| Pid::from_u32(*pid))
-        .collect();
-    sys.refresh_processes_specifics(
-        ProcessesToUpdate::Some(&pid_list),
-        true,
-        ProcessRefreshKind::nothing().with_memory(),
-    );
+    drop(sessions);
+    tokio::task::spawn_blocking(move || {
+        // Query memory for each PID
+        let mut sys = System::new();
+        let pid_list: Vec<Pid> = pids_to_query
+            .iter()
+            .map(|(_, pid, _, _)| Pid::from_u32(*pid))
+            .collect();
+        sys.refresh_processes_specifics(
+            ProcessesToUpdate::Some(&pid_list),
+            true,
+            ProcessRefreshKind::nothing().with_memory(),
+        );
 
-    let result: Vec<PtyMemoryInfo> = pids_to_query
-        .iter()
-        .map(|(session_id, pid, shell, buffer_bytes)| {
-            let memory_mb = sys
-                .process(Pid::from_u32(*pid))
-                .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
-                .unwrap_or(0.0);
+        let result: Vec<PtyMemoryInfo> = pids_to_query
+            .iter()
+            .map(|(session_id, pid, shell, buffer_bytes)| {
+                let memory_mb = sys
+                    .process(Pid::from_u32(*pid))
+                    .map(|p| p.memory() as f64 / 1024.0 / 1024.0)
+                    .unwrap_or(0.0);
 
-            PtyMemoryInfo {
-                session_id: session_id.clone(),
-                pid: Some(*pid),
-                shell: shell.clone(),
-                memory_mb,
-                buffer_bytes: *buffer_bytes,
-                scrollback_lines: 0,
-            }
-        })
-        .collect();
+                PtyMemoryInfo {
+                    session_id: session_id.clone(),
+                    pid: Some(*pid),
+                    shell: shell.clone(),
+                    memory_mb,
+                    buffer_bytes: *buffer_bytes,
+                    scrollback_lines: 0,
+                }
+            })
+            .collect();
 
-    Ok(result)
+        Ok(result)
+    })
+    .await
+    .map_err(|error| format!("PTY memory worker failed: {error}"))?
 }

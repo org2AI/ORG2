@@ -1,32 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { parseRevisionConflict, projectApi } from "@src/api/http/project";
-import type { DiscussionTriggerPreview } from "@src/api/http/project";
-import Message from "@src/components/Message";
-import type { TabPillItem } from "@src/components/TabPill";
-import { createLogger } from "@src/hooks/logger";
-import { useDebouncedCallback } from "@src/hooks/perf";
 import { useCurrentUserMemberIds } from "@src/hooks/project/useCurrentUserMemberId";
-import {
-  resolveImagePathsForDisplay,
-  unresolveImagePathsForStorage,
-} from "@src/modules/ProjectManager/shared/utils/workItemImagePaths";
 import type { Person } from "@src/types/core/shared";
-import type {
-  WorkItemComment,
-  WorkItem as WorkItemExtended,
-} from "@src/types/core/workItem";
+import type { WorkItem as WorkItemExtended } from "@src/types/core/workItem";
 
-import { SESSION_TAB_KEYS, type SessionTab } from "../types";
 import { useWorkItemTimeline } from "../useWorkItemTimeline";
-import {
-  type MentionCandidate,
-  mentionedMemberIds,
-  normalizeWorkItemMentions,
-} from "../workItemMentions";
+import type { MentionCandidate } from "../workItemMentions";
+import { useWorkItemCommentRevisionConflict } from "./useWorkItemCommentRevisionConflict";
+import { useWorkItemDescriptionState } from "./useWorkItemDescriptionState";
+import { useWorkItemDiscussionActions } from "./useWorkItemDiscussionActions";
+import { useWorkItemDiscussionComposer } from "./useWorkItemDiscussionComposer";
+import { useWorkItemSessionTabs } from "./useWorkItemSessionTabs";
 
-const logger = createLogger("useWorkItemContentState");
+export type { CommentRevisionConflictState } from "./useWorkItemCommentRevisionConflict";
 
 interface UseWorkItemContentStateOptions {
   workItem: WorkItemExtended;
@@ -40,14 +27,6 @@ interface UseWorkItemContentStateOptions {
   shortId?: string | null;
   orgId?: string | null;
   onRefreshWorkflow?: () => void | Promise<void>;
-}
-
-export interface CommentRevisionConflictState {
-  commentId: string;
-  mine: string;
-  latest: string;
-  expectedRevision: number;
-  actualRevision: number;
 }
 
 export function useWorkItemContentState(
@@ -82,191 +61,50 @@ export function useWorkItemContentState(
       },
     [currentUserProp, resolvedCurrentUser, t]
   );
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- deps key on currentUserProp?.id on purpose: a new prop object with the same id keeps the Set identity
   const currentUserMemberIds = useMemo(() => {
     const ids = new Set(resolvedCurrentUserMemberIds);
     if (currentUserProp?.id) ids.add(currentUserProp.id);
     return ids;
   }, [currentUserProp?.id, resolvedCurrentUserMemberIds]);
 
-  const [activeSessionTab, setActiveSessionTab] =
-    useState<SessionTab>("session");
-  const [commentText, setCommentText] = useState("");
-  const [replyToCommentId, setReplyToCommentId] = useState<string | null>(null);
-  const [mentionRefs, setMentionRefs] = useState<string[]>([]);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [triggerPreview, setTriggerPreview] =
-    useState<DiscussionTriggerPreview | null>(null);
-  const [commentRevisionConflict, setCommentRevisionConflict] =
-    useState<CommentRevisionConflictState | null>(null);
-  const previewGenerationRef = useRef(0);
+  const {
+    activeSessionTab,
+    setActiveSessionTab,
+    currentPhase,
+    isAgentRunning,
+    sessionTabItems,
+  } = useWorkItemSessionTabs({ workItem, t });
 
-  const currentPhase = workItem.orchestratorState?.current_phase ?? "idle";
-  const isAgentRunning = currentPhase === "sde" || currentPhase === "review";
   const scopedShortId = shortId ?? workItem.shortId ?? "";
 
-  const readLatestComment = useCallback(
-    async (commentId: string): Promise<WorkItemComment | null> => {
-      if (!scopedShortId) return null;
-      if (projectSlug) {
-        const latest = await projectApi.readWorkItemEnriched(
-          projectSlug,
-          scopedShortId,
-          orgId ? { orgId } : undefined
-        );
-        return (
-          (latest.comments as WorkItemComment[]).find(
-            (comment) => comment.id === commentId
-          ) ?? null
-        );
-      }
-      const latest = await projectApi.readStandaloneWorkItem(
-        scopedShortId,
-        orgId ? { orgId } : undefined
-      );
-      return (
-        (latest.frontmatter.comments as WorkItemComment[]).find(
-          (comment) => comment.id === commentId
-        ) ?? null
-      );
-    },
-    [orgId, projectSlug, scopedShortId]
-  );
-
-  const fetchTriggerPreview = useDebouncedCallback((content: string) => {
-    const generation = previewGenerationRef.current + 1;
-    previewGenerationRef.current = generation;
-    projectApi
-      .previewDiscussionTrigger({
-        projectSlug: projectSlug ?? null,
-        orgId: orgId || "personal-org",
-        workItemId: scopedShortId,
-        content,
-        mentions: normalizeWorkItemMentions(mentionRefs, {
-          members: teamMembers,
-          agents: availableAgents,
-          agentOrgs: availableOrgs,
-          currentUserId: currentUser.id,
-        }),
-        parentId: replyToCommentId,
-      })
-      .then((preview) => {
-        if (previewGenerationRef.current === generation) {
-          setTriggerPreview(preview);
-        }
-      })
-      .catch((error) => {
-        logger.warn("Failed to preview Discussion trigger", error);
-        if (previewGenerationRef.current === generation) {
-          setTriggerPreview(null);
-        }
-      });
-  }, 350);
-
-  useEffect(() => {
-    const content = commentText.trim();
-    if (!scopedShortId || !content) {
-      previewGenerationRef.current += 1;
-      setTriggerPreview(null);
-      return;
-    }
-    fetchTriggerPreview(content);
-  }, [
+  const {
     commentText,
-    fetchTriggerPreview,
-    scopedShortId,
-    mentionRefs,
+    setCommentText,
     replyToCommentId,
-  ]);
-
-  useEffect(() => {
-    if (!scopedShortId || !currentUser.id) return;
-    let cancelled = false;
-    projectApi
-      .listWorkItemSubscriptions({
-        projectSlug: projectSlug ?? null,
-        orgId: orgId || "personal-org",
-        workItemId: scopedShortId,
-      })
-      .then((subscriptions) => {
-        if (!cancelled) {
-          setIsSubscribed(
-            subscriptions.some(
-              (subscription) =>
-                subscription.subscriberId === currentUser.id &&
-                !subscription.mutedAt
-            )
-          );
-        }
-      })
-      .catch((error) =>
-        logger.warn("Failed to read Work Item subscriptions", error)
-      );
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser.id, orgId, projectSlug, scopedShortId]);
-
-  const sessionTabItems: TabPillItem[] = useMemo(
-    () =>
-      SESSION_TAB_KEYS.map((key) => ({
-        key,
-        label:
-          key === "session"
-            ? t("common:terminology.agent")
-            : t(`common:labels.${key}`),
-        dataTestId: `work-item-sessions-tab-${key}`,
-        badge:
-          key === "session" && isAgentRunning ? (
-            <span className="ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary-6" />
-          ) : undefined,
-      })),
-    [t, isAgentRunning]
-  );
+    setReplyToCommentId,
+    mentionRefs,
+    setMentionRefs,
+    isSubscribed,
+    handleToggleSubscription,
+    isSubmittingComment,
+    triggerPreview,
+    handleCommentSubmit,
+  } = useWorkItemDiscussionComposer({
+    scopedShortId,
+    projectSlug,
+    orgId,
+    currentUser,
+    teamMembers,
+    availableAgents,
+    availableOrgs,
+    onRefreshWorkflow,
+  });
 
   // --- Description editor ---
 
-  const rawDescription =
-    workItem.spec || workItem.session_metadata?.file_change_summary || "";
-  const [resolvedDescriptionState, setResolvedDescriptionState] = useState<{
-    source: string;
-    value: string;
-  } | null>(null);
-  const resolvedDescription =
-    resolvedDescriptionState?.source === rawDescription
-      ? resolvedDescriptionState.value
-      : null;
-
-  useEffect(() => {
-    let cancelled = false;
-    if (projectSlug && rawDescription) {
-      resolveImagePathsForDisplay(rawDescription, projectSlug)
-        .then((resolved) => {
-          if (!cancelled) {
-            setResolvedDescriptionState({
-              source: rawDescription,
-              value: resolved,
-            });
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setResolvedDescriptionState({
-              source: rawDescription,
-              value: rawDescription,
-            });
-          }
-        });
-    } else {
-      setResolvedDescriptionState({
-        source: rawDescription,
-        value: rawDescription,
-      });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [rawDescription, projectSlug]);
+  const { rawDescription, resolvedDescription, handleDescriptionChange } =
+    useWorkItemDescriptionState({ workItem, onUpdateWorkItem, projectSlug });
 
   // --- Timeline ---
 
@@ -295,296 +133,32 @@ export function useWorkItemContentState(
     [onUpdateWorkItem, workItem.name]
   );
 
-  const handleDescriptionChange = useCallback(
-    (markdown: string) => {
-      const storable = unresolveImagePathsForStorage(markdown.trim());
-      const current =
-        workItem.spec || workItem.session_metadata?.file_change_summary || "";
-      if (storable === current) return;
-      onUpdateWorkItem?.({ spec: storable });
-    },
-    [
-      onUpdateWorkItem,
-      workItem.spec,
-      workItem.session_metadata?.file_change_summary,
-    ]
-  );
-
-  const handleCommentSubmit = useCallback(async () => {
-    if (!scopedShortId || !commentText.trim() || isSubmittingComment) return;
-
-    setIsSubmittingComment(true);
-    try {
-      const mentions = normalizeWorkItemMentions(mentionRefs, {
-        members: teamMembers,
-        agents: availableAgents,
-        agentOrgs: availableOrgs,
-        currentUserId: currentUser.id,
-      });
-      const result = await projectApi.postDiscussionComment({
-        projectSlug: projectSlug ?? null,
-        orgId: orgId || "personal-org",
-        workItemId: scopedShortId,
-        commentId: `cmt-${Date.now()}-${crypto.randomUUID()}`,
-        authorId: currentUser.id,
-        authorName: currentUser.name ?? currentUser.id,
-        content: commentText.trim(),
-        mentionedUserIds: mentionedMemberIds(mentions),
-        mentions,
-        parentId: replyToCommentId,
-      });
-      setIsSubscribed(true);
-      setCommentText("");
-      setReplyToCommentId(null);
-      setMentionRefs([]);
-      logger.debug(
-        `Persisted Discussion comment ${result.comment.id} (${result.wakeReason})`
-      );
-      await onRefreshWorkflow?.();
-    } catch (err) {
-      logger.error("Failed to create comment", err);
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  }, [
-    commentText,
-    isSubmittingComment,
+  const {
+    handleResolveDiscussionThread,
+    handleReopenDiscussionThread,
+    handleDeleteDiscussionComment,
+  } = useWorkItemDiscussionActions({
     scopedShortId,
-    currentUser.id,
-    currentUser.name,
-    mentionRefs,
-    teamMembers,
-    availableAgents,
-    availableOrgs,
-    orgId,
-    onRefreshWorkflow,
     projectSlug,
-    replyToCommentId,
-  ]);
-
-  const handleResolveDiscussionThread = useCallback(
-    async (threadId: string, conclusionCommentId?: string) => {
-      if (!scopedShortId || !currentUser.id) return;
-      try {
-        await projectApi.resolveDiscussionThread({
-          scope: {
-            projectSlug: projectSlug ?? null,
-            orgId: orgId || "personal-org",
-            workItemId: scopedShortId,
-          },
-          threadId,
-          actorId: currentUser.id,
-          conclusionCommentId: conclusionCommentId ?? null,
-        });
-        await onRefreshWorkflow?.();
-      } catch (error) {
-        logger.error("Failed to resolve Discussion thread", error);
-      }
-    },
-    [currentUser.id, onRefreshWorkflow, orgId, projectSlug, scopedShortId]
-  );
-
-  const handleReopenDiscussionThread = useCallback(
-    async (threadId: string) => {
-      if (!scopedShortId || !currentUser.id) return;
-      try {
-        await projectApi.reopenDiscussionThread({
-          scope: {
-            projectSlug: projectSlug ?? null,
-            orgId: orgId || "personal-org",
-            workItemId: scopedShortId,
-          },
-          threadId,
-          actorId: currentUser.id,
-        });
-        await onRefreshWorkflow?.();
-      } catch (error) {
-        logger.error("Failed to reopen Discussion thread", error);
-      }
-    },
-    [currentUser.id, onRefreshWorkflow, orgId, projectSlug, scopedShortId]
-  );
-
-  const handleEditDiscussionComment = useCallback(
-    async (
-      commentId: string,
-      content: string,
-      expectedRevision: number
-    ): Promise<"saved" | "conflict" | "error"> => {
-      if (!scopedShortId || !currentUser.id || !content.trim()) return "error";
-      const mine = content.trim();
-      try {
-        await projectApi.editDiscussionComment({
-          scope: {
-            projectSlug: projectSlug ?? null,
-            orgId: orgId || "personal-org",
-            workItemId: scopedShortId,
-          },
-          commentId,
-          actorId: currentUser.id,
-          content: mine,
-          expectedRevision,
-        });
-        await onRefreshWorkflow?.();
-        return "saved";
-      } catch (error) {
-        const details = parseRevisionConflict(error);
-        if (details) {
-          const latest = await readLatestComment(commentId).catch(
-            (readError) => {
-              logger.error(
-                "Failed to reload conflicted Discussion comment",
-                readError
-              );
-              return null;
-            }
-          );
-          if (latest && !latest.deleted_at) {
-            setCommentRevisionConflict({
-              commentId,
-              mine,
-              latest: latest.content,
-              expectedRevision: details.expected,
-              actualRevision: latest.revision ?? details.actual,
-            });
-          } else {
-            Message.warning(t("workItems.revisionConflict.reloadNotice"), 5000);
-          }
-          await onRefreshWorkflow?.();
-          return "conflict";
-        }
-        logger.error("Failed to edit Discussion comment", error);
-        Message.error(String(error));
-        return "error";
-      }
-    },
-    [
-      currentUser.id,
-      onRefreshWorkflow,
-      orgId,
-      projectSlug,
-      readLatestComment,
-      scopedShortId,
-      t,
-    ]
-  );
-
-  const handleDeleteDiscussionComment = useCallback(
-    async (commentId: string, expectedRevision: number) => {
-      if (!scopedShortId || !currentUser.id) return;
-      try {
-        await projectApi.deleteDiscussionComment({
-          scope: {
-            projectSlug: projectSlug ?? null,
-            orgId: orgId || "personal-org",
-            workItemId: scopedShortId,
-          },
-          commentId,
-          actorId: currentUser.id,
-          expectedRevision,
-        });
-        await onRefreshWorkflow?.();
-      } catch (error) {
-        if (parseRevisionConflict(error)) {
-          await onRefreshWorkflow?.();
-          Message.warning(t("workItems.revisionConflict.reloadNotice"), 5000);
-          return;
-        }
-        logger.error("Failed to delete Discussion comment", error);
-        Message.error(String(error));
-      }
-    },
-    [currentUser.id, onRefreshWorkflow, orgId, projectSlug, scopedShortId, t]
-  );
-
-  const handleUseLatestComment = useCallback(() => {
-    setCommentRevisionConflict(null);
-    void onRefreshWorkflow?.();
-  }, [onRefreshWorkflow]);
-
-  const handleKeepMineComment = useCallback(async () => {
-    const conflict = commentRevisionConflict;
-    if (!conflict || !scopedShortId || !currentUser.id) return;
-    try {
-      await projectApi.editDiscussionComment({
-        scope: {
-          projectSlug: projectSlug ?? null,
-          orgId: orgId || "personal-org",
-          workItemId: scopedShortId,
-        },
-        commentId: conflict.commentId,
-        actorId: currentUser.id,
-        content: conflict.mine,
-        expectedRevision: conflict.actualRevision,
-      });
-      setCommentRevisionConflict(null);
-      await onRefreshWorkflow?.();
-    } catch (error) {
-      const details = parseRevisionConflict(error);
-      if (details) {
-        const latest = await readLatestComment(conflict.commentId).catch(
-          (readError) => {
-            logger.error(
-              "Failed to reload conflicted Discussion comment",
-              readError
-            );
-            return null;
-          }
-        );
-        if (latest && !latest.deleted_at) {
-          setCommentRevisionConflict({
-            ...conflict,
-            latest: latest.content,
-            expectedRevision: details.expected,
-            actualRevision: latest.revision ?? details.actual,
-          });
-          await onRefreshWorkflow?.();
-          Message.warning(t("workItems.revisionConflict.retryFailed"), 5000);
-          return;
-        }
-        setCommentRevisionConflict(null);
-        await onRefreshWorkflow?.();
-        Message.warning(t("workItems.revisionConflict.reloadNotice"), 5000);
-        return;
-      }
-      logger.error("Failed to retry Discussion comment edit", error);
-      Message.error(String(error));
-    }
-  }, [
-    commentRevisionConflict,
-    currentUser.id,
-    onRefreshWorkflow,
     orgId,
-    projectSlug,
-    readLatestComment,
-    scopedShortId,
+    currentUser,
+    onRefreshWorkflow,
     t,
-  ]);
+  });
 
-  const handleToggleSubscription = useCallback(async () => {
-    if (!scopedShortId || !currentUser.id) return;
-    const next = !isSubscribed;
-    try {
-      const subscriptions = await projectApi.setWorkItemSubscribed(
-        {
-          projectSlug: projectSlug ?? null,
-          orgId: orgId || "personal-org",
-          workItemId: scopedShortId,
-        },
-        currentUser.id,
-        next
-      );
-      setIsSubscribed(
-        subscriptions.some(
-          (subscription) =>
-            subscription.subscriberId === currentUser.id &&
-            !subscription.mutedAt
-        )
-      );
-    } catch (error) {
-      logger.error("Failed to update Work Item subscription", error);
-    }
-  }, [currentUser.id, isSubscribed, orgId, projectSlug, scopedShortId]);
+  const {
+    handleEditDiscussionComment,
+    commentRevisionConflict,
+    handleUseLatestComment,
+    handleKeepMineComment,
+  } = useWorkItemCommentRevisionConflict({
+    scopedShortId,
+    projectSlug,
+    orgId,
+    currentUser,
+    onRefreshWorkflow,
+    t,
+  });
 
   return {
     currentUser,

@@ -10,8 +10,6 @@
  *
  * Composer stack rows/shells above the input live in `composerStackTokens.ts`.
  */
-import type { CSSProperties } from "react";
-
 import { CHAT_COMPOSER_STACK_BAR_SHELL_CLASSES } from "./composerStackTokens";
 
 // ==============================================
@@ -22,6 +20,15 @@ export const INPUT_AREA = {
   /** Border radius for input container (chat panel / session creator) */
   borderRadius: 12,
   borderRadiusClass: "rounded-[12px]",
+
+  /**
+   * Compact single-row capsule: half of its 42px height (28px controls plus
+   * 6px padding and a 1px border on each side), so it still reads as a full
+   * pill. A finite radius lets the corners tween to and from `borderRadius`;
+   * `rounded-full` is an infinite radius, which can only snap.
+   */
+  borderRadiusPill: 21,
+  borderRadiusPillClass: "rounded-[21px]",
 
   /** Border radius for edit mode (slightly smaller) */
   borderRadiusEdit: 8,
@@ -41,7 +48,7 @@ export const INPUT_AREA = {
    * border + a 2px primary ring (no diffuse glow).
    */
   shellInteractionClasses:
-    "border border-solid border-border-2 transition-[border-color,box-shadow] duration-200 ease-in-out focus-within:border-primary-6 focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary-6)_15%,transparent)] [&:not(:focus-within):hover]:border-border-3",
+    "border border-solid border-border-2 focus-within:border-primary-6 focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary-6)_15%,transparent)] [&:not(:focus-within):hover]:border-border-3",
 
   /**
    * Drag-over highlight — primary border, tinted background, soft 2px primary
@@ -69,7 +76,7 @@ export const INPUT_AREA = {
    * border + a 2px primary ring, but no diffuse glow shadow.
    */
   shellEditInteractionClasses:
-    "border border-solid border-border-2 transition-[border-color,box-shadow] duration-200 ease-in-out focus-within:border-primary-6 focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary-6)_15%,transparent)] [&:not(:focus-within):hover]:border-border-3",
+    "border border-solid border-border-2 focus-within:border-primary-6 focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary-6)_15%,transparent)] [&:not(:focus-within):hover]:border-border-3",
 
   /**
    * Queue + file-review bars above composer — same as `CHAT_COMPOSER_STACK_BAR_SHELL_CLASSES`.
@@ -112,19 +119,8 @@ export const INPUT_AREA_MENU_FRAME = {
   placement: "up",
 } as const;
 
-// ==============================================
-// Padding Tokens
-// ==============================================
-
-/** Compact variant (chat panel embedded) */
-export const INPUT_AREA_PADDING_COMPACT = {
-  paddingX: 4,
-  paddingXClass: "px-1",
-  paddingTop: 12,
-  paddingBottom: 4,
-  gap: 4,
-  gapClass: "gap-1",
-} as const;
+/** Vertical distance between a composer pill and the menu it opens. */
+export const INPUT_AREA_PILL_MENU_GAP = 6;
 
 // ==============================================
 // Toolbar / Button Tokens
@@ -180,35 +176,3 @@ export const INPUT_AREA_BUTTONS = {
   /** Pill/trigger compact size (for model selector, etc.) */
   pillTriggerSize: "h-[28px] px-3 text-[12px]",
 } as const;
-
-// ==============================================
-// Composite Class Strings
-// ==============================================
-
-export const INPUT_AREA_CLASSES = {
-  /** Full container - chat panel variant (border/background via inline style) */
-  containerChatPanel: [
-    INPUT_AREA.borderRadiusClass,
-    INPUT_AREA_PADDING_COMPACT.gapClass,
-  ].join(" "),
-
-  /** Editor inner (ComposerInput) */
-  editorInner: INPUT_AREA.borderRadiusEditorClass,
-} as const;
-
-// ==============================================
-// Chat Input Container Styles (matches Session Creator)
-// ==============================================
-
-/**
- * Expanded chat input container — border from `shellInteractionClasses` on the element.
- *
- * NOTE: `border-radius` is intentionally NOT set here. It is applied via the
- * `borderRadiusClass` Tailwind class so state-driven variants (e.g. pill shape
- * when unfocused+empty) can override it. Inline styles would win over classes.
- */
-export const CHAT_INPUT_CONTAINER_STYLE: CSSProperties = {
-  background: INPUT_AREA.backgroundChatPanel,
-  paddingTop: INPUT_AREA_PADDING_COMPACT.paddingTop,
-  paddingBottom: INPUT_AREA_PADDING_COMPACT.paddingBottom,
-};

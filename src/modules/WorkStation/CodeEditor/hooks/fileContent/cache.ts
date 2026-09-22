@@ -46,6 +46,7 @@ interface UnsavedContentEntry {
   /** Distinguishes this entry from a later one cached for the same path. */
   generation: number;
   pendingWrite: Promise<void> | null;
+  baseDigest: Promise<string>;
 }
 
 const unsavedContentCache = new Map<string, UnsavedContentEntry>();
@@ -220,6 +221,16 @@ function evictUnsavedContentCache(): void {
   }
 }
 
+async function contentDigest(content: string): Promise<string> {
+  const bytes = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(content)
+  );
+  return Array.from(new Uint8Array(bytes), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
 export function cacheUnsavedContent(
   filePath: string,
   content: string,
@@ -249,6 +260,7 @@ export function cacheUnsavedContent(
       dirty,
       generation: unsavedEntryGeneration,
       pendingWrite: null,
+      baseDigest: contentDigest(originalContent),
     };
     unsavedContentCache.set(filePath, entry);
     evictUnsavedContentCache();
@@ -306,6 +318,39 @@ export function clearUnsavedContentCache(filePath: string): void {
   }
 }
 
+/** Non-destructive access for saving inactive buffers before a Git checkout. */
+export function getDirtyCachedPaths(): string[] {
+  return [...unsavedContentCache]
+    .filter(([, entry]) => entry.dirty)
+    .map(([path]) => path);
+}
+
+export async function saveCachedBufferForSwitch(
+  filePath: string
+): Promise<void> {
+  const entry = unsavedContentCache.get(filePath);
+  if (!entry?.dirty) return;
+  await entry.pendingWrite;
+  const content =
+    entry.content ??
+    (entry.draftPath ? await readTextFile(entry.draftPath) : null);
+  if (content === null || unsavedContentCache.get(filePath) !== entry)
+    throw new Error("The editor buffer changed; save it before switching");
+  if (
+    (await contentDigest(await readTextFile(filePath))) !==
+    (await entry.baseDigest)
+  )
+    throw new Error("The file changed on disk; review it before switching");
+  await writeTextFile(filePath, content);
+  if (
+    unsavedContentCache.get(filePath) !== entry ||
+    (await readTextFile(filePath)) !== content
+  )
+    throw new Error("The editor buffer changed while saving");
+  clearUnsavedContentCache(filePath);
+  invalidateFileCache(filePath);
+}
+
 export function subscribeToFileChanges(
   callback: FileChangeCallback
 ): () => void {
@@ -361,6 +406,7 @@ export function invalidateFileCache(filePath: string): void {
   loadedFilesThisSession.delete(filePath);
 }
 
+/** Test-only: drop the metadata + loaded-this-session caches. */
 export function clearFileCache(): void {
   metadataCache.clear();
   loadedFilesThisSession.clear();
@@ -406,17 +452,4 @@ export function getUnsavedContentCacheStats(): {
     spilledEntries,
     contentChars,
   };
-}
-
-export function updateCachedFileMtime(
-  filePath: string,
-  mtime: number | null
-): void {
-  const existing = metadataCache.get(filePath);
-  if (existing) {
-    existing.mtime = mtime;
-    return;
-  }
-
-  cacheFileMetadata(filePath, false, mtime);
 }

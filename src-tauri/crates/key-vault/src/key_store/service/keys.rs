@@ -93,9 +93,9 @@ impl KeyService {
         // (rename, description, endpoint edits) carry the stored aliases along
         // unchanged, and a historical record that predates these rules must
         // not block every later write to the account.
-        let retained: HashMap<String, Vec<String>> = self
-            .load_store()
-            .get_by_id(&key.id)
+        let previous_key = self.get_key_by_id(&key.id);
+        let retained: HashMap<String, Vec<String>> = previous_key
+            .as_ref()
             .map(|existing| {
                 let mut retained: HashMap<String, Vec<String>> = HashMap::new();
                 for alias in &existing.model_aliases {
@@ -150,14 +150,42 @@ impl KeyService {
                 key.available_models.push(alias.alias.clone());
             }
         }
+        // Import and recovery share the same resolver. Bind once so changing
+        // CODEX_HOME later cannot redirect an existing account's write-back.
+        if previous_key.as_ref().is_some_and(|previous| {
+            !key.same_credential_material(previous)
+                && key.codex_cli_auth_path == previous.codex_cli_auth_path
+        }) {
+            // A new import/reconnect must prove its current source again.
+            key.codex_cli_auth_path = None;
+        }
+        super::codex_cli_auth::bind_codex_cli_source(&mut key);
         let key_id = key.id.clone();
         self.update_store(|store| {
+            if let Some(previous) = store.get_by_id(&key_id) {
+                key.credential_generation = previous.credential_generation;
+                key.codex_pending_source_token_hash =
+                    previous.codex_pending_source_token_hash.clone();
+                if !key.same_credential_material(previous) {
+                    key.credential_generation = key
+                        .credential_generation
+                        .checked_add(1)
+                        .ok_or_else(|| "Credential generation exhausted".to_string())?;
+                    key.oauth_auto_disabled = false;
+                    key.codex_pending_source_token_hash = None;
+                }
+                if previous.enabled && !key.enabled {
+                    key.oauth_auto_disabled = false;
+                }
+            } else {
+                key.credential_generation = 0;
+            }
             store.set(key);
-            store
+            Ok(store
                 .get_by_id(&key_id)
                 .cloned()
-                .expect("KeyStore::set must retain the inserted key")
-        })
+                .expect("KeyStore::set must retain the inserted key"))
+        })?
     }
 
     /// Record behaviorally-observed reasoning capability for `model` on key

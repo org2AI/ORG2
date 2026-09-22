@@ -88,6 +88,54 @@ export function mergeSessions(
   return merged;
 }
 
+const EMPTY_IDS: ReadonlySet<string> = new Set();
+
+/**
+ * Merge an authoritative listing page: the backend lists exactly one row
+ * per continuation lineage (the elected winner), so any held row of a
+ * listed lineage that the page did not return is a sibling the election
+ * demoted, whatever its `updated_at` says — a re-promoted older generation
+ * must displace a newer one whose file is gone. Loads by explicit id are
+ * not authoritative and must use `mergeSessions`.
+ */
+export function mergeAuthoritativeSessions(
+  prev: readonly Session[],
+  incoming: readonly Session[],
+  keepSessionIds: ReadonlySet<string> = EMPTY_IDS
+): Session[] {
+  return mergeSessions(
+    pruneSupersededSiblings(prev, incoming, keepSessionIds),
+    incoming
+  );
+}
+
+/**
+ * Drop held rows that share a lineage with an incoming (authoritative) row
+ * but were not returned themselves. Rows in `keepSessionIds` (the open
+ * session) survive so a deliberately opened older generation stays
+ * reachable; rows without a lineage are untouched.
+ */
+export function pruneSupersededSiblings(
+  sessions: readonly Session[],
+  incoming: readonly Session[],
+  keepSessionIds: ReadonlySet<string> = EMPTY_IDS
+): Session[] {
+  const listedLineages = new Set<string>();
+  for (const session of incoming) {
+    if (session.continuationLineageId) {
+      listedLineages.add(session.continuationLineageId);
+    }
+  }
+  if (listedLineages.size === 0) return sessions.slice();
+  const incomingIds = new Set(incoming.map((session) => session.session_id));
+  return sessions.filter((session) => {
+    const lineageId = session.continuationLineageId;
+    if (!lineageId || !listedLineages.has(lineageId)) return true;
+    if (incomingIds.has(session.session_id)) return true;
+    return keepSessionIds.has(session.session_id);
+  });
+}
+
 export function setPaginationFor(
   category: SessionListCategory,
   patch: Partial<SessionPaginationMap[SessionListCategory]>

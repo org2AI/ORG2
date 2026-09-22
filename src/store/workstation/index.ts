@@ -26,7 +26,6 @@ export { activeHostAtom } from "./tabHost";
 
 // Workstation TabBar (AppShell) coordination atoms
 export {
-  workstationNewBrowserSessionRequestAtom,
   requestNewBrowserSessionAtom,
   workstationProjectTabBarAtom,
   WORK_MANAGEMENT_SECTION,

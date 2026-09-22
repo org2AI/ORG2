@@ -7,6 +7,8 @@ export interface RuntimeInstanceProfile {
 
 const PRIMARY_IDE_SERVER_PORT = 13_847;
 const PRIMARY_CLI_PROXY_PORT = 17_888;
+// Dedicated dev slot, outside the numbered bundle range (2..99).
+const DEV_INSTANCE_ID = 100;
 
 /**
  * Resolve the runtime identity embedded by the per-instance Tauri config.
@@ -16,6 +18,14 @@ const PRIMARY_CLI_PROXY_PORT = 17_888;
 export function runtimeInstanceProfileForIdentifier(
   identifier: string
 ): RuntimeInstanceProfile {
+  if (identifier.trim() === "org2ai.org2.dev") {
+    return {
+      instanceId: DEV_INSTANCE_ID,
+      ideServerPort: PRIMARY_IDE_SERVER_PORT + DEV_INSTANCE_ID - 1,
+      cliProxyPort: PRIMARY_CLI_PROXY_PORT + DEV_INSTANCE_ID - 1,
+      authDeepLinkScheme: "orgii-dev",
+    };
+  }
   const match = /^org2ai\.org2\.instance(\d+)$/.exec(identifier.trim());
   const parsedId = match ? Number(match[1]) : 1;
   const instanceId =

@@ -16,10 +16,10 @@
  */
 import { useSetAtom, useStore } from "jotai";
 import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 
 import Message from "@src/components/Message";
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import i18n from "@src/i18n";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { requestSessionSidebarRevealAtom } from "@src/store/ui/sidebarAtom";

@@ -1,63 +1,36 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
-import { Placeholder } from "@src/components/Placeholder";
-import PrCiStatusIndicator from "@src/components/PrCiStatusIndicator";
-import type { SelectOption } from "@src/components/Select";
-import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
-import {
-  CheckmarkCircle01Icon,
-  CircleDotIcon,
-  CircleSlashIcon,
-  Copy01Icon,
-  GitMergeIcon,
-  GitPullRequestDraftIcon,
-  HugeiconsIcon,
-} from "@src/icons";
 import {
   WorkManagementTable,
   type WorkManagementTableRow,
-} from "@src/modules/shared/components/WorkManagementTable";
-import { compactRepositoryLabel } from "@src/modules/shared/githubRepositoryLabel";
-import InboxListDetailLayout from "@src/modules/shared/layouts/InboxListDetailLayout";
-import SplitListFullscreenButton from "@src/modules/shared/layouts/SplitListFullscreenButton";
-import SplitListHeader from "@src/modules/shared/layouts/SplitListHeader";
+} from "@src/features/GitHubWork/WorkManagementTable";
+import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
+import InboxListDetailLayout from "@src/scaffold/layouts/InboxListDetailLayout";
 
 import { CreateIssueModal } from "./CreateIssueModal";
-import {
-  ManagedIssueActionsCell,
-  ManagedIssueAssigneeCell,
-  ManagedIssueContextMeta,
-  ManagedPrActionsCell,
-} from "./GitHubWorkItemControls";
 import GitHubWorkItemDetailPane from "./GitHubWorkItemDetailPane";
 import GitHubWorkItemsCompactList from "./GitHubWorkItemsCompactList";
+import { GitHubWorkItemsTableEmptyState } from "./GitHubWorkItemsView/GitHubWorkItemsTableEmptyState";
 import {
-  GitHubWorkItemsFilterControls,
-  GitHubWorkItemsRepositorySelect,
-  GitHubWorkItemsSearchAndActions,
-} from "./GitHubWorkItemsHeaderControls";
+  buildManagedIssueTableRow,
+  buildManagedPrTableRow,
+} from "./GitHubWorkItemsView/githubWorkItemsTableRows";
+import { useGitHubWorkItemsViewHeaders } from "./GitHubWorkItemsView/useGitHubWorkItemsViewHeaders";
 import {
   GITHUB_ITEM_KIND,
   type ManagedGitHubItem,
   type ManagedIssueItem,
   type ManagedPrItem,
-  getManagedGitHubItemKey,
 } from "./githubManagedItemModel";
-import {
-  canManageIssueAssignees,
-  canManageIssueStatus,
-  canManagePrStatus,
-  findGitHubRepoSource,
-} from "./githubWorkItemPermissions";
+import { findGitHubRepoSource } from "./githubWorkItemPermissions";
+import type { GitHubWorkItemFacets } from "./githubWorkItemsFilterFacets";
 import {
   GITHUB_WORK_ITEMS_PAGE_SIZE,
   canAdvanceGitHubWorkItemsPage,
 } from "./githubWorkItemsPagination";
 import {
   GITHUB_QUERY_SCOPE,
-  GITHUB_QUERY_STATE,
   type GitHubQueryScope,
   type ParsedGitHubSearchQuery,
 } from "./githubWorkItemsSearchQuery";
@@ -72,7 +45,8 @@ import type {
   ManagedIssueStatusValue,
   ManagedPrStatusValue,
 } from "./useGitHubWorkItemStatusMutations";
-import { useWorkManagementSplitHeader } from "./workManagementSplitHeaderContext";
+
+export { getManagedIssueStatusAccent } from "./GitHubWorkItemsView/githubWorkItemsTableRows";
 
 interface GitHubWorkItemsViewProps {
   scope: Extract<GitHubQueryScope, "issue" | "pr">;
@@ -89,8 +63,7 @@ interface GitHubWorkItemsViewProps {
   selectedRepoSourceForCreate: GitHubRepoSource | null;
   searchQuery: string;
   parsedSearchQuery: ParsedGitHubSearchQuery;
-  issuePersonalFilterOptions: SelectOption[];
-  selectedIssuePersonalFilters: string[];
+  filterFacets: GitHubWorkItemFacets;
   currentPage: number;
   totalLoadedPages: number;
   hasMoreFilteredIssues: boolean;
@@ -100,7 +73,6 @@ interface GitHubWorkItemsViewProps {
   updateSearchQuery: (mutate: (query: ParsedGitHubSearchQuery) => void) => void;
   onSearchQueryChange: (query: string) => void;
   onRepoSelect: (repo: IssueRepoFilter) => void;
-  onIssuePersonalFiltersSelect: (values: (string | number)[]) => void;
   onRefresh: () => void;
   /** Jump directly to an already-loaded page (1-based). */
   onGoToPage: (page: number) => void;
@@ -138,28 +110,6 @@ interface GitHubWorkItemsViewProps {
   ) => void;
 }
 
-export function getManagedIssueStatusAccent(status: ManagedIssueStatusValue): {
-  iconColor: string;
-  valueClassName: string;
-} {
-  if (status === "open") {
-    return {
-      iconColor: "var(--color-success-6)",
-      valueClassName: "text-success-6",
-    };
-  }
-  if (status === "closed_completed") {
-    return {
-      iconColor: "var(--color-purple-6)",
-      valueClassName: "text-purple-6",
-    };
-  }
-  return {
-    iconColor: "var(--color-text-3)",
-    valueClassName: "text-text-2",
-  };
-}
-
 export function GitHubWorkItemsView({
   scope,
   loading,
@@ -175,8 +125,7 @@ export function GitHubWorkItemsView({
   selectedRepoSourceForCreate,
   searchQuery,
   parsedSearchQuery,
-  issuePersonalFilterOptions,
-  selectedIssuePersonalFilters,
+  filterFacets,
   currentPage,
   totalLoadedPages,
   hasMoreFilteredIssues,
@@ -186,7 +135,6 @@ export function GitHubWorkItemsView({
   updateSearchQuery,
   onSearchQueryChange,
   onRepoSelect,
-  onIssuePersonalFiltersSelect,
   onRefresh,
   onGoToPage,
   onNextPage,
@@ -208,8 +156,6 @@ export function GitHubWorkItemsView({
   onCreateIssue,
 }: GitHubWorkItemsViewProps): React.ReactNode {
   const { t } = useTranslation(["sessions", "common"]);
-  const { splitDatasetControl, surfaceDatasetControl } =
-    useWorkManagementSplitHeader();
   const [listFullscreen, setListFullscreen] = useState(false);
   const handleSelectItem = useCallback(
     (item: ManagedGitHubItem) => {
@@ -220,173 +166,25 @@ export function GitHubWorkItemsView({
     },
     [onSelectItem]
   );
-  const activeState =
-    scope === GITHUB_QUERY_SCOPE.PR &&
-    parsedSearchQuery.state === GITHUB_QUERY_STATE.MERGED
-      ? GITHUB_QUERY_STATE.CLOSED
-      : (parsedSearchQuery.state ?? GITHUB_QUERY_STATE.OPEN);
-  const stateTabs = useMemo(
-    () => [
-      {
-        key: GITHUB_QUERY_STATE.OPEN,
-        label: t("chat.panels.manageIssues.stateOpen"),
-      },
-      {
-        key: GITHUB_QUERY_STATE.CLOSED,
-        label: t("chat.panels.manageIssues.stateClosed"),
-      },
-    ],
-    [t]
-  );
   const readonlyReason = t("common:errors.forbidden");
-  const handleStateChange = useCallback(
-    (state: string) => {
-      if (
-        state !== GITHUB_QUERY_STATE.OPEN &&
-        state !== GITHUB_QUERY_STATE.CLOSED
-      ) {
-        return;
-      }
-      updateSearchQuery((query) => {
-        query.state = state;
-      });
-    },
-    [updateSearchQuery]
-  );
-
-  const sharedHeaderControlsProps = useMemo(
-    () => ({
-      stateTabs,
-      activeState,
-      searchQuery,
-      personalFilterOptions:
-        scope === GITHUB_QUERY_SCOPE.ISSUE
-          ? issuePersonalFilterOptions
-          : undefined,
-      selectedPersonalFilters: selectedIssuePersonalFilters,
-      personalFilterLabel: t("common:actions.filter"),
-      refreshLabel: t("common:actions.refresh"),
-      refreshing: loading,
-      createAction:
-        scope === GITHUB_QUERY_SCOPE.ISSUE
-          ? {
-              label: t("chat.panels.manageIssues.createIssueTrigger"),
-              disabled: repoSources.length === 0,
-              onClick: () => onSetCreateFormOpen(true),
-            }
-          : undefined,
-      onStateChange: handleStateChange,
-      onSearchQueryChange,
-      onPersonalFiltersSelect: onIssuePersonalFiltersSelect,
-      onRefresh,
-    }),
-    [
-      activeState,
-      handleStateChange,
-      issuePersonalFilterOptions,
-      loading,
-      onIssuePersonalFiltersSelect,
-      onRefresh,
-      onSearchQueryChange,
-      onSetCreateFormOpen,
-      repoSources.length,
-      scope,
-      searchQuery,
-      selectedIssuePersonalFilters,
-      stateTabs,
-      t,
-    ]
-  );
-  const repositoryHeaderContent = useMemo(
-    () => (
-      <GitHubWorkItemsRepositorySelect
-        repoOptions={repoOptions}
-        selectedRepo={effectiveSelectedRepo}
-        onRepoSelect={onRepoSelect}
-      />
-    ),
-    [effectiveSelectedRepo, onRepoSelect, repoOptions]
-  );
-  const headerTrailing = useMemo(
-    () => (
-      <div className="flex min-w-0 items-center gap-px">
-        <GitHubWorkItemsSearchAndActions {...sharedHeaderControlsProps} />
-        <SplitListFullscreenButton
-          isFullscreen={listFullscreen}
-          onToggle={() => setListFullscreen((current) => !current)}
-        />
-      </div>
-    ),
-    [listFullscreen, sharedHeaderControlsProps]
-  );
-  // Every split presentation owns its controls in the left-column header.
-  const useSplitListHeader = !listFullscreen;
-  const splitListHeader = useMemo(
-    () =>
-      useSplitListHeader ? (
-        <SplitListHeader
-          primary={
-            <div className="flex min-w-0 flex-1 items-center gap-px">
-              {splitDatasetControl}
-              {splitDatasetControl ? (
-                <HeaderSectionSeparator className="mx-0.5" />
-              ) : null}
-              {repositoryHeaderContent}
-              <HeaderSectionSeparator className="mx-0.5" />
-              <GitHubWorkItemsFilterControls {...sharedHeaderControlsProps} />
-            </div>
-          }
-          secondary={
-            <div className="flex min-w-0 flex-1 items-center gap-px">
-              <GitHubWorkItemsSearchAndActions
-                {...sharedHeaderControlsProps}
-                fillSearch
-              />
-              <SplitListFullscreenButton
-                isFullscreen={listFullscreen}
-                onToggle={() => setListFullscreen((current) => !current)}
-              />
-            </div>
-          }
-        />
-      ) : null,
-    [
-      listFullscreen,
-      repositoryHeaderContent,
-      sharedHeaderControlsProps,
-      splitDatasetControl,
-      useSplitListHeader,
-    ]
-  );
-  const fullListHeader = useMemo(
-    () =>
-      !useSplitListHeader ? (
-        <SplitListHeader
-          fullWidth
-          primary={
-            <div className="flex min-w-0 flex-1 items-center gap-px">
-              {surfaceDatasetControl}
-              {surfaceDatasetControl ? (
-                <HeaderSectionSeparator className="mx-0.5" />
-              ) : null}
-              {repositoryHeaderContent}
-              <HeaderSectionSeparator className="mx-0.5" />
-              <GitHubWorkItemsFilterControls {...sharedHeaderControlsProps} />
-              <div className="ml-auto flex min-w-0 items-center gap-px">
-                {headerTrailing}
-              </div>
-            </div>
-          }
-        />
-      ) : null,
-    [
-      headerTrailing,
-      repositoryHeaderContent,
-      sharedHeaderControlsProps,
-      surfaceDatasetControl,
-      useSplitListHeader,
-    ]
-  );
+  const { splitListHeader, fullListHeader } = useGitHubWorkItemsViewHeaders({
+    t,
+    scope,
+    loading,
+    repoSources,
+    repoOptions,
+    effectiveSelectedRepo,
+    searchQuery,
+    parsedSearchQuery,
+    filterFacets,
+    listFullscreen,
+    setListFullscreen,
+    updateSearchQuery,
+    onSearchQueryChange,
+    onRepoSelect,
+    onRefresh,
+    onSetCreateFormOpen,
+  });
   // Let the host keep its tab/title row; each layout mode owns its controls in
   // a local 36px surface row below it.
   const publishedHeader = useMemo(() => ({ hidden: true }), []);
@@ -418,272 +216,31 @@ export function GitHubWorkItemsView({
           <span title={item.updatedAt}>{item.timeAgo || "—"}</span>
         );
         if (item.kind === GITHUB_ITEM_KIND.PR) {
-          const prStatusValue: ManagedPrStatusValue =
-            item.state === GITHUB_QUERY_STATE.OPEN ? "open" : "closed";
-          const prStatusLabel =
-            item.state === GITHUB_QUERY_STATE.MERGED
-              ? t("common:labels.prStatus.merged")
-              : item.rawPr.draft
-                ? t("common:labels.prStatus.draft")
-                : prStatusValue === "open"
-                  ? t("chat.panels.manageIssues.stateOpen")
-                  : t("chat.panels.manageIssues.stateClosed");
-          const prStatusIcon =
-            item.state === GITHUB_QUERY_STATE.MERGED ? (
-              <HugeiconsIcon
-                icon={GitMergeIcon}
-                data-icon="git-merge"
-                size={14}
-                strokeWidth={1.8}
-              />
-            ) : item.rawPr.draft ? (
-              <HugeiconsIcon
-                icon={GitPullRequestDraftIcon}
-                data-icon="git-pull-request-draft"
-                size={14}
-                strokeWidth={1.8}
-              />
-            ) : prStatusValue === "open" ? (
-              <HugeiconsIcon
-                icon={CircleDotIcon}
-                data-icon="circle-dot"
-                size={14}
-                strokeWidth={1.8}
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={CheckmarkCircle01Icon}
-                data-icon="check-circle-2"
-                size={14}
-                strokeWidth={1.8}
-              />
-            );
-          const prCiLabel =
-            item.rawPr.ci_status === "success"
-              ? t("common:git.pr.checks.passedShort")
-              : item.rawPr.ci_status === "failure"
-                ? t("common:git.pr.checks.failedShort")
-                : item.rawPr.ci_status === "pending"
-                  ? t("common:git.pr.checks.runningShort")
-                  : item.rawPr.ci_status === "none"
-                    ? t("common:git.pr.checks.noneShort")
-                    : t("common:git.pr.checks.unavailableShort");
-          return {
-            key: getManagedGitHubItemKey(item),
-            id: `#${item.id}`,
-            idSortValue: item.id,
-            title: item.title,
-            titleLinkOnRowHover: true,
-            metadata: [
-              compactRepositoryLabel(item.repo),
-              item.author,
-              `${item.sourceBranch} → ${item.targetBranch}`,
-            ],
-            fillLastMetadata: true,
-            statusSelect: {
-              value: prStatusValue,
-              label: prStatusLabel,
-              icon: prStatusIcon,
-              iconColor:
-                item.state === GITHUB_QUERY_STATE.MERGED
-                  ? "var(--color-purple-6)"
-                  : item.rawPr.draft
-                    ? "var(--color-text-2)"
-                    : prStatusValue === "open"
-                      ? "var(--color-success-6)"
-                      : "var(--color-text-3)",
-              valueClassName:
-                item.state === GITHUB_QUERY_STATE.MERGED
-                  ? "text-purple-6"
-                  : item.rawPr.draft
-                    ? "text-text-2"
-                    : prStatusValue === "open"
-                      ? "text-success-6"
-                      : "text-text-2",
-              options: [
-                {
-                  value: "open",
-                  label: t("chat.panels.manageIssues.stateOpen"),
-                  icon: (
-                    <HugeiconsIcon
-                      icon={CircleDotIcon}
-                      data-icon="circle-dot"
-                      size={14}
-                      strokeWidth={1.8}
-                    />
-                  ),
-                  iconColor: "var(--color-success-6)",
-                },
-                {
-                  value: "closed",
-                  label: t("chat.panels.manageIssues.stateClosed"),
-                  icon: (
-                    <HugeiconsIcon
-                      icon={CheckmarkCircle01Icon}
-                      data-icon="check-circle-2"
-                      size={14}
-                      strokeWidth={1.8}
-                    />
-                  ),
-                  iconColor: "var(--color-text-3)",
-                },
-              ],
-              onChange: (value) =>
-                onPrStatusChange(item, value as ManagedPrStatusValue),
-              readonly:
-                item.state === GITHUB_QUERY_STATE.MERGED ||
-                !canManagePrStatus(item, source),
-              readonlyReason,
-              dataTestId: `github-pr-status-${item.id}`,
-            },
-            ciStatus: (
-              <PrCiStatusIndicator
-                status={item.rawPr.ci_status}
-                label={prCiLabel}
-                dataTestId={`github-pr-ci-${item.id}`}
-              />
-            ),
+          return buildManagedPrTableRow({
+            item,
+            source,
             updated,
-            actions: (
-              <ManagedPrActionsCell
-                pr={item}
-                addLabel={t("chat.panels.manageIssues.addToChat")}
-                onAddPr={onAddPr}
-              />
-            ),
-            onClick: () => handleSelectItem(item),
-          };
-        }
-        const issueStatusValue: ManagedIssueStatusValue =
-          item.state === "open"
-            ? "open"
-            : item.rawIssue.state_reason === "duplicate"
-              ? "closed_duplicate"
-              : item.rawIssue.state_reason === "not_planned"
-                ? "closed_not_planned"
-                : "closed_completed";
-        const issueStatusAccent = getManagedIssueStatusAccent(issueStatusValue);
-        const issueStatusOptions = [
-          {
-            value: "open",
-            label: t("chat.panels.manageIssues.stateOpen"),
-            icon: (
-              <HugeiconsIcon
-                icon={CircleDotIcon}
-                data-icon="circle-dot"
-                size={14}
-                strokeWidth={1.8}
-              />
-            ),
-            iconColor: getManagedIssueStatusAccent("open").iconColor,
-          },
-          {
-            value: "closed_completed",
-            label: t("chat.panels.manageIssues.closeAsCompleted", {
-              defaultValue: "Close as completed",
-            }),
-            icon: (
-              <HugeiconsIcon
-                icon={CheckmarkCircle01Icon}
-                data-icon="check-circle-2"
-                size={14}
-                strokeWidth={1.8}
-              />
-            ),
-            iconColor:
-              getManagedIssueStatusAccent("closed_completed").iconColor,
-          },
-          {
-            value: "closed_not_planned",
-            label: t("chat.panels.manageIssues.closeAsNotPlanned", {
-              defaultValue: "Close as not planned",
-            }),
-            icon: (
-              <HugeiconsIcon
-                icon={CircleSlashIcon}
-                data-icon="circle-slash"
-                size={14}
-                strokeWidth={1.8}
-              />
-            ),
-            iconColor: "var(--color-text-3)",
-          },
-          ...(issueStatusValue === "closed_duplicate"
-            ? [
-                {
-                  value: "closed_duplicate" as const,
-                  label: t("common:git.issues.composer.closeAsDuplicate"),
-                  icon: (
-                    <HugeiconsIcon
-                      icon={Copy01Icon}
-                      data-icon="copy"
-                      size={14}
-                      strokeWidth={1.8}
-                    />
-                  ),
-                  iconColor: "var(--color-text-3)",
-                },
-              ]
-            : []),
-        ];
-        const selectedIssueStatus = issueStatusOptions.find(
-          (option) => option.value === issueStatusValue
-        )!;
-        const assigneeControl = getIssueAssigneeControlState(item);
-        return {
-          key: getManagedGitHubItemKey(item),
-          id: `#${item.id}`,
-          idSortValue: item.id,
-          title: item.title,
-          titleLinkOnRowHover: true,
-          contextLeading: <ManagedIssueContextMeta issue={item} />,
-          metadata: [compactRepositoryLabel(item.repo), item.author],
-          tags: item.labels.map((label) => label.name),
-          assignee: (
-            <ManagedIssueAssigneeCell
-              issue={item}
-              assignableUsers={assigneeControl.users}
-              canManage={canManageIssueAssignees(source)}
-              loading={assigneeControl.loading}
-              loadError={assigneeControl.error}
-              updating={assigneeControl.updating}
-              noneLabel={t("common:common.none")}
-              loadingLabel={t("common:status.loading")}
-              searchPlaceholder={t("common:common.searchPlaceholder")}
-              readonlyReason={readonlyReason}
-              onOpen={onLoadIssueAssignees}
-              onChange={onIssueAssigneesChange}
-            />
-          ),
-          statusSelect: {
-            value: issueStatusValue,
-            label:
-              item.state === "open"
-                ? t("chat.panels.manageIssues.stateOpen")
-                : t("chat.panels.manageIssues.stateClosed"),
-            icon: selectedIssueStatus.icon,
-            iconColor: selectedIssueStatus.iconColor,
-            valueClassName: issueStatusAccent.valueClassName,
-            options: issueStatusOptions,
-            onChange: (value) =>
-              onIssueStatusChange(item, value as ManagedIssueStatusValue),
-            readonly: !canManageIssueStatus(item, source),
+            t,
             readonlyReason,
-            dataTestId: `github-issue-status-${item.id}`,
-          },
+            onPrStatusChange,
+            onAddPr,
+            onSelectItem: handleSelectItem,
+          });
+        }
+        return buildManagedIssueTableRow({
+          item,
+          source,
           updated,
-          actions: (
-            <ManagedIssueActionsCell
-              issue={item}
-              addLabel={t("chat.panels.manageIssues.addToChat")}
-              openInBrowserLabel={t("common:previews.openInBrowser")}
-              moreActionsLabel={t("common:tooltips.moreActions")}
-              onOpenIssueInBrowser={onOpenIssueInBrowser}
-              onAddIssue={onAddIssue}
-            />
-          ),
-          onClick: () => handleSelectItem(item),
-        };
+          t,
+          readonlyReason,
+          getIssueAssigneeControlState,
+          onLoadIssueAssignees,
+          onIssueAssigneesChange,
+          onIssueStatusChange,
+          onOpenIssueInBrowser,
+          onAddIssue,
+          onSelectItem: handleSelectItem,
+        });
       }),
     [
       getIssueAssigneeControlState,
@@ -701,75 +258,6 @@ export function GitHubWorkItemsView({
       tableRows,
     ]
   );
-
-  const tableEmptyState = (() => {
-    if (
-      scope !== GITHUB_QUERY_SCOPE.PR &&
-      loading &&
-      filteredItems.length === 0
-    ) {
-      return (
-        <Placeholder
-          variant="loading"
-          placement="detail-panel"
-          fillParentHeight
-        />
-      );
-    }
-
-    if (loadError && allItemsCount === 0) {
-      return (
-        <Placeholder
-          variant="error"
-          placement="detail-panel"
-          subtitle={loadError}
-          action={{ label: t("common:actions.retry"), onClick: onRefresh }}
-          fillParentHeight
-        />
-      );
-    }
-
-    if (!loading && repoSources.length === 0) {
-      return (
-        <Placeholder
-          variant="empty"
-          placement="detail-panel"
-          fillParentHeight
-        />
-      );
-    }
-
-    if (
-      scope !== GITHUB_QUERY_SCOPE.PR &&
-      !loading &&
-      filteredItems.length === 0
-    ) {
-      return (
-        <Placeholder
-          variant="no-results"
-          placement="detail-panel"
-          fillParentHeight
-        />
-      );
-    }
-
-    return (
-      <Placeholder
-        variant={loading ? "loading" : loadError ? "error" : "no-results"}
-        placement="detail-panel"
-        subtitle={loadError ?? undefined}
-        action={
-          loadError
-            ? {
-                label: t("common:actions.retry"),
-                onClick: onRefresh,
-              }
-            : undefined
-        }
-        fillParentHeight
-      />
-    );
-  })();
 
   return (
     <div
@@ -823,7 +311,17 @@ export function GitHubWorkItemsView({
             <WorkManagementTable
               rows={settingsRows}
               loading={loading}
-              noDataElement={tableEmptyState}
+              noDataElement={
+                <GitHubWorkItemsTableEmptyState
+                  scope={scope}
+                  loading={loading}
+                  loadError={loadError}
+                  allItemsCount={allItemsCount}
+                  filteredItemsCount={filteredItems.length}
+                  repoSourcesCount={repoSources.length}
+                  onRefresh={onRefresh}
+                />
+              }
               sort={sort}
               onSortChange={onSortChange}
               testId={`github-${scope}-table`}

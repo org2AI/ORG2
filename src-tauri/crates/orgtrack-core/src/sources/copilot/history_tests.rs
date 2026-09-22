@@ -582,7 +582,7 @@ fn store_db_enriches_totals_branch_and_round_usage() {
         store
             .execute(
                 "INSERT INTO sessions (id, cwd, repository, host_type, branch, summary, created_at, updated_at)
-                 VALUES (?1, ?2, 'org2AI/ORGII', 'github.com', 'develop', 'Run the build',
+                 VALUES (?1, ?2, 'org2AI/ORG2', 'github.com', 'develop', 'Run the build',
                          '2026-07-29T09:00:00.000Z', '2026-07-29T09:00:06.000Z')",
                 (TOOL_SESSION_ID, FIXTURE_CWD),
             )

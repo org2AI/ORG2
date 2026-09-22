@@ -6,7 +6,7 @@
 import React from "react";
 
 import PrHoverCard from "@src/components/PrHoverCard";
-import SessionHoverCard from "@src/components/SessionHoverCard";
+import SessionHoverCard from "@src/features/SessionHoverCard";
 import WorkItemHoverCard from "@src/modules/ProjectManager/WorkItems/components/WorkItemHoverCard";
 import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 

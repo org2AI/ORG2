@@ -1,7 +1,9 @@
-import { useCallback, useState } from "react";
+import { useSetAtom } from "jotai";
+import { useCallback, useEffect, useState } from "react";
 
 import type { GitWorktreeEntry } from "@src/api/http/git/types";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
+import { sourceControlRefreshHandlerAtom } from "@src/store/workstation/codeEditor/sourceControlRefreshAtom";
 
 import { PrimarySidebarLayoutWithSections } from "../../PrimarySidebarLayout";
 import type { TabSidebarProps } from "../registry";
@@ -41,7 +43,7 @@ const SourceControlTabSidebarContent: React.FC<TabSidebarProps> = ({
     ? (sourceControlContext?.hasWorktrees ?? false)
     : undefined;
 
-  const { tab } = useSourceControlSidebarModule({
+  const { tab, ref: sourceControlRef } = useSourceControlSidebarModule({
     repoPath: context.repoPath,
     repoId: context.repoId,
     branchName: currentBranch,
@@ -58,6 +60,14 @@ const SourceControlTabSidebarContent: React.FC<TabSidebarProps> = ({
     worktreesLoading: sourceControlContext?.worktreesLoading,
     refreshWorktrees: sourceControlContext?.refreshWorktrees,
   });
+
+  const setRefreshHandler = useSetAtom(sourceControlRefreshHandlerAtom);
+  useEffect(() => {
+    const refresh = () => sourceControlRef.current?.refresh();
+    setRefreshHandler(() => refresh);
+    return () =>
+      setRefreshHandler((current) => (current === refresh ? null : current));
+  }, [setRefreshHandler, sourceControlRef, context.repoId, context.repoPath]);
 
   const [activeTab] = useState(tab.key);
   const handleTabChange = useCallback(() => {

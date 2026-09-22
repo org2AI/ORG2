@@ -4,12 +4,12 @@ import { useTranslation } from "react-i18next";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
 import Message from "@src/components/Message";
-import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
 import {
   githubIssueResourceKey,
   loadGitHubIssueTimeline,
   primeGitHubIssueDetailBundle,
-} from "@src/modules/shared/githubIssueDetailCoordinator";
+} from "@src/features/GitHubWork/githubIssueDetailCoordinator";
+import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
 import { fetchIssueTimeline } from "@src/services/git/operations/githubIssues";
 import {
   openGitHubIssueInChatPanelTabAtom,
@@ -24,7 +24,7 @@ import {
   createGitHubIssueDetailTab,
   createGitHubPrDetailTab,
 } from "@src/store/workstation/tabs";
-import { openExternalLink } from "@src/util/platform/ipcRenderer";
+import { openLink } from "@src/util/ui/openLink";
 
 import type { ManagedIssueItem, ManagedPrItem } from "./githubManagedItemModel";
 import type { WorkManagementDetailHost } from "./workManagementDetailHost";
@@ -55,7 +55,7 @@ export function useGitHubWorkItemActions({
   const { openTab } = useWorkStationTabs();
 
   const openIssueInBrowser = useCallback((issue: ManagedIssueItem) => {
-    void openExternalLink(issue.rawIssue.html_url);
+    openLink(issue.rawIssue.html_url);
   }, []);
 
   const openIssueInTab = useCallback(

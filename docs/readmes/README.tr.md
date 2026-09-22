@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.pl.md">Polski</a>
+  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.id.md">Bahasa Indonesia</a> · <a href="README.pl.md">Polski</a>
 </p>
 
 <p align="center">
@@ -34,19 +34,19 @@ Bir kod parçasının neden var olduğunu — ve işe yarayıp yaramadığını 
 
 ORG-2, ekibinizin kodlama Agent’larını çalıştırdığı yerdir — yerleşik bir Rust harness ve 20’den fazla Agent CLI için başlatıcılar — ve bu kaydı otomatik olarak oluşturur. Her oturum, takım arkadaşlarınızın video gibi yeniden oynattığı bir trajectory hâline gelir: yalnızca diff’i değil, işin gerçekte nasıl kurulduğunu incelerler ve bağlam içinde yorum bırakırlar. Başka araçlarda çalıştırılan oturumlar da içeri alınır ve kendi geçmişlerinden geriye dönük doldurulur; böylece kayıt, uygulamadan hiç geçmemiş işi de kapsar. Kayıt; insanın ne istediğini, Agent’ın bunu nasıl anladığını ve gerçekte ne yaptığını birbirine bağlar, dolayısıyla yayına giren her satır onu yazan oturuma kadar izlenebilir.
 
-Bu yalnızca bir AI kodlama aracı değil; insan/Agent organizasyonları ve organizasyon düzeyinde hizalanma üzerine bir deney. ORG-II, Agent’ları yapılandırılmış bir organizasyon içinde kalıcı ve gözlemlenebilir çalışma arkadaşları olarak ele alır — tekrar oynatılabilir yürütme, oturumlar arası bellek, AI blame ve local-first Rust runtime ile insanlar, Agent’lar ve ekipler ortak bağlam ve hizalanmış hedefler etrafında işbirliği yapabilir.
+Bu yalnızca bir AI kodlama aracı değil; insan/Agent organizasyonları ve organizasyon düzeyinde hizalanma üzerine bir deney. ORG2, Agent’ları yapılandırılmış bir organizasyon içinde kalıcı ve gözlemlenebilir çalışma arkadaşları olarak ele alır — tekrar oynatılabilir yürütme, oturumlar arası bellek, AI blame ve local-first Rust runtime ile insanlar, Agent’lar ve ekipler ortak bağlam ve hizalanmış hedefler etrafında işbirliği yapabilir.
 
 ## Özellikler
 
 <table>
-<tr><td width="50%" valign="middle"><h3>Yerleşik Rust harness</h3><p>Mevcut API anahtarlarınız ve Agent aboneliklerinizle hızlı, token tasarruflu ve özelleştirilebilir native Agents çalıştırın.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="ORG-II Rust harness ile Agents çalıştırma" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>10'dan fazla uygulama ve CLI oturumunu yönetin</h3><p>Tüm araçlarınızdaki Agent oturumlarını tek bir yerde yükleyin ve yönetin. Uygulama değiştirmeden geçmişi tarayın, subagents inceleyin ve her kaynağı kontrol edin.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="ORG-II'de uygulama ve CLI Agent oturum kaynaklarını yönetme" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Ekibinizi kurun; yalnızca PR'ları değil, yörüngeleri inceleyin</h3><p>Ekibinizi kurun ve oturumları cihazlar ile ekip arkadaşları arasında paylaşın. Yalnızca ortaya çıkan diff'i değil, Agent'ın tüm yörüngesini inceleyin ve bağlam içinde yorum bırakın.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="ORG-II'de ekip ve yörünge replay izinlerini yönetme" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Tool call'lar artık video olarak</h3><p>Native Rust harness ve 15'ten fazla CLI Agent'ın çalışmalarını replay edin. Mesajlar, tool call'lar, dosya düzenlemeleri ve komut çıktıları incelenebilir tek bir timeline'da senkronize kalır.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="ORG-II'de Agent oturumunu replay etme" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Yalnızca Git blame değil, AI blame</h3><p>Bir satırı kimin değiştirdiğinde kalmayın. Değişikliğe yol açan Agent oturumlarına, tool call'lara ve kararlara kadar izleyin.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="ORG-II'de kod değişikliklerini Agent oturumları ve kararlara kadar izleme" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Rotada kalın</h3><p>Zamanınızı görevler ve Agent oturumları arasında nasıl harcadığınızı görün. Günlük etkinlik timeline'ı süreyi, kod değişikliklerini ve öncelikleri görünür tutar.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="ORG-II'de görevler ve Agent oturumlarına harcanan zamanı inceleme" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Tam geliştirme workspace'i</h3><p>Agent workspace'inizden ayrılmadan terminali kullanın, kaynak kontrolünü yönetin, Git geçmişini izleyin ve pull request'leri inceleyin.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="ORG-II'de kaynak kontrolü, Git geçmişi ve code review" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Design Modu</h3><p>Native WebKit tarayıcısında canlı sayfaları inceleyin. Bir öğe seçin ve kolay bir düzeltme için tam sayfa bağlamını doğrudan Agent'a gönderin.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="ORG-II Design Modu ile web sayfası öğesi inceleme" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Yerleşik Rust harness</h3><p>Mevcut API anahtarlarınız ve Agent aboneliklerinizle hızlı, token tasarruflu ve özelleştirilebilir native Agents çalıştırın.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="ORG2 Rust harness ile Agents çalıştırma" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>10'dan fazla uygulama ve CLI oturumunu yönetin</h3><p>Tüm araçlarınızdaki Agent oturumlarını tek bir yerde yükleyin ve yönetin. Uygulama değiştirmeden geçmişi tarayın, subagents inceleyin ve her kaynağı kontrol edin.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="ORG2'de uygulama ve CLI Agent oturum kaynaklarını yönetme" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Ekibinizi kurun; yalnızca PR'ları değil, yörüngeleri inceleyin</h3><p>Ekibinizi kurun ve oturumları cihazlar ile ekip arkadaşları arasında paylaşın. Yalnızca ortaya çıkan diff'i değil, Agent'ın tüm yörüngesini inceleyin ve bağlam içinde yorum bırakın.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="ORG2'de ekip ve yörünge replay izinlerini yönetme" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Tool call'lar artık video olarak</h3><p>Native Rust harness ve 15'ten fazla CLI Agent'ın çalışmalarını replay edin. Mesajlar, tool call'lar, dosya düzenlemeleri ve komut çıktıları incelenebilir tek bir timeline'da senkronize kalır.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="ORG2'de Agent oturumunu replay etme" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Yalnızca Git blame değil, AI blame</h3><p>Bir satırı kimin değiştirdiğinde kalmayın. Değişikliğe yol açan Agent oturumlarına, tool call'lara ve kararlara kadar izleyin.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="ORG2'de kod değişikliklerini Agent oturumları ve kararlara kadar izleme" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Rotada kalın</h3><p>Zamanınızı görevler ve Agent oturumları arasında nasıl harcadığınızı görün. Günlük etkinlik timeline'ı süreyi, kod değişikliklerini ve öncelikleri görünür tutar.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="ORG2'de görevler ve Agent oturumlarına harcanan zamanı inceleme" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Tam geliştirme workspace'i</h3><p>Agent workspace'inizden ayrılmadan terminali kullanın, kaynak kontrolünü yönetin, Git geçmişini izleyin ve pull request'leri inceleyin.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="ORG2'de kaynak kontrolü, Git geçmişi ve code review" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Design Modu</h3><p>Native WebKit tarayıcısında canlı sayfaları inceleyin. Bir öğe seçin ve kolay bir düzeltme için tam sayfa bağlamını doğrudan Agent'a gönderin.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="ORG2 Design Modu ile web sayfası öğesi inceleme" width="100%" /></td></tr>
 </table>
 
 ## Daha fazla yetenek
@@ -61,7 +61,7 @@ Bu yalnızca bir AI kodlama aracı değil; insan/Agent organizasyonları ve orga
 
 ## Desteklenen Agents
 
-ORG-II'nin yerleşik Rust harness'ını kullanın veya desteklenen coding-agent CLI'larını desktop app üzerinden başlatın.
+ORG2'nin yerleşik Rust harness'ını kullanın veya desteklenen coding-agent CLI'larını desktop app üzerinden başlatın.
 
 ### GUI + TUI
 
@@ -73,6 +73,7 @@ ORG-II'nin yerleşik Rust harness'ını kullanın veya desteklenen coding-agent 
   <a href="https://kiro.dev/docs/cli/installation"><kbd><img src="../../src/assets/modelIcons/kiro.svg" alt="Kiro CLI logo" width="16" valign="middle" /> Kiro CLI</kbd></a> &nbsp;
   <a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-in-the-cli"><kbd><img src="../../src/assets/modelIcons/copilot.svg" alt="GitHub Copilot logo" width="16" valign="middle" /> GitHub Copilot</kbd></a> &nbsp;
   <a href="https://opencode.ai/docs/config/"><kbd><img src="../../src/assets/modelIcons/opencode.svg" alt="OpenCode logo" width="16" valign="middle" /> OpenCode</kbd></a> &nbsp;
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><kbd><img src="../../src/assets/modelIcons/deepseek.svg" alt="DeepSeek Harness logo" width="16" valign="middle" /> DeepSeek Harness</kbd></a> &nbsp;
   <a href="https://antigravity.google/docs/cli/getting-started"><kbd><img src="../../src/assets/modelIcons/antigravity.svg" alt="Antigravity logo" width="16" valign="middle" /> Antigravity</kbd></a>
 </p>
 
@@ -102,9 +103,7 @@ ORG-II'nin yerleşik Rust harness'ını kullanın veya desteklenen coding-agent 
 
 ## İndir
 
-Güncel build sürümü: v1.1.24 (2026-07-16)
-
-En yeni ORGII desktop app'i tek tıklamayla indirin:
+En yeni ORG2 desktop app'i tek tıklamayla indirin:
 
 - [macOS Apple Silicon](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-mac-apple-silicon.dmg)
 - [Windows x64 installer](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-windows-x64-setup.exe)
@@ -152,4 +151,4 @@ Sorularınız veya geri bildiriminiz mi var, ya da ORG-2'nin gelişimini takip e
 
 ## Lisans
 
-ORGII, GNU Affero General Public License v3.0 veya sonrası (`AGPL-3.0-or-later`) kapsamında lisanslanmıştır. Tam lisans metni için [`LICENSE`](../../LICENSE) dosyasına bakın.
+ORG2, GNU Affero General Public License v3.0 veya sonrası (`AGPL-3.0-or-later`) kapsamında lisanslanmıştır. Tam lisans metni için [`LICENSE`](../../LICENSE) dosyasına bakın.

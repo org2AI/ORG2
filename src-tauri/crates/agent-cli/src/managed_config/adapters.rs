@@ -2,10 +2,16 @@ use super::generators::{selected_model_or_default, upsert_env_file};
 use super::proxy::openai_chat_proxy_base_url;
 use super::registry::{
     AUTOHAND_AGENT, CLINE_AGENT, CONTINUE_CLI_AGENT, DROID_AGENT, GOOSE_AGENT, HERMES_AGENT,
-    KIMI_CLI_AGENT, MISTRAL_VIBE_AGENT, OMP_AGENT, OPENCLAW_AGENT, ORGII_PROVIDER_ID,
-    ORGII_PROVIDER_NAME, PI_AGENT, QWEN_CODE_AGENT,
+    KIMI_CLI_AGENT, LEGACY_ORGII_PROVIDER_NAME, MISTRAL_VIBE_AGENT, OMP_AGENT, OPENCLAW_AGENT,
+    ORGII_PROVIDER_ID, ORGII_PROVIDER_NAME, PI_AGENT, QWEN_CODE_AGENT,
 };
 use chrono::{SecondsFormat, Utc};
+
+/// Continue and Droid model entries have no stable id, so ORG2's managed entry
+/// is matched by display name, including the pre-rename one.
+fn is_managed_model_name(name: Option<&str>) -> bool {
+    matches!(name, Some(ORGII_PROVIDER_NAME | LEGACY_ORGII_PROVIDER_NAME))
+}
 
 fn parse_json_object(existing_content: &str, label: &str) -> Result<serde_json::Value, String> {
     let config = if existing_content.trim().is_empty() {
@@ -462,7 +468,7 @@ pub(super) fn generate_continue_managed_config(
     let model = selected_model_or_default(selected_model);
 
     root.entry(yaml_key("name"))
-        .or_insert_with(|| yaml_string("ORGII Managed"));
+        .or_insert_with(|| yaml_string("ORG2 Managed"));
     root.entry(yaml_key("version"))
         .or_insert_with(|| yaml_string("1.0.0"));
 
@@ -474,10 +480,12 @@ pub(super) fn generate_continue_managed_config(
         .get_mut(&models_key)
         .and_then(serde_yaml::Value::as_sequence_mut)
         .expect("Continue models sequence was just initialized");
-    models.retain(|entry| entry.get("name").and_then(serde_yaml::Value::as_str) != Some("ORGII"));
+    models.retain(|entry| {
+        !is_managed_model_name(entry.get("name").and_then(serde_yaml::Value::as_str))
+    });
 
     let mut orgii_model = serde_yaml::Mapping::new();
-    orgii_model.insert(yaml_key("name"), yaml_string("ORGII"));
+    orgii_model.insert(yaml_key("name"), yaml_string(ORGII_PROVIDER_NAME));
     orgii_model.insert(yaml_key("provider"), yaml_string("openai"));
     orgii_model.insert(yaml_key("model"), yaml_string(model));
     orgii_model.insert(yaml_key("apiKey"), yaml_string(proxy_token));
@@ -528,13 +536,13 @@ pub(super) fn generate_droid_managed_config(
         .and_then(serde_json::Value::as_array_mut)
         .expect("Droid customModels was just initialized");
     models.retain(|entry| {
-        entry.get("displayName").and_then(serde_json::Value::as_str) != Some("ORGII")
+        !is_managed_model_name(entry.get("displayName").and_then(serde_json::Value::as_str))
     });
     models.insert(
         0,
         serde_json::json!({
             "model": model,
-            "displayName": "ORGII",
+            "displayName": ORGII_PROVIDER_NAME,
             "baseUrl": openai_chat_proxy_base_url(proxy_url, DROID_AGENT, proxy_token),
             "apiKey": proxy_token,
             "provider": "generic-chat-completion-api",

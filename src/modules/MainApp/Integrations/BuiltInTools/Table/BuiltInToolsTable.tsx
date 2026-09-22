@@ -19,7 +19,7 @@ import {
   ScrollPreservation,
   ToolInlineCompactRows,
   ToolInlineInfoCard,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
 
 import { EnabledFractionText } from "../../shared/EnabledFractionText";
 import { getBuiltInToolChatIcon } from "../builtInToolIcon";

@@ -114,6 +114,8 @@ export function useAdvancedConfig(): UseAdvancedConfigResult {
       cliAgentType: atomCliAgentType ?? undefined,
       provider: lastModelSelection.provider,
       model: lastModelSelection.model,
+      credentialSource: lastModelSelection.credentialSource,
+      marketProfileId: lastModelSelection.marketProfileId,
       nativeHarnessType,
       agent: lastModelSelection.provider as ModelType | undefined,
       selectedAccountId: lastModelSelection.selectedAccountId,

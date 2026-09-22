@@ -5,7 +5,7 @@
  *
  * ARCHITECTURE (Feb 2, 2026):
  * Window-scoped vs Global storage:
- * - selectedRepo/selectedBranch: sessionStorage (window-scoped)
+ * - selectedRepo: sessionStorage (window-scoped)
  *   Each window has its own selected repo, enabling true multi-window isolation.
  * - lastUsedRepo/cachedRepos: localStorage (global)
  *   Shared across windows for new window initialization and recent repos.
@@ -23,7 +23,7 @@ export const REPO_STORAGE_KEYS = {
   // Window-scoped keys (stored in sessionStorage with window ID suffix)
   // Each window maintains its own selection independently
   selectedRepo: "selected_repo",
-  selectedBranch: "selected_branch",
+  selectedBranch: "selected_branch", // retired key, cleared only during repo reset
 
   // Global keys (stored in localStorage, shared across all windows)
   // Used for new window initialization and cross-window coordination
@@ -57,7 +57,7 @@ export const CACHE_INVALIDATION_KEY = "orgii_repo_cache_invalidated_at";
  * Clear all repo-related storage entries
  *
  * Handles both:
- * - sessionStorage: window-scoped keys (selectedRepo, selectedBranch)
+ * - sessionStorage: selectedRepo and the retired selectedBranch key
  * - localStorage: global keys (lastUsedRepo, cachedRepos)
  */
 export function clearRepoStorage(): void {
@@ -127,7 +127,6 @@ export function resetRepoStore(): void {
     store.set(atoms.reposAtom, []);
     store.set(atoms.validRepoIdsAtom, new Set<string>());
     store.set(atoms.selectedRepoIdAtom, "");
-    store.set(atoms.selectedBranchAtom, "main");
     store.set(atoms.lastUsedRepoAtom, "");
     store.set(atoms.currentBranchAtom, "");
     store.set(atoms.branchesAtom, []);

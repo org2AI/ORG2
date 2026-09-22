@@ -104,3 +104,40 @@ test("does not require or validate labels", () => {
     []
   );
 });
+
+const DEPENDABOT_PR = {
+  title: "chore(deps): bump the cargo-security group",
+  body: "Bumps rand and tauri. Release notes and compatibility details follow.",
+  user: { login: "dependabot[bot]", type: "Bot" },
+  head: {
+    ref: "dependabot/cargo/security",
+    repo: { full_name: "org2AI/ORG2" },
+  },
+  base: { repo: { full_name: "org2AI/ORG2" } },
+};
+
+test("accepts generated Dependabot descriptions without skipping title validation", () => {
+  assert.deepEqual(validatePullRequest(DEPENDABOT_PR), []);
+  assert.equal(
+    validatePullRequest({ ...DEPENDABOT_PR, title: "unscoped" }).length,
+    1
+  );
+  assert.ok(
+    validatePullRequest({ ...DEPENDABOT_PR, body: "<!-- empty -->" }).length
+  );
+});
+
+test("requires verified bot authorship, same repository, and Dependabot branch", () => {
+  for (const override of [
+    { user: { login: "human", type: "User" } },
+    { user: { login: "dependabot[bot]", type: "User" } },
+    { user: { login: "other[bot]", type: "Bot" } },
+    { user: undefined },
+    { head: { ...DEPENDABOT_PR.head, repo: { full_name: "fork/ORG2" } } },
+    { head: { ...DEPENDABOT_PR.head, ref: "dev/change" } },
+    { head: undefined },
+    { base: undefined },
+  ]) {
+    assert.ok(validatePullRequest({ ...DEPENDABOT_PR, ...override }).length);
+  }
+});

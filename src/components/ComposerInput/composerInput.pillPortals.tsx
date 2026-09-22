@@ -115,7 +115,28 @@ export function useComposerPillPortals({
 
     // Layout effects run before paint. Keep this correction synchronous so
     // embedded layout changes cannot expose a one-frame caret jump.
-    placeCaretAfterPill(insertedPill);
+    //
+    // The insertion already left the caret where typing should continue,
+    // which is past anything inserted after the pill in the same edit (its
+    // trailing space, the rest of a pasted fragment). Re-assert that spot
+    // rather than recomputing one from the pill. Only a caret that ended up
+    // outside the editor or ahead of the pill is put back after it.
+    const selection = window.getSelection();
+    const caret =
+      selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    const afterPill = document.createRange();
+    afterPill.setStartAfter(insertedPill);
+    afterPill.collapse(true);
+    if (
+      selection &&
+      caret?.collapsed &&
+      liveHost.contains(caret.startContainer) &&
+      caret.compareBoundaryPoints(Range.START_TO_START, afterPill) >= 0
+    ) {
+      selection.collapse(caret.startContainer, caret.startOffset);
+    } else {
+      placeCaretAfterPill(insertedPill);
+    }
     insertedPill.removeAttribute("data-last-inserted-pill");
     pendingCaretAfterPillRef.current = false;
   }, [hostRef, pendingCaretAfterPillRef, pillEntries]);

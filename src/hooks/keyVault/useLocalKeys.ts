@@ -7,7 +7,7 @@
  * - Load keys from local credentials store
  * - Save, delete, validate, and refresh quotas per key
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   archiveCursorBillingUsageCache,
@@ -28,6 +28,7 @@ import { createLogger } from "@src/hooks/logger";
 
 import { runSharedQuotaRefresh } from "./quotaRefreshCoordinator";
 import {
+  areSharedLocalKeysLoaded,
   getSharedLocalKeys,
   loadSharedLocalKeys,
   publishSharedLocalKeys,
@@ -113,8 +114,15 @@ export function useLocalKeys(
   // Core Methods
   // ============================================
 
+  // `loading` swaps a table body for a placeholder, which unmounts every row
+  // and drops the UI state inside expanded rows. Only the first load — which
+  // has nothing to show yet — may do that; later revalidations keep the
+  // current rows on screen and swap them for fresh data when it arrives.
+  const hasLoadedRef = useRef(areSharedLocalKeysLoaded());
+
   const refreshAgents = useCallback(async (force = false) => {
-    setLoading(true);
+    const isFirstLoad = !hasLoadedRef.current;
+    if (isFirstLoad) setLoading(true);
     setError(null);
 
     try {
@@ -124,8 +132,9 @@ export function useLocalKeys(
       setError(message);
       log.error("Failed to load keys:", err);
     } finally {
+      hasLoadedRef.current = true;
       setHasLoaded(true);
-      setLoading(false);
+      if (isFirstLoad) setLoading(false);
     }
   }, []);
 
@@ -424,5 +433,3 @@ export function useLocalKeys(
     validateKey: validateKeyFn,
   };
 }
-
-export default useLocalKeys;

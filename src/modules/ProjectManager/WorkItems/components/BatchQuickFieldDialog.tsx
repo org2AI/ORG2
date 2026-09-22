@@ -82,9 +82,7 @@ export const BatchQuickFieldDialog: React.FC<BatchQuickFieldDialogProps> = ({
         return [
           {
             value: BATCH_QUICK_FIELD_NO_ASSIGNEE_VALUE,
-            label: t("workItems.properties.noAssignee", {
-              defaultValue: "No assignee",
-            }),
+            label: t("workItems.properties.noAssignee"),
           },
           ...members.map((member) => ({
             value: member.id,
@@ -130,11 +128,11 @@ export const BatchQuickFieldDialog: React.FC<BatchQuickFieldDialogProps> = ({
       width={360}
       onCancel={onClose}
       onOk={() => void handleApply()}
-      okText={t("common:actions.apply", { defaultValue: "Apply" })}
-      cancelText={t("common:actions.cancel", { defaultValue: "Cancel" })}
+      okText={t("common:actions.apply")}
+      cancelText={t("common:actions.cancel")}
       okButtonProps={{ disabled: !value || !projectSlug, loading: applying }}
     >
-      <div className="flex flex-col gap-3 p-4">
+      <div className="flex flex-col gap-3">
         <p className="text-xs text-text-3">
           {t("workItems.batchField.hint", {
             defaultValue: `Applies to ${shortIds.length} selected items.`,
@@ -145,9 +143,7 @@ export const BatchQuickFieldDialog: React.FC<BatchQuickFieldDialogProps> = ({
           value={value ?? undefined}
           options={options}
           onChange={(next) => setValue(next as string)}
-          placeholder={t("workItems.batchProperty.valuePlaceholder", {
-            defaultValue: "Value",
-          })}
+          placeholder={t("workItems.batchProperty.valuePlaceholder")}
           size="small"
           dataTestId={`work-items-batch-${field}-select`}
         />

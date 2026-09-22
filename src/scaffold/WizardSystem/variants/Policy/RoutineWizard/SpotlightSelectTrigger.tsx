@@ -15,6 +15,7 @@
  */
 import React, { forwardRef } from "react";
 
+import Button from "@src/components/Button";
 import "@src/components/Select/index.scss";
 import { ArrowDown01Icon, HugeiconsIcon } from "@src/icons";
 import { useCurrentTheme } from "@src/util/ui/theme/themeUtils";
@@ -85,9 +86,9 @@ const SpotlightSelectTrigger = forwardRef<
   const hasValue = value !== undefined && value !== null && value !== "";
 
   return (
-    <button
+    <Button
+      layout="custom"
       ref={ref}
-      type="button"
       className={wrapperClasses}
       style={{
         ...style,
@@ -122,7 +123,7 @@ const SpotlightSelectTrigger = forwardRef<
           />
         </div>
       </div>
-    </button>
+    </Button>
   );
 });
 

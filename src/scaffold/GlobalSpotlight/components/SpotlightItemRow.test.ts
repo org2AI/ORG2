@@ -49,7 +49,11 @@ describe("SpotlightItemRow selectionState prop", () => {
   it("keeps ordinary rows checkbox-free when the prop is omitted", () => {
     render();
     expect(container.querySelector('input[type="checkbox"]')).toBeNull();
-    act(() => container.querySelector<HTMLElement>(".spotlight-item")!.click());
+    act(() =>
+      container
+        .querySelector<HTMLElement>("[data-spotlight-row-action]")!
+        .click()
+    );
     expect(props.onSelect).toHaveBeenCalledWith(props.item);
   });
 
@@ -75,12 +79,84 @@ describe("SpotlightItemRow selectionState prop", () => {
       });
       expect(checkbox.checked).toBe(false);
       act(() =>
-        container.querySelector<HTMLElement>(".spotlight-item")!.click()
+        container
+          .querySelector<HTMLElement>("[data-spotlight-row-action]")!
+          .click()
       );
       expect(props.onSelect).toHaveBeenCalledOnce();
       expect(onToggle).toHaveBeenCalledOnce();
     }
   );
+
+  it("pins from the right of the label without selecting the row or bubbling keys", () => {
+    const onToggle = vi.fn();
+    render({
+      item: { ...props.item, data: { pinState: { pinned: false, onToggle } } },
+    });
+    const button = container.querySelector<HTMLButtonElement>(
+      'button[aria-pressed="false"]'
+    )!;
+    expect(button).not.toBeNull();
+    expect(button.previousElementSibling?.textContent).toBe("Item");
+    expect(button.className).toContain("group-hover:opacity-100");
+    const keyListener = vi.fn();
+    document.addEventListener("keydown", keyListener);
+    act(() => {
+      button.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+      );
+      button.click();
+    });
+    document.removeEventListener("keydown", keyListener);
+    expect(keyListener).not.toHaveBeenCalled();
+    expect(onToggle).toHaveBeenCalledOnce();
+    expect(props.onSelect).not.toHaveBeenCalled();
+    render({
+      item: { ...props.item, data: { pinState: { pinned: true, onToggle } } },
+    });
+    expect(
+      container
+        .querySelector('button[aria-pressed="true"]')
+        ?.getAttribute("aria-label")
+    ).toBe("sessions:chat.unpinSession");
+  });
+
+  it("keeps the pin toggle after every inline text on the label line", () => {
+    render({
+      item: {
+        ...props.item,
+        data: {
+          inlineTag: "ACP",
+          isSelector: true,
+          tagLabel: "Unavailable",
+          pinState: { pinned: false, onToggle: vi.fn() },
+        },
+      },
+    });
+    const button = container.querySelector<HTMLButtonElement>(
+      'button[aria-pressed="false"]'
+    )!;
+    expect(button).not.toBeNull();
+    expect(button.nextElementSibling).toBeNull();
+    expect(button.previousElementSibling?.textContent).toBe("ACP");
+  });
+
+  it("uses a native activation control without nesting interactive controls", () => {
+    render({
+      selectionState: { checked: false, onToggle: vi.fn() },
+      item: {
+        ...props.item,
+        data: { pinState: { pinned: false, onToggle: vi.fn() } },
+      },
+    });
+    const activation = container.querySelector<HTMLButtonElement>(
+      "[data-spotlight-row-action]"
+    )!;
+    expect(activation.tagName).toBe("BUTTON");
+    expect(activation.getAttribute("aria-label")).toBe("Item");
+    expect(activation.querySelector("button,input")).toBeNull();
+    expect(container.querySelector("button button")).toBeNull();
+  });
 
   it("does not make disabled rows selectable through the checkbox", () => {
     const onToggle = vi.fn();
@@ -89,7 +165,11 @@ describe("SpotlightItemRow selectionState prop", () => {
       selectionState: { checked: true, onToggle },
     });
     expect(container.querySelector('input[type="checkbox"]')).toBeNull();
-    act(() => container.querySelector<HTMLElement>(".spotlight-item")!.click());
+    act(() =>
+      container
+        .querySelector<HTMLElement>("[data-spotlight-row-action]")!
+        .click()
+    );
     expect(props.onSelect).not.toHaveBeenCalled();
     expect(onToggle).not.toHaveBeenCalled();
   });

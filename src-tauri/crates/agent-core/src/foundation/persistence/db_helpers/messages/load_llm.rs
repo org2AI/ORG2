@@ -67,6 +67,38 @@ fn build_multimodal_content(text: &str, image_refs: &[String]) -> serde_json::Va
     serde_json::Value::Array(parts)
 }
 
+/// Complete effective history for transfer/verification. Model request history
+/// intentionally trims old images; that policy must not alter native identity.
+pub fn load_native_history(
+    prefix: &str,
+    session_id: &str,
+) -> rusqlite::Result<Vec<serde_json::Value>> {
+    let mut messages = visible_rows(&load_messages(prefix, session_id)?);
+    for message in &mut messages {
+        if message.role != message_role::USER {
+            continue;
+        }
+        if let Some(encoded) = &message.images {
+            let refs: Vec<String> = serde_json::from_str(encoded)
+                .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
+            let embedded: Vec<String> = refs
+                .iter()
+                .map(|image| {
+                    resolve_image_for_llm(image).ok_or_else(|| {
+                        rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            "historical image is unavailable for exact native transfer",
+                        )))
+                    })
+                })
+                .collect::<rusqlite::Result<_>>()?;
+            message.images =
+                Some(serde_json::to_string(&embedded).expect("string array serialization"));
+        }
+    }
+    Ok(reconstruct_with_projection(&messages, true))
+}
+
 /// Turns elapsed since the given tool was last called in this session,
 /// derived by scanning the persisted transcript tail (capped at
 /// `scan_limit` rows). Counts user messages (≈ turns) after the most
@@ -506,6 +538,13 @@ fn visible_rows(messages: &[AgentMessageRow]) -> Vec<AgentMessageRow> {
 /// `load_llm_history` so the unit tests below can exercise it without a
 /// SQLite round-trip.
 fn reconstruct(messages: &[AgentMessageRow]) -> Vec<serde_json::Value> {
+    reconstruct_with_projection(messages, false)
+}
+
+fn reconstruct_with_projection(
+    messages: &[AgentMessageRow],
+    native: bool,
+) -> Vec<serde_json::Value> {
     let mut result: Vec<serde_json::Value> = Vec::with_capacity(messages.len());
 
     // Collect consecutive tool_calls into batches
@@ -547,6 +586,15 @@ fn reconstruct(messages: &[AgentMessageRow]) -> Vec<serde_json::Value> {
     });
 
     for (msg_idx, msg) in messages.iter().enumerate() {
+        if native && msg.compact_from_sequence.is_some() {
+            flush_pending(
+                &mut result,
+                &mut pending_tool_calls,
+                &mut pending_tool_results,
+            );
+            result.push(serde_json::json!({"role":"context_summary", "content":msg.content}));
+            continue;
+        }
         match msg.role.as_str() {
             message_role::SYSTEM => {
                 flush_pending(
@@ -566,7 +614,7 @@ fn reconstruct(messages: &[AgentMessageRow]) -> Vec<serde_json::Value> {
                     &mut pending_tool_results,
                 );
 
-                if last_image_msg_index == Some(msg_idx) {
+                if native || last_image_msg_index == Some(msg_idx) {
                     if let Some(images_json) = &msg.images {
                         if let Ok(image_refs) = serde_json::from_str::<Vec<String>>(images_json) {
                             if !image_refs.is_empty() {
@@ -614,11 +662,15 @@ fn reconstruct(messages: &[AgentMessageRow]) -> Vec<serde_json::Value> {
                 let tool_call_id = msg.tool_call_id.as_deref().unwrap_or("unknown");
                 let content = msg.tool_output.as_deref().unwrap_or(&msg.content);
 
-                pending_tool_results.push(serde_json::json!({
+                let mut tool_result = serde_json::json!({
                     "role": "tool",
                     "tool_call_id": tool_call_id,
                     "content": content,
-                }));
+                });
+                if native {
+                    tool_result["is_error"] = serde_json::json!(msg.tool_is_error);
+                }
+                pending_tool_results.push(tool_result);
             }
             _ => {}
         }

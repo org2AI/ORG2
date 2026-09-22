@@ -5,24 +5,7 @@
  */
 import React from "react";
 
-import {
-  DingTalkConfig,
-  DiscordConfig,
-  EmailConfig,
-  FeishuConfig,
-  GoogleChatConfig,
-  IMessageConfig,
-  LineConfig,
-  MSTeamsConfig,
-  MatrixConfig,
-  SignalConfig,
-  SlackConfig,
-  TelegramConfig,
-  WeChatConfig,
-  WeComConfig,
-  WhatsAppConfig,
-  ZaloConfig,
-} from "./configs";
+import ChannelConfigFields from "./ChannelConfigFields";
 
 export interface ChannelDetailProps {
   channelType: string;
@@ -31,41 +14,18 @@ export interface ChannelDetailProps {
   pathPrefix: string;
 }
 
-type ChannelConfigComponent = React.ComponentType<
-  Pick<ChannelDetailProps, "config" | "update" | "pathPrefix">
->;
-
-const CHANNEL_CONFIG_COMPONENTS: Record<string, ChannelConfigComponent> = {
-  telegram: TelegramConfig,
-  discord: DiscordConfig,
-  slack: SlackConfig,
-  whatsapp: WhatsAppConfig,
-  imessage: IMessageConfig,
-  signal: SignalConfig,
-  feishu: FeishuConfig,
-  dingtalk: DingTalkConfig,
-  zalo: ZaloConfig,
-  line: LineConfig,
-  msteams: MSTeamsConfig,
-  matrix: MatrixConfig,
-  googlechat: GoogleChatConfig,
-  weixin: WeChatConfig,
-  wecom: WeComConfig,
-  email: EmailConfig,
-};
-
 const ChannelDetailContent: React.FC<ChannelDetailProps> = ({
   channelType,
   config,
   update,
   pathPrefix,
-}) => {
-  const props = { config, update, pathPrefix };
-  const ConfigComponent = CHANNEL_CONFIG_COMPONENTS[channelType];
-  if (!ConfigComponent) {
-    return null;
-  }
-  return <ConfigComponent {...props} />;
-};
+}) => (
+  <ChannelConfigFields
+    channelType={channelType}
+    config={config}
+    update={update}
+    pathPrefix={pathPrefix}
+  />
+);
 
 export default ChannelDetailContent;

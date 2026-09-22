@@ -1,0 +1,85 @@
+// Mobile sizing scale. Theme colors and elevation remain owned by shared UI.
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$touch-target: 44px;
+
+// Intrinsic sizing, shared by mobile portal menus. Override the desktop
+// min-w-fit utility explicitly: a long option must not defeat the viewport cap.
+@mixin adaptive-menu($minimum: 10rem, $maximum: 24rem) {
+  // Shared dropdown defaults remain Desktop-sized unless a mobile surface opts in.
+  --dropdown-font-size: var(--mobile-type-control-size);
+  --dropdown-input-font-size: var(--mobile-type-body-size);
+  line-height: var(--mobile-type-control-leading);
+  --mobile-menu-available-width: calc(
+    100vw - #{2 *
+      $space-4} - env(safe-area-inset-left, 0px) - env(
+        safe-area-inset-right,
+        0px
+      )
+  );
+  width: max-content;
+  min-width: min(#{$minimum}, var(--mobile-menu-available-width));
+  max-width: min(#{$maximum}, var(--mobile-menu-available-width));
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemradio"] {
+    min-width: 0;
+    min-height: $touch-target;
+    > .truncate {
+      min-width: 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
+@mixin search-field {
+  --mobile-search-height: 48px;
+  --mobile-search-radius: 999px;
+  --mobile-search-padding-x: #{$space-4};
+  --mobile-search-icon-size: 20px;
+  --mobile-search-font-size: var(--mobile-type-body-size);
+  --mobile-search-gap: #{$space-2};
+  --mobile-search-surface: var(--color-bg-2);
+  --mobile-search-border: var(--color-border-1);
+  --mobile-search-shadow: var(--shadow-dropdown-soft);
+}
+
+// Apply on the surface, not only .mobile-shell: menus portal to document.body.
+@mixin compact-menu {
+  --mobile-menu-width: 224px;
+  --mobile-menu-viewport-inset: #{$space-4};
+  --mobile-menu-radius: #{$space-4};
+  --mobile-menu-padding: #{$space-2};
+  --mobile-menu-row-height: #{$touch-target};
+  --mobile-menu-row-padding-y: #{$space-2};
+  --mobile-menu-row-padding-x: #{$space-3};
+  --mobile-menu-row-gap: #{$space-2};
+  --mobile-menu-row-radius: #{$space-2};
+  --mobile-menu-font-size: var(--mobile-type-control-size);
+  --mobile-menu-line-height: var(--mobile-type-control-leading);
+  --mobile-menu-caption-size: var(--mobile-type-caption-size);
+  --mobile-menu-caption-line-height: var(--mobile-type-caption-leading);
+  --mobile-menu-caption-padding-y: #{$space-1};
+  --mobile-menu-icon-size: 18px;
+}
+
+// Mobile sheets portal to document.body: define these on the wrapper so both
+// the scrim and panel inherit the same theme-aware surface contract.
+@mixin sheet-surface {
+  --mobile-sheet-surface: var(--color-chat-container);
+  --mobile-sheet-card: var(--color-bg-3);
+  --mobile-sheet-border: var(--color-border-1);
+  --mobile-sheet-divider: var(--color-border-1);
+  --mobile-sheet-shadow: var(--shadow-dropdown-soft);
+  --mobile-sheet-radius: #{$space-4 + $space-2};
+  --mobile-sheet-card-radius: #{$space-3};
+  --mobile-sheet-inset: #{$space-4};
+  --mobile-sheet-group-gap: #{$space-4};
+  --mobile-sheet-row-height: #{$touch-target + $space-1};
+  --mobile-sheet-row-padding: #{$space-3};
+  --mobile-sheet-width: 35rem;
+  --mobile-sheet-enter-duration: 200ms;
+}

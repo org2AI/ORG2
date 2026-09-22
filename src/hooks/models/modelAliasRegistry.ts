@@ -60,31 +60,72 @@ export function getModelAliasDisplayName(
     : modelAliasDisplayNameMap.get(modelName);
 }
 
+function sameMap<V>(left: Map<string, V>, right: Map<string, V>): boolean {
+  if (left.size !== right.size) return false;
+  for (const [key, value] of left) {
+    if (!right.has(key) || right.get(key) !== value) return false;
+  }
+  return true;
+}
+
+function sameKeyLabels(
+  left: Map<string, Map<string, string>>,
+  right: Map<string, Map<string, string>>
+): boolean {
+  if (left.size !== right.size) return false;
+  for (const [keyId, labels] of left) {
+    const other = right.get(keyId);
+    if (!other || !sameMap(labels, other)) return false;
+  }
+  return true;
+}
+
 export function replaceModelAliasesFromKeys(
   keys: KeyRecordWithModelAliases[]
 ): void {
-  modelAliasIconMap.clear();
-  modelAliasDisplayNameMap.clear();
-  keyDisplayNames.clear();
+  const nextIcons = new Map<string, IconProvider>();
+  const nextDisplayNames = new Map<string, string>();
+  const nextKeyDisplayNames = new Map<string, Map<string, string>>();
   const ambiguous = new Set<string>();
   for (const key of keys) {
     const labels = new Map<string, string>();
-    if (key.id) keyDisplayNames.set(key.id, labels);
+    if (key.id) nextKeyDisplayNames.set(key.id, labels);
     for (const alias of key.model_aliases ?? []) {
       if (!alias.alias) continue;
       if (alias.icon) {
-        modelAliasIconMap.set(alias.alias, alias.icon as IconProvider);
+        nextIcons.set(alias.alias, alias.icon as IconProvider);
       }
       const displayName = alias.display_name ?? alias.displayName;
       if (displayName?.trim()) {
         labels.set(alias.alias, displayName);
-        const previous = modelAliasDisplayNameMap.get(alias.alias);
+        const previous = nextDisplayNames.get(alias.alias);
         if (previous !== undefined && previous !== displayName)
           ambiguous.add(alias.alias);
-        modelAliasDisplayNameMap.set(alias.alias, displayName);
+        nextDisplayNames.set(alias.alias, displayName);
       }
     }
   }
-  for (const model of ambiguous) modelAliasDisplayNameMap.delete(model);
+  for (const model of ambiguous) nextDisplayNames.delete(model);
+
+  // Every ModelIcon and model label in the app subscribes here, so an
+  // unchanged rebuild — the common case, since any key write republishes the
+  // whole list — must not wake them.
+  const unchanged =
+    sameMap(nextIcons, modelAliasIconMap) &&
+    sameMap(nextDisplayNames, modelAliasDisplayNameMap) &&
+    sameKeyLabels(nextKeyDisplayNames, keyDisplayNames);
+
+  modelAliasIconMap.clear();
+  for (const [model, icon] of nextIcons) modelAliasIconMap.set(model, icon);
+  modelAliasDisplayNameMap.clear();
+  for (const [model, name] of nextDisplayNames) {
+    modelAliasDisplayNameMap.set(model, name);
+  }
+  keyDisplayNames.clear();
+  for (const [keyId, labels] of nextKeyDisplayNames) {
+    keyDisplayNames.set(keyId, labels);
+  }
+
+  if (unchanged) return;
   notifySubscribers();
 }

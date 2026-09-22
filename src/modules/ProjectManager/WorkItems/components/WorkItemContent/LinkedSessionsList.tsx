@@ -8,15 +8,16 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { WorkItemOriginSession } from "@src/api/http/project";
-import { HugeiconsIcon, RotateLeft01Icon } from "@src/icons";
+import Button from "@src/components/Button";
 import {
   formatTokensShort,
   formatUsd,
-} from "@src/modules/shared/dataSource/usageFormat";
+} from "@src/features/RuntimeDataSource/usageFormat";
 import {
   SessionTable,
   type SessionTableItem,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/features/SessionTable";
+import { HugeiconsIcon, RotateLeft01Icon } from "@src/icons";
 import type { LinkedSession } from "@src/types/core/workItem";
 import {
   formatReplayDateLabel,
@@ -116,9 +117,10 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
         testId: `work-item-linked-session-${session.session_id}`,
         rowAction:
           session.status === "failed" && shortId ? (
-            <button
-              type="button"
-              className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1"
+            <Button
+              variant="tertiary"
+              size="mini"
+              className="gap-1 text-[11px] hover:bg-fill-2 hover:text-text-1"
               onClick={() => {
                 retryFailedLinkedSession({
                   projectSlug,
@@ -130,14 +132,16 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
               }}
               aria-label={t("common:actions.retry")}
               data-testid={`work-item-session-retry-${session.session_id}`}
+              icon={
+                <HugeiconsIcon
+                  icon={RotateLeft01Icon}
+                  data-icon="rotate-ccw"
+                  size={12}
+                />
+              }
             >
-              <HugeiconsIcon
-                icon={RotateLeft01Icon}
-                data-icon="rotate-ccw"
-                size={12}
-              />
               {t("common:actions.retry")}
-            </button>
+            </Button>
           ) : undefined,
       };
     });
@@ -152,13 +156,9 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
     return [
       {
         id: originSession.session_id,
-        title: t("workItems.sessions.originTitle", {
-          defaultValue: "Creation session",
-        }),
+        title: t("workItems.sessions.originTitle"),
         description: originSession.session_id,
-        statusLabel: t("workItems.sessions.originStatus", {
-          defaultValue: "Created this item",
-        }),
+        statusLabel: t("workItems.sessions.originStatus"),
         statusColor: "var(--color-primary-6)",
         agentIcon: renderSessionAgentIcon(
           originSession.session_type,
@@ -212,7 +212,6 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
         >
           <span>
             {t("workItems.sessions.runsCount", {
-              defaultValue: "{{count}} runs",
               count: sessions.length,
             })}
           </span>

@@ -17,9 +17,9 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import type { VirtuosoHandle } from "react-virtuoso";
 
 import type { TreePanelNode } from "@src/components/TreePanelSidebar/types";
+import type { VirtualListHandle } from "@src/components/VirtualList";
 import type { FlattenedTreeNode } from "@src/components/VirtualizedStickyTree";
 import { matchesShortcut } from "@src/config/keyboard/shortcutBindings";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
@@ -33,7 +33,7 @@ export interface UseFileTreeMutationStateOptions {
   baseFlattenedNodes: FlattenedNode[];
   onToggleDirectory: (path: string) => void;
   dispatch: DispatchFn;
-  virtuosoRef: RefObject<VirtuosoHandle | null>;
+  listRef: RefObject<VirtualListHandle | null>;
 }
 
 export interface UseFileTreeMutationStateReturn {
@@ -142,7 +142,7 @@ export function useFileTreeMutationState({
   baseFlattenedNodes,
   onToggleDirectory,
   dispatch,
-  virtuosoRef,
+  listRef,
 }: UseFileTreeMutationStateOptions): UseFileTreeMutationStateReturn {
   const { t } = useTranslation();
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -215,16 +215,16 @@ export function useFileTreeMutationState({
       (node) => node.node.path === NEW_ITEM_PLACEHOLDER_ID
     );
 
-    if (placeholderIndex >= 0 && virtuosoRef.current) {
+    if (placeholderIndex >= 0 && listRef.current) {
       requestAnimationFrame(() => {
-        virtuosoRef.current?.scrollToIndex({
+        listRef.current?.scrollToIndex({
           index: placeholderIndex,
           align: "center",
           behavior: "smooth",
         });
       });
     }
-  }, [creatingNew, flattenedNodes, virtuosoRef]);
+  }, [creatingNew, flattenedNodes, listRef]);
 
   const handleKeyDown = useCallback(
     async (event: KeyboardEvent) => {

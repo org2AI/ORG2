@@ -18,15 +18,7 @@ import React from "react";
 
 import type { ToolUsageMetadata } from "@src/engines/SessionCore/core/types";
 
-import ToolUsageBadge from "../ToolCallBlock/ToolUsageBadge";
-import {
-  EventBlockHeader,
-  EventBlockHeaderIcon,
-  EventBlockHeaderSubtitle,
-  EventBlockHeaderTitle,
-  getEventBlockContainerClasses,
-} from "../primitives";
-import { useBlockHeader } from "../useBlockLocate";
+import { HeaderOnlyBlock } from "../primitives";
 
 interface TitleOnlyBlockProps {
   /** Pre-translated header title (state-aware label from the Rust registry). */
@@ -53,48 +45,18 @@ const TitleOnlyBlock: React.FC<TitleOnlyBlockProps> = React.memo(
     isFailed = false,
     eventId,
     toolUsage,
-  }) => {
-    const {
-      isHeaderHovered,
-      handleHeaderMouseEnter,
-      handleHeaderMouseLeave,
-      handleLocate,
-    } = useBlockHeader({ eventId });
-
-    return (
-      <div
-        className={`${getEventBlockContainerClasses(false)} animate-fade-in`}
-      >
-        <EventBlockHeader
-          isCollapsed
-          withHover={false}
-          onNavigate={handleLocate}
-          onMouseEnter={handleHeaderMouseEnter}
-          onMouseLeave={handleHeaderMouseLeave}
-          rightContent={
-            toolUsage ? <ToolUsageBadge usage={toolUsage} /> : undefined
-          }
-        >
-          <EventBlockHeaderIcon
-            icon={icon}
-            isCollapsed
-            isHeaderHovered={isHeaderHovered}
-            hasContent={false}
-            isLoading={isLoading}
-            isFailed={isFailed}
-          />
-          <EventBlockHeaderTitle isLoading={isLoading}>
-            {title}
-          </EventBlockHeaderTitle>
-          {subtitle != null && subtitle !== "" && (
-            <EventBlockHeaderSubtitle isLoading={isLoading}>
-              {subtitle}
-            </EventBlockHeaderSubtitle>
-          )}
-        </EventBlockHeader>
-      </div>
-    );
-  }
+  }) => (
+    <HeaderOnlyBlock
+      icon={icon}
+      title={title}
+      subtitle={subtitle}
+      isLoading={isLoading}
+      isFailed={isFailed}
+      eventId={eventId}
+      toolUsage={toolUsage}
+      animate
+    />
+  )
 );
 
 TitleOnlyBlock.displayName = "TitleOnlyBlock";

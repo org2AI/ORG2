@@ -102,6 +102,11 @@
   }
 }
 
+[data-workstation-trail-terminal] .xterm-terminal-container {
+  // Match the 12px left inset outside the grid measured by FitAddon.
+  right: 12px;
+}
+
 .chat-panel-terminal-core {
   // Match the *visible* chat-pane color (possibly tinted by the app backdrop
   // via `color-mix()` when page opacity < 100%). The xterm WebGL fill is

@@ -92,7 +92,10 @@ export interface NavigationMenuItem {
   navigableParent?: boolean;
   /** Keep a parent row's disclosure control beside its label instead of right-aligning it. */
   disclosureFollowsLabel?: boolean;
+  /** Keyboard chord rendered through the shared shortcut presentation. */
   shortcut?: string;
+  /** Compact non-interactive metadata shown in the hover accessory slot. */
+  trailingLabel?: string;
   disabled?: boolean;
   dataTestId?: string;
   /** Stable target consumed by an in-product guided tour. */

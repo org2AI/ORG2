@@ -15,23 +15,21 @@
  *   - Reply-target clear after successful send
  */
 import { useAtomValue, useStore } from "jotai";
-import React, { useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
-import type { ComposerSnapshot } from "@src/components/ComposerInput";
-import { serializePillNode } from "@src/components/ComposerInput/utils";
 import Message from "@src/components/Message";
-import { chatEventsAtom, eventsAtom } from "@src/engines/SessionCore";
+import {
+  chatQuotedSelectionsAtom,
+  clearChatQuotedSelectionAtom,
+  setChatQuotedSelectionAtom,
+} from "@src/engines/ChatPanel/chatSelections/chatSelectionAtoms";
 import { createLogger } from "@src/hooks/logger";
 import { useSecretScanGuard } from "@src/hooks/security/useSecretScanGuard";
 import { useSessionCommandActions } from "@src/hooks/session/useSessionPatch";
 import { sessionByIdAtom } from "@src/store/session";
-import { creatorDefaultExecModeAtom } from "@src/store/session/creatorDefaultExecModeAtom";
-import { creatorDefaultProductModeAtom } from "@src/store/session/creatorDefaultProductModeAtom";
 import type { ChatImageAttachment } from "@src/store/ui/chatImageAtom";
 import { wpReadOnlyAtom } from "@src/store/ui/chatPanel/miscAtoms";
-import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 import { isCliSession } from "@src/util/session/sessionDispatch";
 
 import { clearImageDraft } from "../../InputArea/utils/imageDraftCache";
@@ -40,136 +38,45 @@ import {
   parseCompactSlashCommand,
   useManualCompact,
 } from "../useManualCompact";
-import { executeComposerCommand } from "./executeComposerCommand";
-import { executeNativeCliCommand } from "./executeNativeCliCommand";
-import { resolveMcpSlashCommand } from "./mcpSlashCommand";
-import {
-  isTerminalNativeSlashCommand,
-  nativeSlashNames,
-  parseNativeSlashCommand,
-} from "./nativeSlashCommands";
 import { expandSkillPills } from "./outgoingTextTransforms";
-import { projectOutgoingUserMessage } from "./projectOutgoingUserMessage";
-import { interceptPendingQuestionBatches } from "./questionIntercept";
+import {
+  dispatchSubmission,
+  restoreSubmissionAfterDispatchError,
+} from "./submissionDispatch";
 import { shouldRestoreSubmissionAfterDispatchError } from "./submissionErrors";
-import type {
-  CiteCodeSnapshot,
-  InputAreaRefs,
-  SubmitMessageOptions,
-  SubmitOverrideInput,
-} from "./types";
+import {
+  applySubmissionInterceptors,
+  interceptNativeSlashCommand,
+} from "./submissionInterceptors";
+import {
+  buildSubmissionContextBlocks,
+  buildSubmissionPayload,
+} from "./submissionProjection";
+import {
+  resolveSubmitInput,
+  serializeSubmissionSnapshot,
+} from "./submissionSnapshot";
+import type { UseSubmitMessageOptions } from "./submitMessageOptions";
+import type { CiteCodeSnapshot, SubmitMessageOptions } from "./types";
 import { SubmitRetainedDeliveryError } from "./types";
+import { useSubmitAttemptLock } from "./useSubmitAttemptLock";
 
 // Re-exported for existing consumers/tests; the implementation moved to the
 // shared outgoing-text transform module so every projection entry point uses
 // the same copy.
 export { stripContextPillBase64 } from "./outgoingTextTransforms";
+export {
+  memberMentionsFromSnapshot,
+  resolveSubmitInput,
+  serializeSubmissionSnapshot,
+} from "./submissionSnapshot";
+export type { UseSubmitMessageOptions } from "./submitMessageOptions";
 
 const log = createLogger("useSubmitMessage");
-
-export function serializeSubmissionSnapshot(
-  snapshot: ComposerSnapshot,
-  omitMemberPills: boolean
-): string {
-  return snapshot.parts
-    .map((part) => {
-      if (part.kind === "text") return part.text;
-      if (part.kind === "newline") return "\n";
-      if (omitMemberPills && part.attrs.iconType === "member") return "";
-      return serializePillNode(part.attrs);
-    })
-    .join("")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/^[ \t]+|[ \t]+$/g, "");
-}
-
-export function memberMentionsFromSnapshot(
-  snapshot: ComposerSnapshot
-): Array<{ memberId: string; displayName: string }> {
-  const seen = new Set<string>();
-  const mentions: Array<{ memberId: string; displayName: string }> = [];
-  for (const part of snapshot.parts) {
-    if (part.kind !== "pill" || part.attrs.iconType !== "member") continue;
-    if (!part.attrs.filePath.startsWith("member://")) {
-      throw new Error("Agent Team Member pill has no canonical member:// id");
-    }
-    const memberId = part.attrs.filePath.slice("member://".length).trim();
-    if (!memberId) {
-      throw new Error("Agent Team Member pill has an empty canonical id");
-    }
-    if (seen.has(memberId)) continue;
-    seen.add(memberId);
-    mentions.push({ memberId, displayName: part.attrs.fileName });
-  }
-  return mentions;
-}
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface UseSubmitMessageOptions {
-  refs: InputAreaRefs;
-  draftSessionId: string;
-  /** Session whose comment threads Address Comments targets when the
-   * composer dispatches elsewhere (external-history fork composer, where
-   * `draftSessionId` is empty by design). */
-  replyTargetEventId: string | undefined;
-  flushDraft: (text: string) => Promise<void>;
-  clearReplyTarget: () => Promise<void>;
-  imageAttachment: {
-    hasImages: boolean;
-    images: ChatImageAttachment[];
-    clearImages: () => void;
-    restoreImages: (images: ChatImageAttachment[]) => void;
-  };
-  citeCode: {
-    isCiteCode: boolean;
-    clearCiteCode: () => void;
-    captureCiteCode: () => CiteCodeSnapshot;
-    restoreCiteCode: (snapshot: CiteCodeSnapshot) => void;
-  };
-  handleSessChatSubmit: (
-    event: React.FormEvent | undefined,
-    displayText: string,
-    agentContent?: string,
-    imageDataUrls?: string[]
-  ) => Promise<void>;
-  onSubmitOverride?: (input: SubmitOverrideInput) => Promise<boolean>;
-  submitDisabled?: boolean;
-  enableAgentInterceptors?: boolean;
-}
 
 // ============================================================================
 // Hook
 // ============================================================================
-
-function lastSerializedPillLabel(rawLabel: string): string {
-  const trimmed = rawLabel.trim();
-  const lastSpaceIdx = trimmed.search(/\s[^\s]*$/);
-  return lastSpaceIdx >= 0 ? trimmed.slice(lastSpaceIdx + 1).trim() : trimmed;
-}
-
-export function resolveSubmitInput(
-  options: SubmitMessageOptions,
-  liveDisplayText: string,
-  liveHasImages: boolean
-): {
-  isExplicitAction: boolean;
-  displayText: string;
-  hasAttachedImages: boolean;
-} {
-  const isExplicitAction = options.source === "explicit-action";
-  return {
-    isExplicitAction,
-    displayText: isExplicitAction
-      ? (options.capturedText ?? "")
-      : liveDisplayText.trim().length > 0
-        ? liveDisplayText
-        : (options.capturedText ?? ""),
-    hasAttachedImages: !isExplicitAction && liveHasImages,
-  };
-}
 
 export function useSubmitMessage({
   refs,
@@ -187,7 +94,6 @@ export function useSubmitMessage({
   const { t } = useTranslation("sessions");
   const store = useStore();
   const wpReadOnly = useAtomValue(wpReadOnlyAtom);
-  const submitAttemptsInFlightRef = useRef(new Set<string>());
   const submitInFlightKeyRef = useRef<string | null>(null);
   const { runManualCompact } = useManualCompact();
   const { setPlan, rename } = useSessionCommandActions(draftSessionId);
@@ -219,12 +125,14 @@ export function useSubmitMessage({
       }
 
       const isExplicitAction = options.source === "explicit-action";
+      const editorTextAtSubmit =
+        refs.composerInputRef.current.getTextWithPills();
       const submitComposerSnapshot = isExplicitAction
         ? undefined
         : refs.composerInputRef.current.getSnapshot();
       const liveDisplayText = submitComposerSnapshot
         ? serializeSubmissionSnapshot(submitComposerSnapshot, false)
-        : refs.composerInputRef.current.getTextWithPills();
+        : editorTextAtSubmit;
       const resolvedInput = resolveSubmitInput(
         options,
         liveDisplayText,
@@ -244,95 +152,22 @@ export function useSubmitMessage({
 
       const provider = store.get(sessionByIdAtom(draftSessionId))?.cliAgentType;
       if (enableAgentInterceptors && !hasAttachedImages) {
-        // Older pinned Compact actions serialize as an ORG2 skill pill.
-        // Normalize that explicit command before choosing the native path.
-        const compact =
-          provider === "codex" || provider === "claude_code"
-            ? parseCompactSlashCommand(displayText)
-            : null;
-        const nativeCommandText = compact
-          ? `/compact${compact.instructions ? ` ${compact.instructions}` : ""}`
-          : displayText;
-        const command = parseNativeSlashCommand(nativeCommandText);
-        if (command) {
-          if (command.name === "plan" && submitDisabled) return;
-          try {
-            const remaining = await executeComposerCommand(command, {
-              showStatus: () => {
-                const session = store.get(sessionByIdAtom(draftSessionId));
-                Message.info(
-                  [
-                    session?.name,
-                    session?.model,
-                    session?.agentExecMode,
-                    session?.repoPath,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                );
-              },
-              openModel: () => store.set(modelSelectorAtom, { isOpen: true }),
-              setPlan: () =>
-                draftSessionId
-                  ? setPlan()
-                  : Promise.resolve().then(() => {
-                      store.set(creatorDefaultExecModeAtom, "plan");
-                      store.set(creatorDefaultProductModeAtom, null);
-                    }),
-              rename,
-              dispatch: (action) => zodActionRegistry.execute(action, {}),
-            });
-            if (
-              remaining === undefined &&
-              isCliSession(draftSessionId) &&
-              isTerminalNativeSlashCommand(
-                provider,
-                draftSessionId,
-                store.get(eventsAtom),
-                command.name
-              )
-            ) {
-              throw new Error(
-                `/${command.name} requires the native terminal and is unavailable through the provider SDK. Your draft has been kept.`
-              );
-            }
-            if (
-              remaining === undefined &&
-              isCliSession(draftSessionId) &&
-              nativeSlashNames(
-                provider,
-                draftSessionId,
-                store.get(eventsAtom)
-              ).includes(command.name)
-            ) {
-              if (submitDisabled || !(await guardAgainstSecrets(displayText)))
-                return;
-              await executeNativeCliCommand(draftSessionId, nativeCommandText);
-              if (!isExplicitAction) {
-                refs.composerInputRef.current?.clear();
-                await flushDraft("");
-              }
-              options.onSubmitted?.();
-              return;
-            }
-            if (remaining !== undefined) {
-              if (!remaining) {
-                if (!isExplicitAction) {
-                  refs.composerInputRef.current?.clear();
-                  await flushDraft("");
-                }
-                options.onSubmitted?.();
-                return;
-              }
-              displayText = remaining;
-            }
-          } catch (error) {
-            Message.error(
-              error instanceof Error ? error.message : String(error)
-            );
-            return;
-          }
-        }
+        const nativeIntercept = await interceptNativeSlashCommand({
+          store,
+          draftSessionId,
+          provider,
+          displayText,
+          submitDisabled,
+          isExplicitAction,
+          composerInputRef: refs.composerInputRef,
+          flushDraft,
+          guardAgainstSecrets,
+          setPlan,
+          rename,
+          onSubmitted: options.onSubmitted,
+        });
+        if (nativeIntercept.handled) return;
+        displayText = nativeIntercept.displayText;
       }
 
       // ── /compact slash command ───────────────────────────────────────────
@@ -374,42 +209,17 @@ export function useSubmitMessage({
         return;
       }
 
-      // ── Secret scan gate ─────────────────────────────────────────────────
-      // Warn before a typed API key / token / password enters the transcript
-      // and reaches the model. The user can still choose to send anyway.
-      if (hasText) {
-        const clearedSecretScan = await guardAgainstSecrets(displayText);
-        if (!clearedSecretScan) return;
-      }
-
-      // ── Question intercept ────────────────────────────────────────────────
-      // When the agent asked a question and the user typed a reply in the main
-      // input, forward the typed text as the question answer before dispatching.
-      // Finalizes locally even when the native commands fail (no CLI bridge) —
-      // see questionIntercept.ts.
-      if (enableAgentInterceptors && hasText && draftSessionId) {
-        interceptPendingQuestionBatches(
-          store.get(chatEventsAtom),
-          draftSessionId,
-          displayText.trim(),
-          t("chat.skippedByUser")
-        );
-      }
-
-      // ── MCP slash-command resolution ─────────────────────────────────────
-      if (enableAgentInterceptors) {
-        try {
-          const rendered = await resolveMcpSlashCommand(displayText.trim());
-          if (rendered !== null) {
-            displayText = rendered;
-          }
-        } catch (err) {
-          Message.error(
-            `MCP prompt failed: ${err instanceof Error ? err.message : String(err)}`
-          );
-          return;
-        }
-      }
+      const gateResult = await applySubmissionInterceptors({
+        store,
+        draftSessionId,
+        displayText,
+        hasText,
+        enableAgentInterceptors,
+        guardAgainstSecrets,
+        skippedByUserLabel: () => t("chat.skippedByUser"),
+      });
+      if (gateResult.handled) return;
+      displayText = gateResult.displayText;
 
       // ── Skill pill expansion ──────────────────────────────────────────────
       // displayText keeps `name [skill:/<name>]` for rendering pills in
@@ -426,132 +236,44 @@ export function useSubmitMessage({
         await waitForPendingPills();
       }
 
-      // ── Session pill ID injection ─────────────────────────────────────────
-      // Session pills carry only the session ID (no transcript). Extract them
-      // from the serialized display text and append lightweight references.
-      const sessionPillPattern = /([^\n[]+?)\s*\[session:([^\]]+)\]/g;
-      const sessionRefs: string[] = [];
-      let sessionMatch: RegExpExecArray | null;
-      while (
-        (sessionMatch = sessionPillPattern.exec(
-          hasSkillPills ? skillExpanded : displayText
-        )) !== null
-      ) {
-        const referencedSessionId = sessionMatch[2];
-        const referencedSession = store.get(
-          sessionByIdAtom(referencedSessionId)
-        );
-        const fallbackLabel = lastSerializedPillLabel(sessionMatch[1]);
-        const label = referencedSession?.name?.trim() || fallbackLabel;
-        sessionRefs.push(
-          `[Session Reference: ${label} (${referencedSessionId})]`
-        );
-      }
-
-      // ── Terminal/PR pill text collection ─────────────────────────────────
       const terminalTexts = isExplicitAction
         ? {}
         : refs.composerInputRef.current.getTerminalPillTexts();
-      const terminalEntries = Object.entries(terminalTexts);
-      const contextBlocks: string[] = [];
+      const contextBlocks = buildSubmissionContextBlocks({
+        scanText: hasSkillPills ? skillExpanded : displayText,
+        terminalTexts,
+        resolveSessionName: (referencedSessionId) =>
+          store.get(sessionByIdAtom(referencedSessionId))?.name,
+      });
 
-      if (terminalEntries.length > 0) {
-        for (const [path, text] of terminalEntries) {
-          if (path.startsWith("pr://")) {
-            try {
-              const prData = JSON.parse(text) as Record<string, unknown>;
-              const lines: string[] = [
-                `[PR Context] #${prData["prNumber"] ?? prData["number"]} ${prData["prTitle"] ?? prData["title"]}`,
-                `Status: ${prData["prStatus"] ?? prData["state"]}`,
-                ...(prData["sourceBranch"]
-                  ? [
-                      `Branch: ${prData["sourceBranch"]}${prData["targetBranch"] ? ` → ${prData["targetBranch"]}` : ""}`,
-                    ]
-                  : []),
-                ...(prData["additions"] != null
-                  ? [
-                      `+${prData["additions"]} -${prData["deletions"] ?? 0} changes`,
-                    ]
-                  : []),
-                `URL: ${prData["prUrl"] ?? prData["url"]}`,
-              ];
-              contextBlocks.push(lines.join("\n"));
-            } catch {
-              contextBlocks.push("```\n" + text + "\n```");
-            }
-          } else if (path.startsWith("issue://")) {
-            try {
-              const issueData = JSON.parse(text) as Record<string, unknown>;
-              const labels = Array.isArray(issueData["labels"])
-                ? issueData["labels"].join(", ")
-                : "";
-              const assignees = Array.isArray(issueData["assignees"])
-                ? issueData["assignees"].join(", ")
-                : "";
-              const lines: string[] = [
-                `[Issue Context] #${issueData["issueNumber"] ?? issueData["number"]} ${issueData["issueTitle"] ?? issueData["title"]}`,
-                `State: ${issueData["issueState"] ?? issueData["state"]}`,
-                ...(labels ? [`Labels: ${labels}`] : []),
-                ...(assignees ? [`Assignees: ${assignees}`] : []),
-                ...(issueData["comments"] != null
-                  ? [`Comments: ${issueData["comments"]}`]
-                  : []),
-                `URL: ${issueData["issueUrl"] ?? issueData["url"]}`,
-              ];
-              contextBlocks.push(lines.join("\n"));
-            } catch {
-              contextBlocks.push("```\n" + text + "\n```");
-            }
-          } else {
-            contextBlocks.push("```\n" + text + "\n```");
-          }
-        }
-      }
+      // A quoted reply is part of the message, not a side channel: the
+      // blockquote goes into the same display copy history renders and the
+      // agent reads. `isExplicitAction` submissions (auto-respond, rejects)
+      // are not the user's draft and carry no quote.
+      const quotedSelection = isExplicitAction
+        ? undefined
+        : store.get(chatQuotedSelectionsAtom)[draftSessionId];
 
-      if (sessionRefs.length > 0) {
-        contextBlocks.push(...sessionRefs);
-      }
-
-      // The shared projection owns the display/agent split: skill expansion,
-      // `::base64` strip, and the Canvas contract. Canvas is additionally
-      // gated like /compact and Address Comments above — attached images mean
-      // the user is sending real content that happens to mention the command
-      // — and on session capability: CLI agents have no render_inline_canvas
-      // tool, so the message must pass through as ordinary text there.
-      const { displayContent, agentContent } = projectOutgoingUserMessage({
+      const payload = buildSubmissionPayload({
         displayText,
+        quotedSelection,
         contextBlocks,
         enableAgentInterceptors,
-        allowCanvasInterception:
-          !hasAttachedImages && !isCliSession(draftSessionId || null),
-      });
-      displayText = displayContent;
-      const displayTextWithoutMemberMentions = submitComposerSnapshot
-        ? serializeSubmissionSnapshot(submitComposerSnapshot, true)
-        : displayText;
-      const { agentContent: agentContentWithoutMemberMentions } =
-        projectOutgoingUserMessage({
-          displayText: displayTextWithoutMemberMentions,
-          contextBlocks,
-          enableAgentInterceptors,
-          allowCanvasInterception:
-            !hasAttachedImages && !isCliSession(draftSessionId || null),
-        });
-      const memberMentions = submitComposerSnapshot
-        ? memberMentionsFromSnapshot(submitComposerSnapshot)
-        : [];
-
-      const imageDataUrls = isExplicitAction
-        ? []
-        : imageAttachment.images.map((img) => img.dataUrl);
-      const submitKey = JSON.stringify({
+        hasAttachedImages,
         draftSessionId,
-        displayText,
-        agentContent,
-        memberIds: memberMentions.map((mention) => mention.memberId),
-        imageDataUrls,
-        composerSnapshot: submitComposerSnapshot,
+        submitComposerSnapshot,
+        images: imageAttachment.images,
+        isExplicitAction,
       });
+      displayText = payload.displayText;
+      const {
+        agentContent,
+        displayTextWithoutMemberMentions,
+        agentContentWithoutMemberMentions,
+        memberMentions,
+        imageDataUrls,
+        submitKey,
+      } = payload;
       if (submitInFlightKeyRef.current === submitKey) return;
       submitInFlightKeyRef.current = submitKey;
 
@@ -576,13 +298,18 @@ export function useSubmitMessage({
           refs.composerInputRef.current.getTextWithPills();
         const editorStillContainsSubmittedText =
           !isExplicitAction &&
-          (editorTextBeforeClear === displayText ||
-            editorTextBeforeClear.trim() === displayText.trim());
+          // Compare the editor with itself before preprocessing. Snapshot
+          // serialization and MCP expansion can change the outgoing text
+          // without the user having edited the draft.
+          editorTextBeforeClear === editorTextAtSubmit;
         if (editorStillContainsSubmittedText) {
           refs.composerInputRef.current.clear();
           refs.setHasContent(false);
           if (citeCode.isCiteCode) {
             citeCode.clearCiteCode();
+          }
+          if (quotedSelection) {
+            store.set(clearChatQuotedSelectionAtom, draftSessionId);
           }
           imageAttachment.clearImages();
           clearImageDraft(draftSessionId);
@@ -596,36 +323,17 @@ export function useSubmitMessage({
 
         // ── Dispatch ──────────────────────────────────────────────────────────
         try {
-          const dispatchImages =
-            imageDataUrls.length > 0 ? imageDataUrls : undefined;
-          const overrideHandled = onSubmitOverride
-            ? await onSubmitOverride({
-                displayText: displayText || "(image)",
-                agentContent,
-                imageDataUrls: dispatchImages,
-                composerSnapshot: submitComposerSnapshot,
-                memberMentions,
-                displayTextWithoutMemberMentions,
-                agentContentWithoutMemberMentions:
-                  agentContentWithoutMemberMentions ??
-                  displayTextWithoutMemberMentions,
-              })
-            : false;
-          if (!overrideHandled) {
-            const ordinaryAgentContent =
-              memberMentions.length > 0
-                ? (agentContentWithoutMemberMentions ??
-                  displayTextWithoutMemberMentions)
-                : agentContent;
-            // Queue-vs-direct is decided inside handleSessChatSubmit against
-            // the turn-lifecycle FSM — no composer-side heuristics.
-            await handleSessChatSubmit(
-              undefined,
-              displayText || "(image)",
-              ordinaryAgentContent,
-              dispatchImages
-            );
-          }
+          await dispatchSubmission({
+            onSubmitOverride,
+            handleSessChatSubmit,
+            displayText,
+            agentContent,
+            imageDataUrls,
+            submitComposerSnapshot,
+            memberMentions,
+            displayTextWithoutMemberMentions,
+            agentContentWithoutMemberMentions,
+          });
           submitSucceeded = true;
         } catch (err) {
           // Until a transport has retained a visible failed row, the composer
@@ -638,47 +346,23 @@ export function useSubmitMessage({
             !(err instanceof SubmitRetainedDeliveryError) &&
             shouldRestoreSubmissionAfterDispatchError(err)
           ) {
-            const editor = refs.composerInputRef.current;
-            if (editor && editorSnapshot) {
-              try {
-                editor.setContent(editorSnapshot);
-                refs.setHasContent(true);
-                if (draftSessionId) {
-                  void flushDraft(editor.getTextWithPills()).catch(
-                    (restoreError: unknown) => {
-                      log.warn(
-                        "[useSubmitMessage] flushDraft(validation restore) failed:",
-                        restoreError
-                      );
-                    }
-                  );
-                }
-              } catch (restoreError) {
-                log.warn(
-                  "[useSubmitMessage] editor restore failed:",
-                  restoreError
-                );
-              }
-            }
-            if (imagesSnapshot.length > 0) {
-              try {
-                imageAttachment.restoreImages(imagesSnapshot);
-              } catch (restoreError) {
-                log.warn(
-                  "[useSubmitMessage] image restore failed:",
-                  restoreError
-                );
-              }
-            }
-            if (citeSnapshot) {
-              try {
-                citeCode.restoreCiteCode(citeSnapshot);
-              } catch (restoreError) {
-                log.warn(
-                  "[useSubmitMessage] cite restore failed:",
-                  restoreError
-                );
-              }
+            restoreSubmissionAfterDispatchError({
+              refs,
+              draftSessionId,
+              flushDraft,
+              imageAttachment,
+              citeCode,
+              editorSnapshot,
+              imagesSnapshot,
+              citeSnapshot,
+            });
+            // The composer is the only copy again, so the quote it was
+            // replying to has to come back with it.
+            if (quotedSelection) {
+              store.set(setChatQuotedSelectionAtom, {
+                sessionId: draftSessionId,
+                text: quotedSelection,
+              });
             }
           }
 
@@ -725,37 +409,10 @@ export function useSubmitMessage({
     ]
   );
 
-  return useCallback(
-    async (options?: SubmitMessageOptions) => {
-      // Lock before asynchronous preprocessing (secret scan, MCP expansion,
-      // pending-pill reads). A second Enter/click can otherwise start with the
-      // same live editor text, arrive at the late payload-key guard only after
-      // the first dispatch finishes, and send the same user intent twice.
-      const liveDisplayText =
-        refs.composerInputRef.current?.getTextWithPills() ?? "";
-      const displayText =
-        liveDisplayText.trim().length > 0
-          ? liveDisplayText
-          : (options?.capturedText ?? "");
-      const submitAttemptKey = JSON.stringify({
-        draftSessionId,
-        displayText,
-        imageDataUrls: imageAttachment.images.map((image) => image.dataUrl),
-      });
-      const inFlightAttempts = submitAttemptsInFlightRef.current;
-      if (inFlightAttempts.has(submitAttemptKey)) return;
-      inFlightAttempts.add(submitAttemptKey);
-      try {
-        await submitMessage(options);
-      } finally {
-        inFlightAttempts.delete(submitAttemptKey);
-      }
-    },
-    [
-      draftSessionId,
-      imageAttachment.images,
-      refs.composerInputRef,
-      submitMessage,
-    ]
-  );
+  return useSubmitAttemptLock({
+    refs,
+    draftSessionId,
+    images: imageAttachment.images,
+    submitMessage,
+  });
 }

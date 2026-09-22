@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 
 import { ORGII_ORCHESTRATOR } from "@src/assets/providers/types";
 import Switch from "@src/components/Switch";
+import Tooltip from "@src/components/Tooltip";
 import { isOrgiiTierModel } from "@src/config/orgiiCategories";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import {
@@ -17,21 +18,20 @@ import {
 } from "@src/hooks/models/useModelAccountLookup";
 import ModelVariantInlineCard from "@src/modules/MainApp/Integrations/KeyVault/shared/ModelTable/ModelVariantInlineCard";
 import type { ModelTableVariantInfo } from "@src/types/modelTable";
-import { formatModelNameFull } from "@src/util/formatModelName";
 import { groupHasParsedModelVariants } from "@src/util/modelVariants";
 
-import { InlineCardSplit } from "../../shared/InlineCardPrimitives";
+import { InlineCardScrollList } from "../../shared/InlineCardPrimitives";
 import {
-  InlineSplitAddKeyRow,
-  InlineSplitDefaultVersionHeaderRow,
   InlineSplitHeaderRow,
-  InlineSplitSelectableRow,
+  InlineSplitKeyRow,
 } from "../../shared/InlineSplitRows";
 import { AccountSourceBreadcrumb } from "./AccountSourceBreadcrumb";
 import {
   type IntegrationsModelGroupRow,
   applyModelGroupToEnabledSet,
 } from "./integrationsModelGroups";
+
+const NO_OPTIMISTIC_TOGGLES = new Map<string, boolean>();
 
 interface ExpandedAccountEntry {
   key: string;
@@ -102,9 +102,6 @@ interface ModelInlineExpandedCardProps {
   ) => void;
   onToggleAccount: (account: KeyVaultAccount, enabled: boolean) => void;
   isAccountEnabled?: (account: KeyVaultAccount) => boolean;
-  /** Opens the KeyVault wizard to add a new key. Renders the
-   * "+ Add new key" row at the bottom of the left pane when provided. */
-  onAddKey?: () => void;
 }
 
 function getAccountModelToggleKey(
@@ -123,7 +120,8 @@ function isModelEnabledOnAccount(
   return optimisticToggles.get(toggleKey) ?? accountHasModel(account, model);
 }
 
-function buildExpandedAccountEntries(
+/** Exported for the ordering test; the card is the only runtime caller. */
+export function buildExpandedAccountEntries(
   group: IntegrationsModelGroupRow,
   accounts: KeyVaultAccount[],
   tokenMarketLabel: string
@@ -180,11 +178,18 @@ function buildExpandedAccountEntries(
         modelA.localeCompare(modelB)
       ),
     }))
-    .sort((entryA, entryB) =>
-      entryA.account.name.localeCompare(entryB.account.name, undefined, {
+    .sort((entryA, entryB) => {
+      // Keys that are on for this family lead the list; the rest follow
+      // alphabetically. Ordering reads the stored state, not the optimistic
+      // overlay, so a row settles into place once its write lands rather
+      // than jumping out from under the switch that was just clicked.
+      const enabledA = accountHasAnyEnabled(entryA, NO_OPTIMISTIC_TOGGLES);
+      const enabledB = accountHasAnyEnabled(entryB, NO_OPTIMISTIC_TOGGLES);
+      if (enabledA !== enabledB) return enabledA ? -1 : 1;
+      return entryA.account.name.localeCompare(entryB.account.name, undefined, {
         sensitivity: "base",
-      })
-    );
+      });
+    });
 }
 
 function accountHasAnyEnabled(
@@ -205,7 +210,6 @@ const ModelInlineExpandedCard: React.FC<ModelInlineExpandedCardProps> = ({
   onUpdateAccountDefaultVariant,
   onToggleAccount,
   isAccountEnabled = (account) => account.enabled,
-  onAddKey,
 }) => {
   const { t } = useTranslation("integrations");
 
@@ -213,9 +217,6 @@ const ModelInlineExpandedCard: React.FC<ModelInlineExpandedCardProps> = ({
     Map<string, boolean>
   >(new Map());
   const pendingRef = useRef<Set<string>>(new Set());
-  const [selectedAccountKey, setSelectedAccountKey] = useState<string | null>(
-    null
-  );
 
   const tokenMarketLabel = t("common:filters.tokenMarket");
 
@@ -223,12 +224,6 @@ const ModelInlineExpandedCard: React.FC<ModelInlineExpandedCardProps> = ({
     () => buildExpandedAccountEntries(group, accounts, tokenMarketLabel),
     [accounts, group, tokenMarketLabel]
   );
-
-  const effectiveSelectedAccountKey =
-    selectedAccountKey &&
-    accountEntries.some((entry) => entry.key === selectedAccountKey)
-      ? selectedAccountKey
-      : (accountEntries[0]?.key ?? null);
 
   useEffect(() => {
     if (pendingRef.current.size === 0) return;
@@ -323,93 +318,23 @@ const ModelInlineExpandedCard: React.FC<ModelInlineExpandedCardProps> = ({
     [accountEntries, toggleAccountModels]
   );
 
-  const selectedEntry = useMemo(
-    () =>
-      accountEntries.find((entry) => entry.key === effectiveSelectedAccountKey),
-    [accountEntries, effectiveSelectedAccountKey]
-  );
-
-  const selectedDefaultVariantByBaseModel = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const variant of selectedEntry?.account.defaultVariants ?? []) {
-      map.set(variant.base_model, variant.model);
+  const defaultVariantsByAccount = useMemo(() => {
+    const byAccount = new Map<string, Map<string, string>>();
+    for (const entry of accountEntries) {
+      const map = new Map<string, string>();
+      for (const variant of entry.account.defaultVariants ?? []) {
+        map.set(variant.base_model, variant.model);
+      }
+      byAccount.set(entry.key, map);
     }
-    return map;
-  }, [selectedEntry]);
+    return byAccount;
+  }, [accountEntries]);
 
-  const handleChangeDefaultVariant = useCallback(
-    (baseModel: string, model: string) => {
-      if (!selectedEntry || !onUpdateAccountDefaultVariant) return;
-      onUpdateAccountDefaultVariant(selectedEntry.account.id, baseModel, model);
-    },
-    [onUpdateAccountDefaultVariant, selectedEntry]
-  );
-
-  const rightPaneContent = useMemo(() => {
-    if (!selectedEntry) {
-      return (
-        <span className="text-xs text-text-3">
-          {t("modelPreview.noSources")}
-        </span>
-      );
-    }
-
-    const versionInfos = selectedEntry.groupModels.map(
-      (model) =>
-        variantsByModel.get(model) ?? {
-          model,
-          base_model: model,
-          fast: false,
-        }
-    );
-    const hasParsedVariants = groupHasParsedModelVariants(
-      selectedEntry.groupModels
-    );
-    const showVersionPicker =
-      selectedEntry.groupModels.length > 1 || hasParsedVariants;
-
-    if (!showVersionPicker && selectedEntry.groupModels.length === 1) {
-      const model = selectedEntry.groupModels[0];
-
-      return (
-        <InlineSplitDefaultVersionHeaderRow
-          label={t("modelsTable.keyDefaultVersionOnly", {
-            model: formatModelNameFull(model),
-          })}
-          pillLabel={t("modelsTable.variantDefault")}
-        />
-      );
-    }
-
-    return (
-      <ModelVariantInlineCard
-        variants={versionInfos}
-        forceModelList={!hasParsedVariants}
-        defaultVariantByBaseModel={selectedDefaultVariantByBaseModel}
-        onChangeDefaultVariant={
-          onUpdateAccountDefaultVariant ? handleChangeDefaultVariant : undefined
-        }
-        defaultRowLabel={() => t("modelsTable.currentKeySelectedVersion")}
-        embedded
-      />
-    );
-  }, [
-    handleChangeDefaultVariant,
-    onUpdateAccountDefaultVariant,
-    selectedDefaultVariantByBaseModel,
-    selectedEntry,
-    t,
-    variantsByModel,
-  ]);
-
-  // Left pane uses any-enabled semantics: a key is considered ON for this
-  // family as long as at least one of its variants is enabled. There is no
-  // mixed state — the per-variant breakdown lives in the right pane.
-  const accountSummaries = accountEntries.map((entry) =>
-    getAccountEnableSummary(entry, optimisticToggles)
-  );
-  const anyEnabledAccountCount = accountSummaries.filter(
-    (summary) => summary.anyEnabled
+  // Keys are listed with any-enabled semantics: a key counts as ON for this
+  // family as long as one of its variants is enabled. There is no mixed
+  // state — the per-variant breakdown lives in each row's options dropdown.
+  const anyEnabledAccountCount = accountEntries.filter(
+    (entry) => getAccountEnableSummary(entry, optimisticToggles).anyEnabled
   ).length;
   const anyAccountEnabled =
     accountEntries.length > 0 && anyEnabledAccountCount > 0;
@@ -422,17 +347,84 @@ const ModelInlineExpandedCard: React.FC<ModelInlineExpandedCardProps> = ({
         total: accountEntries.length,
       })}
       trailing={
-        <Switch
-          size="small"
-          checked={anyAccountEnabled}
-          onCheckedChange={toggleAllAccounts}
-        />
+        <Tooltip
+          kind="button"
+          position="top"
+          content={t(
+            anyAccountEnabled
+              ? "modelsTable.turnOffAllKeysFor"
+              : "modelsTable.turnOnAllKeysFor",
+            { model: group.label }
+          )}
+        >
+          <span className="inline-flex">
+            <Switch
+              size="small"
+              checked={anyAccountEnabled}
+              onCheckedChange={toggleAllAccounts}
+            />
+          </span>
+        </Tooltip>
       }
     />
   );
 
+  // Variant parsing walks every model id, so each row's list keeps a stable
+  // identity while the accounts do: a click elsewhere in the card must not
+  // make every row re-derive its controls.
+  const versionInfosByAccount = useMemo(() => {
+    const byAccount = new Map<string, ModelTableVariantInfo[]>();
+    for (const entry of accountEntries) {
+      byAccount.set(
+        entry.key,
+        entry.groupModels.map(
+          (model) =>
+            variantsByModel.get(model) ?? {
+              model,
+              base_model: model,
+              fast: false,
+            }
+        )
+      );
+    }
+    return byAccount;
+  }, [accountEntries, variantsByModel]);
+
+  const renderKeyControls = (entry: ExpandedAccountEntry) => {
+    const versionInfos = versionInfosByAccount.get(entry.key) ?? [];
+
+    // Without parsed variants there is no effort ladder to pick from, so the
+    // row only states what the key offers.
+    if (!groupHasParsedModelVariants(entry.groupModels)) {
+      return (
+        <span className="shrink-0 text-xs text-text-3">
+          {entry.groupModels.length > 1
+            ? t("modelsTable.variantCount", { count: entry.groupModels.length })
+            : t("modelsTable.variantDefault")}
+        </span>
+      );
+    }
+
+    return (
+      <ModelVariantInlineCard
+        variants={versionInfos}
+        defaultVariantByBaseModel={defaultVariantsByAccount.get(entry.key)}
+        onChangeDefaultVariant={
+          onUpdateAccountDefaultVariant
+            ? (baseModel, model) =>
+                onUpdateAccountDefaultVariant(
+                  entry.account.id,
+                  baseModel,
+                  model
+                )
+            : undefined
+        }
+        embedded
+      />
+    );
+  };
+
   const renderAccountRow = (entry: ExpandedAccountEntry) => {
-    const isSelected = entry.key === effectiveSelectedAccountKey;
     const enableSummary = getAccountEnableSummary(entry, optimisticToggles);
     const switchTooltip = t(
       enableSummary.anyEnabled
@@ -442,16 +434,15 @@ const ModelInlineExpandedCard: React.FC<ModelInlineExpandedCardProps> = ({
     );
 
     return (
-      <InlineSplitSelectableRow
+      <InlineSplitKeyRow
         key={entry.key}
-        selected={isSelected}
-        onSelect={() => setSelectedAccountKey(entry.key)}
         label={
           <AccountSourceBreadcrumb
             modelType={entry.account.modelType}
             accountName={entry.account.name}
           />
         }
+        controls={renderKeyControls(entry)}
         switchChecked={enableSummary.anyEnabled}
         switchTooltip={switchTooltip}
         onToggle={(nextChecked) => handleToggleKeyGroup(entry, nextChecked)}
@@ -460,29 +451,15 @@ const ModelInlineExpandedCard: React.FC<ModelInlineExpandedCardProps> = ({
   };
 
   return (
-    <InlineCardSplit
-      left={
-        <>
-          {accountEntries.length > 0 ? renderAllSourcesRow() : null}
-          {accountEntries.map((entry) => renderAccountRow(entry))}
-          {accountEntries.length === 0 ? (
-            <span className="px-1 text-xs text-text-3">
-              {t("modelPreview.noSources")}
-            </span>
-          ) : null}
-          {onAddKey ? (
-            <InlineSplitAddKeyRow
-              label={t("modelsTable.addNewKey")}
-              onClick={onAddKey}
-            />
-          ) : null}
-        </>
-      }
-      right={
-        <div className="flex min-w-0 flex-col gap-0.5">{rightPaneContent}</div>
-      }
-      wrapInCard
-    />
+    <InlineCardScrollList>
+      {accountEntries.length > 0 ? renderAllSourcesRow() : null}
+      {accountEntries.map((entry) => renderAccountRow(entry))}
+      {accountEntries.length === 0 ? (
+        <span className="px-1 text-xs text-text-3">
+          {t("modelPreview.noSources")}
+        </span>
+      ) : null}
+    </InlineCardScrollList>
   );
 };
 

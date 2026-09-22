@@ -106,6 +106,26 @@ function render(target: ManualCreatorRequest["target"]) {
 }
 
 describe("ManualSpotlightCreator", () => {
+  it.each(["workItem", "project"] as const)(
+    "uses the Spotlight action header to dismiss the %s creator",
+    (target) => {
+      const { close } = render(target);
+      const title =
+        target === "project" ? "projects.newProject" : "workItems.newWorkItem";
+      const dialog = document.querySelector(
+        `[role="dialog"][aria-label="${title}"]`
+      );
+      expect(dialog).not.toBeNull();
+      expect(dialog!.querySelector("[data-spotlight-input]")).toBeNull();
+      const back = dialog!.querySelector<HTMLButtonElement>(
+        `button[title="${title}"]`
+      );
+      expect(back).not.toBeNull();
+      act(() => back!.click());
+      expect(close).toHaveBeenCalledOnce();
+    }
+  );
+
   it("renders a manual scoped work item and supports cancel and create another", () => {
     const { close } = render("workItem");
     expect(

@@ -2,12 +2,7 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import {
-  BubbleChatIcon,
-  HugeiconsIcon,
-  Settings01Icon,
-  SmartPhone01Icon,
-} from "@src/icons";
+import { BubbleChatIcon, HugeiconsIcon, Settings01Icon } from "@src/icons";
 
 import type { MobileRemoteTab } from "../navigation/mobileRemoteNavigation";
 
@@ -30,11 +25,6 @@ export function MobileTabBar({ active, onChange }: MobileTabBarProps) {
           icon: BubbleChatIcon,
         },
         {
-          id: "devices" as const,
-          label: t("tabs.devices"),
-          icon: SmartPhone01Icon,
-        },
-        {
           id: "settings" as const,
           label: t("tabs.settings"),
           icon: Settings01Icon,
@@ -51,9 +41,7 @@ export function MobileTabBar({ active, onChange }: MobileTabBarProps) {
           return (
             <Button
               key={tab.id}
-              htmlType="button"
               variant="tertiary"
-              appearance="ghost"
               shape="round"
               className="mobile-tab-button"
               style={{

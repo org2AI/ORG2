@@ -30,7 +30,7 @@ function skill(name: string, skillName = name): SlashItem {
     skillPath: `/home/user/.orgii/skills/${skillName}`,
     description: "",
     category: "skill",
-    source: "ORGII Skills",
+    source: "ORG2 Skills",
     acceptsArgs: false,
     skillScope: "user",
   };

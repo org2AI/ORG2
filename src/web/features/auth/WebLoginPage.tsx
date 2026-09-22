@@ -4,10 +4,10 @@ import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 
 import Button from "@src/components/Button";
+import { ONBOARDING_LOGIN_TOKENS } from "@src/components/layout/onboardingTokens";
 import { buildOrg2CloudLoginUrl } from "@src/features/Org2Cloud/config";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import LoginCard from "@src/modules/AppLogin/LoginCard";
-import { ONBOARDING_LOGIN_TOKENS } from "@src/modules/shared/layouts/onboardingTokens";
 
 import { createWebAuthCallbackUrl } from "./webAuthFlowState";
 

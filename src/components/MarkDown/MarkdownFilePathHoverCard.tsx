@@ -4,12 +4,6 @@ import { FileTreeHoverPreview } from "@src/components/FileTreePreview/exports";
 
 import { parseMarkdownFileRef } from "./markdownFileRef";
 
-/**
- * Matches `LinkHoverCard`'s mouseEnterDelay so a file link and a URL link in
- * the same paragraph open their cards on the same beat.
- */
-export const MARKDOWN_FILE_HOVER_DELAY_MS = 350;
-
 interface MarkdownFilePathHoverCardProps {
   /** Absolute workspace path, possibly carrying an agent's `:line` suffix. */
   path: string;
@@ -41,7 +35,6 @@ const MarkdownFilePathHoverCard: React.FC<MarkdownFilePathHoverCardProps> = ({
       // paragraph from wrapping through it, so keep the anchor plain inline.
       display="inline"
       placement="bottom"
-      showDelayMs={MARKDOWN_FILE_HOVER_DELAY_MS}
     >
       {children}
     </FileTreeHoverPreview>

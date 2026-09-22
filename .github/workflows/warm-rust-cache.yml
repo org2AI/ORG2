@@ -119,3 +119,34 @@ jobs:
       - name: cargo test (build only)
         working-directory: src-tauri
         run: cargo test --workspace --no-run
+
+  # ── Warm (Windows) ──────────────────────────────────────────────────────────
+  # Cache producer for ci.yml's `rust-windows` job, under its `ci-windows`
+  # key. That job is clippy-only, so this warms clippy artifacts only.
+  warm-windows:
+    name: Rust (warm cache, Windows)
+    needs: changes
+    if: needs.changes.outputs.rust_required == 'true'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          shared-key: "ci-windows"
+          cache-on-failure: true
+
+      - name: Stage org2-pm sidecar
+        run: node scripts/tauri/prepare-sidecars.cjs --profile debug
+
+      # No `-D warnings`: a cache producer, not a gate (see the macOS job).
+      - name: cargo clippy (all targets)
+        working-directory: src-tauri
+        run: cargo clippy --workspace --all-targets

@@ -9,7 +9,7 @@ describe("SettingsSidebar chrome", () => {
       "utf8"
     );
 
-    expect(source).toContain('variant="search-input"');
+    expect(source).toContain("<SettingsSidebarSearch");
     expect(source).not.toContain("onAddNew=");
     expect(source).not.toContain("SidebarSearchShortcutTooltip");
   });

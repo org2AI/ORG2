@@ -8,6 +8,7 @@
  *
  * Single source of truth for all session events.
  */
+import type { SimulatorEventFilterValue } from "@src/contracts/simulator/eventFilter";
 
 // ============================================
 // Display Variants
@@ -104,12 +105,7 @@ export interface ShellReplayState {
   error?: string | null;
 }
 
-export type SimulatorEventFilterValue =
-  | "key_interactions"
-  | "file_changes"
-  | "terminal_events"
-  | "explore"
-  | "other";
+export type { SimulatorEventFilterValue };
 
 export interface SimulatorEventPreview {
   id: string;

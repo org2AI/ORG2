@@ -13,7 +13,7 @@
  * power clickable replay references in the Submissions sidebar.
  */
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { getGitArtifactsFromEvent } from "@src/shared/git/sessionGitArtifacts";
+import { getGitArtifactsFromEvent } from "@src/util/git/sessionGitArtifacts";
 
 import type {
   SubmissionArtifact,

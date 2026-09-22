@@ -33,8 +33,11 @@ import {
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { loadEvents } from "@src/engines/SessionCore/storage/cacheAdapter";
 import { createLogger } from "@src/hooks/logger";
-import { PR_STATUS_UNKNOWN, normalizePrStatus } from "@src/shared/pr/prStatus";
 import type { Repo } from "@src/store/repo/types";
+import {
+  PR_STATUS_UNKNOWN,
+  normalizePrStatus,
+} from "@src/util/git/pr/prStatus";
 
 import {
   type SubmissionRepoContext,

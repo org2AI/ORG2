@@ -16,9 +16,13 @@ import type { GitFile } from "@src/types/git/types";
 
 import GitFileList from ".";
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
+vi.mock("react-i18next", async () => {
+  const { createInstance } = await import("i18next");
+  const { default: en } = await import("@src/i18n/locales/en/common.json");
+  const instance = createInstance();
+  await instance.init({ lng: "en", resources: { en: { translation: en } } });
+  return { useTranslation: () => ({ t: instance.t.bind(instance) }) };
+});
 
 vi.mock("@src/components/FileTypeIcon", () => ({
   default: ({ fileName }: { fileName: string }) =>
@@ -127,6 +131,33 @@ describe("GitFileList row styling", () => {
       );
     });
 
-    expect(container.textContent).toContain("3000+");
+    expect(
+      container.querySelector(".group\\/header button")?.textContent
+    ).toContain("3000+ changed file");
+    expect(container.querySelector(".group\\/header > div > span")).toBeNull();
   });
+  it.each([0, 1, 2])(
+    "puts %i changed files in the title without a badge",
+    (count) => {
+      act(() =>
+        root.render(
+          React.createElement(GitFileList, {
+            files: Array.from({ length: count }, (_, i) => ({
+              ...file,
+              id: `file-${i}`,
+              path: `file-${i}.ts`,
+            })),
+            selectedFileId: null,
+            onFileSelect: vi.fn(),
+          })
+        )
+      );
+      expect(
+        container.querySelector(".group\\/header button")?.textContent
+      ).toBe(`${count} changed ${count === 1 ? "file" : "files"}`);
+      expect(
+        container.querySelector(".group\\/header > div > span")
+      ).toBeNull();
+    }
+  );
 });

@@ -1,7 +1,7 @@
 /**
  * Settings Schema
  *
- * Defines every user-facing setting with Zod validation, defaults, and descriptions.
+ * Defines persisted settings with Zod validation, defaults, descriptions, and search eligibility.
  * Uses flat dot-notation keys (like VS Code's `editor.fontSize`).
  *
  * This is the single source of truth for:

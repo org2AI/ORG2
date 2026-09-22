@@ -1,5 +1,7 @@
 import { type AriaAttributes, type ReactNode, forwardRef } from "react";
 
+import Button from "@src/components/Button";
+
 import { getListItemClasses } from "./tokens";
 
 type ListPanelItemDataAttributes = Record<
@@ -49,11 +51,11 @@ const ListPanelItem = forwardRef<HTMLButtonElement, ListPanelItemProps>(
     },
     ref
   ) => (
-    <button
+    <Button
+      layout="custom"
       {...dataAttributes}
       ref={ref}
       id={id}
-      type="button"
       role={role}
       aria-label={ariaLabel}
       aria-selected={role === "option" ? selected : undefined}
@@ -111,14 +113,14 @@ const ListPanelItem = forwardRef<HTMLButtonElement, ListPanelItemProps>(
           ) : null}
           {metadata ? (
             <span
-              className={`${preview ? "shrink" : "flex-1"} flex min-w-0 items-center gap-1.5 text-text-2`}
+              className={`${preview ? "shrink" : "flex-1"} flex min-w-0 items-center gap-1.5 leading-none text-text-2`}
             >
               {metadata}
             </span>
           ) : null}
         </div>
       ) : null}
-    </button>
+    </Button>
   )
 );
 

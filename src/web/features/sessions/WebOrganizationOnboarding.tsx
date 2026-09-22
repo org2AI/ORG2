@@ -159,8 +159,7 @@ export function WebOrganizationOnboarding({
               key={option.value}
               long
               size="small"
-              variant={mode === option.value ? "primary" : "secondary"}
-              appearance={mode === option.value ? "solid" : "outline"}
+              variant="tertiary"
               disabled={submitting}
               aria-pressed={mode === option.value}
               onClick={() => selectMode(option.value)}

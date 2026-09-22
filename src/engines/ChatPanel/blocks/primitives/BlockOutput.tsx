@@ -28,6 +28,7 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import ExpandOverlay from "@src/components/ExpandOverlay";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { PayloadRef } from "@src/engines/SessionCore/core/types";
@@ -364,9 +365,9 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
                 ? " · preview retained for rendering"
                 : ""}
             </span>
-            <button
-              type="button"
-              className="rounded-md border border-border-2 px-2 py-1 text-text-2 hover:bg-fill-2"
+            <Button
+              size="mini"
+              className="hover:bg-fill-2"
               onClick={() => {
                 unloadPayload(payloadKey);
                 setFullPayload(null);
@@ -374,7 +375,7 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
               }}
             >
               {t("common:showLess")}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -383,16 +384,16 @@ const BlockOutput: React.FC<BlockOutputProps> = memo(
             <span>
               {payloadRef?.fullSizeBytes.toLocaleString()} bytes previewed
             </span>
-            <button
-              type="button"
-              className="rounded-md border border-border-2 px-2 py-1 text-text-2 hover:bg-fill-2 disabled:opacity-60"
+            <Button
+              size="mini"
+              className="hover:bg-fill-2 disabled:opacity-60"
               disabled={isLoadingPayload}
               onClick={handleLoadFullPayload}
             >
               {isLoadingPayload
                 ? t("common:status.loading")
                 : t("common:showMore")}
-            </button>
+            </Button>
           </div>
         )}
 

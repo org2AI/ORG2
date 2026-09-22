@@ -1,9 +1,4 @@
 {
-  "name": "Ad",
   "genderOptions": {},
-  "role": "Rol",
-  "location": "Konum",
-  "commits": "commit",
-  "activity": "Aktivite",
   "social": {}
 }

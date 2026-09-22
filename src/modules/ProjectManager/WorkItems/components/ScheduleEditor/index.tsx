@@ -2,7 +2,9 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import type { WorkItemSchedule } from "@src/api/http/project";
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { DROPDOWN_ITEM } from "@src/components/Dropdown/tokens";
+import Input from "@src/components/Input";
 import Select, { type SelectOption } from "@src/components/Select";
 import TimePicker from "@src/components/TimePicker";
 import { WORKSTATION_TRAIL_CONTENT } from "@src/config/workstation/tokens";
@@ -341,14 +343,17 @@ const ScheduleEditor: React.FC<ScheduleEditorProps> = ({
             />
           </div>
           {schedule && (
-            <button
-              type="button"
+            <Button
+              variant="tertiary"
+              size="mini"
+              iconOnly
+              icon={
+                <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />
+              }
               aria-label={t("common:actions.clear")}
               onClick={() => onChange(null)}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-none bg-transparent text-text-3 transition-colors hover:bg-fill-3 hover:text-text-1"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />
-            </button>
+              className="shrink-0 hover:bg-fill-3 hover:text-text-1"
+            />
           )}
         </div>
       </div>
@@ -360,8 +365,8 @@ const ScheduleEditor: React.FC<ScheduleEditorProps> = ({
               {t("common:common.date")}
             </div>
             <div className="relative">
-              <button
-                type="button"
+              <Button
+                layout="custom"
                 className="flex h-8 w-full items-center gap-2 rounded-lg border border-border-2 bg-bg-2 px-2 text-left text-[12px] text-text-1 transition-colors outline-none hover:bg-fill-2 focus:border-primary-6"
                 onClick={() => setOneShotDateOpen((open) => !open)}
               >
@@ -377,7 +382,7 @@ const ScheduleEditor: React.FC<ScheduleEditorProps> = ({
                     t("common:common.selectDate")
                   )}
                 </span>
-              </button>
+              </Button>
               {oneShotDateOpen && (
                 <DateQuickAssignDropdown
                   value={schedule?.at}
@@ -457,22 +462,24 @@ const ScheduleEditor: React.FC<ScheduleEditorProps> = ({
           </div>
 
           <div>
-            <button
-              type="button"
-              className="text-[11px] text-primary-6 hover:underline"
+            <Button
+              variant="ghost"
+              size="inline"
+              className="text-[11px]"
               onClick={() => setShowCustomCron(!showCustomCron)}
             >
               {showCustomCron
                 ? t("common:schedule.hideCustomCron")
                 : t("common:schedule.customCron")}
-            </button>
+            </Button>
             {showCustomCron && (
               <div className="mt-1">
-                <input
+                <Input
+                  size="mini"
+                  className="w-full"
                   value={schedule?.cron ?? ""}
-                  onChange={handleCustomCronChange}
+                  onChange={(_value, event) => handleCustomCronChange(event)}
                   placeholder="0 9 * * 1"
-                  className="w-full rounded border border-border-2 bg-bg-2 px-2 py-1 text-[11px] text-text-1 outline-none focus:border-primary-6"
                 />
                 <div className="mt-0.5 text-[10px] text-text-4">
                   {t("common:schedule.cronHelp")}

@@ -74,7 +74,9 @@ export const BubbleWrapper: React.FC<{
       activeSearchEventId
     );
     const wrapSearchTarget = (content: React.ReactNode) => (
-      <div {...targetRowProps}>{content}</div>
+      <div {...targetRowProps} data-transcript-anchor-id={message.eventId}>
+        {content}
+      </div>
     );
 
     let content: React.ReactNode = null;

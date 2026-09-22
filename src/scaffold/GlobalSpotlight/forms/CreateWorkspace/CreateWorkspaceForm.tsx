@@ -18,7 +18,6 @@ import {
   Search01Icon,
   Tick01Icon,
 } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 import { REPO_KIND } from "@src/store/repo";
 
 import { ICONS } from "../../config";
@@ -28,6 +27,8 @@ import {
   SpotlightFormShell,
   SpotlightModalHeader,
 } from "../shared";
+import { SpotlightFormActions } from "../shared/SpotlightFormActions";
+import { SpotlightFormField } from "../shared/SpotlightFormField";
 
 const MAX_WORKSPACE_REPOS = 5;
 
@@ -128,8 +129,7 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
     : generatedWorkspaceName;
 
   const handleSubmit = useCallback(() => {
-    const name =
-      effectiveName || t("workspaceForm.defaultName", "Working Directory");
+    const name = effectiveName || t("workspaceForm.defaultName");
     const selectedRepoIds = orderedRepos
       .filter((repo) => selectedIds.has(repo.id))
       .map((repo) => repo.id);
@@ -150,9 +150,7 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
       <SpotlightModalHeader
         icon={ICONS.workspace}
         title={
-          isEditing
-            ? t("workspaceForm.editTitle", "Edit Working Directory")
-            : t("workspaceForm.title", "Create Multi-repo Working Directory")
+          isEditing ? t("workspaceForm.editTitle") : t("workspaceForm.title")
         }
         badge="WORKING DIRECTORY"
         badgeColor="green"
@@ -168,17 +166,13 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
       />
       <SpotlightFormShell>
         <SpotlightFormBody>
-          <div className="mb-3">
-            <label className="mb-2 block text-[14px] font-normal text-text-2">
-              {t("workspaceForm.workspaceName", "Working Directory Name")}
-            </label>
+          <SpotlightFormField
+            label={t("workspaceForm.workspaceName")}
+            className="mb-3"
+          >
             <Input
               placeholder={
-                effectiveName ||
-                t(
-                  "workspaceForm.workspaceNamePlaceholder",
-                  "My Working Directory"
-                )
+                effectiveName || t("workspaceForm.workspaceNamePlaceholder")
               }
               value={displayedWorkspaceName}
               onChange={(name) => {
@@ -187,7 +181,7 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
                   name.trim() !== generatedWorkspaceName
                 );
               }}
-              className="h-[32px] rounded-lg bg-fill-1 text-[14px]"
+              className="h-[32px] rounded-lg text-[14px]"
               prefix={
                 <HugeiconsIcon
                   icon={ICONS.workspace}
@@ -196,19 +190,16 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
                 />
               }
             />
-          </div>
+          </SpotlightFormField>
 
           <div className="mb-3">
             <Input
               type="search"
-              placeholder={t(
-                "workspaceForm.filterPlaceholder",
-                "Filter repos..."
-              )}
+              placeholder={t("workspaceForm.filterPlaceholder")}
               value={repoSearchQuery}
               onChange={setRepoSearchQuery}
               allowClear
-              className="h-[32px] rounded-lg bg-fill-1 text-[14px]"
+              className="h-[32px] rounded-lg text-[14px]"
               prefix={
                 <HugeiconsIcon
                   icon={Search01Icon}
@@ -221,10 +212,7 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
           </div>
 
           <div className="mb-1 text-[12px] font-medium text-text-3">
-            {t(
-              "workspaceForm.selectRepos",
-              "Select repos for working directory"
-            )}
+            {t("workspaceForm.selectRepos")}
             {selectedIds.size > 0 && (
               <span className="ml-1 text-primary-6">({selectedIds.size})</span>
             )}
@@ -279,7 +267,7 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
                               data-icon="check"
                               size={10}
                             />
-                            {t("workspaceForm.current", "current")}
+                            {t("workspaceForm.current")}
                           </span>
                         )}
                       </div>
@@ -298,8 +286,8 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
                   variant={repoSearchQuery.trim() ? "no-results" : "empty"}
                   title={
                     repoSearchQuery.trim()
-                      ? t("workspaceForm.noReposFound", "No repos match filter")
-                      : t("workspaceForm.noRepos", "No repos available")
+                      ? t("workspaceForm.noReposFound")
+                      : t("workspaceForm.noRepos")
                   }
                 />
               </div>
@@ -307,9 +295,19 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
           </div>
         </SpotlightFormBody>
 
-        <PanelFooter
-          secondaryButtonSize="default"
-          primaryButtonSize="default"
+        <SpotlightFormActions
+          backLabel={t("actions.back")}
+          onBack={onCancel}
+          busy={loading}
+          submit={{
+            label: loading
+              ? `${isEditing ? t("actions.save") : t("actions.create")}...`
+              : isEditing
+                ? t("actions.save")
+                : t("actions.create"),
+            onClick: handleSubmit,
+            disabled: isSubmitDisabled,
+          }}
           left={
             selectedIds.size >= 2 ? (
               <span className="truncate text-[14px] text-text-1">
@@ -319,29 +317,6 @@ const CreateWorkspaceForm: React.FC<CreateWorkspaceFormProps> = ({
               </span>
             ) : undefined
           }
-          secondaryActions={[
-            {
-              label: t("actions.back"),
-              onClick: onCancel,
-              variant: "secondary",
-              disabled: loading,
-            },
-          ]}
-          primaryAction={{
-            label: loading
-              ? `${
-                  isEditing
-                    ? t("actions.save", "Save")
-                    : t("actions.create", "Create")
-                }...`
-              : isEditing
-                ? t("actions.save", "Save")
-                : t("actions.create", "Create"),
-            onClick: handleSubmit,
-            disabled: isSubmitDisabled,
-            loading,
-            variant: "primary",
-          }}
         />
       </SpotlightFormShell>
     </div>

@@ -36,7 +36,9 @@ import { useTranslation } from "react-i18next";
 
 import { rpc } from "@src/api/tauri/rpc";
 import Button from "@src/components/Button";
+import Input from "@src/components/Input";
 import Message from "@src/components/Message";
+import PanelFooter from "@src/components/layout/blocks/PanelFooter";
 import {
   AGENT_SIDE_CHANNEL_EVENTS,
   type AgentSecretRequestDetail,
@@ -235,39 +237,34 @@ export const SecretCaptureModal: FC = () => {
   const submitDisabled = submitting || value.length === 0;
 
   const footer = (
-    <div className="flex w-full items-center justify-between gap-2">
-      <Button
-        size="small"
-        variant="secondary"
-        onClick={handlePasteFromClipboard}
-        disabled={submitting}
-      >
-        {t("secretCapture.pasteFromClipboard")}
-      </Button>
-      <div className="flex items-center gap-2">
+    <PanelFooter
+      left={
         <Button
           size="small"
-          variant="secondary"
-          onClick={() => {
-            void handleCancel();
-          }}
+          onClick={handlePasteFromClipboard}
           disabled={submitting}
         >
-          {t("actions.cancel")}
+          {t("secretCapture.pasteFromClipboard")}
         </Button>
-        <Button
-          size="small"
-          variant="primary"
-          onClick={() => {
-            void handleSubmit();
-          }}
-          disabled={submitDisabled}
-          loading={submitting}
-        >
-          {t("secretCapture.submit")}
-        </Button>
-      </div>
-    </div>
+      }
+      secondaryActions={[
+        {
+          label: t("actions.cancel"),
+          onClick: () => {
+            void handleCancel();
+          },
+          disabled: submitting,
+        },
+      ]}
+      primaryAction={{
+        label: t("secretCapture.submit"),
+        onClick: () => {
+          void handleSubmit();
+        },
+        disabled: submitDisabled,
+        loading: submitting,
+      }}
+    />
   );
 
   return (
@@ -318,12 +315,15 @@ export const SecretCaptureModal: FC = () => {
             <span className="text-text-3">·</span>
             <span>{t(`secretCapture.kind.${kind}`)}</span>
           </span>
-          <input
+          <Input
+            size="large"
+            visibilityToggle={false}
+            className="w-full"
             ref={inputRef}
             id={inputId}
             type="password"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(_value, e) => setValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !submitDisabled) {
                 e.preventDefault();
@@ -337,7 +337,6 @@ export const SecretCaptureModal: FC = () => {
             data-1p-ignore
             data-lpignore="true"
             placeholder={t("secretCapture.inputPlaceholder")}
-            className="rounded-md border border-border-2 bg-bg-2 px-3 py-2 text-sm text-text-1 outline-none focus:border-border-3"
           />
           <span className="text-[11px] text-text-3">
             {t("secretCapture.lengthHint", { count: value.length })}

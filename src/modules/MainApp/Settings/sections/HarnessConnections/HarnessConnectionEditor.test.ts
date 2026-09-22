@@ -77,7 +77,7 @@ vi.mock("@src/components/Select", () => ({
       )
     ),
 }));
-vi.mock("@src/modules/shared/layouts/SectionLayout", () => ({
+vi.mock("@src/components/layout/Section", () => ({
   SECTION_ACTION_GAP_CLASSES: "",
   SECTION_CONTROL_STYLE: {},
   SECTION_DESCRIPTION_CLASSES: "",
@@ -94,7 +94,7 @@ vi.mock("@src/modules/shared/layouts/SectionLayout", () => ({
     label: string;
   }) => createElement("div", null, label, children),
 }));
-vi.mock("@src/modules/shared/layouts/blocks/HintWithInfo", () => ({
+vi.mock("@src/components/layout/blocks/HintWithInfo", () => ({
   HintWithInfo: ({ content }: { content: React.ReactNode }) =>
     createElement("span", null, content),
 }));

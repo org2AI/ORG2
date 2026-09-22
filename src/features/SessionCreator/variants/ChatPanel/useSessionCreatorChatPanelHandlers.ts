@@ -22,6 +22,7 @@ import {
   getSystemPathSourcePath,
   isSystemPathSourceId,
 } from "@src/features/SessionCreator/utils/systemPathSource";
+import { createLogger } from "@src/hooks/logger";
 import { useAgentCompatibility } from "@src/hooks/models/useAgentCompatibility";
 import { useWorkingDirectoryForm } from "@src/scaffold/GlobalSpotlight/hooks/forms";
 import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette";
@@ -30,6 +31,8 @@ import { REPO_KIND, type RepoKind } from "@src/store/repo/types";
 import { sessionCreatorStateAtom, sessionSourceAtom } from "@src/store/session";
 
 import { resolveRepoChangePath } from "./resolveRepoChangePath";
+
+const log = createLogger("SessionCreatorChatPanelHandlers");
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -164,23 +167,27 @@ export function useSessionCreatorChatPanelHandlers({
           })
         );
         if (repoPath) {
-          void handleImportWorkingDirectory(repoPath, {
+          handleImportWorkingDirectory(repoPath, {
             promptForGitInit: false,
-          }).then((repoId) => {
-            if (!repoId) return;
-            // Align the repo-selection store with the imported workspace.
-            // Without this, selectedRepoId keeps pointing at the previous
-            // repo, useChatPanelBranchSync bails on the repoId mismatch, and
-            // the branch pill stays icon-only until an unrelated refresh.
-            selectRepo(repoId);
-            setSessionSource({
-              type: "local",
-              repoId,
-              repoName: repo.name,
-              repoPath,
-              branch: undefined,
+          })
+            .then((repoId) => {
+              if (!repoId) return;
+              // Align the repo-selection store with the imported workspace.
+              // Without this, selectedRepoId keeps pointing at the previous
+              // repo, the live source cannot match the new checkout, and
+              // the branch pill stays icon-only until an unrelated refresh.
+              selectRepo(repoId);
+              setSessionSource({
+                type: "local",
+                repoId,
+                repoName: repo.name,
+                repoPath,
+                branch: undefined,
+              });
+            })
+            .catch((error: unknown) => {
+              log.error("Failed to import the session workspace", error);
             });
-          });
         }
         return;
       }

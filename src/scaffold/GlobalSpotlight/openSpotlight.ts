@@ -96,109 +96,56 @@ export function closeGlobalSpotlight(): void {
  * Supported default modes let command search open with an empty input while
  * preserving the explicit prefixes used by editor-local shortcuts.
  */
+function openGlobalSpotlight(request: SpotlightInitialQuery): void {
+  if (!isStoreInitialized()) return;
+  const store = getInstrumentedStore();
+  store.set(spotlightInitialQueryAtom, request);
+  store.set(spotlightOpenAtom, true);
+}
+
 export function openEditorSpotlight(
   query = "",
   mode?: SpotlightInitialEditorMode
 ): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(
-    spotlightInitialQueryAtom,
-    createEditorSpotlightRequest(query, mode)
-  );
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createEditorSpotlightRequest(query, mode));
 }
 
 export function openWorkingDirectorySpotlight(
   mode: "switch" | "open" | "add" | "create"
 ): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(
-    spotlightInitialQueryAtom,
-    createWorkingDirectorySpotlightRequest(mode)
-  );
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createWorkingDirectorySpotlightRequest(mode));
 }
 
 export function openCollabOrgSpotlight(
   context: SpotlightCollabOrgContext = {}
 ): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(
-    spotlightInitialQueryAtom,
-    createCollabOrgSpotlightRequest(context)
-  );
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createCollabOrgSpotlightRequest(context));
 }
 
 export function openGitHubIssuesImportSpotlight(
   context: SpotlightGitHubIssuesImportContext = {}
 ): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(
-    spotlightInitialQueryAtom,
-    createGitHubIssuesImportSpotlightRequest(context)
-  );
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createGitHubIssuesImportSpotlightRequest(context));
 }
 
 export function openBranchSpotlight(repoId?: string): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(spotlightInitialQueryAtom, createBranchSpotlightRequest(repoId));
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createBranchSpotlightRequest(repoId));
 }
-
 export function openWorktreeSpotlight(): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(spotlightInitialQueryAtom, createWorktreeSpotlightRequest());
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createWorktreeSpotlightRequest());
 }
-
 export function openAgentSessionSearchSpotlight(): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(
-    spotlightInitialQueryAtom,
-    createAgentSessionSearchSpotlightRequest()
-  );
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createAgentSessionSearchSpotlightRequest());
 }
-
 export function openAllSessionsSearchSpotlight(): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(
-    spotlightInitialQueryAtom,
-    createAllSessionsSearchSpotlightRequest()
-  );
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createAllSessionsSearchSpotlightRequest());
 }
-
 export function openAgentControlSpotlight(): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(spotlightInitialQueryAtom, createAgentControlSpotlightRequest());
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createAgentControlSpotlightRequest());
 }
-
 export function openSessionCreatorSpotlight(): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(spotlightInitialQueryAtom, createSessionCreatorSpotlightRequest());
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight(createSessionCreatorSpotlightRequest());
 }
-
 export function openSessionImportSpotlight(): void {
-  if (!isStoreInitialized()) return;
-  const store = getInstrumentedStore();
-  store.set(spotlightInitialQueryAtom, {
-    query: "",
-    layer: { kind: "sessionImport" },
-  });
-  store.set(spotlightOpenAtom, true);
+  openGlobalSpotlight({ query: "", layer: { kind: "sessionImport" } });
 }

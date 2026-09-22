@@ -495,5 +495,3 @@ export function useComposerInput(
     slashLoading,
   };
 }
-
-export default useComposerInput;

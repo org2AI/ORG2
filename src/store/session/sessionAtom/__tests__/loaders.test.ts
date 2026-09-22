@@ -16,6 +16,7 @@ import type { Session } from "../types";
 
 const {
   createSidebarLoadCoordinator,
+  mergeAuthoritativeSessions,
   mergeSessions,
   replaceExternalHistorySourceFirstPage,
 } = __TESTS_ONLY;
@@ -83,6 +84,85 @@ describe("mergeSessions", () => {
       "c",
       "a",
     ]);
+  });
+});
+
+describe("mergeAuthoritativeSessions superseded siblings", () => {
+  function lineageSession(
+    id: string,
+    updatedAt: string,
+    lineage: string
+  ): Session {
+    return {
+      ...makeSession(id, updatedAt),
+      continuationLineageId: lineage,
+    };
+  }
+
+  it("drops a held sibling once the listing returns another row of its lineage", () => {
+    // A Codex resend: gen1 was loaded and listed, the backend then elected
+    // gen2 and stopped listing gen1. Two rows for one thread must not stay.
+    const prev = [lineageSession("gen1", "2026-09-11T00:18:38", "thread-a")];
+    const incoming = [
+      lineageSession("gen2", "2026-09-11T00:29:51", "thread-a"),
+    ];
+    expect(
+      mergeAuthoritativeSessions(prev, incoming).map(
+        (session) => session.session_id
+      )
+    ).toEqual(["gen2"]);
+  });
+
+  it("lets a re-promoted older generation displace a newer cached one", () => {
+    // gen2's file was removed and the backend re-promoted gen1; the
+    // listing is authoritative, so the newer cached gen2 must go.
+    const prev = [lineageSession("gen2", "2026-09-11T00:29:51", "thread-a")];
+    const incoming = [
+      lineageSession("gen1", "2026-09-11T00:18:38", "thread-a"),
+    ];
+    expect(
+      mergeAuthoritativeSessions(prev, incoming).map(
+        (session) => session.session_id
+      )
+    ).toEqual(["gen1"]);
+  });
+
+  it("keeps the open session even when it is the demoted generation", () => {
+    const prev = [lineageSession("gen1", "2026-09-11T00:18:38", "thread-a")];
+    const incoming = [
+      lineageSession("gen2", "2026-09-11T00:29:51", "thread-a"),
+    ];
+    expect(
+      mergeAuthoritativeSessions(prev, incoming, new Set(["gen1"])).map(
+        (session) => session.session_id
+      )
+    ).toEqual(["gen2", "gen1"]);
+  });
+
+  it("keeps rows of other lineages and rows without a lineage", () => {
+    const prev = [
+      lineageSession("other", "2026-09-10T00:00:00", "thread-b"),
+      makeSession("plain", "2026-09-09T00:00:00"),
+    ];
+    const incoming = [
+      lineageSession("gen2", "2026-09-11T00:29:51", "thread-a"),
+    ];
+    expect(
+      mergeAuthoritativeSessions(prev, incoming).map(
+        (session) => session.session_id
+      )
+    ).toEqual(["gen2", "other", "plain"]);
+  });
+
+  it("does not prune on a plain merge, which loads by explicit id", () => {
+    // Opening an older generation by id must not evict the roster winner.
+    const prev = [lineageSession("gen2", "2026-09-11T00:29:51", "thread-a")];
+    const incoming = [
+      lineageSession("gen1", "2026-09-11T00:18:38", "thread-a"),
+    ];
+    expect(
+      mergeSessions(prev, incoming).map((session) => session.session_id)
+    ).toEqual(["gen2", "gen1"]);
   });
 });
 

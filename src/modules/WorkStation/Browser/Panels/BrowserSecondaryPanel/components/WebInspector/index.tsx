@@ -13,8 +13,8 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
-import { HEADER_BUTTON } from "@src/config/workstation/tokens";
 import { HugeiconsIcon, PanelRightOpenIcon } from "@src/icons";
 import type { ElementInfo } from "@src/modules/WorkStation/Browser/hooks/useWebviewInspector";
 import type { SecondaryPanelPosition } from "@src/store/ui/workStationLayout/secondaryPanelPositionAtoms";
@@ -97,18 +97,20 @@ export const WebInspector: React.FC<WebInspectorProps> = memo(
       return (
         <div className="station-sidebar-scroll-area flex h-full w-8 shrink-0 flex-col items-center bg-workstation-bg pt-2">
           <ToolbarTooltip label={t("titleBar.showDevTools")}>
-            <button
-              type="button"
-              className={HEADER_BUTTON.actionLg}
+            <Button
+              variant="tertiary"
+              size="small"
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={PanelRightOpenIcon}
+                  data-icon="panel-right-open"
+                  size={16}
+                />
+              }
               onClick={onToggleCollapse}
               aria-label={t("titleBar.showDevTools")}
-            >
-              <HugeiconsIcon
-                icon={PanelRightOpenIcon}
-                data-icon="panel-right-open"
-                size={16}
-              />
-            </button>
+            />
           </ToolbarTooltip>
           {/* Issue indicators */}
           {(errorCount > 0 || warningCount > 0) && (

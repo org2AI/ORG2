@@ -6,8 +6,6 @@
 
 export { SpotlightSearchBar } from "./SpotlightSearchBar";
 
-export { SpotlightPillBar } from "./SpotlightPillBar";
-
 export { SpotlightItemList } from "./SpotlightItemList";
 
 export {
@@ -16,13 +14,8 @@ export {
 } from "./SpotlightFooter";
 export type { SpotlightFooterActiveChip } from "./SpotlightFooter";
 
-export { KeyboardShortcut } from "@src/components/KeyboardShortcut";
-
-export { SpotlightAccountFooter } from "./SpotlightAccountFooter";
-
-export { SpotlightFooterAction } from "./SpotlightFooterAction";
-
 export { SpotlightFooterToggle } from "./SpotlightFooterToggle";
+export { SpotlightSettingsMenu } from "./SpotlightSettingsMenu";
 
 export { SpotlightPinnedActionSection } from "./SpotlightPinnedActionSection";
 

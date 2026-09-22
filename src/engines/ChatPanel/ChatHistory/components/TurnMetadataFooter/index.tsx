@@ -11,10 +11,10 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import FileTypeIcon from "@src/components/FileTypeIcon";
-import { openMarkdownLinkInBrowserApp } from "@src/components/MarkDown/markdownUtils";
 import TabPill, { type TabPillItem } from "@src/components/TabPill";
 import {
   CHAT_COMPOSER_STACK_BAR_INNER_PADDING_X_CLASS,
+  COMPOSER_STACK_CONTAINER_RADIUS_CLASS,
   COMPOSER_STACK_ROW_BASE,
   COMPOSER_STACK_ROW_HOVER,
 } from "@src/config/composerStackTokens";
@@ -46,8 +46,9 @@ import {
   stationModeAtom,
 } from "@src/store/ui/simulatorAtom";
 import { getFileName } from "@src/util/file/pathUtils";
+import { openLink } from "@src/util/ui/openLink";
 
-import "./index.scss";
+import "./index.css";
 import { mapTurnModifiedFilesToFileChanges } from "./turnFilesMapping";
 
 const DEFAULT_VISIBLE_FILES = 4;
@@ -236,13 +237,13 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
       ]
     );
 
-    // PR rows open in the workstation Browser and bring it into view (the
-    // chat panel un-maximizes and the station switches to Browser), matching
-    // inline PR links in assistant markdown.
+    // PR rows open like inline PR links in assistant markdown: in the
+    // workstation Browser, brought into view (the chat panel un-maximizes and
+    // the station switches to Browser), unless links go to the system browser.
     const openPullRequest = useCallback(
       (artifact: ExtractedGitArtifactData) => {
         if (!artifact.url) return;
-        openMarkdownLinkInBrowserApp(artifact.url);
+        openLink(artifact.url);
       },
       []
     );
@@ -261,12 +262,13 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
 
     return (
       <div className="px-3 pt-2" data-testid="turn-metadata-footer">
-        <div className="overflow-hidden rounded-lg border border-solid border-border-2">
+        <div
+          className={`${COMPOSER_STACK_CONTAINER_RADIUS_CLASS} overflow-hidden border border-solid border-border-2`}
+        >
           <div className="flex min-h-9 items-center justify-between gap-2 px-2.5 py-1">
             <div className="flex min-w-0 items-center gap-1.5">
               <Button
                 variant="tertiary"
-                appearance="ghost"
                 size="small"
                 iconOnly
                 style={{ width: 16 }}
@@ -308,7 +310,6 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
             {activeTab === "edits" && files.length > 0 && (
               <Button
                 variant="tertiary"
-                appearance="ghost"
                 size="small"
                 onClick={() => openDiff()}
                 className="chat-block-title shrink-0 text-text-3 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30"
@@ -330,9 +331,9 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
               >
                 {activeTab === "edits" &&
                   commits.map((artifact) => (
-                    <button
+                    <Button
+                      layout="custom"
                       key={`commit-${artifact.sha ?? artifact.url}`}
-                      type="button"
                       onClick={() => openCommit(artifact)}
                       disabled={!artifact.sha && !artifact.shortSha}
                       title={artifact.sha ?? artifact.url}
@@ -352,13 +353,13 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
                           {artifact.shortSha}
                         </span>
                       )}
-                    </button>
+                    </Button>
                   ))}
                 {activeTab === "edits" &&
                   pullRequests.map((artifact) => (
-                    <button
+                    <Button
+                      layout="custom"
                       key={`pr-${artifact.url ?? artifact.prNumber}`}
-                      type="button"
                       onClick={() => openPullRequest(artifact)}
                       disabled={!artifact.url}
                       title={artifact.url}
@@ -381,7 +382,7 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
                         className="shrink-0 text-text-3"
                         aria-hidden
                       />
-                    </button>
+                    </Button>
                   ))}
                 {activeTab === "edits" &&
                   visibleFiles.map((file) => (
@@ -432,8 +433,8 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
                   className="shrink-0"
                   data-testid="turn-metadata-pinned-controls"
                 >
-                  <button
-                    type="button"
+                  <Button
+                    layout="custom"
                     onClick={() => setExpanded((previous) => !previous)}
                     className={`${STACK_ROW_BUTTON_CLASSES} text-text-3`}
                     data-testid="turn-metadata-expansion-toggle"
@@ -452,7 +453,7 @@ const TurnMetadataFooter: React.FC<TurnMetadataFooterProps> = memo(
                             count: hiddenCount,
                           })}
                     </span>
-                  </button>
+                  </Button>
                 </div>
               ) : null}
             </div>

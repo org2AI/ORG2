@@ -9,9 +9,7 @@
  * - useBranchCheckout.ts - Branch checkout with conflict resolution
  * - useRepoSelection.ts  - Main orchestrating hook
  */
-export { useRepoSelection, default } from "./useRepoSelection";
+export { useRepoSelection } from "./useRepoSelection";
 
 // Sub-hooks for advanced use cases
 export { useRepoLoader } from "./useRepoLoader";
-export { useBranchLoader } from "./useBranchLoader";
-export { useBranchCheckout } from "./useBranchCheckout";

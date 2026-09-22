@@ -11,6 +11,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
 } from "react";
 
@@ -110,7 +111,8 @@ export const WorktreeSourceControlSection = forwardRef<
       onGitFilesChange?.(absoluteFiles, worktreePath);
     }, [onGitFilesChange, absoluteFiles, worktreePath]);
 
-    useEffect(() => {
+    // Resolve the parent overlay before paint when scoped data is ready.
+    useLayoutEffect(() => {
       onLoadingChange?.(loading);
     }, [loading, onLoadingChange]);
 

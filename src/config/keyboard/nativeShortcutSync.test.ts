@@ -39,6 +39,7 @@ it("forwards customized embedded-webview keys, suppresses replaced defaults, and
   const script = source.split('r#"')[1].split('"#;')[0];
   let keydown!: (event: unknown) => void;
   const emit = vi.fn();
+  const open = vi.fn();
   const window = {
     __ORGII_SHORTCUT_PREFERENCES__: {
       bindings: {
@@ -49,6 +50,7 @@ it("forwards customized embedded-webview keys, suppresses replaced defaults, and
       recording: false,
     },
     __TAURI__: { event: { emit } },
+    open,
     addEventListener: (_: string, callback: typeof keydown) => {
       keydown = callback;
     },
@@ -66,14 +68,17 @@ it("forwards customized embedded-webview keys, suppresses replaced defaults, and
       stopPropagation: vi.fn(),
     });
   press("p", "KeyP");
+  expect(open).not.toHaveBeenCalled();
   expect(emit).not.toHaveBeenCalled();
   press("F6", "F6");
-  expect(emit).toHaveBeenCalledWith("inline-webview-shortcut", {
-    shortcut: "openFilePalette",
-    keys: "",
-  });
-  emit.mockClear();
+  expect(open).toHaveBeenCalledTimes(1);
+  expect(open).toHaveBeenCalledWith("orgii-shortcut://openFilePalette");
+  // Even with the Tauri bridge present, shortcut delivery must go through
+  // the native parent owner instead of broadcasting to peer windows.
+  expect(emit).not.toHaveBeenCalled();
+  open.mockClear();
   window.__ORGII_SHORTCUT_PREFERENCES__.recording = true;
   press("F6", "F6");
+  expect(open).not.toHaveBeenCalled();
   expect(emit).not.toHaveBeenCalled();
 });

@@ -14,6 +14,7 @@
  */
 import React, { memo, useCallback, useState } from "react";
 
+import Button from "@src/components/Button";
 import { ChevronsDownUpIcon, HugeiconsIcon, UnfoldMoreIcon } from "@src/icons";
 
 export interface ComposerStackHeaderProps {
@@ -107,14 +108,15 @@ const ComposerStackHeader: React.FC<ComposerStackHeaderProps> = memo(
         onMouseLeave={onLeave}
       >
         {isCollapsible ? (
-          <button
+          <Button
+            layout="custom"
             onClick={onToggle}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-left"
           >
             {iconSlot}
             <span className={labelClass}>{label}</span>
             {badges}
-          </button>
+          </Button>
         ) : (
           <span className="flex min-w-0 flex-1 items-center gap-1.5">
             {icon && iconSlot}

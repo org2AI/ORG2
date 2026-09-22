@@ -6,7 +6,6 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type {
   LocalModelHardwareSummary,
-  MemoryMetrics,
   ProcessMetrics,
   SystemInfo,
   SystemMemoryMetrics,
@@ -15,10 +14,6 @@ import type {
 
 export async function getProcessMetrics(): Promise<ProcessMetrics> {
   return invoke<ProcessMetrics>("get_process_metrics");
-}
-
-export async function getMemoryUsage(): Promise<MemoryMetrics> {
-  return invoke<MemoryMetrics>("get_memory_usage");
 }
 
 export async function getSystemMemory(): Promise<SystemMemoryMetrics> {

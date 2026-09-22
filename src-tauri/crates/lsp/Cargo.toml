@@ -4,14 +4,13 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.85.0"
 
-# Language Server Protocol manager + lint tooling.
+# Language Server Protocol manager.
 #
 # Spawns and supervises external LSP server processes (rust-analyzer,
 # typescript-language-server, pyright, gopls, etc.), parses their JSON-RPC
 # `textDocument/publishDiagnostics` notifications, and forwards them to the
 # IDE WebSocket so the frontend can render diagnostics in-place. Also owns
-# the lint-tool catalog (eslint, ruff, mypy, golangci-lint, clippy, …) and
-# the per-workspace LSP/lint config that gates which servers auto-start.
+# the per-workspace LSP config that gates which servers auto-start.
 #
 # cargo-machete cannot see that `lzma-sys` is intentionally included to force
 # static liblzma for the transitive `xz2` extractor used by install_pipeline.
@@ -38,7 +37,6 @@ app_paths = { path = "../app-paths" }
 app_platform = { path = "../app-platform" }
 app_utils = { path = "../app-utils" }
 core_types = { path = "../types" }
-git = { path = "../git" }
 
 # Tauri (commands + State)
 tauri = { workspace = true }
@@ -80,13 +78,6 @@ futures = "0.3"
 # guard across a `.await`, so a sync mutex is strictly better.
 parking_lot = "0.12"
 
-# Workspace scan needs gitignore-aware traversal
-ignore = "0.4"
-
-# Spawning helper-tool tempdirs (eslint config probing, etc.).
-# Pinned to match `app/Cargo.toml` to avoid duplicate compilations.
-tempfile = "3.13"
-
 # `which` is used to locate binaries that bypass the dependency cache
 # (e.g. ad-hoc tool detection inside install_pipeline). Pinned to match
 # `app/Cargo.toml`.
@@ -98,7 +89,7 @@ log = "0.4"
 tracing = "0.1"
 
 # `commands/cache.rs` uses `chrono::DateTime::parse_from_rfc3339` to gate
-# stale lsp / lint caches on a 1-hour TTL.
+# the stale lsp cache on a 1-hour TTL.
 chrono = { workspace = true }
 
 # `config::ConfigError` derives `thiserror::Error`.
@@ -117,6 +108,7 @@ xz2 = "0.1"
 lzma-sys = { workspace = true }
 zip = { workspace = true }
 
-# `commands/server.rs` decodes percent-encoded `file://` URIs the frontend
-# passes for `textDocument/didOpen`-style commands.
-urlencoding = "2.1"
+[dev-dependencies]
+# Tempdirs for the root-detection and workspace-config tests.
+# Pinned to match `app/Cargo.toml` to avoid duplicate compilations.
+tempfile = "3.13"

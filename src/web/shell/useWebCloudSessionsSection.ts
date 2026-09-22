@@ -11,6 +11,7 @@ import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import {
   buildCloudRemoteItemId,
   parseCloudRemoteItemId,
@@ -24,7 +25,6 @@ import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { org2CloudPresenceAtom } from "@src/features/Org2Cloud/org2CloudPresenceAtom";
 import type { CloudRemoteSessionsFetchState } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
 import { createLogger } from "@src/hooks/logger";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import {
   CLOUD_MY_SESSIONS_LOAD_MORE_ID,
@@ -46,8 +46,6 @@ import { webSessionPath } from "../features/sessions/webSessionLocation";
 const log = createLogger("WebCloudSessionsSection");
 
 const WEB_TEAM_FILTER: CloudSessionFilter = { kind: "all" };
-const EMPTY_LOCAL_SESSIONS = [] as const;
-const EMPTY_LOCAL_SESSION_IDS: ReadonlySet<string> = new Set();
 const EMPTY_BUSY_SESSION_ROWS = new Map();
 const EMPTY_PINNED_REMOTE_SESSION_IDS: ReadonlySet<string> = new Set();
 const buildNoNativeMenuItems = () => [];
@@ -223,12 +221,8 @@ export function useWebCloudSessionsSection({
   const buildRowItem = useCloudSessionRowItemBuilder({
     presenceMap,
     selfUserId,
-    sessions: EMPTY_LOCAL_SESSIONS,
-    localOwnSessionIds: EMPTY_LOCAL_SESSION_IDS,
-    sourceEndpointUrl: undefined,
     t,
     tCommon,
-    runFork: ignoreRemoteSessionAction,
     buildNativeMenuItems: buildNoNativeMenuItems,
     busySessionRows: EMPTY_BUSY_SESSION_ROWS,
     pinnedRemoteSessionIds: EMPTY_PINNED_REMOTE_SESSION_IDS,

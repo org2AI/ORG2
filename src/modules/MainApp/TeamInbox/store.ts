@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 
-import type { SessionReferenceOpen } from "@src/shared/dnd/sessionTabDrag";
+import type { SessionReferenceOpen } from "@src/util/dnd/sessionTabDrag";
 
 import type {
   TeamInboxFilter,
@@ -70,11 +70,6 @@ teamInboxViewStateAtom.debugLabel = "teamInboxViewStateAtom";
 
 export const teamInboxInvalidationAtom = atom(0);
 teamInboxInvalidationAtom.debugLabel = "teamInboxInvalidationAtom";
-
-export const invalidateTeamInboxAtom = atom(null, (get, set) => {
-  set(teamInboxInvalidationAtom, get(teamInboxInvalidationAtom) + 1);
-});
-invalidateTeamInboxAtom.debugLabel = "invalidateTeamInboxAtom";
 
 export interface TeamInboxItemFocusRequest {
   itemKey: string;

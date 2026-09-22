@@ -7,11 +7,12 @@ import {
   isStoreInitialized,
 } from "@src/util/core/state/instrumentedStore";
 
-export const ORGII_COAUTHOR_NAME = "ORGII";
+export const ORGII_COAUTHOR_NAME = "ORG2";
 export const ORGII_COAUTHOR_GITHUB_ACCOUNT = "ORGII-agent";
 export const ORGII_COAUTHOR_EMAIL = `${ORGII_COAUTHOR_GITHUB_ACCOUNT}@users.noreply.github.com`;
 
 const ORGII_COAUTHOR_TRAILER = `Co-authored-by: ${ORGII_COAUTHOR_NAME} <${ORGII_COAUTHOR_EMAIL}>`;
+const LEGACY_ORGII_COAUTHOR_TRAILER = `Co-authored-by: ORGII <${ORGII_COAUTHOR_EMAIL}>`;
 const ORGII_PR_ATTRIBUTION_FOOTER = `Created with ${ORGII_COAUTHOR_NAME}\n\n${ORGII_COAUTHOR_TRAILER}`;
 
 export function shouldIncludeGitCoauthor(): boolean {
@@ -29,7 +30,11 @@ export function appendGitCoauthorTrailer(message: string): string {
 
   const hasTrailer = message
     .split("\n")
-    .some((line) => line.trim() === ORGII_COAUTHOR_TRAILER);
+    .some(
+      (line) =>
+        line.trim() === ORGII_COAUTHOR_TRAILER ||
+        line.trim() === LEGACY_ORGII_COAUTHOR_TRAILER
+    );
 
   if (hasTrailer) return message;
 
@@ -45,7 +50,11 @@ export function appendPullRequestAttributionFooter(
   const normalizedBody = body?.trimEnd() ?? "";
   if (!shouldIncludePullRequestAttribution()) return normalizedBody;
 
-  if (normalizedBody.includes(ORGII_COAUTHOR_TRAILER)) return normalizedBody;
+  if (
+    normalizedBody.includes(ORGII_COAUTHOR_TRAILER) ||
+    normalizedBody.includes(LEGACY_ORGII_COAUTHOR_TRAILER)
+  )
+    return normalizedBody;
   if (!normalizedBody) return ORGII_PR_ATTRIBUTION_FOOTER;
 
   return `${normalizedBody}\n\n---\n\n${ORGII_PR_ATTRIBUTION_FOOTER}`;

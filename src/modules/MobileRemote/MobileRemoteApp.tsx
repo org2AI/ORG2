@@ -1,18 +1,25 @@
-import React from "react";
+import React, { useContext } from "react";
+import { useTranslation } from "react-i18next";
 
-import { MobileRemoteProviders } from "./app";
+import { createLogger } from "@src/hooks/logger";
+
+import { MobileRemoteProviders, useMobileRemote } from "./app";
+import { MobileAuthContext } from "./auth/MobileAuthContext";
 import { MobileShell } from "./components/MobileShell";
 import { MobileTabBar } from "./components/MobileTabBar";
 import { StopConfirmModal } from "./components/modals/StopConfirmModal";
+import { MobileProfileEntry } from "./components/profile/MobileProfileEntry";
+import { mobileConnectionFailureKey } from "./connection/mobileConnectionFeedback";
 import { useMobileRemoteCoordinator } from "./navigation/useMobileRemoteCoordinator";
 import { ConnectingLiveBridge } from "./screens/ConnectingLiveBridge";
+import { ConnectingScreen } from "./screens/ConnectingScreen";
 import { ConnectionErrorScreen } from "./screens/ConnectionErrorScreen";
 import { QRScanScreen } from "./screens/QRScanScreen";
 import { SASConfirmScreen } from "./screens/SASConfirmScreen";
 import { SessionChatScreen } from "./screens/SessionChatScreen";
 import { SessionsScreen } from "./screens/SessionsScreen";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
-import { DevicesTab } from "./screens/devices/DevicesTab";
+import { ConnectionDevicesScreen } from "./screens/devices/ConnectionDevicesScreen";
 import { SettingsTab } from "./screens/settings/SettingsTab";
 
 export interface MobileRemoteAppProps {
@@ -36,6 +43,8 @@ function MobileRemoteRoutes({
     dispatch,
     stopConfirming,
     stopFailed,
+    connectionRecovering,
+    connectionRecoveryError,
     showTabBar,
     selectedSessionName,
     selectedSessionSendCapability,
@@ -43,14 +52,38 @@ function MobileRemoteRoutes({
     handleAcceptPairing,
     handleConfirmStop,
     handleConnectionRetry,
+    handleConnectionRepair,
   } = useMobileRemoteCoordinator(recoveredPairingIntent);
+  const { t } = useTranslation("mobileRemote");
+  const { bootstrapPending, connectionConfig } = useMobileRemote();
+
+  // Manual recovery owns the handshake; do not remount ConnectingLiveBridge
+  // with an old pending config and start a second connection in parallel.
+  if (bootstrapPending || connectionRecovering) {
+    return (
+      <MobileShell>
+        <ConnectingScreen restoring />
+      </MobileShell>
+    );
+  }
 
   if (connection.status === "error") {
     return (
       <MobileShell>
         <ConnectionErrorScreen
-          message={connection.error?.message}
-          onRetry={handleConnectionRetry}
+          message={t(mobileConnectionFailureKey(connection.error))}
+          onRetry={() => {
+            void handleConnectionRetry().catch((error) =>
+              logger.warn("Connection retry failed", error)
+            );
+          }}
+          onRepair={() => {
+            void handleConnectionRepair().catch((error) =>
+              logger.warn("Connection repair failed", error)
+            );
+          }}
+          busy={connectionRecovering}
+          actionError={connectionRecoveryError}
         />
       </MobileShell>
     );
@@ -61,6 +94,7 @@ function MobileRemoteRoutes({
     case "welcome":
       body = (
         <WelcomeScreen
+          profileAction={<MobileProfileEntry />}
           onOpenPairing={() => dispatch({ type: "open_qr_scan" })}
         />
       );
@@ -91,12 +125,23 @@ function MobileRemoteRoutes({
         />
       );
       break;
+    case "connection_devices":
+      body = (
+        <ConnectionDevicesScreen
+          onBack={() => dispatch({ type: "back_from_devices" })}
+          onAddDesktop={() => dispatch({ type: "open_qr_scan" })}
+        />
+      );
+      break;
     case "sessions":
     case "chat":
       if (nav.selectedSessionId) {
         body = (
           <>
             <SessionChatScreen
+              onCanonicalSession={(sessionId) =>
+                dispatch({ type: "select_session", sessionId })
+              }
               sessionId={nav.selectedSessionId}
               sessionName={selectedSessionName}
               sendCapability={selectedSessionSendCapability}
@@ -112,18 +157,14 @@ function MobileRemoteRoutes({
             />
           </>
         );
-      } else if (nav.activeTab === "devices") {
-        body = <DevicesTab />;
       } else if (nav.activeTab === "settings") {
-        body = <SettingsTab />;
-      } else {
         body = (
-          <SessionsScreen
-            onSelectSession={(sessionId) =>
-              dispatch({ type: "select_session", sessionId })
-            }
+          <SettingsTab
+            onOpenDevices={() => dispatch({ type: "open_devices" })}
           />
         );
+      } else {
+        body = null;
       }
       break;
     default:
@@ -141,6 +182,26 @@ function MobileRemoteRoutes({
         ) : null
       }
     >
+      {nav.screen === "sessions" ||
+      nav.screen === "chat" ||
+      nav.screen === "connection_devices" ? (
+        <SessionsScreen
+          key={JSON.stringify([
+            connectionConfig?.desktopId ?? connection.desktopId,
+            connectionConfig?.host,
+            connectionConfig?.port,
+          ])}
+          active={
+            nav.screen === "sessions" &&
+            !nav.selectedSessionId &&
+            nav.activeTab === "sessions"
+          }
+          profileAction={<MobileProfileEntry />}
+          onSelectSession={(sessionId) =>
+            dispatch({ type: "select_session", sessionId })
+          }
+        />
+      ) : null}
       {body}
     </MobileShell>
   );
@@ -152,8 +213,10 @@ export function MobileRemoteApp({
   recoveredPairingIntent = null,
   relayUrl,
 }: MobileRemoteAppProps) {
+  const auth = useContext(MobileAuthContext);
   return (
     <MobileRemoteProviders
+      key={JSON.stringify([authUserId, auth?.session.supabaseUrl, relayUrl])}
       authUserId={authUserId}
       relayUrl={relayUrl}
       demoByDefault={false}
@@ -165,3 +228,5 @@ export function MobileRemoteApp({
 }
 
 MobileRemoteApp.displayName = "MobileRemoteApp";
+
+const logger = createLogger("MobileRemoteApp");

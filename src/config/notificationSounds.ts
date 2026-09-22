@@ -1,12 +1,12 @@
-export const NOTIFICATION_SOUND_PRESETS = [
-  "classic",
-  "gentle",
-  "ascending",
-  "bell",
-] as const;
+import {
+  NOTIFICATION_SOUND_PRESETS,
+  type NotificationSoundPreset,
+} from "@src/contracts/notification/sound";
 
-export type NotificationSoundPreset =
-  (typeof NOTIFICATION_SOUND_PRESETS)[number];
+export {
+  NOTIFICATION_SOUND_PRESETS,
+  type NotificationSoundPreset,
+} from "@src/contracts/notification/sound";
 
 export const DEFAULT_NOTIFICATION_SOUND_PRESET: NotificationSoundPreset =
   "classic";

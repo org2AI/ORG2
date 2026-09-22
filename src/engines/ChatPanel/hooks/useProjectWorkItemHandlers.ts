@@ -12,12 +12,9 @@ import {
   CHAT_PANEL_CREATE_TARGET,
   type ChatPanelCreateProjectContext,
   type ChatPanelCreateTarget,
-  type ChatPanelSelectedProject,
   type ChatPanelSelectedWorkItem,
 } from "@src/store/ui/chatPanel/selectionAtoms";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
-
-type StateSetter<T> = (value: T | ((previous: T) => T)) => void;
 
 interface UseProjectWorkItemHandlersOptions {
   bumpProjectListRefresh: (updater: (previous: number) => number) => void;
@@ -32,8 +29,10 @@ interface UseProjectWorkItemHandlersOptions {
   sessionCreatorAvailable: boolean;
   setActiveSessionId: (sessionId: string | null) => void;
   setCreateTarget: (target: ChatPanelCreateTarget) => void;
-  setSelectedProject: StateSetter<ChatPanelSelectedProject | null>;
-  setSelectedWorkItem: StateSetter<ChatPanelSelectedWorkItem | null>;
+  /** Retain a just-created item for the creator's "Create another" flow. */
+  setCreatorWorkItemContext: (
+    workItem: ChatPanelSelectedWorkItem | null
+  ) => void;
   setShowProjectAgentCreator: (enabled: boolean) => void;
   setShowWorkItemAgentCreator: (enabled: boolean) => void;
   setWorkItemCreateDraft: (draft: WorkItemDraft | null) => void;
@@ -48,8 +47,7 @@ export function useProjectWorkItemHandlers({
   sessionCreatorAvailable,
   setActiveSessionId,
   setCreateTarget,
-  setSelectedProject,
-  setSelectedWorkItem,
+  setCreatorWorkItemContext,
   setShowProjectAgentCreator,
   setShowWorkItemAgentCreator,
   setWorkItemCreateDraft,
@@ -142,12 +140,11 @@ export function useProjectWorkItemHandlers({
             : undefined,
         workItem,
       };
-      setSelectedProject(null);
       if (result.keepOpen) {
-        // "Create another" intentionally stays on the creator. Preserve the
-        // last-created payload for existing draft flows without changing the
-        // active tab.
-        setSelectedWorkItem(createdWorkItem);
+        // "Create another" intentionally stays on the creator. Retain the
+        // last-created payload as the creator's launch context without
+        // changing the active tab.
+        setCreatorWorkItemContext(createdWorkItem);
         return;
       }
       setWorkItemCreateDraft(null);
@@ -156,9 +153,8 @@ export function useProjectWorkItemHandlers({
       dispatchClearSession();
       setWorkstationActiveSessionId(null);
       setActiveSessionId(null);
-      // Work-item surfaces are tab-owned. Opening the canonical keyed tab is
-      // the only transition that updates both its durable payload and the
-      // legacy selected-work-item mirror used by existing panel hooks.
+      // Work-item surfaces are tab-owned: opening the canonical keyed tab
+      // stores the payload and activates the surface in one step.
       openWorkItemTab(createdWorkItem);
     },
     [
@@ -168,8 +164,7 @@ export function useProjectWorkItemHandlers({
       sessionCreatorAvailable,
       setActiveSessionId,
       setCreateTarget,
-      setSelectedProject,
-      setSelectedWorkItem,
+      setCreatorWorkItemContext,
       setShowWorkItemAgentCreator,
       setWorkItemCreateDraft,
       setWorkstationActiveSessionId,

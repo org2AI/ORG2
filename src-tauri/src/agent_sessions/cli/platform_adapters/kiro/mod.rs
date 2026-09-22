@@ -4,6 +4,9 @@
 //!   binary), embedded webview helpers, local token reader.
 //! - `proxy_auth`: builds a fake-AWS-token Kiro SQLite for market-key /
 //!   MITM proxy sessions. No AWS SDK dependency.
+//! - `profile_tokens`: reads back the tokens `kiro-cli` rotated inside an
+//!   own-key profile, syncs them to the Key Vault, and decides whether a
+//!   launch may re-seed the profile from the vault.
 //!
 //! The own-key direct-AWS-SDK SSO login lived in `sso.rs` and has been
 //! archived to `.archive/kiro-sso/` to drop the `aws-config` /
@@ -12,4 +15,5 @@
 //! (`start_kiro_login` / `cancel_kiro_login`) for own-key Kiro Pro auth.
 
 pub mod kiro_auth;
+pub(crate) mod profile_tokens;
 pub mod proxy_auth;

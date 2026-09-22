@@ -28,4 +28,3 @@ export type { WorkspaceSwitchEntry } from "./data/useWorkspaceSwitch";
 export { useAccountFooterForHovered } from "./useAccountFooterForHovered";
 
 // Path segment hook (used by palettes to resolve i18n path labels/templates)
-export { usePathSegment } from "./usePathSegment";

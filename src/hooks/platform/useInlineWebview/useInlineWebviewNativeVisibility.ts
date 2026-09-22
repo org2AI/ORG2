@@ -7,6 +7,7 @@ export interface UseInlineWebviewNativeVisibilityParams {
   isWebviewAvailable: boolean;
   labelRef: MutableRefObject<string>;
   updatePosition: (options?: { force?: boolean }) => Promise<void>;
+  parkOffscreen: () => Promise<void>;
   log: (...args: unknown[]) => void;
 }
 
@@ -19,6 +20,7 @@ export function useInlineWebviewNativeVisibility(
     isWebviewAvailable,
     labelRef,
     updatePosition,
+    parkOffscreen,
     log,
   } = params;
 
@@ -39,13 +41,7 @@ export function useInlineWebviewNativeVisibility(
           });
         } else {
           log("Staging WebView offscreen (isVisible=false, but still mounted)");
-          await invoke("update_inline_webview_position", {
-            label: labelRef.current,
-            x: -10000,
-            y: -10000,
-            width: 1,
-            height: 1,
-          });
+          await parkOffscreen();
         }
       } catch (err) {
         if (!cancelled) {
@@ -65,6 +61,7 @@ export function useInlineWebviewNativeVisibility(
     isWebviewAvailable,
     labelRef,
     updatePosition,
+    parkOffscreen,
     log,
   ]);
 }

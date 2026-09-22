@@ -13,7 +13,6 @@ const labels: ChatPanelTabDisplayLabels = {
   newSession: "New session",
   runtime: "Runtime",
   organization: "Manage ORG",
-  teamInbox: "Inbox",
   workManagement: {
     kanban: "Kanban",
     inbox: "Inbox",
@@ -59,12 +58,6 @@ describe("resolveChatPanelTabDisplayTitle", () => {
     expect(
       resolveChatPanelTabDisplayTitle(tab("channel", "#gone"), null, labels)
     ).toBe("Channels");
-  });
-
-  it("uses the same localized Inbox title as the sidebar", () => {
-    expect(
-      resolveChatPanelTabDisplayTitle(tab("team-inbox"), null, labels)
-    ).toBe("Inbox");
   });
 
   it("keeps Work datasets under one localized tab title", () => {

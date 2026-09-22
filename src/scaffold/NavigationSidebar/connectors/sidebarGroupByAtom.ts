@@ -15,8 +15,6 @@ import {
   DEFAULT_SESSION_GROUP_VISIBLE_COUNT,
   GROUP_BY_MODES,
   type GroupByMode,
-  PROJECTS_GROUP_BY_MODES,
-  type ProjectsGroupByMode,
   SESSION_GROUP_VISIBLE_COUNTS,
   type SessionGroupVisibleCount,
 } from "./types";
@@ -24,15 +22,12 @@ import {
 const STORAGE_KEY = "orgii:sidebarGroupBy";
 const HIDDEN_WORKSPACES_STORAGE_KEY = "orgii:sidebarHiddenWorkspaces";
 const PINNED_WORKSPACES_STORAGE_KEY = "orgii:sidebarPinnedWorkspaces";
-const PROJECTS_STORAGE_KEY = "orgii:projectsSidebarGroupBy";
 const INCLUDE_EXTERNAL_STORAGE_KEY = "orgii:sidebarIncludeExternal";
 const GROUP_VISIBLE_COUNT_STORAGE_KEY = "orgii:sidebarGroupVisibleCount";
 const DEFAULT_MODE: GroupByMode = "byTime";
-const DEFAULT_PROJECTS_MODE: ProjectsGroupByMode = "byOrg";
 const DEFAULT_INCLUDE_EXTERNAL = true;
 
 const StoredGroupByModeSchema = z.enum([...GROUP_BY_MODES]);
-const StoredProjectsGroupByModeSchema = z.enum([...PROJECTS_GROUP_BY_MODES]);
 const StoredIncludeExternalSchema = z.boolean();
 const StoredGroupVisibleCountSchema = z.literal([
   ...SESSION_GROUP_VISIBLE_COUNTS,
@@ -58,14 +53,6 @@ export const sidebarGroupByAtom = atomWithStorage<GroupByMode>(
   { getOnInit: true }
 );
 sidebarGroupByAtom.debugLabel = "sidebarGroupByAtom";
-
-const projectsSidebarGroupByAtom = atomWithStorage<ProjectsGroupByMode>(
-  PROJECTS_STORAGE_KEY,
-  DEFAULT_PROJECTS_MODE,
-  createZodJsonStorage(StoredProjectsGroupByModeSchema),
-  { getOnInit: true }
-);
-projectsSidebarGroupByAtom.debugLabel = "projectsSidebarGroupByAtom";
 
 export const sidebarIncludeExternalAtom = atomWithStorage<boolean>(
   INCLUDE_EXTERNAL_STORAGE_KEY,

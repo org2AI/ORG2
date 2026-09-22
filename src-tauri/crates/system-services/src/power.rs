@@ -37,7 +37,7 @@ use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 
 #[cfg(target_os = "macos")]
-mod macos_impl {
+pub(crate) mod macos_impl {
     use core_foundation::base::TCFType;
     use core_foundation::string::{CFString, CFStringRef};
 
@@ -45,6 +45,11 @@ mod macos_impl {
     type IOReturn = i32;
     const K_IO_RETURN_SUCCESS: IOReturn = 0;
     const K_IOPM_ASSERTION_LEVEL_ON: u32 = 255;
+
+    /// Shown by `pmset -g assertions` and Activity Monitor when someone asks
+    /// what is keeping the Mac awake. ASCII only: `pmset` prints any other
+    /// byte as a replacement character.
+    pub(crate) const ASSERTION_NAME: &str = "ORG2 - agent session running";
 
     #[link(name = "IOKit", kind = "framework")]
     extern "C" {
@@ -62,7 +67,7 @@ mod macos_impl {
         // kIOPMAssertPreventUserIdleSystemSleep — prevents the system from
         // sleeping due to idleness. Display may still dim/sleep.
         let assertion_type = CFString::new("PreventUserIdleSystemSleep");
-        let assertion_name = CFString::new("ORGII — agent session running");
+        let assertion_name = CFString::new(ASSERTION_NAME);
         let mut id: IOPMAssertionID = 0;
         let result = unsafe {
             IOPMAssertionCreateWithName(
@@ -337,6 +342,13 @@ fn release_for_label(label: &str) -> Result<(), String> {
 ///
 /// `window` is injected by Tauri from the invoke context — the frontend
 /// payload is unchanged.
+///
+/// Must stay a synchronous command. Tauri runs sync commands on the main
+/// thread, which is also where `WindowEvent::Destroyed` and page-load hooks
+/// call [`release_sleep_inhibitor_for_window_label`]. On Windows that is load
+/// bearing: `SetThreadExecutionState` is per *thread*, so an acquire moved to
+/// the async runtime would set the flag on a pool thread that the release
+/// (on another thread) could never clear.
 #[tauri::command]
 pub fn system_power_acquire_sleep_inhibitor(window: tauri::Window) -> Result<(), String> {
     acquire_for_label(window.label())

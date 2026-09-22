@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.pl.md">Polski</a>
+  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.id.md">Bahasa Indonesia</a> · <a href="README.pl.md">Polski</a>
 </p>
 
 <p align="center">
@@ -34,7 +34,7 @@ Responder por qué existe un fragmento de código —y si funcionó— siempre h
 
 ORG-2 es donde tu equipo ejecuta sus Agents de código —un harness nativo en Rust más lanzadores para más de 20 CLIs de Agents— y construye ese registro automáticamente. Cada sesión se convierte en una trayectoria que tus compañeros reproducen como un vídeo: revisan cómo se construyó realmente el trabajo en lugar de solo el diff, y comentan en contexto. Las sesiones ejecutadas en otras herramientas se ingieren y se rellenan desde su historial, de modo que el registro cubre también trabajo que nunca pasó por la aplicación. El registro enlaza lo que pidió la persona, lo que entendió el Agent y lo que realmente hizo, así que cualquier línea publicada se rastrea hasta la sesión que la escribió.
 
-No es solo otra herramienta de programación con IA; es un experimento sobre organizaciones humano/Agent y alineación a nivel de organización. ORG-II trata a los Agents como colegas persistentes y observables dentro de una organización estructurada: ejecución reproducible, memoria entre sesiones, AI blame y un runtime Rust local-first para que humanos, Agents y equipos colaboren alrededor de contexto compartido y objetivos alineados.
+No es solo otra herramienta de programación con IA; es un experimento sobre organizaciones humano/Agent y alineación a nivel de organización. ORG2 trata a los Agents como colegas persistentes y observables dentro de una organización estructurada: ejecución reproducible, memoria entre sesiones, AI blame y un runtime Rust local-first para que humanos, Agents y equipos colaboren alrededor de contexto compartido y objetivos alineados.
 
 ## Funciones
 
@@ -48,7 +48,7 @@ Ejecuta Agents nativos rápidos, personalizables y eficientes en tokens con tus 
 
 </td>
 <td width="50%">
-  <img src="../assets/feature-wall/rust-harness.gif" alt="Ejecutar Agents con el harness de Rust de ORG-II" width="100%" />
+  <img src="../assets/feature-wall/rust-harness.gif" alt="Ejecutar Agents con el harness de Rust de ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -60,7 +60,7 @@ Carga y gestiona en un solo lugar las sesiones de Agent de todas tus herramienta
 
 </td>
 <td width="50%">
-  <img src="../assets/feature-wall/session-sources.png" alt="Gestionar fuentes de sesiones de Agent de apps y CLIs en ORG-II" width="100%" />
+  <img src="../assets/feature-wall/session-sources.png" alt="Gestionar fuentes de sesiones de Agent de apps y CLIs en ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -72,7 +72,7 @@ Forma tu equipo y comparte sesiones entre dispositivos y compañeros. Revisa la 
 
 </td>
 <td width="50%">
-  <img src="../assets/feature-wall/team-trajectory-review.png" alt="Gestionar compañeros y permisos de replay de trayectorias en ORG-II" width="100%" />
+  <img src="../assets/feature-wall/team-trajectory-review.png" alt="Gestionar compañeros y permisos de replay de trayectorias en ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -84,7 +84,7 @@ Reproduce el trabajo del harness nativo de Rust y de más de 15 CLI Agents. Mens
 
 </td>
 <td width="50%">
-  <img src="../assets/feature-wall/replay.gif" alt="Reproducir una sesión de Agent en ORG-II" width="100%" />
+  <img src="../assets/feature-wall/replay.gif" alt="Reproducir una sesión de Agent en ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -96,7 +96,7 @@ No te quedes en quién cambió una línea. Rastréala hasta las sesiones de Agen
 
 </td>
 <td width="50%">
-  <img src="../assets/feature-wall/ai-blame.gif" alt="Rastrear cambios de código hasta sesiones y decisiones de Agent en ORG-II" width="100%" />
+  <img src="../assets/feature-wall/ai-blame.gif" alt="Rastrear cambios de código hasta sesiones y decisiones de Agent en ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -108,7 +108,7 @@ Comprueba cómo distribuyes tu tiempo entre tareas y sesiones de Agent. Una time
 
 </td>
 <td width="50%">
-  <img src="../assets/feature-wall/work-diary.png" alt="Revisar el tiempo dedicado a tareas y sesiones de Agent en ORG-II" width="100%" />
+  <img src="../assets/feature-wall/work-diary.png" alt="Revisar el tiempo dedicado a tareas y sesiones de Agent en ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -120,7 +120,7 @@ Usa el terminal, gestiona el control de código fuente, recorre el historial de 
 
 </td>
 <td width="50%">
-  <img src="../assets/feature-wall/development-workspace.gif" alt="Control de código fuente, historial de Git y revisión de código en ORG-II" width="100%" />
+  <img src="../assets/feature-wall/development-workspace.gif" alt="Control de código fuente, historial de Git y revisión de código en ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -132,7 +132,7 @@ Inspecciona páginas en vivo en el navegador WebKit nativo. Selecciona un elemen
 
 </td>
 <td width="50%">
-  <img src="../assets/feature-wall/design-mode.gif" alt="Inspeccionar un elemento web con el Modo Diseño de ORG-II" width="100%" />
+  <img src="../assets/feature-wall/design-mode.gif" alt="Inspeccionar un elemento web con el Modo Diseño de ORG2" width="100%" />
 </td>
 </tr>
 </table>
@@ -149,7 +149,7 @@ Inspecciona páginas en vivo en el navegador WebKit nativo. Selecciona un elemen
 
 ## Agents compatibles
 
-Usa el harness de Rust integrado de ORG-II o inicia estas CLIs de coding Agents compatibles desde la app de escritorio.
+Usa el harness de Rust integrado de ORG2 o inicia estas CLIs de coding Agents compatibles desde la app de escritorio.
 
 ### GUI + TUI
 
@@ -161,6 +161,7 @@ Usa el harness de Rust integrado de ORG-II o inicia estas CLIs de coding Agents 
   <a href="https://kiro.dev/docs/cli/installation"><kbd><img src="../../src/assets/modelIcons/kiro.svg" alt="Logo de Kiro CLI" width="16" valign="middle" /> Kiro CLI</kbd></a> &nbsp;
   <a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-in-the-cli"><kbd><img src="../../src/assets/modelIcons/copilot.svg" alt="Logo de GitHub Copilot" width="16" valign="middle" /> GitHub Copilot</kbd></a> &nbsp;
   <a href="https://opencode.ai/docs/config/"><kbd><img src="../../src/assets/modelIcons/opencode.svg" alt="Logo de OpenCode" width="16" valign="middle" /> OpenCode</kbd></a> &nbsp;
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><kbd><img src="../../src/assets/modelIcons/deepseek.svg" alt="DeepSeek Harness logo" width="16" valign="middle" /> DeepSeek Harness</kbd></a> &nbsp;
   <a href="https://antigravity.google/docs/cli/getting-started"><kbd><img src="../../src/assets/modelIcons/antigravity.svg" alt="Logo de Antigravity" width="16" valign="middle" /> Antigravity</kbd></a>
 </p>
 
@@ -190,9 +191,7 @@ Usa el harness de Rust integrado de ORG-II o inicia estas CLIs de coding Agents 
 
 ## Descargar
 
-Versión actual del build: v1.1.24 (2026-07-16)
-
-Descarga la aplicación desktop más reciente de ORGII con un clic:
+Descarga la aplicación desktop más reciente de ORG2 con un clic:
 
 - [macOS Apple Silicon](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-mac-apple-silicon.dmg)
 - [Instalador de Windows x64](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-windows-x64-setup.exe)
@@ -240,4 +239,4 @@ Si falta un sidecar, el build de Rust crea un pequeño recurso placeholder para 
 
 ## Licencia
 
-ORGII está licenciado bajo GNU Affero General Public License v3.0 o posterior (`AGPL-3.0-or-later`). Consulta [`LICENSE`](../../LICENSE) para ver el texto completo de la licencia.
+ORG2 está licenciado bajo GNU Affero General Public License v3.0 o posterior (`AGPL-3.0-or-later`). Consulta [`LICENSE`](../../LICENSE) para ver el texto completo de la licencia.

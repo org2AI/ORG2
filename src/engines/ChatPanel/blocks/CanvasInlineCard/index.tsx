@@ -119,11 +119,11 @@ const CanvasInlineCard: React.FC<CanvasInlineCardProps> = ({
       : mode === "a2ui"
         ? t("canvasCard.titleA2ui")
         : mode === "react"
-          ? t("canvasCard.titleReact", "React Preview")
+          ? t("canvasCard.titleReact")
           : t("canvasCard.titleHtml"));
 
   const headerSubtitle = isStreaming
-    ? t("canvasCard.streaming", "streaming")
+    ? t("canvasCard.streaming")
     : mode === "url" && url
       ? url
       : undefined;

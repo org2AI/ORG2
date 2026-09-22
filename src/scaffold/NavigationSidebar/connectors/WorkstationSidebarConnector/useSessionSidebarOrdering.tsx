@@ -9,6 +9,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
+import Message from "@src/components/Message";
 import type { TabDragEventDetail } from "@src/modules/WorkStation/shared/TabBar/tabDragTypes";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import type { Session } from "@src/store/session";
@@ -25,6 +26,7 @@ interface DropTarget {
   id: string;
   after: boolean;
   pinned: boolean;
+  sectionId?: string;
   top: number;
   left: number;
   width: number;
@@ -35,11 +37,15 @@ export function useSessionSidebarOrdering({
   items,
   sessionMap,
   onTogglePin,
+  onMoveToSection,
+  sectionMembership,
 }: {
   enabled: boolean;
   items: readonly NavigationMenuItem[];
   sessionMap: ReadonlyMap<string, Session>;
   onTogglePin: (id: string) => Promise<void>;
+  onMoveToSection?: (id: string, sectionId: string | null) => Promise<boolean>;
+  sectionMembership?: ReadonlyMap<string, string>;
 }) {
   const { t } = useTranslation("navigation");
   const setOrder = useSetAtom(sidebarSessionOrderAtom);
@@ -51,9 +57,23 @@ export function useSessionSidebarOrdering({
     atom<DragFeedback>({ dragging: false, target: null })
   );
   const setFeedback = useSetAtom(feedbackAtom);
-  const latest = useRef({ items, sessionMap, order, onTogglePin });
+  const latest = useRef({
+    items,
+    sessionMap,
+    order,
+    onTogglePin,
+    onMoveToSection,
+    sectionMembership,
+  });
   useLayoutEffect(() => {
-    latest.current = { items, sessionMap, order, onTogglePin };
+    latest.current = {
+      items,
+      sessionMap,
+      order,
+      onTogglePin,
+      onMoveToSection,
+      sectionMembership,
+    };
   });
   const eligible = useCallback((id: string) => {
     const session = latest.current.sessionMap.get(id);
@@ -90,9 +110,28 @@ export function useSessionSidebarOrdering({
           width: zone.width,
         };
       }
-      const row = document
-        .elementFromPoint(x, y)
-        ?.closest<HTMLElement>("[data-sidebar-order-id]");
+      const element = document.elementFromPoint(x, y);
+      const sectionHeader = element?.closest<HTMLElement>(
+        "[data-sidebar-section-toggle]"
+      );
+      const sectionKey = sectionHeader?.dataset.sidebarSectionToggle;
+      if (
+        sectionHeader &&
+        sectionKey?.startsWith("custom-section-") &&
+        latest.current.onMoveToSection
+      ) {
+        const rect = sectionHeader.getBoundingClientRect();
+        return {
+          id: "",
+          sectionId: sectionKey.slice("custom-section-".length),
+          pinned: false,
+          after: true,
+          top: rect.bottom,
+          left: rect.left,
+          width: rect.width,
+        };
+      }
+      const row = element?.closest<HTMLElement>("[data-sidebar-order-id]");
       const id = row?.dataset.sidebarOrderId;
       if (!row || !id || !eligible(id)) return null;
       const pinned = Boolean(latest.current.sessionMap.get(id)?.pinned);
@@ -135,6 +174,25 @@ export function useSessionSidebarOrdering({
       if (!id || !drop || drop.id === id) return;
       const current = latest.current;
       if (!current.sessionMap.has(id)) return;
+      const sourceSection = current.sectionMembership?.get(id) ?? null;
+      const targetSection =
+        !drop.id && !drop.sectionId
+          ? sourceSection
+          : (drop.sectionId ?? current.sectionMembership?.get(drop.id) ?? null);
+      if (
+        !drop.pinned &&
+        current.onMoveToSection &&
+        (sourceSection !== targetSection || drop.sectionId)
+      ) {
+        void current
+          .onMoveToSection(id, targetSection)
+          .then(async (success) => {
+            if (success && current.sessionMap.get(id)?.pinned)
+              await current.onTogglePin(id);
+          })
+          .catch((error) => Message.error(String(error)));
+        return;
+      }
       const visibleIds = current.items
         .filter((item) => eligible(item.id))
         .map((item) => item.id);
@@ -165,7 +223,9 @@ export function useSessionSidebarOrdering({
       if (!drop.pinned && sectionOf(id) !== sectionOf(drop.id))
         setGroup("none");
       if (current.sessionMap.get(id)?.pinned && !drop.pinned)
-        void current.onTogglePin(id);
+        void current
+          .onTogglePin(id)
+          .catch((error) => Message.error(String(error)));
     };
     const key = (event: KeyboardEvent) => {
       if (event.key === "Escape") reset();

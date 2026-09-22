@@ -120,15 +120,66 @@ pub(super) fn process_instance_key(descriptor: &ProcessDescriptor) -> ProcessIns
 
 pub(super) fn collect_effective_memory(descriptor: &ProcessDescriptor) -> EffectiveProcessMemory {
     if let Some(usage) = macos_rusage(descriptor.pid) {
-        EffectiveProcessMemory {
-            bytes: usage.ri_phys_footprint,
-            kind: MemoryMetricKind::PhysicalFootprint,
-            birth_token: usage.ri_proc_start_abstime,
-            breakdown: macos_region_breakdown(descriptor.pid),
-            peak_bytes: (usage.ri_lifetime_max_phys_footprint > 0)
-                .then_some(usage.ri_lifetime_max_phys_footprint),
-        }
+        effective_memory_from_rusage(&usage, macos_region_breakdown(descriptor.pid))
     } else {
         EffectiveProcessMemory::rss_fallback(descriptor, descriptor.start_time_secs)
+    }
+}
+
+fn effective_memory_from_rusage(
+    usage: &libc::rusage_info_v4,
+    breakdown: MemoryBreakdown,
+) -> EffectiveProcessMemory {
+    // XNU gather_rusage_info reads the lifetime peak before the current
+    // footprint. A process can grow between those reads, so the raw fields
+    // are not an atomic snapshot. A known lifetime peak must include the
+    // current observation; zero still means the OS peak is unavailable.
+    let peak_bytes = (usage.ri_lifetime_max_phys_footprint > 0).then_some(
+        usage
+            .ri_lifetime_max_phys_footprint
+            .max(usage.ri_phys_footprint),
+    );
+    EffectiveProcessMemory {
+        bytes: usage.ri_phys_footprint,
+        kind: MemoryMetricKind::PhysicalFootprint,
+        birth_token: usage.ri_proc_start_abstime,
+        breakdown,
+        peak_bytes,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rusage_conversion_handles_non_atomic_peak_samples() {
+        for (current, reported_peak, expected_peak) in [
+            (200, 100, Some(200)),
+            (100, 200, Some(200)),
+            (100, 100, Some(100)),
+            (100, 0, None),
+        ] {
+            let mut usage =
+                unsafe { std::mem::MaybeUninit::<libc::rusage_info_v4>::zeroed().assume_init() };
+            usage.ri_phys_footprint = current;
+            usage.ri_lifetime_max_phys_footprint = reported_peak;
+            usage.ri_proc_start_abstime = 42;
+            let breakdown = MemoryBreakdown {
+                resident_private_bytes: 10,
+                resident_shared_bytes: 20,
+                swapped_bytes: 30,
+                kind: MemoryBreakdownKind::VmRegionWalk,
+            };
+
+            let effective = effective_memory_from_rusage(&usage, breakdown);
+
+            assert_eq!(effective.peak_bytes, expected_peak);
+            assert_eq!(effective.bytes, current);
+            assert_eq!(effective.birth_token, 42);
+            assert_eq!(effective.kind, MemoryMetricKind::PhysicalFootprint);
+            assert_eq!(effective.breakdown, breakdown);
+            assert_eq!(usage.ri_lifetime_max_phys_footprint, reported_peak);
+        }
     }
 }

@@ -12,17 +12,22 @@
  *
  * This is the content rendered when a "search" tab is active in the editor.
  */
-import React, { memo, useCallback, useEffect, useMemo } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import AnyIcon from "@src/components/AnyIcon";
 import Button from "@src/components/Button";
-import { Placeholder } from "@src/components/Placeholder";
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import { PLACEHOLDER_TOKENS, Placeholder } from "@src/components/Placeholder";
 import { useTabViewState } from "@src/hooks/tabHost/useTabViewState";
-import { FilterIcon, HugeiconsIcon } from "@src/icons";
+import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
+import { FilterIcon, HugeiconsIcon, Search01Icon } from "@src/icons";
 
 import { SearchFilters } from "../../../shared";
 import SearchBar from "./SearchBar";
 import SearchEditorDocument from "./SearchEditorDocument";
+import { SearchHeaderActions } from "./SearchHeaderActions";
+import { SearchHeaderMoreMenu } from "./SearchHeaderMoreMenu";
 import { serializeSearchResults } from "./serialization";
 import type { SearchEditorContentProps, SearchMode } from "./types";
 import { useSearchTabContent } from "./useSearchTabContent";
@@ -77,9 +82,8 @@ export const SearchEditorContent: React.FC<SearchEditorContentProps> = memo(
     repoPath,
     initialQuery,
     initialOptions,
-    onQueryChangeForTitle,
     onResultClick,
-    openFiles = [],
+    openFiles,
   }) => {
     const { t } = useTranslation();
 
@@ -97,15 +101,25 @@ export const SearchEditorContent: React.FC<SearchEditorContentProps> = memo(
     );
 
     // Search hook - unified with sidebar search execution pipeline
-    const { query, setQuery, options, setOptions, results, loading, error } =
-      useSearchTabContent({
-        repoPath,
-        openFiles,
-        searchMode,
-        sessionScopeId,
-        initialQuery,
-        initialOptions,
-      });
+    const {
+      query,
+      setQuery,
+      options,
+      setOptions,
+      results,
+      loading,
+      error,
+      refresh,
+      submittedSearch,
+      awaitingSubmission,
+    } = useSearchTabContent({
+      repoPath,
+      openFiles,
+      searchMode,
+      sessionScopeId,
+      initialQuery,
+      initialOptions,
+    });
 
     // Option toggles
     const handleCaseSensitiveToggle = useCallback(() => {
@@ -143,13 +157,6 @@ export const SearchEditorContent: React.FC<SearchEditorContentProps> = memo(
       setShowFilters((prev) => !prev);
     }, [setShowFilters]);
 
-    useEffect(() => {
-      if (!onQueryChangeForTitle) {
-        return;
-      }
-      onQueryChangeForTitle(sessionScopeId, query);
-    }, [sessionScopeId, query, onQueryChangeForTitle]);
-
     // Handle file path click (navigate to file)
     const handleFilePathClick = useCallback(
       (filePath: string, line: number) => {
@@ -160,60 +167,81 @@ export const SearchEditorContent: React.FC<SearchEditorContentProps> = memo(
 
     // Serialize results for CodeMirror display
     const serializedResults = useMemo(() => {
-      if (results.length === 0) return null;
+      if (awaitingSubmission || !submittedSearch || results.length === 0)
+        return null;
       return serializeSearchResults(results, {
-        query,
+        query: submittedSearch.query,
         mode: searchMode,
-        caseSensitive: options.caseSensitive,
-        wholeWord: options.wholeWord,
-        useRegex: options.useRegex,
+        caseSensitive: submittedSearch.options.caseSensitive,
+        wholeWord: submittedSearch.options.wholeWord,
+        useRegex: submittedSearch.options.useRegex,
         repoPath,
       });
-    }, [
-      results,
-      query,
-      searchMode,
-      options.caseSensitive,
-      options.wholeWord,
-      options.useRegex,
-      repoPath,
-    ]);
+    }, [results, submittedSearch, awaitingSubmission, searchMode, repoPath]);
+
+    const headerContent = useMemo(
+      () => ({
+        sidebarToggleDisabled: true,
+        content: (
+          <SearchBar
+            query={query}
+            onQueryChange={setQuery}
+            onSubmit={refresh}
+            mode={searchMode}
+            onModeChange={setSearchMode}
+            isLoading={loading}
+          />
+        ),
+        trailing: (
+          <div className="flex shrink-0 items-center gap-px pl-2">
+            <SearchHeaderActions
+              caseSensitive={options.caseSensitive}
+              wholeWord={options.wholeWord}
+              useRegex={options.useRegex}
+              onCaseSensitiveToggle={handleCaseSensitiveToggle}
+              onWholeWordToggle={handleWholeWordToggle}
+              onRegexToggle={handleRegexToggle}
+            />
+            <SearchHeaderMoreMenu onRefresh={refresh} loading={loading} />
+          </div>
+        ),
+        leading: (
+          <ToolbarTooltip label={t("tooltips.toggleFileFilters")}>
+            <Button
+              size="small"
+              variant="tertiary"
+              className="aria-pressed:bg-surface-selected aria-pressed:text-primary-6"
+              aria-expanded={showFilters}
+              aria-pressed={showFilters}
+              iconOnly
+              icon={<AnyIcon icon={FilterIcon} size={14} strokeWidth={2} />}
+              onClick={handleToggleFilters}
+              aria-label={t("tooltips.toggleFileFilters")}
+            />
+          </ToolbarTooltip>
+        ),
+      }),
+      [
+        query,
+        setQuery,
+        searchMode,
+        setSearchMode,
+        loading,
+        options,
+        handleCaseSensitiveToggle,
+        handleWholeWordToggle,
+        handleRegexToggle,
+        showFilters,
+        handleToggleFilters,
+        refresh,
+        t,
+      ]
+    );
+
+    usePublishWorkstationTabHeader({ host: "code", content: headerContent });
 
     return (
       <div className="flex h-full flex-col">
-        {/* Search Bar */}
-        <SearchBar
-          query={query}
-          onQueryChange={setQuery}
-          mode={searchMode}
-          onModeChange={setSearchMode}
-          isLoading={loading}
-          caseSensitive={options.caseSensitive}
-          wholeWord={options.wholeWord}
-          useRegex={options.useRegex}
-          onCaseSensitiveToggle={handleCaseSensitiveToggle}
-          onWholeWordToggle={handleWholeWordToggle}
-          onRegexToggle={handleRegexToggle}
-          rightAction={
-            <Button
-              size="small"
-              shape="square"
-              iconOnly
-              icon={
-                <HugeiconsIcon
-                  icon={FilterIcon}
-                  data-icon="filter"
-                  size={14}
-                  className={showFilters ? "text-primary-6" : "text-text-3"}
-                />
-              }
-              onClick={handleToggleFilters}
-              title={t("tooltips.toggleFileFilters")}
-              aria-label={t("tooltips.toggleFileFilters")}
-            />
-          }
-        />
-
         {/* File Filters (collapsible) */}
         {showFilters && (
           <div className="shrink-0">
@@ -234,7 +262,22 @@ export const SearchEditorContent: React.FC<SearchEditorContentProps> = memo(
         {/* Results Content - VS Code-style CodeMirror display */}
         {/* Use same container structure as CodeViewerContent */}
         <div className="relative min-h-0 flex-1">
-          {error ? (
+          {awaitingSubmission ? (
+            <Placeholder
+              variant="empty"
+              placement="detail-panel"
+              fillParentHeight
+              title={t("placeholders.pressEnterToSearch")}
+              icon={
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  size={PLACEHOLDER_TOKENS.detailIconSize}
+                  strokeWidth={1.25}
+                  className="text-text-1 opacity-30"
+                />
+              }
+            />
+          ) : error ? (
             <Placeholder
               variant="error"
               placement="detail-panel"

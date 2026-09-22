@@ -66,6 +66,26 @@ struct PendingPermission {
     session_id: String,
     tool_name: String,
     tool_call_id: String,
+    tool_args: serde_json::Value,
+    created_at_ms: i64,
+}
+
+struct PendingPermissionGuard {
+    pending: Arc<std::sync::Mutex<HashMap<String, PendingPermission>>>,
+    request_id: String,
+}
+
+impl Drop for PendingPermissionGuard {
+    fn drop(&mut self) {
+        // Cleanup must not panic again while a producer is unwinding.
+        let entry = match self.pending.lock() {
+            Ok(mut pending) => pending.remove(&self.request_id),
+            Err(poisoned) => poisoned.into_inner().remove(&self.request_id),
+        };
+        if let Some(entry) = entry {
+            AgentPermissionManager::broadcast_pending_changed(&entry.session_id);
+        }
+    }
 }
 
 /// Manages pending permission requests for any agent session.
@@ -74,7 +94,7 @@ struct PendingPermission {
 /// `broadcast_event` (routed to the frontend over the Tauri IPC Channel).
 pub struct AgentPermissionManager {
     /// Pending requests keyed by `request_id`.
-    pending: Arc<Mutex<HashMap<String, PendingPermission>>>,
+    pending: Arc<std::sync::Mutex<HashMap<String, PendingPermission>>>,
     /// Session-scoped always-allow rules (tool name or tool+pattern).
     session_rules: Arc<Mutex<Vec<PermissionRule>>>,
     /// Persistent rules loaded from `.orgii/permissions.json`.
@@ -112,7 +132,7 @@ impl AgentPermissionManager {
             .take(8)
             .collect::<String>();
         Self {
-            pending: Arc::new(Mutex::new(HashMap::new())),
+            pending: Arc::new(std::sync::Mutex::new(HashMap::new())),
             session_rules: Arc::new(Mutex::new(Vec::new())),
             persistent_store: Arc::new(Mutex::new(PermissionStore::default())),
             workspace: Arc::new(Mutex::new(None)),
@@ -145,15 +165,33 @@ impl AgentPermissionManager {
         tool_name: &str,
         tool_call_id: &str,
     ) -> (String, oneshot::Receiver<PermissionResponse>) {
+        self.register_with_args(
+            session_id,
+            tool_name,
+            tool_call_id,
+            &serde_json::Value::Null,
+        )
+        .await
+    }
+
+    async fn register_with_args(
+        &self,
+        session_id: &str,
+        tool_name: &str,
+        tool_call_id: &str,
+        tool_args: &serde_json::Value,
+    ) -> (String, oneshot::Receiver<PermissionResponse>) {
         let request_id = format!("{}-{}-{}", self.id_prefix, session_id, uuid::Uuid::new_v4());
         let (tx, rx) = oneshot::channel();
-        self.pending.lock().await.insert(
+        self.pending.lock().expect("permission registry").insert(
             request_id.clone(),
             PendingPermission {
                 sender: tx,
                 session_id: session_id.to_string(),
                 tool_name: tool_name.to_string(),
                 tool_call_id: tool_call_id.to_string(),
+                tool_args: tool_args.clone(),
+                created_at_ms: chrono::Utc::now().timestamp_millis(),
             },
         );
         (request_id, rx)
@@ -168,35 +206,64 @@ impl AgentPermissionManager {
         &self,
         request_id: &str,
         response: PermissionResponse,
-        tool_name: Option<&str>,
-        tool_args: Option<&serde_json::Value>,
+        _tool_name: Option<&str>,
+        _tool_args: Option<&serde_json::Value>,
     ) -> bool {
+        self.respond_scoped(None, request_id, response).await
+    }
+
+    /// Remote callers must prove both request and owning session identity.
+    pub async fn respond_for_session(
+        &self,
+        session_id: &str,
+        request_id: &str,
+        response: PermissionResponse,
+    ) -> bool {
+        self.respond_scoped(Some(session_id), request_id, response)
+            .await
+    }
+
+    async fn respond_scoped(
+        &self,
+        session_id: Option<&str>,
+        request_id: &str,
+        response: PermissionResponse,
+    ) -> bool {
+        // Claim before any side effect; stale or duplicate replies cannot grant rules.
+        let entry = {
+            let mut pending = self.pending.lock().expect("permission registry");
+            if pending
+                .get(request_id)
+                .is_some_and(|entry| session_id.is_none_or(|id| entry.session_id == id))
+            {
+                pending.remove(request_id)
+            } else {
+                None
+            }
+        };
+        let Some(entry) = entry else {
+            return false;
+        };
+        Self::broadcast_pending_changed(&entry.session_id);
         if response == PermissionResponse::AlwaysAllow {
-            if let Some(name) = tool_name {
-                let rule = Self::build_rule(name, tool_args);
-                info!("[permission] Always-allow granted: {}", rule.rule);
+            let rule = Self::build_rule(&entry.tool_name, Some(&entry.tool_args));
+            info!("[permission] Always-allow granted: {}", rule.rule);
 
-                // Add to session rules
-                let mut session = self.session_rules.lock().await;
-                if !session.contains(&rule) {
-                    session.push(rule.clone());
-                }
+            // Add to session rules
+            let mut session = self.session_rules.lock().await;
+            if !session.contains(&rule) {
+                session.push(rule.clone());
+            }
 
-                // Persist to .orgii/permissions.json
-                let mut store = self.persistent_store.lock().await;
-                store.add_allow(rule);
-                if let Some(ref ws) = *self.workspace.lock().await {
-                    if let Err(err) = store.save(ws) {
-                        warn!("[permission] Failed to persist rule: {}", err);
-                    }
+            // Persist to .orgii/permissions.json
+            let mut store = self.persistent_store.lock().await;
+            store.add_allow(rule);
+            if let Some(ref ws) = *self.workspace.lock().await {
+                if let Err(err) = store.save(ws) {
+                    warn!("[permission] Failed to persist rule: {}", err);
                 }
             }
         }
-
-        let Some(entry) = self.pending.lock().await.remove(request_id) else {
-            warn!("[permission] No pending request found for {}", request_id);
-            return false;
-        };
 
         let (status, content) = match response {
             PermissionResponse::Allow => (
@@ -246,9 +313,15 @@ impl AgentPermissionManager {
     /// adding a new `FinalizedStatus` variant forces a compiler error here
     /// rather than silently mapping it to a generic "terminated" string.
     async fn cancel_pending(&self, request_id: &str, status: FinalizedStatus) {
-        let Some(entry) = self.pending.lock().await.remove(request_id) else {
+        let Some(entry) = self
+            .pending
+            .lock()
+            .expect("permission registry")
+            .remove(request_id)
+        else {
             return;
         };
+        Self::broadcast_pending_changed(&entry.session_id);
 
         let content = match status {
             FinalizedStatus::Cancelled => "User stopped the session before responding.",
@@ -276,12 +349,41 @@ impl AgentPermissionManager {
 
     /// Check if there are any pending permission requests.
     pub async fn has_pending(&self) -> bool {
-        !self.pending.lock().await.is_empty()
+        !self.pending.lock().expect("permission registry").is_empty()
     }
 
     /// Get the IDs of all pending permission requests.
     pub async fn pending_ids(&self) -> Vec<String> {
-        self.pending.lock().await.keys().cloned().collect()
+        self.pending
+            .lock()
+            .expect("permission registry")
+            .keys()
+            .cloned()
+            .collect()
+    }
+
+    /// Recoverable projection of the actual parked requests, not an event cache.
+    pub async fn pending_snapshot(&self, limit: usize) -> Vec<serde_json::Value> {
+        self.pending
+            .lock()
+            .expect("permission registry")
+            .iter()
+            .take(limit)
+            .map(|(id, entry)| {
+                serde_json::json!({
+                    "kind": "permission", "origin": "rust_agent", "sessionId": entry.session_id,
+                    "requestId": id, "toolName": entry.tool_name, "toolCallId": entry.tool_call_id,
+                    "toolArgs": entry.tool_args, "createdAtMs": entry.created_at_ms,
+                })
+            })
+            .collect()
+    }
+
+    fn broadcast_pending_changed(session_id: &str) {
+        crate::bus::broadcast_event(
+            "permission:pending_changed",
+            serde_json::json!({"sessionId": session_id}),
+        );
     }
 
     /// Build a permission rule from tool name + args.
@@ -364,7 +466,13 @@ impl PermissionProvider for AgentPermissionManager {
             return Ok(PermissionVerdict::AlwaysAllow);
         }
 
-        let (request_id, rx) = self.register(session_id, tool_name, tool_call_id).await;
+        let (request_id, rx) = self
+            .register_with_args(session_id, tool_name, tool_call_id, args)
+            .await;
+        let _pending_guard = PendingPermissionGuard {
+            pending: Arc::clone(&self.pending),
+            request_id: request_id.clone(),
+        };
 
         crate::bus::broadcast_event(
             "permission:request",
@@ -430,9 +538,140 @@ impl PermissionProvider for AgentPermissionManager {
             InteractionOutcome::Dropped => {
                 // Sender was dropped without cancel_pending (shouldn't happen in
                 // the normal flow, but be defensive).
-                self.pending.lock().await.remove(&request_id);
+                self.pending
+                    .lock()
+                    .expect("permission registry")
+                    .remove(&request_id);
                 Err(())
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod pending_snapshot_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn cleanup_does_not_panic_when_registry_was_poisoned() {
+        let manager = AgentPermissionManager::for_agent("poison-test");
+        let (request_id, rx) = manager.register("session-a", "read_file", "call-a").await;
+        let guard = PendingPermissionGuard {
+            pending: manager.pending.clone(),
+            request_id,
+        };
+        let pending = manager.pending.clone();
+        assert!(std::thread::spawn(move || {
+            let _lock = pending.lock().unwrap();
+            panic!("poison fixture");
+        })
+        .join()
+        .is_err());
+        drop(guard);
+        assert!(rx.await.is_err());
+        let pending = manager
+            .pending
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        assert!(pending.is_empty());
+    }
+
+    #[tokio::test]
+    async fn aborted_permission_future_releases_its_authoritative_entry() {
+        let manager = Arc::new(AgentPermissionManager::for_agent("abort-test"));
+        let task = tokio::spawn({
+            let manager = manager.clone();
+            async move {
+                manager
+                    .request_permission(
+                        "session-a",
+                        "read_file",
+                        "call-a",
+                        &serde_json::json!({"path":"a.rs"}),
+                    )
+                    .await
+            }
+        });
+        for _ in 0..100 {
+            if manager.has_pending().await {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+        assert!(manager.has_pending().await);
+        task.abort();
+        let _ = task.await;
+        assert!(manager.pending_snapshot(10).await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn snapshot_recovers_arguments_and_claim_prevents_duplicate_rules() {
+        let manager = AgentPermissionManager::for_agent("snapshot-test");
+        let args = serde_json::json!({"command": "git status"});
+        let (id, rx) = manager
+            .register_with_args("session-a", "run_shell", "call-a", &args)
+            .await;
+        let snapshot = manager.pending_snapshot(10).await;
+        assert_eq!(snapshot.len(), 1);
+        assert_eq!(snapshot[0]["toolArgs"], args);
+        assert_eq!(snapshot[0]["toolCallId"], "call-a");
+        assert!(snapshot[0]["createdAtMs"].as_i64().unwrap() > 0);
+        assert!(
+            !manager
+                .respond(
+                    "stale",
+                    PermissionResponse::AlwaysAllow,
+                    Some("foreign_tool"),
+                    None
+                )
+                .await
+        );
+        assert!(manager.session_rules.lock().await.is_empty());
+        assert!(
+            !manager
+                .respond_for_session("foreign", &id, PermissionResponse::AlwaysAllow)
+                .await
+        );
+        assert_eq!(manager.pending_snapshot(10).await.len(), 1);
+        assert!(
+            manager
+                .respond(
+                    &id,
+                    PermissionResponse::AlwaysAllow,
+                    Some("foreign_tool"),
+                    None
+                )
+                .await
+        );
+        assert_eq!(rx.await.unwrap(), PermissionResponse::AlwaysAllow);
+        assert!(
+            !manager
+                .respond(
+                    &id,
+                    PermissionResponse::AlwaysAllow,
+                    Some("foreign_tool"),
+                    None
+                )
+                .await
+        );
+        let rules = manager.session_rules.lock().await;
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].rule, "run_shell(git *)");
+        assert!(manager.pending_snapshot(10).await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn another_session_manager_cannot_claim_foreign_request() {
+        let owner = AgentPermissionManager::for_agent("owner");
+        let other = AgentPermissionManager::for_agent("other");
+        let (id, _rx) = owner.register("session-a", "read_file", "call-a").await;
+        assert!(
+            !other
+                .respond(&id, PermissionResponse::Allow, None, None)
+                .await
+        );
+        assert_eq!(owner.pending_snapshot(1).await.len(), 1);
+        owner.cancel_pending(&id, FinalizedStatus::Cancelled).await;
+        assert!(owner.pending_snapshot(1).await.is_empty());
     }
 }

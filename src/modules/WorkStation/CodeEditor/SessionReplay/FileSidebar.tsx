@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
 import { resolveToolName } from "@src/engines/SessionCore/rendering/registry/toolAliases";
 import {
-  CompassIcon,
+  AiSearch01Icon,
   ComputerTerminal01Icon,
   HierarchyFilesIcon,
   HugeiconsIcon,
@@ -23,6 +23,7 @@ import {
 } from "@src/icons";
 import { formatToolArg } from "@src/util/ui/rendering/formatToolName";
 import { getToolDisplayLabelFromRegistry } from "@src/util/ui/rendering/registryToolLabel";
+import { getToolCallTitle } from "@src/util/ui/rendering/toolCallTitle";
 
 import { PrimarySidebarLayoutWithSections } from "../../shared";
 import type { PrimarySidebarTab } from "../../shared/PrimarySidebarLayout/PrimarySidebarLayoutWithSections";
@@ -31,9 +32,9 @@ import {
   gateByActiveKind,
 } from "../../shared/SessionReplay";
 import { PANEL_CONSTANTS } from "../Panels/EditorPrimarySidebar/config";
-import { getShellStatusBadge } from "./ShellSidebar";
 import SimulatorTreePanel from "./components/SimulatorTreePanel";
 import type { FileTreeInput } from "./fileTreeUtils";
+import { getShellStatusBadge } from "./shellStatusBadge";
 import type {
   ExploreOperationEntry,
   FileOperationEntry,
@@ -244,6 +245,7 @@ const FileSidebarComponent: React.FC<FileSidebarProps> = ({
   const toolItems: FileTreeInput[] = useMemo(
     () =>
       toolOperations.map((op) => {
+        const callTitle = getToolCallTitle(op.toolName, op.event?.args);
         const label = getToolDisplayLabelFromRegistry(
           resolveToolName(op.toolName)
         );
@@ -254,7 +256,7 @@ const FileSidebarComponent: React.FC<FileSidebarProps> = ({
         return {
           id: op.eventId,
           filePath: encodeURIComponent(op.eventId),
-          fileName: arg ? `${label} · ${arg}` : label,
+          fileName: callTitle || (arg ? `${label} · ${arg}` : label),
           icon: sidebarToolIcon(op.toolName),
         };
       }),
@@ -324,8 +326,8 @@ const FileSidebarComponent: React.FC<FileSidebarProps> = ({
         label: t("simulator.replay.ide.fileSidebar.tabExplore"),
         icon: (
           <HugeiconsIcon
-            icon={CompassIcon}
-            data-icon="compass"
+            icon={AiSearch01Icon}
+            data-icon="ai-search-01"
             size={PANEL_CONSTANTS.TAB_ICON_SIZE}
           />
         ),
@@ -422,6 +424,7 @@ const FileSidebarComponent: React.FC<FileSidebarProps> = ({
             content: (
               <SimulatorTreePanel
                 items={shellItems}
+                showFilePathPreview={false}
                 selectedId={shellSectionSelectedId}
                 agentSelectedIds={agentSelectedIds}
                 onSelectItem={onSelectShellOperation}
@@ -440,6 +443,7 @@ const FileSidebarComponent: React.FC<FileSidebarProps> = ({
             content: (
               <SimulatorTreePanel
                 items={toolItems}
+                showFilePathPreview={false}
                 selectedId={toolSectionSelectedId}
                 agentSelectedIds={agentSelectedIds}
                 onSelectItem={onSelectToolOperation}
@@ -493,7 +497,6 @@ const FileSidebarComponent: React.FC<FileSidebarProps> = ({
         tabs={tabs}
         activeTab={fileViewMode}
         onTabChange={handleTabChange}
-        tabIconOnly={true}
       />
     </div>
   );

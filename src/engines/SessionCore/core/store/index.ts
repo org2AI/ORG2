@@ -1,10 +1,10 @@
 /**
  * EventStore — barrel export.
  *
- * Re-exports the Rust-backed proxy, hooks, and legacy compatibility.
+ * Re-exports the Rust-backed proxy and its types.
  */
 
-// Rust-backed EventStore proxy (new primary API)
+// Rust-backed EventStore proxy
 export { eventStoreProxy } from "./EventStoreProxy";
 export type {
   DerivedSnapshot,
@@ -13,9 +13,3 @@ export type {
 } from "./EventStoreProxy";
 
 export { eventStoreProxy as eventStore } from "./EventStoreProxy";
-
-export { useEventStoreSelector } from "./hooks";
-
-export { useEventStoreBridge } from "./useEventStoreBridge";
-
-export { useSessionEvents } from "./useSessionEvents";

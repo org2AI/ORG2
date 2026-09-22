@@ -7,23 +7,23 @@
   "keyVault": {
     "title": "모델 & CLI",
     "overview": {},
-    "searchPlaceholder": "계정 검색...",
+    "searchPlaceholder": "키 검색...",
     "inlineCard": {
       "tabStatus": "상태",
       "tabModels": "모델"
     },
-    "noAccountsFound": "계정을 찾을 수 없습니다",
-    "addAccount": "계정 추가",
+    "noKeysFound": "키를 찾을 수 없습니다",
+    "addKey": "키 추가",
     "removeLocal": "로컬 제거",
     "unlist": "목록에서 제거",
     "confirmRemoveTitle": "\"{{name}}\"을(를) 제거하시겠습니까?",
-    "confirmRemoveMessage": "로컬 자격 증명이 제거됩니다. 이 작업은 되돌릴 수 없습니다.",
+    "confirmRemoveMessage": "로컬에 저장된 키가 제거됩니다. 이 작업은 되돌릴 수 없습니다",
     "toasts": {
       "refreshed": "{{name}} 새로고침 완료",
       "refreshError": "{{name}} 새로고침 실패: {{error}}",
       "localRemoved": "{{name}} 제거됨",
       "deleteError": "{{name}} 삭제 실패",
-      "refreshPartial": "모델 새로고침 완료: {{added}}개 추가, {{removed}}개 제거. 단, {{total}}개 계정 중 {{failed}}개 실패",
+      "refreshPartial": "모델 새로고침 완료: {{added}}개 추가, {{removed}}개 제거. 단, 키 {{total}}개 중 {{failed}}개 실패",
       "refreshedNoChange": "모델 새로고침 완료: 변경 사항 없음",
       "refreshedDelta": "모델 새로고침 완료: {{added}}개 추가, {{removed}}개 제거"
     },
@@ -62,16 +62,16 @@
       "availableModels": "사용 가능한 모델",
       "modelsEnabledAddable": "{{enabled}}개 사용 중 · {{addable}}개 추가 가능",
       "noModelsConfigured": "구성된 모델 없음",
-      "supportOrgiiAgents": "ORGII Agents 지원",
+      "supportOrgiiAgents": "ORG2 Agents 지원",
       "supportCliAgents": "CLI Agents 지원",
       "noCliAgentSupport": "이 제공자는 CLI Agent를 지원하지 않습니다",
       "accountEmail": "계정 이메일"
     },
     "customModels": {
-      "manualSetupHint": "엔드포인트에서 허용하는 모델 ID와 선택적 표시 이름을 입력하세요. 모델 검색은 선택 사항이며 활성화만으로 호환성이 검증되지는 않습니다.",
+      "manualSetupHint": "엔드포인트에서 허용하는 모델 ID와 선택적 표시 이름을 입력하세요. 모델 검색은 선택 사항이며 활성화만으로 호환성이 검증되지는 않습니다",
       "modelNamePlaceholder": "모델 id 입력...",
       "displayNamePlaceholder": "선택적 라벨",
-      "emptyHint": "아직 사용자 정의 모델이 추가되지 않았습니다.",
+      "emptyHint": "아직 사용자 정의 모델이 추가되지 않았습니다",
       "addModel": "모델 추가",
       "testRequiresEndpoint": "이 모델을 테스트하려면 엔드포인트와 API 키를 입력하세요",
       "invalidModelId": "모델 ID는 공백이나 제어 문자 없이 1~256바이트여야 합니다.",
@@ -88,8 +88,8 @@
       "keyValidationFailed": "자격 증명 검증 실패"
     },
     "edit": {
-      "title": "계정 편집",
-      "apiChangeHint": "API Key, 자격 증명 또는 공급자 설정을 업데이트하려면 이 계정을 삭제하고 새로 추가하세요",
+      "title": "키 편집",
+      "apiChangeHint": "API Key 또는 공급자 설정을 업데이트하려면 이 키를 삭제하고 새로 추가하세요",
       "saved": "변경 사항 저장됨"
     },
     "quota": {
@@ -145,14 +145,12 @@
       "keysVerified": "자격 증명 검증 완료",
       "failedMessage": "API Key와 Session Token이 동일한 Cursor 계정에 속하지 않는 것 같습니다.",
       "failedError": "오류: {{error}}",
-      "failedHint": "동일한 Cursor 계정의 일치하는 자격 증명으로 새 목록을 만들어 주세요.",
+      "failedHint": "동일한 Cursor 계정의 일치하는 자격 증명으로 새 목록을 만들어 주세요",
       "listingRejected": "목록 거부됨",
       "rejectedByAdmin": "이 목록은 관리자에 의해 거부되었습니다."
     },
     "apiKeyLabel": "API Key",
-    "apiKeyDesc": "공급자 API에 요청을 인증하는 데 사용되는 비밀 키",
     "baseUrlLabel": "Base URL",
-    "baseUrlDesc": "API 엔드포인트 URL — 프록시, 커스텀 배포 또는 자체 호스팅 서버를 사용하는 경우에만 변경",
     "apiProtocolLabel": "API 프로토콜",
     "apiProtocolDesc": "내장 Rust Agent의 와이어 프로토콜 선택",
     "officialUrl": "공식 URL",
@@ -161,7 +159,7 @@
     "customBaseUrlNoteBody": "API 키와 요청 데이터는 입력한 URL로 전송됩니다. 사용자 지정 URL은 신뢰할 수 있는 프록시, 자체 호스팅 배포 또는 직접 제어하는 엔드포인트에만 사용하세요",
     "localModel": {
       "title": "로컬 모델 Cookbook",
-      "description": "로컬 런타임 preset을 선택하고 OpenAI 호환 endpoint를 확인한 뒤 하나 이상의 model ID를 추가하고 저장하면 Chat에서 로컬 모델을 사용할 수 있습니다",
+      "description": "로컬 런타임 preset을 선택하고 OpenAI 호환 endpoint를 확인한 뒤 하나 이상의 model ID를 추가하고 이 키를 저장하면 Chat에서 로컬 모델을 사용할 수 있습니다",
       "baseUrlDesc": "OpenAI 호환 로컬 endpoint입니다. 먼저 런타임을 시작한 뒤 검증하거나 저장하세요",
       "apiKeyDesc": "대부분의 로컬 런타임은 비어 있지 않은 값을 허용합니다. 서버가 키를 요구하지 않으면 placeholder를 유지하세요",
       "quickModelsLabel": "Cookbook 모델",
@@ -171,18 +169,16 @@
       "validateDesc": "endpoint가 실행 중이면 probe하거나, 모델을 수동으로 추가한 뒤 저장하세요"
     },
     "validate": "검증",
-    "validateDesc": "진행하기 전에 자격 증명을 검증하세요",
     "validated": "검증됨",
     "validationSuccessModels": "{{count}}개 모델 감지됨 — 다음 단계에서 구성",
     "validationSuccessNoModels": "Key 검증 완료 — 모델이 자동 감지되지 않았습니다. 아래에서 수동으로 추가하세요",
     "addCliAgent": "Agent 추가",
-    "accountName": "계정 이름(선택 사항)",
-    "accountNameDesc": "비워 두면 {{provider}}를 사용하고, 이후 {{provider}}-1, {{provider}}-2 순서로 사용합니다",
-    "selectorDesc": "연결할 서비스 선택",
-    "accountNamePlaceholder": "자동: {{provider}}",
+    "keyName": "키 이름(선택 사항)",
+    "keyNameDesc": "비워 두면 {{provider}}를 사용하고, 이후 {{provider}}-1, {{provider}}-2 순서로 사용합니다",
+    "keyNamePlaceholder": "자동: {{provider}}",
     "descriptionOptional": "설명 (선택)",
     "descriptionPlaceholder": "설명 입력",
-    "nameDuplicate": "이 이름의 계정이 이미 존재합니다",
+    "nameDuplicate": "이 이름의 키가 이미 존재합니다",
     "stepLabel": "단계 {{current}}/{{total}}",
     "noValidTokenFound": "자격 증명에서 유효한 Token을 찾을 수 없습니다",
     "couldNotDetectKeys": "자격 증명을 감지할 수 없습니다. CLI가 설치되어 있고 로그인되어 있는지 확인하세요.",
@@ -240,13 +236,13 @@
     "signIn": "로그인",
     "signedIn": "로그인됨",
     "signInWithClaudeCode": "Claude Code로 로그인",
-    "claudeCodeSetupMethodDesc": "Claude Code OAuth로 ORGII를 승인합니다",
+    "claudeCodeSetupMethodDesc": "Claude Code OAuth로 ORG2를 승인합니다",
     "claudeCodeSignInTitle": "Claude Code 로그인",
-    "claudeCodeSignInDesc": "내장 브라우저에서 Claude Code에 로그인하세요. ORGII가 authorization code를 캡처하고 OAuth Token을 로컬에 저장합니다",
+    "claudeCodeSignInDesc": "내장 브라우저에서 Claude Code에 로그인하세요. ORG2가 authorization code를 캡처하고 OAuth Token을 로컬에 저장합니다",
     "claudeCodeReadyToSignIn": "Claude Code에 로그인할 준비가 되었습니다",
     "claudeCodeSignedIn": "Claude Code 연결됨",
-    "claudeCodeOAuthHint": "anthropic_native를 사용하는 Rust agents용 claude_code OAuth 계정을 저장합니다.",
-    "claudeCodeBrowserHint": "내장 브라우저에서 Claude Code 승인을 완료하세요.",
+    "claudeCodeOAuthHint": "anthropic_native를 사용하는 Rust agents용 claude_code OAuth 키를 저장합니다",
+    "claudeCodeBrowserHint": "내장 브라우저에서 Claude Code 승인을 완료하세요",
     "claudeCodeSignInErrorHint": "브라우저를 닫고 다시 로그인하세요. Token은 저장되지 않았습니다",
     "connectedViaChatGpt": "ChatGPT Plus/Pro 로그인으로 연결됨",
     "apiKeyDetectedFromConfig": "로컬 구성에서 API Key 감지됨",
@@ -269,7 +265,7 @@
     "opensEmbeddedBrowser": "내장 브라우저로 Cursor 계정을 연결합니다.",
     "loggedIn": "로그인됨",
     "loginStep": "로그인",
-    "signInToCursorHint": "Cursor 계정에 로그인하세요. 로그인 후 이 창은 자동으로 닫힙니다.",
+    "signInToCursorHint": "Cursor 계정에 로그인하세요. 로그인 후 이 창은 자동으로 닫힙니다",
     "copilotCreatePat": "GitHub Personal Access Token 생성",
     "copilotCreatePatDesc": "GitHub PAT 생성을 위한 내장 브라우저 열기",
     "copilotTokenValidated": "Token 검증됨",
@@ -303,26 +299,26 @@
     "cursorLoginBrowserTitle": "Cursor 로그인",
     "modelCount": "{{count}}개 모델",
     "cursorLoginReadyTitle": "Cursor 계정 연결됨",
-    "cursorLoginReadyDesc": "아래에서 Cursor API Key를 생성해 붙여넣으세요. 이 API Key가 없으면 Cursor agent를 사용할 수 없습니다.",
-    "cursorApiKeyBrowserHint": "로그인 후 ORGII가 Cursor dashboard를 엽니다. 거기서 User API Key를 생성한 뒤 아래에 붙여넣으세요",
+    "cursorLoginReadyDesc": "아래에서 Cursor API Key를 생성해 붙여넣으세요. 이 API Key가 없으면 Cursor agent를 사용할 수 없습니다",
+    "cursorApiKeyBrowserHint": "로그인 후 ORG2가 Cursor dashboard를 엽니다. 거기서 User API Key를 생성한 뒤 아래에 붙여넣으세요",
     "cursorApiKeyRecommendedTitle": "Cursor API Key 권장",
-    "cursorApiKeyRecommendedDesc": "Cursor를 ORGII의 Rust agents에서만 사용하려면 Cursor API Key 없이 계속할 수 있습니다. 내장 브라우저로 로그인하거나 session token을 제공하면 됩니다",
-    "cursorApiKeyRecommendedAction": "ORGII 내에서 Cursor도 사용하려면 Cursor API Key를 제공하세요",
+    "cursorApiKeyRecommendedDesc": "Cursor를 ORG2의 Rust agents에서만 사용하려면 Cursor API Key 없이 계속할 수 있습니다. 내장 브라우저로 로그인하거나 session token을 제공하면 됩니다",
+    "cursorApiKeyRecommendedAction": "ORG2 내에서 Cursor도 사용하려면 Cursor API Key를 제공하세요",
     "openCursorApiKeys": "Cursor API Keys 열기",
     "codexSetupMethodDesc": "ChatGPT 로그인, 로컬 감지 또는 OpenAI API key로 Codex를 연결합니다",
     "codexSignInTitle": "Codex 로그인",
-    "codexSignInDesc": "내장 브라우저에서 Codex용 ChatGPT에 로그인하세요. ORGII가 인증 코드를 캡처하고 OAuth Token을 로컬에 저장합니다",
+    "codexSignInDesc": "내장 브라우저에서 Codex용 ChatGPT에 로그인하세요. ORG2가 인증 코드를 캡처하고 OAuth Token을 로컬에 저장합니다",
     "signInWithCodex": "Codex로 로그인",
     "codexReadyToSignIn": "Codex에 로그인할 준비 완료",
     "codexSignedIn": "Codex 연결됨",
-    "codexOAuthHint": "ChatGPT Codex 백엔드 접근을 위한 codex OAuth 계정을 저장합니다.",
-    "codexBrowserHint": "내장 브라우저에서 Codex 인증을 완료하세요.",
+    "codexOAuthHint": "ChatGPT Codex 백엔드 접근을 위한 codex OAuth 키를 저장합니다",
+    "codexBrowserHint": "내장 브라우저에서 Codex 인증을 완료하세요",
     "codexSignInErrorHint": "브라우저를 닫고 다시 로그인하세요. Token이 저장되지 않았습니다",
     "codexAutodetectTitle": "Codex 세션 감지",
     "codexAutodetectDesc": "로컬 환경에서 ~/.codex/auth.json 및 OPENAI_API_KEY를 읽습니다",
-    "codexCredentialLabel": "Codex 자격 증명",
-    "codexCredentialDesc": "Codex OAuth access token 또는 OpenAI API key를 붙여넣으세요",
-    "codexCredentialPlaceholder": "eyJ... 또는 sk-...",
+    "codexKeyLabel": "Codex 키",
+    "codexKeyDesc": "Codex OAuth access token 또는 OpenAI API key를 붙여넣으세요",
+    "codexKeyPlaceholder": "eyJ... 또는 sk-...",
     "codexDetectErrorHint": "Sign in with the embedded browser, or paste an OpenAI API key manually",
     "codexValidationErrorHint": "Check that the token or API key is valid and try again",
     "claudeCodeAutodetectTitle": "Detect Claude Code session",
@@ -330,11 +326,11 @@
     "claudeCodeDetectErrorHint": "Sign in with the embedded browser, or run claude auth login and try detection again",
     "refreshModels": {
       "button": "Cursor 모델 목록 새로고침",
-      "failed": "Cursor에서 새로고침 실패: {{error}}"
+      "failed": "이 Market 워크스페이스를 사용할 수 없습니다. Market을 다시 열어 인증을 갱신하세요."
     },
     "revalidate": "재검증",
-    "confirmRemoveActiveSessions_one": "활성 세션 {{count}}개가 아직 이 계정을 사용 중이며 다음 턴에서 실패합니다:",
-    "confirmRemoveActiveSessions_other": "활성 세션 {{count}}개가 아직 이 계정을 사용 중이며 다음 턴에서 실패합니다:"
+    "confirmRemoveActiveSessions_one": "활성 세션 {{count}}개가 아직 이 키를 사용 중이며 다음 턴에서 실패합니다:",
+    "confirmRemoveActiveSessions_other": "활성 세션 {{count}}개가 아직 이 키를 사용 중이며 다음 턴에서 실패합니다:"
   },
   "integrations": {
     "searchPlaceholder": "연결 검색...",
@@ -349,7 +345,9 @@
     "connecting": "연결 중",
     "reconnecting": "재연결 중",
     "connectionError": "연결 오류",
-    "accountNameDuplicate": "같은 이름의 계정이 이미 존재합니다",
+    "connectionName": "연결 이름(선택 사항)",
+    "connectionNamePlaceholder": "자동: {{provider}}",
+    "connectionNameDuplicate": "같은 이름의 연결이 이미 존재합니다",
     "probeSuccess": "연결 성공",
     "probeFailed": "연결 실패",
     "verified": "검증됨"
@@ -573,7 +571,7 @@
     },
     "gateway": {
       "title": "Gateway Agent",
-      "description": "Gateway 는 모든 채널의 수신 메시지를 라우팅합니다. 시맨틱 라우팅에 사용할 API 키와 모델을 선택하세요.",
+      "description": "Gateway 는 모든 채널의 수신 메시지를 라우팅합니다. 시맨틱 라우팅에 사용할 API 키와 모델을 선택하세요",
       "statusReady": "설정됨",
       "statusUnconfigured": "미설정",
       "account": "API 키 계정",
@@ -581,12 +579,13 @@
       "model": "모델",
       "modelPlaceholder": "모델 선택",
       "groupPerUser": "사용자별 그룹 채팅 세션 격리",
-      "groupPerUserDesc": "그룹 채팅의 각 참가자는 자신만의 세션 컨텍스트를 갖습니다."
+      "groupPerUserDesc": "그룹 채팅의 각 참가자는 자신만의 세션 컨텍스트를 갖습니다"
     },
-    "emailProtocol": "프로토콜"
+    "emailProtocol": "프로토콜",
+    "matrixDeviceNamePlaceholder": "ORG2 봇"
   },
   "modelsTabs": {
-    "myAccounts": "내 Keys",
+    "myKeys": "내 키",
     "models": "모델",
     "comingSoon": "곧 출시",
     "installedClis": "CLI 클라이언트",
@@ -618,28 +617,23 @@
     "groupTagNonCurrent": "비최신",
     "expandAllRows": "모두 펼치기",
     "collapseAllRows": "모두 접기",
-    "orgiiMarketGroup": "ORGII 마켓",
+    "orgiiMarketGroup": "ORG2 마켓",
     "variantSpeed": "Speed",
-    "variantOptions": "버전 옵션",
     "variantDefault": "Default",
     "variantCount": "{{count}}개 버전",
-    "selectedVersion": "선택된 버전",
-    "currentKeySelectedVersion": "현재 Key 의 선택된 버전",
-    "keyDefaultVersionOnly": "이 key에는 기본 버전 {{model}}만 있습니다",
-    "selectedVersionFor": "{{model}}의 선택된 버전",
+    "showVersionDetails": "모든 버전 표시",
     "preferredVersion": "기본 버전",
-    "reasoningLevel": "Reasoning level",
-    "effort": "Effort",
-    "addNewKey": "새 key 추가",
     "availableKeys": "사용 가능한 keys {{enabled}}/{{total}}개 활성화",
     "availableModels": "사용 가능한 모델 {{enabled}}/{{total}}개 활성화",
     "turnOnKeyFor": "{{model}}에 대해 이 key 활성화",
     "turnOffKeyFor": "{{model}}에 대해 이 key 비활성화",
+    "turnOnAllKeysFor": "{{model}}에 대해 모든 key 활성화",
+    "turnOffAllKeysFor": "{{model}}에 대해 모든 key 비활성화",
     "sortEnabledFirst": "정렬: 활성화 우선",
     "sortAlphabetical": "정렬: A–Z"
   },
   "modelPreview": {
-    "noSources": "이 모델이 있는 계정이 없습니다"
+    "noSources": "이 모델이 있는 키가 없습니다"
   },
   "cliPreview": {
     "clientSection": "클라이언트",
@@ -757,28 +751,28 @@
     "tokenRequired": "Personal access token이 필요합니다",
     "oauthWaiting": "OAuth 대기 중",
     "oauthDeviceDesc": "검증 URL을 열고 이 코드를 입력하여 GitHub를 승인하세요",
-    "oauthBrowserDesc": "열린 브라우저 창에서 승인을 완료하세요.",
-    "oauthBrowserOpened": "브라우저 창이 열렸습니다. 거기에서 승인을 완료하면 이 마법사가 계속됩니다."
+    "oauthBrowserDesc": "열린 브라우저 창에서 승인을 완료하세요",
+    "oauthBrowserOpened": "브라우저 창이 열렸습니다. 거기에서 승인을 완료하면 이 마법사가 계속됩니다"
   },
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "자동 감지",
     "methodOAuth": "GitHub로 로그인",
-    "methodPickerDesc": "GitHub 인증 방법을 선택하세요.",
-    "oauthDeviceDesc": "인증 URL을 열고 이 코드를 입력하여 GitHub를 승인하세요.",
+    "methodPickerDesc": "GitHub 인증 방법을 선택하세요",
+    "oauthDeviceDesc": "인증 URL을 열고 이 코드를 입력하여 GitHub를 승인하세요",
     "scanCredHelper": "Git credential helper ({{name}})",
     "scanEmpty": "감지된 항목 없음",
-    "scanEmptyDesc": "gh CLI token, credential helper, SSH 키를 찾지 못했습니다. 위에서 다른 방법을 선택하세요.",
+    "scanEmptyDesc": "gh CLI token, credential helper, SSH 키를 찾지 못했습니다. 위에서 다른 방법을 선택하세요",
     "scanGhCli": "GitHub CLI (gh)",
     "scanResults": "감지된 자격 증명",
-    "scanResultsDesc": "가져올 항목을 하나 선택하세요. 저장 전에 GitHub에서 token을 검증합니다.",
+    "scanResultsDesc": "가져올 항목을 하나 선택하세요. 저장 전에 GitHub에서 token을 검증합니다",
     "scanSshKey": "SSH 키 — {{name}}",
     "scanning": "검색 중…",
-    "scanningDesc": "이 컴퓨터에서 gh CLI token, credential helper, SSH 키를 찾는 중입니다.",
+    "scanningDesc": "이 컴퓨터에서 gh CLI token, credential helper, SSH 키를 찾는 중입니다",
     "sshKeyPath": "SSH 키 경로",
-    "sshKeyPathDesc": "개인 키의 절대 경로 (예: ~/.ssh/id_ed25519). 대응하는 공개 키가 GitHub에 이미 등록되어 있어야 합니다.",
-    "scanSelectRequired": "가져올 감지된 자격 증명을 선택하세요.",
-    "sshKeyPathRequired": "SSH 키 경로는 필수입니다."
+    "sshKeyPathDesc": "개인 키의 절대 경로 (예: ~/.ssh/id_ed25519). 대응하는 공개 키가 GitHub에 이미 등록되어 있어야 합니다",
+    "scanSelectRequired": "가져올 감지된 자격 증명을 선택하세요",
+    "sshKeyPathRequired": "SSH 키 경로는 필수입니다"
   },
   "builtInTools": {
     "tabTools": "기본 제공 도구",
@@ -804,13 +798,13 @@
     "noAgents": "이 도구를 사용하는 Agent가 없습니다",
     "agentSettingsTab": "Agent",
     "actionDetailsTab": "명령 세부 정보",
-    "agentBrowserRestartPromptTitle": "ORGII를 다시 시작할까요?",
-    "agentBrowserRestartPromptMessage": "Browser CLI 제공자를 변경하면 Agent가 선택한 도구를 보려면 ORGII를 다시 시작해야 합니다. 지금 다시 시작할까요?",
+    "agentBrowserRestartPromptTitle": "ORG2를 다시 시작할까요?",
+    "agentBrowserRestartPromptMessage": "Browser CLI 제공자를 변경하면 Agent가 선택한 도구를 보려면 ORG2를 다시 시작해야 합니다. 지금 다시 시작할까요?",
     "sidecarDownloadsSectionTitle": "Sidecar 다운로드",
     "sidecarAgentBrowserLabel": "Agent Browser CLI",
-    "sidecarAgentBrowserDesc": "현재 플랫폼용 Agent Browser 바이너리를 ~/.orgii/bin에 다운로드합니다. ORGII는 시작 시 자동으로 다운로드하지 않습니다.",
+    "sidecarAgentBrowserDesc": "현재 플랫폼용 Agent Browser 바이너리를 ~/.orgii/bin에 다운로드합니다. ORG2는 시작 시 자동으로 다운로드하지 않습니다",
     "sidecarPeekabooLabel": "Peekaboo CLI",
-    "sidecarPeekabooDesc": "데스크톱 자동화를 위한 macOS Peekaboo 바이너리를 ~/.orgii/bin에 다운로드합니다. 지원하지 않는 플랫폼에서는 비활성화됩니다.",
+    "sidecarPeekabooDesc": "데스크톱 자동화를 위한 macOS Peekaboo 바이너리를 ~/.orgii/bin에 다운로드합니다. 지원하지 않는 플랫폼에서는 비활성화됩니다",
     "sidecarUnsupported": "지원 안 됨",
     "sidecarInstalled": "설치됨",
     "sidecarNotInstalled": "설치되지 않음",
@@ -873,7 +867,7 @@
     "connectMethodDesc": "GitHub 계정 연결 방법을 선택하세요",
     "githubApp": "GitHub App",
     "detectFromSystem": "시스템에서 감지",
-    "detectFromSystemDesc": "gh CLI, SSH 키 또는 Git 자격 증명 도우미를 사용합니다.",
+    "detectFromSystemDesc": "gh CLI, SSH 키 또는 Git 자격 증명 도우미를 사용합니다",
     "credentialsDetected": "자격 증명 감지됨",
     "detectedVia": "{{source}}에서 감지됨",
     "sshKeyLabel": "SSH 키",
@@ -893,7 +887,7 @@
     "noCredentialsFound": "GitHub 자격 증명을 찾을 수 없습니다",
     "noCredentialsHint": "GitHub CLI (gh)를 설치하거나 SSH 키를 설정하여 로컬 감지를 사용하세요",
     "manuallyAddToken": "Token 수동 추가",
-    "manualTokenDesc": "HTTPS Git 작업용 GitHub PAT을 붙여넣으세요.",
+    "manualTokenDesc": "HTTPS Git 작업용 GitHub PAT을 붙여넣으세요",
     "autoDetect": "자동 감지",
     "autoDetectTokenSaved": "GitHub token 저장됨",
     "autoDetectSshSwitched": "Remote가 SSH로 전환됨",
@@ -906,9 +900,9 @@
     "worktreeTitle": "Worktree",
     "attributionTitle": "기여 표시",
     "commitAttribution": "Commit Attribution",
-    "commitAttributionDesc": "ORGII에서 만든 Commit 메시지에 ORGII를 Co-authored-by로 추가합니다",
+    "commitAttributionDesc": "ORG2에서 만든 Commit 메시지에 ORG2를 Co-authored-by로 추가합니다",
     "prAttribution": "Pull Request Attribution",
-    "prAttributionDesc": "ORGII에서 만든 Pull Request 설명에 ORGII 기여 표시 footer를 추가합니다",
+    "prAttributionDesc": "ORG2에서 만든 Pull Request 설명에 ORG2 기여 표시 footer를 추가합니다",
     "promptInstructionsTitle": "프롬프트 지침",
     "commitInstructions": "커밋 지침",
     "commitInstructionsDesc": "커밋 메시지 생성 프롬프트에 추가되며 로컬에 저장되고 선택한 Agent로 전송됩니다",
@@ -917,9 +911,9 @@
     "pullRequestInstructionsDesc": "Pull Request 제목 및 설명 생성 프롬프트에 추가되며 로컬에 저장되고 선택한 Agent로 전송됩니다",
     "pullRequestInstructionsPlaceholder": "예: 제목 앞에 이슈 ID를 붙이고 테스트 섹션 포함",
     "coauthor": "Co-authored-by",
-    "coauthorDesc": "ORGII에서 만든 Git Commit에 {{name}} <{{email}}>를 추가합니다",
+    "coauthorDesc": "ORG2에서 만든 Git Commit에 {{name}} <{{email}}>를 추가합니다",
     "noTokenYet": "Token이 필요하신가요?",
-    "createTokenDesc": "GitHub를 열고 repo 접근 권한이 있는 PAT을 만드세요.",
+    "createTokenDesc": "GitHub를 열고 repo 접근 권한이 있는 PAT을 만드세요",
     "accountConnected": "GitHub 계정이 연결되었습니다",
     "disconnectMsg": "연결을 끊으시겠습니까? 이 계정의 모든 저장소에 대한 액세스가 제거됩니다.",
     "disconnectTitle": "GitHub 계정 연결 끊기",
@@ -928,7 +922,7 @@
     "connectRepoDesc": "GitHub 계정을 연결하여 저장소에 액세스",
     "github": "GitHub",
     "signInWithGithub": "GitHub으로 로그인",
-    "signInWithGithubDesc": "GitHub Device Flow로 ORGII를 인증합니다. 서버 호스팅이 필요 없습니다.",
+    "signInWithGithubDesc": "GitHub Device Flow로 ORG2를 인증합니다. 서버 호스팅이 필요 없습니다",
     "oauthWaiting": "인증 대기 중",
     "oauthDeviceCodeDesc": "아래 URL을 열고 이 코드를 입력하세요",
     "oauthOpenGithub": "GitHub 열기",
@@ -963,8 +957,8 @@
     "contentLabel": "콘텐츠",
     "contentDesc": "SKILL.md 본문을 Markdown으로 작성하세요. Agent가 읽는 내용입니다",
     "scopeLabel": "범위",
-    "scopeDesc": "User Skill은 모든 Repo에서 사용할 수 있습니다. Repo-specific Skill은 해당 Repo에서만 로드됩니다.",
-    "scopeDescEdit": "저장 시 범위를 전환하면 Skill 폴더가 User 수준 저장소와 Repo-specific 저장소 사이에서 이동됩니다.",
+    "scopeDesc": "User Skill은 모든 Repo에서 사용할 수 있습니다. Repo-specific Skill은 해당 Repo에서만 로드됩니다",
+    "scopeDescEdit": "저장 시 범위를 전환하면 Skill 폴더가 User 수준 저장소와 Repo-specific 저장소 사이에서 이동됩니다",
     "scopeGlobal": "User",
     "binsLabel": "필수 실행 파일",
     "binsDesc": "이 스킬에 필요한 CLI 프로그램 (예: git, python, docker)",
@@ -984,7 +978,7 @@
     "filePathPlaceholder": "예: scripts/validate.py",
     "removeFile": "파일 삭제",
     "editorNoDraftTitle": "진행 중인 Skill 초안이 없습니다",
-    "editorNoDraftDesc": "Skills 페이지에서 만들기를 클릭하거나 편집할 Skill을 선택하세요.",
+    "editorNoDraftDesc": "Skills 페이지에서 만들기를 클릭하거나 편집할 Skill을 선택하세요",
     "scopeWorkspace": "Repo-specific",
     "deleteConfirmTitle": "스킬 «{{name}}» 삭제?",
     "deleteConfirmMessage": "스킬과 모든 파일이 삭제됩니다. 이 작업은 취소할 수 없습니다."
@@ -993,7 +987,7 @@
     "tab": "MCP",
     "searchPlaceholder": "MCP 서버 검색...",
     "noServers": "구성된 MCP 서버가 없습니다",
-    "noServersDesc": "MCP 서버를 추가하여 외부 도구로 Agent 기능을 확장하세요.",
+    "noServersDesc": "MCP 서버를 추가하여 외부 도구로 Agent 기능을 확장하세요",
     "addServer": "MCP 서버 추가",
     "editServer": "MCP 서버 편집",
     "serverName": "서버 이름",
@@ -1116,18 +1110,17 @@
     },
     "sessionProvenance": {
       "masterToggle": "출처 추적 hooks",
-      "masterToggleDesc": "끄면 관리되는 모든 hooks가 제거되고 신호를 수집하지 않습니다. 플랫폼별 선택은 유지되며 다시 켜면 복원됩니다.",
+      "masterToggleDesc": "끄면 관리되는 모든 hooks가 제거되고 신호를 수집하지 않습니다. 플랫폼별 선택은 유지되며 다시 켜면 복원됩니다",
       "liveStatusToggle": "실시간 에이전트 상태",
-      "liveStatusToggleDesc": "실행 중인 CLI 에이전트의 작업 또는 대기 상태를 표시합니다. 꺼도 출처 기록은 유지됩니다.",
+      "liveStatusToggleDesc": "실행 중인 CLI 에이전트의 작업 또는 대기 상태를 표시합니다. 꺼도 출처 기록은 유지됩니다",
       "title": "세션 출처",
       "capture": "파일 상호작용 기록",
-      "description": "파일 읽기와 쓰기를 메타데이터로 기록합니다. 프롬프트, 도구 출력 및 파일 내용은 저장하지 않습니다.",
+      "description": "파일 읽기와 쓰기를 메타데이터로 기록합니다. 프롬프트, 도구 출력 및 파일 내용은 저장하지 않습니다",
       "installDrift": "저장된 설정과 설치된 hook이 다릅니다. 기록을 전환하여 관리되는 hook을 복구하세요. 설정: {{path}}",
       "copyPath": "복사",
       "col": {
         "source": "도구",
-        "config": "구성",
-        "capture": "캡처"
+        "config": "구성"
       },
       "status": {
         "on": "켜짐",
@@ -1139,8 +1132,8 @@
       },
       "codexApproval": {
         "title": "Codex에서 ORG2 hooks 확인",
-        "description": "Codex가 현재 ORG2 hooks를 승인하고 실행하기를 기다리는 중입니다.",
-        "instructions": "Codex를 열고 ORG2 hooks를 검토한 다음 Trust all and continue를 선택하세요. 세션이 시작되면 SessionStart hook이 활성화를 자동으로 확인합니다.",
+        "description": "Codex가 현재 ORG2 hooks를 승인하고 실행하기를 기다리는 중입니다",
+        "instructions": "Codex를 열고 ORG2 hooks를 검토한 다음 Trust all and continue를 선택하세요. 세션이 시작되면 SessionStart hook이 활성화를 자동으로 확인합니다",
         "review": "Codex에서 검토",
         "verified": "실제 Codex hook 신호로 확인됨({{time}})."
       },
@@ -1185,7 +1178,7 @@
       "addMember": "멤버 추가",
       "noMembers": "멤버를 추가하여 Org 계층 구조를 구축하세요",
       "membersLabel": "팀 멤버",
-      "membersDesc": "각 행은 멤버이며 Writer 권한과 통신 설정은 서로 독립적입니다. 이름은 고유해야 하며 역할은 전문 분야 설명에만 사용됩니다.",
+      "membersDesc": "각 행은 멤버이며 Writer 권한과 통신 설정은 서로 독립적입니다. 이름은 고유해야 하며 역할은 전문 분야 설명에만 사용됩니다",
       "memberName": "이름",
       "memberNamePlaceholder": "유일한 라우팅 name (예: SDE-1)",
       "memberNameDuplicate": "다른 멤버가 이미 이 name을 사용 중입니다. 조직 내에서 name은 유일해야 합니다.",
@@ -1238,9 +1231,9 @@
       "descriptionPlaceholder": "이 Agent는 무엇을 하나요? (선택)",
       "subAgentsTab": "Subagents",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
-      "maxToolUseConcurrencyDesc": "메시지당 동시 Tool 호출 수. 기본값: 10.",
+      "maxToolUseConcurrencyDesc": "메시지당 동시 Tool 호출 수. 기본값: 10",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
-      "subAgentWorktreeIsolationDesc": "임시 Git Worktree에서 실행 (파일 및 Shell 접근 격리).",
+      "subAgentWorktreeIsolationDesc": "임시 Git Worktree에서 실행 (파일 및 Shell 접근 격리)",
       "addSubAgent": "Sub-Agent 추가...",
       "noSubAgents": "구성된 Sub-Agent가 없습니다."
     },
@@ -1276,30 +1269,30 @@
     "applicableAgentsDesc": "이 규칙이 적용될 Agent (비워두면 전체)",
     "selectAgents": "Agent 선택…",
     "ruleSource": "출처",
-    "ruleSourceDesc": "모든 Repo에는 User를, 단일 Repo 전용 가이드라인에는 Repo를 선택합니다.",
+    "ruleSourceDesc": "모든 Repo에는 User를, 단일 Repo 전용 가이드라인에는 Repo를 선택합니다",
     "ruleSourceUser": "User",
-    "ruleSourceUserDesc": "모든 Repo에서 사용할 수 있는 사용자 설정입니다.",
+    "ruleSourceUserDesc": "모든 Repo에서 사용할 수 있는 사용자 설정입니다",
     "ruleSourceRepo": "Repo",
-    "ruleSourceRepoDesc": "선택한 단일 Repo에 저장되는 가이드라인입니다.",
+    "ruleSourceRepoDesc": "선택한 단일 Repo에 저장되는 가이드라인입니다",
     "ruleRepo": "Repo",
     "ruleRepoDesc": "이 가이드라인이 적용되는 단일 Repo",
     "selectRepo": "Repo 선택…",
     "ruleSourcePersonal": "개인",
-    "ruleSourcePersonalDesc": "~/.orgii/personal/rules/ 에 저장. OS Agent / channel 세션 전용.",
+    "ruleSourcePersonalDesc": "~/.orgii/personal/rules/ 에 저장. OS Agent / channel 세션 전용",
     "findSkills": {
       "title": "Skills 검색",
       "placeholder": "Skills 검색...",
       "installs": "Installs",
       "emptyTitle": "Skills 검색",
-      "emptySubtitle": "2자 이상 입력한 다음 Enter를 눌러 Skills를 찾으세요.",
+      "emptySubtitle": "2자 이상 입력한 다음 Enter를 눌러 Skills를 찾으세요",
       "noResults": "Skills를 찾을 수 없음",
-      "noResultsDesc": "다른 검색어를 시도해 보세요."
+      "noResultsDesc": "다른 검색어를 시도해 보세요"
     },
     "importAgentTitle": "다른 apps에서 Agents 가져오기",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agents",
     "emptySelectionTitle": "멤버 또는 Agent 팀 선택",
-    "emptySelectionSubtitle": "사이드바에서 Agent 또는 Agent 팀을 선택해 보고 구성하세요.",
+    "emptySelectionSubtitle": "사이드바에서 Agent 또는 Agent 팀을 선택해 보고 구성하세요",
     "applicableWorkspace": "적용 Workspace",
     "tableTabs": {
       "agents": "Agents",
@@ -1332,18 +1325,18 @@
     "cliManagedConfig": {
       "title": "CLI 설정 전환",
       "modeLabel": "모드",
-      "modeDesc": "기본은 CLI 자체 설정을 복원합니다. ORGII 관리는 백업된 프록시 설정을 기록합니다.",
+      "modeDesc": "기본은 CLI 자체 설정을 복원합니다. ORG2 관리는 백업된 프록시 설정을 기록합니다",
       "modeDefault": "기본",
-      "modeOrgii": "ORGII 관리",
+      "modeOrgii": "ORG2 관리",
       "conflict": "외부 변경",
       "conflictTitle": "충돌",
-      "conflictDesc": "ORGII가 기록한 뒤 활성 CLI 설정이 변경되었습니다.",
+      "conflictDesc": "ORG2가 기록한 뒤 활성 CLI 설정이 변경되었습니다",
       "proxyStatus": "프록시",
       "proxyDefault": "기본 모드",
       "proxyReady": "프록시 준비됨",
       "proxyNotReady": "프록시 준비 안 됨",
       "keyLabel": "키",
-      "keyDesc": "이 CLI 및 관리 프록시와 호환되는 API 키만 표시됩니다.",
+      "keyDesc": "이 CLI 및 관리 프록시와 호환되는 API 키만 표시됩니다",
       "selectKey": "키 선택",
       "modelLabel": "모델",
       "selectModel": "모델 선택",
@@ -1354,9 +1347,9 @@
       "restore": "기본값 복원",
       "forceApply": "강제 적용",
       "forceRestore": "강제 복원",
-      "applySuccess": "ORGII 관리 설정을 적용했습니다",
+      "applySuccess": "ORG2 관리 설정을 적용했습니다",
       "restoreSuccess": "기본 설정을 복원했습니다",
-      "proxyLifecycleDesc": "이 모드를 사용하는 동안 ORGII를 실행 상태로 유지하세요. 창을 닫아도 프록시는 트레이에 남아 있으며, ORGII를 종료하면 설정이 외부에서 변경되지 않은 한 기본값을 안전하게 복원합니다."
+      "proxyLifecycleDesc": "이 모드를 사용하는 동안 ORG2를 실행 상태로 유지하세요. 창을 닫아도 프록시는 트레이에 남아 있으며, ORG2를 종료하면 설정이 외부에서 변경되지 않은 한 기본값을 안전하게 복원합니다"
     }
   },
   "databases": {
@@ -1420,10 +1413,6 @@
     "preview": "미리보기",
     "jsonParseError": "JSON 파싱 오류",
     "noPreview": "미리볼 데이터 없음",
-    "chatExtras": "채팅 추가 기능",
-    "queuedMessages": "대기 메시지",
-    "fileReview": "파일 검토",
-    "terminalProcesses": "터미널 프로세스",
     "modeSessionLink": "세션 링크"
   },
   "rulesTabs": {
@@ -1550,7 +1539,7 @@
       "elapsed": "Total time: {{value}}s"
     },
     "title": "상주 Housekeeper",
-    "description": "로컬 MiniCPM이 프롬프트 다듬기, 짧은 단계 설명, 가벼운 UI 제어를 처리합니다. 코딩 작업과 복잡한 ADE 설정은 계속 메인 Agent 모델을 사용합니다.",
+    "description": "로컬 MiniCPM이 프롬프트 다듬기, 짧은 단계 설명, 가벼운 UI 제어를 처리합니다. 코딩 작업과 복잡한 ADE 설정은 계속 메인 Agent 모델을 사용합니다",
     "autoAccount": "MiniCPM vLLM 계정 자동 선택",
     "tiles": {
       "model": "모델",
@@ -1560,37 +1549,37 @@
     "settings": {
       "enabled": {
         "title": "Housekeeper 활성화",
-        "description": "비활성화하면 프롬프트 다듬기, 단계 설명, 가벼운 UI 제어에 MiniCPM을 사용하지 않습니다."
+        "description": "비활성화하면 프롬프트 다듬기, 단계 설명, 가벼운 UI 제어에 MiniCPM을 사용하지 않습니다"
       },
       "account": {
         "title": "vLLM MiniCPM 계정",
-        "description": "기존 KeyVault vllm_api 계정을 재사용하며, 별도의 자격 증명 저장소를 만들지 않습니다."
+        "description": "기존 KeyVault vllm_api 계정을 재사용하며, 별도의 자격 증명 저장소를 만들지 않습니다"
       },
       "model": {
         "title": "모델 ID",
-        "description": "Docker vLLM MiniCPM5-1B의 기본값은 openbmb/MiniCPM5-1B입니다."
+        "description": "Docker vLLM MiniCPM5-1B의 기본값은 openbmb/MiniCPM5-1B입니다"
       },
       "context": {
         "title": "안전 컨텍스트 예산",
-        "description": "이론상 32k 한도를 믿는 대신 4GB GPU에서는 보수적인 10000 토큰 예산을 사용합니다."
+        "description": "이론상 32k 한도를 믿는 대신 4GB GPU에서는 보수적인 10000 토큰 예산을 사용합니다"
       }
     },
     "features": {
       "promptPolish": {
         "title": "프롬프트 다듬기",
-        "description": "더 강력한 코딩 모델에 보내기 전에 입력을 수동으로 다듬습니다."
+        "description": "더 강력한 코딩 모델에 보내기 전에 입력을 수동으로 다듬습니다"
       },
       "stepExplain": {
         "title": "Agent 단계 설명",
-        "description": "세션 재생 단계에 대해 한두 개의 짧은 중국어 설명을 생성합니다."
+        "description": "세션 재생 단계에 대해 한두 개의 짧은 중국어 설명을 생성합니다"
       },
       "uiControl": {
         "title": "가벼운 ADE/UI 제어",
-        "description": "MiniCPM은 요청을 엄격한 로컬 작업 허용 목록으로만 분류할 수 있습니다."
+        "description": "MiniCPM은 요청을 엄격한 로컬 작업 허용 목록으로만 분류할 수 있습니다"
       },
       "contextCompact": {
         "title": "자동 컨텍스트 유지 관리",
-        "description": "활성화된 세션이 유휴 상태일 때 MiniCPM이 오래된 컨텍스트의 격리된 롤링 요약을 유지하도록 합니다."
+        "description": "활성화된 세션이 유휴 상태일 때 MiniCPM이 오래된 컨텍스트의 격리된 롤링 요약을 유지하도록 합니다"
       }
     }
   },
@@ -1642,11 +1631,11 @@
     "applyFailed": "Git 프로필을 활성화하지 못했습니다"
   },
   "credentialImport": {
-    "title": "다른 앱에서 자격 증명 가져오기",
-    "itemColumn": "자격 증명",
+    "title": "다른 앱에서 키와 구독 가져오기",
+    "itemColumn": "키",
     "sourceColumn": "발견 위치",
-    "empty": "가져올 자격 증명을 찾지 못했습니다. 환경 변수, 셸 프로필, Claude Code 설정, cc-switch 프로필, 그리고 Claude Code, Codex, Cursor, GitHub CLI, Kiro, OpenCode의 로그인 저장소를 확인했습니다.",
-    "allImported": "감지된 자격 증명은 모두 이미 가져왔습니다",
+    "empty": "가져올 키나 구독을 찾지 못했습니다. 환경 변수, 셸 프로필, Claude Code 설정, cc-switch 프로필, 그리고 Claude Code, Codex, Cursor, GitHub CLI, Kiro, OpenCode의 로그인 저장소를 확인했습니다.",
+    "allImported": "감지된 키와 구독은 모두 이미 가져왔습니다",
     "authMethod": {
       "api_key": "API 키",
       "oauth": "로그인 token"
@@ -1661,13 +1650,21 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "가져오기 실패: {{message}}",
-    "partialFailure": "일부 자격 증명을 가져오지 못했습니다:"
+    "partialFailure": "일부 키를 가져오지 못했습니다:",
+    "importSucceeded": "내 키에 저장됨: {{names}}. 가져온 키를 재사용 가능한 연결로 사용할 수 있습니다."
   },
   "skills": {
     "shareToOrg": "조직에 공유",
     "share": "공유",
     "sharedToOrg": "Skill을 조직에 공유했습니다",
-    "shareToOrgHint": "조직 멤버는 이 Skill의 현재 스냅샷을 받습니다. 편집 후 업데이트를 게시하려면 다시 공유하세요.",
+    "shareToOrgHint": "조직 멤버는 이 Skill의 현재 스냅샷을 받습니다. 편집 후 업데이트를 게시하려면 다시 공유하세요",
     "shareOrgPlaceholder": "조직"
+  },
+  "marketConnection": {
+    "loadingPurchases": "ORG2 Market 패키지를 불러오는 중…",
+    "purchasesFailed": "ORG2 Market 패키지를 불러오지 못했습니다. 다시 시도해 주세요.",
+    "failed": "ORG2 Market에 연결할 수 없습니다. 다시 시도해 주세요.",
+    "title": "ORG2 Market",
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

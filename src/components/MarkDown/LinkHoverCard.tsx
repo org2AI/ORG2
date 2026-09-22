@@ -1,4 +1,3 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useSetAtom } from "jotai";
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,11 +5,11 @@ import { useTranslation } from "react-i18next";
 import { getGitRemotes } from "@src/api/http/git/remotes";
 import Button from "@src/components/Button";
 import Dropdown from "@src/components/Dropdown";
+import HoverCard from "@src/components/HoverCard";
+import { HoverCardPanel } from "@src/components/HoverCard/HoverCardBase";
+import { HOVER_CARD } from "@src/components/HoverCard/tokens";
 import Menu from "@src/components/Menu";
 import Message from "@src/components/Message";
-import HoverCardBase, {
-  HoverCardPanel,
-} from "@src/components/SessionHoverCard/HoverCardBase";
 import SplitButton from "@src/components/SplitButton";
 import {
   Copy01Icon,
@@ -22,6 +21,7 @@ import {
 import { openGitHubPrInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { copyText } from "@src/util/data/clipboard";
 import { parseGitHubPullRequestUrl } from "@src/util/git/githubPullRequestUrl";
+import { openInBrowserApp, openInSystemBrowser } from "@src/util/ui/openLink";
 
 import {
   type HttpLinkPreview,
@@ -30,7 +30,6 @@ import {
   remoteUrlsMatchGitHubPullRequest,
 } from "./LinkHoverCard.helpers";
 import LinkPullRequestSummary from "./LinkPullRequestSummary";
-import { openUrlInBrowserApp } from "./markdownUtils";
 import { useLinkPullRequest } from "./useLinkPullRequest";
 
 interface LinkHoverCardProps {
@@ -77,7 +76,7 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
   }, [preview.url, t]);
 
   const handleOpenAsWebPage = useCallback(() => {
-    openUrlInBrowserApp(preview.url, { navigate: true });
+    openInBrowserApp(preview.url);
     setOpenOptionsVisible(false);
   }, [preview.url]);
 
@@ -131,12 +130,6 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
     workspaceRootRepoUrl,
   ]);
 
-  const handleOpenExternal = useCallback(() => {
-    void openUrl(preview.url).catch(() => {
-      Message.error(t("cards.url.openExternalFailed"));
-    });
-  }, [preview.url, t]);
-
   return (
     <HoverCardPanel
       width={pullRequest ? "wide" : "default"}
@@ -153,7 +146,7 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
         />
       ) : (
         <div
-          className="truncate text-xs leading-5 text-text-3"
+          className={`${HOVER_CARD.text} truncate text-text-3`}
           title={preview.url}
         >
           {preview.displayUrl}
@@ -163,7 +156,13 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
         <Button
           variant="tertiary"
           size="mini"
-          icon={<HugeiconsIcon icon={Copy01Icon} data-icon="copy" size={13} />}
+          icon={
+            <HugeiconsIcon
+              icon={Copy01Icon}
+              data-icon="copy"
+              size={HOVER_CARD.iconSize}
+            />
+          }
           iconOnly
           aria-label={t("cards.url.copyUrl")}
           title={t("cards.url.copyUrl")}
@@ -176,14 +175,14 @@ const LinkHoverCardContent: React.FC<LinkHoverCardContentProps> = ({
             <HugeiconsIcon
               icon={InternetIcon}
               data-icon="chrome"
-              size={13}
-              strokeWidth={1.75}
+              size={HOVER_CARD.iconSize}
+              strokeWidth={HOVER_CARD.iconStrokeWidth}
             />
           }
           iconOnly
           aria-label={t("cards.actions.openWithDefaultBrowser")}
           title={t("cards.actions.openWithDefaultBrowser")}
-          onClick={handleOpenExternal}
+          onClick={() => openInSystemBrowser(preview.url)}
         />
         {pullRequest && workspaceRootPath ? (
           <SplitButton
@@ -257,21 +256,21 @@ const LinkHoverCard: React.FC<LinkHoverCardProps> = ({
   if (!preview) return children;
 
   return (
-    <HoverCardBase
+    <HoverCard
       cardId={preview.url}
       position="bottom-start"
       mouseEnterDelay={350}
-      renderContent={() => (
+      content={
         <LinkHoverCardContent
           preview={preview}
           workspaceRootPath={workspaceRootPath}
           workspaceRootRepoId={workspaceRootRepoId}
           workspaceRootRepoUrl={workspaceRootRepoUrl}
         />
-      )}
+      }
     >
       {children}
-    </HoverCardBase>
+    </HoverCard>
   );
 };
 

@@ -1,10 +1,8 @@
 {
   "teamInbox": {
-    "title": "팀 수신함",
     "listLabel": "팀 수신함 목록",
     "itemsLabel": "팀 수신함 항목",
     "unreadCount": "읽지 않음 {{count}}건",
-    "allRead": "모두 확인했습니다",
     "loadMore": "더 불러오기",
     "filters": {
       "mentions": "멘션",
@@ -46,7 +44,6 @@
         "subtitle": "보관한 항목이 여기에 표시됩니다."
       }
     },
-    "loading": "팀 수신함을 불러오는 중…",
     "drop": {
       "title": "여기로 끌어다 놓아 작업 항목 만들기",
       "subtitle": "세션 스냅샷을 확인한 다음 작업 항목을 만들거나 인계하세요.",
@@ -188,7 +185,7 @@
       "aria": "{{label}} 메뉴"
     },
     "items": {
-      "quitOrg2": "ORG-2 종료",
+      "quitOrg2": "ORG2 종료",
       "newSession": "새 세션",
       "openFolder": "폴더 열기...",
       "addFolderToWorkspace": "작업 영역에 폴더 추가...",
@@ -289,8 +286,8 @@
     "save": "저장",
     "cancel": "취소",
     "delete": "삭제",
-    "removeFromOrgii": "ORGII에서 제거",
-    "removeFromOrgiiCount": "ORGII에서 제거 ({{count}})",
+    "removeFromOrgii": "ORG2에서 제거",
+    "removeFromOrgiiCount": "ORG2에서 제거 ({{count}})",
     "edit": "편집",
     "write": "쓰기",
     "close": "닫기",
@@ -352,7 +349,6 @@
     "restart": "재시작",
     "switchToStation": "{{station}}로 전환",
     "discard": "버리기",
-    "run": "실행",
     "clone": "클론",
     "send": "보내기",
     "sendMessageQueued": "보내기(대기열)",
@@ -382,13 +378,18 @@
     "link": "연결",
     "copyName": "이름 복사",
     "switchMethod": "방법 전환",
-    "dismiss": "무시",
     "clearSelection": "선택 지우기",
-    "clearAll": "모두 지우기",
     "openOnGitHub": "GitHub에서 열기",
     "createPullRequest": "Pull request 만들기",
     "expandView": "보기 확장",
-    "restoreSplitView": "분할 보기 복원"
+    "restoreSplitView": "분할 보기 복원",
+    "resetFilters": "필터 초기화",
+    "cardView": "카드 보기",
+    "listView": "목록 보기",
+    "exportAndSync": "내보내기 및 동기화",
+    "export": "내보내기",
+    "openIn": "다음에서 열기",
+    "overwrite": "덮어쓰기"
   },
   "status": {
     "yes": "예",
@@ -452,7 +453,8 @@
     "scanningFileExtensions": "파일 확장자 스캔 중…",
     "testing": "테스트 중...",
     "empty": "비어 있음",
-    "launching": "시작 중..."
+    "launching": "시작 중...",
+    "copiedFilePath": "파일 경로를 복사했습니다"
   },
   "pagination": {
     "totalItems": "{{count}}개 항목",
@@ -463,7 +465,6 @@
     "nextPage": "다음 페이지",
     "lastPage": "마지막 페이지",
     "selectPage": "페이지 선택",
-    "title": "페이지네이션",
     "round": "Round {{current}}",
     "previousRound": "이전 Round",
     "nextRound": "다음 Round",
@@ -504,13 +505,14 @@
     "error": "오류",
     "pid": "PID",
     "shell": "Shell",
-    "source": "소스"
+    "source": "소스",
+    "display": "UI 설정"
   },
   "labels": {
     "accounts": "계정",
     "enabled": "활성화",
     "disabled": "비활성화",
-    "keys": "Keys",
+    "keys": "키",
     "model": "모델",
     "name": "이름",
     "provider": "제공업체",
@@ -536,7 +538,6 @@
     "globPatternsHint": "Glob 패턴, 쉼표로 구분",
     "outline": "개요",
     "timeline": "타임라인",
-    "indexing": "Index",
     "testExplorer": "테스트 탐색기",
     "installed": "설치됨",
     "extensionViews": "확장 뷰",
@@ -552,7 +553,6 @@
     "pullRequest": "Pull request",
     "operationLog": "작업 로그",
     "gitDashboard": "대시보드",
-    "changedFiles": "변경된 파일",
     "colorTokens": "색상 Token",
     "terminalInfo": "터미널 정보",
     "fileCount_one": "{{count}}개 파일",
@@ -644,7 +644,13 @@
     "issueComments_other": "댓글 {{count}}개",
     "tokens": "토큰",
     "actions": "작업",
-    "all": "전체"
+    "all": "전체",
+    "stashesCount": "스태시 {{count}}개",
+    "stashesCount_one": "스태시 {{count}}개",
+    "stashesCount_other": "스태시 {{count}}개",
+    "changedFilesCount": "변경된 파일 {{fileCount}}개",
+    "changedFilesCount_one": "변경된 파일 {{fileCount}}개",
+    "changedFilesCount_other": "변경된 파일 {{fileCount}}개"
   },
   "searchModes": {},
   "tabs": {
@@ -652,7 +658,6 @@
     "explorer": "탐색기",
     "search": "검색",
     "sourceControl": "소스 제어",
-    "sessions": "Session",
     "myTabs": "내 탭 ({{count}})",
     "design": "디자인",
     "settings": "설정",
@@ -690,16 +695,17 @@
     "unknownError": "알 수 없는 오류가 발생했습니다",
     "componentLoadingFailed": "컴포넌트를 불러오지 못했습니다",
     "noLocalPath": "사용 가능한 로컬 경로가 없습니다",
-    "openInFinderFailed": "Finder에서 열지 못했습니다"
+    "openInFinderFailed": "Finder에서 열지 못했습니다",
+    "failedToCopyFilePath": "파일 경로를 복사하지 못했습니다"
   },
   "confirmation": {
     "delete": "정말 삭제하시겠습니까?",
-    "removeTitle": "\"{{name}}\"을(를) ORGII에서 제거하시겠습니까?",
-    "removeMessage": "ORGII와의 연결만 제거됩니다. 디스크에서는 아무것도 제거되지 않습니다.",
+    "removeTitle": "\"{{name}}\"을(를) ORG2에서 제거하시겠습니까?",
+    "removeMessage": "ORG2와의 연결만 제거됩니다. 디스크에서는 아무것도 제거되지 않습니다.",
     "deleteWorkspaceTitle": "Workspace \"{{name}}\"을(를) 삭제하시겠습니까?",
     "deleteWorkspaceMessage": "Workspace 프리셋만 삭제됩니다. 포함된 Repo 및 폴더에는 영향이 없습니다.",
-    "deleteSelectedTitle": "선택한 {{count}}개 항목을 ORGII에서 제거하시겠습니까?",
-    "deleteSelectedMessage": "ORGII와의 연결만 제거됩니다. 디스크에서는 아무것도 제거되지 않습니다.",
+    "deleteSelectedTitle": "선택한 {{count}}개 항목을 ORG2에서 제거하시겠습니까?",
+    "deleteSelectedMessage": "ORG2와의 연결만 제거됩니다. 디스크에서는 아무것도 제거되지 않습니다.",
     "dropStashTitle": "Drop stash?",
     "dropStashMessage": "{{stashRef}}가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
     "popAllStashesTitle": "Pop all stashes?",
@@ -743,9 +749,8 @@
     "previousMatch": "이전 일치 (Shift+Enter)",
     "nextMatch": "다음 일치 (Enter)",
     "clearSearch": "검색 지우기",
-    "openInEditorTab": "편집기 탭에서 열기",
     "openFile": "파일 열기",
-    "openNativeDevTools": "네이티브 브라우저 개발자 도구 열기",
+    "openNativeDevTools": "개발자 도구 열기",
     "captureScreenshot": "스크린샷",
     "enableInspectMode": "요소 검사",
     "disableInspectMode": "검사 종료 (Esc)",
@@ -761,7 +766,6 @@
     "closePanel": "패널 닫기",
     "showSidebar": "사이드바 표시",
     "hideSidebar": "사이드바 숨기기",
-    "moreOptions": "더 많은 옵션",
     "zoomIn": "확대",
     "zoomOut": "축소",
     "goBack": "뒤로",
@@ -774,9 +778,6 @@
     "replace": "바꾸기 (Ctrl+Shift+1)",
     "replaceAll": "모두 바꾸기 (Ctrl+Alt+Enter)",
     "moreActions": "추가 작업...",
-    "formatSql": "SQL 포맷",
-    "queryHistory": "쿼리 기록",
-    "executeQuery": "쿼리 실행 ({{shortcut}})",
     "startVoiceInput": "음성 입력 시작",
     "cancelRecording": "녹음 취소",
     "stopAndTranscribe": "중지하고 전사",
@@ -787,11 +788,9 @@
     "movePanelToRight": "패널을 오른쪽으로 이동",
     "movePanelToBottom": "패널을 아래쪽으로 이동",
     "domTree": "DOM 트리",
-    "closeSession": "Session 닫기",
     "clearNetworkLogs": "네트워크 로그 지우기",
     "clearConsole": "콘솔 지우기",
     "copyToClipboard": "클립보드에 복사",
-    "openDiff": "Diff 열기",
     "popAllStashes": "Pop All Stashes (적용 및 제거)",
     "applyStash": "Apply Stash (적용 및 stash 유지)",
     "popStash": "Pop Stash (적용 및 제거)",
@@ -799,7 +798,16 @@
     "scrollToItem": "{{name}}로 스크롤",
     "containsStatusFiles": "{{status}} 파일 포함",
     "showFileList": "파일 목록 보기",
-    "copyValueRightClickForPath": "클릭하여 값을 복사하고, 우클릭하여 경로를 복사"
+    "copyValueRightClickForPath": "클릭하여 값을 복사하고, 우클릭하여 경로를 복사",
+    "previousMatchLabel": "이전 일치",
+    "nextMatchLabel": "다음 일치",
+    "matchCaseLabel": "대소문자 구분",
+    "matchWholeWordLabel": "전체 단어 일치",
+    "useRegexLabel": "정규식 사용",
+    "replaceLabel": "바꾸기",
+    "replaceAllLabel": "모두 바꾸기",
+    "expandInput": "입력창 펼치기",
+    "collapseInput": "입력창 접기"
   },
   "placeholders": {
     "enterFileName": "파일 이름 입력",
@@ -839,7 +847,6 @@
     "pleaseTryAgain": "다시 시도해 주세요",
     "noFileOpen": "파일을 열어 편집 시작",
     "selectFileToEdit": "탐색기에서 파일 선택",
-    "noTabs": "탭을 열어 시작하기",
     "noTabsOpen": "항목을 열어 시작하기",
     "selectItemToStart": "사이드바에서 항목 선택",
     "noDatabaseConnected": "연결된 데이터베이스 없음",
@@ -851,7 +858,7 @@
     "chatHistoryReloadHint": "Session 데이터가 로드되지 않았을 수 있습니다",
     "chatHistoryAgentWorking": "Agent 실행 중",
     "chatHistoryAgentWorkingHint": "첫 응답부터 메시지가 표시되며 그전에는 도구 모음이 유휴 상태로 보일 수 있습니다",
-    "pleaseSelect": "선택해 주세요",
+    "pleaseSelect": "선택",
     "noSessionsFound": "Session을 찾을 수 없습니다",
     "typeToSearchFiles": "파일을 검색하려면 입력...",
     "selectFileToViewChanges": "변경사항을 보려면 파일을 선택하세요",
@@ -916,9 +923,13 @@
     "selectRepositoryFromWorkspace": "워크스페이스 리포지토리 선택",
     "noData": "데이터 없음",
     "noResults": "결과 없음",
-    "noSessionHistoryForFile": "{{file}}에 대한 세션 활동이 없습니다",
     "noSessionHistory": "세션 기록 없음",
-    "selectSidebarFileToViewChanges": "사이드바에서 파일 선택"
+    "selectSidebarFileToViewChanges": "파일 하나 선택",
+    "selectSidebarStash": "stash 하나 선택",
+    "selectSidebarCommit": "commit 하나 선택",
+    "selectSidebarPullRequest": "pull request 하나 선택",
+    "selectSidebarIssue": "issue 하나 선택",
+    "pressEnterToSearch": "Enter 키를 눌러 검색"
   },
   "inbox": {
     "scrollToBottom": "맨 아래로",
@@ -945,7 +956,6 @@
     "notGitInitialized": "Git 초기화 안 됨",
     "notGitInitializedTooltip": "이 작업 디렉터리에는 아직 .git 디렉터리가 없습니다.",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "scanningFiles": "Scanning files...",
     "branchTooltipSwitching": "브랜치: {{branch}} (전환 중…)",
     "switchWorkspaceTooltip": "작업 디렉터리 전환",
     "switchWorktreeTooltip": "Worktree 전환",
@@ -956,12 +966,6 @@
     "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Git 작업",
     "switchToSessionRepo": "{{name}}(으)로 전환",
-    "embeddingProgress": "Embedding: {{count}}개 청크 처리됨",
-    "embeddingProgressWithPercent": "Embedding: {{count}}개 청크 처리됨 ({{percent}}%)",
-    "embeddingShort": "Embedding {{percent}}%",
-    "embeddingLabel": "Embedding",
-    "indexingProgress": "인덱싱: {{processed}}/{{total}} 파일 ({{percent}}%)",
-    "indexingProgressWithFile": "인덱싱: {{processed}}/{{total}} 파일 ({{percent}}%)\n현재: {{file}}",
     "ports": {
       "workspaceSection": "현재 작업 영역",
       "externalSection": "외부",
@@ -1009,13 +1013,11 @@
       "enterUrlToStart": "URL을 입력하여 시작",
       "privateBrowsingEmptyTitle": "프라이빗 브라우징: URL을 입력하여 시작",
       "simulatorBrowserNotice": "이 브라우저는 세션 재생 전용입니다. 지속적인 탐색은 메인 앱의 브라우저(도구 → 브라우저)를 사용하세요.",
-      "tlsDevNote": "참고: GitHub 등 일부 HTTPS 사이트는 개발 모드에서 인증서 검증으로 TLS 오류가 날 수 있습니다. HTTP 또는 example.com 같은 단순 HTTPS를 시도하세요.",
       "siteUnreachableTitle": "사이트에 연결할 수 없음",
       "webviewHiddenTitle": "웹뷰가 일시적으로 숨겨졌습니다",
       "webviewHiddenBody": "메뉴나 대화 상자를 닫으면 다시 표시됩니다.",
-      "embeddedFallbackTitle": "이 사이트는 임베디드 브라우저에서 작동하지 않을 수 있습니다",
-      "embeddedFallbackBody": "일부 사이트는 앱 WebView 안에서 차단되거나 렌더링되지 않습니다. 페이지가 계속 비어 있으면 시스템 브라우저에서 여세요.",
-      "currentUrl": "현재 URL"
+      "loadStalledTitle": "이 페이지의 로딩이 완료되지 않았습니다",
+      "copyUrl": "URL 복사"
     },
     "unsavedChangesTitle": "Unsaved Changes",
     "ci": {
@@ -1033,7 +1035,10 @@
       }
     },
     "switchToUnifiedDiff": "통합 diff로 전환",
-    "switchToSplitDiff": "분할 diff로 전환"
+    "switchToSplitDiff": "분할 diff로 전환",
+    "switchToGraphView": "그래프 보기로 전환",
+    "fileChangedOnDiskTitle": "디스크에서 파일이 변경됨",
+    "fileChangedOnDiskBody": "\"{{name}}\" 파일이 열린 후 디스크에서 변경되었습니다. 내 버전으로 덮어쓸까요?"
   },
   "git": {
     "loading": "Git 상태 로딩 중...",
@@ -1060,7 +1065,7 @@
       "createTokenButton": "Token 만들기",
       "openGitSettingsButton": "설정 열기",
       "configureInSettings": "설정에서 Git 구성",
-      "configureInSettingsDesc": "설정 → 연결에서 GitHub App 액세스를 추가하거나 token을 저장하거나 로컬 자격 증명을 스캔한 다음 이 Git 작업을 다시 시도하세요."
+      "configureInSettingsDesc": "설정 → 연결에서 GitHub App 액세스를 추가하거나 token을 저장하거나 로컬 자격 증명을 스캔한 다음 이 Git 작업을 다시 시도하세요"
     },
     "actions": {
       "publish": "Publish",
@@ -1098,7 +1103,12 @@
       "returnFromMiniTerminal": "여기에 표시",
       "resizeTerminal": "터미널 크기 조정",
       "terminalProcessCount_one": "프로세스 {{count}}개",
-      "terminalProcessCount_other": "프로세스 {{count}}개"
+      "terminalProcessCount_other": "프로세스 {{count}}개",
+      "sources": "소스",
+      "sourcesCount_one": "소스 {{count}}개",
+      "sourcesCount_other": "소스 {{count}}개",
+      "loadMoreSources": "더 보기 (+{{count}})",
+      "sourceImage": "이미지"
     },
     "pr": {
       "title": "Pull request",
@@ -1299,11 +1309,98 @@
       "cannotParseRepoName": "origin 원격 저장소에서 저장소 이름을 파싱할 수 없습니다",
       "authRequired": {
         "title": "GitHub 연결",
-        "description": "설정 → 연결에서 GitHub 계정을 연결하세요."
+        "description": "설정 → 연결에서 GitHub 계정을 연결하세요"
       },
       "navigationTrail": "Pull request 탐색",
       "failedToLoad": "pull request를 불러오지 못했습니다",
-      "label": "Pull request"
+      "label": "Pull request",
+      "mergeBox": {
+        "checksFailed": "일부 검사가 성공하지 못함",
+        "checksPending": "일부 검사가 아직 완료되지 않음",
+        "checksPassed": "모든 검사 통과",
+        "checksSkipped": "모든 검사를 건너뜀",
+        "counts": {
+          "failing": "{{count}}건 실패",
+          "inProgress": "{{count}}건 진행 중",
+          "skipped": "{{count}}건 건너뜀",
+          "successful": "{{count}}건 성공",
+          "summary_one": "검사: {{parts}}",
+          "summary_other": "검사: {{parts}}"
+        },
+        "check": {
+          "queued": "대기 중",
+          "started": "{{time}} 시작됨",
+          "successfulIn": "{{duration}} 만에 성공",
+          "failingAfter": "{{duration}} 후 실패",
+          "skipped": "건너뜀",
+          "successful": "성공",
+          "failing": "실패"
+        },
+        "deployments": {
+          "label": "배포",
+          "none": "배포 없음",
+          "active_one": "활성 배포 {{count}}건",
+          "active_other": "활성 배포 {{count}}건",
+          "view": "배포 보기",
+          "notDeployed": "이 브랜치는 배포되지 않았습니다",
+          "deployed": "이 브랜치가 성공적으로 배포되었습니다",
+          "deploying": "이 브랜치를 배포하는 중입니다",
+          "deployFailed": "이 브랜치를 배포하는 중 오류가 발생했습니다",
+          "deployInactive": "이 브랜치는 더 이상 배포되어 있지 않습니다",
+          "state": {
+            "active": "활성",
+            "pending": "진행 중",
+            "failure": "실패",
+            "inactive": "비활성"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "변경 사항 승인됨",
+            "detail": "승인 리뷰가 제출되었습니다"
+          },
+          "reviewRequired": {
+            "title": "리뷰 필요",
+            "detail": "병합하려면 승인 리뷰가 하나 이상 필요합니다"
+          },
+          "reviewChangesRequested": {
+            "title": "변경 요청됨",
+            "detail": "리뷰어가 병합 전에 변경을 요청했습니다"
+          },
+          "noConflicts": {
+            "title": "기준 브랜치와 충돌 없음",
+            "detail": "병합을 자동으로 수행할 수 있습니다"
+          },
+          "hasConflicts": {
+            "title": "이 브랜치에 해결해야 할 충돌이 있음",
+            "detail": "헤드 브랜치에서 충돌을 해결한 다음 푸시하세요"
+          },
+          "outOfDate": {
+            "title": "이 브랜치가 기준 브랜치보다 오래됨",
+            "detail": "기준 브랜치의 최신 변경 사항을 이 브랜치에 병합하세요"
+          },
+          "checkingConflicts": {
+            "title": "자동 병합 가능 여부 확인 중…",
+            "detail": "GitHub에서 브랜치 상태를 확인하는 동안 잠시 기다려 주세요"
+          },
+          "autoMergeEnabled": {
+            "title": "자동 병합 활성화됨",
+            "detail": "요구 사항이 충족되면 이 풀 리퀘스트가 병합됩니다"
+          },
+          "inMergeQueue": {
+            "title": "병합 대기열에서 대기 중",
+            "detail": "대기열의 맨 앞에 도달하면 GitHub에서 병합합니다"
+          }
+        },
+        "merged": {
+          "title": "풀 리퀘스트가 성공적으로 병합되고 닫힘",
+          "detail": "헤드 브랜치를 안전하게 삭제할 수 있습니다"
+        },
+        "closed": {
+          "title": "병합되지 않은 커밋이 있는 상태로 닫힘",
+          "detail": "이 풀 리퀘스트는 닫혀 있습니다. 병합하려면 다시 여세요"
+        }
+      }
     },
     "messages": {
       "pushSuccess": "Successfully pushed changes to remote",
@@ -1469,15 +1566,112 @@
       "newIssueBodyPlaceholder": "Issue 설명 (선택 사항)…",
       "authRequired": {
         "title": "GitHub 연결",
-        "description": "설정 → 연결에서 GitHub 계정을 연결하세요."
+        "description": "설정 → 연결에서 GitHub 계정을 연결하세요"
       },
       "reAuthRequired": "GitHub 인증 필요",
-      "reAuthDescription": "GitHub token이 만료되었습니다. 설정 → 연결에서 다시 연결하세요.",
+      "reAuthDescription": "GitHub token이 만료되었습니다. 설정 → 연결에서 다시 연결하세요",
       "goToSettings": "설정으로 이동",
       "loadingTimeline": "활동 불러오는 중…",
       "label": "Issue",
       "linkedLoading": "연결된 항목 불러오는 중",
       "detailNavigation": "Issue 탐색"
+    },
+    "branchSwitch": {
+      "title": "브랜치 전환",
+      "conflictsTitle": "변경 사항을 확인해야 합니다",
+      "blockedTitle": "브랜치 전환을 확인해야 합니다",
+      "working": "저장 및 전환 중…",
+      "current": "현재 브랜치: {{branch}}",
+      "changedFiles": "변경된 파일 {{count}}개",
+      "question": "변경 사항을 어떻게 처리할까요?",
+      "leave": "변경 사항을 {{branch}}에 남기기",
+      "leaveDescription": "나중에 이어서 작업할 수 있도록 저장하고 변경 사항이 없는 작업 트리로 전환합니다",
+      "bring": "변경 사항을 {{branch}}로 가져가기",
+      "bringDescription": "커밋하지 않은 변경 사항을 대상 브랜치로 가져갑니다",
+      "worktreeTitle": "이 브랜치는 다른 작업 트리에서 열려 있습니다",
+      "openWorktree": "작업 트리 열기",
+      "activeTask": "이 워크트리에서 작업이 실행 중입니다",
+      "activeTaskDescription": "지금 전환하면 에이전트가 작업 중인 파일이 바뀝니다",
+      "switchAnyway": "그래도 전환",
+      "switchedTo": "{{branch}}(으)로 전환됨",
+      "saveTitle": "전환 전에 파일 저장",
+      "saveDescription": "열린 파일에 저장하지 않은 편집 내용이 있습니다. 변경 사항을 어디에 보관할지 선택하기 전에 저장하세요",
+      "saveContinue": "모두 저장하고 계속",
+      "saveFailed": "모든 파일을 저장하지 못했습니다",
+      "multipleBuffers": "이 파일은 여러 편집기에서 수정되었습니다. 전환 전에 해당 편집기에서 저장하거나 닫으세요",
+      "editedWhileSaving": "저장하는 동안 파일이 수정되었습니다. 최신 변경 사항을 확인한 후 다시 시도하세요",
+      "savePreview": "브랜치를 전환하기 전에 스프레드시트 편집기에서 편집 내용을 저장하거나 버리세요",
+      "messages": {
+        "detached_head": "전환하기 전에 현재 커밋에서 브랜치를 만들어 분리된 작업을 계속 참조할 수 있게 하세요",
+        "unborn": "저장된 브랜치 변경 사항을 사용하기 전에 첫 커밋을 만드세요",
+        "ignored_collision": "무시된 파일이 덮어써집니다. 전환하기 전에 다른 곳으로 옮기세요",
+        "worktree_branch_in_use": "이 브랜치는 이미 다른 작업 트리에서 열려 있습니다",
+        "invalid_branch_name": "유효한 브랜치 이름을 선택하세요",
+        "branch_exists": "해당 브랜치가 이미 존재합니다",
+        "branch_not_found": "브랜치를 찾을 수 없거나 모호합니다. 브랜치를 새로고침하고 명시적인 리모트 브랜치를 선택하세요",
+        "upstream_mismatch": "해당 이름의 로컬 브랜치가 다른 업스트림을 추적하고 있습니다. 로컬 브랜치를 명시적으로 선택하세요",
+        "operation_merge": "브랜치를 전환하기 전에 병합을 완료하거나 중단하세요",
+        "operation_rebase": "브랜치를 전환하기 전에 리베이스를 완료하거나 중단하세요",
+        "operation_cherry_pick": "브랜치를 전환하기 전에 체리픽을 완료하거나 중단하세요",
+        "operation_revert": "브랜치를 전환하기 전에 리버트를 완료하거나 중단하세요",
+        "operation_other": "브랜치를 전환하기 전에 현재 Git 작업을 완료하세요",
+        "stale": "대화상자가 열려 있는 동안 파일이나 브랜치가 변경되었습니다. 최신 변경 사항을 확인한 후 다시 시도하세요",
+        "save_failed": "변경 사항 저장을 완료하지 못했습니다: {{detail}}. 다시 시도하기 전에 작업 트리와 저장된 변경 사항을 확인하세요",
+        "changed_while_saving": "저장하는 동안 파일이 변경되었습니다. 체크아웃을 시도하지 않았습니다. 스냅샷을 사용할 수 있습니다",
+        "checkout_failed_restored": "체크아웃에 실패했습니다. 변경 사항이 복원되었습니다: {{detail}}",
+        "checkout_failed_saved": "체크아웃에 실패했습니다. 변경 사항이 저장되어 있습니다: {{detail}}",
+        "worktree_changed": "체크아웃 중에 작업 트리가 변경되었습니다. 원래 변경 사항은 저장되어 있습니다. 복원하기 전에 현재 파일을 확인하세요",
+        "restore_conflicts": "{{branch}}(으)로 전환되었습니다. 일부 변경 사항을 복원하지 못했습니다: {{detail}}. 원래 변경 사항은 저장되어 있습니다",
+        "saved_on_previous": "변경 사항이 이전 브랜치에 저장되었습니다",
+        "brought": "변경 사항이 이 브랜치까지 따라왔습니다",
+        "worktree_missing": "워크트리가 더 이상 없습니다. 새로고침 후 다시 시도하세요"
+      }
+    },
+    "dialogs": {
+      "detachedHead": {
+        "title": "Detached HEAD 상태",
+        "body": "커밋 {{shortHash}}에서 detached HEAD 상태입니다.\n\n어떤 브랜치에도 있지 않습니다. 새 브랜치를 먼저 만들지 않고 다른 브랜치로 checkout하면 작성한 커밋이 사라질 수 있습니다.\n\n⚠️ detached HEAD 상태의 커밋은 가비지 컬렉션될 수 있습니다.",
+        "createBranch": "브랜치 만들기",
+        "continueWithoutBranch": "브랜치 없이 계속"
+      },
+      "largePush": {
+        "title": "대량 push 감지됨",
+        "body": "{{remote}}/{{branch}}에 커밋 {{commitCount}}개를 push하려고 합니다.\n\n평소보다 많습니다. 계속하시겠습니까?\n\n💡 큰 변경 사항은 더 작고 목적이 분명한 커밋으로 나누는 것을 고려하세요.",
+        "confirm": "모든 커밋 push"
+      },
+      "protectedBranch": {
+        "title": "보호된 브랜치",
+        "body": "{{remote}}의 \"{{branch}}\" 브랜치는 보호되어 있어 직접 push할 수 없습니다.\n\n보호된 브랜치는 변경 사항이 pull request를 거쳐야 합니다.",
+        "createPr": "Pull Request 만들기"
+      },
+      "pullConflict": {
+        "title": "로컬 변경 사항이 있어 pull할 수 없습니다",
+        "body": "\"{{branch}}\"에서 가져오는 변경 사항이 로컬 변경 사항을 덮어씁니다.{{fileInfo}}\n\n진행 방법을 선택하세요:",
+        "fileInfo_one": " (파일 {{count}}개 영향)",
+        "fileInfo_other": " (파일 {{count}}개 영향)",
+        "stashAndPull": "Stash 후 pull",
+        "discardAndPull": "버리고 pull"
+      },
+      "pushRejected": {
+        "title": "Push 거부됨",
+        "body": "{{remote}}/{{branch}}에 push할 수 없습니다.\n\n원격 브랜치에 로컬에 없는 커밋이 있습니다.{{behindInfo}}\n\n⚠️ Force push는 원격 변경 사항을 영구적으로 덮어씁니다.",
+        "behindInfo_one": " (커밋 {{count}}개 뒤처짐)",
+        "behindInfo_other": " (커밋 {{count}}개 뒤처짐)",
+        "pullAndPush": "Pull 후 push",
+        "forcePush": "Force push"
+      },
+      "conflict": {
+        "titleMerge": "Merge 충돌",
+        "titleRebase": "Rebase 충돌",
+        "bodyMerge": "\"{{branch}}\"을(를) merge하는 중 충돌이 발생했습니다.{{progress}}{{files}}\n\n⚠️ 중단하면 merge가 취소되고 브랜치가 복원됩니다.",
+        "bodyRebase": "\"{{branch}}\" 위로 rebase하는 중 충돌이 발생했습니다.{{progress}}{{files}}\n\n⚠️ 중단하면 브랜치가 rebase 이전 상태로 복원됩니다.",
+        "progress": " (총 {{total}}단계 중 {{current}}단계)",
+        "files_one": "\n\n파일 {{count}}개에 충돌이 있습니다.",
+        "files_other": "\n\n파일 {{count}}개에 충돌이 있습니다.",
+        "resolve": "충돌 해결",
+        "abortMerge": "Merge 중단",
+        "abortRebase": "Rebase 중단"
+      }
     }
   },
   "selectors": {
@@ -1493,11 +1687,20 @@
       "noResults": "일치하는 모델 없음",
       "chooseModel": "모델 선택",
       "chooseKey": "키 선택",
-      "noCompatibleAccounts": "호환되는 키 없음",
       "chooseModelHint": "키보드로 이동하거나 마우스로 모델을 클릭하세요",
       "chooseKeyHint": "키보드로 이동하거나 마우스로 키를 클릭하세요",
       "noModelsForKey": "이 키에 활성화된 모델이 없습니다",
-      "selectAccount": "계정 선택"
+      "noCompatibleKeys": "호환되는 키 없음",
+      "selectKey": "키 선택",
+      "sourceScope": {
+        "label": "모델 소스",
+        "keys": "내 키"
+      },
+      "marketEmpty": {
+        "title": "아직 ORG2 Market 패키지가 없습니다",
+        "subtitle": "{{host}}에서 구매하면 자체 API 키 없이 모델을 사용할 수 있습니다.",
+        "action": "ORG2 Market 열기"
+      }
     },
     "modelProperties": {
       "effort": "Effort",
@@ -1532,7 +1735,6 @@
         "createWorkspace": "새 작업 디렉터리 만들기"
       },
       "sources": {
-        "cloningFromGitHub": "GitHub에서 클론 중",
         "cloningFromGitHubUrl": "GitHub URL에서 클론",
         "cloningFromMyGitHub": "내 GitHub에서 클론",
         "creatingWorkspace": "새 작업 디렉터리 만드는 중",
@@ -1593,7 +1795,6 @@
         "createFrom": "Branch에서 생성",
         "deleteBranch": "브랜치 삭제",
         "refresh": "브랜치 새로 고침",
-        "checkoutDetachedSuccess": "현재 커밋에서 detached HEAD 상태입니다",
         "removeWorktree": "Worktree 제거",
         "newWorktree": "새 Worktree...",
         "refreshPullRequests": "Pull requests 새로 고침"
@@ -1601,7 +1802,12 @@
       "messages": {
         "deletedCount_one": "브랜치 {{count}}개 삭제됨",
         "deletedCount_other": "브랜치 {{count}}개 삭제됨",
-        "failedDeleteList": "삭제 실패: {{branches}}"
+        "failedDeleteList": "삭제 실패: {{branches}}",
+        "failedDelete": "브랜치 \"{{branch}}\"을(를) 삭제하지 못했습니다",
+        "prNoHeadBranch": "Pull request에 head 브랜치가 없습니다",
+        "readBranchesFailed": "로컬 브랜치를 읽지 못했습니다",
+        "createPrBranchFailed": "PR 브랜치를 만들지 못했습니다",
+        "readRemotesFailed": "저장소 원격을 읽지 못했습니다"
       },
       "labels": {
         "otherBranches": "다른 브랜치",
@@ -1618,7 +1824,8 @@
         "prSearchScope": "불러온 Pull requests {{count}}개 내에서 검색",
         "prLimit": "열린 PR 최대 {{count}}개 표시",
         "noPullRequests": "일치하는 Pull requests가 없습니다",
-        "mainWorktree": "메인"
+        "mainWorktree": "메인",
+        "defaultBranches": "기본 브랜치"
       },
       "placeholders": {
         "add": "새 브랜치 이름...",
@@ -1660,11 +1867,13 @@
       "showBranchInfo": "브랜치 정보 표시",
       "compatibleKeys": "호환",
       "planSupport": "Plan",
-      "byokSupport": "Keys",
+      "byokSupport": "키",
       "incompatible": "비호환",
       "manageModels": "모델 관리",
       "manageKeys": "키 관리",
-      "manageAgents": "Agent 관리"
+      "manageAgents": "Agent 관리",
+      "settings": "Spotlight 설정",
+      "unpinAll": "모두 고정 해제"
     },
     "editorSpotlight": {
       "searchPlaceholder": "명령 검색...",
@@ -1734,11 +1943,6 @@
         "integrations": "Agent 및 통합",
         "market": "마켓",
         "actions": "작업"
-      },
-      "paramLabels": {
-        "repo": "리포지토리",
-        "folder": "폴더",
-        "branch": "브랜치"
       },
       "actions": {
         "showInFinder": {
@@ -1827,11 +2031,11 @@
         }
       },
       "toast": {
-        "repoRemoved": "Linkage to ORGII removed",
-        "repoRemoveFailed": "Failed to remove linkage to ORGII",
-        "workspaceRemoved": "Linkage to ORGII removed",
-        "workspaceRemoveFailed": "Failed to remove linkage to ORGII",
-        "bulkDeleted": "{{count}} linkages to ORGII removed",
+        "repoRemoved": "ORG2 연결이 해제되었습니다",
+        "repoRemoveFailed": "ORG2 연결을 해제하지 못했습니다",
+        "workspaceRemoved": "ORG2 연결이 해제되었습니다",
+        "workspaceRemoveFailed": "ORG2 연결을 해제하지 못했습니다",
+        "bulkDeleted": "ORG2 연결 {{count}}개가 해제되었습니다",
         "bulkDeleteFailed": "{{count}} linkages failed to remove"
       }
     }
@@ -1868,7 +2072,9 @@
     "ramHydratedEvents": "Hydrated 이벤트",
     "ramTurnBodies": "히스토리 lazy load",
     "ramFileTrees": "파일 트리",
-    "ramCodeMirrors": "File rendering"
+    "ramCodeMirrors": "File rendering",
+    "chatSplitRatio": "채팅 패널 비율",
+    "chatSplitRatioHint": "선택하면 바로 적용됩니다. 이후 구분선을 드래그하면 그 값이 우선합니다."
   },
   "spotlightActions": {
     "enableChatPagination": "채팅 페이지 나누기 켜기",
@@ -1886,7 +2092,9 @@
     "searchThemes": "테마 검색...",
     "searchSkins": "스킨 검색...",
     "detectUpdate": "업데이트 확인",
-    "recentlyUsed": "최근 사용"
+    "recentlyUsed": "최근 사용",
+    "openMyStationInNewWindow": "My Station을 새 창에서 열기",
+    "openAgentStationInNewWindow": "Agent Station을 새 창에서 열기"
   },
   "commands": {
     "showBottomPanel": "하단 패널 표시",
@@ -1895,7 +2103,8 @@
     "hidePrimarySidebar": "사이드바 숨기기",
     "searchFiles": "파일 검색",
     "switchWorkspace": "작업 디렉터리 전환 / 추가",
-    "newTab": "새 탭"
+    "newTab": "새 탭",
+    "searchSessions": "세션 검색"
   },
   "gitDashboard": {
     "author": "작성자",
@@ -1929,13 +2138,27 @@
       "viewPullRequests": "Pull Requests 보기"
     },
     "pill": {
-      "focus": "포커스",
-      "allChanges": "모든 변경 사항"
+      "focus": "단일",
+      "allChanges": "전체"
     },
     "scope": {
       "main": "메인 체크아웃",
       "worktrees": "Worktree",
       "switchScopeActive": "Source Control 범위 전환: {{repo}}, {{branch}}"
+    },
+    "fileMenu": {
+      "viewChanges": "변경 사항 보기",
+      "openFileInNewTab": "새 탭에서 파일 열기",
+      "stageChanges": "변경 사항 스테이징",
+      "unstageChanges": "변경 사항 스테이징 취소",
+      "discardChanges": "변경 사항 버리기",
+      "markResolved": "해결됨으로 표시 (스테이징)",
+      "acceptCurrent": "현재 변경 사항 수락 (ours)",
+      "acceptIncoming": "들어오는 변경 사항 수락 (theirs)",
+      "stageChangesCount": "변경 사항 스테이징 ({{count}}개)",
+      "unstageChangesCount": "변경 사항 스테이징 취소 ({{count}}개)",
+      "discardChangesCount": "변경 사항 버리기 ({{count}}개)",
+      "markResolvedCount": "해결됨으로 표시 ({{count}}개)"
     }
   },
   "contextInfo": {
@@ -2076,20 +2299,34 @@
   "selectionMenu": {
     "addToChat": "채팅에 추가",
     "addThisFile": "이 파일 추가",
-    "addLines": "{{from}} – {{to}} 줄 추가"
+    "addLines": "{{from}} – {{to}} 줄 추가",
+    "replyToSelection": "답장",
+    "clearQuotedSelection": "인용 제거",
+    "pinSelection": "고정"
   },
   "browser": {
     "screenshot": {
       "added": "스크린샷이 채팅에 첨부되었습니다",
       "failed": "스크린샷 실패: {{reason}}",
-      "noActivePage": "캡처할 활성 페이지가 없습니다"
+      "noActivePage": "캡처할 활성 페이지가 없습니다",
+      "saved": "스크린샷이 저장되었습니다",
+      "saveFailed": "스크린샷 저장 실패: {{reason}}"
     },
     "selectedElement": {
       "addElement": "요소 추가",
       "sentToChat": "요소가 채팅에 첨부되었습니다"
     },
-    "openedInBrowser": "브라우저에서 열림",
-    "goToBrowser": "브라우저로 이동"
+    "menu": {
+      "pageTheme": "페이지 테마",
+      "themeAuto": "자동",
+      "themeLight": "라이트",
+      "themeDark": "다크",
+      "saveScreenshot": "스크린샷 저장...",
+      "openHtmlFile": "HTML 파일 열기..."
+    },
+    "openHtmlFile": {
+      "failed": "파일 열기 실패: {{reason}}"
+    }
   },
   "controlTower": {
     "sidebar": {
@@ -2101,8 +2338,8 @@
   },
   "globalToolbar": {},
   "quitConfirmation": {
-    "title": "ORG-2를 종료하시겠습니까?",
-    "subtitle": "실행 중인 세션은 현재 상태를 유지합니다. 나중에 ORG-2를 다시 열 수 있습니다.",
+    "title": "ORG2를 종료하시겠습니까?",
+    "subtitle": "실행 중인 세션은 현재 상태를 유지합니다. 나중에 ORG2를 다시 열 수 있습니다",
     "cancel": "취소",
     "confirm": "종료"
   },
@@ -2132,7 +2369,7 @@
   "browserCookieImport": {
     "safari": {
       "needsFullDiskAccess": "Needs Full Disk Access",
-      "explain": "Safari keeps its cookies in a folder macOS protects. Allow ORG2 under Full Disk Access in System Settings, then check again.",
+      "explain": "{{browser}}은(는) macOS가 보호하는 폴더에 쿠키를 저장합니다. 시스템 설정의 전체 디스크 접근 권한에서 ORG2를 허용한 다음 다시 확인하세요",
       "openSettings": "Open System Settings",
       "checkAgain": "Check again"
     },
@@ -2157,7 +2394,7 @@
     "doneSkipped_other": "{{count}} cookies were skipped",
     "empty": {
       "title": "No supported browsers found",
-      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from"
     },
     "category": {
       "banking": "Bank",
@@ -2166,7 +2403,7 @@
     },
     "errors": {
       "openSettingsFailed": "Couldn't open System Settings",
-      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow",
       "listFailed": "Couldn't find browsers to import from",
       "previewFailed": "Couldn't read cookies from that browser",
       "importFailed": "Couldn't import the selected cookies"
@@ -2180,7 +2417,8 @@
     "taskCompletedBody": "“{{name}}” 완료 — 검토할 준비가 되었습니다",
     "openSessionAction": "세션 열기",
     "taskFailedTitle": "작업 실패",
-    "taskFailedBody": "“{{name}}” 실패{{detail}}"
+    "taskFailedBody": "“{{name}}” 실패{{detail}}",
+    "taskFailedPrivateBody": "작업이 실패했습니다. ORG2를 열어 자세한 내용을 확인하세요."
   },
   "documentOpen": {
     "openInDefault": "{{name}}에서 열기",
@@ -2194,22 +2432,6 @@
     "openFailed": "문서를 열 수 없습니다",
     "saveFirst": "다른 애플리케이션에서 열기 전에 변경 사항을 저장하거나 버리세요"
   },
-  "sqlEditor": {
-    "placeholder": "SQL 쿼리를 입력하세요...",
-    "format": "서식 정리",
-    "runQueryToSeeResults": "쿼리를 실행하면 결과가 표시됩니다",
-    "executingQuery": "쿼리 실행 중...",
-    "queryFailed": "쿼리 실패",
-    "queryCompleted": "쿼리 완료",
-    "noResults": "쿼리 결과가 없습니다",
-    "rowCount_one": "{{count}}개 행",
-    "rowCount_other": "{{count}}개 행",
-    "press": "실행하려면",
-    "toRun": "키를 누르세요",
-    "nullValue": "NULL",
-    "booleanTrue": "true",
-    "booleanFalse": "false"
-  },
   "chatImage": {
     "maxReached": "이미지는 최대 {{max}}개까지 허용됩니다",
     "remainingWarning": "이미지를 {{remaining}}개만 더 추가할 수 있습니다 (최대 {{max}}개)",
@@ -2220,5 +2442,42 @@
     "goToSection": "{{label}}(으)로 이동, 섹션 {{current}}/{{total}}",
     "section": "섹션 {{current}}",
     "sectionPosition": "섹션 {{current}}/{{total}}"
+  },
+  "gitLabels": {
+    "contains": "포함된 파일: {{status}}",
+    "staged": "{{status}} (스테이징됨)",
+    "additions": "추가된 줄",
+    "deletions": "삭제된 줄",
+    "M": "수정됨",
+    "U": "추적되지 않음",
+    "A": "추가됨",
+    "D": "삭제됨",
+    "R": "이름 변경됨",
+    "C": "충돌",
+    "I": "무시됨",
+    "?": "알 수 없는 상태"
+  },
+  "findScope": {
+    "session": "세션에서 검색",
+    "file": "파일에서 검색",
+    "named": "{{name}}에서 검색"
+  },
+  "sidebarSettings": {
+    "title": "사이드바 설정",
+    "showSidebar": "사이드바 표시",
+    "colorSourceControlFiles": "파일 변경 색상"
+  },
+  "appMessages": {
+    "testNotificationBody": "ORG2에서 보낸 테스트 알림입니다",
+    "workspaceFile": "ORG2 작업 공간",
+    "sessionJsonFile": "ORG2 세션 JSON",
+    "skillsSource": "ORG2 스킬",
+    "gitServiceUnavailable": "로컬 Git 서비스에 연결할 수 없습니다. 앱 시작이 완료되면 다시 시도하세요. 문제가 계속되면 ORG2를 다시 시작하세요."
+  },
+  "imageActions": {
+    "addToChat": "채팅에 추가",
+    "added": "채팅에 추가됨",
+    "failed": "이미지 작업을 완료하지 못했습니다",
+    "downloadCopy": "사본 다운로드"
   }
 }

@@ -15,6 +15,7 @@
  */
 import React, { useCallback, useState } from "react";
 
+import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
 
@@ -92,15 +93,20 @@ const TagsInput: React.FC<TagsInputProps> = ({
               className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-2 bg-bg-2 pr-2 pl-3 text-[12px] text-text-1"
             >
               <span className="leading-none">{tag}</span>
-              <button
-                type="button"
+              <Button
+                variant="tertiary"
+                size="mini"
+                shape="round"
+                iconOnly
+                icon={
+                  <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={11} />
+                }
+                style={{ width: 16, height: 16 }}
                 disabled={disabled}
                 onClick={() => handleRemove(tag)}
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-50"
+                className="hover:bg-fill-2 hover:text-text-1 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label={removeAriaLabel?.(tag) ?? `Remove ${tag}`}
-              >
-                <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={11} />
-              </button>
+              />
             </span>
           ))}
         </div>

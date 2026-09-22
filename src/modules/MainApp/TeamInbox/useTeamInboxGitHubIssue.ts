@@ -4,11 +4,11 @@ import type {
   GitHubIssue,
   GitHubIssueTimelineItem,
 } from "@src/api/tauri/github";
+import { useGitHubIssueDetailState } from "@src/features/GitHubWork/useGitHubIssueDetailState";
 import type {
   GitHubIssueInteractionConfig,
   GitHubIssueStatusChangeOptions,
 } from "@src/modules/ProjectManager/WorkItems/components/WorkItemContent/types";
-import { useGitHubIssueDetailState } from "@src/modules/shared/hooks/useGitHubIssueDetailState";
 import { workstationIssueDetailScopeKey } from "@src/store/workstation/codeEditor/workstationIssueAtom";
 
 interface UseTeamInboxGitHubIssueOptions {

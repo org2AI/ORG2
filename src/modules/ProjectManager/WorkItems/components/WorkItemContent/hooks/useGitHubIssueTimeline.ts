@@ -7,7 +7,7 @@ import {
   loadGitHubDetailAuthScope,
   loadGitHubIssueTimeline,
   loadGitHubRemoteUrl,
-} from "@src/modules/shared/githubIssueDetailCoordinator";
+} from "@src/features/GitHubWork/githubIssueDetailCoordinator";
 import { parseGithubRepoFullName } from "@src/services/git/operations/createPullRequest";
 import { fetchIssueTimeline } from "@src/services/git/operations/githubIssues";
 

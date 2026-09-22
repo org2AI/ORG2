@@ -111,6 +111,13 @@ impl LLMProvider for CodexNativeClient {
                         message,
                         retry_after_secs: retry_after,
                     },
+                    400 if crate::providers::http_error_body::is_model_unavailable(
+                        code,
+                        body.as_str(),
+                    ) =>
+                    {
+                        ProviderError::ModelNotFound(message)
+                    }
                     404 => ProviderError::ModelNotFound(message),
                     _ => ProviderError::RequestFailed(format!("HTTP {}: {}", code, message)),
                 });

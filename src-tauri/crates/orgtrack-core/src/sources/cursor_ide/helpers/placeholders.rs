@@ -85,7 +85,7 @@ pub(in crate::sources::cursor_ide) fn build_unloaded_turn_placeholder_chunk(
     let summary = summaries_by_turn_id.get(&header.bubble_id);
     let body_event_count = summary
         .map(|cached_summary| cached_summary.body_event_count)
-        .unwrap_or_else(|| turn_headers.len().saturating_sub(1));
+        .unwrap_or_else(|| count_turn_body_bubbles(turn_headers, bubbles_by_id));
     let event_count = summary
         .map(|cached_summary| cached_summary.event_count)
         .unwrap_or(turn_headers.len());

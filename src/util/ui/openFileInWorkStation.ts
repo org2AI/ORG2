@@ -9,24 +9,24 @@
  *
  *   - the file tab is added to the main pane and becomes active (the visible
  *     content host follows the active tab, so this reveals the Code Editor)
- *   - the station mode is flipped to `"my-station"` so the WorkStation is
- *     actually visible
- *   - the chat-panel slot is un-maximized so the WorkStation pane on the
- *     right is exposed (caller may have been viewing Settings full-width)
- *   - **no navigation occurs** — the current route (e.g. settings) stays put
+ *   - `revealMyStation` brings the WorkStation on screen: My Station mode, the
+ *     chat-panel slot un-maximized, and a chat tab the Station may share the
+ *     workbench with
+ *   - **no navigation occurs** from a workbench route — the current route
+ *     (e.g. settings) stays put
  *
  * Use this from the Settings / Integrations surfaces, where the WorkStation
  * is already visible in the right pane and we want to act on a file without
  * yanking the user out of their current view.
  */
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
-import { stationModeAtom } from "@src/store/ui/simulatorAtom";
+import { ROUTES } from "@src/config/routes";
 import {
   createFileTab,
   openWorkstationTabAtom,
   presentedWorkstationWorkspaceKeyAtom,
 } from "@src/store/workstation/tabs";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
+import { revealMyStation } from "@src/util/ui/revealMyStation";
 
 export interface OpenFileInWorkStationOptions {
   /** 1-based line to reveal once the file is open. */
@@ -47,13 +47,7 @@ export function openFileInWorkStation(
   if (trimmed.length === 0) return;
 
   const store = getInstrumentedStore();
-  store.set(stationModeAtom, "my-station");
-  // If the chat-panel slot is maximized (covering the main area), un-maximize
-  // it so the WorkStation pane on the right is actually visible. The caller's
-  // current route (e.g. settings) is preserved.
-  if (store.get(chatPanelMaximizedAtom)) {
-    store.set(chatPanelMaximizedAtom, false);
-  }
+  revealMyStation({ path: ROUTES.workStation.code.path });
 
   const tab = createFileTab(trimmed, {
     targetLine: options?.line,

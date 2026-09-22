@@ -13,7 +13,7 @@ mod resume_state;
 mod shared;
 mod transcript_source;
 
-pub use create::create_session;
+pub use create::{create_session, create_session_with_source};
 pub use delete::delete_session;
 pub use field_updates::{
     link_bootstrap_work_item, update_agent_exec_mode, update_draft_text, update_mode_axes,
@@ -37,6 +37,7 @@ pub use resume_state::{
 };
 pub use transcript_source::{
     latest_native_transcript_id, native_transcript_ids_newest_first, session_persists_chunks,
+    unstarted_native_child_revision,
 };
 
 pub(super) use resume_state::clear_cli_resume_state_with_tx;

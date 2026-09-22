@@ -1,9 +1,9 @@
 ---
 name: create-skill
-description: Create Agent Skills for ORGII. Use when the user wants to create, write, or author a new skill, capture a workflow as a skill, or asks about SKILL.md format, skill structure, or best practices.
+description: Create Agent Skills for ORG2. Use when the user wants to create, write, or author a new skill, capture a workflow as a skill, or asks about SKILL.md format, skill structure, or best practices.
 ---
 
-# Creating Skills in ORGII
+# Creating Skills in ORG2
 
 Skills are markdown files that teach the agent how to perform specific tasks. They appear in the `/` slash menu and are included in the agent's system prompt when relevant.
 

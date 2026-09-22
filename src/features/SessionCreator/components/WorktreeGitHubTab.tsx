@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import SearchInput from "@src/components/SearchInput";
-import { HugeiconsIcon, Loading03Icon, Refresh04Icon } from "@src/icons";
+import { HugeiconsIcon, Loading03Icon } from "@src/icons";
 import type { WorktreeLaunchSource } from "@src/store/session/worktreeLaunchSourceAtom";
 
 import {
@@ -48,34 +48,17 @@ export function WorktreeGitHubTab({
           onChange={onQueryChange}
           showClearButton
           className="min-w-0 flex-1"
-          placeholder={t("creator.worktreeSource.githubSearch", {
-            defaultValue: "Search GitHub PRs and issues",
-          })}
-          ariaLabel={t("creator.worktreeSource.githubSearchAria", {
-            defaultValue: "Search GitHub PRs and issues",
-          })}
+          placeholder={t("creator.worktreeSource.githubSearch")}
+          ariaLabel={t("creator.worktreeSource.githubSearchAria")}
         />
-        <Button
+        <RefreshButton
           variant="secondary"
           size="small"
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={14}
-              strokeWidth={1.8}
-              className={refreshing ? "animate-spin" : undefined}
-            />
-          }
           iconOnly
-          title={t("creator.worktreeSource.refreshGithub", {
-            defaultValue: "Refresh GitHub list",
-          })}
-          aria-label={t("creator.worktreeSource.refreshGithub", {
-            defaultValue: "Refresh GitHub list",
-          })}
-          disabled={!repoPath || state === "loading" || refreshing}
-          onClick={onRefresh}
+          label={t("creator.worktreeSource.refreshGithub")}
+          refreshing={refreshing}
+          disabled={!repoPath || state === "loading"}
+          onRefresh={onRefresh}
         />
       </div>
       <WorktreeSourceList>
@@ -95,24 +78,17 @@ export function WorktreeGitHubTab({
             aria-live="assertive"
             className="flex h-[180px] items-center justify-center px-4 text-center text-[13px] text-text-3"
           >
-            {error ||
-              t("creator.worktreeSource.githubError", {
-                defaultValue: "GitHub items could not be loaded.",
-              })}
+            {error || t("creator.worktreeSource.githubError")}
           </div>
         )}
         {state === "empty" && (
           <div className="flex h-[180px] items-center justify-center px-4 text-center text-[13px] text-text-3">
-            {t("creator.worktreeSource.githubEmpty", {
-              defaultValue: "No open GitHub PRs or issues.",
-            })}
+            {t("creator.worktreeSource.githubEmpty")}
           </div>
         )}
         {state === "ready" && items.length === 0 && (
           <div className="flex h-[180px] items-center justify-center px-4 text-center text-[13px] text-text-3">
-            {t("creator.worktreeSource.githubNoMatches", {
-              defaultValue: "No matches.",
-            })}
+            {t("creator.worktreeSource.githubNoMatches")}
           </div>
         )}
         {state === "ready" && items.length > 0 && (

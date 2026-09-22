@@ -172,6 +172,7 @@ export function ActionSubmenu({
   icon,
   disabled = false,
   dataTestId,
+  observeContentResize = false,
   children,
 }: {
   label: string;
@@ -180,6 +181,8 @@ export function ActionSubmenu({
   icon: React.ReactNode;
   disabled?: boolean;
   dataTestId: string;
+  /** Refit when an asynchronous child changes the flyout dimensions. */
+  observeContentResize?: boolean;
   children: React.ReactNode;
 }) {
   const id = useId();
@@ -196,46 +199,56 @@ export function ActionSubmenu({
   useLayoutEffect(() => {
     if (!open || !rowRef.current || !flyoutRef.current || !panelRef.current)
       return;
-    const row = rowRef.current.getBoundingClientRect();
-    const parent = rowRef.current
-      .closest('[role="menu"]')!
-      .getBoundingClientRect();
-    // Measure the visible panel, not the wrapper's padded hover bridge, so
-    // the shared inter-panel gap is applied exactly once.
-    const panel = panelRef.current.getBoundingClientRect();
-    const padding = DROPDOWN_PANEL.viewportPadding;
-    const leftEdge = parent.left - panel.width - DROPDOWN_PANEL.submenuGap;
-    const opensRight = fitSubmenus && leftEdge < padding;
-    const preferredLeft = opensRight
-      ? parent.right + DROPDOWN_PANEL.submenuGap
-      : leftEdge;
-    const left = Math.max(
-      padding,
-      fitSubmenus
-        ? Math.min(preferredLeft, window.innerWidth - panel.width - padding)
-        : preferredLeft
-    );
-    const top = Math.max(
-      padding,
-      Math.min(
-        row.top - DROPDOWN_PANEL.padding,
-        window.innerHeight - panel.height - padding
-      )
-    );
-    // Set geometry before paint without a second React render. Parent menu
-    // repositioning already rerenders this subtree; no extra resize listener.
-    flyoutRef.current.style.left = `${left - (opensRight ? DROPDOWN_PANEL.submenuGap : 0)}px`;
-    flyoutRef.current.style.top = `${top}px`;
-    flyoutRef.current.style.paddingRight = opensRight
-      ? "0px"
-      : `${DROPDOWN_PANEL.submenuGap}px`;
-    flyoutRef.current.style.paddingLeft = opensRight
-      ? `${DROPDOWN_PANEL.submenuGap}px`
-      : "0px";
-    panelRef.current.dataset.actionMenuSide = opensRight ? "right" : "left";
+    const position = () => {
+      if (!rowRef.current || !flyoutRef.current || !panelRef.current) return;
+      const row = rowRef.current.getBoundingClientRect();
+      const parent = rowRef.current
+        .closest('[role="menu"]')!
+        .getBoundingClientRect();
+      // Measure the visible panel, not the wrapper's padded hover bridge, so
+      // the shared inter-panel gap is applied exactly once.
+      const panel = panelRef.current.getBoundingClientRect();
+      const padding = DROPDOWN_PANEL.viewportPadding;
+      const leftEdge = parent.left - panel.width - DROPDOWN_PANEL.submenuGap;
+      const opensRight = fitSubmenus && leftEdge < padding;
+      const preferredLeft = opensRight
+        ? parent.right + DROPDOWN_PANEL.submenuGap
+        : leftEdge;
+      const left = Math.max(
+        padding,
+        fitSubmenus
+          ? Math.min(preferredLeft, window.innerWidth - panel.width - padding)
+          : preferredLeft
+      );
+      const top = Math.max(
+        padding,
+        Math.min(
+          row.top - DROPDOWN_PANEL.padding,
+          window.innerHeight - panel.height - padding
+        )
+      );
+      // Set geometry before paint without a second React render. Parent menu
+      // repositioning already rerenders this subtree; no extra resize listener.
+      flyoutRef.current.style.left = `${left - (opensRight ? DROPDOWN_PANEL.submenuGap : 0)}px`;
+      flyoutRef.current.style.top = `${top}px`;
+      flyoutRef.current.style.paddingRight = opensRight
+        ? "0px"
+        : `${DROPDOWN_PANEL.submenuGap}px`;
+      flyoutRef.current.style.paddingLeft = opensRight
+        ? `${DROPDOWN_PANEL.submenuGap}px`
+        : "0px";
+      panelRef.current.dataset.actionMenuSide = opensRight ? "right" : "left";
+    };
+    position();
+    const observer =
+      observeContentResize && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(position)
+        : undefined;
+    observer?.observe(panelRef.current);
     if (fitSubmenus && document.activeElement === rowRef.current) {
       panelRef.current.querySelector<HTMLElement>(ACTION_SELECTOR)?.focus();
     }
+    return () => observer?.disconnect();
   });
 
   return (

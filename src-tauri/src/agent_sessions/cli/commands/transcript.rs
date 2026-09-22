@@ -195,8 +195,8 @@ pub struct CliTranscriptLocation {
 pub struct CliTranscriptRevision {
     /// False for legacy DB-chunk sessions, which have no provider file.
     native: bool,
-    /// Opaque provider-file-set token. `None` for an unbound or unavailable
-    /// native transcript; callers must not treat that snapshot as stable.
+    /// Opaque provider-file-set or proven unstarted-child token. `None` for
+    /// unavailable/ambiguous native history; that snapshot is not stable.
     revision: Option<String>,
 }
 
@@ -253,7 +253,11 @@ fn load_cli_transcript_revision(session_id: &str) -> Result<CliTranscriptRevisio
     let Some(native_id) = persistence::get_cli_session_id_for_account(session_id, account_id)
         .map_err(|error| format!("read native binding for {session_id}: {error}"))?
     else {
-        return Ok(unavailable());
+        return Ok(CliTranscriptRevision {
+            native: true,
+            revision: persistence::unstarted_native_child_revision(session_id)
+                .map_err(|error| format!("read unstarted native child {session_id}: {error}"))?,
+        });
     };
 
     let exact_revision = super::super::native_materializer::materialized_cli_transcript_revision(
@@ -384,7 +388,7 @@ pub async fn cli_agent_chunks(session_id: String) -> Result<Vec<ActivityChunk>, 
     result
 }
 
-pub(super) fn load_session_chunks(session_id: &str) -> Result<Vec<ActivityChunk>, String> {
+pub(crate) fn load_session_chunks(session_id: &str) -> Result<Vec<ActivityChunk>, String> {
     let session = persistence::get_session(session_id).map_err(|e| format!("DB error: {}", e))?;
     if let Some(session) = session.as_ref() {
         if let Some(mut chunks) = load_native_transcript_chunks(session)? {
@@ -477,3 +481,7 @@ pub async fn cli_agent_truncate_after_chunk(
     .await
     .map_err(|e| format!("Task error: {}", e))?
 }
+
+#[cfg(test)]
+#[path = "transcript_revision_tests.rs"]
+mod transcript_revision_tests;

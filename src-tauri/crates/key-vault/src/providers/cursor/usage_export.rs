@@ -31,7 +31,9 @@ mod types;
 
 pub use commands::{
     __cmd__cursor_archive_billing_usage_cache, __cmd__cursor_read_billing_usage_page,
-    __cmd__cursor_sync_billing_usage, cursor_archive_billing_usage_cache,
+    __cmd__cursor_sync_billing_usage, __tauri_command_name_cursor_archive_billing_usage_cache,
+    __tauri_command_name_cursor_read_billing_usage_page,
+    __tauri_command_name_cursor_sync_billing_usage, cursor_archive_billing_usage_cache,
     cursor_read_billing_usage_page, cursor_sync_billing_usage, sync_key_vault_cursor_billing_usage,
 };
 pub use coordinator::CursorUsageExporter;

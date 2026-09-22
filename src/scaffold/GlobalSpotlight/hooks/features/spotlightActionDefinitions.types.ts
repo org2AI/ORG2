@@ -6,7 +6,7 @@
  * `spotlightActionDefinitions.ts` so the type surface can be imported
  * without pulling in the action tables (and their icon imports).
  */
-import type { ActionId } from "@src/ActionSystem";
+import type { ActionId } from "@src/scaffold/ActionSystem";
 
 import type { SpotlightItem } from "../../types";
 
@@ -42,6 +42,8 @@ export type SpotlightStaticActionId =
   | "disable-dock-auto-hide"
   | "open-my-station"
   | "open-agent-station"
+  | "open-my-station-window"
+  | "open-agent-station-window"
   | "open-kanban"
   | "zoom-in"
   | "zoom-out"
@@ -79,6 +81,8 @@ export type SpotlightStaticActionFallback =
   | "toggle-chat-panel"
   | "open-my-station"
   | "open-agent-station"
+  | "open-my-station-window"
+  | "open-agent-station-window"
   | "open-kanban"
   | "open-search-sidebar"
   | "open-source-control-tab"

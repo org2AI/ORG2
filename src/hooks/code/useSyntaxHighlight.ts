@@ -189,5 +189,3 @@ export function clearSyntaxHighlightCache(): void {
   highlightCache.clear();
   highlightCacheBytes = 0;
 }
-
-export default useSyntaxHighlight;

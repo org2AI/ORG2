@@ -1,7 +1,7 @@
 /** Derive a human-readable device label from the mobile browser environment. */
 export function resolveMobileDeviceLabel(): string {
   if (typeof navigator === "undefined") {
-    return "ORGII Mobile";
+    return "ORG2 Mobile";
   }
 
   const ua = navigator.userAgent;
@@ -38,5 +38,5 @@ export function resolveMobileDeviceLabel(): string {
     return platform.slice(0, 40);
   }
 
-  return "ORGII Mobile";
+  return "ORG2 Mobile";
 }

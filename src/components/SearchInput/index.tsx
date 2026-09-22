@@ -6,7 +6,7 @@
  * - "panel": For in-editor search (with border, navigation arrows)
  * - "sidebar": For sidebar search (borderless, minimal style)
  *
- * Single-line <input> uses inline styles with line-height equal to row height (28px)
+ * Shared Input uses element styles with line-height equal to row height (28px)
  * so text aligns with prefix icons; see searchControlInputStyles.ts.
  *
  * [chevron] [Search icon] [input] [Aa] [ab] [o*] [book] [↑] [↓]
@@ -14,11 +14,10 @@
 import React, { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  HEADER_BUTTON,
-  HEADER_ICON_SIZE,
-} from "@src/config/workstation/tokens";
-import { useTauriSelectAllShortcut } from "@src/hooks/keyboard";
+import Button from "@src/components/Button";
+import Input from "@src/components/Input";
+import Textarea from "@src/components/Textarea";
+import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import {
   ArrowDown01Icon,
   ArrowDown02Icon,
@@ -145,25 +144,17 @@ export const SearchInput: React.FC<SearchInputProps> = memo(
     inputBoxClassName = "",
   }) => {
     const { t } = useTranslation();
-    const handleChange = useCallback(
-      (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        onChange(event.target.value);
-      },
-      [onChange]
-    );
-
-    const tauriSelectAll = useTauriSelectAllShortcut();
 
     const handleKeyDown = useCallback(
       (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (event.nativeEvent.isComposing || event.keyCode === 229) return;
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();
           onSubmit?.();
           return;
         }
-        tauriSelectAll(event);
       },
-      [onSubmit, tauriSelectAll]
+      [onSubmit]
     );
 
     const handleClear = useCallback(() => {
@@ -196,7 +187,7 @@ export const SearchInput: React.FC<SearchInputProps> = memo(
       ? "flex items-center gap-2.5"
       : "flex items-center gap-3";
 
-    // Single wrapper div — Tailwind for layout, .input SCSS class on the <input> for centering
+    // The search shell owns the border and action layout; shared fields stay bare.
     const inputWrapperClass = isSidebar
       ? SEARCH_WRAPPER_SIDEBAR
       : SEARCH_WRAPPER_PANEL;
@@ -216,7 +207,6 @@ export const SearchInput: React.FC<SearchInputProps> = memo(
       ? "flex items-center justify-center rounded text-text-3 transition-colors hover:bg-fill-1"
       : "flex items-center justify-center rounded p-1 text-text-3 transition-colors hover:bg-fill-1";
 
-    const actionButtonClass = HEADER_BUTTON.action;
     const iconSize = HEADER_ICON_SIZE.sm;
 
     // In multiline mode the wrapper is top-aligned (see searchWrapperMultiline) so
@@ -263,15 +253,19 @@ export const SearchInput: React.FC<SearchInputProps> = memo(
             />
           )}
           {multiline ? (
-            <textarea
+            <Textarea
+              appearance="bare"
+              size="small"
+              resize="none"
               ref={inputRef as React.RefObject<HTMLTextAreaElement>}
               value={value}
-              onChange={handleChange}
+              onChange={(value) => onChange(value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               aria-label={ariaLabel}
-              style={searchControlMultilineInputStyle(14)}
-              className={`min-w-0 flex-1 text-text-1 placeholder:text-text-3 ${inputClassName}`}
+              textareaStyle={searchControlMultilineInputStyle(14)}
+              className="min-w-0 flex-1"
+              textareaClassName={`text-text-1 placeholder:text-text-3 ${inputClassName}`}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -282,16 +276,20 @@ export const SearchInput: React.FC<SearchInputProps> = memo(
               }
             />
           ) : (
-            <input
+            <Input
+              autoHeight
+              appearance="bare"
+              size="small"
               ref={inputRef as React.RefObject<HTMLInputElement>}
               type="text"
               value={value}
-              onChange={handleChange}
+              onChange={(value) => onChange(value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               aria-label={ariaLabel}
-              style={searchControlSingleLineInputStyle(14)}
-              className={`min-w-0 flex-1 text-text-1 placeholder:text-text-3 ${inputClassName}`}
+              inputStyle={searchControlSingleLineInputStyle(14)}
+              className="min-w-0 flex-1 [&>.input-inner]:border-0!"
+              inputClassName={`text-text-1 placeholder:text-text-3 ${inputClassName}`}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -299,96 +297,104 @@ export const SearchInput: React.FC<SearchInputProps> = memo(
             />
           )}
           {showClearButton && value && (
-            <button
-              type="button"
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              aria-label={t("tooltips.clearSearch")}
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={Cancel01Icon}
+                  data-icon="x"
+                  size={iconSize}
+                />
+              }
               onClick={handleClear}
-              className={`flex shrink-0 items-center justify-center ${inlineButtonAlignClass} rounded p-0.5 text-text-3 transition-colors hover:text-text-2`}
+              className={`shrink-0 ${inlineButtonAlignClass}`}
               style={inlineButtonStyle}
               title={t("tooltips.clearSearch")}
-            >
-              <HugeiconsIcon
-                icon={Cancel01Icon}
-                data-icon="x"
-                size={iconSize}
-              />
-            </button>
+            />
           )}
 
           {onCaseSensitiveToggle && (
-            <button
-              type="button"
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              aria-pressed={caseSensitive}
+              aria-label={t("tooltips.matchCase")}
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={CaseSensitiveIcon}
+                  data-icon="case-sensitive"
+                  size={iconSize}
+                />
+              }
               onClick={onCaseSensitiveToggle}
-              className={`flex shrink-0 items-center justify-center ${inlineButtonAlignClass} rounded p-0.5 transition-colors ${
-                caseSensitive
-                  ? "text-primary-6 hover:text-primary-5"
-                  : "text-text-2 hover:text-text-1"
-              }`}
+              className={`shrink-0 ${inlineButtonAlignClass}`}
               style={inlineButtonStyle}
               title={t("tooltips.matchCase")}
-            >
-              <HugeiconsIcon
-                icon={CaseSensitiveIcon}
-                data-icon="case-sensitive"
-                size={iconSize}
-              />
-            </button>
+            />
           )}
           {onWholeWordToggle && (
-            <button
-              type="button"
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              aria-pressed={wholeWord}
+              aria-label={t("tooltips.matchWholeWord")}
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={WholeWordIcon}
+                  data-icon="whole-word"
+                  size={iconSize}
+                />
+              }
               onClick={onWholeWordToggle}
-              className={`flex shrink-0 items-center justify-center ${inlineButtonAlignClass} rounded p-0.5 transition-colors ${
-                wholeWord
-                  ? "text-primary-6 hover:text-primary-5"
-                  : "text-text-2 hover:text-text-1"
-              }`}
+              className={`shrink-0 ${inlineButtonAlignClass}`}
               style={inlineButtonStyle}
               title={t("tooltips.matchWholeWord")}
-            >
-              <HugeiconsIcon
-                icon={WholeWordIcon}
-                data-icon="whole-word"
-                size={iconSize}
-              />
-            </button>
+            />
           )}
           {onRegexToggle && (
-            <button
-              type="button"
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              aria-pressed={useRegex}
+              aria-label={t("tooltips.useRegex")}
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={RegexIcon}
+                  data-icon="regex"
+                  size={iconSize}
+                />
+              }
               onClick={onRegexToggle}
-              className={`flex shrink-0 items-center justify-center ${inlineButtonAlignClass} rounded p-0.5 transition-colors ${
-                useRegex
-                  ? "text-primary-6 hover:text-primary-5"
-                  : "text-text-2 hover:text-text-1"
-              }`}
+              className={`shrink-0 ${inlineButtonAlignClass}`}
               style={inlineButtonStyle}
               title={t("tooltips.useRegex")}
-            >
-              <HugeiconsIcon
-                icon={RegexIcon}
-                data-icon="regex"
-                size={iconSize}
-              />
-            </button>
+            />
           )}
           {onOnlyOpenFilesToggle && (
-            <button
-              type="button"
+            <Button
+              variant="tertiary"
+              size="sidebar"
+              aria-pressed={onlyOpenFiles}
+              aria-label={t("tooltips.searchInOpenEditors")}
+              iconOnly
+              icon={
+                <HugeiconsIcon
+                  icon={BookOpen01Icon}
+                  data-icon="book-open"
+                  size={iconSize}
+                />
+              }
               onClick={onOnlyOpenFilesToggle}
-              className={`flex shrink-0 items-center justify-center ${inlineButtonAlignClass} rounded p-0.5 transition-colors ${
-                onlyOpenFiles
-                  ? "text-primary-6 hover:text-primary-5"
-                  : "text-text-2 hover:text-text-1"
-              }`}
+              className={`shrink-0 ${inlineButtonAlignClass}`}
               style={inlineButtonStyle}
               title={t("tooltips.searchInOpenEditors")}
-            >
-              <HugeiconsIcon
-                icon={BookOpen01Icon}
-                data-icon="book-open"
-                size={iconSize}
-              />
-            </button>
+            />
           )}
         </div>
 
@@ -396,44 +402,57 @@ export const SearchInput: React.FC<SearchInputProps> = memo(
         {(onPrevious || onNext) && (
           <div className="flex items-center gap-1.5">
             {onPrevious && (
-              <button
-                type="button"
+              <Button
+                variant="tertiary"
+                size="sidebar"
+                aria-label={t("tooltips.previousMatch")}
+                iconOnly
+                icon={
+                  <HugeiconsIcon
+                    icon={ArrowUp02Icon}
+                    data-icon="arrow-up"
+                    size={iconSize}
+                  />
+                }
                 onClick={onPrevious}
-                className={actionButtonClass}
                 title={t("tooltips.previousMatch")}
-              >
-                <HugeiconsIcon
-                  icon={ArrowUp02Icon}
-                  data-icon="arrow-up"
-                  size={iconSize}
-                />
-              </button>
+              />
             )}
             {onNext && (
-              <button
-                type="button"
+              <Button
+                variant="tertiary"
+                size="sidebar"
+                aria-label={t("tooltips.nextMatch")}
+                iconOnly
+                icon={
+                  <HugeiconsIcon
+                    icon={ArrowDown02Icon}
+                    data-icon="arrow-down"
+                    size={iconSize}
+                  />
+                }
                 onClick={onNext}
-                className={actionButtonClass}
                 title={t("tooltips.nextMatch")}
-              >
-                <HugeiconsIcon
-                  icon={ArrowDown02Icon}
-                  data-icon="arrow-down"
-                  size={iconSize}
-                />
-              </button>
+              />
             )}
           </div>
         )}
         {onClose && (
-          <button
-            type="button"
+          <Button
+            variant="tertiary"
+            size="sidebar"
+            aria-label={t("tooltips.closeEsc")}
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                data-icon="x"
+                size={iconSize}
+              />
+            }
             onClick={onClose}
-            className={actionButtonClass}
             title={t("tooltips.closeEsc")}
-          >
-            <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={iconSize} />
-          </button>
+          />
         )}
       </div>
     );

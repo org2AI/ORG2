@@ -116,9 +116,8 @@ export function useChatEventReplay(): UseChatEventReplayReturn {
       set(chatPanelMaximizedAtom, false);
       set(stationModeAtom, "agent-station");
 
-      // Set event first — this is the primary navigation action.
-      // Order matters: replayMode must be "replay" before currentEventId
-      // so appendEventsAtom (which checks mode) doesn't auto-follow.
+      // Enter replay mode before selecting the event so navigation stays
+      // on the requested event rather than following live activity.
       set(replayModeAtom, "replay");
       set(currentEventIdAtom, resolvedEventId);
 

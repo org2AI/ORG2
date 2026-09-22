@@ -10,8 +10,8 @@ import {
 } from "@src/engines/ChatPanel/blocks/primitives";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { getChatLazyComponent } from "@src/engines/SessionCore/rendering/registry/events";
-import { ActivitySparkIcon, HugeiconsIcon, WaypointsIcon } from "@src/icons";
-import { getRegistryEventType } from "@src/lib/activityData/activityNormalizers";
+import { ActivitySparkIcon, HugeiconsIcon } from "@src/icons";
+import { getRegistryEventType } from "@src/util/data/activityData/activityNormalizers";
 import { getToolDisplayLabelFromRegistry } from "@src/util/ui/rendering/registryToolLabel";
 import { deriveToolAction } from "@src/util/ui/rendering/toolAction";
 
@@ -97,9 +97,9 @@ const WorkActivityGroup = memo(function WorkActivityGroup({
             : (browserPresentation?.label ??
               getToolDisplayLabelFromRegistry(canonical, sharedAction));
   const icon =
-    group === "mixed" || group === "explore" ? (
+    group === "mixed" ? (
       <HugeiconsIcon
-        icon={group === "mixed" ? ActivitySparkIcon : WaypointsIcon}
+        icon={ActivitySparkIcon}
         size={SESSION_UI_TOKENS.ICON.SIZE_SM}
         className="text-text-2"
       />
@@ -109,7 +109,9 @@ const WorkActivityGroup = memo(function WorkActivityGroup({
           ? "run_shell"
           : group === "edit"
             ? "edit_file"
-            : toolActivityCanonical(events[0]),
+            : group === "explore"
+              ? "read_file"
+              : toolActivityCanonical(events[0]),
         { size: SESSION_UI_TOKENS.ICON.SIZE_SM, className: "text-text-2" }
       )
     );

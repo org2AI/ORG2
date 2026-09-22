@@ -4,6 +4,7 @@ import {
   MODEL_GROUP_SORT_MODE,
   getDefaultEnabledModels,
   getModelFamily,
+  groupLabelForAgent,
   groupModels,
   isLegacyGroup,
   sortModelGroups,
@@ -106,6 +107,35 @@ describe("modelGrouping current thresholds", () => {
     expect(getModelFamily("default")).toBe("Cursor");
     expect(getModelFamily("auto")).toBe("Cursor");
     expect(getModelFamily("premium")).toBe("Cursor");
+  });
+
+  it("names Cursor's routing tiers when the owning key is Cursor", () => {
+    const groups = groupModels(["default", "auto", "premium"], "cursor_cli");
+    const byLabel = new Map(groups.map((group) => [group.label, group]));
+
+    expect(byLabel.get("Auto (Cursor picks)")?.models).toEqual(["default"]);
+    expect(byLabel.get("Auto")?.models).toEqual(["auto"]);
+    expect(byLabel.get("Premium")?.models).toEqual(["premium"]);
+  });
+
+  it("leaves tier labels alone for non-Cursor owners", () => {
+    const groups = groupModels(["default"], "claude_code");
+
+    expect(groups[0].label).toBe("Default");
+  });
+
+  it("relabels a tier group once the owner is known", () => {
+    const [group] = groupModels(["default"]);
+
+    expect(groupLabelForAgent(group, "cursor_cli")).toBe("Auto (Cursor picks)");
+    expect(groupLabelForAgent(group, "claude_code")).toBe("Default");
+    expect(groupLabelForAgent(group)).toBe("Default");
+  });
+
+  it("never relabels a group that is not a routing tier", () => {
+    const [group] = groupModels(["composer-2.5"]);
+
+    expect(groupLabelForAgent(group, "cursor_cli")).toBe(group.label);
   });
 
   it("groups cursor-hosted grok variants by family", () => {
@@ -274,6 +304,70 @@ describe("sortModelGroups", () => {
 });
 
 describe("getDefaultEnabledModels", () => {
+  it.each([
+    ["GPT", "gpt-5.4", ["gpt-5.5", "gpt-5.10", "gpt-6", "gpt-7"]],
+    ["GLM", "glm-5", ["glm-5.1", "glm-5.4", "glm-5.10", "glm-6", "glm-7"]],
+    ["Gemini", "gemini-1.5", ["gemini-2", "gemini-3", "gemini-7"]],
+    [
+      "Composer",
+      "composer-1.4",
+      ["composer-1.5", "composer-1.10", "composer-2"],
+    ],
+    ["O-series", "o5.3", ["o5.4", "o5.10", "o6", "o7"]],
+    [
+      "MiniMax",
+      "minimax-m2.6",
+      ["minimax-m2.7", "minimax-m2.10", "minimax-m3"],
+    ],
+    [
+      "Opus",
+      "claude-opus-4-7",
+      ["claude-opus-4-8", "claude-opus-4-10", "claude-opus-5", "claude-opus-6"],
+    ],
+    [
+      "Sonnet",
+      "claude-sonnet-4-7",
+      ["claude-sonnet-4-8", "claude-sonnet-5", "claude-sonnet-6"],
+    ],
+    [
+      "Haiku",
+      "claude-haiku-4-7",
+      ["claude-haiku-4-8", "claude-haiku-5", "claude-haiku-6"],
+    ],
+    [
+      "Fable",
+      "claude-fable-4",
+      ["claude-fable-5", "claude-fable-5-4", "claude-fable-6"],
+    ],
+    ["Mythos", "claude-mythos-4", ["claude-mythos-5", "claude-mythos-6"]],
+  ])(
+    "preselects %s at or above its minimum without an upper limit",
+    (_, older, current) => {
+      expect(getDefaultEnabledModels([older, ...current]).sort()).toEqual(
+        [...current].sort()
+      );
+    }
+  );
+
+  it("preselects GPT 6+, Opus 5+, and Fable 5+ for new accounts", () => {
+    const current = [
+      "gpt-6",
+      "gpt-6-astra",
+      "gpt-6.1",
+      "gpt-7",
+      "claude-opus-5",
+      "claude-opus-5-1",
+      "claude-opus-6",
+      "claude-fable-5",
+      "claude-fable-5-1",
+      "claude-fable-6",
+    ];
+    expect(getDefaultEnabledModels(current).sort()).toEqual(
+      [...current].sort()
+    );
+    expect(getDefaultEnabledModels(["gpt-6-2026-09-16"])).toEqual([]);
+  });
+
   it("preselects only current Zhipu GLM lines by default", () => {
     const enabled = getDefaultEnabledModels([
       "glm-4.7",

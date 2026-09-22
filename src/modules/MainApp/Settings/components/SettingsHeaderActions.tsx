@@ -2,8 +2,10 @@
 import React, { useState } from "react";
 
 import Dropdown from "@src/components/Dropdown";
+import DropdownActionItem from "@src/components/Dropdown/DropdownActionItem";
 import {
   DROPDOWN_CLASSES,
+  DROPDOWN_ITEM,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
@@ -42,6 +44,7 @@ const HeaderIconButton: React.FC<HeaderIconButtonProps> = ({ item }) => {
     <TabBarTrailingIconButton
       title={title}
       nativeTitle={!item.tooltipContent}
+      tooltipDisabled={Boolean(item.tooltipContent)}
       onClick={item.onClick}
       disabled={item.disabled}
       aria-label={title}
@@ -58,7 +61,7 @@ const HeaderIconButton: React.FC<HeaderIconButtonProps> = ({ item }) => {
     <Tooltip
       content={item.tooltipContent}
       position="bottom-end"
-      mouseEnterDelay={200}
+      kind="button"
       framedPanel
     >
       <span className="inline-flex">{button}</span>
@@ -79,31 +82,29 @@ const CompactPlusDropdown: React.FC<CompactPlusDropdownProps> = ({
 
   const droplist = (
     <div
-      className={`${DROPDOWN_CLASSES.menuPanelBase} ${DROPDOWN_WIDTHS.wideMenuClass}`}
+      className={`${DROPDOWN_CLASSES.menuPanelBase} ${DROPDOWN_WIDTHS.sidebarMenuClass}`}
     >
       {items.map((item) => {
         const icon = item.icon;
         return (
-          <button
+          <DropdownActionItem
             key={item.id}
-            type="button"
+            icon={
+              <HugeiconsIcon
+                icon={icon}
+                size={DROPDOWN_ITEM.iconSize}
+                strokeWidth={1.75}
+                className="text-text-1"
+              />
+            }
             data-testid={`settings-plus-dropdown-item-${item.id}`}
             onClick={() => {
               setOpen(false);
               item.onClick();
             }}
-            className={DROPDOWN_CLASSES.menuActionItem}
           >
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <HugeiconsIcon
-                icon={icon}
-                size={HEADER_ICON_SIZE.sm}
-                strokeWidth={1.75}
-                className="text-text-1"
-              />
-              <span className="truncate">{item.label}</span>
-            </span>
-          </button>
+            {item.label}
+          </DropdownActionItem>
         );
       })}
     </div>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import SearchInput from "@src/components/SearchInput";
 import {
@@ -9,7 +9,6 @@ import {
   FolderClosedIcon,
   HugeiconsIcon,
   Loading03Icon,
-  Refresh04Icon,
   WorkflowCircle05Icon,
 } from "@src/icons";
 import type { WorktreeLaunchSource } from "@src/store/session/worktreeLaunchSourceAtom";
@@ -30,6 +29,7 @@ import type {
 } from "./worktreeBranchSource";
 
 const BRANCH_GROUP_LABEL_FALLBACK = {
+  defaultBranches: "Default Branches",
   recent: "Recent",
   worktrees: "Worktrees",
   otherBranches: "Other Branches",
@@ -103,34 +103,17 @@ export function WorktreeBranchTab({
           onChange={onQueryChange}
           showClearButton
           className="min-w-0 flex-1"
-          placeholder={t("creator.worktreeSource.branchSearch", {
-            defaultValue: "Search branches or enter a ref",
-          })}
-          ariaLabel={t("creator.worktreeSource.branchSearchAria", {
-            defaultValue: "Search branches or enter a base ref",
-          })}
+          placeholder={t("creator.worktreeSource.branchSearch")}
+          ariaLabel={t("creator.worktreeSource.branchSearchAria")}
         />
-        <Button
+        <RefreshButton
           variant="secondary"
           size="small"
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={14}
-              strokeWidth={1.8}
-              className={refreshing ? "animate-spin" : undefined}
-            />
-          }
           iconOnly
-          title={t("creator.worktreeSource.refreshBranches", {
-            defaultValue: "Refresh branch list",
-          })}
-          aria-label={t("creator.worktreeSource.refreshBranches", {
-            defaultValue: "Refresh branch list",
-          })}
-          disabled={!repoPath || state === "loading" || refreshing}
-          onClick={onRefresh}
+          label={t("creator.worktreeSource.refreshBranches")}
+          refreshing={refreshing}
+          disabled={!repoPath || state === "loading"}
+          onRefresh={onRefresh}
         />
       </div>
 
@@ -151,30 +134,19 @@ export function WorktreeBranchTab({
             aria-live="assertive"
             className="flex h-[180px] flex-col items-center justify-center gap-2 px-4 text-center text-[13px] text-text-3"
           >
-            <span>
-              {error ||
-                t("creator.worktreeSource.branchError", {
-                  defaultValue: "Branches could not be loaded.",
-                })}
-            </span>
+            <span>{error || t("creator.worktreeSource.branchError")}</span>
             {customRefRow}
           </div>
         )}
         {state === "empty" && (
           <div className="flex h-[180px] flex-col items-center justify-center gap-2 px-4 text-center text-[13px] text-text-3">
-            <span>
-              {t("creator.worktreeSource.branchEmpty", {
-                defaultValue: "No branches found in this repository.",
-              })}
-            </span>
+            <span>{t("creator.worktreeSource.branchEmpty")}</span>
             {customRefRow}
           </div>
         )}
         {state === "ready" && groups.length === 0 && !offerCustomRef && (
           <div className="flex h-[180px] items-center justify-center px-4 text-center text-[13px] text-text-3">
-            {t("creator.worktreeSource.branchNoMatches", {
-              defaultValue: "No matching branches.",
-            })}
+            {t("creator.worktreeSource.branchNoMatches")}
           </div>
         )}
         {state === "ready" && (groups.length > 0 || offerCustomRef) && (

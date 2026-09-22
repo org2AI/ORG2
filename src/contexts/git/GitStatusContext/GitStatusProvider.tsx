@@ -53,8 +53,6 @@ import type {
   StartupState,
 } from "./types";
 
-export { GitStatusContext } from "./context";
-
 // ============================================
 // Provider
 // ============================================

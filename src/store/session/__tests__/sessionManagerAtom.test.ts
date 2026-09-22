@@ -1,8 +1,8 @@
 /**
  * Session atom derived values and helpers — pure logic tests.
  *
- * Tests the pure helpers (`isValidSessionUUID`, `sessionByIdAtom` cache),
- * and derived atoms (`sessionsAtom`, `sessionMapAtom`, `validSessionIdsAtom`)
+ * Tests the `sessionByIdAtom` cache and the derived atoms
+ * (`sessionsAtom`, `sessionMapAtom`, `validSessionIdsAtom`)
  * using a raw Jotai store to avoid React/hook machinery.
  */
 import { createStore } from "jotai";
@@ -16,7 +16,6 @@ import {
   sessionsAtom,
   validSessionIdsAtom,
 } from "../sessionAtom/atoms";
-import { isValidSessionUUID } from "../sessionAtom/helpers";
 import type { Session } from "../sessionAtom/types";
 
 vi.mock("@src/util/core/state/instrumentedStore", () => ({
@@ -43,30 +42,6 @@ function makeStore(sessions: Session[] = []) {
   store.set(sessionsAtom, sessions);
   return store;
 }
-
-describe("isValidSessionUUID", () => {
-  it("accepts a valid v4 UUID", () => {
-    expect(isValidSessionUUID("f47ac10b-58cc-4372-a567-0e02b2c3d479")).toBe(
-      true
-    );
-    expect(isValidSessionUUID("550e8400-e29b-4d34-a716-446655440000")).toBe(
-      true
-    );
-  });
-
-  it("rejects empty string", () => {
-    expect(isValidSessionUUID("")).toBe(false);
-  });
-
-  it("rejects malformed IDs", () => {
-    expect(isValidSessionUUID("not-a-uuid")).toBe(false);
-    expect(isValidSessionUUID("1234-5678")).toBe(false);
-    // v1 UUID (version bit = 1) rejected by v4 regex
-    expect(isValidSessionUUID("550e8400-e29b-1d34-a716-446655440000")).toBe(
-      false
-    );
-  });
-});
 
 describe("sessionMapAtom", () => {
   it("is empty with no sessions", () => {

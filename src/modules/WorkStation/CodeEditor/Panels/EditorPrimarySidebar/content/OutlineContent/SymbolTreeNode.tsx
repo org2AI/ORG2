@@ -1,11 +1,12 @@
 import React, { memo, useCallback, useMemo } from "react";
 
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import {
   CHEVRON_SIZE,
   TreeRowBase,
   type TreeRowNode,
 } from "@src/components/TreeRow";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
+import { HugeiconsIcon } from "@src/icons";
 
 import { SYMBOL_COLORS, SYMBOL_ICONS } from "./config";
 import type { OutlineSymbol } from "./types";
@@ -40,21 +41,11 @@ const SymbolTreeNode: React.FC<SymbolTreeNodeProps> = memo(
         expanded: symbol.expanded,
         icon: hasChildren ? (
           <div className="flex h-4 w-4 items-center justify-center">
-            {symbol.expanded ? (
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                data-icon="chevron-down"
-                size={CHEVRON_SIZE}
-                className="text-text-3"
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                data-icon="chevron-right"
-                size={CHEVRON_SIZE}
-                className="text-text-3"
-              />
-            )}
+            <DisclosureChevron
+              expanded={symbol.expanded}
+              size={CHEVRON_SIZE}
+              className="text-text-3"
+            />
           </div>
         ) : (
           <HugeiconsIcon icon={Icon} size={16} className={colorClass} />

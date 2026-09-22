@@ -103,17 +103,12 @@ export function getSystemThemeId(): GlobalThemeId {
   return getSystemColorScheme() === APPEARANCE_MODE.DARK ? "dark" : "light";
 }
 
-export function getSystemThemeEnglishLabel(
-  colorScheme: SystemColorScheme = getSystemColorScheme()
-): "Light" | "Dark" {
-  return colorScheme === APPEARANCE_MODE.DARK ? "Dark" : "Light";
-}
-
 export function getFollowSystemThemeLabel(
-  colorScheme: SystemColorScheme = getSystemColorScheme(),
-  followSystemLabel = "Follow system"
+  colorScheme: SystemColorScheme,
+  followSystemLabel: string,
+  themeLabels: Record<SystemColorScheme, string>
 ): string {
-  return `${followSystemLabel} (${getSystemThemeEnglishLabel(colorScheme)})`;
+  return `${followSystemLabel} (${themeLabels[colorScheme]})`;
 }
 
 export function normalizeGlobalThemeId(

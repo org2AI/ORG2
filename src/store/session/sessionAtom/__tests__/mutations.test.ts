@@ -28,6 +28,10 @@ import {
   chatSearchSyncAtomFamily,
 } from "@src/store/ui/chatPanel/miscAtoms";
 import {
+  cellReplayKey,
+  cellReplayStatesAtom,
+} from "@src/store/ui/simulatorAtom";
+import {
   createInstrumentedStore,
   getInstrumentedStore,
   resetInstrumentedStore,
@@ -374,6 +378,23 @@ describe("removeSession", () => {
     after.forEach((atomAfter, index) => {
       expect(atomAfter).not.toBe(before[index]);
     });
+  });
+
+  it("removes replay overrides for the deleted session without disturbing another session", async () => {
+    const { store } = await loadModule();
+    const removedKey = cellReplayKey("sess-replay", "review");
+    const keptKey = cellReplayKey("other-session", "review");
+    store.set(cellReplayStatesAtom, {
+      [removedKey]: {
+        currentIndex: 1,
+        isPlaying: false,
+        hasUserOverride: true,
+      },
+      [keptKey]: { currentIndex: 3, isPlaying: false, hasUserOverride: true },
+    });
+    mutations.removeSession("sess-replay");
+    expect(store.get(cellReplayStatesAtom)[removedKey]).toBeUndefined();
+    expect(store.get(cellReplayStatesAtom)[keptKey]?.currentIndex).toBe(3);
   });
 
   it("clears an abandoned image draft", async () => {

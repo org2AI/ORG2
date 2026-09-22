@@ -486,7 +486,7 @@ export interface E2EHelpers {
   debugSessionOrgRuntimeSnapshot: (
     sessionId: string
   ) => Promise<Result<{ snapshot: Json }>>;
-  debugAgentOrgEnableRedesign: () => Promise<Result<{ enabled: true }>>;
+  debugAgentOrgEnable: () => Promise<Result<{ enabled: true }>>;
   debugSessionExecuteTool: (
     sessionId: string,
     toolName: string,
@@ -531,6 +531,11 @@ export interface E2EHelpers {
       selectedApp?: "CODE_EDITOR" | "CHANNELS";
     }
   ) => Promise<Result<{ eventCount: number; chatEventCount: number }>>;
+  streamChatEventText: (
+    sessionId: string,
+    eventId: string,
+    displayText: string
+  ) => Promise<Result<{ eventId: string }>>;
   seedPersistedCachedSession: (input: {
     sessionId: string;
     events: Json[];

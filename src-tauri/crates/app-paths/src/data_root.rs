@@ -135,11 +135,6 @@ pub fn lsp_cache() -> PathBuf {
     orgii_root().join("lsp_cache.json")
 }
 
-/// Lint tool discovery cache: `~/.orgii/lint_cache.json`.
-pub fn lint_cache() -> PathBuf {
-    orgii_root().join("lint_cache.json")
-}
-
 /// Provider protocol capability cache: `~/.orgii/provider-capabilities.json`.
 pub fn provider_capabilities_cache() -> PathBuf {
     orgii_root().join("provider-capabilities.json")
@@ -282,13 +277,13 @@ pub fn agent_definitions() -> PathBuf {
     orgii_root().join("agent-definitions.json")
 }
 
-/// Retired Agent Org definitions path used only by pre-redesign builds:
+/// Retired Agent Org definitions path used only by older builds:
 /// `~/.orgii/agent-orgs.json`.
 pub fn agent_orgs() -> PathBuf {
     orgii_root().join("agent-orgs.json")
 }
 
-/// Redesigned Agent Org definitions (global):
+/// Canonical Agent Org definitions (global):
 /// `~/.orgii/agent-org-definitions.json`.
 pub fn agent_org_definitions() -> PathBuf {
     orgii_root().join("agent-org-definitions.json")

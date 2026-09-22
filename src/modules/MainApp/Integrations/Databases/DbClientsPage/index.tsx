@@ -9,16 +9,16 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
+import {
+  PANEL_HEADER_TOKENS,
+  PanelHeader,
+} from "@src/components/layout/blocks";
 import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import {
   type DependencyStatus,
   useSystemDependencies,
 } from "@src/modules/MainApp/Integrations/hooks/useSystemDependencies";
-import {
-  PANEL_HEADER_TOKENS,
-  PanelHeader,
-} from "@src/modules/shared/layouts/blocks";
 
 import DbClientsTable from "./Table/DbClientsTable";
 

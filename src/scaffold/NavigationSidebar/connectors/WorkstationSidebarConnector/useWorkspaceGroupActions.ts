@@ -23,11 +23,21 @@
  */
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
+import type { MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { gitApi } from "@src/api/http/git";
 import { repoApi } from "@src/api/tauri/repo";
 import { createLogger } from "@src/hooks/logger";
+import {
+  FolderOpenIcon,
+  PinIcon,
+  PinOffIcon,
+  ViewIcon,
+  ViewOffIcon,
+} from "@src/icons";
+import { popupSidebarMenu } from "@src/scaffold/NavigationSidebar/menus/SidebarMenu";
+import { type SidebarMenuItem } from "@src/scaffold/NavigationSidebar/menus/types";
 import {
   REPO_KIND,
   type Repo,
@@ -43,10 +53,6 @@ import {
   sessionSourceAtom,
 } from "@src/store/session/creatorStateAtom";
 import { showNativeMessageSafely } from "@src/util/dialogs/nativeDialog";
-import {
-  type NativeMenuItemOptions,
-  popupNativeMenu,
-} from "@src/util/platform/tauri/nativeMenuPopup";
 
 import {
   sidebarHiddenWorkspacesAtom,
@@ -318,17 +324,18 @@ export function useWorkspaceGroupActions({
   );
 
   const onOpenMenu = useCallback(
-    (workspaceKey: string) => {
+    (workspaceKey: string, event: MouseEvent) => {
       const isPinned = pinnedWorkspaceKeys.has(workspaceKey);
       const isHidden = hiddenWorkspaceKeys.has(workspaceKey);
-      void popupNativeMenu({
+      void popupSidebarMenu(event, {
         source: "sidebar-workspace-group",
         buildItems: () => {
-          const items: NativeMenuItemOptions[] = [];
+          const items: SidebarMenuItem[] = [];
           if (workspaceKey !== NO_WORKSPACE_KEY) {
             items.push(
               {
                 text: revealLabel,
+                icon: FolderOpenIcon,
                 action: () => {
                   void revealWorkspaceInFileManager(
                     workspaceKey,
@@ -342,6 +349,7 @@ export function useWorkspaceGroupActions({
           }
           items.push({
             text: isPinned ? unpinLabel : pinLabel,
+            icon: isPinned ? PinOffIcon : PinIcon,
             action: () => {
               toggleKey(setPinnedWorkspaces, workspaceKey, isPinned);
               if (isPinned) return;
@@ -353,6 +361,7 @@ export function useWorkspaceGroupActions({
           });
           items.push({
             text: isHidden ? unhideLabel : hideLabel,
+            icon: isHidden ? ViewIcon : ViewOffIcon,
             action: () => {
               toggleKey(setHiddenWorkspaces, workspaceKey, isHidden);
               setSectionCollapsed(workspaceKey, !isHidden);

@@ -1,5 +1,9 @@
 //! Codex OAuth token refresh: JWT-expiry detection plus the locked
 //! refresh-token exchange that persists rotated access/refresh/id tokens.
+//! Keys imported from the Codex CLI share its rotating refresh token; see
+//! `codex_cli_auth` for how the two holders stay in step.
+
+use std::path::Path;
 
 use chrono::{Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
@@ -7,6 +11,11 @@ use serde::{Deserialize, Serialize};
 use core_types::providers::{CODEX_ID_TOKEN_ENV_KEY, CODEX_REFRESH_TOKEN_ENV_KEY};
 
 use super::super::types::{AuthMethod, ModelKey, ModelType, OAuthRefreshOutcome};
+use super::codex_cli_auth::{
+    adoptable_codex_cli_tokens, codex_cli_auth_path_for_key, is_linked_to_codex_cli,
+    read_codex_cli_tokens, shares_codex_cli_refresh_token,
+};
+use super::oauth_health::is_permanent_oauth_refresh_failure;
 use super::{KeyService, OAUTH_REFRESH_EXPIRY_SKEW_SECONDS, OAUTH_REFRESH_REQUEST_TIMEOUT};
 
 const CODEX_TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
@@ -36,7 +45,7 @@ struct CodexRefreshErrorResponse {
 }
 
 impl KeyService {
-    fn jwt_expires_at(token: &str) -> Option<chrono::DateTime<Utc>> {
+    pub(super) fn jwt_expires_at(token: &str) -> Option<chrono::DateTime<Utc>> {
         let payload = token.split('.').nth(1)?;
         use base64::Engine;
         let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -82,6 +91,7 @@ impl KeyService {
             .get_key_by_id(key_id)
             .ok_or_else(|| format!("Key not found: {}", key_id))?;
 
+        self.retry_codex_source_writeback(&key);
         if !Self::codex_oauth_key_needs_refresh(&key) {
             return Ok(key);
         }
@@ -100,6 +110,28 @@ impl KeyService {
     ) -> Result<OAuthRefreshOutcome, String> {
         let key = self
             .get_key_by_id(key_id)
+            .ok_or_else(|| format!("Key not found: {key_id}"))?;
+        self.refresh_codex_oauth_key_with(
+            key_id,
+            rejected_access_token,
+            codex_cli_auth_path_for_key(&key).as_deref(),
+            std::env::var(CODEX_REFRESH_TOKEN_URL_OVERRIDE_ENV).ok(),
+        )
+        .await
+    }
+
+    /// `refresh_codex_oauth_key` with its two environment inputs explicit: the
+    /// Codex CLI auth file the key may share a login with, and the token
+    /// endpoint override.
+    pub(crate) async fn refresh_codex_oauth_key_with(
+        &self,
+        key_id: &str,
+        rejected_access_token: &str,
+        cli_auth_path: Option<&Path>,
+        token_url_override: Option<String>,
+    ) -> Result<OAuthRefreshOutcome, String> {
+        let key = self
+            .get_key_by_id(key_id)
             .ok_or_else(|| format!("Key not found: {}", key_id))?;
 
         if !key.is_native_oauth_for(&ModelType::Codex) {
@@ -108,7 +140,20 @@ impl KeyService {
 
         crate::e2e_guard::ensure_oauth_refresh_allowed()?;
 
-        let refresh_lock = self.oauth_refresh_lock_for_key(key_id)?;
+        let scope = key
+            .codex_cli_auth_path
+            .as_deref()
+            .or(cli_auth_path)
+            .map(|path| {
+                format!(
+                    "codex-source:{}",
+                    path.canonicalize()
+                        .unwrap_or_else(|_| path.to_path_buf())
+                        .display()
+                )
+            })
+            .unwrap_or_else(|| key_id.to_string());
+        let refresh_lock = self.oauth_refresh_lock_for_key(&scope)?;
         let _refresh_guard = refresh_lock.lock().await;
 
         let key = self
@@ -127,6 +172,30 @@ impl KeyService {
             return Ok(OAuthRefreshOutcome::AlreadyRotated(Box::new(key)));
         }
 
+        self.retry_codex_source_writeback(&key);
+        let cli_auth_path = key.codex_cli_auth_path.as_deref().or(cli_auth_path);
+
+        // Reload before refreshing, as the Codex CLI does: a linked key's
+        // refresh token may already have been spent — and replaced — by the CLI.
+        let mut linked_to_cli = is_linked_to_codex_cli(&key);
+        if let Some(cli_tokens) = cli_auth_path.and_then(read_codex_cli_tokens) {
+            if !linked_to_cli && shares_codex_cli_refresh_token(&key, &cli_tokens) {
+                self.mark_key_linked_to_codex_cli(&key)?;
+                linked_to_cli = true;
+            }
+            if linked_to_cli {
+                if let Some(tokens) =
+                    adoptable_codex_cli_tokens(&key, rejected_access_token, cli_tokens)
+                {
+                    if let Some(adopted) =
+                        self.adopt_codex_cli_tokens(&key, tokens, cli_auth_path)?
+                    {
+                        return Ok(OAuthRefreshOutcome::AlreadyRotated(Box::new(adopted)));
+                    }
+                }
+            }
+        }
+
         let refresh_token = key
             .env_vars
             .get(CODEX_REFRESH_TOKEN_ENV_KEY)
@@ -140,7 +209,6 @@ impl KeyService {
             refresh_token: &refresh_token,
         };
 
-        let token_url_override = std::env::var(CODEX_REFRESH_TOKEN_URL_OVERRIDE_ENV).ok();
         let token_url = token_url_override
             .clone()
             .unwrap_or_else(|| CODEX_TOKEN_URL.to_string());
@@ -160,7 +228,7 @@ impl KeyService {
             Ok(response) => response,
             Err(err) => {
                 let message = format!("Codex OAuth refresh request failed: {}", err);
-                self.record_oauth_refresh_failure(key_id, &message)?;
+                self.record_oauth_refresh_failure_if_current(&key, &message)?;
                 return Err(message);
             }
         };
@@ -170,7 +238,7 @@ impl KeyService {
             Ok(body) => body,
             Err(err) => {
                 let message = format!("Codex OAuth refresh response read failed: {}", err);
-                self.record_oauth_refresh_failure(key_id, &message)?;
+                self.record_oauth_refresh_failure_if_current(&key, &message)?;
                 return Err(message);
             }
         };
@@ -181,7 +249,21 @@ impl KeyService {
                 "Codex OAuth refresh failed with HTTP {}: {}",
                 status, detail
             );
-            self.record_oauth_refresh_failure(key_id, &message)?;
+            // Another holder spent this refresh token first. When that holder
+            // is the Codex CLI, its auth file already carries the replacement.
+            if is_permanent_oauth_refresh_failure(&message) {
+                let replacement = cli_auth_path
+                    .and_then(read_codex_cli_tokens)
+                    .and_then(|cli| adoptable_codex_cli_tokens(&key, rejected_access_token, cli));
+                if let Some(tokens) = replacement {
+                    if let Some(adopted) =
+                        self.adopt_codex_cli_tokens(&key, tokens, cli_auth_path)?
+                    {
+                        return Ok(OAuthRefreshOutcome::AlreadyRotated(Box::new(adopted)));
+                    }
+                }
+            }
+            self.record_oauth_refresh_failure_if_current(&key, &message)?;
             return Err(message);
         }
 
@@ -189,7 +271,7 @@ impl KeyService {
             Ok(refreshed) => refreshed,
             Err(err) => {
                 let message = format!("Codex OAuth refresh response parse failed: {}", err);
-                self.record_oauth_refresh_failure(key_id, &message)?;
+                self.record_oauth_refresh_failure_if_current(&key, &message)?;
                 return Err(message);
             }
         };
@@ -199,11 +281,11 @@ impl KeyService {
             .filter(|token| !token.trim().is_empty());
         if access_token.is_none() {
             let message = "Codex OAuth refresh response omitted access_token".to_string();
-            self.record_oauth_refresh_failure(key_id, &message)?;
+            self.record_oauth_refresh_failure_if_current(&key, &message)?;
             return Err(message);
         }
 
-        let saved = self.update_store(|store| {
+        let saved: Result<(ModelKey, bool), String> = self.update_store(|store| {
             let entry = store.keys.get_mut(key_id).ok_or_else(|| {
                 format!(
                     "Key disappeared while saving refreshed Codex token: {}",
@@ -211,6 +293,16 @@ impl KeyService {
                 )
             })?;
 
+            if !entry.matches_oauth_snapshot(&key) {
+                return Ok((entry.clone(), false));
+            }
+            if linked_to_cli {
+                entry.codex_cli_auth_path = cli_auth_path.map(Path::to_path_buf);
+            }
+            if linked_to_cli && entry.codex_pending_source_token_hash.is_none() {
+                entry.codex_pending_source_token_hash =
+                    Some(super::codex_cli_auth::source_token_hash(&refresh_token));
+            }
             entry.session_token = access_token;
             if let Some(next_refresh_token) = refreshed.refresh_token {
                 if !next_refresh_token.trim().is_empty() {
@@ -226,14 +318,35 @@ impl KeyService {
                         .insert(CODEX_ID_TOKEN_ENV_KEY.to_string(), next_id_token);
                 }
             }
-            Self::reset_oauth_refresh_failure_state(entry);
-            entry.enabled = true;
+            Self::complete_oauth_refresh(entry);
             entry.updated_at = Utc::now();
             store.updated_at = Utc::now();
-            Ok(entry.clone())
+            Ok((entry.clone(), true))
         })?;
 
-        saved.map(|key| OAuthRefreshOutcome::Refreshed(Box::new(key)))
+        let (saved, committed) = saved?;
+        if !committed {
+            return Ok(OAuthRefreshOutcome::AlreadyRotated(Box::new(saved)));
+        }
+        if linked_to_cli && saved.credential_generation == key.credential_generation {
+            if let Some(path) = cli_auth_path {
+                match self.write_back_codex_source_if_current(path, &refresh_token, &saved) {
+                    Ok(true) => tracing::info!(
+                        "[key-vault] Codex OAuth key {} handed its rotated tokens back to the Codex CLI",
+                        key_id
+                    ),
+                    Ok(false) => {}
+                    // Keep the persisted intent; the next lifecycle event retries once.
+                    Err(err) => tracing::warn!(
+                        "[key-vault] Codex CLI auth write-back failed for key {}: {}",
+                        key_id,
+                        err
+                    ),
+                }
+            }
+        }
+
+        Ok(OAuthRefreshOutcome::Refreshed(Box::new(saved)))
     }
 }
 

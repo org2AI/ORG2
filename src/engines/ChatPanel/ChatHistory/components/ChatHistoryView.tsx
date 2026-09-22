@@ -2,9 +2,10 @@ import React, { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import type { AgentOrgRunMemberView } from "@src/api/tauri/agent";
-import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import { ChatLoadingBlock } from "@src/engines/ChatPanel/blocks/primitives";
+import { resolvePinnedMinimapMarks } from "@src/engines/ChatPanel/chatSelections/pinnedMinimapMarks";
+import { usePinnedChatSelections } from "@src/engines/ChatPanel/chatSelections/usePinnedChatSelections";
 import { resolveTranscriptTopPaddingPx } from "@src/engines/ChatPanel/header/chatPanelHeaderLayout";
 import CloudSessionDownloadProgressCard from "@src/features/Org2Cloud/CloudSessionDownloadProgressCard";
 import { useCloudSessionHasDownloadSurface } from "@src/features/Org2Cloud/useCloudSessionDownloadSurface";
@@ -24,9 +25,15 @@ import {
   useGroupHeaderRenderer,
 } from "../hooks/useGroupHeaderRenderer";
 import type { useReloadSession } from "../hooks/useReloadSession";
+import AgentOrgOverviewTray from "./AgentOrgOverviewTray";
 import ChatHistoryEmptyState from "./ChatHistoryEmptyState";
+import {
+  buildChatGroupFallbackIds,
+  buildChatGroupRenderKeys,
+} from "./ChatHistoryListLayout";
 import ChatPinnedHeaderLayer from "./ChatPinnedHeaderLayer";
 import ChatSearchBar from "./ChatSearchBar";
+import ChatSelectionActions from "./ChatSelectionActions";
 import ConversationMinimap from "./ConversationMinimap";
 import PlanningIndicatorBridge from "./PlanningIndicatorBridge";
 import RevertConfirmDialog from "./RevertConfirmDialog";
@@ -39,6 +46,8 @@ type ViewportModel = ReturnType<typeof useChatViewportController>;
 type ActionsModel = ReturnType<typeof useChatHistoryItemActions>;
 
 const BOTTOM_OVERLAY_FADE_PX = 32;
+const EMPTY_PINNED_MINIMAP_MARKS: ReturnType<typeof resolvePinnedMinimapMarks> =
+  [];
 const VIRTUALIZED_BODY_STYLE: React.CSSProperties = {
   backfaceVisibility: "hidden",
   contain: "layout paint",
@@ -56,7 +65,6 @@ interface ChatHistoryViewProps {
   agentOrgOverviewPanel?: React.ReactNode;
   bottomInset: number;
   chromeTopInset: number;
-  chatPanelPosition: "left" | "right";
   displayMode: ChatHistoryDisplayMode;
   emptyState: UseChatEmptyStateReturn;
   groupChatEnabled: boolean;
@@ -92,7 +100,6 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
   agentOrgOverviewPanel,
   bottomInset,
   chromeTopInset,
-  chatPanelPosition,
   displayMode,
   emptyState,
   groupChatEnabled,
@@ -145,7 +152,6 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
     groupCounts,
     groupHeaders,
     groupMeta,
-    handleLastTurnPage,
     handleNextTurnPage,
     handlePreviousTurnPage,
     pageCount,
@@ -180,14 +186,18 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
   } = navigation;
   const {
     conversationMinimapScrolling,
+    detachForNavigation,
     footerSpacerHeight,
     handleChatListScrollStateChange,
     handleRangeChanged,
     handleTurnPageEndReached,
     isLoadingMore,
+    preserveForLayoutMutation,
+    reconcileLayout,
     scrollAreaRef,
+    scrollToBottom,
+    setScrollRoot,
     staticScrollerRef,
-    turnCollapseInteractionAtRef,
     virtuosoScrollerRef,
   } = viewport;
   const {
@@ -228,7 +238,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
     tailTurnPhase,
     hideUserMessage: hideGroupUserMessage,
     defaultTurnCollapsed,
-    turnCollapseInteractionAtRef,
+    onBeforeTurnCollapseToggle: preserveForLayoutMutation,
     onEditSubmit: mutationActionsDisabled ? undefined : handleEditUserMessage,
     onFailedUserIntentEdit: handleEditUserMessage,
     onRestoreCheckpoint: mutationActionsDisabled
@@ -259,6 +269,19 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
       }) as React.CSSProperties,
     [chatFontSize, chatCodeFontSize, chatLineHeight]
   );
+  // Pinned passages ride the conversation navigator, so they have to be
+  // resolved against the same group projection its markers use. The render
+  // keys are rebuilt here with the list's own helpers rather than lifted out
+  // of the list, which owns them for the virtualizer.
+  const { pins, unpin } = usePinnedChatSelections(activeId);
+  const pinnedMinimapMarks = useMemo(() => {
+    if (pins.length === 0) return EMPTY_PINNED_MINIMAP_MARKS;
+    const renderKeys = buildChatGroupRenderKeys(
+      displayTurnIds,
+      buildChatGroupFallbackIds(displayFlatItems, displayGroupCounts)
+    );
+    return resolvePinnedMinimapMarks(pins, renderKeys);
+  }, [displayFlatItems, displayGroupCounts, displayTurnIds, pins]);
   const conversationMinimapOpen =
     !turnPaginationEnabled && !turnPageListOpen && !agentOrgOverviewOpen;
   // The scrollport reserves nothing for the minimap rail. While the rail has
@@ -272,6 +295,21 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
   const transcriptTopPaddingPx = resolveTranscriptTopPaddingPx(
     chromeTopInset,
     turnPaginationEnabled || groupChatViewActive
+  );
+  const handlePreviousTurnPageNavigation = useCallback(() => {
+    detachForNavigation();
+    handlePreviousTurnPage();
+  }, [detachForNavigation, handlePreviousTurnPage]);
+  const handleNextTurnPageNavigation = useCallback(() => {
+    detachForNavigation();
+    handleNextTurnPage();
+  }, [detachForNavigation, handleNextTurnPage]);
+  const handleTurnPageSelect = useCallback(
+    (pageIndex: number) => {
+      detachForNavigation();
+      selectTurnPage(pageIndex);
+    },
+    [detachForNavigation, selectTurnPage]
   );
   const pinnedHeaderLayer = (
     <ChatPinnedHeaderLayer
@@ -294,9 +332,9 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
       currentTurnPageTimeLabel={currentTurnPageTimeLabel}
       currentPageIndex={currentPageIndex}
       pageCount={pageCount}
-      onPreviousTurnPage={handlePreviousTurnPage}
-      onNextTurnPage={handleNextTurnPage}
-      onLastTurnPage={handleLastTurnPage}
+      onPreviousTurnPage={handlePreviousTurnPageNavigation}
+      onNextTurnPage={handleNextTurnPageNavigation}
+      onLastTurnPage={scrollToBottom}
       trailingActions={paginationTrailingSlot}
       groupChatViewAvailable={groupChatViewAvailable}
       groupChatViewActive={groupChatViewActive}
@@ -310,7 +348,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
       tailTurnPhase={tailTurnPhase}
       hideUserMessage={hideGroupUserMessage}
       defaultTurnCollapsed={defaultTurnCollapsed}
-      turnCollapseInteractionAtRef={turnCollapseInteractionAtRef}
+      onBeforeTurnCollapseToggle={preserveForLayoutMutation}
       onEditSubmit={
         mutationActionsDisabled &&
         !isRetryableFailedUserIntentHeader(activePinnedHeader)
@@ -322,23 +360,25 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
       }
     />
   );
-  const pinnedChromeLayer = (
-    <>
-      {search.isSearchVisible ? (
-        <div
-          className={`shrink-0 border-b border-border-2 ${surfaceBgClass}`}
-          data-chat-search-chrome
-        >
-          <div
-            className={`mx-auto w-full ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
-          >
-            <ChatSearchBar search={search} />
-          </div>
-        </div>
-      ) : null}
-      {pinnedHeaderLayer}
-    </>
-  );
+  // Share the outer split-view anchor with file Find so switching scope
+  // never moves the card between pane headers.
+  const searchOverlayHost =
+    pinnedHeaderPortalHost?.closest<HTMLElement>(
+      "[data-pane-surface-underlay]"
+    ) ??
+    pinnedHeaderPortalHost?.closest<HTMLElement>("[data-chat-panel]") ??
+    pinnedHeaderPortalHost?.parentElement;
+  const searchOverlay = search.isSearchVisible ? (
+    <div
+      className="pointer-events-none absolute top-2 right-2 left-2 z-50"
+      style={chatHistoryContainerStyle}
+      data-chat-search-chrome
+    >
+      <div className="pointer-events-auto ml-auto w-full max-w-sm">
+        <ChatSearchBar search={search} sessionId={activeId} />
+      </div>
+    </div>
+  ) : null;
 
   return (
     <ChatHistoryDisplayModeProvider value={displayMode}>
@@ -352,9 +392,20 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
         ref={chatContainerRef as React.RefObject<HTMLDivElement>}
         style={chatHistoryContainerStyle}
       >
+        {activeId ? (
+          <ChatSelectionActions
+            containerRef={chatContainerRef}
+            sessionId={activeId}
+          />
+        ) : null}
+
         <div className={CHAT_PANEL_WIDTH_TOKENS.contentWidth}>
           <SessionHeader sessionInfo={sessionInfo} />
         </div>
+
+        {searchOverlayHost
+          ? createPortal(searchOverlay, searchOverlayHost)
+          : searchOverlay}
 
         {pinnedHeaderPortalHost
           ? createPortal(
@@ -362,11 +413,11 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                 className="chat-history-portal"
                 style={chatHistoryContainerStyle}
               >
-                {pinnedChromeLayer}
+                {pinnedHeaderLayer}
               </div>,
               pinnedHeaderPortalHost
             )
-          : pinnedChromeLayer}
+          : pinnedHeaderLayer}
 
         {/* Anchor cloud-download progress to the chat-pane header edge instead
             of the virtualized body below SessionHeader. Transcript items and
@@ -382,20 +433,9 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
 
         <div className="flex min-h-0 flex-1 flex-col">
           {agentOrgOverviewOpen && agentOrgOverviewPanel && (
-            <div
-              className={`scrollbar-hide max-h-[45%] shrink-0 overflow-y-auto ${surfaceBgClass}`}
-            >
-              <div
-                className={`mx-auto w-full px-2 pb-2 ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
-              >
-                <div
-                  data-agent-org-overview-panel="true"
-                  className={`${DROPDOWN_CLASSES.panel} p-1`}
-                >
-                  {agentOrgOverviewPanel}
-                </div>
-              </div>
-            </div>
+            <AgentOrgOverviewTray surfaceBgClass={surfaceBgClass}>
+              {agentOrgOverviewPanel}
+            </AgentOrgOverviewTray>
           )}
 
           <div
@@ -409,13 +449,14 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                 groupMeta={displayGroupMeta}
                 groupCounts={displayGroupCounts}
                 flatItems={displayFlatItems}
-                chatPanelPosition={chatPanelPosition}
                 activeGroupIndex={activeGroupIndex}
                 visibleGroupIndices={visibleGroupIndices}
                 isAtBottom={historyState.atBottom}
                 isScrolling={conversationMinimapScrolling}
                 labelVariant={groupChatEnabled ? "agents" : "agent"}
                 onNavigate={handleConversationMinimapNavigate}
+                pinnedMarks={pinnedMinimapMarks}
+                onPinnedRemove={unpin}
               />
             )}
 
@@ -433,7 +474,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                   turnPageSortAscending={turnPageSortAscending}
                   onSelectTurnPage={
                     turnPaginationEnabled
-                      ? selectTurnPage
+                      ? handleTurnPageSelect
                       : handleConversationHistorySelect
                   }
                   onToggleSort={
@@ -524,6 +565,8 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                       }
                       virtualScrollerRef={virtuosoScrollerRef}
                       staticScrollerRef={staticScrollerRef}
+                      onScrollRootChange={setScrollRoot}
+                      onRowLayoutCommit={reconcileLayout}
                       newEventDividerLabel={newEventDividerLabel}
                     />
                   </>

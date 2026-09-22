@@ -5,6 +5,7 @@ import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { stationChatVisibilityAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { restoreChatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
+import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 import { tabToHost } from "./tabHost";
 import {
@@ -28,6 +29,7 @@ export const enterWorkstationRouteAtom = atom(
     if (!Object.values(routes).some((route) => route.path === path)) return;
 
     if (path === routes.base.path) {
+      if (isStationWindow()) return;
       // Explicit callers may already have selected Agent Station before navigating.
       const mode = get(stationModeAtom);
       set(stationChatVisibilityAtom, (prev) => ({ ...prev, [mode]: true }));
@@ -35,14 +37,16 @@ export const enterWorkstationRouteAtom = atom(
       return;
     }
 
-    set(chatPanelMaximizedAtom, false);
+    if (!isStationWindow()) set(chatPanelMaximizedAtom, false);
     const mode =
       path === routes.chat.path
         ? STATION_MODE.AGENT_STATION
         : STATION_MODE.MY_STATION;
     set(stationModeAtom, mode);
     if (path === routes.chat.path) {
-      set(stationChatVisibilityAtom, (prev) => ({ ...prev, [mode]: true }));
+      if (!isStationWindow()) {
+        set(stationChatVisibilityAtom, (prev) => ({ ...prev, [mode]: true }));
+      }
       return;
     }
 

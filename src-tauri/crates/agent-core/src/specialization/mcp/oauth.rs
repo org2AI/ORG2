@@ -47,7 +47,7 @@ pub(crate) const DEFAULT_SCOPES: &[&str] = &[];
 
 /// Name we send in Dynamic Client Registration so the resulting audit
 /// entries on the IdP side are self-describing.
-pub(crate) const OAUTH_CLIENT_NAME: &str = "ORGII MCP Client";
+pub(crate) const OAUTH_CLIENT_NAME: &str = "ORG2 MCP Client";
 
 /// Overall hard timeout on the flow. The user may sit on the
 /// authorization page for a while; 10 minutes keeps the callback

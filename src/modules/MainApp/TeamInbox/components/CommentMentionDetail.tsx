@@ -3,23 +3,23 @@ import { useTranslation } from "react-i18next";
 
 import PersonAvatar from "@src/components/PersonAvatar";
 import UserMessageContent from "@src/engines/ChatPanel/ChatHistory/components/UserMessageContent";
-import { SharedSessionFilesProvider } from "@src/features/Org2Cloud/SharedSessionFilesContext";
-import { getCloudEndpoint } from "@src/features/Org2Cloud/config";
-import {
-  ArchiveArrowUpIcon,
-  ArchiveIcon,
-  AtIcon,
-  HugeiconsIcon,
-  LinkSquare02Icon,
-} from "@src/icons";
-import { WORK_ITEM_THREAD_TOKENS } from "@src/modules/ProjectManager/WorkItems/components/WorkItemThread";
 import {
   ConnectedTimelineItem,
   MarkdownContent,
   TimelineCard,
   TimelineCardHeader,
   TimelineStack,
-} from "@src/modules/shared/components/ActivityTimeline";
+} from "@src/features/GitHubWork/ActivityTimeline";
+import { SharedSessionFilesProvider } from "@src/features/Org2Cloud/SharedSessionFilesContext";
+import { getCloudEndpoint } from "@src/features/Org2Cloud/config";
+import {
+  ArchiveArrowDownIcon,
+  ArchiveArrowUpIcon,
+  AtIcon,
+  HugeiconsIcon,
+  LinkSquare02Icon,
+} from "@src/icons";
+import { WORK_ITEM_THREAD_TOKENS } from "@src/modules/ProjectManager/WorkItems/components/WorkItemThread";
 
 import type { CommentMentionItem, TeamInboxNavigationIntent } from "../domain";
 import TeamInboxDetailLayout from "./TeamInboxDetailLayout";
@@ -96,7 +96,7 @@ const CommentMentionDetail: React.FC<CommentMentionDetailProps> = ({
                 label: t("teamInbox.actions.archive"),
                 icon: (
                   <HugeiconsIcon
-                    icon={ArchiveIcon}
+                    icon={ArchiveArrowDownIcon}
                     data-icon="archive"
                     size={14}
                     strokeWidth={1.8}

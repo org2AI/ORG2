@@ -5,7 +5,7 @@
  */
 import type { GitFile } from "@src/types/git/types";
 
-import type { GitFileTreeNode } from "../components/GitFileTreeItem";
+import type { GitFileTreeNode } from "../components/GitFileTreeNode";
 
 /**
  * Status priority for folder aggregation (higher = takes precedence)

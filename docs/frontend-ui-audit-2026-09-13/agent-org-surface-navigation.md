@@ -1,0 +1,11 @@
+# Agent Org surface navigation UI audit
+
+| Line                                                                                  | Element                         | Verdict          | Reason                                                                                                                                   | Suggested change |
+| ------------------------------------------------------------------------------------- | ------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `src/engines/ChatPanel/ChatHistory/components/AgentOrgSurfaceSwitcher.tsx:136`        | Team Overview control           | keep with reason | Uses the shared `Button` soft appearance, semantic `aria-pressed` selected state, and the requested shared hierarchy icon                | None             |
+| `src/engines/ChatPanel/ChatHistory/components/AgentOrgSurfaceSwitcher.tsx:169`        | Surface selector trigger        | keep with reason | Uses the shared `Button`, dropdown engine, spacing tokens, keyboard semantics, and truncation for constrained widths                     | None             |
+| `src/engines/ChatPanel/ChatHistory/components/AgentOrgSurfaceSwitcher.tsx:227`        | Group and member dropdown rows  | keep with reason | Uses the shared `Button` custom layout for the check/status/badge columns and applies the dropdown engine's viewport height to scrolling | None             |
+| `src/engines/ChatPanel/ChatHistory/components/AgentOrgOverviewTray.tsx:13`            | Overview tray shell             | keep with reason | The 45% height is an explicit product constraint; width, panel surface, border, radius and shadow reuse existing shared tokens           | None             |
+| `src/engines/ChatPanel/ChatHistory/GroupChatView/AgentOrgGroupProjectionView.tsx:170` | Group chat navigation and width | keep with reason | Reuses the same switcher, overview tray and 800px conversation-width token as Coordinator and Member surfaces                            | None             |
+
+Verdict totals: **0 fix**, **5 keep with reason**, **0 abstract**.

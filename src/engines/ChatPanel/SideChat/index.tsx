@@ -31,17 +31,16 @@
  */
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import DetailPanelHeader from "@src/components/DetailPanelHeader";
 import FloatingWindow from "@src/components/FloatingWindow";
 import { SESSION_CONFIG } from "@src/config/sessionCreatorConfig";
-import {
-  HEADER_BUTTON,
-  HEADER_ICON_SIZE,
-} from "@src/config/workstation/tokens";
+import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
+import { resolveAgentOrgComposerExecutionOwnership } from "@src/engines/ChatPanel/agentOrgComposerOwnership";
 import { isUserIntentSendError } from "@src/engines/SessionCore/services/userIntentDispatch";
 import { createLogger } from "@src/hooks/logger";
 import {
@@ -53,7 +52,10 @@ import {
 import { openOrFocusSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { activeChatPanelTabTypeAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { type Session, sessionMapAtom } from "@src/store/session";
-import { chatTurnPaginationEnabledAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
+import {
+  chatHistoryDisplayModeAtom,
+  chatTurnPaginationEnabledAtom,
+} from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import {
   chatVisibleAtom,
   restoreChatWidthAtom,
@@ -76,6 +78,7 @@ import { useConversationTargetBinding } from "../hooks/useConversationTargetBind
 import type { SubmitOverrideInput } from "../hooks/useInputArea/types";
 import { useUserIntentSubmit } from "../hooks/useWorkspaceChat/useUserIntentSubmit";
 import type { ChatPanelProps } from "../types";
+import { sideChatHeaderHostAtom } from "./SideChatHeaderHost";
 import { shouldShowSideChatLauncher } from "./sideChatLauncherVisibility";
 
 const log = createLogger("ChatPanelSideChat");
@@ -117,19 +120,27 @@ interface ChatPanelSideChatProps {
 }
 
 interface SideChatLauncherProps {
+  placement?: "floating" | "header";
   label: string;
   onOpen: () => void;
 }
 
 export function SideChatLauncher({
+  placement = "floating",
   label,
   onOpen,
 }: SideChatLauncherProps): React.ReactNode {
   return (
-    <div className={SIDE_CHAT_LAUNCHER_CLASS}>
+    <div
+      className={
+        placement === "floating"
+          ? SIDE_CHAT_LAUNCHER_CLASS
+          : "flex items-center"
+      }
+    >
       <Button
         variant="primary"
-        size="large"
+        size={placement === "floating" ? "large" : "small"}
         shape="circle"
         iconOnly
         icon={
@@ -144,8 +155,16 @@ export function SideChatLauncher({
         title={label}
         aria-label={label}
         aria-haspopup="dialog"
-        data-testid="side-chat-floating-button"
-        className="pointer-events-auto shadow-lg"
+        data-testid={
+          placement === "floating"
+            ? "side-chat-floating-button"
+            : "side-chat-header-button"
+        }
+        className={
+          placement === "floating"
+            ? "pointer-events-auto shadow-lg"
+            : "pointer-events-auto"
+        }
       />
     </div>
   );
@@ -157,12 +176,27 @@ const ChatPanelSideChat: React.FC<ChatPanelSideChatProps> = ({
   const { t } = useTranslation("sessions");
   const visible = useAtomValue(sideChatVisibleAtom);
   const activeTabType = useAtomValue(activeChatPanelTabTypeAtom);
+  const headerHost = useAtomValue(sideChatHeaderHostAtom);
   const openSideChat = useSetAtom(openSideChatAtom);
   const handleOpen = useCallback(() => openSideChat(null), [openSideChat]);
   if (!visible) {
     // Launchpad and session surfaces already own a composer — no launcher.
     return shouldShowSideChatLauncher(activeTabType) ? (
-      <SideChatLauncher label={t("chat.sideChat.title")} onOpen={handleOpen} />
+      headerHost ? (
+        createPortal(
+          <SideChatLauncher
+            placement="header"
+            label={t("chat.sideChat.title")}
+            onOpen={handleOpen}
+          />,
+          headerHost
+        )
+      ) : (
+        <SideChatLauncher
+          label={t("chat.sideChat.title")}
+          onOpen={handleOpen}
+        />
+      )
     ) : null;
   }
   return <SideChatWindow SessionCreatorSlot={SessionCreatorSlot} />;
@@ -227,29 +261,36 @@ const SideChatWindow: React.FC<ChatPanelSideChatProps> = ({
         actions={
           sessionId ? (
             <div className="flex items-center gap-1.5">
-              <button
-                className={HEADER_BUTTON.action}
+              <Button
+                variant="tertiary"
+                size="sidebar"
+                iconOnly
+                icon={
+                  <HugeiconsIcon
+                    icon={LinkSquare02Icon}
+                    data-icon="link-square-02"
+                    size={HEADER_ICON_SIZE.sm}
+                  />
+                }
                 onClick={handleOpenInTab}
                 title={tCommon("actions.openInNewTab")}
                 aria-label={tCommon("actions.openInNewTab")}
-              >
-                <HugeiconsIcon
-                  icon={LinkSquare02Icon}
-                  data-icon="link-square-02"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              </button>
-              <button
-                className={HEADER_BUTTON.action}
+              />
+              <Button
+                variant="tertiary"
+                size="sidebar"
+                aria-label={t("chat.newSession")}
+                iconOnly
+                icon={
+                  <HugeiconsIcon
+                    icon={PencilEdit02Icon}
+                    data-icon="square-pen"
+                    size={HEADER_ICON_SIZE.sm}
+                  />
+                }
                 onClick={handleNewSession}
                 title={t("chat.newSession")}
-              >
-                <HugeiconsIcon
-                  icon={PencilEdit02Icon}
-                  data-icon="square-pen"
-                  size={HEADER_ICON_SIZE.sm}
-                />
-              </button>
+              />
             </div>
           ) : undefined
         }
@@ -290,13 +331,19 @@ interface SideChatSessionBodyProps {
   isLive: boolean;
 }
 
-const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
+export const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
   sessionId,
   session,
   isLive,
 }) => {
   const turnPaginationEnabled = useAtomValue(chatTurnPaginationEnabledAtom);
+  const displayMode = useAtomValue(chatHistoryDisplayModeAtom);
   const conversationTargetBinding = useConversationTargetBinding(sessionId);
+  const { isDirectAgentOrgMember, executionBinding: composerExecutionBinding } =
+    resolveAgentOrgComposerExecutionOwnership(
+      session,
+      conversationTargetBinding
+    );
   const getSessionId = useCallback(() => sessionId, [sessionId]);
   const submitUserIntent = useUserIntentSubmit({ getSessionId });
 
@@ -306,7 +353,7 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
       agentContent,
       imageDataUrls,
     }: SubmitOverrideInput): Promise<boolean> => {
-      if (conversationTargetBinding?.root) return false;
+      if (composerExecutionBinding?.root) return false;
       const content = agentContent ?? displayText;
       if (!content.trim()) return false;
       try {
@@ -327,7 +374,7 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
         return false;
       }
     },
-    [conversationTargetBinding?.root, sessionId, submitUserIntent]
+    [composerExecutionBinding?.root, sessionId, submitUserIntent]
   );
   const {
     submit: handleSubmit,
@@ -335,6 +382,7 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
     resolveDispatch: resolveCanonicalRetryDispatch,
   } = useConversationSubmitRouter({
     sessionId,
+    isDirectAgentOrgMember,
     currentSession: session,
     root: conversationTargetBinding?.root ?? null,
     selectedTarget: conversationTargetBinding?.target ?? null,
@@ -348,15 +396,16 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
           <div className="min-h-0 flex-1 overflow-hidden">
             <ChatHistory
               surfaceBgClass="bg-bg-2"
+              displayMode={displayMode}
               turnPaginationEnabled={turnPaginationEnabled}
               planningIndicatorScope={{ sessionId, isLive }}
               onFailedUserIntentRetry={
-                conversationTargetBinding
+                conversationTargetBinding || isDirectAgentOrgMember
                   ? handleCanonicalConversationRetry
                   : undefined
               }
               resolveFailedUserIntentDispatch={
-                conversationTargetBinding
+                conversationTargetBinding || isDirectAgentOrgMember
                   ? resolveCanonicalRetryDispatch
                   : undefined
               }
@@ -364,7 +413,7 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
           </div>
           <div className="shrink-0 px-1.5 pt-0.5 pb-1.5">
             <ConversationExecutionBindingContext.Provider
-              value={conversationTargetBinding}
+              value={composerExecutionBinding}
             >
               <InputArea
                 key={sessionId}
@@ -374,7 +423,9 @@ const SideChatSessionBody: React.FC<SideChatSessionBodyProps> = ({
                 sessionScope="none"
                 onSubmitOverride={handleSubmit}
                 disableStopWhenEmpty
-                showAgentControls={Boolean(conversationTargetBinding)}
+                showAgentControls={
+                  Boolean(composerExecutionBinding) || isDirectAgentOrgMember
+                }
                 allowFileAttachments={false}
                 enableAgentInterceptors={false}
               />

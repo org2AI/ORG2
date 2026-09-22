@@ -7,34 +7,29 @@
  * - `.pushEvents` materializing a session's events into a prepared push plan
  * - `.turnIndex`  the 0012 index publish (and the sync-client dependency)
  * - `.upload`     metadata upsert plus the three segment mutations
+ * - `.pushPhases` shared-file sync and the replay write branches of one pass
  * and this file adds the pass orchestration that decides which of them runs.
+ * Two composed helpers sit beside the chain: `.pushGuards` (per-session
+ * retry + shrink confirmation) and `.remoteSeed` (cold-start seeding).
  */
-import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
-import { createLogger } from "@src/hooks/logger";
 import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session/sessionAtom/types";
-import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 
-import {
-  sha256Hex,
-  stableStringify,
-} from "../TeamCollaboration/collabSyncUtils";
-import { splitFrozenIntoSegments } from "../TeamCollaboration/engine/collabSyncEngineHelpers";
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
-import {
-  type Org2CloudAuthState,
-  org2CloudAuthAtom,
-  org2CloudAuthIdentityKey,
-} from "./org2CloudAuthAtom";
+import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
 import { getCloudCapabilitiesConfirmed } from "./org2CloudCapabilities";
 import { broadcastOrgControlChangedToPeers } from "./org2CloudControlBus";
 import { endpointForOrg } from "./org2CloudOrgEndpointRouter";
+import { Org2CloudSessionPushGuards } from "./org2CloudSessionSync.pushGuards";
 import {
-  buildCloudSessionMetadata,
-  metadataPayloadForHash,
-} from "./org2CloudSessionSync.metadata";
-import { Org2CloudSessionSyncUpload } from "./org2CloudSessionSync.upload";
+  Org2CloudSessionSyncPushPhases,
+  type PreparedPushPass,
+} from "./org2CloudSessionSync.pushPhases";
+import {
+  type RemoteSeedHost,
+  seedFromRemoteSummary,
+} from "./org2CloudSessionSync.remoteSeed";
 import { isOrg2SyncErrorCode } from "./org2CloudSyncClient";
 
 export {
@@ -43,34 +38,21 @@ export {
 } from "./org2CloudSessionSync.metadata";
 export type { Org2CloudSyncClientDeps } from "./org2CloudSessionSync.types";
 export { IMPORTED_INCREMENTAL_REANCHOR_EVERY } from "./org2CloudSessionSync.pushEvents";
+export {
+  SESSION_PUSH_RETRY_BASE_MS,
+  SESSION_PUSH_RETRY_MAX_MS,
+} from "./org2CloudSessionSync.pushGuards";
 export { normalizeTurnPromptPreview } from "./org2CloudSessionSync.turnIndex";
 export { SESSION_SEGMENT_UPLOAD_BATCH_SIZE } from "./org2CloudSessionSync.upload";
 
-const log = createLogger("Org2CloudSyncEngine");
-
-/** Per-session transient retry policy (org entitlement failures back off elsewhere). */
-export const SESSION_PUSH_RETRY_BASE_MS = 60_000;
-export const SESSION_PUSH_RETRY_MAX_MS = 30 * 60_000;
-
-interface SessionPushRetryState {
-  failures: number;
-  retryAtMs: number;
-}
-
-export class Org2CloudSessionSync extends Org2CloudSessionSyncUpload {
-  /** Transient event-plane failures, bounded by live (org, session) pairs. */
-  private readonly sessionPushRetryStates = new Map<
-    string,
-    SessionPushRetryState
-  >();
-
-  /** A short read must repeat identically across passes before it rewrites. */
-  private readonly sessionShrinkCandidates = new Map<string, number>();
+export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
+  /** Per-session transient retry + shrink confirmation, split out to
+   * `Org2CloudSessionPushGuards`. */
+  private readonly pushGuards = new Org2CloudSessionPushGuards();
 
   override reset(): void {
     super.reset();
-    this.sessionPushRetryStates.clear();
-    this.sessionShrinkCandidates.clear();
+    this.pushGuards.reset();
   }
 
   override prune(
@@ -78,61 +60,11 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncUpload {
     liveSessionIds: ReadonlySet<string>
   ): void {
     super.prune(liveOrgIds, liveSessionIds);
-    for (const states of [
-      this.sessionPushRetryStates,
-      this.sessionShrinkCandidates,
-    ] as const) {
-      for (const key of states.keys()) {
-        const separatorIndex = key.indexOf(":");
-        const orgId =
-          separatorIndex === -1 ? key : key.slice(0, separatorIndex);
-        const sessionId =
-          separatorIndex === -1 ? "" : key.slice(separatorIndex + 1);
-        if (!liveOrgIds.has(orgId) || !liveSessionIds.has(sessionId)) {
-          states.delete(key);
-        }
-      }
-    }
-  }
-
-  private isSessionPushBackedOff(orgId: string, sessionId: string): boolean {
-    const key = `${orgId}:${sessionId}`;
-    const state = this.sessionPushRetryStates.get(key);
-    if (!state) return false;
-    if (Date.now() < state.retryAtMs) return true;
-    return false;
-  }
-
-  private noteSessionPushFailure(orgId: string, sessionId: string): void {
-    const key = `${orgId}:${sessionId}`;
-    const previous = this.sessionPushRetryStates.get(key);
-    const failures = (previous?.failures ?? 0) + 1;
-    const delayMs = Math.min(
-      SESSION_PUSH_RETRY_BASE_MS * 2 ** (failures - 1),
-      SESSION_PUSH_RETRY_MAX_MS
-    );
-    this.sessionPushRetryStates.set(key, {
-      failures,
-      retryAtMs: Date.now() + delayMs,
-    });
-  }
-
-  private clearSessionPushFailure(orgId: string, sessionId: string): void {
-    this.sessionPushRetryStates.delete(`${orgId}:${sessionId}`);
-  }
-
-  private shouldBackOffSessionFailure(error: unknown): boolean {
-    // Entitlement failures already have org-wide active/inactive backoff and
-    // toast policy in Org2CloudSyncEngine. Duplicating that state here would
-    // keep one session asleep after the org is explicitly resumed.
-    return (
-      !isOrg2SyncErrorCode(error, "ORG2_QUOTA_EXCEEDED") &&
-      !isOrg2SyncErrorCode(error, "ORG2_SYNC_DISABLED")
-    );
+    this.pushGuards.prune(liveOrgIds, liveSessionIds);
   }
 
   /** Seed volatile cold-start caches from a server-authoritative listing. */
-  async seedFromRemoteSummary(
+  seedFromRemoteSummary(
     auth: Org2CloudAuthState,
     orgId: string,
     session: Session,
@@ -140,103 +72,46 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncUpload {
     access: CloudPushAccess,
     remote: RemoteTeammateSessionMetadata
   ): Promise<void> {
-    const key = `${orgId}:${session.session_id}`;
-    if (this.remoteSeedAttemptedKeys.has(key)) return;
-    this.remoteSeedAttemptedKeys.add(key);
-    if (
-      remote.deletedAt ||
-      remote.ownerUserId !== auth.userId ||
-      remote.sourceSessionId !== session.session_id
-    ) {
-      return;
-    }
-    const displayName =
-      auth.profile?.displayName ?? auth.profile?.primaryEmail ?? auth.userId;
-    const localMetadata = buildCloudSessionMetadata(
-      session,
+    return seedFromRemoteSummary(
+      this.remoteSeedHost(),
+      auth,
       orgId,
-      auth.userId,
-      displayName,
+      session,
       scopeKey,
       access,
-      auth.profile?.avatarUrl
+      remote
     );
-    const [localHash, remoteHash] = await Promise.all([
-      sha256Hex(stableStringify(metadataPayloadForHash(localMetadata))),
-      sha256Hex(stableStringify(metadataPayloadForHash(remote))),
-    ]);
-    if (localHash === remoteHash) {
-      // upsertMetadataIfChanged gates on the FULL payload hash; seeding the
-      // stripped comparison hash would never match it and every restart would
-      // re-upsert an identical payload for every pushed session.
-      this.lastPushedMetadataHashes.set(
-        key,
-        await sha256Hex(stableStringify(localMetadata))
-      );
-      this.setPushedMetadataMarker(orgId, session.session_id);
-    }
+  }
 
-    // Metadata and transcript are independent planes. Even if a title or
-    // access field changed locally, a cursor stamped with this exact local
-    // content version plus the server summary proves the event plane clean.
-    // Legacy cursors lack the stamp and deliberately take one normal read.
-    const cursor = this.getCursor(orgId, session.session_id);
-    if (
-      !cursor ||
-      remote.eventsEpoch !== cursor.epoch ||
-      remote.eventsFrozenSeq !== cursor.frozenSeq ||
-      remote.eventsCount !== cursor.pushedCount ||
-      (remote.eventsTailHash ?? null) !== cursor.tailHash
-    ) {
-      return;
-    }
-    const localExecutionRevision = await this.loadLocalExecutionRevision(
-      session.session_id
-    );
-    // The durable cursor predates continuation-child revision stamps. A root
-    // with children therefore needs one authoritative combined replay after
-    // every app start before it can be marked clean in memory.
-    if (
-      localExecutionRevision !== undefined &&
-      localExecutionRevision !== "[]"
-    ) {
-      return;
-    }
-    let localContentRevision: number | undefined;
-    if (!isImportedHistorySession(session.session_id)) {
-      const durable = await eventStoreProxy.getPersistedEventRevision(
-        session.session_id
-      );
-      if (durable && durable.eventCount > 0) {
-        if (durable.eventCount !== cursor.pushedCount) return;
-        if (
-          cursor.localContentRevision !== undefined &&
-          cursor.localContentRevision !== durable.revision
-        ) {
-          return;
-        }
-        // Legacy revisions are upgraded from the server cursor + local count
-        // proof. Crucially this is independent of Session.updated_at: rename,
-        // pin and org-access edits are metadata changes and must not trigger a
-        // multi-GB replay materialization.
-        localContentRevision = durable.revision;
-        if (cursor.localContentRevision !== durable.revision) {
-          this.setCursor({ ...cursor, localContentRevision: durable.revision });
-        }
-      } else if (cursor.localContentUpdatedAt !== session.updated_at) {
-        return;
-      }
-    } else if (cursor.localContentUpdatedAt !== session.updated_at) {
-      return;
-    }
-    this.markEventPlaneClean(
-      orgId,
-      session,
-      this.eventActivityStamps.get(session.session_id) ?? 0,
-      Date.now(),
-      localContentRevision,
-      localExecutionRevision
-    );
+  /** The chain's protected bookkeeping, handed to the seed helper. */
+  private remoteSeedHost(): RemoteSeedHost {
+    return {
+      remoteSeedAttemptedKeys: this.remoteSeedAttemptedKeys,
+      lastPushedMetadataHashes: this.lastPushedMetadataHashes,
+      eventActivityStamps: this.eventActivityStamps,
+      setPushedMetadataMarker: (orgId, sessionId) =>
+        this.setPushedMetadataMarker(orgId, sessionId),
+      getCursor: (orgId, sessionId) => this.getCursor(orgId, sessionId),
+      setCursor: (cursor) => this.setCursor(cursor),
+      loadLocalExecutionRevision: (sessionId) =>
+        this.loadLocalExecutionRevision(sessionId),
+      markEventPlaneClean: (
+        orgId,
+        session,
+        stampAtRead,
+        verifiedAt,
+        localContentRevision,
+        localExecutionRevision
+      ) =>
+        this.markEventPlaneClean(
+          orgId,
+          session,
+          stampAtRead,
+          verifiedAt,
+          localContentRevision,
+          localExecutionRevision
+        ),
+    };
   }
 
   /** Soft-tombstone a prior push and clear every local pushed marker. */
@@ -279,7 +154,7 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncUpload {
     const sessionId = session.session_id;
     if (
       access.accessMode !== COLLAB_SESSION_ACCESS_MODE.METADATA_ONLY &&
-      this.isSessionPushBackedOff(orgId, sessionId)
+      this.pushGuards.isSessionPushBackedOff(orgId, sessionId)
     ) {
       // Metadata remains cheap and live while the expensive transcript plane
       // sleeps. The hash gate makes this a no-RPC no-op when unchanged.
@@ -294,10 +169,10 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncUpload {
     }
     try {
       await this.pushSessionOnce(auth, orgId, session, scopeKey, access);
-      this.clearSessionPushFailure(orgId, sessionId);
+      this.pushGuards.clearSessionPushFailure(orgId, sessionId);
     } catch (error) {
-      if (this.shouldBackOffSessionFailure(error)) {
-        this.noteSessionPushFailure(orgId, sessionId);
+      if (this.pushGuards.shouldBackOffSessionFailure(error)) {
+        this.pushGuards.noteSessionPushFailure(orgId, sessionId);
       }
       throw error;
     }
@@ -388,6 +263,9 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncUpload {
       )
         this.setCursor({ ...latestCursor, sharedFilesVersion: 1 });
     };
+    const publishPreparedTurnIndex = () => {
+      void this.publishTurnIndexBestEffort(auth, orgId, session, stampAtRead);
+    };
     if (!cursor && events.length === 0) {
       await this.upsertMetadataIfChanged(
         auth,
@@ -399,311 +277,53 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncUpload {
       markPreparedClean();
       return;
     }
-    const shrinkKey = `${orgId}:${sessionId}`;
-    let confirmedShrink = false;
     // Equals the plan's totalEventCount without forcing the plan: the shrink
     // dance below returns without pushing on its first observation, and
     // hashing a GB-scale transcript just to skip would defeat this pass.
     const observedTotalEventCount = baseEventCount + events.length;
-    if (cursor && observedTotalEventCount < cursor.pushedCount) {
-      if (observedTotalEventCount === 0) {
-        // A hollow local read can NEVER authorize erasing the cloud copy.
-        // An empty store (wiped cache, missing provider DB, rebuilding
-        // import) reads zero on EVERY pass, so consecutive-pass
-        // confirmation is no evidence of intent — and the cloud row may be
-        // the only surviving copy (cursoride-93121e8a lost its 301 cloud
-        // events to exactly this rewrite on 2026-07-31). Recovery for a
-        // hollow local store is seed/import, not an empty rewrite.
-        this.sessionShrinkCandidates.delete(shrinkKey);
-        log.rateLimited(
-          `hollow-push-${shrinkKey}`,
-          60_000,
-          `persisted read for ${sessionId} returned 0 events but the ` +
-            `cloud cursor covers ${cursor.pushedCount}; refusing hollow ` +
-            `epoch rewrite`
-        );
-        return;
-      }
-      if (
-        this.sessionShrinkCandidates.get(shrinkKey) === observedTotalEventCount
-      ) {
-        this.sessionShrinkCandidates.delete(shrinkKey);
-        confirmedShrink = true;
-        log.info(
-          `persisted read for ${sessionId} returned ${observedTotalEventCount} events ` +
-            `on consecutive passes while the cloud cursor covers ` +
-            `${cursor.pushedCount}; re-anchoring via epoch rewrite`
-        );
-      } else {
-        this.sessionShrinkCandidates.set(shrinkKey, observedTotalEventCount);
-        log.warn(
-          `persisted read for ${sessionId} returned ${observedTotalEventCount} events ` +
-            `but the cloud cursor covers ${cursor.pushedCount}; skipping`
-        );
-        return;
-      }
-    } else {
-      this.sessionShrinkCandidates.delete(shrinkKey);
-    }
+    const shrink = this.pushGuards.observeShrink(
+      orgId,
+      sessionId,
+      observedTotalEventCount,
+      cursor?.pushedCount
+    );
+    if (shrink === "skip") return;
+    const confirmedShrink = shrink === "confirmed";
 
     // A replay exposes its referenced files as independent immutable snapshots.
     // Register only after the source session exists; no transcript bytes/hashes
     // are rewritten to add attachment data.
     await this.upsertMetadataIfChanged(auth, orgId, session, scopeKey, access);
-    const { syncSessionSharedFiles } = await import("./syncSessionSharedFiles");
-    const endpoint = endpointForOrg(orgId);
-    sharedFilesReady = await syncSessionSharedFiles({
-      token: auth.accessToken,
-      endpoint,
+    sharedFilesReady = await this.syncReplaySharedFiles(
+      auth,
       orgId,
-      sessionId,
-      events,
-      repoPath: session.repoPath,
-      assertCurrentIdentity: () => {
-        const latest = this.getStore()?.get(org2CloudAuthAtom);
-        if (
-          !latest ||
-          org2CloudAuthIdentityKey(latest) !== org2CloudAuthIdentityKey(auth) ||
-          endpointForOrg(orgId).supabaseUrl !== endpoint.supabaseUrl
-        )
-          throw new Error("Cloud identity changed while sharing session files");
-      },
-    });
+      session,
+      events
+    );
     const preparedPlan = await prepared.plan();
-    const {
-      perEventHashes,
-      frozenHashMode,
-      totalEventCount,
-      frozenEventCount,
-      localFrozenEventCount,
-      tailEvents,
-      tailHash,
-      frozenChainHash,
-      importedReplay,
-    } = preparedPlan;
+    const pass: PreparedPushPass = {
+      auth,
+      orgId,
+      session,
+      scopeKey,
+      access,
+      prepared,
+      preparedPlan,
+      confirmedShrink,
+      markPreparedClean,
+      publishPreparedTurnIndex,
+    };
 
     if (cursor && mode === "incremental") {
-      const priorFrozenInsideWindow = cursor.frozenEventCount - baseEventCount;
-      const newFrozenEvents = events.slice(
-        priorFrozenInsideWindow,
-        localFrozenEventCount
-      );
-      if (
-        newFrozenEvents.length === 0 &&
-        tailHash === cursor.tailHash &&
-        totalEventCount === cursor.pushedCount
-      ) {
-        await this.upsertMetadataIfChanged(
-          auth,
-          orgId,
-          session,
-          scopeKey,
-          access
-        );
-        if (importedReplay) {
-          this.setCursor({
-            ...cursor,
-            frozenChainHash,
-            importedReplay,
-          });
-        }
-        markPreparedClean();
-        return;
-      }
-      await this.upsertMetadataIfChanged(
-        auth,
-        orgId,
-        session,
-        scopeKey,
-        access
-      );
-      try {
-        await this.appendIncrementalSession(
-          auth,
-          orgId,
-          sessionId,
-          cursor,
-          newFrozenEvents,
-          preparedPlan
-        );
-      } catch (error) {
-        if (!isOrg2SyncErrorCode(error, "ORG2_CONFLICT")) throw error;
-        const fullPrepared = await this.preparePushEventsForPass(
-          sessionId,
-          cursor,
-          true
-        );
-        const fullPlan = await fullPrepared.plan();
-        await this.rewriteSession(auth, orgId, session, scopeKey, access, {
-          events: fullPrepared.events,
-          ...fullPlan,
-          newEpoch: null,
-        });
-      }
-      broadcastOrgControlChangedToPeers(orgId, "sessions");
-      markPreparedClean();
-      void this.publishTurnIndexBestEffort(auth, orgId, session, stampAtRead);
+      await this.pushIncrementalReplay(pass, cursor);
       return;
     }
 
     if (cursor) {
-      let frozenIntact =
-        !confirmedShrink && frozenEventCount >= cursor.frozenEventCount;
-      if (frozenIntact && cursor.frozenEventCount > 0) {
-        // The cursor's commitment may be in either hash mode: flat-v1 cursors
-        // predate the imported-replay checkpoint, a failed turn-id probe
-        // downgrades a checkpointed cursor, and an interrupted batch append
-        // persists a merkle commitment without its checkpoint. Both modes
-        // commit to the same per-event hashes, so intactness accepts a match
-        // in either — an intact history rides the delta append and adopts
-        // this plan's mode there; a mode change alone must never force the
-        // O(total) epoch rewrite.
-        frozenIntact = await this.frozenChainMatchesCursor(
-          cursor,
-          preparedPlan
-        );
-      }
-
-      if (!frozenIntact) {
-        // An epoch rewrite re-uploads the ENTIRE frozen history. It is the
-        // expensive path, so name the condition that forced it: a silent
-        // rewrite loop is indistinguishable from steady state in the ledger.
-        log.info(
-          `epoch rewrite for ${sessionId} org ${orgId}: ` +
-            `confirmedShrink=${confirmedShrink} ` +
-            `frozen=${frozenEventCount} cursorFrozen=${cursor.frozenEventCount} ` +
-            `chainMismatch=${
-              !confirmedShrink && frozenEventCount >= cursor.frozenEventCount
-            }`
-        );
-      }
-
-      if (frozenIntact) {
-        const newFrozenEvents = events.slice(
-          cursor.frozenEventCount,
-          frozenEventCount
-        );
-        if (
-          newFrozenEvents.length === 0 &&
-          tailHash === cursor.tailHash &&
-          totalEventCount === cursor.pushedCount
-        ) {
-          await this.upsertMetadataIfChanged(
-            auth,
-            orgId,
-            session,
-            scopeKey,
-            access
-          );
-          if (importedReplay && frozenChainHash !== cursor.frozenChainHash) {
-            // Same content in an upgraded hash mode: converge the local
-            // cursor (a checkpoint plus its merkle commitment) so the next
-            // delta takes the bounded path — no network write is needed.
-            // The downgrade direction deliberately keeps the cursor: a
-            // still-valid checkpoint must survive a transiently failed probe.
-            this.setCursor({ ...cursor, frozenChainHash, importedReplay });
-          }
-          markPreparedClean();
-          return;
-        }
-        await this.upsertMetadataIfChanged(
-          auth,
-          orgId,
-          session,
-          scopeKey,
-          access
-        );
-        const frozenSegments = splitFrozenIntoSegments(
-          newFrozenEvents,
-          cursor.frozenSeq + 1
-        );
-        try {
-          await this.appendSessionBatches(
-            auth,
-            orgId,
-            sessionId,
-            cursor,
-            frozenSegments,
-            {
-              events,
-              perEventHashes,
-              frozenHashMode,
-              totalEventCount,
-              frozenEventCount,
-              localFrozenEventCount,
-              frozenChainHash,
-              tailEvents,
-              tailHash,
-              importedReplay,
-            }
-          );
-          broadcastOrgControlChangedToPeers(orgId, "sessions");
-          markPreparedClean();
-          void this.publishTurnIndexBestEffort(
-            auth,
-            orgId,
-            session,
-            stampAtRead
-          );
-          return;
-        } catch (error) {
-          if (!isOrg2SyncErrorCode(error, "ORG2_CONFLICT")) throw error;
-          await this.rewriteSession(auth, orgId, session, scopeKey, access, {
-            events,
-            perEventHashes,
-            frozenHashMode,
-            totalEventCount,
-            frozenEventCount,
-            localFrozenEventCount,
-            frozenChainHash,
-            tailEvents,
-            tailHash,
-            importedReplay,
-            newEpoch: null,
-          });
-          markPreparedClean();
-          void this.publishTurnIndexBestEffort(
-            auth,
-            orgId,
-            session,
-            stampAtRead
-          );
-          return;
-        }
-      }
-
-      await this.rewriteSession(auth, orgId, session, scopeKey, access, {
-        events,
-        perEventHashes,
-        frozenHashMode,
-        totalEventCount,
-        frozenEventCount,
-        localFrozenEventCount,
-        frozenChainHash,
-        tailEvents,
-        tailHash,
-        importedReplay,
-        newEpoch: cursor.epoch + 1,
-      });
-      markPreparedClean();
-      void this.publishTurnIndexBestEffort(auth, orgId, session, stampAtRead);
+      await this.pushCursorReplay(pass, cursor);
       return;
     }
 
-    await this.rewriteSession(auth, orgId, session, scopeKey, access, {
-      events,
-      perEventHashes,
-      frozenHashMode,
-      totalEventCount,
-      frozenEventCount,
-      localFrozenEventCount,
-      frozenChainHash,
-      tailEvents,
-      tailHash,
-      importedReplay,
-      newEpoch: 1,
-    });
-    markPreparedClean();
-    void this.publishTurnIndexBestEffort(auth, orgId, session, stampAtRead);
+    await this.pushInitialReplay(pass);
   }
 }

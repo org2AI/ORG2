@@ -4,12 +4,12 @@ import { useTranslation } from "react-i18next";
 import Input from "@src/components/Input";
 import ModelIcon from "@src/components/ModelIcon";
 import Select from "@src/components/Select";
-import { FolderGitTwoIcon, GripIcon, HugeiconsIcon } from "@src/icons";
 import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { FolderGitTwoIcon, GripIcon, HugeiconsIcon } from "@src/icons";
 
 import SpotlightSelectTrigger from "./SpotlightSelectTrigger";
 import type { RoutineDraft, UpdateRoutineDraft } from "./routineDraft";

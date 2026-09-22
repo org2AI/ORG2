@@ -7,6 +7,7 @@
 import React, { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { getToolIcon } from "@src/config/toolIcons";
 import type { ToolUsageMetadata } from "@src/engines/SessionCore/core/types";
 import {
@@ -289,8 +290,8 @@ const StandardTodoBlock: React.FC<StandardTodoBlockProps> = memo(
                 );
               })}
               {needsExpand && (
-                <button
-                  type="button"
+                <Button
+                  layout="custom"
                   className="group flex h-6 w-full cursor-pointer items-center gap-1.5 rounded border-0 bg-transparent px-1.5 text-left transition-colors hover:bg-fill-2"
                   aria-expanded={isListExpanded}
                   onClick={() => setIsListExpanded((prev) => !prev)}
@@ -317,7 +318,7 @@ const StandardTodoBlock: React.FC<StandardTodoBlockProps> = memo(
                       ? t("common:showLess")
                       : t("common:showMore")}
                   </span>
-                </button>
+                </Button>
               )}
             </div>
           </div>

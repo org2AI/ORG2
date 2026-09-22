@@ -5,9 +5,6 @@
  *
  * - useDropdownEngine: Unified base hook (single source of truth for
  *   positioning, ESC, click-outside, and keyboard navigation).
- * - useDropdownListNavigation: Typed list navigation slice (Arrow/Enter
- *   over `items[]`). Wired automatically when `useDropdownEngine` is
- *   called with `listNavigation`.
  * - useDropdownAutoKeyboard: DOM auto-discover keyboard fallback. Wired
  *   automatically by `useDropdownEngine` when `listNavigation` is not
  *   provided.
@@ -22,9 +19,6 @@ export {
   type DropdownEnginePosition,
 } from "./useDropdownEngine";
 
-export {
-  useDropdownListNavigation,
-  type UseDropdownListNavigationReturn,
-} from "./useDropdownListNavigation";
+export { type UseDropdownListNavigationReturn } from "./useDropdownListNavigation";
 
 export { useDropdownAutoKeyboard } from "./useDropdownAutoKeyboard";

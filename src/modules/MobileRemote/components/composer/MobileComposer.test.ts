@@ -10,6 +10,7 @@ import {
 } from "@src/config/composerStackTokens";
 import { MobileRemotePlatformProvider } from "@src/modules/MobileRemote/platform";
 import { createBrowserMobileRemotePlatform } from "@src/modules/MobileRemote/platform/browser";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { MobileComposer } from "./MobileComposer";
 
@@ -18,22 +19,30 @@ vi.mock("@src/components/ModelIcon", () => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
+const voiceTest = vi.hoisted(() => ({
+  start: vi.fn(),
+  onError: undefined as
+    | undefined
+    | ((error: { code: string; message: string }) => void),
+}));
 vi.mock("@src/hooks/voice", () => ({
-  useVoiceInput: () => ({
-    isRecording: false,
-    isSupported: true,
-    liveTranscript: "",
-    elapsedSeconds: 0,
-    start: vi.fn(),
-    stop: vi.fn(),
-    cancel: vi.fn(),
-    toggle: vi.fn(),
-  }),
+  useVoiceInput: (options: { onError?: typeof voiceTest.onError }) => {
+    voiceTest.onError = options.onError;
+    return {
+      isRecording: false,
+      isSupported: true,
+      liveTranscript: "",
+      elapsedSeconds: 0,
+      start: voiceTest.start,
+      stop: vi.fn(),
+      cancel: vi.fn(),
+      toggle: vi.fn(),
+    };
+  },
 }));
 
 (
@@ -50,6 +59,27 @@ afterEach(() => {
   host?.remove();
   root = null;
   host = null;
+  voiceTest.start.mockClear();
+  voiceTest.onError = undefined;
+});
+
+it("retries microphone permission from the shared primary Button without sending a message", async () => {
+  const onSend = vi.fn();
+  await renderComposer(onSend);
+  await act(async () =>
+    voiceTest.onError?.({
+      code: "permission-denied",
+      message: "Permission denied",
+    })
+  );
+  const retry = Array.from(document.querySelectorAll("button")).find(
+    (button) => button.textContent === "Try again"
+  )!;
+  expect(retry).not.toBeUndefined();
+  expect(retry.classList.contains("button")).toBe(true);
+  await act(async () => retry.click());
+  expect(voiceTest.start).toHaveBeenCalledOnce();
+  expect(onSend).not.toHaveBeenCalled();
 });
 
 async function renderComposer(

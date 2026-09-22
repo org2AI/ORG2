@@ -3,7 +3,7 @@
 A standalone command-line tool that **loads and analyzes AI coding-assistant
 sessions** across every tool `orgtrack_core` can read — Claude Code, Codex,
 Cursor (CLI & IDE), Cline, OpenCode, Warp, Windsurf, Trae, Qoder, and more — and
-reports token/cost analytics, without the ORGII desktop app.
+reports token/cost analytics, without the ORG2 desktop app.
 
 It is a thin front-end: all of the loading and analysis is `orgtrack_core`'s,
 reached through three entry points — the source **registry** (scan), the
@@ -220,7 +220,7 @@ orgtrack show claude_code-<uuid> --db ~/.orgtrack/index.db --no-scan
 
 Today the crate is `publish = false` because it depends on the (also
 unpublished) `orgtrack_core`, which in turn has workspace-path dependencies
-(`core_types`, `orgtrack_protocol`, `orgtrack_sync`, `app_paths`). The crate is
+(`core_types`, `orgtrack_protocol`, `app_paths`). The crate is
 deliberately dependency-light (`orgtrack_core` + `core_types` + `rusqlite` +
 `serde` + `serde_json` + `toml` + `sha2` + `minijinja`) so that lifting it out
 is mechanical. The path to an independent publish:

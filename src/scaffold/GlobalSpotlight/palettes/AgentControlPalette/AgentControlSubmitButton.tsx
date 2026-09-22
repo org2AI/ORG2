@@ -2,6 +2,7 @@ import { useAtomValue } from "jotai";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
 import { INPUT_AREA_BUTTONS } from "@src/config/inputAreaTokens";
@@ -24,8 +25,8 @@ export const AgentControlSubmitButton: React.FC<
   });
 
   const button = (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       onClick={onSubmit}
       disabled={disabled}
       className={`flex ${INPUT_AREA_BUTTONS.iconButtonSizeClass} shrink-0 items-center justify-center rounded-full transition-colors duration-200 focus:outline-none ${
@@ -42,7 +43,7 @@ export const AgentControlSubmitButton: React.FC<
         size={INPUT_AREA_BUTTONS.iconSize}
         strokeWidth={2}
       />
-    </button>
+    </Button>
   );
 
   if (disabled) return button;
@@ -57,7 +58,7 @@ export const AgentControlSubmitButton: React.FC<
         />
       }
       position="top-end"
-      mouseEnterDelay={200}
+      kind="button"
       framedPanel
     >
       {button}

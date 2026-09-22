@@ -46,7 +46,8 @@
     "colleagues": "同事",
     "terminals": "終端機",
     "openSourceRepo": "開啟原始碼倉庫",
-    "teamInbox": "Team Inbox"
+    "teamInbox": "Team Inbox",
+    "closeSettings": "關閉設置"
   },
   "routes": {
     "session": "聊天",
@@ -74,12 +75,7 @@
       "manual": "手動排序"
     },
     "tabs": {
-      "workstation": "工作站",
-      "manage": "管理",
-      "core": "核心",
-      "agent": "Agent",
-      "org": "團隊",
-      "agentOrgs": "Agent & 團隊"
+      "workstation": "工作站"
     },
     "groupBy": {
       "none": "不分組",
@@ -101,57 +97,23 @@
       "untitledSession": "未命名 Session",
       "enterSessionName": "輸入 Session 名稱"
     },
-    "groups": {
-      "economy": "經濟",
-      "myServices": "我的服務",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "託管密鑰",
-      "cloud": "Cloud",
-      "openSource": "開源倉庫",
-      "timeline": "時間線"
-    },
     "actions": {
       "addNew": "新建",
       "collapseAll": "全部摺疊",
-      "markAllRead": "全部標為已讀",
-      "toggleGroup": "切換分組"
+      "markAllRead": "全部標為已讀"
     },
     "search": {
-      "folders": "搜尋工作區...",
-      "sessions": "搜尋會話...",
-      "projects": "搜尋專案...",
-      "colleagues": "搜尋同事..."
-    },
-    "folderCounts": {
-      "repo": "{{count}}個倉庫",
-      "multiRepoWorkspace": "{{count}}個多倉庫工作區",
-      "repo_other": "{{count}} repos",
-      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
-      "repo_plural": "{{count}} repos",
-      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
+      "sessions": "搜尋會話..."
     },
     "bottomBar": {
       "settings": "設定",
-      "clockLabel": "目前時間",
       "updateAvailable": "下載更新 v{{version}}"
     },
     "settingsMenu": {
       "appearance": "外觀",
       "modifyAppearance": "修改外觀",
-      "language": "語言",
       "viewRam": "查看 RAM",
-      "tutorials": "教學",
       "openSettings": "開啟設定"
-    },
-    "empty": {
-      "noItems": "暫無內容",
-      "noSessions": "暫無 Session",
-      "noSessionsDesc": "開始一個新 Session",
-      "noResultsFor": "未找到 \"{{query}}\" 的結果",
-      "noSearchResults": "未找到結果"
     },
     "presence": {
       "tooltip": "設定你的線上狀態 — Agent 會根據你是否在鍵盤前調整行為。",
@@ -169,9 +131,18 @@
       "durationTomorrow": "明天",
       "unknownRole": "未知角色"
     },
-    "guide": {
-      "startSession": "建立第一個工作階段",
-      "connectOrganization": "連接或建立工作空間"
+    "sections": {
+      "section": "分區",
+      "create": "新增分區",
+      "name": "分區名稱",
+      "rename": "重新命名分區",
+      "delete": "刪除分區（保留對話）",
+      "remove": "移出分區",
+      "up": "上移",
+      "down": "下移",
+      "manage": "管理分區",
+      "more": "載入更多",
+      "retry": "重試"
     }
   },
   "launchpad": {
@@ -275,9 +246,9 @@
       "switchToRepo": "切換",
       "startSession": "開始會話",
       "openDetails": "開啟詳情",
-      "remove": "Remove from ORGII",
-      "removeSuccess": "Linkage to ORGII removed",
-      "removeFailed": "Failed to remove linkage to ORGII"
+      "remove": "從 ORG2 移除",
+      "removeSuccess": "已解除與 ORG2 的連結",
+      "removeFailed": "無法解除與 ORG2 的連結"
     },
     "addWorkspace": "新增工作區"
   },
@@ -323,11 +294,11 @@
       "forkModelFallback": "擁有者的模型 {{model}} 在你的金鑰下不可用 — 此分叉將改用 {{fallback}}。",
       "forkModelUnavailable": "擁有者的模型 {{model}} 在你的金鑰下不可用 — 執行此分叉前請先選擇模型。",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -483,7 +454,6 @@
       "showHidden": "顯示已隱藏的會話（{{count}}）",
       "viewerTooltip": "{{name}} 正在看這個會話",
       "viewerOverflow": "還有 {{count}} 人正在看",
-      "memberViewing": "正在看：{{title}}",
       "viewerOverflow_one": "and 1 more viewer",
       "viewerOverflow_other": "and {{count}} more viewers",
       "loadingSession": "正在載入會話…",
@@ -665,7 +635,7 @@
       "selectAll": "所有人（{{count}}）",
       "incomingEndpointMismatch": "此分享來自另一套自訂雲端。請先設定對應的雲端點再匯入。",
       "incomingConnectionError": "無法連線雲端服務。請檢查網路後重試。",
-      "incomingIncompatibleError": "雲端服務回傳了不相容的分享資料。請更新 ORGII 或檢查雲端部署。",
+      "incomingIncompatibleError": "雲端服務回傳了不相容的分享資料。請更新 ORG2 或檢查雲端部署。",
       "incomingServerError": "雲端服務暫時無法解析此分享，請重試。",
       "incomingAlreadyOnDevice": "此 session 已在本機，無需建立重複副本。",
       "incomingOpenExisting": "開啟 session",
@@ -677,32 +647,16 @@
       "unresolvedBadge": "{{count}} 則未解決評論",
       "unreadBadge_one": "{{count}} 則未讀訊息",
       "unreadBadge": "{{count}} 則未讀訊息",
-      "addError": "發送失敗——草稿已保留",
-      "addPlaceholder": "新增評論…",
-      "agentAddressing": "Agent 正在處理…",
       "agentAuthor": "Agent @{{name}}",
-      "cancel": "取消",
-      "delete": "刪除",
       "deletedComment": "評論已刪除",
       "earlierVersion": "來自此工作階段的較早版本",
-      "edit": "編輯",
       "editedMarker": "已編輯",
       "empty": "尚無評論",
       "loadError": "評論載入失敗",
-      "mentionMembers": "提及成員",
       "notesButton": "工作階段備註",
       "notesTitle": "工作階段備註",
-      "reply": "回覆",
-      "replyPlaceholder": "回覆…",
       "resolved": "已解決",
       "resolvedToggle": "已解決（{{count}}）",
-      "save": "儲存",
-      "searchMembers": "搜尋成員",
-      "send": "發表",
-      "task": {
-        "assignFailed": "評論已發布，但指派 Agent 失敗——請從討論串重試",
-        "mentionSuggestion": "將這則評論指派給 Agent"
-      },
       "wontFix": "不修復"
     },
     "billing": {
@@ -841,7 +795,6 @@
         "errorChannelMissing": "此頻道已無法使用",
         "errorMessageMissing": "該訊息已無法使用",
         "loadError": "訊息載入失敗",
-        "loadingMessages": "正在載入訊息…",
         "loadOlder": "載入較早的訊息",
         "unknownAuthor": "團隊成員"
       }
@@ -866,26 +819,26 @@
     "deleteRoleCancel": "取消",
     "deleteRoleOk": "刪除",
     "deleteRoleTitle": "刪除角色？",
-    "followUpSuggestionsDesc": "工作項目的一輪完成後，建議可能的後續步驟。這會額外發出一次模型請求。",
+    "followUpSuggestionsDesc": "工作項目的一輪完成後，建議可能的後續步驟。這會額外發出一次模型請求",
     "followUpSuggestionsLabel": "Agent 後續建議",
-    "goalMaxTurnsDesc": "在 Agent 通常會停下的時候，繼續朝我最近的請求最多再工作 N 輪（0 = 關閉）。",
+    "goalMaxTurnsDesc": "在 Agent 通常會停下的時候，繼續朝我最近的請求最多再工作 N 輪（0 = 關閉）",
     "goalMaxTurnsLabel": "目標續跑額度",
     "guidanceLabel": "Agent 指引",
     "guidancePlaceholder": "此角色生效時，Agent 應如何調整行為？",
-    "modeSwitchAutoPlanDesc": "待確認的 Plan 模式建議在確認計時結束後自動切換。",
+    "modeSwitchAutoPlanDesc": "待確認的 Plan 模式建議在確認計時結束後自動切換",
     "modeSwitchAutoPlanLabel": "模式切換自動進入 Plan",
     "newRoleDefaultLabel": "自訂角色",
-    "pageDescription": "定義你目前扮演的角色。Agent 會讀取目前角色的指引並相應調整行為 — 例如在你專注工作時少問釐清問題，或在你離開時批次彙整摘要。",
+    "pageDescription": "定義你目前扮演的角色。Agent 會讀取目前角色的指引並相應調整行為 — 例如在你專注工作時少問釐清問題，或在你離開時批次彙整摘要",
     "pageTitle": "我的角色",
-    "planAutoApproveDesc": "N 秒後自動核准待確認的計畫（0 = 等我確認）。",
+    "planAutoApproveDesc": "N 秒後自動核准待確認的計畫（0 = 等我確認）",
     "planAutoApproveLabel": "計畫自動核准",
-    "questionAutoSkipDesc": "N 秒後自動跳過 Agent 的待答問題（0 = 等我回答）。",
+    "questionAutoSkipDesc": "N 秒後自動跳過 Agent 的待答問題（0 = 等我回答）",
     "questionAutoSkipLabel": "問題自動跳過",
     "roleNameLabel": "名稱",
     "roleNamePlaceholder": "角色名稱",
     "stanceAutonomous": "自主 — 從不等我",
     "stanceDeferAndBatch": "延後並批次 — 先做事，稍後再問",
-    "stanceDesc": "此角色生效時，Agent 如何處理需要阻塞等待的決策。",
+    "stanceDesc": "此角色生效時，Agent 如何處理需要阻塞等待的決策",
     "stanceInteractive": "互動 — 隨時問我",
     "stanceLabel": "行為姿態"
   },
@@ -973,5 +926,10 @@
     "sidebar": {
       "signOut": "Sign out {{name}}"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "取代已停止：結果或檔案已變更，或寫入失敗。部分檔案可能已更新，請重新搜尋後重試。",
+    "budgetExceeded": "搜尋已達資源限制，結果不完整。請縮小搜尋範圍。",
+    "timeout": "搜尋逾時。請縮小搜尋範圍後重試。"
   }
 }

@@ -26,12 +26,6 @@ import { resolvePrismLanguage } from "./prismGrammars";
 const SyntaxHighlighterComponent =
   SyntaxHighlighter as unknown as ComponentType<SyntaxHighlighterProps>;
 
-export {
-  PRISM_LIGHT_LANGUAGES,
-  isPrismLanguage,
-  resolvePrismLanguage,
-} from "./prismGrammars";
-
 /**
  * Drop-in replacement for `Prism` from `react-syntax-highlighter`.
  *

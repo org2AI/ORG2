@@ -41,6 +41,18 @@ describe("org2CloudAuthAtom storage schema", () => {
     );
   });
 
+  it("retains OAuth refresh provenance when a new store hydrates persisted auth", () => {
+    const state = { ...VALID_STATE, oauthClientId: "desktop-client" };
+    storage.setItem(ORG2_CLOUD_AUTH_STORAGE_KEY, state);
+    const store = createStore();
+    const unsubscribe = store.sub(org2CloudAuthAtom, () => {});
+    try {
+      expect(store.get(org2CloudAuthAtom)).toEqual(state);
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("round-trips the signed-out null state", () => {
     storage.setItem(ORG2_CLOUD_AUTH_STORAGE_KEY, null);
     expect(storage.getItem(ORG2_CLOUD_AUTH_STORAGE_KEY, VALID_STATE)).toBe(
@@ -140,9 +152,10 @@ describe("commitRefreshedAuth", () => {
     expect(isSameOrg2CloudSession(switchedEndpoint, VALID_STATE)).toBe(false);
   });
 
-  it("no-ops when ensureFreshSession returned the same object (token still valid)", () => {
+  it("checks current auth without a write when the token is still valid", () => {
     const store = createStore();
     store.set(org2CloudAuthAtom, VALID_STATE);
+    const setItem = vi.spyOn(localStorage, "setItem");
     let setterCalls = 0;
 
     commitRefreshedAuth(
@@ -154,8 +167,10 @@ describe("commitRefreshedAuth", () => {
       VALID_STATE
     );
 
-    expect(setterCalls).toBe(0);
+    expect(setterCalls).toBe(1);
+    expect(setItem).not.toHaveBeenCalled();
     expect(store.get(org2CloudAuthAtom)).toBe(VALID_STATE);
+    setItem.mockRestore();
   });
 
   it("does NOT resurrect a session the user signed out of mid-flight (CAS)", () => {

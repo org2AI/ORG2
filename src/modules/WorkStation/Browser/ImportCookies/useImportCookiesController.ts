@@ -46,9 +46,6 @@ export interface ImportCookiesController {
   stage: ImportStage;
   sourcesLoading: boolean;
   sources: CookieImportSource[];
-  /** A source the user picked that cannot be read yet (e.g. Safari without
-   *  Full Disk Access); the picker explains what to do. */
-  unavailableSource: CookieImportSource | null;
   activeSource: CookieImportSource | null;
   previewLoading: boolean;
   preview: CookieImportPreview | null;
@@ -76,8 +73,6 @@ export function useImportCookiesController(
   const [sourcesLoading, setSourcesLoading] = useState(true);
   // Bumped by refreshSources to re-run the scan.
   const [scanGeneration, setScanGeneration] = useState(0);
-  const [unavailableSource, setUnavailableSource] =
-    useState<CookieImportSource | null>(null);
   const [activeSource, setActiveSource] = useState<CookieImportSource | null>(
     null
   );
@@ -118,7 +113,6 @@ export function useImportCookiesController(
   }, [t, scanGeneration]);
 
   const refreshSources = useCallback(() => {
-    setUnavailableSource(null);
     setSourcesLoading(true);
     setScanGeneration((generation) => generation + 1);
   }, []);
@@ -134,13 +128,10 @@ export function useImportCookiesController(
     (sourceId: string) => {
       const source = sources.find((candidate) => candidate.id === sourceId);
       if (!source) return;
-      if (source.unavailableReason) {
-        // Stay on the picker and explain how to unblock it.
-        setUnavailableSource(source);
-        return;
-      }
+      // A blocked source (e.g. Safari without Full Disk Access) has no store to
+      // preview; its picker row offers the way to unblock it instead.
+      if (source.unavailableReason) return;
       const token = ++requestRef.current;
-      setUnavailableSource(null);
       setActiveSource(source);
       setStage("preview");
       setPreview(null);
@@ -160,7 +151,19 @@ export function useImportCookiesController(
           setActiveSource(null);
           setStage("sources");
           if (isCookieImportError(error) && error.code === "full_disk_access") {
-            setUnavailableSource(source);
+            // The scan thought this store was readable and macOS disagreed.
+            // Record that on the source, so its row turns into the same
+            // "needs Full Disk Access" row a blocked scan result gets.
+            setSources((current) =>
+              current.map((candidate) =>
+                candidate.id === sourceId
+                  ? {
+                      ...candidate,
+                      unavailableReason: "needs_full_disk_access" as const,
+                    }
+                  : candidate
+              )
+            );
             return;
           }
           Message.error(
@@ -233,7 +236,6 @@ export function useImportCookiesController(
     stage,
     sourcesLoading,
     sources,
-    unavailableSource,
     activeSource,
     previewLoading,
     preview,

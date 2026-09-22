@@ -172,16 +172,10 @@ const AgentConfigInner: React.FC<AgentConfigInnerProps> = ({ data }) => {
     async (agentId: string) => {
       try {
         await removeAgent(agentId);
-        Message.success(
-          t("agentOrgs.agentDeleted", { defaultValue: "Agent deleted" })
-        );
+        Message.success(t("agentOrgs.agentDeleted"));
       } catch (err) {
         logger.error("agent delete failed", err);
-        Message.error(
-          t("agentOrgs.agentDeleteFailed", {
-            defaultValue: "Failed to delete agent",
-          })
-        );
+        Message.error(t("agentOrgs.agentDeleteFailed"));
       }
     },
     [removeAgent, t]
@@ -205,11 +199,7 @@ const AgentConfigInner: React.FC<AgentConfigInnerProps> = ({ data }) => {
         );
       } catch (err) {
         logger.error("org save failed", err);
-        Message.error(
-          t("agentOrgs.orgSaveFailed", {
-            defaultValue: "Failed to save team",
-          })
-        );
+        Message.error(t("agentOrgs.orgSaveFailed"));
       }
     },
     [orgs, selectedOrg?.id, loadOrgs, t]
@@ -219,9 +209,7 @@ const AgentConfigInner: React.FC<AgentConfigInnerProps> = ({ data }) => {
     async (orgId: string) => {
       const target = orgs.find((o) => o.id === orgId);
       const confirmed = await confirmDestructiveAction({
-        title: t("agentOrgs.deleteOrgTitle", {
-          defaultValue: "Delete team?",
-        }),
+        title: t("agentOrgs.deleteOrgTitle"),
         message: t("agentOrgs.deleteOrgMessage", {
           name: target?.name ?? "this team",
           defaultValue: `"${target?.name ?? "this team"}" will be permanently removed. This cannot be undone.`,
@@ -235,16 +223,10 @@ const AgentConfigInner: React.FC<AgentConfigInnerProps> = ({ data }) => {
         const refreshed = await loadOrgs();
         setOrgs(refreshed);
         window.dispatchEvent(new Event(AGENT_ORGS_CHANGED_EVENT));
-        Message.success(
-          t("agentOrgs.orgDeleted", { defaultValue: "Team deleted" })
-        );
+        Message.success(t("agentOrgs.orgDeleted"));
       } catch (err) {
         logger.error("org delete failed", err);
-        Message.error(
-          t("agentOrgs.orgDeleteFailed", {
-            defaultValue: "Failed to delete team",
-          })
-        );
+        Message.error(t("agentOrgs.orgDeleteFailed"));
       }
     },
     [orgs, loadOrgs, t]

@@ -1,12 +1,13 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
 import type {
   McpResource,
   McpServerStatus,
   McpToolDef,
 } from "@src/modules/MainApp/AgentOrgs/config/mcp/useMcpServers";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
 
 import {
   InlineCardBody,
@@ -127,22 +128,24 @@ const McpInlineExpandedCard: React.FC<McpInlineExpandedCardProps> = ({
                       </div>
                     ))}
                     {hasMoreTools && !toolsExpanded && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="inline"
                         onClick={() => setToolsExpanded(true)}
-                        className="mt-1 text-left text-[11px] text-text-3 hover:text-text-2"
+                        className="mt-1 text-left text-[11px] hover:text-text-2"
                       >
                         +{displayedTools.length - TOOLS_PREVIEW_COUNT} more
-                      </button>
+                      </Button>
                     )}
                     {toolsExpanded && hasMoreTools && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="inline"
                         onClick={() => setToolsExpanded(false)}
-                        className="mt-1 text-left text-[11px] text-text-3 hover:text-text-2"
+                        className="mt-1 text-left text-[11px] hover:text-text-2"
                       >
                         {t("common:actions.collapse")}
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </InlineCardColumnStack>

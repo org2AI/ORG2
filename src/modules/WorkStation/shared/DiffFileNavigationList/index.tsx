@@ -9,10 +9,10 @@ import type {
   FlattenedTreeNode,
   TreeNodeBase,
 } from "@src/components/VirtualizedStickyTree";
+import { ReferenceDragGhost } from "@src/components/dnd/ReferenceDragGhost";
+import { useReferencePillDrag } from "@src/components/dnd/useReferencePillDrag";
 import { File02Icon, HugeiconsIcon } from "@src/icons";
 import type { TabDragPillPayload } from "@src/modules/WorkStation/shared/TabBar/tabDragTypes";
-import { ReferenceDragGhost } from "@src/shared/dnd/ReferenceDragGhost";
-import { useReferencePillDrag } from "@src/shared/dnd/useReferencePillDrag";
 
 import type { DiffFileSectionData } from "../DiffFileSection";
 
@@ -130,11 +130,7 @@ function DiffFileNavigationListInner<TFile extends DiffFileSectionData>({
 }: DiffFileNavigationListProps<TFile>) {
   const { t } = useTranslation("sessions");
   const resolvedEmptyTitle =
-    emptyTitle ??
-    t(
-      "simulator.replay.diffApp.emptyForFilter",
-      "No diffs match this filter yet"
-    );
+    emptyTitle ?? t("simulator.replay.diffApp.emptyForFilter");
 
   const flattenedNodes = useMemo(() => items.map(buildTreeNode), [items]);
   const buildDragPillPayload = useCallback(

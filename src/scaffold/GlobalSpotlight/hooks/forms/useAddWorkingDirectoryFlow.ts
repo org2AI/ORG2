@@ -47,7 +47,6 @@ function isDirectOpenStage(stage: AddWorkingDirectoryModalStage): boolean {
 
 export type AddWorkingDirectoryModalStage =
   | "add-workspace-new"
-  | "add-workspace-clone"
   | "add-workspace-clone-url"
   | "add-workspace-clone-github"
   | "add-workspace-existing"
@@ -153,22 +152,16 @@ export function useAddWorkingDirectoryFlow(
       options: {
         openWorkspace: t("actions.openFolder"),
         createWorkspace: t("selectors.repo.addOptions.createWorkspace"),
-        cloneFromGitHub: t("cloneForm.titleCloneFromGitHub"),
         cloneFromGitHubUrl: t("selectors.repo.addOptions.cloneFromGitHubUrl"),
         cloneFromMyGitHub: t("selectors.repo.addOptions.cloneFromMyGitHub"),
-        createMultiRepoWorkspace: t(
-          "workspaceForm.createWorkspace",
-          "Create Multi-repo Working Directory"
-        ),
+        createMultiRepoWorkspace: t("workspaceForm.createWorkspace"),
       },
       sources: {
         creatingWorkspace: t("selectors.repo.sources.creatingWorkspace"),
-        cloningFromGitHub: t("selectors.repo.sources.cloningFromGitHub"),
         cloningFromGitHubUrl: t("selectors.repo.sources.cloningFromGitHubUrl"),
         cloningFromMyGitHub: t("selectors.repo.sources.cloningFromMyGitHub"),
         creatingMultiRepoWorkspace: t(
-          "selectors.repo.sources.creatingMultiRepoWorkspace",
-          "composing workspace"
+          "selectors.repo.sources.creatingMultiRepoWorkspace"
         ),
       },
       actionPath: {
@@ -222,8 +215,6 @@ export function useAddWorkingDirectoryFlow(
       switch (stage) {
         case "add-workspace-new":
           return workingDirectoryText.sources.creatingWorkspace;
-        case "add-workspace-clone":
-          return workingDirectoryText.sources.cloningFromGitHub;
         case "add-workspace-clone-url":
           return workingDirectoryText.sources.cloningFromGitHubUrl;
         case "add-workspace-clone-github":
@@ -242,8 +233,6 @@ export function useAddWorkingDirectoryFlow(
       switch (stage) {
         case "add-workspace-new":
           return workingDirectoryText.options.createWorkspace;
-        case "add-workspace-clone":
-          return workingDirectoryText.options.cloneFromGitHub;
         case "add-workspace-clone-url":
           return workingDirectoryText.options.cloneFromGitHubUrl;
         case "add-workspace-clone-github":
@@ -344,9 +333,7 @@ export function useAddWorkingDirectoryFlow(
   const cloneFormFetchRepos = cloneForm.fetchGitHubRepos;
 
   useEffect(() => {
-    const needsGitHubFetch =
-      modalStage === "add-workspace-clone-github" ||
-      (modalStage === "add-workspace-clone" && cloneForm.subTab === "myGitHub");
+    const needsGitHubFetch = modalStage === "add-workspace-clone-github";
     if (!needsGitHubFetch) {
       hasAttemptedGitHubFetchRef.current = false;
       return;
@@ -362,7 +349,6 @@ export function useAddWorkingDirectoryFlow(
     }
   }, [
     modalStage,
-    cloneForm.subTab,
     cloneFormReposLength,
     cloneFormIsLoading,
     cloneFormFetchRepos,
@@ -387,11 +373,10 @@ export function useAddWorkingDirectoryFlow(
     handleGoBack,
     isLoading:
       workingDirectoryForm.loading ||
+      cloneForm.loading ||
       cloneForm.isLoadingRepos ||
       multiRepoWorkspaceForm.loading,
     actionPathSegment,
     getSourceSegment,
   };
 }
-
-export default useAddWorkingDirectoryFlow;

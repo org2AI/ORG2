@@ -426,8 +426,8 @@ pub(crate) fn models_match(cli_model: &str, api_model: &str) -> bool {
 
 /// Read the session token from the locally installed Cursor IDE.
 ///
-/// This is the same account the Cursor CLI authenticates as. Reads from
-/// `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` (macOS).
+/// This is the same account the Cursor CLI authenticates as. Reads Cursor's
+/// `state.vscdb` from the platform location `app_paths::cursor` resolves.
 ///
 /// Returns the token in format `{userId}%3A%3A{jwtToken}`, or `None` if not found.
 pub fn get_local_cursor_session_token() -> Option<String> {
@@ -472,34 +472,11 @@ pub fn get_local_cursor_session_token() -> Option<String> {
     }
 }
 
+/// Cursor's `state.vscdb` for the signed-in user, or `None` when Cursor is not
+/// installed. The platform layout is owned by [`app_paths::cursor`].
 fn get_cursor_state_db_path() -> Option<std::path::PathBuf> {
-    let home = dirs::home_dir()?;
-
-    #[cfg(target_os = "macos")]
-    {
-        let path = home.join("Library/Application Support/Cursor/User/globalStorage/state.vscdb");
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        let path = home.join("AppData/Roaming/Cursor/User/globalStorage/state.vscdb");
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let path = home.join(".config/Cursor/User/globalStorage/state.vscdb");
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    None
+    let path = app_paths::cursor::state_db_path().ok()?;
+    path.exists().then_some(path)
 }
 
 // ============================================

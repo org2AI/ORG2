@@ -2,12 +2,11 @@ import { type MouseEvent, useCallback } from "react";
 
 import { CLOUD_REMOTE_ITEM_PREFIX } from "@src/features/Org2Cloud/cloudRemoteItemId";
 import { createLogger } from "@src/hooks/logger";
+import { AppWindowMacIcon, CursorInWindowIcon } from "@src/icons";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
+import { popupSidebarMenu } from "@src/scaffold/NavigationSidebar/menus/SidebarMenu";
+import { type SidebarMenuItem } from "@src/scaffold/NavigationSidebar/menus/types";
 import type { Session } from "@src/store/session";
-import {
-  type NativeMenuItemOptions,
-  popupNativeMenu,
-} from "@src/util/platform/tauri/nativeMenuPopup";
 
 import { isDraftMenuItemId } from "../sidebarConnectorUtils";
 
@@ -22,6 +21,7 @@ interface UseSidebarTabContextMenuParams {
   ) => Promise<void>;
   onOpenInNewTab: (key: string, item: NavigationMenuItem) => void;
   openInNewTabLabel: string;
+  openInLabel: string;
 }
 
 export function buildOpenSidebarItemInNewTabMenuItem({
@@ -30,8 +30,8 @@ export function buildOpenSidebarItemInNewTabMenuItem({
 }: {
   label: string;
   onOpen: () => void;
-}): NativeMenuItemOptions {
-  return { text: label, action: onOpen };
+}): SidebarMenuItem {
+  return { text: label, icon: AppWindowMacIcon, action: onOpen };
 }
 
 /**
@@ -43,6 +43,7 @@ export function useSidebarTabContextMenu({
   fallback,
   onOpenInNewTab,
   openInNewTabLabel,
+  openInLabel,
 }: UseSidebarTabContextMenuParams) {
   return useCallback(
     async (event: MouseEvent, key: string, item: NavigationMenuItem) => {
@@ -59,19 +60,25 @@ export function useSidebarTabContextMenu({
       event.preventDefault();
       event.stopPropagation();
       try {
-        await popupNativeMenu({
+        await popupSidebarMenu(event, {
           source: "workstation-sidebar-tab-row",
           buildItems: () => [
-            buildOpenSidebarItemInNewTabMenuItem({
-              label: openInNewTabLabel,
-              onOpen: () => onOpenInNewTab(key, item),
-            }),
+            {
+              text: openInLabel,
+              icon: CursorInWindowIcon,
+              items: [
+                buildOpenSidebarItemInNewTabMenuItem({
+                  label: openInNewTabLabel,
+                  onOpen: () => onOpenInNewTab(key, item),
+                }),
+              ],
+            },
           ],
         });
       } catch (error) {
         log.error("[WorkstationSidebar] Tab context menu failed:", error);
       }
     },
-    [fallback, onOpenInNewTab, openInNewTabLabel, sessionMap]
+    [fallback, onOpenInNewTab, openInLabel, openInNewTabLabel, sessionMap]
   );
 }

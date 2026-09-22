@@ -11,10 +11,11 @@ import {
   statusToLifecycle,
   useLifecycleLabels,
 } from "@src/engines/SessionCore/rendering/registry";
+import { FileHeader } from "@src/features/FileHeader";
 import { useTerminalSurfaceStyle } from "@src/hooks/terminal/useTerminalSurfaceStyle";
 import { HugeiconsIcon, Wrench01Icon } from "@src/icons";
-import { FileHeader } from "@src/modules/shared/components/FileHeader";
 import { getToolDisplayLabelFromRegistry } from "@src/util/ui/rendering/registryToolLabel";
+import { getToolCallTitle } from "@src/util/ui/rendering/toolCallTitle";
 
 import type { ToolOperationEntry } from "../types";
 
@@ -84,7 +85,9 @@ export const ToolPanel: React.FC<ToolPanelProps> = memo(
       event.displayStatus || inferStatusFromResult(result)
     );
     const state = statusToLifecycle(status);
+    const callTitle = getToolCallTitle(event.functionName, args);
     const titleText =
+      callTitle ||
       labels[state] ||
       getToolDisplayLabelFromRegistry(event.functionName, action);
     const argsSummary = operation.displayName;
@@ -130,7 +133,10 @@ export const ToolPanel: React.FC<ToolPanelProps> = memo(
           publishEnabled={publishEnabled}
           titleSlot={
             <>
-              <span className="shrink-0 text-[12px] font-medium whitespace-nowrap text-text-1">
+              <span
+                className={`${callTitle ? "min-w-0 truncate" : "shrink-0 whitespace-nowrap"} text-[12px] font-medium text-text-1`}
+                title={callTitle}
+              >
                 {titleText}
               </span>
               {argsSummary && argsSummary !== titleText && (

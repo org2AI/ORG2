@@ -5,7 +5,7 @@ import Button, { type ButtonProps } from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { HugeiconsIcon, InternetIcon } from "@src/icons";
-import { openExternalLink } from "@src/util/platform/ipcRenderer";
+import { openInSystemBrowser } from "@src/util/ui/openLink";
 
 export interface ExternalBrowserButtonProps {
   href: string;
@@ -24,19 +24,17 @@ export const ExternalBrowserButton = memo(function ExternalBrowserButton({
   onClick,
 }: ExternalBrowserButtonProps) {
   const { t } = useTranslation("common");
-  const resolvedLabel =
-    label ?? t("previews.openInExternalBrowser", "Open in external browser");
+  const resolvedLabel = label ?? t("previews.openInExternalBrowser");
   const handleClick: NonNullable<ButtonProps["onClick"]> = (event) => {
     onClick?.(event);
     if (!event.defaultPrevented) {
-      void openExternalLink(href);
+      openInSystemBrowser(href);
     }
   };
 
   return (
     <ToolbarTooltip label={resolvedLabel} position="bottom-end">
       <Button
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly

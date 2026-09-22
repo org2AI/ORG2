@@ -17,6 +17,7 @@
 import { history } from "@codemirror/commands";
 import { bracketMatching, indentUnit } from "@codemirror/language";
 import { MergeView, unifiedMergeView } from "@codemirror/merge";
+import { SearchQuery, search } from "@codemirror/search";
 import { EditorState, Extension, StateEffect } from "@codemirror/state";
 import {
   highlightActiveLine,
@@ -47,9 +48,15 @@ import {
 } from "../config";
 import { createCopyFileRefExtension } from "../shared/createCopyFileRefExtension";
 import { getLanguageExtension } from "../shared/languageExtensions";
+import { activeChangedRowGutter } from "./activeChangedRow";
 import { collapsedGutterBackground } from "./collapsedGutter";
-import { diffLineNumbers } from "./diffLineNumbers";
+import { type DiffLineNumberSide, diffLineNumbers } from "./diffLineNumbers";
+import { COLLAPSED_COMPACT_ROW_PX } from "./incrementalCollapse";
 import "./index.scss";
+import {
+  type ReviewDiffSearch,
+  applyReviewSearch,
+} from "./reviewSearchNavigation";
 
 const log = createLogger("CodeMirrorDiff");
 
@@ -58,6 +65,7 @@ const log = createLogger("CodeMirrorDiff");
 // ============================================
 
 interface CodeMirrorDiffProps {
+  reviewSearch?: ReviewDiffSearch;
   /** Original content */
   oldValue: string;
   /** Modified content */
@@ -70,6 +78,8 @@ interface CodeMirrorDiffProps {
   height?: string;
   /** Diff view mode: unified (inline) or split (side-by-side) */
   viewMode?: DiffViewMode;
+  /** Override the editor word-wrap preference for this diff. */
+  wordWrap?: boolean;
   /** Read-only mode */
   readOnly?: boolean;
   /** Show merge controls (accept/reject buttons) */
@@ -103,7 +113,13 @@ interface CodeMirrorDiffProps {
 // Shared merge theme override (stable reference — defined outside component)
 // ============================================
 
-const MERGE_THEME_OVERRIDE = EditorView.baseTheme({
+// Single-button rows are a fixed height that the collapse widget reports as
+// its exact estimate (see COLLAPSED_COMPACT_ROW_PX); the split (two-button)
+// row stacks two arrow targets instead.
+export const COLLAPSED_COMPACT_ROW_HEIGHT = `${COLLAPSED_COMPACT_ROW_PX}px`;
+export const COLLAPSED_SPLIT_ROW_HEIGHT = "calc(2lh + 8px)";
+
+export const MERGE_THEME_OVERRIDE = EditorView.baseTheme({
   "& .cm-changedLine, & .cm-insertedLine": {
     backgroundColor: "var(--diff-added-bg) !important",
   },
@@ -130,8 +146,8 @@ const MERGE_THEME_OVERRIDE = EditorView.baseTheme({
     outline: "none",
     boxShadow: "none",
     color: "var(--color-text-3)",
-    padding:
-      "calc(var(--cm-gutter-padding, 4px) + 2px) var(--cm-line-padding-left, 12px)",
+    height: COLLAPSED_COMPACT_ROW_HEIGHT,
+    padding: "2px var(--cm-line-padding-left, 12px)",
     margin: "0 8px 0 0",
     cursor: "var(--interactive-cursor, default)",
     fontSize: "var(--cm-font-size-small, 12px)",
@@ -166,8 +182,9 @@ const MERGE_THEME_OVERRIDE = EditorView.baseTheme({
       "--cm-collapsed-fill": "var(--color-fill-3)",
       color: "var(--color-text-2)",
     },
-    "&:not(:first-child):not(:last-child)": {
-      minHeight: "calc(2lh + 2 * var(--cm-gutter-padding, 4px))",
+    "&.cm-collapsedLines--split": {
+      height: COLLAPSED_SPLIT_ROW_HEIGHT,
+      paddingBlock: "4px",
     },
   },
 });
@@ -188,10 +205,12 @@ const AUTO_HEIGHT_THEME = EditorView.theme({
 export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
   oldValue,
   newValue,
+  reviewSearch,
   filePath,
   language,
   height = "100%",
   viewMode = "unified",
+  wordWrap,
   readOnly = true,
   mergeControls = true,
   collapseUnchanged = true,
@@ -206,6 +225,7 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
   noBottomPadding = false,
 }) => {
   const appearanceSettings = useEditorAppearanceSettings();
+  const effectiveWordWrap = wordWrap ?? appearanceSettings.wordWrap;
   const isFullDeletion =
     changeType === "deleted" || (oldValue.length > 0 && newValue.length === 0);
   const unifiedDocumentValue = isFullDeletion ? "" : newValue;
@@ -264,7 +284,10 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
 
   // ── Stable base extensions (rebuilt only when theme/settings change) ─────
 
-  const buildBaseExtensions = (lineNumberStart = 1): Extension[] => {
+  const buildBaseExtensions = (
+    lineNumberStart = 1,
+    lineNumberSide: DiffLineNumberSide = "before"
+  ): Extension[] => {
     const lineNumberOffset = Math.max(1, lineNumberStart) - 1;
     const formatAbsoluteLineNumber = (lineNo: number) =>
       String(lineNo + lineNumberOffset);
@@ -278,7 +301,12 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
 
     if (showLineNumbers) {
       if (appearanceSettings.lineNumbers === "on") {
-        exts.push(diffLineNumbers({ formatNumber: formatAbsoluteLineNumber }));
+        exts.push(
+          diffLineNumbers({
+            formatNumber: formatAbsoluteLineNumber,
+            side: lineNumberSide,
+          })
+        );
       } else if (appearanceSettings.lineNumbers === "relative") {
         exts.push(
           diffLineNumbers({
@@ -290,6 +318,7 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
                 ? formatAbsoluteLineNumber(lineNo)
                 : String(Math.abs(lineNo - cursorLine));
             },
+            side: lineNumberSide,
           })
         );
       } else if (appearanceSettings.lineNumbers === "interval") {
@@ -301,6 +330,7 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
                 ? String(absoluteLineNo)
                 : "";
             },
+            side: lineNumberSide,
           })
         );
       }
@@ -309,6 +339,7 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
     if (appearanceSettings.highlightActiveLine) {
       exts.push(highlightActiveLineGutter());
       exts.push(highlightActiveLine());
+      exts.push(activeChangedRowGutter);
     }
 
     exts.push(customFoldGutter());
@@ -318,7 +349,7 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
       exts.push(editorHistoryKeymapExtension());
       exts.push(bracketMatching());
     }
-    if (appearanceSettings.wordWrap) {
+    if (effectiveWordWrap) {
       exts.push(EditorView.lineWrapping);
     }
     exts.push(goToLineExtension());
@@ -334,7 +365,7 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
 
     if (filePath) exts.push(createCopyFileRefExtension(filePath));
 
-    exts.push(findReplaceExtension());
+    exts.push(reviewSearch ? search() : findReplaceExtension(filePath));
     if (selectionExtension) {
       exts.push(selectionExtension);
     }
@@ -432,7 +463,7 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
     language,
     appearanceSettings.lineNumbers,
     appearanceSettings.highlightActiveLine,
-    appearanceSettings.wordWrap,
+    effectiveWordWrap,
     appearanceSettings.tabSize,
     selectionExtension,
   ]);
@@ -465,8 +496,13 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
     container.innerHTML = "";
 
     try {
+      // Centered numbers: the old pane's column moves to its trailing edge so
+      // both columns meet between the panes, as in GitHub's split diff.
       const oldPaneExts = [
-        ...buildBaseExtensions(oldStartLine),
+        ...buildBaseExtensions(
+          oldStartLine,
+          appearanceSettings.splitDiffCenteredLineNumbers ? "after" : "before"
+        ),
         MERGE_THEME_OVERRIDE,
         ...(autoHeight ? [AUTO_HEIGHT_THEME] : []),
       ];
@@ -537,8 +573,9 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
     filePath,
     language,
     appearanceSettings.lineNumbers,
+    appearanceSettings.splitDiffCenteredLineNumbers,
     appearanceSettings.highlightActiveLine,
-    appearanceSettings.wordWrap,
+    effectiveWordWrap,
     appearanceSettings.tabSize,
     selectionExtension,
   ]);
@@ -567,6 +604,21 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  const reviewQuery = reviewSearch?.query;
+  const reviewMatch = reviewSearch?.match;
+  useEffect(() => {
+    if (reviewQuery === undefined) return;
+    return applyReviewSearch(
+      unifiedViewRef.current,
+      splitMergeViewRef.current,
+      {
+        match: reviewMatch ?? null,
+        query: reviewQuery ?? new SearchQuery({ search: "" }),
+      },
+      isFullDeletion
+    );
+  }, [reviewQuery, reviewMatch, viewMode, isFullDeletion, oldValue, newValue]);
+
   const isUnifiedFullDeletion = isFullDeletion;
   const wrapperStyle: React.CSSProperties = autoHeight
     ? { position: "relative" }
@@ -589,7 +641,9 @@ export const CodeMirrorDiff: React.FC<CodeMirrorDiffProps> = ({
       ) : (
         <div
           ref={splitContainerRef}
-          className={`codemirror-diff codemirror-diff--split${noBottomPadding ? "codemirror-diff--no-bottom-padding" : ""}`}
+          // The separating space sits outside the expression: the formatter
+          // trims spaces inside class strings, which once fused these names.
+          className={`codemirror-diff codemirror-diff--split ${noBottomPadding ? "codemirror-diff--no-bottom-padding" : ""}`}
           spellCheck={false}
           style={visiblePaneStyle}
         />

@@ -10,7 +10,7 @@
  * recurse.
  */
 import { projectApi } from "@src/api/http/project";
-import type { LinkedSession } from "@src/api/http/project/types/agentWorkflow";
+import type { LinkedSession } from "@src/contracts/project/agentWorkflow";
 import { SessionService } from "@src/engines/SessionCore/services/SessionService";
 import { createLogger } from "@src/hooks/logger";
 

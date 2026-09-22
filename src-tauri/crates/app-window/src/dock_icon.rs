@@ -17,6 +17,9 @@ pub const DOCK_ICON_SETTING_KEY: &str = "general.dockIcon";
 /// Bundled 512×512 PNGs rendered from `src/assets/appIcons/*.svg`.
 /// All variants omit the circle behind the mark; light keeps a soft inset
 /// edge so the white tile still reads on a light Dock.
+const DEV_ICON_PNG: &[u8] = include_bytes!("../../../icons/dev/icon.png");
+const DEV_IDENTIFIER: &str = "org2ai.org2.dev";
+
 const DARK_ICON_PNG: &[u8] = include_bytes!("../../../icons/dock/dark.png");
 const LIGHT_ICON_PNG: &[u8] = include_bytes!("../../../icons/dock/light.png");
 const RAINBOW_ICON_PNG: &[u8] = include_bytes!("../../../icons/dock/rainbow.png");
@@ -61,6 +64,16 @@ impl DockIconVariant {
     }
 }
 
+/// Dev shares settings with the installed app, so its visual identity must
+/// win over every stored/live preference without changing that preference.
+fn process_icon_png(identifier: &str, variant: DockIconVariant) -> &'static [u8] {
+    if identifier == DEV_IDENTIFIER {
+        DEV_ICON_PNG
+    } else {
+        variant.png()
+    }
+}
+
 /// The user's stored variant. An absent key, an unreadable settings file, or
 /// an unrecognised value all resolve to the default so a bad edit to
 /// `settings.jsonc` can never leave the app without an icon.
@@ -81,7 +94,7 @@ pub fn stored_dock_icon_variant() -> DockIconVariant {
 pub fn apply_stored_dock_icon(app: &AppHandle) {
     let variant = stored_dock_icon_variant();
     #[cfg(not(target_os = "macos"))]
-    if variant == DockIconVariant::default() {
+    if variant == DockIconVariant::default() && app.config().identifier != DEV_IDENTIFIER {
         return;
     }
     if let Err(err) = apply_dock_icon(app, variant) {
@@ -101,10 +114,10 @@ pub fn apply_stored_dock_icon(app: &AppHandle) {
 /// and title bar show. Windows created later start from the bundle icon and
 /// are covered by the frontend re-applying the setting on mount.
 pub fn apply_dock_icon(app: &AppHandle, variant: DockIconVariant) -> Result<(), String> {
+    let png = process_icon_png(&app.config().identifier, variant);
     #[cfg(target_os = "macos")]
     {
-        let _ = app;
-        set_macos_application_icon(variant);
+        set_macos_application_icon(png);
         Ok(())
     }
 
@@ -112,7 +125,7 @@ pub fn apply_dock_icon(app: &AppHandle, variant: DockIconVariant) -> Result<(), 
     {
         use tauri::{image::Image, Manager};
 
-        let icon = Image::from_bytes(variant.png())
+        let icon = Image::from_bytes(png)
             .map_err(|err| format!("Failed to decode bundled dock icon: {err}"))?;
         for window in app.webview_windows().values() {
             window
@@ -124,19 +137,17 @@ pub fn apply_dock_icon(app: &AppHandle, variant: DockIconVariant) -> Result<(), 
 }
 
 #[cfg(target_os = "macos")]
-fn macos_application_icon(
-    variant: DockIconVariant,
-) -> Option<objc2::rc::Retained<objc2_app_kit::NSImage>> {
+fn macos_application_icon(png: &[u8]) -> Option<objc2::rc::Retained<objc2_app_kit::NSImage>> {
     use objc2::AllocAnyThread;
     use objc2_app_kit::NSImage;
     use objc2_foundation::NSData;
 
-    let data = NSData::with_bytes(variant.png());
+    let data = NSData::with_bytes(png);
     NSImage::initWithData(NSImage::alloc(), &data)
 }
 
 #[cfg(target_os = "macos")]
-fn set_macos_application_icon(variant: DockIconVariant) {
+fn set_macos_application_icon(png: &'static [u8]) {
     use objc2_app_kit::NSApplication;
     use objc2_foundation::MainThreadMarker;
 
@@ -148,11 +159,8 @@ fn set_macos_application_icon(variant: DockIconVariant) {
             return;
         };
         let app = NSApplication::sharedApplication(mtm);
-        let Some(image) = macos_application_icon(variant) else {
-            tracing::warn!(
-                variant = variant.as_str(),
-                "Bundled dock icon failed to decode; keeping the current icon"
-            );
+        let Some(image) = macos_application_icon(png) else {
+            tracing::warn!("Bundled dock icon failed to decode; keeping the current icon");
             return;
         };
         // SAFETY: called on the main thread with an image AppKit owns a
@@ -211,9 +219,39 @@ mod tests {
     #[test]
     fn bundled_icons_are_png() {
         const PNG_MAGIC: &[u8] = b"\x89PNG\r\n\x1a\n";
+        assert!(super::DEV_ICON_PNG.starts_with(PNG_MAGIC));
         assert!(super::DARK_ICON_PNG.starts_with(PNG_MAGIC));
         assert!(super::LIGHT_ICON_PNG.starts_with(PNG_MAGIC));
         assert!(super::RAINBOW_ICON_PNG.starts_with(PNG_MAGIC));
+    }
+
+    #[test]
+    fn dev_identity_keeps_its_icon_across_shared_preference_changes() {
+        for variant in [
+            DockIconVariant::Dark,
+            DockIconVariant::Light,
+            DockIconVariant::Rainbow,
+        ] {
+            assert_eq!(
+                super::process_icon_png("org2ai.org2.dev", variant),
+                super::DEV_ICON_PNG
+            );
+            for identifier in ["org2ai.org2", "org2ai.org2.instance2"] {
+                assert_eq!(super::process_icon_png(identifier, variant), variant.png());
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn dev_icon_decodes_without_an_app_bundle() {
+        objc2::rc::autoreleasepool(|_| {
+            let image = super::macos_application_icon(super::DEV_ICON_PNG)
+                .expect("dev icon must decode on a direct executable launch");
+            let size = image.size();
+            assert_eq!(size.width, 512.0);
+            assert_eq!(size.height, 512.0);
+        });
     }
 
     #[cfg(target_os = "macos")]
@@ -227,7 +265,7 @@ mod tests {
                 DockIconVariant::Dark,
                 DockIconVariant::Rainbow,
             ] {
-                let image = super::macos_application_icon(variant)
+                let image = super::macos_application_icon(variant.png())
                     .expect("each variant must supply a native image without bundle metadata");
                 let size = image.size();
                 assert_eq!(size.width, 512.0);

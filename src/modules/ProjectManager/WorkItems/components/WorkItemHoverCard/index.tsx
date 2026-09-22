@@ -1,12 +1,19 @@
 /** Hover-card presentation owned by Project Manager work items. */
-import React, { memo, useCallback } from "react";
+import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
-import HoverCardBase, {
+import HoverCard, {
+  type HoverCardTriggerProps,
+} from "@src/components/HoverCard";
+import {
   HoverCardPanel,
-  type HoverCardPosition,
   HoverCardRow,
-} from "@src/components/SessionHoverCard/HoverCardBase";
+} from "@src/components/HoverCard/HoverCardBase";
+import {
+  HoverCardMetadataRow,
+  HoverCardMetadataValue,
+} from "@src/components/HoverCard/HoverCardMetadataRow";
+import { HOVER_CARD } from "@src/components/HoverCard/tokens";
 import {
   Building02Icon,
   Clock01Icon,
@@ -46,12 +53,8 @@ export interface WorkItemHoverCardData {
   updatedAt?: string;
 }
 
-interface WorkItemHoverCardProps {
+interface WorkItemHoverCardProps extends HoverCardTriggerProps {
   workItem?: WorkItemHoverCardData | null;
-  children: React.ReactElement;
-  position?: HoverCardPosition;
-  mouseEnterDelay?: number;
-  mouseLeaveDelay?: number;
 }
 
 interface WorkItemHoverCardContentProps {
@@ -88,12 +91,19 @@ function WorkItemPriorityRow({ priority }: { priority: string }) {
   return (
     <HoverCardRow
       icon={
-        config.icon ?? (
+        React.isValidElement<{ size?: number; strokeWidth?: number }>(
+          config.icon
+        ) ? (
+          React.cloneElement(config.icon, {
+            size: HOVER_CARD.iconSize,
+            strokeWidth: HOVER_CARD.iconStrokeWidth,
+          })
+        ) : (
           <HugeiconsIcon
             icon={Flag01Icon}
             data-icon="flag"
-            size={13}
-            strokeWidth={1.75}
+            size={HOVER_CARD.iconSize}
+            strokeWidth={HOVER_CARD.iconStrokeWidth}
           />
         )
       }
@@ -134,102 +144,51 @@ const WorkItemHoverCardContent: React.FC<WorkItemHoverCardContentProps> = memo(
         <WorkItemStatusRow status={workItem.status} />
         <WorkItemPriorityRow priority={workItem.priority} />
         {workItem.projectName && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={DeliveryBox01Icon}
-                data-icon="box"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
-          >
+          <HoverCardMetadataRow icon={DeliveryBox01Icon} dataIcon="box">
             <div className="truncate text-text-2">{workItem.projectName}</div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
         {workItem.orgName && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={Building02Icon}
-                data-icon="building-2"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
-          >
+          <HoverCardMetadataRow icon={Building02Icon} dataIcon="building-2">
             <div className="truncate text-text-2">{workItem.orgName}</div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
         {workItem.source === "local" && workItem.assignee && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={UserIcon}
-                data-icon="user"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
-          >
+          <HoverCardMetadataRow icon={UserIcon} dataIcon="user">
             <div className="truncate text-text-2">{workItem.assignee.name}</div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
         {labels.length > 0 && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={TagsIcon}
-                data-icon="tags"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
-          >
+          <HoverCardMetadataRow icon={TagsIcon} dataIcon="tags">
             <div className="truncate text-text-2" title={labelsTitle}>
               {labelsTitle}
             </div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
         {createdLabel && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={Clock01Icon}
-                data-icon="clock"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
-          >
+          <HoverCardMetadataRow icon={Clock01Icon} dataIcon="clock">
             <div className="truncate text-text-2" title={createdLabel}>
-              <span className="text-text-3">
-                {t("sessions:history.detail.created")}
-              </span>
-              <span className="mx-1 text-text-4">·</span>
-              <span>{createdLabel}</span>
+              <HoverCardMetadataValue
+                label={t("sessions:history.detail.created")}
+              >
+                {createdLabel}
+              </HoverCardMetadataValue>
             </div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
         {updatedLabel && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={GitCommitVerticalIcon}
-                data-icon="git-commit-vertical"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
+          <HoverCardMetadataRow
+            icon={GitCommitVerticalIcon}
+            dataIcon="git-commit-vertical"
           >
             <div className="truncate text-text-2" title={updatedLabel}>
-              <span className="text-text-3">
-                {t("sessions:history.detail.lastUpdated")}
-              </span>
-              <span className="mx-1 text-text-4">·</span>
-              <span>{updatedLabel}</span>
+              <HoverCardMetadataValue
+                label={t("sessions:history.detail.lastUpdated")}
+              >
+                {updatedLabel}
+              </HoverCardMetadataValue>
             </div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
       </HoverCardPanel>
     );
@@ -240,26 +199,18 @@ WorkItemHoverCardContent.displayName = "WorkItemHoverCardContent";
 
 const WorkItemHoverCard: React.FC<WorkItemHoverCardProps> = ({
   workItem,
-  children,
   position,
-  mouseEnterDelay,
-  mouseLeaveDelay,
+  ...triggerProps
 }) => {
-  const renderContent = useCallback(
-    () => (workItem ? <WorkItemHoverCardContent workItem={workItem} /> : null),
-    [workItem]
-  );
-
   return (
-    <HoverCardBase
+    <HoverCard
+      {...triggerProps}
       cardId={workItem ? `${workItem.source}:${workItem.id}` : null}
       position={position}
-      mouseEnterDelay={mouseEnterDelay}
-      mouseLeaveDelay={mouseLeaveDelay}
-      renderContent={renderContent}
-    >
-      {children}
-    </HoverCardBase>
+      content={
+        workItem ? <WorkItemHoverCardContent workItem={workItem} /> : null
+      }
+    />
   );
 };
 

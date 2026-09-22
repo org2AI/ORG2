@@ -8,7 +8,9 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DetectedKey, ModelType } from "@src/api/types/keys";
+import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
+import { PanelFooter } from "@src/components/layout/blocks";
 import {
   AlertCircleIcon,
   CheckmarkCircle01Icon,
@@ -17,7 +19,6 @@ import {
   Key02Icon,
   Tick01Icon,
 } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 import Modal from "@src/scaffold/ModalSystem";
 
 import { findEndpointByBaseUrl, useProviderConfig } from "../config";
@@ -69,7 +70,7 @@ const KeySelectionModal: React.FC<KeySelectionModalProps> = ({
       }
     >
       {/* Body */}
-      <div className="p-4">
+      <div className="p-3">
         <p className="mb-4 text-[13px] text-text-2">
           {t("keyVault.keysFoundForAgent", {
             count: keys.length,
@@ -78,7 +79,8 @@ const KeySelectionModal: React.FC<KeySelectionModalProps> = ({
 
         <div className="space-y-3">
           {keys.map((cred, index) => (
-            <button
+            <Button
+              layout="custom"
               key={cred.id}
               onClick={() => cred.validated && onSelectIndex(index)}
               disabled={!cred.validated}
@@ -219,7 +221,7 @@ const KeySelectionModal: React.FC<KeySelectionModalProps> = ({
                     )}
                 </div>
               </div>
-            </button>
+            </Button>
           ))}
         </div>
       </div>

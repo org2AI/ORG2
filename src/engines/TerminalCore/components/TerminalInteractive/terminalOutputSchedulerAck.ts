@@ -16,6 +16,7 @@ export function flushAck(pane: PaneScheduler): void {
   if (pane.pendingAckBytes > 0 && isTauriReady()) {
     invokeTauri("ack_pty_data", {
       sessionId: pane.sessionId,
+      ...(pane.ownerId === undefined ? {} : { ownerId: pane.ownerId }),
       byteCount: pane.pendingAckBytes,
       queueDepth: pane.queueByteLength,
       renderMs: Math.round(pane.lastRenderMs),

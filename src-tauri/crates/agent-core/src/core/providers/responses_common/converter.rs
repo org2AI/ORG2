@@ -76,7 +76,18 @@ pub fn convert_messages(messages: &[Value]) -> (Option<String>, Vec<Value>) {
         match role {
             "system" => {
                 if let Some(content) = msg.get("content").and_then(|c| c.as_str()) {
-                    instructions = Some(content.to_string());
+                    // Stable, volatile, and late memory blocks are additive.
+                    // Replacing instructions here silently drops the agent's
+                    // main prompt when a later system block arrives.
+                    match instructions.as_mut() {
+                        Some(existing) => {
+                            if !existing.is_empty() && !content.is_empty() {
+                                existing.push_str("\n\n");
+                            }
+                            existing.push_str(content);
+                        }
+                        None => instructions = Some(content.to_string()),
+                    }
                 }
             }
             "user" => {
@@ -312,6 +323,24 @@ fn translate_tool_choice_for_responses(override_val: &Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn convert_messages_preserves_all_system_blocks_in_order() {
+        let messages = vec![
+            serde_json::json!({"role":"system", "content":[{"type":"text", "text":"Stable"}]}),
+            serde_json::json!({"role":"system", "content":"Dynamic"}),
+            serde_json::json!({"role":"user", "content":"Question"}),
+            serde_json::json!({"role":"system", "content":"Late memory"}),
+            serde_json::json!({"role":"system", "content":""}),
+        ];
+        let (instructions, input) = convert_messages(&messages);
+        assert_eq!(
+            instructions.as_deref(),
+            Some("Stable\n\nDynamic\n\nLate memory")
+        );
+        assert_eq!(input, vec![messages[2].clone()]);
+        assert_eq!(convert_messages(&[]), (None, vec![]));
+    }
 
     #[test]
     fn test_convert_messages_extracts_system_as_instructions() {

@@ -20,13 +20,9 @@ import { z } from "zod/v4";
 import { RemoteTeammateSessionMetadataSchema } from "@src/store/collaboration/protocol";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 
-import {
-  type CloudEndpoint,
-  ORG2_CLOUD_POSTGREST_SCHEMA,
-  getCloudEndpoint,
-} from "./config";
-import { fetchWithTransportRetry } from "./org2CloudFetchRetry";
+import { type CloudEndpoint, getCloudEndpoint } from "./config";
 import { sha256Hex } from "./org2CloudOrgManagement";
+import { callOrg2CloudRpc } from "./org2CloudRpc";
 
 // ---------------------------------------------------------------------------
 // Error model
@@ -83,35 +79,12 @@ async function callShareRpc(
   endpoint: CloudEndpoint = getCloudEndpoint(),
   signal?: AbortSignal
 ): Promise<unknown> {
-  const response = await fetchWithTransportRetry(
-    `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`,
-    {
-      method: "POST",
-      headers: {
-        apikey: endpoint.anonKey,
-        authorization: `Bearer ${accessToken}`,
-        "content-type": "application/json",
-        "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-      },
-      body: JSON.stringify(body),
-      signal,
-    }
-  );
-  const text = await response.text();
-  let payload: unknown = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    payload = null;
-  }
-  if (!response.ok) {
-    const message =
-      payload && typeof payload === "object" && "message" in payload
-        ? String((payload as { message: unknown }).message)
-        : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-    throw new Org2CloudShareError(message, response.status);
-  }
-  return payload;
+  return callOrg2CloudRpc(functionName, body, {
+    accessToken,
+    endpoint,
+    signal,
+    createError: (message, status) => new Org2CloudShareError(message, status),
+  });
 }
 
 // ---------------------------------------------------------------------------

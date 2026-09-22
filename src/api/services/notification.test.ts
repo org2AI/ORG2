@@ -1,5 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
+import i18n from "@src/i18n";
+import enCommon from "@src/i18n/locales/en/common.json";
+import enSettings from "@src/i18n/locales/en/settings.json";
+import frCommon from "@src/i18n/locales/fr/common.json";
+import frSettings from "@src/i18n/locales/fr/settings.json";
+import zhCommon from "@src/i18n/locales/zh/common.json";
+import zhSettings from "@src/i18n/locales/zh/settings.json";
 import type { NotificationSettings } from "@src/types/ui/notification";
 
 import {
@@ -79,6 +94,16 @@ const settings: NotificationSettings = {
 };
 
 describe("notification service", () => {
+  beforeAll(() => {
+    for (const [language, common, settingsCatalog] of [
+      ["en", enCommon, enSettings],
+      ["fr", frCommon, frSettings],
+      ["zh", zhCommon, zhSettings],
+    ] as const) {
+      i18n.addResourceBundle(language, "common", common, true, true);
+      i18n.addResourceBundle(language, "settings", settingsCatalog, true, true);
+    }
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.sendNotification.mockResolvedValue(undefined);
@@ -152,6 +177,26 @@ describe("notification service", () => {
     });
 
     expect(mocks.playNotificationSound).toHaveBeenCalledOnce();
+  });
+
+  it("resolves test notification copy after the language changes", async () => {
+    const previousLanguage = i18n.language;
+    try {
+      await i18n.changeLanguage("zh");
+      await sendTestNotification(settings);
+      expect(mocks.sendNotification).toHaveBeenLastCalledWith(
+        expect.objectContaining({ body: "这是一条来自 ORG2 的测试通知" })
+      );
+      await i18n.changeLanguage("fr");
+      await sendTestNotification(settings);
+      expect(mocks.sendNotification).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          body: "Ceci est une notification de test d’ORG2",
+        })
+      );
+    } finally {
+      await i18n.changeLanguage(previousLanguage);
+    }
   });
 
   it("uses the selected preset for the test notification", async () => {

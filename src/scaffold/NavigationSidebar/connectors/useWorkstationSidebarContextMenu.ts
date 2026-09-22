@@ -1,13 +1,25 @@
 import { type MouseEvent, useCallback } from "react";
 
-import { dismissHoverCard } from "@src/components/SessionHoverCard/singletonStore";
+import { dismissHoverCard } from "@src/components/HoverCard/singletonStore";
 import { createLogger } from "@src/hooks/logger";
-import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
-import type { Session } from "@src/store/session";
 import {
-  type NativeMenuItemOptions,
-  popupNativeMenu,
-} from "@src/util/platform/tauri/nativeMenuPopup";
+  AppWindowMacIcon,
+  ArrowBigRightDashIcon,
+  CloudIcon,
+  Copy01Icon,
+  CursorInWindowIcon,
+  Delete02Icon,
+  FolderOutputIcon,
+  PencilEdit02Icon,
+  PinIcon,
+  PinOffIcon,
+  Share02Icon,
+  Tag01Icon,
+} from "@src/icons";
+import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
+import { popupSidebarMenu } from "@src/scaffold/NavigationSidebar/menus/SidebarMenu";
+import { type SidebarMenuItem } from "@src/scaffold/NavigationSidebar/menus/types";
+import type { Session } from "@src/store/session";
 import {
   isCursorIdeSession,
   isHumanSession,
@@ -23,6 +35,7 @@ import type { UseRenameSessionModalResult } from "./useRenameSessionModal";
 const log = createLogger("WorkstationSidebar");
 
 interface UseWorkstationSidebarContextMenuParams {
+  sectionMenuItems?: (sessionId: string) => SidebarMenuItem[];
   sessionMap: Map<string, Session>;
   rename: UseRenameSessionModalResult;
   handleDeleteSession: (sessionId: string) => Promise<void>;
@@ -57,12 +70,13 @@ interface UseWorkstationSidebarContextMenuParams {
   /** Team rows have no local Session and provide their own canonical menu. */
   buildCloudRemoteItemMenuItems?: (
     item: NavigationMenuItem
-  ) => NativeMenuItemOptions[];
-  tCommon: (key: string, defaultValue?: string) => string;
+  ) => SidebarMenuItem[];
+  tCommon: (key: string) => string;
 }
 
 export function useWorkstationSidebarContextMenu({
   sessionMap,
+  sectionMenuItems,
   rename,
   handleDeleteSession,
   handleDeleteDraft,
@@ -92,17 +106,26 @@ export function useWorkstationSidebarContextMenu({
   item: NavigationMenuItem
 ) => Promise<void> {
   const buildMenuItems = useCallback(
-    (_key: string, item: NavigationMenuItem): NativeMenuItemOptions[] => {
+    (_key: string, item: NavigationMenuItem): SidebarMenuItem[] => {
       if (isDraftMenuItemId(item.id)) {
         const draftId = getDraftIdFromMenuItemId(item.id);
         if (!draftId) return [];
         return [
           {
-            text: tCommon("actions.openInNewTab", "Open in New Tab"),
-            action: () => handleOpenDraftInNewTab(item),
+            text: tCommon("actions.openIn"),
+            icon: CursorInWindowIcon,
+            items: [
+              {
+                text: tCommon("actions.openInNewTab"),
+                icon: AppWindowMacIcon,
+                action: () => handleOpenDraftInNewTab(item),
+              },
+            ],
           },
           {
             text: tCommon("sessions:kanban.sidebar.removeDraft"),
+            danger: true,
+            icon: Delete02Icon,
             action: () => handleDeleteDraft(draftId),
           },
         ];
@@ -118,90 +141,141 @@ export function useWorkstationSidebarContextMenu({
       // Subagent rows have no meaningful row-level actions.
       if (session?.parentSessionId || item.id.includes(":subagent:")) return [];
 
-      const openInNewTabItem: NativeMenuItemOptions = {
-        text: tCommon("actions.openInNewTab", "Open in New Tab"),
+      const openInNewTabItem: SidebarMenuItem = {
+        text: tCommon("actions.openInNewTab"),
+        icon: AppWindowMacIcon,
         action: () => handleOpenInNewTab(item.id),
       };
-      const openInNewWindowItem: NativeMenuItemOptions = {
-        text: tCommon("actions.openInNewWindow", "Open in New Window"),
+      const openInNewWindowItem: SidebarMenuItem = {
+        text: tCommon("actions.openInNewWindow"),
+        icon: AppWindowMacIcon,
         action: () => handleOpenInNewWindow(item.id),
       };
-      const openInMyStationItem: NativeMenuItemOptions = {
-        text: tCommon(
-          "sessions:controlTower.sidebar.openInMyStation",
-          "Open in My Station"
-        ),
+      const openInMyStationItem: SidebarMenuItem = {
+        text: tCommon("sessions:controlTower.sidebar.openInMyStation"),
+        icon: ArrowBigRightDashIcon,
         action: () => handleOpenInMyStation(item.id),
       };
-      const pinItem: NativeMenuItemOptions = {
+      const openInMenu = (items: SidebarMenuItem[]): SidebarMenuItem => ({
+        text: tCommon("actions.openIn"),
+        icon: CursorInWindowIcon,
+        appOpenSessionId: item.id,
+        items,
+      });
+      const pinItem: SidebarMenuItem = {
+        icon: session?.pinned ? PinOffIcon : PinIcon,
         text: session?.pinned
-          ? tCommon("sessions:chat.unpinSession", "Unpin")
-          : tCommon("sessions:chat.pinSession", "Pin"),
+          ? tCommon("sessions:chat.unpinSession")
+          : tCommon("sessions:chat.pinSession"),
         action: () => handleTogglePin(item.id),
       };
 
       if (isCursorIde) {
         return [
-          openInNewTabItem,
-          openInNewWindowItem,
-          openInMyStationItem,
+          openInMenu([
+            openInNewTabItem,
+            openInNewWindowItem,
+            openInMyStationItem,
+          ]),
           pinItem,
+          ...(sectionMenuItems?.(item.id) ?? []),
         ];
       }
 
-      const deleteItem: NativeMenuItemOptions = {
+      const deleteItem: SidebarMenuItem = {
         text: tCommon("actions.delete"),
+        danger: true,
+        icon: Delete02Icon,
         action: () => handleDeleteSession(item.id),
       };
       if (isChatPanelTuiSessionId(item.id)) {
-        return [openInNewTabItem, openInNewWindowItem, pinItem, deleteItem];
+        return [
+          openInMenu([openInNewTabItem, openInNewWindowItem]),
+          pinItem,
+          deleteItem,
+        ];
       }
 
-      const primaryItems: NativeMenuItemOptions[] = [
-        openInNewTabItem,
-        openInNewWindowItem,
-        openInMyStationItem,
+      const primaryItems: SidebarMenuItem[] = [
+        openInMenu([
+          openInNewTabItem,
+          openInNewWindowItem,
+          openInMyStationItem,
+        ]),
         {
           text: tCommon("actions.rename"),
+          icon: PencilEdit02Icon,
           action: () => rename.open(item.id, sessionMap),
         },
       ];
+      const exportItems: SidebarMenuItem[] = [];
+      const syncItems: SidebarMenuItem[] = [];
       if (!isHumanSession(item.id)) {
-        primaryItems.push({
-          text: tCommon("sessions:chat.exportAsMarkdown", "Export as Markdown"),
+        exportItems.push({
+          text: tCommon("sessions:chat.exportAsMarkdown"),
+          icon: FolderOutputIcon,
           action: () => handleExportMarkdown(item.id),
         });
       }
       // Move (tag) the session into a managed cloud org, independent of
       // repo-scope auto-sharing. Owner's own pushable sessions only.
       if (session && isMoveEligible(session)) {
-        primaryItems.push({
+        syncItems.push({
           text: moveToOrgLabel,
+          icon: Tag01Icon,
           action: () => handleOpenMoveToOrg(session),
         });
       }
       // Per-session cloud access ladder (§13.4): Off / Metadata only /
       // Full replay + org/restricted visibility, per cloud org.
       if (session && isCloudSyncLevelEligible(session)) {
-        primaryItems.push({
+        syncItems.push({
           text: cloudSyncLevelLabel,
+          icon: CloudIcon,
           action: () => handleOpenCloudSyncLevel(session),
         });
       }
       // Cloud per-session shares (0012): directed member grants + guest
       // link shares, for the owner's own cloud-synced sessions.
       if (session && isCloudShareEligible(session)) {
-        primaryItems.push({
+        syncItems.push({
           text: cloudShareLabel,
+          icon: Share02Icon,
           action: () => handleOpenCloudShare(session),
         });
       }
-      // Non-secret reference for issue trackers and PRs. Sits beside the
-      // sharing actions because it is only meaningful once shared.
+      // Non-secret reference for issue trackers and PRs. Export is available
+      // only when the session already has a shareable reference.
       if (session && isCopyReferenceEligible(session)) {
-        primaryItems.push({
+        exportItems.push({
           text: copyReferenceLabel,
+          icon: Copy01Icon,
           action: () => handleCopyReference(session),
+        });
+      }
+
+      const transferSections: SidebarMenuItem[] = [];
+      if (exportItems.length > 0) {
+        transferSections.push({
+          text: tCommon("actions.export"),
+          section: true,
+          items: exportItems,
+        });
+      }
+      if (syncItems.length > 0) {
+        if (transferSections.length)
+          transferSections.push({ item: "Separator" });
+        transferSections.push({
+          text: tCommon("actions.sync"),
+          section: true,
+          items: syncItems,
+        });
+      }
+      if (transferSections.length > 0) {
+        primaryItems.push({
+          text: tCommon("actions.exportAndSync"),
+          icon: FolderOutputIcon,
+          items: transferSections,
         });
       }
 
@@ -209,12 +283,23 @@ export function useWorkstationSidebarContextMenu({
       // Session Delete is intentionally absent so it cannot bypass Archive or
       // the quiesced-runtime receipt.
       if (session?.agentOrgId) {
-        return [...primaryItems, pinItem];
+        return [
+          ...primaryItems,
+          pinItem,
+          ...(sectionMenuItems?.(item.id) ?? []),
+        ];
       }
-      return [...primaryItems, pinItem, { item: "Separator" }, deleteItem];
+      return [
+        ...primaryItems,
+        pinItem,
+        ...(sectionMenuItems?.(item.id) ?? []),
+        { item: "Separator" },
+        deleteItem,
+      ];
     },
     [
       sessionMap,
+      sectionMenuItems,
       tCommon,
       rename,
       handleDeleteSession,
@@ -247,7 +332,7 @@ export function useWorkstationSidebarContextMenu({
       event.stopPropagation();
       try {
         dismissHoverCard();
-        await popupNativeMenu({
+        await popupSidebarMenu(event, {
           source: "workstation-sidebar-row",
           buildItems: () => buildMenuItems(key, item),
         });

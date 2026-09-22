@@ -9,7 +9,7 @@
  *
  * Labels, descriptions, and icons are derived automatically from the
  * path via `buildBreadcrumbLabels` + `getPathIcon` (backed by
- * `SEGMENT_REGISTRY` in `mainAppPaths.ts`). Sidebars, breadcrumbs and
+ * `SEGMENT_REGISTRY` in `segmentRegistry.ts`). Sidebars, breadcrumbs and
  * spotlight entries always show the same glyph and name for a given
  * URL — no duplicated icon-imports per surface.
  *

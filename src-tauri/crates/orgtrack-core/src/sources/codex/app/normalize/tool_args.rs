@@ -7,11 +7,10 @@ use super::super::impact::patch_file_path_from_line;
 pub(super) fn normalize_shell_args(args: Value) -> Value {
     let command = args
         .get("command")
-        .and_then(Value::as_str)
-        .or_else(|| args.get("cmd").and_then(Value::as_str))
-        .or_else(|| args.get("input").and_then(Value::as_str))
-        .unwrap_or_default()
-        .to_string();
+        .and_then(command_text)
+        .or_else(|| args.get("cmd").and_then(command_text))
+        .or_else(|| args.get("input").and_then(command_text))
+        .unwrap_or_default();
     let cwd = args
         .get("cwd")
         .and_then(Value::as_str)
@@ -185,4 +184,49 @@ fn first_apply_patch_file_path(patch: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Codex rollouts carry `shell` commands either as one string or as argv
+/// (`["bash", "-lc", "<script>"]`). Render argv as the script when it is a
+/// `-c`/`-lc` wrapper, otherwise as a shell-quoted line, so the command is
+/// never lost.
+fn command_text(value: &Value) -> Option<String> {
+    match value {
+        Value::String(text) => Some(text.clone()),
+        Value::Array(items) => {
+            let parts: Vec<&str> = items.iter().filter_map(Value::as_str).collect();
+            if parts.len() != items.len() || parts.is_empty() {
+                return None;
+            }
+            if parts.len() == 3
+                && matches!(parts[1], "-c" | "-lc")
+                && matches!(
+                    parts[0].rsplit('/').next().unwrap_or_default(),
+                    "bash" | "sh" | "zsh" | "fish" | "dash"
+                )
+            {
+                return Some(parts[2].to_string());
+            }
+            Some(
+                parts
+                    .iter()
+                    .map(|part| shell_quote(part))
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            )
+        }
+        _ => None,
+    }
+}
+
+fn shell_quote(part: &str) -> String {
+    let safe = !part.is_empty()
+        && part
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"-_./=:@%+,".contains(&b));
+    if safe {
+        part.to_string()
+    } else {
+        format!("'{}'", part.replace('\'', "'\\''"))
+    }
 }

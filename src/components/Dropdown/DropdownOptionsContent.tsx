@@ -10,7 +10,6 @@ interface DropdownOptionsContentProps {
   searchPlaceholder?: string;
   searchValue: string;
   onSearchChange: (value: string) => void;
-  searchInputRef: React.RefObject<HTMLInputElement | null>;
   filteredOptions: DropdownOption[];
   value?: DropdownSelectValue;
   mode: "single" | "multiple";
@@ -31,7 +30,6 @@ const DropdownOptionsContent: React.FC<DropdownOptionsContentProps> = ({
   searchPlaceholder,
   searchValue,
   onSearchChange,
-  searchInputRef,
   filteredOptions,
   value,
   mode,
@@ -49,7 +47,6 @@ const DropdownOptionsContent: React.FC<DropdownOptionsContentProps> = ({
     <>
       {showSearch && (
         <DropdownSearch
-          ref={searchInputRef}
           type="text"
           placeholder={
             searchPlaceholder ?? t("common:common.searchPlaceholder")

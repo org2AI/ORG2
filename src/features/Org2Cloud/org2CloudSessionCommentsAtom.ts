@@ -10,62 +10,34 @@
  * row in listing shape, so the insert needs no refetch (design §4
  * "optimistic insert on add"). NOT persisted — visibility is server-side
  * (readable guard + retention window) and rows go stale.
+ *
+ * The fetch loop lives in `org2CloudSessionCommentsAtom.fetch.ts` and the
+ * write-through mutations in `org2CloudSessionCommentsAtom.mutations.ts`;
+ * this file owns the atom, the effects that schedule fetches, and the hook
+ * that composes them.
  */
 import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 
-import { deliverOptimisticOutgoing } from "@src/engines/SessionCore/services/optimisticOutgoingDelivery";
-import { createLogger } from "@src/hooks/logger";
-
-import { getCloudEndpoint } from "./config";
 import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
 } from "./org2CloudAuthAtom";
 import {
-  broadcastCommentsChangedToPeers,
   org2CloudCommentsSignalAtom,
   orgCommentsKey,
   sessionCommentsKey,
 } from "./org2CloudCommentsBus";
 import {
-  type CloudCommentResolution,
-  type CloudSessionComment,
-  addSessionComment,
-  deleteSessionComment,
-  editSessionComment,
-  listSessionComments,
-  resolveSessionComment,
-} from "./org2CloudCommentsClient";
-import {
   EMPTY_ENTRY,
-  OPTIMISTIC_SESSION_COMMENT_ID_PREFIX,
-  decideSessionCommentsFetch,
-  insertComment,
-  isOptimisticSessionCommentId,
-  mergeDeltaSessionComments,
-  mergeFullSessionComments,
-  patchComment,
-  sessionCommentsDeltaSince,
   sessionCommentsEntryForIdentity,
   sessionCommentsErrorRetryDelayMs,
-  shouldEvictSessionCommentsOnError,
-  writeSessionCommentsEntry,
 } from "./org2CloudSessionCommentsAtom.commentTransforms";
-import {
-  activeForceTokenByKey,
-  completedForceTokenByKey,
-  dropPendingForce,
-  pendingForceRefetchKeys,
-  pendingForceTokenByKey,
-  rememberCompletedForceToken,
-} from "./org2CloudSessionCommentsAtom.forceTokenTracker";
+import { useSessionCommentsFetcher } from "./org2CloudSessionCommentsAtom.fetch";
 import { useCloudFreshAccessToken } from "./org2CloudSessionCommentsAtom.freshToken";
-import { SessionCommentDeliveryError } from "./org2CloudSessionCommentsAtom.types";
+import { useSessionCommentMutations } from "./org2CloudSessionCommentsAtom.mutations";
 import type {
-  AddCommentInput,
   CloudSessionCommentsEntry,
-  SessionComment,
   UseSessionCommentsResult,
 } from "./org2CloudSessionCommentsAtom.types";
 
@@ -103,9 +75,6 @@ export {
   writeSessionCommentsEntry,
 } from "./org2CloudSessionCommentsAtom.commentTransforms";
 export { SessionCommentDeliveryError } from "./org2CloudSessionCommentsAtom.types";
-export { useCloudFreshAccessToken } from "./org2CloudSessionCommentsAtom.freshToken";
-
-const log = createLogger("Org2CloudSessionComments");
 
 export const org2CloudSessionCommentsAtom = atom<
   Record<string, CloudSessionCommentsEntry>
@@ -147,199 +116,12 @@ export function useSessionComments(
 
   const withFreshToken = useCloudFreshAccessToken();
 
-  const fetchComments = useCallback(
-    async (
-      targetOrgId: string,
-      targetSessionId: string,
-      options?: { force?: boolean; forceToken?: string }
-    ): Promise<void> => {
-      const targetKey = sessionCommentsKey(targetOrgId, targetSessionId);
-      const requestIdentityKey = authIdentityKey;
-      if (!requestIdentityKey) return;
-      const requestKey = `${requestIdentityKey}\u001f${targetKey}`;
-      let force = Boolean(options?.force);
-      let forceToken = options?.forceToken;
-      if (
-        forceToken &&
-        (activeForceTokenByKey.get(requestKey) === forceToken ||
-          pendingForceTokenByKey.get(requestKey) === forceToken ||
-          completedForceTokenByKey.get(requestKey) === forceToken)
-      ) {
-        return;
-      }
-      for (;;) {
-        // Atomic claim: decide-and-mark in ONE updater against live store
-        // state. Two hook instances mounting in the same commit both call in
-        // here, but only the first updater run sees a non-loading entry.
-        // Snapshot the ids known at claim time so the post-fetch merge can
-        // tell an optimistic insert (added DURING the fetch — absent here)
-        // from a row the server dropped (present here, missing from the
-        // response) and must therefore evict.
-        let claimed = false;
-        let queuedForce = false;
-        let knownIdsAtStart = new Set<string>();
-        let anchorAtStart: string | undefined;
-        setEntries((previous) => {
-          const stored = previous[targetKey];
-          const entry =
-            stored?.identityKey === requestIdentityKey ? stored : undefined;
-          const decision = decideSessionCommentsFetch(entry, force, Date.now());
-          if (decision !== "claim") {
-            // A force behind an in-flight fetch is QUEUED, never dropped:
-            // the running fetch's snapshot may predate the write this force
-            // is meant to surface (terminal task states would stay stale
-            // forever otherwise — nothing else refetches the embed).
-            queuedForce = decision === "queue_force";
-            return previous;
-          }
-          claimed = true;
-          knownIdsAtStart = new Set(
-            (entry?.comments ?? []).map((comment) => comment.id)
-          );
-          anchorAtStart = entry?.lastServerTime;
-          return writeSessionCommentsEntry(previous, targetKey, {
-            ...(entry ?? EMPTY_ENTRY),
-            identityKey: requestIdentityKey,
-            state: "loading",
-          });
-        });
-        if (!claimed) {
-          if (queuedForce) {
-            if (forceToken) {
-              pendingForceTokenByKey.set(requestKey, forceToken);
-            } else {
-              pendingForceRefetchKeys.add(requestKey);
-            }
-          }
-          return;
-        }
-        if (forceToken) activeForceTokenByKey.set(requestKey, forceToken);
-        try {
-          const accessToken = await withFreshToken();
-          const currentAuth = authRef.current;
-          if (
-            !currentAuth ||
-            org2CloudAuthIdentityKey(currentAuth) !== requestIdentityKey
-          ) {
-            dropPendingForce(requestKey);
-            return;
-          }
-          // Force paths (manual refresh, session-signal tokens, the
-          // SUBSCRIBED-edge recovery) stay FULL listings — a full snapshot
-          // is the only read that reconciles the stamp-free un-resolve.
-          // TTL/org-signal refetches pull the delta behind the stored anchor.
-          const since =
-            !force && anchorAtStart !== undefined
-              ? sessionCommentsDeltaSince(anchorAtStart)
-              : undefined;
-          const listing = await listSessionComments(
-            accessToken,
-            targetOrgId,
-            targetSessionId,
-            since !== undefined ? { since } : undefined
-          );
-          const latestAfterFetch = authRef.current;
-          if (
-            !latestAfterFetch ||
-            org2CloudAuthIdentityKey(latestAfterFetch) !== requestIdentityKey
-          ) {
-            dropPendingForce(requestKey);
-            return;
-          }
-          // MERGE, not wholesale-replace — see mergeFullSessionComments /
-          // mergeDeltaSessionComments for the two paths' invariants. The
-          // fallback-aware `appliedSince` (not the requested `since`) picks
-          // the path: a pre-delta backend answers every request in full.
-          setEntries((previous) => {
-            const latestAuth = authRef.current;
-            if (
-              !latestAuth ||
-              org2CloudAuthIdentityKey(latestAuth) !== requestIdentityKey
-            ) {
-              return previous;
-            }
-            const stored = previous[targetKey];
-            const sameIdentity = stored?.identityKey === requestIdentityKey;
-            const existing = sameIdentity ? stored.comments : [];
-            const merged =
-              listing.appliedSince !== undefined
-                ? mergeDeltaSessionComments(existing, listing.comments)
-                : mergeFullSessionComments(
-                    existing,
-                    listing.comments,
-                    knownIdsAtStart
-                  );
-            const lastServerTime =
-              listing.serverTime ??
-              (sameIdentity ? stored.lastServerTime : undefined);
-            return writeSessionCommentsEntry(previous, targetKey, {
-              identityKey: requestIdentityKey,
-              comments: merged,
-              viewerOwnsSession: listing.viewerOwnsSession,
-              state: "ready",
-              fetchedAt: Date.now(),
-              ...(lastServerTime !== undefined ? { lastServerTime } : {}),
-            });
-          });
-        } catch (error) {
-          const latestAuth = authRef.current;
-          if (
-            !latestAuth ||
-            org2CloudAuthIdentityKey(latestAuth) !== requestIdentityKey
-          ) {
-            dropPendingForce(requestKey);
-            return;
-          }
-          log.warn(
-            `cloud_list_session_comments failed for ${targetKey}:`,
-            error
-          );
-          // Visibility revocation EVICTS the cached bodies (0002 invariant
-          // 5 for already-cached data); transient failures keep them.
-          const evict = shouldEvictSessionCommentsOnError(error);
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          setEntries((previous) => {
-            const stored = previous[targetKey];
-            const sameIdentity = stored?.identityKey === requestIdentityKey;
-            const retained = !evict && sameIdentity ? stored : undefined;
-            // Eviction protects cached BODIES, not the failure bookkeeping:
-            // resetting the counter on evict-class errors (e.g. a session
-            // that is not on the server) would turn the exponential retry
-            // back into a flat loop against a persistently failing target.
-            const priorFailures = sameIdentity
-              ? (stored?.consecutiveFailures ?? 0)
-              : 0;
-            return writeSessionCommentsEntry(previous, targetKey, {
-              ...(retained ?? EMPTY_ENTRY),
-              identityKey: requestIdentityKey,
-              state: "error",
-              errorMessage,
-              consecutiveFailures: priorFailures + 1,
-              fetchedAt: Date.now(),
-            });
-          });
-        } finally {
-          if (forceToken) {
-            if (activeForceTokenByKey.get(requestKey) === forceToken) {
-              activeForceTokenByKey.delete(requestKey);
-            }
-            rememberCompletedForceToken(requestKey, forceToken);
-          }
-        }
-        // A force that arrived while THIS fetch was in flight replays as
-        // exactly one more forced round-trip. Signal tokens additionally
-        // collapse identical requests from multiple mounted subscribers.
-        const queuedToken = pendingForceTokenByKey.get(requestKey);
-        if (queuedToken) pendingForceTokenByKey.delete(requestKey);
-        const queuedUntokened = pendingForceRefetchKeys.delete(requestKey);
-        if (!queuedToken && !queuedUntokened) return;
-        force = true;
-        forceToken = queuedToken;
-      }
-    },
-    [authIdentityKey, setEntries, withFreshToken]
-  );
+  const fetchComments = useSessionCommentsFetcher({
+    authIdentityKey,
+    authRef,
+    setEntries,
+    withFreshToken,
+  });
 
   useEffect(() => {
     if (!orgId || !sessionId || !signedIn) return;
@@ -442,315 +224,22 @@ export function useSessionComments(
     fetchComments,
   ]);
 
-  /** Apply a pure comments transform to the current entry. */
-  const patchEntry = useCallback(
-    (
-      targetKey: string,
-      transform: (comments: SessionComment[]) => SessionComment[]
-    ) => {
-      const identityKey = authIdentityKey;
-      if (!identityKey) return;
-      setEntries((previous) => {
-        const latestAuth = authRef.current;
-        if (
-          !latestAuth ||
-          org2CloudAuthIdentityKey(latestAuth) !== identityKey
-        ) {
-          return previous;
-        }
-        const stored = previous[targetKey];
-        const entry =
-          stored?.identityKey === identityKey ? stored : EMPTY_ENTRY;
-        return writeSessionCommentsEntry(previous, targetKey, {
-          ...entry,
-          identityKey,
-          comments: transform(entry.comments),
-        });
-      });
-    },
-    [authIdentityKey, setEntries]
-  );
-
-  const insertLocalComment = useCallback(
-    (comment: CloudSessionComment): void => {
-      if (!key) return;
-      patchEntry(key, (comments) => insertComment(comments, comment));
-    },
-    [key, patchEntry]
-  );
-
-  const freshTokenForCurrentIdentity = useCallback(async () => {
-    const identityKey = authIdentityKey;
-    if (!identityKey) throw new Error("not signed in to ORG2 Cloud");
-    const accessToken = await withFreshToken();
-    const latestAuth = authRef.current;
-    if (!latestAuth || org2CloudAuthIdentityKey(latestAuth) !== identityKey) {
-      throw new Error("ORG2 Cloud identity changed during the request");
-    }
-    return { accessToken, identityKey };
-  }, [authIdentityKey, withFreshToken]);
-
-  const isCurrentIdentity = useCallback((identityKey: string): boolean => {
-    const latestAuth = authRef.current;
-    return Boolean(
-      latestAuth && org2CloudAuthIdentityKey(latestAuth) === identityKey
-    );
-  }, []);
-
-  const prepareCommentBody = useCallback(
-    async (body: string, accessToken: string, identityKey: string) => {
-      if (!body.includes("[file:")) return body;
-      if (!orgId || !sessionId) throw new Error("no cloud comment target");
-      const endpoint = getCloudEndpoint();
-      const { prepareSharedCommentFiles } =
-        await import("./prepareSharedCommentFiles");
-      return prepareSharedCommentFiles({
-        body,
-        token: accessToken,
-        endpoint,
-        orgId,
-        sessionId,
-        assertCurrentIdentity: () => {
-          if (
-            !isCurrentIdentity(identityKey) ||
-            getCloudEndpoint().supabaseUrl !== endpoint.supabaseUrl ||
-            authRef.current?.supabaseUrl !== endpoint.supabaseUrl
-          ) {
-            throw new Error("ORG2 Cloud identity changed during file upload");
-          }
-        },
-      });
-    },
-    [orgId, sessionId, isCurrentIdentity]
-  );
-
-  const addComment = useCallback(
-    async (input: AddCommentInput): Promise<CloudSessionComment> => {
-      if (!orgId || !sessionId || !key) {
-        throw new Error("no cloud comment target");
-      }
-      const optimistic: CloudSessionComment = {
-        id:
-          input.optimisticId ??
-          `${OPTIMISTIC_SESSION_COMMENT_ID_PREFIX}${crypto.randomUUID()}`,
-        eventId: input.eventId,
-        parentId: input.parentId,
-        authorUserId: authRef.current?.userId ?? "",
-        authorDisplayName: authRef.current?.profile?.displayName ?? undefined,
-        body: input.body,
-        createdAt: new Date().toISOString(),
-        kind: "user",
-        mentionedUserIds: input.mentionedUserIds ?? [],
-        clientDeliveryStatus: "pending",
-        ...(input.replaceExisting
-          ? {
-              clientRetryExpectedBody: input.expectedBody,
-              clientRetryExpectedMentionedUserIds:
-                input.expectedMentionedUserIds ?? [],
-            }
-          : {}),
-      };
-      // A retry re-sends under the SAME optimistic id: replace the row in
-      // place and keep its original timestamp so the retained message does
-      // not jump out of the transcript position the user is looking at.
-      patchEntry(key, (comments) => {
-        const retainedRow = comments.find(
-          (candidate) => candidate.id === optimistic.id
-        );
-        return insertComment(
-          comments,
-          retainedRow
-            ? { ...optimistic, createdAt: retainedRow.createdAt }
-            : optimistic
-        );
-      });
-      let retained = false;
-      const delivered = await deliverOptimisticOutgoing({
-        send: async () => {
-          const { accessToken, identityKey } =
-            await freshTokenForCurrentIdentity();
-          const body = await prepareCommentBody(
-            input.body,
-            accessToken,
-            identityKey
-          );
-          // Retain uploaded references if the RPC response is lost. Retry sends
-          // these same immutable ids even if the sender changes the local file.
-          if (body !== input.body)
-            patchEntry(key, (comments) =>
-              patchComment(comments, optimistic.id, { body })
-            );
-          const comment = await addSessionComment(accessToken, {
-            orgId,
-            sessionId,
-            body,
-            eventId: input.eventId,
-            parentId: input.parentId,
-            mentionedUserIds: input.mentionedUserIds,
-            clientMessageKey: optimistic.id,
-            replaceExisting: input.replaceExisting,
-            expectedBody: input.expectedBody,
-            expectedMentionedUserIds: input.expectedMentionedUserIds,
-            ...(originSessionId && originSessionId !== sessionId
-              ? { originSessionId }
-              : {}),
-          });
-          return { comment, identityKey };
-        },
-        markSent: ({ comment, identityKey }) => {
-          if (!isCurrentIdentity(identityKey)) return;
-          // Replace the local echo with the server-authored row atomically.
-          patchEntry(key, (comments) =>
-            insertComment(
-              comments.filter((candidate) => candidate.id !== optimistic.id),
-              comment
-            )
-          );
-          broadcastCommentsChangedToPeers(orgId, sessionId);
-        },
-        markFailed: (error) => {
-          patchEntry(key, (comments) => {
-            retained = comments.some(
-              (candidate) => candidate.id === optimistic.id
-            );
-            return patchComment(comments, optimistic.id, {
-              clientDeliveryStatus: "failed",
-              clientDeliveryError:
-                error instanceof Error ? error.message : String(error),
-            });
-          });
-        },
-        onProjectionError: (phase, error) => {
-          log.error(
-            `Failed to project ${phase} Cloud comment delivery for ${sessionId}`,
-            error
-          );
-        },
-      }).catch((error: unknown) => {
-        // Only claim delivery ownership when a failed row is actually on
-        // screen. Otherwise the composer is still the sole copy of the text
-        // and must restore it.
-        if (!retained) throw error;
-        throw new SessionCommentDeliveryError(optimistic.id, error);
-      });
-      return delivered.comment;
-    },
-    [
-      orgId,
-      sessionId,
-      originSessionId,
-      key,
-      freshTokenForCurrentIdentity,
-      isCurrentIdentity,
-      patchEntry,
-      prepareCommentBody,
-    ]
-  );
-
-  const editComment = useCallback(
-    async (commentId: string, body: string): Promise<void> => {
-      if (!orgId || !key) throw new Error("no cloud comment target");
-      if (isOptimisticSessionCommentId(commentId)) {
-        let edited = false;
-        patchEntry(key, (comments) =>
-          comments.map((comment) => {
-            if (
-              comment.id !== commentId ||
-              comment.clientDeliveryStatus !== "failed"
-            ) {
-              return comment;
-            }
-            edited = true;
-            return { ...comment, body };
-          })
-        );
-        if (!edited) throw new Error("only failed Team Chat messages can edit");
-        return;
-      }
-      const { accessToken, identityKey } = await freshTokenForCurrentIdentity();
-      body = await prepareCommentBody(body, accessToken, identityKey);
-      const editedAt = await editSessionComment(
-        accessToken,
-        orgId,
-        commentId,
-        body
-      );
-      if (!isCurrentIdentity(identityKey)) return;
-      patchEntry(key, (comments) =>
-        patchComment(comments, commentId, { body, editedAt })
-      );
-      if (sessionId) broadcastCommentsChangedToPeers(orgId, sessionId);
-    },
-    [
-      orgId,
-      sessionId,
-      key,
-      freshTokenForCurrentIdentity,
-      isCurrentIdentity,
-      patchEntry,
-      prepareCommentBody,
-    ]
-  );
-
-  const deleteComment = useCallback(
-    async (commentId: string): Promise<void> => {
-      if (!orgId || !key) throw new Error("no cloud comment target");
-      const { accessToken, identityKey } = await freshTokenForCurrentIdentity();
-      await deleteSessionComment(accessToken, orgId, commentId);
-      if (!isCurrentIdentity(identityKey)) return;
-      // Mirror the server's soft delete: stamp + blank body (tombstone).
-      patchEntry(key, (comments) =>
-        patchComment(comments, commentId, {
-          deletedAt: new Date().toISOString(),
-          body: "",
-          mentionedUserIds: [],
-        })
-      );
-      if (sessionId) broadcastCommentsChangedToPeers(orgId, sessionId);
-    },
-    [
-      orgId,
-      sessionId,
-      key,
-      freshTokenForCurrentIdentity,
-      isCurrentIdentity,
-      patchEntry,
-    ]
-  );
-
-  const resolveComment = useCallback(
-    async (
-      commentId: string,
-      resolved: boolean,
-      resolution?: CloudCommentResolution
-    ): Promise<void> => {
-      if (!orgId || !key) throw new Error("no cloud comment target");
-      const { accessToken, identityKey } = await freshTokenForCurrentIdentity();
-      await resolveSessionComment(
-        accessToken,
-        orgId,
-        commentId,
-        resolved,
-        resolution
-      );
-      if (!isCurrentIdentity(identityKey)) return;
-      patchEntry(key, (comments) =>
-        patchComment(comments, commentId, {
-          resolvedAt: resolved ? new Date().toISOString() : undefined,
-          resolution: resolved ? (resolution ?? "resolved") : undefined,
-        })
-      );
-      if (sessionId) broadcastCommentsChangedToPeers(orgId, sessionId);
-    },
-    [
-      orgId,
-      sessionId,
-      key,
-      freshTokenForCurrentIdentity,
-      isCurrentIdentity,
-      patchEntry,
-    ]
-  );
+  const {
+    insertLocalComment,
+    addComment,
+    editComment,
+    deleteComment,
+    resolveComment,
+  } = useSessionCommentMutations({
+    orgId,
+    sessionId,
+    originSessionId,
+    key,
+    authIdentityKey,
+    authRef,
+    setEntries,
+    withFreshToken,
+  });
 
   return {
     comments: entry.comments,

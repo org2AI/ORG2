@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 
+import Button from "@src/components/Button";
 import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
 import { classNames } from "@src/util/ui/classNames";
 
@@ -27,7 +28,8 @@ export const SidebarTabButton: React.FC<{
   }, [markClicked, onClick]);
 
   return (
-    <button
+    <Button
+      layout="custom"
       onClick={handleClick}
       disabled={tab.disabled}
       data-action="panel.setLeftTab"
@@ -72,6 +74,6 @@ export const SidebarTabButton: React.FC<{
           </span>
         )}
       </div>
-    </button>
+    </Button>
   );
 };

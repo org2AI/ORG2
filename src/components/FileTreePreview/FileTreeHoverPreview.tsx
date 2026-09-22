@@ -8,10 +8,10 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { FILE_TREE_HOVER_DELAY_MS } from "./config";
 import FileTreePreview from "./index";
 import type { FileTreePreviewProps } from "./types";
 
-const PREVIEW_SHOW_DELAY = 300;
 const PREVIEW_HIDE_DELAY = 150;
 const PREVIEW_GAP = 8;
 
@@ -38,7 +38,7 @@ const FileTreeHoverPreview: React.FC<FileTreeHoverPreviewProps> = ({
   display = "inline-flex",
   as = "span",
   placement = "top",
-  showDelayMs = PREVIEW_SHOW_DELAY,
+  showDelayMs = FILE_TREE_HOVER_DELAY_MS,
 }) => {
   const anchorRef = useRef<HTMLElement | null>(null);
   const setAnchorRef = useCallback((node: HTMLElement | null) => {

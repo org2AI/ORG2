@@ -5,15 +5,11 @@
  * - preprocessTextContent: auto-detect and wrap unformatted code
  * - detectCodeType: classify inline code as file / directory / identifier
  * - openFileInEditor: dispatch event to open file in editor
- * - openUrlInBrowserApp: dispatch event to open URL in browser
- * - openMarkdownLinkInBrowserApp: same, auto-navigating for GitHub PR links
- * - isLocalhostUrl: detect localhost URLs
  * - renderMessageWithCitations: render [N] citation references
  * - renderChildren: recursively apply citation rendering to React nodes
  */
 import React from "react";
 
-import { isGitHubPullRequestUrl } from "@src/util/git/githubPullRequestUrl";
 import { openFileInEditor as openFileInEditorShared } from "@src/util/ui/openFileInEditor";
 
 import { parseMarkdownFileRef } from "./markdownFileRef";
@@ -78,48 +74,6 @@ function setInlineCodeTypeCache(key: string, value: InlineCodeType): void {
     if (firstKey !== undefined) inlineCodeTypeCache.delete(firstKey);
   }
   inlineCodeTypeCache.set(key, value);
-}
-
-// ── openUrlInBrowserApp ───────────────────────────────────────────────────────
-
-export interface OpenUrlInBrowserOptions {
-  navigate?: boolean;
-}
-
-export function openUrlInBrowserApp(
-  url: string,
-  options: OpenUrlInBrowserOptions = {}
-): void {
-  window.dispatchEvent(
-    new CustomEvent("open-url-in-browser", {
-      detail: { url, navigate: options.navigate === true },
-    })
-  );
-}
-
-/**
- * Open an inline markdown link in the Browser app. Ordinary links stay in
- * the background (toast + "Go to Browser"); GitHub pull-request links bring
- * the workstation Browser up immediately — a PR the agent just created is
- * the thing the user wants to look at, not a tab to find later.
- */
-export function openMarkdownLinkInBrowserApp(href: string): void {
-  openUrlInBrowserApp(href, { navigate: isGitHubPullRequestUrl(href) });
-}
-
-// ── isLocalhostUrl ────────────────────────────────────────────────────────────
-
-export function isLocalhostUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.hostname === "localhost" ||
-      parsed.hostname === "127.0.0.1" ||
-      parsed.hostname === "::1"
-    );
-  } catch {
-    return false;
-  }
 }
 
 // ── preprocessTextContent ─────────────────────────────────────────────────────

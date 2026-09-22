@@ -86,7 +86,7 @@ const PLAYWRIGHT_CLI_ACTIONS: &[ActionEntry] = &[
 pub(super) static TOOLS: &[ToolEntry] = &[
     ToolEntry {
         name: tool_names::CONTROL_ORGII,
-        description: "Inspect and control ORGII GUI actions through the frontend ActionSystem.",
+        description: "Inspect and control ORG2 GUI actions through the frontend ActionSystem.",
         description_detail: "Lists and inspects registered GUI-layer actions and visible controls, then dispatches app navigation, Workstation view changes, settings panels, and DOM control operations via the frontend ActionSystem bridge.",
         category: tool_categories::WEB,
         icon_id: "mouse-pointer-click",
@@ -107,7 +107,7 @@ pub(super) static TOOLS: &[ToolEntry] = &[
     },
     ToolEntry {
         name: tool_names::SPOTLIGHT,
-        description: "Open and control ORGII Spotlight.",
+        description: "Open and control ORG2 Spotlight.",
         description_detail: "Directly opens, closes, toggles, or routes Spotlight to common flows such as workspace picker, branch picker, file search, command palette, and Agent session search without first inspecting GUI actions.",
         category: tool_categories::WEB,
         icon_id: "search",
@@ -195,7 +195,7 @@ pub(super) static TOOLS: &[ToolEntry] = &[
     ToolEntry {
         name: tool_names::CONTROL_BROWSER_WITH_AGENT_BROWSER,
         description: "Run raw browser automation commands through Vercel agent-browser CLI.",
-        description_detail: "Executes the selected subcommand with ORGII's managed session flags: agent-browser --session orgii --json <command>. Use for open, snapshot, screenshot, close, and other supported agent-browser commands.",
+        description_detail: "Executes the selected subcommand with ORG2's managed session flags: agent-browser --session orgii --json <command>. Use for open, snapshot, screenshot, close, and other supported agent-browser commands.",
         category: tool_categories::WEB,
         icon_id: "chrome",
         simulator_app: AppBrowser,
@@ -213,7 +213,7 @@ pub(super) static TOOLS: &[ToolEntry] = &[
     ToolEntry {
         name: tool_names::CONTROL_BROWSER_WITH_PLAYWRIGHT,
         description: "Run raw browser automation commands through playwright-cli.",
-        description_detail: "Executes the selected subcommand with ORGII's managed session flag: playwright-cli -s=orgii <command>. Use for open, snapshot, screenshot, close, and other supported playwright-cli commands.",
+        description_detail: "Executes the selected subcommand with ORG2's managed session flag: playwright-cli -s=orgii <command>. Use for open, snapshot, screenshot, close, and other supported playwright-cli commands.",
         category: tool_categories::WEB,
         icon_id: "chrome",
         simulator_app: AppBrowser,
@@ -230,7 +230,7 @@ pub(super) static TOOLS: &[ToolEntry] = &[
     },
     ToolEntry {
         name: tool_names::CONTROL_INTERNAL_BROWSER,
-        description: "Inspect and control the currently visible ORGII internal Browser WebView.",
+        description: "Inspect and control the currently visible ORG2 internal Browser WebView.",
         description_detail: "Targets the active internal browser-session WebView tracked by the frontend lifecycle. Exposes list, is_ready, get_state, click, input, select, scroll, show_mask, hide_mask, and clean_up through the embedded Tauri/WebView Page Agent rather than external Chrome or Playwright, and never accepts arbitrary WebView labels from the model. Call get_state before indexed actions; element indexes are snapshots and can become stale after DOM changes, scrolling, or navigation.",
         category: tool_categories::WEB,
         icon_id: "mouse-pointer-click",

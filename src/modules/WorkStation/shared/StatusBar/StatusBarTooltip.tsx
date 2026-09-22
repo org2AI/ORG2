@@ -30,7 +30,7 @@ export const StatusBarTooltip: React.FC<StatusBarTooltipProps> = memo(
     <Tooltip
       content={label}
       position={position}
-      mouseEnterDelay={200}
+      kind="button"
       framedPanel
       smartPlacement
       disabled={disabled}

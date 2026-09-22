@@ -12,13 +12,14 @@ import {
   vi,
 } from "vitest";
 
+import { testTranslate } from "@src/test/i18nTestTranslate";
+
 import PrHoverCard, { type PrHoverCardData } from ".";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     i18n: { language: "en" },
-    t: (key: string, options?: { defaultValue?: string }) =>
-      options?.defaultValue ?? key,
+    t: (...args: Parameters<typeof testTranslate>) => testTranslate(...args),
   }),
 }));
 

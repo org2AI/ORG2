@@ -50,7 +50,7 @@ pub fn normalize_chunk(chunk: &RawActivityChunk, session_id: &str) -> SessionEve
         .cloned()
         .unwrap_or(serde_json::Value::Object(Default::default()));
 
-    let normalized_args = extract_args(action_type, &args_obj);
+    let normalized_args = extract_args(action_type, raw_function, &args_obj);
     let function_name = resolve_function_name(raw_function, action_type, Some(&args_obj));
     let ui_canonical = resolve_ui_canonical(&function_name);
 
@@ -645,11 +645,24 @@ fn strip_terminal_code_blocks(text: &str) -> String {
 // Field Extraction Helpers
 // ============================================================================
 
-fn extract_args(action_type: &str, args: &serde_json::Value) -> serde_json::Value {
-    if action_type == "tool_call" {
-        if let Some(obj) = args.as_object() {
-            if let Some(input) = obj.get("input") {
-                return input.clone();
+pub(crate) fn extract_args(
+    action_type: &str,
+    raw_function: &str,
+    args: &serde_json::Value,
+) -> serde_json::Value {
+    // Only the generic tool-call envelope owns a nested input object. Named
+    // provider tools already expose their arguments directly, even when those
+    // arguments happen to be called `input`, `name`, or `tool_name`.
+    if action_type == "tool_call" && matches!(raw_function, "" | "tool_call") {
+        if let Some(object) = args.as_object() {
+            if object
+                .get("tool_name")
+                .or_else(|| object.get("name"))
+                .is_some_and(serde_json::Value::is_string)
+            {
+                if let Some(input) = object.get("input").filter(|input| input.is_object()) {
+                    return input.clone();
+                }
             }
         }
     }
@@ -701,9 +714,9 @@ fn extract_call_id(
     let args_obj = args.as_object();
     let result_obj = result.as_object();
 
-    args_obj
+    result_obj
         .and_then(|o| str_field(o, "call_id"))
-        .or_else(|| result_obj.and_then(|o| str_field(o, "call_id")))
+        .or_else(|| args_obj.and_then(|o| str_field(o, "call_id")))
 }
 
 fn str_field(obj: &serde_json::Map<String, serde_json::Value>, key: &str) -> Option<String> {

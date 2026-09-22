@@ -6,7 +6,12 @@ import { describe, expect, it, vi } from "vitest";
 import { SessionsScreen } from "./SessionsScreen";
 
 const state = vi.hoisted(() => ({
-  connection: { desktopId: "one", desktopName: "Mac", presence: "online" },
+  connection: {
+    desktopId: "one",
+    desktopName: "Mac",
+    presence: "online",
+    status: "connected",
+  },
   sessions: [
     { id: "codexapp-a", name: "Session A", status: "idle", repoPath: "/repo" },
   ],
@@ -17,6 +22,8 @@ vi.mock("../app", () => ({ useMobileRemote: () => state }));
 vi.mock("../platform", () => ({
   useMobileRemotePlatform: () => ({
     runtime: {
+      isHidden: () => false,
+      subscribeVisibility: () => () => {},
       readPreference: (key: string) => localStorage.getItem(key),
       writePreference: (key: string, value: string) =>
         localStorage.setItem(key, value),
@@ -46,8 +53,25 @@ describe("SessionsScreen", () => {
       )
     );
     expect(host.querySelector('[aria-label="sessions.groupBy"]')).toBeNull();
-    expect(host.querySelector("[aria-expanded]")).toBeNull();
+    expect(host.querySelector(".mobile-session-group-toggle")).toBeNull();
     expect(host.textContent).toContain("Session A");
+    state.connection.status = "connecting";
+    await act(() =>
+      root.render(
+        React.createElement(SessionsScreen, { onSelectSession: select })
+      )
+    );
+    expect(host.querySelector('[role="status"]')?.textContent).toBe(
+      "connection.reconnecting"
+    );
+    expect(host.textContent).toContain("Session A");
+    state.connection.status = "connected";
+    await act(() =>
+      root.render(
+        React.createElement(SessionsScreen, { onSelectSession: select })
+      )
+    );
+    expect(host.querySelector('[role="status"]')).toBeNull();
     await act(() =>
       host
         .querySelector<HTMLButtonElement>(

@@ -91,7 +91,7 @@ pub(super) fn ensure_default_backup_from_snapshot(
             return Ok(target);
         }
         return Err(format!(
-            "Default backup is missing for {}. Restore it before applying ORGII Managed again.",
+            "Default backup is missing for {}. Restore it before applying ORG2 Managed again.",
             target.target_path
         ));
     }

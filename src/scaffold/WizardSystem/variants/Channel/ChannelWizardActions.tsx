@@ -56,7 +56,6 @@ export const ChannelWizardActions: React.FC<ChannelWizardActionsProps> = ({
     return (
       <Button
         variant="primary"
-        size="small"
         disabled={!selectedType || isDuplicateName || !channelIsValid}
         onClick={onChannelSubmit}
       >
@@ -71,7 +70,6 @@ export const ChannelWizardActions: React.FC<ChannelWizardActionsProps> = ({
     return (
       <Button
         variant="primary"
-        size="small"
         disabled={!selectedType || isDuplicateName || !projectToken.trim()}
         loading={projectSubmitting}
         onClick={onProjectSubmit}
@@ -97,7 +95,6 @@ export const ChannelWizardActions: React.FC<ChannelWizardActionsProps> = ({
     return (
       <Button
         variant="primary"
-        size="small"
         disabled={!selectedType || isDuplicateName || !gitMethod || !hasInput}
         loading={gitSubmitting}
         onClick={onGitSubmit}

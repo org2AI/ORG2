@@ -12,36 +12,30 @@
  * formatting throughout.
  */
 import { useAtom } from "jotai";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import InlineBanner, {
   useDismissibleMessage,
 } from "@src/components/InlineBanner";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import GitHubPrDetailTabs from "@src/features/GitHubWork/GitHubPrDetailTabs";
+import { useDetailRailLayout } from "@src/hooks/ui/layout/useDetailRailLayout";
 import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import GitHubPrDetailTabs from "@src/modules/shared/components/GitHubPrDetailTabs";
-import {
-  PersistentDetailTabPanel,
-  ScrollTrail,
-  WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
-  WORKSTATION_TRAIL_WIDTH,
-} from "@src/modules/shared/layouts/blocks";
-import { resolvePullRequestDetailStatus } from "@src/shared/pr/prLevelActions";
 import {
   type PrIdentity,
   workstationPrScopeKey,
   workstationSelectedPrAtomFamily,
 } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
+import { resolvePullRequestDetailStatus } from "@src/util/git/pr/prLevelActions";
 
 import { useWorkstationPrDetail } from "../../../hooks/useWorkstationPrDetail";
-import { PrChangesTab } from "./PrChangesTab";
-import { PrChecksTab } from "./PrChecksTab";
-import { PrCommitsTab } from "./PrCommitsTab";
-import { PrConversationTab } from "./PrConversationTab";
-import { PrFlowHeader } from "./PrFlowHeader";
-import { PrSidebar } from "./PrSidebar";
+import { PrDetailSidebarRail } from "./PrDetailSidebarRail";
+import { PrDetailTabPanels } from "./PrDetailTabPanels";
+import { PrChecksRefreshContext } from "./prChecksRefreshContext";
 import { formatPrFilesCount } from "./prFilesDisplay";
+import { usePrDetailTrailRefs } from "./usePrDetailTrailRefs";
+import { usePrDetailViewState } from "./usePrDetailViewState";
 
 interface PrDetailPanelProps {
   identity: PrIdentity;
@@ -125,94 +119,21 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
   onFileSelect,
 }) => {
   const { t } = useTranslation("common");
-  const tabContentRef = useRef<HTMLDivElement>(null);
-  const trailScrollContainerRef = useRef<HTMLElement>(null);
-  const trailContentRef = useRef<HTMLElement>(null);
-  const scopeKey = workstationPrScopeKey(repoId, repoPath, identity.number);
-  const [state, setState] = useAtom(workstationSelectedPrAtomFamily(scopeKey));
-  const detailViewState = state.viewState;
-  const setDetailViewState = useCallback(
-    (
-      update: (current: typeof detailViewState) => typeof detailViewState
-    ): void => {
-      setState((current) => ({
-        ...current,
-        viewState: update(current.viewState),
-      }));
-    },
-    [setState]
-  );
-  const activeTab = detailViewState.activeTab;
-  const setConversationDraft = useCallback(
-    (conversationDraft: string) => {
-      setDetailViewState((current) => ({
-        ...current,
-        conversationDraft,
-      }));
-    },
-    [setDetailViewState]
-  );
-  const setSelectedCommitSha = useCallback(
-    (selectedCommitSha: string | null) => {
-      setDetailViewState((current) => ({
-        ...current,
-        selectedCommitSha,
-      }));
-    },
-    [setDetailViewState]
-  );
-  const setSelectedChangedFilePath = useCallback(
-    (selectedChangedFilePath: string | null) => {
-      setDetailViewState((current) => ({
-        ...current,
-        selectedChangedFilePath,
-      }));
-    },
-    [setDetailViewState]
-  );
-  const setTabContentNode = useCallback((node: HTMLDivElement | null) => {
-    tabContentRef.current = node;
-  }, []);
-  const setConversationScrollNode = useCallback(
-    (node: HTMLDivElement | null) => {
-      trailScrollContainerRef.current = node ?? tabContentRef.current;
-    },
-    []
-  );
-  const setConversationContentNode = useCallback(
-    (node: HTMLDivElement | null) => {
-      trailContentRef.current = node ?? tabContentRef.current;
-    },
-    []
-  );
-
   const {
-    repoFullName,
-    addComment,
-    submitReview,
-    replyInlineComment,
-    mergePullRequest,
-    setPullRequestAutoMerge,
-    updatePullRequestDraft,
-    updatePullRequestState,
-    updateRequestedReviewers,
-    updateAssignees,
-    updateLabels,
-    loadReviewerCandidates,
-    reviewerCandidates,
-    assigneeCandidates,
-    loadingReviewerCandidates,
-    reviewerCandidatesError,
-    loadLabelCandidates,
-    labelCandidates,
-    loadingLabelCandidates,
-    labelCandidatesError,
-    prActionPending,
-  } = useWorkstationPrDetail({
-    repoPath,
-    repoId,
-    pr: identity,
-  });
+    trailScrollContainerRef,
+    trailContentRef,
+    setTabContentNode,
+    setConversationScrollNode,
+    setConversationContentNode,
+  } = usePrDetailTrailRefs();
+  const {
+    state,
+    detailViewState,
+    activeTab,
+    setConversationDraft,
+    setSelectedCommitSha,
+    setSelectedChangedFilePath,
+  } = usePrDetailViewState({ repoId, repoPath, prNumber: identity.number });
 
   const currentIdentity = useMemo(
     () => ({
@@ -225,52 +146,8 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
   const { visibleMessage: visibleError, dismiss: dismissError } =
     useDismissibleMessage(state.error);
 
-  // The conversation scroll trail shares the details column, sitting under the
-  // rail exactly as the session/Work Item trail does.
-  const navigationTrail = (
-    <div
-      className="relative ml-auto min-h-0 w-11 flex-1"
-      data-testid="pr-detail-navigation-rail"
-    >
-      <ScrollTrail
-        scrollContainerRef={trailScrollContainerRef}
-        contentRef={trailContentRef}
-        ariaLabel={t("git.pr.navigationTrail", "Pull request navigation")}
-        alignment="start"
-        placement="rail"
-        testId="pr-detail-navigation-trail"
-      />
-    </div>
-  );
-  const sidebar = (
-    <PrSidebar
-      identity={currentIdentity}
-      detail={state.detail}
-      checks={state.checks}
-      reviews={state.reviews}
-      disabled={!repoFullName}
-      pending={prActionPending}
-      reviewerCandidates={reviewerCandidates}
-      loadingReviewerCandidates={loadingReviewerCandidates}
-      reviewerCandidatesError={reviewerCandidatesError}
-      onLoadReviewerCandidates={loadReviewerCandidates}
-      onMerge={mergePullRequest}
-      onSetAutoMerge={setPullRequestAutoMerge}
-      onDraftChange={updatePullRequestDraft}
-      onStateChange={updatePullRequestState}
-      onRequestedReviewersChange={updateRequestedReviewers}
-      assigneeCandidates={assigneeCandidates}
-      onAssigneesChange={updateAssignees}
-      labelCandidates={labelCandidates}
-      loadingLabelCandidates={loadingLabelCandidates}
-      labelCandidatesError={labelCandidatesError}
-      onLoadLabelCandidates={loadLabelCandidates}
-      onLabelsChange={updateLabels}
-    />
-  );
-
   const baseBranch =
-    state.baseRef ?? identity.baseBranch ?? t("git.pr.baseBranch", "base");
+    state.baseRef ?? identity.baseBranch ?? t("git.pr.baseBranch");
 
   const tabs =
     tabsPlacement === "panel" ? (
@@ -284,7 +161,38 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
       />
     ) : null;
 
-  if (state.loading || (state.detail === null && state.error === null)) {
+  const loading =
+    state.loading || (state.detail === null && state.error === null);
+  const { paneRef, inlineRail } = useDetailRailLayout(!loading);
+  // After the layout hook: its pane is the element CI polling watches, so a
+  // panel parked in a background tab stops asking GitHub for checks.
+  const controller = useWorkstationPrDetail({
+    repoPath,
+    repoId,
+    pr: identity,
+    visibilityRef: paneRef,
+  });
+  const sidebar = (
+    <PrDetailSidebarRail
+      currentIdentity={currentIdentity}
+      state={state}
+      controller={controller}
+      activeTab={activeTab}
+      trailScrollContainerRef={trailScrollContainerRef}
+      trailContentRef={trailContentRef}
+      inline={inlineRail}
+    />
+  );
+
+  const checksRefresh = useMemo(
+    () => ({
+      refreshChecks: controller.refreshChecks,
+      refreshing: state.refreshingChecks,
+    }),
+    [controller.refreshChecks, state.refreshingChecks]
+  );
+
+  if (loading) {
     return (
       <GitHubDetailSkeleton
         kind="pr"
@@ -299,124 +207,56 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
   }
 
   return (
-    <div className="allow-select-deep flex h-full min-h-0 flex-col overflow-hidden">
-      {tabs}
+    <PrChecksRefreshContext.Provider value={checksRefresh}>
+      <div className="allow-select-deep flex h-full min-h-0 flex-col overflow-hidden">
+        {tabs}
 
-      {/* A background reconcile clears `state.error` as soon as it succeeds, so
+        {/* A background reconcile clears `state.error` as soon as it succeeds, so
           the strip holds the message until the reader dismisses it. */}
-      {visibleError ? (
-        <InlineBanner onDismiss={dismissError} dataTestId="pr-detail-error">
-          {visibleError}
-        </InlineBanner>
-      ) : null}
+        {visibleError ? (
+          <InlineBanner onDismiss={dismissError} dataTestId="pr-detail-error">
+            {visibleError}
+          </InlineBanner>
+        ) : null}
 
-      {/* Detail tabs mount lazily, then remain mounted to preserve view state. */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-          <PersistentDetailTabPanel
-            active={activeTab === "conversation"}
-            id="pr-detail-tabpanel-conversation"
-            ariaLabelledBy="pr-detail-tab-conversation"
-            className="min-w-0 overflow-hidden"
-          >
-            <div
-              ref={setTabContentNode}
-              className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-            >
-              <PrConversationTab
-                flowHeader={
-                  <PrFlowHeader
-                    identity={currentIdentity}
-                    detail={state.detail}
-                    baseBranch={baseBranch}
-                    commitCount={state.commits.length}
-                    files={state.files}
-                  />
-                }
-                detail={state.detail}
-                identity={currentIdentity}
-                conversation={state.conversation}
-                reviews={state.reviews}
-                reviewComments={state.reviewComments}
-                loading={state.loading}
-                submittingComment={state.submittingComment}
-                submittingReview={state.submittingReview}
-                draft={detailViewState.conversationDraft}
-                onDraftChange={setConversationDraft}
-                onAddComment={addComment}
-                onSubmitReview={submitReview}
-                trailScrollContainerRef={setConversationScrollNode}
-                trailContentRef={setConversationContentNode}
-              />
-            </div>
-          </PersistentDetailTabPanel>
-
-          <PersistentDetailTabPanel
-            active={activeTab === "commits"}
-            id="pr-detail-tabpanel-commits"
-            ariaLabelledBy="pr-detail-tab-commits"
-            className="min-w-0 flex-col overflow-hidden"
-          >
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <PrCommitsTab
-                commits={state.commits}
-                prNumber={identity.number}
-                repoPath={repoPath}
-                repoId={repoId}
-                loading={state.loading}
-                checks={state.checks}
-                selectedCommitSha={detailViewState.selectedCommitSha}
-                onSelectedCommitShaChange={setSelectedCommitSha}
-                onFileSelect={onFileSelect}
-              />
-            </div>
-          </PersistentDetailTabPanel>
-
-          <PersistentDetailTabPanel
-            active={activeTab === "checks"}
-            id="pr-detail-tabpanel-checks"
-            ariaLabelledBy="pr-detail-tab-checks"
-            className="min-w-0 flex-col overflow-hidden"
-          >
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <PrChecksTab checks={state.checks} loading={state.loading} />
-            </div>
-          </PersistentDetailTabPanel>
-
-          <PersistentDetailTabPanel
-            active={activeTab === "changes"}
-            id="pr-detail-tabpanel-changes"
-            ariaLabelledBy="pr-detail-tab-changes"
-            className="min-w-0 flex-col overflow-hidden"
-          >
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <PrChangesTab
-                repoFullName={repoFullName}
-                detail={state.detail}
-                headSha={state.headSha}
-                baseRef={state.baseRef}
-                files={state.files}
-                loading={state.loading}
-                reviewComments={state.reviewComments}
-                selectedFilePath={detailViewState.selectedChangedFilePath}
-                onSelectedFilePathChange={setSelectedChangedFilePath}
-                onFileSelect={onFileSelect}
-                onReplyInlineComment={replyInlineComment}
-              />
-            </div>
-          </PersistentDetailTabPanel>
-        </div>
-
+        {/* Detail tabs mount lazily, then remain mounted to preserve view state. */}
         <div
-          className={`box-border flex h-full shrink-0 flex-col ${WORKSTATION_TRAIL_RAIL_PADDING_CLASS}`}
-          style={{ width: WORKSTATION_TRAIL_WIDTH.expandedPx }}
-          data-testid="pr-detail-sidebar-rail"
+          ref={paneRef}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
-          {sidebar}
-          {activeTab === "conversation" ? navigationTrail : null}
+          {inlineRail && activeTab !== "conversation" ? (
+            <div className="max-h-64 shrink-0 overflow-y-auto px-4 py-4">
+              {sidebar}
+            </div>
+          ) : null}
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <PrDetailTabPanels
+              identity={identity}
+              currentIdentity={currentIdentity}
+              repoPath={repoPath}
+              repoId={repoId}
+              state={state}
+              detailViewState={detailViewState}
+              activeTab={activeTab}
+              baseBranch={baseBranch}
+              controller={controller}
+              setConversationDraft={setConversationDraft}
+              setSelectedCommitSha={setSelectedCommitSha}
+              setSelectedChangedFilePath={setSelectedChangedFilePath}
+              setTabContentNode={setTabContentNode}
+              setConversationScrollNode={setConversationScrollNode}
+              setConversationContentNode={setConversationContentNode}
+              onFileSelect={onFileSelect}
+              inlineProperties={
+                inlineRail && activeTab === "conversation" ? sidebar : undefined
+              }
+            />
+
+            {!inlineRail ? sidebar : null}
+          </div>
         </div>
       </div>
-    </div>
+    </PrChecksRefreshContext.Provider>
   );
 };
 

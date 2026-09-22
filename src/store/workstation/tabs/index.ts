@@ -38,7 +38,6 @@ export { FILE_TAB_TYPES } from "./types";
 export {
   workstationLayoutAtom,
   workstationTabsStateAtom,
-  workstationWorkspaceStateAtom,
   recentWorkstationTabsAtom,
   presentedWorkstationWorkspaceKeyAtom,
   sessionWorkstationWorkspaceKey,
@@ -47,10 +46,7 @@ export {
   openWorkstationTabAtom,
   closeWorkstationTabsAtom,
   closeWorkstationTabAtom,
-  removeSharedWorkstationTabsAtom,
-  removeSharedWorkstationTabAtom,
   focusWorkstationTabAtom,
-  updateWorkstationTabDataAtom,
   reorderWorkstationTabsAtom,
   selectWorkstationPanel,
   mainPaneStateAtom,
@@ -98,7 +94,6 @@ export {
   createDirectoryTab,
   createExplorerTab,
   createStartTab,
-  createGitDiffTab,
   createTimelineDiffTab,
   createSourceControlTab,
   createGitLogTab,
@@ -135,7 +130,6 @@ export {
   getProjectLinearWorkItemsTabChrome,
   getProjectWorkItemsTabChrome,
   getWorkItemDetailTabChrome,
-  createSubagentDetailTab,
   // Agent Config factories
   agentConfigTabFactory,
   createAgentConfigTab,
@@ -180,19 +174,11 @@ export {
 // Editor Cache (Per-Repo File Tab Caching)
 // ============================================
 export {
-  // Constants
-  MAX_EDITOR_CACHE_REPOS,
-  MAX_FILE_TABS_PER_REPO,
   // State atoms
   editorCacheAtom,
   activeEditorRepoAtom,
-  // Derived atoms
-  activeRepoCacheAtom,
-  editorCacheSizeAtom,
   // Action atoms
   saveRepoCacheAtom,
-  clearRepoCacheAtom,
-  clearAllEditorCacheAtom,
   disposeEditorCacheForSessionAtom,
   switchActiveRepoAtom,
 } from "./editorCache";

@@ -1,14 +1,14 @@
 import React from "react";
 
+import DetailHeaderIconAction from "@src/components/DetailHeaderIconAction";
+import type { DetailHeaderIconActionProps } from "@src/components/DetailHeaderIconAction";
 import {
   HugeiconsIcon,
   type IconSvgElement,
   Mail01Icon,
   Tick01Icon,
 } from "@src/icons";
-import DetailHeaderIconAction from "@src/modules/shared/components/DetailHeaderIconAction";
-import type { DetailHeaderIconActionProps } from "@src/modules/shared/components/DetailHeaderIconAction";
-import DetailPaneLayout from "@src/modules/shared/layouts/DetailPaneLayout";
+import DetailPaneLayout from "@src/scaffold/layouts/DetailPaneLayout";
 
 export interface TeamInboxDetailLayoutProps {
   title: string;

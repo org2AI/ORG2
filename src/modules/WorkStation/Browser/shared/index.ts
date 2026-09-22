@@ -5,6 +5,4 @@ export { SharedBrowserWorkspace } from "./SharedBrowserWorkspace";
 export {
   SHARED_BROWSER_HOST,
   SHARED_BROWSER_HOST_SCOPE,
-  activeSharedBrowserHostAtom,
-  sharedBrowserHostRegistryAtom,
 } from "./sharedBrowserHostAtoms";

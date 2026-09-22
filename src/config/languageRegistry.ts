@@ -547,15 +547,6 @@ export const LANGUAGE_MAP: Record<string, string> = Object.fromEntries(
   )
 );
 
-/** Compatibility map for callers that need to inspect display aliases. */
-export const LANGUAGE_DISPLAY_NAMES: Record<string, string> =
-  Object.fromEntries(
-    [...LANGUAGE_METADATA_BY_NAME.entries()].map(([name, metadata]) => [
-      name,
-      metadata.displayName,
-    ])
-  );
-
 /** Compatibility map for raw code-block filename detection. */
 export const SPECIAL_FILENAMES: Record<string, string> = Object.fromEntries(
   LANGUAGE_METADATA.flatMap((language) =>

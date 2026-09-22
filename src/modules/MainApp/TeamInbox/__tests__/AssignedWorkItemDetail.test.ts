@@ -63,7 +63,7 @@ const mocks = vi.hoisted(() => ({
       onStatusChange: vi.fn(),
     },
   },
-  openExternalLink: vi.fn(async () => undefined),
+  openInSystemBrowser: vi.fn(),
   updateWorkItem: vi.fn(),
   transitionHandoff: vi.fn(),
   workItemStatus: "ready" as "loading" | "ready" | "error",
@@ -96,11 +96,11 @@ vi.mock("@src/api/http/git/remotes", async (importOriginal) => ({
   getGitRemotes: mocks.getGitRemotes,
 }));
 
-vi.mock("@src/util/platform/ipcRenderer", () => ({
-  openExternalLink: mocks.openExternalLink,
+vi.mock("@src/util/ui/openLink", () => ({
+  openInSystemBrowser: mocks.openInSystemBrowser,
 }));
 
-vi.mock("@src/modules/shared/components/GitHubLinkedReferences/lazy", () => ({
+vi.mock("@src/features/GitHubWork/GitHubLinkedReferences/lazy", () => ({
   default: ({ references }: { references: readonly unknown[] }) =>
     createElement("div", {
       "data-testid": "team-inbox-linked",
@@ -324,7 +324,7 @@ describe("AssignedWorkItemDetail navigation actions", () => {
       browserAction?.onClick();
     });
 
-    expect(mocks.openExternalLink).toHaveBeenCalledWith(
+    expect(mocks.openInSystemBrowser).toHaveBeenCalledWith(
       "https://github.com/org2AI/ORG2/issues/42"
     );
     expect(onNavigate).not.toHaveBeenCalled();
@@ -372,7 +372,7 @@ describe("AssignedWorkItemDetail navigation actions", () => {
       | undefined;
     expect(browserAction?.label).toBe("previews.openInExternalBrowser");
     act(() => browserAction?.onClick());
-    expect(mocks.openExternalLink).toHaveBeenCalledWith(
+    expect(mocks.openInSystemBrowser).toHaveBeenCalledWith(
       "https://github.com/org2AI/ORG2/issues/61"
     );
   });
@@ -522,7 +522,7 @@ describe("AssignedWorkItemDetail navigation actions", () => {
       projectId: "project-1",
       workItemId: "work-item-1",
     });
-    expect(mocks.openExternalLink).not.toHaveBeenCalled();
+    expect(mocks.openInSystemBrowser).not.toHaveBeenCalled();
   });
 
   it("provides editable properties to the shared thread surface", () => {

@@ -55,8 +55,10 @@ export interface TreeRowBaseProps {
   isSelected?: boolean;
   /** Whether this row is part of a multi-selection */
   isMultiSelected?: boolean;
-  /** Git status info for coloring (optional) */
+  /** Git status info available for optional label coloring. */
   gitStatus?: GitStatusInfo | null;
+  /** Color the row label with its git status (default: false). */
+  colorLabelByGitStatus?: boolean;
   /** Click handler */
   onClick?: (event: MouseEvent) => void;
   /** Context menu handler */

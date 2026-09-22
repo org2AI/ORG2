@@ -2,15 +2,15 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Switch from "@src/components/Switch";
-import type { PolicyInfo } from "@src/hooks/policies";
-import { BookOpen01Icon, HugeiconsIcon } from "@src/icons";
 import {
   CollapsibleSection,
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   PanelFooter,
   PanelHeader,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import type { PolicyInfo } from "@src/hooks/policies";
+import { BookOpen01Icon, HugeiconsIcon } from "@src/icons";
 
 import { DetailHeaderClose } from "../../shared/DetailHeaderClose";
 
@@ -86,8 +86,8 @@ const MarkdownRuleDetailView: React.FC<MarkdownRuleDetailViewProps> = ({
           {
             label: t("common:actions.delete"),
             onClick: onDelete,
-            variant: "danger",
-            appearance: "outline",
+            variant: "secondary",
+            tone: "danger",
           },
         ]}
       />

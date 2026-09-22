@@ -3,6 +3,7 @@ import React, { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
 import {
   DROPDOWN_CLASSES,
@@ -12,7 +13,7 @@ import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 import {
   SIMULATOR_EVENT_FILTER_VALUES,
   type SimulatorEventFilterValue,
-} from "@src/engines/SessionCore/derived/simulatorEventFilters";
+} from "@src/engines/SessionCore/core/simulatorEventFilters";
 import { getDropdownPanelStyle } from "@src/hooks/dropdown/dropdownPanelStyle";
 import { useDropdownEngine } from "@src/hooks/dropdown/useDropdownEngine";
 import { HugeiconsIcon, ListFilterIcon } from "@src/icons";
@@ -66,13 +67,13 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
   );
 
   const triggerLabel = isAllEvents
-    ? t("simulator.replay.filters.allEvents", "All events")
+    ? t("simulator.replay.filters.allEvents")
     : selectedFilters.length === 1
       ? t(
           FILTER_LABEL_KEYS[selectedFilters[0]],
           FILTER_LABEL_FALLBACKS[selectedFilters[0]]
         )
-      : t("simulator.replay.filters.selectedCount", "{{count}} filters", {
+      : t("simulator.replay.filters.selectedCount", {
           count: selectedFilters.length,
         });
 
@@ -111,9 +112,9 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
 
   return (
     <>
-      <button
+      <Button
+        layout="custom"
         ref={triggerRef as React.Ref<HTMLButtonElement>}
-        type="button"
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -121,7 +122,7 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
         }}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
-        aria-label={t("simulator.replay.filters.tooltip", "Filter events")}
+        aria-label={t("simulator.replay.filters.tooltip")}
         title={triggerLabel}
         className={`pointer-events-auto flex h-5 shrink-0 transform-gpu items-center justify-center rounded-full ${
           iconOnly ? "w-5 px-0" : "max-w-[132px] gap-1 px-1.5"
@@ -139,7 +140,7 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
             {triggerLabel}
           </span>
         )}
-      </button>
+      </Button>
       {isOpen &&
         isPositioned &&
         createPortal(
@@ -173,7 +174,7 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
                   className="shrink-0"
                 />
                 <span className="flex-1 text-left">
-                  {t("simulator.replay.filters.allEvents", "All events")}
+                  {t("simulator.replay.filters.allEvents")}
                 </span>
               </div>
               <div

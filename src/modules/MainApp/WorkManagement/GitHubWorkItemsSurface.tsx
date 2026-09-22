@@ -8,7 +8,6 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { SelectOption } from "@src/components/Select";
 import { reposAtom, selectedRepoPathAtom } from "@src/store/repo";
 
 import { GitHubWorkItemsView } from "./GitHubWorkItemsView";
@@ -16,6 +15,7 @@ import {
   type ManagedGitHubItem,
   getManagedGitHubItemKey,
 } from "./githubManagedItemModel";
+import { buildGitHubWorkItemFacets } from "./githubWorkItemsFilterFacets";
 import { GITHUB_QUERY_SCOPE } from "./githubWorkItemsSearchQuery";
 import type { GitHubQueryScope } from "./githubWorkItemsSearchQuery";
 import {
@@ -34,7 +34,6 @@ import { useGitHubWorkItemStatusMutations } from "./useGitHubWorkItemStatusMutat
 import { useGitHubWorkItemsDerivedState } from "./useGitHubWorkItemsDerivedState";
 import { useGitHubWorkItemsLoadLifecycle } from "./useGitHubWorkItemsLoadLifecycle";
 import {
-  GITHUB_FILTER_PRESET,
   areRequestedPrStatesLoaded,
   useGitHubWorkItemsViewState,
 } from "./useGitHubWorkItemsViewState";
@@ -79,11 +78,9 @@ const GitHubWorkItemsSurface: React.FC<GitHubWorkItemsSurfaceProps> = ({
     parsedSearchQuery,
     selectedIssueListStates,
     selectedPrListStates,
-    selectedPersonalFilters: selectedIssuePersonalFilters,
     updateSearchQuery,
     changeSearchQuery: handleSearchQueryChange,
     selectRepo: handleRepoSelect,
-    selectPersonalFilters: handleIssuePersonalFiltersSelect,
     refresh: handleRefresh,
   } = useGitHubWorkItemsViewState({ scope });
   const {
@@ -172,21 +169,9 @@ const GitHubWorkItemsSurface: React.FC<GitHubWorkItemsSurfaceProps> = ({
     setSelectedItemKey(null);
   }, []);
 
-  const issuePersonalFilterOptions = useMemo<SelectOption[]>(
-    () =>
-      scope === GITHUB_QUERY_SCOPE.ISSUE
-        ? [
-            {
-              value: GITHUB_FILTER_PRESET.BY_ME,
-              label: t("chat.panels.manageIssues.createdByMe"),
-            },
-            {
-              value: GITHUB_FILTER_PRESET.ASSIGNED_TO_ME,
-              label: t("chat.panels.manageIssues.assignedToMe"),
-            },
-          ]
-        : [],
-    [scope, t]
+  const filterFacets = useMemo(
+    () => buildGitHubWorkItemFacets(allItems, scope, effectiveSelectedRepo),
+    [allItems, effectiveSelectedRepo, scope]
   );
   const repoOptions = useMemo<RepoFilterOption[]>(
     () =>
@@ -225,9 +210,7 @@ const GitHubWorkItemsSurface: React.FC<GitHubWorkItemsSurfaceProps> = ({
       updateIssueMap,
       updatePrMap,
       setListError,
-      updateErrorMessage: t("chat.panels.manageIssues.statusUpdateFailed", {
-        defaultValue: "Failed to update GitHub status",
-      }),
+      updateErrorMessage: t("chat.panels.manageIssues.statusUpdateFailed"),
       permissionErrorMessage,
     });
   const {
@@ -238,18 +221,11 @@ const GitHubWorkItemsSurface: React.FC<GitHubWorkItemsSurfaceProps> = ({
     repoSources,
     updateIssueMap,
     setListError,
-    updateErrorMessage: t("chat.panels.manageIssues.updateIssueFailed", {
-      defaultValue: "Failed to update GitHub issue",
-    }),
+    updateErrorMessage: t("chat.panels.manageIssues.updateIssueFailed"),
     updateNotAppliedMessage: t(
-      "chat.panels.manageIssues.assigneeUpdateNotApplied",
-      {
-        defaultValue: "GitHub did not apply the assignee change",
-      }
+      "chat.panels.manageIssues.assigneeUpdateNotApplied"
     ),
-    updateSuccessMessage: t("chat.panels.manageIssues.assigneeUpdateSuccess", {
-      defaultValue: "Assignees updated on GitHub",
-    }),
+    updateSuccessMessage: t("chat.panels.manageIssues.assigneeUpdateSuccess"),
     permissionErrorMessage,
   });
   const handleIssueAssigneesChange = useCallback(
@@ -313,8 +289,7 @@ const GitHubWorkItemsSurface: React.FC<GitHubWorkItemsSurfaceProps> = ({
       selectedRepoSourceForCreate={selectedRepoSourceForCreate}
       searchQuery={searchQuery}
       parsedSearchQuery={parsedSearchQuery}
-      issuePersonalFilterOptions={issuePersonalFilterOptions}
-      selectedIssuePersonalFilters={selectedIssuePersonalFilters}
+      filterFacets={filterFacets}
       currentPage={currentPage}
       totalLoadedPages={totalLoadedPages}
       hasMoreFilteredIssues={hasMoreFilteredIssues}
@@ -324,7 +299,6 @@ const GitHubWorkItemsSurface: React.FC<GitHubWorkItemsSurfaceProps> = ({
       updateSearchQuery={updateSearchQuery}
       onSearchQueryChange={handleSearchQueryChange}
       onRepoSelect={handleRepoSelect}
-      onIssuePersonalFiltersSelect={handleIssuePersonalFiltersSelect}
       onRefresh={handleRefresh}
       onGoToPage={handleGoToPage}
       onNextPage={handleNextPage}

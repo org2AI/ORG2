@@ -363,10 +363,13 @@ module.exports = () => {
       new ReactRefreshPlugin({ overlay: false }),
       new rspack.DefinePlugin({
         "process.env.NODE_ENV": JSON.stringify("development"),
+        "process.env.ORGII_MOBILE_REMOTE_NATIVE": JSON.stringify("false"),
         "process.env.ORGII_DEV_EAGER_APP": JSON.stringify(String(eagerDevApp)),
         // Match webpack: browser startup must never read a runtime process global.
         "process.env.ORGII_E2E": JSON.stringify(isE2E ? "1" : "0"),
-        "process.env.ORGII_AGENT_ORG_REDESIGN": JSON.stringify(
+        // Preserve the existing shell-facing opt-out while exposing only the
+        // stable Agent Org availability name to bundled frontend code.
+        "process.env.ORGII_AGENT_ORG_ENABLED": JSON.stringify(
           isE2E ? "1" : (process.env.ORGII_AGENT_ORG_REDESIGN ?? "1")
         ),
         "process.env.ORGII_IDE_SERVER_PORT": JSON.stringify(
@@ -374,6 +377,9 @@ module.exports = () => {
         ),
         "process.env.ORGII_DEEP_LINK_SCHEME": JSON.stringify(
           process.env.ORGII_DEEP_LINK_SCHEME ?? "orgii"
+        ),
+        "process.env.ORGII_MARKET_CONSOLE_ORIGIN": JSON.stringify(
+          process.env.ORGII_MARKET_CONSOLE_ORIGIN ?? "https://market.org2.dev"
         ),
         "process.env.E2E_BASE_URL": JSON.stringify(
           process.env.E2E_BASE_URL ??

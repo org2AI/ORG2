@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.pl.md">Polski</a>
+  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.id.md">Bahasa Indonesia</a> · <a href="README.pl.md">Polski</a>
 </p>
 
 <p align="center">
@@ -34,19 +34,19 @@
 
 ORG-2는 팀이 코딩 Agent를 실행하는 곳입니다. 네이티브 Rust 하네스와 20개 이상의 Agent CLI 런처를 갖추고, 그 기록을 자동으로 만들어 냅니다. 모든 세션은 동료가 영상처럼 재생할 수 있는 trajectory가 되어, 최종 diff만이 아니라 작업이 실제로 어떻게 만들어졌는지를 리뷰하고 맥락 안에서 코멘트할 수 있습니다. 다른 도구에서 실행된 세션도 수집되고 그 히스토리에서 소급해 채워지므로, 앱을 한 번도 거치지 않은 작업까지 기록에 포함됩니다. 기록은 사람이 무엇을 요청했는지, Agent가 무엇으로 이해했는지, 그리고 실제로 무엇을 했는지를 연결하므로 배포된 모든 라인은 그것을 작성한 세션까지 추적됩니다.
 
-이것은 또 하나의 AI 코딩 도구가 아닙니다. 인간과 Agent로 이루어진 조직, 그리고 조직 수준의 alignment에 대한 실험입니다. ORG-II는 Agents를 구조화된 조직 안의 지속적이고 관찰 가능한 동료로 다룹니다. 재생 가능한 실행, 세션 간 메모리, AI blame, local-first Rust runtime을 통해 인간, Agents, 팀이 공유 컨텍스트와 aligned goals를 중심으로 협업할 수 있게 합니다.
+이것은 또 하나의 AI 코딩 도구가 아닙니다. 인간과 Agent로 이루어진 조직, 그리고 조직 수준의 alignment에 대한 실험입니다. ORG2는 Agents를 구조화된 조직 안의 지속적이고 관찰 가능한 동료로 다룹니다. 재생 가능한 실행, 세션 간 메모리, AI blame, local-first Rust runtime을 통해 인간, Agents, 팀이 공유 컨텍스트와 aligned goals를 중심으로 협업할 수 있게 합니다.
 
 ## 기능
 
 <table>
-<tr><td width="50%" valign="middle"><h3>내장 Rust 하네스</h3><p>기존 API 키와 Agent 구독으로 빠르고 토큰 효율적이며 사용자 지정 가능한 네이티브 Agent를 실행하세요.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="ORG-II Rust 하네스로 Agent 실행" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>10개 이상의 앱과 CLI 세션 관리</h3><p>모든 도구의 Agent 세션을 한곳에서 불러오고 관리하세요. 앱을 전환하지 않고 기록을 검색하고 subagent를 살펴보고 각 소스를 제어할 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="ORG-II에서 앱과 CLI의 Agent 세션 소스 관리" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>팀을 구성하고 PR뿐 아니라 궤적까지 리뷰</h3><p>팀을 구성하고 기기와 팀원 사이에서 세션을 공유하세요. 결과 diff뿐 아니라 Agent의 전체 궤적을 리뷰하고 맥락에 맞게 댓글을 남길 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="ORG-II에서 팀원과 궤적 replay 권한 관리" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Tool call을 이제 영상으로</h3><p>네이티브 Rust 하네스와 15개 이상의 CLI Agent 작업을 replay하세요. 메시지, tool call, 파일 편집, 명령 출력이 하나의 검토 가능한 timeline에 동기화됩니다.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="ORG-II에서 Agent 세션 replay" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Git blame을 넘어 AI blame</h3><p>누가 한 줄을 변경했는지만 확인하지 마세요. 변경을 만든 Agent 세션, tool call, 의사결정까지 추적할 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="ORG-II에서 코드 변경을 Agent 세션과 의사결정까지 추적" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>진행 방향 유지</h3><p>작업과 Agent 세션에 시간을 어떻게 쓰는지 확인하세요. 일일 활동 timeline에서 소요 시간, 코드 변경, 우선순위를 계속 파악할 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="ORG-II에서 작업과 Agent 세션에 사용한 시간 검토" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>완전한 개발 워크스페이스</h3><p>Agent 워크스페이스를 벗어나지 않고 터미널, 소스 제어, Git 기록, pull request 리뷰를 이용하세요.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="ORG-II의 소스 제어, Git 기록, 코드 리뷰 도구" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>디자인 모드</h3><p>네이티브 WebKit 브라우저에서 실제 페이지를 검사하세요. 요소를 선택하고 정확한 페이지 컨텍스트를 Agent에 바로 보내 간단히 수정할 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="ORG-II 디자인 모드로 웹 페이지 요소 검사" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>내장 Rust 하네스</h3><p>기존 API 키와 Agent 구독으로 빠르고 토큰 효율적이며 사용자 지정 가능한 네이티브 Agent를 실행하세요.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="ORG2 Rust 하네스로 Agent 실행" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>10개 이상의 앱과 CLI 세션 관리</h3><p>모든 도구의 Agent 세션을 한곳에서 불러오고 관리하세요. 앱을 전환하지 않고 기록을 검색하고 subagent를 살펴보고 각 소스를 제어할 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="ORG2에서 앱과 CLI의 Agent 세션 소스 관리" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>팀을 구성하고 PR뿐 아니라 궤적까지 리뷰</h3><p>팀을 구성하고 기기와 팀원 사이에서 세션을 공유하세요. 결과 diff뿐 아니라 Agent의 전체 궤적을 리뷰하고 맥락에 맞게 댓글을 남길 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="ORG2에서 팀원과 궤적 replay 권한 관리" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Tool call을 이제 영상으로</h3><p>네이티브 Rust 하네스와 15개 이상의 CLI Agent 작업을 replay하세요. 메시지, tool call, 파일 편집, 명령 출력이 하나의 검토 가능한 timeline에 동기화됩니다.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="ORG2에서 Agent 세션 replay" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Git blame을 넘어 AI blame</h3><p>누가 한 줄을 변경했는지만 확인하지 마세요. 변경을 만든 Agent 세션, tool call, 의사결정까지 추적할 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="ORG2에서 코드 변경을 Agent 세션과 의사결정까지 추적" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>진행 방향 유지</h3><p>작업과 Agent 세션에 시간을 어떻게 쓰는지 확인하세요. 일일 활동 timeline에서 소요 시간, 코드 변경, 우선순위를 계속 파악할 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="ORG2에서 작업과 Agent 세션에 사용한 시간 검토" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>완전한 개발 워크스페이스</h3><p>Agent 워크스페이스를 벗어나지 않고 터미널, 소스 제어, Git 기록, pull request 리뷰를 이용하세요.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="ORG2의 소스 제어, Git 기록, 코드 리뷰 도구" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>디자인 모드</h3><p>네이티브 WebKit 브라우저에서 실제 페이지를 검사하세요. 요소를 선택하고 정확한 페이지 컨텍스트를 Agent에 바로 보내 간단히 수정할 수 있습니다.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="ORG2 디자인 모드로 웹 페이지 요소 검사" width="100%" /></td></tr>
 </table>
 
 ## 더 많은 기능
@@ -61,7 +61,7 @@ ORG-2는 팀이 코딩 Agent를 실행하는 곳입니다. 네이티브 Rust 하
 
 ## 지원되는 Agent
 
-ORG-II의 내장 Rust 하네스를 사용하거나 데스크톱 앱에서 지원되는 coding-agent CLI를 실행하세요.
+ORG2의 내장 Rust 하네스를 사용하거나 데스크톱 앱에서 지원되는 coding-agent CLI를 실행하세요.
 
 ### GUI + TUI
 
@@ -73,6 +73,7 @@ ORG-II의 내장 Rust 하네스를 사용하거나 데스크톱 앱에서 지원
   <a href="https://kiro.dev/docs/cli/installation"><kbd><img src="../../src/assets/modelIcons/kiro.svg" alt="Kiro CLI logo" width="16" valign="middle" /> Kiro CLI</kbd></a> &nbsp;
   <a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-in-the-cli"><kbd><img src="../../src/assets/modelIcons/copilot.svg" alt="GitHub Copilot logo" width="16" valign="middle" /> GitHub Copilot</kbd></a> &nbsp;
   <a href="https://opencode.ai/docs/config/"><kbd><img src="../../src/assets/modelIcons/opencode.svg" alt="OpenCode logo" width="16" valign="middle" /> OpenCode</kbd></a> &nbsp;
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><kbd><img src="../../src/assets/modelIcons/deepseek.svg" alt="DeepSeek Harness logo" width="16" valign="middle" /> DeepSeek Harness</kbd></a> &nbsp;
   <a href="https://antigravity.google/docs/cli/getting-started"><kbd><img src="../../src/assets/modelIcons/antigravity.svg" alt="Antigravity logo" width="16" valign="middle" /> Antigravity</kbd></a>
 </p>
 
@@ -102,9 +103,7 @@ ORG-II의 내장 Rust 하네스를 사용하거나 데스크톱 앱에서 지원
 
 ## 다운로드
 
-현재 빌드 버전: v1.1.24 (2026-07-16)
-
-최신 ORGII 데스크톱 앱을 한 번에 다운로드하세요:
+최신 ORG2 데스크톱 앱을 한 번에 다운로드하세요:
 
 - [macOS Apple Silicon](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-mac-apple-silicon.dmg)
 - [Windows x64 설치 프로그램](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-windows-x64-setup.exe)
@@ -152,4 +151,4 @@ sidecar가 없으면 Rust build는 개발 빌드를 계속할 수 있도록 작�
 
 ## 라이선스
 
-ORGII는 GNU Affero General Public License v3.0 이상(`AGPL-3.0-or-later`)으로 라이선스됩니다. 전체 라이선스 전문은 [`LICENSE`](../../LICENSE)를 참고하세요.
+ORG2는 GNU Affero General Public License v3.0 이상(`AGPL-3.0-or-later`)으로 라이선스됩니다. 전체 라이선스 전문은 [`LICENSE`](../../LICENSE)를 참고하세요.

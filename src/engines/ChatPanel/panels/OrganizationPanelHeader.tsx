@@ -3,8 +3,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type ProjectOrg, projectApi } from "@src/api/http/project";
-import OrganizationScopeHeader from "@src/components/OrganizationScopeHeader";
-import type { SelectOption } from "@src/components/Select";
+import OrganizationScopeHeader, {
+  type OrganizationScopeOption,
+} from "@src/components/OrganizationScopeHeader";
 import {
   buildCloudOrgSelectorValue,
   org2CloudOrgsAtom,
@@ -13,7 +14,6 @@ import {
 import { buildOrgSelectorEntries } from "@src/features/Organizations/orgSelectorEntries";
 import { createLogger } from "@src/hooks/logger";
 import { useProjectDataChanged } from "@src/hooks/project";
-import { CloudIcon, HugeiconsIcon, LaptopIcon } from "@src/icons";
 import { openOrganizationInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { DEFAULT_SESSION_ORG_ID } from "@src/store/session";
 import type { ChatPanelSelectedOrganization } from "@src/store/ui/chatPanel/selectionAtoms";
@@ -76,26 +76,11 @@ export function OrganizationPanelHeader({
       }),
     [cloudOrgs, localOrgs, personalOrgLabel]
   );
-  const pickerOptions = useMemo<SelectOption[]>(() => {
-    const options = pickerEntries.map((entry) => ({
+  const pickerOptions = useMemo<OrganizationScopeOption[]>(() => {
+    const options: OrganizationScopeOption[] = pickerEntries.map((entry) => ({
       value: entry.value,
       label: entry.label,
-      icon:
-        entry.kind === "cloud" ? (
-          <HugeiconsIcon
-            icon={CloudIcon}
-            data-icon="cloud"
-            size={13}
-            strokeWidth={2}
-          />
-        ) : (
-          <HugeiconsIcon
-            icon={LaptopIcon}
-            data-icon="laptop"
-            size={13}
-            strokeWidth={2}
-          />
-        ),
+      scope: entry.kind === "cloud" ? ("cloud" as const) : ("local" as const),
       dataTestId: `organization-picker-${entry.kind}-${entry.value}`,
     }));
     if (
@@ -105,14 +90,7 @@ export function OrganizationPanelHeader({
       options.unshift({
         value: organization.projectOrg.orgId,
         label: organization.projectOrg.orgName,
-        icon: (
-          <HugeiconsIcon
-            icon={LaptopIcon}
-            data-icon="laptop"
-            size={13}
-            strokeWidth={2}
-          />
-        ),
+        scope: "local",
         dataTestId: `organization-picker-local-${organization.projectOrg.orgId}`,
       });
     }

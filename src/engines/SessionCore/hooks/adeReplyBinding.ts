@@ -1,4 +1,4 @@
-import { ACTION_ID } from "@src/ActionSystem/actionIds";
+import { ACTION_ID } from "@src/scaffold/ActionSystem/actionIds";
 
 export function extractInvokingSessionId(
   payload: Record<string, unknown>

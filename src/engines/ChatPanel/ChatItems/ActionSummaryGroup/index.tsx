@@ -9,21 +9,21 @@
  * construction. Loading / failed / completed states are handled by
  * each event component natively.
  */
-import React, { Suspense, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { getToolIcon } from "@src/config/toolIcons";
 import ToolUsageBadge from "@src/engines/ChatPanel/blocks/ToolCallBlock/ToolUsageBadge";
-import {
-  ChatLoadingBlock,
-  StackedBlock,
-} from "@src/engines/ChatPanel/blocks/primitives";
+import { StackedBlock } from "@src/engines/ChatPanel/blocks/primitives";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { getChatLazyComponent } from "@src/engines/SessionCore/rendering/registry/events";
-import { HugeiconsIcon, WaypointsIcon } from "@src/icons";
-import { getRegistryEventType } from "@src/lib/activityData/activityNormalizers";
 
 import type { ActionSummaryCategory } from "../../ChatHistory/chatItemPipeline/classifiers";
 import type { ActionSummaryEntry } from "../../ChatHistory/chatItemPipeline/types";
+import {
+  type ActivityGroupEventItem,
+  markActivityGroupTail,
+  renderActivityGroupEvent,
+} from "../activityGroupProjection";
 import { readToolUsage, sumToolUsage } from "../toolUsage";
 
 // ============================================
@@ -36,40 +36,8 @@ interface ActionSummaryGroupProps {
   closedByBoundary?: boolean;
 }
 
-interface CategorizedEvent {
+interface CategorizedEvent extends ActivityGroupEventItem {
   category: ActionSummaryCategory;
-  event: SessionEvent;
-  isLastItem?: boolean;
-}
-
-// ============================================
-// Activity Block — renders via the registry
-// ============================================
-
-function ActivityBlock({ event }: { event: SessionEvent }) {
-  const renderEvent = () => {
-    const eventType = getRegistryEventType(
-      event as unknown as Record<string, unknown>
-    );
-    const EventComponent = getChatLazyComponent(eventType);
-    return <EventComponent event={event} />;
-  };
-
-  return <Suspense fallback={<ChatLoadingBlock />}>{renderEvent()}</Suspense>;
-}
-
-function suppressLoadingForNonLastRunningEvent(
-  event: SessionEvent,
-  isLastItem: boolean
-): SessionEvent {
-  if (isLastItem || event.displayStatus !== "running") return event;
-
-  return {
-    ...event,
-    displayStatus: "completed",
-    activityStatus: "processed",
-    isDelta: false,
-  };
 }
 
 // ============================================
@@ -105,21 +73,6 @@ function buildGroupSummary(
 }
 
 // ============================================
-// Render Item — delegates to registry component
-// ============================================
-
-function renderEventBlock(
-  { event, isLastItem }: CategorizedEvent,
-  _index: number
-): React.ReactNode {
-  const renderedEvent = suppressLoadingForNonLastRunningEvent(
-    event,
-    isLastItem === true
-  );
-  return <ActivityBlock event={renderedEvent} />;
-}
-
-// ============================================
 // Component
 // ============================================
 
@@ -151,10 +104,7 @@ const ActionSummaryGroup: React.FC<ActionSummaryGroupProps> = ({
             }))
           );
 
-    return baseItems.map((item, index) => ({
-      ...item,
-      isLastItem: index === baseItems.length - 1,
-    }));
+    return markActivityGroupTail(baseItems);
   }, [items, entries]);
 
   if (totalCount === 0) return null;
@@ -175,14 +125,7 @@ const ActionSummaryGroup: React.FC<ActionSummaryGroupProps> = ({
     >
       <StackedBlock
         items={orderedItems}
-        icon={
-          <HugeiconsIcon
-            icon={WaypointsIcon}
-            data-icon="waypoints"
-            size={14}
-            className="text-text-2"
-          />
-        }
+        icon={getToolIcon("read_file")}
         label={t("tools.explore")}
         groupSummary={groupSummary}
         defaultCollapsed={closedByBoundary}
@@ -191,7 +134,7 @@ const ActionSummaryGroup: React.FC<ActionSummaryGroupProps> = ({
         rightContent={
           groupToolUsage ? <ToolUsageBadge usage={groupToolUsage} /> : undefined
         }
-        renderItem={renderEventBlock}
+        renderItem={renderActivityGroupEvent}
       />
     </div>
   );

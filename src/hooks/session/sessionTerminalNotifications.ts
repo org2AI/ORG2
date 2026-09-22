@@ -2,7 +2,6 @@
 import type { TFunction } from "i18next";
 
 import {
-  TASK_FAILURE_NOTIFICATION_BODY,
   notifyError,
   notifyTaskCompletion,
 } from "@src/api/services/notification";
@@ -14,6 +13,8 @@ export interface SessionTerminalNotification {
   sessionId: string;
   status: string;
   sessionName: string;
+  /** True when the user already has this Session's tab selected. */
+  sessionInActiveTab: boolean;
   attentionRequired: boolean;
   errorMessage?: string;
   eventKey?: string;
@@ -41,6 +42,10 @@ export function deliverSessionTerminalNotification(
   };
 
   if (event.status === "completed" || event.status === "idle") {
+    // The transcript itself is the completion surface for the selected tab.
+    // Do not create a redundant native, audio, summary, or in-app message.
+    if (event.sessionInActiveTab) return;
+
     const body = t("notifications.taskCompletedBody", {
       name: event.sessionName,
     });
@@ -61,9 +66,7 @@ export function deliverSessionTerminalNotification(
           closable: true,
           // The copy says "open the Session" — give it an actual door.
           action: {
-            label: t("notifications.openSessionAction", {
-              defaultValue: "Open Session",
-            }),
+            label: t("notifications.openSessionAction"),
             onClick: () => {
               void Promise.all([
                 import("@src/util/core/state/instrumentedStore"),
@@ -93,18 +96,21 @@ export function deliverSessionTerminalNotification(
       name: event.sessionName,
       detail,
     });
-    void notifyError(TASK_FAILURE_NOTIFICATION_BODY, settings, {
+    notifyError(t("notifications.taskFailedPrivateBody"), settings, {
       title: t("notifications.taskFailedTitle"),
       context,
-    }).then((result) => {
-      if (result.disposition !== "delivered" || !event.attentionRequired)
-        return;
-      Message.error({
-        content: toastBody,
-        duration: 8000,
-        closable: true,
-      });
-    });
+    })
+      .then((result) => {
+        if (result.disposition !== "delivered" || !event.attentionRequired)
+          return;
+        Message.error({
+          content: toastBody,
+          duration: 8000,
+          closable: true,
+        });
+      })
+      // Match completion delivery: native notifications are best effort.
+      .catch(() => undefined);
     return;
   }
 

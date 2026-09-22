@@ -1,10 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { KEY_SOURCE } from "@src/api/tauri/session";
+import { Message } from "@src/components/Message";
+import { marketActivationErrorCode } from "@src/features/MarketConnect/activationError";
+import { captureMarketOwner } from "@src/features/MarketConnect/identity";
+import {
+  findMarketSourceForRecent,
+  marketSourceModelType,
+  prepareMarketProfileSource,
+} from "@src/features/MarketConnect/marketProfiles";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
-import { accountHasModel } from "@src/hooks/models/useModelAccountLookup";
+import { createLogger } from "@src/hooks/logger";
+import {
+  accountHasModel,
+  accountModelIds as listAccountModelIds,
+} from "@src/hooks/models/useModelAccountLookup";
 import type { RecentModelEntry } from "@src/store/session/recentModelEntriesAtom";
+import { separateEffortPillAtom } from "@src/store/session/separateEffortPillAtom";
+import type { ModelSourceScope } from "@src/store/ui/spotlightModelSourceScopeAtom";
+import { carryModelEffort } from "@src/util/carryModelEffort";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
 import {
   parseModelVariant,
@@ -14,6 +31,8 @@ import {
 import { buildSourceOptions, toSourceOption } from "./sourceItems";
 import type { SourceOption } from "./types";
 import { resolveVariantReselection } from "./variantReselect";
+
+const marketLogger = createLogger("MarketPackages");
 
 type ActiveColumn = "models" | "sources";
 
@@ -27,9 +46,20 @@ interface UseUnifiedModelPaletteSelectionParams {
   keyFirst: boolean;
   accountLookupSize: number;
   accounts: KeyVaultAccount[];
+  marketSources: NonNullable<SourceOption["marketSource"]>[];
+  /**
+   * The scoped subset the Step 2 column may offer. The unscoped `accounts` /
+   * `marketSources` above stay in use for the apply paths, so a Pinned or
+   * Recent row still launches while the browse columns are narrowed.
+   */
+  listingAccounts: KeyVaultAccount[];
+  listingMarketSources: NonNullable<SourceOption["marketSource"]>[];
+  /** Flipping the source scope rebuilds both columns, so the cursor resets. */
+  sourceScope?: ModelSourceScope;
   advancedConfig: AdvancedConfig;
   onConfigChange: (config: AdvancedConfig) => void;
   onClose: () => void;
+  closeOnSourceSelect?: boolean;
   recordRecent: (entry: RecentModelEntry) => void;
 }
 
@@ -39,11 +69,29 @@ export function useUnifiedModelPaletteSelection({
   keyFirst,
   accountLookupSize,
   accounts,
+  marketSources,
+  listingAccounts,
+  listingMarketSources,
+  sourceScope,
   advancedConfig,
   onConfigChange,
   onClose,
+  closeOnSourceSelect = true,
   recordRecent,
 }: UseUnifiedModelPaletteSelectionParams) {
+  const { t } = useTranslation("integrations");
+  const marketSelectionPendingRef = useRef(false);
+  const separateEffortPill = useAtomValue(separateEffortPillAtom);
+  const currentModelId = advancedConfig.model;
+  // With the separate effort pill, a model pick keeps the current effort
+  // instead of the row's per-key default variant.
+  const withCurrentEffort = useCallback(
+    (modelId: string, candidateModelIds: readonly string[]) =>
+      separateEffortPill && modelId
+        ? carryModelEffort(currentModelId, modelId, candidateModelIds)
+        : modelId,
+    [currentModelId, separateEffortPill]
+  );
   const [activeColumn, setActiveColumn] = useState<ActiveColumn>("models");
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [selectedModelLabel, setSelectedModelLabel] = useState("");
@@ -62,8 +110,19 @@ export function useUnifiedModelPaletteSelection({
       selectedGroupModelIds.length > 0
         ? selectedGroupModelIds
         : [selectedModelId];
-    return buildSourceOptions(modelIds, accounts, isCliAgent);
-  }, [accounts, isCliAgent, selectedModelId, selectedGroupModelIds]);
+    return buildSourceOptions(
+      modelIds,
+      listingAccounts,
+      isCliAgent,
+      listingMarketSources
+    );
+  }, [
+    listingAccounts,
+    isCliAgent,
+    listingMarketSources,
+    selectedModelId,
+    selectedGroupModelIds,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -87,15 +146,29 @@ export function useUnifiedModelPaletteSelection({
       }
     });
     return () => cancelAnimationFrame(frameId);
-  }, [isOpen, isCliAgent, keyFirst, accountLookupSize]);
+  }, [isOpen, isCliAgent, keyFirst, sourceScope, accountLookupSize]);
 
   const applySourceSelection = useCallback(
     (modelId: string, _modelLabel: string, source: SourceOption) => {
-      const resolvedModelId = modelId || advancedConfig.model || "";
+      const sourceAccount = source.accountId
+        ? accounts.find((account) => account.id === source.accountId)
+        : undefined;
+      const resolvedModelId = modelId
+        ? withCurrentEffort(
+            modelId,
+            sourceAccount
+              ? listAccountModelIds(sourceAccount).filter((candidate) =>
+                  accountHasModel(sourceAccount, candidate)
+                )
+              : []
+          )
+        : advancedConfig.model || "";
       onConfigChange({
         ...advancedConfig,
         keySource: KEY_SOURCE.OWN,
         selectedAccountId: source.accountId,
+        credentialSource: undefined,
+        marketProfileId: undefined,
         agent: source.modelType,
         provider: source.modelType,
         model: resolvedModelId,
@@ -110,9 +183,17 @@ export function useUnifiedModelPaletteSelection({
         accountName: source.label,
         modelType: source.modelType,
       });
-      onClose();
+      if (closeOnSourceSelect) onClose();
     },
-    [advancedConfig, onConfigChange, onClose, recordRecent]
+    [
+      accounts,
+      advancedConfig,
+      closeOnSourceSelect,
+      onConfigChange,
+      onClose,
+      recordRecent,
+      withCurrentEffort,
+    ]
   );
 
   const previewModel = useCallback(
@@ -150,11 +231,15 @@ export function useUnifiedModelPaletteSelection({
         selectedGroupModelIds.length > 0
           ? selectedGroupModelIds
           : [selectedModelId];
-      const accountModelIds = sourceAccount
+      const accountModelIds = source.marketSource
         ? candidateModelIds.filter((modelId) =>
-            accountHasModel(sourceAccount, modelId)
+            source.marketSource?.modelIds.includes(modelId)
           )
-        : [];
+        : sourceAccount
+          ? candidateModelIds.filter((modelId) =>
+              accountHasModel(sourceAccount, modelId)
+            )
+          : [];
       if (accountModelIds.length === 0) return selectedModelId;
 
       const selectedVariant = parseModelVariant(selectedModelId);
@@ -175,13 +260,109 @@ export function useUnifiedModelPaletteSelection({
     [accounts, selectedModelId, selectedGroupModelIds]
   );
 
+  const applyMarketSourceSelection = useCallback(
+    (
+      marketSource: NonNullable<SourceOption["marketSource"]>,
+      pickedModelId: string,
+      options?: { close?: boolean; keepVariant?: boolean }
+    ) => {
+      if (marketSelectionPendingRef.current) return;
+      const modelId = options?.keepVariant
+        ? pickedModelId
+        : withCurrentEffort(pickedModelId, marketSource.modelIds);
+      let owner: ReturnType<typeof captureMarketOwner>;
+      try {
+        owner = captureMarketOwner(
+          marketSource.profile.connection.identity_user_id
+        );
+      } catch {
+        Message.error(t("marketConnection.launchFailed"));
+        return;
+      }
+      marketSelectionPendingRef.current = true;
+      void prepareMarketProfileSource(marketSource, modelId)
+        .then(({ credentialSource }) => {
+          owner.assertCurrent();
+          const modelType = marketSourceModelType(marketSource, modelId);
+          onConfigChange({
+            ...advancedConfig,
+            keySource: KEY_SOURCE.OWN,
+            selectedAccountId: undefined,
+            credentialSource,
+            marketProfileId: marketSource.profile.id,
+            agent: modelType,
+            provider: modelType,
+            model: modelId,
+            nativeHarnessType: undefined,
+            cliAgentType: marketSource.cliAgentType,
+            selectedSourceLabel: marketSource.label,
+            selectedSourceModelType: modelType,
+          });
+          recordRecent({
+            modelId,
+            sourceType: KEY_SOURCE.OWN,
+            accountName: marketSource.label,
+            credentialSource,
+            marketProfileId: marketSource.profile.id,
+            modelType,
+            cliAgentType: marketSource.cliAgentType,
+          });
+          if (options?.close ?? closeOnSourceSelect) onClose();
+        })
+        .catch((error: unknown) => {
+          const code = marketActivationErrorCode(error);
+          marketLogger.warn(`stage=activate code=${code}`);
+          Message.error(
+            t(
+              code === "model_temporarily_unavailable"
+                ? "status.unavailable"
+                : "marketConnection.launchFailed"
+            )
+          );
+        })
+        .finally(() => {
+          owner.dispose();
+          marketSelectionPendingRef.current = false;
+        });
+    },
+    [
+      advancedConfig,
+      closeOnSourceSelect,
+      onClose,
+      onConfigChange,
+      recordRecent,
+      t,
+      withCurrentEffort,
+    ]
+  );
+
   const handleSourceSelect = useCallback(
-    (source: SourceOption) => {
-      const launchModelId = resolveLaunchModelForSource(source);
+    (source: SourceOption, modelOverride?: string) => {
+      const launchModelId =
+        modelOverride ?? resolveLaunchModelForSource(source);
       if (!launchModelId) return;
+      if (source.marketSource) {
+        applyMarketSourceSelection(source.marketSource, launchModelId);
+        return;
+      }
       applySourceSelection(launchModelId, selectedModelLabel, source);
     },
-    [selectedModelLabel, applySourceSelection, resolveLaunchModelForSource]
+    [
+      applyMarketSourceSelection,
+      selectedModelLabel,
+      applySourceSelection,
+      resolveLaunchModelForSource,
+    ]
+  );
+
+  const handleMarketModelSelect = useCallback(
+    (
+      marketSource: NonNullable<SourceOption["marketSource"]>,
+      modelId: string
+    ) => {
+      applyMarketSourceSelection(marketSource, modelId);
+    },
+    [applyMarketSourceSelection]
   );
 
   // ── Key-first mode ────────────────────────────────────────────────────
@@ -212,9 +393,26 @@ export function useUnifiedModelPaletteSelection({
   // name+type), pushes the selection through `onConfigChange` +
   // `recordRecent`, and closes the palette unless `close: false` is passed
   // (the variant-edit case keeps the palette open so the user can keep
-  // tweaking after the properties dropdown closes itself).
+  // tweaking after the properties dropdown closes itself). `keepVariant`
+  // marks that in-place variant edit, which must not carry the old effort.
   const applyRecentEntry = useCallback(
-    (entry: RecentModelEntry, options?: { close?: boolean }) => {
+    (
+      entry: RecentModelEntry,
+      options?: { close?: boolean; keepVariant?: boolean }
+    ) => {
+      if (entry.credentialSource?.startsWith("market:")) {
+        const currentSource = findMarketSourceForRecent(marketSources, entry);
+        if (!currentSource) {
+          Message.error(t("marketConnection.failed"));
+          return;
+        }
+        applyMarketSourceSelection(currentSource, entry.modelId, {
+          close: options?.close !== false,
+          keepVariant: options?.keepVariant,
+        });
+        return;
+      }
+
       const currentAccount = accounts.find(
         (account) =>
           account.id === entry.accountId &&
@@ -239,6 +437,14 @@ export function useUnifiedModelPaletteSelection({
 
       const reboundEntry: RecentModelEntry = {
         ...entry,
+        modelId: options?.keepVariant
+          ? entry.modelId
+          : withCurrentEffort(
+              entry.modelId,
+              listAccountModelIds(reboundAccount).filter((candidate) =>
+                accountHasModel(reboundAccount, candidate)
+              )
+            ),
         accountId: reboundAccount.id,
         accountName: reboundAccount.name,
         modelType: reboundAccount.modelType,
@@ -248,6 +454,8 @@ export function useUnifiedModelPaletteSelection({
         ...advancedConfig,
         keySource: KEY_SOURCE.OWN,
         selectedAccountId: reboundAccount.id,
+        credentialSource: undefined,
+        marketProfileId: undefined,
         agent: reboundAccount.modelType,
         provider: reboundAccount.modelType,
         model: reboundEntry.modelId,
@@ -259,7 +467,17 @@ export function useUnifiedModelPaletteSelection({
       recordRecent(reboundEntry);
       if (options?.close !== false) onClose();
     },
-    [accounts, advancedConfig, onConfigChange, onClose, recordRecent]
+    [
+      accounts,
+      advancedConfig,
+      applyMarketSourceSelection,
+      marketSources,
+      onConfigChange,
+      onClose,
+      recordRecent,
+      t,
+      withCurrentEffort,
+    ]
   );
 
   const handleRecentSelect = useCallback(
@@ -276,7 +494,10 @@ export function useUnifiedModelPaletteSelection({
     (entry: RecentModelEntry, nextModelId: string) => {
       const resolved = resolveVariantReselection(entry.modelId, nextModelId);
       if (!resolved) return;
-      applyRecentEntry({ ...entry, modelId: resolved }, { close: false });
+      applyRecentEntry(
+        { ...entry, modelId: resolved },
+        { close: false, keepVariant: true }
+      );
     },
     [applyRecentEntry]
   );
@@ -304,5 +525,6 @@ export function useUnifiedModelPaletteSelection({
     previewKey,
     handleKeySelect,
     handleKeyModelSelect,
+    handleMarketModelSelect,
   };
 }

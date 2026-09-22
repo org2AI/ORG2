@@ -2,27 +2,22 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import DeleteIconButton from "@src/components/Button/DeleteIconButton";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import SettingsTable, {
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
 import Switch from "@src/components/Switch";
 import TabPill, { type TabPillItem } from "@src/components/TabPill";
-import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
-import type { CursorRepo } from "@src/hooks/policies";
-import { getInstalledSkillIdentity } from "@src/hooks/skills/installedSkillsMerge";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
-import {
-  Add01Icon,
-  Delete02Icon,
-  HugeiconsIcon,
-  Refresh04Icon,
-  Share02Icon,
-} from "@src/icons";
 import {
   DETAIL_PANEL_TOKENS,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
+import type { CursorRepo } from "@src/hooks/policies";
+import { getInstalledSkillIdentity } from "@src/hooks/skills/installedSkillsMerge";
+import { Add01Icon, HugeiconsIcon, Share02Icon } from "@src/icons";
 import { SKILL_SOURCE } from "@src/types/extensions";
 import type { HubSkillDetail, InstalledSkill } from "@src/types/extensions";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
@@ -257,7 +252,6 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
               </div>
               {canShare ? (
                 <Button
-                  variant="secondary"
                   size="small"
                   icon={
                     <HugeiconsIcon
@@ -267,12 +261,8 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                     />
                   }
                   iconOnly
-                  aria-label={t("skills.shareToOrg", {
-                    defaultValue: "Share to organization",
-                  })}
-                  title={t("skills.shareToOrg", {
-                    defaultValue: "Share to organization",
-                  })}
+                  aria-label={t("skills.shareToOrg")}
+                  title={t("skills.shareToOrg")}
                   onClick={(event) => {
                     event.stopPropagation();
                     setShareTarget(skill);
@@ -280,23 +270,12 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                 />
               ) : null}
               {showRemove ? (
-                <Button
-                  variant="secondary"
+                <DeleteIconButton
                   size="small"
-                  icon={
-                    <HugeiconsIcon
-                      icon={Delete02Icon}
-                      data-icon="trash-2"
-                      size={14}
-                      className="text-danger-6"
-                    />
-                  }
-                  iconOnly
-                  loading={uninstalling}
-                  disabled={!canRemove || uninstalling}
-                  aria-label={t("common:actions.remove")}
-                  title={t("common:actions.remove")}
-                  onClick={(event) => {
+                  deleting={uninstalling}
+                  disabled={!canRemove}
+                  label={t("common:actions.remove")}
+                  onDelete={(event) => {
                     event.stopPropagation();
                     if (canRemove) {
                       void handleUninstallSkill(skill);
@@ -334,34 +313,19 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
     }
   }, [onRefreshSkills, sourceFilter]);
 
-  const { spinClass: refreshSpinClass, handleClick: handleRefreshClick } =
-    useRefreshSpin(handleRefreshSkills, refreshingSkills || loading);
-
   const tableActions = (
     <div className="flex items-center gap-2">
       {onRefreshSkills ? (
-        <Button
+        <RefreshButton
           variant="secondary"
-          size="default"
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={14}
-              className={refreshSpinClass}
-            />
-          }
           iconOnly
-          disabled={refreshingSkills || loading}
-          aria-label={t("common:actions.refresh")}
-          title={t("common:actions.refresh")}
-          onClick={handleRefreshClick}
-          data-testid="integrations-skills-refresh-button"
+          label={t("common:actions.refresh")}
+          refreshing={refreshingSkills || loading}
+          onRefresh={handleRefreshSkills}
+          dataTestId="integrations-skills-refresh-button"
         />
       ) : null}
       <Button
-        variant="secondary"
-        size="default"
         icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
         onClick={onCreate}
         data-testid="integrations-skills-create-button"

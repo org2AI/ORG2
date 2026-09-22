@@ -32,7 +32,7 @@
 | 5   | Browser snapshot tool                               | Render `browser_snapshot` tool.                       | `BROWSER_SNAPSHOT_VISIBLE_LINES` applied; snapshot shown collapsed.                       |
 | 6   | MCP tool with progress rows                         | Render tool call with MCP progress events.            | `McpProgressRow` renders each progress entry in order.                                    |
 | 7   | Unknown tool name                                   | Render with unrecognized `tool_name`.                 | Falls back to generic `ToolCallBlock` display; no crash.                                  |
-| 8   | `task_update` tool                                  | Render task update tool.                              | `TaskUpdateCard` renders with correct task title.                                         |
+| 8   | `task_update` tool                                  | Render task update tool.                              | `OrgTaskAdapter` renders the task card with the correct task title.                        |
 | 9   | `manage_workspace` result                           | Render manage_workspace tool with result.             | `parseManageWorkspaceResult` applied; result displayed correctly.                         |
 | 10  | Null / undefined result                             | Render with `result=null`.                            | No output section rendered; no crash.                                                     |
 

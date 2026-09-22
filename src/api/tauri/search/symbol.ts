@@ -6,12 +6,7 @@
  */
 import { rpc } from "@src/api/tauri/rpc";
 
-import type {
-  LanguageInfo,
-  Location,
-  SymbolInfo,
-  SymbolSearchResult,
-} from "./types";
+import type { Location, SymbolInfo, SymbolSearchResult } from "./types";
 
 // ============================================
 // Symbol Search
@@ -61,10 +56,4 @@ export async function findReferences(
     line,
     column,
   }) as Promise<Location[]>;
-}
-
-export async function getSupportedLanguages(): Promise<LanguageInfo[]> {
-  return rpc.searchSymbol.getSupportedLanguages() as unknown as Promise<
-    LanguageInfo[]
-  >;
 }

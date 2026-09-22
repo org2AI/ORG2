@@ -31,6 +31,7 @@ import {
   useRef,
 } from "react";
 
+import { useDeferredFocus } from "./useDeferredFocus";
 import { useTauriSelectAllShortcut } from "./useTauriSelectAllShortcut";
 
 // ============================================
@@ -59,6 +60,8 @@ export interface UseListNavigationOptions<T extends ListItem> {
     (event: ReactKeyboardEvent) => boolean | void
   >;
   enableGlobalListener?: boolean;
+  /** Allow Right Arrow to activate disclosure rows outside text-only search. */
+  enableDisclosureArrowNavigation?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
   hasModalState?: boolean;
   onGoBack?: () => void;
@@ -151,6 +154,7 @@ export function useListNavigation<T extends ListItem>(
     scrollContainerRef: externalScrollRef,
     additionalKeyHandlers = {},
     enableGlobalListener = false,
+    enableDisclosureArrowNavigation = true,
     inputRef,
     hasModalState = false,
     onGoBack,
@@ -256,6 +260,7 @@ export function useListNavigation<T extends ListItem>(
   // Handles Arrow, Tab, and Backspace when focus is outside the spotlight
   // input. Escape is NOT handled here — SpotlightPortal owns that.
   // ============================================
+  const focusInput = useDeferredFocus(inputRef, enableGlobalListener);
   useEffect(() => {
     if (!enableGlobalListener) return;
 
@@ -311,12 +316,15 @@ export function useListNavigation<T extends ListItem>(
         }
 
         if (inputRef?.current) {
-          setTimeout(() => inputRef.current?.focus(), 0);
+          focusInput();
         }
         return;
       }
 
-      if (keyboardEvent.key === "ArrowRight") {
+      if (
+        enableDisclosureArrowNavigation &&
+        keyboardEvent.key === "ArrowRight"
+      ) {
         if (isFormInput && !isOurInput) return;
 
         const selectedItem = state.items[state.selectedIndex];
@@ -351,7 +359,7 @@ export function useListNavigation<T extends ListItem>(
         }
 
         if (inputRef?.current) {
-          setTimeout(() => inputRef.current?.focus(), 0);
+          focusInput();
         }
         return;
       }
@@ -385,7 +393,13 @@ export function useListNavigation<T extends ListItem>(
 
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
-  }, [enableGlobalListener, inputRef, findNextSelectableIndexFromRef]);
+  }, [
+    enableGlobalListener,
+    focusInput,
+    enableDisclosureArrowNavigation,
+    inputRef,
+    findNextSelectableIndexFromRef,
+  ]);
 
   // ============================================
   // Main keyboard handler (for focused input)
@@ -433,6 +447,7 @@ export function useListNavigation<T extends ListItem>(
         case "Enter":
         case "ArrowRight": {
           if (event.key === "ArrowRight") {
+            if (!enableDisclosureArrowNavigation) break;
             const itemData = items[selectedIndex]?.data as
               | Record<string, unknown>
               | undefined;
@@ -505,6 +520,7 @@ export function useListNavigation<T extends ListItem>(
       isItemSelectable,
       searchQuery,
       additionalKeyHandlers,
+      enableDisclosureArrowNavigation,
       findNextSelectableIndexInItems,
       onEscape,
       hasModalState,
@@ -518,5 +534,3 @@ export function useListNavigation<T extends ListItem>(
     scrollContainerRef,
   };
 }
-
-export default useListNavigation;

@@ -11,6 +11,7 @@
 import React, { memo } from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import {
   CircleArrowOutUpRightIcon,
   SquareArrowUpRight02Icon,
@@ -54,15 +55,20 @@ const EventNavigateIcon: React.FC<EventNavigateIconProps> = memo(
         : SquareArrowUpRight02Icon;
 
     return (
-      <button
-        type="button"
+      <Button
+        variant="tertiary"
+        size={variant === "footer-hover" ? "mini" : "sidebar"}
+        shape={variant === "footer-hover" ? "circle" : "square"}
+        style={{ width: undefined }}
+        iconOnly
+        icon={
+          <AnyIcon icon={Icon} size={variant === "footer-hover" ? 16 : 14} />
+        }
         data-testid="event-navigate"
         aria-label={ariaLabel ?? "View in Agent Station"}
         className={className}
         onClick={handleClick}
-      >
-        <AnyIcon icon={Icon} size={variant === "footer-hover" ? 16 : 14} />
-      </button>
+      />
     );
   }
 );

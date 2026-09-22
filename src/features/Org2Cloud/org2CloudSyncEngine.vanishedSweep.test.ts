@@ -224,6 +224,77 @@ describe("superseded-continuation reconcile", () => {
     expect(client.deleteSession).toHaveBeenCalledTimes(1);
   });
 
+  it("judges a demoted sibling the roster still lists next to its winner", async () => {
+    // The union-merged, persisted roster keeps the demoted sibling; only its
+    // lineage reveals that the newer winner replaced it. Live on 2026-09-11
+    // this kept a resent Codex generation's cloud row forever.
+    store.set(sessionsAtom, [
+      {
+        ...SESSION,
+        session_id: "winner",
+        updated_at: "2026-09-11T00:29:51.000Z",
+        continuationLineageId: "lin-1",
+      },
+      {
+        ...SESSION,
+        session_id: "old-sib",
+        updated_at: "2026-09-11T00:18:38.000Z",
+        continuationLineageId: "lin-1",
+      },
+    ]);
+    startSweepEngine();
+
+    await engine.runSyncPass();
+    expect(client.deleteSession).not.toHaveBeenCalled();
+    await runSweepPass();
+    expect(client.deleteSession).toHaveBeenCalledTimes(1);
+    expect(client.deleteSession).toHaveBeenCalledWith(
+      "jwt-1",
+      "corg-1",
+      "old-sib"
+    );
+  });
+
+  it("lets the backend break an updated_at tie instead of exempting the first row", async () => {
+    // Both generations carry the same last activity (a resend that copied
+    // the prior events). The backend election broke the tie by id and
+    // elected "winner"; the roster lists old-sib first. Neither row may be
+    // exempt from judgement, or the demoted one is never retracted.
+    store.set(sessionsAtom, [
+      {
+        ...SESSION,
+        session_id: "old-sib",
+        updated_at: "2026-09-11T00:18:38.000Z",
+        continuationLineageId: "lin-1",
+      },
+      {
+        ...SESSION,
+        session_id: "winner",
+        updated_at: "2026-09-11T00:18:38.000Z",
+        continuationLineageId: "lin-1",
+      },
+    ]);
+    resolveContinuationStatuses.mockImplementation(
+      async (ids: readonly string[]) =>
+        ids.map((sessionId) => ({
+          sessionId,
+          lineageId: "lin-1",
+          superseded: sessionId === "old-sib",
+        }))
+    );
+    startSweepEngine();
+
+    await engine.runSyncPass();
+    expect(client.deleteSession).not.toHaveBeenCalled();
+    await runSweepPass();
+    expect(client.deleteSession).toHaveBeenCalledTimes(1);
+    expect(client.deleteSession).toHaveBeenCalledWith(
+      "jwt-1",
+      "corg-1",
+      "old-sib"
+    );
+  });
+
   it("leaves the row alone while the family has no pushed winner", async () => {
     // No session carries the suspect's lineage at all.
     store.set(sessionsAtom, []);

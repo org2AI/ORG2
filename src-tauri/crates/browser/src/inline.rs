@@ -5,10 +5,9 @@
 //!
 //! ## Single-owner model
 //!
-//! My Station is the sole owner of every native webview. Control Tower is a
-//! secondary viewer that publishes its container rect via `controlTowerBrowserRectAtom`
-//! (frontend) so My Station can reposition the webview into CT's pane when CT
-//! is active. CT never calls `create_inline_webview` itself.
+//! Each app window owns its live native browser views through SharedBrowserApp.
+//! My Station and Agent Station in that document share the same owner. Detached
+//! windows use scoped labels; a view is never reused under a different parent.
 //!
 //! The ref-count registry (`WEBVIEW_REF_COUNTS`) is retained as a safety net
 //! for any future multi-caller scenario and to guard against double-close races
@@ -28,6 +27,9 @@ use super::scripts::{
 };
 #[cfg(debug_assertions)]
 use super::scripts::{CONSOLE_CAPTURE_SCRIPT, NETWORK_CAPTURE_SCRIPT};
+
+pub mod history_traversal;
+mod load_state;
 
 /// Global ref-count table: label → number of active React instances that have
 /// called `create_inline_webview` and not yet called `close_inline_webview`.
@@ -152,6 +154,35 @@ fn reset_ref(label: &str) {
     map.remove(label);
 }
 
+/// Native window destruction does not run React cleanup. Drop lifecycle slots
+/// owned by its scoped BrowserCore views so reopening starts with one owner.
+pub fn release_station_window_webview_state(window_label: &str) {
+    let suffix = format!("__window__{window_label}");
+    ref_counts()
+        .lock()
+        .unwrap()
+        .retain(|label, _| !label.ends_with(&suffix));
+    generations()
+        .lock()
+        .unwrap()
+        .retain(|label, _| !label.ends_with(&suffix));
+    cancelled_generations()
+        .lock()
+        .unwrap()
+        .retain(|label, _| !label.ends_with(&suffix));
+    load_state::forget_where(|label| label.ends_with(&suffix));
+    if let Ok(Some(active)) = super::internal_browser_state::get_active_internal_browser_state() {
+        if active.label.ends_with(&suffix) {
+            let _ = super::internal_browser_state::clear_active_internal_browser_state(
+                Some(active.label),
+                Some(active.browser_session_id),
+                None,
+                Some(active.updated_at),
+            );
+        }
+    }
+}
+
 #[cfg(test)]
 fn get_ref_count(label: &str) -> u32 {
     let map = ref_counts().lock().unwrap();
@@ -206,6 +237,14 @@ pub async fn create_inline_webview(
         )
     })?;
 
+    // A reused label must belong to this parent. Reject before changing its
+    // generation or ref count so a second window cannot take over its lifecycle.
+    if let Some(existing) = app.get_webview(&label) {
+        if existing.window().label() != parent_window {
+            return Err(format!("Webview '{label}' belongs to another window"));
+        }
+    }
+
     if let Some(generation) = generation {
         set_generation(&label, generation);
     }
@@ -226,35 +265,45 @@ pub async fn create_inline_webview(
             visible = should_show,
             "browser::inline: reusing existing webview"
         );
-        let (target_x, target_y, target_width, target_height) = if should_show {
-            (x, y, width, height)
-        } else {
-            (
-                OFFSCREEN_POSITION,
-                OFFSCREEN_POSITION,
-                OFFSCREEN_MIN_SIZE,
-                OFFSCREEN_MIN_SIZE,
-            )
-        };
-        let pos = tauri::Position::Logical(tauri::LogicalPosition::new(target_x, target_y));
-        let size = tauri::Size::Logical(tauri::LogicalSize::new(target_width, target_height));
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            existing.set_position(pos)?;
-            existing.set_size(size)?;
             if should_show {
+                existing
+                    .set_position(tauri::Position::Logical(tauri::LogicalPosition::new(x, y)))?;
+                existing.set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)))?;
                 existing.show()?;
+            } else {
+                // Park by position only. Shrinking a live page to 1x1 makes it
+                // lay out against a 1px viewport now and again at full size
+                // when the tab is shown.
+                existing.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(
+                    OFFSCREEN_POSITION,
+                    OFFSCREEN_POSITION,
+                )))?;
             }
             Ok::<(), tauri::Error>(())
         }));
         return match result {
-            Ok(Ok(())) => Ok(()),
+            Ok(Ok(())) => {
+                // A reused view does not navigate again, so the owner that asked
+                // for it would never hear a load phase. Replay the last one.
+                load_state::replay(&app, &parent_window, &label);
+                Ok(())
+            }
             Ok(Err(e)) => Err(format!("Failed to reuse webview: {}", e)),
             Err(_) => Ok(()),
         };
     }
 
+    // A freshly built view has proven nothing; never let it inherit the phase of
+    // a previous view that carried the same label.
+    load_state::forget(&label);
+
     let label_for_closure = label.clone();
     let app_for_closure = app.clone();
+    let parent_for_shortcuts = parent_window.clone();
+    let label_for_page_load = label.clone();
+    let app_for_page_load = app.clone();
+    let parent_for_page_load = parent_window.clone();
 
     // Build the webview with anti-bot detection, element inspector, page agent
     // (DOM automation), and new window handling. Console/network interception is
@@ -277,8 +326,16 @@ pub async fn create_inline_webview(
         .initialization_script(PAGE_AGENT_SCRIPT)
         .initialization_script(app_window::shortcut_preferences::initialization_script())
         .initialization_script(SHORTCUT_FORWARDING_SCRIPT)
-        .on_page_load(|webview, _| {
+        .on_page_load(move |webview, payload| {
             let _ = webview.eval(app_window::shortcut_preferences::initialization_script());
+
+            load_state::report(
+                &app_for_page_load,
+                &parent_for_page_load,
+                &label_for_page_load,
+                payload.url().as_str(),
+                load_state::phase_name(payload.event()),
+            );
         })
         .on_new_window(move |new_window_url, _cookies| {
             let url_str = new_window_url.to_string();
@@ -286,7 +343,8 @@ pub async fn create_inline_webview(
 
             if new_window_url.scheme() == "orgii-shortcut" {
                 if let Some(shortcut) = new_window_url.host_str() {
-                    let _ = app_for_closure.emit(
+                    let _ = app_for_closure.emit_to(
+                        &parent_for_shortcuts,
                         "inline-webview-shortcut",
                         serde_json::json!({
                             "shortcut": shortcut,
@@ -355,6 +413,12 @@ pub async fn create_inline_webview(
     }
 
     ownership_observation.commit();
+
+    // Born with the user's page color scheme, so a forced light/dark page never
+    // paints the inherited scheme first. Setup/OAuth webviews keep the default.
+    if crate::color_scheme::is_browser_session_label(&label) {
+        crate::color_scheme::apply_preferred(&webview);
+    }
 
     debug!(
         label = %webview.label(),
@@ -479,6 +543,7 @@ pub fn close_inline_webview(
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| webview.close()));
 
         clear_generation(&label);
+        load_state::forget(&label);
         match result {
             Ok(Ok(())) => Ok(()),
             Ok(Err(e)) => Err(format!("Failed to close: {}", e)),
@@ -492,6 +557,7 @@ pub fn close_inline_webview(
         }
     } else {
         clear_generation(&label);
+        load_state::forget(&label);
         Ok(()) // Webview already gone
     }
 }
@@ -504,15 +570,18 @@ pub fn close_inline_webview(
 ///
 /// Uses catch_unwind to handle wry panics when webviews are in invalid state.
 #[tauri::command]
-pub fn hide_all_inline_webviews(app: AppHandle) -> Result<Vec<String>, String> {
+pub fn hide_all_inline_webviews(
+    app: AppHandle,
+    window: tauri::Window,
+) -> Result<Vec<String>, String> {
     let mut hidden_labels = Vec::new();
 
     // Get all webviews in the app
     let webviews = app.webviews();
 
     for (label, webview) in webviews.iter() {
-        // Skip the main webview (it's the app itself)
-        if label == "main" {
+        // Keep the calling window's app surface and every other window intact.
+        if label == window.label() || webview.window().label() != window.label() {
             continue;
         }
 
@@ -553,15 +622,25 @@ pub fn hide_all_inline_webviews(app: AppHandle) -> Result<Vec<String>, String> {
 ///
 /// Uses catch_unwind to handle wry panics when webviews are in invalid state.
 #[tauri::command]
-pub fn close_all_inline_webviews(app: AppHandle) -> Result<Vec<String>, String> {
+pub fn close_all_inline_webviews(
+    app: AppHandle,
+    window: tauri::Window,
+) -> Result<Vec<String>, String> {
+    close_inline_webviews_for_window(app, window.label())
+}
+
+pub fn close_inline_webviews_for_window(
+    app: AppHandle,
+    window_label: &str,
+) -> Result<Vec<String>, String> {
     let mut closed_labels = Vec::new();
 
     // Get all webviews in the app
     let webviews = app.webviews();
 
     for (label, webview) in webviews.iter() {
-        // Skip the main webview (it's the app itself)
-        if label == "main" {
+        // Keep the reloading window's app surface and every other window intact.
+        if label == window_label || webview.window().label() != window_label {
             continue;
         }
 
@@ -579,6 +658,7 @@ pub fn close_all_inline_webviews(app: AppHandle) -> Result<Vec<String>, String> 
         // Reset lifecycle state so the next create starts fresh.
         reset_ref(label);
         clear_generation(label);
+        load_state::forget(label);
 
         // Clone webview for catch_unwind (needs 'static lifetime)
         let webview_clone = webview.clone();
@@ -668,6 +748,28 @@ mod tests {
         use std::sync::atomic::{AtomicU64, Ordering};
         static CTR: AtomicU64 = AtomicU64::new(0);
         format!("test-{}-{}", suffix, CTR.fetch_add(1, Ordering::Relaxed))
+    }
+
+    #[test]
+    fn closing_station_window_releases_only_its_browser_lifecycle() {
+        let owner = "app-window-station-lifecycle-test";
+        let own = format!("browser-session-lifecycle-test__window__{owner}");
+        let peer = "browser-session-lifecycle-peer__window__app-window-station-other";
+        increment_ref(&own);
+        increment_ref(peer);
+        set_generation(&own, 42);
+        set_generation(peer, 43);
+        cancel_generation(&own, Some(42));
+        release_station_window_webview_state(owner);
+        assert_eq!(get_ref_count(&own), 0);
+        assert!(!is_current_generation(&own, Some(42)));
+        assert!(!is_generation_cancelled(&own, 42));
+        assert_eq!(get_ref_count(peer), 1);
+        assert!(is_current_generation(peer, Some(43)));
+        assert_eq!(increment_ref(&own), 1);
+        assert_eq!(decrement_ref(&own), 0);
+        reset_ref(peer);
+        clear_generation(peer);
     }
 
     #[test]

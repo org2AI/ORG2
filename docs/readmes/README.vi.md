@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.pl.md">Polski</a>
+  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.id.md">Bahasa Indonesia</a> · <a href="README.pl.md">Polski</a>
 </p>
 
 <p align="center">
@@ -34,19 +34,19 @@
 
 ORG-2 là nơi nhóm của bạn chạy các Agent lập trình — một Rust harness native cùng trình khởi chạy cho hơn 20 Agent CLI — và nó tự động dựng nên bản ghi đó. Mỗi phiên trở thành một trajectory mà đồng đội replay như xem video: họ review công việc thực sự đã được dựng ra sao thay vì chỉ nhìn diff, và bình luận ngay trong ngữ cảnh. Các phiên chạy ở công cụ khác cũng được nạp vào và bổ sung ngược từ lịch sử của chúng, nên bản ghi bao phủ cả phần việc chưa từng đi qua ứng dụng. Bản ghi liên kết điều con người yêu cầu, điều Agent hiểu và điều nó thực sự làm, nên bất kỳ dòng nào đã lên production đều truy ngược được về phiên đã viết ra nó.
 
-Đây không chỉ là một công cụ lập trình AI khác; đó là một thử nghiệm về các tổ chức người/Agent và sự align ở cấp tổ chức. ORG-II xem Agents như những đồng nghiệp bền bỉ và có thể quan sát trong một tổ chức có cấu trúc — thực thi có thể replay, bộ nhớ xuyên phiên, AI blame và local-first Rust runtime để con người, Agents và nhóm cùng cộng tác quanh ngữ cảnh chung và mục tiêu đã align.
+Đây không chỉ là một công cụ lập trình AI khác; đó là một thử nghiệm về các tổ chức người/Agent và sự align ở cấp tổ chức. ORG2 xem Agents như những đồng nghiệp bền bỉ và có thể quan sát trong một tổ chức có cấu trúc — thực thi có thể replay, bộ nhớ xuyên phiên, AI blame và local-first Rust runtime để con người, Agents và nhóm cùng cộng tác quanh ngữ cảnh chung và mục tiêu đã align.
 
 ## Tính năng
 
 <table>
-<tr><td width="50%" valign="middle"><h3>Rust harness tích hợp</h3><p>Chạy Agents native nhanh, tiết kiệm token và có thể tùy chỉnh bằng API key cùng gói đăng ký Agent hiện có của bạn.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="Chạy Agents bằng Rust harness của ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Quản lý phiên từ hơn 10 ứng dụng và CLI</h3><p>Tải và quản lý phiên Agent từ mọi công cụ tại một nơi. Quét lịch sử, kiểm tra subagents và điều khiển từng nguồn mà không cần chuyển ứng dụng.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="Quản lý nguồn phiên Agent từ ứng dụng và CLI trong ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Lập nhóm và review trajectory, không chỉ PR</h3><p>Thành lập nhóm và chia sẻ phiên giữa các thiết bị và đồng đội. Review toàn bộ trajectory của Agent, không chỉ diff cuối cùng, và để lại bình luận đúng ngữ cảnh.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="Quản lý đồng đội và quyền replay trajectory trong ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Tool call, giờ ở dạng video</h3><p>Replay công việc từ Rust harness native và hơn 15 CLI Agents. Tin nhắn, tool call, chỉnh sửa tệp và đầu ra lệnh luôn đồng bộ trong một timeline có thể review.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="Replay phiên Agent trong ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>AI blame, không chỉ Git blame</h3><p>Đừng dừng ở người đã thay đổi một dòng. Truy ngược đến phiên Agent, tool call và quyết định đã tạo ra thay đổi đó.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="Truy ngược thay đổi mã đến phiên và quyết định của Agent trong ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Luôn đi đúng hướng</h3><p>Xem thời gian của bạn được sử dụng ra sao giữa các tác vụ và phiên Agent. Timeline hoạt động hằng ngày giúp hiển thị thời lượng, thay đổi mã và mức độ ưu tiên.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="Review thời gian dành cho tác vụ và phiên Agent trong ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Workspace phát triển đầy đủ</h3><p>Dùng terminal, quản lý source control, theo dõi lịch sử Git và review pull request mà không rời workspace Agent.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="Source control, lịch sử Git và công cụ code review trong ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Chế độ Design</h3><p>Kiểm tra trang trực tiếp trong trình duyệt WebKit native. Chọn một phần tử và gửi ngữ cảnh trang chính xác thẳng đến Agent để sửa một cách đơn giản.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="Kiểm tra phần tử trang web bằng Chế độ Design của ORG-II" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Rust harness tích hợp</h3><p>Chạy Agents native nhanh, tiết kiệm token và có thể tùy chỉnh bằng API key cùng gói đăng ký Agent hiện có của bạn.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="Chạy Agents bằng Rust harness của ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Quản lý phiên từ hơn 10 ứng dụng và CLI</h3><p>Tải và quản lý phiên Agent từ mọi công cụ tại một nơi. Quét lịch sử, kiểm tra subagents và điều khiển từng nguồn mà không cần chuyển ứng dụng.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="Quản lý nguồn phiên Agent từ ứng dụng và CLI trong ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Lập nhóm và review trajectory, không chỉ PR</h3><p>Thành lập nhóm và chia sẻ phiên giữa các thiết bị và đồng đội. Review toàn bộ trajectory của Agent, không chỉ diff cuối cùng, và để lại bình luận đúng ngữ cảnh.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="Quản lý đồng đội và quyền replay trajectory trong ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Tool call, giờ ở dạng video</h3><p>Replay công việc từ Rust harness native và hơn 15 CLI Agents. Tin nhắn, tool call, chỉnh sửa tệp và đầu ra lệnh luôn đồng bộ trong một timeline có thể review.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="Replay phiên Agent trong ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>AI blame, không chỉ Git blame</h3><p>Đừng dừng ở người đã thay đổi một dòng. Truy ngược đến phiên Agent, tool call và quyết định đã tạo ra thay đổi đó.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="Truy ngược thay đổi mã đến phiên và quyết định của Agent trong ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Luôn đi đúng hướng</h3><p>Xem thời gian của bạn được sử dụng ra sao giữa các tác vụ và phiên Agent. Timeline hoạt động hằng ngày giúp hiển thị thời lượng, thay đổi mã và mức độ ưu tiên.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="Review thời gian dành cho tác vụ và phiên Agent trong ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Workspace phát triển đầy đủ</h3><p>Dùng terminal, quản lý source control, theo dõi lịch sử Git và review pull request mà không rời workspace Agent.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="Source control, lịch sử Git và công cụ code review trong ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Chế độ Design</h3><p>Kiểm tra trang trực tiếp trong trình duyệt WebKit native. Chọn một phần tử và gửi ngữ cảnh trang chính xác thẳng đến Agent để sửa một cách đơn giản.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="Kiểm tra phần tử trang web bằng Chế độ Design của ORG2" width="100%" /></td></tr>
 </table>
 
 ## Nhiều khả năng hơn
@@ -61,7 +61,7 @@ ORG-2 là nơi nhóm của bạn chạy các Agent lập trình — một Rust h
 
 ## Agents được hỗ trợ
 
-Sử dụng Rust harness tích hợp của ORG-II hoặc khởi chạy các CLI coding-agent được hỗ trợ từ ứng dụng desktop.
+Sử dụng Rust harness tích hợp của ORG2 hoặc khởi chạy các CLI coding-agent được hỗ trợ từ ứng dụng desktop.
 
 ### GUI + TUI
 
@@ -73,6 +73,7 @@ Sử dụng Rust harness tích hợp của ORG-II hoặc khởi chạy các CLI 
   <a href="https://kiro.dev/docs/cli/installation"><kbd><img src="../../src/assets/modelIcons/kiro.svg" alt="Kiro CLI logo" width="16" valign="middle" /> Kiro CLI</kbd></a> &nbsp;
   <a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-in-the-cli"><kbd><img src="../../src/assets/modelIcons/copilot.svg" alt="GitHub Copilot logo" width="16" valign="middle" /> GitHub Copilot</kbd></a> &nbsp;
   <a href="https://opencode.ai/docs/config/"><kbd><img src="../../src/assets/modelIcons/opencode.svg" alt="OpenCode logo" width="16" valign="middle" /> OpenCode</kbd></a> &nbsp;
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><kbd><img src="../../src/assets/modelIcons/deepseek.svg" alt="DeepSeek Harness logo" width="16" valign="middle" /> DeepSeek Harness</kbd></a> &nbsp;
   <a href="https://antigravity.google/docs/cli/getting-started"><kbd><img src="../../src/assets/modelIcons/antigravity.svg" alt="Antigravity logo" width="16" valign="middle" /> Antigravity</kbd></a>
 </p>
 
@@ -102,9 +103,7 @@ Sử dụng Rust harness tích hợp của ORG-II hoặc khởi chạy các CLI 
 
 ## Tải xuống
 
-Phiên bản build hiện tại: v1.1.24 (2026-07-16)
-
-Tải ứng dụng desktop ORGII mới nhất chỉ với một lần nhấp:
+Tải ứng dụng desktop ORG2 mới nhất chỉ với một lần nhấp:
 
 - [macOS Apple Silicon](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-mac-apple-silicon.dmg)
 - [Trình cài đặt Windows x64](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-windows-x64-setup.exe)
@@ -152,4 +151,4 @@ Có câu hỏi, phản hồi hoặc muốn theo dõi quá trình phát triển c
 
 ## Giấy phép
 
-ORGII được cấp phép theo GNU Affero General Public License v3.0 hoặc mới hơn (`AGPL-3.0-or-later`). Xem [`LICENSE`](../../LICENSE) để biết toàn văn giấy phép.
+ORG2 được cấp phép theo GNU Affero General Public License v3.0 hoặc mới hơn (`AGPL-3.0-or-later`). Xem [`LICENSE`](../../LICENSE) để biết toàn văn giấy phép.

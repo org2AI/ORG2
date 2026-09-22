@@ -561,3 +561,48 @@ fn worktree_excludes_keep_lock_and_tmp_out_of_status() {
 
     std::fs::remove_dir_all(&root).ok();
 }
+
+// ============================================
+// Option-shaped branch / base values never reach git
+// ============================================
+
+fn assert_rejected_as_option<T>(result: Result<T, String>) {
+    let Err(error) = result else {
+        panic!("an option-shaped value must be rejected");
+    };
+    assert!(
+        error.contains("must not start with '-'"),
+        "rejection must come from the operand check, got: {error}"
+    );
+}
+
+/// The check runs before git is spawned or the disk is touched, so a missing
+/// repository proves the value was rejected rather than handed to git.
+#[test]
+fn worktree_operations_reject_option_shaped_refs() {
+    let repo = std::path::Path::new("/nonexistent/orgii-operand-guard");
+    let target = std::path::Path::new("/nonexistent/orgii-operand-guard-wt");
+
+    assert_rejected_as_option(create_linked_worktree(repo, target, "--detach", None));
+    assert_rejected_as_option(create_linked_worktree(
+        repo,
+        target,
+        "feature",
+        Some("--force"),
+    ));
+    assert_rejected_as_option(create_session_worktree(
+        repo,
+        "session-1",
+        Some("--force"),
+        None,
+    ));
+    assert_rejected_as_option(merge_session_worktree(
+        repo,
+        "session-1",
+        "--force",
+        MergeStrategy::AutoMerge,
+    ));
+    // `git diff` accepts `--output=<file>`: the range starts with the base.
+    assert_rejected_as_option(get_session_diff(repo, "session-1", "--output=/tmp/x"));
+    assert!(!target.exists());
+}

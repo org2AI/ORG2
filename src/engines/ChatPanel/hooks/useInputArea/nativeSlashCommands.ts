@@ -1,5 +1,5 @@
-import { ACTION_ID } from "@src/ActionSystem/actionIds";
 import type { SessionEvent } from "@src/engines/SessionCore";
+import { ACTION_ID } from "@src/scaffold/ActionSystem/actionIds";
 import type { SlashItem } from "@src/types/extensions";
 
 export const COMPOSER_COMMAND_ACTIONS: Readonly<Record<string, string>> = {

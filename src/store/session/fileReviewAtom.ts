@@ -168,11 +168,6 @@ export const pendingSnapshotAnchorsAtom = atom(
 );
 pendingSnapshotAnchorsAtom.debugLabel = "pendingSnapshotAnchorsAtom";
 
-export const earliestPendingSnapshotAtom = atom((get) => {
-  return get(pendingSnapshotAnchorsAtom)[0] ?? null;
-});
-earliestPendingSnapshotAtom.debugLabel = "earliestPendingSnapshotAtom";
-
 /**
  * Clear all review state (on session switch).
  */

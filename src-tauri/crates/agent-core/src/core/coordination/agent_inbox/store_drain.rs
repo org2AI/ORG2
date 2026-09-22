@@ -565,27 +565,33 @@ impl AgentInboxStore {
                     let is_resume_continuation =
                         turn_is_resume_continuation(&tx, session_id, turn_intent_id)?;
                     for id in ids {
-                        let assignment_status: Option<String> = tx
+                        let unsettled_assignment_status: Option<String> = tx
                             .query_row(
                                 "SELECT task.status
                                  FROM agent_org_runtime_inbox inbox
                                  JOIN agent_org_runtime_tasks task
                                    ON task.org_run_id=inbox.org_run_id
                                   AND task.id=json_extract(inbox.payload_json,'$.task_id')
-                                 WHERE inbox.id=?1 AND inbox.payload_kind='task_assigned'",
+                                 WHERE inbox.id=?1 AND inbox.payload_kind='task_assigned'
+                                   AND NOT EXISTS (
+                                       SELECT 1
+                                       FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                                       WHERE resolution.inbox_id=inbox.id
+                                   )",
                                 [id],
                                 |row| row.get(0),
                             )
                             .optional()
                             .map_err(|err| err.to_string())?;
-                        if is_resume_continuation && assignment_status.is_some() {
+                        if is_resume_continuation && unsettled_assignment_status.is_some() {
                             let owns_assignment = resume_continuation_owns_assignment(
                                 &tx,
                                 session_id,
                                 turn_intent_id,
                                 *id,
                             )?;
-                            if assignment_status.as_deref() != Some("completed") || !owns_assignment
+                            if unsettled_assignment_status.as_deref() != Some("completed")
+                                || !owns_assignment
                             {
                                 return Err(format!(
                                     "Agent Org Inbox row {id} remains unread because its exact Resume continuation did not complete the Task successfully"
@@ -758,17 +764,19 @@ fn task_status_is_pending(
     .map_err(|error| error.to_string())
 }
 
-/// Exact authority for the one exceptional TaskAssigned transition: the Task
-/// was already moved to in_progress by the pre-Pause Turn, so only the
-/// durable continuation created from that same handoff may consume it.
+/// Exact authority for the exceptional TaskAssigned continuation: the Task
+/// was already moved to in_progress by the suspended Turn, so only the
+/// durable continuation created from that exact Pause handoff or Member
+/// intervention receipt may consume it.
 fn resume_continuation_owns_assignment(
     conn: &rusqlite::Connection,
     session_id: &str,
     turn_intent_id: &str,
     inbox_id: i64,
 ) -> Result<bool, String> {
-    conn.query_row(
-        "SELECT EXISTS(
+    let owns_pause_assignment = conn
+        .query_row(
+            "SELECT EXISTS(
              SELECT 1
              FROM agent_org_runtime_pause_handoffs handoff
              JOIN agent_org_runtime_pause_episodes episode
@@ -822,6 +830,68 @@ fn resume_continuation_owns_assignment(
                    WHERE resolution.inbox_id=inbox.id
                )
          )",
+            params![session_id, turn_intent_id, inbox_id],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    if owns_pause_assignment {
+        return Ok(true);
+    }
+
+    conn.query_row(
+        "SELECT EXISTS(
+             SELECT 1
+             FROM agent_org_runtime_member_interventions intervention
+             JOIN agent_org_runtime_runs run ON run.id=intervention.org_run_id
+             JOIN agent_org_runtime_turn_contexts continuation
+               ON continuation.session_id=intervention.session_id
+              AND continuation.turn_intent_id=intervention.continuation_turn_intent_id
+             JOIN agent_org_runtime_turn_contexts original
+               ON original.session_id=intervention.session_id
+              AND original.turn_intent_id=intervention.original_turn_intent_id
+             JOIN session_turn_intents intent
+               ON intent.session_id=intervention.session_id
+              AND intent.turn_intent_id=intervention.continuation_turn_intent_id
+             JOIN agent_org_runtime_tasks task
+               ON task.org_run_id=intervention.org_run_id
+              AND task.id=intervention.original_task_id
+             JOIN agent_org_runtime_inbox inbox
+               ON inbox.id=?3
+              AND inbox.org_run_id=intervention.org_run_id
+              AND inbox.recipient_member_id=intervention.member_id
+             JOIN agent_org_runtime_inbox_materializations materialization
+               ON materialization.inbox_id=inbox.id
+              AND materialization.session_id=intervention.session_id
+             WHERE intervention.session_id=?1
+               AND intervention.continuation_turn_intent_id=?2
+               AND intervention.status='cleared'
+               AND intervention.return_outcome='restored_task'
+               AND run.status='running'
+               AND intent.status IN ('queued','running')
+               AND continuation.turn_kind='task_execution'
+               AND continuation.source_kind='task'
+               AND continuation.task_id=intervention.original_task_id
+               AND continuation.owner_member_id=intervention.member_id
+               AND continuation.activation_generation=run.activation_generation
+               AND original.turn_kind='task_execution'
+               AND original.source_kind='task'
+               AND original.task_id=intervention.original_task_id
+               AND original.owner_member_id=intervention.member_id
+               AND original.activation_generation=run.activation_generation
+               AND task.status IN ('in_progress','completed')
+               AND task.owner=intervention.member_id
+               AND inbox.delivery_class='formal_work'
+               AND inbox.read_at IS NULL
+               AND inbox.payload_kind='task_assigned'
+               AND json_valid(inbox.payload_json)
+               AND json_type(inbox.payload_json,'$.task_id')='text'
+               AND json_extract(inbox.payload_json,'$.task_id')=intervention.original_task_id
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                   WHERE resolution.inbox_id=inbox.id
+               )
+         )",
         params![session_id, turn_intent_id, inbox_id],
         |row| row.get(0),
     )
@@ -839,6 +909,12 @@ fn turn_is_resume_continuation(
              WHERE session_id=?1
                AND continuation_turn_intent_id=?2
                AND continuation_status='dispatched'
+             UNION ALL
+             SELECT 1 FROM agent_org_runtime_member_interventions
+             WHERE session_id=?1
+               AND continuation_turn_intent_id=?2
+               AND status='cleared'
+               AND return_outcome='restored_task'
          )",
         params![session_id, turn_intent_id],
         |row| row.get(0),

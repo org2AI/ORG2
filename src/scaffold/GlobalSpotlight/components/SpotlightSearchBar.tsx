@@ -8,15 +8,21 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
-import { ArrowLeft01Icon, HugeiconsIcon } from "@src/icons";
+import Button from "@src/components/Button";
+import Input from "@src/components/Input";
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import { ArrowLeft01Icon, CleanIcon, HugeiconsIcon } from "@src/icons";
 
 import { ICONS } from "../config";
 import { SPOTLIGHT_CLASSES, SPOTLIGHT_TOKENS } from "../constants";
 import type { PathSegment } from "../types";
+import { handleSpotlightHorizontalArrow } from "./spotlightSearchKeyboard";
 
 // ============ PROPS ============
 
 interface SpotlightSearchBarProps {
+  /** Compact spacing for embedded search cards. */
+  density?: "default" | "compact";
   /** Ref for the input element */
   inputRef: React.RefObject<HTMLInputElement | null>;
   /** Current search query */
@@ -50,6 +56,7 @@ interface SpotlightSearchBarProps {
 // ============ COMPONENT ============
 
 export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
+  density = "default",
   inputRef,
   searchQuery,
   onSearchQueryChange,
@@ -67,6 +74,8 @@ export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const compact = density === "compact";
+  const inputFontSize = compact ? "text-xs" : SPOTLIGHT_TOKENS.inputFontSize;
   const hasPills = path.length > 0;
   const hasLeadingSlot = Boolean(leadingSlot);
 
@@ -117,11 +126,15 @@ export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
 
   return (
     <div>
-      <div className="spotlight-search-bar flex h-[56px] min-h-[56px] items-center gap-2 px-4">
+      <div
+        className={`spotlight-search-bar flex items-center ${compact ? "h-10 min-h-10 gap-1.5 pr-2 pl-3" : "h-[56px] min-h-[56px] gap-2 px-4"}`}
+      >
         {hasLeadingSlot ? (
           <div className="flex shrink-0 items-center">{leadingSlot}</div>
         ) : !hasPills ? (
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+          <div
+            className={`flex shrink-0 items-center justify-center ${compact ? "h-5 w-5" : "h-6 w-6"}`}
+          >
             <AnyIcon
               icon={ICONS.search}
               size={SPOTLIGHT_TOKENS.iconSize}
@@ -133,15 +146,17 @@ export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
 
         {!hasLeadingSlot && hasPills && (
           <div
-            className={`flex min-w-0 shrink-0 items-center gap-2 ${SPOTLIGHT_TOKENS.inputFontSize} text-text-1`}
+            className={`flex min-w-0 shrink-0 items-center gap-2 ${inputFontSize} text-text-1`}
           >
             {path.map((segment, index) => {
               const canRemove =
                 !!onRemoveSegment &&
                 (segment.type !== "action" || !hideActionClose);
               const label = getSegmentLabel(segment);
+              const Pill = canRemove ? "button" : "div";
               return (
-                <div
+                <Pill
+                  type={canRemove ? "button" : undefined}
                   key={`${segment.type}-${segment.id}`}
                   className={`${SPOTLIGHT_CLASSES.primaryPill} ${canRemove ? SPOTLIGHT_CLASSES.interactivePill : ""}`}
                   onClick={
@@ -153,27 +168,34 @@ export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
                 >
                   {canRemove && !isCountingDown && renderBackChevron()}
                   {!canRemove && renderPillIcon(segment)}
-                  <span
-                    className={`max-w-[220px] truncate ${SPOTLIGHT_TOKENS.inputFontSize}`}
-                  >
+                  <span className={`max-w-[220px] truncate ${inputFontSize}`}>
                     {label}
                   </span>
-                </div>
+                </Pill>
               );
             })}
           </div>
         )}
 
         {!hideInput && (
-          <input
+          <Input
+            appearance="bare"
+            size="small"
+            autoHeight
+            className={`min-w-0 flex-1 [&>.input-inner]:border-0! ${inputFontSize}`}
+            inputStyle={{ fontSize: "inherit", lineHeight: "inherit" }}
             ref={inputRef}
             type="text"
             value={searchQuery}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            onKeyDown={onKeyDown}
+            onChange={(_value, event) =>
+              onSearchQueryChange(event.target.value)
+            }
+            onKeyDown={(event) => {
+              if (!handleSpotlightHorizontalArrow(event)) onKeyDown(event);
+            }}
             placeholder={placeholder}
             aria-label={ariaLabel}
-            className={`min-w-0 flex-1 bg-transparent ${SPOTLIGHT_TOKENS.inputFontSize} text-text-1 placeholder:text-text-1 focus:outline-none`}
+            inputClassName={`min-w-0 flex-1 bg-transparent text-ellipsis ${inputFontSize} text-text-1 placeholder:text-text-1 focus:outline-none`}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
@@ -182,23 +204,35 @@ export const SpotlightSearchBar: React.FC<SpotlightSearchBarProps> = ({
           />
         )}
 
-        {!hideInput && searchQuery && !isCountingDown && (
-          <button
-            type="button"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1"
-            aria-label={t("common:tooltips.clearSearch")}
-            onClick={handleResetSearch}
+        {(trailingSlot || (!hideInput && searchQuery && !isCountingDown)) && (
+          <div
+            className={`flex shrink-0 items-center gap-px ${hideInput ? "ml-auto" : ""}`}
           >
-            <HugeiconsIcon icon={ICONS.close} size={14} />
-          </button>
-        )}
+            {!hideInput && searchQuery && !isCountingDown && (
+              <ToolbarTooltip label={t("common:actions.clear")}>
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  iconOnly
+                  onClick={handleResetSearch}
+                  icon={
+                    <>
+                      <HugeiconsIcon icon={CleanIcon} size={14} />
+                      <span className="sr-only">
+                        {t("common:actions.clear")}
+                      </span>
+                    </>
+                  }
+                />
+              </ToolbarTooltip>
+            )}
 
-        {trailingSlot ? (
-          <div className="flex shrink-0 items-center">{trailingSlot}</div>
-        ) : null}
+            {trailingSlot ? (
+              <div className="flex shrink-0 items-center">{trailingSlot}</div>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
 };
-
-export default SpotlightSearchBar;

@@ -21,7 +21,11 @@ const cache = {
     .build(),
 
   loadEvents: defineProcedure("cache_load_session_events")
-    .input(schemas.sessionCore.SessionIdInput)
+    .input(
+      schemas.sessionCore.SessionIdInput.extend({
+        eventType: z.string().optional(),
+      })
+    )
     .output(schemas.sessionCore.SessionEventArraySchema)
     .build(),
 

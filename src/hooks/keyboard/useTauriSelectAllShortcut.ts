@@ -144,5 +144,3 @@ export function installGlobalTauriSelectAllShortcut(): void {
     true
   );
 }
-
-export default useTauriSelectAllShortcut;

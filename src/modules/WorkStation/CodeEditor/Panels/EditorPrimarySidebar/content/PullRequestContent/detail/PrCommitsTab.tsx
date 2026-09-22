@@ -17,6 +17,7 @@ import Button from "@src/components/Button";
 import PersonAvatar from "@src/components/PersonAvatar";
 import { Placeholder } from "@src/components/Placeholder";
 import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
+import { ActivityHeaderActionButton } from "@src/features/GitHubWork/ActivityTimeline";
 import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
   ArrowLeft01Icon,
@@ -31,7 +32,6 @@ import {
   Tick01Icon,
 } from "@src/icons";
 import GitCommitDetailContent from "@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/GitCommitDetailContent";
-import { ActivityHeaderActionButton } from "@src/modules/shared/components/ActivityTimeline";
 import { copyText } from "@src/util/data/clipboard";
 import { formatDate, toIntlLocaleTag } from "@src/util/data/formatters/date";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
@@ -196,13 +196,12 @@ function PrCommitCard({
 
   return (
     <article className="group flex min-w-0 items-center overflow-hidden rounded-xl border border-border-1 bg-primary-container transition-colors hover:border-border-2">
-      <button
-        type="button"
+      <Button
+        layout="custom"
         className="min-w-0 flex-1 px-3 py-3 text-left"
         onClick={() => onSelect(commit)}
         title={commit.message || commit.summary}
         aria-label={t("git.pr.commits.viewCommit", {
-          defaultValue: "View commit {{sha}}: {{summary}}",
           sha: commit.short_sha,
           summary: commit.summary,
         })}
@@ -222,7 +221,7 @@ function PrCommitCard({
             src={commit.actor.avatarUrl}
           />
           <span className="font-medium text-text-2">{commit.actor.login}</span>
-          <span>{t("git.pr.commits.committed", "committed")}</span>
+          <span>{t("git.pr.commits.committed")}</span>
           {commit.author.date ? (
             <time
               dateTime={commit.author.date}
@@ -248,12 +247,12 @@ function PrCommitCard({
                   strokeWidth={1.9}
                   aria-hidden
                 />
-                {t("git.pr.commits.verified", "Verified")}
+                {t("git.pr.commits.verified")}
               </span>
             </>
           ) : null}
         </span>
-      </button>
+      </Button>
 
       <div className="flex shrink-0 items-center gap-0.5 pr-2">
         <code className="hidden px-1 text-[11px] text-text-3 sm:inline">
@@ -277,11 +276,7 @@ function PrCommitCard({
               />
             )
           }
-          label={
-            copied
-              ? t("status.copied")
-              : t("git.pr.commits.copySha", "Copy commit SHA")
-          }
+          label={copied ? t("status.copied") : t("git.pr.commits.copySha")}
           onClick={(event) => {
             event.stopPropagation();
             handleCopy();
@@ -296,7 +291,7 @@ function PrCommitCard({
               strokeWidth={1.75}
             />
           }
-          label={t("git.pr.commits.viewDetails", "View commit details")}
+          label={t("git.pr.commits.viewDetails")}
           onClick={(event) => {
             event.stopPropagation();
             onSelect(commit);
@@ -349,8 +344,8 @@ export const PrCommitsTab: React.FC<PrCommitsTabProps> = ({
     },
     [controlledSelectedCommitSha, onSelectedCommitShaChange]
   );
-  const unknownAuthor = t("git.pr.unknownAuthor", "Unknown");
-  const unknownDate = t("git.pr.commits.unknownDate", "Unknown date");
+  const unknownAuthor = t("git.pr.unknownAuthor");
+  const unknownDate = t("git.pr.commits.unknownDate");
 
   const rows = useMemo(
     () =>
@@ -381,9 +376,7 @@ export const PrCommitsTab: React.FC<PrCommitsTabProps> = ({
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="flex shrink-0 items-center gap-2 border-b border-border-1 px-3 py-2">
           <Button
-            htmlType="button"
             variant="tertiary"
-            appearance="ghost"
             size="mini"
             icon={
               <HugeiconsIcon
@@ -395,7 +388,7 @@ export const PrCommitsTab: React.FC<PrCommitsTabProps> = ({
             }
             onClick={() => updateSelectedCommitSha(null)}
           >
-            {t("git.pr.commits.backToList", "All commits")}
+            {t("git.pr.commits.backToList")}
           </Button>
           <span
             className="min-w-0 flex-1 truncate text-[12px] text-text-2"
@@ -423,7 +416,12 @@ export const PrCommitsTab: React.FC<PrCommitsTabProps> = ({
 
   if (loading && rows.length === 0) {
     return (
-      <Placeholder variant="loading" placement="sidebar" fillParentHeight />
+      <Placeholder
+        loadingIconOnly
+        variant="loading"
+        placement="sidebar"
+        fillParentHeight
+      />
     );
   }
 
@@ -432,7 +430,7 @@ export const PrCommitsTab: React.FC<PrCommitsTabProps> = ({
       <Placeholder
         variant="empty"
         placement="sidebar"
-        title={t("git.pr.commits.none", "No commits")}
+        title={t("git.pr.commits.none")}
         fillParentHeight
       />
     );
@@ -457,7 +455,6 @@ export const PrCommitsTab: React.FC<PrCommitsTabProps> = ({
               </span>
               <span>
                 {t("git.pr.commits.onDate", {
-                  defaultValue: "Commits on {{date}}",
                   date: group.dateLabel,
                 })}
               </span>

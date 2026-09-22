@@ -8,8 +8,6 @@
 @import "../styles/editor-tokens";
 @import "../styles/diff-mixins";
 
-@import "../../../components/CustomScrollbar/index.scss";
-
 .codemirror-editor-wrapper {
   position: relative;
   width: 100%;
@@ -89,13 +87,14 @@
 .codemirror-minimap-host {
   flex: 0 0 80px;
   height: 100%;
-  background: var(--color-bg-2);
+  background: transparent;
   overflow: hidden;
   position: relative;
+  user-select: none;
   cursor: var(--interactive-cursor, default);
 
   // Canvas for code rendering
-  :global(.minimap-canvas) {
+  .minimap-canvas {
     position: absolute;
     top: 0;
     left: 0;
@@ -106,28 +105,30 @@
 
   // Viewport indicator - shows visible region
   // Uses transform (GPU-composited) instead of top to avoid layout triggers
-  :global(.minimap-viewport) {
+  .minimap-viewport {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    background: color-mix(in srgb, var(--color-primary-6) 10%, transparent);
+    // Keep the visible range readable while the pointer is in the editor.
+    background: color-mix(in srgb, var(--color-text-1) 12%, transparent);
+    box-shadow: inset 2px 0
+      color-mix(in srgb, var(--color-text-1) 30%, transparent);
     pointer-events: none;
     will-change: transform;
-    min-height: 20px;
   }
 
   // Hover state for the host
   &:hover {
-    :global(.minimap-viewport) {
-      background: color-mix(in srgb, var(--color-primary-6) 15%, transparent);
+    .minimap-viewport {
+      background: color-mix(in srgb, var(--color-text-1) 18%, transparent);
     }
   }
 
   // Active/dragging state
-  &:active {
-    :global(.minimap-viewport) {
-      background: color-mix(in srgb, var(--color-primary-6) 20%, transparent);
+  &.minimap-dragging {
+    .minimap-viewport {
+      background: color-mix(in srgb, var(--color-text-1) 24%, transparent);
     }
   }
 }
@@ -189,11 +190,12 @@
 
     .cm-lineNumbers {
       border-right: none !important;
-      padding-left: var(--cm-line-number-padding-left, 8px);
+      padding-left: 0;
     }
 
     .cm-lineNumbers .cm-gutterElement {
       border-right: none !important;
+      padding-left: calc(var(--cm-line-number-padding-left, 8px) + 5px);
     }
 
     // Autocomplete popup - use design system colors

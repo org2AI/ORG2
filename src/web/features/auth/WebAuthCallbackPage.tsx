@@ -92,7 +92,7 @@ export function WebAuthCallbackPage() {
 
   return (
     <main className="flex h-full items-center justify-center bg-bg-2">
-      <Button loading appearance="ghost">
+      <Button loading variant="ghost">
         {t("web.authCallback.completing")}
       </Button>
     </main>

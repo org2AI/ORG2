@@ -3,8 +3,6 @@
     "customCommandUpdated": "自訂命令已更新",
     "shellSettingUpdated": "Shell 設定已更新"
   },
-  "noSettingsFound": "未找到\"{{query}}\"相關設置",
-  "searchPlaceholder": "搜索設置...",
   "panel": {
     "maximizeSettings": "最大化設定"
   },
@@ -15,10 +13,13 @@
     "editorAndWorkspace": "編輯器 & 工作區",
     "appUpdate": "應用更新",
     "security": "安全",
+    "appLock": "應用程式鎖",
     "storage": "存儲",
     "agentOrg": "Agent 團隊",
     "harnessConnections": "應用程式連線",
-    "mobileRemote": "行動遙控"
+    "import": "匯入",
+    "mobileRemote": "行動遙控",
+    "development": "開發模式"
   },
   "coreSidebar": {
     "groups": {
@@ -54,6 +55,52 @@
     "customPatternsPlaceholder": "例如 MYCORP_[A-Z0-9]{20}",
     "invalidPatterns": "{{count}} 個模式無效，將被忽略：{{patterns}}"
   },
+  "appLock": {
+    "password": "密碼鎖",
+    "setPassword": "設定密碼",
+    "changePassword": "變更密碼",
+    "removePassword": "移除密碼",
+    "currentPassword": "目前的密碼",
+    "newPassword": "新密碼",
+    "confirmPassword": "確認新密碼",
+    "passwordSet": "密碼已設定",
+    "passwordChanged": "密碼已變更",
+    "passwordRemoved": "密碼已移除",
+    "lockNow": "立即鎖定",
+    "lockNowDesc": "鎖定所有 ORG2 視窗，直到輸入密碼",
+    "shortcut": "鎖定快速鍵",
+    "hint": "密碼提示",
+    "hintPlaceholder": "會顯示在鎖定畫面上",
+    "hintOptionalPlaceholder": "密碼提示（選填）",
+    "autoLock": "自動鎖定",
+    "autoLockDesc": "在 ORG2 中沒有鍵盤或滑鼠操作達到此時間後鎖定",
+    "autoLockNever": "永不",
+    "autoLockMinutes": "{{count}} 分鐘後",
+    "autoLockHour": "1 小時後",
+    "lockOnLaunch": "啟動 ORG2 時鎖定",
+    "lockOnLaunchDesc": "每次開啟應用程式時都要求輸入密碼",
+    "scopeNote": "應用程式鎖只涵蓋 ORG2 的視窗，不會加密你的資料，也不會暫停 Mobile Remote；任何能存取你檔案的人都可以移除它。如果忘記密碼，請結束 ORG2，並刪除家目錄下 .orgii 資料夾中的 app-lock.json",
+    "errors": {
+      "tooShort": "至少使用 {{count}} 個字元",
+      "tooLong": "密碼太長",
+      "mismatch": "兩次輸入的密碼不一致",
+      "incorrectCurrent": "目前的密碼不正確",
+      "throttled": "錯誤次數過多，請稍後再試",
+      "generic": "無法更新應用程式鎖",
+      "hintTooLong": "提示太長",
+      "hintRevealsPassword": "提示中不能包含密碼"
+    },
+    "screen": {
+      "title": "ORG2 已鎖定",
+      "passwordPlaceholder": "密碼",
+      "incorrect": "密碼不正確",
+      "failed": "無法解鎖，請再試一次",
+      "throttled": "嘗試次數過多，請在 {{time}} 後再試",
+      "working": "仍在工作的工作階段：{{count}}",
+      "showHint": "顯示提示",
+      "hint": "提示：{{hint}}"
+    }
+  },
   "myRoles": {
     "currentStatus": "我的目前狀態",
     "tabs": {
@@ -86,6 +133,10 @@
     }
   },
   "general": {
+    "myStationSharing": "Workstation 共用範圍",
+    "myStationSharingDesc": "依工作目錄共用 Workstation 分頁與檢視狀態，或為每個聊天分頁個別儲存",
+    "myStationSharingDirectory": "工作目錄",
+    "myStationSharingTab": "聊天分頁",
     "login": "登錄",
     "tabGeneral": "通用",
     "tabSelfHosted": "自託管",
@@ -117,8 +168,6 @@
     "usePointerCursorsDesc": "將游標移至互動元素上時變更為指標",
     "timezoneAuto": "自動（瀏覽器）",
     "timezoneSearchPlaceholder": "搜索附近城市",
-    "sendOnEnter": "Enter 發送消息",
-    "sendOnEnterDesc": "啟用後 Enter 發送，Shift+Enter 與 Ctrl/Cmd+Enter 換行；關閉後 Ctrl/Cmd+Enter 發送",
     "language": "語言",
     "languageSearchPlaceholder": "搜索語言...",
     "languageNames": {
@@ -135,7 +184,9 @@
       "vi": "越南語",
       "pt": "葡萄牙語",
       "pl": "波蘭語",
-      "zh-Hant": "繁體中文"
+      "zh-Hant": "繁體中文",
+      "hi": "印地語",
+      "id": "印尼語"
     },
     "layout": "佈局",
     "sidebar": "側邊欄",
@@ -143,9 +194,11 @@
     "sidebarEdgeDepth": "側邊欄邊緣層次",
     "selectedItemTransparency": "選取項目透明度",
     "spotlightPlacement": "Spotlight 位置",
+    "spotlightDimBackground": "背景變暗",
+    "spotlightDetailCard": "懸浮詳情卡片",
     "spotlightPlacementOptions": {
       "top": "頂部",
-      "center": "頁面置中"
+      "center": "置中"
     },
     "left": "左側",
     "right": "右側",
@@ -179,6 +232,8 @@
     "voiceInputPermissionOpenFailed": "無法開啟系統設定",
     "preventSleep": "會話運行時阻止系統休眠",
     "preventSleepDesc": "在任何 Agent 會話正在工作時,保持 Mac 或 PC 處於喚醒狀態。所有會話結束後自動釋放",
+    "highRefreshRate": "高更新率",
+    "highRefreshRateDesc": "以顯示器的最高更新率繪製介面，ProMotion 顯示器上最高 120 Hz。捲動、調整大小和動畫更流暢，但執行時耗電更多",
     "devMode": "開發者模式",
     "devModeDesc": "啓用原生 Inspect Element 右鍵菜單和瀏覽器 DevTools。僅供開發和調試使用",
     "presenceGuidanceOnline": "線上 — Agent 行為指引",
@@ -196,11 +251,10 @@
     "lightAccent": "淺色強調色",
     "darkAccent": "深色強調色",
     "skinGroups": {
-      "orgii": "ORGII",
+      "orgii": "ORG2",
       "codex": "Codex"
     },
     "iconStyle": "圖示樣式",
-    "iconStyleDesc": "單色模式會去除檔案類型與模型圖示的顏色，使其看起來像介面元素而非標誌",
     "iconStyleOptions": {
       "colorful": "彩色",
       "monochrome": "單色"
@@ -212,10 +266,22 @@
       "light": "淺色方塊"
     },
     "translucentSidebar": "半透明側邊欄",
+    "sessionBranchTags": "工作階段上的分支和 PR 標籤",
     "skin": "外觀主題",
     "accent": "強調色",
     "linkSkinVariants": "連動淺色與深色",
-    "linkSkinVariantsDesc": "兩種模式使用同一套外觀主題和強調色。只有同時提供淺色與深色變體的外觀主題才能連動"
+    "linkSkinVariantsDesc": "兩種模式使用同一套外觀主題和強調色。只有同時提供淺色與深色變體的外觀主題才能連動",
+    "license": "授權條款",
+    "licenseTitle": "ORG2 授權條款",
+    "licenseLoading": "正在載入授權條款…",
+    "licenseLoadFailed": "無法載入應用程式授權條款",
+    "tooltips": "提示",
+    "buttonTooltipsEnabled": "顯示按鈕提示",
+    "buttonTooltipsEnabledDesc": "懸停按鈕時顯示名稱和快捷鍵。資訊圖示提示始終顯示",
+    "buttonTooltipDelayMs": "提示延遲",
+    "buttonTooltipDelayImmediate": "立即",
+    "buttonTooltipDelaySeconds": "{{seconds}} 秒",
+    "modelPickerStyle": "模型選擇器"
   },
   "background": {
     "title": "背景",
@@ -382,14 +448,14 @@
     "desktopSafetyDeepLinkAction": "打開 Wingman → Safety",
     "desktopConfig": {
       "title": "Desktop Safety",
-      "hideBeforeAction": "桌面控制時隱藏 ORGII",
-      "hideBeforeActionHelper": "Peekaboo 操作期間隱藏 ORGII 主視窗，並顯示 Wingman 列和浮動提示，避免 Agent 手動管理焦點。",
+      "hideBeforeAction": "桌面控制時隱藏 ORG2",
+      "hideBeforeActionHelper": "Peekaboo 操作期間隱藏 ORG2 主視窗，並顯示 Wingman 列和浮動提示，避免 Agent 手動管理焦點",
       "antiDetection": "HID 反自動化強化",
-      "antiDetectionHelper": "讓 Peekaboo 透過真實的 CGEvent（HID）事件執行點擊與按鍵，而非純粹的輔助使用操作，從而降低具有反自動化偵測的應用程式（如微信）封鎖桌面控制的可能性。",
+      "antiDetectionHelper": "讓 Peekaboo 透過真實的 CGEvent（HID）事件執行點擊與按鍵，而非純粹的輔助使用操作，從而降低具有反自動化偵測的應用程式（如微信）封鎖桌面控制的可能性",
       "humanInputProfile": "擬人化輸入節奏",
-      "humanInputProfileHelper": "為合成按鍵套用擬人化的時間節奏。關閉後將以最高速度輸入。",
+      "humanInputProfileHelper": "為合成按鍵套用擬人化的時間節奏。關閉後將以最高速度輸入",
       "escapeAbort": "System Escape key aborts",
-      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded."
+      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded"
     },
     "skillMissingBins": "缺少命令：{{bins}}",
     "skillMissingEnv": "缺少環境變量：{{vars}}",
@@ -458,7 +524,6 @@
     "gitOperations": "Git 操作",
     "gitOperationsDesc": "Git pull、push 和同步通知",
     "soundPreset": "通知音效",
-    "soundPresetDesc": "選擇通知提醒時播放的聲音",
     "previewSound": "試聽",
     "soundPresets": {
       "classic": "經典雙音",
@@ -513,9 +578,13 @@
     "wordWrap": "自動換行",
     "autoSave": "自動儲存",
     "minimap": "小地圖",
+    "hideMinimap": "隱藏縮圖",
     "indentGuides": "縮進參考線",
     "treeIndentGuides": "樹視圖縮進參考線",
     "highlightActiveLine": "目前行高亮",
+    "diffViewMode": "差異檢視",
+    "gitBlame": "Git Blame",
+    "splitDiffCenteredLineNumbers": "並排差異檢視行號置中",
     "shellsOpenWith": "Shell 打開方式",
     "shellsOpenWithDesc": "新終端的初始工作目錄",
     "repoPath": "倉庫路徑",
@@ -550,7 +619,7 @@
       "title": "Git",
       "pullStrategy": "Pull 策略",
       "pullStrategyDesc": "同步時 git pull 如何整合 remote 更改",
-      "pullStrategyHint": "Rebase（默認）：將你的 commit replay 到 remote 之上，創建 linear history。\n\nMerge：branch 有 diverge 時創建 merge commit，保留完整 history。\n\nFast-forward only：僅在不需要 merge 時允許 pull，若 branch 已 diverge 則拒絕。",
+      "pullStrategyHint": "Rebase（默認）：將你的 commit replay 到 remote 之上，創建 linear history。\n\nMerge：branch 有 diverge 時創建 merge commit，保留完整 history。\n\nFast-forward only：僅在不需要 merge 時允許 pull，若 branch 已 diverge 則拒絕",
       "strategyMerge": "Merge",
       "strategyRebase": "Rebase（默認）",
       "strategyFfOnly": "僅 Fast-forward（嚴格）",
@@ -584,20 +653,49 @@
     "fontFamilyCustom": "自定義"
   },
   "update": {
+    "downloading": "正在下載更新…",
+    "downloadingPercent": "正在下載更新… {{percent}}%",
+    "preparingDownload": "正在準備下載…",
+    "downloadBytes": "{{downloaded}} / {{total}}",
+    "downloadedBytes": "已下載 {{downloaded}}",
+    "downloadProgress": "更新下載進度",
+    "inProgress": "進行中",
+    "openProgressLabel": "更新下載{{progress}}，開啟進度通知",
+    "openProgress": "開啟更新下載進度",
+    "available": "有可用更新",
+    "availableVersion": "版本 {{version}} 已可安裝",
+    "updateNow": "立即更新",
+    "checkFailed": "檢查更新失敗",
+    "checking": "正在檢查更新…",
+    "officialInstalled": "正式版已安裝",
+    "officialInstalledDesc": "{{version}} 已安裝至 {{path}}，目前本機組建繼續執行且不受影響",
+    "downloadFailed": "更新下載失敗",
+    "retryNow": "立即重試",
+    "downloadTimeout": "下載逾時，請檢查網路或代理伺服器後重試",
+    "installUnavailable": "目前平台上的本機組建無法安全安裝發行版本",
+    "installing": "正在安裝更新",
+    "preparingInstall": "正在準備 v{{version}}…",
+    "installed": "更新已安裝",
+    "installFailed": "更新安裝失敗",
+    "checked": "已檢查更新",
     "channel": "更新通道",
     "channelDesc": "Beta 通道會先於正式版收到預發布版本。切換回正式版不會降級，將在下一個正式版本發布時生效",
     "channelStable": "正式版",
     "channelBeta": "Beta",
     "detectUpdate": "檢測更新",
     "currentVersion": "目前版本",
-    "installConfirmTitle": "更新已準備好安裝",
-    "installConfirmDesc": "版本 {{version}} 已下載。安裝並重新啓動 ORGII 前，請儲存正在進行的工作",
+    "installConfirmTitle": "更新已就緒",
+    "installConfirmDesc": "版本 {{version}} 已就緒，重新啟動前請儲存工作",
     "installAndRestart": "安裝並重新啓動",
-    "installOfficialConfirmTitle": "正式版已準備好安裝",
-    "installOfficialConfirmDesc": "將正式版 {{version}} 安裝到 /Applications/ORG2.app。目前本機構建會保持開啓且不受影響",
-    "installOfficial": "安裝正式版 App",
+    "installOfficialConfirmTitle": "正式版已就緒",
+    "installOfficialConfirmDesc": "獨立安裝 {{version}}，目前組建保持執行",
+    "installOfficial": "安裝正式版",
     "localBuild": "本機構建",
-    "skipVersion": "跳過此版本"
+    "upToDate": "ORG2 已是最新版本。",
+    "upToDateVersion": "ORG2 已是最新版本（v{{version}}）。",
+    "officialAlreadyInstalled": "官方 ORG2 v{{version}} 已安裝在 /Applications 中。",
+    "automaticRetry": "{{error}} ORG2 將在背景重試，並逐步延長重試間隔。",
+    "restarting": "正在重新啟動 ORG2 以完成更新。"
   },
   "monitor": {
     "appMemory": "應用程式記憶體",
@@ -730,7 +828,7 @@
     "tableVersion": "版本",
     "tableStatus": "狀態",
     "installSection": "安裝",
-    "installHintNote": "針對你當前平臺的建議安裝命令。大多數系統依賴需要管理員權限，所以我們不會自動執行——請複製到你的 terminal 中運行。"
+    "installHintNote": "針對你當前平臺的建議安裝命令。大多數系統依賴需要管理員權限，所以我們不會自動執行——請複製到你的 terminal 中運行"
   },
   "agentSessions": {
     "chatFontSize": "聊天字體大小",
@@ -740,10 +838,8 @@
     "typingAnimationDesc": "爲 Agent 消息啓用打字機動畫",
     "typingSpeed": "打字速度",
     "typingSpeedDesc": "每個字符的毫秒數（1ms = 最快，50ms = 最慢）",
-    "decryptEffect": "解密效果",
-    "decryptEffectDesc": "爲 Agent 消息啓用解密動畫效果",
-    "sendOnEnter": "Enter 發送消息",
-    "sendOnEnterDesc": "啟用後 Enter 發送，Shift+Enter 與 Ctrl/Cmd+Enter 換行；關閉後 Ctrl/Cmd+Enter 發送"
+    "sendOnEnter": "發送消息快速鍵",
+    "sendOnEnterDesc": "選擇發送消息的快速鍵；其他 Enter 組合鍵用於換行"
   },
   "indexing": {
     "noWorkspaceMemories": "暫無工作區記憶。會話提取工作區信息後，記憶將出現在這裏。",
@@ -792,7 +888,7 @@
   "agentEvolution": {
     "enableForAgent": "為 {{agentName}} 啟用進化",
     "noAgentsTitle": "沒有可用 Agent",
-    "noAgentsSubtitle": "建立或匯入 Agent 以設定進化。"
+    "noAgentsSubtitle": "建立或匯入 Agent 以設定進化"
   },
   "org": {},
   "learningsBrowser": {
@@ -858,10 +954,12 @@
   "appearance": {
     "tabApp": "應用",
     "tabCodeEditor": "代碼編輯器",
-    "tabChatPanel": "聊天面板"
+    "tabChatPanel": "聊天面板",
+    "chatHistory": "聊天記錄",
+    "composer": "輸入框",
+    "newChatPage": "新聊天頁面"
   },
   "harnessConnections": {
-    "description": "選擇各程式開發工具使用的連線",
     "current": "目前設定的連線",
     "scope": "適用於本機 CLI 預設設定；專案設定和執行中的工作階段可能覆蓋此設定",
     "original": "原始設定",
@@ -872,9 +970,9 @@
     "model": "模型",
     "routing": "連線方式",
     "direct": "直接連線",
-    "proxy": "透過 ORGII",
-    "directHelp": "關閉 ORGII 後仍可使用",
-    "proxyHelp": "需要保持 ORGII 執行",
+    "proxy": "透過 ORG2",
+    "directHelp": "關閉 ORG2 後仍可使用",
+    "proxyHelp": "需要保持 ORG2 執行",
     "advanced": "進階",
     "test": "測試連線",
     "testHelp": "向所選服務商傳送兩個小型請求，檢查工具呼叫和串流回應；可能產生使用費用",
@@ -885,12 +983,14 @@
     "apply": "使用此連線",
     "applied": "設定已儲存，請建立新的工具工作階段以使用此設定",
     "restore": "還原原始設定",
+    "disconnect": "斷開",
+    "overlayHelp": "連線設定單獨儲存在 {{path}}。「開啟終端機」會使用這份設定啟動 Claude Code，並保留既有對話歷史。工作階段追蹤 hooks 由獨立設定控制",
     "restored": "原始設定已還原，請建立新的工具工作階段",
     "refresh": "重新整理",
     "refreshed": "工具連線已重新整理",
     "refreshFailed": "無法重新整理工具連線：{{error}}",
     "loading": "正在讀取工具設定…",
-    "conflict": "設定已在 ORGII 外部變更。套用或還原前請檢查這些變更；系統不會覆蓋它們",
+    "conflict": "設定已在 ORG2 外部變更。套用或還原前請檢查這些變更；系統不會覆蓋它們",
     "credentialsNote": "直接連線模式會將憑證寫入存取受限的 CLI 設定檔；刪除金鑰庫中的金鑰不會撤銷已匯出的憑證",
     "notInstalled": "請先安裝此工具，再測試或套用連線",
     "appSelector": "應用程式",
@@ -898,7 +998,36 @@
     "authentication": "驗證方式",
     "desktopScope": "單獨設定 Claude Desktop，不影響 Claude Code CLI；套用後需完全結束並重新開啟桌面應用程式",
     "desktopApplied": "桌面設定已儲存，請完全結束並重新開啟 Claude Desktop",
-    "desktopRestored": "已還原先前的桌面設定，請完全結束並重新開啟 Claude Desktop"
+    "desktopRestored": "已還原先前的桌面設定，請完全結束並重新開啟 Claude Desktop",
+    "advancedDescription": "自訂 API 連線和一次性憑證遷移",
+    "marketApps": {
+      "isolatedStorage": "此官方 App 使用獨立設定和對話儲存，不會變更主 App 或 CLI 的設定。舊對話不會自動匯入",
+      "isolatedClaudeStorage": "退出 Claude Desktop 和 Claude Code 後，相容的對話會自動同步",
+      "workspaceHelp": "为当前 App 选择套餐和模型。各 App 独立保存选择，切换 ORG2 聊天来源不会修改 App。",
+      "loading": "正在載入 ORG2 Market 套餐…",
+      "loadFailed": "無法載入 ORG2 Market 套餐",
+      "nonePurchased": "目前沒有可用的 ORG2 Market 套餐",
+      "checking": "正在檢查應用程式…",
+      "unavailable": "目前安裝版本暫不可用",
+      "notInstalled": "尚未安裝",
+      "original": "正在使用應用程式原有設定",
+      "open": "開啟應用程式",
+      "connected": "應用程式已開始跟隨 ORG2 目前工作區",
+      "opened": "應用程式已開啟",
+      "disconnected": "已還原應用程式先前的設定",
+      "actionFailed": "無法更新此應用程式連線",
+      "openFailed": "無法開啟此應用程式",
+      "restoreRequired": "請先還原此應用程式的原始設定，然後重新選擇方案並套用連線",
+      "versionUnverified": "目前 ORG2 版本尚未驗證此桌面應用程式版本的獨立連線相容性，請更新 ORG2 後重試",
+      "workspaceNumber": "服務 {{index}} / {{count}}",
+      "openTerminal": "開啟終端機",
+      "terminalOpened": "已開啟終端機",
+      "provider": "ORG2 Market",
+      "multiPackageHelp": "可同時選擇最多 8 個方案和一個預設模型，連線後可在 App 內切換方案",
+      "auxiliaryBilling": "Claude Code 自動產生標題、記憶和壓縮上下文的呼叫計入預設套餐；只有對話本身跟隨你用 /model 選擇的套餐",
+      "defaultModel": "預設模型",
+      "packageLimit": "最多選擇 8 個方案"
+    }
   },
   "claudeProfiles": {
     "new": "新增設定檔",
@@ -939,10 +1068,10 @@
     "developerOptions": "開發者選項",
     "retryConnection": "重試連線",
     "enabled": "行動遙控",
-    "enabledDesc": "讓已配對的手機透過同一個 Wi‑Fi 區域網路或公開 Relay 操控此桌面上的 Agent 工作階段",
+    "enabledDesc": "用手機查看和操作此電腦上的工作階段",
     "securityNotice": "開啟區域網路曝露後，同一網路內持有連線 URL 和 token 的任何人都可以控制工作階段。若懷疑外洩，請重新產生 token",
-    "outdoorTitle": "戶外連線",
-    "outdoorDesc": "讓桌面主動向外連線至公開 Relay，手機使用 4G、5G 或其他網路也能連線",
+    "outdoorTitle": "允許網際網路連線",
+    "outdoorDesc": "關閉後，手機無法透過網際網路連線至此電腦",
     "relayEnabled": "連線至公開 Relay",
     "relayEnabledDesc": "桌面只會建立向外的 WSS 連線，不需要設定路由器連接埠轉發",
     "relayUrl": "Relay 位址",
@@ -951,7 +1080,7 @@
     "relayPresetLocal": "本機",
     "relayPresetProduction": "正式環境",
     "cloudLoginTitle": "ORG2 Cloud 登入",
-    "cloudLoginDescSignedIn": "已以 {{identity}} 登入 — Relay 會使用此帳號進行戶外配對",
+    "cloudLoginDescSignedIn": "已登入 {{identity}}",
     "cloudLoginDescSignedOut": "透過公開 Relay 配對前，請先登入 ORG2 Cloud",
     "relayStatusCloudLoginRequired": "請在「設定 → 通用」登入 ORG2 Cloud，然後重新整理 Relay 狀態",
     "relayStatusAuthFailedSignedIn": "Relay 拒絕了連線 — 請在「設定 → 通用」登出後重新登入",
@@ -962,7 +1091,7 @@
     "relayStatus_disabled": "已停用",
     "relayStatus_config_error": "設定錯誤",
     "relayStatus_stopped": "已停止",
-    "startOutdoorPairing": "產生戶外配對碼",
+    "startOutdoorPairing": "產生配對碼",
     "fullAccess": "允許執行操作",
     "fullAccessDesc": "開啟後手機可傳送訊息、停止工作階段和回應權限請求；關閉後僅能檢視",
     "pairingExpires": "配對碼將在 {{seconds}} 秒後過期",
@@ -997,16 +1126,50 @@
     "pairedDevicesDesc": "透過 Relay 授權的手機；可隨時撤銷存取權",
     "devicesLoadFailed": "無法載入已配對裝置",
     "noDevices": "尚無已配對裝置",
-    "noDevicesDesc": "產生戶外配對碼，然後在行動遙控 PWA 中掃描或貼上",
+    "noDevicesDesc": "新增手機後，即可查看和操作此電腦上的工作階段",
     "deviceLabel": "裝置",
     "deviceTier": "權限層級",
-    "deviceTierFull": "完整存取",
-    "deviceTierReadOnly": "唯讀",
+    "deviceTierFull": "可操作",
+    "deviceTierReadOnly": "僅查看",
     "deviceLastSeen": "最後上線",
     "devicePairedAt": "配對於 {{time}}",
     "deviceLastSeenValue": "最後上線 {{time}}",
     "deviceNeverSeen": "從未連線",
     "deviceOnline": "線上",
-    "deviceOffline": "離線"
+    "deviceOffline": "離線",
+    "addPhone": "新增手機",
+    "pairingPermission": "手機權限",
+    "relayDisabledHint": "網際網路連線已關閉，可在進階設定中開啟"
+  },
+  "development": {
+    "updateAvailable": "有可用更新",
+    "updateAvailableDesc": "全域偽裝為 99.0.0 版本；更新操作僅預覽對話框",
+    "illustrations": "插畫預覽",
+    "illustrationsDesc": "同時預覽所有應用程式插畫的淺色和深色效果，無需更改應用程式主題",
+    "emptyStates": "空狀態",
+    "mockPanelTitle": "開發模擬面板",
+    "mockPanelReset": "全部重設",
+    "mockPanelDone": "完成",
+    "scenario": {
+      "newUser": "新使用者",
+      "newUserDesc": "全新安裝：沒有金鑰、沒有工作目錄、沒有工作階段記錄",
+      "noKeys": "無金鑰",
+      "noKeysDesc": "隱藏已儲存的帳號與模型，以查看金鑰設定提示",
+      "noWorkingDirectories": "無工作目錄",
+      "noWorkingDirectoriesDesc": "隱藏存放庫與工作區資料夾，以查看「開啟資料夾」狀態",
+      "noSessions": "無工作階段",
+      "noSessionsDesc": "隱藏工作階段記錄，以查看首次啟動的空狀態"
+    }
+  },
+  "managedUsage": {
+    "cancel": "取消",
+    "authorize": "啟用套件",
+    "rates": "每百万输入 / 输出 token 价格",
+    "wallet": "打开钱包",
+    "priceRange": "套件價格區間：官方價的 {{min}}%–{{max}}%",
+    "rangeUnavailable": "套件價格區間暫不可用，請重新整理目錄後再啟用套件。",
+    "walletIncluded": "包含全部模型，直接使用錢包餘額。",
+    "walletUnavailable": "錢包直接扣款暫不可用，請在服務更新後重新整理。",
+    "walletConsent": "依所示價格區間啟用此套件的全部模型，實際用量直接從錢包餘額扣費，無需為套件單獨預存或設定額度。"
   }
 }

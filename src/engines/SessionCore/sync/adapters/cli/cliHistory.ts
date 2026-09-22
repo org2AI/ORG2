@@ -5,6 +5,11 @@ import { cliSessionContextUsage } from "@src/api/tauri/session/contextUsage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { createLogger } from "@src/hooks/logger";
 import type { CliSessionStatus } from "@src/types/session/session";
+import {
+  imageRefToRustPath,
+  isDirectImageUrl,
+  parseTranscriptImageRef,
+} from "@src/util/file/imageRefs";
 
 import type { PostLoadResult } from "../../types";
 
@@ -21,7 +26,9 @@ export function convertResultImages(event: SessionEvent): SessionEvent {
   const result = event.result as Record<string, unknown> | undefined;
   if (!result?.images || !Array.isArray(result.images)) return event;
   const converted = (result.images as string[]).map((imgRef) =>
-    imgRef.startsWith("data:") ? imgRef : convertFileSrc(imgRef)
+    isDirectImageUrl(imgRef) || parseTranscriptImageRef(imgRef)
+      ? imgRef
+      : convertFileSrc(imageRefToRustPath(imgRef))
   );
   return { ...event, result: { ...result, images: converted } };
 }

@@ -40,7 +40,6 @@ export const StyleEditsFooter: React.FC<StyleEditsFooterProps> = memo(
           <ToolbarTooltip label={t("actions.undo")}>
             <Button
               size="small"
-              shape="square"
               iconOnly
               icon={
                 <HugeiconsIcon
@@ -53,7 +52,6 @@ export const StyleEditsFooter: React.FC<StyleEditsFooterProps> = memo(
               disabled={disabled || editCount <= 0}
               onClick={onUndo}
               aria-label={t("actions.undo")}
-              htmlType="button"
             />
           </ToolbarTooltip>
           <Button
@@ -61,7 +59,6 @@ export const StyleEditsFooter: React.FC<StyleEditsFooterProps> = memo(
             size="small"
             disabled={disabled}
             onClick={onSend}
-            htmlType="button"
           >
             {t("workstation.sendStyleEdits")}
           </Button>

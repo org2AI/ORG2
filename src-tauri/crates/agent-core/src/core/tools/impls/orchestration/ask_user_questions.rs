@@ -29,6 +29,37 @@ impl QuestionToolContext {
     }
 }
 
+/// Reject a batch whose elements the model mangled.
+///
+/// The `questions` value is stored verbatim in `QuestionManager::metadata` and
+/// handed straight back by `agent_get_pending_questions`, so an element without
+/// a usable prompt (a bare string, an object keyed differently, a blank
+/// question) would otherwise become a pending request that the UI cannot render
+/// and the frontend contract cannot decode. This is the only writer, so the
+/// invariant belongs here rather than in the readers.
+fn validate_question_elements(questions: &[Value]) -> Result<(), ToolError> {
+    let invalid = questions.iter().enumerate().find(|(_, question)| {
+        !question
+            .get("question")
+            .and_then(Value::as_str)
+            .is_some_and(|text| !text.trim().is_empty())
+    });
+
+    let Some((index, invalid)) = invalid else {
+        return Ok(());
+    };
+
+    // Show the model what it actually sent plus the shape that works, the same
+    // way the non-array branch above does, so it can self-correct.
+    let actual_short = crate::utils::safe_truncate_chars_to_string(&invalid.to_string(), 120);
+    Err(ToolError::InvalidParams(format!(
+        "`questions[{index}]` must be an object with a non-empty string `question`, but got {actual_short}. \
+         Correct format example: \
+         {{\"questions\":[{{\"question\":\"...\",\"header\":\"...\",\"options\":\
+         [{{\"id\":\"opt_a\",\"label\":\"Choice A\",\"description\":\"What A means\"}}]}}]}}"
+    )))
+}
+
 pub struct QuestionTool {
     context: Arc<QuestionToolContext>,
 }
@@ -184,6 +215,8 @@ impl Tool for QuestionTool {
             ));
         }
 
+        validate_question_elements(questions_arr)?;
+
         let request_id = format!("question-{}", uuid::Uuid::new_v4());
 
         // Per-call tool_call_id flows through `CallContext` (constructed
@@ -315,5 +348,54 @@ impl Tool for QuestionTool {
 
     async fn set_session_key(&self, session_key: &str) {
         *self.context.session_id.lock().await = Some(session_key.to_string());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_question_elements;
+    use serde_json::json;
+
+    #[test]
+    fn accepts_a_well_formed_batch() {
+        let questions = vec![
+            json!({"question": "Which target?", "header": "Target"}),
+            json!({"question": "Which branch?"}),
+        ];
+        assert!(validate_question_elements(&questions).is_ok());
+    }
+
+    #[test]
+    fn rejects_elements_without_a_usable_prompt() {
+        for (label, element) in [
+            ("bare string", json!("Which target?")),
+            ("wrong key", json!({"prompt": "Which target?"})),
+            ("blank question", json!({"question": "   "})),
+            ("non-string question", json!({"question": 42})),
+            ("null", json!(null)),
+        ] {
+            let error = validate_question_elements(&[element])
+                .expect_err(&format!("{label} must be rejected"));
+            let message = error.to_string();
+            assert!(
+                message.contains("`questions[0]`"),
+                "{label}: error should name the offending index, got {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn names_the_offending_index_in_a_mixed_batch() {
+        let questions = vec![
+            json!({"question": "Which target?"}),
+            json!({"header": "no question key"}),
+        ];
+        let message = validate_question_elements(&questions)
+            .expect_err("a malformed element must reject the batch")
+            .to_string();
+        assert!(
+            message.contains("`questions[1]`"),
+            "error should point at index 1, got {message}"
+        );
     }
 }

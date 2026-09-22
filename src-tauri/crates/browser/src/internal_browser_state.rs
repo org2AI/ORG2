@@ -28,12 +28,16 @@ fn now_millis() -> u64 {
 }
 
 fn browser_session_id_from_label(label: &str) -> Option<String> {
-    label
-        .strip_prefix(BROWSER_SESSION_LABEL_PREFIX)
-        .filter(|session_id| !session_id.is_empty())
-        .map(str::to_string)
+    let suffix = label.strip_prefix(BROWSER_SESSION_LABEL_PREFIX)?;
+    let session_id = match suffix.split_once("__window__") {
+        Some((session_id, window_label)) if !window_label.is_empty() => session_id,
+        Some(_) => return None,
+        None => suffix,
+    };
+    (!session_id.is_empty()).then(|| session_id.to_string())
 }
 
+#[cfg(test)]
 fn expected_label_for_session(browser_session_id: &str) -> String {
     format!("{BROWSER_SESSION_LABEL_PREFIX}{browser_session_id}")
 }
@@ -50,8 +54,9 @@ fn validate_active_state(state: &ActiveInternalBrowserState) -> Result<(), Strin
             "internal browser label must start with '{BROWSER_SESSION_LABEL_PREFIX}'"
         ));
     }
-    let expected_label = expected_label_for_session(&state.browser_session_id);
-    if state.label != expected_label {
+    if browser_session_id_from_label(&state.label).as_deref()
+        != Some(state.browser_session_id.as_str())
+    {
         return Err(format!(
             "label '{}' does not match browser_session_id '{}'",
             state.label, state.browser_session_id
@@ -232,6 +237,23 @@ mod tests {
         invalid.label = "browser-session-other".to_string();
 
         assert!(validate_active_state(&invalid).is_err());
+    }
+
+    #[test]
+    fn validates_and_lists_window_scoped_browser_session_identity() {
+        let mut detached = state("abc", 1);
+        detached.label = "browser-session-abc__window__app-window-station-my-station".into();
+        assert!(validate_active_state(&detached).is_ok());
+        assert_eq!(
+            browser_session_id_from_label(&detached.label).as_deref(),
+            Some("abc")
+        );
+        detached.browser_session_id = "other".into();
+        assert!(validate_active_state(&detached).is_err());
+        assert_eq!(
+            browser_session_id_from_label("browser-session-abc__window__"),
+            None
+        );
     }
 
     #[test]

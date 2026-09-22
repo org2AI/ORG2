@@ -8,8 +8,8 @@ import React from "react";
 
 import Button from "@src/components/Button";
 import TabPill from "@src/components/TabPill";
+import { PANEL_HEADER_TOKENS } from "@src/components/layout/blocks/PanelHeader/tokens";
 import { ArrowLeft01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 
 import {
   MONTH_NAMES_SHORT,
@@ -135,14 +135,15 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         />
 
         {/* Today */}
-        <button
-          type="button"
-          className="ml-1 cursor-pointer rounded-md border-none bg-fill-1 px-3 py-1 text-xs text-text-2 transition-all duration-150 hover:bg-fill-2 hover:text-text-1"
+        <Button
+          variant="tertiary"
+          size="mini"
+          className="ml-1 text-xs transition-all hover:bg-fill-2 hover:text-text-1"
           onClick={onGoToToday}
           title="Go to today"
         >
           Today
-        </button>
+        </Button>
       </div>
     </div>
   );

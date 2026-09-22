@@ -186,7 +186,7 @@ const CanvasApp: React.FC<SimulatorAppProps> = () => {
 
   const cardTitle = selectedPayload
     ? getDefaultTitle(selectedPayload, t)
-    : t("canvasCard.titleHtml", "Agent Preview");
+    : t("canvasCard.titleHtml");
   const designAvailable =
     activeTab === "canvas" &&
     selectedPayload !== null &&
@@ -215,23 +215,14 @@ const CanvasApp: React.FC<SimulatorAppProps> = () => {
     [selectedPayload, revisionActive]
   );
   const shareHint = shareAvailability.available
-    ? t("canvasApp.shareHint", "Share this Canvas snapshot")
+    ? t("canvasApp.shareHint")
     : shareAvailability.reason === "streaming"
-      ? t(
-          "canvasApp.shareWaitForRevision",
-          "Wait for the Canvas update to finish"
-        )
+      ? t("canvasApp.shareWaitForRevision")
       : shareAvailability.reason === "local-url"
-        ? t(
-            "canvasApp.shareLocalUrlUnavailable",
-            "Local URLs cannot be opened by other people"
-          )
+        ? t("canvasApp.shareLocalUrlUnavailable")
         : shareAvailability.reason === "source-too-large"
-          ? t(
-              "canvasApp.shareTooLarge",
-              "This Canvas is too large for a share link"
-            )
-          : t("canvasApp.shareEmpty", "This Canvas has no shareable content");
+          ? t("canvasApp.shareTooLarge")
+          : t("canvasApp.shareEmpty");
   const handleShare = useCallback(() => {
     if (!selectedPayload || !shareAvailability.available) return;
     openCanvasShare(selectedPayload, cardTitle);
@@ -322,14 +313,14 @@ const CanvasApp: React.FC<SimulatorAppProps> = () => {
         <Placeholder
           variant="empty"
           placement="detail-panel"
-          title={t("canvasApp.empty", "No canvas rendered yet")}
+          title={t("canvasApp.empty")}
           fillParentHeight
         />
       ) : !selectedPayload ? (
         <Placeholder
           variant="empty"
           placement="detail-panel"
-          title={t("canvasCard.empty", "No content")}
+          title={t("canvasCard.empty")}
           fillParentHeight
         />
       ) : activeTab === "compare" && comparePayloads ? (

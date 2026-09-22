@@ -15,12 +15,13 @@ import {
   sidebarCollapsedAtom,
 } from "@src/store/ui/sidebarAtom";
 
+import { SIDEBAR_HOVER_PREVIEW_DELAY } from "./config";
+
 // ============================================
 // Constants
 // ============================================
 
 const HOVER_TRIGGER_WIDTH = 12; // Width of the hover trigger zone in pixels
-const HOVER_DELAY = 100; // Delay before showing sidebar (ms)
 const HIDE_DELAY = 200; // Delay before hiding sidebar (ms)
 const HOVER_SIDEBAR_WIDTH = DEFAULT_SIDEBAR_WIDTH; // Width of the hover sidebar
 
@@ -41,7 +42,7 @@ const HoverSidebarTrigger: React.FC = () => {
   const handleMouseEnter = useCallback(() => {
     showTimeoutRef.current = setTimeout(() => {
       setIsHoverSidebarOpen(true);
-    }, HOVER_DELAY);
+    }, SIDEBAR_HOVER_PREVIEW_DELAY);
   }, [setIsHoverSidebarOpen]);
 
   const handleMouseLeave = useCallback(() => {

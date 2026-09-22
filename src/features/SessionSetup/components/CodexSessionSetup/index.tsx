@@ -1,27 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
-import PageNotice from "@src/components/PageNotice";
-import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
-import SessionSetupStepIndicator from "@src/features/SessionSetup/components/SessionSetupStepIndicator";
+import { OAuthSessionSetupShell } from "@src/features/SessionSetup/components/OAuthSessionSetupShell";
 import { useCodexOAuthCapture } from "@src/features/SessionSetup/hooks/useCodexOAuthCapture";
-import { useOAuthBrowserAutoStart } from "@src/features/SessionSetup/hooks/useOAuthBrowserAutoStart";
 import { useWebviewPositionSync } from "@src/features/SessionSetup/hooks/useWebviewPositionSync";
-import {
-  AlertCircleIcon,
-  ArrowRight01Icon,
-  Cancel01Icon,
-  CheckmarkCircle01Icon,
-  HugeiconsIcon,
-  Loading03Icon,
-  Login01Icon,
-  Refresh04Icon,
-} from "@src/icons";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 export interface CodexSessionValues {
   accessToken: string;
@@ -52,26 +34,9 @@ const CodexSessionSetup: React.FC<CodexSessionSetupProps> = ({
   autoStart = false,
 }) => {
   const { t } = useTranslation("integrations");
-  const [showBrowser, setShowBrowser] = useState(autoStart);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const {
-    isSigningIn,
-    isSignedIn,
-    isWebviewOpen,
-    isWebviewLoading,
-    currentUrl,
-    authUrl,
-    error,
-    accessToken,
-    refreshToken,
-    idToken,
-    expiresIn,
-    startLogin,
-    closeWebview,
-    reset,
-    updatePosition,
-  } = useCodexOAuthCapture({
+  const capture = useCodexOAuthCapture({
     containerRef,
     debug,
     onTokenCaptured: (response) => {
@@ -83,239 +48,67 @@ const CodexSessionSetup: React.FC<CodexSessionSetupProps> = ({
       });
     },
   });
-
-  useEffect(() => {
-    onBrowserStateChange?.(showBrowser);
-  }, [showBrowser, onBrowserStateChange]);
-
-  useEffect(() => {
-    if (!isWebviewOpen && isSignedIn) {
-      queueMicrotask(() => setShowBrowser(false));
-    }
-  }, [isSignedIn, isWebviewOpen]);
-
-  useOAuthBrowserAutoStart(showBrowser, startLogin);
+  const {
+    isWebviewOpen,
+    currentUrl,
+    accessToken,
+    refreshToken,
+    idToken,
+    expiresIn,
+    updatePosition,
+  } = capture;
 
   useWebviewPositionSync(containerRef, isWebviewOpen, updatePosition);
 
-  const handleCloseBrowser = useCallback(() => {
-    void closeWebview();
-    setShowBrowser(false);
-  }, [closeWebview]);
-
-  useEffect(() => {
-    if (closeSignal <= 0 || !showBrowser) return;
-    queueMicrotask(() => handleCloseBrowser());
-  }, [closeSignal, handleCloseBrowser, showBrowser]);
-
-  const handleRetry = useCallback(() => {
-    reset();
-    setShowBrowser(true);
-    void startLogin();
-  }, [reset, startLogin]);
-
-  const hasToken = tokenDetected || isSignedIn || Boolean(accessToken);
-  const displayError = error ?? tokenError;
-  const currentStep = hasToken ? 2 : 1;
+  const hasToken = tokenDetected || capture.isSignedIn || Boolean(accessToken);
 
   return (
-    <div
-      className="flex h-full min-h-0 w-full flex-1 flex-col gap-3"
-      data-testid="codex-session-setup"
-    >
-      {!showBrowser ? (
-        <SectionContainer>
-          <SectionRow
-            label={
-              hasToken
-                ? t("keyVault.codexSignedIn")
-                : t("keyVault.codexSignInTitle")
-            }
-            description={
-              hasToken ? t("keyVault.signedIn") : t("keyVault.codexSignInDesc")
-            }
-            required
-          >
-            <Button
-              variant={hasToken ? "success" : "primary"}
-              appearance={hasToken ? "outline" : "solid"}
-              size="default"
-              loading={isSigningIn || isWebviewLoading}
-              disabled={isSigningIn || isWebviewLoading}
-              onClick={() => setShowBrowser(true)}
-              className="h-8 min-h-8"
-              data-testid="codex-oauth-signin"
-            >
-              {hasToken
-                ? `✓ ${t("keyVault.signedIn")}`
-                : t("keyVault.signInWithCodex")}
-            </Button>
-          </SectionRow>
-        </SectionContainer>
-      ) : (
-        <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden bg-fill-2"
-          data-testid="codex-oauth-browser-shell"
-        >
-          <div className="flex h-10 items-center border-b border-border-2 bg-fill-2 px-3">
-            <div
-              className="flex-1 overflow-hidden text-[12px] text-ellipsis whitespace-nowrap text-text-1"
-              data-testid="codex-oauth-current-url"
-            >
-              {currentUrl || authUrl || t("keyVault.codexReadyToSignIn")}
+    <OAuthSessionSetupShell
+      providerId="codex"
+      containerRef={containerRef}
+      capture={capture}
+      hasToken={hasToken}
+      tokenError={tokenError}
+      onClearTokenError={onClearTokenError}
+      onBrowserStateChange={onBrowserStateChange}
+      closeSignal={closeSignal}
+      initiallyOpen={autoStart}
+      copy={{
+        signInTitle: t("keyVault.codexSignInTitle"),
+        signInDescription: t("keyVault.codexSignInDesc"),
+        signInButton: t("keyVault.signInWithCodex"),
+        signedInTitle: t("keyVault.codexSignedIn"),
+        signedInStatus: t("keyVault.signedIn"),
+        loginStep: t("keyVault.loginStep"),
+        browserHint: t("keyVault.codexBrowserHint"),
+        readyTitle: t("keyVault.codexReadyToSignIn"),
+        oauthHint: t("keyVault.codexOAuthHint"),
+        loading: t("keyVault.loadingText"),
+        failedToLoadBrowser: t("keyVault.failedToLoadBrowser"),
+        retry: t("common:actions.retry"),
+        errorHint: t("keyVault.codexSignInErrorHint"),
+      }}
+      debugContent={
+        debug ? (
+          <>
+            <div>
+              Access Token:{" "}
+              {accessToken ? `${accessToken.slice(0, 24)}...` : "null"}
             </div>
-            <Button
-              variant="tertiary"
-              size="mini"
-              icon={
-                <HugeiconsIcon
-                  icon={Refresh04Icon}
-                  data-icon="refresh-cw"
-                  size={12}
-                />
-              }
-              iconOnly
-              onClick={handleRetry}
-            />
-            <Button
-              variant="tertiary"
-              size="mini"
-              icon={
-                <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
-              }
-              iconOnly
-              onClick={handleCloseBrowser}
-              data-testid="codex-oauth-browser-close"
-            />
-          </div>
-
-          <div className="flex h-9 items-center justify-between gap-2 border-b border-border-2 bg-fill-2 px-4">
-            <div className="flex items-center gap-2">
-              <SessionSetupStepIndicator
-                step={1}
-                currentStep={currentStep}
-                label={t("keyVault.loginStep")}
-                completed={hasToken}
-              />
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                data-icon="chevron-right"
-                size={14}
-                className="text-text-3"
-              />
-              <SessionSetupStepIndicator
-                step={2}
-                currentStep={currentStep}
-                label={t("keyVault.signedIn")}
-                completed={hasToken}
-              />
+            <div>
+              Refresh Token:{" "}
+              {refreshToken ? `${refreshToken.slice(0, 24)}...` : "null"}
             </div>
-            {!hasToken && (
-              <span className="text-[12px] text-text-2">
-                {t("keyVault.codexBrowserHint")}
-              </span>
-            )}
-          </div>
-
-          <div
-            ref={containerRef}
-            className="relative min-h-0 w-full flex-1 overflow-hidden bg-bg-1"
-            data-testid="codex-oauth-webview-container"
-          >
-            {(isSigningIn || isWebviewLoading) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-bg-1">
-                <HugeiconsIcon
-                  icon={Loading03Icon}
-                  data-icon="loader-2"
-                  size={SPINNER_TOKENS.default}
-                  className="animate-spin text-primary-6"
-                />
-                <span className="ml-2 text-text-2">
-                  {t("keyVault.loadingText")}
-                </span>
-              </div>
-            )}
-            {displayError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg-1 p-6 text-center">
-                <HugeiconsIcon
-                  icon={AlertCircleIcon}
-                  data-icon="alert-circle"
-                  size={32}
-                  className="mb-3 text-danger-6"
-                />
-                <div className="mb-2 text-[14px] text-text-2">
-                  {t("keyVault.failedToLoadBrowser")}
-                </div>
-                <div className="mb-4 text-[12px] text-text-3">
-                  {displayError}
-                </div>
-                <Button variant="primary" size="default" onClick={handleRetry}>
-                  {t("common:actions.retry")}
-                </Button>
-              </div>
-            )}
-            {!isWebviewOpen && !isSigningIn && !displayError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg-1 p-6 text-center">
-                {hasToken ? (
-                  <HugeiconsIcon
-                    icon={CheckmarkCircle01Icon}
-                    data-icon="check-circle"
-                    size={32}
-                    className="mb-3 text-success-6"
-                  />
-                ) : (
-                  <HugeiconsIcon
-                    icon={Login01Icon}
-                    data-icon="log-in"
-                    size={32}
-                    className="mb-3 text-text-3"
-                  />
-                )}
-                <div className="mb-2 text-[14px] font-medium text-text-1">
-                  {hasToken
-                    ? t("keyVault.codexSignedIn")
-                    : t("keyVault.codexReadyToSignIn")}
-                </div>
-                <div className="max-w-sm text-[12px] text-text-3">
-                  {t("keyVault.codexOAuthHint")}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {hasToken && !showBrowser && (
-        <PageNotice type="success">{t("keyVault.codexSignedIn")}</PageNotice>
-      )}
-
-      {displayError && !showBrowser && (
-        <PageNotice
-          type="danger"
-          title={displayError}
-          onClose={error ? reset : onClearTokenError}
-        >
-          {t("keyVault.codexSignInErrorHint")}
-        </PageNotice>
-      )}
-
-      {debug && (
-        <div className="mt-4 rounded-lg bg-bg-3 p-3 text-[11px] text-text-3">
-          <div>
-            Access Token:{" "}
-            {accessToken ? `${accessToken.slice(0, 24)}...` : "null"}
-          </div>
-          <div>
-            Refresh Token:{" "}
-            {refreshToken ? `${refreshToken.slice(0, 24)}...` : "null"}
-          </div>
-          <div>Id Token: {idToken ? `${idToken.slice(0, 24)}...` : "null"}</div>
-          <div>Expires In: {expiresIn ?? "null"}</div>
-          <div>Is Webview Open: {String(isWebviewOpen)}</div>
-          <div>Current URL: {currentUrl || "null"}</div>
-        </div>
-      )}
-    </div>
+            <div>
+              Id Token: {idToken ? `${idToken.slice(0, 24)}...` : "null"}
+            </div>
+            <div>Expires In: {expiresIn ?? "null"}</div>
+            <div>Is Webview Open: {String(isWebviewOpen)}</div>
+            <div>Current URL: {currentUrl || "null"}</div>
+          </>
+        ) : undefined
+      }
+    />
   );
 };
 

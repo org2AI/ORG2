@@ -3,11 +3,13 @@
  *
  * Manages expand/collapse state for all ComposerStack sections:
  *
- * Primary cards (question, permission, modeswitch) — always-visible when
- * active; collapse to a primary-6 pill at the front of the pill row.
+ * Primary cards (question, permission, modeswitch, plan) — start collapsed
+ * as a primary-6 pill at the front of the pill row; the card only opens when
+ * the user clicks its pill. New pending data never auto-expands a card.
  *
- * Secondary sections (queue, processes, files) — pill-only; one card open
- * at a time.
+ * Secondary sections (processes, files) — pill-only; one card open at a
+ * time. Queued messages are not a section: they always render as the tray
+ * tucked behind the composer (see QueuedMessages).
  *
  * Shared between ChatView and PlaygroundChatPanel.
  */
@@ -21,7 +23,6 @@ import {
   GitCommitHorizontalIcon,
   HelpCircleIcon,
   HugeiconsIcon,
-  MessageCircleMoreIcon,
   NotificationBubbleIcon,
 } from "@src/icons";
 
@@ -44,9 +45,6 @@ export interface GitArtifactStats {
 
 export interface UseComposerSectionsOptions {
   sessionId?: string | null;
-  queueCount: number;
-  /** Current session's newest durable queue identity. */
-  queueTailKey?: string | null;
   /** Whether the AskQuestionCard currently has pending data (controls pill visibility). */
   hasQuestion?: boolean;
   /** Whether the PermissionCard currently has pending data. */
@@ -129,8 +127,6 @@ export function createFileInlineSection({
 
 export function useComposerSections({
   sessionId,
-  queueCount,
-  queueTailKey = null,
   hasQuestion = false,
   hasPermission = false,
   hasModeSwitch = false,
@@ -141,15 +137,13 @@ export function useComposerSections({
   filesMenu,
   includeFileSections = true,
 }: UseComposerSectionsOptions) {
-  // Primary card collapsed states
-  const [questionCollapsed, setQuestionCollapsed] = useState(false);
-  const [permissionCollapsed, setPermissionCollapsed] = useState(false);
-  const [modeSwitchCollapsed, setModeSwitchCollapsed] = useState(false);
-  const [planCollapsed, setPlanCollapsed] = useState(false);
+  // Primary card collapsed states — collapsed until the user opens the pill.
+  const [questionCollapsed, setQuestionCollapsed] = useState(true);
+  const [permissionCollapsed, setPermissionCollapsed] = useState(true);
+  const [modeSwitchCollapsed, setModeSwitchCollapsed] = useState(true);
+  const [planCollapsed, setPlanCollapsed] = useState(true);
 
-  // Secondary section — only one card open at a time. Persist this per
-  // session so queued messages stay discoverable when users switch away and
-  // return after the turn has completed.
+  // Secondary section — only one card open at a time, remembered per session.
   const [activeSection, setActiveSection] =
     useState<ComposerActiveSection>(null);
   const [activeSectionBySession, setActiveSectionBySession] = useState(
@@ -180,7 +174,6 @@ export function useComposerSections({
         previousSessionId: prevSessionId,
         nextSessionId: sessionId,
         currentActiveSection: activeSection,
-        queueCount,
         previouslyStoredSection: sessionId
           ? activeSectionBySession.get(sessionId)
           : undefined,
@@ -198,54 +191,27 @@ export function useComposerSections({
     setFileChangeStats({ count: 0, additions: 0, deletions: 0 });
   }
 
-  // Auto-expand only for a new durable row in this session. A global enqueue
-  // counter made traffic in session B open the queue card in session A.
-  const [prevQueueTailKey, setPrevQueueTailKey] = useState(queueTailKey);
-  const [prevQueueCount, setPrevQueueCount] = useState(queueCount);
-  const [queueAutoOpenedForCount, setQueueAutoOpenedForCount] = useState(
-    queueCount > 0 ? queueCount : 0
-  );
-  if (prevQueueTailKey !== queueTailKey || prevQueueCount !== queueCount) {
-    const hasNewQueueWork =
-      queueCount > 0 &&
-      (queueTailKey !== prevQueueTailKey || queueCount > prevQueueCount);
-    setPrevQueueTailKey(queueTailKey);
-    setPrevQueueCount(queueCount);
-    setQueueAutoOpenedForCount(hasNewQueueWork ? queueCount : 0);
-    if (hasNewQueueWork) {
-      setActiveSection("queue");
-    }
-  } else if (queueCount === 0 && queueAutoOpenedForCount !== 0) {
-    setQueueAutoOpenedForCount(0);
-  } else if (
-    queueCount > 0 &&
-    activeSection !== "queue" &&
-    queueAutoOpenedForCount < queueCount
-  ) {
-    setQueueAutoOpenedForCount(queueCount);
-    setActiveSection("queue");
-  }
-
-  // Restore collapsed → expanded when the card's data resets (new question, new permission, etc.)
+  // New pending data (new question, new permission, etc.) starts collapsed
+  // again, so a card the user opened for the previous item doesn't carry over.
   const [prevHasQuestion, setPrevHasQuestion] = useState(hasQuestion);
   if (hasQuestion !== prevHasQuestion) {
     setPrevHasQuestion(hasQuestion);
-    if (hasQuestion) setQuestionCollapsed(false);
+    if (hasQuestion) setQuestionCollapsed(true);
   }
   const [prevHasPermission, setPrevHasPermission] = useState(hasPermission);
   if (hasPermission !== prevHasPermission) {
     setPrevHasPermission(hasPermission);
-    if (hasPermission) setPermissionCollapsed(false);
+    if (hasPermission) setPermissionCollapsed(true);
   }
   const [prevHasModeSwitch, setPrevHasModeSwitch] = useState(hasModeSwitch);
   if (hasModeSwitch !== prevHasModeSwitch) {
     setPrevHasModeSwitch(hasModeSwitch);
-    if (hasModeSwitch) setModeSwitchCollapsed(false);
+    if (hasModeSwitch) setModeSwitchCollapsed(true);
   }
   const [prevHasPlan, setPrevHasPlan] = useState(hasPlan);
   if (hasPlan !== prevHasPlan) {
     setPrevHasPlan(hasPlan);
-    if (hasPlan) setPlanCollapsed(false);
+    if (hasPlan) setPlanCollapsed(true);
   }
 
   const collapseQuestion = useCallback(() => setQuestionCollapsed(true), []);
@@ -263,18 +229,12 @@ export function useComposerSections({
   const collapsePlan = useCallback(() => setPlanCollapsed(true), []);
   const expandPlan = useCallback(() => setPlanCollapsed(false), []);
 
-  const toggleQueue = useCallback(
-    () => setActiveSection((prev) => (prev === "queue" ? null : "queue")),
-    []
-  );
   const toggleProcess = useCallback(
     () => setActiveSection((prev) => (prev === "process" ? null : "process")),
     []
   );
-  const queueExpanded = activeSection === "queue";
   const processExpanded = activeSection === "process";
 
-  const hasQueue = queueCount > 0;
   const hasProcess = processVisibleCount > 0;
   const hasFiles = includeFileSections && fileChangeStats.count > 0;
   const gitArtifactCount =
@@ -282,7 +242,6 @@ export function useComposerSections({
   const hasGitArtifacts = gitArtifactCount > 0;
 
   const hasAny =
-    hasQueue ||
     hasProcess ||
     hasFiles ||
     hasGitArtifacts ||
@@ -354,19 +313,6 @@ export function useComposerSections({
     }
 
     // Secondary pills
-    if (hasQueue) {
-      sections.push({
-        key: "queue",
-        icon: React.createElement(HugeiconsIcon, {
-          icon: MessageCircleMoreIcon,
-          size: 13,
-        }),
-        count: queueCount,
-        active: queueExpanded,
-        onExpand: toggleQueue,
-        testId: "composer-section-queue",
-      });
-    }
     if (hasProcess) {
       sections.push({
         key: "process",
@@ -420,16 +366,12 @@ export function useComposerSections({
     expandPermission,
     expandModeSwitch,
     expandPlan,
-    hasQueue,
     hasProcess,
     hasGitArtifacts,
-    queueCount,
     processVisibleCount,
     fileChangeStats,
     gitArtifactCount,
-    queueExpanded,
     processExpanded,
-    toggleQueue,
     toggleProcess,
     onFilesExpand,
     filesMenu,
@@ -447,9 +389,7 @@ export function useComposerSections({
     collapseModeSwitch,
     collapsePlan,
     // Secondary section state
-    queueExpanded,
     processExpanded,
-    toggleQueue,
     toggleProcess,
     hasAny,
     inlineSections,

@@ -6,6 +6,8 @@
 import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
+import Input from "@src/components/Input";
 import { useTauriSelectAllShortcut } from "@src/hooks/keyboard";
 import {
   Cancel01Icon,
@@ -29,8 +31,6 @@ interface SpotlightInputProps {
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   /** Placeholder text */
   placeholder?: string;
-  /** Loading state */
-  isLoading?: boolean;
   /** Static glyph to display (defaults to Search); use `iconElement` for arbitrary JSX */
   icon?: IconSvgElement;
   /** Custom icon element (overrides icon prop) */
@@ -48,7 +48,6 @@ export const SpotlightInput: React.FC<SpotlightInputProps> = ({
   ariaLabel,
   onKeyDown,
   placeholder = "Search...",
-  isLoading: _isLoading = false,
   icon: IconComponent = Search01Icon,
   iconElement,
   trailingSlot,
@@ -85,15 +84,20 @@ export const SpotlightInput: React.FC<SpotlightInputProps> = ({
           )}
         </div>
 
-        <input
+        <Input
+          appearance="bare"
+          size="small"
+          autoHeight
+          className={`min-w-0 flex-1 [&>.input-inner]:border-0! ${SPOTLIGHT_TOKENS.inputFontSize}`}
+          inputStyle={{ fontSize: "inherit", lineHeight: "inherit" }}
           ref={inputRef}
           type="text"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(_value, event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           aria-label={ariaLabel}
-          className={`min-w-0 flex-1 bg-transparent ${SPOTLIGHT_TOKENS.inputFontSize} text-text-1 outline-none placeholder:text-text-2`}
+          inputClassName={`min-w-0 flex-1 bg-transparent ${SPOTLIGHT_TOKENS.inputFontSize} text-text-1 outline-none placeholder:text-text-2`}
           autoFocus={autoFocus}
           autoComplete="off"
           spellCheck="false"
@@ -106,18 +110,18 @@ export const SpotlightInput: React.FC<SpotlightInputProps> = ({
         ) : null}
 
         {value ? (
-          <button
-            type="button"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1"
+          <Button
+            variant="tertiary"
+            size="small"
+            shape="round"
+            iconOnly
+            icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />}
+            className="shrink-0 hover:bg-fill-2 hover:text-text-1"
             aria-label={t("common:tooltips.clearSearch")}
             onClick={handleResetSearch}
-          >
-            <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
-          </button>
+          />
         ) : null}
       </div>
     </div>
   );
 };
-
-export default SpotlightInput;

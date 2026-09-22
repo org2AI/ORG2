@@ -1,0 +1,73 @@
+/**
+ * MarkdownEditor styles
+ *
+ * Border states match Textarea component:
+ *   default → border-border-2
+ *   hover   → border-border-3
+ *   focus   → primary-6 ring
+ *
+ * Embedded editors use the same surface as the wrapper (`--color-bg-2`). The global
+ * CodeMirror theme targets `--cm-editor-background` from :root (standalone editor chrome);
+ * we override `.cm-*` backgrounds under `.markdown-editor-content` so there is no darker
+ * “code panel” inside this component.
+ */
+.markdown-editor-root {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.markdown-editor-wrapper {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-border-2);
+  border-radius: 8px;
+  background: var(--color-bg-2);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.markdown-editor-wrapper:hover {
+  border-color: var(--color-border-3);
+}
+.markdown-editor-wrapper:focus-within {
+  border-color: var(--color-primary-6);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--color-primary-6) 15%, transparent);
+}
+
+.markdown-editor-content {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.markdown-editor-content .codemirror-editor-wrapper .cm-editor,
+.markdown-editor-content .codemirror-editor-wrapper .cm-scroller,
+.markdown-editor-content .codemirror-editor-wrapper .cm-gutters {
+  background-color: var(--color-bg-2) !important;
+}
+
+.markdown-editor-placeholder {
+  position: absolute;
+  top: 8px;
+  left: 6px;
+  z-index: 1;
+  color: var(--color-text-3);
+  font-size: 13px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+
+.markdown-editor-preview {
+  min-width: 0;
+  max-width: 100%;
+  overflow: auto;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--color-text-2);
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}

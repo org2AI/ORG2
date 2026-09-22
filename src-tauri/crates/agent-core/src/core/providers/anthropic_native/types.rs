@@ -65,6 +65,8 @@ pub(super) enum ContentBlock {
 #[derive(Debug, Deserialize)]
 pub(super) struct AnthropicUsage {
     #[serde(default)]
+    pub cache_creation: Option<serde_json::Value>,
+    #[serde(default)]
     pub input_tokens: i64,
     #[serde(default)]
     pub output_tokens: i64,

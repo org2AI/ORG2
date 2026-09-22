@@ -56,6 +56,41 @@ function baseDerivedState(
   };
 }
 
+it("updates live JS call titles through failure, retry, and selection changes", () => {
+  const first = minimalSessionEvent({
+    functionName: "js",
+    args: { title: "Inspect window" },
+    displayStatus: "running",
+  });
+  let state = applyLiveOperationOverlay(baseDerivedState(), first);
+  expect(state.toolOperations[0].displayName).toBe("Inspect window");
+  state = applyLiveOperationOverlay(state, {
+    ...first,
+    displayStatus: "failed",
+  });
+  expect(state.toolOperations[0]).toMatchObject({
+    displayName: "Inspect window",
+    isFailed: true,
+  });
+  state = applyLiveOperationOverlay(state, {
+    ...first,
+    args: { title: "Inspect again" },
+  });
+  expect(state.toolOperations).toHaveLength(1);
+  expect(state.toolOperations[0].displayName).toBe("Inspect again");
+  state = applyLiveOperationOverlay(state, {
+    ...first,
+    id: "other-call",
+    args: {},
+  });
+  expect(
+    state.toolOperations.find((op) => op.eventId === "other-call")?.displayName
+  ).toBe("Js");
+  expect(
+    state.toolOperations.find((op) => op.eventId === first.id)?.displayName
+  ).toBe("Inspect again");
+});
+
 function staleExploreOperation(
   overrides: Partial<ExploreOperationEntry> = {}
 ): ExploreOperationEntry {

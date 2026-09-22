@@ -9,7 +9,7 @@ import {
 } from "@src/engines/ChatPanel/components/SessionHeaderBreadcrumb/sessionHeaderBreadcrumbDisplay";
 import BreadcrumbFileHeader, {
   type BreadcrumbFileHeaderDisplaySegment,
-} from "@src/modules/shared/components/FileHeader/BreadcrumbFileHeader";
+} from "@src/features/FileHeader/BreadcrumbFileHeader";
 import { resolveSessionDisplayMetadata } from "@src/util/session/sessionDisplayMetadata";
 
 import type { WebSessionListItem } from "./useWebSessionRoster";

@@ -54,6 +54,9 @@ export function completeOrg2CloudSignIn(
     accessToken: callback.accessToken,
     refreshToken: callback.refreshToken,
     expiresAt: callback.expiresAt,
+    ...(callback.oauthClientId
+      ? { oauthClientId: callback.oauthClientId }
+      : {}),
   };
   setAuth(state);
   Message.success(i18n.t("navigation:cloud.signedInToast"));
@@ -88,7 +91,7 @@ export async function enrichOrg2CloudProfile(
 
   // Storage hydration parses the same persisted session into a new object,
   // so reference equality would reject a legitimate profile write. Compare
-  // the stable endpoint/account plus refresh-token generation instead.
+  // the endpoint/account and complete credential generation instead.
   let isCurrent = false;
   setAuth((prev) => {
     isCurrent = isSameOrg2CloudSession(prev, fresh);

@@ -12,16 +12,21 @@ export {
 export type { ExternalSkillsetsTab } from "./mainAppPaths/externalSkillsets";
 
 export {
+  buildAccountReauthPath,
   buildCodexReauthPath,
   buildIntegrationsPath,
   CODEX_REAUTH_RETURN_TO_STATE_KEY,
   filterDevModeIntegrationItems,
   getDevOnlyIntegrationRedirect,
   isIntegrationCategoryAvailable,
-  parseCodexReauthIntent,
+  parseAccountReauthIntent,
   parseIntegrationsPath,
+  REAUTH_AGENTS,
 } from "./mainAppPaths/integrations";
-export type { IntegrationsCategorySegment } from "./mainAppPaths/integrations";
+export type {
+  IntegrationsCategorySegment,
+  ReauthAgent,
+} from "./mainAppPaths/integrations";
 
 export {
   buildCoreSettingsItemPath,
@@ -54,7 +59,6 @@ export {
 export type { WizardId } from "./mainAppPaths/wizards";
 
 export {
-  SEGMENT_REGISTRY,
   buildBreadcrumbLabels,
   deriveBreadcrumbKeys,
   getPathIcon,

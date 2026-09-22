@@ -71,9 +71,13 @@ describe("PropertyDropdownField", () => {
       })
     );
 
-    expect(markup).toMatch(
-      /data-testid="status-option-open"[^>]*disabled=""[^>]*aria-disabled="true"/
+    const host = document.createElement("div");
+    host.innerHTML = markup;
+    const option = host.querySelector<HTMLButtonElement>(
+      '[data-testid="status-option-open"]'
     );
+    expect(option?.disabled).toBe(true);
+    expect(option?.getAttribute("aria-disabled")).toBe("true");
     expect(markup).toContain('data-testid="status-option-closed"');
   });
 

@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import type { IconSvgElement } from "@src/icons";
 import { getViewportSize } from "@src/util/ui/window/viewport";
@@ -188,7 +189,8 @@ export const DockContextMenu: React.FC<DockContextMenuProps> = ({
 
           return (
             <React.Fragment key={item.id}>
-              <button
+              <Button
+                layout="custom"
                 className={`${DROPDOWN_CLASSES.menuActionItem} ${
                   isDisabled
                     ? `${DROPDOWN_CLASSES.itemDisabled} text-text-3`
@@ -210,7 +212,7 @@ export const DockContextMenu: React.FC<DockContextMenuProps> = ({
                     {t("simulator.dock.current")}
                   </span>
                 )}
-              </button>
+              </Button>
             </React.Fragment>
           );
         })}

@@ -29,6 +29,8 @@ export const TERMINAL_SETTINGS_REGISTRY = {
     category: "terminal",
   },
   "terminal.letterSpacing": {
+    // Read by terminal surfaces; configurable through the settings file only.
+    settingsSearch: false,
     schema: z.number().min(-2).max(10),
     default: 0,
     description: "Terminal letter spacing in pixels (-2 to 10)",

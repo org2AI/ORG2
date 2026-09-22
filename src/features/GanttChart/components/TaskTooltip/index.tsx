@@ -7,6 +7,7 @@
 import React, { useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 
+import Button from "@src/components/Button";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import {
@@ -303,7 +304,8 @@ const GanttTaskTooltip: React.FC<GanttTaskTooltipProps> = ({
               {(onEdit || onDelete) && (
                 <div className="gantt-task-tooltip__footer">
                   {onEdit && (
-                    <button
+                    <Button
+                      layout="custom"
                       className="gantt-task-tooltip__action"
                       onClick={() => {
                         onEdit(task);
@@ -317,10 +319,11 @@ const GanttTaskTooltip: React.FC<GanttTaskTooltipProps> = ({
                         size={14}
                       />
                       <span>Edit</span>
-                    </button>
+                    </Button>
                   )}
                   {onDelete && (
-                    <button
+                    <Button
+                      layout="custom"
                       className="gantt-task-tooltip__action gantt-task-tooltip__action--danger"
                       onClick={() => {
                         onDelete(task.id);
@@ -334,7 +337,7 @@ const GanttTaskTooltip: React.FC<GanttTaskTooltipProps> = ({
                         size={14}
                       />
                       <span>Delete</span>
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}

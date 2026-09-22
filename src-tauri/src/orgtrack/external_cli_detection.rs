@@ -732,7 +732,7 @@ fn executable_candidates(dir: &Path, command: &str) -> Vec<PathBuf> {
             return vec![dir.join(command)];
         }
         let extensions = env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".to_string());
-        return extensions
+        extensions
             .split(';')
             .filter(|extension| !extension.is_empty())
             .map(|extension| dir.join(format!("{}{}", command, extension.to_ascii_lowercase())))
@@ -745,7 +745,7 @@ fn executable_candidates(dir: &Path, command: &str) -> Vec<PathBuf> {
                     }),
             )
             .chain(std::iter::once(dir.join(command)))
-            .collect();
+            .collect()
     }
     #[cfg(not(windows))]
     {

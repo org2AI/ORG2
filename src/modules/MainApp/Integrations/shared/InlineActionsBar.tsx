@@ -11,7 +11,7 @@
  *
  * Convenience props (`onEdit`, `onDelete`) build the most common Edit/Delete
  * pair with i18n labels + icons + the standard
- * `variant="danger" appearance="outline"` delete styling.
+ * `tone="danger"` outlined delete styling.
  *
  * @example Convenience form (Skills, MCP, KeyVault inline cards)
  * ```tsx
@@ -24,7 +24,7 @@
  *   actions={[
  *     { key: "fire", label: t("routineFields.fireNow"), variant: "primary", onClick: fire },
  *     { key: "edit", label: t("common:actions.edit"), variant: "secondary", onClick: edit },
- *     { key: "delete", label: t("common:actions.delete"), variant: "danger", appearance: "outline", onClick: del },
+ *     { key: "delete", label: t("common:actions.delete"), tone: "danger", onClick: del },
  *   ]}
  * />
  * ```
@@ -33,16 +33,14 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import type { ButtonAppearance, ButtonVariant } from "@src/components/Button";
+import type { ButtonProps } from "@src/components/Button";
 import { Delete02Icon, HugeiconsIcon, Pen01Icon } from "@src/icons";
 
-export interface InlineAction {
+export interface InlineAction extends Pick<ButtonProps, "variant" | "tone"> {
   /** Stable key for React reconciliation + test ids. */
   key: string;
   label: React.ReactNode;
   icon?: React.ReactNode;
-  variant?: ButtonVariant;
-  appearance?: ButtonAppearance;
   onClick: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -111,8 +109,7 @@ const InlineActionsBar: React.FC<InlineActionsBarProps> = ({
         icon: (
           <HugeiconsIcon icon={Delete02Icon} data-icon="trash-2" size={12} />
         ),
-        variant: "danger",
-        appearance: "outline",
+        tone: "danger",
         onClick: onDelete,
         disabled: deleteDisabled,
         loading: deleteLoading,
@@ -143,8 +140,8 @@ const InlineActionsBar: React.FC<InlineActionsBarProps> = ({
         <Button
           key={action.key}
           size="small"
-          variant={action.variant ?? "secondary"}
-          appearance={action.appearance}
+          variant={action.variant}
+          tone={action.tone}
           icon={action.icon}
           onClick={action.onClick}
           disabled={action.disabled}

@@ -3,11 +3,15 @@
  *
  * Shared types for ControlButtons and its dropdown sub-components.
  */
+import type { ReactNode } from "react";
+
 import type { AdvancedConfig } from "../../types";
 
 export type DropdownDirection = "up" | "down";
 
 export interface ControlButtonsProps {
+  /** Place the controls through ComposerBar without mounting selector logic twice. */
+  children: (slots: { pills: ReactNode; modelPill: ReactNode }) => ReactNode;
   /** Advanced config */
   advancedConfig: AdvancedConfig;
   /** Config change handler */

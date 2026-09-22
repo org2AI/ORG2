@@ -21,8 +21,10 @@ pub(in crate::sources::codex::app::transcript) fn pending_tool_calls_from_payloa
         .unwrap_or_else(|| json!({}));
     // `thread/inject_items` preserves the native response-item id supplied by
     // the materializer. Canonical tool calls injected through that supported
-    // API must not be normalized a second time; ordinary Codex rollout tool
-    // calls have only `call_id` in the currently supported transcript schema.
+    // API must not be normalized a second time. Native Codex rollouts also
+    // stamp `id` (`fc_…`) on their own function calls since 0.149, so the id
+    // alone cannot mean "injected": only a call already carrying a canonical
+    // ORGII name is passed through; native names still normalize.
     if let Some(source_item_id) = payload
         .get("id")
         .and_then(Value::as_str)
@@ -39,16 +41,18 @@ pub(in crate::sources::codex::app::transcript) fn pending_tool_calls_from_payloa
                 ),
             );
         }
-        return Some((
-            call_id.clone(),
-            vec![ImportedToolCall {
-                call_id,
-                raw_name: raw_name.clone(),
-                canonical_name: raw_name,
-                args: arguments,
-                created_at: created_at.to_string(),
-            }],
-        ));
+        if is_canonical_injected_tool_name(&raw_name) {
+            return Some((
+                call_id.clone(),
+                vec![ImportedToolCall {
+                    call_id,
+                    raw_name: raw_name.clone(),
+                    canonical_name: raw_name,
+                    args: arguments,
+                    created_at: created_at.to_string(),
+                }],
+            ));
+        }
     }
     let normalized_calls = normalize_codex_tool_calls(&raw_name, arguments);
     let call_count = normalized_calls.len();
@@ -128,4 +132,23 @@ fn split_call_id(call_id: &str, index: usize, total: usize) -> String {
     } else {
         format!("{call_id}:part-{index}")
     }
+}
+
+/// Names the normalizer emits (or passes through unchanged). A call that
+/// already carries one of these came from ORGII's own materializer, not from
+/// Codex, and must not be normalized again.
+fn is_canonical_injected_tool_name(raw_name: &str) -> bool {
+    matches!(
+        raw_name,
+        "web_search"
+            | "subagent"
+            | "org_send_message"
+            | "ask_user_questions"
+            | imported_history::FUNCTION_READ_FILE
+            | imported_history::FUNCTION_RUN_COMMAND_LINE
+            | imported_history::FUNCTION_EDIT_FILE
+            | imported_history::FUNCTION_CODE_SEARCH
+            | imported_history::FUNCTION_GLOB_FILE_SEARCH
+            | imported_history::FUNCTION_AWAIT_OUTPUT
+    )
 }

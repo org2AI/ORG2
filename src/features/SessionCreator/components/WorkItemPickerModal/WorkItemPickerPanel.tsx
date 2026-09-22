@@ -21,7 +21,7 @@ import { SpotlightTabs } from "@src/scaffold/GlobalSpotlight/components/Spotligh
 import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { PaletteBody } from "@src/scaffold/GlobalSpotlight/shell";
 import type { SpotlightItem } from "@src/scaffold/GlobalSpotlight/types";
-import { getPrStatusVariant } from "@src/shared/pr/prStatus";
+import { getPrStatusVariant } from "@src/util/git/pr/prStatus";
 
 import type {
   WorkItemPickerFilter,

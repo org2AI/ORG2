@@ -25,6 +25,7 @@ export interface UseMobileChatScrollResult {
   contentRef: RefObject<HTMLDivElement | null>;
   scrollRef: RefObject<HTMLDivElement | null>;
   scrollToBottom: () => void;
+  pauseTailFollow: () => void;
   showScrollToBottom: boolean;
 }
 
@@ -56,6 +57,18 @@ export function useMobileChatScroll({
   const previousContentKeyRef = useRef("");
   const previousForceFollowKeyRef = useRef<string | undefined>(undefined);
   const previousEnabledRef = useRef(false);
+
+  const pauseTailFollow = useCallback(() => {
+    followTailRef.current = false;
+    if (followFrameRef.current !== null) {
+      cancelAnimationFrame(followFrameRef.current);
+      followFrameRef.current = null;
+    }
+    if (measureFrameRef.current !== null) {
+      cancelAnimationFrame(measureFrameRef.current);
+      measureFrameRef.current = null;
+    }
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     const element = scrollRef.current;
@@ -142,7 +155,18 @@ export function useMobileChatScroll({
       typeof ResizeObserver === "undefined"
         ? null
         : new ResizeObserver(() => {
-            if (followTailRef.current) scheduleFollow();
+            if (followTailRef.current) {
+              scheduleFollow();
+            } else {
+              const show = !isWithinTailFollowThreshold(
+                getPhysicalDistanceFromBottom(scrollRoot)
+              );
+              setScrollNavState((current) =>
+                current.scopeKey === scrollNavScopeKey && current.show === show
+                  ? current
+                  : { scopeKey: scrollNavScopeKey, show }
+              );
+            }
           });
     resizeObserver?.observe(scrollRoot);
     if (contentRef.current) resizeObserver?.observe(contentRef.current);
@@ -176,6 +200,7 @@ export function useMobileChatScroll({
     contentRef,
     scrollRef,
     scrollToBottom: resumeTailFollow,
+    pauseTailFollow,
     showScrollToBottom:
       scrollNavState.scopeKey === scrollNavScopeKey && scrollNavState.show,
   };

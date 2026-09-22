@@ -46,7 +46,8 @@
     "colleagues": "Colegas",
     "terminals": "Terminais",
     "openSourceRepo": "Abrir repo de código-fonte",
-    "teamInbox": "Team Inbox"
+    "teamInbox": "Team Inbox",
+    "closeSettings": "Fechar configurações"
   },
   "routes": {
     "session": "Chat",
@@ -74,12 +75,7 @@
       "manual": "Ordem manual"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "Gerenciar",
-      "core": "Núcleo",
-      "agent": "Agent",
-      "org": "Equipe",
-      "agentOrgs": "Agent e equipe"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "Sem agrupamento",
@@ -101,57 +97,23 @@
       "untitledSession": "Sessão Sem Título",
       "enterSessionName": "Digite o nome da sessão"
     },
-    "groups": {
-      "economy": "Economia",
-      "myServices": "Meus Serviços",
-      "osAgent": "OS Agent",
-      "draft": "Rascunho",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Chave Hospedada",
-      "cloud": "Nuvem",
-      "openSource": "Código aberto",
-      "timeline": "Timeline"
-    },
     "actions": {
       "addNew": "Adicionar",
       "collapseAll": "Recolher tudo",
-      "markAllRead": "Marcar tudo como lido",
-      "toggleGroup": "Alternar seção"
+      "markAllRead": "Marcar tudo como lido"
     },
     "search": {
-      "folders": "Pesquisar no Workspace...",
-      "sessions": "Pesquisar sessões...",
-      "projects": "Pesquisar projetos...",
-      "colleagues": "Pesquisar colegas..."
-    },
-    "folderCounts": {
-      "repo": "{{count}} Repo",
-      "repo_plural": "{{count}} Repos",
-      "multiRepoWorkspace": "{{count}} Workspace multi-Repo",
-      "multiRepoWorkspace_plural": "{{count}} Workspaces multi-Repo",
-      "repo_other": "{{count}} Repos",
-      "multiRepoWorkspace_other": "{{count}} Workspaces multi-Repo"
+      "sessions": "Pesquisar sessões..."
     },
     "bottomBar": {
       "settings": "Configurações",
-      "clockLabel": "Hora atual",
       "updateAvailable": "Baixar atualização v{{version}}"
     },
     "settingsMenu": {
       "appearance": "Aparência",
       "modifyAppearance": "Modificar aparência",
-      "language": "Idioma",
       "viewRam": "Ver RAM",
-      "tutorials": "Tutoriais",
       "openSettings": "Abrir configurações"
-    },
-    "empty": {
-      "noItems": "Nenhum item",
-      "noSessions": "Nenhuma sessão",
-      "noSessionsDesc": "Inicie uma nova sessão para começar",
-      "noResultsFor": "Nenhum resultado para \"{{query}}\"",
-      "noSearchResults": "Nenhum resultado encontrado"
     },
     "presence": {
       "tooltip": "Define a tua disponibilidade — os agentes adaptam-se a se estás ou não ao teclado.",
@@ -169,9 +131,18 @@
       "durationTomorrow": "Amanhã",
       "unknownRole": "Papel desconhecido"
     },
-    "guide": {
-      "startSession": "Iniciar uma sessão",
-      "connectOrganization": "Conecte ou crie um espaço de trabalho"
+    "sections": {
+      "section": "Seção",
+      "create": "Nova seção",
+      "name": "Nome da seção",
+      "rename": "Renomear seção",
+      "delete": "Excluir seção (manter sessões)",
+      "remove": "Remover da seção",
+      "up": "Mover para cima",
+      "down": "Mover para baixo",
+      "manage": "Gerenciar seção",
+      "more": "Carregar mais",
+      "retry": "Tentar novamente"
     }
   },
   "launchpad": {
@@ -275,9 +246,9 @@
       "switchToRepo": "Abrir",
       "startSession": "Iniciar sessão",
       "openDetails": "Mostrar detalhes",
-      "remove": "Remove from ORGII",
-      "removeSuccess": "Linkage to ORGII removed",
-      "removeFailed": "Failed to remove linkage to ORGII"
+      "remove": "Remover da ORG2",
+      "removeSuccess": "Vínculo com o ORG2 removido",
+      "removeFailed": "Não foi possível remover o vínculo com o ORG2"
     },
     "addWorkspace": "Adicionar workspace"
   },
@@ -323,11 +294,11 @@
       "forkModelFallback": "O modelo {{model}} do proprietário não está disponível com suas chaves — este fork usará {{fallback}} no lugar.",
       "forkModelUnavailable": "O modelo {{model}} do proprietário não está disponível com suas chaves — escolha um modelo antes de executar este fork.",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -376,7 +347,7 @@
     "signOutConfirmTitle": "Sair da conta?",
     "signOutConfirmBody": "Você precisará entrar novamente para acessar sua conta",
     "signedInAs": "Sessão iniciada como {{name}}",
-    "signedInToast": "Signed in to ORG2 Cloud",
+    "signedInToast": "Conectado ao ORG2 Cloud",
     "sessionExpired": "Sua sessão do ORG2 Cloud expirou. Entre novamente para continuar.",
     "customEndpoint": {
       "title": "Backend do ORG2 Cloud personalizado",
@@ -484,7 +455,6 @@
       "showHidden": "Mostrar sessões ocultas ({{count}})",
       "viewerTooltip": "{{name}} está vendo esta sessão",
       "viewerOverflow": "e mais {{count}} visualizando",
-      "memberViewing": "vendo: {{title}}",
       "viewerOverflow_one": "and 1 more viewer",
       "viewerOverflow_other": "and {{count}} more viewers",
       "loadingSession": "Carregando sessão…",
@@ -501,15 +471,15 @@
       "opening": "Abrindo a sessão da equipe…"
     },
     "sync": {
-      "quotaExceededToast": "ORG2 Cloud sync paused: this workspace's plan quota is exceeded",
-      "syncDisabledToast": "ORG2 Cloud sync paused: session sync is disabled for this workspace's plan",
+      "quotaExceededToast": "Sincronização do ORG2 Cloud pausada: a cota do plano deste espaço de trabalho foi excedida",
+      "syncDisabledToast": "Sincronização do ORG2 Cloud pausada: a sincronização de sessões está desativada no plano deste espaço de trabalho",
       "schemaMismatchToast": "Sincronização do ORG2 Cloud pausada: versão de esquema do backend {{backend}}, o aplicativo espera {{expected}}"
     },
     "moveToOrg": {
       "menuItem": "Workspace tags…",
       "title": "Etiquetas",
       "hint": "Marque um ou mais espaços de trabalho para compartilhar esta sessão — ela pode estar em Personal e em vários espaços de trabalho ao mesmo tempo. Continua sendo uma sessão local normal; isso apenas a torna visível nesses lugares. Só é possível selecionar espaços de trabalho cujo escopo de repositórios cobre o repositório desta sessão.",
-      "noOrgs": "No cloud workspaces yet — sign in to ORG2 Cloud to create or join one.",
+      "noOrgs": "Ainda não há espaços de trabalho na nuvem — entre no ORG2 Cloud para criar um ou participar de um existente.",
       "cloudBadge": "Cloud",
       "added": "Added to {{org}}",
       "removed": "Removed from {{org}}",
@@ -666,7 +636,7 @@
       "selectAll": "Todos ({{count}})",
       "incomingEndpointMismatch": "Este compartilhamento pertence a outra nuvem personalizada. Configure esse endpoint antes de importar.",
       "incomingConnectionError": "Não foi possível conectar ao serviço de nuvem. Verifique a rede e tente novamente.",
-      "incomingIncompatibleError": "A nuvem retornou uma resposta incompatível. Atualize o ORGII ou verifique a implantação.",
+      "incomingIncompatibleError": "A nuvem retornou uma resposta incompatível. Atualize o ORG2 ou verifique a implantação.",
       "incomingServerError": "O serviço de nuvem não conseguiu resolver este compartilhamento. Tente novamente.",
       "incomingAlreadyOnDevice": "Esta sessão já está neste dispositivo. Abra a original em vez de importar uma duplicata.",
       "incomingOpenExisting": "Abrir sessão",
@@ -678,32 +648,16 @@
       "unresolvedBadge": "{{count}} comentários não resolvidos",
       "unreadBadge_one": "{{count}} mensagem não lida",
       "unreadBadge": "{{count}} mensagens não lidas",
-      "addError": "Não foi possível publicar — seu rascunho foi mantido",
-      "addPlaceholder": "Adicionar um comentário…",
-      "agentAddressing": "O agente está tratando…",
       "agentAuthor": "Agente @{{name}}",
-      "cancel": "Cancelar",
-      "delete": "Excluir",
       "deletedComment": "Comentário excluído",
       "earlierVersion": "De uma versão anterior desta sessão",
-      "edit": "Editar",
       "editedMarker": "editado",
       "empty": "Ainda não há comentários",
       "loadError": "Não foi possível carregar os comentários",
-      "mentionMembers": "Mencionar",
       "notesButton": "Notas da sessão",
       "notesTitle": "Notas da sessão",
-      "reply": "Responder",
-      "replyPlaceholder": "Responder…",
       "resolved": "Resolvido",
       "resolvedToggle": "Resolvidos ({{count}})",
-      "save": "Salvar",
-      "searchMembers": "Pesquisar membros",
-      "send": "Comentar",
-      "task": {
-        "assignFailed": "O comentário foi publicado, mas a atribuição do agente falhou — tente novamente pela thread",
-        "mentionSuggestion": "Atribuir este comentário a um agente"
-      },
       "wontFix": "Não será corrigido"
     },
     "sharingFloor": {
@@ -841,7 +795,6 @@
         "errorChannelMissing": "Este canal não está mais disponível",
         "errorMessageMissing": "Essa mensagem não está mais disponível",
         "loadError": "Não foi possível carregar as mensagens",
-        "loadingMessages": "Carregando mensagens…",
         "loadOlder": "Carregar mensagens anteriores",
         "unknownAuthor": "Colega de equipe"
       }
@@ -866,26 +819,26 @@
     "deleteRoleCancel": "Cancelar",
     "deleteRoleOk": "Excluir",
     "deleteRoleTitle": "Excluir função?",
-    "followUpSuggestionsDesc": "Sugere possíveis próximos passos após um turno concluído de item de trabalho. Isso usa uma solicitação adicional ao modelo.",
+    "followUpSuggestionsDesc": "Sugere possíveis próximos passos após um turno concluído de item de trabalho. Isso usa uma solicitação adicional ao modelo",
     "followUpSuggestionsLabel": "Sugestões de follow-up do Agent",
-    "goalMaxTurnsDesc": "Continuar trabalhando na minha última solicitação por até N turnos extras depois que o agent normalmente pararia (0 = desativado).",
+    "goalMaxTurnsDesc": "Continuar trabalhando na minha última solicitação por até N turnos extras depois que o agent normalmente pararia (0 = desativado)",
     "goalMaxTurnsLabel": "Orçamento de continuação do objetivo",
     "guidanceLabel": "Orientação do Agent",
     "guidancePlaceholder": "Como o agent deve adaptar seu comportamento quando esta função estiver ativa?",
-    "modeSwitchAutoPlanDesc": "Alterna automaticamente as sugestões pendentes de modo Planejar quando o temporizador de confirmação expira.",
+    "modeSwitchAutoPlanDesc": "Alterna automaticamente as sugestões pendentes de modo Planejar quando o temporizador de confirmação expira",
     "modeSwitchAutoPlanLabel": "Plano automático na troca de modo",
     "newRoleDefaultLabel": "Função personalizada",
-    "pageDescription": "Defina a função que você está exercendo agora. O agent lê a orientação da função ativa e adapta seu comportamento — por exemplo, fazendo menos perguntas de esclarecimento quando você está concentrado ou agrupando resumos quando você está ausente.",
+    "pageDescription": "Defina a função que você está exercendo agora. O agent lê a orientação da função ativa e adapta seu comportamento — por exemplo, fazendo menos perguntas de esclarecimento quando você está concentrado ou agrupando resumos quando você está ausente",
     "pageTitle": "Minhas funções",
-    "planAutoApproveDesc": "Aprova automaticamente planos pendentes após N segundos (0 = esperar por mim).",
+    "planAutoApproveDesc": "Aprova automaticamente planos pendentes após N segundos (0 = esperar por mim)",
     "planAutoApproveLabel": "Aprovação automática de planos",
-    "questionAutoSkipDesc": "Pula automaticamente perguntas pendentes do agent após N segundos (0 = esperar por mim).",
+    "questionAutoSkipDesc": "Pula automaticamente perguntas pendentes do agent após N segundos (0 = esperar por mim)",
     "questionAutoSkipLabel": "Pular perguntas automaticamente",
     "roleNameLabel": "Nome",
     "roleNamePlaceholder": "Nome da função",
     "stanceAutonomous": "Autônomo — nunca esperar por mim",
     "stanceDeferAndBatch": "Adiar e agrupar — trabalhar primeiro, perguntar depois",
-    "stanceDesc": "Como o agent trata decisões bloqueantes enquanto esta função está ativa.",
+    "stanceDesc": "Como o agent trata decisões bloqueantes enquanto esta função está ativa",
     "stanceInteractive": "Interativo — perguntar à vontade",
     "stanceLabel": "Postura de comportamento"
   },
@@ -973,5 +926,10 @@
     "sidebar": {
       "signOut": "Sign out {{name}}"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "A substituição parou porque os resultados ou o arquivo mudaram, ou uma gravação falhou. Alguns arquivos podem já ter sido atualizados. Pesquise novamente antes de tentar de novo.",
+    "budgetExceeded": "A pesquisa atingiu o limite de recursos. Os resultados são parciais; reduza o âmbito.",
+    "timeout": "A pesquisa excedeu o tempo limite. Reduza o âmbito e tente novamente."
   }
 }

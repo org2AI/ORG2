@@ -8,6 +8,7 @@ import React, { memo } from "react";
 import { createPortal } from "react-dom";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import DropdownSelectedCheck from "@src/components/Dropdown/DropdownSelectedCheck";
 import {
   DROPDOWN_CLASSES,
@@ -72,9 +73,9 @@ const AppSwitcherDropdownPanelComponent: React.FC<
           const isActive = item.id === activeId;
           const isDisabled = item.disabled === true;
           return (
-            <button
+            <Button
+              layout="custom"
               key={item.id}
-              type="button"
               disabled={isDisabled}
               aria-disabled={isDisabled || undefined}
               data-tour-target={item.tourTarget}
@@ -106,7 +107,7 @@ const AppSwitcherDropdownPanelComponent: React.FC<
                 </span>
               )}
               {isActive && <DropdownSelectedCheck />}
-            </button>
+            </Button>
           );
         })}
       </div>

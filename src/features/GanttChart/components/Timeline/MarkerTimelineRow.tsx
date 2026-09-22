@@ -5,6 +5,8 @@
 import type { VirtualItem } from "@tanstack/react-virtual";
 import React from "react";
 
+import Button from "@src/components/Button";
+
 import { type ViewScopePeriod, getMsPerColumn } from "../../config";
 import type {
   GanttConfig,
@@ -147,8 +149,8 @@ export const MarkerTimelineRow: React.FC<MarkerTimelineRowProps> = ({
         }
 
         const markerElement = width ? (
-          <button
-            type="button"
+          <Button
+            layout="custom"
             className="gantt-timeline__marker-segment"
             style={{ background: marker.color }}
             aria-label={marker.ariaLabel ?? marker.title}
@@ -158,10 +160,10 @@ export const MarkerTimelineRow: React.FC<MarkerTimelineRowProps> = ({
                 {marker.label}
               </span>
             )}
-          </button>
+          </Button>
         ) : (
-          <button
-            type="button"
+          <Button
+            layout="custom"
             className="gantt-timeline__marker-dot"
             style={{ background: marker.color }}
             aria-label={marker.ariaLabel ?? marker.title}

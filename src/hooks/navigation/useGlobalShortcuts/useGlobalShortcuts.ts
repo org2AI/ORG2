@@ -164,5 +164,3 @@ export const useGlobalShortcuts = () => {
     spotlightOpen,
   };
 };
-
-export default useGlobalShortcuts;

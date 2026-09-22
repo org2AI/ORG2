@@ -7,11 +7,14 @@ import {
   REPLAY_SPEED_OPTIONS,
   type ReplaySpeed,
 } from "@src/config/workspace/replayConfig";
-import type { SimulatorEventFilterValue } from "@src/engines/SessionCore/core/types";
-import type { SubagentSession } from "@src/engines/Simulator/hooks/useSubagentSessions";
-import type { AppType } from "@src/engines/Simulator/types/appTypes";
+import type {
+  AppType,
+  SimulatorEventFilterValue,
+} from "@src/contracts/simulator";
 import { STATION_MODES, type StationMode } from "@src/types/ui/workstation";
+import { withCoalescedWrites } from "@src/util/core/storage/coalescedStorageWrite";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
+import { getCurrentStationWindowMode } from "@src/util/platform/tauri/windowIdentity";
 
 export { STATION_MODE, type StationMode } from "@src/types/ui/workstation";
 
@@ -33,41 +36,10 @@ const SIMULATOR_GRID_LAYOUTS = [
 
 export type SimulatorGridLayout = (typeof SIMULATOR_GRID_LAYOUTS)[number];
 
-const SimulatorGridLayoutSchema = z.enum(SIMULATOR_GRID_LAYOUTS);
-
-/**
- * Simulator grid layout setting
- */
-export const simulatorLayoutAtom = atomWithStorage<SimulatorGridLayout>(
-  "simulatorLayout",
-  "1x1",
-  createZodJsonStorage(SimulatorGridLayoutSchema)
-);
-simulatorLayoutAtom.debugLabel = "simulatorLayoutAtom";
-
-/**
- * Auto layout mode - automatically adjust grid based on task count
- */
-export const simulatorAutoLayoutAtom = atomWithStorage<boolean>(
-  "simulatorAutoLayout",
-  true
-);
-simulatorAutoLayoutAtom.debugLabel = "simulatorAutoLayoutAtom";
-
-/**
- * Simulator show dock setting
- */
-export const simulatorShowDockAtom = atomWithStorage<boolean>(
-  "simulatorShowDock",
-  true,
-  createZodJsonStorage(z.boolean())
-);
-simulatorShowDockAtom.debugLabel = "simulatorShowDockAtom";
-
 /**
  * Cell replay state for multi-task grid
- * Persists currentIndex for each threadId so state survives view switches
- * Key: threadId, Value: { currentIndex, isPlaying, hasUserOverride }
+ * Retains currentIndex for mounted owners and up to 256 recent inactive cells.
+ * Keys encode the owning session and thread, including empty thread names.
  *
  * `hasUserOverride` flips to `true` when the user manually controls a cell
  * (play, pause, drag progress, step prev/next, etc.). When true, the cell
@@ -79,37 +51,109 @@ export interface CellReplayPersistState {
   isPlaying: boolean;
   hasUserOverride?: boolean;
 }
-export const cellReplayStatesAtom = atom<
+export const MAX_CELL_REPLAY_STATES = 256;
+
+export function cellReplayKey(sessionId: string, threadId = ""): string {
+  return JSON.stringify([sessionId, threadId]);
+}
+
+const cellReplayStatesStorageAtom = atom<
   Record<string, CellReplayPersistState>
 >({});
+/** A mount owns one revocable writer; registrations are scoped to the Jotai store. */
+export interface CellReplayOwner {
+  cellId: string;
+  active: boolean;
+  onRemove: () => void;
+}
+const cellReplayOwnersAtom = atom<ReadonlySet<CellReplayOwner>>(
+  new Set<CellReplayOwner>()
+);
+
+type CellReplayStates = Record<string, CellReplayPersistState>;
+
+/** Drops the oldest inactive entries past the cap; returns `states` itself when none are dropped. */
+function evictInactiveCellStates(
+  states: CellReplayStates,
+  owners: ReadonlySet<CellReplayOwner>
+): CellReplayStates {
+  const activeKeys = new Set(
+    [...owners].filter((owner) => owner.active).map((owner) => owner.cellId)
+  );
+  const entries = Object.entries(states);
+  const inactive = entries.filter(([key]) => !activeKeys.has(key));
+  const overflow = inactive.length - MAX_CELL_REPLAY_STATES;
+  if (overflow <= 0) return states;
+  const evicted = new Set(inactive.slice(0, overflow).map(([key]) => key));
+  return Object.fromEntries(entries.filter(([key]) => !evicted.has(key)));
+}
+
+export const registerCellReplayOwnerAtom = atom(
+  null,
+  (get, set, owner: CellReplayOwner) => {
+    set(cellReplayOwnersAtom, new Set([...get(cellReplayOwnersAtom), owner]));
+    return () => {
+      owner.active = false;
+      const owners = new Set(get(cellReplayOwnersAtom));
+      owners.delete(owner);
+      set(cellReplayOwnersAtom, owners);
+      // Once the last owner closes, its state joins the inactive LRU. Publish
+      // only when that actually evicts something.
+      const states = get(cellReplayStatesStorageAtom);
+      const retained = evictInactiveCellStates(states, owners);
+      if (retained !== states) set(cellReplayStatesStorageAtom, retained);
+    };
+  }
+);
+
+export const cellReplayStatesAtom = atom(
+  (get) => get(cellReplayStatesStorageAtom),
+  (
+    get,
+    set,
+    update:
+      | CellReplayStates
+      | ((previous: CellReplayStates) => CellReplayStates)
+  ) => {
+    const previous = get(cellReplayStatesStorageAtom);
+    const next = typeof update === "function" ? update(previous) : update;
+    if (next === previous) return;
+    set(
+      cellReplayStatesStorageAtom,
+      evictInactiveCellStates(next, get(cellReplayOwnersAtom))
+    );
+  }
+);
 cellReplayStatesAtom.debugLabel = "cellReplayStatesAtom";
 
-/**
- * Global replay control for multi-task grid
- * When triggered, all cells start/stop playing simultaneously
- */
-export interface GlobalReplayState {
-  /** Whether global playback is active */
-  isPlaying: boolean;
-  /** Timestamp when play was triggered (used to sync cells) */
-  triggerTime: number;
-  /** Playback speed multiplier */
-  speed: number;
-}
-export const globalReplayStateAtom = atom<GlobalReplayState>({
-  isPlaying: false,
-  triggerTime: 0,
-  speed: 1,
-});
-globalReplayStateAtom.debugLabel = "globalReplayStateAtom";
-
-/**
- * Simulator data source. Only `"real"` is currently produced — the atom is
- * kept (instead of inlined) so that future replay sources (mock fixtures,
- * recorded sessions, etc.) can plug in without rewiring every consumer.
- */
-export const simulatorDataSourceAtom = atom<"real">("real");
-simulatorDataSourceAtom.debugLabel = "simulatorDataSourceAtom";
+/** Session removal must not leave replay overrides available for resurrection. */
+export const clearCellReplaySessionAtom = atom(
+  null,
+  (get, set, sessionId: string) => {
+    const belongsToSession = (key: string) => {
+      try {
+        return (JSON.parse(key) as unknown[])[0] === sessionId;
+      } catch {
+        return key === sessionId;
+      }
+    };
+    // Revoke before publishing deletion: subscribers and queued work cannot
+    // recreate the record, even if the child view has not unmounted yet.
+    for (const owner of get(cellReplayOwnersAtom)) {
+      if (owner.active && belongsToSession(owner.cellId)) {
+        owner.active = false;
+        owner.onRemove();
+      }
+    }
+    const states = get(cellReplayStatesAtom);
+    const entries = Object.entries(states).filter(
+      ([key]) => !belongsToSession(key)
+    );
+    if (entries.length !== Object.keys(states).length) {
+      set(cellReplayStatesAtom, Object.fromEntries(entries));
+    }
+  }
+);
 
 /**
  * Selected app type for free-switching in simulator.
@@ -230,18 +274,6 @@ export const simulatorPlaybackSpeedAtom =
   );
 simulatorPlaybackSpeedAtom.debugLabel = "simulatorPlaybackSpeedAtom";
 
-/**
- * Auto-scroll setting for simulator replay.
- * When enabled, content auto-scrolls during playback.
- */
-export const simulatorAutoScrollAtom = atomWithStorage<boolean>(
-  "simulatorAutoScroll",
-  true,
-  createZodJsonStorage(z.boolean()),
-  { getOnInit: true }
-);
-simulatorAutoScrollAtom.debugLabel = "simulatorAutoScrollAtom";
-
 // ============================================
 // Station Mode — switches the right-side WorkStation surface between live
 // tools and the agent simulator. Chat-panel maximization is a separate axis.
@@ -249,11 +281,51 @@ simulatorAutoScrollAtom.debugLabel = "simulatorAutoScrollAtom";
 
 const StationModeSchema = z.enum(STATION_MODES);
 
-export const stationModeAtom = atomWithStorage<StationMode>(
+/**
+ * The user's station preference for the MAIN window. Persisted, and — like
+ * every `createZodJsonStorage` atom — resynced across windows through the
+ * `storage` event, which is exactly why a detached station window must never
+ * read or write it directly (see `stationModeAtom`).
+ */
+const persistedStationModeAtom = atomWithStorage<StationMode>(
   "stationMode",
   "my-station",
   createZodJsonStorage(StationModeSchema),
   { getOnInit: true }
+);
+persistedStationModeAtom.debugLabel = "persistedStationModeAtom";
+
+// Each detached document starts in the mode named by its native label, then
+// owns its selection independently. Clicking the station selector never opens
+// another window and never writes the main window's persisted preference.
+const detachedStationModeAtom = atom<StationMode | null>(null);
+
+/**
+ * The station this window shows.
+ *
+ * Main uses its persisted preference. A detached station starts from its
+ * window label and keeps subsequent selection changes in this document.
+ */
+export const stationModeAtom = atom(
+  (get) => {
+    const initialMode = getCurrentStationWindowMode();
+    return initialMode === null
+      ? get(persistedStationModeAtom)
+      : (get(detachedStationModeAtom) ?? initialMode);
+  },
+  (
+    get,
+    set,
+    update: StationMode | ((previous: StationMode) => StationMode)
+  ) => {
+    const next =
+      typeof update === "function" ? update(get(stationModeAtom)) : update;
+    if (getCurrentStationWindowMode() !== null) {
+      set(detachedStationModeAtom, next);
+    } else {
+      set(persistedStationModeAtom, next);
+    }
+  }
 );
 stationModeAtom.debugLabel = "stationModeAtom";
 
@@ -265,33 +337,10 @@ stationModeAtom.debugLabel = "stationModeAtom";
  * than the rail, so the sidebar defaults to CLOSED and one state is shared
  * across them.
  */
-export const simulatorReplaySidebarCollapsedAtom = atomWithStorage<boolean>(
+export const simulatorPrimarySidebarCollapsedAtom = atomWithStorage<boolean>(
   "simulatorReplaySidebarCollapsed",
   true,
   createZodJsonStorage(z.boolean())
-);
-simulatorReplaySidebarCollapsedAtom.debugLabel =
-  "simulatorReplaySidebarCollapsedAtom";
-
-/**
- * Router atom for simulator replay sidebar chrome.
- */
-export const simulatorPrimarySidebarCollapsedAtom = atom<
-  boolean,
-  [boolean | "toggle" | ((prev: boolean) => boolean)],
-  void
->(
-  (get) => get(simulatorReplaySidebarCollapsedAtom),
-  (get, set, next) => {
-    const prev = get(simulatorReplaySidebarCollapsedAtom);
-    const value =
-      next === "toggle"
-        ? !prev
-        : typeof next === "function"
-          ? next(prev)
-          : next;
-    set(simulatorReplaySidebarCollapsedAtom, value);
-  }
 );
 simulatorPrimarySidebarCollapsedAtom.debugLabel =
   "simulatorPrimarySidebarCollapsedAtom";
@@ -317,7 +366,11 @@ simulatorPrimarySidebarPositionAtom.debugLabel =
 export const simulatorPrimarySidebarWidthAtom = atomWithStorage<number>(
   "simulatorPrimarySidebarWidth",
   SIMULATOR_PRIMARY_SIDEBAR.defaultWidth,
-  createZodJsonStorage(z.number())
+  // Coalesced: the resize handle writes this once per animation frame while
+  // the divider is being dragged, and a synchronous localStorage write per
+  // frame is a main-thread cost for a value that only matters at rest. The
+  // atom itself still updates synchronously, so the drag stays live.
+  withCoalescedWrites(createZodJsonStorage(z.number()))
 );
 simulatorPrimarySidebarWidthAtom.debugLabel =
   "simulatorPrimarySidebarWidthAtom";
@@ -382,20 +435,3 @@ simulatorCaptionBarEnabledAtom.debugLabel = "simulatorCaptionBarEnabledAtom";
  */
 export const focusedSubagentCellAtom = atom<string | null>(null);
 focusedSubagentCellAtom.debugLabel = "focusedSubagentCellAtom";
-
-/**
- * Incremented whenever the user clicks the "locate" icon on a SubagentBlock.
- * ActivitySimulator watches this to re-open the subagent split pane if it
- * was previously dismissed by the user.
- */
-export const subagentPanelRevealRequestAtom = atom<number>(0);
-subagentPanelRevealRequestAtom.debugLabel = "subagentPanelRevealRequestAtom";
-
-/**
- * All child subagent sessions for the current parent session.
- * Written by ActivitySimulator from `allSubagentSessions` (DB-sourced),
- * read by SessionReplayMessages to inline SubagentChip rows in the chat
- * transcript. Uses SubagentSession directly — no separate type needed.
- */
-export const simulatorSubagentSessionsAtom = atom<SubagentSession[]>([]);
-simulatorSubagentSessionsAtom.debugLabel = "simulatorSubagentSessionsAtom";

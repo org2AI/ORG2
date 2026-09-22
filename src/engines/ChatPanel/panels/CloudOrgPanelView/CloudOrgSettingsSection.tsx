@@ -5,6 +5,12 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Select from "@src/components/Select";
+import {
+  SECTION_ACTION_GAP_CLASSES,
+  SECTION_CONTROL_STYLE,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
 import type {
   CloudEntitlementState,
   CloudOrgMember,
@@ -12,13 +18,7 @@ import type {
 import {
   RUNTIME_TELEMETRY_INTERVAL_OPTIONS,
   RUNTIME_TELEMETRY_OFF_VALUE,
-} from "@src/modules/shared/dataSource/teamRuntimeData";
-import {
-  SECTION_ACTION_GAP_CLASSES,
-  SECTION_CONTROL_STYLE,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/features/RuntimeDataSource/teamRuntimeData";
 import {
   COLLAB_SESSION_ACCESS_MODE,
   type CollabSessionAccessMode,
@@ -202,8 +202,6 @@ export function CloudOrgSettingsSection({
               align="start"
             >
               <Button
-                htmlType="button"
-                size="default"
                 variant={entitlement.plan === "free" ? "primary" : "secondary"}
                 onClick={openCloudBillingPage}
                 data-testid={
@@ -243,9 +241,6 @@ export function CloudOrgSettingsSection({
           label={t("routes.sessions")}
         >
           <Button
-            htmlType="button"
-            size="default"
-            variant="secondary"
             data-testid="cloud-org-open-sessions"
             onClick={onOpenSessions}
           >
@@ -385,8 +380,6 @@ export function CloudOrgSettingsSection({
                 data-testid="cloud-org-rename-input"
               />
               <Button
-                htmlType="button"
-                size="default"
                 variant="primary"
                 disabled={!nameDirty || renaming}
                 loading={renaming}
@@ -428,9 +421,6 @@ export function CloudOrgSettingsSection({
                   onChange={(value) => setTransferTarget(String(value))}
                 />
                 <Button
-                  htmlType="button"
-                  size="default"
-                  variant="secondary"
                   disabled={!transferTarget || transferring}
                   loading={transferring}
                   data-testid="cloud-org-transfer-confirm"
@@ -477,9 +467,8 @@ export function CloudOrgSettingsSection({
                 data-testid="cloud-org-delete-confirm-input"
               />
               <Button
-                htmlType="button"
-                size="default"
-                variant="danger"
+                variant="primary"
+                tone="danger"
                 disabled={deleteConfirmText.trim() !== orgName || deleting}
                 loading={deleting}
                 data-testid="cloud-org-delete-confirm"

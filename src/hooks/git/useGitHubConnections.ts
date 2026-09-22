@@ -87,5 +87,3 @@ export function useGitHubConnections(
     loadingBranches: EMPTY_LOADING_BRANCHES,
   };
 }
-
-export default useGitHubConnections;

@@ -15,6 +15,3 @@ export type { OptimizedChatItem } from "./types";
 
 // Filters (used by ChatItemRenderer)
 export { willEventRenderContent } from "./filters";
-
-// Utils
-export { calculateDuration } from "./utils";

@@ -141,6 +141,13 @@ async function tryWaitForPlanCardReady(label, timeout = REPLY_TIMEOUT_MS) {
     await showChatTranscriptSurface();
     await browser.waitUntil(
       async () => {
+        // The composer's current-plan card starts collapsed to its pill and
+        // only opens on click; the pill renders only while collapsed.
+        await execJS(`
+          const pill = document.querySelector('[data-testid="composer-section-plan"]');
+          if (pill) pill.click();
+          return Boolean(pill);
+        `);
         const ui = await execJS(js.planUi);
         const transcriptBuildReady =
           ui.readyCardCount >= 1 && ui.enabledBuildButtonCount >= 1;

@@ -22,7 +22,7 @@
 ---
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="docs/readmes/README.fr.md">Français</a> · <a href="docs/readmes/README.zh.md">简体中文</a> · <a href="docs/readmes/README.zh-Hant.md">繁體中文</a> · <a href="docs/readmes/README.es.md">Español</a> · <a href="docs/readmes/README.ru.md">Русский</a> · <a href="docs/readmes/README.pt.md">Português</a> · <a href="docs/readmes/README.de.md">Deutsch</a> · <a href="docs/readmes/README.ja.md">日本語</a> · <a href="docs/readmes/README.ko.md">한국어</a> · <a href="docs/readmes/README.tr.md">Türkçe</a> · <a href="docs/readmes/README.vi.md">Tiếng Việt</a> · <a href="docs/readmes/README.pl.md">Polski</a>
+  <a href="README.md">English</a> · <a href="docs/readmes/README.fr.md">Français</a> · <a href="docs/readmes/README.zh.md">简体中文</a> · <a href="docs/readmes/README.zh-Hant.md">繁體中文</a> · <a href="docs/readmes/README.es.md">Español</a> · <a href="docs/readmes/README.hi.md">हिन्दी</a> · <a href="docs/readmes/README.ru.md">Русский</a> · <a href="docs/readmes/README.pt.md">Português</a> · <a href="docs/readmes/README.de.md">Deutsch</a> · <a href="docs/readmes/README.ja.md">日本語</a> · <a href="docs/readmes/README.ko.md">한국어</a> · <a href="docs/readmes/README.tr.md">Türkçe</a> · <a href="docs/readmes/README.vi.md">Tiếng Việt</a> · <a href="docs/readmes/README.id.md">Bahasa Indonesia</a> · <a href="docs/readmes/README.pl.md">Polski</a>
 </p>
 
 <p>Built with Rust and Tauri for local-first execution under 100MB on disk. Supports agent trajectory livestream and replay. Easy to follow and review.</p>
@@ -35,7 +35,7 @@ Answering why a piece of code exists — and whether it worked — has always me
 
 ORG-2 is where your team runs its coding agents — a native Rust harness plus launchers for 20+ agent CLIs — and it builds that record automatically. Every session becomes a trajectory teammates replay like a video, reviewing how the work was actually built rather than just the diff and commenting in context. Sessions run in other tools are ingested and backfilled from their history, so the record covers work that never touched the app. The record links what the human asked for, what the agent understood, and what it actually did, so any shipped line traces back to the session that wrote it.
 
-It is not just another AI coding tool; it is an experiment in human/agent organizations and org-level alignment. ORG-II treats agents as persistent, observable colleagues inside a structured organization — replayable execution, cross-session memory, AI blame, and a local-first Rust runtime so humans, agents, and teams can collaborate around shared context and aligned goals.
+It is not just another AI coding tool; it is an experiment in human/agent organizations and org-level alignment. ORG2 treats agents as persistent, observable colleagues inside a structured organization — replayable execution, cross-session memory, AI blame, and a local-first Rust runtime so humans, agents, and teams can collaborate around shared context and aligned goals.
 
 ## Features
 
@@ -49,7 +49,7 @@ Run fast, token-saving, customizable native agents with your existing API keys a
 
 </td>
 <td width="50%">
-  <img src="docs/assets/feature-wall/rust-harness.gif" alt="Run agents with the ORG-II Rust harness" width="100%" />
+  <img src="docs/assets/feature-wall/rust-harness.gif" alt="Run agents with the ORG2 Rust harness" width="100%" />
 </td>
 </tr>
 <tr>
@@ -61,7 +61,7 @@ Load and manage agent sessions from all your tools in one place. Scan history, i
 
 </td>
 <td width="50%">
-  <img src="docs/assets/feature-wall/session-sources.png" alt="Manage agent session sources across apps and CLIs in ORG-II" width="100%" />
+  <img src="docs/assets/feature-wall/session-sources.png" alt="Manage agent session sources across apps and CLIs in ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -73,7 +73,7 @@ Form your team and share sessions across devices and teammates. Review the full 
 
 </td>
 <td width="50%">
-  <img src="docs/assets/feature-wall/team-trajectory-review.png" alt="Manage teammates and trajectory replay permissions in ORG-II" width="100%" />
+  <img src="docs/assets/feature-wall/team-trajectory-review.png" alt="Manage teammates and trajectory replay permissions in ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -85,7 +85,7 @@ Replay work from the native Rust harness and 15+ CLI agents. Messages, tool call
 
 </td>
 <td width="50%">
-  <img src="docs/assets/feature-wall/replay.gif" alt="Replay an agent session in ORG-II" width="100%" />
+  <img src="docs/assets/feature-wall/replay.gif" alt="Replay an agent session in ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -97,7 +97,7 @@ Do not stop at who changed a line. Trace it back to the agent sessions, tool cal
 
 </td>
 <td width="50%">
-  <img src="docs/assets/feature-wall/ai-blame.gif" alt="Trace code changes back to agent sessions and decisions in ORG-II" width="100%" />
+  <img src="docs/assets/feature-wall/ai-blame.gif" alt="Trace code changes back to agent sessions and decisions in ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -109,7 +109,7 @@ See how your time is spent across tasks and agent sessions. A daily activity tim
 
 </td>
 <td width="50%">
-  <img src="docs/assets/feature-wall/work-diary.png" alt="Review time spent across tasks and agent sessions in ORG-II" width="100%" />
+  <img src="docs/assets/feature-wall/work-diary.png" alt="Review time spent across tasks and agent sessions in ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -121,7 +121,7 @@ Use the terminal, manage source control, trace Git history, and review pull requ
 
 </td>
 <td width="50%">
-  <img src="docs/assets/feature-wall/development-workspace.gif" alt="Source control, Git history, and code review tools in ORG-II" width="100%" />
+  <img src="docs/assets/feature-wall/development-workspace.gif" alt="Source control, Git history, and code review tools in ORG2" width="100%" />
 </td>
 </tr>
 <tr>
@@ -133,7 +133,7 @@ Inspect live pages in the native WebKit browser. Select an element and send its 
 
 </td>
 <td width="50%">
-  <img src="docs/assets/feature-wall/design-mode.gif" alt="Inspect a webpage element with ORG-II Design Mode" width="100%" />
+  <img src="docs/assets/feature-wall/design-mode.gif" alt="Inspect a webpage element with ORG2 Design Mode" width="100%" />
 </td>
 </tr>
 </table>
@@ -150,7 +150,7 @@ Inspect live pages in the native WebKit browser. Select an element and send its 
 
 ## Supported Agents
 
-Use ORG-II's built-in Rust harness or launch these supported coding-agent CLIs from the desktop app.
+Use ORG2's built-in Rust harness or launch these supported coding-agent CLIs from the desktop app.
 
 ### GUI + TUI
 
@@ -192,9 +192,9 @@ Use ORG-II's built-in Rust harness or launch these supported coding-agent CLIs f
 
 ## Download
 
-Current build version: v1.3.0 (2026-08-26)
+Current build version: v2.0.7 (2026-09-22)
 
-Download the latest ORGII desktop app with one click:
+Download the latest ORG2 desktop app with one click:
 
 - [macOS Apple Silicon](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-mac-apple-silicon.dmg)
 - [Windows x64 installer](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-windows-x64-setup.exe)
@@ -242,4 +242,4 @@ Have questions, feedback, or want to follow along as ORG-2 evolves? Join us on D
 
 ## License
 
-ORGII is licensed under the GNU Affero General Public License v3.0 or later (`AGPL-3.0-or-later`). See [`LICENSE`](LICENSE) for the full license text.
+ORG2 is licensed under the GNU Affero General Public License v3.0 or later (`AGPL-3.0-or-later`). See [`LICENSE`](LICENSE) for the full license text.

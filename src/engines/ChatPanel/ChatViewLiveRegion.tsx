@@ -1,5 +1,6 @@
 import { type ReactNode, memo } from "react";
 
+import { ImageActionsProvider } from "@src/components/ImageActions/context";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { SessionCommentsProvider } from "@src/features/Org2Cloud/SessionComments/SessionCommentsContext";
 import { Org2ConversationSenderMetadataProvider } from "@src/features/Org2Cloud/SessionConversation/Org2ConversationSenderMetadataProvider";
@@ -38,33 +39,35 @@ export const ChatViewLiveRegion = memo(function ChatViewLiveRegion({
   const { commentAnchors, transcriptReady } = usePipelineChatEvents();
 
   return (
-    <SessionCommentsProvider
-      session={commentsSession}
-      targetOverride={commentsTargetOverride}
-      events={transcriptReady ? commentAnchors : null}
-      turnAnchorsVisible={turnAnchorsVisible}
-    >
-      <Org2ConversationSenderMetadataProvider
-        sessionId={dataSessionId}
+    <ImageActionsProvider>
+      <SessionCommentsProvider
         session={commentsSession}
+        targetOverride={commentsTargetOverride}
+        events={transcriptReady ? commentAnchors : null}
+        turnAnchorsVisible={turnAnchorsVisible}
       >
-        <ConversationStreamProvider
-          sessionId={conversationSessionId}
-          overrideEvents={conversationOverrideEvents}
+        <Org2ConversationSenderMetadataProvider
+          sessionId={dataSessionId}
+          session={commentsSession}
         >
-          {(activeRunnerSessionId) => (
-            <div
-              ref={rootRef}
-              data-chat-view-root
-              data-session-id={dataSessionId}
-              className="relative flex h-full max-w-full min-w-0 flex-col overflow-hidden"
-            >
-              {children(activeRunnerSessionId)}
-            </div>
-          )}
-        </ConversationStreamProvider>
-      </Org2ConversationSenderMetadataProvider>
-    </SessionCommentsProvider>
+          <ConversationStreamProvider
+            sessionId={conversationSessionId}
+            overrideEvents={conversationOverrideEvents}
+          >
+            {(activeRunnerSessionId) => (
+              <div
+                ref={rootRef}
+                data-chat-view-root
+                data-session-id={dataSessionId}
+                className="relative flex h-full max-w-full min-w-0 flex-col overflow-hidden"
+              >
+                {children(activeRunnerSessionId)}
+              </div>
+            )}
+          </ConversationStreamProvider>
+        </Org2ConversationSenderMetadataProvider>
+      </SessionCommentsProvider>
+    </ImageActionsProvider>
   );
 });
 

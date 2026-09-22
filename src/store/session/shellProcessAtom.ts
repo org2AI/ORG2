@@ -162,19 +162,3 @@ export const updateShellProcessAtom = atom(
   }
 );
 updateShellProcessAtom.debugLabel = "updateShellProcess";
-
-/**
- * Clear all processes for a session (on session end/cleanup).
- */
-export const clearSessionProcessesAtom = atom(
-  null,
-  (get, set, sessionId: string) => {
-    const currentMap = get(shellProcessMapAtom);
-    if (currentMap.has(sessionId)) {
-      const newMap = new Map(currentMap);
-      newMap.delete(sessionId);
-      set(shellProcessMapAtom, newMap);
-    }
-  }
-);
-clearSessionProcessesAtom.debugLabel = "clearSessionProcesses";

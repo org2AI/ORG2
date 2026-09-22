@@ -5,10 +5,8 @@ import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 
-import { CheckoutBlockedDialog } from "@src/components/GitDialogs/CheckoutBlockedDialog";
-import { CheckoutConflictDialog } from "@src/components/GitDialogs/CheckoutConflictDialog";
 import { createLogger } from "@src/hooks/logger";
-import { runGuardedCheckout } from "@src/services/git/operations/guardedCheckout";
+import { performBranchSwitch } from "@src/services/git/operations/performBranchSwitch";
 import {
   REPO_KIND,
   currentBranchAtom,
@@ -19,7 +17,6 @@ import {
   activeWorkspaceRootPathAtom,
   activeWorktreeAtom,
 } from "@src/store/workspace";
-import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
 
 import {
   addCheckoutStateListener,
@@ -33,7 +30,7 @@ const log = createLogger("useBranchCheckout");
 
 export function useBranchCheckout(): UseBranchCheckoutReturn {
   const selectedRepoId = useAtomValue(selectedRepoIdAtom);
-  const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
+  const [, setCurrentBranch] = useAtom(currentBranchAtom);
   const selectedRepo = useAtomValue(selectedRepoAtom);
   const activeWorktree = useAtomValue(activeWorktreeAtom);
   const activeWorkspaceRootPath = useAtomValue(activeWorkspaceRootPathAtom);
@@ -79,61 +76,11 @@ export function useBranchCheckout(): UseBranchCheckoutReturn {
         return;
       }
 
-      const previousBranch = currentBranch;
-
-      // Mark checkout in progress
+      if (isCheckingOut) return;
       setIsCheckingOut(true);
       notifyCheckoutState(true);
-
-      // Optimistic update
-      flushSync(() => {
-        setCurrentBranch(branch);
-      });
       try {
-        const result = await runGuardedCheckout({
-          repoId: selectedRepoId,
-          repoPath,
-          ref: branch,
-          onConflict: (name) =>
-            CheckoutConflictDialog.open({ branchName: name }),
-          onBlocked: ({ branch: name, errorType, message }) =>
-            CheckoutBlockedDialog.open({
-              branchName: name,
-              errorType,
-              message,
-            }),
-        });
-
-        if (result.success) {
-          // Optimistic value already reflects the new branch (the stash/force
-          // recovery checked out the same ref), so keep it as-is.
-          if (result.outcome !== "checked-out" && result.message) {
-            showGitActionDialogSafely(result.message, "info");
-          }
-        } else {
-          // Rollback: nothing was checked out (error or user cancellation).
-          setCurrentBranch(previousBranch);
-          if (result.outcome !== "cancelled" && !result.blocked) {
-            log.error(
-              `[useBranchCheckout] Failed to checkout branch "${branch}":`,
-              result.message,
-              `errorType: ${result.errorType}`
-            );
-            showGitActionDialogSafely(
-              result.message || `Failed to checkout branch "${branch}"`,
-              "error"
-            );
-          }
-        }
-      } catch (error) {
-        setCurrentBranch(previousBranch);
-        log.error("[useBranchCheckout] Checkout error:", error);
-        showGitActionDialogSafely(
-          error instanceof Error
-            ? error.message
-            : `Failed to checkout branch "${branch}"`,
-          "error"
-        );
+        await performBranchSwitch({ repoId: selectedRepoId, repoPath }, branch);
       } finally {
         setIsCheckingOut(false);
         notifyCheckoutState(false);
@@ -144,7 +91,6 @@ export function useBranchCheckout(): UseBranchCheckoutReturn {
       selectedRepo,
       activeWorktree,
       activeWorkspaceRootPath,
-      currentBranch,
       setCurrentBranch,
     ]
   );

@@ -19,11 +19,17 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from "react";
 
+import { createLogger } from "@src/hooks/logger";
 import { installedSkillsAtom } from "@src/store/skills/installedSkillsAtom";
+import {
+  findBrowserSessionByUrl,
+  loadBrowserPillContent,
+} from "@src/util/contextPillContent";
 import { useCurrentTheme } from "@src/util/ui/theme/themeUtils";
 
 import { createInputHandler } from "./composerInput.inputHandler";
@@ -33,7 +39,11 @@ import { createCutHandler } from "./cutHandler";
 import { buildImperativeApi } from "./imperativeApi";
 import "./index.scss";
 import { type MentionState, createKeyDownHandler } from "./keyboard";
-import { createDropHandler, createPasteHandler } from "./pasteHandlers";
+import {
+  createDropHandler,
+  createPasteHandler,
+  pillForUrl,
+} from "./pasteHandlers";
 import {
   caretTextOffset,
   placeCaretAtEnd,
@@ -42,11 +52,36 @@ import {
   rangeInsideHost,
 } from "./selection";
 import { removeSnapshotTextRange } from "./snapshotRanges";
-import type { ComposerInputProps, ComposerInputRef } from "./types";
+import type {
+  ComposerInputProps,
+  ComposerInputRef,
+  ComposerPillAttrs,
+} from "./types";
 import { useEditorOperations } from "./useEditorOperations";
 import { PILL_DATA_ATTR, extractPlainText } from "./utils";
 
 export type { ComposerInputRef, ComposerSnapshot, PillIconType } from "./types";
+
+const logger = createLogger("ComposerInput");
+
+/**
+ * The browser pill for a URL that is the page open in an in-app browser
+ * session — the same pill, and the same content load, as @-mentioning the tab.
+ */
+function resolveBrowserPill(url: string): ComposerPillAttrs | null {
+  const session = findBrowserSessionByUrl(url);
+  if (!session) return null;
+  const pillPath = `browser://${session.sessionId}/${Date.now()}`;
+  loadBrowserPillContent(session.sessionId, pillPath);
+  return {
+    filePath: pillPath,
+    fileName: session.title || "Browser Tab",
+    isFolder: false,
+    iconType: "browser",
+    lineStart: null,
+    lineEnd: null,
+  };
+}
 /** Attribute marking a pill host span — read-only surfaces route clicks on it. */
 export { serializePillNode } from "./utils";
 
@@ -224,6 +259,8 @@ const ComposerInput = forwardRef<ComposerInputRef, ComposerInputProps>(
     );
 
     // ===== Stable handlers =====
+    const handleInputRef = useRef(handleInput);
+    handleInputRef.current = handleInput;
     const handlePaste = useMemo(
       () =>
         createPasteHandler({
@@ -234,6 +271,24 @@ const ComposerInput = forwardRef<ComposerInputRef, ComposerInputProps>(
           insertTextAtCaret: ops.insertTextAtCaret,
           getOnImagePaste: () => onImagePasteRef.current,
           getInstalledSkills: () => installedSkillsRef.current,
+          resolveBrowserPill,
+          // The WebKit-sanitizer recovery path finishes after an IPC round
+          // trip, so the synchronous `paste` wrapper has already closed its
+          // history boundary. Open a fresh one around the awaited work and
+          // notify on completion, making the recovered paste a single undo.
+          runDeferred: (work) => {
+            const finish = () => {
+              ops.commitHistoryBoundary();
+              handleInputRef.current?.();
+            };
+            ops.markHistoryBoundary();
+            // Close the history step whichever way the work settles, so a
+            // failed native read can never leave a boundary open.
+            work().then(finish, (error: unknown) => {
+              logger.warn("Deferred paste did not complete:", error);
+              finish();
+            });
+          },
         }),
       [ops]
     );
@@ -255,19 +310,34 @@ const ComposerInput = forwardRef<ComposerInputRef, ComposerInputProps>(
     const handleCut = useMemo(
       () =>
         createCutHandler({
+          markHistoryBoundary: ops.markHistoryBoundary,
           reconcilePillsFromDom: ops.reconcilePillsFromDom,
-          onAfterCut: handleInput,
+          // The handler cancels the native cut, so the browser never sends
+          // its `deleteByCut` input. Report it as one, so a cut that empties
+          // the editor settles it the way deleting everything does.
+          onAfterCut: () =>
+            handleInput(new InputEvent("input", { inputType: "deleteByCut" })),
         }),
-      [ops.reconcilePillsFromDom, handleInput]
+      [ops.markHistoryBoundary, ops.reconcilePillsFromDom, handleInput]
     );
 
     // Wrap `insertNewline` so a bare-Enter / Shift+Enter newline still
     // flows through the same notify-host path that native typing does.
     // The op mutates the DOM directly (no `beforeinput`/`input` event),
     // so without this the parent never sees the new `\n`.
+    const autolinkUrlBeforeCaret = useCallback(
+      () =>
+        ops.autolinkUrlBeforeCaret((url) =>
+          pillForUrl(url, "", resolveBrowserPill)
+        ),
+      [ops]
+    );
     const insertNewlineAndNotify = useCallback(() => {
-      if (ops.insertNewline()) handleInput();
-    }, [ops, handleInput]);
+      // A line break ends the word before it, so an address typed just before
+      // Enter links the same way it does before a space.
+      const linked = autolinkUrlBeforeCaret();
+      if (ops.insertNewline() || linked) handleInput();
+    }, [ops, handleInput, autolinkUrlBeforeCaret]);
 
     const undoAndNotify = useCallback(() => {
       const restored = ops.undo();
@@ -316,6 +386,7 @@ const ComposerInput = forwardRef<ComposerInputRef, ComposerInputProps>(
             return host ? extractPlainText(host) : "";
           },
           insertNewline: insertNewlineAndNotify,
+          markHistoryBoundary: ops.markHistoryBoundary,
           undo: undoAndNotify,
           redo: redoAndNotify,
           requireCmdEnter,
@@ -324,6 +395,7 @@ const ComposerInput = forwardRef<ComposerInputRef, ComposerInputProps>(
       [
         hostRef,
         insertNewlineAndNotify,
+        ops.markHistoryBoundary,
         redoAndNotify,
         requireCmdEnter,
         setAtMentionState,
@@ -347,10 +419,14 @@ const ComposerInput = forwardRef<ComposerInputRef, ComposerInputProps>(
       undoAndNotify,
       redoAndNotify,
       updateCoveredPillSelection,
+      autolinkUrlBeforeCaret,
     });
 
     // ===== Initial content + autoFocus =====
-    useEffect(() => {
+    // Layout effects: seeded content and the caret must be on screen in the
+    // first painted frame. As passive effects they ran after it, so the
+    // composer flashed empty and unfocused, then jumped.
+    useLayoutEffect(() => {
       if (!initialContent) return;
       ops.setHostContent(initialContent);
       updateEmptyState();
@@ -362,7 +438,7 @@ const ComposerInput = forwardRef<ComposerInputRef, ComposerInputProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps -- initialContent is mount-owned editor seed data; later changes must use the imperative setContent path so an ordinary parent render cannot overwrite user edits
     }, []);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
       if (!autoFocus) return;
       const host = hostRef.current;
       if (host) placeCaretAtEnd(host);

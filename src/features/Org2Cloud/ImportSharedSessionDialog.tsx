@@ -4,13 +4,13 @@ import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Textarea from "@src/components/Textarea";
+import { PanelFooter } from "@src/components/layout/blocks";
 import { Download01Icon } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
-import { SpotlightPillBar } from "@src/scaffold/GlobalSpotlight/components/SpotlightPillBar";
 import {
   SpotlightFormBody,
   SpotlightFormShell,
 } from "@src/scaffold/GlobalSpotlight/forms/shared";
+import { SpotlightFormLayout } from "@src/scaffold/GlobalSpotlight/forms/shared/SpotlightFormLayout";
 import { SpotlightShell } from "@src/scaffold/GlobalSpotlight/shell";
 
 import { parseCloudShareInput } from "./org2CloudOrgManagement";
@@ -51,13 +51,9 @@ const ImportSharedSessionDialog: React.FC<ImportSharedSessionDialogProps> = ({
   }, [handleClose, queuePendingShare, value]);
 
   const body = (
-    <section
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("cloud.share.importEntry")}
-    >
-      <SpotlightPillBar
-        path={[
+    <SpotlightFormLayout
+      header={{
+        path: [
           {
             type: "action",
             id: "import-session",
@@ -65,13 +61,17 @@ const ImportSharedSessionDialog: React.FC<ImportSharedSessionDialogProps> = ({
             icon: Download01Icon,
             color: "primary",
           },
-        ]}
-        onRemoveSegment={() => {
+        ],
+        onRemoveSegment: () => {
           setValue("");
           setInvalid(false);
           (onGoBack ?? onClose)();
-        }}
-      />
+        },
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("cloud.share.importEntry")}
+    >
       <SpotlightFormShell>
         <SpotlightFormBody>
           <div
@@ -128,7 +128,7 @@ const ImportSharedSessionDialog: React.FC<ImportSharedSessionDialogProps> = ({
           }}
         />
       </SpotlightFormShell>
-    </section>
+    </SpotlightFormLayout>
   );
   if (asBody) return visible ? body : null;
   return (

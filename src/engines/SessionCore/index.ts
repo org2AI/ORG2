@@ -68,7 +68,6 @@ export type {
 
 export {
   editTruncationTimestampAtom,
-  eventCountAtom,
   eventIndexAtom,
   eventsAtom,
   eventStoreVersionAtom,
@@ -83,7 +82,6 @@ export type {
   StreamingSnapshot,
   EventStoreProxy,
 } from "./core/store";
-export { useEventStoreSelector } from "./core/store";
 
 // Replay Atoms
 export {
@@ -113,11 +111,7 @@ export {
   clearSessionLoadErrorAtom,
   failSessionLoadAtom,
   loadSessionAtom,
-  updateEventByIdAtom,
 } from "./core/atoms";
-
-// Note: Context-aware atoms (effectiveEventsAtom, threadFilteredEventsAtom, etc.)
-// are internal implementation details. Use derived atoms or hooks instead.
 
 // ============================================
 // Derived Atoms
@@ -127,7 +121,7 @@ export {
   SIMULATOR_EVENT_FILTER_VALUES,
   isSimulatorEventVisibleForFilters,
   type SimulatorEventFilterValue,
-} from "./derived/simulatorEventFilters";
+} from "./core/simulatorEventFilters";
 export { chatEventsAtom } from "./derived/chatEvents";
 export {
   createdAtByIdAtom,
@@ -135,7 +129,6 @@ export {
   effectiveSimulatorEventIdsAtom,
   getAppTypeForSimulatorPreview,
   mainReplayCursorMsAtom,
-  messagesEventsAtom,
   navigateNextSimulatorEventAtom,
   navigatePrevSimulatorEventAtom,
   navigateToFirstSimulatorEventAtom,
@@ -176,10 +169,9 @@ export { useCanvasRevisionDraftForSession } from "./hooks/useCanvasRevisionDraft
 
 // Session management (hooks/session/) — imported per-file to avoid barrel circularity
 export { useSessionDiscovery } from "./hooks/session/useSessionDiscovery";
-export { useSessionCreator } from "./hooks/session/useSessionCreator";
 
 // Replay & navigation (hooks/replay/)
-export { useStepState, usePlanningIndicator } from "./hooks/replay";
+export { useStepState } from "./hooks/replay";
 
 // ============================================
 // Rendering (tool registry + React-coupled accessors)
@@ -203,19 +195,6 @@ export { cacheAdapter } from "./storage/cacheAdapter";
 
 // Individual backends
 export { sqliteCache } from "./storage/sqliteCache";
-
-// ============================================
-// Legacy Compatibility - REMOVED
-// Converters have been inlined into their usage sites
-// ============================================
-
-// ============================================
-// Workspace State (from contexts/workspace/)
-// ============================================
-
-// Workspace atoms - Only externally-used atoms are exported
-// Use focused workspace hooks for other state.
-export { isExploringAtom } from "./workspace/atoms";
 
 // Workspace hooks (replace useSessionContext, useUIContext)
 // Note: For chat UI state, use useChatContext from contexts/workspace/ChatContext

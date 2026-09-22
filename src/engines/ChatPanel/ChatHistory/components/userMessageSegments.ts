@@ -206,54 +206,67 @@ export function normalizeMarkdownReferencePills(text: string): string {
 
       const label = rawLabel.trim();
       const destination = rawDestination.trim().replace(/^<|>$/g, "");
+      // Markdown's opening bracket separates a link from adjacent prose.
+      // Replacing it with `label [type:path]` removes that boundary; the pill
+      // grammar then absorbs the preceding word/sentence into the label.
+      // Keep the normalized label a separate token at this producing boundary.
+      const withLabelBoundary = (reference: string) =>
+        offset > 0 && !/\s/.test(text[offset - 1])
+          ? ` ${reference}`
+          : reference;
 
       if (parseSharedSessionFileReference(destination)) {
-        return `${label} [file:${destination}]`;
+        return withLabelBoundary(`${label} [file:${destination}]`);
       }
       const githubReference = parseGitHubPillUrl(destination);
       if (githubReference) {
-        return serializePillNode({
-          filePath: githubReference.url,
-          fileName: githubReference.displayName,
-          iconType: githubReference.iconType,
-        });
+        return withLabelBoundary(
+          serializePillNode({
+            filePath: githubReference.url,
+            fileName: githubReference.displayName,
+            iconType: githubReference.iconType,
+          })
+        );
       }
 
       const httpReference = parseHttpUrlPill(destination);
       if (httpReference) {
-        return serializePillNode({
-          filePath: httpReference.url,
-          fileName: httpReference.displayName,
-          iconType: "link",
-        });
+        return withLabelBoundary(
+          serializePillNode({
+            filePath: httpReference.url,
+            fileName: httpReference.displayName,
+            iconType: "link",
+          })
+        );
       }
 
       const filePath = filePathFromMarkdownDestination(destination);
       if (filePath) {
         const isFolder = filePath.endsWith("/") || filePath.endsWith("\\");
-        return serializePillNode({
-          filePath,
-          fileName: label,
-          iconType: isFolder ? "folder" : "file",
-        });
+        return withLabelBoundary(
+          serializePillNode({
+            filePath,
+            fileName: label,
+            iconType: isFolder ? "folder" : "file",
+          })
+        );
       }
 
       const pillType = nativeSchemePillType(destination);
       if (pillType) {
-        return serializePillNode({
-          filePath: destination,
-          fileName: label,
-          iconType: pillType,
-        });
+        return withLabelBoundary(
+          serializePillNode({
+            filePath: destination,
+            fileName: label,
+            iconType: pillType,
+          })
+        );
       }
 
       return match;
     }
   );
 }
-
-/** Backward-compatible name for the first URL-only normalization pass. */
-export const normalizeMarkdownUrlPills = normalizeMarkdownReferencePills;
 
 /**
  * Extract the first fenced code block from text.
@@ -380,17 +393,4 @@ export function parseUserMessage(text: string): Segment[] {
   return parseNormalizedUserMessage(
     normalizeMarkdownReferencePills(normalizeUserMessageText(text))
   );
-}
-
-/**
- * Extract the bare session id from a serialized session pill path.
- * Current serialization stores the bare id (`[session:sdeagent-…]`);
- * legacy messages may carry `session://<id>/<ts>` (optionally with an
- * inline `::base64` suffix).
- */
-export function sessionIdFromPillPath(path: string): string {
-  const withoutScheme = path.startsWith("session://")
-    ? path.slice("session://".length)
-    : path;
-  return withoutScheme.split("::")[0].split("/")[0];
 }

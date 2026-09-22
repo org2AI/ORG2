@@ -1,5 +1,4 @@
 {
-  "title": "团队运行状态",
   "refresh": "刷新",
   "loadError": "团队运行状态加载失败",
   "overview": {
@@ -67,7 +66,7 @@
     "memory": "内存",
     "unified": "统一内存",
     "gpu": "GPU",
-    "appVersion": "ORGII 版本",
+    "appVersion": "ORG2 版本",
     "totalSessions": "会话总数",
     "lastSynced": "最后同步"
   },

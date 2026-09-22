@@ -51,10 +51,10 @@ pub use crud::{
 };
 pub(crate) use lifecycle::touch_recall;
 pub use lifecycle::{
-    abandon_pending, count_pending_for_scope, count_pending_learnings, delete_learning,
-    deprecate_learning, last_consolidation_at, load_active_candidates, load_pending_learnings,
-    mark_merged, promote_pending_to_active, reactivate_learning, record_consolidation_run,
-    update_learning_body, ConsolidationRunRecord,
+    abandon_pending, abandon_pending_for_account, count_pending_for_scope, count_pending_learnings,
+    delete_learning, deprecate_learning, last_consolidation_at, load_active_candidates,
+    load_pending_learnings, mark_merged, promote_pending_to_active, reactivate_learning,
+    record_consolidation_run, update_learning_body, ConsolidationRunRecord,
 };
 pub use prompt::{inject_learnings_into_prompt, learning_prompt_revision};
 pub use ranking::{salience_score, search_similar};
@@ -286,6 +286,76 @@ mod tests {
         assert!(
             msg.contains("no such table") || msg.contains("learnings"),
             "expected sqlite \"no such table\" error, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn abandon_pending_for_account_drains_only_that_account() {
+        let conn = setup_db();
+        let mut orphan_a =
+            make_learning("agent:builtin:sde", "orphan a", LearningCategory::Pattern);
+        orphan_a.status = LearningStatus::Pending;
+        orphan_a.account_id = Some("gone-account".into());
+        let mut orphan_b =
+            make_learning("agent:builtin:sde", "orphan b", LearningCategory::Pattern);
+        orphan_b.status = LearningStatus::Pending;
+        orphan_b.account_id = Some("gone-account".into());
+        let mut live = make_learning(
+            "agent:builtin:sde",
+            "live account",
+            LearningCategory::Pattern,
+        );
+        live.status = LearningStatus::Pending;
+        live.account_id = Some("live-account".into());
+        let mut active = make_learning(
+            "agent:builtin:sde",
+            "already active",
+            LearningCategory::Pattern,
+        );
+        active.account_id = Some("gone-account".into());
+        let mut other_scope = make_learning(
+            "agent:builtin:other",
+            "other scope",
+            LearningCategory::Pattern,
+        );
+        other_scope.status = LearningStatus::Pending;
+        other_scope.account_id = Some("gone-account".into());
+        let ids: Vec<String> = [&orphan_a, &orphan_b, &live, &active, &other_scope]
+            .into_iter()
+            .map(|learning| insert_learning(&conn, learning).unwrap())
+            .collect();
+
+        let drained =
+            abandon_pending_for_account(&conn, "agent:builtin:sde", "gone-account").unwrap();
+        assert_eq!(drained, 2);
+
+        let status_of = |id: &str| -> String {
+            conn.query_row("SELECT status FROM learnings WHERE id = ?1", [id], |row| {
+                row.get(0)
+            })
+            .unwrap()
+        };
+        assert_eq!(status_of(&ids[0]), "abandoned");
+        assert_eq!(status_of(&ids[1]), "abandoned");
+        assert_eq!(
+            status_of(&ids[2]),
+            "pending",
+            "another account's rows stay queued"
+        );
+        assert_eq!(
+            status_of(&ids[3]),
+            "active",
+            "only pending rows are touched"
+        );
+        assert_eq!(status_of(&ids[4]), "pending", "other scopes are untouched");
+        assert_eq!(
+            count_pending_for_scope(&conn, "agent:builtin:sde").unwrap(),
+            1
+        );
+        // The queue is now drained for that account: a second call is a no-op.
+        assert_eq!(
+            abandon_pending_for_account(&conn, "agent:builtin:sde", "gone-account").unwrap(),
+            0
         );
     }
 }

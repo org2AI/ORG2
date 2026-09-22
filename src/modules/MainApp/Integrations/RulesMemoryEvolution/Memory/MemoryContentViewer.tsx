@@ -12,9 +12,9 @@ import { rpc } from "@src/api/tauri/rpc";
 import type { WorkspaceMemoryDetail } from "@src/api/tauri/rpc/schemas/workspaceMemory";
 import Button from "@src/components/Button";
 import Markdown from "@src/components/MarkDown";
+import MarkdownEditor from "@src/components/MarkdownEditor";
 import Message from "@src/components/Message";
 import { Copy01Icon, HugeiconsIcon, Pen01Icon } from "@src/icons";
-import MarkdownEditor from "@src/modules/shared/components/MarkdownEditor";
 import Modal from "@src/scaffold/ModalSystem";
 import { copyText } from "@src/util/data/clipboard";
 

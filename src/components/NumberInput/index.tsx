@@ -27,6 +27,7 @@
  */
 import React, { forwardRef, useCallback, useState } from "react";
 
+import Button from "@src/components/Button";
 import {
   Add01Icon,
   ArrowDown01Icon,
@@ -288,8 +289,8 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       return (
         <div className={wrapperClasses} style={style}>
           <div className="number-input-inner rounded-lg bg-bg-2">
-            <button
-              type="button"
+            <Button
+              layout="custom"
               className="number-input-btn-side number-input-btn-left"
               onClick={decrement}
               disabled={disabled || isAtMin}
@@ -301,7 +302,7 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
                 size={14}
                 strokeWidth={1.5}
               />
-            </button>
+            </Button>
 
             <div className="number-input-value-group">
               <input
@@ -324,8 +325,8 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
               )}
             </div>
 
-            <button
-              type="button"
+            <Button
+              layout="custom"
               className="number-input-btn-side number-input-btn-right"
               onClick={increment}
               disabled={disabled || isAtMax}
@@ -337,7 +338,7 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
                 size={14}
                 strokeWidth={1.5}
               />
-            </button>
+            </Button>
           </div>
         </div>
       );
@@ -365,8 +366,8 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           {suffix && <span className="number-input-suffix">{suffix}</span>}
 
           <div className="number-input-controls">
-            <button
-              type="button"
+            <Button
+              layout="custom"
               className="number-input-btn number-input-btn-up"
               onClick={increment}
               disabled={disabled || isAtMax}
@@ -378,9 +379,9 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
                 size={12}
                 strokeWidth={2}
               />
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              layout="custom"
               className="number-input-btn number-input-btn-down"
               onClick={decrement}
               disabled={disabled || isAtMin}
@@ -392,7 +393,7 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
                 size={12}
                 strokeWidth={2}
               />
-            </button>
+            </Button>
           </div>
         </div>
       </div>

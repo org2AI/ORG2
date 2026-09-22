@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import QuotaBar, {
   QuotaBarInline,
   type QuotaBarProps,
-  QuotaStatusBar,
   getQuotaBgColorClass,
   getQuotaTextColorClass,
 } from "./index";
@@ -87,23 +86,5 @@ describe("QuotaBarInline", () => {
     expect(withBar).toContain('style="width:18%"');
     expect(withBar).toContain(">18%</span>");
     expect(withBar).not.toContain("% left");
-  });
-});
-
-describe("QuotaStatusBar", () => {
-  it("shows login and plan status alongside an unlimited quota bar", () => {
-    const markup = renderToStaticMarkup(
-      React.createElement(QuotaStatusBar, {
-        remainingPercent: 42,
-        isUnlimited: true,
-        planType: "Enterprise",
-      })
-    );
-
-    expect(markup).toContain("Logged in");
-    expect(markup).toContain("Quota:");
-    expect(markup).toContain("Enterprise");
-    expect(markup).toContain(">∞</span>");
-    expect(markup).toContain('style="width:100%"');
   });
 });

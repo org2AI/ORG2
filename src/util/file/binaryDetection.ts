@@ -16,7 +16,6 @@
  * quick synchronous checks where async is not convenient.
  */
 import "@src/api/tauri/perf";
-import { type BinaryCheckResult } from "@src/api/tauri/perf";
 
 import { getFileExtensionLower } from "./pathUtils";
 
@@ -311,4 +310,3 @@ export function getBinaryFileMessage(): string {
 // ============================================
 
 // Re-export types
-export type { BinaryCheckResult };

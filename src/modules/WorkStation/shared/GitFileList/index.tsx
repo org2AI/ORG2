@@ -14,11 +14,13 @@
 import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import Input from "@src/components/Input";
 import {
   GitStatusBadge,
   TREE_ROW_HEIGHT,
+  TreeRowActionGroup,
   TreeRowBase,
 } from "@src/components/TreeRow";
 import type { GitStatusInfo, TreeRowNode } from "@src/components/TreeRow";
@@ -26,17 +28,10 @@ import type {
   FlattenedTreeNode,
   StickyScrollNode,
 } from "@src/components/VirtualizedStickyTree";
-import {
-  CHEVRON_SIZE,
-  STICKY_ROW,
-  VirtualizedStickyTree,
-  stickyRowPadding,
-} from "@src/components/VirtualizedStickyTree";
+import { VirtualizedStickyTree } from "@src/components/VirtualizedStickyTree";
+import { StickyTreeRow } from "@src/components/VirtualizedStickyTree/StickyTreeRow";
 import { getStatusColorForFile } from "@src/config/gitStatus";
-import { HEADER_BUTTON } from "@src/config/workstation/tokens";
 import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
   HierarchyFilesIcon,
   HugeiconsIcon,
   ListIcon,
@@ -46,7 +41,7 @@ import type { GitFile } from "@src/types/git/types";
 import { getFileName } from "@src/util/file/pathUtils";
 
 import { SectionHeader } from "../../CodeEditor/Panels/EditorPrimarySidebar/content/SourceControlContent/components";
-import type { GitFileTreeNode } from "../../CodeEditor/Panels/EditorPrimarySidebar/content/SourceControlContent/components/GitFileTreeItem";
+import type { GitFileTreeNode } from "../../CodeEditor/Panels/EditorPrimarySidebar/content/SourceControlContent/components/GitFileTreeNode";
 import {
   buildVSCodeStyleTree,
   flattenGitFileTree,
@@ -383,7 +378,6 @@ const GitFileList: React.FC<GitFileListProps> = ({
   const renderStickyItem = useCallback(
     (stickyNode: StickyScrollNode<GitFileListNode>, onClick: () => void) => {
       const { node, depth } = stickyNode;
-      const isExpanded = node.expanded;
 
       const gitStatus: GitStatusInfo | null = node.treeNode?.aggregateStatus
         ? { status: node.treeNode.aggregateStatus, staged: false }
@@ -393,44 +387,25 @@ const GitFileList: React.FC<GitFileListProps> = ({
         : "text-text-2";
 
       return (
-        <div
-          className={STICKY_ROW.row}
-          style={stickyRowPadding(depth)}
+        <StickyTreeRow
+          depth={depth}
+          expanded={Boolean(node.expanded)}
+          name={node.name}
           onClick={onClick}
           title={`Scroll to ${node.name}`}
+          icon={
+            !node.isFolder && (
+              <FileTypeIcon
+                fileName={node.name}
+                size="small"
+                className="shrink-0 text-text-2"
+              />
+            )
+          }
+          nameClassName={`min-w-0 flex-1 truncate text-[13px] ${textColorClass}`}
         >
-          <div className={STICKY_ROW.chevronBox}>
-            {isExpanded ? (
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                data-icon="chevron-down"
-                size={CHEVRON_SIZE}
-                className={STICKY_ROW.chevronIcon}
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                data-icon="chevron-right"
-                size={CHEVRON_SIZE}
-                className={STICKY_ROW.chevronIcon}
-              />
-            )}
-          </div>
-
-          {!node.isFolder && (
-            <FileTypeIcon
-              fileName={node.name}
-              size="small"
-              className="shrink-0 text-text-2"
-            />
-          )}
-
-          <span className={`${STICKY_ROW.nameBase} ${textColorClass}`}>
-            {node.name}
-          </span>
-
           <GitStatusBadge status={gitStatus} isDirectory={node.isFolder} />
-        </div>
+        </StickyTreeRow>
       );
     },
     []
@@ -446,52 +421,52 @@ const GitFileList: React.FC<GitFileListProps> = ({
   // Section header actions
   const sectionActions = useMemo(
     () => (
-      <div className="flex items-center gap-0.5 opacity-0 group-hover/header:opacity-100">
+      <TreeRowActionGroup hoverGroup="sidebar">
         {showFilterToggle && (
-          <button
-            className={`${HEADER_BUTTON.actionTreeRow} ${showFilter ? "text-primary-6" : ""}`}
+          <Button
+            size="sidebar"
+            variant="tertiary"
+            iconOnly
             onClick={handleFilterToggle}
             title={t("actions.search")}
             aria-label={t("actions.search")}
             aria-expanded={showFilter}
-          >
-            <HugeiconsIcon
-              icon={Search01Icon}
-              data-icon="search-icon"
-              size={14}
-              strokeWidth={1.75}
-              className={showFilter ? "text-primary-6" : "text-text-3"}
-            />
-          </button>
+            aria-pressed={showFilter}
+            icon={
+              <HugeiconsIcon
+                icon={Search01Icon}
+                data-icon="search-icon"
+                size={14}
+                strokeWidth={1.75}
+              />
+            }
+          />
         )}
-        <button
-          className={HEADER_BUTTON.actionTreeRow}
+        <Button
+          size="sidebar"
+          variant="tertiary"
+          iconOnly
           onClick={handleViewModeToggle}
           title={
             viewMode === "list"
               ? t("workstation.switchToTreeView")
               : t("workstation.switchToListView")
           }
-        >
-          {viewMode === "list" ? (
+          aria-label={
+            viewMode === "list"
+              ? t("workstation.switchToTreeView")
+              : t("workstation.switchToListView")
+          }
+          icon={
             <HugeiconsIcon
-              icon={HierarchyFilesIcon}
-              data-icon="list-tree"
+              icon={viewMode === "list" ? HierarchyFilesIcon : ListIcon}
+              data-icon={viewMode === "list" ? "list-tree" : "list"}
               size={14}
               strokeWidth={1.75}
-              className="text-text-3"
             />
-          ) : (
-            <HugeiconsIcon
-              icon={ListIcon}
-              data-icon="list"
-              size={14}
-              strokeWidth={1.75}
-              className="text-text-3"
-            />
-          )}
-        </button>
-      </div>
+          }
+        />
+      </TreeRowActionGroup>
     ),
     [
       viewMode,
@@ -503,16 +478,19 @@ const GitFileList: React.FC<GitFileListProps> = ({
     ]
   );
 
-  const displayTitle = title ?? t("labels.changedFiles");
   const displayCountLabel = filterQuery ? undefined : unfilteredCountLabel;
+  const displayTitle =
+    title ??
+    t("labels.changedFilesCount", {
+      count: filteredFiles.length,
+      fileCount: displayCountLabel ?? filteredFiles.length,
+    });
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="group/sidebar flex h-full flex-col overflow-hidden">
       {/* Section header */}
       <SectionHeader
         title={displayTitle}
-        count={filteredFiles.length}
-        countLabel={displayCountLabel}
         isCollapsed={isCollapsed}
         onToggle={() => setIsCollapsed((prev) => !prev)}
         actions={sectionActions}

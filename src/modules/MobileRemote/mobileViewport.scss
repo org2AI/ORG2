@@ -5,31 +5,42 @@
  * blank strip below the 100dvh app shell.
  */
 
-// Mirror Desktop ChatHistory typography for tool blocks and chat surfaces.
-// Mobile Remote renders EventBlockHeader outside `.wp__chat__history`, so the
-// scoped `.chat-block-header` reset from ChatHistory/index.scss never applies
-// and rows inherit the browser's 16px body size instead of 13px.
-$mobile-chat-font-size: 13px;
-$mobile-chat-code-font-size: 13px;
-$mobile-chat-line-height: 1.6;
+@use "./mobileTypography" as typography;
+@use "./mobileUiTokens" as mobile;
+@use "./mobileOverlays";
+
+// Adapt shared transcript consumers to mobile roles, including body-portaled
+// sheets. This entry-only stylesheet never changes Desktop typography.
 // Desktop CHAT_ITEM_GAP is py-1 (4px per side, 8px between items). Mobile
 // transcript uses py-0.5 by default and 2px between consecutive tool rows.
 $mobile-chat-item-gap-y: 2px;
 $mobile-chat-tool-run-gap-y: 2px;
 
+.mobile-turn-summary {
+  padding-block: mobile.$space-2;
+
+  &__toggle {
+    min-height: mobile.$touch-target;
+    font-size: var(--mobile-type-caption-size);
+    font-weight: normal;
+  }
+}
+
 html {
-  --chat-font-size: #{$mobile-chat-font-size};
-  --chat-code-font-size: #{$mobile-chat-code-font-size};
-  --chat-line-height: #{$mobile-chat-line-height};
+  @include typography.tokens;
+  @include typography.utilities;
+  --chat-font-size: var(--mobile-type-body-size);
+  --chat-code-font-size: var(--mobile-type-code-size);
+  --chat-line-height: var(--mobile-type-reading-leading);
   --mobile-chat-item-gap-y: #{$mobile-chat-item-gap-y};
   --mobile-chat-tool-run-gap-y: #{$mobile-chat-tool-run-gap-y};
-  --chat-block-xs-size: calc(var(--chat-font-size) - 2px);
-  --chat-block-content-size: var(--chat-code-font-size);
-  --chat-block-title-size: var(--chat-font-size);
-  --chat-block-md-size: var(--chat-font-size);
+  --chat-block-xs-size: var(--mobile-type-caption-size);
+  --chat-block-content-size: var(--mobile-type-secondary-size);
+  --chat-block-title-size: var(--mobile-type-secondary-size);
+  --chat-block-md-size: var(--mobile-type-secondary-size);
 
   .chat-block-header {
-    font-size: var(--chat-block-title-size, #{$mobile-chat-font-size});
+    font-size: var(--chat-block-title-size);
   }
 
   .chat-block-icon {
@@ -67,5 +78,34 @@ body,
   body,
   #root {
     height: 100dvh;
+  }
+}
+
+// This stylesheet is loaded only by the Remote entries. Shared sheet behavior
+// is unchanged; all mobile permission/stop/round sheets use the visible height.
+html .orgii-bottom-sheet-panel {
+  min-width: 0;
+  width: 100%;
+  max-width: 48rem;
+  align-self: center;
+  max-height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)));
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  overflow-wrap: anywhere;
+  .orgii-bottom-sheet-body {
+    min-height: 0;
+  }
+  .orgii-bottom-sheet-close {
+    width: mobile.$touch-target;
+    height: mobile.$touch-target;
+  }
+  .orgii-bottom-sheet-footer button {
+    min-height: mobile.$touch-target;
+    max-width: 100%;
+    height: auto;
+    > .truncate {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
   }
 }

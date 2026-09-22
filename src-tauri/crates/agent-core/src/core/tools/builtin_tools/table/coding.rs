@@ -88,7 +88,7 @@ pub(super) static TOOLS: &[ToolEntry] = &[
     ToolEntry {
         name: tool_names::INSPECT_TERMINALS,
         description: "Inspect and control live terminal sessions.",
-        description_detail: "Every request must include an `action` field. Use `{\"action\":\"list\"}` to list ORGII-managed PTY sessions, then `{\"action\":\"read_output\",\"session_id\":\"...\"}` to read bounded redacted output, `{\"action\":\"write_input\",\"session_id\":\"...\",\"input\":\"...\"}` to write input, or `{\"action\":\"close\",\"session_id\":\"...\"}` to close a selected PTY. Output returned to agents is read from the redacted snapshot buffer, not the raw terminal byte stream.",
+        description_detail: "Every request must include an `action` field. Use `{\"action\":\"list\"}` to list ORG2-managed PTY sessions, then `{\"action\":\"read_output\",\"session_id\":\"...\"}` to read bounded redacted output, `{\"action\":\"write_input\",\"session_id\":\"...\",\"input\":\"...\"}` to write input, or `{\"action\":\"close\",\"session_id\":\"...\"}` to close a selected PTY. Output returned to agents is read from the redacted snapshot buffer, not the raw terminal byte stream.",
         category: tool_categories::CODING,
         icon_id: "terminal-square",
         simulator_app: AppCode,
@@ -105,7 +105,7 @@ pub(super) static TOOLS: &[ToolEntry] = &[
             ("close", "x"),
         ],
         actions: &[
-            action_sub!("list", "List live ORGII-managed terminal sessions", Shell, chat: CbFallback, labels: "tools.inspectTerminalsListRunning", "tools.inspectTerminalsListDone", "tools.inspectTerminalsListFailed"),
+            action_sub!("list", "List live ORG2-managed terminal sessions", Shell, chat: CbFallback, labels: "tools.inspectTerminalsListRunning", "tools.inspectTerminalsListDone", "tools.inspectTerminalsListFailed"),
             action_sub!("read_output", "Read a bounded redacted output snapshot from a terminal session", Shell, chat: CbFallback, labels: "tools.inspectTerminalsReadOutputRunning", "tools.inspectTerminalsReadOutputDone", "tools.inspectTerminalsReadOutputFailed"),
             action_sub!("write_input", "Write input text or control characters into a terminal session", Shell, chat: CbFallback, labels: "tools.inspectTerminalsWriteInputRunning", "tools.inspectTerminalsWriteInputDone", "tools.inspectTerminalsWriteInputFailed"),
             action_sub!("close", "Close a terminal session", Shell, chat: CbFallback, labels: "tools.inspectTerminalsCloseRunning", "tools.inspectTerminalsCloseDone", "tools.inspectTerminalsCloseFailed"),

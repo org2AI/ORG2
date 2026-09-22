@@ -31,6 +31,7 @@ import {
 } from "@src/api/tauri/externalHistory/imported/cloudReplay";
 import { sessionAggregateList } from "@src/api/tauri/session";
 import { createLogger } from "@src/hooks/logger";
+import type { Session } from "@src/store/session";
 
 const log = createLogger("Org2CloudVanishedSessions");
 
@@ -188,4 +189,55 @@ async function findSupersededSessions(
       sessionId: status.sessionId,
       lineageId: status.lineageId as string,
     }));
+}
+
+/**
+ * The roster the superseded reconcile may treat as live. `sessionsAtom` is
+ * a union that is never pruned and is rehydrated from persistence, so a
+ * continuation sibling the backend election already demoted can stay listed
+ * next to its winner indefinitely. Absence from the roster is what makes a
+ * push-marked id a suspect, so such a row would never be judged and its
+ * cloud copy would never be retracted. Within a lineage only a row that is
+ * strictly newest stays live; siblings tied on `updated_at` are all left
+ * to the backend status lookup, which breaks the tie the way the election
+ * did. Rows without a lineage are always live.
+ */
+export function continuationLiveSessionIds(
+  sessions: readonly Session[]
+): Set<string> {
+  const newestByLineage = new Map<
+    string,
+    { updatedAt: string; count: number; sessionId: string }
+  >();
+  for (const session of sessions) {
+    const lineageId = session.continuationLineageId;
+    if (!lineageId) continue;
+    const updatedAt = session.updated_at || "";
+    const current = newestByLineage.get(lineageId);
+    if (!current || updatedAt.localeCompare(current.updatedAt) > 0) {
+      newestByLineage.set(lineageId, {
+        updatedAt,
+        count: 1,
+        sessionId: session.session_id,
+      });
+    } else if (updatedAt === current.updatedAt) {
+      current.count += 1;
+    }
+  }
+  const live = new Set<string>();
+  for (const session of sessions) {
+    const lineageId = session.continuationLineageId;
+    if (lineageId) {
+      const newest = newestByLineage.get(lineageId);
+      if (
+        !newest ||
+        newest.count !== 1 ||
+        newest.sessionId !== session.session_id
+      ) {
+        continue;
+      }
+    }
+    live.add(session.session_id);
+  }
+  return live;
 }

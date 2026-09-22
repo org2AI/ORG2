@@ -51,9 +51,7 @@ export default defineConfig({
     // The cap is a memory ceiling, not a tuning knob: it keeps a full-suite run
     // affordable next to a dev server and a typecheck on a 16 GB machine.
     pool: "threads",
-    poolOptions: {
-      threads: { minThreads: 1, maxThreads: 4 },
-    },
+    maxWorkers: 4,
     // Several state-integration suites intentionally reset and dynamically
     // reload large atom graphs. On Windows, full-suite worker contention can
     // push those imports just beyond Vitest's 5 second default even though the

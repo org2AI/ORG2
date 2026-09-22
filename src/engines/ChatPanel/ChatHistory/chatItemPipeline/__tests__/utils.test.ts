@@ -1,13 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import {
-  makeChatItem,
-  makeSessionEvent,
-  resetActivityCounter,
-} from "@src/engines/SessionCore/rendering/props/__tests__/fixtures";
+import { makeSessionEvent } from "@src/engines/SessionCore/rendering/props/__tests__/fixtures";
 
-import { calculateDuration, canConsolidate, mergeObservations } from "../utils";
+import { canConsolidate, mergeObservations } from "../utils";
 
 describe("canConsolidate", () => {
   it("returns true for same thread_id, same action_type, consecutive parts", () => {
@@ -106,68 +102,5 @@ describe("mergeObservations", () => {
       makeSessionEvent({ result: { observation: "" } }),
     ];
     expect(mergeObservations(activities)).toBe("");
-  });
-});
-
-describe("calculateDuration", () => {
-  beforeEach(() => {
-    resetActivityCounter();
-  });
-
-  it("returns duration in seconds between first and last item", () => {
-    const actFirst = makeSessionEvent({
-      createdAt: "2026-04-01T10:00:00Z",
-    });
-    const actSecond = makeSessionEvent({
-      createdAt: "2026-04-01T10:00:10Z",
-    });
-    const items = [makeChatItem(actFirst), makeChatItem(actSecond)];
-    expect(calculateDuration(items)).toBe(10);
-  });
-
-  it("returns undefined for a single item", () => {
-    const items = [makeChatItem(makeSessionEvent())];
-    expect(calculateDuration(items)).toBeUndefined();
-  });
-
-  it("returns undefined for empty array", () => {
-    expect(calculateDuration([])).toBeUndefined();
-  });
-
-  it("uses event.createdAt field", () => {
-    const actFirst = makeSessionEvent({
-      createdAt: "2026-04-01T10:00:00Z",
-    });
-    const actSecond = makeSessionEvent({
-      createdAt: "2026-04-01T10:00:30Z",
-    });
-    const items = [makeChatItem(actFirst), makeChatItem(actSecond)];
-    expect(calculateDuration(items)).toBe(30);
-  });
-
-  it("skips items without event when calculating duration", () => {
-    const actFirst = makeSessionEvent({
-      createdAt: "2026-04-01T10:00:00Z",
-    });
-    const actSecond = makeSessionEvent({
-      createdAt: "2026-04-01T10:00:20Z",
-    });
-    const items = [
-      makeChatItem(actFirst),
-      { chunk_id: "no-event", type: "activity" as const },
-      makeChatItem(actSecond),
-    ];
-    expect(calculateDuration(items)).toBe(20);
-  });
-
-  it("handles multiple items with varying timestamps", () => {
-    const actFirst = makeSessionEvent({
-      createdAt: "2026-04-01T10:00:00Z",
-    });
-    const actSecond = makeSessionEvent({
-      createdAt: "2026-04-01T10:01:00Z",
-    });
-    const items = [makeChatItem(actFirst), makeChatItem(actSecond)];
-    expect(calculateDuration(items)).toBe(60);
   });
 });

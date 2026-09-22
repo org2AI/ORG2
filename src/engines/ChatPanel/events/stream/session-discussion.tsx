@@ -1,9 +1,9 @@
 import React from "react";
 
+import { MarkdownContent } from "@src/components/MarkdownContent";
 import PersonAvatar from "@src/components/PersonAvatar";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { discussionPayloadOf } from "@src/features/Org2Cloud/SessionConversation/discussionEvents";
-import { MarkdownContent } from "@src/modules/shared/components/MarkdownContent";
 import { formatShortLocalTime } from "@src/util/data/formatters/date";
 
 function timeLabel(createdAt: string): string {

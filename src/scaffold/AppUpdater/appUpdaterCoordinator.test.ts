@@ -17,7 +17,7 @@ function createUpdate(version = "1.1.22"): Update {
 
 describe("AppUpdaterCoordinator", () => {
   let now: number;
-  let check: ReturnType<typeof vi.fn>;
+  let check: ReturnType<typeof vi.fn<() => Promise<Update | null>>>;
   let coordinator: AppUpdaterCoordinator;
 
   beforeEach(() => {

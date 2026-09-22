@@ -7,17 +7,10 @@
 //! added draws on top. Clicks and pointer events also follow this order:
 //! the front-most subview in the click region receives the event.
 //!
-//! This module exposes two operations:
-//!
-//! - [`browser_webview_send_to_back`]: move the given webview's NSView to
-//!   the back of its superview's subviews. Other siblings (React UI) will
-//!   draw above it and intercept clicks in their bounds. Used when a React
-//!   overlay (dropdown, modal, tooltip) temporarily needs to cover the
-//!   browser region.
-//!
-//! - [`browser_webview_bring_to_front`]: move it to the front. This is the
-//!   default state: the browser is interactive and draws above any
-//!   overlapping React surface.
+//! This module exposes [`browser_webviews_set_layer_for_all`]: reorder every
+//! inline browser webview in the calling window so React overlays (dropdowns,
+//! modals, tooltips) can paint and receive clicks above the WKWebView, then
+//! restore the webviews to the front when the last overlay closes.
 //!
 //! ## Pointer events
 //!
@@ -34,22 +27,7 @@
 
 use tauri::{AppHandle, Manager};
 
-/// Move the given inline webview's native NSView to the back of its
-/// superview's subview stack, so React surfaces draw above it.
-#[tauri::command]
-pub fn browser_webview_send_to_back(app: AppHandle, label: String) -> Result<(), String> {
-    reorder_webview(&app, &label, Order::Back)
-}
-
-/// Move the given inline webview's native NSView to the front of its
-/// superview's subview stack, so it draws above all other children of the
-/// window's contentView (default state — fully interactive).
-#[tauri::command]
-pub fn browser_webview_bring_to_front(app: AppHandle, label: String) -> Result<(), String> {
-    reorder_webview(&app, &label, Order::Front)
-}
-
-/// Reorder every inline browser webview at once. Used by the global overlay
+/// Reorder every inline browser webview in the calling window. Used by the global overlay
 /// layering bridge (React-side) to drop all inline webviews behind portals
 /// when any overlay opens, and lift them back on close.
 ///
@@ -62,6 +40,7 @@ pub fn browser_webview_bring_to_front(app: AppHandle, label: String) -> Result<(
 #[tauri::command]
 pub fn browser_webviews_set_layer_for_all(
     app: AppHandle,
+    window: tauri::Window,
     send_to_back: bool,
 ) -> Result<Vec<String>, String> {
     let order = if send_to_back {
@@ -71,12 +50,12 @@ pub fn browser_webviews_set_layer_for_all(
     };
     let mut reordered: Vec<String> = Vec::new();
 
-    for label in app.webviews().keys() {
-        if !label.starts_with("browser-session-") {
+    for (label, webview) in app.webviews() {
+        if !label.starts_with("browser-session-") || webview.window().label() != window.label() {
             continue;
         }
 
-        if let Err(err) = reorder_webview(&app, label, order) {
+        if let Err(err) = reorder_webview(&app, &label, order) {
             // Not fatal — a webview might be mid-teardown. Log and continue.
             eprintln!(
                 "[browser_webviews_set_layer_for_all] '{}' skipped: {}",

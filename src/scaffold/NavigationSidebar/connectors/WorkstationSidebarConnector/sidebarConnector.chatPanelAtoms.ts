@@ -26,12 +26,14 @@ import {
   openSessionInWorkstationAtom,
 } from "@src/store/session/sessionTabPlacementAtom";
 import {
-  chatPanelContentModeAtom,
   chatPanelCreateTargetAtom,
   chatPanelSelectedProjectAtom,
   chatPanelSelectedWorkItemAtom,
 } from "@src/store/ui/chatPanel/selectionAtoms";
-import { chatPanelNavigateAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import {
+  chatPanelContentModeAtom,
+  resetChatPanelSessionSurfaceAtom,
+} from "@src/store/ui/chatPanel/surfaceAtoms";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { workManagementProjectsViewAtom } from "@src/store/workstation";
@@ -42,7 +44,9 @@ export function useWorkstationSidebarChatPanelAtoms() {
   const chatPanelSelectedWorkItem = useAtomValue(chatPanelSelectedWorkItemAtom);
   const chatPanelSelectedProject = useAtomValue(chatPanelSelectedProjectAtom);
   const setChatPanelCreateTarget = useSetAtom(chatPanelCreateTargetAtom);
-  const navigateChatPanel = useSetAtom(chatPanelNavigateAtom);
+  const resetChatPanelSessionSurface = useSetAtom(
+    resetChatPanelSessionSurfaceAtom
+  );
   const setStationChatVisible = useSetAtom(activeStationChatVisibleAtom);
   const setStationMode = useSetAtom(stationModeAtom);
   const activeWorkManagementSection = useAtomValue(
@@ -76,7 +80,7 @@ export function useWorkstationSidebarChatPanelAtoms() {
     chatPanelSelectedWorkItem,
     chatPanelSelectedProject,
     setChatPanelCreateTarget,
-    navigateChatPanel,
+    resetChatPanelSessionSurface,
     setStationChatVisible,
     setStationMode,
     activeWorkManagementSection,

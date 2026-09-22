@@ -48,8 +48,6 @@
     "title": "Types de builder",
     "howTitle": "Comment lire le code",
     "howBody": "Quatre préférences observées composent un type de builder. Ces lettres décrivent un mode de travail, pas une identité figée : elles peuvent évoluer avec vos habitudes et vos outils.",
-    "galleryTitle": "Les 16 types",
-    "galleryHint": "Choisissez un portrait pour voir le profil complet et des conseils pratiques de collaboration avec les agents.",
     "knowMore": "En savoir plus",
     "family": "{{first}} · {{second}}",
     "letters": {

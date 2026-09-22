@@ -39,10 +39,12 @@ interface SpotlightFormBodyProps {
 }
 
 /**
- * Standard body region for a form panel. Applies the canonical `p-3`
+ * Standard body region for a form panel. Applies the canonical `px-3 pb-3`
  * inset so the body and the `PanelFooter` (`px-3 h-12`) line up on the
  * horizontal axis.
  */
 export const SpotlightFormBody: React.FC<SpotlightFormBodyProps> = ({
   children,
-}) => <div className="p-3">{children}</div>;
+}) => (
+  <div className={SPOTLIGHT_MODAL_FORM_TOKENS.bodyClassName}>{children}</div>
+);

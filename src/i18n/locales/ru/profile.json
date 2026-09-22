@@ -1,9 +1,4 @@
 {
-  "name": "Имя",
   "genderOptions": {},
-  "role": "Роль",
-  "location": "Местоположение",
-  "commits": "коммитов",
-  "activity": "Активность",
   "social": {}
 }

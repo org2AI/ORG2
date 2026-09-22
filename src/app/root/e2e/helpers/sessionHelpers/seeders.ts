@@ -143,6 +143,49 @@ export function createSessionSeederHelpers(store: E2EStore) {
     }
   };
 
+  const streamChatEventText = async (
+    sessionId: string,
+    eventId: string,
+    displayText: string
+  ): Promise<Result<{ eventId: string }>> => {
+    try {
+      if (!sessionId || !eventId) {
+        return {
+          ok: false,
+          error: "streamChatEventText: `sessionId` and `eventId` are required",
+        };
+      }
+      const existing = (await eventStoreProxy.getEvents(sessionId)).find(
+        (event) => event.id === eventId
+      );
+      if (!existing) {
+        return {
+          ok: false,
+          error: `streamChatEventText: event ${eventId} was not found`,
+        };
+      }
+      await eventStoreProxy.upsert(
+        {
+          ...existing,
+          displayText,
+          displayStatus: "running",
+          isDelta: true,
+          result: {
+            ...(existing.result ?? {}),
+            content: displayText,
+            observation: displayText,
+            is_delta: true,
+            status: "running",
+          },
+        },
+        sessionId
+      );
+      return { ok: true, eventId };
+    } catch (err) {
+      return asError(err);
+    }
+  };
+
   /**
    * Seed a bare session row into the sidebar list (`sessionsAtom`) without
    * opening it or touching the event store. Used by specs that exercise the
@@ -493,7 +536,7 @@ export function createSessionSeederHelpers(store: E2EStore) {
    * Wire-path seed for the Diff app's Submissions tab. Calls the debug-only
    * Tauri command `debug_seed_commit_link`, which writes a real orgtrack
    * `CommitLinkRecord` (the same shape a live provider run derives from a
-   * `git push` shell event). `orgtrack_get_session_commit_links` then returns
+   * `git push` shell event). `orgtrack_get_diff_replay_preview` then returns
    * it and `SessionReplay` renders the commit in the Submissions tab exactly
    * like a live push. No store writes happen here.
    */
@@ -729,6 +772,7 @@ export function createSessionSeederHelpers(store: E2EStore) {
 
   return {
     seedChatEvents,
+    streamChatEventText,
     seedSidebarSession,
     openWorkManagementTab,
     seedModeSwitchSession,

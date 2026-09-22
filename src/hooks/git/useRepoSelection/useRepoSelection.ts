@@ -254,5 +254,3 @@ export function useRepoSelection(
     reposLoaded,
   };
 }
-
-export default useRepoSelection;

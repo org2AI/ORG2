@@ -13,10 +13,12 @@ import type {
   SessionEvent,
 } from "@src/engines/SessionCore/core/types";
 import { processChunksRust } from "@src/engines/SessionCore/ingestion/rustBridge";
+import { seedSidebarCloudScope } from "@src/features/Org2Cloud/sidebarCloudScope.testUtils";
+import { buildInitialChatPanelTabsState } from "@src/store/chatPanel/chatPanelTabFactories";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import type { Session } from "@src/store/session/sessionAtom/types";
-import { chatPanelSelectedCloudOrgAtom } from "@src/store/ui/chatPanel/selectionAtoms";
 import { createInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 import {
@@ -24,7 +26,6 @@ import {
   peekShareableScopeKeys,
   primeShareableScopeKey,
   resolveMatchingOrgRepoScope,
-  subscribeShareableScopeKeys,
 } from "../TeamCollaboration/repoScopeResolver";
 import {
   PERSONAL_EXCLUDED_TOKEN,
@@ -42,10 +43,7 @@ import {
 } from "./org2CloudAccessSettings";
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
 import { org2CloudAuthAtom } from "./org2CloudAuthAtom";
-import {
-  org2CloudOrgsAtom,
-  sidebarActiveCloudOrgIdAtom,
-} from "./org2CloudOrgsAtom";
+import { org2CloudOrgsAtom } from "./org2CloudOrgsAtom";
 import { ensureProjectOrgForCloudOrg } from "./org2CloudProjectOrgAlias";
 import type { CloudOrgCollabState } from "./org2CloudProjectsClient";
 import { Org2CloudProjectsError } from "./org2CloudProjectsClient";
@@ -180,7 +178,6 @@ export const peekMock = vi.mocked(peekShareableScopeKeys);
 export const primeMock = vi.mocked(primeShareableScopeKey);
 export const peekMatchingScopeMock = vi.mocked(peekMatchingOrgRepoScope);
 export const resolveMatchingScopeMock = vi.mocked(resolveMatchingOrgRepoScope);
-export const subscribeScopeKeysMock = vi.mocked(subscribeShareableScopeKeys);
 export const messageMock = vi.mocked(Message);
 
 export function notifyScopeKeysResolved(): void {
@@ -349,8 +346,10 @@ export function createEngineFixture() {
   store.set(org2CloudOrgsAtom, [
     { orgId: "corg-1", name: "Cloud Team", role: "member" },
   ]);
-  store.set(chatPanelSelectedCloudOrgAtom, null);
-  store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+  // The shared store keeps the previous test's tab strip; an open organization
+  // tab would otherwise still count as the visible management org.
+  store.set(chatPanelTabsAtom, buildInitialChatPanelTabsState());
+  seedSidebarCloudScope(store, "corg-1");
   store.set(org2CloudRepoScopesAtom, { "corg-1": [SCOPE_KEY] });
   store.set(org2CloudSyncEnabledAtom, {});
   store.set(org2CloudPushCursorsAtom, {});
@@ -422,7 +421,6 @@ export const engineTestDeps = {
   COLLAB_LISTING_SHARE_WINDOW_MS,
   DATA_CHANGED_DEBOUNCE_MS,
   EXTERNAL_HISTORY_ACTIVITY_DEBOUNCE_MS,
-  chatPanelSelectedCloudOrgAtom,
   ensureProjectOrgForCloudOrg,
   getImportedHistorySourceBySessionId,
   INACTIVE_ORG_BACKOFF_COOLDOWN_MS,
@@ -446,7 +444,6 @@ export const engineTestDeps = {
   org2CloudPushedMetadataAtom,
   org2CloudRepoScopesAtom,
   org2CloudSyncEnabledAtom,
-  sidebarActiveCloudOrgIdAtom,
   sessionOrgTagsAtom,
   sessionsAtom,
 };

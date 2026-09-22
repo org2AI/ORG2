@@ -35,8 +35,6 @@ export interface CellReplayState {
   totalEvents: number;
   /** Progress percentage (0-100) */
   progress: number;
-  /** Whether auto-scroll is enabled */
-  autoScroll: boolean;
   /** Current replay mode (see `ReplayMode`). */
   mode: ReplayMode;
   /**

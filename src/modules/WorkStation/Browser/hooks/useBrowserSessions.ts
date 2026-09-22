@@ -19,6 +19,7 @@ import {
   browserDevToolsPositionPersistAtom,
 } from "@src/store/ui/workStationLayout/secondaryPanelPositionAtoms";
 import type { SecondaryPanelPosition } from "@src/store/ui/workStationLayout/secondaryPanelPositionAtoms";
+import { getBrowserSessionWebviewLabel } from "@src/util/platform/tauri/browserSessionLabel";
 
 import { shouldEnableBrowserLogPolling } from "./browserDiagnosticsPolicy";
 import { useBrowserConsole } from "./useBrowserConsole";
@@ -68,8 +69,6 @@ export interface UseBrowserSessionsReturn {
   clearSelection: () => void;
 
   // Handlers
-  handlePrevSession: () => void;
-  handleNextSession: () => void;
   handleToggleDevTools: () => void;
   handleOpenNativeDevTools: () => Promise<void>;
   handleSelectSession: (sessionId: string) => void;
@@ -129,7 +128,7 @@ export function useBrowserSessions(
   const activeSessionId = browserState.activeSessionId || "";
   const activeWebviewLabel = useMemo(() => {
     if (!activeSessionId) return "";
-    return `browser-session-${activeSessionId}`;
+    return getBrowserSessionWebviewLabel(activeSessionId);
   }, [activeSessionId]);
 
   // Console log management - delayed start
@@ -217,22 +216,6 @@ export function useBrowserSessions(
   }, [browserState.sessions, browserState.activeSessionId]);
 
   // Handlers
-  const handlePrevSession = useCallback(() => {
-    const currentIndex = currentSessionIndex - 1;
-    if (currentIndex > 0) {
-      const prevSession = browserState.sessions[currentIndex - 1];
-      browserState.setActiveSession(prevSession.id);
-    }
-  }, [currentSessionIndex, browserState]);
-
-  const handleNextSession = useCallback(() => {
-    const currentIndex = currentSessionIndex - 1;
-    if (currentIndex < browserState.sessions.length - 1) {
-      const nextSession = browserState.sessions[currentIndex + 1];
-      browserState.setActiveSession(nextSession.id);
-    }
-  }, [currentSessionIndex, browserState]);
-
   const handleToggleDevTools = useCallback(() => {
     setDevToolsCollapsed(!devToolsCollapsed);
   }, [setDevToolsCollapsed, devToolsCollapsed]);
@@ -308,8 +291,6 @@ export function useBrowserSessions(
     toggleInspectMode,
     selectedElement,
     clearSelection,
-    handlePrevSession,
-    handleNextSession,
     handleToggleDevTools,
     handleOpenNativeDevTools,
     handleSelectSession,

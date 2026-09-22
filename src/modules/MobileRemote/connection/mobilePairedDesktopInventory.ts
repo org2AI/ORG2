@@ -1,3 +1,8 @@
+import {
+  desktopIdentityName,
+  pairedDesktopId,
+  parseDesktopIdentity,
+} from "./mobileDesktopIdentity";
 import type {
   MobileConnectionConfig,
   MobilePairedDesktopSummary,
@@ -67,18 +72,20 @@ export function updatePairingInventory(
   nowMs: number
 ): StoredPairingInventory {
   if (!config) return { ...inventory, activeDesktopId: null };
-  const endpoint =
-    config.wsUrl?.trim() ||
-    [config.host?.trim(), config.port].filter(Boolean).join(":");
-  const id = config.desktopId?.trim() || `endpoint:${endpoint}`;
+  const id = pairedDesktopId(config);
+  const previous = inventory.desktops.find((desktop) => desktop.id === id);
+  const desktopIdentity =
+    parseDesktopIdentity(config.desktopIdentity) ??
+    parseDesktopIdentity(previous?.config.desktopIdentity);
   const desktop: StoredPairedDesktop = {
     id,
     name:
-      config.deviceLabel?.trim() ||
+      desktopIdentityName(desktopIdentity) ||
+      previous?.name ||
       config.desktopId?.trim() ||
       config.host?.trim() ||
       "Paired Desktop",
-    config,
+    config: desktopIdentity ? { ...config, desktopIdentity } : config,
     updatedAtMs: nowMs,
   };
   return {
@@ -121,10 +128,13 @@ export function selectPairingInventory(
 export function summarizePairingInventory(
   inventory: StoredPairingInventory
 ): MobilePairedDesktopSummary[] {
-  return inventory.desktops.map(({ id, name, updatedAtMs }) => ({
+  return inventory.desktops.map(({ id, name, config, updatedAtMs }) => ({
     id,
     name,
     updatedAtMs,
     active: id === inventory.activeDesktopId,
+    ...(parseDesktopIdentity(config.desktopIdentity) && {
+      desktopIdentity: parseDesktopIdentity(config.desktopIdentity),
+    }),
   }));
 }

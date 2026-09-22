@@ -52,7 +52,6 @@ export interface DisplayData {
 interface BrowserReplayDisplayOptions {
   activeEntry: BrowserEntry | null | undefined;
   activeInternalEntry: InternalBrowserEntry | null | undefined;
-  activeSubtool: string | null | undefined;
   isAutomationActive: boolean;
   automation: {
     lastScreenshot: string | null;
@@ -87,7 +86,6 @@ function renderNativeBrowserDomContent(
 export function useBrowserReplayDisplay({
   activeEntry,
   activeInternalEntry,
-  activeSubtool,
   isAutomationActive,
   automation,
   cache,
@@ -389,21 +387,10 @@ export function useBrowserReplayDisplay({
     );
   }, [activeInternalEntry]);
 
-  // ── activeSubtool-aware display decision ─────────────────────────────────────
-
-  const activeEntryId = useMemo(() => {
-    if (activeSubtool === "internal_browser" && activeInternalEntry) {
-      return activeInternalEntry.entryId;
-    }
-    if (activeEntry) return activeEntry.entryId;
-    return null;
-  }, [activeSubtool, activeInternalEntry, activeEntry]);
-
   return {
     displayData,
     headerInfo,
     nativeHeaderInfo,
     nativeDisplayContent,
-    activeEntryId,
   };
 }

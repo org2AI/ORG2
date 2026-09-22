@@ -388,5 +388,3 @@ export function buildGitErrorInfo(
     timestamp: options.timestamp || new Date(),
   };
 }
-
-export default showGitErrorDialog;

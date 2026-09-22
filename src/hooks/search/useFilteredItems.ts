@@ -114,5 +114,3 @@ export function useFilteredItems<T>(
     isFiltering: !!searchQuery,
   };
 }
-
-export default useFilteredItems;

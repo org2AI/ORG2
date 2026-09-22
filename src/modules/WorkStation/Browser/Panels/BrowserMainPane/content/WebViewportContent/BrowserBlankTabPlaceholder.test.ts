@@ -179,4 +179,41 @@ describe("BrowserBlankTabPlaceholder", () => {
     act(() => portAction?.click());
     expect(onOpen).toHaveBeenCalledWith("http://localhost:1998/");
   });
+
+  it("offers opening a local HTML file only when the host wires it up", () => {
+    const onOpenHtmlFile = vi.fn();
+
+    act(() => {
+      root.render(
+        createElement(
+          Provider,
+          { store: createStore() },
+          createElement(BrowserBlankTabPlaceholder, {
+            onOpen: vi.fn(),
+            onOpenHtmlFile,
+          })
+        )
+      );
+    });
+
+    const htmlAction = container.querySelector<HTMLButtonElement>(
+      '[data-action-id="open-local-html-file"]'
+    );
+    expect(htmlAction?.textContent).toBe("browser.menu.openHtmlFile");
+    act(() => htmlAction?.click());
+    expect(onOpenHtmlFile).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      root.render(
+        createElement(
+          Provider,
+          { store: createStore() },
+          createElement(BrowserBlankTabPlaceholder, { onOpen: vi.fn() })
+        )
+      );
+    });
+    expect(
+      container.querySelector('[data-action-id="open-local-html-file"]')
+    ).toBeNull();
+  });
 });

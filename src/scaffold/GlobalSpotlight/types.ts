@@ -50,15 +50,11 @@ export interface ActionDefinition {
   /** Color for the tag */
   color: string;
   /** Required parameters in order of collection */
-  requiredParams: ParamType[];
+  requiredParams: [Exclude<ParamType, "branch" | "source">];
   /** Short keywords for quick search (1-2 words, matched at word boundaries) */
   keywords?: string[];
   /** Aliases for fuzzy matching */
   aliases?: string[];
-  /** Whether this action has a special modal (like add-repo forms) */
-  hasModal?: boolean;
-  /** Template for inline display with placeholders (e.g., "Open {repo} in editor") */
-  template?: string;
 }
 
 // ============ DATA TYPES ============
@@ -99,10 +95,9 @@ export type { SpotlightItem, SpotlightItemData };
 
 export interface GlobalSpotlightProps {
   /** Control open state (parent controls visibility) */
-  isOpen?: boolean;
+  isOpen: boolean;
   /**
-   * When the parent owns visibility (controlled `isOpen` or portal host), called to dismiss.
-   * Ignored when the spotlight uses only its internal open state.
+   * The parent owns visibility and dismisses the dialog when called.
    */
-  onClose?: () => void;
+  onClose: () => void;
 }

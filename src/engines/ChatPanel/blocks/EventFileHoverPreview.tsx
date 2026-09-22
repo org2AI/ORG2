@@ -25,7 +25,6 @@ const EventFileHoverPreview: React.FC<EventFileHoverPreviewProps> = ({
       as="div"
       display="block"
       placement="bottom"
-      showDelayMs={750}
     >
       {children}
     </FileTreeHoverPreview>

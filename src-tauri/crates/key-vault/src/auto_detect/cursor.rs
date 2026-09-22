@@ -3,7 +3,8 @@ use super::{DetectedKey, QuotaInfo};
 
 /// Detect Cursor session keys from local state database
 ///
-/// Reads from: ~/Library/Application Support/Cursor/User/globalStorage/state.vscdb
+/// Reads from Cursor’s `state.vscdb`, at the platform location resolved by
+/// `app_paths::cursor`.
 /// Table: ItemTable
 /// Keys: cursorAuth/accessToken
 pub(super) async fn detect_cursor_keys() -> Vec<DetectedKey> {
@@ -76,28 +77,24 @@ struct CursorDbTokens {
     email: Option<String>,
 }
 
-/// Get the path to Cursor's state database
+/// Get the path to Cursor's state database for the signed-in user.
+///
+/// Honors `$XDG_CONFIG_HOME` / `%APPDATA%` via [`app_paths::cursor`], which the
+/// injected-home [`cursor_state_db_path_in`] deliberately does not.
 fn get_cursor_state_db_path() -> Option<std::path::PathBuf> {
-    let home = dirs::home_dir()?;
-    let path = cursor_state_db_path_in(&home);
+    let path = app_paths::cursor::state_db_path().ok()?;
     path.exists().then_some(path)
 }
 
 /// Platform-specific location of Cursor's `state.vscdb` under `home`.
 /// Existence is not checked here.
+///
+/// Keeps taking `home` explicitly because the suggestion probes receive theirs
+/// from a `ProbeContext`; only the platform layout is delegated. Unlike
+/// [`get_cursor_state_db_path`] this ignores `$XDG_CONFIG_HOME` / `%APPDATA%`,
+/// so an injected fixture home cannot fall through to the real installation.
 pub(super) fn cursor_state_db_path_in(home: &std::path::Path) -> std::path::PathBuf {
-    #[cfg(target_os = "macos")]
-    {
-        home.join("Library/Application Support/Cursor/User/globalStorage/state.vscdb")
-    }
-    #[cfg(target_os = "windows")]
-    {
-        home.join("AppData/Roaming/Cursor/User/globalStorage/state.vscdb")
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    {
-        home.join(".config/Cursor/User/globalStorage/state.vscdb")
-    }
+    app_paths::cursor::state_db_path_under(home)
 }
 
 /// Read only the raw access-token JWT from Cursor's state database, opened

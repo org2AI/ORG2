@@ -157,6 +157,8 @@ describe("Table row interactions", () => {
       'button[aria-label="Expand row"]'
     );
     expect(expandButton).not.toBeNull();
+    // index.scss tints the chevron on row hover through this class.
+    expect(expandButton?.classList.contains("table-expand-button")).toBe(true);
     expect(
       expandButton?.querySelector('[data-icon="chevron-right"]')
     ).not.toBeNull();

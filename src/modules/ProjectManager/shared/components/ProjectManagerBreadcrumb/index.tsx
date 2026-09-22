@@ -1,6 +1,6 @@
 import React from "react";
 
-import BreadcrumbFileHeader from "@src/modules/shared/components/FileHeader/BreadcrumbFileHeader";
+import BreadcrumbFileHeader from "@src/features/FileHeader/BreadcrumbFileHeader";
 
 export interface ProjectManagerBreadcrumbSegment {
   label: string;

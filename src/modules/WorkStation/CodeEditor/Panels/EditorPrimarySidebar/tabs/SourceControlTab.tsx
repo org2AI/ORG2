@@ -32,7 +32,6 @@ import { useSourceControlScope } from "../hooks/useSourceControlScope";
 import type { SourceControlContentHandle } from "./SourceControlTabPanels";
 import {
   NotGitInitializedContent,
-  SourceControlTabContent,
   SourceControlWithWorktrees,
 } from "./SourceControlTabPanels";
 
@@ -146,6 +145,7 @@ export function useSourceControlTabConfig({
       return (
         <div className="flex h-full min-h-0 flex-col">
           <Placeholder
+            loadingIconOnly
             variant="loading"
             placement="sidebar"
             title={t("placeholders.loading")}
@@ -164,7 +164,7 @@ export function useSourceControlTabConfig({
       );
     }
 
-    if (isMultiRoot && workspaceFolders.length > 1) {
+    if (isMultiRoot && workspaceFolders.length > 1 && !showOnlyStashes) {
       return (
         <MultiRootSourceControlContent
           ref={
@@ -185,31 +185,17 @@ export function useSourceControlTabConfig({
         />
       );
     }
-    if (hasWorktrees) {
-      return (
-        <SourceControlWithWorktrees
-          ref={sourceControlRef}
-          repoPath={repoPath}
-          repoId={repoId}
-          worktrees={worktrees}
-          worktreesLoading={worktreesLoading}
-          scope={effectiveScope}
-          onGitFileSelect={onGitFileSelect}
-          onGitFilesChange={onGitFilesChange}
-          onGitHistorySelectionChange={onGitHistorySelectionChange}
-          showFilter={showFilter}
-          viewMode={viewMode}
-          showOnlyStashes={showOnlyStashes}
-          navigateWithoutSelecting={navigateWithoutSelecting}
-          sectionFilter={sectionFilter}
-        />
-      );
-    }
+    // Keep the connected pane mounted while worktree discovery settles.
+    // Switching between standalone and scoped component types here remounts
+    // the file list and briefly reintroduces the scope loading overlay.
     return (
-      <SourceControlTabContent
+      <SourceControlWithWorktrees
         ref={sourceControlRef}
         repoPath={repoPath}
         repoId={repoId}
+        worktrees={worktrees}
+        worktreesLoading={worktreesLoading}
+        scope={effectiveScope}
         onGitFileSelect={onGitFileSelect}
         onGitFilesChange={onGitFilesChange}
         onGitHistorySelectionChange={onGitHistorySelectionChange}
@@ -238,7 +224,6 @@ export function useSourceControlTabConfig({
     sectionFilter,
     sourceControlRef,
     worktrees,
-    hasWorktrees,
     worktreesLoading,
     refreshWorktrees,
     t,

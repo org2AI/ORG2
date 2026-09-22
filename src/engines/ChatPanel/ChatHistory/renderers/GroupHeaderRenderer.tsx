@@ -50,6 +50,7 @@ function sameMeta(
     left.durationMs === right.durationMs &&
     left.itemCount === right.itemCount &&
     left.bodyEventCount === right.bodyEventCount &&
+    left.hasBody === right.hasBody &&
     left.previewText === right.previewText &&
     left.startMs === right.startMs &&
     left.endMs === right.endMs &&
@@ -77,12 +78,17 @@ function sameGroupHeaderProps(
   const previousSourceGroupCount =
     previous.sourceGroupCount ?? previous.groupCount;
   const nextSourceGroupCount = next.sourceGroupCount ?? next.groupCount;
+  // The preceding round decides whether this header stacks under it.
+  const previousPrecedingHasBody =
+    previous.groupMeta[previous.groupIndex - 1]?.hasBody;
+  const nextPrecedingHasBody = next.groupMeta[next.groupIndex - 1]?.hasBody;
 
   return (
     previous.groupIndex === next.groupIndex &&
     previousHeaderKey === nextHeaderKey &&
     previousSourceGroupIndex === nextSourceGroupIndex &&
     previousSourceGroupCount === nextSourceGroupCount &&
+    previousPrecedingHasBody === nextPrecedingHasBody &&
     previous.collapseLabelVariant === next.collapseLabelVariant &&
     previous.hideCollapseTimeRange === next.hideCollapseTimeRange &&
     previous.suppressRoundGap === next.suppressRoundGap &&
@@ -91,8 +97,7 @@ function sameGroupHeaderProps(
     previous.compactUserMessage === next.compactUserMessage &&
     previous.defaultTurnCollapsed === next.defaultTurnCollapsed &&
     previous.renderPart === next.renderPart &&
-    previous.turnCollapseInteractionAtRef ===
-      next.turnCollapseInteractionAtRef &&
+    previous.onBeforeTurnCollapseToggle === next.onBeforeTurnCollapseToggle &&
     previous.onEditSubmit === next.onEditSubmit &&
     previous.onRestoreCheckpoint === next.onRestoreCheckpoint &&
     sameHeader(previousHeader, nextHeader) &&
@@ -117,8 +122,7 @@ export interface GroupHeaderRendererProps {
   suppressRoundGap?: boolean;
   /**
    * Lifecycle phase of the tail turn: "complete" renders its "Agent worked
-   * for X" bar immediately (still expanded by default); "stale" also
-   * defaults it to collapsed like a historical turn.
+   * for X" bar and defaults it to collapsed like a historical turn.
    */
   tailTurnPhase?: TailTurnPhase;
   /**
@@ -133,7 +137,7 @@ export interface GroupHeaderRendererProps {
   /** Default collapse state for eligible turns when no explicit override exists. */
   defaultTurnCollapsed?: boolean;
   renderPart?: GroupHeaderRenderPart;
-  turnCollapseInteractionAtRef: React.MutableRefObject<number>;
+  onBeforeTurnCollapseToggle?: () => void;
   onEditSubmit?: (
     header: OptimizedChatItem,
     newText: string,
@@ -163,9 +167,9 @@ export const GroupHeaderRenderer: React.FC<GroupHeaderRendererProps> = memo(
     tailTurnPhase = "running",
     hideUserMessage = false,
     compactUserMessage = true,
-    defaultTurnCollapsed = false,
+    defaultTurnCollapsed = true,
     renderPart = "all",
-    turnCollapseInteractionAtRef,
+    onBeforeTurnCollapseToggle,
     onEditSubmit,
     onRestoreCheckpoint,
   }) => {
@@ -245,8 +249,14 @@ export const GroupHeaderRenderer: React.FC<GroupHeaderRendererProps> = memo(
     if (!showUserPart && !showCollapsePart) return null;
 
     const headerPaddingBottomClass = showCollapsePart ? "" : "pb-2";
+    // After a round the agent never worked in (no bar, no rows), this user
+    // message stacks under the previous one instead of opening a new section.
+    const followsBodylessTurn = groupMeta[groupIndex - 1]?.hasBody === false;
     const roundGap =
-      renderPart !== "collapse" && groupIndex > 0 && !suppressRoundGap
+      renderPart !== "collapse" &&
+      groupIndex > 0 &&
+      !suppressRoundGap &&
+      !followsBodylessTurn
         ? CHAT_FOOTER_SPACER.ROUND_GAP_PX
         : 0;
 
@@ -275,7 +285,7 @@ export const GroupHeaderRenderer: React.FC<GroupHeaderRendererProps> = memo(
             showTimeRange={!hideCollapseTimeRange}
             labelVariant={collapseLabelVariant}
             defaultCollapsed={turnDefaultCollapsed}
-            turnCollapseInteractionAtRef={turnCollapseInteractionAtRef}
+            onBeforeToggle={onBeforeTurnCollapseToggle}
             onExpand={
               canExpandUnloadedTurn ? handleExpandUnloadedTurn : undefined
             }

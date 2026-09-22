@@ -11,7 +11,7 @@ import {
   recentChatPanelTabsAtom,
 } from "../chatPanelRecentTabs";
 import {
-  buildDefaultLaunchpadTab,
+  createDefaultLaunchpadTab,
   createSessionTab,
 } from "../chatPanelTabFactories";
 import { closeAndDestroyChatPanelTabAtom } from "../chatPanelTabLifecycleAtoms";
@@ -32,7 +32,7 @@ describe("Chat Panel recent tabs", () => {
 
   it("records tabs as navigation leaves them and excludes the destination", () => {
     const store = createInstrumentedStore();
-    const launchpad = buildDefaultLaunchpadTab();
+    const launchpad = createDefaultLaunchpadTab();
     const sessionA = createSessionTab({ sessionId: "session-a", title: "A" });
     const sessionB = createSessionTab({ sessionId: "session-b", title: "B" });
     store.set(chatPanelTabsAtom, {
@@ -77,7 +77,7 @@ describe("Chat Panel recent tabs", () => {
 
   it("removes a recent session when sidebar navigation consumes Launchpad", () => {
     const store = createInstrumentedStore();
-    const launchpad = buildDefaultLaunchpadTab();
+    const launchpad = createDefaultLaunchpadTab();
     const sessionA = createSessionTab({ sessionId: "session-a", title: "A" });
     store.set(chatPanelTabsAtom, {
       tabs: [launchpad],

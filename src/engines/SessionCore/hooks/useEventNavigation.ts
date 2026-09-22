@@ -6,9 +6,9 @@
  */
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES, isWorkbenchPath } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 
 import {

@@ -1,15 +1,17 @@
-import { registerAppActions } from "@/src/ActionSystem/registerAppActions";
-import { useEffect } from "react";
-import { Outlet, createBrowserRouter, useNavigate } from "react-router-dom";
+import { registerAppActions } from "@/src/scaffold/ActionSystem/registerAppActions";
+import { Suspense, lazy, useEffect } from "react";
+import { Outlet, createBrowserRouter } from "react-router-dom";
 
+import ErrorPage from "@src/app/root/ErrorPage";
+import ConnectionHost from "@src/features/MarketConnect/ConnectionHost";
 import { useOrg2CloudOrgs } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { useOrg2CloudRosterReconcile } from "@src/features/Org2Cloud/org2CloudRosterReconcile";
 import { useOrg2CloudGuestShareAccess } from "@src/features/Org2Cloud/useOrg2CloudGuestShareAccess";
 import { useOrg2CloudRealtime } from "@src/features/Org2Cloud/useOrg2CloudRealtime";
 import { useOrg2CloudSyncEngine } from "@src/features/Org2Cloud/useOrg2CloudSyncEngine";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useDeepLinkHandler } from "@src/hooks/platform/useDeepLinkHandler";
 import AppShell from "@src/modules";
-import ErrorPage from "@src/modules/shared/Error";
 import {
   appStandaloneRouteGroup,
   projectManagerRouteGroup,
@@ -19,6 +21,18 @@ import {
 import { RouteDebugModal } from "@src/scaffold/ModalSystem/variants/RouteDebug";
 
 import { AuthGuard, AuthRedirect } from "./guards";
+
+// Dev builds only, behind a dynamic import so the panel and its controls stay
+// out of the release bundle and out of the startup graph.
+const DevMockScenariosModal =
+  process.env.NODE_ENV === "development"
+    ? lazy(
+        () =>
+          import(
+            /* webpackChunkName: "dev-mock-scenarios" */ "@src/scaffold/ModalSystem/variants/DevMockScenarios"
+          )
+      )
+    : null;
 
 // Root layout for global services and modals.
 const RootLayout = () => {
@@ -59,6 +73,12 @@ const RootLayout = () => {
   return (
     <>
       <RouteDebugModal />
+      {DevMockScenariosModal && (
+        <Suspense fallback={null}>
+          <DevMockScenariosModal />
+        </Suspense>
+      )}
+      <ConnectionHost />
       {/* AuthGuard wraps Outlet - if not authenticated, redirects to login */}
       <AuthGuard>
         <Outlet />

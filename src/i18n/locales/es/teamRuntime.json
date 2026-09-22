@@ -1,5 +1,4 @@
 {
-  "title": "Runtime del equipo",
   "refresh": "Actualizar",
   "loadError": "No se pudo cargar el runtime del equipo",
   "overview": {
@@ -67,7 +66,7 @@
     "memory": "Memoria",
     "unified": "unificada",
     "gpu": "GPU",
-    "appVersion": "Versión de ORGII",
+    "appVersion": "Versión de ORG2",
     "totalSessions": "Sesiones totales",
     "lastSynced": "Última sincronización"
   },

@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 
 import { ICON_CONFIG, PANEL_CONSTANTS } from "../config";
 
@@ -17,7 +16,6 @@ const {
   search: SearchIcon,
   addFile: AddFileIcon,
   addFolder: AddFolderIcon,
-  refresh: RefreshIcon,
   collapseAll: CollapseAllIcon,
   openInTab: OpenInTabIcon,
 } = ICON_CONFIG;
@@ -25,8 +23,6 @@ const {
 export interface UseExplorerActionsOptions {
   showFilterFiles: boolean;
   onToggleFilterFiles: () => void;
-  onRefresh?: () => void;
-  filesRefreshLoading?: boolean;
   onCollapseAll?: () => void;
   onAddFile?: () => void;
   onAddFolder?: () => void;
@@ -44,8 +40,6 @@ export interface UseExplorerActionsResult {
 export function useExplorerActions({
   showFilterFiles,
   onToggleFilterFiles,
-  onRefresh,
-  filesRefreshLoading = false,
   onCollapseAll,
   onAddFile,
   onAddFolder,
@@ -55,11 +49,6 @@ export function useExplorerActions({
   onOpenSearchTab,
 }: UseExplorerActionsOptions): UseExplorerActionsResult {
   const { t } = useTranslation("common");
-  const {
-    spinClass: filesRefreshSpinClass,
-    handleClick: handleFilesRefreshClick,
-  } = useRefreshSpin(onRefresh ?? (() => {}), filesRefreshLoading);
-
   const filesActions = useMemo<SectionHeaderAction[]>(() => {
     const actions: SectionHeaderAction[] = [];
 
@@ -107,22 +96,6 @@ export function useExplorerActions({
       });
     }
 
-    if (onRefresh) {
-      actions.push({
-        key: "refresh",
-        icon: (
-          <AnyIcon
-            icon={RefreshIcon}
-            size={PANEL_CONSTANTS.ACTION_ICON_SIZE}
-            strokeWidth={PANEL_CONSTANTS.ACTION_ICON_STROKE}
-            className={filesRefreshSpinClass}
-          />
-        ),
-        tooltip: "Refresh Explorer",
-        onClick: handleFilesRefreshClick,
-      });
-    }
-
     if (onCollapseAll) {
       actions.push({
         key: "collapse-all",
@@ -144,9 +117,6 @@ export function useExplorerActions({
     onToggleFilterFiles,
     onAddFile,
     onAddFolder,
-    onRefresh,
-    filesRefreshSpinClass,
-    handleFilesRefreshClick,
     onCollapseAll,
     t,
   ]);

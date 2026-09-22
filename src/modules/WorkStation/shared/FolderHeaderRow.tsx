@@ -8,13 +8,9 @@
  */
 import React, { memo } from "react";
 
+import { SidebarSectionHeader } from "@src/components/SidebarSectionHeader";
 import { FOLDER_HEADER } from "@src/config/workstation/tokens";
-import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
-  HugeiconsIcon,
-  WorkflowCircle05Icon,
-} from "@src/icons";
+import { HugeiconsIcon, WorkflowCircle05Icon } from "@src/icons";
 
 export interface FolderHeaderRowProps {
   /** Display name (folder name / repo name) */
@@ -46,46 +42,36 @@ export const FolderHeaderRow: React.FC<FolderHeaderRowProps> = memo(
     onContextMenu,
     actions,
   }) => (
-    <div
-      className={`${FOLDER_HEADER.row}${className ? ` ${className}` : ""}`}
+    <SidebarSectionHeader
+      surface="group"
+      titleStyle="name"
+      title={name}
+      expanded={expanded}
+      onToggle={onToggle}
       onContextMenu={onContextMenu}
-    >
-      <button type="button" className={FOLDER_HEADER.button} onClick={onToggle}>
-        {expanded ? (
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            data-icon="chevron-down"
-            size={14}
-            className="shrink-0 text-text-3"
-          />
-        ) : (
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            data-icon="chevron-right"
-            size={14}
-            className="shrink-0 text-text-3"
-          />
-        )}
-        <span className={FOLDER_HEADER.name}>{name}</span>
-        {branchName && (
-          <>
-            <HugeiconsIcon
-              icon={WorkflowCircle05Icon}
-              data-icon="git-branch"
-              size={11}
-              className="shrink-0 text-text-3"
-            />
-            <span className={FOLDER_HEADER.branch}>{branchName}</span>
-          </>
-        )}
-        {badgeCount != null && badgeCount > 0 && (
-          <span className="bg-accent-7 ml-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-medium text-white">
-            {badgeCount}
-          </span>
-        )}
-      </button>
-      {actions && <div className={FOLDER_HEADER.actions}>{actions}</div>}
-    </div>
+      className={`group/folder-header ${className ?? ""}`}
+      actions={actions}
+      titleSuffix={
+        <>
+          {branchName && (
+            <>
+              <HugeiconsIcon
+                icon={WorkflowCircle05Icon}
+                data-icon="git-branch"
+                size={11}
+                className="shrink-0 text-text-3"
+              />
+              <span className={FOLDER_HEADER.branch}>{branchName}</span>
+            </>
+          )}
+          {badgeCount != null && badgeCount > 0 && (
+            <span className="bg-accent-7 ml-1 inline-flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-medium text-white">
+              {badgeCount}
+            </span>
+          )}
+        </>
+      }
+    />
   )
 );
 

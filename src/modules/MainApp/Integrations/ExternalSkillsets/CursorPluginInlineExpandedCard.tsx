@@ -3,6 +3,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { CursorPluginInfo } from "@src/api/tauri/rpc/procedures/agentOrgs";
+import Button from "@src/components/Button";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
 import { createLogger } from "@src/hooks/logger";
 import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
@@ -13,7 +15,6 @@ import {
   Tick01Icon,
   WorkflowCircle05Icon,
 } from "@src/icons";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
 import { copyText } from "@src/util/data/clipboard";
 import { extractSkillPreviewDescription } from "@src/util/skills/skillFrontmatter";
 import { openFileInWorkStation } from "@src/util/ui/openFileInWorkStation";
@@ -161,9 +162,9 @@ const CursorPluginInlineExpandedCard: React.FC<
   const skillsContent = (
     <div className="flex flex-col overflow-hidden">
       {visibleSkills.map((skill) => (
-        <button
+        <Button
+          layout="custom"
           key={skill.slug}
-          type="button"
           onClick={() =>
             openFileInWorkStation(skill.skillPath, { defaultPreviewMode: true })
           }
@@ -193,16 +194,16 @@ const CursorPluginInlineExpandedCard: React.FC<
               </span>
             )}
           </div>
-        </button>
+        </Button>
       ))}
       {!skillsExpanded && hiddenCount > 0 && (
-        <button
-          type="button"
+        <Button
+          layout="custom"
           onClick={() => setSkillsExpanded(true)}
           className="px-3 py-1.5 text-left text-[12px] text-text-3 hover:text-text-1"
         >
           {t("cursorPlugins.viewMore", { count: hiddenCount })}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -210,9 +211,9 @@ const CursorPluginInlineExpandedCard: React.FC<
   const hooksContent = (
     <div className="flex flex-col overflow-hidden">
       {plugin.hooks.map((hook) => (
-        <button
+        <Button
+          layout="custom"
           key={hook.eventType}
-          type="button"
           onClick={() =>
             openFileInWorkStation(hook.hookPath, { defaultPreviewMode: true })
           }
@@ -240,7 +241,7 @@ const CursorPluginInlineExpandedCard: React.FC<
               {hook.eventType}
             </span>
           </div>
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -268,9 +269,10 @@ const CursorPluginInlineExpandedCard: React.FC<
         <InlineCardBody>{tabContent}</InlineCardBody>
         {activeTab === PLUGIN_INLINE_TAB.MCP && hasMcp && (
           <InlineCardFooter>
-            <button
+            <Button
+              size="mini"
               onClick={handleCopyMcp}
-              className="inline-flex items-center gap-1.5 rounded border border-border-2 px-3 py-1.5 text-[12px] text-text-2 transition-colors hover:bg-fill-3 hover:text-text-1"
+              className="gap-1.5 text-[12px] hover:bg-fill-3 hover:text-text-1"
             >
               {mcpCopied ? (
                 <HugeiconsIcon icon={Tick01Icon} data-icon="check" size={12} />
@@ -284,7 +286,7 @@ const CursorPluginInlineExpandedCard: React.FC<
               {mcpCopied
                 ? t("common:status.copied")
                 : t("cursorPlugins.copyMcpConfig")}
-            </button>
+            </Button>
           </InlineCardFooter>
         )}
       </InlineCardShell>

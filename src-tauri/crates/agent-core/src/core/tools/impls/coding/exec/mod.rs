@@ -579,7 +579,7 @@ impl Tool for ExecTool {
             }
             self.request_external_terminal_confirmation(
                 &command,
-                "Opening an external terminal runs outside the tool backend and stdout/stderr cannot be captured. Confirm that you want ORGII to open your OS terminal and send this command.",
+                "Opening an external terminal runs outside the tool backend and stdout/stderr cannot be captured. Confirm that you want ORG2 to open your OS terminal and send this command.",
             )
             .await?;
             let launch = external::launch(&command, &effective_dir)?;

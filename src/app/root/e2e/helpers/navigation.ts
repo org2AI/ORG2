@@ -8,11 +8,6 @@ import { allAgentDefsAtom } from "@src/modules/MainApp/AgentOrgs/store/builtInAg
 import { router } from "@src/router";
 import { openWorkItemInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { reposAtom, selectedRepoIdAtom } from "@src/store/repo/atoms";
-import {
-  CHAT_PANEL_CONTENT_MODE,
-  chatPanelContentModeAtom,
-  chatPanelSelectedWorkItemAtom,
-} from "@src/store/ui/chatPanel/selectionAtoms";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
@@ -232,7 +227,6 @@ export function createNavigationHelpers(store: E2EStore) {
       store.set(stationModeAtom, "my-station");
       store.set(chatPanelMaximizedAtom, true);
       store.set(chatWidthAtom, 560);
-      store.set(chatPanelContentModeAtom, CHAT_PANEL_CONTENT_MODE.NON_SESSION);
       const selection = {
         workItem: enrichedWorkItemToUI(workItem),
         projectId: project?.slug ?? projectSlug,
@@ -240,9 +234,8 @@ export function createNavigationHelpers(store: E2EStore) {
         projectSlug,
         shortId,
       };
-      store.set(chatPanelSelectedWorkItemAtom, selection);
-      // The active tab owns the visible surface since the launchpad rework;
-      // a bare selection write no longer switches away from the start page.
+      // The active tab owns the visible surface; opening the keyed tab both
+      // stores the payload and switches away from the start page.
       store.set(openWorkItemInChatPanelTabAtom, selection);
       await new Promise((resolve) => window.setTimeout(resolve, 100));
       return { ok: true };

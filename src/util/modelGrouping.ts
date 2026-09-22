@@ -13,6 +13,7 @@ import {
   isModelVariantSuffixToken,
   stripCursorHostedModelPrefix,
 } from "./modelNameGrammar";
+import { formatTierModelLabel, isTierModelName } from "./modelTiers";
 
 export interface ModelGroup {
   label: string;
@@ -39,20 +40,20 @@ function groupHasAnyEnabled(
 // Era thresholds — groups below these are "older"
 // ============================================
 
-/** Minimum sortVersion to be considered "current" per family */
-const CURRENT_THRESHOLDS: Record<string, number> = {
-  claude: 408, // Claude 4.8+
-  gpt: 550, // GPT 5.5+
-  gemini: 200, // Gemini 2+
-  sonnet: 408, // Sonnet 4.8+
-  opus: 408, // Opus 4.8+
-  haiku: 408, // Haiku 4.8+
-  fable: 500, // Fable 5 / 5.1+
-  mythos: 500, // Mythos 5+
-  composer: 150, // Composer 1.5+
-  o: 540, // O-series: o5.4+ current; o5 / o4 / o3 / o1 older
-  glm: 510, // Zhipu GLM 5.1+ current; GLM 5.0 / 4.x older
-  minimax: 270, // MiniMax 2.7+ / 3+ current; older MiniMax lines older
+/** Inclusive minimum versions, with no upper bound for future generations. */
+const CURRENT_MINIMUM_VERSIONS: Record<string, readonly [number, number]> = {
+  claude: [4, 8],
+  gpt: [5, 5],
+  gemini: [2, 0],
+  sonnet: [4, 8],
+  opus: [4, 8],
+  haiku: [4, 8],
+  fable: [5, 0],
+  mythos: [5, 0],
+  composer: [1, 5],
+  o: [5, 4],
+  glm: [5, 1],
+  minimax: [2, 7],
 };
 
 interface ParsedGroup {
@@ -67,10 +68,16 @@ function formatGptTierLabel(tier: string): string {
     .join(" ");
 }
 
-const CURSOR_TIER_MODELS = new Set(["default", "auto", "premium"]);
-
-function formatCursorTierLabel(modelName: string): string {
-  return modelName.charAt(0).toUpperCase() + modelName.slice(1);
+/**
+ * Group label for a routing-tier id. With a Cursor hint the tier is named for
+ * what it does ("Auto (Cursor picks)"); without one the owner is unknown, so
+ * the id is only capitalised — see `@src/util/modelTiers`.
+ */
+function formatTierGroupLabel(modelName: string, agentType?: string): string {
+  return (
+    formatTierModelLabel(modelName, agentType) ??
+    modelName.charAt(0).toUpperCase() + modelName.slice(1)
+  );
 }
 
 function versionStringToSortVersion(version: string): number {
@@ -172,14 +179,22 @@ function parseClaude(rest: string): ParsedGroup {
   return { label: "Claude", sortVersion: 0 };
 }
 
-/** Parse a model name and extract a group label + sortable version number. */
-function parseModelGroup(modelName: string): ParsedGroup {
+/**
+ * Parse a model name and extract a group label + sortable version number.
+ *
+ * `agentType` only matters for routing-tier ids, whose label depends on who
+ * owns them; every other name is self-identifying.
+ */
+function parseModelGroup(modelName: string, agentType?: string): ParsedGroup {
   const { coreModelName } = stripCursorHostedModelPrefix(modelName);
   const lower = coreModelName.toLowerCase();
   const cleaned = lower.replace(/-\d{8}$/, "").replace(/-latest$/, "");
 
-  if (CURSOR_TIER_MODELS.has(cleaned)) {
-    return { label: formatCursorTierLabel(cleaned), sortVersion: 1000 };
+  if (isTierModelName(cleaned)) {
+    return {
+      label: formatTierGroupLabel(cleaned, agentType),
+      sortVersion: 1000,
+    };
   }
 
   for (const { prefix, label, versionRe } of FAMILY_PATTERNS) {
@@ -242,11 +257,20 @@ function parseModelGroup(modelName: string): ParsedGroup {
   return { label: "Other", sortVersion: -1 };
 }
 
-/** Group models by family prefix and sort groups by version descending. */
-export function groupModels(models: string[]): ModelGroup[] {
+/**
+ * Group models by family prefix and sort groups by version descending.
+ *
+ * Pass `agentType` whenever the caller knows which account the ids came from:
+ * routing-tier ids ("default", "auto") name no model, so only the owner can
+ * say what the group should be called.
+ */
+export function groupModels(
+  models: string[],
+  agentType?: string
+): ModelGroup[] {
   const groups = new Map<string, ModelGroup>();
   for (const model of models) {
-    const parsed = parseModelGroup(model);
+    const parsed = parseModelGroup(model, agentType);
     const groupLabel = parsed.label === "Other" ? model : parsed.label;
     const existing = groups.get(groupLabel);
     if (existing) {
@@ -262,6 +286,23 @@ export function groupModels(models: string[]): ModelGroup[] {
   return Array.from(groups.values()).sort(
     (groupA, groupB) => groupB.sortVersion - groupA.sortVersion
   );
+}
+
+/**
+ * Re-derive a group's label once the owning agent is known.
+ *
+ * Only routing-tier groups ("default", "auto", "premium") can change: every
+ * other label is derived from a self-identifying model name. Lets callers that
+ * group ids from mixed sources fix up the labels they can attribute, without
+ * re-running the grouping pass per account.
+ */
+export function groupLabelForAgent(
+  group: ModelGroup,
+  agentType?: string
+): string {
+  const soleModel = group.models.length === 1 ? group.models[0] : undefined;
+  if (!soleModel || !isTierModelName(soleModel)) return group.label;
+  return formatTierGroupLabel(soleModel.toLowerCase(), agentType);
 }
 
 /** Sort model groups for inline pickers (enabled first or A–Z). */
@@ -317,9 +358,15 @@ export function getDefaultEnabledModels(allModels: string[]): string[] {
 export function isLegacyGroup(group: ModelGroup): boolean {
   const labelHead = group.label.split(" ")[0].toLowerCase();
   const familyKey = /^o\d/.test(labelHead) ? "o" : labelHead;
-  const threshold = CURRENT_THRESHOLDS[familyKey];
-  if (threshold !== undefined) {
-    return group.sortVersion < threshold;
+  const minimum = CURRENT_MINIMUM_VERSIONS[familyKey];
+  if (minimum) {
+    // Compare version components rather than the presentation sort score:
+    // e.g. 5.10 is newer than 5.5, and every 6.x also clears that minimum.
+    const version = group.label.match(/(?:^o| )(\d+)(?:\.(\d+))?/);
+    if (!version) return true;
+    const major = Number(version[1]);
+    const minor = Number(version[2] ?? 0);
+    return major < minimum[0] || (major === minimum[0] && minor < minimum[1]);
   }
   return false;
 }
@@ -349,7 +396,7 @@ export function getModelFamily(modelName: string): string {
   const lower = coreModelName.toLowerCase();
   const cleaned = lower.replace(/-\d{8}$/, "").replace(/-latest$/, "");
 
-  if (CURSOR_TIER_MODELS.has(cleaned)) {
+  if (isTierModelName(cleaned)) {
     return "Cursor";
   }
 

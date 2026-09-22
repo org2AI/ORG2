@@ -7,23 +7,23 @@
   "keyVault": {
     "title": "Mô hình & CLI",
     "overview": {},
-    "searchPlaceholder": "Tìm kiếm tài khoản...",
+    "searchPlaceholder": "Tìm kiếm khóa...",
     "inlineCard": {
       "tabStatus": "Trạng thái",
       "tabModels": "Mô hình"
     },
-    "noAccountsFound": "Không tìm thấy tài khoản",
-    "addAccount": "Thêm tài khoản",
+    "noKeysFound": "Không tìm thấy khóa",
+    "addKey": "Thêm khóa",
     "removeLocal": "Xóa cục bộ",
     "unlist": "Hủy niêm yết",
     "confirmRemoveTitle": "Xóa \"{{name}}\"?",
-    "confirmRemoveMessage": "Thông tin xác thực cục bộ sẽ bị xóa. Hành động này không thể hoàn tác.",
+    "confirmRemoveMessage": "Khóa đã lưu cục bộ sẽ bị xóa. Hành động này không thể hoàn tác",
     "toasts": {
       "refreshed": "{{name}} đã làm mới thành công",
       "refreshError": "Không thể làm mới {{name}}: {{error}}",
       "localRemoved": "{{name}} đã xóa",
       "deleteError": "Không thể xóa {{name}}",
-      "refreshPartial": "Đã làm mới mô hình: +{{added}} / -{{removed}}, nhưng {{failed}} trên {{total}} tài khoản bị lỗi",
+      "refreshPartial": "Đã làm mới mô hình: +{{added}} / -{{removed}}, nhưng {{failed}} trên {{total}} khóa bị lỗi",
       "refreshedNoChange": "Đã làm mới mô hình: không có thay đổi",
       "refreshedDelta": "Đã làm mới mô hình: thêm {{added}}, xóa {{removed}}"
     },
@@ -62,16 +62,16 @@
       "availableModels": "Mô hình khả dụng",
       "modelsEnabledAddable": "{{enabled}} đã bật · {{addable}} có thể thêm",
       "noModelsConfigured": "Chưa cấu hình mô hình",
-      "supportOrgiiAgents": "Hỗ trợ ORGII Agents",
+      "supportOrgiiAgents": "Hỗ trợ ORG2 Agents",
       "supportCliAgents": "Hỗ trợ CLI Agents",
       "noCliAgentSupport": "Nhà cung cấp này không hỗ trợ CLI Agent",
       "accountEmail": "Email tài khoản"
     },
     "customModels": {
-      "manualSetupHint": "Nhập ID mô hình chính xác mà điểm cuối chấp nhận và tên hiển thị tùy chọn. Không bắt buộc khám phá mô hình; bật mô hình không xác minh tính tương thích.",
+      "manualSetupHint": "Nhập ID mô hình chính xác mà điểm cuối chấp nhận và tên hiển thị tùy chọn. Không bắt buộc khám phá mô hình; bật mô hình không xác minh tính tương thích",
       "modelNamePlaceholder": "Nhập id mô hình...",
       "displayNamePlaceholder": "Nhãn tùy chọn",
-      "emptyHint": "Chưa thêm mô hình tùy chỉnh nào.",
+      "emptyHint": "Chưa thêm mô hình tùy chỉnh nào",
       "addModel": "Thêm mô hình",
       "testRequiresEndpoint": "Nhập điểm cuối và khóa API để kiểm tra mô hình này",
       "invalidModelId": "ID mô hình phải dài 1–256 byte, không chứa khoảng trắng hoặc ký tự điều khiển.",
@@ -88,8 +88,8 @@
       "keyValidationFailed": "Xác minh thông tin xác thực thất bại"
     },
     "edit": {
-      "title": "Chỉnh sửa tài khoản",
-      "apiChangeHint": "Để cập nhật API Key, thông tin xác thực hoặc cài đặt nhà cung cấp, hãy xóa tài khoản này và thêm mới",
+      "title": "Chỉnh sửa khóa",
+      "apiChangeHint": "Để cập nhật API Key hoặc cài đặt nhà cung cấp, hãy xóa khóa này và thêm khóa mới",
       "saved": "Đã lưu thay đổi"
     },
     "quota": {
@@ -145,14 +145,12 @@
       "keysVerified": "Thông tin xác thực đã được xác minh",
       "failedMessage": "API Key và Session Token của bạn dường như không thuộc cùng một tài khoản Cursor.",
       "failedError": "Lỗi: {{error}}",
-      "failedHint": "Vui lòng tạo danh sách mới với thông tin xác thực phù hợp từ cùng một tài khoản Cursor.",
+      "failedHint": "Vui lòng tạo danh sách mới với thông tin xác thực phù hợp từ cùng một tài khoản Cursor",
       "listingRejected": "Danh sách bị từ chối",
       "rejectedByAdmin": "Danh sách này đã bị từ chối bởi quản trị viên."
     },
     "apiKeyLabel": "API Key",
-    "apiKeyDesc": "Khóa bí mật dùng để xác thực yêu cầu đến API của nhà cung cấp",
     "baseUrlLabel": "Base URL",
-    "baseUrlDesc": "URL điểm cuối API — chỉ thay đổi khi sử dụng proxy, triển khai tùy chỉnh hoặc máy chủ tự lưu trữ",
     "apiProtocolLabel": "Giao thức API",
     "apiProtocolDesc": "Chọn giao thức kết nối cho Rust Agent tích hợp",
     "officialUrl": "URL chính thức",
@@ -161,7 +159,7 @@
     "customBaseUrlNoteBody": "API key và dữ liệu yêu cầu được gửi đến URL bạn nhập. Chỉ dùng URL tùy chỉnh cho proxy đáng tin cậy, triển khai tự lưu trữ hoặc điểm cuối bạn kiểm soát",
     "localModel": {
       "title": "Cookbook mô hình cục bộ",
-      "description": "Chọn preset runtime cục bộ, xác nhận endpoint tương thích OpenAI, thêm một hoặc nhiều ID mô hình rồi lưu tài khoản này để dùng mô hình cục bộ trong Chat",
+      "description": "Chọn preset runtime cục bộ, xác nhận endpoint tương thích OpenAI, thêm một hoặc nhiều ID mô hình rồi lưu khóa này để dùng mô hình cục bộ trong Chat",
       "baseUrlDesc": "Endpoint cục bộ tương thích OpenAI. Hãy khởi động runtime trước khi xác thực hoặc lưu",
       "apiKeyDesc": "Hầu hết runtime cục bộ chấp nhận mọi giá trị không rỗng. Giữ placeholder trừ khi máy chủ yêu cầu key",
       "quickModelsLabel": "Mô hình Cookbook",
@@ -171,18 +169,16 @@
       "validateDesc": "Probe endpoint nếu đang chạy, hoặc lưu sau khi thêm mô hình thủ công"
     },
     "validate": "Xác thực",
-    "validateDesc": "Xác thực thông tin đăng nhập trước khi tiếp tục",
     "validated": "Đã xác thực",
     "validationSuccessModels": "Phát hiện {{count}} mô hình — cấu hình ở bước tiếp theo",
     "validationSuccessNoModels": "Key đã xác thực — không tự động phát hiện model, vui lòng thêm model thủ công bên dưới",
     "addCliAgent": "Thêm Agent",
-    "accountName": "Tên tài khoản (tùy chọn)",
-    "accountNameDesc": "Để trống để dùng {{provider}}, sau đó {{provider}}-1, {{provider}}-2, v.v",
-    "selectorDesc": "Chọn dịch vụ để kết nối",
-    "accountNamePlaceholder": "Tự động: {{provider}}",
+    "keyName": "Tên khóa (tùy chọn)",
+    "keyNameDesc": "Để trống để dùng {{provider}}, sau đó {{provider}}-1, {{provider}}-2, v.v",
+    "keyNamePlaceholder": "Tự động: {{provider}}",
     "descriptionOptional": "Mô tả (tùy chọn)",
     "descriptionPlaceholder": "Nhập mô tả",
-    "nameDuplicate": "Đã tồn tại tài khoản với tên này",
+    "nameDuplicate": "Đã tồn tại khóa với tên này",
     "stepLabel": "Bước {{current}}/{{total}}",
     "noValidTokenFound": "Không tìm thấy token hợp lệ trong thông tin xác thực",
     "couldNotDetectKeys": "Không thể phát hiện thông tin xác thực. Đảm bảo CLI đã cài đặt và bạn đã đăng nhập.",
@@ -240,13 +236,13 @@
     "signIn": "Đăng nhập",
     "signedIn": "Đã đăng nhập",
     "signInWithClaudeCode": "Đăng nhập bằng Claude Code",
-    "claudeCodeSetupMethodDesc": "Dùng Claude Code OAuth để ủy quyền ORGII",
+    "claudeCodeSetupMethodDesc": "Dùng Claude Code OAuth để ủy quyền ORG2",
     "claudeCodeSignInTitle": "Đăng nhập Claude Code",
-    "claudeCodeSignInDesc": "Đăng nhập Claude Code trong trình duyệt tích hợp. ORGII sẽ lấy authorization code và lưu OAuth Token cục bộ",
+    "claudeCodeSignInDesc": "Đăng nhập Claude Code trong trình duyệt tích hợp. ORG2 sẽ lấy authorization code và lưu OAuth Token cục bộ",
     "claudeCodeReadyToSignIn": "Sẵn sàng đăng nhập Claude Code",
     "claudeCodeSignedIn": "Claude Code đã kết nối",
-    "claudeCodeOAuthHint": "Thao tác này lưu tài khoản claude_code OAuth cho Rust agents dùng anthropic_native.",
-    "claudeCodeBrowserHint": "Hoàn tất ủy quyền Claude Code trong trình duyệt tích hợp.",
+    "claudeCodeOAuthHint": "Thao tác này lưu khóa claude_code OAuth cho Rust agents dùng anthropic_native",
+    "claudeCodeBrowserHint": "Hoàn tất ủy quyền Claude Code trong trình duyệt tích hợp",
     "claudeCodeSignInErrorHint": "Đóng trình duyệt và thử đăng nhập lại. Chưa lưu Token nào",
     "connectedViaChatGpt": "Đã kết nối qua ChatGPT Plus/Pro",
     "apiKeyDetectedFromConfig": "Đã phát hiện API key từ cấu hình cục bộ",
@@ -269,7 +265,7 @@
     "opensEmbeddedBrowser": "Dùng trình duyệt tích hợp để kết nối tài khoản Cursor của bạn.",
     "loggedIn": "Đã đăng nhập",
     "loginStep": "Đăng nhập",
-    "signInToCursorHint": "Đăng nhập vào tài khoản Cursor của bạn. Cửa sổ này sẽ tự đóng sau khi đăng nhập.",
+    "signInToCursorHint": "Đăng nhập vào tài khoản Cursor của bạn. Cửa sổ này sẽ tự đóng sau khi đăng nhập",
     "copilotCreatePat": "Tạo GitHub Personal Access Token",
     "copilotCreatePatDesc": "Mở trình duyệt tích hợp để tạo GitHub PAT",
     "copilotTokenValidated": "Token đã xác thực",
@@ -303,26 +299,26 @@
     "cursorLoginBrowserTitle": "Đăng nhập Cursor",
     "modelCount": "{{count}} mô hình",
     "cursorLoginReadyTitle": "Tài khoản Cursor đã kết nối",
-    "cursorLoginReadyDesc": "Hãy tạo và dán Cursor API Key bên dưới. Cursor agent sẽ không hoạt động nếu thiếu API Key này.",
-    "cursorApiKeyBrowserHint": "Sau khi đăng nhập, ORGII sẽ mở dashboard Cursor. Hãy tạo User API Key ở đó rồi dán vào bên dưới",
+    "cursorLoginReadyDesc": "Hãy tạo và dán Cursor API Key bên dưới. Cursor agent sẽ không hoạt động nếu thiếu API Key này",
+    "cursorApiKeyBrowserHint": "Sau khi đăng nhập, ORG2 sẽ mở dashboard Cursor. Hãy tạo User API Key ở đó rồi dán vào bên dưới",
     "cursorApiKeyRecommendedTitle": "Nên cung cấp Cursor API Key",
-    "cursorApiKeyRecommendedDesc": "Bạn có thể tiếp tục mà không cần Cursor API Key nếu chỉ muốn dùng Cursor với Rust agents của ORGII; chỉ cần đăng nhập bằng trình duyệt nội bộ hoặc cung cấp session token",
-    "cursorApiKeyRecommendedAction": "Hãy cung cấp Cursor API Key nếu bạn cũng muốn dùng Cursor trong ORGII",
+    "cursorApiKeyRecommendedDesc": "Bạn có thể tiếp tục mà không cần Cursor API Key nếu chỉ muốn dùng Cursor với Rust agents của ORG2; chỉ cần đăng nhập bằng trình duyệt nội bộ hoặc cung cấp session token",
+    "cursorApiKeyRecommendedAction": "Hãy cung cấp Cursor API Key nếu bạn cũng muốn dùng Cursor trong ORG2",
     "openCursorApiKeys": "Mở Cursor API Keys",
     "codexSetupMethodDesc": "Kết nối Codex bằng đăng nhập ChatGPT, tự phát hiện cục bộ hoặc OpenAI API key",
     "codexSignInTitle": "Đăng nhập Codex",
-    "codexSignInDesc": "Đăng nhập ChatGPT cho Codex trong trình duyệt nhúng. ORGII sẽ bắt mã ủy quyền và lưu OAuth Token cục bộ",
+    "codexSignInDesc": "Đăng nhập ChatGPT cho Codex trong trình duyệt nhúng. ORG2 sẽ bắt mã ủy quyền và lưu OAuth Token cục bộ",
     "signInWithCodex": "Đăng nhập bằng Codex",
     "codexReadyToSignIn": "Sẵn sàng đăng nhập Codex",
     "codexSignedIn": "Codex đã kết nối",
-    "codexOAuthHint": "Thao tác này lưu tài khoản OAuth codex để truy cập backend ChatGPT Codex.",
-    "codexBrowserHint": "Hoàn tất ủy quyền Codex trong trình duyệt nhúng.",
+    "codexOAuthHint": "Thao tác này lưu khóa OAuth codex để truy cập backend ChatGPT Codex",
+    "codexBrowserHint": "Hoàn tất ủy quyền Codex trong trình duyệt nhúng",
     "codexSignInErrorHint": "Đóng trình duyệt và thử đăng nhập lại. Chưa lưu Token nào",
     "codexAutodetectTitle": "Phát hiện phiên Codex",
     "codexAutodetectDesc": "Đọc ~/.codex/auth.json và OPENAI_API_KEY từ môi trường cục bộ",
-    "codexCredentialLabel": "Thông tin Codex",
-    "codexCredentialDesc": "Dán Codex OAuth access token hoặc OpenAI API key",
-    "codexCredentialPlaceholder": "eyJ... hoặc sk-...",
+    "codexKeyLabel": "Khóa Codex",
+    "codexKeyDesc": "Dán Codex OAuth access token hoặc OpenAI API key",
+    "codexKeyPlaceholder": "eyJ... hoặc sk-...",
     "codexDetectErrorHint": "Đăng nhập bằng trình duyệt nhúng hoặc dán thủ công OpenAI API key",
     "codexValidationErrorHint": "Kiểm tra token hoặc API key có hợp lệ không rồi thử lại",
     "claudeCodeAutodetectTitle": "Phát hiện phiên Claude Code",
@@ -330,11 +326,11 @@
     "claudeCodeDetectErrorHint": "Đăng nhập bằng trình duyệt nhúng hoặc chạy claude auth login rồi thử phát hiện lại",
     "refreshModels": {
       "button": "Làm mới danh sách mô hình Cursor",
-      "failed": "Làm mới từ Cursor thất bại: {{error}}"
+      "failed": "Workspace Market này hiện không khả dụng. Hãy mở lại Market để làm mới quyền truy cập."
     },
     "revalidate": "Xác thực lại",
-    "confirmRemoveActiveSessions_one": "{{count}} phiên đang hoạt động vẫn dùng tài khoản này và sẽ thất bại ở lượt tiếp theo:",
-    "confirmRemoveActiveSessions_other": "{{count}} phiên đang hoạt động vẫn dùng tài khoản này và sẽ thất bại ở lượt tiếp theo:"
+    "confirmRemoveActiveSessions_one": "{{count}} phiên đang hoạt động vẫn dùng khóa này và sẽ thất bại ở lượt tiếp theo:",
+    "confirmRemoveActiveSessions_other": "{{count}} phiên đang hoạt động vẫn dùng khóa này và sẽ thất bại ở lượt tiếp theo:"
   },
   "integrations": {
     "searchPlaceholder": "Tìm kiếm kết nối...",
@@ -349,7 +345,9 @@
     "connecting": "Đang kết nối",
     "reconnecting": "Đang kết nối lại",
     "connectionError": "Lỗi kết nối",
-    "accountNameDuplicate": "Tài khoản với tên này đã tồn tại",
+    "connectionName": "Tên kết nối (tùy chọn)",
+    "connectionNamePlaceholder": "Tự động: {{provider}}",
+    "connectionNameDuplicate": "Kết nối với tên này đã tồn tại",
     "probeSuccess": "Kết nối thành công",
     "probeFailed": "Kết nối thất bại",
     "verified": "Đã xác minh"
@@ -573,7 +571,7 @@
     },
     "gateway": {
       "title": "Gateway Agent",
-      "description": "Gateway định tuyến tin nhắn đến từ mọi kênh. Chọn API key và mô hình để sử dụng cho định tuyến ngữ nghĩa.",
+      "description": "Gateway định tuyến tin nhắn đến từ mọi kênh. Chọn API key và mô hình để sử dụng cho định tuyến ngữ nghĩa",
       "statusReady": "Đã cấu hình",
       "statusUnconfigured": "Chưa cấu hình",
       "account": "Tài khoản API Key",
@@ -581,12 +579,13 @@
       "model": "Mô hình",
       "modelPlaceholder": "Chọn mô hình",
       "groupPerUser": "Cô lập phiên chat nhóm theo người dùng",
-      "groupPerUserDesc": "Mỗi người tham gia trong chat nhóm có ngữ cảnh phiên riêng."
+      "groupPerUserDesc": "Mỗi người tham gia trong chat nhóm có ngữ cảnh phiên riêng"
     },
-    "emailProtocol": "Giao thức"
+    "emailProtocol": "Giao thức",
+    "matrixDeviceNamePlaceholder": "Bot ORG2"
   },
   "modelsTabs": {
-    "myAccounts": "Keys của tôi",
+    "myKeys": "Khóa của tôi",
     "models": "Mô hình",
     "comingSoon": "Sắp ra mắt",
     "installedClis": "CLI Clients",
@@ -618,28 +617,23 @@
     "groupTagNonCurrent": "Không phải mới nhất",
     "expandAllRows": "Mở rộng tất cả",
     "collapseAllRows": "Thu gọn tất cả",
-    "orgiiMarketGroup": "Thị trường ORGII",
+    "orgiiMarketGroup": "Thị trường ORG2",
     "variantSpeed": "Speed",
-    "variantOptions": "Tùy chọn phiên bản",
     "variantDefault": "Default",
     "variantCount": "{{count}} phiên bản",
-    "selectedVersion": "Phiên bản đã chọn",
-    "currentKeySelectedVersion": "Phiên bản đã chọn của khoá hiện tại",
-    "keyDefaultVersionOnly": "Key này chỉ có phiên bản mặc định {{model}}",
-    "selectedVersionFor": "Phiên bản đã chọn cho {{model}}",
+    "showVersionDetails": "Hiện tất cả phiên bản",
     "preferredVersion": "Phiên bản ưu tiên",
-    "reasoningLevel": "Reasoning level",
-    "effort": "Effort",
-    "addNewKey": "Thêm key mới",
     "availableKeys": "Đã bật {{enabled}}/{{total}} keys khả dụng",
     "availableModels": "Đã bật {{enabled}}/{{total}} mô hình khả dụng",
     "turnOnKeyFor": "Bật key này cho {{model}}",
     "turnOffKeyFor": "Tắt key này cho {{model}}",
+    "turnOnAllKeysFor": "Bật tất cả key cho {{model}}",
+    "turnOffAllKeysFor": "Tắt tất cả key cho {{model}}",
     "sortEnabledFirst": "Sắp xếp: bật trước",
     "sortAlphabetical": "Sắp xếp: A–Z"
   },
   "modelPreview": {
-    "noSources": "Không có tài khoản nào có mô hình này"
+    "noSources": "Không có khóa nào có mô hình này"
   },
   "cliPreview": {
     "clientSection": "Máy khách",
@@ -757,28 +751,28 @@
     "tokenRequired": "Cần Personal access token",
     "oauthWaiting": "Đang chờ OAuth",
     "oauthDeviceDesc": "Mở URL xác minh và nhập mã này để cấp quyền GitHub",
-    "oauthBrowserDesc": "Hoàn tất cấp quyền trong cửa sổ trình duyệt đã mở.",
-    "oauthBrowserOpened": "Một cửa sổ trình duyệt đã được mở. Hoàn tất cấp quyền ở đó, rồi trình hướng dẫn này sẽ tiếp tục."
+    "oauthBrowserDesc": "Hoàn tất cấp quyền trong cửa sổ trình duyệt đã mở",
+    "oauthBrowserOpened": "Một cửa sổ trình duyệt đã được mở. Hoàn tất cấp quyền ở đó, rồi trình hướng dẫn này sẽ tiếp tục"
   },
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "Tự động phát hiện",
     "methodOAuth": "Đăng nhập bằng GitHub",
-    "methodPickerDesc": "Chọn cách bạn muốn xác thực với GitHub.",
-    "oauthDeviceDesc": "Mở URL xác minh và nhập mã này để ủy quyền GitHub.",
+    "methodPickerDesc": "Chọn cách bạn muốn xác thực với GitHub",
+    "oauthDeviceDesc": "Mở URL xác minh và nhập mã này để ủy quyền GitHub",
     "scanCredHelper": "Git credential helper ({{name}})",
     "scanEmpty": "Không phát hiện gì",
-    "scanEmptyDesc": "Không tìm thấy token gh CLI, credential helper hay khóa SSH nào. Hãy chọn phương thức khác ở trên.",
+    "scanEmptyDesc": "Không tìm thấy token gh CLI, credential helper hay khóa SSH nào. Hãy chọn phương thức khác ở trên",
     "scanGhCli": "GitHub CLI (gh)",
     "scanResults": "Thông tin xác thực đã phát hiện",
-    "scanResultsDesc": "Chọn một mục để nhập. Chúng tôi xác minh token với GitHub trước khi lưu.",
+    "scanResultsDesc": "Chọn một mục để nhập. Chúng tôi xác minh token với GitHub trước khi lưu",
     "scanSshKey": "Khóa SSH — {{name}}",
     "scanning": "Đang quét…",
-    "scanningDesc": "Đang tìm token gh CLI, credential helper và khóa SSH trên máy này.",
+    "scanningDesc": "Đang tìm token gh CLI, credential helper và khóa SSH trên máy này",
     "sshKeyPath": "Đường dẫn khóa SSH",
-    "sshKeyPathDesc": "Đường dẫn tuyệt đối đến khóa riêng (vd. ~/.ssh/id_ed25519). Khóa công khai tương ứng phải đã được đăng ký trên GitHub.",
-    "scanSelectRequired": "Chọn một thông tin xác thực đã phát hiện để nhập.",
-    "sshKeyPathRequired": "Cần nhập đường dẫn khóa SSH."
+    "sshKeyPathDesc": "Đường dẫn tuyệt đối đến khóa riêng (vd. ~/.ssh/id_ed25519). Khóa công khai tương ứng phải đã được đăng ký trên GitHub",
+    "scanSelectRequired": "Chọn một thông tin xác thực đã phát hiện để nhập",
+    "sshKeyPathRequired": "Cần nhập đường dẫn khóa SSH"
   },
   "builtInTools": {
     "tabTools": "Công cụ tích hợp",
@@ -804,13 +798,13 @@
     "noAgents": "Không có Agent nào sử dụng công cụ này",
     "agentSettingsTab": "Agent",
     "actionDetailsTab": "Chi tiết lệnh",
-    "agentBrowserRestartPromptTitle": "Khởi động lại ORGII?",
-    "agentBrowserRestartPromptMessage": "Việc đổi nhà cung cấp Browser CLI yêu cầu khởi động lại ORGII trước khi Agent thấy công cụ đã chọn. Khởi động lại ngay?",
+    "agentBrowserRestartPromptTitle": "Khởi động lại ORG2?",
+    "agentBrowserRestartPromptMessage": "Việc đổi nhà cung cấp Browser CLI yêu cầu khởi động lại ORG2 trước khi Agent thấy công cụ đã chọn. Khởi động lại ngay?",
     "sidecarDownloadsSectionTitle": "Tải xuống sidecar",
     "sidecarAgentBrowserLabel": "Agent Browser CLI",
-    "sidecarAgentBrowserDesc": "Tải tệp nhị phân Agent Browser cho nền tảng này vào ~/.orgii/bin. ORGII không bao giờ tải khi khởi động.",
+    "sidecarAgentBrowserDesc": "Tải tệp nhị phân Agent Browser cho nền tảng này vào ~/.orgii/bin. ORG2 không bao giờ tải khi khởi động",
     "sidecarPeekabooLabel": "Peekaboo CLI",
-    "sidecarPeekabooDesc": "Tải tệp nhị phân macOS Peekaboo cho tự động hóa desktop vào ~/.orgii/bin. Nền tảng không hỗ trợ sẽ bị tắt.",
+    "sidecarPeekabooDesc": "Tải tệp nhị phân macOS Peekaboo cho tự động hóa desktop vào ~/.orgii/bin. Nền tảng không hỗ trợ sẽ bị tắt",
     "sidecarUnsupported": "Không hỗ trợ",
     "sidecarInstalled": "Đã cài đặt",
     "sidecarNotInstalled": "Chưa cài đặt",
@@ -873,7 +867,7 @@
     "connectMethodDesc": "Chọn cách kết nối tài khoản GitHub",
     "githubApp": "GitHub App",
     "detectFromSystem": "Phát hiện từ hệ thống",
-    "detectFromSystemDesc": "Dùng gh CLI, khóa SSH hoặc Git credential helpers.",
+    "detectFromSystemDesc": "Dùng gh CLI, khóa SSH hoặc Git credential helpers",
     "credentialsDetected": "Đã phát hiện thông tin xác thực",
     "detectedVia": "Phát hiện qua {{source}}",
     "sshKeyLabel": "Khóa SSH",
@@ -893,7 +887,7 @@
     "noCredentialsFound": "Không tìm thấy thông tin xác thực GitHub",
     "noCredentialsHint": "Cài đặt GitHub CLI (gh) hoặc thiết lập khóa SSH để sử dụng phát hiện cục bộ",
     "manuallyAddToken": "Thêm token thủ công",
-    "manualTokenDesc": "Dán GitHub PAT cho thao tác Git HTTPS.",
+    "manualTokenDesc": "Dán GitHub PAT cho thao tác Git HTTPS",
     "autoDetect": "Tự động phát hiện",
     "autoDetectTokenSaved": "Đã lưu GitHub token",
     "autoDetectSshSwitched": "Remote đã chuyển sang SSH",
@@ -906,9 +900,9 @@
     "worktreeTitle": "Worktree",
     "attributionTitle": "Ghi nhận",
     "commitAttribution": "Commit Attribution",
-    "commitAttributionDesc": "Thêm ORGII dưới dạng Co-authored-by vào thông điệp Commit được tạo từ ORGII",
+    "commitAttributionDesc": "Thêm ORG2 dưới dạng Co-authored-by vào thông điệp Commit được tạo từ ORG2",
     "prAttribution": "Pull Request Attribution",
-    "prAttributionDesc": "Thêm footer ghi nhận ORGII vào mô tả Pull Request được tạo từ ORGII",
+    "prAttributionDesc": "Thêm footer ghi nhận ORG2 vào mô tả Pull Request được tạo từ ORG2",
     "promptInstructionsTitle": "Hướng dẫn prompt",
     "commitInstructions": "Hướng dẫn commit",
     "commitInstructionsDesc": "Được thêm vào prompt tạo thông điệp commit, lưu trên máy và gửi đến Agent đã chọn",
@@ -917,9 +911,9 @@
     "pullRequestInstructionsDesc": "Được thêm vào prompt tạo tiêu đề và mô tả pull request, lưu trên máy và gửi đến Agent đã chọn",
     "pullRequestInstructionsPlaceholder": "Ví dụ: Thêm mã vấn đề vào đầu tiêu đề và thêm phần kiểm thử",
     "coauthor": "Co-authored-by",
-    "coauthorDesc": "Thêm {{name}} <{{email}}> vào các Git Commit được tạo từ ORGII",
+    "coauthorDesc": "Thêm {{name}} <{{email}}> vào các Git Commit được tạo từ ORG2",
     "noTokenYet": "Cần Token?",
-    "createTokenDesc": "Mở GitHub và tạo PAT có quyền truy cập repo.",
+    "createTokenDesc": "Mở GitHub và tạo PAT có quyền truy cập repo",
     "accountConnected": "Đã kết nối tài khoản GitHub",
     "disconnectMsg": "Bạn có chắc muốn ngắt kết nối? Thao tác này sẽ xóa quyền truy cập tất cả kho lưu trữ từ tài khoản này.",
     "disconnectTitle": "Ngắt kết nối tài khoản GitHub",
@@ -928,7 +922,7 @@
     "connectRepoDesc": "Kết nối tài khoản GitHub để truy cập kho lưu trữ",
     "github": "GitHub",
     "signInWithGithub": "Đăng nhập bằng GitHub",
-    "signInWithGithubDesc": "Cấp quyền cho ORGII qua luồng thiết bị GitHub. Không cần máy chủ tự lưu trữ.",
+    "signInWithGithubDesc": "Cấp quyền cho ORG2 qua luồng thiết bị GitHub. Không cần máy chủ tự lưu trữ",
     "oauthWaiting": "Đang chờ cấp quyền",
     "oauthDeviceCodeDesc": "Mở URL bên dưới và nhập mã này",
     "oauthOpenGithub": "Mở GitHub",
@@ -963,8 +957,8 @@
     "contentLabel": "Nội dung",
     "contentDesc": "Viết nội dung SKILL.md bằng Markdown. Đây là nội dung Agent đọc",
     "scopeLabel": "Phạm vi",
-    "scopeDesc": "Skill User khả dụng trên mọi repo. Skill theo repo chỉ được tải cho repo đó.",
-    "scopeDescEdit": "Đổi phạm vi khi lưu sẽ di chuyển thư mục skill giữa lưu trữ User và lưu trữ theo repo.",
+    "scopeDesc": "Skill User khả dụng trên mọi repo. Skill theo repo chỉ được tải cho repo đó",
+    "scopeDescEdit": "Đổi phạm vi khi lưu sẽ di chuyển thư mục skill giữa lưu trữ User và lưu trữ theo repo",
     "scopeGlobal": "User",
     "binsLabel": "Tệp thực thi cần thiết",
     "binsDesc": "Chương trình CLI mà skill này cần (vd. git, python, docker)",
@@ -984,7 +978,7 @@
     "filePathPlaceholder": "vd. scripts/validate.py",
     "removeFile": "Xóa tệp",
     "editorNoDraftTitle": "Không có bản nháp Skill nào đang thực hiện",
-    "editorNoDraftDesc": "Bắt đầu bằng cách nhấp Tạo ở trang Skills, hoặc chọn một Skill để chỉnh sửa.",
+    "editorNoDraftDesc": "Bắt đầu bằng cách nhấp Tạo ở trang Skills, hoặc chọn một Skill để chỉnh sửa",
     "scopeWorkspace": "Theo repo",
     "deleteConfirmTitle": "Xóa skill «{{name}}»?",
     "deleteConfirmMessage": "Thao tác này sẽ xóa skill và toàn bộ tệp. Không thể hoàn tác."
@@ -993,7 +987,7 @@
     "tab": "MCP",
     "searchPlaceholder": "Tìm máy chủ MCP...",
     "noServers": "Chưa cấu hình máy chủ MCP nào",
-    "noServersDesc": "Thêm máy chủ MCP để mở rộng khả năng của Agent với các công cụ bên ngoài.",
+    "noServersDesc": "Thêm máy chủ MCP để mở rộng khả năng của Agent với các công cụ bên ngoài",
     "addServer": "Thêm máy chủ MCP",
     "editServer": "Sửa máy chủ MCP",
     "serverName": "Tên máy chủ",
@@ -1116,18 +1110,17 @@
     },
     "sessionProvenance": {
       "masterToggle": "Hook truy xuất nguồn gốc",
-      "masterToggleDesc": "Khi tắt, tất cả hook được quản lý sẽ bị gỡ và không có tín hiệu nào được thu thập; lựa chọn của từng nền tảng được giữ lại và khôi phục khi bật lại.",
+      "masterToggleDesc": "Khi tắt, tất cả hook được quản lý sẽ bị gỡ và không có tín hiệu nào được thu thập; lựa chọn của từng nền tảng được giữ lại và khôi phục khi bật lại",
       "liveStatusToggle": "Trạng thái tác nhân trực tiếp",
-      "liveStatusToggleDesc": "Cho biết tác nhân CLI đang chạy đang làm việc hay chờ. Tắt vẫn giữ ghi nhận nguồn gốc.",
+      "liveStatusToggleDesc": "Cho biết tác nhân CLI đang chạy đang làm việc hay chờ. Tắt vẫn giữ ghi nhận nguồn gốc",
       "title": "Nguồn gốc phiên",
       "capture": "Ghi lại tương tác với tệp",
-      "description": "Ghi các thao tác đọc và ghi tệp dưới dạng siêu dữ liệu. Không lưu câu lệnh, đầu ra công cụ hoặc nội dung tệp.",
+      "description": "Ghi các thao tác đọc và ghi tệp dưới dạng siêu dữ liệu. Không lưu câu lệnh, đầu ra công cụ hoặc nội dung tệp",
       "installDrift": "Tùy chọn đã lưu và hook đã cài đặt không khớp. Hãy chuyển đổi tính năng ghi để sửa hook được quản lý. Cấu hình: {{path}}",
       "copyPath": "Sao chép",
       "col": {
         "source": "Công cụ",
-        "config": "Cấu hình",
-        "capture": "Thu thập"
+        "config": "Cấu hình"
       },
       "status": {
         "on": "Bật",
@@ -1139,8 +1132,8 @@
       },
       "codexApproval": {
         "title": "Xác minh hook ORG2 trong Codex",
-        "description": "Đang chờ Codex phê duyệt và chạy các hook ORG2 hiện tại.",
-        "instructions": "Mở Codex, xem lại các hook ORG2, rồi chọn Trust all and continue. Hook SessionStart sẽ tự động xác minh việc kích hoạt khi phiên bắt đầu.",
+        "description": "Đang chờ Codex phê duyệt và chạy các hook ORG2 hiện tại",
+        "instructions": "Mở Codex, xem lại các hook ORG2, rồi chọn Trust all and continue. Hook SessionStart sẽ tự động xác minh việc kích hoạt khi phiên bắt đầu",
         "review": "Xem lại trong Codex",
         "verified": "Đã xác minh bằng tín hiệu hook Codex thực ({{time}})."
       },
@@ -1185,7 +1178,7 @@
       "addMember": "Thêm Thành viên",
       "noMembers": "Thêm thành viên để xây dựng cấu trúc org",
       "membersLabel": "Thành viên nhóm",
-      "membersDesc": "Mỗi hàng là một thành viên với quyền Writer và cài đặt liên lạc độc lập. Tên phải duy nhất; vai trò chỉ mô tả chuyên môn.",
+      "membersDesc": "Mỗi hàng là một thành viên với quyền Writer và cài đặt liên lạc độc lập. Tên phải duy nhất; vai trò chỉ mô tả chuyên môn",
       "memberName": "Tên",
       "memberNamePlaceholder": "Tên định tuyến duy nhất (vd. SDE-1)",
       "memberNameDuplicate": "Một thành viên khác đã dùng name này. Name phải duy nhất trong tổ chức.",
@@ -1238,9 +1231,9 @@
       "descriptionPlaceholder": "Agent này làm gì? (tùy chọn)",
       "subAgentsTab": "Subagents",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
-      "maxToolUseConcurrencyDesc": "Số lần gọi Tool đồng thời mỗi tin nhắn. Mặc định: 10.",
+      "maxToolUseConcurrencyDesc": "Số lần gọi Tool đồng thời mỗi tin nhắn. Mặc định: 10",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
-      "subAgentWorktreeIsolationDesc": "Chạy trong Git Worktree tạm thời (truy cập file và Shell riêng biệt).",
+      "subAgentWorktreeIsolationDesc": "Chạy trong Git Worktree tạm thời (truy cập file và Shell riêng biệt)",
       "addSubAgent": "Thêm Sub-Agent...",
       "noSubAgents": "Chưa cấu hình sub-agent."
     },
@@ -1276,30 +1269,30 @@
     "applicableAgentsDesc": "Agent nào áp dụng quy tắc này (để trống = tất cả)",
     "selectAgents": "Chọn Agent…",
     "ruleSource": "Nguồn",
-    "ruleSourceDesc": "Chọn User cho mọi repo hoặc Repo cho hướng dẫn riêng của một repo.",
+    "ruleSourceDesc": "Chọn User cho mọi repo hoặc Repo cho hướng dẫn riêng của một repo",
     "ruleSourceUser": "User",
-    "ruleSourceUserDesc": "Tùy chọn người dùng khả dụng trên mọi repo.",
+    "ruleSourceUserDesc": "Tùy chọn người dùng khả dụng trên mọi repo",
     "ruleSourceRepo": "Repo",
-    "ruleSourceRepoDesc": "Hướng dẫn được lưu cho một repo đã chọn.",
+    "ruleSourceRepoDesc": "Hướng dẫn được lưu cho một repo đã chọn",
     "ruleRepo": "Repo",
     "ruleRepoDesc": "Repo duy nhất mà hướng dẫn này áp dụng",
     "selectRepo": "Chọn repo…",
     "ruleSourcePersonal": "Cá nhân",
-    "ruleSourcePersonalDesc": "Lưu tại ~/.orgii/personal/rules/. Chỉ session OS Agent / channel.",
+    "ruleSourcePersonalDesc": "Lưu tại ~/.orgii/personal/rules/. Chỉ session OS Agent / channel",
     "findSkills": {
       "title": "Tìm kiếm Skills",
       "placeholder": "Tìm kiếm Skills...",
       "installs": "Installs",
       "emptyTitle": "Tìm kiếm Skills",
-      "emptySubtitle": "Nhập ít nhất 2 ký tự, rồi nhấn Enter để tìm Skills.",
+      "emptySubtitle": "Nhập ít nhất 2 ký tự, rồi nhấn Enter để tìm Skills",
       "noResults": "Không tìm thấy Skills",
-      "noResultsDesc": "Thử một cụm từ tìm kiếm khác."
+      "noResultsDesc": "Thử một cụm từ tìm kiếm khác"
     },
     "importAgentTitle": "Nhập Agents từ apps khác",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agents",
     "emptySelectionTitle": "Chọn một thành viên hoặc Nhóm Agent",
-    "emptySelectionSubtitle": "Chọn một Agent hoặc Nhóm Agent từ thanh bên để xem và cấu hình.",
+    "emptySelectionSubtitle": "Chọn một Agent hoặc Nhóm Agent từ thanh bên để xem và cấu hình",
     "applicableWorkspace": "Workspace áp dụng",
     "tableTabs": {
       "agents": "Agents",
@@ -1332,18 +1325,18 @@
     "cliManagedConfig": {
       "title": "Chuyển đổi cấu hình CLI",
       "modeLabel": "Chế độ",
-      "modeDesc": "Mặc định khôi phục cấu hình riêng của CLI. ORGII quản lý sẽ ghi một cấu hình proxy đã được sao lưu.",
+      "modeDesc": "Mặc định khôi phục cấu hình riêng của CLI. ORG2 quản lý sẽ ghi một cấu hình proxy đã được sao lưu",
       "modeDefault": "Mặc định",
-      "modeOrgii": "ORGII quản lý",
+      "modeOrgii": "ORG2 quản lý",
       "conflict": "Thay đổi bên ngoài",
       "conflictTitle": "Xung đột",
-      "conflictDesc": "Cấu hình CLI đang hoạt động đã thay đổi sau khi ORGII ghi nó.",
+      "conflictDesc": "Cấu hình CLI đang hoạt động đã thay đổi sau khi ORG2 ghi nó",
       "proxyStatus": "Proxy",
       "proxyDefault": "Chế độ mặc định",
       "proxyReady": "Proxy đã sẵn sàng",
       "proxyNotReady": "Proxy chưa sẵn sàng",
       "keyLabel": "Khóa",
-      "keyDesc": "Chỉ hiển thị các API key tương thích với CLI này và proxy được quản lý.",
+      "keyDesc": "Chỉ hiển thị các API key tương thích với CLI này và proxy được quản lý",
       "selectKey": "Chọn khóa",
       "modelLabel": "Mô hình",
       "selectModel": "Chọn mô hình",
@@ -1354,9 +1347,9 @@
       "restore": "Khôi phục mặc định",
       "forceApply": "Buộc áp dụng",
       "forceRestore": "Buộc khôi phục",
-      "applySuccess": "Đã áp dụng cấu hình do ORGII quản lý",
+      "applySuccess": "Đã áp dụng cấu hình do ORG2 quản lý",
       "restoreSuccess": "Đã khôi phục cấu hình mặc định",
-      "proxyLifecycleDesc": "Hãy giữ ORGII chạy khi dùng chế độ này. Đóng cửa sổ vẫn giữ proxy trong khay hệ thống; thoát ORGII sẽ khôi phục an toàn về Mặc định trừ khi cấu hình đã bị thay đổi từ bên ngoài."
+      "proxyLifecycleDesc": "Hãy giữ ORG2 chạy khi dùng chế độ này. Đóng cửa sổ vẫn giữ proxy trong khay hệ thống; thoát ORG2 sẽ khôi phục an toàn về Mặc định trừ khi cấu hình đã bị thay đổi từ bên ngoài"
     }
   },
   "databases": {
@@ -1420,10 +1413,6 @@
     "preview": "Xem trước",
     "jsonParseError": "Lỗi phân tích JSON",
     "noPreview": "Không có dữ liệu để xem trước",
-    "chatExtras": "Tiện ích trò chuyện",
-    "queuedMessages": "Tin nhắn đang chờ",
-    "fileReview": "Xem lại tệp",
-    "terminalProcesses": "Tiến trình terminal",
     "modeSessionLink": "Liên kết phiên"
   },
   "rulesTabs": {
@@ -1550,7 +1539,7 @@
       "elapsed": "Tổng thời gian: {{value}}s"
     },
     "title": "Housekeeper thường trú",
-    "description": "MiniCPM cục bộ xử lý việc trau chuốt prompt, giải thích ngắn các bước và điều khiển UI nhẹ. Tác vụ lập trình và thiết lập ADE phức tạp vẫn dùng mô hình agent chính.",
+    "description": "MiniCPM cục bộ xử lý việc trau chuốt prompt, giải thích ngắn các bước và điều khiển UI nhẹ. Tác vụ lập trình và thiết lập ADE phức tạp vẫn dùng mô hình agent chính",
     "autoAccount": "Tự động chọn tài khoản MiniCPM vLLM",
     "tiles": {
       "model": "Mô hình",
@@ -1560,37 +1549,37 @@
     "settings": {
       "enabled": {
         "title": "Bật housekeeper",
-        "description": "Khi tắt, việc trau chuốt prompt, giải thích bước và điều khiển UI nhẹ sẽ không dùng MiniCPM."
+        "description": "Khi tắt, việc trau chuốt prompt, giải thích bước và điều khiển UI nhẹ sẽ không dùng MiniCPM"
       },
       "account": {
         "title": "Tài khoản vLLM MiniCPM",
-        "description": "Dùng lại tài khoản vllm_api hiện có trong KeyVault; không tạo kho thông tin xác thực riêng."
+        "description": "Dùng lại tài khoản vllm_api hiện có trong KeyVault; không tạo kho thông tin xác thực riêng"
       },
       "model": {
         "title": "ID mô hình",
-        "description": "Docker vLLM MiniCPM5-1B mặc định là openbmb/MiniCPM5-1B."
+        "description": "Docker vLLM MiniCPM5-1B mặc định là openbmb/MiniCPM5-1B"
       },
       "context": {
         "title": "Ngân sách ngữ cảnh an toàn",
-        "description": "Dùng ngân sách thận trọng 10000 token trên GPU 4GB thay vì tin vào giới hạn lý thuyết 32k."
+        "description": "Dùng ngân sách thận trọng 10000 token trên GPU 4GB thay vì tin vào giới hạn lý thuyết 32k"
       }
     },
     "features": {
       "promptPolish": {
         "title": "Trau chuốt prompt",
-        "description": "Trau chuốt đầu vào theo cách thủ công trước khi gửi tới mô hình lập trình mạnh hơn."
+        "description": "Trau chuốt đầu vào theo cách thủ công trước khi gửi tới mô hình lập trình mạnh hơn"
       },
       "stepExplain": {
         "title": "Giải thích bước của Agent",
-        "description": "Tạo một hoặc hai lời giải thích ngắn bằng tiếng Trung cho các bước phát lại phiên."
+        "description": "Tạo một hoặc hai lời giải thích ngắn bằng tiếng Trung cho các bước phát lại phiên"
       },
       "uiControl": {
         "title": "Điều khiển ADE/UI nhẹ",
-        "description": "MiniCPM chỉ được phép phân loại yêu cầu vào một danh sách trắng thao tác cục bộ nghiêm ngặt."
+        "description": "MiniCPM chỉ được phép phân loại yêu cầu vào một danh sách trắng thao tác cục bộ nghiêm ngặt"
       },
       "contextCompact": {
         "title": "Tự động bảo trì ngữ cảnh",
-        "description": "Cho phép MiniCPM duy trì một bản tóm tắt cuốn chiếu riêng biệt của ngữ cảnh cũ khi các phiên đã bật đang rảnh."
+        "description": "Cho phép MiniCPM duy trì một bản tóm tắt cuốn chiếu riêng biệt của ngữ cảnh cũ khi các phiên đã bật đang rảnh"
       }
     }
   },
@@ -1642,11 +1631,11 @@
     "applyFailed": "Không thể kích hoạt hồ sơ Git"
   },
   "credentialImport": {
-    "title": "Nhập thông tin xác thực từ ứng dụng khác",
-    "itemColumn": "Thông tin xác thực",
+    "title": "Nhập khóa và gói đăng ký từ ứng dụng khác",
+    "itemColumn": "Khóa",
     "sourceColumn": "Tìm thấy trong",
-    "empty": "Không tìm thấy thông tin xác thực nào để nhập. Đã kiểm tra biến môi trường, shell profile, cài đặt Claude Code, hồ sơ cc-switch và kho đăng nhập của Claude Code, Codex, Cursor, GitHub CLI, Kiro và OpenCode.",
-    "allImported": "Tất cả thông tin xác thực đã phát hiện đều đã được nhập",
+    "empty": "Không tìm thấy khóa hoặc gói đăng ký nào để nhập. Đã kiểm tra biến môi trường, shell profile, cài đặt Claude Code, hồ sơ cc-switch và kho đăng nhập của Claude Code, Codex, Cursor, GitHub CLI, Kiro và OpenCode.",
+    "allImported": "Tất cả khóa và gói đăng ký đã phát hiện đều đã được nhập",
     "authMethod": {
       "api_key": "API key",
       "oauth": "Token đăng nhập"
@@ -1661,13 +1650,21 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "Nhập thất bại: {{message}}",
-    "partialFailure": "Một số thông tin xác thực không thể nhập:"
+    "partialFailure": "Một số khóa không thể nhập:",
+    "importSucceeded": "Đã lưu vào Khóa của tôi: {{names}}. Các khóa đã nhập hiện có thể dùng làm kết nối có thể tái sử dụng."
   },
   "skills": {
     "shareToOrg": "Chia sẻ với tổ chức",
     "share": "Chia sẻ",
     "sharedToOrg": "Đã chia sẻ Skill với tổ chức",
-    "shareToOrgHint": "Thành viên của tổ chức nhận được ảnh chụp hiện tại của skill này; hãy chia sẻ lại sau khi chỉnh sửa để phát hành bản cập nhật.",
+    "shareToOrgHint": "Thành viên của tổ chức nhận được ảnh chụp hiện tại của skill này; hãy chia sẻ lại sau khi chỉnh sửa để phát hành bản cập nhật",
     "shareOrgPlaceholder": "Tổ chức"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Đang tải gói ORG2 Market…",
+    "purchasesFailed": "Không thể tải gói ORG2 Market. Vui lòng thử lại.",
+    "failed": "Không thể kết nối với ORG2 Market. Vui lòng thử lại.",
+    "title": "ORG2 Market",
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

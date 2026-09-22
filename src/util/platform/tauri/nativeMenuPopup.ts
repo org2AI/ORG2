@@ -1,7 +1,8 @@
 /** Central native context-menu lifecycle for the current WebView. */
-import type {
-  LogicalPosition,
-  PhysicalPosition,
+import { invoke } from "@tauri-apps/api/core";
+import {
+  type LogicalPosition,
+  type PhysicalPosition,
   Position,
 } from "@tauri-apps/api/dpi";
 import {
@@ -84,9 +85,9 @@ function getState(): NativeMenuPopupState {
 /**
  * Owns the complete lifecycle of one native context menu.
  *
- * Tauri's popup command retains the WebView resource-table lock while the
- * native menu tracks input. Claiming this non-queueing gate before the first
- * menu IPC prevents a nested popup from waiting on that same lock forever.
+ * The backend popup command releases the WebView resource lock before native
+ * tracking so reentrant filesystem/resource IPC cannot deadlock AppKit.
+ * This gate additionally prevents overlapping native menu tracking sessions.
  * Duplicate requests are dropped because replaying a context menu after the
  * originating interaction has ended would be stale UI.
  */
@@ -115,13 +116,16 @@ export async function popupNativeMenu({
     try {
       if (at) {
         try {
-          await menu.popup(at);
+          await invoke("popup_native_menu", {
+            rid: menu.rid,
+            at: at instanceof Position ? at : new Position(at),
+          });
         } catch (error) {
           if (!fallbackToCursor) throw error;
-          await menu.popup();
+          await invoke("popup_native_menu", { rid: menu.rid });
         }
       } else {
-        await menu.popup();
+        await invoke("popup_native_menu", { rid: menu.rid });
       }
     } catch (error) {
       popupError = error;

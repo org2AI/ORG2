@@ -1,10 +1,10 @@
 import React, { memo } from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
-import { PRIMARY_SIDEBAR_HOVER } from "@src/config/workstation/tokens";
+import { SidebarRow } from "@src/components/SidebarRow";
+import { GitCommitIcon, PinIcon } from "@src/icons";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
-import { TIMELINE_ICONS } from "../config";
 import type { OrgtrackFileTimelineEntry } from "../types";
 
 interface OrgtrackTimelineEntryProps {
@@ -14,9 +14,7 @@ interface OrgtrackTimelineEntryProps {
 
 export const OrgtrackTimelineEntryView: React.FC<OrgtrackTimelineEntryProps> =
   memo(({ entry, onCommitClick }) => {
-    const CommitIcon = TIMELINE_ICONS.commit;
-    const PinIcon = TIMELINE_ICONS.pin;
-    const Icon = entry.entryType === "commit_link" ? CommitIcon : PinIcon;
+    const Icon = entry.entryType === "commit_link" ? GitCommitIcon : PinIcon;
     const timestamp = new Date(entry.timestamp * 1000).toISOString();
     const lineLabel =
       entry.startLine && entry.endLine
@@ -37,28 +35,17 @@ export const OrgtrackTimelineEntryView: React.FC<OrgtrackTimelineEntryProps> =
     ].filter(Boolean);
 
     return (
-      <div
-        className={`group/orgtrack-item flex items-start gap-1.5 px-4 py-1.5 pr-3 transition-colors ${
-          entry.commitSha ? `cursor-pointer ${PRIMARY_SIDEBAR_HOVER.row}` : ""
-        }`}
+      <SidebarRow
+        disabled={!entry.commitSha || !onCommitClick}
         onClick={() => {
           if (entry.commitSha) {
             onCommitClick?.(entry.commitSha);
           }
         }}
-      >
-        <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-          <AnyIcon icon={Icon} size={14} className="text-text-1" />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="truncate text-[13px] text-text-2" title={title}>
-            {title}
-          </div>
-          <div className="truncate text-[11px] text-text-3">
-            {meta.join(" · ")}
-          </div>
-        </div>
-      </div>
+        label={title}
+        metadata={meta.join(" · ")}
+        icon={<AnyIcon icon={Icon} size={12} className="text-text-1" />}
+      />
     );
   });
 

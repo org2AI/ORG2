@@ -2,12 +2,12 @@
  * ActivitySimulatorGrid Component
  *
  * Grid layout component supporting 1x1 to 3x4 configurations.
- * Each cell contains a SimulatorContentArea showing activity content.
+ * Each cell renders the active app's content for its events.
  *
  * Performance optimizations:
  * - Grid cells memoized based on layout
  * - Custom memo comparison to prevent unnecessary re-renders
- * - SimulatorContentArea has its own memo comparison
+ * - Grid cells have their own memo comparison
  *
  * Features:
  * - Multi-task mode: each cell shows different task with independent replay
@@ -21,41 +21,20 @@ import { useAtomValue } from "jotai";
 import React, { memo } from "react";
 
 import { replayModeAtom } from "@src/engines/SessionCore";
+import { cellReplayKey } from "@src/store/ui/simulatorAtom";
 
 import { IndependentGridCell, SimpleGridCell } from "./components/GridCell";
 import { MultiTaskHeader } from "./components/MultiTaskHeader";
 import { useGridLayout } from "./hooks/useGridLayout";
 import type { ActivitySimulatorGridProps } from "./types/gridTypes";
-
-type RenderSignatureEvent =
-  | (NonNullable<ActivitySimulatorGridProps["currentEvent"]> & {
-      lastActivityAt?: string;
-    })
-  | null
-  | undefined;
-
-function getEventRenderSignature(event: RenderSignatureEvent): string {
-  if (!event) return "";
-  return [
-    event.id,
-    event.chunk_id ?? "",
-    event.functionName,
-    event.displayStatus,
-    event.displayText,
-    event.displayVariant,
-    event.lastActivityAt ?? "",
-    event.args ? JSON.stringify(event.args) : "",
-    event.result ? JSON.stringify(event.result) : "",
-    event.extracted ? JSON.stringify(event.extracted) : "",
-    event.payloadRefs ? JSON.stringify(event.payloadRefs) : "",
-  ].join("|");
-}
+import { getEventRenderSignature } from "./utils/eventRenderSignature";
 
 // ============================================
 // Main Component
 // ============================================
 
 const ActivitySimulatorGridComponent: React.FC<ActivitySimulatorGridProps> = ({
+  sessionId,
   layout = "1x1",
   currentEvent = null,
   events = [],
@@ -86,10 +65,11 @@ const ActivitySimulatorGridComponent: React.FC<ActivitySimulatorGridProps> = ({
           cellEvents = events;
         }
 
-        if (isMultiTaskMode && cell.threadId) {
+        if (isMultiTaskMode && cell.threadId && sessionId) {
           return (
             <IndependentGridCell
-              key={cell.threadId ?? cell.index}
+              key={cellReplayKey(sessionId, cell.threadId)}
+              sessionId={sessionId}
               index={cell.index}
               color={cell.color}
               title={cell.title}
@@ -105,9 +85,6 @@ const ActivitySimulatorGridComponent: React.FC<ActivitySimulatorGridProps> = ({
         return (
           <SimpleGridCell
             key={cell.index}
-            index={cell.index}
-            color={cell.color}
-            title={cell.title}
             currentEvent={currentEvent}
             events={cellEvents}
             specs={specs}
@@ -143,6 +120,7 @@ const arePropsEqual = (
   prev: ActivitySimulatorGridProps,
   next: ActivitySimulatorGridProps
 ): boolean => {
+  if (prev.sessionId !== next.sessionId) return false;
   if (prev.layout !== next.layout) return false;
   if (prev.forceAppType !== next.forceAppType) return false;
   if (prev.selectedThreadId !== next.selectedThreadId) return false;

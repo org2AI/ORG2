@@ -26,6 +26,7 @@ import React, {
   useState,
 } from "react";
 
+import Button from "@src/components/Button";
 import type { FieldAppearance } from "@src/components/controlAppearance";
 import { useTauriSelectAllShortcut } from "@src/hooks/keyboard";
 import { CancelCircleIcon, HugeiconsIcon } from "@src/icons";
@@ -345,8 +346,8 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             (showWordLimit && (maxWords !== undefined || maxLength))) && (
             <div className="textarea-footer">
               {showClearButton && (
-                <button
-                  type="button"
+                <Button
+                  layout="custom"
                   className="textarea-clear"
                   onClick={handleClear}
                   tabIndex={-1}
@@ -356,7 +357,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                     data-icon="xcircle"
                     size={16}
                   />
-                </button>
+                </Button>
               )}
 
               {showWordLimit && (maxWords !== undefined || maxLength) && (

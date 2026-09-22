@@ -7,8 +7,6 @@
  *
  * Actions belong to the host context; the content router only receives the
  * inputs it renders.
- *
- * See docs/workstation-unification/phase-2-host-hoist-plan.md (Phase 2.1).
  */
 import { type ReactNode, createContext, useContext } from "react";
 

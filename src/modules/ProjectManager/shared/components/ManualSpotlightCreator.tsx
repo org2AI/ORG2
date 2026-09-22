@@ -3,8 +3,11 @@ import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { workItemDataToUI } from "@src/api/http/project";
+import { Add01Icon } from "@src/icons";
 import CreateProjectView from "@src/modules/ProjectManager/Projects/components/CreateProjectView";
 import CreateWorkItemView from "@src/modules/ProjectManager/WorkItems/components/CreateWorkItemView";
+import { SpotlightFormBody } from "@src/scaffold/GlobalSpotlight/forms/shared";
+import { SpotlightFormLayout } from "@src/scaffold/GlobalSpotlight/forms/shared/SpotlightFormLayout";
 import { SpotlightShell } from "@src/scaffold/GlobalSpotlight/shell/SpotlightShell";
 import {
   openProjectInChatPanelTabAtom,
@@ -45,8 +48,22 @@ export default function ManualSpotlightCreator({
 
   return (
     <SpotlightShell isOpen onClose={onClose} hideFooter>
-      <section
+      <SpotlightFormLayout
+        role="dialog"
+        aria-modal="true"
         aria-label={title}
+        header={{
+          path: [
+            {
+              type: "action",
+              id: `new-${request.target}`,
+              label: title,
+              icon: Add01Icon,
+              color: "primary",
+            },
+          ],
+          onRemoveSegment: onClose,
+        }}
         onKeyDown={(event) => {
           if (event.key === "Escape" && !event.defaultPrevented) {
             event.stopPropagation();
@@ -54,67 +71,66 @@ export default function ManualSpotlightCreator({
           }
         }}
       >
-        <div className="px-4 pt-4 pb-2 text-sm font-medium text-text-1">
-          {title}
-        </div>
-        <div className="pb-4" data-testid="manual-spotlight-creator">
-          {request.target === "project" ? (
-            <CreateProjectView
-              tabId={MANUAL_PROJECT_CREATOR_DRAFT_ID}
-              layout="spotlight"
-              orgId={context?.orgId}
-              scopeBreadcrumbLabel={context?.scopeBreadcrumbLabel}
-              repoPath={workspace?.path}
-              repoName={workspace?.name}
-              onSetUnsaved={ignoreUnsaved}
-              onCancel={onClose}
-              onProjectCreated={(result) => {
-                refreshProjects((value) => value + 1);
-                if (!mounted.current) return;
-                onClose();
-                openProject(result);
-              }}
-            />
-          ) : (
-            <CreateWorkItemView
-              layout="spotlight"
-              aiGenerateMode={false}
-              orgId={context?.orgId}
-              repoPath={workspace?.path}
-              onSetUnsaved={ignoreUnsaved}
-              onCancel={onClose}
-              onWorkItemCreated={(result) => {
-                if (!mounted.current || !result || result.keepOpen) return;
-                const workItem =
-                  result.workItem ??
-                  (result.item
-                    ? workItemDataToUI(result.item, {
-                        labelMap: new Map(),
-                        memberMap: new Map(),
-                      })
-                    : null);
-                if (!workItem) return;
-                onClose();
-                openWorkItem({
-                  workItem,
-                  shortId: result.shortId,
-                  projectSlug: result.projectSlug ?? "",
-                  projectId:
-                    result.item?.frontmatter.project ??
-                    workItem.project?.id ??
-                    "",
-                  projectName: workItem.project?.name ?? "",
-                  orgId: result.orgId,
-                  orgName:
-                    result.orgId === context?.orgId
-                      ? context?.scopeBreadcrumbLabel
-                      : undefined,
-                });
-              }}
-            />
-          )}
-        </div>
-      </section>
+        <SpotlightFormBody>
+          <div data-testid="manual-spotlight-creator">
+            {request.target === "project" ? (
+              <CreateProjectView
+                tabId={MANUAL_PROJECT_CREATOR_DRAFT_ID}
+                layout="spotlight"
+                orgId={context?.orgId}
+                scopeBreadcrumbLabel={context?.scopeBreadcrumbLabel}
+                repoPath={workspace?.path}
+                repoName={workspace?.name}
+                onSetUnsaved={ignoreUnsaved}
+                onCancel={onClose}
+                onProjectCreated={(result) => {
+                  refreshProjects((value) => value + 1);
+                  if (!mounted.current) return;
+                  onClose();
+                  openProject(result);
+                }}
+              />
+            ) : (
+              <CreateWorkItemView
+                layout="spotlight"
+                aiGenerateMode={false}
+                orgId={context?.orgId}
+                repoPath={workspace?.path}
+                onSetUnsaved={ignoreUnsaved}
+                onCancel={onClose}
+                onWorkItemCreated={(result) => {
+                  if (!mounted.current || !result || result.keepOpen) return;
+                  const workItem =
+                    result.workItem ??
+                    (result.item
+                      ? workItemDataToUI(result.item, {
+                          labelMap: new Map(),
+                          memberMap: new Map(),
+                        })
+                      : null);
+                  if (!workItem) return;
+                  onClose();
+                  openWorkItem({
+                    workItem,
+                    shortId: result.shortId,
+                    projectSlug: result.projectSlug ?? "",
+                    projectId:
+                      result.item?.frontmatter.project ??
+                      workItem.project?.id ??
+                      "",
+                    projectName: workItem.project?.name ?? "",
+                    orgId: result.orgId,
+                    orgName:
+                      result.orgId === context?.orgId
+                        ? context?.scopeBreadcrumbLabel
+                        : undefined,
+                  });
+                }}
+              />
+            )}
+          </div>
+        </SpotlightFormBody>
+      </SpotlightFormLayout>
     </SpotlightShell>
   );
 }

@@ -17,24 +17,22 @@ import type { LinkedEmail, MemberEntry } from "@src/api/http/project";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import PersonAvatar from "@src/components/PersonAvatar";
-import { createLogger } from "@src/hooks/logger";
-import { useCurrentUserMemberIds } from "@src/hooks/project/useCurrentUserMemberId";
-import {
-  Cancel01Icon,
-  Copy01Icon,
-  HugeiconsIcon,
-  MinusSignIcon,
-  Pen01Icon,
-  Tick01Icon,
-} from "@src/icons";
-import { ClaimIdentityModal } from "@src/modules/ProjectManager/shared/components";
 import {
   SECTION_DESCRIPTION_CLASSES,
   SectionContainer,
   SectionHeading,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { CARD_ROW_TOKENS } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/Section";
+import { CARD_ROW_TOKENS } from "@src/components/layout/blocks";
+import { createLogger } from "@src/hooks/logger";
+import { useCurrentUserMemberIds } from "@src/hooks/project/useCurrentUserMemberId";
+import {
+  Copy01Icon,
+  HugeiconsIcon,
+  MinusSignIcon,
+  Pen01Icon,
+} from "@src/icons";
+import { ClaimIdentityModal } from "@src/modules/ProjectManager/shared/components";
 import { copyText } from "@src/util/data/clipboard";
 import { formatLastCommitDate } from "@src/util/datetime/formatLastCommitDate";
 
@@ -164,47 +162,22 @@ const EditableField: React.FC<{
             ref={inputRef}
             defaultValue={value}
             className="w-full"
-            onKeyDown={(keyEvent) => {
-              if (keyEvent.key === "Enter")
-                handleSave((keyEvent.target as HTMLInputElement).value);
-              if (keyEvent.key === "Escape") handleCancel();
-            }}
+            onConfirm={handleSave}
+            onCancel={handleCancel}
           />
         ) : (
           <span className="text-[14px] text-text-1">{value || "—"}</span>
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        {editing ? (
-          <>
-            <Button
-              icon={
-                <HugeiconsIcon icon={Tick01Icon} data-icon="check" size={14} />
-              }
-              iconOnly
-              onClick={() => {
-                if (inputRef.current) handleSave(inputRef.current.value);
-              }}
-            />
-            <Button
-              icon={
-                <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
-              }
-              iconOnly
-              onClick={handleCancel}
-            />
-          </>
-        ) : (
-          <Button
-            icon={
-              <HugeiconsIcon icon={Pen01Icon} data-icon="pencil" size={14} />
-            }
-            iconOnly
-            onClick={handleStartEdit}
-          />
-        )}
-      </div>
+      {!editing && (
+        <Button
+          icon={<HugeiconsIcon icon={Pen01Icon} data-icon="pencil" size={14} />}
+          iconOnly
+          className="shrink-0"
+          onClick={handleStartEdit}
+        />
+      )}
     </div>
   );
 };

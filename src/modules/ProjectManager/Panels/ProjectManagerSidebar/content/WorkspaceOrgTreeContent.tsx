@@ -8,9 +8,9 @@
  */
 import React, { memo, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { VirtuosoHandle } from "react-virtuoso";
 
 import { TREE_ROW_HEIGHT, TreeRowBase } from "@src/components/TreeRow";
+import type { VirtualListHandle } from "@src/components/VirtualList";
 import {
   type FlattenedTreeNode,
   VirtualizedStickyTree,
@@ -47,7 +47,7 @@ export const WorkspaceOrgTreeContent: React.FC<WorkspaceOrgTreeContentProps> =
   memo(
     ({ onOpenProjects, onOpenWorkItems, activeRepoView, activeOrgScope }) => {
       const { t } = useTranslation("projects");
-      const virtuosoRef = useRef<VirtuosoHandle>(null);
+      const listRef = useRef<VirtualListHandle>(null);
 
       const flattenedNodes = useMemo<FlattenedTreeNode<WorkspaceTreeNode>[]>(
         () => [
@@ -169,7 +169,7 @@ export const WorkspaceOrgTreeContent: React.FC<WorkspaceOrgTreeContentProps> =
           flattenedNodes={flattenedNodes}
           rowHeight={TREE_ROW_HEIGHT}
           renderItem={renderItem}
-          virtuosoRef={virtuosoRef}
+          listRef={listRef}
           emptyMessage={t("workspace.empty")}
         />
       );

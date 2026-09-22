@@ -1,9 +1,4 @@
 {
-  "name": "이름",
   "genderOptions": {},
-  "role": "직무",
-  "location": "위치",
-  "commits": "커밋",
-  "activity": "활동",
   "social": {}
 }

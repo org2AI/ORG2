@@ -9,6 +9,7 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 
+import Button from "@src/components/Button";
 import Select from "@src/components/Select";
 import {
   Add01Icon,
@@ -183,24 +184,36 @@ export function TokenOverridePanel({
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            className="flex h-5 w-5 items-center justify-center rounded text-text-3 hover:bg-fill-2 hover:text-text-1"
+          <Button
+            variant="tertiary"
+            size="sidebar"
+            aria-label={isMinimized ? "Expand" : "Minimize"}
+            iconOnly
+            icon={
+              isMinimized ? (
+                <HugeiconsIcon icon={Add01Icon} data-icon="plus" size={12} />
+              ) : (
+                <HugeiconsIcon
+                  icon={MinusSignIcon}
+                  data-icon="minus"
+                  size={12}
+                />
+              )
+            }
+            className="hover:bg-fill-2 hover:text-text-1"
             onClick={() => setIsMinimized(!isMinimized)}
             title={isMinimized ? "Expand" : "Minimize"}
-          >
-            {isMinimized ? (
-              <HugeiconsIcon icon={Add01Icon} data-icon="plus" size={12} />
-            ) : (
-              <HugeiconsIcon icon={MinusSignIcon} data-icon="minus" size={12} />
-            )}
-          </button>
-          <button
-            className="flex h-5 w-5 items-center justify-center rounded text-text-3 hover:bg-fill-2 hover:text-text-1"
+          />
+          <Button
+            variant="tertiary"
+            size="sidebar"
+            aria-label="Close"
+            iconOnly
+            icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />}
+            className="hover:bg-fill-2 hover:text-text-1"
             onClick={onClose}
             title="Close"
-          >
-            <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />
-          </button>
+          />
         </div>
       </div>
 
@@ -253,12 +266,14 @@ export function TokenOverridePanel({
           </div>
 
           {hasOverrides && (
-            <button
-              className="mt-1 w-full rounded-md bg-fill-3 px-3 py-1.5 text-[12px] font-medium text-text-2 transition-colors hover:bg-fill-4 hover:text-text-1"
+            <Button
+              variant="tertiary"
+              size="mini"
+              className="mt-1 w-full text-[12px] font-medium hover:bg-fill-4 hover:text-text-1"
               onClick={onReset}
             >
               Reset All
-            </button>
+            </Button>
           )}
         </div>
       )}

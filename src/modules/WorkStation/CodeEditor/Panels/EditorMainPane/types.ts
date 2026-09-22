@@ -24,6 +24,8 @@ export interface EditorContentProps {
   repoPath: string;
   repoId?: string | null;
   repoDisplayName: string;
+  onExplorerRefresh?: () => void;
+  explorerLoading?: boolean;
 
   // Git diff viewing
   gitDiffTabs: Set<string>;

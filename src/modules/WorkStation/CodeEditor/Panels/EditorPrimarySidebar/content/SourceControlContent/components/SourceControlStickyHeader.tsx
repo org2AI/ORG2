@@ -12,22 +12,21 @@
  * Extracted from SourceControlContent to keep that component under the
  * line limit.
  */
+import { useAtomValue } from "jotai";
 import React from "react";
-import { useTranslation } from "react-i18next";
 
+import { FileTreeHoverPreview } from "@src/components/FileTreePreview/exports";
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import { GitStatusBadge, type GitStatusInfo } from "@src/components/TreeRow";
 import type { StickyScrollNode } from "@src/components/VirtualizedStickyTree";
-import {
-  CHEVRON_SIZE,
-  STICKY_ROW,
-  stickyRowPadding,
-} from "@src/components/VirtualizedStickyTree/tokens";
+import { StickyTreeRow } from "@src/components/VirtualizedStickyTree/StickyTreeRow";
+import { getStatusColorForFile } from "@src/config/gitStatus";
 import {
   COUNT_BADGE,
   getCountBadgeSizeClass,
 } from "@src/config/workstation/tokens";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
+import { gitSourceControlColorFileNamesAtom } from "@src/store/ui/editorSettingsAtom";
+import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 
 import type { SourceControlNode } from "../utils/virtualizedTreeUtils";
 
@@ -35,16 +34,16 @@ interface SourceControlStickyHeaderProps {
   stickyNode: StickyScrollNode<SourceControlNode>;
   onClick: () => void;
   stickyBgClass?: string;
+  repoPath?: string;
 }
 
 export const SourceControlStickyHeader: React.FC<
   SourceControlStickyHeaderProps
-> = ({ stickyNode, onClick, stickyBgClass }) => {
-  const { t } = useTranslation();
+> = ({ stickyNode, onClick, stickyBgClass, repoPath }) => {
+  const activeWorkspaceRootPath = useAtomValue(activeWorkspaceRootPathAtom);
+  const effectiveRepoPath = repoPath ?? activeWorkspaceRootPath;
+  const colorFileNames = useAtomValue(gitSourceControlColorFileNamesAtom);
   const { node, depth } = stickyNode;
-  const stickyRowClass = stickyBgClass
-    ? `${STICKY_ROW.rowBase} ${stickyBgClass}`
-    : STICKY_ROW.row;
 
   if (node.nodeType === "section-header") {
     const isWarning = node.variant === "warning";
@@ -55,43 +54,29 @@ export const SourceControlStickyHeader: React.FC<
         ? COUNT_BADGE.muted
         : COUNT_BADGE.primary;
     return (
-      <div
-        className={stickyRowClass}
-        style={stickyRowPadding(depth)}
+      <StickyTreeRow
+        depth={depth}
+        expanded={Boolean(node.expanded)}
+        name={node.name}
         onClick={onClick}
+        stickyBgClass={stickyBgClass}
+        nameClassName="min-w-0 flex-1 truncate text-[11px] font-medium text-text-2 uppercase"
       >
-        <div className={STICKY_ROW.chevronBox}>
-          {node.expanded ? (
-            <HugeiconsIcon
-              icon={ArrowDown01Icon}
-              data-icon="chevron-down"
-              size={CHEVRON_SIZE}
-              className={STICKY_ROW.chevronIcon}
-            />
-          ) : (
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              data-icon="chevron-right"
-              size={CHEVRON_SIZE}
-              className={STICKY_ROW.chevronIcon}
-            />
-          )}
-        </div>
-        <span className="min-w-0 truncate text-[11px] font-medium text-text-2 uppercase">
-          {node.name}
-        </span>
-        <div className="flex-1" />
         <span
           className={`${COUNT_BADGE.base} ${getCountBadgeSizeClass(sectionCount)} ${countBadgeVariant}`}
         >
           {sectionCount}
         </span>
-      </div>
+      </StickyTreeRow>
     );
   }
 
-  const isExpanded = node.expanded;
   const isDirectory = node.nodeType === "directory";
+  const relativePath = node.file?.path ?? node.treeNode?.path ?? node.path;
+  const absolutePath =
+    effectiveRepoPath && !relativePath.startsWith("/")
+      ? `${effectiveRepoPath}/${relativePath}`
+      : relativePath;
   const gitStatus: GitStatusInfo | null =
     isDirectory && node.treeNode?.aggregateStatus
       ? { status: node.treeNode.aggregateStatus, staged: false }
@@ -100,41 +85,37 @@ export const SourceControlStickyHeader: React.FC<
         : null;
 
   return (
-    <div
-      className={stickyRowClass}
-      style={stickyRowPadding(depth)}
-      onClick={onClick}
-      title={t("tooltips.scrollToItem", { name: node.name })}
+    <FileTreeHoverPreview
+      path={absolutePath}
+      itemType={isDirectory ? "folder" : "file"}
+      repoPath={effectiveRepoPath ?? undefined}
+      as="div"
+      display="block"
+      placement="right"
     >
-      <div className={STICKY_ROW.chevronBox}>
-        {isExpanded ? (
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            data-icon="chevron-down"
-            size={CHEVRON_SIZE}
-            className={STICKY_ROW.chevronIcon}
-          />
-        ) : (
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            data-icon="chevron-right"
-            size={CHEVRON_SIZE}
-            className={STICKY_ROW.chevronIcon}
-          />
-        )}
-      </div>
-
-      {!isDirectory && (
-        <FileTypeIcon
-          fileName={node.name}
-          size="small"
-          className="shrink-0 text-text-2"
-        />
-      )}
-
-      <span className={STICKY_ROW.name}>{node.name}</span>
-
-      <GitStatusBadge status={gitStatus} isDirectory={isDirectory} />
-    </div>
+      <StickyTreeRow
+        depth={depth}
+        expanded={Boolean(node.expanded)}
+        name={node.name}
+        onClick={onClick}
+        stickyBgClass={stickyBgClass}
+        nameClassName={
+          !isDirectory && colorFileNames && gitStatus
+            ? `min-w-0 flex-1 truncate text-[13px] ${getStatusColorForFile(gitStatus.status, gitStatus.staged)}`
+            : undefined
+        }
+        icon={
+          !isDirectory && (
+            <FileTypeIcon
+              fileName={node.name}
+              size="small"
+              className="shrink-0 text-text-2"
+            />
+          )
+        }
+      >
+        <GitStatusBadge status={gitStatus} isDirectory={isDirectory} />
+      </StickyTreeRow>
+    </FileTreeHoverPreview>
   );
 };

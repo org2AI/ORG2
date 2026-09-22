@@ -6,13 +6,15 @@
  * - "panel": For in-editor search (with border, larger)
  * - "sidebar": For sidebar search (borderless, minimal style)
  *
- * Single-line <input> uses searchControlSingleLineInputStyle (line-height = row height).
+ * Shared Input uses searchControlSingleLineInputStyle (line-height = row height).
  *
  * [Replace icon] [input] [replace] [replace all]
  */
 import React, { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
+import Input from "@src/components/Input";
 import type {
   SearchInputSurface,
   SearchInputVariant,
@@ -26,6 +28,7 @@ import {
   searchControlSingleLineInputStyle,
   searchWrapperMultiline,
 } from "@src/components/SearchInput/searchControlInputStyles";
+import Textarea from "@src/components/Textarea";
 import { HEADER_BUTTON } from "@src/config/workstation/tokens";
 import { HugeiconsIcon, ReplaceAllIcon, ReplaceIcon } from "@src/icons";
 
@@ -51,7 +54,7 @@ export interface ReplaceInputProps {
   /** Whether buttons are disabled */
   disabled?: boolean;
   /** Input ref - supports both input and textarea */
-  inputRef?: React.RefObject<HTMLInputElement | HTMLTextAreaElement>;
+  inputRef?: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   /** Custom class name */
   className?: string;
   /** Enable multiline input (uses textarea instead of input) */
@@ -86,12 +89,6 @@ export const ReplaceInput: React.FC<ReplaceInputProps> = memo(
     inputBoxClassName = "",
   }) => {
     const { t } = useTranslation();
-    const handleChange = useCallback(
-      (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        onChange(event.target.value);
-      },
-      [onChange]
-    );
 
     const handleKeyDown = useCallback(
       (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -154,14 +151,18 @@ export const ReplaceInput: React.FC<ReplaceInputProps> = memo(
 
         <div className={`${inputWrapperMultilineClass} ${inputBoxClassName}`}>
           {multiline ? (
-            <textarea
+            <Textarea
+              appearance="bare"
+              size="small"
+              resize="none"
               ref={inputRef as React.RefObject<HTMLTextAreaElement>}
               value={value}
-              onChange={handleChange}
+              onChange={(value) => onChange(value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              style={searchControlMultilineInputStyle(14)}
-              className="min-w-0 flex-1 text-text-1 placeholder:text-text-3"
+              textareaStyle={searchControlMultilineInputStyle(14)}
+              className="min-w-0 flex-1"
+              textareaClassName="text-text-1 placeholder:text-text-3"
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -172,15 +173,19 @@ export const ReplaceInput: React.FC<ReplaceInputProps> = memo(
               }
             />
           ) : (
-            <input
+            <Input
+              autoHeight
+              appearance="bare"
+              size="small"
               ref={inputRef as React.RefObject<HTMLInputElement>}
               type="text"
               value={value}
-              onChange={handleChange}
+              onChange={(value) => onChange(value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              style={searchControlSingleLineInputStyle(14)}
-              className="min-w-0 flex-1 text-text-1 placeholder:text-text-3"
+              inputStyle={searchControlSingleLineInputStyle(14)}
+              className="min-w-0 flex-1 [&>.input-inner]:border-0!"
+              inputClassName="text-text-1 placeholder:text-text-3"
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -190,34 +195,44 @@ export const ReplaceInput: React.FC<ReplaceInputProps> = memo(
         </div>
 
         {onReplace && (
-          <button
+          <Button
+            variant="tertiary"
+            size="sidebar"
+            aria-label={t("tooltips.replace")}
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={ReplaceIcon}
+                data-icon="replace"
+                size={iconSize}
+              />
+            }
             onClick={onReplace}
             disabled={disabled}
             className={actionButtonClass}
             style={actionButtonStyle}
             title={t("tooltips.replace")}
-          >
-            <HugeiconsIcon
-              icon={ReplaceIcon}
-              data-icon="replace"
-              size={iconSize}
-            />
-          </button>
+          />
         )}
         {onReplaceAll && (
-          <button
+          <Button
+            variant="tertiary"
+            size="sidebar"
+            aria-label={t("tooltips.replaceAll")}
+            iconOnly
+            icon={
+              <HugeiconsIcon
+                icon={ReplaceAllIcon}
+                data-icon="replace-all"
+                size={iconSize}
+              />
+            }
             onClick={onReplaceAll}
             disabled={disabled}
             className={actionButtonClass}
             style={actionButtonStyle}
             title={t("tooltips.replaceAll")}
-          >
-            <HugeiconsIcon
-              icon={ReplaceAllIcon}
-              data-icon="replace-all"
-              size={iconSize}
-            />
-          </button>
+          />
         )}
       </div>
     );

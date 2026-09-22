@@ -7,6 +7,7 @@ import {
 
 export const MODEL_REASONING_LEVEL = {
   NONE: "none",
+  // No explicit effort override. Keep the internal key stable; display as Default.
   BASELINE: "baseline",
   LOW: "low",
   MEDIUM: "medium",
@@ -308,7 +309,7 @@ export function formatReasoningLevel(
     case MODEL_REASONING_LEVEL.NONE:
       return "None";
     case MODEL_REASONING_LEVEL.BASELINE:
-      return "Baseline";
+      return "Default";
     case MODEL_REASONING_LEVEL.LOW:
       return "Light";
     case MODEL_REASONING_LEVEL.MEDIUM:

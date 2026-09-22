@@ -14,7 +14,6 @@ import type {
   WorkManagementSection,
 } from "@src/store/workstation";
 
-import { TEAM_INBOX_MENU_ITEM_ID } from "../sidebarConnectorUtils";
 import type { GroupByMode } from "../types";
 import {
   CLOUD_MY_SESSIONS_SECTION_ID,
@@ -82,16 +81,14 @@ export function useWorkstationSidebarSelectionAndCollapse({
     sessionCreatorDrafts,
   });
   const selectedMenuItemId =
-    activeChatPanelTabType === "team-inbox"
-      ? TEAM_INBOX_MENU_ITEM_ID
-      : activeViewKey === "work-items" && projectsSelectedMenuItemId
-        ? projectsSelectedMenuItemId
-        : activeChatPanelTabType === "work-management"
-          ? resolveWorkItemsSidebarMenuItemId({
-              homeTab: activeWorkManagementSection,
-              projectsView: workManagementProjectsView,
-            })
-          : baseSelectedMenuItemId;
+    activeViewKey === "work-items" && projectsSelectedMenuItemId
+      ? projectsSelectedMenuItemId
+      : activeChatPanelTabType === "work-management"
+        ? resolveWorkItemsSidebarMenuItemId({
+            homeTab: activeWorkManagementSection,
+            projectsView: workManagementProjectsView,
+          })
+        : baseSelectedMenuItemId;
   const handleSessionCollapsedSectionIdsChange = useCallback(
     (nextCollapsedSectionIds: Set<string>) => {
       setGroupVisibleCounts((currentVisibleCounts) =>

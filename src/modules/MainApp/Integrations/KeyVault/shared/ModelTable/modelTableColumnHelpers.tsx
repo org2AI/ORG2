@@ -1,18 +1,13 @@
 import React from "react";
 
-import Button from "@src/components/Button";
+import DeleteIconButton from "@src/components/Button/DeleteIconButton";
 import Input from "@src/components/Input";
 import ModelIcon from "@src/components/ModelIcon";
 import Select from "@src/components/Select";
 import { SETTINGS_TABLE_CELL } from "@src/components/SettingsTable/tokens";
 import Switch from "@src/components/Switch";
 import { MODEL_TABLE_CONTROL_SIZE } from "@src/config/modelTable";
-import {
-  BoxIcon,
-  CornerDownRightIcon,
-  Delete02Icon,
-  HugeiconsIcon,
-} from "@src/icons";
+import { BoxIcon, CornerDownRightIcon, HugeiconsIcon } from "@src/icons";
 import type { ModelTableModelAlias } from "@src/types/modelTable";
 import { formatModelNameFull } from "@src/util/formatModelName";
 
@@ -254,20 +249,9 @@ function renderRemoveButton(
   handleRemove: (model: string) => void
 ): React.ReactNode {
   return (
-    <Button
-      variant="secondary"
-      size="default"
-      icon={
-        <HugeiconsIcon
-          icon={Delete02Icon}
-          data-icon="trash-2"
-          size={14}
-          className="text-danger-6"
-        />
-      }
-      iconOnly
+    <DeleteIconButton
       className="shrink-0"
-      onClick={() => handleRemove(model)}
+      onDelete={() => handleRemove(model)}
     />
   );
 }

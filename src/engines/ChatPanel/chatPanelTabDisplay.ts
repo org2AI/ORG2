@@ -8,7 +8,6 @@ export interface ChatPanelTabDisplayLabels {
   newSession: string;
   runtime: string;
   organization: string;
-  teamInbox: string;
   workManagement: {
     kanban: string;
     inbox: string;
@@ -51,8 +50,6 @@ export function resolveChatPanelTabDisplayTitle(
       return labels.newSession;
     case "runtime":
       return labels.runtime;
-    case "team-inbox":
-      return labels.teamInbox;
     case "work-management":
       return resolveWorkManagementTabTitle(tab, labels.workManagement);
     case "session": {

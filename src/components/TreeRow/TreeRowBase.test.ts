@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { TreeRowBase } from "./TreeRowBase";
+import { TREE_ROW_HEIGHT } from "./config";
 
 const node = {
   id: "src",
@@ -18,6 +19,7 @@ describe("TreeRowBase", () => {
     );
 
     expect(markup).not.toContain(" mx-1 ");
+    expect(markup).not.toContain("pb-px");
     expect(markup).toContain("padding-left:16px");
     expect(markup).toContain("padding-right:8px");
   });
@@ -28,6 +30,8 @@ describe("TreeRowBase", () => {
     );
 
     expect(markup).toContain(" mx-1 ");
+    expect(markup).toContain("pb-px");
+    expect(TREE_ROW_HEIGHT).toBe(29);
     expect(markup).toContain("padding-left:12px");
     expect(markup).toContain("padding-right:4px");
   });

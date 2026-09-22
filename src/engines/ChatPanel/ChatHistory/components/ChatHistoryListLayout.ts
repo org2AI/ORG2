@@ -20,18 +20,46 @@ const AT_BOTTOM_EPSILON_PX = 4;
  * user expands/collapses it, so body-derived keys remount the unchanged header
  * (including attached-image thumbnails). Keep identity on the turn instead.
  *
- * Headerless groups cannot participate in turn collapse because they have no
- * turn id; their positional fallback is therefore stable for this interaction.
+ * Headerless groups cannot use a turn id, so prefer their first immutable
+ * event/chunk id. This keeps their identity stable when older history prepends.
  */
+/**
+ * Per-group fallback identity: the first item's immutable event/chunk id.
+ * Shared so every surface that needs a group's render key — the list itself
+ * and the minimap, which maps pinned anchors back to groups — derives it the
+ * same way.
+ */
+export function buildChatGroupFallbackIds(
+  flatItems: readonly {
+    event?: { id?: string | null } | null;
+    chunk_id?: string | null;
+  }[],
+  groupCounts: readonly number[]
+): (string | null)[] {
+  let startFlatIndex = 0;
+  return groupCounts.map((groupItemCount) => {
+    const firstItem = flatItems[startFlatIndex];
+    startFlatIndex += groupItemCount;
+    return firstItem?.event?.id ?? firstItem?.chunk_id ?? null;
+  });
+}
+
 export function buildChatGroupRenderKeys(
-  turnIds: readonly (string | null)[]
+  turnIds: readonly (string | null)[],
+  fallbackIds: readonly (string | null)[] = []
 ): string[] {
   const occurrences = new Map<string, number>();
   return turnIds.map((turnId, groupIndex) => {
-    if (turnId === null) return `chat-group-index:${groupIndex}`;
-    const occurrence = occurrences.get(turnId) ?? 0;
-    occurrences.set(turnId, occurrence + 1);
-    return `chat-turn:${turnId}:occurrence:${occurrence}`;
+    const stableIdentity =
+      turnId === null
+        ? fallbackIds[groupIndex]
+          ? `chat-event:${fallbackIds[groupIndex]}`
+          : null
+        : `chat-turn:${turnId}`;
+    if (stableIdentity === null) return `chat-group-index:${groupIndex}`;
+    const occurrence = occurrences.get(stableIdentity) ?? 0;
+    occurrences.set(stableIdentity, occurrence + 1);
+    return `${stableIdentity}:occurrence:${occurrence}`;
   });
 }
 

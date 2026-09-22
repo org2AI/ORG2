@@ -674,6 +674,79 @@ describe("useSubmitMessage composer boundary", () => {
     );
   });
 
+  it.each(["snapshot", "mcp"])(
+    "clears the submitted editor and image drafts when %s serialization changes the outgoing text",
+    async (path) => {
+      const editorHarness = createEditor("original message");
+      if (path === "snapshot") {
+        vi.mocked(editorHarness.editor.getSnapshot).mockReturnValue({
+          parts: [{ kind: "text", text: "original\u200B message" }],
+        });
+      } else {
+        mocks.resolveMcpSlashCommand.mockResolvedValue("expanded prompt");
+      }
+      const options = optionsFor(editorHarness);
+      options.imageAttachment.images = [image()];
+      options.imageAttachment.hasImages = true;
+      await mount(options);
+
+      await act(async () => {
+        await latestSubmit!();
+      });
+
+      expect(options.handleSessChatSubmit).toHaveBeenCalledWith(
+        undefined,
+        path === "snapshot" ? "original\u200B message" : "expanded prompt",
+        path === "snapshot"
+          ? "agent:original\u200B message"
+          : "agent:expanded prompt",
+        [image().dataUrl]
+      );
+      expect(editorHarness.editor.clear).toHaveBeenCalledOnce();
+      expect(editorHarness.readText()).toBe("");
+      expect(options.imageAttachment.clearImages).toHaveBeenCalledOnce();
+      expect(mocks.clearImageDraft).toHaveBeenCalledWith("session-1");
+      expect(options.flushDraft).toHaveBeenCalledWith("");
+    }
+  );
+
+  it("preserves a newer draft entered during asynchronous preprocessing", async () => {
+    const editorHarness = createEditor("original message");
+    let finishScan!: (allowed: boolean) => void;
+    mocks.guardAgainstSecrets.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishScan = resolve;
+        })
+    );
+    const options = optionsFor(editorHarness);
+    await mount(options);
+
+    let pending!: Promise<void>;
+    act(() => {
+      pending = latestSubmit!();
+    });
+    await vi.waitFor(() =>
+      expect(mocks.guardAgainstSecrets).toHaveBeenCalledWith("original message")
+    );
+    await act(async () => {
+      editorHarness.editor.setContent("new draft");
+      finishScan(true);
+      await pending;
+    });
+
+    expect(options.handleSessChatSubmit).toHaveBeenCalledWith(
+      undefined,
+      "original message",
+      "agent:original message",
+      undefined
+    );
+    expect(editorHarness.readText()).toBe("new draft");
+    expect(editorHarness.editor.clear).not.toHaveBeenCalled();
+    expect(options.imageAttachment.clearImages).not.toHaveBeenCalled();
+    expect(options.flushDraft).not.toHaveBeenCalled();
+  });
+
   it("leaves the composer untouched while ordinary submission is disabled", async () => {
     const editorHarness = createEditor("queued while busy");
     const handleSessChatSubmit = vi.fn().mockResolvedValue(undefined);

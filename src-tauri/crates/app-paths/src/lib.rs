@@ -11,7 +11,11 @@
 //!
 //! The crate's public surface is intentionally flat: submodules exist only to
 //! keep this file readable, and every public item is re-exported here so
-//! callers keep using `app_paths::<helper>()`.
+//! callers keep using `app_paths::<helper>()`. Cursor-owned storage helpers
+//! live under `app_paths::cursor` to distinguish them from ORGII profiles.
+
+/// Canonical resolver for Cursor-owned IDE storage and plugin cache paths.
+pub mod cursor;
 
 mod cli_homes;
 mod data_root;
@@ -20,6 +24,9 @@ mod permissions;
 mod shell_path;
 mod system_git;
 mod temp;
+
+#[cfg(test)]
+mod test_env;
 
 pub use cli_homes::*;
 pub use data_root::*;

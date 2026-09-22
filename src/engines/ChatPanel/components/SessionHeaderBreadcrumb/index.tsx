@@ -8,7 +8,7 @@ import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import SubagentBadge from "@src/components/SubagentBadge";
 import BreadcrumbFileHeader, {
   type BreadcrumbFileHeaderDisplaySegment,
-} from "@src/modules/shared/components/FileHeader/BreadcrumbFileHeader";
+} from "@src/features/FileHeader/BreadcrumbFileHeader";
 import { type Session, sessionByIdAtom } from "@src/store/session";
 import { resolveSessionDisplayMetadata } from "@src/util/session/sessionDisplayMetadata";
 

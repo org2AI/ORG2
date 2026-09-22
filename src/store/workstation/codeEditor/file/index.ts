@@ -90,12 +90,6 @@ export const fileHasUnsavedChangesAtom = atom((get) => {
 });
 fileHasUnsavedChangesAtom.debugLabel = "fileHasUnsavedChangesAtom";
 
-/** Mark file as saved */
-export const fileMarkSavedAtom = atom(null, (get, set) => {
-  const content = get(fileContentAtom);
-  set(fileSavedContentAtom, content);
-});
-
 // ============================================
 // Search State Atoms
 // ============================================

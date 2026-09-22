@@ -94,7 +94,6 @@ describe("ChatPanelTabBar", () => {
   it.each([
     "start-page",
     "runtime",
-    "team-inbox",
     "work-management",
     "organization",
   ] as const)(
@@ -134,9 +133,9 @@ describe("ChatPanelTabBar", () => {
     );
 
     expect(markup).toMatch(
-      /<div[^>]*work-station-editor-tab[^>]*role="tab"[^>]*>.*<button type="button"/s
+      /<div[^>]*work-station-editor-tab[^>]*role="tab"[^>]*>.*<button\b[^>]*type="button"/s
     );
-    expect(markup.match(/<button type="button"/g)).toHaveLength(1);
+    expect(markup.match(/<button\b[^>]*type="button"/g)).toHaveLength(1);
     expect(markup).toMatch(
       /bg-linear-to-l[^"<]*transition-opacity[^"<]*duration-150[^"<]*opacity-0/
     );

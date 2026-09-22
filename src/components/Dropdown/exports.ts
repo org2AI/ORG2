@@ -29,13 +29,12 @@ export { default as Dropdown } from "./index";
 // Options renderer (used internally and by Select)
 export { default as DropdownOptionsRenderer } from "./DropdownOptionsRenderer";
 
-// Keyboard navigation hook
-export { useDropdownKeyboard } from "./useDropdownKeyboard";
-
 // Base building blocks
 export { default as DropdownPanel } from "./DropdownPanel";
 
 export { default as DropdownItem, DropdownItemGroup } from "./DropdownItem";
+
+export { default as DropdownActionItem } from "./DropdownActionItem";
 
 export { default as DropdownSearch } from "./DropdownSearch";
 
@@ -49,9 +48,6 @@ export { default as DropdownHeader } from "./DropdownHeader";
 export { default as DropdownFooter } from "./DropdownFooter";
 
 export { default as DropdownCollapsibleSectionHeader } from "./DropdownCollapsibleSectionHeader";
-
-// Multi-select footer (for Select dropdownRender or custom dropdowns)
-export { default as MultiSelectFooter } from "./MultiSelectFooter";
 
 // Design tokens
 export {

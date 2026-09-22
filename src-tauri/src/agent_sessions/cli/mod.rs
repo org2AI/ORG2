@@ -73,6 +73,20 @@ pub fn init_cli_agent_tables(conn: &Connection) -> SqliteResult<()> {
             updated_at     TEXT NOT NULL
         );
 
+        -- Non-secret credential-source identity belongs to the durable Session.
+        -- Rotating grants and local proxy tokens are never stored here.
+        CREATE TABLE IF NOT EXISTS code_session_credential_sources (
+            session_id TEXT PRIMARY KEY REFERENCES code_sessions(session_id) ON DELETE CASCADE,
+            selection TEXT NOT NULL CHECK(length(selection) BETWEEN 1 AND 1024)
+        );
+
+        -- sessions.db does not explicitly guarantee foreign_keys is enabled.
+        -- The trigger keeps source deletion atomic with its owner deletion.
+        CREATE TRIGGER IF NOT EXISTS code_session_credential_source_cleanup
+        AFTER DELETE ON code_sessions BEGIN
+            DELETE FROM code_session_credential_sources WHERE session_id=OLD.session_id;
+        END;
+
         CREATE TABLE IF NOT EXISTS code_session_permissions (
             session_id TEXT PRIMARY KEY REFERENCES code_sessions(session_id) ON DELETE CASCADE,
             mode TEXT NOT NULL CHECK(mode IN ('manual','auto_edit','full_permission'))

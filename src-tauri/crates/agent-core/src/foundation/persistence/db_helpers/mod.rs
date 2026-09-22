@@ -241,6 +241,9 @@ pub struct AgentMessageRow {
     pub compact_tokens_before: Option<i64>,
     /// Estimated context tokens after compaction. See `compact_tokens_before`.
     pub compact_tokens_after: Option<i64>,
+    /// Durable portable error bit for a materialized tool result.
+    #[serde(default)]
+    pub tool_is_error: bool,
 }
 
 /// Simplified lifecycle states for agent session persistence (database level).
@@ -350,13 +353,13 @@ fn insert_message_with_connection(
     let insert_sql = match conflict_policy {
         MessageConflictPolicy::Replace => format!(
             "INSERT OR REPLACE INTO {prefix}_messages
-             (id, session_id, role, content, tool_name, tool_call_id, tool_input, tool_output, model, sequence, created_at, images, compact_from_sequence, compact_tokens_before, compact_tokens_after)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)"
+             (id, session_id, role, content, tool_name, tool_call_id, tool_input, tool_output, model, sequence, created_at, images, compact_from_sequence, compact_tokens_before, compact_tokens_after, tool_is_error)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)"
         ),
         MessageConflictPolicy::PreserveExisting => format!(
             "INSERT INTO {prefix}_messages
-             (id, session_id, role, content, tool_name, tool_call_id, tool_input, tool_output, model, sequence, created_at, images, compact_from_sequence, compact_tokens_before, compact_tokens_after)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)"
+             (id, session_id, role, content, tool_name, tool_call_id, tool_input, tool_output, model, sequence, created_at, images, compact_from_sequence, compact_tokens_before, compact_tokens_after, tool_is_error)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)"
         ),
     };
     let exists_sql = format!("SELECT EXISTS(SELECT 1 FROM {prefix}_messages WHERE id = ?1)");
@@ -391,6 +394,7 @@ fn insert_message_with_connection(
             msg.compact_from_sequence,
             msg.compact_tokens_before,
             msg.compact_tokens_after,
+            msg.tool_is_error,
         ],
     )?;
     conn.execute(&touch_sql, params![msg.session_id, now])?;
@@ -480,7 +484,7 @@ fn insert_message_retry_with<T>(
 pub(crate) const AGENT_MESSAGE_ROW_COLUMNS: &str =
     "id, session_id, role, content, tool_name, tool_call_id,
      tool_input, tool_output, model, sequence, created_at, images,
-     compact_from_sequence, compact_tokens_before, compact_tokens_after";
+     compact_from_sequence, compact_tokens_before, compact_tokens_after, tool_is_error";
 
 /// Map one result row selected via [`AGENT_MESSAGE_ROW_COLUMNS`].
 pub(crate) fn read_agent_message_row(row: &rusqlite::Row<'_>) -> SqliteResult<AgentMessageRow> {
@@ -500,6 +504,7 @@ pub(crate) fn read_agent_message_row(row: &rusqlite::Row<'_>) -> SqliteResult<Ag
         compact_from_sequence: row.get(12)?,
         compact_tokens_before: row.get(13)?,
         compact_tokens_after: row.get(14)?,
+        tool_is_error: row.get(15)?,
     })
 }
 

@@ -7,6 +7,7 @@ import type { NativeSidebarSessionCursor } from "@src/api/tauri/session";
 import { createLogger } from "@src/hooks/logger";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
+import { activeSessionIdAtom } from "../viewAtom";
 import type { DateBucketPaginationMap } from "./paginationAtoms";
 import type { Session } from "./types";
 
@@ -20,4 +21,10 @@ export interface FetchPageResult {
   hasMore: boolean;
   nextCursor?: NativeSidebarSessionCursor | null;
   dateBuckets?: DateBucketPaginationMap;
+}
+
+/** Rows the roster merge must never prune: the session the user has open. */
+export function openSessionKeepIds(): ReadonlySet<string> {
+  const activeSessionId = getStore().get(activeSessionIdAtom);
+  return activeSessionId ? new Set([activeSessionId]) : new Set();
 }

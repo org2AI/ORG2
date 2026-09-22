@@ -28,10 +28,10 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import MarkDown from "@src/components/MarkDown";
 import PersonAvatar from "@src/components/PersonAvatar";
-import { LocalSessionReferenceCard } from "@src/components/SessionReferenceCard";
 import Textarea from "@src/components/Textarea";
 import Tooltip from "@src/components/Tooltip";
 import { CHAT_ITEM_PADDING_X } from "@src/engines/ChatPanel/blocks/primitives/config";
+import { LocalSessionReferenceCard } from "@src/features/SessionReferenceCard";
 import {
   Cancel01Icon,
   Delete02Icon,
@@ -207,9 +207,12 @@ const ChannelMessageRow: React.FC<ChannelMessageRowProps> = ({
         className={`${grouped ? "absolute top-0 right-0 z-10 rounded-md bg-bg-1" : "ml-auto"} inline-flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-focus-within/channelmsg:opacity-100 group-hover/channelmsg:opacity-100`}
       >
         {canEdit ? (
-          <Tooltip content={t("cloud.channels.feed.edit")} framedPanel>
+          <Tooltip
+            kind="button"
+            content={t("cloud.channels.feed.edit")}
+            framedPanel
+          >
             <Button
-              htmlType="button"
               variant="tertiary"
               size="mini"
               iconOnly
@@ -228,9 +231,12 @@ const ChannelMessageRow: React.FC<ChannelMessageRowProps> = ({
           </Tooltip>
         ) : null}
         {canDelete ? (
-          <Tooltip content={t("cloud.channels.feed.delete")} framedPanel>
+          <Tooltip
+            kind="button"
+            content={t("cloud.channels.feed.delete")}
+            framedPanel
+          >
             <Button
-              htmlType="button"
               variant="tertiary"
               size="mini"
               iconOnly
@@ -330,7 +336,6 @@ const ChannelMessageRow: React.FC<ChannelMessageRowProps> = ({
             />
             <div className="flex items-center justify-end gap-1.5">
               <Button
-                htmlType="button"
                 variant="tertiary"
                 size="mini"
                 icon={
@@ -347,7 +352,6 @@ const ChannelMessageRow: React.FC<ChannelMessageRowProps> = ({
                 {t("cloud.channels.cancel")}
               </Button>
               <Button
-                htmlType="button"
                 variant="primary"
                 size="mini"
                 disabled={draft.trim().length === 0}

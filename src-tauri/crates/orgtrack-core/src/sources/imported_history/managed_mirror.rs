@@ -167,7 +167,7 @@ pub fn demote_org2_origin_mirrors_from_conn(
          WHERE source = ?1 AND client_origin = 'org2' AND listable != 0",
         [source],
     )
-    .map_err(|err| format!("Failed to demote ORGII history mirrors: {err}"))
+    .map_err(|err| format!("Failed to demote ORG2 history mirrors: {err}"))
 }
 
 /// Fold the managed verdict into a discovery fingerprint so a session that

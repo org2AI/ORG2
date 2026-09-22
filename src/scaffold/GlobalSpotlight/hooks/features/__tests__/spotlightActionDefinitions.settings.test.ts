@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ACTION_ID } from "@src/ActionSystem";
+import { ACTION_ID } from "@src/scaffold/ActionSystem";
 
 import { buildChatPanelSettingsActions } from "../spotlightActionDefinitions.settings";
 

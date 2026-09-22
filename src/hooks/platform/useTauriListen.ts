@@ -32,6 +32,8 @@ interface UseTauriListenOptions {
   enabled?: boolean;
   /** Called when `listen` rejects. Defaults to logging the failure. */
   onError?: (error: unknown) => void;
+  /** Runs after the listener is installed, e.g. to request an initial snapshot. */
+  onReady?: () => void;
 }
 
 export function useTauriListen<T = unknown>(
@@ -51,6 +53,10 @@ export function useTauriListen<T = unknown>(
   }, [onError]);
 
   const enabled = options?.enabled !== false;
+  const onReadyRef = useRef(options?.onReady);
+  useEffect(() => {
+    onReadyRef.current = options?.onReady;
+  }, [options?.onReady]);
 
   useEffect(() => {
     if (!enabled || !event) return;
@@ -68,6 +74,7 @@ export function useTauriListen<T = unknown>(
           return;
         }
         unlisten = fn;
+        onReadyRef.current?.();
       })
       .catch((error: unknown) => {
         if (onErrorRef.current) {

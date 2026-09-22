@@ -12,19 +12,19 @@ interface CommitInfoPanelProps {
  */
 export const CommitInfoPanel: React.FC<CommitInfoPanelProps> = memo(
   function CommitInfoPanel({ commitDiff, hasInlineHeaderAbove = false }) {
+    if (!commitDiff.body?.trim()) return null;
+
     const paddingClassName = hasInlineHeaderAbove ? "pb-3" : "pb-3 pt-3";
 
     return (
       <div
         className={`max-h-40 shrink-0 overflow-hidden border-b border-border-2 px-3 ${paddingClassName}`}
       >
-        {commitDiff.body ? (
-          <div className="scrollbar-overlay max-h-[148px] overflow-y-auto pr-2">
-            <p className="max-w-[860px] cursor-text text-[12px] leading-5 whitespace-pre-wrap text-text-2 select-text">
-              {commitDiff.body}
-            </p>
-          </div>
-        ) : null}
+        <div className="scrollbar-overlay max-h-[148px] overflow-y-auto pr-2">
+          <p className="max-w-[860px] cursor-text text-[12px] leading-5 whitespace-pre-wrap text-text-2 select-text">
+            {commitDiff.body}
+          </p>
+        </div>
       </div>
     );
   }

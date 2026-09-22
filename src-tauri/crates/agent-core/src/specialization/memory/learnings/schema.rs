@@ -5,7 +5,7 @@
 //! dedup) — keeping them together and dependency-free makes the write-path
 //! contract easy to read.
 
-use rusqlite::{Connection, Result as SqliteResult};
+use rusqlite::{Connection, Result as SqliteResult, Transaction, TransactionBehavior};
 
 use super::types::LearningCategory;
 
@@ -145,13 +145,7 @@ pub fn init_learnings_table(conn: &Connection) -> SqliteResult<()> {
     // aborted schema init. `idx_learnings_active` is re-created on every init
     // (its predicate has changed across versions), so drop-then-create rather
     // than IF NOT EXISTS.
-    conn.execute("DROP INDEX IF EXISTS idx_learnings_active", [])?;
-    conn.execute(
-        "CREATE INDEX idx_learnings_active
-            ON learnings(agent_scope, status)
-            WHERE status NOT IN ('deprecated', 'abandoned')",
-        [],
-    )?;
+    rebuild_active_index(conn)?;
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_learnings_parent ON learnings(parent_id)",
         [],
@@ -193,61 +187,49 @@ pub fn init_learnings_table(conn: &Connection) -> SqliteResult<()> {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn table_has_column(conn: &Connection, column: &str) -> bool {
-        let mut stmt = conn
-            .prepare("PRAGMA table_info(learnings)")
-            .expect("prepare table_info");
-        let mut rows = stmt.query([]).expect("query table_info");
-        while let Some(row) = rows.next().expect("row") {
-            if row.get::<_, String>(1).expect("name") == column {
-                return true;
-            }
+fn rebuild_active_index(conn: &Connection) -> SqliteResult<()> {
+    // Separate processes can initialize the same database. Acquire the writer
+    // before DROP, including when the index is absent and DROP is a read-only
+    // no-op. Otherwise a deferred read snapshot can fail to upgrade to a writer.
+    // An existing caller transaction retains ownership and its isolation rules.
+    let transaction = if conn.is_autocommit() {
+        Some(Transaction::new_unchecked(
+            conn,
+            TransactionBehavior::Immediate,
+        )?)
+    } else {
+        None
+    };
+    // A savepoint also restores the old index if CREATE fails inside a caller's
+    // transaction; rolling back or committing that outer transaction is unsafe.
+    conn.execute_batch("SAVEPOINT org2_rebuild_learnings_active")?;
+    let result = (|| {
+        conn.execute("DROP INDEX IF EXISTS idx_learnings_active", [])?;
+        conn.execute(
+            "CREATE INDEX idx_learnings_active
+                ON learnings(agent_scope, status)
+                WHERE status NOT IN ('deprecated', 'abandoned')",
+            [],
+        )?;
+        conn.execute_batch("RELEASE org2_rebuild_learnings_active")
+    })();
+    if let Err(error) = &result {
+        // Stop before RELEASE if rollback fails: releasing a still-dirty
+        // savepoint could commit a partial rebuild. Always return the original
+        // migration error, and make a cleanup failure observable as well.
+        if let Err(cleanup_error) = conn.execute_batch(
+            "ROLLBACK TO org2_rebuild_learnings_active; RELEASE org2_rebuild_learnings_active",
+        ) {
+            tracing::error!(%error, %cleanup_error, "Failed to roll back learnings active-index rebuild");
         }
-        false
     }
-
-    fn index_exists(conn: &Connection, name: &str) -> bool {
-        conn.query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?1",
-            [name],
-            |row| Ok(row.get::<_, i64>(0)? == 1),
-        )
-        .expect("query index presence")
+    result?;
+    if let Some(transaction) = transaction {
+        transaction.commit()?;
     }
-
-    // Regression: a `learnings` table created before the lifecycle / evolution
-    // columns existed must still upgrade cleanly. `idx_learnings_active` filters
-    // on `status` and `idx_learnings_parent` indexes `parent_id`; creating them
-    // in the initial CREATE TABLE batch failed with "no such column: status" on
-    // any legacy table, aborting init before the ALTER TABLE migrations ran.
-    #[test]
-    fn init_learnings_table_upgrades_legacy_table_missing_lifecycle_columns() {
-        let conn = Connection::open_in_memory().expect("open in-memory db");
-        // Pre-lifecycle schema: base columns only, none of the ALTER-added ones.
-        conn.execute_batch(
-            "CREATE TABLE learnings (
-                id           TEXT PRIMARY KEY,
-                agent_scope  TEXT NOT NULL DEFAULT '_global',
-                content      TEXT NOT NULL,
-                category     TEXT NOT NULL DEFAULT 'pattern',
-                created_at   TEXT NOT NULL,
-                updated_at   TEXT NOT NULL
-            );",
-        )
-        .expect("create legacy learnings table");
-        assert!(!table_has_column(&conn, "status"));
-        assert!(!table_has_column(&conn, "parent_id"));
-
-        // This previously errored with "no such column: status".
-        init_learnings_table(&conn).expect("upgrade legacy learnings schema");
-
-        assert!(table_has_column(&conn, "status"));
-        assert!(table_has_column(&conn, "parent_id"));
-        assert!(index_exists(&conn, "idx_learnings_active"));
-        assert!(index_exists(&conn, "idx_learnings_parent"));
-    }
+    Ok(())
 }
+
+#[cfg(test)]
+#[path = "schema_tests.rs"]
+mod tests;

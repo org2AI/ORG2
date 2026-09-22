@@ -16,6 +16,7 @@
  */
 import React, { memo } from "react";
 
+import Button from "@src/components/Button";
 import { HugeiconsIcon, SquareIcon } from "@src/icons";
 
 import { renderCommandHighlight } from "./commandHighlight";
@@ -103,7 +104,8 @@ export const TerminalCommand: React.FC<TerminalCommandProps> = memo(
           <span className="terminal-command__text">{command}</span>
         )}
         {stopAction && (
-          <button
+          <Button
+            layout="custom"
             onClick={stopAction.onClick}
             disabled={stopAction.isStopping}
             title={stopAction.tooltip}
@@ -116,7 +118,7 @@ export const TerminalCommand: React.FC<TerminalCommandProps> = memo(
               fill="currentColor"
               strokeWidth={0}
             />
-          </button>
+          </Button>
         )}
       </div>
     );

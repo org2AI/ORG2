@@ -1,9 +1,4 @@
 {
-  "name": "Nome",
   "genderOptions": {},
-  "role": "Cargo",
-  "location": "Localização",
-  "commits": "commits",
-  "activity": "Atividade",
   "social": {}
 }

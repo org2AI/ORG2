@@ -20,18 +20,19 @@
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 
-import {
-  ACTION_ID,
-  initializeServices,
-  registerCoreActions,
-  zodActionRegistry,
-} from "@src/ActionSystem";
 import { sendAdeActionResult } from "@src/api/tauri/agent";
+import type { PendingSessionProposal } from "@src/contracts/session/ade";
 import { clearSessionAtom } from "@src/engines/SessionCore/core/atoms/actions";
 import {
   GLOBAL_UI_CHANNEL_SESSION_ID,
   subscribeToSessionEvents,
 } from "@src/engines/SessionCore/sync/useSessionChannel";
+import {
+  ACTION_ID,
+  initializeServices,
+  registerCoreActions,
+  zodActionRegistry,
+} from "@src/scaffold/ActionSystem";
 import { reposAtom } from "@src/store/repo/atoms";
 import {
   SESSION_TARGET_KIND,
@@ -41,11 +42,10 @@ import {
   activeSessionIdAtom,
   workstationActiveSessionIdAtom,
 } from "@src/store/session/viewAtom";
-import { chatPanelNavigateAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { resetChatPanelSessionSurfaceAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { restoreChatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { adeManagerEnabledAtom } from "@src/store/ui/uiAtom";
 import { activeWorkspaceRootAtom } from "@src/store/workspace";
-import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import { recordPushEvent } from "@src/util/monitoring/apiTracker";
 
@@ -61,14 +61,7 @@ import { resolveTrustedDispatchParams } from "./adeReplyBinding";
  * consumed by `AdeAwareSessionCreatorSlot` in AppLayout when the
  * user launches a session from the creator.
  */
-export interface PendingSessionProposal {
-  correlationId: string;
-  task: string;
-  agentDefinitionId?: string;
-  repoPath?: string;
-  model?: string;
-  expiresAt: number;
-}
+export type { PendingSessionProposal };
 
 export const pendingSessionProposal: {
   current: PendingSessionProposal | null;
@@ -229,9 +222,7 @@ export function useAgentADEActions(): void {
           });
 
           // Navigate chat panel to the session creator (same as "New session" button).
-          store.set(chatPanelNavigateAtom, {
-            kind: CHAT_PANEL_SURFACE_KIND.SESSION,
-          });
+          store.set(resetChatPanelSessionSurfaceAtom);
           store.set(clearSessionAtom);
           store.set(workstationActiveSessionIdAtom, null);
           store.set(activeSessionIdAtom, null);

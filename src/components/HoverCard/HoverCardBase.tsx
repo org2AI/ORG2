@@ -1,0 +1,451 @@
+import React, {
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+
+import { getViewportSize } from "@src/util/ui/window/viewport";
+
+import { getSidePanePlacement } from "./sidePanePlacement";
+import {
+  allocateInstanceId,
+  cancelPendingClose,
+  dismissHoverCard,
+  openCard,
+  scheduleClose,
+  useHoverCardState,
+} from "./singletonStore";
+import { HOVER_CARD } from "./tokens";
+
+export type HoverCardPosition =
+  | "bottom-start"
+  | "right-start"
+  | "right-or-bottom";
+
+const DEFAULT_MOUSE_ENTER_DELAY_MS = 500;
+const DEFAULT_MOUSE_LEAVE_DELAY_MS = 100;
+const DEFAULT_POSITION: HoverCardPosition = "bottom-start";
+const VIEWPORT_PADDING_PX = 8;
+const TRIGGER_GAP_PX = 8;
+const CARD_LEAVE_DELAY_MS = 80;
+
+interface HoverCardBaseProps {
+  panelClassName?: string;
+  /** Optional enclosing panel to clear when placing a secondary pane. */
+  anchorSelector?: string;
+  zIndex?: number;
+  cardId?: string | null;
+  children: React.ReactElement;
+  position?: HoverCardPosition;
+  mouseEnterDelay?: number;
+  mouseLeaveDelay?: number;
+  renderContent: (cardId: string) => React.ReactNode;
+}
+
+interface HoverCardTriggerProps {
+  instanceId: number;
+  cardId: string;
+  position: HoverCardPosition;
+  mouseEnterDelay: number;
+  mouseLeaveDelay: number;
+  children: React.ReactElement;
+}
+
+interface HoverCardPortalProps {
+  anchorSelector?: string;
+  panelClassName?: string;
+  zIndex?: number;
+  instanceId: number;
+  cardId: string;
+  position: HoverCardPosition;
+  renderContent: (cardId: string) => React.ReactNode;
+}
+
+interface HoverCardPanelProps {
+  width?: "default" | "wide";
+  title?: string;
+  children: React.ReactNode;
+  /** Allow anchored child menus to extend beyond short hover-card panels. */
+  allowOverflow?: boolean;
+}
+
+interface HoverCardRowProps {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  iconClassName?: string;
+}
+
+type ElementProps = {
+  ref?: React.Ref<HTMLElement>;
+  onMouseEnter?: (event: React.MouseEvent) => void;
+  onMouseLeave?: (event: React.MouseEvent) => void;
+  onClickCapture?: (event: React.MouseEvent) => void;
+  onContextMenuCapture?: (event: React.MouseEvent) => void;
+  onFocus?: (event: React.FocusEvent) => void;
+  onBlur?: (event: React.FocusEvent) => void;
+  [key: string]: unknown;
+};
+
+function applyRef(
+  ref: React.Ref<HTMLElement> | undefined,
+  node: HTMLElement | null
+): void {
+  if (!ref) return;
+  if (typeof ref === "function") {
+    ref(node);
+  } else {
+    (ref as React.MutableRefObject<HTMLElement | null>).current = node;
+  }
+}
+
+function computePortalStyle(
+  rect: DOMRect,
+  position: HoverCardPosition,
+  cardWidth: number,
+  cardHeight: number,
+  viewport = getViewportSize(),
+  panelRect = rect
+): React.CSSProperties {
+  let top = 0;
+  let left = 0;
+
+  if (position === "right-or-bottom") {
+    return {
+      position: "fixed",
+      ...getSidePanePlacement(
+        rect,
+        { width: cardWidth, height: cardHeight },
+        viewport,
+        panelRect
+      ),
+    };
+  }
+
+  if (position === "right-start") {
+    top = rect.top;
+    left = rect.right + TRIGGER_GAP_PX;
+
+    if (
+      cardWidth > 0 &&
+      left + cardWidth > viewport.width - VIEWPORT_PADDING_PX
+    ) {
+      const leftSide = rect.left - cardWidth - TRIGGER_GAP_PX;
+      if (leftSide >= VIEWPORT_PADDING_PX) {
+        left = leftSide;
+      }
+    }
+  } else {
+    top = rect.bottom + TRIGGER_GAP_PX;
+    left = rect.left;
+  }
+
+  if (cardWidth > 0) {
+    left = Math.max(
+      VIEWPORT_PADDING_PX,
+      Math.min(left, viewport.width - cardWidth - VIEWPORT_PADDING_PX)
+    );
+  }
+  if (cardHeight > 0) {
+    top = Math.max(
+      VIEWPORT_PADDING_PX,
+      Math.min(top, viewport.height - cardHeight - VIEWPORT_PADDING_PX)
+    );
+  }
+
+  return { position: "fixed", top, left, zIndex: 1000 };
+}
+
+const HoverCardTrigger: React.FC<HoverCardTriggerProps> = ({
+  instanceId,
+  cardId,
+  position,
+  mouseEnterDelay,
+  mouseLeaveDelay,
+  children,
+}) => {
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearEnterTimer = useCallback(() => {
+    if (enterTimerRef.current !== null) {
+      clearTimeout(enterTimerRef.current);
+      enterTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearEnterTimer();
+      scheduleClose(instanceId, 0);
+    };
+  }, [clearEnterTimer, instanceId]);
+
+  const openWithDelay = useCallback(() => {
+    clearEnterTimer();
+    const node = triggerRef.current;
+    if (!node) return;
+    const run = () => {
+      enterTimerRef.current = null;
+      const current = triggerRef.current;
+      if (
+        !current ||
+        (position === "right-or-bottom" &&
+          document.visibilityState === "hidden")
+      )
+        return;
+      openCard(
+        instanceId,
+        cardId,
+        current.getBoundingClientRect(),
+        position,
+        current
+      );
+    };
+    if (mouseEnterDelay <= 0) {
+      run();
+    } else {
+      enterTimerRef.current = setTimeout(run, mouseEnterDelay);
+    }
+  }, [cardId, clearEnterTimer, instanceId, mouseEnterDelay, position]);
+
+  const handleLeave = useCallback(() => {
+    clearEnterTimer();
+    scheduleClose(instanceId, mouseLeaveDelay);
+  }, [clearEnterTimer, instanceId, mouseLeaveDelay]);
+
+  const originalProps =
+    (children.props as ElementProps | undefined) ?? ({} as ElementProps);
+  const originalRef = originalProps.ref;
+
+  const composedRef = useCallback(
+    (node: HTMLElement | null) => {
+      triggerRef.current = node;
+      applyRef(originalRef, node);
+    },
+    [originalRef]
+  );
+
+  // eslint-disable-next-line react-hooks/refs -- cloneElement only forwards the composed callback ref for React to invoke during commit; it never reads ref.current during render
+  return cloneElement(children, {
+    ref: composedRef,
+    onMouseEnter: (event: React.MouseEvent) => {
+      openWithDelay();
+      originalProps.onMouseEnter?.(event);
+    },
+    onMouseLeave: (event: React.MouseEvent) => {
+      handleLeave();
+      originalProps.onMouseLeave?.(event);
+    },
+    onFocus: (event: React.FocusEvent) => {
+      if (position === "right-or-bottom") openWithDelay();
+      originalProps.onFocus?.(event);
+    },
+    onBlur: (event: React.FocusEvent) => {
+      if (position === "right-or-bottom") handleLeave();
+      originalProps.onBlur?.(event);
+    },
+    // Row actions stop bubbling so they do not select the row. Dismiss in
+    // capture, including pending opens, before an action opens its menu.
+    onClickCapture: (event: React.MouseEvent) => {
+      clearEnterTimer();
+      dismissHoverCard();
+      originalProps.onClickCapture?.(event);
+    },
+    onContextMenuCapture: (event: React.MouseEvent) => {
+      clearEnterTimer();
+      dismissHoverCard();
+      originalProps.onContextMenuCapture?.(event);
+    },
+  } as ElementProps);
+};
+
+const HoverCardPortal: React.FC<HoverCardPortalProps> = ({
+  anchorSelector,
+  panelClassName,
+  zIndex = 1000,
+  instanceId,
+  cardId,
+  position,
+  renderContent,
+}) => {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [cardSize, setCardSize] = useState({ width: 0, height: 0 });
+  const { triggerRect, anchorElement } = useHoverCardState();
+  const [geometry, setGeometry] = useState(() => ({
+    anchorRect: triggerRect,
+    panelRect: triggerRect,
+    viewport: getViewportSize(),
+  }));
+
+  useLayoutEffect(() => {
+    const node = cardRef.current;
+    if (!node) return;
+
+    const panelElement = anchorSelector
+      ? anchorElement?.closest<HTMLElement>(anchorSelector)
+      : null;
+    const updateCardSize = () => {
+      if (position === "right-or-bottom" && anchorElement) {
+        // Viewport changes can alter placement even when the anchor is unchanged.
+        setGeometry({
+          anchorRect: anchorElement.getBoundingClientRect(),
+          panelRect: (panelElement ?? anchorElement).getBoundingClientRect(),
+          viewport: getViewportSize(),
+        });
+      }
+      const rect = node.getBoundingClientRect();
+      setCardSize((current) =>
+        current.width === rect.width && current.height === rect.height
+          ? current
+          : { width: rect.width, height: rect.height }
+      );
+    };
+
+    updateCardSize();
+    const observer = new ResizeObserver(updateCardSize);
+    observer.observe(node);
+    if (position === "right-or-bottom" && anchorElement) {
+      observer.observe(anchorElement);
+      if (panelElement && panelElement !== anchorElement)
+        observer.observe(panelElement);
+      window.addEventListener("resize", updateCardSize);
+    }
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateCardSize);
+    };
+  }, [anchorElement, anchorSelector, cardId, position]);
+
+  useEffect(() => {
+    if (position !== "right-or-bottom") return;
+    const dismiss = () => dismissHoverCard();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismiss();
+    };
+    const onScroll = (event: Event) => {
+      if (
+        !(event.target instanceof Node) ||
+        !cardRef.current?.contains(event.target)
+      )
+        dismiss();
+    };
+    window.addEventListener("scroll", onScroll, true);
+    document.addEventListener("visibilitychange", dismiss);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("visibilitychange", dismiss);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [position]);
+
+  if (!triggerRect) return null;
+
+  const style = computePortalStyle(
+    position === "right-or-bottom"
+      ? (geometry.anchorRect ?? triggerRect)
+      : triggerRect,
+    position,
+    cardSize.width,
+    cardSize.height,
+    position === "right-or-bottom" ? geometry.viewport : undefined,
+    geometry.panelRect ?? triggerRect
+  );
+
+  return createPortal(
+    <div
+      ref={cardRef}
+      data-hover-card="true"
+      className={panelClassName}
+      style={{ ...style, zIndex }}
+      onMouseEnter={cancelPendingClose}
+      onMouseLeave={() => scheduleClose(instanceId, CARD_LEAVE_DELAY_MS)}
+    >
+      {renderContent(cardId)}
+    </div>,
+    document.body
+  );
+};
+
+export const HoverCardPanel: React.FC<HoverCardPanelProps> = ({
+  title,
+  children,
+  allowOverflow = false,
+  width = "default",
+}) => (
+  <div
+    className={`${width === "wide" ? "w-96 max-w-[calc(100vw-16px)]" : "w-[280px]"} ${HOVER_CARD.surface} ${
+      allowOverflow ? "overflow-visible" : "overflow-y-auto"
+    }`}
+    style={{ maxHeight: `calc(100vh - ${VIEWPORT_PADDING_PX * 2}px)` }}
+  >
+    {title && (
+      <div className={`${HOVER_CARD.title} ${HOVER_CARD.text}`} title={title}>
+        {title}
+      </div>
+    )}
+    <div className={HOVER_CARD.rows}>{children}</div>
+  </div>
+);
+
+export const HoverCardRow: React.FC<HoverCardRowProps> = ({
+  icon,
+  children,
+  iconClassName = "text-text-3",
+}) => (
+  <div className={`${HOVER_CARD.row} ${HOVER_CARD.text}`}>
+    <span className={`${HOVER_CARD.iconSlot} ${iconClassName}`}>{icon}</span>
+    <div className="min-w-0">{children}</div>
+  </div>
+);
+
+const HoverCardBase: React.FC<HoverCardBaseProps> = ({
+  panelClassName,
+  anchorSelector,
+  zIndex,
+  cardId,
+  children,
+  position = DEFAULT_POSITION,
+  mouseEnterDelay = DEFAULT_MOUSE_ENTER_DELAY_MS,
+  mouseLeaveDelay = DEFAULT_MOUSE_LEAVE_DELAY_MS,
+  renderContent,
+}) => {
+  const [instanceId] = useState(allocateInstanceId);
+  const { activeInstanceId } = useHoverCardState();
+
+  if (!cardId || !isValidElement(children)) return children;
+
+  const isActiveOwner = activeInstanceId === instanceId;
+
+  return (
+    <>
+      <HoverCardTrigger
+        instanceId={instanceId}
+        cardId={cardId}
+        position={position}
+        mouseEnterDelay={mouseEnterDelay}
+        mouseLeaveDelay={mouseLeaveDelay}
+      >
+        {children}
+      </HoverCardTrigger>
+      {isActiveOwner && (
+        <HoverCardPortal
+          anchorSelector={anchorSelector}
+          panelClassName={panelClassName}
+          zIndex={zIndex}
+          instanceId={instanceId}
+          cardId={cardId}
+          position={position}
+          renderContent={renderContent}
+        />
+      )}
+    </>
+  );
+};
+
+export default HoverCardBase;

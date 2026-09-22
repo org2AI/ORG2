@@ -231,11 +231,17 @@ pub(crate) async fn load_initial_turn_window_events(
     let recent_count = recent_turn_count.unwrap_or(DEFAULT_RECENT_TURN_BODY_COUNT);
     let (mut window, pinned_artifact_events) = tokio::task::spawn_blocking(move || {
         let window = sqlite_cache::load_initial_turn_window(&sid, recent_count)?;
-        let pinned = sqlite_cache::load_session_pinned_artifact_events(
+        let mut pinned = sqlite_cache::load_session_pinned_artifact_events(
             &sid,
             PINNED_ARTIFACT_FUNCTION_NAMES,
             MAX_PINNED_ARTIFACT_EVENTS,
         )?;
+        // Control metadata must survive a window that no longer includes the
+        // retry timestamp; it controls logical prompt projection after restart.
+        pinned.extend(sqlite_cache::load_events_by_type(
+            &sid,
+            "queued_retry_lineage",
+        )?);
         Ok::<_, rusqlite::Error>((window, pinned))
     })
     .await

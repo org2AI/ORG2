@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AgentOrgRunView } from "@src/api/tauri/agent";
 import { AgentOrgTaskProjectionProvider } from "@src/engines/ChatPanel/ChatHistory/AgentOrgTaskProjectionContext";
 import type { UniversalEventProps } from "@src/engines/SessionCore/rendering/types/universalProps";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { OrgTaskAdapter } from "./OrgTaskAdapter";
 
@@ -16,20 +17,8 @@ vi.mock("@src/engines/ChatPanel/hooks/useChatEventReplay", () => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, values?: Record<string, unknown>) => {
-      if (
-        key ===
-        "planner.agentOrgOverview.coordinatorWorkState.waiting_for_org_event"
-      )
-        return "Coordinator waiting for an event";
-      if (key === "planner.agentOrgOverview.coordinatorWorkState.active")
-        return "Coordinator active";
-      if (key === "orgTask.list.count")
-        return `${String(values?.taskCount ?? 0)} tasks`;
-      return String(values?.defaultValue ?? key);
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 const baseProps: UniversalEventProps = {

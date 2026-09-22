@@ -51,6 +51,22 @@ impl UnifiedMessageProcessor {
         } else {
             false
         };
+        let agent_org_turn_kind = self
+            .runtime
+            .agent_org_context
+            .as_ref()
+            .zip(self.runtime.agent_org_current_member_id.as_ref())
+            .filter(|(_, member_id)| {
+                member_id.as_str() != crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID
+            })
+            .map(|_| {
+                crate::coordination::agent_org_turn_contexts::require_existing_context_for_session(
+                    session_id,
+                    turn_intent_id,
+                )
+                .map(|context| context.turn_kind)
+            })
+            .transpose()?;
 
         self.runtime
             .provider
@@ -151,13 +167,13 @@ impl UnifiedMessageProcessor {
             .agent_org_context
             .as_ref()
             .zip(self.runtime.agent_org_current_member_id.as_ref())
-            .and_then(|(context, member_id)| {
-                (member_id != crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID).then(
-                    || super::super::event_handler::AgentOrgTaskLifecycleContext {
-                        run_id: context.run_id.clone(),
-                        member_id: member_id.clone(),
-                    },
-                )
+            .zip(agent_org_turn_kind)
+            .map(|((context, member_id), turn_kind)| {
+                super::super::event_handler::AgentOrgTaskLifecycleContext {
+                    run_id: context.run_id.clone(),
+                    member_id: member_id.clone(),
+                    turn_kind,
+                }
             });
         let handler = UnifiedEventHandler::new(event_handler_config);
 

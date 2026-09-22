@@ -24,7 +24,7 @@ import type { CanvasInlineMode } from "@src/engines/ChatPanel/blocks/CanvasInlin
 import type { SimulatorAppProps } from "@src/engines/Simulator/apps/core/types";
 import {
   ArrowExpand01Icon,
-  ArrowShrink01Icon,
+  ArrowShrink02Icon,
   Cancel01Icon,
   HugeiconsIcon,
   Layout01Icon,
@@ -36,6 +36,7 @@ import {
   useSimulatorAwaitingAgentCaption,
   useSimulatorPlaceholderActions,
 } from "@src/modules/WorkStation/shared";
+import { openLink } from "@src/util/ui/openLink";
 
 // ============================================
 // Types
@@ -204,12 +205,11 @@ function CanvasApp(props: SimulatorAppProps) {
         <div className="flex items-center gap-1">
           {state.mode === "url" && state.url && (
             <Button
-              onClick={() => window.open(state.url!, "_blank")}
+              onClick={() => openLink(state.url!)}
               title={t("simulator.replay.canvas.tooltipOpenInBrowser")}
               aria-label={t("simulator.replay.canvas.tooltipOpenInBrowser")}
               size="mini"
               variant="tertiary"
-              appearance="soft"
               iconOnly
               icon={
                 <HugeiconsIcon
@@ -234,12 +234,11 @@ function CanvasApp(props: SimulatorAppProps) {
             }
             size="mini"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               isFullscreen ? (
                 <HugeiconsIcon
-                  icon={ArrowShrink01Icon}
+                  icon={ArrowShrink02Icon}
                   data-icon="minimize-2"
                   className="h-3.5 w-3.5"
                 />
@@ -258,7 +257,6 @@ function CanvasApp(props: SimulatorAppProps) {
             aria-label={t("simulator.replay.canvas.tooltipCloseCanvas")}
             size="mini"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               <HugeiconsIcon

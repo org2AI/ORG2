@@ -153,8 +153,50 @@ describe("RoundNavigator", () => {
     expect(button("turn-pagination-next-round").disabled).toBe(false);
   });
 
+  it("keeps sorting inside the open sheet and marks the selected round", async () => {
+    const onSelect = vi.fn();
+    await renderNavigator("r1", onSelect);
+    act(() => button("turn-pagination-current-round").click());
+    const sheet = container.querySelector('[data-testid="round-sheet"]')!;
+    const list = sheet.querySelector('[data-mobile-round-list="true"]')!;
+    expect(list.querySelector("button")?.getAttribute("data-page-index")).toBe(
+      "2"
+    );
+    expect(
+      list
+        .querySelector('[aria-current="true"]')
+        ?.getAttribute("data-page-index")
+    ).toBe("0");
+    const sort = Array.from(sheet.querySelectorAll("button")).find((item) =>
+      item.textContent?.includes("rounds.newestFirst")
+    )!;
+    act(() => sort.click());
+    expect(list.querySelector("button")?.getAttribute("data-page-index")).toBe(
+      "0"
+    );
+    act(() =>
+      (list.querySelector('[data-page-index="1"]') as HTMLButtonElement).click()
+    );
+    expect(onSelect).toHaveBeenCalledWith("r2");
+    expect(container.querySelector('[data-testid="round-sheet"]')).toBeNull();
+  });
+
   it("labels a truncated round body", async () => {
     await renderNavigator("r1", vi.fn(), true, true);
     expect(container.textContent).toContain("部分内容已截断");
+  });
+
+  it("places partial and truncated notes below navigation and removes them when complete", async () => {
+    await renderNavigator("r1", vi.fn(), false, true);
+    const nav = container.querySelector("nav")!;
+    const note = nav.querySelector("[data-turn-navigation-status]")!;
+    expect(note.parentElement).toBe(nav);
+    expect(note.textContent).toBe("仅显示最近轮次 · 部分内容已截断");
+    expect(button("turn-pagination-current-round").textContent).toBe("第 1 轮");
+    expect(button("turn-pagination-next-round").disabled).toBe(false);
+
+    await renderNavigator("r1", vi.fn(), true, false);
+    expect(nav.querySelector("[data-turn-navigation-status]")).toBeNull();
+    expect(button("turn-pagination-current-round").textContent).toBe("第 1 轮");
   });
 });

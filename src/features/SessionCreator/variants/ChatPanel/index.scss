@@ -217,3 +217,20 @@
     border-radius: 0 0 12px 12px;
   }
 }
+
+.spotlight-session-creator.session-creator-chat-panel-wrapper {
+  // SpotlightFormBody owns the inset, including in short windows.
+  .session-creator-chat-panel-content {
+    padding: 0 !important;
+  }
+
+  .session-creator-chat-panel-compact-header,
+  .session-creator-chat-panel-fullscreen-composer-group {
+    background: transparent;
+  }
+
+  // The floating card shadow would still outline the transparent header.
+  .session-creator-chat-panel-fullscreen-composer-group::before {
+    content: none;
+  }
+}

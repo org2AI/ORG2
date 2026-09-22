@@ -1,51 +1,59 @@
 /**
- * Bridges global Cmd+T / Cmd+W (dispatched as custom events from useTabShortcuts)
- * into the active Workstation app. Only the mounted tool should register handlers.
+ * Bridges the global ⌘W (dispatched as a custom event from `useTabShortcuts`)
+ * into the Workstation content host that owns the active tab.
  *
- * `onNewTab` is optional — the Code Editor intentionally does not register
- * a handler for ⌘T because file lookup is owned by ⌘P (file palette).
- * Hosts that have a meaningful "new tab" concept (Browser: new browser
- * session, Database: add connection, Project: new project) keep their
- * `onNewTab` wiring.
+ * # Why the host has to be part of the condition
+ *
+ * The bridge listens on `window`, so every mounted host hears every event.
+ * The AppShell deliberately keeps previously-visited hosts mounted-but-hidden
+ * so tab switches stay instant (see `hostMountPolicy.ts`), which means two or
+ * three hosts are commonly listening at once. A bridge that registered on
+ * mount alone would run several close handlers for one keystroke — closing a
+ * tab the user cannot see, in a host they are not looking at.
+ *
+ * Callers therefore declare which host they are, and the bridge compares that
+ * against `activeHostAtom` rather than trusting each call site to derive its
+ * own "am I active" flag. Making it a required input is the point: the
+ * previous contract was an optional `enabled` boolean, and two of the three
+ * call sites passed a bare `true`.
  */
+import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 
+import {
+  type WorkstationTabHost,
+  activeHostAtom,
+} from "@src/store/workstation/tabHost";
+
 export interface WorkStationTabShortcutBridgeOptions {
-  enabled: boolean;
-  onNewTab?: () => void;
+  /** The content host registering this handler. */
+  host: WorkstationTabHost;
+  /**
+   * Extra gate for hosts with their own notion of being live. ANDed with the
+   * active-host check; it can never widen the condition. Defaults to `true`.
+   */
+  enabled?: boolean;
   onCloseActiveTab: () => void;
 }
 
-const HUMANTOOLS_NEW_TAB = "workstation-new-tab";
-const HUMANTOOLS_CLOSE_ACTIVE_TAB = "workstation-close-active-tab";
+const WORKSTATION_CLOSE_ACTIVE_TAB = "workstation-close-active-tab";
 
 export function useWorkStationTabShortcutBridge(
   options: WorkStationTabShortcutBridgeOptions
 ): void {
-  const { enabled, onNewTab, onCloseActiveTab } = options;
+  const { host, enabled = true, onCloseActiveTab } = options;
+  const activeHost = useAtomValue(activeHostAtom);
+  const listening = enabled && activeHost === host;
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!listening) return;
 
     const handleClose = () => {
       onCloseActiveTab();
     };
-    window.addEventListener(HUMANTOOLS_CLOSE_ACTIVE_TAB, handleClose);
-
-    let detachNew: (() => void) | undefined;
-    if (onNewTab) {
-      const handleNew = () => {
-        onNewTab();
-      };
-      window.addEventListener(HUMANTOOLS_NEW_TAB, handleNew);
-      detachNew = () => {
-        window.removeEventListener(HUMANTOOLS_NEW_TAB, handleNew);
-      };
-    }
-
+    window.addEventListener(WORKSTATION_CLOSE_ACTIVE_TAB, handleClose);
     return () => {
-      window.removeEventListener(HUMANTOOLS_CLOSE_ACTIVE_TAB, handleClose);
-      detachNew?.();
+      window.removeEventListener(WORKSTATION_CLOSE_ACTIVE_TAB, handleClose);
     };
-  }, [enabled, onNewTab, onCloseActiveTab]);
+  }, [listening, onCloseActiveTab]);
 }

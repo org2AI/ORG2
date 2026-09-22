@@ -138,6 +138,14 @@ export const OVERLAY_SHORTCUTS: ShortcutEntry[] = [
     category: "navigation",
   },
   {
+    id: "list_search",
+    command: "Search the list",
+    macKeys: "⌘F",
+    winKeys: "Ctrl+F",
+    scope: "list",
+    category: "search",
+  },
+  {
     id: "menu_submenu",
     command: "Open submenu",
     macKeys: "→",

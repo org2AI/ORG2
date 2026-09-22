@@ -13,6 +13,7 @@ use super::{
     ensure_worktree_excludes, list_session_worktrees, session_branch_name,
     validate_session_id, worktree_lock_is_held, LinkedWorktreeInfo, WorktreeInfo,
 };
+use crate::util::ensure_git_operand;
 
 /// Fallback used when the caller does not supply a configurable limit.
 const DEFAULT_MAX_CONCURRENT_WORKTREES: usize = 8;
@@ -35,6 +36,10 @@ pub fn create_linked_worktree(
     let branch = branch.trim();
     if branch.is_empty() {
         return Err("branch cannot be empty".to_string());
+    }
+    ensure_git_operand(branch, "branch")?;
+    if let Some(base_ref) = base_ref {
+        ensure_git_operand(base_ref, "base ref")?;
     }
     let path_string = worktree_path.to_string_lossy().to_string();
     if worktree_path.exists() {
@@ -104,6 +109,9 @@ pub fn create_session_worktree(
     max_count: Option<usize>,
 ) -> Result<WorktreeInfo, String> {
     validate_session_id(session_id)?;
+    if let Some(base) = base_branch {
+        ensure_git_operand(base, "base branch")?;
+    }
     let repo_str = repo_path.to_string_lossy().to_string();
     let wt_path = session_worktree_dir(&repo_str, session_id);
     let branch = session_branch_name(session_id);

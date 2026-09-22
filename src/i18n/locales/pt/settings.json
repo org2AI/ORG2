@@ -3,8 +3,6 @@
     "customCommandUpdated": "Comando personalizado atualizado",
     "shellSettingUpdated": "Configuração do shell atualizada"
   },
-  "noSettingsFound": "Nenhuma configuração encontrada para \"{{query}}\"",
-  "searchPlaceholder": "Pesquisar configurações...",
   "panel": {
     "maximizeSettings": "Maximizar configurações"
   },
@@ -15,10 +13,13 @@
     "editorAndWorkspace": "Editor & Workspace",
     "appUpdate": "Atualização do App",
     "security": "Segurança",
+    "appLock": "Bloqueio do app",
     "storage": "Armazenamento",
     "agentOrg": "Equipe Agent",
     "harnessConnections": "Conexões de aplicativos",
-    "mobileRemote": "Mobile Remote"
+    "import": "Importação",
+    "mobileRemote": "Mobile Remote",
+    "development": "Modo de desenvolvimento"
   },
   "coreSidebar": {
     "groups": {
@@ -54,6 +55,52 @@
     "customPatternsPlaceholder": "ex.: MYCORP_[A-Z0-9]{20}",
     "invalidPatterns": "{{count}} padrão(ões) são inválidos e serão ignorados: {{patterns}}"
   },
+  "appLock": {
+    "password": "Bloqueio por senha",
+    "setPassword": "Definir senha",
+    "changePassword": "Alterar senha",
+    "removePassword": "Remover senha",
+    "currentPassword": "Senha atual",
+    "newPassword": "Nova senha",
+    "confirmPassword": "Confirmar nova senha",
+    "passwordSet": "Senha definida",
+    "passwordChanged": "Senha alterada",
+    "passwordRemoved": "Senha removida",
+    "lockNow": "Bloquear agora",
+    "lockNowDesc": "Bloqueia todas as janelas do ORG2 até que a senha seja digitada",
+    "shortcut": "Atalho para bloquear",
+    "hint": "Dica da senha",
+    "hintPlaceholder": "Exibida na tela de bloqueio",
+    "hintOptionalPlaceholder": "Dica da senha (opcional)",
+    "autoLock": "Bloquear automaticamente",
+    "autoLockDesc": "Bloquear após este tempo sem uso de teclado ou mouse no ORG2",
+    "autoLockNever": "Nunca",
+    "autoLockMinutes": "Após {{count}} min",
+    "autoLockHour": "Após 1 hora",
+    "lockOnLaunch": "Bloquear ao iniciar o ORG2",
+    "lockOnLaunchDesc": "Pedir a senha sempre que o app for aberto",
+    "scopeNote": "O bloqueio cobre apenas as janelas do ORG2. Ele não criptografa seus dados nem pausa o Mobile Remote, e qualquer pessoa com acesso aos seus arquivos pode removê-lo. Se esquecer a senha, encerre o ORG2 e exclua app-lock.json da pasta .orgii no seu diretório pessoal",
+    "errors": {
+      "tooShort": "Use pelo menos {{count}} caracteres",
+      "tooLong": "Essa senha é longa demais",
+      "mismatch": "As senhas não coincidem",
+      "incorrectCurrent": "A senha atual está incorreta",
+      "throttled": "Muitas tentativas incorretas. Tente novamente mais tarde",
+      "generic": "Não foi possível atualizar o bloqueio do app",
+      "hintTooLong": "Essa dica é longa demais",
+      "hintRevealsPassword": "A dica não pode conter a senha"
+    },
+    "screen": {
+      "title": "O ORG2 está bloqueado",
+      "passwordPlaceholder": "Senha",
+      "incorrect": "Senha incorreta",
+      "failed": "Não foi possível desbloquear. Tente novamente",
+      "throttled": "Muitas tentativas. Tente novamente em {{time}}",
+      "working": "Sessões ainda trabalhando: {{count}}",
+      "showHint": "Mostrar dica",
+      "hint": "Dica: {{hint}}"
+    }
+  },
   "myRoles": {
     "currentStatus": "Meu status atual",
     "tabs": {
@@ -86,6 +133,10 @@
     }
   },
   "general": {
+    "myStationSharing": "Partilha do Workstation",
+    "myStationSharingDesc": "Partilhar os separadores e o estado das vistas do Workstation por diretório de trabalho ou guardá-los separadamente para cada separador de conversa",
+    "myStationSharingDirectory": "Diretório de trabalho",
+    "myStationSharingTab": "Separador de conversa",
     "login": "Entrar",
     "tabGeneral": "Geral",
     "tabSelfHosted": "Auto-hospedado",
@@ -117,8 +168,6 @@
     "usePointerCursorsDesc": "Altera o cursor para um ponteiro ao passar sobre elementos interativos",
     "timezoneAuto": "Automático (Navegador)",
     "timezoneSearchPlaceholder": "Pesquisar cidades próximas",
-    "sendOnEnter": "Enviar mensagens com Enter",
-    "sendOnEnterDesc": "Quando ativado, Enter envia; Shift+Enter e Ctrl/Cmd+Enter inserem uma nova linha. Quando desativado, Ctrl/Cmd+Enter envia",
     "language": "Idioma",
     "languageSearchPlaceholder": "Pesquisar idiomas...",
     "languageNames": {
@@ -135,7 +184,9 @@
       "vi": "Vietnamita",
       "pt": "Português",
       "pl": "Polonês",
-      "zh-Hant": "Chinês tradicional"
+      "zh-Hant": "Chinês tradicional",
+      "hi": "Hindi",
+      "id": "Indonésio"
     },
     "layout": "Layout",
     "sidebar": "Barra lateral",
@@ -143,9 +194,11 @@
     "sidebarEdgeDepth": "Profundidade da borda da barra lateral",
     "selectedItemTransparency": "Transparência do item selecionado",
     "spotlightPlacement": "Posição do Spotlight",
+    "spotlightDimBackground": "Escurecer o fundo",
+    "spotlightDetailCard": "Cartão de detalhes ao passar o cursor",
     "spotlightPlacementOptions": {
       "top": "Topo",
-      "center": "Centro da página"
+      "center": "Centro"
     },
     "left": "Esquerda",
     "right": "Direita",
@@ -179,6 +232,8 @@
     "voiceInputPermissionOpenFailed": "Não foi possível abrir as Configurações do Sistema",
     "preventSleep": "Impedir suspensão do sistema durante as sessões",
     "preventSleepDesc": "Mantém seu Mac ou PC acordado enquanto alguma sessão de Agent estiver ativa. Liberado automaticamente quando todas as sessões terminam",
+    "highRefreshRate": "Alta taxa de atualização",
+    "highRefreshRateDesc": "Renderiza na taxa de atualização máxima da sua tela, até 120 Hz em telas ProMotion. Rolagem, redimensionamento e animações ficam mais suaves, mas consomem mais energia enquanto acontecem",
     "devMode": "Modo Desenvolvedor",
     "devModeDesc": "Habilita o menu de contexto nativo Inspecionar Elemento e o DevTools do navegador. Destinado apenas para desenvolvimento e depuração",
     "presenceGuidanceOnline": "Online — orientação para os agentes",
@@ -196,11 +251,10 @@
     "lightAccent": "Destaque claro",
     "darkAccent": "Destaque escuro",
     "skinGroups": {
-      "orgii": "ORGII",
+      "orgii": "ORG2",
       "codex": "Codex"
     },
     "iconStyle": "Estilo dos ícones",
-    "iconStyleDesc": "Monocromático dessatura os ícones de tipo de arquivo e de modelo para que pareçam interface, não logotipos",
     "iconStyleOptions": {
       "colorful": "Colorido",
       "monochrome": "Monocromático"
@@ -212,10 +266,22 @@
       "light": "Bloco claro"
     },
     "translucentSidebar": "Barra lateral translúcida",
+    "sessionBranchTags": "Tags de branch e PR nas sessões",
     "skin": "Skin",
     "accent": "Destaque",
     "linkSkinVariants": "Vincular claro e escuro",
-    "linkSkinVariantsDesc": "Usa um único skin e destaque para os dois modos. Só é possível vincular skins que incluem uma variante clara e uma escura"
+    "linkSkinVariantsDesc": "Usa um único skin e destaque para os dois modos. Só é possível vincular skins que incluem uma variante clara e uma escura",
+    "license": "Licença",
+    "licenseTitle": "Licença do ORG2",
+    "licenseLoading": "Carregando licença…",
+    "licenseLoadFailed": "Não foi possível carregar a licença do aplicativo",
+    "tooltips": "Dicas",
+    "buttonTooltipsEnabled": "Mostrar dicas dos botões",
+    "buttonTooltipsEnabledDesc": "Mostra o rótulo e o atalho de teclado ao passar o cursor sobre botões. As dicas dos ícones de informação sempre aparecem",
+    "buttonTooltipDelayMs": "Atraso das dicas",
+    "buttonTooltipDelayImmediate": "Imediatamente",
+    "buttonTooltipDelaySeconds": "{{seconds}} s",
+    "modelPickerStyle": "Seletor de modelo"
   },
   "background": {
     "title": "Plano de fundo",
@@ -382,14 +448,14 @@
     "desktopSafetyDeepLinkAction": "Abrir Wingman → Segurança",
     "desktopConfig": {
       "title": "Segurança de Desktop",
-      "hideBeforeAction": "Ocultar ORGII durante o controle da área de trabalho",
-      "hideBeforeActionHelper": "Oculta a janela principal do ORGII enquanto o Peekaboo opera e mostra a barra Wingman com uma legenda flutuante para que o Agent não precise gerenciar o foco.",
+      "hideBeforeAction": "Ocultar ORG2 durante o controle da área de trabalho",
+      "hideBeforeActionHelper": "Oculta a janela principal do ORG2 enquanto o Peekaboo opera e mostra a barra Wingman com uma legenda flutuante para que o Agent não precise gerenciar o foco",
       "antiDetection": "Reforço anti-automação HID",
-      "antiDetectionHelper": "Faz o Peekaboo enviar eventos CGEvent (HID) reais para cliques e teclas em vez de ações de Acessibilidade puras, para que apps com detecção de automação (ex.: WeChat) tenham menos probabilidade de bloquear o controle da área de trabalho.",
+      "antiDetectionHelper": "Faz o Peekaboo enviar eventos CGEvent (HID) reais para cliques e teclas em vez de ações de Acessibilidade puras, para que apps com detecção de automação (ex.: WeChat) tenham menos probabilidade de bloquear o controle da área de trabalho",
       "humanInputProfile": "Cadência de digitação humana",
-      "humanInputProfileHelper": "Aplica um perfil de tempo semelhante ao humano às teclas sintetizadas. Desative para digitar na velocidade máxima.",
+      "humanInputProfileHelper": "Aplica um perfil de tempo semelhante ao humano às teclas sintetizadas. Desative para digitar na velocidade máxima",
       "escapeAbort": "Tecla Escape do sistema aborta",
-      "escapeAbortHelper": "Trata uma tecla Escape pressionada por hardware como sinal de abortar para automação de desktop em andamento. Nossos próprios pressionamentos sintetizados de Escape são sempre excluídos."
+      "escapeAbortHelper": "Trata uma tecla Escape pressionada por hardware como sinal de abortar para automação de desktop em andamento. Nossos próprios pressionamentos sintetizados de Escape são sempre excluídos"
     },
     "skillMissingBins": "Faltando: {{bins}}",
     "skillMissingEnv": "Variáveis de ambiente faltando: {{vars}}",
@@ -458,7 +524,6 @@
     "gitOperations": "Operações Git",
     "gitOperationsDesc": "Notificações de Git pull, push e sincronização",
     "soundPreset": "Som de notificação",
-    "soundPresetDesc": "Escolha o som das notificações audíveis",
     "previewSound": "Ouvir",
     "soundPresets": {
       "classic": "Clássico",
@@ -513,9 +578,13 @@
     "wordWrap": "Quebra de linha",
     "autoSave": "Salvamento automático",
     "minimap": "Minimapa",
+    "hideMinimap": "Ocultar minimapa",
     "indentGuides": "Guias de indentação",
     "treeIndentGuides": "Guias de indentação em árvore",
     "highlightActiveLine": "Realce da linha atual",
+    "diffViewMode": "Visualização de diff",
+    "gitBlame": "Git blame",
+    "splitDiffCenteredLineNumbers": "Números de linha centralizados no diff dividido",
     "shellsOpenWith": "Shells abrem em",
     "shellsOpenWithDesc": "Diretório de trabalho inicial para novos terminais",
     "repoPath": "Caminho do Repo",
@@ -550,7 +619,7 @@
       "title": "Git",
       "pullStrategy": "Estratégia de pull",
       "pullStrategyDesc": "Como o git pull integra alterações remotas ao sincronizar",
-      "pullStrategyHint": "Rebase (padrão): Reaplica seus commits sobre o remoto. Cria um histórico linear.\n\nMerge: Cria um commit de merge quando os branches divergiram. Preserva o histórico completo.\n\nApenas fast-forward: Permite pull apenas quando nenhum merge é necessário. Recusa se os branches divergiram.",
+      "pullStrategyHint": "Rebase (padrão): Reaplica seus commits sobre o remoto. Cria um histórico linear.\n\nMerge: Cria um commit de merge quando os branches divergiram. Preserva o histórico completo.\n\nApenas fast-forward: Permite pull apenas quando nenhum merge é necessário. Recusa se os branches divergiram",
       "strategyMerge": "Merge",
       "strategyRebase": "Rebase (padrão)",
       "strategyFfOnly": "Apenas fast-forward (estrito)",
@@ -584,24 +653,53 @@
     "fontFamilyCustom": "Personalizado"
   },
   "update": {
+    "downloading": "Baixando atualização…",
+    "downloadingPercent": "Baixando atualização… {{percent}}%",
+    "preparingDownload": "Preparando download…",
+    "downloadBytes": "{{downloaded}} de {{total}}",
+    "downloadedBytes": "{{downloaded}} baixados",
+    "downloadProgress": "Progresso do download da atualização",
+    "inProgress": "em andamento",
+    "openProgressLabel": "Download da atualização {{progress}}. Abrir aviso de progresso.",
+    "openProgress": "Abrir progresso do download",
+    "available": "Atualização disponível",
+    "availableVersion": "A versão {{version}} está pronta para instalar.",
+    "updateNow": "Atualizar agora",
+    "checkFailed": "Falha ao buscar atualizações",
+    "checking": "Buscando atualizações…",
+    "officialInstalled": "Aplicativo oficial instalado",
+    "officialInstalledDesc": "{{version}} foi instalado em {{path}}. Este build local continua em execução sem alterações",
+    "downloadFailed": "Falha no download da atualização",
+    "retryNow": "Tentar novamente agora",
+    "downloadTimeout": "O download excedeu o tempo limite. Verifique a rede ou o proxy e tente novamente.",
+    "installUnavailable": "Este build local não pode instalar uma versão publicada com segurança nesta plataforma.",
+    "installing": "Instalando atualização",
+    "preparingInstall": "Preparando v{{version}}…",
+    "installed": "Atualização instalada",
+    "installFailed": "Falha na instalação da atualização",
+    "checked": "Busca de atualizações concluída",
     "detectUpdate": "Detectar Atualização",
     "currentVersion": "Versão atual",
     "channel": "Canal de atualização",
     "channelDesc": "Beta recebe builds de pré-lançamento antes da versão estável. Voltar para Estável nunca faz downgrade — passa a valer na próxima versão estável",
     "channelStable": "Estável",
     "channelBeta": "Beta",
-    "installConfirmTitle": "Atualização pronta para instalar",
-    "installConfirmDesc": "A versão {{version}} foi baixada. Salve qualquer trabalho em andamento antes de instalar e reiniciar o ORGII",
+    "installConfirmTitle": "Atualização pronta",
+    "installConfirmDesc": "A versão {{version}} está pronta. Salve seu trabalho antes de reiniciar",
     "installAndRestart": "Instalar e reiniciar",
-    "installOfficialConfirmTitle": "App oficial pronto para instalar",
-    "installOfficialConfirmDesc": "Instala a versão oficial {{version}} em /Applications/ORG2.app. Este build local permanece aberto e inalterado",
-    "installOfficial": "Instalar app oficial",
+    "installOfficialConfirmTitle": "Versão oficial pronta",
+    "installOfficialConfirmDesc": "Instale {{version}} separadamente. Este build permanece aberto",
+    "installOfficial": "Instalar versão oficial",
     "localBuild": "Local",
-    "skipVersion": "Pular esta versão"
+    "upToDate": "O ORG2 está atualizado.",
+    "upToDateVersion": "O ORG2 está atualizado (v{{version}}).",
+    "officialAlreadyInstalled": "A versão oficial ORG2 v{{version}} já está instalada em /Applications.",
+    "automaticRetry": "{{error}} O ORG2 tentará novamente em segundo plano com intervalos cada vez maiores.",
+    "restarting": "Reiniciando o ORG2 para concluir a atualização."
   },
   "monitor": {
     "appMemory": "App memory",
-    "appBackend": "ORG2 backend",
+    "appBackend": "Serviço interno do ORG2",
     "appWebviewHelpers": "Owned WebView helpers",
     "rssMappedDiagnostic": "RSS / mapped memory (diagnostic)",
     "measurement": "Measurement",
@@ -706,7 +804,7 @@
     "tableVersion": "Versão",
     "tableStatus": "Status",
     "installSection": "Instalar",
-    "installHintNote": "Comando de instalação sugerido para sua plataforma. A maioria das dependências do sistema requer privilégios de administrador, então não as executamos automaticamente — copie e cole no seu terminal."
+    "installHintNote": "Comando de instalação sugerido para sua plataforma. A maioria das dependências do sistema requer privilégios de administrador, então não as executamos automaticamente — copie e cole no seu terminal"
   },
   "storage": {
     "dataDirectory": "Diretório de Dados",
@@ -740,10 +838,8 @@
     "typingAnimationDesc": "Habilita a animação de máquina de escrever para mensagens do Agent",
     "typingSpeed": "Velocidade de Digitação",
     "typingSpeedDesc": "Milissegundos por caractere (1ms = mais rápido, 50ms = mais lento)",
-    "decryptEffect": "Efeito de Decriptação",
-    "decryptEffectDesc": "Habilita a animação de decriptação para mensagens do Agent",
-    "sendOnEnter": "Enviar mensagens com Enter",
-    "sendOnEnterDesc": "Quando ativado, Enter envia; Shift+Enter e Ctrl/Cmd+Enter inserem uma nova linha. Quando desativado, Ctrl/Cmd+Enter envia"
+    "sendOnEnter": "Enviar mensagens com",
+    "sendOnEnterDesc": "Escolha o atalho que envia uma mensagem; as outras combinações com Enter inserem uma nova linha"
   },
   "indexing": {
     "noWorkspaceMemories": "Ainda não há memórias deste Workspace. Elas aparecerão depois que as sessões extraírem informações sobre este Workspace.",
@@ -792,7 +888,7 @@
   "agentEvolution": {
     "enableForAgent": "Ativar Evolução para {{agentName}}",
     "noAgentsTitle": "Nenhum Agent disponível",
-    "noAgentsSubtitle": "Crie ou importe um Agent para configurar a Evolução."
+    "noAgentsSubtitle": "Crie ou importe um Agent para configurar a Evolução"
   },
   "org": {},
   "learningsBrowser": {
@@ -858,10 +954,12 @@
   "appearance": {
     "tabApp": "App",
     "tabCodeEditor": "Editor de Código",
-    "tabChatPanel": "Painel de Chat"
+    "tabChatPanel": "Painel de Chat",
+    "chatHistory": "Histórico do chat",
+    "composer": "Compositor",
+    "newChatPage": "Página de novo chat"
   },
   "harnessConnections": {
-    "description": "Escolha a conexão de cada ferramenta de programação",
     "current": "Conexão configurada",
     "scope": "Aplica-se ao padrão da CLI deste dispositivo; configurações do projeto e sessões em execução podem ter prioridade",
     "original": "Configuração original",
@@ -872,9 +970,9 @@
     "model": "Modelo",
     "routing": "Rota de conexão",
     "direct": "Direta",
-    "proxy": "Pelo ORGII",
-    "directHelp": "Funciona com o ORGII fechado",
-    "proxyHelp": "Requer manter o ORGII aberto",
+    "proxy": "Pelo ORG2",
+    "directHelp": "Funciona com o ORG2 fechado",
+    "proxyHelp": "Requer manter o ORG2 aberto",
     "advanced": "Avançado",
     "test": "Testar conexão",
     "testHelp": "Envia duas pequenas solicitações ao provedor para verificar ferramentas e streaming; podem ocorrer cobranças",
@@ -885,12 +983,14 @@
     "apply": "Usar esta conexão",
     "applied": "Configuração salva: inicie uma nova sessão da ferramenta",
     "restore": "Restaurar configuração original",
+    "disconnect": "Desconectar",
+    "overlayHelp": "As configurações de conexão ficam separadas em {{path}}. \"Abrir terminal\" inicia o Claude Code com essas configurações e o histórico existente. Os hooks de acompanhamento de sessões são controlados separadamente",
     "restored": "Configuração original restaurada: inicie uma nova sessão da ferramenta",
     "refresh": "Atualizar",
     "refreshed": "Conexões de ferramentas atualizadas",
     "refreshFailed": "Não foi possível atualizar as conexões de ferramentas: {{error}}",
     "loading": "Lendo configuração da ferramenta…",
-    "conflict": "A configuração mudou fora do ORGII. Revise as alterações antes de aplicar ou restaurar; elas não serão sobrescritas",
+    "conflict": "A configuração mudou fora do ORG2. Revise as alterações antes de aplicar ou restaurar; elas não serão sobrescritas",
     "credentialsNote": "O modo direto grava credenciais na configuração da CLI com acesso restrito; excluir uma chave do cofre não revoga a credencial exportada",
     "notInstalled": "Instale esta ferramenta antes de testar ou aplicar uma conexão",
     "appSelector": "Aplicativo",
@@ -898,7 +998,36 @@
     "authentication": "Autenticação",
     "desktopScope": "Configura o Claude Desktop separadamente do Claude Code CLI; encerre e reabra o Desktop após aplicar",
     "desktopApplied": "Configuração salva — encerre completamente e reabra o Claude Desktop",
-    "desktopRestored": "Configuração anterior restaurada — encerre completamente e reabra o Claude Desktop"
+    "desktopRestored": "Configuração anterior restaurada — encerre completamente e reabra o Claude Desktop",
+    "advancedDescription": "Conexões de API personalizadas e migração única de credenciais",
+    "marketApps": {
+      "isolatedStorage": "Este app oficial usa configurações e armazenamento de conversas separados. Seu app principal e a CLI mantêm as configurações. Conversas anteriores não são importadas automaticamente",
+      "isolatedClaudeStorage": "As conversas compatíveis sincronizam após fechar Claude Desktop e Claude Code",
+      "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
+      "loading": "Carregando pacotes do ORG2 Market…",
+      "loadFailed": "Não foi possível carregar os pacotes do ORG2 Market",
+      "nonePurchased": "No momento não há pacotes do ORG2 Market disponíveis",
+      "checking": "Verificando aplicativo…",
+      "unavailable": "Indisponível para esta versão instalada",
+      "notInstalled": "Não instalado",
+      "original": "Usando a configuração original do aplicativo",
+      "open": "Abrir aplicativo",
+      "connected": "O aplicativo agora segue o espaço atual do ORG2",
+      "opened": "Aplicativo aberto",
+      "disconnected": "A configuração anterior do aplicativo foi restaurada",
+      "actionFailed": "Não foi possível atualizar esta conexão",
+      "openFailed": "Não foi possível abrir este aplicativo",
+      "restoreRequired": "Restaure a configuração original deste app, depois selecione seus pacotes e aplique a conexão novamente",
+      "versionUnverified": "Esta versão do app de desktop ainda não foi verificada para conexões isoladas nesta versão do ORG2. Atualize o ORG2 e tente novamente",
+      "workspaceNumber": "Serviço {{index}} de {{count}}",
+      "openTerminal": "Abrir terminal",
+      "terminalOpened": "Terminal aberto",
+      "provider": "ORG2 Market",
+      "multiPackageHelp": "Selecione até 8 pacotes e um modelo padrão para alternar entre pacotes no aplicativo",
+      "auxiliaryBilling": "As chamadas automáticas do Claude Code para título, memória e compactação são cobradas do pacote padrão; só o chat em si segue o pacote escolhido com /model",
+      "defaultModel": "Modelo padrão",
+      "packageLimit": "Selecione até 8 pacotes"
+    }
   },
   "claudeProfiles": {
     "new": "Novo perfil",
@@ -939,10 +1068,10 @@
     "developerOptions": "Opções do desenvolvedor",
     "retryConnection": "Tentar conexão novamente",
     "enabled": "Mobile Remote",
-    "enabledDesc": "Permite que um celular pareado controle sessões de agent neste desktop pela mesma rede Wi‑Fi ou pelo relay público",
+    "enabledDesc": "Use o celular para visualizar e controlar sessões neste computador",
     "securityNotice": "Qualquer pessoa na sua rede com a URL de conexão e o token pode controlar sessões quando a exposição na LAN está ativada. Regenere o token se achar que ele vazou",
-    "outdoorTitle": "Conexão externa",
-    "outdoorDesc": "Conecta o desktop a um relay público por saída, para que seu celular funcione via 4G, 5G ou outra rede",
+    "outdoorTitle": "Permitir conexões pela internet",
+    "outdoorDesc": "Quando desativado, os celulares não podem se conectar a este computador pela internet",
     "relayEnabled": "Conectar ao relay público",
     "relayEnabledDesc": "O desktop abre uma conexão WSS de saída; não é necessário encaminhamento de porta no roteador",
     "relayUrl": "Endereço do relay",
@@ -951,7 +1080,7 @@
     "relayPresetLocal": "Local",
     "relayPresetProduction": "Produção",
     "cloudLoginTitle": "Login no ORG2 Cloud",
-    "cloudLoginDescSignedIn": "Conectado como {{identity}} — o relay usa esta conta para o pareamento externo",
+    "cloudLoginDescSignedIn": "Conectado como {{identity}}",
     "cloudLoginDescSignedOut": "Faça login no ORG2 Cloud antes de parear pelo relay público",
     "relayStatusCloudLoginRequired": "Faça login no ORG2 Cloud em Configurações → Geral e depois atualize o status do relay",
     "relayStatusAuthFailedSignedIn": "O relay rejeitou a conexão — saia e entre novamente em Configurações → Geral",
@@ -962,7 +1091,7 @@
     "relayStatus_disabled": "Desativado",
     "relayStatus_config_error": "Erro de configuração",
     "relayStatus_stopped": "Parado",
-    "startOutdoorPairing": "Gerar código de pareamento externo",
+    "startOutdoorPairing": "Gerar código de pareamento",
     "fullAccess": "Permitir ações",
     "fullAccessDesc": "Quando ativado, o celular pode enviar mensagens, parar sessões e responder a permissões; quando desativado, é somente leitura",
     "pairingExpires": "O código de pareamento expira em {{seconds}} segundos",
@@ -997,16 +1126,50 @@
     "pairedDevicesDesc": "Celulares autorizados pelo relay; o acesso pode ser revogado a qualquer momento",
     "devicesLoadFailed": "Não foi possível carregar os dispositivos pareados",
     "noDevices": "Nenhum dispositivo pareado",
-    "noDevicesDesc": "Gere um código de pareamento externo e depois escaneie ou cole-o no PWA do Mobile Remote",
+    "noDevicesDesc": "Após adicionar um celular, você pode acessar as sessões neste computador",
     "deviceLabel": "Dispositivo",
     "deviceTier": "Nível",
-    "deviceTierFull": "Acesso completo",
-    "deviceTierReadOnly": "Somente leitura",
+    "deviceTierFull": "Pode controlar",
+    "deviceTierReadOnly": "Somente visualizar",
     "deviceLastSeen": "Visto por último",
     "devicePairedAt": "Pareado {{time}}",
     "deviceLastSeenValue": "Visto por último {{time}}",
     "deviceNeverSeen": "Nunca conectado",
     "deviceOnline": "Online",
-    "deviceOffline": "Offline"
+    "deviceOffline": "Offline",
+    "addPhone": "Adicionar celular",
+    "pairingPermission": "Permissões do celular",
+    "relayDisabledHint": "As conexões pela internet estão desativadas. Ative-as nas configurações avançadas"
+  },
+  "development": {
+    "updateAvailable": "Atualização disponível",
+    "updateAvailableDesc": "Simular a versão 99.0.0; as ações apenas abrem o diálogo",
+    "illustrations": "Ilustrações",
+    "illustrationsDesc": "Compare todas as ilustrações nos modos claro e escuro sem alterar o tema",
+    "emptyStates": "Estados vazios",
+    "mockPanelTitle": "Painel de simulação de desenvolvimento",
+    "mockPanelReset": "Repor tudo",
+    "mockPanelDone": "Concluído",
+    "scenario": {
+      "newUser": "Novo utilizador",
+      "newUserDesc": "Instalação nova: sem chaves, sem diretório, sem histórico",
+      "noKeys": "Sem chaves",
+      "noKeysDesc": "Ocultar contas e modelos para ver os avisos de chave",
+      "noWorkingDirectories": "Sem diretórios de trabalho",
+      "noWorkingDirectoriesDesc": "Ocultar repositórios e pastas para ver «abrir uma pasta»",
+      "noSessions": "Sem sessões",
+      "noSessionsDesc": "Ocultar o histórico para ver os estados do primeiro arranque"
+    }
+  },
+  "managedUsage": {
+    "cancel": "Cancelar",
+    "authorize": "Ativar pacote",
+    "rates": "Entrada / saída por milhão de tokens",
+    "wallet": "Abrir carteira",
+    "priceRange": "Faixa do pacote: {{min}}%–{{max}}% do preço oficial",
+    "rangeUnavailable": "A faixa de preços do pacote está indisponível. Atualize o catálogo antes de ativar o pacote.",
+    "walletIncluded": "Todos os modelos incluídos utilizam o saldo da sua carteira.",
+    "walletUnavailable": "A cobrança pela carteira ainda não está disponível. Atualize após a atualização do serviço.",
+    "walletConsent": "Ative todos os modelos deste pacote na faixa de preços exibida. O uso real é cobrado diretamente do saldo da sua carteira; não é necessário um orçamento separado para o pacote."
   }
 }

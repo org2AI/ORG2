@@ -26,7 +26,7 @@ interface UseGroupHeaderRendererOptions {
   tailTurnPhase: GroupHeaderRendererProps["tailTurnPhase"];
   hideUserMessage: boolean;
   defaultTurnCollapsed: boolean;
-  turnCollapseInteractionAtRef: React.MutableRefObject<number>;
+  onBeforeTurnCollapseToggle?: () => void;
   onEditSubmit: GroupHeaderRendererProps["onEditSubmit"];
   /** Retry/edit stays valid for a rejected synthetic turn on read-only source history. */
   onFailedUserIntentEdit: GroupHeaderRendererProps["onEditSubmit"];
@@ -58,7 +58,7 @@ export function useGroupHeaderRenderer({
   tailTurnPhase,
   hideUserMessage,
   defaultTurnCollapsed,
-  turnCollapseInteractionAtRef,
+  onBeforeTurnCollapseToggle,
   onEditSubmit,
   onFailedUserIntentEdit,
   onRestoreCheckpoint,
@@ -89,7 +89,7 @@ export function useGroupHeaderRenderer({
           compactUserMessage={turnPaginationEnabled}
           defaultTurnCollapsed={defaultTurnCollapsed}
           renderPart={renderPart}
-          turnCollapseInteractionAtRef={turnCollapseInteractionAtRef}
+          onBeforeTurnCollapseToggle={onBeforeTurnCollapseToggle}
           onEditSubmit={
             onEditSubmit ??
             (isRetryableFailedUserIntentHeader(header)
@@ -111,7 +111,7 @@ export function useGroupHeaderRenderer({
       tailTurnPhase,
       hideUserMessage,
       defaultTurnCollapsed,
-      turnCollapseInteractionAtRef,
+      onBeforeTurnCollapseToggle,
       onEditSubmit,
       onFailedUserIntentEdit,
       onRestoreCheckpoint,

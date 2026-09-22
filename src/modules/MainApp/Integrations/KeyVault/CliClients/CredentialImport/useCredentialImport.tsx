@@ -22,6 +22,7 @@ import {
   listCredentialSuggestions,
 } from "@src/api/services/keyValidation";
 import { rpc } from "@src/api/tauri/rpc";
+import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
 import ModelIcon from "@src/components/ModelIcon";
 import type { SettingsTableColumn } from "@src/components/SettingsTable";
@@ -60,6 +61,10 @@ export interface CredentialImportFailure {
   displayName: string;
   sourceLabel: string;
   error: string;
+}
+
+export interface CredentialImportSuccess {
+  displayNames: string[];
 }
 
 interface UseCredentialImportOptions {
@@ -106,6 +111,8 @@ export function useCredentialImport({
   const [importErrors, setImportErrors] = useState<CredentialImportFailure[]>(
     []
   );
+  const [importSuccess, setImportSuccess] =
+    useState<CredentialImportSuccess | null>(null);
   const [detectionRefreshKey, setDetectionRefreshKey] = useState(0);
 
   const sourceKindLabel = useCallback(
@@ -215,10 +222,13 @@ export function useCredentialImport({
     setImporting(true);
     setImportError(null);
     setImportErrors([]);
+    setImportSuccess(null);
     try {
       const report = await importCredentialSuggestions(selections);
       const failures = report.items.filter((item) => item.status === "failed");
-      const importedCount = report.items.length - failures.length;
+      const importedItems = report.items.filter(
+        (item) => item.status === "imported"
+      );
 
       if (failures.length > 0) {
         setImportErrors(
@@ -236,7 +246,16 @@ export function useCredentialImport({
         setSelected(new Set());
       }
 
-      if (importedCount > 0) {
+      if (importedItems.length > 0) {
+        setImportSuccess({
+          displayNames: [
+            ...new Set(
+              importedItems.map(
+                (item) => byId.get(item.id)?.displayName ?? item.agentType
+              )
+            ),
+          ],
+        });
         await onRefresh?.();
         refreshDetection();
       }
@@ -319,8 +338,8 @@ export function useCredentialImport({
               <span className="shrink-0">{authLabel}</span>
               <span className="shrink-0 text-text-4">·</span>
               {row.sourcePath ? (
-                <button
-                  type="button"
+                <Button
+                  layout="custom"
                   className="flex min-w-0 cursor-pointer items-center gap-1.5 text-left underline-offset-2 hover:underline focus-visible:underline focus-visible:ring-1 focus-visible:ring-primary-6 focus-visible:outline-none [&:focus-visible>svg]:opacity-100 [&:hover>svg]:opacity-100"
                   aria-label={`${t(getFileManagerRevealLabelKey())}: ${row.sourcePath}`}
                   onClick={(event) => {
@@ -336,7 +355,7 @@ export function useCredentialImport({
                     className="shrink-0 opacity-0"
                     aria-hidden
                   />
-                </button>
+                </Button>
               ) : (
                 <span className="min-w-0 truncate">{detail}</span>
               )}
@@ -357,6 +376,7 @@ export function useCredentialImport({
     importing,
     importError,
     importErrors,
+    importSuccess,
     importColumns,
     handleRowClick,
     handleImport,

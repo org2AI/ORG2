@@ -8,37 +8,18 @@
  */
 
 export {
-  // Core storage atoms
   workspaceFoldersAtom,
-  workspaceConfigPathAtom,
   activeFolderIdAtom,
-  workspaceIsDirtyAtom,
-  // DB-backed workspace state
-  savedWorkspacesAtom,
   activeWorkspaceIdAtom,
-  activeWorkspaceNameAtom,
   workspaceActiveAtom,
-  // Derived flags
-  isMultiRootWorkspaceAtom,
-  hasWorkspaceAtom,
-  // Write atoms
-  addWorkspaceFolderAtom,
-  removeWorkspaceFolderAtom,
-  setWorkspaceFoldersAtom,
-  setPrimaryFolderAtom,
-  reorderFoldersAtom,
-  renameFolderAtom,
 } from "../ui/workspaceFoldersAtom";
 
 export {
-  primaryFolderAtom,
-  activeFolderAtom,
   activeWorkspaceRootAtom,
   activeWorkspaceRootNameAtom,
   activeWorkspaceRootPathAtom,
   primaryWorkspaceRootAtom,
   primaryWorkspaceRootPathAtom,
-  workspaceNameAtom,
   activeWorktreeAtom,
   setActiveWorktreeAtom,
   type ActiveWorktreeSelection,

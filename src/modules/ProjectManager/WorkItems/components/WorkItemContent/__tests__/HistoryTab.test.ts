@@ -43,7 +43,7 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
+vi.mock("@src/components/MarkdownTextareaEditor", () => ({
   default: ({
     appearance,
     dataTestId,
@@ -60,7 +60,7 @@ vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
     }),
 }));
 
-vi.mock("@src/modules/shared/components/MarkdownContent", () => ({
+vi.mock("@src/components/MarkdownContent", () => ({
   MarkdownContent: ({ body }: { body: string }) =>
     createElement("div", null, body),
 }));

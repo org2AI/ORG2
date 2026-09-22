@@ -16,6 +16,11 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@src/components/KeyboardShortcut/ToolbarTooltip", () => ({
   ToolbarTooltip: ({ children }: { children: React.ReactNode }) => children,
+  ToolbarTooltipPositionProvider: ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => children,
 }));
 
 describe("WebUrlBar", () => {
@@ -64,10 +69,83 @@ describe("WebUrlBar", () => {
         '[aria-label="tooltips.enableInspectMode"]'
       )?.disabled
     ).toBe(true);
+  });
+
+  it("keeps native DevTools out of the toolbar; the more menu owns it", () => {
+    act(() => {
+      root.render(
+        createElement(
+          Provider,
+          { store: createStore() },
+          createElement(WebUrlBar, {
+            url: "https://example.com/",
+            onNavigate: vi.fn(),
+            onOpenNativeDevTools: vi.fn(),
+            inline: true,
+          })
+        )
+      );
+    });
+
     expect(
-      container.querySelector<HTMLButtonElement>(
-        '[aria-label="tooltips.openNativeDevTools"]'
-      )?.disabled
-    ).toBe(true);
+      container.querySelector('[aria-label="tooltips.openNativeDevTools"]')
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="browser-url-bar-more-button"]')
+    ).not.toBeNull();
+  });
+
+  it("puts the more menu at the right end of the toolbar", () => {
+    act(() => {
+      root.render(
+        createElement(
+          Provider,
+          { store: createStore() },
+          createElement(WebUrlBar, {
+            url: "",
+            onNavigate: vi.fn(),
+            onOpenNativeDevTools: vi.fn(),
+            onOpenHtmlFile: vi.fn(),
+            hasActiveWebview: false,
+            inline: true,
+          })
+        )
+      );
+    });
+
+    const buttons = [...container.querySelectorAll("button")];
+    expect(buttons.at(-1)?.getAttribute("data-testid")).toBe(
+      "browser-url-bar-more-button"
+    );
+  });
+
+  it("navigates to a typed local file URL instead of searching for it", () => {
+    const onNavigate = vi.fn();
+    const fileUrl = "file:///Users/me/My%20Site/index.html";
+
+    act(() => {
+      root.render(
+        createElement(
+          Provider,
+          { store: createStore() },
+          createElement(WebUrlBar, {
+            url: fileUrl,
+            onNavigate,
+            inline: true,
+          })
+        )
+      );
+    });
+
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="browser-url-bar-input"]'
+    );
+    act(() => {
+      input?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+      );
+    });
+
+    expect(onNavigate).toHaveBeenCalledWith(fileUrl);
   });
 });

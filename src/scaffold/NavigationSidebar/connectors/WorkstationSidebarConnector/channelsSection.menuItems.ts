@@ -233,10 +233,11 @@ export interface BuildCloudChannelsMenuItemsParams {
   t: TFunction;
   tCommon: TFunction;
   onCreateClick: (event: MouseEvent<HTMLButtonElement>) => void;
-  /** Opens the row's overflow (native context) menu for the given entries. */
+  /** Opens the row's overflow dropdown menu for the given entries. */
   onOpenChannelMenu: (
     channel: CloudChannel,
-    kinds: readonly ChannelRowActionKind[]
+    kinds: readonly ChannelRowActionKind[],
+    event: MouseEvent<HTMLButtonElement>
   ) => void;
   onUnarchive: (channel: CloudChannel) => void;
   onDeleteChannel: (channel: CloudChannel) => void;
@@ -290,7 +291,7 @@ export function buildCloudChannelsMenuItems({
           icon: MoreHorizontalIcon,
           label: tCommon("actions.more"),
           dataTestId: `cloud-channel-more-${channel.id}`,
-          onClick: () => onOpenChannelMenu(channel, kinds),
+          onClick: (event) => onOpenChannelMenu(channel, kinds, event),
         },
       ])
     );

@@ -13,12 +13,18 @@
 //! rate card as static build-time data: parsed once into an in-memory index. This
 //! keeps the read-only guarantee intact (no DB writes) and removes the dead table.
 //!
+//! These are short-context reference rates, not invoice reconciliation.
+//! Explicit Fast catalog entries override the standard rate when identified.
+//! The model-only lookup cannot account for service tier, request size, cache
+//! lifetime, or historical rate changes. See `docs/model-pricing-2026-09-14.md`.
+//!
 //! ## Lookup order
 //!
 //! 1. Local/self-hosted providers price at `$0`.
 //! 2. Exact id match (case-insensitive).
 //! 3. Normalized id match (case-fold, `.`/`_` treated as `-`, date-pin and
 //!    effort/verbosity suffixes stripped).
+//!    An effort before `-fast` may also resolve an explicit Fast catalog entry.
 //! 4. Longest-prefix family fallback over the normalized ids.
 //! 5. Mid-range default.
 
@@ -154,6 +160,25 @@ pub fn resolve_pricing(model: Option<&str>) -> ModelPricing {
         .find(|(id, _)| *id == normalized)
     {
         return *pricing;
+    }
+
+    // Cursor places effort before speed (e.g. cursor-grok-4.6-high-fast).
+    // Only remove that effort when the resulting Fast row actually exists:
+    // `max` can also be part of a distinct model such as gpt-5.1-codex-max.
+    if let Some((base, effort)) = normalized
+        .strip_suffix("-fast")
+        .and_then(|base| base.rsplit_once('-'))
+    {
+        if matches!(
+            effort,
+            "low" | "medium" | "high" | "xhigh" | "max" | "ultra"
+        ) {
+            let fast_id = format!("{base}-fast");
+            if let Some((_, pricing)) = catalog.by_normalized.iter().find(|(id, _)| *id == fast_id)
+            {
+                return *pricing;
+            }
+        }
     }
 
     // 4. longest-prefix family fallback (list is length-descending)
@@ -352,6 +377,85 @@ mod tests {
             pricing
         );
         assert_eq!(normalize_model_id("claude-fable-5-1"), "claude-fable-5-1");
+    }
+
+    #[test]
+    fn current_published_rates_resolve_without_stale_family_defaults() {
+        // Independent expected values from the provider sources recorded in
+        // docs/model-pricing-2026-09-14.md, in input/output/write/read order.
+        let cases = [
+            ("gpt-6-astra", [10.0, 50.0, 12.5, 1.0]),
+            ("gpt-5.6-sol", [4.0, 20.0, 5.0, 0.4]),
+            ("gpt-5.6", [4.0, 20.0, 5.0, 0.4]),
+            ("gpt-5.6-terra", [2.0, 12.0, 2.5, 0.2]),
+            ("gpt-5.6-luna", [0.2, 1.2, 0.25, 0.02]),
+            ("gpt-5.5-pro", [30.0, 180.0, 30.0, 30.0]),
+            ("claude-fable-5-1", [10.0, 50.0, 12.5, 0.25]),
+            ("claude-mythos-5-1", [10.0, 50.0, 12.5, 0.25]),
+            ("claude-mythos-5", [10.0, 50.0, 12.5, 1.0]),
+            ("claude-sonnet-5", [2.0, 10.0, 2.5, 0.2]),
+            ("gemini-2.5-pro", [1.25, 10.0, 1.25, 0.125]),
+            ("gemini-2.5-flash", [0.3, 2.5, 0.3, 0.03]),
+            ("gemini-2.5-flash-lite", [0.1, 0.4, 0.1, 0.01]),
+            ("gemini-flash", [0.3, 2.5, 0.3, 0.03]),
+            ("gemini-3.5-flash", [1.5, 9.0, 1.5, 0.15]),
+            ("minimax-m3", [0.3, 1.2, 0.3, 0.06]),
+            ("minimax", [0.3, 1.2, 0.3, 0.06]),
+            ("deepseek-v4-pro", [1.32, 3.96, 1.32, 0.044]),
+            ("deepseek-v4-flash", [0.3, 1.2, 0.3, 0.006]),
+            ("deepseek-flash", [0.3, 1.2, 0.3, 0.006]),
+            ("deepseek", [0.3, 1.2, 0.3, 0.006]),
+        ];
+        for (model, [input, output, write, read]) in cases {
+            let expected = ModelPricing {
+                input_per_mtok: input,
+                output_per_mtok: output,
+                cache_creation_per_mtok: write,
+                cache_read_per_mtok: read,
+            };
+            for id in [
+                model.to_string(),
+                format!("provider/{}", model.to_uppercase()),
+                format!("{model}-20260914"),
+                format!("{model}-xhigh"),
+            ] {
+                assert_eq!(resolve_pricing(Some(&id)), expected, "{id}");
+            }
+        }
+    }
+
+    #[test]
+    fn cursor_catalog_keeps_fast_and_standard_rates_distinct() {
+        for (model, [input, output, write, read]) in [
+            ("composer-2.5", [0.5, 2.5, 0.5, 0.2]),
+            ("composer-2.5-fast", [3.0, 15.0, 3.0, 0.5]),
+            ("grok-4.5-fast", [4.0, 18.0, 4.0, 1.0]),
+            ("grok-4.6", [2.0, 6.0, 2.0, 0.5]),
+            ("grok-4.6-fast", [4.0, 12.0, 4.0, 1.0]),
+            ("cursor-grok-4.6-medium", [2.0, 6.0, 2.0, 0.5]),
+            ("cursor-grok-4.6-high-fast", [4.0, 12.0, 4.0, 1.0]),
+            ("cursor/cursor-grok-4.6-xhigh-fast", [4.0, 12.0, 4.0, 1.0]),
+            ("grok-4.5-high-fast", [4.0, 18.0, 4.0, 1.0]),
+            ("gemini-3.1-pro", [2.0, 12.0, 2.0, 0.2]),
+            ("gemini-3.8-flash", [0.75, 3.5, 0.75, 0.075]),
+            ("muse-spark-1.3-max", [1.25, 4.25, 1.25, 0.15]),
+        ] {
+            assert_eq!(
+                resolve_pricing(Some(model)),
+                ModelPricing {
+                    input_per_mtok: input,
+                    output_per_mtok: output,
+                    cache_creation_per_mtok: write,
+                    cache_read_per_mtok: read,
+                },
+                "{model}"
+            );
+        }
+        // Do not invent a Fast multiplier for families without a published row.
+        assert_eq!(
+            resolve_pricing(Some("gpt-5.1-codex-max-fast")),
+            resolve_pricing(Some("gpt-5.1-codex-max"))
+        );
     }
 
     #[test]

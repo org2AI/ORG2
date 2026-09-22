@@ -10,6 +10,7 @@
 import React, { memo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import Button from "@src/components/Button";
 import { PILL_CONTROL_HOVER_CLASS } from "@src/components/CompoundPill/config";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
 import Tooltip from "@src/components/Tooltip";
@@ -26,10 +27,18 @@ interface VoiceInputButtonProps {
   disabled?: boolean;
   /** Filled treatment for compact contextual composers. */
   appearance?: "default" | "solid";
+  /** Shell-owned touch geometry; glyph size remains shared. */
+  className?: string;
 }
 
 const VoiceInputButton: React.FC<VoiceInputButtonProps> = memo(
-  ({ onPressStart, onPressEnd, disabled = false, appearance = "default" }) => {
+  ({
+    onPressStart,
+    onPressEnd,
+    disabled = false,
+    appearance = "default",
+    className = "",
+  }) => {
     const { t } = useTranslation();
     const activePointerIdRef = useRef<number | null>(null);
     const isPressingRef = useRef(false);
@@ -79,8 +88,8 @@ const VoiceInputButton: React.FC<VoiceInputButtonProps> = memo(
     );
 
     const buttonNode = (
-      <button
-        type="button"
+      <Button
+        layout="custom"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
@@ -109,6 +118,7 @@ const VoiceInputButton: React.FC<VoiceInputButtonProps> = memo(
               : `text-text-1 ${PILL_CONTROL_HOVER_CLASS}`,
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
           "leading-none",
+          className,
         ].join(" ")}
         style={{ lineHeight: 0 }}
         data-testid="composer-voice-input-button"
@@ -122,7 +132,7 @@ const VoiceInputButton: React.FC<VoiceInputButtonProps> = memo(
           strokeWidth={1.75}
           className="block"
         />
-      </button>
+      </Button>
     );
 
     return (
@@ -134,7 +144,7 @@ const VoiceInputButton: React.FC<VoiceInputButtonProps> = memo(
           />
         }
         position="top"
-        mouseEnterDelay={200}
+        kind="button"
         framedPanel
       >
         {buttonNode}

@@ -2,11 +2,15 @@ import { useStore } from "jotai";
 import { useCallback } from "react";
 
 import { useUserIntentSubmit } from "@src/engines/ChatPanel/hooks/useWorkspaceChat/useUserIntentSubmit";
-import type {
-  ConversationRootLocator,
-  LocalConversationTarget,
+import {
+  type ConversationRootLocator,
+  type LocalConversationTarget,
+  isLocalConversationTarget,
 } from "@src/engines/SessionCore/conversations/conversationTypes";
-import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import type {
+  QueuedConversationDispatch,
+  QueuedConversationDispatchResolution,
+} from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import {
   type Org2CloudAuthState,
   org2CloudAuthAtom,
@@ -22,7 +26,10 @@ import {
 } from "../useInputArea/types";
 
 interface UseConversationSubmitRouterOptions {
+  /** Session that owns the outer conversation surface. */
   sessionId: string;
+  /** The composer belongs to a materialized non-Coordinator Agent Org Member. */
+  isDirectAgentOrgMember: boolean;
   currentSession: Session | undefined;
   root: ConversationRootLocator | null;
   selectedTarget: LocalConversationTarget | null;
@@ -43,7 +50,7 @@ interface ConversationSubmitRouter {
    * current root and the runtime the picker shows, not the pair the row was
    * admitted with. Null while no canonical runtime is selected.
    */
-  resolveDispatch: () => QueuedConversationDispatch | null;
+  resolveDispatch: () => QueuedConversationDispatchResolution;
 }
 
 export function buildCanonicalConversationDispatch(params: {
@@ -87,11 +94,7 @@ export function canonicalConversationTargetOrThrow(
       "Select an available runtime before continuing this conversation"
     );
   }
-  if (
-    target.cliAgentType &&
-    (target.cliAgentType !== "claude_code" || target.accountId) &&
-    (!target.accountId || !target.model)
-  ) {
+  if (!isLocalConversationTarget(target)) {
     throw new SubmitValidationError(
       "Select a model and source before continuing this conversation"
     );
@@ -108,6 +111,7 @@ export function canonicalConversationTargetOrThrow(
  */
 export function useConversationSubmitRouter({
   sessionId,
+  isDirectAgentOrgMember,
   currentSession,
   root,
   selectedTarget,
@@ -183,19 +187,31 @@ export function useConversationSubmitRouter({
   const submit = useCallback(
     async (input: SubmitOverrideInput) => {
       if (await onSurfaceSubmit(input)) return true;
+      if (isDirectAgentOrgMember) return false;
       return enqueueCanonical(input);
     },
-    [enqueueCanonical, onSurfaceSubmit]
+    [enqueueCanonical, isDirectAgentOrgMember, onSurfaceSubmit]
   );
-  const resolveDispatch = useCallback(
-    () =>
-      buildCanonicalConversationDispatch({
+
+  const retry = useCallback(
+    async (input: CanonicalConversationRetryInput) => {
+      if (isDirectAgentOrgMember) return false;
+      return enqueueCanonical(input);
+    },
+    [enqueueCanonical, isDirectAgentOrgMember]
+  );
+  const resolveDispatch =
+    useCallback((): QueuedConversationDispatchResolution => {
+      if (isDirectAgentOrgMember) return { action: "clear" };
+      const dispatch = buildCanonicalConversationDispatch({
         root,
         selectedTarget,
         auth: store.get(org2CloudAuthAtom),
-      }),
-    [root, selectedTarget, store]
-  );
+      });
+      return dispatch
+        ? { action: "replace", dispatch }
+        : { action: "preserve" };
+    }, [isDirectAgentOrgMember, root, selectedTarget, store]);
 
-  return { submit, retry: enqueueCanonical, resolveDispatch };
+  return { submit, retry, resolveDispatch };
 }

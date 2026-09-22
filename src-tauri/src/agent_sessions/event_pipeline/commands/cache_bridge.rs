@@ -238,7 +238,19 @@ pub async fn cache_count_session_events(session_id: String) -> Result<usize, Str
 
 /// Load SessionEvents directly from SQLite cache (conversion happens in Rust).
 #[tauri::command]
-pub async fn cache_load_session_events(session_id: String) -> Result<Vec<SessionEvent>, String> {
+pub async fn cache_load_session_events(
+    session_id: String,
+    event_type: Option<String>,
+) -> Result<Vec<SessionEvent>, String> {
+    if let Some(event_type) = event_type {
+        return tokio::task::spawn_blocking(move || {
+            sqlite_cache::load_events_by_type(&session_id, &event_type)
+                .map(|events| events.iter().map(cached_event_to_session_event).collect())
+        })
+        .await
+        .map_err(|err| err.to_string())?
+        .map_err(|err| err.to_string());
+    }
     log::debug!("[cache_bridge] cache_load_session_events called for session_id={session_id}");
     let sid = session_id.clone();
     let cached = tokio::task::spawn_blocking(move || sqlite_cache::load_events(&sid))

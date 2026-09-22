@@ -1,0 +1,16 @@
+{
+  "status": {
+    "polling": "Polling",
+    "loadingSession": "Memuat data sesi...",
+    "noSession": "Tidak ada sesi yang dipilih",
+    "implementing": "Mengimplementasikan",
+    "pending": "Tertunda",
+    "inProgress": "Sedang Berlangsung",
+    "connected": "Terhubung",
+    "connecting": "Menghubungkan...",
+    "disconnected": "Terputus"
+  },
+  "dialogs": {},
+  "toolDescriptions": {},
+  "stages": {}
+}

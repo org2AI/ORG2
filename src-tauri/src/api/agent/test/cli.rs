@@ -567,8 +567,18 @@ pub async fn test_codex_cli_account_switch(
     let session_id = created.session_id;
     let timeout_secs = request.timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS);
 
-    let initial_codex_home = app_paths::codex_cli_profile_dir(&request.initial_account_id);
-    let followup_codex_home = app_paths::codex_cli_profile_dir(&request.followup_account_id);
+    let initial_codex_home = app_paths::codex_cli_profile_dir_for_generation(
+        &request.initial_account_id,
+        key_vault::key_store::KEY_SERVICE
+            .get_key_by_id(&request.initial_account_id)
+            .map_or(0, |key| key.credential_generation),
+    );
+    let followup_codex_home = app_paths::codex_cli_profile_dir_for_generation(
+        &request.followup_account_id,
+        key_vault::key_store::KEY_SERVICE
+            .get_key_by_id(&request.followup_account_id)
+            .map_or(0, |key| key.credential_generation),
+    );
 
     if let Err(err) = cli_agent_run(CliRunRequest {
         session_id: session_id.clone(),

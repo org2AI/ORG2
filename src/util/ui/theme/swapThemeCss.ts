@@ -13,6 +13,7 @@ import {
   THEME_PREFERENCE,
   readStoredGlobalThemePreference,
 } from "@src/config/appearance/globalThemes";
+import { syncMacosPageBackdrop } from "@src/util/platform/macosPageBackdrop";
 import { syncMacosRootTint } from "@src/util/platform/macosRootTint";
 import { isMacOS, isWindows } from "@src/util/platform/tauri";
 
@@ -85,9 +86,10 @@ export function syncThemeAppearance(cssPath: string): void {
   root.dataset.themeId = colorScheme;
   root.style.colorScheme = colorScheme;
   applySkinTokensForVariant(colorScheme);
-  // The base stylesheet changed `--color-bg-2`; re-measure the root tint the
-  // native macOS layer mirrors (no-op off macOS).
+  // The base stylesheet changed `--color-bg-2`; re-measure the root tint and
+  // the page colour the native macOS layers mirror (no-op off macOS).
   void syncMacosRootTint();
+  syncMacosPageBackdrop();
 
   const nativeTheme = isMacOS()
     ? resolveNativeTheme(colorScheme, readStoredGlobalThemePreference())
@@ -235,6 +237,11 @@ function swapFromExisting(
       cleanupListeners();
       clearTimeout(timeoutId);
       newLink.remove();
+      // A cold start may not have synchronized any appearance yet. Retain
+      // and describe the stylesheet that actually survived the failed load.
+      if (latestRequestedCssPath === newCssPath) {
+        syncThemeAppearance(oldLink.href);
+      }
       resolve();
     };
 

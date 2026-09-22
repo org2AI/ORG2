@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ACTION_ID } from "@src/ActionSystem/actionIds";
+import { ACTION_ID } from "@src/scaffold/ActionSystem/actionIds";
 
 import {
   extractInvokingSessionId,

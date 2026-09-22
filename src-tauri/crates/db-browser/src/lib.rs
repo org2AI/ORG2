@@ -8,6 +8,9 @@ mod ops;
 mod pool;
 mod types;
 
+/// Close every SQLite lease a reloaded or destroyed window left open.
+pub use pool::release_owner;
+
 pub use commands::{
     db_close, db_delete, db_execute, db_get_table_data, db_get_table_schema, db_get_tables,
     db_insert, db_is_valid_sqlite_file, db_open, db_query, db_update,

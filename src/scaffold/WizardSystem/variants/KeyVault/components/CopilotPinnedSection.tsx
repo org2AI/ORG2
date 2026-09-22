@@ -12,8 +12,8 @@ import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { DETAIL_PANEL_TOKENS } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/Section";
+import { DETAIL_PANEL_TOKENS } from "@src/components/layout/blocks";
 
 import type { WizardData } from "../types";
 
@@ -73,9 +73,8 @@ const CopilotPinnedSection: React.FC<CopilotPinnedSectionProps> = ({
                 style={SECTION_CONTROL_STYLE}
               />
               <Button
-                variant={keyValidated ? "success" : "primary"}
-                appearance={keyValidated ? "outline" : undefined}
-                size="default"
+                variant={keyValidated ? "secondary" : "primary"}
+                tone={keyValidated ? "success" : undefined}
                 loading={validatingKey}
                 disabled={validatingKey || !data.raw_key_input}
                 onClick={validateKey}

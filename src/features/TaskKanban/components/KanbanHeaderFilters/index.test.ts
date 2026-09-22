@@ -43,8 +43,8 @@ describe("KanbanHeaderFilters", () => {
   let container: HTMLDivElement;
   let root: Root;
   let store: ReturnType<typeof createStore>;
-  let onAutoArchiveTtlChange: ReturnType<typeof vi.fn>;
-  let onTimeFilterChange: ReturnType<typeof vi.fn>;
+  let onAutoArchiveTtlChange: ReturnType<typeof vi.fn<() => void>>;
+  let onTimeFilterChange: ReturnType<typeof vi.fn<() => void>>;
 
   beforeAll(() => {
     reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;

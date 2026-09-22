@@ -33,6 +33,17 @@ describe("buildMobileWsUrl", () => {
     );
   });
 
+  it("does not replay a URL's one-time code after pairing is confirmed", () => {
+    const url = new URL(
+      buildMobileWsUrl({
+        wsUrl: "wss://relay.example.com/v1/mobile/ws?pairingCode=expired",
+        deviceToken: "saved-device-token",
+      })
+    );
+    expect(url.searchParams.has("pairingCode")).toBe(false);
+    expect(url.searchParams.get("token")).toBe("saved-device-token");
+  });
+
   it("builds LAN url from host port token", () => {
     expect(
       buildMobileWsUrl({ host: "192.168.1.10", port: 13847, token: "secret" })

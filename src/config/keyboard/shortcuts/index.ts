@@ -1,12 +1,4 @@
 export { ALL_SHORTCUTS } from "./allShortcuts";
-export { BROWSER_SHORTCUTS } from "./browserShortcuts";
-export { DATABASE_SHORTCUTS } from "./databaseShortcuts";
 export { CATEGORY_CONFIG, SCOPE_LABELS } from "./displayConfig";
-export { EDITOR_SHORTCUTS } from "./editorShortcuts";
-export { GLOBAL_SHORTCUTS } from "./globalShortcuts";
 export { getCategories } from "./helpers";
-export { OVERLAY_SHORTCUTS } from "./overlayShortcuts";
-export { PROJECT_SHORTCUTS } from "./projectShortcuts";
-export { SOURCE_CONTROL_SHORTCUTS } from "./sourceControlShortcuts";
-export { SPOTLIGHT_SHORTCUTS } from "./spotlightShortcuts";
 export type { ShortcutCategory, ShortcutEntry } from "./types";

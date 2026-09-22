@@ -51,14 +51,19 @@ pub mod agent_sessions; // Agent session management (CLI, event pipeline, persis
 pub mod api;
 pub(crate) mod app; // Tauri application assembly: bootstrap, plugins, setup hook, lifecycle
 pub mod app_update; // Channel-aware (stable/beta) app update checks
+pub mod native_menu; // Native popup resource-lock boundary
 pub mod cli_managed_proxy;
+pub(crate) mod dynamic_credentials;
 pub mod harness_connections;
 pub mod infrastructure; // In-tree-only cross-cutting infrastructure (paths, platform, archive, housekeeping). Leaf pieces live in their own workspace crates.
+pub mod market_connection;
 pub mod orgtrack;
 mod runtime_instance;
 pub(crate) mod setup;
 #[cfg(target_os = "macos")]
 mod single_instance_focus;
+#[cfg(target_os = "macos")]
+mod single_instance_gate;
 pub mod usage_diagnostics;
 
 #[cfg(test)]

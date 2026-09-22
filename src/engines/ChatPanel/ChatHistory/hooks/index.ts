@@ -9,39 +9,13 @@ export { useChatHistoryState } from "./useChatHistoryState";
 
 export { useChatHistoryProjectionModel } from "./useChatHistoryProjectionModel";
 export { useChatHistoryItemActions } from "./useChatHistoryItemActions";
-export {
-  resolveConversationHistoryPageIndex,
-  useChatNavigationController,
-} from "./useChatNavigationController";
+export { useChatNavigationController } from "./useChatNavigationController";
 export { useChatViewportController } from "./useChatViewportController";
 
-export { isTurnCollapseEligible } from "./useChatGroups";
 export type { ChatGroupMeta, UseChatGroupsReturn } from "./useChatGroups";
 
 export { useChatSearch } from "./useChatSearch";
 
-export { useChatPagination } from "./useChatPagination";
-
-export { useChatTurnPagination } from "./useChatTurnPagination";
-
-export { useChatScroll } from "./useChatScroll";
-
-export { useChatFooterSpacer } from "./useChatFooterSpacer";
-
-export { useEditUserMessage } from "./useEditUserMessage";
-
-export { useRestoreCheckpoint } from "./useRestoreCheckpoint";
-
 export { useChatEmptyState } from "./useChatEmptyState";
 
-export { useChatScrollPin } from "./useChatScrollPin";
-
-export { useGroupHeaderRenderer } from "./useGroupHeaderRenderer";
-
 export { useReloadSession } from "./useReloadSession";
-export {
-  findTailTurnId,
-  TAIL_TURN_STALE_MS,
-  useTailTurnPhase,
-} from "./useTailTurnCollapse";
-export { useTurnPageNavigation } from "./useTurnPageSelection";

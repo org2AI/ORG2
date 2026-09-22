@@ -14,7 +14,6 @@ export interface SessionTranscriptRuntime {
   loadStatus: SessionLoadStatus;
   loadError: string | null;
   isAgentWorking: boolean;
-  isExploring?: boolean;
   onReload: () => void;
   /** Remote surfaces wire chat block locate to their replay controller. */
   onNavigateToEvent?: (eventId: string) => void;

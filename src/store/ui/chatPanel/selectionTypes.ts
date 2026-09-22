@@ -126,7 +126,7 @@ export type ChatPanelSelectedOrganization =
  * (`WorkspaceOverviewPanelView`). The overview/details split is
  * orthogonal to which workspace is selected; entry points that drill
  * into a specific repo (e.g. the dashboard's "Open details" button)
- * set this to `"details"` along with `chatPanelSelectedWorkspaceAtom`.
+ * set this to `"details"` when opening the workspace tab.
  *
  * Persisted only in-memory — switching between workspace overview
  * targets preserves the selected tab unless navigation explicitly

@@ -169,6 +169,8 @@ export function resolveRunnerConfig(runner: Runner): AdvancedConfig {
   return {
     keySource: runtimeConfig?.keySource,
     selectedAccountId: runtimeConfig?.accountId,
+    credentialSource: runtimeConfig?.credentialSource,
+    marketProfileId: runtimeConfig?.marketProfileId,
     model: runtimeConfig?.model,
     nativeHarnessType: runtimeConfig?.nativeHarnessType,
     tier: runtimeConfig?.tier,

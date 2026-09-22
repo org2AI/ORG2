@@ -23,7 +23,7 @@ import { createLogger } from "@src/hooks/logger";
 import {
   clearInternalFileTreeDrag,
   setInternalFileTreeDrag,
-} from "@src/shared/dnd/dragSideChannel";
+} from "@src/util/dnd/dragSideChannel";
 
 const log = createLogger("NativeDrag");
 

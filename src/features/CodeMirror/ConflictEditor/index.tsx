@@ -10,7 +10,7 @@
  * - Keyboard navigation between conflicts
  */
 import { history } from "@codemirror/commands";
-import { bracketMatching, foldGutter, indentUnit } from "@codemirror/language";
+import { bracketMatching, indentUnit } from "@codemirror/language";
 import {
   EditorState,
   Extension,
@@ -44,6 +44,7 @@ import { useEditorAppearanceSettings } from "@src/hooks/settings";
 import {
   codeMirrorCspNonceExtension,
   createCodeMirrorTheme,
+  customFoldGutter,
   editorHistoryKeymapExtension,
   getCodeMirrorTheme,
 } from "../config";
@@ -419,7 +420,7 @@ export const CodeMirrorConflictEditor: React.FC<
     }
 
     // Fold gutter and bracket matching
-    extensions.push(foldGutter());
+    extensions.push(customFoldGutter());
     extensions.push(bracketMatching());
     extensions.push(createCodeMirrorTheme());
 

@@ -24,6 +24,7 @@
  * place instead of duplicating a remove-self RPC flow here.
  */
 import { useAtomValue, useSetAtom } from "jotai";
+import type { MouseEvent } from "react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -42,14 +43,21 @@ import type { CloudChannel } from "@src/features/Org2Cloud/channels/types";
 import { useOrgChannels } from "@src/features/Org2Cloud/channels/useOrgChannels";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { createLogger } from "@src/hooks/logger";
+import {
+  ArchiveArrowDownIcon,
+  ArrowBigRightDashIcon,
+  Delete02Icon,
+  Settings01Icon,
+  UserMultipleIcon,
+} from "@src/icons";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
+import { popupSidebarMenu } from "@src/scaffold/NavigationSidebar/menus/SidebarMenu";
 import {
   closeOtherThanActiveChatPanelTabsAtom,
   openChannelInChatPanelTabAtom,
   reconcileDiscussionChannelTabsAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
-import { popupNativeMenu } from "@src/util/platform/tauri/nativeMenuPopup";
 
 import {
   type SidebarTabDisposition,
@@ -216,28 +224,40 @@ export function useCloudChannelsSection({
   );
 
   const openChannelActionsMenu = useCallback(
-    (channel: CloudChannel, kinds: readonly ChannelRowActionKind[]) => {
+    (
+      channel: CloudChannel,
+      kinds: readonly ChannelRowActionKind[],
+      event: MouseEvent
+    ) => {
       if (!orgId) return;
       const entries: Record<
         ChannelRowActionKind,
-        { text: string; action: () => void }
+        {
+          text: string;
+          icon: import("@src/icons").IconSvgElement;
+          action: () => void;
+        }
       > = {
         manageMembers: {
           text: t("cloud.channels.manageMembers"),
+          icon: UserMultipleIcon,
           action: () => openMembersDialog(channel),
         },
         archive: {
           text: t("cloud.channels.archiveAction"),
+          icon: ArchiveArrowDownIcon,
           action: () => setDialogState({ orgId, kind: "archive", channel }),
         },
         delete: {
           text: t("cloud.channels.deleteAction"),
+          icon: Delete02Icon,
           action: () => setDialogState({ orgId, kind: "delete", channel }),
         },
         // The members dialog carries the leave affordance; opening it beats
         // duplicating the remove-self flow (and its last-manager refusal).
         leave: {
           text: t("cloud.channels.leave"),
+          icon: ArrowBigRightDashIcon,
           action: () => openMembersDialog(channel),
         },
       };
@@ -250,12 +270,13 @@ export function useCloudChannelsSection({
           ? [
               {
                 text: t("cloud.channels.settings.action"),
+                icon: Settings01Icon,
                 action: () =>
                   setDialogState({ orgId, kind: "settings", channel }),
               },
             ]
           : [];
-      void popupNativeMenu({
+      void popupSidebarMenu(event, {
         source: "cloud-channel-row",
         buildItems: () => [
           ...settingsEntries,

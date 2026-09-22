@@ -8,8 +8,8 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import IntegrationIcon from "@src/components/IntegrationIcon";
+import { InfoCard } from "@src/components/layout/blocks";
 import { ChevronsLeftRightEllipsisIcon, HugeiconsIcon } from "@src/icons";
-import { InfoCard } from "@src/modules/shared/layouts/blocks";
 
 import { CHANNEL_TYPES } from "../config";
 import {

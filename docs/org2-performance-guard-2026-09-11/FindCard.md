@@ -1,0 +1,16 @@
+# Consolidated Find lifecycle
+
+| Area               | Verdict | Evidence                                                                    | Change or reason kept                                                                                             | Verification                                                                                |
+| ------------------ | ------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Background work    | fix     | One shared keydown/pointerdown/focusin listener set while any target exists | Per-session competing Find handlers removed; no polling                                                           | Focused-scope cycle and unregister tests                                                    |
+| Memory             | fix     | Mounted-target Set, per-scope focus references, editor WeakMap              | Targets unregister on hook/plugin destruction; panel removes overlay and unmounts React root                      | Unregister, editor close and editor destroy tests                                           |
+| Scope/isolation    | fix     | Session atoms and editor views retain their own mutations                   | Coordinator stores callbacks only; hidden targets skipped; last focused file preferred                            | Both starting scopes, unavailable scope, multi-editor preference, real editor→session cycle |
+| Rendering/hot path | keep    | Both searches use existing 500 ms debounce                                  | Availability snapshot refreshes on registration/interaction, not each input keypress; match-action timers removed | Debounce and latest-query replacement tests                                                 |
+
+Lifecycle matrix: mount registers once; idle has no scheduled loop; key/pointer/focus events route ownership; closed cards cancel pending work on unmount; session/file switches close the old card before opening the next; hidden/disconnected targets are skipped on selection. No new network, persistence, identity or provider-ingestion path exists.
+
+Verification uses real CodeMirror state/editor transactions in jsdom and fake-timer search tests. It checks replacement output, pending query flush, read-only controls, overlay disposal and shortcut dispatch counts. Native visual/CPU measurements were not run because computer control was not requested. No measured CPU improvement is claimed.
+
+Performance verdict: pass for bounded registration and tested scheduling/cleanup behavior. Full typecheck passes in the isolated PR branch.
+
+Commands: `pnpm test src/components/FindCard/findCoordinator.test.ts src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/components/CodeMirrorSearchPanel/CodeMirrorSearchPanel.test.ts src/engines/ChatPanel/ChatHistory/hooks/__tests__/useChatSearchShortcut.test.ts src/engines/ChatPanel/ChatHistory/hooks/__tests__/useChatSearch.test.ts` (26 passed); `pnpm typecheck:fast` (passed in the isolated PR branch); targeted `pnpm exec eslint` for all changed implementation/tests; `pnpm check:boundaries` (0 new forbidden edges); `git diff --check`.

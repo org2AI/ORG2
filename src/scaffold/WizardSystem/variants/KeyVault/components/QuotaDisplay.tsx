@@ -18,10 +18,7 @@ import { useTranslation } from "react-i18next";
 
 import type { QuotaSnapshot } from "@src/api/types/keyVault";
 import QuotaBar from "@src/components/QuotaBar";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 
 interface QuotaDisplayProps {
   quotaInfo: QuotaSnapshot;

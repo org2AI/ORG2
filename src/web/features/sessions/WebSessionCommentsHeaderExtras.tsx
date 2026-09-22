@@ -16,8 +16,6 @@ import { BookEditIcon, HugeiconsIcon } from "@src/icons";
 
 import type { WebSessionListItem } from "./useWebSessionRoster";
 
-const noopAsync = async () => undefined;
-
 export interface WebSessionCommentsHeaderExtrasProps {
   session: WebSessionListItem;
 }
@@ -47,10 +45,6 @@ const WebSessionCommentsModalBody: React.FC<
     >
       <CommentThreadList
         threads={grouped.sessionLevel}
-        viewerUserId={null}
-        viewerIsAdmin={false}
-        readOnly
-        showComposer={false}
         emptyLabel={
           state === "error"
             ? t("cloud.comments.loadError")
@@ -58,10 +52,6 @@ const WebSessionCommentsModalBody: React.FC<
                 defaultValue: t("cloud.comments.empty"),
               })
         }
-        onAdd={noopAsync}
-        onEdit={noopAsync}
-        onDelete={noopAsync}
-        onResolve={noopAsync}
       />
       {grouped.orphaned.length > 0 && (
         <div
@@ -71,17 +61,7 @@ const WebSessionCommentsModalBody: React.FC<
           <div className="text-[11px] text-text-3">
             {t("cloud.comments.earlierVersion")}
           </div>
-          <CommentThreadList
-            threads={grouped.orphaned}
-            viewerUserId={null}
-            viewerIsAdmin={false}
-            readOnly
-            showComposer={false}
-            onAdd={noopAsync}
-            onEdit={noopAsync}
-            onDelete={noopAsync}
-            onResolve={noopAsync}
-          />
+          <CommentThreadList threads={grouped.orphaned} />
         </div>
       )}
     </div>

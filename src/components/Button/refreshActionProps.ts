@@ -4,5 +4,4 @@
  */
 export const TEXT_HOVER_REFRESH_BUTTON_PROPS = {
   variant: "tertiary",
-  appearance: "solid",
 } as const;

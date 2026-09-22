@@ -2,23 +2,8 @@ import React, { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Message from "@src/components/Message";
-import {
-  BlockOutput,
-  EVENT_BLOCK_TRANSPARENT_EXPANDED_SHELL_CLASSES,
-  EventBlockHeader,
-  EventBlockHeaderIcon,
-  EventBlockHeaderTitle,
-  SESSION_UI_TOKENS,
-  getEventBlockContainerClasses,
-} from "@src/engines/ChatPanel/blocks/primitives";
-import { useBlockHeader } from "@src/engines/ChatPanel/blocks/useBlockLocate";
-import {
-  LLM_USAGE_ARGS_KEY,
-  type SessionEvent,
-  TOOL_USAGE_ARGS_KEY,
-} from "@src/engines/SessionCore/core/types";
-import { HugeiconsIcon, MailOpen01Icon } from "@src/icons";
 
+import OutputImageGallery from "../../ChatItems/OutputImageGallery";
 import {
   AgentTurnContext,
   type AgentTurnContextValue,
@@ -26,12 +11,10 @@ import {
 import { useGroupChatContext } from "../GroupChatView/GroupChatContext";
 import GroupChatMessageBubble from "../GroupChatView/GroupChatMessageBubble";
 import {
-  extractGroupMessageContent,
   isAgentOrgInboxTranscriptEvent,
   resolveGroupChatMessageBubble,
   resolveGroupChatToolUseSummary,
 } from "../GroupChatView/groupChatUtils";
-import type { OptimizedChatItem } from "../chatItemPipeline/types";
 import { NewEventDivider } from "../components/NewEventDivider";
 import TurnMetadataFooterSlot from "../components/TurnMetadataFooterSlot";
 import { CHAT_FOOTER_SPACER } from "../config/chatFooterSpacer";
@@ -45,171 +28,13 @@ import { collectChatItemEventIds } from "../hooks/chatSearchProjection";
 import { getUnloadedTurnMeta, isTurnPreviewItem } from "../hooks/useChatGroups";
 import { ChatItemRenderer } from "./ChatItemRenderer";
 import ChatItemWrap from "./ChatItemWrap";
+import { InboxTranscriptCard } from "./InboxTranscriptCard";
+import { areGroupItemRendererPropsEqual } from "./groupItemRendererEquality";
+import type { GroupItemRendererProps } from "./groupItemRendererTypes";
+
+export type { GroupItemRendererProps } from "./groupItemRendererTypes";
 
 const GROUP_CHAT_CONTINUATION_WINDOW_MS = 60_000;
-const INBOX_TRANSCRIPT_ICON = (
-  <HugeiconsIcon
-    icon={MailOpen01Icon}
-    data-icon="mail-open"
-    size={SESSION_UI_TOKENS.ICON.SIZE_SM}
-  />
-);
-
-// ============================================
-// Custom props equality for memo()
-// ============================================
-
-type EventSummary = NonNullable<OptimizedChatItem["event"]>;
-
-const RESULT_RENDER_KEYS = [
-  "type",
-  "message",
-  "content",
-  "observation",
-  "success",
-  "failure",
-  "error",
-  "images",
-  "call_id",
-  "output",
-  "stdout",
-  "stderr",
-  "interleaved_output",
-  "interleavedOutput",
-  "diff",
-  "diffString",
-  "segments",
-  "filePaths",
-  "linesAdded",
-  "linesRemoved",
-  "status",
-  // Keep retry actions current even when the visible message body is unchanged.
-  "queueMessageId",
-  "deliveryOwnerRetired",
-  "deliveryStatus",
-  "deliveryError",
-  "turnIntentId",
-  "syntheticUserInput",
-] as const;
-
-const ARG_RENDER_KEYS = [
-  "command",
-  "streamOutput",
-  "streamContent",
-  "title",
-  "action",
-  "content",
-  "path",
-  "file_path",
-  "target_file",
-  "patch_text",
-  "old_str",
-  "old_string",
-  "old_content",
-  "new_str",
-  "new_string",
-  "new_content",
-  "subagentSessionId",
-  TOOL_USAGE_ARGS_KEY,
-  LLM_USAGE_ARGS_KEY,
-] as const;
-
-function sameRecordKeys(
-  left: Record<string, unknown> | undefined,
-  right: Record<string, unknown> | undefined,
-  keys: readonly string[]
-): boolean {
-  if (left === right) return true;
-  if (!left || !right) return false;
-  return keys.every((key) => left[key] === right[key]);
-}
-
-function sameEventSummary(
-  left: EventSummary | undefined,
-  right: EventSummary | undefined
-): boolean {
-  if (left === right) return true;
-  if (!left || !right) return false;
-  return (
-    left.id === right.id &&
-    left.actionType === right.actionType &&
-    left.functionName === right.functionName &&
-    left.uiCanonical === right.uiCanonical &&
-    left.displayText === right.displayText &&
-    left.displayStatus === right.displayStatus &&
-    left.displayVariant === right.displayVariant &&
-    left.activityStatus === right.activityStatus &&
-    left.shellPid === right.shellPid &&
-    left.shellProcessStatus === right.shellProcessStatus &&
-    left.shellExitCode === right.shellExitCode &&
-    left.shellLogPath === right.shellLogPath &&
-    left.extracted === right.extracted &&
-    left.payloadRefs === right.payloadRefs &&
-    sameRecordKeys(left.result, right.result, RESULT_RENDER_KEYS) &&
-    sameRecordKeys(left.args, right.args, ARG_RENDER_KEYS)
-  );
-}
-
-function sameEventList(
-  left: readonly EventSummary[] | undefined,
-  right: readonly EventSummary[] | undefined
-): boolean {
-  if (left === right) return true;
-  if (!left || !right) return false;
-  if (left.length !== right.length) return false;
-  return left.every((leftEvent, i) => sameEventSummary(leftEvent, right[i]));
-}
-
-function sameChatItem(
-  left: OptimizedChatItem | undefined,
-  right: OptimizedChatItem | undefined
-): boolean {
-  if (left === right) return true;
-  if (!left || !right) return false;
-  return (
-    left.chunk_id === right.chunk_id &&
-    left.type === right.type &&
-    left.structuralOnly === right.structuralOnly &&
-    left.consolidatedParts === right.consolidatedParts &&
-    left.actionSummaryClosedByBoundary ===
-      right.actionSummaryClosedByBoundary &&
-    left.activityStackGroup?.category === right.activityStackGroup?.category &&
-    left.activityStackGroup?.closedByBoundary ===
-      right.activityStackGroup?.closedByBoundary &&
-    sameEventSummary(left.event, right.event) &&
-    sameEventList(left.readFileEvents, right.readFileEvents) &&
-    sameEventList(
-      left.activityStackGroup?.events,
-      right.activityStackGroup?.events
-    ) &&
-    sameEventList(
-      left.actionSummaryItems?.map((item) => item.event),
-      right.actionSummaryItems?.map((item) => item.event)
-    )
-  );
-}
-
-function areGroupItemRendererPropsEqual(
-  previous: GroupItemRendererProps,
-  next: GroupItemRendererProps
-): boolean {
-  return (
-    previous.flatIndex === next.flatIndex &&
-    previous.groupIndex === next.groupIndex &&
-    previous.turnId === next.turnId &&
-    sameChatItem(previous.chatItem, next.chatItem) &&
-    // previousChatItem affects group-chat continuation window only (createdAt
-    // comparison). Shallow-compare the event rather than the full item — the
-    // continuation check only reads event.createdAt, source, and senderName.
-    previous.previousChatItem?.event === next.previousChatItem?.event &&
-    previous.isLastItemInGroup === next.isLastItemInGroup &&
-    previous.isLastGroup === next.isLastGroup &&
-    previous.isWpGeneWorking === next.isWpGeneWorking &&
-    previous.onRegenerate === next.onRegenerate &&
-    previous.onEditUserMessage === next.onEditUserMessage &&
-    previous.newEventDividerLabel === next.newEventDividerLabel
-  );
-}
 
 function isWithinGroupChatContinuationWindow(
   previousTimestamp: string,
@@ -222,112 +47,6 @@ function isWithinGroupChatContinuationWindow(
   }
   const elapsedMs = currentTime - previousTime;
   return elapsedMs >= 0 && elapsedMs <= GROUP_CHAT_CONTINUATION_WINDOW_MS;
-}
-
-function getInboxTranscriptBody(event: SessionEvent): string {
-  return extractGroupMessageContent(event).trim();
-}
-
-const InboxTranscriptCard: React.FC<{
-  event: SessionEvent;
-  title: string;
-}> = ({ event, title }) => {
-  const { t } = useTranslation("sessions");
-  const body = getInboxTranscriptBody(event);
-  const hasContent = body.length > 0;
-  const {
-    isCollapsed,
-    isHeaderHovered,
-    handleHeaderClick,
-    handleHeaderMouseEnter,
-    handleHeaderMouseLeave,
-  } = useBlockHeader({ defaultCollapsed: true, eventId: event.id });
-
-  return (
-    <div className={`${getEventBlockContainerClasses(false)} animate-fade-in`}>
-      <EventBlockHeader
-        isCollapsed={isCollapsed}
-        withHover={false}
-        onToggleCollapse={hasContent ? handleHeaderClick : undefined}
-        onMouseEnter={handleHeaderMouseEnter}
-        onMouseLeave={handleHeaderMouseLeave}
-      >
-        <EventBlockHeaderIcon
-          icon={INBOX_TRANSCRIPT_ICON}
-          isCollapsed={isCollapsed}
-          isHeaderHovered={isHeaderHovered}
-          iconSize={SESSION_UI_TOKENS.ICON.SIZE_SM}
-          hasContent={hasContent}
-        />
-        <EventBlockHeaderTitle>{title}</EventBlockHeaderTitle>
-      </EventBlockHeader>
-
-      {!isCollapsed && hasContent && (
-        <div
-          className={`${EVENT_BLOCK_TRANSPARENT_EXPANDED_SHELL_CLASSES} animate-fade-in`}
-        >
-          <div className="border-b border-border-1 px-3 py-1.5 text-[13px] leading-normal">
-            <div className="flex min-w-0 items-baseline gap-2">
-              <span className="shrink-0 text-text-3">
-                {t("cards.agentMessage.meta.sender")}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-text-1">
-                {t("cards.agentMessage.emailBubble.subagentMessages")}
-              </span>
-            </div>
-            <div className="flex min-w-0 items-baseline gap-2">
-              <span className="shrink-0 text-text-3">
-                {t("cards.agentMessage.meta.recipient")}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-text-1">
-                Coordinator
-              </span>
-            </div>
-          </div>
-          <BlockOutput
-            output={body}
-            withBorder={false}
-            sessionId={event.sessionId}
-            eventId={event.id}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
-export interface GroupItemRendererProps {
-  flatIndex: number;
-  groupIndex: number;
-  turnId: string | null;
-  /** The item at `flatIndex`. Passed directly to avoid the full array reference. */
-  chatItem: OptimizedChatItem | undefined;
-  /**
-   * The nearest preceding non-structural, non-unloaded item before
-   * `flatIndex`. Pre-resolved by the call site so this renderer does not
-   * need to scan the full flat list on every render.
-   */
-  previousChatItem: OptimizedChatItem | undefined;
-  /** Whether this row is the final body item in its group. */
-  isLastItemInGroup: boolean;
-  /** Whether this row belongs to the latest group. */
-  isLastGroup: boolean;
-  isWpGeneWorking: boolean;
-  onRegenerate?: (groupIndex: number) => void;
-  onEditUserMessage?: (
-    item: OptimizedChatItem,
-    newText: string,
-    imageDataUrls?: string[]
-  ) => Promise<void> | void;
-  /**
-   * When set, the renderer paints a `NewEventDivider` immediately
-   * above each group's *last* item. Subagent panes use this so the
-   * latest assistant event in every turn is visually called out —
-   * matches the "---- New event ----" divider in
-   * `Communication > messages`. `null` / undefined leaves the
-   * divider off (default).
-   */
-  newEventDividerLabel?: string | null;
 }
 
 /**
@@ -389,9 +108,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
     const inboxTranscriptLabel = useMemo(() => {
       if (!event || simpleMessage) return null;
       if (!isAgentOrgInboxTranscriptEvent(event)) return null;
-      return t("groupChat.inboxTranscript.readMessages", {
-        defaultValue: "Coordinator read messages sent by other agents",
-      });
+      return t("groupChat.inboxTranscript.readMessages");
     }, [event, simpleMessage, t]);
 
     const usesGroupChatMessageBubble = simpleMessage !== null;
@@ -432,6 +149,9 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
     // actually change.
     const turnContext = useMemo<AgentTurnContextValue>(
       () => ({
+        sessionId: event?.sessionId,
+        outputImagesAtEnd: true,
+        turnId,
         isLastGroup,
         isLastItemInGroup,
         onRegenerate: onRegenerate
@@ -445,6 +165,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
             : null,
       }),
       [
+        turnId,
         isLastGroup,
         isLastItemInGroup,
         isWpGeneWorking,
@@ -492,7 +213,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
       ) : null;
 
     // Wrap the rendered item in a guaranteed-non-zero-height container.
-    // react-virtuoso measures each item's `offsetHeight`; a zero-height
+    // The virtualizer measures each item’s `offsetHeight`; a zero-height
     // child triggers a "Zero-sized element, this should not happen"
     // console error. The pipeline tries to pre-filter empty events
     // (`willEventRenderContent`) but some shapes still resolve to `null`
@@ -538,6 +259,15 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
             <NewEventDivider label={newEventDividerLabel as string} />
           )}
           {renderedItem}
+          {/* Projection owns gallery placement; a status footer may follow it. */}
+          {chatItem?.outputImages?.length ? (
+            <ChatItemWrap variant="text">
+              <OutputImageGallery
+                key={turnId ?? chatItem.chunk_id}
+                images={chatItem.outputImages}
+              />
+            </ChatItemWrap>
+          ) : null}
           {isLastItemInGroup &&
             renderedItem !== null &&
             !groupChat?.enabled &&

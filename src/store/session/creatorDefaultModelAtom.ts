@@ -72,6 +72,8 @@ export interface LastModelSelection {
   provider?: string;
   model?: string;
   selectedAccountId?: string;
+  credentialSource?: string;
+  marketProfileId?: string;
   cliAgentType?: CliAgentType;
   cliAgentLabel?: string;
   cliModelDisplay?: string;
@@ -180,6 +182,8 @@ export function deriveLastModelSelection(
     model: pair.modelId,
     provider: pair.modelType as string,
     selectedAccountId: pair.accountId,
+    credentialSource: pair.credentialSource,
+    marketProfileId: pair.marketProfileId,
     cliAgentType: pair.cliAgentType,
     cliAgentLabel: pair.cliAgentLabel,
     cliModelDisplay: pair.cliModelDisplay,
@@ -206,6 +210,8 @@ async function pruneStaleEntries(map: LastModelPairMap): Promise<{
       if (!entry) continue;
 
       if (isHostedKey(entry.sourceType)) continue;
+
+      if (entry.credentialSource?.startsWith("market:")) continue;
 
       if (!entry.accountId || !validIds.has(entry.accountId)) {
         result[category] = undefined;
@@ -348,7 +354,7 @@ export function extractModelPair(
     };
   }
 
-  if (!config.selectedAccountId) return null;
+  if (!config.selectedAccountId && !config.credentialSource) return null;
   if (!config.model) return null;
 
   return {
@@ -356,6 +362,8 @@ export function extractModelPair(
     sourceType: KEY_SOURCE.OWN,
     accountId: config.selectedAccountId,
     accountName: config.selectedSourceLabel,
+    credentialSource: config.credentialSource,
+    marketProfileId: config.marketProfileId,
     modelType:
       config.selectedSourceModelType ??
       (config.provider as ModelType) ??

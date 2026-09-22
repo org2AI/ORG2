@@ -65,28 +65,42 @@ test("recognizes only the initial successful webpack compile as ready", () => {
 });
 
 test("tauri args disable beforeDevCommand after wrapper starts webpack", () => {
-  assert.deepEqual(createTauriArgs({ features: [], lightDev: false }), [
-    "dev",
-    "--config",
-    '{"build":{"beforeDevCommand":""}}',
+  const args = createTauriArgs();
+  assert.deepEqual(args.slice(0, 2), ["dev", "--config"]);
+  const config = JSON.parse(args[2]);
+  assert.deepEqual(config.build, { beforeDevCommand: "" });
+  assert.equal(config.identifier, "org2ai.org2.dev");
+  assert.equal(config.productName, "ORG2 Dev");
+  assert.deepEqual(config.plugins["deep-link"].desktop.schemes, [
+    "yorgai-dev",
+    "orgii-dev",
   ]);
+  assert.equal(config.plugins.updater.active, false);
+  assert.ok(config.bundle.icon.includes("icons/dev/icon.icns"));
+  assert.ok(config.bundle.icon.includes("icons/dev/icon.ico"));
+  for (const icon of config.bundle.icon) {
+    assert.ok(fs.existsSync(`src-tauri/${icon}`), `Missing dev icon: ${icon}`);
+  }
 });
 
 test("tauri args preserve features and devUrl override", () => {
-  assert.deepEqual(
-    createTauriArgs({
-      features: ["webdriver"],
-      lightDev: true,
-      devUrl: "http://127.0.0.1:1998",
-    }),
-    [
-      "dev",
-      "--features",
-      "webdriver",
-      "--config",
-      '{"build":{"beforeDevCommand":"","devUrl":"http://127.0.0.1:1998"}}',
-    ]
-  );
+  const args = createTauriArgs({
+    features: ["webdriver"],
+    lightDev: true,
+    devUrl: "http://127.0.0.1:1998",
+  });
+  assert.deepEqual(args.slice(0, 4), [
+    "dev",
+    "--features",
+    "webdriver",
+    "--config",
+  ]);
+  const config = JSON.parse(args[4]);
+  assert.equal(config.identifier, "org2ai.org2.dev");
+  assert.deepEqual(config.build, {
+    beforeDevCommand: "",
+    devUrl: "http://127.0.0.1:1998",
+  });
 });
 
 test("dev wrapper does not pass terminal stdin to child processes", () => {
@@ -113,8 +127,14 @@ test("tauri dev npm scripts use a cross-platform launcher", () => {
 });
 
 test("tauri dev launcher detaches Unix stdin without requiring setsid", () => {
-  assert.match(tauriLauncherSource, /detached:\s*process\.platform !== "win32"/);
-  assert.match(tauriLauncherSource, /stdio:\s*\["ignore",\s*"inherit",\s*"inherit"\]/);
+  assert.match(
+    tauriLauncherSource,
+    /detached:\s*process\.platform !== "win32"/
+  );
+  assert.match(
+    tauriLauncherSource,
+    /stdio:\s*\["ignore",\s*"inherit",\s*"inherit"\]/
+  );
   assert.match(tauriLauncherSource, /env\.ORGII_LIGHT_DEV = "true"/);
   assert.match(tauriLauncherSource, /SIGINT:\s*130/);
   assert.match(tauriLauncherSource, /SIGTERM:\s*143/);

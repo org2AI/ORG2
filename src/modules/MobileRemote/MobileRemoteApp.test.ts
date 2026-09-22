@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { I18nextProvider } from "react-i18next";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import i18n, { i18nReady } from "@src/i18n";
 import enMobileRemote from "@src/i18n/locales/en/mobileRemote.json";
@@ -21,7 +22,16 @@ const TestMobileRemotePlatformProvider =
   >;
 
 describe("MobileRemoteApp", () => {
-  it("renders welcome markup within providers", async () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("does not flash pairing before persisted device hydration", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }))
+    );
     await i18nReady;
     i18n.addResourceBundle("en", "mobileRemote", enMobileRemote, true, true);
     await i18n.changeLanguage("en");
@@ -36,8 +46,8 @@ describe("MobileRemoteApp", () => {
         )
       )
     );
-    expect(markup).toContain("Mobile Remote");
     expect(markup).not.toContain("Try demo");
-    expect(markup).toContain(enMobileRemote.welcome.scanQr);
+    expect(markup).not.toContain(enMobileRemote.welcome.scanQr);
+    expect(markup).toContain('aria-busy="true"');
   });
 });

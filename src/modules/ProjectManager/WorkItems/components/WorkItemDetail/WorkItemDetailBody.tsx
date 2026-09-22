@@ -2,6 +2,14 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { WorkItemData as WorkItemDataPayload } from "@src/api/http/project";
+import {
+  PersistentDetailTabPanel,
+  WorkstationTrailSurface,
+} from "@src/components/layout/blocks";
+import LazyGitHubLinkedReferences from "@src/features/GitHubWork/GitHubLinkedReferences/lazy";
+import type { ExtractedGitHubReference } from "@src/features/GitHubWork/GitHubLinkedReferences/references";
+import type { ThreadDetailTab } from "@src/features/GitHubWork/ThreadDetailTabs";
+import { useDetailRailLayout } from "@src/hooks/ui/layout/useDetailRailLayout";
 import { useResizeHandle } from "@src/hooks/ui/useResizeHandle";
 import type {
   AgentDefinition,
@@ -11,15 +19,8 @@ import {
   PropertiesPanel,
   PropertiesRailFrame,
 } from "@src/modules/ProjectManager/shared";
-import LazyGitHubLinkedReferences from "@src/modules/shared/components/GitHubLinkedReferences/lazy";
-import type { ExtractedGitHubReference } from "@src/modules/shared/components/GitHubLinkedReferences/references";
-import type { ThreadDetailTab } from "@src/modules/shared/components/ThreadDetailTabs";
-import DetailPaneErrorBoundary from "@src/modules/shared/layouts/DetailPaneErrorBoundary";
-import {
-  PersistentDetailTabPanel,
-  WorkstationTrailSurface,
-} from "@src/modules/shared/layouts/blocks";
 import { VerticalResizeHandle } from "@src/scaffold/Resize";
+import DetailPaneErrorBoundary from "@src/scaffold/layouts/DetailPaneErrorBoundary";
 import type { Person } from "@src/types/core/shared";
 import type {
   WorkItem as WorkItemExtended,
@@ -95,6 +96,7 @@ export function WorkItemDetailBody({
   onRefreshWorkItem,
   onCreatePr,
 }: WorkItemDetailBodyProps) {
+  const { paneRef, inlineRail } = useDetailRailLayout(propertiesOpen);
   const { t } = useTranslation("projects");
   const { handleMouseDown: handleInfoPanelResize, isResizing } =
     useResizeHandle(infoPanelWidth, setInfoPanelWidth, {
@@ -135,77 +137,87 @@ export function WorkItemDetailBody({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden">
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <div className="flex h-full flex-col overflow-visible">
-          <PersistentDetailTabPanel
-            active={activeTab === "conversation"}
-            id="work-item-detail-tabpanel-conversation"
-            ariaLabelledBy="work-item-detail-tab-conversation"
-            className="min-h-0 min-w-0 overflow-hidden"
-          >
-            <DetailPaneErrorBoundary
-              key={`${displayWorkItem.session_id}:conversation`}
-              label={t("workItems.detail.conversation", {
-                defaultValue: "Conversation",
-              })}
-              onRetry={onRefreshWorkItem}
-            >
-              <WorkItemContent
-                key={displayWorkItem.session_id}
-                workItem={displayWorkItem}
-                presentation="thread"
-                onUpdateWorkItem={onUpdateWorkItem}
-                onUpdateWorkItemImmediate={onUpdateWorkItemImmediate}
-                teamMembers={availableMembers}
-                availableAgents={availableAgents}
-                availableOrgs={availableOrgs}
-                repoPath={repoPath}
-                projectSlug={projectSlug}
-                orgId={orgId}
-                shortId={shortId}
-                onOpenSession={onOpenSession}
-                onOpenFileDiff={onOpenFileDiff}
-                onReviewAllFiles={onReviewAllFiles}
-                onOpenSubItem={onOpenSubItem}
-                onRefreshWorkflow={onRefreshWorkItem}
-                activeAgentSessionId={activeAgentSessionId}
-                onCreatePr={onCreatePr}
-              />
-            </DetailPaneErrorBoundary>
-          </PersistentDetailTabPanel>
-          <PersistentDetailTabPanel
-            active={activeTab === "linked"}
-            id="work-item-detail-tabpanel-linked"
-            ariaLabelledBy="work-item-detail-tab-linked"
-            className="min-h-0 min-w-0 flex-col overflow-hidden"
-          >
-            <DetailPaneErrorBoundary
-              key={`${displayWorkItem.session_id}:linked`}
-              label={t("workItems.detail.linked", { defaultValue: "Linked" })}
-            >
-              <LazyGitHubLinkedReferences
-                references={linkedReferences}
-                repoPath={repoPath}
-                enabled={activeTab === "linked"}
-              />
-            </DetailPaneErrorBoundary>
-          </PersistentDetailTabPanel>
+    <div ref={paneRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {propertiesOpen && inlineRail && activeTab !== "conversation" ? (
+        <div className="max-h-64 shrink-0 overflow-y-auto px-4 py-4">
+          {propertiesContent}
         </div>
-      </div>
+      ) : null}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex h-full flex-col overflow-visible">
+            <PersistentDetailTabPanel
+              active={activeTab === "conversation"}
+              id="work-item-detail-tabpanel-conversation"
+              ariaLabelledBy="work-item-detail-tab-conversation"
+              className="min-h-0 min-w-0 overflow-hidden"
+            >
+              <DetailPaneErrorBoundary
+                key={`${displayWorkItem.session_id}:conversation`}
+                label={t("workItems.detail.conversation")}
+                onRetry={onRefreshWorkItem}
+              >
+                <WorkItemContent
+                  key={displayWorkItem.session_id}
+                  workItem={displayWorkItem}
+                  presentation="thread"
+                  headerProperties={
+                    propertiesOpen && inlineRail && activeTab === "conversation"
+                      ? propertiesContent
+                      : undefined
+                  }
+                  onUpdateWorkItem={onUpdateWorkItem}
+                  onUpdateWorkItemImmediate={onUpdateWorkItemImmediate}
+                  teamMembers={availableMembers}
+                  availableAgents={availableAgents}
+                  availableOrgs={availableOrgs}
+                  repoPath={repoPath}
+                  projectSlug={projectSlug}
+                  orgId={orgId}
+                  shortId={shortId}
+                  onOpenSession={onOpenSession}
+                  onOpenFileDiff={onOpenFileDiff}
+                  onReviewAllFiles={onReviewAllFiles}
+                  onOpenSubItem={onOpenSubItem}
+                  onRefreshWorkflow={onRefreshWorkItem}
+                  activeAgentSessionId={activeAgentSessionId}
+                  onCreatePr={onCreatePr}
+                />
+              </DetailPaneErrorBoundary>
+            </PersistentDetailTabPanel>
+            <PersistentDetailTabPanel
+              active={activeTab === "linked"}
+              id="work-item-detail-tabpanel-linked"
+              ariaLabelledBy="work-item-detail-tab-linked"
+              className="min-h-0 min-w-0 flex-col overflow-hidden"
+            >
+              <DetailPaneErrorBoundary
+                key={`${displayWorkItem.session_id}:linked`}
+                label={t("workItems.detail.linked")}
+              >
+                <LazyGitHubLinkedReferences
+                  references={linkedReferences}
+                  repoPath={repoPath}
+                  enabled={activeTab === "linked"}
+                />
+              </DetailPaneErrorBoundary>
+            </PersistentDetailTabPanel>
+          </div>
+        </div>
 
-      {propertiesOpen && (
-        <>
-          <VerticalResizeHandle
-            variant="transparent"
-            onMouseDown={handleInfoPanelResize}
-            isResizing={isResizing}
-          />
-          <PropertiesRailFrame width={infoPanelWidth} floatingContent>
-            {propertiesContent}
-          </PropertiesRailFrame>
-        </>
-      )}
+        {propertiesOpen && !inlineRail && (
+          <>
+            <VerticalResizeHandle
+              variant="transparent"
+              onMouseDown={handleInfoPanelResize}
+              isResizing={isResizing}
+            />
+            <PropertiesRailFrame width={infoPanelWidth} floatingContent>
+              {propertiesContent}
+            </PropertiesRailFrame>
+          </>
+        )}
+      </div>
     </div>
   );
 }

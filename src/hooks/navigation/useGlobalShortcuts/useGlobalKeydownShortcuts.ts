@@ -6,10 +6,13 @@ import {
   matchesShortcut,
 } from "@src/config/keyboard/shortcutBindings";
 import { shortcutRegistry } from "@src/hooks/keyboard";
+import { AppViewService } from "@src/services/app";
+import { devMockScenariosModalOpenAtom } from "@src/store/dev/mockScenarios";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { routeDebugModalOpenAtom } from "@src/store/ui/uiAtom";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
+import { closeCurrentWindow } from "./closeCurrentWindow";
 import { resolveDigitZeroShortcut } from "./digitZeroShortcut";
 import { isEditableElement, isEditableElementExtended } from "./types";
 
@@ -212,6 +215,7 @@ export function useGlobalKeydownShortcuts(
         ["new_tab", () => shortcutRegistry.dispatch("new_tab")],
         ["new_tab_alt", () => shortcutRegistry.dispatch("new_tab_alt")],
         ["open_settings", handleOpenSettings],
+        ["lock_app", () => void AppViewService.lockApp()],
         [
           "agent_session_search",
           handleOpenAgentSessionSearch,
@@ -256,15 +260,19 @@ export function useGlobalKeydownShortcuts(
           () => shortcutRegistry.dispatch("toggle_spotlight"),
           spotlightOpenRef.current || !editable,
         ],
-        ["search_files", handleOpenCodeEditorSearchSidebar],
         [
-          "window_close",
-          () => {
-            void import("@tauri-apps/api/window").then(({ getCurrentWindow }) =>
-              getCurrentWindow().close()
-            );
-          },
+          // Dev builds only. The catalog entry is dev-gated too, so
+          // `matchesShortcut` can never resolve this id in a release build.
+          "open_dev_mock_scenarios",
+          () =>
+            getInstrumentedStore().set(
+              devMockScenariosModalOpenAtom,
+              (prev) => !prev
+            ),
+          process.env.NODE_ENV === "development",
         ],
+        ["search_files", handleOpenCodeEditorSearchSidebar],
+        ["window_close", closeCurrentWindow],
         [
           "window_open_folder",
           () => {

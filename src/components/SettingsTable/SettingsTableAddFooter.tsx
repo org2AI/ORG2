@@ -32,7 +32,6 @@ export function SettingsTableAddFooter({
     >
       <Button
         variant="tertiary"
-        size="default"
         icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
         onClick={onClick}
         disabled={disabled}

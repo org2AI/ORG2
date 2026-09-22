@@ -8,8 +8,6 @@
  */
 import React from "react";
 
-import { HugeiconsIcon, Tick01Icon } from "@src/icons";
-
 export function getQuotaTextColorClass(
   percentage: number,
   healthyThreshold = 30
@@ -189,66 +187,6 @@ export const QuotaBarInline: React.FC<QuotaBarInlineProps> = ({
       <span className={`text-[11px] font-medium ${textColorClass}`}>
         {isUnlimited ? "∞" : `${Math.round(remainingPercent)}%`}
       </span>
-    </div>
-  );
-};
-
-interface QuotaStatusBarProps {
-  remainingPercent: number;
-  isUnlimited?: boolean;
-  isLoggedIn?: boolean;
-  planType?: string;
-  className?: string;
-}
-
-export const QuotaStatusBar: React.FC<QuotaStatusBarProps> = ({
-  remainingPercent: rawRemainingPercent,
-  isUnlimited = false,
-  isLoggedIn = true,
-  planType,
-  className = "",
-}) => {
-  const remainingPercent = Math.max(0, Math.min(100, rawRemainingPercent));
-  const textColorClass = getQuotaTextColorClass(remainingPercent);
-  const bgColorClass = getQuotaBgColorClass(remainingPercent);
-
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-md bg-fill-1 px-3 py-2 ${className}`}
-    >
-      {isLoggedIn && (
-        <>
-          <div className="flex items-center gap-1.5">
-            <HugeiconsIcon
-              icon={Tick01Icon}
-              data-icon="check"
-              size={12}
-              className="text-success-6"
-              strokeWidth={3}
-            />
-            <span className="text-[11px] text-text-2">Logged in</span>
-          </div>
-          <div className="h-3 border-r border-border-2" />
-        </>
-      )}
-      <div className="flex flex-1 items-center gap-2">
-        <span className="text-[11px] text-text-3">Quota:</span>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-fill-3">
-          <div
-            className={`h-full rounded-full ${bgColorClass}`}
-            style={{ width: `${isUnlimited ? 100 : remainingPercent}%` }}
-          />
-        </div>
-        <span className={`text-[11px] font-medium ${textColorClass}`}>
-          {isUnlimited ? "∞" : `${Math.round(remainingPercent)}%`}
-        </span>
-      </div>
-      {planType && (
-        <>
-          <div className="h-3 border-r border-border-2" />
-          <span className="text-[11px] text-text-3">{planType}</span>
-        </>
-      )}
     </div>
   );
 };

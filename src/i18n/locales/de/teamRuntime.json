@@ -1,5 +1,4 @@
 {
-  "title": "Team-Runtime",
   "refresh": "Aktualisieren",
   "loadError": "Team-Runtime konnte nicht geladen werden",
   "overview": {
@@ -67,7 +66,7 @@
     "memory": "Arbeitsspeicher",
     "unified": "unified",
     "gpu": "GPU",
-    "appVersion": "ORGII-Version",
+    "appVersion": "ORG2-Version",
     "totalSessions": "Sitzungen gesamt",
     "lastSynced": "Zuletzt synchronisiert"
   },

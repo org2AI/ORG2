@@ -16,7 +16,6 @@ import {
   PrDetailPanel,
   PrDetailTabs,
 } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/PullRequestContent/detail/PrDetailPanel";
-import { resolvePullRequestDetailStatus } from "@src/shared/pr/prLevelActions";
 import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import {
   workstationPrScopeKey,
@@ -24,6 +23,7 @@ import {
 } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import { createFileTab } from "@src/store/workstation/tabs";
 import type { GitHubPrDetailTabData } from "@src/store/workstation/tabs";
+import { resolvePullRequestDetailStatus } from "@src/util/git/pr/prLevelActions";
 
 import type { UnifiedTabContentProps } from "../types";
 

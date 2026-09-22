@@ -7,6 +7,7 @@ fn redaction_patterns() -> &'static [Regex] {
     static PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
     PATTERNS.get_or_init(|| {
         [
+            r#"(/cli/(?:codex|claude_code)/)session_[a-f0-9]{32}\b"#,
             r#"(?i)(\b[A-Z0-9_]*(?:API[_-]?KEY|TOKEN|SECRET|PASSWORD|PASS|PRIVATE[_-]?KEY|SESSION[_-]?TOKEN|ACCESS[_-]?TOKEN|REFRESH[_-]?TOKEN)[A-Z0-9_]*\b\s*[:=]\s*)[^\s'\"]+"#,
             r#"(?i)(\bBearer\s+)[A-Za-z0-9._~+/=-]{12,}"#,
             r#"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"#,
@@ -76,6 +77,19 @@ pub fn append_redacted_bounded(buffer: &mut String, chunk: &str, max_chars: usiz
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn redacts_managed_proxy_route_capabilities_without_hiding_protocol() {
+        for agent in ["codex", "claude_code"] {
+            let token = format!("session_{}", "b".repeat(32));
+            let input = format!("http://127.0.0.1:17930/cli/{agent}/{token}/v1/responses");
+            assert_eq!(
+                redact_terminal_text(&input),
+                format!("http://127.0.0.1:17930/cli/{agent}/secret_*******/v1/responses")
+            );
+            assert_eq!(redact_terminal_text(&token), token);
+        }
+    }
 
     #[test]
     fn redacts_key_value_secrets() {

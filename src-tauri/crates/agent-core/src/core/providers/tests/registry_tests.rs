@@ -162,28 +162,3 @@ fn wire_model_name_normalizes_shorthand() {
     let spec = find_by_name("anthropic").unwrap();
     assert_eq!(wire_model_name(spec, "sonnet-4.5"), "claude-sonnet-4.5");
 }
-
-#[test]
-fn fast_model_hint_for_claude() {
-    assert!(fast_model_hint("claude-sonnet-4").contains("haiku"));
-}
-
-#[test]
-fn fast_model_hint_for_gpt() {
-    assert!(fast_model_hint("gpt-4o").contains("mini"));
-}
-
-#[test]
-fn fast_model_hint_for_gemini() {
-    assert!(fast_model_hint("gemini-2.0-pro").contains("flash"));
-}
-
-#[test]
-fn fast_model_hint_for_deepseek() {
-    assert!(fast_model_hint("deepseek-r1").contains("deepseek-chat"));
-}
-
-#[test]
-fn fast_model_hint_unknown_returns_self() {
-    assert_eq!(fast_model_hint("custom-model"), "custom-model");
-}

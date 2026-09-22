@@ -17,6 +17,7 @@
  */
 import React, { forwardRef, memo } from "react";
 
+import Button from "@src/components/Button";
 import type { ButtonVariant } from "@src/components/Button";
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 import { classNames } from "@src/util/ui/classNames";
@@ -30,12 +31,8 @@ import { STATUS_BAR_TOKENS, STATUS_BAR_TYPOGRAPHY } from "./statusBarTokens";
 export interface BaseStatusBarProps {
   /** Content for the left section */
   leftContent?: React.ReactNode;
-  /** Content for the center section (optional, absolute positioned) */
-  centerContent?: React.ReactNode;
   /** Content for the right section */
   rightContent?: React.ReactNode;
-  /** Whether to use rounded bottom corners (for simulator frame) */
-  roundedBottom?: boolean;
   /** Additional class name */
   className?: string;
 }
@@ -124,9 +121,9 @@ export const StatusBarButton = memo(
           : STATUS_BAR_TOKENS.buttonGhost;
 
       return (
-        <button
+        <Button
+          layout="custom"
           ref={ref}
-          type="button"
           className={classNames(
             STATUS_BAR_TOKENS.button,
             variantClass,
@@ -145,7 +142,7 @@ export const StatusBarButton = memo(
           data-testid={dataTestId}
         >
           {children}
-        </button>
+        </Button>
       );
     }
   )
@@ -286,13 +283,7 @@ StatusBarDivider.displayName = "StatusBarDivider";
 // ============================================
 
 export const BaseStatusBar: React.FC<BaseStatusBarProps> = memo(
-  ({
-    leftContent,
-    centerContent,
-    rightContent,
-    roundedBottom = false,
-    className,
-  }) => {
+  ({ leftContent, rightContent, className }) => {
     return (
       <div
         className={classNames(
@@ -300,22 +291,13 @@ export const BaseStatusBar: React.FC<BaseStatusBarProps> = memo(
           STATUS_BAR_TOKENS.heightClass,
           STATUS_BAR_TOKENS.typographyClass,
           STATUS_BAR_TOKENS.barPaddingClass,
-          // Top hairline = boundary with the content area above. The
-          // bottom hairline (boundary with the dock) is owned by
-          // `StationDockChrome` so every consumer renders the same line
-          // at the same DOM depth — see comment in StationDockChrome.
+          // Top hairline = boundary with the content area above.
           "border-t border-border-2 text-text-1",
-          roundedBottom && "rounded-b-page",
           className
         )}
       >
         {/* Left section */}
         <div className={STATUS_BAR_TOKENS.leftCluster}>{leftContent}</div>
-
-        {/* Center section (absolute positioned) */}
-        {centerContent && (
-          <div className={STATUS_BAR_TOKENS.centerCluster}>{centerContent}</div>
-        )}
 
         {/* Right section */}
         <div className={STATUS_BAR_TOKENS.rightCluster}>{rightContent}</div>

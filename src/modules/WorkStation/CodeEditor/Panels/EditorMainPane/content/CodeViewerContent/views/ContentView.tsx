@@ -5,7 +5,7 @@
  * Handles preview modes (markdown, HTML, JSON, CSV),
  * conflict editor, and regular CodeMirror editor.
  */
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import React, { Suspense, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,19 +16,9 @@ import {
   CodeMirrorEditor,
   type ConflictResolutionChoice,
 } from "@src/features/CodeMirror";
-import {
-  FileHeader,
-  TabBarBottomPanelToggle,
-  UnsavedChangesBar,
-} from "@src/modules/WorkStation/shared";
+import { useEditorDisplayToggles } from "@src/hooks/settings/useEditorDisplayToggles";
+import { FileHeader, UnsavedChangesBar } from "@src/modules/WorkStation/shared";
 import { EditorService } from "@src/services/workStation/EditorService";
-import {
-  editorHighlightActiveLineAtom,
-  editorLineNumbersAtom,
-  editorShowBlameAtom,
-  editorShowMinimapAtom,
-  editorWordWrapAtom,
-} from "@src/store/ui/editorSettingsAtom";
 import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { stampStyleNonces } from "@src/util/iframeCspNonce";
 
@@ -84,13 +74,8 @@ export const ContentView: React.FC<ContentViewProps> = ({
   onCloseSelectionDropdown,
 }) => {
   const { t } = useTranslation();
-  const [lineNumbers, setLineNumbers] = useAtom(editorLineNumbersAtom);
-  const [wordWrap, setWordWrap] = useAtom(editorWordWrapAtom);
-  const [showMinimap, setShowMinimap] = useAtom(editorShowMinimapAtom);
-  const [highlightActiveLine, setHighlightActiveLine] = useAtom(
-    editorHighlightActiveLineAtom
-  );
-  const [showBlame, setShowBlame] = useAtom(editorShowBlameAtom);
+  const toggles = useEditorDisplayToggles();
+  const showBlame = toggles.gitBlameEnabled;
   const { onOpenSettings } = useAtomValue(activeStatusBarCallbacksAtom);
   const isPlanFile = relativePath?.endsWith(".plan.md") ?? false;
   const isSkillFile =
@@ -113,12 +98,6 @@ export const ContentView: React.FC<ContentViewProps> = ({
   const handleGoToLineRequest = useCallback(() => {
     EditorService.openGoToLinePanel();
   }, []);
-  const handleLineNumbersChange = useCallback(
-    (enabled: boolean) => {
-      setLineNumbers(enabled ? "on" : "off");
-    },
-    [setLineNumbers]
-  );
   const canToggleBlame = !isDeletedFile;
 
   return (
@@ -140,19 +119,19 @@ export const ContentView: React.FC<ContentViewProps> = ({
             : undefined
         }
         relativePathToCopy={relativePath}
-        lineNumbersEnabled={lineNumbers !== "off"}
-        onLineNumbersChange={handleLineNumbersChange}
-        wordWrapEnabled={wordWrap}
-        onWordWrapChange={setWordWrap}
-        minimapEnabled={showMinimap}
-        onMinimapChange={setShowMinimap}
-        highlightActiveLineEnabled={highlightActiveLine}
-        onHighlightActiveLineChange={setHighlightActiveLine}
+        lineNumbersEnabled={toggles.lineNumbersEnabled}
+        onLineNumbersChange={toggles.onLineNumbersChange}
+        wordWrapEnabled={toggles.wordWrapEnabled}
+        onWordWrapChange={toggles.onWordWrapChange}
+        minimapEnabled={toggles.minimapEnabled}
+        onMinimapChange={toggles.onMinimapChange}
+        highlightActiveLineEnabled={toggles.highlightActiveLineEnabled}
+        onHighlightActiveLineChange={toggles.onHighlightActiveLineChange}
         showGitBlameToggle={canToggleBlame}
         gitBlameEnabled={showBlame}
-        onGitBlameChange={setShowBlame}
-        beforeMoreMenuSlot={<TabBarBottomPanelToggle />}
+        onGitBlameChange={toggles.onGitBlameChange}
         onMoreSettings={onOpenSettings}
+        showSidebarSettings
         loading={false}
         hasUnsavedChanges={hasUnsavedChanges}
         isMarkdownFile={isPreviewable}

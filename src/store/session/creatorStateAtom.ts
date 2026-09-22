@@ -9,9 +9,9 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 
-import type { AgentRole } from "@src/api/http/project/types/agentWorkflow";
 import type { CliAgentType } from "@src/api/tauri/rpc/schemas/validation";
 import type { DispatchCategory } from "@src/api/tauri/session";
+import type { AgentRole } from "@src/contracts/project/agentWorkflow";
 import { createLogger } from "@src/hooks/logger";
 import {
   BUILTIN_SDE_DEF_ID,

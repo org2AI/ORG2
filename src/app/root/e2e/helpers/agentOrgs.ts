@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { ideServerAuthHeaders } from "@src/config/ideServer";
+
 import { asError } from "../result";
 import type { E2EHelpers, Json, Result } from "../types";
 import { e2eUrl } from "./e2eBaseUrl";
@@ -8,7 +10,7 @@ type AgentOrgE2EHelpers = Pick<
   E2EHelpers,
   | "listAgentOrgs"
   | "removeAgentOrg"
-  | "debugAgentOrgEnableRedesign"
+  | "debugAgentOrgEnable"
   | "debugSessionOrgRuntimeSnapshot"
   | "debugSessionExecuteTool"
   | "debugSessionExecuteOrgTool"
@@ -27,11 +29,9 @@ type AgentOrgE2EHelpers = Pick<
 >;
 
 export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
-  const debugAgentOrgEnableRedesign = async (): Promise<
-    Result<{ enabled: true }>
-  > => {
+  const debugAgentOrgEnable = async (): Promise<Result<{ enabled: true }>> => {
     try {
-      await invoke("debug_agent_org_enable_redesign");
+      await invoke("debug_agent_org_enable");
       return { ok: true, enabled: true };
     } catch (err) {
       return asError(err);
@@ -410,7 +410,13 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
     try {
       const response = await fetch(
         e2eUrl("/agent/test/agent-org/simulate-app-restart"),
-        { method: "POST", headers: { "Content-Type": "application/json" } }
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...ideServerAuthHeaders(),
+          },
+        }
       );
       const body = (await response.json()) as {
         ok: boolean;
@@ -445,7 +451,7 @@ export function createAgentOrgHelpers(): AgentOrgE2EHelpers {
   };
 
   return {
-    debugAgentOrgEnableRedesign,
+    debugAgentOrgEnable,
     listAgentOrgs,
     removeAgentOrg,
     debugSessionOrgRuntimeSnapshot,

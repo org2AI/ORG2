@@ -8,7 +8,6 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import type { VirtuosoHandle } from "react-virtuoso";
 
 import {
   STORY_SYNC_ADAPTER,
@@ -17,6 +16,7 @@ import {
 import { type ProjectOrg, projectApi } from "@src/api/http/project";
 import IntegrationIcon from "@src/components/IntegrationIcon";
 import { TREE_ROW_HEIGHT, TreeRowBase } from "@src/components/TreeRow";
+import type { VirtualListHandle } from "@src/components/VirtualList";
 import {
   type FlattenedTreeNode,
   VirtualizedStickyTree,
@@ -109,7 +109,7 @@ export const OrgSidebarTreeContent: React.FC<ProjectSidebarTreeContentProps> =
     }) => {
       const { t } = useTranslation(["projects", "common"]);
       const refreshSignal = useAtomValue(projectListRefreshAtom);
-      const virtuosoRef = useRef<VirtuosoHandle>(null);
+      const listRef = useRef<VirtualListHandle>(null);
       const [projectOrgs, setProjectOrgs] = useState<ProjectOrg[]>([]);
       const [loadingProjectOrgs, setLoadingProjectOrgs] = useState(false);
       const [projectOrgError, setProjectOrgError] = useState<string | null>(
@@ -381,7 +381,7 @@ export const OrgSidebarTreeContent: React.FC<ProjectSidebarTreeContentProps> =
           flattenedNodes={flattenedNodes}
           rowHeight={TREE_ROW_HEIGHT}
           renderItem={renderItem}
-          virtuosoRef={virtuosoRef}
+          listRef={listRef}
           loading={loadingProjectOrgs || loadingLinearTeams}
           emptyMessage={t("projects:orgs.noLinearOrgs")}
         />

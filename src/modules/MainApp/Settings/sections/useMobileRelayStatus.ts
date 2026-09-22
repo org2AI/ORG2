@@ -1,13 +1,17 @@
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type RelayStatus, mobileRemoteApi } from "@src/api/tauri/mobileRemote";
 import { safeUnlisten } from "@src/util/platform/tauri/safeUnlisten";
 
 /** Subscribe before reading; serialize invalidations and discard stale reads. */
 export function useMobileRelayStatus(key: string, enabled: boolean) {
+  const subscriptionScope = useMemo(() => ({ key, enabled }), [key, enabled]);
+  const [manualRefreshScope, setManualRefreshScope] = useState<
+    typeof subscriptionScope | null
+  >(null);
   const [snapshot, setSnapshot] = useState<{
-    key: string;
+    scope: typeof subscriptionScope;
     data: RelayStatus | null;
     loading: boolean;
     error: string | null;
@@ -16,6 +20,7 @@ export function useMobileRelayStatus(key: string, enabled: boolean) {
   const refresh = useCallback(() => requestRef.current?.(), []);
 
   useEffect(() => {
+    const { enabled } = subscriptionScope;
     if (!enabled) return;
     let cancelled = false;
     let inFlight = false;
@@ -27,7 +32,12 @@ export function useMobileRelayStatus(key: string, enabled: boolean) {
       dirty = true;
       if (inFlight) return;
       inFlight = true;
-      setSnapshot({ key, data, loading: true, error: null });
+      setSnapshot({
+        scope: subscriptionScope,
+        data,
+        loading: true,
+        error: null,
+      });
       try {
         do {
           dirty = false;
@@ -36,12 +46,22 @@ export function useMobileRelayStatus(key: string, enabled: boolean) {
             if (cancelled) return;
             if (!dirty) {
               data = next;
-              setSnapshot({ key, data, loading: false, error: null });
+              setSnapshot({
+                scope: subscriptionScope,
+                data,
+                loading: false,
+                error: null,
+              });
             }
           } catch (error) {
             if (cancelled) return;
             if (!dirty)
-              setSnapshot({ key, data, loading: false, error: String(error) });
+              setSnapshot({
+                scope: subscriptionScope,
+                data,
+                loading: false,
+                error: String(error),
+              });
           }
         } while (dirty && !cancelled);
       } finally {
@@ -51,7 +71,12 @@ export function useMobileRelayStatus(key: string, enabled: boolean) {
     const requestStatus = () => {
       void request().catch((error: unknown) => {
         if (!cancelled)
-          setSnapshot({ key, data, loading: false, error: String(error) });
+          setSnapshot({
+            scope: subscriptionScope,
+            data,
+            loading: false,
+            error: String(error),
+          });
       });
     };
     requestRef.current = requestStatus;
@@ -64,24 +89,30 @@ export function useMobileRelayStatus(key: string, enabled: boolean) {
           return;
         }
         unlisten = dispose;
+        setManualRefreshScope(null);
         requestStatus();
       })
       .catch(() => {
         // Older/non-native hosts still support the visible manual refresh action.
-        if (!cancelled) requestStatus();
+        if (!cancelled) {
+          setManualRefreshScope(subscriptionScope);
+          requestStatus();
+        }
       });
     return () => {
       cancelled = true;
       requestRef.current = null;
       safeUnlisten(unlisten);
     };
-  }, [key, enabled]);
+  }, [subscriptionScope]);
 
-  const current = enabled && snapshot?.key === key ? snapshot : null;
+  const current =
+    enabled && snapshot?.scope === subscriptionScope ? snapshot : null;
   return {
     data: current?.data ?? null,
     loading: enabled && (current?.loading ?? true),
     error: current?.error ?? null,
+    manualRefreshRequired: enabled && manualRefreshScope === subscriptionScope,
     refresh,
   };
 }

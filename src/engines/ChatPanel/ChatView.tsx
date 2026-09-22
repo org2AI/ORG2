@@ -34,6 +34,7 @@ import React, {
 } from "react";
 
 import { useShowInteractArea } from "@src/contexts/workspace/ChatContext";
+import { resolveAgentOrgComposerExecutionOwnership } from "@src/engines/ChatPanel/agentOrgComposerOwnership";
 import { derivePlanApprovalViewState } from "@src/engines/SessionCore/derived/planDisplayEvents";
 import { chatEventsForSessionAtomFamily } from "@src/engines/SessionCore/derived/sessionScopedChatEvents";
 import { useTodoSync } from "@src/engines/SessionCore/hooks/session/useTodoSync";
@@ -70,7 +71,6 @@ import {
   shouldShowExternalHistoryContinuationComposer,
   shouldShowMainChatComposer,
 } from "./chatViewComposerVisibility";
-import { resolveInitialFileChanges } from "./chatViewFileChanges";
 import type { ConversationTargetBinding } from "./conversationTargetSelection";
 import { useConversationSubmitRouter } from "./hooks/conversationSubmit/useConversationSubmitRouter";
 import { useBrowserAddToConversationAction } from "./hooks/useBrowserAddToConversationAction";
@@ -78,10 +78,10 @@ import { useChatViewAgentOrgSurface } from "./hooks/useChatViewAgentOrgSurface";
 import { useChatViewAgentStationDiff } from "./hooks/useChatViewAgentStationDiff";
 import { useChatViewFilesMenu } from "./hooks/useChatViewFilesMenu";
 import { useChatViewFloatingComposerInset } from "./hooks/useChatViewFloatingComposerInset";
-import { useChatViewOrgtrackSummary } from "./hooks/useChatViewOrgtrackSummary";
 import { useChatViewPipelineClaim } from "./hooks/useChatViewPipelineClaim";
 import { useChatViewPlanPillState } from "./hooks/useChatViewPlanPillState";
 import { useChatViewScrollToBottom } from "./hooks/useChatViewScrollToBottom";
+import { useChatViewSessionImpact } from "./hooks/useChatViewSessionImpact";
 import { useConversationTargetBinding } from "./hooks/useConversationTargetBinding";
 import { useFollowAgent } from "./hooks/useFollowAgent";
 import {
@@ -104,7 +104,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
     conversationTargetBinding,
     displayMode = "full",
     turnPaginationEnabled = true,
-    position = "right",
     surfaceBgClass = "bg-chat-pane",
     readOnly = false,
     secondary = false,
@@ -122,7 +121,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
     );
 
     const isCursorIde = isCursorIdeSession(sessionId);
-    const isExternalHistory = isExternalHistorySession(sessionId);
     const isImportedHistory = isImportedHistorySession(sessionId);
     const isReadOnlySurface = readOnly || isImportedHistory;
 
@@ -147,18 +145,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       hydratedSessionIdsRef.current.add(sessionId);
       void loadSessions({ forceRefresh: true });
     }, [currentSession?.productMode, isImportedHistory, sessionId]);
-    const orgtrackSummary = useChatViewOrgtrackSummary(sessionId);
-
-    const initialFileChanges = useMemo(
-      () =>
-        resolveInitialFileChanges({
-          currentSession,
-          isCursorIde,
-          isExternalHistory,
-          orgtrackSummary,
-        }),
-      [currentSession, isCursorIde, isExternalHistory, orgtrackSummary]
-    );
 
     // Backend `agent_session_list_workspaces` only resolves sessions whose
     // runtime is currently attached. Historical sessions (status
@@ -240,6 +226,15 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       [sessionId]
     );
     const followUpEvents = useAtomValue(followUpEventsAtom);
+    const { orgtrackSummary, resolvedFileChangeStats } =
+      useChatViewSessionImpact({
+        sessionId,
+        isImportedHistory,
+        session: currentSession,
+        assistantFingerprint: isImportedHistory
+          ? latestCompletedAssistantFingerprint(followUpEvents)
+          : null,
+      });
     const showCurrentPlanSurfaceAtom = useMemo(
       () =>
         selectAtom(
@@ -282,6 +277,9 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
 
     const { scrollNav, handleScrollNavChange, externalScrollToBottomButton } =
       useChatViewScrollToBottom();
+    const handleBeforeMessageDispatch = useCallback(() => {
+      scrollNav?.onScrollToBottom();
+    }, [scrollNav]);
 
     const {
       agentOrgRunView,
@@ -309,8 +307,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       handleAgentOrgMemberSessionJump,
       handleMainComposerSubmitOverride,
       cancelQueuedMessage,
-      queueTailKey,
-      handleClearSessionQueue,
       handleReorderSessionQueue,
       handleSendNow,
       queueEditProps,
@@ -322,18 +318,46 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       sessionId,
       showCurrentPlanSurface,
       conversationRoot: conversationTargetBinding?.root ?? null,
+      onBeforeMessageDispatch: handleBeforeMessageDispatch,
     });
+    // The visible ChatView's session is the authoritative composer target.
+    // Agent-org member views may override it with queueSessionId, but ordinary
+    // imported teammate sessions have no agent-org queue target. Passing null
+    // there made useMessageDispatch fail before onSubmitOverride could admit
+    // the turn to the canonical queue ("no active sessionId"), so no writable
+    // native execution episode could be prepared.
+    const inputAreaSessionId = queueSessionId ?? sessionId;
+    const inputAreaSession = useAtomValue(sessionByIdAtom(inputAreaSessionId));
+    const composerOwnership = groupChatViewActive
+      ? {
+          isDirectAgentOrgMember: false,
+          executionBinding: conversationTargetBinding,
+        }
+      : resolveAgentOrgComposerExecutionOwnership(
+          inputAreaSession,
+          conversationTargetBinding
+        );
+    const { isDirectAgentOrgMember } = composerOwnership;
+    const composerExecutionBinding = composerOwnership.executionBinding;
     const {
       submit: handleConversationSubmit,
       retry: handleCanonicalConversationRetry,
       resolveDispatch: resolveCanonicalRetryDispatch,
     } = useConversationSubmitRouter({
       sessionId,
+      isDirectAgentOrgMember,
       currentSession,
       root: conversationTargetBinding?.root ?? null,
       selectedTarget: conversationTargetBinding?.target ?? null,
       onSurfaceSubmit: handleMainComposerSubmitOverride,
     });
+    const handleConversationSubmitWithTailFollow = useCallback(
+      (input: Parameters<typeof handleConversationSubmit>[0]) => {
+        handleBeforeMessageDispatch();
+        return handleConversationSubmit(input);
+      },
+      [handleBeforeMessageDispatch, handleConversationSubmit]
+    );
 
     // Primary card active-data state (reported up by each card)
     const [hasQuestion, setHasQuestion] = useState(false);
@@ -359,17 +383,13 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       collapsePermission,
       collapseModeSwitch,
       collapsePlan,
-      queueExpanded,
       processExpanded,
-      toggleQueue,
       toggleProcess,
       hasAny,
       inlineSections,
       setProcessVisibleCount,
     } = useComposerSections({
       sessionId,
-      queueCount: sessionMessageQueue.length,
-      queueTailKey,
       hasQuestion,
       hasPermission,
       hasModeSwitch,
@@ -393,15 +413,8 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
     // coordinator-scoped feed, and header actions such as collapse-all are
     // keyed by the coordinator session id.
     const chatHistorySessionId = groupChatViewActive
-      ? sessionId
+      ? queueSessionId
       : agentOrgInteractionSessionId;
-    // The visible ChatView's session is the authoritative composer target.
-    // Agent-org member views may override it with queueSessionId, but ordinary
-    // imported teammate sessions have no agent-org queue target. Passing null
-    // there made useMessageDispatch fail before onSubmitOverride could admit
-    // the turn to the canonical queue ("no active sessionId"), so no writable
-    // native execution episode could be prepared.
-    const inputAreaSessionId = queueSessionId ?? sessionId;
     const {
       suggestions: followUpSuggestions,
       clearSuggestions: clearFollowUpSuggestions,
@@ -419,7 +432,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         showMainComposer,
         composerRef: setMeasuredFloatingComposerRef,
         inputBoxRef,
-        chatPanelPosition: position,
         planCollapsed,
         onPlanCollapse: collapsePlan,
         questionCollapsed,
@@ -431,19 +443,16 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         onQuestionDataChange: setHasQuestion,
         onPermissionDataChange: setHasPermission,
         onModeSwitchDataChange: setHasModeSwitch,
-        queueExpanded,
         processExpanded,
         queuedMessages: sessionMessageQueue,
         onCancelQueuedMessage: cancelQueuedMessage,
-        onClearQueuedMessages: handleClearSessionQueue,
         onSendQueuedMessageNow: handleSendNow,
         onReorderQueuedMessages: handleReorderSessionQueue,
-        onToggleQueue: toggleQueue,
         onToggleProcess: toggleProcess,
         onProcessVisibleCountChange: setProcessVisibleCount,
         onFilesExpand: openAgentStationDiff,
         filesMenu,
-        initialFileChanges,
+        resolvedFileChangeStats,
         groupChatPendingMessage,
         groupChatViewActive,
         hasAnyInlineSection: hasAny,
@@ -453,7 +462,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         agentOrgIntervention: agentOrgInterventionSlot,
         streamRetry,
         groupChatPausedBottomContent,
-        onSubmitOverride: handleConversationSubmit,
+        onSubmitOverride: handleConversationSubmitWithTailFollow,
         customMentionOptions: groupChatMentionOptions,
         queueEditProps,
         disableStopWhenEmpty: groupChatViewActive,
@@ -471,7 +480,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         inputAreaSessionId,
         showMainComposer,
         setMeasuredFloatingComposerRef,
-        position,
         planCollapsed,
         collapsePlan,
         questionCollapsed,
@@ -480,19 +488,16 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         collapseQuestion,
         collapsePermission,
         collapseModeSwitch,
-        queueExpanded,
         processExpanded,
         sessionMessageQueue,
         cancelQueuedMessage,
-        handleClearSessionQueue,
         handleSendNow,
         handleReorderSessionQueue,
-        toggleQueue,
         toggleProcess,
         setProcessVisibleCount,
         openAgentStationDiff,
         filesMenu,
-        initialFileChanges,
+        resolvedFileChangeStats,
         groupChatPendingMessage,
         groupChatViewActive,
         currentAgentOrgMember,
@@ -504,7 +509,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         agentOrgInterventionSlot,
         streamRetry,
         groupChatPausedBottomContent,
-        handleConversationSubmit,
+        handleConversationSubmitWithTailFollow,
         groupChatMentionOptions,
         queueEditProps,
         followUpSuggestions,
@@ -564,7 +569,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                   <ChatViewHistorySurface
                     sessionId={
                       groupChatViewActive
-                        ? sessionId
+                        ? chatHistorySessionId
                         : runnerBindings.sourceSessionId
                     }
                     groupChatViewActive={groupChatViewActive}
@@ -581,7 +586,6 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                     handleRetryGroupDelivery={handleRetryGroupDelivery}
                     agentMessageClampEligible={agentMessageClampEligible}
                     surfaceBgClass={surfaceBgClass}
-                    position={position}
                     currentAgentOrgMember={currentAgentOrgMember}
                     agentOrgRunView={agentOrgRunView}
                     agentOrgRunViewError={agentOrgRunViewError}
@@ -622,7 +626,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
                   />
                 ) : (
                   <ConversationExecutionBindingContext.Provider
-                    value={conversationTargetBinding}
+                    value={composerExecutionBinding}
                   >
                     <ChatViewComposerSection
                       {...composerSectionProps}

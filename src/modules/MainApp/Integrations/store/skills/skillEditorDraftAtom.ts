@@ -17,10 +17,19 @@ export { SKILL_SCOPE, type SkillScope };
 export interface BundledFileDraft {
   relativePath: string;
   content: string;
+  /** Baseline used to submit only user-edited text files. */
+  originalPath?: string;
+  originalContent?: string;
+  /** Unreadable/binary files stay on disk and cannot become empty writes. */
+  readError?: string;
+  binary?: boolean;
 }
 
 export interface SkillEditorDraft {
   name: string;
+  originalFrontmatter: string | null;
+  /** Captured workspace identity; editor navigation must not redirect a save. */
+  workspacePath?: string | null;
   description: string;
   alwaysActive: boolean;
   version: string;
@@ -49,6 +58,7 @@ export interface SkillEditorDraft {
 export function createEmptySkillDraft(): SkillEditorDraft {
   return {
     name: "",
+    originalFrontmatter: null,
     description: "",
     alwaysActive: false,
     version: "",

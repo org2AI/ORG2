@@ -1,8 +1,5 @@
 /**
- * Window Types for Simulator Multi-Window Support
- *
- * Provides type definitions and configurations for managing multiple windows
- * within the simulator environment.
+ * Window action icons for the simulator dock context menu.
  */
 import {
   ArrowExpand01Icon,
@@ -11,11 +8,6 @@ import {
   type IconSvgElement,
   MinusSignIcon,
 } from "@src/icons";
-
-/**
- * Layout mode for the simulator
- */
-export type LayoutMode = "single";
 
 export const WINDOW_ICONS: Record<string, IconSvgElement> = {
   switchTo: ArrowLeftRightIcon,

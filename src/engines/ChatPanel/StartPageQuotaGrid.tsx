@@ -9,12 +9,15 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import Message from "@src/components/Message";
 import ModelIcon from "@src/components/ModelIcon";
 import {
   getQuotaBgColorClass,
   getQuotaTextColorClass,
 } from "@src/components/QuotaBar";
+import { SECTION_GAP_CLASSES } from "@src/components/layout/Section";
+import { RuntimeSectionHeader } from "@src/features/RuntimeDataSource/RuntimeSectionHeader";
 import { useKeyVault } from "@src/hooks/keyVault";
 import {
   type AccountQuotaCard,
@@ -23,11 +26,6 @@ import {
 } from "@src/hooks/keyVault/accountQuotaDisplay";
 import { createLogger } from "@src/hooks/logger";
 import { ArrowLeft01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
-import {
-  RuntimeRefreshButton,
-  RuntimeSectionHeader,
-} from "@src/modules/shared/dataSource/RuntimeSectionHeader";
-import { SECTION_GAP_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
 
 const logger = createLogger("StartPageQuotaGrid");
 
@@ -368,11 +366,11 @@ export function StartPageQuotaGrid({
       {showHeader ? (
         <RuntimeSectionHeader
           title={t("kanban.dataSource.views.quota")}
-          className="-mx-4 bg-chat-pane px-4 pt-2 pb-1"
+          className="-mx-4 bg-chat-pane px-4"
           dataTestId="quota-refresh-controls"
           headingLevel="h3"
         >
-          <RuntimeRefreshButton
+          <RefreshButton
             label={t("chat.startPage.quota.refresh")}
             onRefresh={handleRefreshAll}
             refreshing={refreshing}

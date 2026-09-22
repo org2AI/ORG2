@@ -4,8 +4,10 @@ import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import {
-  org2CloudOrgsAtom,
+  beginOrg2CloudOrgsRequest,
+  commitOrg2CloudOrgsRequest,
   sidebarActiveCloudOrgIdAtom,
 } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { createSmokeRoot } from "@src/test/reactSmokeHarness";
@@ -64,7 +66,16 @@ describe("WebCloudRealtimeScope", () => {
 
   it("projects the route org for Realtime and clears it on teardown", async () => {
     const store = createStore();
-    store.set(org2CloudOrgsAtom, [
+    store.set(org2CloudAuthAtom, {
+      kind: "org2_cloud",
+      userId: "viewer",
+      supabaseUrl: "https://example.test",
+      supabaseAnonKey: "anon",
+      accessToken: "access",
+      refreshToken: "refresh",
+      expiresAt: 9999999999,
+    });
+    commitOrg2CloudOrgsRequest(store, beginOrg2CloudOrgsRequest(store), [
       { orgId: "org-1", name: "One", role: "member" },
       { orgId: "org-2", name: "Two", role: "member" },
     ]);

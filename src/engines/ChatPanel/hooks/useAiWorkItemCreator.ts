@@ -20,10 +20,7 @@ import { resolveHumanAssigneeWrite } from "@src/modules/ProjectManager/WorkItems
 import { openSessionInNewChatTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { SESSION_TARGET_KIND } from "@src/store/session";
 import type { SessionCreatorState } from "@src/store/session/creatorStateAtom";
-import {
-  type ChatPanelCreateProjectContext,
-  type ChatPanelSelectedProject,
-} from "@src/store/ui/chatPanel/selectionAtoms";
+import { type ChatPanelCreateProjectContext } from "@src/store/ui/chatPanel/selectionAtoms";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 import { createWorkItemDetailTab } from "@src/store/workstation/tabs";
@@ -77,7 +74,6 @@ interface UseAiWorkItemCreatorOptions {
   createProjectContext: ChatPanelCreateProjectContext | null;
   creatorState: SessionCreatorState;
   setActiveSessionId: (sessionId: string | null) => void;
-  setSelectedProject: (project: ChatPanelSelectedProject | null) => void;
   setWorkItemCreateDraft: (draft: WorkItemDraft | null) => void;
   setWorkstationActiveSessionId: (sessionId: string | null) => void;
   workItemCreateDraft: WorkItemDraft | null;
@@ -88,7 +84,6 @@ export function useAiWorkItemCreator({
   createProjectContext,
   creatorState,
   setActiveSessionId,
-  setSelectedProject,
   setWorkItemCreateDraft,
   setWorkstationActiveSessionId,
   workItemCreateDraft,
@@ -320,7 +315,6 @@ export function useAiWorkItemCreator({
         );
       }
 
-      setSelectedProject(null);
       setWorkItemCreateDraft(null);
       // Land the launched session in the LEFT chat panel as a normal session
       // tab (the existing chat UX), and open the Work Item detail in the
@@ -348,7 +342,6 @@ export function useAiWorkItemCreator({
       openLaunchedSessionTab,
       openStationTab,
       setActiveSessionId,
-      setSelectedProject,
       setStationMode,
       setWorkItemCreateDraft,
       setWorkstationActiveSessionId,

@@ -92,7 +92,7 @@ export function getProjectManagerBreadcrumbSegments(
     ];
   }
 
-  if (tab.type === "project-org" || tab.type === "project-org-settings") {
+  if (tab.type === "project-org") {
     return [{ label: getProjectOrgName(tab, t("orgs.personalOrg")) }];
   }
 

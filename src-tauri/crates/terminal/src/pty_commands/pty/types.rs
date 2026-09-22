@@ -3,7 +3,10 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::atomic::Ordering};
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use super::session::PtySession;
 use crate::pty_commands::shells::ShellKind;
@@ -12,11 +15,44 @@ use crate::pty_commands::shells::ShellKind;
 // Request Types
 // ============================================
 
+/// Immutable identity of one native PTY, also returned by `create_pty`.
+/// A decimal string avoids JavaScript's integer precision limit. The counter
+/// is process-local: no event or PTY survives a native process restart.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PtySessionIdentity {
+    pub session_generation: String,
+}
+
+impl PtySessionIdentity {
+    pub(crate) fn new() -> Self {
+        static NEXT_GENERATION: AtomicU64 = AtomicU64::new(1);
+        Self {
+            session_generation: NEXT_GENERATION.fetch_add(1, Ordering::Relaxed).to_string(),
+        }
+    }
+
+    pub(crate) fn exit_event(&self, owner_id: u64) -> PtyExitEvent {
+        PtyExitEvent {
+            session_generation: self.session_generation.clone(),
+            owner_id,
+        }
+    }
+}
+
+/// Captured before releasing registry ownership, never looked up at dispatch.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PtyExitEvent {
+    pub session_generation: String,
+    pub owner_id: u64,
+}
+
 /// Request payload for creating a new PTY session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreatePtyRequest {
     /// Unique identifier for this terminal session (e.g., "terminal-pty-1768913809817")
     pub session_id: String,
+    #[serde(default)]
+    pub owner_id: Option<u64>,
     /// Number of rows (height) for the terminal
     pub rows: u16,
     /// Number of columns (width) for the terminal
@@ -87,19 +123,17 @@ pub(super) fn pty_info_from_session(session_id: &str, session: &PtySession) -> P
             .expect("last_output_at mutex poisoned"),
         has_output_tap: session.output_tap.is_some(),
         unacked_bytes: session.unacked_bytes.load(Ordering::Relaxed),
-        redacted_output_chars: session
-            .redacted_output
-            .lock()
-            .expect("redacted_output mutex poisoned")
-            .chars()
-            .count(),
+        redacted_output_chars: session.inspection_chars(),
     }
 }
 
 /// Response for `attach_pty_stream`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AttachPtyStream {
-    /// Bounded, redacted snapshot of recent output (restore base).
+    pub session_generation: String,
+    /// Incomplete UTF-8 suffix to seed the new webview decoder.
+    pub pending_utf8_b64: String,
+    /// Bounded local display replay; agent inspection uses a separate redacted projection.
     pub output: String,
     /// Stream offset covered by `output`. Live `pty-output` chunks whose
     /// `seq` is below this are already contained in the snapshot and must

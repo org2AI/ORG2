@@ -12,15 +12,7 @@ import React from "react";
 import { getToolIcon } from "@src/config/toolIcons";
 import type { ToolUsageMetadata } from "@src/engines/SessionCore/core/types";
 
-import ToolUsageBadge from "../ToolCallBlock/ToolUsageBadge";
-import {
-  EventBlockHeader,
-  EventBlockHeaderIcon,
-  EventBlockHeaderSubtitle,
-  EventBlockHeaderTitle,
-  getEventBlockContainerClasses,
-} from "../primitives";
-import { useBlockHeader } from "../useBlockLocate";
+import { HeaderOnlyBlock } from "../primitives";
 
 interface ListDirBlockProps {
   /** Directory path being listed (raw value from the event). */
@@ -42,61 +34,25 @@ interface ListDirBlockProps {
 
 const ListDirBlock: React.FC<ListDirBlockProps> = React.memo(
   ({ dirPath, isLoading = false, eventId, title, targetPath, toolUsage }) => {
-    const {
-      isHeaderHovered,
-      handleHeaderMouseEnter,
-      handleHeaderMouseLeave,
-      handleLocate,
-    } = useBlockHeader({
-      defaultCollapsed: true,
-      eventId,
-      collapseAllValue: false,
-      preserveDefaultOnExpand: true,
-    });
-
     // Prefer the formatted repo-relative label; fall back to the raw event
     // path. Hide the subtitle entirely for cwd-only events (`"."`) so the
     // header reads cleanly as "Listed contents".
     const subtitle =
       targetPath || (dirPath && dirPath !== "." ? dirPath : undefined);
-    const subtitleTitle = subtitle || undefined;
 
     return (
-      <div className={getEventBlockContainerClasses(false)}>
-        <EventBlockHeader
-          isCollapsed
-          withHover={false}
-          onNavigate={handleLocate}
-          onMouseEnter={handleHeaderMouseEnter}
-          onMouseLeave={handleHeaderMouseLeave}
-          rightContent={
-            toolUsage ? <ToolUsageBadge usage={toolUsage} /> : undefined
-          }
-        >
-          <EventBlockHeaderIcon
-            icon={getToolIcon("list_dir", {
-              size: 14,
-              className: "text-text-2",
-            })}
-            isCollapsed
-            isHeaderHovered={isHeaderHovered}
-            hasContent={false}
-            isLoading={isLoading}
-          />
-          <EventBlockHeaderTitle isLoading={isLoading}>
-            {title}
-          </EventBlockHeaderTitle>
-          {subtitle && (
-            <EventBlockHeaderSubtitle
-              isLoading={isLoading}
-              title={subtitleTitle}
-              className="text-text-1"
-            >
-              <span className="min-w-0 truncate">{subtitle}</span>
-            </EventBlockHeaderSubtitle>
-          )}
-        </EventBlockHeader>
-      </div>
+      <HeaderOnlyBlock
+        icon={getToolIcon("list_dir", { size: 14, className: "text-text-2" })}
+        title={title}
+        subtitle={subtitle}
+        subtitleTitle={subtitle || undefined}
+        subtitleClassName="text-text-1"
+        truncateSubtitle
+        isLoading={isLoading}
+        eventId={eventId}
+        toolUsage={toolUsage}
+        collapseParticipation
+      />
     );
   }
 );

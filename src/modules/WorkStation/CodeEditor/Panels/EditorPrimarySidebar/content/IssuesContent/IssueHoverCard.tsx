@@ -1,15 +1,19 @@
 /** Hover-card presentation owned by the WorkStation issues panel. */
-import React, { memo, useCallback } from "react";
+import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
-import HoverCardBase, {
+import HoverCard, {
+  type HoverCardTriggerProps,
+} from "@src/components/HoverCard";
+import {
   HoverCardPanel,
-  type HoverCardPosition,
   HoverCardRow,
-} from "@src/components/SessionHoverCard/HoverCardBase";
-import { HoverCardUrlRow } from "@src/components/SessionHoverCard/HoverCardUrlRow";
-import { formatHoverCardTimeAgo } from "@src/components/SessionHoverCard/hoverCardTime";
+} from "@src/components/HoverCard/HoverCardBase";
+import { HoverCardMetadataRow } from "@src/components/HoverCard/HoverCardMetadataRow";
+import { HoverCardUrlRow } from "@src/components/HoverCard/HoverCardUrlRow";
+import { formatHoverCardTimeAgo } from "@src/components/HoverCard/hoverCardTime";
+import { HOVER_CARD } from "@src/components/HoverCard/tokens";
 import Tag from "@src/components/Tag";
 import { TYPOGRAPHY } from "@src/config/workstation/tokens";
 import {
@@ -23,12 +27,8 @@ import {
 } from "@src/icons";
 import { getLabelColorStyle } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/hooks/workstationIssueHelpers";
 
-interface IssueHoverCardProps {
+interface IssueHoverCardProps extends HoverCardTriggerProps {
   issue?: GitHubIssue | null;
-  children: React.ReactElement;
-  position?: HoverCardPosition;
-  mouseEnterDelay?: number;
-  mouseLeaveDelay?: number;
 }
 
 interface IssueHoverCardContentProps {
@@ -59,15 +59,15 @@ const IssueHoverCardContent: React.FC<IssueHoverCardContentProps> = memo(
               <HugeiconsIcon
                 icon={CircleDotIcon}
                 data-icon="circle-dot"
-                size={13}
-                strokeWidth={1.75}
+                size={HOVER_CARD.iconSize}
+                strokeWidth={HOVER_CARD.iconStrokeWidth}
               />
             ) : (
               <HugeiconsIcon
                 icon={CancelCircleIcon}
                 data-icon="xcircle"
-                size={13}
-                strokeWidth={1.75}
+                size={HOVER_CARD.iconSize}
+                strokeWidth={HOVER_CARD.iconStrokeWidth}
               />
             )
           }
@@ -82,16 +82,7 @@ const IssueHoverCardContent: React.FC<IssueHoverCardContentProps> = memo(
 
         {issue.html_url && <HoverCardUrlRow url={issue.html_url} />}
 
-        <HoverCardRow
-          icon={
-            <HugeiconsIcon
-              icon={UserIcon}
-              data-icon="user"
-              size={13}
-              strokeWidth={1.75}
-            />
-          }
-        >
+        <HoverCardMetadataRow icon={UserIcon} dataIcon="user">
           <div className="truncate text-text-2">
             <span>{issue.user.login}</span>
             <span className="mx-1 text-text-4">·</span>
@@ -99,25 +90,14 @@ const IssueHoverCardContent: React.FC<IssueHoverCardContentProps> = memo(
               {formatHoverCardTimeAgo(issue.created_at, i18n.language)}
             </span>
           </div>
-        </HoverCardRow>
+        </HoverCardMetadataRow>
 
-        <HoverCardRow
-          icon={
-            <HugeiconsIcon
-              icon={Clock01Icon}
-              data-icon="clock"
-              size={13}
-              strokeWidth={1.75}
-            />
-          }
-        >
+        <HoverCardMetadataRow icon={Clock01Icon} dataIcon="clock">
           <div className="truncate text-text-2">
             <span className="text-text-3">
               {wasUpdated
-                ? t("git.issues.updated", { defaultValue: "Last updated" })
-                : t("git.issues.notUpdated", {
-                    defaultValue: "not updated",
-                  })}
+                ? t("git.issues.updated")
+                : t("git.issues.notUpdated")}
             </span>
             {wasUpdated && (
               <>
@@ -128,23 +108,11 @@ const IssueHoverCardContent: React.FC<IssueHoverCardContentProps> = memo(
               </>
             )}
           </div>
-        </HoverCardRow>
+        </HoverCardMetadataRow>
 
         {issue.labels.length > 0 && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={TagsIcon}
-                data-icon="tags"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
-          >
-            <div
-              className="relative top-[2px] flex min-w-0 flex-wrap items-center gap-1"
-              title={labelsTitle}
-            >
+          <HoverCardMetadataRow icon={TagsIcon} dataIcon="tags">
+            <div className={HOVER_CARD.tags} title={labelsTitle}>
               {issue.labels.map((label) => (
                 <Tag
                   key={label.id}
@@ -157,40 +125,21 @@ const IssueHoverCardContent: React.FC<IssueHoverCardContentProps> = memo(
                 </Tag>
               ))}
             </div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
 
         {issue.assignees.length > 0 && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={UserIcon}
-                data-icon="user"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
-          >
+          <HoverCardMetadataRow icon={UserIcon} dataIcon="user">
             <div className="truncate text-text-2" title={assigneesTitle}>
               {t("git.issues.assignedTo", {
-                defaultValue: "Assigned to {{assignees}}",
                 assignees: assigneesTitle,
               })}
             </div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
 
         {issue.comments > 0 && (
-          <HoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={Message01Icon}
-                data-icon="message-square"
-                size={13}
-                strokeWidth={1.75}
-              />
-            }
-          >
+          <HoverCardMetadataRow icon={Message01Icon} dataIcon="message-square">
             <div className="truncate text-text-2">
               {t("git.issues.commentCount", {
                 count: issue.comments,
@@ -198,13 +147,15 @@ const IssueHoverCardContent: React.FC<IssueHoverCardContentProps> = memo(
                 defaultValue_other: "{{count}} comments",
               })}
             </div>
-          </HoverCardRow>
+          </HoverCardMetadataRow>
         )}
 
         {issue.body && (
           <>
             <div className="my-1 h-px bg-border-2" />
-            <p className="line-clamp-4 text-[12px] leading-5 whitespace-pre-wrap text-text-2">
+            <p
+              className={`${HOVER_CARD.text} line-clamp-4 whitespace-pre-wrap text-text-2`}
+            >
               {issue.body}
             </p>
           </>
@@ -218,26 +169,16 @@ IssueHoverCardContent.displayName = "IssueHoverCardContent";
 
 const IssueHoverCard: React.FC<IssueHoverCardProps> = ({
   issue,
-  children,
   position = "right-start",
-  mouseEnterDelay,
-  mouseLeaveDelay,
+  ...triggerProps
 }) => {
-  const renderContent = useCallback(
-    () => (issue ? <IssueHoverCardContent issue={issue} /> : null),
-    [issue]
-  );
-
   return (
-    <HoverCardBase
+    <HoverCard
+      {...triggerProps}
       cardId={issue ? `github-issue:${issue.number}` : null}
       position={position}
-      mouseEnterDelay={mouseEnterDelay}
-      mouseLeaveDelay={mouseLeaveDelay}
-      renderContent={renderContent}
-    >
-      {children}
-    </HoverCardBase>
+      content={issue ? <IssueHoverCardContent issue={issue} /> : null}
+    />
   );
 };
 

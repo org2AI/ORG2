@@ -294,14 +294,11 @@ const CanvasDesignPrompt: React.FC<CanvasDesignPromptProps> = ({
       className="pointer-events-auto z-10000 drop-shadow-2xl"
       style={promptLayout.style}
       role="dialog"
-      aria-label={t("canvasApp.designPromptLabel", "Describe a Canvas change")}
+      aria-label={t("canvasApp.designPromptLabel")}
     >
       <InputArea
         key={`${selection.kind}:${selection.elementInfo.xpath}`}
-        placeholder={t(
-          "canvasApp.designPromptPlaceholder",
-          "Describe what to change…"
-        )}
+        placeholder={t("canvasApp.designPromptPlaceholder")}
         sessionId={sessionId}
         sessionScope="none"
         onSubmitOverride={handleSubmitOverride}
@@ -318,10 +315,7 @@ const CanvasDesignPrompt: React.FC<CanvasDesignPromptProps> = ({
           <CanvasSelectionPill
             selection={selection}
             onDismiss={onDismiss}
-            dismissLabel={t(
-              "canvasApp.clearDesignSelection",
-              "Clear Canvas selection"
-            )}
+            dismissLabel={t("canvasApp.clearDesignSelection")}
           />
         }
       />
@@ -361,8 +355,8 @@ const CanvasDesignSurface: React.FC<CanvasDesignSurfaceProps> = ({
           <div className="flex h-full items-center justify-center">
             <span className="text-xs text-text-4">
               {payload.streaming
-                ? t("canvasCard.waiting", "Waiting for content…")
-                : t("canvasCard.empty", "No content")}
+                ? t("canvasCard.waiting")
+                : t("canvasCard.empty")}
             </span>
           </div>
         }
@@ -405,17 +399,14 @@ const CanvasDesignSurface: React.FC<CanvasDesignSurfaceProps> = ({
                 >
                   {visibleSelection.tooltipLabel}
                   <span className="ml-2 font-normal opacity-80">
-                    {t(
-                      "canvasApp.designHoverHint",
-                      "Click to select, drag to draw"
-                    )}
+                    {t("canvasApp.designHoverHint")}
                   </span>
                 </div>
               )}
               {inspector.selected && (
                 <Button
                   data-canvas-design-close
-                  className="pointer-events-auto absolute bg-text-1 text-bg-1 shadow-lg hover:bg-text-2"
+                  className="pointer-events-auto absolute bg-text-1 text-bg-1 shadow-lg hover:bg-text-2 hover:text-bg-1"
                   style={{
                     left: clamp(
                       visibleSelection.rect.x +
@@ -429,14 +420,10 @@ const CanvasDesignSurface: React.FC<CanvasDesignSurfaceProps> = ({
                         ? visibleSelection.rect.y - 34
                         : visibleSelection.rect.y + 4,
                   }}
-                  aria-label={t(
-                    "canvasApp.clearDesignSelection",
-                    "Clear Canvas selection"
-                  )}
+                  aria-label={t("canvasApp.clearDesignSelection")}
                   onClick={inspector.clearSelection}
                   size="mini"
                   variant="tertiary"
-                  appearance="soft"
                   iconOnly
                   icon={
                     <HugeiconsIcon

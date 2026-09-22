@@ -83,7 +83,7 @@ fn launch_for_platform(
         || stderr.contains("-1743")
     {
         format!(
-            "Terminal.app automation was denied. Allow ORGII to control Terminal in macOS System Settings → Privacy & Security → Automation, then try again.{}",
+            "Terminal.app automation was denied. Allow ORG2 to control Terminal in macOS System Settings → Privacy & Security → Automation, then try again.{}",
             if stderr.is_empty() {
                 String::new()
             } else {

@@ -31,6 +31,7 @@ pub fn session_worktree_state(
 
     let mut commits_ahead_of_base = 0u64;
     if let Some(base) = base_branch {
+        crate::util::ensure_git_operand(base, "base branch")?;
         let branch_exists = matches!(
             run_git(repo_path, &["rev-parse", "--verify", &branch]),
             Ok(ref output) if output.status.success()
@@ -64,6 +65,9 @@ pub fn get_session_diff(
     session_id: &str,
     base_branch: &str,
 ) -> Result<String, String> {
+    // The range below starts with `base_branch`, and `git diff` accepts
+    // `--output=<file>`, so an option-shaped base would write a file.
+    crate::util::ensure_git_operand(base_branch, "base branch")?;
     let branch = session_branch_name(session_id);
     let output = run_git(
         repo_path,

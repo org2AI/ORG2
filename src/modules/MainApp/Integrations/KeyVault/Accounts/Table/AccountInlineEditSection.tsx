@@ -181,13 +181,13 @@ export const AccountInlineEditBody: React.FC<AccountInlineEditBodyProps> = ({
       <InlineCardColumnStack>
         <div className="flex min-w-0 flex-col gap-1">
           <span className="flex items-center gap-1 text-[12px] font-semibold text-text-1">
-            {t("keyVault.accountName")}
+            {t("keyVault.keyName")}
             <span className="ml-0.5 text-danger-6">*</span>
           </span>
           <Input
             value={name}
             onChange={setName}
-            placeholder={t("keyVault.accountNamePlaceholder")}
+            placeholder={t("keyVault.keyNamePlaceholder")}
             spellCheck={false}
           />
         </div>
@@ -242,7 +242,7 @@ export const AccountInlineEditFooter: React.FC<
           {t("keyVault.edit.saved")}
         </span>
       ) : null}
-      <Button variant="secondary" size="small" onClick={onCancel}>
+      <Button size="small" onClick={onCancel}>
         {tCommon("actions.cancel")}
       </Button>
       <Button

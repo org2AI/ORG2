@@ -33,9 +33,13 @@ describe("WorkItemSection", () => {
       })
     );
 
-    expect(markup).toContain("bg-workstation-bg");
-    expect(markup).toContain("hover:bg-fill-1");
-    expect(markup).not.toContain("hover:bg-fill-2");
+    // Scope to the header row: its ghost action buttons own their own hover.
+    const rowClasses = new Set(
+      markup.match(/role="button"[^>]*class="([^"]*)"/)?.[1].split(/\s+/)
+    );
+    expect(rowClasses.has("bg-workstation-bg")).toBe(true);
+    expect(rowClasses.has("hover:bg-fill-1")).toBe(true);
+    expect(rowClasses.has("hover:bg-fill-2")).toBe(false);
   });
 
   it("falls back to the definition name for custom statuses instead of the i18n key", () => {

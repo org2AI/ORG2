@@ -1,39 +1,10 @@
-import DingTalkForm from "./DingTalkForm";
-import DiscordForm from "./DiscordForm";
-import EmailForm from "./EmailForm";
-import FeishuForm from "./FeishuForm";
-import GoogleChatForm from "./GoogleChatForm";
-import IMessageForm from "./IMessageForm";
-import LineForm from "./LineForm";
-import MSTeamsForm from "./MSTeamsForm";
-import MatrixForm from "./MatrixForm";
-import SignalForm from "./SignalForm";
-import SlackForm from "./SlackForm";
-import TelegramForm from "./TelegramForm";
-import WeChatForm from "./WeChatForm";
-import WeComForm from "./WeComForm";
-import WhatsAppForm from "./WhatsAppForm";
-import ZaloForm from "./ZaloForm";
-import type { ChannelFormComponent } from "./types";
-
-export const CHANNEL_FORMS: Record<string, ChannelFormComponent> = {
-  telegram: TelegramForm,
-  discord: DiscordForm,
-  slack: SlackForm,
-  whatsapp: WhatsAppForm,
-  imessage: IMessageForm,
-  signal: SignalForm,
-  feishu: FeishuForm,
-  dingtalk: DingTalkForm,
-  zalo: ZaloForm,
-  line: LineForm,
-  msteams: MSTeamsForm,
-  matrix: MatrixForm,
-  googlechat: GoogleChatForm,
-  weixin: WeChatForm,
-  wecom: WeComForm,
-  email: EmailForm,
-};
+/**
+ * Channel setup-form surface.
+ *
+ * The per-channel forms are gone: `ChannelSetupForm` renders the field table
+ * in `Channels/fields/wizardFields.ts` instead.
+ */
+export { default as ChannelSetupForm } from "./ChannelSetupForm";
 
 export function canSubmitChannel(
   channelType: string,

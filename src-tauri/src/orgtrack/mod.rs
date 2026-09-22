@@ -13,6 +13,7 @@ pub mod usage_dashboard_commands;
 
 mod command_stats;
 mod diff_commands;
+pub(crate) mod imported_changes;
 mod file_session_history;
 
 use command_stats::record_orgtrack_command_call;
@@ -32,6 +33,7 @@ use database::db::get_connection;
 use orgtrack_core::canonical::SOURCE_ORGII_RUST_AGENTS;
 use orgtrack_core::policy::{source_tier_policy, SourceTierPolicy};
 use orgtrack_core::projectors::stats::{session_summaries, CoreSessionSummary};
+use orgtrack_core::sources::imported_history;
 use orgtrack_core::store::{sqlite::SqliteRecordStore, RecordStore};
 use types::OrgtrackTier;
 
@@ -115,18 +117,17 @@ pub async fn orgtrack_get_session_summary(
     tokio::task::spawn_blocking(move || {
         let conn = get_connection().map_err(|err| err.to_string())?;
         let store = SqliteRecordStore::new(&conn);
-        let sessions: Vec<_> = store
-            .list_sessions(None)?
-            .into_iter()
-            .filter(|session| session.session_id == session_id)
-            .collect();
-        if sessions.is_empty() {
+        // Primary-key lookup. Filtering a full listing deserialized every
+        // session's JSON payload on each chat open.
+        let Some(session) = store.get_session(&session_id)? else {
             return Ok(None);
-        }
+        };
+        let sessions = vec![session];
         let final_diffs = store.list_final_diffs(None, Some(&session_id))?;
         let commit_links = store.list_commit_links_for_session(&session_id)?;
         let mut summaries = session_summaries(sessions, final_diffs, commit_links);
         apply_runtime_impact_overrides(&mut summaries)?;
+        apply_imported_history_impact_overrides(&conn, &mut summaries)?;
         Ok(summaries.pop())
     })
     .await
@@ -142,6 +143,33 @@ fn apply_runtime_impact_overrides(summaries: &mut [CoreSessionSummary]) -> Resul
             summary.files_changed = impact.files_changed.max(0) as usize;
             summary.lines_added = impact.lines_added.max(0) as i32;
             summary.lines_removed = impact.lines_removed.max(0) as i32;
+        }
+    }
+    Ok(())
+}
+
+/// Imported sessions take the impact their source parser cached on each
+/// rescan (the numbers their sidebar row carries), not the orgtrack final
+/// diffs, which no live writer produces for them.
+fn apply_imported_history_impact_overrides(
+    conn: &rusqlite::Connection,
+    summaries: &mut [CoreSessionSummary],
+) -> Result<(), String> {
+    for summary in summaries {
+        if summary.source == SOURCE_ORGII_RUST_AGENTS {
+            continue;
+        }
+        if let Some(impact) =
+            imported_history::cache::query_cached_session_impact_by_session_id_from_conn(
+                conn,
+                &summary.session_id,
+            )?
+        {
+            summary.overlay_source_impact(
+                impact.files_changed,
+                impact.lines_added,
+                impact.lines_removed,
+            );
         }
     }
     Ok(())

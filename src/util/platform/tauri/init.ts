@@ -51,7 +51,7 @@ interface TauriAPIs {
 }
 
 // Global state for Tauri APIs
-let tauriState: TauriAPIs = {
+const tauriState: TauriAPIs = {
   invoke: null,
   listen: null,
   Channel: null,
@@ -117,14 +117,6 @@ export const initializeTauriAPIs = async (): Promise<boolean> => {
   })();
 
   return initPromise;
-};
-
-/**
- * Get the current Tauri API state
- * Safe to call anytime - returns current state without initializing
- */
-export const getTauriAPIs = (): TauriAPIs => {
-  return { ...tauriState };
 };
 
 // Lazily cached tracker module to avoid dynamic import on every call
@@ -262,17 +254,3 @@ export function base64ToFile(
   }
   return new File([bytes], fileName, { type: mimeType });
 }
-
-/**
- * Reset Tauri state (mainly for testing)
- */
-export const resetTauriState = (): void => {
-  tauriState = {
-    invoke: null,
-    listen: null,
-    Channel: null,
-    isAvailable: false,
-    isTauriEnvironment: false,
-  };
-  initPromise = null;
-};

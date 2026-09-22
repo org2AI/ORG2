@@ -23,6 +23,8 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
+import { PLACEHOLDER_TOKENS } from "@src/components/Placeholder";
+import { Archive04Icon, HugeiconsIcon } from "@src/icons";
 import {
   DiffSectionList,
   type DiffSectionListViewState,
@@ -37,6 +39,7 @@ import {
 } from "@src/store/workstation/tabs/tabViewState";
 import type { GitFile } from "@src/types/git/types";
 
+import { loadReviewFile } from "./allChanges/loadReviewFile";
 import { useAllChangesFiles } from "./allChanges/useAllChangesFiles";
 
 /** Slot under the owning tab's view state that holds the list snapshot. */
@@ -175,6 +178,14 @@ const AllChangesView: React.FC<AllChangesViewProps> = ({
     [releaseContentForFile]
   );
 
+  const loadSearchFile = useCallback(
+    async (path: string) => {
+      const file = files.find((file) => file.path === path);
+      return file && repoPath ? loadReviewFile(file, repoPath, repoId) : null;
+    },
+    [files, repoPath, repoId]
+  );
+
   const sections = useMemo(
     () => sortedFiles.map((file) => ({ key: file.id, file })),
     [sortedFiles]
@@ -182,11 +193,24 @@ const AllChangesView: React.FC<AllChangesViewProps> = ({
 
   return (
     <DiffSectionList
+      enableReviewSearch
+      reviewSearchFiles={files}
+      loadReviewFile={loadSearchFile}
       sections={sections}
       viewMode={viewMode}
+      wordWrap={viewMode === "split" ? true : undefined}
       loading={loading}
       emptyTitle={
         staged ? t("placeholders.noStagedChanges") : t("placeholders.noChanges")
+      }
+      emptyIcon={
+        <HugeiconsIcon
+          icon={Archive04Icon}
+          data-icon="archive-04"
+          size={PLACEHOLDER_TOKENS.detailIconSize}
+          strokeWidth={1.25}
+          className="text-text-1 opacity-30"
+        />
       }
       repoPath={repoPath}
       defaultCollapsed
@@ -202,6 +226,7 @@ const AllChangesView: React.FC<AllChangesViewProps> = ({
       showRenamePath
       compactHeaderGutter
       hideBottomPadding
+      hideLastBottomBorder
     />
   );
 };

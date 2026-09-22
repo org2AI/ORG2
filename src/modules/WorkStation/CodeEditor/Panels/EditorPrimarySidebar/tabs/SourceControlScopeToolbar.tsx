@@ -25,7 +25,7 @@ import {
 import {
   formatCompactStatNumber,
   formatDiffStatsLabel,
-} from "@src/shared/pr/formatStatNumber";
+} from "@src/util/git/pr/formatStatNumber";
 
 import {
   type ScopePickerWorktreeEntry,
@@ -48,7 +48,7 @@ export type { SourceControlScope } from "./sourceControlScopePickerHelpers";
 
 const BREADCRUMB_TONE_CLASS = {
   muted: "text-text-3",
-  primary: "font-medium text-text-1",
+  primary: "font-normal text-text-1",
   secondary: "text-text-2",
 } as const;
 
@@ -171,9 +171,9 @@ function ScopePickerItem({
       </DropdownItem>
       {onRemove ? (
         <Button
-          htmlType="button"
           size="sidebar"
-          variant="danger"
+          variant="tertiary"
+          tone="danger"
           className={SCOPE_PICKER_REMOVE_BUTTON}
           title={removeLabel}
           aria-label={removeLabel}
@@ -182,7 +182,6 @@ function ScopePickerItem({
             event.stopPropagation();
             onRemove();
           }}
-          appearance="soft"
           iconOnly
           icon={
             <HugeiconsIcon
@@ -346,7 +345,7 @@ export function SourceControlScopeToolbar({
         ) : null}
         {!showMainScope && filteredWorktrees.length === 0 ? (
           <div className={DROPDOWN_CLASSES.listMessage}>
-            {t("placeholders.noResults", "No results")}
+            {t("placeholders.noResults")}
           </div>
         ) : null}
       </div>

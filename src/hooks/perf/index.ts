@@ -17,10 +17,7 @@ export {
 export { useSidebarMemoryEntry } from "./useSidebarMemoryEntry";
 export {
   describeAppMemoryMeasurement,
-  refreshAppMemorySnapshot,
   getAppMemoryRoleLabelKey,
   getAppMemoryTotals,
   useAppMemorySnapshot,
-  type AppMemorySnapshotState,
-  type AppMemorySnapshot,
 } from "./appMemorySnapshot";

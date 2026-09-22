@@ -11,15 +11,15 @@ import { saveKey } from "@src/api/services/keyValidation";
 import { formatModelAgentType, isApiKeyProvider } from "@src/assets/providers";
 import type { SelectOption } from "@src/components/Select";
 import type { SettingsTableSelectFilter } from "@src/components/SettingsTable";
-import TabPill from "@src/components/TabPill";
-import type { AvailableAgent } from "@src/config/cliAgents";
-import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import type { AvailableAgent } from "@src/config/cliAgents";
+import type { KeyVaultAccount } from "@src/hooks/keyVault";
+import { upsertSharedLocalKey } from "@src/hooks/keyVault/sharedLocalKeyStore";
 import {
   accountMatchesBrandFilter,
   buildBrandProviderFilterOptions,
@@ -34,6 +34,8 @@ import type { DetailMode } from "../../types";
 import MyAccountsTableSection from "../Accounts/Table/MyAccountsTableSection";
 import InlineCredentialImport from "../CliClients/CredentialImport/InlineCredentialImport";
 import ModelsTableSection from "../Models/Table/ModelsTableSection";
+import { applyDefaultVariantOverrides } from "./defaultVariantOverrides";
+import { useDefaultVariantSaves } from "./useDefaultVariantSaves";
 
 const ALL_FILTER = "all";
 const MODEL_SAVE_DEBOUNCE_MS = 120;
@@ -245,7 +247,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
     void Promise.all(
       [...queued.entries()].map(([accountId, enabledModels]) => {
         const account = accountById.get(accountId);
-        if (!account) return Promise.resolve();
+        if (!account) return Promise.resolve(undefined);
         return saveKey({
           id: account.id,
           agent_type: account.modelType,
@@ -254,11 +256,20 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
         });
       })
     )
-      .then(() => onRefresh?.())
+      // `saveKey` answers with the stored record, so publishing it is enough
+      // to settle the optimistic overlay. Re-listing every key would flip the
+      // page back to its loading state for a round trip that tells us nothing
+      // new.
+      .then((savedKeys) => {
+        for (const saved of savedKeys) {
+          if (saved) upsertSharedLocalKey(saved);
+        }
+      })
       .catch(() => {
         const empty = new Map<string, Set<string>>();
         optimisticModelEnabledByAccountRef.current = empty;
         setOptimisticModelEnabledByAccount(empty);
+        // The write failed, so the store is the only trustworthy source left.
         void onRefresh?.();
       });
   }, [accounts, onRefresh]);
@@ -351,26 +362,9 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
     [accounts, queueModelSave]
   );
 
-  const handleUpdateAccountDefaultVariant = useCallback(
-    (accountId: string, baseModel: string, model: string) => {
-      const account = accounts.find((entry) => entry.id === accountId);
-      if (!account) return;
-
-      const nextDefaults = (account.defaultVariants ?? []).filter(
-        (variant) => variant.base_model !== baseModel
-      );
-      nextDefaults.push({ base_model: baseModel, model });
-
-      void saveKey({
-        id: account.id,
-        agent_type: account.modelType,
-        default_variants: nextDefaults,
-      })
-        .then(() => onRefresh?.())
-        .catch(() => onRefresh?.());
-    },
-    [accounts, onRefresh]
-  );
+  const { optimisticDefaultVariants, updateDefaultVariant } =
+    useDefaultVariantSaves({ accounts, onRefresh });
+  const handleUpdateAccountDefaultVariant = updateDefaultVariant;
 
   const [optimisticToggles, setOptimisticToggles] = useState<
     Map<string, boolean>
@@ -380,11 +374,15 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   const modelAdjustedAccounts = useMemo(() => {
     const hasModelOptimistic = optimisticModelEnabledByAccount.size > 0;
     const hasAccountOptimistic = optimisticToggles.size > 0;
-    if (!hasModelOptimistic && !hasAccountOptimistic) return accounts;
+    const hasVariantOptimistic = optimisticDefaultVariants.size > 0;
+    if (!hasModelOptimistic && !hasAccountOptimistic && !hasVariantOptimistic) {
+      return accounts;
+    }
 
     return accounts.map((account) => {
       const optimisticModels = optimisticModelEnabledByAccount.get(account.id);
       const optimisticAccountEnabled = optimisticToggles.get(account.id);
+      const optimisticVariants = optimisticDefaultVariants.get(account.id);
       let nextAccount = account;
 
       if (optimisticModels) {
@@ -393,10 +391,24 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
       if (optimisticAccountEnabled !== undefined) {
         nextAccount = { ...nextAccount, enabled: optimisticAccountEnabled };
       }
+      if (optimisticVariants && optimisticVariants.size > 0) {
+        nextAccount = {
+          ...nextAccount,
+          defaultVariants: applyDefaultVariantOverrides(
+            account.defaultVariants,
+            optimisticVariants
+          ),
+        };
+      }
 
       return nextAccount;
     });
-  }, [accounts, optimisticModelEnabledByAccount, optimisticToggles]);
+  }, [
+    accounts,
+    optimisticDefaultVariants,
+    optimisticModelEnabledByAccount,
+    optimisticToggles,
+  ]);
 
   const filteredAdjustedAccounts = useMemo(() => {
     const adjustedById = new Map(
@@ -446,7 +458,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
         agent_type: account.modelType,
         enabled: nowEnabled,
       })
-        .then(() => onRefresh?.())
+        .then((saved) => upsertSharedLocalKey(saved))
         .catch(() => {
           // Roll back the optimistic toggle to the original server value so
           // the switch does not stay permanently stuck in the wrong position.
@@ -458,7 +470,7 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
           pendingIds.current.delete(account.id);
         });
     },
-    [onRefresh]
+    []
   );
 
   const isAccountEnabled = useCallback(
@@ -472,8 +484,8 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
 
   const tabs = useMemo(() => {
     return [
-      { key: "models", label: t("modelsTabs.models", "Models") },
-      { key: "my-accounts", label: t("modelsTabs.myAccounts", "My Keys") },
+      { key: "models", label: t("modelsTabs.models") },
+      { key: "my-accounts", label: t("modelsTabs.myKeys") },
     ];
   }, [t]);
 
@@ -531,18 +543,9 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
     <DetailPanelContainer>
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tabs}
-            activeTab={activeTab}
-            onChange={setActiveTab}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>

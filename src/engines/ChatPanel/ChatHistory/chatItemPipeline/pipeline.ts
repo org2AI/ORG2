@@ -7,6 +7,7 @@
  * - Groups consecutive read file events
  * - Groups consecutive exploration tool calls
  * - Groups consecutive shell commands, MCP calls, and terminal follow-ups
+ * - Collapses runs of background-job waits that no terminal stack absorbed
  * - Groups file edits/deletions with reads performed between them
  * - Stacks consecutive browser actions
  * - Consolidates partial observations
@@ -19,11 +20,17 @@ import {
   createReadFileGroupId,
 } from "@/src/engines/SessionCore/sync/utils/activityIds";
 
+import { isRetryAuditBoundary } from "@src/engines/SessionCore/conversations/retryAuditBoundary";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import {
+  ensureUniqueChunkIds,
+  getStableActivityItemId,
+} from "./activityIdentity";
+import {
   type ActionSummaryCategory,
   getActionSummaryCategory,
+  isAwaitOutputEvent,
   isBrowserEvent,
   isCommandGroupActivityEvent,
   isFileModificationEvent,
@@ -43,6 +50,8 @@ import {
   type OptimizedChatItem,
 } from "./types";
 import { canConsolidate, mergeObservations } from "./utils";
+
+export { getStableActivityItemId } from "./activityIdentity";
 
 // ============================================
 // Error detection helpers (pipeline-local, no blocks dependency)
@@ -71,71 +80,6 @@ function isFailedToolCall(event: SessionEvent): boolean {
   if (result.success === false || result.is_error === true) return true;
   if (result.error || result.error_message) return true;
   return getErrorText(result) !== null;
-}
-
-function getEventCallId(event: SessionEvent): string | undefined {
-  return (
-    event.callId ||
-    (event as { call_id?: string }).call_id ||
-    (event.result?.call_id as string | undefined)
-  );
-}
-
-export function getStableActivityItemId(event: SessionEvent): string {
-  const callId = getEventCallId(event);
-  if (
-    callId &&
-    (event.actionType === "tool_call" || event.actionType === "tool_result")
-  ) {
-    return event.sessionId
-      ? `tool:${event.sessionId}:${callId}`
-      : `tool:${callId}`;
-  }
-  return event.id;
-}
-
-/**
- * `chunk_id` is the React key for every rendered chat row, so it has to be
- * unique across the returned list.
- *
- * `getStableActivityItemId` deliberately collapses a `tool_call` and its
- * `tool_result` onto one `tool:<sessionId>:<callId>` id, on the assumption that
- * the backend merged the pair into a single event. When that merge doesn't
- * happen both events reach here and claim the same id — React then warns and
- * may drop one of the two rows outright.
- *
- * Disambiguate rather than drop: both events carry real content, and silently
- * discarding one would hide the upstream merge failure instead of surfacing it.
- * The fast path allocates nothing when ids are already unique, which is the
- * normal case.
- */
-function ensureUniqueChunkIds(items: OptimizedChatItem[]): OptimizedChatItem[] {
-  const seen = new Set<string>();
-  let hasCollision = false;
-  for (const item of items) {
-    if (seen.has(item.chunk_id)) {
-      hasCollision = true;
-      break;
-    }
-    seen.add(item.chunk_id);
-  }
-  if (!hasCollision) return items;
-
-  seen.clear();
-  return items.map((item) => {
-    if (!seen.has(item.chunk_id)) {
-      seen.add(item.chunk_id);
-      return item;
-    }
-    let occurrence = 2;
-    let candidate = `${item.chunk_id}#${occurrence}`;
-    while (seen.has(candidate)) {
-      occurrence++;
-      candidate = `${item.chunk_id}#${occurrence}`;
-    }
-    seen.add(candidate);
-    return { ...item, chunk_id: candidate };
-  });
 }
 
 // ============================================
@@ -409,6 +353,56 @@ export function processChatItems(
     flushPartialBuffer();
   };
 
+  // A wait lands as its own row when no terminal stack absorbs it: a provider
+  // poll with no command row beside it, or a subagent wait. Adjacent rows of
+  // that kind collapse into one wait stack. A run that ends the list is still
+  // live, so it stays open like a trailing terminal stack.
+  const groupStandaloneWaits = (
+    items: OptimizedChatItem[]
+  ): OptimizedChatItem[] => {
+    if (!opts.groupWaitActivities) return items;
+
+    const minToGroup = opts.minWaitActivitiesToGroup ?? 2;
+    const grouped: OptimizedChatItem[] = [];
+    let run: { item: OptimizedChatItem; event: SessionEvent }[] = [];
+    const flushRun = (closedByBoundary: boolean) => {
+      if (run.length > 0 && run.length >= minToGroup) {
+        const waitEvents = run.map(({ event }) => event);
+        waitEvents.forEach((event) => updateVisibleStatusCount(event, -1));
+        grouped.push({
+          chunk_id: createActivityStackGroupId(
+            "wait",
+            getStableActivityItemId(waitEvents[0])
+          ),
+          type: "activityStackGroup",
+          activityStackGroup: {
+            category: "wait",
+            events: waitEvents,
+            closedByBoundary,
+          },
+        });
+      } else {
+        grouped.push(...run.map(({ item }) => item));
+      }
+      run = [];
+    };
+
+    for (const item of items) {
+      if (
+        item.type === "activity" &&
+        item.event &&
+        isAwaitOutputEvent(item.event)
+      ) {
+        run.push({ item, event: item.event });
+        continue;
+      }
+      flushRun(true);
+      grouped.push(item);
+    }
+    flushRun(false);
+    return grouped;
+  };
+
   // ------------------------------------------
   // Pre-pass: dedup running tool_call chunks + assistant messages
   // ------------------------------------------
@@ -434,6 +428,12 @@ export function processChatItems(
       duplicateUserIds.has(event.id) ||
       duplicateDeliveryFailureIds.has(event.id)
     ) {
+      continue;
+    }
+
+    if (isRetryAuditBoundary(event)) {
+      flushAllBuffers();
+      result.push(eventToItem(event));
       continue;
     }
 
@@ -641,5 +641,5 @@ export function processChatItems(
   flushEditBuffer(false);
   flushPartialBuffer();
 
-  return { items: ensureUniqueChunkIds(result), stats };
+  return { items: ensureUniqueChunkIds(groupStandaloneWaits(result)), stats };
 }

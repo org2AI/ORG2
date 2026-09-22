@@ -123,13 +123,17 @@ export const DROPDOWN_ITEM = {
   gap: 8,
   gapClass: "gap-2",
 
+  /** Minimum space between a settings-row label and its trailing control. */
+  controlGap: 24,
+  controlGapClass: "gap-6",
+
   /** Icon size */
   iconSize: 13,
   iconSizeClass: "h-[13px] w-[13px]",
 
   /** Font size */
   fontSize: 13,
-  fontSizeClass: "text-[13px]",
+  fontSizeClass: "text-[length:var(--dropdown-font-size,13px)]",
 
   /**
    * Hover background. Hover only changes the surface fill — the selected
@@ -175,7 +179,7 @@ export const DROPDOWN_SEARCH = {
 
   /** Font size */
   fontSize: 13,
-  fontSizeClass: "text-[13px]",
+  fontSizeClass: "text-[length:var(--dropdown-font-size,13px)]",
 
   /** Icon size */
   iconSize: 13,
@@ -202,6 +206,10 @@ const PANEL_HEADER_ROW = `${PANEL_ROW} border-b border-solid border-border-2`;
  * Usage: <div className={DROPDOWN_CLASSES.panel}>...</div>
  */
 export const DROPDOWN_CLASSES = {
+  /** Keep button triggers visibly selected for the lifetime of their popup. */
+  triggerOpen:
+    "aria-expanded:bg-surface-selected! aria-expanded:text-primary-6!",
+
   /** Panel container classes */
   panel: [
     DROPDOWN_PANEL.bgClass,
@@ -300,6 +308,12 @@ export const DROPDOWN_CLASSES = {
     "text-text-1",
   ].join(" "),
 
+  /** Destructive actions retain semantic color across pointer and keyboard states. */
+  itemDanger: "text-danger-6!",
+  itemDangerHover: "hover:bg-danger-1! focus-visible:bg-danger-1!",
+  itemDangerActive: "bg-danger-1!",
+  itemDangerIcon: "text-danger-6",
+
   /** Item hover state */
   itemHover: DROPDOWN_ITEM.hoverBgClass,
 
@@ -393,7 +407,7 @@ export const DROPDOWN_CLASSES = {
     "justify-between",
     "whitespace-nowrap",
     "text-left",
-    DROPDOWN_ITEM.gapClass,
+    DROPDOWN_ITEM.controlGapClass,
     DROPDOWN_ITEM.paddingXClass,
     DROPDOWN_ITEM.heightClass,
     DROPDOWN_ITEM.minHeightClass,
@@ -428,7 +442,7 @@ export const DROPDOWN_CLASSES = {
     "bg-transparent",
     "border-none",
     "outline-none",
-    DROPDOWN_ITEM.fontSizeClass,
+    "text-[length:var(--dropdown-input-font-size,var(--dropdown-font-size,13px))]",
     "text-text-1",
     "placeholder:text-text-3",
   ].join(" "),
@@ -484,7 +498,7 @@ export const DROPDOWN_CLASSES = {
 
   /** Empty/loading message inside a dropdown list. */
   listMessage:
-    "flex items-center justify-center gap-2 px-3 py-6 text-center text-[13px] text-text-3",
+    "flex items-center justify-center gap-2 px-3 py-6 text-center text-[length:var(--dropdown-font-size,13px)] text-text-3",
 
   /** Footer container (Select All, actions) — flex, border-t, p-1 */
   footerContainer: [

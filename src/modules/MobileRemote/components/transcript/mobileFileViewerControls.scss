@@ -1,0 +1,86 @@
+@use "../../mobileUiTokens" as mobile;
+
+.mobile-file-controls {
+  --mobile-file-control-size: #{mobile.$touch-target};
+  --mobile-file-control-padding: #{mobile.$space-2};
+  --mobile-file-control-radius: #{mobile.$space-2};
+
+  flex-shrink: 0;
+  padding: 0 mobile.$space-3;
+  border-bottom: 1px solid var(--color-border-1);
+  background: var(--mobile-file-surface, var(--color-chat-container));
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: mobile.$space-2;
+    min-height: calc(#{mobile.$touch-target} + #{mobile.$space-2});
+  }
+  &__status {
+    display: flex;
+    align-items: center;
+    gap: mobile.$space-1;
+    min-width: 0;
+    margin-right: auto;
+  }
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: mobile.$space-1;
+    flex-shrink: 0;
+  }
+  &__action {
+    flex-shrink: 0;
+    font-weight: var(--mobile-type-medium-weight);
+    &[aria-pressed="true"] {
+      background: var(--color-fill-2);
+      color: var(--color-text-1);
+    }
+  }
+  &__partial {
+    flex-shrink: 0;
+    padding: 0 mobile.$space-1;
+    border-radius: mobile.$space-1;
+    background: var(--color-warning-1);
+    color: var(--color-warning-6);
+  }
+  &__files {
+    display: flex;
+    align-items: center;
+    gap: mobile.$space-1;
+    overflow-x: auto;
+    margin-inline: -#{mobile.$space-3};
+    padding: mobile.$space-1 mobile.$space-3;
+    border-bottom: 1px solid var(--color-border-1);
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+  // Desktop TabPillSurface owns colors, radius, hover and active state.
+  // Only touch geometry and mobile typography differ on this surface.
+  &__tab {
+    max-width: 12rem;
+    min-height: mobile.$touch-target;
+    font-size: var(--mobile-type-caption-size);
+    line-height: var(--mobile-type-control-leading);
+    font-weight: var(--mobile-type-medium-weight);
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary-6);
+      outline-offset: -2px;
+    }
+  }
+  // Long translated actions can move below status instead of clipping on a
+  // compact viewport or with enlarged text. Neither action loses its label.
+  &__row {
+    flex-wrap: wrap;
+  }
+  &__actions {
+    margin-left: auto;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+}

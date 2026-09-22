@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { AgentOrgRunMemberView } from "@src/api/tauri/agent";
-import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import type { QueuedConversationDispatchResolution } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 export interface FollowAgentNavState {
@@ -48,8 +48,6 @@ export const EMPTY_BROWSER_ADD_TO_CONVERSATION_NAV: BrowserAddToConversationNavS
 export interface ChatHistoryProps {
   /** Opaque background class for sticky headers. Must match the container surface. */
   surfaceBgClass?: string;
-  /** Dock side of the containing chat panel, used by narrow side previews. */
-  chatPanelPosition?: "left" | "right";
   agentOrgCurrentMemberName?: string | null;
   /**
    * Stable identifier of the member currently being viewed in the chat
@@ -82,6 +80,8 @@ export interface ChatHistoryProps {
    * keep their surfaced turn expanded.
    */
   disableTailCollapse?: boolean;
+  /** Compact monitor surfaces may opt into unconditional tail following. */
+  tailFollowMode?: "reader-controlled" | "always";
   /** Trailing content for turn pagination controls; ignored when pagination is disabled. */
   paginationTrailingSlot?: ReactNode;
   /** Omit each turn's leading user-message card while retaining its turn boundary. */
@@ -103,7 +103,7 @@ export interface ChatHistoryProps {
    * The canonical dispatch a retry of a held Agent row should carry: the
    * current root and the runtime the picker shows now.
    */
-  resolveFailedUserIntentDispatch?: () => QueuedConversationDispatch | null;
+  resolveFailedUserIntentDispatch?: () => QueuedConversationDispatchResolution;
   /**
    * Session-scoped source for the planning footer. Session-scoped surfaces
    * should set `isLive` to false while showing a replay slice.

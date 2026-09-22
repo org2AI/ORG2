@@ -75,7 +75,6 @@ export function resolveOrgTaskTitle(
           {
             ns: "sessions",
             subject,
-            defaultValue: "{{subject}} deferred task completion until cleanup",
           }
         );
       }
@@ -117,7 +116,6 @@ export function resolveOrgTaskTitle(
     return t("simulator.replay.messages.bubble.senderTitle.updatedTodos", {
       ns: "sessions",
       subject,
-      defaultValue: "{{subject}} updated to-dos",
     });
   }
 

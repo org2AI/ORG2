@@ -12,18 +12,11 @@
  * - Browser sessions sync their state to the tab store
  * - All tab switching goes through useBrowserPaneState
  */
-import { useAtom, useAtomValue } from "jotai";
-import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
-
-import {
-  workstationNewBrowserSessionConsumedTickAtom,
-  workstationNewBrowserSessionRequestAtom,
-} from "@src/store/workstation/workstationTabBarAtoms";
+import React, { memo, useCallback, useMemo, useState } from "react";
 
 import {
   WORK_STATION_PLACEHOLDER_PAGE_BG_CLASS,
   WorkStationShell,
-  buildSecondaryPanelConfig,
 } from "../../shared";
 import {
   type BrowserHostContextValue,
@@ -35,9 +28,11 @@ import {
   SharedBrowserDevToolsPanel,
   SharedBrowserWorkspace,
 } from "../shared";
+import { buildBrowserDevToolsPanelConfig } from "../shared/browserDevToolsPanelConfig";
 import { AgentBrowserOverlay } from "./AgentBrowserOverlay";
 import type { BrowserLayoutProps } from "./types";
 import { useBrowserLayoutState } from "./useBrowserLayoutState";
+import { useNewBrowserSessionRequest } from "./useNewBrowserSessionRequest";
 
 export const BrowserLayout: React.FC<BrowserLayoutProps> = memo(
   ({ repoPath, repoName: _repoName, isActive = true }) => {
@@ -55,33 +50,7 @@ export const BrowserLayout: React.FC<BrowserLayoutProps> = memo(
 
     const [devToolsPanelHeight, setDevToolsPanelHeight] = useState(300);
 
-    // Cross-host "New Browser Tab" intent: the unified `+` menu and the
-    // Launchpad bump `workstationNewBrowserSessionRequestAtom` via
-    // `requestNewBrowserSessionAtom`. We dispatch `addSession(url, isPrivate)`
-    // for any request whose tick exceeds the consumed-tick atom — including a
-    // request issued before this host mounted (e.g. "New Browser" clicked from
-    // the empty Launchpad), which a per-mount ref would have missed. The
-    // module-level consumed tick prevents re-firing on a later remount.
-    const newSessionRequest = useAtomValue(
-      workstationNewBrowserSessionRequestAtom
-    );
-    const [consumedTick, setConsumedTick] = useAtom(
-      workstationNewBrowserSessionConsumedTickAtom
-    );
-    const addBrowserSession = state.browser.browserState.addSession;
-    useEffect(() => {
-      if (newSessionRequest.tick > consumedTick) {
-        setConsumedTick(newSessionRequest.tick);
-        addBrowserSession(newSessionRequest.url, newSessionRequest.isPrivate);
-      }
-    }, [
-      newSessionRequest.tick,
-      newSessionRequest.url,
-      newSessionRequest.isPrivate,
-      consumedTick,
-      setConsumedTick,
-      addBrowserSession,
-    ]);
+    useNewBrowserSessionRequest(state.browser.browserState);
 
     // ============================================
     // Main content
@@ -184,24 +153,17 @@ export const BrowserLayout: React.FC<BrowserLayoutProps> = memo(
     );
 
     // Secondary panel config — single mount, CSS grid relocates right/bottom.
-    // Size/handler are axis-appropriate: width for right, height for bottom.
     const secondaryPanelConfig = useMemo(
       () =>
-        buildSecondaryPanelConfig({
+        buildBrowserDevToolsPanelConfig({
           content: devToolsContent,
           position: devToolsPosition,
           collapsed: state.browser.devToolsCollapsed,
-          size:
-            devToolsPosition === "right"
-              ? state.browser.devToolsPanelWidth
-              : devToolsPanelHeight,
-          onSizeChange:
-            devToolsPosition === "right"
-              ? state.browser.setDevToolsPanelWidth
-              : setDevToolsPanelHeight,
+          width: state.browser.devToolsPanelWidth,
+          onWidthChange: state.browser.setDevToolsPanelWidth,
+          height: devToolsPanelHeight,
+          onHeightChange: setDevToolsPanelHeight,
           onClose: handleCloseDevTools,
-          minSize: devToolsPosition === "right" ? 200 : 160,
-          maxSize: devToolsPosition === "right" ? 400 : 600,
         }),
       [
         devToolsContent,
@@ -217,12 +179,12 @@ export const BrowserLayout: React.FC<BrowserLayoutProps> = memo(
     // ============================================
     // Phase 2.2: publish the Browser host's render surface above the tab
     // dispatcher. Mirrors `ProjectHostProvider` — the value bundles the
-    // shared-webview activation flags + the DevTools polling stack + panel
-    // handlers so staged browser renderers (`browser-session` / `devtools`)
-    // can consume it via `useBrowserHostContext` once `UnifiedTabContent` is
-    // mounted for browser tabs. Providing it here is additive — BrowserLayout
-    // below still renders its bespoke `SharedBrowserWorkspace` /
-    // `SharedBrowserDevToolsPanel` directly and is unchanged.
+    // shared-webview activation flags + inspect handlers so the staged
+    // `browser-session` renderer can consume it via `useBrowserHostContext`
+    // once `UnifiedTabContent` is mounted for browser tabs. Providing it here
+    // is additive — BrowserLayout below still renders its bespoke
+    // `SharedBrowserWorkspace` directly, and DevTools stays in the secondary
+    // panel above.
     // ============================================
 
     const browser = state.browser;
@@ -231,7 +193,6 @@ export const BrowserLayout: React.FC<BrowserLayoutProps> = memo(
 
     const browserHostValue = useMemo<BrowserHostContextValue>(
       () => ({
-        repoPath,
         browserState: browser.browserState,
         isWorkspaceActive:
           isActive && showBrowserViewport && !automationRunning,
@@ -242,49 +203,17 @@ export const BrowserLayout: React.FC<BrowserLayoutProps> = memo(
         onOpenNativeDevTools: browser.handleOpenNativeDevTools,
         onToggleDevToolsPane: browser.handleToggleDevTools,
         devToolsPaneCollapsed: browser.devToolsCollapsed,
-        devToolsCollapsed: browser.devToolsCollapsed,
-        onToggleDevToolsCollapse: browser.handleToggleDevTools,
-        devToolsPanelWidth: browser.devToolsPanelWidth,
-        onDevToolsPanelWidthChange: browser.setDevToolsPanelWidth,
-        devToolsPanelHeight,
-        onDevToolsPanelHeightChange: setDevToolsPanelHeight,
-        devToolsPosition,
-        onToggleDevToolsPosition: handleToggleDevToolsPosition,
-        consoleEntries: browser.entries,
-        onClearConsoleEntries: browser.clearEntries,
-        networkEntries: browser.networkEntries,
-        onClearNetworkEntries: browser.clearNetworkEntries,
-        errorCount: browser.errorCount,
-        warningCount: browser.warningCount,
-        selectedElement: browser.selectedElement,
-        webviewLabel: browser.activeWebviewLabel,
-        currentUrl: browser.currentUrl,
       }),
       [
-        repoPath,
         isActive,
         showBrowserViewport,
         automationRunning,
-        devToolsPanelHeight,
-        devToolsPosition,
-        handleToggleDevToolsPosition,
         browser.browserState,
         browser.isInspectMode,
         browser.toggleInspectMode,
         browser.handleOpenNativeDevTools,
         browser.handleToggleDevTools,
         browser.devToolsCollapsed,
-        browser.devToolsPanelWidth,
-        browser.setDevToolsPanelWidth,
-        browser.entries,
-        browser.clearEntries,
-        browser.networkEntries,
-        browser.clearNetworkEntries,
-        browser.errorCount,
-        browser.warningCount,
-        browser.selectedElement,
-        browser.activeWebviewLabel,
-        browser.currentUrl,
       ]
     );
 

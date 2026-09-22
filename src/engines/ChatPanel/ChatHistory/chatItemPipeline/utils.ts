@@ -5,8 +5,6 @@
  */
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
-import type { OptimizedChatItem } from "./types";
-
 /**
  * Check if two events can be consolidated (same thread, consecutive parts)
  */
@@ -39,24 +37,3 @@ export const mergeObservations = (events: SessionEvent[]): string => {
     .filter(Boolean)
     .join("\n");
 };
-
-/**
- * Calculate duration from first to last item (in seconds).
- */
-export function calculateDuration(
-  items: OptimizedChatItem[]
-): number | undefined {
-  const timestamps = items
-    .map((item) => {
-      const time = item.event?.createdAt;
-      return time ? new Date(time).getTime() : null;
-    })
-    .filter((time): time is number => time !== null);
-
-  if (timestamps.length < 2) return undefined;
-
-  const minTime = Math.min(...timestamps);
-  const maxTime = Math.max(...timestamps);
-
-  return Math.round((maxTime - minTime) / 1000);
-}

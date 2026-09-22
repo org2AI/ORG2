@@ -36,6 +36,17 @@ export const GLOBAL_SHORTCUTS: ShortcutEntry[] = [
     category: "window",
   },
   {
+    // Shift+Cmd+L is 1Password's lock chord. The more common Cmd+L (Bitwarden,
+    // Telegram, KeePassXC) is already "New tab (alternative)" here, and
+    // Ctrl+Cmd+Q belongs to the macOS lock screen.
+    id: "lock_app",
+    command: "Lock app",
+    macKeys: "⇧⌘L",
+    winKeys: "Ctrl+Shift+L",
+    scope: "global",
+    category: "window",
+  },
+  {
     id: "open_my_station",
     command: "Open My Station",
     macKeys: "⌘1",

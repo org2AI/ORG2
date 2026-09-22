@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import { ActivityTimestamp } from "@src/modules/shared/components/ActivityTimeline";
-import DetailFlowHeader from "@src/modules/shared/components/DetailFlowHeader";
+import DetailFlowHeader from "@src/components/DetailFlowHeader";
+import { ActivityTimestamp } from "@src/features/GitHubWork/ActivityTimeline";
 import type { WorkItem } from "@src/types/core/workItem";
 
 import { formatWorkItemShortId } from "../workItemIdentity";
@@ -45,20 +45,15 @@ export default function WorkItemFlowHeader({
         avatarUrl: workItem.createdBy?.avatar ?? "",
       }}
       unknownActorLabel={t("workItems.activity.system")}
-      ariaLabel={t("workItems.detailSummary", {
-        defaultValue: "Work Item summary",
-      })}
+      ariaLabel={t("workItems.detailSummary")}
       testIdPrefix="work-item-flow"
     >
-      <span>
-        {t("workItems.activity.openedWorkItem", "opened this work item")}
-      </span>
+      <span>{t("workItems.activity.openedWorkItem")}</span>
       <ActivityTimestamp timestamp={workItem.created_time} />
       <span aria-hidden>·</span>
       <span>
         {t("common:git.issues.commentCount", {
           count: workItem.comments?.length ?? 0,
-          defaultValue: "{{count}} comment",
           defaultValue_other: "{{count}} comments",
         })}
       </span>

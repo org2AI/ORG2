@@ -121,6 +121,9 @@ impl OpenAIResponsesClient {
                 message,
                 retry_after_secs: retry_after,
             },
+            400 if crate::providers::http_error_body::is_model_unavailable(status, body) => {
+                ProviderError::ModelNotFound(message)
+            }
             404 => ProviderError::ModelNotFound(message),
             _ => ProviderError::RequestFailed(format!("HTTP {}: {}", status, message)),
         }

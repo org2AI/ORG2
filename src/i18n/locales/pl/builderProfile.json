@@ -48,8 +48,6 @@
     "title": "Typy twórców",
     "howTitle": "Jak czytać kod",
     "howBody": "Cztery obserwowane preferencje tworzą typ twórcy. Litery opisują wzorzec pracy, a nie stałą tożsamość — mogą się zmieniać wraz z nawykami i narzędziami.",
-    "galleryTitle": "Wszystkie 16 typów",
-    "galleryHint": "Wybierz portret, aby zobaczyć pełny profil i praktyczne wskazówki dotyczące współpracy z agentami.",
     "knowMore": "Dowiedz się więcej",
     "family": "{{first}} · {{second}}",
     "letters": {

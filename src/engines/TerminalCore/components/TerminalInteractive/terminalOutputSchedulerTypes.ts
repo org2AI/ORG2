@@ -13,6 +13,7 @@ export interface SchedulerEntry {
 
 export interface PaneScheduler {
   sessionId: string;
+  ownerId?: number;
   write: WriteCallback;
   queue: SchedulerEntry[];
   /** Index of the first unconsumed entry in `queue`. */

@@ -1,0 +1,71 @@
+.docx-preview h1,
+.docx-preview h2,
+.docx-preview h3,
+.docx-preview h4,
+.docx-preview h5,
+.docx-preview h6 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  color: var(--color-text-1);
+}
+.docx-preview h1 {
+  font-size: 1.6em;
+}
+.docx-preview h2 {
+  font-size: 1.35em;
+}
+.docx-preview h3 {
+  font-size: 1.15em;
+}
+.docx-preview p {
+  margin-bottom: 0.5em;
+  line-height: 1.6;
+}
+.docx-preview ul,
+.docx-preview ol {
+  margin: 0.5em 0;
+  padding-left: 2em;
+}
+.docx-preview li {
+  margin-bottom: 0.25em;
+}
+.docx-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+}
+.docx-preview th,
+.docx-preview td {
+  border: 1px solid var(--color-border-2);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.docx-preview th {
+  background: var(--color-fill-2);
+  font-weight: 600;
+}
+.docx-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0.5em 0;
+}
+.docx-preview strong,
+.docx-preview b {
+  font-weight: 600;
+}
+.docx-preview em,
+.docx-preview i {
+  font-style: italic;
+}
+.docx-preview a {
+  color: var(--color-primary-6);
+  text-decoration: underline;
+}
+.docx-preview blockquote {
+  margin: 0.5em 0;
+  padding: 0.5em 1em;
+  border-left: 3px solid var(--color-border-2);
+  color: var(--color-text-2);
+}

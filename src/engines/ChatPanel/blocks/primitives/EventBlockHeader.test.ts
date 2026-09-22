@@ -12,6 +12,8 @@ import {
   vi,
 } from "vitest";
 
+import { ViewportLayoutMutationProvider } from "@src/components/ViewportLayoutMutationContext";
+
 import EventBlockHeader from "./EventBlockHeader";
 import { EventBlockHeaderTitle } from "./EventBlockHeaderTextSlots";
 import type { EventBlockHeaderProps } from "./types";
@@ -48,7 +50,7 @@ describe("EventBlockHeader text selection", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps title text selectable without making the whole header selectable", () => {
+  it("keeps header chrome out of the selection range", () => {
     act(() => {
       root.render(
         createElement(
@@ -61,8 +63,9 @@ describe("EventBlockHeader text selection", () => {
 
     const header = container.firstElementChild;
     const title = container.querySelector("span");
-    expect(header?.classList.contains("select-none")).toBe(false);
-    expect(title?.classList.contains("select-text")).toBe(true);
+    expect(header?.classList.contains("chat-block-header")).toBe(true);
+    expect(title?.classList.contains("select-none")).toBe(true);
+    expect(title?.classList.contains("select-text")).toBe(false);
   });
 
   it("does not toggle the header after dragging across its title", () => {
@@ -126,6 +129,59 @@ describe("EventBlockHeader text selection", () => {
     act(() => navigate?.click());
     expect(onNavigate).toHaveBeenCalledOnce();
     expect(onToggleCollapse).toHaveBeenCalledOnce();
+  });
+
+  it("captures the viewport anchor before a collapsible event header mutates layout", () => {
+    const calls: string[] = [];
+    vi.spyOn(window, "getSelection").mockReturnValue({
+      isCollapsed: true,
+    } as Selection);
+
+    act(() => {
+      root.render(
+        createElement(
+          ViewportLayoutMutationProvider,
+          { value: () => calls.push("before-layout-mutation") },
+          createElement(
+            TestEventBlockHeader,
+            {
+              isCollapsed: true,
+              onToggleCollapse: () => calls.push("toggle"),
+            },
+            createElement(EventBlockHeaderTitle, null, "Ran command")
+          )
+        )
+      );
+    });
+
+    act(() => container.querySelector<HTMLElement>('[role="button"]')?.click());
+    expect(calls).toEqual(["before-layout-mutation", "toggle"]);
+  });
+
+  it("does not capture a layout anchor for navigation-only headers", () => {
+    const beforeLayoutMutation = vi.fn();
+    const onNavigate = vi.fn();
+    vi.spyOn(window, "getSelection").mockReturnValue({
+      isCollapsed: true,
+    } as Selection);
+
+    act(() => {
+      root.render(
+        createElement(
+          ViewportLayoutMutationProvider,
+          { value: beforeLayoutMutation },
+          createElement(
+            TestEventBlockHeader,
+            { isCollapsed: true, onNavigate },
+            createElement(EventBlockHeaderTitle, null, "Read file")
+          )
+        )
+      );
+    });
+
+    act(() => container.querySelector<HTMLElement>('[role="button"]')?.click());
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(beforeLayoutMutation).not.toHaveBeenCalled();
   });
 
   it("makes expandable rows use the clickable cursor", () => {

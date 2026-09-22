@@ -11,6 +11,11 @@ import React, { Suspense } from "react";
 import { ManualSpotlightCreatorHost } from "@src/modules/ProjectManager/shared/components/ManualSpotlightCreatorHost";
 import { spotlightOpenAtom } from "@src/store/ui/uiAtom";
 
+import {
+  SpotlightTransitionRefContext,
+  useLaunchpadTransition,
+} from "./useLaunchpadTransition";
+
 const GlobalSpotlight = React.lazy(() =>
   import("@/src/scaffold/GlobalSpotlight").then((module) => ({
     default: module.GlobalSpotlight,
@@ -20,16 +25,20 @@ const GlobalSpotlight = React.lazy(() =>
 export const GlobalSpotlightPortal: React.FC = () => {
   const [spotlightOpen, setSpotlightOpen] = useAtom(spotlightOpenAtom);
 
+  const transitionRef = useLaunchpadTransition(spotlightOpen);
+
   return (
     <>
       <ManualSpotlightCreatorHost />
       {spotlightOpen && (
-        <Suspense fallback={null}>
-          <GlobalSpotlight
-            isOpen={true}
-            onClose={() => setSpotlightOpen(false)}
-          />
-        </Suspense>
+        <SpotlightTransitionRefContext.Provider value={transitionRef}>
+          <Suspense fallback={null}>
+            <GlobalSpotlight
+              isOpen={true}
+              onClose={() => setSpotlightOpen(false)}
+            />
+          </Suspense>
+        </SpotlightTransitionRefContext.Provider>
       )}
     </>
   );

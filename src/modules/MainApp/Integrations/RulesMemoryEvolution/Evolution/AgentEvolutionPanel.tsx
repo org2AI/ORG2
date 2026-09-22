@@ -5,16 +5,13 @@ import { useTranslation } from "react-i18next";
 import { Placeholder } from "@src/components/Placeholder";
 import SkeletonBar from "@src/components/Skeleton";
 import Switch from "@src/components/Switch";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import {
   builtInAgentsAtom,
   customAgentsAtom,
 } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
 import type { AgentDefinition } from "@src/modules/MainApp/AgentOrgs/types";
 import { LearningsBrowserContent } from "@src/modules/MainApp/Settings/subpages/LearningsBrowserPage/LearningsBrowserContent";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 import { useAgentLearnings } from "./useAgentLearnings";
 

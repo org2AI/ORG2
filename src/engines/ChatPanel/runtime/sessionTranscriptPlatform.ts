@@ -1,18 +1,13 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef } from "react";
+import { useAtomValue } from "jotai";
+import { useEffect, useRef } from "react";
 
 import {
-  clearSessionLoadErrorAtom,
-  isExploringAtom,
   loadErrorAtom,
   loadStatusAtom,
   sessionHydrationByIdAtom,
-  triggerSessionReloadAtom,
 } from "@src/engines/SessionCore";
-import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
-import { createLogger } from "@src/hooks/logger";
 import { useAgentWorkingRef } from "@src/hooks/streaming/useAgentWorkingRef";
-import { activeSessionIdAtom, sessionByIdAtom } from "@src/store/session";
+import { sessionByIdAtom } from "@src/store/session";
 import {
   isPendingCancelAtom,
   isSessionActiveAtom,
@@ -21,10 +16,10 @@ import {
 import { cursorIdeTurnSummariesAtomFamily } from "@src/store/session/cursorIdeTurnSummariesAtom";
 import { isCursorIdeSession } from "@src/util/session/sessionDispatch";
 
+import { useReloadSession } from "../ChatHistory/hooks/useReloadSession";
 import { useSessionTranscriptRuntime } from "../SessionTranscriptRuntimeContext";
 import type { SessionTranscriptPlatformState } from "./sessionTranscriptPlatform.types";
 
-const log = createLogger("SessionTranscriptPlatform");
 
 /** Desktop adapter for the shared transcript. Webpack replaces this module in
  * the browser entry with the Cloud/context-backed implementation. */
@@ -38,36 +33,13 @@ export function useSessionTranscriptPlatform(
   );
   const desktopIsAgentWorking = useAtomValue(isSessionActiveAtom);
   const desktopIsAgentWorkingRef = useAgentWorkingRef();
-  const desktopIsExploring = useAtomValue(isExploringAtom);
   const desktopLoadStatus = useAtomValue(loadStatusAtom);
   const desktopLoadError = useAtomValue(loadErrorAtom);
   const isPendingCancel = useAtomValue(isPendingCancelAtom);
   const isRolledBack = useAtomValue(sessionRolledBackAtom);
   const hydration = useAtomValue(sessionHydrationByIdAtom(sessionId ?? ""));
 
-  const clearSessionLoadError = useSetAtom(clearSessionLoadErrorAtom);
-  const setLoadStatus = useSetAtom(loadStatusAtom);
-  const triggerSessionReload = useSetAtom(triggerSessionReloadAtom);
-  const setActiveSessionId = useSetAtom(activeSessionIdAtom);
-
-  const desktopReload = useCallback(() => {
-    if (!sessionId) return;
-    void eventStoreProxy
-      .evictSession(sessionId)
-      .catch((error) =>
-        log.warn("Session eviction before reload failed", error)
-      );
-    clearSessionLoadError();
-    setLoadStatus("loading");
-    setActiveSessionId(sessionId);
-    triggerSessionReload(sessionId);
-  }, [
-    clearSessionLoadError,
-    sessionId,
-    setActiveSessionId,
-    setLoadStatus,
-    triggerSessionReload,
-  ]);
+  const desktopReload = useReloadSession(sessionId);
 
   const runtimeAgentWorkingRef = useRef(runtime?.isAgentWorking ?? false);
   useEffect(() => {
@@ -84,7 +56,6 @@ export function useSessionTranscriptPlatform(
     isAgentWorkingRef: runtime
       ? runtimeAgentWorkingRef
       : desktopIsAgentWorkingRef,
-    isExploring: runtime?.isExploring ?? desktopIsExploring,
     loadStatus: runtime?.loadStatus ?? desktopLoadStatus,
     loadError: runtime?.loadError ?? desktopLoadError,
     isPendingCancel: runtime ? false : isPendingCancel,

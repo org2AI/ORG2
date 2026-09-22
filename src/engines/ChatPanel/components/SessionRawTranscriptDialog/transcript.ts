@@ -74,7 +74,7 @@ export async function loadRawSessionTranscript(
     sessionId,
     source: {
       kind: "orgii-event-store",
-      displayName: "ORGII EventStore",
+      displayName: "ORG2 EventStore",
     },
     loadedAt: new Date().toISOString(),
     entries: mergeRawSessionEvents(persistedEvents, liveEvents, sessionId),

@@ -11,124 +11,106 @@
  * (`useFileContentManager`) — editing, dirty-diff baselines, and save/reload
  * all depend on it not being recreated per-tab.
  */
-import React, { Suspense, memo } from "react";
-
-import { Placeholder } from "@src/components/Placeholder";
 import { getGitFileForPath } from "@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/sourceControlMainProps";
 import { useEditorHostContext } from "@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/context/editorHostContext";
 import { requiresFilePreviewRoute as shouldUseDedicatedPreviewRoute } from "@src/util/file/previewTypes";
 
-import type { UnifiedTabContentProps } from "../types";
+import { createLazyTabRenderer } from "./createLazyTabRenderer";
 import { useFileGitBaseline } from "./useFileGitBaseline";
-
-const CodeViewerContent = React.lazy(
-  () =>
-    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/CodeViewerContent")
-);
-
-const LazyFallback = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
 
 function isCsvTableFile(filePath: string): boolean {
   const lowerPath = filePath.toLowerCase();
   return lowerPath.endsWith(".csv") || lowerPath.endsWith(".tsv");
 }
 
-const FileTabRenderer: React.FC<UnifiedTabContentProps> = memo((props) => {
-  const { tab, isActive } = props;
-  const {
-    fileContentState,
-    gitFilesByPath,
-    repoPath,
-    onFileSelect,
-    onCursorPositionChange,
-    forceRefresh,
-    onBinaryUnsavedChange,
-  } = useEditorHostContext();
+const FileTabRenderer = createLazyTabRenderer({
+  displayName: "FileTabRenderer",
+  load: () =>
+    import("@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/CodeViewerContent"),
+  useProps: ({ tab, isActive }) => {
+    const {
+      fileContentState,
+      gitFilesByPath,
+      repoPath,
+      onFileSelect,
+      onCursorPositionChange,
+      forceRefresh,
+      onBinaryUnsavedChange,
+    } = useEditorHostContext();
 
-  const filePath = tab.data.filePath as string;
-  // Look up git info for this file to get the base content (HEAD version)
-  const gitFileInfo = filePath
-    ? getGitFileForPath(filePath, repoPath, gitFilesByPath)
-    : undefined;
-  const loadedBaseline = useFileGitBaseline(
-    gitFileInfo,
-    repoPath,
-    isActive,
-    fileContentState.originalContent
-  );
+    const filePath = tab.data.filePath as string;
+    // Look up git info for this file to get the base content (HEAD version)
+    const gitFileInfo = filePath
+      ? getGitFileForPath(filePath, repoPath, gitFilesByPath)
+      : undefined;
+    const loadedBaseline = useFileGitBaseline(
+      gitFileInfo,
+      repoPath,
+      isActive,
+      fileContentState.originalContent
+    );
 
-  // Check if file was deleted (exists in git but removed from disk)
-  // Also treat as deleted if we have git info with oldContent and file read failed
-  const isDeletedFile =
-    gitFileInfo?.status === "deleted" ||
-    (fileContentState.error?.type === "not_found" &&
-      gitFileInfo?.oldContent !== undefined);
+    // Check if file was deleted (exists in git but removed from disk)
+    // Also treat as deleted if we have git info with oldContent and file read failed
+    const isDeletedFile =
+      gitFileInfo?.status === "deleted" ||
+      (fileContentState.error?.type === "not_found" &&
+        gitFileInfo?.oldContent !== undefined);
 
-  // Determine baseline for dirty diff:
-  // - Deleted files: show oldContent with all lines marked as deleted
-  // - Files in git status with "added": use "" to show all lines as green
-  // - Files in git status with changes: use oldContent (HEAD version)
-  // - Files not in git status: undefined → falls back to fileContent for unsaved changes
-  const gitBaseContent = gitFileInfo
-    ? gitFileInfo.status === "added"
-      ? "" // Untracked file - compare against empty to show all green
-      : gitFileInfo.status === "deleted"
-        ? "" // Deleted file - compare against empty (we'll mark all as deleted)
-        : loadedBaseline
-    : undefined;
+    // Determine baseline for dirty diff:
+    // - Deleted files: show oldContent with all lines marked as deleted
+    // - Files in git status with "added": use "" to show all lines as green
+    // - Files in git status with changes: use oldContent (HEAD version)
+    // - Files not in git status: undefined → falls back to fileContent for unsaved changes
+    const gitBaseContent = gitFileInfo
+      ? gitFileInfo.status === "added"
+        ? "" // Untracked file - compare against empty to show all green
+        : gitFileInfo.status === "deleted"
+          ? "" // Deleted file - compare against empty (we'll mark all as deleted)
+          : loadedBaseline
+      : undefined;
 
-  // For deleted files, show the old content instead of trying to read from disk
-  const displayContent = isDeletedFile
-    ? (loadedBaseline ?? "")
-    : fileContentState.content;
+    // For deleted files, show the old content instead of trying to read from disk
+    const displayContent = isDeletedFile
+      ? (loadedBaseline ?? "")
+      : fileContentState.content;
 
-  // Saved-on-disk content for unsaved changes diff (when file not in git status)
-  const savedContent =
-    isDeletedFile || gitFileInfo ? undefined : fileContentState.originalContent;
+    // Saved-on-disk content for unsaved changes diff (when file not in git status)
+    const savedContent =
+      isDeletedFile || gitFileInfo
+        ? undefined
+        : fileContentState.originalContent;
 
-  return (
-    <Suspense fallback={<LazyFallback />}>
-      <CodeViewerContent
-        selectedFile={filePath}
-        fileContent={displayContent}
-        loading={isDeletedFile ? false : fileContentState.loading}
-        error={isDeletedFile ? null : fileContentState.error}
-        repoPath={repoPath}
-        onFileSelect={onFileSelect}
-        onContentChange={fileContentState.handleContentChange}
-        onSave={fileContentState.handleSave}
-        onDiscard={fileContentState.handleDiscard}
-        onReload={fileContentState.handleReload}
-        hasUnsavedChanges={
-          isDeletedFile
-            ? false
-            : isCsvTableFile(filePath)
-              ? tab.hasUnsavedChanges === true ||
-                fileContentState.hasUnsavedChanges
-              : fileContentState.hasUnsavedChanges
-        }
-        saving={isDeletedFile ? false : fileContentState.saving}
-        requiresFilePreviewRoute={
-          isDeletedFile
-            ? false
-            : fileContentState.isBinary ||
-              shouldUseDedicatedPreviewRoute(filePath)
-        }
-        defaultPreviewMode={tab.data.defaultPreviewMode as boolean}
-        contentReady={isDeletedFile ? true : fileContentState.contentReady}
-        onCursorPositionChange={onCursorPositionChange}
-        onSaveSuccess={forceRefresh}
-        onBinaryUnsavedChange={onBinaryUnsavedChange}
-        gitBaseContent={gitBaseContent}
-        savedContent={savedContent}
-        isDeletedFile={isDeletedFile}
-      />
-    </Suspense>
-  );
+    return {
+      selectedFile: filePath,
+      fileContent: displayContent,
+      loading: isDeletedFile ? false : fileContentState.loading,
+      error: isDeletedFile ? null : fileContentState.error,
+      repoPath,
+      onFileSelect,
+      onContentChange: fileContentState.handleContentChange,
+      onSave: fileContentState.handleSave,
+      onDiscard: fileContentState.handleDiscard,
+      onReload: fileContentState.handleReload,
+      hasUnsavedChanges: isDeletedFile
+        ? false
+        : isCsvTableFile(filePath)
+          ? tab.hasUnsavedChanges === true || fileContentState.hasUnsavedChanges
+          : fileContentState.hasUnsavedChanges,
+      saving: isDeletedFile ? false : fileContentState.saving,
+      requiresFilePreviewRoute: isDeletedFile
+        ? false
+        : fileContentState.isBinary || shouldUseDedicatedPreviewRoute(filePath),
+      defaultPreviewMode: tab.data.defaultPreviewMode as boolean,
+      contentReady: isDeletedFile ? true : fileContentState.contentReady,
+      onCursorPositionChange,
+      onSaveSuccess: forceRefresh,
+      onBinaryUnsavedChange,
+      gitBaseContent,
+      savedContent,
+      isDeletedFile,
+    };
+  },
 });
-
-FileTabRenderer.displayName = "FileTabRenderer";
 
 export default FileTabRenderer;

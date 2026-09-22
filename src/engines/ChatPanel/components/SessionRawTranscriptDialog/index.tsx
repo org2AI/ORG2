@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, memo } from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
+import PanelFooter from "@src/components/layout/blocks/PanelFooter";
 import { ClipboardIcon, HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import Modal from "@src/scaffold/ModalSystem";
 
@@ -28,53 +28,50 @@ const SessionRawTranscriptDialog: React.FC<SessionRawTranscriptDialogProps> =
     return (
       <Modal
         visible={visible}
-        title={t("chat.rawTranscript.title", {
-          defaultValue: "Raw session transcript",
-        })}
+        title={t("chat.rawTranscript.title")}
         onClose={onClose}
         width="min(960px, 92vw)"
         bodyClassName="flex min-h-0 flex-col p-0"
         style={{ height: "min(760px, 84vh)" }}
         footer={
-          <div className="flex items-center justify-end gap-2 px-3 py-3">
-            <Button
-              size="small"
-              icon={
-                <HugeiconsIcon
-                  icon={Refresh04Icon}
-                  data-icon="refresh-cw"
-                  size={14}
-                  strokeWidth={1.75}
-                />
-              }
-              loading={transcript.loading}
-              disabled={!sessionId}
-              onClick={() => void transcript.loadTranscript()}
-            >
-              {t("common:actions.refresh", "Refresh")}
-            </Button>
-            <Button
-              size="small"
-              icon={
-                <HugeiconsIcon
-                  icon={ClipboardIcon}
-                  data-icon="clipboard"
-                  size={14}
-                  strokeWidth={1.75}
-                />
-              }
-              disabled={!transcript.snapshot || transcript.loading}
-              onClick={() => void transcript.copyTranscript()}
-            >
-              {t("common:actions.copy", "Copy")}
-            </Button>
-            <Button size="small" variant="primary" onClick={onClose}>
-              {t("common:actions.close", "Close")}
-            </Button>
-          </div>
+          <PanelFooter
+            secondaryActions={[
+              {
+                label: t("common:actions.refresh"),
+                icon: (
+                  <HugeiconsIcon
+                    icon={Refresh04Icon}
+                    data-icon="refresh-cw"
+                    size={14}
+                    strokeWidth={1.75}
+                  />
+                ),
+                loading: transcript.loading,
+                disabled: !sessionId,
+                onClick: () => void transcript.loadTranscript(),
+              },
+              {
+                label: t("common:actions.copy"),
+                icon: (
+                  <HugeiconsIcon
+                    icon={ClipboardIcon}
+                    data-icon="clipboard"
+                    size={14}
+                    strokeWidth={1.75}
+                  />
+                ),
+                disabled: !transcript.snapshot || transcript.loading,
+                onClick: () => void transcript.copyTranscript(),
+              },
+            ]}
+            primaryAction={{
+              label: t("common:actions.close"),
+              onClick: onClose,
+            }}
+          />
         }
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pb-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3">
           <Suspense fallback={null}>
             <SessionRawTranscriptContent
               error={transcript.error}

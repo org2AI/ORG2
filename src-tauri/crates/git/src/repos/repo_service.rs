@@ -13,7 +13,7 @@
 
 use super::repo_db::{self, RepoKind, RepoRecord};
 use super::unregister_workspace_from_watcher;
-use crate::util::tokio_git_command;
+use crate::util::{ensure_git_operand, tokio_git_command};
 
 // ============================================
 // Helpers
@@ -136,7 +136,7 @@ pub async fn import_repo(path: String, name: Option<String>) -> Result<RepoRecor
                 "--allow-empty",
                 "-m",
                 "Initial commit",
-                "--author=Orgii <orgii@local>",
+                "--author=ORG2 <orgii@local>",
             ])
             .current_dir(&canonical)
             .output()
@@ -205,6 +205,9 @@ pub async fn clone_github(
     target_dir: String,
     name: Option<String>,
 ) -> Result<RepoRecord, String> {
+    // `git clone` accepts `--upload-pack=<cmd>` and `--config`, so the URL must
+    // be an operand before it reaches argv.
+    ensure_git_operand(&url, "repository URL")?;
     let repo_name = match name {
         Some(n) if !n.trim().is_empty() => n,
         _ => {
@@ -285,7 +288,7 @@ pub async fn create_empty_repo(path: String, name: Option<String>) -> Result<Rep
             "--allow-empty",
             "-m",
             "Initial commit",
-            "--author=Orgii <orgii@local>",
+            "--author=ORG2 <orgii@local>",
         ])
         .current_dir(&path)
         .output()

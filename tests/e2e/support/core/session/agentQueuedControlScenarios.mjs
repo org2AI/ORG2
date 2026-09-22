@@ -745,28 +745,24 @@ async function waitForQueuedFollowup(marker) {
 
   await browser.waitUntil(
     async () => {
-      const clearAll = await execJS(`
-        const button = document.querySelector('[data-testid="queued-messages-clear-all"]');
-        return button
-          ? {
-              text: (button.textContent || "").trim(),
-              title: (button.getAttribute("title") || "").trim(),
-            }
-          : null;
+      // A single queued row has no Clear all strip (its delete is the same
+      // action), so check the always-present per-row Send now control.
+      const sendNowTitle = await execJS(`
+        const button = document.querySelector('[data-testid="queued-message-send-now"]');
+        return button ? (button.getAttribute("title") || "").trim() : null;
       `);
       return (
-        clearAll !== null &&
-        clearAll.text.length > 0 &&
-        clearAll.title.length > 0 &&
-        clearAll.text !== "actions.clearAll" &&
-        clearAll.title !== "actions.clearAll"
+        typeof sendNowTitle === "string" &&
+        sendNowTitle.length > 0 &&
+        sendNowTitle !== "common:actions.sendNow" &&
+        sendNowTitle !== "actions.sendNow"
       );
     },
     {
       timeout: 10_000,
       interval: 100,
       timeoutMsg:
-        "queued-message clear-all control did not render translated text and title",
+        "queued-message send-now control did not render a translated title",
     }
   );
 }

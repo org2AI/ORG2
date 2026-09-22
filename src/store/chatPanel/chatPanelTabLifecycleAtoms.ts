@@ -4,10 +4,7 @@ import { destroyChatPanelTerminalAtom } from "@src/store/chatPanel/chatPanelTerm
 import { workstationActiveSessionIdAtom } from "@src/store/session/viewAtom";
 import {
   type ChatPanelSelectedWorkItem,
-  chatPanelSelectedCloudOrgAtom,
-  chatPanelSelectedProjectAtom,
-  chatPanelSelectedProjectOrgAtom,
-  chatPanelSelectedWorkItemAtom,
+  chatPanelCreatorWorkItemContextAtom,
 } from "@src/store/ui/chatPanel/selectionAtoms";
 import type { WorkManagementSection } from "@src/store/workstation";
 
@@ -18,7 +15,7 @@ import {
 } from "./chatPanelRecentTabsState";
 import {
   DEFAULT_LAUNCHPAD_TAB_ID,
-  buildDefaultLaunchpadTab,
+  createDefaultLaunchpadTab,
   getChatPanelWorkItemTabKey,
 } from "./chatPanelTabFactories";
 import { dropChatPanelTabHistoryAtom } from "./chatPanelTabNavigationAtoms";
@@ -57,22 +54,12 @@ export const setActiveWorkManagementSectionAtom = atom(
   ) => {
     const state = get(chatPanelTabsAtom);
     const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
-    if (
-      activeTab?.type !== "work-management" &&
-      activeTab?.type !== "team-inbox"
-    ) {
-      return;
-    }
+    if (activeTab?.type !== "work-management") return;
     set(chatPanelTabsAtom, {
       ...state,
       tabs: state.tabs.map((tab) =>
         tab.id === activeTab.id
-          ? {
-              ...tab,
-              type: "work-management" as const,
-              managementSection: section,
-              title,
-            }
+          ? { ...tab, managementSection: section, title }
           : tab
       ),
     });
@@ -104,18 +91,15 @@ export const closeChatPanelTabAtom = atom(null, (get, set, tabId: string) => {
     set(workstationActiveSessionIdAtom, null);
   }
   if (
-    (tab.type === "work-management" || tab.type === "team-inbox") &&
-    !nextTabs.some(
-      (candidate) =>
-        candidate.type === "work-management" || candidate.type === "team-inbox"
-    )
+    tab.type === "work-management" &&
+    !nextTabs.some((candidate) => candidate.type === "work-management")
   ) {
     set(disposeWorkManagementStateAtom);
   }
   let nextActiveId = state.activeTabId;
 
   if (nextTabs.length === 0) {
-    const launchpad = buildDefaultLaunchpadTab();
+    const launchpad = createDefaultLaunchpadTab();
     if (state.activeTabId === tabId) {
       set(recordChatPanelTabTransitionAtom, {
         previousTab: tab,
@@ -196,7 +180,7 @@ export const closeSessionChatPanelTabsAtom = atom(
         .reverse()
         .find((tab) => !tabsToClose.has(tab.id)) ??
       remainingTabs.find((tab) => tab.id === DEFAULT_LAUNCHPAD_TAB_ID);
-    const nextTab = fallbackTab ?? buildDefaultLaunchpadTab();
+    const nextTab = fallbackTab ?? createDefaultLaunchpadTab();
     const nextTabs = fallbackTab ? remainingTabs : [nextTab, ...remainingTabs];
     set(chatPanelTabsAtom, {
       tabs: nextTabs,
@@ -208,25 +192,19 @@ export const closeSessionChatPanelTabsAtom = atom(
 );
 closeSessionChatPanelTabsAtom.debugLabel = "closeSessionChatPanelTabs";
 
-/** Close the singleton organization tab, or clear its legacy surface mirrors. */
+/** Close the singleton organization tab if one is open. */
 export const closeOrganizationChatPanelTabAtom = atom(null, (get, set) => {
   const tab = get(chatPanelTabsAtom).tabs.find(
     (candidate) => candidate.type === "organization"
   );
-  if (tab) {
-    set(closeChatPanelTabAtom, tab.id);
-    return;
-  }
-  set(chatPanelSelectedCloudOrgAtom, null);
-  set(chatPanelSelectedProjectOrgAtom, null);
+  if (tab) set(closeChatPanelTabAtom, tab.id);
 });
 closeOrganizationChatPanelTabAtom.debugLabel = "closeOrganizationChatPanelTab";
 
 /**
  * Close the tab that owns a deleted Work Item. Remote item tombstones and
- * project cascades must remove the durable tab payload as well as the legacy
- * selected-work-item mirror; clearing only the mirror leaves an editable ghost
- * because `WorkItemSurfaceRenderer` is keyed by the tab.
+ * project cascades must remove the durable tab payload; a just-created item
+ * the Launchpad creator still retains is dropped the same way.
  */
 export const closeWorkItemChatPanelTabAtom = atom(
   null,
@@ -242,9 +220,9 @@ export const closeWorkItemChatPanelTabAtom = atom(
       set(closeChatPanelTabAtom, tab.id);
       return;
     }
-    const selected = get(chatPanelSelectedWorkItemAtom);
-    if (selected && getChatPanelWorkItemTabKey(selected) === workItemKey) {
-      set(chatPanelSelectedWorkItemAtom, null);
+    const retained = get(chatPanelCreatorWorkItemContextAtom);
+    if (retained && getChatPanelWorkItemTabKey(retained) === workItemKey) {
+      set(chatPanelCreatorWorkItemContextAtom, null);
     }
   }
 );
@@ -280,17 +258,9 @@ export const closeProjectOrgChatPanelTabsAtom = atom(
 
     for (const tabId of tabIds) set(closeChatPanelTabAtom, tabId);
 
-    const selectedWorkItem = get(chatPanelSelectedWorkItemAtom);
-    if (selectedWorkItem?.orgId && revoked.has(selectedWorkItem.orgId)) {
-      set(chatPanelSelectedWorkItemAtom, null);
-    }
-    const selectedProject = get(chatPanelSelectedProjectAtom);
-    if (selectedProject?.orgId && revoked.has(selectedProject.orgId)) {
-      set(chatPanelSelectedProjectAtom, null);
-    }
-    const selectedProjectOrg = get(chatPanelSelectedProjectOrgAtom);
-    if (revoked.has(selectedProjectOrg?.orgId ?? "")) {
-      set(chatPanelSelectedProjectOrgAtom, null);
+    const retained = get(chatPanelCreatorWorkItemContextAtom);
+    if (retained?.orgId && revoked.has(retained.orgId)) {
+      set(chatPanelCreatorWorkItemContextAtom, null);
     }
   }
 );
@@ -451,19 +421,6 @@ export const setChatPanelTabTitleAtom = atom(
         ),
       };
     });
-  }
-);
-
-/** Toggle TUI mode on the given tab */
-export const toggleChatPanelTabTuiModeAtom = atom(
-  null,
-  (_get, set, tabId: string) => {
-    set(chatPanelTabsAtom, (prev) => ({
-      ...prev,
-      tabs: prev.tabs.map((tab) =>
-        tab.id === tabId ? { ...tab, tuiMode: !tab.tuiMode } : tab
-      ),
-    }));
   }
 );
 

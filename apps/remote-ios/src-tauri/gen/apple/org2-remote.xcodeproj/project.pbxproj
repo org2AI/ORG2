@@ -18,6 +18,7 @@
 		652A1C1A2C4650C0DBB0D107 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA94EAB943C480C6D901740E /* WebKit.framework */; };
 		848449A8A26D5ABCBB9D3D44 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 09999C01BEF32C9D12B9594C /* main.mm */; };
 		A9FBA82AAABB47D494C53BBC /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1386F1869ECC7C9F605BB80 /* UIKit.framework */; };
+		E06BB14DC03A735D21DDB446 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5659F41309F2BBE4AB265FEA /* PrivacyInfo.xcprivacy */; };
 		FD65BF213E21D25393C10432 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 09BEDDA01D3B6AF50AB4C557 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -26,6 +27,7 @@
 		09999C01BEF32C9D12B9594C /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		09BEDDA01D3B6AF50AB4C557 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4E8C456B445C726BEF9E9257 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		5659F41309F2BBE4AB265FEA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		582265530F2F2E7B757D7C0E /* org2-remote_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "org2-remote_iOS.entitlements"; sourceTree = "<group>"; };
 		680653A546C7ECEDBC792278 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		796E95FE899E78FC89082DC8 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
@@ -66,6 +68,7 @@
 			children = (
 				E49FDFC669F6670256C4A142 /* Info.plist */,
 				582265530F2F2E7B757D7C0E /* org2-remote_iOS.entitlements */,
+				5659F41309F2BBE4AB265FEA /* PrivacyInfo.xcprivacy */,
 			);
 			path = "org2-remote_iOS";
 			sourceTree = "<group>";
@@ -210,6 +213,7 @@
 			files = (
 				FD65BF213E21D25393C10432 /* Assets.xcassets in Resources */,
 				52049DEC689E516DA7E7B1D6 /* LaunchScreen.storyboard in Resources */,
+				E06BB14DC03A735D21DDB446 /* PrivacyInfo.xcprivacy in Resources */,
 				0E9EE0CB965D103591BBD989 /* assets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

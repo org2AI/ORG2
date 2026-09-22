@@ -9,7 +9,7 @@
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import {
   WIZARD_IDS,
@@ -19,6 +19,7 @@ import {
   parseSettingsTopTab,
 } from "@src/config/mainAppPaths";
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { HierarchyCircle01Icon, UserAdd01Icon } from "@src/icons";
 import { integrationsToolbarAtom } from "@src/store/ui/integrationsToolbarAtom";
 import type {

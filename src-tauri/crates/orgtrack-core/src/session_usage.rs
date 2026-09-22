@@ -213,10 +213,15 @@ fn native_totals(conn: &Connection, session_id: &str) -> Result<NativeTotals, St
 }
 
 fn latest_native_column(conn: &Connection, session_id: &str, column: &str) -> Option<String> {
+    let foreground = if table_exists(conn, "session_auxiliary_usage").unwrap_or(false) {
+        "AND NOT EXISTS (SELECT 1 FROM session_auxiliary_usage aux WHERE aux.token_usage_id = session_token_usage.id)"
+    } else {
+        ""
+    };
     conn.query_row(
         &format!(
             "SELECT {column} FROM session_token_usage
-             WHERE session_id = ?1 AND {column} IS NOT NULL AND {column} != ''
+             WHERE session_id = ?1 AND {column} IS NOT NULL AND {column} != '' {foreground}
              ORDER BY created_at DESC
              LIMIT 1"
         ),
@@ -290,6 +295,51 @@ fn estimated_cost_usd(record: &SessionUsageRecord, pricing: ModelPricing) -> f64
         + cost_for(record.cache_read_tokens, pricing.cache_read_per_mtok)
 }
 
+/// Price native requests at the model that actually served them. Auxiliary
+/// requests may use a cheaper model while the session's displayed model stays
+/// the foreground model. Grouping bounds returned rows to distinct models.
+fn native_estimated_cost(
+    conn: &Connection,
+    session_id: &str,
+    fallback_model: Option<&str>,
+) -> Result<f64, String> {
+    let mut query = conn
+        .prepare(
+            "SELECT model, SUM(input_tokens), SUM(output_tokens), SUM(cache_read_tokens),
+                SUM(cache_write_tokens), SUM(total_tokens)
+         FROM session_token_usage WHERE session_id = ?1
+         GROUP BY model, (input_tokens = 0 AND output_tokens = 0 AND
+             cache_read_tokens = 0 AND cache_write_tokens = 0 AND total_tokens > 0)",
+        )
+        .map_err(|err| err.to_string())?;
+    let rows = query
+        .query_map([session_id], |row| {
+            Ok((
+                row.get::<_, Option<String>>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, i64>(4)?,
+                row.get::<_, i64>(5)?,
+            ))
+        })
+        .map_err(|err| err.to_string())?;
+    let mut result = 0.0;
+    for row in rows {
+        let (model, input, output, read, write, total) = row.map_err(|err| err.to_string())?;
+        let price = pricing::resolve_pricing(model.as_deref().or(fallback_model));
+        result += if input == 0 && output == 0 && read == 0 && write == 0 && total > 0 {
+            total as f64 / 1_000_000.0 * (price.input_per_mtok + price.output_per_mtok) / 2.0
+        } else {
+            cost_for(input, price.input_per_mtok)
+                + cost_for(output, price.output_per_mtok)
+                + cost_for(read, price.cache_read_per_mtok)
+                + cost_for(write, price.cache_creation_per_mtok)
+        };
+    }
+    Ok(result)
+}
+
 /// Rebuild and upsert the usage/cost projection row for one session.
 ///
 /// Returns the projected record, or `None` when no store knows the session
@@ -357,7 +407,11 @@ pub fn recompute_session_usage(
 
     let pricing = pricing::resolve_pricing(model.as_deref());
     record.model = model;
-    let estimated = estimated_cost_usd(&record, pricing);
+    let estimated = if record.tokens_source == TOKENS_SOURCE_NATIVE {
+        native_estimated_cost(conn, session_id, record.model.as_deref())?
+    } else {
+        estimated_cost_usd(&record, pricing)
+    };
     let recorded = if route_is_metered(record.key_source.as_deref()) {
         estimated
     } else {
@@ -520,6 +574,106 @@ mod tests {
     }
 
     #[test]
+    fn corrected_catalog_rates_reach_stored_session_estimates() {
+        let conn = fixture_conn();
+        // 10k input + 2k output + 30k cache reads + 4k cache writes.
+        // Assert published-dollar results, not expectations derived from the
+        // resolver under test, so a stale catalog cannot make this test pass.
+        for (session_id, model, expected) in [
+            ("astra", "openai/gpt-6-astra-high", 0.28),
+            ("fable", "claude-fable-5-1-xhigh", 0.2575),
+            ("mythos", "claude-mythos-5-1", 0.2575),
+            ("sol", "gpt-5.6", 0.112),
+            ("terra", "gpt-5.6-terra", 0.06),
+            ("luna", "gpt-5.6-luna", 0.006),
+            ("cursor-grok", "cursor-grok-4.6-high-fast", 0.11),
+            ("composer-fast", "composer-2.5-fast", 0.087),
+        ] {
+            insert_code_session(&conn, session_id, "own_key");
+            insert_turn(
+                &conn,
+                session_id,
+                Some(model),
+                (10_000, 2_000, 30_000, 4_000, 46_000, 44_000),
+                "2026-09-14T00:00:00Z",
+            );
+            let record = recompute_session_usage(&conn, session_id)
+                .expect("recompute")
+                .expect("projected");
+            assert!(
+                (record.estimated_cost_usd - expected).abs() < 1e-9,
+                "{model}"
+            );
+            let stored = SqliteRecordStore::new(&conn)
+                .get_session_usage(session_id)
+                .expect("read projection")
+                .expect("projection row");
+            assert!((stored.cost_usd - expected).abs() < 1e-9, "{model}");
+            assert_eq!(stored.recorded_cost_usd, 0.0);
+        }
+    }
+
+    #[test]
+    fn mixed_auxiliary_models_price_per_response_without_changing_foreground_model() {
+        let conn = fixture_conn();
+        insert_code_session(&conn, "mixed", "own_key");
+        insert_turn(
+            &conn,
+            "mixed",
+            Some("gpt-6-astra"),
+            (10_000, 2_000, 30_000, 4_000, 46_000, 44_000),
+            "2026-09-14T00:00:00Z",
+        );
+        insert_turn(
+            &conn,
+            "mixed",
+            Some("gpt-5.6-luna"),
+            (10_000, 2_000, 30_000, 4_000, 46_000, 0),
+            "2026-09-14T00:00:01Z",
+        );
+        let auxiliary_id = conn.last_insert_rowid();
+        conn.execute_batch(
+            "CREATE TABLE session_auxiliary_usage(token_usage_id INTEGER UNIQUE, purpose TEXT);",
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO session_auxiliary_usage VALUES (?1,'session_title')",
+            [auxiliary_id],
+        )
+        .unwrap();
+        let projected = recompute_session_usage(&conn, "mixed").unwrap().unwrap();
+        assert_eq!(projected.model.as_deref(), Some("gpt-6-astra"));
+        assert_eq!(projected.context_tokens, 44_000);
+        assert_eq!(projected.input_tokens, 20_000);
+        // Independent published list estimates: Astra $0.28 + Luna $0.006.
+        assert!((projected.estimated_cost_usd - 0.286).abs() < 1e-9);
+        assert_eq!(projected.recorded_cost_usd, 0.0);
+    }
+
+    #[test]
+    fn auxiliary_estimate_keeps_same_model_total_only_rows_separate() {
+        let conn = fixture_conn();
+        insert_code_session(&conn, "partial", "own_key");
+        insert_turn(
+            &conn,
+            "partial",
+            Some("claude-sonnet-4-5"),
+            (1000, 100, 0, 0, 1100, 1000),
+            "2026-09-14T00:00:00Z",
+        );
+        insert_turn(
+            &conn,
+            "partial",
+            Some("claude-sonnet-4-5"),
+            (0, 0, 0, 0, 1000, 0),
+            "2026-09-14T00:00:01Z",
+        );
+        let projected = recompute_session_usage(&conn, "partial").unwrap().unwrap();
+        // $3/M input + $15/M output; unknown split keeps the existing midpoint estimate.
+        assert!((projected.estimated_cost_usd - 0.0135).abs() < 1e-9);
+    }
+
+    #[test]
     fn native_rollups_sum_tokens_and_max_context() {
         let conn = fixture_conn();
         insert_code_session(&conn, "s-native", "own_key");
@@ -554,11 +708,15 @@ mod tests {
         assert_eq!(record.source, SOURCE_ORGII_CLI_SESSIONS);
         assert_eq!(record.account_id.as_deref(), Some("acct-1"));
 
-        let pricing = pricing::resolve_pricing(Some("claude-opus-4-5"));
-        let expected = 1.5 * pricing.input_per_mtok
-            + 0.15 * pricing.output_per_mtok
-            + 0.05 * pricing.cache_creation_per_mtok
-            + 0.2 * pricing.cache_read_per_mtok;
+        let sonnet = pricing::resolve_pricing(Some("claude-sonnet-4-5"));
+        let opus = pricing::resolve_pricing(Some("claude-opus-4-5"));
+        // Changing the foreground model must not reprice its earlier responses.
+        let expected = sonnet.input_per_mtok
+            + 0.1 * sonnet.output_per_mtok
+            + 0.05 * sonnet.cache_creation_per_mtok
+            + 0.2 * sonnet.cache_read_per_mtok
+            + 0.5 * opus.input_per_mtok
+            + 0.05 * opus.output_per_mtok;
         assert!((record.estimated_cost_usd - expected).abs() < 1e-9);
         // Own-key route: estimate only, no recorded metered spend.
         assert_eq!(record.recorded_cost_usd, 0.0);

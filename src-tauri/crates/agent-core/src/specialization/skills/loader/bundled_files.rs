@@ -110,7 +110,7 @@ pub async fn skills_write_files_batch(
                 return BundledFileWriteResult {
                     relative_path: file.relative_path,
                     success: false,
-                    error: Some("Skill provenance/cache metadata is managed by ORGII".to_string()),
+                    error: Some("Skill provenance/cache metadata is managed by ORG2".to_string()),
                 };
             }
 

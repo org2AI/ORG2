@@ -12,12 +12,13 @@ import {
   SECTION_VALUE_SMALL_SECONDARY_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@/src/modules/shared/layouts/SectionLayout";
+} from "@/src/components/layout/Section";
 import { invoke } from "@tauri-apps/api/core";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import DeleteIconButton from "@src/components/Button/DeleteIconButton";
 import Message from "@src/components/Message";
 import SettingsTable, {
   SETTINGS_TABLE_COL,
@@ -243,17 +244,8 @@ const StorageSection: React.FC = () => {
                   cat.is_folder ? t("storage.openFolder") : t("storage.reveal")
                 }
               />
-              <Button
-                onClick={() => handleClearClick(cat)}
-                icon={
-                  <HugeiconsIcon
-                    icon={Delete02Icon}
-                    data-icon="trash-2"
-                    size={14}
-                    className="text-danger-6"
-                  />
-                }
-                iconOnly
+              <DeleteIconButton
+                onDelete={() => handleClearClick(cat)}
                 disabled={!canClear || isClearing}
               />
             </div>
@@ -386,8 +378,6 @@ const StorageSection: React.FC = () => {
           })}
         >
           <Button
-            variant="secondary"
-            size="default"
             icon={
               <HugeiconsIcon
                 icon={Delete02Icon}

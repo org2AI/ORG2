@@ -10,7 +10,7 @@
 //! - [`repos`]       — repository listing, search, and branch commands
 //! - [`pulls`]       — pull requests, reviews, inline review comments, checks
 //! - [`issues`]      — issues, issue comments, labels, collaborators
-//! - [`credentials`] — git credential lookup, repository clone, token check
+//! - [`credentials`] — git credential lookup
 //!
 //! Every command is re-exported at this module's root so the Tauri
 //! `generate_handler!` registration paths (`…::github::commands::github_*`)

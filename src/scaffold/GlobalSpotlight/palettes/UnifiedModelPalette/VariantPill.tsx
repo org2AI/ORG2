@@ -11,15 +11,20 @@
  * change is persisted via the supplied `onApply` callback (which the
  * caller wires to `saveKey` with `default_variants`).
  */
+import { useAtomValue } from "jotai";
 import React from "react";
 
+import Button from "@src/components/Button";
 import ModelPropertiesDropdown from "@src/components/ModelPropertiesDropdown";
 import { BrainIcon, HugeiconsIcon, Pen01Icon } from "@src/icons";
+import { separateEffortPillAtom } from "@src/store/session/separateEffortPillAtom";
 import {
   formatReasoningLevel,
   parseModelVariant,
 } from "@src/util/modelVariants";
 import { buildVariantEditOptions } from "@src/util/variantEditOptions";
+
+import { VariantPillEditContext } from "./variantPillEditContext";
 
 interface VariantPillProps {
   /** Concrete model id whose variant is being displayed. */
@@ -43,15 +48,36 @@ export const VariantPill: React.FC<VariantPillProps> = ({
   groupModelIds,
   onApply,
 }) => {
-  const variant = parseModelVariant(modelId);
-
   const variantOptions = React.useMemo(
     () => buildVariantEditOptions(groupModelIds ?? [modelId]),
     [groupModelIds, modelId]
   );
+  const effectiveModelId =
+    variantOptions.resolveVariantId(variantOptions.parseSelection(modelId)) ??
+    modelId;
+  const variant = parseModelVariant(effectiveModelId);
 
   const pillClasses =
     "relative z-10 inline-flex h-[24px] shrink-0 items-center gap-0.5 rounded-full border border-transparent bg-transparent px-2 text-[11px] font-semibold text-text-2 transition-colors group-hover/model-row:border-border-3 group-hover/model-row:bg-bg-1 group-focus-within/model-row:border-border-3 group-focus-within/model-row:bg-bg-1";
+
+  const separateEffortPill = useAtomValue(separateEffortPillAtom);
+  const { confirmChanges, onEditingChange } = React.useContext(
+    VariantPillEditContext
+  );
+  const pillId = React.useId();
+  const handleOpenChange = React.useCallback(
+    (open: boolean) => onEditingChange?.(pillId, open),
+    [onEditingChange, pillId]
+  );
+  // A pill can unmount with its popover open (the row list re-renders), and
+  // the popover never reports that close, so release the hold here.
+  React.useEffect(
+    () => () => onEditingChange?.(pillId, false),
+    [onEditingChange, pillId]
+  );
+  // The composer's own effort pill owns effort, and a pick keeps it, so a
+  // per-row variant would only advertise an effort the pick will not use.
+  if (separateEffortPill) return null;
 
   const editable = onApply !== undefined && (groupModelIds?.length ?? 0) > 1;
   const parts: string[] = [];
@@ -151,30 +177,25 @@ export const VariantPill: React.FC<VariantPillProps> = ({
       value={modelId}
       onChange={onApply}
       sidePanelInContainer
+      confirmChanges={confirmChanges}
+      onOpenChange={handleOpenChange}
       renderTrigger={({ ref, onClick, ariaExpanded }) => {
         const isActive = ariaExpanded;
         return (
-          <button
+          <Button
+            layout="custom"
             ref={ref}
-            type="button"
             onClick={onClick}
             aria-expanded={ariaExpanded}
             aria-label="Edit variant"
-            // `group` enables `group-hover:` text/icon lifts on the
-            // nested label · separator · pencil. When the dropdown is
-            // open (`isActive`), we pin the lifted colours via JSX so
-            // the pill stays in its "active" appearance without
-            // depending on the cursor staying inside.
             className={`${pillClasses} group/variant-pill cursor-pointer hover:border-border-3 hover:bg-fill-4 ${
               isActive ? "border-border-3 bg-fill-4" : ""
             }`}
           >
             {renderBody(isActive)}
-          </button>
+          </Button>
         );
       }}
     />
   );
 };
-
-export default VariantPill;

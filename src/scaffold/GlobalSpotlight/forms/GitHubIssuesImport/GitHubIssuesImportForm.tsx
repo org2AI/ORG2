@@ -1,12 +1,6 @@
 import { emit } from "@tauri-apps/api/event";
 import { useSetAtom } from "jotai";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -20,16 +14,17 @@ import Input from "@src/components/Input";
 import { Message } from "@src/components/Message";
 import PageNotice from "@src/components/PageNotice";
 import Select, { type SelectOption } from "@src/components/Select";
+import { PanelFooter } from "@src/components/layout/blocks";
 import { createLogger } from "@src/hooks/logger";
 import { HugeiconsIcon, Loading03Icon } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 import { projectListRefreshAtom } from "@src/store/project/projectAtom";
 import { STORY_PERSONAL_ORG_FILTER_ID } from "@src/store/workstation/tabs";
 
-import { SpotlightSearchBar } from "../../components";
 import { ICONS } from "../../config";
 import type { PathSegment } from "../../types";
 import { SpotlightFormBody, SpotlightFormShell } from "../shared";
+import { SpotlightFormField } from "../shared/SpotlightFormField";
+import { SpotlightFormLayout } from "../shared/SpotlightFormLayout";
 import {
   createProjectSlug,
   createWorkItemPrefix,
@@ -58,7 +53,6 @@ const GitHubIssuesImportForm: React.FC<GitHubIssuesImportFormProps> = ({
 }) => {
   const { t } = useTranslation(["projects", "common"]);
   const bumpProjectListRefresh = useSetAtom(projectListRefreshAtom);
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
   const [projectName, setProjectName] = useState(() =>
     repoName ? `${repoName} issues` : ""
   );
@@ -202,17 +196,10 @@ const GitHubIssuesImportForm: React.FC<GitHubIssuesImportFormProps> = ({
   ]);
 
   return (
-    <div data-testid="github-issues-import-spotlight">
-      <SpotlightSearchBar
-        inputRef={hiddenInputRef}
-        searchQuery=""
-        onSearchQueryChange={() => undefined}
-        onKeyDown={() => undefined}
-        placeholder=""
-        path={path}
-        onRemoveSegment={onCancel}
-        hideInput
-      />
+    <SpotlightFormLayout
+      header={{ path, onRemoveSegment: onCancel }}
+      data-testid="github-issues-import-spotlight"
+    >
       <form
         data-testid="github-issues-import-form"
         onSubmit={(event) => {
@@ -223,13 +210,10 @@ const GitHubIssuesImportForm: React.FC<GitHubIssuesImportFormProps> = ({
         <SpotlightFormShell>
           <SpotlightFormBody>
             <div className="flex flex-col gap-4">
-              <label className="flex flex-col gap-2 text-sm text-text-2">
-                <span>
-                  {t("projects:githubIssuesImport.fields.projectName")}
-                  <span className="text-danger-6" aria-hidden>
-                    *
-                  </span>
-                </span>
+              <SpotlightFormField
+                label={t("projects:githubIssuesImport.fields.projectName")}
+                required
+              >
                 <Input
                   value={projectName}
                   onChange={setProjectName}
@@ -243,15 +227,12 @@ const GitHubIssuesImportForm: React.FC<GitHubIssuesImportFormProps> = ({
                   autoFocus
                   required
                 />
-              </label>
+              </SpotlightFormField>
 
-              <label className="flex flex-col gap-2 text-sm text-text-2">
-                <span>
-                  {t("projects:githubIssuesImport.fields.repo")}
-                  <span className="text-danger-6" aria-hidden>
-                    *
-                  </span>
-                </span>
+              <SpotlightFormField
+                label={t("projects:githubIssuesImport.fields.repo")}
+                required
+              >
                 <Input
                   value={repoInput}
                   onChange={(value) => {
@@ -267,7 +248,7 @@ const GitHubIssuesImportForm: React.FC<GitHubIssuesImportFormProps> = ({
                   size="default"
                   required
                 />
-              </label>
+              </SpotlightFormField>
 
               <div className="flex flex-col gap-2 text-sm text-text-2">
                 <span>
@@ -329,7 +310,6 @@ const GitHubIssuesImportForm: React.FC<GitHubIssuesImportFormProps> = ({
                 label: t("common:actions.clear"),
                 onClick: handleClear,
                 disabled: saving,
-                htmlType: "button",
               },
             ]}
             primaryAction={{
@@ -342,7 +322,7 @@ const GitHubIssuesImportForm: React.FC<GitHubIssuesImportFormProps> = ({
           />
         </SpotlightFormShell>
       </form>
-    </div>
+    </SpotlightFormLayout>
   );
 };
 

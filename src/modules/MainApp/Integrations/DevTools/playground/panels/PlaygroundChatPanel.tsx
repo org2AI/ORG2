@@ -149,10 +149,6 @@ export function PlaygroundChatPanel({
     onCommitSendNow: NOOP_MESSAGE_ACTION,
   });
 
-  const effectiveQueueCount = chatExtras?.showQueuedMessages
-    ? demoQueue.length
-    : 0;
-
   const demoProcesses = chatExtras?.showTerminalProcesses
     ? MOCK_ACTIVE_PROCESSES
     : [];
@@ -197,16 +193,13 @@ export function PlaygroundChatPanel({
     collapseQuestion,
     collapsePermission,
     collapseModeSwitch,
-    queueExpanded,
     processExpanded,
-    toggleQueue,
     toggleProcess,
     hasAny,
     inlineSections,
     setProcessVisibleCount,
     setFileChangeStats,
   } = useComposerSections({
-    queueCount: effectiveQueueCount,
     hasQuestion: !!pendingAskUser,
     hasPermission: !!pendingApproval,
     hasModeSwitch: showModeSwitchPreview,
@@ -306,16 +299,6 @@ export function PlaygroundChatPanel({
               )}
 
               {/* Expanded section cards */}
-              {queueExpanded && chatExtras?.showQueuedMessages && (
-                <QueuedMessages
-                  messages={demoQueue}
-                  onCancel={NOOP_MESSAGE_ACTION}
-                  onClear={() => setDemoQueue([])}
-                  onSendNow={NOOP_MESSAGE_ACTION}
-                  onReorder={handleDemoReorder}
-                  onToggle={toggleQueue}
-                />
-              )}
               {processExpanded && (
                 <ActiveProcesses
                   initialProcesses={demoProcesses}
@@ -364,6 +347,16 @@ export function PlaygroundChatPanel({
                       <ChatRetryStatusBar items={retryStatusItems} />
                       {pausedBottomContent}
                     </>
+                  }
+                  composerTray={
+                    chatExtras?.showQueuedMessages ? (
+                      <QueuedMessages
+                        messages={demoQueue}
+                        onCancel={NOOP_MESSAGE_ACTION}
+                        onSendNow={NOOP_MESSAGE_ACTION}
+                        onReorder={handleDemoReorder}
+                      />
+                    ) : null
                   }
                   {...queueEditProps}
                 />

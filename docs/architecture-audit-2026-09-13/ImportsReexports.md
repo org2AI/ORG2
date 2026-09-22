@@ -1,0 +1,35 @@
+# Imports and re-exports audit
+
+Scope: TypeScript/frontend source at `f65cb2f6b` (develop `482e7f951` plus PR #1687), inspected in an isolated worktree. Unrelated working changes were excluded. Audit only; no source cleanup performed.
+
+## Results
+
+No additional unresolved active-source imports reported by Knip. AST traversal checked all 86 static local CSS/SCSS/Sass imports in JavaScript/TypeScript under `src`; all resolve. A regex-only hit for `./Button.scss` was mock source text, not an actual import. Dynamic computed paths and Sass-internal imports are not covered by that AST count.
+
+Knip reported six unresolved references in four archived test files, not active application files: cloudWorkItemLock (three), routeViewModeConfig, waitForSnapshotChange, and SpreadsheetEditor clipboardUtils. These should be handled as archive/test-discovery maintenance, not as current webpack failures.
+
+## Confirmed cleanup candidates
+
+| Line                                                                       | Element                                                                            | Verdict          | Reason                                                                                                       | Suggested change                                                                                   |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| src/icons.ts:141,181,191,274,395                                           | CloudDownloadIcon, Edit03Icon, FileCodeIcon, LayoutTopIcon, SquareArrowRight01Icon | fix              | Knip flags all five; source-wide search finds no source consumers outside the canonical icon barrel          | Remove these five re-export lines                                                                  |
+| src/config/keyboard/shortcuts/index.ts:2                                   | Eight per-category shortcut re-exports                                             | fix              | No barrel consumers; allShortcuts imports the owning files directly and assembles ALL_SHORTCUTS              | Remove unused barrel entries; retain definitions and aggregation                                   |
+| src/store/repo/index.ts:55,68,109                                          | selectedBranchAtom, repoFilterAtom, isMainAppWindowLabel                           | fix              | Unused barrel exposure; storage and derived state consume owning modules directly                            | Remove only the three re-exports                                                                   |
+| src/hooks/keyVault/index.ts:7                                              | useLocalKeys                                                                       | fix              | Production pages call useKeyVault; useKeyVault imports useLocalKeys directly                                 | Remove unused barrel export, retain implementation                                                 |
+| src/engines/ChatPanel/ChatHistory/hooks/index.ts:27,37                     | useChatScroll, useChatScrollPin                                                    | fix              | useChatViewportController imports and invokes both directly                                                  | Remove unused barrel exposure; retain active hooks                                                 |
+| src/engines/ChatPanel/ChatHistory/components/TurnPaginationControls.tsx:28 | shouldShowTurnPaginationSpinner                                                    | fix              | Toolbar consumes the owning helper directly; tests use the toolbar export, not this legacy forwarding export | Remove obsolete forwarding export                                                                  |
+| src/engines/ChatPanel/ChatHistory/hooks/chatSearch/index.ts:30             | scrollElementIntoView                                                              | fix              | Deprecated alias flagged unused by Knip                                                                      | Remove alias after final consumer check in cleanup branch                                          |
+| src/engines/ChatPanel/ChatHistory/chatItemPipeline/index.ts:20             | calculateDuration                                                                  | fix              | No production consumer; definition plus barrel plus direct unit tests only                                   | Remove barrel export; consider deleting function and obsolete tests together in a scoped follow-up |
+| src/config/keyboard/shortcuts/allShortcuts.ts:1                            | Shortcut implementations                                                           | keep with reason | Direct imports populate the live ALL_SHORTCUTS aggregate                                                     | Retain                                                                                             |
+| src/hooks/keyVault/useKeyVault.ts:45                                       | useLocalKeys implementation                                                        | keep with reason | Invoked by the live useKeyVault hook consumed by integration pages                                           | Retain                                                                                             |
+
+These are separate cleanup candidates, not additions to the existing build-fix PR. Do not mass-delete every static-analysis finding.
+
+## Evidence and limits
+
+- `pnpm exec knip --include exports,types,nsExports,nsTypes,unresolved --reporter json`: exit 1 because findings exist; 909 exports, 147 types, 36 namespace exports, 3 namespace types, 6 unresolved imports. These 1,095 export-related findings are candidates, not 1,095 proven removable re-exports. Repository configuration includes tests as entries and ignores exports used in their own file.
+- AST stylesheet scan with the installed TypeScript parser: 86 local static stylesheet imports, zero missing targets.
+- Source searches and direct caller inspection confirmed the distinctions in the table.
+- PR #1687 frontend webpack build/runtime guard check and commit TypeScript check passed earlier in this same isolated source state.
+- Architecture layers covered: 1 compilation/import resolution; 2 dead exports and direct caller tracing; 3 stale paths/aliases; 6 barrel ownership boundaries; 7 misleading legacy exposure. Layers 4/5/8/9/10 assessed as outside this read-only import audit: no semantic variants, default branches, wire payloads, initialization, or resolver behavior changed or validated. This is not a full Rust/runtime architecture audit.
+- No Rust checks, GUI checks, or native rebuild were run for this read-only audit. No runtime/performance improvement is claimed.

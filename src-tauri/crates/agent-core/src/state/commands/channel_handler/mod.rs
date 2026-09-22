@@ -35,4 +35,7 @@ pub use lifecycle::{agent_set_gateway_model, agent_toggle_channel, restore_enabl
 // for the fn — i.e. `channel_handler::__cmd__agent_*` — so we re-export
 // the helper modules from the original location to keep that path
 // resolvable after the split.
-pub use lifecycle::{__cmd__agent_set_gateway_model, __cmd__agent_toggle_channel};
+pub use lifecycle::{
+    __cmd__agent_set_gateway_model, __cmd__agent_toggle_channel,
+    __tauri_command_name_agent_set_gateway_model, __tauri_command_name_agent_toggle_channel,
+};

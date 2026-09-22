@@ -2,8 +2,6 @@ import type {
   EventDisplayStatus,
   SessionEvent,
 } from "@src/engines/SessionCore/core/types";
-import type { MessageEntry } from "@src/modules/WorkStation/Chat/Communication/types";
-import { convertToMessageEntry } from "@src/modules/WorkStation/Chat/Communication/utils";
 
 export interface ParsedEventResult {
   data: SessionEvent | null;
@@ -82,24 +80,4 @@ export function buildPlaygroundSessionEvent(
     activityStatus: "agent",
     ...overrides,
   };
-}
-
-export function playgroundChatMessageEntry(
-  messageId: string,
-  sender: "user" | "agent",
-  text: string
-): MessageEntry {
-  const isUser = sender === "user";
-  const event = buildPlaygroundSessionEvent({
-    id: messageId,
-    chunk_id: messageId,
-    functionName: isUser ? "user_input" : "assistant",
-    actionType: isUser ? "user_input" : "assistant",
-    args: isUser ? { message: text } : { content: text },
-    source: isUser ? "user" : "assistant",
-    displayText: text,
-    displayVariant: "message",
-    result: {},
-  });
-  return convertToMessageEntry(event, "chat", false);
 }

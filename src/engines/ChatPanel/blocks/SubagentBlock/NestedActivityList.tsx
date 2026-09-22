@@ -198,5 +198,3 @@ export const NestedActivityListForSession: React.FC<{
   );
 });
 NestedActivityListForSession.displayName = "NestedActivityListForSession";
-
-export default NestedActivityList;

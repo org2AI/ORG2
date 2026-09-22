@@ -22,7 +22,7 @@ describe("SpotlightFormShell", () => {
         "[--modal-chrome-padding:--spacing(3)]",
       ])
     );
-    expect(markup).toContain('class="p-3"');
+    expect(markup).toContain('class="px-3 pb-3"');
     expect(markup).not.toContain("border");
     expect(markup).not.toContain("rounded");
   });

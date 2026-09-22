@@ -21,10 +21,12 @@ export function SASConfirmScreen({
   return (
     <>
       <MobileTopBar title={t("pairing.sasTitle")} onBack={onBack} />
-      <div className="flex flex-1 flex-col px-4 py-4">
-        <p className="mb-4 text-sm text-text-2">{t("pairing.sasHint")}</p>
+      <div className="mobile-flow-screen flex flex-1 flex-col px-4 py-4">
+        <p className="mobile-type-secondary mb-4 text-text-2">
+          {t("pairing.sasHint")}
+        </p>
         <div className="rounded-lg border border-border-2 bg-bg-2 px-4 py-6 text-center">
-          <p className="font-mono text-xl text-text-1">{phrase}</p>
+          <p className="mobile-type-title font-mono text-text-1">{phrase}</p>
         </div>
         <div className="mt-6">
           <MobileActionButton onClick={onConfirm}>

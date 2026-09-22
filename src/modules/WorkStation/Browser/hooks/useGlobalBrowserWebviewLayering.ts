@@ -3,7 +3,7 @@
  *
  * Single-mount bridge between React overlay state (`activeOverlayCountAtom`)
  * and the native z-order of every inline Browser WKWebView. Mount once at
- * the app root. When any overlay opens anywhere in the app, all inline
+ * each window root. When an overlay opens in that window, its inline
  * browser webviews drop behind the React UI so portals (dropdowns, modals,
  * spotlights, tooltips) paint and receive clicks correctly. When the last
  * overlay closes, the webviews return to the front.

@@ -50,11 +50,11 @@ test("mixed diffs lint only the lintable half", () => {
     selectLintTargets([
       "docs/frontend-ui-audit-2026-08-28/GLOBAL.md",
       "src-tauri/src/lib.rs",
-      "src/modules/shared/layouts/blocks/DetailTabStrip.tsx",
+      "src/components/layout/blocks/DetailTabStrip.tsx",
     ]),
     {
       mode: "files",
-      files: ["src/modules/shared/layouts/blocks/DetailTabStrip.tsx"],
+      files: ["src/components/layout/blocks/DetailTabStrip.tsx"],
     }
   );
 });
@@ -67,6 +67,7 @@ test("rule-changing diffs fall back to the full run", () => {
     ".prettierrc",
     ".prettierignore",
     "src/tailwind.css",
+    "src/.oxlintrc.json",
     "package.json",
     "pnpm-lock.yaml",
     "tsconfig.json",

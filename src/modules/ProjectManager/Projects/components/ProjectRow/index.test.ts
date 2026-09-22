@@ -20,7 +20,7 @@ vi.mock("@src/components/IntegrationIcon", () => ({
 const project: Project = {
   id: "project-1",
   name: "GitHub Project",
-  description: "从 yorgai/ORGII 的 GitHub Issues 同步。",
+  description: "从 org2AI/ORG2 的 GitHub Issues 同步。",
   slug: "github-project",
   syncAdapterId: "github",
   status: "backlog",
@@ -49,7 +49,7 @@ describe("ProjectRow source UI", () => {
     expect(markup).toContain('data-icon="box"');
     expect(markup).not.toContain('data-integration-icon="github"');
     expect(markup).toContain('data-testid="project-unlink-source-project-1"');
-    expect(markup).toContain("GitHub Issues · yorgai/ORGII");
+    expect(markup).toContain("GitHub Issues · org2AI/ORG2");
     expect(markup).not.toContain("同步。");
   });
 

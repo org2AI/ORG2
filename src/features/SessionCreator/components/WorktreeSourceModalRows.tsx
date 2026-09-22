@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import Button from "@src/components/Button";
 import { getListItemClasses } from "@src/components/ListPanel";
 import { HugeiconsIcon, Tick01Icon } from "@src/icons";
 
@@ -26,8 +27,8 @@ export function WorktreeSourceRow({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      layout="custom"
       onClick={onClick}
       className={`${getListItemClasses(selected)} min-h-8 w-full min-w-0 rounded-md! px-2! py-1! text-left`}
     >
@@ -58,6 +59,6 @@ export function WorktreeSourceRow({
           className="shrink-0 text-primary-6"
         />
       )}
-    </button>
+    </Button>
   );
 }

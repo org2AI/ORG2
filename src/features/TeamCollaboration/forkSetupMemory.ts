@@ -31,21 +31,6 @@ function writeAll(memory: ForkSetupMemory): void {
   } catch {
     // Best-effort persistence; the setup dialog remains the fallback.
   }
-  version += 1;
-  for (const listener of [...listeners]) listener();
-}
-
-let version = 0;
-const listeners = new Set<() => void>();
-
-/** Re-render hook for surfaces that mirror the memory (composer model pill). */
-export function subscribeForkSetupMemory(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-export function forkSetupMemoryVersion(): number {
-  return version;
 }
 
 /** Last confirmed continuation setup for this repo scope, if any. */

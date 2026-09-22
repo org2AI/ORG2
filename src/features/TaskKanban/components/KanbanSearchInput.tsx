@@ -1,7 +1,7 @@
 import { useAtom } from "jotai";
 import React, { memo } from "react";
 
-import { WorkManagementSearchInput } from "@src/modules/shared/components/WorkManagementSearchInput";
+import { WorkManagementSearchInput } from "@src/features/GitHubWork/WorkManagementSearchInput";
 import { kanbanSearchQueryAtom } from "@src/store/ui/kanbanViewStateAtom";
 
 const KanbanSearchInput: React.FC = memo(() => {

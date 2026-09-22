@@ -46,7 +46,8 @@
     "colleagues": "Đồng nghiệp",
     "terminals": "Terminal",
     "openSourceRepo": "Mở kho mã nguồn",
-    "teamInbox": "Team Inbox"
+    "teamInbox": "Team Inbox",
+    "closeSettings": "Đóng cài đặt"
   },
   "routes": {
     "session": "Trò chuyện",
@@ -74,12 +75,7 @@
       "manual": "Thứ tự thủ công"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "Quản lý",
-      "core": "Lõi",
-      "agent": "Agent",
-      "org": "Nhóm",
-      "agentOrgs": "Agent và nhóm"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "Không nhóm",
@@ -101,57 +97,23 @@
       "untitledSession": "Session chưa đặt tên",
       "enterSessionName": "Nhập tên Session"
     },
-    "groups": {
-      "economy": "Kinh tế",
-      "myServices": "Dịch vụ của tôi",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Hosted Key",
-      "cloud": "Cloud",
-      "openSource": "Mã nguồn mở",
-      "timeline": "Timeline"
-    },
     "actions": {
       "addNew": "Thêm mới",
       "collapseAll": "Thu gọn tất cả",
-      "markAllRead": "Đánh dấu tất cả đã đọc",
-      "toggleGroup": "Chuyển đổi phần"
+      "markAllRead": "Đánh dấu tất cả đã đọc"
     },
     "search": {
-      "folders": "Tìm kiếm Workspace...",
-      "sessions": "Tìm kiếm phiên...",
-      "projects": "Tìm kiếm dự án...",
-      "colleagues": "Tìm đồng nghiệp..."
-    },
-    "folderCounts": {
-      "repo": "{{count}} Repo",
-      "multiRepoWorkspace": "{{count}} Workspace đa Repo",
-      "repo_other": "{{count}} repos",
-      "multiRepoWorkspace_other": "{{count}} Multi-Repo Workspaces",
-      "repo_plural": "{{count}} repos",
-      "multiRepoWorkspace_plural": "{{count}} Multi-Repo Workspaces"
+      "sessions": "Tìm kiếm phiên..."
     },
     "bottomBar": {
       "settings": "Cài đặt",
-      "clockLabel": "Thời gian hiện tại",
       "updateAvailable": "Tải bản cập nhật v{{version}}"
     },
     "settingsMenu": {
       "appearance": "Giao diện",
       "modifyAppearance": "Thay đổi giao diện",
-      "language": "Ngôn ngữ",
       "viewRam": "Xem RAM",
-      "tutorials": "Hướng dẫn",
       "openSettings": "Mở cài đặt"
-    },
-    "empty": {
-      "noItems": "Không có mục nào",
-      "noSessions": "Không có Session nào",
-      "noSessionsDesc": "Bắt đầu Session mới",
-      "noResultsFor": "Không có kết quả cho \"{{query}}\"",
-      "noSearchResults": "Không tìm thấy kết quả"
     },
     "presence": {
       "tooltip": "Đặt trạng thái — Agent sẽ điều chỉnh tùy bạn có ở bàn phím hay không.",
@@ -169,9 +131,18 @@
       "durationTomorrow": "Ngày mai",
       "unknownRole": "Vai trò không xác định"
     },
-    "guide": {
-      "startSession": "Bắt đầu phiên",
-      "connectOrganization": "Kết nối hoặc tạo không gian làm việc"
+    "sections": {
+      "section": "Mục",
+      "create": "Mục mới",
+      "name": "Tên mục",
+      "rename": "Đổi tên mục",
+      "delete": "Xóa mục (giữ phiên)",
+      "remove": "Xóa khỏi mục",
+      "up": "Di chuyển lên",
+      "down": "Di chuyển xuống",
+      "manage": "Quản lý mục",
+      "more": "Tải thêm",
+      "retry": "Thử lại"
     }
   },
   "launchpad": {
@@ -275,9 +246,9 @@
       "switchToRepo": "Mở",
       "startSession": "Bắt đầu phiên",
       "openDetails": "Hiển thị chi tiết",
-      "remove": "Remove from ORGII",
-      "removeSuccess": "Linkage to ORGII removed",
-      "removeFailed": "Failed to remove linkage to ORGII"
+      "remove": "Xóa khỏi ORG2",
+      "removeSuccess": "Đã xóa liên kết với ORG2",
+      "removeFailed": "Không thể xóa liên kết với ORG2"
     },
     "addWorkspace": "Thêm Workspace"
   },
@@ -323,11 +294,11 @@
       "forkModelFallback": "Mô hình {{model}} của chủ sở hữu không khả dụng với khóa của bạn — bản fork này sẽ dùng {{fallback}} thay thế.",
       "forkModelUnavailable": "Mô hình {{model}} của chủ sở hữu không khả dụng với khóa của bạn — hãy chọn một mô hình trước khi chạy bản fork này.",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -484,7 +455,6 @@
       "showHidden": "Hiện các phiên đã ẩn ({{count}})",
       "viewerTooltip": "{{name}} đang xem phiên này",
       "viewerOverflow": "và {{count}} người khác đang xem",
-      "memberViewing": "đang xem: {{title}}",
       "viewerOverflow_one": "and 1 more viewer",
       "viewerOverflow_other": "and {{count}} more viewers",
       "loadingSession": "Đang tải phiên…",
@@ -666,7 +636,7 @@
       "selectAll": "Tất cả ({{count}})",
       "incomingEndpointMismatch": "Nội dung chia sẻ thuộc một đám mây tùy chỉnh khác. Hãy cấu hình endpoint đó trước khi nhập.",
       "incomingConnectionError": "Không thể kết nối dịch vụ đám mây. Hãy kiểm tra mạng và thử lại.",
-      "incomingIncompatibleError": "Đám mây trả về phản hồi chia sẻ không tương thích. Hãy cập nhật ORGII hoặc kiểm tra bản triển khai.",
+      "incomingIncompatibleError": "Đám mây trả về phản hồi chia sẻ không tương thích. Hãy cập nhật ORG2 hoặc kiểm tra bản triển khai.",
       "incomingServerError": "Dịch vụ đám mây không thể xử lý nội dung chia sẻ này. Hãy thử lại.",
       "incomingAlreadyOnDevice": "Phiên này đã có trên thiết bị. Hãy mở bản gốc thay vì nhập một bản trùng lặp.",
       "incomingOpenExisting": "Mở phiên",
@@ -678,32 +648,16 @@
       "unresolvedBadge": "{{count}} bình luận chưa giải quyết",
       "unreadBadge_one": "{{count}} tin nhắn chưa đọc",
       "unreadBadge": "{{count}} tin nhắn chưa đọc",
-      "addError": "Không thể đăng — bản nháp đã được giữ lại",
-      "addPlaceholder": "Thêm bình luận…",
-      "agentAddressing": "Agent đang xử lý…",
       "agentAuthor": "Agent @{{name}}",
-      "cancel": "Hủy",
-      "delete": "Xóa",
       "deletedComment": "Bình luận đã bị xóa",
       "earlierVersion": "Từ phiên bản trước của phiên này",
-      "edit": "Sửa",
       "editedMarker": "đã chỉnh sửa",
       "empty": "Chưa có bình luận nào",
       "loadError": "Không thể tải bình luận",
-      "mentionMembers": "Nhắc đến",
       "notesButton": "Ghi chú phiên",
       "notesTitle": "Ghi chú phiên",
-      "reply": "Trả lời",
-      "replyPlaceholder": "Trả lời…",
       "resolved": "Đã giải quyết",
       "resolvedToggle": "Đã giải quyết ({{count}})",
-      "save": "Lưu",
-      "searchMembers": "Tìm thành viên",
-      "send": "Đăng",
-      "task": {
-        "assignFailed": "Đã đăng bình luận, nhưng giao cho agent thất bại — thử lại từ luồng",
-        "mentionSuggestion": "Giao bình luận này cho agent"
-      },
       "wontFix": "Sẽ không sửa"
     },
     "sharingFloor": {
@@ -841,7 +795,6 @@
         "errorChannelMissing": "Kênh này không còn khả dụng",
         "errorMessageMissing": "Tin nhắn này không còn khả dụng",
         "loadError": "Không thể tải tin nhắn",
-        "loadingMessages": "Đang tải tin nhắn…",
         "loadOlder": "Tải tin nhắn cũ hơn",
         "unknownAuthor": "Thành viên nhóm"
       }
@@ -866,26 +819,26 @@
     "deleteRoleCancel": "Hủy",
     "deleteRoleOk": "Xóa",
     "deleteRoleTitle": "Xóa vai trò?",
-    "followUpSuggestionsDesc": "Gợi ý các bước tiếp theo có thể sau khi một lượt Work Item hoàn tất. Việc này dùng thêm một yêu cầu mô hình.",
+    "followUpSuggestionsDesc": "Gợi ý các bước tiếp theo có thể sau khi một lượt Work Item hoàn tất. Việc này dùng thêm một yêu cầu mô hình",
     "followUpSuggestionsLabel": "Gợi ý tiếp theo của Agent",
-    "goalMaxTurnsDesc": "Tiếp tục làm việc theo yêu cầu gần nhất của tôi thêm tối đa N lượt sau khi agent thường sẽ dừng (0 = tắt).",
+    "goalMaxTurnsDesc": "Tiếp tục làm việc theo yêu cầu gần nhất của tôi thêm tối đa N lượt sau khi agent thường sẽ dừng (0 = tắt)",
     "goalMaxTurnsLabel": "Ngân sách tiếp tục mục tiêu",
     "guidanceLabel": "Hướng dẫn cho Agent",
     "guidancePlaceholder": "Agent nên điều chỉnh hành vi thế nào khi vai trò này đang hoạt động?",
-    "modeSwitchAutoPlanDesc": "Tự động chuyển các đề xuất chế độ Plan đang chờ khi hết thời gian xác nhận.",
+    "modeSwitchAutoPlanDesc": "Tự động chuyển các đề xuất chế độ Plan đang chờ khi hết thời gian xác nhận",
     "modeSwitchAutoPlanLabel": "Tự động chuyển chế độ Plan",
     "newRoleDefaultLabel": "Vai trò tùy chỉnh",
-    "pageDescription": "Xác định vai trò bạn đang đảm nhận lúc này. Agent đọc hướng dẫn của vai trò đang hoạt động và điều chỉnh hành vi cho phù hợp — ví dụ, hỏi ít câu làm rõ hơn khi bạn đang tập trung, hoặc gộp các bản tóm tắt khi bạn đi vắng.",
+    "pageDescription": "Xác định vai trò bạn đang đảm nhận lúc này. Agent đọc hướng dẫn của vai trò đang hoạt động và điều chỉnh hành vi cho phù hợp — ví dụ, hỏi ít câu làm rõ hơn khi bạn đang tập trung, hoặc gộp các bản tóm tắt khi bạn đi vắng",
     "pageTitle": "Vai trò của tôi",
-    "planAutoApproveDesc": "Tự động phê duyệt kế hoạch đang chờ sau N giây (0 = chờ tôi).",
+    "planAutoApproveDesc": "Tự động phê duyệt kế hoạch đang chờ sau N giây (0 = chờ tôi)",
     "planAutoApproveLabel": "Tự động phê duyệt kế hoạch",
-    "questionAutoSkipDesc": "Tự động bỏ qua câu hỏi đang chờ của agent sau N giây (0 = chờ tôi).",
+    "questionAutoSkipDesc": "Tự động bỏ qua câu hỏi đang chờ của agent sau N giây (0 = chờ tôi)",
     "questionAutoSkipLabel": "Tự động bỏ qua câu hỏi",
     "roleNameLabel": "Tên",
     "roleNamePlaceholder": "Tên vai trò",
     "stanceAutonomous": "Tự chủ — không bao giờ chờ tôi",
     "stanceDeferAndBatch": "Hoãn & gộp — làm trước, hỏi sau",
-    "stanceDesc": "Cách agent xử lý các quyết định chặn khi vai trò này đang hoạt động.",
+    "stanceDesc": "Cách agent xử lý các quyết định chặn khi vai trò này đang hoạt động",
     "stanceInteractive": "Tương tác — cứ thoải mái hỏi tôi",
     "stanceLabel": "Tư thế hành vi"
   },
@@ -973,5 +926,10 @@
     "sidebar": {
       "signOut": "Sign out {{name}}"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Đã dừng thay thế vì kết quả hoặc tệp đã thay đổi, hoặc ghi thất bại. Một số tệp có thể đã được cập nhật. Hãy tìm kiếm lại trước khi thử lại.",
+    "budgetExceeded": "Tìm kiếm đã đạt giới hạn tài nguyên. Kết quả chưa đầy đủ; hãy thu hẹp phạm vi.",
+    "timeout": "Tìm kiếm đã hết thời gian. Hãy thu hẹp phạm vi và thử lại."
   }
 }

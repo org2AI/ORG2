@@ -13,17 +13,13 @@ import {
 } from "vitest";
 
 import type { GitHubPrReview } from "@src/api/tauri/github";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { PrSidebar } from "./PrSidebar";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, unknown>) => {
-      if (typeof fallback === "string") return fallback;
-      if (typeof fallback?.defaultValue !== "string") return key;
-      return fallback.defaultValue;
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 function review(
@@ -147,7 +143,7 @@ describe("PrSidebar", () => {
     );
     expect(reviewerTrigger?.style.height).toBe("20px");
     expect(reviewerTrigger?.style.width).toBe("20px");
-    expect(reviewerTrigger?.style.borderRadius).toBe("8px");
+    expect(reviewerTrigger?.style.borderRadius).toBe("var(--radius-sm)");
     const reviewers = container.querySelector(
       "[data-testid='pr-sidebar-reviewers']"
     );

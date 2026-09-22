@@ -43,10 +43,8 @@ pub const SHORTCUT_FORWARDING_SCRIPT: &str = r#"
     };
 
     const emitShortcut = (detail) => {
-        if (window.__TAURI__ && window.__TAURI__.event && window.__TAURI__.event.emit) {
-            window.__TAURI__.event.emit('inline-webview-shortcut', detail);
-            return;
-        }
+        // The native on_new_window owner targets its parent window. A global
+        // Tauri emit would execute the shortcut in every app window.
         window.open('orgii-shortcut://' + encodeURIComponent(detail.shortcut));
     };
 

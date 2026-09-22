@@ -96,7 +96,6 @@ const ProjectStatusBar: React.FC<ProjectStatusBarProps> = memo(
       <BaseStatusBar
         leftContent={null}
         rightContent={rightContent}
-        roundedBottom={false}
         className={className}
       />
     );

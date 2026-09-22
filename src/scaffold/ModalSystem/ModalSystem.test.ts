@@ -141,6 +141,26 @@ describe("Modal opening focus", () => {
     );
   });
 
+  it("keeps custom visual titles named without changing string-title defaults", () => {
+    openModal(createElement("div", null, "Body"));
+    expect(
+      document.querySelector('[role="dialog"]')?.getAttribute("aria-label")
+    ).toBe("Create channel");
+    act(() =>
+      root.render(
+        createElement(Modal, {
+          visible: true,
+          title: createElement("span", null, "File identity"),
+          "aria-label": "example.ts",
+        })
+      )
+    );
+    expect(
+      document.querySelector('[role="dialog"]')?.getAttribute("aria-label")
+    ).toBe("example.ts");
+    expect(document.body.textContent).toContain("File identity");
+  });
+
   it("focuses a textarea when it is the first field", () => {
     openModal(createElement("textarea", { "data-testid": "body" }));
 

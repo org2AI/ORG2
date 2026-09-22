@@ -30,7 +30,7 @@ impl Tool for SpotlightTool {
     }
 
     fn description(&self) -> &str {
-        "Open and control ORGII Spotlight directly. Use this for command palette, file search, workspace picker, branch picker, Agent session search, or opening/closing Spotlight."
+        "Open and control ORG2 Spotlight directly. Use this for command palette, file search, workspace picker, branch picker, Agent session search, or opening/closing Spotlight."
     }
 
     fn parameters(&self) -> Value {

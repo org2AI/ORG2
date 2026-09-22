@@ -93,7 +93,7 @@ const SLEEP_COMMAND: &str = "sleep";
 
 const DESCRIPTION: &str = r#"Control the macOS desktop through the bundled Peekaboo CLI.
 
-Pass the Peekaboo subcommand in `command`; ORGII adds the bundled executable path automatically. Do not include the executable name.
+Pass the Peekaboo subcommand in `command`; ORG2 adds the bundled executable path automatically. Do not include the executable name.
 
 Examples:
 - `see --app Safari --json`

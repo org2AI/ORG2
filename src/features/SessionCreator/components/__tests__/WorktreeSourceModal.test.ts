@@ -13,6 +13,7 @@ import {
 } from "vitest";
 
 import type Modal from "@src/scaffold/ModalSystem";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import WorktreeSourceModal from "../WorktreeSourceModal";
 import { WorktreeSourceRow } from "../WorktreeSourceModalRows";
@@ -22,14 +23,8 @@ const testState = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { defaultValue?: string }) =>
-      key === "common:actions.cancel"
-        ? "Cancel"
-        : key === "common:actions.create"
-          ? "Create"
-          : (options?.defaultValue ?? key),
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 // SVGs resolve to URL strings in Vitest, outside the webpack SVGR pipeline.

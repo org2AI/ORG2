@@ -18,7 +18,13 @@ import React, { useCallback, useMemo, useState } from "react";
 import AvatarChip from "@src/components/AvatarChip";
 import Button from "@src/components/Button";
 import PersonAvatar from "@src/components/PersonAvatar";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import Select from "@src/components/Select";
+import {
+  SECTION_ACTION_GAP_CLASSES,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
 import type { CloudCapabilities } from "@src/features/Org2Cloud/org2CloudCapabilities";
 import type { RepoSyncCoverage } from "@src/features/Org2Cloud/org2CloudSyncCoverage";
 import type {
@@ -26,13 +32,7 @@ import type {
   SyncJournalMember,
 } from "@src/features/Org2Cloud/org2CloudSyncJournal";
 import { useCopyCheck } from "@src/hooks/ui/useCopyCheck";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { HugeiconsIcon, Refresh04Icon, UsersRoundIcon } from "@src/icons";
-import {
-  SECTION_ACTION_GAP_CLASSES,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import { copyText } from "@src/util/data/clipboard";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 
@@ -363,8 +363,6 @@ export function CloudOrgSyncSection({ t, status }: CloudOrgSyncSectionProps) {
               </span>
             ) : null}
             <Button
-              htmlType="button"
-              size="default"
               variant="primary"
               disabled={status.running}
               loading={status.running}
@@ -560,9 +558,6 @@ export function CloudOrgSyncSection({ t, status }: CloudOrgSyncSectionProps) {
               </div>
             ) : null}
             <Button
-              htmlType="button"
-              size="default"
-              variant="secondary"
               disabled={visibleEntries.length === 0}
               data-testid="cloud-org-sync-logs-copy"
               onClick={handleCopy}
@@ -572,9 +567,6 @@ export function CloudOrgSyncSection({ t, status }: CloudOrgSyncSectionProps) {
                 : t("cloud.orgPanel.sync.logsCopy")}
             </Button>
             <Button
-              htmlType="button"
-              size="default"
-              variant="secondary"
               disabled={status.entries.length === 0}
               data-testid="cloud-org-sync-logs-clear"
               onClick={status.clearLog}

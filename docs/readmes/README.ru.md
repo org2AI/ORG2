@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.pl.md">Polski</a>
+  <a href="../../README.md">English</a> · <a href="README.fr.md">Français</a> · <a href="README.zh.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.es.md">Español</a> · <a href="README.hi.md">हिन्दी</a> · <a href="README.ru.md">Русский</a> · <a href="README.pt.md">Português</a> · <a href="README.de.md">Deutsch</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.id.md">Bahasa Indonesia</a> · <a href="README.pl.md">Polski</a>
 </p>
 
 <p align="center">
@@ -34,19 +34,19 @@
 
 ORG-2 — это место, где ваша команда запускает свои Agents для кода: нативный Rust-харнесс и лаунчеры более чем для 20 Agent CLI, — и он строит эту запись автоматически. Каждая сессия становится траекторией, которую коллеги воспроизводят как видео: они смотрят, как работа была на самом деле сделана, а не только итоговый diff, и оставляют комментарии в контексте. Сессии, запущенные в других инструментах, подхватываются и достраиваются из их истории, поэтому запись покрывает и ту работу, которая никогда не проходила через приложение. Запись связывает то, что попросил человек, то, как это понял Agent, и то, что он действительно сделал, — поэтому любую выпущенную строку можно проследить до написавшей её сессии.
 
-Это не просто ещё один инструмент для написания кода с ИИ; это эксперимент об организациях из людей и Agents и о согласованности на уровне организации. ORG-II относится к Agents как к постоянным и наблюдаемым коллегам внутри структурированной организации — воспроизводимое выполнение, межсессионная память, AI blame и local-first Rust runtime, чтобы люди, Agents и команды могли работать вокруг общего контекста и согласованных целей.
+Это не просто ещё один инструмент для написания кода с ИИ; это эксперимент об организациях из людей и Agents и о согласованности на уровне организации. ORG2 относится к Agents как к постоянным и наблюдаемым коллегам внутри структурированной организации — воспроизводимое выполнение, межсессионная память, AI blame и local-first Rust runtime, чтобы люди, Agents и команды могли работать вокруг общего контекста и согласованных целей.
 
 ## Возможности
 
 <table>
-<tr><td width="50%" valign="middle"><h3>Встроенный Rust-харнесс</h3><p>Запускайте быстрых, экономных по токенам и настраиваемых нативных Agents с вашими существующими API-ключами и подписками Agents.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="Запуск Agents с помощью Rust-харнесса ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Управляйте сессиями из более чем 10 приложений и CLI</h3><p>Загружайте и управляйте сессиями Agent из всех ваших инструментов в одном месте. Просматривайте историю, изучайте subagents и контролируйте каждый источник без переключения приложений.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="Управление источниками сессий Agent из приложений и CLI в ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Соберите команду и проверяйте траектории, а не только PR</h3><p>Соберите команду и делитесь сессиями между устройствами и коллегами. Проверяйте всю траекторию Agent, а не только итоговый diff, и оставляйте комментарии в контексте.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="Управление командой и правами на replay траекторий в ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Вызовы инструментов теперь как видео</h3><p>Воспроизводите работу нативного Rust-харнесса и более 15 CLI Agents. Сообщения, вызовы инструментов, правки файлов и вывод команд синхронизированы в единой доступной для ревью timeline.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="Воспроизведение сессии Agent в ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>AI blame, а не только Git blame</h3><p>Не останавливайтесь на том, кто изменил строку. Проследите её до сессий Agent, вызовов инструментов и решений, которые привели к изменению.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="Связь изменений кода с сессиями и решениями Agent в ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Не сбивайтесь с курса</h3><p>Смотрите, как ваше время распределяется между задачами и сессиями Agent. Ежедневная timeline активности показывает длительность, изменения кода и приоритеты.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="Анализ времени на задачи и сессии Agent в ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Полный workspace для разработки</h3><p>Используйте терминал, управляйте исходным кодом, изучайте историю Git и проверяйте pull requests, не покидая workspace Agent.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="Управление исходным кодом, история Git и code review в ORG-II" width="100%" /></td></tr>
-<tr><td width="50%" valign="middle"><h3>Режим Design</h3><p>Исследуйте живые страницы во встроенном браузере WebKit. Выберите элемент и отправьте его точный контекст страницы прямо Agent для простого исправления.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="Исследование элемента веб-страницы в режиме Design ORG-II" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Встроенный Rust-харнесс</h3><p>Запускайте быстрых, экономных по токенам и настраиваемых нативных Agents с вашими существующими API-ключами и подписками Agents.</p></td><td width="50%"><img src="../assets/feature-wall/rust-harness.gif" alt="Запуск Agents с помощью Rust-харнесса ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Управляйте сессиями из более чем 10 приложений и CLI</h3><p>Загружайте и управляйте сессиями Agent из всех ваших инструментов в одном месте. Просматривайте историю, изучайте subagents и контролируйте каждый источник без переключения приложений.</p></td><td width="50%"><img src="../assets/feature-wall/session-sources.png" alt="Управление источниками сессий Agent из приложений и CLI в ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Соберите команду и проверяйте траектории, а не только PR</h3><p>Соберите команду и делитесь сессиями между устройствами и коллегами. Проверяйте всю траекторию Agent, а не только итоговый diff, и оставляйте комментарии в контексте.</p></td><td width="50%"><img src="../assets/feature-wall/team-trajectory-review.png" alt="Управление командой и правами на replay траекторий в ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Вызовы инструментов теперь как видео</h3><p>Воспроизводите работу нативного Rust-харнесса и более 15 CLI Agents. Сообщения, вызовы инструментов, правки файлов и вывод команд синхронизированы в единой доступной для ревью timeline.</p></td><td width="50%"><img src="../assets/feature-wall/replay.gif" alt="Воспроизведение сессии Agent в ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>AI blame, а не только Git blame</h3><p>Не останавливайтесь на том, кто изменил строку. Проследите её до сессий Agent, вызовов инструментов и решений, которые привели к изменению.</p></td><td width="50%"><img src="../assets/feature-wall/ai-blame.gif" alt="Связь изменений кода с сессиями и решениями Agent в ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Не сбивайтесь с курса</h3><p>Смотрите, как ваше время распределяется между задачами и сессиями Agent. Ежедневная timeline активности показывает длительность, изменения кода и приоритеты.</p></td><td width="50%"><img src="../assets/feature-wall/work-diary.png" alt="Анализ времени на задачи и сессии Agent в ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Полный workspace для разработки</h3><p>Используйте терминал, управляйте исходным кодом, изучайте историю Git и проверяйте pull requests, не покидая workspace Agent.</p></td><td width="50%"><img src="../assets/feature-wall/development-workspace.gif" alt="Управление исходным кодом, история Git и code review в ORG2" width="100%" /></td></tr>
+<tr><td width="50%" valign="middle"><h3>Режим Design</h3><p>Исследуйте живые страницы во встроенном браузере WebKit. Выберите элемент и отправьте его точный контекст страницы прямо Agent для простого исправления.</p></td><td width="50%"><img src="../assets/feature-wall/design-mode.gif" alt="Исследование элемента веб-страницы в режиме Design ORG2" width="100%" /></td></tr>
 </table>
 
 ## Дополнительные возможности
@@ -61,7 +61,7 @@ ORG-2 — это место, где ваша команда запускает �
 
 ## Поддерживаемые Agents
 
-Используйте встроенный Rust-харнесс ORG-II или запускайте эти поддерживаемые CLI coding Agents из desktop app.
+Используйте встроенный Rust-харнесс ORG2 или запускайте эти поддерживаемые CLI coding Agents из desktop app.
 
 ### GUI + TUI
 
@@ -73,6 +73,7 @@ ORG-2 — это место, где ваша команда запускает �
   <a href="https://kiro.dev/docs/cli/installation"><kbd><img src="../../src/assets/modelIcons/kiro.svg" alt="Kiro CLI logo" width="16" valign="middle" /> Kiro CLI</kbd></a> &nbsp;
   <a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-in-the-cli"><kbd><img src="../../src/assets/modelIcons/copilot.svg" alt="GitHub Copilot logo" width="16" valign="middle" /> GitHub Copilot</kbd></a> &nbsp;
   <a href="https://opencode.ai/docs/config/"><kbd><img src="../../src/assets/modelIcons/opencode.svg" alt="OpenCode logo" width="16" valign="middle" /> OpenCode</kbd></a> &nbsp;
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><kbd><img src="../../src/assets/modelIcons/deepseek.svg" alt="DeepSeek Harness logo" width="16" valign="middle" /> DeepSeek Harness</kbd></a> &nbsp;
   <a href="https://antigravity.google/docs/cli/getting-started"><kbd><img src="../../src/assets/modelIcons/antigravity.svg" alt="Antigravity logo" width="16" valign="middle" /> Antigravity</kbd></a>
 </p>
 
@@ -102,9 +103,7 @@ ORG-2 — это место, где ваша команда запускает �
 
 ## Скачать
 
-Текущая версия сборки: v1.1.24 (2026-07-16)
-
-Скачайте последнюю desktop app ORGII одним нажатием:
+Скачайте последнюю desktop app ORG2 одним нажатием:
 
 - [macOS Apple Silicon](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-mac-apple-silicon.dmg)
 - [Установщик Windows x64](https://github.com/org2AI/ORG2/releases/latest/download/ORG2-latest-windows-x64-setup.exe)
@@ -152,4 +151,4 @@ Computer Use сейчас доступен только на macOS. Browser Use 
 
 ## Лицензия
 
-ORGII распространяется по лицензии GNU Affero General Public License v3.0 или более поздней версии (`AGPL-3.0-or-later`). Полный текст лицензии см. в [`LICENSE`](../../LICENSE).
+ORG2 распространяется по лицензии GNU Affero General Public License v3.0 или более поздней версии (`AGPL-3.0-or-later`). Полный текст лицензии см. в [`LICENSE`](../../LICENSE).

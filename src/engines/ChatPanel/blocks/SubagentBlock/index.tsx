@@ -22,6 +22,7 @@ import React, {
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { ChatBubbleAvatar, ChatBubbleBody } from "@src/components/ChatBubble";
 import { resolveAgentIcon } from "@src/config/agentIcons";
 import type { ToolUsageMetadata } from "@src/engines/SessionCore/core/types";
@@ -165,8 +166,8 @@ const SubagentBlock: React.FC<SubagentBlockProps> = memo(
         <div className="flex items-center gap-2 pl-2">
           {toolUsage && <ToolUsageBadge usage={toolUsage} />}
           {canStop && (
-            <button
-              type="button"
+            <Button
+              layout="custom"
               data-testid="subagent-card-stop-button"
               className="flex h-5 w-0 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-none bg-text-2 text-white transition-colors group-hover/chat-block-header:w-5 hover:bg-text-1 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleStop}
@@ -185,7 +186,7 @@ const SubagentBlock: React.FC<SubagentBlockProps> = memo(
                   strokeWidth={0}
                 />
               )}
-            </button>
+            </Button>
           )}
         </div>
       ) : undefined;

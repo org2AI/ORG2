@@ -3,6 +3,7 @@
  * Used by useSlashItemsCache, useSlashCommand, and PinnedActionsBar.
  */
 import type { ComposerInputRef } from "@src/components/ComposerInput/types";
+import i18n from "@src/i18n";
 import { type InstalledSkill, SLASH_ACTIONS } from "@src/types/extensions";
 
 /**
@@ -53,7 +54,8 @@ export function resolveSkillGroup(skill: InstalledSkill): string {
     if (normalized.startsWith(`${home}/.hermes/skills`)) return "Hermes Skills";
     if (normalized.startsWith(`${home}/.openclaw/skills`))
       return "OpenClaw Skills";
-    if (normalized.startsWith(`${home}/.orgii/skills`)) return "ORGII Skills";
+    if (normalized.startsWith(`${home}/.orgii/skills`))
+      return i18n.t("common:appMessages.skillsSource");
     const homeRelativePath = normalized.slice(home.length + 1);
     const homeDiscoveredMatch = homeRelativePath.match(/^(\.[^/]+)\/skills\//);
     if (homeDiscoveredMatch) {

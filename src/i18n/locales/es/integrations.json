@@ -7,23 +7,23 @@
   "keyVault": {
     "title": "Modelos & CLIs",
     "overview": {},
-    "searchPlaceholder": "Buscar cuentas...",
+    "searchPlaceholder": "Buscar claves...",
     "inlineCard": {
       "tabStatus": "Estado",
       "tabModels": "Modelos"
     },
-    "noAccountsFound": "No se encontraron cuentas",
-    "addAccount": "Añadir cuenta",
+    "noKeysFound": "No se encontraron claves",
+    "addKey": "Añadir clave",
     "removeLocal": "Eliminar local",
     "unlist": "Deslistar",
     "confirmRemoveTitle": "¿Eliminar \"{{name}}\"?",
-    "confirmRemoveMessage": "Esto eliminará la credencial local. Esta acción no se puede deshacer.",
+    "confirmRemoveMessage": "Esto eliminará la clave guardada localmente. Esta acción no se puede deshacer",
     "toasts": {
       "refreshed": "{{name}} actualizado correctamente",
       "refreshError": "Error al actualizar {{name}}: {{error}}",
       "localRemoved": "{{name}} eliminado",
       "deleteError": "Error al eliminar {{name}}",
-      "refreshPartial": "Modelos actualizados: +{{added}} / -{{removed}}, pero fallaron {{failed}} de {{total}} cuentas",
+      "refreshPartial": "Modelos actualizados: +{{added}} / -{{removed}}, pero fallaron {{failed}} de {{total}} claves",
       "refreshedNoChange": "Modelos actualizados: sin cambios",
       "refreshedDelta": "Modelos actualizados: {{added}} añadidos, {{removed}} eliminados"
     },
@@ -62,16 +62,16 @@
       "availableModels": "Modelos disponibles",
       "modelsEnabledAddable": "{{enabled}} habilitados · {{addable}} añadibles",
       "noModelsConfigured": "No hay modelos configurados",
-      "supportOrgiiAgents": "Compatible con ORGII Agents",
+      "supportOrgiiAgents": "Compatible con ORG2 Agents",
       "supportCliAgents": "Compatible con CLI Agents",
       "noCliAgentSupport": "Sin soporte de CLI Agent para este proveedor",
       "accountEmail": "Correo de la cuenta"
     },
     "customModels": {
-      "manualSetupHint": "Añade el ID exacto que acepta tu endpoint y un nombre opcional. La detección es opcional; activar un modelo no verifica su compatibilidad.",
+      "manualSetupHint": "Añade el ID exacto que acepta tu endpoint y un nombre opcional. La detección es opcional; activar un modelo no verifica su compatibilidad",
       "modelNamePlaceholder": "Ingrese el id del modelo...",
       "displayNamePlaceholder": "Etiqueta opcional",
-      "emptyHint": "No se han agregado modelos personalizados.",
+      "emptyHint": "No se han agregado modelos personalizados",
       "addModel": "Agregar modelo",
       "testRequiresEndpoint": "Introduce un endpoint y una clave de API para probar este modelo",
       "invalidModelId": "Los ID de modelo deben tener entre 1 y 256 bytes, sin espacios ni caracteres de control.",
@@ -88,8 +88,8 @@
       "keyValidationFailed": "Validación de credenciales fallida"
     },
     "edit": {
-      "title": "Editar cuenta",
-      "apiChangeHint": "Para actualizar tu API Key, credenciales o configuración del proveedor, elimina esta cuenta y agrega una nueva",
+      "title": "Editar clave",
+      "apiChangeHint": "Para actualizar tu API Key o la configuración del proveedor, elimina esta clave y agrega una nueva",
       "saved": "Cambios guardados"
     },
     "quota": {
@@ -145,14 +145,12 @@
       "keysVerified": "Credenciales verificadas",
       "failedMessage": "Tu API Key y Session Token no parecen pertenecer a la misma cuenta de Cursor.",
       "failedError": "Error: {{error}}",
-      "failedHint": "Por favor crea un nuevo listado con credenciales coincidentes de la misma cuenta de Cursor.",
+      "failedHint": "Por favor crea un nuevo listado con credenciales coincidentes de la misma cuenta de Cursor",
       "listingRejected": "Listado rechazado",
       "rejectedByAdmin": "Este listado fue rechazado por un administrador."
     },
     "apiKeyLabel": "API Key",
-    "apiKeyDesc": "Clave secreta para autenticar solicitudes a la API del proveedor",
     "baseUrlLabel": "Base URL",
-    "baseUrlDesc": "URL del endpoint de la API — cambiar solo si usa un proxy, despliegue personalizado o servidor propio",
     "apiProtocolLabel": "Protocolo API",
     "apiProtocolDesc": "Elegir el protocolo de conexión para el agente Rust integrado",
     "officialUrl": "URL oficial",
@@ -161,7 +159,7 @@
     "customBaseUrlNoteBody": "Su clave API y los datos de la solicitud se envían a la URL que ingrese. Use URLs personalizadas solo para proxies confiables, despliegues propios o endpoints que controle",
     "localModel": {
       "title": "Cookbook de modelos locales",
-      "description": "Elige un preset de runtime local, confirma su endpoint compatible con OpenAI, agrega uno o más ID de modelo y guarda esta cuenta para usar modelos locales en Chat",
+      "description": "Elige un preset de runtime local, confirma su endpoint compatible con OpenAI, agrega uno o más ID de modelo y guarda esta clave para usar modelos locales en Chat",
       "baseUrlDesc": "Endpoint local compatible con OpenAI. Inicia el runtime antes de validar o guardar",
       "apiKeyDesc": "La mayoría de runtimes locales aceptan cualquier valor no vacío. Mantén el marcador salvo que tu servidor exija una clave",
       "quickModelsLabel": "Modelos Cookbook",
@@ -171,18 +169,16 @@
       "validateDesc": "Prueba el endpoint si está en ejecución, o guarda después de agregar modelos manualmente"
     },
     "validate": "Validar",
-    "validateDesc": "Validar credenciales antes de continuar",
     "validated": "Validado",
     "validationSuccessModels": "{{count}} modelos detectados — configurar en el siguiente paso",
     "validationSuccessNoModels": "Key validada — no se detectaron modelos, agréguelos manualmente a continuación",
     "addCliAgent": "Agregar Agent",
-    "accountName": "Nombre de la cuenta (opcional)",
-    "accountNameDesc": "Déjalo en blanco para usar {{provider}}, luego {{provider}}-1, {{provider}}-2, etc",
-    "selectorDesc": "Elige qué servicio conectar",
-    "accountNamePlaceholder": "Auto: {{provider}}",
+    "keyName": "Nombre de la clave (opcional)",
+    "keyNameDesc": "Déjalo en blanco para usar {{provider}}, luego {{provider}}-1, {{provider}}-2, etc",
+    "keyNamePlaceholder": "Auto: {{provider}}",
     "descriptionOptional": "Descripción (opcional)",
     "descriptionPlaceholder": "Ingrese la descripción",
-    "nameDuplicate": "Ya existe una cuenta con este nombre",
+    "nameDuplicate": "Ya existe una clave con este nombre",
     "stepLabel": "Paso {{current}}/{{total}}",
     "noValidTokenFound": "No se encontró token válido en la credencial",
     "couldNotDetectKeys": "No se pudieron detectar las credenciales. Asegúrate de que CLI esté instalado y hayas iniciado sesión.",
@@ -240,13 +236,13 @@
     "signIn": "Iniciar sesión",
     "signedIn": "Sesión iniciada",
     "signInWithClaudeCode": "Iniciar sesión con Claude Code",
-    "claudeCodeSetupMethodDesc": "Usa Claude Code OAuth para autorizar ORGII",
+    "claudeCodeSetupMethodDesc": "Usa Claude Code OAuth para autorizar ORG2",
     "claudeCodeSignInTitle": "Inicio de sesión de Claude Code",
-    "claudeCodeSignInDesc": "Inicia sesión en Claude Code en el navegador integrado. ORGII capturará el authorization code y guardará el OAuth Token localmente",
+    "claudeCodeSignInDesc": "Inicia sesión en Claude Code en el navegador integrado. ORG2 capturará el authorization code y guardará el OAuth Token localmente",
     "claudeCodeReadyToSignIn": "Listo para iniciar sesión en Claude Code",
     "claudeCodeSignedIn": "Claude Code conectado",
-    "claudeCodeOAuthHint": "Esto guarda una cuenta claude_code OAuth para Rust agents que usan anthropic_native.",
-    "claudeCodeBrowserHint": "Completa la autorización de Claude Code en el navegador integrado.",
+    "claudeCodeOAuthHint": "Esto guarda una clave OAuth claude_code para Rust agents que usan anthropic_native",
+    "claudeCodeBrowserHint": "Completa la autorización de Claude Code en el navegador integrado",
     "claudeCodeSignInErrorHint": "Cierra el navegador e intenta iniciar sesión de nuevo. No se guardó ningún Token",
     "connectedViaChatGpt": "Conectado vía inicio de sesión ChatGPT Plus/Pro",
     "apiKeyDetectedFromConfig": "API key detectada desde config local",
@@ -269,7 +265,7 @@
     "opensEmbeddedBrowser": "Usa el navegador interno para conectar tu cuenta de Cursor.",
     "loggedIn": "Conectado",
     "loginStep": "Iniciar sesión",
-    "signInToCursorHint": "Inicia sesión en tu cuenta de Cursor. Esta ventana se cerrará automáticamente después del inicio de sesión.",
+    "signInToCursorHint": "Inicia sesión en tu cuenta de Cursor. Esta ventana se cerrará automáticamente después del inicio de sesión",
     "copilotCreatePat": "Crear GitHub Personal Access Token",
     "copilotCreatePatDesc": "Abre el navegador interno para crear un PAT de GitHub",
     "copilotTokenValidated": "Token validado",
@@ -303,26 +299,26 @@
     "cursorLoginBrowserTitle": "Inicio de sesión de Cursor",
     "modelCount": "{{count}} modelos",
     "cursorLoginReadyTitle": "Cuenta de Cursor conectada",
-    "cursorLoginReadyDesc": "Genera y pega una API key de Cursor abajo. Cursor agent no funcionará sin esta API key.",
-    "cursorApiKeyBrowserHint": "Después de iniciar sesión, ORGII abre el dashboard de Cursor. Genera allí una User API Key y pégala abajo",
+    "cursorLoginReadyDesc": "Genera y pega una API key de Cursor abajo. Cursor agent no funcionará sin esta API key",
+    "cursorApiKeyBrowserHint": "Después de iniciar sesión, ORG2 abre el dashboard de Cursor. Genera allí una User API Key y pégala abajo",
     "cursorApiKeyRecommendedTitle": "Se recomienda una API key de Cursor",
-    "cursorApiKeyRecommendedDesc": "Puedes continuar sin una API key de Cursor si solo quieres usar Cursor con los Rust agents de ORGII; solo inicia sesión con el navegador interno o proporciona un token de sesión",
-    "cursorApiKeyRecommendedAction": "Proporciona una API key de Cursor si también quieres usar Cursor dentro de ORGII",
+    "cursorApiKeyRecommendedDesc": "Puedes continuar sin una API key de Cursor si solo quieres usar Cursor con los Rust agents de ORG2; solo inicia sesión con el navegador interno o proporciona un token de sesión",
+    "cursorApiKeyRecommendedAction": "Proporciona una API key de Cursor si también quieres usar Cursor dentro de ORG2",
     "openCursorApiKeys": "Abrir Cursor API Keys",
     "codexSetupMethodDesc": "Conecta Codex con inicio de sesión de ChatGPT, detección local o una API key de OpenAI",
     "codexSignInTitle": "Inicio de sesión de Codex",
-    "codexSignInDesc": "Inicia sesión en ChatGPT para Codex en el navegador integrado. ORGII captura el código de autorización y guarda los tokens OAuth localmente",
+    "codexSignInDesc": "Inicia sesión en ChatGPT para Codex en el navegador integrado. ORG2 captura el código de autorización y guarda los tokens OAuth localmente",
     "signInWithCodex": "Iniciar sesión con Codex",
     "codexReadyToSignIn": "Listo para iniciar sesión en Codex",
     "codexSignedIn": "Codex conectado",
-    "codexOAuthHint": "Esto guarda una cuenta OAuth codex para acceder al backend ChatGPT Codex.",
-    "codexBrowserHint": "Completa la autorización de Codex en el navegador integrado.",
+    "codexOAuthHint": "Esto guarda una clave OAuth codex para acceder al backend ChatGPT Codex",
+    "codexBrowserHint": "Completa la autorización de Codex en el navegador integrado",
     "codexSignInErrorHint": "Cierra el navegador e intenta iniciar sesión de nuevo. No se guardó ningún token",
     "codexAutodetectTitle": "Detectar sesión de Codex",
     "codexAutodetectDesc": "Lee ~/.codex/auth.json y OPENAI_API_KEY desde tu entorno local",
-    "codexCredentialLabel": "Credencial de Codex",
-    "codexCredentialDesc": "Pega un access token OAuth de Codex o una API key de OpenAI",
-    "codexCredentialPlaceholder": "eyJ... o sk-...",
+    "codexKeyLabel": "Clave de Codex",
+    "codexKeyDesc": "Pega un access token OAuth de Codex o una API key de OpenAI",
+    "codexKeyPlaceholder": "eyJ... o sk-...",
     "codexDetectErrorHint": "Inicia sesión con el navegador integrado o pega manualmente una API key de OpenAI",
     "codexValidationErrorHint": "Comprueba que el token o la API key sean válidos e inténtalo de nuevo",
     "claudeCodeAutodetectTitle": "Detectar sesión de Claude Code",
@@ -330,11 +326,11 @@
     "claudeCodeDetectErrorHint": "Inicia sesión con el navegador integrado o ejecuta claude auth login y vuelve a detectar",
     "refreshModels": {
       "button": "Actualizar lista de modelos de Cursor",
-      "failed": "Falló la actualización desde Cursor: {{error}}"
+      "failed": "Este espacio de trabajo de Market no está disponible. Abre Market de nuevo para actualizar la autorización."
     },
     "revalidate": "Revalidar",
-    "confirmRemoveActiveSessions_one": "{{count}} sesión activa sigue usando esta cuenta y fallará en su próximo turno:",
-    "confirmRemoveActiveSessions_other": "{{count}} sesiones activas siguen usando esta cuenta y fallarán en su próximo turno:"
+    "confirmRemoveActiveSessions_one": "{{count}} sesión activa sigue usando esta clave y fallará en su próximo turno:",
+    "confirmRemoveActiveSessions_other": "{{count}} sesiones activas siguen usando esta clave y fallarán en su próximo turno:"
   },
   "integrations": {
     "searchPlaceholder": "Buscar conexiones...",
@@ -349,7 +345,9 @@
     "connecting": "Conectando",
     "reconnecting": "Reconectando",
     "connectionError": "Error de conexión",
-    "accountNameDuplicate": "Ya existe una cuenta con este nombre",
+    "connectionName": "Nombre de la conexión (opcional)",
+    "connectionNamePlaceholder": "Auto: {{provider}}",
+    "connectionNameDuplicate": "Ya existe una conexión con este nombre",
     "probeSuccess": "Conexión exitosa",
     "probeFailed": "Conexión fallida",
     "verified": "Verificado"
@@ -573,7 +571,7 @@
     },
     "gateway": {
       "title": "Gateway Agent",
-      "description": "El Gateway enruta los mensajes entrantes de cada canal. Elige una clave API y un modelo para el enrutamiento semántico.",
+      "description": "El Gateway enruta los mensajes entrantes de cada canal. Elige una clave API y un modelo para el enrutamiento semántico",
       "statusReady": "Configurado",
       "statusUnconfigured": "Sin configurar",
       "account": "Cuenta de clave API",
@@ -581,12 +579,13 @@
       "model": "Modelo",
       "modelPlaceholder": "Seleccionar modelo",
       "groupPerUser": "Aislar sesiones de chat grupal por usuario",
-      "groupPerUserDesc": "Cada participante en un chat grupal tiene su propio contexto de sesión."
+      "groupPerUserDesc": "Cada participante en un chat grupal tiene su propio contexto de sesión"
     },
-    "emailProtocol": "Protocolo"
+    "emailProtocol": "Protocolo",
+    "matrixDeviceNamePlaceholder": "Bot de ORG2"
   },
   "modelsTabs": {
-    "myAccounts": "Mis Keys",
+    "myKeys": "Mis claves",
     "models": "Modelos",
     "comingSoon": "Próximamente",
     "installedClis": "Clientes CLI",
@@ -618,28 +617,23 @@
     "groupTagNonCurrent": "No última",
     "expandAllRows": "Expandir todo",
     "collapseAllRows": "Contraer todo",
-    "orgiiMarketGroup": "Mercado ORGII",
+    "orgiiMarketGroup": "Mercado ORG2",
     "variantSpeed": "Speed",
-    "variantOptions": "Opciones de versión",
     "variantDefault": "Default",
     "variantCount": "{{count}} versiones",
-    "selectedVersion": "Versión seleccionada",
-    "currentKeySelectedVersion": "Versión seleccionada de la clave actual",
-    "keyDefaultVersionOnly": "Esta key solo tiene una versión predeterminada: {{model}}",
-    "selectedVersionFor": "Versión seleccionada para {{model}}",
+    "showVersionDetails": "Mostrar todas las versiones",
     "preferredVersion": "Versión preferida",
-    "reasoningLevel": "Reasoning level",
-    "effort": "Effort",
-    "addNewKey": "Añadir nueva key",
     "availableKeys": "{{enabled}}/{{total}} keys utilizables habilitadas",
     "availableModels": "{{enabled}}/{{total}} modelos utilizables habilitados",
     "turnOnKeyFor": "Activar esta key para {{model}}",
     "turnOffKeyFor": "Desactivar esta key para {{model}}",
+    "turnOnAllKeysFor": "Activar todas las keys para {{model}}",
+    "turnOffAllKeysFor": "Desactivar todas las keys para {{model}}",
     "sortEnabledFirst": "Orden: activados primero",
     "sortAlphabetical": "Orden: A–Z"
   },
   "modelPreview": {
-    "noSources": "Ninguna cuenta con este modelo"
+    "noSources": "Ninguna clave con este modelo"
   },
   "cliPreview": {
     "clientSection": "Cliente",
@@ -757,28 +751,28 @@
     "tokenRequired": "Se requiere Personal access token",
     "oauthWaiting": "Esperando OAuth",
     "oauthDeviceDesc": "Abre la URL de verificación e introduce este código para autorizar GitHub",
-    "oauthBrowserDesc": "Completa la autorización en la ventana del navegador abierta.",
-    "oauthBrowserOpened": "Se abrió una ventana del navegador. Completa la autorización allí y el asistente continuará."
+    "oauthBrowserDesc": "Completa la autorización en la ventana del navegador abierta",
+    "oauthBrowserOpened": "Se abrió una ventana del navegador. Completa la autorización allí y el asistente continuará"
   },
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "Detección automática",
     "methodOAuth": "Iniciar sesión con GitHub",
-    "methodPickerDesc": "Elige cómo quieres autenticarte en GitHub.",
-    "oauthDeviceDesc": "Abre la URL de verificación e introduce este código para autorizar GitHub.",
+    "methodPickerDesc": "Elige cómo quieres autenticarte en GitHub",
+    "oauthDeviceDesc": "Abre la URL de verificación e introduce este código para autorizar GitHub",
     "scanCredHelper": "Helper de credenciales de Git ({{name}})",
     "scanEmpty": "No se detectó nada",
-    "scanEmptyDesc": "No se encontraron tokens de gh CLI, helpers de credenciales ni claves SSH. Elige otro método arriba.",
+    "scanEmptyDesc": "No se encontraron tokens de gh CLI, helpers de credenciales ni claves SSH. Elige otro método arriba",
     "scanGhCli": "GitHub CLI (gh)",
     "scanResults": "Credenciales detectadas",
-    "scanResultsDesc": "Elige una para importar. Validamos los tokens con GitHub antes de guardarlos.",
+    "scanResultsDesc": "Elige una para importar. Validamos los tokens con GitHub antes de guardarlos",
     "scanSshKey": "Clave SSH — {{name}}",
     "scanning": "Escaneando…",
-    "scanningDesc": "Buscando tokens de gh CLI, helpers de credenciales y claves SSH en este equipo.",
+    "scanningDesc": "Buscando tokens de gh CLI, helpers de credenciales y claves SSH en este equipo",
     "sshKeyPath": "Ruta de la clave SSH",
-    "sshKeyPathDesc": "Ruta absoluta a la clave privada (p. ej. ~/.ssh/id_ed25519). La clave pública correspondiente ya debe estar registrada en GitHub.",
-    "scanSelectRequired": "Elige una credencial detectada para importar.",
-    "sshKeyPathRequired": "La ruta de la clave SSH es obligatoria."
+    "sshKeyPathDesc": "Ruta absoluta a la clave privada (p. ej. ~/.ssh/id_ed25519). La clave pública correspondiente ya debe estar registrada en GitHub",
+    "scanSelectRequired": "Elige una credencial detectada para importar",
+    "sshKeyPathRequired": "La ruta de la clave SSH es obligatoria"
   },
   "builtInTools": {
     "tabTools": "Herramientas integradas",
@@ -804,13 +798,13 @@
     "noAgents": "Ningún Agent usa esta herramienta",
     "agentSettingsTab": "Agent",
     "actionDetailsTab": "Detalles de comandos",
-    "agentBrowserRestartPromptTitle": "¿Reiniciar ORGII?",
-    "agentBrowserRestartPromptMessage": "Cambiar el proveedor Browser CLI requiere reiniciar ORGII antes de que los agentes vean la herramienta seleccionada. ¿Reiniciar ahora?",
+    "agentBrowserRestartPromptTitle": "¿Reiniciar ORG2?",
+    "agentBrowserRestartPromptMessage": "Cambiar el proveedor Browser CLI requiere reiniciar ORG2 antes de que los agentes vean la herramienta seleccionada. ¿Reiniciar ahora?",
     "sidecarDownloadsSectionTitle": "Descargas de sidecars",
     "sidecarAgentBrowserLabel": "Agent Browser CLI",
-    "sidecarAgentBrowserDesc": "Descarga el binario de Agent Browser para esta plataforma en ~/.orgii/bin. ORGII nunca lo descarga al iniciar.",
+    "sidecarAgentBrowserDesc": "Descarga el binario de Agent Browser para esta plataforma en ~/.orgii/bin. ORG2 nunca lo descarga al iniciar",
     "sidecarPeekabooLabel": "Peekaboo CLI",
-    "sidecarPeekabooDesc": "Descarga el binario macOS de Peekaboo para automatización de escritorio en ~/.orgii/bin. Las plataformas no compatibles quedan deshabilitadas.",
+    "sidecarPeekabooDesc": "Descarga el binario macOS de Peekaboo para automatización de escritorio en ~/.orgii/bin. Las plataformas no compatibles quedan deshabilitadas",
     "sidecarUnsupported": "No compatible",
     "sidecarInstalled": "Instalado",
     "sidecarNotInstalled": "No instalado",
@@ -873,7 +867,7 @@
     "connectMethodDesc": "Elija cómo conectar su cuenta de GitHub",
     "githubApp": "GitHub App",
     "detectFromSystem": "Detectar del sistema",
-    "detectFromSystemDesc": "Usa gh CLI, claves SSH o helpers de credenciales Git.",
+    "detectFromSystemDesc": "Usa gh CLI, claves SSH o helpers de credenciales Git",
     "credentialsDetected": "Credenciales detectadas",
     "detectedVia": "Detectado a través de {{source}}",
     "sshKeyLabel": "Clave SSH",
@@ -893,7 +887,7 @@
     "noCredentialsFound": "No se encontraron credenciales de GitHub",
     "noCredentialsHint": "Instale la CLI de GitHub (gh) o configure claves SSH para usar la detección local",
     "manuallyAddToken": "Añadir token manualmente",
-    "manualTokenDesc": "Pega un GitHub PAT para operaciones Git HTTPS.",
+    "manualTokenDesc": "Pega un GitHub PAT para operaciones Git HTTPS",
     "autoDetect": "Detectar automáticamente",
     "autoDetectTokenSaved": "Token de GitHub guardado",
     "autoDetectSshSwitched": "Remote cambiado a SSH",
@@ -906,9 +900,9 @@
     "worktreeTitle": "Worktree",
     "attributionTitle": "Atribución",
     "commitAttribution": "Commit Attribution",
-    "commitAttributionDesc": "Añadir ORGII como Co-authored-by a los mensajes de Commit creados desde ORGII",
+    "commitAttributionDesc": "Añadir ORG2 como Co-authored-by a los mensajes de Commit creados desde ORG2",
     "prAttribution": "Pull Request Attribution",
-    "prAttributionDesc": "Añadir un pie de atribución de ORGII a las descripciones de Pull Request creadas desde ORGII",
+    "prAttributionDesc": "Añadir un pie de atribución de ORG2 a las descripciones de Pull Request creadas desde ORG2",
     "promptInstructionsTitle": "Instrucciones de prompts",
     "commitInstructions": "Instrucciones para commits",
     "commitInstructionsDesc": "Se añaden a los prompts de generación de mensajes de commit, se guardan localmente y se envían al Agent seleccionado",
@@ -917,9 +911,9 @@
     "pullRequestInstructionsDesc": "Se añaden a los prompts de generación de títulos y descripciones de pull requests, se guardan localmente y se envían al Agent seleccionado",
     "pullRequestInstructionsPlaceholder": "Ejemplo: Antepón el ID de la incidencia a los títulos e incluye una sección de pruebas",
     "coauthor": "Co-authored-by",
-    "coauthorDesc": "Añadir {{name}} <{{email}}> a los commits Git creados desde ORGII",
+    "coauthorDesc": "Añadir {{name}} <{{email}}> a los commits Git creados desde ORG2",
     "noTokenYet": "¿Necesitas un Token?",
-    "createTokenDesc": "Abre GitHub y crea un PAT con acceso repo.",
+    "createTokenDesc": "Abre GitHub y crea un PAT con acceso repo",
     "accountConnected": "Cuenta de GitHub conectada",
     "disconnectMsg": "¿Estás seguro de que quieres desconectar? Esto eliminará el acceso a todos los repos de esta cuenta.",
     "disconnectTitle": "Desconectar cuenta de GitHub",
@@ -928,7 +922,7 @@
     "connectRepoDesc": "Conecta una cuenta de GitHub para acceder a repos",
     "github": "GitHub",
     "signInWithGithub": "Iniciar sesión con GitHub",
-    "signInWithGithubDesc": "Autoriza ORGII mediante el flujo de dispositivo de GitHub. Sin hospedaje de servidor.",
+    "signInWithGithubDesc": "Autoriza ORG2 mediante el flujo de dispositivo de GitHub. Sin hospedaje de servidor",
     "oauthWaiting": "Esperando autorización",
     "oauthDeviceCodeDesc": "Abre la URL siguiente e introduce este código",
     "oauthOpenGithub": "Abrir GitHub",
@@ -963,8 +957,8 @@
     "contentLabel": "Contenido",
     "contentDesc": "Escribe el cuerpo del SKILL.md en Markdown. Esto es lo que el Agent lee",
     "scopeLabel": "Alcance",
-    "scopeDesc": "Los skills User están disponibles en todos los repos. Los skills específicos del repo solo se cargan para ese repo.",
-    "scopeDescEdit": "Cambiar el alcance al guardar moverá la carpeta del skill entre almacenamiento User y específico del repo.",
+    "scopeDesc": "Los skills User están disponibles en todos los repos. Los skills específicos del repo solo se cargan para ese repo",
+    "scopeDescEdit": "Cambiar el alcance al guardar moverá la carpeta del skill entre almacenamiento User y específico del repo",
     "scopeGlobal": "User",
     "binsLabel": "Binarios requeridos",
     "binsDesc": "Programas CLI que necesita este skill (ej. git, python, docker)",
@@ -984,7 +978,7 @@
     "filePathPlaceholder": "ej. scripts/validate.py",
     "removeFile": "Eliminar archivo",
     "editorNoDraftTitle": "No hay un borrador de Skill en curso",
-    "editorNoDraftDesc": "Empieza haciendo clic en Crear en la página de Skills, o elige un Skill para editar.",
+    "editorNoDraftDesc": "Empieza haciendo clic en Crear en la página de Skills, o elige un Skill para editar",
     "scopeWorkspace": "Específico del repo",
     "deleteConfirmTitle": "¿Eliminar el skill «{{name}}»?",
     "deleteConfirmMessage": "Esto eliminará el skill y todos sus archivos. Esta acción no se puede deshacer."
@@ -993,7 +987,7 @@
     "tab": "MCP",
     "searchPlaceholder": "Buscar servidores MCP...",
     "noServers": "No hay servidores MCP configurados",
-    "noServersDesc": "Agrega un servidor MCP para extender las capacidades del agente con herramientas externas.",
+    "noServersDesc": "Agrega un servidor MCP para extender las capacidades del agente con herramientas externas",
     "addServer": "Agregar servidor MCP",
     "editServer": "Editar servidor MCP",
     "serverName": "Nombre del servidor",
@@ -1116,18 +1110,17 @@
     },
     "sessionProvenance": {
       "masterToggle": "Hooks de procedencia",
-      "masterToggleDesc": "Al desactivarlos, se desinstalan todos los hooks administrados y no se captura ninguna señal; las selecciones por plataforma se conservan y se restauran al volver a activarlos.",
+      "masterToggleDesc": "Al desactivarlos, se desinstalan todos los hooks administrados y no se captura ninguna señal; las selecciones por plataforma se conservan y se restauran al volver a activarlos",
       "liveStatusToggle": "Estado del agente en vivo",
-      "liveStatusToggleDesc": "Muestra si los agentes CLI están trabajando o esperando. Desactivarlo mantiene la captura de procedencia.",
+      "liveStatusToggleDesc": "Muestra si los agentes CLI están trabajando o esperando. Desactivarlo mantiene la captura de procedencia",
       "title": "Procedencia de sesiones",
       "capture": "Registrar interacciones con archivos",
-      "description": "Registra lecturas y escrituras de archivos como metadatos. No se guardan prompts, salidas de herramientas ni contenido de archivos.",
+      "description": "Registra lecturas y escrituras de archivos como metadatos. No se guardan prompts, salidas de herramientas ni contenido de archivos",
       "installDrift": "La preferencia guardada y el hook instalado son distintos. Cambia la captura para reparar el hook administrado. Configuración: {{path}}",
       "copyPath": "Copiar",
       "col": {
         "source": "Herramienta",
-        "config": "Configuración",
-        "capture": "Captura"
+        "config": "Configuración"
       },
       "status": {
         "on": "Activado",
@@ -1139,8 +1132,8 @@
       },
       "codexApproval": {
         "title": "Verificar los hooks de ORG2 en Codex",
-        "description": "Esperando a que Codex apruebe y ejecute los hooks actuales de ORG2.",
-        "instructions": "Abre Codex, revisa los hooks de ORG2 y elige Trust all and continue. El hook SessionStart verifica la activación automáticamente al iniciar la sesión.",
+        "description": "Esperando a que Codex apruebe y ejecute los hooks actuales de ORG2",
+        "instructions": "Abre Codex, revisa los hooks de ORG2 y elige Trust all and continue. El hook SessionStart verifica la activación automáticamente al iniciar la sesión",
         "review": "Revisar en Codex",
         "verified": "Verificado mediante una señal real de un hook de Codex ({{time}})."
       },
@@ -1185,7 +1178,7 @@
       "addMember": "Agregar Miembro",
       "noMembers": "Agrega miembros para construir la jerarquía de tu org",
       "membersLabel": "Miembros del equipo",
-      "membersDesc": "Cada fila es un miembro con una concesión de Writer y ajustes de comunicación independientes. Los nombres deben ser únicos; el rol solo describe la especialidad.",
+      "membersDesc": "Cada fila es un miembro con una concesión de Writer y ajustes de comunicación independientes. Los nombres deben ser únicos; el rol solo describe la especialidad",
       "memberName": "Nombre",
       "memberNamePlaceholder": "Nombre de enrutamiento único (p. ej. SDE-1)",
       "memberNameDuplicate": "Otro miembro ya usa este nombre. Los nombres deben ser únicos dentro de la organización.",
@@ -1238,9 +1231,9 @@
       "descriptionPlaceholder": "¿Qué hace este agent? (opcional)",
       "subAgentsTab": "Subagents",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
-      "maxToolUseConcurrencyDesc": "Llamadas de herramientas simultáneas por mensaje. Predeterminado: 10.",
+      "maxToolUseConcurrencyDesc": "Llamadas de herramientas simultáneas por mensaje. Predeterminado: 10",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
-      "subAgentWorktreeIsolationDesc": "Ejecutar en un Git Worktree temporal (acceso a archivos y Shell aislado).",
+      "subAgentWorktreeIsolationDesc": "Ejecutar en un Git Worktree temporal (acceso a archivos y Shell aislado)",
       "addSubAgent": "Agregar Sub-Agent...",
       "noSubAgents": "No hay sub-agents configurados."
     },
@@ -1276,30 +1269,30 @@
     "applicableAgentsDesc": "A qué agentes se aplica esta regla (vacío = todos)",
     "selectAgents": "Seleccionar agentes…",
     "ruleSource": "Origen",
-    "ruleSourceDesc": "Elige User para todos los repos o Repo para una guía específica de un repo.",
+    "ruleSourceDesc": "Elige User para todos los repos o Repo para una guía específica de un repo",
     "ruleSourceUser": "User",
-    "ruleSourceUserDesc": "Una preferencia de usuario disponible en todos los repos.",
+    "ruleSourceUserDesc": "Una preferencia de usuario disponible en todos los repos",
     "ruleSourceRepo": "Repo",
-    "ruleSourceRepoDesc": "Una guía guardada para un único repo seleccionado.",
+    "ruleSourceRepoDesc": "Una guía guardada para un único repo seleccionado",
     "ruleRepo": "Repo",
     "ruleRepoDesc": "El único repo al que se aplica esta guía",
     "selectRepo": "Seleccionar repo…",
     "ruleSourcePersonal": "Personal",
-    "ruleSourcePersonalDesc": "Guardado en ~/.orgii/personal/rules/. Solo sesiones OS Agent / channel.",
+    "ruleSourcePersonalDesc": "Guardado en ~/.orgii/personal/rules/. Solo sesiones OS Agent / channel",
     "findSkills": {
       "title": "Buscar Skills",
       "placeholder": "Buscar Skills...",
       "installs": "Installs",
       "emptyTitle": "Buscar Skills",
-      "emptySubtitle": "Introduce al menos 2 caracteres y pulsa Enter para buscar Skills.",
+      "emptySubtitle": "Introduce al menos 2 caracteres y pulsa Enter para buscar Skills",
       "noResults": "No se encontraron Skills",
-      "noResultsDesc": "Prueba con otro término de búsqueda."
+      "noResultsDesc": "Prueba con otro término de búsqueda"
     },
     "importAgentTitle": "Importar Agents desde otras apps",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agentes",
     "emptySelectionTitle": "Seleccione un miembro o un Equipo Agent",
-    "emptySelectionSubtitle": "Elija un Agent o un Equipo Agent en la barra lateral para verlo y configurarlo.",
+    "emptySelectionSubtitle": "Elija un Agent o un Equipo Agent en la barra lateral para verlo y configurarlo",
     "applicableWorkspace": "Workspace aplicable",
     "tableTabs": {
       "agents": "Agents",
@@ -1332,18 +1325,18 @@
     "cliManagedConfig": {
       "title": "Conmutador de configuración de la CLI",
       "modeLabel": "Modo",
-      "modeDesc": "Predeterminado restaura la configuración propia de la CLI. Gestionado por ORGII escribe una configuración de proxy con copia de seguridad.",
+      "modeDesc": "Predeterminado restaura la configuración propia de la CLI. Gestionado por ORG2 escribe una configuración de proxy con copia de seguridad",
       "modeDefault": "Predeterminado",
-      "modeOrgii": "Gestionado por ORGII",
+      "modeOrgii": "Gestionado por ORG2",
       "conflict": "Cambio externo",
       "conflictTitle": "Conflicto",
-      "conflictDesc": "La configuración activa de la CLI cambió después de que ORGII la escribiera.",
+      "conflictDesc": "La configuración activa de la CLI cambió después de que ORG2 la escribiera",
       "proxyStatus": "Proxy",
       "proxyDefault": "Modo predeterminado",
       "proxyReady": "Proxy listo",
       "proxyNotReady": "Proxy no listo",
       "keyLabel": "Credencial",
-      "keyDesc": "Solo se muestran las claves de API compatibles con esta CLI y el proxy gestionado.",
+      "keyDesc": "Solo se muestran las claves de API compatibles con esta CLI y el proxy gestionado",
       "selectKey": "Seleccionar credencial",
       "modelLabel": "Modelo",
       "selectModel": "Seleccionar modelo",
@@ -1354,9 +1347,9 @@
       "restore": "Restaurar predeterminado",
       "forceApply": "Forzar aplicación",
       "forceRestore": "Forzar restauración",
-      "applySuccess": "Configuración gestionada por ORGII aplicada",
+      "applySuccess": "Configuración gestionada por ORG2 aplicada",
       "restoreSuccess": "Configuración predeterminada restaurada",
-      "proxyLifecycleDesc": "Mantén ORGII en ejecución mientras uses este modo. Cerrar la ventana deja el proxy en la bandeja del sistema; salir de ORGII restaura Predeterminado de forma segura, salvo que la configuración haya cambiado externamente."
+      "proxyLifecycleDesc": "Mantén ORG2 en ejecución mientras uses este modo. Cerrar la ventana deja el proxy en la bandeja del sistema; salir de ORG2 restaura Predeterminado de forma segura, salvo que la configuración haya cambiado externamente"
     }
   },
   "databases": {
@@ -1420,10 +1413,6 @@
     "preview": "Vista previa",
     "jsonParseError": "Error de análisis JSON",
     "noPreview": "Sin datos para previsualizar",
-    "chatExtras": "Extras del chat",
-    "queuedMessages": "Mensajes en cola",
-    "fileReview": "Revisión de archivos",
-    "terminalProcesses": "Procesos de terminal",
     "modeSessionLink": "Enlace de sesión"
   },
   "rulesTabs": {
@@ -1550,7 +1539,7 @@
       "elapsed": "Tiempo total: {{value}}s"
     },
     "title": "Housekeeper residente",
-    "description": "MiniCPM local se encarga de pulir prompts, explicar pasos brevemente y del control ligero de la UI. Las tareas de programación y la configuración compleja del ADE siguen usando el modelo principal del agent.",
+    "description": "MiniCPM local se encarga de pulir prompts, explicar pasos brevemente y del control ligero de la UI. Las tareas de programación y la configuración compleja del ADE siguen usando el modelo principal del agent",
     "autoAccount": "Seleccionar automáticamente la cuenta vLLM de MiniCPM",
     "tiles": {
       "model": "Modelo",
@@ -1560,37 +1549,37 @@
     "settings": {
       "enabled": {
         "title": "Activar housekeeper",
-        "description": "Cuando está desactivado, el pulido de prompts, las explicaciones de pasos y el control ligero de la UI no usarán MiniCPM."
+        "description": "Cuando está desactivado, el pulido de prompts, las explicaciones de pasos y el control ligero de la UI no usarán MiniCPM"
       },
       "account": {
         "title": "Cuenta vLLM de MiniCPM",
-        "description": "Reutiliza una cuenta vllm_api existente de Key Vault; no se crea ningún almacén de credenciales aparte."
+        "description": "Reutiliza una cuenta vllm_api existente de Key Vault; no se crea ningún almacén de credenciales aparte"
       },
       "model": {
         "title": "ID del modelo",
-        "description": "Docker vLLM MiniCPM5-1B usa openbmb/MiniCPM5-1B de forma predeterminada."
+        "description": "Docker vLLM MiniCPM5-1B usa openbmb/MiniCPM5-1B de forma predeterminada"
       },
       "context": {
         "title": "Presupuesto de contexto seguro",
-        "description": "Usa un presupuesto conservador de 10000 tokens en GPU de 4 GB en lugar de confiar en el límite teórico de 32k."
+        "description": "Usa un presupuesto conservador de 10000 tokens en GPU de 4 GB en lugar de confiar en el límite teórico de 32k"
       }
     },
     "features": {
       "promptPolish": {
         "title": "Pulido de prompts",
-        "description": "Pule manualmente la entrada antes de enviarla al modelo de programación más potente."
+        "description": "Pule manualmente la entrada antes de enviarla al modelo de programación más potente"
       },
       "stepExplain": {
         "title": "Explicaciones de pasos del agent",
-        "description": "Genera una o dos explicaciones breves en chino para los pasos de la reproducción de la sesión."
+        "description": "Genera una o dos explicaciones breves en chino para los pasos de la reproducción de la sesión"
       },
       "uiControl": {
         "title": "Control ligero de ADE/UI",
-        "description": "MiniCPM solo puede clasificar las solicitudes dentro de una lista blanca estricta de acciones locales."
+        "description": "MiniCPM solo puede clasificar las solicitudes dentro de una lista blanca estricta de acciones locales"
       },
       "contextCompact": {
         "title": "Mantenimiento automático del contexto",
-        "description": "Permite que MiniCPM mantenga un resumen continuo y aislado del contexto antiguo mientras las sesiones habilitadas están inactivas."
+        "description": "Permite que MiniCPM mantenga un resumen continuo y aislado del contexto antiguo mientras las sesiones habilitadas están inactivas"
       }
     }
   },
@@ -1642,11 +1631,11 @@
     "applyFailed": "No se pudo activar el perfil de Git"
   },
   "credentialImport": {
-    "title": "Importar credenciales de otras apps",
-    "itemColumn": "Credencial",
+    "title": "Importar claves y suscripciones de otras apps",
+    "itemColumn": "Clave",
     "sourceColumn": "Encontrada en",
-    "empty": "No se encontraron credenciales para importar. Se revisaron variables de entorno, perfiles de shell, ajustes de Claude Code, perfiles de cc-switch y los almacenes de inicio de sesión de Claude Code, Codex, Cursor, GitHub CLI, Kiro y OpenCode.",
-    "allImported": "Todas las credenciales detectadas ya se han importado",
+    "empty": "No se encontraron claves ni suscripciones para importar. Se revisaron variables de entorno, perfiles de shell, ajustes de Claude Code, perfiles de cc-switch y los almacenes de inicio de sesión de Claude Code, Codex, Cursor, GitHub CLI, Kiro y OpenCode.",
+    "allImported": "Todas las claves y suscripciones detectadas ya se han importado",
     "authMethod": {
       "api_key": "Clave de API",
       "oauth": "Token de inicio de sesión"
@@ -1661,13 +1650,21 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "La importación falló: {{message}}",
-    "partialFailure": "Algunas credenciales no se pudieron importar:"
+    "partialFailure": "Algunas claves no se pudieron importar:",
+    "importSucceeded": "Guardado en Mis claves: {{names}}. Las claves importadas ya están disponibles como conexiones reutilizables."
   },
   "skills": {
     "shareToOrg": "Compartir con la organización",
     "share": "Compartir",
     "sharedToOrg": "Skill compartida con la organización",
-    "shareToOrgHint": "Los miembros de la organización reciben la instantánea actual de esta Skill; vuelve a compartirla después de editarla para publicar una actualización.",
+    "shareToOrgHint": "Los miembros de la organización reciben la instantánea actual de esta Skill; vuelve a compartirla después de editarla para publicar una actualización",
     "shareOrgPlaceholder": "Organización"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Cargando paquetes de ORG2 Market…",
+    "purchasesFailed": "No se pudieron cargar los paquetes de ORG2 Market. Inténtalo de nuevo.",
+    "failed": "No se pudo conectar con ORG2 Market. Inténtalo de nuevo.",
+    "title": "ORG2 Market",
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

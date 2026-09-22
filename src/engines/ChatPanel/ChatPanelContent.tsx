@@ -12,8 +12,6 @@ interface ChatPanelContentProps {
   emptyChatContent: React.ReactNode;
   displayMode: ChatHistoryDisplayMode;
   paginationEnabled: boolean;
-  position: "left" | "right";
-  showPanelContent: boolean;
   showSessionContent: boolean;
   /** Non-GUI surface for the active session; mounted only while one is on. */
   alternateSessionView?: React.ReactNode;
@@ -36,8 +34,6 @@ export function ChatPanelContent({
   emptyChatContent,
   displayMode,
   paginationEnabled,
-  position,
-  showPanelContent,
   showSessionContent,
   alternateSessionView,
   sessionViewMode = "gui",
@@ -46,7 +42,7 @@ export function ChatPanelContent({
   const alternateActive = sessionViewMode !== "gui";
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      {!showPanelContent ? null : showSessionContent && currentSessionId ? (
+      {showSessionContent && currentSessionId ? (
         <>
           {/* Kept mounted while another view is showing: unmounting would drop
               the virtualized chat list's measurement cache and force a full
@@ -61,7 +57,6 @@ export function ChatPanelContent({
               conversationTargetBinding={conversationTargetBinding}
               displayMode={displayMode}
               turnPaginationEnabled={paginationEnabled}
-              position={position}
               chromeTopInset={chromeTopInset}
             />
           </div>

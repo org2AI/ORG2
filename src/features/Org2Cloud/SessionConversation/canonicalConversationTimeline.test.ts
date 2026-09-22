@@ -5,6 +5,12 @@ import {
   NATIVE_SOURCE_EVENT_ID_ARG,
   projectNativeConversationItems,
 } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
+import {
+  beginQueuedRetry,
+  recordEmptyFailedAttempt,
+  retryLineageEvent,
+  retryLineageForMessage,
+} from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
 
@@ -137,6 +143,57 @@ const common = {
 };
 
 describe("canonical conversation timeline", () => {
+  it("keeps local retry proof across the next Cloud read without deleting the failed audit row", () => {
+    const failed = event(
+      "failed",
+      "user",
+      "2026-09-18T00:00:00Z",
+      "failed-intent"
+    );
+    const message = {
+      id: "queue-one",
+      turnIntentId: "failed-intent",
+      content: "failed",
+      displayContent: "failed",
+    };
+    const proof = recordEmptyFailedAttempt(
+      retryLineageForMessage([], message),
+      message,
+      [failed]
+    );
+    const retried = {
+      ...failed,
+      id: "retried",
+      chunk_id: "retried",
+      result: { ...failed.result, turnIntentId: "retry-intent" },
+    };
+    const marker = retryLineageEvent(
+      "local",
+      beginQueuedRetry(proof, { ...message, turnIntentId: "retry-intent" })
+    );
+    const nextTurnHistory = assembleCanonicalConversationTimeline({
+      family: null,
+      anchorBareSessionId: "root",
+      anchorEvents: [marker],
+      planeEvents: [failed, retried].map((item, index) => ({
+        id: `plane-${index}`,
+        rootSessionId: "root",
+        authorUserId: "alice",
+        turnId: String(item.result?.turnIntentId),
+        seq: index + 1,
+        event: item,
+        createdAt: item.createdAt,
+      })),
+      comments: [],
+      streamSessionId: "local",
+      viewer: { status: "known", userId: "alice" },
+    });
+    expect(
+      nextTurnHistory.filter((item) => item.source === "user")
+    ).toHaveLength(2);
+    expect(projectNativeConversationItems(nextTurnHistory)).toHaveLength(1);
+  });
+
   it("keeps the anchor's failed retry row when a family replay already published its intent", () => {
     const failed = {
       ...currentTurn,

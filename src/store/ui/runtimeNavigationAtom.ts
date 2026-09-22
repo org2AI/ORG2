@@ -1,12 +1,7 @@
 import { atom } from "jotai";
 
 export type RuntimeOrganizationView = "today" | "members" | "sync";
-export type RuntimePersonalView =
-  | "usage"
-  | "profile"
-  | "scanning"
-  | "hooks"
-  | "assets";
+export type RuntimePersonalView = "usage" | "profile" | "scanning" | "hooks";
 
 /**
  * One-shot navigation request for opening Runtime at a specific surface. The

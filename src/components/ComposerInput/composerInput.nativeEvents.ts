@@ -10,7 +10,7 @@
  */
 import { useEffect } from "react";
 
-import { hasReferenceDragData } from "@src/shared/dnd/referenceDragData";
+import { hasReferenceDragData } from "@src/util/dnd/referenceDragData";
 import { EDIT_HISTORY_EVENT } from "@src/util/dom/editHistoryCommand";
 
 import { removePillForDeleteDirection } from "./keyboard";
@@ -30,6 +30,8 @@ export interface UseComposerNativeEventsParams {
   undoAndNotify: () => boolean;
   redoAndNotify: () => boolean;
   updateCoveredPillSelection: () => void;
+  /** Link the URL word that ends at the caret; see `useEditorOperations`. */
+  autolinkUrlBeforeCaret: () => boolean;
 }
 
 /**
@@ -49,6 +51,7 @@ export function useComposerNativeEvents({
   undoAndNotify,
   redoAndNotify,
   updateCoveredPillSelection,
+  autolinkUrlBeforeCaret,
 }: UseComposerNativeEventsParams): void {
   const {
     markHistoryBoundary,
@@ -64,9 +67,12 @@ export function useComposerNativeEvents({
     const handleCompositionStart = () => {
       isComposingRef.current = true;
     };
-    const handleCompositionEnd = () => {
+    const handleCompositionEnd = (event: CompositionEvent) => {
       isComposingRef.current = false;
       compositionEndedAtRef.current = performance.now();
+      // Composition-replacement input is ignored while it runs; resync once it
+      // ends, which also settles an editor emptied by a cancelled composition.
+      handleInput(event);
     };
     const handleBeforeInput = (event: InputEvent) => {
       if (isComposingRef.current || event.isComposing) return;
@@ -80,9 +86,11 @@ export function useComposerNativeEvents({
         if (!event.cancelable) return;
         event.preventDefault();
         markHistoryBoundary();
+        // A line break ends the word before it, like a space does.
+        const linked = autolinkUrlBeforeCaret();
         const inserted = insertNewline();
         commitHistoryBoundary();
-        if (inserted) handleInput();
+        if (inserted || linked) handleInput();
         return;
       }
 
@@ -113,6 +121,21 @@ export function useComposerNativeEvents({
           handleInput();
           return;
         }
+      }
+      // Typing a separator after an address links it, the way pasting one
+      // does. The separator is inserted here, after the pill, so the history
+      // step and the caret both land where the user was typing.
+      if (
+        event.inputType === "insertText" &&
+        event.data &&
+        /^\s+$/.test(event.data) &&
+        autolinkUrlBeforeCaret()
+      ) {
+        event.preventDefault();
+        insertTextAtCaret(event.data);
+        commitHistoryBoundary();
+        handleInput();
+        return;
       }
       if (event.inputType === "insertText" && event.data) {
         const sanitized = sanitizeText(event.data);
@@ -227,5 +250,6 @@ export function useComposerNativeEvents({
     redoAndNotify,
     undoAndNotify,
     updateCoveredPillSelection,
+    autolinkUrlBeforeCaret,
   ]);
 }

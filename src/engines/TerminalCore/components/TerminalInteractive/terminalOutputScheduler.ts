@@ -69,7 +69,13 @@ function writeAndMeasure(pane: PaneScheduler, chunk: string): void {
 }
 
 function drainForegroundTurn(pane: PaneScheduler): void {
-  if (pane.suspended || !pane.foreground || !queueHasItems(pane)) return;
+  if (
+    !ownsPane(pane) ||
+    pane.suspended ||
+    !pane.foreground ||
+    !queueHasItems(pane)
+  )
+    return;
 
   for (let i = 0; i < FOREGROUND_WRITES_PER_TURN && queueHasItems(pane); i++) {
     const chunk = consumeChunk(pane);
@@ -86,7 +92,7 @@ function drainForegroundTurn(pane: PaneScheduler): void {
 
 function drainBackground(pane: PaneScheduler): void {
   pane.timerId = null;
-  if (pane.suspended || !queueHasItems(pane)) return;
+  if (!ownsPane(pane) || pane.suspended || !queueHasItems(pane)) return;
 
   const deadline = performance.now() + BACKGROUND_TIME_BUDGET_MS;
   while (queueHasItems(pane) && performance.now() < deadline) {
@@ -155,14 +161,26 @@ function checkInteractiveBypass(
 // ============================================
 
 /** Register a terminal pane before scheduling output. */
-export function registerPane(sessionId: string, write: WriteCallback): void {
-  getOrCreatePane(sessionId, write);
+export function registerPane(
+  sessionId: string,
+  write: WriteCallback,
+  ownerId?: number
+): PaneScheduler {
+  unregisterPane(sessionId);
+  const pane = getOrCreatePane(sessionId, write);
+  pane.ownerId = ownerId;
+  return pane;
+}
+
+export function ownsPane(pane: PaneScheduler): boolean {
+  return paneMap.get(pane.sessionId) === pane;
 }
 
 /** Remove a pane, cancel its drain work, and ACK discarded queued bytes. */
-export function unregisterPane(sessionId: string): void {
+export function unregisterPane(sessionId: string, owner?: PaneScheduler): void {
   const pane = paneMap.get(sessionId);
-  if (!pane) return;
+  if (!pane || (owner && pane !== owner)) return;
+  pane.suspended = true;
 
   if (pane.mcPort) {
     pane.mcPort.close();

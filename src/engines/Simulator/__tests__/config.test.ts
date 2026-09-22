@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-import { calculateAutoLayout, getLayoutCells } from "../config";
+import { calculateAutoLayout } from "../config";
 
 vi.mock("@src/store/ui/simulatorAtom", () => ({ SimulatorGridLayout: {} }));
 
@@ -18,17 +18,5 @@ describe("calculateAutoLayout", () => {
     expect(calculateAutoLayout(9)).toBe("3x3");
     expect(calculateAutoLayout(10)).toBe("3x4");
     expect(calculateAutoLayout(12)).toBe("3x4");
-  });
-});
-
-describe("getLayoutCells", () => {
-  it("returns row × col for each layout key", () => {
-    expect(getLayoutCells("1x1")).toBe(1);
-    expect(getLayoutCells("1x2")).toBe(2);
-    expect(getLayoutCells("2x2")).toBe(4);
-    expect(getLayoutCells("2x3")).toBe(6);
-    expect(getLayoutCells("3x3")).toBe(9);
-    expect(getLayoutCells("4x2")).toBe(8);
-    expect(getLayoutCells("3x4")).toBe(12);
   });
 });

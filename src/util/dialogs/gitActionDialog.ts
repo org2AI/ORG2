@@ -1,4 +1,5 @@
 import { createLogger } from "@src/hooks/logger";
+import i18n from "@src/i18n";
 
 const log = createLogger("GitActionDialog");
 
@@ -13,7 +14,7 @@ const TRANSPORT_ERROR_MESSAGES = new Set([
 export function normalizeGitActionDialogMessage(dialogMessage: string): string {
   const normalizedMessage = dialogMessage.trim().toLowerCase();
   if (TRANSPORT_ERROR_MESSAGES.has(normalizedMessage)) {
-    return "Unable to reach the local Git service. Please try again after the app finishes starting, or restart ORGII if this keeps happening.";
+    return i18n.t("common:appMessages.gitServiceUnavailable");
   }
   return dialogMessage;
 }

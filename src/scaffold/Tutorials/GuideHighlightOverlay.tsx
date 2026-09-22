@@ -5,10 +5,7 @@ import { createPortal } from "react-dom";
 
 import Button from "@src/components/Button";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
-import {
-  POPUP_ANIMATION,
-  getPopupSurfaceStyle,
-} from "@src/scaffold/shared/popupTokens";
+import { POPUP_ANIMATION, getPopupSurfaceStyle } from "@src/scaffold/tokens";
 import {
   clearGuideHighlightAtom,
   guideHighlightAtom,
@@ -246,7 +243,6 @@ const GuideHighlightOverlay: React.FC = () => {
               <Button
                 size="mini"
                 variant="tertiary"
-                appearance="ghost"
                 icon={
                   <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
                 }

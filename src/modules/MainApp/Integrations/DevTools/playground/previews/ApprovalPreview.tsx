@@ -47,8 +47,8 @@ export function ApprovalPreview({
     <PermissionCardBody
       label={
         isCommandConfirm
-          ? t("chat.commandConfirmTitle", "Command Requires Approval")
-          : t("chat.permissionPrompt", "Your permission is needed")
+          ? t("chat.commandConfirmTitle")
+          : t("chat.permissionPrompt")
       }
       badge={
         !isCommandConfirm && toolName ? (

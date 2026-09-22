@@ -80,7 +80,7 @@ const CanvasRevisionSteps: React.FC<CanvasRevisionStepsProps> = ({
   return (
     <ol
       className={`flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 ${className}`.trim()}
-      aria-label={t("canvasApp.revisionStepsLabel", "Canvas update progress")}
+      aria-label={t("canvasApp.revisionStepsLabel")}
     >
       {steps.map((label, index) => {
         const state = states[index] ?? "pending";

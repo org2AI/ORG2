@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 
+import Button from "@src/components/Button";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 
 export interface TurnNavigationRoundListItem {
@@ -14,23 +15,26 @@ export interface TurnNavigationRoundListProps {
   currentPageIndex: number;
   onSelect: (pageIndex: number) => void;
   className?: string;
+  mobile?: boolean;
 }
 
 const TurnNavigationRoundList: React.FC<TurnNavigationRoundListProps> = memo(
-  ({ items, currentPageIndex, onSelect, className = "" }) => {
+  ({ items, currentPageIndex, onSelect, className = "", mobile = false }) => {
     return (
       <div
         data-testid="turn-navigation-round-list"
+        data-mobile-round-list={mobile || undefined}
         className={`scrollbar-hide max-h-[min(60vh,24rem)] overflow-y-auto ${className}`.trim()}
       >
         {items.map((item) => {
           const isCurrent = item.pageIndex === currentPageIndex;
           return (
-            <button
+            <Button
+              layout="custom"
               key={item.id}
-              type="button"
               data-testid="turn-page-list-item"
               data-page-index={item.pageIndex}
+              aria-current={isCurrent ? "true" : undefined}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left ${
                 isCurrent ? DROPDOWN_CLASSES.itemSelected : "text-text-2"
               }`}
@@ -45,7 +49,7 @@ const TurnNavigationRoundList: React.FC<TurnNavigationRoundListProps> = memo(
                   {item.timeLabel}
                 </span>
               ) : null}
-            </button>
+            </Button>
           );
         })}
       </div>

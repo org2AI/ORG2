@@ -13,6 +13,7 @@ import {
 } from "vitest";
 
 import type { ComposerInputRef } from "@src/components/ComposerInput";
+import { testTranslate, useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import PinnedActionsBar, { getUnresolvedPinnedSkillsKey } from ".";
 
@@ -26,9 +27,8 @@ vi.mock("jotai", async (importOriginal) => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 vi.mock("@src/components/Button", async () => {
@@ -156,7 +156,7 @@ describe("PinnedActionsBar", () => {
     ).toBeNull();
     expect(
       container.querySelector<HTMLButtonElement>(
-        'button[title="input.pinnedActions.manage"]'
+        `button[title="${testTranslate("sessions:input.pinnedActions.manage")}"]`
       )
     ).toBeNull();
     expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
@@ -178,7 +178,7 @@ describe("PinnedActionsBar", () => {
 
     expect(
       container.querySelector<HTMLButtonElement>(
-        'button[title="input.pinnedActions.manage"]'
+        `button[title="${testTranslate("sessions:input.pinnedActions.manage")}"]`
       )
     ).not.toBeNull();
     expect(container.querySelector('[aria-hidden="true"]')).toBeNull();

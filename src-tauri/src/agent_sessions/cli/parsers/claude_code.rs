@@ -371,6 +371,10 @@ impl CliAgentParser for ClaudeCodeParser {
                             // has old_string/new_string/path even without the "running" chunk
                             chunk.args = normalized_args;
                             chunk.result = result;
+                            let images = orgtrack_core::sources::imported_history::images::content_image_refs(item.get("content"));
+                            if !images.is_empty() {
+                                chunk.result["images"] = serde_json::json!(images);
+                            }
                             orgtrack_core::sources::claude_code::history::apply_claude_question_result(
                                 &mut chunk, tool_use_result, is_error,
                             );
@@ -678,5 +682,19 @@ impl CliAgentParser for ClaudeCodeParser {
 
     fn cli_session_id(&self) -> Option<String> {
         self.thread_id.clone()
+    }
+}
+
+#[cfg(test)]
+mod output_image_tests {
+    use super::*;
+    #[test]
+    fn live_tool_result_preserves_structured_images() {
+        let mut parser = ClaudeCodeParser::new("image-session");
+        let input = serde_json::json!({"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"draw","content":[{"type":"image","source":{"type":"base64","media_type":"image/png","data":"AVATAR"}}]}]}});
+        let chunks = parser.parse_line(&input.to_string());
+        assert!(chunks
+            .iter()
+            .any(|c| c.result["images"][0] == "data:image/png;base64,AVATAR"));
     }
 }

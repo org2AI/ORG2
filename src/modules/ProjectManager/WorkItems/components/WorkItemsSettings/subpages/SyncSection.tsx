@@ -22,7 +22,7 @@ import {
   SectionContainer,
   SectionHeading,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
 
 import ConflictRowComponent from "./syncSection/ConflictRow";
 import ImportPanel from "./syncSection/ImportPanel";
@@ -104,8 +104,7 @@ const SyncSection: React.FC<SyncSectionProps> = ({ slug }) => {
             />
             {isAttached ? (
               <Button
-                variant="danger"
-                appearance="outline"
+                tone="danger"
                 size="small"
                 onClick={handleDetach}
                 loading={detaching}

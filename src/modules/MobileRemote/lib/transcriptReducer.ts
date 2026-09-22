@@ -3,6 +3,12 @@ import type { ExtractedData } from "@src/engines/SessionCore/core/types";
 
 export type TranscriptItemKind = "user" | "agent" | "tool";
 
+function boundedImageCount(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? Math.min(value, 8)
+    : 0;
+}
+
 export type MobileToolData =
   | ExtractedData
   | ({ kind: "unknown" } & Record<string, unknown>);
@@ -11,10 +17,13 @@ export interface TranscriptItem {
   id: string;
   kind: TranscriptItemKind;
   text: string;
+  imageCount?: number;
   toolName?: string;
   toolCanonical?: string;
   toolStatus?: string;
   toolSummary?: string;
+  /** Bounded args.title; presentation decides whether it describes the call. */
+  toolArgumentTitle?: string;
   toolData?: MobileToolData;
   toolDataTruncated?: boolean;
   toolFilePath?: string;
@@ -31,6 +40,7 @@ export interface TranscriptItem {
 }
 
 export interface SnapshotUpsertEvent {
+  imageCount?: number;
   id?: string;
   turnIntentId?: string;
   uiCanonical?: string;
@@ -43,6 +53,7 @@ export interface SnapshotUpsertEvent {
   args?: Record<string, unknown>;
   result?: Record<string, unknown>;
   toolSummary?: string;
+  toolArgumentTitle?: string;
   toolData?: MobileToolData;
   toolDataTruncated?: boolean;
   filePath?: string;
@@ -170,6 +181,7 @@ export function reduceTranscriptFromUpserts(
       mergeItem({
         id,
         kind: "user",
+        imageCount: boundedImageCount(event.imageCount),
         text: resolveEventText(event),
         createdAt: event.createdAt,
         turnIntentId: event.turnIntentId,
@@ -181,6 +193,7 @@ export function reduceTranscriptFromUpserts(
       mergeItem({
         id,
         kind: "agent",
+        imageCount: boundedImageCount(event.imageCount),
         text: resolveEventText(event),
         streaming:
           event.displayStatus?.toLowerCase() === "running" ||
@@ -199,6 +212,7 @@ export function reduceTranscriptFromUpserts(
         toolCanonical: event.uiCanonical,
         toolStatus: event.displayStatus,
         toolSummary: event.toolSummary,
+        toolArgumentTitle: stringField(event.toolArgumentTitle) || undefined,
         toolData: event.toolData,
         toolDataTruncated: event.toolDataTruncated,
         toolFilePath: event.filePath,

@@ -47,6 +47,7 @@ import {
   subagentJobMapAtom,
 } from "@src/store/session/subagentJobAtom";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
+import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 import type { SessionViewState } from "./types";
 import { markSessionVisited } from "./visitedSessionsAtom";
@@ -91,12 +92,17 @@ const SessionViewStateStorageSchema = z
  * inert (no session work until the user explicitly acts). Only metadata
  * (sessionName, repoPath) survives a reload.
  */
-export const sessionViewAtom = atomWithStorage<SessionViewState>(
-  STORAGE_KEY,
-  DEFAULT_STATE,
-  createZodJsonStorage(SessionViewStateStorageSchema),
-  { getOnInit: true }
-);
+// The detached station follows main through explicit session events. Reading
+// shared storage would apply the cold-start null transform on every live
+// storage event; writing it would also let a mirror overwrite main's metadata.
+export const sessionViewAtom = isStationWindow()
+  ? atom<SessionViewState>(DEFAULT_STATE)
+  : atomWithStorage<SessionViewState>(
+      STORAGE_KEY,
+      DEFAULT_STATE,
+      createZodJsonStorage(SessionViewStateStorageSchema),
+      { getOnInit: true }
+    );
 sessionViewAtom.debugLabel = "sessionViewAtom";
 
 // ============================================

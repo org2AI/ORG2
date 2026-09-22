@@ -6,19 +6,16 @@
  */
 import React, { memo } from "react";
 
-import {
-  TREE_ROW_INSET_CLASS,
-  TREE_ROW_ROUNDED_CLASS,
-} from "@src/components/TreeRow";
+import { SidebarSectionHeader } from "@src/components/SidebarSectionHeader";
 import {
   COUNT_BADGE,
   getCountBadgeSizeClass,
 } from "@src/config/workstation/tokens";
-import { ArrowDown01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
 export interface SectionHeaderProps {
   title: string;
-  count: number;
+  /** Omit when the count is already part of the title. */
+  count?: number;
   /** Optional display text when the numeric count is a lower bound. */
   countLabel?: string;
   isCollapsed: boolean;
@@ -57,55 +54,24 @@ export const SectionHeader: React.FC<SectionHeaderProps> = memo(
         : COUNT_BADGE.primary;
 
     return (
-      <div
-        className={`group/header ${TREE_ROW_INSET_CLASS} flex ${heightClassName} min-w-0 items-center gap-1.5 px-2 ${TREE_ROW_ROUNDED_CLASS} ${
-          useWarningText ? "hover:bg-warning-1" : ""
-        }`}
-      >
-        <button
-          className="flex min-w-0 items-center gap-1.5"
-          onClick={onToggle}
-        >
-          {isCollapsed ? (
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              data-icon="chevron-right"
-              size={14}
-              className={useWarningText ? "text-warning-6" : "text-text-3"}
-            />
-          ) : (
-            <HugeiconsIcon
-              icon={ArrowDown01Icon}
-              data-icon="chevron-down"
-              size={14}
-              className={useWarningText ? "text-warning-6" : "text-text-3"}
-            />
-          )}
-          {icon}
-          <span
-            className={`min-w-0 truncate text-[11px] font-medium uppercase ${
-              useWarningText ? "text-warning-6" : "text-text-2"
-            }`}
-          >
-            {title}
-          </span>
-        </button>
-        <div className="flex-1" />
-        <div className="relative flex shrink-0 items-center">
-          {/* Action buttons - show on hover without affecting layout */}
-          {actions && (
-            <div className="absolute right-full mr-1 flex items-center">
-              {actions}
-            </div>
-          )}
-          {/* Count badge */}
-          <span
-            className={`${COUNT_BADGE.base} ${getCountBadgeSizeClass(count)} ${countBadgeVariant}`}
-          >
-            {countLabel ?? count}
-          </span>
-        </div>
-      </div>
+      <SidebarSectionHeader
+        title={title}
+        expanded={!isCollapsed}
+        onToggle={onToggle}
+        icon={icon}
+        heightClassName={heightClassName}
+        warning={useWarningText}
+        actions={actions}
+        badge={
+          count !== undefined && (
+            <span
+              className={`${COUNT_BADGE.base} ${getCountBadgeSizeClass(count)} ${countBadgeVariant}`}
+            >
+              {countLabel ?? count}
+            </span>
+          )
+        }
+      />
     );
   }
 );

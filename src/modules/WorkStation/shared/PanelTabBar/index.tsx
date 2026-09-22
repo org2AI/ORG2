@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import React, { memo, useCallback } from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
+import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
 import {
@@ -116,8 +117,8 @@ const PanelTabButton: React.FC<PanelTabButtonProps> = memo(
     }, [markClicked, onTabChange, tab.key]);
 
     return (
-      <button
-        type="button"
+      <Button
+        layout="custom"
         data-active={isActive ? "true" : "false"}
         onClick={handleClick}
         onMouseLeave={resetCursor}
@@ -146,7 +147,7 @@ const PanelTabButton: React.FC<PanelTabButtonProps> = memo(
             {tab.badge}
           </span>
         )}
-      </button>
+      </Button>
     );
   }
 );

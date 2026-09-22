@@ -24,7 +24,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEffect } from "react";
 
 import { createLogger } from "@src/hooks/logger";
-import { clearInternalFileTreeDrag } from "@src/shared/dnd/dragSideChannel";
+import { clearInternalFileTreeDrag } from "@src/util/dnd/dragSideChannel";
 
 import {
   getChatDropTargetId,

@@ -165,6 +165,7 @@ export function useChatPanelAgentPresentation({
   const heroContent = useMemo(
     () =>
       resolveSessionCreatorAgentHeroContent({
+        t,
         hasAgentSelected,
         dispatchCategory,
         targetKind,
@@ -187,6 +188,7 @@ export function useChatPanelAgentPresentation({
       orgs,
       registry,
       isOSMode,
+      t,
     ]
   );
 

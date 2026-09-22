@@ -1,4 +1,4 @@
-use super::utils::run_git;
+use super::utils::{ensure_git_operand, run_git};
 use crate::types::*;
 use git::types::BranchInfo;
 /**
@@ -8,6 +8,10 @@ use git::types::BranchInfo;
  * All operations use retry logic for transient errors.
  */
 use std::path::Path;
+
+#[cfg(test)]
+#[path = "tests/branch_tests.rs"]
+mod operand_tests;
 
 impl From<BranchInfo> for GitBranchInfo {
     fn from(b: BranchInfo) -> Self {
@@ -43,6 +47,10 @@ pub fn create_branch(
     start_point: Option<&str>,
     checkout: bool,
 ) -> Result<(), String> {
+    ensure_git_operand(name, "branch name")?;
+    if let Some(sp) = start_point {
+        ensure_git_operand(sp, "start point")?;
+    }
     let mut args = vec!["branch", name];
 
     if let Some(sp) = start_point {
@@ -64,6 +72,7 @@ pub fn create_branch(
 
 /// Delete a branch
 pub fn delete_branch(repo_path: &Path, branch_name: &str, force: bool) -> Result<(), String> {
+    ensure_git_operand(branch_name, "branch name")?;
     let delete_flag = if force { "-D" } else { "-d" };
 
     let output = run_git(repo_path, &["branch", delete_flag, branch_name])?;
@@ -86,6 +95,10 @@ pub fn rename_branch(
     new_name: &str,
     force: bool,
 ) -> Result<(), String> {
+    if let Some(old) = old_name {
+        ensure_git_operand(old, "branch name")?;
+    }
+    ensure_git_operand(new_name, "branch name")?;
     let rename_flag = if force { "-M" } else { "-m" };
 
     let mut args = vec!["branch", rename_flag];
@@ -136,12 +149,16 @@ fn ref_exists(repo_path: &Path, full_ref: &str) -> bool {
 ///
 /// If `force` is true, uses `git checkout --force` to discard local changes.
 pub fn checkout_ref(repo_path: &Path, ref_name: &str, force: bool) -> Result<(), String> {
+    ensure_git_operand(ref_name, "ref")?;
     // An explicit remote-tracking ref is itself a valid checkout target, but
     // checking it out directly detaches HEAD. Resolve it before the generic
     // checkout attempt so branch-picker selection behaves like GitHub Desktop.
     let exact_local_ref = format!("refs/heads/{}", ref_name);
     if !ref_exists(repo_path, &exact_local_ref) {
         if let Some((remote_ref, local_name)) = remote_tracking_branch(ref_name) {
+            // `origin/-x` passes the check above, but its local half is placed
+            // in argv on its own.
+            ensure_git_operand(&local_name, "ref")?;
             let full_remote_ref = format!("refs/remotes/{}", remote_ref);
             if ref_exists(repo_path, &full_remote_ref) {
                 let local_ref = format!("refs/heads/{}", local_name);

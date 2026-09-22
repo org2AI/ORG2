@@ -111,9 +111,7 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
   const handleDeleteRow = useCallback(
     async (row: AgentRow) => {
       const confirmed = await confirmDestructiveAction({
-        title: t("agentOrgs.deleteAgentTitle", {
-          defaultValue: "Delete agent?",
-        }),
+        title: t("agentOrgs.deleteAgentTitle"),
         message: t("agentOrgs.deleteAgentMessage", {
           name: row.name,
           defaultValue: `"${row.name}" will be permanently removed. This cannot be undone.`,
@@ -129,7 +127,7 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
     () => [
       {
         key: "name",
-        label: t("common:labels.name", { defaultValue: "Name" }),
+        label: t("common:labels.name"),
         width: SETTINGS_TABLE_COL.fill,
         sorter: (rowA, rowB) => rowA.name.localeCompare(rowB.name),
         renderCell: (row) => {
@@ -146,20 +144,20 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
       },
       {
         key: "category",
-        label: t("agentOrgs.agentDetail.type", { defaultValue: "Type" }),
+        label: t("agentOrgs.agentDetail.type"),
         width: AGENTS_TABLE_COL_WIDTH.category,
         sorter: (rowA, rowB) => rowA.__category.localeCompare(rowB.__category),
         renderCell: (row) => (
           <span className={SETTINGS_TABLE_CELL.value}>
             {row.__category === "builtin"
-              ? t("agentOrgs.agentDetail.builtIn", { defaultValue: "Built-in" })
-              : t("agentOrgs.agentDetail.custom", { defaultValue: "Custom" })}
+              ? t("agentOrgs.agentDetail.builtIn")
+              : t("agentOrgs.agentDetail.custom")}
           </span>
         ),
       },
       {
         key: "description",
-        label: t("common:labels.description", { defaultValue: "Description" }),
+        label: t("common:labels.description"),
         width: SETTINGS_TABLE_COL.fill,
         renderCell: (row) => (
           <span
@@ -172,11 +170,7 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
       },
       {
         key: "actions",
-        label: (
-          <span className="sr-only">
-            {t("common:labels.actions", { defaultValue: "Actions" })}
-          </span>
-        ),
+        label: <span className="sr-only">{t("common:labels.actions")}</span>,
         width: AGENTS_TABLE_COL_WIDTH.actions,
         align: "right",
         renderCell: (row) => (
@@ -185,17 +179,12 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <Button
-              variant="secondary"
-              size="small"
-              onClick={() => handleView(row)}
-            >
-              {t("common:actions.view", { defaultValue: "View" })}
+            <Button size="small" onClick={() => handleView(row)}>
+              {t("common:actions.view")}
             </Button>
             {row.__category === "custom" ? (
               <Button
-                variant="danger"
-                appearance="outline"
+                tone="danger"
                 size="small"
                 icon={
                   <HugeiconsIcon
@@ -206,10 +195,8 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
                 }
                 iconOnly
                 onClick={() => void handleDeleteRow(row)}
-                aria-label={t("common:actions.delete", {
-                  defaultValue: "Delete",
-                })}
-                title={t("common:actions.delete", { defaultValue: "Delete" })}
+                aria-label={t("common:actions.delete")}
+                title={t("common:actions.delete")}
               />
             ) : null}
           </div>
@@ -229,19 +216,15 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
         options: [
           {
             value: "all",
-            label: t("common:labels.all", { defaultValue: "All" }),
+            label: t("common:labels.all"),
           },
           {
             value: "builtin",
-            label: t("agentOrgs.agentDetail.builtIn", {
-              defaultValue: "Built-in",
-            }),
+            label: t("agentOrgs.agentDetail.builtIn"),
           },
           {
             value: "custom",
-            label: t("agentOrgs.agentDetail.custom", {
-              defaultValue: "Custom",
-            }),
+            label: t("agentOrgs.agentDetail.custom"),
           },
         ],
       },
@@ -249,11 +232,9 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
     [categoryFilter, t]
   );
 
-  const addAgentLabel = t("agentOrgs.addAgent", { defaultValue: "Add Agent" });
+  const addAgentLabel = t("agentOrgs.addAgent");
   const addButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       iconOnly
       aria-label={addAgentLabel}
@@ -278,13 +259,11 @@ const AgentsTable: React.FC<AgentsTableProps> = ({
       searchBar={{
         searchValue: searchQuery,
         onSearchChange: setSearchQuery,
-        searchPlaceholder: t("agentOrgs.searchAgents", {
-          defaultValue: "Search agents…",
-        }),
+        searchPlaceholder: t("agentOrgs.searchAgents"),
         allowSearchClear: true,
         rightContent: addButton,
       }}
-      emptyTitle={t("agentOrgs.noAgents", { defaultValue: "No agents yet" })}
+      emptyTitle={t("agentOrgs.noAgents")}
       emptyAction={{
         label: addAgentLabel,
         onClick: onAddAgent,

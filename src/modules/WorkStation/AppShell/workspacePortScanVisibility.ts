@@ -1,7 +1,6 @@
 interface WorkspacePortScanVisibilityOptions {
   isCodeMode: boolean;
   isBrowserMode: boolean;
-  isActive: boolean;
   chatPanelFocused: boolean;
   hasActiveTab: boolean;
   isLaunchpad: boolean;
@@ -12,7 +11,6 @@ interface WorkspacePortScanVisibilityOptions {
 export function shouldEnableWorkspacePortScan({
   isCodeMode,
   isBrowserMode,
-  isActive,
   chatPanelFocused,
   hasActiveTab,
   isLaunchpad,
@@ -20,7 +18,6 @@ export function shouldEnableWorkspacePortScan({
 }: WorkspacePortScanVisibilityOptions): boolean {
   return (
     (isCodeMode || isBrowserMode) &&
-    isActive &&
     !chatPanelFocused &&
     hasActiveTab &&
     !isLaunchpad &&

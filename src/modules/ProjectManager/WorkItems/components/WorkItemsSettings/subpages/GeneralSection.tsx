@@ -11,7 +11,6 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Switch from "@src/components/Switch";
-import { Alert01Icon, HugeiconsIcon } from "@src/icons";
 import {
   SECTION_ACTION_GAP_CLASSES,
   SECTION_CONTROL_STYLE,
@@ -19,7 +18,8 @@ import {
   SectionContainer,
   SectionHeading,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { Alert01Icon, HugeiconsIcon } from "@src/icons";
 
 import { deriveWorkItemPrefix } from "../../../config";
 
@@ -139,7 +139,8 @@ const GeneralSection: React.FC<GeneralSectionProps> = ({
         >
           {!showConfirm ? (
             <Button
-              variant="danger"
+              variant="primary"
+              tone="danger"
               size="small"
               onClick={() => setShowConfirm(true)}
               disabled={!onDeleteProject}
@@ -174,7 +175,8 @@ const GeneralSection: React.FC<GeneralSectionProps> = ({
               />
               <div className={SECTION_ACTION_GAP_CLASSES}>
                 <Button
-                  variant="danger"
+                  variant="primary"
+                  tone="danger"
                   size="small"
                   disabled={!isConfirmed}
                   loading={deleting}

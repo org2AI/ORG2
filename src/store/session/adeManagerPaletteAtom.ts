@@ -1,7 +1,9 @@
 import { atom } from "jotai";
 
-import type { PendingSessionProposal } from "@src/engines/SessionCore/hooks/useAgentADEActions";
-import type { AdeManagerRunStatus } from "@src/scaffold/GlobalSpotlight/palettes/AgentControlPalette/types";
+import type {
+  AdeManagerRunStatus,
+  PendingSessionProposal,
+} from "@src/contracts/session";
 
 export interface AdeManagerPaletteState {
   sessionId: string | null;

@@ -14,16 +14,10 @@ const FALLBACK_CLIENT_VERSION: &str = "2.6.12";
 static CURSOR_VERSION: OnceLock<String> = OnceLock::new();
 static CURSOR_MACHINE_IDS: OnceLock<(String, Option<String>)> = OnceLock::new();
 
+/// Cursor's `state.vscdb` for the signed-in user, or `None` when Cursor is not
+/// installed. The platform layout is owned by [`app_paths::cursor`].
 fn cursor_state_db_path() -> Option<PathBuf> {
-    let home = dirs::home_dir()?;
-    #[cfg(target_os = "macos")]
-    let path = home.join("Library/Application Support/Cursor/User/globalStorage/state.vscdb");
-    #[cfg(target_os = "windows")]
-    let path = home.join("AppData/Roaming/Cursor/User/globalStorage/state.vscdb");
-    #[cfg(target_os = "linux")]
-    let path = home.join(".config/Cursor/User/globalStorage/state.vscdb");
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-    return None;
+    let path = app_paths::cursor::state_db_path().ok()?;
     path.exists().then_some(path)
 }
 

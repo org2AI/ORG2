@@ -28,7 +28,7 @@ import {
   parseTelemetryOption,
   readOrgRuntimeTelemetry,
   telemetrySelectValue,
-} from "@src/modules/shared/dataSource/teamRuntimeData";
+} from "@src/features/RuntimeDataSource/teamRuntimeData";
 
 import type { SelectValue } from "./cloudOrgPanelTypes";
 

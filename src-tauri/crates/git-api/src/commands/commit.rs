@@ -2,13 +2,19 @@ use super::staging::{stage_all_files, stage_file};
 use super::utils::{get_current_branch, run_git};
 use crate::types::*;
 
-const ORGII_COAUTHOR_TRAILER: &str = "Co-authored-by: ORGII <ORGII-agent@users.noreply.github.com>";
+#[cfg(test)]
+#[path = "tests/commit_tests.rs"]
+mod tests;
+
+const ORGII_COAUTHOR_TRAILER: &str = "Co-authored-by: ORG2 <ORGII-agent@users.noreply.github.com>";
+const LEGACY_ORGII_COAUTHOR_TRAILER: &str =
+    "Co-authored-by: ORGII <ORGII-agent@users.noreply.github.com>";
 
 pub(crate) fn append_orgii_coauthor_trailer(message: &str, enabled: bool) -> String {
     if !enabled
-        || message
-            .lines()
-            .any(|line| line.trim() == ORGII_COAUTHOR_TRAILER)
+        || message.lines().any(|line| {
+            line.trim() == ORGII_COAUTHOR_TRAILER || line.trim() == LEGACY_ORGII_COAUTHOR_TRAILER
+        })
     {
         return message.to_string();
     }
@@ -47,8 +53,11 @@ pub fn list_commits(
     let format_arg =
         "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%aI%x1f%cn%x1f%ce%x1f%cI%x1f%s%x1f%b%x1f%P%x1e";
 
-    // Store file_path as owned String for lifetime
-    let file_filter: String = file_path.unwrap_or("").to_string();
+    // The timeline filter is a selected filename, never a pathspec pattern.
+    let file_filter: String = file_path
+        .filter(|path| !path.is_empty())
+        .map(super::utils::literal_pathspec)
+        .unwrap_or_default();
 
     // Build git log command
     let mut args = vec!["log", &limit_str, format_arg];
@@ -60,7 +69,7 @@ pub fn list_commits(
 
     // Add file path filter if provided (like VSCode Timeline)
     // This uses git's pathspec to filter commits that touched the file
-    if file_path.is_some() && !file_filter.is_empty() {
+    if !file_filter.is_empty() {
         args.push("--");
         args.push(&file_filter);
     }
@@ -302,4 +311,28 @@ pub fn amend_commit(
         .into_iter()
         .next()
         .ok_or_else(|| "Failed to get amended commit".to_string())
+}
+
+#[cfg(test)]
+mod branding_tests {
+    use super::append_orgii_coauthor_trailer;
+
+    #[test]
+    fn attribution_uses_org2_and_recognizes_existing_brand_names() {
+        let trailer = "Co-authored-by: ORG2 <ORGII-agent@users.noreply.github.com>";
+        assert_eq!(
+            append_orgii_coauthor_trailer("Update UI", true),
+            format!("Update UI\n\n{trailer}")
+        );
+        for name in ["ORGII", "ORG2"] {
+            let existing = format!(
+                "Update UI\n\nCo-authored-by: {name} <ORGII-agent@users.noreply.github.com>"
+            );
+            assert_eq!(append_orgii_coauthor_trailer(&existing, true), existing);
+        }
+        assert_eq!(
+            append_orgii_coauthor_trailer("Update UI", false),
+            "Update UI"
+        );
+    }
 }

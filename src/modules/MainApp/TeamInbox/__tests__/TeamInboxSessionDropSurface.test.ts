@@ -20,7 +20,7 @@ import {
   type SessionTabDragEndDetail,
   type SessionTabDragStartDetail,
   type SessionTabTransfer,
-} from "@src/shared/dnd/sessionTabDrag";
+} from "@src/util/dnd/sessionTabDrag";
 
 import TeamInboxSessionDropSurface from "../components/TeamInboxSessionDropSurface";
 import type {

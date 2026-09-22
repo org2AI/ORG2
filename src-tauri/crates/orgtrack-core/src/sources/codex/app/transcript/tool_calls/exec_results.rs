@@ -5,6 +5,7 @@ pub(super) struct CodexExecResult {
     pub(super) output: String,
     pub(super) session_id: Option<String>,
     pub(super) exit_code: Option<i64>,
+    pub(super) empty_tool_value: bool,
 }
 
 pub(super) fn append_incremental_output(existing: &mut String, next: &str) {
@@ -74,6 +75,17 @@ fn codex_exec_results_from_value(value: Value) -> Vec<CodexExecResult> {
 
 fn codex_exec_result_from_value(value: Value) -> Option<CodexExecResult> {
     let object = value.as_object()?;
+    // apply_patch returns an empty successful value. Keep its position in a
+    // Desktop exec batch; dropping it assigns the following shell's exit/
+    // background status to the already-completed edit.
+    if object.is_empty() {
+        return Some(CodexExecResult {
+            output: "{}".into(),
+            session_id: None,
+            exit_code: Some(0),
+            empty_tool_value: true,
+        });
+    }
     if !object.contains_key("output")
         && !object.contains_key("session_id")
         && !object.contains_key("sessionId")
@@ -83,6 +95,7 @@ fn codex_exec_result_from_value(value: Value) -> Option<CodexExecResult> {
         return None;
     }
     Some(CodexExecResult {
+        empty_tool_value: false,
         output: object
             .get("output")
             .and_then(Value::as_str)

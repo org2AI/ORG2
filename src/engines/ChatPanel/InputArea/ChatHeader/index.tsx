@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { wingmanStop } from "@src/api/tauri/agent";
+import Button from "@src/components/Button";
 import { useChatContext } from "@src/contexts/workspace/ChatContext";
 import { useStepState } from "@src/engines/SessionCore";
 import { useSessionId } from "@src/engines/SessionCore/hooks/session";
@@ -47,8 +48,8 @@ const ChatHeader = () => {
               className="animate-pulse"
             />
             <span>{t("chat.wingmanActive")}</span>
-            <button
-              type="button"
+            <Button
+              layout="custom"
               className="ml-1 flex items-center gap-1 text-primary-5 hover:text-primary-7"
               title={t("chat.stopWingman")}
               onClick={() => {
@@ -63,7 +64,7 @@ const ChatHeader = () => {
                 size={11}
                 strokeWidth={1.75}
               />
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -89,19 +90,23 @@ const ChatHeader = () => {
                 </span>
               </div>
 
-              <button
-                className="flex cursor-pointer items-center justify-center border-none bg-transparent p-0 text-text-2 hover:text-text-1"
+              <Button
+                variant="tertiary"
+                size="mini"
+                iconOnly
+                icon={
+                  <HugeiconsIcon
+                    icon={Cancel01Icon}
+                    data-icon="x"
+                    size={16}
+                    strokeWidth={1.75}
+                  />
+                }
+                className="hover:text-text-1"
                 onClick={() => {
                   setFeedBackInfo({ isFeedBack: false });
                 }}
-              >
-                <HugeiconsIcon
-                  icon={Cancel01Icon}
-                  data-icon="x"
-                  size={16}
-                  strokeWidth={1.75}
-                />
-              </button>
+              />
             </div>
           )}
         </div>

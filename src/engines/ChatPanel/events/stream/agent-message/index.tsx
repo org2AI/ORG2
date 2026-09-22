@@ -18,6 +18,10 @@ import Markdown from "@src/components/MarkDown";
 import { getEventIcon } from "@src/config/toolIcons";
 import AgentChatItemDefault from "@src/engines/ChatPanel/ChatItems/AgentChatItemDefault";
 import AgentMessageBlock from "@src/engines/ChatPanel/blocks/AgentMessageBlock";
+import {
+  type MessageTurnIdentity,
+  readTruncatedResponseTurn,
+} from "@src/engines/ChatPanel/blocks/AgentMessageBlock/useAgentMessageExpansion";
 import CanvasInlineCard from "@src/engines/ChatPanel/blocks/CanvasInlineCard";
 import CanvasRevisionProgress from "@src/engines/ChatPanel/blocks/CanvasInlineCard/CanvasRevisionProgress";
 import { isCanvasRevisionPayload } from "@src/engines/ChatPanel/blocks/CanvasInlineCard/canvasRevision";
@@ -115,6 +119,7 @@ const InlineThinkingBlock: React.FC<{ content: string }> = ({ content }) => {
 // ============================================
 
 interface ChatVariantProps {
+  truncatedResponseTurn?: MessageTurnIdentity;
   content?: string;
   thinkingContent?: string | null;
   isStreaming?: boolean;
@@ -125,6 +130,7 @@ interface ChatVariantProps {
 }
 
 const ChatVariant: React.FC<ChatVariantProps> = ({
+  truncatedResponseTurn,
   content,
   thinkingContent,
   isStreaming = false,
@@ -164,6 +170,7 @@ const ChatVariant: React.FC<ChatVariantProps> = ({
       {thinkingContent && <InlineThinkingBlock content={thinkingContent} />}
       {hasVisibleContent && (
         <AgentMessageBlock
+          truncatedResponseTurn={truncatedResponseTurn}
           eventId={eventId}
           isStreaming={isStreaming}
           rightContent={
@@ -302,6 +309,10 @@ export const AgentMessageEvent: React.FC<AgentMessageEventProps> = (props) => {
 
     return (
       <ChatVariant
+        truncatedResponseTurn={readTruncatedResponseTurn(
+          props.event?.sessionId ?? sessionId,
+          props.event?.result ?? props.result
+        )}
         content={content}
         thinkingContent={thinkingContent}
         isStreaming={props.isStreaming}

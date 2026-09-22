@@ -72,6 +72,7 @@ function namespaceSectionItems(
   return items.map((item) => ({
     ...item,
     id: `${sectionId}-${item.id}`,
+    data: { ...item.data, pinId: item.data?.pinId ?? item.id },
   }));
 }
 
@@ -93,24 +94,6 @@ export function buildActionItems(
     : ACTIONS;
 
   return actions.map((action) => ({
-    id: action.id,
-    label: resolveActionLabel(action, translate),
-    icon: action.icon,
-    type: "action" as const,
-    data: {
-      showDisclosureChevron: action.requiredParams.length > 0,
-    },
-    action: () => onSelectAction(action),
-  }));
-}
-
-export function buildRepoActionItems(
-  onSelectAction: (action: ActionDefinition) => void,
-  translate: Translator
-): SpotlightItem[] {
-  return ACTIONS.filter((actionDef) =>
-    actionDef.requiredParams.includes("repo")
-  ).map((action) => ({
     id: action.id,
     label: resolveActionLabel(action, translate),
     icon: action.icon,
@@ -206,7 +189,11 @@ export function buildThemeItems(
       value: APPEARANCE_MODE.SYSTEM,
       label: getFollowSystemThemeLabel(
         systemColorScheme,
-        translate("settings:general.followSystem")
+        translate("settings:general.followSystem"),
+        {
+          light: translate("settings:general.light"),
+          dark: translate("settings:general.dark"),
+        }
       ),
       icon: ComputerSettingsIcon,
     },

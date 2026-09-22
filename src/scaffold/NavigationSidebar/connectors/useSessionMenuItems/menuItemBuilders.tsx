@@ -105,21 +105,6 @@ export function buildSessionMenuItem({
   const gitIndicator = showBranchTag
     ? renderSessionGitIndicator(session, pr)
     : null;
-  // The section header used to be the ONLY at-rest pin affordance, so pinning
-  // was invisible wherever that header does not render (cloud scope strips
-  // every separator) — and since the list is already recency-sorted, pinning a
-  // recent session moves it zero rows. Mark the row itself so pin state is
-  // legible in every scope and every grouping mode.
-  const pinIndicator = session.pinned ? (
-    <HugeiconsIcon
-      icon={PinIcon}
-      data-icon="pin"
-      size={11}
-      strokeWidth={2}
-      className="shrink-0 text-text-3"
-      aria-label="Pinned"
-    />
-  ) : null;
 
   return {
     id: session.session_id,
@@ -130,17 +115,15 @@ export function buildSessionMenuItem({
     icon: resolveSessionRowIcon(session),
     iconBadge: statusDot,
     subtitle: liveDetail && pendingAsking ? liveDetail : undefined,
-    trailingElement:
-      pinIndicator || gitIndicator ? (
-        <span className="inline-flex items-center gap-1 leading-none">
-          {pinIndicator}
-          {gitIndicator}
-        </span>
-      ) : undefined,
+    trailingElement: gitIndicator ? (
+      <span className="inline-flex items-center gap-1 leading-none">
+        {gitIndicator}
+      </span>
+    ) : undefined,
     // Sidebar rows stay in bare compact form ("2m"/"2h"/"2d", no "ago")
     // regardless of the app's display language — a localized sentence-style
-    // form (e.g. zh's "2分钟前") doesn't fit this row's fixed-width shortcut.
-    shortcut: formatCompactAge(timestampSrc),
+    // form (e.g. zh's "2分钟前") doesn't fit this row's compact trailing slot.
+    trailingLabel: formatCompactAge(timestampSrc),
     openContextMenuOnSelectedClick: true,
     opensChatPanelTab: true,
     dragPayload: {

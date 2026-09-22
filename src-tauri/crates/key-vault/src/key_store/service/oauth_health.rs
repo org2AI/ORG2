@@ -12,7 +12,7 @@ const OAUTH_TEMPORARY_UNAVAILABLE_SECONDS: i64 = 30 * 60;
 const OAUTH_RATE_LIMIT_FALLBACK_SECONDS: i64 = 5 * 60;
 const OAUTH_REFRESH_FAILURE_COOLDOWN_SECONDS: i64 = 5 * 60;
 
-fn is_permanent_oauth_refresh_failure(error_message: &str) -> bool {
+pub(super) fn is_permanent_oauth_refresh_failure(error_message: &str) -> bool {
     let lower = error_message.to_lowercase();
     lower.contains("refresh token not found or invalid")
         || lower.contains("refresh_token_reused")
@@ -39,10 +39,30 @@ impl KeyService {
         key_id: &str,
         error_message: &str,
     ) -> Result<Option<ModelKey>, String> {
+        self.record_oauth_refresh_failure_guarded(key_id, error_message, None)
+    }
+
+    pub fn record_oauth_refresh_failure_if_current(
+        &self,
+        expected: &ModelKey,
+        error_message: &str,
+    ) -> Result<Option<ModelKey>, String> {
+        self.record_oauth_refresh_failure_guarded(&expected.id, error_message, Some(expected))
+    }
+
+    fn record_oauth_refresh_failure_guarded(
+        &self,
+        key_id: &str,
+        error_message: &str,
+        expected: Option<&ModelKey>,
+    ) -> Result<Option<ModelKey>, String> {
         self.update_store(|store| {
             let Some(entry) = store.keys.get_mut(key_id) else {
                 return Ok(None);
             };
+            if expected.is_some_and(|snapshot| !entry.matches_oauth_snapshot(snapshot)) {
+                return Ok(Some(entry.clone()));
+            }
             if !entry.is_refreshable_native_oauth() {
                 return Err(format!(
                     "Key {} ({:?}, {:?}) is not a native OAuth account",
@@ -62,6 +82,8 @@ impl KeyService {
                 || (entry.model_type != ModelType::ClaudeCode
                     && count >= OAUTH_REFRESH_FAILURE_DISABLE_THRESHOLD)
             {
+                // A failure must never acquire ownership of a pre-existing manual disable.
+                entry.oauth_auto_disabled |= entry.enabled;
                 entry.enabled = false;
                 entry.health_status = HealthStatus::Invalid;
             } else {
@@ -196,6 +218,14 @@ impl KeyService {
         ))
     }
 
+    pub(super) fn complete_oauth_refresh(entry: &mut ModelKey) {
+        if entry.oauth_auto_disabled {
+            entry.enabled = true;
+        }
+        entry.oauth_auto_disabled = false;
+        Self::reset_oauth_refresh_failure_state(entry);
+    }
+
     pub(super) fn reset_oauth_refresh_failure_state(entry: &mut ModelKey) {
         entry.oauth_refresh_failure_count = 0;
         entry.last_oauth_refresh_failed_at = None;
@@ -218,9 +248,12 @@ impl KeyService {
             .oauth_refresh_locks
             .lock()
             .map_err(|err| format!("OAuth refresh lock map poisoned: {}", err))?;
-        Ok(locks
-            .entry(key_id.to_string())
-            .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
-            .clone())
+        locks.retain(|_, lock| lock.strong_count() > 0);
+        if let Some(lock) = locks.get(key_id).and_then(std::sync::Weak::upgrade) {
+            return Ok(lock);
+        }
+        let lock = Arc::new(tokio::sync::Mutex::new(()));
+        locks.insert(key_id.to_string(), Arc::downgrade(&lock));
+        Ok(lock)
     }
 }

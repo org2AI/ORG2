@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Gửi dưới dạng tin nhắn mới?",
+    "body": "Tin nhắn này thuộc một phiên thực thi. Chỉnh sửa tại đây không thể tua lại cuộc trò chuyện. Thay vào đó, gửi nội dung này dưới dạng tin nhắn mới ở cuối? Các tin nhắn và thay đổi tệp hiện có sẽ được giữ nguyên.",
+    "sendNew": "Gửi tin nhắn mới"
+  },
   "tray": {
     "markAllRead": "Đánh dấu tất cả là đã đọc",
     "showKanban": "Hiển thị Kanban",
@@ -50,7 +55,7 @@
     },
     "dataSource": {
       "title": "Nguồn dữ liệu",
-      "description": "Các công cụ lập trình bên ngoài mà ORGII phát hiện. Các ứng dụng có thể nhập hiển thị số phiên và có thể quét lại; số còn lại hiển thị trạng thái cài đặt và nơi lưu lịch sử.",
+      "description": "Các công cụ lập trình bên ngoài mà ORG2 phát hiện. Các ứng dụng có thể nhập hiển thị số phiên và có thể quét lại; số còn lại hiển thị trạng thái cài đặt và nơi lưu lịch sử.",
       "rescanAll": "Quét lại tất cả",
       "rescan": "Quét lại",
       "rescanning": "Đang quét lại…",
@@ -88,8 +93,7 @@
       "openFolder": "Mở thư mục",
       "tabs": {
         "all": "Tất cả",
-        "apps": "Ứng dụng",
-        "clis": "CLI"
+        "apps": "Ứng dụng"
       },
       "views": {
         "scanning": "Quét",
@@ -97,7 +101,6 @@
         "usage": "Mức sử dụng",
         "team": "Nhóm",
         "quota": "Hạn mức",
-        "assets": "Tài sản",
         "profile": "Hồ sơ"
       },
       "usage": {
@@ -174,7 +177,8 @@
           "output": "Đầu ra",
           "cache": "Đọc bộ nhớ đệm",
           "cost": "Chi phí",
-          "filterBySession": "Lọc theo phiên này"
+          "filterBySession": "Lọc theo phiên này",
+          "purpose": "Mục đích"
         },
         "pricing": {
           "input": "Đầu vào",
@@ -190,7 +194,7 @@
           "perTurn": "Lệnh gọi LLM",
           "perTool": "Lệnh gọi công cụ",
           "close": "Đóng",
-          "noData": "Phiên này chỉ có tổng số liệu ở cấp phiên; dữ liệu theo từng lệnh gọi được ghi nhận cho các lượt chạy agent riêng của ORGII.",
+          "noData": "Phiên này chỉ có tổng số liệu ở cấp phiên; dữ liệu theo từng lệnh gọi được ghi nhận cho các lượt chạy agent riêng của ORG2.",
           "turnHeader": "Lượt {{turn}}",
           "promptTokens": "Prompt",
           "completionTokens": "Hoàn thành"
@@ -199,7 +203,17 @@
           "title": "Chưa có dữ liệu sử dụng",
           "subtitle": "Chạy hoặc quét một số phiên lập trình để mức sử dụng token xuất hiện tại đây."
         },
-        "loadError": "Không thể tải dữ liệu sử dụng"
+        "loadError": "Không thể tải dữ liệu sử dụng",
+        "purposes": {
+          "main": "Phản hồi chính",
+          "session_title": "Tiêu đề phiên",
+          "session_memory": "Bộ nhớ phiên",
+          "workspace_memory": "Bộ nhớ không gian làm việc",
+          "auto_dream": "Hợp nhất bộ nhớ",
+          "skill_prefetch": "Chọn kỹ năng",
+          "memory_prefetch": "Truy xuất bộ nhớ",
+          "compaction": "Nén ngữ cảnh"
+        }
       },
       "sessions_other": "{{count}} phiên",
       "details": {
@@ -307,7 +321,6 @@
   },
   "simulator": {
     "captionBarToggleTooltip": "Hiện thanh tin nhắn Agent",
-    "noActiveSession": "Không có phiên hoạt động",
     "tabs": {
       "kanban": "Kanban"
     },
@@ -324,18 +337,6 @@
           "agentBrowser": "Trình duyệt Agent",
           "searchFetch": "Tìm kiếm & tải"
         },
-        "sections": {
-          "browserTitle": "Hoạt động trình duyệt",
-          "interactionsTitle": "Tương tác",
-          "webSearchesTitle": "Tìm kiếm web",
-          "pagesFetchedTitle": "Trang đã tải"
-        },
-        "empty": {
-          "noBrowserActivity": "Không có hoạt động trình duyệt",
-          "noBrowserInteractions": "Không có tương tác trình duyệt",
-          "noWebSearches": "Không có tìm kiếm web",
-          "noPagesFetched": "Không có trang đã tải"
-        },
         "header": {
           "categoryBrowser": "Trình duyệt",
           "categoryLiveBrowser": "Trình duyệt trực tiếp",
@@ -346,7 +347,6 @@
       },
       "ide": {
         "shell": {
-          "emptyNoCommands": "Không có lệnh",
           "noCommand": "(không có lệnh)",
           "outputInProgress": "… đang xuất ra",
           "exitCode": "[mã thoát: {{code}}]"
@@ -520,8 +520,7 @@
     },
     "titleBar": {
       "showSidebar": "Hiện thanh bên",
-      "hideSidebar": "Ẩn thanh bên",
-      "showBottomPanel": "Hiện bảng dưới"
+      "hideSidebar": "Ẩn thanh bên"
     },
     "multiTask": {
       "monitoringProgress": "Đang theo dõi tiến độ của {{count}} subagent",
@@ -554,22 +553,6 @@
     "addedToContext": "Đã thêm vào ngữ cảnh Session",
     "creatingWithContext": "Đang tạo Session mới với ngữ cảnh",
     "creationCooldown": "Vui lòng đợi một chút trước khi tạo terminal khác."
-  },
-  "scope": {
-    "applicableScope": "Phạm vi áp dụng",
-    "for": "cho",
-    "selectCategory": "Chọn danh mục",
-    "selectScope": "Chọn phạm vi",
-    "allRepos": "Tất cả kho lưu trữ",
-    "allSessions": "Tất cả Session",
-    "allProjects": "Tất cả Project",
-    "allWorkItems": "Tất cả mục công việc",
-    "categories": {
-      "repo": "Kho lưu trữ",
-      "session": "Session",
-      "projects": "Project",
-      "workItems": "Mục công việc"
-    }
   },
   "editor": {
     "loading": "Đang tải trình soạn thảo..."
@@ -608,6 +591,7 @@
     "voicePermissionSheetTitle": "Cần quyền truy cập micrô"
   },
   "chat": {
+    "draftTooLong": "Bản nháp quá dài (tối đa {{max}} ký tự)",
     "cliPermissions": {
       "ask": "Yêu cầu phê duyệt",
       "workspace": "Truy cập không gian làm việc",
@@ -642,23 +626,18 @@
       "inputPosition": "Ô nhập",
       "positionBottom": "Dưới",
       "positionMiddle": "Giữa",
-      "trailPosition": "Thanh ngữ cảnh",
+      "repoBarPosition": "Thanh kho lưu trữ",
       "positionUp": "Trên",
       "positionDown": "Dưới",
-      "uiControls": "Điều khiển giao diện",
-      "showQuickActions": "Hiển thị thao tác nhanh",
+      "showQuickActions": "Thao tác nhanh",
       "showSkills": "Kỹ năng đã ghim",
-      "showCliUpdate": "Hiển thị bản cập nhật CLI",
-      "title": "Bạn muốn làm gì?",
-      "back": "Quay lại trang bắt đầu",
+      "showCliUpdate": "Bản cập nhật CLI",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Phiên mới"
       },
       "newWorkItem": {
         "title": "Work item mới"
-      },
-      "setupRepo": {
-        "title": "Thiết lập Repo"
       },
       "addApiKey": {
         "title": "Thêm API key"
@@ -669,59 +648,27 @@
       "installLatestUpdate": {
         "title": "Cài đặt bản cập nhật mới nhất"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "Phiên",
         "workItem": "Hạng mục công việc",
         "more": "Thêm",
-        "work": "Làm việc",
         "manage": "Quản lý",
-        "heatmap": "Xu hướng",
         "runtime": "Thời gian chạy"
       },
       "quota": {
         "empty": "Chưa có dữ liệu quota. Hãy làm mới mức sử dụng từ Key Vault.",
         "refresh": "Làm mới",
-        "justNow": "vừa xong",
-        "minutesAgo": "{{count}} phút trước",
-        "hoursAgo": "{{count}} giờ trước",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7d",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Weekly",
           "monthly": "Monthly"
         }
       },
-      "exploreRepos": {
-        "title": "Khám phá Repos"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "Quản lý issues"
       }
     },
     "defaultTitle": "Chat",
@@ -732,8 +679,17 @@
     "performActions_one": "Thực hiện {{count}} thao tác",
     "performActions_other": "Thực hiện {{count}} thao tác",
     "showInlineDiffs": "Thay đổi ngay trong nội dung",
-    "pageSettings": "Hiển thị trang",
     "inputSettings": "Cài đặt nhập liệu",
+    "sendMethod": "Gửi bằng",
+    "navigation": {
+      "title": "Điều hướng",
+      "openLinksIn": "Mở liên kết trong",
+      "internalBrowser": "Trình duyệt tích hợp",
+      "externalBrowser": "Trình duyệt bên ngoài"
+    },
+    "compactInput": "Ô nhập liệu thu gọn",
+    "composerGlow": "Hiệu ứng phát sáng ô nhập",
+    "separateEffortPill": "Nút Effort riêng",
     "replay": {
       "follow": "Theo dõi"
     },
@@ -759,15 +715,11 @@
       "modeSourceBundled": "Đã tải chế độ từ bản dự phòng đi kèm (chưa chạy probe Cursor).",
       "modeRefresh": "Làm mới chế độ"
     },
-    "hideSimulator": "Ẩn trình mô phỏng",
-    "showSimulator": "Hiện trình mô phỏng",
-    "fullScreenChat": "Tập trung bảng chat (ẩn Workstation)",
     "maximizeChatPanel": "Phóng to bảng chat",
     "showWorkstation": "Hiện Workstation",
     "workstationUnavailableForPage": "Workstation không khả dụng trên trang này",
     "hideWorkstation": "Ẩn Workstation",
     "restoreSplitView": "Hiện Workstation",
-    "shrinkToWorkstation": "Thu nhỏ bảng chat (hiện Workstation)",
     "tuiModeOn": "Chế độ TUI (nhấp để tắt)",
     "tuiModeOff": "Bật chế độ TUI",
     "tabs": {
@@ -919,10 +871,10 @@
       "exportJson": "Xuất JSON",
       "importAction": "Nhập Session",
       "exportDescription": "Xuất Session đang hoạt động thành ảnh chụp nhanh JSON di động",
-      "importDescription": "Nhập ảnh chụp nhanh Session JSON vào thanh bên.",
+      "importDescription": "Nhập ảnh chụp nhanh Session JSON vào thanh bên",
       "jsonSnapshotNote": "Sessions đã nhập là ảnh chụp nhanh chỉ đọc và giữ nguyên lịch sử sự kiện gốc",
       "chooseJson": "Chọn tệp JSON",
-      "chooseJsonHint": "Chọn tệp xuất .orgii-session.json.",
+      "chooseJsonHint": "Chọn tệp xuất .orgii-session.json",
       "loadingPreview": "Đang đếm sự kiện Session…",
       "noActiveSession": "Chưa chọn Session đang hoạt động.",
       "importedName": "Session đã nhập: {{name}}",
@@ -971,22 +923,9 @@
       "showMore_one": "Hiện thêm {{count}}",
       "showMore_other": "Hiện thêm {{count}}"
     },
-    "manageIssues": {
-      "title": "Quản lý issues",
-      "myWork": "Việc của tôi",
-      "allRepositories": "Tất cả repos",
-      "newIssue": "Issue mới",
-      "tabs": {
-        "recent": "Gần đây",
-        "assigned": "Được giao",
-        "byMe": "Bởi tôi",
-        "mentioned": "Được nhắc đến"
-      }
-    },
     "readOnly": "Chỉ đọc",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "Tạo issue GitHub",
         "issueTitlePlaceholder": "Tiêu đề issue",
@@ -996,28 +935,40 @@
         "addToChat": "Add",
         "repositoryLabel": "Kho lưu trữ",
         "createIssueFailed": "Không thể tạo issue",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "Tất cả trạng thái",
         "closeAsCompleted": "Đóng là đã hoàn thành",
         "closeAsNotPlanned": "Đóng là không lên kế hoạch",
         "statusUpdateFailed": "Không thể cập nhật trạng thái GitHub",
         "assignedToMe": "Được giao cho tôi",
         "createdByMe": "Do tôi tạo",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "Yêu cầu đánh giá",
-          "authoredByMe": "Do tôi tạo",
-          "otherTodos": "Việc cần làm khác"
-        },
         "assigneeUpdateNotApplied": "GitHub chưa áp dụng thay đổi người được giao",
         "assigneeUpdateSuccess": "Đã cập nhật người được giao trên GitHub",
         "updateIssueFailed": "Không thể cập nhật GitHub issue",
-        "refreshIssues": "Làm mới vấn đề",
-        "refreshPullRequests": "Làm mới yêu cầu hợp nhất"
+        "filters": {
+          "searchPlaceholder": "Tìm bộ lọc",
+          "noMatches": "Không có bộ lọc phù hợp",
+          "activeCount": "Bộ lọc đang bật: {{count}}",
+          "clear": "Xóa bộ lọc",
+          "reviewRequestedFromMe": "Yêu cầu tôi đánh giá",
+          "noAssignee": "Chưa có người phụ trách",
+          "noLabel": "Không có nhãn",
+          "linkedPullRequest": "Có pull request liên kết",
+          "draft": "Bản nháp",
+          "readyForReview": "Sẵn sàng đánh giá",
+          "recentlyUpdated": "Cập nhật trong 7 ngày qua",
+          "stale": "Không cập nhật trong 30 ngày",
+          "facetAuthor": "Tác giả",
+          "facetAssignee": "Người phụ trách",
+          "facetLabel": "Nhãn",
+          "facetMilestone": "Cột mốc",
+          "facetReviewRequested": "Được yêu cầu đánh giá",
+          "facetBaseBranch": "Nhánh gốc",
+          "facetCiStatus": "Kiểm tra",
+          "ciSuccess": "Đạt",
+          "ciFailure": "Thất bại",
+          "ciPending": "Đang chờ"
+        }
       }
     },
     "sessionViews": {
@@ -1051,7 +1002,9 @@
     "typeMessage": "Nhập tin nhắn…",
     "session": "Phiên",
     "history": "Các phiên",
-    "agentFallback": "Agent"
+    "agentFallback": "Agent",
+    "goToPinnedPassage": "Đi tới đoạn đã ghim: {{preview}}",
+    "unpinPassage": "Bỏ ghim"
   },
   "tools": {
     "noResultsFound": "Không tìm thấy kết quả",
@@ -1148,6 +1101,7 @@
     "terminalWaitRunning": "Đang chờ terminal hoàn tất",
     "runShellFailed": "Lệnh thất bại",
     "runCommands": "Chạy lệnh",
+    "waitBackgroundTasks": "Chờ tác vụ nền",
     "terminalSummary": {
       "command_one": "{{count}} lệnh",
       "command_other": "{{count}} lệnh",
@@ -1158,6 +1112,10 @@
       "check_one": "{{count}} lần kiểm tra",
       "check_other": "{{count}} lần kiểm tra",
       "separator": ", "
+    },
+    "waitSummary": {
+      "count_one": "{{count}} lần",
+      "count_other": "{{count}} lần"
     },
     "inspectTerminalsRunning": "Đang kiểm tra terminal",
     "inspectTerminalsDone": "Đã kiểm tra terminal",
@@ -1466,10 +1424,13 @@
     "awaitOutputListFailed": "Không liệt kê được tác vụ nền",
     "awaitOutputKeepWaiting": "Vẫn đang chạy",
     "awaitOutputStillRunning": "Đang chạy",
+    "awaitOutputSummaryShellSingle": "tiến trình terminal",
     "awaitOutputSummaryShell_one": "1 tiến trình terminal",
     "awaitOutputSummaryShell_other": "{{count}} tiến trình terminal",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}} Subagents",
+    "awaitOutputSummaryUnknownSingle": "một tác vụ nền",
     "awaitOutputSummaryUnknown_one": "một tác vụ nền",
     "awaitOutputSummaryUnknown_other": "{{count}} tác vụ nền",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",
@@ -1924,13 +1885,12 @@
     "start": "Bắt đầu",
     "missingGit": {
       "title": "Thiếu Git",
-      "body": "Git chưa được cài đặt hoặc không tìm thấy. Hãy yêu cầu ADE Manager hoặc SDE Agent cài đặt Git cho máy này, rồi khởi động lại ORGII."
+      "body": "Git chưa được cài đặt hoặc không tìm thấy. Hãy yêu cầu ADE Manager hoặc SDE Agent cài đặt Git cho máy này, rồi khởi động lại ORG2"
     },
     "model": "Mô hình",
     "contextMenu": {
       "filesAndFolders": "Tệp và thư mục",
       "workItems": "Hạng mục công việc",
-      "back": "Quay lại",
       "recent": "Gần đây",
       "showMore": "Hiển thị thêm {{remaining}}",
       "session": "Phiên"
@@ -1988,9 +1948,9 @@
       "formatting": "Định dạng văn bản"
     },
     "regionNoticeTitle": "Có thể bị hạn chế theo khu vực",
-    "regionNoticeBodyProvider": "Bạn đang ở {{location}}. Một số mô hình có thể không khả dụng tại khu vực của bạn.",
-    "regionNoticeBodySanctions": "Bạn đang ở {{location}}. GitHub, npm, Docker Hub và các dịch vụ tương tự có thể không khả dụng.",
-    "regionNoticeBodyBoth": "Bạn đang ở {{location}}. Một số mô hình và dịch vụ như GitHub, npm và Docker Hub có thể không khả dụng do chính sách khu vực và hạn chế thương mại.",
+    "regionNoticeBodyProvider": "Bạn đang ở {{location}}. Một số mô hình có thể không khả dụng tại khu vực của bạn",
+    "regionNoticeBodySanctions": "Bạn đang ở {{location}}. GitHub, npm, Docker Hub và các dịch vụ tương tự có thể không khả dụng",
+    "regionNoticeBodyBoth": "Bạn đang ở {{location}}. Một số mô hình và dịch vụ như GitHub, npm và Docker Hub có thể không khả dụng do chính sách khu vực và hạn chế thương mại",
     "selectAgent": "Chọn một agent",
     "placeholderDefault": "Nhập tin nhắn, dùng @ để thêm tệp, dùng / để dùng skills",
     "wingmanPlaceholder": "Mô tả nhiệm vụ của bạn — Wingman nên theo dõi điều gì?",
@@ -2022,12 +1982,19 @@
       }
     },
     "cliVersionOutdated": {
-      "title": "{{cli}} cần nâng cấp ({{installed}} > {{latest}})",
+      "title": "Có bản cập nhật cho {{cli}}",
+      "versions": "Hiện tại: {{installed}} · Mới nhất: {{latest}}",
+      "upgrade": "Cập nhật trong terminal",
+      "upgradeHint": "Cập nhật Cursor CLI trong terminal riêng. Kiểm tra lại phiên bản khi hoàn tất.",
+      "upgradeTerminal": "Cập nhật Cursor CLI",
+      "upgradeStarted": "Đã bắt đầu cập nhật trong terminal. Kiểm tra lại phiên bản khi hoàn tất.",
+      "upgradeFailed": "Không thể mở terminal cập nhật. Vui lòng thử lại.",
       "muteUntilNextVersion": "Không cảnh báo cho đến phiên bản tiếp theo",
       "refresh": "Kiểm tra lại phiên bản {{cli}} CLI",
       "unknownVersion": "không xác định"
     },
-    "mode": "Chế độ soạn thảo"
+    "mode": "Chế độ soạn thảo",
+    "cursorIdeDescription": "Duyệt và tiếp tục các phiên trò chuyện Cursor IDE trong ORG2"
   },
   "planner": {
     "modes": {
@@ -2117,7 +2084,7 @@
         "cancelled": "Đã hủy",
         "failed": "Thất bại"
       },
-      "title": "Tổng quan Nhóm Agent",
+      "title": "Tổng quan nhóm",
       "summary": "{{active}} đang hoạt động · {{pending}} chờ xử lý",
       "loadFailed": "Không tải được tổng quan nhóm",
       "tasks": "Nhiệm vụ",
@@ -2138,7 +2105,7 @@
       "archiveTeardownRetained": "Đã lưu trữ nhưng không thể giải phóng {{count}} môi trường chạy. Việc xóa vẫn bị chặn.",
       "archiveTeardownQuiesced": "Đã lưu trữ và dừng hoàn toàn. Giờ có thể xóa vĩnh viễn.",
       "dangerZone": "Vùng nguy hiểm",
-      "deleteDescription": "Xóa vĩnh viễn nhóm này cùng mọi phiên và lịch sử.",
+      "deleteDescription": "Xóa vĩnh viễn nhóm này cùng mọi phiên và lịch sử",
       "deleteTeam": "Xóa nhóm",
       "deleteTitle": "Xóa vĩnh viễn nhóm này?",
       "deleteWarning": "Thao tác này xóa vĩnh viễn mọi phiên và lịch sử của nhóm. Không thể hoàn tác.",
@@ -2192,9 +2159,7 @@
       "activeMembers": "Thành viên đang hoạt động",
       "inFlightTurns": "Lượt đang chạy",
       "openTasks": "Nhiệm vụ đang mở",
-      "blockingInbox": "Hộp thư đến đang chặn",
-      "blockersTitle": "Những gì vẫn đang cản trở hoàn tất",
-      "unknownBlocker": "Trở ngại hệ thống không xác định"
+      "blockingInbox": "Hộp thư đến đang chặn"
     },
     "agentOrgIntervention": {
       "directTitle": "Làm việc trực tiếp với {{member}}",
@@ -2266,7 +2231,7 @@
     "noSessionIdFound": "Không tìm thấy ID Session",
     "failedToResume": "Tiếp tục lại Session thất bại",
     "failedToCheckChanges": "Không thể kiểm tra thay đổi tệp. Sẽ tiến hành hoàn tác.",
-    "insufficientBalance": "Số dư không đủ cho dịch vụ ORGII được lưu trữ. Nạp tiền tại orgii.ai/wallet.",
+    "insufficientBalance": "Số dư không đủ cho dịch vụ ORG2 được lưu trữ. Nạp tiền tại orgii.ai/wallet.",
     "runQueuedBehindCheckout": "Đang xếp hàng: một lần chạy khác đang dùng checkout này. Sẽ bắt đầu ngay khi lần chạy đó kết thúc."
   },
   "planning": {
@@ -2359,7 +2324,6 @@
     },
     "triggerLabel": "Trò chuyện nhóm",
     "userMessageOutcomeUnknown": "Không xác định được kết quả gửi. Hãy thử lại lần gửi ban đầu.",
-    "coordinatorLabel": "Điều phối viên",
     "youLabel": "Bạn",
     "retry": "Thử lại",
     "memberCount_one": "{{count}} thành viên",

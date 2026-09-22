@@ -25,19 +25,12 @@ const SpotlightContext = createContext<SpotlightContextValue | null>(null);
 
 interface SpotlightProviderProps {
   children: React.ReactNode;
-  initialState?: Partial<SpotlightState>;
 }
 
 export function SpotlightProvider({
   children,
-  initialState,
 }: SpotlightProviderProps): React.ReactElement {
-  const [state, dispatch] = useReducer(
-    spotlightReducer,
-    initialState
-      ? { ...initialSpotlightState, ...initialState }
-      : initialSpotlightState
-  );
+  const [state, dispatch] = useReducer(spotlightReducer, initialSpotlightState);
 
   return (
     <SpotlightContext.Provider value={{ state, dispatch }}>

@@ -1,0 +1,11 @@
+/* Keep the overflow affordance visible even when this list is idle. */
+.turn-metadata-scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-color) transparent;
+}
+.turn-metadata-scroll-area::-webkit-scrollbar-thumb,
+.turn-metadata-scroll-area::-webkit-scrollbar-thumb:hover,
+.turn-metadata-scroll-area::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-color);
+  background-clip: padding-box;
+}

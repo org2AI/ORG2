@@ -170,6 +170,7 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
     // Multi-select support
     const {
       selectedFileIds,
+      lastSelectedId,
       handleFileClick,
       selectAll: _selectAll,
       clearSelection,
@@ -195,7 +196,6 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
       onDiscard,
       onFileSelect,
       handleFileClick,
-      navigateWithoutSelecting,
     });
 
     // Commit logic
@@ -335,6 +335,13 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
       ]
     );
 
+    // Combined-diff navigation has sidebar focus without a single-file diff ID.
+    const focusedFileId = navigateWithoutSelecting
+      ? lastSelectedId && selectedFileIds.has(lastSelectedId)
+        ? lastSelectedId
+        : null
+      : selectedFileId;
+
     // Render a single tree item
     const renderItem = useCallback(
       (item: FlattenedTreeNode<SourceControlNode>) => (
@@ -342,7 +349,7 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
           node={item.node}
           depth={item.depth}
           isSelected={
-            item.node.file ? item.node.file.id === selectedFileId : false
+            item.node.file ? item.node.file.id === focusedFileId : false
           }
           isMultiSelected={
             item.node.file ? isFileSelected(item.node.file.id) : false
@@ -367,7 +374,7 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
         />
       ),
       [
-        selectedFileId,
+        focusedFileId,
         isFileSelected,
         selectedFileIds,
         handleSectionToggle,
@@ -397,9 +404,10 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
           stickyNode={stickyNode}
           onClick={onClick}
           stickyBgClass={resolvedStickyBgClass}
+          repoPath={repoPath}
         />
       ),
-      [resolvedStickyBgClass]
+      [resolvedStickyBgClass, repoPath]
     );
 
     // Handle sticky header click — VS Code pattern: scroll-to-reveal only,
@@ -424,6 +432,7 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
             <React.Suspense
               fallback={
                 <Placeholder
+                  loadingIconOnly
                   variant="loading"
                   placement="sidebar"
                   fillParentHeight
@@ -521,6 +530,7 @@ export const SourceControlContent: React.FC<SourceControlContentProps> = memo(
           {/* Loading State - only show on initial load when no files exist */}
           {loading && files.length === 0 && !suppressLoadingPlaceholder && (
             <Placeholder
+              loadingIconOnly
               variant="loading"
               placement="sidebar"
               title={t("placeholders.loadingChanges")}

@@ -3,7 +3,7 @@ name = "agent_core"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.85.0"
-description = "ORGII agent runtime: configuration, LLM providers, model context, tool registry, turn execution, agent definitions, session management, prompt builders, intelligence (memory, skills, MCP, plugins, automation), integrations (channels, gateway), and Tauri command surface for the agent core."
+description = "ORG2 agent runtime: configuration, LLM providers, model context, tool registry, turn execution, agent definitions, session management, prompt builders, intelligence (memory, skills, MCP, plugins, automation), integrations (channels, gateway), and Tauri command surface for the agent core."
 publish = false
 
 [lib]

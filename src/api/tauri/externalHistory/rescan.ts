@@ -12,6 +12,30 @@ export interface ExternalHistoryScanResult {
    * roster reload to detect staleness the rescan alone cannot see.
    */
   sourceSignatures: Record<string, string>;
+  /**
+   * Sources whose importer failed, keyed to the error message. A batch rescan
+   * reports them here instead of rejecting, because the other sources in the
+   * batch did scan and must still be acknowledged. Coalesced requests share
+   * one result, so read only the ids you asked for — see
+   * {@link splitScanSourcesByOutcome}.
+   */
+  failedSources: Record<string, string>;
+}
+
+/** Partition the sources a caller requested by whether their importer ran. */
+export function splitScanSourcesByOutcome<SourceId extends string>(
+  requestedSources: readonly SourceId[],
+  result: Pick<ExternalHistoryScanResult, "failedSources"> | undefined
+): { succeeded: SourceId[]; failed: { sourceId: SourceId; error: string }[] } {
+  const failedSources = result?.failedSources ?? {};
+  const succeeded: SourceId[] = [];
+  const failed: { sourceId: SourceId; error: string }[] = [];
+  for (const sourceId of requestedSources) {
+    const error = failedSources[sourceId];
+    if (error === undefined) succeeded.push(sourceId);
+    else failed.push({ sourceId, error });
+  }
+  return { succeeded, failed };
 }
 
 interface PendingScanWaiter {
@@ -34,13 +58,19 @@ function normalizeScanResult(
   // The fallback keeps older native builds and lightweight test doubles safe:
   // if no result payload exists, assume changed and perform the downstream
   // refresh rather than risking stale UI. A payload without signatures (older
-  // native build) degrades to signature-blind change reporting.
+  // native build) degrades to signature-blind change reporting; one without
+  // `failedSources` rejected on any failure, so resolving means none failed.
   if (!result) {
-    return { changedSources: [...fallbackSources], sourceSignatures: {} };
+    return {
+      changedSources: [...fallbackSources],
+      sourceSignatures: {},
+      failedSources: {},
+    };
   }
   return {
     changedSources: result.changedSources ?? [...fallbackSources],
     sourceSignatures: result.sourceSignatures ?? {},
+    failedSources: result.failedSources ?? {},
   };
 }
 
@@ -55,6 +85,10 @@ function mergeScanResults(
       {},
       ...results.map(({ sourceSignatures }) => sourceSignatures ?? {})
     ) as Record<string, string>,
+    failedSources: Object.assign(
+      {},
+      ...results.map(({ failedSources }) => failedSources ?? {})
+    ) as Record<string, string>,
   };
 }
 
@@ -67,15 +101,27 @@ async function runScanBatch(
   // single `clear` flag would force unrelated incremental sources to rebuild.
   for (const source of sources) {
     if (!clearSources.has(source)) continue;
-    results.push(
-      normalizeScanResult(
-        await invoke<ExternalHistoryScanResult>(
-          "external_history_rescan_source",
-          { source, clear: true }
-        ),
-        [source]
-      )
-    );
+    try {
+      results.push(
+        normalizeScanResult(
+          await invoke<ExternalHistoryScanResult>(
+            "external_history_rescan_source",
+            { source, clear: true }
+          ),
+          [source]
+        )
+      );
+    } catch (error) {
+      // The single-source command rejects on its own failure. Coalesced
+      // waiters for other sources share this batch, so keep it per-source.
+      results.push({
+        changedSources: [],
+        sourceSignatures: {},
+        failedSources: {
+          [source]: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
   }
   const incrementalSources = sources.filter(
     (source) => !clearSources.has(source)
@@ -138,7 +184,11 @@ function enqueueExternalHistoryScan(
 ): Promise<ExternalHistoryScanResult> {
   const sources = [...new Set(requestedSources)];
   if (sources.length === 0) {
-    return Promise.resolve({ changedSources: [], sourceSignatures: {} });
+    return Promise.resolve({
+      changedSources: [],
+      sourceSignatures: {},
+      failedSources: {},
+    });
   }
 
   const joinsActive = sources.filter(
@@ -178,12 +228,21 @@ function enqueueExternalHistoryScan(
  *
  * Both modes leave the cache populated, so callers can immediately re-read the
  * count / sidebar without a separate lazy load.
+ *
+ * Rejects when this source's importer fails: a single-source request has no
+ * other outcome to report.
  */
 export async function externalHistoryRescanSource(
   source: ImportedHistorySourceId,
   options?: { clear?: boolean }
 ): Promise<ExternalHistoryScanResult> {
-  return enqueueExternalHistoryScan([source], options?.clear ?? false);
+  const result = await enqueueExternalHistoryScan(
+    [source],
+    options?.clear ?? false
+  );
+  const error = result.failedSources[source];
+  if (error !== undefined) throw new Error(error);
+  return result;
 }
 
 /**
@@ -191,6 +250,10 @@ export async function externalHistoryRescanSource(
  *
  * Keeping the fan-out here gives every "rescan all" entry point the same
  * backend behavior while the Rust command remains intentionally source-scoped.
+ *
+ * Resolves even when some sources fail — they are listed in `failedSources`
+ * so one unreadable store cannot hide the sources that did scan. Partition
+ * the requested ids with {@link splitScanSourcesByOutcome}.
  */
 export async function externalHistoryRescanSources(
   sources: readonly ImportedHistorySourceId[]

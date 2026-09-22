@@ -12,6 +12,13 @@ pub struct DirectConnection {
     pub base_url: String,
     pub api_key: String,
     pub desktop_auth_scheme: Option<String>,
+    /// Claude Desktop can fetch the short-lived local-proxy credential from an
+    /// executable helper. The helper contains only a loopback proxy token; it
+    /// never receives a Market bearer or refresh credential.
+    pub desktop_helper: Option<super::desktop::CredentialHelper>,
+    /// Present only when this otherwise-direct Desktop profile is backed by
+    /// ORG2's authenticated local proxy.
+    pub proxy_token: Option<String>,
 }
 
 pub(super) fn generate_direct_configs(
@@ -20,7 +27,9 @@ pub(super) fn generate_direct_configs(
     connection: &DirectConnection,
     previous: Option<&CliConfigProfileManifest>,
 ) -> Result<BTreeMap<String, String>, String> {
-    if connection.api_key.trim().is_empty() || connection.model.trim().is_empty() {
+    if (connection.api_key.trim().is_empty() && connection.desktop_helper.is_none())
+        || connection.model.trim().is_empty()
+    {
         return Err("An API key and model are required".into());
     }
     if agent == super::desktop::TARGET {
@@ -31,6 +40,9 @@ pub(super) fn generate_direct_configs(
     }
     if connection.desktop_auth_scheme.is_some() {
         return Err("Desktop authentication settings cannot be applied to a CLI target".into());
+    }
+    if connection.desktop_helper.is_some() || connection.proxy_token.is_some() {
+        return Err("Desktop proxy settings cannot be applied to a CLI target".into());
     }
     let (file_id, generated) = match agent {
         "claude_code" => (
@@ -168,7 +180,7 @@ fn codex(
         config["model_providers"] = Item::Table(Table::new());
     }
     let mut provider = Table::new();
-    provider["name"] = value("ORGII");
+    provider["name"] = value("ORG2");
     provider["base_url"] = value(&connection.base_url);
     provider["wire_api"] = value("responses");
     provider["requires_openai_auth"] = value(false);
@@ -179,4 +191,40 @@ fn codex(
     config["model"] = value(&connection.model);
     // auth.json, the OS credential store, other providers and profiles remain untouched.
     Ok(config.to_string())
+}
+
+/// Verify a previously applied Claude overlay against the currently resolved
+/// credential/profile, without writing configuration or exposing its secrets.
+pub fn verify_claude_launch_connection(connection: &DirectConnection) -> Result<(), String> {
+    let _guard = super::config_operation_guard()?;
+    let _target_lock = super::target_lock::lock_targets("claude_code")?;
+    let manifest = super::manifest::read_manifest("claude_code")?
+        .ok_or("Claude Code connection is missing")?;
+    if manifest.mode != CliConfigMode::Direct
+        || manifest.selected_key_id.as_deref() != Some(&connection.key_id)
+        || manifest.selected_model.as_deref() != Some(&connection.model)
+        || manifest.provider_profile != connection.profile
+    {
+        return Err("Selected client configuration changed".into());
+    }
+    let status = super::operations::status_for_unlocked("claude_code")?;
+    if status.conflict || !status.overlay {
+        return Err("Selected client configuration changed".into());
+    }
+    let settings = status
+        .target_files
+        .iter()
+        .find(|target| target.id == "settings")
+        .ok_or("Claude Code settings are missing")?;
+    let raw = std::fs::read_to_string(&settings.target_path)
+        .map_err(|_| "Could not read Claude Code settings")?;
+    let refreshed = claude(&raw, connection)?;
+    let old: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|_| "Invalid Claude Code settings")?;
+    let current: serde_json::Value =
+        serde_json::from_str(&refreshed).map_err(|_| "Invalid Claude Code settings")?;
+    if old != current {
+        return Err("Connection credentials or profile changed; apply the connection again".into());
+    }
+    Ok(())
 }

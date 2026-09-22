@@ -8,6 +8,25 @@ export const SPOTLIGHT_STYLES = `
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.2);
   }
 
+  /* ========== BACKDROP ========== */
+  /* Light dim + blur so the page recedes behind the panel. Much softer than
+   * the modal mask on purpose: spotlight is a quick palette, not a dialog. */
+  .spotlight-backdrop {
+    background: rgba(0, 0, 0, 0.16);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    border-radius: var(--border-radius-window);
+    animation: spotlight-backdrop-in 150ms ease-out;
+  }
+
+  @keyframes spotlight-backdrop-in {
+    from { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spotlight-backdrop { animation: none; }
+  }
+
   /* ========== SCROLLBAR ========== */
   .spotlight-scrollable {
     scrollbar-width: none;

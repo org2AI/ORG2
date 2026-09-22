@@ -5,6 +5,8 @@
  */
 import React, { memo } from "react";
 
+import Button from "@src/components/Button";
+
 // ============================================
 // Type Definitions
 // ============================================
@@ -41,14 +43,15 @@ const CiteCodePreview: React.FC<CiteCodePreviewProps> = memo(
         <span className="text-text-3">
           L{selectedCiteRange.start}-{selectedCiteRange.end}
         </span>
-        <button
-          type="button"
-          className="ml-1 text-text-3 hover:text-text-1"
+        <Button
+          variant="tertiary"
+          size="mini"
+          iconOnly
+          icon={<span aria-hidden>×</span>}
+          className="ml-1 hover:text-text-1"
           aria-label="Remove code citation"
           onClick={onClear}
-        >
-          <span aria-hidden>×</span>
-        </button>
+        />
       </div>
     );
   }

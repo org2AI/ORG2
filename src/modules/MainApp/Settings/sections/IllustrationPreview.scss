@@ -1,0 +1,13 @@
+// Deliberately fixed reference surfaces: both previews must remain visible
+// regardless of the app's selected theme or custom skin.
+.illustration-preview-surface {
+  &[data-preview-theme="light"] {
+    background: #f5f5f5;
+    color: #202020;
+  }
+
+  &[data-preview-theme="dark"] {
+    background: #131313;
+    color: #e5e5e5;
+  }
+}

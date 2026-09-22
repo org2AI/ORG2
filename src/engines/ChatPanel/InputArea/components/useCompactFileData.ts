@@ -5,6 +5,7 @@ import {
   getOrgtrackSessionFinalDiffs,
 } from "@src/api/tauri/lineage";
 import { createLogger } from "@src/hooks/logger";
+import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 
 import type {
   FileChangeInfo,
@@ -16,6 +17,8 @@ import {
 } from "./compactFileChangesHelpers";
 
 const logger = createLogger("CompactFileChanges");
+
+const NO_FILES: FileChangeInfo[] = [];
 
 export interface UseCompactFileDataOptions {
   sessionId: string | null;
@@ -39,10 +42,16 @@ export function useCompactFileData({
   initialData,
   reloadKey,
 }: UseCompactFileDataOptions): UseCompactFileDataReturn {
-  const [orgtrackFiles, setOrgtrackFiles] = useState<FileChangeInfo[]>([]);
+  const [loaded, setLoaded] = useState<{
+    sessionId: string;
+    files: FileChangeInfo[];
+  } | null>(null);
 
   useEffect(() => {
-    if (initialData || !sessionId) {
+    // Only native runtimes write orgtrack edit artifacts. Imported sessions
+    // hold at most leftovers of the removed on-demand analysis, so the read
+    // is a guaranteed-empty round trip; their pill reads the session summary.
+    if (initialData || !sessionId || isImportedHistorySession(sessionId)) {
       return;
     }
 
@@ -52,13 +61,16 @@ export function useCompactFileData({
         if (cancelled) return;
         const artifactFiles = mapEditArtifactsToFileChangeInfo(editArtifacts);
         if (artifactFiles.length > 0) {
-          setOrgtrackFiles(artifactFiles);
+          setLoaded({ sessionId, files: artifactFiles });
           return;
         }
 
         const finalDiffs = await getOrgtrackSessionFinalDiffs({ sessionId });
         if (cancelled) return;
-        setOrgtrackFiles(finalDiffs.map(mapFinalDiffToFileChangeInfo));
+        setLoaded({
+          sessionId,
+          files: finalDiffs.map(mapFinalDiffToFileChangeInfo),
+        });
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -75,9 +87,13 @@ export function useCompactFileData({
     // reloadKey already encodes sessionId; listed explicitly for clarity.
   }, [initialData, sessionId, reloadKey]);
 
+  // Files read for another session never surface under this one — the
+  // hook's host is not remounted on every session switch.
+  const sessionFiles =
+    sessionId && loaded?.sessionId === sessionId ? loaded.files : NO_FILES;
   const allFiles = useMemo(
-    () => initialData?.files ?? (sessionId ? orgtrackFiles : []),
-    [initialData?.files, orgtrackFiles, sessionId]
+    () => initialData?.files ?? sessionFiles,
+    [initialData?.files, sessionFiles]
   );
 
   return { allFiles };

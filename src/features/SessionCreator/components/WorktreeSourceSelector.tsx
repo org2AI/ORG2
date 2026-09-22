@@ -61,6 +61,7 @@ export interface WorktreeSourceSelectorProps {
 }
 
 const BRANCH_GROUP_LABEL_FALLBACK = {
+  defaultBranches: "Default Branches",
   recent: "Recent",
   worktrees: "Worktrees",
   otherBranches: "Other Branches",
@@ -122,9 +123,7 @@ export const WorktreeSourceSelector: React.FC<WorktreeSourceSelectorProps> = ({
                 value: source.baseBranch,
                 defaultValue: `Use "${source.baseBranch}" as ref`,
               }),
-              detail: t("sessions:creator.worktreeSource.branchCustomRefHint", {
-                defaultValue: "Tag, commit, or any git ref",
-              }),
+              detail: t("sessions:creator.worktreeSource.branchCustomRefHint"),
               icon: HashtagIcon,
               source,
             },
@@ -197,12 +196,7 @@ export const WorktreeSourceSelector: React.FC<WorktreeSourceSelectorProps> = ({
       if (resolving) return;
       setResolveError(null);
       if (!selectionRepoKey) {
-        setResolveError(
-          t("sessions:creator.worktreeSource.selectRepository", {
-            defaultValue:
-              "Select a repository before choosing a worktree source",
-          })
-        );
+        setResolveError(t("sessions:creator.worktreeSource.selectRepository"));
         return;
       }
 
@@ -210,10 +204,7 @@ export const WorktreeSourceSelector: React.FC<WorktreeSourceSelectorProps> = ({
       if (item.resolveMeta) {
         if (!repoPath) {
           setResolveError(
-            t("sessions:creator.worktreeSource.selectRepository", {
-              defaultValue:
-                "Select a repository before choosing a worktree source",
-            })
+            t("sessions:creator.worktreeSource.selectRepository")
           );
           return;
         }
@@ -263,33 +254,19 @@ export const WorktreeSourceSelector: React.FC<WorktreeSourceSelectorProps> = ({
     error: activeError,
     emptyMessage:
       mode === "branch"
-        ? t("sessions:creator.worktreeSource.branchNoMatches", {
-            defaultValue: "No matching branches",
-          })
-        : t("sessions:creator.worktreeSource.prNoMatches", {
-            defaultValue: "No matching pull requests",
-          }),
-    loadingLabel: t("common:status.loading", { defaultValue: "Loading" }),
-    resolvingLabel: t("sessions:creator.worktreeSource.resolving", {
-      defaultValue: "Resolving PR…",
-    }),
+        ? t("sessions:creator.worktreeSource.branchNoMatches")
+        : t("sessions:creator.worktreeSource.prNoMatches"),
+    loadingLabel: t("common:status.loading"),
+    resolvingLabel: t("sessions:creator.worktreeSource.resolving"),
     searchPlaceholder:
       mode === "branch"
-        ? t("sessions:creator.worktreeSource.branchSearch", {
-            defaultValue: "Search branches or enter a ref",
-          })
-        : t("sessions:creator.worktreeSource.prSearch", {
-            defaultValue: "Search pull requests",
-          }),
+        ? t("sessions:creator.worktreeSource.branchSearch")
+        : t("sessions:creator.worktreeSource.prSearch"),
     searchAriaLabel:
       mode === "branch"
-        ? t("sessions:creator.worktreeSource.branchSearchAria", {
-            defaultValue: "Search branches or enter a base ref",
-          })
-        : t("sessions:creator.worktreeSource.prSearchAria", {
-            defaultValue: "Search pull requests",
-          }),
-    retryLabel: t("common:actions.retry", { defaultValue: "Retry" }),
+        ? t("sessions:creator.worktreeSource.branchSearchAria")
+        : t("sessions:creator.worktreeSource.prSearchAria"),
+    retryLabel: t("common:actions.retry"),
     onClose,
     onModeChange: handleModeChange,
     onQueryChange: setQuery,

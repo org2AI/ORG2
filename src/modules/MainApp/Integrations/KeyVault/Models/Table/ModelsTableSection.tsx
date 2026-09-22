@@ -2,21 +2,21 @@ import { useCallback, useMemo, useState } from "react";
 
 import { ORGII_ORCHESTRATOR } from "@src/assets/providers/types";
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import ModelIcon from "@src/components/ModelIcon";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
+  type SettingsTableCardViewConfig,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
 import Switch from "@src/components/Switch";
 import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   Add01Icon,
   ArrowDown01Icon,
   ArrowUp01Icon,
   HugeiconsIcon,
-  Refresh04Icon,
 } from "@src/icons";
 import GroupRowEraTag from "@src/modules/MainApp/Integrations/KeyVault/shared/ModelTable/GroupRowEraTag";
 
@@ -31,6 +31,7 @@ import {
   getIntegrationsGroupRowKey,
   groupSomeEnabled,
   sortIntegrationsModelGroups,
+  unanimousGroupAgentType,
 } from "./integrationsModelGroups";
 import { INTEGRATIONS_MODELS_TABLE_COL_WIDTH } from "./integrationsModelsTableWidths";
 import { MAX_SOURCE_ICONS, dedupeSourceTypes } from "./modelsTableUtils";
@@ -128,6 +129,7 @@ export default function ModelsTableSection({
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "card">("card");
 
   const {
     modelsSearchQuery,
@@ -180,28 +182,23 @@ export default function ModelsTableSection({
   const expandControl =
     olderCount > 0 && !isSearching ? (
       <div className="flex justify-center border-t border-border-2 py-2.5">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="inline"
           onClick={() => setHideOlder((prev) => !prev)}
-          className="flex items-center gap-1.5 text-[13px] text-primary-6 hover:text-primary-5"
+          icon={
+            <HugeiconsIcon
+              icon={hideOlder ? ArrowDown01Icon : ArrowUp01Icon}
+              data-icon={hideOlder ? "chevron-down" : "chevron-up"}
+              size={14}
+            />
+          }
+          className="text-[13px]"
         >
-          {hideOlder ? (
-            <HugeiconsIcon
-              icon={ArrowDown01Icon}
-              data-icon="chevron-down"
-              size={14}
-            />
-          ) : (
-            <HugeiconsIcon
-              icon={ArrowUp01Icon}
-              data-icon="chevron-up"
-              size={14}
-            />
-          )}
           {hideOlder
             ? t("modelsTable.showMoreOlder")
             : t("modelsTable.showLessOlder")}
-        </button>
+        </Button>
       </div>
     ) : null;
 
@@ -231,12 +228,20 @@ export default function ModelsTableSection({
           }
 
           const primaryModel = group.models[0]?.model;
+          // Routing-tier ids ("default") name no brand on their own, so the
+          // owning agent has to come along or the row falls back to the
+          // neutral placeholder while the key row beneath it shows a mark.
+          const primaryModelAgent = unanimousGroupAgentType(group.models);
 
           return (
             <div className="flex w-full min-w-0 items-center gap-2">
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 {primaryModel ? (
-                  <ModelIcon modelName={primaryModel} size="small" />
+                  <ModelIcon
+                    modelName={primaryModel}
+                    agentType={primaryModelAgent}
+                    size="small"
+                  />
                 ) : null}
                 <span className="inline-flex min-w-0 items-center gap-1.5">
                   <span
@@ -305,13 +310,11 @@ export default function ModelsTableSection({
         onUpdateAccountDefaultVariant={onUpdateAccountDefaultVariant}
         onToggleAccount={onToggleAccount}
         isAccountEnabled={isAccountEnabled}
-        onAddKey={onAdd}
       />
     ),
     [
       accounts,
       isAccountEnabled,
-      onAdd,
       onToggleAccount,
       onToggleModel,
       onUpdateAccountDefaultVariant,
@@ -332,41 +335,42 @@ export default function ModelsTableSection({
     [expandedGroupKeys, renderExpandedGroupCard]
   );
 
-  const { spinClass: refreshSpinClass, handleClick: handleRefreshModelsClick } =
-    useRefreshSpin(() => {
-      void onRefreshModels?.();
-    }, refreshingAllModels ?? false);
-
   const refreshModelsButton = onRefreshModels ? (
-    <Button
+    <RefreshButton
       variant="secondary"
-      size="default"
-      icon={
-        <HugeiconsIcon
-          icon={Refresh04Icon}
-          data-icon="refresh-cw"
-          size={14}
-          className={refreshSpinClass}
-        />
-      }
       iconOnly
-      onClick={handleRefreshModelsClick}
-      disabled={refreshingAllModels}
-      aria-label={t("keyVault.refreshModels.button")}
-      title={t("keyVault.refreshModels.button")}
-      data-testid="key-vault-models-refresh-button"
+      label={t("keyVault.refreshModels.button")}
+      refreshing={refreshingAllModels ?? false}
+      onRefresh={() => {
+        void onRefreshModels?.();
+      }}
+      dataTestId="key-vault-models-refresh-button"
     />
   ) : null;
 
+  // The model name is the card heading, the enable switch its trailing action,
+  // and "enabled sources" the one field worth a label.
+  const cardView = useMemo<
+    SettingsTableCardViewConfig<IntegrationsModelGroupRow>
+  >(
+    () => ({
+      enabled: viewMode === "card",
+      onEnabledChange: (enabled) => setViewMode(enabled ? "card" : "list"),
+      titleColumnKey: "model",
+      actionColumnKeys: ["status"],
+      fieldLayout: "inline",
+      minCardWidth: 280,
+    }),
+    [viewMode]
+  );
+
   const addProviderButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       iconOnly
       onClick={onAdd}
-      aria-label={t("keyVault.addAccount")}
-      title={t("keyVault.addAccount")}
+      aria-label={t("keyVault.addKey")}
+      title={t("keyVault.addKey")}
       data-testid="key-vault-models-add-provider-button"
     />
   );
@@ -380,6 +384,7 @@ export default function ModelsTableSection({
       rows={groupRows}
       getRowKey={getIntegrationsGroupRowKey}
       expandable={expandable}
+      cardView={cardView}
       headerHeight="tall"
       className="table-expanded-no-hover table-settings-expanded-compact"
       searchBar={{

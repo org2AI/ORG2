@@ -133,8 +133,6 @@ export interface WorkstationTabHeaderSlots {
   sidebarToggleDisabled?: boolean;
   /** Hide shell-owned leading chrome when the published surface has no sidebar. */
   shellLeadingChromeHidden?: boolean;
-  /** Visually joins this 40px header to a following pane-owned row. */
-  joinWithFollowingRow?: boolean;
   /** The active split view renders its controls in the left column instead. */
   hidden?: boolean;
 }
@@ -156,7 +154,6 @@ function isWorkstationTabHeaderSlots(
       "trailing" in contribution ||
       "sidebarToggleDisabled" in contribution ||
       "shellLeadingChromeHidden" in contribution ||
-      "joinWithFollowingRow" in contribution ||
       "hidden" in contribution)
   );
 }

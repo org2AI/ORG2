@@ -14,8 +14,6 @@ export interface ScrollToBottomButtonProps {
 export const ScrollToBottomButton = React.memo(
   ({ label, onClick, className = "" }: ScrollToBottomButtonProps) => (
     <Button
-      variant="secondary"
-      appearance="outline"
       size="small"
       shape="round"
       icon={

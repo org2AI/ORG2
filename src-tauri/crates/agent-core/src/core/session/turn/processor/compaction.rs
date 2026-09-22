@@ -106,13 +106,19 @@ impl UnifiedMessageProcessor {
         tail: &[Value],
         budget_tokens: usize,
     ) -> (Vec<Value>, CompactionOutcome) {
+        let attributed = crate::session::auxiliary_usage::AuxiliaryUsageProvider::borrowed(
+            self.runtime.provider.as_ref(),
+            session_id,
+            "compaction",
+            self.runtime.account_id.as_deref(),
+        );
         let mut state = self.compaction_state.lock().await;
         let (compacted, outcome) = ContextCompactor::compact(
             tail,
             budget_tokens,
             &self.runtime.resolved.compaction,
             &mut state,
-            self.runtime.provider.as_ref(),
+            &attributed,
             &self.runtime.model,
         )
         .await;
@@ -130,7 +136,7 @@ impl UnifiedMessageProcessor {
             budget_tokens,
             &self.runtime.resolved.compaction,
             &mut state,
-            self.runtime.provider.as_ref(),
+            &attributed,
             &self.runtime.model,
             None,
         )
@@ -269,8 +275,6 @@ impl UnifiedMessageProcessor {
                     messages_kept: kept,
                 };
             }
-            let mut sm_state = self.sm_state.lock().await;
-            sm_state.last_summarized_seq = None;
         } else {
             // No fork-form here (unlike pre-turn): reactive compaction runs
             // right after the provider REJECTED this exact prefix as too
@@ -283,9 +287,16 @@ impl UnifiedMessageProcessor {
             let cleaned = crate::model_context::cleanup::post_compact_cleanup(compacted);
             *messages = append_compacted_tail(&prefix, cleaned);
             outcome = llm_outcome;
-            let mut sm_state = self.sm_state.lock().await;
-            sm_state.last_summarized_seq = None;
         }
+
+        // Only a successful rewrite invalidates the extraction frame. A failed
+        // LLM fallback may have received an intermediate SM-compacted tail;
+        // restore the original frame along with its still-valid growth state.
+        if !matches!(outcome, CompactionOutcome::Compacted { .. }) {
+            *messages = pre_compact_messages;
+            return outcome;
+        }
+        self.sm_state.lock().await.reset_after_compaction();
 
         crate::model_context::file_reinjection::reinject_files_after_compaction(
             &pre_compact_messages,
@@ -467,7 +478,7 @@ impl UnifiedMessageProcessor {
                 need_llm_compact = false;
 
                 let mut sm_state = self.sm_state.lock().await;
-                sm_state.last_summarized_seq = None;
+                sm_state.reset_after_compaction();
             }
         }
 
@@ -496,13 +507,19 @@ impl UnifiedMessageProcessor {
                 temperature: self.runtime.resolved.temperature as f32,
             };
 
+            let attributed = crate::session::auxiliary_usage::AuxiliaryUsageProvider::borrowed(
+                self.runtime.provider.as_ref(),
+                session_id,
+                "compaction",
+                self.runtime.account_id.as_deref(),
+            );
             let mut state = self.compaction_state.lock().await;
             let (compacted, outcome) = ContextCompactor::compact_with_fork(
                 &compactable_tail,
                 budget_tokens,
                 &self.runtime.resolved.compaction,
                 &mut state,
-                self.runtime.provider.as_ref(),
+                &attributed,
                 &self.runtime.model,
                 Some(&fork_inputs),
             )
@@ -512,7 +529,7 @@ impl UnifiedMessageProcessor {
             // and the turn proceeds with the original messages — no silent
             // truncation, no boundary persist for a no-op. The failure was
             // already counted toward the circuit breaker inside `compact`.
-            if let CompactionOutcome::Failed { reason } = outcome {
+            if let CompactionOutcome::Failed { ref reason } = outcome {
                 warn!(
                     "[unified_processor] Pre-turn compaction failed for session {} — continuing uncompacted: {}",
                     session_id, reason
@@ -525,6 +542,9 @@ impl UnifiedMessageProcessor {
                     ),
                     "compaction",
                 );
+            }
+            if !matches!(outcome, CompactionOutcome::Compacted { .. }) {
+                *messages = pre_compact_messages;
                 return CompactionPhaseOutcome::Continue;
             }
 
@@ -532,7 +552,7 @@ impl UnifiedMessageProcessor {
             *messages = append_compacted_tail(&prefix, cleaned_tail);
 
             let mut sm_state = self.sm_state.lock().await;
-            sm_state.last_summarized_seq = None;
+            sm_state.reset_after_compaction();
         }
 
         // Post-compact file re-injection
@@ -656,7 +676,7 @@ impl UnifiedMessageProcessor {
                 // compact summary, so the old anchor describes rows the
                 // visible window no longer contains.
                 let mut sm_state = self.sm_state.lock().await;
-                sm_state.last_summarized_seq = None;
+                sm_state.reset_after_compaction();
                 let persist_outcome = match sm_state.content.as_deref() {
                     Some(content) if !content.trim().is_empty() => {
                         unified_persistence::save_session_memory_state(session_id, content, None)
@@ -766,3 +786,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "reactive_memory_tests.rs"]
+mod reactive_memory_tests;

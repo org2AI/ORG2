@@ -125,9 +125,7 @@ function buildEmailMessageView(
     return {
       sender: { value: t("cards.agentMessage.emailBubble.subagentMessages") },
       recipient: { value: "Coordinator" },
-      subject: t("groupChat.inboxTranscript.readMessages", {
-        defaultValue: "Coordinator read messages sent by other agents",
-      }),
+      subject: t("groupChat.inboxTranscript.readMessages"),
       body,
     };
   }

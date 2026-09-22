@@ -3,7 +3,7 @@ import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@/src/modules/shared/layouts/SectionLayout";
+} from "@/src/components/layout/Section";
 import { useAtom } from "jotai";
 import React, {
   useCallback,
@@ -16,8 +16,28 @@ import { useTranslation } from "react-i18next";
 
 import Input from "@src/components/Input";
 import NumberInput from "@src/components/NumberInput";
+import SegmentedTextPill from "@src/components/SegmentedTextPill";
 import Select from "@src/components/Select";
 import Switch from "@src/components/Switch";
+import {
+  ColorFileNamesFigure,
+  DiffViewModeFigure,
+  GitBlameFigure,
+  HighlightActiveLineFigure,
+  LineNumbersFigure,
+  MinimapFigure,
+  SplitDiffLineNumbersFigure,
+  TreeIndentGuidesFigure,
+  WordWrapFigure,
+} from "@src/modules/MainApp/Settings/previews/editorPreviews";
+import {
+  LabelWithPreview,
+  PreviewGrid,
+  offOnPreview,
+  previewItems,
+  withDropdownOptionPreviews,
+  withOptionPreviews,
+} from "@src/modules/MainApp/Settings/previews/primitives";
 import {
   CODE_FONT_FAMILIES,
   type CodeFontFamily,
@@ -32,12 +52,17 @@ import {
   editorHighlightActiveLineAtom,
   editorLineHeightAtom,
   editorLineNumbersAtom,
+  editorShowBlameAtom,
   editorShowMinimapAtom,
   editorShowTreeIndentGuidesAtom,
+  editorSplitDiffCenteredLineNumbersAtom,
   editorTabSizeAtom,
   editorWordWrapAtom,
+  gitSourceControlColorFileNamesAtom,
 } from "@src/store/ui/editorSettingsAtom";
 import { terminalFontSizeAtom } from "@src/store/ui/uiAtom";
+import { diffViewModeAtom } from "@src/store/workstation/codeEditor/diffViewModeAtom";
+import type { DiffViewMode } from "@src/types/git/types";
 
 const CUSTOM_FONT_DEBOUNCE_MS = 3000;
 
@@ -236,6 +261,15 @@ export const FeaturesSection: React.FC = () => {
   const [highlightActiveLine, setHighlightActiveLine] = useAtom(
     editorHighlightActiveLineAtom
   );
+  const [splitDiffCenteredLineNumbers, setSplitDiffCenteredLineNumbers] =
+    useAtom(editorSplitDiffCenteredLineNumbersAtom);
+  // Same atoms as the file header / Source Control quick menus, so a change
+  // on either surface is reflected on the other immediately.
+  const [diffViewMode, setDiffViewMode] = useAtom(diffViewModeAtom);
+  const [showBlame, setShowBlame] = useAtom(editorShowBlameAtom);
+  const [colorFileNames, setColorFileNames] = useAtom(
+    gitSourceControlColorFileNamesAtom
+  );
 
   const handleLineNumbersChange = useCallback(
     (value: string | number | (string | number)[]) => {
@@ -246,69 +280,203 @@ export const FeaturesSection: React.FC = () => {
   );
 
   const lineNumbersOptions = useMemo(
-    () => [
-      { value: "on", label: t("common:common.on") },
-      { value: "off", label: t("common:common.off") },
-      { value: "relative", label: t("editor.lineNumbersRelative") },
-      { value: "interval", label: t("editor.lineNumbersInterval") },
-    ],
+    () =>
+      [
+        { value: "on", label: t("common:common.on") },
+        { value: "off", label: t("common:common.off") },
+        { value: "relative", label: t("editor.lineNumbersRelative") },
+        { value: "interval", label: t("editor.lineNumbersInterval") },
+      ] as const satisfies readonly {
+        value: EditorLineNumbers;
+        label: string;
+      }[],
     [t]
+  );
+  const renderLineNumbersFigure = (mode: EditorLineNumbers) => (
+    <LineNumbersFigure mode={mode} />
+  );
+
+  const diffViewModeOptions = [
+    { value: "unified", label: t("common:workstation.unified") },
+    { value: "split", label: t("common:workstation.split") },
+  ] as const satisfies readonly { value: DiffViewMode; label: string }[];
+  const renderDiffViewModeFigure = (mode: DiffViewMode) => (
+    <DiffViewModeFigure mode={mode} />
   );
 
   return (
-    <SectionContainer title={t("editor.tabEditor")}>
-      <SectionRow
-        settingsSearchKeys="editor.showTreeIndentGuides"
-        label={t("editor.treeIndentGuides")}
-      >
-        <Switch
-          checked={showTreeIndentGuides}
-          onCheckedChange={setShowTreeIndentGuides}
-        />
-      </SectionRow>
+    <>
+      <SectionContainer title={t("editor.tabEditor")}>
+        <SectionRow
+          settingsSearchKeys="editor.showTreeIndentGuides"
+          label={
+            <LabelWithPreview
+              label={t("editor.treeIndentGuides")}
+              preview={offOnPreview(TreeIndentGuidesFigure)}
+            />
+          }
+        >
+          <Switch
+            checked={showTreeIndentGuides}
+            onCheckedChange={setShowTreeIndentGuides}
+          />
+        </SectionRow>
 
-      <SectionRow
-        settingsSearchKeys="editor.lineNumbers"
-        label={t("editor.lineNumbers")}
-      >
-        <Select
-          value={lineNumbers}
-          onChange={handleLineNumbersChange}
-          options={lineNumbersOptions}
-          style={SECTION_CONTROL_STYLE}
-        />
-      </SectionRow>
+        <SectionRow
+          settingsSearchKeys="editor.lineNumbers"
+          label={
+            <LabelWithPreview
+              label={t("editor.lineNumbers")}
+              preview={
+                <PreviewGrid
+                  items={previewItems(
+                    lineNumbersOptions,
+                    renderLineNumbersFigure
+                  )}
+                />
+              }
+            />
+          }
+        >
+          <Select
+            value={lineNumbers}
+            onChange={handleLineNumbersChange}
+            options={withDropdownOptionPreviews(
+              lineNumbersOptions,
+              renderLineNumbersFigure
+            )}
+            style={SECTION_CONTROL_STYLE}
+          />
+        </SectionRow>
 
-      <SectionRow
-        settingsSearchKeys="editor.wordWrap"
-        label={t("editor.wordWrap")}
-      >
-        <Switch checked={wordWrap} onCheckedChange={setWordWrap} />
-      </SectionRow>
+        <SectionRow
+          label={
+            <LabelWithPreview
+              label={t("editor.diffViewMode")}
+              preview={
+                <PreviewGrid
+                  items={previewItems(
+                    diffViewModeOptions,
+                    renderDiffViewModeFigure
+                  )}
+                />
+              }
+            />
+          }
+        >
+          <SegmentedTextPill<DiffViewMode>
+            ariaLabel={t("editor.diffViewMode")}
+            value={diffViewMode}
+            onChange={setDiffViewMode}
+            options={withOptionPreviews(
+              diffViewModeOptions,
+              renderDiffViewModeFigure
+            )}
+            size="large"
+            dataTestId="diff-view-mode-select"
+          />
+        </SectionRow>
 
-      <SectionRow
-        settingsSearchKeys="editor.autoSave"
-        label={t("editor.autoSave")}
-      >
-        <Switch checked={autoSave} onCheckedChange={setAutoSave} />
-      </SectionRow>
+        <SectionRow
+          settingsSearchKeys="editor.splitDiffCenteredLineNumbers"
+          label={
+            <LabelWithPreview
+              label={t("editor.splitDiffCenteredLineNumbers")}
+              preview={offOnPreview(SplitDiffLineNumbersFigure)}
+            />
+          }
+        >
+          <Switch
+            checked={splitDiffCenteredLineNumbers}
+            onCheckedChange={setSplitDiffCenteredLineNumbers}
+          />
+        </SectionRow>
 
-      <SectionRow
-        settingsSearchKeys="editor.showMinimap"
-        label={t("editor.minimap")}
-      >
-        <Switch checked={showMinimap} onCheckedChange={setShowMinimap} />
-      </SectionRow>
+        <SectionRow
+          settingsSearchKeys="editor.wordWrap"
+          label={
+            <LabelWithPreview
+              label={t("editor.wordWrap")}
+              preview={offOnPreview(WordWrapFigure)}
+            />
+          }
+        >
+          <Switch checked={wordWrap} onCheckedChange={setWordWrap} />
+        </SectionRow>
 
-      <SectionRow
-        settingsSearchKeys="editor.highlightActiveLine"
-        label={t("editor.highlightActiveLine")}
-      >
-        <Switch
-          checked={highlightActiveLine}
-          onCheckedChange={setHighlightActiveLine}
-        />
-      </SectionRow>
-    </SectionContainer>
+        <SectionRow
+          settingsSearchKeys="editor.showMinimap"
+          label={
+            <LabelWithPreview
+              label={t("editor.minimap")}
+              preview={offOnPreview(MinimapFigure)}
+            />
+          }
+        >
+          <Switch checked={showMinimap} onCheckedChange={setShowMinimap} />
+        </SectionRow>
+
+        <SectionRow
+          settingsSearchKeys="editor.highlightActiveLine"
+          label={
+            <LabelWithPreview
+              label={t("editor.highlightActiveLine")}
+              preview={offOnPreview(HighlightActiveLineFigure)}
+            />
+          }
+        >
+          <Switch
+            checked={highlightActiveLine}
+            onCheckedChange={setHighlightActiveLine}
+          />
+        </SectionRow>
+
+        <SectionRow
+          settingsSearchKeys="git.sourceControl.colorFileNames"
+          label={
+            <LabelWithPreview
+              label={t("common:sidebarSettings.colorSourceControlFiles")}
+              preview={offOnPreview(ColorFileNamesFigure)}
+            />
+          }
+        >
+          <Switch
+            checked={colorFileNames}
+            onCheckedChange={(checked) => {
+              setColorFileNames(checked).catch(() => undefined);
+            }}
+            ariaLabel={t("common:sidebarSettings.colorSourceControlFiles")}
+            dataTestId="color-source-control-files-switch"
+          />
+        </SectionRow>
+      </SectionContainer>
+
+      {/* Behavior toggles rather than display ones. */}
+      <SectionContainer>
+        <SectionRow
+          settingsSearchKeys="editor.autoSave"
+          label={t("editor.autoSave")}
+        >
+          <Switch checked={autoSave} onCheckedChange={setAutoSave} />
+        </SectionRow>
+
+        <SectionRow
+          settingsSearchKeys="editor.showBlame"
+          label={
+            <LabelWithPreview
+              label={t("editor.gitBlame")}
+              preview={offOnPreview(GitBlameFigure)}
+            />
+          }
+        >
+          <Switch
+            checked={showBlame}
+            onCheckedChange={setShowBlame}
+            ariaLabel={t("editor.gitBlame")}
+            dataTestId="git-blame-switch"
+          />
+        </SectionRow>
+      </SectionContainer>
+    </>
   );
 };

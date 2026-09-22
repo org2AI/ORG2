@@ -35,7 +35,7 @@ import {
 import { isThemeCssPathDark } from "@src/config/appearance/globalThemes";
 import {
   customShellPathAtom,
-  resolvedTerminalFontFamilyAtom,
+  resolvedCodeFontFamilyAtom,
   shellTypeAtom,
 } from "@src/store/ui/editorSettingsAtom";
 // Direct leaf import to avoid pulling @src/store's barrel — which transitively
@@ -131,7 +131,7 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     const configuredFontSize = useAtomValue(terminalFontSizeAtom);
     const terminalFontSize = fontSize ?? configuredFontSize;
     const terminalLetterSpacing = useAtomValue(terminalLetterSpacingAtom);
-    const codeFontFamily = useAtomValue(resolvedTerminalFontFamilyAtom);
+    const codeFontFamily = useAtomValue(resolvedCodeFontFamilyAtom);
     const shellType = useAtomValue(shellTypeAtom);
     const customShellPath = useAtomValue(customShellPathAtom);
     const appTheme = useAtomValue(themesAtom);

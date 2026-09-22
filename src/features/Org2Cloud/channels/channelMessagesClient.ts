@@ -11,12 +11,8 @@
  * `ORG2_CHANNEL_ARCHIVED`, `ORG2_MESSAGE_NOT_FOUND`), and the composer
  * distinguishes them by code, not by message text.
  */
-import { type CloudEndpoint, ORG2_CLOUD_POSTGREST_SCHEMA } from "../config";
-import {
-  fetchWithTransportRetry,
-  runCloudRequestWithTimeout,
-} from "../org2CloudFetchRetry";
 import { endpointForOrg } from "../org2CloudOrgEndpointRouter";
+import { callOrg2CloudRpc } from "../org2CloudRpc";
 import type {
   CloudChannelMessage,
   CloudChannelMessagesPage,
@@ -70,10 +66,6 @@ export function org2ChannelMessagesErrorCode(
 // RPC plumbing
 // ---------------------------------------------------------------------------
 
-function rpcUrl(functionName: string, endpoint: CloudEndpoint): string {
-  return `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`;
-}
-
 async function callChannelMessagesRpc(
   functionName: string,
   accessToken: string,
@@ -81,44 +73,14 @@ async function callChannelMessagesRpc(
   body: Record<string, unknown>,
   sourceSignal?: AbortSignal
 ): Promise<unknown> {
-  const endpoint = endpointForOrg(orgId);
-  return runCloudRequestWithTimeout(
-    async (signal) => {
-      const response = await fetchWithTransportRetry(
-        rpcUrl(functionName, endpoint),
-        {
-          method: "POST",
-          headers: {
-            apikey: endpoint.anonKey,
-            authorization: `Bearer ${accessToken}`,
-            "content-type": "application/json",
-            "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-          },
-          body: JSON.stringify(body),
-          signal,
-        }
-      );
-
-      const text = await response.text();
-      let payload: unknown = null;
-      try {
-        payload = text ? JSON.parse(text) : null;
-      } catch {
-        payload = null;
-      }
-
-      if (!response.ok) {
-        const message =
-          payload && typeof payload === "object" && "message" in payload
-            ? String((payload as { message: unknown }).message)
-            : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-        throw new Org2CloudChannelMessagesError(message, response.status);
-      }
-      return payload;
-    },
-    CHANNEL_MESSAGES_REQUEST_TIMEOUT_MS,
-    sourceSignal
-  );
+  return callOrg2CloudRpc(functionName, body, {
+    accessToken,
+    endpoint: endpointForOrg(orgId),
+    timeoutMs: CHANNEL_MESSAGES_REQUEST_TIMEOUT_MS,
+    signal: sourceSignal,
+    createError: (message, status) =>
+      new Org2CloudChannelMessagesError(message, status),
+  });
 }
 
 // ---------------------------------------------------------------------------

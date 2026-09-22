@@ -10,20 +10,12 @@
 
 export { WorkingDirectoryPalette } from "./WorkingDirectoryPalette";
 
-export { WorkingDirectoryDropdown } from "./WorkingDirectoryPalette/WorkingDirectoryDropdown";
-
 export { BranchPalette, WorktreePalette } from "./BranchPalette";
-
-export { BranchDropdown } from "./BranchPalette/BranchDropdown";
 
 export { UnifiedModelPalette } from "./UnifiedModelPalette";
 
-export { UnifiedModelDropdown } from "./UnifiedModelPalette/UnifiedModelDropdown";
-
 export { DispatchCategoryPalette } from "./DispatchCategoryPalette";
 export type { AgentSelection } from "./DispatchCategoryPalette";
-
-export { DispatchCategoryDropdown } from "./DispatchCategoryPalette/DispatchCategoryDropdown";
 
 export { EditorPalette } from "./EditorPalette";
 

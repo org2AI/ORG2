@@ -127,28 +127,39 @@ async fn authenticated_http_and_native_share_broker_receipts() {
 /// never runs, because `start_server` awaits `axum::serve` until process exit —
 /// and `org2-ui` discovery hard-fails above 64 candidates, so the CLI would stop
 /// working after roughly 65 app starts.
+///
+/// The port is deterministic per install, so **every** stale descriptor names
+/// the port this process just bound. An earlier version of this test gave each
+/// descriptor its own port and passed while the sweep did nothing in practice:
+/// probing a port we already hold always succeeds.
 #[tokio::test]
-async fn sweep_removes_descriptors_whose_endpoint_is_gone() {
+async fn sweep_removes_descriptors_that_cannot_be_live() {
     let directory = tempfile::tempdir().unwrap();
-    let live = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let live_port = live.local_addr().unwrap().port();
-    let dead_port = {
-        let socket = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        socket.local_addr().unwrap().port()
-    };
+    let own_port = 13847u16;
+    let own = "instance-current";
 
-    let write = |name: &str, body: String| {
-        std::fs::write(directory.path().join(name), body).unwrap();
+    let write = |name: &str, body: serde_json::Value| {
+        std::fs::write(directory.path().join(name), body.to_string()).unwrap();
     };
-    write("live.json", json!({"port": live_port}).to_string());
-    write("dead.json", json!({"port": dead_port}).to_string());
-    write("no-port.json", json!({"instanceId": "x"}).to_string());
-    write("unparsable.json", "{".into());
-    write("keep.txt", "not a descriptor".into());
+    // Prior launches of this install: same port, different instance ids. These
+    // are the ones the leak is made of.
+    write("prev-1.json", json!({"instanceId":"old-a","port":own_port,"pid":std::process::id()}));
+    write("prev-2.json", json!({"instanceId":"old-b","port":own_port,"pid":1}));
+    // Ours, written by this very publish.
+    write("current.json", json!({"instanceId":own,"port":own_port,"pid":std::process::id()}));
+    // A second install on its own port, still running.
+    write("other-live.json", json!({"instanceId":"other","port":13999,"pid":std::process::id()}));
+    // A second install on its own port whose process is gone.
+    write("other-dead.json", json!({"instanceId":"gone","port":13998,"pid":0x7FFF_FFFE}));
+    // Pre-pid format, and not ours.
+    write("legacy.json", json!({"instanceId":"legacy","port":13997}));
+    std::fs::write(directory.path().join("unparsable.json"), "{").unwrap();
+    std::fs::write(directory.path().join("keep.txt"), "not a descriptor").unwrap();
 
     tokio::task::spawn_blocking({
         let path = directory.path().to_path_buf();
-        move || sweep(&path)
+        let own = own.to_string();
+        move || sweep(&path, own_port, &own)
     })
     .await
     .unwrap();
@@ -158,6 +169,32 @@ async fn sweep_removes_descriptors_whose_endpoint_is_gone() {
         .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
     remaining.sort();
-    assert_eq!(remaining, vec!["keep.txt".to_string(), "live.json".to_string()]);
-    drop(live);
+    assert_eq!(
+        remaining,
+        vec![
+            "current.json".to_string(),
+            "keep.txt".to_string(),
+            "other-live.json".to_string(),
+        ]
+    );
+}
+
+/// The own-port rule is what the sweep rests on, so pin the reason it holds:
+/// a loopback connect to a port we have bound succeeds even though nothing
+/// ever calls `accept`. Probing therefore cannot distinguish live from stale.
+#[tokio::test]
+async fn probing_a_bound_port_cannot_prove_liveness() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let connected = tokio::task::spawn_blocking(move || {
+        std::net::TcpStream::connect_timeout(
+            &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+            std::time::Duration::from_millis(100),
+        )
+        .is_ok()
+    })
+    .await
+    .unwrap();
+    assert!(connected, "a bound listener accepts connections from its backlog");
+    drop(listener);
 }

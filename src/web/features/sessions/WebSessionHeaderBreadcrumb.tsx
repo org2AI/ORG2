@@ -1,5 +1,4 @@
 import React, { memo, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 
 import AnyIcon from "@src/components/AnyIcon";
 import { resolveAgentIcon } from "@src/config/agentIcons";
@@ -11,6 +10,7 @@ import BreadcrumbFileHeader, {
   type BreadcrumbFileHeaderDisplaySegment,
 } from "@src/features/FileHeader/BreadcrumbFileHeader";
 import { resolveSessionDisplayMetadata } from "@src/util/session/sessionDisplayMetadata";
+import { useWebNavigate } from "@src/web/useWebNavigate";
 
 import type { WebSessionListItem } from "./useWebSessionRoster";
 import { webSessionPath } from "./webSessionLocation";
@@ -23,7 +23,7 @@ interface WebSessionHeaderBreadcrumbProps {
 
 const WebSessionHeaderBreadcrumb: React.FC<WebSessionHeaderBreadcrumbProps> =
   memo(({ session, fallbackName, rosterSessions }) => {
-    const navigate = useNavigate();
+    const navigate = useWebNavigate();
     const display = useMemo(
       () =>
         resolveSessionDisplayMetadata({

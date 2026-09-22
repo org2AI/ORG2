@@ -20,7 +20,6 @@ import { useReloadSession } from "../ChatHistory/hooks/useReloadSession";
 import { useSessionTranscriptRuntime } from "../SessionTranscriptRuntimeContext";
 import type { SessionTranscriptPlatformState } from "./sessionTranscriptPlatform.types";
 
-
 /** Desktop adapter for the shared transcript. Webpack replaces this module in
  * the browser entry with the Cloud/context-backed implementation. */
 export function useSessionTranscriptPlatform(

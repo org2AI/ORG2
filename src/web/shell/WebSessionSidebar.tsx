@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue } from "jotai";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
@@ -13,6 +13,7 @@ import SidebarBottomBar from "@src/scaffold/NavigationSidebar/blocks/SidebarBott
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import SidebarOrgSelector from "@src/scaffold/NavigationSidebar/connectors/SidebarOrgSelector";
 import NavigationSidebar from "@src/scaffold/NavigationSidebar/variants/NavigationSidebar";
+import { useWebNavigate } from "@src/web/useWebNavigate";
 
 import { resolveWebActiveCloudOrgId } from "../features/sessions/WebCloudRealtimeScope";
 import { useWebSessions } from "../features/sessions/WebSessionsContext";
@@ -24,7 +25,7 @@ import {
 } from "./useWebCloudSessionsSection";
 
 export function WebSessionSidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const navigate = useNavigate();
+  const navigate = useWebNavigate();
   const location = useLocation();
   const { t } = useTranslation("navigation");
   const { t: tCommon } = useTranslation("common");

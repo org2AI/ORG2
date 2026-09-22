@@ -1,7 +1,6 @@
 import { useSetAtom } from "jotai";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
@@ -11,6 +10,7 @@ import {
 } from "@src/features/Org2Cloud/authCallback";
 import { getCloudEndpoint } from "@src/features/Org2Cloud/config";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
+import { useWebNavigate } from "@src/web/useWebNavigate";
 
 import {
   consumeWebAuthCallbackState,
@@ -20,7 +20,7 @@ import {
 export function WebAuthCallbackPage() {
   const { t } = useTranslation("navigation");
   const setAuth = useSetAtom(org2CloudAuthAtom);
-  const navigate = useNavigate();
+  const navigate = useWebNavigate();
   const committedRef = useRef(false);
   const result = useMemo(() => {
     const validatedState = validateWebAuthCallbackState(window.location.href);

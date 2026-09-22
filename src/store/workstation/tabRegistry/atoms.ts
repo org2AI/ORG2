@@ -9,6 +9,7 @@
  */
 import { type Getter, type Setter, atom } from "jotai";
 
+import { effectiveChatPanelMaximizedAtom } from "@src/store/chatPanel/chatPanelLayoutAtoms";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { STATION_MODE, stationModeAtom } from "@src/store/ui/simulatorAtom";
 
@@ -127,11 +128,17 @@ closeTabAtom.debugLabel = "closeTabAtom";
  * The Agent Station shows none of these tabs — it owns no tab bar of its own —
  * so while it is the visible Station the chord closes the Station itself, the
  * way closing My Station's sole Launchpad does. Without this it reached past
- * the Agent Station and closed a My Station tab nobody could see.
+ * the Agent Station and closed a My Station tab nobody could see. This holds
+ * however empty the Station is: with no session and no tabs behind it there is
+ * still a Station on screen, and the chord closes it.
+ *
+ * Visibility is the effective layout, not the saved preference — a chat tab
+ * that denies Station access (Runtime, Work, Organization) already fills the
+ * slot, and the chord must fall through to that tab rather than be swallowed.
  */
 export const closeActiveWorkStationTabAtom = atom(null, (get, set) => {
   if (get(stationModeAtom) === STATION_MODE.AGENT_STATION) {
-    if (get(chatPanelMaximizedAtom)) return false;
+    if (get(effectiveChatPanelMaximizedAtom)) return false;
     set(chatPanelMaximizedAtom, true);
     return true;
   }

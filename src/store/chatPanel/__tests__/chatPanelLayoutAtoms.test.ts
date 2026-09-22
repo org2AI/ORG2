@@ -128,6 +128,10 @@ describe("closeTabChordFallbackAtom", () => {
         workstation: [createProjectSettingsTab()],
       })
     ).toBe(CLOSE_TAB_CHORD_FALLBACK.CLOSE_STATION);
+    // Empty too: no session, no tabs behind it, still a Station on screen.
+    expect(seed({ stationMode: "agent-station", workstation: [] })).toBe(
+      CLOSE_TAB_CHORD_FALLBACK.CLOSE_STATION
+    );
   });
 
   it("closes the window once My Station is closed too", () => {

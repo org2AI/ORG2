@@ -5,6 +5,14 @@ use terminal::pty_commands::pty::PtyState;
 use tokio::sync::{Mutex, Semaphore};
 
 const MAX_OUTPUT_BYTES: usize = 8192;
+/// The published schema caps `command` and `data` at 8192 JavaScript string
+/// units, which are UTF-16 code units, while `len()` here counts UTF-8 bytes.
+/// A BMP scalar is one unit and at most three bytes; an astral scalar is two
+/// units and four bytes, so three bytes per unit is the true ceiling. The
+/// previous 32769 was safe but arbitrary, and a byte-for-unit bound would have
+/// rejected 8192 CJK characters outright.
+const MAX_INPUT_UTF16_UNITS: usize = 8192;
+const MAX_INPUT_BYTES: usize = MAX_INPUT_UTF16_UNITS * 3;
 static INPUT_JOBS: Semaphore = Semaphore::const_new(16);
 /// The write half `guarded_write` drives. A real `PtyWriter` can only be built
 /// from a live PTY master, so the cancellation, capacity and timeout
@@ -20,12 +28,23 @@ impl TerminalWrite for terminal::pty_io::PtyWriter {
     }
 }
 
+/// Defence in depth behind `eligible()` in services/uiCommands/terminals.ts,
+/// which is the enforcing gate. The excluded classes come from the generated
+/// catalog rather than literals kept here, so adding a terminal class cannot
+/// silently make it writable through this boundary — the catalog is hash
+/// checked on both sides and pinned by publicUi/terminalPrefixes.test.ts.
 fn terminal_id(request: &app_ui::Request) -> Result<&str, String> {
     let id = request.params["terminalId"].as_str().unwrap_or("");
+    let excluded = app_ui::catalog()["terminals"]["excludedIdPrefixes"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default();
     if id.is_empty()
         || id.len() > 128
-        || id.starts_with("agent-pty-")
-        || id.starts_with("chatpanel-")
+        || excluded
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .any(|prefix| id.starts_with(prefix))
         || !id
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
@@ -51,8 +70,10 @@ fn input_data(request: &app_ui::Request) -> Result<String, String> {
         "ui.terminal.interrupt" => "\x03".to_string(),
         _ => return Err("TERMINAL_INVALID_INPUT: Unsupported terminal operation".into()),
     };
-    if data.len() > 32769 {
-        return Err("TERMINAL_INVALID_INPUT: Input exceeds 32 KiB".into());
+    // The trailing carriage return `execute` appends is the only byte beyond
+    // what the schema admits.
+    if data.len() > MAX_INPUT_BYTES + 1 {
+        return Err("TERMINAL_INVALID_INPUT: Input exceeds 8,192 string units".into());
     }
     Ok(data)
 }
@@ -65,20 +86,28 @@ fn output_tail(output: &str, max_bytes: usize) -> (&str, bool) {
 }
 
 /// Input may partially reach the PTY before an OS write fails or times out.
-/// Keep that result unknown and retain the writer/permit until the worker ends.
+/// Keep that result unknown and retain the writer until the worker ends.
 async fn guarded_write<W: TerminalWrite>(
     writer: Arc<Mutex<W>>,
     data: String,
     active: impl Fn() -> bool + Send + 'static,
 ) -> Result<usize, String> {
-    let permit = INPUT_JOBS
+    // Admission control for this call only. A PTY master write blocks once the
+    // line discipline's input buffer fills and the foreground process is not
+    // reading, and the worker below is deliberately never aborted — so holding
+    // a *global* permit for the worker's whole life meant 16 wedged terminals
+    // disabled `ui.terminal.*` input for every other terminal, permanently and
+    // invisibly. The owned writer lock is what actually prevents interleaving
+    // on one PTY, so it alone travels into the worker; the permit is released
+    // with this frame, at the caller's deadline at the latest.
+    let _permit = INPUT_JOBS
         .try_acquire()
         .map_err(|_| "BUSY: Terminal input workers are occupied")?;
-    let mut writer = writer
+    let writer = writer
         .try_lock_owned()
         .map_err(|_| "BUSY: Terminal is receiving another input")?;
     let mut task = tokio::spawn(async move {
-        let _permit = permit;
+        let mut writer = writer;
         if !active() {
             return Err("TERMINAL_REQUEST_EXPIRED: Input was not sent".to_string());
         }
@@ -93,9 +122,10 @@ async fn guarded_write<W: TerminalWrite>(
         })?,
         Err(_) => {
             // A submitted PTY write cannot be undone, so the worker is never
-            // aborted: it keeps the writer lock and the permit until it ends,
-            // which blocks an interleaved second write rather than replaying
-            // this one. The caller gets an unknown receipt now.
+            // aborted: it keeps the writer lock until it ends, which blocks an
+            // interleaved second write on this terminal rather than replaying
+            // this one. The caller gets an unknown receipt now. Other
+            // terminals are unaffected — see the permit note above.
             Err("TERMINAL_WRITE_UNKNOWN: Input delivery exceeded the deadline; do not resend automatically".into())
         }
     }
@@ -201,6 +231,13 @@ mod tests {
             "\x03"
         );
         assert!(input_data(&request("gui.execute", json!({}))).is_err());
+        // 8,192 UTF-16 units of CJK is 24,576 UTF-8 bytes: the schema admits
+        // it, so a byte-for-unit bound here would reject valid input.
+        let wide = "\u{4f60}".repeat(MAX_INPUT_UTF16_UNITS);
+        assert_eq!(wide.len(), MAX_INPUT_BYTES);
+        assert!(input_data(&request("ui.terminal.input", json!({"data": wide}))).is_ok());
+        let over = "a".repeat(MAX_INPUT_BYTES + 2);
+        assert!(input_data(&request("ui.terminal.input", json!({"data": over}))).is_err());
         assert!(terminal_id(&request(
             "ui.terminal.read",
             json!({"terminalId":"agent-pty-secret"})
@@ -297,11 +334,18 @@ mod tests {
         started_rx.await.unwrap();
         let outcome = task.await.unwrap();
         let held_after_timeout = writer.try_lock().is_err();
+        // The still-blocked worker must not also be holding global capacity:
+        // one wedged terminal cannot disable input for the other fifteen.
+        let permits_after_timeout = INPUT_JOBS.available_permits();
+        let other = Arc::new(Mutex::new(Capture(Arc::new(StdMutex::new(Vec::new())))));
+        let other_outcome = guarded_write(other, "two".into(), || true).await;
         // Always release the fixture worker before asserting, including failure paths.
         gate.notify_one();
         let _finished = writer.lock().await;
         assert!(outcome.unwrap_err().starts_with("TERMINAL_WRITE_UNKNOWN"));
         assert!(held_after_timeout);
+        assert_eq!(permits_after_timeout, 16);
+        assert_eq!(other_outcome.unwrap(), 3);
         assert_eq!(INPUT_JOBS.available_permits(), 16);
     }
 }

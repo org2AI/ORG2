@@ -21,6 +21,9 @@ export const requestSchema = z.strictObject({
   timeoutMs: z.number().int().min(1).max(30000),
 });
 export type UiRequest = z.infer<typeof requestSchema>;
+// The protocol's workspace, which is narrower than the app's
+// `WorkstationWorkspaceKey`: there is no `directory` target on the wire.
+export type UiWorkspace = UiRequest["target"]["workspace"];
 export interface UiResponse {
   protocolVersion: 1;
   requestId: string;

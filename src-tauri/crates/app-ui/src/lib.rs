@@ -19,10 +19,25 @@ pub fn catalog() -> &'static serde_json::Value {
         serde_json::from_str(include_str!("../catalog.json")).expect("validated bundled UI catalog")
     })
 }
+/// Catalog capability tiers. Every enforcement point keys on one of these;
+/// none of them re-derive privilege from the command id.
+pub const CAPABILITY_READ: &str = "ui.read";
+pub const CAPABILITY_TERMINAL_READ: &str = "terminal.read";
+pub const CAPABILITY_PRESENT: &str = "ui.present";
+pub const CAPABILITY_TERMINAL_WRITE: &str = "terminal.write";
+
 pub fn command_exists(command: &str) -> bool {
+    command_capability(command).is_some()
+}
+
+/// The catalog capability a command requires. Every enforcement point keys on
+/// this rather than re-deriving "is this a mutation" from the command id.
+pub fn command_capability(command: &str) -> Option<&'static str> {
     catalog()["commands"]
-        .as_array()
-        .is_some_and(|items| items.iter().any(|item| item["id"] == command))
+        .as_array()?
+        .iter()
+        .find(|item| item["id"] == command)?["capability"]
+        .as_str()
 }
 
 pub fn capabilities() -> serde_json::Value {

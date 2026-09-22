@@ -44,10 +44,11 @@ export function createUiDependencies(
         return {
           repoPath: store.get(activeWorkspaceRootPathAtom) || undefined,
         };
-      // A directory workspace already names its own root; there is no session
-      // to look up.
-      if (workspace.kind === "directory")
-        return { repoPath: workspace.directory };
+      // `WorkstationWorkspaceKey` also has a `directory` variant, but the wire
+      // protocol does not: both app_ui::Workspace and workspaceSchema admit
+      // only global and session, and useUiCommandRuntime parses the envelope
+      // before dispatch. A directory target cannot reach this function, so
+      // there is deliberately no branch for one.
       const session = store.get(sessionMapAtom).get(workspace.sessionId);
       if (!session)
         throw new Error(

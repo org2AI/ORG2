@@ -18,14 +18,25 @@ Read common instructions or one topic:
 {"action":"ui.docs","params":{"query":"文件"}}
 ```
 
-Execute the same versioned request that the CLI sends. Replace the example instance and session with discovered IDs; use a fresh request ID. A request's target session is the workspace destination, not the caller's identity.
+Send the same versioned request the CLI sends, for **read commands only**
+(the `ui.read` and `terminal.read` capabilities: `ui.context`,
+`ui.tabs.list`, `ui.terminal.list`, `ui.terminal.read`). Replace the example instance and session with discovered
+IDs; use a fresh request ID. A request's target session is the workspace
+destination, not the caller's identity.
+
+Commands that present UI or write to a terminal are rejected here and must go
+through `open_in_org2` and `write_org2_terminal`. Tool policy is resolved by
+tool name, so a mutating command inside this envelope would be invisible to it:
+`control_orgii` is not on the read-only deny list, and forwarding one would
+reach `ui.terminal.execute` from Plan or Review mode, where both `run_shell`
+and `write_org2_terminal` are denied.
 
 ```json
 {
   "uiRequest": {
     "protocolVersion": 1,
     "requestId": "unique-request-id",
-    "command": "ui.file.open",
+    "command": "ui.terminal.list",
     "target": {
       "instanceId": "discovered-instance-id",
       "windowId": "main",
@@ -34,8 +45,8 @@ Execute the same versioned request that the CLI sends. Replace the example insta
         "sessionId": "discovered-local-session-id"
       }
     },
-    "params": { "path": "src/main.ts", "line": 42 },
-    "reveal": true,
+    "params": { "limit": 20 },
+    "reveal": false,
     "timeoutMs": 10000
   }
 }

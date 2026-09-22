@@ -55,8 +55,13 @@ export function useUiCommandRuntime(): void {
         {
           id: command.id,
           category: "app",
-          layer: "gui",
           description: command.description,
+          // Transport, not an affordance. "gui" would put all 14 into
+          // getADEExposedActions() and therefore into the GUI control manifest
+          // the model reads through control_orgii — with a {generation,
+          // request} schema no model can satisfy, since the generation is
+          // broker-issued and deps.active() rejects a fabricated one.
+          layer: "action",
           params: envelopeSchema,
         },
         async ({ request, generation: requestGeneration }) => {
@@ -133,7 +138,24 @@ export function useUiCommandRuntime(): void {
         .then(async () => {
           if (disposed) return;
           const parsed = envelopeSchema.safeParse(message);
-          if (!parsed.success) return;
+          if (!parsed.success) {
+            // Returning silently would leave the broker entry pending until
+            // the caller's timeoutMs and report a *deterministic* rejection as
+            // an uncertain outcome — the one result the rulebook tells agents
+            // never to auto-retry. The broker only dispatches fully typed
+            // requests, so the echo below always has a target to match on;
+            // if it somehow does not, resolve would reject it anyway.
+            if (message.request?.target)
+              await invokeTauri("ui_command_result", {
+                generation: message.generation,
+                response: failure(
+                  message.request,
+                  "INVALID_PARAMS",
+                  parsed.error.message
+                ),
+              });
+            return;
+          }
           const result = await zodActionRegistry.execute(
             message.request.command,
             parsed.data

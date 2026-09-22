@@ -8,14 +8,17 @@ import type {
 } from "@src/store/workstation/tabs/types";
 
 import { failure } from "./protocol";
-import type { UiRequest, UiResponse } from "./protocol";
+import type { UiRequest, UiResponse, UiWorkspace } from "./protocol";
 import type { TerminalOperations } from "./terminals";
 
 export interface UiDependencies {
   terminal: TerminalOperations;
   permitted(): boolean;
   active(): Promise<boolean>;
-  resolveWorkspace(workspace: WorkstationWorkspaceKey): { repoPath?: string };
+  // Takes the protocol's workspace, not the app's wider key: a `directory`
+  // target cannot exist on the wire, and typing it wider would resurrect a
+  // branch that no request can reach.
+  resolveWorkspace(workspace: UiWorkspace): { repoPath?: string };
   context(): unknown;
   tabs(workspace: WorkstationWorkspaceKey): WorkStationTab[];
   partition(tab: WorkStationTab): "shared" | "workspace";
@@ -54,10 +57,20 @@ export async function executeUiRequest(
   const parsed = uiSchemas[command.id].safeParse(request.params);
   if (!parsed.success)
     return failure(request, "INVALID_PARAMS", parsed.error.message);
-  const mutation = command.capability !== "ui.read";
+  // Enforce on the declared tier rather than on "is this a mutation", so the
+  // set of gated capabilities is a list one can read rather than a negation
+  // that silently absorbs every tier added later. `terminal.read` is
+  // deliberately NOT here: `permitted()` is the presentation permission, and
+  // reads are allowed while presentation is off (see the "allows bounded
+  // terminal reads while presentation is disabled" test). It is nonetheless
+  // its own tier now — scrollback is not the same disclosure as tab titles —
+  // so gating it later is a one-line change rather than a redesign.
+  const gated =
+    command.capability === "ui.present" ||
+    command.capability === "terminal.write";
   const workspace = request.target.workspace;
   const check = async () => {
-    if (mutation && !deps.permitted())
+    if (gated && !deps.permitted())
       throw new CommandError(
         "CAPABILITY_DENIED",
         "ADE Manager is off; UI control is disabled"
@@ -68,7 +81,7 @@ export async function executeUiRequest(
         "Request is no longer active"
       );
     // Recheck after await: revoked permissions or deleted sessions cannot commit.
-    if (mutation && !deps.permitted())
+    if (gated && !deps.permitted())
       throw new CommandError(
         "CAPABILITY_DENIED",
         "UI control permission was revoked"
@@ -225,27 +238,36 @@ export async function executeUiRequest(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const code =
-      error instanceof CommandError
-        ? error.code
-        : message.startsWith("TARGET_NOT_FOUND")
-          ? "TARGET_NOT_FOUND"
-          : message.startsWith("BUSY")
-            ? "BUSY"
-            : message.startsWith("TARGET_NOT_PRESENTABLE")
-              ? "TARGET_NOT_PRESENTABLE"
-              : message.startsWith("FILE_NOT_FOUND")
-                ? "FILE_NOT_FOUND"
-                : message.startsWith("FILE_NOT_READABLE")
-                  ? "FILE_NOT_READABLE"
-                  : "EXECUTION_FAILED";
-    const response = failure(
-      request,
-      message.startsWith("TERMINAL_") ? message.split(":", 1)[0] : code,
-      message
-    );
-    if (response.error?.code === "TERMINAL_WRITE_UNKNOWN")
-      response.status = "unknown";
+    const code = classify(error, message);
+    const response = failure(request, code, message);
+    if (code === "TERMINAL_WRITE_UNKNOWN") response.status = "unknown";
     return response;
   }
+}
+
+// Every code the wire may carry. Recovering a code from free message text
+// left the set open — a `TERMINAL_`-prefixed message without a colon put its
+// whole text on the wire as `error.code`, and any unrelated store error
+// starting with `BUSY` was reclassified as a protocol BUSY. Throwers inside
+// this module use CommandError; the Tauri boundary can only hand back a
+// string, so its prefixes are matched against this closed set exactly once.
+const BOUNDARY_CODES = [
+  "TARGET_NOT_FOUND",
+  "TARGET_NOT_PRESENTABLE",
+  "TERMINAL_NOT_FOUND",
+  "TERMINAL_NOT_READY",
+  "TERMINAL_INVALID_INPUT",
+  "TERMINAL_REQUEST_EXPIRED",
+  "TERMINAL_WRITE_UNKNOWN",
+  "FILE_NOT_FOUND",
+  "FILE_NOT_READABLE",
+  "BUSY",
+] as const;
+
+function classify(error: unknown, message: string): string {
+  if (error instanceof CommandError) return error.code;
+  const matched = BOUNDARY_CODES.find(
+    (code) => message === code || message.startsWith(`${code}:`)
+  );
+  return matched ?? "EXECUTION_FAILED";
 }

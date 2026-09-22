@@ -30,9 +30,6 @@ function argValue(flag) {
 const profile = argValue("--profile") ?? "debug";
 const explicitTarget = argValue("--target");
 
-// Rust-only CI has no node_modules. Build the checked-in catalog here;
-// frontend protocol tests verify it against Zod, including its content hash.
-
 function hostTriple() {
   const result = spawnSync("rustc", ["-vV"], { encoding: "utf8" });
   if (result.status !== 0) {

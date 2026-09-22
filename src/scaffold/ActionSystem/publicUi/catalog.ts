@@ -140,7 +140,11 @@ const terminalCommands = [
     id: "ui.terminal.read",
     cli: ["terminal", "read"],
     positional: "terminalId",
-    capability: "ui.read",
+    // Scrollback carries tokens, credentials on command lines and private
+    // remotes. It is a read, but not the same tier as listing tab titles:
+    // it is gated on the app's UI-control permission like every other
+    // terminal capability.
+    capability: "terminal.read",
     description:
       "Read a bounded tail of retained redacted PTY output. --maxBytes defaults to 4096 and is capped at 8192; not a rendered screen or full history.",
   },
@@ -169,6 +173,16 @@ const terminalCommands = [
       "Send Ctrl+C to an explicit live shell terminal. Does not prove that its process exited.",
   },
 ] as const;
+/// Terminal id classes this surface never exposes. `eligible()` in
+/// services/uiCommands/terminals.ts is the enforcing gate; these literals are
+/// the id-shaped part of it, published so the Rust boundary stops keeping its
+/// own copy. catalog.ts is imported by bare node from scripts/ui, so it cannot
+/// use @src aliases — publicUi/terminalPrefixes.test.ts pins these against the
+/// owning modules instead.
+export const EXCLUDED_TERMINAL_ID_PREFIXES = [
+  "agent-pty-",
+  "chatpanel-",
+] as const;
 export const uiCommands = [
   ...commonUiCommands,
   ...terminalCommands.map((command) => ({
@@ -179,6 +193,11 @@ export const uiCommands = [
 ] as const;
 export const uiCatalog = {
   protocolVersion: 1,
+  // Published so the Rust boundary stops re-deriving terminal ownership from
+  // literals of its own. `eligible()` in services/uiCommands/terminals.ts is
+  // the enforcing gate; these are the id-shaped classes it excludes, carried
+  // across the wire under the same hash check as the command schemas.
+  terminals: { excludedIdPrefixes: EXCLUDED_TERMINAL_ID_PREFIXES },
   commands: uiCommands.map((command) => {
     const { $schema: _schema, ...params } = z.toJSONSchema(
       uiSchemas[command.id]

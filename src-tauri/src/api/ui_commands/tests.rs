@@ -122,3 +122,42 @@ async fn authenticated_http_and_native_share_broker_receipts() {
     server.abort();
     app_ui::broker().unregister(&generation);
 }
+
+/// Without a sweep every launch leaves a descriptor behind — `Descriptor::drop`
+/// never runs, because `start_server` awaits `axum::serve` until process exit —
+/// and `org2-ui` discovery hard-fails above 64 candidates, so the CLI would stop
+/// working after roughly 65 app starts.
+#[tokio::test]
+async fn sweep_removes_descriptors_whose_endpoint_is_gone() {
+    let directory = tempfile::tempdir().unwrap();
+    let live = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let live_port = live.local_addr().unwrap().port();
+    let dead_port = {
+        let socket = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        socket.local_addr().unwrap().port()
+    };
+
+    let write = |name: &str, body: String| {
+        std::fs::write(directory.path().join(name), body).unwrap();
+    };
+    write("live.json", json!({"port": live_port}).to_string());
+    write("dead.json", json!({"port": dead_port}).to_string());
+    write("no-port.json", json!({"instanceId": "x"}).to_string());
+    write("unparsable.json", "{".into());
+    write("keep.txt", "not a descriptor".into());
+
+    tokio::task::spawn_blocking({
+        let path = directory.path().to_path_buf();
+        move || sweep(&path)
+    })
+    .await
+    .unwrap();
+
+    let mut remaining: Vec<String> = std::fs::read_dir(directory.path())
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    remaining.sort();
+    assert_eq!(remaining, vec!["keep.txt".to_string(), "live.json".to_string()]);
+    drop(live);
+}

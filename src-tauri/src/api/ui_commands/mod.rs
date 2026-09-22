@@ -11,7 +11,7 @@ use axum::{
 pub use commands::*;
 use serde::Deserialize;
 use serde_json::json;
-use std::{io::Write, sync::OnceLock};
+use std::{io::Write, sync::OnceLock, time::Duration};
 pub use terminal_commands::*;
 
 fn token() -> &'static str {
@@ -82,10 +82,50 @@ impl Drop for Descriptor {
         let _ = std::fs::remove_file(&self.0);
     }
 }
+/// Remove descriptors whose endpoint no longer answers.
+///
+/// `Descriptor::drop` only runs if `start_server` returns, and it never does:
+/// the process exits under `axum::serve`. Every launch would otherwise leave a
+/// file behind, and `org2-ui`'s discovery hard-fails above 64 candidates — so
+/// without this the CLI stops working after ~65 app starts.
+///
+/// A refused loopback connection is immediate, so the common case costs
+/// nothing; the timeout only applies to a port something else is holding open.
+fn sweep(directory: &std::path::Path) {
+    const PROBE: Duration = Duration::from_millis(100);
+    let Ok(entries) = std::fs::read_dir(directory) else {
+        return;
+    };
+    for entry in entries.take(512).flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
+        }
+        let live = std::fs::read(&path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+            .and_then(|value| value["port"].as_u64())
+            .and_then(|port| u16::try_from(port).ok())
+            .is_some_and(|port| {
+                std::net::TcpStream::connect_timeout(
+                    &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+                    PROBE,
+                )
+                .is_ok()
+            });
+        if !live {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+}
+
 pub async fn publish(port: u16) -> std::io::Result<Descriptor> {
     tokio::task::spawn_blocking(move || {
         let directory = app_paths::orgii_root().join("ui/instances");
         std::fs::create_dir_all(&directory)?;
+        // This instance is already listening, so its own descriptor — written
+        // below under a fresh instance id — is never a sweep candidate.
+        sweep(&directory);
         let id = &app_ui::broker().instance_id;
         let path = directory.join(format!("{id}.json"));
         let temp = directory.join(format!(".{id}.tmp"));
@@ -100,8 +140,10 @@ pub async fn publish(port: u16) -> std::io::Result<Descriptor> {
         let result = (|| {
             app_paths::set_sensitive_file_permissions(&temp)?;
             file.write_all(
-                serde_json::to_string(&json!({"instanceId":id,"port":port,"token":token()}))?
-                    .as_bytes(),
+                serde_json::to_string(
+                    &json!({"instanceId":id,"port":port,"token":token(),"pid":std::process::id()}),
+                )?
+                .as_bytes(),
             )?;
             file.sync_all()?;
             std::fs::rename(&temp, &path)?;

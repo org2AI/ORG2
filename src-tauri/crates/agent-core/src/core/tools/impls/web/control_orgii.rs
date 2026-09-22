@@ -142,7 +142,7 @@ impl Tool for OrgiiControlTool {
             "properties": {
                 "uiRequest": {
                     "type": "object",
-                    "description": "Versioned public UI request (protocolVersion, requestId, command, target, params, reveal). Uses the same broker and policy as org2 ui. Read org2 rulebook or action=ui.capabilities first.",
+                    "description": "Versioned public UI read request (protocolVersion, requestId, command, target, params). Inspection only: commands that present UI or write to a terminal must use open_in_org2 or write_org2_terminal, which the tool policy can evaluate by name. Read org2 rulebook or action=ui.capabilities first.",
                     "additionalProperties": true
                 },
                 "operation": {
@@ -208,6 +208,32 @@ impl Tool for OrgiiControlTool {
         if let Some(request) = params.get("uiRequest") {
             let request: app_ui::Request = serde_json::from_value(request.clone())
                 .map_err(|err| ToolError::InvalidParams(err.to_string()))?;
+            // Tool policy (AutonomyLevel::ReadOnly and the read-only
+            // AgentExecModes) is resolved by tool *name* in
+            // `ToolRegistry::execute_with_policy`, so it cannot see the
+            // command inside this envelope. `control_orgii` is not on
+            // `READ_ONLY_DENY_TOOLS`; forwarding a mutating command here would
+            // therefore reach `ui.terminal.execute` from Plan or Review mode,
+            // where `run_shell` and `write_org2_terminal` are both denied.
+            // Mutations must go through the concrete tools, whose names the
+            // policy layer can actually evaluate.
+            match app_ui::command_capability(&request.command) {
+                Some(app_ui::CAPABILITY_READ) | Some(app_ui::CAPABILITY_TERMINAL_READ) => {}
+                Some(_) => {
+                    return Err(ToolError::InvalidParams(format!(
+                        "uiRequest only carries read commands; use {} or {} for {}",
+                        tool_names::OPEN_IN_ORG2,
+                        tool_names::WRITE_ORG2_TERMINAL,
+                        request.command
+                    )))
+                }
+                None => {
+                    return Err(ToolError::InvalidParams(format!(
+                        "Unknown UI command {}",
+                        request.command
+                    )))
+                }
+            }
             let result = app_ui::broker()
                 .execute(&format!("native:{}", ctx.session_id), request)
                 .await;
@@ -443,5 +469,54 @@ mod envelope_tests {
             build_ade_action_envelope("corr-2", "gui.execute", serde_json::json!({}), "");
         assert_eq!(envelope["invokingSessionId"], "");
         assert_eq!(envelope["sessionId"], "");
+    }
+
+    /// `control_orgii` is not on `READ_ONLY_DENY_TOOLS`, and tool policy is
+    /// resolved by tool *name*, so a mutating command inside `uiRequest` would
+    /// be invisible to it: Plan and Review mode deny `run_shell` and
+    /// `write_org2_terminal` yet would still reach `ui.terminal.execute` here.
+    /// Mutations must go through the concrete tools, whose names the policy
+    /// layer can evaluate.
+    #[tokio::test]
+    async fn ui_request_passthrough_carries_reads_only() {
+        let tool = OrgiiControlTool::new(Arc::new(ActionBridge::new()));
+        let ctx = crate::tools::traits::CallContext::trusted_sde();
+        let envelope = |command: &str| {
+            serde_json::json!({"uiRequest":{"protocolVersion":1,"requestId":"r-1",
+                "command":command,"target":{"instanceId":"i","windowId":"main",
+                "workspace":{"kind":"global"}},"params":{},"reveal":false,"timeoutMs":1000}})
+        };
+        for denied in [
+            "ui.terminal.execute",
+            "ui.terminal.input",
+            "ui.terminal.interrupt",
+            "ui.file.open",
+            "ui.web.open",
+        ] {
+            let error = tool
+                .execute_text(envelope(denied), &ctx)
+                .await
+                .expect_err("mutating commands must not pass through");
+            assert!(
+                error.to_string().contains(tool_names::OPEN_IN_ORG2)
+                    && error.to_string().contains(denied),
+                "{denied}: {error}"
+            );
+        }
+        assert!(tool
+            .execute_text(envelope("ui.not.a.command"), &ctx)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("Unknown UI command"));
+        // Both read tiers still reach the broker; with no UI runtime registered
+        // the broker answers UI_NOT_READY rather than rejecting the envelope.
+        for allowed in ["ui.context", "ui.tabs.list", "ui.terminal.list", "ui.terminal.read"] {
+            let read = tool.execute_text(envelope(allowed), &ctx).await.unwrap();
+            assert!(
+                !read.contains("uiRequest only carries read commands"),
+                "{allowed}: {read}"
+            );
+        }
     }
 }

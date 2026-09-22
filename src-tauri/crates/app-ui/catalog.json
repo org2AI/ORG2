@@ -1,5 +1,11 @@
 {
   "protocolVersion": 1,
+  "terminals": {
+    "excludedIdPrefixes": [
+      "agent-pty-",
+      "chatpanel-"
+    ]
+  },
   "commands": [
     {
       "id": "ui.context",
@@ -330,7 +336,7 @@
         "read"
       ],
       "positional": "terminalId",
-      "capability": "ui.read",
+      "capability": "terminal.read",
       "description": "Read a bounded tail of retained redacted PTY output. --maxBytes defaults to 4096 and is capped at 8192; not a rendered screen or full history.",
       "topic": "terminals",
       "keywords": [
@@ -481,5 +487,5 @@
       }
     }
   ],
-  "hash": "65e185e3e38f6225ea73db094321b52e4c8012e90fb89befc4a3182f6ebb4fd5"
+  "hash": "7ee22d6bee0d1870784ca33b98959dea5686badabc08e03ae430b64e1d0a9443"
 }

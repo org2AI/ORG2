@@ -23,7 +23,8 @@ fn create_message_table(prefix: &str) {
                 images       TEXT,
                 compact_from_sequence INTEGER,
                 compact_tokens_before INTEGER,
-                compact_tokens_after INTEGER
+                compact_tokens_after INTEGER,
+                tool_is_error INTEGER NOT NULL DEFAULT 0
              );"
     ))
     .expect("create message table");
@@ -240,6 +241,7 @@ fn make_system_msg(seq: i64, content: &str) -> AgentMessageRow {
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     }
 }
 
@@ -260,6 +262,7 @@ fn make_user_msg(seq: i64, content: &str) -> AgentMessageRow {
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     }
 }
 
@@ -280,6 +283,7 @@ fn make_assistant_msg(seq: i64, content: &str) -> AgentMessageRow {
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     }
 }
 
@@ -300,6 +304,7 @@ fn make_tool_call(seq: i64, call_id: &str, name: &str, args: &str) -> AgentMessa
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     }
 }
 
@@ -320,6 +325,7 @@ fn make_tool_result(seq: i64, call_id: &str, name: &str, result: &str) -> AgentM
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     }
 }
 
@@ -640,4 +646,27 @@ fn load_llm_history_applies_compact_boundary_from_db() {
     assert_eq!(history[0]["role"], "user");
     assert_eq!(history[0]["content"], "summary");
     assert_eq!(history[1]["content"], "recent");
+}
+
+#[test]
+fn native_history_rejects_missing_images_without_mutating_stored_history() {
+    let _sandbox = test_env::sandbox();
+    create_message_table(DB_PREFIX);
+    insert_text_message(DB_PREFIX, DB_SESSION, message_role::USER, "keep this", 1);
+    let conn = get_connection().unwrap();
+    let images = serde_json::to_string(&vec!["/missing-native-parity-image.png"]).unwrap();
+    conn.execute(
+        &format!("UPDATE {DB_PREFIX}_messages SET images=?1"),
+        [&images],
+    )
+    .unwrap();
+    assert!(load_native_history(DB_PREFIX, DB_SESSION).is_err());
+    let stored: (String, String) = conn
+        .query_row(
+            &format!("SELECT content,images FROM {DB_PREFIX}_messages"),
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(stored, ("keep this".into(), images));
 }

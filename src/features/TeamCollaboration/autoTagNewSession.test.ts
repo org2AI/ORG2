@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  org2CloudOrgsAtom,
-  sidebarActiveCloudOrgIdAtom,
-} from "@src/features/Org2Cloud/org2CloudOrgsAtom";
+import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
+import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { org2CloudRepoScopesAtom } from "@src/features/Org2Cloud/org2CloudSyncAtoms";
 import { org2CloudSyncEngine } from "@src/features/Org2Cloud/org2CloudSyncEngine";
+import { seedSidebarCloudScope } from "@src/features/Org2Cloud/sidebarCloudScope.testUtils";
 import { createInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 
 import { autoTagLaunchedSessionToActiveCloudOrg } from "./autoTagNewSession";
@@ -39,10 +38,19 @@ const ORG_ID = "org-1";
 const SCOPE_KEY = "github.com/acme/repo";
 
 function seedCloudScope() {
-  store.set(sidebarActiveCloudOrgIdAtom, ORG_ID);
+  store.set(org2CloudAuthAtom, {
+    kind: "org2_cloud",
+    userId: "test-user",
+    accessToken: "test-access",
+    refreshToken: "test-refresh",
+    supabaseUrl: "https://cloud.example.test",
+    supabaseAnonKey: "test-anon",
+    expiresAt: 9999999999,
+  });
   store.set(org2CloudOrgsAtom, [
     { orgId: ORG_ID, name: "Acme", role: "member" },
   ]);
+  seedSidebarCloudScope(store, ORG_ID);
   store.set(org2CloudRepoScopesAtom, { [ORG_ID]: [SCOPE_KEY] });
   resolveScopeKeysMock.mockResolvedValue([SCOPE_KEY]);
 }
@@ -51,7 +59,7 @@ describe("autoTagLaunchedSessionToActiveCloudOrg", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     store.set(sessionOrgTagsAtom, {});
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
     store.set(org2CloudOrgsAtom, []);
     store.set(org2CloudRepoScopesAtom, {});
     resolveScopeKeysMock.mockResolvedValue([]);
@@ -120,7 +128,7 @@ describe("autoTagLaunchedSessionToActiveCloudOrg", () => {
 
   it("skips when no cloud org scope is active in the sidebar", async () => {
     seedCloudScope();
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
 
     const tagged = await autoTagLaunchedSessionToActiveCloudOrg({
       sessionId: "session-1",

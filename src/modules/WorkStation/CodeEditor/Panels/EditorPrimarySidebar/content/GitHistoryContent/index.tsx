@@ -16,18 +16,18 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
-import { useActionSystem } from "@src/ActionSystem";
 import { getGitCommits } from "@src/api/http/git/commits";
 import type { GitCommitInfo } from "@src/api/http/git/types";
 import { Placeholder } from "@src/components/Placeholder";
+import { VirtualList } from "@src/components/VirtualList";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import {
   type UseWorkStationTabsReturn,
   useWorkStationTabs,
 } from "@src/hooks/tabHost/useWorkStationTabs";
 import { HugeiconsIcon, Loading03Icon } from "@src/icons";
+import { useActionSystem } from "@src/scaffold/ActionSystem";
 import {
   type GitHistoryRequest,
   getCachedGitHistory,
@@ -363,16 +363,16 @@ const GitHistoryContentInner: React.FC<GitHistoryContentInnerProps> = ({
         <Placeholder
           variant="empty"
           placement="sidebar"
-          title={t("placeholders.noResults", "No results")}
+          title={t("placeholders.noResults")}
           fillParentHeight
         />
       ) : (
-        <Virtuoso
+        <VirtualList
           className="scrollbar-hide min-h-0 flex-1"
           data={filteredCommits}
           computeItemKey={(_index, commit) => commit.sha}
           fixedItemHeight={ROW_HEIGHT}
-          overscan={ROW_HEIGHT * 8}
+          overscanPx={ROW_HEIGHT * 8}
           endReached={() => {
             void handleLoadMore();
           }}

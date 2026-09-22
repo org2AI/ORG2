@@ -48,6 +48,7 @@ pub(super) fn from_non_streaming(parsed: &MessagesResponse) -> HashMap<String, i
             api_usage.cache_creation_input_tokens,
         );
     }
+    merge_cache_lifetimes(&mut usage, api_usage.cache_creation.as_ref());
     usage
 }
 
@@ -67,6 +68,7 @@ pub(super) fn merge_message_start(usage: &mut HashMap<String, i64>, message: Opt
         return;
     };
 
+    merge_cache_lifetimes(usage, api_usage.get("cache_creation"));
     if let Some(input) = api_usage.get("input_tokens").and_then(Value::as_i64) {
         debug!("[streaming-usage] MessageStart input_tokens={}", input);
         usage.insert(usage_key::PROMPT_TOKENS.to_string(), input);
@@ -130,6 +132,22 @@ pub(super) fn finalize_total(usage: &mut HashMap<String, i64>) {
         usage.get(usage_key::COMPLETION_TOKENS),
     ) {
         usage.insert(usage_key::TOTAL_TOKENS.to_string(), prompt + completion);
+    }
+}
+
+// Preserve reported cache-write lifetimes for downstream receipts. An omitted
+// lifetime remains unknown: never infer 5m/1h from the combined write counter.
+fn merge_cache_lifetimes(usage: &mut HashMap<String, i64>, creation: Option<&Value>) {
+    for (field, key) in [
+        ("ephemeral_5m_input_tokens", "cache_write_5m_tokens"),
+        ("ephemeral_1h_input_tokens", "cache_write_1h_tokens"),
+    ] {
+        if let Some(tokens) = creation
+            .and_then(|value| value.get(field))
+            .and_then(Value::as_i64)
+        {
+            usage.insert(key.to_owned(), tokens);
+        }
     }
 }
 

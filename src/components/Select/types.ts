@@ -27,7 +27,7 @@ export interface SelectProps {
   /** @default 'single' */
   mode?: "single" | "multiple";
   options?: (SelectOption | SelectOptionGroup)[];
-  /** @default 'Please select' */
+  /** @default 'Select' */
   placeholder?: ReactNode;
   /** @default 'default' */
   size?: "mini" | "small" | "default" | "large";

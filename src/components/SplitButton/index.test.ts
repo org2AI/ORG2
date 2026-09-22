@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import SplitButton from ".";
 
-type SplitVariant =
+type SplitColor =
   | "primary"
   | "secondary"
   | "danger"
@@ -12,12 +12,15 @@ type SplitVariant =
   | "success"
   | "merged";
 
-function renderSplitButton(variant: SplitVariant, menuOpen = false): string {
+/** Neutral colors are variants; semantic ones are a toned primary. */
+function renderSplitButton(color: SplitColor, menuOpen = false): string {
+  const neutral = color === "primary" || color === "secondary";
   return renderToStaticMarkup(
     React.createElement(
       SplitButton,
       {
-        variant,
+        variant: neutral ? color : "primary",
+        tone: neutral ? undefined : color,
         menu: React.createElement("div", { "data-testid": "menu" }),
         menuOpen,
         onMenuButtonClick: vi.fn(),
@@ -36,10 +39,10 @@ function menuButtonClassName(markup: string): string {
 describe("SplitButton", () => {
   it("uses the success tone while hovered or open", () => {
     expect(menuButtonClassName(renderSplitButton("success"))).toContain(
-      "enabled:hover:bg-success-5"
+      "enabled:hover:bg-success-fill-hover"
     );
     expect(menuButtonClassName(renderSplitButton("success", true))).toContain(
-      "bg-success-5 enabled:hover:bg-success-5"
+      "bg-success-fill-hover enabled:hover:bg-success-fill-hover"
     );
   });
 
@@ -72,7 +75,6 @@ describe("SplitButton", () => {
     const markup = renderToStaticMarkup(
       React.createElement(SplitButton, {
         variant: "tertiary",
-        appearance: "soft-no-drop",
         menu: React.createElement("div"),
         menuOpen: false,
         onMenuButtonClick: vi.fn(),
@@ -84,12 +86,13 @@ describe("SplitButton", () => {
     expect(classes[0][1]).toContain(
       "group-hover/button-split:bg-button-hover-no-drop"
     );
-    expect(classes[0][1]).toContain("enabled:hover:bg-button-hover-no-drop");
-    expect(classes[1][1]).toContain("enabled:hover:bg-button-hover");
-    expect(classes[1][1]).toContain("focus-visible:bg-button-hover");
-    expect(classes[1][1]).not.toContain(
-      "enabled:hover:bg-button-hover-no-drop"
-    );
+    expect(classes[0][1]).toContain("btn-hover:bg-surface-hover");
+    // The menu segment's own stronger fill is a caller class, so it overrides
+    // the tertiary hover default the underlying Button still emits.
+    const menuClasses = classes[1][1].split(" ");
+    expect(menuClasses).toContain("enabled:hover:bg-button-hover");
+    expect(menuClasses).toContain("focus-visible:bg-button-hover");
+    expect(menuClasses).not.toContain("enabled:hover:bg-button-hover-no-drop");
   });
 
   it.each([false, true])(
@@ -98,7 +101,6 @@ describe("SplitButton", () => {
       const markup = renderToStaticMarkup(
         React.createElement(SplitButton, {
           variant: "tertiary",
-          appearance: "soft-no-drop",
           menu: React.createElement("div"),
           menuOpen: true,
           disabled,
@@ -167,5 +169,15 @@ describe("SplitButton", () => {
 
     expect(markup).toContain("width:60px");
     expect(markup).toContain("width:20px");
+  });
+});
+
+describe("SplitButton divider", () => {
+  it("draws an inset border-colored divider at the menu segment's leading edge", () => {
+    const markup = renderSplitButton("danger");
+    const menuButton = markup.slice(markup.lastIndexOf("<button"));
+    expect(menuButton).toMatch(
+      /<span[^>]*data-split-divider[^>]*class="[^"]*top-1\/4 bottom-1\/4 left-0 w-\[0\.5px\] bg-border-1"/
+    );
   });
 });

@@ -71,20 +71,14 @@ export function useCloudRemoteSessionMenuItems({
       );
       return buildCloudSessionNativeMenuItems({
         labels: {
-          openInNewTab: tCommon("actions.openInNewTab", "Open in New Tab"),
-          openInNewWindow: tCommon(
-            "actions.openInNewWindow",
-            "Open in New Window"
-          ),
-          openInMyStation: tSessions(
-            "controlTower.sidebar.openInMyStation",
-            "Open in My Station"
-          ),
+          openInNewTab: tCommon("actions.openInNewTab"),
+          openInNewWindow: tCommon("actions.openInNewWindow"),
+          openInMyStation: tSessions("controlTower.sidebar.openInMyStation"),
           copyUrl: t("cloud.sidebar.copyUrl"),
           togglePin: isPinned
-            ? tCommon("sessions:chat.unpinSession", "Unpin")
-            : tCommon("sessions:chat.pinSession", "Pin"),
-          remove: tCommon("actions.remove", "Remove"),
+            ? tCommon("sessions:chat.unpinSession")
+            : tCommon("sessions:chat.pinSession"),
+          remove: tCommon("actions.remove"),
         },
         onOpenInNewTab: () => openTeamSessionAtDestination(row, "new-tab"),
         onOpenInNewWindow: () =>

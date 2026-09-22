@@ -156,9 +156,7 @@ export function buildContextInfoCategories(
     } else {
       categories.push({
         key: "unattributed",
-        label: t("contextInfo.categories.unattributed", {
-          defaultValue: "Unattributed",
-        }),
+        label: t("contextInfo.categories.unattributed"),
         tokens: delta,
         percent: 0,
         hex: colors.unattributed,

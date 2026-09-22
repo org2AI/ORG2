@@ -8,7 +8,7 @@
  * top chrome row; the sidebar starts below it and never owns its own header.
  *
  * Frame-level responsibilities are limited to:
- * - rounding / background
+ * - background
  * - the floating replay controls
  * - empty-state placeholder
  */
@@ -22,37 +22,26 @@ import { NoTabsPlaceholder } from "@src/modules/WorkStation/shared";
 import FloatingReplayContainer from "../FloatingReplayContainer";
 
 interface SimulatorSingleViewProps {
-  isBootingEvent: boolean;
   mainContentAppType: AppType | null;
   displayContent: React.ReactNode;
-  hideHeader?: boolean;
-  compactMode?: boolean;
 }
 
 export const SimulatorSingleView: React.FC<SimulatorSingleViewProps> = ({
-  isBootingEvent,
   mainContentAppType,
   displayContent,
-  hideHeader = false,
-  compactMode = false,
 }) => {
   const { t } = useTranslation("sessions");
   const { sessionId } = useSessionId();
   const hasSession = Boolean(sessionId);
 
-  const showSessionPlaceholder =
-    !hasSession && !displayContent && !isBootingEvent;
-  const showEmptyTabsPlaceholder =
-    hasSession && !displayContent && !isBootingEvent;
+  const showSessionPlaceholder = !hasSession && !displayContent;
+  const showEmptyTabsPlaceholder = hasSession && !displayContent;
 
-  const showRounded = !hideHeader;
   const showFloatingReplayControls =
     hasSession && mainContentAppType && mainContentAppType !== AppType.DIFF;
 
   return (
-    <div
-      className={`relative flex h-full w-full flex-col overflow-hidden ${showRounded ? "rounded-xl" : ""} bg-bg-2 ${compactMode ? "simulator-compact-mode" : ""}`}
-    >
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-bg-2">
       <div className="relative min-h-0 flex-1 overflow-auto text-text-1">
         {showSessionPlaceholder ? (
           <NoTabsPlaceholder

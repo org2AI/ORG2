@@ -13,6 +13,7 @@ import {
   type SaveKeyRequest,
 } from "@src/api/tauri/rpc/schemas/validation";
 import { LOCAL_MODEL_PROVIDER, type ModelType } from "@src/api/types/keys";
+import { withRecordedSetupMethod } from "@src/hooks/keyVault/accountSetupMethod";
 import { useUndoableState } from "@src/hooks/ui/useUndoableState";
 
 import { DEFAULT_WIZARD_DATA } from "../config";
@@ -44,6 +45,13 @@ const OAUTH_ENV_VARS_BY_AGENT: Record<
   [CLI_AGENT.COPILOT]: {
     accessToken: "GITHUB_TOKEN",
   },
+};
+
+// The method each agent's setup step shows before the user picks one
+// (`CodexSetup` / `ClaudeCodeSetup` both fall back to sign-in).
+const DEFAULT_SETUP_METHOD_BY_AGENT: Record<string, string> = {
+  [CLI_AGENT.CODEX]: "signin",
+  [CLI_AGENT.CLAUDE_CODE]: "signin",
 };
 
 // ============================================
@@ -212,10 +220,11 @@ export function useWizard(options: UseWizardOptions): UseWizardReturn {
       base_url: cleanInput(data.extracted_base_url),
       protocol: data.protocol,
       env_vars: Object.keys(envVarRecord).length > 0 ? envVarRecord : undefined,
-      account_metadata:
-        data.account_metadata && Object.keys(data.account_metadata).length > 0
-          ? data.account_metadata
-          : undefined,
+      account_metadata: withRecordedSetupMethod(
+        data.account_metadata,
+        data.setup_method,
+        DEFAULT_SETUP_METHOD_BY_AGENT[data.agent_type]
+      ),
       available_models:
         allAvailableModels.length > 0 ? allAvailableModels : allowedModels,
       enabled_models: allowedModels,

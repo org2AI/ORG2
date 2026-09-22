@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import { prepareChatImageFile } from "@src/engines/ChatPanel/hooks/useInputArea/imageExtensions";
@@ -6,23 +6,26 @@ import type { MobileSendAttachment } from "@src/modules/MobileRemote/connection/
 import { MAX_CHAT_IMAGES } from "@src/store/ui/chatImageAtom";
 import { optimizeImage } from "@src/util/optimization/imageOptimizer";
 
-export interface MobileComposerImage {
-  id: string;
-  dataUrl: string;
-  fileName: string;
-}
+import { useMobileComposerDraft } from "./MobileComposerDraftContext";
+import { MOBILE_DRAFT_IMAGE_BUDGET } from "./mobileComposerDraftStore";
+import type {
+  MobileComposerDraftHandle,
+  MobileComposerImage,
+} from "./mobileComposerDraftStore";
 
-export function useMobileComposerImages() {
+export function useMobileComposerImages(
+  draftHandle?: MobileComposerDraftHandle
+) {
   const { t } = useTranslation("mobileRemote");
-  const [images, setImages] = useState<MobileComposerImage[]>([]);
-  const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string>();
-  const imagesLengthRef = useRef(0);
-
-  imagesLengthRef.current = images.length;
+  const { handle, snapshot } = useMobileComposerDraft(undefined, draftHandle);
+  const { images, processing, imageError: error } = snapshot;
 
   const ingestFiles = useCallback(
     async (files: File[]) => {
+      if (handle.getSnapshot().processing) return;
+      const entry = handle.capture();
+      const setError = (imageError?: string) =>
+        handle.updateIfCurrent(entry, (draft) => ({ ...draft, imageError }));
       const validFiles = files
         .map(prepareChatImageFile)
         .filter((file): file is File => file !== null);
@@ -33,7 +36,7 @@ export function useMobileComposerImages() {
         return;
       }
 
-      const remaining = MAX_CHAT_IMAGES - imagesLengthRef.current;
+      const remaining = MAX_CHAT_IMAGES - handle.getSnapshot().images.length;
       if (remaining <= 0) {
         setError(
           t("composer.attachments.maxReached", { max: MAX_CHAT_IMAGES })
@@ -53,11 +56,15 @@ export function useMobileComposerImages() {
         setError(undefined);
       }
 
-      setProcessing(true);
+      handle.updateIfCurrent(entry, (draft) => ({
+        ...draft,
+        processing: true,
+      }));
       const newImages: MobileComposerImage[] = [];
 
       try {
         for (const file of filesToProcess) {
+          if (!handle.isCurrent(entry)) return;
           try {
             const result = await optimizeImage(file, {
               maxWidth: 1920,
@@ -65,6 +72,22 @@ export function useMobileComposerImages() {
               quality: 0.85,
               maxFileSizeBytes: 500 * 1024,
             });
+            if (!handle.isCurrent(entry)) return;
+            const retainedBytes = [
+              ...handle.getSnapshot().images,
+              ...newImages,
+            ].reduce(
+              (total, image) =>
+                total + 2 * (image.dataUrl.length + image.fileName.length),
+              0
+            );
+            if (
+              retainedBytes + 2 * (result.dataUrl.length + file.name.length) >
+              MOBILE_DRAFT_IMAGE_BUDGET
+            ) {
+              setError(t("composer.attachments.processFailed"));
+              continue;
+            }
             newImages.push({
               id: `mobile-img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
               dataUrl: result.dataUrl,
@@ -76,28 +99,41 @@ export function useMobileComposerImages() {
         }
 
         if (newImages.length > 0) {
-          setImages((prev) => [...prev, ...newImages]);
+          try {
+            handle.updateIfCurrent(entry, (draft) => ({
+              ...draft,
+              images: [...draft.images, ...newImages].slice(0, MAX_CHAT_IMAGES),
+            }));
+          } catch {
+            setError(t("composer.attachments.processFailed"));
+          }
         }
       } finally {
-        setProcessing(false);
+        handle.updateIfCurrent(entry, (draft) => ({
+          ...draft,
+          processing: false,
+        }));
       }
     },
-    [t]
+    [handle, t]
   );
 
-  const removeImage = useCallback((id: string) => {
-    setImages((prev) => prev.filter((image) => image.id !== id));
-    setError(undefined);
-  }, []);
-
-  const clearImages = useCallback(() => {
-    setImages([]);
-    setError(undefined);
-  }, []);
+  const removeImage = useCallback(
+    (id: string) => {
+      handle.update((draft) => ({
+        ...draft,
+        images: draft.images.filter((image) => image.id !== id),
+        imageError: undefined,
+      }));
+    },
+    [handle]
+  );
 
   const toSendAttachments = useCallback((): MobileSendAttachment[] => {
-    return images.map(({ dataUrl, fileName }) => ({ dataUrl, fileName }));
-  }, [images]);
+    return handle
+      .getSnapshot()
+      .images.map(({ dataUrl, fileName }) => ({ dataUrl, fileName }));
+  }, [handle]);
 
   return {
     images,
@@ -106,7 +142,6 @@ export function useMobileComposerImages() {
     error,
     ingestFiles,
     removeImage,
-    clearImages,
     toSendAttachments,
   };
 }

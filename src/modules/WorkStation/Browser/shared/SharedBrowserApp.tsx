@@ -55,6 +55,7 @@ export const SharedBrowserApp: React.FC = memo(() => {
             hidden={!activeRect || isWebviewBlocked}
             manageWebviews
             bypassStationModeBlocking
+            suppressStatusOverlays
           />
         </Suspense>
       )}

@@ -29,6 +29,11 @@ import SettingsTable, {
 import Switch from "@src/components/Switch";
 import TabPill from "@src/components/TabPill";
 import {
+  DETAIL_PANEL_TOKENS,
+  ScrollPreservation,
+  ToolInlineInfoCard,
+} from "@src/components/layout/blocks";
+import {
   TOOL_CATEGORY_ORDER,
   toolCategoryLabel,
 } from "@src/modules/MainApp/Integrations/BuiltInTools/config";
@@ -37,11 +42,6 @@ import {
   type ToolActionEntry,
 } from "@src/modules/MainApp/Integrations/BuiltInTools/types";
 import { useUnifiedToolsMetadata } from "@src/modules/MainApp/Integrations/BuiltInTools/useUnifiedToolsMetadata";
-import {
-  DETAIL_PANEL_TOKENS,
-  ScrollPreservation,
-  ToolInlineInfoCard,
-} from "@src/modules/shared/layouts/blocks";
 
 import { agentToolDisplayName } from "../agentToolName";
 import { type ToolEditorState, useAgentToolEditor } from "./useAgentToolEditor";

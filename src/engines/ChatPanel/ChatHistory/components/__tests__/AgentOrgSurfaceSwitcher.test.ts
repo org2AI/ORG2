@@ -18,12 +18,18 @@ import AgentOrgSurfaceSwitcher from "../AgentOrgSurfaceSwitcher";
 
 const dropdownEngineTestState = vi.hoisted(() => ({ maxHeight: 300 }));
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { defaultValue?: string }) =>
-      options?.defaultValue ?? key,
-  }),
-}));
+vi.mock("react-i18next", async () => {
+  const { default: sessions } =
+    await import("@src/i18n/locales/en/sessions.json");
+  const labels: Record<string, string> = {
+    "sessions:groupChat.triggerLabel": sessions.groupChat.triggerLabel,
+    "sessions:planner.agentOrgOverview.title":
+      sessions.planner.agentOrgOverview.title,
+    "sessions:planner.agentOrgMemberStatus.noTasks":
+      sessions.planner.agentOrgMemberStatus.noTasks,
+  };
+  return { useTranslation: () => ({ t: (key: string) => labels[key] ?? key }) };
+});
 
 vi.mock("@src/hooks/dropdown", async () => {
   const ReactModule = await vi.importActual<typeof import("react")>("react");

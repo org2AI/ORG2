@@ -129,10 +129,7 @@ export function useDiffDetailContent({
         sections={consolidatedSections}
         viewMode={diffViewMode}
         loading={orgtrackFinalDiffsLoading}
-        emptyTitle={t(
-          "simulator.replay.diffApp.emptyForFilter",
-          "No diffs yet"
-        )}
+        emptyTitle={t("simulator.replay.diffApp.emptyForFilter")}
         focusedPath={focusedDiffPath}
         focusedNonce={focusedDiffNonce}
         collapseSignal={collapseAllSignal}

@@ -151,27 +151,6 @@ export function getListIconClasses(isSelected: boolean): string {
 }
 
 // ==============================================
-// Section Header Tokens (group labels in list panels)
-// ==============================================
-
-export const LIST_PANEL_SECTION_HEADER = {
-  /** Base typography: 11px, medium, uppercase, tracking-wide */
-  typography: "text-[11px] font-medium uppercase tracking-wide text-text-3",
-
-  /** Horizontal padding only; vertical spacing comes from sectionWithHeader gap */
-  paddingFirst: "px-3",
-
-  /** Same as first; section top spacing uses sectionGroupTopSpacing on the parent */
-  paddingRest: "px-3",
-
-  /** Combined: first section header */
-  first: "px-3 text-[11px] font-medium uppercase tracking-wide text-primary-6",
-
-  /** Combined: subsequent section header */
-  rest: "px-3 text-[11px] font-medium uppercase tracking-wide text-primary-6",
-} as const;
-
-// ==============================================
 // List scroll area (padding between header/search and first item)
 // ==============================================
 

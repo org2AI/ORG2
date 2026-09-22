@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { ideServerAuthHeaders } from "@src/config/ideServer";
 import {
   repoPathAtom,
   repositoryIdAtom,
@@ -303,7 +304,10 @@ export function createWorkspaceHelpers(store: E2EStore) {
         e2eUrl("/agent/test/session/workspace/list-from-db"),
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...ideServerAuthHeaders(),
+          },
           body: JSON.stringify({ session_id: sessionId }),
         }
       );
@@ -339,7 +343,7 @@ export function createWorkspaceHelpers(store: E2EStore) {
         e2eUrl(
           `/git/api/git/repo/${encodeURIComponent(repoId)}/status?${query.toString()}`
         ),
-        { method: "GET" }
+        { method: "GET", headers: ideServerAuthHeaders() }
       );
       const httpStatus = response.status;
       let body: unknown = null;

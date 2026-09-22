@@ -65,20 +65,6 @@
     }
   }
 
-  &__shimmer {
-    height: 120px;
-    margin: 16px;
-    border-radius: 6px;
-    background: linear-gradient(
-      90deg,
-      var(--color-fill-2, #f2f3f5) 25%,
-      var(--color-fill-1, #f7f8fa) 50%,
-      var(--color-fill-2, #f2f3f5) 75%
-    );
-    background-size: 200% 100%;
-    animation: mermaid-shimmer 1.5s ease-in-out infinite;
-  }
-
   &__code {
     margin: 0;
     padding: 12px;
@@ -107,14 +93,5 @@
         color: var(--color-text-1);
       }
     }
-  }
-}
-
-@keyframes mermaid-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
   }
 }

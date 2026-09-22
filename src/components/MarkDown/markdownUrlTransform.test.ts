@@ -1,17 +1,36 @@
 import { defaultUrlTransform } from "react-markdown";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildCloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
-
+import {
+  registerMarkdownExtensions,
+  resetMarkdownExtensions,
+} from "./extensions";
 import { markdownUrlTransform } from "./markdownUrlTransform";
 
-const REFERENCE = buildCloudSessionReference({
-  orgId: "0830d453-1111-4222-8333-444455556666",
-  ownerUserId: "6c6a39b1-4ca5-4c48-89b4-74d1565c258d",
-  sourceSessionId: "sdeagent-1784668132283",
-});
+/**
+ * Shaped like the real `orgii://cloud/session/ref` grammar, but declared here
+ * as a literal: which scheme is a reference is the registering tier's
+ * business, not the renderer's. This suite pins the transform's own rule —
+ * an owned href survives on `href` and nowhere else.
+ */
+const REFERENCE =
+  "orgii://cloud/session/ref?v=1&org=0830d453-1111-4222-8333-444455556666&owner=6c6a39b1-4ca5-4c48-89b4-74d1565c258d&session=sdeagent-1784668132283";
 
 describe("markdown url transform", () => {
+  beforeEach(() => {
+    registerMarkdownExtensions({
+      ownsReferenceHref: (href) => href === REFERENCE,
+    });
+  });
+  afterEach(() => {
+    resetMarkdownExtensions();
+  });
+
+  it("sanitizes an owned scheme when no tier registered it", () => {
+    resetMarkdownExtensions();
+    expect(markdownUrlTransform(REFERENCE, "href")).toBe("");
+  });
+
   it("proves the default sanitizer would drop a session reference", () => {
     expect(defaultUrlTransform(REFERENCE)).toBe("");
   });

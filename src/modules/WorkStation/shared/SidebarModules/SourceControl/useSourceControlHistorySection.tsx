@@ -8,8 +8,8 @@ import type { TFunction } from "i18next";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   SectionFilterInput,
   makeSectionFilterAction,

@@ -12,7 +12,11 @@ import { useLocation } from "react-router-dom";
 
 import { rpc } from "@src/api/tauri/rpc";
 import { Message } from "@src/components/Message";
-import TabPill from "@src/components/TabPill";
+import {
+  DETAIL_PANEL_TOKENS,
+  InternalHeader,
+  ScrollPreservation,
+} from "@src/components/layout/blocks";
 import {
   type AgentOrgsTabSegment,
   WIZARD_IDS,
@@ -27,11 +31,6 @@ import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useCliAgents } from "@src/modules/MainApp/Integrations/KeyVault/CliClients/hooks/useCliAgents";
-import {
-  DETAIL_PANEL_TOKENS,
-  InternalHeader,
-  ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
 import { reposAtom } from "@src/store/repo/atoms";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
 
@@ -111,11 +110,7 @@ const AgentOrgsPage: React.FC = () => {
     }
     if (lastReportedErrorRef.current === agentDefsLoadError) return;
     lastReportedErrorRef.current = agentDefsLoadError;
-    Message.error(
-      t("agentOrgs.agentLoadFailed", {
-        defaultValue: "Failed to load agent definitions",
-      })
-    );
+    Message.error(t("agentOrgs.agentLoadFailed"));
   }, [agentDefsLoadError, t]);
 
   const { accounts } = useKeyVault({ autoLoad: true });
@@ -164,11 +159,7 @@ const AgentOrgsPage: React.FC = () => {
         );
       } catch (err) {
         logger.error("save failed", err);
-        Message.error(
-          t("agentOrgs.orgSaveFailed", {
-            defaultValue: "Failed to save organization",
-          })
-        );
+        Message.error(t("agentOrgs.orgSaveFailed"));
       }
     },
     [orgs, loadOrgs, setOrgs, closeWizard, t]
@@ -178,15 +169,13 @@ const AgentOrgsPage: React.FC = () => {
     async (orgId: string) => {
       const target = orgs.find((org) => org.id === orgId);
       const confirmed = await confirmDestructiveAction({
-        title: t("agentOrgs.deleteOrgTitle", {
-          defaultValue: "Delete team?",
-        }),
+        title: t("agentOrgs.deleteOrgTitle"),
         message: t("agentOrgs.deleteOrgMessage", {
           name: target?.name ?? "this team",
           defaultValue: `"${target?.name ?? "this team"}" will be permanently removed. This cannot be undone.`,
         }),
-        okLabel: t("common:actions.delete", { defaultValue: "Delete" }),
-        cancelLabel: t("common:actions.cancel", { defaultValue: "Cancel" }),
+        okLabel: t("common:actions.delete"),
+        cancelLabel: t("common:actions.cancel"),
       });
       if (!confirmed) return;
 
@@ -194,16 +183,10 @@ const AgentOrgsPage: React.FC = () => {
         await rpc.agentOrgs.orgs.remove({ orgId });
         const refreshed = await loadOrgs();
         setOrgs(refreshed);
-        Message.success(
-          t("agentOrgs.orgDeleted", { defaultValue: "Team deleted" })
-        );
+        Message.success(t("agentOrgs.orgDeleted"));
       } catch (err) {
         logger.error("delete failed", err);
-        Message.error(
-          t("agentOrgs.orgDeleteFailed", {
-            defaultValue: "Failed to delete team",
-          })
-        );
+        Message.error(t("agentOrgs.orgDeleteFailed"));
       }
     },
     [orgs, loadOrgs, setOrgs, t]
@@ -229,16 +212,10 @@ const AgentOrgsPage: React.FC = () => {
       try {
         await addAgent(agent);
         closeWizard();
-        Message.success(
-          t("agentOrgs.agentSaved", { defaultValue: "Agent saved" })
-        );
+        Message.success(t("agentOrgs.agentSaved"));
       } catch (err) {
         logger.error("agent save failed", err);
-        Message.error(
-          t("agentOrgs.agentSaveFailed", {
-            defaultValue: "Failed to save agent",
-          })
-        );
+        Message.error(t("agentOrgs.agentSaveFailed"));
       }
     },
     [addAgent, closeWizard, t]
@@ -248,16 +225,10 @@ const AgentOrgsPage: React.FC = () => {
     async (agentId: string) => {
       try {
         await removeAgent(agentId);
-        Message.success(
-          t("agentOrgs.agentDeleted", { defaultValue: "Agent deleted" })
-        );
+        Message.success(t("agentOrgs.agentDeleted"));
       } catch (err) {
         logger.error("agent delete failed", err);
-        Message.error(
-          t("agentOrgs.agentDeleteFailed", {
-            defaultValue: "Failed to delete agent",
-          })
-        );
+        Message.error(t("agentOrgs.agentDeleteFailed"));
       }
     },
     [removeAgent, t]
@@ -297,18 +268,9 @@ const AgentOrgsPage: React.FC = () => {
     <div className="settings-page absolute inset-0 flex flex-col overflow-hidden">
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tabs}
-            activeTab={activeTableTab}
-            onChange={setActiveTableTab}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tabs}
+        activeTab={activeTableTab}
+        onTabChange={setActiveTableTab}
       />
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>

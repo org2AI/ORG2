@@ -45,7 +45,8 @@
     "diff": "Diff",
     "colleagues": "Colegas",
     "terminals": "Terminais",
-    "openSourceRepo": "Abrir repo de código-fonte"
+    "openSourceRepo": "Abrir repo de código-fonte",
+    "closeSettings": "Fechar configurações"
   },
   "routes": {
     "session": "Chat",
@@ -73,12 +74,7 @@
       "manual": "Ordem manual"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "Gerenciar",
-      "core": "Núcleo",
-      "agent": "Agent",
-      "org": "Equipe",
-      "agentOrgs": "Agent e equipe"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "Sem agrupamento",
@@ -100,55 +96,23 @@
       "untitledSession": "Sessão Sem Título",
       "enterSessionName": "Digite o nome da sessão"
     },
-    "groups": {
-      "economy": "Economia",
-      "myServices": "Meus Serviços",
-      "osAgent": "OS Agent",
-      "draft": "Rascunho",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Chave Hospedada",
-      "cloud": "Nuvem",
-      "openSource": "Código aberto",
-      "timeline": "Timeline"
-    },
     "actions": {
       "addNew": "Adicionar",
       "collapseAll": "Recolher tudo",
-      "markAllRead": "Marcar tudo como lido",
-      "toggleGroup": "Alternar seção"
+      "markAllRead": "Marcar tudo como lido"
     },
     "search": {
-      "folders": "Pesquisar no Workspace...",
-      "sessions": "Pesquisar sessões...",
-      "projects": "Pesquisar projetos...",
-      "colleagues": "Pesquisar colegas..."
-    },
-    "folderCounts": {
-      "repo": "{{count}} Repo",
-      "repo_plural": "{{count}} Repos",
-      "multiRepoWorkspace": "{{count}} Workspace multi-Repo",
-      "multiRepoWorkspace_plural": "{{count}} Workspaces multi-Repo"
+      "sessions": "Pesquisar sessões..."
     },
     "bottomBar": {
       "settings": "Configurações",
-      "clockLabel": "Hora atual",
       "updateAvailable": "Baixar atualização v{{version}}"
     },
     "settingsMenu": {
       "appearance": "Aparência",
       "modifyAppearance": "Modificar aparência",
-      "language": "Idioma",
       "viewRam": "Ver RAM",
-      "tutorials": "Tutoriais",
       "openSettings": "Abrir configurações"
-    },
-    "empty": {
-      "noItems": "Nenhum item",
-      "noSessions": "Nenhuma sessão",
-      "noSessionsDesc": "Inicie uma nova sessão para começar",
-      "noResultsFor": "Nenhum resultado para \"{{query}}\"",
-      "noSearchResults": "Nenhum resultado encontrado"
     },
     "presence": {
       "tooltip": "Define a tua disponibilidade — os agentes adaptam-se a se estás ou não ao teclado.",
@@ -166,9 +130,18 @@
       "durationTomorrow": "Amanhã",
       "unknownRole": "Papel desconhecido"
     },
-    "guide": {
-      "startSession": "Iniciar uma sessão",
-      "connectOrganization": "Conecte ou crie um espaço de trabalho"
+    "sections": {
+      "section": "Seção",
+      "create": "Nova seção",
+      "name": "Nome da seção",
+      "rename": "Renomear seção",
+      "delete": "Excluir seção (manter sessões)",
+      "remove": "Remover da seção",
+      "up": "Mover para cima",
+      "down": "Mover para baixo",
+      "manage": "Gerenciar seção",
+      "more": "Carregar mais",
+      "retry": "Tentar novamente"
     }
   },
   "launchpad": {
@@ -320,11 +293,11 @@
       "forkModelFallback": "O modelo {{model}} do proprietário não está disponível com suas chaves — este fork usará {{fallback}} no lugar.",
       "forkModelUnavailable": "O modelo {{model}} do proprietário não está disponível com suas chaves — escolha um modelo antes de executar este fork.",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -810,7 +783,6 @@
         "errorChannelMissing": "Este canal não está mais disponível",
         "errorMessageMissing": "Essa mensagem não está mais disponível",
         "loadError": "Não foi possível carregar as mensagens",
-        "loadingMessages": "Carregando mensagens…",
         "loadOlder": "Carregar mensagens anteriores",
         "unknownAuthor": "Colega de equipe"
       }
@@ -834,26 +806,26 @@
     "deleteRoleCancel": "Cancelar",
     "deleteRoleOk": "Excluir",
     "deleteRoleTitle": "Excluir função?",
-    "followUpSuggestionsDesc": "Sugere possíveis próximos passos após um turno concluído de item de trabalho. Isso usa uma solicitação adicional ao modelo.",
+    "followUpSuggestionsDesc": "Sugere possíveis próximos passos após um turno concluído de item de trabalho. Isso usa uma solicitação adicional ao modelo",
     "followUpSuggestionsLabel": "Sugestões de follow-up do Agent",
-    "goalMaxTurnsDesc": "Continuar trabalhando na minha última solicitação por até N turnos extras depois que o agent normalmente pararia (0 = desativado).",
+    "goalMaxTurnsDesc": "Continuar trabalhando na minha última solicitação por até N turnos extras depois que o agent normalmente pararia (0 = desativado)",
     "goalMaxTurnsLabel": "Orçamento de continuação do objetivo",
     "guidanceLabel": "Orientação do Agent",
     "guidancePlaceholder": "Como o agent deve adaptar seu comportamento quando esta função estiver ativa?",
-    "modeSwitchAutoPlanDesc": "Alterna automaticamente as sugestões pendentes de modo Planejar quando o temporizador de confirmação expira.",
+    "modeSwitchAutoPlanDesc": "Alterna automaticamente as sugestões pendentes de modo Planejar quando o temporizador de confirmação expira",
     "modeSwitchAutoPlanLabel": "Plano automático na troca de modo",
     "newRoleDefaultLabel": "Função personalizada",
-    "pageDescription": "Defina a função que você está exercendo agora. O agent lê a orientação da função ativa e adapta seu comportamento — por exemplo, fazendo menos perguntas de esclarecimento quando você está concentrado ou agrupando resumos quando você está ausente.",
+    "pageDescription": "Defina a função que você está exercendo agora. O agent lê a orientação da função ativa e adapta seu comportamento — por exemplo, fazendo menos perguntas de esclarecimento quando você está concentrado ou agrupando resumos quando você está ausente",
     "pageTitle": "Minhas funções",
-    "planAutoApproveDesc": "Aprova automaticamente planos pendentes após N segundos (0 = esperar por mim).",
+    "planAutoApproveDesc": "Aprova automaticamente planos pendentes após N segundos (0 = esperar por mim)",
     "planAutoApproveLabel": "Aprovação automática de planos",
-    "questionAutoSkipDesc": "Pula automaticamente perguntas pendentes do agent após N segundos (0 = esperar por mim).",
+    "questionAutoSkipDesc": "Pula automaticamente perguntas pendentes do agent após N segundos (0 = esperar por mim)",
     "questionAutoSkipLabel": "Pular perguntas automaticamente",
     "roleNameLabel": "Nome",
     "roleNamePlaceholder": "Nome da função",
     "stanceAutonomous": "Autônomo — nunca esperar por mim",
     "stanceDeferAndBatch": "Adiar e agrupar — trabalhar primeiro, perguntar depois",
-    "stanceDesc": "Como o agent trata decisões bloqueantes enquanto esta função está ativa.",
+    "stanceDesc": "Como o agent trata decisões bloqueantes enquanto esta função está ativa",
     "stanceInteractive": "Interativo — perguntar à vontade",
     "stanceLabel": "Postura de comportamento"
   },
@@ -878,5 +850,10 @@
       "updated": "Atualizados recentemente",
       "forks": "Forks"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "A substituição parou porque os resultados ou o arquivo mudaram, ou uma gravação falhou. Alguns arquivos podem já ter sido atualizados. Pesquise novamente antes de tentar de novo.",
+    "budgetExceeded": "A pesquisa atingiu o limite de recursos. Os resultados são parciais; reduza o âmbito.",
+    "timeout": "A pesquisa excedeu o tempo limite. Reduza o âmbito e tente novamente."
   }
 }

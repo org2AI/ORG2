@@ -17,7 +17,13 @@
  */
 import React, { useCallback, useMemo, useRef } from "react";
 
-import { SpotlightFooter, type SpotlightFooterActiveChip } from "../components";
+import type { SpotlightPinScope } from "@src/store/ui/spotlightPinsAtom";
+
+import {
+  SpotlightFooter,
+  type SpotlightFooterActiveChip,
+  SpotlightSettingsMenu,
+} from "../components";
 import { SPOTLIGHT_CONFIG } from "../constants";
 import { SpotlightShellChrome } from "./SpotlightShellChrome";
 import {
@@ -44,6 +50,8 @@ interface SpotlightShellProps {
   activeActionChip?: SpotlightFooterActiveChip;
   /** Hide the keyboard-hints footer entirely (used by pure-input palettes). */
   hideFooter?: boolean;
+  /** Pin list the settings menu's "Unpin all" clears; omit when unpinnable. */
+  pinScope?: SpotlightPinScope;
   children: React.ReactNode;
 }
 
@@ -57,6 +65,7 @@ export const SpotlightShell: React.FC<SpotlightShellProps> = ({
   hasActiveAction = false,
   activeActionChip,
   hideFooter = false,
+  pinScope,
   children,
 }) => {
   // Tiny external stores so palette-level ShellFooterAction components can
@@ -113,10 +122,14 @@ export const SpotlightShell: React.FC<SpotlightShellProps> = ({
           // `empty:hidden` keeps the hint row's gap from opening up when no
           // palette contributes an inline control.
           trailingSlot={
-            <div
-              ref={setInlineHostEl}
-              className="flex items-center empty:hidden"
-            />
+            <>
+              <div
+                ref={setInlineHostEl}
+                className="flex items-center empty:hidden"
+              />
+              {/* Placement + dim only apply to the floating overlay. */}
+              {asPortal && <SpotlightSettingsMenu pinScope={pinScope} />}
+            </>
           }
         />
         <div ref={setPillHostEl} className="flex items-center" />
@@ -139,5 +152,3 @@ export const SpotlightShell: React.FC<SpotlightShellProps> = ({
     </SpotlightFooterActionContext.Provider>
   );
 };
-
-export default SpotlightShell;

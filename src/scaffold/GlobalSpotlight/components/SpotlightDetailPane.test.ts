@@ -17,6 +17,21 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+// The hover card is gated by `general.spotlightDetailCard`; every other key
+// keeps its real value so the rows render exactly as they do in the app.
+let detailCardEnabled = true;
+vi.mock("@src/hooks/settings/useSettings", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@src/hooks/settings/useSettings")>();
+  return {
+    ...actual,
+    useSettingValue: (key: string) =>
+      key === "general.spotlightDetailCard"
+        ? detailCardEnabled
+        : (actual.useSettingValue as (k: string) => unknown)(key),
+  };
+});
+
 describe("Spotlight row detail panes", () => {
   let root: Root;
   let container: HTMLDivElement;
@@ -32,6 +47,7 @@ describe("Spotlight row detail panes", () => {
     });
   };
   beforeEach(() => {
+    detailCardEnabled = true;
     vi.mocked(openPath).mockResolvedValue(undefined);
     vi.useFakeTimers();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -47,6 +63,9 @@ describe("Spotlight row detail panes", () => {
     container.setAttribute("data-spotlight-detail-anchor", "");
     document.body.append(container);
     root = createRoot(container);
+    renderRows();
+  });
+  function renderRows(): void {
     act(() =>
       root.render(
         createElement(
@@ -113,7 +132,7 @@ describe("Spotlight row detail panes", () => {
         )
       )
     );
-  });
+  }
   afterEach(() => {
     act(() => {
       root.unmount();
@@ -141,6 +160,16 @@ describe("Spotlight row detail panes", () => {
     expect(pane()?.textContent).not.toContain("19m");
     expect(pane()?.textContent).not.toContain("2026-09-07");
     expect(select).not.toHaveBeenCalled();
+  });
+  it("shows no detail card at all once the setting is turned off", () => {
+    detailCardEnabled = false;
+    renderRows();
+    hover("repo");
+    expect(pane()).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(
+      container.querySelector("[data-spotlight-item-id='repo']")
+    ).not.toBeNull();
   });
   it("does not show a detail card for branch rows", () => {
     hover("branch");

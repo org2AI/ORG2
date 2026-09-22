@@ -8,6 +8,7 @@ import {
 
 import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import SessionSetupStepIndicator from "@src/features/SessionSetup/components/SessionSetupStepIndicator";
 import { useOAuthBrowserAutoStart } from "@src/features/SessionSetup/hooks/useOAuthBrowserAutoStart";
@@ -21,10 +22,6 @@ import {
   Login01Icon,
   Refresh04Icon,
 } from "@src/icons";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 /**
  * Localized strings a provider supplies to the shared OAuth shell. Every key
@@ -168,9 +165,8 @@ export function OAuthSessionSetupShell({
             required
           >
             <Button
-              variant={hasToken ? "success" : "primary"}
-              appearance={hasToken ? "outline" : "solid"}
-              size="default"
+              variant={hasToken ? "secondary" : "primary"}
+              tone={hasToken ? "success" : undefined}
               loading={isSigningIn || isWebviewLoading}
               disabled={isSigningIn || isWebviewLoading}
               onClick={() => setShowBrowser(true)}
@@ -276,7 +272,7 @@ export function OAuthSessionSetupShell({
                 <div className="mb-4 text-[12px] text-text-3">
                   {displayError}
                 </div>
-                <Button variant="primary" size="default" onClick={handleRetry}>
+                <Button variant="primary" onClick={handleRetry}>
                   {copy.retry}
                 </Button>
               </div>

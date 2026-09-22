@@ -93,7 +93,7 @@ interface UseWorkstationSidebarHandlersParams {
   groupByMode: GroupByMode;
   defaultGroupVisibleCount: SessionGroupVisibleCount;
   setGroupVisibleCounts: Dispatch<SetStateAction<Map<string, number>>>;
-  tCommon: (key: string, defaultValue?: string) => string;
+  tCommon: (key: string) => string;
   onOpenChatPanelTab: (tabId: string) => void;
   onOpenSessionChatPanelTab: (options: {
     sessionId: string;
@@ -310,10 +310,10 @@ export function useWorkstationSidebarHandlers({
           sessionId,
           outputPath: filePath,
         });
-        Message.success(tCommon("sessions:chat.exportSuccess", "Exported!"));
+        Message.success(tCommon("sessions:chat.exportSuccess"));
       } catch (error) {
         log.error("[WorkstationSidebar] Export markdown failed:", error);
-        Message.error(tCommon("sessions:chat.exportFailed", "Export failed"));
+        Message.error(tCommon("sessions:chat.exportFailed"));
       }
     },
     [sessionMap, sessionRouteLabel, tCommon]

@@ -108,38 +108,12 @@ pub async fn mimo_code_history_chunks(
 }
 
 #[tauri::command]
-pub async fn mimo_code_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<mimo_code_history::MimoCodeRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        mimo_code_history::list_mimo_code_recent_paths(&mut conn, limit)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
 pub async fn omp_history_chunks(
     session_id: String,
 ) -> Result<Vec<core_types::activity::ActivityChunk>, String> {
     tokio::task::spawn_blocking(move || {
         let conn = open_cache_conn()?;
         omp_history::load_omp_history_for_session(&conn, &session_id)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
-pub async fn omp_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<omp_history::OmpRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        omp_history::list_omp_recent_paths(&mut conn, limit)
     })
     .await
     .map_err(|err| format!("Task join error: {err}"))?
@@ -158,38 +132,12 @@ pub async fn pi_history_chunks(
 }
 
 #[tauri::command]
-pub async fn pi_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<pi_history::PiRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        pi_history::list_pi_recent_paths(&mut conn, limit)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
 pub async fn qoder_cli_history_chunks(
     session_id: String,
 ) -> Result<Vec<core_types::activity::ActivityChunk>, String> {
     tokio::task::spawn_blocking(move || {
         let conn = open_cache_conn()?;
         qoder_cli_history::load_qoder_cli_history_for_session(&conn, &session_id)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
-pub async fn qoder_cli_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<qoder_cli_history::QoderCliRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        qoder_cli_history::list_qoder_cli_recent_paths(&mut conn, limit)
     })
     .await
     .map_err(|err| format!("Task join error: {err}"))?
@@ -208,38 +156,12 @@ pub async fn qwen_code_history_chunks(
 }
 
 #[tauri::command]
-pub async fn qwen_code_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<qwen_code_history::QwenCodeRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        qwen_code_history::list_qwen_code_recent_paths(&mut conn, limit)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
 pub async fn kimi_history_chunks(
     session_id: String,
 ) -> Result<Vec<core_types::activity::ActivityChunk>, String> {
     tokio::task::spawn_blocking(move || {
         let conn = open_cache_conn()?;
         kimi_history::load_kimi_history_for_session(&conn, &session_id)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
-pub async fn kimi_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<kimi_history::KimiRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        kimi_history::list_kimi_recent_paths(&mut conn, limit)
     })
     .await
     .map_err(|err| format!("Task join error: {err}"))?
@@ -282,19 +204,6 @@ pub async fn trae_history_chunks(
 }
 
 #[tauri::command]
-pub async fn trae_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<trae_history::TraeRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        trae_history::list_trae_recent_paths(&mut conn, limit)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
 pub async fn cline_history_chunks(
     session_id: String,
 ) -> Result<Vec<core_types::activity::ActivityChunk>, String> {
@@ -307,38 +216,12 @@ pub async fn cline_history_chunks(
 }
 
 #[tauri::command]
-pub async fn cline_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<cline_history::ClineRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        cline_history::list_cline_recent_paths(&mut conn, limit)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
 pub async fn workbuddy_history_chunks(
     session_id: String,
 ) -> Result<Vec<core_types::activity::ActivityChunk>, String> {
     tokio::task::spawn_blocking(move || {
         let conn = open_cache_conn()?;
         workbuddy_history::load_workbuddy_history_for_session(&conn, &session_id)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-#[tauri::command]
-pub async fn workbuddy_recent_paths(
-    limit: Option<usize>,
-) -> Result<Vec<workbuddy_history::WorkBuddyRecentPath>, String> {
-    let limit = limit.unwrap_or(20);
-    tokio::task::spawn_blocking(move || {
-        let mut conn = open_cache_conn()?;
-        workbuddy_history::list_workbuddy_recent_paths(&mut conn, limit)
     })
     .await
     .map_err(|err| format!("Task join error: {err}"))?

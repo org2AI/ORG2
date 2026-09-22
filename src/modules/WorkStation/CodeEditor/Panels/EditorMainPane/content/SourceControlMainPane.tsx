@@ -7,10 +7,10 @@
  */
 import React, { Suspense, memo } from "react";
 
-import { Placeholder } from "@src/components/Placeholder";
+import LazyDetailFallback from "@src/components/layout/blocks/LazyDetailFallback";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import { useGitHubIssueDetailState } from "@src/features/GitHubWork/useGitHubIssueDetailState";
 import type { QuickAction } from "@src/modules/WorkStation/shared";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import { useGitHubIssueDetailState } from "@src/modules/shared/hooks/useGitHubIssueDetailState";
 import { workstationRepoScopeKey } from "@src/store/workstation/codeEditor/workstationPrAtom";
 import type { SourceControlHistorySelection } from "@src/store/workstation/tabs";
 import type { GitFile } from "@src/types/git/types";
@@ -29,10 +29,6 @@ const IssueDetailPanel = React.lazy(() =>
   import("@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/IssuesContent/IssueDetailPanel").then(
     (module) => ({ default: module.IssueDetailPanel })
   )
-);
-
-const LazyFallback = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
 );
 
 export interface SourceControlMainPaneProps {
@@ -147,7 +143,7 @@ const SourceControlMainPane: React.FC<SourceControlMainPaneProps> = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <Suspense fallback={<LazyFallback />}>
+      <Suspense fallback={<LazyDetailFallback />}>
         <SourceControlMainContent
           mode={mode}
           focusGitFile={focusGitFile}

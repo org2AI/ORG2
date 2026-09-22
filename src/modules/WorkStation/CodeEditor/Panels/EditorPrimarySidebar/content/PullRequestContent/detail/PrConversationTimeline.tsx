@@ -3,14 +3,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitHubReviewComment } from "@src/api/tauri/github";
-import { projectMarkdownSessionReferences } from "@src/components/MarkDown/sessionReferenceProjection";
 import PersonAvatar from "@src/components/PersonAvatar";
-import {
-  CancelCircleIcon,
-  CheckmarkCircle01Icon,
-  FileDiffIcon,
-  HugeiconsIcon,
-} from "@src/icons";
 import {
   ConnectedTimelineItem,
   MarkdownContent,
@@ -18,9 +11,20 @@ import {
   TimelineCardHeader,
   TimelineLoadingSkeleton,
   TimelineStack,
-} from "@src/modules/shared/components/ActivityTimeline";
+} from "@src/features/GitHubWork/ActivityTimeline";
+import { projectMarkdownSessionReferences } from "@src/features/Org2Cloud/markdown/sessionReferenceProjection";
+import {
+  CancelCircleIcon,
+  CheckmarkCircle01Icon,
+  FileDiffIcon,
+  HugeiconsIcon,
+} from "@src/icons";
 import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 
+import {
+  IssueTimelineEventRow,
+  IssueTimelineLabelGroupRow,
+} from "../../IssuesContent/IssueTimelineEvent";
 import type { TimelineEntry } from "./types";
 
 interface PrAuthor {
@@ -53,7 +57,7 @@ function reviewVerb(
   switch (state) {
     case "APPROVED":
       return {
-        label: t("git.pr.activity.approved", "approved these changes"),
+        label: t("git.pr.activity.approved"),
         icon: (
           <HugeiconsIcon
             icon={CheckmarkCircle01Icon}
@@ -66,7 +70,7 @@ function reviewVerb(
       };
     case "CHANGES_REQUESTED":
       return {
-        label: t("git.pr.activity.changesRequested", "requested changes"),
+        label: t("git.pr.activity.changesRequested"),
         icon: (
           <HugeiconsIcon
             icon={CancelCircleIcon}
@@ -79,7 +83,7 @@ function reviewVerb(
       };
     case "DISMISSED":
       return {
-        label: t("git.pr.activity.reviewDismissed", "dismissed a review"),
+        label: t("git.pr.activity.reviewDismissed"),
         icon: (
           <HugeiconsIcon
             icon={FileDiffIcon}
@@ -92,7 +96,7 @@ function reviewVerb(
       };
     default:
       return {
-        label: t("git.pr.activity.reviewed", "reviewed"),
+        label: t("git.pr.activity.reviewed"),
         icon: (
           <HugeiconsIcon
             icon={FileDiffIcon}
@@ -174,14 +178,14 @@ export function PrConversationTimeline({
                 />
               }
               actor={author.login || identity.title}
-              action={t("git.pr.activity.opened", "opened this pull request")}
+              action={t("git.pr.activity.opened")}
               timestamp={createdAt}
             />
           }
         >
           <MarkdownContent
             body={body}
-            emptyText={t("git.pr.noDescription", "No description provided.")}
+            emptyText={t("git.pr.noDescription")}
             fadeFrom="from-chat-pane"
           />
         </TimelineCard>
@@ -189,9 +193,7 @@ export function PrConversationTimeline({
 
       {loading && timeline.length === 0 ? (
         <ConnectedTimelineItem isLast>
-          <TimelineLoadingSkeleton
-            label={t("git.pr.loadingConversation", "Loading…")}
-          />
+          <TimelineLoadingSkeleton label={t("git.pr.loadingConversation")} />
         </ConnectedTimelineItem>
       ) : (
         timeline.map((entry, index) => {
@@ -221,11 +223,8 @@ export function PrConversationTimeline({
                       actor={comment.user.login}
                       action={
                         isSessionAttachment
-                          ? t(
-                              "git.pr.activity.appendedSession",
-                              "appended a session"
-                            )
-                          : t("git.pr.activity.commented", "commented")
+                          ? t("git.pr.activity.appendedSession")
+                          : t("git.pr.activity.commented")
                       }
                       timestamp={comment.created_at}
                     />
@@ -236,6 +235,35 @@ export function PrConversationTimeline({
                     fadeFrom="from-chat-pane"
                   />
                 </TimelineCard>
+              </ConnectedTimelineItem>
+            );
+          }
+          if (entry.kind === "labelEvent") {
+            const { row } = entry;
+            if (row.kind === "labelGroup") {
+              const latest = row.items[row.items.length - 1];
+              return (
+                <ConnectedTimelineItem
+                  key={`lg-${row.event}-${latest.id ?? latest.created_at ?? index}`}
+                  isLast={isLast}
+                  trailLabel={`${row.actor?.login ?? "GitHub"} · ${row.event}`}
+                >
+                  <IssueTimelineLabelGroupRow
+                    event={row.event}
+                    actor={row.actor}
+                    items={row.items}
+                  />
+                </ConnectedTimelineItem>
+              );
+            }
+            const { item } = row;
+            return (
+              <ConnectedTimelineItem
+                key={`le-${item.id ?? item.created_at ?? index}`}
+                isLast={isLast}
+                trailLabel={`${item.actor?.login ?? "GitHub"} · ${item.event}`}
+              >
+                <IssueTimelineEventRow item={item} />
               </ConnectedTimelineItem>
             );
           }
@@ -273,7 +301,7 @@ export function PrConversationTimeline({
                   />
                 ) : (
                   <div className="text-[12px] text-text-3 italic">
-                    {t("git.pr.reviewNoBody", "Left review comments.")}
+                    {t("git.pr.reviewNoBody")}
                   </div>
                 )}
                 <ReviewCommentSummary comments={inline} />

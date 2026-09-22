@@ -46,6 +46,35 @@ pub fn create_provider_with_reliability(
     create_provider_with_native_harness(model, account_id, reliability, None, None)
 }
 
+/// Explicit source and Account Key ownership are mutually exclusive.
+pub async fn create_provider_with_selection_preflight(
+    model: &str,
+    account_id: Option<&str>,
+    credential_source: Option<&str>,
+    reliability: &ReliabilityConfig,
+    native_harness_type: Option<NativeHarnessType>,
+    workspace: Option<SessionWorkspace>,
+) -> Result<Box<dyn LLMProvider>, ProviderError> {
+    if let Some(source) = credential_source {
+        if account_id.is_some() || native_harness_type.is_some() {
+            return Err(ProviderError::AuthError(
+                "Conflicting native credential owners".into(),
+            ));
+        }
+        // The source validates its own exact protocol/model. Never apply a
+        // configured fallback to an unrelated account or another Package.
+        return super::dynamic::build(source, model);
+    }
+    create_provider_with_native_harness_preflight(
+        model,
+        account_id,
+        reliability,
+        native_harness_type,
+        workspace,
+    )
+    .await
+}
+
 pub async fn create_provider_with_native_harness_preflight(
     model: &str,
     account_id: Option<&str>,

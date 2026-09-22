@@ -214,16 +214,14 @@ export function useSourceControlSidebarModule({
   const sectionLabel = isHistoryMode
     ? t("common:labels.gitHistory")
     : isPrMode
-      ? t("common:labels.pullRequest", "Pull request")
+      ? t("common:labels.pullRequest")
       : isIssuesMode
-        ? t("common:git.issues.title", "Issues")
+        ? t("common:git.issues.title")
         : t("tabs.sourceControl");
   const isAlternateMode = isPrMode || isHistoryMode || isIssuesMode;
   const sectionTitle = isAlternateMode ? (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className="flex min-w-0 items-center gap-1.5 normal-case"
       onClick={() => onFilterModeChange?.("uncommitted")}
       aria-label={t("tabs.sourceControl")}

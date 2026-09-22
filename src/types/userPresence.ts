@@ -87,12 +87,6 @@ export const PRESENCE_STANCE = {
 export type PresenceStance =
   (typeof PRESENCE_STANCE)[keyof typeof PRESENCE_STANCE];
 
-export const PRESENCE_STANCES: PresenceStance[] = [
-  PRESENCE_STANCE.INTERACTIVE,
-  PRESENCE_STANCE.DEFER_AND_BATCH,
-  PRESENCE_STANCE.AUTONOMOUS,
-];
-
 /** Full per-mode record: prompt identity + runtime behavior policy. */
 export interface PresenceModeSpec {
   /** "online" | "invisible" | "away" | "role:<slug>" */

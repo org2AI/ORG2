@@ -76,7 +76,6 @@ const RawPromptPanelBody: React.FC<{ rawText: string; sessionId: string }> = ({
   const model = describeModelLabel(session?.model);
 
   const lengthLabel = t("chat.rawPrompt.length", {
-    defaultValue: "{{length}} chars",
     length: rawText.length.toLocaleString(
       toIntlLocaleTag(i18n.resolvedLanguage)
     ),
@@ -87,9 +86,7 @@ const RawPromptPanelBody: React.FC<{ rawText: string; sessionId: string }> = ({
       <div className="flex shrink-0 items-center gap-2 border-b border-border-2/60 px-3 py-1.5">
         <div className="min-w-0 flex-1">
           <div className="truncate text-[12px] font-medium text-text-1">
-            {t("chat.rawPrompt.title", {
-              defaultValue: "Raw prompt sent to AI",
-            })}
+            {t("chat.rawPrompt.title")}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-text-3">
             {model && (
@@ -145,7 +142,7 @@ const RawPromptToggleComponent: React.FC<RawPromptToggleProps> = ({
     [panelPosition]
   );
 
-  const label = t("chat.rawPrompt.view", { defaultValue: "View raw prompt" });
+  const label = t("chat.rawPrompt.view");
 
   const handleClick = useCallback(
     (event: React.MouseEvent) => {
@@ -163,7 +160,6 @@ const RawPromptToggleComponent: React.FC<RawPromptToggleProps> = ({
     <>
       <Button
         variant="tertiary"
-        appearance="soft"
         size="mini"
         aria-pressed={isOpen}
         iconOnly
@@ -176,7 +172,6 @@ const RawPromptToggleComponent: React.FC<RawPromptToggleProps> = ({
           />
         }
         ref={buttonRef}
-        htmlType="button"
         data-testid="chat-message-raw-prompt-toggle"
         title={label}
         aria-label={label}

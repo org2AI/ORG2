@@ -17,7 +17,7 @@
  */
 import { atom } from "jotai";
 
-import type { AddSessionOptions } from "@src/engines/TerminalCore/types";
+import type { AddSessionOptions } from "@src/contracts/terminal";
 import { selectedRepoPathAtom } from "@src/store/repo";
 import {
   activeTerminalIdAtom,
@@ -156,12 +156,32 @@ export const releaseMiniTerminalSessionAtom = atom(
 );
 releaseMiniTerminalSessionAtom.debugLabel = "chatPanel/miniTerminal/release";
 
+// Per-store and operation-scoped: repeated Stop clicks share one native kill.
+const closingMiniTerminalIdsAtom = atom<ReadonlySet<string>>(new Set<string>());
+
 /** Kill a claimed PTY outright (the panel's per-tab close control). */
 export const closeMiniTerminalSessionAtom = atom(
   null,
-  (get, set, sessionId: string) => {
-    set(releaseMiniTerminalSessionAtom, sessionId);
-    void set(closeTerminalSessionAtom, sessionId);
+  async (get, set, sessionId: string) => {
+    if (
+      get(closingMiniTerminalIdsAtom).has(sessionId) ||
+      !get(miniTerminalClaimedIdsAtom).includes(sessionId)
+    )
+      return;
+    set(closingMiniTerminalIdsAtom, (ids) => new Set([...ids, sessionId]));
+    try {
+      // Keep ownership while native close is pending. Releasing first would
+      // expose the still-live session in the trail and let Workstation remount
+      // its PTY. The canonical close removes the session before we release it.
+      await set(closeTerminalSessionAtom, sessionId);
+      set(releaseMiniTerminalSessionAtom, sessionId);
+    } finally {
+      set(closingMiniTerminalIdsAtom, (ids) => {
+        const remaining = new Set(ids);
+        remaining.delete(sessionId);
+        return remaining;
+      });
+    }
   }
 );
 closeMiniTerminalSessionAtom.debugLabel = "chatPanel/miniTerminal/closeSession";

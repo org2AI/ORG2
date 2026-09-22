@@ -11,7 +11,7 @@ import {
   adoptFindTarget,
   closeFindTarget,
   registerFindTarget,
-} from "@src/components/FindCard/findCoordinator";
+} from "@src/scaffold/GlobalSpotlight/FindCard/findCoordinator";
 
 export function useChatSearchShortcut(
   containerRef: RefObject<HTMLElement | null>,

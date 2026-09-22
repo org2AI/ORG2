@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { WorkItemData } from "@src/api/http/project";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import {
   getSubItemProgress,
@@ -13,19 +14,8 @@ import {
 import WorkItemSubItems from "./WorkItemSubItems";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (
-      key: string,
-      options?: { defaultValue?: string; [key: string]: unknown }
-    ) => {
-      const template = options?.defaultValue ?? key;
-      return Object.entries(options ?? {}).reduce(
-        (value, [optionKey, optionValue]) =>
-          value.split(`{{${optionKey}}}`).join(String(optionValue)),
-        template
-      );
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 function child(

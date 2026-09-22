@@ -8,20 +8,47 @@ export type ConnectionStatus =
 
 export type DesktopPresence = "online" | "offline" | "unknown";
 
+/** Invalid admission data is distinct from a network failure in recovery UI. */
+export class MobileConnectionTicketError extends Error {}
+
 /** A policy denial needs a new user action, not an automatic network retry. */
 export class MobileConnectionAuthorizationError extends Error {}
 
 export type MobilePermissionTier = "full" | "read_only";
 
 export interface MobileRemoteCapabilities {
+  /** Resolve historical mirrors to their current managed execution owner. */
+  sessionIdentity?: boolean;
+  /** Resolve and subscribe under one connection-owned opening lease. */
+  sessionOpen?: boolean;
+  changeReview?: boolean;
+  sessionReadState?: boolean;
+  sessionSearch?: boolean;
+  pendingInteractions?: boolean;
   roundHistory?: boolean;
   /** Open an event-owned file in the paired Desktop app. */
   openSessionFile?: boolean;
+  sessionImages?: boolean;
   /** Session model picker backed by desktop KeyVault. */
   modelSelection?: boolean;
 }
 
+export interface MobilePendingPermission {
+  kind: "permission";
+  origin: "rust_agent" | "cli_hook" | "acp";
+  sessionId: string;
+  requestId: string;
+  toolName: string;
+  toolCallId?: string;
+  toolArgs: Record<string, unknown>;
+  toolArgsTruncated?: boolean;
+  createdAtMs: number;
+  sessionName?: string;
+}
+
 export interface MobileRpcError {
+  /** Local connection classification, never inferred from server error text. */
+  connectionIssue?: "ticket" | "authorization";
   code: number;
   message: string;
 }
@@ -42,6 +69,8 @@ export interface MobileModelOption {
 }
 
 export interface MobileSessionModelState {
+  optionsLoading?: boolean;
+  optionsError?: string;
   config: MobileSessionModelConfig | null;
   options: MobileModelOption[];
   loading: boolean;
@@ -55,19 +84,41 @@ export interface MobileSendAttachment {
   fileName?: string;
 }
 
+/** Display metadata reported by the paired Desktop, never phone or Cloud identity. */
+export interface MobileDesktopIdentity {
+  name?: string;
+  model?: string;
+  username?: string;
+}
+
 export interface InitializeResult {
   protocolVersion: number;
   desktopId?: string;
   desktopName?: string;
+  desktopIdentity?: MobileDesktopIdentity;
   orgiiVersion?: string;
   tier?: MobilePermissionTier;
   capabilities?: MobileRemoteCapabilities;
+}
+
+/** Bounded, optional inputs to Desktop's shared icon resolver. */
+export interface MobileSessionDisplay {
+  cliAgentType?: string;
+  agentOrgId?: string;
+  agentDefinitionId?: string;
+  agentIconId?: string;
+  model?: string;
+  externalHistorySource?: string;
 }
 
 export interface MobileSessionRow {
   id: string;
   name: string;
   status: "running" | "idle" | "offline";
+  /** Canonical directory lifecycle; absent on older Desktop builds. */
+  lifecycleStatus?: string;
+  mergeStatus?: string | null;
+  display?: MobileSessionDisplay;
   category?: "live" | "cloud";
   sendCapability?: "native" | "external_codex" | "read_only";
   updatedAtMs?: number;
@@ -86,6 +137,9 @@ export interface MobileConnectionConfig {
   /** Phase 1 pending pairing that becomes active after desktop SAS confirmation. */
   pairingCode?: string;
   desktopId?: string;
+  /** Last authenticated desktop metadata, retained for offline display. */
+  desktopIdentity?: MobileDesktopIdentity;
+  /** This phone's label, sent to Desktop. Never a desktop display name. */
   deviceLabel?: string;
 }
 
@@ -95,6 +149,7 @@ export interface MobilePairedDesktopSummary {
   name: string;
   active: boolean;
   updatedAtMs: number;
+  desktopIdentity?: MobileDesktopIdentity;
 }
 
 export interface MobileConnectionState {

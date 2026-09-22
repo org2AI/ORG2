@@ -15,7 +15,7 @@ const CONTROL_CARDS: &[ControlCard] = &[
         id: "settings.language.set",
         kind: "action",
         summary: "Set the ORG2 app language/locale. Use directly for language requests; Spotlight also exposes this as a second-level language picker.",
-        call: r#"control_orgii({ "action": "settings.language.set", "params": { "language": "fr" } }) for French. Supported language codes: en, fr, zh, zh-Hant, es, ru, pt, de, ja, ko, tr, vi, pl. In Spotlight, choose Language, then choose the target language."#,
+        call: r#"control_orgii({ "action": "settings.language.set", "params": { "language": "fr" } }) for French. Supported language codes: en, fr, zh, zh-Hant, es, hi, ru, pt, de, ja, ko, tr, vi, id, pl. In Spotlight, choose Language, then choose the target language."#,
         terms: &[
             "language", "locale", "translation", "french", "français", "francais", "fr", "english", "chinese", "spanish", "german", "japanese", "korean", "russian", "portuguese", "turkish", "vietnamese", "polish",
         ],
@@ -39,19 +39,19 @@ const CONTROL_CARDS: &[ControlCard] = &[
         ],
     },
     ControlCard {
-        id: "theme.setLight/theme.setDark/theme.setHighContrast",
+        id: "theme.setLight/theme.setDark",
         kind: "actions",
         summary: "Switch ORG2 appearance using discrete theme commands. Prefer these over parameterized theme operations.",
-        call: r#"control_orgii({ "action": "theme.setLight", "params": {} }), control_orgii({ "action": "theme.setDark", "params": {} }), or control_orgii({ "action": "theme.setHighContrast", "params": {} })"#,
+        call: r#"control_orgii({ "action": "theme.setLight", "params": {} }) or control_orgii({ "action": "theme.setDark", "params": {} })"#,
         terms: &[
-            "theme", "appearance", "light theme", "light mode", "dark theme", "dark mode", "high contrast", "contrast", "accessibility theme",
+            "theme", "appearance", "light theme", "light mode", "dark theme", "dark mode",
         ],
     },
     ControlCard {
         id: "chatPanel settings",
         kind: "actions",
-        summary: "Change chat panel settings with discrete commands for position, pagination, and model picker style.",
-        call: r#"Position: chatPanel.setMyStationLeft, chatPanel.setMyStationRight, chatPanel.setAgentStationLeft, chatPanel.setAgentStationRight. Pagination: chatPanel.enablePagination or chatPanel.disablePagination. Model picker: chatPanel.useModelPickerSpotlight or chatPanel.useModelPickerDropdown."#,
+        summary: "Change chat panel settings with discrete commands for position (applies to every station layout), pagination, and model picker style.",
+        call: r#"Position: chatPanel.setLeft or chatPanel.setRight. Pagination: chatPanel.enablePagination or chatPanel.disablePagination. Model picker: chatPanel.useModelPickerSpotlight or chatPanel.useModelPickerDropdown."#,
         terms: &[
             "chat panel", "chat location", "chat left", "chat right", "my station chat", "agent station chat", "pagination", "chat rounds", "model picker", "model dropdown", "model spotlight",
         ],
@@ -60,9 +60,9 @@ const CONTROL_CARDS: &[ControlCard] = &[
         id: "workstation layout settings",
         kind: "actions",
         summary: "Change Workstation layout settings with discrete commands.",
-        call: r#"Layout density: workstation.setComfortLayout or workstation.setCompactLayout. Sidebar: workstation.setSidebarLeft or workstation.setSidebarRight. Dock: workstation.enableDockAutoHide or workstation.disableDockAutoHide."#,
+        call: r#"Sidebar: workstation.setSidebarLeft or workstation.setSidebarRight."#,
         terms: &[
-            "workstation layout", "compact layout", "comfort layout", "sidebar position", "workstation sidebar", "dock auto hide", "auto hide dock", "dock visible",
+            "workstation layout", "sidebar position", "workstation sidebar", "sidebar left", "sidebar right",
         ],
     },
     ControlCard {
@@ -209,15 +209,63 @@ mod tests {
         assert!(section.contains("command_palette"));
     }
 
+    fn read_frontend_source(relative: &str) -> String {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../src")
+            .join(relative);
+        std::fs::read_to_string(&path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
+    }
+
+    /// Dotted action ids named in a card's `call` text, e.g. `chatPanel.setLeft`.
+    fn advertised_action_ids(call: &str) -> Vec<String> {
+        call.split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '.' || ch == '-'))
+            .map(|token| token.trim_end_matches('.'))
+            .filter(|token| {
+                token.starts_with(|ch: char| ch.is_ascii_lowercase())
+                    && token.contains('.')
+                    && token.split('.').all(|segment| !segment.is_empty())
+            })
+            .map(str::to_owned)
+            .collect()
+    }
+
+    /// The frontend is the source of truth for action ids; a card must never
+    /// advertise an id that was renamed or removed there.
+    #[test]
+    fn every_advertised_action_is_registered_in_the_frontend() {
+        let action_ids = read_frontend_source("scaffold/ActionSystem/actionIds.ts");
+        let destinations = [
+            read_frontend_source("scaffold/GlobalSpotlight/navDestinations.ts"),
+            read_frontend_source("scaffold/GlobalSpotlight/navDestinationGroups.ts"),
+        ]
+        .concat();
+
+        let mut missing = Vec::new();
+        for card in CONTROL_CARDS {
+            for id in advertised_action_ids(card.call) {
+                let registered = match id.strip_prefix("spotlight.destination.") {
+                    Some(destination) => destinations.contains(&format!("\"{destination}\"")),
+                    None => action_ids.contains(&format!("\"{id}\"")),
+                };
+                if !registered {
+                    missing.push(format!("{} -> {id}", card.id));
+                }
+            }
+        }
+        assert!(missing.is_empty(), "unregistered GUI actions: {missing:?}");
+    }
+
     #[test]
     fn retrieves_discrete_theme_commands() {
         let section = build_gui_control_relevant_controls_section(
             Some(ADE_MANAGER_ID),
-            "switch to high contrast theme",
+            "switch to dark theme",
         )
         .expect("section");
 
-        assert!(section.contains("theme.setHighContrast"));
+        assert!(section.contains("theme.setDark"));
+        assert!(!section.contains("theme.setHighContrast"));
     }
 
     #[test]
@@ -228,7 +276,8 @@ mod tests {
         )
         .expect("section");
 
-        assert!(section.contains("chatPanel.setMyStationRight"));
+        assert!(section.contains("chatPanel.setRight"));
+        assert!(!section.contains("chatPanel.setMyStation"));
         assert!(section.contains("chatPanel.useModelPickerDropdown"));
     }
 

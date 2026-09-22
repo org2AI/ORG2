@@ -23,8 +23,6 @@ export function useChatViewScrollToBottom() {
   }, []);
   const externalScrollToBottomButton = scrollNav?.showScrollToBottom ? (
     <Button
-      variant="secondary"
-      appearance="outline"
       size="small"
       shape="round"
       icon={

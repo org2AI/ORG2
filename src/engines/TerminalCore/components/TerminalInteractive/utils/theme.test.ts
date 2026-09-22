@@ -29,9 +29,12 @@ function installThemeCss(): void {
       --cm-editor-background: ${LIGHT_BACKGROUND};
       --cm-editor-caret: ${LIGHT_PRIMARY_6};
       --terminal-caret: ${LIGHT_PRIMARY_6};
-      --terminal-selection: #efefef;
+      --text-selection: #bfe8ff;
+      --terminal-selection: var(--text-selection);
     }
     body {
+      --text-selection: #bfe8ff;
+      --terminal-selection: var(--text-selection);
       --color-primary-6: ${LIGHT_PRIMARY_6};
       --cm-editor-caret: var(--color-primary-6);
       --terminal-caret: var(--color-primary-6);
@@ -57,6 +60,13 @@ describe("getXTermTheme cursor", () => {
     document.body.style.setProperty("--color-primary-6", VIOLET_PRIMARY_6);
 
     expect(getXTermTheme("light").cursor).toBe(VIOLET_PRIMARY_6);
+  });
+
+  it("follows chat selection for both focused and inactive terminal text", () => {
+    installThemeCss();
+    document.body.style.setProperty("--text-selection", "#aabbff");
+    expect(getXTermTheme("light").selectionBackground).toBe("#aabbff");
+    expect(getXTermTheme("light").selectionInactiveBackground).toBe("#aabbff");
   });
 
   it("falls back to the palette default before the theme CSS loads", () => {

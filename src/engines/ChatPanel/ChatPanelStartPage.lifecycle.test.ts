@@ -86,7 +86,6 @@ function Harness() {
     onAddApiKey: vi.fn(),
     onCreateTarget: (target) =>
       setCreateTarget(target as ChatPanelCreateTarget),
-    onInstallLatestUpdate: vi.fn(),
     onProjectAgentModeChange: vi.fn(),
     onWorkItemAgentModeChange: vi.fn(),
     projectAgentMode: true,

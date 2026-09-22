@@ -418,8 +418,8 @@ const AgentOrgGroupProjectionView: React.FC<
                               {item.canStop && (
                                 <Button
                                   size="mini"
-                                  variant="danger"
-                                  appearance="ghost"
+                                  variant="tertiary"
+                                  tone="danger"
                                   icon={
                                     <HugeiconsIcon
                                       icon={SquareIcon}
@@ -439,7 +439,6 @@ const AgentOrgGroupProjectionView: React.FC<
                                 <Button
                                   size="mini"
                                   variant="tertiary"
-                                  appearance="ghost"
                                   icon={
                                     <HugeiconsIcon
                                       icon={RotateLeft01Icon}

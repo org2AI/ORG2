@@ -13,14 +13,9 @@ describe("BrowserStatusBar", () => {
   it("includes the shared running-servers menu", () => {
     const markup = renderToStaticMarkup(
       React.createElement(BrowserStatusBar, {
-        url: "",
-        isLoading: false,
         errorCount: 0,
         warningCount: 0,
-        isDevToolsOpen: false,
         onToggleDevTools: vi.fn(),
-        sessionCount: 0,
-        currentSessionIndex: 0,
       })
     );
 

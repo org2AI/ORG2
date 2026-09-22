@@ -6,7 +6,9 @@
 
 use rusqlite::{params, Connection};
 
-use super::helpers::{duration_between_iso_ms, normalize_created_at, preview_text};
+use super::helpers::{
+    count_turn_body_bubbles, duration_between_iso_ms, normalize_created_at, preview_text,
+};
 use super::models::{CursorIdeTurnSummary, OrderedBubble, RawComposerHeader, StableFingerprint};
 
 const CURSOR_BUBBLE_TYPE_USER: i64 = 1;
@@ -57,7 +59,7 @@ pub(super) fn build_cursor_ide_turn_summaries(
             .get(&header.bubble_id)
             .map(|bubble| preview_text(&bubble.raw.text))
             .unwrap_or_default();
-        let body_event_count = turn_headers.len().saturating_sub(1);
+        let body_event_count = count_turn_body_bubbles(turn_headers, &bubbles_by_id);
 
         summaries.push(CursorIdeTurnSummary {
             turn_id: header.bubble_id.clone(),
@@ -82,7 +84,8 @@ pub(super) fn cursor_ide_summary_source_fingerprint(
     order: &[RawComposerHeader],
 ) -> String {
     let mut hasher = StableFingerprint::new();
-    hasher.write_str("cursor-ide-turn-summary-v2");
+    // v3: body counts skip bubbles that render nothing; v2 rows over-count.
+    hasher.write_str("cursor-ide-turn-summary-v3");
     hasher.write_i64(composer_created_at);
     hasher.write_i64(composer_last_updated_at);
     hasher.write_i64(source_updated_at);

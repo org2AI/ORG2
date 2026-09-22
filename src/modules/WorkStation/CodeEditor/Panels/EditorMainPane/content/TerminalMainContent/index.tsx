@@ -159,9 +159,7 @@ const TerminalMainContent: React.FC<TerminalMainContentProps> = ({
         {!isAgentTerminal && (
           <>
             <span className="flex items-center gap-px">
-              <ToolbarTooltip
-                label={t("controlTower.sidebar.newTerminal", "New Terminal")}
-              >
+              <ToolbarTooltip label={t("controlTower.sidebar.newTerminal")}>
                 <TerminalNewSessionSplitButton
                   onNewTerminal={handleNewTerminal}
                   splitMainWidth={24}
@@ -184,7 +182,6 @@ const TerminalMainContent: React.FC<TerminalMainContentProps> = ({
           >
             {isAgentTerminal ? (
               <Button
-                htmlType="button"
                 variant="tertiary"
                 size="small"
                 iconOnly

@@ -221,5 +221,3 @@ export function useFileMode({
     error,
   };
 }
-
-export default useFileMode;

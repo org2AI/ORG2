@@ -5,9 +5,6 @@ import {
   getRecentApiCalls,
 } from "./apiTrackerCalls";
 import {
-  captureApiCallStack,
-  clearPendingHttpTrackingState,
-  initializeApiTracking,
   installFetchTracking,
   installXmlHttpRequestTracking,
 } from "./apiTrackerHttp";
@@ -57,7 +54,6 @@ export type {
 } from "./apiTrackerTypes";
 
 export {
-  captureApiCallStack,
   cleanupInteractionTracking,
   getApiCallHotspots,
   getApiCalls,
@@ -66,14 +62,12 @@ export {
   getRecentApiCalls,
   getTimerEvents,
   getTimerHotspots,
-  initializeApiTracking,
   recordPushEvent,
   trackTauriInvoke,
   trackTauriInvokeResult,
   withDirectTauriInvokeTrackingSuppressed,
 };
 
-let cleanupInterceptors: (() => void) | undefined;
 let cleanupDirectTauriInvokeTracking: (() => void) | undefined;
 let cleanupTauriCallbackTracking: (() => void) | undefined;
 let cleanupTimerTracking: (() => void) | undefined;
@@ -82,7 +76,6 @@ let cleanupXmlHttpRequestTracking: (() => void) | undefined;
 
 export const enableApiTracking = (): void => {
   enableTrackingState();
-  cleanupInterceptors = initializeApiTracking();
   cleanupDirectTauriInvokeTracking = installDirectTauriInvokeTracking();
   cleanupTauriCallbackTracking = installTauriCallbackTracking();
   // Production bundles intentionally omit source maps. Timer/RAF stack
@@ -98,8 +91,6 @@ export const enableApiTracking = (): void => {
 
 export const disableApiTracking = (): void => {
   disableTrackingState();
-  cleanupInterceptors?.();
-  cleanupInterceptors = undefined;
   cleanupDirectTauriInvokeTracking?.();
   cleanupDirectTauriInvokeTracking = undefined;
   cleanupTauriCallbackTracking?.();
@@ -113,9 +104,8 @@ export const disableApiTracking = (): void => {
   cleanupInteractionTracking();
 
   // Result-side handlers return early while disabled, so discard in-flight
-  // timing and capture state. Completed calls intentionally remain available.
+  // timing state. Completed calls intentionally remain available.
   clearRequestTimings();
-  clearPendingHttpTrackingState();
 };
 
 export const isApiTrackingEnabled = (): boolean => isTrackingEnabled();

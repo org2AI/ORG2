@@ -237,6 +237,11 @@ function swapFromExisting(
       cleanupListeners();
       clearTimeout(timeoutId);
       newLink.remove();
+      // A cold start may not have synchronized any appearance yet. Retain
+      // and describe the stylesheet that actually survived the failed load.
+      if (latestRequestedCssPath === newCssPath) {
+        syncThemeAppearance(oldLink.href);
+      }
       resolve();
     };
 

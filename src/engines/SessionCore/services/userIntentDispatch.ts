@@ -275,6 +275,22 @@ export async function setOptimisticQueueUserDelivery(
   return updated;
 }
 
+/**
+ * Prepare a retry after its edited, explicitly held queue owner is durable.
+ * A restored queue can supply the visible failed bubble without an EventStore
+ * row. Recreate only that owner's deterministic projection before releasing
+ * it for dispatch; the queue remains the sole execution authority.
+ */
+export async function prepareOptimisticQueueUserRetry(
+  params: OptimisticUserDeliveryProjectionParams
+): Promise<void> {
+  if (await setOptimisticQueueUserDelivery(params, "pending")) return;
+  await eventStoreProxy.upsert(
+    optimisticQueueUserEvent(params, "pending"),
+    params.sessionId
+  );
+}
+
 /** Remove only an admission attempt that never entered the durable queue. */
 export async function removeOptimisticQueueUserDelivery(
   params: Pick<

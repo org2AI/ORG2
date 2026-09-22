@@ -101,7 +101,6 @@ export const DesignPanel: React.FC<DesignPanelProps> = memo(
     const renderLinkButton = (isLinked: boolean, onToggle: () => void) => (
       <Button
         variant="tertiary"
-        appearance="soft"
         size="sidebar"
         aria-pressed={!isLinked}
         aria-label={isLinked ? "Unlink values" : "Link values"}
@@ -114,7 +113,9 @@ export const DesignPanel: React.FC<DesignPanelProps> = memo(
           />
         }
         onClick={onToggle}
-        className={`${isLinked ? "text-text-2" : "text-primary-6"}`}
+        className={
+          isLinked ? "text-text-2" : "text-primary-6 hover:text-primary-6"
+        }
         title={isLinked ? "Unlink values" : "Link values"}
       />
     );
@@ -279,7 +280,6 @@ export const DesignPanel: React.FC<DesignPanelProps> = memo(
               headerActions={
                 <Button
                   variant="tertiary"
-                  appearance="soft"
                   size="sidebar"
                   aria-pressed={radiusExpanded}
                   aria-label={
@@ -295,7 +295,9 @@ export const DesignPanel: React.FC<DesignPanelProps> = memo(
                   }
                   onClick={() => setRadiusExpanded(!radiusExpanded)}
                   className={`${
-                    radiusExpanded ? "text-primary-6" : "text-text-2"
+                    radiusExpanded
+                      ? "text-primary-6 hover:text-primary-6"
+                      : "text-text-2"
                   }`}
                   title={
                     radiusExpanded ? "Use single radius" : "Customize corners"

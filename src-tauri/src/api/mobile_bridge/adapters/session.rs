@@ -163,14 +163,28 @@ pub fn mobile_session_name(name: &str, display_label: Option<&str>) -> String {
         .to_string()
 }
 
-fn is_mobile_list_category(category: SessionCategory) -> bool {
-    matches!(
-        category,
-        SessionCategory::Agent | SessionCategory::Os | SessionCategory::Cli
-    )
+/// Only the display resolver's inputs cross this boundary, never the full
+/// aggregate (which also contains account, storage and provider provenance).
+fn mobile_session_display(record: &SessionAggregateRecord) -> Value {
+    let mut display = Map::new();
+    for (key, value) in [
+        ("cliAgentType", record.cli_agent_type.as_deref()),
+        ("agentOrgId", record.agent_org_id.as_deref()),
+        ("agentDefinitionId", record.agent_definition_id.as_deref()),
+        ("agentIconId", record.agent_icon_id.as_deref()),
+        ("model", record.model.as_deref()),
+        (
+            "externalHistorySource",
+            record.external_history_source.as_deref(),
+        ),
+    ] {
+        if let Some(value) = value.filter(|value| !value.is_empty() && value.len() <= 512) {
+            display.insert(key.to_string(), json!(value));
+        }
+    }
+    Value::Object(display)
 }
 
-/// Keep directory metadata on the wire; do not reconstruct it from a title.
 fn mobile_directory_session_row(record: &SessionAggregateRecord, send_capability: &str) -> Value {
     let updated_at_ms = chrono::DateTime::parse_from_rfc3339(&record.updated_at)
         .ok()
@@ -178,12 +192,23 @@ fn mobile_directory_session_row(record: &SessionAggregateRecord, send_capability
     json!({
         "id": record.session_id,
         "name": mobile_session_name(&record.name, record.display_label.as_deref()),
-        "status": map_session_status_to_mobile(&record.status),
         "repoPath": record.repo_path,
         "repoName": record.repo_name,
         "updatedAtMs": updated_at_ms,
+        // Retained for old clients; new clients read the lossless lifecycle.
+        "status": map_session_status_to_mobile(&record.status),
+        "lifecycleStatus": record.status,
+        "mergeStatus": record.merge_status,
+        "display": mobile_session_display(record),
         "sendCapability": send_capability,
     })
+}
+
+fn is_mobile_list_category(category: SessionCategory) -> bool {
+    matches!(
+        category,
+        SessionCategory::Agent | SessionCategory::Os | SessionCategory::Cli
+    )
 }
 
 fn session_list_from_sidebar_snapshot(
@@ -1191,7 +1216,7 @@ fn compact_mobile_tool_json(
     }
 }
 
-fn mobile_tool_data(value: &Value) -> (Value, bool) {
+pub(super) fn mobile_tool_data(value: &Value) -> (Value, bool) {
     let mut truncated = false;
     let regular_limits = MobileToolDataLimits {
         max_depth: MAX_MOBILE_TOOL_DATA_DEPTH,
@@ -1436,6 +1461,7 @@ fn mobile_event_from_session(event: &SessionEvent) -> Option<(Value, bool)> {
         "displayText": display_text,
         "createdAt": event.created_at,
     });
+    mobile_event["imageCount"] = json!(super::images::image_count(&event.result));
     let extracted = event
         .extracted
         .as_ref()
@@ -1528,6 +1554,9 @@ fn mobile_event_from_wire(event: &Value) -> Option<(Value, bool)> {
     } else {
         false
     };
+    mobile_event["imageCount"] = json!(super::images::image_count(
+        event.get("result").unwrap_or(&Value::Null)
+    ));
     let turn_intent_id = wire_string(event, "turnIntentId", "turn_intent_id");
     let turn_intent_id = if turn_intent_id.is_empty() {
         event
@@ -1708,6 +1737,54 @@ fn build_subscription_snapshot(
     value
 }
 
+/// Resolve the authoritative owner and return its first body in one round trip.
+/// The lease can be closed before its canonical ID is known to the phone.
+pub async fn session_open(conn_id: u64, params: &Value) -> Result<Value, RpcError> {
+    session_open_with_loader(conn_id, params, |id, latest| async move {
+        load_subscription_history(&id, latest).await
+    })
+    .await
+}
+
+async fn session_open_with_loader<F, Fut>(
+    conn_id: u64,
+    params: &Value,
+    load: F,
+) -> Result<Value, RpcError>
+where
+    F: FnOnce(String, bool) -> Fut,
+    Fut: std::future::Future<Output = Result<(MobileHistoryWindow, bool), RpcError>>,
+{
+    let token = params
+        .get("subscriptionId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty() && id.len() <= 128)
+        .ok_or_else(|| RpcError::invalid_params("subscriptionId is required"))?;
+    let identity = super::session_identity::resolve(params).await?;
+    let session_id = identity["sessionId"]
+        .as_str()
+        .ok_or_else(|| RpcError::invalid_params("invalid session identity"))?;
+    if !fanout::open_session(conn_id, token, session_id, MAX_CONCURRENT_SUBSCRIPTIONS) {
+        return Err(RpcError::new(
+            RpcErrorCode::InvalidRequest,
+            "connection not registered",
+        ));
+    }
+    let latest_only = params.get("latestOnly").and_then(Value::as_bool) == Some(true);
+    let history = match load(session_id.to_owned(), latest_only).await {
+        Ok(history) => history,
+        Err(error) => {
+            fanout::close_open_session(conn_id, token);
+            return Err(error);
+        }
+    };
+    let mut response = subscription_history_response(session_id, history.0, history.1);
+    response["managed"] = identity["managed"].clone();
+    response["subscriptionId"] = Value::String(token.to_owned());
+    response["subscribed"] = Value::Bool(true);
+    Ok(response)
+}
+
 /// Subscribe a mobile connection to session event fanout and return one
 /// authoritative, bounded history snapshot for the selected session.
 pub async fn session_subscribe(conn_id: u64, params: &Value) -> Result<Value, RpcError> {
@@ -1733,13 +1810,74 @@ pub async fn session_subscribe(conn_id: u64, params: &Value) -> Result<Value, Rp
         ));
     }
 
-    let history = match load_mobile_initial_history(session_id).await {
+    let latest_only = params.get("latestOnly").and_then(Value::as_bool) == Some(true);
+    let history = match load_subscription_history(session_id, latest_only).await {
         Ok(loaded) => loaded,
         Err(err) => {
             fanout::unsubscribe_session(conn_id, session_id);
             return Err(err);
         }
     };
+    let mut response = subscription_history_response(session_id, history.0, history.1);
+    response["subscribed"] = Value::Bool(true);
+    Ok(response)
+}
+
+/// Read the full directory after a fast subscription response, without changing
+/// subscription state or occupying the mutation lane.
+pub async fn session_history(params: &Value) -> Result<Value, RpcError> {
+    let session_id = params
+        .get("sessionId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty())
+        .ok_or_else(|| RpcError::invalid_params("sessionId is required"))?;
+    let history = load_mobile_initial_history(session_id).await?;
+    Ok(subscription_history_response(session_id, history, false))
+}
+
+async fn load_subscription_history(
+    session_id: &str,
+    latest_only: bool,
+) -> Result<(MobileHistoryWindow, bool), RpcError> {
+    let history_id = mobile_history_session_id(session_id);
+    if latest_only && history_id.starts_with(orgtrack_core::sources::codex::SESSION_PREFIX) {
+        // This bounded tail reader does not build the full turn catalog. Empty
+        // or exceptionally large latest turns retain the existing full reader.
+        if let Ok(window) =
+            crate::orgtrack::history_commands::codex_app_mobile_tail_window(history_id).await
+        {
+            return mobile_codex_preview(session_id, window)
+                .await
+                .map(|history| (history, true));
+        }
+    }
+    load_mobile_initial_history(session_id)
+        .await
+        .map(|history| (history, false))
+}
+
+async fn mobile_codex_preview(
+    session_id: &str,
+    window: orgtrack_core::sources::codex::app::CodexAppInitialWindow,
+) -> Result<MobileHistoryWindow, RpcError> {
+    let rounds = mobile_rounds_from_projected(&window.turns);
+    let latest_round_id = rounds.last().map(|round| round.id.clone());
+    let chunks = latest_round_chunks(window.chunks, latest_round_id.as_deref());
+    let loaded = events_from_chunks(chunks, session_id.to_string()).await?;
+    Ok(MobileHistoryWindow {
+        rounds,
+        rounds_complete: false,
+        latest_round_id,
+        events: loaded.events,
+        events_truncated: loaded.truncated,
+    })
+}
+
+fn subscription_history_response(
+    session_id: &str,
+    history: MobileHistoryWindow,
+    history_deferred: bool,
+) -> Value {
     let snapshot = build_subscription_snapshot(
         session_id,
         history.latest_round_id.as_deref(),
@@ -1748,15 +1886,15 @@ pub async fn session_subscribe(conn_id: u64, params: &Value) -> Result<Value, Rp
         0,
     );
 
-    Ok(json!({
-        "subscribed": true,
+    json!({
         "sessionId": session_id,
+        "historyDeferred": history_deferred,
         "rounds": {
             "items": history.rounds,
             "complete": history.rounds_complete,
         },
         "snapshot": snapshot,
-    }))
+    })
 }
 
 /// Load one exact round body without mutating the desktop EventStore window.
@@ -1784,6 +1922,15 @@ pub async fn session_round(params: &Value) -> Result<Value, RpcError> {
 
 /// Unsubscribe from a session fanout stream.
 pub fn session_unsubscribe(conn_id: u64, params: &Value) -> Result<Value, RpcError> {
+    if let Some(token) = params.get("subscriptionId") {
+        let token = token
+            .as_str()
+            .filter(|id| !id.is_empty() && id.len() <= 128)
+            .ok_or_else(|| RpcError::invalid_params("invalid subscriptionId"))?;
+        fanout::close_open_session(conn_id, token);
+        return Ok(json!({ "unsubscribed": true }));
+    }
+
     let session_id = params
         .get("sessionId")
         .and_then(|value| value.as_str())
@@ -1801,6 +1948,125 @@ pub fn session_unsubscribe(conn_id: u64, params: &Value) -> Result<Value, RpcErr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn opening_owns_snapshot_and_closes_by_lease_without_known_canonical_id() {
+        let _guard = super::super::super::fanout::TEST_REGISTRY_LOCK.lock().await;
+        let (tx, _rx) = tokio::sync::mpsc::channel(8);
+        let conn = fanout::register_connection(tx);
+        let response = session_open_with_loader(
+            conn,
+            &json!({
+                "sessionId": "cliagent-opening", "subscriptionId": "first", "latestOnly": true
+            }),
+            |id, latest| async move {
+                assert_eq!(id, "cliagent-opening");
+                assert!(latest);
+                assert!(fanout::is_subscribed(conn, &id));
+                Ok((
+                    MobileHistoryWindow {
+                        rounds: vec![],
+                        rounds_complete: true,
+                        latest_round_id: None,
+                        events: vec![],
+                        events_truncated: false,
+                    },
+                    false,
+                ))
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(response["sessionId"], "cliagent-opening");
+        assert_eq!(response["managed"], false);
+        assert_eq!(response["subscriptionId"], "first");
+        assert_eq!(response["snapshot"]["sessionId"], "cliagent-opening");
+        session_unsubscribe(conn, &json!({"subscriptionId":"first"})).unwrap();
+        assert!(!fanout::is_subscribed(conn, "cliagent-opening"));
+        let failed = session_open_with_loader(
+            conn,
+            &json!({
+                "sessionId":"cliagent-opening", "subscriptionId":"failed"
+            }),
+            |_, _| async { Err(RpcError::invalid_params("history unavailable")) },
+        )
+        .await;
+        assert!(failed.is_err());
+        assert_eq!(fanout::subscription_count(conn), 0);
+        fanout::unregister_connection(conn);
+    }
+
+    #[tokio::test]
+    #[ignore = "requires an explicitly supplied local transcript path; reads only"]
+    async fn mobile_history_read_latency_probe() {
+        use orgtrack_core::sources::codex::app;
+        let path = std::path::PathBuf::from(
+            std::env::var("ORG2_HISTORY_PROBE_PATH").expect("fixture path"),
+        );
+        let start = std::time::Instant::now();
+        let tail =
+            app::load_codex_app_mobile_tail_window_from_path("codexapp-probe", &path).unwrap();
+        let tail = mobile_codex_preview("codexapp-probe", tail).await.unwrap();
+        let tail_elapsed = start.elapsed();
+        let start = std::time::Instant::now();
+        let full =
+            app::load_codex_app_initial_window_from_path("codexapp-probe", &path, 1).unwrap();
+        let rounds = mobile_rounds_from_projected(&full.turns);
+        let full_latest = rounds.last().map(|round| round.id.clone());
+        let chunks = latest_round_chunks(full.chunks, full_latest.as_deref());
+        let _events = events_from_chunks(chunks, "codexapp-probe".into())
+            .await
+            .unwrap();
+        let full_elapsed = start.elapsed();
+        assert_eq!(tail.latest_round_id, full_latest);
+        eprintln!(
+            "history probe: bytes={}, latest_ms={}, full_ms={}, rounds={}",
+            std::fs::metadata(&path).unwrap().len(),
+            tail_elapsed.as_millis(),
+            full_elapsed.as_millis(),
+            rounds.len()
+        );
+    }
+
+    #[tokio::test]
+    async fn mobile_preview_projects_real_latest_turn_and_defers_the_directory() {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        for (kind, message) in [
+            ("user_message", "older"),
+            ("agent_message", "old answer"),
+            ("user_message", "latest"),
+            ("agent_message", "latest answer"),
+        ] {
+            writeln!(
+                file,
+                "{}",
+                json!({"timestamp":"2026-09-12T00:00:00Z",
+                "payload":{"type":kind,"message":message}})
+            )
+            .unwrap();
+        }
+        let id = "codexapp-preview-fixture";
+        let window =
+            orgtrack_core::sources::codex::app::load_codex_app_mobile_tail_window_from_path(
+                id,
+                file.path(),
+            )
+            .unwrap();
+        let history = mobile_codex_preview(id, window).await.unwrap();
+        let response = subscription_history_response(id, history, true);
+        assert_eq!(response["historyDeferred"], true);
+        assert_eq!(response["rounds"]["complete"], false);
+        assert_eq!(response["rounds"]["items"].as_array().unwrap().len(), 1);
+        assert!(
+            response.get("subscribed").is_none(),
+            "history read does not mutate subscription"
+        );
+        let encoded = serde_json::to_string(&response).unwrap();
+        assert!(encoded.contains("latest answer"));
+        assert!(!encoded.contains("old answer"));
+        assert_eq!(response["snapshot"]["sessionId"], id);
+    }
 
     #[tokio::test]
     async fn managed_codex_native_reply_keeps_submit_identity_after_append() {
@@ -2246,6 +2512,45 @@ mod tests {
     }
 
     #[test]
+    fn mobile_session_display_projects_only_bounded_resolver_inputs() {
+        let mut record: SessionAggregateRecord = serde_json::from_value(json!({
+            "sessionId": "sdeagent-custom", "name": "Raw name", "status": "waiting_for_user",
+            "createdAt": "2026-09-09T00:00:00Z", "updatedAt": "2026-09-09T00:00:00Z",
+            "category": "agent", "keySource": "own_key", "isActive": true,
+            "agentDefinitionId": "custom:reviewer", "agentIconId": "review-icon",
+            "model": "claude-sonnet", "cliAgentType": "claude_code",
+            "externalHistorySource": "claude_code", "agentOrgId": "org-agent",
+            "accountId": "private-account", "userInput": "private-prompt",
+            "storagePath": "/private/session.json"
+        }))
+        .expect("valid aggregate fixture");
+        assert_eq!(
+            mobile_session_display(&record),
+            json!({
+                "agentDefinitionId": "custom:reviewer", "agentIconId": "review-icon",
+                "model": "claude-sonnet", "cliAgentType": "claude_code",
+                "externalHistorySource": "claude_code", "agentOrgId": "org-agent"
+            })
+        );
+        record.model = Some("x".repeat(513));
+        assert!(mobile_session_display(&record).get("model").is_none());
+        record.agent_icon_id = None;
+        assert!(mobile_session_display(&record).get("agentIconId").is_none());
+        record.merge_status = Some("pending".into());
+        for status in ["waiting_for_user", "paused", "completed", "future_status"] {
+            record.status = status.to_string();
+            let wire = mobile_directory_session_row(&record, "read_only");
+            assert_eq!(wire["lifecycleStatus"], status);
+            assert_eq!(wire["mergeStatus"], "pending");
+            assert_eq!(wire["status"], map_session_status_to_mobile(status));
+            assert_eq!(wire["sendCapability"], "read_only");
+            assert!(wire.get("accountId").is_none());
+            assert!(wire.get("userInput").is_none());
+            assert!(wire.get("storagePath").is_none());
+        }
+    }
+
+    #[test]
     fn sidebar_snapshot_list_preserves_desktop_order_and_running_filter() {
         let snapshot = vec![
             MobileSidebarSessionSnapshotRow {
@@ -2416,6 +2721,20 @@ mod tests {
     }
 
     #[test]
+    fn mobile_request_heading_is_normalized_before_losing_envelope_provenance() {
+        let plain = "## My request:\n  keep indentation\n";
+        let wrapped = format!("<in-app-browser-context>state</in-app-browser-context>\n{plain}");
+        assert_eq!(
+            mobile_display_text("user", &wrapped, MAX_MOBILE_MESSAGE_TEXT_BYTES),
+            ("  keep indentation\n".into(), false)
+        );
+        assert_eq!(
+            mobile_display_text("user", plain, MAX_MOBILE_MESSAGE_TEXT_BYTES),
+            (plain.into(), false)
+        );
+    }
+
+    #[test]
     fn mobile_message_projection_preserves_plain_text_and_real_truncation() {
         let plain = "  indented first line\n\n```xml\n<custom>keep</custom>\n```";
         assert_eq!(
@@ -2459,7 +2778,8 @@ mod tests {
                 .with_result(json!({
                     "type": "user",
                     "message": { "role": "user", "content": "historic prompt" },
-                    "turnIntentId": "intent-history"
+                    "turnIntentId": "intent-history",
+                    "images": ["/tmp/screenshot.png"]
                 }));
         let assistant =
             core_types::activity::ActivityChunk::new("codexapp-history", "assistant", "assistant")
@@ -2487,6 +2807,12 @@ mod tests {
             .and_then(Value::as_array)
             .expect("snapshot upserts");
         assert_eq!(upserts.len(), 2);
+        assert_eq!(upserts[0]["imageCount"], 1);
+        assert!(upserts[0].get("result").is_none());
+        let wire = serde_json::to_value(&events[0]).expect("wire event");
+        let (projected, _) = mobile_event_from_wire(&wire).expect("projection");
+        assert_eq!(projected["imageCount"], 1);
+        assert!(projected.get("result").is_none());
         assert_eq!(
             upserts[0].get("source").and_then(Value::as_str),
             Some("user")
@@ -2503,6 +2829,32 @@ mod tests {
             upserts[1].get("displayText").and_then(Value::as_str),
             Some("historic answer")
         );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires an explicitly supplied local history session"]
+    async fn local_history_image_projection() {
+        let id = std::env::var("ORG2_TEST_IMAGE_SESSION").expect("session fixture");
+        let started = std::env::var("ORG2_TEST_IMAGE_STARTED").expect("round timestamp");
+        let window = load_mobile_initial_history(&id)
+            .await
+            .expect("initial history");
+        let round = window
+            .rounds
+            .iter()
+            .find(|round| round.started_at.starts_with(&started))
+            .expect("round");
+        let loaded = load_mobile_round_events(&id, &round.id)
+            .await
+            .expect("round history");
+        let counts: Vec<_> = loaded
+            .events
+            .iter()
+            .filter_map(mobile_event_from_session)
+            .map(|(event, _)| event["imageCount"].as_u64().unwrap_or(0))
+            .collect();
+        eprintln!("Authoritative round image counts: {counts:?}");
+        assert!(counts.iter().any(|count| *count > 0));
     }
 
     #[test]

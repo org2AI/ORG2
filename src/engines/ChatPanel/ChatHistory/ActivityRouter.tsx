@@ -23,12 +23,12 @@ import {
   getChatComponent,
 } from "@src/engines/SessionCore/rendering/registry/events";
 import { createLogger } from "@src/hooks/logger";
-import { getRegistryEventType } from "@src/lib/activityData/activityNormalizers";
+import { getRegistryEventType } from "@src/util/data/activityData/activityNormalizers";
 import {
   extractAssistantMessageContent,
   extractTextFromContent,
   isOrchestratorSystemPrompt,
-} from "@src/lib/activityData/textExtractors";
+} from "@src/util/data/activityData/textExtractors";
 
 import AgentChatItemDefault from "../ChatItems/AgentChatItemDefault";
 import AgentErrorChatItem from "../ChatItems/AgentErrorChatItem";
@@ -292,10 +292,7 @@ const ActivityChatItem: React.FC<ActivityChatItemProps> = memo(
                 llmUsage ? <LlmUsageBadge usage={llmUsage} /> : undefined
               }
             >
-              <AgentChatItemDefault
-                streamHtml={isStreaming}
-                messageTimestamp={event.createdAt}
-              >
+              <AgentChatItemDefault streamHtml={isStreaming}>
                 {assistantContent}
               </AgentChatItemDefault>
             </AgentMessageBlock>

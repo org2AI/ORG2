@@ -3,13 +3,13 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import ComposerShell from "@src/components/ComposerShell";
-import ComposerSurface from "@src/components/ComposerSurface";
-import PersonAvatar from "@src/components/PersonAvatar";
 import MarkdownTextareaEditor, {
   type MarkdownEditorMode,
-} from "@src/modules/shared/components/MarkdownTextareaEditor";
-import MarkdownEditorModeSwitch from "@src/modules/shared/components/MarkdownTextareaEditor/ModeSwitch";
-import { LoadingBar } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/MarkdownTextareaEditor";
+import MarkdownEditorModeSwitch from "@src/components/MarkdownTextareaEditor/ModeSwitch";
+import PersonAvatar from "@src/components/PersonAvatar";
+import { LoadingBar } from "@src/components/layout/blocks";
+import ComposerSurface from "@src/engines/ChatPanel/ComposerSurface";
 
 import GitHubIssueCloseButton from "./GitHubIssueCloseButton";
 import type {
@@ -133,7 +133,6 @@ const GitHubIssueComposer: React.FC<GitHubIssueComposerProps> = ({
         }
         trailingActions={
           <Button
-            htmlType="button"
             variant="primary"
             size="small"
             shape="round"

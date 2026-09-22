@@ -11,21 +11,14 @@ import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Session } from "@src/store/session/sessionAtom/types";
+import { testTranslate } from "@src/test/i18nTestTranslate";
 import { createSmokeRoot, dispatch } from "@src/test/reactSmokeHarness";
 
 // react-i18next has no instance bound in this suite; interpolate the one
 // placeholder the panel uses so the rendered header is assertable.
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (
-      _key: string,
-      options?: { defaultValue?: string; length?: string }
-    ): string => {
-      const template = options?.defaultValue ?? _key;
-      return options?.length === undefined
-        ? template
-        : template.replace("{{length}}", options.length);
-    },
+    t: (...args: Parameters<typeof testTranslate>) => testTranslate(...args),
     i18n: { resolvedLanguage: "en" },
   }),
 }));

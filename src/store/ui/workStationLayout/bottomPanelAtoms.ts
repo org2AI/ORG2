@@ -33,29 +33,3 @@ export const workStationEditorSecondaryCollapsedPersistAtom = atom(
     setStoredValue("bottom_collapsed", String(next));
   }
 );
-
-function getStoredBottomPanelHeight(): number {
-  const stored = getStoredValue("bottom_height");
-  if (stored) {
-    const height = parseInt(stored, 10);
-    if (!isNaN(height) && height >= 160 && height <= 600) {
-      return height;
-    }
-  }
-  return 250;
-}
-
-export const workStationBottomPanelHeightAtom = atom<number>(
-  getStoredBottomPanelHeight()
-);
-workStationBottomPanelHeightAtom.debugLabel =
-  "workStationBottomPanelHeightAtom";
-
-export const workStationBottomPanelHeightPersistAtom = atom(
-  (get) => get(workStationBottomPanelHeightAtom),
-  (_get, set, value: number) => {
-    const clampedValue = Math.max(160, Math.min(600, value));
-    set(workStationBottomPanelHeightAtom, clampedValue);
-    setStoredValue("bottom_height", String(clampedValue));
-  }
-);

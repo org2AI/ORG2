@@ -60,14 +60,34 @@ export function sanitizePillDisplayLabel(name: string): string {
 
 const VISIBLE_PILL_LABEL_MAX_CHARS = 10;
 
+/**
+ * Longest link label shown in full. Long enough for an ordinary address to
+ * read as typed ("https://github.com/org2AI/ORG2"), short enough that a pasted
+ * token-laden URL cannot run the width of the composer.
+ */
+const VISIBLE_LINK_LABEL_MAX_CHARS = 48;
+
+/**
+ * Truncate a link's label. Unlike a file name, a URL has no extension worth
+ * keeping — its last dot is usually the host's TLD — so this only cuts the
+ * tail; the full address stays available on hover.
+ */
+export function truncateVisibleLinkLabel(label: string): string {
+  if (label.length <= VISIBLE_LINK_LABEL_MAX_CHARS) return label;
+  return `${label.slice(0, VISIBLE_LINK_LABEL_MAX_CHARS)}...`;
+}
+
 export function truncateVisiblePillLabel(label: string): string {
   if (label.length <= VISIBLE_PILL_LABEL_MAX_CHARS) return label;
 
+  // Keep a file's extension visible ("verylongname...tsx"). Only a short
+  // dotted suffix counts: in a URL the last dot is in the host, and what
+  // follows it is the whole path and query, not an extension.
   const compoundExtensionMatch = label.match(/\.index\.[^.]+$/i);
-  const lastDotIndex = label.lastIndexOf(".");
   const extension =
     compoundExtensionMatch?.[0] ??
-    (lastDotIndex > 0 ? label.slice(lastDotIndex) : "");
+    label.match(/(?<=.)\.[^./\\?#&=\s]{1,10}$/)?.[0] ??
+    "";
   return `${label.slice(0, VISIBLE_PILL_LABEL_MAX_CHARS)}...${extension}`;
 }
 
@@ -162,6 +182,37 @@ export function pillDataAttributes(
     result["data-line-start"] = String(attrs.lineStart);
   if (attrs.lineEnd != null) result["data-line-end"] = String(attrs.lineEnd);
   return result;
+}
+
+/**
+ * Zero-width space. `insertNewline` parks one at the end of the editor to
+ * anchor the caret on an empty last row; it is never part of the text.
+ */
+const ZERO_WIDTH_SPACE = String.fromCharCode(0x200b);
+
+/**
+ * Length of `text` in plain-text coordinates — the offsets `extractPlainText`
+ * produces, where zero-width anchors do not count.
+ */
+export function plainTextLength(text: string): number {
+  return text.length - (text.split(ZERO_WIDTH_SPACE).length - 1);
+}
+
+/**
+ * Index into the raw `text` that a plain-text offset points at, stepping over
+ * the zero-width anchors plain-text coordinates leave out.
+ */
+export function rawIndexAtPlainOffset(
+  text: string,
+  plainOffset: number
+): number {
+  let remaining = Math.max(0, plainOffset);
+  let index = 0;
+  while (index < text.length && remaining > 0) {
+    if (text[index] !== ZERO_WIDTH_SPACE) remaining -= 1;
+    index += 1;
+  }
+  return index;
 }
 
 /**

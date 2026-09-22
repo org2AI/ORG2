@@ -9,13 +9,11 @@
  * - Derived atoms: Computed values (auto-memoized)
  * - Action atoms: Write-only operations with encapsulated logic
  */
-import type {
-  AddSessionOptions,
-  TerminalSession,
-} from "@/src/engines/TerminalCore/types";
+import type { TerminalSession } from "@/src/engines/TerminalCore/types";
 import { type Getter, type Setter, atom } from "jotai";
 
 import { getSettingsDefaults } from "@src/config/settingsSchema";
+import type { AddSessionOptions } from "@src/contracts/terminal";
 import { createLogger } from "@src/hooks/logger";
 import { settingsAtom } from "@src/store/settings/settingsAtom";
 import { invokeTauri, isTauriReady } from "@src/util/platform/tauri/init";

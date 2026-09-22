@@ -5,7 +5,7 @@ import {
   extractGitHubReferences,
   getWorkItemReferenceText,
   parseGitHubRepoFromItemUrl,
-} from "@src/modules/shared/components/GitHubLinkedReferences/references";
+} from "@src/features/GitHubWork/GitHubLinkedReferences/references";
 import type { WorkItem } from "@src/types/core/workItem";
 
 interface UseWorkItemPanelLinkedReferencesArgs {

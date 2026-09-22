@@ -108,7 +108,14 @@ pub(crate) fn register_settings_hooks() {
             agent_core::utils::set_global_http_version_pref(pref);
         }
         agent_core::session::housekeeper_compaction::update_from_settings(value);
+        crate::api::mobile_bridge::authorization::notify_settings_changed(value);
         crate::api::mobile_bridge::relay::notify_settings_changed(value);
+        if let Some(app) = crate::api::get_app_handle() {
+            let high_refresh_rate = value
+                .get(app_window::rendering_rate::HIGH_REFRESH_RATE_SETTING_KEY)
+                .and_then(|v| v.as_bool());
+            app_window::rendering_rate::apply_rendering_rate_to_app_windows(app, high_refresh_rate);
+        }
     }));
 }
 

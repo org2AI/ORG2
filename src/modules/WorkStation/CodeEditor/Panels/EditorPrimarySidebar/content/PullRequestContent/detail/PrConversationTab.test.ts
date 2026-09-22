@@ -4,12 +4,13 @@ import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
+
 import { PrConversationTab } from "./PrConversationTab";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, fallback?: string) => fallback ?? _key,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 vi.mock("@src/features/Org2Cloud/useSessionReferenceDropTarget", () => ({
@@ -20,7 +21,7 @@ vi.mock("@src/hooks/ui/layout/useElementDimensions", () => ({
   useElementDimensions: () => 0,
 }));
 
-vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", async () => {
+vi.mock("@src/components/MarkdownTextareaEditor", async () => {
   const { forwardRef } = await import("react");
   return {
     default: forwardRef<HTMLDivElement, Record<string, unknown>>(
@@ -214,8 +215,7 @@ describe("PrConversationTab", () => {
         '[data-testid="pr-review-comment-row"]'
       );
       expect(modalBody?.className).toContain("p-0");
-      expect(reviewModalBody?.className).toContain("px-5");
-      expect(reviewModalBody?.className).toContain("py-4");
+      expect(reviewModalBody?.classList.contains("p-3")).toBe(true);
       expect(decisionRow?.className).not.toContain("grid-cols-");
       expect(commentRow?.className).toContain("block");
       expect(commentRow?.textContent).toContain("Review comment");
@@ -298,5 +298,69 @@ describe("PrConversationTab", () => {
         .querySelector('[data-testid="pr-comment-editor"]')
         ?.getAttribute("data-value")
     ).toBe("Do not lose this review");
+  });
+
+  it("collapses close-together label events from the PR's GitHub timeline", () => {
+    const markup = renderToStaticMarkup(
+      createElement(PrConversationTab, {
+        detail: null,
+        identity: {
+          number: 42,
+          title: "Show label activity",
+          url: "https://github.com/org/repo/pull/42",
+          status: "open",
+          headBranch: "feature/labels",
+        },
+        conversation: [],
+        reviews: [],
+        reviewComments: [],
+        timelineEvents: [
+          {
+            id: 1,
+            event: "labeled",
+            created_at: "2026-09-13T02:34:05Z",
+            actor: { login: "ShiboSheng", avatar_url: "" },
+            body: null,
+            html_url: null,
+            assignee: null,
+            label: { name: "bug", color: "d73a4a" },
+            milestone: null,
+            rename: null,
+            source: null,
+            commit_id: null,
+            lock_reason: null,
+          },
+          {
+            id: 2,
+            event: "labeled",
+            created_at: "2026-09-13T02:34:22Z",
+            actor: { login: "ShiboSheng", avatar_url: "" },
+            body: null,
+            html_url: null,
+            assignee: null,
+            label: { name: "UX", color: "8b2fc9" },
+            milestone: null,
+            rename: null,
+            source: null,
+            commit_id: null,
+            lock_reason: null,
+          },
+        ],
+        loading: false,
+        submittingComment: false,
+        submittingReview: false,
+        onAddComment: vi.fn().mockResolvedValue(undefined),
+        onSubmitReview: vi.fn().mockResolvedValue(undefined),
+      })
+    );
+    const container = document.createElement("div");
+    container.innerHTML = markup;
+
+    expect(container.querySelectorAll('[data-icon="tag-icon"]')).toHaveLength(
+      1
+    );
+    expect(container.textContent).toContain("bug");
+    expect(container.textContent).toContain("UX");
+    expect(container.textContent?.match(/ShiboSheng/g)?.length).toBe(1);
   });
 });

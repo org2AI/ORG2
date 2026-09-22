@@ -60,7 +60,10 @@ fn release_with_other_holders_remaining_keeps_the_assertion() {
 #[test]
 fn release_of_the_last_holder_drops_the_assertion() {
     let mut holders = set(&["main"]);
-    assert_eq!(decide_release(&mut holders, true, "main"), Transition::Apply);
+    assert_eq!(
+        decide_release(&mut holders, true, "main"),
+        Transition::Apply
+    );
     assert!(holders.is_empty());
 }
 
@@ -94,7 +97,10 @@ fn detached_window_release_does_not_strand_the_main_window() {
     let mut held = false;
 
     // Main window starts an agent run → creates the platform assertion.
-    assert_eq!(decide_acquire(&mut holders, held, "main"), Transition::Apply);
+    assert_eq!(
+        decide_acquire(&mut holders, held, "main"),
+        Transition::Apply
+    );
     held = true;
 
     // A detached session window also sees "working" and acquires → shares
@@ -121,10 +127,66 @@ fn detached_window_release_does_not_strand_the_main_window() {
     assert_eq!(holders, set(&["main"]));
 
     // Main finishes: the last holder out drops the assertion.
-    assert_eq!(decide_release(&mut holders, held, "main"), Transition::Apply);
+    assert_eq!(
+        decide_release(&mut holders, held, "main"),
+        Transition::Apply
+    );
     held = false;
     assert!(holders.is_empty());
 
     // Acquire again after a full release → applies again.
-    assert_eq!(decide_acquire(&mut holders, held, "main"), Transition::Apply);
+    assert_eq!(
+        decide_acquire(&mut holders, held, "main"),
+        Transition::Apply
+    );
+}
+
+/// The one test that does cross the FFI boundary: the refcount above is only
+/// worth anything if the assertion it guards is real. `pmset -g assertions` is
+/// the OS's own view, so this proves the assertion type string is one IOKit
+/// accepts, that it is attributed to this process under a name `pmset` can
+/// print (it mangles non-ASCII), and that releasing the id withdraws it.
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_assertion_is_visible_to_the_os_while_held_and_gone_after_release() {
+    use crate::power::macos_impl::ASSERTION_NAME;
+
+    fn own_assertion_lines() -> Option<Vec<String>> {
+        let output = std::process::Command::new("/usr/bin/pmset")
+            .args(["-g", "assertions"])
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let pid_marker = format!("pid {}(", std::process::id());
+        Some(
+            String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .filter(|line| line.contains(&pid_marker) && line.contains(ASSERTION_NAME))
+                .map(str::to_owned)
+                .collect(),
+        )
+    }
+
+    let Some(before) = own_assertion_lines() else {
+        eprintln!("pmset unavailable; skipping live IOPMAssertion check");
+        return;
+    };
+    assert!(
+        before.is_empty(),
+        "unexpected pre-existing assertion: {before:?}"
+    );
+
+    let assertion_id = crate::power::macos_impl::acquire().expect("acquire");
+    let held = own_assertion_lines().expect("pmset");
+    assert_eq!(held.len(), 1, "{held:?}");
+    assert!(held[0].contains("PreventUserIdleSystemSleep"), "{held:?}");
+
+    crate::power::macos_impl::release(assertion_id).expect("release");
+    let after = own_assertion_lines().expect("pmset");
+    assert!(
+        after.is_empty(),
+        "assertion outlived its release: {after:?}"
+    );
 }

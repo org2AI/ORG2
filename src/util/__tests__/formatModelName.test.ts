@@ -36,6 +36,25 @@ describe("formatModelName", () => {
     expect(formatModelName("default")).toBe("default");
   });
 
+  it("names Cursor's routing tier when the owner is known", () => {
+    expect(formatModelName("default", "cursor_cli")).toBe(
+      "Auto (Cursor picks)"
+    );
+    expect(formatModelNameFull("default", "cursor_cli")).toBe(
+      "Auto (Cursor picks)"
+    );
+  });
+
+  it("keeps the raw tier id for non-Cursor owners", () => {
+    expect(formatModelName("default", "claude_code")).toBe("default");
+    expect(formatModelNameFull("default", "claude_code")).toBe("default");
+  });
+
+  it("still title-cases the other tier words without a hint", () => {
+    expect(formatModelName("auto")).toBe("Auto");
+    expect(formatModelName("premium")).toBe("Premium");
+  });
+
   it("filters out long hex-like segments", () => {
     const longHex = "a".repeat(13);
     expect(formatModelName(`foo-${longHex}-bar`)).toBe("Foo Bar");

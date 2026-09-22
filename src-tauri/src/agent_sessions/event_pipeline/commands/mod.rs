@@ -65,7 +65,7 @@ pub(crate) fn prepare_loaded_events(
 
 #[cfg(test)]
 mod streaming_snapshot_delta_tests {
-    use super::notify::build_streaming_snapshot_delta;
+    use super::notify::{build_settled_snapshot_delta, build_streaming_snapshot_delta};
     use super::*;
     use crate::agent_sessions::event_pipeline::store::EventStore;
 
@@ -124,6 +124,161 @@ mod streaming_snapshot_delta_tests {
         assert_eq!(no_op.base_version, delta.version);
         assert!(no_op.upserts.is_empty());
         assert!(no_op.memberships.is_empty());
+    }
+
+    fn retry_user(id: &str, intent: &str) -> SessionEvent {
+        let mut event = test_event(id, "2026-09-18T16:00:00Z");
+        event.function_name = "user".into();
+        event.source = core_types::session_event::EventSource::User;
+        event.action_type = "raw".into();
+        event.result = serde_json::json!({"turnIntentId": intent});
+        event
+    }
+
+    fn retry_marker() -> SessionEvent {
+        let mut event = test_event("queued-retry-lineage:owner:", "2026-09-18T16:00:01Z");
+        event.function_name = "system".into();
+        event.source = core_types::session_event::EventSource::System;
+        event.action_type = "queued_retry_lineage".into();
+        event.result = serde_json::json!({"retryLineage": {
+            "version": 1, "queueMessageId": "owner", "superseded": [{
+                "sessionId": "streaming-delta-test", "turnIntentId": "failed-C",
+                "sourceEventIds": []
+            }]
+        }});
+        event
+    }
+
+    #[test]
+    fn retry_lineage_snapshot_delta_keeps_full_projection_after_new_send() {
+        let mut store = EventStore::new();
+        let mut error = test_event("original-error", "2026-09-18T16:00:02Z");
+        error.function_name = "error".into();
+        error.action_type = "error".into();
+        error.display_variant = core_types::session_event::EventDisplayVariant::Error;
+        store.set(vec![
+            retry_user("A", "A"),
+            retry_user("B", "B"),
+            retry_user("old-C", "failed-C"),
+            error,
+            retry_user("new-C", "retry-C"),
+            retry_marker(),
+        ]);
+        let full = super::super::derived::compute_derived(store.events(), store.version());
+        assert!(
+            full.chat_events
+                .iter()
+                .any(|event| event.id == "old-C"
+                    && event.action_type == "queued_retry_audit_boundary")
+        );
+        store.mark_full_snapshot_emitted();
+        store.append(vec![retry_user("D", "D")]);
+        let delta = build_settled_snapshot_delta(&mut store);
+        assert_eq!(
+            delta.chat_event_ids,
+            vec!["A", "B", "old-C", "original-error", "new-C", "D"]
+        );
+        assert!(
+            store.get_by_id("old-C").is_some(),
+            "raw failed prompt stays auditable"
+        );
+    }
+
+    #[test]
+    fn retry_lineage_streaming_delta_preserves_failed_attempt_audit_boundary() {
+        let mut store = EventStore::new();
+        store.set(vec![
+            retry_user("old-C", "failed-C"),
+            retry_user("new-C", "retry-C"),
+            retry_marker(),
+        ]);
+        store.mark_full_snapshot_emitted();
+        store.set_streaming(true);
+        store.upsert(retry_user("old-C", "failed-C"));
+        store.upsert(retry_user("new-C", "retry-C"));
+        let streaming = build_streaming_snapshot_delta(&mut store);
+        assert!(
+            streaming
+                .memberships
+                .iter()
+                .find(|entry| entry.id == "old-C")
+                .unwrap()
+                .chat
+        );
+        assert!(
+            streaming
+                .memberships
+                .iter()
+                .find(|entry| entry.id == "new-C")
+                .unwrap()
+                .chat
+        );
+        let boundary = streaming
+            .upserts
+            .iter()
+            .find(|event| event.id == "old-C")
+            .unwrap();
+        assert_eq!(
+            boundary.source,
+            core_types::session_event::EventSource::System
+        );
+        assert_eq!(boundary.action_type, "queued_retry_audit_boundary");
+        assert_eq!(
+            store.get_by_id("old-C").unwrap().source,
+            core_types::session_event::EventSource::User
+        );
+        assert_eq!(
+            streaming.upserts.len(),
+            2,
+            "streaming retains journal-only payloads"
+        );
+    }
+
+    #[test]
+    fn retry_lineage_change_refreshes_unchanged_prompt_membership() {
+        let mut store = EventStore::new();
+        store.set(vec![
+            retry_user("old-C", "failed-C"),
+            retry_user("new-C", "retry-C"),
+        ]);
+        store.mark_full_snapshot_emitted();
+        store.set_streaming(true);
+        store.merge_events(vec![retry_marker()]);
+        assert!(
+            store.should_emit_full_snapshot(),
+            "lineage changes an unchanged old prompt's membership"
+        );
+        let full = super::super::derived::compute_derived(store.events(), store.version());
+        assert!(
+            full.chat_events
+                .iter()
+                .any(|event| event.id == "old-C"
+                    && event.action_type == "queued_retry_audit_boundary")
+        );
+        store.mark_full_snapshot_emitted();
+        store.append(vec![test_event("token-chunk", "2026-09-18T16:00:03Z")]);
+        assert!(
+            !store.should_emit_full_snapshot(),
+            "ordinary token chunks stay incremental"
+        );
+        let delta = build_streaming_snapshot_delta(&mut store);
+        assert_eq!(delta.upserts.len(), 1);
+        assert_eq!(delta.memberships.len(), 1);
+
+        // Replacing or removing the verdict also changes an unchanged prompt.
+        let mut cleared = retry_marker();
+        cleared.result["retryLineage"]["superseded"] = serde_json::json!([]);
+        store.upsert(cleared);
+        assert!(store.should_emit_full_snapshot());
+        assert!(
+            super::super::derived::compute_derived(store.events(), store.version())
+                .chat_events
+                .iter()
+                .any(|event| event.id == "old-C")
+        );
+        store.mark_full_snapshot_emitted();
+        store.remove_by_id_prefix("queued-retry-lineage:");
+        assert!(store.should_emit_full_snapshot());
     }
 
     #[test]

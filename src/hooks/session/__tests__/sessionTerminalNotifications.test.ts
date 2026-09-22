@@ -1,7 +1,10 @@
 import type { TFunction } from "i18next";
 import { describe, expect, it, vi } from "vitest";
 
-import { notifyError } from "@src/api/services/notification";
+import {
+  notifyError,
+  notifyTaskCompletion,
+} from "@src/api/services/notification";
 import Message from "@src/components/Message";
 import type { NotificationSettings } from "@src/types/ui/notification";
 
@@ -68,6 +71,7 @@ describe("deliverSessionTerminalNotification", () => {
           sessionId: "session-a",
           sessionName: "Session A",
           status,
+          sessionInActiveTab: false,
           attentionRequired: true,
         },
         settings,
@@ -87,6 +91,32 @@ describe("deliverSessionTerminalNotification", () => {
     }
   );
 
+  it.each(["completed", "idle"])(
+    "does not create a %s message for the selected Session tab",
+    async (status) => {
+      vi.mocked(notifyTaskCompletion).mockClear();
+      vi.mocked(Message.success).mockClear();
+
+      deliverSessionTerminalNotification(
+        {
+          sessionId: "session-a",
+          sessionName: "Session A",
+          status,
+          sessionInActiveTab: true,
+          // Even if the document itself is hidden or unfocused, the selected
+          // tab must not accumulate a redundant completion message.
+          attentionRequired: true,
+        },
+        settings,
+        ((key: string) => key) as TFunction
+      );
+      await Promise.resolve();
+
+      expect(notifyTaskCompletion).not.toHaveBeenCalled();
+      expect(Message.success).not.toHaveBeenCalled();
+    }
+  );
+
   it("contains native delivery rejection without showing a delivered failure toast", async () => {
     vi.mocked(notifyError).mockRejectedValueOnce(
       new Error("Native channel unavailable")
@@ -100,6 +130,7 @@ describe("deliverSessionTerminalNotification", () => {
         sessionId: "session-a",
         sessionName: "Session A",
         status: "failed",
+        sessionInActiveTab: false,
         attentionRequired: true,
         errorMessage: "Private task details",
       },
@@ -122,6 +153,7 @@ describe("deliverSessionTerminalNotification", () => {
       sessionId: "session-a",
       sessionName: "Session A",
       status: "cancelled",
+      sessionInActiveTab: false,
       attentionRequired: true,
     };
     const translate = ((key: string) => key) as TFunction;

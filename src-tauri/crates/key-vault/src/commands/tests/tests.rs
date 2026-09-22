@@ -602,9 +602,11 @@ fn live_codex_catalog_preserves_capabilities_and_completes_builtin_models() {
         catalog.default_enabled_models,
         vec![
             "account-visible-model",
+            "gpt-6-astra",
             "gpt-5.6-sol",
             "gpt-5.6-terra",
             "gpt-5.6-luna",
+            "gpt-5.5",
         ]
     );
     assert_eq!(
@@ -818,4 +820,71 @@ fn sonnet_ladders_follow_reference_effort_limits() {
         .model_variants
         .iter()
         .any(|variant| variant.model == "claude-sonnet-5-thinking-xhigh"));
+}
+
+#[test]
+fn current_oauth_generations_are_preselected_without_overriding_provider_defaults() {
+    use crate::commands::validate::{resolved_oauth_catalog, OAuthModelCatalogSource};
+    use crate::types::DiscoveredModel;
+
+    for (agent_type, current, older) in [
+        (
+            "codex",
+            vec!["gpt-5.5", "gpt-5.10", "gpt-6-astra", "gpt-6.1", "gpt-7"],
+            vec!["gpt-5.4", "gpt-60fake"],
+        ),
+        (
+            "claude_code",
+            vec![
+                "claude-opus-5",
+                "claude-opus-5-1",
+                "claude-opus-6",
+                "claude-sonnet-4-10",
+                "claude-sonnet-5",
+                "claude-haiku-6",
+                "claude-mythos-6",
+                "claude-fable-5",
+                "claude-fable-5-1",
+                "claude-fable-6",
+            ],
+            vec!["claude-opus-4-7", "claude-fable-4", "claude-opus-50fake"],
+        ),
+    ] {
+        let discovered = std::iter::once("provider-default")
+            .chain(current.iter().copied())
+            .chain(older.iter().copied())
+            .map(|id| DiscoveredModel {
+                id: id.to_string(),
+                is_default: id == "provider-default",
+                ..DiscoveredModel::default()
+            })
+            .collect();
+        let catalog =
+            resolved_oauth_catalog(agent_type, discovered, OAuthModelCatalogSource::Live).unwrap();
+        assert_eq!(
+            catalog.default_enabled_models.first().map(String::as_str),
+            Some("provider-default")
+        );
+        for model in current {
+            assert_eq!(
+                catalog
+                    .default_enabled_models
+                    .iter()
+                    .filter(|id| id.as_str() == model)
+                    .count(),
+                1,
+                "{model}"
+            );
+        }
+        for model in older {
+            assert!(
+                !catalog.default_enabled_models.iter().any(|id| id == model),
+                "{model}"
+            );
+        }
+        assert!(catalog
+            .default_enabled_models
+            .iter()
+            .all(|id| catalog.models.contains(id)));
+    }
 }

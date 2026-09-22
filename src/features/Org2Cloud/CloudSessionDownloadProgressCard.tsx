@@ -98,7 +98,6 @@ const PendingPlay: React.FC<{
   });
   const startButton = (
     <Button
-      variant="secondary"
       size={variant === "centered" ? "small" : "mini"}
       data-testid="cloud-session-download-start"
       onClick={() =>
@@ -186,7 +185,6 @@ const CenteredProgress: React.FC<{
         !completed &&
         (paused ? (
           <Button
-            variant="secondary"
             size="small"
             data-testid="cloud-session-download-resume"
             onClick={() =>
@@ -283,7 +281,6 @@ const CardProgress: React.FC<{
           !completed &&
           (paused ? (
             <Button
-              variant="secondary"
               size="mini"
               data-testid="cloud-session-download-resume"
               onClick={() =>

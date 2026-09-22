@@ -17,6 +17,8 @@ import { isWindows } from "@src/util/platform/tauri";
 export interface CliTuiSessionCreateParams {
   platform: CliAgentType;
   name: string;
+  /** Persist the selected launch model for history and subsequent turns. */
+  model?: string;
   repoPath?: string;
   /** Create a fresh isolated worktree. */
   isolate?: boolean;
@@ -173,6 +175,7 @@ export async function cliAgentCreateTuiSession(
       platform: params.platform,
       keySource: "own_key",
       runner: "tui",
+      ...(params.model ? { model: params.model } : {}),
       ...(params.repoPath ? { repoPath: params.repoPath } : {}),
       ...(params.isolate ? { isolate: true } : {}),
       ...(params.worktreeBaseRef
@@ -195,4 +198,25 @@ export async function cliAgentTuiRelease(sessionId: string): Promise<void> {
   } catch {
     // Best-effort — the session row simply keeps its last status.
   }
+}
+
+/** Apply launch-scoped environment after the shell's startup files have run. */
+export function withCliCommandEnvironment(
+  command: string,
+  env: Record<string, string>,
+  windows: boolean = isWindows()
+): string {
+  const entries = Object.entries(env);
+  if (entries.some(([name]) => !/^[A-Z_][A-Z0-9_]*$/.test(name)))
+    throw new Error("Invalid client environment name");
+  if (!entries.length) return command;
+  if (windows) {
+    const assignments = entries
+      // Assignment RHS uses expression mode, even when a command argument
+      // containing the same path would not need quotes.
+      .map(([name, value]) => `$env:${name}='${value.replace(/'/g, "''")}'`)
+      .join("; ");
+    return `& { ${assignments}; & ${command} }`;
+  }
+  return `env ${entries.map(([name, value]) => quoteShellArg(`${name}=${value}`, false)).join(" ")} ${command}`;
 }

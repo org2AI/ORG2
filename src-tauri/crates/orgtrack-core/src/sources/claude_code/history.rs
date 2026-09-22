@@ -50,10 +50,11 @@ pub use replay::{
     visit_claude_code_history_from_path,
 };
 pub use windows::{
-    load_claude_code_cloud_turn_windows_for_session, load_claude_code_initial_window_for_session,
-    load_claude_code_initial_window_from_path, load_claude_code_turn_ids_for_session,
-    load_claude_code_turn_index_for_session, load_claude_code_turn_windows_for_session,
-    load_claude_code_turn_windows_from_path, stat_claude_code_history_for_session,
+    load_claude_code_cloud_turn_windows_for_session, load_claude_code_image_from_path,
+    load_claude_code_initial_window_for_session, load_claude_code_initial_window_from_path,
+    load_claude_code_turn_ids_for_session, load_claude_code_turn_index_for_session,
+    load_claude_code_turn_windows_for_session, load_claude_code_turn_windows_from_path,
+    load_claude_code_user_source_messages_from_path, stat_claude_code_history_for_session,
 };
 
 #[cfg(test)]
@@ -93,3 +94,7 @@ use windows::{
 #[cfg(test)]
 #[path = "history_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "history_control_tests.rs"]
+mod control_tests;

@@ -65,6 +65,10 @@ pub enum MaterializedHistoryContent {
         call_id: String,
         name: String,
         output: String,
+        is_error: bool,
+    },
+    ContextSummary {
+        summary: String,
     },
 }
 
@@ -569,6 +573,11 @@ pub fn anchor_at_or_after_created_at(
     }
 }
 
+/// Load complete effective history for native transfer and verification.
+pub fn load_native_history(session_id: &str) -> SqliteResult<Vec<serde_json::Value>> {
+    shared::load_native_history(SESSION_TABLE_PREFIX, session_id)
+}
+
 /// Load LLM-formatted history for a session.
 pub fn load_llm_history(session_id: &str) -> SqliteResult<Vec<serde_json::Value>> {
     shared::load_llm_history(SESSION_TABLE_PREFIX, session_id)
@@ -788,10 +797,21 @@ fn materialized_history_rows(
                     row.tool_input = Some(arguments.clone());
                     row
                 }
+                MaterializedHistoryContent::ContextSummary { summary } => {
+                    let mut row = message_row(
+                        session_id,
+                        shared::message_role::SYSTEM,
+                        summary.clone(),
+                        None,
+                    );
+                    row.compact_from_sequence = Some(0);
+                    row
+                }
                 MaterializedHistoryContent::ToolResult {
                     call_id,
                     name,
                     output,
+                    is_error,
                 } => {
                     if call_id.trim().is_empty() || name.trim().is_empty() {
                         return Err(history_append_constraint(
@@ -807,6 +827,7 @@ fn materialized_history_rows(
                     row.tool_call_id = Some(call_id.clone());
                     row.tool_name = Some(name.clone());
                     row.tool_output = Some(output.clone());
+                    row.tool_is_error = *is_error;
                     row
                 }
             };
@@ -940,6 +961,7 @@ fn message_row(
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     }
 }
 
@@ -961,6 +983,7 @@ fn persisted_history_row_matches(
         && persisted.tool_call_id == expected.tool_call_id
         && persisted.tool_input == expected.tool_input
         && persisted.tool_output == expected.tool_output
+        && persisted.tool_is_error == expected.tool_is_error
         && persisted.model == expected.model
         && persisted.created_at == expected.created_at
         && persisted.images == expected.images
@@ -979,7 +1002,7 @@ fn persisted_history_row(
     tx.query_row(
         "SELECT session_id, role, content, tool_name, tool_call_id,
                 tool_input, tool_output, model, sequence, created_at,
-                images, compact_from_sequence
+                images, compact_from_sequence, tool_is_error
          FROM agent_messages WHERE id = ?1",
         params![id],
         |row| {
@@ -999,6 +1022,7 @@ fn persisted_history_row(
                 compact_from_sequence: row.get(11)?,
                 compact_tokens_before: None,
                 compact_tokens_after: None,
+                tool_is_error: row.get(12)?,
             })
         },
     )
@@ -1101,8 +1125,8 @@ fn persist_history_rows(
                 .map(|_| sequence.saturating_add(1));
             tx.execute(
                 "INSERT INTO agent_messages
-                 (id, session_id, role, content, tool_name, tool_call_id, tool_input, tool_output, model, sequence, created_at, images, compact_from_sequence)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                 (id, session_id, role, content, tool_name, tool_call_id, tool_input, tool_output, model, sequence, created_at, images, compact_from_sequence, tool_is_error)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
                 params![
                     row.id,
                     row.session_id,
@@ -1117,6 +1141,7 @@ fn persist_history_rows(
                     row.created_at,
                     row.images,
                     compact_from_sequence,
+                    row.tool_is_error,
                 ],
             )?;
         }
@@ -1606,6 +1631,7 @@ mod tests {
                 call_id: call_id.to_string(),
                 name: name.to_string(),
                 output: "done".to_string(),
+                is_error: false,
             },
         }
     }
@@ -1662,7 +1688,8 @@ mod tests {
                 images TEXT,
                 compact_from_sequence INTEGER,
                 compact_tokens_before INTEGER,
-                compact_tokens_after INTEGER
+                compact_tokens_after INTEGER,
+                tool_is_error INTEGER NOT NULL DEFAULT 0
              );",
         )
         .expect("create session/message tables");
@@ -2350,6 +2377,7 @@ mod tests {
                         call_id: "call-1".to_string(),
                         name: "read_file".to_string(),
                         output: "contents".to_string(),
+                        is_error: false,
                     },
                 },
             ],

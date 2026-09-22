@@ -2,69 +2,54 @@ import React, { type ReactNode, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import Input from "@src/components/Input";
 import { Placeholder } from "@src/components/Placeholder";
 import Select from "@src/components/Select";
-import type { SelectOption, SelectProps } from "@src/components/Select";
 import Table, { type TableColumn } from "@src/components/Table";
-import Tooltip from "@src/components/Tooltip";
 import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 import {
+  DashboardSquare01Icon,
   FilterIcon,
+  FilterResetIcon,
   HugeiconsIcon,
-  InformationCircleIcon,
-  Search01Icon,
+  LayoutListIcon,
 } from "@src/icons";
 
 import SearchSortBar, { type SearchSortBarProps } from "./SearchSortBar";
-import {
-  SettingsTableAddFooter,
-  type SettingsTableAddFooterProps,
-} from "./SettingsTableAddFooter";
+import { SettingsTableAddFooter } from "./SettingsTableAddFooter";
+import type { SettingsTableAddFooterProps } from "./SettingsTableAddFooter";
+import { SettingsTableCardGrid } from "./SettingsTableCardGrid";
 import { SettingsTablePagination } from "./SettingsTablePagination";
+import { SettingsTableSearchInput } from "./SettingsTableSearchInput";
+import { renderSettingsTableCell } from "./renderSettingsTableCell";
+import {
+  SETTINGS_TABLE_FILTER_MIN_WIDTH,
+  SETTINGS_TABLE_FILTER_SEARCH_THRESHOLD,
+} from "./tokens";
+import type {
+  SettingsTableBodySurface,
+  SettingsTableCardViewConfig,
+  SettingsTableColumn,
+  SettingsTablePaginationContext,
+  SettingsTableSelectFilter,
+  SettingsTableSurfaceVariant,
+} from "./types";
 
-export { SETTINGS_TABLE_CELL, SETTINGS_TABLE_COL } from "./tokens";
-
-export interface SettingsTableColumn<RowData> {
-  key: string;
-  label: ReactNode;
-  width?: React.CSSProperties["width"];
-  align?: "left" | "center" | "right";
-  /** Legacy: SettingsTable now preserves columns and relies on internal horizontal scrolling. */
-  hideBelow?: "sm" | "md";
-  sorter?: boolean | ((rowA: RowData, rowB: RowData) => number);
-  renderCell: (rowData: RowData) => ReactNode;
-  /** When provided, appends an info icon with tooltip after cell content. */
-  cellInfoTooltip?: (rowData: RowData) => string | undefined;
-}
-
-/** Select filter descriptor for the search bar area. */
-export interface SettingsTableSelectFilter {
-  key: string;
-  value: string | number;
-  /** The "all / unfiltered" value. When `value !== defaultValue` the trigger text turns primary-6. */
-  defaultValue: string | number;
-  options: SelectOption[];
-  onChange: (value: string | number) => void;
-  minWidth?: number;
-  /** Defaults to the compact toolbar's ghost appearance. */
-  appearance?: SelectProps["appearance"];
-}
-
-interface SettingsTablePaginationContext {
-  pageIndex: number;
-  pageSize: number;
-  total: number;
-  pageCount: number;
-  canPreviousPage: boolean;
-  canNextPage: boolean;
-  onPageChange: (pageIndex: number) => void;
-  onPageSizeChange: (pageSize: number) => void;
-}
-
-export type SettingsTableSurfaceVariant = "default" | "transparent";
-
-export type SettingsTableBodySurface = "raised" | "pane";
+export {
+  SETTINGS_TABLE_CELL,
+  SETTINGS_TABLE_COL,
+  SETTINGS_TABLE_FILTER_MIN_WIDTH,
+  SETTINGS_TABLE_FILTER_SEARCH_THRESHOLD,
+} from "./tokens";
+export { renderAllFilterIcon } from "./filterIcons";
+export type { SettingsTableSearchShortcut } from "./SettingsTableSearchInput";
+export type {
+  SettingsTableBodySurface,
+  SettingsTableCardViewConfig,
+  SettingsTableColumn,
+  SettingsTablePaginationContext,
+  SettingsTableSelectFilter,
+  SettingsTableSurfaceVariant,
+} from "./types";
 
 export interface SettingsTableProps<RowData> {
   columns: SettingsTableColumn<RowData>[];
@@ -155,18 +140,103 @@ export interface SettingsTableProps<RowData> {
   fillHeight?: boolean;
   /** Cap table height and scroll rows inside the body. */
   maxHeight?: number | string;
+  /** Render rows as cards instead of table rows while `cardView.enabled` is
+   *  true. The toolbar, filters, expandable rows, footer, and pagination are
+   *  unchanged; column header sorting has no card equivalent. */
+  cardView?: SettingsTableCardViewConfig<RowData>;
   className?: string;
   rootClassName?: string;
 }
 
-function SettingsTableToolbar({
+/** The toolbar's list/card switch. Shows the mode it switches *to*, matching
+ *  the flat/group toggle the model table already uses. */
+function CardViewToggle<RowData>({
+  cardView,
+}: {
+  cardView?: SettingsTableCardViewConfig<RowData>;
+}) {
+  const { t } = useTranslation();
+  if (!cardView?.onEnabledChange) return null;
+
+  const showingCards = cardView.enabled;
+  const label = showingCards ? t("actions.listView") : t("actions.cardView");
+  return (
+    <Button
+      iconOnly
+      onClick={() => cardView.onEnabledChange?.(!showingCards)}
+      icon={
+        <HugeiconsIcon
+          icon={showingCards ? LayoutListIcon : DashboardSquare01Icon}
+          data-icon={showingCards ? "layout-list" : "dashboard-square"}
+          size={14}
+        />
+      }
+      aria-label={label}
+      title={label}
+      data-testid="settings-table-view-toggle"
+    />
+  );
+}
+
+/** Long option lists get a search box; short fixed ones read faster without. */
+function filterIsSearchable(filter: SettingsTableSelectFilter): boolean {
+  return (
+    filter.searchable ??
+    filter.options.length > SETTINGS_TABLE_FILTER_SEARCH_THRESHOLD
+  );
+}
+
+/** A filter is "on" whenever it sits anywhere but its own unfiltered value. */
+function hasActiveFilters(filters?: SettingsTableSelectFilter[]): boolean {
+  return (filters ?? []).some((filter) => filter.value !== filter.defaultValue);
+}
+
+/** Sends every filter back to its `defaultValue` in one pass. */
+function resetFilters(filters?: SettingsTableSelectFilter[]): void {
+  for (const filter of filters ?? []) {
+    if (filter.value !== filter.defaultValue)
+      filter.onChange(filter.defaultValue);
+  }
+}
+
+function ResetFiltersButton({
+  filters,
+  label,
+}: {
+  filters?: SettingsTableSelectFilter[];
+  label: string;
+}) {
+  if (!hasActiveFilters(filters)) return null;
+  return (
+    <Button
+      iconOnly
+      variant="tertiary"
+      onClick={() => resetFilters(filters)}
+      icon={
+        <HugeiconsIcon
+          icon={FilterResetIcon}
+          data-icon="filter-reset"
+          size={14}
+        />
+      }
+      aria-label={label}
+      title={label}
+      className="shrink-0 text-text-3 hover:text-text-1"
+      data-testid="settings-table-reset-filters"
+    />
+  );
+}
+
+function SettingsTableToolbar<RowData>({
   searchBar,
   selectFilters,
   selectFiltersExtra,
+  cardView,
 }: {
   searchBar?: SearchSortBarProps;
   selectFilters?: SettingsTableSelectFilter[];
   selectFiltersExtra?: ReactNode;
+  cardView?: SettingsTableCardViewConfig<RowData>;
 }) {
   const { t } = useTranslation();
 
@@ -189,7 +259,6 @@ function SettingsTableToolbar({
 
   const filterButton = filterConfig ? (
     <Button
-      variant="secondary"
       iconOnly
       onClick={filterConfig.onToggle}
       icon={
@@ -208,7 +277,8 @@ function SettingsTableToolbar({
     !!filterButton ||
     !!showSort ||
     !!hasInlineSearch ||
-    !!searchBar?.rightContent;
+    !!searchBar?.rightContent ||
+    !!cardView?.onEnabledChange;
 
   return (
     <div className="flex min-w-0 flex-col gap-2 pt-2 pb-2 @[640px]:flex-row @[640px]:items-center">
@@ -225,11 +295,21 @@ function SettingsTableToolbar({
                 onChange={(val) => filter.onChange(val as string | number)}
                 appearance={filter.appearance ?? "ghost"}
                 dropdownWidthMode="auto"
-                dropdownMinWidth={filter.minWidth ?? 120}
+                dropdownMinWidth={
+                  filter.minWidth ?? SETTINGS_TABLE_FILTER_MIN_WIDTH
+                }
+                showSearch={filterIsSearchable(filter)}
+                // Option marks belong to the dropdown rows; the closed trigger
+                // stays a plain label so the toolbar reads as one row of text.
+                showTriggerIcon={false}
                 className={isActive ? "text-primary-6" : ""}
               />
             );
           })}
+          <ResetFiltersButton
+            filters={selectFilters}
+            label={t("actions.resetFilters")}
+          />
           {effectiveTabPills ? (
             <div className="flex min-w-0 shrink-0 items-center gap-2">
               {effectiveTabPills}
@@ -261,27 +341,18 @@ function SettingsTableToolbar({
           ) : null}
           {hasInlineSearch && searchBar ? (
             <div className="min-w-0 flex-1">
-              <Input
-                type="search"
+              <SettingsTableSearchInput
                 size={searchBar.searchInputSize ?? "default"}
-                className="w-full min-w-0"
                 value={searchBar.searchValue ?? ""}
                 placeholder={searchBar.searchPlaceholder}
-                prefix={
-                  <HugeiconsIcon
-                    icon={Search01Icon}
-                    data-icon="search"
-                    size={14}
-                    className="text-text-3"
-                    aria-hidden
-                  />
-                }
                 onChange={(value) => searchBar.onSearchChange?.(value)}
                 allowClear={searchBar.allowSearchClear ?? true}
                 onClear={searchBar.onSearchClear}
+                shortcut={searchBar.searchShortcut}
               />
             </div>
           ) : null}
+          <CardViewToggle cardView={cardView} />
           {searchBar?.rightContent ? (
             <div className="flex shrink-0 items-center gap-2">
               {searchBar.rightContent}
@@ -297,10 +368,14 @@ function SelectFilterRow({
   filters,
   extra,
   hasSearchBarAbove,
+  resetLabel,
+  trailing,
 }: {
   filters: SettingsTableSelectFilter[];
   extra?: ReactNode;
   hasSearchBarAbove: boolean;
+  resetLabel: string;
+  trailing?: ReactNode;
 }) {
   return (
     <div
@@ -317,13 +392,23 @@ function SelectFilterRow({
               onChange={(val) => filter.onChange(val as string | number)}
               appearance={filter.appearance ?? "ghost"}
               dropdownWidthMode="auto"
-              dropdownMinWidth={filter.minWidth ?? 120}
+              dropdownMinWidth={
+                filter.minWidth ?? SETTINGS_TABLE_FILTER_MIN_WIDTH
+              }
+              showSearch={filterIsSearchable(filter)}
+              showTriggerIcon={false}
               className={isActive ? "text-primary-6" : ""}
             />
           );
         })}
+        <ResetFiltersButton filters={filters} label={resetLabel} />
         {extra ? (
           <div className="flex shrink-0 items-center">{extra}</div>
+        ) : null}
+        {trailing ? (
+          <div className="ml-auto flex shrink-0 items-center pl-2">
+            {trailing}
+          </div>
         ) : null}
       </div>
     </div>
@@ -367,13 +452,16 @@ export default function SettingsTable<RowData>({
   bodySurface = "raised",
   fillHeight = false,
   maxHeight,
+  cardView,
   className = "",
   rootClassName = "",
 }: SettingsTableProps<RowData>) {
+  const { t } = useTranslation();
   const searchRef = useRef<HTMLDivElement>(null);
   const hasSelectFilterRow =
     (!!selectFilters && selectFilters.length > 0) || !!selectFiltersExtra;
-  const hasSearchBar = !!searchBar || hasSelectFilterRow;
+  const hasViewToggle = !!cardView?.onEnabledChange;
+  const hasSearchBar = !!searchBar || hasSelectFilterRow || hasViewToggle;
   const searchHeight = useElementDimensions(searchRef, {
     dimension: "height",
     deps: [hasSearchBar],
@@ -393,36 +481,12 @@ export default function SettingsTable<RowData>({
         width: column.width,
         align: column.align,
         sorter: column.sorter,
-        render: (_value, rowData) => {
-          const cell = column.renderCell(rowData);
-          const tooltip = column.cellInfoTooltip?.(rowData);
-          if (!tooltip) return cell;
-          return (
-            <div className="flex items-center gap-1.5">
-              {cell}
-              <Tooltip
-                content={
-                  <span style={{ whiteSpace: "pre-line" }}>{tooltip}</span>
-                }
-                position="top"
-                showArrow={false}
-              >
-                <span className="flex cursor-help items-center p-1">
-                  <HugeiconsIcon
-                    icon={InformationCircleIcon}
-                    data-icon="info"
-                    size={14}
-                    className="text-text-3"
-                  />
-                </span>
-              </Tooltip>
-            </div>
-          );
-        },
+        render: (_value, rowData) => renderSettingsTableCell(column, rowData),
       })),
     [columns]
   );
 
+  const cardMode = cardView?.enabled === true;
   const needsPagination = pageSize != null && rows.length > pageSize;
   const showEmptyFooter = !needsPagination && resolvedFooter == null;
   const hasBottomFooter =
@@ -458,6 +522,15 @@ export default function SettingsTable<RowData>({
     .filter(Boolean)
     .join(" ");
 
+  const emptyElement = noDataElement ?? (
+    <Placeholder
+      variant="empty"
+      title={emptyTitle}
+      subtitle={emptySubtitle}
+      action={emptyAction}
+    />
+  );
+
   const paginationRenderer = useMemo(() => {
     if (!needsPagination) return undefined;
     if (paginationFooter) return paginationFooter;
@@ -470,7 +543,7 @@ export default function SettingsTable<RowData>({
     };
   }, [needsPagination, paginationFooter, pageSizeOptions]);
 
-  const hasHeader = !!searchBar || hasSelectFilterRow;
+  const hasHeader = !!searchBar || hasSelectFilterRow || hasViewToggle;
   const surfaceClassName =
     surfaceVariant === "transparent"
       ? "settings-table-root-transparent"
@@ -521,19 +594,39 @@ export default function SettingsTable<RowData>({
             className={`${stickyBordered ? "settings-table-sticky-surface -mx-px border-x border-t border-border-1" : ""} border-b border-border-1 px-4 ${surfaceVariant !== "transparent" ? "rounded-t-xl" : ""} ${surfaceClassName} ${searchHeaderClassName}`.trim()}
           >
             {inlineHeaderToolbar ? (
-              <SettingsTableToolbar
+              <SettingsTableToolbar<RowData>
                 searchBar={searchBar}
                 selectFilters={selectFilters}
                 selectFiltersExtra={selectFiltersExtra}
+                cardView={cardView}
               />
             ) : (
               <>
-                {searchBar && <SearchSortBar {...searchBar} noPadding />}
+                {searchBar && (
+                  <SearchSortBar
+                    {...searchBar}
+                    noPadding
+                    leadingRightContent={<CardViewToggle cardView={cardView} />}
+                  />
+                )}
+                {!searchBar && !hasSelectFilterRow && hasViewToggle && (
+                  <div className="flex justify-end py-2">
+                    <CardViewToggle cardView={cardView} />
+                  </div>
+                )}
                 {hasSelectFilterRow && (
                   <SelectFilterRow
                     filters={selectFilters ?? []}
                     extra={selectFiltersExtra}
                     hasSearchBarAbove={!!searchBar}
+                    resetLabel={t("actions.resetFilters")}
+                    // Without a search bar the filter row is the only toolbar
+                    // the table has, so the view toggle lands there instead.
+                    trailing={
+                      searchBar ? undefined : (
+                        <CardViewToggle cardView={cardView} />
+                      )
+                    }
                   />
                 )}
               </>
@@ -541,38 +634,50 @@ export default function SettingsTable<RowData>({
           </div>
         </div>
       )}
-      <Table<RowData>
-        columns={tableColumns}
-        data={rows}
-        rowKey={getRowKey}
-        showHeader={showHeader}
-        pagination={needsPagination ? { pageSize } : false}
-        renderPagination={paginationRenderer}
-        hover={hover}
-        stripe={false}
-        border={false}
-        settings
-        size="small"
-        className={combinedClassName}
-        loading={loading}
-        expandable={expandable}
-        onRowClick={
-          onRowClick ? (record: RowData) => onRowClick(record) : undefined
-        }
-        rowClassName={rowClassName}
-        rowDataTestId={rowDataTestId}
-        rowDataAttributes={rowDataAttributes}
-        noDataElement={
-          noDataElement ?? (
-            <Placeholder
-              variant="empty"
-              title={emptyTitle}
-              subtitle={emptySubtitle}
-              action={emptyAction}
-            />
-          )
-        }
-      />
+      {cardMode && cardView ? (
+        <SettingsTableCardGrid<RowData>
+          cardView={cardView}
+          columns={columns}
+          rows={rows}
+          getRowKey={getRowKey}
+          loading={loading}
+          noDataElement={emptyElement}
+          expandable={expandable}
+          onRowClick={onRowClick}
+          rowDataTestId={rowDataTestId}
+          rowDataAttributes={rowDataAttributes}
+          pageSize={pageSize}
+          renderPagination={paginationRenderer}
+          expandLabels={{
+            expand: t("actions.expand"),
+            collapse: t("actions.collapse"),
+          }}
+        />
+      ) : (
+        <Table<RowData>
+          columns={tableColumns}
+          data={rows}
+          rowKey={getRowKey}
+          showHeader={showHeader}
+          pagination={needsPagination ? { pageSize } : false}
+          renderPagination={paginationRenderer}
+          hover={hover}
+          stripe={false}
+          border={false}
+          settings
+          size="small"
+          className={combinedClassName}
+          loading={loading}
+          expandable={expandable}
+          onRowClick={
+            onRowClick ? (record: RowData) => onRowClick(record) : undefined
+          }
+          rowClassName={rowClassName}
+          rowDataTestId={rowDataTestId}
+          rowDataAttributes={rowDataAttributes}
+          noDataElement={emptyElement}
+        />
+      )}
       {resolvedFooter}
       {showEmptyFooter && (
         <div

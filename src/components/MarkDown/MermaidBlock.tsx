@@ -5,7 +5,7 @@
  * - mermaid library (~2MB) is loaded lazily on first use via dynamic import()
  * - SVG is rendered once via mermaid.render() and cached per (code + theme) key
  * - Module-level SVG cache (FIFO, max 50) avoids re-rendering identical diagrams
- * - Renders asynchronously; shows a shimmer placeholder while loading
+ * - Renders asynchronously; shows a skeleton placeholder while loading
  * - Debounces rendering during streaming (300ms stability wait)
  * - Click-to-zoom: click diagram to toggle fullscreen overlay
  */
@@ -13,12 +13,7 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import Button from "@src/components/Button";
-import {
-  EventBlockHeader,
-  EventBlockHeaderIcon,
-  EventBlockHeaderTitle,
-  getEventBlockContainerClasses,
-} from "@src/engines/ChatPanel/blocks/primitives";
+import SkeletonBar from "@src/components/Skeleton";
 import {
   Add01Icon,
   ArrowExpand01Icon,
@@ -29,6 +24,9 @@ import {
   WorkflowCircle01Icon,
 } from "@src/icons";
 import { registerCache } from "@src/util/memory/cacheRegistry";
+
+import { markdownExtensions } from "./extensions";
+import type { MarkdownBlockHeaderProps } from "./extensions";
 
 // ============================================
 // Module-level SVG cache (FIFO, max 50)
@@ -240,6 +238,51 @@ interface MermaidBlockHeaderProps {
   rightContent?: React.ReactNode;
 }
 
+const MERMAID_ICON = (
+  <HugeiconsIcon icon={WorkflowCircle01Icon} data-icon="workflow" size={14} />
+);
+
+/**
+ * Header used when no host surface registered its own block chrome: the same
+ * title, icon, right slot and toggle target, without the host's hover
+ * treatment. A diagram is never headerless.
+ */
+const PlainBlockHeader: React.FC<MarkdownBlockHeaderProps> = ({
+  title,
+  icon,
+  isCollapsed,
+  onToggle,
+  onMouseEnter,
+  onMouseLeave,
+  rightContent,
+}) => (
+  <div
+    className="flex h-8 w-full items-center gap-1.5 px-2 text-text-2"
+    role="button"
+    tabIndex={0}
+    aria-expanded={!isCollapsed}
+    onClick={onToggle}
+    onKeyDown={(event) => {
+      if (event.target !== event.currentTarget) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onToggle();
+      }
+    }}
+    onMouseEnter={onMouseEnter}
+    onMouseLeave={onMouseLeave}
+  >
+    {icon}
+    <span className="min-w-0 flex-1 truncate text-left">{title}</span>
+    {rightContent}
+  </div>
+);
+
+/** Block container classes, falling back to the renderer's own frame. */
+const blockContainerClasses = (): string =>
+  markdownExtensions().blockChrome?.containerClassName() ??
+  "overflow-hidden rounded-lg border border-border-2";
+
 const MermaidBlockHeader: React.FC<MermaidBlockHeaderProps> = ({
   isCollapsed,
   isHeaderHovered,
@@ -247,30 +290,21 @@ const MermaidBlockHeader: React.FC<MermaidBlockHeaderProps> = ({
   onMouseEnter,
   onMouseLeave,
   rightContent,
-}) => (
-  <EventBlockHeader
-    isCollapsed={isCollapsed}
-    withHover={false}
-    onToggleCollapse={onToggle}
-    onMouseEnter={onMouseEnter}
-    onMouseLeave={onMouseLeave}
-    rightContent={rightContent}
-  >
-    <EventBlockHeaderIcon
-      icon={
-        <HugeiconsIcon
-          icon={WorkflowCircle01Icon}
-          data-icon="workflow"
-          size={14}
-        />
-      }
+}) => {
+  const Header = markdownExtensions().blockChrome?.Header ?? PlainBlockHeader;
+  return (
+    <Header
+      title="Mermaid"
+      icon={MERMAID_ICON}
       isCollapsed={isCollapsed}
       isHeaderHovered={isHeaderHovered}
-      hasContent
+      onToggle={onToggle}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      rightContent={rightContent}
     />
-    <EventBlockHeaderTitle>Mermaid</EventBlockHeaderTitle>
-  </EventBlockHeader>
-);
+  );
+};
 
 const MermaidBlock: React.FC<MermaidBlockProps> = memo(
   ({ code, isDarkMode = false }) => {
@@ -469,7 +503,7 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
     if (error) {
       return (
         <div
-          className={`${getEventBlockContainerClasses()} mermaid-block mermaid-block--error`}
+          className={`${blockContainerClasses()} mermaid-block mermaid-block--error`}
         >
           <MermaidBlockHeader
             isCollapsed={isCollapsed}
@@ -494,7 +528,7 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
     if (loading) {
       return (
         <div
-          className={`${getEventBlockContainerClasses()} mermaid-block mermaid-block--loading`}
+          className={`${blockContainerClasses()} mermaid-block mermaid-block--loading`}
         >
           <MermaidBlockHeader
             isCollapsed={isCollapsed}
@@ -503,7 +537,12 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
             onMouseEnter={handleHeaderMouseEnter}
             onMouseLeave={handleHeaderMouseLeave}
           />
-          {!isCollapsed && <div className="mermaid-block__shimmer" />}
+          {!isCollapsed && (
+            <SkeletonBar
+              className="m-4 h-30 rounded-md"
+              testId="mermaid-loading-block"
+            />
+          )}
         </div>
       );
     }
@@ -512,7 +551,7 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
       <>
         <div
           ref={containerRef}
-          className={`${getEventBlockContainerClasses()} mermaid-block ${isDarkMode ? "mermaid-block--dark" : ""}`}
+          className={`${blockContainerClasses()} mermaid-block ${isDarkMode ? "mermaid-block--dark" : ""}`}
         >
           <MermaidBlockHeader
             isCollapsed={isCollapsed}
@@ -523,7 +562,6 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
             rightContent={
               <Button
                 layout="custom"
-                appearance="custom"
                 className="mermaid-block__expand-btn"
                 onClick={(event) => {
                   event.stopPropagation();
@@ -565,7 +603,6 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
                 <div className="flex items-center gap-1">
                   <Button
                     layout="custom"
-                    appearance="custom"
                     className="flex h-7 w-7 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/15 hover:text-white"
                     onClick={zoomOut}
                     title="Zoom out"
@@ -581,7 +618,6 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
                   </span>
                   <Button
                     layout="custom"
-                    appearance="custom"
                     className="flex h-7 w-7 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/15 hover:text-white"
                     onClick={zoomIn}
                     title="Zoom in"
@@ -595,7 +631,6 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
                   <div className="mx-1 h-4 w-px bg-white/20" />
                   <Button
                     layout="custom"
-                    appearance="custom"
                     className="flex h-7 w-7 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/15 hover:text-white"
                     onClick={resetZoom}
                     title="Reset (100%)"
@@ -609,7 +644,6 @@ const MermaidBlock: React.FC<MermaidBlockProps> = memo(
                   <div className="mx-1 h-4 w-px bg-white/20" />
                   <Button
                     layout="custom"
-                    appearance="custom"
                     className="flex h-7 w-7 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/15 hover:text-white"
                     onClick={toggleExpand}
                     title="Close"

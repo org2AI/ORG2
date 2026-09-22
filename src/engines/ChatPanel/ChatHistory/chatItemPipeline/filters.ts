@@ -22,11 +22,11 @@ import {
   extractThinkContent,
   stripThinkTags,
 } from "@src/engines/SessionCore/sync/adapters/shared/streamingParsers";
-import { normalizeFunctionName } from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 import {
   extractAssistantMessageContent,
   extractTextFromContent,
-} from "@src/lib/activityData/textExtractors";
+} from "@src/util/data/activityData/textExtractors";
 
 /**
  * Check if event will render content (pre-filter to avoid wasted renders).

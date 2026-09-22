@@ -1,12 +1,12 @@
 import React from "react";
 
 import { Placeholder } from "@src/components/Placeholder";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import { useGitHubIssueDetailState } from "@src/features/GitHubWork/useGitHubIssueDetailState";
 import {
   IssueDetailPanel,
   IssueDetailTabs,
 } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/IssuesContent/IssueDetailPanel";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import { useGitHubIssueDetailState } from "@src/modules/shared/hooks/useGitHubIssueDetailState";
 import type { GitHubIssueDetailTabData } from "@src/types/githubDetail";
 
 export function GitHubIssuePanelView({

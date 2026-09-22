@@ -12,7 +12,6 @@ use database::db::get_connection;
 use orgtrack_core::pricing;
 use orgtrack_core::usage_dashboard::{
     self, DailyRollup, SessionSort, TrendBucket, UsageFilter, UsageOverview, UsageRoundQuery,
-    UsageRoundRow, UsageSessionRow, UsageSummary, UsageTrendPoint,
 };
 
 /// Per-Mtok list rates for one model, resolved from the bundled pricing catalog.
@@ -44,8 +43,6 @@ pub async fn usage_dashboard_model_pricing(
 }
 
 const DAY_MS: i64 = 86_400_000;
-/// Sessions-table page cap, so a huge history can't return an unbounded blob.
-const MAX_SESSION_ROWS: usize = 1_000;
 /// Request-log page cap (rounds are finer-grained, so allow more).
 const MAX_ROUND_ROWS: usize = 5_000;
 static USAGE_QUERY_QUEUE: OnceLock<tokio::sync::Semaphore> = OnceLock::new();
@@ -97,45 +94,6 @@ fn resolve_trend_bucket(
     }
 }
 
-/// Headline totals (tokens, cost, cache-hit rate, per-bucket breakdown) for the
-/// current scope.
-#[tauri::command]
-pub async fn usage_dashboard_summary(
-    bucket: Option<String>,
-    start_ms: Option<i64>,
-    end_ms: Option<i64>,
-    session_id: Option<String>,
-) -> Result<UsageSummary, String> {
-    let _permit = acquire_usage_query_permit().await?;
-    tokio::task::spawn_blocking(move || {
-        let conn = open_conn()?;
-        let filter = build_filter(bucket, start_ms, end_ms, session_id);
-        usage_dashboard::usage_summary(&conn, &filter)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-/// Time-bucketed token + cost series for the trends chart.
-#[tauri::command]
-pub async fn usage_dashboard_trends(
-    bucket: Option<String>,
-    start_ms: Option<i64>,
-    end_ms: Option<i64>,
-    session_id: Option<String>,
-    bucket_unit: Option<String>,
-) -> Result<Vec<UsageTrendPoint>, String> {
-    let _permit = acquire_usage_query_permit().await?;
-    tokio::task::spawn_blocking(move || {
-        let conn = open_conn()?;
-        let filter = build_filter(bucket, start_ms, end_ms, session_id);
-        let unit = resolve_trend_bucket(bucket_unit.as_deref(), start_ms, end_ms);
-        usage_dashboard::usage_trends(&conn, &filter, unit)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
 /// Optional summary/trends and request-log page from one round-store scan.
 #[allow(clippy::too_many_arguments)]
 // Tauri serializes these parameters as the existing frontend command contract;
@@ -183,30 +141,6 @@ pub async fn usage_dashboard_overview(
     .map_err(|err| format!("Task join error: {err}"))?
 }
 
-/// Per-round request-log rows for the current scope, sorted and paginated.
-#[tauri::command]
-pub async fn usage_dashboard_rounds(
-    bucket: Option<String>,
-    start_ms: Option<i64>,
-    end_ms: Option<i64>,
-    session_id: Option<String>,
-    sort: Option<String>,
-    offset: Option<usize>,
-    limit: Option<usize>,
-) -> Result<Vec<UsageRoundRow>, String> {
-    let _permit = acquire_usage_query_permit().await?;
-    tokio::task::spawn_blocking(move || {
-        let conn = open_conn()?;
-        let filter = build_filter(bucket, start_ms, end_ms, session_id);
-        let sort = SessionSort::parse(sort.as_deref());
-        let offset = offset.unwrap_or(0);
-        let limit = limit.unwrap_or(MAX_ROUND_ROWS).min(MAX_ROUND_ROWS);
-        usage_dashboard::usage_rounds(&conn, &filter, sort, offset, limit)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
 /// Per-(UTC day, bucket) rollup plus rolling-24h snapshot for the
 /// member-runtime cloud push. Unlike the scoped desktop views above, this
 /// always spans ALL sources (the `other` bucket included) so the totals a
@@ -220,31 +154,6 @@ pub async fn usage_dashboard_daily_rollup(
     tokio::task::spawn_blocking(move || {
         let conn = open_conn()?;
         usage_dashboard::usage_daily_rollup(&conn, start_ms, end_ms)
-    })
-    .await
-    .map_err(|err| format!("Task join error: {err}"))?
-}
-
-/// Per-session table rows for the current scope, sorted and paginated. The row
-/// total for pagination is `usage_dashboard_summary`'s `sessionCount`.
-#[tauri::command]
-pub async fn usage_dashboard_sessions(
-    bucket: Option<String>,
-    start_ms: Option<i64>,
-    end_ms: Option<i64>,
-    session_id: Option<String>,
-    sort: Option<String>,
-    offset: Option<usize>,
-    limit: Option<usize>,
-) -> Result<Vec<UsageSessionRow>, String> {
-    let _permit = acquire_usage_query_permit().await?;
-    tokio::task::spawn_blocking(move || {
-        let conn = open_conn()?;
-        let filter = build_filter(bucket, start_ms, end_ms, session_id);
-        let sort = SessionSort::parse(sort.as_deref());
-        let offset = offset.unwrap_or(0);
-        let limit = limit.unwrap_or(MAX_SESSION_ROWS).min(MAX_SESSION_ROWS);
-        usage_dashboard::usage_sessions(&conn, &filter, sort, offset, limit)
     })
     .await
     .map_err(|err| format!("Task join error: {err}"))?

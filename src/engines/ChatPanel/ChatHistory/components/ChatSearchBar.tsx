@@ -1,7 +1,7 @@
 import { useAtomValue } from "jotai";
 
-import FindCard from "@src/components/FindCard";
 import { SESSION_CONFIG } from "@src/config/sessionCreatorConfig";
+import FindCard from "@src/scaffold/GlobalSpotlight/FindCard";
 import { sessionByIdAtom } from "@src/store/session";
 import { stripPillReferences } from "@src/util/session/stripPillReferences";
 

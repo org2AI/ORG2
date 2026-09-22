@@ -526,6 +526,17 @@
     height: 1px; // allow child flex container to use h-full
   }
 
+  // An expandable settings row toggles from anywhere on the row, so hovering
+  // the row tints its disclosure chevron. This is independent of the row
+  // background hover (SettingsTable leaves `hover` off by default) and follows
+  // the same post-toggle suppression. Unlayered, so it outranks the Button's
+  // own `text-text-2` / `hover:text-text-1` utilities.
+  .table-row:not(.table-row-hover-suppressed):hover
+    > .table-expand-cell
+    .table-expand-button {
+    color: var(--color-primary-6);
+  }
+
   .table-row,
   .table-expanded-row,
   .table-tbody > tr:not(.table-row):not(.table-expanded-row),
@@ -973,25 +984,10 @@
   font-size: 13px;
   color: var(--text-2);
 
+  // The jumper is a shared <Input>, which owns the field chrome; styling the
+  // inner <input> here as well would draw a second box inside it.
   input {
-    width: 50px;
-    padding: 4px 8px;
-    border: 1px solid var(--border-2);
-    border-radius: 4px;
-    background: var(--color-bg-1);
-    color: var(--text-1);
-    font-size: 13px;
     text-align: center;
-    transition: all 0.2s ease;
-
-    &:hover {
-      border-color: var(--border-3);
-    }
-
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary-6);
-    }
   }
 }
 

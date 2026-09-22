@@ -1,7 +1,11 @@
 /**
  * QueuedMessages Component
  *
- * Renders queued messages that attach to the top of InputArea (like CompactFileChanges).
+ * Renders queued messages as a tray tucked behind the top edge of the
+ * composer shell: InputArea renders it (via `composerTray`) directly above the
+ * shell, and the tray's bottom padding slides under the shell's rounded top.
+ * Always visible while messages are queued — rows only: no collapsed pill
+ * and no count / clear-all header (each row carries its own actions).
  * Supports drag-and-drop reordering via dnd-kit (vertical sortable list).
  *
  * Edit triggers the main input box via queueEditTargetAtom.
@@ -26,15 +30,13 @@ import {
 } from "@dnd-kit/sortable";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
+import { useWebViewSensors } from "@src/components/dnd/useWebViewSensors";
 import {
   CHAT_COMPOSER_STACK_BAR_INNER_PADDING_X_CLASS,
   CHAT_COMPOSER_STACK_BAR_SURFACE_BG_CLASS,
+  COMPOSER_TRAY_SHELL_CLASSES,
 } from "@src/config/composerStackTokens";
-import { HugeiconsIcon, MessageCircleMoreIcon } from "@src/icons";
-import { useWebViewSensors } from "@src/lib/dndKit";
 import {
   type QueuedMessage,
   messageQueueHandoffIdsAtom,
@@ -42,26 +44,17 @@ import {
 } from "@src/store/ui/messageQueueAtom";
 import { reorderActiveRef } from "@src/store/ui/queueReorderState";
 
-import ComposerStackHeader from "./ComposerStackHeader";
 import QueuedMessageItem from "./QueuedMessageItem";
 
 export interface QueuedMessagesProps {
   messages: QueuedMessage[];
   onCancel: (messageId: string) => void;
-  onClear: () => void;
   onSendNow: (messageId: string) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
-  /** Called when the user closes the card (header collapse button). */
-  onToggle: () => void;
 }
 
 const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
-  ({ messages, onCancel, onClear, onSendNow, onReorder, onToggle }) => {
-    // Bind the namespace explicitly.  The queue can render during startup
-    // before the default namespace finishes reconciling; passing a qualified
-    // key through that transient state was displayed as the raw
-    // `actions.clearAll` key in the composer.
-    const { t } = useTranslation("common");
+  ({ messages, onCancel, onSendNow, onReorder }) => {
     const setEditTarget = useSetAtom(queueEditTargetAtom);
     const editTarget = useAtomValue(queueEditTargetAtom);
     const handoffIds = useAtomValue(messageQueueHandoffIdsAtom);
@@ -131,39 +124,9 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
 
     return (
       <div
-        className={`${CHAT_COMPOSER_STACK_BAR_SURFACE_BG_CLASS} overflow-hidden rounded-lg border border-solid border-border-2`}
+        data-testid="queued-messages-tray"
+        className={`${CHAT_COMPOSER_STACK_BAR_SURFACE_BG_CLASS} ${COMPOSER_TRAY_SHELL_CLASSES}`}
       >
-        <ComposerStackHeader
-          icon={
-            <HugeiconsIcon
-              icon={MessageCircleMoreIcon}
-              data-icon="message-circle-more"
-              size={14}
-            />
-          }
-          label={t("common:labels.queuedCount", { count: messages.length })}
-          actions={
-            <>
-              {draggable && (
-                <span className="text-[10px] text-text-4">
-                  {t("common:labels.dragToReorder")}
-                </span>
-              )}
-              <Button
-                htmlType="button"
-                variant="tertiary"
-                size="mini"
-                onClick={onClear}
-                title={t("actions.clearAll")}
-                data-testid="queued-messages-clear-all"
-              >
-                {t("actions.clearAll")}
-              </Button>
-            </>
-          }
-          expanded={true}
-          onToggle={onToggle}
-        />
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -177,7 +140,7 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
             strategy={verticalListSortingStrategy}
           >
             <div
-              className={`${CHAT_COMPOSER_STACK_BAR_INNER_PADDING_X_CLASS} max-h-[192px] overflow-y-auto pb-1`}
+              className={`${CHAT_COMPOSER_STACK_BAR_INNER_PADDING_X_CLASS} max-h-[192px] overflow-y-auto`}
             >
               {messages.map((msg) => (
                 <QueuedMessageItem

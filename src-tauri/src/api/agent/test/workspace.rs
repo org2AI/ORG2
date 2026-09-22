@@ -277,6 +277,7 @@ pub async fn test_session_launch_seed_only(
         workspace_path: Some(workspace_path.clone()),
         key_source: None,
         account_id: account_id.clone(),
+        credential_source: None,
         model: model.clone(),
         native_harness_type: native_harness_type.clone(),
         platform: None,

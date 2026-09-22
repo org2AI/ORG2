@@ -1,4 +1,8 @@
-import { scopedNativeSourceEventIdOf } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
+import {
+  NATIVE_SOURCE_EVENT_ID_ARG,
+  nativeSourceEventId,
+  scopedNativeSourceEventIdOf,
+} from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { turnIntentIdOf } from "@src/engines/SessionCore/sync/utils/activityIds";
 
@@ -90,12 +94,34 @@ export function buildConversationRunnerOverlay(
   events: readonly SessionEvent[],
   canonicalSessionId: string
 ): SessionEvent[] {
-  return selectConversationRunnerTail(runner, events).map((event) => ({
-    ...event,
-    id: `runlive-${event.id}`,
-    chunk_id: `runlive-${event.id}`,
-    sessionId: canonicalSessionId,
-  }));
+  return selectConversationRunnerTail(runner, events).map((event) => {
+    const sourceId = nativeSourceEventId(event);
+    const id = `runlive-${sourceId}`;
+    return {
+      ...event,
+      id,
+      chunk_id: id,
+      sessionId: canonicalSessionId,
+      args: { ...event.args, [NATIVE_SOURCE_EVENT_ID_ARG]: sourceId },
+    };
+  });
+}
+
+/** Only the added source identity changes the args wrapper during projection. */
+function overlayArgsEqual(
+  left: SessionEvent["args"],
+  right: SessionEvent["args"]
+): boolean {
+  if (left === right) return true;
+  const keys = Object.keys(left);
+  return (
+    keys.length === Object.keys(right).length &&
+    keys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(right, key) &&
+        left[key] === right[key]
+    )
+  );
 }
 
 /** Avoid replacing the overlay when only an unrelated queue atom changed. */
@@ -111,7 +137,7 @@ export function conversationRunnerOverlaysEqual(
       event.displayStatus === candidate.displayStatus &&
       event.displayText === candidate.displayText &&
       event.isDelta === candidate.isDelta &&
-      event.args === candidate.args &&
+      overlayArgsEqual(event.args, candidate.args) &&
       event.result === candidate.result
     );
   });

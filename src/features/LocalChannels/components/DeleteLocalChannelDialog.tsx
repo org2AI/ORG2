@@ -64,7 +64,7 @@ const DeleteLocalChannelDialog: React.FC<DeleteLocalChannelDialogProps> = ({
           onSubmit={handleDelete}
           cancelTestId="local-channel-delete-cancel"
           submitTestId="local-channel-delete-confirm"
-          submitVariant="danger"
+          submitTone="danger"
           disabled={!acknowledged || !channel}
         />
       }

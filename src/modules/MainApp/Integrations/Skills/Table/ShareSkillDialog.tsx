@@ -55,11 +55,7 @@ export const ShareSkillDialog: React.FC<ShareSkillDialogProps> = ({
         description: skill.description ?? "",
         sharedBy: null,
       });
-      Message.success(
-        t("skills.sharedToOrg", {
-          defaultValue: "Skill shared with the organization",
-        })
-      );
+      Message.success(t("skills.sharedToOrg"));
       onClose();
     } catch (error) {
       Message.error(String(error));
@@ -71,30 +67,21 @@ export const ShareSkillDialog: React.FC<ShareSkillDialogProps> = ({
   return (
     <Modal
       visible={skill !== null}
-      title={t("skills.shareToOrg", {
-        defaultValue: "Share to organization",
-      })}
+      title={t("skills.shareToOrg")}
       width={400}
       onCancel={onClose}
       onOk={() => void handleShare()}
-      okText={t("skills.share", { defaultValue: "Share" })}
-      cancelText={t("common:actions.cancel", { defaultValue: "Cancel" })}
+      okText={t("skills.share")}
+      cancelText={t("common:actions.cancel")}
       okButtonProps={{ disabled: !orgId, loading: sharing }}
     >
       <div className="flex flex-col gap-3">
-        <p className="text-xs text-text-3">
-          {t("skills.shareToOrgHint", {
-            defaultValue:
-              "Members of the organization receive this skill's current snapshot; share again after editing to publish an update.",
-          })}
-        </p>
+        <p className="text-xs text-text-3">{t("skills.shareToOrgHint")}</p>
         <Select
           value={orgId ?? undefined}
           options={orgOptions}
           onChange={(value) => setOrgId(value as string)}
-          placeholder={t("skills.shareOrgPlaceholder", {
-            defaultValue: "Organization",
-          })}
+          placeholder={t("skills.shareOrgPlaceholder")}
           size="small"
           dataTestId="skills-share-org-select"
         />

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import React from "react";
+import React, { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,15 +9,18 @@ import { _resetToolRegistry } from "@src/engines/SessionCore/rendering/registry/
 import { BookOpen02Icon, Search01Icon, Wrench01Icon } from "@src/icons";
 
 import type { TranscriptItem } from "../../lib/transcriptReducer";
+import { MobileToolCall } from "./MobileToolCall";
 import {
-  MobileToolCall,
   mobileToolSummary,
   normalizeMobileToolLifecycle,
   resolveMobileToolIconName,
-} from "./MobileToolCall";
+} from "./mobileToolPresentation";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { tool?: string }) =>
+      options?.tool ? `${key}: ${options.tool}` : key,
+  }),
 }));
 
 afterEach(() => {
@@ -59,6 +63,60 @@ describe("resolveMobileToolIconName", () => {
 });
 
 describe("MobileToolCall", () => {
+  it("keeps tool target and current status in its accessible name across updates", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const env = globalThis as typeof globalThis & {
+      IS_REACT_ACT_ENVIRONMENT?: boolean;
+    };
+    const previous = env.IS_REACT_ACT_ENVIRONMENT;
+    env.IS_REACT_ACT_ENVIRONMENT = true;
+    const onOpenDetails = vi.fn();
+    try {
+      for (const [command, status, expectedStatus] of [
+        ["pnpm test", "running", "running"],
+        ["pnpm test", "failed", "failed"],
+        ["pnpm build", "completed", "done"],
+      ] as const) {
+        await act(async () =>
+          root.render(
+            React.createElement(MobileToolCall, {
+              item: {
+                id: "command",
+                kind: "tool",
+                text: "run_shell",
+                toolName: "run_shell",
+                toolSummary: command,
+                toolStatus: status,
+                toolData: {
+                  kind: "shell",
+                  command,
+                  output: "Output stays in details",
+                  isFailure: status === "failed",
+                },
+              },
+              onOpenDetails,
+            })
+          )
+        );
+        const trigger = host.querySelector("button")!;
+        expect(trigger.getAttribute("aria-label")).toBe(
+          `transcript.tools.openDetails: transcript.tools.labels.runCommand · ${command} · transcript.tools.status.${expectedStatus}`
+        );
+        expect(trigger.getAttribute("aria-label")).not.toContain(
+          "Output stays in details"
+        );
+        await act(async () => trigger.click());
+      }
+      expect(onOpenDetails).toHaveBeenCalledTimes(3);
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+      env.IS_REACT_ACT_ENVIRONMENT = previous;
+    }
+  });
+
   it("renders distinct icons per tool without the desktop tool registry", () => {
     const readItem: TranscriptItem = {
       id: "file-1",

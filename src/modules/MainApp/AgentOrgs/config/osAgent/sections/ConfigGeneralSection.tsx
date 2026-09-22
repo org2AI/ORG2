@@ -28,13 +28,13 @@ import { useTranslation } from "react-i18next";
 
 import { rpc } from "@src/api/tauri/rpc";
 import Button from "@src/components/Button";
-import { FolderOpenIcon, HugeiconsIcon } from "@src/icons";
 import {
   SECTION_ACTION_GAP_CLASSES,
   SECTION_PATH_TEXT_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { FolderOpenIcon, HugeiconsIcon } from "@src/icons";
 
 import AgentRuntimeLimitsSection from "../../shared/AgentRuntimeLimitsSection";
 

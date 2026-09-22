@@ -12,12 +12,12 @@ import { useTranslation } from "react-i18next";
 
 import type { GitHubChecksSummary } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
+import CiCheckStateIcon from "@src/components/CiCheckStateIcon";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
 } from "@src/components/Dropdown/tokens";
 import { ArrowUpRight01Icon, HugeiconsIcon, ListChecksIcon } from "@src/icons";
-import CiCheckStateIcon from "@src/modules/shared/components/CiCheckStateIcon";
 import {
   CI_CHECK_SECTION_ORDER,
   type CiCheckItem,
@@ -27,6 +27,8 @@ import {
 } from "@src/services/git/ciCheckState";
 import { formatRelativeTime } from "@src/util/time/formatRelativeTime";
 import { classNames } from "@src/util/ui/classNames";
+
+import { PrChecksRefreshButton } from "./PrChecksRefreshButton";
 
 interface PrCheckRowProps {
   item: CiCheckItem;
@@ -65,7 +67,6 @@ function PrCheckRow({ item, onOpenDetails }: PrCheckRowProps): React.ReactNode {
       {item.detailsUrl ? (
         <Button
           variant="tertiary"
-          appearance="soft"
           size="mini"
           iconOnly
           icon={
@@ -75,10 +76,9 @@ function PrCheckRow({ item, onOpenDetails }: PrCheckRowProps): React.ReactNode {
               size={DROPDOWN_ITEM.iconSize}
             />
           }
-          htmlType="button"
           className="shrink-0"
-          title={t("workstation.ci.viewDetails", "View check details")}
-          aria-label={t("workstation.ci.viewDetails", "View check details")}
+          title={t("workstation.ci.viewDetails")}
+          aria-label={t("workstation.ci.viewDetails")}
           onClick={(event) => {
             event.stopPropagation();
             onOpenDetails(item.detailsUrl as string);
@@ -113,12 +113,12 @@ export function PrChecksPanel({
   const sectionLabel = (state: CiCheckState, count: number): string => {
     const label =
       state === "failure"
-        ? t("workstation.ci.sections.failed", "Failed")
+        ? t("workstation.ci.sections.failed")
         : state === "pending"
-          ? t("workstation.ci.sections.running", "Running")
+          ? t("workstation.ci.sections.running")
           : state === "neutral"
-            ? t("workstation.ci.sections.skipped", "Skipped")
-            : t("workstation.ci.sections.passed", "Passed");
+            ? t("workstation.ci.sections.skipped")
+            : t("workstation.ci.sections.passed");
     return `${label} · ${count}`;
   };
 
@@ -138,19 +138,23 @@ export function PrChecksPanel({
           aria-hidden
         />
         <span className="min-w-0 flex-1 truncate text-text-1">
-          {t("git.pr.tabs.checks", "Checks")}
+          {t("git.pr.tabs.checks")}
         </span>
         {counts.total > 0 ? (
           <span className="shrink-0 text-text-3 tabular-nums">
             {`${counts.success}/${counts.total}`}
           </span>
         ) : null}
+        <PrChecksRefreshButton
+          iconSize={DROPDOWN_ITEM.iconSize}
+          testId="pr-checks-panel-refresh"
+        />
       </div>
 
       <div className={DROPDOWN_CLASSES.optionsContainerBelowHeader}>
         {sections.length === 0 ? (
           <div className={DROPDOWN_CLASSES.listMessage}>
-            {t("git.pr.checks.none", "No checks reported")}
+            {t("git.pr.checks.none")}
           </div>
         ) : (
           sections.map((section) => (

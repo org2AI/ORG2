@@ -3,7 +3,10 @@
  *
  * Base URL configuration, HTTP helpers, and request caching.
  */
-import { IDE_SERVER_HTTP_URL } from "@src/config/ideServer";
+import {
+  IDE_SERVER_HTTP_URL,
+  ideServerAuthHeaders,
+} from "@src/config/ideServer";
 
 // Rust HTTP Server (IDE server port) - Primary backend for all git operations
 // Routes are nested under /git, so full path is /git/api/git/repo
@@ -78,6 +81,7 @@ export async function fetchRustApi<T>(
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...ideServerAuthHeaders(),
       ...options.headers,
     },
   });

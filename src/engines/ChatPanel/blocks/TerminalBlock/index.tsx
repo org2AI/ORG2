@@ -74,8 +74,6 @@ export const TerminalStopButton: React.FC<TerminalStopButtonProps> = ({
   return (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className="flex h-5 w-0 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-none bg-text-2 text-white transition-colors group-hover/chat-block-header:w-5 hover:bg-text-1 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       onClick={handleStop}
       disabled={isStopping}
@@ -167,10 +165,11 @@ const TerminalBlock: React.FC<TerminalBlockProps> = memo(
     const isStillRunning = isLoading || isBackground;
     // Visibility policy:
     // - Caller-provided defaults always win.
-    // - Still running OR backgrounded → expanded so progress remains visible.
+    // - Running, backgrounded, and settled commands all start collapsed so
+    //   command input/output does not expand the chat timeline by default.
     // - Every settled command → collapsed; failures remain visible in the
     //   header through their failed state and exit code, and can be expanded.
-    const effectiveDefaultCollapsed = defaultCollapsed ?? !isStillRunning;
+    const effectiveDefaultCollapsed = defaultCollapsed ?? true;
 
     const {
       isCollapsed,

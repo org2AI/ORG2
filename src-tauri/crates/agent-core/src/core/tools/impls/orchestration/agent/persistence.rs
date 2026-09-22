@@ -10,6 +10,7 @@ use super::AgentTool;
 #[derive(Default)]
 pub(super) struct ParentInheritance {
     pub(super) account_id: Option<String>,
+    pub(super) credential_source: Option<String>,
     pub(super) key_source: core_types::key_source::KeySource,
     pub(super) agent_exec_mode: Option<String>,
     pub(super) native_harness_type: Option<String>,
@@ -24,6 +25,7 @@ impl AgentTool {
         match crate::session::persistence::get_session(parent_session_id) {
             Ok(Some(parent)) => ParentInheritance {
                 account_id: parent.account_id,
+                credential_source: parent.credential_source,
                 key_source: parent.key_source,
                 agent_exec_mode: parent.agent_exec_mode,
                 native_harness_type: parent.native_harness_type,
@@ -70,6 +72,9 @@ impl AgentTool {
             status: crate::session::SessionStatus::Running.as_str().to_string(),
             model: Some(model.to_string()),
             account_id: inheritance.account_id,
+            credential_source: inheritance
+                .credential_source
+                .or_else(|| self.config.provider.credential_source().map(str::to_owned)),
             key_source: inheritance.key_source,
             session_type: crate::session::persistence::session_type::SUBAGENT.to_string(),
             parent_session_id: Some(parent_session_id.to_string()),

@@ -1,3 +1,4 @@
+import { Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanupPtyListeners } from "../terminalLifecycle";
@@ -374,5 +375,134 @@ describe("PTY connection ownership and stream restoration", () => {
     expect(text.indexOf("Z")).toBeLessThan(text.indexOf("Session ended"));
     expect(text).toContain("Session ended");
     expect(paneMap.has(sessionId)).toBe(false);
+  });
+});
+
+// Captured from a clean interactive zsh on a PTY. PROMPT_SP emits an inverse
+// percent and width-dependent padding, then erases it at column zero. Parsing
+// those bytes on a narrower grid wraps the padding and leaves the percent.
+function zshStartup(cols: number) {
+  return (
+    "\x1b[1m\x1b[7m%\x1b[27m\x1b[1m\x1b[0m" +
+    " ".repeat(cols - 1) +
+    "\r \r\r\x1b[0m\x1b[27m\x1b[24m\x1b[Jprompt % \x1b[K\x1b[?2004h"
+  );
+}
+
+describe("PTY startup dimensions", () => {
+  it.each(["listeners", "existence probe"])(
+    "starts zsh at the live grid after a resize during %s",
+    async (phase) => {
+      const grid = new Terminal({ cols: 64, rows: 24, allowProposedApi: true });
+      const shared = refs();
+      const terminal = Object.assign(shared.terminalRef.current, {
+        cols: 64,
+        rows: 24,
+      });
+      terminal.write.mockImplementation((data) => grid.write(data));
+      const pending = deferred<void>();
+      if (phase === "listeners") {
+        transport.listen.mockImplementationOnce(async (name, callback) => {
+          await pending.promise;
+          const unlisten = vi.fn();
+          listeners.push({ name, callback, unlisten });
+          return unlisten;
+        });
+      }
+      transport.invoke.mockImplementation(async (name, args) => {
+        if (name === "resize_pty") {
+          if (phase === "existence probe") await pending.promise;
+          throw new Error("not found");
+        }
+        if (name === "create_pty") {
+          output(
+            Array.from(new TextEncoder().encode(zshStartup(args.request.cols))),
+            0
+          );
+          return base;
+        }
+      });
+      try {
+        const connection = start(shared);
+        await settle();
+        terminal.cols = 62;
+        terminal.rows = 20;
+        grid.resize(62, 20);
+        pending.resolve();
+        await connection.promise;
+        flushBacklog(sessionId, 10000);
+        await new Promise<void>((resolve) => grid.write("", resolve));
+        expect(transport.invoke).toHaveBeenCalledWith(
+          "create_pty",
+          expect.objectContaining({
+            request: expect.objectContaining({ cols: 62, rows: 20 }),
+          })
+        );
+        const lines = Array.from(
+          { length: grid.buffer.active.length },
+          (_, i) => grid.buffer.active.getLine(i)!.translateToString(true)
+        );
+        expect(lines.some((line) => line.startsWith("prompt %"))).toBe(true);
+        expect(lines.filter((line) => line.trim() === "%")).toEqual([]);
+      } finally {
+        grid.dispose();
+      }
+    }
+  );
+
+  it("reconciles a resize lost while native creation was pending", async () => {
+    const shared = refs();
+    const terminal = Object.assign(shared.terminalRef.current, {
+      cols: 64,
+      rows: 24,
+    });
+    const pending = deferred<typeof base>();
+    let created = false;
+    transport.invoke.mockImplementation((name) => {
+      if (name === "resize_pty" && !created)
+        return Promise.reject(new Error("not found"));
+      if (name === "create_pty") return pending.promise;
+      return Promise.resolve();
+    });
+    const connection = start(shared);
+    await settle();
+    terminal.cols = 62;
+    terminal.rows = 20;
+    created = true;
+    pending.resolve(base);
+    await connection.promise;
+    expect(transport.invoke).toHaveBeenLastCalledWith(
+      "attach_pty_output_channel",
+      expect.anything()
+    );
+    const resizeCalls = transport.invoke.mock.calls.filter(
+      ([name]) => name === "resize_pty"
+    );
+    expect(resizeCalls.map(([, args]) => args.request)).toEqual([
+      { session_id: sessionId, cols: 64, rows: 24 },
+      { session_id: sessionId, cols: 62, rows: 20 },
+    ]);
+  });
+
+  it("does not reconcile a disposed connection after creation returns", async () => {
+    const shared = refs();
+    const terminal = Object.assign(shared.terminalRef.current, {
+      cols: 64,
+      rows: 24,
+    });
+    const pending = deferred<typeof base>();
+    transport.invoke.mockImplementation((name) => {
+      if (name === "resize_pty") return Promise.reject(new Error("not found"));
+      return name === "create_pty" ? pending.promise : Promise.resolve();
+    });
+    const connection = start(shared);
+    await settle();
+    connection.abort.abort();
+    terminal.cols = 62;
+    pending.resolve(base);
+    await connection.promise;
+    expect(
+      transport.invoke.mock.calls.filter(([name]) => name === "resize_pty")
+    ).toHaveLength(1);
   });
 });

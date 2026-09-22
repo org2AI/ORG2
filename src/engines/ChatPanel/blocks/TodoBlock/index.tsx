@@ -292,8 +292,6 @@ const StandardTodoBlock: React.FC<StandardTodoBlockProps> = memo(
               {needsExpand && (
                 <Button
                   layout="custom"
-                  appearance="custom"
-                  htmlType="button"
                   className="group flex h-6 w-full cursor-pointer items-center gap-1.5 rounded border-0 bg-transparent px-1.5 text-left transition-colors hover:bg-fill-2"
                   aria-expanded={isListExpanded}
                   onClick={() => setIsListExpanded((prev) => !prev)}

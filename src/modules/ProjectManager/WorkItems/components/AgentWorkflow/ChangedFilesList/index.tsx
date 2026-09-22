@@ -146,7 +146,6 @@ const ChangedFilesList: React.FC<ChangedFilesListProps> = ({
         {(onReviewAllFiles || onOpenFileDiff) && reviewableFiles.length > 0 && (
           <Button
             variant="tertiary"
-            appearance="soft-no-drop"
             size="mini"
             aria-label={t("workItems.changedFiles.reviewInEditor")}
             iconOnly

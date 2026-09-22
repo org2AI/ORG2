@@ -42,12 +42,11 @@ const RegionNoticeButton: React.FC<RegionNoticeButtonProps> = ({
       <Tooltip
         content={<KeyboardShortcutTooltipContent label={title} />}
         position="bottom-end"
-        mouseEnterDelay={200}
+        kind="button"
         framedPanel
       >
         <span className="inline-flex">
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             iconOnly

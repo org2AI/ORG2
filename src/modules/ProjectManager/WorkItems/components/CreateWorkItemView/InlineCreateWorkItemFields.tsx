@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type ProjectOrg, projectApi } from "@src/api/http/project";
+import type { MarkdownEditorMode } from "@src/components/MarkdownTextareaEditor";
 import { INPUT_AREA_EDITOR_HEIGHT } from "@src/config/inputAreaTokens";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { createLogger } from "@src/hooks/logger";
@@ -14,7 +15,6 @@ import {
   ProjectContentEditor,
   type ProjectContentEditorRef,
 } from "@src/modules/ProjectManager/shared";
-import type { MarkdownEditorMode } from "@src/modules/shared/components/MarkdownTextareaEditor";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 import type { Person } from "@src/types/core/shared";
 import type { WorkItemLabel, WorkItemProject } from "@src/types/core/workItem";

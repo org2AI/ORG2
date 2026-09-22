@@ -31,7 +31,13 @@ export const PILL_CONTROL_FIELD_HOVER_CLASS = "enabled:hover:border-border-3!";
 export const PILL_CONTROL_FIELD_FOCUS_CLASS =
   "border-primary-6! shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary-6)_15%,transparent)]!";
 
-export type PillControlFocusTreatment = "accent" | "field";
+/**
+ * - `accent` — open state fills the surface and tints the label primary.
+ * - `field` — form-field focus ring.
+ * - `border` — open state only recolors the border; surface and label keep
+ *   their idle colors (composer pill row).
+ */
+export type PillControlFocusTreatment = "accent" | "field" | "border";
 
 /** Resolve the standard idle/open treatment for outlined pill controls. */
 export function pillControlStateClass(
@@ -39,6 +45,14 @@ export function pillControlStateClass(
   idleSurface: "background" | "fill" = "background",
   focusTreatment: PillControlFocusTreatment = "accent"
 ): string {
+  if (focusTreatment === "border") {
+    const surfaceClass =
+      idleSurface === "fill"
+        ? PILL_CONTROL_IDLE_FILL_SURFACE_CLASS
+        : PILL_CONTROL_IDLE_SURFACE_CLASS;
+    return isActive ? `${surfaceClass} border-primary-6!` : surfaceClass;
+  }
+
   if (focusTreatment === "field") {
     const surfaceClass =
       idleSurface === "fill"

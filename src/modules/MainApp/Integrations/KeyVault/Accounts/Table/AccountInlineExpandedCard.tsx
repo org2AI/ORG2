@@ -8,8 +8,8 @@ import React, {
 import { useTranslation } from "react-i18next";
 
 import PageNotice from "@src/components/PageNotice";
+import { AccountInlineDetails } from "@src/features/KeyVault/AccountInlineDetails";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { AccountInlineDetails } from "@src/modules/shared/keyVault/AccountInlineDetails";
 
 import {
   buildVariantsByModelFromAccounts,

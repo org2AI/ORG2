@@ -24,8 +24,7 @@ export const ExternalBrowserButton = memo(function ExternalBrowserButton({
   onClick,
 }: ExternalBrowserButtonProps) {
   const { t } = useTranslation("common");
-  const resolvedLabel =
-    label ?? t("previews.openInExternalBrowser", "Open in external browser");
+  const resolvedLabel = label ?? t("previews.openInExternalBrowser");
   const handleClick: NonNullable<ButtonProps["onClick"]> = (event) => {
     onClick?.(event);
     if (!event.defaultPrevented) {
@@ -36,7 +35,6 @@ export const ExternalBrowserButton = memo(function ExternalBrowserButton({
   return (
     <ToolbarTooltip label={resolvedLabel} position="bottom-end">
       <Button
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly

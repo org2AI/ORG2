@@ -17,7 +17,6 @@ import { toFsPluginPath } from "@src/util/file/pathUtils";
 import {
   cacheFileMetadata,
   cacheUnsavedContent,
-  clearFileCache,
   clearUnsavedContentCache,
   getCachedBinaryStatus,
   getCachedFileMetadata,
@@ -26,7 +25,6 @@ import {
   markFileLoadedThisSession,
   popUnsavedContent,
   subscribeToFileChanges,
-  updateCachedFileMtime,
 } from "./cache";
 import { MAX_EDIT_LOG_SIZE } from "./constants";
 import { classifyFileError } from "./errors";
@@ -41,11 +39,9 @@ const log = createLogger("FileContent");
 
 export type { FileError, UseFileContentOptions, UseFileContentReturn };
 export {
-  clearFileCache,
   clearUnsavedContentCache,
   invalidateFileCache,
   subscribeToFileChanges,
-  updateCachedFileMtime,
 };
 
 export function useFileContent(
@@ -53,8 +49,8 @@ export function useFileContent(
 ): UseFileContentReturn {
   const { filePath, autoLoad = true } = options;
 
-  const [content, setContent] = useState<string>("");
-  const [originalContent, setOriginalContent] = useState<string>("");
+  const [content, setContentState] = useState<string>("");
+  const [originalContent, setOriginalContentState] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<FileError | null>(null);
   const [isBinary, setIsBinary] = useState<boolean>(false);
@@ -64,14 +60,24 @@ export function useFileContent(
   const [loadedFilePath, setLoadedFilePath] = useState<string | null>(null);
 
   // Versioning (VSCode-style)
-  const [version, setVersion] = useState<number>(0);
-  const [diskVersion, setDiskVersion] = useState<number>(0);
+  const [version, setVersionState] = useState<number>(0);
+  const [diskVersion, setDiskVersionState] = useState<number>(0);
   const [recentEdits, setRecentEdits] = useState<EditOperation[]>([]);
   const [diskMtime, setDiskMtime] = useState<number | null>(null);
 
   // Track current file path to avoid stale updates
   const currentFilePathRef = useRef<string | null>(null);
   const loadingRef = useRef<boolean>(false);
+  const documentIdentity = useMemo(() => ({ filePath }), [filePath]);
+  const activeIdentity = useRef(documentIdentity);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    activeIdentity.current = documentIdentity;
+    return () => {
+      mounted.current = false;
+    };
+  }, [documentIdentity]);
 
   // Use ref to access version in loadContent without adding it as a dependency
   // This prevents loadContent from being recreated on every version change
@@ -82,17 +88,29 @@ export function useFileContent(
   const originalContentRef = useRef(originalContent);
   const diskVersionRef = useRef(diskVersion);
   const recentEditsRef = useRef(recentEdits);
+  const hasUnsavedChangesRef = useRef(hasUnsavedChanges);
+
+  const setContent = useCallback((value: string) => {
+    contentRef.current = value;
+    setContentState(value);
+  }, []);
+  const setVersion = useCallback((value: number) => {
+    versionRef.current = value;
+    setVersionState(value);
+  }, []);
+  const setOriginalContent = useCallback((value: string) => {
+    originalContentRef.current = value;
+    setOriginalContentState(value);
+  }, []);
+  const setDiskVersion = useCallback((value: number) => {
+    diskVersionRef.current = value;
+    setDiskVersionState(value);
+  }, []);
 
   useEffect(() => {
-    versionRef.current = version;
-  }, [version]);
-
-  useEffect(() => {
-    contentRef.current = content;
-    originalContentRef.current = originalContent;
-    diskVersionRef.current = diskVersion;
     recentEditsRef.current = recentEdits;
-  }, [content, originalContent, diskVersion, recentEdits]);
+    hasUnsavedChangesRef.current = hasUnsavedChanges;
+  }, [recentEdits, hasUnsavedChanges]);
 
   // Cache unsaved content before switching to a new file
   useEffect(() => {
@@ -132,7 +150,12 @@ export function useFileContent(
     }
 
     // Prevent duplicate loads
-    if (loadingRef.current && currentFilePathRef.current === filePath) {
+    if (
+      loadingRef.current &&
+      currentFilePathRef.current === filePath &&
+      mounted.current &&
+      activeIdentity.current === documentIdentity
+    ) {
       return;
     }
 
@@ -183,7 +206,11 @@ export function useFileContent(
       const fileContent = await readTextFile(toFsPluginPath(filePath));
 
       // Check for stale response
-      if (currentFilePathRef.current !== filePath) {
+      if (
+        currentFilePathRef.current !== filePath ||
+        !mounted.current ||
+        activeIdentity.current !== documentIdentity
+      ) {
         return;
       }
 
@@ -206,7 +233,11 @@ export function useFileContent(
       // Check for cached unsaved content from a previous tab switch. The
       // text may come back from an on-disk draft, so this can yield.
       const cachedUnsaved = await popUnsavedContent(filePath);
-      if (currentFilePathRef.current !== filePath) {
+      if (
+        currentFilePathRef.current !== filePath ||
+        !mounted.current ||
+        activeIdentity.current !== documentIdentity
+      ) {
         return;
       }
 
@@ -252,14 +283,22 @@ export function useFileContent(
         // Fetch disk modification time in background (don't block rendering)
         void fetchFileMtime(filePath)
           .then((mtime) => {
-            if (currentFilePathRef.current === filePath) {
+            if (
+              currentFilePathRef.current === filePath &&
+              mounted.current &&
+              activeIdentity.current === documentIdentity
+            ) {
               setDiskMtime(mtime);
               cacheFileMetadata(filePath, false, mtime);
             }
           })
           .catch((error: unknown) => {
             log.error("[FileContent] Failed to fetch file mtime:", error);
-            if (currentFilePathRef.current === filePath) {
+            if (
+              currentFilePathRef.current === filePath &&
+              mounted.current &&
+              activeIdentity.current === documentIdentity
+            ) {
               setDiskMtime(null);
               cacheFileMetadata(filePath, false, null);
             }
@@ -280,7 +319,11 @@ export function useFileContent(
       );
     } catch (err) {
       // Check for stale response
-      if (currentFilePathRef.current !== filePath) {
+      if (
+        currentFilePathRef.current !== filePath ||
+        !mounted.current ||
+        activeIdentity.current !== documentIdentity
+      ) {
         return;
       }
 
@@ -299,14 +342,25 @@ export function useFileContent(
       setDiskMtime(null);
       setHasUnsavedChanges(false);
     } finally {
-      if (currentFilePathRef.current === filePath) {
+      if (
+        currentFilePathRef.current === filePath &&
+        mounted.current &&
+        activeIdentity.current === documentIdentity
+      ) {
         setLoading(false);
         loadingRef.current = false;
         // Track which file path this content was loaded for
         setLoadedFilePath(filePath);
       }
     }
-  }, [filePath]); // Note: version accessed via ref, not as dependency
+  }, [
+    filePath,
+    documentIdentity,
+    setContent,
+    setOriginalContent,
+    setVersion,
+    setDiskVersion,
+  ]); // Note: version accessed via ref, not as dependency
 
   // Auto-load on file path change
   useEffect(() => {
@@ -315,21 +369,34 @@ export function useFileContent(
     }
   }, [filePath, autoLoad, loadContent]);
 
-  // Subscribe to external file change notifications
-  // When file watcher detects this file changed externally, reload it
+  // Subscribe to external file change notifications.
+  //
+  // Only a CLEAN buffer is reloaded. `loadContent` replaces the buffer with
+  // the bytes on disk and clears the dirty flag, so auto-reloading a dirty
+  // buffer would silently discard the user's unsaved edits — a worse failure
+  // than the stale content it is meant to fix. A dirty buffer keeps its
+  // edits; the save path compares against disk and asks before overwriting
+  // (see `diskGuard.ts`).
+  //
+  // NOTE: no producer calls `onExternalFileChange` today — the Rust
+  // `emit_file_changed`/`emit_files_changed` pair in
+  // `crates/git/src/watch/event_emitter.rs` has no callers, so `file:changed`
+  // is never emitted and this subscription is currently inert. It is kept,
+  // and made safe, so that wiring a producer is a one-line change rather than
+  // one that reintroduces the clobber above.
   useEffect(() => {
     if (!filePath) return;
 
     const unsubscribe = subscribeToFileChanges((changedPath) => {
-      // Check if the changed file matches our current file
-      // Handle both exact match and path ending match (for relative vs absolute)
-      if (
-        changedPath === filePath ||
-        filePath.endsWith(`/${changedPath}`) ||
-        changedPath.endsWith(`/${filePath.split("/").pop()}`)
-      ) {
-        loadContent();
-      }
+      // Exact match, or a repo-relative path naming this same file. The
+      // basename-only clause this replaces matched ANY file with the same
+      // name in ANY directory, so an unrelated `index.ts` could reload this
+      // one.
+      const isSameFile =
+        changedPath === filePath || filePath.endsWith(`/${changedPath}`);
+      if (!isSameFile) return;
+      if (hasUnsavedChangesRef.current) return;
+      loadContent();
     });
 
     return unsubscribe;
@@ -338,12 +405,12 @@ export function useFileContent(
   // Update content with source attribution (for editing)
   const updateContent = useCallback(
     (newContent: string, source: EditSource) => {
-      const nextVersion = version + 1;
+      const nextVersion = versionRef.current + 1;
 
       // Record only the changed span: the log is for attribution, and the
       // full buffer already lives in `content` (and in CodeMirror's history).
       const edit = createMinimalEditOperation(
-        content,
+        contentRef.current,
         newContent,
         source,
         nextVersion
@@ -355,21 +422,32 @@ export function useFileContent(
       setRecentEdits(
         (prev) => [...prev, edit].slice(-MAX_EDIT_LOG_SIZE) // Keep last N edits
       );
-      setHasUnsavedChanges(nextVersion !== diskVersion);
+      setHasUnsavedChanges(newContent !== originalContentRef.current);
     },
-    [version, diskVersion, content]
+    [setContent, setVersion]
   );
 
   // Mark as saved
   const markSaved = useCallback(() => {
+    if (!mounted.current || activeIdentity.current !== documentIdentity)
+      return false;
     setOriginalContent(content);
-    setDiskVersion(version); // Update disk version to match current version
-    setHasUnsavedChanges(false);
+    setDiskVersion(version);
+    const clean = contentRef.current === content;
+    setHasUnsavedChanges(!clean);
     // Clear unsaved content cache since changes are now saved
     if (filePath) {
-      clearUnsavedContentCache(filePath);
+      if (clean) clearUnsavedContentCache(filePath);
     }
-  }, [content, version, filePath]);
+    return clean;
+  }, [
+    content,
+    version,
+    filePath,
+    documentIdentity,
+    setOriginalContent,
+    setDiskVersion,
+  ]);
 
   // Discard changes
   const discardChanges = useCallback(() => {
@@ -380,7 +458,7 @@ export function useFileContent(
     if (filePath) {
       clearUnsavedContentCache(filePath);
     }
-  }, [originalContent, diskVersion, filePath]);
+  }, [originalContent, diskVersion, filePath, setContent, setVersion]);
 
   // Helper functions for filtering edits by source type
   const getAIEdits = useCallback(() => {
@@ -407,6 +485,7 @@ export function useFileContent(
   // Memoize return object to prevent unnecessary re-renders in consumers
   return useMemo(
     () => ({
+      documentPath: filePath,
       content: exposedContent,
       originalContent: exposedOriginalContent,
       loading: exposedLoading,
@@ -430,6 +509,7 @@ export function useFileContent(
       discardChanges,
     }),
     [
+      filePath,
       exposedContent,
       exposedOriginalContent,
       exposedLoading,

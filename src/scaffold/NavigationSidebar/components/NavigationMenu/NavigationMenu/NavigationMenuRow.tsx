@@ -1,13 +1,17 @@
 import React, { useCallback } from "react";
 
+import { ReferenceDragGhost } from "@src/components/dnd/ReferenceDragGhost";
 import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
 import { ChevronsDownUpIcon, HugeiconsIcon, UnfoldMoreIcon } from "@src/icons";
-import { ReferenceDragGhost } from "@src/shared/dnd/ReferenceDragGhost";
 
 import type { NavigationMenuItem } from "../config";
 import { NavigationMenuRowAccessorySlot } from "./RowAccessorySlot";
 import { NavigationMenuRowActionButton } from "./RowActionButton";
-import { renderLeadingIcon, renderRowActions } from "./renderRowParts";
+import {
+  renderLeadingIcon,
+  renderNavigationMenuHoverContent,
+  renderRowActions,
+} from "./renderRowParts";
 import type {
   NavigationMenuIconRenderer,
   NavigationMenuItemClickHandler,
@@ -178,7 +182,7 @@ export const NavigationMenuParentRow = React.forwardRef<
                 item.disclosureFollowsLabel ? "" : "flex-1"
               }`}
             >
-              <span className="flex min-w-0 items-center gap-1">
+              <span className="flex min-w-0 items-center gap-3">
                 <span className="truncate text-[13px] leading-4 text-text-1">
                   {item.label}
                 </span>
@@ -202,13 +206,10 @@ export const NavigationMenuParentRow = React.forwardRef<
             <NavigationMenuRowAccessorySlot
               parentHoverGroup
               persistentContent={item.trailingElement}
-              hoverContent={
-                item.shortcut ? (
-                  <span className="max-w-24 truncate text-[11px] text-text-2">
-                    {item.shortcut}
-                  </span>
-                ) : undefined
-              }
+              hoverContent={renderNavigationMenuHoverContent(
+                item,
+                "max-w-24 truncate text-[11px] text-text-2"
+              )}
               actionContent={
                 item.showMoreActions
                   ? renderRowActions({

@@ -17,6 +17,7 @@ export function useUnifiedModelPalette({
   dispatchCategoryOverride,
   cliAgentTypeOverride,
   keyFirst = false,
+  closeOnSourceSelect = true,
 }: Pick<
   UnifiedModelPaletteProps,
   | "isOpen"
@@ -32,6 +33,8 @@ export function useUnifiedModelPalette({
    * model-first.
    */
   keyFirst?: boolean;
+  /** Keep an anchored dropdown open after committing its second-level source. */
+  closeOnSourceSelect?: boolean;
 }) {
   const { t: tCommon } = useTranslation();
   const modelAliasVersion = useModelAliasRegistryVersion();
@@ -39,10 +42,15 @@ export function useUnifiedModelPalette({
   const {
     accounts,
     accountLookup,
+    marketSources,
+    marketProfilesLoading,
+    marketProfilesError,
+    refreshMarketProfiles,
     orgiiModelSet,
     orgiiCategoryIds,
     orgiiPoolEnabled,
     dispatchCategory,
+    cliAgentType,
     recentEntries,
     recordRecent,
     saveKey,
@@ -77,15 +85,18 @@ export function useUnifiedModelPalette({
     previewKey,
     handleKeySelect,
     handleKeyModelSelect,
+    handleMarketModelSelect,
   } = useUnifiedModelPaletteSelection({
     isOpen,
     isCliAgent,
     keyFirst,
     accountLookupSize: accountLookup.size,
     accounts,
+    marketSources,
     advancedConfig,
     onConfigChange,
     onClose,
+    closeOnSourceSelect,
     recordRecent,
   });
 
@@ -93,8 +104,10 @@ export function useUnifiedModelPalette({
     rawItems,
     sideMenuRawItems,
     sideMenuModelItems,
+    pinnedItems,
     recentItems,
     allModelItems,
+    pinnedHeader,
     recentHeader,
     allHeader,
     sourceItems,
@@ -103,11 +116,16 @@ export function useUnifiedModelPalette({
   } = useUnifiedModelPaletteItems({
     advancedConfig,
     accounts,
+    marketSources,
+    marketProfilesLoading,
+    marketProfilesError,
+    refreshMarketProfiles,
     accountLookup,
     orgiiModelSet,
     orgiiCategoryIds,
     orgiiPoolEnabled,
     isCliAgent,
+    cliAgentType,
     recentEntries,
     sourceOptions,
     selectedModelId,
@@ -120,6 +138,7 @@ export function useUnifiedModelPalette({
     selectedKeyAccountId,
     handleKeySelect,
     handleKeyModelSelect,
+    handleMarketModelSelect,
     saveKey,
     modelAliasVersion,
     tCommon,
@@ -134,8 +153,10 @@ export function useUnifiedModelPalette({
     rawItems,
     sideMenuRawItems,
     sideMenuModelItems,
+    pinnedItems,
     recentItems,
     allModelItems,
+    pinnedHeader,
     recentHeader,
     allHeader,
     sourceItems,

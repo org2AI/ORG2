@@ -178,18 +178,13 @@ export function useWorkingDirectoryPaletteWorkspaces({
         }
         const refreshed = await listWorkspaces();
         setSavedWorkspaces(refreshed);
-        Message.success(
-          t("selectors.spotlight.toast.workspaceRemoved", "Workspace deleted")
-        );
+        Message.success(t("selectors.spotlight.toast.workspaceRemoved"));
       } catch (error) {
         log.error("Error deleting workspace:", error);
         Message.error(
           error instanceof Error
             ? error.message
-            : t(
-                "selectors.spotlight.toast.workspaceRemoveFailed",
-                "Failed to delete workspace"
-              )
+            : t("selectors.spotlight.toast.workspaceRemoveFailed")
         );
       }
     },
@@ -224,10 +219,7 @@ export function useWorkingDirectoryPaletteWorkspaces({
       title: t("confirmation.deleteSelectedTitle", {
         count: total,
       }),
-      message: t(
-        "confirmation.deleteSelectedMessage",
-        "This only removes their linkage to ORG2. Nothing will be removed from disk."
-      ),
+      message: t("confirmation.deleteSelectedMessage"),
       okLabel: t("actions.removeFromOrgii"),
       cancelLabel: t("actions.cancel"),
     });
@@ -369,33 +361,29 @@ export function useWorkingDirectoryPaletteWorkspaces({
         <div className="flex items-center gap-1">
           <Button
             variant="tertiary"
-            appearance="soft"
             size="mini"
-            aria-label={t("actions.edit", "Edit")}
+            aria-label={t("actions.edit")}
             iconOnly
             icon={<HugeiconsIcon icon={ICONS.editRepo} size={14} />}
-            htmlType="button"
             onClick={(e) => {
               e.stopPropagation();
               handleEditWorkspace(ws);
             }}
             className="hover:bg-fill-3 hover:text-text-1"
-            title={t("actions.edit", "Edit")}
+            title={t("actions.edit")}
           />
           <Button
-            variant="danger"
-            appearance="soft"
+            variant="tertiary"
+            tone="danger"
             size="mini"
-            aria-label={t("actions.delete", "Delete")}
+            aria-label={t("actions.delete")}
             iconOnly
             icon={<HugeiconsIcon icon={ICONS.removeRepo} size={14} />}
-            htmlType="button"
             onClick={(e) => {
               e.stopPropagation();
               void handleDeleteWorkspace(ws);
             }}
-            className="hover:text-error-6 hover:bg-fill-3"
-            title={t("actions.delete", "Delete")}
+            title={t("actions.delete")}
           />
         </div>
       );

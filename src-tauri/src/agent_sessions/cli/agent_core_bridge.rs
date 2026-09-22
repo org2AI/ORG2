@@ -19,8 +19,8 @@ use agent_core::session::AgentExecMode;
 use agent_core::tools::names as tool_names;
 
 use super::commands::{
-    cli_agent_create, cli_agent_delete, cli_agent_message, cli_agent_run, CliMessageRequest,
-    CliRunRequest,
+    cli_agent_create_with_source, cli_agent_delete, cli_agent_message, cli_agent_run,
+    CliMessageRequest, CliRunRequest,
 };
 use super::persistence::{self, CreateCodeSessionParams};
 
@@ -28,6 +28,24 @@ fn run(
     params: CliLaunchParams,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<CliLaunchOutcome, String>> + Send>> {
     Box::pin(async move {
+        let credential_source = params.credential_source;
+        if let Some(selection) = &credential_source {
+            if selection.is_empty()
+                || selection.len() > 1024
+                || params.account_id.is_some()
+                || params.key_source.as_deref().is_some_and(|s| s != "own_key")
+                || !matches!(params.cli_agent_type.as_str(), "claude_code" | "codex")
+                || params
+                    .model
+                    .as_deref()
+                    .is_none_or(|m| m.is_empty() || m.len() > 256)
+            {
+                return Err("Invalid dynamic execution source".into());
+            }
+            crate::dynamic_credentials::source(selection)?
+                .ok_or("Dynamic source required")?
+                .destination(selection, &params.cli_agent_type)?;
+        }
         let create_params = CreateCodeSessionParams {
             name: params.name,
             flow: None,
@@ -60,7 +78,7 @@ fn run(
             product_mode: params.product_mode,
         };
 
-        let session = cli_agent_create(create_params).await?;
+        let session = cli_agent_create_with_source(create_params, credential_source).await?;
         let session_id = session.session_id.clone();
         let created_at = session.created_at.clone();
 
@@ -255,7 +273,15 @@ pub fn register() {
     session_bridge::register_launch_cli_agent(run);
     session_bridge::register_dispatch_cli_turn(dispatch_turn);
     session_bridge::register_delete_cli_session(|session_id| {
-        persistence::delete_session(session_id).map_err(|err| format!("DB error: {err}"))
+        crate::cli_managed_proxy::release_session_route(session_id)?;
+        agent_cli::managed_config::launch::release(session_id)?;
+        let deleted =
+            persistence::delete_session(session_id).map_err(|err| format!("DB error: {err}"));
+        // This synchronous adapter cannot hold the async control guard. Revoke
+        // again after deletion; preparation checks its durable owner after
+        // reservation, closing both sides of the reserve/delete interleaving.
+        crate::cli_managed_proxy::release_session_route(session_id)?;
+        deleted
     });
     session_bridge::register_get_cli_tools_snapshot(tools_snapshot);
     session_bridge::register_respond_cli_plan_approval(respond_plan_approval);

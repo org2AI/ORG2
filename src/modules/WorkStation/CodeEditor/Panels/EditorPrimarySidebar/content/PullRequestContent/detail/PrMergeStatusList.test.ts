@@ -13,23 +13,13 @@ import {
 } from "vitest";
 
 import type { GitHubChecksSummary } from "@src/api/tauri/github";
+import { testTranslate, useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { PrMergeStatusList } from "./PrMergeStatusList";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, unknown>) => {
-      if (typeof fallback === "string") return fallback;
-      if (!fallback) return key;
-      const count = fallback.count as number | undefined;
-      const template =
-        count === 1
-          ? (fallback.defaultValue as string)
-          : ((fallback.defaultValue_other ?? fallback.defaultValue) as string);
-      if (typeof template !== "string") return key;
-      return template.replace("{{count}}", String(count ?? ""));
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 const openLink = vi.fn();
@@ -125,7 +115,9 @@ describe("PrMergeStatusList", () => {
     const headline = container.querySelector<HTMLElement>(
       "[data-testid='pr-merge-status-headline']"
     );
-    expect(headline?.textContent).toBe("Able to merge");
+    expect(headline?.textContent).toBe(
+      testTranslate("common:git.pr.mergeStatus.ableToMerge")
+    );
     // Tone lives on the headline's icon, not the row text — the row itself
     // shares the same neutral text style as every other row in the list.
     const headlineIcon = headline?.querySelector("[data-icon='git-merge']");

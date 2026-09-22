@@ -192,8 +192,6 @@ export function PropertyDropdownField<T extends string>({
   const trigger = isIconTrigger ? (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       title={label}
       aria-label={label}
       aria-disabled={readonly || interactionDisabled}

@@ -13,6 +13,8 @@ import type { ReactNode } from "react";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
+import { DiffViewModeToggle } from "@src/components/DiffViewModeToggle";
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import TabPill from "@src/components/TabPill";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import {
@@ -25,7 +27,6 @@ import {
 } from "@src/icons";
 import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
 import type { SourceControlFilterMode } from "@src/modules/WorkStation/shared/SidebarModules";
-import { DiffViewModeToggle } from "@src/modules/shared/components/DiffViewModeToggle";
 import type {
   SourceControlHistorySelection,
   WorkStationTab,
@@ -150,67 +151,66 @@ export const SourceControlHeaderContent: React.FC<
         {showIssueHeader && (
           <ExternalBrowserButton
             href={selectedIssue.html_url}
-            label={t(
-              "common:previews.openInExternalBrowser",
-              "Open in external browser"
-            )}
+            label={t("common:previews.openInExternalBrowser")}
             className="shrink-0"
             onClick={(e) => e.stopPropagation()}
           />
         )}
         {showReviewNavigation && (
           <>
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              disabled={reviewNavigationDisabled}
-              onClick={onReviewPrevFile}
-              title={t("common:actions.reviewPreviousFile")}
-              aria-label={t("common:actions.reviewPreviousFile")}
-              className="shrink-0"
-              icon={
-                <HugeiconsIcon
-                  icon={ArrowUp01Icon}
-                  data-icon="chevron-up"
-                  size={HEADER_ICON_SIZE.sm}
-                  strokeWidth={1.75}
-                />
-              }
-            />
-            <Button
-              htmlType="button"
-              variant="tertiary"
-              size="small"
-              iconOnly
-              disabled={reviewNavigationDisabled}
-              onClick={onReviewNextFile}
-              title={t("common:actions.reviewNextFile")}
-              aria-label={t("common:actions.reviewNextFile")}
-              className="shrink-0"
-              icon={
-                <HugeiconsIcon
-                  icon={ArrowDown01Icon}
-                  data-icon="chevron-down"
-                  size={HEADER_ICON_SIZE.sm}
-                  strokeWidth={1.75}
-                />
-              }
-            />
+            <ToolbarTooltip
+              label={t("common:actions.reviewPreviousFile")}
+              noShortcut
+            >
+              <Button
+                variant="tertiary"
+                size="small"
+                iconOnly
+                disabled={reviewNavigationDisabled}
+                onClick={onReviewPrevFile}
+                className="shrink-0"
+                icon={
+                  <HugeiconsIcon
+                    icon={ArrowUp01Icon}
+                    data-icon="chevron-up"
+                    size={HEADER_ICON_SIZE.sm}
+                    strokeWidth={1.75}
+                  />
+                }
+              />
+            </ToolbarTooltip>
+            <ToolbarTooltip
+              label={t("common:actions.reviewNextFile")}
+              noShortcut
+            >
+              <Button
+                variant="tertiary"
+                size="small"
+                iconOnly
+                disabled={reviewNavigationDisabled}
+                onClick={onReviewNextFile}
+                className="shrink-0"
+                icon={
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    data-icon="chevron-down"
+                    size={HEADER_ICON_SIZE.sm}
+                    strokeWidth={1.75}
+                  />
+                }
+              />
+            </ToolbarTooltip>
           </>
         )}
 
         {showCollapseAll && (
-          <>
+          <ToolbarTooltip label={t("actions.collapseAll")} noShortcut>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
               className="shrink-0"
               onClick={onCollapseAll}
-              title={t("actions.collapseAll")}
               icon={
                 <HugeiconsIcon
                   icon={ListChevronsDownUpIcon}
@@ -219,7 +219,7 @@ export const SourceControlHeaderContent: React.FC<
                 />
               }
             />
-          </>
+          </ToolbarTooltip>
         )}
         {(showReviewNavigation || showCollapseAll) && (
           <span
@@ -233,32 +233,35 @@ export const SourceControlHeaderContent: React.FC<
           onChange={onDiffViewModeChange}
           t={t}
         />
+        <ToolbarTooltip label={t("common:actions.refresh")} noShortcut>
+          <Button
+            variant="tertiary"
+            size="small"
+            iconOnly
+            className="shrink-0"
+            onClick={onRefresh}
+            icon={
+              <HugeiconsIcon
+                icon={Refresh04Icon}
+                data-icon="refresh-cw"
+                size={HEADER_ICON_SIZE.sm}
+                strokeWidth={2}
+                className={sourceControlRefreshSpinClass}
+              />
+            }
+          />
+        </ToolbarTooltip>
         {showDetailToolbar ? (
           <span
             ref={focusToolbarRef}
             className="flex shrink-0 items-center gap-px"
           />
         ) : (
-          <SourceControlDiffSettingsMenu />
+          <SourceControlDiffSettingsMenu
+            onRefresh={onRefresh}
+            refreshSpinClass={sourceControlRefreshSpinClass}
+          />
         )}
-        <Button
-          htmlType="button"
-          variant="tertiary"
-          size="small"
-          iconOnly
-          className="shrink-0"
-          onClick={onRefresh}
-          title={t("common:actions.refresh")}
-          aria-label={t("common:actions.refresh")}
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={HEADER_ICON_SIZE.sm}
-              className={sourceControlRefreshSpinClass}
-            />
-          }
-        />
       </span>
     </div>
   );

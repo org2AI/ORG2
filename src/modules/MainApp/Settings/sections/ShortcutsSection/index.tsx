@@ -19,6 +19,7 @@ import SettingsTable, {
   type SettingsTableColumn,
   type SettingsTableSelectFilter,
 } from "@src/components/SettingsTable";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import {
   CURRENT_SHORTCUT_PLATFORM,
   resetShortcutBindings,
@@ -33,10 +34,6 @@ import {
   getCategories,
 } from "@src/config/keyboard/shortcuts";
 import { useShortcutBindings } from "@src/config/keyboard/useShortcutBindings";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 
 import ShortcutRecorder from "./ShortcutRecorder";
 

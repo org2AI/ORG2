@@ -1,12 +1,10 @@
-import React, {
-  Suspense,
-  createContext,
-  lazy,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import React, { Suspense, lazy, useCallback, useMemo, useState } from "react";
+
+import {
+  MarkdownLocalFileInterceptContext,
+  useMarkdownLocalFileIntercepted,
+  useMarkdownLocalFileInterceptor,
+} from "@src/components/MarkDown/extensions";
 
 import { sharedFileAbsolutePath } from "./sessionSharedFileCandidates";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
@@ -18,7 +16,12 @@ interface Scope {
   endpoint: string;
   repoPath?: string;
 }
-const Context = createContext<((path: string) => boolean) | null>(null);
+/**
+ * The interception channel is declared beside the Markdown renderer
+ * (`components/MarkDown/extensions`) so the renderer stays a leaf; this
+ * feature owns the provider and the viewer it opens.
+ */
+const Context = MarkdownLocalFileInterceptContext;
 export function SharedSessionFilesProvider({
   scope,
   children,
@@ -68,11 +71,10 @@ export function SharedSessionFilesProvider({
     </Context.Provider>
   );
 }
-/** Returns false outside shared sessions, preserving normal local navigation. */
-const NOT_SHARED = () => false;
+/** True inside a shared session; false keeps normal local navigation. */
 export function useIsSessionFileShared(): boolean {
-  return useContext(Context) !== null;
+  return useMarkdownLocalFileIntercepted();
 }
 export function useOpenSessionSharedFile(): (path: string) => boolean {
-  return useContext(Context) ?? NOT_SHARED;
+  return useMarkdownLocalFileInterceptor();
 }

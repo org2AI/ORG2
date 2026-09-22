@@ -11,13 +11,13 @@ import Select from "@src/components/Select";
 import type { SelectOption } from "@src/components/Select";
 import TabPill from "@src/components/TabPill";
 import type { TabPillItem } from "@src/components/TabPill";
+import { WorkManagementSearchInput } from "@src/features/GitHubWork/WorkManagementSearchInput";
 import {
   CircleIcon,
   Flag01Icon,
   HugeiconsIcon,
   TimeScheduleIcon,
 } from "@src/icons";
-import { WorkManagementSearchInput } from "@src/modules/shared/components/WorkManagementSearchInput";
 
 import {
   type ProjectsGroupMode,

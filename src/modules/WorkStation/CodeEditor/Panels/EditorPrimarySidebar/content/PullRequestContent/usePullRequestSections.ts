@@ -93,18 +93,16 @@ export function usePullRequestSections({
   const openStatus = useMemo<SectionStatus | null>(
     () =>
       openPrsLoadState === "loading" && orderedPrs.length === 0
-        ? { kind: "loading", message: t("actions.loading", "Loading…") }
+        ? { kind: "loading", message: t("actions.loading") }
         : openPrsLoadState === "error" && orderedPrs.length === 0
           ? {
               kind: "error",
-              message:
-                openPrsError ??
-                t("git.pr.failedToLoad", "Failed to load pull requests"),
+              message: openPrsError ?? t("git.pr.failedToLoad"),
             }
           : orderedPrs.length === 0
             ? {
                 kind: "empty",
-                message: t("labels.noPullRequest", "No pull request"),
+                message: t("labels.noPullRequest"),
               }
             : null,
     [openPrsError, openPrsLoadState, orderedPrs.length, t]
@@ -113,18 +111,16 @@ export function usePullRequestSections({
   const closedStatus = useMemo<SectionStatus | null>(
     () =>
       closedPrsLoadState === "loading" && filteredClosedPrs.length === 0
-        ? { kind: "loading", message: t("actions.loading", "Loading…") }
+        ? { kind: "loading", message: t("actions.loading") }
         : closedPrsLoadState === "error" && filteredClosedPrs.length === 0
           ? {
               kind: "error",
-              message:
-                closedPrsError ??
-                t("git.pr.failedToLoad", "Failed to load pull requests"),
+              message: closedPrsError ?? t("git.pr.failedToLoad"),
             }
           : closedPrsLoadState === "ready" && filteredClosedPrs.length === 0
             ? {
                 kind: "empty",
-                message: t("labels.noPullRequest", "No pull request"),
+                message: t("labels.noPullRequest"),
               }
             : null,
     [closedPrsError, closedPrsLoadState, filteredClosedPrs.length, t]

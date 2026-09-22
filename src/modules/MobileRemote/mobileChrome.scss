@@ -1,48 +1,95 @@
-// Mobile-only chrome. Session rows, transcript typography, and the composer
-// continue to use their existing design tokens and surfaces.
+@use "./mobileUiTokens" as mobile;
+
+// Mobile-only chrome; typography is owned by the mobile entry's semantic scale.
 .mobile-shell {
-  --mobile-accent: #171717;
-  --mobile-accent-pressed: #333;
-  --mobile-on-accent: #fff;
-  --mobile-chrome-muted: #595959;
-  --mobile-glass: rgb(255 255 255 / 62%);
-  --mobile-glass-solid: #f5f5f5;
-  --mobile-glass-edge: rgb(0 0 0 / 10%);
-  --mobile-glass-highlight: rgb(255 255 255 / 92%);
-  --mobile-glass-shadow: 0 8px 28px rgb(0 0 0 / 10%), 0 2px 6px rgb(0 0 0 / 4%);
+  // Mobile chrome owns semantic aliases only. Their values come from the
+  // active app skin, so custom themes stay in sync without a second palette.
+  --mobile-accent: var(--color-text-1);
+  --mobile-accent-pressed: var(--color-text-2);
+  --mobile-on-accent: var(--color-bg-2);
+  --mobile-chrome-muted: var(--color-text-3);
+  --mobile-glass: color-mix(in srgb, var(--color-bg-2) 68%, transparent);
+  --mobile-glass-solid: var(--color-bg-2);
+  --mobile-glass-edge: var(--color-border-2);
+  --mobile-glass-highlight: var(--color-border-1);
+  --mobile-glass-shadow: var(--shadow-dropdown-soft);
   --mobile-glass-blur: blur(20px);
-  --mobile-selected: rgb(0 0 0 / 7%);
-  --mobile-canvas: #ededed;
-  --mobile-touch-size: 44px;
+  --mobile-selected: var(--color-fill-2);
+  --mobile-pill-selected: var(--color-fill-3);
+  // The shell and session content share one semantic canvas. Keeping a
+  // mobile-only hex here made the header visibly split from ChatTranscript
+  // and rendered as near-black in dark mode.
+  --mobile-canvas: var(--color-chat-container);
+  --mobile-touch-size: #{mobile.$touch-target};
   --mobile-action-height: 54px;
   --mobile-action-padding: 14px 22px;
-  --mobile-action-font-size: 17px;
-  --mobile-tab-height: 56px;
-  --mobile-tab-padding: 7px 12px;
+  --mobile-action-font-size: var(--mobile-type-control-size);
+  --mobile-tab-height: 48px;
+  --mobile-tab-padding: 5px 12px;
 
   background: var(--mobile-canvas);
-
-  // This palette belongs to navigation only; it never replaces the app's
-  // semantic colors inherited by session content or status indicators.
-  @media (prefers-color-scheme: dark) {
-    --mobile-accent: #f5f5f5;
-    --mobile-accent-pressed: #d4d4d4;
-    --mobile-on-accent: #111;
-    --mobile-chrome-muted: #bdbdbd;
-    --mobile-glass: rgb(28 28 28 / 68%);
-    --mobile-glass-solid: #202020;
-    --mobile-glass-edge: rgb(255 255 255 / 12%);
-    --mobile-glass-highlight: rgb(255 255 255 / 24%);
-    --mobile-glass-shadow:
-      0 8px 28px rgb(0 0 0 / 28%), 0 2px 6px rgb(0 0 0 / 16%);
-    --mobile-selected: rgb(255 255 255 / 10%);
-    --mobile-canvas: #101010;
-  }
+  font-size: var(--mobile-type-body-size);
+  line-height: var(--mobile-type-body-leading);
 }
 
 .mobile-shell__viewport {
-  max-width: 393px;
+  min-width: 0;
+  // Fluid on phones; keep long conversation lines readable on wider screens.
+  // A continuous cap also avoids breakpoint jumps when the keyboard resizes.
+  max-width: 48rem;
   background: var(--mobile-canvas);
+}
+
+// Onboarding/error screens share a scroll owner. Auto margins center short
+// content, but collapse to zero when landscape/keyboard space runs out.
+.mobile-flow-screen {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+  padding-bottom: max(#{mobile.$space-4}, env(safe-area-inset-bottom));
+  > * {
+    flex-shrink: 0;
+    max-width: 100%;
+  }
+}
+.mobile-flow-screen--centered {
+  justify-content: flex-start;
+  > :first-child {
+    margin-top: auto;
+  }
+  > :last-child {
+    margin-bottom: auto;
+  }
+}
+.mobile-auth-content {
+  flex: 1 0 auto;
+  padding-block: mobile.$space-4;
+}
+
+.liquid-modal-content.mobile-confirm-modal {
+  min-width: 0;
+  width: min(26rem, calc(100vw - 2 * #{mobile.$space-4}));
+  max-width: calc(100vw - 2 * #{mobile.$space-4});
+  max-height: calc(
+    100dvh - 2 *
+      #{mobile.$space-4} - env(safe-area-inset-top, 0px) - env(
+        safe-area-inset-bottom,
+        0px
+      )
+  );
+  overflow-wrap: anywhere;
+
+  button {
+    min-height: mobile.$touch-target;
+    height: auto;
+    max-width: 100%;
+    > .truncate {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+  }
 }
 
 .mobile-top-bar {
@@ -56,15 +103,15 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 22px 22px 16px;
+  gap: mobile.$space-3;
+  padding: 22px 22px mobile.$space-4;
 
   .mobile-top-bar__title {
     order: 2;
     flex: 0 0 100%;
-    font-size: 34px;
-    font-weight: 700;
-    line-height: 1.15;
+    font-size: var(--mobile-type-large-title-size);
+    font-weight: var(--mobile-type-strong-weight);
+    line-height: var(--mobile-type-title-leading);
     letter-spacing: -0.035em;
   }
 }
@@ -77,13 +124,13 @@
   align-items: center;
   gap: 10px;
   min-height: 68px;
-  padding: 10px 16px;
+  padding: 10px mobile.$space-4;
 
   .mobile-top-bar__title {
     grid-column: 2;
-    font-size: 17px;
-    font-weight: 600;
-    line-height: 1.3;
+    font-size: var(--mobile-type-heading-size);
+    font-weight: var(--mobile-type-emphasis-weight);
+    line-height: var(--mobile-type-heading-leading);
     letter-spacing: -0.02em;
     text-align: center;
   }
@@ -147,14 +194,15 @@
 
 .mobile-tab-dock {
   flex-shrink: 0;
-  padding: 10px 20px max(12px, env(safe-area-inset-bottom));
+  padding: mobile.$space-2 20px max(10px, env(safe-area-inset-bottom));
 }
 
 .mobile-tab-bar {
   display: flex;
-  gap: 4px;
-  padding: 5px;
+  gap: mobile.$space-1;
+  padding: mobile.$space-1;
   border-radius: 999px;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--mobile-accent) 4%, transparent);
 }
 
 .mobile-tab-button {
@@ -163,9 +211,9 @@
   color: var(--mobile-chrome-muted);
 
   &[aria-current="page"] {
-    color: var(--mobile-on-accent);
-    background: var(--mobile-accent);
-    box-shadow: inset 0 1px 0 var(--mobile-glass-highlight);
+    color: var(--mobile-accent);
+    background: var(--mobile-selected);
+    box-shadow: none;
   }
 }
 
@@ -173,21 +221,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .mobile-tab-button__label {
   max-width: 100%;
   overflow: hidden;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: var(--mobile-type-micro-size);
+  font-weight: var(--mobile-type-emphasis-weight);
+  line-height: var(--mobile-type-title-leading);
   text-overflow: ellipsis;
 }
 
 .mobile-action-button {
   width: 100%;
-  font-weight: 600;
+  font-weight: var(--mobile-type-emphasis-weight);
   letter-spacing: -0.015em;
 
   // Shared Button uses a truncating label for dense desktop controls. Large
@@ -202,7 +250,7 @@
     color: var(--mobile-on-accent);
     background: var(--mobile-accent);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 24%),
+      inset 0 1px 0 var(--mobile-glass-highlight),
       0 6px 16px color-mix(in srgb, var(--mobile-accent) 20%, transparent);
   }
 
@@ -235,8 +283,7 @@
 }
 
 .mobile-shell
-  .mobile-action-button[data-mobile-variant="primary"]:active:not(:disabled),
-.mobile-shell .mobile-tab-button[aria-current="page"]:active:not(:disabled) {
+  .mobile-action-button[data-mobile-variant="primary"]:active:not(:disabled) {
   background: var(--mobile-accent-pressed);
 }
 
@@ -251,8 +298,7 @@
   }
 
   .mobile-shell
-    .mobile-action-button[data-mobile-variant="primary"]:hover:not(:disabled),
-  .mobile-shell .mobile-tab-button[aria-current="page"]:hover:not(:disabled) {
+    .mobile-action-button[data-mobile-variant="primary"]:hover:not(:disabled) {
     background: var(--mobile-accent-pressed);
   }
 }

@@ -1,0 +1,134 @@
+@use "../../mobileUiTokens" as mobile;
+
+.mobile-connections {
+  display: flex;
+  flex-direction: column;
+  gap: mobile.$space-4;
+  padding: mobile.$space-2 mobile.$space-4 mobile.$space-4;
+
+  &__group {
+    display: flex;
+    flex-direction: column;
+    gap: mobile.$space-2;
+  }
+
+  &__heading {
+    margin: 0;
+    padding-inline: mobile.$space-1;
+    font-size: var(--mobile-type-caption-size);
+    line-height: var(--mobile-type-caption-leading);
+    font-weight: 500;
+    color: var(--color-text-3);
+  }
+
+  &__card {
+    background: var(--color-bg-3);
+    border-color: transparent;
+    border-radius: mobile.$space-3;
+  }
+
+  &__section-row {
+    padding-block: 0;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: mobile.$space-3;
+    width: 100%;
+    min-width: 0;
+    min-height: calc(#{mobile.$touch-target} + #{mobile.$space-3});
+    padding: mobile.$space-3 0;
+    color: var(--color-text-1);
+    text-align: left;
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    color: var(--color-text-3);
+  }
+
+  &__identity {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: mobile.$space-1;
+    min-width: 0;
+  }
+
+  &__line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: mobile.$space-2;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name,
+  &__details {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: var(--mobile-type-secondary-size);
+    line-height: var(--mobile-type-control-leading);
+    font-weight: 500;
+  }
+
+  &__details,
+  &__permission,
+  &__current {
+    color: var(--color-text-3);
+    font-size: var(--mobile-type-caption-size);
+    line-height: var(--mobile-type-caption-leading);
+    font-weight: 400;
+  }
+
+  &__permission,
+  &__current,
+  &__presence {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  &__presence {
+    margin-inline-start: auto;
+  }
+
+  &__current {
+    padding: 0 mobile.$space-2;
+    border-radius: mobile.$space-1;
+    background: var(--color-fill-2);
+  }
+
+  &__switch {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    &:active {
+      opacity: 0.7;
+    }
+    &:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--color-primary-6);
+      outline-offset: mobile.$space-1;
+      border-radius: mobile.$space-2;
+    }
+  }
+
+  &__add {
+    min-height: mobile.$touch-target;
+    font-size: var(--mobile-type-secondary-size);
+    font-weight: 500;
+  }
+}

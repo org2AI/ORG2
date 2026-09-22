@@ -1,14 +1,14 @@
 import { atom } from "jotai";
 
 import type { AgentExecMode } from "@src/config/sessionCreatorConfig";
-import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
-import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
-import type { QueuedConversationDispatch } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import { conversationRootKey } from "@src/contracts/conversation";
+import type { QueuedConversationDispatch } from "@src/contracts/conversation";
 import {
   MAX_QUEUED_CONVERSATION_MESSAGE_CHARS,
   MAX_QUEUED_CONVERSATION_MESSAGE_CHARS_TOTAL,
   queuedConversationMessageCharSize,
-} from "@src/engines/SessionCore/conversations/queuedConversationContract";
+} from "@src/contracts/conversation";
+import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
 import { mintTurnIntentId } from "@src/engines/SessionCore/sync/adapters/shared/eventFactories";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 import { isCliSession } from "@src/util/session/sessionDispatch";

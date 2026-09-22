@@ -15,6 +15,7 @@ import { useEditorAppearanceSettings } from "@src/hooks/settings";
 import type { BlameLineData } from "../../config";
 import {
   codeMirrorCspNonceExtension,
+  codeNavigationExtension,
   createCodeMirrorTheme,
   customFoldGutter,
   dirtyDiffGutter,
@@ -43,6 +44,8 @@ export interface UseEditorExtensionsOptions {
   isDeletedFile: boolean;
   /** Whether go-to-line is enabled */
   enableGoToLine: boolean;
+  /** Whether code navigation shortcuts (definition/references/back/forward) are enabled */
+  enableCodeNavigation: boolean;
   /** Whether find/replace is enabled */
   enableFindReplace: boolean;
   /** Effective minimap setting (after large file check) */
@@ -86,6 +89,7 @@ export function useEditorExtensions(
     originalValue,
     isDeletedFile,
     enableGoToLine,
+    enableCodeNavigation,
     enableFindReplace,
     effectiveMinimap,
     effectiveIndentGuides,
@@ -227,6 +231,10 @@ export function useEditorExtensions(
       exts.push(goToLineExtension());
     }
 
+    if (enableCodeNavigation) {
+      exts.push(codeNavigationExtension());
+    }
+
     if (effectiveIndentGuides) {
       exts.push(indentGuidesExtension());
     }
@@ -259,6 +267,7 @@ export function useEditorExtensions(
     cursorExtension,
     selectionExtension,
     enableGoToLine,
+    enableCodeNavigation,
     effectiveIndentGuides,
     effectiveMinimap,
     enableFindReplace,

@@ -73,11 +73,7 @@ export function useAgentOrgTaskHandoffDialogs({
       await onRefresh();
     } catch (taskError) {
       logger.error("Failed to update Agent Team Task:", taskError);
-      Message.error(
-        t("planner.agentOrgTasks.handoffFailed", {
-          defaultValue: "Could not safely update this Task",
-        })
-      );
+      Message.error(t("planner.agentOrgTasks.handoffFailed"));
     } finally {
       setIsMutatingTask(false);
     }
@@ -107,11 +103,7 @@ export function useAgentOrgTaskHandoffDialogs({
         "Failed to resolve Agent Team Task handoff:",
         resolutionError
       );
-      Message.error(
-        t("planner.agentOrgTasks.handoffResolutionFailed", {
-          defaultValue: "Could not resolve this handoff",
-        })
-      );
+      Message.error(t("planner.agentOrgTasks.handoffResolutionFailed"));
     } finally {
       setIsMutatingTask(false);
     }

@@ -57,6 +57,8 @@ export interface CodeMirrorEditorProps {
   enableIndentGuides?: boolean;
   /** Enable go to line with Cmd+G (default: true) */
   enableGoToLine?: boolean;
+  /** Enable code navigation: definition, references, back/forward (default: true) */
+  enableCodeNavigation?: boolean;
   /** Enable find & replace with Cmd+F/Cmd+H (default: true) */
   enableFindReplace?: boolean;
   /** Enable dirty diff gutter (default: true when originalValue provided) */

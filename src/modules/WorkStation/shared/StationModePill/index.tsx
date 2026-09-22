@@ -45,8 +45,7 @@ const IconSwitchButton: React.FC<IconSwitchButtonProps> = ({
     >
       <span className="inline-flex">
         <Button
-          appearance={selected ? "solid" : "ghost"}
-          variant={selected ? "primary" : "secondary"}
+          variant={selected ? "primary" : "tertiary"}
           size="mini"
           shape="round"
           iconOnly

@@ -13,7 +13,7 @@ import {
 } from "vitest";
 
 import type { GitHubIssueTimelineItem } from "@src/api/tauri/github";
-import { resetGitHubIssueDetailCoordinator } from "@src/modules/shared/githubIssueDetailCoordinator";
+import { resetGitHubIssueDetailCoordinator } from "@src/features/GitHubWork/githubIssueDetailCoordinator";
 
 import {
   parseGitHubIssueNumber,

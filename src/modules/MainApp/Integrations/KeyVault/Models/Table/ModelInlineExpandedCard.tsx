@@ -374,7 +374,7 @@ const ModelInlineExpandedCard: React.FC<ModelInlineExpandedCardProps> = ({
       return (
         <InlineSplitDefaultVersionHeaderRow
           label={t("modelsTable.keyDefaultVersionOnly", {
-            model: formatModelNameFull(model),
+            model: formatModelNameFull(model, selectedEntry.account.modelType),
           })}
           pillLabel={t("modelsTable.variantDefault")}
         />

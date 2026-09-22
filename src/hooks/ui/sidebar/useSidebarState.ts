@@ -39,10 +39,6 @@ export interface UseSidebarStateReturn {
   isDragging: boolean;
   /** Mouse down handler for drag handle */
   handleMouseDown: (e: ReactMouseEvent) => void;
-  /** Toggle collapse state */
-  toggleCollapse: () => void;
-  /** Expand sidebar (uncollapse) */
-  expand: () => void;
   /** Collapse sidebar */
   collapse: () => void;
   /** Set width directly */
@@ -50,10 +46,6 @@ export interface UseSidebarStateReturn {
 }
 
 export function useSidebarState(): UseSidebarStateReturn {
-  // Width constraints are fixed; responsive collapse preserves the user's
-  // chosen expanded width.
-  const maxWidth = MAX_SIDEBAR_WIDTH;
-
   // Global state — split read/write for isDragging so setter is stable
   const [globalWidth, setGlobalWidth] = useAtom(sidebarWidthAtom);
   const [isCollapsed, setGlobalCollapsed] = useAtom(sidebarCollapsedAtom);
@@ -81,13 +73,8 @@ export function useSidebarState(): UseSidebarStateReturn {
     [setGlobalWidth, setGlobalCollapsed]
   );
 
-  // Keep refs current so closures inside handleMouseDown always read
-  // the latest values without re-creating the outer callback.
-  const maxWidthRef = useRef(maxWidth);
-  useEffect(() => {
-    maxWidthRef.current = maxWidth;
-  }, [maxWidth]);
-
+  // Keep the ref current so closures inside handleMouseDown always read
+  // the latest updater without re-creating the outer callback.
   const updateGlobalRef = useRef(updateGlobal);
   useEffect(() => {
     updateGlobalRef.current = updateGlobal;
@@ -111,10 +98,9 @@ export function useSidebarState(): UseSidebarStateReturn {
 
       const onMouseMove = (moveEvent: globalThis.MouseEvent) => {
         moveEvent.preventDefault();
-        const currentMax = maxWidthRef.current;
         const newWidth = Math.max(
           MIN_SIDEBAR_WIDTH,
-          Math.min(currentMax, moveEvent.clientX)
+          Math.min(MAX_SIDEBAR_WIDTH, moveEvent.clientX)
         );
         if (pendingWidthRef.current === newWidth) return;
         pendingWidthRef.current = newWidth;
@@ -155,17 +141,7 @@ export function useSidebarState(): UseSidebarStateReturn {
     [isCollapsed, setIsDragging]
   );
 
-  // ── Collapse / expand ───────────────────────────────────────────────
-
-  const toggleCollapse = useCallback(() => {
-    requestAnimationFrame(() => {
-      updateGlobal({ collapsed: !isCollapsed });
-    });
-  }, [isCollapsed, updateGlobal]);
-
-  const expand = useCallback(() => {
-    requestAnimationFrame(() => updateGlobal({ collapsed: false }));
-  }, [updateGlobal]);
+  // ── Collapse / width ────────────────────────────────────────────────
 
   const collapse = useCallback(() => {
     requestAnimationFrame(() => updateGlobal({ collapsed: true }));
@@ -175,11 +151,11 @@ export function useSidebarState(): UseSidebarStateReturn {
     (newWidth: number) => {
       const constrained = Math.max(
         MIN_SIDEBAR_WIDTH,
-        Math.min(maxWidth, newWidth)
+        Math.min(MAX_SIDEBAR_WIDTH, newWidth)
       );
       updateGlobal({ width: constrained });
     },
-    [maxWidth, updateGlobal]
+    [updateGlobal]
   );
 
   // ── Cleanup on unmount / window blur ───────────────────────────────
@@ -203,8 +179,6 @@ export function useSidebarState(): UseSidebarStateReturn {
     isCollapsed,
     isDragging,
     handleMouseDown,
-    toggleCollapse,
-    expand,
     collapse,
     setWidth,
   };

@@ -134,6 +134,10 @@ pub fn load_settings() -> MobileRemoteSettings {
         return MobileRemoteSettings::default();
     };
 
+    settings_from_value(&settings)
+}
+
+pub(super) fn settings_from_value(settings: &serde_json::Value) -> MobileRemoteSettings {
     MobileRemoteSettings {
         enabled: settings
             .get("mobileRemote.enabled")
@@ -374,7 +378,11 @@ mod tests {
     #[test]
     fn mobile_bridge_bind_addr_stays_on_loopback_without_exposure() {
         assert_eq!(
-            mobile_bridge_bind_addr(&settings_matrix(true, false), DEFAULT_MOBILE_LAN_PORT, 13_847),
+            mobile_bridge_bind_addr(
+                &settings_matrix(true, false),
+                DEFAULT_MOBILE_LAN_PORT,
+                13_847
+            ),
             Ok(SocketAddr::new(
                 IpAddr::V4(Ipv4Addr::LOCALHOST),
                 DEFAULT_MOBILE_LAN_PORT
@@ -385,7 +393,11 @@ mod tests {
     #[test]
     fn mobile_bridge_bind_addr_opens_all_interfaces_with_exposure() {
         assert_eq!(
-            mobile_bridge_bind_addr(&settings_matrix(true, true), DEFAULT_MOBILE_LAN_PORT, 13_847),
+            mobile_bridge_bind_addr(
+                &settings_matrix(true, true),
+                DEFAULT_MOBILE_LAN_PORT,
+                13_847
+            ),
             Ok(SocketAddr::new(
                 IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 DEFAULT_MOBILE_LAN_PORT
@@ -417,7 +429,10 @@ mod tests {
         // Bound to loopback: only `enabled` matters.
         assert!(bridge_route_available(&settings_matrix(true, false), false));
         assert!(bridge_route_available(&settings_matrix(true, true), false));
-        assert!(!bridge_route_available(&settings_matrix(false, true), false));
+        assert!(!bridge_route_available(
+            &settings_matrix(false, true),
+            false
+        ));
 
         // Bound to every interface: revoking exposure closes the routes even
         // though the socket stays bound until the next restart.

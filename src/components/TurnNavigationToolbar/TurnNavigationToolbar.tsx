@@ -25,6 +25,7 @@ import {
   Loading03Icon,
 } from "@src/icons";
 
+import "./TurnNavigationToolbar.scss";
 import { shouldShowTurnPaginationSpinner } from "./shouldShowTurnPaginationSpinner";
 
 const SELECT_TRIGGER_BASE =
@@ -84,7 +85,7 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
     });
     const isMobile = variant === "mobile";
     const rootClassName = isMobile
-      ? `flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border-2 bg-bg-1 px-3 py-2 ${className}`.trim()
+      ? `turn-navigation-toolbar-mobile shrink-0 border-b border-border-2 bg-bg-1 px-3 py-2 ${className}`.trim()
       : `flex h-10 min-h-10 shrink-0 items-center justify-between gap-2 px-2 text-xs text-text-3 ${className}`.trim();
 
     if (!enabled) return null;
@@ -95,18 +96,20 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
         aria-label={ariaLabel ?? t("common:pagination.latestRound")}
         data-turn-navigation-toolbar={variant}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <div
+          data-turn-navigation-info
+          className="flex min-w-0 flex-1 items-center gap-1.5"
+        >
           {leading}
           <div className="relative min-w-0">
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               data-testid="turn-pagination-current-round"
               className={`${SELECT_TRIGGER_BASE} cursor-pointer ${SURFACE_TOKENS.hover} disabled:cursor-not-allowed disabled:opacity-50 ${
                 listOpen ? SURFACE_TOKENS.selected : ""
               }`}
               disabled={!ready}
+              title={currentLabel}
               onClick={() => {
                 if (!ready) return;
                 onToggleList();
@@ -138,15 +141,32 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
               {trailingAfterSelector}
             </>
           ) : null}
-          {statusAnnotation ? (
-            <span className="min-w-0 text-xs text-text-3">
+          {isMobile && !listOpen && currentTimeLabel ? (
+            <span
+              data-turn-navigation-time
+              className="text-xs text-text-3 tabular-nums"
+            >
+              {currentTimeLabel}
+            </span>
+          ) : null}
+          {!isMobile && statusAnnotation ? (
+            <span
+              data-turn-navigation-status
+              className="min-w-0 text-xs text-text-3"
+            >
               {statusAnnotation}
             </span>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {!listOpen && currentTimeLabel ? (
-            <span className="px-1 text-[13px] whitespace-nowrap text-text-3 tabular-nums">
+        <div
+          data-turn-navigation-controls
+          className="flex shrink-0 items-center gap-1.5"
+        >
+          {!isMobile && !listOpen && currentTimeLabel ? (
+            <span
+              data-turn-navigation-time
+              className="px-1 text-[13px] whitespace-nowrap text-text-3 tabular-nums"
+            >
               {currentTimeLabel}
             </span>
           ) : null}
@@ -160,12 +180,11 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
                     />
                   }
                   position="bottom-end"
-                  mouseEnterDelay={200}
+                  kind="button"
                   framedPanel
                 >
                   <span className="inline-flex">
                     <Button
-                      htmlType="button"
                       variant="tertiary"
                       size="small"
                       iconOnly
@@ -198,12 +217,11 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
                     />
                   }
                   position="bottom-end"
-                  mouseEnterDelay={200}
+                  kind="button"
                   framedPanel
                 >
                   <span className="inline-flex">
                     <Button
-                      htmlType="button"
                       variant="tertiary"
                       size="small"
                       iconOnly
@@ -230,13 +248,12 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
                     />
                   }
                   position="bottom-end"
-                  mouseEnterDelay={200}
+                  kind="button"
                   framedPanel={!isMobile}
                   disabled={isMobile}
                 >
                   <span className="inline-flex">
                     <Button
-                      htmlType="button"
                       variant="tertiary"
                       size="small"
                       iconOnly
@@ -262,13 +279,12 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
                     />
                   }
                   position="bottom-end"
-                  mouseEnterDelay={200}
+                  kind="button"
                   framedPanel={!isMobile}
                   disabled={isMobile}
                 >
                   <span className="inline-flex">
                     <Button
-                      htmlType="button"
                       variant="tertiary"
                       size="small"
                       iconOnly
@@ -294,13 +310,12 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
                     />
                   }
                   position="bottom-end"
-                  mouseEnterDelay={200}
+                  kind="button"
                   framedPanel={!isMobile}
                   disabled={isMobile}
                 >
                   <span className="inline-flex">
                     <Button
-                      htmlType="button"
                       variant="tertiary"
                       size="small"
                       iconOnly
@@ -324,6 +339,14 @@ const TurnNavigationToolbar: React.FC<TurnNavigationToolbarProps> = memo(
             )}
           </div>
         </div>
+        {isMobile && statusAnnotation ? (
+          <span
+            data-turn-navigation-status
+            className="min-w-0 text-xs text-text-3"
+          >
+            {statusAnnotation}
+          </span>
+        ) : null}
       </nav>
     );
   }

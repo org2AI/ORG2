@@ -24,25 +24,6 @@ export async function setGatewayModel(
   return rpc.tools.setGatewayModel({ accountId, model });
 }
 
-export async function listAllTools(): Promise<
-  Array<{ name: string; description: string; category: string }>
-> {
-  const tools = await rpc.tools.listAllTools();
-  return tools.map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    category: tool.category,
-  }));
-}
-
-export async function listAgentTools<T = unknown>(): Promise<T[]> {
-  return rpc.tools.listAgentTools() as Promise<T[]>;
-}
-
-export async function initToolRegistry(): Promise<void> {
-  await rpc.tools.initToolRegistry();
-}
-
 export async function checkKeys(model: string): Promise<{
   found: boolean;
   provider?: string | null;

@@ -214,11 +214,6 @@ export const SessionEventPartialSchema =
     Partial<SessionEvent>
   >;
 
-export const ReplayTimeRangeSchema = z.object({
-  start: z.string(),
-  end: z.string(),
-});
-
 export const SessionSpecSchema = z.object({
   specId: z.string(),
   sessionId: z.string(),

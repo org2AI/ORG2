@@ -17,7 +17,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { repoApi } from "@src/api/tauri/repo";
@@ -32,7 +31,6 @@ import {
   isMultiRootWorkspaceAtom,
   setWorkspaceFoldersAtom,
 } from "@src/store/ui/workspaceFoldersAtom";
-import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import {
   useExternalRecentPaths,
@@ -40,6 +38,7 @@ import {
   useWorkspaceSwitch,
 } from "../../hooks";
 import { useWorkingDirectoryForm } from "../../hooks/forms";
+import { PickerDropdownShell } from "../../shell/PickerDropdownShell";
 import type { RepoItem } from "../../types";
 import {
   OpenPathRow,
@@ -281,25 +280,12 @@ export const WorkingDirectoryDropdown: React.FC<
 
   if (!isOpen || !isPositioned) return null;
 
-  const width = Math.max(MIN_DROPDOWN_WIDTH, panelPosition.width);
-  const { width: vw } = getViewportSize();
-  const viewportMargin = DROPDOWN_PANEL.viewportPadding;
-  const left = Math.max(
-    viewportMargin,
-    Math.min(panelPosition.left, vw - viewportMargin - width)
-  );
-
-  return createPortal(
-    <div
+  return (
+    <PickerDropdownShell
       ref={panelRef}
       role="menu"
-      className={`${DROPDOWN_CLASSES.panel} fixed flex flex-col`}
-      style={{
-        top: panelPosition.top,
-        bottom: panelPosition.bottom,
-        left,
-        width,
-      }}
+      position={panelPosition}
+      preferredWidth={Math.max(MIN_DROPDOWN_WIDTH, panelPosition.width)}
     >
       <DropdownSearch
         ref={inputRef}
@@ -362,8 +348,7 @@ export const WorkingDirectoryDropdown: React.FC<
           ))
         )}
       </div>
-    </div>,
-    document.body
+    </PickerDropdownShell>
   );
 };
 

@@ -85,12 +85,8 @@ const PrSection: React.FC<PrSectionProps> = ({
         type={readiness.canComplete ? "success" : "warning"}
         title={
           readiness.canComplete
-            ? t("workItems.outputTab.prReady", {
-                defaultValue: "Ready to complete",
-              })
-            : t("workItems.outputTab.prBlocked", {
-                defaultValue: "Completion is blocked",
-              })
+            ? t("workItems.outputTab.prReady")
+            : t("workItems.outputTab.prBlocked")
         }
       >
         {readiness.blockers.length > 0 ? (
@@ -250,8 +246,6 @@ const PrSection: React.FC<PrSectionProps> = ({
             )}
           </div>
           <Button
-            variant="primary"
-            appearance="outline"
             size="small"
             icon={
               <HugeiconsIcon

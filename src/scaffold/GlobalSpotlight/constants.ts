@@ -5,12 +5,16 @@
  * chrome lives in SpotlightShell — constants here are the single source of
  * truth it reads from.
  */
+import {
+  SPOTLIGHT_TOP_OFFSET,
+  SPOTLIGHT_WIDTH,
+} from "@src/util/ui/spotlightAnchor";
 
 export const SPOTLIGHT_CONFIG = {
   /** Width of the spotlight in pixels */
-  width: 680,
+  width: SPOTLIGHT_WIDTH,
   /** Distance from top of viewport in pixels */
-  topOffset: 8,
+  topOffset: SPOTLIGHT_TOP_OFFSET,
   /** Z-index for backdrop overlay */
   backdropZIndex: 9998,
   /** Z-index for spotlight container */

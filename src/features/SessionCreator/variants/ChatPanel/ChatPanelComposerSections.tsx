@@ -6,6 +6,7 @@
  * (above or below the frame), and the composer body — the TUI start button or
  * the `EditorArea`.
  */
+import { useAtomValue } from "jotai";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -14,6 +15,7 @@ import SelectorPill from "@src/components/SelectorPill";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import type { usePinnedActionsVisibilityContextMenu } from "@src/engines/ChatPanel/InputArea/components/PinnedActionsBar/usePinnedActionsVisibilityContextMenu";
 import { HugeiconsIcon, ScreenRotationIcon } from "@src/icons";
+import { composerGlowVisibleAtom } from "@src/store/session/composerGlowVisibleAtom";
 
 import { EditorArea, SessionInfoLine } from "../../components";
 import RepoChromeRow from "./RepoChromeRow";
@@ -31,12 +33,9 @@ export const ChatPanelShareScreenButton: React.FC<
   const { t } = useTranslation(["sessions", "common"]);
   return (
     <Button
-      variant="tertiary"
-      appearance="dashed"
       size="mini"
       shape="round"
-      htmlType="button"
-      className="gap-1.5 border-dashed text-[12px] hover:border-primary-4 hover:text-primary-6"
+      className="gap-1.5 border-dashed bg-transparent text-[12px] text-text-2 hover:border-primary-4 hover:text-primary-6"
       onClick={onClick}
       icon={
         <HugeiconsIcon
@@ -107,6 +106,7 @@ export const ChatPanelComposerGroup: React.FC<ChatPanelComposerGroupProps> = ({
   spotlight,
 }) => {
   const { t } = useTranslation(["sessions", "common"]);
+  const composerGlowVisible = useAtomValue(composerGlowVisibleAtom);
   const sessionInfoLine = (
     <SessionInfoLine
       {...sessionInfoProps}
@@ -166,7 +166,7 @@ export const ChatPanelComposerGroup: React.FC<ChatPanelComposerGroupProps> = ({
     composerHeaderContent ?? editorAreaProps.headerContent;
   const composerGroupClassName = `session-creator-chat-panel-fullscreen-composer-group mx-auto w-full ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth} ${
     isLaunchpadLayout && !isCliTuiMode ? "composer-bottom-glow" : ""
-  }`;
+  } ${composerGlowVisible ? "" : "composer-glow-hidden"}`;
   const composerFrameClassName = `session-creator-chat-panel-fullscreen-composer w-full ${
     headerLayout === "compact"
       ? "session-creator-chat-panel-fullscreen-composer-compact"
@@ -176,13 +176,10 @@ export const ChatPanelComposerGroup: React.FC<ChatPanelComposerGroupProps> = ({
     <div className="rounded-xl bg-chat-container p-3">
       <Button
         variant="primary"
-        appearance="solid"
-        size="default"
         shape="round"
-        htmlType="button"
         onClick={onLaunch}
         disabled={!canLaunch || isLoading}
-        className="w-full text-[13px] font-semibold hover:bg-primary-7 disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
       >
         {t("creator.start")}
       </Button>

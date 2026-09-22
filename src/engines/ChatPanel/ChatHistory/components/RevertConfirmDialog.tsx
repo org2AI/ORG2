@@ -17,7 +17,7 @@ import { atom, createStore, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
+import PanelFooter from "@src/components/layout/blocks/PanelFooter";
 import Modal from "@src/scaffold/ModalSystem";
 
 export type RevertChoice = "revert" | "keep" | "cancel";
@@ -74,43 +74,35 @@ const RevertConfirmDialog: React.FC = () => {
   return (
     <Modal
       visible={state.visible}
-      title={t("revertConfirm.title", "Unsaved file changes")}
+      title={t("revertConfirm.title")}
       onClose={handleCancel}
       maskClosable={false}
       escToExit
       width={440}
       footer={
-        <div className="flex items-center justify-end gap-2 px-3 pb-4">
-          <Button
-            size="small"
-            data-testid="rewind-file-changes-cancel"
-            onClick={handleCancel}
-          >
-            {t("common:actions.cancel", "Cancel")}
-          </Button>
-          <Button
-            size="small"
-            data-testid="rewind-file-changes-keep"
-            onClick={handleKeep}
-          >
-            {t("revertConfirm.keepChanges", "Keep changes")}
-          </Button>
-          <Button
-            size="small"
-            variant="primary"
-            data-testid="rewind-file-changes-revert"
-            onClick={handleRevert}
-          >
-            {t("revertConfirm.revertChanges", "Revert changes")}
-          </Button>
-        </div>
+        <PanelFooter
+          secondaryActions={[
+            {
+              label: t("common:actions.cancel"),
+              onClick: handleCancel,
+              dataTestId: "rewind-file-changes-cancel",
+            },
+            {
+              label: t("revertConfirm.keepChanges"),
+              onClick: handleKeep,
+              dataTestId: "rewind-file-changes-keep",
+            },
+          ]}
+          primaryAction={{
+            label: t("revertConfirm.revertChanges"),
+            onClick: handleRevert,
+            dataTestId: "rewind-file-changes-revert",
+          }}
+        />
       }
     >
       <div className="text-token-secondary text-sm">
-        {t(
-          "revertConfirm.body",
-          "The agent made file changes since this message. What would you like to do with those changes?"
-        )}
+        {t("revertConfirm.body")}
       </div>
     </Modal>
   );

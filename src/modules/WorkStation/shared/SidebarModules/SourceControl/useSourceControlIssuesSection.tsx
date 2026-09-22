@@ -8,8 +8,8 @@ import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useMemo } from "react";
 
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { CircleDotIcon, HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import { makeSectionFilterAction } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/components/SectionFilterInput";
 import { PANEL_CONSTANTS } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/config";
@@ -77,7 +77,7 @@ export function useSourceControlIssuesSection({
             className={issuesRefreshSpinClass}
           />
         ),
-        tooltip: t("common:actions.refresh", "Refresh"),
+        tooltip: t("common:actions.refresh"),
         onClick: handleIssuesRefreshClick,
       },
       {

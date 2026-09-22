@@ -26,10 +26,13 @@
 use rmcp::handler::client::progress::ProgressDispatcher;
 use rmcp::handler::client::ClientHandler;
 use rmcp::model::{
-    ClientInfo, CreateElicitationResult, CreateMessageRequestMethod, CreateMessageRequestParams,
-    CreateMessageResult, ElicitationAction, ErrorData as McpError, ProgressNotificationParam,
-    ResourceUpdatedNotificationParam,
+    ClientInfo, CreateMessageRequestMethod, ElicitRequestParams, ElicitResult, ElicitationAction,
+    ErrorData as McpError, ProgressNotificationParam, ResourceUpdatedNotificationParam,
 };
+// Sampling is deprecated upstream (SEP-2577) but `ClientHandler::create_message`
+// still takes these types; we override it only to deny loudly.
+#[allow(deprecated)]
+use rmcp::model::{CreateMessageRequestParams, CreateMessageResult};
 use rmcp::service::{NotificationContext, RequestContext};
 use rmcp::RoleClient;
 use tokio::sync::mpsc;
@@ -85,16 +88,12 @@ pub(crate) fn deny_sampling_response() -> McpError {
     McpError::method_not_found::<CreateMessageRequestMethod>()
 }
 
-/// Build the `CreateElicitationResult` returned for every
+/// Build the `ElicitResult` returned for every
 /// `elicitation/create` request. Spec-compliant "Decline" action with no
 /// content — matches rmcp's default behavior but emitted explicitly so the
 /// intent is visible in our tree.
-pub(crate) fn deny_elicitation_response() -> CreateElicitationResult {
-    CreateElicitationResult {
-        action: ElicitationAction::Decline,
-        content: None,
-        meta: None,
-    }
+pub(crate) fn deny_elicitation_response() -> ElicitResult {
+    ElicitResult::new(ElicitationAction::Decline)
 }
 
 impl ClientHandler for AgentClientHandler {
@@ -102,6 +101,7 @@ impl ClientHandler for AgentClientHandler {
         super::client::default_client_info()
     }
 
+    #[allow(deprecated)]
     async fn create_message(
         &self,
         _params: CreateMessageRequestParams,
@@ -118,9 +118,9 @@ impl ClientHandler for AgentClientHandler {
 
     async fn create_elicitation(
         &self,
-        _request: rmcp::model::CreateElicitationRequestParams,
+        _request: ElicitRequestParams,
         context: RequestContext<RoleClient>,
-    ) -> Result<CreateElicitationResult, McpError> {
+    ) -> Result<ElicitResult, McpError> {
         warn!(
             request_id = ?context.id,
             "mcp: server issued elicitation/create but client did not advertise \

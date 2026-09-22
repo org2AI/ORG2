@@ -12,6 +12,12 @@ const enSupport = {
       back: "Back",
       search: "Search",
       add: "Add",
+      copy: "Copy",
+    },
+    status: {
+      copied: "Copied",
+      loading: "Loading…",
+      copyFailed: "Copy failed",
     },
     tooltips: {
       startVoiceInput: "Start voice input",
@@ -47,6 +53,7 @@ const enSupport = {
     },
     chat: {
       typeMessage: "Type a message…",
+      draftTooLong: "Draft is too long (maximum {{max}} characters)",
       send: "Send",
       permissionPrompt: "Your permission is needed",
       commandConfirmTitle: "Command Requires Approval",
@@ -76,6 +83,7 @@ const enMobileRemoteResources = {
   ...enMobileRemote,
   selectors: enSupport.common.selectors,
   rounds: {
+    ...enMobileRemote.rounds,
     navigationLabel: "Conversation rounds",
     label: "Round {{current}} of {{total}}",
     previous: "Previous",
@@ -94,6 +102,12 @@ const zhSupport = {
       back: "返回",
       search: "搜索",
       add: "添加",
+      copy: "复制",
+    },
+    status: {
+      copied: "已复制",
+      loading: "加载中…",
+      copyFailed: "复制失败",
     },
     tooltips: {
       startVoiceInput: "开始语音输入",
@@ -129,6 +143,7 @@ const zhSupport = {
     },
     chat: {
       typeMessage: "输入消息…",
+      draftTooLong: "草稿过长（最多 {{max}} 个字符）",
       send: "发送",
       permissionPrompt: "需要你的授权",
       commandConfirmTitle: "命令需要审批",
@@ -157,6 +172,7 @@ const zhMobileRemoteResources = {
   ...zhMobileRemote,
   selectors: zhSupport.common.selectors,
   rounds: {
+    ...zhMobileRemote.rounds,
     navigationLabel: "会话轮次",
     label: "第 {{current}} / {{total}} 轮",
     previous: "上一轮",

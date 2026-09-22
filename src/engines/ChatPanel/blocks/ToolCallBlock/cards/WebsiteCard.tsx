@@ -89,7 +89,6 @@ const WebsiteCard: React.FC<WebsiteCardProps> = ({ card }) => {
 
       <Button
         variant="tertiary"
-        appearance="soft-no-drop"
         size="sidebar"
         iconOnly
         icon={
@@ -101,7 +100,6 @@ const WebsiteCard: React.FC<WebsiteCardProps> = ({ card }) => {
             aria-hidden
           />
         }
-        htmlType="button"
         onClick={handleOpen}
         className={`flex ${ICON_BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.noDrop} cursor-pointer border-none bg-transparent opacity-0 group-focus-within/website-card:opacity-100 group-hover/website-card:opacity-100 focus-visible:opacity-100`}
         title={t("cards.openLink")}

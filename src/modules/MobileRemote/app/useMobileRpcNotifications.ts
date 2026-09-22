@@ -1,54 +1,88 @@
-import { type Dispatch, type SetStateAction, useCallback } from "react";
+import { useCallback } from "react";
 
 import type { MobileConnectionState } from "../connection/types";
 import type { PermissionBusEnvelope } from "../lib/interactionQueue";
 import type { TranscriptSnapshotEnvelope } from "../lib/transcriptLoadState";
-import type { MobileConnectionRefs } from "./useMobileConnectionRefs";
-import type { useMobilePermissions } from "./useMobilePermissions";
-import {
-  terminalSignalFromBusEvent,
-  type useMobileSend,
-} from "./useMobileSend";
-import type { useMobileSessionList } from "./useMobileSessionList";
-import type { useMobileTranscript } from "./useMobileTranscript";
+import type { MobileRemoteState } from "./useMobileRemoteState";
+import { terminalSignalFromBusEvent } from "./useMobileSend";
 
-type TranscriptApi = ReturnType<typeof useMobileTranscript>;
-type SendApi = ReturnType<typeof useMobileSend>;
-
-interface UseMobileRpcNotificationsParams {
-  refs: Pick<MobileConnectionRefs, "clientRef" | "activeSessionRef">;
-  setConnection: Dispatch<SetStateAction<MobileConnectionState>>;
-  requestSessionList: ReturnType<
-    typeof useMobileSessionList
-  >["requestSessionList"];
-  receivePermissionEvent: ReturnType<
-    typeof useMobilePermissions
-  >["receivePermissionEvent"];
-  receiveTerminal: SendApi["receiveTerminal"];
-  receiveSendStatus: SendApi["receiveSendStatus"];
-  receiveSnapshot: TranscriptApi["receiveSnapshot"];
-  refreshSubscribedSession: TranscriptApi["refreshSubscribedSession"];
-}
-
-/** Routes desktop-originated RPC notifications to their owning hook. */
-export function useMobileRpcNotifications({
-  refs,
-  setConnection,
-  requestSessionList,
-  receivePermissionEvent,
-  receiveTerminal,
-  receiveSendStatus,
-  receiveSnapshot,
-  refreshSubscribedSession,
-}: UseMobileRpcNotificationsParams) {
-  const { clientRef, activeSessionRef } = refs;
+export function useMobileRpcNotifications(
+  state: MobileRemoteState,
+  releaseTransport: (close: boolean) => void
+) {
+  const {
+    clientRef,
+    permissionRevisionRef,
+    activeSessionRef,
+    activeConfigRef,
+    generationRef,
+    scheduleReconnectRef,
+    setConnection,
+    connectionRef,
+    requestSessionList,
+    refreshSubscribedSession,
+    receiveSnapshot,
+    receivePermissionEvent,
+    receiveTerminal,
+    receiveSendStatus,
+  } = state;
   const handleRpcNotification = useCallback(
     (method: string, params: Record<string, unknown> | undefined) => {
+      if (method === "interaction/pending_changed") {
+        permissionRevisionRef.current++;
+        return;
+      }
       if (method === "relay/presence") {
-        setConnection((prev) => ({
-          ...prev,
+        const previous = connectionRef.current;
+        const next: MobileConnectionState = {
+          ...previous,
           presence: params?.online === true ? "online" : "offline",
-        }));
+        };
+        // Relay can retain the phone socket while replacing the Desktop actor.
+        // Presence is an invalidation edge, not just a status-dot update. Write
+        // the edge synchronously so duplicate notifications cannot refresh twice.
+        connectionRef.current = next;
+        setConnection(next);
+        const client = clientRef.current;
+        if (
+          client &&
+          previous.status === "connected" &&
+          previous.presence !== "online" &&
+          next.presence === "online"
+        ) {
+          // Roster failures keep the authenticated transport and recover through
+          // the bounded list owner, independently of the online presence dot.
+          const generation = generationRef.current;
+          void requestSessionList(client).catch((error: unknown) => {
+            // A recreated relay actor can lose initialize state while keeping
+            // the phone socket. Only that authorization failure needs handshake
+            // recovery; ordinary roster failures stay with the list retry owner.
+            if (
+              !(
+                error &&
+                typeof error === "object" &&
+                "code" in error &&
+                (error.code === -32001 || error.code === 401)
+              ) ||
+              clientRef.current !== client ||
+              generationRef.current !== generation ||
+              connectionRef.current.presence !== "online"
+            )
+              return;
+            const config = activeConfigRef.current;
+            if (!config || config.pairingCode) return;
+            releaseTransport(true);
+            setConnection((prev) => ({
+              ...prev,
+              status: "connecting",
+              presence: "offline",
+            }));
+            scheduleReconnectRef.current(config, generation);
+          });
+          // Desktop's recreated actor also lost its active transcript subscription.
+          if (activeSessionRef.current)
+            refreshSubscribedSession(activeSessionRef.current);
+        }
         return;
       }
       if (method === "orgii/event") {
@@ -78,22 +112,28 @@ export function useMobileRpcNotifications({
         const client = clientRef.current;
         if (client) {
           // Keep the previous successful list visible during invalidation.
-          // A failed refresh is retried by the next change/reconnect/manual
-          // refresh; the generation guard prevents an older reply winning.
+          // The list owner exposes errors and retries; generation guards
+          // prevent an old desktop reply from winning.
           void requestSessionList(client).catch(() => undefined);
         }
       }
     },
     [
+      permissionRevisionRef,
+      connectionRef,
+      setConnection,
+      clientRef,
       requestSessionList,
+      activeSessionRef,
+      activeConfigRef,
+      generationRef,
+      releaseTransport,
+      scheduleReconnectRef,
+      refreshSubscribedSession,
       receivePermissionEvent,
       receiveTerminal,
-      receiveSendStatus,
       receiveSnapshot,
-      refreshSubscribedSession,
-      activeSessionRef,
-      clientRef,
-      setConnection,
+      receiveSendStatus,
     ]
   );
 

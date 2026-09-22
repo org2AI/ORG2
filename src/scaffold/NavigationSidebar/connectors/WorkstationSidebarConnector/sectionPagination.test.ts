@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  getProjectsSectionVisibleCountKey,
   getSessionSectionVisibleCountKey,
   resetNewlyCollapsedSectionVisibleCounts,
   resetScopedSectionPagination,
@@ -24,9 +23,6 @@ describe("sidebar section pagination", () => {
     expect(getSessionSectionVisibleCountKey("pinned", "byWorkspace")).toBe(
       "pinned"
     );
-    expect(
-      getProjectsSectionVisibleCountKey("projects-work-items:recent")
-    ).toBe("projects-work-items:recent");
   });
 
   it("evicts only a newly collapsed section's expanded row count", () => {

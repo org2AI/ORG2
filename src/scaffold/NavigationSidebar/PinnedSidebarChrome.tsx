@@ -19,7 +19,6 @@ import {
   COLLAPSED_SIDEBAR_CHROME_CENTER_TOP,
   useCollapsedSidebarButtonLeft,
 } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
-import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "@src/scaffold/NavigationSidebar/config";
 
 import {
   SidebarChromeToggle,
@@ -47,10 +46,7 @@ const PinnedSidebarChromeComponent: React.FC = () => {
       }
     >
       <SidebarChromeToggle variant={variant} />
-      <SessionHistoryNav
-        variant={variant}
-        tooltipMouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
-      />
+      <SessionHistoryNav variant={variant} />
     </div>
   );
 };

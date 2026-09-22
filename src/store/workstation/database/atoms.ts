@@ -5,7 +5,7 @@
  * reopened on app restart. The actual database service instances are
  * recreated from configs.
  */
-import type { DatabaseConnectionConfig } from "@src/engines/DatabaseCore";
+import type { DatabaseConnectionConfig } from "@src/contracts/database";
 import { createLogger } from "@src/hooks/logger";
 
 const log = createLogger("Database");

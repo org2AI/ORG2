@@ -8,7 +8,7 @@
  * via cli_agents/alias_map.rs). Any tool that normalizes to "subagent" spawns subagents.
  */
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { normalizeFunctionName } from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 
 /**
  * Check if a tool spawns subagents.

@@ -19,7 +19,6 @@ import { useBrowserSessions } from "@src/modules/WorkStation/Browser/hooks/useBr
 import {
   NoTabsPlaceholder,
   ReplayShellLayout,
-  buildSecondaryPanelConfig,
   useSimulatorAwaitingAgentCaption,
   useSimulatorPlaceholderActions,
 } from "@src/modules/WorkStation/shared";
@@ -39,6 +38,7 @@ import {
   SharedBrowserDevToolsPanel,
   SharedBrowserWorkspace,
 } from "../shared";
+import { buildBrowserDevToolsPanelConfig } from "../shared/browserDevToolsPanelConfig";
 import { sendSelectedElementToChat } from "../shared/sendSelectedElementToChat";
 import type { BrowserEntry } from "./types";
 import { useBrowser } from "./useBrowser";
@@ -238,21 +238,15 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
 
   const secondaryPanelConfig = useMemo(
     () =>
-      buildSecondaryPanelConfig({
+      buildBrowserDevToolsPanelConfig({
         content: devToolsContent,
         position: devToolsPosition,
         collapsed: myTabsBrowser.devToolsCollapsed || !showActiveMyTabsBrowser,
-        size:
-          devToolsPosition === "right"
-            ? myTabsBrowser.devToolsPanelWidth
-            : devToolsPanelHeight,
-        onSizeChange:
-          devToolsPosition === "right"
-            ? myTabsBrowser.setDevToolsPanelWidth
-            : setDevToolsPanelHeight,
+        width: myTabsBrowser.devToolsPanelWidth,
+        onWidthChange: myTabsBrowser.setDevToolsPanelWidth,
+        height: devToolsPanelHeight,
+        onHeightChange: setDevToolsPanelHeight,
         onClose: handleCloseDevTools,
-        minSize: devToolsPosition === "right" ? 200 : 160,
-        maxSize: devToolsPosition === "right" ? 400 : 600,
       }),
     [
       devToolsContent,
@@ -286,15 +280,9 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
 
     return (
       <BrowserStatusBar
-        url={myTabsBrowser.currentUrl}
-        isLoading={myTabsBrowser.isLoading}
         errorCount={myTabsBrowser.errorCount}
         warningCount={myTabsBrowser.warningCount}
-        isDevToolsOpen={!myTabsBrowser.devToolsCollapsed}
         onToggleDevTools={myTabsBrowser.handleToggleDevTools}
-        isPrivate={myTabsBrowser.isPrivate}
-        sessionCount={myTabsBrowser.sessionCount}
-        currentSessionIndex={myTabsBrowser.currentSessionIndex}
         hasSelectedElement={myTabsBrowser.selectedElement !== null}
         selectedElementLabel={
           myTabsBrowser.selectedElement
@@ -308,15 +296,9 @@ const SessionReplayBrowserComponent: React.FC<SessionReplayBrowserProps> = ({
     );
   }, [
     showActiveMyTabsBrowser,
-    myTabsBrowser.currentUrl,
-    myTabsBrowser.isLoading,
     myTabsBrowser.errorCount,
     myTabsBrowser.warningCount,
-    myTabsBrowser.devToolsCollapsed,
     myTabsBrowser.handleToggleDevTools,
-    myTabsBrowser.isPrivate,
-    myTabsBrowser.sessionCount,
-    myTabsBrowser.currentSessionIndex,
     myTabsBrowser.selectedElement,
     handleSendSelectedElementToChat,
     myTabsBrowser.clearSelection,

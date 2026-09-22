@@ -126,7 +126,13 @@ pub async fn generate_and_persist_session_title(
     account_id: Option<&str>,
     content: &str,
 ) -> String {
-    let title = match generate_session_title(provider, model, account_id, content).await {
+    let attributed = super::auxiliary_usage::AuxiliaryUsageProvider::borrowed(
+        provider,
+        session_id,
+        "session_title",
+        account_id,
+    );
+    let title = match generate_session_title(&attributed, model, account_id, content).await {
         Ok(title) => title,
         Err(err) => {
             warn!(

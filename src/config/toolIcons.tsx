@@ -32,13 +32,13 @@ import {
   BoxIcon as Box,
   FirstBracketIcon as Braces,
   Briefcase01Icon as Briefcase,
+  CalendarSyncIcon as CalendarSync,
   Camera01Icon as Camera,
   CheckmarkCircle01Icon as CheckCircle2,
   InternetIcon as Chrome,
   CircleCheckBigIcon as CircleCheckBig,
   ClipboardCopyIcon as ClipboardCopy,
   ClipboardListIcon as ClipboardList,
-  ClipboardPenIcon as ClipboardPen,
   Clock01Icon as Clock,
   DatabaseIcon as Database,
   ViewIcon as Eye,
@@ -103,7 +103,7 @@ import {
   Cancel01Icon as X,
   CancelCircleIcon as XCircle,
 } from "@src/icons";
-import { normalizeFunctionName } from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 
 /** Default size/class for chat ToolCallBlock and Integrations tool rows. */
 export const DEFAULT_TOOL_ICON_SIZE = 14;
@@ -131,13 +131,13 @@ const ICON_BY_ID: Record<string, IconSvgElement> = {
   "bot-off": BotOff,
   box: Box,
   braces: Braces,
+  "calendar-sync": CalendarSync,
   camera: Camera,
   "check-circle-2": CheckCircle2,
   chrome: Chrome,
   "circle-check-big": CircleCheckBig,
   "clipboard-copy": ClipboardCopy,
   "clipboard-list": ClipboardList,
-  "clipboard-pen": ClipboardPen,
   clock: Clock,
   eye: Eye,
   "file-box": FileBox,

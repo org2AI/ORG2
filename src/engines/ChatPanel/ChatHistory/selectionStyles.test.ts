@@ -39,6 +39,22 @@ describe("chat transcript selection styles", () => {
     expect(textAllowlist).toContain("time");
   });
 
+  it("keeps event block headers inert inside allow-select-deep items", () => {
+    const styles = readFileSync(resolve(__dirname, "index.scss"), "utf8");
+    const headerRule = styles.match(
+      /\.allow-select-deep \.chat-block-header,\n\s{2}\.allow-select-deep \.chat-block-header \* \{([\s\S]*?)\n\s{2}\}/
+    )?.[1];
+    const headerPaintRule = styles.match(
+      /\.allow-select-deep \.chat-block-header::selection,\n\s{2}\.allow-select-deep \.chat-block-header \*::selection \{([\s\S]*?)\n\s{2}\}/
+    )?.[1];
+
+    // `.allow-select-deep :is(span, …)` is (0,2,1) and would otherwise beat the
+    // (0,2,0) `.chat-block-header *` reset at the top of the file.
+    expect(headerRule).toContain("user-select: none !important");
+    expect(headerRule).toContain("-webkit-user-select: none !important");
+    expect(headerPaintRule).toContain("background: transparent !important");
+  });
+
   it.each(["orgii_main.css", "orgii_dark.css"])(
     "defines a visible text-selection color in %s",
     (themeFile) => {

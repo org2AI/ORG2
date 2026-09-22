@@ -241,24 +241,53 @@ describe("useTranscriptViewport", () => {
     }
   );
 
-  it("coalesces row, footer, typing, and collapse resize signals around the same anchor", () => {
+  it("restores the reading anchor inside the resize callback, before paint", () => {
     scrollRoot.scrollTop = 200;
     act(() => {
       scrollRoot.dispatchEvent(new WheelEvent("wheel", { deltaY: -120 }));
       viewport.handleScroll(false);
     });
 
+    // A frame requested from the observer would run only after this frame
+    // painted the reflowed rows at the stale offset.
     firstAnchorTop = 130;
     act(() => {
       triggerResize();
+      expect(scrollRoot.scrollTop).toBe(230);
       triggerResize();
       triggerResize();
     });
-    expect(frames).toHaveLength(1);
-    act(flushFrames);
 
+    expect(frames).toHaveLength(0);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
     expect(scrollRoot.scrollTop).toBe(230);
     expect(viewport.mode).toBe("detached_reading");
+  });
+
+  it("keeps the tail pinned inside the resize callback while a pane resize reflows the transcript", () => {
+    scrollHeight = 1_300;
+    act(() => {
+      triggerResize();
+      expect(scrollRoot.scrollTop).toBe(900);
+    });
+    expect(frames).toHaveLength(0);
+
+    scrollHeight = 1_100;
+    act(() => triggerResize());
+    expect(scrollRoot.scrollTop).toBe(700);
+    expect(viewport.mode).toBe("following_tail");
+  });
+
+  it("reconciles a content owner's synchronous layout commit and drops the pending frame", () => {
+    render("session-a", "streamed-row");
+    expect(frames).toHaveLength(1);
+
+    scrollHeight = 1_250;
+    act(() => {
+      viewport.reconcileLayout();
+      expect(scrollRoot.scrollTop).toBe(850);
+    });
+    expect(frames).toHaveLength(0);
   });
 
   it("captures an anchor before a user-triggered collapse changes layout", () => {

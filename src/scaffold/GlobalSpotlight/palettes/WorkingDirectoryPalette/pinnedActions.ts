@@ -40,10 +40,7 @@ export function buildPinnedWorkingDirectoryActions({
       },
       {
         id: "pinned-create-workspace-entry",
-        label: t(
-          "workspaceForm.createWorkspace",
-          "Create Multi-repo Working Directory"
-        ),
+        label: t("workspaceForm.createWorkspace"),
         icon: ICONS.workspace,
         type: "action",
         data: { showDisclosureChevron: true },
@@ -73,9 +70,7 @@ export function buildPinnedWorkingDirectoryActions({
 
   actions.push({
     id: "pinned-manage-entry",
-    label: isManageMode
-      ? t("actions.done", "Done")
-      : t("actions.manage", "Manage"),
+    label: isManageMode ? t("actions.done") : t("actions.manage"),
     icon: isManageMode ? ICONS.done : ICONS.config,
     type: "action",
     data: isManageMode ? undefined : { showDisclosureChevron: true },

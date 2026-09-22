@@ -1,36 +1,15 @@
-import React, { useCallback } from "react";
-import { useTranslation } from "react-i18next";
-
-import { ACTION_ID, useActionSystemOptional } from "@src/ActionSystem";
 import { ROUTES } from "@src/config/routes";
-import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
+import { ACTION_ID } from "@src/scaffold/ActionSystem";
 
-import { SpotlightFooterAction } from "./SpotlightFooterAction";
+import { SpotlightNavigationFooterAction } from "./SpotlightNavigationFooterAction";
 
-interface ManageAgentsFooterActionProps {
-  onClose: () => void;
-}
-
-export const ManageAgentsFooterAction: React.FC<
-  ManageAgentsFooterActionProps
-> = ({ onClose }) => {
-  const { t } = useTranslation("common");
-  const navigate = useNavigate();
-  const actionSystem = useActionSystemOptional();
-
-  const handleClick = useCallback(() => {
-    onClose();
-    if (actionSystem?.isValidAction(ACTION_ID.APP_GO_TO_AGENT_ORGS)) {
-      void actionSystem.dispatch(ACTION_ID.APP_GO_TO_AGENT_ORGS, {}, "user");
-      return;
-    }
-    navigate(ROUTES.app.agentOrgs.path);
-  }, [actionSystem, onClose, navigate]);
-
+export function ManageAgentsFooterAction({ onClose }: { onClose: () => void }) {
   return (
-    <SpotlightFooterAction
-      label={t("selectors.spotlightFooter.manageAgents")}
-      onClick={handleClick}
+    <SpotlightNavigationFooterAction
+      onClose={onClose}
+      labelKey="selectors.spotlightFooter.manageAgents"
+      actionId={ACTION_ID.APP_GO_TO_AGENT_ORGS}
+      fallbackPath={ROUTES.app.agentOrgs.path}
     />
   );
-};
+}

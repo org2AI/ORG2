@@ -65,18 +65,12 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         />
       )}
       <div className="flex justify-end gap-2">
-        <Button
-          size="small"
-          variant="tertiary"
-          appearance="ghost"
-          onClick={onCancel}
-        >
+        <Button size="small" variant="tertiary" onClick={onCancel}>
           {t("common:actions.cancel")}
         </Button>
         <Button
           size="small"
           variant="primary"
-          appearance="solid"
           icon={
             <HugeiconsIcon icon={FloppyDiskIcon} data-icon="save" size={14} />
           }

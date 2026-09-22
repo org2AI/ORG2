@@ -10,8 +10,6 @@ export interface PublishedHeaderSlots {
   leading?: ReactNode;
   content?: ReactNode;
   trailing?: ReactNode;
-  /** Visually joins this 36px header to a following pane-owned row. */
-  joinWithFollowingRow?: boolean;
   /** The active split surface owns this chrome in its left column instead. */
   hidden?: boolean;
 }
@@ -32,6 +30,7 @@ export const PublishedHeaderSlotsView: React.FC<PublishedHeaderSlotsViewProps> =
       return (
         <div
           className={`flex min-w-0 flex-1 items-center ${paddingLeftClassName}`}
+          data-published-header-slots
         >
           {slots?.leading && (
             <NoDragRegion className="flex shrink-0 items-center">

@@ -11,28 +11,11 @@
   white-space: nowrap;
 }
 
-.task-impact-line__empty,
-.task-impact-line__loading,
-.task-impact-line__action {
+.task-impact-line__empty {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   color: var(--color-text-3);
-}
-
-.task-impact-line__action {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: var(--interactive-cursor, default);
-  font: inherit;
-}
-.task-impact-line__action:hover {
-  color: var(--color-primary-6);
-}
-
-.task-impact-line__loading svg {
-  animation: task-impact-line-spin 0.8s linear infinite;
 }
 
 @keyframes task-impact-line-spin {

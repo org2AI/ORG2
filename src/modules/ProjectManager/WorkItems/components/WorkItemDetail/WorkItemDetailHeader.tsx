@@ -2,6 +2,7 @@ import { type ReactNode, useRef, useState } from "react";
 
 import { STORY_SYNC_ADAPTER } from "@src/api/http/integrations/syncConnections";
 import Button from "@src/components/Button";
+import DetailHeaderIconAction from "@src/components/DetailHeaderIconAction";
 import Input from "@src/components/Input";
 import IntegrationIcon from "@src/components/IntegrationIcon";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
@@ -22,8 +23,7 @@ import {
 } from "@src/modules/ProjectManager/WorkItems/workItemIdentity";
 import ProjectManagerBreadcrumb from "@src/modules/ProjectManager/shared/components/ProjectManagerBreadcrumb";
 import type { ProjectManagerBreadcrumbSegment } from "@src/modules/ProjectManager/shared/components/ProjectManagerBreadcrumb";
-import DetailHeaderIconAction from "@src/modules/shared/components/DetailHeaderIconAction";
-import { DetailPaneCloseAction } from "@src/modules/shared/layouts/DetailPaneLayout";
+import { DetailPaneCloseAction } from "@src/scaffold/layouts/DetailPaneLayout";
 import type { WorkItem as WorkItemExtended } from "@src/types/core/workItem";
 
 export interface WorkItemDetailHeaderProps {
@@ -260,7 +260,6 @@ export function WorkItemDetailHeaderActions({
     <div className="flex shrink-0 items-center gap-px">
       <ToolbarTooltip label={t("common:actions.previous")}>
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly
@@ -278,7 +277,6 @@ export function WorkItemDetailHeaderActions({
       </ToolbarTooltip>
       <ToolbarTooltip label={t("common:actions.next")}>
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly
@@ -321,7 +319,6 @@ export function WorkItemDetailHeaderActions({
       {onDeleteWorkItem && (
         <ToolbarTooltip label={t("workItems.deleteWorkItem")}>
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             iconOnly
@@ -347,7 +344,6 @@ export function WorkItemDetailHeaderActions({
           }
         >
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             iconOnly

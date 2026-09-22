@@ -5,6 +5,7 @@ import marketImage from "@src/assets/illustrations/login-market.png";
 import mobileRemoteImage from "@src/assets/illustrations/login-mobile-remote.png";
 import sharingImage from "@src/assets/illustrations/login-sharing.png";
 import Button from "@src/components/Button";
+import Illustration from "@src/components/Illustration";
 import { ArrowLeft01Icon, ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 
 const ROTATION_MS = 6000;
@@ -63,20 +64,15 @@ export function SignInFeatures() {
       className="group/features relative shrink-0 overflow-hidden"
       aria-live="off"
     >
-      <img
-        src={slide.image}
-        alt=""
-        className="liquid-modal-image"
-        draggable={false}
-      />
+      <Illustration src={slide.image} className="liquid-modal-image" />
       <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 via-black/60 to-transparent px-3 pt-12 pb-3">
         <h3 className="text-base font-semibold text-white">{slide.title}</h3>
         <p className="text-sm text-white/90">{slide.body}</p>
       </div>
       {([-1, 1] as const).map((direction) => (
         <Button
+          variant="tertiary"
           key={direction}
-          appearance="ghost"
           shape="circle"
           iconOnly
           aria-label={t(

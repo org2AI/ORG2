@@ -6,7 +6,7 @@ import {
   MAX_QUEUED_CONVERSATION_MESSAGE_CHARS_TOTAL,
   isQueuedConversationMessagePayload,
   queuedConversationMessageCharSize,
-} from "@src/engines/SessionCore/conversations/queuedConversationContract";
+} from "@src/contracts/conversation";
 
 import {
   type ActiveMessageDelivery,

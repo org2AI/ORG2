@@ -17,6 +17,11 @@ import PageNotice from "@src/components/PageNotice";
 import Switch from "@src/components/Switch";
 import Textarea from "@src/components/Textarea";
 import {
+  SECTION_CONTROL_STYLE,
+  SectionContainer,
+  SectionRow,
+} from "@src/components/layout/Section";
+import {
   CancelCircleIcon,
   CheckmarkCircle01Icon,
   ComputerTerminal01Icon,
@@ -27,11 +32,6 @@ import type {
   McpServerConfig,
   McpTestResult,
 } from "@src/modules/MainApp/AgentOrgs/config/mcp/useMcpServers";
-import {
-  SECTION_CONTROL_STYLE,
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import {
   SelectionGrid,
   WizardShell,
@@ -91,8 +91,6 @@ const McpAddWizard: React.FC<McpAddWizardProps> = ({
         actions={
           <>
             <Button
-              variant="secondary"
-              size="small"
               onClick={w.handleTest}
               disabled={!w.canSave || w.testing}
               loading={w.testing}
@@ -101,7 +99,6 @@ const McpAddWizard: React.FC<McpAddWizardProps> = ({
             </Button>
             <Button
               variant="primary"
-              size="small"
               onClick={w.handleSave}
               disabled={!w.canSave || w.saving}
               loading={w.saving}

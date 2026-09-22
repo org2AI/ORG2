@@ -1,0 +1,102 @@
+{
+  "rollout": [
+    {
+      "timestamp": "2026-09-18T16:00:49.086Z",
+      "type": "event_msg",
+      "payload": {
+        "type": "task_started",
+        "turn_id": "outage-provider-turn"
+      }
+    },
+    {
+      "timestamp": "2026-09-18T16:00:49.091Z",
+      "type": "turn_context",
+      "payload": {
+        "turn_id": "outage-provider-turn",
+        "model": "gpt-5.6-luna"
+      }
+    },
+    {
+      "timestamp": "2026-09-18T16:00:49.099Z",
+      "type": "response_item",
+      "payload": {
+        "type": "message",
+        "id": "msg_native-outage-user",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "<ide_context>\norgii-turn-intent:outage-intent\n</ide_context>\n\nFor the outage recovery check, reply with the saved marker only. Do not use tools."
+          }
+        ],
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "outage-provider-turn",
+          "content_item_kinds": ["user.text"]
+        }
+      }
+    },
+    {
+      "timestamp": "2026-09-18T16:00:49.100Z",
+      "type": "event_msg",
+      "payload": {
+        "type": "item_completed",
+        "turn_id": "outage-provider-turn",
+        "item": {
+          "type": "UserMessage",
+          "id": "native-outage-user",
+          "content": [
+            {
+              "type": "text",
+              "text": "<ide_context>\norgii-turn-intent:outage-intent\n</ide_context>\n\nFor the outage recovery check, reply with the saved marker only. Do not use tools.",
+              "text_elements": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "timestamp": "2026-09-18T16:00:51.500Z",
+      "type": "event_msg",
+      "payload": {
+        "type": "task_complete",
+        "turn_id": "outage-provider-turn",
+        "last_agent_message": null,
+        "error": {
+          "message": "unexpected status 502 Bad Gateway: upstream_unavailable",
+          "codex_error_info": "other"
+        }
+      }
+    }
+  ],
+  "user": {
+    "id": "codex-user-0",
+    "actionType": "raw",
+    "functionName": "user_message",
+    "result": {
+      "type": "user",
+      "message": {
+        "content": "For the outage recovery check, reply with the saved marker only. Do not use tools.",
+        "role": "user"
+      },
+      "turnIntentId": "outage-intent"
+    }
+  },
+  "normalizedUser": {
+    "id": "codex-user-0",
+    "actionType": "raw",
+    "functionName": "user",
+    "result": {
+      "type": "user",
+      "message": {
+        "content": "For the outage recovery check, reply with the saved marker only. Do not use tools.",
+        "role": "user"
+      },
+      "turnIntentId": "outage-intent"
+    },
+    "uiCanonical": "user",
+    "source": "user",
+    "displayText": "For the outage recovery check, reply with the saved marker only. Do not use tools.",
+    "displayStatus": "completed",
+    "displayVariant": "message"
+  }
+}

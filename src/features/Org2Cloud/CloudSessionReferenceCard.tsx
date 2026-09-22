@@ -4,13 +4,13 @@ import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
+import { resolveAgentIcon } from "@src/config/agentIcons";
 import {
   ReferenceCard,
   ReferenceCardMeta,
   ReferenceCardMetaItem,
   ReferenceCardTitle,
-} from "@src/components/SessionReferenceCard";
-import { resolveAgentIcon } from "@src/config/agentIcons";
+} from "@src/features/SessionReferenceCard";
 import { UserMultipleIcon } from "@src/icons";
 import { formatModelNameFull } from "@src/util/formatModelName";
 import { resolveSessionDisplayMetadata } from "@src/util/session/sessionDisplayMetadata";

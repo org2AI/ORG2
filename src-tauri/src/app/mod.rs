@@ -11,6 +11,8 @@
 
 pub(crate) mod bootstrap;
 pub(crate) mod builder;
+#[cfg(target_os = "macos")]
+mod dev_process_name;
 pub(crate) mod lifecycle;
 pub(crate) mod plugins;
 pub(crate) mod setup_hook;

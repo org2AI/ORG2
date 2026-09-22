@@ -21,9 +21,10 @@ import {
   SECTION_SUBHEADING_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { DETAIL_PANEL_TOKENS } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/Section";
+import { DETAIL_PANEL_TOKENS } from "@src/components/layout/blocks";
 import { SelectionGrid } from "@src/scaffold/WizardSystem/primitives";
+import { AccountNameInfoIcon } from "@src/scaffold/WizardSystem/shared/AccountNameInfoIcon";
 import { parseModelVariants } from "@src/util/modelVariants";
 
 import { useApiSetup } from "../hooks/useApiSetup";
@@ -117,9 +118,6 @@ const ApiSetup: React.FC<ApiSetupProps> = ({
   // Navigation
   // ============================================
 
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [nameTouched, setNameTouched] = useState(false);
-
   const existingNameSet = useMemo(
     () =>
       new Set(
@@ -128,22 +126,20 @@ const ApiSetup: React.FC<ApiSetupProps> = ({
     [existingAccountNames]
   );
 
-  // Live duplicate detection — re-evaluated on every keystroke.
+  // Live duplicate detection — re-evaluated on every keystroke. A duplicate
+  // disables Done, so its error must show whenever it holds, not only after
+  // the input blurs: the name can also arrive without the field being focused.
   const trimmedName = data.name.trim();
   const isDuplicateName =
     trimmedName !== "" && existingNameSet.has(trimmedName.toLowerCase());
 
   const handleNext = () => {
-    if (isDuplicateName) {
-      setNameTouched(true);
-      setNameError(t("keyVault.nameDuplicate"));
-      return;
-    }
+    if (isDuplicateName) return;
 
     if (!data.agent_type) {
       setErrors({
         agent_type: t("keyVault.providerRequired", {
-          label: t("wizard.pickProvider", "Provider"),
+          label: t("wizard.pickProvider"),
         }),
       });
       return;
@@ -186,42 +182,29 @@ const ApiSetup: React.FC<ApiSetupProps> = ({
       data.agent_type === "custom_api");
 
   const accountNameBase =
-    selectedProvider?.label ||
-    data.agent_type ||
-    t("wizard.pickProvider", "Provider");
+    selectedProvider?.label || data.agent_type || t("wizard.pickProvider");
 
   const accountNameSection = (
-    <SectionContainer>
-      <SectionRow
-        label={t("keyVault.accountName")}
-        description={t("keyVault.accountNameDesc", {
+    <SectionRow
+      label={
+        <span className="inline-flex items-center gap-1">
+          {t("keyVault.keyName")}
+          <AccountNameInfoIcon provider={accountNameBase} />
+        </span>
+      }
+    >
+      <Input
+        value={data.name}
+        onChange={(value) => onChange({ name: value })}
+        placeholder={t("keyVault.keyNamePlaceholder", {
           provider: accountNameBase,
         })}
-      >
-        <Input
-          value={data.name}
-          onChange={(value) => {
-            onChange({ name: value });
-            if (nameError) setNameError(null);
-            if (nameTouched) setNameTouched(false);
-          }}
-          onBlur={() => {
-            if (trimmedName) setNameTouched(true);
-          }}
-          placeholder={t("keyVault.accountNamePlaceholder", {
-            provider: accountNameBase,
-          })}
-          size="default"
-          style={SECTION_CONTROL_STYLE}
-          errorMessage={
-            nameTouched && isDuplicateName
-              ? t("keyVault.nameDuplicate")
-              : (nameError ?? undefined)
-          }
-          errorPlacement="left"
-        />
-      </SectionRow>
-    </SectionContainer>
+        size="default"
+        style={SECTION_CONTROL_STYLE}
+        errorMessage={isDuplicateName ? t("keyVault.nameDuplicate") : undefined}
+        errorPlacement="left"
+      />
+    </SectionRow>
   );
 
   const handleTestModel = useCallback(
@@ -273,14 +256,12 @@ const ApiSetup: React.FC<ApiSetupProps> = ({
           {/* Provider, method, and region sections — hidden when browser is open */}
           {!hook.browserOpen && (
             <>
-              {accountNameSection}
-
               <SectionContainer>
                 {/* Provider selection */}
                 {selectedProviderKey ? (
                   <SectionRow
-                    label={t("wizard.pickProvider", "Provider")}
-                    description={t("keyVault.selectorDesc")}
+                    label={t("wizard.pickProvider")}
+                    tallLabel
                     required
                   >
                     <Select
@@ -296,9 +277,9 @@ const ApiSetup: React.FC<ApiSetupProps> = ({
                   </SectionRow>
                 ) : (
                   <SectionRow
-                    label={t("wizard.pickProvider", "Provider")}
-                    description={t("keyVault.selectorDesc")}
+                    label={t("wizard.pickProvider")}
                     layout="vertical"
+                    tallLabel
                     required
                   >
                     {errors.agent_type && (
@@ -309,13 +290,10 @@ const ApiSetup: React.FC<ApiSetupProps> = ({
                         <div key={group.group} className="space-y-2">
                           <div className="text-[12px] font-medium text-text-2">
                             {group.group === "mostUsed"
-                              ? t(
-                                  "keyVault.providerGroups.mostUsed",
-                                  "Most used"
-                                )
+                              ? t("keyVault.providerGroups.mostUsed")
                               : group.group === "cloud"
-                                ? t("keyVault.providerGroups.cloud", "Cloud")
-                                : t("keyVault.providerGroups.local", "Local")}
+                                ? t("keyVault.providerGroups.cloud")
+                                : t("keyVault.providerGroups.local")}
                           </div>
                           <SelectionGrid
                             options={group.options}
@@ -329,10 +307,13 @@ const ApiSetup: React.FC<ApiSetupProps> = ({
                   </SectionRow>
                 )}
 
+                {selectedProviderKey && accountNameSection}
+
                 {selectedProviderKey && hasMultipleVariants && (
                   <SectionRow
-                    label={t("wizard.selectVariant", "Connection method")}
+                    label={t("wizard.selectVariant")}
                     layout={data.agent_type ? "horizontal" : "vertical"}
+                    tallLabel
                     required
                   >
                     {data.agent_type ? (

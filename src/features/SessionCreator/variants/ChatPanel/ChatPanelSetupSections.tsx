@@ -10,6 +10,7 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import { pillControlStateClass } from "@src/components/CompoundPill/config";
 import PageNotice from "@src/components/PageNotice";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
@@ -21,7 +22,6 @@ import {
   HierarchyCircle01Icon,
   HugeiconsIcon,
   NotificationOff01Icon,
-  Refresh04Icon,
 } from "@src/icons";
 import { PresenceMenuButton } from "@src/scaffold/NavigationSidebar/blocks/SidebarBottomBar";
 
@@ -96,8 +96,6 @@ export const ChatPanelSessionSetupActions: React.FC<
             {leadingActionSlot}
             {orgMembersPanelProps && (
               <Button
-                variant="secondary"
-                appearance="outline"
                 size="small"
                 shape="round"
                 icon={
@@ -174,29 +172,14 @@ export const ChatPanelCliVersionWarning: React.FC<
               data-testid="session-creator-cli-version-mute"
               onClick={cliVersionAlert.onMuteUntilNextVersion}
             />
-            <Button
-              variant="tertiary"
-              size="small"
-              icon={
-                <HugeiconsIcon
-                  icon={Refresh04Icon}
-                  data-icon="refresh-cw"
-                  size={14}
-                  strokeWidth={1.8}
-                />
-              }
+            <RefreshButton
               iconOnly
-              loading={cliVersionAlert.refreshing}
-              loadingSpinIcon
-              disabled={cliVersionAlert.refreshing}
-              title={t("creator.cliVersionOutdated.refresh", {
+              label={t("creator.cliVersionOutdated.refresh", {
                 cli: cliVersionAlert.cliDisplayName,
               })}
-              aria-label={t("creator.cliVersionOutdated.refresh", {
-                cli: cliVersionAlert.cliDisplayName,
-              })}
-              data-testid="session-creator-cli-version-refresh"
-              onClick={cliVersionAlert.onRefresh}
+              refreshing={cliVersionAlert.refreshing}
+              onRefresh={cliVersionAlert.onRefresh}
+              dataTestId="session-creator-cli-version-refresh"
             />
           </div>
         }

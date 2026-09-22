@@ -18,7 +18,7 @@ import type {
   WorkItemRoutineSource,
   WorkItemSchedule,
   WorkItemWorkProduct,
-} from "@src/api/http/project/types";
+} from "@src/contracts/project";
 
 import type { Label, Person } from "./shared";
 
@@ -188,7 +188,7 @@ export type {
   WorkItemWorkProduct,
   OrchestratorState,
   FollowUpRef,
-} from "@src/api/http/project/types";
+} from "@src/contracts/project";
 
 /**
  * A market delegation entry on a work item

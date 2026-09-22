@@ -129,3 +129,100 @@ it("preserves known status on read failure and allows manual retry", async () =>
   await act(async () => latest.refresh());
   expect(container.textContent).toBe("online");
 });
+
+it("keeps manual refresh available when event subscription fails", async () => {
+  mocks.listen.mockRejectedValueOnce(new Error("events unavailable"));
+  await render();
+  expect(latest.manualRefreshRequired).toBe(true);
+  expect(container.textContent).toBe("disabled");
+  mocks.read.mockResolvedValueOnce({ phase: "online" });
+  await act(async () => latest.refresh());
+  expect(container.textContent).toBe("online");
+  expect(latest.manualRefreshRequired).toBe(true);
+  expect(mocks.read).toHaveBeenCalledTimes(2);
+});
+
+it("clears the manual fallback when a new scope subscribes successfully", async () => {
+  mocks.listen.mockRejectedValueOnce(new Error("events unavailable"));
+  await render("first");
+  expect(latest.manualRefreshRequired).toBe(true);
+  const subscription = deferred<() => void>();
+  mocks.listen.mockReturnValueOnce(subscription.promise);
+  await render("second");
+  expect(latest.manualRefreshRequired).toBe(false);
+  await act(async () => subscription.resolve(dispose));
+  expect(latest.manualRefreshRequired).toBe(false);
+});
+
+it("clears the manual fallback when disabled and reenabled in the same scope", async () => {
+  mocks.listen.mockRejectedValueOnce(new Error("events unavailable"));
+  await render();
+  expect(latest.manualRefreshRequired).toBe(true);
+  await render("desktop", false);
+  expect(latest.manualRefreshRequired).toBe(false);
+  const subscription = deferred<() => void>();
+  mocks.listen.mockReturnValueOnce(subscription.promise);
+  await render();
+  expect(latest.manualRefreshRequired).toBe(false);
+  await act(async () => subscription.resolve(dispose));
+  expect(latest.manualRefreshRequired).toBe(false);
+});
+
+it("waits for a fresh snapshot after reenabling while event registration is pending", async () => {
+  mocks.read.mockResolvedValueOnce({ phase: "online" });
+  await render();
+  expect(container.textContent).toBe("online");
+  await render("desktop", false);
+  expect(latest.data).toBeNull();
+  expect(latest.loading).toBe(false);
+  const subscription = deferred<() => void>();
+  mocks.listen.mockReturnValueOnce(subscription.promise);
+  await render();
+  expect(latest.data).toBeNull();
+  expect(latest.loading).toBe(true);
+  expect(latest.error).toBeNull();
+  expect(mocks.read).toHaveBeenCalledTimes(1);
+  mocks.read.mockResolvedValueOnce({ phase: "connecting" });
+  await act(async () => subscription.resolve(dispose));
+  expect(container.textContent).toBe("connecting");
+  expect(latest.loading).toBe(false);
+});
+
+it("does not restore old status or errors when returning to an earlier scope", async () => {
+  mocks.read.mockResolvedValueOnce({ phase: "online" });
+  await render("first");
+  mocks.read.mockRejectedValueOnce(new Error("old connection error"));
+  await act(async () => changed());
+  expect(latest.data?.phase).toBe("online");
+  expect(latest.error).toContain("old connection error");
+  const secondSubscription = deferred<() => void>();
+  const returningSubscription = deferred<() => void>();
+  mocks.listen
+    .mockReturnValueOnce(secondSubscription.promise)
+    .mockReturnValueOnce(returningSubscription.promise);
+  await render("second");
+  await render("first");
+  expect(latest.data).toBeNull();
+  expect(latest.loading).toBe(true);
+  expect(latest.error).toBeNull();
+  await act(async () => secondSubscription.resolve(dispose));
+  expect(latest.data).toBeNull();
+  expect(latest.loading).toBe(true);
+  expect(mocks.read).toHaveBeenCalledTimes(2);
+  mocks.read.mockResolvedValueOnce({ phase: "connecting" });
+  await act(async () => returningSubscription.resolve(dispose));
+  expect(container.textContent).toBe("connecting");
+  expect(latest.loading).toBe(false);
+  expect(latest.error).toBeNull();
+});
+
+it("disposes registration that resolves after the consumer unmounts", async () => {
+  const subscription = deferred<() => void>();
+  mocks.listen.mockReturnValueOnce(subscription.promise);
+  await render();
+  await act(async () => root.render(null));
+  await act(async () => subscription.resolve(dispose));
+  await flushDeferredCleanup();
+  expect(dispose).toHaveBeenCalledTimes(1);
+  expect(mocks.read).not.toHaveBeenCalled();
+});

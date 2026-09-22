@@ -8,16 +8,12 @@ import {
   BUILTIN_SDE_DEF_ID,
 } from "@src/util/session/sessionDispatch";
 
-export const MAX_TREE_DEPTH = 4;
-
 /** Color map for built-in agent IDs; custom agents use default color */
 export const AGENT_COLORS: Record<string, string> = {
   "user-me": "text-primary-6",
   [BUILTIN_OS_DEF_ID]: "text-[#d97706]",
   [BUILTIN_SDE_DEF_ID]: "text-[#10b981]",
 };
-
-export const DEFAULT_AGENT_COLOR = "text-primary-6";
 
 /** Build Select options from Rust-native built-in and custom agents. */
 export function buildAgentOptions(

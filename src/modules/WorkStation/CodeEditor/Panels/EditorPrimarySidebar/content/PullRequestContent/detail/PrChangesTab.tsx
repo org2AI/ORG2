@@ -17,6 +17,7 @@ import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
 import type { GitFileStatus } from "@src/config/gitStatus";
 import { CodeMirrorDiff } from "@src/features/CodeMirror";
+import { useEditorDisplayToggles } from "@src/hooks/settings/useEditorDisplayToggles";
 import { ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import {
   FileHeader,
@@ -26,11 +27,6 @@ import {
   gitFileListWidthAtom,
 } from "@src/modules/WorkStation/shared";
 import { VerticalResizeHandle, useColumnResize } from "@src/scaffold/Resize";
-import {
-  editorHighlightActiveLineAtom,
-  editorLineNumbersAtom,
-  editorWordWrapAtom,
-} from "@src/store/ui/editorSettingsAtom";
 import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { diffViewModeAtom } from "@src/store/workstation/codeEditor";
 import type { GitFile } from "@src/types/git/types";
@@ -95,11 +91,7 @@ export const PrChangesTab: React.FC<PrChangesTabProps> = ({
 
   const [fileListCollapsed, setFileListCollapsed] = useState(false);
   const [viewMode, setViewMode] = useAtom(diffViewModeAtom);
-  const [lineNumbers, setLineNumbers] = useAtom(editorLineNumbersAtom);
-  const [wordWrap, setWordWrap] = useAtom(editorWordWrapAtom);
-  const [highlightActiveLine, setHighlightActiveLine] = useAtom(
-    editorHighlightActiveLineAtom
-  );
+  const toggles = useEditorDisplayToggles();
   const { onOpenSettings } = useAtomValue(activeStatusBarCallbacksAtom);
   const [fileListWidth, setFileListWidth] = useAtom(gitFileListWidthAtom);
   const { columnRef: fileListRef, handleMouseDown: handleFileListResize } =
@@ -190,11 +182,6 @@ export const PrChangesTab: React.FC<PrChangesTabProps> = ({
     headRef: headSha,
   });
 
-  const handleLineNumbersChange = useCallback(
-    (enabled: boolean) => setLineNumbers(enabled ? "on" : "off"),
-    [setLineNumbers]
-  );
-
   if (loading && files.length === 0) {
     return (
       <Placeholder
@@ -211,7 +198,7 @@ export const PrChangesTab: React.FC<PrChangesTabProps> = ({
       <Placeholder
         variant="empty"
         placement="sidebar"
-        title={t("git.pr.changes.noFiles", "No file changes")}
+        title={t("git.pr.changes.noFiles")}
         fillParentHeight
       />
     );
@@ -241,7 +228,6 @@ export const PrChangesTab: React.FC<PrChangesTabProps> = ({
         {fileListCollapsed && (
           <Button
             layout="custom"
-            appearance="custom"
             className="flex w-6 shrink-0 items-center justify-center border-r border-border-2 hover:bg-fill-1"
             onClick={() => setFileListCollapsed(false)}
             title={t("tooltips.showFileList")}
@@ -266,12 +252,14 @@ export const PrChangesTab: React.FC<PrChangesTabProps> = ({
                 deletions={selectedFile.deletions}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
-                lineNumbersEnabled={lineNumbers !== "off"}
-                onLineNumbersChange={handleLineNumbersChange}
-                wordWrapEnabled={wordWrap}
-                onWordWrapChange={setWordWrap}
-                highlightActiveLineEnabled={highlightActiveLine}
-                onHighlightActiveLineChange={setHighlightActiveLine}
+                lineNumbersEnabled={toggles.lineNumbersEnabled}
+                onLineNumbersChange={toggles.onLineNumbersChange}
+                wordWrapEnabled={toggles.wordWrapEnabled}
+                onWordWrapChange={toggles.onWordWrapChange}
+                highlightActiveLineEnabled={toggles.highlightActiveLineEnabled}
+                onHighlightActiveLineChange={
+                  toggles.onHighlightActiveLineChange
+                }
                 onMoreSettings={onOpenSettings}
                 loading={loadState === "loading"}
                 onFileSelect={onFileSelect}
@@ -297,10 +285,7 @@ export const PrChangesTab: React.FC<PrChangesTabProps> = ({
                   <Placeholder
                     variant="empty"
                     placement="sidebar"
-                    title={t(
-                      "git.pr.changes.tooLarge",
-                      "File too large to diff"
-                    )}
+                    title={t("git.pr.changes.tooLarge")}
                     subtitle={selectedFile.filename}
                     fillParentHeight
                   />

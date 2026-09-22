@@ -61,6 +61,8 @@ fn main() -> Result<(), String> {
             .into(),
             base_url: args[2].clone(),
             api_key: "orgii-fixture-key".into(),
+            desktop_helper: None,
+            proxy_token: None,
         },
         None,
     )?;

@@ -31,8 +31,6 @@ interface BrowserStatusBarSyncOptions {
   currentSessionIndex: number;
   selectedElement: ElementInfo | null;
   handleToggleDevTools: () => void;
-  handlePrevSession: () => void;
-  handleNextSession: () => void;
   clearSelection: () => void;
   setAddToAgent: (payload: AddToAgentRequest) => void;
   toastSuccess: (msg: string) => void;
@@ -51,8 +49,6 @@ export function useBrowserStatusBar({
   currentSessionIndex,
   selectedElement,
   handleToggleDevTools,
-  handlePrevSession,
-  handleNextSession,
   clearSelection,
   setAddToAgent,
   toastSuccess,
@@ -111,12 +107,7 @@ export function useBrowserStatusBar({
 
     setStatusBarCallbacks((prev) => ({
       ...prev,
-      onTogglePrimaryPanel: undefined,
-      primaryPanelCollapsed: undefined,
       onToggleDevTools: handleToggleDevTools,
-      devToolsOpen: !devToolsCollapsed,
-      onPrevSession: handlePrevSession,
-      onNextSession: handleNextSession,
       onSendSelectedElementToChat: handleSendSelectedElementToChat,
       onClearSelectedElement: () => {
         void clearSelection();
@@ -130,9 +121,6 @@ export function useBrowserStatusBar({
   }, [
     isActive,
     handleToggleDevTools,
-    devToolsCollapsed,
-    handlePrevSession,
-    handleNextSession,
     clearSelection,
     setStatusBarCallbacks,
     selectedElement,

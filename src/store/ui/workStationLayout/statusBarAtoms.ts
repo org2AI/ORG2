@@ -154,21 +154,7 @@ export interface StatusBarCallbacks {
   onWorktreeClick?: () => void;
   /** Opens editor settings tab (Code / Project Manager — registered from AppShell). */
   onOpenSettings?: () => void;
-  /** Toggles the primary sidebar panel (left or right depending on layoutMode). */
-  onTogglePrimaryPanel?: () => void;
-  /** Whether the primary sidebar panel is currently collapsed. */
-  primaryPanelCollapsed?: boolean;
-  /** Current sidebar layout mode. */
-  layoutMode?: "left" | "right";
-  /** Toggles the bottom panel (terminal/output — Code Editor only). */
-  onToggleBottomPanel?: () => void;
-  /** Whether the bottom panel is currently collapsed. */
-  bottomPanelCollapsed?: boolean;
   onToggleDevTools?: () => void;
-  /** Whether the DevTools panel is currently open (Browser only). */
-  devToolsOpen?: boolean;
-  onPrevSession?: () => void;
-  onNextSession?: () => void;
   /** Send the currently inspector-selected DOM element to the Chat composer. */
   onSendSelectedElementToChat?: () => void;
   /** Clear the current inspector element selection. */

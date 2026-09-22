@@ -15,6 +15,7 @@ import {
 
 import { InternetIcon, LinkSquare02Icon } from "@src/icons";
 import { WorkManagementSplitHeaderContext } from "@src/modules/MainApp/WorkManagement/workManagementSplitHeaderContext";
+import { DetailPaneShortcutCloseContext } from "@src/scaffold/layouts/detailPaneShortcutClose";
 import { workstationTabHeaderAtomByHost } from "@src/store/workstation";
 import type { WorkItem } from "@src/types/core/workItem";
 
@@ -37,6 +38,7 @@ const componentProps = vi.hoisted(() => ({
   listRenderCount: 0,
   placeholder: null as Record<string, unknown> | null,
   prDetail: null as Record<string, unknown> | null,
+  shortcutClose: null as (() => void) | null,
 }));
 const openInSystemBrowser = vi.hoisted(() => vi.fn());
 const translate = vi.hoisted(() => vi.fn((key: string) => key));
@@ -51,7 +53,7 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/layouts/SplitViewLayout", () => ({
+vi.mock("@src/scaffold/layouts/SplitViewLayout", () => ({
   default: (props: Record<string, unknown>) => {
     splitViewProps.current = props;
     return createElement(
@@ -64,9 +66,9 @@ vi.mock("@src/modules/shared/layouts/SplitViewLayout", () => ({
   },
 }));
 
-vi.mock("@src/modules/shared/layouts/blocks", async (importOriginal) => {
+vi.mock("@src/components/layout/blocks", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@src/modules/shared/layouts/blocks")>();
+    await importOriginal<typeof import("@src/components/layout/blocks")>();
   return {
     ...actual,
     LoadingBar: () => createElement("div", { "data-testid": "loading-bar" }),
@@ -87,6 +89,10 @@ vi.mock("@src/components/Placeholder", () => ({
 vi.mock("../components", () => ({
   AssignedWorkItemDetail: (props: Record<string, unknown>) => {
     componentProps.assignedDetail = props;
+    // What the detail header's close action hears from the close-tab chord.
+    componentProps.shortcutClose = React.useContext(
+      DetailPaneShortcutCloseContext
+    );
     return null;
   },
   CommentMentionDetail: () => null,
@@ -187,6 +193,7 @@ describe("TeamInboxView split layout", () => {
     componentProps.listRenderCount = 0;
     componentProps.placeholder = null;
     componentProps.prDetail = null;
+    componentProps.shortcutClose = null;
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -638,7 +645,44 @@ describe("TeamInboxView split layout", () => {
     ).toBe("split");
   });
 
-  it("keeps the initial gate closed for a source loading snapshot", async () => {
+  it("keeps the split on a placeholder when the close-tab chord closes the detail", async () => {
+    await act(async () => {
+      root.render(
+        createElement(TeamInboxView, {
+          dataSource: {
+            listPage: async () => ({
+              items: [partialLoadItem],
+              nextCursor: null,
+            }),
+          },
+        })
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      const onSelectItem = componentProps.list?.onSelectItem as
+        | ((item: AssignedWorkItem) => void)
+        | undefined;
+      onSelectItem?.(partialLoadItem);
+    });
+    expect(componentProps.list?.selectedItemId).not.toBeNull();
+    expect(componentProps.shortcutClose).toBeTypeOf("function");
+    componentProps.placeholder = null;
+
+    await act(async () => componentProps.shortcutClose?.());
+
+    expect(
+      container
+        .querySelector('[data-testid="team-inbox-list-detail-layout"]')
+        ?.getAttribute("data-layout-mode")
+    ).toBe("split");
+    expect(componentProps.list?.selectedItemId).toBeNull();
+    expect(componentProps.placeholder).toMatchObject({ variant: "empty" });
+  });
+
+  it("keeps pending notifications hidden without withholding ready pull requests", async () => {
     let emitSnapshot: (() => void) | undefined;
     let page = {
       items: [] as AssignedWorkItem[],
@@ -666,7 +710,7 @@ describe("TeamInboxView split layout", () => {
     });
 
     expect(componentProps.list?.items).toEqual([]);
-    expect(componentProps.list?.pullRequests).toEqual([]);
+    expect(componentProps.list?.pullRequests).toEqual([createPullRequest()]);
     expect(componentProps.list?.loading).toBe(true);
 
     page = { items: [partialLoadItem], nextCursor: null, loading: false };
@@ -681,7 +725,7 @@ describe("TeamInboxView split layout", () => {
     expect(componentProps.list?.loading).toBe(false);
   });
 
-  it("holds the first Inbox snapshot until pull requests finish loading", async () => {
+  it("shows the first Inbox snapshot while pull requests are still loading", async () => {
     const listPage = vi.fn(async () => ({
       items: [partialLoadItem],
       nextCursor: null,
@@ -699,12 +743,12 @@ describe("TeamInboxView split layout", () => {
       await Promise.resolve();
     });
 
-    expect(componentProps.list?.items).toEqual([]);
+    expect(componentProps.list?.items).toEqual([partialLoadItem]);
     expect(componentProps.list?.pullRequests).toEqual([]);
     expect(componentProps.list?.unreadCounts).toEqual({
-      all: 0,
+      all: 1,
       mentions: 0,
-      assigned: 0,
+      assigned: 1,
     });
     expect(componentProps.list?.loading).toBe(true);
 
@@ -797,7 +841,7 @@ describe("TeamInboxView split layout", () => {
     });
   });
 
-  it("holds the first pull-request snapshot until Inbox loading finishes", async () => {
+  it("shows the first pull-request snapshot while Inbox is still loading", async () => {
     let resolveInbox!: (value: {
       items: AssignedWorkItem[];
       nextCursor: null;
@@ -823,7 +867,7 @@ describe("TeamInboxView split layout", () => {
     });
 
     expect(componentProps.list?.items).toEqual([]);
-    expect(componentProps.list?.pullRequests).toEqual([]);
+    expect(componentProps.list?.pullRequests).toEqual([createPullRequest()]);
     expect(componentProps.list?.loading).toBe(true);
 
     await act(async () => {

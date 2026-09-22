@@ -58,7 +58,6 @@ export const InlineBanner: React.FC<InlineBannerProps> = ({
       {onDismiss ? (
         <Button
           variant="tertiary"
-          appearance="soft-no-drop"
           size="sidebar"
           iconOnly
           icon={
@@ -71,10 +70,9 @@ export const InlineBanner: React.FC<InlineBannerProps> = ({
             />
           }
           style={{ width: 16, height: 16 }}
-          htmlType="button"
           onClick={onDismiss}
-          aria-label={t("actions.close", "Close")}
-          title={t("actions.close", "Close")}
+          aria-label={t("actions.close")}
+          title={t("actions.close")}
           data-testid={dataTestId ? `${dataTestId}-dismiss` : undefined}
           className="mt-px -mr-1 shrink-0 hover:bg-fill-2"
         />

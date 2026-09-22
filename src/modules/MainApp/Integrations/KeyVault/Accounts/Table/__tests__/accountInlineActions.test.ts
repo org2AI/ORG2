@@ -4,7 +4,7 @@ import type { KeyVaultAccount } from "@src/hooks/keyVault";
 
 import {
   areAccountRefreshActionsDisabled,
-  shouldShowCodexReconnect,
+  reconnectableOAuthAgent,
 } from "../accountInlineActions";
 
 function createAccount(
@@ -43,44 +43,50 @@ describe("areAccountRefreshActionsDisabled", () => {
   );
 });
 
-describe("shouldShowCodexReconnect", () => {
-  it("shows reconnect for a failed local Codex OAuth account", () => {
-    expect(shouldShowCodexReconnect(createAccount())).toBe(true);
+describe("reconnectableOAuthAgent", () => {
+  it("offers reconnect for a failed local Codex OAuth account", () => {
+    expect(reconnectableOAuthAgent(createAccount())).toBe("codex");
+  });
+
+  it("offers reconnect for a failed local Claude Code OAuth account", () => {
+    expect(
+      reconnectableOAuthAgent(createAccount({ modelType: "claude_code" }))
+    ).toBe("claude_code");
   });
 
   it("accepts invalid health even before the mapped status becomes error", () => {
     expect(
-      shouldShowCodexReconnect(
+      reconnectableOAuthAgent(
         createAccount({ status: "ready", healthStatus: "invalid" })
       )
-    ).toBe(true);
+    ).toBe("codex");
   });
 
-  it("hides reconnect for a healthy Codex OAuth account", () => {
+  it("hides reconnect for a healthy OAuth account", () => {
     expect(
-      shouldShowCodexReconnect(
+      reconnectableOAuthAgent(
         createAccount({ status: "ready", healthStatus: "valid", enabled: true })
       )
-    ).toBe(false);
+    ).toBeNull();
   });
 
-  it("hides browser reauthentication for a Codex API-key account", () => {
+  it("hides browser reauthentication for an API-key account", () => {
     expect(
-      shouldShowCodexReconnect(
+      reconnectableOAuthAgent(
         createAccount({ authMethod: "api_key", hasApiKey: true })
       )
-    ).toBe(false);
+    ).toBeNull();
   });
 
-  it("hides reconnect for other invalid providers", () => {
+  it("hides reconnect for providers without a reauthentication flow", () => {
     expect(
-      shouldShowCodexReconnect(createAccount({ modelType: "claude_code" }))
-    ).toBe(false);
+      reconnectableOAuthAgent(createAccount({ modelType: "kiro" }))
+    ).toBeNull();
   });
 
   it("hides reconnect when the credential is not stored locally", () => {
     expect(
-      shouldShowCodexReconnect(createAccount({ hasLocalKey: false }))
-    ).toBe(false);
+      reconnectableOAuthAgent(createAccount({ hasLocalKey: false }))
+    ).toBeNull();
   });
 });

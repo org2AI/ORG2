@@ -1,9 +1,9 @@
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { extractTodoData } from "@src/engines/SessionCore/rendering/props";
-import { normalizeActivity } from "@src/lib/activityData";
 import { isTodoEvent } from "@src/modules/WorkStation/Chat/Communication/utils";
 import type { TodoItem } from "@src/store/ui/todoAtom";
 import { preserveTodoContent } from "@src/store/ui/todoMerge";
+import { normalizeActivity } from "@src/util/data/activityData";
 
 import { sanitizeTodoDisplayText } from "./todoNormalization";
 

@@ -32,7 +32,6 @@ const TerminalInfoButtonComponent: React.FC<TerminalInfoButtonProps> = ({
       onMouseLeave={() => setShowTerminalInfo(false)}
     >
       <Button
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly

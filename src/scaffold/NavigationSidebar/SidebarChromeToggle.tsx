@@ -7,15 +7,15 @@
  *
  * macOS draws it inside `PinnedSidebarChrome`, pinned in window space after
  * the traffic lights. Every other host draws it in flow at the head of the
- * sidebar's own chrome row, where the collapsed-sidebar hosts place the same
- * group, so it never moves between the two states there either.
+ * sidebar's own chrome row while open, and `CollapsedSidebarButton` draws it
+ * at the same spot in the leading host's row once collapsed, so it never
+ * moves between the two states there either.
  */
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { memo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { SessionHistoryNavVariant } from "@src/components/SessionHistoryNav";
-import SidebarChromeIconButton from "@src/components/SidebarChromeIconButton";
 import { TabBarTrailingIconButton } from "@src/components/TabPill/TabBarTrailingIconButton";
 import {
   HugeiconsIcon,
@@ -23,10 +23,8 @@ import {
   LayoutAlignLeftIcon,
   PanelLeftIcon,
 } from "@src/icons";
-import {
-  SIDEBAR_HOVER_PREVIEW_DELAY,
-  SIDEBAR_TOOLTIP_HOVER_DELAY,
-} from "@src/scaffold/NavigationSidebar/config";
+import SidebarChromeIconButton from "@src/scaffold/NavigationSidebar/components/SidebarChromeIconButton";
+import { SIDEBAR_HOVER_PREVIEW_DELAY } from "@src/scaffold/NavigationSidebar/config";
 import { hoverSidebarOpenAtom } from "@src/store/ui/hoverSidebarAtom";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
 
@@ -83,7 +81,6 @@ const ChromeButton: React.FC<ChromeButtonProps> = ({
       <SidebarChromeIconButton
         title={label}
         shortcutId={shortcutId}
-        tooltipMouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
         onClick={onClick}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
@@ -99,7 +96,6 @@ const ChromeButton: React.FC<ChromeButtonProps> = ({
       title={label}
       shortcutId={shortcutId}
       tooltipPosition="bottom"
-      tooltipMouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
       nativeTitle={false}
       onClick={onClick}
       onMouseEnter={onMouseEnter}

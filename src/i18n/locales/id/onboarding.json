@@ -1,0 +1,69 @@
+{
+  "tutorials": {
+    "chrome": {
+      "stepProgress": "Langkah {{current}} dari {{total}}",
+      "close": "Tutup",
+      "previous": "Langkah sebelumnya",
+      "next": "Langkah berikutnya",
+      "finish": "Selesaikan tur",
+      "keyboardHint": "Gunakan ← / → atau < / >",
+      "desktop": "Desktop",
+      "myStation": "My Station",
+      "infinity": "Infinity",
+      "agentStation": "Agent Station"
+    },
+    "generalLayout": {
+      "title": "Tur tata letak umum",
+      "description": "Pelajari Chat Panel, Runtime, pengalih mode station, dan dock",
+      "duration": "1 mnt",
+      "steps": {
+        "chat-panel": {
+          "title": "Chat Panel",
+          "body": "Di sinilah pengguna bercakap dengan agen, meninjau aktivitas, dan mengirim instruksi lanjutan"
+        },
+        "runtime": {
+          "title": "Runtime",
+          "body": "Lihat penggunaan dan status runtime Anda di sini. Di ruang kerja, Anda juga dapat memeriksa status sinkronisasi anggota dan membuka anggota untuk meninjau penggunaan Codex, Claude, dan Cursor"
+        },
+        "station-mode-pill": {
+          "title": "Beralih mode station",
+          "body": "Gunakan pil ini untuk beralih mode station. Desktop berarti My Station, ruang kerja Anda. Infinity berarti Agent Station, tampilan aktivitas agen"
+        },
+        "dock": {
+          "title": "Dock Agent Station",
+          "body": "Dock beralih antar aplikasi di dalam station. Tur ini untuk sementara menonaktifkan sembunyi otomatis agar kontrol ini tetap terlihat"
+        }
+      }
+    },
+    "codeEditor": {
+      "title": "Tur Code Editor",
+      "description": "Pelajari tab, ruang kerja editor, Source Control, dan Git History",
+      "duration": "2 mnt",
+      "steps": {
+        "tabs": {
+          "title": "Tab Code Editor",
+          "body": "Tab mengumpulkan file, diff, terminal, tampilan source control, dan dasbor yang Anda buka saat bekerja di repositori"
+        },
+        "editor-surface": {
+          "title": "Ruang kerja editor",
+          "body": "Ini adalah area utama Code Editor. Buka file, periksa diff, jalankan terminal, dan tinjau perubahan yang dihasilkan di sini"
+        },
+        "create-tabs": {
+          "title": "Buat tab baru",
+          "body": "Gunakan menu plus di All Tabs untuk membuat terminal, tab browser, file, dasbor, dan utilitas repositori"
+        },
+        "source-control": {
+          "title": "Perubahan Git",
+          "body": "Buka Source Control untuk meninjau file yang berubah, stage atau unstage pekerjaan, commit, pull, push, fetch, dan sinkronkan dengan remote"
+        },
+        "git-history": {
+          "title": "Riwayat Git",
+          "body": "Git History mengalihkan Source Control ke mode riwayat commit agar Anda dapat memeriksa commit sebelumnya dan perubahan terkait"
+        }
+      }
+    }
+  },
+  "discovery": {
+    "getStarted": "Mulai"
+  }
+}

@@ -5,14 +5,11 @@ import {
   SESSION_HISTORY_NAV_WIDTH,
 } from "@src/components/SessionHistoryNav";
 import { hasMacWindowChrome } from "@src/config/windowChromeRadius";
-import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
-import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
+import { WINDOW_CHROME_TOKENS } from "@src/config/windowChromeTokens";
+import { useWorkbenchTouchesLeadingEdge } from "@src/hooks/ui/workbench/workbenchLeadingEdgeContext";
 import { sidebarCollapsedAtom } from "@src/store/ui/sidebarAtom";
 import { windowFullscreenAtom } from "@src/store/ui/uiAtom";
-import {
-  type ChatPanelPosition,
-  chatPanelPositionAtom,
-} from "@src/store/ui/workStationLayout/chatPositionAtoms";
+import type { ChatPanelPosition } from "@src/store/ui/workStationLayout/chatPositionAtoms";
 import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 const COLLAPSED_SIDEBAR_BUTTON_LEFT_INSET = 8;
@@ -23,10 +20,11 @@ const COLLAPSED_SIDEBAR_HISTORY_NAV_RESERVED_WIDTH =
 const MACOS_TRAFFIC_LIGHTS_RESERVED_WIDTH = 80;
 /**
  * A detached station window has no sidebar and no collapsed-sidebar group:
- * its top bar only clears the overlay traffic lights (x=20 + three buttons),
- * matching `MACOS_TRAFFIC_LIGHTS_INSET_PX` in the detached session window.
+ * its top bar only clears the overlay traffic lights, like the detached
+ * session window.
  */
-const STATION_WINDOW_MACOS_LEADING_INSET = 84;
+const STATION_WINDOW_MACOS_LEADING_INSET =
+  WINDOW_CHROME_TOKENS.macTrafficLightsLeadingInset;
 const STATION_WINDOW_MACOS_FULLSCREEN_LEADING_INSET = 12;
 /**
  * Native full screen hides the traffic lights, but the group reads better a
@@ -34,11 +32,11 @@ const STATION_WINDOW_MACOS_FULLSCREEN_LEADING_INSET = 12;
  */
 const MACOS_FULLSCREEN_EXTRA_LEFT_INSET = 8;
 /**
- * Vertical center of the 36px title-bar row every host places its chrome in
- * (8px top breathing room + half the row). The pinned macOS group and each
- * host's own collapsed toggle share it so nothing shifts between states.
+ * The pinned macOS group and each host's own collapsed toggle share the
+ * title-bar center so nothing shifts between states.
  */
-export const COLLAPSED_SIDEBAR_CHROME_CENTER_TOP = 26;
+export const COLLAPSED_SIDEBAR_CHROME_CENTER_TOP =
+  WINDOW_CHROME_TOKENS.titleBarCenterTop;
 
 export interface CollapsedSidebarChromeOptions {
   /**
@@ -113,22 +111,19 @@ export function useCollapsedSidebarButtonLeft(): number {
 /**
  * Whether a workstation top bar must pad its leading edge. In the main
  * window: the sidebar is collapsed and the workstation touches the window's
- * left edge. In a detached station window: whenever the macOS traffic lights
- * overlay the bar (the sidebar / chat atoms describe the main window's
- * layout and are meaningless there). `CollapsedSidebarButton` renders
- * nothing in a station window, so the offset only ever clears chrome.
+ * left edge, as `AppLayout` resolves it (`WorkbenchLeadingEdgeContext`). In a
+ * detached station window: whenever the macOS traffic lights overlay the bar
+ * (the sidebar / chat atoms describe the main window's layout and are
+ * meaningless there). `CollapsedSidebarButton` renders nothing in a station
+ * window, so the offset only ever clears chrome.
  */
 export function useShouldOffsetWorkStationTopBar(): boolean {
   const sidebarCollapsed = useAtomValue(sidebarCollapsedAtom);
-  const chatPanelMaximized = useAtomValue(chatPanelMaximizedAtom);
-  const chatWidth = useAtomValue(chatWidthAtom);
-  const chatPanelPosition = useAtomValue(chatPanelPositionAtom);
+  const touchesLeadingEdge = useWorkbenchTouchesLeadingEdge();
   const fullscreen = useAtomValue(windowFullscreenAtom);
   if (isStationWindow())
     return getStationWindowLeadingInset({ fullscreen }) > 0;
-  const chatOccupiesLeftEdge = chatWidth > 0 && chatPanelPosition === "left";
-
-  return sidebarCollapsed && !chatPanelMaximized && !chatOccupiesLeftEdge;
+  return sidebarCollapsed && touchesLeadingEdge;
 }
 
 export function useShouldOffsetChatPanelHeader(options: {
@@ -141,8 +136,4 @@ export function useShouldOffsetChatPanelHeader(options: {
   if (options.useExternalWidth) return true;
 
   return options.position === "left";
-}
-
-export function useShouldOffsetMainAppHeader(): boolean {
-  return useAtomValue(sidebarCollapsedAtom);
 }

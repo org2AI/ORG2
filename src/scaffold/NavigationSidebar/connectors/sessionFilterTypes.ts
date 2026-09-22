@@ -6,8 +6,6 @@ export interface SessionFilterButtonProps {
   groupByMode: string;
   groupVisibleCount: SessionGroupVisibleCount;
   includeExternal: boolean;
-  groupByModes?: readonly string[];
-  getGroupByLabel?: (mode: string) => string;
   onSelect: (mode: string) => void;
   onSelectGroupVisibleCount: (count: SessionGroupVisibleCount) => void;
   onToggleIncludeExternal: (includeExternal: boolean) => void;

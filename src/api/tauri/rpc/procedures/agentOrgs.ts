@@ -141,6 +141,16 @@ const connections = {
     )
     .output(z.array(z.string()))
     .build(),
+  openClient: defineProcedure("harness_connection_open_client")
+    .input(
+      z.object({
+        agentName: z.literal("claude_code"),
+        keyId: z.string(),
+        model: z.string(),
+      })
+    )
+    .output(z.null())
+    .build(),
   status: defineProcedure("harness_connection_status")
     .input(schemas.agentOrgs.HarnessConnectionInput)
     .output(schemas.agentOrgs.HarnessConnectionViewSchema)

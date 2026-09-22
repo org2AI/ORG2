@@ -19,20 +19,6 @@ export const ORCHESTRATOR_PHASE = {
 export type OrchestratorPhase =
   (typeof ORCHESTRATOR_PHASE)[keyof typeof ORCHESTRATOR_PHASE];
 
-export const TERMINAL_PHASES: ReadonlySet<OrchestratorPhase> = new Set([
-  ORCHESTRATOR_PHASE.Idle,
-  ORCHESTRATOR_PHASE.Completed,
-  ORCHESTRATOR_PHASE.Failed,
-  ORCHESTRATOR_PHASE.AwaitingUser,
-]);
-
-export const ACTIVE_PHASES: ReadonlySet<OrchestratorPhase> = new Set([
-  ORCHESTRATOR_PHASE.Coding,
-  ORCHESTRATOR_PHASE.Sde,
-  ORCHESTRATOR_PHASE.Review,
-  ORCHESTRATOR_PHASE.FollowUp,
-]);
-
 export const AGENT_ROLE = {
   Coding: "coding",
   Sde: "sde",
@@ -53,8 +39,6 @@ export function toAgentRole(role: string | null | undefined): AgentRole | null {
   }
   return null;
 }
-
-export const PENDING_SESSION_ID = "pending";
 
 /**
  * Default OrchestratorConfig — single source of truth.

@@ -11,10 +11,13 @@
  * `src-tauri/src/agent_sessions/event_pipeline/fixtures/visibility_parity.json`
  * (see `__tests__/visibilityParity.test.ts`).
  */
+import { isRetryAuditBoundary } from "../conversations/retryAuditBoundary";
 import type { SessionEvent } from "../core/types";
 
 const INTERNAL_LIFECYCLE_ACTION_TYPES = new Set([
   "native_command_catalog",
+  "queued_retry_lineage",
+  "queued_retry_audit_boundary",
   "task_start",
   "task_completed",
   "task_failed",
@@ -41,6 +44,7 @@ export function isInternalLifecycleEvent(
  * Filters out empty thinking events and other non-chat events.
  */
 export function isVisibleInChat(event: SessionEvent): boolean {
+  if (isRetryAuditBoundary(event)) return true;
   // NOTE: thinking deltas (isDelta=true, variant="thinking") are now allowed
   // through so the chat panel can show a live streaming cursor while the
   // model reasons. Empty thinking deltas are still caught by the

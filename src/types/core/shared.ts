@@ -68,6 +68,11 @@ export interface ContextMenuItem {
   submenu?: ContextMenuItem[];
   action?: () => void;
   disabled?: boolean;
+  /**
+   * Overrides the depth-aware dismissal policy. Root actions dismiss by
+   * default; nested property updates stay open by default.
+   */
+  closeMenuOnSelect?: boolean;
 }
 
 /**

@@ -68,6 +68,8 @@ export interface InputEditorProps {
   compact?: boolean;
   /** Focus the contenteditable host after mount. */
   autoFocus?: boolean;
+  /** Extra ComposerInput classes (the expanded height). Ignored while `compact`. */
+  editorClassName?: string;
   /**
    * Non-document context rendered on the editor's first line before the
    * contenteditable surface. This intentionally stays outside the serialized
@@ -105,6 +107,7 @@ const InputEditor: React.FC<InputEditorProps> = memo(
     slashTriggerMode = "command",
     compact = false,
     autoFocus = false,
+    editorClassName,
     leadingContent,
   }) => {
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -191,7 +194,8 @@ const InputEditor: React.FC<InputEditorProps> = memo(
               : clsx(
                   INPUT_AREA_EDITOR_CLASS,
                   leadingContent &&
-                    "chat-input-editor chat-input-editor-leading"
+                    "chat-input-editor chat-input-editor-leading",
+                  editorClassName
                 )
           }
           minHeight={compact ? 0 : INPUT_AREA_EDITOR_HEIGHT.min}

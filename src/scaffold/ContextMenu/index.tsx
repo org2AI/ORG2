@@ -323,7 +323,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                   <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                 )}
                 <div className={DROPDOWN_CLASSES.sectionLabel}>
-                  {t("creator.slashMenu.mode", { defaultValue: "Mode" })}
+                  {t("creator.slashMenu.mode")}
                 </div>
                 {modeEntries.map((entry) => {
                   const isCurrent = entry.mode.id === currentMode;
@@ -414,9 +414,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                   <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                 )}
                 <div className={DROPDOWN_CLASSES.sectionLabel}>
-                  {t("creator.slashMenu.commands", {
-                    defaultValue: "Commands",
-                  })}
+                  {t("creator.slashMenu.commands")}
                 </div>
                 {contextEntries.map((entry) => (
                   <div key={entry.item.id} data-context-menu-flat>
@@ -445,9 +443,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                   <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                 )}
                 <div className={DROPDOWN_CLASSES.sectionLabel}>
-                  {t("creator.contextMenu.filesAndFolders", {
-                    defaultValue: "Files & Folders",
-                  })}
+                  {t("creator.contextMenu.filesAndFolders")}
                 </div>
                 {searchResults.map((item, index) => (
                   <div

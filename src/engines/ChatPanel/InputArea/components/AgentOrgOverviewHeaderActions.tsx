@@ -47,7 +47,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
     <div className="flex items-center gap-0.5">
       {canNavigateToCoordinator && (
         <Button
-          htmlType="button"
           variant="tertiary"
           size="mini"
           iconOnly
@@ -67,8 +66,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
       )}
       {isRunning && (
         <Button
-          htmlType="button"
-          variant="secondary"
           size="mini"
           iconOnly
           disabled={isTogglingPause}
@@ -88,7 +85,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
       )}
       {isPaused && (
         <Button
-          htmlType="button"
           variant="tertiary"
           size="mini"
           iconOnly
@@ -109,17 +105,12 @@ const AgentOrgOverviewHeaderActions: React.FC<
       )}
       {canArchive && (
         <Button
-          htmlType="button"
           variant="tertiary"
           size="mini"
           iconOnly
           disabled={isArchiving || isTogglingPause}
-          aria-label={t("planner.agentOrgOverview.archiveRun", {
-            defaultValue: "Archive Team",
-          })}
-          title={t("planner.agentOrgOverview.archiveRun", {
-            defaultValue: "Archive Team",
-          })}
+          aria-label={t("planner.agentOrgOverview.archiveRun")}
+          title={t("planner.agentOrgOverview.archiveRun")}
           onClick={() => void onArchiveRun()}
           data-testid="agent-org-overview-archive-button"
           icon={
@@ -133,7 +124,6 @@ const AgentOrgOverviewHeaderActions: React.FC<
         />
       )}
       <Button
-        htmlType="button"
         variant="tertiary"
         size="mini"
         iconOnly

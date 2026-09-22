@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   DetailPanelContainer,
   ScrollTrailTarget,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
 
 import WorkItemContentStack from "../WorkItemContentStack";
 import {

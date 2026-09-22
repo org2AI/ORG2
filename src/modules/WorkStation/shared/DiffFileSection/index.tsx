@@ -2,7 +2,7 @@ import React, { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import Message from "@src/components/Message";
-import { FileHeader } from "@src/modules/shared/components/FileHeader";
+import { FileHeader } from "@src/features/FileHeader";
 import { copyText } from "@src/util/data/clipboard";
 import { isBinaryByExtension } from "@src/util/file/binaryDetection";
 import {
@@ -40,6 +40,7 @@ const DiffFileSection: React.FC<DiffFileSectionProps> = ({
   file,
   reviewSearch,
   viewMode,
+  wordWrap,
   defaultExpanded = true,
   expansionSignal = 0,
   repoPath,
@@ -158,6 +159,7 @@ const DiffFileSection: React.FC<DiffFileSectionProps> = ({
       resolvedDiff={resolvedDiff}
       reviewSearch={reviewSearch}
       viewMode={viewMode}
+      wordWrap={wordWrap}
       noBottomPadding={noBottomPadding}
       t={t}
     />

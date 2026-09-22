@@ -12,21 +12,18 @@ import React, {
   useState,
 } from "react";
 
-import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
-  type IconSvgElement,
-} from "@src/icons";
+import { type IconSvgElement } from "@src/icons";
 
 import SidebarBase from "../SidebarBase";
 import { SidebarList } from "../blocks";
-import NavigationMenu from "../components/NavigationMenu";
-import { NavigationMenuRowActionButton } from "../components/NavigationMenu/NavigationMenu/RowActionButton";
 import type { NavigationMenuItemClickHandler } from "../components/NavigationMenu/NavigationMenu/types";
 import type {
   NavigationMenuItem,
   NavigationMenuRowAction,
 } from "../components/NavigationMenu/config";
+import NavigationSidebarSection, {
+  type NavigationMenuSection,
+} from "../components/NavigationSidebarSection";
 
 // ============================================
 // Types
@@ -37,7 +34,6 @@ export interface NavigationSidebarProps {
   pinnedMenuItems?: NavigationMenuItem[];
   selectedKey?: string;
   onMenuItemClick?: NavigationMenuItemClickHandler;
-  onSubmenuOpenChange?: (key: string, open: boolean) => void;
   onMenuItemContextMenu?: (
     e: React.MouseEvent,
     key: string,
@@ -88,15 +84,6 @@ export interface NavigationSidebarProps {
   };
 }
 
-interface NavigationMenuSection {
-  id: string;
-  title?: string;
-  /** Leading glyph beside the title (e.g. the pinned-workspace pin). */
-  titleIcon?: ReactNode;
-  items: NavigationMenuItem[];
-  headerActions?: readonly NavigationMenuRowAction[];
-}
-
 function groupMenuItemsIntoSections(
   items: readonly NavigationMenuItem[]
 ): NavigationMenuSection[] {
@@ -144,21 +131,6 @@ function groupMenuItemsIntoSections(
   return result;
 }
 
-function NavigationSidebarSectionHeader({
-  title,
-  titleIcon,
-}: {
-  title: string;
-  titleIcon?: ReactNode;
-}) {
-  return (
-    <div className="mb-1 flex items-center gap-1.5 px-2 text-[11px] font-medium tracking-wider text-text-2 uppercase">
-      {titleIcon}
-      <span className="min-w-0 truncate">{title}</span>
-    </div>
-  );
-}
-
 // ============================================
 // Component
 // ============================================
@@ -169,7 +141,6 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = React.memo(
     pinnedMenuItems = [],
     selectedKey,
     onMenuItemClick,
-    onSubmenuOpenChange,
     onMenuItemContextMenu,
     renderMenuItemWrapper,
     defaultOpenKeys = [],
@@ -298,75 +269,22 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = React.memo(
 
         {pinnedSections.length > 0 && (
           <div className="flex flex-col gap-2 px-3 pt-1">
-            {pinnedSections.map((section) => {
-              const isSectionCollapsed =
-                collapsibleSections && collapsedSections.has(section.id);
-
-              return (
-                <div key={section.id} data-sidebar-section-id={section.id}>
-                  {section.title &&
-                    (collapsibleSections ? (
-                      <div
-                        data-sidebar-section-toggle={section.id}
-                        role="button"
-                        tabIndex={0}
-                        aria-expanded={!isSectionCollapsed}
-                        className={`${isSectionCollapsed ? "" : "mb-px"} group/section-title flex h-7 cursor-pointer items-center gap-2 pl-2`}
-                        onClick={() => {
-                          toggleSection(section.id);
-                        }}
-                        onKeyDown={(event) => {
-                          if (
-                            event.target !== event.currentTarget ||
-                            (event.key !== "Enter" && event.key !== " ")
-                          ) {
-                            return;
-                          }
-                          event.preventDefault();
-                          toggleSection(section.id);
-                        }}
-                      >
-                        {section.titleIcon}
-                        <span className="min-w-0 truncate text-[11px] font-medium tracking-wider text-text-2 uppercase">
-                          {section.title}
-                        </span>
-                        <span
-                          className={`${isSectionCollapsed ? "inline-flex" : "hidden"} -ml-1 shrink-0 items-center leading-none text-text-2 group-hover/section-title:inline-flex`}
-                        >
-                          <NavigationMenuRowActionButton
-                            icon={
-                              isSectionCollapsed
-                                ? ArrowRight01Icon
-                                : ArrowDown01Icon
-                            }
-                            label={section.title}
-                            onClick={() => {
-                              toggleSection(section.id);
-                            }}
-                          />
-                        </span>
-                      </div>
-                    ) : (
-                      <NavigationSidebarSectionHeader
-                        title={section.title}
-                        titleIcon={section.titleIcon}
-                      />
-                    ))}
-                  {!isSectionCollapsed && (
-                    <NavigationMenu
-                      items={section.items}
-                      selectedKeys={selectedKeys}
-                      collapsed={false}
-                      defaultOpenKeys={resolvedDefaultOpenKeys}
-                      onMenuItemClick={handleMenuItemClick}
-                      onSubmenuOpenChange={onSubmenuOpenChange}
-                      onMenuItemContextMenu={handleMenuItemContextMenu}
-                      renderMenuItemWrapper={renderMenuItemWrapper}
-                    />
-                  )}
-                </div>
-              );
-            })}
+            {pinnedSections.map((section) => (
+              <NavigationSidebarSection
+                key={section.id}
+                section={section}
+                collapsibleSections={Boolean(collapsibleSections)}
+                collapsed={Boolean(
+                  collapsibleSections && collapsedSections.has(section.id)
+                )}
+                onToggle={toggleSection}
+                selectedKeys={selectedKeys}
+                defaultOpenKeys={resolvedDefaultOpenKeys}
+                onMenuItemClick={handleMenuItemClick}
+                onMenuItemContextMenu={handleMenuItemContextMenu}
+                renderMenuItemWrapper={renderMenuItemWrapper}
+              />
+            ))}
           </div>
         )}
 
@@ -377,104 +295,22 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = React.memo(
           topPadding={listTopPadding}
           scrollContainerRef={menuRevealRootRef}
         >
-          {sections.map((section) => {
-            const isSectionCollapsed =
-              collapsibleSections && collapsedSections.has(section.id);
-
-            return (
-              <div key={section.id} data-sidebar-section-id={section.id}>
-                {section.title &&
-                  (collapsibleSections ? (
-                    <div
-                      data-sidebar-section-toggle={section.id}
-                      role="button"
-                      tabIndex={0}
-                      aria-expanded={!isSectionCollapsed}
-                      className={`${isSectionCollapsed ? "" : "mb-px"} group/section-title flex h-7 cursor-pointer items-center gap-1 pl-2`}
-                      onClick={() => {
-                        toggleSection(section.id);
-                      }}
-                      onKeyDown={(event) => {
-                        if (
-                          event.target !== event.currentTarget ||
-                          (event.key !== "Enter" && event.key !== " ")
-                        ) {
-                          return;
-                        }
-                        event.preventDefault();
-                        toggleSection(section.id);
-                      }}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        {section.titleIcon}
-                        <span className="min-w-0 truncate text-[11px] font-medium tracking-wider text-text-2 uppercase">
-                          {section.title}
-                        </span>
-                        <span
-                          className={`${isSectionCollapsed ? "inline-flex" : "hidden"} -ml-1 shrink-0 items-center leading-none text-text-2 group-hover/section-title:inline-flex`}
-                        >
-                          <NavigationMenuRowActionButton
-                            icon={
-                              isSectionCollapsed
-                                ? ArrowRight01Icon
-                                : ArrowDown01Icon
-                            }
-                            label={section.title ?? section.id}
-                            onClick={() => {
-                              toggleSection(section.id);
-                            }}
-                          />
-                        </span>
-                      </span>
-                      {section.headerActions && (
-                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 leading-none text-text-2">
-                          {section.headerActions.map((action) => (
-                            <span
-                              key={action.label}
-                              className={
-                                section.headerActions?.some(
-                                  (headerAction) => headerAction.active
-                                )
-                                  ? "inline-flex"
-                                  : action.showOnSidebarHover
-                                    ? "hidden group-hover/sidebar:inline-flex group-focus-visible/section-title:inline-flex group-has-[:focus-visible]/section-title:inline-flex"
-                                    : "hidden group-hover/section-title:inline-flex group-focus-visible/section-title:inline-flex group-has-[:focus-visible]/section-title:inline-flex"
-                              }
-                            >
-                              <NavigationMenuRowActionButton
-                                icon={action.icon}
-                                iconClassName={action.iconClassName}
-                                label={action.label}
-                                active={action.active}
-                                dataTestId={action.dataTestId}
-                                onClick={action.onClick}
-                              />
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <NavigationSidebarSectionHeader
-                      title={section.title}
-                      titleIcon={section.titleIcon}
-                    />
-                  ))}
-                {!isSectionCollapsed && (
-                  <NavigationMenu
-                    items={section.items}
-                    selectedKeys={selectedKeys}
-                    collapsed={false}
-                    defaultOpenKeys={resolvedDefaultOpenKeys}
-                    onMenuItemClick={handleMenuItemClick}
-                    onSubmenuOpenChange={onSubmenuOpenChange}
-                    onMenuItemContextMenu={handleMenuItemContextMenu}
-                    renderMenuItemWrapper={renderMenuItemWrapper}
-                  />
-                )}
-              </div>
-            );
-          })}
+          {sections.map((section) => (
+            <NavigationSidebarSection
+              key={section.id}
+              section={section}
+              collapsibleSections={Boolean(collapsibleSections)}
+              collapsed={Boolean(
+                collapsibleSections && collapsedSections.has(section.id)
+              )}
+              onToggle={toggleSection}
+              selectedKeys={selectedKeys}
+              defaultOpenKeys={resolvedDefaultOpenKeys}
+              onMenuItemClick={handleMenuItemClick}
+              onMenuItemContextMenu={handleMenuItemContextMenu}
+              renderMenuItemWrapper={renderMenuItemWrapper}
+            />
+          ))}
         </SidebarList>
 
         {/* Bottom Content */}

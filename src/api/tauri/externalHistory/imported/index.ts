@@ -272,19 +272,6 @@ export function getImportedHistorySourceBySessionId(
 }
 
 /**
- * The native-CLI continuation capability of the source owning `sessionId`,
- * or `undefined` when the source is a pure read-only replay (no CLI can
- * reopen its sessions). Sync and prefix-driven so render gates (composer,
- * continue button) don't need the backend plan call; the backend stays
- * authoritative per session.
- */
-export function getImportedHistoryCliResume(
-  sessionId: string | null | undefined
-) {
-  return getImportedHistorySourceBySessionId(sessionId)?.cliResume;
-}
-
-/**
  * The native-app deep-link capability of the source owning `sessionId`, or
  * `undefined` when no verified per-session app link exists for it. Sync and
  * prefix-driven for the same reason as {@link getImportedHistoryCliResume}:

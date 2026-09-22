@@ -31,7 +31,7 @@ FloatingBarLayer.displayName = "FloatingBar.Layer";
 
 function FloatingBarPill({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pointer-events-auto box-border flex h-8 max-h-8 min-h-8 shrink-0 items-center gap-2 rounded-full border border-solid border-border-2 bg-fill-2 pr-1.5 pl-4 shadow-[0_2px_12px_rgba(0,0,0,0.14)]">
+    <div className="pointer-events-auto box-border flex h-10 max-h-10 min-h-10 shrink-0 items-center gap-2 rounded-full border border-solid border-border-2 bg-fill-2 pr-1.5 pl-4 shadow-[0_2px_12px_rgba(0,0,0,0.14)]">
       {children}
     </div>
   );
@@ -62,15 +62,13 @@ const FloatingBarUnsaved: React.FC<UnsavedChangesBarProps> = memo(
         </span>
         {onDiscard && (
           <Button
-            size="mini"
-            htmlType="button"
+            shape="circle"
             variant="tertiary"
             onClick={onDiscard}
             disabled={saving}
             className="shrink-0 text-text-2 hover:text-text-1"
             title={t("actions.discard")}
             aria-label={t("actions.discard")}
-            appearance="soft"
             iconOnly
             icon={
               <HugeiconsIcon
@@ -83,15 +81,13 @@ const FloatingBarUnsaved: React.FC<UnsavedChangesBarProps> = memo(
           />
         )}
         <Button
-          size="mini"
-          htmlType="button"
-          variant="tertiary"
+          shape="circle"
+          variant="primary"
           onClick={onSave}
           disabled={saving}
-          className="shrink-0 bg-primary-6 text-white hover:bg-primary-7!"
+          className="shrink-0"
           title={saving ? t("status.saving") : t("actions.save")}
           aria-label={saving ? t("status.saving") : t("actions.save")}
-          appearance="soft"
           iconOnly
           icon={
             saving ? (

@@ -6,6 +6,7 @@ import AnyIcon from "@src/components/AnyIcon";
 import Button from "@src/components/Button";
 import HoverCardBase from "@src/components/HoverCard/HoverCardBase";
 import { createLogger } from "@src/hooks/logger";
+import { useSettingValue } from "@src/hooks/settings/useSettings";
 import { FolderClosedIcon, FolderOpenIcon } from "@src/icons";
 
 import { ICONS } from "../config";
@@ -35,8 +36,6 @@ function DetailLine({
       {canOpen ? (
         <Button
           layout="custom"
-          appearance="custom"
-          htmlType="button"
           className="group/path flex min-w-0 cursor-pointer items-center gap-1.5 text-left underline-offset-2 hover:underline focus-visible:underline focus-visible:ring-1 focus-visible:ring-primary-6 focus-visible:outline-none"
           onClick={(event) => {
             event.stopPropagation();
@@ -62,7 +61,11 @@ function DetailLine({
 /** Shared across palettes. Details use already-loaded row metadata only. */
 export function SpotlightDetailPane({ item, children }: Props) {
   const { t } = useTranslation();
+  // One switch owns every palette's hover card, so turning it off in the
+  // Spotlight menu leaves the rows themselves untouched.
+  const detailCardEnabled = useSettingValue("general.spotlightDetailCard");
   const data = item.data;
+  if (!detailCardEnabled) return children;
   if (data?.isHeader || data?.disabled) return children;
   const isBranch = item.type === "branch" || data?.isRef === true;
   if (isBranch) return children;

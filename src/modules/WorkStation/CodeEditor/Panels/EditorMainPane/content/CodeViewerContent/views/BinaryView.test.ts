@@ -18,7 +18,6 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("@src/util/platform/tauri", () => ({ isTauriDesktop: () => true }));
 vi.mock("@src/modules/WorkStation/shared", () => ({
-  TabBarBottomPanelToggle: () => null,
   FileHeader: ({
     onRevealInFileManager,
     relativePathToCopy,

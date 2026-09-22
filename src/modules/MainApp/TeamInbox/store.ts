@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 
-import type { SessionReferenceOpen } from "@src/shared/dnd/sessionTabDrag";
+import type { SessionReferenceOpen } from "@src/util/dnd/sessionTabDrag";
 
 import type {
   TeamInboxFilter,

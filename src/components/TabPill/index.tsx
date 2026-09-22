@@ -208,7 +208,6 @@ const TabPill: React.FC<TabPillProps> = ({
       return (
         <Button
           layout="custom"
-          appearance="custom"
           key={tab.key}
           ref={hasDropdown ? dropdownTriggerRef : undefined}
           data-active={isActive ? "true" : "false"}
@@ -266,7 +265,6 @@ const TabPill: React.FC<TabPillProps> = ({
     return (
       <Button
         layout="custom"
-        appearance="custom"
         key={tab.key}
         ref={hasDropdown ? dropdownTriggerRef : undefined}
         data-active={isActive ? "true" : "false"}
@@ -286,7 +284,7 @@ const TabPill: React.FC<TabPillProps> = ({
             : "cursor-pointer",
           "whitespace-nowrap",
           !fillWidth && "shrink-0",
-          buttonStyle ? "rounded-lg" : "rounded-[100px]",
+          buttonStyle ? "rounded-md" : "rounded-[100px]",
           size === "mini"
             ? "text-[12px]"
             : size === "small"
@@ -323,7 +321,7 @@ const TabPill: React.FC<TabPillProps> = ({
             ? isActive || isDropdownOpen
               ? `bg-fill-2 font-medium ${
                   isActive ? selectedActiveTextClass : defaultActiveTextClass
-                } hover:bg-fill-3 ${
+                } hover:bg-fill-2 ${
                   isActive && activeTone === "neutral"
                     ? "hover:text-text-1"
                     : "hover:text-primary-5"

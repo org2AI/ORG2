@@ -12,6 +12,7 @@
  */
 import { useAtomValue, useSetAtom } from "jotai";
 import { type RefObject, useEffect } from "react";
+import { flushSync } from "react-dom";
 
 import type { ComposerInputRef } from "@src/components/ComposerInput";
 import { capPillText, storePillText } from "@src/config/pillTokens";
@@ -44,69 +45,82 @@ export function useAddToAgentInsertion(
         return;
       }
 
-      if (stableRequest.type === "lines") {
-        editor.insertFileReference({
-          filePath: stableRequest.filePath,
-          fileName: stableRequest.fileName,
-          lineStart: stableRequest.lineStart,
-          lineEnd: stableRequest.lineEnd,
-        });
-      } else if (stableRequest.type === "terminal") {
-        const capped = capPillText(stableRequest.text);
-        const pillPath = `terminal://selection/${Date.now()}`;
-        let label: string;
-        if (stableRequest.displayName) {
-          label = stableRequest.displayName;
-        } else if (
-          stableRequest.lineStart !== undefined &&
-          stableRequest.lineEnd !== undefined
-        ) {
-          label =
-            stableRequest.lineStart === stableRequest.lineEnd
-              ? `Terminal (${stableRequest.lineStart})`
-              : `Terminal (${stableRequest.lineStart}-${stableRequest.lineEnd})`;
+      // This runs from the insertion timer, outside React lifecycle callbacks.
+      // Commit the pill portal and its trailing text as one edit before yielding;
+      // an empty first-pill span must not escape into a painted frame.
+      flushSync(() => {
+        if (stableRequest.type === "lines") {
+          editor.insertFileReference({
+            filePath: stableRequest.filePath,
+            fileName: stableRequest.fileName,
+            lineStart: stableRequest.lineStart,
+            lineEnd: stableRequest.lineEnd,
+          });
+        } else if (stableRequest.type === "file-selection") {
+          const pillPath = `paste://${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          storePillText(pillPath, capPillText(stableRequest.text));
+          editor.insertFilePill(
+            pillPath,
+            false,
+            "paste",
+            stableRequest.fileName
+          );
+        } else if (stableRequest.type === "terminal") {
+          const capped = capPillText(stableRequest.text);
+          const pillPath = `terminal://selection/${Date.now()}`;
+          let label: string;
+          if (stableRequest.displayName) {
+            label = stableRequest.displayName;
+          } else if (
+            stableRequest.lineStart !== undefined &&
+            stableRequest.lineEnd !== undefined
+          ) {
+            label =
+              stableRequest.lineStart === stableRequest.lineEnd
+                ? `Terminal (${stableRequest.lineStart})`
+                : `Terminal (${stableRequest.lineStart}-${stableRequest.lineEnd})`;
+          } else {
+            const lineCount = capped.trimEnd().split("\n").length;
+            label = lineCount > 1 ? `Terminal (1-${lineCount})` : "Terminal";
+          }
+          storePillText(pillPath, capped);
+          editor.insertFilePill(pillPath, false, "terminal", label);
+        } else if (stableRequest.type === "dom-element") {
+          const pillPath = `dom-element://selection/${Date.now()}`;
+          storePillText(pillPath, capPillText(stableRequest.text));
+          editor.insertFilePill(
+            pillPath,
+            false,
+            "dom-element",
+            stableRequest.displayName
+          );
+        } else if (stableRequest.type === "dom-component") {
+          const pillPath = `paste://${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}`;
+          storePillText(pillPath, capPillText(stableRequest.jsonText));
+          editor.insertFilePill(
+            pillPath,
+            false,
+            "dom-component",
+            stableRequest.fileName
+          );
+        } else if (stableRequest.type === "issue") {
+          const pillPath = `issue://${stableRequest.issueNumber}`;
+          const label = `#${stableRequest.issueNumber} ${stableRequest.issueTitle}`;
+          storePillText(pillPath, capPillText(JSON.stringify(stableRequest)));
+          editor.insertFilePill(pillPath, false, "issue", label);
+        } else if (stableRequest.type === "pr") {
+          const pillPath = `pr://${stableRequest.prNumber}`;
+          const label = `PR #${stableRequest.prNumber} ${stableRequest.prTitle}`;
+          storePillText(pillPath, capPillText(JSON.stringify(stableRequest)));
+          editor.insertFilePill(pillPath, false, "pr", label);
         } else {
-          const lineCount = capped.trimEnd().split("\n").length;
-          label = lineCount > 1 ? `Terminal (1-${lineCount})` : "Terminal";
+          editor.insertFilePill(stableRequest.filePath, false, "file");
         }
-        storePillText(pillPath, capped);
-        editor.insertFilePill(pillPath, false, "terminal", label);
-      } else if (stableRequest.type === "dom-element") {
-        const pillPath = `dom-element://selection/${Date.now()}`;
-        storePillText(pillPath, capPillText(stableRequest.text));
-        editor.insertFilePill(
-          pillPath,
-          false,
-          "dom-element",
-          stableRequest.displayName
-        );
-      } else if (stableRequest.type === "dom-component") {
-        const pillPath = `paste://${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2, 8)}`;
-        storePillText(pillPath, capPillText(stableRequest.jsonText));
-        editor.insertFilePill(
-          pillPath,
-          false,
-          "dom-component",
-          stableRequest.fileName
-        );
-      } else if (stableRequest.type === "issue") {
-        const pillPath = `issue://${stableRequest.issueNumber}`;
-        const label = `#${stableRequest.issueNumber} ${stableRequest.issueTitle}`;
-        storePillText(pillPath, capPillText(JSON.stringify(stableRequest)));
-        editor.insertFilePill(pillPath, false, "issue", label);
-      } else if (stableRequest.type === "pr") {
-        const pillPath = `pr://${stableRequest.prNumber}`;
-        const label = `PR #${stableRequest.prNumber} ${stableRequest.prTitle}`;
-        storePillText(pillPath, capPillText(JSON.stringify(stableRequest)));
-        editor.insertFilePill(pillPath, false, "pr", label);
-      } else {
-        editor.insertFilePill(stableRequest.filePath, false, "file");
-      }
 
-      editor.focus();
-      clearRequest(null);
+        clearRequest(null);
+      });
     }
 
     scheduleInsert(0);

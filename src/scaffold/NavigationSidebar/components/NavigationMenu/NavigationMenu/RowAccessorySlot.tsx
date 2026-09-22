@@ -43,12 +43,9 @@ export function NavigationMenuRowAccessorySlot({
   const revealedHoverClasses = parentHoverGroup
     ? "group-hover/parent:pointer-events-auto group-focus-within/parent:pointer-events-auto group-hover/parent:max-w-44 group-focus-within/parent:max-w-44 group-hover/parent:opacity-100 group-focus-within/parent:opacity-100"
     : "group-hover:pointer-events-auto group-focus-within:pointer-events-auto group-hover:max-w-44 group-focus-within:max-w-44 group-hover:opacity-100 group-focus-within:opacity-100";
-  // The action group is nudged 2px past the slot's right edge so its glyphs sit
-  // as close to the row edge as the at-rest status dot (a 20px hit target pads
-  // its 14px icon by 3px). That nudge has to live on the CLIPPING layer, not on
-  // a child of it: a negative margin inside an `overflow-hidden` box puts those
-  // 2px outside the clip rect, which sheared the right edge off the last button.
-  const actionNudgeClass = actionContent ? "-mr-0.5" : "";
+  // A 20px action in the 28px row has 4px of visible vertical inset. Pull the
+  // action layer 4px into the row's px-2 padding so its right inset matches.
+  const actionInsetClass = actionContent ? "-mr-1" : "";
   const hasStacked = Boolean(
     persistentContent ||
     hoverContent ||
@@ -79,7 +76,7 @@ export function NavigationMenuRowAccessorySlot({
       )}
       {(hoverContent || actionContent) && (
         <span
-          className={`pointer-events-none col-start-1 row-start-1 inline-flex max-w-0 items-center justify-end gap-1.5 justify-self-end overflow-hidden whitespace-nowrap opacity-0 ${actionNudgeClass} ${revealedHoverClasses}`}
+          className={`pointer-events-none col-start-1 row-start-1 inline-flex max-w-0 items-center justify-end gap-1.5 justify-self-end overflow-hidden whitespace-nowrap opacity-0 ${actionInsetClass} ${revealedHoverClasses}`}
         >
           {hoverContent && (
             <span className="inline-flex max-w-16 items-center justify-end overflow-hidden">
@@ -87,7 +84,7 @@ export function NavigationMenuRowAccessorySlot({
             </span>
           )}
           {actionContent && (
-            <span className="inline-flex items-center justify-end gap-1">
+            <span className="inline-flex items-center justify-end gap-px">
               {actionContent}
             </span>
           )}

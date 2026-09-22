@@ -5,18 +5,18 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Select from "@src/components/Select";
 import Textarea from "@src/components/Textarea";
-import { createLogger } from "@src/hooks/logger";
-import TeamMemberTable, {
-  type TeamMember,
-} from "@src/modules/MainApp/AgentOrgs/components/TeamMemberTable";
-import type { PlanApprovalPolicy } from "@src/modules/MainApp/AgentOrgs/types";
 import {
   SECTION_DESCRIPTION_CLASSES,
   SECTION_LABEL_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { SECTION_CONTROL_STYLE } from "@src/modules/shared/layouts/SectionLayout/tokens";
+} from "@src/components/layout/Section";
+import { SECTION_CONTROL_STYLE } from "@src/components/layout/Section/tokens";
+import { createLogger } from "@src/hooks/logger";
+import TeamMemberTable, {
+  type TeamMember,
+} from "@src/modules/MainApp/AgentOrgs/components/TeamMemberTable";
+import type { PlanApprovalPolicy } from "@src/modules/MainApp/AgentOrgs/types";
 
 import MemberCommunicationPanel from "./MemberCommunicationPanel";
 import PlanApprovalPolicySelector from "./PlanApprovalPolicySelector";
@@ -257,7 +257,6 @@ const AgentTeamFormSections: React.FC<AgentTeamFormSectionsProps> = ({
             description={t("agentOrgs.orgWizard.deleteOrgDesc")}
           >
             <Button
-              variant="secondary"
               size="small"
               onClick={() => {
                 Promise.resolve(onDelete()).catch((error: unknown) => {

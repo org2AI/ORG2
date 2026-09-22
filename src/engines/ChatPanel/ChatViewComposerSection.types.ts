@@ -4,7 +4,7 @@ import type { SessionFollowUpSuggestion } from "@src/api/services/sessionFollowU
 
 import type { ScrollNavState } from "./ChatHistory";
 import type { InlineSection } from "./InputArea/components/CollapsedInlineRow";
-import type { FileChangesResult } from "./InputArea/components/compactFileChangesHelpers";
+import type { FileChangeVisibleStats } from "./InputArea/components/CompactFileChanges";
 import type { QueueEditInputAreaProps } from "./InputArea/hooks/useQueueEditMode";
 import type {
   CustomMentionOption,
@@ -47,7 +47,6 @@ export interface ChatViewComposerSectionProps {
   showMainComposer: boolean;
   composerRef: React.Ref<HTMLDivElement>;
   inputBoxRef?: React.Ref<HTMLDivElement>;
-  chatPanelPosition: "left" | "right";
   planCollapsed: boolean;
   onPlanCollapse: () => void;
   questionCollapsed: boolean;
@@ -59,19 +58,20 @@ export interface ChatViewComposerSectionProps {
   onQuestionDataChange: (hasData: boolean) => void;
   onPermissionDataChange: (hasData: boolean) => void;
   onModeSwitchDataChange: (hasData: boolean) => void;
-  queueExpanded: boolean;
   processExpanded: boolean;
   queuedMessages: import("@src/store/ui/messageQueueAtom").QueuedMessage[];
   onCancelQueuedMessage: (messageId: string) => void;
-  onClearQueuedMessages: () => void;
   onSendQueuedMessageNow: (messageId: string) => void;
   onReorderQueuedMessages: (fromIndex: number, toIndex: number) => void;
-  onToggleQueue: () => void;
   onToggleProcess: () => void;
   onProcessVisibleCountChange: (count: number) => void;
   onFilesExpand: () => void;
   filesMenu?: React.ReactNode;
-  initialFileChanges?: FileChangesResult;
+  /**
+   * Host-resolved files-pill stats (imported sessions). When set, the pill
+   * shows them directly and the orgtrack artifact tracker is not mounted.
+   */
+  resolvedFileChangeStats?: FileChangeVisibleStats;
   groupChatPendingMessage: GroupChatPendingMessageView | null;
   groupChatViewActive: boolean;
   hasAnyInlineSection: boolean;

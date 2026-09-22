@@ -36,11 +36,11 @@ export function PrReviewModal({
   return (
     <Modal
       visible={reviewModalVisible}
-      title={t("git.pr.submitReview", "Submit review")}
+      title={t("git.pr.submitReview")}
       width={640}
       bodyClassName="p-0"
-      okText={t("git.pr.submitReview", "Submit review")}
-      cancelText={t("actions.cancel", "Cancel")}
+      okText={t("git.pr.submitReview")}
+      cancelText={t("actions.cancel")}
       onCancel={closeReviewModal}
       onOk={handleReview}
       closable={!submittingReview}
@@ -53,20 +53,15 @@ export function PrReviewModal({
       cancelButtonProps={{ disabled: submittingReview }}
     >
       <div
-        className="flex flex-col gap-4 px-5 py-4"
+        className="flex flex-col gap-4 p-3"
         data-testid="pr-review-modal-body"
       >
         <p className="text-[13px] leading-5 text-text-3">
-          {t(
-            "git.pr.reviewHeadNotice",
-            "The review applies only if the displayed head commit still matches"
-          )}
+          {t("git.pr.reviewHeadNotice")}
         </p>
 
         <fieldset className="m-0 min-w-0 border-0 p-0">
-          <legend className="sr-only">
-            {t("git.pr.reviewDecision", "Review decision")}
-          </legend>
+          <legend className="sr-only">{t("git.pr.reviewDecision")}</legend>
           <div data-testid="pr-review-decision-row">
             <Radio.Group
               value={reviewDecision}
@@ -76,10 +71,10 @@ export function PrReviewModal({
               size="small"
               className="flex-wrap gap-x-5 gap-y-2"
             >
-              <Radio value="COMMENT">{t("git.pr.comment", "Comment")}</Radio>
-              <Radio value="APPROVE">{t("git.pr.approve", "Approve")}</Radio>
+              <Radio value="COMMENT">{t("git.pr.comment")}</Radio>
+              <Radio value="APPROVE">{t("git.pr.approve")}</Radio>
               <Radio value="REQUEST_CHANGES">
-                {t("git.pr.requestChanges", "Request changes")}
+                {t("git.pr.requestChanges")}
               </Radio>
             </Radio.Group>
           </div>
@@ -90,15 +85,13 @@ export function PrReviewModal({
           className="block"
           data-testid="pr-review-comment-row"
         >
-          <span className="sr-only">
-            {t("git.pr.reviewComment", "Review comment")}
-          </span>
+          <span className="sr-only">{t("git.pr.reviewComment")}</span>
           <Textarea
             id="pr-review-comment"
             data-testid="pr-review-comment"
             value={reviewBody}
             onChange={setReviewBody}
-            placeholder={t("git.pr.reviewCommentPlaceholder", "Add a comment…")}
+            placeholder={t("git.pr.reviewCommentPlaceholder")}
             autoSize={{ minRows: 4, maxRows: 8 }}
             resize="none"
             disabled={submittingReview}

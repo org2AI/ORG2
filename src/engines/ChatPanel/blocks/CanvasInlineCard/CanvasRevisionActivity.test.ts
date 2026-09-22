@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { testTranslate, useTestTranslation } from "@src/test/i18nTestTranslate";
+
 import CanvasRevisionActivity from "./CanvasRevisionActivity";
 
 const testState = vi.hoisted(() => ({
@@ -17,17 +19,8 @@ vi.mock("@src/engines/ChatPanel/blocks/useBlockLocate", () => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (
-      _key: string,
-      fallback: string,
-      values?: Record<string, string | number>
-    ) =>
-      Object.entries(values ?? {}).reduce(
-        (text, [name, value]) => text.split(`{{${name}}}`).join(String(value)),
-        fallback
-      ),
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 describe("CanvasRevisionActivity", () => {
@@ -66,9 +59,13 @@ describe("CanvasRevisionActivity", () => {
     expect(markup).toContain(
       '<span class="block min-w-0 truncate">Updated Coffee sketch</span>'
     );
-    expect(markup).toContain("2 targeted changes");
+    const targetedSummary = testTranslate(
+      "sessions:canvasApp.revisionTargetedSummary",
+      { amount: 2 }
+    );
+    expect(markup).toContain(targetedSummary);
     expect(markup).toContain(
-      '<span class="block min-w-0 truncate">2 targeted changes · same Canvas</span>'
+      `<span class="block min-w-0 truncate">${targetedSummary}</span>`
     );
     expect(markup).toContain("替换按钮文案");
     expect(markup).toContain("核对原有交互");

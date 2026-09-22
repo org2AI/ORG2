@@ -88,7 +88,6 @@ const TaskDetailHeaderActions: React.FC<TaskDetailHeaderActionsProps> = ({
               {MERGE_STRATEGY_OPTIONS.map((strategy) => (
                 <Button
                   layout="custom"
-                  appearance="custom"
                   key={strategy}
                   className={`flex w-full items-center px-3 py-1.5 text-left text-[12px] hover:bg-bg-2 ${
                     mergeStrategy === strategy

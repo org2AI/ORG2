@@ -60,7 +60,7 @@
     },
     "loadingConnections": "GitHub-Verbindungen werden geladen...",
     "noConnectionTitle": "Keine GitHub-Verbindung gefunden",
-    "noConnectionDescription": "Fügen Sie zuerst unter Integrations eine GitHub-Verbindung hinzu und kehren Sie dann hierher zurück, um GitHub Issues zu importieren.",
+    "noConnectionDescription": "Fügen Sie zuerst unter Integrations eine GitHub-Verbindung hinzu und kehren Sie dann hierher zurück, um GitHub Issues zu importieren",
     "linkedRepoHint": "Dieses Project wird auch mit dem aktuellen Workspace repo verknüpft: {{repoName}}",
     "errors": {
       "invalidRepo": "Verwenden Sie owner/repo oder eine GitHub-Repository-URL."
@@ -80,7 +80,7 @@
     "importLinearOrgs": "Linear-Arbeitsbereiche importieren",
     "gitFolderPath": "Git-Ordnerpfad (optional)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Verbinden Sie diesen Arbeitsbereich mit einem vorhandenen Git-Arbeitsbaum für die Ordnersynchronisierung.",
+    "gitFolderPathHint": "Verbinden Sie diesen Arbeitsbereich mit einem vorhandenen Git-Arbeitsbaum für die Ordnersynchronisierung",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Mit einem Git-Ordner synchronisiert",
     "pendingSync": "Synchronisierung ausstehend",
@@ -123,7 +123,7 @@
     "addTeams": "Teams hinzufügen",
     "addLabels": "Labels hinzufügen",
     "addRepos": "Repos verknüpfen",
-    "noReposHint": "Keine Repos verfügbar. Fügen Sie zuerst ein Repo zum Workspace hinzu.",
+    "noReposHint": "Keine Repos verfügbar. Fügen Sie zuerst ein Repo zum Workspace hinzu",
     "addDate": "Datum hinzufügen",
     "clearDate": "Datum löschen",
     "noStatus": "Kein Status",
@@ -358,10 +358,7 @@
       "moreProperties": "Weitere Eigenschaften"
     },
     "propertyFields": {
-      "assignee": "Zuständiger",
-      "project": "Project",
-      "milestone": "Meilenstein",
-      "dueDate": "Fälligkeitsdatum"
+      "project": "Project"
     },
     "addWorkItem": "Arbeitselement hinzufügen",
     "agentWorkflow": {
@@ -392,8 +389,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "Noch nicht verfügbar",
-      "prPendingHint": "PR wird nach Abschluss des Agent erstellt.",
-      "prNeutralHint": "Es wurde noch kein PR erstellt.",
+      "prPendingHint": "PR wird nach Abschluss des Agent erstellt",
+      "prNeutralHint": "Es wurde noch kein PR erstellt",
       "prCreatingHint": "Pull Request wird erstellt...",
       "prCreateButton": "Pull Request erstellen",
       "prCreateError": "Pull Request konnte nicht erstellt werden",
@@ -403,7 +400,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "Keine Dateiänderungen",
-      "fileDiffCleanHint": "Keine Dateiänderungen erkannt.",
+      "fileDiffCleanHint": "Keine Dateiänderungen erkannt",
       "costSummary": "Kostenübersicht",
       "totalCost": "Gesamt",
       "tokens": "Token",
@@ -413,7 +410,7 @@
     "viewWorkItems": "Work Items anzeigen",
     "fromRoutine": "From routine: {{name}}",
     "batchField": {
-      "hint": "Gilt für {{count}} ausgewählte Elemente."
+      "hint": "Gilt für {{count}} ausgewählte Elemente"
     },
     "batchStatus": {
       "title": "Status setzen"
@@ -457,7 +454,7 @@
       "save": "Aktuelle Ansicht speichern",
       "saveTitle": "Ansicht speichern",
       "namePlaceholder": "Name der Ansicht",
-      "saveHint": "Speichert die aktuellen Filter; das Layout wird beim ersten Öffnen übernommen.",
+      "saveHint": "Speichert die aktuellen Filter; das Layout wird beim ersten Öffnen übernommen",
       "delete": "Ansicht löschen"
     },
     "table": {
@@ -475,14 +472,14 @@
     },
     "batchProperty": {
       "title": "Eigenschaft setzen",
-      "hint": "Wendet einen Eigenschaftswert auf {{count}} ausgewählte Elemente an. Lass den Wert leer, um ihn zu löschen.",
+      "hint": "Wendet einen Eigenschaftswert auf {{count}} ausgewählte Elemente an. Lass den Wert leer, um ihn zu löschen",
       "propertyPlaceholder": "Eigenschaft",
       "valuePlaceholder": "Wert",
       "applied": "{{count}} Elemente aktualisiert"
     },
     "revisionConflict": {
       "title": "Bearbeitungskonflikt auflösen",
-      "description": "{{field}} wurde nach Revision {{expected}} geändert. Vergleiche deine Bearbeitung mit Revision {{actual}} und wähle dann, welche Version behalten werden soll.",
+      "description": "{{field}} wurde nach Revision {{expected}} geändert. Vergleiche deine Bearbeitung mit Revision {{actual}} und wähle dann, welche Version behalten werden soll",
       "mine": "Meine Version",
       "latest": "Neueste Version",
       "useLatest": "Neueste verwenden",
@@ -573,7 +570,7 @@
     "sidebarSync": "Synchronisierung",
     "sync": {
       "title": "Externe Synchronisierung",
-      "description": "Spiegele die Arbeitselemente dieser Project in ein externes System wie Linear oder GitHub.",
+      "description": "Spiegele die Arbeitselemente dieser Project in ein externes System wie Linear oder GitHub",
       "adapterPicker": {
         "title": "Adapter",
         "notAttached": "Nicht verbunden",
@@ -582,7 +579,7 @@
         "changeWarning": "Trennen Sie den aktuellen Adapter, bevor Sie einen neuen verbinden.",
         "detachProjectMenuLabel": "GitHub-Verknüpfung aufheben",
         "detachProjectTitle": "GitHub-Verknüpfung mit {{project}} aufheben?",
-        "detachProjectDescription": "Die Synchronisierung mit GitHub Issues wird beendet. Das lokale Projekt und die importierten Arbeitselemente bleiben in ORG2 erhalten.",
+        "detachProjectDescription": "Die Synchronisierung mit GitHub Issues wird beendet. Das lokale Projekt und die importierten Arbeitselemente bleiben in ORG2 erhalten",
         "detachProjectAction": "GitHub-Verknüpfung mit {{project}} aufheben",
         "detachProjectSuccess": "GitHub-Verknüpfung mit {{project}} aufgehoben"
       },
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "Webhook-Status wird geladen…",
-        "notInstalledDescription": "Installieren Sie ein Webhook-Geheimnis, damit dieser Anbieter Änderungen direkt sendet, statt auf den nächsten Abruf zu warten.",
+        "notInstalledDescription": "Installieren Sie ein Webhook-Geheimnis, damit dieser Anbieter Änderungen direkt sendet, statt auf den nächsten Abruf zu warten",
         "install": "Webhook installieren",
-        "installedDescription": "Fügen Sie die URL in die Webhook-Konfiguration Ihres Anbieters ein und verwenden Sie das Geheimnis unten zum Signieren der Zustellungen.",
+        "installedDescription": "Fügen Sie die URL in die Webhook-Konfiguration Ihres Anbieters ein und verwenden Sie das Geheimnis unten zum Signieren der Zustellungen",
         "indicatorFresh": "Kürzliche Zustellung",
         "indicatorStale": "Keine kürzliche Zustellung",
         "lastDeliveryNever": "Noch keine Zustellungen",
@@ -627,7 +624,7 @@
         "copyUrl": "URL kopieren",
         "rotate": "Geheimnis rotieren",
         "secretTitle": "Kopieren Sie dieses Geheimnis jetzt — es wird nicht erneut angezeigt",
-        "secretDescription": "Fügen Sie dieses Signatur-Geheimnis in die Webhook-Konfiguration Ihres Anbieters ein. Nach dem Schließen dieses Panels speichern wir den Klartext nicht.",
+        "secretDescription": "Fügen Sie dieses Signatur-Geheimnis in die Webhook-Konfiguration Ihres Anbieters ein. Nach dem Schließen dieses Panels speichern wir den Klartext nicht",
         "copySecret": "Geheimnis kopieren",
         "dismissSecret": "Ich habe es gespeichert",
         "secretCopied": "Geheimnis in die Zwischenablage kopiert",
@@ -653,9 +650,9 @@
         "progressNoTotal": "{{count}} Einträge importiert",
         "completedSummary": "{{count}} Einträge vom Remote importiert.",
         "cancelledSummary": "Nach dem Import von {{count}} Einträgen abgebrochen.",
-        "pendingDescription": "Die erste Synchronisation durchläuft den gesamten Remote-Verlauf einmal. Folgende Synchronisationen nutzen den normalen inkrementellen Zyklus.",
-        "runningDescription": "Der Remote-Verlauf wird Seite für Seite durchlaufen. Sie können in der Zwischenzeit weiterarbeiten.",
-        "failedDescription": "Die letzte Seite ist dauerhaft fehlgeschlagen. Bei einem erneuten Versuch wird ab dem Cursor fortgesetzt.",
+        "pendingDescription": "Die erste Synchronisation durchläuft den gesamten Remote-Verlauf einmal. Folgende Synchronisationen nutzen den normalen inkrementellen Zyklus",
+        "runningDescription": "Der Remote-Verlauf wird Seite für Seite durchlaufen. Sie können in der Zwischenzeit weiterarbeiten",
+        "failedDescription": "Die letzte Seite ist dauerhaft fehlgeschlagen. Bei einem erneuten Versuch wird ab dem Cursor fortgesetzt",
         "cancel": "Import abbrechen",
         "retry": "Erneut versuchen",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "Status",
     "statusesBuiltin": "Integrierte Status",
-    "statusesBuiltinDescription": "Die Standard-Workflow-Kategorien. Immer verfügbar.",
+    "statusesBuiltinDescription": "Die Standard-Workflow-Kategorien. Immer verfügbar",
     "statusesCustom": "Benutzerdefinierte Status",
-    "statusesCustomDescription": "Benannte Aliasse für eine integrierte Kategorie. Filter, Zähler und Boards behandeln sie wie ihre Kategorie.",
+    "statusesCustomDescription": "Benannte Aliasse für eine integrierte Kategorie. Filter, Zähler und Boards behandeln sie wie ihre Kategorie",
     "statusNamePlaceholder": "Statusname",
     "noCustomStatuses": "Noch keine benutzerdefinierten Status.",
     "statusArchive": "Status archivieren",
@@ -793,11 +790,11 @@
     "unknownState": "Unknown state",
     "emptyConnections": {
       "title": "No Linear connections",
-      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
+      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear"
     },
     "emptySelection": {
       "title": "Select a Linear Project",
-      "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
+      "description": "Choose a Project from the left to view live Linear Issues and edit Project details"
     },
     "forms": {
       "createProjectTitle": "Create Linear Project",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder sync complete",
     "syncFailed": "Git folder sync failed: {{message}}",
     "noResultTitle": "No Git sync result",
-    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
+    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts"
   }
 }

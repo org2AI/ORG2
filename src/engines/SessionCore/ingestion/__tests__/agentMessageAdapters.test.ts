@@ -571,3 +571,20 @@ describe("mergeToolResults", () => {
     expect(tauri.mergeToolResults).toHaveBeenCalledWith({ events: input });
   });
 });
+
+it("preserves a durable failed tool result without rewriting its output", () => {
+  const event = persistedMessageToSessionEvent(
+    makeRow({
+      role: "tool_result",
+      toolOutput: "missing file",
+      toolIsError: true,
+    }),
+    "agent-error"
+  );
+  expect(event.result).toMatchObject({
+    content: "missing file",
+    observation: "missing file",
+    is_error: true,
+  });
+  expect(event.displayStatus).toBe("failed");
+});

@@ -45,6 +45,8 @@ fn connection(profile: ClaudeProviderProfile) -> DirectConnection {
         api_key: "synthetic-native-secret".into(),
         desktop_auth_scheme: (profile.target == "claude_desktop")
             .then(|| profile.auth_scheme.clone()),
+        desktop_helper: None,
+        proxy_token: None,
         profile: Some(profile),
     }
 }
@@ -207,6 +209,7 @@ fn save_apply_switch_and_restore_keep_catalog_and_native_state_independent() {
     assert_eq!(std::fs::read_to_string(&settings).unwrap(), original);
     enable_direct("claude_code", connection(first.clone()), None).unwrap();
     assert_eq!(applied("claude_code").unwrap(), Some(first.clone()));
+    verify_claude_launch_connection(&connection(first.clone())).unwrap();
     assert!(delete("claude_code", &first.id, first.revision).is_err());
     let mut edited = first.clone();
     edited
@@ -216,6 +219,9 @@ fn save_apply_switch_and_restore_keep_catalog_and_native_state_independent() {
         .unwrap()
         .model = "vendor/updated".into();
     let edited = save(edited).unwrap();
+    assert!(verify_claude_launch_connection(&connection(edited.clone())).is_err());
+    // Editing the saved catalog does not mutate the applied snapshot.
+    verify_claude_launch_connection(&connection(first.clone())).unwrap();
     let native_before = std::fs::read_to_string(&settings).unwrap();
     assert_eq!(applied("claude_code").unwrap(), Some(first.clone()));
     assert!(save(first.clone()).is_err());

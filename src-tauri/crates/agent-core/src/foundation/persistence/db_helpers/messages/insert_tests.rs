@@ -43,7 +43,8 @@ fn seed_session(session_id: &str) {
             images       TEXT,
             compact_from_sequence INTEGER,
             compact_tokens_before INTEGER,
-            compact_tokens_after INTEGER
+            compact_tokens_after INTEGER,
+            tool_is_error INTEGER NOT NULL DEFAULT 0
          );",
     )
     .expect("create tables in seed_session");
@@ -74,6 +75,7 @@ fn make_msg(session_id: &str, role: &str, content: &str) -> AgentMessageRow {
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     }
 }
 

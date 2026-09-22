@@ -1,7 +1,9 @@
 import type { ComposerSnapshot } from "./types";
+import { plainTextLength, rawIndexAtPlainOffset } from "./utils";
 
+/** Length of a part in plain-text coordinates (see `caretTextOffset`). */
 function partTextLength(part: ComposerSnapshot["parts"][number]): number {
-  if (part.kind === "text") return part.text.length;
+  if (part.kind === "text") return plainTextLength(part.text);
   if (part.kind === "newline") return 1;
   return part.attrs.fileName.length;
 }
@@ -32,7 +34,8 @@ export function removeSnapshotTextRange(
     const removeStart = Math.max(0, start - partStart);
     const removeEnd = Math.min(length, end - partStart);
     const nextText =
-      part.text.slice(0, removeStart) + part.text.slice(removeEnd);
+      part.text.slice(0, rawIndexAtPlainOffset(part.text, removeStart)) +
+      part.text.slice(rawIndexAtPlainOffset(part.text, removeEnd));
     if (nextText) parts.push({ kind: "text", text: nextText });
   }
 

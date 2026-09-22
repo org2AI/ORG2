@@ -15,16 +15,15 @@ import SettingsTable, {
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
 import Switch from "@src/components/Switch";
-import TabPill from "@src/components/TabPill";
-import { useRoutineResultNavigation } from "@src/hooks/navigation";
-import { HugeiconsIcon, SquareArrowUpRight02Icon } from "@src/icons";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
+} from "@src/components/layout/blocks";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
+import { useRoutineResultNavigation } from "@src/hooks/navigation";
+import { HugeiconsIcon, SquareArrowUpRight02Icon } from "@src/icons";
 
 import {
   InlineCardBody,
@@ -124,19 +123,13 @@ const RoutineFireHistory: React.FC<{ routine: RoutineDefinition }> = ({
           </span>
           {fire.sessionId && (
             <Button
-              variant="primary"
-              appearance="ghost"
+              variant="ghost"
               size="inline"
-              htmlType="button"
-              className="gap-1 hover:underline"
+              className="gap-1"
               onClick={(event) => {
                 event.stopPropagation();
                 void openResult({ sessionId: fire.sessionId }).catch(() =>
-                  Message.error(
-                    t("routineFields.openSessionError", {
-                      defaultValue: "Could not open the session",
-                    })
-                  )
+                  Message.error(t("routineFields.openSessionError"))
                 );
               }}
               icon={
@@ -153,22 +146,16 @@ const RoutineFireHistory: React.FC<{ routine: RoutineDefinition }> = ({
           )}
           {fire.workItemId && (
             <Button
-              variant="primary"
-              appearance="ghost"
+              variant="ghost"
               size="inline"
-              htmlType="button"
-              className="gap-1 hover:underline"
+              className="gap-1"
               onClick={(event) => {
                 event.stopPropagation();
                 void openResult({
                   workItemId: fire.workItemId,
                   projectSlug: getRoutineProjectSlug(routine),
                 }).catch(() =>
-                  Message.error(
-                    t("routineFields.openWorkItemError", {
-                      defaultValue: "Could not open the Work Item",
-                    })
-                  )
+                  Message.error(t("routineFields.openWorkItemError"))
                 );
               }}
               icon={
@@ -375,18 +362,9 @@ export const RoutinesTable: React.FC<RoutinesTableProps> = ({
     <DetailPanelContainer>
       <InternalHeader
         noPanelHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={
-          <TabPill
-            tabs={tab}
-            activeTab="routines"
-            onChange={() => {}}
-            variant="simple"
-            fillWidth={false}
-            size="large"
-          />
-        }
+        tabs={tab}
+        activeTab="routines"
+        onTabChange={() => {}}
       />
       <ScrollPreservation className={DETAIL_PANEL_TOKENS.scrollContentNoTop}>
         <div className={DETAIL_PANEL_TOKENS.contentWidthWithPaddingNoTop}>

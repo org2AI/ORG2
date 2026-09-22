@@ -102,7 +102,13 @@ interface FormProps {
 }
 
 // Form Item Props
-interface FormItemProps {
+interface FormItemProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Associate a visible label with its native control. */
+  htmlFor?: string;
+  helpId?: string;
+  extraId?: string;
+  /** Compact standalone field layout; does not require a wrapping Form. */
+  presentation?: "default" | "compact";
   /**
    * Field label
    */
@@ -153,6 +159,10 @@ interface FormItemProps {
 // Form Item Component
 const FormItem: React.FC<FormItemProps> = ({
   label,
+  htmlFor,
+  helpId,
+  extraId,
+  presentation = "default",
   required = false,
   validateStatus,
   help,
@@ -161,6 +171,7 @@ const FormItem: React.FC<FormItemProps> = ({
   className = "",
   style,
   children,
+  ...props
 }) => {
   const formContext = useFormContext();
   const showColon = itemColon !== undefined ? itemColon : formContext.colon;
@@ -182,11 +193,49 @@ const FormItem: React.FC<FormItemProps> = ({
     .filter(Boolean)
     .join(" ");
 
+  if (presentation === "compact")
+    return (
+      <div
+        {...props}
+        className={`flex min-w-0 flex-col gap-2 text-sm text-text-2 ${className}`}
+        style={style}
+      >
+        {label && (
+          <label htmlFor={htmlFor}>
+            {label}
+            {required && (
+              <span aria-hidden className="text-danger-6">
+                *
+              </span>
+            )}
+          </label>
+        )}
+        {children}
+        {help && (
+          <div
+            id={helpId}
+            className={
+              validateStatus === "error"
+                ? "text-xs text-danger-6"
+                : "text-xs text-text-2"
+            }
+          >
+            {help}
+          </div>
+        )}
+        {extra && (
+          <div id={extraId} className="text-xs text-text-2">
+            {extra}
+          </div>
+        )}
+      </div>
+    );
+
   return (
-    <div className={itemClasses} style={style}>
+    <div {...props} className={itemClasses} style={style}>
       {label && (
         <div className={labelClasses}>
-          <label>
+          <label htmlFor={htmlFor}>
             {label}
             {showColon && <span className="form-item-colon">:</span>}
           </label>
@@ -194,8 +243,16 @@ const FormItem: React.FC<FormItemProps> = ({
       )}
       <div className="form-item-control">
         <div className="form-item-control-input">{children}</div>
-        {help && <div className="form-item-help">{help}</div>}
-        {extra && <div className="form-item-extra">{extra}</div>}
+        {help && (
+          <div id={helpId} className="form-item-help">
+            {help}
+          </div>
+        )}
+        {extra && (
+          <div id={extraId} className="form-item-extra">
+            {extra}
+          </div>
+        )}
       </div>
     </div>
   );

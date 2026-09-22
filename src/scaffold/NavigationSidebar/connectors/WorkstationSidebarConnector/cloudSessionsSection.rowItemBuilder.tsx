@@ -259,7 +259,7 @@ export function useCloudSessionRowItemBuilder({
         // Prefer the source/agent brand used by regular sessions. Cloud
         // scope is context, not the session's icon identity.
         icon: sessionIcon,
-        shortcut: relativeTime,
+        trailingLabel: relativeTime,
         trailingElement,
         disabled,
       };
@@ -290,8 +290,8 @@ export function useCloudSessionRowItemBuilder({
           {
             icon: isPinned ? PinOffIcon : PinIcon,
             label: isPinned
-              ? tCommon("sessions:chat.unpinSession", "Unpin")
-              : tCommon("sessions:chat.pinSession", "Pin"),
+              ? tCommon("sessions:chat.unpinSession")
+              : tCommon("sessions:chat.pinSession"),
             onClick: () => toggleRemoteSessionPin(row.orgId, row.id),
           },
           {

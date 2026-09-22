@@ -90,17 +90,13 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
       : currentMemberName
         ? members.find((member) => member.name === currentMemberName)
         : undefined;
-    const groupChatLabel = t("sessions:groupChat.triggerLabel", {
-      defaultValue: "Group chat",
-    });
+    const groupChatLabel = t("sessions:groupChat.triggerLabel");
     const currentSurfaceLabel = groupChatActive
       ? groupChatLabel
       : currentMember?.isCoordinator
         ? "Coordinator"
         : (currentMember?.name ?? currentMemberName ?? null);
-    const overviewLabel = t("sessions:planner.agentOrgOverview.title", {
-      defaultValue: "Team Overview",
-    });
+    const overviewLabel = t("sessions:planner.agentOrgOverview.title");
     const {
       isOpen: isMemberSwitcherOpen,
       isPositioned: isMemberSwitcherPositioned,
@@ -136,7 +132,6 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
           <Button
             htmlType="button"
             variant="tertiary"
-            appearance="soft"
             size="small"
             data-testid="agent-org-overview-trigger"
             data-agent-org-overview-trigger="true"
@@ -170,7 +165,6 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
               ref={memberSwitcherTriggerRef}
               htmlType="button"
               variant="tertiary"
-              appearance="soft"
               size="small"
               data-testid="agent-org-member-switcher-trigger"
               className="max-w-full min-w-0 disabled:cursor-default"
@@ -226,7 +220,6 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
                       <>
                         <Button
                           layout="custom"
-                          appearance="custom"
                           htmlType="button"
                           role="menuitem"
                           aria-current={groupChatActive ? "page" : undefined}
@@ -276,9 +269,7 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
                             { count: member.queuedUserDirectedCount }
                           )
                         : hasNoTasksAndNoInbox
-                          ? t("sessions:planner.agentOrgMemberStatus.noTasks", {
-                              defaultValue: "No tasks",
-                            })
+                          ? t("sessions:planner.agentOrgMemberStatus.noTasks")
                           : runtimeStatus
                             ? runtimeStatusLabelKey
                               ? t(`sessions:${runtimeStatusLabelKey}`)
@@ -289,7 +280,6 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
                         <Button
                           key={member.memberId}
                           layout="custom"
-                          appearance="custom"
                           htmlType="button"
                           role="menuitem"
                           aria-current={isCurrent ? "page" : undefined}

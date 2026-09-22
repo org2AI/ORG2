@@ -8,11 +8,11 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useAppNavigation } from "@src/hooks/navigation/useAppNavigation";
 import {
   DETAIL_PANEL_TOKENS,
   ScrollPreservation,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { useAppNavigation } from "@src/hooks/navigation/useAppNavigation";
 
 import AgentSkillsTable from "./AgentSkillsTable";
 import { useSkills } from "./useSkills";

@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import type { AgentRegistry } from "@src/store/session/agentRegistryAtom";
 
-import { resolveAgentRuntimeSelection } from "./agentRuntimeConfig";
+import {
+  applyAgentRuntimeConfig,
+  resolveAgentRuntimeSelection,
+  toAgentRuntimeConfig,
+} from "./agentRuntimeConfig";
 
 function account(
   id: string,
@@ -192,4 +196,37 @@ describe("agent runtime selection coordinator", () => {
       })
     ).toEqual({ status: "needs_model_picker" });
   });
+});
+
+it("keeps per-runner Package ownership isolated from the global source", () => {
+  const account = {
+    keySource: "own_key" as const,
+    selectedAccountId: "key-vault",
+    model: "gpt",
+  };
+  const first = {
+    keySource: "own_key" as const,
+    credentialSource: "market:first",
+    marketProfileId: "market:profile-first",
+    model: "gpt",
+  };
+  const second = {
+    ...first,
+    credentialSource: "market:second",
+    marketProfileId: "market:profile-second",
+  };
+  const selected = applyAgentRuntimeConfig(
+    account,
+    toAgentRuntimeConfig(first)
+  );
+  expect(selected.credentialSource).toBe("market:first");
+  expect(selected.selectedAccountId).toBeUndefined();
+  expect(selected.cliAgentType).toBeUndefined();
+  const switched = applyAgentRuntimeConfig(first, toAgentRuntimeConfig(second));
+  expect(switched.credentialSource).toBe("market:second");
+  expect(switched.marketProfileId).toBe("market:profile-second");
+  const own = applyAgentRuntimeConfig(first, toAgentRuntimeConfig(account));
+  expect(own.selectedAccountId).toBe("key-vault");
+  expect(own.credentialSource).toBeUndefined();
+  expect(own.marketProfileId).toBeUndefined();
 });

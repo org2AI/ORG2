@@ -10,8 +10,7 @@ export interface TabPillSurfaceProps extends React.HTMLAttributes<TabPillElement
   as?: "button" | "div";
   isActive: boolean;
   isDragging?: boolean;
-  hideLabel?: boolean;
-  variant?: "standard" | "compact" | "session";
+  variant?: "standard" | "session";
 }
 
 const VARIANT_CLASSES: Record<
@@ -19,7 +18,6 @@ const VARIANT_CLASSES: Record<
   string
 > = {
   standard: "min-w-14 max-w-[240px] shrink-0 gap-1.5 px-2.5",
-  compact: "h-7 w-7 shrink-0 justify-center",
   session: "min-w-0 max-w-[120px] shrink-0 gap-1.5 px-2.5",
 };
 
@@ -34,8 +32,7 @@ export const TabPillSurface = React.forwardRef<
       as = "div",
       isActive,
       isDragging = false,
-      hideLabel = false,
-      variant = hideLabel ? "compact" : "standard",
+      variant = "standard",
       className = "",
       children,
       onClick,
@@ -85,9 +82,7 @@ export const TabPillSurface = React.forwardRef<
       return (
         <Button
           layout="custom"
-          appearance="custom"
           ref={ref as React.Ref<HTMLButtonElement>}
-          htmlType="button"
           className={surfaceClassName}
           onClick={handleClick as React.MouseEventHandler<HTMLButtonElement>}
           onMouseLeave={

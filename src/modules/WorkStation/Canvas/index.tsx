@@ -210,7 +210,6 @@ function CanvasApp(props: SimulatorAppProps) {
               aria-label={t("simulator.replay.canvas.tooltipOpenInBrowser")}
               size="mini"
               variant="tertiary"
-              appearance="soft"
               iconOnly
               icon={
                 <HugeiconsIcon
@@ -235,7 +234,6 @@ function CanvasApp(props: SimulatorAppProps) {
             }
             size="mini"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               isFullscreen ? (
@@ -259,7 +257,6 @@ function CanvasApp(props: SimulatorAppProps) {
             aria-label={t("simulator.replay.canvas.tooltipCloseCanvas")}
             size="mini"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               <HugeiconsIcon

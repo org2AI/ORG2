@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "Genel düzen turu",
-      "description": "Sohbet panelini, Runtime’ı, istasyon modu seçicisini ve dock’u tanıyın.",
+      "description": "Sohbet panelini, Runtime’ı, istasyon modu seçicisini ve dock’u tanıyın",
       "duration": "1 dk.",
       "steps": {
         "chat-panel": {
           "title": "Sohbet Paneli",
-          "body": "Bu, kullanıcıların temsilcilerle sohbet ettiği, etkinliği incelediği ve takip talimatlarını gönderdiği yerdir."
+          "body": "Bu, kullanıcıların temsilcilerle sohbet ettiği, etkinliği incelediği ve takip talimatlarını gönderdiği yerdir"
         },
         "runtime": {
           "title": "Çalışma zamanı",
-          "body": "Kendi kullanımınızı ve çalışma durumunu burada görün. Bir çalışma alanıta üye eşitleme durumunu da inceleyebilir ve Codex, Claude ile Cursor kullanım ayrıntılarını açabilirsiniz."
+          "body": "Kendi kullanımınızı ve çalışma durumunu burada görün. Bir çalışma alanıta üye eşitleme durumunu da inceleyebilir ve Codex, Claude ile Cursor kullanım ayrıntılarını açabilirsiniz"
         },
         "station-mode-pill": {
           "title": "İstasyon değiştir modlar",
-          "body": "İstasyon modlarını değiştirmek için bu hapı kullanın. Masaüstü, My Station, yani çalışma alanınız anlamına gelir. Sonsuzluk, ajan etkinlik görünümü olan Agent Station anlamına gelir."
+          "body": "İstasyon modlarını değiştirmek için bu hapı kullanın. Masaüstü, My Station, yani çalışma alanınız anlamına gelir. Sonsuzluk, ajan etkinlik görünümü olan Agent Station anlamına gelir"
         },
         "dock": {
           "title": "Agent Station bağlantı istasyonu",
-          "body": "Dok, istasyonun içindeki uygulamaları değiştirir. Tur, otomatik gizlemeyi geçici olarak devre dışı bırakır, böylece bu kontroller görünür kalır."
+          "body": "Dok, istasyonun içindeki uygulamaları değiştirir. Tur, otomatik gizlemeyi geçici olarak devre dışı bırakır, böylece bu kontroller görünür kalır"
         }
       }
     },
     "codeEditor": {
       "title": "Kod Düzenleyici turu",
-      "description": "Sekmeleri, düzenleyici çalışma alanını, kaynak kontrolünü ve Git geçmişini tanıyın.",
+      "description": "Sekmeleri, düzenleyici çalışma alanını, kaynak kontrolünü ve Git geçmişini tanıyın",
       "duration": "2 dk.",
       "steps": {
         "tabs": {
           "title": "Kod Düzenleyici sekmeleri",
-          "body": "Sekmeler, açıkken açtığınız dosyaları, farkları, terminalleri, kaynak kontrol görünümlerini ve kontrol panellerini toplar. depoda çalışmak."
+          "body": "Sekmeler, açıkken açtığınız dosyaları, farkları, terminalleri, kaynak kontrol görünümlerini ve kontrol panellerini toplar. depoda çalışmak"
         },
         "editor-surface": {
           "title": "Düzenleyici çalışma alanı",
-          "body": "Bu, ana Kod Düzenleyici yüzeyidir. Dosyaları açın, farkları inceleyin, terminalleri çalıştırın ve oluşturulan değişiklikleri burada inceleyin."
+          "body": "Bu, ana Kod Düzenleyici yüzeyidir. Dosyaları açın, farkları inceleyin, terminalleri çalıştırın ve oluşturulan değişiklikleri burada inceleyin"
         },
         "create-tabs": {
           "title": "Yeni sekmeler oluşturun",
-          "body": "Terminaller, tarayıcı sekmeleri, dosyalar, kontrol panelleri ve depo yardımcı programları oluşturmak için Tüm Sekmeler'deki artı menüsünü kullanın."
+          "body": "Terminaller, tarayıcı sekmeleri, dosyalar, kontrol panelleri ve depo yardımcı programları oluşturmak için Tüm Sekmeler'deki artı menüsünü kullanın"
         },
         "source-control": {
           "title": "Git değişiklikleri",
-          "body": "Değiştirilen dosyaları incelemek, çalışmayı hazırlamak veya geri almak, onaylamak, çekmek, göndermek, göndermek için Kaynak Denetimini açın. getir ve uzaktan kumandayla senkronize et."
+          "body": "Değiştirilen dosyaları incelemek, çalışmayı hazırlamak veya geri almak, onaylamak, çekmek, göndermek, göndermek için Kaynak Denetimini açın. getir ve uzaktan kumandayla senkronize et"
         },
         "git-history": {
           "title": "Git geçmişi",
-          "body": "Git Geçmişi, Kaynak Kontrolünü taahhüt geçmişi moduna geçirir, böylece önceki taahhütleri ve ilgili değişiklikleri inceleyebilirsiniz."
+          "body": "Git Geçmişi, Kaynak Kontrolünü taahhüt geçmişi moduna geçirir, böylece önceki taahhütleri ve ilgili değişiklikleri inceleyebilirsiniz"
         }
       }
     }
   },
   "discovery": {
-    "title": "Başlangıç ve yeni özellikler",
-    "getStarted": "Başlarken",
-    "newFeatures": "Yeni özellikler",
-    "branchesTitle": "Depo dalları",
-    "branchesDescription": "Depo dallarını doğrudan Spotlight üzerinden değiştirin."
+    "getStarted": "Başlarken"
   }
 }

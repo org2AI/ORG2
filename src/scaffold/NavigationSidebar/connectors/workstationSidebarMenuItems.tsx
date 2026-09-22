@@ -219,7 +219,7 @@ export function buildDraftMenuItems({
         }),
         // Keep sidebar rows in bare compact form ("2m"/"2h"/"2d", no "ago")
         // regardless of the app's display language (see menuItemBuilders.tsx).
-        shortcut: formatCompactAge(draft.createdAt),
+        trailingLabel: formatCompactAge(draft.createdAt),
         openContextMenuOnSelectedClick: true,
         opensChatPanelTab: true,
         iconBadge: (

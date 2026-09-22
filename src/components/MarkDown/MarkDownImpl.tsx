@@ -19,16 +19,6 @@ import remarkGfm from "remark-gfm";
 
 import { isInternalComposerReferenceHref } from "@src/components/ComposerInput/postedReferenceHref";
 import { isThemeCssPathDark } from "@src/config/appearance/globalThemes";
-import CanvasInlineCard from "@src/engines/ChatPanel/blocks/CanvasInlineCard";
-import ChatCodeBlock from "@src/engines/ChatPanel/blocks/CodeBlock";
-import SharedSessionFileLink from "@src/features/Org2Cloud/SharedSessionFileLink";
-import {
-  useIsSessionFileShared,
-  useOpenSessionSharedFile,
-} from "@src/features/Org2Cloud/SharedSessionFilesContext";
-import { parseCloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
-import { parseSharedSessionFileReference } from "@src/features/Org2Cloud/sharedSessionFileReference";
-import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
 import { themesAtom } from "@src/store/ui/uiAtom";
 import { activeWorkspaceRootAtom } from "@src/store/workspace";
 import { openLink } from "@src/util/ui/openLink";
@@ -40,7 +30,11 @@ import MarkdownLinkIcon, { hasMarkdownLinkIcon } from "./MarkdownLinkIcon";
 import MarkdownLocalImage, { openLocalMarkdownRef } from "./MarkdownLocalImage";
 import MarkdownTable from "./MarkdownTable";
 import MermaidBlock from "./MermaidBlock";
-import SessionReferenceCards from "./SessionReferenceCards";
+import {
+  markdownExtensions,
+  useMarkdownLocalFileIntercepted,
+  useMarkdownLocalFileInterceptor,
+} from "./extensions";
 import "./index.scss";
 import {
   CANVAS_FENCED_LANGUAGES,
@@ -61,8 +55,6 @@ import {
   renderChildren,
 } from "./markdownUtils";
 import { useMarkdownFileRootPath } from "./markdownWorkspaceRoot";
-import { remarkCloudSessionReferences } from "./remarkCloudSessionReferences";
-import { projectMarkdownSessionReferences } from "./sessionReferenceProjection";
 
 // ============================================
 // Types
@@ -133,28 +125,6 @@ interface StreamingMarkdownBlockProps extends MarkdownRendererProps {
   blockIndex: number;
 }
 
-const CloudSessionMarkdownLink: React.FC<{
-  href: string;
-  children: React.ReactNode;
-  reference: NonNullable<ReturnType<typeof parseCloudSessionReference>>;
-}> = ({ href, children, reference }) => {
-  const openReference = useOpenCloudSessionReference();
-  return (
-    <a
-      href={href}
-      title={undefined}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        openReference(reference, { autoReplay: true });
-      }}
-    >
-      {children}
-    </a>
-  );
-};
-CloudSessionMarkdownLink.displayName = "CloudSessionMarkdownLink";
-
 const StreamingMarkdownBlock = memo<StreamingMarkdownBlockProps>(
   ({ content, components, plugins, blockIndex }) => (
     <div className={blockIndex > 0 ? STREAMING_BLOCK_GAP_CLASS : undefined}>
@@ -199,16 +169,19 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
    * below, which acts on the workspace that is actually open.
    */
   const fileRootPath = useMarkdownFileRootPath();
-  const sessionProjection = useMemo(
-    () =>
-      sessionReferencesAsCards
-        ? projectMarkdownSessionReferences(textContent)
-        : { text: textContent, references: [], referenceOnly: false },
-    [sessionReferencesAsCards, textContent]
-  );
+  const sessionProjection = useMemo(() => {
+    const project = markdownExtensions().sessionAttachments?.project;
+    return sessionReferencesAsCards && project
+      ? project(textContent)
+      : {
+          text: textContent,
+          attachments: [] as readonly unknown[],
+          referenceOnly: false,
+        };
+  }, [sessionReferencesAsCards, textContent]);
 
-  const openSharedFile = useOpenSessionSharedFile();
-  const sharedSessionFiles = useIsSessionFileShared();
+  const openSharedFile = useMarkdownLocalFileInterceptor();
+  const sharedSessionFiles = useMarkdownLocalFileIntercepted();
   const handleLinkClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
       event.preventDefault();
@@ -272,8 +245,11 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
             return <MermaidBlock code={codeContent} isDarkMode={isDarkMode} />;
           }
 
-          // Canvas / preview fenced blocks — render as CanvasInlineCard
+          // Canvas / preview fenced blocks — rendered by the registered
+          // canvas slot; with none registered the fence stays a code block.
+          const CanvasInlineCard = markdownExtensions().CanvasInlineCard;
           if (
+            CanvasInlineCard &&
             !disableCanvasInline &&
             CANVAS_FENCED_LANGUAGES.has(language.toLowerCase())
           ) {
@@ -317,8 +293,10 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
             );
           }
 
-          // Use ChatCodeBlock if enabled
-          if (useChatCodeBlock) {
+          // Use the registered chat code block if the caller asked for it;
+          // without a registration the renderer's own fence renders instead.
+          const ChatCodeBlock = markdownExtensions().ChatCodeBlock;
+          if (useChatCodeBlock && ChatCodeBlock) {
             const openFilePath = resolveCurrentRepoFilePath(
               fenceMeta.filePath,
               fileRootPath
@@ -428,21 +406,14 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
       },
       a({ children, href, ...props }) {
         const url = href ?? "";
-        const sharedFile = parseSharedSessionFileReference(url);
-        if (sharedFile)
-          return (
-            <SharedSessionFileLink href={url} reference={sharedFile}>
-              {children}
-            </SharedSessionFileLink>
-          );
-        const cloudReference = parseCloudSessionReference(url);
-        if (cloudReference) {
-          return (
-            <CloudSessionMarkdownLink href={url} reference={cloudReference}>
-              {children}
-            </CloudSessionMarkdownLink>
-          );
-        }
+        // Domain reference hrefs (cloud session, shared session file) are
+        // rendered by the tier that owns them; null means "not one of mine"
+        // and the ordinary link path below continues.
+        const referenceLink = markdownExtensions().renderReferenceLink?.(
+          url,
+          children
+        );
+        if (referenceLink != null) return referenceLink;
         if (isInternalComposerReferenceHref(url)) {
           return (
             <a
@@ -542,8 +513,13 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
     disableCanvasInline,
   ]);
 
-  // Memoize plugins array to prevent recreation
-  const plugins = useMemo(() => [remarkGfm, remarkCloudSessionReferences], []);
+  // Memoize plugins array to prevent recreation. Registered plugins extend
+  // the base GFM set; with none registered the renderer is plain GFM.
+  const extensionPlugins = markdownExtensions().remarkPlugins;
+  const plugins = useMemo(
+    () => [remarkGfm, ...(extensionPlugins ?? [])] as MarkdownRemarkPlugins,
+    [extensionPlugins]
+  );
 
   // Preprocess text content to auto-detect and format code.
   // Skip the expensive regex pass when the caller guarantees the content is
@@ -559,6 +535,13 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
     () => (streaming ? splitIntoStableMarkdownBlocks(processedContent) : null),
     [processedContent, streaming]
   );
+
+  const attachmentCards =
+    sessionProjection.attachments.length > 0
+      ? markdownExtensions().sessionAttachments?.render(
+          sessionProjection.attachments
+        )
+      : null;
 
   if (streaming && streamingBlocks) {
     return (
@@ -576,9 +559,7 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
             ))}
           </div>
         ) : null}
-        {sessionProjection.references.length > 0 ? (
-          <SessionReferenceCards references={sessionProjection.references} />
-        ) : null}
+        {attachmentCards}
       </>
     );
   }
@@ -592,9 +573,7 @@ const MarkdownComponent: React.FC<MarkdownProps> = ({
           plugins={plugins}
         />
       ) : null}
-      {sessionProjection.references.length > 0 ? (
-        <SessionReferenceCards references={sessionProjection.references} />
-      ) : null}
+      {attachmentCards}
     </>
   );
 };

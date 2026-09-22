@@ -318,6 +318,46 @@ describe("local conversation execution tail", () => {
     ).resolves.toEqual([expect.objectContaining({ displayText: "body" })]);
   });
 
+  it("loads proven empty children but still blocks failed children with missing real history", async () => {
+    const root = {
+      authority: "local-session",
+      authorityScope: [],
+      conversationId: "root-1",
+    };
+    const prior = event(
+      "prior",
+      "2026-09-04T05:00:00Z",
+      "assistant",
+      "paid answer"
+    );
+    mocks.invokeTauri.mockResolvedValue([
+      {
+        sessionId: "cliagent-empty-child",
+        createdAt: "2026-09-04T05:01:00Z",
+        updatedAt: "2026-09-04T05:02:00Z",
+        status: "failed",
+        isTerminal: true,
+      },
+    ]);
+    mocks.loadCanonical.mockImplementation(async (sessionId: string) => ({
+      source: "native_store",
+      events: sessionId === root.conversationId ? [prior] : [],
+    }));
+    mocks.loadCliRevision.mockResolvedValue(
+      '["unstarted-native-child-v1","cliagent-empty-child"]'
+    );
+    await expect(loadLocalCanonicalConversationTimeline(root)).resolves.toEqual(
+      [prior]
+    );
+
+    // The native producer alone may prove emptiness. An empty read plus a
+    // failed status cannot stand in for that proof after real history is lost.
+    mocks.loadCliRevision.mockResolvedValue(null);
+    await expect(
+      loadLocalCanonicalConversationTimeline(root)
+    ).rejects.toBeInstanceOf(QueuedConversationBlockedError);
+  });
+
   it("blocks an idle child whose native transcript is unavailable", async () => {
     mocks.invokeTauri.mockResolvedValue([
       {

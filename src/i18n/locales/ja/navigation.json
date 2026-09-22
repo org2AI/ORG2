@@ -45,7 +45,8 @@
     "diff": "Diff",
     "colleagues": "同僚",
     "terminals": "ターミナル",
-    "openSourceRepo": "ソース Repo を開く"
+    "openSourceRepo": "ソース Repo を開く",
+    "closeSettings": "設定を閉じる"
   },
   "routes": {
     "session": "チャット",
@@ -73,12 +74,7 @@
       "manual": "手動順"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "管理",
-      "core": "コア",
-      "agent": "Agent",
-      "org": "チーム",
-      "agentOrgs": "Agent & チーム"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "グループ化なし",
@@ -100,55 +96,23 @@
       "untitledSession": "無題のSession",
       "enterSessionName": "Session名を入力"
     },
-    "groups": {
-      "economy": "エコノミー",
-      "myServices": "マイサービス",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Hosted Key",
-      "cloud": "Cloud",
-      "openSource": "オープンソース",
-      "timeline": "タイムライン"
-    },
     "actions": {
       "addNew": "新規追加",
       "collapseAll": "すべて折りたたむ",
-      "markAllRead": "すべて既読にする",
-      "toggleGroup": "セクションを切り替え"
+      "markAllRead": "すべて既読にする"
     },
     "search": {
-      "folders": "ワークスペースを検索...",
-      "sessions": "セッションを検索...",
-      "projects": "プロジェクトを検索...",
-      "colleagues": "同僚を検索..."
-    },
-    "folderCounts": {
-      "repo": "{{count}} Repo",
-      "multiRepoWorkspace": "{{count}} マルチ Repo Workspace",
-      "repo_plural": "{{count}} Repo",
-      "multiRepoWorkspace_plural": "{{count}} マルチ Repo Workspace"
+      "sessions": "セッションを検索..."
     },
     "bottomBar": {
       "settings": "設定",
-      "clockLabel": "現在時刻",
       "updateAvailable": "アップデート v{{version}} をダウンロード"
     },
     "settingsMenu": {
       "appearance": "外観",
       "modifyAppearance": "外観を変更",
-      "language": "言語",
       "viewRam": "RAM を表示",
-      "tutorials": "チュートリアル",
       "openSettings": "設定を開く"
-    },
-    "empty": {
-      "noItems": "アイテムがありません",
-      "noSessions": "Sessionがありません",
-      "noSessionsDesc": "新しいSessionを開始してください",
-      "noResultsFor": "\"{{query}}\" の検索結果がありません",
-      "noSearchResults": "結果が見つかりません"
     },
     "presence": {
       "tooltip": "在席状態を設定 — Agent はあなたがキーボード前にいるかに応じて動作を調整します。",
@@ -166,9 +130,18 @@
       "durationTomorrow": "明日",
       "unknownRole": "不明なロール"
     },
-    "guide": {
-      "startSession": "セッションを開始",
-      "connectOrganization": "ワークスペースを接続または作成"
+    "sections": {
+      "section": "セクション",
+      "create": "新しいセクション",
+      "name": "セクション名",
+      "rename": "セクション名を変更",
+      "delete": "セクションを削除（セッションを保持）",
+      "remove": "セクションから外す",
+      "up": "上へ移動",
+      "down": "下へ移動",
+      "manage": "セクションを管理",
+      "more": "さらに読み込む",
+      "retry": "再試行"
     }
   },
   "launchpad": {
@@ -320,11 +293,11 @@
       "forkModelFallback": "オーナーのモデル {{model}} はあなたのキーでは利用できません — このフォークは代わりに {{fallback}} を使用します。",
       "forkModelUnavailable": "オーナーのモデル {{model}} はあなたのキーでは利用できません — 実行前にモデルを選択してください。",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -810,7 +783,6 @@
         "errorChannelMissing": "このチャンネルは利用できなくなりました",
         "errorMessageMissing": "このメッセージは利用できなくなりました",
         "loadError": "メッセージを読み込めませんでした",
-        "loadingMessages": "メッセージを読み込み中…",
         "loadOlder": "以前のメッセージを読み込む",
         "unknownAuthor": "メンバー"
       }
@@ -834,26 +806,26 @@
     "deleteRoleCancel": "キャンセル",
     "deleteRoleOk": "削除",
     "deleteRoleTitle": "ロールを削除しますか？",
-    "followUpSuggestionsDesc": "作業項目のターン完了後に次のステップの候補を提案します。追加のモデルリクエストを使用します。",
+    "followUpSuggestionsDesc": "作業項目のターン完了後に次のステップの候補を提案します。追加のモデルリクエストを使用します",
     "followUpSuggestionsLabel": "Agent のフォローアップ提案",
-    "goalMaxTurnsDesc": "Agent が通常停止する時点から、最後の要求に向けて最大 N ターン追加で作業を続けます（0 = オフ）。",
+    "goalMaxTurnsDesc": "Agent が通常停止する時点から、最後の要求に向けて最大 N ターン追加で作業を続けます（0 = オフ）",
     "goalMaxTurnsLabel": "目標継続の予算",
     "guidanceLabel": "Agent へのガイダンス",
     "guidancePlaceholder": "このロールがアクティブなとき、Agent はどのように振る舞いを変えるべきですか？",
-    "modeSwitchAutoPlanDesc": "確認タイマーが切れたとき、保留中の Plan モード提案を自動的に切り替えます。",
+    "modeSwitchAutoPlanDesc": "確認タイマーが切れたとき、保留中の Plan モード提案を自動的に切り替えます",
     "modeSwitchAutoPlanLabel": "モード切り替えの自動 Plan",
     "newRoleDefaultLabel": "カスタムロール",
-    "pageDescription": "今あなたが担っているロールを定義します。Agent はアクティブなロールのガイダンスを読み、それに合わせて振る舞いを調整します — 例えば、集中しているときは確認の質問を減らし、離席中は要約をまとめて送ります。",
+    "pageDescription": "今あなたが担っているロールを定義します。Agent はアクティブなロールのガイダンスを読み、それに合わせて振る舞いを調整します — 例えば、集中しているときは確認の質問を減らし、離席中は要約をまとめて送ります",
     "pageTitle": "マイロール",
-    "planAutoApproveDesc": "保留中の計画を N 秒後に自動承認します（0 = 自分を待つ）。",
+    "planAutoApproveDesc": "保留中の計画を N 秒後に自動承認します（0 = 自分を待つ）",
     "planAutoApproveLabel": "計画の自動承認",
-    "questionAutoSkipDesc": "保留中の Agent の質問を N 秒後に自動スキップします（0 = 自分を待つ）。",
+    "questionAutoSkipDesc": "保留中の Agent の質問を N 秒後に自動スキップします（0 = 自分を待つ）",
     "questionAutoSkipLabel": "質問の自動スキップ",
     "roleNameLabel": "名前",
     "roleNamePlaceholder": "ロール名",
     "stanceAutonomous": "自律 — 私を待たない",
     "stanceDeferAndBatch": "後回しでまとめる — まず作業し、あとで質問",
-    "stanceDesc": "このロールがアクティブな間、Agent がブロッキングな判断をどう扱うか。",
+    "stanceDesc": "このロールがアクティブな間、Agent がブロッキングな判断をどう扱うか",
     "stanceInteractive": "対話的 — 自由に質問してよい",
     "stanceLabel": "行動の姿勢"
   },
@@ -878,5 +850,10 @@
       "updated": "最近の更新",
       "forks": "フォーク数"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "結果やファイルの変更、または書き込みの失敗により置換を停止しました。一部のファイルは更新済みの可能性があります。再検索してから再試行してください。",
+    "budgetExceeded": "検索がリソース上限に達しました。結果は一部のみです。検索範囲を絞ってください。",
+    "timeout": "検索がタイムアウトしました。検索範囲を絞って再試行してください。"
   }
 }

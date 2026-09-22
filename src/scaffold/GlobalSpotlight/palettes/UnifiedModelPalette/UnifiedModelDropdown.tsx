@@ -20,7 +20,6 @@ import React, {
 import { createPortal } from "react-dom";
 
 import AnyIcon from "@src/components/AnyIcon";
-import Button from "@src/components/Button";
 import DropdownSearch from "@src/components/Dropdown/DropdownSearch";
 import HoverSafeSubmenuBridge from "@src/components/Dropdown/HoverSafeSubmenuBridge";
 import {
@@ -34,10 +33,15 @@ import {
   useDropdownEngine,
 } from "@src/hooks/dropdown";
 import { useFilteredItems } from "@src/hooks/search";
-import { ArrowRight01Icon, HugeiconsIcon, Tick01Icon } from "@src/icons";
+import { ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import { getViewportSize } from "@src/util/ui/window/viewport";
 
+import { PickerOptionRow } from "../../components/PickerOptionRow";
 import type { SpotlightItem } from "../../shared";
+import {
+  PickerDropdownShell,
+  getPickerDropdownBounds,
+} from "../../shell/PickerDropdownShell";
 import type { UnifiedModelPaletteProps } from "./types";
 import {
   MODEL_SECTION,
@@ -67,7 +71,7 @@ interface DropdownRowProps {
   item: SpotlightItem;
   keyboardProps?: ReturnType<UseDropdownListNavigationReturn["getItemProps"]>;
   onItemMouseEnter?: (element: HTMLElement) => void;
-  onRowMouseEnter?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onRowMouseEnter?: (element: HTMLElement) => void;
   submenuSide?: SubmenuSide;
 }
 
@@ -78,25 +82,8 @@ const DropdownRow: React.FC<DropdownRowProps> = ({
   onRowMouseEnter,
   submenuSide,
 }) => {
-  const data = getItemData(item);
-  const isCurrent = data.isCurrentSelection === true;
-
-  const renderedIcon = useMemo(() => {
-    if (isCurrent) {
-      return (
-        <HugeiconsIcon
-          icon={Tick01Icon}
-          data-icon="check"
-          size={DROPDOWN_ITEM.iconSize}
-          strokeWidth={2.25}
-          className="text-primary-6"
-        />
-      );
-    }
-    return <AnyIcon icon={item.icon} size={14} className="text-text-2" />;
-  }, [item.icon, isCurrent]);
-
-  if (isHeaderItem(item)) {
+  const data = item.data ?? {};
+  if (isHeaderItem(item))
     return (
       <div
         className={DROPDOWN_CLASSES.sectionLabel}
@@ -105,57 +92,38 @@ const DropdownRow: React.FC<DropdownRowProps> = ({
         {item.label}
       </div>
     );
-  }
-
-  const labelContent = data.labelContent as React.ReactNode | undefined;
-  const rightContent = data.rightContent as React.ReactNode | undefined;
-  const rightLabel = data.rightLabel as string | undefined;
-  const testId = typeof data.testId === "string" ? data.testId : undefined;
-  const handleMouseEnter = (event: React.MouseEvent<HTMLButtonElement>) => {
-    keyboardProps?.onMouseEnter();
-    onItemMouseEnter?.(event.currentTarget);
-    onRowMouseEnter?.(event);
-  };
-
   return (
-    <Button
-      layout="custom"
-      appearance="custom"
-      htmlType="button"
-      data-dropdown-model-row-anchor
-      data-testid={testId}
-      {...keyboardProps}
-      onMouseEnter={handleMouseEnter}
-      className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} group/model-row w-full justify-start [&_button]:font-normal! [&_span]:font-normal!`}
-    >
-      {renderedIcon && (
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-text-1">
-          {renderedIcon}
-        </span>
-      )}
-      <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate overflow-hidden text-[13px]">
-        {labelContent ?? item.label}
-      </span>
-      {rightContent ? (
-        <span className="relative z-10 ml-1 flex shrink-0 items-center">
-          {rightContent}
-        </span>
-      ) : (
-        rightLabel && (
-          <span className="relative z-10 ml-1 shrink-0 truncate text-[12px] text-text-3">
-            {rightLabel}
-          </span>
-        )
-      )}
-      {submenuSide && (
-        <HugeiconsIcon
-          icon={ArrowRight01Icon}
-          data-icon="chevron-right"
-          size={DROPDOWN_ITEM.iconSize}
-          className="shrink-0 text-text-3"
-        />
-      )}
-    </Button>
+    <PickerOptionRow
+      modelAnchor
+      label={data.labelContent ?? item.label}
+      icon={<AnyIcon icon={item.icon} size={14} className="text-text-2" />}
+      selected={data.isCurrentSelection === true}
+      disabled={data.disabled === true}
+      testId={data.testId}
+      keyboardProps={keyboardProps}
+      className="group/model-row text-[13px]"
+      onRowEnter={(element) => {
+        onItemMouseEnter?.(element);
+        onRowMouseEnter?.(element);
+      }}
+      trailing={
+        <>
+          {data.rightContent ??
+            (data.rightLabel && (
+              <span className="truncate text-[12px] text-text-3">
+                {data.rightLabel}
+              </span>
+            ))}
+          {submenuSide && (
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={DROPDOWN_ITEM.iconSize}
+              className="shrink-0 text-text-3"
+            />
+          )}
+        </>
+      }
+    />
   );
 };
 
@@ -179,6 +147,8 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const {
+    pinnedItems,
+    pinnedHeader,
     recentItems,
     recentHeader,
     allModelItems,
@@ -197,6 +167,7 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
     onConfigChange,
     dispatchCategoryOverride,
     cliAgentTypeOverride,
+    closeOnSourceSelect: false,
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -230,6 +201,11 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
     return `${item.label} ${item.desc || ""} ${rightLabel} ${searchAlias}`;
   }, []);
 
+  const { filteredItems: filteredPinnedItems } = useFilteredItems({
+    items: pinnedItems,
+    searchQuery,
+    getSearchText,
+  });
   const { filteredItems: filteredRecentItems } = useFilteredItems({
     items: recentItems,
     searchQuery,
@@ -242,6 +218,9 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
   });
   const filteredItems = useMemo((): SpotlightItem[] => {
     const items: SpotlightItem[] = [];
+    if (filteredPinnedItems.length > 0) {
+      items.push(pinnedHeader, ...filteredPinnedItems);
+    }
     if (filteredRecentItems.length > 0) {
       items.push(recentHeader, ...filteredRecentItems);
     }
@@ -249,7 +228,14 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
       items.push(allHeader, ...filteredAllModelItems);
     }
     return items;
-  }, [filteredRecentItems, recentHeader, filteredAllModelItems, allHeader]);
+  }, [
+    filteredPinnedItems,
+    pinnedHeader,
+    filteredRecentItems,
+    recentHeader,
+    filteredAllModelItems,
+    allHeader,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -342,6 +328,7 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
       const sourceItem = sourceItems[index];
       if (!sourceItem) return;
       sourceItem.action?.();
+      setSubmenuOpen(false);
     },
     [sourceItems]
   );
@@ -423,11 +410,12 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
   if (!isOpen || !isPositioned) return null;
 
   const { width: vw, height: vh } = getViewportSize();
-  const left = Math.max(
-    VIEWPORT_MARGIN,
-    Math.min(panelPosition.left, vw - VIEWPORT_MARGIN - DROPDOWN_WIDTH)
+  const { left, width: primaryWidth } = getPickerDropdownBounds(
+    panelPosition,
+    DROPDOWN_WIDTH,
+    vw
   );
-  const rightSubmenuLeft = left + DROPDOWN_WIDTH + SUBMENU_GAP;
+  const rightSubmenuLeft = left + primaryWidth + SUBMENU_GAP;
   const leftSubmenuLeft = left - SUBMENU_GAP - SUBMENU_WIDTH;
   const canOpenSubmenuRight =
     rightSubmenuLeft + SUBMENU_WIDTH <= vw - VIEWPORT_MARGIN;
@@ -465,16 +453,12 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
 
   return createPortal(
     <>
-      <div
+      <PickerDropdownShell
         ref={panelRef}
         data-dropdown-main-panel-anchor
-        className={`${DROPDOWN_CLASSES.panel} fixed flex flex-col`}
-        style={{
-          top: panelPosition.top,
-          bottom: panelPosition.bottom,
-          left,
-          width: DROPDOWN_WIDTH,
-        }}
+        position={panelPosition}
+        preferredWidth={DROPDOWN_WIDTH}
+        portal={false}
       >
         <DropdownSearch
           ref={inputRef}
@@ -530,9 +514,8 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
                     closeModelPropertiesDropdown(hoveredElement);
                     if (!rowUsesSubmenu) setSubmenuOpen(false);
                   }}
-                  onRowMouseEnter={(event) => {
-                    const rowTop =
-                      event.currentTarget.getBoundingClientRect().top;
+                  onRowMouseEnter={(element) => {
+                    const rowTop = element.getBoundingClientRect().top;
                     setSubmenuAnchorTop(rowTop);
                     notifySidePanelAnchorChange();
                     if (rowUsesSubmenu) {
@@ -545,14 +528,14 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
             })
           )}
         </div>
-      </div>
+      </PickerDropdownShell>
 
       {effectiveSubmenuOpen && (
         <HoverSafeSubmenuBridge
           side={submenuSide}
           primaryLeft={left}
           primaryTop={primaryPanelTop}
-          primaryWidth={DROPDOWN_WIDTH}
+          primaryWidth={primaryWidth}
           primaryHeight={primaryPanelHeight}
           submenuLeft={submenuLeft}
           submenuTop={submenuTop}
@@ -576,7 +559,7 @@ export const UnifiedModelDropdown: React.FC<UnifiedModelDropdownProps> = ({
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className={DROPDOWN_CLASSES.sectionLabel}>
-            {tCommon("selectors.modelSelector.selectAccount")}
+            {tCommon("selectors.modelSelector.selectKey")}
           </div>
           <div
             className="scrollbar-overlay flex flex-col overflow-y-auto"

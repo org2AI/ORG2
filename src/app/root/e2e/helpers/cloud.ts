@@ -46,6 +46,8 @@ import {
   parseCloudShareDeepLink,
 } from "@src/features/Org2Cloud/org2CloudOrgManagement";
 import {
+  beginOrg2CloudOrgsRequest,
+  commitOrg2CloudOrgsRequest,
   isOrg2CloudOrgsConverging,
   org2CloudOrgsAtom,
   org2CloudOrgsLoadedAtom,
@@ -193,11 +195,9 @@ export function createCloudHelpers({ store }: CloudHelperDeps) {
         name: org.name,
         role: org.role,
       }));
-      store.set(org2CloudOrgsAtom, orgs);
-      // Seeding orgs simulates a completed `list_my_orgs`, so mark the roster
-      // loaded too — otherwise a cloud-aliased work item reads as
-      // membership-pending and blocks its start.
-      store.set(org2CloudOrgsLoadedAtom, true);
+      // Seed the same confirmed membership boundary as list_my_orgs,
+      // including the identity that owns this roster.
+      commitOrg2CloudOrgsRequest(store, beginOrg2CloudOrgsRequest(store), orgs);
       return { ok: true, count: orgs.length };
     } catch (err) {
       return asError(err);

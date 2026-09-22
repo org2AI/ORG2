@@ -352,6 +352,12 @@ async fn run_manual_compact_exclusive(
     let compacted = match compacted {
         Some(compacted) => compacted,
         None => {
+            let attributed = crate::session::auxiliary_usage::AuxiliaryUsageProvider::borrowed(
+                runtime.provider.as_ref(),
+                &session_id,
+                "compaction",
+                runtime.account_id.as_deref(),
+            );
             let attempt = {
                 let mut compaction_state = session.compaction.lock().await;
                 ContextCompactor::compact_manual_force(
@@ -359,7 +365,7 @@ async fn run_manual_compact_exclusive(
                     budget_tokens,
                     &runtime.resolved.compaction,
                     &mut compaction_state,
-                    runtime.provider.as_ref(),
+                    &attributed,
                     &runtime.model,
                     custom_instructions,
                 )

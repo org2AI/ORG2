@@ -2,16 +2,16 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  DETAIL_PANEL_TOKENS,
+  DetailPanelContainer,
+} from "@src/components/layout/blocks";
+import {
   type LinkedRepoOption,
   PROJECT_PROPERTY_CONCISE_FIELDS,
   ProjectContentEditor,
   type ProjectData,
   ProjectPropertyFields,
 } from "@src/modules/ProjectManager/shared";
-import {
-  DETAIL_PANEL_TOKENS,
-  DetailPanelContainer,
-} from "@src/modules/shared/layouts/blocks";
 import type { Label, Person, Team } from "@src/types/core/shared";
 import type { WorkItem as WorkItemExtended } from "@src/types/core/workItem";
 

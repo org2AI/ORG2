@@ -33,6 +33,7 @@ pub fn save_system_msg(prefix: &str, session_id: &str, content: &str) -> SqliteR
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     };
     insert_message_retry(prefix, &msg)
 }
@@ -66,6 +67,7 @@ pub fn save_compact_boundary_msg(
         compact_from_sequence: Some(from_sequence),
         compact_tokens_before: tokens_before,
         compact_tokens_after: tokens_after,
+        tool_is_error: false,
     };
     let id = insert_message_retry(prefix, &msg)?;
     Ok((id, created_at))
@@ -109,6 +111,7 @@ pub fn save_user_msg(
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     };
     insert_message_retry(prefix, &msg)
 }
@@ -140,6 +143,7 @@ pub fn save_user_msg_with_id(
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     };
     insert_message_if_absent_retry(prefix, &msg)
 }
@@ -167,6 +171,7 @@ pub fn save_assistant_msg(
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     };
     insert_message_retry(prefix, &msg)
 }
@@ -197,6 +202,7 @@ pub fn save_assistant_msg_with_connection(
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     };
     insert_message_with_connection(conn, prefix, &msg, MessageConflictPolicy::Replace)
         .map(|(id, _)| id)
@@ -226,6 +232,7 @@ pub fn save_tool_call_msg(
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     };
     insert_message_retry(prefix, &msg)
 }
@@ -255,6 +262,7 @@ pub fn save_tool_result_msg(
         compact_from_sequence: None,
         compact_tokens_before: None,
         compact_tokens_after: None,
+        tool_is_error: false,
     };
     insert_message_retry(prefix, &msg)
 }

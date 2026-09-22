@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 
 import Message from "@src/components/Message";
 import { createLogger } from "@src/hooks/logger";
-import { consumeInternalFileTreeDragData } from "@src/shared/dnd/dragSideChannel";
+import { consumeInternalFileTreeDragData } from "@src/util/dnd/dragSideChannel";
 
 import {
   createPreventDefaults,

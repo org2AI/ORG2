@@ -1,11 +1,5 @@
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useAtom, useAtomValue, useStore } from "jotai";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type ProjectOrg, projectApi } from "@src/api/http/project";
@@ -14,7 +8,10 @@ import {
   ALL_CLOUD_SESSIONS_FILTER,
   type CloudSessionFilter,
 } from "@src/features/Org2Cloud/cloudSessionFilter";
-import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
+import {
+  org2CloudAuthAtom,
+  org2CloudAuthIdentityKey,
+} from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import {
   buildCloudOrgSelectorValue,
   org2CloudOrgsAtom,
@@ -91,9 +88,12 @@ export function useSidebarOrgScope({
   sortedSessions,
 }: UseSidebarOrgScopeParams) {
   const { t: tProjects } = useTranslation("projects");
+  const store = useStore();
   const cloudOrgs = useAtomValue(org2CloudOrgsAtom);
   const cloudOrgsLoaded = useAtomValue(org2CloudOrgsLoadedAtom);
-  const cloudAuthed = useAtomValue(org2CloudAuthAtom) !== null;
+  const cloudAuth = useAtomValue(org2CloudAuthAtom);
+  const cloudAuthed = cloudAuth !== null;
+  const cloudIdentity = cloudAuth ? org2CloudAuthIdentityKey(cloudAuth) : null;
   const [selectedOrgId, setSelectedOrgId] = useAtom(sidebarSelectedOrgIdAtom);
   const [projectOrgs, setProjectOrgs] = useState<ProjectOrg[]>([]);
   const [projectOrgsLoaded, setProjectOrgsLoaded] = useState(false);
@@ -233,13 +233,7 @@ export function useSidebarOrgScope({
       ) ?? null
     );
   }, [activeLocalOrg, cloudOrgs, projectOrgs]);
-  const activeCloudOrgId = activeCloudOrg?.orgId ?? null;
-
-  const setSidebarActiveCloudOrgId = useSetAtom(sidebarActiveCloudOrgIdAtom);
-  useLayoutEffect(() => {
-    setSidebarActiveCloudOrgId(activeCloudOrgId);
-    return () => setSidebarActiveCloudOrgId(null);
-  }, [activeCloudOrgId, setSidebarActiveCloudOrgId]);
+  const activeCloudOrgId = useAtomValue(sidebarActiveCloudOrgIdAtom);
 
   const sessionOrgTags = useAtomValue(sessionOrgTagsAtom);
   const repoScopesByOrg = useAtomValue(org2CloudRepoScopesAtom);
@@ -280,20 +274,54 @@ export function useSidebarOrgScope({
     return ids.size > 0 ? ids : undefined;
   }, [activeOrgId, sessionOrgTags]);
 
-  const [cloudSessionFilters, setCloudSessionFilters] = useState<
-    Map<string, CloudSessionFilter>
-  >(new Map());
-  const cloudSessionFilter = activeCloudOrgId
-    ? (cloudSessionFilters.get(activeCloudOrgId) ?? ALL_CLOUD_SESSIONS_FILTER)
-    : ALL_CLOUD_SESSIONS_FILTER;
+  // Application-owned filters are bounded by current membership, not every
+  // organization/account ever visited during this process lifetime.
+  const [cloudSessionFilters, setCloudSessionFilters] = useState<{
+    identity: string | null;
+    byOrg: Map<string, CloudSessionFilter>;
+  }>(() => ({ identity: cloudIdentity, byOrg: new Map() }));
+  const liveCloudOrgIds = useMemo(
+    () => new Set(cloudOrgs.map((org) => org.orgId)),
+    [cloudOrgs]
+  );
+  // Reconcile owned state before committing this render, so no frame exposes
+  // a filter from an evicted organization or another account.
+  if (cloudSessionFilters.identity !== cloudIdentity) {
+    setCloudSessionFilters({ identity: cloudIdentity, byOrg: new Map() });
+  } else if (cloudOrgsLoaded && cloudSessionFilters.byOrg.size > 0) {
+    const retained = [...cloudSessionFilters.byOrg].filter(([id]) =>
+      liveCloudOrgIds.has(id)
+    );
+    if (retained.length !== cloudSessionFilters.byOrg.size) {
+      setCloudSessionFilters({
+        identity: cloudIdentity,
+        byOrg: new Map(retained),
+      });
+    }
+  }
+  const cloudSessionFilter =
+    activeCloudOrgId && cloudSessionFilters.identity === cloudIdentity
+      ? (cloudSessionFilters.byOrg.get(activeCloudOrgId) ??
+        ALL_CLOUD_SESSIONS_FILTER)
+      : ALL_CLOUD_SESSIONS_FILTER;
   const handleCloudSessionFilterChange = useCallback(
     (filter: CloudSessionFilter) => {
-      if (!activeCloudOrgId) return;
-      setCloudSessionFilters((previous) =>
-        new Map(previous).set(activeCloudOrgId, filter)
-      );
+      const currentAuth = store.get(org2CloudAuthAtom);
+      if (
+        !activeCloudOrgId ||
+        !currentAuth ||
+        org2CloudAuthIdentityKey(currentAuth) !== cloudIdentity ||
+        store.get(sidebarActiveCloudOrgIdAtom) !== activeCloudOrgId
+      )
+        return;
+      setCloudSessionFilters((previous) => ({
+        identity: cloudIdentity,
+        byOrg: new Map(
+          previous.identity === cloudIdentity ? previous.byOrg : []
+        ).set(activeCloudOrgId, filter),
+      }));
     },
-    [activeCloudOrgId]
+    [activeCloudOrgId, cloudIdentity, store]
   );
 
   return {

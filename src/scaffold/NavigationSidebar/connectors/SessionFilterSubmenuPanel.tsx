@@ -30,8 +30,6 @@ interface SessionFilterSubmenuPanelProps {
   resolveGroupByLabel: (mode: string) => string;
   handleSelect: (mode: string) => void;
   handleGroupVisibleCountSelect: (count: SessionGroupVisibleCount) => void;
-  closeSubmenu: () => void;
-  close: () => void;
   handleSubmenuPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   handleSubmenuMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -49,8 +47,6 @@ export function SessionFilterSubmenuPanel({
   resolveGroupByLabel,
   handleSelect,
   handleGroupVisibleCountSelect,
-  closeSubmenu,
-  close,
   handleSubmenuPointerDown,
   handleSubmenuMouseDown,
 }: SessionFilterSubmenuPanelProps): React.ReactElement {
@@ -92,8 +88,6 @@ export function SessionFilterSubmenuPanel({
                   selected={mode === sortMode}
                   onClick={() => {
                     setSortMode(mode);
-                    closeSubmenu();
-                    close();
                   }}
                 >
                   {t(`sidebar.sort.${mode}`)}

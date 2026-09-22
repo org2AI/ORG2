@@ -5,13 +5,13 @@ import type {
   ContextUsageCategory,
   ContextUsageSnapshot,
 } from "@src/store/session/cliSessionStatusAtom";
+import { testTranslate } from "@src/test/i18nTestTranslate";
 
 import { buildContextInfoCategories } from "./contextInfoCategories";
 import type { PanelCategory } from "./contextInfoTypes";
 
-const translate = vi.fn(
-  (key: string, options?: { defaultValue?: string }) =>
-    options?.defaultValue ?? key
+const translate = vi.fn((...args: Parameters<typeof testTranslate>) =>
+  testTranslate(...args)
 );
 const t = translate as unknown as TFunction;
 
@@ -132,8 +132,7 @@ describe("buildContextInfoCategories", () => {
       hex: "#f87171",
     });
     expect(translate).toHaveBeenCalledWith(
-      "contextInfo.categories.unattributed",
-      { defaultValue: "Unattributed" }
+      "contextInfo.categories.unattributed"
     );
   });
 

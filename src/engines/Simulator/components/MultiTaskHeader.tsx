@@ -50,7 +50,6 @@ const MultiTaskHeader: React.FC<MultiTaskHeaderProps> = ({
         {onMinimize && (
           <Button
             variant="tertiary"
-            appearance="ghost"
             size="mini"
             aria-label={t("simulator.multiTask.minimizePanel")}
             iconOnly
@@ -61,7 +60,6 @@ const MultiTaskHeader: React.FC<MultiTaskHeaderProps> = ({
                 size={14}
               />
             }
-            htmlType="button"
             onClick={onMinimize}
             className={`flex h-6 w-6 items-center justify-center rounded text-text-3 transition-all ${SURFACE_TOKENS.hover} hover:text-text-1`}
             title={t("simulator.multiTask.minimizePanel")}
@@ -70,12 +68,10 @@ const MultiTaskHeader: React.FC<MultiTaskHeaderProps> = ({
         {onClose && (
           <Button
             variant="tertiary"
-            appearance="ghost"
             size="mini"
             aria-label={t("simulator.multiTask.closePanel")}
             iconOnly
             icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />}
-            htmlType="button"
             onClick={onClose}
             className={`flex h-6 w-6 items-center justify-center rounded text-text-3 transition-all ${SURFACE_TOKENS.hover} hover:text-text-1`}
             title={t("simulator.multiTask.closePanel")}

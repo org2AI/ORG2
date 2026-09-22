@@ -35,8 +35,8 @@ import {
   Clock01Icon,
   type IconSvgElement,
 } from "@src/icons";
-import { normalizeActivity } from "@src/lib/activityData";
 import { preserveTodoContent } from "@src/store/ui/todoMerge";
+import { normalizeActivity } from "@src/util/data/activityData";
 import { formatSmartDateTime } from "@src/util/data/formatters/date";
 import { prettifyMemberName } from "@src/util/data/formatters/memberName";
 

@@ -3,14 +3,13 @@
  *
  * Type definitions for the editor palette component
  */
+import type { SpotlightInitialEditorMode as EditorPaletteMode } from "@src/store/ui/uiAtom";
+
 import type { SpotlightItem } from "../../shared";
 
 // ============ EDITOR PALETTE MODES ============
 
-export type EditorPaletteMode =
-  | "file" // Go to file (default, no prefix)
-  | "command" // Run command (> prefix)
-  | "symbol"; // Search symbols (@ prefix)
+export type { SpotlightInitialEditorMode as EditorPaletteMode } from "@src/store/ui/uiAtom";
 
 // ============ STATE ============
 

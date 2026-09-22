@@ -12,7 +12,6 @@ import {
   createBrowserSessionTab,
   createChatSessionTab,
   createFileTab,
-  createGitDiffTab,
   createGitHubIssueDetailTab,
   createProjectDashboardTab,
   createProjectWorkItemsIndexTab,
@@ -20,7 +19,6 @@ import {
   createSearchSessionsTab,
   createSearchTab,
   createSourceControlTab,
-  createSubagentDetailTab,
   createTerminalTab,
   createTimelineDiffTab,
   createWorkItemDetailTab,
@@ -208,16 +206,6 @@ describe("Code Editor Factories", () => {
     it("includes defaultPreviewMode when provided", () => {
       const tab = createFileTab("/rules/rule.md", { defaultPreviewMode: true });
       expect(tab.data.defaultPreviewMode).toBe(true);
-    });
-  });
-
-  describe("createGitDiffTab", () => {
-    it("creates git diff tab", () => {
-      const tab = createGitDiffTab("/src/index.ts", "M");
-
-      expect(tab.id).toBe("git-diff:/src/index.ts");
-      expect(tab.type).toBe("git-diff");
-      expect(tab.data.gitStatusLetter).toBe("M");
     });
   });
 
@@ -425,19 +413,6 @@ describe("Project Manager Factories", () => {
 
       expect(tab.id).toBe("github-issue-detail:/workspace/ORGII:42");
       expect(tab.data.stateScopeKey).toBe("repo:/workspace/ORGII:issue:42");
-    });
-  });
-});
-
-describe("Subagent Factories", () => {
-  describe("createSubagentDetailTab", () => {
-    it("creates unique subagent detail tabs", () => {
-      const tab1 = createSubagentDetailTab("Task 1");
-      const tab2 = createSubagentDetailTab("Task 2");
-
-      expect(tab1.id).not.toBe(tab2.id);
-      expect(tab1.title).toBe("Task 1");
-      expect(tab1.icon).toBe("MessageSquare");
     });
   });
 });

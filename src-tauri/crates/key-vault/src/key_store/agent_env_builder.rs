@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::service::KeyService;
 use super::types::{
-    is_claude_official_oauth_token, is_official_anthropic_endpoint, AuthMethod, ModelType,
+    is_claude_official_oauth_token, is_official_anthropic_endpoint, AuthMethod, ModelKey, ModelType,
 };
 use core_types::providers::KIMI_CODE_URL_FRAGMENT;
 
@@ -35,6 +35,11 @@ impl KeyService {
             },
         };
 
+        Self::env_for_key(agent_type, &entry)
+    }
+
+    /// Build credentials from the same snapshot that selects the profile generation.
+    pub fn env_for_key(agent_type: &ModelType, entry: &ModelKey) -> HashMap<String, String> {
         // Honour the master enable switch: a disabled account must not
         // contribute env vars even if the caller targets it explicitly.
         // Mirrors the gate already enforced in

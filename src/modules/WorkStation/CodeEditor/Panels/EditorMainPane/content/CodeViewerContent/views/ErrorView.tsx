@@ -11,10 +11,7 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Placeholder } from "@src/components/Placeholder";
-import {
-  FileHeader,
-  TabBarBottomPanelToggle,
-} from "@src/modules/WorkStation/shared";
+import { FileHeader } from "@src/modules/WorkStation/shared";
 
 import type { ErrorViewProps } from "../types";
 
@@ -74,7 +71,6 @@ export const ErrorView: React.FC<ErrorViewProps> = ({
         isMarkdownFile={isPreviewable}
         isPreviewMode={isPreviewMode}
         onTogglePreview={onTogglePreview}
-        beforeMoreMenuSlot={<TabBarBottomPanelToggle />}
       />
       <Placeholder
         variant="error"

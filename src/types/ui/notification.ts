@@ -1,4 +1,4 @@
-import type { NotificationSoundPreset } from "@src/config/notificationSounds";
+import type { NotificationSoundPreset } from "@src/contracts/notification";
 
 export type NotificationCategory =
   | "taskCompletion"

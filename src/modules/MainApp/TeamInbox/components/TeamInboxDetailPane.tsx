@@ -7,15 +7,15 @@
 import type { TFunction } from "i18next";
 import React from "react";
 
+import DetailHeaderIconAction from "@src/components/DetailHeaderIconAction";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import GitHubPrDetailTabs from "@src/features/GitHubWork/GitHubPrDetailTabs";
 import { HugeiconsIcon, InternetIcon, LinkSquare02Icon } from "@src/icons";
 import type { ManagedPrItem } from "@src/modules/MainApp/WorkManagement/githubManagedItemModel";
-import DetailHeaderIconAction from "@src/modules/shared/components/DetailHeaderIconAction";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import GitHubPrDetailTabs from "@src/modules/shared/components/GitHubPrDetailTabs";
 import DetailPaneLayout, {
   DetailPaneCloseAction,
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
+} from "@src/scaffold/layouts/DetailPaneLayout";
 import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import type { WorkItem } from "@src/types/core/workItem";
 import { openInSystemBrowser } from "@src/util/ui/openLink";

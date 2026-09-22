@@ -22,7 +22,7 @@ import {
   type CallbackRefEffectHandle,
   useCallbackRefEffect,
 } from "@src/hooks/dom/useCallbackRefEffect";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 const STROKE_DRAW_INTERVAL_MS = 2200;
 

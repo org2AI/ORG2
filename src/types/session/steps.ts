@@ -67,10 +67,6 @@ export interface SessionConfig {
   ide_extensions: Record<string, unknown>;
   github_token_enable: boolean;
 }
-export interface WpSessionConfig {
-  cur: SessionConfig | undefined;
-  origin: SessionConfig | undefined;
-}
 
 export interface WpApiKey {
   chunk_id: string;
@@ -80,12 +76,6 @@ export interface WpApiKey {
 export interface WpApiKeyList {
   cur: WpApiKey[];
   origin: WpApiKey[];
-}
-
-export interface ContextAddMap {
-  init_tab: string;
-  follow_tab_add: string;
-  follow_tab_load: string;
 }
 export interface WpWebItem {
   chunk_id: string;

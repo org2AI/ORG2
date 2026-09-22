@@ -158,9 +158,12 @@ async fn get_git_file_status(
         params.file_path.clone()
     };
 
-    // Run: git ls-files --stage -- <file_path>
+    // Run: git ls-files --stage -- :(literal)<file_path>
+    // The selected name is matched literally; a pattern-looking name such as
+    // `[ab].txt` must not report another file's stage or blob.
+    let literal_path = crate::commands::utils::literal_pathspec(&relative_path);
     let output = spawn_git_command(
-        &["ls-files", "--stage", "--", &relative_path],
+        &["ls-files", "--stage", "--", &literal_path],
         Path::new(&params.repo_path),
     )
     .map_err(|e| FileRouteError::GitError(format!("Failed to execute git: {}", e)))?;

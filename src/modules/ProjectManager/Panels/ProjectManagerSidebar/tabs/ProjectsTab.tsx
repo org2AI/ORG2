@@ -13,9 +13,9 @@ import {
   DROPDOWN_PANEL,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import type { SectionHeaderAction } from "@src/components/TreePanelSidebar/types";
 import { useDropdownEngine } from "@src/hooks/dropdown";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   Add01Icon,
   DeliveryBox01Icon,
@@ -98,7 +98,6 @@ const OrgActionsDropdown: React.FC<OrgActionsDropdownProps> = ({
     <>
       <Button
         variant="tertiary"
-        appearance="soft"
         size="sidebar"
         aria-pressed={isOpen}
         aria-label={addOrgLabel}
@@ -121,7 +120,6 @@ const OrgActionsDropdown: React.FC<OrgActionsDropdownProps> = ({
           toggle();
         }}
         title={addOrgLabel}
-        htmlType="button"
       />
       {isOpen &&
         isPositioned &&
@@ -145,8 +143,6 @@ const OrgActionsDropdown: React.FC<OrgActionsDropdownProps> = ({
           >
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={handleAddOrg}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"
@@ -162,8 +158,6 @@ const OrgActionsDropdown: React.FC<OrgActionsDropdownProps> = ({
             </Button>
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={handleImportOrgs}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"
@@ -229,7 +223,6 @@ const CreateActionsDropdown: React.FC<CreateActionsDropdownProps> = ({
     <>
       <Button
         variant="tertiary"
-        appearance="soft"
         size="sidebar"
         aria-pressed={isOpen}
         aria-label={createLabel}
@@ -252,7 +245,6 @@ const CreateActionsDropdown: React.FC<CreateActionsDropdownProps> = ({
           toggle();
         }}
         title={createLabel}
-        htmlType="button"
       />
       {isOpen &&
         isPositioned &&
@@ -276,8 +268,6 @@ const CreateActionsDropdown: React.FC<CreateActionsDropdownProps> = ({
           >
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={handleCreateWorkItem}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"
@@ -295,8 +285,6 @@ const CreateActionsDropdown: React.FC<CreateActionsDropdownProps> = ({
             </Button>
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={handleCreateProject}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"
@@ -314,8 +302,6 @@ const CreateActionsDropdown: React.FC<CreateActionsDropdownProps> = ({
             </Button>
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={handleImportGithubIssuesProject}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"

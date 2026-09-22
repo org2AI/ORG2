@@ -4,12 +4,12 @@ import { useTranslation } from "react-i18next";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
 import Message from "@src/components/Message";
-import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
 import {
   githubIssueResourceKey,
   loadGitHubIssueTimeline,
   primeGitHubIssueDetailBundle,
-} from "@src/modules/shared/githubIssueDetailCoordinator";
+} from "@src/features/GitHubWork/githubIssueDetailCoordinator";
+import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
 import { fetchIssueTimeline } from "@src/services/git/operations/githubIssues";
 import {
   openGitHubIssueInChatPanelTabAtom,

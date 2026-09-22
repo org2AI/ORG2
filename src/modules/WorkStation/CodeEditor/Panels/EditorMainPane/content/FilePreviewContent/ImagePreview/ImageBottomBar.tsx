@@ -14,8 +14,8 @@ import {
   ArrowExpand01Icon,
   ArrowRight02Icon,
   HugeiconsIcon,
-  ZoomInAreaIcon,
-  ZoomOutAreaIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
 } from "@src/icons";
 
 import { PreviewBottomBar, formatFileSize } from "../PreviewBottomBar";
@@ -162,7 +162,6 @@ const ZoomControls: React.FC<ZoomProps> = ({
     <>
       <Button
         variant="tertiary"
-        appearance="soft"
         size="sidebar"
         aria-pressed={fitMode}
         iconOnly
@@ -170,7 +169,7 @@ const ZoomControls: React.FC<ZoomProps> = ({
           <HugeiconsIcon
             icon={ArrowExpand01Icon}
             data-icon="maximize"
-            size={HEADER_ICON_SIZE.md}
+            size={HEADER_ICON_SIZE.sm}
             strokeWidth={1.75}
           />
         }
@@ -178,7 +177,6 @@ const ZoomControls: React.FC<ZoomProps> = ({
       />
       <Button
         variant="tertiary"
-        appearance="soft"
         size="sidebar"
         aria-pressed={!fitMode && zoom === 1}
         iconOnly
@@ -188,14 +186,13 @@ const ZoomControls: React.FC<ZoomProps> = ({
       <div className="mx-1 h-3 w-px bg-border-2" />
       <Button
         variant="tertiary"
-        appearance="soft"
         size="sidebar"
         iconOnly
         icon={
           <HugeiconsIcon
-            icon={ZoomOutAreaIcon}
+            icon={ZoomOutIcon}
             data-icon="zoom-out"
-            size={HEADER_ICON_SIZE.md}
+            size={HEADER_ICON_SIZE.sm}
             strokeWidth={1.75}
           />
         }
@@ -207,14 +204,13 @@ const ZoomControls: React.FC<ZoomProps> = ({
       </span>
       <Button
         variant="tertiary"
-        appearance="soft"
         size="sidebar"
         iconOnly
         icon={
           <HugeiconsIcon
-            icon={ZoomInAreaIcon}
+            icon={ZoomInIcon}
             data-icon="zoom-in"
-            size={HEADER_ICON_SIZE.md}
+            size={HEADER_ICON_SIZE.sm}
             strokeWidth={1.75}
           />
         }

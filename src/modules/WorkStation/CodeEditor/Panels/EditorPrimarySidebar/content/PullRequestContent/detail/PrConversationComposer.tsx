@@ -2,14 +2,14 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import ComposerSurface from "@src/components/ComposerSurface";
-import { COMPOSER_BOTTOM_DOCK_PADDING_CLASS } from "@src/config/composerStackTokens";
-import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import MarkdownTextareaEditor, {
   type MarkdownEditorMode,
   type MarkdownTextareaEditorRef,
-} from "@src/modules/shared/components/MarkdownTextareaEditor";
-import MarkdownEditorModeSwitch from "@src/modules/shared/components/MarkdownTextareaEditor/ModeSwitch";
+} from "@src/components/MarkdownTextareaEditor";
+import MarkdownEditorModeSwitch from "@src/components/MarkdownTextareaEditor/ModeSwitch";
+import { COMPOSER_BOTTOM_DOCK_PADDING_CLASS } from "@src/config/composerStackTokens";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
+import ComposerSurface from "@src/engines/ChatPanel/ComposerSurface";
 
 interface PrConversationComposerProps {
   composerDockRef: React.RefObject<HTMLDivElement | null>;
@@ -58,7 +58,7 @@ export function PrConversationComposer({
       >
         <section
           data-testid="pr-comment-composer"
-          aria-label={t("git.pr.commentPlaceholder", "Leave a comment…")}
+          aria-label={t("git.pr.commentPlaceholder")}
           className="flex flex-col gap-1.5"
         >
           <ComposerSurface
@@ -79,18 +79,15 @@ export function PrConversationComposer({
             trailingActions={
               <div className="flex items-center justify-end gap-1.5">
                 <Button
-                  htmlType="button"
-                  variant="secondary"
                   size="small"
                   shape="round"
                   disabled={submittingReview}
                   onClick={() => setReviewModalVisible(true)}
                   data-testid="pr-submit-review"
                 >
-                  {t("git.pr.submitReview", "Submit review")}
+                  {t("git.pr.submitReview")}
                 </Button>
                 <Button
-                  htmlType="button"
                   variant="primary"
                   size="small"
                   shape="round"
@@ -98,7 +95,7 @@ export function PrConversationComposer({
                   disabled={!draft.trim() || submittingComment}
                   onClick={() => void handleComment()}
                 >
-                  {t("git.pr.comment", "Comment")}
+                  {t("git.pr.comment")}
                 </Button>
               </div>
             }
@@ -107,7 +104,7 @@ export function PrConversationComposer({
               ref={editorRef}
               value={draft}
               onChange={updateDraft}
-              placeholder={t("git.pr.commentPlaceholder", "Leave a comment…")}
+              placeholder={t("git.pr.commentPlaceholder")}
               minHeight={64}
               minRows={2}
               maxHeight={500}

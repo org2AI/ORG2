@@ -41,6 +41,7 @@ mod projection;
 mod provider_commands;
 mod provider_wrappers;
 mod scan;
+mod session_sources;
 
 pub use cursor::*;
 pub use imported_windows::*;
@@ -48,12 +49,13 @@ pub use projection::*;
 pub use provider_commands::*;
 pub use provider_wrappers::*;
 pub use scan::*;
+pub use session_sources::*;
 
 #[cfg(test)]
 mod tests {
     use orgtrack_core::projectors::turn_metadata::ProjectedTurnMetadata;
 
-    use super::scan::external_history_scan_mode;
+    use super::scan::{external_history_scan_mode, external_history_scan_result_wire};
     use super::*;
 
     fn projected(turn_id: &str, start_sequence: i64) -> ProjectedTurnMetadata {
@@ -119,6 +121,51 @@ mod tests {
         assert_eq!(
             external_history_scan_mode(true),
             ExternalHistoryScanMode::Rebuild
+        );
+    }
+
+    #[test]
+    fn rescan_wire_reports_a_failed_source_beside_the_successful_ones() {
+        let outcomes = std::collections::HashMap::from([
+            (
+                "warp".to_string(),
+                Err("unable to open database file".to_string()),
+            ),
+            (
+                "codex_app".to_string(),
+                Ok(ExternalHistorySourceScanResult {
+                    changed: true,
+                    signature: "codex-signature".to_string(),
+                }),
+            ),
+            (
+                "cline".to_string(),
+                Ok(ExternalHistorySourceScanResult {
+                    changed: false,
+                    signature: "cline-signature".to_string(),
+                }),
+            ),
+        ]);
+
+        let wire = external_history_scan_result_wire(
+            vec![
+                "warp".to_string(),
+                "codex_app".to_string(),
+                "cline".to_string(),
+            ],
+            outcomes,
+        );
+
+        assert_eq!(wire.changed_sources, vec!["codex_app".to_string()]);
+        assert_eq!(wire.source_signatures.len(), 2);
+        assert_eq!(wire.source_signatures["codex_app"], "codex-signature");
+        assert_eq!(wire.source_signatures["cline"], "cline-signature");
+        assert_eq!(
+            wire.failed_sources,
+            std::collections::HashMap::from([(
+                "warp".to_string(),
+                "unable to open database file".to_string()
+            )])
         );
     }
 

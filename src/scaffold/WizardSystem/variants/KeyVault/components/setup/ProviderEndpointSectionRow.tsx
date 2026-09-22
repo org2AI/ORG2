@@ -5,7 +5,7 @@ import type {
   ProviderProtocol,
 } from "@src/api/tauri/rpc/schemas/validation";
 import TabPill from "@src/components/TabPill";
-import { SectionRow } from "@src/modules/shared/layouts/SectionLayout";
+import { SectionRow } from "@src/components/layout/Section";
 
 import {
   getOfficialBaseUrl,

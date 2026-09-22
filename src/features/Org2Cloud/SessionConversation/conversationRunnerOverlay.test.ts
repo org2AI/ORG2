@@ -7,6 +7,7 @@ import {
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import {
+  buildConversationRunnerOverlay,
   conversationRunnerOverlaysEqual,
   selectConversationRunnerTail,
 } from "./conversationRunnerOverlay";
@@ -55,6 +56,46 @@ function completedTool(
 }
 
 describe("conversation runner overlay stability", () => {
+  it("preserves source identity for live assistant/tool rows across episodes without needless updates", () => {
+    const runner = {
+      runnerSessionId: "first-child",
+      turnId: "turn",
+      eventStartIndex: 0,
+    };
+    const assistant = {
+      ...event("reply"),
+      sessionId: "first-child",
+      id: "codex-asst-8",
+      result: { turnIntentId: "turn" },
+    };
+    const tool = {
+      ...completedTool("tool-9", "result"),
+      sessionId: "first-child",
+      result: { status: "completed", output: "result", turnIntentId: "turn" },
+    };
+    const rows = [assistant, tool];
+    const first = buildConversationRunnerOverlay(runner, rows, "root");
+    const repeated = buildConversationRunnerOverlay(runner, rows, "root");
+    const other = buildConversationRunnerOverlay(
+      { ...runner, runnerSessionId: "second-child" },
+      rows.map((row) => ({ ...row, sessionId: "second-child" })),
+      "root"
+    );
+    expect(first.map(nativeSourceEventId)).toEqual(
+      rows.map(nativeSourceEventId)
+    );
+    expect(first.map((row) => row.id)).not.toEqual(other.map((row) => row.id));
+    expect(conversationRunnerOverlaysEqual(first, repeated)).toBe(true);
+    expect(conversationRunnerOverlaysEqual(first, other)).toBe(false);
+    expect(
+      conversationRunnerOverlaysEqual(first, [
+        first[0],
+        { ...first[1], args: { ...first[1].args, path: "/repo/OTHER.md" } },
+      ])
+    ).toBe(false);
+    expect(tool.args).toEqual({ path: "/repo/README.md" });
+  });
+
   it("reuses equal projections but publishes visible streaming changes", () => {
     const first = event("working");
     expect(

@@ -25,6 +25,8 @@ export interface TauriMobileRemoteBridge {
   secureDelete(key: string): Promise<void>;
   getInitialDeepLinks(): Promise<string[]>;
   subscribeDeepLinks(listener: (urls: string[]) => void): Promise<() => void>;
+  /** Optional for older/injected shells; derived from the loaded theme canvas. */
+  applyCanvasColor?(color: [number, number, number]): Promise<void>;
 }
 
 export interface TauriMobileRemotePlatformOptions {

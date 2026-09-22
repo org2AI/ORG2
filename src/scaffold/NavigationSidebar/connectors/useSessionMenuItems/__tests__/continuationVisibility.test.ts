@@ -3,10 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { Session } from "@src/store/session";
 
 import {
-  continuationLineagesForRevealedSessions,
   continuationWinnerIds,
   isHiddenContinuationSibling,
-  isRosterSiblingOfRevealedContinuation,
 } from "../continuationVisibility";
 
 function session(sessionId: string, continuationLineageId?: string): Session {
@@ -18,49 +16,6 @@ function session(sessionId: string, continuationLineageId?: string): Session {
     continuationLineageId,
   };
 }
-
-describe("continuationLineagesForRevealedSessions", () => {
-  it("returns only lineages owned by explicitly revealed rows", () => {
-    expect(
-      continuationLineagesForRevealedSessions(
-        [
-          session("active-old", "lineage-a"),
-          session("roster-new", "lineage-a"),
-          session("unrelated", "lineage-b"),
-          session("legacy-without-lineage"),
-        ],
-        new Set(["active-old", "legacy-without-lineage"])
-      )
-    ).toEqual(new Set(["lineage-a"]));
-  });
-
-  it("hides the roster winner but keeps the explicitly revealed sibling", () => {
-    const revealedIds = new Set(["active-old"]);
-    const revealedLineages = new Set(["lineage-a"]);
-
-    expect(
-      isRosterSiblingOfRevealedContinuation(
-        session("roster-new", "lineage-a"),
-        revealedIds,
-        revealedLineages
-      )
-    ).toBe(true);
-    expect(
-      isRosterSiblingOfRevealedContinuation(
-        session("active-old", "lineage-a"),
-        revealedIds,
-        revealedLineages
-      )
-    ).toBe(false);
-    expect(
-      isRosterSiblingOfRevealedContinuation(
-        session("unrelated", "lineage-b"),
-        revealedIds,
-        revealedLineages
-      )
-    ).toBe(false);
-  });
-});
 
 describe("continuationWinnerIds", () => {
   function dated(

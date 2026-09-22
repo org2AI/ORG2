@@ -41,7 +41,7 @@
 # Recommended GitHub/Azure OIDC setup for scalable tag releases:
 #   GitHub Environment: code-signing
 #   Azure Federated Credential subject:
-#     repo:YORG-AI/ORGII:environment:code-signing
+#     repo:org2AI/ORG2:environment:code-signing
 #
 # Azure Trusted Signing config (already provisioned):
 #   Account:  orgii-codesign  (East US — https://eus.codesigning.azure.net/)
@@ -251,7 +251,7 @@ jobs:
     runs-on: windows-latest
     needs: build-and-release
     # This makes GitHub's OIDC subject stable across all release tags:
-    # repo:YORG-AI/ORGII:environment:code-signing
+    # repo:org2AI/ORG2:environment:code-signing
     environment: code-signing
     env:
       HAS_AZURE_SIGNING: ${{ secrets.AZURE_CLIENT_ID != '' }}

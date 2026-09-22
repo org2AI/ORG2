@@ -72,7 +72,6 @@ fn run_git_command(repo_path: &PathBuf, args: &[&str]) -> Result<std::process::O
 
 /// Create a commit with the given message
 /// Uses run_git_command helper with retries and clean environment
-#[tauri::command(rename_all = "camelCase")]
 pub fn git_commit(folder_path: String, message: String) -> Result<(), String> {
     let repo_path = PathBuf::from(&folder_path);
 

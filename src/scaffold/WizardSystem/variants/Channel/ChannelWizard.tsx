@@ -112,7 +112,7 @@ const ChannelWizard: React.FC<ChannelWizardProps> = ({
     if (!selectedType) return;
 
     const validationErrors = validateAccountName(isDuplicateName, {
-      duplicate: t("integrations.accountNameDuplicate"),
+      duplicate: t("integrations.connectionNameDuplicate"),
     });
     if (validationErrors.name) {
       setErrors(validationErrors);
@@ -137,7 +137,7 @@ const ChannelWizard: React.FC<ChannelWizardProps> = ({
     if (!gitMethod) return;
 
     const validationErrors = validateAccountName(isDuplicateName, {
-      duplicate: t("integrations.accountNameDuplicate"),
+      duplicate: t("integrations.connectionNameDuplicate"),
     });
     if (validationErrors.name) {
       setErrors(validationErrors);
@@ -150,12 +150,7 @@ const ChannelWizard: React.FC<ChannelWizardProps> = ({
       const label = resolvedAccountName;
       if (gitMethod === STORY_SYNC_AUTH_METHOD.SCAN) {
         if (!gitScanCandidate) {
-          setGitSubmitError(
-            t(
-              "gitConnections.scanSelectRequired",
-              "Pick a detected credential to import."
-            )
-          );
+          setGitSubmitError(t("gitConnections.scanSelectRequired"));
           setGitSubmitting(false);
           return;
         }
@@ -194,9 +189,7 @@ const ChannelWizard: React.FC<ChannelWizardProps> = ({
         );
       } else if (gitMethod === STORY_SYNC_AUTH_METHOD.SSH) {
         if (!gitSshKeyPath.trim()) {
-          setGitSubmitError(
-            t("gitConnections.sshKeyPathRequired", "SSH key path is required.")
-          );
+          setGitSubmitError(t("gitConnections.sshKeyPathRequired"));
           setGitSubmitting(false);
           return;
         }
@@ -241,7 +234,7 @@ const ChannelWizard: React.FC<ChannelWizardProps> = ({
     if (!selectedType) return;
 
     const validationErrors = validateAccountName(isDuplicateName, {
-      duplicate: t("integrations.accountNameDuplicate"),
+      duplicate: t("integrations.connectionNameDuplicate"),
     });
     if (validationErrors.name) {
       setErrors(validationErrors);

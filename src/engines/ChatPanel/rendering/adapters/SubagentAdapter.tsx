@@ -25,7 +25,6 @@ import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import {
   focusedSubagentCellAtom,
   stationModeAtom,
-  subagentPanelRevealRequestAtom,
 } from "@src/store/ui/simulatorAtom";
 
 import SubagentBlock from "../../blocks/SubagentBlock";
@@ -144,7 +143,6 @@ export const SubagentAdapter: React.FC<UniversalEventProps> = (props) => {
   const agentIconId = subagentSession?.agentIconId;
 
   const setFocusedCell = useSetAtom(focusedSubagentCellAtom);
-  const setPanelReveal = useSetAtom(subagentPanelRevealRequestAtom);
   const setChatPanelMaximized = useSetAtom(chatPanelMaximizedAtom);
   const setStationMode = useSetAtom(stationModeAtom);
   const navigateToEvent = useSetAtom(navigateToEventAtom);
@@ -153,22 +151,20 @@ export const SubagentAdapter: React.FC<UniversalEventProps> = (props) => {
     // Seek the main replay cursor back to this subagent's delegate event so
     // the cursor lands inside the subagent's [startedAtMs, endedAtMs] clip
     // window. Without this, a subagent that already finished has retired its
-    // monitor cell (the cursor sits past endedAtMs), so focusing the cell or
-    // bumping the reveal counter has nothing to act on. navigateToEventAtom
-    // also flips replayMode to "replay" (free-browse), pausing tail-follow at
-    // that moment. The cell then re-materialises and focus/reveal take effect.
+    // monitor cell (the cursor sits past endedAtMs), so focusing the cell has
+    // nothing to act on. navigateToEventAtom also flips replayMode to
+    // "replay" (free-browse), pausing tail-follow at that moment. The cell
+    // then re-materialises and focus takes effect.
     navigateToEvent(props.eventId);
     setStationMode("agent-station");
     setChatPanelMaximized(false);
     setFocusedCell(data.subagentSessionId);
-    setPanelReveal((prev) => prev + 1);
   }, [
     data.subagentSessionId,
     props.eventId,
     navigateToEvent,
     setChatPanelMaximized,
     setFocusedCell,
-    setPanelReveal,
     setStationMode,
   ]);
 

@@ -1,6 +1,4 @@
-import React from "react";
-
-import Button from "@src/components/Button";
+import SegmentedTextPill from "@src/components/SegmentedTextPill";
 import { CLI_LAUNCH_MODE, type CliLaunchMode } from "@src/store/session";
 
 interface CliAgentListFilterSwitchProps {
@@ -9,46 +7,21 @@ interface CliAgentListFilterSwitchProps {
   className?: string;
 }
 
-export const CliAgentListFilterSwitch: React.FC<
-  CliAgentListFilterSwitchProps
-> = ({ mode, onModeChange, className = "" }) => {
-  const guiSelected = mode === CLI_LAUNCH_MODE.GUI;
-  const tuiSelected = mode === CLI_LAUNCH_MODE.TUI;
-
+export function CliAgentListFilterSwitch({
+  mode,
+  onModeChange,
+  className,
+}: CliAgentListFilterSwitchProps) {
   return (
-    <div
-      className={`inline-flex h-[28px] items-center rounded-full bg-fill-2 p-0.5 text-[12px] font-medium ${className}`}
-    >
-      <Button
-        layout="custom"
-        appearance="custom"
-        htmlType="button"
-        className={`h-6 rounded-full px-2.5 py-0 transition-colors ${
-          guiSelected
-            ? "bg-bg-2 text-text-1 shadow-xs"
-            : "text-text-3 hover:text-text-1"
-        }`}
-        aria-pressed={guiSelected}
-        onClick={() => onModeChange(CLI_LAUNCH_MODE.GUI)}
-      >
-        GUI
-      </Button>
-      <Button
-        layout="custom"
-        appearance="custom"
-        htmlType="button"
-        className={`h-6 rounded-full px-2.5 py-0 transition-colors ${
-          tuiSelected
-            ? "bg-bg-2 text-text-1 shadow-xs"
-            : "text-text-3 hover:text-text-1"
-        }`}
-        aria-pressed={tuiSelected}
-        onClick={() => onModeChange(CLI_LAUNCH_MODE.TUI)}
-      >
-        TUI
-      </Button>
-    </div>
+    <SegmentedTextPill
+      ariaLabel="GUI / TUI"
+      value={mode}
+      onChange={onModeChange}
+      className={className}
+      options={[
+        { value: CLI_LAUNCH_MODE.GUI, label: "GUI" },
+        { value: CLI_LAUNCH_MODE.TUI, label: "TUI" },
+      ]}
+    />
   );
-};
-
-export default CliAgentListFilterSwitch;
+}

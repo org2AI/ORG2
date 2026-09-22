@@ -243,3 +243,50 @@ fn blank_head_branch_is_treated_as_unknown() {
         vec!["fetch", "--no-tags", "origin", "refs/pull/8/head"]
     );
 }
+
+// ============================================
+// Option-shaped inputs never reach git
+// ============================================
+
+#[test]
+fn option_shaped_remote_is_rejected_before_any_git_call() {
+    let mock = MockGit::new(vec![]);
+
+    let err = resolve_pr_base_with("--upload-pack=x", 7, Some("feature/x"), None, |args| {
+        mock.run(args)
+    })
+    .expect_err("an option-shaped remote must be rejected");
+
+    assert!(err.contains("must not start with '-'"), "{err}");
+    assert!(
+        mock.calls().is_empty(),
+        "git must not run: {:?}",
+        mock.calls()
+    );
+}
+
+/// The head branch name is PR metadata. One git would parse as an option is
+/// never fetched by name; the PR still resolves through its pull ref.
+#[test]
+fn option_shaped_head_branch_resolves_through_the_pull_ref() {
+    let mock = MockGit::new(vec![
+        ok(""),                                           // fetch origin refs/pull/7/head
+        ok("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"), // rev-parse FETCH_HEAD
+    ]);
+
+    let result = resolve_pr_base_with("origin", 7, Some("--upload-pack=x"), None, |args| {
+        mock.run(args)
+    })
+    .expect("falls back to the pull ref");
+
+    assert_eq!(result.head_sha, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    let calls = mock.calls();
+    assert_eq!(
+        calls[0],
+        vec!["fetch", "--no-tags", "origin", "refs/pull/7/head"]
+    );
+    assert!(
+        calls.iter().flatten().all(|arg| arg != "--upload-pack=x"),
+        "the head branch must never reach argv: {calls:?}"
+    );
+}

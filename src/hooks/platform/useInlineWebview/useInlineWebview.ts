@@ -32,6 +32,7 @@ export function useInlineWebview(
     onCreated,
     onDestroyed,
     onNavigate,
+    resolveHistoryDirection,
     onNewWindow,
     onError,
   } = options;
@@ -67,10 +68,11 @@ export function useInlineWebview(
     onNewWindow,
   });
 
-  const { getContainerRect, updatePosition } = useWebviewLayout({
+  const { getContainerRect, updatePosition, parkOffscreen } = useWebviewLayout({
     containerRef,
     isWebviewCreated,
     isWebviewAvailable,
+    isVisible,
     labelRef,
     log,
   });
@@ -106,6 +108,7 @@ export function useInlineWebview(
       onError,
       onDestroyed,
       onNavigate,
+      resolveHistoryDirection,
       isWebviewCreated,
       setIsWebviewCreated,
       setIsLoading,
@@ -120,6 +123,7 @@ export function useInlineWebview(
     isWebviewAvailable,
     labelRef,
     updatePosition,
+    parkOffscreen,
     log,
   });
 

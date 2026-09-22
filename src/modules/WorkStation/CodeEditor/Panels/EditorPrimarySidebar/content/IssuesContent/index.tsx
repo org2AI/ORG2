@@ -206,9 +206,9 @@ const IssuesContent: React.FC<IssuesContentProps> = memo(
       [selectIssue]
     );
 
-    const failedToLoad = t("git.issues.failedToLoad", "Failed to load");
-    const loadingLabel = t("actions.loading", "Loading…");
-    const noIssuesLabel = t("labels.noIssues", "No issues");
+    const failedToLoad = t("git.issues.failedToLoad");
+    const loadingLabel = t("actions.loading");
+    const noIssuesLabel = t("labels.noIssues");
 
     const openStatus = useMemo<SectionStatus | null>(() => {
       if (isOpenLoading) return { kind: "loading", message: loadingLabel };
@@ -317,16 +317,10 @@ const IssuesContent: React.FC<IssuesContentProps> = memo(
         <Placeholder
           variant="error"
           placement="sidebar"
-          title={t(
-            "git.issues.reAuthRequired",
-            "GitHub Authorization Required"
-          )}
-          subtitle={t(
-            "git.issues.reAuthDescription",
-            "Your GitHub token has expired. Go to Settings → Connections to reconnect."
-          )}
+          title={t("git.issues.reAuthRequired")}
+          subtitle={t("git.issues.reAuthDescription")}
           action={{
-            label: t("git.issues.goToSettings", "Go to Settings"),
+            label: t("git.issues.goToSettings"),
             onClick: () =>
               navigate(buildIntegrationsPath({ category: "connections" })),
           }}
@@ -338,9 +332,9 @@ const IssuesContent: React.FC<IssuesContentProps> = memo(
         <Placeholder
           variant="error"
           placement="sidebar"
-          title={t("git.issues.failedToLoad", "Failed to load issues")}
+          title={t("git.issues.failedToLoad")}
           subtitle={error}
-          action={{ label: t("actions.retry", "Retry"), onClick: refresh }}
+          action={{ label: t("actions.retry"), onClick: refresh }}
           fillParentHeight
         />
       );
@@ -412,16 +406,12 @@ const IssuesContent: React.FC<IssuesContentProps> = memo(
               <div className="flex justify-center py-1.5">
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
-                  htmlType="button"
                   className="text-[11px] font-medium hover:bg-fill-1 disabled:cursor-default disabled:opacity-60"
                   disabled={isLoading}
                   onClick={isOpenSection ? loadMoreOpen : loadMoreClosed}
                 >
-                  {isLoading
-                    ? t("actions.loading", "Loading…")
-                    : t("actions.loadMore", "Load more")}
+                  {isLoading ? t("actions.loading") : t("actions.loadMore")}
                 </Button>
               </div>
             );

@@ -51,4 +51,32 @@ describe("ComposerInput snapshot ranges", () => {
       ],
     });
   });
+
+  it("measures text the way the editor's plain text does", () => {
+    // A zero-width anchor is in the DOM but not in the plain text, so it must
+    // not shift the range: shifted by one, this removed "review" and left "@".
+    const anchor = String.fromCharCode(0x200b);
+    const snapshot: ComposerSnapshot = {
+      parts: [
+        filePill,
+        { kind: "newline" },
+        { kind: "text", text: `${anchor}see @review now` },
+      ],
+    };
+    const startOffset = "index.tsx".length + "\n".length + "see ".length;
+
+    expect(
+      removeSnapshotTextRange(
+        snapshot,
+        startOffset,
+        startOffset + "@review".length
+      )
+    ).toEqual({
+      parts: [
+        filePill,
+        { kind: "newline" },
+        { kind: "text", text: `${anchor}see  now` },
+      ],
+    });
+  });
 });

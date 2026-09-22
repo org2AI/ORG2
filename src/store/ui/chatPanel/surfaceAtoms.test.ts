@@ -150,28 +150,13 @@ describe("tab-derived chat-panel surface", () => {
             ? CHAT_PANEL_CONTENT_MODE.SESSION
             : CHAT_PANEL_CONTENT_MODE.NON_SESSION
         );
-        const active = resolveChatPanelContentState({
-          active: true,
+        const contentState = resolveChatPanelContentState({
           currentSessionId: "still-loaded-session",
           surface,
         });
-        expect(active.showSessionContent).toBe(
+        expect(contentState.showSessionContent).toBe(
           destination.kind === KIND.SESSION
         );
-        expect(active.showPanelContent).toBe(true);
-        expect(active.showHeader).toBe(true);
-        // Inactive pane: only a non-session destination keeps the panel and
-        // its header showing.
-        const inactive = resolveChatPanelContentState({
-          active: false,
-          currentSessionId: "still-loaded-session",
-          surface,
-        });
-        expect(inactive.showSessionContent).toBe(false);
-        expect(inactive.showPanelContent).toBe(
-          destination.kind !== KIND.SESSION
-        );
-        expect(inactive.showHeader).toBe(destination.kind !== KIND.SESSION);
       }
     }
   );

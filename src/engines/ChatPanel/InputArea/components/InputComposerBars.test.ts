@@ -12,20 +12,27 @@ import {
   vi,
 } from "vitest";
 
-import type ComposerBar from "@src/components/ComposerBar";
+import type ComposerBar from "@src/engines/ChatPanel/ComposerBar";
 
 import { NormalComposerContent } from "./InputComposerBars";
 
 const testState = vi.hoisted(() => ({
   composerBarProps: null as React.ComponentProps<typeof ComposerBar> | null,
   inputEditorProps: null as Record<string, unknown> | null,
+  expansionEnabled: [] as boolean[],
+  expansion: {
+    expanded: false,
+    showToggle: false,
+    editorClassName: "",
+    toggle: () => {},
+  },
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@src/components/ComposerBar", async () => {
+vi.mock("@src/engines/ChatPanel/ComposerBar", async () => {
   const ReactModule = await import("react");
   return {
     default: (props: React.ComponentProps<typeof ComposerBar>) => {
@@ -36,6 +43,7 @@ vi.mock("@src/components/ComposerBar", async () => {
         props.leftPrefix,
         props.editorSlot,
         props.pills,
+        props.modelPill,
         props.submitButton
       );
     },
@@ -53,6 +61,24 @@ vi.mock("@src/components/Voice", async () => {
     VoiceRecordingBar: () =>
       ReactModule.createElement("span", {
         "data-testid": "voice-recording-bar",
+      }),
+  };
+});
+
+vi.mock("@src/components/ComposerInput/useComposerExpansion", () => ({
+  useComposerExpansion: (_ref: unknown, enabled: boolean) => {
+    testState.expansionEnabled.push(enabled);
+    return testState.expansion;
+  },
+}));
+
+vi.mock("@src/components/ComposerInput/ComposerExpandToggle", async () => {
+  const ReactModule = await import("react");
+  return {
+    default: (props: { expanded: boolean }) =>
+      ReactModule.createElement("span", {
+        "data-testid": "expand-toggle",
+        "data-expanded": String(props.expanded),
       }),
   };
 });
@@ -105,6 +131,13 @@ describe("NormalComposerContent contextual presentations", () => {
   beforeEach(() => {
     testState.composerBarProps = null;
     testState.inputEditorProps = null;
+    testState.expansionEnabled = [];
+    testState.expansion = {
+      expanded: false,
+      showToggle: false,
+      editorClassName: "",
+      toggle: () => {},
+    };
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -261,6 +294,52 @@ describe("NormalComposerContent contextual presentations", () => {
     expect(
       container.querySelector("[data-testid='input-editor']")?.textContent
     ).toBe("Stat");
+  });
+
+  it("places the expand toggle immediately left of the microphone", () => {
+    testState.expansion = {
+      expanded: true,
+      showToggle: true,
+      editorClassName: "composer-input-expanded",
+      toggle: () => {},
+    };
+    renderComposer(false, {
+      contextualPanel: false,
+      inlineLeadingContent: undefined,
+      promptPolish: {
+        status: "idle",
+        isAvailable: true,
+        isPolishing: false,
+        isPolished: false,
+        toggle: vi.fn(async () => undefined),
+        reset: vi.fn(),
+      },
+    });
+
+    const order = [
+      ...container.querySelectorAll(
+        "[data-testid='prompt-polish'], [data-testid='expand-toggle'], [data-testid='voice-button'], [data-testid='input-actions']"
+      ),
+    ].map((node) => node.getAttribute("data-testid"));
+    expect(order).toEqual([
+      "prompt-polish",
+      "expand-toggle",
+      "voice-button",
+      "input-actions",
+    ]);
+    expect(testState.inputEditorProps).toMatchObject({
+      editorClassName: "composer-input-expanded",
+    });
+    expect(testState.expansionEnabled.at(-1)).toBe(true);
+  });
+
+  it("pauses expansion for the compact row and while recording", () => {
+    renderComposer(false, { isCompactRow: true });
+    expect(testState.expansionEnabled.at(-1)).toBe(false);
+
+    renderComposer(false, { showVoiceUi: true });
+    expect(testState.expansionEnabled.at(-1)).toBe(false);
+    expect(container.querySelector("[data-testid='expand-toggle']")).toBeNull();
   });
 
   it("keeps the standard microphone and send actions after typing", () => {

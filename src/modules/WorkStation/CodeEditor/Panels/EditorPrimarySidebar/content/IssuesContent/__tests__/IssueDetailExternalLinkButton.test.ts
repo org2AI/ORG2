@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { GitHubIssue } from "@src/api/tauri/github";
 import { buildCloudSessionReference } from "@src/features/Org2Cloud/cloudSessionReference";
 import type { GitHubIssueInteractionConfig } from "@src/modules/ProjectManager/WorkItems/components/WorkItemContent/types";
+import { testTranslate, useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import {
   IssueDetailExternalLinkButton,
@@ -15,20 +16,8 @@ import {
 import { IssueTimelineItems } from "../IssueTimelineItems";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, unknown>) => {
-      if (typeof fallback === "string") return fallback;
-      if (typeof fallback?.defaultValue !== "string") return key;
-
-      const template =
-        fallback.count === 1 || typeof fallback.defaultValue_other !== "string"
-          ? fallback.defaultValue
-          : fallback.defaultValue_other;
-      return template.replace(/{{(\w+)}}/g, (_, name: string) =>
-        String(fallback[name] ?? "")
-      );
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 vi.mock("@src/api/http/project", async (importOriginal) => {
@@ -59,7 +48,7 @@ vi.mock("@src/components/MarkDown", () => ({
     createElement("div", { "data-testid": "markdown" }, textContent),
 }));
 
-vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
+vi.mock("@src/components/MarkdownTextareaEditor", () => ({
   default: forwardRef(function MockMarkdownTextareaEditor(
     {
       appearance,
@@ -82,7 +71,7 @@ vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
   }),
 }));
 
-vi.mock("@src/modules/shared/components/GitHubLinkedReferences/lazy", () => ({
+vi.mock("@src/features/GitHubWork/GitHubLinkedReferences/lazy", () => ({
   default: ({ references }: { references: readonly unknown[] }) =>
     createElement("div", {
       "data-testid": "mock-linked-references",
@@ -138,10 +127,12 @@ describe("IssueDetailExternalLinkButton", () => {
     );
 
     expect(markup).toMatch(/<button\b[^>]*type="button"/);
-    expect(markup).toContain('aria-label="Open in external browser"');
+    expect(markup).toContain(
+      `aria-label="${testTranslate("common:previews.openInExternalBrowser")}"`
+    );
     expect(markup).toContain('data-icon="chrome"');
-    expect(markup).toContain("enabled:hover:bg-surface-hover");
-    expect(markup).toContain("enabled:active:bg-surface-selected");
+    expect(markup).toContain("btn-hover:bg-surface-hover");
+    expect(markup).toContain("btn-active:bg-surface-selected");
     expect(markup).not.toContain("<a ");
   });
 

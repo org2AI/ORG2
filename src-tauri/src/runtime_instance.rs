@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 
 const PRIMARY_IDE_SERVER_PORT: u16 = 13_847;
 const PRIMARY_CLI_PROXY_PORT: u16 = 17_888;
+// Dedicated dev slot, outside the numbered bundle range (2..=99).
+const DEV_INSTANCE_ID: u16 = 100;
 const INSTANCE_IDENTIFIER_PREFIXES: &[&str] = &["org2ai.org2.instance", "org2ai.org2.e2e.instance"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,7 +23,11 @@ pub(crate) struct RuntimeInstanceProfile {
 
 impl RuntimeInstanceProfile {
     pub(crate) fn from_identifier(identifier: &str) -> Self {
-        let instance_id = parse_instance_id(identifier).unwrap_or(1);
+        let instance_id = if identifier == "org2ai.org2.dev" {
+            DEV_INSTANCE_ID
+        } else {
+            parse_instance_id(identifier).unwrap_or(1)
+        };
         Self {
             instance_id,
             ide_server_port: PRIMARY_IDE_SERVER_PORT + instance_id - 1,
@@ -29,22 +35,25 @@ impl RuntimeInstanceProfile {
         }
     }
 
-    /// Secondary identities own a sibling data root even when their binary is
-    /// launched directly. The primary identity keeps the production default
-    /// (`~/.orgii`) by returning `None`.
+    /// Numbered test identities own a sibling data root on direct launch.
+    /// Primary and dev intentionally share `~/.orgii`, including sessions.db
+    /// and its attachments/replays, by returning `None`.
     pub(crate) fn default_orgii_home(self, user_home: &Path) -> Option<PathBuf> {
+        if self.instance_id == DEV_INSTANCE_ID {
+            return None;
+        }
         (self.instance_id > 1)
             .then(|| user_home.join(format!(".orgii-instance{}", self.instance_id)))
     }
 
-    /// Secondary identities must not scan the real user's Codex/Claude
-    /// histories. Launch helpers normally provide an explicit override, but
-    /// direct executable launches need the same isolation guarantee.
+    /// Numbered test identities must not scan the real user's histories.
+    /// Dev shares the primary session store and its provider history sources.
     pub(crate) fn default_external_history_home(
         self,
         resolved_orgii_home: &Path,
     ) -> Option<PathBuf> {
-        (self.instance_id > 1).then(|| resolved_orgii_home.join("external-history-home"))
+        (self.instance_id > 1 && self.instance_id != DEV_INSTANCE_ID)
+            .then(|| resolved_orgii_home.join("external-history-home"))
     }
 }
 
@@ -60,6 +69,33 @@ fn parse_instance_id(identifier: &str) -> Option<u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dev_identifier_shares_primary_data_with_separate_service_defaults() {
+        let dev = RuntimeInstanceProfile::from_identifier("org2ai.org2.dev");
+        let primary = RuntimeInstanceProfile::from_identifier("org2ai.org2");
+        assert_eq!(dev.ide_server_port, 13_946);
+        assert_eq!(dev.cli_proxy_port, 17_987);
+        let user_home = Path::new("/home/test");
+        assert_eq!(dev.default_orgii_home(user_home), None);
+        assert_eq!(
+            dev.default_orgii_home(user_home),
+            primary.default_orgii_home(user_home)
+        );
+        assert_eq!(
+            dev.default_external_history_home(&user_home.join(".orgii")),
+            None
+        );
+        for id in 1..=99 {
+            let other =
+                RuntimeInstanceProfile::from_identifier(&format!("org2ai.org2.instance{id}"));
+            assert_ne!(dev.ide_server_port, other.ide_server_port);
+            assert_ne!(dev.cli_proxy_port, other.cli_proxy_port);
+            if id > 1 {
+                assert!(other.default_orgii_home(user_home).is_some());
+            }
+        }
+    }
 
     #[test]
     fn primary_identifier_uses_primary_ports() {

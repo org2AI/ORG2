@@ -11,7 +11,6 @@ import {
   getAppTypeForTool,
 } from "@src/engines/SessionCore/rendering/registry/initToolRegistry";
 import { resolveToolName } from "@src/engines/SessionCore/rendering/registry/toolAliases";
-import { defineSimulatorAppConfig } from "@src/engines/Simulator/apps/core/configFactory";
 import { matchesByAppType } from "@src/engines/Simulator/apps/core/matchers";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
 import { getToolDisplayLabelFromRegistry } from "@src/util/ui/rendering/registryToolLabel";
@@ -249,18 +248,3 @@ export function deriveIDEState(
     fileViewMode,
   };
 }
-
-// ============================================
-// App Configuration
-// ============================================
-
-/**
- * IDE simulator app config.
- * Uses Rust registry for event matching.
- */
-export const IDE_APP_CONFIG = defineSimulatorAppConfig<SimulatorIDEState>({
-  appType: AppType.CODE_EDITOR,
-  name: "IDE",
-  icon: "Code2",
-  deriveState: deriveIDEState,
-});

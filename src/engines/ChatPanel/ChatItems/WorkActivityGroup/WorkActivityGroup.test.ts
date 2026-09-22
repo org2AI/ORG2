@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { makeSessionEvent } from "@src/engines/SessionCore/rendering/props/__tests__/fixtures";
-import { ActivitySparkIcon, WaypointsIcon } from "@src/icons";
+import { ActivitySparkIcon, BookOpen02Icon } from "@src/icons";
 import { getToolDisplayLabelFromRegistry } from "@src/util/ui/rendering/registryToolLabel";
 
 import WorkActivityGroup from ".";
@@ -194,7 +194,7 @@ describe("work activity expansion", () => {
   });
 
   it.each([
-    ["read_file", WaypointsIcon],
+    ["read_file", BookOpen02Icon],
     ["run_shell", ActivitySparkIcon],
   ] as const)(
     "selects the correct icon when reads are followed by %s",

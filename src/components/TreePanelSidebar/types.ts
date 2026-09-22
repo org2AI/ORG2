@@ -14,6 +14,8 @@ export interface TreePanelNode {
   id: string;
   /** Display name */
   name: string;
+  /** Search-only compact folder label; name/path remain the action target. */
+  compactName?: string;
   /** Full path or identifier */
   path: string;
   /** Node type */

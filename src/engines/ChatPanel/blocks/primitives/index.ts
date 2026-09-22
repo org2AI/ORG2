@@ -12,6 +12,8 @@ export {
 export { EventBlockHeader } from "./EventBlockHeader";
 
 export { EventBlockHeaderIcon } from "./EventBlockHeaderIcon";
+export { default as HeaderOnlyBlock } from "./HeaderOnlyBlock";
+export type { HeaderOnlyBlockProps } from "./HeaderOnlyBlock";
 export {
   EventBlockHeaderInfo,
   EventBlockHeaderSubtitle,

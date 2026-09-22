@@ -17,7 +17,7 @@ export interface VirtualizedGroupModel<TGroup, TItem> {
 }
 
 /**
- * Build GroupedVirtuoso's compact data model. Collapsed groups keep their
+ * Build the grouped list's compact data model. Collapsed groups keep their
  * header entry while their row references are omitted.
  */
 export function buildVirtualizedGroupModel<

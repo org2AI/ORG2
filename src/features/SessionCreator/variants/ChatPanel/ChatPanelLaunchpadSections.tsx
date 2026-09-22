@@ -9,12 +9,12 @@
 import React, { Children } from "react";
 import { useTranslation } from "react-i18next";
 
+import { CREATOR_MIDDLE_POSITION_STYLE } from "@src/components/layout/blocks";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import {
   LaunchpadActionGrid,
   type LaunchpadActionPresentation,
 } from "@src/features/SessionCreator/components/LaunchpadActionGrid";
-import { CREATOR_MIDDLE_POSITION_STYLE } from "@src/modules/shared/layouts/blocks";
 
 import SessionCreatorAgentHero from "./SessionCreatorAgentHero";
 import WorkItemAttachmentControl from "./WorkItemAttachmentControl";

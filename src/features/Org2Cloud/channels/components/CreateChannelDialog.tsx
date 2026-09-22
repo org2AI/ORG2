@@ -209,7 +209,7 @@ const CreateChannelDialog: React.FC<CreateChannelDialogProps> = ({
       width={760}
     >
       <div
-        className="flex flex-col gap-5 px-5 py-4"
+        className="flex flex-col gap-5 p-3"
         data-testid="channel-create-dialog"
       >
         <ChannelNameField

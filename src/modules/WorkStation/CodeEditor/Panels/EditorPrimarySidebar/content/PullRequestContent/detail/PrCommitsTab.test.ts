@@ -13,6 +13,7 @@ import {
 } from "vitest";
 
 import type { GitHubChecksSummary } from "@src/api/tauri/github";
+import { testTranslate } from "@src/test/i18nTestTranslate";
 import { copyText } from "@src/util/data/clipboard";
 
 import { PrCommitsTab } from "./PrCommitsTab";
@@ -21,22 +22,14 @@ const mocks = vi.hoisted(() => ({ language: "en" }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (
-      key: string,
-      fallbackOrOptions?: string | Record<string, unknown>
-    ): string => {
-      if (typeof fallbackOrOptions === "string") return fallbackOrOptions;
-      const fallback =
-        typeof fallbackOrOptions?.defaultValue === "string"
-          ? fallbackOrOptions.defaultValue
-          : key;
-      const translated =
-        mocks.language === "zh" && key === "git.pr.commits.onDate"
-          ? "{{date}} 的提交"
-          : fallback;
-      return translated.replace(/{{(\w+)}}/g, (_, token: string) =>
-        String(fallbackOrOptions?.[token] ?? "")
-      );
+    // Real English copy, except for the one key this suite switches to Chinese
+    // to prove the commit-group label and date follow the resolved language.
+    t: (...args: Parameters<typeof testTranslate>) => {
+      const [key, options] = args;
+      if (mocks.language === "zh" && key === "git.pr.commits.onDate") {
+        return String(options?.date ?? "") + " 的提交";
+      }
+      return testTranslate(...args);
     },
     i18n: { resolvedLanguage: mocks.language },
   }),

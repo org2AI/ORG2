@@ -15,10 +15,9 @@ interface UseSessionFilterActionsOptions extends Pick<
   | "onImportSessionJson"
 > {
   close: () => void;
-  closeSubmenu: () => void;
 }
 
-/** Group-by and Show selections plus the action rows: each runs its callback, then closes the menu. */
+/** Setting selections stay open; terminal action rows close after running. */
 export function useSessionFilterActions({
   onSelect,
   onSelectGroupVisibleCount,
@@ -29,24 +28,19 @@ export function useSessionFilterActions({
   onExportSessionJson,
   onImportSessionJson,
   close,
-  closeSubmenu,
 }: UseSessionFilterActionsOptions) {
   const handleSelect = useCallback(
     (mode: string) => {
       onSelect(mode);
-      closeSubmenu();
-      close();
     },
-    [onSelect, closeSubmenu, close]
+    [onSelect]
   );
 
   const handleGroupVisibleCountSelect = useCallback(
     (count: SessionGroupVisibleCount) => {
       onSelectGroupVisibleCount(count);
-      closeSubmenu();
-      close();
     },
-    [close, closeSubmenu, onSelectGroupVisibleCount]
+    [onSelectGroupVisibleCount]
   );
 
   const handleConfigureExternalSources = useCallback(() => {

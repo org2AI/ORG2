@@ -96,18 +96,25 @@ dropIndicator.style.cssText = `
     box-shadow: 0 0 4px rgba(59, 130, 246, 0.5);
 `;
 
-// Append to document when ready
-const appendOverlays = () => {
-  if (!document.body) {
-    setTimeout(appendOverlays, 50);
-    return;
+// Attached on first use, not at document start: this script is injected into
+// every page the browser loads, and most pages are never inspected. Every path
+// that shows an overlay goes through positionOverlay / positionTooltip /
+// showDropIndicator, so those are the only callers.
+const overlayAttachHooks = [];
+let overlayHooksRan = false;
+
+const ensureOverlays = () => {
+  if (!document.body) return;
+  if (!highlightOverlay.isConnected) {
+    document.body.appendChild(highlightOverlay);
+    document.body.appendChild(infoTooltip);
+    document.body.appendChild(selectedOverlay);
+    document.body.appendChild(dropIndicator);
   }
-  document.body.appendChild(highlightOverlay);
-  document.body.appendChild(infoTooltip);
-  document.body.appendChild(selectedOverlay);
-  document.body.appendChild(dropIndicator);
+  if (overlayHooksRan) return;
+  overlayHooksRan = true;
+  overlayAttachHooks.forEach((hook) => hook());
 };
-appendOverlays();
 
 // Get element selector (tag#id.class1.class2)
 const getElementSelector = (el) => {
@@ -157,6 +164,7 @@ const positionOverlay = (overlay, el) => {
     overlay.style.display = "none";
     return;
   }
+  ensureOverlays();
   const rect = el.getBoundingClientRect();
   overlay.style.left = rect.left + "px";
   overlay.style.top = rect.top + "px";
@@ -176,6 +184,7 @@ const positionTooltip = (el, text) => {
     infoTooltip.style.display = "none";
     return;
   }
+  ensureOverlays();
   const rect = el.getBoundingClientRect();
   infoTooltip.textContent = text;
   infoTooltip.style.display = "block";

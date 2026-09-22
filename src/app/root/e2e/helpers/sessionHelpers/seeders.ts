@@ -536,7 +536,7 @@ export function createSessionSeederHelpers(store: E2EStore) {
    * Wire-path seed for the Diff app's Submissions tab. Calls the debug-only
    * Tauri command `debug_seed_commit_link`, which writes a real orgtrack
    * `CommitLinkRecord` (the same shape a live provider run derives from a
-   * `git push` shell event). `orgtrack_get_session_commit_links` then returns
+   * `git push` shell event). `orgtrack_get_diff_replay_preview` then returns
    * it and `SessionReplay` renders the commit in the Submissions tab exactly
    * like a live push. No store writes happen here.
    */

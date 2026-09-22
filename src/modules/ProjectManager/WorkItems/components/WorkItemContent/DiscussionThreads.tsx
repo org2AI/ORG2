@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import PersonAvatar from "@src/components/PersonAvatar";
 import Textarea from "@src/components/Textarea";
+import { MarkdownContent } from "@src/features/GitHubWork/ActivityTimeline";
 import {
   CheckmarkCircle01Icon,
   CornerUpLeftIcon,
@@ -12,7 +13,6 @@ import {
   HugeiconsIcon,
   RotateLeft01Icon,
 } from "@src/icons";
-import { MarkdownContent } from "@src/modules/shared/components/ActivityTimeline";
 import type { Person } from "@src/types/core/shared";
 import type { WorkItemComment } from "@src/types/core/workItem";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";
@@ -65,15 +65,10 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
 
   const handleDelete = async (comment: WorkItemComment) => {
     const confirmed = await confirmDestructiveAction({
-      title: t("workItems.activity.deleteComment", {
-        defaultValue: "Delete comment",
-      }),
-      message: t("workItems.activity.deleteCommentConfirm", {
-        defaultValue:
-          "Delete this comment? Replies stay, the comment body is removed.",
-      }),
-      okLabel: t("common:actions.delete", { defaultValue: "Delete" }),
-      cancelLabel: t("common:actions.cancel", { defaultValue: "Cancel" }),
+      title: t("workItems.activity.deleteComment"),
+      message: t("workItems.activity.deleteCommentConfirm"),
+      okLabel: t("common:actions.delete"),
+      cancelLabel: t("common:actions.cancel"),
     });
     if (confirmed) {
       await onDelete?.(comment.id, comment.revision ?? 0);
@@ -114,9 +109,7 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                       size={12}
                       aria-hidden
                     />
-                    {t("workItems.activity.resolved", {
-                      defaultValue: "Resolved",
-                    })}
+                    {t("workItems.activity.resolved")}
                   </span>
                 ) : null}
               </div>
@@ -124,7 +117,6 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
               (!root.resolved_at && onResolve) ? (
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
                   icon={
                     root.resolved_at ? (
@@ -151,12 +143,8 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                   data-testid={`work-item-discussion-${root.resolved_at ? "reopen" : "resolve"}-${threadId}`}
                 >
                   {root.resolved_at
-                    ? t("workItems.activity.reopen", {
-                        defaultValue: "Reopen",
-                      })
-                    : t("workItems.activity.resolve", {
-                        defaultValue: "Resolve",
-                      })}
+                    ? t("workItems.activity.reopen")
+                    : t("workItems.activity.resolve")}
                 </Button>
               ) : null}
             </div>
@@ -186,16 +174,12 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                       </span>
                       {comment.conclusion ? (
                         <span className="text-success-7 rounded-full bg-success-1 px-2 py-0.5 text-xs">
-                          {t("workItems.activity.conclusion", {
-                            defaultValue: "Conclusion",
-                          })}
+                          {t("workItems.activity.conclusion")}
                         </span>
                       ) : null}
                       {comment.edited_at && !isDeleted ? (
                         <span className="text-xs text-text-4">
-                          {t("workItems.activity.edited", {
-                            defaultValue: "(edited)",
-                          })}
+                          {t("workItems.activity.edited")}
                         </span>
                       ) : null}
                       <time className="text-xs text-text-4">
@@ -204,9 +188,7 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                     </div>
                     {isDeleted ? (
                       <p className="text-sm text-text-4 italic">
-                        {t("workItems.activity.commentDeleted", {
-                          defaultValue: "This comment was deleted.",
-                        })}
+                        {t("workItems.activity.commentDeleted")}
                       </p>
                     ) : isEditing ? (
                       <div className="flex flex-col gap-2">
@@ -220,13 +202,10 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                         <div className="flex justify-end gap-1.5">
                           <Button
                             variant="tertiary"
-                            appearance="ghost"
                             size="mini"
                             onClick={() => setEditingCommentId(null)}
                           >
-                            {t("common:actions.cancel", {
-                              defaultValue: "Cancel",
-                            })}
+                            {t("common:actions.cancel")}
                           </Button>
                           <Button
                             variant="primary"
@@ -245,9 +224,7 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                             }}
                             data-testid={`work-item-discussion-edit-save-${comment.id}`}
                           >
-                            {t("common:actions.save", {
-                              defaultValue: "Save",
-                            })}
+                            {t("common:actions.save")}
                           </Button>
                         </div>
                       </div>
@@ -259,7 +236,6 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                         {isOwn && onEdit ? (
                           <Button
                             variant="tertiary"
-                            appearance="ghost"
                             size="mini"
                             icon={
                               <HugeiconsIcon
@@ -275,15 +251,12 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                             }}
                             data-testid={`work-item-discussion-edit-${comment.id}`}
                           >
-                            {t("common:actions.edit", {
-                              defaultValue: "Edit",
-                            })}
+                            {t("common:actions.edit")}
                           </Button>
                         ) : null}
                         {isOwn && onDelete ? (
                           <Button
                             variant="tertiary"
-                            appearance="ghost"
                             size="mini"
                             icon={
                               <HugeiconsIcon
@@ -296,15 +269,12 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                             onClick={() => void handleDelete(comment)}
                             data-testid={`work-item-discussion-delete-${comment.id}`}
                           >
-                            {t("common:actions.delete", {
-                              defaultValue: "Delete",
-                            })}
+                            {t("common:actions.delete")}
                           </Button>
                         ) : null}
                         {onReply ? (
                           <Button
                             variant="tertiary"
-                            appearance="ghost"
                             size="mini"
                             icon={
                               <HugeiconsIcon
@@ -317,9 +287,7 @@ const DiscussionThreads: React.FC<DiscussionThreadsProps> = ({
                             onClick={() => onReply(comment.id)}
                             data-testid={`work-item-discussion-reply-${comment.id}`}
                           >
-                            {t("workItems.activity.reply", {
-                              defaultValue: "Reply",
-                            })}
+                            {t("workItems.activity.reply")}
                           </Button>
                         ) : null}
                       </div>

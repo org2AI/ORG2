@@ -131,9 +131,7 @@ export const BatchPropertyDialog: React.FC<BatchPropertyDialogProps> = ({
             value={textValue || undefined}
             options={selectValueOptions}
             onChange={(value) => setTextValue(value as string)}
-            placeholder={t("workItems.batchProperty.valuePlaceholder", {
-              defaultValue: "Value",
-            })}
+            placeholder={t("workItems.batchProperty.valuePlaceholder")}
             size="small"
           />
         );
@@ -147,9 +145,7 @@ export const BatchPropertyDialog: React.FC<BatchPropertyDialogProps> = ({
             onChange={(value) =>
               setMultiValues((value as Array<string | number>).map(String))
             }
-            placeholder={t("workItems.batchProperty.valuePlaceholder", {
-              defaultValue: "Value",
-            })}
+            placeholder={t("workItems.batchProperty.valuePlaceholder")}
             size="small"
           />
         );
@@ -158,9 +154,7 @@ export const BatchPropertyDialog: React.FC<BatchPropertyDialogProps> = ({
           <Input
             value={textValue}
             onChange={(value) => setTextValue(value)}
-            placeholder={t("workItems.batchProperty.valuePlaceholder", {
-              defaultValue: "Value",
-            })}
+            placeholder={t("workItems.batchProperty.valuePlaceholder")}
             size="small"
           />
         );
@@ -170,14 +164,12 @@ export const BatchPropertyDialog: React.FC<BatchPropertyDialogProps> = ({
   return (
     <Modal
       visible={open}
-      title={t("workItems.batchProperty.title", {
-        defaultValue: "Set property",
-      })}
+      title={t("workItems.batchProperty.title")}
       width={420}
       onCancel={onClose}
       onOk={() => void handleApply()}
-      okText={t("common:actions.apply", { defaultValue: "Apply" })}
-      cancelText={t("common:actions.cancel", { defaultValue: "Cancel" })}
+      okText={t("common:actions.apply")}
+      cancelText={t("common:actions.cancel")}
       okButtonProps={{ disabled: !selected, loading: applying }}
     >
       <div className="flex flex-col gap-3">
@@ -196,9 +188,7 @@ export const BatchPropertyDialog: React.FC<BatchPropertyDialogProps> = ({
             setMultiValues([]);
             setBoolValue(false);
           }}
-          placeholder={t("workItems.batchProperty.propertyPlaceholder", {
-            defaultValue: "Property",
-          })}
+          placeholder={t("workItems.batchProperty.propertyPlaceholder")}
           size="small"
           dataTestId="work-items-batch-property-select"
         />

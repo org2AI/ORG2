@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
-import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
+import PanelFooter from "@src/components/layout/blocks/PanelFooter";
 import Modal from "@src/scaffold/ModalSystem";
 
 interface AgentOrgOverviewDeleteTeamDialogProps {
@@ -28,9 +28,7 @@ const AgentOrgOverviewDeleteTeamDialog: React.FC<
   return (
     <Modal
       visible={visible}
-      title={t("planner.agentOrgOverview.deleteTitle", {
-        defaultValue: "Permanently delete this Team?",
-      })}
+      title={t("planner.agentOrgOverview.deleteTitle")}
       // Modal portals to document.body; keep it inside Overview's
       // document-level outside-click boundary for real pointer events.
       className="agent-org-overview-owned-overlay"
@@ -38,43 +36,39 @@ const AgentOrgOverviewDeleteTeamDialog: React.FC<
       maskClosable={!isDeleting}
       closable={!isDeleting}
       onCancel={onClose}
-      bodyClassName="space-y-3 px-5 py-4"
+      bodyClassName="space-y-3 p-3"
       footer={
-        <div className="flex h-12 items-center justify-end gap-2 px-3">
-          <Button variant="tertiary" disabled={isDeleting} onClick={onClose}>
-            {t("common:actions.cancel")}
-          </Button>
-          <Button
-            variant="danger"
-            disabled={!deleteConfirmed || isDeleting}
-            loading={isDeleting}
-            onClick={() => void onConfirm()}
-            data-testid="agent-org-delete-confirm-button"
-          >
-            {t("planner.agentOrgOverview.deleteTeam", {
-              defaultValue: "Delete Team",
-            })}
-          </Button>
-        </div>
+        <PanelFooter
+          secondaryActions={[
+            {
+              label: t("common:actions.cancel"),
+              onClick: onClose,
+              disabled: isDeleting,
+            },
+          ]}
+          primaryAction={{
+            label: t("planner.agentOrgOverview.deleteTeam"),
+            onClick: () => void onConfirm(),
+            tone: "danger",
+            disabled: !deleteConfirmed || isDeleting,
+            loading: isDeleting,
+            dataTestId: "agent-org-delete-confirm-button",
+          }}
+        />
       }
     >
       <div
         className="border-error-6/25 bg-error-6/5 rounded-md border px-3 py-2 text-[12px] leading-5 text-text-2"
         role="alert"
       >
-        {t("planner.agentOrgOverview.deleteWarning", {
-          defaultValue:
-            "This permanently deletes every Team session and its history. This action cannot be undone.",
-        })}
+        {t("planner.agentOrgOverview.deleteWarning")}
       </div>
       <Checkbox
         checked={deleteConfirmed}
         disabled={isDeleting}
         onCheckedChange={onDeleteConfirmedChange}
       >
-        {t("planner.agentOrgOverview.deleteAcknowledge", {
-          defaultValue: "I understand this deletion is permanent.",
-        })}
+        {t("planner.agentOrgOverview.deleteAcknowledge")}
       </Checkbox>
     </Modal>
   );

@@ -11,7 +11,6 @@ use axum::{
 use serde::Deserialize;
 
 use crate::commands;
-use crate::commands::tasks;
 use crate::error::{GitApiError, GitApiResult};
 use crate::extractors::{lookup_repo_path, validate_path};
 use crate::types::*;
@@ -47,11 +46,6 @@ pub fn routes() -> Router {
         .route("/api/git/repo/{repo_id}/revert/abort", post(revert_abort))
         // Reset
         .route("/api/git/repo/{repo_id}/reset", post(reset))
-        // Task execution streaming
-        .route(
-            "/api/tasks/{task_id}/run/stream",
-            axum::routing::get(tasks::run_task_stream),
-        )
 }
 
 // ============================================

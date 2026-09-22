@@ -51,12 +51,31 @@ export function useMobileSessionModel({
 }) {
   const [sessionModel, setSessionModelState] =
     useState<MobileSessionModelState>(INITIAL_SESSION_MODEL_STATE);
+  const sessionModelRef = useRef(sessionModel);
+  sessionModelRef.current = sessionModel;
   const sessionModelRequestRef = useRef(0);
+  const optionsGenerationRef = useRef(0);
+  const optionsFlightRef = useRef<{
+    client: MobileRpcClient | null;
+    sessionId: string;
+    promise: Promise<void>;
+  } | null>(null);
+  const optionsReadyRef = useRef<{
+    client: MobileRpcClient | null;
+    sessionId: string;
+  } | null>(null);
   const refreshSessionModel = useCallback(
     async (sessionId: string) => {
       const requestGeneration = ++sessionModelRequestRef.current;
+      optionsReadyRef.current = null;
+      if (sessionModelRef.current.config?.sessionId !== sessionId) {
+        optionsGenerationRef.current += 1;
+        optionsFlightRef.current = null;
+      }
       setSessionModelState((prev) => ({
-        ...prev,
+        ...(prev.config?.sessionId === sessionId
+          ? prev
+          : INITIAL_SESSION_MODEL_STATE),
         loading: true,
         error: undefined,
       }));
@@ -81,14 +100,10 @@ export function useMobileSessionModel({
         return;
       }
       try {
-        const [config, list] = await Promise.all([
-          client.call<MobileSessionModelConfig>("session/config", {
-            sessionId,
-          }),
-          client.call<{ models?: MobileModelOption[] }>("models/list", {
-            sessionId,
-          }),
-        ]);
+        const config = await client.call<MobileSessionModelConfig>(
+          "session/config",
+          { sessionId }
+        );
         if (
           requestGeneration !== sessionModelRequestRef.current ||
           activeSessionRef.current !== sessionId ||
@@ -96,12 +111,13 @@ export function useMobileSessionModel({
         ) {
           return;
         }
-        setSessionModelState({
+        setSessionModelState((prev) => ({
+          ...prev,
           config,
-          options: list.models ?? [],
           loading: false,
           patching: false,
-        });
+          options: prev.config?.sessionId === sessionId ? prev.options : [],
+        }));
       } catch (error) {
         if (
           requestGeneration !== sessionModelRequestRef.current ||
@@ -117,6 +133,85 @@ export function useMobileSessionModel({
       }
     },
     [clientRef, connectionRef, activeSessionRef]
+  );
+
+  const loadSessionModels = useCallback(
+    (sessionId: string): Promise<void> => {
+      const client = clientRef.current;
+      if (
+        optionsFlightRef.current?.client === client &&
+        optionsFlightRef.current.sessionId === sessionId
+      )
+        return optionsFlightRef.current.promise;
+      if (
+        optionsReadyRef.current?.client === client &&
+        optionsReadyRef.current.sessionId === sessionId
+      )
+        return Promise.resolve();
+      if (activeSessionRef.current !== sessionId) return Promise.resolve();
+      const config = sessionModelRef.current.config;
+      if (config?.sessionId !== sessionId || config.modelEditable !== true)
+        return Promise.resolve();
+      if (connectionRef.current.demoMode) {
+        setSessionModelState((prev) => ({
+          ...prev,
+          options: DEMO_MODEL_OPTIONS,
+        }));
+        return Promise.resolve();
+      }
+      if (!client || connectionRef.current.presence !== "online")
+        return Promise.resolve();
+      const generation = ++optionsGenerationRef.current;
+      const current = () =>
+        generation === optionsGenerationRef.current &&
+        clientRef.current === client &&
+        activeSessionRef.current === sessionId;
+      setSessionModelState((prev) => ({
+        ...prev,
+        optionsLoading: true,
+        optionsError: undefined,
+      }));
+      const promise = Promise.resolve().then(async () => {
+        try {
+          const list = await client.call<{ models: MobileModelOption[] }>(
+            "models/list",
+            { sessionId }
+          );
+          if (
+            !Array.isArray(list?.models) ||
+            list.models.length > 256 ||
+            list.models.some(
+              (option) =>
+                !option ||
+                typeof option.id !== "string" ||
+                typeof option.accountId !== "string" ||
+                typeof option.accountLabel !== "string"
+            )
+          )
+            throw new Error("Invalid model catalog");
+          if (!current()) return;
+          optionsReadyRef.current = { client, sessionId };
+          setSessionModelState((prev) => ({
+            ...prev,
+            options: list.models,
+            optionsLoading: false,
+          }));
+        } catch (error) {
+          if (current())
+            setSessionModelState((prev) => ({
+              ...prev,
+              optionsLoading: false,
+              optionsError: toMobileRpcError(error).message,
+            }));
+        } finally {
+          if (optionsFlightRef.current?.promise === promise)
+            optionsFlightRef.current = null;
+        }
+      });
+      optionsFlightRef.current = { client, sessionId, promise };
+      return promise;
+    },
+    [activeSessionRef, clientRef, connectionRef]
   );
 
   const setSessionModel = useCallback(
@@ -194,11 +289,15 @@ export function useMobileSessionModel({
 
   const resetSessionModel = useCallback(() => {
     sessionModelRequestRef.current += 1;
+    optionsGenerationRef.current += 1;
+    optionsFlightRef.current = null;
+    optionsReadyRef.current = null;
     setSessionModelState(INITIAL_SESSION_MODEL_STATE);
   }, []);
   return {
     sessionModel,
     refreshSessionModel,
+    loadSessionModels,
     setSessionModel,
     resetSessionModel,
   };

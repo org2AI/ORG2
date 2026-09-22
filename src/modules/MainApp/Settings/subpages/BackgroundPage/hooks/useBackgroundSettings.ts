@@ -18,7 +18,6 @@ import {
   type BackgroundConfig,
   backgroundConfigPersistAtom,
   sanitizePageOpacity,
-  sanitizeSidebarOpacity,
 } from "@src/store/ui/backgroundConfigAtom";
 
 import { MAX_CUSTOM_BACKGROUND_COLORS } from "../config";
@@ -32,7 +31,6 @@ export interface UseBackgroundSettingsReturn {
   handleAddCustomPaletteHex: (hex: string) => void;
   handleRemoveCustomPaletteHex: (hex: string, event: React.MouseEvent) => void;
   handlePageOpacityChange: (val: number | number[]) => void;
-  handleSidebarOpacityChange: (val: number | number[]) => void;
 }
 
 export function useBackgroundSettings(): UseBackgroundSettingsReturn {
@@ -156,15 +154,6 @@ export function useBackgroundSettings(): UseBackgroundSettingsReturn {
     [config, setConfigWithUndo]
   );
 
-  const handleSidebarOpacityChange = useCallback(
-    (val: number | number[]) => {
-      const raw = Array.isArray(val) ? val[0] : val;
-      const sidebarOpacity = sanitizeSidebarOpacity(raw);
-      setConfigWithUndo({ ...config, sidebarOpacity });
-    },
-    [config, setConfigWithUndo]
-  );
-
   return {
     // State
     config,
@@ -174,6 +163,5 @@ export function useBackgroundSettings(): UseBackgroundSettingsReturn {
     handleAddCustomPaletteHex,
     handleRemoveCustomPaletteHex,
     handlePageOpacityChange,
-    handleSidebarOpacityChange,
   };
 }

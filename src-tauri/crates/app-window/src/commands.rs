@@ -326,6 +326,7 @@ fn build_detached_app_window(
         super::set_traffic_light_position(&window, super::TRAFFIC_LIGHT_X, super::TRAFFIC_LIGHT_Y);
         super::apply_macos_window_material(&window);
         super::remove_window_background_color(&window);
+        super::rendering_rate::apply_stored_rendering_rate(&window);
     }
 
     super::apply_host_desktop_decorated_window_corners(&window);

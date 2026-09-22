@@ -79,12 +79,11 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
           <ToolbarTooltip
             label={
               designAvailable
-                ? t("canvasApp.designHint", "Select an element to change")
-                : t("canvasApp.designUnavailable", "Design is unavailable")
+                ? t("canvasApp.designHint")
+                : t("canvasApp.designUnavailable")
             }
           >
             <Button
-              htmlType="button"
               variant="tertiary"
               size="mini"
               icon={
@@ -99,7 +98,7 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
               aria-pressed={designEnabled}
               className={designEnabled ? "bg-primary-2! text-primary-6!" : ""}
             >
-              {t("canvasApp.design", "Design")}
+              {t("canvasApp.design")}
             </Button>
           </ToolbarTooltip>
         )}
@@ -116,10 +115,9 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
           <Button
             onClick={onReload}
             className="text-text-4 hover:bg-fill-3 hover:text-text-2"
-            title={t("canvasCard.reload", "Reload")}
+            title={t("canvasCard.reload")}
             size="mini"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               <HugeiconsIcon
@@ -132,7 +130,6 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
         )}
         <ToolbarTooltip label={shareHint}>
           <Button
-            htmlType="button"
             variant="tertiary"
             size="mini"
             icon={
@@ -141,7 +138,7 @@ const CanvasTabHeader: React.FC<CanvasTabHeaderProps> = ({
             onClick={onShare}
             disabled={!shareEnabled}
           >
-            {t("canvasApp.share", "Share")}
+            {t("canvasApp.share")}
           </Button>
         </ToolbarTooltip>
       </div>

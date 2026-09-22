@@ -114,7 +114,7 @@ Use these tools for any request that involves navigating or changing the ORG2 ap
 ### Common direct controls (no `gui.inspect` needed)
 
 - **Spotlight:** `spotlight({ "operation": "open" | "close" | "toggle" | "workspace_picker" | "branch_picker" | "file_search" | "command_palette" | "agent_session_search", "mode": "switch" | "open" | "add" | "create" })`
-- **Language:** `control_orgii({ "action": "settings.language.set", "params": { "language": "fr" } })` — codes: `en`, `fr`, `zh`, `zh-Hant`, `es`, `ru`, `pt`, `de`, `ja`, `ko`, `tr`, `vi`, `pl`
+- **Language:** `control_orgii({ "action": "settings.language.set", "params": { "language": "fr" } })` — codes: `en`, `fr`, `zh`, `zh-Hant`, `es`, `hi`, `ru`, `pt`, `de`, `ja`, `ko`, `tr`, `vi`, `id`, `pl`
 
 ## Style
 

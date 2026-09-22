@@ -118,7 +118,7 @@ export function createRustAgentAdapter(
   ): Promise<SessionEvent[]> => {
     const messages = await loadMessages(sessionId);
     if (signal.aborted || !messages?.length) return [];
-    // Match Rust load_llm_history's effective frame, not the display timeline.
+    // Match Rust load_native_history's complete effective frame.
     // The boundary is appended after its retained tail, so simply clearing
     // projected items on encountering the marker loses that entire tail.
     const boundary = messages.reduce<PersistedMessage | undefined>(
@@ -131,10 +131,7 @@ export function createRustAgentAdapter(
     );
     const effectiveMessages = boundary
       ? [
-          // Rust sends the complete persisted boundary (including continuation
-          // instructions) as a user message. Remove only projection metadata
-          // on this copy so the display adapter does not strip its wrapper.
-          { ...boundary, role: "user", compactFromSequence: null },
+          boundary,
           ...messages.filter(
             (message) =>
               message.compactFromSequence == null &&
@@ -144,7 +141,9 @@ export function createRustAgentAdapter(
       : messages;
     return mergeToolResults(
       effectiveMessages.map((message) =>
-        persistedMessageToSessionEvent(message, sessionId)
+        persistedMessageToSessionEvent(message, sessionId, {
+          preserveCompactBoundaryText: true,
+        })
       )
     );
   };

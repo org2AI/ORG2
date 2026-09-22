@@ -1,4 +1,7 @@
-use crate::commands::merge::{rebase_args, rebase_branch};
+use crate::commands::merge::{
+    cherry_pick_commit, merge_branch, rebase_args, rebase_branch, reset_file, reset_head,
+    reset_mode_flag, revert_commit,
+};
 
 fn git_in(dir: &std::path::Path, args: &[&str]) {
     let out = std::process::Command::new("git")
@@ -180,4 +183,113 @@ fn conflict_reporting_is_structural_and_continue_needs_no_editor() {
     );
 
     let _ = std::fs::remove_dir_all(&repo);
+}
+
+// ============================================
+// Request values must be operands, never options
+// ============================================
+
+fn assert_rejected_as_option<T>(result: Result<T, String>) {
+    let Err(error) = result else {
+        panic!("an option-shaped value must be rejected");
+    };
+    assert!(
+        error.contains("must not start with '-'"),
+        "rejection must come from the operand check, got: {error}"
+    );
+}
+
+/// Regression: `upstream` went into `git rebase --autostash <upstream>`
+/// unchecked. `git rebase` accepts `--exec=<cmd>`, so an option-shaped value ran
+/// a program of the caller's choosing. The repository below is the state in
+/// which that fired — an upstream is configured and one commit is ahead of it.
+#[test]
+fn rebase_branch_never_runs_an_option_shaped_upstream() {
+    if std::process::Command::new("git")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        eprintln!("skipping: git executable not available");
+        return;
+    }
+
+    let root = std::env::temp_dir().join(format!(
+        "orgii-rebase-operand-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock after epoch")
+            .as_nanos()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    let origin = root.join("origin.git");
+    let repo = root.join("work");
+    std::fs::create_dir_all(&origin).expect("create origin dir");
+    std::fs::create_dir_all(&repo).expect("create work dir");
+
+    git_in(&origin, &["init", "--bare"]);
+    git_in(&repo, &["init"]);
+    git_in(&repo, &["commit", "--allow-empty", "-m", "base"]);
+    git_in(&repo, &["branch", "-M", "main"]);
+    git_in(
+        &repo,
+        &[
+            "remote",
+            "add",
+            "origin",
+            origin.to_str().expect("utf8 path"),
+        ],
+    );
+    git_in(&repo, &["push", "-u", "origin", "main"]);
+    git_in(&repo, &["commit", "--allow-empty", "-m", "ahead"]);
+
+    let marker = root.join("EXECUTED");
+    let payload = format!("--exec=touch {}", marker.display());
+
+    assert_rejected_as_option(rebase_branch(&repo, &payload, None));
+    assert_rejected_as_option(rebase_branch(&repo, "main", Some(&payload)));
+    assert!(
+        !marker.exists(),
+        "an option-shaped rebase value must never reach git"
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The check runs before git is spawned, so a missing repository proves the
+/// value was rejected rather than handed to git.
+#[test]
+fn history_operations_reject_option_shaped_refs() {
+    let repo = std::path::Path::new("/nonexistent/orgii-operand-guard");
+
+    assert_rejected_as_option(merge_branch(repo, "--no-verify", false, None));
+    assert_rejected_as_option(cherry_pick_commit(repo, "--abort", false));
+    assert_rejected_as_option(revert_commit(repo, "--abort", false));
+    assert_rejected_as_option(reset_head(repo, "--pathspec-from-file=x", "hard"));
+    assert_rejected_as_option(reset_file(repo, "a.txt", "--ours"));
+}
+
+/// Regression: `mode` was interpolated as `--{mode}`, so any `git reset` option
+/// could be selected through it.
+#[test]
+fn reset_mode_is_an_allowlist() {
+    assert_eq!(reset_mode_flag("soft"), Ok("--soft"));
+    assert_eq!(reset_mode_flag("mixed"), Ok("--mixed"));
+    assert_eq!(reset_mode_flag("hard"), Ok("--hard"));
+
+    for mode in [
+        "",
+        "keep",
+        "merge",
+        "pathspec-from-file=x",
+        "hard --quiet",
+        "-hard",
+    ] {
+        assert!(reset_mode_flag(mode).is_err(), "{mode:?} must be rejected");
+    }
+
+    let repo = std::path::Path::new("/nonexistent/orgii-operand-guard");
+    let error = reset_head(repo, "HEAD", "pathspec-from-file=x").expect_err("invalid mode");
+    assert!(error.contains("Invalid reset mode"), "{error}");
 }

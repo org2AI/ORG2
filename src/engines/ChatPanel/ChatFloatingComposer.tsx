@@ -14,12 +14,9 @@ import InputArea from "./InputArea";
 import CollapsedInlineRow, {
   type InlineSection,
 } from "./InputArea/components/CollapsedInlineRow";
-import type {
-  FileChangeVisibleStats,
-  FileChangesResult,
-} from "./InputArea/components/CompactFileChanges";
+import type { FileChangeVisibleStats } from "./InputArea/components/CompactFileChanges";
 import QueueEditModeCard from "./InputArea/components/QueueEditModeCard";
-import type QueuedMessages from "./InputArea/components/QueuedMessages";
+import QueuedMessages from "./InputArea/components/QueuedMessages";
 import { createFileInlineSection } from "./InputArea/hooks/useComposerSections";
 import type { QueueEditInputAreaProps } from "./InputArea/hooks/useQueueEditMode";
 import type CreatePlanCard from "./blocks/CreatePlanCard";
@@ -44,7 +41,6 @@ import type {
 interface ChatFloatingComposerProps {
   composerRef: React.Ref<HTMLDivElement>;
   inputBoxRef?: React.Ref<HTMLDivElement>;
-  chatPanelPosition: "left" | "right";
   sessionId: string;
   inputAreaSessionId: string;
   controlSessionId?: string | null;
@@ -62,19 +58,17 @@ interface ChatFloatingComposerProps {
   onQuestionDataChange: (hasData: boolean) => void;
   onPermissionDataChange: (hasData: boolean) => void;
   onModeSwitchDataChange: (hasData: boolean) => void;
-  queueExpanded: boolean;
   processExpanded: boolean;
   queuedMessages: Parameters<typeof QueuedMessages>[0]["messages"];
   onCancelQueuedMessage: Parameters<typeof QueuedMessages>[0]["onCancel"];
-  onClearQueuedMessages: Parameters<typeof QueuedMessages>[0]["onClear"];
   onSendQueuedMessageNow: Parameters<typeof QueuedMessages>[0]["onSendNow"];
   onReorderQueuedMessages: Parameters<typeof QueuedMessages>[0]["onReorder"];
-  onToggleQueue: () => void;
   onToggleProcess: () => void;
   onProcessVisibleCountChange: (count: number) => void;
   onFilesExpand: () => void;
   filesMenu?: React.ReactNode;
-  initialFileChanges?: FileChangesResult;
+  /** Host-resolved files-pill stats; when set no artifact tracker mounts. */
+  resolvedFileChangeStats?: FileChangeVisibleStats;
   /** Idle-reload signal for the files pill (session/round/idle transitions). */
   filesReloadKey: string;
   groupChatPendingMessage: GroupChatPendingMessageView | null;
@@ -100,7 +94,6 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
   ({
     composerRef,
     inputBoxRef,
-    chatPanelPosition,
     sessionId,
     inputAreaSessionId,
     controlSessionId,
@@ -118,19 +111,16 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
     onQuestionDataChange,
     onPermissionDataChange,
     onModeSwitchDataChange,
-    queueExpanded,
     processExpanded,
     queuedMessages,
     onCancelQueuedMessage,
-    onClearQueuedMessages,
     onSendQueuedMessageNow,
     onReorderQueuedMessages,
-    onToggleQueue,
     onToggleProcess,
     onProcessVisibleCountChange,
     onFilesExpand,
     filesMenu,
-    initialFileChanges,
+    resolvedFileChangeStats,
     filesReloadKey,
     groupChatPendingMessage,
     groupChatViewActive,
@@ -173,17 +163,21 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
       );
     }, []);
 
+    // Host-resolved stats render in the same commit; tracker-reported stats
+    // arrive one effect later.
+    const visibleFileChangeStats = resolvedFileChangeStats ?? fileChangeStats;
+
     const localInlineSections = useMemo<InlineSection[]>(() => {
       const fileSection = createFileInlineSection({
-        fileChangeStats,
+        fileChangeStats: visibleFileChangeStats,
         onFilesExpand,
         filesMenu,
       });
       return fileSection ? [...inlineSections, fileSection] : inlineSections;
-    }, [fileChangeStats, filesMenu, inlineSections, onFilesExpand]);
+    }, [visibleFileChangeStats, filesMenu, inlineSections, onFilesExpand]);
 
     const hasLocalInlineSection =
-      hasAnyInlineSection || fileChangeStats.count > 0;
+      hasAnyInlineSection || visibleFileChangeStats.count > 0;
     const showTopRowPills =
       hasLocalInlineSection ||
       scrollNav?.showFollowAgent ||
@@ -225,17 +219,10 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
           <ComposerActivityTrackers
             sessionId={sessionId}
             inputAreaSessionId={inputAreaSessionId}
-            queueExpanded={queueExpanded}
-            queuedMessages={queuedMessages}
-            onCancelQueuedMessage={onCancelQueuedMessage}
-            onClearQueuedMessages={onClearQueuedMessages}
-            onSendQueuedMessageNow={onSendQueuedMessageNow}
-            onReorderQueuedMessages={onReorderQueuedMessages}
-            onToggleQueue={onToggleQueue}
             processExpanded={processExpanded}
             onToggleProcess={onToggleProcess}
             onProcessVisibleCountChange={onProcessVisibleCountChange}
-            initialFileChanges={initialFileChanges}
+            trackFileChanges={!resolvedFileChangeStats}
             filesReloadKey={filesReloadKey}
             onFileChangeStatsChange={setFileChangeStats}
           />
@@ -250,7 +237,6 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
 
           <InputArea
             omitChatHeader
-            chatPanelPosition={chatPanelPosition}
             sessionId={inputAreaSessionId}
             controlSessionId={controlSessionId}
             onSubmitOverride={onSubmitOverride}
@@ -266,6 +252,14 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
               ) : null
             }
             topRowTrailingContent={trailingScrollButton}
+            composerTray={
+              <QueuedMessages
+                messages={queuedMessages}
+                onCancel={onCancelQueuedMessage}
+                onSendNow={onSendQueuedMessageNow}
+                onReorder={onReorderQueuedMessages}
+              />
+            }
             statusBanners={
               <ComposerStatusBanners
                 sessionId={sessionId}

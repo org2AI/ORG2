@@ -5,20 +5,12 @@ import { NoDragRegion } from "@src/components/WindowChrome";
 import { StationModeChip } from "./StationModeChip";
 import { TabBarLeadingLayout } from "./TabBarLeadingLayout";
 
-interface StationTabBarLeadingProps {
-  trailing?: React.ReactNode;
-  trailingPadding?: boolean;
-}
-
-export const StationTabBarLeading: React.FC<StationTabBarLeadingProps> = ({
-  trailing,
-  trailingPadding,
-}) => (
-  <TabBarLeadingLayout trailingPadding={trailingPadding}>
+/** Station-mode chip, kept tight to the first tab (no trailing padding). */
+export const StationTabBarLeading: React.FC = () => (
+  <TabBarLeadingLayout trailingPadding={false}>
     <NoDragRegion>
       <StationModeChip />
     </NoDragRegion>
-    {trailing ? <NoDragRegion>{trailing}</NoDragRegion> : null}
   </TabBarLeadingLayout>
 );
 

@@ -70,7 +70,6 @@ export function useTaskKanbanHeader({
           />
           {onAddTask ? (
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly

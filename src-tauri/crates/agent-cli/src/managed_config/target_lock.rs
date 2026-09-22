@@ -17,10 +17,16 @@ fn canonical_target(path: &Path) -> Result<PathBuf, String> {
 }
 
 pub(super) fn lock_targets(agent: &str) -> Result<Vec<File>, String> {
+    lock_app_targets(agent, None)
+}
+pub(super) fn lock_app_targets(
+    agent: &str,
+    profile: Option<&super::native_app::NativeAppProfile>,
+) -> Result<Vec<File>, String> {
     if !super::registry::supported_agent(agent) {
         return Ok(Vec::new());
     }
-    let mut paths = super::manifest::agent_manifest_targets(agent)?
+    let mut paths = super::manifest::app_targets(agent, profile)?
         .into_iter()
         .map(|target| canonical_target(Path::new(&target.target_path)))
         .collect::<Result<Vec<_>, _>>()?;

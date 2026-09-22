@@ -104,7 +104,6 @@ export function PlaygroundSidebarHeader({
             <Button
               variant={jsonPanelOpen ? "primary" : "secondary"}
               size="small"
-              htmlType="button"
               icon={
                 <HugeiconsIcon
                   icon={FirstBracketIcon}
@@ -121,7 +120,6 @@ export function PlaygroundSidebarHeader({
             <Button
               variant={tokenPanelOpen ? "primary" : "secondary"}
               size="small"
-              htmlType="button"
               icon={
                 <HugeiconsIcon
                   icon={ColorPickerIcon}
@@ -136,7 +134,6 @@ export function PlaygroundSidebarHeader({
           )}
           <Button
             size="small"
-            htmlType="button"
             icon={
               <HugeiconsIcon
                 icon={RotateLeft01Icon}

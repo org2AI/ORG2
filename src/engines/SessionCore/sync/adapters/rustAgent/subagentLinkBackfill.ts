@@ -1,5 +1,5 @@
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { normalizeFunctionName } from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 import { invokeTauri } from "@src/util/platform/tauri/init";
 
 // ============================================================================

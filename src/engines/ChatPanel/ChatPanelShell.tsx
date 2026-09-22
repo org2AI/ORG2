@@ -17,7 +17,6 @@ interface ChatPanelShellProps {
   chatPanelOpacityStyle: ChatPanelShellStyle;
   chatWidth: number;
   chatWidthStyleValue: string | number;
-  embedded: boolean;
   focusedWorkstationRail?: React.ReactNode;
   /** The pane fills the app window; hosted tab content may use compact chrome. */
   fullScreen: boolean;
@@ -32,6 +31,8 @@ interface ChatPanelShellProps {
   panelOverlay?: React.ReactNode;
   resizeIndicatorHost?: HTMLElement | null;
   resizeTooltipLabel: React.ReactNode;
+  /** Controls hosted under the divider tooltip's label (the split presets). */
+  renderResizeTooltipExtra?: (close: () => void) => React.ReactNode;
   resizeTooltipShortcut: string;
   sessionModals: React.ReactNode;
   showResizeHandle: boolean;
@@ -46,7 +47,6 @@ export function ChatPanelShell({
   chatPanelOpacityStyle,
   chatWidth,
   chatWidthStyleValue,
-  embedded,
   focusedWorkstationRail,
   fullScreen,
   hasTabBar,
@@ -59,6 +59,7 @@ export function ChatPanelShell({
   panelOverlay,
   resizeIndicatorHost,
   resizeTooltipLabel,
+  renderResizeTooltipExtra,
   resizeTooltipShortcut,
   sessionModals,
   showResizeHandle,
@@ -75,10 +76,9 @@ export function ChatPanelShell({
       }
       isResizing={isDragging}
       onMouseDown={onResizeMouseDown}
+      renderTooltipExtra={renderResizeTooltipExtra}
       tooltipLabel={resizeTooltipLabel}
       tooltipShortcut={resizeTooltipShortcut}
-      variant={embedded ? "border" : "transparent"}
-      noAccent={!embedded}
     />
   );
 
@@ -98,7 +98,7 @@ export function ChatPanelShell({
           : { width: chatWidthStyleValue }),
         minWidth:
           !useExternalWidth && chatWidth > 0 ? CHAT_MIN_WIDTH : undefined,
-        borderRadius: embedded ? 0 : "var(--radius-page)",
+        borderRadius: 0,
         contain: isDragging ? "strict" : undefined,
         willChange: isDragging ? "width" : undefined,
         ...chatPanelOpacityStyle,

@@ -1,6 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AgentLiveStatus } from "@src/api/tauri/rpc/schemas/agentOrgs";
@@ -11,13 +10,13 @@ import {
   type SessionListCategory,
   createSidebarRosterMatcher,
   sessionPaginationAtom,
-  upsertSession,
 } from "@src/store/session";
 import { agentLiveStatusAtom } from "@src/store/session/agentLiveStatusAtom";
 import { sessionBranchTagsVisibleAtom } from "@src/store/ui/sidebarAtom";
 import { isImportedHistorySession } from "@src/util/session/sessionDispatch";
 import { isPrimarySessionListSession } from "@src/util/session/sessionVisibility";
 
+import { buildCustomSectionItems } from "../sections/projection";
 import {
   continuationWinnerIds,
   isHiddenContinuationSibling,
@@ -42,6 +41,7 @@ import type {
   UseSessionMenuItemsResult,
 } from "./types";
 import { useSessionPrStatuses } from "./useSessionPrStatuses";
+import { useSidebarChildSessions } from "./useSidebarChildSessions";
 
 /**
  * One-line subtitle for a session row, shown ONLY while the session is
@@ -58,22 +58,8 @@ function liveDetailForSession(
   );
 }
 
-export { getLoadMoreGroupId, isLoadMoreId } from "./paginationHelpers";
-
-interface ChildSessionRecord {
-  sessionId: string;
-  name: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  sessionType: string;
-  parentSessionId: string | null;
-}
-
 const SUBAGENT_SESSION_ID_SEGMENT = ":subagent:";
 
-/** Max concurrent `es_get_child_sessions` calls when hydrating the sidebar. */
-const SUBAGENT_QUERY_CONCURRENCY = 8;
 const NO_SESSIONS: readonly Session[] = [];
 
 function parentSessionIdFor(session: Session): string | null {
@@ -81,34 +67,6 @@ function parentSessionIdFor(session: Session): string | null {
   const segmentIndex = session.session_id.indexOf(SUBAGENT_SESSION_ID_SEGMENT);
   if (segmentIndex <= 0) return null;
   return session.session_id.slice(0, segmentIndex);
-}
-
-function agentNameFromChildName(name: string): string | undefined {
-  const markerIndex = name.indexOf(" (");
-  const label = markerIndex >= 0 ? name.slice(0, markerIndex) : name;
-  const trimmed = label.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function childRecordToSession(
-  record: ChildSessionRecord,
-  parentSessionId: string
-): Session {
-  const name = record.name?.trim() || record.sessionId;
-  return {
-    session_id: record.sessionId,
-    status: record.status,
-    created_at: record.createdAt,
-    updated_at: record.updatedAt,
-    created_time: record.createdAt,
-    updated_time: record.updatedAt,
-    name,
-    category: "rust_agent",
-    keySource: "own_key",
-    parentSessionId: record.parentSessionId ?? parentSessionId,
-    background: true,
-    agentDisplayName: agentNameFromChildName(name),
-  };
 }
 
 function buildChildSessionMenuItem(
@@ -156,7 +114,9 @@ function insertExpandedSubagentRows({
 }
 
 export function useSessionMenuItems({
+  enrichVisibleRows = true,
   sortedSessions,
+  customSections,
   visitedSessions,
   repoPathToName,
   groupByMode,
@@ -176,16 +136,6 @@ export function useSessionMenuItems({
   const pagination = useAtomValue(sessionPaginationAtom);
   const agentLiveStatuses = useAtomValue(agentLiveStatusAtom);
   const showBranchTags = useAtomValue(sessionBranchTagsVisibleAtom);
-  // parentId → the parent's updated_at at query time. Children are re-fetched
-  // only when the parent session changes, instead of re-querying every
-  // visible session on every list refresh (that pattern issued 100+
-  // concurrent `es_get_child_sessions` calls that queued up on SQLite).
-  const [queriedSubagentParents, setQueriedSubagentParents] = useState<
-    ReadonlyMap<string, string>
-  >(() => new Map());
-  const [fetchedChildSessionsByParent, setFetchedChildSessionsByParent] =
-    useState<ReadonlyMap<string, Session[]>>(() => new Map());
-
   const isInSidebarRoster = useMemo(
     () => createSidebarRosterMatcher(pagination),
     [pagination]
@@ -197,7 +147,9 @@ export function useSessionMenuItems({
         return (
           isPrimarySessionListSession(session) &&
           (explicitlyRevealed ||
-            (isInSidebarRoster(session) &&
+            ((isInSidebarRoster(session) ||
+              (customSections?.loadedIds.has(session.session_id) &&
+                session.status !== "archived")) &&
               (includeExternal ||
                 !isImportedHistorySession(session.session_id)) &&
               (sessionMatchesOrgFilter(session, selectedOrgIds) ||
@@ -206,6 +158,7 @@ export function useSessionMenuItems({
       }),
     [
       extraSessionIds,
+      customSections?.loadedIds,
       includeExternal,
       isInSidebarRoster,
       revealedSessionIds,
@@ -225,72 +178,10 @@ export function useSessionMenuItems({
     [continuationWinners, eligibleSessions]
   );
 
-  useEffect(() => {
-    const parentsToQuery = visibleSessions.filter(
-      (session) =>
-        queriedSubagentParents.get(session.session_id) !==
-        (session.updated_at ?? "")
-    );
-    if (parentsToQuery.length === 0) return;
-
-    setQueriedSubagentParents((previous) => {
-      const next = new Map(previous);
-      for (const session of parentsToQuery) {
-        next.set(session.session_id, session.updated_at ?? "");
-      }
-      return next;
-    });
-
-    let cancelled = false;
-    // Bounded concurrency: a cold sidebar can have 100+ visible sessions and
-    // firing them all at once queues the backend's blocking pool on SQLite
-    // (observed 2.6s average per call under that contention). Batches keep
-    // per-call latency flat and results paint incrementally.
-    void (async () => {
-      for (
-        let offset = 0;
-        offset < parentsToQuery.length && !cancelled;
-        offset += SUBAGENT_QUERY_CONCURRENCY
-      ) {
-        const batch = parentsToQuery.slice(
-          offset,
-          offset + SUBAGENT_QUERY_CONCURRENCY
-        );
-        const results = await Promise.allSettled(
-          batch.map(async (parent) => {
-            const parentSessionId = parent.session_id;
-            const records = await invoke<ChildSessionRecord[]>(
-              "es_get_child_sessions",
-              { parentSessionId }
-            );
-            const childSessions = records.map((record) =>
-              childRecordToSession(record, parentSessionId)
-            );
-            for (const childSession of childSessions) {
-              upsertSession(childSession);
-            }
-            return { parentSessionId, childSessions };
-          })
-        );
-        if (cancelled) return;
-        setFetchedChildSessionsByParent((previousMap) => {
-          const nextMap = new Map(previousMap);
-          for (const result of results) {
-            if (result.status !== "fulfilled") continue;
-            nextMap.set(
-              result.value.parentSessionId,
-              result.value.childSessions
-            );
-          }
-          return nextMap;
-        });
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [queriedSubagentParents, visibleSessions]);
+  const fetchedChildSessionsByParent = useSidebarChildSessions(
+    visibleSessions,
+    enrichVisibleRows
+  );
 
   const childSessionsByParent = useMemo(() => {
     const map = new Map<string, Session[]>();
@@ -373,8 +264,12 @@ export function useSessionMenuItems({
   );
 
   const unpinnedSessions = useMemo(
-    () => listedSessions.filter((session) => !session.pinned),
-    [listedSessions]
+    () =>
+      listedSessions.filter(
+        (session) =>
+          !session.pinned && !customSections?.membership.has(session.session_id)
+      ),
+    [listedSessions, customSections?.membership]
   );
 
   const sessionMap = useMemo(() => {
@@ -392,7 +287,7 @@ export function useSessionMenuItems({
 
   // Do not mount any repo refresh work while branch tags are hidden.
   const prForSession = useSessionPrStatuses(
-    showBranchTags ? listedSessions : NO_SESSIONS
+    enrichVisibleRows && showBranchTags ? listedSessions : NO_SESSIONS
   );
 
   const buildSessionRow = useCallback(
@@ -424,7 +319,7 @@ export function useSessionMenuItems({
       const label = loading
         ? tCommon("sessions:chat.loading")
         : state.phase === "error"
-          ? tCommon("common:actions.retry", "Retry")
+          ? tCommon("common:actions.retry")
           : tCommon("common:actions.loadMore");
       return loadMoreRow(category, loading, label);
     },
@@ -437,7 +332,7 @@ export function useSessionMenuItems({
     const label = state.loading
       ? tCommon("sessions:chat.loading")
       : state.error
-        ? tCommon("common:actions.retry", "Retry")
+        ? tCommon("common:actions.retry")
         : tCommon("common:actions.loadMore");
     return [unifiedLoadMoreRow(state, label)];
   }, [pagination, tCommon]);
@@ -486,31 +381,61 @@ export function useSessionMenuItems({
 
   const dateGroupLabels: Record<DateGroupKey, string> = useMemo(
     () => ({
-      today: tCommon("sessions:chat.historyToday", "Today"),
-      yesterday: tCommon("sessions:chat.historyYesterday", "Yesterday"),
-      thisWeek: tCommon("sessions:chat.historyThisWeek", "This Week"),
-      older: tCommon("sessions:chat.historyOlder", "Older"),
+      today: tCommon("sessions:chat.historyToday"),
+      yesterday: tCommon("sessions:chat.historyYesterday"),
+      thisWeek: tCommon("sessions:chat.historyThisWeek"),
+      older: tCommon("sessions:chat.historyOlder"),
     }),
     [tCommon]
   );
 
-  const pinnedLabel = tCommon("sessions:chat.historyPinned", "Pinned");
+  const pinnedLabel = tCommon("sessions:chat.historyPinned");
+
+  const customHeaders = customSections?.headers;
+  const customMembership = customSections?.membership;
+  const customPager = customSections?.pager;
+  const customSectionItems = useMemo(
+    () =>
+      customHeaders && customMembership && customPager
+        ? buildCustomSectionItems(
+            listedSessions,
+            customHeaders,
+            customMembership,
+            buildSessionRow,
+            customPager
+          )
+        : [],
+    [
+      listedSessions,
+      customHeaders,
+      customMembership,
+      customPager,
+      buildSessionRow,
+    ]
+  );
 
   const appendPinnedSessions = useCallback(
     (items: NavigationMenuItem[], includeBackendPager = false): boolean => {
       const backendRow = includeBackendPager
         ? loadMoreRowFor("pinned_native")
         : null;
-      if (pinnedSessions.length === 0 && !backendRow) return false;
-      items.push(separator("pinned", pinnedLabel));
+      if (pinnedSessions.length > 0 || backendRow)
+        items.push(separator("pinned", pinnedLabel));
       const hasHiddenRows =
         pinnedSessions.length > 0
           ? appendGroupSessions(items, "pinned", pinnedSessions)
           : false;
       if (!hasHiddenRows && backendRow) items.push(backendRow);
+      items.push(...customSectionItems);
       return hasHiddenRows;
     },
-    [appendGroupSessions, loadMoreRowFor, pinnedLabel, pinnedSessions]
+    [
+      appendGroupSessions,
+      loadMoreRowFor,
+      pinnedLabel,
+      pinnedSessions,
+      customSectionItems,
+    ]
   );
 
   const byTimeMenuItems = useMemo<NavigationMenuItem[]>(
@@ -547,10 +472,7 @@ export function useSessionMenuItems({
     ]
   );
 
-  const noWorkspaceLabel = tCommon(
-    "sessions:chat.historyNoWorkspace",
-    "No Workspace"
-  );
+  const noWorkspaceLabel = tCommon("sessions:chat.historyNoWorkspace");
 
   const byWorkspaceMenuItems = useMemo<NavigationMenuItem[]>(
     () =>
@@ -578,9 +500,7 @@ export function useSessionMenuItems({
       case "none": {
         const items: NavigationMenuItem[] = [];
         const hiddenPinned = appendPinnedSessions(items, false);
-        items.push(
-          separator("sessions", tCommon("sessions:chat.history", "Sessions"))
-        );
+        items.push(separator("sessions", tCommon("sessions:chat.history")));
         const hidden = appendGroupSessions(items, "sessions", unpinnedSessions);
         if (!hidden && !hiddenPinned) appendTrailingLoadMoreItems(items);
         return items;

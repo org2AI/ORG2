@@ -12,7 +12,7 @@ import Message from "@src/components/Message";
 import { Placeholder } from "@src/components/Placeholder";
 import TabPill from "@src/components/TabPill";
 import Textarea from "@src/components/Textarea";
-import { SectionRow } from "@src/modules/shared/layouts/SectionLayout";
+import { SectionRow } from "@src/components/layout/Section";
 
 import { InlineCardColumnStack } from "../../shared/InlineCardPrimitives";
 
@@ -275,26 +275,15 @@ export const CliLaunchProfileSection: React.FC<
         </SectionRow>
         <SectionRow showHeader={false}>
           <div className="flex items-center justify-between gap-2">
-            <Button
-              variant="secondary"
-              size="default"
-              onClick={handleReset}
-              loading={resetting}
-            >
+            <Button onClick={handleReset} loading={resetting}>
               {t("common:actions.reset")}
             </Button>
             <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="default"
-                onClick={handleCancel}
-                disabled={!dirty}
-              >
+              <Button onClick={handleCancel} disabled={!dirty}>
                 {t("common:actions.cancel")}
               </Button>
               <Button
                 variant="primary"
-                size="default"
                 onClick={handleSave}
                 loading={saving}
                 disabled={!dirty}
@@ -360,21 +349,11 @@ export const CliLaunchProfileSection: React.FC<
         />
       </label>
       <div className="flex items-center justify-between gap-2">
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={handleReset}
-          loading={resetting}
-        >
+        <Button size="small" onClick={handleReset} loading={resetting}>
           {t("common:actions.reset")}
         </Button>
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={handleCancel}
-            disabled={!dirty}
-          >
+          <Button size="small" onClick={handleCancel} disabled={!dirty}>
             {t("common:actions.cancel")}
           </Button>
           <Button

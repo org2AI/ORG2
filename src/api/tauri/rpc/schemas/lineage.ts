@@ -1,38 +1,9 @@
 /**
  * Lineage RPC Schemas
  *
- * Zod schemas for get_session_impact / get_provenance_session_ids commands.
- * Rust source: src-tauri/src/project_management/lineage/
- *
- * Note: get_session_impact returns serde_json::Value in Rust, but we
- * describe the known SessionImpact shape from analytics.rs.
+ * Zod schemas for orgtrack lineage commands.
  */
 import { z } from "zod/v4";
-
-// ── Input schemas ──
-
-export const GetSessionImpactInput = z.object({
-  sessionId: z.string(),
-});
-
-// ── Output schemas ──
-
-export const FunctionEntrySchema = z.object({
-  file: z.string(),
-  name: z.string(),
-  nodeType: z.string(),
-  lines: z.tuple([z.number().int(), z.number().int()]),
-});
-
-export const SessionImpactSchema = z.object({
-  sessionId: z.string(),
-  filesTouched: z.array(z.string()),
-  functionsCreated: z.array(FunctionEntrySchema),
-  commitsInfluenced: z.array(z.string()),
-  totalLinesAttributed: z.number().int(),
-  firstEditAt: z.number().int().nullable().optional(),
-  lastCommitAt: z.number().int().nullable().optional(),
-});
 
 export const OrgtrackTierSchema = z.enum(["meta", "details", "trajectory"]);
 export const OrgtrackTimelineEntryTypeSchema = z.enum([
@@ -134,10 +105,6 @@ export const OrgtrackSessionArtifactQueryInput = z.object({
   sessionId: z.string().optional(),
 });
 
-export const OrgtrackCheckpointFileStateInput = z.object({
-  checkpointId: z.string(),
-});
-
 export const OrgtrackEditKindSchema = z.enum([
   "read",
   "write",
@@ -152,15 +119,6 @@ export const OrgtrackArtifactQualitySchema = z.enum([
   "patch_reversible",
   "inferred",
   "stats_only",
-]);
-
-export const OrgtrackCheckpointKindSchema = z.enum([
-  "pre_message_snapshot",
-  "post_tool_call",
-  "post_turn",
-  "explicit_user_checkpoint",
-  "commit_boundary",
-  "inferred",
 ]);
 
 export const OrgtrackParsedCategorySchema = z.object({
@@ -220,27 +178,6 @@ export const OrgtrackSessionEditArtifactSchema = z.object({
   metadata: OrgtrackAgentMetadataSchema,
 });
 
-export const OrgtrackSessionDiffChunkSchema = z.object({
-  schemaVersion: z.number().int(),
-  recordId: z.string(),
-  editRecordId: z.string(),
-  source: z.string(),
-  sessionId: z.string(),
-  sourceEventId: z.string().nullable().optional(),
-  sequenceIndex: z.number().int(),
-  chunkIndex: z.number().int(),
-  filePath: z.string(),
-  oldStartLine: z.number().int().nullable().optional(),
-  newStartLine: z.number().int().nullable().optional(),
-  oldContent: z.string().nullable().optional(),
-  newContent: z.string().nullable().optional(),
-  diff: z.string().nullable().optional(),
-  linesAdded: z.number().int(),
-  linesRemoved: z.number().int(),
-  isDeleted: z.boolean(),
-  quality: OrgtrackArtifactQualitySchema,
-});
-
 export const OrgtrackSessionFinalDiffSchema = z.object({
   schemaVersion: z.number().int(),
   recordId: z.string(),
@@ -258,16 +195,6 @@ export const OrgtrackSessionFinalDiffSchema = z.object({
   quality: OrgtrackArtifactQualitySchema,
   differsFromSummedChunks: z.boolean(),
   computedAt: z.string(),
-});
-
-export const OrgtrackCommitLinkSchema = z.object({
-  schemaVersion: z.number().int(),
-  recordId: z.string(),
-  commitSha: z.string(),
-  filePaths: z.array(z.string()),
-  sessionIds: z.array(z.string()),
-  reachabilityState: z.string(),
-  linkedAt: z.string(),
 });
 
 export const OrgtrackSubmissionCommitPersonSchema = z.object({
@@ -295,37 +222,6 @@ export const OrgtrackDiffReplayPreviewInput =
 export const OrgtrackDiffReplayPreviewSchema = z.object({
   finalDiffs: z.array(OrgtrackSessionFinalDiffSchema),
   submissionCommits: z.array(OrgtrackSubmissionCommitSchema),
-});
-
-export const OrgtrackSessionCheckpointSchema = z.object({
-  schemaVersion: z.number().int(),
-  checkpointId: z.string(),
-  source: z.string(),
-  sourceSessionId: z.string().nullable().optional(),
-  sessionId: z.string(),
-  sequenceIndex: z.number().int(),
-  sourceEventId: z.string().nullable().optional(),
-  turnId: z.string().nullable().optional(),
-  checkpointKind: OrgtrackCheckpointKindSchema,
-  timestamp: z.string().nullable().optional(),
-  affectedFilePaths: z.array(z.string()),
-  editRecordIds: z.array(z.string()),
-  quality: OrgtrackArtifactQualitySchema,
-  undoSupported: z.boolean(),
-  metadataJson: z.string().nullable().optional(),
-});
-
-export const OrgtrackCheckpointFileStateSchema = z.object({
-  schemaVersion: z.number().int(),
-  recordId: z.string(),
-  checkpointId: z.string(),
-  sessionId: z.string(),
-  filePath: z.string(),
-  content: z.string().nullable().optional(),
-  reversePatch: z.string().nullable().optional(),
-  diff: z.string().nullable().optional(),
-  contentHash: z.string().nullable().optional(),
-  quality: OrgtrackArtifactQualitySchema,
 });
 
 export const OrgtrackBranchContextSchema = z.object({
@@ -521,8 +417,6 @@ export const OrgtrackFileSessionHistorySchema = z.object({
   backfill: OrgtrackFileSessionHistoryBackfillSchema,
   sessions: z.array(OrgtrackFileSessionHistorySessionSchema),
 });
-
-export type SessionImpact = z.output<typeof SessionImpactSchema>;
 
 export type OrgtrackSessionEditArtifact = z.output<
   typeof OrgtrackSessionEditArtifactSchema

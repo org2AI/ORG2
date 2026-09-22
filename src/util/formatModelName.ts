@@ -18,6 +18,7 @@
 import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
 
 import { groupModels } from "./modelGrouping";
+import { formatTierModelLabel } from "./modelTiers";
 import { formatReasoningLevel, parseModelVariant } from "./modelVariants";
 
 const UPPERCASE_TOKENS = new Set(["gpt", "o1", "o3", "o4"]);
@@ -73,8 +74,15 @@ function formatClaudeModelName(cleanedModel: string): string | undefined {
   return familyPrefix;
 }
 
-export function formatModelName(model: string): string {
-  if (!model || model === "default") return model;
+export function formatModelName(model: string, agentType?: string): string {
+  if (!model) return model;
+  // A routing tier names no model, so it only earns a product label once the
+  // owner is known to be Cursor ("default" → "Auto (Cursor picks)"). Without
+  // that hint "default" stays the raw id: title-casing it to "Default" would
+  // read like a model name for an id that names no model.
+  const tierLabel = formatTierModelLabel(model, agentType);
+  if (tierLabel) return tierLabel;
+  if (model === "default") return model;
 
   const cleaned = model.replace(TRAILING_JUNK_RE, "");
   const claudeName = formatClaudeModelName(cleaned);
@@ -119,11 +127,14 @@ export function formatModelName(model: string): string {
  *   o3-mini-2025-01-31   → O3 Mini 2025-01-31
  *   gemini-2.0-flash     → Gemini 2.0 Flash
  */
-export function formatModelNameFull(model: string): string {
-  if (!model || model === "default") return model;
+export function formatModelNameFull(model: string, agentType?: string): string {
+  if (!model) return model;
+  const tierLabel = formatTierModelLabel(model, agentType);
+  if (tierLabel) return tierLabel;
+  if (model === "default") return model;
 
   const dateMatch = model.match(TRAILING_JUNK_RE);
-  const baseName = formatModelName(model);
+  const baseName = formatModelName(model, agentType);
   if (!dateMatch) return baseName;
 
   const raw = dateMatch[0].replace(/^-/, "");
@@ -212,6 +223,19 @@ interface ModelSelection {
   listingModelDisplay?: string;
   listingName?: string;
   selectedSourceLabel?: string;
+  /** Owning agent of a hosted listing — a label hint for routing-tier ids. */
+  listingModelType?: string;
+  /** Owning agent of the selected key — a label hint for routing-tier ids. */
+  selectedSourceModelType?: string;
+}
+
+/**
+ * Which agent a selection runs on, for ids that only mean something once the
+ * owner is known (see `@src/util/modelTiers`). Mirrors the precedence the
+ * model pill already uses to pick its icon, so label and mark never disagree.
+ */
+function selectionAgentHint(selection: ModelSelection): string | undefined {
+  return selection.listingModelType ?? selection.selectedSourceModelType;
 }
 
 export interface ModelPillDisplayParts {
@@ -243,6 +267,7 @@ export function resolveModelDisplayLabel(
   providers: ProviderWithModels[],
   fallback: string = "Model"
 ): string {
+  const agentHint = selectionAgentHint(selection);
   if (selection.listingModelDisplay) {
     return compactModelLabel(selection.listingModelDisplay);
   }
@@ -252,7 +277,9 @@ export function resolveModelDisplayLabel(
   if (selection.listingModel) {
     const alias = getModelAliasDisplayName(selection.listingModel);
     if (alias) return alias;
-    return compactModelLabel(formatModelNameFull(selection.listingModel));
+    return compactModelLabel(
+      formatModelNameFull(selection.listingModel, agentHint)
+    );
   }
 
   if (!selection.model) return fallback;
@@ -265,27 +292,29 @@ export function resolveModelDisplayLabel(
       (prov) => prov.provider_name === selection.provider
     );
     const model = provider?.models.find((mod) => mod.id === selection.model);
-    if (model) return compactModelLabel(formatModelNameFull(model.id));
+    if (model)
+      return compactModelLabel(formatModelNameFull(model.id, agentHint));
   }
 
   for (const provider of providers) {
     const model = provider.models.find((mod) => mod.id === selection.model);
-    if (model) return compactModelLabel(formatModelNameFull(model.id));
+    if (model)
+      return compactModelLabel(formatModelNameFull(model.id, agentHint));
   }
 
-  return compactModelLabel(formatModelNameFull(selection.model));
+  return compactModelLabel(formatModelNameFull(selection.model, agentHint));
 }
 
-function resolveModelGroupLabel(modelId: string): string {
+function resolveModelGroupLabel(modelId: string, agentType?: string): string {
   const variant = parseModelVariant(modelId);
   const displayModelId = variant?.baseModel ?? modelId;
   const alias = getModelAliasDisplayName(displayModelId);
   if (alias) return alias;
 
-  const groupedModel = groupModels([displayModelId])[0];
+  const groupedModel = groupModels([displayModelId], agentType)[0];
   if (groupedModel && groupedModel.label !== "Other") return groupedModel.label;
 
-  return formatModelNameFull(displayModelId);
+  return formatModelNameFull(displayModelId, agentType);
 }
 
 export function resolveModelPillDisplayParts(
@@ -304,7 +333,7 @@ export function resolveModelPillDisplayParts(
   if (variant?.fast) variantParts.push("Fast");
 
   return {
-    label: resolveModelGroupLabel(modelId),
+    label: resolveModelGroupLabel(modelId, selectionAgentHint(selection)),
     rawValue: modelId,
     variantInfo: variantParts.length > 0 ? variantParts.join(" · ") : undefined,
     thinking: Boolean(variant?.thinking),
@@ -328,6 +357,7 @@ export function resolveModelFullLabel(
   selection: ModelSelection,
   fallback: string = "Model"
 ): string {
+  const agentHint = selectionAgentHint(selection);
   if (selection.listingModelDisplay) {
     return compactModelLabel(selection.listingModelDisplay);
   }
@@ -337,7 +367,7 @@ export function resolveModelFullLabel(
   if (selection.listingModel) {
     const alias = getModelAliasDisplayName(selection.listingModel);
     if (alias) return alias;
-    return formatModelNameFull(selection.listingModel);
+    return formatModelNameFull(selection.listingModel, agentHint);
   }
 
   if (!selection.model) return fallback;
@@ -345,5 +375,5 @@ export function resolveModelFullLabel(
   const alias = getModelAliasDisplayName(selection.model);
   if (alias) return alias;
 
-  return formatModelNameFull(selection.model);
+  return formatModelNameFull(selection.model, agentHint);
 }

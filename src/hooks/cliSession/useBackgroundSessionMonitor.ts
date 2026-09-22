@@ -23,7 +23,8 @@ import {
 import { registerNotificationSoundUnlock } from "@src/api/services/notificationSound";
 import Message from "@src/components/Message";
 import { deliverSessionTerminalNotification } from "@src/hooks/session/sessionTerminalNotifications";
-import { activeSessionIdAtom, sessionByIdAtom } from "@src/store/session";
+import { activeChatPanelSessionIdAtom } from "@src/store/chatPanel/chatPanelTabsState";
+import { sessionByIdAtom } from "@src/store/session";
 import {
   type NotificationSettings,
   notificationSettingsAtom,
@@ -183,13 +184,12 @@ function deliverCliStatus(
 ): void {
   const store = isStoreInitialized() ? getInstrumentedStore() : null;
   const session = store?.get(sessionByIdAtom(msg.session_id));
-  const activeSessionId = store?.get(activeSessionIdAtom);
+  const activeChatPanelSessionId = store?.get(activeChatPanelSessionIdAtom);
+  const sessionInActiveTab = activeChatPanelSessionId === msg.session_id;
   const sessionInBackground = msg.background ?? session?.background ?? false;
-  const outsideActiveSession =
-    sessionInBackground ||
-    (store !== null && activeSessionId !== msg.session_id);
-  const attentionRequired =
-    isNotificationAttentionRequired(outsideActiveSession);
+  const outsideActiveTab =
+    sessionInBackground || (store !== null && !sessionInActiveTab);
+  const attentionRequired = isNotificationAttentionRequired(outsideActiveTab);
   const sessionName =
     msg.session_name || session?.name || t("notifications.backgroundSession");
 
@@ -203,6 +203,7 @@ function deliverCliStatus(
       sessionId: msg.session_id,
       status: completedTurn ? "completed" : msg.status,
       sessionName,
+      sessionInActiveTab,
       attentionRequired,
       errorMessage: msg.error_message ?? session?.error_message,
       eventKey:

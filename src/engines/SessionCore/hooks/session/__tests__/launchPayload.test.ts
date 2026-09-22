@@ -10,6 +10,87 @@ import {
 } from "../useSessionCreator/useSessionLaunch/launchPayload";
 
 describe("launchPayload", () => {
+  it("forwards an opaque Market credential source without replacing the workspace", () => {
+    const options = baseLaunchOptions();
+    options.dispatchCategory = DISPATCH_CATEGORY.CLI_AGENT;
+    options.resolvedKeys = {
+      ...options.resolvedKeys,
+      accountId: undefined,
+      credentialSource: "market:opaque-selection",
+      cliAgentType: "claude_code",
+      model: "claude-sonnet",
+    };
+
+    const { launchParams } = buildSessionLaunchPayload(options);
+
+    expect(launchParams.credentialSource).toBe("market:opaque-selection");
+    expect(launchParams.accountId).toBeUndefined();
+    expect(launchParams.workspacePath).toBe("/workspace/repo-one");
+
+    const session = buildSessionFromLaunchResult({
+      agentExecMode: "build",
+      effectiveSource: options.effectiveSource,
+      isBackgroundLaunch: false,
+      launchCliAgentType: "claude_code",
+      launchCredentialSource: launchParams.credentialSource,
+      result: {
+        sessionId: "market-session",
+        category: DISPATCH_CATEGORY.CLI_AGENT,
+        name: "Market session",
+        status: "running",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        userInput: "hello",
+        background: false,
+        model: "claude-sonnet",
+      },
+    });
+    expect(session.credentialSource).toBe("market:opaque-selection");
+  });
+
+  it("launches SDE with a Package source and preserves it in the optimistic session", () => {
+    const options = baseLaunchOptions();
+    options.dispatchCategory = DISPATCH_CATEGORY.RUST_AGENT;
+    options.selectedAgentDefId = "builtin:sde";
+    options.resolvedKeys = {
+      ...options.resolvedKeys,
+      accountId: undefined,
+      credentialSource: "market:sde-package",
+      cliAgentType: undefined,
+      model: "gpt",
+    };
+    const { launchParams } = buildSessionLaunchPayload(options);
+    expect(launchParams).toMatchObject({
+      category: "rust_agent",
+      agentDefinitionId: "builtin:sde",
+      credentialSource: "market:sde-package",
+      model: "gpt",
+    });
+    expect(launchParams.accountId).toBeUndefined();
+    expect(launchParams.platform).toBeUndefined();
+    const session = buildSessionFromLaunchResult({
+      agentExecMode: "build",
+      effectiveSource: options.effectiveSource,
+      isBackgroundLaunch: false,
+      launchAgentDefinitionId: "builtin:sde",
+      result: {
+        sessionId: "sdeagent-package",
+        credentialSource: "market:sde-package",
+        category: "rust_agent",
+        name: "SDE",
+        status: "running",
+        createdAt: "2026-09-17T00:00:00Z",
+        userInput: "hello",
+        background: false,
+        model: "gpt",
+      },
+    });
+    expect(session).toMatchObject({
+      agentDefinitionId: "builtin:sde",
+      credentialSource: "market:sde-package",
+    });
+    expect(session.cliAgentType).toBeUndefined();
+  });
+
   it("persists launch workspacePath on the frontend session row", () => {
     const session = buildSessionFromLaunchResult({
       agentExecMode: "build",

@@ -109,7 +109,6 @@ const CanvasPreviewTabRenderer: React.FC<UnifiedTabContentProps> = memo(
               aria-label={t("previews.openInBrowser")}
               size="mini"
               variant="tertiary"
-              appearance="soft"
               iconOnly
               icon={
                 <HugeiconsIcon
@@ -125,7 +124,6 @@ const CanvasPreviewTabRenderer: React.FC<UnifiedTabContentProps> = memo(
               aria-label={t("previews.closeCanvas")}
               size="mini"
               variant="tertiary"
-              appearance="soft"
               iconOnly
               icon={
                 <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={12} />

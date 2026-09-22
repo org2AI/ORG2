@@ -10,7 +10,7 @@ mod projections;
 mod read_delete;
 mod save;
 
-pub use clipboard::clipboard_write_text;
+pub use clipboard::{clipboard_write_image, clipboard_write_text};
 pub use dtos::{
     DefaultVariantInfo, FullKeyResponse, KeyInfo, ModelAliasInfo, ModelVariantInfo, SaveKeyRequest,
 };

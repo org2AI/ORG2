@@ -322,7 +322,7 @@ function buildUnifiedProviders(
           },
           {
             modelType: cli.name,
-            label: t("wizard.variantSubscription", "Subscription"),
+            label: t("wizard.variantSubscription"),
             mode: "cli",
             apiKeyEnvVar: cli.envConfig?.apiKeyEnvVar ?? "",
             supportsBaseUrl: cli.envConfig?.supportsBaseUrl ?? false,
@@ -393,7 +393,7 @@ function buildUnifiedProviders(
       variants: [
         {
           modelType: cli.name,
-          label: t("wizard.variantSubscription", "Subscription"),
+          label: t("wizard.variantSubscription"),
           mode: "cli",
           apiKeyEnvVar: cli.envConfig?.apiKeyEnvVar ?? "",
           supportsBaseUrl: cli.envConfig?.supportsBaseUrl ?? false,

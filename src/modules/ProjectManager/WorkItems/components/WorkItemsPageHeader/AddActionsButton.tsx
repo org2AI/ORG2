@@ -55,7 +55,6 @@ export function AddActionsButton({
     return (
       <ToolbarTooltip label={label}>
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly
@@ -84,7 +83,6 @@ export function AddActionsButton({
       <ToolbarTooltip label={addWorkItemLabel} disabled={isOpen}>
         <Button
           ref={triggerRef}
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly
@@ -121,8 +119,6 @@ export function AddActionsButton({
           >
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={handleAddWorkItem}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"
@@ -141,8 +137,6 @@ export function AddActionsButton({
             </Button>
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={handleAddProject}
               className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full text-left`}
               role="menuitem"

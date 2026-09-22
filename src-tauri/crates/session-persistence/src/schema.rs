@@ -318,6 +318,23 @@ pub fn init_session_tables(conn: &Connection) -> SqliteResult<()> {
         [],
     )?;
 
+    // Receipt metadata is separate from the existing usage rows so old readers
+    // continue summing all billed activity without a destructive migration.
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS session_auxiliary_usage (
+            response_id TEXT PRIMARY KEY,
+            credential_source TEXT,
+            session_id TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            provider_usage_json TEXT NOT NULL,
+            token_usage_id INTEGER NOT NULL UNIQUE,
+            FOREIGN KEY(token_usage_id) REFERENCES session_token_usage(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_auxiliary_usage_session
+            ON session_auxiliary_usage(session_id);",
+    )?;
+
     // Migration: add context_tokens column (last LLM call's prompt tokens = context fill level)
     conn.execute(
         "ALTER TABLE session_token_usage ADD COLUMN context_tokens INTEGER NOT NULL DEFAULT 0",

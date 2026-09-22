@@ -7,23 +7,23 @@
   "keyVault": {
     "title": "Modeller & CLI",
     "overview": {},
-    "searchPlaceholder": "Hesaplarda ara...",
+    "searchPlaceholder": "Anahtarlarda ara...",
     "inlineCard": {
       "tabStatus": "Durum",
       "tabModels": "Modeller"
     },
-    "noAccountsFound": "Hesap bulunamadı",
-    "addAccount": "Hesap Ekle",
+    "noKeysFound": "Anahtar bulunamadı",
+    "addKey": "Anahtar Ekle",
     "removeLocal": "Yereli Kaldır",
     "unlist": "Listeden Çıkar",
     "confirmRemoveTitle": "\"{{name}}\" kaldırılsın mı?",
-    "confirmRemoveMessage": "Yerel kimlik bilgileri kaldırılacak. Bu işlem geri alınamaz.",
+    "confirmRemoveMessage": "Yerel olarak kaydedilen anahtar kaldırılacak. Bu işlem geri alınamaz",
     "toasts": {
       "refreshed": "{{name}} başarıyla yenilendi",
       "refreshError": "{{name}} yenilenemedi: {{error}}",
       "localRemoved": "{{name}} kaldırıldı",
       "deleteError": "{{name}} silinemedi",
-      "refreshPartial": "Modeller yenilendi: +{{added}} / -{{removed}}, ancak {{total}} hesaptan {{failed}} tanesi başarısız oldu",
+      "refreshPartial": "Modeller yenilendi: +{{added}} / -{{removed}}, ancak {{total}} anahtardan {{failed}} tanesi başarısız oldu",
       "refreshedNoChange": "Modeller yenilendi: değişiklik yok",
       "refreshedDelta": "Modeller yenilendi: {{added}} eklendi, {{removed}} kaldırıldı"
     },
@@ -68,10 +68,10 @@
       "accountEmail": "Hesap e-postası"
     },
     "customModels": {
-      "manualSetupHint": "Uç noktanızın kabul ettiği tam model kimliğini ve isteğe bağlı görünen adı ekleyin. Model keşfi isteğe bağlıdır; etkinleştirmek uyumluluğu doğrulamaz.",
+      "manualSetupHint": "Uç noktanızın kabul ettiği tam model kimliğini ve isteğe bağlı görünen adı ekleyin. Model keşfi isteğe bağlıdır; etkinleştirmek uyumluluğu doğrulamaz",
       "modelNamePlaceholder": "Model id girin...",
       "displayNamePlaceholder": "İsteğe bağlı etiket",
-      "emptyHint": "Henüz özel model eklenmedi.",
+      "emptyHint": "Henüz özel model eklenmedi",
       "addModel": "Model Ekle",
       "testRequiresEndpoint": "Bu modeli test etmek için bir uç nokta ve API anahtarı girin",
       "invalidModelId": "Model kimlikleri boşluk veya denetim karakteri içermeden 1–256 bayt olmalıdır.",
@@ -88,8 +88,8 @@
       "keyValidationFailed": "Kimlik bilgisi doğrulaması başarısız"
     },
     "edit": {
-      "title": "Hesabı düzenle",
-      "apiChangeHint": "API Key, kimlik bilgileri veya sağlayıcı ayarlarını güncellemek için bu hesabı silin ve yenisini ekleyin",
+      "title": "Anahtarı düzenle",
+      "apiChangeHint": "API Key veya sağlayıcı ayarlarını güncellemek için bu anahtarı silin ve yenisini ekleyin",
       "saved": "Değişiklikler kaydedildi"
     },
     "quota": {
@@ -145,14 +145,12 @@
       "keysVerified": "Kimlik Bilgileri Doğrulandı",
       "failedMessage": "API Key ve Session Token'ınız aynı Cursor hesabına ait görünmüyor.",
       "failedError": "Hata: {{error}}",
-      "failedHint": "Lütfen aynı Cursor hesabından eşleşen kimlik bilgileriyle yeni bir liste oluşturun.",
+      "failedHint": "Lütfen aynı Cursor hesabından eşleşen kimlik bilgileriyle yeni bir liste oluşturun",
       "listingRejected": "Liste Reddedildi",
       "rejectedByAdmin": "Bu liste bir yönetici tarafından reddedildi."
     },
     "apiKeyLabel": "API Key",
-    "apiKeyDesc": "Sağlayıcının API'sine istek doğrulamak için kullanılan gizli anahtar",
     "baseUrlLabel": "Base URL",
-    "baseUrlDesc": "API uç nokta URL'si — yalnızca proxy, özel dağıtım veya kendi sunucunuzu kullanıyorsanız değiştirin",
     "apiProtocolLabel": "API protokolü",
     "apiProtocolDesc": "Yerleşik Rust Agent için bağlantı protokolünü seçin",
     "officialUrl": "Resmi URL",
@@ -161,7 +159,7 @@
     "customBaseUrlNoteBody": "API anahtarınız ve istek verileri girdiğiniz URL'ye gönderilir. Özel URL'leri yalnızca güvenilir proxy'ler, kendi barındırdığınız dağıtımlar veya kontrol ettiğiniz uç noktalar için kullanın",
     "localModel": {
       "title": "Yerel model Cookbook",
-      "description": "Yerel runtime presetini seçin, OpenAI uyumlu endpoint'i onaylayın, bir veya daha fazla model ID ekleyin ve yerel modelleri Chat içinde kullanmak için bu hesabı kaydedin",
+      "description": "Yerel runtime presetini seçin, OpenAI uyumlu endpoint'i onaylayın, bir veya daha fazla model ID ekleyin ve yerel modelleri Chat içinde kullanmak için bu anahtarı kaydedin",
       "baseUrlDesc": "OpenAI uyumlu yerel endpoint. Önce runtime'ı başlatın, sonra doğrulayın veya kaydedin",
       "apiKeyDesc": "Çoğu yerel runtime boş olmayan herhangi bir değeri kabul eder. Sunucunuz anahtar zorunlu kılmıyorsa placeholder'ı bırakın",
       "quickModelsLabel": "Cookbook modelleri",
@@ -171,18 +169,16 @@
       "validateDesc": "Endpoint çalışıyorsa test edin veya modelleri elle ekledikten sonra kaydedin"
     },
     "validate": "Doğrula",
-    "validateDesc": "Devam etmeden önce kimlik bilgilerini doğrulayın",
     "validated": "Doğrulandı",
     "validationSuccessModels": "{{count}} model algılandı — sonraki adımda yapılandırın",
     "validationSuccessNoModels": "Key doğrulandı — model otomatik algılanmadı, lütfen aşağıdan manuel olarak ekleyin",
     "addCliAgent": "Agent Ekle",
-    "accountName": "Hesap adı (isteğe bağlı)",
-    "accountNameDesc": "Boş bırakırsanız {{provider}}, ardından {{provider}}-1, {{provider}}-2 şeklinde kullanılır",
-    "selectorDesc": "Bağlanacak hizmeti seçin",
-    "accountNamePlaceholder": "Otomatik: {{provider}}",
+    "keyName": "Anahtar adı (isteğe bağlı)",
+    "keyNameDesc": "Boş bırakırsanız {{provider}}, ardından {{provider}}-1, {{provider}}-2 şeklinde kullanılır",
+    "keyNamePlaceholder": "Otomatik: {{provider}}",
     "descriptionOptional": "Açıklama (İsteğe Bağlı)",
     "descriptionPlaceholder": "Açıklama girin",
-    "nameDuplicate": "Bu ada sahip bir hesap zaten mevcut",
+    "nameDuplicate": "Bu ada sahip bir anahtar zaten mevcut",
     "stepLabel": "Adım {{current}}/{{total}}",
     "noValidTokenFound": "Kimlik bilgisinde geçerli token bulunamadı",
     "couldNotDetectKeys": "Kimlik bilgileri algılanamadı. CLI'nın yüklü olduğundan ve giriş yaptığınızdan emin olun.",
@@ -245,8 +241,8 @@
     "claudeCodeSignInDesc": "Dahili tarayıcıda Claude Code'a giriş yapın. ORG2 authorization code'u yakalar ve OAuth Token'ı yerel olarak kaydeder",
     "claudeCodeReadyToSignIn": "Claude Code'a giriş yapmaya hazır",
     "claudeCodeSignedIn": "Claude Code bağlı",
-    "claudeCodeOAuthHint": "Bu, anthropic_native kullanan Rust agents için bir claude_code OAuth hesabı kaydeder.",
-    "claudeCodeBrowserHint": "Dahili tarayıcıda Claude Code yetkilendirmesini tamamlayın.",
+    "claudeCodeOAuthHint": "Bu, anthropic_native kullanan Rust agents için bir claude_code OAuth anahtarı kaydeder",
+    "claudeCodeBrowserHint": "Dahili tarayıcıda Claude Code yetkilendirmesini tamamlayın",
     "claudeCodeSignInErrorHint": "Tarayıcıyı kapatıp tekrar giriş yapmayı deneyin. Token kaydedilmedi",
     "connectedViaChatGpt": "ChatGPT Plus/Pro girişi ile bağlandı",
     "apiKeyDetectedFromConfig": "Yerel yapılandırmadan API Key algılandı",
@@ -269,7 +265,7 @@
     "opensEmbeddedBrowser": "Cursor hesabınızı bağlamak için dahili tarayıcıyı kullanın.",
     "loggedIn": "Giriş yapıldı",
     "loginStep": "Giriş",
-    "signInToCursorHint": "Cursor hesabınızda oturum açın. Girişten sonra bu pencere otomatik olarak kapanır.",
+    "signInToCursorHint": "Cursor hesabınızda oturum açın. Girişten sonra bu pencere otomatik olarak kapanır",
     "copilotCreatePat": "GitHub Personal Access Token Oluştur",
     "copilotCreatePatDesc": "GitHub PAT oluşturmak için dahili tarayıcıyı açar",
     "copilotTokenValidated": "Token doğrulandı",
@@ -303,7 +299,7 @@
     "cursorLoginBrowserTitle": "Cursor girişi",
     "modelCount": "{{count}} model",
     "cursorLoginReadyTitle": "Cursor hesabı bağlandı",
-    "cursorLoginReadyDesc": "Aşağıda bir Cursor API Key oluşturup yapıştırın. Cursor agent bu API Key olmadan çalışmaz.",
+    "cursorLoginReadyDesc": "Aşağıda bir Cursor API Key oluşturup yapıştırın. Cursor agent bu API Key olmadan çalışmaz",
     "cursorApiKeyBrowserHint": "Giriş yaptıktan sonra ORG2 Cursor dashboard'u açar. Orada bir User API Key oluşturun ve aşağıya yapıştırın",
     "cursorApiKeyRecommendedTitle": "Cursor API Key önerilir",
     "cursorApiKeyRecommendedDesc": "Cursor'u yalnızca ORG2'nin Rust agents ile kullanmak istiyorsanız Cursor API Key olmadan devam edebilirsiniz; sadece dahili tarayıcıyla oturum açın veya bir session token sağlayın",
@@ -315,14 +311,14 @@
     "signInWithCodex": "Codex ile oturum aç",
     "codexReadyToSignIn": "Codex oturumu açmaya hazır",
     "codexSignedIn": "Codex bağlandı",
-    "codexOAuthHint": "Bu, ChatGPT Codex backend erişimi için bir codex OAuth hesabı kaydeder.",
-    "codexBrowserHint": "Codex yetkilendirmesini yerleşik tarayıcıda tamamlayın.",
+    "codexOAuthHint": "Bu, ChatGPT Codex backend erişimi için bir codex OAuth anahtarı kaydeder",
+    "codexBrowserHint": "Codex yetkilendirmesini yerleşik tarayıcıda tamamlayın",
     "codexSignInErrorHint": "Tarayıcıyı kapatıp yeniden oturum açmayı deneyin. Token kaydedilmedi",
     "codexAutodetectTitle": "Codex oturumunu algıla",
     "codexAutodetectDesc": "Yerel ortamınızdan ~/.codex/auth.json ve OPENAI_API_KEY okur",
-    "codexCredentialLabel": "Codex kimlik bilgisi",
-    "codexCredentialDesc": "Codex OAuth access token veya OpenAI API key yapıştırın",
-    "codexCredentialPlaceholder": "eyJ... veya sk-...",
+    "codexKeyLabel": "Codex anahtarı",
+    "codexKeyDesc": "Codex OAuth access token veya OpenAI API key yapıştırın",
+    "codexKeyPlaceholder": "eyJ... veya sk-...",
     "codexDetectErrorHint": "Yerleşik tarayıcıyla oturum açın veya OpenAI API key'i elle yapıştırın",
     "codexValidationErrorHint": "Token veya API key'in geçerli olduğunu kontrol edip tekrar deneyin",
     "claudeCodeAutodetectTitle": "Claude Code oturumunu algıla",
@@ -330,11 +326,11 @@
     "claudeCodeDetectErrorHint": "Yerleşik tarayıcıyla oturum açın veya claude auth login çalıştırıp algılamayı tekrar deneyin",
     "refreshModels": {
       "button": "Cursor model listesini yenile",
-      "failed": "Cursor'dan yenileme başarısız: {{error}}"
+      "failed": "Bu Market çalışma alanı kullanılamıyor. Yetkilendirmeyi yenilemek için Market’i yeniden açın."
     },
     "revalidate": "Yeniden doğrula",
-    "confirmRemoveActiveSessions_one": "{{count}} etkin oturum hâlâ bu hesabı kullanıyor ve bir sonraki turunda başarısız olacak:",
-    "confirmRemoveActiveSessions_other": "{{count}} etkin oturum hâlâ bu hesabı kullanıyor ve bir sonraki turlarında başarısız olacak:"
+    "confirmRemoveActiveSessions_one": "{{count}} etkin oturum hâlâ bu anahtarı kullanıyor ve bir sonraki turunda başarısız olacak:",
+    "confirmRemoveActiveSessions_other": "{{count}} etkin oturum hâlâ bu anahtarı kullanıyor ve bir sonraki turlarında başarısız olacak:"
   },
   "integrations": {
     "searchPlaceholder": "Bağlantıları ara...",
@@ -349,7 +345,9 @@
     "connecting": "Bağlanıyor",
     "reconnecting": "Yeniden bağlanıyor",
     "connectionError": "Bağlantı hatası",
-    "accountNameDuplicate": "Bu isimde bir hesap zaten mevcut",
+    "connectionName": "Bağlantı adı (isteğe bağlı)",
+    "connectionNamePlaceholder": "Otomatik: {{provider}}",
+    "connectionNameDuplicate": "Bu isimde bir bağlantı zaten mevcut",
     "probeSuccess": "Bağlantı başarılı",
     "probeFailed": "Bağlantı başarısız",
     "verified": "Doğrulandı"
@@ -573,7 +571,7 @@
     },
     "gateway": {
       "title": "Gateway Agent",
-      "description": "Gateway, her kanaldan gelen mesajları yönlendirir. Semantik yönlendirme için kullanılacak API anahtarı ve modeli seçin.",
+      "description": "Gateway, her kanaldan gelen mesajları yönlendirir. Semantik yönlendirme için kullanılacak API anahtarı ve modeli seçin",
       "statusReady": "Yapılandırıldı",
       "statusUnconfigured": "Yapılandırılmadı",
       "account": "API Anahtarı Hesabı",
@@ -581,13 +579,13 @@
       "model": "Model",
       "modelPlaceholder": "Model seçin",
       "groupPerUser": "Grup sohbet oturumlarını kullanıcı başına izole et",
-      "groupPerUserDesc": "Grup sohbetindeki her katılımcı kendi oturum bağlamına sahip olur."
+      "groupPerUserDesc": "Grup sohbetindeki her katılımcı kendi oturum bağlamına sahip olur"
     },
     "emailProtocol": "Protokol",
     "matrixDeviceNamePlaceholder": "ORG2 botu"
   },
   "modelsTabs": {
-    "myAccounts": "Keys'im",
+    "myKeys": "Anahtarlarım",
     "models": "Modeller",
     "comingSoon": "Yakında",
     "installedClis": "CLI İstemcileri",
@@ -621,7 +619,6 @@
     "collapseAllRows": "Tümünü daralt",
     "orgiiMarketGroup": "ORG2 Market",
     "variantSpeed": "Speed",
-    "variantOptions": "Sürüm seçenekleri",
     "variantDefault": "Default",
     "variantCount": "{{count}} sürüm",
     "selectedVersion": "Seçili sürüm",
@@ -629,8 +626,6 @@
     "keyDefaultVersionOnly": "Bu key yalnızca varsayılan {{model}} sürümüne sahip",
     "selectedVersionFor": "{{model}} için seçili sürüm",
     "preferredVersion": "Tercih edilen sürüm",
-    "reasoningLevel": "Reasoning level",
-    "effort": "Effort",
     "addNewKey": "Yeni key ekle",
     "availableKeys": "{{enabled}}/{{total}} kullanılabilir keys etkin",
     "availableModels": "{{enabled}}/{{total}} kullanılabilir model etkin",
@@ -640,7 +635,7 @@
     "sortAlphabetical": "Sıralama: A–Z"
   },
   "modelPreview": {
-    "noSources": "Bu modele sahip hesap yok"
+    "noSources": "Bu modele sahip anahtar yok"
   },
   "cliPreview": {
     "clientSection": "İstemci",
@@ -758,28 +753,28 @@
     "tokenRequired": "Personal access token gerekli",
     "oauthWaiting": "OAuth bekleniyor",
     "oauthDeviceDesc": "Doğrulama URL'sini açın ve GitHub yetkilendirmesi için bu kodu girin",
-    "oauthBrowserDesc": "Açılan tarayıcı penceresinde yetkilendirmeyi tamamlayın.",
-    "oauthBrowserOpened": "Bir tarayıcı penceresi açıldı. Yetkilendirmeyi orada tamamlayın, ardından bu sihirbaz devam eder."
+    "oauthBrowserDesc": "Açılan tarayıcı penceresinde yetkilendirmeyi tamamlayın",
+    "oauthBrowserOpened": "Bir tarayıcı penceresi açıldı. Yetkilendirmeyi orada tamamlayın, ardından bu sihirbaz devam eder"
   },
   "gitConnections": {
     "github": "GitHub",
     "methodScan": "Otomatik algıla",
     "methodOAuth": "GitHub ile oturum aç",
-    "methodPickerDesc": "GitHub'da nasıl kimlik doğrulamak istediğinizi seçin.",
-    "oauthDeviceDesc": "Doğrulama URL'sini açın ve GitHub'ı yetkilendirmek için bu kodu girin.",
+    "methodPickerDesc": "GitHub'da nasıl kimlik doğrulamak istediğinizi seçin",
+    "oauthDeviceDesc": "Doğrulama URL'sini açın ve GitHub'ı yetkilendirmek için bu kodu girin",
     "scanCredHelper": "Git kimlik yardımcısı ({{name}})",
     "scanEmpty": "Hiçbir şey algılanmadı",
-    "scanEmptyDesc": "gh CLI token'ı, kimlik yardımcısı veya SSH anahtarı bulunamadı. Yukarıdan başka bir yöntem seçin.",
+    "scanEmptyDesc": "gh CLI token'ı, kimlik yardımcısı veya SSH anahtarı bulunamadı. Yukarıdan başka bir yöntem seçin",
     "scanGhCli": "GitHub CLI (gh)",
     "scanResults": "Algılanan kimlik bilgileri",
-    "scanResultsDesc": "İçe aktarmak için birini seçin. Token'lar kaydedilmeden önce GitHub'da doğrulanır.",
+    "scanResultsDesc": "İçe aktarmak için birini seçin. Token'lar kaydedilmeden önce GitHub'da doğrulanır",
     "scanSshKey": "SSH anahtarı — {{name}}",
     "scanning": "Taranıyor…",
-    "scanningDesc": "Bu makinede gh CLI token'ları, kimlik yardımcıları ve SSH anahtarları aranıyor.",
+    "scanningDesc": "Bu makinede gh CLI token'ları, kimlik yardımcıları ve SSH anahtarları aranıyor",
     "sshKeyPath": "SSH anahtarı yolu",
-    "sshKeyPathDesc": "Özel anahtarın mutlak yolu (örn. ~/.ssh/id_ed25519). Eşleşen genel anahtar GitHub'da zaten kayıtlı olmalıdır.",
-    "scanSelectRequired": "İçe aktarmak için algılanan bir kimlik bilgisi seçin.",
-    "sshKeyPathRequired": "SSH anahtarı yolu gerekli."
+    "sshKeyPathDesc": "Özel anahtarın mutlak yolu (örn. ~/.ssh/id_ed25519). Eşleşen genel anahtar GitHub'da zaten kayıtlı olmalıdır",
+    "scanSelectRequired": "İçe aktarmak için algılanan bir kimlik bilgisi seçin",
+    "sshKeyPathRequired": "SSH anahtarı yolu gerekli"
   },
   "builtInTools": {
     "tabTools": "Yerleşik araçlar",
@@ -809,9 +804,9 @@
     "agentBrowserRestartPromptMessage": "Browser CLI sağlayıcısını değiştirmek, Agent'ların seçilen aracı görmesi için ORG2'nin yeniden başlatılmasını gerektirir. Şimdi yeniden başlatılsın mı?",
     "sidecarDownloadsSectionTitle": "Sidecar indirmeleri",
     "sidecarAgentBrowserLabel": "Agent Browser CLI",
-    "sidecarAgentBrowserDesc": "Bu platform için Agent Browser ikili dosyasını ~/.orgii/bin içine indirir. ORG2 bunu başlangıçta asla indirmez.",
+    "sidecarAgentBrowserDesc": "Bu platform için Agent Browser ikili dosyasını ~/.orgii/bin içine indirir. ORG2 bunu başlangıçta asla indirmez",
     "sidecarPeekabooLabel": "Peekaboo CLI",
-    "sidecarPeekabooDesc": "Masaüstü otomasyonu için macOS Peekaboo ikili dosyasını ~/.orgii/bin içine indirir. Desteklenmeyen platformlar devre dışı kalır.",
+    "sidecarPeekabooDesc": "Masaüstü otomasyonu için macOS Peekaboo ikili dosyasını ~/.orgii/bin içine indirir. Desteklenmeyen platformlar devre dışı kalır",
     "sidecarUnsupported": "Desteklenmiyor",
     "sidecarInstalled": "Yüklü",
     "sidecarNotInstalled": "Yüklü değil",
@@ -874,7 +869,7 @@
     "connectMethodDesc": "GitHub hesabınızı nasıl bağlayacağınızı seçin",
     "githubApp": "GitHub App",
     "detectFromSystem": "Sistemden Algıla",
-    "detectFromSystemDesc": "gh CLI, SSH anahtarları veya Git kimlik yardımcılarını kullanın.",
+    "detectFromSystemDesc": "gh CLI, SSH anahtarları veya Git kimlik yardımcılarını kullanın",
     "credentialsDetected": "Kimlik bilgileri algılandı",
     "detectedVia": "{{source}} üzerinden algılandı",
     "sshKeyLabel": "SSH Anahtarı",
@@ -894,7 +889,7 @@
     "noCredentialsFound": "GitHub kimlik bilgileri bulunamadı",
     "noCredentialsHint": "Yerel algılama için GitHub CLI (gh) yükleyin veya SSH anahtarları ayarlayın",
     "manuallyAddToken": "Token’ı elle ekle",
-    "manualTokenDesc": "HTTPS Git işlemleri için GitHub PAT yapıştırın.",
+    "manualTokenDesc": "HTTPS Git işlemleri için GitHub PAT yapıştırın",
     "autoDetect": "Otomatik algıla",
     "autoDetectTokenSaved": "GitHub token kaydedildi",
     "autoDetectSshSwitched": "Remote SSH’ye geçirildi",
@@ -920,7 +915,7 @@
     "coauthor": "Co-authored-by",
     "coauthorDesc": "ORG2 üzerinden oluşturulan Git commit'lerine {{name}} <{{email}}> ekle",
     "noTokenYet": "Token gerekiyor mu?",
-    "createTokenDesc": "GitHub’ı açıp repo erişimli bir PAT oluşturun.",
+    "createTokenDesc": "GitHub’ı açıp repo erişimli bir PAT oluşturun",
     "accountConnected": "GitHub hesabı bağlandı",
     "disconnectMsg": "Bağlantıyı kesmek istediğinizden emin misiniz? Bu, bu hesaptaki tüm depolara erişimi kaldıracaktır.",
     "disconnectTitle": "GitHub Hesabı Bağlantısını Kes",
@@ -929,7 +924,7 @@
     "connectRepoDesc": "Depolara erişmek için bir GitHub hesabı bağlayın",
     "github": "GitHub",
     "signInWithGithub": "GitHub ile oturum aç",
-    "signInWithGithubDesc": "ORG2'yi GitHub Device Flow üzerinden yetkilendirin. Sunucu barındırma gerekmez.",
+    "signInWithGithubDesc": "ORG2'yi GitHub Device Flow üzerinden yetkilendirin. Sunucu barındırma gerekmez",
     "oauthWaiting": "Yetkilendirme bekleniyor",
     "oauthDeviceCodeDesc": "Aşağıdaki URL'yi açın ve bu kodu girin",
     "oauthOpenGithub": "GitHub'ı aç",
@@ -964,8 +959,8 @@
     "contentLabel": "İçerik",
     "contentDesc": "SKILL.md gövdesini Markdown ile yazın. Agent'ın okuduğu içerik budur",
     "scopeLabel": "Kapsam",
-    "scopeDesc": "User Skill’leri tüm repolarda kullanılabilir. Repo-specific Skill’ler yalnızca ilgili repoda yüklenir.",
-    "scopeDescEdit": "Kaydederken kapsam değiştirmek Skill klasörünü User düzeyi depolama ile repo-specific depolama arasında taşır.",
+    "scopeDesc": "User Skill’leri tüm repolarda kullanılabilir. Repo-specific Skill’ler yalnızca ilgili repoda yüklenir",
+    "scopeDescEdit": "Kaydederken kapsam değiştirmek Skill klasörünü User düzeyi depolama ile repo-specific depolama arasında taşır",
     "scopeGlobal": "User",
     "binsLabel": "Gerekli programlar",
     "binsDesc": "Bu becerinin ihtiyaç duyduğu CLI programları (ör. git, python, docker)",
@@ -985,7 +980,7 @@
     "filePathPlaceholder": "ör. scripts/validate.py",
     "removeFile": "Dosyayı kaldır",
     "editorNoDraftTitle": "Devam eden bir Skill taslağı yok",
-    "editorNoDraftDesc": "Skills sayfasında Oluştur'a tıklayın veya düzenlemek için bir Skill seçin.",
+    "editorNoDraftDesc": "Skills sayfasında Oluştur'a tıklayın veya düzenlemek için bir Skill seçin",
     "scopeWorkspace": "Repo-specific",
     "deleteConfirmTitle": "«{{name}}» becerisini sil?",
     "deleteConfirmMessage": "Bu işlem beceriyi ve tüm dosyalarını kaldıracaktır. Bu eylem geri alınamaz."
@@ -994,7 +989,7 @@
     "tab": "MCP",
     "searchPlaceholder": "MCP sunucularını ara...",
     "noServers": "Yapılandırılmış MCP sunucusu yok",
-    "noServersDesc": "Agent yeteneklerini harici araçlarla genişletmek için bir MCP sunucusu ekleyin.",
+    "noServersDesc": "Agent yeteneklerini harici araçlarla genişletmek için bir MCP sunucusu ekleyin",
     "addServer": "MCP Sunucusu Ekle",
     "editServer": "MCP Sunucusunu Düzenle",
     "serverName": "Sunucu Adı",
@@ -1117,12 +1112,12 @@
     },
     "sessionProvenance": {
       "masterToggle": "Kaynak izleme hook'ları",
-      "masterToggleDesc": "Kapatıldığında tüm yönetilen hook'lar kaldırılır ve hiçbir sinyal yakalanmaz; platform seçimleri korunur ve yeniden açıldığında geri yüklenir.",
+      "masterToggleDesc": "Kapatıldığında tüm yönetilen hook'lar kaldırılır ve hiçbir sinyal yakalanmaz; platform seçimleri korunur ve yeniden açıldığında geri yüklenir",
       "liveStatusToggle": "Canlı ajan durumu",
-      "liveStatusToggleDesc": "Çalışan CLI ajanlarının çalıştığını veya beklediğini gösterir. Kapatılsa da kaynak izleme sürer.",
+      "liveStatusToggleDesc": "Çalışan CLI ajanlarının çalıştığını veya beklediğini gösterir. Kapatılsa da kaynak izleme sürer",
       "title": "Oturum kaynağı",
       "capture": "Dosya etkileşimlerini kaydet",
-      "description": "Dosya okuma ve yazma işlemlerini meta veri olarak kaydeder. İstemler, araç çıktıları ve dosya içerikleri saklanmaz.",
+      "description": "Dosya okuma ve yazma işlemlerini meta veri olarak kaydeder. İstemler, araç çıktıları ve dosya içerikleri saklanmaz",
       "installDrift": "Kaydedilen tercih ile yüklü hook farklı. Yönetilen hook'u onarmak için kaydı değiştirin. Yapılandırma: {{path}}",
       "copyPath": "Kopyala",
       "col": {
@@ -1139,8 +1134,8 @@
       },
       "codexApproval": {
         "title": "ORG2 hook'larını Codex'te doğrula",
-        "description": "Codex'in mevcut ORG2 hook'larını onaylayıp çalıştırması bekleniyor.",
-        "instructions": "Codex'i açın, ORG2 hook'larını inceleyin ve Trust all and continue seçeneğini seçin. SessionStart hook'u, oturum başladığında etkinleştirmeyi otomatik olarak doğrular.",
+        "description": "Codex'in mevcut ORG2 hook'larını onaylayıp çalıştırması bekleniyor",
+        "instructions": "Codex'i açın, ORG2 hook'larını inceleyin ve Trust all and continue seçeneğini seçin. SessionStart hook'u, oturum başladığında etkinleştirmeyi otomatik olarak doğrular",
         "review": "Codex'te incele",
         "verified": "Gerçek bir Codex hook sinyaliyle doğrulandı ({{time}})."
       },
@@ -1185,7 +1180,7 @@
       "addMember": "Üye Ekle",
       "noMembers": "Org hiyerarşinizi oluşturmak için üye ekleyin",
       "membersLabel": "Takım Üyeleri",
-      "membersDesc": "Her satır, bağımsız Writer izni ve iletişim ayarları olan bir üyedir. Adlar benzersiz olmalıdır; rol yalnızca uzmanlığı açıklar.",
+      "membersDesc": "Her satır, bağımsız Writer izni ve iletişim ayarları olan bir üyedir. Adlar benzersiz olmalıdır; rol yalnızca uzmanlığı açıklar",
       "memberName": "Ad",
       "memberNamePlaceholder": "Benzersiz yönlendirme adı (örn. SDE-1)",
       "memberNameDuplicate": "Başka bir üye bu name'i zaten kullanıyor. Name ekip içinde benzersiz olmalıdır.",
@@ -1238,9 +1233,9 @@
       "descriptionPlaceholder": "Bu agent ne yapar? (isteğe bağlı)",
       "subAgentsTab": "Subagents",
       "maxToolUseConcurrencyLabel": "Max tool-use concurrency",
-      "maxToolUseConcurrencyDesc": "Mesaj başına eşzamanlı Tool çağrısı sayısı. Varsayılan: 10.",
+      "maxToolUseConcurrencyDesc": "Mesaj başına eşzamanlı Tool çağrısı sayısı. Varsayılan: 10",
       "subAgentWorktreeIsolationLabel": "Worktree isolation",
-      "subAgentWorktreeIsolationDesc": "Geçici Git Worktree'de çalıştır (dosya ve Shell erişimi izole).",
+      "subAgentWorktreeIsolationDesc": "Geçici Git Worktree'de çalıştır (dosya ve Shell erişimi izole)",
       "addSubAgent": "Sub-Agent Ekle...",
       "noSubAgents": "Yapılandırılmış sub-agent yok."
     },
@@ -1276,30 +1271,30 @@
     "applicableAgentsDesc": "Bu kuralın uygulanacağı Agent'lar (boş = tümü)",
     "selectAgents": "Agent seç…",
     "ruleSource": "Kaynak",
-    "ruleSourceDesc": "Tüm repolar için User, tek repo kılavuzu için Repo seçin.",
+    "ruleSourceDesc": "Tüm repolar için User, tek repo kılavuzu için Repo seçin",
     "ruleSourceUser": "User",
-    "ruleSourceUserDesc": "Tüm repolarda kullanılabilen bir kullanıcı tercihi.",
+    "ruleSourceUserDesc": "Tüm repolarda kullanılabilen bir kullanıcı tercihi",
     "ruleSourceRepo": "Repo",
-    "ruleSourceRepoDesc": "Seçilen tek repo için kaydedilen bir kılavuz.",
+    "ruleSourceRepoDesc": "Seçilen tek repo için kaydedilen bir kılavuz",
     "ruleRepo": "Repo",
     "ruleRepoDesc": "Bu kılavuzun geçerli olduğu tek repo",
     "selectRepo": "Repo seç…",
     "ruleSourcePersonal": "Kişisel",
-    "ruleSourcePersonalDesc": "~/.orgii/personal/rules/ konumunda saklanır. Yalnızca OS Agent / channel oturumları.",
+    "ruleSourcePersonalDesc": "~/.orgii/personal/rules/ konumunda saklanır. Yalnızca OS Agent / channel oturumları",
     "findSkills": {
       "title": "Skills ara",
       "placeholder": "Skills ara...",
       "installs": "Installs",
       "emptyTitle": "Skills ara",
-      "emptySubtitle": "Skills bulmak için en az 2 karakter girin ve Enter’a basın.",
+      "emptySubtitle": "Skills bulmak için en az 2 karakter girin ve Enter’a basın",
       "noResults": "Skills bulunamadı",
-      "noResultsDesc": "Farklı bir arama terimi deneyin."
+      "noResultsDesc": "Farklı bir arama terimi deneyin"
     },
     "importAgentTitle": "Agents öğelerini diğer apps içinden içe aktar",
     "importAgentColumn": "Agent",
     "importedItemAgents": "agent'lar",
     "emptySelectionTitle": "Bir üye veya Agent Ekibi seçin",
-    "emptySelectionSubtitle": "Görüntülemek ve yapılandırmak için kenar çubuğundan bir Agent veya Agent Ekibi seçin.",
+    "emptySelectionSubtitle": "Görüntülemek ve yapılandırmak için kenar çubuğundan bir Agent veya Agent Ekibi seçin",
     "applicableWorkspace": "Uygulanacak Workspace",
     "tableTabs": {
       "agents": "Agents",
@@ -1332,18 +1327,18 @@
     "cliManagedConfig": {
       "title": "CLI yapılandırma anahtarı",
       "modeLabel": "Mod",
-      "modeDesc": "Varsayılan, CLI'ın kendi yapılandırmasını geri yükler. ORG2 Yönetimli, yedeklenmiş bir proxy yapılandırması yazar.",
+      "modeDesc": "Varsayılan, CLI'ın kendi yapılandırmasını geri yükler. ORG2 Yönetimli, yedeklenmiş bir proxy yapılandırması yazar",
       "modeDefault": "Varsayılan",
       "modeOrgii": "ORG2 Yönetimli",
       "conflict": "Harici değişiklik",
       "conflictTitle": "Çakışma",
-      "conflictDesc": "Etkin CLI yapılandırması ORG2 yazdıktan sonra değişti.",
+      "conflictDesc": "Etkin CLI yapılandırması ORG2 yazdıktan sonra değişti",
       "proxyStatus": "Proxy",
       "proxyDefault": "Varsayılan mod",
       "proxyReady": "Proxy hazır",
       "proxyNotReady": "Proxy hazır değil",
       "keyLabel": "Anahtar",
-      "keyDesc": "Yalnızca bu CLI ve yönetimli proxy ile uyumlu API anahtarları gösterilir.",
+      "keyDesc": "Yalnızca bu CLI ve yönetimli proxy ile uyumlu API anahtarları gösterilir",
       "selectKey": "Anahtar seç",
       "modelLabel": "Model",
       "selectModel": "Model seç",
@@ -1356,7 +1351,7 @@
       "forceRestore": "Zorla Geri Yükle",
       "applySuccess": "ORG2 yönetimli yapılandırma uygulandı",
       "restoreSuccess": "Varsayılan yapılandırma geri yüklendi",
-      "proxyLifecycleDesc": "Bu modu kullanırken ORG2'yi çalışır durumda tutun. Pencereyi kapatmak proxy'yi tepside tutar; ORG2'den çıkmak, yapılandırma harici olarak değişmediği sürece Varsayılanı güvenle geri yükler."
+      "proxyLifecycleDesc": "Bu modu kullanırken ORG2'yi çalışır durumda tutun. Pencereyi kapatmak proxy'yi tepside tutar; ORG2'den çıkmak, yapılandırma harici olarak değişmediği sürece Varsayılanı güvenle geri yükler"
     }
   },
   "databases": {
@@ -1546,7 +1541,7 @@
       "elapsed": "Toplam süre: {{value}}s"
     },
     "title": "Yerleşik Housekeeper",
-    "description": "Yerel MiniCPM istem düzeltme, kısa adım açıklamaları ve hafif UI denetimini üstlenir. Kodlama görevleri ve karmaşık ADE kurulumu yine ana agent modelini kullanır.",
+    "description": "Yerel MiniCPM istem düzeltme, kısa adım açıklamaları ve hafif UI denetimini üstlenir. Kodlama görevleri ve karmaşık ADE kurulumu yine ana agent modelini kullanır",
     "autoAccount": "MiniCPM vLLM hesabını otomatik seç",
     "tiles": {
       "model": "Model",
@@ -1556,37 +1551,37 @@
     "settings": {
       "enabled": {
         "title": "Housekeeper'ı etkinleştir",
-        "description": "Devre dışı bırakıldığında istem düzeltme, adım açıklamaları ve hafif UI denetimi MiniCPM kullanmaz."
+        "description": "Devre dışı bırakıldığında istem düzeltme, adım açıklamaları ve hafif UI denetimi MiniCPM kullanmaz"
       },
       "account": {
         "title": "vLLM MiniCPM hesabı",
-        "description": "Mevcut bir KeyVault vllm_api hesabını yeniden kullanır; ayrı bir kimlik bilgisi deposu oluşturulmaz."
+        "description": "Mevcut bir KeyVault vllm_api hesabını yeniden kullanır; ayrı bir kimlik bilgisi deposu oluşturulmaz"
       },
       "model": {
         "title": "Model kimliği",
-        "description": "Docker vLLM MiniCPM5-1B varsayılan olarak openbmb/MiniCPM5-1B kullanır."
+        "description": "Docker vLLM MiniCPM5-1B varsayılan olarak openbmb/MiniCPM5-1B kullanır"
       },
       "context": {
         "title": "Güvenli bağlam bütçesi",
-        "description": "4GB GPU'larda teorik 32k sınırına güvenmek yerine ihtiyatlı bir 10000 token bütçesi kullan."
+        "description": "4GB GPU'larda teorik 32k sınırına güvenmek yerine ihtiyatlı bir 10000 token bütçesi kullan"
       }
     },
     "features": {
       "promptPolish": {
         "title": "İstem düzeltme",
-        "description": "Girdiyi daha güçlü kodlama modeline göndermeden önce manuel olarak düzeltin."
+        "description": "Girdiyi daha güçlü kodlama modeline göndermeden önce manuel olarak düzeltin"
       },
       "stepExplain": {
         "title": "Agent adım açıklamaları",
-        "description": "Oturum tekrarı adımları için bir veya iki kısa Çince açıklama oluştur."
+        "description": "Oturum tekrarı adımları için bir veya iki kısa Çince açıklama oluştur"
       },
       "uiControl": {
         "title": "Hafif ADE/UI denetimi",
-        "description": "MiniCPM istekleri yalnızca katı bir yerel eylem beyaz listesine göre sınıflandırabilir."
+        "description": "MiniCPM istekleri yalnızca katı bir yerel eylem beyaz listesine göre sınıflandırabilir"
       },
       "contextCompact": {
         "title": "Otomatik bağlam bakımı",
-        "description": "Etkin oturumlar boştayken MiniCPM'in eski bağlamın yalıtılmış, kayan bir özetini tutmasına izin ver."
+        "description": "Etkin oturumlar boştayken MiniCPM'in eski bağlamın yalıtılmış, kayan bir özetini tutmasına izin ver"
       }
     }
   },
@@ -1638,11 +1633,11 @@
     "applyFailed": "Git profili etkinleştirilemedi"
   },
   "credentialImport": {
-    "title": "Diğer uygulamalardan kimlik bilgilerini içe aktar",
-    "itemColumn": "Kimlik bilgisi",
+    "title": "Diğer uygulamalardan anahtar ve abonelikleri içe aktar",
+    "itemColumn": "Anahtar",
     "sourceColumn": "Bulunduğu yer",
-    "empty": "İçe aktarılacak kimlik bilgisi bulunamadı. Ortam değişkenleri, kabuk profilleri, Claude Code ayarları, cc-switch profilleri ve Claude Code, Codex, Cursor, GitHub CLI, Kiro ve OpenCode oturum açma depoları kontrol edildi.",
-    "allImported": "Algılanan tüm kimlik bilgileri zaten içe aktarılmış",
+    "empty": "İçe aktarılacak anahtar veya abonelik bulunamadı. Ortam değişkenleri, kabuk profilleri, Claude Code ayarları, cc-switch profilleri ve Claude Code, Codex, Cursor, GitHub CLI, Kiro ve OpenCode oturum açma depoları kontrol edildi.",
+    "allImported": "Algılanan tüm anahtarlar ve abonelikler zaten içe aktarılmış",
     "authMethod": {
       "api_key": "API anahtarı",
       "oauth": "Oturum açma token'ı"
@@ -1657,13 +1652,21 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "İçe aktarma başarısız: {{message}}",
-    "partialFailure": "Bazı kimlik bilgileri içe aktarılamadı:"
+    "partialFailure": "Bazı anahtarlar içe aktarılamadı:",
+    "importSucceeded": "Anahtarlarım'a kaydedildi: {{names}}. İçe aktarılan anahtarlar artık yeniden kullanılabilir bağlantılar olarak kullanılabilir."
   },
   "skills": {
     "shareToOrg": "Organizasyonla paylaş",
     "share": "Paylaş",
     "sharedToOrg": "Skill organizasyonla paylaşıldı",
-    "shareToOrgHint": "Organizasyon üyeleri bu Skill'in geçerli anlık görüntüsünü alır; düzenledikten sonra güncelleme yayınlamak için yeniden paylaşın.",
+    "shareToOrgHint": "Organizasyon üyeleri bu Skill'in geçerli anlık görüntüsünü alır; düzenledikten sonra güncelleme yayınlamak için yeniden paylaşın",
     "shareOrgPlaceholder": "Organizasyon"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Loading official packages…",
+    "purchasesFailed": "Could not load official packages. Try again.",
+    "failed": "Market bağlantısı kurulamadı. Lütfen tekrar deneyin.",
+    "title": "Official packages",
+    "launchFailed": "Could not enable the selected package. Refresh the catalog and check wallet funds and usage authorization."
   }
 }

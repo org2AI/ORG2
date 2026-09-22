@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
+import type { ThreadDetailTab } from "@src/features/GitHubWork/ThreadDetailTabs";
 import { useTabViewState } from "@src/hooks/tabHost/useTabViewState";
-import type { ThreadDetailTab } from "@src/modules/shared/components/ThreadDetailTabs";
 
 interface IssueDetailTabSelection {
   issueUrl: string;

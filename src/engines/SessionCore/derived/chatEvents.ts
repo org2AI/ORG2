@@ -16,6 +16,7 @@ import {
   messageQueueAtom,
 } from "@src/store/ui/messageQueueAtom";
 
+import { projectQueuedRetryChatEvents } from "../conversations/queuedRetryLineage";
 import { derivedSnapshotAtom, eventsAtom } from "../core/atoms/events";
 import { sessionIdAtom } from "../core/atoms/metadata";
 import type { Snapshot } from "../core/store/EventStoreProxy";
@@ -212,9 +213,11 @@ export function appendQueuedUserEvents(
   sessionId: string | null,
   queuedMessages: readonly QueuedMessage[]
 ): SessionEvent[] {
+  events = projectQueuedRetryChatEvents(events);
   if (!sessionId || queuedMessages.length === 0) return events;
   const representedTurnIntents = new Map<string, number>();
   events.forEach((event, index) => {
+    if (event.source !== "user" || event.sessionId !== sessionId) return;
     const turnIntentId = turnIntentIdOf(event);
     if (turnIntentId && !representedTurnIntents.has(turnIntentId)) {
       representedTurnIntents.set(turnIntentId, index);
@@ -231,6 +234,44 @@ export function appendQueuedUserEvents(
       // reads "pending"; overlay the queue verdict so the bubble shows the
       // error and its retry instead of sending forever.
       const existing = next[representedIndex];
+      const nativeMessage = existing?.result?.message as
+        | { role?: unknown }
+        | undefined;
+      const importedNativeUser =
+        (existing?.functionName === "user_message" ||
+          existing?.functionName === "user") &&
+        (existing.actionType === "raw" ||
+          existing.actionType === "raw_event") &&
+        existing.result?.type === "user" &&
+        nativeMessage?.role === "user" &&
+        existing.result?.syntheticUserInput !== true;
+      const nativeUserEcho =
+        existing?.source === "user" &&
+        (existing.result?.["backendPersisted"] === true ||
+          importedNativeUser) &&
+        existing.result?.["deliveryStatus"] === undefined;
+      if (message.deliveryError && nativeUserEcho) {
+        // Native history may replace the optimistic row before the model
+        // fails. Its completed user echo proves prompt persistence, not a
+        // successful response or retirement of the durable failure owner.
+        // Restore that owner's retry projection at the same position, without
+        // rewriting native history or creating another dispatch authority.
+        if (next === events) next = [...events];
+        next[representedIndex] = createSyntheticUserEvent(
+          sessionId,
+          message.displayContent,
+          {
+            id: `queued-user-${message.turnIntentId}`,
+            createdAt: message.createdAt,
+            imageDataUrls: message.imageDataUrls,
+            turnIntentId: message.turnIntentId,
+            deliveryStatus: "failed",
+            deliveryError: message.deliveryError,
+            queueMessageId: message.id,
+          }
+        );
+        continue;
+      }
       if (
         !message.deliveryError ||
         !existing ||

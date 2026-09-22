@@ -13,6 +13,9 @@ import type { MemberFilterMenuState } from "./cloudSessionsSection.types";
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const onFilterChange = vi.fn();
+let presenceMap: Parameters<
+  typeof useCloudMemberFilterDropdown
+>[0]["presenceMap"] = {};
 const env = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
 };
@@ -36,7 +39,7 @@ function Harness() {
     })),
     hiddenRemoteSessionIds: new Set(["org-1|hidden"]),
     setHiddenRemoteSessionIds: vi.fn(),
-    presenceMap: {},
+    presenceMap,
     onFilterChange,
     t: ((key: string) => key) as TFunction,
   });
@@ -59,6 +62,7 @@ beforeEach(async () => {
   env.IS_REACT_ACT_ENVIRONMENT = true;
   vi.useFakeTimers();
   onFilterChange.mockClear();
+  presenceMap = { "org-1": { "7": {}, "3": {} } as never };
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -142,4 +146,18 @@ it("closes on outside click", async () => {
     document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
   );
   expect(document.querySelector("input")).toBeNull();
+});
+
+it("lists online members before offline ones, keeping roster order", () => {
+  const ids = [
+    ...document.querySelectorAll<HTMLElement>(
+      '[data-testid^="sidebar-cloud-filter-member-"]'
+    ),
+  ].map((node) =>
+    node.dataset.testid!.replace("sidebar-cloud-filter-member-", "")
+  );
+  expect(ids.slice(0, 4)).toEqual(["3", "7", "0", "1"]);
+  expect(
+    document.querySelectorAll('[data-testid="member-online-dot"]')
+  ).toHaveLength(2);
 });

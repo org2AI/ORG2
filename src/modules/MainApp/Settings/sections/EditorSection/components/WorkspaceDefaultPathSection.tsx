@@ -7,17 +7,17 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import Select from "@src/components/Select";
-import { WORKSPACE_DEFAULT_REPO_LOCATION } from "@src/config/workspaceDefaultRepoPaths";
-import type { WorkspaceDefaultRepoLocation } from "@src/config/workspaceDefaultRepoPaths";
-import { createLogger } from "@src/hooks/logger";
-import { FolderOpenIcon, HugeiconsIcon } from "@src/icons";
 import {
   SECTION_ACTION_GAP_CLASSES,
   SECTION_CONTROL_STYLE,
   SECTION_PATH_TEXT_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { WORKSPACE_DEFAULT_REPO_LOCATION } from "@src/config/workspaceDefaultRepoPaths";
+import type { WorkspaceDefaultRepoLocation } from "@src/config/workspaceDefaultRepoPaths";
+import { createLogger } from "@src/hooks/logger";
+import { FolderOpenIcon, HugeiconsIcon } from "@src/icons";
 import {
   workspaceCustomDefaultRepoPathAtom,
   workspaceDefaultRepoLocationAtom,
@@ -123,8 +123,6 @@ const WorkspaceDefaultPathSection: React.FC = () => {
               className="min-w-0 flex-1"
             />
             <Button
-              variant="secondary"
-              size="default"
               iconOnly
               icon={
                 <HugeiconsIcon

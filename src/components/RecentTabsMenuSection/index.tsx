@@ -1,8 +1,10 @@
 import React, { useId } from "react";
 
-import Button from "@src/components/Button";
-import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
-import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
+import DropdownActionItem from "@src/components/Dropdown/DropdownActionItem";
+import {
+  DROPDOWN_CLASSES,
+  DROPDOWN_ITEM,
+} from "@src/components/Dropdown/tokens";
 import { HugeiconsIcon, WorkHistoryIcon } from "@src/icons";
 
 export interface RecentTabMenuItem {
@@ -34,30 +36,24 @@ export function RecentTabsMenuSection({
           {label}
         </div>
         {tabs.map((tab) => (
-          <Button
-            layout="custom"
-            appearance="custom"
+          <DropdownActionItem
             key={tab.id}
-            htmlType="button"
-            role="menuitem"
-            className={DROPDOWN_CLASSES.menuActionItem}
-            data-recent-tab-id={tab.id}
-            onClick={() => onOpen(tab.id)}
-          >
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              {tab.leadingIcon ?? (
+            icon={
+              tab.leadingIcon ?? (
                 <HugeiconsIcon
                   icon={WorkHistoryIcon}
                   data-icon="work-history"
-                  size={HEADER_ICON_SIZE.sm}
+                  size={DROPDOWN_ITEM.iconSize}
                   strokeWidth={1.8}
                 />
-              )}
-              <span className="max-w-[320px] min-w-0 flex-1 truncate">
-                {tab.title}
-              </span>
-            </span>
-          </Button>
+              )
+            }
+            labelClassName="max-w-[320px]"
+            data-recent-tab-id={tab.id}
+            onClick={() => onOpen(tab.id)}
+          >
+            {tab.title}
+          </DropdownActionItem>
         ))}
       </div>
     </>

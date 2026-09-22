@@ -4,23 +4,23 @@
 
 - A completed session exists with at least one recorded event sequence.
 - The `ActivitySimulator` is rendered inside a full Jotai + React Router + i18n provider tree.
-- Simulator atoms (`simulatorLayoutAtom`, `replayModeAtom`, etc.) are at default values.
+- Simulator atoms (`replayModeAtom`, `simulatorSelectedAppAtom`, etc.) are at default values.
 - The session's event array is non-empty and has been processed by `mergeSessionEventsToolResultsByCallId`.
 
 ## Happy Path
 
-| #   | Steps                                                      | Expected Result                                                           |
-| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | Open a completed session; Simulator mounts.                | First event is displayed in `ActivitySimulatorGrid`; Dock chrome visible. |
-| 2   | Press "Play" on `DockReplayControl`.                       | Events advance step by step; `displayEvent` updates on each tick.         |
-| 3   | Press "Pause".                                             | Playback stops at current event; UI frozen at that state.                 |
-| 4   | Drag the `MusicPlayerReplayBar` scrubber to 50%.           | `displayEvent` jumps to the midpoint event; no crash.                     |
-| 5   | Click "Next step" arrow.                                   | Advances by one event; display updates.                                   |
-| 6   | Click "Prev step" arrow.                                   | Steps back by one event; display updates.                                 |
-| 7   | Switch to a different app tab in the Dock.                 | `simulatorSelectedAppAtom` updates; grid reflects new app view.           |
-| 8   | Session has subagents; `SubagentPipCard` renders.          | Pip cards displayed below main grid; clicking one sets active subagent.   |
-| 9   | Chat panel visible; floating input shown.                  | `SimulatorFloatingInput` is rendered when `chatVisible=true`.             |
-| 10  | Dock auto-layout enabled; session switches app mid-replay. | `simulatorAutoLayoutAtom` triggers correct app selection automatically.   |
+| #   | Steps                                             | Expected Result                                                           |
+| --- | ------------------------------------------------- | ------------------------------------------------------------------------- |
+| 1   | Open a completed session; Simulator mounts.       | First event is displayed in `ActivitySimulatorGrid`; Dock chrome visible. |
+| 2   | Press "Play" on `DockReplayControl`.              | Events advance step by step; `displayEvent` updates on each tick.         |
+| 3   | Press "Pause".                                    | Playback stops at current event; UI frozen at that state.                 |
+| 4   | Drag the `MusicPlayerReplayBar` scrubber to 50%.  | `displayEvent` jumps to the midpoint event; no crash.                     |
+| 5   | Click "Next step" arrow.                          | Advances by one event; display updates.                                   |
+| 6   | Click "Prev step" arrow.                          | Steps back by one event; display updates.                                 |
+| 7   | Switch to a different app tab in the Dock.        | `simulatorSelectedAppAtom` updates; grid reflects new app view.           |
+| 8   | Session has subagents; `SubagentPipCard` renders. | Pip cards displayed below main grid; clicking one sets active subagent.   |
+| 9   | Chat panel visible; floating input shown.         | `SimulatorFloatingInput` is rendered when `chatVisible=true`.             |
+| 10  | Session has multiple execution threads.           | Grid layout is derived from the thread count automatically.               |
 
 ## Edge Cases
 

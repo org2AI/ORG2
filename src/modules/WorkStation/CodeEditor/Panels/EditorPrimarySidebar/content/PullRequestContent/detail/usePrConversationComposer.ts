@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 
-import { useSessionReferenceDropTarget } from "@src/features/Org2Cloud/useSessionReferenceDropTarget";
-import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 import type {
   MarkdownEditorMode,
   MarkdownTextareaEditorRef,
-} from "@src/modules/shared/components/MarkdownTextareaEditor";
+} from "@src/components/MarkdownTextareaEditor";
+import { useSessionReferenceDropTarget } from "@src/features/Org2Cloud/useSessionReferenceDropTarget";
+import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 
 interface UsePrConversationComposerOptions {
   controlledDraft?: string;

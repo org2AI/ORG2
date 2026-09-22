@@ -196,9 +196,7 @@ export function TabContextMenu(props: TabContextMenuProps) {
               },
             ];
             const moveToChatPanelItem: NativeMenuItemOptions = {
-              text: t("sessions:chat.moveToChatPanel", {
-                defaultValue: "Move to Chat Panel",
-              }),
+              text: t("sessions:chat.moveToChatPanel"),
               action: () => {
                 const context = contextMenuRef.current;
                 if (context) context.onMoveToChatPanel?.(context.tab);
@@ -212,9 +210,7 @@ export function TabContextMenu(props: TabContextMenuProps) {
                 items.push(
                   { item: "Separator" },
                   {
-                    text: t("teamInbox.handoff.createFromSession", {
-                      defaultValue: "Create team Work Item…",
-                    }),
+                    text: t("teamInbox.handoff.createFromSession"),
                     action: () => {
                       const context = contextMenuRef.current;
                       if (context) {
@@ -225,9 +221,7 @@ export function TabContextMenu(props: TabContextMenuProps) {
                   },
                   moveToChatPanelItem,
                   {
-                    text: t("sessions:chat.rawTranscript.menuItem", {
-                      defaultValue: "View raw transcript",
-                    }),
+                    text: t("sessions:chat.rawTranscript.menuItem"),
                     action: () => {
                       const context = contextMenuRef.current;
                       const activeSessionId = context?.tab.data.sessionId;

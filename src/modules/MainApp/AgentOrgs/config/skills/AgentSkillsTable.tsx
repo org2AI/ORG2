@@ -87,8 +87,6 @@ const AgentSkillsTable: React.FC<AgentSkillsTableProps> = ({
   const addSkillButton =
     onAddSkill && addSkillLabel ? (
       <Button
-        variant="secondary"
-        size="default"
         icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
         onClick={onAddSkill}
         data-testid="agent-orgs-add-skill-button"

@@ -3,8 +3,6 @@
     "customCommandUpdated": "Пользовательская команда обновлена",
     "shellSettingUpdated": "Настройка оболочки обновлена"
   },
-  "noSettingsFound": "Настройки для \"{{query}}\" не найдены",
-  "searchPlaceholder": "Поиск настроек...",
   "panel": {
     "maximizeSettings": "Развернуть настройки"
   },
@@ -15,10 +13,13 @@
     "editorAndWorkspace": "Редактор & Workspace",
     "appUpdate": "Обновление",
     "security": "Безопасность",
+    "appLock": "Блокировка приложения",
     "storage": "Хранилище",
     "agentOrg": "Команда Agent",
     "harnessConnections": "Подключения приложений",
-    "mobileRemote": "Mobile Remote"
+    "import": "Импорт",
+    "mobileRemote": "Mobile Remote",
+    "development": "Режим разработчика"
   },
   "coreSidebar": {
     "groups": {
@@ -54,6 +55,52 @@
     "customPatternsPlaceholder": "напр. MYCORP_[A-Z0-9]{20}",
     "invalidPatterns": "{{count}} шаблон(ов) недействительны и будут проигнорированы: {{patterns}}"
   },
+  "appLock": {
+    "password": "Блокировка паролем",
+    "setPassword": "Задать пароль",
+    "changePassword": "Изменить пароль",
+    "removePassword": "Удалить пароль",
+    "currentPassword": "Текущий пароль",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Подтвердите новый пароль",
+    "passwordSet": "Пароль задан",
+    "passwordChanged": "Пароль изменён",
+    "passwordRemoved": "Пароль удалён",
+    "lockNow": "Заблокировать сейчас",
+    "lockNowDesc": "Блокирует все окна ORG2 до ввода пароля",
+    "shortcut": "Сочетание клавиш для блокировки",
+    "hint": "Подсказка к паролю",
+    "hintPlaceholder": "Показывается на экране блокировки",
+    "hintOptionalPlaceholder": "Подсказка к паролю (необязательно)",
+    "autoLock": "Блокировать автоматически",
+    "autoLockDesc": "Блокировать, если в ORG2 столько времени нет ввода с клавиатуры или мыши",
+    "autoLockNever": "Никогда",
+    "autoLockMinutes": "Через {{count}} мин",
+    "autoLockHour": "Через 1 час",
+    "lockOnLaunch": "Блокировать при запуске ORG2",
+    "lockOnLaunchDesc": "Запрашивать пароль при каждом открытии приложения",
+    "scopeNote": "Блокировка распространяется только на окна ORG2. Она не шифрует данные и не приостанавливает Mobile Remote, и любой, у кого есть доступ к вашим файлам, может её снять. Если вы забыли пароль, закройте ORG2 и удалите app-lock.json из папки .orgii в домашнем каталоге",
+    "errors": {
+      "tooShort": "Используйте не менее {{count}} символов",
+      "tooLong": "Этот пароль слишком длинный",
+      "mismatch": "Пароли не совпадают",
+      "incorrectCurrent": "Текущий пароль неверен",
+      "throttled": "Слишком много неверных попыток. Повторите попытку позже",
+      "generic": "Не удалось обновить блокировку приложения",
+      "hintTooLong": "Эта подсказка слишком длинная",
+      "hintRevealsPassword": "Подсказка не может содержать пароль"
+    },
+    "screen": {
+      "title": "ORG2 заблокирован",
+      "passwordPlaceholder": "Пароль",
+      "incorrect": "Неверный пароль",
+      "failed": "Не удалось разблокировать. Повторите попытку",
+      "throttled": "Слишком много попыток. Повторите через {{time}}",
+      "working": "Сеансов в работе: {{count}}",
+      "showHint": "Показать подсказку",
+      "hint": "Подсказка: {{hint}}"
+    }
+  },
   "myRoles": {
     "currentStatus": "Мой текущий статус",
     "tabs": {
@@ -86,6 +133,10 @@
     }
   },
   "general": {
+    "myStationSharing": "Общее состояние Workstation",
+    "myStationSharingDesc": "Использовать общие вкладки и состояние представлений Workstation для рабочего каталога или сохранять их отдельно для каждой вкладки чата",
+    "myStationSharingDirectory": "Рабочий каталог",
+    "myStationSharingTab": "Вкладка чата",
     "login": "Вход",
     "tabGeneral": "Общие",
     "tabSelfHosted": "Самостоятельный хостинг",
@@ -117,8 +168,6 @@
     "usePointerCursorsDesc": "Менять курсор на указатель при наведении на интерактивные элементы",
     "timezoneAuto": "Авто (браузер)",
     "timezoneSearchPlaceholder": "Поиск ближайших городов",
-    "sendOnEnter": "Отправлять сообщения клавишей Enter",
-    "sendOnEnterDesc": "Если включено, Enter отправляет, а Shift+Enter и Ctrl/Cmd+Enter вставляют новую строку. Если выключено, отправка выполняется Ctrl/Cmd+Enter",
     "language": "Язык",
     "languageSearchPlaceholder": "Поиск языков...",
     "languageNames": {
@@ -135,7 +184,9 @@
       "vi": "Вьетнамский",
       "pt": "Португальский",
       "pl": "Польский",
-      "zh-Hant": "Китайский традиционный"
+      "zh-Hant": "Китайский традиционный",
+      "hi": "Хинди",
+      "id": "Индонезийский"
     },
     "layout": "Макет",
     "sidebar": "Боковая панель",
@@ -143,6 +194,8 @@
     "sidebarEdgeDepth": "Глубина границы боковой панели",
     "selectedItemTransparency": "Прозрачность выбранного элемента",
     "spotlightPlacement": "Положение Spotlight",
+    "spotlightDimBackground": "Затемнять фон",
+    "spotlightDetailCard": "Карточка сведений при наведении",
     "spotlightPlacementOptions": {
       "top": "Сверху",
       "center": "По центру"
@@ -179,6 +232,8 @@
     "voiceInputPermissionOpenFailed": "Не удалось открыть Системные настройки",
     "preventSleep": "Запрещать спящий режим во время сессий",
     "preventSleepDesc": "Не давать Mac или ПК уснуть, пока работает хотя бы одна сессия Agent. Освобождается автоматически после завершения всех сессий",
+    "highRefreshRate": "Высокая частота обновления",
+    "highRefreshRateDesc": "Отрисовывать интерфейс с полной частотой обновления дисплея — до 120 Гц на дисплеях ProMotion. Прокрутка, изменение размера и анимации становятся плавнее, но во время работы расходуют больше энергии",
     "devMode": "Режим разработчика",
     "devModeDesc": "Включает нативное контекстное меню Inspect Element и DevTools браузера. Только для разработки и отладки",
     "presenceGuidanceOnline": "В сети — инструкции для агентов",
@@ -200,7 +255,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Стиль иконок",
-    "iconStyleDesc": "Монохромный режим обесцвечивает иконки типов файлов и моделей, чтобы они читались как интерфейс, а не как логотипы",
     "iconStyleOptions": {
       "colorful": "Цветные",
       "monochrome": "Монохромные"
@@ -212,10 +266,22 @@
       "light": "Светлая плитка"
     },
     "translucentSidebar": "Полупрозрачная боковая панель",
+    "sessionBranchTags": "Теги веток и PR у сессий",
     "skin": "Скин",
     "accent": "Акцент",
     "linkSkinVariants": "Связать светлый и тёмный",
-    "linkSkinVariantsDesc": "Использовать один скин и акцент для обоих режимов. Связать можно только скины, имеющие светлый и тёмный варианты"
+    "linkSkinVariantsDesc": "Использовать один скин и акцент для обоих режимов. Связать можно только скины, имеющие светлый и тёмный варианты",
+    "license": "Лицензия",
+    "licenseTitle": "Лицензия ORG2",
+    "licenseLoading": "Загрузка лицензии…",
+    "licenseLoadFailed": "Не удалось загрузить лицензию приложения",
+    "tooltips": "Подсказки",
+    "buttonTooltipsEnabled": "Показывать подсказки кнопок",
+    "buttonTooltipsEnabledDesc": "Показывать название и сочетание клавиш при наведении на кнопки. Подсказки информационных значков показываются всегда",
+    "buttonTooltipDelayMs": "Задержка подсказки",
+    "buttonTooltipDelayImmediate": "Сразу",
+    "buttonTooltipDelaySeconds": "{{seconds}} с",
+    "modelPickerStyle": "Выбор модели"
   },
   "background": {
     "title": "Фон",
@@ -383,13 +449,13 @@
     "desktopConfig": {
       "title": "Desktop Safety",
       "hideBeforeAction": "Скрывать ORG2 при управлении рабочим столом",
-      "hideBeforeActionHelper": "Скрывает главное окно ORG2 во время работы Peekaboo и показывает панель Wingman с плавающей подписью, чтобы Agent не управлял фокусом вручную.",
+      "hideBeforeActionHelper": "Скрывает главное окно ORG2 во время работы Peekaboo и показывает панель Wingman с плавающей подписью, чтобы Agent не управлял фокусом вручную",
       "antiDetection": "Защита от обнаружения автоматизации (HID)",
-      "antiDetectionHelper": "Заставляет Peekaboo отправлять настоящие события CGEvent (HID) для кликов и нажатий клавиш вместо чистых действий Accessibility, чтобы приложения с детекцией автоматизации (например, WeChat) реже блокировали управление рабочим столом.",
+      "antiDetectionHelper": "Заставляет Peekaboo отправлять настоящие события CGEvent (HID) для кликов и нажатий клавиш вместо чистых действий Accessibility, чтобы приложения с детекцией автоматизации (например, WeChat) реже блокировали управление рабочим столом",
       "humanInputProfile": "Человекоподобный ритм ввода",
-      "humanInputProfileHelper": "Применяет человекоподобный профиль таймингов к синтезированным нажатиям клавиш. Отключите для ввода на максимальной скорости.",
+      "humanInputProfileHelper": "Применяет человекоподобный профиль таймингов к синтезированным нажатиям клавиш. Отключите для ввода на максимальной скорости",
       "escapeAbort": "System Escape key aborts",
-      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded."
+      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded"
     },
     "skillMissingBins": "Отсутствует: {{bins}}",
     "skillMissingEnv": "Отсутствуют переменные окружения: {{vars}}",
@@ -458,7 +524,6 @@
     "gitOperations": "Git операции",
     "gitOperationsDesc": "Уведомления о Git pull, push и синхронизации",
     "soundPreset": "Звук уведомления",
-    "soundPresetDesc": "Выберите звук для слышимых уведомлений",
     "previewSound": "Прослушать",
     "soundPresets": {
       "classic": "Классический",
@@ -517,6 +582,9 @@
     "indentGuides": "Направляющие отступов",
     "treeIndentGuides": "Направляющие отступов дерева",
     "highlightActiveLine": "Подсветка текущей строки",
+    "diffViewMode": "Вид различий",
+    "gitBlame": "Git blame",
+    "splitDiffCenteredLineNumbers": "Номера строк по центру в разделённом diff",
     "shellsOpenWith": "Shell открывается с",
     "shellsOpenWithDesc": "Начальная рабочая директория для новых терминалов",
     "repoPath": "Путь репо",
@@ -551,7 +619,7 @@
       "title": "Git",
       "pullStrategy": "Стратегия pull",
       "pullStrategyDesc": "Как git pull интегрирует изменения с remote при синхронизации",
-      "pullStrategyHint": "Rebase (по умолчанию): Replays ваши commits поверх remote. Создаёт linear history.\n\nMerge: Создаёт merge commit при diverge branches. Сохраняет полный history.\n\nFast-forward only: Разрешает pull только когда merge не нужен. Отказывает если branches diverged.",
+      "pullStrategyHint": "Rebase (по умолчанию): Replays ваши commits поверх remote. Создаёт linear history.\n\nMerge: Создаёт merge commit при diverge branches. Сохраняет полный history.\n\nFast-forward only: Разрешает pull только когда merge не нужен. Отказывает если branches diverged",
       "strategyMerge": "Merge",
       "strategyRebase": "Rebase (по умолчанию)",
       "strategyFfOnly": "Только Fast-forward (строго)",
@@ -600,7 +668,7 @@
     "checkFailed": "Не удалось проверить обновления",
     "checking": "Проверка обновлений…",
     "officialInstalled": "Официальное приложение установлено",
-    "officialInstalledDesc": "Версия {{version}} установлена в {{path}}. Эта локальная сборка продолжает работать без изменений.",
+    "officialInstalledDesc": "Версия {{version}} установлена в {{path}}. Эта локальная сборка продолжает работать без изменений",
     "downloadFailed": "Не удалось загрузить обновление",
     "retryNow": "Повторить сейчас",
     "downloadTimeout": "Время ожидания загрузки истекло. Проверьте сеть или прокси и повторите попытку.",
@@ -736,7 +804,7 @@
     "tableVersion": "Версия",
     "tableStatus": "Статус",
     "installSection": "Установка",
-    "installHintNote": "Предлагаемая команда установки для вашей платформы. Большинство системных зависимостей требует прав администратора, поэтому мы не запускаем их автоматически — скопируйте и вставьте в свой terminal."
+    "installHintNote": "Предлагаемая команда установки для вашей платформы. Большинство системных зависимостей требует прав администратора, поэтому мы не запускаем их автоматически — скопируйте и вставьте в свой terminal"
   },
   "storage": {
     "dataDirectory": "Каталог данных",
@@ -770,10 +838,8 @@
     "typingAnimationDesc": "Включить эффект печатной машинки для сообщений Agent",
     "typingSpeed": "Скорость набора",
     "typingSpeedDesc": "Миллисекунд на символ (1мс = быстрее, 50мс = медленнее)",
-    "decryptEffect": "Эффект Decrypt",
-    "decryptEffectDesc": "Включить Decrypt анимацию для сообщений Agent",
-    "sendOnEnter": "Отправлять сообщения клавишей Enter",
-    "sendOnEnterDesc": "Если включено, Enter отправляет, а Shift+Enter и Ctrl/Cmd+Enter вставляют новую строку. Если выключено, отправка выполняется Ctrl/Cmd+Enter"
+    "sendOnEnter": "Отправлять сообщения с помощью",
+    "sendOnEnterDesc": "Выберите сочетание клавиш для отправки сообщения; другие сочетания с Enter вставляют новую строку"
   },
   "indexing": {
     "noWorkspaceMemories": "Пока нет воспоминаний о проекте. Они появятся после того, как сеансы извлекут информацию об этом рабочем пространстве.",
@@ -822,7 +888,7 @@
   "agentEvolution": {
     "enableForAgent": "Включить эволюцию для {{agentName}}",
     "noAgentsTitle": "Нет доступных Agent",
-    "noAgentsSubtitle": "Создайте или импортируйте Agent, чтобы настроить эволюцию."
+    "noAgentsSubtitle": "Создайте или импортируйте Agent, чтобы настроить эволюцию"
   },
   "org": {},
   "learningsBrowser": {
@@ -888,10 +954,12 @@
   "appearance": {
     "tabApp": "Приложение",
     "tabCodeEditor": "Редактор кода",
-    "tabChatPanel": "Панель чата"
+    "tabChatPanel": "Панель чата",
+    "chatHistory": "История чата",
+    "composer": "Поле ввода",
+    "newChatPage": "Страница нового чата"
   },
   "harnessConnections": {
-    "description": "Выберите подключение для каждого инструмента разработки",
     "current": "Настроенное подключение",
     "scope": "Применяется к настройкам CLI по умолчанию на этом устройстве; настройки проекта и активные сеансы могут иметь приоритет",
     "original": "Исходные настройки",
@@ -915,6 +983,8 @@
     "apply": "Использовать это подключение",
     "applied": "Настройки сохранены — начните новый сеанс инструмента",
     "restore": "Восстановить исходные настройки",
+    "disconnect": "Отключить",
+    "overlayHelp": "Настройки подключения хранятся отдельно в {{path}}. «Открыть терминал» запускает Claude Code с этими настройками и существующей историей бесед. Хуки отслеживания сеансов настраиваются отдельно",
     "restored": "Исходные настройки восстановлены — начните новый сеанс инструмента",
     "refresh": "Обновить",
     "refreshed": "Подключения инструментов обновлены",
@@ -928,7 +998,36 @@
     "authentication": "Аутентификация",
     "desktopScope": "Настраивает Claude Desktop отдельно от Claude Code CLI; после применения полностью закройте и снова откройте Desktop",
     "desktopApplied": "Настройки сохранены — полностью закройте и снова откройте Claude Desktop",
-    "desktopRestored": "Предыдущие настройки восстановлены — полностью закройте и снова откройте Claude Desktop"
+    "desktopRestored": "Предыдущие настройки восстановлены — полностью закройте и снова откройте Claude Desktop",
+    "advancedDescription": "Пользовательские API-подключения и одноразовый импорт учетных данных",
+    "marketApps": {
+      "isolatedStorage": "Это официальное приложение использует отдельные настройки и хранилище разговоров. Настройки основного приложения и CLI сохраняются. Предыдущие разговоры не импортируются автоматически",
+      "isolatedClaudeStorage": "Совместимые беседы синхронизируются после закрытия Claude Desktop и Claude Code",
+      "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
+      "loading": "Loading official packages…",
+      "loadFailed": "Official packages could not be loaded",
+      "nonePurchased": "No official packages are currently available",
+      "checking": "Проверка приложения…",
+      "unavailable": "Недоступно для установленной версии",
+      "notInstalled": "Не установлено",
+      "original": "Использует исходные настройки приложения",
+      "open": "Открыть приложение",
+      "connected": "Приложение теперь следует текущему пространству ORG2",
+      "opened": "Приложение открыто",
+      "disconnected": "Предыдущая конфигурация приложения восстановлена",
+      "actionFailed": "Не удалось обновить подключение приложения",
+      "openFailed": "Не удалось открыть это приложение",
+      "restoreRequired": "Восстановите исходные настройки приложения, затем выберите пакеты и снова примените подключение",
+      "versionUnverified": "Эта версия настольного приложения ещё не проверена для изолированных подключений в данной сборке ORG2. Обновите ORG2 и повторите попытку",
+      "workspaceNumber": "Сервис {{index}} из {{count}}",
+      "openTerminal": "Открыть терминал",
+      "terminalOpened": "Терминал открыт",
+      "provider": "ORG2 Market",
+      "multiPackageHelp": "Выберите до 8 пакетов и модель по умолчанию, затем переключайте пакеты в приложении",
+      "auxiliaryBilling": "Автоматические вызовы Claude Code для заголовка, памяти и сжатия списываются с пакета по умолчанию; только сам чат следует пакету, выбранному через /model",
+      "defaultModel": "Модель по умолчанию",
+      "packageLimit": "Выберите до 8 пакетов"
+    }
   },
   "claudeProfiles": {
     "new": "Новый профиль",
@@ -969,10 +1068,10 @@
     "developerOptions": "Параметры разработчика",
     "retryConnection": "Повторить подключение",
     "enabled": "Mobile Remote",
-    "enabledDesc": "Разрешить сопряжённому телефону управлять сессиями агентов на этом компьютере через ту же Wi‑Fi-сеть или через публичный relay",
+    "enabledDesc": "Просматривайте сеансы на этом компьютере и управляйте ими с телефона",
     "securityNotice": "Любой в вашей сети, у кого есть URL подключения и token, может управлять сессиями, когда включён доступ по LAN. Перегенерируйте token, если считаете, что он утёк",
-    "outdoorTitle": "Внешнее подключение",
-    "outdoorDesc": "Подключить компьютер к публичному relay исходящим соединением, чтобы телефон работал через 4G, 5G или другую сеть",
+    "outdoorTitle": "Разрешить подключения через интернет",
+    "outdoorDesc": "Если отключено, телефоны не смогут подключаться к этому компьютеру через интернет",
     "relayEnabled": "Подключаться к публичному relay",
     "relayEnabledDesc": "Компьютер открывает исходящее WSS-соединение; проброс портов на роутере не требуется",
     "relayUrl": "Адрес relay",
@@ -981,7 +1080,7 @@
     "relayPresetLocal": "Локальное",
     "relayPresetProduction": "Production",
     "cloudLoginTitle": "Вход в ORG2 Cloud",
-    "cloudLoginDescSignedIn": "Выполнен вход как {{identity}} — relay использует этот аккаунт для внешнего сопряжения",
+    "cloudLoginDescSignedIn": "Выполнен вход как {{identity}}",
     "cloudLoginDescSignedOut": "Войдите в ORG2 Cloud перед сопряжением через публичный relay",
     "relayStatusCloudLoginRequired": "Войдите в ORG2 Cloud в Настройки → Общие, затем обновите статус relay",
     "relayStatusAuthFailedSignedIn": "Relay отклонил подключение — выйдите и войдите снова в Настройки → Общие",
@@ -992,7 +1091,7 @@
     "relayStatus_disabled": "Отключено",
     "relayStatus_config_error": "Ошибка конфигурации",
     "relayStatus_stopped": "Остановлено",
-    "startOutdoorPairing": "Сгенерировать код внешнего сопряжения",
+    "startOutdoorPairing": "Создать код сопряжения",
     "fullAccess": "Разрешить действия",
     "fullAccessDesc": "Когда включено, телефон может отправлять сообщения, останавливать сессии и отвечать на запросы разрешений; когда выключено — только просмотр",
     "pairingExpires": "Код сопряжения истекает через {{seconds}} с",
@@ -1027,16 +1126,36 @@
     "pairedDevicesDesc": "Телефоны, авторизованные через relay; доступ можно отозвать в любой момент",
     "devicesLoadFailed": "Не удалось загрузить сопряжённые устройства",
     "noDevices": "Нет сопряжённых устройств",
-    "noDevicesDesc": "Сгенерируйте код внешнего сопряжения, затем отсканируйте или вставьте его в PWA Mobile Remote",
+    "noDevicesDesc": "Добавив телефон, вы сможете получить доступ к сеансам на этом компьютере",
     "deviceLabel": "Устройство",
     "deviceTier": "Уровень",
-    "deviceTierFull": "Полный доступ",
-    "deviceTierReadOnly": "Только чтение",
+    "deviceTierFull": "Управление разрешено",
+    "deviceTierReadOnly": "Только просмотр",
     "deviceLastSeen": "Последняя активность",
     "devicePairedAt": "Сопряжено {{time}}",
     "deviceLastSeenValue": "Последняя активность {{time}}",
     "deviceNeverSeen": "Никогда не подключалось",
     "deviceOnline": "В сети",
-    "deviceOffline": "Не в сети"
+    "deviceOffline": "Не в сети",
+    "addPhone": "Добавить телефон",
+    "pairingPermission": "Разрешения телефона",
+    "relayDisabledHint": "Подключения через интернет отключены. Включите их в дополнительных настройках"
+  },
+  "development": {
+    "updateAvailable": "Доступно обновление",
+    "updateAvailableDesc": "Показывать индикаторы обновления во всём приложении для версии 99.0.0 — действия открывают только предпросмотр",
+    "illustrations": "Иллюстрации",
+    "illustrationsDesc": "Сравните все иллюстрации в светлом и тёмном режиме, не меняя тему"
+  },
+  "managedUsage": {
+    "cancel": "Отмена",
+    "authorize": "Включить пакет",
+    "rates": "Вход / выход за миллион токенов",
+    "wallet": "Открыть кошелёк",
+    "priceRange": "Диапазон пакета: {{min}}%–{{max}}% от официальной цены",
+    "rangeUnavailable": "Диапазон цен пакета недоступен. Обновите каталог перед включением пакета.",
+    "walletIncluded": "Все включённые модели используют баланс вашего кошелька.",
+    "walletUnavailable": "Оплата из кошелька пока недоступна. Обновите страницу после обновления сервиса.",
+    "walletConsent": "Включить все модели этого пакета в указанном диапазоне цен. Фактическое использование оплачивается напрямую с баланса кошелька; отдельный бюджет пакета не требуется."
   }
 }

@@ -15,7 +15,7 @@ import {
 
 import { consumeOpaquePairingIntent } from "@src/modules/MobileRemote/auth/mobileAuthIntent";
 
-import LoginPage from ".";
+import LoginPage, { LoginLoadingState } from ".";
 
 const mocks = vi.hoisted(() => ({
   login: vi.fn(() => Promise.resolve()),
@@ -157,6 +157,13 @@ describe("LoginPage return target", () => {
       "http://localhost:3000/orgii/mobile?relay=wss%3A%2F%2Frelay.example#pair=device-intent"
     );
     expect(mocks.login).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain("loading.waiting");
+    expect(container.textContent).toContain("login.signingIn");
+    expect(
+      Array.from(container.querySelectorAll("button")).some(
+        (button) => button.textContent === "login.button"
+      )
+    ).toBe(false);
   });
 
   it("does not offer the hosted-login bypass for a mobile return target", async () => {
@@ -181,5 +188,32 @@ describe("LoginPage return target", () => {
       (button) => button.textContent === "login.startButton"
     );
     expect(skipButton).toBeDefined();
+  });
+
+  it("shows a confirmed stage with a success image before entering the app", async () => {
+    await act(async () => {
+      root.render(React.createElement(LoginLoadingState, { stage: "success" }));
+    });
+
+    expect(container.textContent).toContain("loading.success");
+    expect(container.textContent).toContain("loading.openingApp");
+    expect(container.querySelector("img")?.getAttribute("src")).toContain(
+      "login-success"
+    );
+    expect(container.querySelector("svg")).not.toBeNull();
+  });
+
+  it("shows a dedicated image when sign-in fails", async () => {
+    await act(async () => {
+      root.render(
+        React.createElement(LoginLoadingState, { error: "OAuth failed" })
+      );
+    });
+
+    expect(container.textContent).toContain("loading.failed");
+    expect(container.textContent).toContain("OAuth failed");
+    expect(container.querySelector("img")?.getAttribute("src")).toContain(
+      "login-failure"
+    );
   });
 });

@@ -53,7 +53,7 @@ const ORGII_DARK_SEED: SkinSeed = {
   accent: "#43aafd",
   contrast: 60,
   semanticColors: {
-    diffAdded: "#89d185",
+    diffAdded: "#3fb950",
     diffRemoved: "#f14c4c",
     skill: "#a371f7",
   },
@@ -187,5 +187,3 @@ export function supportsBothVariants(id: string | null | undefined): boolean {
   const skin = getSkin(id);
   return skin?.variants.light != null && skin?.variants.dark != null;
 }
-
-export const SKIN_IDS: readonly string[] = SKINS.map((skin) => skin.id);

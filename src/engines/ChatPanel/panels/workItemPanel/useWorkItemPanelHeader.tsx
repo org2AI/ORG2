@@ -5,8 +5,12 @@ import { STORY_SYNC_ADAPTER } from "@src/api/http/integrations/syncConnections";
 import Button from "@src/components/Button";
 import IntegrationIcon from "@src/components/IntegrationIcon";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import { DetailHeaderTabs } from "@src/components/layout/blocks";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { usePublishChatPanelHeader } from "@src/engines/ChatPanel/header";
+import ThreadDetailTabs, {
+  type ThreadDetailTab,
+} from "@src/features/GitHubWork/ThreadDetailTabs";
 import {
   Delete02Icon,
   HugeiconsIcon,
@@ -15,10 +19,6 @@ import {
 } from "@src/icons";
 import { WorkItemDetailHeaderBreadcrumb } from "@src/modules/ProjectManager/WorkItems/components/WorkItemDetail/WorkItemDetailHeader";
 import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
-import ThreadDetailTabs, {
-  type ThreadDetailTab,
-} from "@src/modules/shared/components/ThreadDetailTabs";
-import { DetailHeaderTabs } from "@src/modules/shared/layouts/blocks";
 import type { ChatPanelSelectedWorkItem } from "@src/store/ui/chatPanel/selectionAtoms";
 import type { WorkItem } from "@src/types/core/workItem";
 
@@ -66,7 +66,6 @@ export function useWorkItemPanelHeader({
         !isGitHubSyncedProject ? (
           <ToolbarTooltip label={t("projects:workItems.deleteWorkItem")}>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
@@ -91,7 +90,6 @@ export function useWorkItemPanelHeader({
         ) : null}
         <ToolbarTooltip label={propertiesToggleLabel}>
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             iconOnly
@@ -181,9 +179,7 @@ export function useWorkItemPanelHeader({
             onChange={handleDetailTabChange}
             variant="header"
             idPrefix="chat-panel-work-item-detail"
-            ariaLabel={t("projects:workItems.detailNavigation", {
-              defaultValue: "Work Item navigation",
-            })}
+            ariaLabel={t("projects:workItems.detailNavigation")}
           />
         }
       />

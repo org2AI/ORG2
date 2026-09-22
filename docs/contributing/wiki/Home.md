@@ -27,8 +27,8 @@
 
 ## Download
 
-Get the latest desktop release from the [Releases](https://github.com/YORG-AI/ORGII/releases) page.
+Get the latest desktop release from the [Releases](https://github.com/org2AI/ORG2/releases) page.
 
 ## License
 
-ORGII is licensed under [AGPL-3.0-or-later](https://github.com/YORG-AI/ORGII/blob/main/LICENSE).
+ORGII is licensed under [AGPL-3.0-or-later](https://github.com/org2AI/ORG2/blob/main/LICENSE).

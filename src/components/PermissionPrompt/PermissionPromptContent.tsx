@@ -12,6 +12,8 @@ export interface PermissionPromptContentProps {
   /** Extra context line (e.g. mobile remote execution notice). */
   footerNote?: React.ReactNode;
   className?: string;
+  /** Mobile adapts shared content roles without changing Desktop defaults. */
+  typography?: "default" | "mobile";
 }
 
 export function PermissionPromptContent({
@@ -20,18 +22,39 @@ export function PermissionPromptContent({
   argsPreview = [],
   footerNote,
   className = "",
+  typography = "default",
 }: PermissionPromptContentProps) {
+  const bodyStyle =
+    typography === "mobile"
+      ? {
+          fontSize: "var(--mobile-type-secondary-size, 14px)",
+          lineHeight: "var(--mobile-type-body-leading, 1.5)",
+        }
+      : undefined;
+  const captionStyle =
+    typography === "mobile"
+      ? {
+          fontSize: "var(--mobile-type-caption-size, 12px)",
+          lineHeight: "var(--mobile-type-caption-leading, 1.5)",
+        }
+      : undefined;
   return (
     <div className={`flex flex-col gap-2 ${className}`.trim()}>
       {commandText ? (
         <div>
           <div className="rounded-md bg-fill-2 px-3 py-2">
-            <code className="text-sm font-semibold break-all text-primary-6">
+            <code
+              style={bodyStyle}
+              className="text-sm font-semibold break-all text-primary-6"
+            >
               {commandText}
             </code>
           </div>
           {description ? (
-            <p className="mt-2 text-sm leading-relaxed text-text-2">
+            <p
+              style={bodyStyle}
+              className="mt-2 text-sm leading-relaxed text-text-2"
+            >
               {description}
             </p>
           ) : null}
@@ -39,12 +62,21 @@ export function PermissionPromptContent({
       ) : (
         <div>
           {description ? (
-            <p className="text-sm leading-relaxed text-text-2">{description}</p>
+            <p
+              style={bodyStyle}
+              className="text-sm leading-relaxed text-text-2"
+            >
+              {description}
+            </p>
           ) : null}
           {argsPreview.length > 0 ? (
             <div className="scrollbar-overlay mt-2 flex max-h-[160px] flex-col gap-1 overflow-y-auto">
               {argsPreview.map(({ key, value }) => (
-                <div key={key} className="flex gap-1.5 text-sm leading-relaxed">
+                <div
+                  key={key}
+                  style={bodyStyle}
+                  className="flex gap-1.5 text-sm leading-relaxed"
+                >
                   <span className="shrink-0 font-medium text-text-3">
                     {key}:
                   </span>
@@ -56,7 +88,9 @@ export function PermissionPromptContent({
         </div>
       )}
       {footerNote ? (
-        <p className="text-xs leading-relaxed text-text-3">{footerNote}</p>
+        <p style={captionStyle} className="text-xs leading-relaxed text-text-3">
+          {footerNote}
+        </p>
       ) : null}
     </div>
   );

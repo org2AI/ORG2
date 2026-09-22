@@ -60,7 +60,7 @@
     },
     "loadingConnections": "GitHub 接続を読み込み中...",
     "noConnectionTitle": "GitHub 接続が見つかりません",
-    "noConnectionDescription": "先に Integrations で GitHub 接続を追加してから、ここに戻って GitHub Issues をインポートしてください。",
+    "noConnectionDescription": "先に Integrations で GitHub 接続を追加してから、ここに戻って GitHub Issues をインポートしてください",
     "linkedRepoHint": "この Project は現在の Workspace repo にもリンクされます: {{repoName}}",
     "errors": {
       "invalidRepo": "owner/repo または GitHub リポジトリ URL を使用してください。"
@@ -80,7 +80,7 @@
     "importLinearOrgs": "Linear ワークスペースをインポート",
     "gitFolderPath": "Git フォルダーのパス（任意）",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "このワークスペースを既存の Git ワークツリーに紐づけてフォルダー同期に使用します。",
+    "gitFolderPathHint": "このワークスペースを既存の Git ワークツリーに紐づけてフォルダー同期に使用します",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Git フォルダーと同期中",
     "pendingSync": "同期待ち",
@@ -123,7 +123,7 @@
     "addTeams": "チームを追加",
     "addLabels": "ラベルを追加",
     "addRepos": "リポジトリをリンク",
-    "noReposHint": "利用できるリポジトリがありません。まずワークスペースにリポジトリを追加してください。",
+    "noReposHint": "利用できるリポジトリがありません。まずワークスペースにリポジトリを追加してください",
     "addDate": "日付を追加",
     "clearDate": "日付をクリア",
     "noStatus": "ステータスなし",
@@ -358,10 +358,7 @@
       "moreProperties": "その他のプロパティ"
     },
     "propertyFields": {
-      "assignee": "担当者",
-      "project": "Project",
-      "milestone": "マイルストーン",
-      "dueDate": "期限"
+      "project": "Project"
     },
     "addWorkItem": "ワークアイテムを追加",
     "agentWorkflow": {
@@ -392,8 +389,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "まだ利用できません",
-      "prPendingHint": "Agent 完了後に PR が作成されます。",
-      "prNeutralHint": "PR はまだ作成されていません。",
+      "prPendingHint": "Agent 完了後に PR が作成されます",
+      "prNeutralHint": "PR はまだ作成されていません",
       "prCreatingHint": "Pull Request を作成中...",
       "prCreateButton": "Pull Request を作成",
       "prCreateError": "Pull Request の作成に失敗しました",
@@ -403,7 +400,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "ファイル変更なし",
-      "fileDiffCleanHint": "ファイルの変更は検出されませんでした。",
+      "fileDiffCleanHint": "ファイルの変更は検出されませんでした",
       "costSummary": "コスト概要",
       "totalCost": "合計",
       "tokens": "Token",
@@ -413,7 +410,7 @@
     "viewWorkItems": "Work Item を表示",
     "fromRoutine": "From routine: {{name}}",
     "batchField": {
-      "hint": "選択した{{count}}件のアイテムに適用します。"
+      "hint": "選択した{{count}}件のアイテムに適用します"
     },
     "batchStatus": {
       "title": "ステータスを設定"
@@ -457,7 +454,7 @@
       "save": "現在のビューを保存",
       "saveTitle": "ビューを保存",
       "namePlaceholder": "ビュー名",
-      "saveHint": "現在のフィルターを保存します。レイアウトは初回に開くときの初期値になります。",
+      "saveHint": "現在のフィルターを保存します。レイアウトは初回に開くときの初期値になります",
       "delete": "ビューを削除"
     },
     "table": {
@@ -475,14 +472,14 @@
     },
     "batchProperty": {
       "title": "プロパティを設定",
-      "hint": "選択した {{count}} 件の項目に 1 つのプロパティ値を適用します。値を空にするとクリアされます。",
+      "hint": "選択した {{count}} 件の項目に 1 つのプロパティ値を適用します。値を空にするとクリアされます",
       "propertyPlaceholder": "プロパティ",
       "valuePlaceholder": "値",
       "applied": "{{count}} 件の項目を更新しました"
     },
     "revisionConflict": {
       "title": "編集の競合を解決",
-      "description": "{{field}} はリビジョン {{expected}} の後に変更されました。あなたの編集をリビジョン {{actual}} と比較し、どちらを残すか選択してください。",
+      "description": "{{field}} はリビジョン {{expected}} の後に変更されました。あなたの編集をリビジョン {{actual}} と比較し、どちらを残すか選択してください",
       "mine": "自分のバージョン",
       "latest": "最新バージョン",
       "useLatest": "最新を使用",
@@ -573,7 +570,7 @@
     "sidebarSync": "同期",
     "sync": {
       "title": "外部同期",
-      "description": "このProjectのワークアイテムを Linear や GitHub などの外部システムにミラーリングします。",
+      "description": "このProjectのワークアイテムを Linear や GitHub などの外部システムにミラーリングします",
       "adapterPicker": {
         "title": "アダプター",
         "notAttached": "未接続",
@@ -582,7 +579,7 @@
         "changeWarning": "新しいアダプターを接続する前に、現在のアダプターを切断してください。",
         "detachProjectMenuLabel": "GitHub のリンクを解除",
         "detachProjectTitle": "{{project}} から GitHub のリンクを解除しますか？",
-        "detachProjectDescription": "GitHub Issues の同期が停止します。ローカルの Project とインポート済みの作業項目は ORG2 に残ります。",
+        "detachProjectDescription": "GitHub Issues の同期が停止します。ローカルの Project とインポート済みの作業項目は ORG2 に残ります",
         "detachProjectAction": "{{project}} から GitHub のリンクを解除",
         "detachProjectSuccess": "{{project}} から GitHub のリンクを解除しました"
       },
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "Webhook ステータスを読み込み中…",
-        "notInstalledDescription": "Webhook シークレットをインストールすると、次回のポーリングを待たずにプロバイダから変更が直接送信されます。",
+        "notInstalledDescription": "Webhook シークレットをインストールすると、次回のポーリングを待たずにプロバイダから変更が直接送信されます",
         "install": "Webhook をインストール",
-        "installedDescription": "URL をプロバイダの Webhook 設定に貼り付け、下のシークレットで配信に署名してください。",
+        "installedDescription": "URL をプロバイダの Webhook 設定に貼り付け、下のシークレットで配信に署名してください",
         "indicatorFresh": "最近の配信あり",
         "indicatorStale": "最近の配信なし",
         "lastDeliveryNever": "まだ配信はありません",
@@ -627,7 +624,7 @@
         "copyUrl": "URL をコピー",
         "rotate": "シークレットをローテーション",
         "secretTitle": "今すぐコピーしてください — 再表示されません",
-        "secretDescription": "この署名シークレットをプロバイダの Webhook 設定に貼り付けてください。このパネルを閉じると平文の値は保存されません。",
+        "secretDescription": "この署名シークレットをプロバイダの Webhook 設定に貼り付けてください。このパネルを閉じると平文の値は保存されません",
         "copySecret": "シークレットをコピー",
         "dismissSecret": "保存しました",
         "secretCopied": "シークレットをクリップボードにコピーしました",
@@ -653,9 +650,9 @@
         "progressNoTotal": "{{count}} 件をインポート済み",
         "completedSummary": "リモートから {{count}} 件をインポートしました。",
         "cancelledSummary": "{{count}} 件をインポートしてからキャンセルしました。",
-        "pendingDescription": "初回同期ではリモートの履歴を一度だけ全件取り込みます。以降の同期は通常の差分サイクルを使用します。",
-        "runningDescription": "リモート履歴をページ単位で取り込んでいます。実行中も作業を続けられます。",
-        "failedDescription": "直前のページで永続的なエラーが発生しました。再試行するとカーソルから再開します。",
+        "pendingDescription": "初回同期ではリモートの履歴を一度だけ全件取り込みます。以降の同期は通常の差分サイクルを使用します",
+        "runningDescription": "リモート履歴をページ単位で取り込んでいます。実行中も作業を続けられます",
+        "failedDescription": "直前のページで永続的なエラーが発生しました。再試行するとカーソルから再開します",
         "cancel": "インポートをキャンセル",
         "retry": "再試行",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "ステータス",
     "statusesBuiltin": "組み込みステータス",
-    "statusesBuiltinDescription": "標準のワークフロー区分です。常に利用できます。",
+    "statusesBuiltinDescription": "標準のワークフロー区分です。常に利用できます",
     "statusesCustom": "カスタムステータス",
-    "statusesCustomDescription": "組み込み区分に付けた別名です。フィルター、件数、ボードでは元の区分として扱われます。",
+    "statusesCustomDescription": "組み込み区分に付けた別名です。フィルター、件数、ボードでは元の区分として扱われます",
     "statusNamePlaceholder": "ステータス名",
     "noCustomStatuses": "カスタムステータスはまだありません。",
     "statusArchive": "ステータスをアーカイブ",
@@ -793,11 +790,11 @@
     "unknownState": "Unknown state",
     "emptyConnections": {
       "title": "No Linear connections",
-      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
+      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear"
     },
     "emptySelection": {
       "title": "Select a Linear Project",
-      "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
+      "description": "Choose a Project from the left to view live Linear Issues and edit Project details"
     },
     "forms": {
       "createProjectTitle": "Create Linear Project",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder sync complete",
     "syncFailed": "Git folder sync failed: {{message}}",
     "noResultTitle": "No Git sync result",
-    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
+    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts"
   }
 }

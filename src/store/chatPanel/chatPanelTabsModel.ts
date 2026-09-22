@@ -1,4 +1,4 @@
-import type { CloudChannelVisibility } from "@src/features/Org2Cloud/channels/types";
+import type { CloudChannelVisibility } from "@src/contracts/channels";
 import type {
   ChatPanelSelectedOrganization,
   ChatPanelSelectedProject,
@@ -118,13 +118,20 @@ export interface ChatPanelTabsState {
 /** Fixed id of the shared cloud/local organization management tab. */
 export const ORGANIZATION_TAB_ID = "chat-organization-management";
 
+type ChatPanelTabStationAccess = "always" | "never";
 export type ChatPanelWorkstationTransferKind =
   | "session"
   | "github-issue"
   | "github-pr";
 
-/** Content presentation and transfer policy for chat tabs; pane layout is independent. */
+/** Layout and transfer policy every chat-pane tab type must declare. */
 export interface ChatPanelTabTypePolicy {
+  /**
+   * When the tab can share the workbench with a Station surface.
+   * Conversation-oriented tabs can always remain docked beside the Station;
+   * standalone management and detail surfaces always own the full workbench.
+   */
+  stationAccess: ChatPanelTabStationAccess;
   /** Lossless Chat Panel -> My Station mapping, or null when the tab cannot move. */
   workstationTransfer: ChatPanelWorkstationTransferKind | null;
   /**
@@ -148,7 +155,7 @@ export interface ChatPanelTabTypePolicy {
 }
 
 /**
- * Intentionally exhaustive: a new tab type must make every content-presentation decision
+ * Intentionally exhaustive: a new tab type must make every layout decision
  * explicitly instead of silently inheriting an unsafe default.
  */
 export const CHAT_PANEL_TAB_TYPE_POLICY: Record<
@@ -156,84 +163,98 @@ export const CHAT_PANEL_TAB_TYPE_POLICY: Record<
   ChatPanelTabTypePolicy
 > = {
   session: {
+    stationAccess: "always",
     workstationTransfer: "session",
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: false,
   },
   terminal: {
+    stationAccess: "always",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: true,
   },
   "start-page": {
+    stationAccess: "always",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: true,
     sideChatLauncher: false,
   },
   channel: {
+    stationAccess: "always",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: true,
   },
   "run-group": {
+    stationAccess: "always",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: true,
   },
   runtime: {
+    stationAccess: "never",
     workstationTransfer: null,
     standaloneTool: true,
     collapsedHeadingIcon: true,
     sideChatLauncher: true,
   },
   "work-management": {
+    stationAccess: "never",
     workstationTransfer: null,
     standaloneTool: true,
     collapsedHeadingIcon: true,
     sideChatLauncher: true,
   },
   workspace: {
+    stationAccess: "never",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: true,
   },
   organization: {
+    stationAccess: "never",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: true,
     sideChatLauncher: true,
   },
   "work-item": {
+    stationAccess: "never",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: true,
   },
   "github-issue": {
+    stationAccess: "never",
     workstationTransfer: "github-issue",
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: true,
   },
   "github-pr": {
+    stationAccess: "never",
     workstationTransfer: "github-pr",
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: true,
   },
   project: {
+    stationAccess: "never",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: false,
     sideChatLauncher: true,
   },
   explore: {
+    stationAccess: "never",
     workstationTransfer: null,
     standaloneTool: false,
     collapsedHeadingIcon: false,
@@ -247,12 +268,28 @@ function resolveChatPanelTabType(
   return typeof tabOrType === "string" ? tabOrType : (tabOrType?.type ?? null);
 }
 
+export function isChatPanelTabStationAvailable(
+  tabOrType: ChatPanelTab | ChatPanelTabType | null | undefined
+): boolean {
+  const type = resolveChatPanelTabType(tabOrType);
+  if (type === null) return true;
+  return CHAT_PANEL_TAB_TYPE_POLICY[type].stationAccess === "always";
+}
+
 /** Whether the active tab is a standalone tool surface (Work lists, Runtime). */
 export function isStandaloneChatPanelToolTab(
   tabOrType: ChatPanelTab | ChatPanelTabType | null | undefined
 ): boolean {
   const type = resolveChatPanelTabType(tabOrType);
   return type !== null && CHAT_PANEL_TAB_TYPE_POLICY[type].standaloneTool;
+}
+
+/** Resolve the layout without mutating the user's persisted maximize choice. */
+export function resolveChatPanelMaximizedForLayout(
+  userMaximized: boolean,
+  tabOrType: ChatPanelTab | ChatPanelTabType | null | undefined
+): boolean {
+  return userMaximized || !isChatPanelTabStationAvailable(tabOrType);
 }
 
 export function getWorkManagementFallbackTitle(

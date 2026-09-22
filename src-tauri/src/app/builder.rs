@@ -21,6 +21,12 @@ pub(crate) fn run() {
     // secondary data root from the same identity that owns its WebView profile
     // and service ports.
     let context = tauri::generate_context!();
+    #[cfg(target_os = "macos")]
+    if let Err(error) =
+        super::dev_process_name::reexec_dev_with_display_name(&context.config().identifier)
+    {
+        eprintln!("Could not apply the dev Dock name: {error}");
+    }
     #[cfg(all(debug_assertions, feature = "webdriver", target_os = "macos"))]
     let context = {
         let mut context = context;
@@ -34,6 +40,21 @@ pub(crate) fn run() {
             }
         }
         context
+    };
+
+    // Keep this FD alive through application.run; duplicates must leave before
+    // bootstrap opens databases or reconciles persisted work.
+    #[cfg(target_os = "macos")]
+    let _instance_guard = match crate::single_instance_gate::prepare(&context.config().identifier) {
+        Ok(crate::single_instance_gate::Admission::Primary(guard)) => guard,
+        Ok(crate::single_instance_gate::Admission::Forwarded(pid)) => {
+            crate::single_instance_focus::activate_process(pid);
+            return;
+        }
+        Err(error) => {
+            eprintln!("Could not enter the application instance: {error}");
+            std::process::exit(1);
+        }
     };
 
     bootstrap::bootstrap(&context.config().identifier);

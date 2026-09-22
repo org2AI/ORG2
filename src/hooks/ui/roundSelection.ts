@@ -3,15 +3,6 @@ export type RoundSelection = number | null;
 
 export const LATEST_ROUND_SELECTION = null;
 
-/** Adapter for consumers whose existing pagination contract uses a number. */
-export function roundSelectionToUnboundedIndex(
-  selection: RoundSelection
-): number {
-  return selection === LATEST_ROUND_SELECTION
-    ? Number.MAX_SAFE_INTEGER
-    : selection;
-}
-
 function normalizePageCount(pageCount: number): number {
   if (!Number.isFinite(pageCount)) return 0;
   return Math.max(0, Math.trunc(pageCount));

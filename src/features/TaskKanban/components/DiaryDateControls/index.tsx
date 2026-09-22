@@ -98,7 +98,6 @@ const DiaryDateControls: React.FC<DiaryDateControlsProps> = ({
   return (
     <div className="flex min-w-0 items-center gap-1.5">
       <Button
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly
@@ -125,7 +124,6 @@ const DiaryDateControls: React.FC<DiaryDateControlsProps> = ({
         style={{ width: "max-content" }}
       />
       <Button
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly

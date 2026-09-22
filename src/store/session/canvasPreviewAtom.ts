@@ -12,7 +12,7 @@
  */
 import { atom } from "jotai";
 
-import type { CanvasInlinePayload } from "@src/engines/ChatPanel/blocks/CanvasInlineCard/types";
+import type { CanvasInlinePayload } from "@src/contracts/chat";
 
 export interface CanvasPreviewEntry {
   sessionId: string;

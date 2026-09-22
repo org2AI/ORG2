@@ -27,8 +27,6 @@ const SessionCreatorKanban: React.FC<SessionCreatorKanbanProps> = ({
 
   const leadingActionSlot = onClose ? (
     <Button
-      variant="secondary"
-      appearance="outline"
       size="small"
       shape="round"
       iconOnly

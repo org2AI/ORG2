@@ -5,16 +5,12 @@
  */
 import React, { Suspense, memo } from "react";
 
-import { Placeholder } from "@src/components/Placeholder";
+import LazyDetailFallback from "@src/components/layout/blocks/LazyDetailFallback";
 import type { GitFile } from "@src/types/git/types";
 
 import { SourceControlSelectionPlaceholder } from "../SourceControlSelectionPlaceholder";
 
 const GitDiffContent = React.lazy(() => import("../GitDiffContent"));
-
-const LazyFallback: React.FC = () => (
-  <Placeholder variant="loading" placement="detail-panel" fillParentHeight />
-);
 
 export interface FocusViewProps {
   /** Selected file's git diff record (resolved by the renderer) */
@@ -56,7 +52,7 @@ const FocusView: React.FC<FocusViewProps> = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <Suspense fallback={<LazyFallback />}>
+      <Suspense fallback={<LazyDetailFallback />}>
         <GitDiffContent
           gitFile={gitFile}
           loading={loading}

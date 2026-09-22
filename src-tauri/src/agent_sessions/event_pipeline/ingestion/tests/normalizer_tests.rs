@@ -426,8 +426,9 @@ fn test_tool_call_extracts_nested_args() {
     let chunk = RawActivityChunk {
         chunk_id: Some("chunk-tc".to_string()),
         action_type: Some("tool_call".to_string()),
-        function: Some("read_file".to_string()),
+        function: Some("tool_call".to_string()),
         args: Some(serde_json::json!({
+            "tool_name": "read_file",
             "input": {"file_path": "/src/lib.rs", "offset": 0}
         })),
         result: Some(serde_json::json!({})),
@@ -447,6 +448,29 @@ fn test_tool_call_extracts_nested_args() {
         Some("/src/lib.rs")
     );
     assert_eq!(event.file_path.as_deref(), Some("/src/lib.rs"));
+}
+
+#[test]
+fn tool_call_preserves_scalar_input_argument_through_storage() {
+    for input in [
+        serde_json::json!("text(ALL_TOOLS.map(x => x.name))"),
+        serde_json::json!(7),
+        serde_json::Value::Null,
+    ] {
+        let args = serde_json::json!({"input": input});
+        let chunk = RawActivityChunk {
+            action_type: Some("tool_call".into()),
+            function: Some("exec".into()),
+            args: Some(args.clone()),
+            ..Default::default()
+        };
+        let event = normalize_chunk(&chunk, "scalar-input");
+        assert_eq!(event.args, args);
+        assert_eq!(
+            crate::agent_sessions::event_pipeline::commands::event_conversion::normalize_event_record_value(event.args),
+            args,
+        );
+    }
 }
 
 #[test]
@@ -548,4 +572,43 @@ fn native_command_catalog_is_completed_metadata_not_a_new_run() {
     assert_eq!(event.action_type, "native_command_catalog");
     assert_eq!(event.display_variant, EventDisplayVariant::Session);
     assert_eq!(event.display_status, EventDisplayStatus::Completed);
+}
+
+#[test]
+fn named_tool_preserves_object_input_and_business_fields() {
+    let args = serde_json::json!({"input":{"query":"hello"},"options":{"limit":3},"tool_name":"business_value"});
+    let chunk = RawActivityChunk {
+        action_type: Some("tool_call".into()),
+        function: Some("echo_payload".into()),
+        args: Some(args.clone()),
+        ..Default::default()
+    };
+    assert_eq!(normalize_chunk(&chunk, "input-contract").args, args);
+}
+
+#[test]
+fn provider_call_identity_wins_over_business_call_id() {
+    let chunks: Vec<_> = ["provider_a", "provider_b"]
+        .into_iter()
+        .map(|id| RawActivityChunk {
+            chunk_id: Some(id.into()),
+            action_type: Some("tool_call".into()),
+            function: Some("inspect_call".into()),
+            args: Some(serde_json::json!({"call_id":"target_job"})),
+            result: Some(serde_json::json!({"call_id":id,"output":"ok","success":true})),
+            ..Default::default()
+        })
+        .collect();
+    let events =
+        crate::agent_sessions::event_pipeline::ingestion::ingest_raw_chunks_with_prompt_resolver(
+            &chunks,
+            "identity-contract",
+            |_| None,
+        )
+        .events;
+    assert_eq!(events.len(), 2);
+    for (event, id) in events.iter().zip(["provider_a", "provider_b"]) {
+        assert_eq!(event.call_id.as_deref(), Some(id));
+        assert_eq!(event.args["call_id"], "target_job");
+    }
 }

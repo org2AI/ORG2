@@ -101,7 +101,7 @@ pub(super) struct AssembleParams {
     pub final_registry: Arc<ToolRegistry>,
     pub policy_arc: Arc<ResolvedToolPolicy>,
     pub model: String,
-    pub account_id: String,
+    pub account_id: Option<String>,
     pub native_harness_type: Option<core_types::providers::NativeHarnessType>,
     pub workspace_state: Arc<parking_lot::RwLock<SessionWorkspace>>,
     pub mcp_auto_approved: Vec<String>,
@@ -126,7 +126,7 @@ pub(super) async fn install_runtime(
         tool_registry: params.final_registry,
         policy: params.policy_arc,
         model: params.model,
-        account_id: Some(params.account_id),
+        account_id: params.account_id,
         native_harness_type: params.native_harness_type,
         workspace_state: params.workspace_state,
         mcp_auto_approved: params.mcp_auto_approved,
@@ -153,7 +153,7 @@ pub(super) async fn install_runtime(
 pub(super) async fn mark_running_for_gateway(
     state: &AgentAppState,
     has_gateway: bool,
-    account_id: &str,
+    account_id: Option<&str>,
 ) {
     if !has_gateway {
         return;
@@ -162,7 +162,7 @@ pub(super) async fn mark_running_for_gateway(
         .running
         .store(true, std::sync::atomic::Ordering::Relaxed);
     let mut current = state.current_account_id.lock().await;
-    *current = Some(account_id.to_string());
+    *current = account_id.map(str::to_owned);
 }
 
 /// Side-effect: write the file-based session registry row.

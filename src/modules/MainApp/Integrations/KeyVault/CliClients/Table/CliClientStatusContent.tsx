@@ -2,11 +2,11 @@ import type { TFunction } from "i18next";
 import type React from "react";
 
 import StatusDot from "@src/components/StatusDot";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
 import {
   type AvailableAgent,
   METHOD_DISPLAY_LABELS,
 } from "@src/config/cliAgents";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
 
 import {
   InlineCardColumnStack,

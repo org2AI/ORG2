@@ -1,7 +1,7 @@
 import type React from "react";
 
+import type { MarkdownEditorMode } from "@src/components/MarkdownTextareaEditor";
 import type { ProjectContentEditorRef } from "@src/modules/ProjectManager/shared";
-import type { MarkdownEditorMode } from "@src/modules/shared/components/MarkdownTextareaEditor";
 import type { WorkItemDraft } from "@src/store/workstation/projectManager";
 import type { Person } from "@src/types/core/shared";
 import type {

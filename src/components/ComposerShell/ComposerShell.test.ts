@@ -56,6 +56,19 @@ describe("ComposerShell background focus", () => {
     expect(document.activeElement).toBe(editor);
   });
 
+  it("puts the caret after the text already typed, not in front of it", () => {
+    const editor = renderShell();
+    editor.append(document.createTextNode("draft message"));
+    window.getSelection()?.removeAllRanges();
+
+    click(container.querySelector('[data-testid="gap"]')!);
+
+    const selection = window.getSelection()!;
+    expect(selection.isCollapsed).toBe(true);
+    expect(selection.anchorNode).toBe(editor.firstChild);
+    expect(selection.anchorOffset).toBe("draft message".length);
+  });
+
   it.each([
     createElement("button", null, createElement("span", null, "Model")),
     createElement("button", { disabled: true }, "Send"),

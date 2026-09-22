@@ -11,12 +11,10 @@ import type { WorktreeLaunchSource } from "@src/store/session/worktreeLaunchSour
 
 import type { EditorPaletteMode } from "./palettes/EditorPalette/types";
 
-export type WorkingDirectoryPickerMode = "switch" | "open" | "add" | "create";
-
-export interface EmbeddedEditorPaletteState {
-  mode: EditorPaletteMode;
-  query: string;
-}
+export type WorkingDirectoryPickerMode = Extract<
+  import("@src/store/ui/uiAtom").SpotlightInitialLayer,
+  { kind: "workspace" }
+>["mode"];
 
 export function getEditorPaletteMode(query: string): EditorPaletteMode {
   if (query.startsWith(">")) return "command";

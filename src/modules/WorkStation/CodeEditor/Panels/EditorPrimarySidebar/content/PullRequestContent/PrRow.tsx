@@ -4,6 +4,8 @@ import type { OpenPRItem } from "@src/api/tauri/github";
 import AnyIcon from "@src/components/AnyIcon";
 import PrHoverCard from "@src/components/PrHoverCard";
 import { TreeRowBase, type TreeRowNode } from "@src/components/TreeRow";
+import { ReferenceDragGhost } from "@src/components/dnd/ReferenceDragGhost";
+import { useReferencePillDrag } from "@src/components/dnd/useReferencePillDrag";
 import {
   GitMergeIcon,
   GitPullRequestClosedIcon,
@@ -11,13 +13,11 @@ import {
   GitPullRequestIcon,
 } from "@src/icons";
 import type { TabDragPillPayload } from "@src/modules/WorkStation/shared/TabBar/tabDragTypes";
-import { ReferenceDragGhost } from "@src/shared/dnd/ReferenceDragGhost";
-import { setPrDragStash } from "@src/shared/dnd/dragSideChannel";
-import { useReferencePillDrag } from "@src/shared/dnd/useReferencePillDrag";
+import { setPrDragStash } from "@src/util/dnd/dragSideChannel";
 import {
   getPrStatusIconName,
   getPrStatusVariant,
-} from "@src/shared/pr/prStatus";
+} from "@src/util/git/pr/prStatus";
 
 interface PrRowProps {
   pr: OpenPRItem;

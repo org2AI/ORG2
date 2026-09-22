@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai";
 import { type CSSProperties, useMemo } from "react";
 
 import { TERMINAL_LINE_HEIGHT } from "@src/config/terminalAppearance";
-import { resolvedTerminalFontFamilyAtom } from "@src/store/ui/editorSettingsAtom";
+import { resolvedCodeFontFamilyAtom } from "@src/store/ui/editorSettingsAtom";
 // Direct leaf import to avoid pulling @src/store's barrel — which transitively
 // reaches SidebarModules/Terminal → engines/TerminalCore → this file's consumers.
 import {
@@ -31,12 +31,13 @@ export function useTerminalSurfaceStyle(): TerminalSurfaceStyle {
   const terminalThemeName = useAtomValue(terminalThemeAtom);
   const terminalFontSize = useAtomValue(terminalFontSizeAtom);
   const terminalLetterSpacing = useAtomValue(terminalLetterSpacingAtom);
-  const terminalFontFamily = useAtomValue(resolvedTerminalFontFamilyAtom);
+  const terminalFontFamily = useAtomValue(resolvedCodeFontFamilyAtom);
   return useMemo(() => {
     const palette = TERMINAL_THEMES[terminalThemeName];
     const typography: CSSProperties = {
       fontFamily: terminalFontFamily,
       fontSize: terminalFontSize,
+      fontWeight: 400,
       letterSpacing: terminalLetterSpacing,
       lineHeight: TERMINAL_LINE_HEIGHT,
     };

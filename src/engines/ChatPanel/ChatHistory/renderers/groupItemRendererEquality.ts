@@ -121,6 +121,11 @@ function sameChatItem(
     left.chunk_id === right.chunk_id &&
     left.type === right.type &&
     left.structuralOnly === right.structuralOnly &&
+    (left.outputImages === right.outputImages ||
+      (left.outputImages?.length === right.outputImages?.length &&
+        (left.outputImages ?? []).every(
+          (image, index) => image === right.outputImages?.[index]
+        ))) &&
     left.consolidatedParts === right.consolidatedParts &&
     left.actionSummaryClosedByBoundary ===
       right.actionSummaryClosedByBoundary &&

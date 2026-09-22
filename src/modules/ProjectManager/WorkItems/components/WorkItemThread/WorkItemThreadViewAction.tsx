@@ -25,7 +25,6 @@ export const WorkItemThreadViewAction: React.FC<
   return (
     <Button
       variant="tertiary"
-      appearance="ghost"
       size="mini"
       icon={
         isDiscussion ? (

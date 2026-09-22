@@ -10,11 +10,16 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
+import {
+  SPOTLIGHT_TOP_OFFSET,
+  readSpotlightAnchorStyle,
+} from "@src/util/ui/spotlightAnchor";
 
 import {
   DEFAULT_DURATION,
   type MessageConfig,
   type MessageItemProps,
+  type MessagePlacement,
   type MessageType,
 } from "./types";
 
@@ -23,6 +28,9 @@ import {
 // ============================================
 
 const TYPE_STYLES: Record<MessageType, { border: string }> = {
+  regular: {
+    border: "border-border-2",
+  },
   success: {
     border: "border-success-6/30",
   },
@@ -145,11 +153,9 @@ const MessageItem = ({
           <div className="mt-2 flex justify-end gap-3">
             {cancel && (
               <Button
-                variant="primary"
-                appearance="ghost"
+                variant="ghost"
                 size="inline"
-                htmlType="button"
-                className="text-xs leading-[1.2] font-medium hover:text-primary-5 hover:underline"
+                className="text-xs leading-[1.2] font-medium"
                 onClick={handleCancelAction}
               >
                 {cancel.label ?? t("actions.cancel")}
@@ -157,11 +163,9 @@ const MessageItem = ({
             )}
             {download && (
               <Button
-                variant="primary"
-                appearance="ghost"
+                variant="ghost"
                 size="inline"
-                htmlType="button"
-                className="text-xs leading-[1.2] font-medium hover:text-primary-5 hover:underline"
+                className="text-xs leading-[1.2] font-medium"
                 onClick={handleDownload}
               >
                 {download.label ?? t("actions.download")}
@@ -169,11 +173,9 @@ const MessageItem = ({
             )}
             {action && (
               <Button
-                variant="primary"
-                appearance="ghost"
+                variant="ghost"
                 size="inline"
-                htmlType="button"
-                className="text-xs leading-[1.2] font-semibold hover:text-primary-5 hover:underline"
+                className="text-xs leading-[1.2] font-semibold"
                 onClick={handlePrimaryAction}
               >
                 {action.label}
@@ -187,11 +189,10 @@ const MessageItem = ({
       {closable && (
         <Button
           variant="tertiary"
-          appearance="soft"
           size="mini"
           iconOnly
           icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />}
-          className="ml-1 shrink-0 opacity-60 transition-all ease-out hover:bg-white/10 hover:text-text-1 hover:opacity-100 active:scale-95"
+          className="ml-1 shrink-0 opacity-60 transition-all ease-out hover:text-text-1 hover:opacity-100 active:scale-95"
           onClick={handleClose}
           aria-label={t("actions.close")}
         />
@@ -215,15 +216,42 @@ const MessageContainer: FC<MessageContainerProps> = ({
   messages,
   onRemove,
 }) => {
-  const messageArray = Array.from(messages.entries());
+  const messagesByPlacement = (placement: MessagePlacement) =>
+    Array.from(messages.entries()).filter(
+      ([, config]) => (config.placement ?? "bottom") === placement
+    );
 
-  return (
-    <div className="flex w-auto max-w-[380px] flex-col-reverse items-end gap-2 max-[480px]:max-w-full">
+  const renderMessages = (placement: MessagePlacement) => {
+    const messageArray = messagesByPlacement(placement);
+    if (messageArray.length === 0) return null;
+
+    return (
       <AnimatePresence>
         {messageArray.map(([id, config]) => (
           <MessageItem key={id} id={id} {...config} onRemove={onRemove} />
         ))}
       </AnimatePresence>
+    );
+  };
+
+  return (
+    <div className="h-full w-full">
+      {/* Anchored like the Spotlight palette: over the content area, same width. */}
+      {messagesByPlacement("spotlight").length > 0 && (
+        <div
+          data-message-placement="spotlight"
+          className="pointer-events-none absolute flex -translate-x-1/2 flex-col gap-2"
+          style={{ top: SPOTLIGHT_TOP_OFFSET, ...readSpotlightAnchorStyle() }}
+        >
+          {renderMessages("spotlight")}
+        </div>
+      )}
+      <div
+        data-message-placement="bottom"
+        className="pointer-events-none absolute right-4 bottom-4 flex w-auto max-w-[380px] flex-col-reverse items-end gap-2 max-[480px]:right-2 max-[480px]:bottom-2 max-[480px]:left-2 max-[480px]:max-w-full"
+      >
+        {renderMessages("bottom")}
+      </div>
     </div>
   );
 };

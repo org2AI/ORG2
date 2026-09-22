@@ -13,8 +13,8 @@ import type { PrFile } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
 import PrStatusBadge from "@src/components/PrStatusBadge";
+import GitHubFlowHeader from "@src/features/GitHubWork/GitHubFlowHeader";
 import { Copy01Icon, HugeiconsIcon } from "@src/icons";
-import GitHubFlowHeader from "@src/modules/shared/components/GitHubFlowHeader";
 import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import { copyText } from "@src/util/data/clipboard";
 
@@ -89,7 +89,7 @@ export function PrFlowHeader({
   const copyHeadBranch = useCallback(async () => {
     try {
       await copyText(identity.headBranch);
-      Message.success(t("git.pr.flow.branchCopied", "Branch name copied"));
+      Message.success(t("git.pr.flow.branchCopied"));
     } catch (error) {
       Message.error(error instanceof Error ? error.message : String(error));
     }
@@ -98,38 +98,35 @@ export function PrFlowHeader({
   const verbPhrase = merged
     ? t("git.pr.flow.mergedCommitsInto", {
         count: commits,
-        defaultValue: "merged {{count}} commit into",
         defaultValue_other: "merged {{count}} commits into",
       })
     : t("git.pr.flow.wantsToMergeCommitsInto", {
         count: commits,
-        defaultValue: "wants to merge {{count}} commit into",
         defaultValue_other: "wants to merge {{count}} commits into",
       });
 
   return (
     <GitHubFlowHeader
       testIdPrefix="pr-flow"
-      ariaLabel={t("git.pr.summary.label", "Pull request summary")}
+      ariaLabel={t("git.pr.summary.label")}
       title={identity.title}
       number={identity.number}
       status={<PrStatusBadge status={identity.status} size="sm" showIcon />}
       actor={actor}
-      unknownActorLabel={t("git.pr.unknownAuthor", "Unknown")}
+      unknownActorLabel={t("git.pr.unknownAuthor")}
     >
       <span>{verbPhrase}</span>
       <BranchPill name={baseBranch} />
-      <span>{t("git.pr.flow.from", "from")}</span>
+      <span>{t("git.pr.flow.from")}</span>
       <BranchPill name={identity.headBranch} />
       <Button
         size="sidebar"
-        aria-label={t("git.pr.flow.copyHeadBranch", "Copy head branch name")}
-        title={t("git.pr.flow.copyHeadBranch", "Copy head branch name")}
+        aria-label={t("git.pr.flow.copyHeadBranch")}
+        title={t("git.pr.flow.copyHeadBranch")}
         className="text-text-3 hover:text-text-1"
         onClick={() => void copyHeadBranch()}
         data-testid="pr-flow-copy-branch"
         variant="tertiary"
-        appearance="soft"
         iconOnly
         icon={
           <HugeiconsIcon

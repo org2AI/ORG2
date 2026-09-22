@@ -7,7 +7,7 @@
 import React from "react";
 
 import Button from "@src/components/Button";
-import SessionHoverCard from "@src/components/SessionHoverCard";
+import SessionHoverCard from "@src/features/SessionHoverCard";
 import {
   STATUS_COLORS,
   WORK_ITEM_STATUS_COLOR,
@@ -79,7 +79,6 @@ const SpanningEventCard: React.FC<SpanningEventCardProps> = ({
     <SessionHoverCard sessionId={event.id} position="right-start">
       <Button
         layout="custom"
-        appearance="custom"
         onClick={handleClick}
         className={`flex h-full w-full items-center overflow-hidden px-2 text-left text-xs font-medium transition-all hover:brightness-110 ${
           isSelected ? "ring-2 ring-primary-6 ring-offset-1" : ""

@@ -25,7 +25,7 @@ pub use index::load_codex_context_usage_for_session;
 
 // Public API — preserved at `...::sources::codex::app::*`.
 pub use index::{
-    codex_thread_id_from_file_stem, list_codex_app_recent_paths,
+    codex_app_review_path, codex_thread_id_from_file_stem, list_codex_app_recent_paths,
     list_codex_app_reconciliation_sessions, list_codex_app_sessions_paginated,
     load_codex_app_cloud_turn_for_session, load_codex_app_for_session,
     load_codex_app_initial_window_for_session, load_codex_app_mobile_tail_window_for_session,
@@ -35,10 +35,11 @@ pub use index::{
 pub use meta::{resolve_codex_transcript_for_thread_id_near_path, CodexTranscriptLocator};
 pub(crate) use normalize::normalize_codex_tool_calls;
 pub use transcript::{
-    load_codex_image_from_path,
     load_codex_app_from_path, load_codex_app_initial_window_from_path,
-    load_codex_app_mobile_tail_window_from_path, load_codex_app_turn_from_path,
-    load_codex_app_window_turn_from_path, visit_codex_app_from_path, CodexAppInitialWindow,
+    load_codex_app_mobile_tail_window_from_path, load_codex_app_review_context_from_path,
+    load_codex_app_review_from_path, load_codex_app_turn_from_path,
+    load_codex_app_window_turn_from_path, load_codex_image_from_path,
+    load_codex_user_source_messages_from_path, visit_codex_app_from_path, CodexAppInitialWindow,
     CodexAppTurnWindow,
 };
 
@@ -72,7 +73,10 @@ pub(crate) use transcript::{
 // v14: re-derive `repo_path` so the desktop app's own
 // `~/Documents/Codex/<date>/<slug>` (and ChatGPT app) scratch dirs are stored
 // as no workspace.
-const CODEX_APP_METADATA_PARSER_VERSION: i64 = 14;
+// v15: count completed `item_completed`/`FileChange` items. Codex Desktop
+// never persists `patch_apply_end`, so every `exec`-wrapped edit tallied zero.
+// v16: retain empty successful results so mixed exec batches preserve edit status/order.
+const CODEX_APP_METADATA_PARSER_VERSION: i64 = 16;
 
 pub type CodexAppSessionRow = ImportedHistorySessionRow;
 pub type CodexAppSessionPage = ImportedHistorySessionPage;

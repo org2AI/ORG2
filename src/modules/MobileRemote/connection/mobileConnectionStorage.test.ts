@@ -80,8 +80,8 @@ describe("mobileConnectionStorage", () => {
 
     expect(loadScopedMobileConnectionConfig("user-a", storage)).toBeNull();
     expect(listScopedMobilePairedDesktops("user-a", storage)).toEqual([
-      { id: "desktop-b", name: "Office Mac", active: false, updatedAtMs: 2 },
-      { id: "desktop-a", name: "Home Mac", active: false, updatedAtMs: 1 },
+      { id: "desktop-b", name: "desktop-b", active: false, updatedAtMs: 2 },
+      { id: "desktop-a", name: "desktop-a", active: false, updatedAtMs: 1 },
     ]);
     expect(listScopedMobilePairedDesktops("user-b", storage)).toEqual([]);
   });
@@ -118,8 +118,8 @@ describe("mobileConnectionStorage", () => {
       desktopId: "desktop-a",
     });
     expect(listScopedMobilePairedDesktops("user-a", storage)).toEqual([
-      { id: "desktop-b", name: "Office Mac", active: false, updatedAtMs: 2 },
-      { id: "desktop-a", name: "Home Mac", active: true, updatedAtMs: 1 },
+      { id: "desktop-b", name: "desktop-b", active: false, updatedAtMs: 2 },
+      { id: "desktop-a", name: "desktop-a", active: true, updatedAtMs: 1 },
     ]);
     expect(
       JSON.stringify(listScopedMobilePairedDesktops("user-a", storage))

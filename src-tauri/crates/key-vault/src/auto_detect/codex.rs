@@ -2,7 +2,8 @@ use std::env;
 use std::fs;
 
 use super::helpers::{
-    create_detected_key, get_home_dir, get_openai_config_paths, validate_openai_key, OpenAIConfig,
+    create_detected_key, get_openai_config_paths, local_codex_auth_path, validate_openai_key,
+    OpenAIConfig,
 };
 use super::{DetectedKey, QuotaInfo};
 use core_types::providers::{
@@ -16,8 +17,7 @@ pub(super) async fn detect_codex_keys() -> Vec<DetectedKey> {
 
     // 1. Check Codex CLI auth.json first (most common for Codex CLI users)
     // This returns BOTH OAuth and API key if both exist
-    if let Some(home) = get_home_dir() {
-        let codex_auth_path = home.join(".codex/auth.json");
+    if let Some(codex_auth_path) = local_codex_auth_path() {
         let codex_creds = read_codex_auth_config(&codex_auth_path).await;
         keys.extend(codex_creds);
     }

@@ -3,9 +3,6 @@
  *
  * Centralized header dimensions, button styles, and class strings for Workstation.
  * Follows the same pattern as DROPDOWN_CLASSES in @src/components/Dropdown/tokens.
- *
- * Used by: FileHeader, WebUrlBar, SearchBar,
- *          CollapsibleSection, PanelSectionHeader, ActionBar, Button, etc.
  */
 import { SURFACE_TOKENS } from "@src/config/surfaceTokens";
 
@@ -48,9 +45,6 @@ export const PRIMARY_SIDEBAR_HOVER = {
 // Dimensions
 // ============================================
 
-/** Standard header height (px) for all Workstation headers */
-export const HEADER_HEIGHT = 40;
-
 /** Icon sizes used inside header buttons */
 export const HEADER_ICON_SIZE = {
   /** Compact discard glyph; button hit area stays unchanged. */
@@ -80,9 +74,13 @@ export const BUTTON_SIZE = {
   lg: "h-7 w-7 rounded-lg",
 } as const;
 
-/** One palette for compact row, terminal, and header actions. */
+/**
+ * One palette for compact row, terminal, and header actions on controls that
+ * cannot use `Button`. Button keeps a `btn:`-layered copy of these in
+ * src/components/Button/presentation.tsx (parity is tested).
+ */
 const DEFAULT_BUTTON_VARIANT =
-  "text-text-2 enabled:hover:bg-button-hover enabled:hover:text-text-1 focus-visible:bg-button-hover focus-visible:text-text-1";
+  "text-text-2 enabled:hover:bg-fill-2 enabled:hover:text-text-1 focus-visible:bg-fill-2 focus-visible:text-text-1";
 
 export const BUTTON_VARIANT = {
   default: DEFAULT_BUTTON_VARIANT,
@@ -101,89 +99,29 @@ export const BUTTON_VARIANT = {
     "bg-surface-selected text-primary-6 enabled:hover:bg-button-hover focus-visible:bg-button-hover",
 } as const;
 
-/** Standard 20px row controls. Add flex or the row's hover-reveal classes. */
-const ROW_BUTTON_BASE = `${ICON_BUTTON_BASE} ${BUTTON_SIZE.sm}`;
-export const ROW_BUTTON = {
-  default: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.default}`,
-  danger: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.danger}`,
-  primary: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.primary}`,
-  success: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.success}`,
-  active: `${ROW_BUTTON_BASE} ${BUTTON_VARIANT.active}`,
-} as const;
-
-/**
- * Pre-composed button class strings for direct use in JSX.
- *
- * Usage:
- * ```tsx
- * <button className={HEADER_BUTTON.action} title="Refresh">
- *   <RefreshCw size={HEADER_ICON_SIZE.sm} />
- * </button>
- *
- * <button className={HEADER_BUTTON.actionDisabled} disabled={!canClick}>
- *   <ArrowLeft size={HEADER_ICON_SIZE.md} />
- * </button>
- * ```
- */
+/** Pre-composed class strings for icon controls that cannot use `Button`. */
 export const HEADER_BUTTON = {
   /** Standard action button (20×20, default variant) */
-  action: `flex ${ROW_BUTTON.default}`,
-  /** Compact row / section action with the shared neutral hover fill. */
-  actionTreeRow: `flex ${ROW_BUTTON.default}`,
-  /** Standard action button with disabled support */
-  actionDisabled: `flex ${ROW_BUTTON.default} disabled:cursor-not-allowed disabled:opacity-30`,
-  /** Danger action button (20×20) */
-  danger: `flex ${ROW_BUTTON.danger}`,
-  /** Success action button (20×20) — merge, accept, run test */
-  success: `flex ${ROW_BUTTON.success}`,
-  /** Active/toggled button (20×20) */
-  active: `flex ${ROW_BUTTON.active}`,
-  /** Medium (24×24) — modal close, etc. */
-  actionMd: `${BUTTON_BASE} ${BUTTON_SIZE.md} ${BUTTON_VARIANT.default}`,
+  action: `flex ${ICON_BUTTON_BASE} ${BUTTON_SIZE.sm} ${BUTTON_VARIANT.default}`,
   /** Medium row action — uses the same default palette. */
   actionMdTreeRow: `${BUTTON_BASE} ${BUTTON_SIZE.md} ${BUTTON_VARIANT.defaultTreeRow}`,
-  /** Large (28×28) — collapse toggles, panel headers */
-  actionLg: `${BUTTON_BASE} ${BUTTON_SIZE.lg} ${BUTTON_VARIANT.default}`,
-  /**
-   * Workstation tab bar trailing slot — regular header action styling.
-   * Prefer this name in tab-strip code for clarity.
-   */
-  tabBarTrailing: `flex ${ROW_BUTTON.default}`,
-  /** Tab bar trailing — toggled on (e.g. split view, properties panel) */
-  tabBarTrailingActive: `${BUTTON_BASE} ${BUTTON_SIZE.sm} ${SURFACE_TOKENS.selected} text-primary-6 ${SURFACE_TOKENS.selectedHover}`,
 } as const;
 
 // ============================================
 // Tab bar trailing strip (document tabs row)
 // ============================================
 
-/**
- * Flex row for right-side tab bar controls (before horizontal padding).
- * Pair with {@link TAB_BAR_CONTROLS_ROW_PADDING_FULL} or
- * {@link TAB_BAR_CONTROLS_ROW_PADDING_TRAILING_ONLY}.
- */
-export const TAB_BAR_CONTROLS_ROW_BASE_CLASS =
-  "ml-auto flex h-full shrink-0 items-center gap-px";
-
-/** Full inset when built-in buttons exist or when document tabs are shown. */
+/** Horizontal inset of the tab bar's right-side control row. */
 export const TAB_BAR_CONTROLS_ROW_PADDING_FULL = "pl-1 pr-2";
 
-/**
- * Trailing-only row (e.g. Code Editor with zero tabs: bottom-panel toggle).
- * Matches the standard tab-bar trailing edge inset.
- */
-export const TAB_BAR_CONTROLS_ROW_PADDING_TRAILING_ONLY = "pl-1 pr-2";
 /**
  * The `pr-2` above, in pixels. Hosts that reserve window-edge space for
  * pinned chrome subtract it so the reservation's 1px gap is not doubled.
  */
 export const TAB_BAR_CONTROLS_ROW_TRAILING_PADDING_PX = 8;
 
-/** Default: full horizontal padding (most toolbars). */
-export const TAB_BAR_CONTROLS_ROW_CLASS = `${TAB_BAR_CONTROLS_ROW_BASE_CLASS} ${TAB_BAR_CONTROLS_ROW_PADDING_FULL}`;
-
 /**
- * Trailing icon group **inside** `TAB_BAR_CONTROLS_ROW_CLASS` (or inside
+ * Trailing icon group inside the tab bar's control row (or inside
  * {@link TAB_BAR_TRAILING_EDGE_CLASS}). Do not add horizontal padding here —
  * the parent supplies the tab-bar edge inset.
  */
@@ -198,48 +136,15 @@ export const TAB_BAR_TRAILING_EDGE_CLASS =
   "flex h-full shrink-0 items-center gap-px pl-1 pr-2";
 
 // ============================================
-// Split Button Tokens
-// ============================================
-/**
- * Split action button: primary click + chevron dropdown.
- * Used by: terminal "new + profile picker", any action with a dropdown variant.
- *
- * Hover behaviour (each half is independent):
- *  - Left hover  → shared surface hover, icon → text-text-1
- *  - Right hover → bg-fill-3, icon → text-text-1
- *
- * ```tsx
- * <div className={SPLIT_BUTTON.container}>
- *   <button className={SPLIT_BUTTON.left} onClick={onDefault}>
- *     <Plus size={HEADER_ICON_SIZE.md} />
- *   </button>
- *   <button className={SPLIT_BUTTON.right} onClick={onToggleMenu}>
- *     <ChevronDown size={12} />
- *   </button>
- * </div>
- * ```
- */
-export const SPLIT_BUTTON = {
-  /** Outer wrapper — shared surface hover covers both halves */
-  container:
-    "group/split flex items-center rounded transition-colors hover:bg-button-hover focus-within:bg-button-hover",
-  /** Left (primary action) — inherits the shared hover surface from container */
-  left: "flex h-5 w-5 items-center justify-center rounded-l text-text-3 transition-colors group-hover/split:text-text-1",
-  /** Right (chevron) — button hover surface stacks on top of container hover */
-  right:
-    "flex h-5 items-center justify-center rounded-r px-0.5 text-text-3 transition-colors group-hover/split:text-text-1 hover:bg-fill-3",
-} as const;
-
-// ============================================
 // Header Class Strings
 // ============================================
 
 /** Shared left inset aligning header content with the first tab icon. */
 export const HEADER_CONTENT_LEFT_PADDING_CLASS = "pl-[15px]";
 /** Shared right inset for content inside My Station header bars. */
-export const HEADER_CONTENT_RIGHT_PADDING_CLASS = "pr-2";
+const HEADER_CONTENT_RIGHT_PADDING_CLASS = "pr-2";
 /** Shared tab-aligned left and compact right insets for header bars. */
-export const HEADER_CONTENT_HORIZONTAL_PADDING_CLASS = `${HEADER_CONTENT_LEFT_PADDING_CLASS} ${HEADER_CONTENT_RIGHT_PADDING_CLASS}`;
+const HEADER_CONTENT_HORIZONTAL_PADDING_CLASS = `${HEADER_CONTENT_LEFT_PADDING_CLASS} ${HEADER_CONTENT_RIGHT_PADDING_CLASS}`;
 
 /** Shared 36px file-bar row geometry (used by FileHeader + search rows). */
 export const FILE_BAR_ROW_CLASSES = `work-station-file-bar flex h-9 shrink-0 items-center gap-1.5 ${HEADER_CONTENT_HORIZONTAL_PADDING_CLASS}`;
@@ -271,23 +176,11 @@ export const HEADER_CLASSES = {
 
   /**
    * Sidebar section header (collapsible section title row).
-   * Used by: CollapsibleSection, PanelSectionHeader
    *
    * Height: 32px, space-between layout, shrink-proof, transparent surface.
    */
   sectionHeader:
     "flex h-8 min-w-0 shrink-0 items-center justify-between overflow-hidden bg-transparent pl-3 pr-2",
-} as const;
-
-/**
- * Search tab row layout (used by Search editor + Extension tab search rows).
- * Keeps height/border/padding consistent across tabs.
- */
-export const SEARCH_TAB_ROW_CLASSES = {
-  /** Row container: fixed row height + horizontal layout + padding */
-  row: FILE_BAR_ROW_CLASSES,
-  /** Optional bottom divider */
-  withBorder: "border-b border-border-2",
 } as const;
 
 // ============================================
@@ -350,11 +243,6 @@ export function getCountBadgeSizeClass(count: number): string {
 }
 
 // ============================================
-// Section Action Button Tokens
-// ============================================
-/** Used by: CollapsibleSection (PrimarySidebarLayout) */
-
-// ============================================
 // Diff Stats Tokens
 // ============================================
 /** +N / -N inline stats shown in file headers and commit headers */
@@ -369,15 +257,6 @@ export const DIFF_STATS = {
   additions: "text-success-6",
   /** Deletions text */
   deletions: "text-danger-6",
-} as const;
-
-export const SECTION_ACTION_BUTTON = {
-  /** Header actions without a backdrop use the fill-2 hover/focus palette. */
-  base: `flex ${ICON_BUTTON_BASE} ${BUTTON_VARIANT.noDrop}`,
-  /** Icon-only (20×20) */
-  iconOnly: BUTTON_SIZE.sm,
-  /** With label (compact inline) */
-  withLabel: "gap-1 rounded-lg px-1.5 py-0.5 text-[11px]",
 } as const;
 
 // ============================================

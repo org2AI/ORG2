@@ -511,6 +511,14 @@ pub fn setup_menu_events(app: &AppHandle) {
     app.on_menu_event(move |app, event| {
         let event_id = event.id().0.as_str();
 
+        // Menu accelerators are delivered natively, so the lock page cannot
+        // swallow them the way it swallows key events: without this, Cmd+N
+        // and friends would still drive the app behind it. Quitting stays
+        // available — a locked app relaunches locked.
+        if event_id != "app_quit" && crate::app_lock::is_locked() {
+            return;
+        }
+
         match event_id {
             "app_quit" => {
                 open_quit_confirmation(app);
@@ -614,10 +622,10 @@ pub fn setup_menu_events(app: &AppHandle) {
             // NOTE: Toggle Sidebar (Cmd+B) and Toggle Terminal (Cmd+`) are NOT in the native menu.
             // They are context-dependent frontend actions handled by the webview's keydown handler.
             "help_documentation" => {
-                let _ = open::that("https://github.com/YORG-AI/ORGII/wiki");
+                let _ = open::that("https://github.com/org2AI/ORG2/wiki");
             }
             "help_report_issue" => {
-                let _ = open::that("https://github.com/YORG-AI/ORGII/issues");
+                let _ = open::that("https://github.com/org2AI/ORG2/issues");
             }
             MENU_ID_RESTART_SETUP => {
                 println!("[AppMenu] Restart Setup Guide requested");

@@ -94,9 +94,9 @@ describe("sidebar cross-surface routing precedence", () => {
     ]);
     expect(closeOtherTabs).not.toHaveBeenCalled();
     expect(projectsClick).not.toHaveBeenCalled();
-    const workItem = row("projects-work-item:work-a");
-    click(workItem, mouseEvent(true));
-    expect(projectsClick).toHaveBeenCalledWith(workItem.key, workItem);
+    const projectRow = row("projects-project-overview:project-a");
+    click(projectRow, mouseEvent(true));
+    expect(projectsClick).toHaveBeenCalledWith(projectRow.key, projectRow);
     expect(openInNewTab).not.toHaveBeenCalled();
   });
 
@@ -147,10 +147,10 @@ describe("sidebar cross-surface routing precedence", () => {
     expect(closeOtherTabs).not.toHaveBeenCalled();
   });
 
-  it("opens Work Item destinations without closing existing tabs", () => {
+  it("opens Work Items view destinations without closing existing tabs", () => {
     render(true);
     const item: NavigationMenuItem = {
-      ...row("projects-work-item:work-a"),
+      ...row("projects-project-overview:project-a"),
       opensChatPanelTab: true,
     };
 

@@ -23,21 +23,11 @@ const EditModeHeader: React.FC<EditModeHeaderProps> = ({
       {editHeaderActions && (
         <div className="flex items-center gap-1">
           {onEditCancel && (
-            <Button
-              variant="tertiary"
-              size="mini"
-              htmlType="button"
-              onClick={onEditCancel}
-            >
+            <Button variant="tertiary" size="mini" onClick={onEditCancel}>
               {t("common:actions.cancel")}
             </Button>
           )}
-          <Button
-            variant="primary"
-            size="mini"
-            htmlType="button"
-            onClick={onEditSubmit}
-          >
+          <Button variant="primary" size="mini" onClick={onEditSubmit}>
             {t("common:actions.save")}
           </Button>
         </div>

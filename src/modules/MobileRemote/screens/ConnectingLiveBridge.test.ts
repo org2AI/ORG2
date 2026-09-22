@@ -21,6 +21,7 @@ import { ConnectingLiveBridge } from "./ConnectingLiveBridge";
 const mocks = vi.hoisted(() => ({
   connectLive: vi.fn(),
   refreshSessions: vi.fn(),
+  connection: { status: "connecting" },
 }));
 
 const TestMobileRemotePlatformProvider =
@@ -37,6 +38,7 @@ vi.mock("../app", () => ({
   useMobileRemote: () => ({
     connectLive: mocks.connectLive,
     refreshSessions: mocks.refreshSessions,
+    connection: mocks.connection,
   }),
 }));
 
@@ -81,6 +83,7 @@ describe("ConnectingLiveBridge", () => {
   });
 
   beforeEach(() => {
+    mocks.connection.status = "connecting";
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -198,5 +201,22 @@ describe("ConnectingLiveBridge", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("finishes once a confirmed device recovers after the first attempt failed", async () => {
+    const onComplete = vi.fn();
+    const platform = createBrowserMobileRemotePlatform();
+    const config = { wsUrl: "wss://relay.example.com/v1/mobile/ws" };
+    mocks.connectLive.mockRejectedValueOnce(new Error("desktop is offline"));
+    await act(async () =>
+      root.render(renderBridge(platform, config, onComplete))
+    );
+    expect(onComplete).not.toHaveBeenCalled();
+    mocks.connection.status = "connected";
+    await act(async () =>
+      root.render(renderBridge(platform, config, onComplete))
+    );
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(mocks.connectLive).toHaveBeenCalledOnce();
   });
 });

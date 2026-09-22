@@ -1,0 +1,24 @@
+# BranchSwitch lifecycle and performance audit
+
+| Area               | Verdict | Evidence                                                                        | Change or reason kept                                                                                      | Verification                                                    |
+| ------------------ | ------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Background work    | keep    | No new polling/timers/watchers; mounted banner listeners; Git on spawn_blocking | Hidden banner defers reads, return revalidates, invalidation bursts produce one trailing read              | Visibility, burst and unmount DOM tests                         |
+| Memory             | keep    | One 50-snapshot page and 128 KiB preview; API map stores only pending reads     | Completion/failure evicts read promises; editor registration unmounts; coordinator keys removed in finally | API dedup/eviction, registry and Git pagination tests           |
+| Scope/isolation    | keep    | Captured repo/worktree/query identity and common-directory lock                 | Late branch results rejected; actual HEAD published only to matching active scope                          | Stale-branch, coordinator concurrency, Rust lock/worktree tests |
+| Rendering/hot path | keep    | No streaming subscription or render-time Git IO                                 | Reuse SelectionGrid; preview loads on request                                                              | Real component tests and source call-chain review               |
+
+## Lifecycle matrix
+
+| Resource                | Active / idle                                                 | Hidden / return                                    | Failure / close / restart                                      | Evidence                                              |
+| ----------------------- | ------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------- |
+| Banner                  | Demand read then no continuous work                           | No new hidden read; revalidate on return           | Remove listeners and ignore late results                       | Three DOM lifecycle tests                             |
+| API read sharing        | Equal pending reads share                                     | Driven by consumers/explicit actions               | Evict success and failure; no completed-result cache           | API tests                                             |
+| Dialog                  | Choice/result only; clean checkout skips it                   | Dispatched safety mutation may finish while hidden | Cancel resolves once/unmounts; busy cannot dismiss             | Modal tests                                           |
+| Git process             | Demand-only, off async executor                               | Started mutation continues for recovery integrity  | One attempt, 60-second process timeout and group kill/reap     | Utility subprocess tests                              |
+| Snapshots               | Deliberate disk retention; demand metadata scans              | No idle sweep                                      | Durable journal and refs; no replay of partially applied phase | Real Git recovery fixtures; full process-kill not run |
+| Editor buffers          | Existing stores reused; one baseline digest per cached buffer | No new idle work                                   | Failed saves retain buffer; mounted registration cleaned up    | Buffer and registry tests                             |
+| Provider/cloud/identity | No new cloud data or provider parsing                         | Not applicable                                     | No topology/provider compatibility claims                      | Source review                                         |
+
+Full status/content hashing is demand-driven but active cost depends on repository size. Snapshot metadata scans grow with retained snapshots; retained file-name lists depend on changed-file counts. Recovery copies deliberately consume disk until explicit cleanup. The lock coordinates only new switch/restore operations; other writers remain independent.
+
+**Performance verdict: blocked** for native measurement. Native Tauri visible/hidden idle, CPU/RSS, repeated open/close, Windows and abrupt process-shutdown measurements were not run because computer control was not authorized. Automated lifecycle checks pass; no measured performance improvement is claimed.

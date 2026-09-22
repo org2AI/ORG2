@@ -5,7 +5,7 @@ import {
   ScrollTrail,
   WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
   WORKSTATION_TRAIL_WIDTH,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
 import type {
   PrDetailTab,
   PrIdentity,
@@ -20,6 +20,7 @@ interface PrDetailSidebarRailProps {
   state: WorkstationSelectedPrState;
   controller: WorkstationPrDetailController;
   activeTab: PrDetailTab;
+  inline?: boolean;
   trailScrollContainerRef: React.RefObject<HTMLElement | null>;
   trailContentRef: React.RefObject<HTMLElement | null>;
 }
@@ -30,6 +31,7 @@ export function PrDetailSidebarRail({
   state,
   controller,
   activeTab,
+  inline = false,
   trailScrollContainerRef,
   trailContentRef,
 }: PrDetailSidebarRailProps): React.ReactNode {
@@ -65,7 +67,7 @@ export function PrDetailSidebarRail({
       <ScrollTrail
         scrollContainerRef={trailScrollContainerRef}
         contentRef={trailContentRef}
-        ariaLabel={t("git.pr.navigationTrail", "Pull request navigation")}
+        ariaLabel={t("git.pr.navigationTrail")}
         alignment="start"
         placement="rail"
         testId="pr-detail-navigation-trail"
@@ -98,6 +100,8 @@ export function PrDetailSidebarRail({
       onLabelsChange={updateLabels}
     />
   );
+
+  if (inline) return sidebar;
 
   return (
     <div

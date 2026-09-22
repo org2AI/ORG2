@@ -7,9 +7,9 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useActionSystemOptional } from "@src/ActionSystem";
 import { generateCommitMessage } from "@src/api/tauri/git/commitMessage";
 import { useGitOperations } from "@src/hooks/git/useGitOperations";
+import { useActionSystemOptional } from "@src/scaffold/ActionSystem";
 import { gitCommitInstructionsAtom } from "@src/store/ui/editorSettingsAtom";
 import { gitOutputIntegrationAtom } from "@src/store/workstation/codeEditor/outputIntegration";
 import type { GitFile } from "@src/types/git/types";

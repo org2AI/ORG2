@@ -16,16 +16,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { formatModelAgentType } from "@src/assets/providers";
 import AnyIcon from "@src/components/AnyIcon";
-import Button from "@src/components/Button";
 import DropdownSearch from "@src/components/Dropdown/DropdownSearch";
 import {
   DROPDOWN_CLASSES,
-  DROPDOWN_ITEM,
   DROPDOWN_PANEL,
 } from "@src/components/Dropdown/tokens";
 import ModelIcon from "@src/components/ModelIcon";
@@ -36,9 +33,9 @@ import {
 } from "@src/hooks/dropdown";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import { useFilteredItems } from "@src/hooks/search";
-import { HugeiconsIcon, Tick01Icon } from "@src/icons";
-import { getViewportSize } from "@src/util/ui/window/viewport";
 
+import { PickerOptionRow } from "../../components/PickerOptionRow";
+import { PickerDropdownShell } from "../../shell/PickerDropdownShell";
 import type { SpotlightItem } from "../../types";
 import type { DispatchCategoryPaletteProps } from "./types";
 import {
@@ -47,7 +44,6 @@ import {
 } from "./useDispatchCategoryOptions";
 
 const LIST_MAX_HEIGHT = 360;
-const VIEWPORT_MARGIN = 12;
 /** Lower bound when the trigger is very narrow (e.g. collapsed sidebar). */
 const MIN_DROPDOWN_WIDTH = 320;
 
@@ -74,7 +70,7 @@ const AvailableKeyCount: React.FC<{ keys: KeyVaultAccount[] }> = ({ keys }) => {
       ))}
     </div>
   ) : (
-    <span>{t("selectors.modelSelector.noCompatibleAccounts")}</span>
+    <span>{t("selectors.modelSelector.noCompatibleKeys")}</span>
   );
 
   return (
@@ -106,65 +102,31 @@ interface DropdownRowProps {
 }
 
 const DropdownRow: React.FC<DropdownRowProps> = ({ item, keyboardProps }) => {
-  const data = getItemData(item);
-  const rightContent = data.rightContent as React.ReactNode | undefined;
+  const data = item.data ?? {};
   const availableKeys = data.availableKeys as KeyVaultAccount[] | undefined;
-  const isCurrent = data.isCurrentSelection === true;
-  const isDisabled = data.disabled === true;
-  const tagLabel = typeof data.tagLabel === "string" ? data.tagLabel : null;
-  const testId = typeof data.testId === "string" ? data.testId : undefined;
-
-  const renderedIcon = useMemo(() => {
-    if (isCurrent) {
-      return (
-        <HugeiconsIcon
-          icon={Tick01Icon}
-          data-icon="check"
-          size={DROPDOWN_ITEM.iconSize}
-          strokeWidth={2.25}
-          className="text-primary-6"
-        />
-      );
-    }
-    return <AnyIcon icon={item.icon} size={16} className="text-text-2" />;
-  }, [item.icon, isCurrent]);
-
   return (
-    <Button
-      layout="custom"
-      appearance="custom"
-      htmlType="button"
-      data-testid={testId}
-      {...keyboardProps}
-      disabled={isDisabled}
-      className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full justify-start ${
-        isCurrent ? DROPDOWN_CLASSES.itemSelected : ""
-      } ${isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
-    >
-      {renderedIcon && (
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-          {renderedIcon}
-        </span>
-      )}
-      <div className="flex min-w-0 flex-1 flex-col items-start">
-        <span
-          className={`truncate text-[13px] ${isCurrent ? "text-primary-6" : "text-text-1"}`}
-        >
-          {item.label}
-        </span>
-        {item.desc && (
-          <span className="truncate text-[11px] text-text-3">{item.desc}</span>
-        )}
-      </div>
-      {tagLabel && (
-        <span className="shrink-0 text-[11px] text-text-3">{tagLabel}</span>
-      )}
-      {availableKeys ? (
-        <AvailableKeyCount keys={availableKeys} />
-      ) : (
-        rightContent && <div className="shrink-0">{rightContent}</div>
-      )}
-    </Button>
+    <PickerOptionRow
+      label={item.label}
+      description={item.desc}
+      icon={<AnyIcon icon={item.icon} size={16} className="text-text-2" />}
+      selected={data.isCurrentSelection === true}
+      disabled={data.disabled === true}
+      testId={data.testId}
+      keyboardProps={keyboardProps}
+      className="text-[13px]"
+      trailing={
+        <>
+          {data.tagLabel && (
+            <span className="text-[11px] text-text-3">{data.tagLabel}</span>
+          )}
+          {availableKeys ? (
+            <AvailableKeyCount keys={availableKeys} />
+          ) : (
+            data.rightContent
+          )}
+        </>
+      }
+    />
   );
 };
 
@@ -269,28 +231,13 @@ export const DispatchCategoryDropdown: React.FC<
 
   if (!isOpen || !isPositioned) return null;
 
-  const { width: vw } = getViewportSize();
-  const width = Math.min(
-    Math.max(MIN_DROPDOWN_WIDTH, panelPosition.width),
-    vw - VIEWPORT_MARGIN * 2
-  );
-  const centeredLeft = panelPosition.left + (panelPosition.width - width) / 2;
-  const left = Math.max(
-    VIEWPORT_MARGIN,
-    Math.min(centeredLeft, vw - VIEWPORT_MARGIN - width)
-  );
-
-  return createPortal(
-    <div
+  return (
+    <PickerDropdownShell
       ref={panelRef}
       role="menu"
-      className={`${DROPDOWN_CLASSES.panel} fixed flex flex-col`}
-      style={{
-        top: panelPosition.top,
-        bottom: panelPosition.bottom,
-        left,
-        width,
-      }}
+      position={panelPosition}
+      preferredWidth={Math.max(MIN_DROPDOWN_WIDTH, panelPosition.width)}
+      align="center"
     >
       <DropdownSearch
         ref={inputRef}
@@ -328,8 +275,7 @@ export const DispatchCategoryDropdown: React.FC<
           })
         )}
       </div>
-    </div>,
-    document.body
+    </PickerDropdownShell>
   );
 };
 

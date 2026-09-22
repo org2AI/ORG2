@@ -7,13 +7,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  type StateSnapshot,
-  Virtuoso,
-  type VirtuosoHandle,
-} from "react-virtuoso";
 
 import { Placeholder } from "@src/components/Placeholder";
+import {
+  VirtualList,
+  type VirtualListHandle,
+} from "@src/components/VirtualList";
 import { EDITOR_TAB_CANVAS_BG_CLASS } from "@src/config/workstation/tokens";
 import type { DiffViewMode } from "@src/types/git/types";
 
@@ -26,6 +25,7 @@ import type {
 } from "./search/reviewSearchTypes";
 import { useReviewSearch } from "./search/useReviewSearch";
 import {
+  type DiffSectionListScrollSnapshot,
   type DiffSectionListViewState,
   type RememberedExpansion,
   createRestoredExpansions,
@@ -47,9 +47,11 @@ interface DiffSectionListProps<TFile extends DiffFileSectionData> {
   reviewSearchFiles?: readonly ReviewSearchFile[];
   loadReviewFile?: (path: string) => Promise<ReviewSearchFile | null>;
   viewMode: DiffViewMode;
+  wordWrap?: boolean;
   loading?: boolean;
   emptyTitle: string;
   emptySubtitle?: string;
+  emptyIcon?: React.ReactNode;
   repoPath?: string;
   collapseThreshold?: number;
   /** Start collapsible sections closed regardless of list size. */
@@ -91,7 +93,9 @@ function DiffListFooter() {
   return <div className="h-[100px]" aria-hidden />;
 }
 
-const DIFF_LIST_COMPONENTS = { Footer: DiffListFooter };
+/** Collapsed diff sections dominate; expanded ones re-measure on mount. */
+const DIFF_SECTION_ESTIMATED_HEIGHT = 44;
+const SCROLL_SETTLE_MS = 150;
 
 function DiffSectionListInner<TFile extends DiffFileSectionData>({
   sections,
@@ -99,9 +103,11 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
   reviewSearchFiles,
   loadReviewFile,
   viewMode,
+  wordWrap,
   loading = false,
   emptyTitle,
   emptySubtitle,
+  emptyIcon,
   repoPath,
   collapseThreshold = DEFAULT_COLLAPSE_THRESHOLD,
   defaultCollapsed = false,
@@ -122,7 +128,7 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
   viewState,
   onViewStateChange,
 }: DiffSectionListProps<TFile>) {
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const listRef = useRef<VirtualListHandle>(null);
   const searchRootRef = useRef<HTMLDivElement>(null);
   const reviewFiles = useMemo(
     () =>
@@ -139,7 +145,7 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
     (match: ReviewSearchMatch) => {
       const index = sections.findIndex(({ file }) => file.path === match.path);
       if (index >= 0)
-        virtuosoRef.current?.scrollToIndex({
+        listRef.current?.scrollToIndex({
           index,
           align: "start",
           behavior: "auto",
@@ -163,10 +169,12 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
   // Everything below is read once at mount: the list is rebuilt from the
   // snapshot a previous mount saved (see `viewState.ts`), not kept alive.
   const restoredExpansionsRef = useRef(createRestoredExpansions(viewState));
-  const [restoredScroll] = useState<StateSnapshot | undefined>(
+  const [restoredScroll] = useState<DiffSectionListScrollSnapshot | undefined>(
     () => viewState?.scroll ?? undefined
   );
-  const lastScrollRef = useRef<StateSnapshot | null>(viewState?.scroll ?? null);
+  const lastScrollRef = useRef<DiffSectionListScrollSnapshot | null>(
+    viewState?.scroll ?? null
+  );
   const handledFocusNonceRef = useRef<number | null>(
     viewState?.focusNonce ?? null
   );
@@ -262,42 +270,59 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
     [emitViewState, onExpansionChange]
   );
 
-  // Snapshot the scroll offset (plus measured sizes) each time scrolling
-  // settles. This is an event callback, so reading the handle here is safe,
-  // and it works no matter when Virtuoso mounted — the list often renders a
-  // placeholder first and only mounts Virtuoso once sections arrive, so a
-  // handle captured at this component's mount would be null.
-  const handleIsScrolling = useCallback(
-    (scrolling: boolean) => {
-      if (scrolling) return;
-      virtuosoRef.current?.getState((snapshot) => {
-        lastScrollRef.current = snapshot;
+  // Record the offset on every scroll frame (a ref write, no re-render) and
+  // publish it once scrolling settles. The previous virtualizer exposed an
+  // "is scrolling" edge for this; a trailing timer is the DOM-level
+  // equivalent, and keeps the view-state emit off the scroll path.
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      lastScrollRef.current = { scrollTop: event.currentTarget.scrollTop };
+      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = setTimeout(() => {
+        settleTimerRef.current = null;
         emitViewState();
-      });
+      }, SCROLL_SETTLE_MS);
     },
     [emitViewState]
   );
-
-  const handleScrollerRef = useCallback(
-    (element: HTMLElement | Window | null) => {
-      scrollerRef.current = element instanceof HTMLElement ? element : null;
+  useEffect(
+    () => () => {
+      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
     },
     []
   );
 
+  // Re-apply the saved offset as rows measure. Runs on every render (no dep
+  // array) because the scroller cannot reach the offset until enough rows
+  // below it have been measured — early attempts are clamped by the browser,
+  // and the one that lands sets the flag.
+  const restoredScrollAppliedRef = useRef(false);
+  useLayoutEffect(() => {
+    const scroller = listRef.current?.getScrollElement();
+    if (scroller) scrollerRef.current = scroller;
+    if (restoredScrollAppliedRef.current) return;
+    const target = restoredScroll?.scrollTop ?? 0;
+    if (target <= 0) {
+      restoredScrollAppliedRef.current = true;
+      return;
+    }
+    if (!scroller) return;
+    if (scroller.scrollHeight - scroller.clientHeight < target) return;
+    scroller.scrollTop = target;
+    restoredScrollAppliedRef.current = true;
+  });
+
   // Final snapshot when the list goes away. Layout cleanup runs while the
   // scroller is still attached, so a scroll that had not settled yet is
-  // captured from the element (keeping the last measured sizes). A mount
-  // the user never scrolled keeps the previously saved offset — the restored
-  // scroll may not have been applied yet, and a fresh `0` would clobber it.
+  // captured from the element. A mount the user never scrolled keeps the
+  // previously saved offset — the restored scroll may not have been applied
+  // yet, and a fresh `0` would clobber it.
   useLayoutEffect(() => {
     return () => {
       const scroller = scrollerRef.current;
       if (scroller && scroller.isConnected && scroller.scrollTop > 0) {
-        lastScrollRef.current = {
-          ranges: lastScrollRef.current?.ranges ?? [],
-          scrollTop: scroller.scrollTop,
-        };
+        lastScrollRef.current = { scrollTop: scroller.scrollTop };
       }
       emitViewState();
     };
@@ -313,7 +338,7 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
     );
     if (focusedIndex < 0) return;
 
-    virtuosoRef.current?.scrollToIndex({
+    listRef.current?.scrollToIndex({
       index: focusedIndex,
       align: "start",
       behavior: "auto",
@@ -362,6 +387,7 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
       <Placeholder
         variant="empty"
         placement="detail-panel"
+        icon={emptyIcon}
         title={emptyTitle}
         subtitle={emptySubtitle}
         fillParentHeight
@@ -376,16 +402,16 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
     >
       {reviewSearch.card}
       <div className="min-h-0 flex-1 overflow-hidden">
-        <Virtuoso
-          ref={virtuosoRef}
+        <VirtualList
+          ref={listRef}
           className={`scrollbar-hide h-full ${EDITOR_TAB_CANVAS_BG_CLASS}`}
           data={keyedSections}
           computeItemKey={(_index, item) => item.renderKey}
-          overscan={600}
-          restoreStateFrom={restoredScroll}
-          isScrolling={handleIsScrolling}
-          scrollerRef={handleScrollerRef}
-          {...(hideBottomPadding ? {} : { components: DIFF_LIST_COMPONENTS })}
+          overscanPx={600}
+          estimatedItemHeight={DIFF_SECTION_ESTIMATED_HEIGHT}
+          preserveStickyDescendants
+          onScroll={handleScroll}
+          footer={hideBottomPadding ? undefined : <DiffListFooter />}
           itemContent={(index, { section, renderKey }) => {
             const isFocused = focusedPath === section.file.path;
             const expansionSignal =
@@ -417,6 +443,7 @@ function DiffSectionListInner<TFile extends DiffFileSectionData>({
                     : undefined
                 }
                 viewMode={viewMode}
+                wordWrap={wordWrap}
                 defaultExpanded={
                   (reviewSearch.match?.path === section.file.path
                     ? true

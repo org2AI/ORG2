@@ -201,18 +201,16 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
   const renderBranchDeleteAction = useCallback(
     (branch: { name: string }) =>
       createElement(Button, {
-        htmlType: "button",
         variant: "tertiary",
-        appearance: "soft",
         size: "sidebar",
         iconOnly: true,
         icon: createElement(HugeiconsIcon, { icon: Delete02Icon, size: 14 }),
-        "aria-label": t("actions.delete", "Delete"),
+        "aria-label": t("actions.delete"),
         onClick: (event: MouseEvent<HTMLButtonElement>) => {
           event.stopPropagation();
           void handleDeleteBranch(branch.name);
         },
-        title: t("actions.delete", "Delete"),
+        title: t("actions.delete"),
       }),
     [handleDeleteBranch, t]
   );
@@ -257,13 +255,11 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
       deletedCount > 0
         ? t("selectors.branch.messages.deletedCount", {
             count: deletedCount,
-            defaultValue: "Deleted {{count}} branch",
           })
         : null,
       failedBranchNames.length > 0
         ? t("selectors.branch.messages.failedDeleteList", {
             branches: failedBranchNames.join(", "),
-            defaultValue: "Failed to delete: {{branches}}",
           })
         : null,
     ].filter(Boolean);
@@ -286,7 +282,7 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
       if (selectedBranchCount > 0) {
         actions.push({
           id: "pinned-branch-delete-selected",
-          label: `${t("actions.delete", "Delete")} (${selectedBranchCount})`,
+          label: `${t("actions.delete")} (${selectedBranchCount})`,
           icon: Delete02Icon,
           type: "action",
           action: () => {
@@ -296,7 +292,7 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
       }
       actions.push({
         id: "pinned-branch-remove-done",
-        label: t("actions.done", "Done"),
+        label: t("actions.done"),
         icon: Tick01Icon,
         type: "action",
         action: () => {
@@ -313,7 +309,7 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
       actions.push(
         {
           id: "pinned-branch-create-new",
-          label: t("selectors.branch.actions.createNew", "New Branch"),
+          label: t("selectors.branch.actions.createNew"),
           icon: GitBranchPlusIcon,
           type: "action",
           data: { showDisclosureChevron: true },
@@ -321,7 +317,7 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
         },
         {
           id: "pinned-branch-create-from",
-          label: t("selectors.branch.actions.createFrom", "New Branch From"),
+          label: t("selectors.branch.actions.createFrom"),
           icon: GitBranchPlusIcon,
           type: "action",
           data: { showDisclosureChevron: true },
@@ -335,7 +331,7 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
 
     actions.push({
       id: "pinned-branch-refresh",
-      label: t("selectors.branch.actions.refresh", "Refresh"),
+      label: t("selectors.branch.actions.refresh"),
       icon: RefreshIcon,
       type: "action",
       data: {
@@ -347,7 +343,7 @@ export function useBranchPalette(options: UseBranchPaletteOptions) {
     if (effectiveShowRemoveMode && onDeleteBranch) {
       actions.push({
         id: "pinned-branch-delete",
-        label: t("selectors.branch.actions.deleteBranch", "Delete Branch"),
+        label: t("selectors.branch.actions.deleteBranch"),
         icon: GitBranchMinusIcon,
         type: "action",
         data: { showDisclosureChevron: true },

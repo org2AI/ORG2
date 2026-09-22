@@ -92,7 +92,24 @@ fn native_window_chunks(
     Ok(Some(chunks))
 }
 
+// Provider-owned rollouts can retain an old proxy error as assistant text.
+// Sanitize at the history projection boundary; never rewrite native files.
+fn redact_proxy_routes(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::String(text) if text.contains("/cli/") => {
+            *text = terminal::redaction::redact_terminal_text(text);
+        }
+        serde_json::Value::Array(values) => values.iter_mut().for_each(redact_proxy_routes),
+        serde_json::Value::Object(values) => values.values_mut().for_each(redact_proxy_routes),
+        _ => {}
+    }
+}
+
 fn normalize_history(mut chunks: Vec<ActivityChunk>, session_id: &str) -> Vec<SessionEvent> {
+    for chunk in &mut chunks {
+        redact_proxy_routes(&mut chunk.args);
+        redact_proxy_routes(&mut chunk.result);
+    }
     super::super::interactions::overlay_live_questions(session_id, &mut chunks);
     // Move fields instead of a serialize/parse round-trip through the WebView.
     // This mirrors rustBridge.toRawChunk, including its absent top-level call id.
@@ -194,6 +211,49 @@ mod tests {
     use std::{fs, io::Write};
 
     #[test]
+    fn failed_native_user_retry_fixture_matches_normalized_history_wire_shape() {
+        let sandbox = crate::test_utils::test_env::sandbox();
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../crates/orgtrack-core/src/sources/fixtures/codex_native_failed_user.json"
+        ))
+        .unwrap();
+        let path = sandbox.path().join("native-failed-user.jsonl");
+        let rows = fixture["rollout"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(&path, format!("{rows}\n")).unwrap();
+        let expected = &fixture["normalizedUser"];
+        let full = orgtrack_core::sources::codex::app::load_codex_app_from_path("runner", &path)
+            .unwrap();
+        let preview = orgtrack_core::sources::codex::app::load_codex_app_initial_window_from_path(
+            "runner", &path, 1,
+        )
+        .unwrap();
+        for chunks in [full, preview.chunks] {
+            let events = normalize_history(chunks, "runner");
+            let users = events
+                .iter()
+                .filter(|event| event.source == core_types::session_event::EventSource::User)
+                .collect::<Vec<_>>();
+            assert_eq!(users.len(), 1);
+            let actual = serde_json::to_value(users[0]).unwrap();
+            // Preview has a byte-offset identity; the rendered fields must
+            // retain the exact same contract as full native history.
+            for (key, value) in expected.as_object().unwrap() {
+                if key != "id" {
+                    assert_eq!(&actual[key], value, "normalized {key}");
+                }
+            }
+            assert!(users[0].result.get("backendPersisted").is_none());
+            assert!(users[0].result.get("deliveryStatus").is_none());
+        }
+    }
+
+    #[test]
     fn managed_native_preview_is_bounded_and_old_bodies_remain_fetchable() {
         check_managed_native_history(128);
     }
@@ -216,6 +276,25 @@ mod tests {
 
     fn check_managed_native_history(turn_count: i64) {
         check_managed_native_history_impl(turn_count, false);
+    }
+
+    #[test]
+    fn native_history_projection_redacts_proxy_errors_replayed_as_assistant_text() {
+        let _sandbox = crate::test_utils::test_env::sandbox();
+        let token = format!("session_{}", "c".repeat(32));
+        let text = format!(
+            "credential_store_read_failed http://127.0.0.1:17930/cli/codex/{token}/v1/responses"
+        );
+        let chunk = ActivityChunk::new("history-redaction", "agent_response", "agent_response")
+            .with_result(json!({"observation": text, "text": text}));
+        let original = serde_json::to_string(&chunk).unwrap();
+        let events = normalize_history(vec![chunk], "history-redaction");
+        assert!(!events.is_empty());
+        let output = serde_json::to_string(&events).unwrap();
+        assert!(!output.contains(&token));
+        assert!(output.contains("credential_store_read_failed"));
+        assert!(output.contains("secret_*******"));
+        assert!(original.contains(&token), "native input is not rewritten");
     }
 
     fn check_managed_native_history_impl(turn_count: i64, streaming_only: bool) {

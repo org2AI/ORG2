@@ -7,7 +7,7 @@
  *
  * Used by:
  * - WorkStationShell (primary sidebar, right panel, bottom panel)
- * - ResizableSplitPanel (Code Editor sidebar)
+ * - ResizableSplitPanel (SplitViewLayout list/detail split)
  * - WorkStation secondary panel (bottom panel height)
  */
 import i18next from "i18next";

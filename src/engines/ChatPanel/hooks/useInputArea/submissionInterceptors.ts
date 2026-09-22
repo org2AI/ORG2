@@ -1,10 +1,10 @@
 import type { useStore } from "jotai";
 
-import { zodActionRegistry } from "@src/ActionSystem/schema/zodRegistry";
 import Message from "@src/components/Message";
 import { chatEventsAtom, eventsAtom } from "@src/engines/SessionCore";
 import type { useSecretScanGuard } from "@src/hooks/security/useSecretScanGuard";
 import type { useSessionCommandActions } from "@src/hooks/session/useSessionPatch";
+import { zodActionRegistry } from "@src/scaffold/ActionSystem/schema/zodRegistry";
 import { sessionByIdAtom } from "@src/store/session";
 import { creatorDefaultExecModeAtom } from "@src/store/session/creatorDefaultExecModeAtom";
 import { creatorDefaultProductModeAtom } from "@src/store/session/creatorDefaultProductModeAtom";

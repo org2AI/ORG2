@@ -234,9 +234,7 @@ export function formatCategoryLabel(
     case "rust_agent":
       return t("chat.importExport.categories.rust");
     case "human_session":
-      return t("chat.importExport.categories.human", {
-        defaultValue: "Work log",
-      });
+      return t("chat.importExport.categories.human");
     case "cursor_ide":
       return t("chat.importExport.categories.cursorIde");
     case "external_history":

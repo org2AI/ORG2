@@ -29,8 +29,6 @@ export function AgentOrgTaskSubject({
   return (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className={`chat-block-title flex min-w-0 flex-1 items-start gap-1 text-left text-sm leading-5 text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none ${done ? "text-text-3! line-through" : ""}`}
       title={task.description || task.subject}
       aria-expanded={expanded}

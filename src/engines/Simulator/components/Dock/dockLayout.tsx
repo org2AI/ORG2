@@ -85,15 +85,12 @@ StationDockIconStrip.displayName = "StationDockIconStrip";
 
 export interface StationDockRowProps {
   children: React.ReactNode;
-  /** Rendered immediately to the right of the icon strip (e.g. keyboard) */
-  trailing?: React.ReactNode;
 }
 
 export const StationDockRow: React.FC<StationDockRowProps> = memo(
-  ({ children, trailing }) => (
+  ({ children }) => (
     <div className="relative flex w-full max-w-full min-w-0 items-center justify-center gap-2">
       {children}
-      {trailing ?? null}
     </div>
   )
 );

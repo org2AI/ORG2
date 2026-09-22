@@ -153,7 +153,7 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
       return actions.find((action) => action.key === "fetch");
     }, [actions, aheadCount, behindCount, needsPublish]);
 
-    const gitActionsLabel = t("workstation.gitActionsTooltip", "Git actions");
+    const gitActionsLabel = t("workstation.gitActionsTooltip");
 
     return (
       <div ref={triggerRef} className="flex h-full">
@@ -259,9 +259,7 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
                       return (
                         <Button
                           layout="custom"
-                          appearance="custom"
                           key={action.key}
-                          htmlType="button"
                           className={classNames(
                             DROPDOWN_CLASSES.menuActionItem,
                             disabled && DROPDOWN_CLASSES.itemDisabled
@@ -285,8 +283,6 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
                     {suggestedAction && (
                       <Button
                         layout="custom"
-                        appearance="custom"
-                        htmlType="button"
                         className={classNames(
                           DROPDOWN_CLASSES.menuActionItem,
                           (isSyncBusy ||
@@ -313,8 +309,6 @@ export const GitSyncStatusMenu: React.FC<GitSyncStatusMenuProps> = memo(
                     <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                     <Button
                       layout="custom"
-                      appearance="custom"
-                      htmlType="button"
                       className={DROPDOWN_CLASSES.menuActionItem}
                       onClick={() => setShowAllActions(true)}
                       role="menuitem"

@@ -224,32 +224,37 @@ pub const ANTI_BOT_DETECTION_SCRIPT: &str = r#"
     // ============================================
     // 6. WebGL Renderer (prevent fingerprint mismatch)
     // ============================================
+    // Chromium engines only. WKWebView already reports the masked
+    // "Apple Inc." / "Apple GPU" pair, so wrapping getParameter there changes
+    // nothing a page can read and only puts a Proxy on every WebGL call.
     try {
-        const webglVendor = isMac ? 'Apple Inc.' : 'Google Inc. (NVIDIA)';
-        const webglRenderer = isMac ? 'Apple GPU' : 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1080 Direct3D11 vs_5_0 ps_5_0, OpenGL 4.5)';
+        if (isChromium) {
+            const webglVendor = 'Google Inc. (NVIDIA)';
+            const webglRenderer = 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1080 Direct3D11 vs_5_0 ps_5_0, OpenGL 4.5)';
 
-        const getParameterHandler = {
-            apply: function(target, thisArg, args) {
-                const param = args[0];
-                // UNMASKED_VENDOR_WEBGL
-                if (param === 37445) return webglVendor;
-                // UNMASKED_RENDERER_WEBGL
-                if (param === 37446) return webglRenderer;
-                return Reflect.apply(target, thisArg, args);
+            const getParameterHandler = {
+                apply: function(target, thisArg, args) {
+                    const param = args[0];
+                    // UNMASKED_VENDOR_WEBGL
+                    if (param === 37445) return webglVendor;
+                    // UNMASKED_RENDERER_WEBGL
+                    if (param === 37446) return webglRenderer;
+                    return Reflect.apply(target, thisArg, args);
+                }
+            };
+
+            if (WebGLRenderingContext.prototype.getParameter) {
+                WebGLRenderingContext.prototype.getParameter = new Proxy(
+                    WebGLRenderingContext.prototype.getParameter,
+                    getParameterHandler
+                );
             }
-        };
-
-        if (WebGLRenderingContext.prototype.getParameter) {
-            WebGLRenderingContext.prototype.getParameter = new Proxy(
-                WebGLRenderingContext.prototype.getParameter,
-                getParameterHandler
-            );
-        }
-        if (typeof WebGL2RenderingContext !== 'undefined' && WebGL2RenderingContext.prototype.getParameter) {
-            WebGL2RenderingContext.prototype.getParameter = new Proxy(
-                WebGL2RenderingContext.prototype.getParameter,
-                getParameterHandler
-            );
+            if (typeof WebGL2RenderingContext !== 'undefined' && WebGL2RenderingContext.prototype.getParameter) {
+                WebGL2RenderingContext.prototype.getParameter = new Proxy(
+                    WebGL2RenderingContext.prototype.getParameter,
+                    getParameterHandler
+                );
+            }
         }
     } catch (e) {}
 
@@ -266,18 +271,7 @@ pub const ANTI_BOT_DETECTION_SCRIPT: &str = r#"
     } catch (e) {}
 
     // ============================================
-    // 8. Performance Timing (reduce precision to match real browsers)
-    // ============================================
-    try {
-        const originalNow = performance.now.bind(performance);
-        performance.now = function() {
-            // Reduce to 0.1ms precision (real browsers have reduced precision for security)
-            return Math.round(originalNow() * 10) / 10;
-        };
-    } catch (e) {}
-
-    // ============================================
-    // 9. Link Interception
+    // 8. Link Interception
     // ============================================
     document.addEventListener('click', function(e) {
         let target = e.target;
@@ -295,7 +289,5 @@ pub const ANTI_BOT_DETECTION_SCRIPT: &str = r#"
             }
         }
     }, true);
-
-    console.log('[Orgii] Anti-detection initialized - Platform:', isMac ? 'macOS/Safari' : isWindows ? 'Windows/Edge' : 'Linux/Chrome');
 })();
 "#;

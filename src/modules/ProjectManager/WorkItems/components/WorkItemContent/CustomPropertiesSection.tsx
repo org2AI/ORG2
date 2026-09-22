@@ -19,6 +19,7 @@ import Checkbox from "@src/components/Checkbox";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import Select, { type SelectOption } from "@src/components/Select";
+import { ActivityHeaderActionButton } from "@src/features/GitHubWork/ActivityTimeline";
 import {
   Add01Icon,
   ArchiveIcon,
@@ -26,7 +27,6 @@ import {
   HugeiconsIcon,
   ListChevronsDownUpIcon,
 } from "@src/icons";
-import { ActivityHeaderActionButton } from "@src/modules/shared/components/ActivityTimeline";
 import type { Person } from "@src/types/core/shared";
 
 import { usePropertyDefinitions } from "../../hooks/usePropertyDefinitions";
@@ -90,8 +90,8 @@ function PropertyValueEditor({
           onCheckedChange={(checked) => void onSave(checked)}
         >
           {value === true
-            ? t("workItems.properties.yes", { defaultValue: "Yes" })
-            : t("workItems.properties.no", { defaultValue: "No" })}
+            ? t("workItems.properties.yes")
+            : t("workItems.properties.no")}
         </Checkbox>
       </div>
     );
@@ -170,9 +170,7 @@ function PropertyValueEditor({
       size="small"
       placeholder={
         property.propertyType === "date"
-          ? t("workItems.properties.datePlaceholder", {
-              defaultValue: "YYYY-MM-DD",
-            })
+          ? t("workItems.properties.datePlaceholder")
           : undefined
       }
       onChange={setDraft}
@@ -305,11 +303,7 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
       (draftType === "select" || draftType === "multi_select") &&
       optionNames.length === 0
     ) {
-      setError(
-        t("workItems.properties.optionsRequired", {
-          defaultValue: "Select properties require comma-separated options.",
-        })
-      );
+      setError(t("workItems.properties.optionsRequired"));
       return;
     }
     setBusyPropertyId("new");
@@ -378,11 +372,7 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
         />
       }
       title={
-        <span className="font-normal">
-          {t("workItems.properties.title", {
-            defaultValue: "Custom properties",
-          })}
-        </span>
+        <span className="font-normal">{t("workItems.properties.title")}</span>
       }
       action={
         editable ? (
@@ -396,10 +386,8 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
             }
             label={
               showCreate
-                ? t("common:actions.cancel", { defaultValue: "Cancel" })
-                : t("workItems.properties.add", {
-                    defaultValue: "Add property",
-                  })
+                ? t("common:actions.cancel")
+                : t("workItems.properties.add")
             }
             onClick={() => setShowCreate((current) => !current)}
             data-testid="work-item-property-add-toggle"
@@ -411,9 +399,7 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
         {error ? (
           <PageNotice
             type="danger"
-            title={t("workItems.properties.updateFailed", {
-              defaultValue: "Property update failed",
-            })}
+            title={t("workItems.properties.updateFailed")}
           >
             {error}
           </PageNotice>
@@ -428,18 +414,14 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
               value={draftName}
               onChange={setDraftName}
               size="small"
-              placeholder={t("workItems.properties.namePlaceholder", {
-                defaultValue: "Property name",
-              })}
+              placeholder={t("workItems.properties.namePlaceholder")}
               data-testid="work-item-property-name"
             />
             <Select
               value={draftType}
               options={typeOptions}
               size="small"
-              ariaLabel={t("workItems.properties.type", {
-                defaultValue: "Property type",
-              })}
+              ariaLabel={t("workItems.properties.type")}
               dataTestId="work-item-property-type"
               onChange={(value) => setDraftType(value as PropertyType)}
             />
@@ -448,9 +430,7 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
                 value={draftOptions}
                 onChange={setDraftOptions}
                 size="small"
-                placeholder={t("workItems.properties.optionsPlaceholder", {
-                  defaultValue: "Options, comma separated",
-                })}
+                placeholder={t("workItems.properties.optionsPlaceholder")}
                 className="md:col-span-2"
                 data-testid="work-item-property-options"
               />
@@ -464,7 +444,7 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
                 disabled={!draftName.trim()}
                 data-testid="work-item-property-create"
               >
-                {t("common:actions.create", { defaultValue: "Create" })}
+                {t("common:actions.create")}
               </Button>
             </div>
           </div>
@@ -472,15 +452,11 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
 
         {isLoading ? (
           <p className="px-0 py-2 text-[12px] text-text-3">
-            {t("workItems.properties.loading", {
-              defaultValue: "Loading properties…",
-            })}
+            {t("workItems.properties.loading")}
           </p>
         ) : definitions.length === 0 ? (
           <p className="px-0 py-2 text-[12px] text-text-3">
-            {t("workItems.properties.empty", {
-              defaultValue: "No custom properties yet.",
-            })}
+            {t("workItems.properties.empty")}
           </p>
         ) : (
           <div className="flex flex-col gap-0.5">
@@ -510,7 +486,6 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
                 {editable ? (
                   <Button
                     variant="tertiary"
-                    appearance="ghost"
                     size="mini"
                     shape="circle"
                     iconOnly
@@ -521,9 +496,7 @@ const CustomPropertiesSection: React.FC<CustomPropertiesSectionProps> = ({
                         size={13}
                       />
                     }
-                    title={t("workItems.properties.archive", {
-                      defaultValue: "Archive property",
-                    })}
+                    title={t("workItems.properties.archive")}
                     aria-label={t("workItems.properties.archiveNamed", {
                       defaultValue: `Archive ${property.name}`,
                       name: property.name,

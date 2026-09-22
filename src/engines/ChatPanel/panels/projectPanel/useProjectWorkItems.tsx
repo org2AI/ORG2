@@ -261,9 +261,7 @@ export function useProjectWorkItems(
   const handleAddKanbanTask = useCallback(
     async (status: TaskStatus) => {
       await createWorkItem({
-        title: t("projects:workItems.newWorkItemName", {
-          defaultValue: "New Work Item",
-        }),
+        title: t("projects:workItems.newWorkItemName"),
         projectId: selectedProject.project.id,
         status: status || WORK_ITEMS_DEFAULT_STATUS,
       });
@@ -347,7 +345,6 @@ export function useProjectWorkItems(
           shortcutId="workitems_search"
         >
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             iconOnly

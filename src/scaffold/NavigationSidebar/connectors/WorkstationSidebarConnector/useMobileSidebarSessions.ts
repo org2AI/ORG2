@@ -12,6 +12,7 @@ import {
 import { createLogger } from "@src/hooks/logger";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import type { Session } from "@src/store/session";
+import { isMainAppWindow } from "@src/util/platform/tauri/windowIdentity";
 import { isSessionInProgress } from "@src/util/session/sessionInProgress";
 
 import { NO_WORKSPACE_KEY } from "../types";
@@ -72,7 +73,7 @@ export function projectMobileSidebarSessions({
   return rows;
 }
 
-/** Mounted with the desktop connector, even when another sidebar view is visible. */
+/** Owned by the application roster provider, independent of sidebar views. */
 export function useMobileSidebarSessions({
   scope: orgScope,
   loading,
@@ -90,6 +91,8 @@ export function useMobileSidebarSessions({
   const owner = useRef<symbol | null>(null);
   const previousScope = useRef<string | null>(null);
   useEffect(() => {
+    // Detached windows share Rust state but must not replace the main roster.
+    if (!isMainAppWindow()) return;
     const token = publisher.acquire();
     owner.current = token;
     const revalidate = () => publisher.revalidate(token);

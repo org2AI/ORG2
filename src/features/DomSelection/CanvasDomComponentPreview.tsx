@@ -44,7 +44,7 @@ const CanvasDomComponentPreview: React.FC<CanvasDomComponentPreviewProps> =
     return (
       <div className="max-h-28 w-full overflow-hidden rounded-lg border border-border-2 bg-bg-1">
         <iframe
-          title={t("domSelection.previewTitle", "Canvas selection preview")}
+          title={t("domSelection.previewTitle")}
           sandbox=""
           srcDoc={srcDoc}
           tabIndex={-1}

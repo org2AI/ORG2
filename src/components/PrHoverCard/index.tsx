@@ -21,7 +21,7 @@ import {
 import {
   getPrStatusLabelKey,
   getPrStatusVariant,
-} from "@src/shared/pr/prStatus";
+} from "@src/util/git/pr/prStatus";
 
 export interface PrHoverCardData {
   number: number;
@@ -99,9 +99,7 @@ const PrHoverCardContent: React.FC<PrHoverCardContentProps> = memo(({ pr }) => {
             className="flex min-w-0 items-center"
             data-testid="pr-hover-card-diff-stats"
           >
-            <span className="text-text-3">
-              {t("git.pr.tabs.changes", { defaultValue: "Changes" })}
-            </span>
+            <span className="text-text-3">{t("git.pr.tabs.changes")}</span>
             <span className="mx-1 text-text-4">·</span>
             <DiffStatsBadge
               additions={additions}
@@ -118,9 +116,7 @@ const PrHoverCardContent: React.FC<PrHoverCardContentProps> = memo(({ pr }) => {
       {pr.updated_at && (
         <HoverCardMetadataRow icon={Clock01Icon} dataIcon="clock">
           <div className="truncate text-text-2">
-            <HoverCardMetadataValue
-              label={t("git.issues.updated", { defaultValue: "Last updated" })}
-            >
+            <HoverCardMetadataValue label={t("git.issues.updated")}>
               {formatHoverCardTimeAgo(pr.updated_at, i18n.language)}
             </HoverCardMetadataValue>
           </div>

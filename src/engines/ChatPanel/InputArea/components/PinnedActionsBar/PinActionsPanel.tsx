@@ -201,8 +201,6 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
         <div key={renderKey} className="relative">
           <Button
             layout="custom"
-            appearance="custom"
-            htmlType="button"
             className={`${DROPDOWN_CLASSES.menuControlItem} min-w-0 pr-9!`}
             {...keyboard.getItemProps(filteredItems.indexOf(item))}
           >
@@ -238,7 +236,6 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
 
           <Button
             variant="tertiary"
-            appearance="ghost"
             size="sidebar"
             iconOnly
             className="absolute top-1/2 right-2 -translate-y-1/2"
@@ -327,15 +324,10 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
             </div>
           )}
           {renderSection(
-            t("creator.slashMenu.workspaceSkills", {
-              defaultValue: "Workspace Skills",
-            }),
+            t("creator.slashMenu.workspaceSkills"),
             workspaceSkillItems
           )}
-          {renderSection(
-            t("creator.slashMenu.userSkills", { defaultValue: "User Skills" }),
-            userSkillItems
-          )}
+          {renderSection(t("creator.slashMenu.userSkills"), userSkillItems)}
           {nonSkillItems.map(renderItem)}
         </div>
 
@@ -344,8 +336,6 @@ const PinActionsPanel: React.FC<PinActionsPanelProps> = memo(
           <div className={DROPDOWN_CLASSES.footerContainer}>
             <Button
               layout="custom"
-              appearance="custom"
-              htmlType="button"
               onClick={onUnpinAll}
               className={`${DROPDOWN_CLASSES.menuActionItem} min-w-0`}
               data-dropdown-keyboard-skip="true"

@@ -43,6 +43,8 @@ export interface Location {
 }
 
 export interface SearchFilters {
+  include_globs?: string[];
+  exclude_globs?: string[];
   file_extensions?: string[];
   exclude_dirs?: string[];
   case_sensitive?: boolean;
@@ -66,6 +68,8 @@ export interface SearchResultEvent {
 }
 
 export interface SearchCompleteEvent {
+  budget_exhausted?: boolean;
+  cancelled?: boolean;
   search_id: string;
   emitted_matches: number;
   emitted_files: number;

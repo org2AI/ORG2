@@ -2,8 +2,10 @@
  * useChatViewOrgtrackSummary
  *
  * Fetches the orgtrack-core session summary (commit/file-change rollups)
- * for a session, re-fetching whenever the session id changes and ignoring
- * stale responses from a superseded fetch.
+ * for a session. Each result is tagged with the session it was read for, so
+ * a session switch never shows the previous session's numbers while the new
+ * read is in flight. `reloadKey` re-reads the same session (a round ended,
+ * the agent went idle) and keeps the last value until the fresh one lands.
  */
 import { useEffect, useState } from "react";
 
@@ -15,26 +17,38 @@ import { createLogger } from "@src/hooks/logger";
 
 const logger = createLogger("ChatView");
 
-export function useChatViewOrgtrackSummary(sessionId: string) {
-  const [orgtrackSummary, setOrgtrackSummary] =
-    useState<CoreSessionSummary | null>(null);
+interface LoadedSummary {
+  sessionId: string;
+  summary: CoreSessionSummary | null;
+}
+
+export function useChatViewOrgtrackSummary(
+  sessionId: string,
+  reloadKey?: string
+): CoreSessionSummary | null {
+  const [loaded, setLoaded] = useState<LoadedSummary | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void getOrgtrackSessionSummary(sessionId)
+    getOrgtrackSessionSummary(sessionId)
       .then((summary) => {
-        if (!cancelled) setOrgtrackSummary(summary);
+        if (!cancelled) setLoaded({ sessionId, summary });
       })
       .catch((error: unknown) => {
-        if (!cancelled) {
-          logger.warn("failed to load orgtrack session summary", error);
-          setOrgtrackSummary(null);
-        }
+        if (cancelled) return;
+        logger.warn("failed to load orgtrack session summary", error);
+        // A failed re-read keeps this session's last good summary.
+        setLoaded((previous) =>
+          previous?.sessionId === sessionId
+            ? previous
+            : { sessionId, summary: null }
+        );
       });
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+    // reloadKey is a pure refetch signal for the same session.
+  }, [sessionId, reloadKey]);
 
-  return orgtrackSummary;
+  return loaded?.sessionId === sessionId ? loaded.summary : null;
 }

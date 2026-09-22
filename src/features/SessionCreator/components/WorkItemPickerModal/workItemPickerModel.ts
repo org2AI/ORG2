@@ -10,7 +10,7 @@ import type {
   PullRequestCiStatus,
 } from "@src/api/tauri/github";
 import type { SessionLaunchWorkItemContext } from "@src/engines/SessionCore/hooks/session/useSessionCreator/useSessionLaunch/types";
-import { normalizePrStatus } from "@src/shared/pr/prStatus";
+import { normalizePrStatus } from "@src/util/git/pr/prStatus";
 
 export const WORK_ITEM_PICKER_RESULT_LIMIT = 20;
 const WORK_ITEM_CACHE_MAX_ITEMS = 500;

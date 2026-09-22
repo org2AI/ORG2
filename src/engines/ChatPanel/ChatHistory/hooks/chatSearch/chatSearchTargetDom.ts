@@ -7,10 +7,6 @@ export const SEARCH_TARGET_MESSAGE_ID_ATTR = "data-search-target-message-id";
 export const SEARCH_TARGET_EVENT_ID_ATTR = "data-search-target-event-id";
 export const SEARCH_ACTIVE_ATTR = "data-search-active";
 
-/** @deprecated Prefer SEARCH_TARGET_* — kept for in-flight DOM queries. */
-export const STATION_MESSAGE_ID_ATTR = SEARCH_TARGET_MESSAGE_ID_ATTR;
-export const STATION_EVENT_ID_ATTR = SEARCH_TARGET_EVENT_ID_ATTR;
-
 export interface ChatSearchDomTarget {
   eventId?: string;
   itemId?: string;

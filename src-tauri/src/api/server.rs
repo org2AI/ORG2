@@ -4,19 +4,25 @@
 //! single Axum server bound on port 13847 (high port chosen to avoid OS
 //! service conflicts).
 //!
-//! Every route here — `/git`, `/search`, `/agent`, `/ws`, the automation
-//! webhooks — is unauthenticated, and CORS is fully open (`Any`). Both are
-//! only safe because the server binds loopback unconditionally
-//! ([`mobile_bridge::auth::ide_server_bind_addr`]). Nothing may make this
-//! listener reachable off this machine; the Mobile Remote LAN bridge runs on
-//! its own listener with its own token auth
+//! The server binds loopback unconditionally
+//! ([`mobile_bridge::auth::ide_server_bind_addr`]), which keeps other
+//! machines out but not other origins: any page a browser loads can address
+//! `localhost`. So `/git`, `/search`, `/agent`, `/ws`, the automation webhooks
+//! and the OpenAPI document all sit behind [`local_auth::require_local_client`]
+//! (loopback `Host`, the app's own `Origin`, per-launch token), and CORS only
+//! admits the app's own webviews. The `/hooks/*` routes and the sync webhook
+//! carry their own credentials and are mounted outside that layer.
+//!
+//! Nothing may make this listener reachable off this machine; the Mobile
+//! Remote LAN bridge runs on its own listener with its own token auth
 //! ([`mobile_bridge::spawn_bridge_listener`]).
 use axum::Router;
 use tokio::sync::broadcast;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::timeout::TimeoutLayer;
 use utoipa::OpenApi;
 
+use super::local_auth;
 use super::mobile_bridge;
 use super::websocket_handler;
 
@@ -263,20 +269,48 @@ pub async fn start_server(
         DEFAULT_IDE_SERVER_PORT
     });
     let addr = mobile_bridge::auth::ide_server_bind_addr(port);
+    let app = build_app(ws_tx);
 
-    // Create CORS layer (allow frontend on any localhost port)
+    println!("🚀 Unified IDE server starting on http://{}", addr);
+    println!("📚 Git API: http://{}/git/*", addr);
+    println!("🔍 Search API: http://{}/search/*", addr);
+    println!("📄 File API: http://{}/api/file/*", addr);
+    println!("🤖 Agent API: http://{}/agent/*", addr);
+    println!("🔌 WebSocket: ws://{}/ws", addr);
+
+    // Start server
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    // Publish the live-status endpoint descriptor only once the port is
+    // actually bound, so hook posts never race a half-started server.
+    super::agent_status_ingest::write_endpoint_file(port);
+    // Claim the IDE port first, then let the mobile bridge take its own.
+    mobile_bridge::spawn_bridge_listener(port);
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}
+
+/// Assemble every route this listener serves, with its request check and CORS
+/// policy. Split from [`start_server`] so the wiring can be exercised over a
+/// real socket without binding the IDE port.
+pub(crate) fn build_app(ws_tx: broadcast::Sender<String>) -> Router {
+    // Only the app's own webviews may read responses. The same predicate
+    // backs the request check, so the two cannot disagree.
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(AllowOrigin::predicate(|origin, _request| {
+            local_auth::is_allowed_origin(origin)
+        }))
         .allow_methods(Any)
         .allow_headers(Any);
 
     // Create WebSocket router with state
     let ws_router = Router::new()
         .route("/ws", axum::routing::get(websocket_handler::ws_handler))
-        .with_state(ws_tx.clone());
+        .with_state(ws_tx);
 
-    // Create main app with nested routes
-    let app = Router::new()
+    // Everything the app's own webviews call. Guarded as a whole, so a route
+    // added here is authenticated by construction.
+    let protected = Router::new()
         // OpenAPI spec (machine-readable; no Swagger UI)
         .route(
             "/api-docs/openapi.json",
@@ -300,6 +334,14 @@ pub async fn start_server(
             "/automation/webhook/{*route}",
             axum::routing::post(automation_webhook_handler),
         )
+        // Merge WebSocket router
+        .merge(ws_router)
+        .layer(axum::middleware::from_fn(local_auth::require_local_client));
+
+    // Routes that authenticate themselves, called by processes that are not
+    // the app's webview and cannot obtain its token.
+    Router::new()
+        .merge(protected)
         // Live agent-status ingest: token-authenticated posts from the
         // `--session-provenance-hook` subprocess (see api::agent_status_ingest).
         .route(
@@ -336,32 +378,13 @@ pub async fn start_server(
         // `project_management::sync::webhook_listener` for the full
         // request lifecycle.
         .merge(project_management::sync::webhook_listener::router())
-        // Merge WebSocket router
-        .merge(ws_router)
         // NOTE: the Mobile Remote bridge is deliberately NOT merged here. It
         // is the one surface `mobileRemote.allowLanExposure` may open to the
         // network, so it gets its own listener below rather than riding on
-        // this unauthenticated loopback server.
-        // Apply CORS
-        .layer(cors);
-
-    println!("🚀 Unified IDE server starting on http://{}", addr);
-    println!("📚 Git API: http://{}/git/*", addr);
-    println!("🔍 Search API: http://{}/search/*", addr);
-    println!("📄 File API: http://{}/api/file/*", addr);
-    println!("🤖 Agent API: http://{}/agent/*", addr);
-    println!("🔌 WebSocket: ws://{}/ws", addr);
-
-    // Start server
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    // Publish the live-status endpoint descriptor only once the port is
-    // actually bound, so hook posts never race a half-started server.
-    super::agent_status_ingest::write_endpoint_file(port);
-    // Claim the IDE port first, then let the mobile bridge take its own.
-    mobile_bridge::spawn_bridge_listener(port);
-    axum::serve(listener, app).await?;
-
-    Ok(())
+        // this loopback server.
+        // CORS wraps everything, so preflights are answered before the
+        // request check (a preflight carries no token).
+        .layer(cors)
 }
 
 /// Handler for automation webhook triggers.

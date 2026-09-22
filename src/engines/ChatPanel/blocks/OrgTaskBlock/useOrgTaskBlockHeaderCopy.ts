@@ -70,42 +70,32 @@ export function useOrgTaskBlockHeaderCopy({
           ? t("groupChat.taskHeader.createWithOwner", {
               sender: groupSenderName,
               ownerName,
-              defaultValue: "{{sender}} assigned task to {{ownerName}}",
             })
           : t("groupChat.taskHeader.create", {
               sender: groupSenderName,
-              defaultValue: "{{sender}} assigned task",
             })
         : action === "delete"
           ? t("simulator.replay.messages.bubble.senderTitle.taskDeleted", {
               subject: groupSenderName,
-              defaultValue: "{{subject}} deleted task",
             })
           : updateChangeKind === "status"
             ? t("groupChat.taskHeader.updateStatus", {
                 sender: groupSenderName,
-                defaultValue: "{{sender}} updated task status",
               })
             : t("groupChat.taskHeader.updateDetail", {
                 sender: groupSenderName,
-                defaultValue: "{{sender}} updated task detail",
               })
       : action === "create"
         ? ownerName
           ? t("orgTask.create.titleWithOwner", {
               ownerName,
-              defaultValue: "Assign task to {{ownerName}}",
             })
           : t("orgTask.create.title")
         : action === "delete"
-          ? t("tools.deleted", { defaultValue: "Deleted task" })
+          ? t("tools.deleted")
           : updateChangeKind === "status"
-            ? t("orgTask.update.titleStatus", {
-                defaultValue: "Update task status",
-              })
-            : t("orgTask.update.titleDetail", {
-                defaultValue: "Update task detail",
-              }));
+            ? t("orgTask.update.titleStatus")
+            : t("orgTask.update.titleDetail"));
 
   // Subtitle: only populated when action is "update" + status changed.
   // Reads "Marked as [Pending|In Progress|Completed]" using the same
@@ -119,7 +109,6 @@ export function useOrgTaskBlockHeaderCopy({
     action === "update" && statusChanged && statusLabel
       ? t("orgTask.update.markedAs", {
           status: statusLabel,
-          defaultValue: "Marked as {{status}}",
         })
       : null;
 

@@ -59,6 +59,12 @@ pub struct ExternalHistoryScanResultWire {
     /// against the signatures captured at its last roster reload to decide
     /// whether the sidebar is stale.
     pub source_signatures: std::collections::HashMap<String, String>,
+    /// Sources whose importer failed, keyed to the error. They are reported
+    /// beside the successful sources instead of rejecting the whole request:
+    /// one unreadable store (e.g. a privacy-protected app container) must not
+    /// stop the other sources from being acknowledged as scanned. Failed
+    /// sources never appear in `changed_sources` or `source_signatures`.
+    pub failed_sources: std::collections::HashMap<String, String>,
 }
 
 pub(super) fn external_history_scan_mode(clear: bool) -> ExternalHistoryScanMode {
@@ -154,20 +160,43 @@ async fn external_history_rescan_validated_sources(
 ) -> Result<ExternalHistoryScanResultWire, String> {
     let schedule = external_history_scan_coordinator().schedule(sources.clone(), mode);
     launch_external_history_scan_jobs(schedule.jobs);
-    let results = schedule.waiter.wait().await?;
-    let changed_sources = sources
-        .iter()
-        .filter(|source| results.get(*source).is_some_and(|result| result.changed))
-        .cloned()
-        .collect();
-    let source_signatures = results
-        .into_iter()
-        .map(|(source, result)| (source, result.signature))
-        .collect();
-    Ok(ExternalHistoryScanResultWire {
+    let outcomes = schedule.waiter.wait().await?;
+    Ok(external_history_scan_result_wire(sources, outcomes))
+}
+
+/// Splits per-source outcomes into the wire result, keeping `changed_sources`
+/// in request order.
+pub(super) fn external_history_scan_result_wire(
+    sources: Vec<String>,
+    mut outcomes: std::collections::HashMap<String, ExternalHistorySourceScanOutcome>,
+) -> ExternalHistoryScanResultWire {
+    let mut changed_sources = Vec::new();
+    let mut source_signatures = std::collections::HashMap::with_capacity(sources.len());
+    let mut failed_sources = std::collections::HashMap::new();
+    for source in sources {
+        match outcomes.remove(&source) {
+            Some(Ok(result)) => {
+                if result.changed {
+                    changed_sources.push(source.clone());
+                }
+                source_signatures.insert(source, result.signature);
+            }
+            Some(Err(error)) => {
+                tracing::warn!(
+                    source = %source,
+                    error = %error,
+                    "external history rescan failed for source"
+                );
+                failed_sources.insert(source, error);
+            }
+            None => {}
+        }
+    }
+    ExternalHistoryScanResultWire {
         changed_sources,
         source_signatures,
-    })
+        failed_sources,
+    }
 }
 
 #[tauri::command]
@@ -182,14 +211,22 @@ pub async fn external_history_rescan_source(
     // version changes remain part of those signatures and force the affected
     // records to re-parse without clearing unrelated cached rows.
     let mode = external_history_scan_mode(clear);
-    external_history_rescan_validated_sources(vec![source], mode).await
+    let mut result = external_history_rescan_validated_sources(vec![source.clone()], mode).await?;
+    // A single-source request has nothing else to report, so its failure is
+    // the request's failure.
+    if let Some(error) = result.failed_sources.remove(&source) {
+        return Err(error);
+    }
+    Ok(result)
 }
 
 /// Incrementally update multiple external history sources in one IPC request.
 ///
 /// Sources are processed through one cache connection. This is the app-startup
 /// and scheduled auto-scan path; keeping it batched avoids one frontend/native
-/// round trip per installed provider.
+/// round trip per installed provider. A source whose importer fails is
+/// reported in `failed_sources`; the request only rejects for an invalid
+/// source list or a closed coordinator.
 #[tauri::command]
 pub async fn external_history_rescan_sources(
     sources: Vec<String>,

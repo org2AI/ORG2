@@ -12,13 +12,10 @@
 import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import SaveableTextarea from "@src/components/SaveableTextarea";
 import Switch from "@src/components/Switch";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
 import { useSetting } from "@src/hooks/settings/useSettings";
-import SaveableTextarea from "@src/modules/shared/components/SaveableTextarea";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import { validateCustomPatterns } from "@src/util/secretScan";
 
 const SecuritySection: React.FC = () => {

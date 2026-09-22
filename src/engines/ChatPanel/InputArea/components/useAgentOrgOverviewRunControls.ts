@@ -93,21 +93,11 @@ export function useAgentOrgOverviewRunControls({
   const handleArchiveRun = useCallback(async () => {
     if (!currentSessionId || !canArchive || isArchiving) return;
     const confirmed = await confirmDestructiveAction({
-      title: t("planner.agentOrgOverview.archiveTitle", {
-        defaultValue: "Archive this Team?",
-      }),
+      title: t("planner.agentOrgOverview.archiveTitle"),
       message: isRunning
-        ? t("planner.agentOrgOverview.archiveWorkingWarning", {
-            defaultValue:
-              "Archive is permanent. Tasks currently being executed will be cancelled, and the Team will become read-only.",
-          })
-        : t("planner.agentOrgOverview.archiveWarning", {
-            defaultValue:
-              "Archive is permanent. The Team will become read-only and cannot be resumed.",
-          }),
-      okLabel: t("planner.agentOrgOverview.archiveRun", {
-        defaultValue: "Archive",
-      }),
+        ? t("planner.agentOrgOverview.archiveWorkingWarning")
+        : t("planner.agentOrgOverview.archiveWarning"),
+      okLabel: t("planner.agentOrgOverview.archiveRun"),
       cancelLabel: t("common:actions.cancel"),
     });
     if (!confirmed) return;
@@ -117,11 +107,7 @@ export function useAgentOrgOverviewRunControls({
       await onRefresh();
     } catch (archiveError) {
       logger.error("Failed to Archive Agent Team:", archiveError);
-      Message.error(
-        t("planner.agentOrgOverview.archiveFailed", {
-          defaultValue: "Failed to Archive Team",
-        })
-      );
+      Message.error(t("planner.agentOrgOverview.archiveFailed"));
     } finally {
       setIsArchiving(false);
     }

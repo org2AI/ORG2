@@ -20,6 +20,15 @@ import {
   QueuedConversationRecoveryPendingError,
   QueuedConversationTurnFailedError,
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import {
+  beginQueuedRetry,
+  recordEmptyFailedAttempt,
+  retryLineageEvent,
+  retryLineageEventId,
+  retryLineageForMessage,
+} from "@src/engines/SessionCore/conversations/queuedRetryLineage";
+import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
+import { loadAuthoritativeSessionEvents } from "@src/engines/SessionCore/sync/authoritativeSessionEvents";
 import { cloudConversationAuthorityIsLive } from "@src/features/Org2Cloud/SessionConversation/cloudConversationAuthority";
 import { dispatchQueuedCloudConversation } from "@src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter";
 import { org2CloudRemoteSessionsAtom } from "@src/features/Org2Cloud/org2CloudRemoteSessionsAtom";
@@ -62,6 +71,22 @@ async function dispatchQueuedLocalConversation(
     throw new Error(
       `unsupported local conversation authority: ${root.authority}`
     );
+  }
+  const persisted = await rpc.sessionCore.cache.getEvent({
+    sessionId: root.conversationId,
+    eventId: retryLineageEventId(message.id),
+  });
+  let retryLineage = retryLineageForMessage(
+    persisted ? [persisted] : [],
+    message
+  );
+  const nextLineage = beginQueuedRetry(retryLineage, message);
+  if (nextLineage !== retryLineage) {
+    await eventStoreProxy.append(
+      [retryLineageEvent(root.conversationId, nextLineage)],
+      root.conversationId
+    );
+    retryLineage = nextLineage;
   }
   let runnerReady = false;
   let providerAccepted = message.status === "accepted";
@@ -121,6 +146,24 @@ async function dispatchQueuedLocalConversation(
     // example a model the account cannot use). Nothing landed on the root,
     // so the user's row must carry the reason and stay retryable instead of
     // sitting under "Agent is idle" as if it had been answered.
+    // Persist proof before returning retry ownership to the queue. A crash
+    // must not turn an uncertain/partial failure into a supersedable attempt.
+    try {
+      const native = await loadAuthoritativeSessionEvents(result.sessionId);
+      retryLineage = recordEmptyFailedAttempt(
+        retryLineage,
+        message,
+        native.events
+      );
+      await eventStoreProxy.append(
+        [retryLineageEvent(root.conversationId, retryLineage)],
+        root.conversationId
+      );
+    } catch (error) {
+      throw new QueuedConversationRecoveryPendingError(
+        `Could not persist failed-attempt lineage: ${String(error)}`
+      );
+    }
     throw new QueuedConversationTurnFailedError(
       await localTurnFailureReason(store, result.sessionId)
     );

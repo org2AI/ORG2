@@ -2,8 +2,8 @@ import { useCallback, useState } from "react";
 import { flushSync } from "react-dom";
 
 import type { AppearanceMode } from "@src/config/appearance/globalThemes";
+import { WIKI_OPEN_EVENT } from "@src/features/Wiki/wikiEvents";
 import type { UseAppNavigationReturn } from "@src/hooks/navigation/useAppNavigation";
-import { TUTORIALS_OPEN_EVENT } from "@src/scaffold/Tutorials/tutorialRegistry";
 
 interface UseSidebarSettingsMenuActionsOptions {
   closeAll: () => void;
@@ -12,21 +12,20 @@ interface UseSidebarSettingsMenuActionsOptions {
 }
 
 /**
- * Wiki and account dialog visibility, plus the menu actions that close every
- * popover as they navigate, change the theme or open a dialog.
+ * Account dialog visibility, navigation actions that dismiss the menu, and
+ * in-place appearance updates that leave the menu tree available.
  */
 export function useSidebarSettingsMenuActions({
   closeAll,
   goToSettings,
   handleAppearanceModeChange,
 }: UseSidebarSettingsMenuActionsOptions) {
-  const [showWiki, setShowWiki] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
 
-  const handleOpenOnboarding = useCallback(() => {
+  const handleOpenWiki = useCallback(() => {
     flushSync(closeAll);
-    window.dispatchEvent(new CustomEvent(TUTORIALS_OPEN_EVENT));
+    window.dispatchEvent(new CustomEvent(WIKI_OPEN_EVENT));
   }, [closeAll]);
 
   const handleOpenSettings = useCallback(() => {
@@ -52,19 +51,16 @@ export function useSidebarSettingsMenuActions({
   const handleSelectAppearanceMode = useCallback(
     async (mode: AppearanceMode) => {
       await handleAppearanceModeChange(mode);
-      closeAll();
     },
-    [closeAll, handleAppearanceModeChange]
+    [handleAppearanceModeChange]
   );
 
   return {
-    showWiki,
-    setShowWiki,
+    handleOpenWiki,
     showSignInModal,
     setShowSignInModal,
     showSignOutConfirmation,
     setShowSignOutConfirmation,
-    handleOpenOnboarding,
     handleOpenSettings,
     handleModifyAppearance,
     handleSignIn,

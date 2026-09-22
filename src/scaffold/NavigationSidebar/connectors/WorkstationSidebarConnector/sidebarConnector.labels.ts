@@ -7,7 +7,7 @@ import type { TFunction } from "i18next";
 
 import { getFileManagerRevealLabelKey } from "@src/util/platform/fileManagerLabels";
 
-type TCommon = (key: string, defaultValue?: string) => string;
+type TCommon = (key: string) => string;
 
 interface BuildWorkstationSidebarLabelsParams {
   t: TFunction;
@@ -24,8 +24,8 @@ export function buildWorkstationSidebarLabels({
 }: BuildWorkstationSidebarLabelsParams) {
   const untitledSession = t("sidebar.defaults.untitledSession");
   const newSessionLabel = t("labels.newSession");
-  const pinFolderLabel = tCommon("sessions:chat.pinSession", "Pin");
-  const unpinFolderLabel = tCommon("sessions:chat.unpinSession", "Unpin");
+  const pinFolderLabel = tCommon("sessions:chat.pinSession");
+  const unpinFolderLabel = tCommon("sessions:chat.unpinSession");
   const createProjectLabel = tProjects("projects.createProject");
   const createWorkItemLabel = tProjects("workItems.createWorkItem");
   const workItemsLabel = t("labels.workItems");
@@ -34,23 +34,11 @@ export function buildWorkstationSidebarLabels({
   const importGithubIssuesLabel = tProjects("githubIssuesImport.menuLabel");
   const addOrgLabel = t("collaboration.addOrg");
   const manageOrgLabel = t("collaboration.manageOrg");
-  const moreActionsLabel = tCommon("common:actions.more", "More actions");
-  const pinWorkspaceLabel = tCommon(
-    "sessions:chat.pinWorkspaceGroup",
-    "Pin workspace"
-  );
-  const unpinWorkspaceLabel = tCommon(
-    "sessions:chat.unpinWorkspaceGroup",
-    "Unpin workspace"
-  );
-  const hideWorkspaceLabel = tCommon(
-    "sessions:chat.hideWorkspaceGroup",
-    "Hide workspace"
-  );
-  const unhideWorkspaceLabel = tCommon(
-    "sessions:chat.unhideWorkspaceGroup",
-    "Unhide workspace"
-  );
+  const moreActionsLabel = tCommon("common:actions.more");
+  const pinWorkspaceLabel = tCommon("sessions:chat.pinWorkspaceGroup");
+  const unpinWorkspaceLabel = tCommon("sessions:chat.unpinWorkspaceGroup");
+  const hideWorkspaceLabel = tCommon("sessions:chat.hideWorkspaceGroup");
+  const unhideWorkspaceLabel = tCommon("sessions:chat.unhideWorkspaceGroup");
   const revealWorkspaceLabel = tCommon(getFileManagerRevealLabelKey());
   const workspaceUnavailableTitle = tSessions("chat.workspaceUnavailableTitle");
   const workspaceUnavailableMessage = tSessions(

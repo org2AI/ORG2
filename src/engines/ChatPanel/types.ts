@@ -36,19 +36,6 @@ export interface ChatPanelProps {
   viewportWidth: number | undefined;
   /** Whether to use external width management */
   useExternalWidth?: boolean;
-  /** Session sidebar width for layout calculations */
-  sessionSidebarWidth?: number;
-  /**
-   * Whether ChatPanel is embedded inside another container.
-   * When true, removes external border radius for seamless integration.
-   */
-  embedded?: boolean;
-  /**
-   * Whether the docked chat surface is active for the current station.
-   * When false, the panel shell may stay mounted for layout persistence,
-   * but it must not mount ChatView/SessionCreator or claim session sync.
-   */
-  active?: boolean;
   /**
    * Position of the chat panel.
    * Affects drag handle position, border side, and header ordering.

@@ -12,13 +12,14 @@ import {
   vi,
 } from "vitest";
 
+import { testTranslate } from "@src/test/i18nTestTranslate";
+
 import CanvasShareDialog from "./CanvasShareDialog";
 import type { CanvasShareDialogState } from "./useCanvasShareDialog";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (_key: string, fallback: string | { defaultValue?: string }) =>
-      typeof fallback === "string" ? fallback : (fallback.defaultValue ?? _key),
+    t: (...args: Parameters<typeof testTranslate>) => testTranslate(...args),
     i18n: { language: "en" },
   }),
 }));

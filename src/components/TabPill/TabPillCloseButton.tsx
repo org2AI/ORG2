@@ -37,7 +37,6 @@ export const TabPillCloseButton: React.FC<TabPillCloseButtonProps> = ({
 }) => (
   <Button
     variant="tertiary"
-    appearance="ghost"
     size="sidebar"
     aria-label={title}
     iconOnly
@@ -72,7 +71,6 @@ export const TabPillCloseButton: React.FC<TabPillCloseButtonProps> = ({
         </g>
       </svg>
     }
-    htmlType="button"
     tabIndex={tabIndex}
     title={title}
     data-action={dataAction}

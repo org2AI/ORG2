@@ -4,13 +4,13 @@ import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import TabPill, { type TabPillItem } from "@src/components/TabPill";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
+import { WorkManagementRefreshButton } from "@src/features/GitHubWork/WorkManagementRefreshButton";
 import {
   CheckmarkCircle01Icon,
   CircleDotIcon,
   HugeiconsIcon,
   PencilEdit02Icon,
 } from "@src/icons";
-import { WorkManagementRefreshButton } from "@src/modules/shared/components/WorkManagementRefreshButton";
 
 export function GitHubWorkItemToolbarActions({
   refreshLabel,
@@ -37,7 +37,6 @@ export function GitHubWorkItemToolbarActions({
       {createAction ? (
         <ToolbarTooltip label={createAction.label}>
           <Button
-            htmlType="button"
             variant="tertiary"
             size="small"
             icon={

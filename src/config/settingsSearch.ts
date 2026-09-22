@@ -47,12 +47,24 @@ const APPEARANCE_APP_KEYS = new Set<SettingsKey>([
   "general.translucentSidebar",
   "general.iconStyle",
   "general.dockIcon",
+  "general.highRefreshRate",
   "general.uiScale",
   "general.usePointerCursors",
   "general.applicationUiFont",
   "general.spotlightPlacement",
+  "general.spotlightDimBackground",
+  "general.spotlightDetailCard",
+  "general.buttonTooltipsEnabled",
+  "general.buttonTooltipDelayMs",
   "layout.sidebarSelectedRowOpacity",
   "layout.sidebarEdgeDepthEnabled",
+  "general.chatPanelPosition",
+  "general.chatPaneSplitRatio",
+  "general.modelPickerStyle",
+]);
+
+const APPEARANCE_CHAT_PANEL_KEYS = new Set<SettingsKey>([
+  "general.chatTurnPaginationEnabled",
 ]);
 
 const MY_ROLE_KEYS = new Set<SettingsKey>([
@@ -166,12 +178,19 @@ const SETTINGS_SEARCH_UI_OVERRIDES: Partial<
     labelKey: "settings:general.preventSleep",
   },
   "general.updateChannel": { labelKey: "settings:update.channel" },
+  "general.myStationSharing": { labelKey: "settings:general.myStationSharing" },
   "general.voiceInputEnabled": { labelKey: "settings:general.voiceInput" },
   "layout.sidebarSelectedRowOpacity": {
     labelKey: "settings:general.selectedItemTransparency",
   },
   "layout.sidebarEdgeDepthEnabled": {
     labelKey: "settings:general.sidebarEdgeDepth",
+  },
+  "general.spotlightDimBackground": {
+    labelKey: "settings:general.spotlightDimBackground",
+  },
+  "general.spotlightDetailCard": {
+    labelKey: "settings:general.spotlightDetailCard",
   },
   "general.lightSkin": {
     aliasLabelKeys: ["settings:general.skin", "settings:general.skins"],
@@ -188,14 +207,28 @@ const SETTINGS_SEARCH_UI_OVERRIDES: Partial<
     labelKey: "settings:agentSessions.typingAnimation",
   },
   "chat.typingSpeed": { labelKey: "settings:agentSessions.typingSpeed" },
-  "chat.decryptEffectEnabled": {
-    labelKey: "settings:agentSessions.decryptEffect",
-  },
   "chat.sendOnEnter": { labelKey: "settings:agentSessions.sendOnEnter" },
   "editor.customFontFamily": {
     labelKey: "settings:editor.customFontName",
   },
   "editor.showMinimap": { labelKey: "settings:editor.minimap" },
+  "editor.showBlame": { labelKey: "settings:editor.gitBlame" },
+  "git.sourceControl.colorFileNames": {
+    labelKey: "common:sidebarSettings.colorSourceControlFiles",
+    owner: { navigationItemId: "appearance", tab: "code-editor" },
+  },
+  "general.chatPanelPosition": {
+    labelKey: "common:layoutSettings.chatPanelLocation",
+  },
+  "general.chatPaneSplitRatio": {
+    labelKey: "common:layoutSettings.chatSplitRatio",
+  },
+  "general.modelPickerStyle": {
+    labelKey: "common:layoutSettings.modelPickerStyle",
+  },
+  "general.chatTurnPaginationEnabled": {
+    labelKey: "common:layoutSettings.paginateChatHistory",
+  },
   "editor.showTreeIndentGuides": {
     labelKey: "settings:editor.treeIndentGuides",
   },
@@ -301,14 +334,10 @@ function resolveOwner(
   if (APPEARANCE_APP_KEYS.has(key)) {
     return { navigationItemId: "appearance", tab: "app" };
   }
-  if (
-    key.startsWith("background.") ||
-    key.startsWith("sidebar.") ||
-    key.startsWith("layout.")
-  ) {
+  if (key.startsWith("layout.")) {
     return { navigationItemId: "appearance", tab: "app" };
   }
-  if (key.startsWith("general.chat") || key === "general.modelPickerStyle") {
+  if (APPEARANCE_CHAT_PANEL_KEYS.has(key)) {
     return { navigationItemId: "appearance", tab: "chat-panel" };
   }
   if (MY_ROLE_KEYS.has(key)) return { navigationItemId: "myRoles" };

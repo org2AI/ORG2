@@ -67,13 +67,13 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
   );
 
   const triggerLabel = isAllEvents
-    ? t("simulator.replay.filters.allEvents", "All events")
+    ? t("simulator.replay.filters.allEvents")
     : selectedFilters.length === 1
       ? t(
           FILTER_LABEL_KEYS[selectedFilters[0]],
           FILTER_LABEL_FALLBACKS[selectedFilters[0]]
         )
-      : t("simulator.replay.filters.selectedCount", "{{count}} filters", {
+      : t("simulator.replay.filters.selectedCount", {
           count: selectedFilters.length,
         });
 
@@ -114,9 +114,7 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
     <>
       <Button
         layout="custom"
-        appearance="custom"
         ref={triggerRef as React.Ref<HTMLButtonElement>}
-        htmlType="button"
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -124,7 +122,7 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
         }}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
-        aria-label={t("simulator.replay.filters.tooltip", "Filter events")}
+        aria-label={t("simulator.replay.filters.tooltip")}
         title={triggerLabel}
         className={`pointer-events-auto flex h-5 shrink-0 transform-gpu items-center justify-center rounded-full ${
           iconOnly ? "w-5 px-0" : "max-w-[132px] gap-1 px-1.5"
@@ -176,7 +174,7 @@ export const EventFilterDropdown: React.FC<EventFilterDropdownProps> = ({
                   className="shrink-0"
                 />
                 <span className="flex-1 text-left">
-                  {t("simulator.replay.filters.allEvents", "All events")}
+                  {t("simulator.replay.filters.allEvents")}
                 </span>
               </div>
               <div

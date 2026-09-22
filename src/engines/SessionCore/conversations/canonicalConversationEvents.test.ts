@@ -3,16 +3,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import { loadCanonicalConversationEvents } from "./canonicalConversationEvents";
+import { retryLineageEvent } from "./queuedRetryLineage";
 
 const mocks = vi.hoisted(() => ({
   cliStatus: vi.fn(),
+  loadLineage: vi.fn(async () => []),
   loadAuthoritative: vi.fn(),
   getPersistedEvents: vi.fn(),
   mergeInterrupted: vi.fn(),
 }));
 
 vi.mock("@src/api/tauri/rpc", () => ({
-  rpc: { cli: { status: mocks.cliStatus } },
+  rpc: {
+    cli: { status: mocks.cliStatus },
+    sessionCore: { cache: { loadEvents: mocks.loadLineage } },
+  },
 }));
 vi.mock("@src/engines/SessionCore/sync/authoritativeSessionEvents", () => ({
   loadAuthoritativeSessionEvents: mocks.loadAuthoritative,
@@ -56,6 +61,40 @@ describe("loadCanonicalConversationEvents", () => {
     });
     mocks.getPersistedEvents.mockResolvedValue(projected);
     mocks.mergeInterrupted.mockReturnValue(merged);
+  });
+
+  it("merges a persisted marker once when the authoritative replay already contains it", async () => {
+    const marker = retryLineageEvent("cliagent-test", {
+      version: 1,
+      queueMessageId: "queue",
+      superseded: [],
+    });
+    mocks.loadAuthoritative.mockResolvedValueOnce({
+      events: [...native, marker],
+      source: "cli_history",
+    });
+    mocks.loadLineage.mockResolvedValueOnce([marker] as never);
+    mocks.cliStatus.mockResolvedValueOnce({ status: "completed" });
+    const result = await loadCanonicalConversationEvents("cliagent-test");
+    expect(
+      result.events.filter((event) => event.id === marker.id)
+    ).toHaveLength(1);
+    expect(mocks.getPersistedEvents).not.toHaveBeenCalled();
+  });
+
+  it("retains retry control metadata when a killed CLI has no readable native transcript", async () => {
+    const marker = retryLineageEvent("cliagent-test", {
+      version: 1,
+      queueMessageId: "queue",
+      superseded: [],
+    });
+    mocks.loadAuthoritative.mockRejectedValueOnce(
+      new Error("native unavailable")
+    );
+    mocks.getPersistedEvents.mockResolvedValueOnce([...projected, marker]);
+    mocks.cliStatus.mockResolvedValueOnce({ status: "failed" });
+    const result = await loadCanonicalConversationEvents("cliagent-test");
+    expect(result.events).toContain(marker);
   });
 
   it.each(["failed", "error", "timeout", "cancelled", "abandoned"])(

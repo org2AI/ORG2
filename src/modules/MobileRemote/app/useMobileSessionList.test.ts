@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 
 import type { MobileRpcClient } from "../connection/mobileRpcClient";
+import type { MobileSessionRow } from "../connection/types";
 import { useMobileSessionList } from "./useMobileSessionList";
 
 describe("useMobileSessionList", () => {
@@ -48,7 +49,10 @@ describe("useMobileSessionList", () => {
       await act(async () => roster.resetSessions());
       expect(roster.sessionsHasMore).toBe(false);
       await act(async () => roster.requestSessionList(client));
-      expect(call).toHaveBeenLastCalledWith("session/list", { offset: 0 });
+      expect(call).toHaveBeenLastCalledWith("session/list", {
+        offset: 0,
+        limit: 200,
+      });
     } finally {
       await act(async () => root.unmount());
       env.IS_REACT_ACT_ENVIRONMENT = false;
@@ -154,6 +158,66 @@ describe("useMobileSessionList", () => {
       });
       expect(oldCall).toHaveBeenCalledTimes(1);
       expect(roster.sessions.map((row) => row.id)).toEqual(["new"]);
+    } finally {
+      await act(async () => root.unmount());
+      env.IS_REACT_ACT_ENVIRONMENT = false;
+    }
+  });
+
+  it("starts roster preparation before commit without waiting for it", async () => {
+    const env = globalThis as typeof globalThis & {
+      IS_REACT_ACT_ENVIRONMENT?: boolean;
+    };
+    env.IS_REACT_ACT_ENVIRONMENT = true;
+    const rows = [
+      {
+        id: "codexapp-imported",
+        name: "Imported Codex",
+        status: "idle" as const,
+        sendCapability: "external_codex" as const,
+      },
+    ];
+    let finishPreparation!: () => void;
+    const prepareSessions = vi.fn(
+      (
+        _client: MobileRpcClient,
+        _rows: readonly MobileSessionRow[],
+        _isCurrent: () => boolean
+      ) =>
+        new Promise<void>((resolve) => {
+          finishPreparation = resolve;
+        })
+    );
+    const client = {
+      call: vi.fn().mockResolvedValue({ sessions: rows, hasMore: false }),
+    } as unknown as MobileRpcClient;
+    const clientRef = { current: client as MobileRpcClient | null };
+    let roster!: ReturnType<typeof useMobileSessionList>;
+    function Probe() {
+      const value = useMobileSessionList(clientRef, prepareSessions);
+      React.useLayoutEffect(() => {
+        roster = value;
+      });
+      return null;
+    }
+    const root = createRoot(document.createElement("div"));
+    try {
+      await act(async () => root.render(React.createElement(Probe)));
+      await act(async () => {
+        await roster.requestSessionList(client);
+      });
+      expect(prepareSessions).toHaveBeenCalledWith(
+        client,
+        rows,
+        expect.any(Function)
+      );
+      expect(prepareSessions.mock.calls[0][2]()).toBe(true);
+      expect(roster.sessions).toEqual(rows);
+      await act(async () => {
+        finishPreparation();
+        await Promise.resolve();
+      });
+      expect(roster.sessions).toEqual(rows);
     } finally {
       await act(async () => root.unmount());
       env.IS_REACT_ACT_ENVIRONMENT = false;

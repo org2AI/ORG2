@@ -98,7 +98,11 @@ const Select = forwardRef<HTMLDivElement, SelectProps>(
     const { t } = useTranslation();
     const { isDark } = useCurrentTheme();
 
-    const resolvedPlaceholder = placeholder || t("placeholders.pleaseSelect");
+    // While options are still loading, "Select" misreads as an empty
+    // choice; name the pending state instead unless the caller set a label.
+    const resolvedPlaceholder =
+      placeholder ||
+      t(loading ? "placeholders.loading" : "placeholders.pleaseSelect");
 
     // ---- Value management ----
     const {

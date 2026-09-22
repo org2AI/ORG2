@@ -13,15 +13,12 @@
 import { useAtomValue } from "jotai";
 import React, { forwardRef, useCallback } from "react";
 
+import DisclosureChevron from "@src/components/DisclosureChevron";
 import FileTypeIcon from "@src/components/FileTypeIcon";
 import { SidebarRowContent } from "@src/components/SidebarRow/SidebarRowContent";
+import { getStatusColorForFile } from "@src/config/gitStatus";
 import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
-import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
-  CornerDownRightIcon,
-  HugeiconsIcon,
-} from "@src/icons";
+import { CornerDownRightIcon, HugeiconsIcon } from "@src/icons";
 import { editorShowTreeIndentGuidesAtom } from "@src/store/ui/editorSettingsAtom";
 
 import {
@@ -45,6 +42,8 @@ export const TreeRowBase = React.memo(
         depth,
         isSelected = false,
         isMultiSelected = false,
+        gitStatus,
+        colorLabelByGitStatus = false,
         onClick,
         onContextMenu,
         className = "",
@@ -110,6 +109,10 @@ export const TreeRowBase = React.memo(
         }
         return "text-text-2";
       };
+      const labelTextColorClass =
+        !isIgnored && !isSelected && colorLabelByGitStatus && gitStatus
+          ? getStatusColorForFile(gitStatus.status, gitStatus.staged)
+          : getTextColorClass();
 
       return (
         <div
@@ -163,21 +166,11 @@ export const TreeRowBase = React.memo(
                     ) : null
                   ) : isDirectory ? (
                     <div className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                      {isExpanded ? (
-                        <HugeiconsIcon
-                          icon={ArrowDown01Icon}
-                          data-icon="chevron-down"
-                          size={CHEVRON_SIZE}
-                          className="text-text-3"
-                        />
-                      ) : (
-                        <HugeiconsIcon
-                          icon={ArrowRight01Icon}
-                          data-icon="chevron-right"
-                          size={CHEVRON_SIZE}
-                          className="text-text-3"
-                        />
-                      )}
+                      <DisclosureChevron
+                        expanded={isExpanded}
+                        size={CHEVRON_SIZE}
+                        className="text-text-3"
+                      />
                     </div>
                   ) : (
                     <FileTypeIcon
@@ -217,7 +210,7 @@ export const TreeRowBase = React.memo(
                     : node.path || node.name
                   : undefined
               }
-              labelClassName={`text-[13px] ${isSelected ? "font-medium" : ""} ${getTextColorClass()}`}
+              labelClassName={`text-[13px] ${isSelected ? "font-medium" : ""} ${labelTextColorClass}`}
               trailing={
                 <>
                   {/* Additional content (action buttons, status badge, etc.) */}
@@ -229,7 +222,6 @@ export const TreeRowBase = React.memo(
                       data-icon="corner-down-right"
                       size={12}
                       className="shrink-0 text-text-3"
-                      aria-label="symlink"
                     />
                   )}
                 </>

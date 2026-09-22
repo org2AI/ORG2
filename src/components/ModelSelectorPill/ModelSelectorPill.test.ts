@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import messages from "@src/i18n/locales/en/common.json";
 import sessionMessages from "@src/i18n/locales/en/sessions.json";
+import { separateEffortPillAtom } from "@src/store/session/separateEffortPillAtom";
 import { activeOverlayCountAtom } from "@src/store/ui/overlayLayerAtom";
 import { buildVariantEditOptions } from "@src/util/variantEditOptions";
 
@@ -130,7 +131,8 @@ describe("ModelSelectorPill combined settings", () => {
   function render(
     initial = "gpt-5.6-sol-xhigh",
     editable = true,
-    defaultAdvanced = false
+    defaultAdvanced = false,
+    harnessSwitch?: { label: string; onClick: () => void }
   ) {
     function Harness() {
       const [model, setModel] = useState(initial);
@@ -147,6 +149,7 @@ describe("ModelSelectorPill combined settings", () => {
             }
           : undefined,
         settingsMenuDefaultAdvanced: defaultAdvanced,
+        harnessSwitch,
         dataTestId: "model-pill",
         effortDataTestId: "effort-pill",
       });
@@ -449,22 +452,92 @@ describe("ModelSelectorPill combined settings", () => {
   });
 
   it.each([false, true])(
-    "keeps the existing model-only control when levels cannot be picked (editable=%s)",
+    "opens the same compact menu without a slider when effort cannot be edited (editable=%s)",
     (editable) => {
       if (editable) fixture.models = ["gpt-5.6-sol"];
       render(editable ? "gpt-5.6-sol" : "gpt-5.6-sol-xhigh", editable);
-      click("model-pill");
+      openCompact();
+      expect(openModel).not.toHaveBeenCalled();
+      expect(document.querySelector('[role="slider"]')).toBeNull();
+      click("model-settings-switch-model");
       expect(openModel).toHaveBeenCalledOnce();
-      expect(document.querySelector('[role="menu"]')).toBeNull();
       expect(container.querySelectorAll("button")).toHaveLength(1);
     }
   );
 
-  it("keeps the existing speed-only control when there are no selectable effort levels", () => {
+  it("keeps the speed toggle in the compact menu without effort levels", () => {
     fixture.models = ["composer-2.5", "composer-2.5-fast"];
     render("composer-2.5");
-    expect(element("effort-pill")).not.toBeNull();
+    openCompact();
+    expect(element("model-settings-fast-toggle")).not.toBeNull();
+    expect(document.querySelector('[role="slider"]')).toBeNull();
+    click("model-settings-fast-toggle");
+    expect(apply).toHaveBeenCalledWith("composer-2.5-fast");
+  });
+  it("opens the model picker directly before any model has been selected", () => {
+    act(() =>
+      root.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(ModelSelectorPill, {
+            selection: null,
+            defaultLabel: "Select model",
+            active: false,
+            onClick: openModel,
+            harnessSwitch: { label: "Codex", onClick: vi.fn() },
+            dataTestId: "model-pill",
+          })
+        )
+      )
+    );
+    // The pill owns no popup in this state, so it must not advertise one.
+    expect(element("model-pill").hasAttribute("aria-expanded")).toBe(false);
+    openCompact();
+    expect(openModel).toHaveBeenCalledOnce();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(
+      document.querySelector('[data-testid="model-settings-switch-model"]')
+    ).toBeNull();
+    expect(store.get(activeOverlayCountAtom)).toBe(0);
+  });
+
+  it("shows the current harness and dismisses the compact menu before switching", () => {
+    const switchHarness = vi.fn();
+    render("gpt-5.6-sol-xhigh", true, false, {
+      label: "Codex",
+      onClick: switchHarness,
+    });
+    openCompact();
+    expect(element("model-selector-switch-harness").textContent).toBe("Codex");
+    click("model-selector-switch-harness");
+    expect(switchHarness).toHaveBeenCalledOnce();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(openModel).not.toHaveBeenCalled();
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it("splits model and effort into one group when the effort pill is separate", () => {
+    store.set(separateEffortPillAtom, true);
+    render();
+    expect(element("model-pill").textContent).toBe("GPT 5.6 Sol");
+    expect(element("effort-pill").textContent).toBe("Extra High");
+    expect(element("model-pill").parentElement).toBe(
+      element("effort-pill").parentElement
+    );
+    expect(element("effort-pill").className).toContain("px-2!");
+
     click("model-pill");
     expect(openModel).toHaveBeenCalledOnce();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+
+    click("effort-pill");
+    act(() => vi.advanceTimersByTime(32));
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(element("effort-pill").getAttribute("aria-expanded")).toBe("true");
+    click("model-settings-fast-toggle");
+    expect(apply).toHaveBeenCalledWith("gpt-5.6-sol-xhigh-fast");
+    key("Escape");
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 });

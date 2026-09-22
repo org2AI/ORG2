@@ -2,9 +2,9 @@ import type { TFunction } from "i18next";
 import type React from "react";
 
 import { formatAgentType } from "@src/assets/providers";
+import { InfoRow } from "@src/components/layout/blocks/InfoRow";
 import type { AvailableAgent } from "@src/config/cliAgents";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { InfoRow } from "@src/modules/shared/layouts/blocks/InfoRow";
 
 import { AccountSourceBreadcrumb } from "../../Models/Table/AccountSourceBreadcrumb";
 import { InlineCardColumnStack } from "../../shared/InlineCardPrimitives";

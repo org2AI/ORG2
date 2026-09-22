@@ -4,7 +4,7 @@
 //! mapper in [`super::record`] so the column list stays in one place.
 
 use chrono::Utc;
-use rusqlite::{params, Result as SqliteResult};
+use rusqlite::{params, OptionalExtension, Result as SqliteResult};
 use tracing::warn;
 
 use crate::persistence::db_helpers as shared;
@@ -18,6 +18,7 @@ const SESSION_DELETE_TABLES: &[&str] = &[
     "agent_todos",
     "agent_snapshots",
     "agent_file_resolutions",
+    "session_auxiliary_usage",
     "session_token_usage",
     "session_llm_usage_spans",
     "session_tool_usage",
@@ -87,14 +88,15 @@ INSERT INTO agent_sessions (
     worktree_branch, base_branch, merge_status,
     project_slug, agent_definition_id, org_member_id, parent_session_id, parent_event_id,
     workspace_additional_json, key_source, agent_exec_mode, native_harness_type,
-    draft_text, reply_target_event_id, pinned, product_mode
+    draft_text, reply_target_event_id, pinned, product_mode, credential_source
 )
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35)
 ON CONFLICT(session_id) DO UPDATE SET
     name                       = excluded.name,
     status                     = excluded.status,
-    model                      = COALESCE(excluded.model, agent_sessions.model),
-    account_id                 = COALESCE(excluded.account_id, agent_sessions.account_id),
+    model                      = CASE WHEN agent_sessions.credential_source IS NULL THEN COALESCE(excluded.model, agent_sessions.model) ELSE agent_sessions.model END,
+    account_id                 = CASE WHEN agent_sessions.credential_source IS NULL THEN COALESCE(excluded.account_id, agent_sessions.account_id) ELSE NULL END,
+    credential_source          = agent_sessions.credential_source,
     user_input                 = excluded.user_input,
     updated_at                 = excluded.updated_at,
     session_type               = excluded.session_type,
@@ -162,10 +164,48 @@ ON CONFLICT(session_id) DO UPDATE SET
     product_mode               = COALESCE(agent_sessions.product_mode, excluded.product_mode)
 "#;
 
+fn validate_upsert_owner(
+    conn: &rusqlite::Connection,
+    record: &UnifiedSessionRecord,
+) -> SqliteResult<()> {
+    if record.credential_source.is_some()
+        && (record.account_id.is_some() || record.native_harness_type.is_some())
+    {
+        return Err(rusqlite::Error::InvalidParameterName(
+            "Conflicting session credential owners".into(),
+        ));
+    }
+    let existing_source: Option<Option<String>> = conn
+        .query_row(
+            "SELECT credential_source FROM agent_sessions WHERE session_id = ?1",
+            [&record.session_id],
+            |r| r.get(0),
+        )
+        .optional()?;
+    if record.credential_source.is_some()
+        && existing_source
+            .as_ref()
+            .is_some_and(|s| s != &record.credential_source)
+    {
+        return Err(rusqlite::Error::InvalidParameterName(
+            "Session credential source is immutable".into(),
+        ));
+    }
+    if existing_source.flatten().is_some()
+        && (record.account_id.is_some() || record.native_harness_type.is_some())
+    {
+        return Err(rusqlite::Error::InvalidParameterName(
+            "Package session cannot change credential owner".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Upsert a unified session.
 pub fn upsert_session(record: &UnifiedSessionRecord) -> SqliteResult<()> {
     with_sessions_writer(|| -> SqliteResult<()> {
         let conn = get_connection()?;
+        validate_upsert_owner(&conn, record)?;
         let key_source_str = record.key_source.as_ref();
         conn.execute(
             UPSERT_SESSION_SQL,
@@ -204,6 +244,7 @@ pub fn upsert_session(record: &UnifiedSessionRecord) -> SqliteResult<()> {
                 record.reply_target_event_id,
                 record.pinned as i64,
                 record.product_mode,
+                record.credential_source,
             ],
         )?;
         Ok(())
@@ -567,6 +608,19 @@ pub fn update_name(session_id: &str, name: &str) -> SqliteResult<bool> {
 pub fn update_model(session_id: &str, model: &str) -> SqliteResult<()> {
     with_sessions_writer(|| -> SqliteResult<()> {
         let conn = get_connection()?;
+        let source: Option<String> = conn
+            .query_row(
+                "SELECT credential_source FROM agent_sessions WHERE session_id = ?1",
+                [session_id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .flatten();
+        if let Some(source) = source {
+            crate::providers::dynamic::build(&source, model).map_err(|_| {
+                rusqlite::Error::InvalidParameterName("Package session model mismatch".into())
+            })?;
+        }
         conn.execute(
             "UPDATE agent_sessions SET model = ?2 WHERE session_id = ?1",
             params![session_id, model],
@@ -582,6 +636,19 @@ pub fn update_model(session_id: &str, model: &str) -> SqliteResult<()> {
 pub fn update_account_id(session_id: &str, account_id: &str) -> SqliteResult<()> {
     with_sessions_writer(|| -> SqliteResult<()> {
         let conn = get_connection()?;
+        let source: Option<String> = conn
+            .query_row(
+                "SELECT credential_source FROM agent_sessions WHERE session_id = ?1",
+                [session_id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .flatten();
+        if source.is_some() {
+            return Err(rusqlite::Error::InvalidParameterName(
+                "Package session cannot switch to an Account Key".into(),
+            ));
+        }
         conn.execute(
             "UPDATE agent_sessions SET account_id = ?2 WHERE session_id = ?1",
             params![session_id, account_id],
@@ -607,6 +674,24 @@ pub fn update_model_and_account(
 ) -> SqliteResult<bool> {
     let changed = with_sessions_writer(|| -> SqliteResult<bool> {
         let conn = get_connection()?;
+        let source: Option<String> = conn
+            .query_row(
+                "SELECT credential_source FROM agent_sessions WHERE session_id = ?1",
+                [session_id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .flatten();
+        if let Some(source) = source {
+            if account_id.is_some() {
+                return Err(rusqlite::Error::InvalidParameterName(
+                    "Package session cannot switch to an Account Key".into(),
+                ));
+            }
+            crate::providers::dynamic::build(&source, model).map_err(|_| {
+                rusqlite::Error::InvalidParameterName("Package session model mismatch".into())
+            })?;
+        }
         let affected = if let Some(acc_id) = account_id {
             conn.execute(
                 "UPDATE agent_sessions SET model = ?2, account_id = ?3 WHERE session_id = ?1",
@@ -1058,6 +1143,7 @@ mod tests {
             key_source TEXT NOT NULL DEFAULT 'own_key',
             agent_exec_mode TEXT,
             native_harness_type TEXT,
+        credential_source TEXT,
             draft_text TEXT,
             reply_target_event_id TEXT,
             pinned INTEGER NOT NULL DEFAULT 0,
@@ -1154,9 +1240,52 @@ mod tests {
                 record.reply_target_event_id,
                 record.pinned as i64,
                 record.product_mode,
+                record.credential_source,
             ],
         )
         .unwrap();
+    }
+
+    #[test]
+    fn package_owner_survives_background_upserts_and_rejects_account_harness_takeover() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(TEST_SCHEMA).unwrap();
+        let mut package = UnifiedSessionRecord {
+            session_id: "native_package".into(),
+            credential_source: Some("market:metadata-only".into()),
+            model: Some("selected-model".into()),
+            ..Default::default()
+        };
+        validate_upsert_owner(&conn, &package).unwrap();
+        upsert_into(&conn, &package);
+        let restored = select_one(&conn, &package.session_id);
+        assert_eq!(restored.credential_source, package.credential_source);
+        assert_eq!(restored.account_id, None);
+        package.credential_source = None;
+        package.model = Some("background-default".into());
+        validate_upsert_owner(&conn, &package).unwrap();
+        upsert_into(&conn, &package);
+        let restored = select_one(&conn, &package.session_id);
+        assert_eq!(
+            restored.credential_source.as_deref(),
+            Some("market:metadata-only")
+        );
+        assert_eq!(restored.model.as_deref(), Some("selected-model"));
+        package.account_id = Some("default-account".into());
+        assert!(validate_upsert_owner(&conn, &package).is_err());
+        package.account_id = None;
+        package.native_harness_type = Some("codex".into());
+        assert!(validate_upsert_owner(&conn, &package).is_err());
+        package.native_harness_type = None;
+        package.credential_source = Some("market:other-selection".into());
+        assert!(validate_upsert_owner(&conn, &package).is_err());
+        package.session_id = "ordinary_account".into();
+        package.credential_source = None;
+        package.account_id = Some("explicit-account".into());
+        upsert_into(&conn, &package);
+        package.account_id = None;
+        package.credential_source = Some("market:metadata-only".into());
+        assert!(validate_upsert_owner(&conn, &package).is_err());
     }
 
     fn select_one(conn: &rusqlite::Connection, session_id: &str) -> UnifiedSessionRecord {

@@ -6,7 +6,7 @@
  * `spotlightActionDefinitions.ts` so the type surface can be imported
  * without pulling in the action tables (and their icon imports).
  */
-import type { ActionId } from "@src/ActionSystem";
+import type { ActionId } from "@src/scaffold/ActionSystem";
 
 import type { SpotlightItem } from "../../types";
 

@@ -367,7 +367,7 @@ mod tests {
         );
         event.display_text = format!("{context}{body}");
         let compacted = compact_event_for_snapshot(&event);
-        assert!(compacted.display_text.ends_with(body));
+        assert_eq!(compacted.display_text, "  preserve code indentation\n");
         assert!(!compacted.display_text.contains("orgii_provider_context"));
         assert!(!compacted
             .payload_refs

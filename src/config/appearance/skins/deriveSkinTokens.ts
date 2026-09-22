@@ -118,6 +118,7 @@ export function deriveSkinTokens(
   const pageSurface = seed.surface;
   const recessedSurface = isLight ? lift(0.05) : recede(0.25);
   const editorSurface = isLight ? pageSurface : recede(0.3);
+  const textSelection = tint(seed.accent, isLight ? 0.28 : 0.5);
 
   const tokens: SkinTokens = {
     // Surfaces
@@ -172,10 +173,10 @@ export function deriveSkinTokens(
     "--cm-editor-gutter-bg": editorSurface,
     "--cm-editor-foreground": seed.ink,
     "--cm-editor-gutter-fg": fade(isLight ? 0.5 : 0.45),
-    "--cm-editor-selection": tint(seed.accent, isLight ? 0.2 : 0.45),
+    "--cm-editor-selection": textSelection,
     "--cm-editor-line-highlight": isLight ? "transparent" : rgba(ink, 0.06),
-    "--text-selection": tint(seed.accent, isLight ? 0.28 : 0.5),
-    "--terminal-selection": tint(seed.accent, isLight ? 0.2 : 0.45),
+    "--text-selection": textSelection,
+    "--terminal-selection": textSelection,
 
     // Sidebar
     "--sidebar-bg": rgba(
@@ -215,6 +216,21 @@ export function deriveSkinTokens(
     ? skillRamp[4]
     : skillRamp[6];
   tokens["--color-merged-button-contrast"] = readableOn(mergedBase);
+
+  // Filled success buttons. On dark skins success-6 is a light text green, so
+  // the fill steps down the ramp to a saturated green; hover and press go one
+  // step darker, like the primary fill.
+  const successFill = isLight ? successRamp[5] : successRamp[3];
+  tokens["--color-success-button-bg"] = successFill;
+  tokens["--color-success-button-hover"] = isLight
+    ? successRamp[6]
+    : successRamp[2];
+  tokens["--color-success-button-active"] = isLight
+    ? successRamp[6]
+    : successRamp[2];
+  tokens["--color-success-button-contrast"] = readableOn(
+    parseHex(successFill) ?? ink
+  );
 
   assignSyntaxTokens(tokens, seed, fade);
 

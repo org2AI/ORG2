@@ -9,7 +9,6 @@
  * reads can cause layout thrashing.
  *
  * Used by:
- * - DatabaseManager (left panel resize)
  * - Browser (left panel resize)
  * - BrowserInspector (DevTools panel resize)
  * - CodeEditor BottomPanel (vertical resize)

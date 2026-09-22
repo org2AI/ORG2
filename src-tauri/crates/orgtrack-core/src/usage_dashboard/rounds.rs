@@ -26,6 +26,7 @@ struct NativeTurn {
     output_tokens: i64,
     cache_read_tokens: i64,
     cache_write_tokens: i64,
+    usage_purpose: Option<String>,
 }
 
 struct ScopedSessionTableGuard<'a> {
@@ -88,7 +89,13 @@ fn prepare_scoped_session_table<'a>(
     Ok(ScopedSessionTableGuard { conn })
 }
 
-fn native_turn_query(filter: &UsageFilter) -> (String, Vec<String>) {
+fn native_turn_query(filter: &UsageFilter, has_auxiliary_usage: bool) -> (String, Vec<String>) {
+    // Legacy databases and orgtrack-cli do not have auxiliary receipts yet.
+    let purpose = if has_auxiliary_usage {
+        "(SELECT aux.purpose FROM session_auxiliary_usage aux WHERE aux.token_usage_id = stu.id)"
+    } else {
+        "NULL"
+    };
     let mut clauses = vec!["scoped.is_native = 1".to_string()];
     let mut params = Vec::new();
     if let Some(start) = filter.start_ms.and_then(rfc3339_ms_bound) {
@@ -106,7 +113,7 @@ fn native_turn_query(filter: &UsageFilter) -> (String, Vec<String>) {
         format!(
             "SELECT stu.id, stu.session_id, stu.created_at, stu.model,
                     stu.input_tokens, stu.output_tokens,
-                    stu.cache_read_tokens, stu.cache_write_tokens
+                    stu.cache_read_tokens, stu.cache_write_tokens, {purpose}
              FROM session_token_usage stu
              INNER JOIN {SCOPED_SESSION_TABLE} scoped
                      ON scoped.session_id = stu.session_id
@@ -119,7 +126,7 @@ fn native_turn_query(filter: &UsageFilter) -> (String, Vec<String>) {
 }
 
 fn fetch_native_turns(conn: &Connection, filter: &UsageFilter) -> Result<Vec<NativeTurn>, String> {
-    let (sql, params) = native_turn_query(filter);
+    let (sql, params) = native_turn_query(filter, table_exists(conn, "session_auxiliary_usage"));
     let mut statement = conn.prepare(&sql).map_err(|err| err.to_string())?;
     let rows = statement
         .query_map(rusqlite::params_from_iter(params), |row| {
@@ -132,6 +139,7 @@ fn fetch_native_turns(conn: &Connection, filter: &UsageFilter) -> Result<Vec<Nat
                 output_tokens: row.get(5)?,
                 cache_read_tokens: row.get(6)?,
                 cache_write_tokens: row.get(7)?,
+                usage_purpose: row.get(8)?,
             })
         })
         .map_err(|err| err.to_string())?;
@@ -174,6 +182,8 @@ fn turn_cost(
 pub struct UsageRoundRow {
     /// `session_id#stable_database_row_or_sequence_id`.
     pub round_id: String,
+    /// Auxiliary activity included in the owning session totals.
+    pub usage_purpose: Option<String>,
     pub session_id: String,
     pub session_name: String,
     pub bucket: String,
@@ -215,6 +225,7 @@ fn build_round_row(
     let cost = turn_cost(model.as_deref(), input, output, cache_write, cache_read);
     UsageRoundRow {
         round_id: format!("{}#{stable_key}", session.session_id),
+        usage_purpose: None,
         session_id: session.session_id.clone(),
         session_name: session.name.clone(),
         bucket: session.bucket.clone(),
@@ -361,7 +372,7 @@ fn visit_rounds_inner(
                 if !filter.contains(ms) {
                     continue;
                 }
-                visit(build_round_row(
+                let mut row = build_round_row(
                     session,
                     turn.row_id,
                     turn.model,
@@ -370,7 +381,9 @@ fn visit_rounds_inner(
                     turn.cache_read_tokens,
                     turn.cache_write_tokens,
                     ms,
-                ))?;
+                );
+                row.usage_purpose = turn.usage_purpose;
+                visit(row)?;
             }
         } else if session.last_active_ms > 0
             && filter.contains(session.last_active_ms)
@@ -416,7 +429,7 @@ pub(super) fn native_turn_query_plan(
         sessions.retain(|session| session.session_id == session_id);
     }
     let _scoped_session_table = prepare_scoped_session_table(conn, &sessions)?;
-    let (sql, params) = native_turn_query(filter);
+    let (sql, params) = native_turn_query(filter, table_exists(conn, "session_auxiliary_usage"));
     let mut statement = conn
         .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
         .map_err(|err| err.to_string())?;

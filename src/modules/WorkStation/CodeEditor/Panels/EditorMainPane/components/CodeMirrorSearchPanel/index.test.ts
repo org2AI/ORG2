@@ -9,13 +9,13 @@ import { EditorView } from "@codemirror/view";
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { registerFindTarget } from "@src/components/FindCard/findCoordinator";
 import { CURRENT_SHORTCUT_PLATFORM } from "@src/config/keyboard/shortcutBindings";
+import { registerFindTarget } from "@src/scaffold/GlobalSpotlight/FindCard/findCoordinator";
 
 import { findReplaceExtension } from ".";
 
 const mocks = vi.hoisted(() => ({ card: vi.fn(), replace: vi.fn() }));
-vi.mock("@src/components/FindCard", () => ({
+vi.mock("@src/scaffold/GlobalSpotlight/FindCard", () => ({
   default: (props: { children?: React.ReactNode }) => {
     mocks.card(props);
     return props.children ?? null;

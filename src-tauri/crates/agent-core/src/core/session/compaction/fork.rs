@@ -358,6 +358,7 @@ fn build_forked_record(
         status: SessionStatus::Idle.as_str().to_string(),
         model: old_record.model.clone(),
         account_id: old_record.account_id.clone(),
+        credential_source: old_record.credential_source.clone(),
         workspace_path: old_record.workspace_path.clone(),
         session_type: old_record.session_type.clone(),
         channel: old_record.channel.clone(),
@@ -401,6 +402,25 @@ mod tests {
     /// `docs/rust-backend/agent-core-cleanup-todo--0429.md`:
     /// dropping any one of them on fork was the original split-brain
     /// shape (a hosted_key parent compacting into an own_key child, etc.).
+    #[test]
+    fn compaction_fork_preserves_dynamic_owner_without_an_account() {
+        let parent = unified_persistence::UnifiedSessionRecord {
+            session_id: "package-session".into(),
+            model: Some("selected-model".into()),
+            credential_source: Some("market:public-selection".into()),
+            ..Default::default()
+        };
+        let child = build_forked_record(
+            &parent,
+            "package-session-v2",
+            "package-session",
+            "2026-09-17T00:00:00Z",
+        );
+        assert_eq!(child.credential_source, parent.credential_source);
+        assert_eq!(child.account_id, None);
+        assert_eq!(child.model, parent.model);
+    }
+
     #[test]
     fn build_forked_record_inherits_identity_quartet() {
         let parent = unified_persistence::UnifiedSessionRecord {

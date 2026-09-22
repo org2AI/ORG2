@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import Select, { type SelectOption } from "@src/components/Select";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
 import {
   TableSurface,
@@ -150,7 +150,6 @@ export const DbPreviewView: React.FC<DbPreviewViewProps> = memo(
         </span>
         <Button
           variant="tertiary"
-          appearance="soft-no-drop"
           size="mini"
           iconOnly
           icon={
@@ -161,14 +160,12 @@ export const DbPreviewView: React.FC<DbPreviewViewProps> = memo(
               className={spinClass}
             />
           }
-          htmlType="button"
           onClick={handleRefreshClick}
           className="hover:bg-fill-2 hover:text-text-1"
         />
         {showPagination && (
           <div className="ml-auto flex items-center gap-1.5 text-[11px] text-text-2">
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
@@ -178,7 +175,6 @@ export const DbPreviewView: React.FC<DbPreviewViewProps> = memo(
             />
             <span className="tabular-nums">{rangeLabel}</span>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly

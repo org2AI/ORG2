@@ -14,6 +14,7 @@
  */
 pub mod ai;
 pub mod branch;
+pub mod branch_switch;
 pub mod commit;
 pub mod cursor_chat;
 pub mod diff;
@@ -22,7 +23,6 @@ pub mod remote;
 pub mod staging;
 pub mod stash;
 pub mod streaming;
-pub mod tasks;
 pub mod utils;
 
 // Re-export all public functions for convenience

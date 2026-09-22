@@ -85,24 +85,19 @@ export function CompactTaskCard({
     currentStatus != null &&
     currentOwnerName !== (ownerName ?? null);
   const currentOwnerLabel = hasCurrentOwnerOverlay
-    ? (currentOwnerName ??
-      t("orgTask.unassignedOwner", { defaultValue: "Unassigned" }))
+    ? (currentOwnerName ?? t("orgTask.unassignedOwner"))
     : null;
   const currentRecordUnavailableLabel = currentRecordUnavailable
-    ? t("orgTask.currentRecordUnavailable", {
-        defaultValue: "Current state unavailable",
-      })
+    ? t("orgTask.currentRecordUnavailable")
     : null;
   const assignedLabel =
     operationAccepted && taskAssignedDispatched
-      ? t("orgTask.assignedBadge", { defaultValue: "Assigned" })
+      ? t("orgTask.assignedBadge")
       : null;
   const outcomeLabel = operationAccepted
     ? null
     : completionDeferred
-      ? t("orgTask.outcome.deferred", {
-          defaultValue: "Completion deferred · waiting for cleanup",
-        })
+      ? t("orgTask.outcome.deferred")
       : t(`orgTask.outcome.${operationOutcome}`, {
           defaultValue: operationOutcome,
         });
@@ -218,9 +213,7 @@ export function CompactTaskCard({
               data-testid="org-task-block-current-status"
             >
               <span className="shrink-0 text-text-3">
-                {t("orgTask.currentStatusLabel", {
-                  defaultValue: "Current status",
-                })}
+                {t("orgTask.currentStatusLabel")}
               </span>
               <span
                 className="min-w-0 truncate text-text-1"
@@ -237,9 +230,7 @@ export function CompactTaskCard({
               data-testid="org-task-block-current-owner"
             >
               <span className="shrink-0 text-text-3">
-                {t("orgTask.currentOwnerLabel", {
-                  defaultValue: "Current owner",
-                })}
+                {t("orgTask.currentOwnerLabel")}
               </span>
               <span className="min-w-0 truncate text-text-1">
                 {currentOwnerLabel}
@@ -252,9 +243,7 @@ export function CompactTaskCard({
               data-testid="org-task-block-current-status-unavailable"
             >
               <span className="shrink-0 text-text-3">
-                {t("orgTask.currentStatusLabel", {
-                  defaultValue: "Current status",
-                })}
+                {t("orgTask.currentStatusLabel")}
               </span>
               <span className="min-w-0 truncate text-warning-6">
                 {currentRecordUnavailableLabel}
@@ -264,9 +253,7 @@ export function CompactTaskCard({
           {currentReplacementTaskId && (
             <div className="flex min-w-0 items-center gap-2">
               <span className="shrink-0 text-text-3">
-                {t("orgTask.replacementLabel", {
-                  defaultValue: "Replacement",
-                })}
+                {t("orgTask.replacementLabel")}
               </span>
               <span
                 className="min-w-0 truncate font-mono text-text-1"

@@ -16,9 +16,9 @@ import Dropdown from "@src/components/Dropdown";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import type { DropdownOption } from "@src/components/Dropdown/types";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import Select from "@src/components/Select";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   Archive03Icon,
   CircleDotIcon,
@@ -171,20 +171,20 @@ const SourceControlFilterHeader: React.FC<SourceControlFilterHeaderProps> =
             icon: filterIcon("pr"),
             label: (
               <span className="whitespace-nowrap">
-                {t("common:labels.pullRequest", "Pull request")}
+                {t("common:labels.pullRequest")}
               </span>
             ),
-            triggerLabel: t("common:labels.pullRequest", "Pull request"),
+            triggerLabel: t("common:labels.pullRequest"),
           },
           {
             value: "issues",
             icon: filterIcon("issues"),
             label: (
               <span className="whitespace-nowrap">
-                {t("common:labels.issues", "Issues")}
+                {t("common:labels.issues")}
               </span>
             ),
-            triggerLabel: t("common:labels.issues", "Issues"),
+            triggerLabel: t("common:labels.issues"),
           },
         ];
       }, [getCountLabel, getModeCount, hideStageFilters, t]);
@@ -226,8 +226,6 @@ const SourceControlFilterHeader: React.FC<SourceControlFilterHeaderProps> =
                 <div className={DROPDOWN_CLASSES.menuPanel}>
                   <Button
                     layout="custom"
-                    appearance="custom"
-                    htmlType="button"
                     onClick={handleRefreshMenuClick}
                     className={DROPDOWN_CLASSES.menuActionItem}
                   >
@@ -237,9 +235,7 @@ const SourceControlFilterHeader: React.FC<SourceControlFilterHeaderProps> =
                       size={HEADER_ICON_SIZE.sm}
                       className={refreshSpinClass}
                     />
-                    <span>
-                      {t("controlTower.diff.refresh", "Refresh Git status")}
-                    </span>
+                    <span>{t("controlTower.diff.refresh")}</span>
                   </Button>
                 </div>
               }
@@ -253,7 +249,6 @@ const SourceControlFilterHeader: React.FC<SourceControlFilterHeaderProps> =
                 disabled={moreMenuVisible}
               >
                 <Button
-                  htmlType="button"
                   variant="tertiary"
                   size="small"
                   iconOnly

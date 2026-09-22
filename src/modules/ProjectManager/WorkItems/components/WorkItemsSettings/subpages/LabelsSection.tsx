@@ -13,16 +13,16 @@ import ColorPicker, {
   DEFAULT_COLOR_PRESETS,
 } from "@src/components/ColorPicker";
 import Input from "@src/components/Input";
-import { useKeyboardSave } from "@src/hooks/keyboard";
-import { useUndoStackWithRestore } from "@src/hooks/ui/useUndoableState";
-import { Add01Icon, Delete02Icon, HugeiconsIcon } from "@src/icons";
 import {
   SECTION_ACTION_GAP_CLASSES,
   SectionContainer,
   SectionHeading,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { CARD_ROW_TOKENS } from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/Section";
+import { CARD_ROW_TOKENS } from "@src/components/layout/blocks";
+import { useKeyboardSave } from "@src/hooks/keyboard";
+import { useUndoStackWithRestore } from "@src/hooks/ui/useUndoableState";
+import { Add01Icon, Delete02Icon, HugeiconsIcon } from "@src/icons";
 import type { Label } from "@src/types/core/shared";
 
 export interface LabelsSectionProps {

@@ -23,6 +23,8 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 
+import { PLACEHOLDER_TOKENS } from "@src/components/Placeholder";
+import { Archive04Icon, HugeiconsIcon } from "@src/icons";
 import {
   DiffSectionList,
   type DiffSectionListViewState,
@@ -196,9 +198,19 @@ const AllChangesView: React.FC<AllChangesViewProps> = ({
       loadReviewFile={loadSearchFile}
       sections={sections}
       viewMode={viewMode}
+      wordWrap={viewMode === "split" ? true : undefined}
       loading={loading}
       emptyTitle={
         staged ? t("placeholders.noStagedChanges") : t("placeholders.noChanges")
+      }
+      emptyIcon={
+        <HugeiconsIcon
+          icon={Archive04Icon}
+          data-icon="archive-04"
+          size={PLACEHOLDER_TOKENS.detailIconSize}
+          strokeWidth={1.25}
+          className="text-text-1 opacity-30"
+        />
       }
       repoPath={repoPath}
       defaultCollapsed

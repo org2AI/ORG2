@@ -639,3 +639,81 @@ fn replacing_native_binding_resets_catalog_revisions() {
         1
     );
 }
+
+#[test]
+fn durable_credential_source_is_projected_by_every_session_read() {
+    let _sandbox = test_env::sandbox();
+    let session_id = "cli-source-projection";
+    create_test_session(session_id, "account-a");
+    let conn = database::db::get_connection().unwrap();
+    conn.execute(
+        "UPDATE code_sessions SET runner='tui', account_id=NULL WHERE session_id=?1",
+        [session_id],
+    )
+    .unwrap();
+    bind_credential_source(
+        session_id,
+        "test:workspace-a",
+        "claude_code",
+        "claude-sonnet-4-6",
+    )
+    .unwrap();
+    create_test_session("cli-ordinary-projection", "account-b");
+    let assert_source = |rows: Vec<CodeSession>| {
+        let row = rows
+            .iter()
+            .find(|row| row.session_id == session_id)
+            .unwrap();
+        assert_eq!(row.credential_source.as_deref(), Some("test:workspace-a"));
+        assert_eq!(row.account_id, None);
+        let wire = serde_json::to_value(row).unwrap();
+        assert_eq!(wire["credentialSource"], "test:workspace-a");
+        assert!(wire["accountId"].is_null());
+    };
+    assert_source(vec![get_session(session_id).unwrap().unwrap()]);
+    assert_source(list_sessions().unwrap());
+    assert_source(list_sessions_page(256, 0).unwrap());
+    assert_source(list_unpinned_root_sessions_page(256, None).unwrap());
+    assert_source(list_unpinned_root_sessions_page(256, Some(("9999", "z"))).unwrap());
+    let ordinary = get_session("cli-ordinary-projection").unwrap().unwrap();
+    assert_eq!(ordinary.credential_source, None);
+    assert_eq!(ordinary.account_id.as_deref(), Some("account-b"));
+    let wire = serde_json::to_value(ordinary).unwrap();
+    assert!(wire.get("credentialSource").is_none());
+    assert!(serde_json::from_value::<CodeSession>(wire).is_ok());
+}
+
+#[test]
+fn execution_creation_commits_source_with_owner_or_neither() {
+    let _sandbox = test_env::sandbox();
+    let params: CreateCodeSessionParams = serde_json::from_value(serde_json::json!({
+        "platform": "codex", "model": "model", "repoPath": "/tmp"
+    }))
+    .unwrap();
+    let created =
+        create_session_with_source("cli-atomic-source", &params, Some("test:workspace")).unwrap();
+    assert_eq!(created.credential_source.as_deref(), Some("test:workspace"));
+    assert_eq!(created.runner, "local");
+    for (id, patch, source) in [
+        (
+            "cli-mixed-source",
+            serde_json::json!({"accountId":"keyvault"}),
+            "test:workspace",
+        ),
+        (
+            "cli-wrong-runner",
+            serde_json::json!({"runner":"tui"}),
+            "test:workspace",
+        ),
+        ("cli-empty-source", serde_json::json!({}), ""),
+    ] {
+        let mut raw = serde_json::json!({"platform":"codex", "model":"model", "repoPath":"/tmp"});
+        raw.as_object_mut()
+            .unwrap()
+            .extend(patch.as_object().unwrap().clone());
+        let invalid = serde_json::from_value(raw).unwrap();
+        assert!(create_session_with_source(id, &invalid, Some(source)).is_err());
+        assert!(get_session(id).unwrap().is_none());
+        assert!(credential_source(id).unwrap().is_none());
+    }
+}

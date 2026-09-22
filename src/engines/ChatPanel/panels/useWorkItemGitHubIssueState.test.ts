@@ -12,8 +12,8 @@ import {
   vi,
 } from "vitest";
 
+import { resetGitHubIssueDetailCoordinator } from "@src/features/GitHubWork/githubIssueDetailCoordinator";
 import type { GitHubIssueInteractionConfig } from "@src/modules/ProjectManager/WorkItems/components/WorkItemContent/types";
-import { resetGitHubIssueDetailCoordinator } from "@src/modules/shared/githubIssueDetailCoordinator";
 import { workstationIssueDetailScopeKey } from "@src/store/workstation/codeEditor/workstationIssueAtom";
 
 import { useWorkItemGitHubIssueState } from "./useWorkItemGitHubIssueState";
@@ -27,7 +27,7 @@ vi.mock("@src/modules/ProjectManager/WorkItems/githubIssueRemote", () => ({
   resolveGitHubIssueRemoteUrl: mocks.resolveGitHubIssueRemoteUrl,
 }));
 
-vi.mock("@src/modules/shared/hooks/useGitHubIssueDetailState", () => ({
+vi.mock("@src/features/GitHubWork/useGitHubIssueDetailState", () => ({
   useGitHubIssueDetailState: mocks.useGitHubIssueDetailState,
 }));
 

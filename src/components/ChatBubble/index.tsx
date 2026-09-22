@@ -32,9 +32,6 @@ export const CHAT_BUBBLE_WIDTH_TOKENS = {
 export const CHAT_SESSION_USER_BUBBLE_CLASS =
   "rounded-2xl bg-fill-2 px-3 py-2 text-text-1";
 
-/** Desktop adds positioning and a content-width cap around the shared bubble. */
-export const CHAT_SESSION_USER_BUBBLE_LAYOUT_CLASS = `relative w-fit max-w-[min(600px,100%)] ${CHAT_SESSION_USER_BUBBLE_CLASS}`;
-
 // ============================================
 // Avatar — circular icon container
 // ============================================
@@ -102,15 +99,22 @@ type BubbleVariant = keyof typeof BODY_VARIANTS;
 interface ChatBubbleBodyProps {
   variant: BubbleVariant;
   className?: string;
+  /** Override body typography for shells with their own semantic text scale. */
+  bodyClassName?: string;
   children: React.ReactNode;
 }
 
 export const ChatBubbleBody: React.FC<ChatBubbleBodyProps> = memo(
-  ({ variant, className = "", children }) => (
+  ({
+    variant,
+    className = "",
+    bodyClassName = "text-[13px] leading-relaxed",
+    children,
+  }) => (
     <div
       className={`${CHAT_BUBBLE_WIDTH_TOKENS.body} text-left ${BODY_VARIANTS[variant]} ${className}`}
     >
-      <div className="min-w-0 text-[13px] leading-relaxed">{children}</div>
+      <div className={`min-w-0 ${bodyClassName}`}>{children}</div>
     </div>
   )
 );
@@ -151,9 +155,20 @@ interface ChatBubbleCopyButtonProps {
   placement?: "bubble-corner" | "message-corner" | "toolbar";
 }
 
-/** Shared geometry and interaction treatment for compact message actions. */
-export const CHAT_BUBBLE_TOOLBAR_BUTTON_CLASS =
-  "inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent px-1 py-0 transition-colors hover:bg-fill-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-6/30";
+/**
+ * Shared geometry and focus treatment for compact message actions. Colors come
+ * from the Button variant; a resting `bg-*` here would also pin the background
+ * over the variant's hover and any active-state class.
+ */
+export const CHAT_BUBBLE_TOOLBAR_BUTTON_BASE_CLASS =
+  "inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md px-1 py-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-6/30";
+
+/**
+ * Neutral message action: the base plus the toolbar's lighter hover fill.
+ * Semantic actions (e.g. danger) use the base so their variant's own hover
+ * surface shows.
+ */
+export const CHAT_BUBBLE_TOOLBAR_BUTTON_CLASS = `${CHAT_BUBBLE_TOOLBAR_BUTTON_BASE_CLASS} hover:bg-fill-2`;
 
 const ChatBubbleCopyButtonComponent: React.FC<ChatBubbleCopyButtonProps> = ({
   content,
@@ -176,7 +191,6 @@ const ChatBubbleCopyButtonComponent: React.FC<ChatBubbleCopyButtonProps> = ({
     return (
       <Button
         variant="tertiary"
-        appearance="soft"
         size="mini"
         iconOnly
         icon={
@@ -187,7 +201,6 @@ const ChatBubbleCopyButtonComponent: React.FC<ChatBubbleCopyButtonProps> = ({
             strokeWidth={1.75}
           />
         }
-        htmlType="button"
         title={t("actions.copy")}
         aria-label={t("actions.copy")}
         className={`${CHAT_BUBBLE_TOOLBAR_BUTTON_CLASS} text-text-3 hover:text-text-1`}
@@ -204,7 +217,6 @@ const ChatBubbleCopyButtonComponent: React.FC<ChatBubbleCopyButtonProps> = ({
   return (
     <Button
       variant="tertiary"
-      appearance="soft-no-drop"
       size="mini"
       iconOnly
       icon={
@@ -215,7 +227,6 @@ const ChatBubbleCopyButtonComponent: React.FC<ChatBubbleCopyButtonProps> = ({
           strokeWidth={1.75}
         />
       }
-      htmlType="button"
       title={t("actions.copy")}
       aria-label={t("actions.copy")}
       className={`${cornerClass} inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-text-3 opacity-0 transition-[opacity,background-color,color] hover:bg-fill-2 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none ${hoverGroupClass}`}

@@ -1,28 +1,22 @@
 /**
  * WebViewport
  *
- * Main viewport for Browser's web browsing mode showing tab bar, URL bar, and webview.
- * Uses the shared TabBar component.
+ * Main viewport for Browser's web browsing mode showing the URL bar and webview.
+ * Browser tabs live in the shared workstation tab strip, not here.
  */
 import BrowserCore from "@/src/engines/BrowserCore";
 import type { BrowserState } from "@/src/engines/BrowserCore/types";
-import { TabBar, type WorkStationTab } from "@/src/modules/WorkStation/shared";
-import { useSetAtom } from "jotai";
 import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import Message from "@src/components/Message";
+import { createLogger } from "@src/hooks/logger";
 import type { WorkstationTabHeaderHost } from "@src/hooks/tabHost/useWorkstationTabHeader";
 import { ImportCookiesModal } from "@src/modules/WorkStation/Browser/ImportCookies";
-import { focusBrowserUrlBar } from "@src/modules/WorkStation/Browser/shared/urlBarFocus";
-import {
-  closeBrowserTabAtom,
-  extractSessionId,
-  getBrowserSessionDisplayTitle,
-  switchBrowserTabAtom,
-  translatePlaceholderBrowserSessionTitle,
-} from "@src/store/workstation/browser/tabs";
+import { pickLocalHtmlFile } from "@src/modules/WorkStation/Browser/shared/pickLocalHtmlFile";
 import { getBrowserSessionWebviewLabel } from "@src/util/platform/tauri/browserSessionLabel";
 
+import { useBrowserPageColorSchemeSync } from "../../../../hooks/useBrowserPageColorSchemeSync";
 import { useWebviewScreenshot } from "../../../../hooks/useWebviewScreenshot";
 import WebUrlBar from "../../components/WebUrlBar";
 import BrowserBlankTabPlaceholder from "./BrowserBlankTabPlaceholder";
@@ -40,8 +34,6 @@ interface WebViewportProps {
   onToggleDevToolsPane?: () => void;
   /** Whether the WorkStation Browser secondary DevTools pane is collapsed. */
   devToolsPaneCollapsed?: boolean;
-  /** Hide the tab bar (when using shared tab bar) */
-  hideTabBar?: boolean;
   /** Hide webviews when their host or viewport is inactive */
   hideWebviews?: boolean;
   /** Header host to publish the URL bar into. Defaults to My Station Browser. */
@@ -66,6 +58,8 @@ interface WebViewportProps {
   manageWebviews?: boolean;
 }
 
+const log = createLogger("WebViewport");
+
 function hasActiveBrowserWebview(url?: string): boolean {
   const normalizedUrl = url?.trim().toLowerCase();
   return Boolean(normalizedUrl && !normalizedUrl.startsWith("about:blank"));
@@ -81,7 +75,6 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
     onOpenNativeDevTools,
     onToggleDevToolsPane,
     devToolsPaneCollapsed = false,
-    hideTabBar = false,
     hideWebviews = false,
     publishUrlBarToHost = "browser",
     inlineUrlBar = false,
@@ -90,21 +83,10 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
     respectModalBlocking = true,
     manageWebviews = true,
   }) => {
-    const {
-      sessions,
-      activeSessionId,
-      setActiveSession,
-      closeSession,
-      updateSession,
-    } = browserState;
     const { t } = useTranslation();
+    const { sessions, activeSessionId, updateSession } = browserState;
 
-    // Also drive browserTabsAtom so My Station Browser's reverse-sync effect
-    // (in useBrowserLayoutState) doesn't forward a stale activeTabId back into
-    // BrowserContext and revert this click. Control Tower doesn't read
-    // browserTabsAtom for active selection, so this write is a no-op there.
-    const switchBrowserTab = useSetAtom(switchBrowserTabAtom);
-    const closeBrowserTab = useSetAtom(closeBrowserTabAtom);
+    useBrowserPageColorSchemeSync();
 
     const activeSession = useMemo(
       () => sessions.find((session) => session.id === activeSessionId),
@@ -119,68 +101,6 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
       }),
       [activeSession, browserState, effectiveActiveSessionId]
     );
-
-    // Convert browser sessions to WorkStationTab format for the tab bar
-    const editorTabs: WorkStationTab[] = useMemo(
-      () =>
-        sessions.map((session) => {
-          const displayTitle = getBrowserSessionDisplayTitle(session);
-          return {
-            id: `browser:${session.id}`,
-            type: "browser-session" as const,
-            title: translatePlaceholderBrowserSessionTitle(displayTitle, t),
-            data: {
-              sessionId: session.id,
-              url: session.url,
-              incognito: session.incognito,
-              isLoading: session.isLoading,
-            },
-            hasUnsavedChanges: false,
-          };
-        }),
-      [sessions, t]
-    );
-
-    // Get the active tab ID in WorkStationTab format
-    const activeTabId = effectiveActiveSessionId
-      ? `browser:${effectiveActiveSessionId}`
-      : null;
-
-    // Handle tab click - extract session ID and set active
-    const handleTabClick = useCallback(
-      (tabId: string) => {
-        const sessionId = extractSessionId(tabId);
-        // Switch the WorkStation Browser tab strip first so My Station's
-        // reverse-sync effect (browserTabsAtom -> BrowserContext) sees the
-        // new active tab, then update BrowserContext.
-        switchBrowserTab(tabId);
-        setActiveSession(sessionId);
-      },
-      [setActiveSession, switchBrowserTab]
-    );
-
-    // Handle tab close - extract session ID and close
-    const handleTabClose = useCallback(
-      (tabId: string) => {
-        const sessionId = extractSessionId(tabId);
-        closeBrowserTab(tabId);
-        closeSession(sessionId);
-      },
-      [closeBrowserTab, closeSession]
-    );
-
-    // Handle tab reorder (not supported for browser sessions yet)
-    const handleTabReorder = useCallback(
-      (_startIndex: number, _endIndex: number) => {
-        // TODO: Implement session reordering if needed
-      },
-      []
-    );
-
-    const handleNewBrowserTab = useCallback(() => {
-      browserState.addSession();
-      focusBrowserUrlBar();
-    }, [browserState]);
 
     // Check if can go back/forward based on history
     const canGoBack = useMemo(() => {
@@ -218,6 +138,21 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
       },
       [effectiveActiveSessionId, activeSession, updateSession]
     );
+
+    // Shared by the URL bar's "..." menu and the blank-tab placeholder. Returns
+    // nothing: it is handed to click props, which must not receive a promise.
+    const handleOpenHtmlFile = useCallback(() => {
+      pickLocalHtmlFile()
+        .then((fileUrl) => {
+          if (fileUrl) handleNavigate(fileUrl);
+        })
+        .catch((error: unknown) => {
+          const reason =
+            error instanceof Error ? error.message : String(error ?? "unknown");
+          log.error("[WebViewport] open HTML file failed:", reason);
+          Message.error(t("browser.openHtmlFile.failed", { reason }));
+        });
+    }, [handleNavigate, t]);
 
     // Handle back navigation
     const handleBack = useCallback(() => {
@@ -271,11 +206,18 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
     const activeWebviewLabel = effectiveActiveSessionId
       ? getBrowserSessionWebviewLabel(effectiveActiveSessionId)
       : null;
-    const { triggerScreenshot, isCapturing } = useWebviewScreenshot({
-      webviewLabel: activeWebviewLabel,
-    });
+    const { triggerScreenshot, saveScreenshot, isCapturing } =
+      useWebviewScreenshot({
+        webviewLabel: activeWebviewLabel,
+      });
 
     const [importCookiesOpen, setImportCookiesOpen] = useState(false);
+    const openImportCookies = useCallback(() => setImportCookiesOpen(true), []);
+    // Importing carries persistent logins, so neither the URL bar menu nor the
+    // blank-tab placeholder offers it while browsing privately.
+    const handleImportCookies = activeSession?.incognito
+      ? undefined
+      : openImportCookies;
     const handleReloadAfterImport = useCallback(() => {
       if (effectiveActiveSessionId && activeSession?.url) {
         updateSession(effectiveActiveSessionId, { isLoading: true });
@@ -284,19 +226,6 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
 
     return (
       <div className="flex h-full w-full flex-col overflow-hidden">
-        {/* Tab Bar - uses the same component as Code Editor and Database Explorer */}
-        {!hideTabBar && editorTabs.length > 0 && (
-          <TabBar
-            tabs={editorTabs}
-            activeTabId={activeTabId}
-            onTabClick={handleTabClick}
-            onTabClose={handleTabClose}
-            onTabReorder={handleTabReorder}
-            onNewTab={handleNewBrowserTab}
-            repoPath=""
-          />
-        )}
-
         {/* URL Bar */}
         {activeSession && (
           <WebUrlBar
@@ -316,6 +245,9 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
             devToolsPaneCollapsed={devToolsPaneCollapsed}
             onScreenshot={activeSession.url ? triggerScreenshot : undefined}
             isCapturingScreenshot={isCapturing}
+            onSaveScreenshot={saveScreenshot}
+            onOpenHtmlFile={handleOpenHtmlFile}
+            onImportCookies={handleImportCookies}
             isInspectMode={isInspectMode}
             onToggleInspectMode={onToggleInspectMode}
             publishToHost={publishUrlBarToHost}
@@ -336,7 +268,8 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
                 <BrowserBlankTabPlaceholder
                   isIncognito={activeSession?.incognito}
                   onOpen={handleNavigate}
-                  onImportCookies={() => setImportCookiesOpen(true)}
+                  onOpenHtmlFile={handleOpenHtmlFile}
+                  onImportCookies={handleImportCookies}
                 />
               ) : undefined
             }

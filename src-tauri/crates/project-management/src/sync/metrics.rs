@@ -386,44 +386,17 @@ pub fn tail(limit: usize) -> Vec<SyncMetric> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex as StdMutex;
-
-    /// Per-test isolated ORGII_HOME so concurrent tests don't smash each
-    /// other's metrics file. Wraps the env-var dance in a guard that
-    /// restores the previous value on drop.
-    struct OrgiiHomeGuard {
-        previous: Option<String>,
-        _lock: std::sync::MutexGuard<'static, ()>,
-    }
-
-    impl OrgiiHomeGuard {
-        fn new(path: &std::path::Path) -> Self {
-            // Serialize ORGII_HOME mutations across tests in this module.
-            static ENV_LOCK: StdMutex<()> = StdMutex::new(());
-            let lock = ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
-            let previous = std::env::var("ORGII_HOME").ok();
-            // SAFETY: tests are single-threaded inside the guard.
-            unsafe { std::env::set_var("ORGII_HOME", path) };
-            Self {
-                previous,
-                _lock: lock,
-            }
-        }
-    }
-
-    impl Drop for OrgiiHomeGuard {
-        fn drop(&mut self) {
-            match &self.previous {
-                Some(value) => unsafe { std::env::set_var("ORGII_HOME", value) },
-                None => unsafe { std::env::remove_var("ORGII_HOME") },
-            }
-        }
-    }
+    use test_helpers::test_env;
 
     #[test]
     fn append_and_tail_round_trip() {
-        let tmp = tempfile::tempdir().expect("tmpdir");
-        let _guard = OrgiiHomeGuard::new(tmp.path());
+        // Uses the workspace-wide `ORGII_HOME` sandbox lock (see
+        // `test_helpers::test_env`) rather than a module-local mutex: a
+        // module-local guard only serializes against other tests in this
+        // same module, not against every other test in the binary that
+        // also mutates `ORGII_HOME`, which lets a concurrent test repoint
+        // `ORGII_HOME` mid-test and made this test flaky.
+        let _sandbox = test_env::sandbox();
 
         record("p1", "echo", MetricKind::Push, MetricOutcome::Ok, 12, 1);
         record("p1", "echo", MetricKind::Pull, MetricOutcome::Empty, 4, 0);
@@ -437,8 +410,7 @@ mod tests {
 
     #[test]
     fn rotation_moves_live_to_backup_when_over_threshold() {
-        let tmp = tempfile::tempdir().expect("tmpdir");
-        let _guard = OrgiiHomeGuard::new(tmp.path());
+        let _sandbox = test_env::sandbox();
 
         // Pre-seed the live file just over the threshold so the next
         // append triggers rotation. Don't write 10MB of zeroes — just

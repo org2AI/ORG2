@@ -30,7 +30,7 @@ vi.mock("@src/components/Avatar", () => ({
     createElement("img", { src, alt: "viewer" }),
 }));
 
-vi.mock("@src/modules/shared/components/MarkdownTextareaEditor", () => ({
+vi.mock("@src/components/MarkdownTextareaEditor", () => ({
   default: ({
     value,
     onChange,
@@ -235,11 +235,6 @@ describe("GitHubIssueComposer", () => {
     expect(
       document.querySelector("[data-testid='github-issue-close-menu']")
     ).not.toBeNull();
-    expect(
-      document
-        .querySelector("[data-testid='github-issue-status-open']")
-        ?.getAttribute("aria-disabled")
-    ).toBe("true");
     expect(config.onLoadDuplicateCandidates).not.toHaveBeenCalled();
 
     await act(async () => {

@@ -33,9 +33,6 @@ export function LaunchpadSearchTrigger({
       style={CHAT_PANEL_HEADER_NO_DRAG_STYLE}
     >
       <Button
-        htmlType="button"
-        variant="secondary"
-        appearance="outline"
         size="small"
         shape="round"
         className="w-full bg-transparent! text-text-3! hover:bg-fill-2! data-[spotlight-source-active]:opacity-0 [&>span]:w-full"

@@ -11,6 +11,7 @@
  * Supabase token-refresh response, so no conversion can drift. Compare with
  * `Date.now() / 1000`.
  */
+import { type ExtractAtomArgs, atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 
 import {
@@ -53,15 +54,15 @@ const sharedOrg2CloudAuthStorage = {
     return localOrg2CloudAuthStorage.getItem(key, initialValue);
   },
   setItem(key: string, value: Org2CloudAuthState | null) {
-    localOrg2CloudAuthStorage.setItem(key, value);
     mirrorSharedServiceAuthValue(
       ORG2_CLOUD_AUTH_STORAGE_KEY,
       JSON.stringify(value)
     );
+    localOrg2CloudAuthStorage.setItem(key, value);
   },
   removeItem(key: string) {
-    localOrg2CloudAuthStorage.removeItem(key);
     mirrorSharedServiceAuthValue(ORG2_CLOUD_AUTH_STORAGE_KEY, null);
+    localOrg2CloudAuthStorage.removeItem(key);
   },
   subscribe(
     key: string,
@@ -80,23 +81,56 @@ const sharedOrg2CloudAuthStorage = {
   },
 };
 
-export const org2CloudAuthAtom = atomWithStorage<Org2CloudAuthState | null>(
+const storedOrg2CloudAuthAtom = atomWithStorage<Org2CloudAuthState | null>(
   ORG2_CLOUD_AUTH_STORAGE_KEY,
   null,
   sharedOrg2CloudAuthStorage,
   { getOnInit: true }
 );
+/** Read-only CAS checks must not cause atomWithStorage to rewrite credentials. */
+export const org2CloudAuthAtom = atom(
+  (get) => get(storedOrg2CloudAuthAtom),
+  (get, set, update: ExtractAtomArgs<typeof storedOrg2CloudAuthAtom>[0]) => {
+    const current = get(storedOrg2CloudAuthAtom);
+    const next = typeof update === "function" ? update(current) : update;
+    if (next !== current) set(storedOrg2CloudAuthAtom, next);
+  }
+);
 org2CloudAuthAtom.debugLabel = "org2CloudAuthAtom";
 
+/** Rehydration/profile enrichment may replace the object, not its credentials. */
+function sameCredentialGeneration(
+  current: Org2CloudAuthState | null,
+  expected: Org2CloudAuthState
+): current is Org2CloudAuthState {
+  return (
+    current !== null &&
+    org2CloudAuthIdentityKey(current) === org2CloudAuthIdentityKey(expected) &&
+    current.supabaseAnonKey === expected.supabaseAnonKey &&
+    current.oauthClientId === expected.oauthClientId &&
+    current.accessToken === expected.accessToken &&
+    current.refreshToken === expected.refreshToken &&
+    current.expiresAt === expected.expiresAt
+  );
+}
+
+function sameProfile(
+  current: Org2CloudProfile | undefined,
+  expected: Org2CloudProfile | undefined
+): boolean {
+  return (
+    current?.displayName === expected?.displayName &&
+    current?.primaryEmail === expected?.primaryEmail &&
+    current?.avatarUrl === expected?.avatarUrl
+  );
+}
+
 /**
- * Write a refreshed session back to the auth atom under a COMPARE-AND-SET:
- * a `ensureFreshSession` round-trip can resolve AFTER the user signed out
- * or switched endpoints mid-flight (both wipe/replace the atom). A blind
- * `set(fresh)` would then resurrect a discarded session — re-persisting
- * old-backend tokens into localStorage and flipping the UI back to
- * signed-in. Only commit when the atom is still exactly the session we
- * refreshed. `setAuth` must accept jotai's functional-updater form (both
- * `store.set` and the `useAtom`/`useSetAtom` setter do).
+ * Commit only the credential generation that initiated refresh. Shared-store
+ * synchronization and atomWithStorage hydration parse a new object, so object
+ * equality can discard a successful rotation and leave the spent token saved.
+ * Generation equality survives those reads while protecting logout, endpoint /
+ * client switches and newer sign-ins. Concurrent profile enrichment is kept.
  */
 export function commitRefreshedAuth(
   setAuth: (
@@ -105,37 +139,27 @@ export function commitRefreshedAuth(
   previous: Org2CloudAuthState,
   fresh: Org2CloudAuthState
 ): boolean {
-  if (fresh === previous) return true;
   let committed = false;
   setAuth((current) => {
-    if (current !== previous) return current;
+    if (!sameCredentialGeneration(current, previous)) return current;
     committed = true;
-    return fresh;
+    if (fresh === previous) return current;
+    // Keep the fresh reference when possible: sign-in profile enrichment uses
+    // it to verify ownership before its next RPC. Preserve a newer profile if
+    // that is the only field updated while the token exchange was in flight.
+    return sameProfile(current.profile, previous.profile)
+      ? fresh
+      : { ...fresh, profile: current.profile };
   });
   return committed;
 }
 
 /**
  * Sign the user out locally after GoTrue DEFINITIVELY rejects a refresh
- * credential (400/401 `invalid_grant` — never a transient network/timeout
- * failure, see `ensureFreshSession`'s `onRefreshRejected`). Guarded by a
- * compare-and-set, but deliberately on STABLE IDENTITY (`userId` +
- * `refreshToken`) rather than object reference.
- *
- * Reference equality is NOT safe here: `org2CloudAuthAtom` is an
- * `atomWithStorage` with `{ getOnInit: true }`, whose `onMount` re-reads
- * `storage.getItem(...)` and calls `setAtom(...)` on every mount (jotai's
- * `atomWithStorage` idiom — see `node_modules/jotai/.../utils.mjs`). Because
- * `createZodJsonStorage`'s `getItem` runs `JSON.parse` + `schema.parse` on
- * every call, it returns a BRAND-NEW object each time even when the
- * persisted bytes are byte-for-byte unchanged. A `current` snapshot
- * captured just before that re-hydration settles is therefore never
- * `===` the atom's live value again, even though it is the exact same
- * session — so a reference-equality CAS silently never fires and the
- * rejected session is never cleared (the reported zombie-signed-in bug).
- * Comparing `userId`/`refreshToken` survives that re-hydration while still
- * refusing to clobber a newer sign-in or a concurrently rotated token
- * (different `userId` and/or `refreshToken`).
+ * credential (400/401 — never a transient network/timeout failure). Use the
+ * same scoped credential-generation CAS as successful rotation, not object
+ * reference or user id alone. A newer login or another endpoint/client cannot
+ * be cleared by the late rejection of an older exchange.
  */
 export function clearRejectedAuth(
   setAuth: (
@@ -145,11 +169,7 @@ export function clearRejectedAuth(
 ): boolean {
   let cleared = false;
   setAuth((current) => {
-    if (
-      !current ||
-      current.userId !== rejected.userId ||
-      current.refreshToken !== rejected.refreshToken
-    ) {
+    if (!sameCredentialGeneration(current, rejected)) {
       return current;
     }
     cleared = true;

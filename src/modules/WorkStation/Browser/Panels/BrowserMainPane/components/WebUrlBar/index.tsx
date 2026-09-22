@@ -7,6 +7,8 @@
  * - Back/Forward buttons
  * - Reload button
  * - Loading indicator
+ * - "..." menu: page color scheme, save screenshot, open a local HTML file,
+ *   import cookies, native DevTools
  */
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,7 +16,10 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import Input from "@src/components/Input";
-import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import {
+  ToolbarTooltip,
+  ToolbarTooltipPositionProvider,
+} from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import {
   FILE_BAR_ROW_CLASSES,
   HEADER_ICON_SIZE,
@@ -29,7 +34,6 @@ import {
   ArrowRight02Icon,
   Camera01Icon,
   Cancel01Icon,
-  CodeXmlIcon,
   HugeiconsIcon,
   Loading03Icon,
   PenTool01Icon,
@@ -38,6 +42,9 @@ import {
 } from "@src/icons";
 import { BROWSER_URL_BAR_FOCUS_EVENT } from "@src/modules/WorkStation/Browser/shared/urlBarFocus";
 import { normalizeBrowserInput } from "@src/util/url/browserUrl";
+import { isLocalFileUrl } from "@src/util/url/localFileUrl";
+
+import { BrowserUrlBarMoreMenu } from "./BrowserUrlBarMoreMenu";
 
 // ============================================
 // Types
@@ -76,6 +83,12 @@ interface WebUrlBarProps {
   onScreenshot?: () => void;
   /** Whether a screenshot capture is currently in flight. */
   isCapturingScreenshot?: boolean;
+  /** Capture the current page and save it to a file the user picks. */
+  onSaveScreenshot?: () => void;
+  /** Pick a local HTML file and open it in this tab. */
+  onOpenHtmlFile?: () => void;
+  /** Open the "import cookies from your browser" flow. Hidden when omitted. */
+  onImportCookies?: () => void;
   /** Whether the element inspector is currently active. */
   isInspectMode?: boolean;
   /** Toggle the element inspector (hover/click to select DOM nodes). */
@@ -126,6 +139,9 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
     devToolsPaneCollapsed = false,
     onScreenshot,
     isCapturingScreenshot = false,
+    onSaveScreenshot,
+    onOpenHtmlFile,
+    onImportCookies,
     isInspectMode = false,
     onToggleInspectMode,
     publishToHost = "browser",
@@ -275,7 +291,12 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
 
     // Handle navigation
     const handleNavigate = useCallback(() => {
-      const normalizedUrl = normalizeBrowserInput(inputValue);
+      // A local page's address is already a complete URL; the web normalizer
+      // only knows http(s) and would turn it into a search query.
+      const typedUrl = inputValue.trim();
+      const normalizedUrl = isLocalFileUrl(typedUrl)
+        ? typedUrl
+        : normalizeBrowserInput(inputValue);
       if (!normalizedUrl) return;
 
       setInputValue(normalizedUrl);
@@ -328,7 +349,6 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
         <div className="flex items-center gap-px">
           <ToolbarTooltip label={t("tooltips.goBack")}>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
@@ -346,7 +366,6 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
           </ToolbarTooltip>
           <ToolbarTooltip label={t("tooltips.goForward")}>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
@@ -364,7 +383,6 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
           </ToolbarTooltip>
           <ToolbarTooltip label={reloadControlLabel}>
             <Button
-              htmlType="button"
               variant="tertiary"
               size="small"
               iconOnly
@@ -431,7 +449,9 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
             onMouseMove={handleInputMouseMove}
             onMouseUp={handleInputMouseUp}
             placeholder={t("placeholders.enterUrlOrSearch")}
-            inputClassName="relative z-10 h-7 min-w-0 flex-1 border-none bg-transparent px-3 text-[14px] text-text-1 outline-none select-text placeholder:text-text-3"
+            // A shown address sits centered; focusing it (editing) or an empty
+            // bar with its placeholder keeps the usual left alignment.
+            inputClassName="relative z-10 h-7 min-w-0 flex-1 border-none bg-transparent px-3 text-[14px] text-text-1 outline-none select-text placeholder:text-text-3 [&:not(:focus):not(:placeholder-shown)]:text-center"
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
@@ -442,7 +462,9 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
         {(onToggleInspectMode ||
           onScreenshot ||
           onOpenNativeDevTools ||
-          onToggleDevToolsPane) && (
+          onToggleDevToolsPane ||
+          onSaveScreenshot ||
+          onOpenHtmlFile) && (
           <div className="flex items-center gap-px">
             {onToggleInspectMode && (
               <ToolbarTooltip
@@ -453,7 +475,6 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
                 )}
               >
                 <Button
-                  htmlType="button"
                   variant="tertiary"
                   size="small"
                   iconOnly
@@ -479,7 +500,6 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
             {onScreenshot && (
               <ToolbarTooltip label={t("tooltips.captureScreenshot")}>
                 <Button
-                  htmlType="button"
                   variant="tertiary"
                   size="small"
                   iconOnly
@@ -506,27 +526,6 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
               </ToolbarTooltip>
             )}
 
-            {onOpenNativeDevTools && (
-              <ToolbarTooltip label={t("tooltips.openNativeDevTools")}>
-                <Button
-                  htmlType="button"
-                  variant="tertiary"
-                  size="small"
-                  iconOnly
-                  onClick={onOpenNativeDevTools}
-                  disabled={!hasActiveWebview}
-                  aria-label={t("tooltips.openNativeDevTools")}
-                  icon={
-                    <HugeiconsIcon
-                      icon={CodeXmlIcon}
-                      data-icon="code"
-                      size={HEADER_ICON_SIZE.md}
-                    />
-                  }
-                />
-              </ToolbarTooltip>
-            )}
-
             {onToggleDevToolsPane && (
               <ToolbarTooltip
                 label={
@@ -536,7 +535,6 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
                 }
               >
                 <Button
-                  htmlType="button"
                   variant="tertiary"
                   size="small"
                   iconOnly
@@ -561,19 +559,36 @@ export const WebUrlBar: React.FC<WebUrlBarProps> = memo(
                 />
               </ToolbarTooltip>
             )}
+
+            <BrowserUrlBarMoreMenu
+              onSaveScreenshot={onSaveScreenshot}
+              canSaveScreenshot={hasActiveWebview && !isCapturingScreenshot}
+              onOpenHtmlFile={onOpenHtmlFile}
+              onImportCookies={onImportCookies}
+              onOpenNativeDevTools={onOpenNativeDevTools}
+              canOpenNativeDevTools={hasActiveWebview}
+            />
           </div>
         )}
       </div>
     );
 
+    // The native webview sits right under this bar and paints over any
+    // tooltip that opens downward, so this toolbar's tooltips open upward.
+    const header = (
+      <ToolbarTooltipPositionProvider value="top">
+        {headerContent}
+      </ToolbarTooltipPositionProvider>
+    );
+
     usePublishWorkstationTabHeader({
       host: publishToHost,
-      content: headerContent,
+      content: header,
       enabled: publishEnabled && !inline,
     });
 
     if (inline) {
-      return <div className={FILE_BAR_ROW_CLASSES}>{headerContent}</div>;
+      return <div className={FILE_BAR_ROW_CLASSES}>{header}</div>;
     }
 
     return null;

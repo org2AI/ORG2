@@ -25,10 +25,11 @@ import {
   WIZARD_IDS,
   buildCodexReauthPath,
   buildIntegrationsPath,
-  parseCodexReauthIntent,
+  parseAccountReauthIntent,
 } from "@src/config/mainAppPaths";
 import { parseSettingsSetupProvider } from "@src/config/settingsSetupActions";
 import { useKeyVault } from "@src/hooks/keyVault";
+import { reconnectSetupMethod } from "@src/hooks/keyVault/accountSetupMethod";
 import { requiresCodexReauthentication } from "@src/hooks/keyVault/codexReauthentication";
 import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
@@ -100,23 +101,24 @@ export function useKeyVaultPage() {
   // Wizard open-state derived from URL
   const { wizard, entityId, openWizard } = useWizardParam();
   const showAddForm = wizard === WIZARD_IDS.KEY_ADD;
-  const codexReauthIntent = parseCodexReauthIntent(location.search);
-  const isCodexReauth = showAddForm && codexReauthIntent.active;
+  const reauthIntent = parseAccountReauthIntent(location.search);
+  const reauthAgent = showAddForm ? reauthIntent.agent : null;
+  const isReauth = reauthAgent !== null;
   const explicitReauthAccount = entityId ? getAccount(entityId) : undefined;
+  // A Codex failure surfaced in chat may not know which account it used.
   const soleCodexAccount = useMemo(() => {
     const codexAccounts = accounts.filter(
       (account) => account.modelType === "codex"
     );
     return codexAccounts.length === 1 ? codexAccounts[0] : undefined;
   }, [accounts]);
-  const reauthAccount = isCodexReauth
-    ? (explicitReauthAccount ?? soleCodexAccount)
+  const reauthAccount = isReauth
+    ? (explicitReauthAccount ??
+      (reauthAgent === "codex" ? soleCodexAccount : undefined))
     : undefined;
-  const reauthAccountId =
-    reauthAccount?.id ?? (isCodexReauth ? entityId : null);
-  const isResolvingReauthAccount =
-    isCodexReauth && !hasLoaded && !reauthAccount;
-  const reauthReturnTo = isCodexReauth
+  const reauthAccountId = reauthAccount?.id ?? (isReauth ? entityId : null);
+  const isResolvingReauthAccount = isReauth && !hasLoaded && !reauthAccount;
+  const reauthReturnTo = isReauth
     ? readCodexReauthReturnTo(location.state)
     : null;
 
@@ -441,19 +443,18 @@ export function useKeyVaultPage() {
     showAddForm: showAddForm && !isResolvingReauthAccount,
     formLoading,
     selectedAccountId,
-    formInitialAgentType: isCodexReauth
-      ? ("codex" as const)
-      : parseSettingsSetupProvider(location.search).keyProvider,
-    formInitialData: isCodexReauth
+    formInitialAgentType:
+      reauthAgent ?? parseSettingsSetupProvider(location.search).keyProvider,
+    formInitialData: reauthAgent
       ? {
           name: reauthAccount?.name ?? "",
-          setup_method: "signin",
+          setup_method: reconnectSetupMethod(reauthAgent, reauthAccount),
         }
       : undefined,
     formExistingAccountNames: accounts
       .filter((account) => account.id !== reauthAccountId)
       .map((account) => account.name),
-    autoStartCodexLogin: isCodexReauth && codexReauthIntent.autoStart,
+    autoStartCodexLogin: reauthAgent === "codex" && reauthIntent.autoStart,
 
     // Handlers
     handleAccountSelect,

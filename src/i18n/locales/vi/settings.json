@@ -3,8 +3,6 @@
     "customCommandUpdated": "Đã cập nhật lệnh tùy chỉnh",
     "shellSettingUpdated": "Đã cập nhật cài đặt shell"
   },
-  "noSettingsFound": "Không tìm thấy cài đặt cho \"{{query}}\"",
-  "searchPlaceholder": "Tìm kiếm cài đặt...",
   "panel": {
     "maximizeSettings": "Phóng to cài đặt"
   },
@@ -15,10 +13,13 @@
     "editorAndWorkspace": "Editor & Workspace",
     "appUpdate": "Cập nhật ứng dụng",
     "security": "Bảo mật",
+    "appLock": "Khóa ứng dụng",
     "storage": "Lưu trữ",
     "agentOrg": "Nhóm Agent",
     "harnessConnections": "Kết nối ứng dụng",
-    "mobileRemote": "Điều khiển từ điện thoại"
+    "import": "Nhập",
+    "mobileRemote": "Điều khiển từ điện thoại",
+    "development": "Chế độ phát triển"
   },
   "coreSidebar": {
     "groups": {
@@ -54,6 +55,52 @@
     "customPatternsPlaceholder": "ví dụ: MYCORP_[A-Z0-9]{20}",
     "invalidPatterns": "{{count}} mẫu không hợp lệ và sẽ bị bỏ qua: {{patterns}}"
   },
+  "appLock": {
+    "password": "Khóa bằng mật khẩu",
+    "setPassword": "Đặt mật khẩu",
+    "changePassword": "Đổi mật khẩu",
+    "removePassword": "Xóa mật khẩu",
+    "currentPassword": "Mật khẩu hiện tại",
+    "newPassword": "Mật khẩu mới",
+    "confirmPassword": "Xác nhận mật khẩu mới",
+    "passwordSet": "Đã đặt mật khẩu",
+    "passwordChanged": "Đã đổi mật khẩu",
+    "passwordRemoved": "Đã xóa mật khẩu",
+    "lockNow": "Khóa ngay",
+    "lockNowDesc": "Khóa mọi cửa sổ ORG2 cho đến khi nhập mật khẩu",
+    "shortcut": "Phím tắt khóa",
+    "hint": "Gợi ý mật khẩu",
+    "hintPlaceholder": "Hiển thị trên màn hình khóa",
+    "hintOptionalPlaceholder": "Gợi ý mật khẩu (không bắt buộc)",
+    "autoLock": "Tự động khóa",
+    "autoLockDesc": "Khóa sau khoảng thời gian này không có thao tác bàn phím hoặc chuột trong ORG2",
+    "autoLockNever": "Không bao giờ",
+    "autoLockMinutes": "Sau {{count}} phút",
+    "autoLockHour": "Sau 1 giờ",
+    "lockOnLaunch": "Khóa khi ORG2 khởi động",
+    "lockOnLaunchDesc": "Yêu cầu mật khẩu mỗi lần mở ứng dụng",
+    "scopeNote": "Khóa chỉ áp dụng cho các cửa sổ của ORG2. Khóa không mã hóa dữ liệu của bạn hay tạm dừng Mobile Remote, và bất kỳ ai truy cập được tệp của bạn đều có thể gỡ bỏ. Nếu quên mật khẩu, hãy thoát ORG2 và xóa app-lock.json khỏi thư mục .orgii trong thư mục chính của bạn",
+    "errors": {
+      "tooShort": "Dùng ít nhất {{count}} ký tự",
+      "tooLong": "Mật khẩu đó quá dài",
+      "mismatch": "Mật khẩu không khớp",
+      "incorrectCurrent": "Mật khẩu hiện tại không đúng",
+      "throttled": "Quá nhiều lần nhập sai. Hãy thử lại sau",
+      "generic": "Không thể cập nhật khóa ứng dụng",
+      "hintTooLong": "Gợi ý đó quá dài",
+      "hintRevealsPassword": "Gợi ý không được chứa mật khẩu"
+    },
+    "screen": {
+      "title": "ORG2 đã bị khóa",
+      "passwordPlaceholder": "Mật khẩu",
+      "incorrect": "Mật khẩu không đúng",
+      "failed": "Không thể mở khóa. Hãy thử lại",
+      "throttled": "Quá nhiều lần thử. Hãy thử lại sau {{time}}",
+      "working": "Phiên vẫn đang làm việc: {{count}}",
+      "showHint": "Hiện gợi ý",
+      "hint": "Gợi ý: {{hint}}"
+    }
+  },
   "myRoles": {
     "currentStatus": "Trạng thái hiện tại của tôi",
     "tabs": {
@@ -86,6 +133,10 @@
     }
   },
   "general": {
+    "myStationSharing": "Chia sẻ Workstation",
+    "myStationSharingDesc": "Chia sẻ các tab và trạng thái hiển thị Workstation theo thư mục làm việc hoặc lưu riêng cho từng tab trò chuyện",
+    "myStationSharingDirectory": "Thư mục làm việc",
+    "myStationSharingTab": "Tab trò chuyện",
     "login": "Đăng nhập",
     "tabGeneral": "Chung",
     "tabSelfHosted": "Tự lưu trữ",
@@ -117,8 +168,6 @@
     "usePointerCursorsDesc": "Đổi con trỏ sang dạng bàn tay khi di chuột qua các phần tử tương tác",
     "timezoneAuto": "Tự động (Trình duyệt)",
     "timezoneSearchPlaceholder": "Tìm kiếm thành phố gần nhất",
-    "sendOnEnter": "Gửi tin nhắn bằng Enter",
-    "sendOnEnterDesc": "Khi bật, Enter gửi; Shift+Enter và Ctrl/Cmd+Enter chèn dòng mới. Khi tắt, Ctrl/Cmd+Enter gửi",
     "language": "Ngôn ngữ",
     "languageSearchPlaceholder": "Tìm kiếm ngôn ngữ...",
     "languageNames": {
@@ -135,7 +184,9 @@
       "vi": "Tiếng Việt",
       "pt": "Tiếng Bồ Đào Nha",
       "pl": "Tiếng Ba Lan",
-      "zh-Hant": "Tiếng Trung phồn thể"
+      "zh-Hant": "Tiếng Trung phồn thể",
+      "hi": "Tiếng Hindi",
+      "id": "Tiếng Indonesia"
     },
     "layout": "Bố cục",
     "sidebar": "Thanh bên",
@@ -143,6 +194,8 @@
     "sidebarEdgeDepth": "Độ sâu cạnh thanh bên",
     "selectedItemTransparency": "Độ trong suốt của mục đã chọn",
     "spotlightPlacement": "Vị trí Spotlight",
+    "spotlightDimBackground": "Làm mờ nền",
+    "spotlightDetailCard": "Thẻ chi tiết khi di chuột",
     "spotlightPlacementOptions": {
       "top": "Trên cùng",
       "center": "Giữa"
@@ -179,6 +232,8 @@
     "voiceInputPermissionOpenFailed": "Không thể mở Cài đặt hệ thống",
     "preventSleep": "Ngăn hệ thống ngủ khi đang chạy phiên",
     "preventSleepDesc": "Giữ cho Mac hoặc PC của bạn luôn thức khi có bất kỳ phiên Agent nào đang hoạt động. Tự động giải phóng khi tất cả phiên kết thúc",
+    "highRefreshRate": "Tần số quét cao",
+    "highRefreshRateDesc": "Hiển thị ở tần số quét tối đa của màn hình, lên đến 120 Hz trên màn hình ProMotion. Cuộn, thay đổi kích thước và hoạt ảnh mượt hơn nhưng tiêu tốn nhiều năng lượng hơn trong khi chạy",
     "devMode": "Chế độ nhà phát triển",
     "devModeDesc": "Bật menu ngữ cảnh Inspect Element gốc và DevTools trình duyệt. Chỉ dành cho phát triển và gỡ lỗi",
     "presenceGuidanceOnline": "Trực tuyến — hướng dẫn cho Agent",
@@ -200,7 +255,6 @@
       "codex": "Codex"
     },
     "iconStyle": "Kiểu biểu tượng",
-    "iconStyleDesc": "Đơn sắc làm giảm bão hòa các biểu tượng loại tệp và mô hình để chúng trông như giao diện, không phải logo",
     "iconStyleOptions": {
       "colorful": "Nhiều màu",
       "monochrome": "Đơn sắc"
@@ -212,10 +266,22 @@
       "light": "Ô sáng"
     },
     "translucentSidebar": "Thanh bên trong mờ",
+    "sessionBranchTags": "Thẻ nhánh và PR trên phiên",
     "skin": "Skin",
     "accent": "Màu nhấn",
     "linkSkinVariants": "Liên kết sáng và tối",
-    "linkSkinVariantsDesc": "Dùng một skin và màu nhấn cho cả hai chế độ. Chỉ các skin có cả biến thể sáng và tối mới có thể liên kết"
+    "linkSkinVariantsDesc": "Dùng một skin và màu nhấn cho cả hai chế độ. Chỉ các skin có cả biến thể sáng và tối mới có thể liên kết",
+    "license": "Giấy phép",
+    "licenseTitle": "Giấy phép ORG2",
+    "licenseLoading": "Đang tải giấy phép…",
+    "licenseLoadFailed": "Không thể tải giấy phép của ứng dụng",
+    "tooltips": "Chú giải",
+    "buttonTooltipsEnabled": "Hiện chú giải nút",
+    "buttonTooltipsEnabledDesc": "Hiện tên và phím tắt khi di chuột qua nút. Chú giải của biểu tượng thông tin luôn hiển thị",
+    "buttonTooltipDelayMs": "Độ trễ chú giải",
+    "buttonTooltipDelayImmediate": "Ngay lập tức",
+    "buttonTooltipDelaySeconds": "{{seconds}} giây",
+    "modelPickerStyle": "Bộ chọn mô hình"
   },
   "background": {
     "title": "Hình nền",
@@ -383,13 +449,13 @@
     "desktopConfig": {
       "title": "Desktop Safety",
       "hideBeforeAction": "Ẩn ORG2 khi điều khiển màn hình",
-      "hideBeforeActionHelper": "Ẩn cửa sổ chính ORG2 trong khi Peekaboo thao tác, đồng thời hiển thị thanh Wingman và chú thích nổi để Agent không cần tự quản lý tiêu điểm.",
+      "hideBeforeActionHelper": "Ẩn cửa sổ chính ORG2 trong khi Peekaboo thao tác, đồng thời hiển thị thanh Wingman và chú thích nổi để Agent không cần tự quản lý tiêu điểm",
       "antiDetection": "Tăng cường chống phát hiện tự động hóa HID",
-      "antiDetectionHelper": "Khiến Peekaboo gửi các sự kiện CGEvent (HID) thực cho thao tác nhấp chuột và gõ phím thay vì thao tác Trợ năng thuần túy, để các ứng dụng có phát hiện tự động hóa (ví dụ: WeChat) ít có khả năng chặn điều khiển màn hình hơn.",
+      "antiDetectionHelper": "Khiến Peekaboo gửi các sự kiện CGEvent (HID) thực cho thao tác nhấp chuột và gõ phím thay vì thao tác Trợ năng thuần túy, để các ứng dụng có phát hiện tự động hóa (ví dụ: WeChat) ít có khả năng chặn điều khiển màn hình hơn",
       "humanInputProfile": "Nhịp gõ phím giống con người",
-      "humanInputProfileHelper": "Áp dụng hồ sơ thời gian giống con người cho các phím được tổng hợp. Tắt để gõ ở tốc độ tối đa.",
+      "humanInputProfileHelper": "Áp dụng hồ sơ thời gian giống con người cho các phím được tổng hợp. Tắt để gõ ở tốc độ tối đa",
       "escapeAbort": "System Escape key aborts",
-      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded."
+      "escapeAbortHelper": "Treat a hardware Escape keydown as an abort signal for in-flight desktop automation. Our own synthesized Escape presses are always excluded"
     },
     "skillMissingBins": "Thiếu: {{bins}}",
     "skillMissingEnv": "Thiếu biến môi trường: {{vars}}",
@@ -458,7 +524,6 @@
     "gitOperations": "Hoạt động Git",
     "gitOperationsDesc": "Thông báo Git pull, push và đồng bộ",
     "soundPreset": "Âm thanh thông báo",
-    "soundPresetDesc": "Chọn âm thanh cho các thông báo có tiếng",
     "previewSound": "Nghe thử",
     "soundPresets": {
       "classic": "Cổ điển",
@@ -517,6 +582,9 @@
     "indentGuides": "Đường dẫn thụt lề",
     "treeIndentGuides": "Đường dẫn thụt lề cây",
     "highlightActiveLine": "Đánh dấu dòng hiện tại",
+    "diffViewMode": "Chế độ xem khác biệt",
+    "gitBlame": "Git blame",
+    "splitDiffCenteredLineNumbers": "Số dòng căn giữa trong diff chia đôi",
     "shellsOpenWith": "Shell mở với",
     "shellsOpenWithDesc": "Thư mục làm việc ban đầu cho terminal mới",
     "repoPath": "Đường dẫn kho",
@@ -551,7 +619,7 @@
       "title": "Git",
       "pullStrategy": "Chiến lược pull",
       "pullStrategyDesc": "Cách git pull tích hợp thay đổi từ remote khi đồng bộ",
-      "pullStrategyHint": "Rebase (mặc định): Replays commit của bạn lên remote. Tạo linear history.\n\nMerge: Tạo merge commit khi branches đã diverged. Giữ nguyên history đầy đủ.\n\nFast-forward only: Chỉ cho phép pull khi không cần merge. Từ chối nếu branches đã diverged.",
+      "pullStrategyHint": "Rebase (mặc định): Replays commit của bạn lên remote. Tạo linear history.\n\nMerge: Tạo merge commit khi branches đã diverged. Giữ nguyên history đầy đủ.\n\nFast-forward only: Chỉ cho phép pull khi không cần merge. Từ chối nếu branches đã diverged",
       "strategyMerge": "Merge",
       "strategyRebase": "Rebase (mặc định)",
       "strategyFfOnly": "Chỉ Fast-forward (nghiêm ngặt)",
@@ -600,7 +668,7 @@
     "checkFailed": "Không thể kiểm tra bản cập nhật",
     "checking": "Đang kiểm tra bản cập nhật…",
     "officialInstalled": "Đã cài ứng dụng chính thức",
-    "officialInstalledDesc": "Đã cài {{version}} tại {{path}}. Bản dựng cục bộ này vẫn chạy và không thay đổi.",
+    "officialInstalledDesc": "Đã cài {{version}} tại {{path}}. Bản dựng cục bộ này vẫn chạy và không thay đổi",
     "downloadFailed": "Không thể tải bản cập nhật",
     "retryNow": "Thử lại ngay",
     "downloadTimeout": "Tải xuống quá thời gian chờ. Kiểm tra mạng hoặc proxy rồi thử lại.",
@@ -760,7 +828,7 @@
     "tableVersion": "Phiên bản",
     "tableStatus": "Trạng thái",
     "installSection": "Cài đặt",
-    "installHintNote": "Lệnh cài đặt được đề xuất cho nền tảng của bạn. Hầu hết các phụ thuộc hệ thống cần quyền quản trị, nên chúng tôi không tự động chạy — hãy sao chép và dán vào terminal."
+    "installHintNote": "Lệnh cài đặt được đề xuất cho nền tảng của bạn. Hầu hết các phụ thuộc hệ thống cần quyền quản trị, nên chúng tôi không tự động chạy — hãy sao chép và dán vào terminal"
   },
   "agentSessions": {
     "chatFontSize": "Cỡ chữ chat",
@@ -770,10 +838,8 @@
     "typingAnimationDesc": "Bật hiệu ứng máy đánh chữ cho tin nhắn Agent",
     "typingSpeed": "Tốc độ gõ",
     "typingSpeedDesc": "Mili giây mỗi ký tự (1ms = nhanh nhất, 50ms = chậm nhất)",
-    "decryptEffect": "Hiệu ứng Decrypt",
-    "decryptEffectDesc": "Bật hiệu ứng Decrypt cho tin nhắn Agent",
-    "sendOnEnter": "Gửi tin nhắn bằng Enter",
-    "sendOnEnterDesc": "Khi bật, Enter gửi; Shift+Enter và Ctrl/Cmd+Enter chèn dòng mới. Khi tắt, Ctrl/Cmd+Enter gửi"
+    "sendOnEnter": "Gửi tin nhắn bằng",
+    "sendOnEnterDesc": "Chọn phím tắt dùng để gửi tin nhắn; các tổ hợp Enter khác sẽ chèn dòng mới"
   },
   "indexing": {
     "noWorkspaceMemories": "Chưa có bộ nhớ Workspace. Chúng sẽ xuất hiện sau khi phiên trích xuất thông tin về không gian làm việc này.",
@@ -822,7 +888,7 @@
   "agentEvolution": {
     "enableForAgent": "Bật Tiến hóa cho {{agentName}}",
     "noAgentsTitle": "Không có Agent khả dụng",
-    "noAgentsSubtitle": "Tạo hoặc nhập Agent để cấu hình Tiến hóa."
+    "noAgentsSubtitle": "Tạo hoặc nhập Agent để cấu hình Tiến hóa"
   },
   "org": {},
   "learningsBrowser": {
@@ -888,10 +954,12 @@
   "appearance": {
     "tabApp": "Ứng dụng",
     "tabCodeEditor": "Trình soạn thảo mã",
-    "tabChatPanel": "Bảng trò chuyện"
+    "tabChatPanel": "Bảng trò chuyện",
+    "chatHistory": "Lịch sử trò chuyện",
+    "composer": "Khung soạn thảo",
+    "newChatPage": "Trang trò chuyện mới"
   },
   "harnessConnections": {
-    "description": "Chọn kết nối cho từng công cụ lập trình",
     "current": "Kết nối đã cấu hình",
     "scope": "Áp dụng cho mặc định CLI trên máy này; cài đặt dự án và phiên đang chạy có thể được ưu tiên",
     "original": "Thiết lập ban đầu",
@@ -915,6 +983,8 @@
     "apply": "Dùng kết nối này",
     "applied": "Đã lưu cấu hình — hãy bắt đầu phiên công cụ mới",
     "restore": "Khôi phục thiết lập ban đầu",
+    "disconnect": "Ngắt kết nối",
+    "overlayHelp": "Cấu hình kết nối được lưu riêng tại {{path}}. \"Mở terminal\" khởi động Claude Code với cấu hình này và lịch sử hội thoại hiện có. Hook theo dõi phiên được điều khiển riêng",
     "restored": "Đã khôi phục thiết lập ban đầu — hãy bắt đầu phiên công cụ mới",
     "refresh": "Làm mới",
     "refreshed": "Đã làm mới kết nối công cụ",
@@ -928,7 +998,36 @@
     "authentication": "Xác thực",
     "desktopScope": "Cấu hình Claude Desktop riêng với Claude Code CLI; thoát hoàn toàn rồi mở lại Desktop sau khi áp dụng",
     "desktopApplied": "Đã lưu cấu hình — thoát hoàn toàn rồi mở lại Claude Desktop",
-    "desktopRestored": "Đã khôi phục cấu hình trước — thoát hoàn toàn rồi mở lại Claude Desktop"
+    "desktopRestored": "Đã khôi phục cấu hình trước — thoát hoàn toàn rồi mở lại Claude Desktop",
+    "advancedDescription": "Kết nối API tùy chỉnh và di chuyển thông tin xác thực một lần",
+    "marketApps": {
+      "isolatedStorage": "Ứng dụng chính thức này dùng cài đặt và bộ nhớ hội thoại riêng. Ứng dụng chính và CLI giữ nguyên cài đặt. Các hội thoại cũ không được nhập tự động",
+      "isolatedClaudeStorage": "Các cuộc trò chuyện tương thích tự đồng bộ sau khi thoát Claude Desktop và Claude Code",
+      "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
+      "loading": "Loading official packages…",
+      "loadFailed": "Official packages could not be loaded",
+      "nonePurchased": "No official packages are currently available",
+      "checking": "Đang kiểm tra ứng dụng…",
+      "unavailable": "Không khả dụng cho phiên bản đã cài đặt này",
+      "notInstalled": "Chưa cài đặt",
+      "original": "Đang dùng cấu hình gốc của ứng dụng",
+      "open": "Mở ứng dụng",
+      "connected": "Ứng dụng hiện theo không gian ORG2 hiện tại",
+      "opened": "Đã mở ứng dụng",
+      "disconnected": "Đã khôi phục cấu hình trước của ứng dụng",
+      "actionFailed": "Không thể cập nhật kết nối ứng dụng này",
+      "openFailed": "Không thể mở ứng dụng này",
+      "restoreRequired": "Khôi phục thiết lập gốc của ứng dụng này, sau đó chọn các gói và áp dụng lại kết nối",
+      "versionUnverified": "Phiên bản ứng dụng máy tính này chưa được xác minh cho kết nối biệt lập trong bản ORG2 này. Hãy cập nhật ORG2 rồi thử lại",
+      "workspaceNumber": "Dịch vụ {{index}} / {{count}}",
+      "openTerminal": "Mở terminal",
+      "terminalOpened": "Đã mở terminal",
+      "provider": "ORG2 Market",
+      "multiPackageHelp": "Chọn tối đa 8 gói và một mô hình mặc định, sau đó chuyển gói trong ứng dụng",
+      "auxiliaryBilling": "Các lời gọi tự động của Claude Code cho tiêu đề, bộ nhớ và nén ngữ cảnh được tính vào gói mặc định; chỉ cuộc trò chuyện mới theo gói bạn chọn bằng /model",
+      "defaultModel": "Mô hình mặc định",
+      "packageLimit": "Chọn tối đa 8 gói"
+    }
   },
   "claudeProfiles": {
     "new": "Hồ sơ mới",
@@ -969,10 +1068,10 @@
     "developerOptions": "Tùy chọn nhà phát triển",
     "retryConnection": "Thử kết nối lại",
     "enabled": "Điều khiển từ điện thoại",
-    "enabledDesc": "Cho phép điện thoại đã ghép nối điều khiển các phiên agent trên máy tính này qua cùng mạng Wi‑Fi LAN hoặc qua relay công cộng",
+    "enabledDesc": "Dùng điện thoại để xem và điều khiển các phiên trên máy tính này",
     "securityNotice": "Khi bật phơi bày LAN, bất kỳ ai trong mạng của bạn có URL kết nối và token đều có thể điều khiển phiên. Hãy tạo lại token nếu bạn nghi ngờ nó bị lộ",
-    "outdoorTitle": "Kết nối từ xa",
-    "outdoorDesc": "Kết nối máy tính ra ngoài tới một relay công cộng để điện thoại của bạn hoạt động qua 4G, 5G hoặc mạng khác",
+    "outdoorTitle": "Cho phép kết nối qua internet",
+    "outdoorDesc": "Khi tắt, điện thoại không thể kết nối với máy tính này qua internet",
     "relayEnabled": "Kết nối tới relay công cộng",
     "relayEnabledDesc": "Máy tính mở một kết nối WSS đi ra; không cần chuyển tiếp cổng trên router",
     "relayUrl": "Địa chỉ relay",
@@ -981,7 +1080,7 @@
     "relayPresetLocal": "Cục bộ",
     "relayPresetProduction": "Production",
     "cloudLoginTitle": "Đăng nhập ORG2 Cloud",
-    "cloudLoginDescSignedIn": "Đã đăng nhập với tư cách {{identity}} — relay dùng tài khoản này để ghép nối từ xa",
+    "cloudLoginDescSignedIn": "Đã đăng nhập bằng {{identity}}",
     "cloudLoginDescSignedOut": "Đăng nhập ORG2 Cloud trước khi ghép nối qua relay công cộng",
     "relayStatusCloudLoginRequired": "Đăng nhập ORG2 Cloud trong Cài đặt → Chung, rồi làm mới trạng thái relay",
     "relayStatusAuthFailedSignedIn": "Relay đã từ chối kết nối — hãy đăng xuất rồi đăng nhập lại trong Cài đặt → Chung",
@@ -992,7 +1091,7 @@
     "relayStatus_disabled": "Đã tắt",
     "relayStatus_config_error": "Lỗi cấu hình",
     "relayStatus_stopped": "Đã dừng",
-    "startOutdoorPairing": "Tạo mã ghép nối từ xa",
+    "startOutdoorPairing": "Tạo mã ghép nối",
     "fullAccess": "Cho phép thao tác",
     "fullAccessDesc": "Khi bật, điện thoại có thể gửi tin nhắn, dừng phiên và trả lời yêu cầu quyền; khi tắt, chỉ được xem",
     "pairingExpires": "Mã ghép nối hết hạn sau {{seconds}} giây",
@@ -1027,16 +1126,36 @@
     "pairedDevicesDesc": "Các điện thoại được ủy quyền qua relay; có thể thu hồi quyền truy cập bất cứ lúc nào",
     "devicesLoadFailed": "Không thể tải thiết bị đã ghép nối",
     "noDevices": "Không có thiết bị đã ghép nối",
-    "noDevicesDesc": "Tạo mã ghép nối từ xa, rồi quét hoặc dán vào PWA Điều khiển từ điện thoại",
+    "noDevicesDesc": "Sau khi thêm điện thoại, bạn có thể truy cập các phiên trên máy tính này",
     "deviceLabel": "Thiết bị",
     "deviceTier": "Cấp độ",
-    "deviceTierFull": "Toàn quyền",
+    "deviceTierFull": "Có thể điều khiển",
     "deviceTierReadOnly": "Chỉ xem",
     "deviceLastSeen": "Lần cuối hoạt động",
     "devicePairedAt": "Đã ghép nối {{time}}",
     "deviceLastSeenValue": "Lần cuối hoạt động {{time}}",
     "deviceNeverSeen": "Chưa từng kết nối",
     "deviceOnline": "Trực tuyến",
-    "deviceOffline": "Ngoại tuyến"
+    "deviceOffline": "Ngoại tuyến",
+    "addPhone": "Thêm điện thoại",
+    "pairingPermission": "Quyền của điện thoại",
+    "relayDisabledHint": "Kết nối qua internet đang tắt. Bạn có thể bật trong cài đặt nâng cao"
+  },
+  "development": {
+    "updateAvailable": "Có bản cập nhật",
+    "updateAvailableDesc": "Hiện chỉ báo cập nhật trên toàn ứng dụng với phiên bản 99.0.0 — thao tác cập nhật chỉ mở bản xem trước",
+    "illustrations": "Hình minh họa",
+    "illustrationsDesc": "So sánh mọi hình minh họa ở chế độ sáng và tối mà không đổi giao diện"
+  },
+  "managedUsage": {
+    "cancel": "Hủy",
+    "authorize": "Bật gói",
+    "rates": "Đầu vào / đầu ra trên một triệu token",
+    "wallet": "Mở ví",
+    "priceRange": "Khoảng giá gói: {{min}}%–{{max}}% giá chính thức",
+    "rangeUnavailable": "Chưa có khoảng giá của gói. Hãy làm mới danh mục trước khi bật gói.",
+    "walletIncluded": "Tất cả mô hình trong gói sử dụng số dư ví của bạn.",
+    "walletUnavailable": "Thanh toán bằng ví chưa khả dụng. Hãy làm mới sau khi dịch vụ được cập nhật.",
+    "walletConsent": "Bật mọi mô hình trong gói này theo khoảng giá hiển thị. Chi phí sử dụng thực tế được trừ trực tiếp từ số dư ví; không cần ngân sách riêng cho gói."
   }
 }

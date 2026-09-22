@@ -209,6 +209,77 @@ pub(super) fn generate_claude_code_managed_config(
         .map_err(|err| format!("JSON serialize error: {err}"))
 }
 
+/// Claude Code merges `--settings <overlay>` per key over the user's own
+/// settings.json, so authentication overrides there would survive and can win
+/// over the overlay's proxy credential. Refuse to connect until the user
+/// resolves them; the user's file is never edited by ORG2.
+pub(super) fn inspect_claude_code_user_settings(raw: &str) -> Result<(), String> {
+    if raw.trim().is_empty() {
+        return Ok(());
+    }
+    // Do not include parser diagnostics: source excerpts can contain secrets.
+    let settings: serde_json::Value =
+        serde_json::from_str(raw).map_err(|_| "Invalid Claude Code settings JSON")?;
+    let Some(root) = settings.as_object() else {
+        return Err("Claude Code settings must be an object".into());
+    };
+    if root.contains_key("apiKeyHelper") {
+        return Err(
+            "Claude Code uses apiKeyHelper in ~/.claude/settings.json. Remove that authentication override before connecting."
+                .into(),
+        );
+    }
+    let Some(env) = root.get("env").and_then(serde_json::Value::as_object) else {
+        return Ok(());
+    };
+    for key in ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"] {
+        if env.contains_key(key) {
+            return Err(format!(
+                "Claude Code settings.json sets env.{key}, which would override the ORG2 connection. Remove it before connecting."
+            ));
+        }
+    }
+    for key in [
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "CLAUDE_CODE_USE_FOUNDRY",
+    ] {
+        if env
+            .get(key)
+            .is_some_and(|value| value.as_str() == Some("1") || value.as_bool() == Some(true))
+        {
+            return Err(
+                "Claude Code has a cloud-provider override in settings.json. Resolve it before connecting."
+                    .into(),
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Claude Code persists a few choices into the same settings.json that ORG2
+/// manages: `/model` rewrites `model`, the first run and `/theme` write
+/// `theme`, `/effort` writes `effortLevel`. Those runtime-owned fields are
+/// expected to drift after a launch and must not read as a third-party edit.
+/// Every other field (including the managed `env`, `modelPicker` and
+/// `availableModels`) still has to match the applied profile at the JSON level.
+pub(super) const CLAUDE_CODE_RUNTIME_OWNED_FIELDS: &[&str] = &["model", "theme", "effortLevel"];
+
+pub(super) fn claude_code_runtime_drift_only(current: &[u8], applied: &[u8]) -> bool {
+    fn normalized(bytes: &[u8]) -> Option<serde_json::Map<String, serde_json::Value>> {
+        let mut value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
+        let object = value.as_object_mut()?;
+        for field in CLAUDE_CODE_RUNTIME_OWNED_FIELDS {
+            object.remove(*field);
+        }
+        Some(std::mem::take(object))
+    }
+    match (normalized(current), normalized(applied)) {
+        (Some(current), Some(applied)) => current == applied,
+        _ => false,
+    }
+}
+
 fn quote_env_value(value: &str) -> String {
     let escaped = value.replace('\\', "\\\\").replace('"', "\\\"");
     format!("\"{escaped}\"")

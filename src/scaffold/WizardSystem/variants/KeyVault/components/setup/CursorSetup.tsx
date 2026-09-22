@@ -12,14 +12,14 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
-import { CursorSessionSetup } from "@src/features/SessionSetup";
-import { InternetIcon, KeyboardIcon, SearchAreaIcon } from "@src/icons";
 import {
   SECTION_CONTROL_STYLE,
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { CursorSessionSetup } from "@src/features/SessionSetup";
+import { InputShortTextIcon, InternetIcon, SearchAreaIcon } from "@src/icons";
 import {
   SelectionGrid,
   type SelectionGridOption,
@@ -70,7 +70,7 @@ const CursorSetup: React.FC<CursorSetupProps> = ({
       {
         key: "enter_token",
         label: t("keyVault.enterToken"),
-        icon: KeyboardIcon,
+        icon: InputShortTextIcon,
       },
     ],
     [t]
@@ -211,9 +211,8 @@ const CursorSetup: React.FC<CursorSetupProps> = ({
               required
             >
               <Button
-                variant={tokenDetected ? "success" : "primary"}
-                appearance={tokenDetected ? "outline" : undefined}
-                size="default"
+                variant={tokenDetected ? "secondary" : "primary"}
+                tone={tokenDetected ? "success" : undefined}
                 loading={detectingToken}
                 disabled={detectingToken}
                 onClick={onDetectToken}

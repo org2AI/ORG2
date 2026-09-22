@@ -13,17 +13,13 @@ import {
 } from "vitest";
 
 import type { GitHubPrReview } from "@src/api/tauri/github";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { PrSidebar } from "./PrSidebar";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, unknown>) => {
-      if (typeof fallback === "string") return fallback;
-      if (typeof fallback?.defaultValue !== "string") return key;
-      return fallback.defaultValue;
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 function review(

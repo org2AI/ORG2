@@ -5,14 +5,19 @@
 # at a glance whether the pre-commit hook ran. Commits with no trailer were
 # created with `--no-verify` or with hooks otherwise bypassed.
 MSG_FILE="$1"
-STATS_FILE=".git/COMMIT_STATS.json"
+# Resolve the git directory rather than assuming `.git` is one: in a linked
+# worktree it is a *file* holding a `gitdir:` pointer, so the old hardcoded
+# `.git/COMMIT_STATS.json` never resolved and every worktree commit silently
+# lost its trailer — indistinguishable from a real bypass.
+GIT_DIR=$(git rev-parse --absolute-git-dir 2>/dev/null) || GIT_DIR=".git"
+STATS_FILE="$GIT_DIR/COMMIT_STATS.json"
 
 if [ -f "$STATS_FILE" ] && [ -f "$MSG_FILE" ]; then
   if ! grep -q "Pre-commit hook ran\." "$MSG_FILE" 2>/dev/null; then
-    COUNTS=$(node -e '
+    COUNTS=$(STATS_FILE="$STATS_FILE" node -e '
       const fs = require("fs");
       try {
-        const s = JSON.parse(fs.readFileSync(".git/COMMIT_STATS.json", "utf8"));
+        const s = JSON.parse(fs.readFileSync(process.env.STATS_FILE, "utf8"));
         process.stdout.write("Total eslint: " + (s.eslint ?? 0) + ", total circular: " + (s.circular ?? 0));
       } catch (_) {}
     ')

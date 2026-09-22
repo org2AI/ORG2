@@ -1,14 +1,18 @@
 import React, { useCallback } from "react";
 
 import { SESSION_ROW_PRESENTATION } from "@src/components/SessionRowPresentation";
+import { ReferenceDragGhost } from "@src/components/dnd/ReferenceDragGhost";
 import { useImmediateCursorReset } from "@src/hooks/ui/useImmediateCursorReset";
 import { ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
-import { ReferenceDragGhost } from "@src/shared/dnd/ReferenceDragGhost";
 
 import { SIDEBAR_STYLE } from "../../../config";
 import type { NavigationMenuItem } from "../config";
 import { NavigationMenuRowAccessorySlot } from "./RowAccessorySlot";
-import { renderLeadingIcon, renderRowActions } from "./renderRowParts";
+import {
+  renderLeadingIcon,
+  renderNavigationMenuHoverContent,
+  renderRowActions,
+} from "./renderRowParts";
 import type {
   NavigationMenuIconRenderer,
   NavigationMenuItemClickHandler,
@@ -158,7 +162,7 @@ export const NavigationMenuLeafRow = React.forwardRef<
           })}
           {!collapsed && (
             <div className={SESSION_ROW_PRESENTATION.text}>
-              <span className="flex min-w-0 items-center gap-1">
+              <span className="flex min-w-0 items-center gap-3">
                 <span
                   className={`${SESSION_ROW_PRESENTATION.title} ${
                     item.disabled
@@ -225,13 +229,10 @@ function renderLeafRowAccessory({
       <NavigationMenuRowAccessorySlot
         workingIndicatorContent={item.workingIndicator}
         persistentContent={item.trailingElement}
-        hoverContent={
-          item.shortcut ? (
-            <span className="max-w-16 truncate text-[11px] text-text-2">
-              {item.shortcut}
-            </span>
-          ) : undefined
-        }
+        hoverContent={renderNavigationMenuHoverContent(
+          item,
+          "max-w-16 truncate text-[11px] text-text-2"
+        )}
         actionContent={renderRowActions({
           item,
           t,
@@ -244,6 +245,7 @@ function renderLeafRowAccessory({
 
   if (
     !item.shortcut &&
+    !item.trailingLabel &&
     !item.trailingElement &&
     !item.workingIndicator &&
     !item.showDrillDownIndicator
@@ -270,13 +272,10 @@ function renderLeafRowAccessory({
           )}
         </>
       }
-      hoverContent={
-        item.shortcut ? (
-          <span className="max-w-18 truncate text-[11px] text-text-3">
-            {item.shortcut}
-          </span>
-        ) : undefined
-      }
+      hoverContent={renderNavigationMenuHoverContent(
+        item,
+        "max-w-18 truncate text-[11px] text-text-3"
+      )}
     />
   );
 }

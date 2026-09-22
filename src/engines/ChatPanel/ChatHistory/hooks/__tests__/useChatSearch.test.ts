@@ -4,8 +4,8 @@ import { act, createElement, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import FindCard from "@src/components/FindCard";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import FindCard from "@src/scaffold/GlobalSpotlight/FindCard";
 import {
   chatFindInChatOpenAtomFamily,
   chatSearchSyncAtomFamily,
@@ -124,6 +124,8 @@ describe("chat search highlight scheduling", () => {
     act(() =>
       root.render(createElement(Provider, { store }, createElement(Harness)))
     );
+    expect(host.querySelector('[data-icon="search-list-01"]')).not.toBeNull();
+    expect(host.querySelector('[data-icon="search"]')).toBeNull();
     const buttons = Array.from(
       host.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")
     );

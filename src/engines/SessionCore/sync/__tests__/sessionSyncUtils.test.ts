@@ -1,8 +1,14 @@
+import nativeFixture from "@/src-tauri/crates/orgtrack-core/src/sources/fixtures/codex_native_failed_user.json";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  effectiveQueuedRetryEvents,
+  retryLineageEvent,
+} from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import {
+  hydrateSessionStoreBeforeDisplay,
   loadOwnSessionInitialEvents,
   loadPersistedHistory,
 } from "../sessionSyncUtils";
@@ -12,12 +18,17 @@ const cacheAdapterMock = vi.hoisted(() => ({
   getSessionMetadata: vi.fn(),
   loadInitialTurnWindow: vi.fn(),
   loadEvents: vi.fn(),
+  set: vi.fn(),
 }));
 
 vi.mock("@src/engines/SessionCore/storage/cacheAdapter", () => ({
   getSessionMetadata: cacheAdapterMock.getSessionMetadata,
   loadInitialTurnWindow: cacheAdapterMock.loadInitialTurnWindow,
   loadEvents: cacheAdapterMock.loadEvents,
+}));
+
+vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
+  eventStoreProxy: { set: cacheAdapterMock.set },
 }));
 
 function makeEvent(id: string): SessionEvent {
@@ -242,6 +253,109 @@ describe("loadPersistedHistory", () => {
     expect(cacheAdapterMock.loadEvents).toHaveBeenCalledWith(
       "cliagent-restart"
     );
+  });
+
+  it("retains validated retry lineage through native reload and EventStore replacement", async () => {
+    const sessionId = "cliagent-retry-reload";
+    const user = (intent: string, index: number): SessionEvent => ({
+      ...nativeFixture.normalizedUser,
+      id: `native-${intent}`,
+      chunk_id: null,
+      sessionId,
+      createdAt: `2026-09-18T16:00:0${index}.000Z`,
+      args: {},
+      source: "user",
+      displayStatus: "completed",
+      displayVariant: "message",
+      activityStatus: "agent",
+      result: { ...nativeFixture.normalizedUser.result, turnIntentId: intent },
+    });
+    const nativeHistory = [
+      user("A", 0),
+      user("B", 1),
+      user("failed-C", 2),
+      user("retry-C", 4),
+    ];
+    const diagnostic = {
+      ...nativeHistory[2],
+      id: "original-error",
+      source: "assistant" as const,
+      actionType: "error",
+      functionName: "error",
+      displayStatus: "failed" as const,
+      displayVariant: "error" as const,
+      displayText: "upstream unavailable",
+      result: { success: false },
+    };
+    nativeHistory.splice(3, 0, diagnostic);
+    const lineage = retryLineageEvent(sessionId, {
+      version: 1,
+      queueMessageId: "retry-owner",
+      superseded: [{ sessionId, turnIntentId: "failed-C", sourceEventIds: [] }],
+    });
+    const malformed = { ...lineage, id: "wrong-owner" };
+    const unrelated = { ...diagnostic, id: "cached-assistant-not-authority" };
+    const foreign = retryLineageEvent("other-session", {
+      version: 1,
+      queueMessageId: "other-owner",
+      superseded: [{ sessionId, turnIntentId: "A", sourceEventIds: [] }],
+    });
+    cacheAdapterMock.getSessionMetadata.mockResolvedValue({
+      sessionId,
+      eventCount: 4,
+      cachedAt: 1,
+    });
+    cacheAdapterMock.loadEvents.mockResolvedValue([
+      lineage,
+      malformed,
+      unrelated,
+      foreign,
+    ]);
+    const adapter = makeAdapter("cli", nativeHistory);
+    for (let reload = 0; reload < 2; reload += 1) {
+      if (reload === 1) {
+        // A window may carry an older version of the same durable row.
+        nativeHistory.push({
+          ...lineage,
+          result: {
+            retryLineage: {
+              version: 1,
+              queueMessageId: "retry-owner",
+              superseded: [],
+            },
+          },
+        });
+      }
+      const events = await loadPersistedHistory(
+        adapter,
+        sessionId,
+        new AbortController().signal
+      );
+      await hydrateSessionStoreBeforeDisplay(sessionId, events);
+      const [replacement, replacedSession] =
+        cacheAdapterMock.set.mock.calls.at(-1)!;
+      expect(replacedSession).toBe(sessionId);
+      expect(replacement).toContain(lineage);
+      expect(replacement).not.toContain(malformed);
+      expect(replacement).not.toContain(unrelated);
+      expect(replacement).not.toContain(foreign);
+      // Same identity contract as Rust compute_derived at es_set's consumer.
+      const visible = effectiveQueuedRetryEvents(replacement);
+      expect(
+        visible
+          .filter((event) => event.source === "user")
+          .map((event) => event.result.turnIntentId)
+      ).toEqual(["A", "B", "retry-C"]);
+      expect(visible).toContain(diagnostic);
+      expect(
+        replacement.filter((event: SessionEvent) => event.id === lineage.id)
+      ).toHaveLength(1);
+    }
+    expect(adapter.loadHistory).toHaveBeenCalledTimes(2);
+    expect(cacheAdapterMock.loadEvents).toHaveBeenCalledTimes(2);
+    expect(
+      nativeHistory.filter((event) => event.source === "user")
+    ).toHaveLength(4);
   });
 
   it("does not reparse native CLI history through an empty event cache", async () => {

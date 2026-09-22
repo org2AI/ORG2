@@ -9,7 +9,6 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::agent_sessions::event_pipeline::derived::compute_derived;
-use crate::agent_sessions::event_pipeline::payload_compaction::compact_event_for_snapshot;
 use crate::agent_sessions::event_pipeline::store::EventStore;
 use crate::agent_sessions::event_pipeline::types::{SnapshotDelta, SnapshotEventMembership};
 
@@ -83,13 +82,26 @@ pub(crate) fn schedule_notify(app: &AppHandle, state: &EventStoreState, session_
 /// again would be pure duplicate work.
 pub(super) fn build_streaming_snapshot_delta(store: &mut EventStore) -> SnapshotDelta {
     use crate::agent_sessions::event_pipeline::derived::{
-        is_visible_in_chat, is_visible_in_messages, is_visible_in_simulator,
+        compact_retry_event_for_snapshot, is_superseded_retry_prompt, is_visible_in_chat,
+        is_visible_in_messages, is_visible_in_simulator, superseded_retry_intents,
     };
 
     let version = store.version();
     let event_count = store.event_count();
     let (base_version, mut changed_ids, removed_ids) = store.take_delta_tracking();
     changed_ids.sort_by_key(|id| store.event_position(id).unwrap_or(usize::MAX));
+
+    // Ordinary assistant/tool chunks stay journal-only. A changed user row
+    // needs the same identity verdict as the full baseline. Control changes
+    // themselves force a new baseline because they also affect unchanged rows.
+    let superseded = changed_ids
+        .iter()
+        .any(|id| {
+            store.get_by_id(id).is_some_and(|event| {
+                event.source == crate::agent_sessions::event_pipeline::types::EventSource::User
+            })
+        })
+        .then(|| superseded_retry_intents(store.events()));
 
     let mut upserts = Vec::with_capacity(changed_ids.len());
     let mut memberships = Vec::with_capacity(changed_ids.len());
@@ -100,14 +112,17 @@ pub(super) fn build_streaming_snapshot_delta(store: &mut EventStore) -> Snapshot
         let Some(event) = store.get_by_id(&id) else {
             continue;
         };
+        let is_superseded = superseded
+            .as_ref()
+            .is_some_and(|identities| is_superseded_retry_prompt(event, identities));
         memberships.push(SnapshotEventMembership {
             id: id.clone(),
             event_index,
-            chat: is_visible_in_chat(event),
-            messages: is_visible_in_messages(event),
-            simulator: is_visible_in_simulator(event),
+            chat: is_visible_in_chat(event) || is_superseded,
+            messages: is_visible_in_messages(event) && !is_superseded,
+            simulator: is_visible_in_simulator(event) && !is_superseded,
         });
-        upserts.push(compact_event_for_snapshot(event));
+        upserts.push(compact_retry_event_for_snapshot(event, is_superseded));
     }
 
     SnapshotDelta {
@@ -126,12 +141,6 @@ pub(super) fn build_streaming_snapshot_delta(store: &mut EventStore) -> Snapshot
 }
 
 fn emit_snapshot(app: &AppHandle, state: &EventStoreState, session_id: &str) {
-    use crate::agent_sessions::event_pipeline::derived::{
-        build_simulator_preview_indexes, is_visible_in_chat, is_visible_in_messages,
-        is_visible_in_simulator, latest_canvas_preview, sort_simulator_events,
-    };
-    use crate::agent_sessions::event_pipeline::types::EventDisplayStatus;
-
     let mut stores = state.stores.lock().unwrap_or_else(|e| e.into_inner());
     let Some(store) = stores.get_mut(session_id) else {
         return;
@@ -163,15 +172,37 @@ fn emit_snapshot(app: &AppHandle, state: &EventStoreState, session_id: &str) {
         return;
     }
 
+    let snapshot = build_settled_snapshot_delta(store);
+    let envelope = SnapshotEnvelope {
+        session_id: session_id.to_string(),
+        snapshot,
+    };
+    app.emit(NOTIFY_EVENT_NAME, &envelope).ok();
+    crate::infrastructure::main_runloop::wake_main_runloop();
+}
+
+/// Build the settled wire projection after an already-emitted full baseline.
+pub(super) fn build_settled_snapshot_delta(store: &mut EventStore) -> SnapshotDelta {
+    use crate::agent_sessions::event_pipeline::derived::{
+        build_simulator_preview_indexes, compact_retry_event_for_snapshot,
+        is_superseded_retry_prompt, is_visible_in_chat, is_visible_in_messages,
+        is_visible_in_simulator, latest_canvas_preview, sort_simulator_events,
+        superseded_retry_intents,
+    };
+    use crate::agent_sessions::event_pipeline::types::EventDisplayStatus;
+
     let version = store.version();
     let event_count = store.event_count();
     let (base_version, changed_ids, removed_ids) = store.take_delta_tracking();
     let events = store.events();
+    let superseded = superseded_retry_intents(events);
     let changed_id_set = changed_ids.iter().collect::<std::collections::HashSet<_>>();
     let upserts = events
         .iter()
         .filter(|event| changed_id_set.contains(&event.id))
-        .map(compact_event_for_snapshot)
+        .map(|event| {
+            compact_retry_event_for_snapshot(event, is_superseded_retry_prompt(event, &superseded))
+        })
         .collect::<Vec<_>>();
     let event_ids = events
         .iter()
@@ -185,21 +216,24 @@ fn emit_snapshot(app: &AppHandle, state: &EventStoreState, session_id: &str) {
         if event.display_status == EventDisplayStatus::Running {
             has_running_event = true;
         }
-        if is_visible_in_chat(event) {
+        if is_visible_in_chat(event) || is_superseded_retry_prompt(event, &superseded) {
             chat_event_ids.push(event.id.clone());
         }
-        if is_visible_in_messages(event) {
+        if is_visible_in_messages(event) && !is_superseded_retry_prompt(event, &superseded) {
             messages_event_ids.push(event.id.clone());
         }
-        if is_visible_in_simulator(event) {
-            simulator_preview_events.push(compact_event_for_snapshot(event));
+        if is_visible_in_simulator(event) && !is_superseded_retry_prompt(event, &superseded) {
+            simulator_preview_events.push(compact_retry_event_for_snapshot(
+                event,
+                is_superseded_retry_prompt(event, &superseded),
+            ));
         }
     }
     sort_simulator_events(&mut simulator_preview_events);
     let preview_indexes = build_simulator_preview_indexes(&simulator_preview_events);
     let latest_canvas_preview = latest_canvas_preview(events);
     let chat_event_count = chat_event_ids.len();
-    let snapshot = SnapshotDelta {
+    SnapshotDelta {
         version,
         base_version,
         event_count,
@@ -223,11 +257,5 @@ fn emit_snapshot(app: &AppHandle, state: &EventStoreState, session_id: &str) {
         incremental_orders: false,
         memberships: Vec::new(),
         streaming: false,
-    };
-    let envelope = SnapshotEnvelope {
-        session_id: session_id.to_string(),
-        snapshot,
-    };
-    app.emit(NOTIFY_EVENT_NAME, &envelope).ok();
-    crate::infrastructure::main_runloop::wake_main_runloop();
+    }
 }

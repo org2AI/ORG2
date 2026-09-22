@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { CLI_AGENT } from "@src/api/types/keys";
 import { formatModelAgentType } from "@src/assets/providers";
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import ModelIcon from "@src/components/ModelIcon";
 import SettingsTable, {
   SETTINGS_TABLE_CELL,
@@ -12,16 +13,9 @@ import SettingsTable, {
 } from "@src/components/SettingsTable";
 import Switch from "@src/components/Switch";
 import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
+import { AccountStatusDot } from "@src/features/KeyVault/AccountStatusDot";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
-import {
-  Add01Icon,
-  Delete02Icon,
-  HugeiconsIcon,
-  Pen01Icon,
-  Refresh04Icon,
-} from "@src/icons";
-import { KEY_VAULT_STATUS_DOT } from "@src/modules/shared/keyVault/statusColors";
+import { Add01Icon, Delete02Icon, HugeiconsIcon, Pen01Icon } from "@src/icons";
 import { groupModels } from "@src/util/modelGrouping";
 
 import { EnabledFractionText } from "../../../shared/EnabledFractionText";
@@ -142,13 +136,6 @@ export default function MyAccountsTableSection({
     string | null
   >(null);
 
-  const {
-    spinClass: refreshSpinClass,
-    handleClick: handleRefreshAccountsClick,
-  } = useRefreshSpin(() => {
-    void onRefreshAccounts?.();
-  }, loading);
-
   const handleEditAccountInline = useCallback(
     (accountId: string) => {
       setExpandedAccountKeys([accountId]);
@@ -204,9 +191,7 @@ export default function MyAccountsTableSection({
           <span
             className={`${SETTINGS_TABLE_CELL.primary} inline-flex items-center gap-1.5 font-bold`}
           >
-            <span
-              className={`inline-block h-2 w-2 shrink-0 rounded-full ${KEY_VAULT_STATUS_DOT[account.status] ?? "bg-fill-3"}`}
-            />
+            <AccountStatusDot account={account} />
             {formatAccountDisplayName(account)}
           </span>
         ),
@@ -276,7 +261,6 @@ export default function MyAccountsTableSection({
               />
               {showEdit ? (
                 <Button
-                  variant="secondary"
                   size="small"
                   icon={
                     <HugeiconsIcon
@@ -293,8 +277,7 @@ export default function MyAccountsTableSection({
               ) : null}
               {onDisconnectAccount ? (
                 <Button
-                  variant="danger"
-                  appearance="outline"
+                  tone="danger"
                   size="small"
                   icon={
                     <HugeiconsIcon
@@ -392,35 +375,25 @@ export default function MyAccountsTableSection({
   );
 
   const refreshAccountsButton = onRefreshAccounts ? (
-    <Button
+    <RefreshButton
       variant="secondary"
-      size="default"
-      icon={
-        <HugeiconsIcon
-          icon={Refresh04Icon}
-          data-icon="refresh-cw"
-          size={14}
-          className={refreshSpinClass}
-        />
-      }
       iconOnly
-      onClick={handleRefreshAccountsClick}
-      disabled={loading}
-      aria-label={t("common:actions.refresh")}
-      title={t("common:actions.refresh")}
-      data-testid="key-vault-accounts-refresh-button"
+      label={t("common:actions.refresh")}
+      refreshing={loading}
+      onRefresh={() => {
+        void onRefreshAccounts?.();
+      }}
+      dataTestId="key-vault-accounts-refresh-button"
     />
   ) : null;
 
   const addKeyButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       iconOnly
       onClick={onAdd}
-      aria-label={t("keyVault.addAccount")}
-      title={t("keyVault.addAccount")}
+      aria-label={t("keyVault.addKey")}
+      title={t("keyVault.addKey")}
       data-testid="key-vault-add-account-button"
     />
   );
@@ -449,9 +422,9 @@ export default function MyAccountsTableSection({
           </>
         ),
       }}
-      emptyTitle={t("keyVault.noAccountsFound")}
+      emptyTitle={t("keyVault.noKeysFound")}
       emptyAction={{
-        label: t("keyVault.addAccount"),
+        label: t("keyVault.addKey"),
         onClick: onAdd,
       }}
     />

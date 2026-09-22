@@ -19,6 +19,7 @@ use super::get_connection;
 #[serde(rename_all = "camelCase")]
 pub struct TokenUsageRecord {
     pub id: i64,
+    pub usage_purpose: Option<String>,
     pub session_id: String,
     pub session_type: String,
     pub model: Option<String>,
@@ -111,18 +112,28 @@ pub(crate) fn recompute_usage_projection(session_id: &str) {
 /// Get all per-round token usage records for a session, ordered by created_at.
 pub fn get_token_usage_records(session_id: &str) -> SqliteResult<Vec<TokenUsageRecord>> {
     let conn = get_connection()?;
-    let mut stmt = conn.prepare(
+    let has_auxiliary = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='session_auxiliary_usage')",
+        [], |row| row.get::<_, bool>(0),
+    )?;
+    let purpose = if has_auxiliary {
+        "(SELECT aux.purpose FROM session_auxiliary_usage aux WHERE aux.token_usage_id = session_token_usage.id)"
+    } else {
+        "NULL"
+    };
+    let mut stmt = conn.prepare(&format!(
         "SELECT id, session_id, session_type, model, account_id,
                 input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
-                total_tokens, context_tokens, context_usage_json, created_at
+                total_tokens, context_tokens, context_usage_json, created_at, {purpose}
          FROM session_token_usage
          WHERE session_id = ?1
-         ORDER BY created_at ASC",
-    )?;
+         ORDER BY created_at ASC, id ASC",
+    ))?;
     let records = stmt
         .query_map([session_id], |row| {
             Ok(TokenUsageRecord {
                 id: row.get(0)?,
+                usage_purpose: row.get(13)?,
                 session_id: row.get(1)?,
                 session_type: row.get(2)?,
                 model: row.get(3)?,

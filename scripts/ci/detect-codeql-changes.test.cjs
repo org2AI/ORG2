@@ -85,6 +85,10 @@ test("real git diff preserves deletions and both sides of cross-language renames
   }
   try {
     git("init", "-q");
+    // A commit can leave detached gc/maintenance writing into .git, which
+    // races the cleanup below (ENOTEMPTY on CI).
+    git("config", "gc.auto", "0");
+    git("config", "maintenance.auto", "false");
     fs.writeFileSync(path.join(cwd, "old.rs"), "// shared content\n");
     fs.writeFileSync(path.join(cwd, "removed.py"), "# removed\n");
     git("add", ".");
@@ -122,6 +126,11 @@ test("real git diff preserves deletions and both sides of cross-language renames
       "rust",
     ]);
   } finally {
-    fs.rmSync(cwd, { recursive: true, force: true });
+    fs.rmSync(cwd, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
   }
 });

@@ -15,8 +15,8 @@
 import React, { memo } from "react";
 import { useTranslation } from "react-i18next";
 
-import ComposerBar from "@src/components/ComposerBar";
 import ComposerShell from "@src/components/ComposerShell";
+import ComposerBar from "@src/engines/ChatPanel/ComposerBar";
 import { HugeiconsIcon, LockIcon } from "@src/icons";
 
 import ContextInfoButton from "./ContextInfoButton";
@@ -31,8 +31,7 @@ interface SessionReadOnlyBarProps {
 const SessionReadOnlyBar: React.FC<SessionReadOnlyBarProps> = memo(
   ({ pills, label }) => {
     const { t } = useTranslation("sessions");
-    const badgeLabel =
-      label ?? t("chat.readOnly", { defaultValue: "Read-only" });
+    const badgeLabel = label ?? t("chat.readOnly");
 
     return (
       <ComposerShell variant="embedded">

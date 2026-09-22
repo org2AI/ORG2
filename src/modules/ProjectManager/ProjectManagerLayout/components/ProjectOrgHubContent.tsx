@@ -2,6 +2,7 @@ import React, { Suspense, useMemo } from "react";
 
 import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
+import { LAZY_DETAIL_FALLBACK } from "@src/components/layout/blocks/LazyDetailFallback";
 import {
   PROJECT_ORG_SURFACE_VIEW,
   type ProjectOrgScope,
@@ -12,7 +13,6 @@ import {
 import type { LinearProjectSelection } from "../../Panels/ProjectManagerSidebar/content/WorkspaceTreeContent";
 import { useProjectOrgCatalogData } from "../hooks/useProjectOrgCatalogData";
 import type { ExpandWorkItemToTabHandler } from "../types";
-import { STORY_MANAGER_SUSPENSE_LOADING_FALLBACK } from "./ProjectManagerLoadingFallback";
 import { ProjectOrgHubHeader } from "./ProjectOrgHubHeader";
 import { ProjectOrgSettingsPane } from "./ProjectOrgSettingsPane";
 import { ProjectOrgSurfacePillSwitch } from "./ProjectOrgSurfacePillSwitch";
@@ -104,7 +104,7 @@ export const ProjectOrgHubContent: React.FC<ProjectOrgHubContentProps> = ({
   const body = useMemo(() => {
     if (orgView === PROJECT_ORG_SURFACE_VIEW.PROJECTS) {
       return (
-        <Suspense fallback={STORY_MANAGER_SUSPENSE_LOADING_FALLBACK}>
+        <Suspense fallback={LAZY_DETAIL_FALLBACK}>
           <ProjectsPage
             breadcrumbSegments={resolvedBreadcrumbSegments}
             orgId={scopedOrgId}
@@ -122,7 +122,7 @@ export const ProjectOrgHubContent: React.FC<ProjectOrgHubContentProps> = ({
 
     if (orgView === PROJECT_ORG_SURFACE_VIEW.WORK_ITEMS) {
       return (
-        <Suspense fallback={STORY_MANAGER_SUSPENSE_LOADING_FALLBACK}>
+        <Suspense fallback={LAZY_DETAIL_FALLBACK}>
           <ProjectWorkItemsTabContent
             breadcrumbSegments={resolvedBreadcrumbSegments}
             orgId={scopedOrgId}

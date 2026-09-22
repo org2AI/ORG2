@@ -28,7 +28,6 @@ it("keeps URL-entry back/forward behavior without timestamped recording", () => 
   };
   renderToStaticMarkup(
     createElement(WebViewport, {
-      hideTabBar: true,
       browserState: {
         sessions: [session],
         activeSessionId: "test",
@@ -56,4 +55,36 @@ it("keeps URL-entry back/forward behavior without timestamped recording", () => 
     history: ["https://first.example", "https://next.example"],
     historyIndex: 1,
   });
+});
+
+it("offers cookie import to the URL bar for regular tabs only", () => {
+  const urlBarPropsFor = (incognito: boolean) => {
+    const session = {
+      id: "test",
+      url: "https://first.example",
+      title: "First",
+      history: ["https://first.example"],
+      historyIndex: 0,
+      isLoading: false,
+      error: null,
+      incognito,
+    };
+    renderToStaticMarkup(
+      createElement(WebViewport, {
+        browserState: {
+          sessions: [session],
+          activeSessionId: "test",
+          activeSession: session,
+          updateSession: vi.fn(),
+          addSession: vi.fn(),
+          closeSession: vi.fn(),
+          setActiveSession: vi.fn(),
+        },
+      })
+    );
+    return vi.mocked(WebUrlBar).mock.calls.at(-1)?.[0];
+  };
+
+  expect(urlBarPropsFor(false)?.onImportCookies).toBeTypeOf("function");
+  expect(urlBarPropsFor(true)?.onImportCookies).toBeUndefined();
 });

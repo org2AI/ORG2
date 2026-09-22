@@ -513,7 +513,6 @@ export function useExternalImport({
           const dropdownVisible = actionsDropdownRowKey === actionKey;
           return (
             <SplitButton
-              variant="secondary"
               size="small"
               onClick={() => handleOpen(row)}
               menu={

@@ -29,6 +29,7 @@ import {
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
 import SelectorPill from "@src/components/SelectorPill";
+import { INPUT_AREA_PILL_MENU_GAP } from "@src/config/inputAreaTokens";
 import {
   AGENT_EXEC_MODES,
   type AgentExecMode,
@@ -155,7 +156,7 @@ const ModePill: React.FC<ModePillProps> = memo(
       panelRef,
       panelPosition,
     } = useDropdownEngine<HTMLButtonElement>({
-      gap: 6,
+      gap: INPUT_AREA_PILL_MENU_GAP,
       align: "left",
       placement,
     });
@@ -259,16 +260,19 @@ const ModePill: React.FC<ModePillProps> = memo(
           onClick={handleTriggerClick}
           hoverIcon={
             resetToDefaultOnClick && mode !== DEFAULT_AGENT_EXEC_MODE ? (
-              <HugeiconsIcon
-                icon={Cancel01Icon}
-                data-icon="x"
-                size={14}
-                strokeWidth={1.75}
-              />
+              <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-current/15">
+                <HugeiconsIcon
+                  icon={Cancel01Icon}
+                  data-icon="x"
+                  size={14}
+                  strokeWidth={1.75}
+                />
+              </span>
             ) : undefined
           }
           className={toneClassName}
           size="sm"
+          paddingX="compact"
         />
 
         {isOpen &&

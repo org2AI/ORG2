@@ -3,6 +3,7 @@ import React from "react";
 
 import Button from "@src/components/Button";
 import { PILL_CONTROL_IDLE_SURFACE_CLASS } from "@src/components/CompoundPill/config";
+import { COMPOSER_STACK_INSET_X_CLASS } from "@src/config/composerStackTokens";
 import {
   ChatRetryBanner,
   toChatRetryKind,
@@ -18,9 +19,7 @@ import ActiveProcesses from "../InputArea/components/ActiveProcesses";
 import AgentOrgInterventionPinBar from "../InputArea/components/AgentOrgInterventionPinBar";
 import CompactFileChanges, {
   type FileChangeVisibleStats,
-  type FileChangesResult,
 } from "../InputArea/components/CompactFileChanges";
-import QueuedMessages from "../InputArea/components/QueuedMessages";
 import CreatePlanCard from "../blocks/CreatePlanCard";
 import type {
   AgentOrgInterventionView,
@@ -38,8 +37,6 @@ export const ComposerScrollToBottomButton: React.FC<
   ComposerScrollToBottomButtonProps
 > = ({ scrollNav, t }) => (
   <Button
-    variant="secondary"
-    appearance="outline"
     size="small"
     shape="round"
     icon={
@@ -90,20 +87,24 @@ export const ComposerInteractionCards: React.FC<
 }) => (
   <>
     {currentPlanApproval && shouldShowCurrentPlanSurface && (
-      <CreatePlanCard
-        key={`current-plan-${currentPlanApproval.planRevisionId ?? currentPlanApproval.toolCallId ?? currentPlanApproval.planPath}`}
-        content={currentPlanApproval.planContent}
-        title={currentPlanApproval.planTitle}
-        isStreaming={false}
-        toolCallId={currentPlanApproval.toolCallId}
-        planId={currentPlanApproval.planId}
-        planRevisionId={currentPlanApproval.planRevisionId}
-        sessionId={sessionId}
-        surface="current"
-        surfaceState={currentPlanSurfaceState}
-        collapsed={planCollapsed}
-        onCollapse={onPlanCollapse}
-      />
+      // The plan card uses the chat-history block shell; inset it here so it
+      // lines up with the rest of the composer stack.
+      <div className={COMPOSER_STACK_INSET_X_CLASS}>
+        <CreatePlanCard
+          key={`current-plan-${currentPlanApproval.planRevisionId ?? currentPlanApproval.toolCallId ?? currentPlanApproval.planPath}`}
+          content={currentPlanApproval.planContent}
+          title={currentPlanApproval.planTitle}
+          isStreaming={false}
+          toolCallId={currentPlanApproval.toolCallId}
+          planId={currentPlanApproval.planId}
+          planRevisionId={currentPlanApproval.planRevisionId}
+          sessionId={sessionId}
+          surface="current"
+          surfaceState={currentPlanSurfaceState}
+          collapsed={planCollapsed}
+          onCollapse={onPlanCollapse}
+        />
+      </div>
     )}
 
     <AskQuestionCard
@@ -130,52 +131,29 @@ export const ComposerInteractionCards: React.FC<
 interface ComposerActivityTrackersProps {
   sessionId: string;
   inputAreaSessionId: string;
-  queueExpanded: boolean;
-  queuedMessages: Parameters<typeof QueuedMessages>[0]["messages"];
-  onCancelQueuedMessage: Parameters<typeof QueuedMessages>[0]["onCancel"];
-  onClearQueuedMessages: Parameters<typeof QueuedMessages>[0]["onClear"];
-  onSendQueuedMessageNow: Parameters<typeof QueuedMessages>[0]["onSendNow"];
-  onReorderQueuedMessages: Parameters<typeof QueuedMessages>[0]["onReorder"];
-  onToggleQueue: () => void;
   processExpanded: boolean;
   onToggleProcess: () => void;
   onProcessVisibleCountChange: (count: number) => void;
-  initialFileChanges?: FileChangesResult;
+  /** False when the host already resolved the files-pill stats. */
+  trackFileChanges: boolean;
   filesReloadKey: string;
   onFileChangeStatsChange: (next: FileChangeVisibleStats) => void;
 }
 
-/** Queued messages, active processes (expanded or hidden tracker) and the file-change tracker. */
+/** Active processes (expanded or hidden tracker) and the file-change tracker. */
 export const ComposerActivityTrackers: React.FC<
   ComposerActivityTrackersProps
 > = ({
   sessionId,
   inputAreaSessionId,
-  queueExpanded,
-  queuedMessages,
-  onCancelQueuedMessage,
-  onClearQueuedMessages,
-  onSendQueuedMessageNow,
-  onReorderQueuedMessages,
-  onToggleQueue,
   processExpanded,
   onToggleProcess,
   onProcessVisibleCountChange,
-  initialFileChanges,
+  trackFileChanges,
   filesReloadKey,
   onFileChangeStatsChange,
 }) => (
   <>
-    {queueExpanded && (
-      <QueuedMessages
-        messages={queuedMessages}
-        onCancel={onCancelQueuedMessage}
-        onClear={onClearQueuedMessages}
-        onSendNow={onSendQueuedMessageNow}
-        onReorder={onReorderQueuedMessages}
-        onToggle={onToggleQueue}
-      />
-    )}
     {processExpanded && (
       <ActiveProcesses
         key={`process-expanded-${sessionId}`}
@@ -193,13 +171,14 @@ export const ComposerActivityTrackers: React.FC<
         hidden
       />
     )}
-    <CompactFileChanges
-      key={`files-tracker-${inputAreaSessionId}`}
-      sessionIdOverride={inputAreaSessionId}
-      initialData={initialFileChanges}
-      reloadKey={filesReloadKey}
-      onVisibleStatsChange={onFileChangeStatsChange}
-    />
+    {trackFileChanges && (
+      <CompactFileChanges
+        key={`files-tracker-${inputAreaSessionId}`}
+        sessionIdOverride={inputAreaSessionId}
+        reloadKey={filesReloadKey}
+        onVisibleStatsChange={onFileChangeStatsChange}
+      />
+    )}
   </>
 );
 
@@ -223,23 +202,16 @@ export const GroupChatPendingMessagePill: React.FC<
     {groupChatPendingMessage.retryError ? (
       <>
         <span className="h-1.5 w-1.5 rounded-full bg-warning-6" />
-        <span>
-          {t("groupChat.userMessageOutcomeUnknown", {
-            defaultValue: "Delivery outcome unknown. Retry with the same IDs.",
-          })}
-        </span>
+        <span>{t("groupChat.userMessageOutcomeUnknown")}</span>
         <Button
           data-testid="agent-org-group-chat-retry"
-          variant="secondary"
-          appearance="outline"
           size="mini"
           shape="round"
-          htmlType="button"
           loading={groupChatPendingMessage.retrying}
           disabled={groupChatPendingMessage.retrying}
           onClick={() => void groupChatPendingMessage.onRetry()}
         >
-          {t("common:actions.retry", { defaultValue: "Retry" })}
+          {t("common:actions.retry")}
         </Button>
       </>
     ) : (
@@ -248,7 +220,6 @@ export const GroupChatPendingMessagePill: React.FC<
         <span>
           {t("groupChat.userMessagePending", {
             member: groupChatPendingMessage.targetMemberName,
-            defaultValue: "{{member}} is picking up your message",
           })}
         </span>
       </>

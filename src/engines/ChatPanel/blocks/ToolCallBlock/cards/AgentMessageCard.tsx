@@ -255,7 +255,7 @@ const MessageMetaSection: React.FC<MessageMetaSectionProps> = ({
       {statusLabel && (
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="shrink-0 text-text-3">
-            {t("cards.agentMessage.meta.status", { defaultValue: "Status" })}
+            {t("cards.agentMessage.meta.status")}
           </span>
           <span
             className="min-w-0 flex-1 truncate text-text-1"

@@ -97,6 +97,71 @@ describe("GitHub managed-item model", () => {
     ).toBe(false);
   });
 
+  it("applies issue-only qualifiers and rejects pull requests for them", () => {
+    const item = mapIssueToManagedItem(
+      { ...issue, milestone: "v2", created_at: "2026-07-01T00:00:00.000Z" },
+      source
+    );
+    const matches = (raw: string) =>
+      managedItemMatchesQuery(
+        item,
+        parseGitHubSearchQuery(raw),
+        Date.parse("2026-07-21T00:00:00.000Z")
+      );
+
+    expect(matches("assignee:someone,viewer")).toBe(true);
+    expect(matches("-assignee:@me")).toBe(false);
+    expect(matches("-label:bug")).toBe(false);
+    expect(matches("-label:wip")).toBe(true);
+    expect(matches("-author:author")).toBe(false);
+    expect(matches("milestone:V2")).toBe(true);
+    expect(matches("milestone:v3")).toBe(false);
+    expect(matches("no:assignee")).toBe(false);
+    expect(matches("no:milestone")).toBe(false);
+    expect(matches("linked:pr")).toBe(true);
+    expect(matches("-linked:pr")).toBe(false);
+    expect(matches("comments:>=2")).toBe(true);
+    expect(matches("comments:>2")).toBe(false);
+    expect(matches("updated:>7d")).toBe(true);
+    expect(matches("updated:<7d")).toBe(false);
+    expect(matches("created:2026-06-30..2026-07-02")).toBe(true);
+    expect(matches("draft:false")).toBe(false);
+    expect(matches("base:main")).toBe(false);
+
+    const bare = mapIssueToManagedItem(
+      { ...issue, labels: [], assignees: [], milestone: null },
+      source
+    );
+    expect(
+      managedItemMatchesQuery(
+        bare,
+        parseGitHubSearchQuery("no:assignee no:label no:milestone")
+      )
+    ).toBe(true);
+  });
+
+  it("applies pull-request-only qualifiers and rejects issues for them", () => {
+    const item = mapPrToManagedItem(
+      { ...pr, draft: true, requested_reviewer_logins: ["Viewer"] },
+      source
+    );
+    const matches = (raw: string) =>
+      managedItemMatchesQuery(item, parseGitHubSearchQuery(raw));
+
+    expect(matches("draft:true")).toBe(true);
+    expect(matches("draft:false")).toBe(false);
+    expect(matches("review-requested:@me")).toBe(true);
+    expect(matches("review-requested:someone")).toBe(false);
+    expect(matches("base:main,develop")).toBe(true);
+    expect(matches("base:develop")).toBe(false);
+    expect(matches("head:fix/crash")).toBe(true);
+    expect(matches("status:success")).toBe(true);
+    expect(matches("status:failure,pending")).toBe(false);
+    expect(matches("label:bug")).toBe(false);
+    expect(matches("no:assignee")).toBe(false);
+    expect(matches("-label:bug")).toBe(true);
+  });
+
   it("matches both displayed IDs and title text", () => {
     const item = mapIssueToManagedItem(issue, source);
 

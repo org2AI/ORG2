@@ -40,10 +40,9 @@ vi.mock("./GridCell/IndependentGridCell", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock(
-  "@src/modules/shared/components/FileHeader/BreadcrumbFileHeader",
-  () => ({ default: () => null })
-);
+vi.mock("@src/features/FileHeader/BreadcrumbFileHeader", () => ({
+  default: () => null,
+}));
 vi.mock("@src/engines/ChatPanel/blocks/primitives", () => ({
   EVENT_LOADING_SHIMMER_TEXT_CLASSES: "",
 }));

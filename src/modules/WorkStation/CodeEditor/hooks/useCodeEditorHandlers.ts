@@ -37,7 +37,6 @@ export interface UseCodeEditorHandlersOptions {
   repoName: string;
   editorState: UseCodeEditorReturn;
   setPrimaryPanel: (fn: (prev: PanelState) => PanelState) => void;
-  setSearchPanelVisible: (visible: boolean) => void;
   gitDiffState: UseGitDiffStateReturn;
 }
 
@@ -51,10 +50,6 @@ export interface UseCodeEditorHandlersReturn {
   handleDirectoryToggle: (path: string) => void;
 
   // Search handlers
-  handleSearchClick: () => void;
-  handleSearchClose: () => void;
-  handleSearchChange: (query: string) => void;
-  handleSearchFileSelect: (path: string) => void;
   handleFilterSearch: (query: string) => void;
   handleClearFilterSearch: () => void;
 
@@ -85,7 +80,6 @@ export function useCodeEditorHandlers(
     repoName: _repoName,
     editorState,
     setPrimaryPanel,
-    setSearchPanelVisible,
     gitDiffState,
   } = options;
 
@@ -168,33 +162,6 @@ export function useCodeEditorHandlers(
   // ============================================
   // Search Handlers
   // ============================================
-
-  const handleSearchClick = useCallback(() => {
-    setSearchPanelVisible(true);
-  }, [setSearchPanelVisible]);
-
-  const handleSearchClose = useCallback(() => {
-    setSearchPanelVisible(false);
-    editorState.clearSearch();
-  }, [setSearchPanelVisible, editorState]);
-
-  const handleSearchChange = useCallback(
-    (query: string) => {
-      editorState.searchFiles(query);
-    },
-    [editorState]
-  );
-
-  // File selection from search
-  const handleSearchFileSelect = useCallback(
-    (path: string) => {
-      editorState.selectFile(path);
-
-      const tab = createFileTab(path);
-      setPrimaryPanel((prev) => openTab(prev, tab));
-    },
-    [editorState, setPrimaryPanel]
-  );
 
   const handleFilterSearch = useCallback(
     (query: string) => {
@@ -364,10 +331,6 @@ export function useCodeEditorHandlers(
     handleDirectoryToggle,
 
     // Search
-    handleSearchClick,
-    handleSearchClose,
-    handleSearchChange,
-    handleSearchFileSelect,
     handleFilterSearch,
     handleClearFilterSearch,
 

@@ -20,14 +20,20 @@ afterEach(() => {
   localStorage.clear();
 });
 
+// No measured split area in these tests, so the estimate applies: innerWidth
+// 1200 − 240 assumed sidebar − 20 gutter = 940 shared. The 1/3 default asks
+// for 313, below MIN_WIDTH, so it seeds the 420 floor; the 2/3 ceiling clamps
+// anything wider to 626, and 1/2 lands on 470.
+const SEEDED_FROM_DEFAULT_RATIO = 420;
+
 describe("chat width initialization", () => {
   it.each([
-    [null, 520],
+    [null, SEEDED_FROM_DEFAULT_RATIO],
     ["480", 480],
     ["0", 0],
-    ["900", 558],
+    ["900", 626],
     ["100", 420],
-    ["invalid-json", 520],
+    ["invalid-json", SEEDED_FROM_DEFAULT_RATIO],
   ])(
     "initializes persisted %s to %s before rendering",
     async (stored, expected) => {
@@ -81,6 +87,33 @@ describe("chat width initialization", () => {
     expect(document.documentElement.style.getPropertyValue(cssVar)).toBe(
       "480px"
     );
+  });
+
+  it("re-applies a picked preset over the persisted width", async () => {
+    localStorage.setItem("globalChatWidth", "480");
+    const { chatWidthAtom, adoptDefaultChatWidthAtom } =
+      await import("./widthAtoms");
+    const { getChatWidthForRatio } =
+      await import("@src/engines/ChatPanel/config");
+    const store = createStore();
+    store.set(adoptDefaultChatWidthAtom, getChatWidthForRatio("two-thirds"));
+    expect(store.get(chatWidthAtom)).toBe(626);
+    vi.advanceTimersByTime(300);
+    expect(localStorage.getItem("globalChatWidth")).toBe("626");
+  });
+
+  it("stores a preset picked while the pane is hidden as the restore width", async () => {
+    const { chatWidthAtom, adoptDefaultChatWidthAtom, restoreChatWidthAtom } =
+      await import("./widthAtoms");
+    const { getChatWidthForRatio } =
+      await import("@src/engines/ChatPanel/config");
+    const store = createStore();
+    store.set(chatWidthAtom, 0);
+    store.set(adoptDefaultChatWidthAtom, getChatWidthForRatio("half"));
+    // The pane stays collapsed — the preset only changes what it reopens at.
+    expect(store.get(chatWidthAtom)).toBe(0);
+    store.set(restoreChatWidthAtom);
+    expect(store.get(chatWidthAtom)).toBe(470);
   });
 
   it("coalesces repeated resize persistence without adding startup timers", async () => {

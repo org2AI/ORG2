@@ -1,24 +1,25 @@
 import type { ReactNode } from "react";
 
 import Select from "@src/components/Select";
-import type { SelectOption } from "@src/components/Select";
-import { WorkManagementSearchInput } from "@src/modules/shared/components/WorkManagementSearchInput";
-import { compactRepositoryLabel } from "@src/modules/shared/githubRepositoryLabel";
+import { WorkManagementSearchInput } from "@src/features/GitHubWork/WorkManagementSearchInput";
+import { compactRepositoryLabel } from "@src/features/GitHubWork/githubRepositoryLabel";
 
-import { IssuePersonalFilterDropdown } from "./GitHubWorkItemControls";
 import {
   GitHubWorkItemStateTabs,
   GitHubWorkItemToolbarActions,
 } from "./GitHubWorkItemList";
+import {
+  GitHubWorkItemsFilterMenu,
+  type GitHubWorkItemsFilterMenuProps,
+} from "./GitHubWorkItemsFilterMenu";
 import type { IssueRepoFilter, RepoFilterOption } from "./githubWorkItemsTypes";
 
 export interface GitHubWorkItemsHeaderControlsProps {
   stateTabs: Array<{ key: string; label: string }>;
   activeState: string;
   searchQuery: string;
-  personalFilterOptions?: SelectOption[];
-  selectedPersonalFilters?: string[];
-  personalFilterLabel?: string;
+  /** Omitted where the header offers no filter popover. */
+  filterMenu?: GitHubWorkItemsFilterMenuProps;
   refreshLabel: string;
   refreshing: boolean;
   createAction?: {
@@ -28,33 +29,18 @@ export interface GitHubWorkItemsHeaderControlsProps {
   };
   onStateChange: (state: string) => void;
   onSearchQueryChange: (query: string) => void;
-  onPersonalFiltersSelect?: (values: (string | number)[]) => void;
   onRefresh: () => void;
 }
 
 export function GitHubWorkItemsFilterControls({
   stateTabs,
   activeState,
-  personalFilterOptions = [],
-  selectedPersonalFilters = [],
-  personalFilterLabel,
+  filterMenu,
   onStateChange,
-  onPersonalFiltersSelect,
 }: Pick<
   GitHubWorkItemsHeaderControlsProps,
-  | "stateTabs"
-  | "activeState"
-  | "personalFilterOptions"
-  | "selectedPersonalFilters"
-  | "personalFilterLabel"
-  | "onStateChange"
-  | "onPersonalFiltersSelect"
+  "stateTabs" | "activeState" | "filterMenu" | "onStateChange"
 >): ReactNode {
-  const showPersonalFilters =
-    personalFilterOptions.length > 0 &&
-    personalFilterLabel !== undefined &&
-    onPersonalFiltersSelect !== undefined;
-
   return (
     <div className="flex shrink-0 items-center gap-px">
       <GitHubWorkItemStateTabs
@@ -62,14 +48,7 @@ export function GitHubWorkItemsFilterControls({
         activeTab={activeState}
         onChange={onStateChange}
       />
-      {showPersonalFilters ? (
-        <IssuePersonalFilterDropdown
-          options={personalFilterOptions}
-          selectedFilters={selectedPersonalFilters}
-          filterLabel={personalFilterLabel}
-          onSelect={onPersonalFiltersSelect}
-        />
-      ) : null}
+      {filterMenu ? <GitHubWorkItemsFilterMenu {...filterMenu} /> : null}
     </div>
   );
 }
@@ -120,6 +99,8 @@ export function GitHubWorkItemsSearchAndActions({
 interface GitHubWorkItemsRepositorySelectProps {
   repoOptions: RepoFilterOption[];
   selectedRepo: IssueRepoFilter;
+  /** True until the repository list has resolved a selection. */
+  loading?: boolean;
   onRepoSelect: (repo: IssueRepoFilter) => void;
 }
 
@@ -127,11 +108,13 @@ interface GitHubWorkItemsRepositorySelectProps {
 export function GitHubWorkItemsRepositorySelect({
   repoOptions,
   selectedRepo,
+  loading = false,
   onRepoSelect,
 }: GitHubWorkItemsRepositorySelectProps): ReactNode {
   return (
     <Select
       value={selectedRepo}
+      loading={loading}
       options={repoOptions.map((option) => ({
         value: option.key,
         label: compactRepositoryLabel(option.label),

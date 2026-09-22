@@ -119,7 +119,7 @@ pub(super) fn update_kimi_platform(
     live_status: bool,
     executable: &Path,
 ) -> Result<(), String> {
-    let path = SessionProvenanceHookPlatform::Kimi.config_path();
+    let path = SessionProvenanceHookPlatform::Kimi.config_path()?;
     // Skip the comment-destroying rewrite only when the on-disk shape already
     // matches the desired one — entry COUNT matters, not mere presence, or a
     // live-status flip would never upgrade/downgrade the installed set.

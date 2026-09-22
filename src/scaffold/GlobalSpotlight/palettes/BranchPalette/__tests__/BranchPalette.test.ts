@@ -278,7 +278,9 @@ describe("branch picker tabs", () => {
       onSelect.mockResolvedValueOnce(true);
       await act(async () =>
         container
-          .querySelector<HTMLElement>('[data-spotlight-item-id="pr:42"]')!
+          .querySelector<HTMLElement>(
+            '[data-spotlight-item-id="pr:42"] [data-spotlight-row-action]'
+          )!
           .click()
       );
       expect(onClose).toHaveBeenCalledTimes(1);
@@ -340,7 +342,9 @@ describe("branch picker tabs", () => {
     await clickTab("prs");
     await act(async () =>
       container
-        .querySelector<HTMLElement>('[data-spotlight-item-id="pr:42"]')!
+        .querySelector<HTMLElement>(
+          '[data-spotlight-item-id="pr:42"] [data-spotlight-row-action]'
+        )!
         .click()
     );
     await act(async () => root.render(null));

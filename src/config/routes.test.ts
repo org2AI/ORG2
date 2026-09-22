@@ -1,6 +1,11 @@
 import { ContentWritingIcon } from "@src/icons";
 
-import { ROUTES, getIconComponentForPath, isWorkbenchPath } from "./routes";
+import {
+  ROUTES,
+  getIconComponentForPath,
+  isSettingsPath,
+  isWorkbenchPath,
+} from "./routes";
 
 describe("Workbench route ownership", () => {
   it("uses the writing glyph for My Station's Code Editor", () => {
@@ -22,6 +27,13 @@ describe("Workbench route ownership", () => {
     expect(isWorkbenchPath(ROUTES.auth.login.path)).toBe(false);
     expect(isWorkbenchPath("/orgii/workstation-old")).toBe(false);
     expect(isWorkbenchPath("/orgii/app/settings-preview")).toBe(false);
+  });
+
+  it("separates Settings from the rest of the Workbench", () => {
+    expect(isSettingsPath(ROUTES.app.settings.path)).toBe(true);
+    expect(isSettingsPath(`${ROUTES.app.settings.path}/appearance`)).toBe(true);
+    expect(isSettingsPath(ROUTES.workStation.base.path)).toBe(false);
+    expect(isSettingsPath("/orgii/app/settings-preview")).toBe(false);
   });
 
   it("does not expose a Home route", () => {

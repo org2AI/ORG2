@@ -23,6 +23,27 @@ const AT_BOTTOM_EPSILON_PX = 4;
  * Headerless groups cannot use a turn id, so prefer their first immutable
  * event/chunk id. This keeps their identity stable when older history prepends.
  */
+/**
+ * Per-group fallback identity: the first item's immutable event/chunk id.
+ * Shared so every surface that needs a group's render key — the list itself
+ * and the minimap, which maps pinned anchors back to groups — derives it the
+ * same way.
+ */
+export function buildChatGroupFallbackIds(
+  flatItems: readonly {
+    event?: { id?: string | null } | null;
+    chunk_id?: string | null;
+  }[],
+  groupCounts: readonly number[]
+): (string | null)[] {
+  let startFlatIndex = 0;
+  return groupCounts.map((groupItemCount) => {
+    const firstItem = flatItems[startFlatIndex];
+    startFlatIndex += groupItemCount;
+    return firstItem?.event?.id ?? firstItem?.chunk_id ?? null;
+  });
+}
+
 export function buildChatGroupRenderKeys(
   turnIds: readonly (string | null)[],
   fallbackIds: readonly (string | null)[] = []

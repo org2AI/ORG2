@@ -60,7 +60,7 @@
     },
     "loadingConnections": "Đang tải kết nối GitHub...",
     "noConnectionTitle": "Không tìm thấy kết nối GitHub",
-    "noConnectionDescription": "Trước tiên hãy thêm kết nối GitHub trong Integrations, sau đó quay lại đây để nhập GitHub Issues.",
+    "noConnectionDescription": "Trước tiên hãy thêm kết nối GitHub trong Integrations, sau đó quay lại đây để nhập GitHub Issues",
     "linkedRepoHint": "Project này cũng sẽ được liên kết với Workspace repo hiện tại: {{repoName}}",
     "errors": {
       "invalidRepo": "Dùng owner/repo hoặc URL kho GitHub."
@@ -80,7 +80,7 @@
     "importLinearOrgs": "Nhập không gian làm việc Linear",
     "gitFolderPath": "Đường dẫn thư mục Git (tùy chọn)",
     "gitFolderPathPlaceholder": "/path/to/repo",
-    "gitFolderPathHint": "Liên kết không gian làm việc này với một cây làm việc Git hiện có để đồng bộ thư mục.",
+    "gitFolderPathHint": "Liên kết không gian làm việc này với một cây làm việc Git hiện có để đồng bộ thư mục",
     "gitFolderBadge": "Git",
     "gitFolderSynced": "Đã đồng bộ với thư mục Git",
     "pendingSync": "Đang chờ đồng bộ",
@@ -123,7 +123,7 @@
     "addTeams": "Thêm nhóm",
     "addLabels": "Thêm nhãn",
     "addRepos": "Liên kết kho lưu trữ",
-    "noReposHint": "Không có kho lưu trữ khả dụng. Hãy thêm kho lưu trữ vào workspace trước.",
+    "noReposHint": "Không có kho lưu trữ khả dụng. Hãy thêm kho lưu trữ vào workspace trước",
     "addDate": "Thêm ngày",
     "clearDate": "Xóa ngày",
     "noStatus": "Không có trạng thái",
@@ -358,10 +358,7 @@
       "moreProperties": "Thuộc tính khác"
     },
     "propertyFields": {
-      "assignee": "Người được gán",
-      "project": "Project",
-      "milestone": "Cột mốc",
-      "dueDate": "Hạn chót"
+      "project": "Project"
     },
     "addWorkItem": "Thêm mục công việc",
     "agentWorkflow": {
@@ -392,8 +389,8 @@
     "outputTab": {
       "prSection": "Pull Request",
       "prNotAvailable": "Chưa có sẵn",
-      "prPendingHint": "PR sẽ được tạo sau khi Agent hoàn thành.",
-      "prNeutralHint": "Chưa có PR nào được tạo.",
+      "prPendingHint": "PR sẽ được tạo sau khi Agent hoàn thành",
+      "prNeutralHint": "Chưa có PR nào được tạo",
       "prCreatingHint": "Đang tạo Pull Request...",
       "prCreateButton": "Tạo Pull Request",
       "prCreateError": "Không thể tạo Pull Request",
@@ -403,7 +400,7 @@
       "prDraft": "Draft",
       "changedFilesSection": "Changed Files",
       "fileDiffClean": "Không có thay đổi tệp",
-      "fileDiffCleanHint": "Không phát hiện thay đổi tệp nào.",
+      "fileDiffCleanHint": "Không phát hiện thay đổi tệp nào",
       "costSummary": "Tổng chi phí",
       "totalCost": "Tổng",
       "tokens": "Token",
@@ -413,7 +410,7 @@
     "viewWorkItems": "Xem Work Items",
     "fromRoutine": "From routine: {{name}}",
     "batchField": {
-      "hint": "Áp dụng cho {{count}} mục đã chọn."
+      "hint": "Áp dụng cho {{count}} mục đã chọn"
     },
     "batchStatus": {
       "title": "Đặt trạng thái"
@@ -457,7 +454,7 @@
       "save": "Lưu chế độ xem hiện tại",
       "saveTitle": "Lưu chế độ xem",
       "namePlaceholder": "Tên chế độ xem",
-      "saveHint": "Ghi lại các bộ lọc hiện tại; bố cục được dùng cho lần mở đầu tiên.",
+      "saveHint": "Ghi lại các bộ lọc hiện tại; bố cục được dùng cho lần mở đầu tiên",
       "delete": "Xóa chế độ xem"
     },
     "table": {
@@ -475,14 +472,14 @@
     },
     "batchProperty": {
       "title": "Đặt thuộc tính",
-      "hint": "Áp dụng một giá trị thuộc tính cho {{count}} mục đã chọn. Để trống giá trị để xóa.",
+      "hint": "Áp dụng một giá trị thuộc tính cho {{count}} mục đã chọn. Để trống giá trị để xóa",
       "propertyPlaceholder": "Thuộc tính",
       "valuePlaceholder": "Giá trị",
       "applied": "Đã cập nhật {{count}} mục"
     },
     "revisionConflict": {
       "title": "Giải quyết xung đột chỉnh sửa",
-      "description": "{{field}} đã thay đổi sau bản sửa {{expected}}. Hãy so sánh chỉnh sửa của bạn với bản sửa {{actual}}, rồi chọn phiên bản muốn giữ.",
+      "description": "{{field}} đã thay đổi sau bản sửa {{expected}}. Hãy so sánh chỉnh sửa của bạn với bản sửa {{actual}}, rồi chọn phiên bản muốn giữ",
       "mine": "Phiên bản của tôi",
       "latest": "Phiên bản mới nhất",
       "useLatest": "Dùng bản mới nhất",
@@ -573,7 +570,7 @@
     "sidebarSync": "Đồng bộ",
     "sync": {
       "title": "Đồng bộ bên ngoài",
-      "description": "Phản chiếu các mục công việc của Project này tới một hệ thống bên ngoài như Linear hoặc GitHub.",
+      "description": "Phản chiếu các mục công việc của Project này tới một hệ thống bên ngoài như Linear hoặc GitHub",
       "adapterPicker": {
         "title": "Bộ chuyển đổi",
         "notAttached": "Chưa kết nối",
@@ -582,7 +579,7 @@
         "changeWarning": "Hãy ngắt kết nối bộ chuyển đổi hiện tại trước khi kết nối bộ chuyển đổi mới.",
         "detachProjectMenuLabel": "Hủy liên kết GitHub",
         "detachProjectTitle": "Hủy liên kết GitHub khỏi {{project}}?",
-        "detachProjectDescription": "Đồng bộ GitHub Issues sẽ dừng. Dự án cục bộ và các mục công việc đã nhập vẫn ở lại trong ORG2.",
+        "detachProjectDescription": "Đồng bộ GitHub Issues sẽ dừng. Dự án cục bộ và các mục công việc đã nhập vẫn ở lại trong ORG2",
         "detachProjectAction": "Hủy liên kết GitHub khỏi {{project}}",
         "detachProjectSuccess": "Đã hủy liên kết GitHub khỏi {{project}}"
       },
@@ -617,9 +614,9 @@
       "webhook": {
         "title": "Webhook",
         "loading": "Đang tải trạng thái webhook…",
-        "notInstalledDescription": "Cài đặt một secret webhook để nhà cung cấp đẩy thay đổi trực tiếp thay vì chờ lượt poll tiếp theo.",
+        "notInstalledDescription": "Cài đặt một secret webhook để nhà cung cấp đẩy thay đổi trực tiếp thay vì chờ lượt poll tiếp theo",
         "install": "Cài đặt webhook",
-        "installedDescription": "Dán URL vào cấu hình webhook của nhà cung cấp và dùng secret bên dưới để ký các lần phát.",
+        "installedDescription": "Dán URL vào cấu hình webhook của nhà cung cấp và dùng secret bên dưới để ký các lần phát",
         "indicatorFresh": "Có phân phối gần đây",
         "indicatorStale": "Không có phân phối gần đây",
         "lastDeliveryNever": "Chưa có phân phối",
@@ -627,7 +624,7 @@
         "copyUrl": "Sao chép URL",
         "rotate": "Xoay secret",
         "secretTitle": "Sao chép secret này ngay — sẽ không hiển thị lại",
-        "secretDescription": "Dán secret ký này vào cấu hình webhook của nhà cung cấp. Chúng tôi không lưu giá trị plaintext sau khi bạn đóng bảng này.",
+        "secretDescription": "Dán secret ký này vào cấu hình webhook của nhà cung cấp. Chúng tôi không lưu giá trị plaintext sau khi bạn đóng bảng này",
         "copySecret": "Sao chép secret",
         "dismissSecret": "Đã lưu",
         "secretCopied": "Đã sao chép secret vào clipboard",
@@ -653,9 +650,9 @@
         "progressNoTotal": "Đã nhập {{count}} mục",
         "completedSummary": "Đã nhập {{count}} mục từ phía remote.",
         "cancelledSummary": "Đã hủy sau khi nhập {{count}} mục.",
-        "pendingDescription": "Lần đồng bộ đầu tiên sẽ duyệt toàn bộ lịch sử remote một lần. Các lần đồng bộ sau dùng chu kỳ tăng dần thông thường.",
-        "runningDescription": "Đang duyệt lịch sử remote từng trang. Bạn có thể tiếp tục làm việc trong khi quá trình diễn ra.",
-        "failedDescription": "Trang gần nhất thất bại vĩnh viễn. Khi thử lại sẽ tiếp tục từ vị trí con trỏ.",
+        "pendingDescription": "Lần đồng bộ đầu tiên sẽ duyệt toàn bộ lịch sử remote một lần. Các lần đồng bộ sau dùng chu kỳ tăng dần thông thường",
+        "runningDescription": "Đang duyệt lịch sử remote từng trang. Bạn có thể tiếp tục làm việc trong khi quá trình diễn ra",
+        "failedDescription": "Trang gần nhất thất bại vĩnh viễn. Khi thử lại sẽ tiếp tục từ vị trí con trỏ",
         "cancel": "Hủy nhập",
         "retry": "Thử lại",
         "errors": {
@@ -737,9 +734,9 @@
     },
     "sidebarStatuses": "Trạng thái",
     "statusesBuiltin": "Trạng thái tích hợp",
-    "statusesBuiltinDescription": "Các nhóm quy trình tiêu chuẩn. Luôn khả dụng.",
+    "statusesBuiltinDescription": "Các nhóm quy trình tiêu chuẩn. Luôn khả dụng",
     "statusesCustom": "Trạng thái tùy chỉnh",
-    "statusesCustomDescription": "Tên gọi khác đặt trên một nhóm tích hợp. Bộ lọc, số đếm và bảng coi chúng như nhóm gốc.",
+    "statusesCustomDescription": "Tên gọi khác đặt trên một nhóm tích hợp. Bộ lọc, số đếm và bảng coi chúng như nhóm gốc",
     "statusNamePlaceholder": "Tên trạng thái",
     "noCustomStatuses": "Chưa có trạng thái tùy chỉnh.",
     "statusArchive": "Lưu trữ trạng thái",
@@ -793,11 +790,11 @@
     "unknownState": "Unknown state",
     "emptyConnections": {
       "title": "No Linear connections",
-      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear."
+      "description": "Create a Linear connection in Integrations, then return here to browse Projects directly from Linear"
     },
     "emptySelection": {
       "title": "Select a Linear Project",
-      "description": "Choose a Project from the left to view live Linear Issues and edit Project details."
+      "description": "Choose a Project from the left to view live Linear Issues and edit Project details"
     },
     "forms": {
       "createProjectTitle": "Create Linear Project",
@@ -850,8 +847,8 @@
     "syncComplete": "Git folder sync complete",
     "syncFailed": "Git folder sync failed: {{message}}",
     "noResultTitle": "No Git sync result",
-    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts.",
+    "noResultSubtitle": "Run Git folder sync from the status bar to review conflicts",
     "noConflictsTitle": "No conflicts",
-    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts."
+    "noConflictsSubtitle": "This workspace has no pending Git folder conflicts"
   }
 }

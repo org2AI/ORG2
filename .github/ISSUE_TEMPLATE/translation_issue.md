@@ -8,7 +8,7 @@ assignees: ""
 
 ## Locale
 
-<!-- Select the affected locale(s): en, fr, zh, zh-Hant, es, ru, pt, de, ja, ko, tr, vi, pl -->
+<!-- Select the affected locale(s): en, fr, zh, zh-Hant, es, hi, ru, pt, de, ja, ko, tr, vi, id, pl -->
 
 ## Issue Type
 

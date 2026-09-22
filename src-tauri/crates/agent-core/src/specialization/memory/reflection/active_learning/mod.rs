@@ -46,6 +46,7 @@ use provider::get_observation_provider;
 /// callers treat `Ok(0)` as the normal "nothing to observe" outcome.
 pub async fn maybe_observe_tool_failures(session_id: &str) -> Result<usize, String> {
     let conn = get_connection().map_err(|e| format!("DB: {}", e))?;
+    super::ensure_account_background_session(&conn, session_id)?;
 
     let (agent_def_id, workspace_path, session_model, session_account): (
         Option<String>,

@@ -24,6 +24,7 @@ import GitHubPillIcon from "@src/assets/modelIcons/github-pill.svg";
 import AnyIcon from "@src/components/AnyIcon";
 import FileTreePreview from "@src/components/FileTreePreview";
 import FileTypeIcon from "@src/components/FileTypeIcon";
+import LinkHoverCard from "@src/components/MarkDown/LinkHoverCard";
 import Tooltip from "@src/components/Tooltip";
 import { PILL_SIZE, readPillText } from "@src/config/pillTokens";
 import {
@@ -43,6 +44,7 @@ import {
   WorkflowCircle05Icon,
 } from "@src/icons";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom";
+import { activeWorkspaceRootAtom } from "@src/store/workspace";
 import { resolveSessionRowIcon } from "@src/util/session/sessionSidebarRow";
 import { openLink } from "@src/util/ui/openLink";
 
@@ -52,7 +54,18 @@ import CanvasCommandPillIcon, {
 } from "./CanvasCommandPillIcon";
 import { isGitHubPillUrl } from "./githubUrl";
 import type { ComposerPillAttrs, PillIconType } from "./types";
-import { truncateVisiblePillLabel } from "./utils";
+import { truncateVisibleLinkLabel, truncateVisiblePillLabel } from "./utils";
+
+/**
+ * Lets an untruncated label break across lines instead of pushing past the
+ * composer's edge. The pill stays one inline atom for caret purposes; only the
+ * text inside it wraps.
+ */
+const WRAPPING_LABEL_STYLE = {
+  whiteSpace: "normal",
+  overflowWrap: "anywhere",
+  maxWidth: "100%",
+} as const;
 
 const PREVIEW_SHOW_DELAY = 300;
 const PREVIEW_HIDE_DELAY = 150;
@@ -117,6 +130,130 @@ export interface ComposerPillProps {
   onDelete: () => void;
 }
 
+/**
+ * The glyph a pill wears, resolved from its type. Exported so a reference keeps
+ * the same face wherever it appears — inside the composer while writing, and
+ * inside a sent message bubble afterwards. A pill that changed icon on send
+ * would read as a different kind of thing than the one the user inserted.
+ */
+export function renderPillIcon(
+  iconType: PillIconType | null,
+  filePath: string,
+  fileName: string,
+  isFolder: boolean
+): React.ReactNode {
+  switch (iconType as PillIconType | null) {
+    case "repo":
+    case "pr":
+    case "issue":
+      if (isGitHubPillUrl(filePath)) {
+        return (
+          <GitHubPillIcon
+            width={PILL_SIZE.iconSize}
+            height={PILL_SIZE.iconSize}
+            className="text-primary-6"
+          />
+        );
+      }
+      if (iconType === "repo")
+        return (
+          <HugeiconsIcon icon={CodeXmlIcon} data-icon="code" {...ICON_PROPS} />
+        );
+      if (iconType === "pr")
+        return (
+          <HugeiconsIcon
+            icon={GitPullRequestIcon}
+            data-icon="git-pull-request"
+            {...ICON_PROPS}
+          />
+        );
+      return (
+        <HugeiconsIcon
+          icon={ListChecksIcon}
+          data-icon="list-checks"
+          {...ICON_PROPS}
+        />
+      );
+    case "branch":
+      return (
+        <HugeiconsIcon
+          icon={WorkflowCircle05Icon}
+          data-icon="git-branch"
+          {...ICON_PROPS}
+        />
+      );
+    case "terminal":
+      return (
+        <HugeiconsIcon
+          icon={ComputerTerminal01Icon}
+          data-icon="terminal"
+          {...ICON_PROPS}
+        />
+      );
+    case "session":
+      return <SessionPillIcon path={filePath} />;
+    case "browser":
+      return (
+        <HugeiconsIcon icon={InternetIcon} data-icon="globe" {...ICON_PROPS} />
+      );
+    case "link":
+      return (
+        <HugeiconsIcon icon={Link01Icon} data-icon="link" {...ICON_PROPS} />
+      );
+    case "project":
+      return (
+        <HugeiconsIcon
+          icon={DeliveryBox01Icon}
+          data-icon="box"
+          {...ICON_PROPS}
+        />
+      );
+    case "workitem":
+      return (
+        <HugeiconsIcon
+          icon={ListChecksIcon}
+          data-icon="list-checks"
+          {...ICON_PROPS}
+        />
+      );
+    case "dom-element":
+      return (
+        <HugeiconsIcon
+          icon={SquareMousePointerIcon}
+          data-icon="square-mouse-pointer"
+          {...ICON_PROPS}
+        />
+      );
+    case "dom-component":
+      return (
+        <HugeiconsIcon
+          icon={Cursor02Icon}
+          data-icon="mouse-pointer-2"
+          {...ICON_PROPS}
+        />
+      );
+    case "skill":
+      if (isCanvasCommandPillPath(filePath)) {
+        return <CanvasCommandPillIcon />;
+      }
+      return (
+        <HugeiconsIcon icon={ToolboxIcon} data-icon="toolbox" {...ICON_PROPS} />
+      );
+    case "member":
+      return (
+        <HugeiconsIcon icon={AtIcon} data-icon="at-sign" {...ICON_PROPS} />
+      );
+    default:
+      return (
+        <FileTypeIcon
+          fileName={isFolder ? filePath || fileName : fileName || filePath}
+          type={isFolder ? "folder" : undefined}
+          size="small"
+        />
+      );
+  }
+}
+
 const ComposerPill: React.FC<ComposerPillProps> = ({
   attrs,
   skillPath,
@@ -131,6 +268,7 @@ const ComposerPill: React.FC<ComposerPillProps> = ({
     lineEnd,
   } = attrs;
 
+  const activeWorkspaceRoot = useAtomValue(activeWorkspaceRootAtom);
   const [isHovered, setIsHovered] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewPosition, setPreviewPosition] = useState({ left: 0, top: 0 });
@@ -147,12 +285,36 @@ const ComposerPill: React.FC<ComposerPillProps> = ({
   }, [lineStart, lineEnd]);
 
   const isGenericLink = iconType === "link";
+  /**
+   * What hovering should reveal. A reference pill labelled with the link's own
+   * words shows nothing about where it points, so the address belongs here —
+   * the same affordance skill pills already use for their path.
+   */
+  const isReference =
+    isGenericLink || iconType === "pr" || iconType === "issue";
+  /** Web references get the hover card; everything else falls back to text. */
+  const referenceUrl =
+    isReference && /^https?:\/\//iu.test(filePath) ? filePath : "";
+  const hoverDetail = referenceUrl
+    ? null
+    : iconType === "skill"
+      ? skillPath
+      : isReference
+        ? filePath
+        : null;
+  // A parsed GitHub reference shows its whole label — "owner/repo#123" is the
+  // information, and it may wrap onto the next line. Everything else
+  // truncates: a pasted URL can run to hundreds of characters, and its full
+  // address stays available on hover.
+  const showsFullLabel = isGitHubPillUrl(filePath);
   const visibleFileName = useMemo(
     () =>
-      isGitHubPillUrl(filePath) || isGenericLink
-        ? fileName
-        : truncateVisiblePillLabel(fileName),
-    [fileName, filePath, isGenericLink]
+      isGenericLink
+        ? truncateVisibleLinkLabel(fileName)
+        : showsFullLabel
+          ? fileName
+          : truncateVisiblePillLabel(fileName),
+    [fileName, isGenericLink, showsFullLabel]
   );
 
   const isFolder = useMemo(() => {
@@ -301,145 +463,27 @@ const ComposerPill: React.FC<ComposerPillProps> = ({
     };
   }, []);
 
-  const iconNode = (() => {
-    if (isHovered) {
-      return (
-        <HugeiconsIcon
-          icon={Cancel01Icon}
-          data-icon="x"
-          size={PILL_SIZE.iconSize}
-          strokeWidth={2}
-          onClick={handleDelete}
-          style={{
-            cursor: "var(--interactive-cursor, default)",
-            color: "var(--color-text-3)",
-          }}
-        />
-      );
-    }
-    switch (iconType as PillIconType | null) {
-      case "repo":
-      case "pr":
-      case "issue":
-        if (isGitHubPillUrl(filePath)) {
-          return (
-            <GitHubPillIcon
-              width={PILL_SIZE.iconSize}
-              height={PILL_SIZE.iconSize}
-              className="text-primary-6"
-            />
-          );
-        }
-        if (iconType === "repo")
-          return (
-            <HugeiconsIcon
-              icon={CodeXmlIcon}
-              data-icon="code"
-              {...ICON_PROPS}
-            />
-          );
-        if (iconType === "pr")
-          return (
-            <HugeiconsIcon
-              icon={GitPullRequestIcon}
-              data-icon="git-pull-request"
-              {...ICON_PROPS}
-            />
-          );
-        return (
-          <HugeiconsIcon
-            icon={ListChecksIcon}
-            data-icon="list-checks"
-            {...ICON_PROPS}
-          />
-        );
-      case "branch":
-        return (
-          <HugeiconsIcon
-            icon={WorkflowCircle05Icon}
-            data-icon="git-branch"
-            {...ICON_PROPS}
-          />
-        );
-      case "terminal":
-        return (
-          <HugeiconsIcon
-            icon={ComputerTerminal01Icon}
-            data-icon="terminal"
-            {...ICON_PROPS}
-          />
-        );
-      case "session":
-        return <SessionPillIcon path={filePath} />;
-      case "browser":
-        return (
-          <HugeiconsIcon
-            icon={InternetIcon}
-            data-icon="globe"
-            {...ICON_PROPS}
-          />
-        );
-      case "link":
-        return (
-          <HugeiconsIcon icon={Link01Icon} data-icon="link" {...ICON_PROPS} />
-        );
-      case "project":
-        return (
-          <HugeiconsIcon
-            icon={DeliveryBox01Icon}
-            data-icon="box"
-            {...ICON_PROPS}
-          />
-        );
-      case "workitem":
-        return (
-          <HugeiconsIcon
-            icon={ListChecksIcon}
-            data-icon="list-checks"
-            {...ICON_PROPS}
-          />
-        );
-      case "dom-element":
-        return (
-          <HugeiconsIcon
-            icon={SquareMousePointerIcon}
-            data-icon="square-mouse-pointer"
-            {...ICON_PROPS}
-          />
-        );
-      case "dom-component":
-        return (
-          <HugeiconsIcon
-            icon={Cursor02Icon}
-            data-icon="mouse-pointer-2"
-            {...ICON_PROPS}
-          />
-        );
-      case "skill":
-        if (isCanvasCommandPillPath(filePath)) {
-          return <CanvasCommandPillIcon />;
-        }
-        return (
-          <HugeiconsIcon
-            icon={ToolboxIcon}
-            data-icon="toolbox"
-            {...ICON_PROPS}
-          />
-        );
-      case "member":
-        return (
-          <HugeiconsIcon icon={AtIcon} data-icon="at-sign" {...ICON_PROPS} />
-        );
-      default:
-        return (
-          <FileTypeIcon
-            fileName={isFolder ? filePath || fileName : fileName || filePath}
-            type={isFolder ? "folder" : undefined}
-            size="small"
-          />
-        );
-    }
-  })();
+  const iconNode = isGenericLink ? null : isHovered ? (
+    <HugeiconsIcon
+      icon={Cancel01Icon}
+      data-icon="x"
+      size={PILL_SIZE.iconSize}
+      strokeWidth={2}
+      onClick={handleDelete}
+      // Removal is the one destructive thing a pill offers, so the glyph turns
+      // danger under the cursor — it sits where the icon was, and nothing else
+      // distinguishes hovering the pill from hovering its remove control.
+      className="text-text-3 hover:text-danger-6"
+      style={{ cursor: "var(--interactive-cursor, default)" }}
+    />
+  ) : (
+    renderPillIcon(
+      iconType as PillIconType | null,
+      filePath,
+      fileName,
+      isFolder
+    )
+  );
 
   const pillNode = (
     <BasePill
@@ -453,14 +497,15 @@ const ComposerPill: React.FC<ComposerPillProps> = ({
         cursor: "var(--interactive-cursor, default)",
         backgroundColor: "transparent",
         outline: "none",
+        ...(showsFullLabel ? WRAPPING_LABEL_STYLE : null),
       }}
       onClick={handlePillClick}
       onMouseDown={handlePillMouseDown}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      title={fileName}
+      title={hoverDetail || referenceUrl ? undefined : fileName}
     >
-      <span>{visibleFileName}</span>
+      <span className="composer-pill-label">{visibleFileName}</span>
       {lineRangeDisplay && (
         <span style={{ color: "var(--color-text-3)", fontSize: "12px" }}>
           {lineRangeDisplay}
@@ -469,20 +514,31 @@ const ComposerPill: React.FC<ComposerPillProps> = ({
     </BasePill>
   );
 
-  const pillWithTooltip =
-    iconType === "skill" && skillPath ? (
-      <Tooltip
-        content={<span className="break-all">{skillPath}</span>}
-        position="top"
-        mouseEnterDelay={200}
-        framedPanel
-        smartPlacement
-      >
-        {pillNode}
-      </Tooltip>
-    ) : (
-      pillNode
-    );
+  const pillWithTooltip = referenceUrl ? (
+    // The same card a link carries everywhere else in the app: the
+    // pull-request / issue summary for GitHub targets, the host card
+    // otherwise. A plain address is a poor preview of a reference.
+    <LinkHoverCard
+      url={referenceUrl}
+      workspaceRootPath={activeWorkspaceRoot?.path ?? ""}
+      workspaceRootRepoId={activeWorkspaceRoot?.repoId}
+      workspaceRootRepoUrl={activeWorkspaceRoot?.repo?.repo_url}
+    >
+      {pillNode}
+    </LinkHoverCard>
+  ) : hoverDetail ? (
+    <Tooltip
+      content={<span className="break-all">{hoverDetail}</span>}
+      position="top"
+      kind="button"
+      framedPanel
+      smartPlacement
+    >
+      {pillNode}
+    </Tooltip>
+  ) : (
+    pillNode
+  );
 
   return (
     <>

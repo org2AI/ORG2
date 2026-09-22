@@ -8,6 +8,14 @@
 import React, { memo, useMemo } from "react";
 
 import { Placeholder } from "@src/components/Placeholder";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import {
+  extractGitHubReferences,
+  getIssueReferenceText,
+  parseGitHubRepoFromItemUrl,
+} from "@src/features/GitHubWork/GitHubLinkedReferences/references";
+import type { ThreadDetailTab } from "@src/features/GitHubWork/ThreadDetailTabs";
+import { useGitHubIssueDetailState } from "@src/features/GitHubWork/useGitHubIssueDetailState";
 import { useTabViewState } from "@src/hooks/tabHost/useTabViewState";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
 import {
@@ -15,14 +23,6 @@ import {
   IssueDetailPanel,
   IssueDetailTabs,
 } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/IssuesContent/IssueDetailPanel";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import {
-  extractGitHubReferences,
-  getIssueReferenceText,
-  parseGitHubRepoFromItemUrl,
-} from "@src/modules/shared/components/GitHubLinkedReferences/references";
-import type { ThreadDetailTab } from "@src/modules/shared/components/ThreadDetailTabs";
-import { useGitHubIssueDetailState } from "@src/modules/shared/hooks/useGitHubIssueDetailState";
 import type { GitHubIssueDetailTabData } from "@src/store/workstation/tabs";
 
 import type { UnifiedTabContentProps } from "../types";

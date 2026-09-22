@@ -9,8 +9,8 @@ import {
   useAppMemorySnapshot,
   useRuntimeRamStats,
 } from "@src/hooks/perf";
-import { startVisibilityAwarePoller } from "@src/shared/scheduling/visibilityAwarePoller";
 import { listRegisteredCaches } from "@src/util/memory/cacheRegistry";
+import { startVisibilityAwarePoller } from "@src/util/time/scheduling/visibilityAwarePoller";
 
 import {
   CHEAP_METRICS_POLL_INTERVAL_MS,

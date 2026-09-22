@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Send as a new message?",
+    "body": "This message belongs to an execution session. Editing it here cannot rewind the conversation. Send this text as a new message at the end instead? Existing messages and file changes will be kept.",
+    "sendNew": "Send new message"
+  },
   "tray": {
     "markAllRead": "Mark all as read",
     "showKanban": "Show Kanban",
@@ -92,8 +97,7 @@
       },
       "tabs": {
         "all": "All",
-        "apps": "Apps",
-        "clis": "CLIs"
+        "apps": "Apps"
       },
       "views": {
         "scanning": "Scanning",
@@ -178,7 +182,8 @@
           "output": "Output",
           "cache": "Cache read",
           "cost": "Cost",
-          "filterBySession": "Filter to this session"
+          "filterBySession": "Filter to this session",
+          "purpose": "Purpose"
         },
         "pricing": {
           "input": "Input",
@@ -203,7 +208,17 @@
           "title": "No usage yet",
           "subtitle": "Run or scan some coding sessions and their token usage will show up here."
         },
-        "loadError": "Failed to load usage data"
+        "loadError": "Failed to load usage data",
+        "purposes": {
+          "main": "Main response",
+          "session_title": "Session title",
+          "session_memory": "Session memory",
+          "workspace_memory": "Workspace memory",
+          "auto_dream": "Memory consolidation",
+          "skill_prefetch": "Skill selection",
+          "memory_prefetch": "Memory retrieval",
+          "compaction": "Context compaction"
+        }
       },
       "sessions_one": "{{count}} session",
       "sessions_other": "{{count}} sessions",
@@ -507,8 +522,7 @@
     },
     "titleBar": {
       "showSidebar": "Show sidebar",
-      "hideSidebar": "Hide sidebar",
-      "showBottomPanel": "Show bottom panel"
+      "hideSidebar": "Hide sidebar"
     },
     "multiTask": {
       "monitoringProgress": "Monitoring the progress of {{count}} subagents",
@@ -586,6 +600,7 @@
       "full": "Full access",
       "nextTurn": "Permissions apply to the next turn"
     },
+    "draftTooLong": "Draft is too long (maximum {{max}} characters)",
     "planApprovedLabel": "Implementing approved plan",
     "planApprovedEditedLabel": "Implementing approved plan (edited)",
     "restoreCheckpoint": "Restore checkpoint",
@@ -614,23 +629,18 @@
       "inputPosition": "Input",
       "positionBottom": "Bottom",
       "positionMiddle": "Middle",
-      "trailPosition": "Trail",
+      "repoBarPosition": "Repo bar",
       "positionUp": "Up",
       "positionDown": "Down",
-      "uiControls": "UI controls",
-      "showQuickActions": "Show quick actions",
+      "showQuickActions": "Quick actions",
       "showSkills": "Pinned skills",
-      "showCliUpdate": "Show CLI update",
-      "title": "What would you like to do?",
-      "back": "Back to start page",
+      "showCliUpdate": "CLI update",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "New session"
       },
       "newWorkItem": {
         "title": "New work item"
-      },
-      "setupRepo": {
-        "title": "Set up repo"
       },
       "addApiKey": {
         "title": "Add API key"
@@ -641,59 +651,27 @@
       "installLatestUpdate": {
         "title": "Install latest update"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "Session",
         "workItem": "Work Item",
         "more": "More",
-        "work": "Work",
         "manage": "Manage",
-        "heatmap": "Trends",
         "runtime": "Runtime"
       },
       "quota": {
         "empty": "No quota data yet. Refresh usage from Key Vault.",
         "refresh": "Refresh",
-        "justNow": "Just now",
-        "minutesAgo": "{{count}}m ago",
-        "hoursAgo": "{{count}}h ago",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7d",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Weekly",
           "monthly": "Monthly"
         }
       },
-      "exploreRepos": {
-        "title": "Explore repos"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "Manage issues"
       }
     },
     "defaultTitle": "Chat",
@@ -705,6 +683,7 @@
     "performActions_other": "Perform {{count}} actions",
     "showInlineDiffs": "Inline diffs",
     "inputSettings": "Input settings",
+    "sendMethod": "Send with",
     "navigation": {
       "title": "Navigation",
       "openLinksIn": "Open links in",
@@ -712,6 +691,8 @@
       "externalBrowser": "External browser"
     },
     "compactInput": "Compact input",
+    "composerGlow": "Input glow",
+    "separateEffortPill": "Separate effort pill",
     "replay": {
       "follow": "Follow"
     },
@@ -737,15 +718,11 @@
       "modeSourceBundled": "Modes loaded from bundled fallback (probe Cursor not yet running).",
       "modeRefresh": "Refresh modes"
     },
-    "hideSimulator": "Hide simulator",
-    "showSimulator": "Show simulator",
-    "fullScreenChat": "Focus Chat Panel (Hide Workstation)",
     "maximizeChatPanel": "Maximize Chat Panel",
     "showWorkstation": "Show Workstation",
     "workstationUnavailableForPage": "Workstation is not available on this page",
     "hideWorkstation": "Hide Workstation",
     "restoreSplitView": "Show Workstation",
-    "shrinkToWorkstation": "Shrink Chat Panel (Show Workstation)",
     "tuiModeOn": "TUI mode (click to disable)",
     "tuiModeOff": "Enable TUI mode",
     "tabs": {
@@ -901,10 +878,10 @@
       "exportJson": "Export JSON",
       "importAction": "Import Session",
       "exportDescription": "Export the active Session as a portable JSON snapshot",
-      "importDescription": "Import a Session JSON snapshot into the sidebar.",
+      "importDescription": "Import a Session JSON snapshot into the sidebar",
       "jsonSnapshotNote": "Imported Sessions are read-only snapshots and keep the original event history",
       "chooseJson": "Choose JSON file",
-      "chooseJsonHint": "Select an .orgii-session.json export file.",
+      "chooseJsonHint": "Select an .orgii-session.json export file",
       "loadingPreview": "Counting Session events…",
       "noActiveSession": "No active Session selected.",
       "importedName": "Imported Session: {{name}}",
@@ -953,22 +930,9 @@
       "showMore_one": "Show {{count}} more",
       "showMore_other": "Show {{count}} more"
     },
-    "manageIssues": {
-      "title": "Manage issues",
-      "myWork": "My work",
-      "allRepositories": "All repositories",
-      "newIssue": "New issue",
-      "tabs": {
-        "recent": "Recent",
-        "assigned": "Assigned",
-        "byMe": "By me",
-        "mentioned": "Mentioned"
-      }
-    },
     "readOnly": "Read-only",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "Create GitHub issue",
         "issueTitlePlaceholder": "Issue title",
@@ -978,28 +942,40 @@
         "addToChat": "Add",
         "repositoryLabel": "Repository",
         "createIssueFailed": "Failed to create issue",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "All states",
         "closeAsCompleted": "Close as completed",
         "closeAsNotPlanned": "Close as not planned",
         "statusUpdateFailed": "Failed to update GitHub status",
         "assignedToMe": "Assigned to me",
         "createdByMe": "Created by me",
-        "pullRequests": {
-          "reviewRequested": "Review requested",
-          "authoredByMe": "Authored by me",
-          "otherTodos": "Other todos"
-        },
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
         "assigneeUpdateNotApplied": "GitHub did not apply the assignee change",
         "assigneeUpdateSuccess": "Assignees updated on GitHub",
         "updateIssueFailed": "Failed to update GitHub issue",
-        "refreshIssues": "Refresh issues",
-        "refreshPullRequests": "Refresh pull requests"
+        "filters": {
+          "searchPlaceholder": "Search filters",
+          "noMatches": "No matching filters",
+          "activeCount": "Active filters: {{count}}",
+          "clear": "Clear filters",
+          "reviewRequestedFromMe": "Review requested from me",
+          "noAssignee": "No assignee",
+          "noLabel": "No label",
+          "linkedPullRequest": "Has a linked pull request",
+          "draft": "Draft",
+          "readyForReview": "Ready for review",
+          "recentlyUpdated": "Updated in the last 7 days",
+          "stale": "Not updated for 30 days",
+          "facetAuthor": "Author",
+          "facetAssignee": "Assignee",
+          "facetLabel": "Label",
+          "facetMilestone": "Milestone",
+          "facetReviewRequested": "Review requested",
+          "facetBaseBranch": "Base branch",
+          "facetCiStatus": "Checks",
+          "ciSuccess": "Passing",
+          "ciFailure": "Failing",
+          "ciPending": "Pending"
+        }
       }
     },
     "sessionViews": {
@@ -1027,7 +1003,9 @@
     "sending": "Sending…",
     "typeMessage": "Type a message…",
     "session": "Session",
-    "history": "Sessions"
+    "history": "Sessions",
+    "goToPinnedPassage": "Go to pinned passage: {{preview}}",
+    "unpinPassage": "Unpin"
   },
   "planning": {
     "agentTyping": "Agent is typing...",
@@ -1927,7 +1905,7 @@
     "start": "Start",
     "missingGit": {
       "title": "Git is missing",
-      "body": "Git is not installed or could not be found. Ask ADE Manager or SDE Agent to install Git for this machine, then restart ORG2."
+      "body": "Git is not installed or could not be found. Ask ADE Manager or SDE Agent to install Git for this machine, then restart ORG2"
     },
     "cliVersionOutdated": {
       "title": "{{cli}} needs an upgrade ({{installed}} > {{latest}})",
@@ -1940,7 +1918,6 @@
       "filesAndFolders": "Files & Folders",
       "session": "Session",
       "workItems": "Work Items",
-      "back": "Back",
       "recent": "Recent",
       "showMore": "Show {{remaining}} more"
     },
@@ -1997,9 +1974,9 @@
       "formatting": "Text formatting"
     },
     "regionNoticeTitle": "Possible regional limitations",
-    "regionNoticeBodyProvider": "You are in {{location}}. Certain models may be unavailable in your region.",
-    "regionNoticeBodySanctions": "You are in {{location}}. GitHub, npm, Docker Hub, and similar services may be unavailable.",
-    "regionNoticeBodyBoth": "You are in {{location}}. Certain models and services like GitHub, npm, and Docker Hub may be unavailable due to regional policy and trade rules.",
+    "regionNoticeBodyProvider": "You are in {{location}}. Certain models may be unavailable in your region",
+    "regionNoticeBodySanctions": "You are in {{location}}. GitHub, npm, Docker Hub, and similar services may be unavailable",
+    "regionNoticeBodyBoth": "You are in {{location}}. Certain models and services like GitHub, npm, and Docker Hub may be unavailable due to regional policy and trade rules",
     "selectAgent": "Select agent",
     "placeholderDefault": "Type a message, @ to add files, / to use skills",
     "wingmanPlaceholder": "Describe your mission — what should Wingman watch for?",
@@ -2143,7 +2120,7 @@
       "archiveTeardownRetained": "Archived, but {{count}} runtime could not be released. Delete remains blocked.",
       "archiveTeardownQuiesced": "Archived and fully stopped. Permanent deletion is now available.",
       "dangerZone": "Danger Zone",
-      "deleteDescription": "Permanently delete this Team and all of its sessions and history.",
+      "deleteDescription": "Permanently delete this Team and all of its sessions and history",
       "deleteTeam": "Delete Team",
       "deleteTitle": "Permanently delete this Team?",
       "deleteWarning": "This permanently deletes every Team session and its history. This action cannot be undone.",

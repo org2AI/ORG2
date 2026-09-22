@@ -198,6 +198,20 @@ describe("deriveSkinTokens", () => {
     ).toEqual({});
   });
 
+  it("keeps editor and terminal selections identical to chat in every skin", () => {
+    for (const skin of SKINS) {
+      for (const variant of SKIN_VARIANTS) {
+        const seed = skin.variants[variant]?.seed;
+        if (!seed) continue;
+        const tokens = deriveSkinTokens(seed, variant);
+        const expected = tokens["--text-selection"];
+        expect(expected, `${skin.id}/${variant}`).toMatch(/^#[\da-f]{6}$/i);
+        expect(tokens["--cm-editor-selection"]).toBe(expected);
+        expect(tokens["--terminal-selection"]).toBe(expected);
+      }
+    }
+  });
+
   it("emits only keys covered by the teardown list", () => {
     const covered = new Set(SKIN_TOKEN_KEYS);
     for (const skin of SKINS) {

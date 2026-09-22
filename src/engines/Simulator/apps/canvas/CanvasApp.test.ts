@@ -14,6 +14,7 @@ import {
 
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import type { CanvasRevisionDraft } from "@src/store/session/canvasRevisionDraftAtom";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import CanvasApp from "./CanvasApp";
 
@@ -25,9 +26,8 @@ const testState = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, fallback?: string) => fallback ?? _key,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 // Partial mock: modules across the import graph create real atoms at module
 // scope, so only the React read/write hooks are replaced.

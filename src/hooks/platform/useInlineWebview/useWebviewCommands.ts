@@ -10,6 +10,8 @@ import {
 
 import { toNativeFrame } from "@src/util/platform/tauri/nativeFrame";
 
+import type { WebviewHistoryDirection } from "./types";
+
 export interface UseWebviewCommandsParams {
   isWebviewAvailable: boolean;
   isUnmountedRef: RefObject<boolean>;
@@ -26,6 +28,9 @@ export interface UseWebviewCommandsParams {
   onError?: (error: Error) => void;
   onDestroyed?: () => void;
   onNavigate?: (url: string) => void;
+  resolveHistoryDirection?: (
+    targetUrl: string
+  ) => WebviewHistoryDirection | null;
   isWebviewCreated: boolean;
   setIsWebviewCreated: (value: boolean) => void;
   setIsLoading: (value: boolean) => void;
@@ -61,6 +66,7 @@ export function useWebviewCommands(
     onError,
     onDestroyed,
     onNavigate,
+    resolveHistoryDirection,
     isWebviewCreated,
     setIsWebviewCreated,
     setIsLoading,
@@ -214,10 +220,25 @@ export function useWebviewCommands(
           setIsLoading(true);
         }
 
-        await invoke("navigate_inline_webview", {
-          label: labelRef.current,
-          url: targetUrl,
-        });
+        // A Back/Forward step first tries the native back-forward list, which
+        // restores the page instead of fetching it again. Rust only travels
+        // when that list holds this exact URL; otherwise it reports false and
+        // the URL is loaded as before.
+        const historyDirection = resolveHistoryDirection?.(targetUrl) ?? null;
+        const travelled = historyDirection
+          ? await invoke<boolean>("traverse_inline_webview_history", {
+              label: labelRef.current,
+              url: targetUrl,
+              direction: historyDirection,
+            }).catch(() => false)
+          : false;
+
+        if (!travelled) {
+          await invoke("navigate_inline_webview", {
+            label: labelRef.current,
+            url: targetUrl,
+          });
+        }
 
         if (isUnmountedRef.current) return;
 
@@ -257,6 +278,7 @@ export function useWebviewCommands(
       createWebview,
       log,
       onNavigate,
+      resolveHistoryDirection,
       isUnmountedRef,
       labelRef,
       lastPolledUrlRef,

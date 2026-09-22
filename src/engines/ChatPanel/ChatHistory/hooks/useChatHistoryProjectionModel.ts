@@ -83,14 +83,13 @@ export function useChatHistoryProjectionModel({
   const collapseAllCommand = useAtomValue(collapseAllCommandAtom);
   const collapseToolActivity = useAtomValue(collapseToolActivityAtom);
   const selectedThreadId = useAtomValue(selectedExecutionThreadAtom);
-  // Drives bar visibility ("complete") and the stale default-collapse;
+  // Drives completed-turn bar visibility and immediate default-collapse;
   // see useTailTurnPhase for the rules and the anti-flicker latch.
   const tailTurnPhase = useTailTurnPhase({
     activeId,
     chatHistory,
     disableTailCollapse,
     groupChat,
-    isAgentWorking,
     sessionStatus,
   });
 

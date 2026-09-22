@@ -18,6 +18,7 @@
 //! - `plan_approval`  — plan detection and approval card registration
 //! - `token_sync`     — post-run token sync back to key vault
 
+mod codex_profile;
 pub(crate) mod command;
 mod context_bridge;
 mod cursor_usage;
@@ -30,6 +31,7 @@ pub(crate) mod launch_profiles;
 mod lifecycle;
 mod oauth_setup;
 mod plan_approval;
+mod profile_history;
 mod proxy_release;
 mod session;
 mod token_sync;

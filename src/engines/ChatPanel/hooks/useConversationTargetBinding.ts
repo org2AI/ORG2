@@ -10,10 +10,7 @@ import {
   resolveDefaultConversationTarget,
 } from "@src/engines/ChatPanel/conversationTargetSelection";
 import type { ConversationSource } from "@src/engines/SessionCore/conversations/conversationTypes";
-import {
-  getRustCompatibleAccounts,
-  useAgentCompatibility,
-} from "@src/hooks/models/useAgentCompatibility";
+import { useAgentCompatibility } from "@src/hooks/models/useAgentCompatibility";
 import { useModelAccountLookup } from "@src/hooks/models/useModelAccountLookup";
 import { useAgentDefinitions } from "@src/modules/MainApp/AgentOrgs/hooks/useAgentDefinitions";
 import {
@@ -33,6 +30,7 @@ import {
 import { useConversationCloudTarget } from "./conversationTargetBinding/useConversationCloudTarget";
 import { useConversationExecutionTargets } from "./conversationTargetBinding/useConversationExecutionTargets";
 import { useConversationTargetPicks } from "./conversationTargetBinding/useConversationTargetPicks";
+import { useMarketTargetPresentation } from "./conversationTargetBinding/useMarketTargetPresentation";
 
 export {
   conversationRootForSession,
@@ -157,15 +155,10 @@ export function useConversationTargetBinding(
     source,
   ]);
 
-  const hasAvailableRuntime = useMemo(
-    () =>
-      nativeCliTargets.length > 0 ||
-      (definitions.length > 0 &&
-        getRustCompatibleAccounts(registry, [...accounts]).some(
-          (account) => account.enabled
-        )),
-    [accounts, definitions.length, nativeCliTargets.length, registry]
-  );
+  // Runtime availability allows the user to open its source picker. Account
+  // credentials are selected separately; a Package-only SDE needs no KeyVault row.
+  const hasAvailableRuntime =
+    nativeCliTargets.length > 0 || definitions.length > 0;
   const resolvedReadiness = resolveConversationTargetReadiness({
     accountsLoaded,
     agentDiscoverySettled,
@@ -185,6 +178,10 @@ export function useConversationTargetBinding(
       accounts,
     });
   }, [accounts, readiness, source, target]);
+
+  const marketSelection = useMarketTargetPresentation(
+    presentation?.selection ?? null
+  );
 
   const runtimeSelection = useMemo(
     () =>
@@ -222,7 +219,7 @@ export function useConversationTargetBinding(
               failed: executionTargetHydrationFailed,
             }),
             cloudTarget,
-            selection: presentation?.selection ?? null,
+            selection: marketSelection,
             runtimeSelection,
             target,
             readiness,
@@ -239,7 +236,7 @@ export function useConversationTargetBinding(
       executionTargetHydrationLoading,
       executionTargets,
       nativeCliTargets,
-      presentation,
+      marketSelection,
       readiness,
       runtimeSelection,
       sessionId,

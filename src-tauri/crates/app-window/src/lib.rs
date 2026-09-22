@@ -21,6 +21,7 @@ mod windows_corner;
 
 pub mod dock_icon;
 pub mod page_backdrop;
+pub mod rendering_rate;
 pub mod root_tint;
 pub mod shortcut_preferences;
 pub mod startup_backdrop;
@@ -302,6 +303,7 @@ pub fn recreate_main_window(app: &AppHandle) -> Result<(), String> {
         set_traffic_light_position(&window, TRAFFIC_LIGHT_X, TRAFFIC_LIGHT_Y);
         apply_macos_window_material(&window);
         remove_window_background_color(&window);
+        rendering_rate::apply_stored_rendering_rate(&window);
     }
 
     apply_host_desktop_window_chrome(&window);

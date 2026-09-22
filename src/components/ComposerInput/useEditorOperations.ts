@@ -14,11 +14,14 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { canInsertLineBreak } from "@src/util/data/canInsertLineBreak";
 
+import { findUrlWordEndingAt } from "./markdownLinkSegments";
 import {
+  caretTextOffset,
   insertNodeAtCaret,
   placeCaretAfter,
   placeCaretAfterPill,
   placeCaretAtEnd,
+  placeCaretAtTextOffset,
   rangeInsideHost,
 } from "./selection";
 import type { ComposerPillAttrs, ComposerSnapshot } from "./types";
@@ -40,13 +43,17 @@ function snapshotsEqual(
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function pushHistoryEntry(
-  stack: ComposerSnapshot[],
-  snapshot: ComposerSnapshot
-): void {
+/** One undo/redo step: the document, and where the caret was in it. */
+interface HistoryEntry {
+  snapshot: ComposerSnapshot;
+  /** Plain-text offset of the caret, or null when the editor had none. */
+  caretOffset: number | null;
+}
+
+function pushHistoryEntry(stack: HistoryEntry[], entry: HistoryEntry): void {
   const previous = stack[stack.length - 1];
-  if (previous && snapshotsEqual(previous, snapshot)) return;
-  stack.push(snapshot);
+  if (previous && snapshotsEqual(previous.snapshot, entry.snapshot)) return;
+  stack.push(entry);
   if (stack.length > MAX_HISTORY_ENTRIES) stack.shift();
 }
 
@@ -80,6 +87,13 @@ export interface UseEditorOperationsResult {
   clearHost: () => void;
   /** Insert a newline only if the first line stays nonblank. Returns success. */
   insertNewline: () => boolean;
+  /**
+   * Turn the URL word that ends at the caret into a pill, as the user types a
+   * separator after it. Returns whether a pill was inserted.
+   */
+  autolinkUrlBeforeCaret: (
+    buildPill: (url: string) => ComposerPillAttrs | null
+  ) => boolean;
   /** Focus the editor at the end */
   focusHost: () => void;
   /** Remove the first pill whose `filePath` matches */
@@ -96,9 +110,9 @@ export function useEditorOperations(): UseEditorOperationsResult {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const pillHostsRef = useRef<Map<string, HTMLSpanElement>>(new Map());
   const pillAttrsRef = useRef<Map<string, ComposerPillAttrs>>(new Map());
-  const undoStackRef = useRef<ComposerSnapshot[]>([]);
-  const redoStackRef = useRef<ComposerSnapshot[]>([]);
-  const historyBoundaryRef = useRef<ComposerSnapshot | null>(null);
+  const undoStackRef = useRef<HistoryEntry[]>([]);
+  const redoStackRef = useRef<HistoryEntry[]>([]);
+  const historyBoundaryRef = useRef<HistoryEntry | null>(null);
   const [pillEntries, setPillEntries] = useState<PillEntry[]>([]);
 
   const syncPillEntries = useCallback(() => {
@@ -180,6 +194,44 @@ export function useEditorOperations(): UseEditorOperationsResult {
     }
     if (lastNode) placeCaretAfter(lastNode);
   }, []);
+
+  const autolinkUrlBeforeCaret = useCallback(
+    (buildPill: (url: string) => ComposerPillAttrs | null): boolean => {
+      const host = hostRef.current;
+      const selection = window.getSelection();
+      if (!host || !selection?.rangeCount || !selection.isCollapsed) {
+        return false;
+      }
+      const caret = selection.getRangeAt(0);
+      const node = caret.startContainer;
+      if (node.nodeType !== Node.TEXT_NODE || !host.contains(node)) {
+        return false;
+      }
+      const text = node as Text;
+      const word = findUrlWordEndingAt(text.data, caret.startOffset);
+      if (!word) return false;
+      const attrs = buildPill(word.url);
+      if (!attrs) return false;
+
+      // Replace only the address; punctuation typed after it stays as text.
+      const address = document.createRange();
+      address.setStart(text, word.start);
+      address.setEnd(text, word.start + word.url.length);
+      address.deleteContents();
+      selection.collapse(text, word.start);
+      insertPill(attrs);
+
+      // insertPill leaves the caret directly after the pill. Move it to where
+      // the user was typing: past any trailing punctuation.
+      const pill = host.querySelector<HTMLElement>("[data-last-inserted-pill]");
+      const following = pill?.nextSibling;
+      if (following?.nodeType === Node.TEXT_NODE) {
+        selection.collapse(following, word.trailing.length);
+      }
+      return true;
+    },
+    [insertPill]
+  );
 
   const insertNewline = useCallback(() => {
     const host = hostRef.current;
@@ -336,16 +388,44 @@ export function useEditorOperations(): UseEditorOperationsResult {
     return { parts };
   }, []);
 
-  const markHistoryBoundary = useCallback(() => {
-    historyBoundaryRef.current = captureSnapshot();
+  const captureHistoryEntry = useCallback((): HistoryEntry => {
+    const host = hostRef.current;
+    const selection = window.getSelection();
+    const range =
+      selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    const caretOffset =
+      host && range && host.contains(range.startContainer)
+        ? caretTextOffset(host, range)
+        : null;
+    return { snapshot: captureSnapshot(), caretOffset };
   }, [captureSnapshot]);
+
+  // Undo and redo put the caret back where it was in the restored document,
+  // so undoing an edit made mid-line does not throw the caret to the end.
+  const restoreHistoryEntry = useCallback(
+    (entry: HistoryEntry) => {
+      const restored = restoreSnapshotContent(entry.snapshot);
+      const host = hostRef.current;
+      if (restored && host) {
+        if (entry.caretOffset === null) placeCaretAtEnd(host);
+        else placeCaretAtTextOffset(host, entry.caretOffset);
+      }
+      historyBoundaryRef.current = null;
+      return restored;
+    },
+    [restoreSnapshotContent]
+  );
+
+  const markHistoryBoundary = useCallback(() => {
+    historyBoundaryRef.current = captureHistoryEntry();
+  }, [captureHistoryEntry]);
 
   const commitHistoryBoundary = useCallback(() => {
     const before = historyBoundaryRef.current;
     historyBoundaryRef.current = null;
     if (!before) return;
     const after = captureSnapshot();
-    if (snapshotsEqual(before, after)) return;
+    if (snapshotsEqual(before.snapshot, after)) return;
     pushHistoryEntry(undoStackRef.current, before);
     redoStackRef.current = [];
   }, [captureSnapshot]);
@@ -353,24 +433,16 @@ export function useEditorOperations(): UseEditorOperationsResult {
   const undo = useCallback(() => {
     const previous = undoStackRef.current.pop();
     if (!previous) return false;
-    pushHistoryEntry(redoStackRef.current, captureSnapshot());
-    const restored = restoreSnapshotContent(previous);
-    const host = hostRef.current;
-    if (restored && host) placeCaretAtEnd(host);
-    historyBoundaryRef.current = null;
-    return restored;
-  }, [captureSnapshot, restoreSnapshotContent]);
+    pushHistoryEntry(redoStackRef.current, captureHistoryEntry());
+    return restoreHistoryEntry(previous);
+  }, [captureHistoryEntry, restoreHistoryEntry]);
 
   const redo = useCallback(() => {
     const next = redoStackRef.current.pop();
     if (!next) return false;
-    pushHistoryEntry(undoStackRef.current, captureSnapshot());
-    const restored = restoreSnapshotContent(next);
-    const host = hostRef.current;
-    if (restored && host) placeCaretAtEnd(host);
-    historyBoundaryRef.current = null;
-    return restored;
-  }, [captureSnapshot, restoreSnapshotContent]);
+    pushHistoryEntry(undoStackRef.current, captureHistoryEntry());
+    return restoreHistoryEntry(next);
+  }, [captureHistoryEntry, restoreHistoryEntry]);
 
   const clearHost = useCallback(() => {
     const host = hostRef.current;
@@ -467,6 +539,7 @@ export function useEditorOperations(): UseEditorOperationsResult {
       captureSnapshot,
       clearHost,
       insertNewline,
+      autolinkUrlBeforeCaret,
       focusHost,
       removePillByPath,
       isHostEmpty,
@@ -486,6 +559,7 @@ export function useEditorOperations(): UseEditorOperationsResult {
       captureSnapshot,
       clearHost,
       insertNewline,
+      autolinkUrlBeforeCaret,
       focusHost,
       removePillByPath,
       isHostEmpty,

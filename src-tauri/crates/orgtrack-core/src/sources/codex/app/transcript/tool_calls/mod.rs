@@ -106,7 +106,64 @@ pub(super) fn resolve_codex_tool_outputs(
     sequence: &mut usize,
     background_tool_calls: &mut imported_history::PendingCallMap<PendingBackgroundToolCall>,
 ) {
+    let start = chunks.len();
+    resolve_codex_tool_outputs_inner(
+        transcript_session_id,
+        calls,
+        file_order,
+        output_value,
+        fallback_output,
+        chunks,
+        sequence,
+        background_tool_calls,
+    );
+    let images = output_value
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|part| {
+            matches!(
+                part.get("type").and_then(Value::as_str),
+                Some("input_image" | "output_image" | "image")
+            )
+        })
+        .filter_map(|part| part.get("image_url").and_then(Value::as_str))
+        .filter(|value| {
+            value.starts_with("orgii-transcript-image:")
+                || value.starts_with("https://")
+                || value.starts_with("http://")
+        })
+        .collect::<Vec<_>>();
+    if !images.is_empty() {
+        if let Some(chunk) = chunks.get_mut(start) {
+            chunk.result["images"] = json!(images);
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn resolve_codex_tool_outputs_inner(
+    transcript_session_id: &str,
+    calls: Vec<ImportedToolCall>,
+    file_order: u64,
+    output_value: Option<&Value>,
+    fallback_output: &str,
+    chunks: &mut Vec<ActivityChunk>,
+    sequence: &mut usize,
+    background_tool_calls: &mut imported_history::PendingCallMap<PendingBackgroundToolCall>,
+) {
     let mut results = codex_exec_results(output_value);
+    // An empty value has no explicit success flag. Do not promote it over an
+    // outer script failure; only typed per-command results can stand alone.
+    let envelope = fallback_output.trim_start();
+    if envelope.starts_with("Script failed") || envelope.starts_with("Script error") {
+        for result in &mut results {
+            if result.empty_tool_value {
+                result.exit_code = Some(1);
+                result.output = fallback_output.to_owned();
+            }
+        }
+    }
     if results.len() == calls.len() {
         for (call, result) in calls.into_iter().zip(results.drain(..)) {
             resolve_codex_call_group(
@@ -121,7 +178,7 @@ pub(super) fn resolve_codex_tool_outputs(
         }
         return;
     }
-    if results.len() == 1 {
+    if results.len() == 1 && !results[0].empty_tool_value {
         resolve_codex_call_group(
             transcript_session_id,
             calls,

@@ -11,6 +11,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
+use crate::agent_sessions::event_pipeline::ingestion::{
+    function_map::resolve_function_name, normalizer::extract_args,
+};
+
 pub(super) const MAX_ITEMS: usize = 100_000;
 const MAX_SERIALIZED_BYTES: usize = 64 * 1024 * 1024;
 const MAX_PORTABLE_TOOL_CALL_ID_LENGTH: usize = 64;
@@ -239,7 +243,7 @@ fn chunk_text(chunk: &ActivityChunk) -> String {
 }
 
 fn transferable_tool_args(chunk: &ActivityChunk) -> Value {
-    let mut args = chunk.args.clone();
+    let mut args = extract_args(&chunk.action_type, &chunk.function, &chunk.args);
     if let Some(object) = args.as_object_mut() {
         object.retain(|key, _| {
             key != "conversationTurnId"
@@ -368,7 +372,11 @@ pub(super) fn append_native_items_from_chunks(
                     .filter(|value| !value.trim().is_empty())
                     .unwrap_or(&chunk.chunk_id);
                 let call_id = portable_tool_call_id(raw_call_id);
-                let name = chunk.function.clone();
+                // Canonical SessionEvents use the ingestion vocabulary. The
+                // native read-back must use that same projection before strict
+                // prefix comparison, including pass-through custom tools.
+                let name =
+                    resolve_function_name(&chunk.function, &chunk.action_type, Some(&chunk.args));
                 items.push(NativeConversationItem::ToolCall {
                     id: format!("{}:call", chunk.chunk_id),
                     call_id: call_id.clone(),
@@ -411,6 +419,14 @@ pub(super) fn native_items_from_agent_history(history: &[Value]) -> Vec<NativeCo
             .unwrap_or_default()
             .to_string();
         match role {
+            "context_summary" => {
+                items.clear();
+                items.push(NativeConversationItem::ContextSummary {
+                    id: format!("agent-history-{index}"),
+                    summary: message.get("content").map(json_text).unwrap_or_default(),
+                    created_at,
+                });
+            }
             "user" | "assistant" => {
                 let text = message.get("content").map(json_text).unwrap_or_default();
                 let images = agent_message_images(message);

@@ -66,10 +66,6 @@ vi.mock("@src/store/session/cliSessionStatusAtom", async () => {
   const { atom } = await import("jotai");
   return { sessionRuntimeStatusAtom: atom("idle") };
 });
-vi.mock("@src/store/ui/chatPanelAtom", async () => {
-  const { atom } = await import("jotai");
-  return { modelPickerStyleAtom: atom("spotlight") };
-});
 vi.mock("@src/components/AnyIcon", () => ({ default: () => null }));
 vi.mock("@src/components/ModelIcon", () => ({ default: () => null }));
 vi.mock("@src/components/Message", () => ({
@@ -95,17 +91,41 @@ vi.mock("@src/components/ModelSelectorPill", async () => {
   return {
     default: forwardRef<
       HTMLButtonElement,
-      { onClick: () => void; dataTestId: string; disabled?: boolean }
-    >(({ onClick, dataTestId, disabled }, ref) =>
-      createElement("button", {
-        ref,
-        "data-testid": dataTestId,
-        disabled,
-        onClick,
-      })
+      {
+        onClick: () => void;
+        dataTestId: string;
+        disabled?: boolean;
+        harnessSwitch?: {
+          label: string;
+          onClick: () => void;
+          disabled?: boolean;
+        };
+      }
+    >(({ onClick, dataTestId, disabled, harnessSwitch }, ref) =>
+      createElement(
+        "div",
+        null,
+        createElement("button", {
+          ref,
+          "data-testid": dataTestId,
+          disabled,
+          onClick,
+        }),
+        harnessSwitch &&
+          createElement(
+            "button",
+            {
+              "data-testid": "model-selector-switch-harness",
+              disabled: harnessSwitch.disabled,
+              onClick: harnessSwitch.onClick,
+            },
+            harnessSwitch.label
+          )
+      )
     ),
   };
 });
+
 vi.mock(
   "@src/scaffold/GlobalSpotlight/palettes/DispatchCategoryPalette/DispatchCategoryPicker",
   async () => {
@@ -269,7 +289,8 @@ describe("ModelPill disclosure ownership", () => {
   });
 
   it("keeps the runtime and model palettes mutually exclusive", () => {
-    click("chat-runtime-pill");
+    click("chat-model-pill-model");
+    click("model-selector-switch-harness");
     expect(
       container.querySelector('[data-testid="runtime-palette"]')
     ).not.toBeNull();
@@ -283,7 +304,8 @@ describe("ModelPill disclosure ownership", () => {
       container.querySelector('[data-testid="model-palette"]')
     ).not.toBeNull();
 
-    click("chat-runtime-pill");
+    click("chat-model-pill-model");
+    click("model-selector-switch-harness");
     expect(container.querySelector('[data-testid="model-palette"]')).toBeNull();
     expect(
       container.querySelector('[data-testid="runtime-palette"]')
@@ -292,7 +314,8 @@ describe("ModelPill disclosure ownership", () => {
 
   it("discards an unfinished runtime pick when the conversation changes", () => {
     fixture.binding.applyRuntimePick.mockReturnValue(false);
-    click("chat-runtime-pill");
+    click("chat-model-pill-model");
+    click("model-selector-switch-harness");
     click("runtime-choice-claude");
     expect(
       container
@@ -325,7 +348,8 @@ describe("ModelPill disclosure ownership", () => {
 
   it("stops masking an ambient Claude target after the binding resolves", () => {
     fixture.binding.applyRuntimePick.mockReturnValue(false);
-    click("chat-runtime-pill");
+    click("chat-model-pill-model");
+    click("model-selector-switch-harness");
     click("runtime-choice-claude");
     expect(
       container

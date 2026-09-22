@@ -3,7 +3,7 @@ import { TOOL_NAMES } from "@src/api/tauri/agent/toolNames";
 import { willEventRenderContent } from "@src/engines/ChatPanel/ChatHistory/chatItemPipeline";
 import { parseAgentMessageCard } from "@src/engines/ChatPanel/blocks/ToolCallBlock/helpers/cardParsers";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
-import { getRegistryEventType } from "@src/lib/activityData/activityNormalizers";
+import { getRegistryEventType } from "@src/util/data/activityData/activityNormalizers";
 import { prettifyMemberName } from "@src/util/data/formatters/memberName";
 
 import {

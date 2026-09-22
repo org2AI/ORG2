@@ -16,6 +16,7 @@
 import { atom, createStore, useAtom, useStore } from "jotai";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
+import { sidebarSelectedOrgIdAtom } from "@src/features/Organizations/sidebarOrgScopeAtom";
 import { createLogger } from "@src/hooks/logger";
 
 import { enrichOrg2CloudProfile } from "./completeSignIn";
@@ -121,6 +122,10 @@ org2CloudOrgsLoadedAtom.debugLabel = "org2CloudOrgsLoadedAtom";
 export const org2CloudOrgsRequestEpochAtom = atom(0);
 org2CloudOrgsRequestEpochAtom.debugLabel = "org2CloudOrgsRequestEpochAtom";
 
+/** Identity that produced the confirmed roster; not a second selection owner. */
+const org2CloudOrgsIdentityAtom = atom<string | null>(null);
+const org2CloudOrgsRequestIdentityAtom = atom<string | null>(null);
+
 type JotaiStore = ReturnType<typeof createStore>;
 
 /**
@@ -163,9 +168,19 @@ export async function queueOrg2CloudOrgsConvergence<T>(
   }
 }
 
-export function beginOrg2CloudOrgsRequest(store: JotaiStore): number {
+export function beginOrg2CloudOrgsRequest(
+  store: JotaiStore,
+  requestIdentity?: string | null
+): number {
+  const auth = store.get(org2CloudAuthAtom);
+  const currentIdentity = auth ? org2CloudAuthIdentityKey(auth) : null;
+  // A retained callback may still hold the previous account's auth ref.
+  // It must neither issue an old-identity read nor supersede a current one.
+  if (requestIdentity !== undefined && requestIdentity !== currentIdentity)
+    return -1;
   const epoch = store.get(org2CloudOrgsRequestEpochAtom) + 1;
   store.set(org2CloudOrgsRequestEpochAtom, epoch);
+  store.set(org2CloudOrgsRequestIdentityAtom, currentIdentity);
   return epoch;
 }
 
@@ -173,7 +188,12 @@ export function isCurrentOrg2CloudOrgsRequest(
   store: JotaiStore,
   epoch: number
 ): boolean {
-  return store.get(org2CloudOrgsRequestEpochAtom) === epoch;
+  const auth = store.get(org2CloudAuthAtom);
+  const identity = auth ? org2CloudAuthIdentityKey(auth) : null;
+  return (
+    store.get(org2CloudOrgsRequestEpochAtom) === epoch &&
+    store.get(org2CloudOrgsRequestIdentityAtom) === identity
+  );
 }
 
 export function commitOrg2CloudOrgsRequest(
@@ -183,6 +203,10 @@ export function commitOrg2CloudOrgsRequest(
 ): boolean {
   if (!isCurrentOrg2CloudOrgsRequest(store, epoch)) return false;
   store.set(org2CloudOrgsAtom, orgs);
+  store.set(
+    org2CloudOrgsIdentityAtom,
+    store.get(org2CloudOrgsRequestIdentityAtom)
+  );
   store.set(org2CloudOrgsLoadedAtom, true);
   return true;
 }
@@ -217,8 +241,24 @@ export const org2CloudRosterRealtimeConnectedAtom = atom<
 org2CloudRosterRealtimeConnectedAtom.debugLabel =
   "org2CloudRosterRealtimeConnectedAtom";
 
-/** Cloud org id currently selected in the sidebar workspace scope selector (null = a local scope). */
-export const sidebarActiveCloudOrgIdAtom = atom<string | null>(null);
+/** Application scope, derived from selection and authenticated membership.
+ * Sidebar instances never acquire/release it: route and hover teardown are
+ * presentation events, not changes to the selected organization.
+ */
+export const sidebarActiveCloudOrgIdAtom = atom((get): string | null => {
+  const auth = get(org2CloudAuthAtom);
+  if (
+    !auth ||
+    !get(org2CloudOrgsLoadedAtom) ||
+    get(org2CloudOrgsIdentityAtom) !== org2CloudAuthIdentityKey(auth)
+  )
+    return null;
+  const selected = parseCloudOrgSelectorValue(get(sidebarSelectedOrgIdAtom));
+  return selected &&
+    get(org2CloudOrgsAtom).some((org) => org.orgId === selected)
+    ? selected
+    : null;
+});
 sidebarActiveCloudOrgIdAtom.debugLabel = "sidebarActiveCloudOrgIdAtom";
 
 /** Resolve the exact managed org selected in the sidebar. Local/personal
@@ -288,7 +328,11 @@ export function useOrg2CloudOrgs(): void {
     const runAttempt = async (attempt: number): Promise<void> => {
       const current = authRef.current;
       if (!current || cancelled) return;
-      const requestEpoch = beginOrg2CloudOrgsRequest(store);
+      const requestEpoch = beginOrg2CloudOrgsRequest(
+        store,
+        org2CloudAuthIdentityKey(current)
+      );
+      if (!isCurrentOrg2CloudOrgsRequest(store, requestEpoch)) return;
       const retry = (): void => {
         if (cancelled || attempt >= RETRY_DELAYS_MS.length) return;
         retryTimer = setTimeout(() => {
@@ -403,7 +447,12 @@ export function useRefetchOrg2CloudOrgs(): (
 
         for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
           const current = authRef.current;
-          const requestEpoch = beginOrg2CloudOrgsRequest(store);
+          const requestEpoch = beginOrg2CloudOrgsRequest(
+            store,
+            current ? org2CloudAuthIdentityKey(current) : null
+          );
+          if (!isCurrentOrg2CloudOrgsRequest(store, requestEpoch))
+            return store.get(org2CloudOrgsAtom);
           if (!current) {
             store.set(org2CloudOrgsAtom, []);
             store.set(org2CloudOrgsLoadedAtom, false);

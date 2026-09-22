@@ -237,7 +237,6 @@ export const SavedViewsControl: React.FC<SavedViewsControlProps> = ({
       <>
         <Button
           variant="tertiary"
-          appearance="ghost"
           size="small"
           iconOnly
           icon={
@@ -248,9 +247,7 @@ export const SavedViewsControl: React.FC<SavedViewsControlProps> = ({
             />
           }
           onClick={() => setSaveOpen(true)}
-          aria-label={t("workItems.savedViews.save", {
-            defaultValue: "Save current view",
-          })}
+          aria-label={t("workItems.savedViews.save")}
           data-testid="work-items-saved-view-save"
         />
         {renderSaveModal()}
@@ -262,31 +259,24 @@ export const SavedViewsControl: React.FC<SavedViewsControlProps> = ({
     return (
       <Modal
         visible={saveOpen}
-        title={t("workItems.savedViews.saveTitle", {
-          defaultValue: "Save view",
-        })}
+        title={t("workItems.savedViews.saveTitle")}
         width={380}
         onCancel={() => setSaveOpen(false)}
         onOk={() => void handleSave()}
-        okText={t("common:actions.save", { defaultValue: "Save" })}
-        cancelText={t("common:actions.cancel", { defaultValue: "Cancel" })}
+        okText={t("common:actions.save")}
+        cancelText={t("common:actions.cancel")}
         okButtonProps={{ disabled: !draftName.trim(), loading: saving }}
       >
         <div className="flex flex-col gap-2">
           <Input
             value={draftName}
             onChange={(value) => setDraftName(value)}
-            placeholder={t("workItems.savedViews.namePlaceholder", {
-              defaultValue: "View name",
-            })}
+            placeholder={t("workItems.savedViews.namePlaceholder")}
             autoFocus
             data-testid="work-items-saved-view-name"
           />
           <p className="text-xs text-text-4">
-            {t("workItems.savedViews.saveHint", {
-              defaultValue:
-                "Captures the current filters; layout seeds the first open.",
-            })}
+            {t("workItems.savedViews.saveHint")}
           </p>
         </div>
       </Modal>
@@ -299,16 +289,13 @@ export const SavedViewsControl: React.FC<SavedViewsControlProps> = ({
         value={selectedId ?? undefined}
         options={options}
         onChange={(value) => handleSelect(value as string)}
-        placeholder={t("workItems.savedViews.placeholder", {
-          defaultValue: "Views",
-        })}
+        placeholder={t("workItems.savedViews.placeholder")}
         appearance="ghost"
         size="small"
         dataTestId="work-items-saved-view-select"
       />
       <Button
         variant="tertiary"
-        appearance="ghost"
         size="small"
         iconOnly
         icon={
@@ -319,24 +306,19 @@ export const SavedViewsControl: React.FC<SavedViewsControlProps> = ({
           />
         }
         onClick={() => setSaveOpen(true)}
-        aria-label={t("workItems.savedViews.save", {
-          defaultValue: "Save current view",
-        })}
+        aria-label={t("workItems.savedViews.save")}
         data-testid="work-items-saved-view-save"
       />
       {selectedId ? (
         <Button
           variant="tertiary"
-          appearance="ghost"
           size="small"
           iconOnly
           icon={
             <HugeiconsIcon icon={Delete02Icon} data-icon="trash-2" size={14} />
           }
           onClick={() => void handleDelete()}
-          aria-label={t("workItems.savedViews.delete", {
-            defaultValue: "Delete view",
-          })}
+          aria-label={t("workItems.savedViews.delete")}
           data-testid="work-items-saved-view-delete"
         />
       ) : null}

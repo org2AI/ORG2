@@ -24,7 +24,7 @@ describe("ChatPanelPublishedHeader", () => {
     expect(markup).toContain('data-testid="chat-panel-published-header"');
     expect(markup).toContain("h-9");
     expect(markup).toContain("pl-[15px]");
-    expect(markup).toContain("border-b border-border-2");
+    expect(markup).not.toContain("border-b");
     expect(markup).not.toContain("bg-chat-pane/40");
     expect(markup).not.toContain("backdrop-blur-xl");
     expect(markup).toContain("Leading");
@@ -32,19 +32,26 @@ describe("ChatPanelPublishedHeader", () => {
     expect(markup).toContain("Trailing");
   });
 
-  it("omits the divider when the pane joins a following row", () => {
-    const markup = renderToStaticMarkup(
-      React.createElement(ChatPanelPublishedHeader, {
-        windowsHost: false,
-        slots: {
-          content: React.createElement("span", null, "Joined content"),
-          joinWithFollowingRow: true,
-        },
-      })
-    );
+  it("moves its reserved insets only with the transition it is given", () => {
+    const renderWithInsets = (insetTransitionClassName?: string) =>
+      renderToStaticMarkup(
+        React.createElement(ChatPanelPublishedHeader, {
+          windowsHost: false,
+          slots: { content: React.createElement("span", null, "Content") },
+          leadingInsetPx: 176,
+          trailingInsetPx: 66,
+          insetTransitionClassName,
+        })
+      );
 
-    expect(markup).toContain("Joined content");
-    expect(markup).not.toContain("border-b border-border-2");
+    const atRest = renderWithInsets();
+    expect(atRest).toContain("padding-left:176px");
+    expect(atRest).toContain("padding-right:66px");
+    expect(atRest).not.toContain("transition-[padding]");
+
+    expect(renderWithInsets("transition-[padding] duration-200")).toContain(
+      "transition-[padding] duration-200"
+    );
   });
 
   it("does not add an empty row when no pane has published controls", () => {

@@ -7,7 +7,7 @@ import SourceControlMainPane from "../SourceControlMainPane";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@src/modules/shared/hooks/useGitHubIssueDetailState", () => ({
+vi.mock("@src/features/GitHubWork/useGitHubIssueDetailState", () => ({
   useGitHubIssueDetailState: () => ({ selectedState: { issue: null } }),
 }));
 vi.mock("../useSourceControlIssueDetailTab", () => ({

@@ -104,7 +104,7 @@ function TaskListRow({ task }: { task: TaskUpdateCardData }) {
     ? t(`orgTask.status.${task.status}`, { defaultValue: task.status })
     : null;
   const assignedLabel = task.taskAssignedDispatched
-    ? t("orgTask.assignedBadge", { defaultValue: "Assigned" })
+    ? t("orgTask.assignedBadge")
     : null;
   const statusRowLabel = [assignedLabel, statusLabel]
     .filter(Boolean)
@@ -174,16 +174,13 @@ export const TaskListCard: React.FC<TaskListCardProps> = ({
       ? card.kind === "get"
         ? t("groupChat.taskHeader.get", {
             sender: groupSenderName,
-            defaultValue: "{{sender}} viewed task details",
           })
         : card.kind === "graph"
           ? t("groupChat.taskHeader.create", {
               sender: groupSenderName,
-              defaultValue: "{{sender}} assigned tasks",
             })
           : t("groupChat.taskHeader.list", {
               sender: groupSenderName,
-              defaultValue: "{{sender}} viewed task list",
             })
       : card.kind === "get"
         ? t("orgTask.get.title")
@@ -262,8 +259,8 @@ export const TaskListCard: React.FC<TaskListCardProps> = ({
           <div className="flex min-w-0 items-baseline gap-2">
             <span className="shrink-0 text-text-3">
               {observationLabel == null
-                ? t("orgTask.list.countLabel", { defaultValue: "Tasks" })
-                : t("orgTask.statusLabel", { defaultValue: "Status" })}
+                ? t("orgTask.list.countLabel")
+                : t("orgTask.statusLabel")}
             </span>
             <span
               className="min-w-0 flex-1 truncate text-text-1"

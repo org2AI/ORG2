@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "Recorrido general por el diseño",
-      "description": "Conoce el panel de chat, Runtime, el selector de modo y el dock.",
+      "description": "Conoce el panel de chat, Runtime, el selector de modo y el dock",
       "duration": "1 min",
       "steps": {
         "chat-panel": {
           "title": "Panel de chat",
-          "body": "Aquí es donde los usuarios conversan con los agentes, revisan la actividad y envían instrucciones de seguimiento."
+          "body": "Aquí es donde los usuarios conversan con los agentes, revisan la actividad y envían instrucciones de seguimiento"
         },
         "runtime": {
           "title": "Tiempo de ejecución",
-          "body": "Consulta aquí tu uso y el estado de ejecución. En un espacio de trabajo, también puedes revisar la sincronización de los miembros y abrir sus detalles de uso de Codex, Claude y Cursor."
+          "body": "Consulta aquí tu uso y el estado de ejecución. En un espacio de trabajo, también puedes revisar la sincronización de los miembros y abrir sus detalles de uso de Codex, Claude y Cursor"
         },
         "station-mode-pill": {
           "title": "Cambiar de estación modos",
-          "body": "Utilice esta pastilla para cambiar los modos de estación. Escritorio significa My Station, tu espacio de trabajo. Infinito significa Agent Station, la vista de actividad del agente."
+          "body": "Utilice esta pastilla para cambiar los modos de estación. Escritorio significa My Station, tu espacio de trabajo. Infinito significa Agent Station, la vista de actividad del agente"
         },
         "dock": {
           "title": "Base de Agent Station",
-          "body": "La base cambia de aplicaciones dentro de la estación. El recorrido desactiva temporalmente la ocultación automática para que estos controles permanezcan visibles."
+          "body": "La base cambia de aplicaciones dentro de la estación. El recorrido desactiva temporalmente la ocultación automática para que estos controles permanezcan visibles"
         }
       }
     },
     "codeEditor": {
       "title": "Recorrido por el editor de código",
-      "description": "Conoce las pestañas, el espacio del editor, el control de código fuente y el historial de Git.",
+      "description": "Conoce las pestañas, el espacio del editor, el control de código fuente y el historial de Git",
       "duration": "2 minutos",
       "steps": {
         "tabs": {
           "title": "Pestañas del editor de código",
-          "body": "Las pestañas recopilan los archivos, diferencias, terminales, vistas de control de código fuente y paneles que abre mientras trabaja en el repositorio."
+          "body": "Las pestañas recopilan los archivos, diferencias, terminales, vistas de control de código fuente y paneles que abre mientras trabaja en el repositorio"
         },
         "editor-surface": {
           "title": "Espacio de trabajo del editor",
-          "body": "Esta es la superficie principal del Editor de código. Abra archivos, inspeccione diferencias, ejecute terminales y revise los cambios generados aquí."
+          "body": "Esta es la superficie principal del Editor de código. Abra archivos, inspeccione diferencias, ejecute terminales y revise los cambios generados aquí"
         },
         "create-tabs": {
           "title": "Crear nuevas pestañas",
-          "body": "Utilice el menú más en Todas las pestañas para crear terminales, pestañas del navegador, archivos, paneles y utilidades de repositorio."
+          "body": "Utilice el menú más en Todas las pestañas para crear terminales, pestañas del navegador, archivos, paneles y utilidades de repositorio"
         },
         "source-control": {
           "title": "Cambios de Git",
-          "body": "Control de código abierto para revisar archivos modificados, preparar o cancelar el trabajo, confirmar, extraer, enviar, recuperar y sincronizar con el control remoto."
+          "body": "Control de código abierto para revisar archivos modificados, preparar o cancelar el trabajo, confirmar, extraer, enviar, recuperar y sincronizar con el control remoto"
         },
         "git-history": {
           "title": "Historial de Git",
-          "body": "Historial de Git cambia el Control de fuente al modo de historial de confirmaciones para que puedas inspeccionar confirmaciones anteriores y cambios relacionados."
+          "body": "Historial de Git cambia el Control de fuente al modo de historial de confirmaciones para que puedas inspeccionar confirmaciones anteriores y cambios relacionados"
         }
       }
     }
   },
   "discovery": {
-    "title": "Primeros pasos y novedades",
-    "getStarted": "Primeros pasos",
-    "newFeatures": "Novedades",
-    "branchesTitle": "Ramas del repositorio",
-    "branchesDescription": "Cambia de rama del repositorio directamente desde Spotlight."
+    "getStarted": "Primeros pasos"
   }
 }

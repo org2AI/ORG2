@@ -1,8 +1,10 @@
+import type { ModelType } from "@src/api/tauri/rpc/schemas/validation";
 import { isOrgiiTierModel } from "@src/config/orgiiCategories";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import type { ModelTableVariantInfo } from "@src/types/modelTable";
 import {
   type ModelGroup,
+  groupLabelForAgent,
   groupModels,
   isLegacyGroup,
   isUncategorizedModelGroup,
@@ -37,6 +39,25 @@ function modelGroupKey(
     return `other::${group.models[0]}`;
   }
   return `${era}::${group.label}::${group.sortVersion}`;
+}
+
+/**
+ * The one agent behind every source of these rows, or `undefined` when they
+ * come from more than one. Routing-tier ids ("default") only carry a meaning
+ * once the owner is known, and a tier offered by two different agents has no
+ * single owner to name.
+ */
+export function unanimousGroupAgentType(
+  rows: ConsolidatedModelRow[]
+): ModelType | undefined {
+  let agentType: ModelType | undefined;
+  for (const row of rows) {
+    for (const source of row.sources) {
+      if (agentType && source.modelType !== agentType) return undefined;
+      agentType = source.modelType;
+    }
+  }
+  return agentType;
 }
 
 function resolveGroupEra(
@@ -93,7 +114,7 @@ export function buildIntegrationsModelGroups(
     const era = resolveGroupEra(group, groupRows);
     result.push({
       key: modelGroupKey(group, era),
-      label: group.label,
+      label: groupLabelForAgent(group, unanimousGroupAgentType(groupRows)),
       models: groupRows,
       era,
       isOrgiiGroup: false,

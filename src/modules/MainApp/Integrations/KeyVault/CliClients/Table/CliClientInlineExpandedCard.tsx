@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
+import { useRefreshSpin } from "@src/components/RefreshIcon/useRefreshSpin";
 import {
   Add01Icon,
   HugeiconsIcon,
@@ -133,7 +133,6 @@ const CliClientInlineExpandedCard = ({
         <InlineCardFooter>
           {onRefresh && (
             <Button
-              variant="secondary"
               size="small"
               icon={
                 <HugeiconsIcon
@@ -151,7 +150,6 @@ const CliClientInlineExpandedCard = ({
           )}
           {agent.docsUrl && (
             <Button
-              variant="secondary"
               size="small"
               icon={
                 <HugeiconsIcon
@@ -168,7 +166,6 @@ const CliClientInlineExpandedCard = ({
           )}
           {onAdd && (
             <Button
-              variant="secondary"
               size="small"
               icon={
                 <HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />

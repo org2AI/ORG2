@@ -94,11 +94,7 @@ export function useAgentOrgTeamDeletion({
       if (requiresNavigationReset) goToNewSession();
     } catch (deleteError) {
       logger.error("Failed to delete Archived Agent Team:", deleteError);
-      Message.error(
-        t("planner.agentOrgOverview.deleteFailed", {
-          defaultValue: "Failed to delete Team",
-        })
-      );
+      Message.error(t("planner.agentOrgOverview.deleteFailed"));
     } finally {
       setIsDeleting(false);
     }

@@ -147,6 +147,7 @@ export interface Session {
   keySource?: KeySource;
   /** Selected code account ID (own_key sessions) */
   accountId?: string;
+  credentialSource?: string;
   /** Price tier for market sessions */
   tier?: PriceTier;
   /** Process ID of the running agent (null if never started) */

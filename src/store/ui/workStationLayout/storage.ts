@@ -1,20 +1,14 @@
+import { scheduleCoalescedStorageWrite } from "@src/util/core/storage/coalescedStorageWrite";
+
 const WORK_STATION_PREFIX = "work_station_";
 
 const STORAGE_KEYS = [
-  "split_enabled",
-  "split_ratio",
   "layout_mode",
   "primary_sidebar_collapsed",
   "primary_sidebar_width",
-  "browser_primary_sidebar_collapsed",
   "browser_devtools_position",
-  "right_collapsed",
   "devtools_collapsed",
   "bottom_collapsed",
-  "bottom_height",
-  "title_bar_hidden",
-  "status_bar_hidden",
-  "follow_agent_highlight",
 ] as const;
 
 export type WorkStationStorageKey = (typeof STORAGE_KEYS)[number];
@@ -34,16 +28,36 @@ function batchReadStorage(): Map<WorkStationStorageKey, string | null> {
   return result;
 }
 
+/**
+ * Authoritative in-process value for every key.
+ *
+ * Seeded from one batched read at module load to avoid N synchronous reads
+ * during atom init, then kept current by `setStoredValue`. Reads must never
+ * go back to `localStorage`: the disk write is coalesced, so between a write
+ * and its flush the disk is deliberately behind this map.
+ */
 const storedValues = batchReadStorage();
 
 export function getStoredValue(key: WorkStationStorageKey): string | null {
   return storedValues.get(key) ?? null;
 }
 
-export function setStoredValue(key: string, value: string): void {
-  try {
-    localStorage.setItem(`${WORK_STATION_PREFIX}${key}`, value);
-  } catch {
-    // ignore localStorage errors
-  }
+/**
+ * Record `value` for `key` and queue the disk write.
+ *
+ * The write is coalesced (see `coalescedStorageWrite`) because these keys are
+ * panel geometry and collapsed flags: a resize drag calls this once per
+ * animation frame, and a synchronous `setItem` per frame is a main-thread
+ * cost for a value only the resting state of which matters. The in-memory map
+ * updates synchronously, so `getStoredValue` never observes the lag.
+ */
+export function setStoredValue(
+  key: WorkStationStorageKey,
+  value: string
+): void {
+  storedValues.set(key, value);
+  const storageKey = `${WORK_STATION_PREFIX}${key}`;
+  scheduleCoalescedStorageWrite(storageKey, () => {
+    localStorage.setItem(storageKey, value);
+  });
 }

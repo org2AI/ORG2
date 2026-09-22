@@ -29,6 +29,7 @@ const FULL_LINT_TRIGGERS = new Set([
   ".prettierrc",
   ".prettierignore",
   "src/tailwind.css",
+  "src/.oxlintrc.json",
   "package.json",
   "pnpm-lock.yaml",
   "tsconfig.json",

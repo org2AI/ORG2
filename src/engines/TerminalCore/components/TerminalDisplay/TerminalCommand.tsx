@@ -106,7 +106,6 @@ export const TerminalCommand: React.FC<TerminalCommandProps> = memo(
         {stopAction && (
           <Button
             layout="custom"
-            appearance="custom"
             onClick={stopAction.onClick}
             disabled={stopAction.isStopping}
             title={stopAction.tooltip}

@@ -32,8 +32,6 @@ interface CountBadgeProps {
   label?: string;
   /** Show badge even when count is 0 */
   showZero?: boolean;
-  /** Icon size */
-  iconSize?: number;
   /** Additional class name */
   className?: string;
 }
@@ -81,14 +79,7 @@ const VARIANT_CONFIG: Record<CountVariant, VariantConfig> = {
 // ============================================
 
 export const CountBadge: React.FC<CountBadgeProps> = memo(
-  ({
-    variant,
-    count,
-    label,
-    showZero = false,
-    iconSize = 14,
-    className = "",
-  }) => {
+  ({ variant, count, label, showZero = false, className = "" }) => {
     // Don't render if count is 0 and showZero is false
     if (count === 0 && !showZero) {
       return null;
@@ -107,7 +98,7 @@ export const CountBadge: React.FC<CountBadgeProps> = memo(
       <span
         className={`flex items-center gap-1 text-[12px] ${config.colorClass} ${className}`}
       >
-        <AnyIcon icon={config.icon} size={iconSize} className="shrink-0" />
+        <AnyIcon icon={config.icon} size={14} className="shrink-0" />
         <span>
           {count}
           {pluralizedLabel && ` ${pluralizedLabel}`}

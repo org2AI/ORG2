@@ -100,7 +100,7 @@ vi.mock("@src/util/ui/openLink", () => ({
   openInSystemBrowser: mocks.openInSystemBrowser,
 }));
 
-vi.mock("@src/modules/shared/components/GitHubLinkedReferences/lazy", () => ({
+vi.mock("@src/features/GitHubWork/GitHubLinkedReferences/lazy", () => ({
   default: ({ references }: { references: readonly unknown[] }) =>
     createElement("div", {
       "data-testid": "team-inbox-linked",

@@ -15,7 +15,7 @@ interface UseDroppedFilesConsumerOptions {
   composerInputRef: RefObject<ComposerInputRef | null>;
   dropTargetId: string;
   hasContentRef: MutableRefObject<boolean>;
-  handleImagePaste: (files: File[]) => Promise<void>;
+  handleImagePaste: (files: File[]) => Promise<unknown>;
   handleImagePath: (path: string, fileName?: string) => Promise<void>;
 }
 
@@ -54,7 +54,7 @@ export function useDroppedFilesConsumer({
       .filter((file): file is File => Boolean(file));
     const pathImageFiles = imageFiles.filter((file) => !file.browserFile);
 
-    const imagePromises: Promise<void>[] = [];
+    const imagePromises: Promise<unknown>[] = [];
 
     if (browserImageFiles.length > 0) {
       imagePromises.push(handleImagePaste(browserImageFiles));

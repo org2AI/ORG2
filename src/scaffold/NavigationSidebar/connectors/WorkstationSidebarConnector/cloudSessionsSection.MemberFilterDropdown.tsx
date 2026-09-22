@@ -59,9 +59,17 @@ export function useCloudMemberFilterDropdown({
   // Everyone + the active roster. Current rows are only a loading/legacy
   // fallback; a teammate does not need to publish a Session before they can
   // be selected as a filter.
+  // Online members (presence dot) sort first; the sort is stable, so each
+  // group keeps the roster order.
+  const orgPresence = orgId ? presenceMap[orgId] : undefined;
   const memberOptions = useMemo(() => {
-    return buildCloudSessionMemberFilterOptions(rows, rosterMembers);
-  }, [rosterMembers, rows]);
+    const options = buildCloudSessionMemberFilterOptions(rows, rosterMembers);
+    return options.sort(
+      (a, b) =>
+        Number(Boolean(orgPresence?.[b.userId])) -
+        Number(Boolean(orgPresence?.[a.userId]))
+    );
+  }, [orgPresence, rosterMembers, rows]);
 
   const closeMemberMenu = useCallback(
     () => setMemberMenu(null),
@@ -127,7 +135,7 @@ export function useCloudMemberFilterDropdown({
   ];
   const options = filterOptions.map((option) => {
     const presenceEntry = option.userId
-      ? (orgId ? presenceMap[orgId] : undefined)?.[option.userId]
+      ? orgPresence?.[option.userId]
       : undefined;
 
     return {

@@ -235,7 +235,6 @@ const MiniCPMStepExplanationPanel: React.FC<MiniCPMStepExplanationPanelProps> =
         {onClose ? (
           <Button
             variant="tertiary"
-            appearance="soft-no-drop"
             size="mini"
             iconOnly
             icon={
@@ -246,7 +245,6 @@ const MiniCPMStepExplanationPanel: React.FC<MiniCPMStepExplanationPanelProps> =
                 strokeWidth={1.75}
               />
             }
-            htmlType="button"
             className="absolute top-2 right-2 z-10 hover:bg-fill-2 hover:text-text-1"
             onClick={onClose}
             aria-label="关闭 MiniCPM 步骤解析"

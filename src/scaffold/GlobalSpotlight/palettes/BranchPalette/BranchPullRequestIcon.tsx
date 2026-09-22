@@ -12,7 +12,7 @@ import {
 import {
   getPrStatusIconName,
   getPrStatusLabelKey,
-} from "@src/shared/pr/prStatus";
+} from "@src/util/git/pr/prStatus";
 
 import "./BranchPullRequestIcon.css";
 

@@ -15,11 +15,11 @@
 import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { HEADER_CLASSES } from "@src/config/workstation/tokens";
 import {
   WorkstationTrailBody,
   WorkstationTrailHeader,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import { HEADER_CLASSES } from "@src/config/workstation/tokens";
 
 // Re-export types for consumers
 export type { Label, LinkedRepoOption, Team, ProjectData } from "./types";

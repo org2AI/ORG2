@@ -9,9 +9,7 @@ describe("AgentChatItemDefault message chrome", () => {
     const markup = renderToStaticMarkup(
       createElement(
         AgentChatItemDefault,
-        {
-          messageTimestamp: "2026-09-01T14:55:00.000Z",
-        } as ComponentProps<typeof AgentChatItemDefault>,
+        {} as ComponentProps<typeof AgentChatItemDefault>,
         "Assistant response"
       )
     );

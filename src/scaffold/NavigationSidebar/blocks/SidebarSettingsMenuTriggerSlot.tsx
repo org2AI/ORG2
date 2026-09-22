@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { Settings01Icon } from "@src/icons";
-import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "@src/scaffold/NavigationSidebar/config";
 
 import HoverAnimatedIcon, {
   triggerIconAnimation,
@@ -39,12 +38,10 @@ export function SidebarSettingsMenuTriggerSlot({
       label={t("sidebar.bottomBar.settings")}
       shortcut={openSettingsShortcut}
       position="top"
-      mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
       disabled={isOpen}
     >
       <div ref={triggerRef} className="inline-flex">
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           iconOnly

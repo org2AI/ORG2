@@ -9,13 +9,13 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
+import { ActivityTimestamp } from "@src/features/GitHubWork/ActivityTimeline";
+import GitHubFlowHeader from "@src/features/GitHubWork/GitHubFlowHeader";
 import {
   CheckmarkCircle01Icon,
   CircleDotIcon,
   HugeiconsIcon,
 } from "@src/icons";
-import { ActivityTimestamp } from "@src/modules/shared/components/ActivityTimeline";
-import GitHubFlowHeader from "@src/modules/shared/components/GitHubFlowHeader";
 
 export function GitHubIssueFlowHeader({
   issue,
@@ -51,21 +51,18 @@ export function GitHubIssueFlowHeader({
               aria-hidden
             />
           )}
-          {isOpen
-            ? t("git.issues.status.open", "Open")
-            : t("git.issues.status.closed", "Closed")}
+          {isOpen ? t("git.issues.status.open") : t("git.issues.status.closed")}
         </span>
       }
       actor={{ login: issue.user.login, avatarUrl: issue.user.avatar_url }}
-      unknownActorLabel={t("git.pr.unknownAuthor", "Unknown")}
+      unknownActorLabel={t("git.pr.unknownAuthor")}
     >
-      <span>{t("git.issues.activity.opened", "opened this issue")}</span>
+      <span>{t("git.issues.activity.opened")}</span>
       <ActivityTimestamp timestamp={issue.created_at} />
       <span aria-hidden>·</span>
       <span>
         {t("git.issues.commentCount", {
           count: issue.comments,
-          defaultValue: "{{count}} comment",
           defaultValue_other: "{{count}} comments",
         })}
       </span>

@@ -7,15 +7,15 @@ import {
 } from "react";
 
 import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
-import type { SelectOption } from "@src/components/Select";
-import SplitListFullscreenButton from "@src/modules/shared/layouts/SplitListFullscreenButton";
-import SplitListHeader from "@src/modules/shared/layouts/SplitListHeader";
+import SplitListFullscreenButton from "@src/scaffold/layouts/SplitListFullscreenButton";
+import SplitListHeader from "@src/scaffold/layouts/SplitListHeader";
 
 import {
   GitHubWorkItemsFilterControls,
   GitHubWorkItemsRepositorySelect,
   GitHubWorkItemsSearchAndActions,
 } from "../GitHubWorkItemsHeaderControls";
+import type { GitHubWorkItemFacets } from "../githubWorkItemsFilterFacets";
 import {
   GITHUB_QUERY_SCOPE,
   GITHUB_QUERY_STATE,
@@ -39,14 +39,12 @@ export function useGitHubWorkItemsViewHeaders({
   effectiveSelectedRepo,
   searchQuery,
   parsedSearchQuery,
-  issuePersonalFilterOptions,
-  selectedIssuePersonalFilters,
+  filterFacets,
   listFullscreen,
   setListFullscreen,
   updateSearchQuery,
   onSearchQueryChange,
   onRepoSelect,
-  onIssuePersonalFiltersSelect,
   onRefresh,
   onSetCreateFormOpen,
 }: {
@@ -58,14 +56,12 @@ export function useGitHubWorkItemsViewHeaders({
   effectiveSelectedRepo: IssueRepoFilter;
   searchQuery: string;
   parsedSearchQuery: ParsedGitHubSearchQuery;
-  issuePersonalFilterOptions: SelectOption[];
-  selectedIssuePersonalFilters: string[];
+  filterFacets: GitHubWorkItemFacets;
   listFullscreen: boolean;
   setListFullscreen: Dispatch<SetStateAction<boolean>>;
   updateSearchQuery: (mutate: (query: ParsedGitHubSearchQuery) => void) => void;
   onSearchQueryChange: (query: string) => void;
   onRepoSelect: (repo: IssueRepoFilter) => void;
-  onIssuePersonalFiltersSelect: (values: (string | number)[]) => void;
   onRefresh: () => void;
   onSetCreateFormOpen: (open: boolean) => void;
 }) {
@@ -109,12 +105,12 @@ export function useGitHubWorkItemsViewHeaders({
       stateTabs,
       activeState,
       searchQuery,
-      personalFilterOptions:
-        scope === GITHUB_QUERY_SCOPE.ISSUE
-          ? issuePersonalFilterOptions
-          : undefined,
-      selectedPersonalFilters: selectedIssuePersonalFilters,
-      personalFilterLabel: t("common:actions.filter"),
+      filterMenu: {
+        scope,
+        facets: filterFacets,
+        parsedSearchQuery,
+        updateSearchQuery,
+      },
       refreshLabel: t("common:actions.refresh"),
       refreshing: loading,
       createAction:
@@ -127,24 +123,23 @@ export function useGitHubWorkItemsViewHeaders({
           : undefined,
       onStateChange: handleStateChange,
       onSearchQueryChange,
-      onPersonalFiltersSelect: onIssuePersonalFiltersSelect,
       onRefresh,
     }),
     [
       activeState,
+      filterFacets,
       handleStateChange,
-      issuePersonalFilterOptions,
       loading,
-      onIssuePersonalFiltersSelect,
       onRefresh,
       onSearchQueryChange,
       onSetCreateFormOpen,
+      parsedSearchQuery,
       repoSources.length,
       scope,
       searchQuery,
-      selectedIssuePersonalFilters,
       stateTabs,
       t,
+      updateSearchQuery,
     ]
   );
   const repositoryHeaderContent = useMemo(
@@ -152,10 +147,11 @@ export function useGitHubWorkItemsViewHeaders({
       <GitHubWorkItemsRepositorySelect
         repoOptions={repoOptions}
         selectedRepo={effectiveSelectedRepo}
+        loading={loading && !effectiveSelectedRepo}
         onRepoSelect={onRepoSelect}
       />
     ),
-    [effectiveSelectedRepo, onRepoSelect, repoOptions]
+    [effectiveSelectedRepo, loading, onRepoSelect, repoOptions]
   );
   const headerTrailing = useMemo(
     () => (
@@ -177,10 +173,6 @@ export function useGitHubWorkItemsViewHeaders({
         <SplitListHeader
           primary={
             <div className="flex min-w-0 flex-1 items-center gap-px">
-              {splitDatasetControl}
-              {splitDatasetControl ? (
-                <HeaderSectionSeparator className="mx-0.5" />
-              ) : null}
               {repositoryHeaderContent}
               <HeaderSectionSeparator className="mx-0.5" />
               <GitHubWorkItemsFilterControls {...sharedHeaderControlsProps} />
@@ -188,6 +180,10 @@ export function useGitHubWorkItemsViewHeaders({
           }
           secondary={
             <div className="flex min-w-0 flex-1 items-center gap-px">
+              {splitDatasetControl}
+              {splitDatasetControl ? (
+                <HeaderSectionSeparator className="mx-0.5" />
+              ) : null}
               <GitHubWorkItemsSearchAndActions
                 {...sharedHeaderControlsProps}
                 fillSearch

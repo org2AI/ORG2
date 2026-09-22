@@ -1,5 +1,8 @@
 import { formatSearchQuerySubtitle } from "@src/engines/ChatPanel/blocks/ToolCallBlock/helpers/argsSummary";
-import { isSearchTool } from "@src/engines/SessionCore/rendering/registry/toolCategories";
+import {
+  isSearchTool,
+  isShellTool,
+} from "@src/engines/SessionCore/rendering/registry/toolCategories";
 
 import type {
   MobileToolData,
@@ -136,17 +139,19 @@ function formatMobileToolSubtitleValue(
     : summary;
 }
 
-export function mobileToolSummary(item: TranscriptItem): string {
+export function mobileToolDetailSummary(item: TranscriptItem): string {
   const projected = item.toolSummary?.trim();
-  if (projected) return formatMobileToolSubtitleValue(item, projected);
+  if (projected) return projected;
   const structured = summaryFromToolData(item.toolData);
-  if (structured) return formatMobileToolSubtitleValue(item, structured);
+  if (structured) return structured;
   if (item.toolFilePath?.trim()) return item.toolFilePath.trim();
   if (item.toolCommand?.trim()) return item.toolCommand.trim();
   const fallback = item.text.trim();
-  return fallback !== item.toolName
-    ? formatMobileToolSubtitleValue(item, fallback)
-    : "";
+  return fallback !== item.toolName ? fallback : "";
+}
+
+export function mobileToolSummary(item: TranscriptItem): string {
+  return formatMobileToolSubtitleValue(item, mobileToolDetailSummary(item));
 }
 
 export function outputFromToolData(data?: MobileToolData): string {
@@ -224,6 +229,71 @@ export function outputFromToolData(data?: MobileToolData): string {
       .join("\n");
   }
   return "";
+}
+
+export interface MobileShellDetail {
+  command: string;
+  output: string;
+  exitCode?: number;
+}
+
+export interface MobileSearchDetail {
+  query: string;
+  output: string;
+}
+
+function textValue(value: unknown): string {
+  return typeof value === "string" && value.trim() ? value : "";
+}
+
+/**
+ * Project the shell fields used by Desktop's TerminalBlock into a small,
+ * browser-safe model for the iOS detail surface. Preserve output whitespace;
+ * terminal output is presentation data, not a label to normalize.
+ */
+export function mobileShellDetail(
+  item: TranscriptItem
+): MobileShellDetail | null {
+  const payload = record(item.toolData);
+  const action = stringValue(payload?.action).toLowerCase();
+  const isShell =
+    toolKind(item.toolData) === "shell" ||
+    isShellTool(resolveMobileToolIconName(item));
+
+  // Desktop renders process termination as a compact lifecycle row rather
+  // than a terminal. Keep that action on the generic mobile detail path too.
+  if (!isShell || action === "kill") return null;
+
+  const command =
+    textValue(payload?.command) ||
+    textValue(item.toolCommand) ||
+    mobileToolDetailSummary(item);
+  const output =
+    textValue(payload?.output) ||
+    textValue(payload?.streamOutput) ||
+    textValue(payload?.errorMessage);
+  const exitCode =
+    typeof payload?.exitCode === "number" && Number.isFinite(payload.exitCode)
+      ? payload.exitCode
+      : undefined;
+
+  return command || output ? { command, output, exitCode } : null;
+}
+
+/** Mobile counterpart to Desktop's SearchBlock projection. */
+export function mobileSearchDetail(
+  item: TranscriptItem
+): MobileSearchDetail | null {
+  if (!isMobileSearchTool(item)) return null;
+
+  const payload = record(item.toolData);
+  const query =
+    textValue(item.toolSummary) ||
+    textValue(payload?.query) ||
+    mobileToolDetailSummary(item);
+  const output = outputFromToolData(item.toolData);
+
+  return query || output ? { query, output } : null;
 }
 
 export function compactMetadata(

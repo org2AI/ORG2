@@ -50,6 +50,7 @@ pub(super) struct SessionRuntimeSpec {
 pub(super) async fn build_session_runtime(
     model: &str,
     account_id: Option<&str>,
+    credential_source: Option<&str>,
     reliability: &ReliabilityConfig,
     native_harness_type: Option<NativeHarnessType>,
     tool_deps: ToolDeps,
@@ -61,9 +62,10 @@ pub(super) async fn build_session_runtime(
 ) -> Result<SessionRuntimeSpec, String> {
     let workspace_snapshot = tool_deps.workspace.read().clone();
     let workspace_root = workspace_snapshot.working_dir().to_path_buf();
-    let provider = crate::providers::factory::create_provider_with_native_harness_preflight(
+    let provider = crate::providers::factory::create_provider_with_selection_preflight(
         model,
         account_id,
+        credential_source,
         reliability,
         native_harness_type,
         Some(workspace_snapshot),

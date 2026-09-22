@@ -30,6 +30,5 @@ pub mod io;
 pub mod paths;
 pub mod routine_schedule;
 pub mod schema;
-pub mod sync_export;
 pub mod types;
 pub mod watermark_watch;

@@ -8,12 +8,11 @@ import { useSetAtom } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import TabPill from "@src/components/TabPill";
 import {
   DETAIL_PANEL_TOKENS,
   DetailPanelContainer,
   InternalHeader,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
 import { integrationsToolbarAtom } from "@src/store/ui/integrationsToolbarAtom";
 
 import { BuiltInToolsTable } from "./BuiltInTools/Table/BuiltInToolsTable";
@@ -59,18 +58,9 @@ const ToolsCategoryView: React.FC = () => {
   const builtinHeader = (
     <InternalHeader
       noPanelHeader
-      contentPadding
-      className={DETAIL_PANEL_TOKENS.headerWidth}
-      tabs={
-        <TabPill
-          tabs={builtinTabs}
-          activeTab={builtinTab}
-          onChange={(key) => setBuiltinTab(key as BuiltinTab)}
-          variant="simple"
-          fillWidth={false}
-          size="large"
-        />
-      }
+      tabs={builtinTabs}
+      activeTab={builtinTab}
+      onTabChange={(key) => setBuiltinTab(key as BuiltinTab)}
     />
   );
 

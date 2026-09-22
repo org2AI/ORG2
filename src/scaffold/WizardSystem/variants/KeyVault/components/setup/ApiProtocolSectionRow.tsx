@@ -9,7 +9,7 @@ import Select from "@src/components/Select";
 import {
   SECTION_CONTROL_STYLE,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
 
 import { getOfficialBaseUrl } from "../../config/providerEndpoints";
 import type { AgentSetupProps } from "./types";

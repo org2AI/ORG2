@@ -1,7 +1,7 @@
 import {
   ToolInlineCompactRows,
   ToolInlineInfoCard,
-} from "@/src/modules/shared/layouts/blocks";
+} from "@/src/components/layout/blocks";
 import type { TFunction } from "i18next";
 import React from "react";
 

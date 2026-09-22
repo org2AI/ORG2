@@ -10,6 +10,15 @@ import AnyIcon from "@src/components/AnyIcon";
 import PageNotice from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
 import StatusDot from "@src/components/StatusDot";
+import {
+  CollapsibleSection,
+  DETAIL_PANEL_TOKENS,
+  DetailPanelContainer,
+  InfoCard,
+  PanelFooter,
+  PanelHeader,
+  PanelRefreshButton,
+} from "@src/components/layout/blocks";
 import { SPINNER_TOKENS } from "@src/config/spinnerTokens";
 import {
   ComputerTerminal01Icon,
@@ -28,15 +37,6 @@ import {
   STATUS_ICON,
   STATUS_ICON_SIZE,
 } from "@src/modules/MainApp/Integrations/panelTokens";
-import {
-  CollapsibleSection,
-  DETAIL_PANEL_TOKENS,
-  DetailPanelContainer,
-  InfoCard,
-  PanelFooter,
-  PanelHeader,
-  PanelRefreshButton,
-} from "@src/modules/shared/layouts/blocks";
 
 import { DetailHeaderClose } from "../../shared/DetailHeaderClose";
 
@@ -325,8 +325,8 @@ const McpServerDetailPanel: React.FC<McpServerDetailPanelProps> = ({
           {
             label: t("common:actions.delete"),
             onClick: () => onDelete(server.name, server.scope),
-            variant: "danger",
-            appearance: "outline",
+            variant: "secondary",
+            tone: "danger",
           },
         ]}
       />

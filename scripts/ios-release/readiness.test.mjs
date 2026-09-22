@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   releaseConfig,
+  validateAltoolResult,
   validateDistribution,
+  validatePrivacyManifest,
   bundleId,
   parsePlist,
 } from "./readiness.mjs";
@@ -31,7 +34,10 @@ function fixture() {
     CFBundleIdentifier: bundleId,
     CFBundleShortVersionString: expected.version,
     CFBundleVersion: expected.build,
+    DTSDKName: "iphoneos26.0",
     NSCameraUsageDescription: "Scan pairing codes",
+    NSMicrophoneUsageDescription: "Record dictation",
+    NSSpeechRecognitionUsageDescription: "Transcribe dictation",
     CFBundleURLTypes: [{ CFBundleURLSchemes: ["org2remote"] }],
     ITSAppUsesNonExemptEncryption: false,
   };
@@ -57,9 +63,117 @@ test("release config rejects shell-like and invalid version/build/team inputs", 
     assert.throws(() => releaseConfig(...args));
   }
 });
+
+test("rejects an altool API failure even when altool exits successfully", () => {
+  assert.throws(() =>
+    validateAltoolResult(
+      "ERROR: Failed to validate package. UPLOAD FAILED (409)",
+      "upload",
+      0,
+    ),
+  );
+});
+
+test("requires an explicit altool success marker", () => {
+  assert.throws(() =>
+    validateAltoolResult(
+      "Transfer completed without a final response",
+      "upload",
+      0,
+    ),
+  );
+  assert.doesNotThrow(() =>
+    validateAltoolResult(
+      "UPLOAD SUCCEEDED",
+      "upload",
+      0,
+    ),
+  );
+});
 test("accepts matching distribution metadata, including legacy App ID prefixes", () => {
   const f = fixture();
   validateDistribution(f.info, f.profile, f.entitlements, f.expected);
+});
+
+test("accepts an Ad Hoc distribution profile with registered devices", () => {
+  const f = fixture();
+  f.expected.exportMethod = "ad-hoc";
+  f.profile.ProvisionedDevices = ["registered-device"];
+  delete f.profile.Entitlements["beta-reports-active"];
+  validateDistribution(f.info, f.profile, f.entitlements, f.expected);
+});
+
+test("rejects an Ad Hoc profile without registered devices", () => {
+  const f = fixture();
+  f.expected.exportMethod = "ad-hoc";
+  delete f.profile.Entitlements["beta-reports-active"];
+  assert.throws(() =>
+    validateDistribution(f.info, f.profile, f.entitlements, f.expected),
+  );
+});
+
+test("accepts a minimal privacy manifest without invalid empty declarations", () => {
+  validatePrivacyManifest({ NSPrivacyTracking: false });
+});
+
+test("rejects empty optional privacy declarations", () => {
+  for (const key of [
+    "NSPrivacyCollectedDataTypes",
+    "NSPrivacyAccessedAPITypes",
+    "NSPrivacyTrackingDomains",
+  ]) {
+    assert.throws(() =>
+      validatePrivacyManifest({ NSPrivacyTracking: false, [key]: [] }),
+    );
+  }
+});
+
+test("requires reasons for declared required-reason APIs", () => {
+  assert.throws(() =>
+    validatePrivacyManifest({
+      NSPrivacyTracking: false,
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp",
+          NSPrivacyAccessedAPITypeReasons: [],
+        },
+      ],
+    }),
+  );
+});
+
+test("ships the reviewed iOS privacy declarations", () => {
+  const privacy = parsePlist(
+    readFileSync(
+      new URL(
+        "../../apps/remote-ios/src-tauri/gen/apple/org2-remote_iOS/PrivacyInfo.xcprivacy",
+        import.meta.url,
+      ),
+    ),
+  );
+  validatePrivacyManifest(privacy);
+  assert.equal(privacy.NSPrivacyTracking, false);
+  assert.deepEqual(
+    privacy.NSPrivacyCollectedDataTypes.map(
+      (entry) => entry.NSPrivacyCollectedDataType,
+    ),
+    [
+      "NSPrivacyCollectedDataTypeName",
+      "NSPrivacyCollectedDataTypeEmailAddress",
+      "NSPrivacyCollectedDataTypeUserID",
+      "NSPrivacyCollectedDataTypeDeviceID",
+      "NSPrivacyCollectedDataTypeProductInteraction",
+      "NSPrivacyCollectedDataTypeOtherUserContent",
+      "NSPrivacyCollectedDataTypePhotosorVideos",
+    ],
+  );
+  assert.deepEqual(privacy.NSPrivacyAccessedAPITypes, [
+    {
+      NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp",
+      NSPrivacyAccessedAPITypeReasons: ["C617.1"],
+    },
+  ]);
+  assert.equal(privacy.NSPrivacyTrackingDomains, undefined);
 });
 for (const [name, mutate] of [
   [
@@ -111,9 +225,33 @@ for (const [name, mutate] of [
     },
   ],
   [
+    "outdated iOS SDK",
+    (f) => {
+      f.info.DTSDKName = "iphoneos18.5";
+    },
+  ],
+  [
+    "missing iOS SDK metadata",
+    (f) => {
+      delete f.info.DTSDKName;
+    },
+  ],
+  [
     "missing camera permission",
     (f) => {
       delete f.info.NSCameraUsageDescription;
+    },
+  ],
+  [
+    "missing microphone permission",
+    (f) => {
+      delete f.info.NSMicrophoneUsageDescription;
+    },
+  ],
+  [
+    "missing speech recognition permission",
+    (f) => {
+      delete f.info.NSSpeechRecognitionUsageDescription;
     },
   ],
   [

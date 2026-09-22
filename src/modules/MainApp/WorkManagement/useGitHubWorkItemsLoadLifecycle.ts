@@ -7,7 +7,7 @@ import type { PullRequestListState } from "@src/api/tauri/github";
 import {
   loadGitHubDetailAuthScope,
   loadGitHubViewer,
-} from "@src/modules/shared/githubIssueDetailCoordinator";
+} from "@src/features/GitHubWork/githubIssueDetailCoordinator";
 import { REPO_KIND } from "@src/store/repo";
 import type { Repo } from "@src/store/repo/types";
 import { mapWithConcurrency } from "@src/util/collections/mapWithConcurrency";

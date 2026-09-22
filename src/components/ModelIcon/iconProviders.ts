@@ -41,6 +41,7 @@ import KiroIcon from "@src/assets/modelIcons/kiro.svg?url";
 import LlamaCppIcon from "@src/assets/modelIcons/llama-cpp.svg?url";
 import LmStudioIcon from "@src/assets/modelIcons/lmstudio.svg";
 import LongCatIcon from "@src/assets/modelIcons/longcat.svg";
+import MetaAiIcon from "@src/assets/modelIcons/meta-ai.svg?url";
 import MetaIcon from "@src/assets/modelIcons/meta.svg?url";
 import MinimaxIcon from "@src/assets/modelIcons/minimax.svg?url";
 import MistralIcon from "@src/assets/modelIcons/mistral.svg?url";
@@ -122,6 +123,7 @@ export type IconProvider =
   | "mistral"
   | "qwen"
   | "meta"
+  | "meta_ai"
   | "nvidia"
   | "perplexity"
   | "kiro"
@@ -200,6 +202,7 @@ export const ICON_MAP: Record<IconProvider, ModelIconSource | undefined> = {
   mistral: MistralIcon,
   qwen: QwenIcon,
   meta: MetaIcon,
+  meta_ai: MetaAiIcon,
   nvidia: NvidiaIcon,
   perplexity: PerplexityIcon,
   kimi: KimiIcon,
@@ -272,6 +275,7 @@ export const SELECTABLE_ICON_PROVIDERS: IconProvider[] = [
   "mistral",
   "qwen",
   "meta",
+  "meta_ai",
   "nvidia",
   "perplexity",
   "kimi",

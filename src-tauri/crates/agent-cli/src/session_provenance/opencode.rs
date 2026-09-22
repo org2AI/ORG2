@@ -16,10 +16,9 @@ pub(super) const OPENCODE_PLUGIN_TEMPLATE: &str =
 /// (`$XDG_CONFIG_HOME/opencode/plugin/orgii-session-provenance.js`, defaulting
 /// to `~/.config`).
 pub(super) fn opencode_plugin_path() -> PathBuf {
-    let config_home = std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
+    let config_home = app_paths::external_history_xdg_config_dir()
         .filter(|path| path.is_absolute())
-        .unwrap_or_else(|| app_paths::home_dir().join(".config"));
+        .unwrap_or_else(|| app_paths::external_history_home_dir().join(".config"));
     config_home
         .join("opencode")
         .join("plugin")

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import Message from "@src/components/Message";
 
+import OutputImageGallery from "../../ChatItems/OutputImageGallery";
 import {
   AgentTurnContext,
   type AgentTurnContextValue,
@@ -107,9 +108,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
     const inboxTranscriptLabel = useMemo(() => {
       if (!event || simpleMessage) return null;
       if (!isAgentOrgInboxTranscriptEvent(event)) return null;
-      return t("groupChat.inboxTranscript.readMessages", {
-        defaultValue: "Coordinator read messages sent by other agents",
-      });
+      return t("groupChat.inboxTranscript.readMessages");
     }, [event, simpleMessage, t]);
 
     const usesGroupChatMessageBubble = simpleMessage !== null;
@@ -151,6 +150,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
     const turnContext = useMemo<AgentTurnContextValue>(
       () => ({
         sessionId: event?.sessionId,
+        outputImagesAtEnd: true,
         turnId,
         isLastGroup,
         isLastItemInGroup,
@@ -213,7 +213,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
       ) : null;
 
     // Wrap the rendered item in a guaranteed-non-zero-height container.
-    // react-virtuoso measures each item's `offsetHeight`; a zero-height
+    // The virtualizer measures each item’s `offsetHeight`; a zero-height
     // child triggers a "Zero-sized element, this should not happen"
     // console error. The pipeline tries to pre-filter empty events
     // (`willEventRenderContent`) but some shapes still resolve to `null`
@@ -259,6 +259,15 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
             <NewEventDivider label={newEventDividerLabel as string} />
           )}
           {renderedItem}
+          {/* Projection owns gallery placement; a status footer may follow it. */}
+          {chatItem?.outputImages?.length ? (
+            <ChatItemWrap variant="text">
+              <OutputImageGallery
+                key={turnId ?? chatItem.chunk_id}
+                images={chatItem.outputImages}
+              />
+            </ChatItemWrap>
+          ) : null}
           {isLastItemInGroup &&
             renderedItem !== null &&
             !groupChat?.enabled &&

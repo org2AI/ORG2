@@ -4,7 +4,7 @@
  * React bindings for panel state management.
  * Core actions delegate to PanelService (singleton).
  *
- * Shared by: CodeEditor, DatabaseManager, Browser
+ * Shared by: AppShell, CodeEditor, Browser
  *
  * - Uses useAtomValue for read-only subscriptions (no setter = no extra closure)
  * - Uses useSetAtom for write-only operations (no re-render on value change)
@@ -14,20 +14,12 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 
 import {
-  workStationBottomPanelHeightAtom,
-  workStationBottomPanelHeightPersistAtom,
-  workStationEditorSecondaryCollapsedAtom,
-  workStationEditorSecondaryCollapsedPersistAtom,
-} from "@src/store/ui/workStationLayout/bottomPanelAtoms";
-import {
   workStationDevToolsCollapsedAtom,
   workStationDevToolsCollapsedPersistAtom,
 } from "@src/store/ui/workStationLayout/devToolsCollapsedAtoms";
 import {
-  type PrimarySidebarTabKey,
   workStationPrimarySidebarCollapsedAtom,
   workStationPrimarySidebarCollapsedPersistAtom,
-  workStationPrimarySidebarTabAtom,
   workStationPrimarySidebarWidthAtom,
   workStationPrimarySidebarWidthPersistAtom,
 } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
@@ -41,24 +33,14 @@ export interface UseWorkStationPanelsReturn {
   // Layout mode
   layoutMode: LayoutMode;
   setLayoutMode: (mode: LayoutMode) => void;
-  toggleLayoutMode: () => void;
 
   // Primary sidebar (one rail, visually left or right via CSS swap)
-  primarySidebarTab: PrimarySidebarTabKey;
-  setPrimarySidebarTab: (tab: PrimarySidebarTabKey) => void;
   primarySidebarCollapsed: boolean;
   setPrimarySidebarCollapsed: (collapsed: boolean) => void;
   togglePrimarySidebar: () => void;
   closePrimarySidebar: () => void;
   primarySidebarWidth: number;
   setPrimarySidebarWidth: (width: number) => void;
-
-  // Bottom panel
-  bottomPanelCollapsed: boolean;
-  setBottomPanelCollapsed: (collapsed: boolean) => void;
-  toggleBottomPanel: () => void;
-  bottomPanelHeight: number;
-  setBottomPanelHeight: (height: number) => void;
 
   // Browser DevTools panel
   devToolsCollapsed: boolean;
@@ -74,8 +56,6 @@ export function useWorkStationPanels(): UseWorkStationPanelsReturn {
   const setLayoutModePersist = useSetAtom(workStationLayoutModePersistAtom);
 
   // Primary sidebar — one atom regardless of left/right layout mode.
-  const primarySidebarTab = useAtomValue(workStationPrimarySidebarTabAtom);
-  const setPrimarySidebarTab = useSetAtom(workStationPrimarySidebarTabAtom);
   const primarySidebarCollapsed = useAtomValue(
     workStationPrimarySidebarCollapsedAtom
   );
@@ -87,26 +67,10 @@ export function useWorkStationPanels(): UseWorkStationPanelsReturn {
     workStationPrimarySidebarWidthPersistAtom
   );
 
-  // Bottom panel
-  const bottomPanelCollapsed = useAtomValue(
-    workStationEditorSecondaryCollapsedAtom
-  );
-  const setBottomPanelCollapsedPersist = useSetAtom(
-    workStationEditorSecondaryCollapsedPersistAtom
-  );
-  const bottomPanelHeight = useAtomValue(workStationBottomPanelHeightAtom);
-  const setBottomPanelHeightPersist = useSetAtom(
-    workStationBottomPanelHeightPersistAtom
-  );
-
   const devToolsCollapsed = useAtomValue(workStationDevToolsCollapsedAtom);
   const setDevToolsCollapsedPersist = useSetAtom(
     workStationDevToolsCollapsedPersistAtom
   );
-
-  const toggleLayoutMode = useCallback(() => {
-    setLayoutModePersist(layoutMode === "left" ? "right" : "left");
-  }, [layoutMode, setLayoutModePersist]);
 
   const togglePrimarySidebar = useCallback(() => {
     setPrimarySidebarCollapsedPersist(!primarySidebarCollapsed);
@@ -116,10 +80,6 @@ export function useWorkStationPanels(): UseWorkStationPanelsReturn {
     setPrimarySidebarCollapsedPersist(true);
   }, [setPrimarySidebarCollapsedPersist]);
 
-  const toggleBottomPanel = useCallback(() => {
-    setBottomPanelCollapsedPersist(!bottomPanelCollapsed);
-  }, [bottomPanelCollapsed, setBottomPanelCollapsedPersist]);
-
   const toggleDevTools = useCallback(() => {
     setDevToolsCollapsedPersist(!devToolsCollapsed);
   }, [devToolsCollapsed, setDevToolsCollapsedPersist]);
@@ -127,22 +87,13 @@ export function useWorkStationPanels(): UseWorkStationPanelsReturn {
   return {
     layoutMode,
     setLayoutMode: setLayoutModePersist,
-    toggleLayoutMode,
 
-    primarySidebarTab,
-    setPrimarySidebarTab,
     primarySidebarCollapsed,
     setPrimarySidebarCollapsed: setPrimarySidebarCollapsedPersist,
     togglePrimarySidebar,
     closePrimarySidebar,
     primarySidebarWidth,
     setPrimarySidebarWidth: setPrimarySidebarWidthPersist,
-
-    bottomPanelCollapsed,
-    setBottomPanelCollapsed: setBottomPanelCollapsedPersist,
-    toggleBottomPanel,
-    bottomPanelHeight,
-    setBottomPanelHeight: setBottomPanelHeightPersist,
 
     devToolsCollapsed,
     setDevToolsCollapsed: setDevToolsCollapsedPersist,

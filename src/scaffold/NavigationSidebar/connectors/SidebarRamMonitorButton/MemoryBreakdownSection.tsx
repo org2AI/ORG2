@@ -49,7 +49,6 @@ export const MemoryBreakdownSection: React.FC<MemoryBreakdownSectionProps> = ({
     })}
     <Button
       variant="tertiary"
-      appearance="ghost"
       size="mini"
       iconOnly
       long

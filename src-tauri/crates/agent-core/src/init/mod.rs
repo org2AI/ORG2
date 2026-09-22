@@ -365,11 +365,25 @@ async fn ensure_session_initialized(
         _ => None,
     };
 
+    let persisted_id = session_id.to_string();
+    let persisted = tokio::task::spawn_blocking(move || {
+        crate::session::persistence::get_session(&persisted_id)
+    })
+    .await
+    .map_err(|_| "Session owner lookup failed")?
+    .map_err(|e| e.to_string())?;
+    let credential_source = persisted.as_ref().and_then(|r| r.credential_source.clone());
+    let account_id = account_id.map(str::to_owned);
+    if credential_source.is_some() && account_id.is_some() {
+        return Err("Conflicting session credential owners".into());
+    }
+
     // Fast path: re-entrant init for an already-running session.
     if let Some(existing) = fast_path::try_reuse_existing(
         state,
         session_id,
-        account_id,
+        account_id.as_deref(),
+        credential_source.as_deref(),
         requested_model.as_deref(),
         &workspace_root,
     )
@@ -383,6 +397,15 @@ async fn ensure_session_initialized(
     let model =
         requested_model.ok_or("model is required: not provided by caller and not set in config")?;
 
+    if credential_source.is_none() && account_id.is_none() {
+        #[cfg(debug_assertions)]
+        if !crate::providers::e2e_fake::is_e2e_fake_provider_model(&model) {
+            return Err("An account or credential source is required".into());
+        }
+        #[cfg(not(debug_assertions))]
+        return Err("An account or credential source is required".into());
+    }
+
     crate::skills::loader::source_dirs::ensure_source_dirs(&resolved.skills.source_dirs).await?;
 
     state.invalidate_session(session_id).await;
@@ -394,30 +417,6 @@ async fn ensure_session_initialized(
             .map_err(|err| format!("Failed to spawn create_dir_all: {}", err))?
             .map_err(|err| format!("Failed to create workspace directory: {}", err))?;
     }
-
-    let account_id = match account_id {
-        Some(account_id) => account_id.to_string(),
-        None => {
-            #[cfg(debug_assertions)]
-            {
-                if crate::providers::e2e_fake::is_e2e_fake_provider_model(&model) {
-                    "e2e-fake-provider-account".to_string()
-                } else {
-                    return Err(format!(
-                        "account_id is required for session {} — cannot initialize provider without it",
-                        session_id
-                    ));
-                }
-            }
-            #[cfg(not(debug_assertions))]
-            {
-                return Err(format!(
-                    "account_id is required for session {} — cannot initialize provider without it",
-                    session_id
-                ));
-            }
-        }
-    };
 
     info!(
         "[init] Initializing session {} (model={}, workspace_root={})",
@@ -551,7 +550,7 @@ async fn ensure_session_initialized(
         agent_model: model.clone(),
         session_id: session_id.to_string(),
         bus,
-        session_account_id: Some(account_id.clone()),
+        session_account_id: account_id.clone(),
         node_registry,
         question_manager: Some(Arc::clone(&session_handle.question_manager)),
         secret_broker: Some(Arc::clone(&session_handle.secret_broker)),
@@ -564,7 +563,8 @@ async fn ensure_session_initialized(
 
     let spec = build_session_runtime(
         &model,
-        Some(&account_id),
+        account_id.as_deref(),
+        credential_source.as_deref(),
         &resolved.reliability,
         native_harness_type,
         tool_deps,
@@ -608,7 +608,7 @@ async fn ensure_session_initialized(
             session_id,
             resolved: &resolved,
             model: &model,
-            account_id: &account_id,
+            account_id: account_id.as_deref(),
             workspace_dir: workspace_root.clone(),
             workspace: workspace_state.read().clone(),
             scratchpad_dir,
@@ -685,7 +685,8 @@ async fn ensure_session_initialized(
         return Err(error);
     }
 
-    runtime_assemble::mark_running_for_gateway(state, cap_flags.has_gateway, &account_id).await;
+    runtime_assemble::mark_running_for_gateway(state, cap_flags.has_gateway, account_id.as_deref())
+        .await;
     runtime_assemble::register_in_file_registry(session_id, &log_prefix, &model, &workspace_root);
     runtime_assemble::log_init_complete(session_id, &model, &workspace_root);
 

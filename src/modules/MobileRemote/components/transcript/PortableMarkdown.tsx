@@ -1,11 +1,14 @@
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import "@src/components/MarkDown/index.scss";
 
+import { PortableCodeBlock } from "./PortableCodeBlock";
+
 export interface PortableMarkdownProps {
   textContent: string;
+  streaming?: boolean;
 }
 
 /**
@@ -16,11 +19,42 @@ export interface PortableMarkdownProps {
  * the public mobile bundle.
  */
 const PortableMarkdown: React.FC<PortableMarkdownProps> = memo(
-  ({ textContent }) => (
-    <ReactMarkdown className="chat-markdown-body" remarkPlugins={[remarkGfm]}>
-      {textContent}
-    </ReactMarkdown>
-  )
+  ({ textContent, streaming = false }) => {
+    const components = useMemo(
+      () => ({
+        pre: ({ children }: { children?: React.ReactNode }) => {
+          const child = React.Children.toArray(children)[0];
+          if (
+            !React.isValidElement<{
+              children?: React.ReactNode;
+              className?: string;
+            }>(child)
+          )
+            return <pre>{children}</pre>;
+          return (
+            <PortableCodeBlock
+              code={String(child.props.children ?? "").replace(/\n$/, "")}
+              language={
+                /language-([^\s]+)/.exec(child.props.className ?? "")?.[1] ??
+                "text"
+              }
+              streaming={streaming}
+            />
+          );
+        },
+      }),
+      [streaming]
+    );
+    return (
+      <ReactMarkdown
+        className="chat-markdown-body"
+        remarkPlugins={[remarkGfm]}
+        components={components}
+      >
+        {textContent}
+      </ReactMarkdown>
+    );
+  }
 );
 
 PortableMarkdown.displayName = "PortableMarkdown";

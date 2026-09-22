@@ -1934,3 +1934,66 @@ fn native_preview_replace_never_claims_full_hydration() {
     store.set(vec![]);
     assert_eq!(store.hydration_mode(), HydrationMode::Full);
 }
+
+#[test]
+fn generated_images_survive_shell_cleanup_on_hydration_and_live_updates() {
+    let images = serde_json::json!([
+        "orgii-transcript-image:round-two-first",
+        "orgii-transcript-image:round-two-second"
+    ]);
+    for running in [false, true] {
+        let mut shell = make_shell_tool_call("generated-images");
+        shell.shell_replay = None;
+        shell.display_status = if running {
+            EventDisplayStatus::Running
+        } else {
+            EventDisplayStatus::Completed
+        };
+        shell.result = serde_json::json!({"stdout": "x".repeat(100_000), "images": images});
+        let mut store = EventStore::new();
+        store.set(vec![shell.clone()]);
+        assert_eq!(
+            store.get_by_id("generated-images").unwrap().result,
+            serde_json::json!({"images": images})
+        );
+        store.upsert(shell);
+        assert_eq!(
+            store.get_by_id("generated-images").unwrap().result,
+            serde_json::json!({"images": images})
+        );
+    }
+}
+
+#[test]
+#[ignore = "requires local generated-image rollout"]
+fn real_generated_images_survive_initial_window_event_store() {
+    use crate::agent_sessions::event_pipeline::ingestion::{
+        ingest_raw_chunks_with_prompt_resolver, types::RawActivityChunk,
+    };
+    let path = std::path::PathBuf::from(std::env::var("ORGII_CODEX_ROLLOUT_FIXTURE").unwrap());
+    let chunks = orgtrack_core::sources::codex::app::load_codex_app_initial_window_from_path(
+        "codexapp-generated",
+        &path,
+        1,
+    )
+    .unwrap()
+    .chunks;
+    let raw: Vec<RawActivityChunk> = chunks
+        .into_iter()
+        .map(|chunk| serde_json::from_value(serde_json::to_value(chunk).unwrap()).unwrap())
+        .collect();
+    let events =
+        ingest_raw_chunks_with_prompt_resolver(&raw, "codexapp-generated", |_| None).events;
+    let count = |events: &[SessionEvent]| {
+        events
+            .iter()
+            .filter(|e| e.source != EventSource::User)
+            .filter_map(|e| e.result["images"].as_array())
+            .map(Vec::len)
+            .sum::<usize>()
+    };
+    assert_eq!(count(&events), 4, "ingestion");
+    let mut store = EventStore::new();
+    store.set(events);
+    assert_eq!(count(store.events()), 4, "hydrated event store");
+}

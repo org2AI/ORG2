@@ -11,15 +11,7 @@ import FileTypeIcon from "@src/components/FileTypeIcon";
 import { getToolIcon } from "@src/config/toolIcons";
 import type { ToolUsageMetadata } from "@src/engines/SessionCore/core/types";
 
-import ToolUsageBadge from "../ToolCallBlock/ToolUsageBadge";
-import {
-  EventBlockHeader,
-  EventBlockHeaderIcon,
-  EventBlockHeaderSubtitle,
-  EventBlockHeaderTitle,
-  getEventBlockContainerClasses,
-} from "../primitives";
-import { useBlockHeader } from "../useBlockLocate";
+import { HeaderOnlyBlock } from "../primitives";
 
 interface GlobBlockProps {
   /** Glob pattern */
@@ -37,62 +29,30 @@ interface GlobBlockProps {
 }
 
 const GlobBlock: React.FC<GlobBlockProps> = React.memo(
-  ({ pattern, isLoading = false, eventId, title, toolUsage }) => {
-    const {
-      isHeaderHovered,
-      handleHeaderMouseEnter,
-      handleHeaderMouseLeave,
-      handleLocate,
-    } = useBlockHeader({
-      defaultCollapsed: true,
-      eventId,
-      collapseAllValue: false,
-      preserveDefaultOnExpand: true,
-    });
-
-    return (
-      <div className={getEventBlockContainerClasses(false)}>
-        <EventBlockHeader
-          isCollapsed
-          withHover={false}
-          onNavigate={handleLocate}
-          onMouseEnter={handleHeaderMouseEnter}
-          onMouseLeave={handleHeaderMouseLeave}
-          rightContent={
-            toolUsage ? <ToolUsageBadge usage={toolUsage} /> : undefined
-          }
-        >
-          <EventBlockHeaderIcon
-            icon={getToolIcon("glob_file_search", {
-              size: 14,
-              className: "text-text-2",
-            })}
-            isCollapsed
-            isHeaderHovered={isHeaderHovered}
-            hasContent={false}
-            isLoading={isLoading}
-          />
-          <EventBlockHeaderTitle isLoading={isLoading}>
-            {title}
-          </EventBlockHeaderTitle>
-          {pattern && (
-            <EventBlockHeaderSubtitle
-              isLoading={isLoading}
-              title={pattern}
-              className="text-text-1"
-            >
-              <FileTypeIcon
-                fileName={pattern}
-                size="small"
-                className="mr-1.5 shrink-0"
-              />
-              <span className="min-w-0 truncate">{pattern}</span>
-            </EventBlockHeaderSubtitle>
-          )}
-        </EventBlockHeader>
-      </div>
-    );
-  }
+  ({ pattern, isLoading = false, eventId, title, toolUsage }) => (
+    <HeaderOnlyBlock
+      icon={getToolIcon("glob_file_search", {
+        size: 14,
+        className: "text-text-2",
+      })}
+      title={title}
+      subtitle={pattern}
+      subtitleTitle={pattern}
+      subtitleClassName="text-text-1"
+      subtitlePrefix={
+        <FileTypeIcon
+          fileName={pattern}
+          size="small"
+          className="mr-1.5 shrink-0"
+        />
+      }
+      truncateSubtitle
+      isLoading={isLoading}
+      eventId={eventId}
+      toolUsage={toolUsage}
+      collapseParticipation
+    />
+  )
 );
 
 GlobBlock.displayName = "GlobBlock";

@@ -3,8 +3,8 @@
  *
  * GitHub-style PR conversation: a flow-title header (title · #number · status
  * pill · merge-flow sentence) over the PR description and the interleaved
- * comment/review timeline. A bottom composer posts a conversation comment or
- * submits a review. The operations sidebar stays at the panel level beside
+ * comment/review timeline, closed by GitHub's merge box. A bottom composer
+ * posts a conversation comment or submits a review. The operations sidebar stays at the panel level beside
  * the tabs.
  *
  * Reuses the shared timeline primitives so it renders identically to the Issue
@@ -14,6 +14,7 @@ import React from "react";
 
 import type {
   GitHubIssueComment,
+  GitHubIssueTimelineItem,
   GitHubPrReview,
   GitHubReviewComment,
   PrReviewEvent,
@@ -31,11 +32,15 @@ import { usePrReviewModal } from "./usePrReviewModal";
 interface PrConversationTabProps {
   /** GitHub-style flow-title block rendered above the timeline. */
   flowHeader?: React.ReactNode;
+  inlineProperties?: React.ReactNode;
+  /** GitHub-style merge box rendered after the last timeline entry. */
+  mergeBox?: React.ReactNode;
   detail: Record<string, unknown> | null;
   identity: PrIdentity;
   conversation: GitHubIssueComment[];
   reviews: GitHubPrReview[];
   reviewComments: GitHubReviewComment[];
+  timelineEvents?: GitHubIssueTimelineItem[];
   loading: boolean;
   submittingComment: boolean;
   submittingReview: boolean;
@@ -49,11 +54,14 @@ interface PrConversationTabProps {
 
 export const PrConversationTab: React.FC<PrConversationTabProps> = ({
   flowHeader,
+  inlineProperties,
+  mergeBox,
   detail,
   identity,
   conversation,
   reviews,
   reviewComments,
+  timelineEvents,
   loading,
   submittingComment,
   submittingReview,
@@ -95,7 +103,8 @@ export const PrConversationTab: React.FC<PrConversationTabProps> = ({
   const { commentsByReview, timeline } = usePrConversationTimeline(
     conversation,
     reviews,
-    reviewComments
+    reviewComments,
+    timelineEvents
   );
 
   return (
@@ -117,6 +126,9 @@ export const PrConversationTab: React.FC<PrConversationTabProps> = ({
           <div
             className={`${DETAIL_PANEL_TOKENS.headerWidth} flex flex-col px-4 py-4`}
           >
+            {inlineProperties ? (
+              <div className="mb-4">{inlineProperties}</div>
+            ) : null}
             <div className="min-w-0 flex-1">
               <PrConversationTimeline
                 detail={detail}
@@ -126,6 +138,7 @@ export const PrConversationTab: React.FC<PrConversationTabProps> = ({
                 loading={loading}
               />
             </div>
+            {mergeBox ? <div className="mt-4">{mergeBox}</div> : null}
           </div>
         </div>
       </div>

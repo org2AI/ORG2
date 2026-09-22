@@ -15,6 +15,7 @@ import { getToolDisplayBehavior } from "@src/engines/SessionCore/rendering/regis
 import { TOOL_DISPLAY_BEHAVIOR } from "@src/engines/SessionCore/rendering/registry/types";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
 import { VirtualizedModernDiff } from "@src/features/CodeViewer/VirtualizedModernDiff";
+import { FileHeader } from "@src/features/FileHeader";
 import { ComputerTerminal01Icon, HugeiconsIcon } from "@src/icons";
 import { ImagePreview } from "@src/modules/WorkStation/CodeEditor/Panels/EditorMainPane/content/FilePreviewContent/ImagePreview";
 import {
@@ -23,7 +24,6 @@ import {
   useSimulatorPlaceholderActions,
 } from "@src/modules/WorkStation/shared";
 import { SelectedTextAddToChat } from "@src/modules/WorkStation/shared/SelectedTextAddToChat";
-import { FileHeader } from "@src/modules/shared/components/FileHeader";
 import { simulatorEffectiveDockAppAtom } from "@src/store/ui/simulatorAtom";
 import { getFileName } from "@src/util/file/pathUtils";
 import {
@@ -394,6 +394,7 @@ export const CodePanel: React.FC<CodePanelProps> = memo(
           ) : hasMultipleEdits ? (
             <SelectedTextAddToChat
               displayName={selectionDisplayName}
+              filePath={filePath}
               scopeKey={operation.eventId}
               className="min-w-0"
             >
@@ -405,6 +406,7 @@ export const CodePanel: React.FC<CodePanelProps> = memo(
           ) : oldContent !== undefined || newContent !== undefined ? (
             <SelectedTextAddToChat
               displayName={selectionDisplayName}
+              filePath={filePath}
               scopeKey={operation.eventId}
               className="h-full min-h-0 min-w-0"
             >

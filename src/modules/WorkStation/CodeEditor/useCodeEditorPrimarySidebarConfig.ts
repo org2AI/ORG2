@@ -26,7 +26,8 @@ export function useCodeEditorPrimarySidebarConfig({
     activeTab?.type === "chat-session" ||
     activeTab?.type === "github-issue-detail" ||
     activeTab?.type === "github-pr-detail" ||
-    activeTab?.type === "search-sessions";
+    activeTab?.type === "search-sessions" ||
+    activeTab?.type === "search";
   const sidebarVisible =
     !activeTabHasNoSidebar && !panels.primarySidebarCollapsed;
 

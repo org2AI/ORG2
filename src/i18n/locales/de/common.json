@@ -18,12 +18,15 @@
     "file": "In Datei suchen",
     "named": "In {{name}} suchen"
   },
+  "sidebarSettings": {
+    "title": "Seitenleiste",
+    "showSidebar": "Seitenleiste anzeigen",
+    "colorSourceControlFiles": "Diff-Farben für Dateien"
+  },
   "teamInbox": {
-    "title": "Team-Posteingang",
     "listLabel": "Liste des Team-Posteingangs",
     "itemsLabel": "Einträge im Team-Posteingang",
     "unreadCount": "{{count}} ungelesen",
-    "allRead": "Alles gelesen",
     "loadMore": "Mehr laden",
     "filters": {
       "mentions": "Erwähnungen",
@@ -65,7 +68,6 @@
         "subtitle": "Elemente, die du archivierst, erscheinen hier."
       }
     },
-    "loading": "Team-Posteingang wird geladen…",
     "drop": {
       "title": "Zum Erstellen eines Arbeitselements hier ablegen",
       "subtitle": "Prüfe den Sitzungs-Schnappschuss und erstelle oder übergib dann das Arbeitselement.",
@@ -317,6 +319,9 @@
     "confirm": "Bestätigen",
     "apply": "Anwenden",
     "reset": "Zurücksetzen",
+    "resetFilters": "Filter zurücksetzen",
+    "cardView": "Kartenansicht",
+    "listView": "Listenansicht",
     "search": "Suchen",
     "add": "Hinzufügen",
     "remove": "Entfernen",
@@ -371,7 +376,6 @@
     "restart": "Neu starten",
     "switchToStation": "Zu {{station}} wechseln",
     "discard": "Verwerfen",
-    "run": "Ausführen",
     "clone": "Klonen",
     "send": "Senden",
     "sendMessageQueued": "Senden (Warteschlange)",
@@ -401,13 +405,12 @@
     "link": "Verknüpfen",
     "copyName": "Namen kopieren",
     "switchMethod": "Methode wechseln",
-    "dismiss": "Ignorieren",
     "clearSelection": "Auswahl löschen",
-    "clearAll": "Alles löschen",
     "openOnGitHub": "Auf GitHub öffnen",
     "createPullRequest": "Pull Request erstellen",
     "expandView": "Ansicht erweitern",
-    "restoreSplitView": "Geteilte Ansicht wiederherstellen"
+    "restoreSplitView": "Geteilte Ansicht wiederherstellen",
+    "overwrite": "Überschreiben"
   },
   "status": {
     "yes": "Ja",
@@ -483,7 +486,6 @@
     "nextPage": "Nächste Seite",
     "lastPage": "Letzte Seite",
     "selectPage": "Seite auswählen",
-    "title": "Seitennummerierung",
     "round": "Round {{current}}",
     "previousRound": "Vorherige Runde",
     "nextRound": "Nächste Runde",
@@ -534,7 +536,7 @@
     "accounts": "Konten",
     "enabled": "Aktiviert",
     "disabled": "Deaktiviert",
-    "keys": "Keys",
+    "keys": "Schlüssel",
     "model": "Modell",
     "name": "Name",
     "provider": "Anbieter",
@@ -560,7 +562,6 @@
     "globPatternsHint": "Glob-Muster, kommagetrennt",
     "outline": "Gliederung",
     "timeline": "Zeitleiste",
-    "indexing": "Indexierung",
     "testExplorer": "Test-Explorer",
     "installed": "Installiert",
     "extensionViews": "Erweiterungsansichten",
@@ -772,7 +773,7 @@
     "nextMatchLabel": "Nächster Treffer",
     "clearSearch": "Suche löschen",
     "openFile": "Datei öffnen",
-    "openNativeDevTools": "Native Browser-DevTools öffnen",
+    "openNativeDevTools": "DevTools öffnen",
     "captureScreenshot": "Screenshot",
     "enableInspectMode": "Element untersuchen",
     "disableInspectMode": "Inspektor verlassen (Esc)",
@@ -788,7 +789,6 @@
     "closePanel": "Panel schließen",
     "showSidebar": "Seitenleiste anzeigen",
     "hideSidebar": "Seitenleiste ausblenden",
-    "moreOptions": "Mehr Optionen",
     "zoomIn": "Vergrößern",
     "zoomOut": "Verkleinern",
     "goBack": "Zurück",
@@ -806,10 +806,9 @@
     "replaceAll": "Alle ersetzen (Ctrl+Alt+Enter)",
     "replaceAllLabel": "Alle ersetzen",
     "moreActions": "Weitere Aktionen...",
-    "formatSql": "SQL formatieren",
-    "queryHistory": "Abfrageverlauf",
-    "executeQuery": "Abfrage ausführen ({{shortcut}})",
     "startVoiceInput": "Spracheingabe starten",
+    "expandInput": "Eingabefeld vergrößern",
+    "collapseInput": "Eingabefeld verkleinern",
     "cancelRecording": "Aufnahme abbrechen",
     "stopAndTranscribe": "Stoppen und transkribieren",
     "htmlPreview": "HTML-Vorschau",
@@ -880,7 +879,7 @@
     "chatHistoryReloadHint": "Session-Daten wurden möglicherweise nicht geladen",
     "chatHistoryAgentWorking": "Agent läuft",
     "chatHistoryAgentWorkingHint": "Nachrichten erscheinen mit der ersten Antwort; bis dahin kann die Leiste inaktiv wirken",
-    "pleaseSelect": "Bitte auswählen",
+    "pleaseSelect": "Auswählen",
     "noSessionsFound": "Keine Session gefunden",
     "typeToSearchFiles": "Zum Suchen von Dateien eingeben...",
     "selectFileToViewChanges": "Wählen Sie eine Datei, um Änderungen anzuzeigen",
@@ -950,7 +949,8 @@
     "selectSidebarStash": "Einen stash auswählen",
     "selectSidebarCommit": "Einen commit auswählen",
     "selectSidebarPullRequest": "Einen pull request auswählen",
-    "selectSidebarIssue": "Ein issue auswählen"
+    "selectSidebarIssue": "Ein issue auswählen",
+    "pressEnterToSearch": "Zum Suchen Enter drücken"
   },
   "inbox": {
     "scrollToBottom": "Nach unten scrollen",
@@ -979,7 +979,6 @@
     "notGitInitialized": "Git nicht initialisiert",
     "notGitInitializedTooltip": "Dieses Arbeitsverzeichnis hat noch kein .git-Verzeichnis.",
     "publishBranchToOrigin": "Publish branch \"{{branch}}\" to origin",
-    "scanningFiles": "Scanning files...",
     "branchTooltipSwitching": "Branch: {{branch}} (wird gewechselt…)",
     "switchWorkspaceTooltip": "Arbeitsverzeichnis wechseln",
     "switchWorktreeTooltip": "Worktree wechseln",
@@ -990,12 +989,6 @@
     "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Git-Aktionen",
     "switchToSessionRepo": "Zu {{name}} wechseln",
-    "embeddingProgress": "Embedding: {{count}} Chunks verarbeitet",
-    "embeddingProgressWithPercent": "Embedding: {{count}} Chunks verarbeitet ({{percent}}%)",
-    "embeddingShort": "Embedding {{percent}}%",
-    "embeddingLabel": "Embedding",
-    "indexingProgress": "Indexierung: {{processed}}/{{total}} Dateien ({{percent}}%)",
-    "indexingProgressWithFile": "Indexierung: {{processed}}/{{total}} Dateien ({{percent}}%)\nAktuell: {{file}}",
     "ports": {
       "workspaceSection": "Aktueller Arbeitsbereich",
       "externalSection": "Extern",
@@ -1044,13 +1037,11 @@
       "enterUrlToStart": "Geben Sie eine URL ein, um zu starten",
       "privateBrowsingEmptyTitle": "Privates Surfen: Geben Sie eine URL ein, um zu starten",
       "simulatorBrowserNotice": "Dieser Browser dient nur der Session-Wiedergabe. Für dauerhaftes Surfen nutzen Sie den Browser in der Haupt-App (Tools → Browser).",
-      "tlsDevNote": "Hinweis: Einige HTTPS-Seiten (z. B. GitHub) können im Entwicklungsmodus TLS-Fehler wegen der Zertifikatsprüfung anzeigen. Versuchen Sie HTTP-Seiten oder einfache HTTPS-Seiten wie example.com.",
       "siteUnreachableTitle": "Diese Seite ist nicht erreichbar",
       "webviewHiddenTitle": "Webview vorübergehend ausgeblendet",
       "webviewHiddenBody": "Menü oder Dialog schließen, um sie wieder anzuzeigen.",
-      "embeddedFallbackTitle": "Diese Seite funktioniert im eingebetteten Browser möglicherweise nicht",
-      "embeddedFallbackBody": "Manche Seiten blockieren die Darstellung in App-WebViews oder werden dort nicht korrekt gerendert. Öffne sie im Systembrowser, wenn die Seite leer bleibt.",
-      "currentUrl": "Aktuelle URL"
+      "loadStalledTitle": "Diese Seite wurde nicht fertig geladen",
+      "copyUrl": "URL kopieren"
     },
     "unsavedChangesTitle": "Unsaved Changes",
     "ci": {
@@ -1066,7 +1057,9 @@
         "skipped": "Übersprungen",
         "passed": "Bestanden"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Datei auf der Festplatte geändert",
+    "fileChangedOnDiskBody": "„{{name}}“ wurde seit dem Öffnen auf der Festplatte geändert. Mit Ihrer Version überschreiben?"
   },
   "git": {
     "loading": "Git-Status wird geladen...",
@@ -1093,7 +1086,7 @@
       "createTokenButton": "Token erstellen",
       "openGitSettingsButton": "Einstellungen öffnen",
       "configureInSettings": "Git in den Einstellungen konfigurieren",
-      "configureInSettingsDesc": "Füge GitHub App-Zugriff hinzu, speichere ein Token oder scanne lokale Zugangsdaten unter Einstellungen → Verbindungen und versuche diese Git-Operation erneut."
+      "configureInSettingsDesc": "Füge GitHub App-Zugriff hinzu, speichere ein Token oder scanne lokale Zugangsdaten unter Einstellungen → Verbindungen und versuche diese Git-Operation erneut"
     },
     "actions": {
       "publish": "Publish",
@@ -1131,7 +1124,12 @@
       "returnFromMiniTerminal": "Hier anzeigen",
       "resizeTerminal": "Terminalgröße ändern",
       "terminalProcessCount_one": "{{count}} Prozess",
-      "terminalProcessCount_other": "{{count}} Prozesse"
+      "terminalProcessCount_other": "{{count}} Prozesse",
+      "sources": "Quellen",
+      "sourcesCount_one": "{{count}} Quelle",
+      "sourcesCount_other": "{{count}} Quellen",
+      "loadMoreSources": "Mehr laden (+{{count}})",
+      "sourceImage": "Bild"
     },
     "pr": {
       "title": "Pull Request",
@@ -1214,6 +1212,93 @@
         "checkingConflicts": "Konflikte werden geprüft…",
         "autoMergeEnabled": "Automatisches Zusammenführen aktiviert",
         "inMergeQueue": "Wartet in der Merge-Warteschlange"
+      },
+      "mergeBox": {
+        "checksFailed": "Einige Checks waren nicht erfolgreich",
+        "checksPending": "Einige Checks sind noch nicht abgeschlossen",
+        "checksPassed": "Alle Checks bestanden",
+        "checksSkipped": "Alle Checks wurden übersprungen",
+        "counts": {
+          "failing": "{{count}} fehlgeschlagen",
+          "inProgress": "{{count}} laufend",
+          "skipped": "{{count}} übersprungen",
+          "successful": "{{count}} erfolgreich",
+          "summary_one": "Check: {{parts}}",
+          "summary_other": "Checks: {{parts}}"
+        },
+        "check": {
+          "queued": "In Warteschlange",
+          "started": "Gestartet {{time}}",
+          "successfulIn": "Erfolgreich in {{duration}}",
+          "failingAfter": "Fehlgeschlagen nach {{duration}}",
+          "skipped": "Übersprungen",
+          "successful": "Erfolgreich",
+          "failing": "Fehlgeschlagen"
+        },
+        "deployments": {
+          "label": "Deployments",
+          "none": "Keine Deployments",
+          "active_one": "{{count}} aktives Deployment",
+          "active_other": "{{count}} aktive Deployments",
+          "view": "Deployment anzeigen",
+          "notDeployed": "Dieser Branch wurde nicht bereitgestellt",
+          "deployed": "Dieser Branch wurde erfolgreich bereitgestellt",
+          "deploying": "Dieser Branch wird gerade bereitgestellt",
+          "deployFailed": "Beim Bereitstellen dieses Branch ist ein Fehler aufgetreten",
+          "deployInactive": "Dieser Branch ist nicht mehr bereitgestellt",
+          "state": {
+            "active": "Aktiv",
+            "pending": "Läuft",
+            "failure": "Fehlgeschlagen",
+            "inactive": "Inaktiv"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Änderungen genehmigt",
+            "detail": "Ein genehmigendes Review wurde eingereicht"
+          },
+          "reviewRequired": {
+            "title": "Review erforderlich",
+            "detail": "Zum Zusammenführen ist mindestens ein genehmigendes Review erforderlich"
+          },
+          "reviewChangesRequested": {
+            "title": "Änderungen angefordert",
+            "detail": "Ein Reviewer hat vor dem Zusammenführen Änderungen angefordert"
+          },
+          "noConflicts": {
+            "title": "Keine Konflikte mit dem Basis-Branch",
+            "detail": "Das Zusammenführen kann automatisch erfolgen"
+          },
+          "hasConflicts": {
+            "title": "Dieser Branch hat Konflikte, die gelöst werden müssen",
+            "detail": "Konflikte im Head-Branch lösen, dann pushen"
+          },
+          "outOfDate": {
+            "title": "Dieser Branch ist nicht auf dem Stand des Basis-Branch",
+            "detail": "Die neuesten Änderungen des Basis-Branch in diesen Branch zusammenführen"
+          },
+          "checkingConflicts": {
+            "title": "Automatische Zusammenführbarkeit wird geprüft…",
+            "detail": "Einen Moment, GitHub prüft den Status des Branch"
+          },
+          "autoMergeEnabled": {
+            "title": "Automatisches Zusammenführen aktiviert",
+            "detail": "Dieser Pull Request wird zusammengeführt, sobald die Anforderungen erfüllt sind"
+          },
+          "inMergeQueue": {
+            "title": "Wartet in der Merge-Warteschlange",
+            "detail": "GitHub führt ihn zusammen, sobald er an der Spitze der Warteschlange ist"
+          }
+        },
+        "merged": {
+          "title": "Pull Request erfolgreich zusammengeführt und geschlossen",
+          "detail": "Der Head-Branch kann sicher gelöscht werden"
+        },
+        "closed": {
+          "title": "Mit nicht zusammengeführten Commits geschlossen",
+          "detail": "Dieser Pull Request ist geschlossen. Zum Zusammenführen erneut öffnen"
+        }
       },
       "commits": {
         "backToList": "Alle Commits",
@@ -1332,7 +1417,7 @@
       "cannotParseRepoName": "Repository-Name konnte nicht aus dem origin-Remote ermittelt werden",
       "authRequired": {
         "title": "GitHub verbinden",
-        "description": "Gehe zu Einstellungen → Verbindungen, um dein GitHub-Konto zu verbinden."
+        "description": "Gehe zu Einstellungen → Verbindungen, um dein GitHub-Konto zu verbinden"
       },
       "navigationTrail": "Pull-Request-Navigation",
       "failedToLoad": "Pull Requests konnten nicht geladen werden",
@@ -1502,15 +1587,112 @@
       "newIssueBodyPlaceholder": "Issue beschreiben (optional)…",
       "authRequired": {
         "title": "GitHub verbinden",
-        "description": "Gehe zu Einstellungen → Verbindungen, um dein GitHub-Konto zu verbinden."
+        "description": "Gehe zu Einstellungen → Verbindungen, um dein GitHub-Konto zu verbinden"
       },
       "reAuthRequired": "GitHub-Autorisierung erforderlich",
-      "reAuthDescription": "Dein GitHub-Token ist abgelaufen. Gehe zu Einstellungen → Verbindungen, um die Verbindung zu erneuern.",
+      "reAuthDescription": "Dein GitHub-Token ist abgelaufen. Gehe zu Einstellungen → Verbindungen, um die Verbindung zu erneuern",
       "goToSettings": "Zu den Einstellungen",
       "loadingTimeline": "Aktivität wird geladen…",
       "label": "Issue",
       "linkedLoading": "Verknüpfte Elemente werden geladen",
       "detailNavigation": "Issue-Navigation"
+    },
+    "branchSwitch": {
+      "title": "Branch wechseln",
+      "conflictsTitle": "Änderungen erfordern Aufmerksamkeit",
+      "blockedTitle": "Branch-Wechsel erfordert Aufmerksamkeit",
+      "working": "Speichern und wechseln…",
+      "current": "Aktueller Branch: {{branch}}",
+      "changedFiles": "{{count}} geänderte Dateien",
+      "question": "Was möchtest du mit deinen Änderungen tun?",
+      "leave": "Änderungen auf {{branch}} belassen",
+      "leaveDescription": "Speichere deine Arbeit für später und wechsle mit einem sauberen Arbeitsverzeichnis",
+      "bring": "Änderungen zu {{branch}} mitnehmen",
+      "bringDescription": "Nimm deine nicht committeten Änderungen zum Ziel-Branch mit",
+      "worktreeTitle": "Branch ist in einem anderen Worktree geöffnet",
+      "openWorktree": "Worktree öffnen",
+      "activeTask": "In diesem Worktree läuft eine Aufgabe",
+      "activeTaskDescription": "Ein Wechsel ändert jetzt die Dateien, an denen der Agent arbeitet",
+      "switchAnyway": "Trotzdem wechseln",
+      "switchedTo": "Zu {{branch}} gewechselt",
+      "saveTitle": "Dateien vor dem Wechsel speichern",
+      "saveDescription": "Geöffnete Dateien enthalten ungespeicherte Änderungen. Speichere sie, bevor du entscheidest, wo du die Änderungen behalten möchtest",
+      "saveContinue": "Alles speichern und fortfahren",
+      "saveFailed": "Nicht alle Dateien konnten gespeichert werden",
+      "multipleBuffers": "Diese Datei wurde in mehreren Editoren bearbeitet. Speichere oder schließe diese Editoren vor dem Wechsel",
+      "editedWhileSaving": "Dateien wurden während des Speicherns bearbeitet. Prüfe die neuesten Änderungen und versuche es erneut",
+      "savePreview": "Speichere oder verwirf Änderungen im Tabelleneditor, bevor du den Branch wechselst",
+      "messages": {
+        "detached_head": "Erstelle vor dem Wechseln einen Branch aus dem aktuellen Commit, damit die losgelöste Arbeit erreichbar bleibt",
+        "unborn": "Erstelle den ersten Commit, bevor du gespeicherte Branch-Änderungen verwendest",
+        "ignored_collision": "Eine ignorierte Datei würde überschrieben. Verschiebe sie aus dem Weg, bevor du wechselst",
+        "worktree_branch_in_use": "Dieser Branch ist bereits in einem anderen Worktree geöffnet",
+        "invalid_branch_name": "Wähle einen gültigen Branch-Namen",
+        "branch_exists": "Dieser Branch existiert bereits",
+        "branch_not_found": "Branch nicht gefunden oder mehrdeutig. Aktualisiere die Branches und wähle einen expliziten Remote-Branch",
+        "upstream_mismatch": "Ein lokaler Branch mit diesem Namen verfolgt einen anderen Upstream. Wähle den lokalen Branch explizit aus",
+        "operation_merge": "Beende oder brich den Merge ab, bevor du den Branch wechselst",
+        "operation_rebase": "Beende oder brich den Rebase ab, bevor du den Branch wechselst",
+        "operation_cherry_pick": "Beende oder brich den Cherry-Pick ab, bevor du den Branch wechselst",
+        "operation_revert": "Beende oder brich den Revert ab, bevor du den Branch wechselst",
+        "operation_other": "Beende die aktuelle Git-Operation, bevor du den Branch wechselst",
+        "stale": "Die Dateien oder Branches haben sich geändert, während der Dialog geöffnet war. Prüfe die neuesten Änderungen und versuche es erneut",
+        "save_failed": "Änderungen konnten nicht vollständig gespeichert werden: {{detail}}. Prüfe das Arbeitsverzeichnis und die gespeicherten Änderungen, bevor du es erneut versuchst",
+        "changed_while_saving": "Dateien haben sich beim Speichern geändert. Der Checkout wurde nicht versucht; dein Snapshot ist verfügbar",
+        "checkout_failed_restored": "Checkout fehlgeschlagen; deine Änderungen wurden wiederhergestellt: {{detail}}",
+        "checkout_failed_saved": "Checkout fehlgeschlagen. Deine Änderungen sind gespeichert: {{detail}}",
+        "worktree_changed": "Das Arbeitsverzeichnis hat sich während des Checkouts geändert. Deine ursprünglichen Änderungen sind gespeichert; prüfe die aktuellen Dateien, bevor du wiederherstellst",
+        "restore_conflicts": "Zu {{branch}} gewechselt. Einige Änderungen konnten nicht wiederhergestellt werden: {{detail}}. Deine ursprünglichen Änderungen sind gespeichert",
+        "saved_on_previous": "Änderungen auf dem vorherigen Branch gespeichert",
+        "brought": "Deine Änderungen sind dir zu diesem Branch gefolgt",
+        "worktree_missing": "Der Worktree existiert nicht mehr. Aktualisieren und erneut versuchen"
+      }
+    },
+    "dialogs": {
+      "detachedHead": {
+        "title": "Detached-HEAD-Zustand",
+        "body": "Du befindest dich im Detached-HEAD-Zustand beim Commit {{shortHash}}.\n\nDu bist auf keinem Branch. Commits, die du erstellst, können verloren gehen, wenn du einen anderen Branch auscheckst, ohne vorher einen neuen Branch zu erstellen.\n\n⚠️ Commits im Detached-HEAD-Zustand können von der Garbage Collection entfernt werden.",
+        "createBranch": "Branch erstellen",
+        "continueWithoutBranch": "Ohne Branch fortfahren"
+      },
+      "largePush": {
+        "title": "Großer Push erkannt",
+        "body": "Du bist dabei, {{commitCount}} Commits nach {{remote}}/{{branch}} zu pushen.\n\nDas ist mehr als üblich. Möchtest du wirklich fortfahren?\n\n💡 Erwäge, große Änderungen in kleinere, fokussiertere Commits aufzuteilen.",
+        "confirm": "Alle Commits pushen"
+      },
+      "protectedBranch": {
+        "title": "Geschützter Branch",
+        "body": "Der Branch \"{{branch}}\" auf {{remote}} ist geschützt und kann nicht direkt gepusht werden.\n\nBei geschützten Branches müssen Änderungen über Pull Requests laufen.",
+        "createPr": "Pull Request erstellen"
+      },
+      "pullConflict": {
+        "title": "Pull mit lokalen Änderungen nicht möglich",
+        "body": "Deine lokalen Änderungen würden durch die eingehenden Änderungen von \"{{branch}}\" überschrieben.{{fileInfo}}\n\nWähle, wie es weitergehen soll:",
+        "fileInfo_one": " ({{count}} Datei betroffen)",
+        "fileInfo_other": " ({{count}} Dateien betroffen)",
+        "stashAndPull": "Stash und Pull",
+        "discardAndPull": "Verwerfen und Pull"
+      },
+      "pushRejected": {
+        "title": "Push abgelehnt",
+        "body": "Push nach {{remote}}/{{branch}} nicht möglich.\n\nDer Remote-Branch enthält Commits, die du lokal nicht hast.{{behindInfo}}\n\n⚠️ Ein Force Push überschreibt die Änderungen auf dem Remote dauerhaft.",
+        "behindInfo_one": " ({{count}} Commit zurück)",
+        "behindInfo_other": " ({{count}} Commits zurück)",
+        "pullAndPush": "Pull und Push",
+        "forcePush": "Force Push"
+      },
+      "conflict": {
+        "titleMerge": "Merge-Konflikt",
+        "titleRebase": "Rebase-Konflikt",
+        "bodyMerge": "Beim Merge von \"{{branch}}\" sind Konflikte aufgetreten.{{progress}}{{files}}\n\n⚠️ Ein Abbruch bricht den Merge ab und stellt deinen Branch wieder her.",
+        "bodyRebase": "Beim Rebase auf \"{{branch}}\" sind Konflikte aufgetreten.{{progress}}{{files}}\n\n⚠️ Ein Abbruch stellt deinen Branch in dem Zustand wieder her, in dem er vor dem Rebase war.",
+        "progress": " (Schritt {{current}} von {{total}})",
+        "files_one": "\n\n{{count}} Datei mit Konflikten.",
+        "files_other": "\n\n{{count}} Dateien mit Konflikten.",
+        "resolve": "Konflikte lösen",
+        "abortMerge": "Merge abbrechen",
+        "abortRebase": "Rebase abbrechen"
+      }
     }
   },
   "selectors": {
@@ -1526,11 +1708,11 @@
       "noResults": "Keine passenden Modelle",
       "chooseModel": "Modell auswählen",
       "chooseKey": "Schlüssel auswählen",
-      "noCompatibleAccounts": "Keine kompatiblen Schlüssel",
+      "noCompatibleKeys": "Keine kompatiblen Schlüssel",
       "chooseModelHint": "Navigiere mit der Tastatur oder klicke mit der Maus auf ein Modell",
       "chooseKeyHint": "Navigiere mit der Tastatur oder klicke mit der Maus auf einen Schlüssel",
       "noModelsForKey": "Für diesen Schlüssel sind keine Modelle aktiviert",
-      "selectAccount": "Konto auswählen"
+      "selectKey": "Schlüssel auswählen"
     },
     "modelProperties": {
       "effort": "Aufwand",
@@ -1565,7 +1747,6 @@
         "createWorkspace": "Neues Arbeitsverzeichnis erstellen"
       },
       "sources": {
-        "cloningFromGitHub": "Klonen von GitHub",
         "cloningFromGitHubUrl": "Klonen von GitHub-URL",
         "cloningFromMyGitHub": "Klonen von meinem GitHub",
         "creatingWorkspace": "neues Arbeitsverzeichnis erstellen",
@@ -1626,7 +1807,6 @@
         "createFrom": "Branch aus erstellen",
         "deleteBranch": "Branch löschen",
         "refresh": "Branch aktualisieren",
-        "checkoutDetachedSuccess": "Im detached HEAD-Zustand am aktuellen Commit",
         "removeWorktree": "Worktree entfernen",
         "newWorktree": "Neuer Worktree...",
         "refreshPullRequests": "Pull requests aktualisieren"
@@ -1634,9 +1814,15 @@
       "messages": {
         "deletedCount_one": "{{count}} Branch gelöscht",
         "deletedCount_other": "{{count}} Branches gelöscht",
-        "failedDeleteList": "Löschen fehlgeschlagen: {{branches}}"
+        "failedDeleteList": "Löschen fehlgeschlagen: {{branches}}",
+        "failedDelete": "Branch „{{branch}}“ konnte nicht gelöscht werden",
+        "prNoHeadBranch": "Pull Request hat keinen Head-Branch",
+        "readBranchesFailed": "Lokale Branches konnten nicht gelesen werden",
+        "createPrBranchFailed": "PR-Branch konnte nicht erstellt werden",
+        "readRemotesFailed": "Remotes des Repositorys konnten nicht gelesen werden"
       },
       "labels": {
+        "defaultBranches": "Standard-Branches",
         "otherBranches": "Andere Branches",
         "current": "Aktuell",
         "recent": "Zuletzt verwendet",
@@ -1684,6 +1870,8 @@
       "selectWorktreeSource": "Worktree-Branch oder Pull Request auswählen"
     },
     "spotlightFooter": {
+      "settings": "Spotlight-Einstellungen",
+      "unpinAll": "Alle lösen",
       "navigate": "Navigieren",
       "select": "Auswählen",
       "switchColumn": "Spalte wechseln",
@@ -1693,7 +1881,7 @@
       "showBranchInfo": "Branch-Infos anzeigen",
       "compatibleKeys": "Kompatibel",
       "planSupport": "Plan",
-      "byokSupport": "Keys",
+      "byokSupport": "Schlüssel",
       "incompatible": "Inkompatibel",
       "manageModels": "Modelle verwalten",
       "manageKeys": "Schlüssel verwalten",
@@ -1767,11 +1955,6 @@
         "integrations": "Agents & Integrationen",
         "market": "Markt",
         "actions": "Aktionen"
-      },
-      "paramLabels": {
-        "repo": "Repo",
-        "folder": "Ordner",
-        "branch": "Branch"
       },
       "actions": {
         "showInFinder": {
@@ -1872,11 +2055,13 @@
   "ellipsisMenu": {},
   "layoutSettings": {
     "chatPanelLocation": "Chat-Panel",
+    "chatSplitRatio": "Anteil des Chat-Panels",
+    "chatSplitRatioHint": "Wird sofort nach der Auswahl angewendet; ein späteres Ziehen der Trennlinie hat weiterhin Vorrang.",
     "chatLeft": "Chat links",
     "chatRight": "Chat rechts",
     "sidebarPosition": "Workstation-Seitenleiste",
     "modelPickerStyle": "Auswahl",
-    "paginateChatHistory": "Chatverlauf paginieren",
+    "paginateChatHistory": "Paginierter Chatverlauf",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "Menü",
     "left": "Links",
@@ -2125,13 +2310,29 @@
   "selectionMenu": {
     "addToChat": "Zum Chat hinzufügen",
     "addThisFile": "Diese Datei hinzufügen",
-    "addLines": "Zeilen {{from}} – {{to}} hinzufügen"
+    "addLines": "Zeilen {{from}} – {{to}} hinzufügen",
+    "replyToSelection": "Antworten",
+    "clearQuotedSelection": "Zitat entfernen",
+    "pinSelection": "Anheften"
   },
   "browser": {
     "screenshot": {
       "added": "Screenshot zum Chat hinzugefügt",
       "failed": "Screenshot fehlgeschlagen: {{reason}}",
-      "noActivePage": "Keine aktive Seite zum Erfassen"
+      "noActivePage": "Keine aktive Seite zum Erfassen",
+      "saved": "Screenshot gespeichert",
+      "saveFailed": "Screenshot konnte nicht gespeichert werden: {{reason}}"
+    },
+    "menu": {
+      "pageTheme": "Seitendesign",
+      "themeAuto": "Automatisch",
+      "themeLight": "Hell",
+      "themeDark": "Dunkel",
+      "saveScreenshot": "Screenshot speichern...",
+      "openHtmlFile": "HTML-Datei öffnen..."
+    },
+    "openHtmlFile": {
+      "failed": "Datei konnte nicht geöffnet werden: {{reason}}"
     },
     "selectedElement": {
       "addElement": "Element hinzufügen",
@@ -2151,7 +2352,7 @@
   "globalToolbar": {},
   "quitConfirmation": {
     "title": "ORG2 beenden?",
-    "subtitle": "Laufende Sitzungen behalten ihren aktuellen Zustand. Sie können ORG2 später erneut öffnen.",
+    "subtitle": "Laufende Sitzungen behalten ihren aktuellen Zustand. Sie können ORG2 später erneut öffnen",
     "cancel": "Abbrechen",
     "confirm": "Beenden"
   },
@@ -2181,7 +2382,7 @@
   "browserCookieImport": {
     "safari": {
       "needsFullDiskAccess": "Needs Full Disk Access",
-      "explain": "Safari speichert Cookies in einem von macOS geschützten Ordner. Erlaube ORG2 unter Festplattenvollzugriff in den Systemeinstellungen und prüfe dann erneut.",
+      "explain": "{{browser}} speichert Cookies in einem von macOS geschützten Ordner. Erlaube ORG2 unter Festplattenvollzugriff in den Systemeinstellungen und prüfe dann erneut",
       "openSettings": "Open System Settings",
       "checkAgain": "Check again"
     },
@@ -2206,7 +2407,7 @@
     "doneSkipped_other": "{{count}} cookies were skipped",
     "empty": {
       "title": "No supported browsers found",
-      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from"
     },
     "category": {
       "banking": "Bank",
@@ -2215,7 +2416,7 @@
     },
     "errors": {
       "openSettingsFailed": "Couldn't open System Settings",
-      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow",
       "listFailed": "Couldn't find browsers to import from",
       "previewFailed": "Couldn't read cookies from that browser",
       "importFailed": "Couldn't import the selected cookies"
@@ -2244,22 +2445,6 @@
     "openFailed": "Das Dokument konnte nicht geöffnet werden",
     "saveFirst": "Speichere oder verwerfe die Änderungen, bevor du das Dokument in einer anderen Anwendung öffnest"
   },
-  "sqlEditor": {
-    "placeholder": "SQL-Abfrage eingeben...",
-    "format": "Formatieren",
-    "runQueryToSeeResults": "Abfrage ausführen, um Ergebnisse anzuzeigen",
-    "executingQuery": "Abfrage wird ausgeführt...",
-    "queryFailed": "Abfrage fehlgeschlagen",
-    "queryCompleted": "Abfrage abgeschlossen",
-    "noResults": "Abfrage hat keine Ergebnisse geliefert",
-    "rowCount_one": "{{count}} Zeile",
-    "rowCount_other": "{{count}} Zeilen",
-    "press": "Drücke",
-    "toRun": "zum Ausführen",
-    "nullValue": "NULL",
-    "booleanTrue": "true",
-    "booleanFalse": "false"
-  },
   "chatImage": {
     "maxReached": "Maximal {{max}} Bilder erlaubt",
     "remainingWarning": "Nur noch {{remaining}} Bild(er) können hinzugefügt werden (max. {{max}})",
@@ -2277,5 +2462,11 @@
     "sessionJsonFile": "ORG2-Sitzung als JSON",
     "skillsSource": "ORG2-Skills",
     "gitServiceUnavailable": "Der lokale Git-Dienst ist nicht erreichbar. Versuche es nach dem Start der App erneut, oder starte ORG2 neu, wenn das Problem weiterhin besteht."
+  },
+  "imageActions": {
+    "addToChat": "Zum Chat hinzufügen",
+    "added": "Zum Chat hinzugefügt",
+    "failed": "Bildaktion konnte nicht abgeschlossen werden",
+    "downloadCopy": "Kopie herunterladen"
   }
 }

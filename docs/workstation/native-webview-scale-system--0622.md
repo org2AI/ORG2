@@ -98,7 +98,7 @@ This means layout changes must update both:
 Some layout changes move the browser anchor without changing its size. Examples:
 
 - switching the chat panel from left to right,
-- changing chat panel layout mode,
+- resizing or showing/hiding the chat panel,
 - toggling chat focus/maximize,
 - sidebar state changes that affect content origin.
 
@@ -136,6 +136,6 @@ When inline WebViews are misaligned under UI scale:
 - `src/engines/BrowserCore/index.tsx` — owns the browser frame anchor.
 - `src/modules/WorkStation/Browser/shared/SharedBrowserHostSlot.tsx` — publishes visible browser host rects.
 - `src/modules/WorkStation/Browser/shared/SharedBrowserApp.tsx` — positions the shared browser owner host.
-- `src/modules/shared/layouts/AppLayout.tsx` — dispatches layout-change events for chat/sidebar layout shifts.
+- `src/scaffold/AppLayout/AppLayout.tsx` — dispatches layout-change events for chat/sidebar layout shifts.
 - `src-tauri/crates/app-window/src/commands.rs` — sets zoom on the main WebView.
 - `src-tauri/crates/browser/src/inline.rs` — creates and repositions inline child WebViews.

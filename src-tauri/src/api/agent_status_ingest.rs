@@ -64,16 +64,7 @@ pub fn write_endpoint_file(port: u16) {
 /// Timing-safe token comparison: the loopback bind already scopes callers to
 /// this machine, but don't leak the token through early-exit comparison.
 fn token_matches(candidate: &str) -> bool {
-    let expected = hook_token().as_bytes();
-    let candidate = candidate.as_bytes();
-    if expected.len() != candidate.len() {
-        return false;
-    }
-    expected
-        .iter()
-        .zip(candidate)
-        .fold(0u8, |acc, (left, right)| acc | (left ^ right))
-        == 0
+    super::local_auth::constant_time_eq(hook_token().as_bytes(), candidate.as_bytes())
 }
 
 /// Shared bearer-token check for every `/hooks/*` loopback route (status

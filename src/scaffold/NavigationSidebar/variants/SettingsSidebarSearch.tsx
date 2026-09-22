@@ -17,8 +17,8 @@ import { Cancel01Icon, HugeiconsIcon, Search01Icon } from "@src/icons";
 import {
   type RenderedSettingsControl,
   collectRenderedSettingsControls,
-} from "@src/modules/shared/layouts/blocks/SettingsSearchDropdown/settingsControlSearch";
-import { createSettingsSearchIndex } from "@src/modules/shared/layouts/blocks/SettingsSearchDropdown/settingsSearchIndex";
+} from "@src/scaffold/NavigationSidebar/variants/SettingsSearchDropdown/settingsControlSearch";
+import { createSettingsSearchIndex } from "@src/scaffold/NavigationSidebar/variants/SettingsSearchDropdown/settingsSearchIndex";
 
 import { SidebarList } from "../blocks";
 import { SIDEBAR_STYLE } from "../config";
@@ -202,8 +202,8 @@ export default function SettingsSidebarSearch({
               clearSearch();
             } else keyboard.handleKeyDown(event);
           }}
-          placeholder={t("settings:searchPlaceholder")}
-          aria-label={t("settings:searchPlaceholder")}
+          placeholder={t("common:common.searchPlaceholder")}
+          aria-label={t("common:common.searchPlaceholder")}
           prefix={
             <HugeiconsIcon
               icon={Search01Icon}
@@ -215,7 +215,6 @@ export default function SettingsSidebarSearch({
             query ? (
               <Button
                 variant="tertiary"
-                appearance="ghost"
                 size="sidebar"
                 iconOnly
                 aria-label={t("common:tooltips.clearSearch")}
@@ -242,7 +241,7 @@ export default function SettingsSidebarSearch({
           <div
             id={listId}
             role="listbox"
-            aria-label={t("settings:searchPlaceholder")}
+            aria-label={t("common:common.searchPlaceholder")}
             data-testid="settings-navigation-search-results"
           >
             {pages.length === 0 ? (
@@ -251,7 +250,7 @@ export default function SettingsSidebarSearch({
                 role="status"
                 aria-live="polite"
               >
-                {t("settings:noSettingsFound", { query: query.trim() })}
+                {t("common:common.noResults")}
               </div>
             ) : (
               pages.map(({ page, items }) => (

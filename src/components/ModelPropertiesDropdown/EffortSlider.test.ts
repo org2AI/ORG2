@@ -12,16 +12,15 @@ import {
   vi,
 } from "vitest";
 
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 import { MODEL_REASONING_LEVEL } from "@src/util/modelVariants";
 import { buildVariantEditOptions } from "@src/util/variantEditOptions";
 
 import { EffortSlider } from "./EffortSlider";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, options: { defaultValue: string }) =>
-      options.defaultValue,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 const LEVELS = [
@@ -325,6 +324,42 @@ describe("EffortSlider", () => {
     expect(
       container.querySelector<HTMLElement>(".effort-slider")?.dataset.effort
     ).toBe("max");
+  });
+
+  it("uses selectable tab pills for exactly two levels", () => {
+    const onChange = vi.fn();
+    render({
+      levels: [MODEL_REASONING_LEVEL.LOW, MODEL_REASONING_LEVEL.HIGH],
+      value: MODEL_REASONING_LEVEL.LOW,
+      onChange,
+    });
+    expect(container.querySelector('input[type="range"]')).toBeNull();
+    expect(container.querySelector(".effort-slider__comet")).toBeNull();
+    const buttons = container.querySelectorAll<HTMLButtonElement>("button");
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute("aria-pressed")).toBe("true");
+    act(() => buttons[1].click());
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      MODEL_REASONING_LEVEL.HIGH
+    );
+  });
+
+  it("removes particles and the motion listener at the first level", () => {
+    const add = vi.spyOn(document, "addEventListener");
+    const remove = vi.spyOn(document, "removeEventListener");
+    render({ value: LEVELS[0] });
+    expect(container.querySelector(".effort-slider__comet")).toBeNull();
+    expect(
+      add.mock.calls.filter(([type]) => type === "visibilitychange")
+    ).toHaveLength(0);
+    render({ value: LEVELS[1] });
+    expect(container.querySelector(".effort-slider__comet")).not.toBeNull();
+    const listener = add.mock.calls.find(
+      ([type]) => type === "visibilitychange"
+    )?.[1];
+    render({ value: LEVELS[0] });
+    expect(container.querySelector(".effort-slider__comet")).toBeNull();
+    expect(remove).toHaveBeenCalledWith("visibilitychange", listener);
   });
 
   it("pauses while hidden, resumes once visible, and removes its listener on close", () => {

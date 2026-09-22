@@ -15,7 +15,6 @@
  * - `EDITOR_ACTIONS`           — editor palette modes (file / command / symbol).
  * - `QUICK_NAVIGATION_ACTIONS` — work-station tab switchers (terminal, SCM).
  */
-import { ACTION_ID } from "@src/ActionSystem";
 import { getShortcutKeys } from "@src/config/keyboard/shortcutDisplay";
 import {
   Add01Icon,
@@ -39,6 +38,7 @@ import {
   SquareTerminalIcon,
   WorkflowCircle05Icon,
 } from "@src/icons";
+import { ACTION_ID } from "@src/scaffold/ActionSystem";
 
 import type {
   SpotlightEditorActionDefinition,

@@ -1,0 +1,201 @@
+{
+  "title": "Profil builder",
+  "refresh": "Muat ulang",
+  "tooFewSessions": "Kurang dari 25 sesi — tipe belum dapat dipastikan.",
+  "noSessionsYet": "Belum ada sesi yang dianalisis — huruf akan muncul saat riwayat Anda dibaca.",
+  "axisStats": "{{sessions}} sesi · {{consistency}}% sepakat",
+  "anchorFlip": "titik netral harus bergeser {{factor}}×",
+  "anchorNeverFlips": "kesimpulan tetap berlaku di titik netral mana pun",
+  "evidenceHint": "Median Anda untuk setiap sinyal, dibandingkan dengan nilai netralnya.",
+  "secondary": "Terukur, tetapi tidak layak menjadi huruf",
+  "secondaryNote": "— sebagian besar verifikasi tidak meninggalkan jejak dalam transkrip, jadi tingkat keyakinannya rendah.",
+  "byTool": "Per alat",
+  "byToolHint": "Titik netral yang sama digunakan di semua tempat, sehingga baris-baris ini dapat dibandingkan. Huruf yang hanya berlaku di satu alat patut diragukan.",
+  "overTime": "Dari waktu ke waktu",
+  "overTimeHint": "Jendela bergulir, terbaru lebih dulu.",
+  "status": "Status",
+  "coverage": "Sesi yang dibaca",
+  "coverageReading": "Masih membaca riwayat Anda — profil akan makin tajam seiring bertambahnya data.",
+  "coverageComplete": "Semua sesi di mesin ini telah dibaca.",
+  "confidence": "Tingkat keyakinan",
+  "confidenceHint": "Seberapa kuat sesi Anda sesuai dengan huruf di atas.",
+  "axesTitle": "Sumbu",
+  "evidenceCol": {
+    "signal": "Sinyal",
+    "yours": "Milik Anda",
+    "neutral": "Netral"
+  },
+  "byToolCol": {
+    "tool": "Alat",
+    "code": "Tipe",
+    "sessions": "Sesi"
+  },
+  "overTimeCol": {
+    "window": "Akhir jendela",
+    "code": "Tipe"
+  },
+  "fanoutLabel": "Percabangan subagen",
+  "fanoutHint": "Proporsi sesi yang bercabang ke subagen. Dipisahkan dari Fokus/Swarm: ini adalah tingkat paralelisme yang lain dan menunjuk ke arah sebaliknya.",
+  "highlights": "Sorotan",
+  "caveat": "tidak pasti: {{reason}}",
+  "clarity": {
+    "slight": "preferensi ringan",
+    "moderate": "preferensi sedang",
+    "clear": "preferensi jelas",
+    "veryClear": "preferensi sangat jelas"
+  },
+  "types": {
+    "title": "Tipe builder",
+    "howTitle": "Cara membaca kode",
+    "howBody": "Empat preferensi yang teramati digabungkan menjadi satu tipe builder. Huruf-hurufnya menggambarkan pola kerja, bukan identitas tetap — masing-masing dapat berubah seiring kebiasaan dan alat Anda berubah.",
+    "galleryTitle": "Semua 16 tipe",
+    "galleryHint": "Pilih potret untuk melihat bagaimana empat preferensinya membentuk cara ia membangun.",
+    "knowMore": "Selengkapnya",
+    "family": "{{first}} · {{second}}",
+    "letters": {
+      "M": {
+        "name": "Petakan",
+        "description": "Merumuskan target, batasan, dan rute sebelum bergerak",
+        "agentTip": "Beri agen brief tertulis dan kriteria penerimaan yang eksplisit"
+      },
+      "E": {
+        "name": "Jelajahi",
+        "description": "Mengurangi ambiguitas dengan membuat kemajuan dan belajar dari apa yang berubah",
+        "agentTip": "Mulai dengan uji coba yang berguna, lalu perketat brief berdasarkan apa yang Anda pelajari"
+      },
+      "D": {
+        "name": "Arahkan",
+        "description": "Tetap dekat dengan proses dan membentuk jalur langkah demi langkah",
+        "agentTip": "Minta titik periksa yang terlihat dan intervensi saat jalurnya melenceng"
+      },
+      "A": {
+        "name": "Delegasikan",
+        "description": "Menetapkan batasan, lalu membiarkan agen memilih jalurnya",
+        "agentTip": "Nyatakan hasil dan batasan dengan jelas, lalu beri ruang untuk otonomi"
+      },
+      "F": {
+        "name": "Fokus",
+        "description": "Memberikan perhatian penuh pada satu agen atau thread aktif",
+        "agentTip": "Jalankan satu tujuan dalam satu waktu dan buat serah terima berikutnya tidak ambigu"
+      },
+      "W": {
+        "name": "Swarm",
+        "description": "Menjaga beberapa agen atau thread berjalan secara paralel",
+        "agentTip": "Bagi pekerjaan berdasarkan kepemilikan yang jelas dan buat titik temu yang disengaja"
+      },
+      "S": {
+        "name": "Sistematisasi",
+        "description": "Berinvestasi pada alat, aturan, dan infrastruktur yang meningkatkan pekerjaan di masa depan",
+        "agentTip": "Biarkan agen merekam otomatisasi yang dapat digunakan ulang dan pengetahuan operasional yang tahan lama"
+      },
+      "H": {
+        "name": "Rilis",
+        "description": "Mengutamakan penyelesaian dan pengiriman produk yang ada di depan Anda",
+        "agentTip": "Jaga garis akhir tetap terlihat dan wajibkan hasil nyata yang dikirimkan"
+      }
+    }
+  },
+  "cards": {
+    "total_time": {
+      "question": "Berapa banyak waktu yang Anda habiskan?",
+      "headline": "{{hours}} jam",
+      "detail": "Di {{sessions}} sesi"
+    },
+    "lines": {
+      "question": "Berapa banyak yang Anda rilis?",
+      "headline": "{{added}} baris",
+      "detail": "Ditambahkan di {{sessions}} sesi, dengan {{removed}} dihapus"
+    },
+    "tool_calls": {
+      "question": "Berapa banyak yang dikerjakan agen?",
+      "headline": "{{total}} panggilan alat",
+      "detail": "Sekitar {{perSession}} per sesi"
+    },
+    "longest_session": {
+      "question": "Sesi tunggal terlama Anda?",
+      "headline": "{{duration}}",
+      "detail": "Rentang kerja terdalam tanpa jeda Anda bersama agen"
+    },
+    "longest_run": {
+      "question": "Seberapa jauh agen bekerja sendiri?",
+      "headline": "{{steps}} langkah",
+      "detail": "Proses terlamanya tanpa sepatah kata pun dari Anda"
+    },
+    "parallel_peak": {
+      "question": "Seberapa sering lebih dari satu agen berjalan?",
+      "headline": "{{percent}}% dari waktu Anda",
+      "detail": "Dalam sesi Anda yang paling paralel, sebesar itulah porsi yang berjalan bersamaan"
+    },
+    "streak": {
+      "question": "Berapa rentetan terpanjang Anda?",
+      "headline": "{{days}} hari berturut-turut",
+      "detail": "Hari berturut-turut Anda bekerja dengan agen"
+    },
+    "peak_hour": {
+      "question": "Kapan Anda bekerja?",
+      "headline": "{{hour}}",
+      "detail": "Anda memulai {{sessions}} sesi pada jam tersebut"
+    },
+    "deep_sessions": {
+      "question": "Bagaimana cara Anda bekerja?",
+      "headline": "{{count}} sesi mendalam",
+      "detail": "Rata-rata {{duration}} fokus tanpa jeda"
+    },
+    "busiest_day": {
+      "question": "Hari tersibuk Anda?",
+      "headline": "{{sessions}} sesi",
+      "detail": "Semuanya pada {{date}}"
+    },
+    "prompt_length": {
+      "question": "Seberapa panjang prompt Anda?",
+      "headline": "Rata-rata {{words}} kata",
+      "detail": "Singkat dan bernada percakapan"
+    },
+    "prompt_length_long": {
+      "detail": "Anda memberi arahan dalam paragraf, bukan satu baris"
+    },
+    "prompts_per_session": {
+      "question": "Seberapa banyak Anda berbicara dengan agen?",
+      "headline": "{{prompts}} prompt per sesi",
+      "detail": "Seberapa sering Anda turun tangan dalam satu sesi"
+    },
+    "longest_prompt": {
+      "question": "Prompt tunggal terpanjang Anda?",
+      "headline": "{{words}} kata",
+      "detail": "Satu pesan, semuanya ada di dalamnya"
+    },
+    "redirects": {
+      "question": "Seberapa sering Anda mengubah arah?",
+      "headline": "{{percent}}% pesan",
+      "detail": "Saat Anda berhenti dan mengarahkan agen ke tempat lain"
+    },
+    "interrupts": {
+      "question": "Apakah Anda membiarkannya selesai?",
+      "headline": "{{percent}}% dari waktu",
+      "detail": "Anda menyela pada {{rest}}% sisanya"
+    },
+    "interrupts_never": {
+      "detail": "Anda hampir tidak pernah menghentikan proses di tengah jalan"
+    },
+    "plan_first": {
+      "question": "Seberapa sering Anda merencanakan terlebih dahulu?",
+      "headline": "{{percent}}% sesi build",
+      "detail": "{{planned}} dari {{builders}} sesi yang mengubah kode dimulai dari rencana"
+    },
+    "harness": {
+      "question": "Apakah Anda mengasah alat Anda sendiri?",
+      "headline": "{{percent}}% edit",
+      "detail": "Perubahan pada instruksi agen Anda sendiri — CLAUDE.md, aturan, skill"
+    },
+    "fanout": {
+      "question": "Apakah Anda bercabang ke subagen?",
+      "headline": "{{percent}}% sesi",
+      "detail": "Saat satu agen memunculkan agen lain untuk bekerja secara paralel"
+    },
+    "tool_spread": {
+      "question": "Berapa banyak agen yang Anda gunakan?",
+      "headline": "{{tools}} alat berbeda",
+      "detail": "Pekerjaan Anda tersebar di semuanya"
+    }
+  }
+}

@@ -113,9 +113,7 @@ export function useWorkItemContentModel({
         type="danger"
         role="status"
         dataTestId="work-item-github-timeline-alert"
-        title={t("git.issues.timelineErrorTitle", {
-          defaultValue: "GitHub activity unavailable",
-        })}
+        title={t("git.issues.timelineErrorTitle")}
       >
         {githubTimelineError}
       </PageNotice>

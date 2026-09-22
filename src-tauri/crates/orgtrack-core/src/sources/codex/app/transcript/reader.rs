@@ -28,6 +28,61 @@ use super::CODEX_PROVIDER_SLUG;
 const CODEX_TURN_HEADER_PROBE_BYTES: u64 = 8 * 1024 * 1024;
 const CODEX_MOBILE_HISTORY_SCAN_MAX_BYTES: u64 = 32 * 1024 * 1024;
 
+/// Bounded context for historical file replay in a large rollout. Seek near
+/// the selected turn and include at most eight earlier turns / 32 MiB, then
+/// stop after the turn containing the exact provider call. No whole-log scan.
+pub fn load_codex_app_review_context_from_path(
+    session_id: &str,
+    path: &Path,
+    turn_id: &str,
+    call_id: &str,
+) -> Result<Vec<ActivityChunk>, String> {
+    let signature = codex_transcript_file_signature(path)?;
+    let offset = codex_turn_offset_cache()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(path, signature, turn_id)
+        .map(|entry| entry.0)
+        .or_else(|| codex_lazy_turn_offset(turn_id))
+        .filter(|offset| *offset < signature.size_bytes)
+        .ok_or("Review turn has no bounded source offset")?;
+    let previous = find_recent_codex_user_offsets_bounded(path, offset, 8, 32 * 1024 * 1024)?;
+    let start = previous
+        .iter()
+        .map(|e| e.byte_offset)
+        .min()
+        .unwrap_or(offset);
+    let (chunks, _, _) = super::parser::parse_codex_app_bounded(
+        session_id,
+        path,
+        CodexTranscriptCollectionMode::ReviewThroughCall { call_id },
+        start,
+        codex_lazy_turn_sequence(start),
+        64 * 1024 * 1024,
+    )?;
+    if codex_transcript_file_signature(path)? != signature {
+        return Err("History changed during review; retry".into());
+    }
+    Ok(chunks)
+}
+
+/// Explicit review only: reject oversized histories instead of claiming an
+/// incomplete suffix represents the whole session. Never updates raw history.
+pub fn load_codex_app_review_from_path(
+    session_id: &str,
+    path: &Path,
+) -> Result<Vec<ActivityChunk>, String> {
+    let (chunks, _, _) = super::parser::parse_codex_app_bounded(
+        session_id,
+        path,
+        CodexTranscriptCollectionMode::Full,
+        0,
+        0,
+        64 * 1024 * 1024,
+    )?;
+    Ok(chunks)
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexAppInitialWindow {
@@ -228,6 +283,13 @@ fn load_codex_turn_at(
             if let Some((previous_user, mut previous_summary)) =
                 load_codex_turn_header(session_id, path, previous_offset)?
             {
+                // The header probe parses only the user row, so its summary
+                // reports an empty body. The catalog entry measured the real
+                // one; without it this placeholder replaces the initial
+                // window's on merge and the round loses its expand bar.
+                previous_summary.body_event_count =
+                    i64::try_from(previous_entry.following_line_count).unwrap_or(i64::MAX);
+                previous_summary.event_count = previous_summary.body_event_count.saturating_add(1);
                 // The context placeholder spans up to the loaded turn's
                 // start. The header-only summary carries ended_at ==
                 // started_at, and that created_at tie flips the placeholder
@@ -244,6 +306,11 @@ fn load_codex_turn_at(
                     &previous_summary,
                     Some(turn_id.to_string()),
                     previous_entry.last_agent_preview.as_ref(),
+                    &previous_entry
+                        .output_images
+                        .iter()
+                        .map(|image| image.reference(session_id))
+                        .collect::<Vec<_>>(),
                 ));
                 remembered_offsets.push(CodexTurnOffset {
                     turn_id: previous_summary.turn_id,
@@ -276,13 +343,14 @@ pub(crate) fn load_codex_app_cloud_turn_from_path(
         return Err(format!("Invalid Codex cloud turn id: {turn_id}"));
     };
     let start_offset = codex_cloud_turn_start_offset(path, user_offset)?;
-    let (chunks, _, _) = parse_codex_app_from_path_with_mode(
+    let (mut chunks, _, _) = parse_codex_app_from_path_with_mode(
         session_id,
         path,
         CodexTranscriptCollectionMode::FirstTurn,
         start_offset,
         start_sequence,
     )?;
+    super::output_images::materialize_output_images(path, &mut chunks)?;
     Ok(chunks)
 }
 
@@ -348,6 +416,11 @@ fn load_codex_app_initial_tail_window(
             &summary,
             next_turn_id,
             entry.last_agent_preview.as_ref(),
+            &entry
+                .output_images
+                .iter()
+                .map(|image| image.reference(session_id))
+                .collect::<Vec<_>>(),
         ));
         turns.push(summary);
     }
@@ -400,7 +473,9 @@ fn codex_catalog_turn_header(
             user_chunk.result["images"] = serde_json::json!(refs);
         }
     }
-    let body_event_count = i64::try_from(entry.following_line_count.max(1)).unwrap_or(i64::MAX);
+    // Zero stays zero: the catalog only counts lines the parser can render,
+    // so an empty count is a round with no body to fetch.
+    let body_event_count = i64::try_from(entry.following_line_count).unwrap_or(i64::MAX);
     let summary = ProjectedTurnMetadata {
         turn_id: user_chunk.chunk_id.clone(),
         start_sequence: i64::try_from(sequence).unwrap_or(i64::MAX),

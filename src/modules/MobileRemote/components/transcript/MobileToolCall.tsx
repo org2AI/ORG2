@@ -20,10 +20,6 @@ import { record, stringValue } from "./mobileToolPresentation";
 import { useMobileToolPresentation } from "./useMobileToolPresentation";
 
 export {
-  MobileToolDetailSheet,
-  type MobileToolDetailSheetProps,
-} from "./MobileToolDetailSheet";
-export {
   mobileToolSummary,
   normalizeMobileToolLifecycle,
   resolveMobileToolIconName,
@@ -140,12 +136,16 @@ export function MobileToolCall({
   return (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className="block w-full min-w-0 border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
       aria-haspopup="dialog"
       aria-expanded={detailsOpen}
-      aria-label={t("transcript.tools.openDetails", { tool: title })}
+      aria-label={[
+        t("transcript.tools.openDetails", { tool: title }),
+        summary,
+        statusLabel,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
       onClick={onOpenDetails}
       data-tool-call-name={rawName}
       data-tool-call-layout="inline"

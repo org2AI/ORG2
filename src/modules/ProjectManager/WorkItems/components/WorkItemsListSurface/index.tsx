@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import DetailPaneLayout, {
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
-import InboxListDetailLayout from "@src/modules/shared/layouts/InboxListDetailLayout";
+} from "@src/scaffold/layouts/DetailPaneLayout";
+import InboxListDetailLayout from "@src/scaffold/layouts/InboxListDetailLayout";
 import type { DropdownOption, Person } from "@src/types/core/shared";
 import type {
   WorkItem as WorkItemExtended,

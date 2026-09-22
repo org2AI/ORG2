@@ -150,6 +150,16 @@ fn tool_args(script: &str, name: &str, expression: &str) -> Value {
     }
 }
 
+/// Share the same non-evaluating scanner with metadata ingestion. Return each
+/// patch once, before normalization splits a multi-file patch into tool rows.
+pub(super) fn exec_patches(input: &str) -> Vec<String> {
+    tool_invocations(input)
+        .into_iter()
+        .filter(|(name, _)| normalize_tool_name_key(name) == "apply_patch")
+        .filter_map(|(_, expression)| resolve_string_expression(input, expression))
+        .collect()
+}
+
 /// Scan source-order calls while ignoring tool-looking text inside strings.
 fn tool_invocations(script: &str) -> Vec<(&str, &str)> {
     let bytes = script.as_bytes();

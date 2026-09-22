@@ -67,7 +67,7 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
     () => [
       {
         key: "name",
-        label: t("common:labels.name", { defaultValue: "Name" }),
+        label: t("common:labels.name"),
         width: SETTINGS_TABLE_COL.fill,
         sorter: (rowA, rowB) => rowA.name.localeCompare(rowB.name),
         renderCell: (row) => (
@@ -78,7 +78,7 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
       },
       {
         key: "members",
-        label: t("agentOrgs.orgMembers", { defaultValue: "Members" }),
+        label: t("agentOrgs.orgMembers"),
         width: ORGS_TABLE_COL_WIDTH.members,
         sorter: (rowA, rowB) => countMembers(rowA) - countMembers(rowB),
         renderCell: (row) => (
@@ -87,7 +87,7 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
       },
       {
         key: "description",
-        label: t("common:labels.description", { defaultValue: "Description" }),
+        label: t("common:labels.description"),
         width: SETTINGS_TABLE_COL.fill,
         renderCell: (row) => (
           <span
@@ -100,11 +100,7 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
       },
       {
         key: "actions",
-        label: (
-          <span className="sr-only">
-            {t("common:labels.actions", { defaultValue: "Actions" })}
-          </span>
-        ),
+        label: <span className="sr-only">{t("common:labels.actions")}</span>,
         width: ORGS_TABLE_COL_WIDTH.actions,
         align: "right",
         renderCell: (row) => (
@@ -114,16 +110,14 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
             onKeyDown={(event) => event.stopPropagation()}
           >
             <Button
-              variant="secondary"
               size="small"
               data-testid={`agent-orgs-org-view-button-${row.id}`}
               onClick={() => handleView(row)}
             >
-              {t("common:actions.view", { defaultValue: "View" })}
+              {t("common:actions.view")}
             </Button>
             <Button
-              variant="danger"
-              appearance="outline"
+              tone="danger"
               size="small"
               icon={
                 <HugeiconsIcon
@@ -135,10 +129,8 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
               iconOnly
               data-testid={`agent-orgs-org-delete-row-button-${row.id}`}
               onClick={() => void onDeleteOrg(row.id)}
-              aria-label={t("common:actions.delete", {
-                defaultValue: "Delete",
-              })}
-              title={t("common:actions.delete", { defaultValue: "Delete" })}
+              aria-label={t("common:actions.delete")}
+              title={t("common:actions.delete")}
             />
           </div>
         ),
@@ -147,11 +139,9 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
     [handleView, onDeleteOrg, t]
   );
 
-  const addOrgLabel = t("agentOrgs.addOrg", { defaultValue: "Add Agent Team" });
+  const addOrgLabel = t("agentOrgs.addOrg");
   const addButton = (
     <Button
-      variant="secondary"
-      size="default"
       icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
       iconOnly
       aria-label={addOrgLabel}
@@ -175,13 +165,11 @@ const OrgsTable: React.FC<OrgsTableProps> = ({
       searchBar={{
         searchValue: searchQuery,
         onSearchChange: setSearchQuery,
-        searchPlaceholder: t("agentOrgs.searchOrgs", {
-          defaultValue: "Search teams…",
-        }),
+        searchPlaceholder: t("agentOrgs.searchOrgs"),
         allowSearchClear: true,
         rightContent: addButton,
       }}
-      emptyTitle={t("agentOrgs.noOrgs", { defaultValue: "No orgs yet" })}
+      emptyTitle={t("agentOrgs.noOrgs")}
       emptyAction={{
         label: addOrgLabel,
         onClick: onAddOrg,

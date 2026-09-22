@@ -1,3 +1,5 @@
+import type { SystemColorScheme } from "@src/config/appearance/globalThemes";
+
 import type { MobileAuthClient } from "../auth/mobileAuthClient";
 import type { MobileAuthSession } from "../auth/mobileAuthState";
 import type {
@@ -8,6 +10,8 @@ import type {
 export type MobileRemoteIntentEvent = "auth_callback" | "pairing";
 
 export interface MobileRemoteRuntimePort {
+  readPreference?(key: string): string | null;
+  writePreference?(key: string, value: string): void;
   now(): number;
   random(): number;
   randomUUID(): string;
@@ -20,6 +24,14 @@ export interface MobileRemoteRuntimePort {
    * mounted container yet, in which case the caller renders nothing.
    */
   portalContainer(): Element | null;
+}
+
+export interface MobileRemoteAppearancePort {
+  getSystemColorScheme(): SystemColorScheme;
+  subscribeSystemColorScheme(
+    listener: (colorScheme: SystemColorScheme) => void
+  ): () => void;
+  applyColorScheme(colorScheme: SystemColorScheme): void | Promise<void>;
 }
 
 export interface MobileRemoteAuthPort {
@@ -68,6 +80,8 @@ export interface MobileRemoteConnectionPort {
  * Tauri globals. Platform shells own credentials, navigation and lifecycle.
  */
 export interface MobileRemotePlatform {
+  /** Optional for alternate shells without clipboard access; invoked by user gesture only. */
+  writeClipboardText?(text: string): Promise<void>;
   /** User-initiated, one-shot scan. Aborting must release the camera. */
   scanQr?(video: HTMLVideoElement, signal: AbortSignal): Promise<string>;
   /** Opens an external page using the shell's navigation implementation. */
@@ -79,6 +93,8 @@ export interface MobileRemotePlatform {
     readonly defaultDeviceLabel: string;
   };
   readonly runtime: MobileRemoteRuntimePort;
+  /** Optional only for lightweight test/alternate shells; production adapters provide it. */
+  readonly appearance?: MobileRemoteAppearancePort;
   readonly auth: MobileRemoteAuthPort;
   readonly connection: MobileRemoteConnectionPort;
 }

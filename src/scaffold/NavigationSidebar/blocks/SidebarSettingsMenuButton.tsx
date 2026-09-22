@@ -30,8 +30,6 @@ import {
   useSidebarUtilityPanelDismiss,
 } from "./useSidebarSettingsMenuPopovers";
 
-const WikiModal = React.lazy(() => import("@src/features/Wiki/WikiModal"));
-
 const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
   renderTrigger,
   onSignIn,
@@ -74,13 +72,11 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
   });
 
   const {
-    showWiki,
-    setShowWiki,
+    handleOpenWiki,
     showSignInModal,
     setShowSignInModal,
     showSignOutConfirmation,
     setShowSignOutConfirmation,
-    handleOpenOnboarding,
     handleOpenSettings,
     handleModifyAppearance,
     handleSignIn,
@@ -119,8 +115,7 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
                 signedIn={signedIn}
                 devModeEnabled={devModeEnabled}
                 setActiveSubmenu={setActiveSubmenu}
-                closeAll={closeAll}
-                setShowWiki={setShowWiki}
+                handleOpenWiki={handleOpenWiki}
                 handleSignOut={handleSignOut}
                 handleViewRam={handleViewRam}
               />
@@ -131,11 +126,9 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
               <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
               <SidebarSettingsMenuTrailingItems
                 signedIn={signedIn}
-                devModeEnabled={devModeEnabled}
                 onSignIn={onSignIn}
                 openSettingsShortcut={openSettingsShortcut}
                 setActiveSubmenu={setActiveSubmenu}
-                handleOpenOnboarding={handleOpenOnboarding}
                 handleOpenSettings={handleOpenSettings}
                 handleSignIn={handleSignIn}
               />
@@ -143,12 +136,7 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
           </div>,
           document.body
         )}
-      {showWiki && (
-        <React.Suspense fallback={null}>
-          <WikiModal open onClose={() => setShowWiki(false)} />
-        </React.Suspense>
-      )}
-      {showSignInModal && onSignIn && (
+      {showSignInModal && (
         <SignInModal
           onClose={() => setShowSignInModal(false)}
           onSignIn={onSignIn}
@@ -168,7 +156,6 @@ const SidebarSettingsMenuButton: React.FC<SidebarSettingsMenuButtonProps> = ({
         submenuPanelRef={submenuPanelRef}
         submenuPosition={submenuPosition}
         onModifyAppearance={handleModifyAppearance}
-        onPresenceSelectionComplete={closeAll}
         onSelectAppearanceMode={(mode) => void handleSelectAppearanceMode(mode)}
         onSubmenuMouseDown={handleSubmenuMouseDown}
         onSubmenuPointerDown={handleSubmenuPointerDown}

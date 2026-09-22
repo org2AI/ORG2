@@ -6,6 +6,7 @@ import {
   getGitCredentialForRemote,
   listOpenPRsLocal,
 } from "@src/api/tauri/github";
+import i18n from "@src/i18n";
 import { coalesceGitHubListRequest } from "@src/services/git/githubListCache";
 import { resolveGithubRepoFullName } from "@src/util/git/githubRemote";
 
@@ -95,7 +96,10 @@ export function useBranchPullRequests(repoId: string, repoPath: string) {
           repo_path: repoPath,
         });
         if (!active()) return;
-        if (!remotes) throw new Error("Could not read repository remotes");
+        if (!remotes)
+          throw new Error(
+            i18n.t("common:selectors.branch.messages.readRemotesFailed")
+          );
         const githubRemotes = remotes.remotes.filter((remote) =>
           resolveGithubRepoFullName([remote.url])
         );

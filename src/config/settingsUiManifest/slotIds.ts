@@ -1,4 +1,5 @@
 export const SETTINGS_SECTION_SLOT_IDS = {
+  APP_DEVELOPMENT: "app.development",
   APP_GENERAL: "app.general",
   APP_APPEARANCE: "app.appearance",
   APP_EDITOR: "app.editor",
@@ -6,6 +7,7 @@ export const SETTINGS_SECTION_SLOT_IDS = {
   APP_MOBILE_REMOTE: "app.mobileRemote",
 
   APP_HARNESS_CONNECTIONS: "app.harnessConnections",
+  APP_IMPORT: "app.import",
 } as const;
 
 export type SettingsSectionSlotId =

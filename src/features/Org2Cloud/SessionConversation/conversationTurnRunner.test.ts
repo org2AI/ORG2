@@ -4,7 +4,12 @@ import { projectNativeConversationItems } from "@src/engines/SessionCore/convers
 import {
   QueuedConversationRecoveryPendingError,
   QueuedConversationTurnClosedError,
+  QueuedConversationTurnFailedError,
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import {
+  beginQueuedRetry,
+  recordEmptyFailedAttempt,
+} from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { Org2CloudConversationError } from "@src/features/Org2Cloud/org2CloudConversationEventsClient";
 
@@ -15,6 +20,12 @@ import {
 
 const mocks = vi.hoisted(() => ({
   continueLocalConversation: vi.fn(),
+  recoverLocalConversationTurn: vi.fn(),
+  persistCloudEmptyFailure: vi.fn(),
+}));
+
+vi.mock("./cloudConversationRetry", () => ({
+  persistCloudEmptyFailure: mocks.persistCloudEmptyFailure,
 }));
 
 vi.mock(
@@ -22,11 +33,13 @@ vi.mock(
   async (importOriginal) => ({
     ...(await importOriginal()),
     continueLocalConversation: mocks.continueLocalConversation,
+    recoverLocalConversationTurn: mocks.recoverLocalConversationTurn,
   })
 );
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.persistCloudEmptyFailure.mockResolvedValue(true);
   mocks.continueLocalConversation.mockImplementation(async (params) => {
     params.onSessionReady?.("cliagent-owner", 3);
     return {
@@ -60,6 +73,223 @@ describe("buildPushedUserEvent", () => {
 });
 
 describe("runConversationTurn", () => {
+  const retryParams = () => ({
+    root: {
+      authority: "org2-cloud" as const,
+      authorityScope: ["https://cloud.example", "org-1"],
+      conversationId: "shared-root",
+    },
+    conversationTitle: "Shared conversation",
+    displayText: "continue",
+    timeline: [],
+    target: {
+      cliAgentType: "codex" as const,
+      accountId: "acct",
+      model: "model",
+    },
+    turnIntentId: "failed-intent",
+    retry: {
+      message: {
+        id: "queue-1",
+        sessionId: "shared-root",
+        turnIntentId: "failed-intent",
+        content: "continue",
+        displayContent: "continue",
+        status: "accepted" as const,
+      },
+      lineage: {
+        version: 1 as const,
+        queueMessageId: "queue-1",
+        superseded: [],
+      },
+    },
+    publishTail: vi.fn().mockResolvedValue(undefined),
+  });
+
+  it("publishes a proved empty failure but returns the original message to explicit Retry", async () => {
+    mocks.continueLocalConversation.mockResolvedValueOnce({
+      sessionId: "runner",
+      terminalStatus: "failed",
+      agentTail: [],
+    });
+    const params = retryParams();
+    await expect(runConversationTurn(params)).rejects.toBeInstanceOf(
+      QueuedConversationTurnFailedError
+    );
+    expect(mocks.persistCloudEmptyFailure).toHaveBeenCalledWith(
+      params.retry,
+      "runner"
+    );
+    expect(
+      mocks.persistCloudEmptyFailure.mock.invocationCallOrder[0]
+    ).toBeLessThan(params.publishTail.mock.invocationCallOrder[0]!);
+    expect(params.publishTail).toHaveBeenCalledOnce();
+  });
+
+  it("recovers an ambiguous failure publication without sending the provider again", async () => {
+    const result = {
+      sessionId: "runner",
+      terminalStatus: "failed",
+      agentTail: [],
+    };
+    mocks.continueLocalConversation.mockResolvedValueOnce(result);
+    mocks.recoverLocalConversationTurn.mockResolvedValueOnce(result);
+    const params = retryParams();
+    params.publishTail.mockRejectedValueOnce(
+      new QueuedConversationRecoveryPendingError()
+    );
+    await expect(runConversationTurn(params)).rejects.toBeInstanceOf(
+      QueuedConversationRecoveryPendingError
+    );
+    await expect(
+      runConversationTurn({
+        ...params,
+        recovery: { runnerSessionId: "runner", providerAccepted: true },
+      })
+    ).rejects.toBeInstanceOf(QueuedConversationTurnFailedError);
+    expect(mocks.continueLocalConversation).toHaveBeenCalledOnce();
+    expect(mocks.recoverLocalConversationTurn).toHaveBeenCalledOnce();
+    expect(params.publishTail.mock.calls.map(([id]) => id)).toEqual([
+      "failed-intent",
+      "failed-intent",
+    ]);
+  });
+
+  it("explicit retry succeeds with prior context once and does not repeat the failed prompt", async () => {
+    const params = retryParams();
+    const failedPrompt = {
+      ...buildPushedUserEvent(
+        "continue",
+        undefined,
+        undefined,
+        "2026-09-18T00:00:00Z",
+        params.turnIntentId
+      ),
+      sessionId: "shared-root",
+    };
+    const earlierPrompt = {
+      ...buildPushedUserEvent(
+        "remember amber-river-572",
+        undefined,
+        undefined,
+        "2026-09-17T00:00:00Z",
+        "earlier-intent"
+      ),
+      sessionId: "shared-root",
+    };
+    mocks.continueLocalConversation.mockResolvedValueOnce({
+      sessionId: "shared-root",
+      terminalStatus: "failed",
+      agentTail: [],
+    });
+    await expect(runConversationTurn(params)).rejects.toBeInstanceOf(
+      QueuedConversationTurnFailedError
+    );
+    const failedLineage = recordEmptyFailedAttempt(
+      params.retry.lineage,
+      params.retry.message,
+      [earlierPrompt, failedPrompt]
+    );
+    const retriedMessage = {
+      ...params.retry.message,
+      turnIntentId: "explicit-retry",
+    };
+    const retriedLineage = beginQueuedRetry(failedLineage, retriedMessage);
+    mocks.continueLocalConversation.mockImplementationOnce(
+      async (continuation) => {
+        expect(projectNativeConversationItems(continuation.timeline)).toEqual([
+          expect.objectContaining({
+            role: "user",
+            text: "remember amber-river-572",
+          }),
+        ]);
+        expect(continuation.displayText).toBe("continue");
+        expect(continuation.turnIntentId).toBe("explicit-retry");
+        return {
+          sessionId: "shared-root",
+          terminalStatus: "completed",
+          agentTail: [],
+        };
+      }
+    );
+    await expect(
+      runConversationTurn({
+        ...params,
+        timeline: [earlierPrompt, failedPrompt],
+        turnIntentId: "explicit-retry",
+        retry: { message: retriedMessage, lineage: retriedLineage },
+      })
+    ).resolves.toMatchObject({ terminalStatus: "completed" });
+    expect(mocks.continueLocalConversation).toHaveBeenCalledTimes(2);
+    expect(mocks.persistCloudEmptyFailure).toHaveBeenCalledOnce();
+  });
+
+  it("retains accepted recovery ownership when failure proof cannot persist", async () => {
+    mocks.continueLocalConversation.mockResolvedValueOnce({
+      sessionId: "runner",
+      terminalStatus: "failed",
+      agentTail: [],
+    });
+    mocks.persistCloudEmptyFailure.mockRejectedValueOnce(
+      new QueuedConversationRecoveryPendingError("disk failed")
+    );
+    const params = retryParams();
+    await expect(runConversationTurn(params)).rejects.toBeInstanceOf(
+      QueuedConversationRecoveryPendingError
+    );
+    expect(params.publishTail).not.toHaveBeenCalled();
+  });
+
+  it.each(["failed", "cancelled"] as const)(
+    "keeps partial output for %s without acquiring empty retry ownership",
+    async (terminalStatus) => {
+      const partial = {
+        ...buildPushedUserEvent(
+          "partial",
+          undefined,
+          undefined,
+          "2026-09-18T00:00:00Z",
+          "failed-intent"
+        ),
+        source: "assistant" as const,
+        functionName: "assistant",
+        actionType: "assistant",
+      } as SessionEvent;
+      mocks.continueLocalConversation.mockResolvedValueOnce({
+        sessionId: "runner",
+        terminalStatus,
+        agentTail: [partial],
+      });
+      const params = retryParams();
+      await expect(runConversationTurn(params)).resolves.toMatchObject({
+        terminalStatus,
+      });
+      expect(mocks.persistCloudEmptyFailure).not.toHaveBeenCalled();
+      expect(params.publishTail).toHaveBeenCalledOnce();
+    }
+  );
+
+  it("does not label cancellation or an unproved empty native suffix as retryable", async () => {
+    mocks.continueLocalConversation.mockResolvedValueOnce({
+      sessionId: "runner",
+      terminalStatus: "cancelled",
+      agentTail: [],
+    });
+    await expect(runConversationTurn(retryParams())).resolves.toMatchObject({
+      terminalStatus: "cancelled",
+    });
+    expect(mocks.persistCloudEmptyFailure).not.toHaveBeenCalled();
+    mocks.continueLocalConversation.mockResolvedValueOnce({
+      sessionId: "runner",
+      terminalStatus: "failed",
+      agentTail: [],
+    });
+    mocks.persistCloudEmptyFailure.mockResolvedValueOnce(false);
+    await expect(runConversationTurn(retryParams())).resolves.toMatchObject({
+      terminalStatus: "failed",
+    });
+  });
+
   it("binds a fresh hidden runner during preparation, then exposes its exact native prefix", async () => {
     const onRunnerReady = vi.fn();
     const publishTail = vi.fn();

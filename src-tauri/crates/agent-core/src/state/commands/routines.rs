@@ -577,6 +577,7 @@ fn routine_to_launch_request(
         content: routine.run_template.prompt.clone(),
         target,
         resources: LaunchResourceSelection {
+            credential_source: None,
             key_source: routine.run_template.resources.key_source.clone(),
             account_id: routine.run_template.resources.account_id.clone(),
             model: routine.run_template.resources.model.clone(),

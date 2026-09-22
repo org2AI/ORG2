@@ -1,0 +1,8 @@
+{
+  "notices": {
+    "trademark": "Nama produk, logo, dan merek yang ditampilkan di halaman ini adalah milik pemiliknya masing-masing dan digunakan semata-mata untuk tujuan identifikasi. Penggunaan tersebut tidak menyiratkan dukungan, sponsor, atau afiliasi apa pun dengan ORG2.",
+    "responsibleUse": "Anda bertanggung jawab untuk menggunakan model AI sesuai dengan kebijakan penggunaan yang dapat diterima dari setiap penyedia, termasuk pedoman keselamatan, kebijakan alignment, batas laju, dan pembatasan konten mereka. Model hanya boleh digunakan untuk tujuan yang sah. ORG2 tidak memantau, mencatat, atau melacak penggunaan model maupun data Anda.",
+    "keyPrivacy": "API key dan token sesi yang Anda tambahkan disimpan secara lokal di perangkat Anda dan tidak pernah diunggah ke server ORG2 atau dibagikan kepada pihak ketiga. ORG2 tidak memproses, meneruskan, atau memiliki akses ke kunci atau token Anda. Anda bertanggung jawab untuk memperoleh API key melalui kanal resmi atau distributor resmi setiap penyedia, sesuai dengan ketentuan layanan mereka.",
+    "cli": "Agen CLI yang tercantum di sini adalah alat pihak ketiga yang tidak dikembangkan, dikelola, atau didistribusikan oleh ORG2. Agen tersebut dapat menghasilkan hasil yang tidak akurat, tidak terduga, atau berbahaya yang mungkin tidak sesuai dengan maksud Anda. ORG2 tidak bertanggung jawab atas perilaku, output, atau konsekuensi apa pun yang timbul dari penggunaannya. Hanya gunakan agen CLI dari sumber yang Anda percayai."
+  }
+}

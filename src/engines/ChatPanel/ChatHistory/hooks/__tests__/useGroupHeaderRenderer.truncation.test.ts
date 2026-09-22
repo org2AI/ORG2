@@ -7,6 +7,7 @@ import {
   makeChatItem,
   makeSessionEvent,
 } from "@src/engines/SessionCore/rendering/props/__tests__/fixtures";
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { useGroupHeaderRenderer } from "../useGroupHeaderRenderer";
 
@@ -49,6 +50,11 @@ function Header({
   });
   return renderHeader(0);
 }
+
+vi.mock("react-i18next", () => ({
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
+}));
 
 describe("continuous chat user-message previews", () => {
   let container: HTMLDivElement;
@@ -137,20 +143,31 @@ describe("continuous chat user-message previews", () => {
     expect(viewport().querySelector(".bg-linear-to-t")).toBeNull();
   });
 
-  it("preserves paginated previews and disposes continuous-mode measurement", () => {
+  it("folds paginated previews only when rendered text overflows three lines", () => {
+    render(true);
+    // Over 120 characters but only 72px rendered: no fold, no fade.
+    expect(viewport().style.maxHeight).toBe("");
+    expect(container.querySelector(".bg-linear-to-t")).toBeNull();
+
+    contentHeight = 96;
+    act(() => remeasure());
+    expect(viewport().style.maxHeight).toBe("72px");
+    expect(container.querySelector(".bg-linear-to-t")).not.toBeNull();
+  });
+
+  it("swaps measurement owners when pagination toggles", () => {
     render();
     expect(observe).toHaveBeenCalledOnce();
 
     render(true);
-    expect(viewport().style.maxHeight).toBe("72px");
-    expect(container.querySelector(".bg-linear-to-t")).not.toBeNull();
     expect(disconnect).toHaveBeenCalledOnce();
-    expect(observe).toHaveBeenCalledOnce();
+    expect(observe).toHaveBeenCalledTimes(2);
 
     render();
     expect(viewport().style.maxHeight).toBe("240px");
     expect(viewport().querySelector("button")).toBeNull();
-    expect(observe).toHaveBeenCalledTimes(2);
+    expect(disconnect).toHaveBeenCalledTimes(2);
+    expect(observe).toHaveBeenCalledTimes(3);
   });
 
   it("disconnects measurement when the message leaves the mounted list", () => {
@@ -192,13 +209,15 @@ describe("continuous chat user-message previews", () => {
       )
     );
 
-    const retryButton = container.querySelector<HTMLButtonElement>(
-      '[data-testid="chat-message-delivery-failed"] button'
-    );
+    const retryButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="chat-message-delivery-failed"] button'
+      )
+    ).find((button) => button.textContent === "Retry");
     const editButton = container.querySelector<HTMLButtonElement>(
       '[data-testid="chat-message-user-edit-button"]'
     );
-    expect(retryButton).not.toBeNull();
+    expect(retryButton).toBeDefined();
     expect(editButton).not.toBeNull();
     act(() => retryButton!.click());
     expect(retry).toHaveBeenCalledWith(

@@ -3,16 +3,13 @@ import React from "react";
 import {
   WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
   WORKSTATION_TRAIL_WIDTH,
-} from "@src/modules/shared/layouts/blocks/workstationTrailTokens";
-import { classNames } from "@src/util/ui/classNames";
+} from "@src/components/layout/tokens/workstationTrailTokens";
 
 interface PropertiesRailFrameProps {
   children?: React.ReactNode;
   width?: number | string;
   minWidth?: number | string;
   maxWidth?: number | string;
-  className?: string;
-  contentClassName?: string;
   floatingContent?: boolean;
 }
 
@@ -25,8 +22,6 @@ const PropertiesRailFrame: React.FC<PropertiesRailFrameProps> = ({
   width,
   minWidth,
   maxWidth,
-  className,
-  contentClassName,
   floatingContent = false,
 }) => {
   const resolvedWidth =
@@ -42,10 +37,7 @@ const PropertiesRailFrame: React.FC<PropertiesRailFrameProps> = ({
   if (floatingContent) {
     return (
       <div
-        className={classNames(
-          `box-border flex h-full shrink-0 flex-col ${WORKSTATION_TRAIL_RAIL_PADDING_CLASS}`,
-          className
-        )}
+        className={`box-border flex h-full shrink-0 flex-col ${WORKSTATION_TRAIL_RAIL_PADDING_CLASS}`}
         style={sizeStyle}
       >
         {children}
@@ -55,20 +47,10 @@ const PropertiesRailFrame: React.FC<PropertiesRailFrameProps> = ({
 
   return (
     <div
-      className={classNames(
-        "box-border flex h-full shrink-0 flex-col border-l border-solid border-border-2",
-        className
-      )}
+      className="box-border flex h-full shrink-0 flex-col border-l border-solid border-border-2"
       style={sizeStyle}
     >
-      <div
-        className={classNames(
-          "min-h-0 flex-1 overflow-hidden",
-          contentClassName
-        )}
-      >
-        {children}
-      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>
   );
 };

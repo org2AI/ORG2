@@ -49,6 +49,107 @@ async function loadVisitedSessions() {
 }
 
 describe("visited session persistence", () => {
+  it("synchronizes the real Desktop atom bidirectionally and reconciles after mobile reconnect", async () => {
+    const {
+      store,
+      markSessionVisited,
+      markAllSessionsVisited,
+      markAllSessionsVisitedPersisted,
+      visitedSessionsAtom,
+      visitedSessionIdsAtom,
+    } = await loadVisitedSessions();
+    const { startDesktopReadStateBridge } =
+      await import("../desktopReadStateBridge");
+    const { createMobileReadStateSync } =
+      await import("@src/modules/MobileRemote/app/mobileReadStateSync");
+    type Client =
+      import("@src/modules/MobileRemote/connection/mobileRpcClient").MobileRpcClient;
+    type Handler =
+      import("@src/modules/MobileRemote/connection/mobileRpcClient").RpcNotificationHandler;
+    let receive!: (payload: unknown) => void;
+    let sequence = 0;
+    const waiting = new Map<string, (reply: unknown) => void>();
+    const notifications = new Set<Handler>();
+    const notifyChanged = vi.fn(async () => {
+      notifications.forEach((fn) => fn("session/read_state_changed", {}));
+    });
+    const stop = startDesktopReadStateBridge({
+      listen: async (handler) => {
+        receive = handler;
+        return () => undefined;
+      },
+      reply: async (id, visitedIds) => {
+        waiting.get(id)?.({ visitedIds });
+        waiting.delete(id);
+      },
+      notifyChanged,
+      read: () => store.get(visitedSessionsAtom),
+      mark: markAllSessionsVisitedPersisted,
+      subscribe: (fn) => store.sub(visitedSessionsAtom, fn),
+      onError: (error) => {
+        throw error;
+      },
+    });
+    const client: Client = {
+      call: <T>(method: string, params?: Record<string, unknown>) =>
+        new Promise<T>((resolve) => {
+          const requestId = String(++sequence);
+          waiting.set(requestId, (reply) => resolve(reply as T));
+          receive({
+            requestId,
+            sessionIds: params?.sessionIds,
+            markVisited: method === "session/mark_visited",
+            expiresAtMs: Date.now() + 5000,
+          });
+        }),
+      onNotification: (fn) => {
+        notifications.add(fn);
+        return () => {
+          notifications.delete(fn);
+        };
+      },
+      notify: () => undefined,
+      close: () => undefined,
+      readyState: 1,
+    };
+    const flush = async () => {
+      for (let i = 0; i < 80; i++) await Promise.resolve();
+    };
+    const mobile = createMobileReadStateSync();
+    mobile.watch(["desktop-read", "mobile-read", "while-offline"]);
+    mobile.connect(client, "account/desktop");
+    await flush();
+    expect(mobile.getSnapshot().get("desktop-read")).toBe(false);
+    markSessionVisited("desktop-read");
+    await flush();
+    expect(mobile.getSnapshot().get("desktop-read")).toBe(true);
+    mobile.markVisited("mobile-read");
+    await flush();
+    expect(store.get(visitedSessionsAtom).has("mobile-read")).toBe(true);
+    expect(
+      JSON.parse(localStorage.getItem("orgii:visited-sessions")!)
+    ).toContain("mobile-read");
+    expect(mobile.getSnapshot().get("mobile-read")).toBe(true);
+    mobile.connect(null, "account/desktop");
+    markSessionVisited("while-offline");
+    await flush();
+    mobile.connect(client, "account/desktop");
+    await flush();
+    expect(mobile.getSnapshot().get("while-offline")).toBe(true);
+    const before = notifyChanged.mock.calls.length;
+    markAllSessionsVisited(["batch-a", "batch-a", "batch-b"]);
+    await flush();
+    expect(notifyChanged.mock.calls.length - before).toBe(1);
+    const ids = store.get(visitedSessionIdsAtom);
+    markAllSessionsVisited(["batch-a", "batch-b"]);
+    await flush();
+    expect(store.get(visitedSessionIdsAtom)).toBe(ids);
+    expect(notifyChanged.mock.calls.length - before).toBe(1);
+    mobile.dispose();
+    stop();
+    expect(notifications.size).toBe(0);
+    expect(waiting.size).toBe(0);
+  });
   it("keeps navigation state in memory when persistence exceeds quota", async () => {
     const storage = installStorage({
       "orgii:org2-cloud-v1:auth": "protected-auth",
@@ -60,6 +161,19 @@ describe("visited session persistence", () => {
     expect(() => markSessionVisited("session-1")).not.toThrow();
     expect(store.get(visitedSessionIdsAtom)).toEqual(["session-1"]);
     expect(storage.getItem("orgii:org2-cloud-v1:auth")).toBe("protected-auth");
+  });
+  it("does not acknowledge a remote mark until persistence succeeds, including retry after quota recovery", async () => {
+    const storage = installStorage();
+    storage.failWrites = true;
+    const { markAllSessionsVisitedPersisted } = await loadVisitedSessions();
+    expect(() => markAllSessionsVisitedPersisted(["remote"])).toThrow(
+      "Could not persist"
+    );
+    storage.failWrites = false;
+    expect(() => markAllSessionsVisitedPersisted(["remote"])).not.toThrow();
+    expect(JSON.parse(storage.getItem("orgii:visited-sessions")!)).toContain(
+      "remote"
+    );
   });
 
   it("marks a full unread batch in one persisted update while retaining existing read state", async () => {

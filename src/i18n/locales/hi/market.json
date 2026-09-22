@@ -1,0 +1,8 @@
+{
+  "market": {
+    "auth": {
+      "noAuthCode": "कोई ऑथराइज़ेशन कोड प्राप्त नहीं हुआ",
+      "tokenExchangeFailed": "टोकन एक्सचेंज विफल"
+    }
+  }
+}

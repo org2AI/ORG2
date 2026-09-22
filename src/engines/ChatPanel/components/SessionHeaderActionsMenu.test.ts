@@ -15,7 +15,9 @@ import {
   CursorInWindowIcon,
   ThirdBracketIcon,
 } from "@src/icons";
+import { chatSendOnEnterAtom } from "@src/store/config/configAtom";
 import { compactComposerInputAtom } from "@src/store/session/compactComposerInputAtom";
+import { composerGlowVisibleAtom } from "@src/store/session/composerGlowVisibleAtom";
 import { collapseToolActivityAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import { linkOpenTargetAtom } from "@src/store/ui/linkOpenTargetAtom";
 
@@ -38,6 +40,11 @@ const mocks = vi.hoisted(() => ({
   linkOpenTarget: "internal",
   setLinkOpenTarget: vi.fn(),
   setCompactComposerInput: vi.fn(),
+  setComposerGlowVisible: vi.fn(),
+  sendOnEnter: false,
+  setSendOnEnter: vi.fn(),
+  typingEffectEnabled: true,
+  setTypingEffectEnabled: vi.fn(),
 }));
 
 vi.mock("@src/api/tauri/externalHistory/appOpen", () => ({
@@ -64,9 +71,17 @@ vi.mock("jotai", async (importOriginal) => ({
         ? [mocks.linkOpenTarget, mocks.setLinkOpenTarget]
         : atom === compactComposerInputAtom
           ? [false, mocks.setCompactComposerInput]
-          : [mocks.pinnedActionsVisible, mocks.setPinnedActionsVisible],
+          : atom === composerGlowVisibleAtom
+            ? [true, mocks.setComposerGlowVisible]
+            : atom === chatSendOnEnterAtom
+              ? [mocks.sendOnEnter, mocks.setSendOnEnter]
+              : [mocks.pinnedActionsVisible, mocks.setPinnedActionsVisible],
   useAtomValue: () => mocks.session,
   useSetAtom: () => mocks.openWindow,
+}));
+vi.mock("@src/hooks/settings/useSettings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@src/hooks/settings/useSettings")>()),
+  useSetting: () => [mocks.typingEffectEnabled, mocks.setTypingEffectEnabled],
 }));
 vi.mock("@src/util/ui/theme/themeUtils", () => ({
   useCurrentTheme: () => "light",
@@ -159,6 +174,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.eligible = true;
   mocks.pinnedActionsVisible = false;
+  mocks.sendOnEnter = false;
   mocks.linkOpenTarget = "internal";
   mocks.appOpenPlan.mockResolvedValue(null);
   mocks.openInApp.mockResolvedValue(undefined);
@@ -435,11 +451,12 @@ describe("SessionHeaderActionsMenu", () => {
     expect(
       [...switches].map((control) => control.getAttribute("aria-label"))
     ).toEqual([
-      "common:pagination.title",
+      "common:layoutSettings.paginateChatHistory",
       "chat.showTokenUsage",
       "chat.showTurnMetadata",
       "chat.showInlineDiffs",
       "chat.collapseToolActivity",
+      "settings:agentSessions.typingAnimation",
     ]);
     expect(panel.children[1].getAttribute("role")).toBe("separator");
     expect(panel.children[1].className).toBe(
@@ -472,6 +489,11 @@ describe("SessionHeaderActionsMenu", () => {
       true,
       expect.anything()
     );
+    expect(switches[5].getAttribute("aria-checked")).toBe("true");
+    expect(mocks.setTypingEffectEnabled).toHaveBeenCalledWith(
+      false,
+      expect.anything()
+    );
     expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
     expect(
       element("session-ui-settings-submenu").getAttribute("aria-expanded")
@@ -493,7 +515,20 @@ describe("SessionHeaderActionsMenu", () => {
     ).toEqual([
       ["chat.startPage.showSkills", "false"],
       ["chat.compactInput", "false"],
+      ["chat.composerGlow", "true"],
+      ["chat.separateEffortPill", "false"],
     ]);
+    const sendPill = element("session-menu-send-on-enter");
+    expect(sendPill.getAttribute("aria-label")).toBe("chat.sendMethod");
+    const sendOptions = sendPill.querySelectorAll<HTMLButtonElement>(
+      "button[aria-pressed]"
+    );
+    expect(
+      [...sendOptions].map((option) => option.getAttribute("aria-pressed"))
+    ).toEqual(["false", "true"]);
+    act(() => sendOptions[0]?.click());
+    expect(mocks.setSendOnEnter).toHaveBeenCalledWith(true);
+
     click("session-menu-show-skills-toggle");
     expect(mocks.setPinnedActionsVisible).toHaveBeenCalledWith(
       true,
@@ -502,6 +537,11 @@ describe("SessionHeaderActionsMenu", () => {
     click("session-menu-compact-input-toggle");
     expect(mocks.setCompactComposerInput).toHaveBeenCalledWith(
       true,
+      expect.anything()
+    );
+    click("session-menu-composer-glow-toggle");
+    expect(mocks.setComposerGlowVisible).toHaveBeenCalledWith(
+      false,
       expect.anything()
     );
     expect(mocks.setPinnedActionsVisible).toHaveBeenCalledOnce();

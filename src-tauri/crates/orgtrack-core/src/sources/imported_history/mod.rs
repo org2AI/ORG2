@@ -1,16 +1,18 @@
 pub mod cache;
 pub mod client_origin;
 pub mod context_usage;
-pub(crate) mod images;
+pub mod images;
 pub mod managed_mirror;
 pub mod managed_roots;
 pub mod metadata;
 pub mod paths;
+pub(crate) mod raw_json;
 #[cfg(feature = "git")]
 pub mod repo_identity;
 pub mod scan_snapshot;
 pub mod scratch_workspace;
 pub mod turn_correlation;
+pub mod user_sources;
 pub mod watermark;
 pub mod window;
 
@@ -102,7 +104,9 @@ pub fn extract_user_request_body(text: &str) -> String {
 }
 
 /// Remove generated context without projecting a title or discarding attachment
-/// references. Call before transport truncation, while closing tags still exist.
+/// references. A request-only heading is removed only when a leading generated
+/// envelope proves it is transport metadata. Call before transport truncation,
+/// while that provenance and the closing tags still exist.
 pub fn strip_generated_prompt_context(text: &str) -> String {
     let mut projected = strip_internal_context_blocks_impl(text, true).to_string();
     for (open_prefix, close_tag) in GENERATED_CONTEXT_TAGS {
@@ -118,7 +122,17 @@ pub fn strip_generated_prompt_context(text: &str) -> String {
             projected.replace_range(start..end, " ");
         }
     }
-    strip_internal_context_blocks_impl(&projected, true).to_string()
+    let projected = strip_internal_context_blocks_impl(&projected, true);
+    if is_generated_prompt_envelope(text) && projected != text {
+        let candidate = projected.trim_start();
+        let (first_line, body) = candidate.split_once('\n').unwrap_or((candidate, ""));
+        if REQUEST_HEADINGS.contains(&first_line.trim_end()) {
+            // Drop only the envelope line, preserving body indentation and
+            // later user-authored headings. Reprojection is then idempotent.
+            return body.to_string();
+        }
+    }
+    projected.to_string()
 }
 
 /// Project transport-generated prompt wrappers to a single-line title.
@@ -1175,6 +1189,33 @@ mod user_request_projection_tests {
         let incomplete = "<orgii_provider_context>unterminated input";
         // Preserve the existing policy for a truncated leading internal block.
         assert_eq!(strip_generated_prompt_context(incomplete), "");
+    }
+
+    #[test]
+    fn request_heading_requires_leading_generated_context_provenance() {
+        let body = "  keep indentation\n\n## My request:\nKeep this authored section.\n";
+        for heading in REQUEST_HEADINGS {
+            let plain = format!("{heading}\n{body}");
+            assert_eq!(strip_generated_prompt_context(&plain), plain);
+            for context in [
+                "<in-app-browser-context source=\"ambient-ui-state\">browser</in-app-browser-context>",
+                "<orgii_provider_context>rules</orgii_provider_context>",
+            ] {
+                let wrapped = format!("{context}\n{heading}\r\n{body}");
+                let projected = strip_generated_prompt_context(&wrapped);
+                assert_eq!(projected, body);
+                assert_eq!(strip_generated_prompt_context(&projected), projected);
+            }
+        }
+        let nested = "<orgii_provider_context>rules</orgii_provider_context>\n## My request:\n## My request:\nAuthored heading";
+        let projected = strip_generated_prompt_context(nested);
+        assert_eq!(projected, "## My request:\nAuthored heading");
+        assert_eq!(strip_generated_prompt_context(&projected), projected);
+        let literal =
+            "## My request:\nKeep.\n<orgii_provider_context>trailing</orgii_provider_context>";
+        assert!(strip_generated_prompt_context(literal).starts_with("## My request:"));
+        let code = "```md\n## My request:\n```";
+        assert_eq!(strip_generated_prompt_context(code), code);
     }
 
     const MULTI_LINE_PROMPT: &str =

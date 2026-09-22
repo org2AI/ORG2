@@ -11,10 +11,10 @@ import {
   toMobileRpcError,
 } from "../connection/mobileRpcClient";
 import type { MobileConnectionState } from "../connection/types";
+import { loadSubscriptionHistory } from "../lib/loadSubscriptionHistory";
 import {
   type TranscriptRoundResult,
   type TranscriptSnapshotEnvelope,
-  type TranscriptSubscribeResult,
   applyLiveTranscriptSnapshot,
   applyTranscriptRoundResult,
   applyTranscriptSubscribeResult,
@@ -42,6 +42,26 @@ export function useMobileTranscript({
   activeSessionRef: MutableRefObject<string | null>;
   connection: MobileConnectionState;
 }) {
+  const [openedSession, setOpenedSession] = useState<{
+    requested: string;
+    sessionId: string;
+    managed: boolean;
+  } | null>(null);
+  const openingLeaseRef = useRef<{
+    client: MobileRpcClient;
+    subscriptionId: string;
+  } | null>(null);
+  const releaseOpening = useCallback(() => {
+    const lease = openingLeaseRef.current;
+    openingLeaseRef.current = null;
+    if (!lease || lease.client !== clientRef.current) return false;
+    void lease.client
+      .call("session/unsubscribe", {
+        subscriptionId: lease.subscriptionId,
+      })
+      .catch(() => undefined);
+    return true;
+  }, [clientRef]);
   const subscriptionGenerationRef = useRef(0);
   const roundRequestGenerationRef = useRef(0);
   const refreshInFlightRef = useRef<{
@@ -58,6 +78,7 @@ export function useMobileTranscript({
     createInitialTranscriptLoadState
   );
   const invalidateTranscriptRequests = useCallback(() => {
+    openingLeaseRef.current = null;
     subscriptionGenerationRef.current += 1;
     roundRequestGenerationRef.current += 1;
     refreshInFlightRef.current = null;
@@ -70,6 +91,7 @@ export function useMobileTranscript({
   }, []);
   const resetTranscript = useCallback(() => {
     invalidateTranscriptRequests();
+    setOpenedSession(null);
     setTranscript(createInitialTranscriptLoadState());
   }, [invalidateTranscriptRequests]);
   const showDemoTranscript = useCallback(
@@ -97,40 +119,74 @@ export function useMobileTranscript({
     async (
       client: MobileRpcClient,
       sessionId: string,
-      subscriptionGeneration: number
+      subscriptionGeneration: number,
+      latestOnly = true
     ) => {
+      let resolvedId = sessionId;
+      const opening = connectionRef.current.capabilities?.sessionOpen === true;
+      const lease = opening
+        ? { client, subscriptionId: `open-${subscriptionGeneration}` }
+        : null;
+      if (lease) openingLeaseRef.current = lease;
+      const isCurrent = () =>
+        clientRef.current === client &&
+        activeSessionRef.current === resolvedId &&
+        subscriptionGenerationRef.current === subscriptionGeneration;
       try {
-        const result = await client.call<TranscriptSubscribeResult>(
-          "session/subscribe",
-          { sessionId }
+        const applied = await loadSubscriptionHistory(
+          client,
+          sessionId,
+          isCurrent,
+          (result) =>
+            setTranscript((prev) =>
+              applyTranscriptSubscribeResult(
+                prev,
+                result,
+                resolvedId,
+                subscriptionGeneration
+              )
+            ),
+          latestOnly,
+          lease
+            ? {
+                subscriptionId: lease.subscriptionId,
+                onIdentity: (canonical, managed) => {
+                  resolvedId = canonical;
+                  activeSessionRef.current = canonical;
+                  setOpenedSession((previous) => ({
+                    requested:
+                      previous?.sessionId === sessionId
+                        ? previous.requested
+                        : sessionId,
+                    sessionId: canonical,
+                    managed,
+                  }));
+                  setTranscript((prev) => ({ ...prev, sessionId: canonical }));
+                },
+              }
+            : undefined
         );
-        if (
-          clientRef.current !== client ||
-          activeSessionRef.current !== sessionId ||
-          subscriptionGenerationRef.current !== subscriptionGeneration
-        ) {
-          return;
-        }
-        setTranscript((prev) =>
-          applyTranscriptSubscribeResult(
-            prev,
-            result,
-            sessionId,
-            subscriptionGeneration
-          )
-        );
-        return true;
+        if (!applied && lease)
+          void client
+            .call("session/unsubscribe", {
+              subscriptionId: lease.subscriptionId,
+            })
+            .catch(() => undefined);
+        return applied;
       } catch (error) {
-        if (
-          clientRef.current !== client ||
-          activeSessionRef.current !== sessionId ||
-          subscriptionGenerationRef.current !== subscriptionGeneration
-        )
-          return;
+        // This close queues behind an opening that timed out on the phone.
+        // Its lease prevents a late close from removing a newer subscription.
+        if (lease)
+          void client
+            .call("session/unsubscribe", {
+              subscriptionId: lease.subscriptionId,
+            })
+            .catch(() => undefined);
+        if (!isCurrent()) return;
         setTranscript((prev) =>
           failTranscriptLoad(
             prev,
-            sessionId,
+            resolvedId,
             subscriptionGeneration,
             toMobileRpcError(error).message
           )
@@ -138,7 +194,7 @@ export function useMobileTranscript({
         throw error;
       }
     },
-    [activeSessionRef, clientRef]
+    [activeSessionRef, clientRef, connectionRef]
   );
 
   refreshSubscribedSessionRef.current = (sessionId: string) => {
@@ -160,7 +216,12 @@ export function useMobileTranscript({
     setTranscript((current) =>
       beginTranscriptLoad(current, sessionId, subscriptionGeneration)
     );
-    void requestSessionSnapshot(client, sessionId, subscriptionGeneration)
+    void requestSessionSnapshot(
+      client,
+      sessionId,
+      subscriptionGeneration,
+      false
+    )
       .catch(() => undefined)
       .finally(() => {
         if (refreshInFlightRef.current?.token !== token) return;
@@ -284,6 +345,9 @@ export function useMobileTranscript({
   ]);
 
   return {
+    openingClient: openingLeaseRef.current?.client,
+    openedSession,
+    releaseOpening,
     transcript,
     setTranscript,
     transcriptView: getSelectedTranscriptView(transcript),

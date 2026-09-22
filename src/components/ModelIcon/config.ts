@@ -31,7 +31,10 @@ export {
   MODEL_PROVIDER_ICON_PROVIDERS,
   THEMEABLE_ICONS,
 } from "./iconProviders";
-export { getIconProviderFromModelName } from "./modelNameIcons";
+export {
+  getIconProviderFromModelName,
+  isGenericTierModelName,
+} from "./modelNameIcons";
 export { toIconComponent } from "./urlIconComponent";
 
 /**

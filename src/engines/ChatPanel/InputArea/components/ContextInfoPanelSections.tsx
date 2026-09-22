@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import React, { memo } from "react";
 
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import Textarea from "@src/components/Textarea";
 import { useHousekeeperConfig } from "@src/hooks/housekeeper";
 import {
@@ -9,7 +10,6 @@ import {
   Cancel01Icon,
   ChevronsDownUpIcon,
   HugeiconsIcon,
-  Refresh04Icon,
   UnfoldMoreIcon,
 } from "@src/icons";
 
@@ -85,22 +85,16 @@ export const ContextInfoPanelSummary: React.FC<
         {t("contextInfo.title")}
       </span>
       <div className="flex items-center gap-1">
-        <Button
-          variant="tertiary"
-          size="small"
-          shape="square"
+        <RefreshButton
           iconOnly
-          aria-label={t("common:actions.refresh")}
-          title={t("common:actions.refresh")}
-          loading={refreshing}
-          disabled={!sessionId || refreshing}
-          onClick={refresh}
-          icon={<HugeiconsIcon icon={Refresh04Icon} size={14} />}
+          label={t("common:actions.refresh")}
+          refreshing={refreshing}
+          disabled={!sessionId}
+          onRefresh={refresh}
         />
         <Button
           variant="tertiary"
           size="small"
-          shape="square"
           iconOnly
           onClick={close}
           aria-label={t("common:actions.close")}
@@ -226,8 +220,6 @@ export const ContextInfoManualCompactSection: React.FC<
     <div className="flex items-center justify-between px-1 py-1">
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         onClick={() => setManualCompactOpen((open) => !open)}
         aria-expanded={manualCompactOpen}
         className="flex-1 self-stretch text-left text-[13px] font-semibold text-text-1"
@@ -237,7 +229,6 @@ export const ContextInfoManualCompactSection: React.FC<
       <Button
         variant="tertiary"
         size="small"
-        shape="square"
         iconOnly
         data-testid="context-info-manual-compact-toggle"
         onClick={() => setManualCompactOpen((open) => !open)}
@@ -272,7 +263,6 @@ export const ContextInfoManualCompactSection: React.FC<
         />
         <Button
           long
-          variant="secondary"
           size="small"
           className="mt-2"
           data-testid="context-info-manual-compact-button"

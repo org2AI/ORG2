@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 
-import { listenForDrag } from "@src/shared/interaction/dragLifecycle";
+import { listenForDrag } from "@src/util/dom/dragLifecycle";
 
 import {
   clamp,

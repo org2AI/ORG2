@@ -53,7 +53,7 @@ export interface UseDropdownAutoKeyboardOptions {
   isOpen: boolean;
   /** Panel ref - the hook queries rows from this subtree. */
   panelRef: RefObject<HTMLElement | null>;
-  /** Close the dropdown (used after a row is committed via Enter). */
+  /** Close the dropdown on Escape. Committed rows own their dismiss policy. */
   onClose: () => void;
   /** When `false`, the hook is a no-op. */
   enabled: boolean;
@@ -255,12 +255,11 @@ export function useDropdownAutoKeyboard({
     const panel = panelRef.current;
     const rows = queryRows(panel);
     const current = indexRef.current;
-    if (current < 0 || current >= rows.length) return false;
+    if (current < 0 || current >= rows.length) return;
     const row = rows[current];
     // Use the native click so React onClick handlers fire identically
     // to a real pointer click.
     row.click();
-    return true;
   }, [panelRef]);
 
   // Document-level capture listener — mirrors the strategy in
@@ -307,8 +306,7 @@ export function useDropdownAutoKeyboard({
           if (indexRef.current < 0) return;
           event.preventDefault();
           event.stopPropagation();
-          const committed = commit();
-          if (committed) onClose();
+          commit();
           return;
         }
         case "Escape": {

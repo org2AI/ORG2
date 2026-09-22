@@ -5,8 +5,8 @@
 import {
   type ConversationRootLocator,
   conversationRootKey,
-} from "@src/engines/SessionCore/conversations/conversationTypes";
-import { QueuedConversationBusyError } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+} from "@src/contracts/conversation";
+import { QueuedConversationBusyError } from "@src/contracts/conversation";
 
 const CONVERSATION_TURN_LOCK_PREFIX = "orgii:canonical-conversation:";
 

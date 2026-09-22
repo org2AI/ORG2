@@ -19,26 +19,26 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
+import MarkdownEditor from "@src/components/MarkdownEditor";
 import NumberInput from "@src/components/NumberInput";
 import Select from "@src/components/Select";
 import Switch from "@src/components/Switch";
 import TabPill from "@src/components/TabPill";
 import Textarea from "@src/components/Textarea";
-import SubAgentsEditor from "@src/modules/MainApp/AgentOrgs/config/shared/SubAgentsEditor";
-import type { AgentDefinition } from "@src/modules/MainApp/AgentOrgs/types";
-import MarkdownEditor from "@src/modules/shared/components/MarkdownEditor";
 import {
   SECTION_DESCRIPTION_CLASSES,
   SECTION_GAP_CLASSES,
   SECTION_LABEL_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { SECTION_CONTROL_STYLE } from "@src/modules/shared/layouts/SectionLayout/tokens";
+} from "@src/components/layout/Section";
+import { SECTION_CONTROL_STYLE } from "@src/components/layout/Section/tokens";
 import {
   DETAIL_PANEL_TOKENS,
   InternalHeader,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import SubAgentsEditor from "@src/modules/MainApp/AgentOrgs/config/shared/SubAgentsEditor";
+import type { AgentDefinition } from "@src/modules/MainApp/AgentOrgs/types";
 import {
   WizardShell,
   WizardStepLayout,
@@ -62,29 +62,15 @@ const AgentWizard: FC<AgentWizardProps> = ({ onSave, onCancel }) => {
   const { t: tSettings } = useTranslation("settings");
   const w = useAgentWizard(onSave);
 
-  const headerTabs = useMemo(
-    () => (
-      <TabPill
-        tabs={w.tabs}
-        activeTab={w.activeTab}
-        onChange={w.setActiveTab}
-        variant="simple"
-        fillWidth={false}
-        size="large"
-      />
-    ),
-    [w.tabs, w.activeTab, w.setActiveTab]
-  );
-
   const afterHeader = useMemo(
     () => (
       <InternalHeader
-        contentPadding
-        className={DETAIL_PANEL_TOKENS.headerWidth}
-        tabs={headerTabs}
+        tabs={w.tabs}
+        activeTab={w.activeTab}
+        onTabChange={w.setActiveTab}
       />
     ),
-    [headerTabs]
+    [w.tabs, w.activeTab, w.setActiveTab]
   );
 
   const soulEditorTabs = useMemo(
@@ -117,8 +103,6 @@ const AgentWizard: FC<AgentWizardProps> = ({ onSave, onCancel }) => {
         actions={
           <>
             <Button
-              variant="secondary"
-              size="small"
               data-testid="agent-orgs-agent-wizard-cancel-button"
               onClick={onCancel}
             >
@@ -126,7 +110,6 @@ const AgentWizard: FC<AgentWizardProps> = ({ onSave, onCancel }) => {
             </Button>
             <Button
               variant="primary"
-              size="small"
               disabled={!w.canCreate}
               data-testid="agent-orgs-agent-wizard-create-button"
               onClick={w.handleCreate}

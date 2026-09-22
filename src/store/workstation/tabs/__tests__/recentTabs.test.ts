@@ -1,7 +1,7 @@
 import { createStore } from "jotai/vanilla";
 import { describe, expect, it } from "vitest";
 
-import { RECENT_TABS_LIMIT } from "@src/shared/tabs/recentTabs";
+import { RECENT_TABS_LIMIT } from "@src/util/tabs/recentTabs";
 
 import {
   recentWorkstationTabEntriesAtom,

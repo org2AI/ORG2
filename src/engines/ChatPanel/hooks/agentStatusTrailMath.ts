@@ -35,17 +35,16 @@ export type AgentStatusTrailPhase = "hidden" | "idle" | "asking" | "running";
  * Either way the trail would sit there pulsing "Running tools... 3h 20m"
  * forever, which is the most confidently wrong thing it could say.
  *
- * Shorter than `TAIL_TURN_STALE_MS` (10 min) on purpose: that window folds a
- * turn's content away, so it is deliberately conservative. This one only
- * changes a label and a pulse, so it can afford to be honest sooner.
+ * This timeout changes only the trail label and pulse. Turn collapse follows
+ * the engine completion signal independently.
  */
 export const TRAIL_IDLE_AFTER_MS = 5 * 60_000;
 
 /**
  * Milliseconds until the trail should stop reading as running, floored at 0.
  *
- * Same shape as `resolveTailTurnStaleDelayMs`: callers arm ONE timer for the
- * remainder of the window rather than polling, and re-arm whenever activity
+ * Callers arm ONE timer for the remainder of the window rather than polling,
+ * and re-arm whenever activity
  * moves. Clamping at zero keeps a session reopened long after its last event
  * on the timer path instead of turning into a synchronous state write from an
  * effect body (a cascading render).

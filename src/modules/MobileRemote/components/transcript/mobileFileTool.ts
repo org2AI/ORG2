@@ -12,8 +12,40 @@ export interface MobileFileTarget {
   line?: number;
   content?: string;
   diff?: string;
+  /** Canonical before/after snapshots, never inferred from missing content. */
+  oldContent?: string;
+  newContent?: string;
   linesAdded?: number;
   linesRemoved?: number;
+}
+
+export const MOBILE_MERGE_MAX_CHARACTERS = 100_000;
+
+/** A compacted pair may end at different offsets: never diff those prefixes. */
+export function mobileFilePreview(
+  target: MobileFileTarget,
+  truncated: boolean
+) {
+  if (
+    !truncated &&
+    target.oldContent !== undefined &&
+    target.newContent !== undefined &&
+    target.oldContent.length + target.newContent.length <=
+      MOBILE_MERGE_MAX_CHARACTERS
+  ) {
+    return {
+      kind: "merge" as const,
+      content: target.newContent,
+      original: target.oldContent,
+    };
+  }
+  return target.diff !== undefined
+    ? { kind: "patch" as const, content: target.diff, original: undefined }
+    : {
+        kind: "snapshot" as const,
+        content: target.content,
+        original: undefined,
+      };
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -27,7 +59,9 @@ function stringValue(value: unknown): string | undefined {
 }
 
 function textValue(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value : undefined;
+  // Empty/whitespace-only is valid file content, not a missing snapshot.
+  // In particular, an edit to an empty file must not fall back to oldContent.
+  return typeof value === "string" ? value : undefined;
 }
 
 function numberValue(value: unknown): number | undefined {
@@ -63,6 +97,8 @@ function targetFromRecord(
       textValue(value.content) ??
       textValue(value.oldContent),
     diff: textValue(value.diff),
+    oldContent: textValue(value.oldContent),
+    newContent: textValue(value.newContent),
     linesAdded: numberValue(value.linesAdded),
     linesRemoved: numberValue(value.linesRemoved),
   };

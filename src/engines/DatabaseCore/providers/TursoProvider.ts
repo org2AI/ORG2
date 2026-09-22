@@ -16,6 +16,7 @@ import type {
   TableInfo,
   TursoConnectionConfig,
 } from "../types";
+import { ConnectionLifecycle } from "./ConnectionLifecycle";
 
 function toInValues(values: unknown[]): InValue[] {
   return values.map((v) => (v === undefined ? null : (v as InValue)));
@@ -25,50 +26,39 @@ export class TursoProvider implements IDatabaseService {
   readonly type = "turso" as const;
   readonly config: TursoConnectionConfig;
 
-  private _status: ConnectionStatus = { state: "disconnected" };
-  private client: Client | null = null;
-
+  private lifecycle = new ConnectionLifecycle<Client>(async (client) => {
+    client.close();
+  });
+  private get client(): Client | null {
+    return this.lifecycle.current;
+  }
   constructor(config: TursoConnectionConfig) {
     this.config = config;
   }
 
   get status(): ConnectionStatus {
-    return this._status;
+    return this.lifecycle.status;
   }
-
-  async connect(): Promise<void> {
-    if (this.client) {
-      return;
-    }
-
-    this._status = { state: "connecting" };
-
-    try {
-      this.client = createClient({
+  connect(): Promise<void> {
+    return this.lifecycle.connect(async () => {
+      const client = createClient({
         url: this.config.url,
         authToken: this.config.authToken,
       });
-      await this.client.execute("SELECT 1");
-      this._status = { state: "connected", connectedAt: Date.now() };
-    } catch (error) {
-      this.client = null;
-      const message =
-        error instanceof Error ? error.message : "Failed to connect";
-      this._status = { state: "error", error: message };
-      throw error;
-    }
+      try {
+        await client.execute("SELECT 1");
+        return client;
+      } catch (error) {
+        client.close();
+        throw error;
+      }
+    });
   }
-
-  async disconnect(): Promise<void> {
-    if (this.client) {
-      this.client.close();
-      this.client = null;
-    }
-    this._status = { state: "disconnected" };
+  disconnect(): Promise<void> {
+    return this.lifecycle.disconnect();
   }
-
   isConnected(): boolean {
-    return this.client !== null && this._status.state === "connected";
+    return this.client !== null;
   }
 
   async getTables(): Promise<TableInfo[]> {

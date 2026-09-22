@@ -15,15 +15,21 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::params;
 
+use super::profile_tokens::{decide_own_key_seed, record_vault_agreement, OwnKeySeedDecision};
+
 const KIRO_DEVICE_REG_KEY: &str = "kirocli:odic:device-registration";
-const KIRO_TOKEN_KEY: &str = "kirocli:odic:token";
+pub(super) const KIRO_TOKEN_KEY: &str = "kirocli:odic:token";
+/// Written where the vault key has no refresh token / expiry. The profile
+/// read-back maps these back to "absent" so they can never reach the vault.
+pub(super) const OWN_KEY_REFRESH_TOKEN_PLACEHOLDER: &str = "orgii_managed";
+pub(super) const OWN_KEY_EXPIRES_AT_PLACEHOLDER: &str = "2099-12-31T23:59:59Z";
 const KIRO_SCOPES: &[&str] = &[
     "codewhisperer:completions",
     "codewhisperer:analysis",
     "codewhisperer:conversations",
 ];
 
-fn kiro_sqlite_relative_path() -> PathBuf {
+pub(super) fn kiro_sqlite_relative_path() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
         PathBuf::from("Library/Application Support/kiro-cli/data.sqlite3")
@@ -79,6 +85,8 @@ fn write_kiro_auth_records(
 
     let conn = rusqlite::Connection::open(db_path)
         .map_err(|err| format!("Failed to open Kiro auth DB: {}", err))?;
+    app_paths::set_sensitive_file_permissions(db_path)
+        .map_err(|err| format!("Failed to secure Kiro auth DB: {err}"))?;
     create_kiro_auth_schema(&conn)?;
 
     let token_str = serde_json::to_string(token_json)
@@ -173,10 +181,29 @@ pub fn setup_proxy_auth_db(
     Ok(temp_home)
 }
 
+/// Prepare the account-scoped HOME an own-key `kiro-cli` runs in.
+///
+/// Seed a generation once; afterward the CLI owns its rotating tokens.
+/// Reconnection must select a new generation before calling this function.
 pub fn setup_own_key_home(
     profile_home: &Path,
     env_vars: &HashMap<String, String>,
 ) -> Result<(), String> {
+    std::fs::create_dir_all(profile_home).map_err(|err| format!("Create Kiro profile: {err}"))?;
+    let lock_path = profile_home.join(".orgii-seed.lock");
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let seed_lock = options
+        .open(lock_path)
+        .map_err(|err| format!("Open Kiro profile lock: {err}"))?;
+    fs2::FileExt::try_lock_exclusive(&seed_lock).map_err(|_| {
+        "Kiro profile is being initialized by another launch; retry this turn".to_string()
+    })?;
     let Some(access_token) = env_vars
         .get("KIRO_ACCESS_TOKEN")
         .map(|value| value.trim())
@@ -191,11 +218,16 @@ pub fn setup_own_key_home(
         }
         return Err("Kiro own-key session requires KIRO_ACCESS_TOKEN or KIRO_API_KEY".to_string());
     };
-    let refresh_token = env_vars
+    let vault_refresh_token = env_vars
         .get("KIRO_REFRESH_TOKEN")
         .map(|value| value.trim())
-        .filter(|value| !value.is_empty())
-        .unwrap_or("orgii_managed");
+        .filter(|value| !value.is_empty());
+    if decide_own_key_seed(profile_home) == OwnKeySeedDecision::KeepProfile {
+        prepare_kiro_home(profile_home)?;
+        log::info!("[KiroProxy] Kept initialized own-key profile under kiro-cli token ownership");
+        return Ok(());
+    }
+    let refresh_token = vault_refresh_token.unwrap_or(OWN_KEY_REFRESH_TOKEN_PLACEHOLDER);
     let region = env_vars
         .get("KIRO_REGION")
         .map(|value| value.trim())
@@ -220,7 +252,7 @@ pub fn setup_own_key_home(
         .get("KIRO_EXPIRES_AT")
         .map(|value| value.trim())
         .filter(|value| !value.is_empty())
-        .unwrap_or("2099-12-31T23:59:59Z");
+        .unwrap_or(OWN_KEY_EXPIRES_AT_PLACEHOLDER);
 
     let token_json = serde_json::json!({
         "access_token": access_token,
@@ -242,6 +274,7 @@ pub fn setup_own_key_home(
 
     let db_path = profile_home.join(kiro_sqlite_relative_path());
     write_kiro_auth_records(&db_path, &token_json, &device_reg_json)?;
+    record_vault_agreement(profile_home, access_token, vault_refresh_token)?;
     prepare_kiro_home(profile_home)?;
     log::info!("[KiroProxy] Created own-key auth DB at {:?}", db_path);
     Ok(())

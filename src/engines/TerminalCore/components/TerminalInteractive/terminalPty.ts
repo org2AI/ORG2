@@ -30,6 +30,7 @@ import {
   suspendPane,
   unregisterPane,
 } from "./terminalOutputScheduler";
+import { formatLastLogin, resolvePtyLaunchOptions } from "./terminalPtyLaunch";
 import { writeWithRenderSettle } from "./terminalRenderSettle";
 import type { TerminalViewProps } from "./types";
 import { writeBrowserModeMessage } from "./utils/browserModeMessage";
@@ -143,58 +144,6 @@ export function notifyPtyUserInput(sessionId: string): void {
   notifyUserInput(sessionId);
 }
 
-function resolvePtyLaunchOptions({
-  repoPath,
-  shellType,
-  customShellPath,
-  shellOverride,
-  forceRepoCwd,
-}: {
-  repoPath?: string;
-  shellType: ShellType;
-  customShellPath?: string;
-  shellOverride?: string;
-  forceRepoCwd?: boolean;
-}) {
-  let cwd: string | null = null;
-  let shell: string | null = shellOverride || null;
-
-  if (shell) {
-    cwd = repoPath || null;
-  } else if (shellType === "repo" && repoPath) {
-    cwd = repoPath;
-  } else if (shellType === "default") {
-    cwd = null;
-  } else if (shellType === "custom") {
-    if (customShellPath) shell = customShellPath;
-    cwd = repoPath || null;
-  }
-
-  // CLI-agent terminals must start where their session lives (worktree /
-  // repo) regardless of the user's shellType cwd preference — `default`
-  // would otherwise drop the agent into the home directory.
-  if (forceRepoCwd && repoPath) {
-    cwd = repoPath;
-  }
-
-  return { cwd, shell };
-}
-
-function formatLastLogin(sessionKey: string) {
-  const now = new Date();
-  const timeStr = now.toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-
-  return `Last login: ${timeStr} on ${sessionKey}`;
-}
-
 async function fetchPtyInfo(
   sessionId: string,
   sessionKey: string,
@@ -227,8 +176,7 @@ async function reconnectOrCreatePty({
   ownerId,
   onSessionIdentity,
   restorePendingUtf8,
-  cols,
-  rows,
+  getSize,
   sessionId,
   sessionKey,
   repoPath,
@@ -246,8 +194,7 @@ async function reconnectOrCreatePty({
   ownerId: number;
   onSessionIdentity: (identity: Partial<PtySessionIdentity> | void) => void;
   restorePendingUtf8: (b64: string) => void;
-  cols: number;
-  rows: number;
+  getSize: () => { cols: number; rows: number };
   sessionId: string;
   sessionKey: string;
   repoPath?: string;
@@ -267,8 +214,7 @@ async function reconnectOrCreatePty({
     await invokeTauri("resize_pty", {
       request: {
         session_id: sessionId,
-        rows: rows || 20,
-        cols: cols || 80,
+        ...getSize(),
       },
     });
     ptyExists = true;
@@ -289,12 +235,12 @@ async function reconnectOrCreatePty({
       forceRepoCwd,
     });
 
+    const launchSize = getSize();
     const created = await invokeTauri<PtySessionIdentity | void>("create_pty", {
       request: {
         session_id: sessionId,
         owner_id: ownerId,
-        rows: rows || 20,
-        cols: cols || 80,
+        ...launchSize,
         cwd,
         shell,
         args: argsOverride || null,
@@ -305,6 +251,18 @@ async function reconnectOrCreatePty({
 
     onSessionIdentity(created);
     if (!isTerminalLive()) return;
+    // Fits during native creation can send resize_pty before the session is
+    // registered. Reconcile that lost resize before releasing queued output.
+    const currentSize = getSize();
+    if (
+      currentSize.cols !== launchSize.cols ||
+      currentSize.rows !== launchSize.rows
+    ) {
+      await invokeTauri("resize_pty", {
+        request: { session_id: sessionId, ...currentSize },
+      });
+      if (!isTerminalLive()) return;
+    }
     await fetchPtyInfo(
       sessionId,
       sessionKey,
@@ -649,8 +607,12 @@ export async function initPtyConnection({
           sessionGeneration = identity?.session_generation;
         },
         restorePendingUtf8,
-        cols,
-        rows,
+        // Listener registration and the existence probe are asynchronous;
+        // the fitted grid may have changed since initPtyConnection was called.
+        getSize: () => ({
+          cols: terminal.cols || cols || 80,
+          rows: terminal.rows || rows || 20,
+        }),
         sessionId,
         sessionKey,
         repoPath: repoPathRef.current,

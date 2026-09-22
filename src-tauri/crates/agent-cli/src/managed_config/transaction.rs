@@ -32,6 +32,8 @@ struct CliConfigTransactionTarget {
 pub(super) struct CliConfigTransactionJournal {
     agent: String,
     final_manifest_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_app: Option<super::native_app::NativeAppProfile>,
     target_files: Vec<CliConfigTransactionTarget>,
     created_at: String,
 }
@@ -73,7 +75,18 @@ fn read_transaction_journal(
     Ok(Some(journal))
 }
 
+fn validate_journal(journal: &CliConfigTransactionJournal) -> Result<(), String> {
+    if let Some(profile) = &journal.native_app {
+        profile.validate(&journal.agent)?;
+        for target in &journal.target_files {
+            profile.validate_target(&journal.agent, &target.id, &target.target_path)?;
+        }
+    }
+    Ok(())
+}
+
 fn rollback_transaction(journal: &CliConfigTransactionJournal) -> Result<(), String> {
+    validate_journal(journal)?;
     let mut errors = Vec::new();
     for target in &journal.target_files {
         let target_path = PathBuf::from(&target.target_path);
@@ -119,6 +132,7 @@ pub(super) fn recover_pending_transaction_unlocked(agent_name: &str) -> Result<(
         return Ok(());
     };
 
+    validate_journal(&journal)?;
     if file_hash(&manifest_path(agent_name))? == Some(journal.final_manifest_hash.clone()) {
         cleanup_transaction_dir(agent_name)?;
         return Ok(());
@@ -170,6 +184,7 @@ pub(super) fn begin_transaction(
     let journal = CliConfigTransactionJournal {
         agent: agent_name.to_string(),
         final_manifest_hash: sha256_bytes(&manifest_bytes(final_manifest)?),
+        native_app: final_manifest.native_app.clone(),
         target_files,
         created_at: now_stamp(),
     };
@@ -187,6 +202,7 @@ pub(super) fn execute_transaction(
 ) -> Result<(), String> {
     let journal = begin_transaction(agent_name, snapshots, final_manifest, mutations)?;
     let result = (|| {
+        validate_journal(&journal)?;
         for (id, mutation) in mutations {
             let snapshot = snapshots
                 .get(id)

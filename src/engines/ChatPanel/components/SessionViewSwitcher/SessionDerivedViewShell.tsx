@@ -62,7 +62,7 @@ export const SessionDerivedViewShell: React.FC<SessionDerivedViewShellProps> =
             className="flex flex-1 items-center justify-center text-sm text-text-3"
             style={insetStyle}
           >
-            {t("status.loading", { defaultValue: "Loading…" })}
+            {t("status.loading")}
           </div>
         );
       }

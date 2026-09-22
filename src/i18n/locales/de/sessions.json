@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Als neue Nachricht senden?",
+    "body": "Diese Nachricht gehört zu einer Ausführungssitzung. Durch Bearbeiten an dieser Stelle lässt sich die Unterhaltung nicht zurücksetzen. Diesen Text stattdessen als neue Nachricht am Ende senden? Vorhandene Nachrichten und Dateiänderungen bleiben erhalten.",
+    "sendNew": "Neue Nachricht senden"
+  },
   "tray": {
     "markAllRead": "Alle als gelesen markieren",
     "showKanban": "Kanban anzeigen",
@@ -88,8 +93,7 @@
       "openFolder": "Ordner öffnen",
       "tabs": {
         "all": "Alle",
-        "apps": "Apps",
-        "clis": "CLIs"
+        "apps": "Apps"
       },
       "views": {
         "scanning": "Scannen",
@@ -174,7 +178,8 @@
           "output": "Ausgabe",
           "cache": "Cache-Lesevorgänge",
           "cost": "Kosten",
-          "filterBySession": "Nach dieser Sitzung filtern"
+          "filterBySession": "Nach dieser Sitzung filtern",
+          "purpose": "Zweck"
         },
         "pricing": {
           "input": "Eingabe",
@@ -199,7 +204,17 @@
           "title": "Noch keine Nutzung",
           "subtitle": "Führe Coding-Sitzungen aus oder scanne sie, damit ihre Token-Nutzung hier erscheint."
         },
-        "loadError": "Nutzungsdaten konnten nicht geladen werden"
+        "loadError": "Nutzungsdaten konnten nicht geladen werden",
+        "purposes": {
+          "main": "Hauptantwort",
+          "session_title": "Sitzungstitel",
+          "session_memory": "Sitzungsspeicher",
+          "workspace_memory": "Arbeitsbereichsspeicher",
+          "auto_dream": "Speicherkonsolidierung",
+          "skill_prefetch": "Skill-Auswahl",
+          "memory_prefetch": "Speicherabruf",
+          "compaction": "Kontextkomprimierung"
+        }
       },
       "sessions_one": "{{count}} Sitzung",
       "sessions_other": "{{count}} Sitzungen",
@@ -507,8 +522,7 @@
     },
     "titleBar": {
       "showSidebar": "Seitenleiste anzeigen",
-      "hideSidebar": "Seitenleiste ausblenden",
-      "showBottomPanel": "Unteres Panel anzeigen"
+      "hideSidebar": "Seitenleiste ausblenden"
     },
     "multiTask": {
       "monitoringProgress": "Überwacht den Fortschritt von {{count}} Subagents",
@@ -579,6 +593,7 @@
     "voicePermissionSheetTitle": "Mikrofonzugriff erforderlich"
   },
   "chat": {
+    "draftTooLong": "Der Entwurf ist zu lang (maximal {{max}} Zeichen)",
     "cliPermissions": {
       "ask": "Genehmigung anfordern",
       "workspace": "Zugriff auf den Arbeitsbereich",
@@ -613,23 +628,18 @@
       "inputPosition": "Eingabe",
       "positionBottom": "Unten",
       "positionMiddle": "Mitte",
-      "trailPosition": "Kontextleiste",
+      "repoBarPosition": "Repo-Leiste",
       "positionUp": "Oben",
       "positionDown": "Unten",
-      "uiControls": "UI-Steuerung",
-      "showQuickActions": "Schnellaktionen anzeigen",
+      "showQuickActions": "Schnellaktionen",
       "showSkills": "Angeheftete Skills",
-      "showCliUpdate": "CLI-Updates anzeigen",
-      "title": "Was möchtest du tun?",
-      "back": "Zurück zur Startseite",
+      "showCliUpdate": "CLI-Updates",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Neue Sitzung"
       },
       "newWorkItem": {
         "title": "Neues work item"
-      },
-      "setupRepo": {
-        "title": "Repo einrichten"
       },
       "addApiKey": {
         "title": "API key hinzufügen"
@@ -640,59 +650,27 @@
       "installLatestUpdate": {
         "title": "Neueste Aktualisierung installieren"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "Sitzung",
         "workItem": "Arbeitselement",
         "more": "Mehr",
-        "work": "Arbeit",
         "manage": "Verwalten",
-        "heatmap": "Trends",
         "runtime": "Laufzeit"
       },
       "quota": {
         "empty": "Noch keine Quota-Daten. Nutzung im Key Vault aktualisieren.",
         "refresh": "Aktualisieren",
-        "justNow": "gerade eben",
-        "minutesAgo": "vor {{count}} Min.",
-        "hoursAgo": "vor {{count}}Std",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7T",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Wöchentlich",
           "monthly": "Monatlich"
         }
       },
-      "exploreRepos": {
-        "title": "Repos entdecken"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "Issues verwalten"
       }
     },
     "defaultTitle": "Chat",
@@ -704,6 +682,7 @@
     "performActions_other": "{{count}} Aktionen ausführen",
     "showInlineDiffs": "Inline-Diffs",
     "inputSettings": "Eingabeeinstellungen",
+    "sendMethod": "Senden mit",
     "navigation": {
       "title": "Navigation",
       "openLinksIn": "Links öffnen in",
@@ -711,6 +690,8 @@
       "externalBrowser": "Externer Browser"
     },
     "compactInput": "Kompakte Eingabe",
+    "composerGlow": "Eingabe-Leuchten",
+    "separateEffortPill": "Effort als eigene Schaltfläche",
     "replay": {
       "follow": "Folgen"
     },
@@ -736,15 +717,11 @@
       "modeSourceBundled": "Modi aus dem mitgelieferten Fallback geladen (Cursor-Probe noch nicht aktiv).",
       "modeRefresh": "Modi aktualisieren"
     },
-    "hideSimulator": "Simulator ausblenden",
-    "showSimulator": "Simulator einblenden",
-    "fullScreenChat": "Chat-Panel fokussieren (Workstation ausblenden)",
     "maximizeChatPanel": "Chat-Panel maximieren",
     "showWorkstation": "Workstation anzeigen",
     "workstationUnavailableForPage": "Workstation ist auf dieser Seite nicht verfügbar",
     "hideWorkstation": "Workstation ausblenden",
     "restoreSplitView": "Workstation anzeigen",
-    "shrinkToWorkstation": "Chat-Panel verkleinern (Workstation anzeigen)",
     "tuiModeOn": "TUI-Modus (zum Deaktivieren klicken)",
     "tuiModeOff": "TUI-Modus aktivieren",
     "tabs": {
@@ -896,10 +873,10 @@
       "exportJson": "JSON exportieren",
       "importAction": "Session importieren",
       "exportDescription": "Exportiert die aktive Session als portablen JSON-Snapshot",
-      "importDescription": "Importiert einen Session-JSON-Snapshot in die Seitenleiste.",
+      "importDescription": "Importiert einen Session-JSON-Snapshot in die Seitenleiste",
       "jsonSnapshotNote": "Importierte Sessions sind schreibgeschützte Snapshots und behalten den ursprünglichen Ereignisverlauf",
       "chooseJson": "JSON-Datei auswählen",
-      "chooseJsonHint": "Wähle eine .orgii-session.json-Exportdatei aus.",
+      "chooseJsonHint": "Wähle eine .orgii-session.json-Exportdatei aus",
       "loadingPreview": "Session-Ereignisse werden gezählt…",
       "noActiveSession": "Keine aktive Session ausgewählt.",
       "importedName": "Importierte Session: {{name}}",
@@ -948,22 +925,9 @@
       "showMore_one": "{{count}} weitere anzeigen",
       "showMore_other": "{{count}} weitere anzeigen"
     },
-    "manageIssues": {
-      "title": "Issues verwalten",
-      "myWork": "Meine Arbeit",
-      "allRepositories": "Alle repos",
-      "newIssue": "Neue issue",
-      "tabs": {
-        "recent": "Zuletzt",
-        "assigned": "Zugewiesen",
-        "byMe": "Von mir",
-        "mentioned": "Erwähnt"
-      }
-    },
     "readOnly": "Schreibgeschützt",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "GitHub issue erstellen",
         "issueTitlePlaceholder": "Issue-Titel",
@@ -973,28 +937,40 @@
         "addToChat": "Add",
         "repositoryLabel": "Repository",
         "createIssueFailed": "Issue konnte nicht erstellt werden",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "Alle Status",
         "closeAsCompleted": "Als erledigt schließen",
         "closeAsNotPlanned": "Als nicht geplant schließen",
         "statusUpdateFailed": "GitHub-Status konnte nicht aktualisiert werden",
         "assignedToMe": "Mir zugewiesen",
         "createdByMe": "Von mir erstellt",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "Überprüfung angefordert",
-          "authoredByMe": "Von mir erstellt",
-          "otherTodos": "Weitere To-dos"
-        },
         "assigneeUpdateNotApplied": "GitHub hat die Änderung der Zuweisung nicht übernommen",
         "assigneeUpdateSuccess": "Zuweisungen auf GitHub aktualisiert",
         "updateIssueFailed": "GitHub issue konnte nicht aktualisiert werden",
-        "refreshIssues": "Issues aktualisieren",
-        "refreshPullRequests": "Pull Requests aktualisieren"
+        "filters": {
+          "searchPlaceholder": "Filter durchsuchen",
+          "noMatches": "Keine passenden Filter",
+          "activeCount": "Aktive Filter: {{count}}",
+          "clear": "Filter löschen",
+          "reviewRequestedFromMe": "Review von mir angefordert",
+          "noAssignee": "Niemand zugewiesen",
+          "noLabel": "Kein Label",
+          "linkedPullRequest": "Mit verknüpftem Pull-Request",
+          "draft": "Entwurf",
+          "readyForReview": "Bereit zum Review",
+          "recentlyUpdated": "In den letzten 7 Tagen aktualisiert",
+          "stale": "Seit 30 Tagen nicht aktualisiert",
+          "facetAuthor": "Autor",
+          "facetAssignee": "Zugewiesen",
+          "facetLabel": "Label",
+          "facetMilestone": "Meilenstein",
+          "facetReviewRequested": "Review angefordert",
+          "facetBaseBranch": "Basis-Branch",
+          "facetCiStatus": "Checks",
+          "ciSuccess": "Erfolgreich",
+          "ciFailure": "Fehlgeschlagen",
+          "ciPending": "Ausstehend"
+        }
       }
     },
     "sessionViews": {
@@ -1027,7 +1003,9 @@
     "sending": "Wird gesendet…",
     "typeMessage": "Nachricht eingeben…",
     "session": "Session",
-    "history": "Sessions"
+    "history": "Sessions",
+    "goToPinnedPassage": "Zur angehefteten Passage: {{preview}}",
+    "unpinPassage": "Lösen"
   },
   "tools": {
     "noResultsFound": "Keine Ergebnisse gefunden",
@@ -1908,13 +1886,12 @@
     "start": "Starten",
     "missingGit": {
       "title": "Git fehlt",
-      "body": "Git ist nicht installiert oder konnte nicht gefunden werden. Bitte ADE Manager oder SDE Agent bitten, Git auf diesem Gerät zu installieren, und ORG2 anschließend neu starten."
+      "body": "Git ist nicht installiert oder konnte nicht gefunden werden. Bitte ADE Manager oder SDE Agent bitten, Git auf diesem Gerät zu installieren, und ORG2 anschließend neu starten"
     },
     "model": "Modell",
     "contextMenu": {
       "filesAndFolders": "Dateien und Ordner",
       "workItems": "Arbeitselemente",
-      "back": "Zurück",
       "recent": "Zuletzt verwendet",
       "showMore": "{{remaining}} weitere anzeigen",
       "session": "Session"
@@ -1972,9 +1949,9 @@
       "formatting": "Textformatierung"
     },
     "regionNoticeTitle": "Mögliche regionale Einschränkungen",
-    "regionNoticeBodyProvider": "Sie befinden sich in {{location}}. Bestimmte Modelle sind in Ihrer Region möglicherweise nicht verfügbar.",
-    "regionNoticeBodySanctions": "Sie befinden sich in {{location}}. GitHub, npm, Docker Hub und ähnliche Dienste sind möglicherweise nicht verfügbar.",
-    "regionNoticeBodyBoth": "Sie befinden sich in {{location}}. Bestimmte Modelle und Dienste wie GitHub, npm und Docker Hub sind aufgrund regionaler Regeln und Handelsbeschränkungen möglicherweise nicht verfügbar.",
+    "regionNoticeBodyProvider": "Sie befinden sich in {{location}}. Bestimmte Modelle sind in Ihrer Region möglicherweise nicht verfügbar",
+    "regionNoticeBodySanctions": "Sie befinden sich in {{location}}. GitHub, npm, Docker Hub und ähnliche Dienste sind möglicherweise nicht verfügbar",
+    "regionNoticeBodyBoth": "Sie befinden sich in {{location}}. Bestimmte Modelle und Dienste wie GitHub, npm und Docker Hub sind aufgrund regionaler Regeln und Handelsbeschränkungen möglicherweise nicht verfügbar",
     "selectAgent": "Agent auswählen",
     "placeholderDefault": "Nachricht eingeben, @ zum Hinzufügen von Dateien, / zum Verwenden von skills",
     "wingmanPlaceholder": "Beschreibe deine Mission — worauf soll Wingman achten?",
@@ -2123,7 +2100,7 @@
       "archiveTeardownRetained": "Archiviert, aber {{count}} Laufzeit konnte nicht freigegeben werden. Löschen bleibt gesperrt.",
       "archiveTeardownQuiesced": "Archiviert und vollständig beendet. Dauerhaftes Löschen ist jetzt möglich.",
       "dangerZone": "Gefahrenbereich",
-      "deleteDescription": "Dieses Team mit allen Sitzungen und Verläufen dauerhaft löschen.",
+      "deleteDescription": "Dieses Team mit allen Sitzungen und Verläufen dauerhaft löschen",
       "deleteTeam": "Team löschen",
       "deleteTitle": "Dieses Team dauerhaft löschen?",
       "deleteWarning": "Alle Teamsitzungen und Verläufe werden dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",

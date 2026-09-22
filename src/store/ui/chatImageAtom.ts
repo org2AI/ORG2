@@ -17,6 +17,8 @@ export interface ChatImageAttachment {
   dataUrl: string;
   /** Original file name (if available) */
   fileName: string;
+  /** Available only when imported from an actual local file. */
+  localPath?: string;
   /** File size in bytes (after optimization) */
   size: number;
   /** Image dimensions */

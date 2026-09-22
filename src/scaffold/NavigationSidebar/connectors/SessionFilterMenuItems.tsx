@@ -217,8 +217,12 @@ export function SessionFilterActionItems({
       <DropdownItem
         dataTestId="sidebar-include-external"
         role="none"
+        hoverable={false}
         suffix={
-          <span onKeyDown={(event) => event.stopPropagation()}>
+          <span
+            className="flex items-center"
+            onKeyDown={(event) => event.stopPropagation()}
+          >
             <Switch
               size="small"
               checked={includeExternal}

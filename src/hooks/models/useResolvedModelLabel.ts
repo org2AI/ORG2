@@ -27,6 +27,7 @@ interface ModelSelectionInput {
   listingName?: string;
   selectedSourceLabel?: string;
   selectedSourceModelType?: string;
+  listingModelType?: string;
 }
 
 interface ProviderWithModels {

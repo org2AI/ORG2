@@ -112,11 +112,22 @@ pub(super) enum ManagedConfigGenerator {
     PiModelsJson,
 }
 
+/// Where a managed target lives. `Native` rewrites the app's own config file
+/// (with a default backup and conflict detection). `Overlay` writes an
+/// ORG2-owned file that the app is launched with (`claude --settings <file>`),
+/// so the user's own configuration is never modified.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ManagedConfigTargetKind {
+    Native,
+    Overlay,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(super) struct ManagedConfigTargetSpec {
     pub(super) file_id: &'static str,
     pub(super) profile_file_name: &'static str,
     pub(super) generator: ManagedConfigGenerator,
+    pub(super) kind: ManagedConfigTargetKind,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -131,7 +142,7 @@ const CODEX_TARGETS: &[ManagedConfigTargetSpec] = &[managed_target(
     CODEX_CONFIG_FILE_NAME,
     ManagedConfigGenerator::CodexToml,
 )];
-const CLAUDE_CODE_TARGETS: &[ManagedConfigTargetSpec] = &[managed_target(
+const CLAUDE_CODE_TARGETS: &[ManagedConfigTargetSpec] = &[overlay_target(
     CLAUDE_CODE_CONFIG_FILE_ID,
     CLAUDE_CODE_CONFIG_FILE_NAME,
     ManagedConfigGenerator::ClaudeCodeJson,
@@ -402,7 +413,31 @@ const fn managed_target(
         file_id,
         profile_file_name,
         generator,
+        kind: ManagedConfigTargetKind::Native,
     }
+}
+
+const fn overlay_target(
+    file_id: &'static str,
+    profile_file_name: &'static str,
+    generator: ManagedConfigGenerator,
+) -> ManagedConfigTargetSpec {
+    ManagedConfigTargetSpec {
+        file_id,
+        profile_file_name,
+        generator,
+        kind: ManagedConfigTargetKind::Overlay,
+    }
+}
+
+/// Whether this agent/file pair is an ORG2-owned overlay rather than the
+/// app's native configuration file.
+pub(super) fn is_overlay_target(agent_name: &str, file_id: &str) -> bool {
+    managed_config_adapter(agent_name).is_some_and(|adapter| {
+        adapter.targets.iter().any(|target| {
+            target.file_id == file_id && target.kind == ManagedConfigTargetKind::Overlay
+        })
+    })
 }
 
 const fn managed_adapter(

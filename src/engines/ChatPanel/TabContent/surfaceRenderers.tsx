@@ -10,7 +10,7 @@
 import { useSetAtom } from "jotai";
 import React, { Suspense, useCallback } from "react";
 
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
 import { closeAndDestroyChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { type ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
 

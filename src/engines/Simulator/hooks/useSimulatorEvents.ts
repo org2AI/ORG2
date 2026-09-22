@@ -30,7 +30,6 @@ import {
   UseSimulatorEventsReturn,
 } from "./types";
 import { useEventNavigation } from "./useEventNavigation";
-import { useReplayMode } from "./useReplayMode";
 
 export function useSimulatorEvents(
   options: UseSimulatorEventsOptions = {}
@@ -56,8 +55,6 @@ export function useSimulatorEvents(
     },
     [setCurrentEventId]
   );
-
-  useReplayMode({ replayBarValue });
 
   const timeRangeInfo = useMemo<TimeRangeInfo>(() => {
     const startDate = dayjs(timeRange.start);

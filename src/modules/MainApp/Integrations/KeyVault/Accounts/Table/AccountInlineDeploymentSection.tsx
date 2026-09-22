@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { updateKeyHealth } from "@src/api/services/keyValidation";
 import PageNotice from "@src/components/PageNotice";
+import { SECTION_SUBHEADING_CLASSES } from "@src/components/layout/Section";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { SECTION_SUBHEADING_CLASSES } from "@src/modules/shared/layouts/SectionLayout";
 import DeploymentModelInput from "@src/scaffold/WizardSystem/variants/KeyVault/components/DeploymentModelInput";
 
 interface AccountInlineDeploymentSectionProps {

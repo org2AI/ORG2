@@ -11,7 +11,7 @@
  */
 import React, { memo } from "react";
 
-import { ActionSystemProvider } from "@src/ActionSystem";
+import { ActionSystemProvider } from "@src/scaffold/ActionSystem";
 
 import { BrowserLayout } from "./BrowserLayout";
 import type { BrowserProps } from "./types";

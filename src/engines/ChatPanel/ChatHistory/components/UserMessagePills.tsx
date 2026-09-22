@@ -1,22 +1,35 @@
 /**
  * Read-only reference primitives for rendered user messages.
  *
- * Persisted composer pills are a wire format, not a presentation contract.
- * References render as ordinary links; only explicit member mentions retain
- * pill treatment. Session references are lifted into cards before this layer.
+ * A reference looks the same after sending as it did while typing: the pill
+ * face the composer showed, not a bare link. Presentation is shared with
+ * `ComposerPill` through `renderPillIcon` so the two cannot drift; the click
+ * behaviour stays local, because a sent message resolves terminal and paste
+ * content from the text decoded off the message itself rather than from the
+ * editor's in-memory store. Session references are lifted into cards before
+ * this layer, and member mentions keep their own @ pill below.
  */
+import { useAtomValue } from "jotai";
 import React, { memo, useCallback } from "react";
 
 import BasePill from "@src/components/ComposerInput/BasePill";
+import { renderPillIcon } from "@src/components/ComposerInput/ComposerPill";
+import { isGitHubPillUrl } from "@src/components/ComposerInput/githubUrl";
 import {
   isSafePostedReferenceHref,
   resolvePostedReferenceHref,
 } from "@src/components/ComposerInput/postedReferenceHref";
+import {
+  truncateVisibleLinkLabel,
+  truncateVisiblePillLabel,
+} from "@src/components/ComposerInput/utils";
+import LinkHoverCard from "@src/components/MarkDown/LinkHoverCard";
 import { PILL_SIZE } from "@src/config/pillTokens";
 import SharedSessionFileLink from "@src/features/Org2Cloud/SharedSessionFileLink";
 import { useOpenSessionSharedFile } from "@src/features/Org2Cloud/SharedSessionFilesContext";
 import { parseSharedSessionFileReference } from "@src/features/Org2Cloud/sharedSessionFileReference";
 import { AtIcon, HugeiconsIcon } from "@src/icons";
+import { activeWorkspaceRootAtom } from "@src/store/workspace";
 import { openLink } from "@src/util/ui/openLink";
 
 import { type MentionSegment, type PillSegment } from "./userMessageSegments";
@@ -26,6 +39,7 @@ const ICON_PROPS = { size: PILL_SIZE.iconSize, strokeWidth: 1.75 } as const;
 export const InlineReferenceLink: React.FC<{ segment: PillSegment }> = memo(
   ({ segment }) => {
     const openSharedFile = useOpenSessionSharedFile();
+    const activeWorkspaceRoot = useAtomValue(activeWorkspaceRootAtom);
     const href = resolvePostedReferenceHref(
       segment.path,
       segment.pillType,
@@ -115,17 +129,74 @@ export const InlineReferenceLink: React.FC<{ segment: PillSegment }> = memo(
           {segment.displayName}
         </SharedSessionFileLink>
       );
-    return isSafePostedReferenceHref(href) ? (
-      <a
-        href={href}
-        className="text-primary-6 underline-offset-2 hover:underline focus-visible:underline active:underline"
-        title={href}
+    if (!isSafePostedReferenceHref(href)) {
+      return <span>{segment.displayName}</span>;
+    }
+
+    const pill = (
+      <BasePill
+        variant="editor"
+        // `group` scopes the hover underline below to the words alone, leaving
+        // the icon unmarked.
+        className="group"
+        iconNode={
+          segment.pillType === "link"
+            ? null
+            : renderPillIcon(
+                segment.pillType,
+                segment.path,
+                segment.displayName,
+                segment.pillType === "folder"
+              )
+        }
+        style={{
+          position: "relative",
+          zIndex: 1,
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          // A full GitHub label may wrap rather than overflow the bubble.
+          ...(isGitHubPillUrl(href)
+            ? {
+                whiteSpace: "normal",
+                overflowWrap: "anywhere",
+                maxWidth: "100%",
+              }
+            : null),
+        }}
+        title={isWebReference ? undefined : href}
         onClick={handleClick}
+        // A pill is a span, so the link affordance the old anchor carried has
+        // to be stated for assistive tech and keyboard users.
+        role="link"
+        tabIndex={0}
+        aria-label={`${segment.displayName} (${href})`}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") handleClick(event);
+        }}
       >
-        {segment.displayName}
-      </a>
-    ) : (
-      <span>{segment.displayName}</span>
+        <span className="underline-offset-2 group-hover:underline">
+          {segment.pillType === "link"
+            ? truncateVisibleLinkLabel(segment.displayName)
+            : isGitHubPillUrl(href)
+              ? segment.displayName
+              : truncateVisiblePillLabel(segment.displayName)}
+        </span>
+      </BasePill>
+    );
+
+    // A web reference gets the same hover card links carry everywhere else —
+    // the pull-request / issue summary for GitHub targets, the host card
+    // otherwise. `LinkHoverCard` returns the pill untouched for anything it
+    // cannot preview, so non-web references simply keep their tooltip.
+    return (
+      <LinkHoverCard
+        url={href}
+        workspaceRootPath={activeWorkspaceRoot?.path ?? ""}
+        workspaceRootRepoId={activeWorkspaceRoot?.repoId}
+        workspaceRootRepoUrl={activeWorkspaceRoot?.repo?.repo_url}
+      >
+        {pill}
+      </LinkHoverCard>
     );
   }
 );

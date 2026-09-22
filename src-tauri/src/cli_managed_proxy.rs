@@ -1,3 +1,7 @@
+mod execution_profile;
+pub(crate) use execution_profile::prepare_execution_profile;
+mod session_routes;
+use crate::dynamic_credentials::Authentication;
 use axum::{
     body::{to_bytes, Body},
     extract::Path,
@@ -55,6 +59,7 @@ enum ProxyProtocol {
 
 #[derive(Debug, Clone)]
 struct ProxyContext {
+    authentication: Authentication,
     key_id: String,
     provider: String,
     model: String,
@@ -156,12 +161,12 @@ fn proxy_unavailable_message() -> String {
     }
 }
 
-async fn run_proxy_server() -> Result<(), String> {
-    let addr = std::net::SocketAddr::from((
-        [127, 0, 0, 1],
-        agent_cli::managed_config::managed_proxy_port(),
-    ));
-    let app = Router::new()
+type ResolveProxyContext = dyn Fn(&str) -> Result<ProxyContext, String> + Send + Sync;
+#[derive(Clone)]
+struct ContextResolver(std::sync::Arc<ResolveProxyContext>);
+
+fn proxy_router(resolver: ContextResolver) -> Router {
+    Router::new()
         .route("/health", get(health_handler))
         .route("/proxy/{token}/v1", any(proxy_v1_root_handler))
         .route("/proxy/{token}/v1/{*path}", any(proxy_v1_handler))
@@ -173,7 +178,16 @@ async fn run_proxy_server() -> Result<(), String> {
         .route(
             "/cli/{agent}/{token}/claude/{*path}",
             any(cli_claude_handler),
-        );
+        )
+        .layer(axum::Extension(resolver))
+}
+
+async fn run_proxy_server() -> Result<(), String> {
+    let addr = std::net::SocketAddr::from((
+        [127, 0, 0, 1],
+        agent_cli::managed_config::managed_proxy_port(),
+    ));
+    let app = proxy_router(ContextResolver(std::sync::Arc::new(resolve_proxy_context)));
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
@@ -279,7 +293,16 @@ async fn proxy_agent_handler(
     path: String,
     request: Request<Body>,
 ) -> Response<Body> {
-    let context = match resolve_proxy_context(agent_name) {
+    let resolved = session_routes::resolve(agent_name, &supplied_token).and_then(|session| {
+        session.map(Ok).unwrap_or_else(|| {
+            request
+                .extensions()
+                .get::<ContextResolver>()
+                .ok_or_else(|| "Proxy context resolver unavailable".to_string())
+                .and_then(|resolver| (resolver.0)(agent_name))
+        })
+    });
+    let mut context = match resolved {
         Ok(context) => context,
         Err(err) => {
             return json_error(StatusCode::PRECONDITION_FAILED, err);
@@ -309,18 +332,92 @@ async fn proxy_agent_handler(
     };
 
     let mut outbound_body = body_bytes.to_vec();
-    if is_json_request(&parts.headers) && !outbound_body.is_empty() {
-        if let Ok(mut value) = serde_json::from_slice::<Value>(&outbound_body) {
-            rewrite_model_field(&mut value, &context.model);
-            match serde_json::to_vec(&value) {
-                Ok(bytes) => outbound_body = bytes,
-                Err(err) => {
-                    return json_error(
-                        StatusCode::BAD_REQUEST,
-                        format!("Failed to serialize proxy request body: {err}"),
-                    );
+    let mut json_body = if is_json_request(&parts.headers) && !outbound_body.is_empty() {
+        match serde_json::from_slice::<Value>(&outbound_body) {
+            Ok(value) => Some(value),
+            Err(_) => return json_error(StatusCode::BAD_REQUEST, "Invalid JSON request".into()),
+        }
+    } else {
+        None
+    };
+    let source = match crate::dynamic_credentials::source(&context.key_id) {
+        Ok(value) => value,
+        Err(error) => return json_error(StatusCode::PRECONDITION_FAILED, error),
+    };
+    let mut resolved_model = false;
+    if let Some(source) = source {
+        if !outbound_body.is_empty() && json_body.as_ref().is_none_or(|value| !value.is_object()) {
+            return json_error(
+                StatusCode::BAD_REQUEST,
+                "Dynamic model requests require a JSON object".into(),
+            );
+        }
+        if json_body
+            .as_ref()
+            .and_then(|value| value.get("model"))
+            .is_some_and(|model| !model.is_string())
+        {
+            return json_error(StatusCode::BAD_REQUEST, "Invalid request model".into());
+        }
+        if parts.method == Method::GET
+            && matches!(
+                path.split('?').next().unwrap_or_default(),
+                "models" | "v1/models"
+            )
+        {
+            match source.models(&context.key_id, agent_name) {
+                Ok(Some(models)) => {
+                    let data: Vec<_> = models.iter().map(|model| serde_json::json!({
+                        "id": model.id, "display_name": model.label, "object": "model", "type": "model"
+                    })).collect();
+                    return axum::Json(
+                        serde_json::json!({"object":"list", "data":data, "has_more":false}),
+                    )
+                    .into_response();
                 }
+                Ok(None) => {}
+                Err(error) => return json_error(StatusCode::PRECONDITION_FAILED, error),
             }
+        }
+        let requested = json_body
+            .as_ref()
+            .and_then(|value| value.get("model"))
+            .and_then(Value::as_str)
+            .filter(|model| *model != ORGII_CURRENT_MODEL)
+            .unwrap_or(&context.model);
+        match source.request_selection(&context.key_id, agent_name, requested) {
+            Ok(Some(route)) => {
+                context.key_id = route.selection;
+                context.model = route.model;
+                resolved_model = true;
+            }
+            Ok(None) => {}
+            Err(error) => return json_error(StatusCode::BAD_REQUEST, error),
+        }
+    }
+    match crate::dynamic_credentials::source(&context.key_id) {
+        Ok(Some(source)) => match source.credential(&context.key_id, agent_name).await {
+            Ok(credential) => {
+                context.authentication = credential.destination.authentication;
+                context.api_key = credential.secret;
+                context.provider = credential.destination.provider;
+                context.upstream_base_url = credential.destination.base_url;
+            }
+            Err(error) => return json_error(StatusCode::PRECONDITION_FAILED, error),
+        },
+        Ok(None) => {}
+        Err(error) => return json_error(StatusCode::PRECONDITION_FAILED, error),
+    }
+
+    if let Some(ref mut value) = json_body {
+        if resolved_model {
+            rewrite_model_field(value, &context.model);
+        } else {
+            rewrite_request_model(value, &context);
+        }
+        match serde_json::to_vec(value) {
+            Ok(bytes) => outbound_body = bytes,
+            Err(_) => return json_error(StatusCode::BAD_REQUEST, "Invalid JSON request".into()),
         }
     }
 
@@ -340,7 +437,11 @@ fn empty_ok_response() -> Response<Body> {
 }
 
 fn authenticated_empty_ok_response(agent_name: &str, supplied_token: &str) -> Response<Body> {
-    let context = match resolve_proxy_context(agent_name) {
+    let context = match session_routes::resolve(agent_name, supplied_token).and_then(|session| {
+        session
+            .map(Ok)
+            .unwrap_or_else(|| resolve_proxy_context(agent_name))
+    }) {
         Ok(context) => context,
         Err(err) => return json_error(StatusCode::PRECONDITION_FAILED, err),
     };
@@ -390,6 +491,7 @@ async fn forward_request(
         &context.protocol,
         &context.provider,
         &context.api_key,
+        context.authentication,
     );
     if !incoming_headers.contains_key(CONTENT_TYPE) {
         builder = builder.header(CONTENT_TYPE.as_str(), "application/json");
@@ -446,6 +548,20 @@ fn is_json_request(headers: &HeaderMap) -> bool {
         .and_then(|value| value.to_str().ok())
         .map(|value| value.to_ascii_lowercase().contains("json"))
         .unwrap_or(true)
+}
+
+// Market validates the requested model against the purchase at the gateway.
+// Preserve explicit model IDs so native model switching does not silently bill
+// and execute the default model instead. The ORG2 placeholder still resolves.
+fn rewrite_request_model(value: &mut Value, context: &ProxyContext) {
+    if context.provider == "market"
+        && value
+            .get("model")
+            .is_some_and(|model| model != ORGII_CURRENT_MODEL)
+    {
+        return;
+    }
+    rewrite_model_field(value, &context.model);
 }
 
 fn rewrite_model_field(value: &mut Value, selected_model: &str) {
@@ -561,7 +677,11 @@ fn apply_auth_header(
     protocol: &ProxyProtocol,
     provider: &str,
     api_key: &str,
+    authentication: Authentication,
 ) -> reqwest::RequestBuilder {
+    if matches!(authentication, Authentication::Bearer) {
+        return builder.header("Authorization", format!("Bearer {api_key}"));
+    }
     match protocol {
         ProxyProtocol::OpenAi if provider == "azure_openai_api" => {
             builder.header("api-key", api_key)
@@ -576,6 +696,15 @@ fn apply_auth_header(
 
 fn protocol_for_agent(agent_name: &str) -> Result<ProxyAgentDescriptor, String> {
     use agent_cli::managed_config::CliManagedProxyProtocol;
+
+    if agent_name == agent_cli::managed_config::desktop::TARGET {
+        return Ok(ProxyAgentDescriptor {
+            protocol: ProxyProtocol::Anthropic,
+            protocol_name: "anthropic",
+            display_name: "Claude Desktop",
+            requires_openai_responses: false,
+        });
+    }
 
     let proxy_protocol = agent_cli::managed_config::managed_proxy_protocol_for_agent(agent_name)
         .ok_or_else(|| {
@@ -607,6 +736,25 @@ fn resolve_proxy_context_for_selection(
     proxy_token: String,
 ) -> Result<ProxyContext, String> {
     let descriptor = protocol_for_agent(agent_name)?;
+    if let Some(selection) = key_id {
+        if let Some(source) = crate::dynamic_credentials::source(selection)? {
+            let destination = source.destination(selection, agent_name)?;
+            let model = selected_model
+                .filter(|m| !m.is_empty())
+                .ok_or("No model selected")?;
+            return Ok(ProxyContext {
+                authentication: destination.authentication,
+                key_id: selection.into(),
+                provider: destination.provider,
+                model: model.into(),
+                upstream_base_url: destination.base_url,
+                api_key: String::new(),
+                proxy_token,
+                protocol: descriptor.protocol,
+            });
+        }
+    }
+
     if matches!(agent_name, "claude_code" | "codex") {
         let key_id = key_id
             .filter(|value| !value.trim().is_empty())
@@ -616,6 +764,7 @@ fn resolve_proxy_context_for_selection(
             .ok_or("Selected KeyVault key does not exist")?;
         let connection = key_vault::harness_connections::resolve(agent_name, &key, selected_model)?;
         return Ok(ProxyContext {
+            authentication: Authentication::ProtocolDefault,
             key_id: connection.key_id,
             provider: connection.provider,
             model: connection.model,
@@ -737,6 +886,7 @@ fn resolve_proxy_context_for_selection(
     };
 
     Ok(ProxyContext {
+        authentication: Authentication::ProtocolDefault,
         key_id: key_id.to_string(),
         provider,
         model,
@@ -778,6 +928,190 @@ fn compatible_key_ids_for_agent(agent_name: &str) -> Vec<String> {
         .collect()
 }
 
+pub(crate) async fn ensure_managed_proxy_running() -> Result<(), String> {
+    start_cli_managed_proxy_thread();
+    for _ in 0..20 {
+        if PROXY_RUNNING.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    if PROXY_RUNNING.load(Ordering::SeqCst) {
+        Ok(())
+    } else {
+        Err(proxy_unavailable_message())
+    }
+}
+
+/// Application adapter for trusted dynamic sources; normal KeyVault selection
+/// still uses its endpoint/model test receipt path below.
+#[cfg(feature = "market-connect")]
+pub(crate) async fn enable_dynamic_managed<
+    G: crate::dynamic_credentials::OperationAuthorization + 'static,
+>(
+    agent: String,
+    key: String,
+    model: String,
+    expected_hashes: std::collections::BTreeMap<String, Option<String>>,
+    native_app: Option<agent_cli::managed_config::native_app::NativeAppProfile>,
+    authorization: impl std::future::Future<Output = Result<G, String>>,
+) -> Result<agent_cli::managed_config::CliConfigManagedStatus, String> {
+    if !matches!(agent.as_str(), "claude_code" | "codex") || model.is_empty() || model.len() > 256 {
+        return Err("Unsupported dynamic client selection".into());
+    }
+    let source =
+        crate::dynamic_credentials::source(&key)?.ok_or("Dynamic credential source required")?;
+    source.credential(&key, &agent).await?;
+    ensure_managed_proxy_running().await?;
+    let authorization = authorization.await?;
+    tokio::task::spawn_blocking(move || {
+        authorization.check()?;
+        if !PROXY_RUNNING.load(Ordering::SeqCst) {
+            return Err(proxy_unavailable_message());
+        }
+        let context =
+            resolve_proxy_context_for_selection(&agent, Some(&key), Some(&model), String::new())?;
+        if let Some(profile) = native_app {
+            return agent_cli::managed_config::enable_native_app(
+                &profile,
+                key,
+                context.provider,
+                model,
+                None,
+                None,
+                &expected_hashes,
+            );
+        }
+        agent_cli::managed_config::enable_orgii_managed_checked(
+            &agent,
+            Some(key),
+            Some(context.provider),
+            Some(model),
+            false,
+            Some(&expected_hashes),
+        )
+    })
+    .await
+    .map_err(|_| "Client configuration task failed")?
+}
+
+#[cfg(feature = "market-connect")]
+pub(crate) async fn enable_dynamic_catalog<
+    G: crate::dynamic_credentials::OperationAuthorization + 'static,
+>(
+    agent: String,
+    key: String,
+    model: String,
+    catalog: agent_cli::managed_config::model_catalog::ModelCatalog,
+    expected_hashes: std::collections::BTreeMap<String, Option<String>>,
+    native_app: Option<agent_cli::managed_config::native_app::NativeAppProfile>,
+    authorization: impl std::future::Future<Output = Result<G, String>>,
+) -> Result<agent_cli::managed_config::CliConfigManagedStatus, String> {
+    let source =
+        crate::dynamic_credentials::source(&key)?.ok_or("Dynamic credential source required")?;
+    source.credential(&key, &agent).await?;
+    ensure_managed_proxy_running().await?;
+    let authorization = authorization.await?;
+    tokio::task::spawn_blocking(move || {
+        authorization.check()?;
+        if !PROXY_RUNNING.load(Ordering::SeqCst) {
+            return Err(proxy_unavailable_message());
+        }
+        let context =
+            resolve_proxy_context_for_selection(&agent, Some(&key), Some(&model), String::new())?;
+        if let Some(profile) = native_app {
+            return agent_cli::managed_config::enable_native_app(
+                &profile,
+                key,
+                context.provider,
+                model,
+                Some(&catalog),
+                None,
+                &expected_hashes,
+            );
+        }
+        agent_cli::managed_config::enable_orgii_managed_catalog(
+            &agent,
+            key,
+            context.provider,
+            model,
+            &catalog,
+            &expected_hashes,
+        )
+    })
+    .await
+    .map_err(|_| "Client configuration task failed")?
+}
+
+#[cfg(feature = "market-connect")]
+pub(crate) async fn enable_dynamic_desktop<
+    G: crate::dynamic_credentials::OperationAuthorization + 'static,
+>(
+    key: String,
+    model: String,
+    models: Vec<agent_cli::managed_config::model_catalog::PickerModel>,
+    expected_hashes: std::collections::BTreeMap<String, Option<String>>,
+    native_app: Option<agent_cli::managed_config::native_app::NativeAppProfile>,
+    authorization: impl std::future::Future<Output = Result<G, String>>,
+) -> Result<agent_cli::managed_config::CliConfigManagedStatus, String> {
+    use agent_cli::managed_config::{desktop::CredentialHelper, DirectConnection};
+
+    if model.is_empty() || model.len() > 256 || !models.iter().any(|entry| entry.id == model) {
+        return Err("Unsupported Desktop selection".into());
+    }
+    let source =
+        crate::dynamic_credentials::source(&key)?.ok_or("Dynamic credential source required")?;
+    source.credential(&key, "claude_desktop").await?;
+    ensure_managed_proxy_running().await?;
+    let authorization = authorization.await?;
+    tokio::task::spawn_blocking(move || {
+        authorization.check()?;
+        if !PROXY_RUNNING.load(Ordering::SeqCst) {
+            return Err(proxy_unavailable_message());
+        }
+        let token = agent_cli::managed_config::generate_proxy_token();
+        let profile = native_app.ok_or("Official Claude App requires an isolated profile")?;
+        let helper_path = profile.helper();
+        let base_url = agent_cli::managed_config::claude_desktop_proxy_base_url(
+            &agent_cli::managed_config::managed_proxy_url(),
+            &token,
+        );
+        let connection = DirectConnection {
+            profile: None,
+            key_id: key,
+            provider: "market".into(),
+            model,
+            base_url,
+            api_key: String::new(),
+            desktop_auth_scheme: Some("bearer".into()),
+            desktop_helper: Some(CredentialHelper {
+                path: helper_path.clone(),
+                token: token.clone(),
+                models,
+            }),
+            proxy_token: Some(token),
+        };
+        let status = agent_cli::managed_config::enable_native_app(
+            &profile,
+            connection.key_id.clone(),
+            connection.provider.clone(),
+            connection.model.clone(),
+            None,
+            Some(&connection),
+            &expected_hashes,
+        )?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&helper_path, std::fs::Permissions::from_mode(0o700))
+                .map_err(|_| "Could not activate the Desktop credential helper")?;
+        }
+        Ok(status)
+    })
+    .await
+    .map_err(|_| "Desktop configuration task failed")?
+}
+
 #[tauri::command(rename_all = "camelCase")]
 pub async fn cli_config_enable_orgii_managed(
     agent_name: String,
@@ -791,13 +1125,7 @@ pub async fn cli_config_enable_orgii_managed(
         key_id.as_deref(),
         model.as_deref(),
     )?;
-    start_cli_managed_proxy_thread();
-    for _ in 0..20 {
-        if PROXY_RUNNING.load(Ordering::SeqCst) {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
+    ensure_managed_proxy_running().await?;
     tokio::task::spawn_blocking(move || {
         if !PROXY_RUNNING.load(Ordering::SeqCst) {
             return Err(proxy_unavailable_message());
@@ -915,10 +1243,227 @@ fn json_error(status: StatusCode, message: String) -> Response<Body> {
         .unwrap_or_else(|_| Response::new(Body::from("proxy error")))
 }
 
+/// Revoke only this live session route; never change another client's selection.
+pub(crate) fn release_session_route(session_id: &str) -> Result<(), String> {
+    session_routes::release(session_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[cfg(feature = "market-connect")]
+    #[tokio::test]
+    async fn codex_router_forwards_workspace_v1_uri_and_query_to_upstream() {
+        crate::test_utils::install_crypto_provider_for_tests();
+        let (observed, mut received) = tokio::sync::mpsc::channel(4);
+        let upstream = Router::new().fallback(any(move |request: Request<Body>| {
+            let observed = observed.clone();
+            async move {
+                let uri = request.uri().to_string();
+                let auth = request
+                    .headers()
+                    .get("authorization")
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_owned();
+                let bytes = to_bytes(request.into_body(), MAX_PROXY_BODY_BYTES)
+                    .await
+                    .unwrap();
+                let payload: Value = serde_json::from_slice(&bytes).unwrap();
+                observed.send((uri, auth, payload)).await.unwrap();
+                Json(json!({"ok":true}))
+            }
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let upstream_root = format!("http://{}/w/ws_route_test", listener.local_addr().unwrap());
+        let upstream_task = tokio::spawn(async move {
+            axum::serve(listener, upstream).await.unwrap();
+        });
+        let context = ProxyContext {
+            authentication: Authentication::Bearer,
+            key_id: "test-static-selection".into(),
+            provider: "market".into(),
+            model: "test-model".into(),
+            api_key: "synthetic-bearer".into(),
+            upstream_base_url: crate::market_connection::source::protocol_base_url(
+                &upstream_root,
+                "codex",
+            ),
+            proxy_token: "synthetic-local-token".into(),
+            protocol: ProxyProtocol::OpenAi,
+        };
+        let app = proxy_router(ContextResolver(std::sync::Arc::new(move |agent| {
+            assert_eq!(agent, "codex");
+            Ok(context.clone())
+        })));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy_url = format!("http://{}", listener.local_addr().unwrap());
+        let proxy_task = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let client = reqwest::Client::new();
+        for (path, requested, expected) in [
+            ("responses", "orgii-current-model", "test-model"),
+            ("responses?stream=true", "second-model", "second-model"),
+            ("responses", "third-model", "third-model"),
+        ] {
+            let response = client
+                .post(format!(
+                    "{proxy_url}/cli/codex/synthetic-local-token/v1/{path}"
+                ))
+                .json(&json!({"model":requested,"input":"test"}))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let (uri, auth, payload) =
+                tokio::time::timeout(Duration::from_secs(5), received.recv())
+                    .await
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(uri, format!("/w/ws_route_test/v1/{path}"));
+            assert_eq!(auth, "Bearer synthetic-bearer");
+            assert_eq!(payload["model"], expected);
+        }
+        let rejected = client
+            .post(format!("{proxy_url}/cli/codex/wrong-token/v1/responses"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(rejected.status(), StatusCode::UNAUTHORIZED);
+        assert!(received.try_recv().is_err());
+        proxy_task.abort();
+        upstream_task.abort();
+    }
+
+    #[tokio::test]
+    async fn session_routes_forward_independently_and_reject_released_tokens() {
+        let _ = tokio_rustls::rustls::crypto::ring::default_provider().install_default();
+        let (observed, mut received) = tokio::sync::mpsc::channel(8);
+        let upstream = Router::new().fallback(any(move |request: Request<Body>| {
+            let observed = observed.clone();
+            async move {
+                observed.send(request.uri().to_string()).await.unwrap();
+                Json(json!({"ok":true}))
+            }
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let root = format!("http://{}", listener.local_addr().unwrap());
+        let upstream_task = tokio::spawn(async move {
+            axum::serve(listener, upstream).await.unwrap();
+        });
+        let sessions = [
+            uuid::Uuid::new_v4().to_string(),
+            uuid::Uuid::new_v4().to_string(),
+        ];
+        let mut tokens = Vec::new();
+        for (index, session) in sessions.iter().enumerate() {
+            tokens.push(
+                session_routes::reserve(
+                    session,
+                    "codex",
+                    ProxyContext {
+                        authentication: Authentication::Bearer,
+                        key_id: "test-static".into(),
+                        provider: "test".into(),
+                        model: "test-model".into(),
+                        upstream_base_url: format!("{root}/w/ws_{index}/v1"),
+                        api_key: "synthetic-upstream-key".into(),
+                        proxy_token: String::new(),
+                        protocol: ProxyProtocol::OpenAi,
+                    },
+                )
+                .unwrap(),
+            );
+        }
+        // Session routes remain usable without a global selection.
+        let app = proxy_router(ContextResolver(std::sync::Arc::new(|_| {
+            Err("global selection removed".into())
+        })));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy_url = format!("http://{}", listener.local_addr().unwrap());
+        let proxy_task = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let client = reqwest::Client::new();
+        for index in [0, 1, 0] {
+            let response = client
+                .post(format!(
+                    "{proxy_url}/cli/codex/{}/v1/responses",
+                    tokens[index]
+                ))
+                .json(&json!({"model":"orgii-current-model","input":"test"}))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                tokio::time::timeout(Duration::from_secs(5), received.recv())
+                    .await
+                    .unwrap()
+                    .unwrap(),
+                format!("/w/ws_{index}/v1/responses")
+            );
+        }
+        session_routes::release(&sessions[0]).unwrap();
+        let rejected = client
+            .post(format!("{proxy_url}/cli/codex/{}/v1/responses", tokens[0]))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(rejected.status(), StatusCode::PRECONDITION_FAILED);
+        assert!(received.try_recv().is_err());
+        let remaining = client
+            .post(format!("{proxy_url}/cli/codex/{}/v1/responses", tokens[1]))
+            .json(&json!({"model":"test-model","input":"test"}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(remaining.status(), StatusCode::OK);
+        session_routes::release(&sessions[1]).unwrap();
+        let claude_session = uuid::Uuid::new_v4().to_string();
+        let claude_token = session_routes::reserve(
+            &claude_session,
+            "claude_code",
+            ProxyContext {
+                authentication: Authentication::Bearer,
+                key_id: "test-static".into(),
+                provider: "test".into(),
+                model: "test-model".into(),
+                upstream_base_url: format!("{root}/w/ws_claude"),
+                api_key: "synthetic-upstream-key".into(),
+                proxy_token: String::new(),
+                protocol: ProxyProtocol::Anthropic,
+            },
+        )
+        .unwrap();
+        let head_url = format!("{proxy_url}/cli/claude_code/{claude_token}/claude/v1");
+        assert_eq!(
+            client.head(&head_url).send().await.unwrap().status(),
+            StatusCode::OK
+        );
+        let response = client
+            .post(format!("{head_url}/messages"))
+            .json(&json!({"model":"test-model","messages":[],"max_tokens":1}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        // Drain the preceding surviving Codex request, then the Claude request.
+        assert_eq!(received.recv().await.unwrap(), "/w/ws_1/v1/responses");
+        assert_eq!(received.recv().await.unwrap(), "/w/ws_claude/v1/messages");
+        session_routes::release(&claude_session).unwrap();
+        assert_eq!(
+            client.head(&head_url).send().await.unwrap().status(),
+            StatusCode::PRECONDITION_FAILED
+        );
+        assert!(received.try_recv().is_err());
+        proxy_task.abort();
+        upstream_task.abort();
+    }
 
     #[test]
     fn rewrites_placeholder_model() {
@@ -1014,4 +1559,91 @@ mod tests {
             Some("api-version=2026-01-01".to_string())
         );
     }
+    #[test]
+    fn protocol_default_preserves_static_provider_authentication() {
+        let _ = tokio_rustls::rustls::crypto::ring::default_provider().install_default();
+        let client = reqwest::Client::new();
+        for (protocol, provider, header, expected) in [
+            (
+                ProxyProtocol::Anthropic,
+                "anthropic",
+                "x-api-key",
+                "fixture-key",
+            ),
+            (
+                ProxyProtocol::Anthropic,
+                "azure_anthropic_api",
+                "api-key",
+                "fixture-key",
+            ),
+            (
+                ProxyProtocol::OpenAi,
+                "openai",
+                "authorization",
+                "Bearer fixture-key",
+            ),
+            (
+                ProxyProtocol::OpenAi,
+                "azure_openai_api",
+                "api-key",
+                "fixture-key",
+            ),
+        ] {
+            let request = apply_auth_header(
+                client.post("https://gateway.example.test"),
+                &protocol,
+                provider,
+                "fixture-key",
+                Authentication::ProtocolDefault,
+            )
+            .build()
+            .unwrap();
+            assert_eq!(request.headers().get(header).unwrap(), expected);
+            for other in ["authorization", "x-api-key", "api-key"] {
+                if other != header {
+                    assert!(!request.headers().contains_key(other));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn dynamic_source_declares_bearer_for_both_protocols() {
+        let _ = tokio_rustls::rustls::crypto::ring::default_provider().install_default();
+        let client = reqwest::Client::new();
+        for protocol in [ProxyProtocol::Anthropic, ProxyProtocol::OpenAi] {
+            let request = apply_auth_header(
+                client.post("https://gateway.example.test/w/ws_fixture/v1/messages"),
+                &protocol,
+                "test-source",
+                "synthetic-workspace-token",
+                Authentication::Bearer,
+            )
+            .build()
+            .unwrap();
+            assert_eq!(
+                request.headers().get("authorization").unwrap(),
+                "Bearer synthetic-workspace-token"
+            );
+            assert!(!request.headers().contains_key("x-api-key"));
+            assert!(!request.headers().contains_key("api-key"));
+        }
+        assert_eq!(
+            build_anthropic_upstream_url(
+                "https://gateway.example.test/w/ws_fixture",
+                "v1/messages"
+            )
+            .unwrap(),
+            "https://gateway.example.test/w/ws_fixture/v1/messages"
+        );
+        assert_eq!(
+            build_upstream_url("https://gateway.example.test/w/ws_fixture", "v1/responses")
+                .unwrap(),
+            "https://gateway.example.test/w/ws_fixture/v1/responses"
+        );
+    }
 }
+
+#[cfg(all(test, feature = "market-connect"))]
+#[path = "cli_managed_proxy/catalog_tests.rs"]
+mod catalog_tests;

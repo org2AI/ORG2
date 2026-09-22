@@ -9,6 +9,7 @@
 import React from "react";
 
 import ModelIcon from "@src/components/ModelIcon";
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
 import {
@@ -28,10 +29,12 @@ import {
 
 import type { SpotlightItem } from "../../types";
 import { VariantPill } from "./VariantPill";
+import { withModelRowAttributes } from "./modelRowAttributes";
 import { MODEL_SECTION } from "./modelSection";
 
 export const KEY_FIRST_KEY_TEST_ID = "unified-model-key-option";
 export const KEY_FIRST_MODEL_TEST_ID = "unified-model-key-model-option";
+export const MARKET_PROFILE_TEST_ID = "unified-model-market-profile-option";
 
 /** Model ids the account can actually launch (enabled, incl. variant rungs). */
 export function enabledAccountModelIds(account: KeyVaultAccount): string[] {
@@ -77,7 +80,7 @@ export function buildKeyItems({
       <span className="shrink-0 font-normal text-text-1">{account.name}</span>
     );
 
-    return {
+    return withModelRowAttributes({
       id: `key:${account.id}`,
       label: account.name,
       icon: KeyIcon,
@@ -97,7 +100,110 @@ export function buildKeyItems({
       // A key with nothing to pick in Step 2 is a one-click launch.
       action: () =>
         groupCount > 0 ? onSelectKey(account.id) : onCommit(account, ""),
-    };
+    });
+  });
+}
+
+export function buildMarketProfileItems(options: {
+  sources: MarketProfileSource[];
+  onSelect: (sourceId: string) => void;
+  marketLabel: string;
+}): SpotlightItem[] {
+  return options.sources.map((source) => {
+    const SourceIcon = () => (
+      <ModelIcon agentType={source.modelType} size={14} />
+    );
+    const modelCount = groupModels(source.modelIds).length;
+    return withModelRowAttributes({
+      id: `profile:${source.id}`,
+      label: source.label,
+      icon: SourceIcon,
+      type: "action" as const,
+      data: {
+        isSelector: true,
+        modelSection: MODEL_SECTION.ALL,
+        keyAccountId: source.id,
+        labelContent: (
+          <span className="shrink-0 font-normal text-text-1">
+            {source.label}
+          </span>
+        ),
+        rightContent: (
+          <span className="text-[12px] text-text-3">
+            {options.marketLabel} · {modelCount}
+          </span>
+        ),
+        showDisclosureChevron: modelCount > 0,
+        searchAlias: `${options.marketLabel} ${source.modelType}`,
+        testId: MARKET_PROFILE_TEST_ID,
+      },
+      action: () => options.onSelect(source.id),
+    });
+  });
+}
+
+export function buildMarketProfileModelItems(options: {
+  source: MarketProfileSource;
+  onCommit: (source: MarketProfileSource, modelId: string) => void;
+}): SpotlightItem[] {
+  const groups = groupModels(options.source.modelIds, options.source.modelType);
+  return groups.flatMap((group) => {
+    const variants = [...group.models].sort(compareModelsByVersion);
+    const modelId = variants[0];
+    if (!modelId) return [];
+    const variantInfos = variants.map((variantId) =>
+      resolveModelVariantFields(variantId)
+    );
+    const baseModel =
+      parseModelVariant(modelId)?.baseModel ??
+      variantInfos[0]?.base_model ??
+      modelId;
+    const launchModel =
+      resolveDefaultVariant(baseModel, variantInfos, undefined) ?? modelId;
+    const ModelItemIcon = () => (
+      <ModelIcon
+        modelName={modelId}
+        agentType={options.source.modelType}
+        size={14}
+      />
+    );
+    const displayLabel =
+      group.label === "Other"
+        ? formatModelNameFull(modelId, options.source.modelType)
+        : group.label;
+    return [
+      withModelRowAttributes({
+        id: `market-model:${options.source.id}:${modelId}`,
+        label: `${displayLabel} ${variants.join(" ")}`,
+        icon: ModelItemIcon,
+        type: "action" as const,
+        data: {
+          isSelector: true,
+          modelSection: MODEL_SECTION.ALL,
+          modelId,
+          groupModelIds: variants,
+          labelContent: (
+            <span className="shrink-0 font-normal text-text-1">
+              {displayLabel}
+            </span>
+          ),
+          rightContent:
+            variants.length > 1 ? (
+              <VariantPill
+                modelId={launchModel}
+                groupModelIds={variants}
+                onApply={(nextModelId) =>
+                  options.onCommit(options.source, nextModelId)
+                }
+              />
+            ) : (
+              <VariantPill modelId={launchModel} />
+            ),
+          testId: KEY_FIRST_MODEL_TEST_ID,
+        },
+        action: () => options.onCommit(options.source, launchModel),
+      }),
+    ];
   });
 }
 
@@ -125,8 +231,10 @@ export function buildKeyModelItems({
   const items: SpotlightItem[] = [];
   const literalModels = account.modelType === "custom_api";
   const groups = literalModels
-    ? enabledAccountModelIds(account).flatMap((model) => groupModels([model]))
-    : groupModels(enabledAccountModelIds(account));
+    ? enabledAccountModelIds(account).flatMap((model) =>
+        groupModels([model], account.modelType)
+      )
+    : groupModels(enabledAccountModelIds(account), account.modelType);
 
   for (const group of groups) {
     const sortedVariants = [...group.models].sort(compareModelsByVersion);
@@ -150,8 +258,14 @@ export function buildKeyModelItems({
       : (resolveDefaultVariant(baseModel, variantInfos, persisted) ??
         representative);
 
+    // The account is the agent hint: it is what tells a routing tier such as
+    // Cursor's "auto" apart from the same word on another agent's key.
     const ModelItemIcon = () => (
-      <ModelIcon modelName={representative} size={14} />
+      <ModelIcon
+        modelName={representative}
+        agentType={account.modelType}
+        size={14}
+      />
     );
 
     const hasMultipleVariants = sortedVariants.length > 1;
@@ -161,7 +275,8 @@ export function buildKeyModelItems({
     );
     const displayLabel = hasMultipleVariants
       ? group.label
-      : (aliasDisplayName ?? formatModelNameFull(representative));
+      : (aliasDisplayName ??
+        formatModelNameFull(representative, account.modelType));
 
     const labelContent =
       !hasMultipleVariants && aliasDisplayName ? (
@@ -190,23 +305,25 @@ export function buildKeyModelItems({
         <VariantPill modelId={baseModel} />
       );
 
-    items.push({
-      id: literalModels
-        ? `key-model:${account.id}:${representative}`
-        : `key-model:${account.id}:${group.label}:${group.sortVersion}`,
-      label: [displayLabel, ...sortedVariants].join(" "),
-      icon: ModelItemIcon,
-      type: "action" as const,
-      data: {
-        isSelector: true,
-        modelId: launchModel,
-        groupModelIds: sortedVariants,
-        labelContent,
-        rightContent: trailing,
-        testId: KEY_FIRST_MODEL_TEST_ID,
-      },
-      action: () => onCommit(account, launchModel),
-    });
+    items.push(
+      withModelRowAttributes({
+        id: literalModels
+          ? `key-model:${account.id}:${representative}`
+          : `key-model:${account.id}:${group.label}:${group.sortVersion}`,
+        label: [displayLabel, ...sortedVariants].join(" "),
+        icon: ModelItemIcon,
+        type: "action" as const,
+        data: {
+          isSelector: true,
+          modelId: launchModel,
+          groupModelIds: sortedVariants,
+          labelContent,
+          rightContent: trailing,
+          testId: KEY_FIRST_MODEL_TEST_ID,
+        },
+        action: () => onCommit(account, launchModel),
+      })
+    );
   }
 
   return items;

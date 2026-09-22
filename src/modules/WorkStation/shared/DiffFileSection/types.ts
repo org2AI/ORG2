@@ -26,6 +26,7 @@ export interface DiffFileSectionProps {
   file: DiffFileSectionData;
   reviewSearch?: ReviewDiffSearch;
   viewMode: DiffViewMode;
+  wordWrap?: boolean;
   defaultExpanded?: boolean;
   expansionSignal?: number;
   repoPath?: string;

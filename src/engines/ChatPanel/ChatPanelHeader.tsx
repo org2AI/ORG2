@@ -7,7 +7,6 @@ import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut
 import RegionNoticeButton from "@src/components/RegionNoticeButton";
 import Tooltip from "@src/components/Tooltip";
 import { HeaderActionGroup } from "@src/components/WindowChrome/HeaderActionGroup";
-import { CHROME_TOOLTIP_HOVER_DELAY } from "@src/config/tooltip";
 import type { DropdownEnginePosition } from "@src/hooks/dropdown";
 import { useCollapsedSidebarChromeOffset } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
 import { useWorkbenchRightEdgeReservation } from "@src/hooks/ui/workbench/usePinnedWorkbenchChrome";
@@ -16,8 +15,9 @@ import {
   HugeiconsIcon,
   SquareTerminalIcon,
 } from "@src/icons";
-import { ChatPaneFocusButton } from "@src/modules/WorkStation/shared/StationPaneControls";
+import { usePaneLayoutInsetTransition } from "@src/scaffold/AppLayout/usePaneLayoutInsetTransition";
 import { CollapsedSidebarButton } from "@src/scaffold/NavigationSidebar/CollapsedSidebarButton";
+import { ChatPaneFocusButton } from "@src/scaffold/WorkbenchChrome/StationPaneControls";
 import type { ChatHistoryDisplayMode } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import type { ChatPanelPosition } from "@src/store/ui/workStationLayout/chatPositionAtoms";
 import { isWindows } from "@src/util/platform/tauri";
@@ -75,8 +75,6 @@ interface ChatPanelHeaderProps {
   tokenUsageVisible: boolean;
   turnMetadataVisible: boolean;
   shouldOffsetHeaderForCollapsedSidebar: boolean;
-  /** Whether the active tab may reveal a Station beside the chat pane. */
-  showHeader: boolean;
   showSessionContent: boolean;
   /** Owner-side share entry gate (design §6.3): own session + org in scope. */
   showCloudShareSettings: boolean;
@@ -136,7 +134,6 @@ export function ChatPanelHeader({
   tokenUsageVisible,
   turnMetadataVisible,
   shouldOffsetHeaderForCollapsedSidebar,
-  showHeader,
   showSessionContent,
   showCloudShareSettings,
   showTranscriptActions,
@@ -168,7 +165,7 @@ export function ChatPanelHeader({
   const trailingInsetPx = pinnedChromeInThisHeader
     ? rightEdge.reservedRight
     : undefined;
-  if (!showHeader) return null;
+  const insetTransitionClassName = usePaneLayoutInsetTransition();
 
   const tuiModeLabel = tuiMode ? t("chat.tuiModeOn") : t("chat.tuiModeOff");
 
@@ -185,12 +182,11 @@ export function ChatPanelHeader({
               <KeyboardShortcutTooltipContent label={tuiModeLabel} noShortcut />
             }
             position="bottom-end"
-            mouseEnterDelay={CHROME_TOOLTIP_HOVER_DELAY}
+            kind="button"
             framedPanel
           >
             <span className="inline-flex">
               <Button
-                htmlType="button"
                 variant="tertiary"
                 size="small"
                 iconOnly
@@ -318,12 +314,6 @@ export function ChatPanelHeader({
                 <ChatPanelCollapsedTabHeading />
               </div>
             ) : undefined),
-          // Collapsed, this row stands in for the borderless tab row and is
-          // the maximized pane's only chrome — a rule under it would be a
-          // line the pane never had. Uncollapsed, the publisher decides.
-          joinWithFollowingRow:
-            tabRowCollapsed ||
-            (publishedHeaderSlots?.joinWithFollowingRow ?? false),
           trailing:
             publishedHeaderSlots?.trailing ||
             sessionPublishedActions ||
@@ -388,20 +378,19 @@ export function ChatPanelHeader({
       <ChatPanelPublishedHeader
         slots={effectivePublishedHeaderSlots}
         windowsHost={windowsHost}
-        hideBottomBorder={!tabRowCollapsed}
         trailingInsetPx={trailingInsetPx}
         leadingInsetPx={
           shouldOffsetHeaderForCollapsedSidebar
             ? collapsedSidebarChromeOffset
             : undefined
         }
+        insetTransitionClassName={insetTransitionClassName}
       />
     </div>
   ) : (
     <ChatPanelPublishedHeader
       slots={effectivePublishedHeaderSlots}
       windowsHost={windowsHost}
-      hideBottomBorder={!tabRowCollapsed}
     />
   );
 
@@ -424,7 +413,7 @@ export function ChatPanelHeader({
           (HEADER_CONTENT_LEFT_PADDING_CLASS 15px + breadcrumb px-1 4px). */}
       {tabRowCollapsed ? null : (
         <div
-          className={`workspace-header header-tab-group @container/launchpad-header z-40 grid h-11 min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 pt-2 pl-1 ${CHAT_PANEL_HEADER_RIGHT_PADDING_CLASS} ${
+          className={`workspace-header header-tab-group @container/launchpad-header z-40 grid h-11 min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 pt-2 pl-1 ${CHAT_PANEL_HEADER_RIGHT_PADDING_CLASS} ${insetTransitionClassName} ${
             overlayPublishedHeader
               ? "absolute top-0 right-0 left-0"
               : "relative shrink-0"

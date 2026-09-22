@@ -91,7 +91,7 @@ export function useDiffSidebarTab({
       const sections: PanelSection[] = [
         {
           key: "submission-commits",
-          title: t("simulator.replay.diffApp.submissions.commits", "Commits"),
+          title: t("simulator.replay.diffApp.submissions.commits"),
           content: (
             <SubmissionCommitsContent
               commits={submissionCommits}
@@ -101,10 +101,7 @@ export function useDiffSidebarTab({
                   : null
               }
               onCommitSelect={handleSubmissionCommitSelect}
-              emptyLabel={t(
-                "simulator.replay.diffApp.submissions.noCommits",
-                "No Commits yet"
-              )}
+              emptyLabel={t("simulator.replay.diffApp.submissions.noCommits")}
             />
           ),
           defaultFlexGrow: 2,
@@ -116,13 +113,12 @@ export function useDiffSidebarTab({
       if (pullRequestsWithStatus.length > 0) {
         sections.push({
           key: "submission-prs",
-          title: t("simulator.replay.diffApp.submissions.pr", "PR"),
+          title: t("simulator.replay.diffApp.submissions.pr"),
           content: (
             <SubmissionPullRequestsContent
               pullRequests={pullRequestsWithStatus}
               emptyLabel={t(
-                "simulator.replay.diffApp.submissions.noPullRequests",
-                "No Pull Requests yet"
+                "simulator.replay.diffApp.submissions.noPullRequests"
               )}
             />
           ),
@@ -134,21 +130,18 @@ export function useDiffSidebarTab({
 
       return {
         key: "submissions-sidebar",
-        label: t(
-          "simulator.replay.diffApp.submissions.tabLabel",
-          "Submissions"
-        ),
+        label: t("simulator.replay.diffApp.submissions.tabLabel"),
         sections,
       };
     }
 
     return {
       key: "diff-sidebar",
-      label: t("simulator.replay.diffApp.tabLabel", "Diff"),
+      label: t("simulator.replay.diffApp.tabLabel"),
       sections: [
         {
           key: "diff-list",
-          title: t("simulator.replay.diffApp.tabLabel", "Diff"),
+          title: t("simulator.replay.diffApp.tabLabel"),
           content: (
             <DiffFileNavigationList
               items={sidebarItems}

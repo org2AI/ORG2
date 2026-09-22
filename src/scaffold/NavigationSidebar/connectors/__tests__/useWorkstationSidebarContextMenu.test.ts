@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import type { Session } from "@src/store/session";
+import { testTranslate } from "@src/test/i18nTestTranslate";
 import { popupNativeMenu } from "@src/util/platform/tauri/nativeMenuPopup";
 
 import { useWorkstationSidebarContextMenu } from "../useWorkstationSidebarContextMenu";
@@ -14,7 +15,7 @@ vi.mock("@src/util/platform/tauri/nativeMenuPopup", () => ({
 }));
 
 const mockedPopupNativeMenu = vi.mocked(popupNativeMenu);
-const translate = (key: string, defaultValue?: string) => defaultValue ?? key;
+const translate = testTranslate;
 
 function session(sessionId: string): Session {
   return {
@@ -117,7 +118,8 @@ describe("useWorkstationSidebarContextMenu", () => {
       const items = await popupOptions?.buildItems();
       const detachedWindowItem = items?.find(
         (menuItem) =>
-          "text" in menuItem && menuItem.text === "Open in New Window"
+          "text" in menuItem &&
+          menuItem.text === testTranslate("common:actions.openInNewWindow")
       );
 
       expect(detachedWindowItem).toBeDefined();

@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDebouncedCallback } from "@src/hooks/perf";
-import { getUiScaleFromCssVar } from "@src/lib/dndKit";
+import { getUiScaleFromCssVar } from "@src/util/dom/uiScale";
 
 import {
   UseTextSelectionDropdownOptions,
@@ -37,7 +37,7 @@ const SELECTION_CLEAR_DELAY_MS = 200;
 export function useTextSelectionDropdown(
   options: UseTextSelectionDropdownOptions
 ): UseTextSelectionDropdownReturn {
-  const { containerRef } = options;
+  const { anchorToSelection = false, containerRef } = options;
 
   // State
   const [visible, setVisible] = useState(false);
@@ -100,9 +100,18 @@ export function useTextSelectionDropdown(
       }
     }
 
+    const uiScale = getUiScaleFromCssVar();
+
+    if (anchorToSelection) {
+      // getBoundingClientRect() and MouseEvent.clientX/Y share the same
+      // client-pixel space, so both paths divide by the UI scale alike.
+      const rect = selection.getRangeAt(0).getBoundingClientRect();
+      showDropdown({ x: rect.left / uiScale, y: rect.top / uiScale }, text);
+      return;
+    }
+
     const offsetX = 10;
     const offsetY = 10;
-    const uiScale = getUiScaleFromCssVar();
 
     showDropdown(
       {

@@ -1,9 +1,9 @@
 import type { TFunction } from "i18next";
 import React, { useRef } from "react";
 
+import { ScrollTrailTarget } from "@src/components/layout/blocks";
 import { useWorkItemImageInsert } from "@src/hooks/project";
 import type { ProjectContentEditorRef } from "@src/modules/ProjectManager/shared";
-import { ScrollTrailTarget } from "@src/modules/shared/layouts/blocks";
 import type { Person } from "@src/types/core/shared";
 
 import RevisionConflictModal from "../../RevisionConflictModal";
@@ -151,9 +151,7 @@ export function useWorkItemContentSections({
   const customPropertiesSection = !isGitHubWorkItem ? (
     <ScrollTrailTarget
       enabled={isThread}
-      label={t("workItems.properties.title", {
-        defaultValue: "Custom properties",
-      })}
+      label={t("workItems.properties.title")}
     >
       <CustomPropertiesSection
         projectSlug={projectSlug}

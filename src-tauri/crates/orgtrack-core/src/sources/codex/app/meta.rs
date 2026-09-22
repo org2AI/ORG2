@@ -16,7 +16,10 @@ use crate::sources::imported_history::{
     watermark::{ImportedParseWatermark, WatermarkedTranscriptReader},
 };
 
-use super::impact::{collect_codex_impact_from_patch_apply_end, collect_codex_impact_from_payload};
+use super::impact::{
+    collect_codex_impact_from_file_change_item, collect_codex_impact_from_patch_apply_end,
+    collect_codex_impact_from_payload,
+};
 use super::index::{
     codex_sessions_dir_for_session_path, codex_thread_id_from_file_stem,
     collect_codex_session_files,
@@ -71,15 +74,22 @@ struct CodexSessionMetaState {
     prev_cached: i64,
     prev_cache_write: i64,
     prev_output: i64,
-    // Primary impact source: `patch_apply_end` events, which Codex emits after
-    // every *successful* apply with a structured `changes` map (path ->
-    // unified_diff). This covers every edit path uniformly — the `apply_patch`
-    // tool, `exec`-wrapped patches, etc. The tool-call scan is only a
-    // fallback for older rollouts that predate `patch_apply_end`.
+    // Impact sources, in `finish` priority order. Codex Desktop records each
+    // *successful* apply as a completed `FileChange` item — the only record of
+    // `exec`-wrapped patches. CLI rollouts that persist events instead carry
+    // the same `changes` map on `patch_apply_end`. Both describe the same
+    // applies, so they are tallied apart and never summed. The tool-call scan
+    // is only a fallback for rollouts that predate both.
+    #[serde(default)]
+    file_change_impact: ImportedHistoryImpactStats,
+    #[serde(default)]
+    file_change_touched: BTreeSet<String>,
     impact: ImportedHistoryImpactStats,
     touched_files: BTreeSet<String>,
     fallback_impact: ImportedHistoryImpactStats,
     fallback_touched: BTreeSet<String>,
+    #[serde(default)]
+    pending_exec_patches: std::collections::BTreeMap<String, Vec<String>>,
     parent_thread_id: Option<String>,
     source_metadata: CodexAppSourceMetadata,
 }
@@ -203,6 +213,11 @@ impl CodexSessionMetaState {
                 self.prev_output = cum_output;
             }
         }
+        collect_codex_impact_from_file_change_item(
+            &parsed.payload,
+            &mut self.file_change_impact,
+            &mut self.file_change_touched,
+        );
         collect_codex_impact_from_patch_apply_end(
             &parsed.payload,
             &mut self.impact,
@@ -213,6 +228,55 @@ impl CodexSessionMetaState {
             &mut self.fallback_impact,
             &mut self.fallback_touched,
         );
+        // A wrapper is an intent, not proof of an edit. Attribute it only when
+        // its matching result confirms completion, including across append scans.
+        let payload = &parsed.payload;
+        if payload.get("type").and_then(Value::as_str) == Some("custom_tool_call")
+            && payload.get("name").and_then(Value::as_str) == Some("exec")
+        {
+            if let (Some(id), Some(input)) = (
+                payload.get("call_id").and_then(Value::as_str),
+                payload.get("input").and_then(Value::as_str),
+            ) {
+                let patches = super::desktop_exec::exec_patches(input);
+                let retained: usize = self
+                    .pending_exec_patches
+                    .values()
+                    .flatten()
+                    .map(String::len)
+                    .sum();
+                if !patches.is_empty()
+                    && self.pending_exec_patches.len() < 64
+                    && retained + patches.iter().map(String::len).sum::<usize>() <= 2 * 1024 * 1024
+                {
+                    self.pending_exec_patches.insert(id.to_string(), patches);
+                }
+            }
+        } else if payload.get("type").and_then(Value::as_str) == Some("custom_tool_call_output") {
+            if let Some(patches) = payload
+                .get("call_id")
+                .and_then(Value::as_str)
+                .and_then(|id| self.pending_exec_patches.remove(id))
+            {
+                let output = super::desktop_exec::codex_tool_output_text(payload.get("output"));
+                if output.starts_with("Script completed")
+                    && !super::desktop_exec::codex_tool_output_failed(
+                        &output,
+                        super::desktop_exec::codex_tool_exit_code(&output),
+                    )
+                    && !output.contains("\"isError\":true")
+                    && !output.contains("\"isError\": true")
+                {
+                    for patch in patches {
+                        super::impact::accumulate_patch_impact(
+                            &patch,
+                            &mut self.fallback_impact,
+                            &mut self.fallback_touched,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     fn finish(
@@ -220,12 +284,15 @@ impl CodexSessionMetaState {
         record: &ImportedHistoryDiscoveredRecord,
         external_title: String,
     ) -> Option<CodexAppSessionMeta> {
-        // Prefer the authoritative `patch_apply_end` tally; only fall back to
-        // the tool-call scan when no successful applies were recorded.
-        if self.touched_files.is_empty()
-            && self.impact.lines_added == 0
-            && self.impact.lines_removed == 0
-        {
+        // Prefer an authoritative tally of successful applies; only fall back
+        // to the tool-call scan when neither record kind was written.
+        let is_empty = |impact: &ImportedHistoryImpactStats, touched: &BTreeSet<String>| {
+            touched.is_empty() && impact.lines_added == 0 && impact.lines_removed == 0
+        };
+        if !is_empty(&self.file_change_impact, &self.file_change_touched) {
+            self.impact = self.file_change_impact;
+            self.touched_files = self.file_change_touched;
+        } else if is_empty(&self.impact, &self.touched_files) {
             self.impact = self.fallback_impact;
             self.touched_files = self.fallback_touched;
         }

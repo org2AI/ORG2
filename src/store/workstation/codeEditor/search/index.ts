@@ -3,9 +3,6 @@
  *
  * Jotai atoms for codebase search state management.
  * Shared by both UI (useRepoSearchPanel) and AI (SearchService).
- *
- * Related submodules (also re-exported below):
- * - indexingProgressAtom: Indexing progress UI state
  */
 import { atom } from "jotai";
 
@@ -145,16 +142,4 @@ export const searchAppendResultsAtom = atom(
 // Re-exports from submodules
 // ============================================
 
-export {
-  indexingProgressAtom,
-  isIndexingAtom,
-  indexingPercentAtom,
-  indexingStatusMessageAtom,
-  startIndexingProgressAtom,
-  updateIndexingProgressAtom,
-  completeIndexingAtom,
-  setIndexingErrorAtom,
-  cancelIndexingAtom,
-  resetIndexingAtom,
-} from "./indexingProgressAtom";
 export * from "./searchTabSessionCache";

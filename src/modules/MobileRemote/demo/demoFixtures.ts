@@ -1,7 +1,3 @@
-/** Demo fixtures for Phase 0 mobile remote UI (no relay yet). */
-
-export const DEMO_SAS_PHRASE = "amber-falcon-42";
-
 export const DEMO_DESKTOP_NAME = "Home Mac";
 
 export interface DemoSessionRow {

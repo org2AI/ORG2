@@ -69,7 +69,6 @@ export const EditorPrimarySidebar: React.FC<EditorPrimarySidebarProps> = memo(
     onFilterSearch,
     onClearSearch,
     onTabChange,
-    iconOnly = true,
     onSymbolClick,
     onTimelineCommitClick,
     onRevealFile,
@@ -294,7 +293,6 @@ export const EditorPrimarySidebar: React.FC<EditorPrimarySidebarProps> = memo(
         tabs={allTabs}
         activeTab={viewMode}
         onTabChange={handleTabChange}
-        tabIconOnly={iconOnly}
         hideTabs
       />
     );

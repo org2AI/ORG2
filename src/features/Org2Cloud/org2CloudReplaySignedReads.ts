@@ -23,15 +23,12 @@
  */
 import { z } from "zod/v4";
 
-import {
-  type CloudEndpoint,
-  ORG2_CLOUD_POSTGREST_SCHEMA,
-  getCloudEndpoint,
-} from "./config";
+import { type CloudEndpoint, getCloudEndpoint } from "./config";
 import {
   fetchWithTransportRetry,
   isFetchTransportError,
 } from "./org2CloudFetchRetry";
+import { callOrg2CloudRpc } from "./org2CloudRpc";
 import { Org2CloudStorageError } from "./org2CloudStorageClient";
 import { Org2CloudSyncError } from "./org2CloudSyncClient";
 
@@ -129,37 +126,20 @@ export async function authorizeReplayRead(
   endpoint: CloudEndpoint = getCloudEndpoint(),
   signal?: AbortSignal
 ): Promise<CloudReplayReadGrant> {
-  const response = await fetchWithTransportRetry(
-    `${endpoint.supabaseUrl}/rest/v1/rpc/cloud_authorize_replay_read`,
+  const payload = await callOrg2CloudRpc(
+    "cloud_authorize_replay_read",
     {
-      method: "POST",
-      headers: {
-        apikey: endpoint.anonKey,
-        "content-type": "application/json",
-        "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-      },
-      body: JSON.stringify({
-        p_org_id: orgId,
-        p_session_id: sessionId,
-        p_share_token: shareToken,
-      }),
+      p_org_id: orgId,
+      p_session_id: sessionId,
+      p_share_token: shareToken,
+    },
+    {
+      // No `accessToken`: the share token in the body is the sole capability.
+      endpoint,
       signal,
+      createError: (message, status) => new Org2CloudSyncError(message, status),
     }
   );
-  const text = await response.text();
-  let payload: unknown = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    payload = null;
-  }
-  if (!response.ok) {
-    const message =
-      payload && typeof payload === "object" && "message" in payload
-        ? String((payload as { message: unknown }).message)
-        : `org2_cloud rpc cloud_authorize_replay_read failed with ${response.status}`;
-    throw new Org2CloudSyncError(message, response.status);
-  }
   return CloudReplayReadGrantSchema.parse(payload);
 }
 

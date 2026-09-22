@@ -1,0 +1,87 @@
+{
+  "refresh": "Segarkan",
+  "loadError": "Gagal memuat runtime tim",
+  "overview": {
+    "today": "Hari ini",
+    "everyone": "Semua orang",
+    "activeMembers": "Anggota aktif",
+    "usageByAgent": "Penggunaan per agen",
+    "recentSessions": "Sesi bersama terbaru",
+    "recentLoading": "Memuat sesi bersama…",
+    "recentEmpty": "Belum ada sesi bersama",
+    "members": "Rincian anggota",
+    "activeToday": "Aktif hari ini",
+    "inactiveToday": "Tidak aktif hari ini",
+    "sync": "Sinkronisasi"
+  },
+  "signedOut": {
+    "title": "Masuk untuk melihat tim Anda",
+    "subtitle": "Runtime rekan tim dibagikan melalui ORG2 Cloud.",
+    "action": "Masuk"
+  },
+  "noOrgs": {
+    "title": "Belum ada ruang kerja cloud",
+    "subtitle": "Bergabung atau buat ruang kerja, dan rekan tim Anda akan muncul di sini."
+  },
+  "unsupported": {
+    "title": "Backend perlu ditingkatkan",
+    "subtitle": "Backend cloud ruang kerja ini belum mendukung berbagi runtime tim."
+  },
+  "disabled": {
+    "title": "Berbagi runtime tim nonaktif",
+    "subtitle": "Admin ruang kerja dapat mengaktifkannya di pengaturan ruang kerja.",
+    "adminSubtitle": "Anda dapat mengaktifkannya di pengaturan ruang kerja."
+  },
+  "empty": {
+    "title": "Belum ada data anggota",
+    "subtitle": "Anggota muncul di sini setelah laporan runtime pertama mereka."
+  },
+  "card": {
+    "you": "Anda",
+    "cpu": "CPU",
+    "ram": "RAM",
+    "gpu": "GPU",
+    "today": "Hari ini",
+    "week": "7 hr",
+    "sessions": "Sesi",
+    "lastSynced": "Terakhir disinkronkan {{time}}",
+    "neverReported": "Belum ada laporan"
+  },
+  "detail": {
+    "back": "Tim",
+    "profileTitle": "Profil builder",
+    "noProfile": "Belum ada profil yang dibagikan.",
+    "usageTitle": "Penggunaan",
+    "usageEmpty": "Tidak ada penggunaan dalam rentang ini",
+    "range": {
+      "7": "7 hari",
+      "30": "30 hari",
+      "90": "90 hari"
+    },
+    "agentsTitle": "Agen terinstal",
+    "machineTitle": "Mesin",
+    "machineLabel": "Mesin",
+    "os": "Sistem operasi",
+    "chip": "Chip",
+    "memory": "Memori",
+    "unified": "terpadu",
+    "gpu": "GPU",
+    "appVersion": "Versi ORG2",
+    "totalSessions": "Total sesi",
+    "lastSynced": "Terakhir disinkronkan"
+  },
+  "orgSettings": {
+    "label": "Berbagi runtime tim",
+    "help": "Beban mesin, total penggunaan, dan profil builder anggota dibagikan ke ruang kerja pada interval ini. Hanya data agregat — tidak pernah transkrip, repo, atau judul.",
+    "memberNote": "Diaktifkan oleh admin. Interval: {{interval}}.",
+    "off": "Nonaktif",
+    "interval": {
+      "15": "Setiap 15 menit",
+      "30": "Setiap 30 menit",
+      "60": "Setiap jam",
+      "180": "Setiap 3 jam",
+      "360": "Setiap 6 jam",
+      "1440": "Setiap 24 jam"
+    }
+  }
+}

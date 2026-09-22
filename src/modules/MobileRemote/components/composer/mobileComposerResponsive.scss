@@ -1,0 +1,73 @@
+@use "../../mobileUiTokens" as mobile;
+
+.mobile-model-menu.mobile-model-menu {
+  @include mobile.adaptive-menu(16rem);
+
+  [role="option"] {
+    // Model and account names form a wrapping, two-part label. Let content
+    // determine row height instead of the shared desktop fixed-height row.
+    height: auto;
+    padding-block: mobile.$space-2;
+  }
+
+  // Account names may be longer than model names. Keep their identity visible
+  // on a second line rather than allocating a non-shrinking suffix column.
+  .mobile-model-menu__label {
+    display: flex;
+    flex-direction: column;
+    gap: mobile.$space-1;
+  }
+}
+
+.mobile-model-settings-menu.mobile-model-settings-menu {
+  @include mobile.adaptive-menu(14rem);
+  max-height: calc(100dvh - #{mobile.$space-4 * 2});
+  overflow-y: auto;
+}
+
+[data-mobile-composer="true"] {
+  min-width: 0;
+  max-height: 55dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// Mobile adapts shared composer controls at their supported class boundaries.
+// Keep the glyph size while reserving the common touch target in layout.
+.mobile-composer-toolbar,
+.mobile-composer-recording {
+  height: auto;
+  min-height: mobile.$touch-target;
+}
+
+.mobile-composer-icon-action,
+.mobile-composer-recording button {
+  min-width: mobile.$touch-target;
+  min-height: mobile.$touch-target;
+  flex-shrink: 0;
+}
+
+// The send surface is smaller than its hit target: a transparent token-sized
+// inset keeps the 44px button clickable without painting an oversized disk.
+.mobile-composer-submit {
+  border: #{mobile.$space-3 * 0.5} solid transparent;
+  background-clip: padding-box;
+}
+
+.mobile-composer-recording {
+  padding-block: mobile.$space-1;
+
+  // ComposerSendGroup retains a desktop height; let the touch controls size it.
+  > :last-child {
+    height: auto;
+  }
+}
+
+.mobile-composer-model-trigger {
+  min-width: 0;
+  max-width: 100%;
+  flex-shrink: 1;
+  min-height: mobile.$touch-target;
+  font-size: var(--mobile-type-secondary-size);
+  line-height: var(--mobile-type-control-leading);
+}

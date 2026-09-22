@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ComposerInputRef } from "@src/components/ComposerInput";
 
-import { InputAreaTopRows, getComposerShellVariant } from "./InputAreaChrome";
+import {
+  InputAreaTopRows,
+  getComposerShellClassName,
+  getComposerShellVariant,
+} from "./InputAreaChrome";
 
 vi.mock("../ChatHeader", () => ({ default: () => null }));
 vi.mock("./PlanTodoPill", () => ({ default: () => null }));
@@ -83,6 +87,24 @@ describe("getComposerShellVariant", () => {
     expect(shellVariant({ isEditMode: true })).toBe("embedded");
     expect(shellVariant({ isEditMode: true, quietEditSurface: true })).toBe(
       "historyEdit"
+    );
+  });
+});
+
+describe("getComposerShellClassName", () => {
+  const base = {
+    isDragOver: false,
+    isEditMode: false,
+    quietEditSurface: false,
+  };
+
+  it("keeps the composer glow by default", () => {
+    expect(getComposerShellClassName(base)).toBe("composer-breathing");
+  });
+
+  it("marks the glow hidden when the preference is off", () => {
+    expect(getComposerShellClassName({ ...base, glowVisible: false })).toBe(
+      "composer-breathing composer-glow-hidden"
     );
   });
 });

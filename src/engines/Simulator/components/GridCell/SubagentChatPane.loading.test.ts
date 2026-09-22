@@ -3,13 +3,13 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 
+import { useTestTranslation } from "@src/test/i18nTestTranslate";
+
 import { SubagentChatPane } from "./SubagentChatPane";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { defaultValue?: string }) =>
-      options?.defaultValue ?? key,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 vi.mock(
   "@src/engines/SessionCore/derived/sessionScopedChatEvents",

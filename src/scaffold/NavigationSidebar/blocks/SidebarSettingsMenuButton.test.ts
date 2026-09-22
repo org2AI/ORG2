@@ -21,7 +21,7 @@ import {
   org2CloudAuthAtom,
 } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import * as entitlementCoordinator from "@src/features/Org2Cloud/org2CloudEntitlementCoordinator";
-import { TUTORIALS_OPEN_EVENT } from "@src/scaffold/Tutorials/tutorialRegistry";
+import { WIKI_OPEN_EVENT } from "@src/features/Wiki/wikiEvents";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { settingsAtom } from "@src/store/settings";
 
@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   goToSettings: vi.fn(),
   handleAppearanceModeChange: vi.fn().mockResolvedValue(undefined),
   navigateTo: vi.fn(),
+  openLink: vi.fn(),
 }));
 
 function createRect({
@@ -61,6 +62,8 @@ function createRect({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+
+vi.mock("@src/util/ui/openLink", () => ({ openLink: mocks.openLink }));
 
 vi.mock("@src/hooks/navigation", () => ({
   useAppNavigation: () => ({
@@ -157,63 +160,41 @@ describe("SidebarSettingsMenuButton", () => {
     expect(adeManagerButton).toBeUndefined();
   });
 
-  it("opens and dismisses the separate wiki outside dev mode without opening onboarding", async () => {
-    act(() => store.set(devModeEnabledAtom, false));
-    const onOnboarding = vi.fn();
-    window.addEventListener(TUTORIALS_OPEN_EVENT, onOnboarding);
-    try {
-      const button = document.querySelector<HTMLButtonElement>(
-        '[data-testid="sidebar-menu-wiki"]'
+  it.each([false, true])(
+    "opens the wiki dialog with dev mode %s after closing the menu",
+    (devMode) => {
+      act(() => store.set(devModeEnabledAtom, devMode));
+      const onOpen = vi.fn(() =>
+        expect(mocks.closeDropdown).toHaveBeenCalledOnce()
       );
-      expect(button?.textContent).toBe("Wiki");
-      await act(async () => {
-        button!.click();
-        await import("@src/features/Wiki/WikiModal");
-      });
-      expect(mocks.closeDropdown).toHaveBeenCalledOnce();
-      expect(
-        document.querySelector('[aria-label="Search the wiki"]')
-      ).not.toBeNull();
-      expect(
-        document.querySelector('[data-testid="onboarding-modal"]')
-      ).toBeNull();
-      expect(onOnboarding).not.toHaveBeenCalled();
-      act(() =>
-        document.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
-        )
-      );
-      expect(
-        document.querySelector('[aria-label="Search the wiki"]')
-      ).toBeNull();
-    } finally {
-      window.removeEventListener(TUTORIALS_OPEN_EVENT, onOnboarding);
+      window.addEventListener(WIKI_OPEN_EVENT, onOpen);
+      try {
+        const button = document.querySelector<HTMLButtonElement>(
+          '[data-testid="sidebar-menu-wiki"]'
+        );
+        expect(button?.textContent).toBe("Wiki");
+        expect(button?.getAttribute("aria-haspopup")).toBe("dialog");
+        act(() => button!.click());
+        expect(onOpen).toHaveBeenCalledOnce();
+        expect(mocks.openLink).not.toHaveBeenCalled();
+      } finally {
+        window.removeEventListener(WIKI_OPEN_EVENT, onOpen);
+      }
     }
-  });
+  );
 
-  it("hides onboarding when dev mode is disabled", () => {
-    act(() => store.set(devModeEnabledAtom, false));
+  it("keeps Wiki as the only entry point into the dialog", () => {
+    act(() => store.set(devModeEnabledAtom, true));
     expect(
       document.querySelector('[data-testid="sidebar-menu-onboarding"]')
     ).toBeNull();
-  });
-
-  it("opens onboarding from the account menu after closing the dropdown", () => {
-    const onOpen = vi.fn(() =>
-      expect(mocks.closeDropdown).toHaveBeenCalledOnce()
-    );
-    window.addEventListener(TUTORIALS_OPEN_EVENT, onOpen);
-    try {
-      const button = document.querySelector<HTMLButtonElement>(
-        '[data-testid="sidebar-menu-onboarding"]'
-      );
-      expect(button?.textContent).toBe("discovery.title");
-      expect(button?.getAttribute("aria-haspopup")).toBe("dialog");
-      act(() => button!.click());
-      expect(onOpen).toHaveBeenCalledOnce();
-    } finally {
-      window.removeEventListener(TUTORIALS_OPEN_EVENT, onOpen);
-    }
+    expect(
+      Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          '[data-testid="sidebar-menu-wiki"]'
+        )
+      )
+    ).toHaveLength(1);
   });
 
   it("uses the standard square button radius for its footer trigger", () => {
@@ -293,8 +274,31 @@ describe("SidebarSettingsMenuButton", () => {
       (button) => button.textContent === "cloud.signIn"
     )!;
     await act(async () => confirm.click());
-    expect(dialog()).toBeNull();
+    expect(dialog()?.textContent).toContain("auth:loading.waiting");
     expect(onSignIn).toHaveBeenCalledOnce();
+    const waitingDialog = dialog();
+    await act(async () => {
+      store.set(org2CloudAuthAtom, {
+        kind: "org2_cloud",
+        supabaseUrl: "https://cloud.example.test",
+        supabaseAnonKey: "test-key",
+        userId: "user-1",
+        accessToken: "test-token",
+        refreshToken: "test-refresh",
+        expiresAt: 2_000_000_000,
+      });
+      root.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(SidebarSettingsMenuButton, {
+            onSignIn: undefined,
+          })
+        )
+      );
+    });
+    expect(dialog()).toBe(waitingDialog);
+    expect(dialog()?.textContent).toContain("auth:loading.success");
   });
 
   it("confirms logout before clearing the persisted account and showing login", async () => {
@@ -412,19 +416,19 @@ describe("SidebarSettingsMenuButton", () => {
       .join(" ");
 
     expect(submenuText).toContain("layoutSettings.chatPanelLocation");
+    expect(submenuText).toContain("layoutSettings.chatSplitRatio");
     expect(submenuText).toContain("layoutSettings.sidebarPosition");
     expect(submenuText).toContain("layoutSettings.modelPickerStyle");
-    expect(submenuText).toContain("layoutSettings.paginateChatHistory");
-    expect(
-      document.querySelector(
-        '[data-testid="sidebar-layout-pagination-separator"]'
-      )
-    ).not.toBeNull();
+    // Layout is segmented pills only. The two switches that used to trail it —
+    // Spotlight dim background and chat-history pagination — live on their own
+    // Settings tabs (Appearance → Spotlight, Appearance → Chat Panel).
+    expect(submenuText).not.toContain("layoutSettings.paginateChatHistory");
+    expect(submenuText).not.toContain("general.spotlightDimBackground");
 
     const segmentedControls = Array.from(
       document.body.querySelectorAll<HTMLElement>('[role="group"]')
     );
-    expect(segmentedControls).toHaveLength(4);
+    expect(segmentedControls).toHaveLength(5);
     expect(
       segmentedControls.every((control) => control.classList.contains("h-6"))
     ).toBe(true);
@@ -432,13 +436,12 @@ describe("SidebarSettingsMenuButton", () => {
       segmentedControls.map((control) => control.getAttribute("aria-label"))
     ).toEqual([
       "layoutSettings.chatPanelLocation",
+      "layoutSettings.chatSplitRatio",
       "layoutSettings.sidebarPosition",
       "layoutSettings.modelPickerStyle",
       "general.spotlightPlacement",
     ]);
-    expect(
-      document.body.querySelector('[role="switch"]')?.getAttribute("aria-label")
-    ).toBe("layoutSettings.paginateChatHistory");
+    expect(document.body.querySelectorAll('[role="switch"]')).toHaveLength(0);
   });
 
   it("updates the shared Spotlight placement setting from Layout", async () => {
@@ -510,6 +513,36 @@ describe("SidebarSettingsMenuButton", () => {
 
     await act(async () => themeButtons[2]?.click());
     expect(mocks.handleAppearanceModeChange).toHaveBeenCalledWith("dark");
+    expect(mocks.closeDropdown).not.toHaveBeenCalled();
+    expect(
+      document.body.querySelector('[role="group"][aria-label="general.theme"]')
+    ).not.toBeNull();
+  });
+
+  it("keeps the menu tree open after changing presence", async () => {
+    const presenceTrigger = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>("button")
+    ).find((button) => button.textContent === "myRoles.tabs.presence");
+
+    await act(async () => {
+      presenceTrigger?.dispatchEvent(
+        new MouseEvent("mouseover", { bubbles: true })
+      );
+    });
+
+    const awayOption = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>("button")
+    ).find((button) => button.textContent === "sidebar.presence.away");
+    expect(awayOption).toBeDefined();
+
+    await act(async () => awayOption?.click());
+
+    expect(mocks.closeDropdown).not.toHaveBeenCalled();
+    expect(
+      Array.from(
+        document.body.querySelectorAll<HTMLButtonElement>("button")
+      ).find((button) => button.textContent === "sidebar.presence.away")
+    ).toBeDefined();
   });
 
   it("opens Appearance settings from Modify appearance", async () => {

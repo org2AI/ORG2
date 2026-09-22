@@ -20,17 +20,17 @@ import {
   projectApi,
 } from "@src/api/http/project";
 import Button from "@src/components/Button";
-import Message from "@src/components/Message";
-import { Placeholder } from "@src/components/Placeholder";
-import { Copy01Icon, HugeiconsIcon, Link01Icon } from "@src/icons";
 import CompactListPanel, {
   type CompactListPanelEntry,
-} from "@src/modules/shared/components/CompactListPanel";
-import { WorkManagementRefreshButton } from "@src/modules/shared/components/WorkManagementRefreshButton";
+} from "@src/components/CompactListPanel";
+import Message from "@src/components/Message";
+import { Placeholder } from "@src/components/Placeholder";
+import { WorkManagementRefreshButton } from "@src/features/GitHubWork/WorkManagementRefreshButton";
+import { Copy01Icon, HugeiconsIcon, Link01Icon } from "@src/icons";
 import DetailPaneLayout, {
   DetailPanePlaceholder,
-} from "@src/modules/shared/layouts/DetailPaneLayout";
-import InboxListDetailLayout from "@src/modules/shared/layouts/InboxListDetailLayout";
+} from "@src/scaffold/layouts/DetailPaneLayout";
+import InboxListDetailLayout from "@src/scaffold/layouts/InboxListDetailLayout";
 import { copyText } from "@src/util/data/clipboard";
 
 const DELIVERY_STATUS_TONE: Record<string, string> = {
@@ -141,9 +141,7 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
     (deliveryId: string) => {
       void runAction(async () => {
         await projectApi.replayRoutineWebhookDelivery(deliveryId);
-        Message.success(
-          t("webhooks.replayQueued", { defaultValue: "Delivery replayed" })
-        );
+        Message.success(t("webhooks.replayQueued"));
         loadDeliveries();
       });
     },
@@ -154,11 +152,9 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
     async (value: string) => {
       try {
         await copyText(value);
-        Message.success(t("webhooks.copied", { defaultValue: "Copied" }));
+        Message.success(t("webhooks.copied"));
       } catch {
-        Message.error(
-          t("webhooks.copyFailed", { defaultValue: "Copy failed" })
-        );
+        Message.error(t("webhooks.copyFailed"));
       }
     },
     [t]
@@ -179,23 +175,20 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
   const paused = Boolean(status?.pausedAt);
   const statusChip = !status ? null : !status.installed ? (
     <span className="text-[11px] text-text-4">
-      {t("webhooks.notInstalled", { defaultValue: "Not installed" })}
+      {t("webhooks.notInstalled")}
     </span>
   ) : paused ? (
     <span className="text-[11px] font-medium text-danger-6">
       {t("webhooks.paused", {
-        defaultValue: "Paused after {{count}} failures",
         count: status.consecutiveFailures,
       })}
     </span>
   ) : status.enabled ? (
     <span className="text-[11px] font-medium text-success-6">
-      {t("webhooks.enabled", { defaultValue: "Enabled" })}
+      {t("webhooks.enabled")}
     </span>
   ) : (
-    <span className="text-[11px] text-text-3">
-      {t("webhooks.disabled", { defaultValue: "Disabled" })}
-    </span>
+    <span className="text-[11px] text-text-3">{t("webhooks.disabled")}</span>
   );
   const copyLabel = t("common:actions.copy");
 
@@ -219,15 +212,12 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
           {status?.installed ? (
             <>
               <Button
-                variant="secondary"
                 size="small"
                 onClick={handleToggleEnabled}
                 disabled={busy || !status}
                 data-testid={`routine-webhook-toggle-${routine.name}`}
               >
-                {status.enabled
-                  ? t("webhooks.disable", { defaultValue: "Disable" })
-                  : t("webhooks.enable", { defaultValue: "Enable" })}
+                {status.enabled ? t("webhooks.disable") : t("webhooks.enable")}
               </Button>
               <Button
                 variant="tertiary"
@@ -236,7 +226,7 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
                 disabled={busy}
                 data-testid={`routine-webhook-rotate-${routine.name}`}
               >
-                {t("webhooks.rotate", { defaultValue: "Rotate secret" })}
+                {t("webhooks.rotate")}
               </Button>
             </>
           ) : (
@@ -247,11 +237,11 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
               disabled={busy}
               data-testid={`routine-webhook-install-${routine.name}`}
             >
-              {t("webhooks.install", { defaultValue: "Install webhook" })}
+              {t("webhooks.install")}
             </Button>
           )}
           <WorkManagementRefreshButton
-            label={t("common:actions.refresh", { defaultValue: "Refresh" })}
+            label={t("common:actions.refresh")}
             loading={busy}
             onRefresh={() => {
               loadStatus();
@@ -263,8 +253,7 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
 
         {status?.secretHint ? (
           <div className="text-[11px] text-text-3">
-            {t("webhooks.secretHint", { defaultValue: "Secret" })} ·{" "}
-            {status.secretHint}
+            {t("webhooks.secretHint")} · {status.secretHint}
           </div>
         ) : null}
 
@@ -274,10 +263,7 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
             data-testid={`routine-webhook-install-info-${routine.name}`}
           >
             <p className="text-[11px] text-text-3">
-              {t("webhooks.secretShownOnce", {
-                defaultValue:
-                  "The secret is shown once — store it in your provider now.",
-              })}
+              {t("webhooks.secretShownOnce")}
             </p>
             <div className="flex items-center gap-2">
               <code className="min-w-0 flex-1 truncate text-[11px] text-text-2">
@@ -317,12 +303,7 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
         {deliveries === null ? (
           <Placeholder variant="loading" />
         ) : deliveries.length === 0 ? (
-          <Placeholder
-            variant="empty"
-            title={t("webhooks.noDeliveries", {
-              defaultValue: "No deliveries yet",
-            })}
-          />
+          <Placeholder variant="empty" title={t("webhooks.noDeliveries")} />
         ) : (
           <ul className="flex flex-col gap-1">
             {deliveries.map((delivery) => (
@@ -352,7 +333,7 @@ const WebhookDetailPane: React.FC<WebhookDetailPaneProps> = ({
                   disabled={busy}
                   data-testid={`routine-webhook-replay-${delivery.id}`}
                 >
-                  {t("webhooks.replay", { defaultValue: "Replay" })}
+                  {t("webhooks.replay")}
                 </Button>
               </li>
             ))}
@@ -458,9 +439,7 @@ const RoutineWebhooksPanel: React.FC<RoutineWebhooksPanelProps> = ({
     <Placeholder
       variant="empty"
       placement="sidebar"
-      title={t("webhooks.empty", {
-        defaultValue: "No routines yet — apply one from the CLI first",
-      })}
+      title={t("webhooks.empty")}
       fillParentHeight
     />
   ) : (
@@ -468,7 +447,7 @@ const RoutineWebhooksPanel: React.FC<RoutineWebhooksPanelProps> = ({
   );
   const routineList = (
     <CompactListPanel
-      ariaLabel={t("webhooks.title", { defaultValue: "Webhooks" })}
+      ariaLabel={t("webhooks.title")}
       entries={entries}
       selectedEntryKey={selectedRoutine?.routineId ?? null}
       loading={routines === null && !error}

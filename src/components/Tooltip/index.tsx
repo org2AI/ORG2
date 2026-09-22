@@ -49,6 +49,7 @@ import {
   getBestTooltipCandidate,
   getTooltipPositionSide,
 } from "./tooltipPlacement";
+import { useButtonTooltipTiming } from "./useButtonTooltipTiming";
 
 export type { TooltipPosition } from "./tooltipPlacement";
 
@@ -96,7 +97,16 @@ export interface TooltipProps {
   trigger?: "hover" | "click" | "focus";
 
   /**
-   * Show delay (ms)
+   * `"button"` marks the label/shortcut hint of a clickable control. Its show
+   * delay and visibility follow the global Appearance → Tooltips setting, and
+   * `mouseEnterDelay` is ignored. `"info"` (info icons, status badges, data
+   * previews) keeps the per-site `mouseEnterDelay`.
+   * @default 'info'
+   */
+  kind?: "button" | "info";
+
+  /**
+   * Show delay (ms). Ignored when `kind="button"`.
    * @default 100
    */
   mouseEnterDelay?: number;
@@ -188,6 +198,15 @@ export interface TooltipProps {
    * @default false
    */
   smartPlacement?: boolean;
+
+  /**
+   * Let the pointer reach the tooltip panel, so it can host controls the user
+   * clicks. Hover tooltips are inert by default (`pointer-events: none`) —
+   * without this the panel's own enter/leave handlers never fire and moving
+   * toward it dismisses it. `trigger="click"` implies this.
+   * @default false
+   */
+  interactive?: boolean;
 }
 
 const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
@@ -196,9 +215,10 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
       content,
       position = "top",
       trigger = "hover",
-      mouseEnterDelay = 100,
+      kind = "info",
+      mouseEnterDelay: infoMouseEnterDelay = 100,
       mouseLeaveDelay = 100,
-      disabled = false,
+      disabled: disabledProp = false,
       open,
       defaultOpen = false,
       onOpenChange,
@@ -213,9 +233,16 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
       framedPanel = false,
       framedPanelWide = false,
       smartPlacement = false,
+      interactive = false,
     },
     _ref
   ) => {
+    const buttonTiming = useButtonTooltipTiming();
+    const isButtonTooltip = kind === "button";
+    const mouseEnterDelay = isButtonTooltip
+      ? buttonTiming.delayMs
+      : infoMouseEnterDelay;
+    const disabled = disabledProp || (isButtonTooltip && !buttonTiming.enabled);
     const [internalOpen, setInternalOpen] = useState(defaultOpen);
     const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
     const [arrowOffset, setArrowOffset] = useState({ left: 0, top: 0 });
@@ -524,7 +551,7 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
       `native-tooltip-${position}`,
       `native-tooltip-${color}`,
       effectiveOpen && positionReady && "native-tooltip-visible",
-      trigger === "click" && "native-tooltip-interactive",
+      (trigger === "click" || interactive) && "native-tooltip-interactive",
       panelStyle && "native-tooltip-panel",
       usesFramedSurface && "native-tooltip-framed-panel",
       framedPanelWide && "native-tooltip-framed-panel-wide",

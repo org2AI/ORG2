@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ModelType } from "@src/api/types/keys";
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import ModelIcon from "@src/components/ModelIcon";
 import { Placeholder } from "@src/components/Placeholder";
 import type { SelectOption } from "@src/components/Select";
@@ -19,8 +20,7 @@ import Tag from "@src/components/Tag";
 import type { AvailableAgent } from "@src/config/cliAgents";
 import { MODEL_TABLE_SWITCH_SIZE } from "@src/config/modelTable";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
-import { Add01Icon, HugeiconsIcon, Refresh04Icon } from "@src/icons";
+import { Add01Icon, HugeiconsIcon } from "@src/icons";
 import {
   cliAgentVisibilityOverridesAtom,
   isCliAgentEnabled,
@@ -88,11 +88,6 @@ const CliClientsTable: React.FC<CliClientsTableProps> = ({
   const [readyFilter, setReadyFilter] = useState<ReadyFilter>(READY_FILTER.ALL);
   const cliVisibilityOverrides = useAtomValue(cliAgentVisibilityOverridesAtom);
   const setCliAgentEnabled = useSetAtom(setCliAgentEnabledAtom);
-  const { spinClass, handleClick: handleRefreshClick } = useRefreshSpin(
-    fetchAgents ?? (() => undefined),
-    loading
-  );
-
   const subscriptionsByAgent = useMemo(() => {
     const subscriptionMap = new Map<string, number>();
     for (const agent of agents) {
@@ -242,9 +237,7 @@ const CliClientsTable: React.FC<CliClientsTableProps> = ({
         key: "enabled",
         label: (
           <span className="sr-only">
-            {tIntegrations("common:labels.status", {
-              defaultValue: "Status",
-            })}
+            {tIntegrations("common:labels.status")}
           </span>
         ),
         width: SETTINGS_TABLE_COL.hug,
@@ -286,16 +279,10 @@ const CliClientsTable: React.FC<CliClientsTableProps> = ({
                 onCheckedChange={(nextEnabled) =>
                   handleEnabledChange(agent, nextEnabled)
                 }
-                ariaLabel={tIntegrations("common:labels.enabled", {
-                  defaultValue: "Enabled",
-                })}
+                ariaLabel={tIntegrations("common:labels.enabled")}
               />
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => handleViewAgent(agent)}
-              >
-                {tIntegrations("common:actions.view", { defaultValue: "View" })}
+              <Button size="small" onClick={() => handleViewAgent(agent)}>
+                {tIntegrations("common:actions.view")}
               </Button>
             </div>
           );
@@ -371,35 +358,20 @@ const CliClientsTable: React.FC<CliClientsTableProps> = ({
     return rows;
   }, [agents, searchQuery, installFilter, readyFilter, subscriptionsByAgent]);
 
-  const addButtonLabel = tIntegrations("common:actions.add", {
-    defaultValue: "Add",
-  });
-  const refreshButtonLabel = tIntegrations("common:actions.refresh", {
-    defaultValue: "Refresh",
-  });
+  const addButtonLabel = tIntegrations("common:actions.add");
+  const refreshButtonLabel = tIntegrations("common:actions.refresh");
 
   const headerActions = (
     <div className="flex items-center gap-1">
-      <Button
+      <RefreshButton
         variant="secondary"
-        size="default"
-        icon={
-          <HugeiconsIcon
-            icon={Refresh04Icon}
-            data-icon="refresh-cw"
-            size={14}
-            className={spinClass}
-          />
-        }
         iconOnly
-        aria-label={refreshButtonLabel}
-        title={refreshButtonLabel}
-        onClick={handleRefreshClick}
+        label={refreshButtonLabel}
+        refreshing={loading}
+        onRefresh={fetchAgents ?? (() => undefined)}
       />
       {onAdd && (
         <Button
-          variant="secondary"
-          size="default"
           icon={<HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />}
           iconOnly
           aria-label={addButtonLabel}

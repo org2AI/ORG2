@@ -24,9 +24,9 @@ import { useAtomValue } from "jotai";
 import React, { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useActionSystem } from "@src/ActionSystem";
 import { useGitStatus } from "@src/contexts/git/GitStatusContext/useGitStatus";
 import { useWorkStationTabShortcutBridge } from "@src/hooks/tabHost/useWorkStationTabShortcutBridge";
+import { useActionSystem } from "@src/scaffold/ActionSystem";
 import { workStationPrimarySidebarCollapsedAtom } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 
 import { EditorPaneLayers } from "./EditorPaneLayers";
@@ -39,7 +39,6 @@ import type { EditorContentProps } from "./types";
 import { useEditorHostValue } from "./useEditorHostValue";
 import { useEditorPaneFileState } from "./useEditorPaneFileState";
 import { useEditorPaneLayers } from "./useEditorPaneLayers";
-import { useSearchTabTitleChange } from "./useSearchTabTitleChange";
 import { useSourceControlTabHeader } from "./useSourceControlTabHeader";
 
 const NO_RETAINED_TABS: ReadonlySet<string> = new Set();
@@ -128,15 +127,13 @@ const EditorContent: React.FC<EditorContentProps> = memo(
     // palette). In All-Tabs mode the unified `+` menu (TabBarPlusMenu)
     // claims ⌘T directly via its own `workstation-new-tab` listener.
     useWorkStationTabShortcutBridge({
-      enabled: true,
+      host: "code",
       onCloseActiveTab: handleWorkStationCloseActiveEditorTab,
     });
 
     // ============================================
     // Tab Bar Handlers
     // ============================================
-
-    const handleSearchTabTitleChange = useSearchTabTitleChange(updatePaneState);
 
     const { handleGitDiffUnsavedChange, handleBinaryUnsavedChange } =
       useUnsavedChangeHandlers({ activeTabId, updatePaneState });
@@ -189,7 +186,6 @@ const EditorContent: React.FC<EditorContentProps> = memo(
       onFileSelect,
       onFileSelectWithLine,
       onCursorPositionChange,
-      handleSearchTabTitleChange,
       handleGitDiffUnsavedChange,
       handleBinaryUnsavedChange,
       terminalState,

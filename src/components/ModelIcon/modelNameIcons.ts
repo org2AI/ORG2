@@ -1,28 +1,52 @@
 import type { ModelType } from "@src/api/types/keys";
+import { isTierModelName } from "@src/util/modelTiers";
 
 import type { IconProvider } from "./iconProviders";
 import { MODEL_TYPE_TO_ICON } from "./modelTypeIcons";
+
+/**
+ * Routing tiers, not models: "auto", "default" and "premium" are the names
+ * Cursor gives its own tiers, but every other agent uses the same words
+ * generically — a `claude_code` account's "default" means "whatever the CLI
+ * picks". Claiming them for Cursor unconditionally painted the Cursor cube on
+ * unrelated agents' rows, so they resolve to a brand only when the agent hint
+ * is Cursor itself.
+ *
+ * The name set itself lives in `@src/util/modelTiers` — shared with the label
+ * resolvers so a tier never reads as a model in one surface and a routing
+ * choice in another.
+ */
+
+/**
+ * True for model ids that name a routing tier rather than a model. Such a name
+ * carries no brand, so callers must not fall back to the agent's mark for it —
+ * that would claim the session runs a specific model.
+ */
+export function isGenericTierModelName(modelName: string): boolean {
+  return isTierModelName(modelName);
+}
 
 /**
  * Detect icon provider from model name.
  * @param modelName - The model name string (e.g. "gpt-4o", "composer-1", "auto")
  * @param agentType - Optional agent type hint for generic names like "auto"
  */
-const CURSOR_MODEL_NAME_ICONS = new Set(["auto", "default", "premium"]);
-
 export function getIconProviderFromModelName(
   modelName: string,
   agentType?: string
 ): IconProvider {
   const lower = modelName.toLowerCase();
 
-  // Generic model names that depend on agent type context
-  if (lower === "auto" && agentType) {
-    return MODEL_TYPE_TO_ICON[agentType as ModelType] || "unknown";
+  // Routing tiers only name a brand when the agent behind them is Cursor.
+  if (isTierModelName(lower)) {
+    const hinted = agentType
+      ? (MODEL_TYPE_TO_ICON[agentType as ModelType] as IconProvider | undefined)
+      : undefined;
+    return hinted === "cursor" || agentType === "cursor" ? "cursor" : "unknown";
   }
 
-  // Cursor models (composer and Cursor plan/tier names)
-  if (lower.includes("composer") || CURSOR_MODEL_NAME_ICONS.has(lower)) {
+  // Cursor models (the Composer family)
+  if (lower.includes("composer")) {
     return "cursor";
   }
 
@@ -98,6 +122,12 @@ export function getIconProviderFromModelName(
     lower.includes("nemotron")
   ) {
     return "nvidia";
+  }
+
+  // Meta AI's Muse family (muse-spark-*) carries the Meta AI mark, not the
+  // Llama-era Meta logo; this sits above that rule so "meta/muse-*" lands here.
+  if (/(?:^|[^a-z0-9])muse(?:[^a-z0-9]|$)/.test(lower)) {
+    return "meta_ai";
   }
 
   // Meta/Llama models

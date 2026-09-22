@@ -7,7 +7,7 @@ export interface GitHubIssueDetailTabData {
   authScope?: string;
   viewerLogin?: string | null;
   repoPermissions?:
-    | import("@src/api/tauri/github").GitHubRepoPermissions
+    | import("@src/contracts/github").GitHubRepoPermissions
     | null;
 }
 

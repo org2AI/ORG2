@@ -131,11 +131,6 @@ export function getItemHeight(item: SpotlightItem): number {
   return item.desc ? ITEM_HEIGHT_WITH_DESC : ITEM_HEIGHT;
 }
 
-/** Type-safe accessor for item data */
-function getItemData(item: SpotlightItem): SpotlightItemData {
-  return (item.data || {}) as SpotlightItemData;
-}
-
 // ============ TYPES ============
 
 export interface SpotlightItemRowProps {
@@ -149,13 +144,15 @@ export interface SpotlightItemRowProps {
   onHover: (index: number) => void;
   onHoverEnd?: () => void;
   searchQuery: string;
+  /** Show the hover detail card for rows with extra metadata. */
+  showDetailPane?: boolean;
 }
 
 // ============ DESC LINE ============
 
 /** Renders the desc text. When descTitle is set, the "+ N more" suffix becomes
  *  a hoverable pill with an info icon that shows the full list in a tooltip. */
-const DescLine = memo<{ desc: string; descTitle: unknown }>(
+const DescLine = memo<{ desc: string; descTitle?: string }>(
   ({ desc, descTitle }) => {
     if (typeof descTitle !== "string" || !descTitle) {
       return (
@@ -200,7 +197,7 @@ const DescLine = memo<{ desc: string; descTitle: unknown }>(
           position="bottom-start"
           style={{ zIndex: 10000 }}
         >
-          <span className="inline-flex shrink-0 cursor-default items-center gap-0.5 rounded-full bg-fill-2 px-1.5 py-px text-[10px] text-text-3 hover:bg-fill-2 hover:text-text-2">
+          <span className="pointer-events-auto relative inline-flex shrink-0 cursor-default items-center gap-0.5 rounded-full bg-fill-2 px-1.5 py-px text-[10px] text-text-3 hover:bg-fill-2 hover:text-text-2">
             <HugeiconsIcon
               icon={InformationCircleIcon}
               data-icon="info"
@@ -256,9 +253,10 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
     onHover,
     onHoverEnd,
     searchQuery,
+    showDetailPane = true,
   }) => {
     const { t } = useTranslation();
-    const data = getItemData(item);
+    const data = item.data ?? {};
     const isChildItem = data.parentAction && item.type === "option";
     const isCurrentSelection = data.isCurrentSelection;
     const isHeader = data.isHeader;
@@ -271,8 +269,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
     const itemTextClassName = isDanger
       ? "text-danger-6"
       : SPOTLIGHT_CLASSES.itemLabelTone;
-    const iconTone =
-      typeof data.iconTone === "string" ? data.iconTone : undefined;
+    const iconTone = data.iconTone;
     const itemIconClassName = isDanger
       ? "text-danger-6"
       : iconTone === "primary"
@@ -284,25 +281,6 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
     const labelWeightClass = isCurrentSelection
       ? "font-medium"
       : SPOTLIGHT_CLASSES.itemLabelWeight;
-    const modelSection =
-      typeof data.modelSection === "string" ? data.modelSection : undefined;
-    const modelId = typeof data.modelId === "string" ? data.modelId : undefined;
-    const groupModelIds = Array.isArray(data.groupModelIds)
-      ? data.groupModelIds
-          .filter((value): value is string => typeof value === "string")
-          .join(" ")
-      : undefined;
-    const testId = typeof data.testId === "string" ? data.testId : undefined;
-    const sourceAccountId =
-      typeof data.sourceAccountId === "string"
-        ? data.sourceAccountId
-        : undefined;
-    const sourceModelType =
-      typeof data.sourceModelType === "string"
-        ? data.sourceModelType
-        : undefined;
-    const sourceType =
-      typeof data.sourceType === "string" ? data.sourceType : undefined;
     const copyName = data.contextMenuCopy?.name;
     const copyPath = data.contextMenuCopy?.path;
 
@@ -337,8 +315,8 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         void showSpotlightContextMenu({
           name: copyName,
           path: copyPath,
-          copyNameLabel: t("actions.copyName", "Copy Name"),
-          copyPathLabel: t("actions.copyPath", "Copy Path"),
+          copyNameLabel: t("actions.copyName"),
+          copyPathLabel: t("actions.copyPath"),
           revealLabel: t(getFileManagerRevealLabelKey()),
         }).catch((error: unknown) => {
           log.error("Failed to show context menu:", error);
@@ -364,7 +342,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
       !data.statusContent && data.tagLabel && item.type !== "branch" ? (
         <span
           className={`${TAG_BASE_CLASSES} shrink-0 px-[10px] py-1.5 text-[11px] ${
-            isDisabled ? "bg-fill-2 text-text-3" : "text-slate-600"
+            isDisabled ? "bg-fill-2 text-text-3" : "text-text-2"
           }`}
         >
           {isDisabled && (
@@ -377,16 +355,11 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
 
     const row = (
       <div
-        data-testid={testId}
+        data-testid={data.testId}
+        {...data.domAttributes}
         data-spotlight-item-index={index}
         data-spotlight-item-id={item.id}
-        data-spotlight-model-section={modelSection}
-        data-spotlight-model-id={modelId}
-        data-spotlight-group-model-ids={groupModelIds}
-        data-source-account-id={sourceAccountId}
-        data-source-model-type={sourceModelType}
-        data-source-type={sourceType}
-        className={`spotlight-item group relative mx-2 ${SPOTLIGHT_CLASSES.itemRow} ${
+        className={`spotlight-item group relative mx-2 [&_button]:pointer-events-auto [&_input]:pointer-events-auto [&_label]:pointer-events-auto [&>*]:pointer-events-none ${SPOTLIGHT_CLASSES.itemRow} ${
           isDisabled
             ? "cursor-not-allowed opacity-50"
             : `cursor-pointer ${isCurrentSelection ? "is-current-selection" : ""} ${isSelected ? "selected" : ""}`
@@ -395,13 +368,24 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
           height: getItemHeight(item),
           marginBottom: SPOTLIGHT_TOKENS.itemGap,
         }}
-        onClick={handleClick}
         onContextMenu={handleContextMenu}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
+        {/* A sibling hit area keeps nested variant/pin/checkbox controls out of a button.
+            This compound row owns geometry; the shared Button owns activation semantics. */}
+        <Button
+          layout="custom"
+          className="absolute inset-0 h-full w-full rounded-lg focus-visible:ring-1 focus-visible:ring-primary-6 focus-visible:outline-none"
+          data-spotlight-row-action
+          aria-label={item.label}
+          disabled={isDisabled}
+          tabIndex={-1}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={handleClick}
+        />
         {selectionState && !isDisabled && (
-          <div className="flex shrink-0 items-center justify-center">
+          <div className="pointer-events-auto! relative flex shrink-0 items-center justify-center">
             <Checkbox
               size="small"
               checked={selectionState.checked}
@@ -471,7 +455,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
               <span
                 className={`flex min-w-0 items-center gap-1.5 truncate ${SPOTLIGHT_TOKENS.labelFontSize}`}
               >
-                {data.labelContent as React.ReactNode}
+                {data.labelContent}
               </span>
             ) : item.type === "command" && item.label.includes(": ") ? (
               <span
@@ -494,10 +478,19 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
                 <HighlightText text={item.label} query={searchQuery} />
               </span>
             )}
+            {data.inlineTag && (
+              <span className="shrink-0 text-[10px] text-text-3">
+                {data.inlineTag}
+              </span>
+            )}
+            {showSecondaryStatus && !data.statusContent && data.tagLabel && (
+              <span className="shrink-0 text-[10px] text-text-3">
+                {data.tagLabel}
+              </span>
+            )}
             {data.pinState && !isDisabled && (
               <Button
                 variant="tertiary"
-                appearance="ghost"
                 size="sidebar"
                 iconOnly
                 aria-label={t(
@@ -512,7 +505,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
                     ? "sessions:chat.unpinSession"
                     : "sessions:chat.pinSession"
                 )}
-                className="shrink-0 opacity-0 group-hover:opacity-100 focus-visible:bg-fill-3 focus-visible:opacity-100 enabled:hover:bg-fill-3 enabled:active:bg-fill-4"
+                className="relative shrink-0 opacity-0 group-hover:opacity-100 focus-visible:bg-fill-3 focus-visible:opacity-100 enabled:hover:bg-fill-3 enabled:active:bg-fill-4"
                 icon={
                   <HugeiconsIcon
                     icon={data.pinState.pinned ? PinOffIcon : PinIcon}
@@ -529,16 +522,6 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
                   data.pinState?.onToggle();
                 }}
               />
-            )}
-            {data.inlineTag && (
-              <span className="shrink-0 text-[10px] text-text-3">
-                {data.inlineTag}
-              </span>
-            )}
-            {showSecondaryStatus && !data.statusContent && data.tagLabel && (
-              <span className="shrink-0 text-[10px] text-text-3">
-                {data.tagLabel}
-              </span>
             )}
           </div>
           {item.desc && (
@@ -563,7 +546,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
 
           {data.statusContent ? (
             <span className="flex h-6 w-6 items-center justify-center">
-              {data.statusContent as React.ReactNode}
+              {data.statusContent}
             </span>
           ) : (
             !showSecondaryStatus && tagBadge
@@ -589,6 +572,7 @@ export const SpotlightItemRow = memo<SpotlightItemRowProps>(
         </div>
       </div>
     );
+    if (!showDetailPane) return row;
     return <SpotlightDetailPane item={item}>{row}</SpotlightDetailPane>;
   }
 );

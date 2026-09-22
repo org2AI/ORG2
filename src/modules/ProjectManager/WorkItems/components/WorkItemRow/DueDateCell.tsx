@@ -51,8 +51,6 @@ export function DueDateCell({
   const trigger = !endDate ? (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className={`flex h-6 w-6 items-center justify-center rounded-full border border-solid bg-transparent text-text-3 transition-[border-color,background-color,color] ${
         isOpen
           ? "border-primary-5 bg-primary-1 text-primary-6"
@@ -73,8 +71,6 @@ export function DueDateCell({
   ) : (
     <Button
       layout="custom"
-      appearance="custom"
-      htmlType="button"
       className={`inline-flex h-7 items-center justify-center rounded-full border border-solid px-2 text-[12px] leading-[18px] font-medium transition-[border-color,background-color,color] ${colorClass} ${
         isOpen
           ? "border-primary-5 bg-primary-1"

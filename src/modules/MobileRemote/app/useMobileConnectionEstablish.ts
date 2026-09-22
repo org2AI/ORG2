@@ -1,11 +1,11 @@
-import {
-  type Dispatch,
-  type RefObject,
-  type SetStateAction,
-  useCallback,
-} from "react";
+import { useCallback } from "react";
 
-import type { MobileAuthContextValue } from "../auth/MobileAuthContext";
+import { mobileComposerDesktopScope } from "../components/composer/mobileComposerDraftStore";
+import {
+  desktopIdentityName,
+  pairedDesktopId,
+  withInitializedDesktop,
+} from "../connection/mobileDesktopIdentity";
 import {
   createMobileRpcClient,
   toMobileRpcError,
@@ -17,66 +17,50 @@ import type {
   MobileConnectionConfig,
   MobileConnectionState,
 } from "../connection/types";
-import { DEMO_DESKTOP_NAME } from "../demo/demoFixtures";
-import type { MobileRemotePlatform } from "../platform/types";
 import {
   waitForPairingApproval,
   waitForSocketOpen,
 } from "./mobileSocketHandshake";
-import type { MobileConnectionRefs } from "./useMobileConnectionRefs";
-import type {
-  RemoteReconnectController,
-  useMobileConnectionTransport,
-} from "./useMobileConnectionTransport";
-import type { useMobileRpcNotifications } from "./useMobileRpcNotifications";
-import type { useMobileSessionList } from "./useMobileSessionList";
-import type { useMobileTranscript } from "./useMobileTranscript";
+import type { MobileRemoteState } from "./useMobileRemoteState";
 
-type TranscriptApi = ReturnType<typeof useMobileTranscript>;
-
-interface UseMobileConnectionEstablishParams {
-  platform: MobileRemotePlatform;
-  authUserId: string;
-  authRef: RefObject<MobileAuthContextValue | null>;
-  refs: MobileConnectionRefs;
-  reconnect: RemoteReconnectController;
-  setConnection: Dispatch<SetStateAction<MobileConnectionState>>;
-  releaseTransport: ReturnType<
-    typeof useMobileConnectionTransport
-  >["releaseTransport"];
-  handleRpcNotification: ReturnType<typeof useMobileRpcNotifications>;
-  requestSessionList: ReturnType<
-    typeof useMobileSessionList
-  >["requestSessionList"];
-  requestSessionSnapshot: TranscriptApi["requestSessionSnapshot"];
-  beginLoad: TranscriptApi["beginLoad"];
+export class SupersededConnectionError extends Error {
+  constructor() {
+    super("Connection was superseded");
+  }
 }
 
-/** Opens, authenticates, and re-opens the desktop socket for one generation. */
-export function useMobileConnectionEstablish({
-  platform,
-  authUserId,
-  authRef,
-  refs,
-  reconnect,
-  setConnection,
-  releaseTransport,
-  handleRpcNotification,
-  requestSessionList,
-  requestSessionSnapshot,
-  beginLoad,
-}: UseMobileConnectionEstablishParams) {
+export function useMobileConnectionEstablish(
+  state: MobileRemoteState,
+  authUserId: string,
+  persistConnection: (config: MobileConnectionConfig | null) => Promise<void>,
+  releaseTransport: (close: boolean) => void,
+  handleRpcNotification: (
+    method: string,
+    params: Record<string, unknown> | undefined
+  ) => void
+) {
   const {
+    platform,
+    draftStore,
+    authRef,
     preparationRef,
     clientRef,
+    setRpc,
     socketRef,
     activeSessionRef,
     unsubscribeRpcRef,
     activeConfigRef,
     generationRef,
+    reconnect,
     scheduleReconnectRef,
-  } = refs;
-
+    setConnection,
+    setConnectionConfig,
+    setPairedDesktops,
+    connectionRef,
+    requestSessionList,
+    beginLoad,
+    requestSessionSnapshot,
+  } = state;
   const establishConnection = useCallback(
     async (config: MobileConnectionConfig, generation: number) => {
       const deviceLabel =
@@ -103,7 +87,13 @@ export function useMobileConnectionEstablish({
         );
         preparation.signal.throwIfAborted();
         if (generation !== generationRef.current || platform.runtime.isHidden())
-          throw new Error("Connection was superseded");
+          throw new SupersededConnectionError();
+      } catch (error) {
+        if (preparation.signal.aborted) throw new SupersededConnectionError();
+        if (error instanceof MobileConnectionAuthorizationError) {
+          draftStore.clearDesktop(mobileComposerDesktopScope(config, {}));
+        }
+        throw error;
       } finally {
         if (preparationRef.current === preparation)
           preparationRef.current = null;
@@ -111,6 +101,17 @@ export function useMobileConnectionEstablish({
       const socket = platform.connection.createSocket(preparedUrl);
       let authenticated = false;
       let intentionalClose = false;
+      let authorizationDenied = false;
+      let pairedConfig = config;
+      // Policy closes during initialize are just as terminal as post-handshake
+      // revocation. The RPC client's generic close error must not trigger retries.
+      socket.addEventListener(
+        "close",
+        (event) => {
+          authorizationDenied = event.code === 1008;
+        },
+        { once: true }
+      );
       socketRef.current = socket;
 
       try {
@@ -118,16 +119,29 @@ export function useMobileConnectionEstablish({
         if (generation !== generationRef.current) {
           intentionalClose = true;
           socket.close();
-          throw new Error("Connection was superseded");
+          throw new SupersededConnectionError();
         }
 
         const client = createMobileRpcClient(socket, platform.runtime);
         clientRef.current = client;
+        setRpc(client);
         unsubscribeRpcRef.current = client.onNotification(
           handleRpcNotification
         );
         if (config.pairingCode) {
           await waitForPairingApproval(socket, client, platform.runtime);
+          if (
+            generation !== generationRef.current ||
+            socketRef.current !== socket
+          )
+            throw new SupersededConnectionError();
+          // Relay approval, not Desktop availability, finalizes pairing. Keep
+          // the durable device credential, but never replay the one-time code.
+          const { pairingCode: _approvedCode, ...confirmed } = config;
+          pairedConfig = confirmed;
+          activeConfigRef.current = confirmed;
+          setConnectionConfig(confirmed);
+          void persistConnection(confirmed).catch(() => undefined);
         }
 
         const init = await client.call<InitializeResult>("initialize", {
@@ -139,25 +153,60 @@ export function useMobileConnectionEstablish({
           capabilities: { interactions: ["permission"], streaming: true },
           deviceLabel,
         });
-        if (generation !== generationRef.current) {
+        if (
+          generation !== generationRef.current ||
+          socketRef.current !== socket
+        ) {
           intentionalClose = true;
           client.close();
-          throw new Error("Connection was superseded");
+          throw new SupersededConnectionError();
         }
 
         authenticated = true;
         reconnect.reset();
-        setConnection({
+        const identifiedConfig = withInitializedDesktop(pairedConfig, init);
+        const desktopName = desktopIdentityName(
+          identifiedConfig.desktopIdentity
+        );
+        if (identifiedConfig !== config) {
+          activeConfigRef.current = identifiedConfig;
+          setConnectionConfig(identifiedConfig);
+          // Publish verified metadata immediately; secure-storage latency must not
+          // delay sessions or display an opaque ID after initialize succeeds.
+          setPairedDesktops((desktops) => {
+            const id = pairedDesktopId(config);
+            const existing = desktops.find((desktop) => desktop.id === id);
+            return [
+              {
+                id,
+                name: desktopName ?? existing?.name ?? id,
+                active: true,
+                updatedAtMs: existing?.updatedAtMs ?? platform.runtime.now(),
+                desktopIdentity: identifiedConfig.desktopIdentity,
+              },
+              ...desktops
+                .filter((desktop) => desktop.id !== id)
+                .map((desktop) => ({ ...desktop, active: false })),
+            ].slice(0, 20);
+          });
+        }
+        // Retry the confirmed credential write even without desktop metadata:
+        // an earlier approval save may have failed before Desktop came online.
+        void persistConnection(identifiedConfig).catch(() => undefined);
+        const connected: MobileConnectionState = {
           status: "connected",
           presence: "online",
           desktopId: init.desktopId ?? config.desktopId,
-          desktopName: init.desktopName ?? DEMO_DESKTOP_NAME,
+          desktopName: desktopName ?? config.desktopId ?? config.host,
           // Authorization is server-owned. An older/incomplete initialize
           // response must never silently upgrade the phone to write access.
           tier: init.tier ?? "read_only",
           capabilities: init.capabilities,
           demoMode: false,
-        });
+        };
+        // Restoration runs before React commits; use this handshake's capabilities.
+        connectionRef.current = connected;
+        setConnection(connected);
         socket.addEventListener(
           "close",
           (event) => {
@@ -171,6 +220,11 @@ export function useMobileConnectionEstablish({
             }
             releaseTransport(false);
             if (event.code === 1008) {
+              draftStore.clearDesktop(
+                mobileComposerDesktopScope(identifiedConfig, {
+                  desktopId: identifiedConfig.desktopId,
+                })
+              );
               activeConfigRef.current = null;
               setConnection((prev) => ({
                 ...prev,
@@ -190,90 +244,81 @@ export function useMobileConnectionEstablish({
               presence: "offline",
               error: undefined,
             }));
-            scheduleReconnectRef.current(config, generation);
+            scheduleReconnectRef.current(identifiedConfig, generation);
           },
           { once: true }
         );
-        await requestSessionList(client);
-        if (
-          socketRef.current !== socket ||
-          generation !== generationRef.current
-        )
-          return;
-        if (activeSessionRef.current) {
+        // The roster is independent of the selected conversation. A slow list
+        // must not serialize reconnect → latest body behind unrelated sessions.
+        const restoreActiveSession = async () => {
+          if (
+            socketRef.current !== socket ||
+            generation !== generationRef.current
+          )
+            return;
           const sessionId = activeSessionRef.current;
+          if (!sessionId) return;
           const subscriptionGeneration = beginLoad(sessionId);
           await requestSessionSnapshot(
             client,
             sessionId,
             subscriptionGeneration
           ).catch(() => undefined);
-        }
+        };
+        await Promise.all([
+          restoreActiveSession(),
+          // An authenticated socket is healthy even when its roster read fails.
+          // List state and bounded retries are owned by useMobileSessionList.
+          requestSessionList(client).catch(() => undefined),
+        ]);
       } catch (error) {
         intentionalClose = true;
-        if (socketRef.current === socket) releaseTransport(true);
+        if (socketRef.current !== socket) throw new SupersededConnectionError();
+        releaseTransport(true);
+        if (
+          authorizationDenied ||
+          error instanceof MobileConnectionAuthorizationError
+        ) {
+          draftStore.clearDesktop(mobileComposerDesktopScope(config, {}));
+        }
+        if (authorizationDenied)
+          throw new MobileConnectionAuthorizationError(
+            "Device access was revoked or pairing expired"
+          );
         throw error;
       }
     },
     [
-      authUserId,
-      reconnect,
-      handleRpcNotification,
-      platform.clientInfo,
+      platform.clientInfo.defaultDeviceLabel,
+      platform.clientInfo.name,
+      platform.clientInfo.version,
       platform.connection,
       platform.runtime,
-      releaseTransport,
-      requestSessionList,
-      requestSessionSnapshot,
-      beginLoad,
-      activeConfigRef,
-      activeSessionRef,
-      authRef,
-      clientRef,
-      generationRef,
       preparationRef,
-      scheduleReconnectRef,
-      setConnection,
       socketRef,
-      unsubscribeRpcRef,
-    ]
-  );
-
-  const runReconnect = useCallback(
-    async (config: MobileConnectionConfig, generation: number) => {
-      if (generation !== generationRef.current || platform.runtime.isHidden()) {
-        return;
-      }
-      setConnection((prev) => ({
-        ...prev,
-        status: "connecting",
-        presence: "offline",
-        error: undefined,
-      }));
-      try {
-        await establishConnection(config, generation);
-      } catch (error) {
-        if (generation !== generationRef.current) return;
-        const denied = error instanceof MobileConnectionAuthorizationError;
-        if (denied) activeConfigRef.current = null;
-        setConnection((prev) => ({
-          ...prev,
-          status: denied ? "error" : "connecting",
-          presence: "offline",
-          error: toMobileRpcError(error),
-        }));
-        if (!denied) scheduleReconnectRef.current(config, generation);
-      }
-    },
-    [
-      establishConnection,
-      platform.runtime,
-      activeConfigRef,
+      authUserId,
       generationRef,
-      scheduleReconnectRef,
+      authRef,
+      draftStore,
+      clientRef,
+      setRpc,
+      unsubscribeRpcRef,
+      handleRpcNotification,
+      reconnect,
+      persistConnection,
+      connectionRef,
       setConnection,
+      requestSessionList,
+      activeConfigRef,
+      setConnectionConfig,
+      setPairedDesktops,
+      releaseTransport,
+      scheduleReconnectRef,
+      activeSessionRef,
+      beginLoad,
+      requestSessionSnapshot,
     ]
   );
 
-  return { establishConnection, runReconnect };
+  return establishConnection;
 }

@@ -45,11 +45,9 @@ const CiteCodePreview: React.FC<CiteCodePreviewProps> = memo(
         </span>
         <Button
           variant="tertiary"
-          appearance="ghost"
           size="mini"
           iconOnly
           icon={<span aria-hidden>×</span>}
-          htmlType="button"
           className="ml-1 hover:text-text-1"
           aria-label="Remove code citation"
           onClick={onClear}

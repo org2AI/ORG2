@@ -13,3 +13,11 @@ export function basename(path: string | undefined): string {
   const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
   return idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
 }
+
+/**
+ * Collapses a macOS (`/Users/<name>`) or Linux (`/home/<name>`) home
+ * directory prefix to `~`. Other paths are returned unchanged.
+ */
+export function tildePath(path: string): string {
+  return path.replace(/^\/(?:Users|home)\/[^/]+(?=\/|$)/u, "~");
+}

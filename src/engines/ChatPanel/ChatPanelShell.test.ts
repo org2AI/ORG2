@@ -38,7 +38,6 @@ function render(
       chatPanelOpacityStyle: {},
       chatWidth: 1200,
       chatWidthStyleValue: "100%",
-      embedded: true,
       focusedWorkstationRail,
       fullScreen,
       hasTabBar,

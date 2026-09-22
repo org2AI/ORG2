@@ -25,9 +25,9 @@ import Checkbox from "@src/components/Checkbox";
 import Dropdown from "@src/components/Dropdown";
 import type { DropdownOption } from "@src/components/Dropdown/types";
 import PersonAvatar from "@src/components/PersonAvatar";
+import { PanelFooter } from "@src/components/layout/blocks";
 import { ChannelDialogErrorNotice } from "@src/features/DiscussionChannels/components/ChannelDialogPrimitives";
 import { HugeiconsIcon, MoreHorizontalIcon } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 
 import { bumpOrg2CloudChannelsVersionAtom } from "../channelsAtom";
 import {
@@ -339,8 +339,6 @@ const ManageChannelMembersDialog: React.FC<ManageChannelMembersDialogProps> = ({
                   ) : null}
                   {isSelf && channel?.visibility === "private" ? (
                     <Button
-                      htmlType="button"
-                      variant="secondary"
                       size="small"
                       disabled={mutating}
                       onClick={() => handleRemoveMember(member.userId)}
@@ -362,9 +360,7 @@ const ManageChannelMembersDialog: React.FC<ManageChannelMembersDialogProps> = ({
                       }}
                     >
                       <Button
-                        htmlType="button"
                         variant="tertiary"
-                        appearance="ghost"
                         size="small"
                         disabled={mutating}
                         icon={

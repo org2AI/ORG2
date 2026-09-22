@@ -13,6 +13,8 @@ import {
   vi,
 } from "vitest";
 
+import { testTranslate, useTestTranslation } from "@src/test/i18nTestTranslate";
+
 import { ExternalBrowserButton } from "./ExternalBrowserButton";
 
 const { openInSystemBrowser } = vi.hoisted(() => ({
@@ -24,9 +26,8 @@ vi.mock("@src/util/ui/openLink", () => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, fallback: string) => fallback,
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 vi.mock("@src/components/KeyboardShortcut/ToolbarTooltip", () => ({
@@ -75,15 +76,21 @@ describe("ExternalBrowserButton", () => {
     );
 
     expect(markup).toContain(
-      'data-shortcut-tooltip-label="Open in external browser"'
+      `data-shortcut-tooltip-label="${testTranslate(
+        "common:previews.openInExternalBrowser"
+      )}"`
     );
     expect(markup).toMatch(/<button\b[^>]*type="button"/);
-    expect(markup).toContain('aria-label="Open in external browser"');
+    expect(markup).toContain(
+      `aria-label="${testTranslate("common:previews.openInExternalBrowser")}"`
+    );
     expect(markup).toContain('data-icon="chrome"');
-    expect(markup).toContain("enabled:hover:bg-surface-hover");
-    expect(markup).toContain("enabled:active:bg-surface-selected");
+    expect(markup).toContain("btn-hover:bg-surface-hover");
+    expect(markup).toContain("btn-active:bg-surface-selected");
     expect(markup).not.toContain("<a ");
-    expect(markup).not.toContain('title="Open in external browser"');
+    expect(markup).not.toContain(
+      `title="${testTranslate("common:previews.openInExternalBrowser")}"`
+    );
   });
 
   it("opens the supplied URL through the external-browser API", async () => {

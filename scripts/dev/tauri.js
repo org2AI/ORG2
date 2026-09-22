@@ -14,6 +14,7 @@ const { spawn, execFileSync, execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const { tauriFeatureList } = require("../tauri/features.cjs");
+const { applyDevInstanceEnv } = require("../tauri/instance-profile.cjs");
 const {
   applyDefaultDiagnosticsEndpoint,
 } = require("../tauri/diagnostics-endpoint.cjs");
@@ -396,7 +397,7 @@ function cleanChildEnv() {
       delete env[key];
     }
   }
-  return applyDefaultDiagnosticsEndpoint(env);
+  return applyDefaultDiagnosticsEndpoint(applyDevInstanceEnv(env));
 }
 
 function createBinPath(name) {

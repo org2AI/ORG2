@@ -89,8 +89,8 @@ describe("mobileRemoteNavigation", () => {
 
   it("switches tabs on the sessions screen", () => {
     let state = createInitialMobileRemoteNavState({ screen: "sessions" });
-    state = reduceMobileRemoteNav(state, { type: "set_tab", tab: "devices" });
-    expect(state.activeTab).toBe("devices");
+    state = reduceMobileRemoteNav(state, { type: "set_tab", tab: "sessions" });
+    expect(state.activeTab).toBe("sessions");
 
     state = reduceMobileRemoteNav(state, { type: "set_tab", tab: "settings" });
     expect(state.activeTab).toBe("settings");
@@ -102,7 +102,7 @@ describe("mobileRemoteNavigation", () => {
         screen: "sessions",
         stopModalOpen: true,
       }),
-      { type: "set_tab", tab: "devices" }
+      { type: "set_tab", tab: "sessions" }
     );
     expect(state.stopModalOpen).toBe(false);
   });
@@ -130,4 +130,41 @@ describe("mobileRemoteNavigation", () => {
     expect(state.screen).toBe("welcome");
     expect(state.pendingConfig).toBeNull();
   });
+});
+
+it("keeps devices under settings, cancels pairing back to devices, then returns to settings", () => {
+  let state = createInitialMobileRemoteNavState({
+    screen: "sessions",
+    activeTab: "settings",
+  });
+  state = reduceMobileRemoteNav(state, { type: "open_devices" });
+  expect(state.screen).toBe("connection_devices");
+  state = reduceMobileRemoteNav(state, { type: "open_qr_scan" });
+  expect(state.screen).toBe("qr_scan");
+  state = reduceMobileRemoteNav(state, { type: "back_from_qr_scan" });
+  expect(state.screen).toBe("connection_devices");
+  expect(state.activeTab).toBe("settings");
+  state = reduceMobileRemoteNav(state, { type: "back_from_devices" });
+  expect(state.screen).toBe("sessions");
+  expect(state.activeTab).toBe("settings");
+});
+
+it("returns to devices after adding a computer through SAS and clears pairing intent", () => {
+  let state = createInitialMobileRemoteNavState({
+    screen: "connection_devices",
+    activeTab: "settings",
+  });
+  state = reduceMobileRemoteNav(state, { type: "open_qr_scan" });
+  state = reduceMobileRemoteNav(state, {
+    type: "accept_pairing",
+    config: { wsUrl: "wss://relay.example.test" },
+    requiresSas: true,
+    sasPhrase: "example",
+  });
+  state = reduceMobileRemoteNav(state, { type: "confirm_sas" });
+  state = reduceMobileRemoteNav(state, { type: "connecting_complete" });
+  expect(state.screen).toBe("connection_devices");
+  expect(state.activeTab).toBe("settings");
+  expect(state.pendingConfig).toBeNull();
+  expect(state.pairingReturnScreen).toBe("welcome");
 });

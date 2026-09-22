@@ -153,19 +153,13 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
       <div className="flex h-full w-full items-center justify-center bg-chat-pane px-4 text-center">
         {historyLoad?.status === "error" ? (
           <Button variant="tertiary" size="small" onClick={historyLoad.retry}>
-            {t("simulator.subagentPane.retryHistory", {
-              defaultValue: "Couldn’t load history — Retry",
-            })}
+            {t("simulator.subagentPane.retryHistory")}
           </Button>
         ) : (
           <span role="status" className="text-[12px] text-text-3">
             {historyLoad?.status === "loading"
-              ? t("simulator.subagentPane.loadingHistory", {
-                  defaultValue: "Loading history…",
-                })
-              : t("simulator.subagentPane.waitingForActivity", {
-                  defaultValue: "Waiting for activity…",
-                })}
+              ? t("simulator.subagentPane.loadingHistory")
+              : t("simulator.subagentPane.waitingForActivity")}
           </span>
         )}
       </div>
@@ -189,14 +183,11 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
     <>
       {historyLoad?.status === "error" && (
         <Button variant="tertiary" size="small" onClick={historyLoad.retry}>
-          {t("simulator.subagentPane.retryHistory", {
-            defaultValue: "Couldn’t load history — Retry",
-          })}
+          {t("simulator.subagentPane.retryHistory")}
         </Button>
       )}
       <SubagentPromptToggle sessionId={sessionId} />
       <Button
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly
@@ -216,9 +207,7 @@ const SubagentChatPaneComponent: React.FC<SubagentChatPaneProps> = ({
     </>
   );
 
-  const newEventDividerLabel = t("simulator.subagentPane.newEventDivider", {
-    defaultValue: "New event",
-  });
+  const newEventDividerLabel = t("simulator.subagentPane.newEventDivider");
 
   // Footer scope: live only while the session is actually running AND the
   // pane is at the live tail (no replay slice). `slicedEvents !== undefined`

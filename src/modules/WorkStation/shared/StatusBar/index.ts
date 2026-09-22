@@ -1,47 +1,12 @@
 /**
  * StatusBar Components
  *
- * Unified status bar components for Workstation apps.
- *
- * Structure:
- * - base.tsx: BaseStatusBar and primitive components (Button, Segment, Text, Divider)
- * - EditorStatusBar.tsx: For CodeEditor
- * - DatabaseStatusBar.tsx: For Database Manager
- * - BrowserStatusBar.tsx: For Browser
- * - ProjectStatusBar.tsx: For Project Manager
+ * Unified status bar components for Workstation apps. Consumers import the
+ * variants (StatusBarBase, EditorStatusBar, ProjectStatusBar,
+ * StatusBarRenderer, …) from their own files; this barrel only carries the
+ * pieces still imported through it.
  */
 
-// Layout tokens (Tailwind class strings for bar height, clusters, segments)
-export { STATUS_BAR_TOKENS, STATUS_BAR_TYPOGRAPHY } from "./statusBarTokens";
-
-// Base components
-export {
-  BaseStatusBar,
-  StatusBarButton,
-  StatusBarDivider,
-  StatusBarLabel,
-  StatusBarSegment,
-  StatusBarText,
-} from "./StatusBarBase";
-
-// Editor status bar (CodeEditor)
-export { EditorStatusBar } from "./EditorStatusBar";
 export type { CommitInfo, CursorPosition } from "./EditorStatusBar";
 
-export { CiStatusMenu } from "./CiStatusMenu";
-export { PortsStatusMenu } from "./PortsStatusMenu";
-export { WorkspacePortScanner } from "./WorkspacePortScanner";
-
-// Database status bar (Database Manager)
-
-// Browser status bar (Browser)
 export { default as BrowserStatusBar } from "./BrowserStatusBar";
-
-// Project status bar (Project Manager)
-export { default as ProjectStatusBar } from "./ProjectStatusBar";
-
-// Unified renderer (reads global atom, renders appropriate variant)
-export { StatusBarRenderer } from "./StatusBarRenderer";
-
-// Default export
-export { EditorStatusBar as default } from "./EditorStatusBar";

@@ -1,5 +1,6 @@
 import React, { Suspense, useMemo } from "react";
 
+import { LAZY_DETAIL_FALLBACK } from "@src/components/layout/blocks/LazyDetailFallback";
 import { useRetainedTabPool } from "@src/hooks/tabHost/useRetainedTabPool";
 import { UnifiedTabContent } from "@src/modules/WorkStation/TabContent/UnifiedTabContent";
 import { NoTabsPlaceholder } from "@src/modules/WorkStation/shared";
@@ -9,7 +10,6 @@ import {
 } from "@src/store/workstation/tabs/tabRetention";
 
 import type { ProjectManagerContentRouterProps } from "../types";
-import { STORY_MANAGER_SUSPENSE_LOADING_FALLBACK } from "./ProjectManagerLoadingFallback";
 
 const GitCommitDetailContent = React.lazy(
   () =>
@@ -129,7 +129,7 @@ function renderActiveContent({
     const chatSessionId = String(activeTab.data.sessionId || "");
     if (!chatSessionId) return null;
     return (
-      <Suspense fallback={STORY_MANAGER_SUSPENSE_LOADING_FALLBACK}>
+      <Suspense fallback={LAZY_DETAIL_FALLBACK}>
         <div
           data-chat-panel
           className="flex h-full min-w-0 flex-1 flex-col overflow-hidden text-sm"
@@ -152,7 +152,7 @@ function renderActiveContent({
     const commitMessage = String(activeTab.data.commitMessage || "");
 
     return (
-      <Suspense fallback={STORY_MANAGER_SUSPENSE_LOADING_FALLBACK}>
+      <Suspense fallback={LAZY_DETAIL_FALLBACK}>
         <GitCommitDetailContent
           commitSha={commitSha}
           shortSha={commitShortSha}
@@ -170,7 +170,6 @@ function renderActiveContent({
     case "project-work-items":
     case "project-git-sync-review":
     case "project-org":
-    case "project-org-settings":
     case "project-settings":
     case "workItem-detail":
       return <UnifiedTabContent tab={activeTab} isActive />;

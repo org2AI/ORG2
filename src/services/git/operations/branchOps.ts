@@ -4,11 +4,9 @@
 import { gitApi } from "@src/api/http/git";
 import type { CheckoutErrorType } from "@src/api/http/git/branchOps";
 import type { GitErrorType } from "@src/api/http/git/streaming";
-import { CheckoutBlockedDialog } from "@src/components/GitDialogs/CheckoutBlockedDialog";
-import { CheckoutConflictDialog } from "@src/components/GitDialogs/CheckoutConflictDialog";
 
-import { runGuardedCheckout } from "./guardedCheckout";
 import { noRepoContextFailure } from "./noRepoContext";
+import { performBranchSwitch } from "./performBranchSwitch";
 import {
   type GitOperationResult,
   getRepoContext,
@@ -19,41 +17,12 @@ import {
 // Core Operations
 // ============================================
 
-/**
- * Raw, unguarded checkout — does NOT surface the `CheckoutConflictDialog` on
- * a dirty working tree.
- *
- * @internal Do NOT call from UI code. Use `checkoutWithDialog` instead, which
- * routes through `runGuardedCheckout` and shows the conflict resolution dialog.
- */
+/** Checkout through the same user-directed flow as every UI entry point. */
 export async function checkoutRaw(
   branch: string,
   create?: boolean
 ): Promise<GitOperationResult> {
-  const repo = getRepoContext();
-
-  if (repo) {
-    const result = await runGuardedCheckout({
-      repoId: repo.repoId,
-      repoPath: repo.repoPath,
-      ref: branch,
-      create,
-      onConflict: (name) => CheckoutConflictDialog.open({ branchName: name }),
-      onBlocked: ({ branch: name, errorType, message }) =>
-        CheckoutBlockedDialog.open({
-          branchName: name,
-          errorType,
-          message,
-        }),
-    });
-    return {
-      success: result.success,
-      errorType: toGitErrorType(result.errorType),
-      message: result.message,
-    };
-  }
-
-  return noRepoContextFailure("the checkout");
+  return checkoutWithDialog(branch, create);
 }
 
 /**
@@ -191,40 +160,14 @@ function toGitErrorType(errorType: CheckoutErrorType | "none"): GitErrorType {
   return "unknown";
 }
 
-/**
- * Checkout with conflict handling (Issue #17 de-dup).
- *
- * Routes the ActionSystem `GIT_CHECKOUT` path through the SAME guarded-checkout
- * core as `useBranchCheckout.selectBranch`, so a dirty tree surfaces the unified
- * `CheckoutConflictDialog` (stash/discard/cancel) instead of the old divergent
- * `showGitErrorDialog` flow. The result is mapped back to the
- * `{ success, message, errorType }` contract its callers depend on.
- */
+/** Shared branch switching for ActionSystem callers. */
 export async function checkoutWithDialog(
   branch: string,
   create?: boolean
 ): Promise<GitOperationResult> {
-  const repoContext = getRepoContext();
-
-  if (!repoContext) {
-    // No repo context → fall back to the terminal-based checkout (no dialog).
-    return checkoutRaw(branch, create);
-  }
-
-  const result = await runGuardedCheckout({
-    repoId: repoContext.repoId,
-    repoPath: repoContext.repoPath,
-    ref: branch,
-    create,
-    onConflict: (name) => CheckoutConflictDialog.open({ branchName: name }),
-    onBlocked: ({ branch: name, errorType, message }) =>
-      CheckoutBlockedDialog.open({
-        branchName: name,
-        errorType,
-        message,
-      }),
-  });
-
+  const context = getRepoContext();
+  if (!context) return noRepoContextFailure("the checkout");
+  const result = await performBranchSwitch(context, branch, create);
   return {
     success: result.success,
     errorType: toGitErrorType(result.errorType),

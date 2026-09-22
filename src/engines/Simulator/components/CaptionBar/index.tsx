@@ -112,8 +112,6 @@ const CaptionBar: React.FC<CaptionBarProps> = memo(
         {expandedPanel}
         <Button
           layout="custom"
-          appearance="custom"
-          htmlType="button"
           onClick={handleToggle}
           className="flex h-7 w-full max-w-full cursor-pointer items-center px-3 text-[13px] text-text-2 transition-colors hover:text-text-1"
         >

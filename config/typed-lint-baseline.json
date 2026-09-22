@@ -1,15 +1,15 @@
 [
   {
-    "key": "b3b4047e6c67815310afd57e53deb0436f0368dbfa4eafe48f0bbb44a2a7ccfe",
-    "file": "src/ActionSystem/actions/themeActions.zod.ts",
+    "key": "d927836665d5efaba7e5658396cf48e2d1409097c068c5b43c2b5bfbf69c01fe",
+    "file": "src/scaffold/ActionSystem/actions/themeActions.zod.ts",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "store.set(updateSettingsBatchAtom, { \"general.theme\": themePreference, });",
     "count": 1
   },
   {
-    "key": "e3731981075054ce047a4627ecbed38d094b2b2a561addd93979c11887902eb7",
-    "file": "src/ActionSystem/ActionSystemContext.tsx",
+    "key": "4505e016b5c169054c6ea0c6f910994139ea70b4e87c7236397dd93114003f49",
+    "file": "src/scaffold/ActionSystem/ActionSystemContext.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "initializeServices(repoPath, repoId).then(() => {});",
@@ -176,8 +176,8 @@
     "count": 1
   },
   {
-    "key": "bee009c151f2f9ce9d2e8d649ff93c7dd3352c01912017f88a4c628f3fdbbec0",
-    "file": "src/components/ImagePreviewOverlay/index.tsx",
+    "key": "c8e6ae2fe33e70d66d557828fb3d8f0830510d01fe90521a14ac13a3e8c0ccf5",
+    "file": "src/scaffold/ImagePreviewOverlay/index.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{handleCopy}",
@@ -376,8 +376,8 @@
     "count": 1
   },
   {
-    "key": "46cbc10c52ee26eee4448af796fe4df1207d6e73d6d2dd14b22ca7677c59f911",
-    "file": "src/engines/ChatPanel/ChatHistory/index.tsx",
+    "key": "2f234ceb505ce8f56c821a82dad6752ccf1c163b6f204a75f6770ae2d2ce0b7e",
+    "file": "src/engines/ChatPanel/ChatHistory/ChatHistory.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void loadEventComponent(\"canvas_inline\");",
@@ -4792,11 +4792,11 @@
     "count": 1
   },
   {
-    "key": "84e6ca0f36505713f3a2a7672e11d8e6bd9b1fe695dfc79f6271033a1a358ef5",
+    "key": "4b919fb67e74804c64f37a9405a2ddb5e0c0eb70b03c9a2802273d006acc855b",
     "file": "src/modules/MainApp/WorkManagement/RoutineWebhooksPanel.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
-    "source": "void runAction(async () => { await projectApi.replayRoutineWebhookDelivery(deliveryId); Message.success( t(\"webhooks.replayQueued\", { defaultValue: \"Delivery replayed\" }) ); loadDeliveries(); });",
+    "source": "void runAction(async () => { await projectApi.replayRoutineWebhookDelivery(deliveryId); Message.success(t(\"webhooks.replayQueued\")); loadDeliveries(); });",
     "count": 1
   },
   {
@@ -5920,360 +5920,360 @@
     "count": 1
   },
   {
-    "key": "4bfe4438eb7c09e9b2548715458a3e9e72b4ecc30594a1ab1871a58a570cdca2",
-    "file": "src/modules/shared/components/FileHeader/FileDropdown.tsx",
+    "key": "435d7055155d667fa6116e39936aba67817de553d6e3bbfaf3c6bb4380831e53",
+    "file": "src/features/FileHeader/FileDropdown.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "handleToggle(entry.path);",
     "count": 1
   },
   {
-    "key": "9fcb6c378bd4cb0287a6da2dc72ec556e0fc203bb295bc6ffcc48a01d7f72162",
-    "file": "src/modules/shared/components/FileHeader/FileDropdown.tsx",
+    "key": "41d66487bdc22ac3ae4a97503b979b8a582ba79956e75027bc91a9cc2a43368c",
+    "file": "src/features/FileHeader/FileDropdown.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "loadChildren(entryPath).then((children) => { setRootEntries((current) => updateEntry(current, entryPath, (existing) => ({ ...existing, expanded: true, loaded: true, children, })) ); });",
     "count": 1
   },
   {
-    "key": "ca6f59ef06e5ad7e191dba3587956273b97580b05002cb71818413801a0f9801",
-    "file": "src/modules/shared/components/FileHeader/FileDropdown.tsx",
+    "key": "604b7aeaed8b43b6fdc12716b0cddc9b9e761f670dfe1b1655548ebebcfb4829",
+    "file": "src/features/FileHeader/FileDropdown.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{() => handleToggle(row.entry.path)}",
     "count": 1
   },
   {
-    "key": "f8c760c46135834bf68472f6bc817fe5ba88cc601ac1a1fbaea6aeb5387241ca",
-    "file": "src/modules/shared/components/FileHeader/index.tsx",
+    "key": "8081f3ffc40c0083890604498cd8b9bc49835605eea3b6fb44ae6ff98a8942ab",
+    "file": "src/features/FileHeader/index.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{handleCopyRelativePathMenuClick}",
     "count": 1
   },
   {
-    "key": "173d90cdc5266fc502dd65858b4230b201fc8e7ef3f3cca361b43e6a1a9c70bb",
-    "file": "src/modules/shared/components/GitHubLinkedReferences/index.tsx",
+    "key": "74916cb4459dbcb8ea899bae6886502760a11e1f793f99830f06fc621d12856e",
+    "file": "src/features/GitHubWork/GitHubLinkedReferences/index.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void request.promise.then((items) => { if (active) setState({ key: requestKey, items }); });",
     "count": 1
   },
   {
-    "key": "c91fa3374f59505dceb3f624d6e7cd5d46037b4a903a17ede069b41c82617383",
-    "file": "src/modules/shared/components/GitHubLinkedReferences/index.tsx",
+    "key": "d08ed9b1b950ba0076a61594ef7379acad99ce9f826b9c53b4d298ab10b539d7",
+    "file": "src/features/GitHubWork/GitHubLinkedReferences/index.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void openExternalLink(item.htmlUrl);",
     "count": 1
   },
   {
-    "key": "1edfdf7f133412db80d46c770c988368bc8e26c786dfd46e8b0d8adf3f8c5e33",
-    "file": "src/modules/shared/components/SaveableTextarea.tsx",
+    "key": "a1b1ae89fb67d59f88bdc8f3b3c196702a1e06ff90c74eb83bf23e71c3df18e0",
+    "file": "src/components/SaveableTextarea.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise returned in function argument where a void return was expected.",
     "source": "handleSave",
     "count": 1
   },
   {
-    "key": "4a60fcad8d1ea20f4621b3eb9e1f50545db10e98af85ef9fec3e6265fc87dd72",
-    "file": "src/modules/shared/components/SaveableTextarea.tsx",
+    "key": "924654e06eb5303be037e66c0b1ca7ad686ee649d35fc3dd4b3943c585f9bf7c",
+    "file": "src/components/SaveableTextarea.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{handleSave}",
     "count": 1
   },
   {
-    "key": "72eb28d4c24f9742a631c214bbeeb44626e2fc197e17b8b9cc934704e1894c58",
-    "file": "src/modules/shared/components/WorkManagementAssigneeCell.tsx",
+    "key": "4d2d84597cc5be2db2248ae9f2b9f3a4450d569c16b90ba38938b7a3d6c6eae5",
+    "file": "src/features/GitHubWork/WorkManagementAssigneeCell.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void onChangeAssigneeIds(assigneeIds);",
     "count": 1
   },
   {
-    "key": "bb0aca26487669b9e2492bd612ae22ee191623cd86881dfd53f6d3f58ab0db4d",
-    "file": "src/modules/shared/dataSource/BuilderProfilePanel.tsx",
+    "key": "6b280251042a89110ad09057cc16ef3c49ceece374b6147b4a50f8ef46851735",
+    "file": "src/features/RuntimeDataSource/BuilderProfilePanel.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void load(key);",
     "count": 1
   },
   {
-    "key": "d171823ff5a05d8e75e4bd8044dbacdc47de4f74db04733cd305120b4f816017",
-    "file": "src/modules/shared/dataSource/BuilderProfilePanel.tsx",
+    "key": "1728bf52c8ce324c3b45fd193100fcfedfedb77c485cdb30c8c249c3d740e065",
+    "file": "src/features/RuntimeDataSource/BuilderProfilePanel.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void load();",
     "count": 2
   },
   {
-    "key": "f2330c39d1301dcbbf705a58122bb13ebbb8ccf58a1b7899b438568fa444eebe",
-    "file": "src/modules/shared/dataSource/BuilderProfilePanel.tsx",
+    "key": "b6eb2cf7ea90e02679755543eb898d75af384ecc755603edb7c729337c994a06",
+    "file": "src/features/RuntimeDataSource/BuilderProfilePanel.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void tick();",
     "count": 1
   },
   {
-    "key": "26129e4c16d5ecb5077831dc21a13cba5c688d5f1d7705d21b3c7dbe68783f2c",
-    "file": "src/modules/shared/dataSource/RuntimeScanningPanelColumns.tsx",
+    "key": "93b1db23248feefcbe48a1ee3e90bed7524cd640ac88caaf490129b1a8616bfe",
+    "file": "src/features/ExternalSessionSources/sourceScanningColumns.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void handleRescan(row, true);",
     "count": 1
   },
   {
-    "key": "51968ce0f70097bbb484269da5e4f90e1e7288abeea86cd3259b850307a3e766",
-    "file": "src/modules/shared/dataSource/RuntimeScanningPanelColumns.tsx",
+    "key": "ccf9f1278d8f225f98673c84346267e5a4d776e46812f6e8f992cbeeb1e9203c",
+    "file": "src/features/ExternalSessionSources/sourceScanningColumns.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void handleRescan(row, false);",
     "count": 1
   },
   {
-    "key": "274c3882c484268eb84015b9fe3d0f12b52864056de7d62e2c5de17911869b50",
-    "file": "src/modules/shared/dataSource/RuntimeScanningPanelInventory.ts",
+    "key": "dd3454208a70e207c207311fa45edb56a968d3cbb3db529dfd81e3cb8cc83f71",
+    "file": "src/features/ExternalSessionSources/useSourceScanningInventory.ts",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void loadScanningInventory();",
     "count": 1
   },
   {
-    "key": "f9395a8d878cfce59480ad7c4ea7ee9caa042c3fe2a498a6354b7d34ae0d713c",
-    "file": "src/modules/shared/dataSource/SessionProvenanceHookPlatformsTable.tsx",
+    "key": "e41848eace05e0ae6fd1a1d99a5835e2bb8d45aa9f3e6520d0e6956fe3b4a205",
+    "file": "src/features/ExternalSessionSources/SessionProvenanceHookPlatformsTable.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void loadStatuses();",
     "count": 1
   },
   {
-    "key": "2f13ae42ec559cbfff350daf1608d44ff31db46a8b010b0d2437de651195b580",
-    "file": "src/modules/shared/dataSource/SessionProvenanceRecentSignalsTable.tsx",
+    "key": "c2e5d10bed411503c88ae0e5abe16eab810c728eafacae9a509002aac2f3f136",
+    "file": "src/features/ExternalSessionSources/SessionProvenanceRecentSignalsTable.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void load();",
     "count": 1
   },
   {
-    "key": "53e96187b66923b06c457ab366257a05822c1ce9373eb3d780fb69a986e91ad4",
-    "file": "src/modules/shared/dataSource/SessionUsagePanel.tsx",
+    "key": "77e9b2a9d771363dd39595ac51713597e3b4c08a44261f598ed3705776dc290e",
+    "file": "src/features/RuntimeDataSource/SessionUsagePanel.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void loadTrends();",
     "count": 1
   },
   {
-    "key": "622ab1cae71d8babff554208acfe4b003f6bc467fb8002614d560a9214dfaed1",
-    "file": "src/modules/shared/dataSource/SessionUsagePanel.tsx",
+    "key": "4b3a2f1073d7b74259aa2bee45b81bc56c19283917cae1522486e3b2e7059b73",
+    "file": "src/features/RuntimeDataSource/SessionUsagePanel.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void loadRounds();",
     "count": 2
   },
   {
-    "key": "d683e4dcfe3d2af536e194890cc147fb667f96f890e0b8f8167316cb19313c99",
-    "file": "src/modules/shared/dataSource/SessionUsagePanel.tsx",
+    "key": "fcb7e4feb3788a1fe35641c88d4b3b81bfea82699d0289cd3d0ba92df9d12f3a",
+    "file": "src/features/RuntimeDataSource/SessionUsagePanel.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void loadHeadline();",
     "count": 2
   },
   {
-    "key": "e1b4fbb0cb1704b3597ebeb731b2ecba5faf853e3376161905491f7320983a4e",
-    "file": "src/modules/shared/dataSource/SessionUsagePanel.tsx",
+    "key": "ebea7d3cac1af68df50997bf6cfc0e6e3606bb7a8ab13add2492f60408542853",
+    "file": "src/features/RuntimeDataSource/SessionUsagePanel.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{loadTrends}",
     "count": 1
   },
   {
-    "key": "7442d9f1e3543adc1baa0804d8a5619057678e1156998e12f769bb168c801c23",
-    "file": "src/modules/shared/dataSource/TeamMemberDetail.tsx",
+    "key": "36e49b2eee5470b9611f2ccad221ef247428f4b6842e6d83c8896f1c59afa3bb",
+    "file": "src/features/RuntimeDataSource/TeamMemberDetail.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void (async () => { setLoading(true); setError(null); try { const accessToken = await getFreshAccessToken(); const nextRange = memberUsageDayRange(Date.now(), usageRange); const rows = await getMemberUsage( accessToken, orgId, entry.userId, nextRange.fromDay, nextRange.toDay ); if (cancelled || seq !== requestRef.current) return; setDays(rows); setRange(nextRange); } catch (err) { if (!cancelled && seq === requestRef.current) { setError(err instanceof Error ? err.message : String(err)); } } finally { if (!cancelled && seq === requestRef.current) setLoading(false); } })();",
     "count": 1
   },
   {
-    "key": "a29b35936e5cce038414d2bf647c99f06bbd61ae0aedd81f39683e210e26d564",
-    "file": "src/modules/shared/dataSource/useTeamRuntimeRoster.ts",
+    "key": "929c3e83567dd3a325a8de54d0df3c5e33a6253781211ad8a998574ea3496e94",
+    "file": "src/features/RuntimeDataSource/useTeamRuntimeRoster.ts",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void (async () => { setFetching(true); setError(null); try { const accessToken = await getFreshAccessToken(); const capabilities = await getCloudCapabilities(accessToken); const isSupported = hasMemberRuntimeCapability(capabilities); if (cancelled || seq !== requestRef.current) return; setSupported(isSupported); // Roster reads are pointless against an unsupported backend, and the // disabled explainer replaces the roster while telemetry is off. if (!isSupported || !telemetryEnabled) return; const roster = await listMemberRuntime(accessToken, selectedOrgId); if (cancelled || seq !== requestRef.current) return; setMembers(roster); setMembersKey(`${authIdentityKey}|${selectedOrgId}`); } catch (err) { log.warn(\"team runtime roster fetch failed:\", err); if (!cancelled && seq === requestRef.current) { setError(err instanceof Error ? err.message : String(err)); } } finally { if (!cancelled && seq === requestRef.current) setFetching(false); } })();",
     "count": 1
   },
   {
-    "key": "1d90d0486ef7dbae789d4c48b8d6e548829b74891f8d7e4b0d703ce54c978f1c",
-    "file": "src/modules/shared/Error/index.tsx",
+    "key": "77d45ebb1819cc02594087335e5738a7a9a7ae7f921aef06e6261f4aad9425dd",
+    "file": "src/app/root/ErrorPage/index.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{handleCopy}",
     "count": 1
   },
   {
-    "key": "310e52fe868da177e4d816fe059b2d0907581afecf287dd78042a251ec62889f",
-    "file": "src/modules/shared/Error/index.tsx",
+    "key": "c7c826f1e9b63c9769a7aeec7a0ec0f3a085e99551c6b51f87601cbf695b20c5",
+    "file": "src/app/root/ErrorPage/index.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "hideNativeWebviews();",
     "count": 1
   },
   {
-    "key": "692f89d4b97b6b91fae7eae214cc9e19865050ee3ff36fdd383166b7d0335a8c",
-    "file": "src/modules/shared/hooks/useGitHubIssueDetailState.ts",
+    "key": "a576b2d90e81b876ea2636706dbb57421f49fafc580d6c6321266016291bb070",
+    "file": "src/features/GitHubWork/useGitHubIssueDetailState.ts",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void Promise.allSettled([ loadGitHubViewer(store, authScope, getGitHubViewerLogin), loadGitHubRepoPermissions(store, authScope, repoFullName, () => getGitHubRepoPermissionsLocal(repoFullName) ), ]).then(([viewerResult, permissionsResult]) => { if (cancelled || requestGenerationRef.current !== generation) return; setResolution({ key: requestKey, viewer: viewerResult.status === \"fulfilled\" ? resolveViewer(viewerResult.value, currentIssue, currentTimeline) : null, permissions: permissionsResult.status === \"fulfilled\" ? permissionsResult.value : null, duplicateCandidates: [], duplicateCandidatesLoaded: false, loadingDuplicateCandidates: false, duplicateCandidatesError: false, assignableUsers: [], assignableUsersLoaded: false, loadingAssignableUsers: false, assigneesError: null, submittingComment: false, updatingBody: false, updatingStatus: false, updatingAssignees: false, error: null, }); });",
     "count": 1
   },
   {
-    "key": "473ae4ea836ac7e26b9cdb91d25568e45a7f59d603005f82d64c2647871e1a8f",
-    "file": "src/modules/shared/hooks/useWorkspaceEvents.ts",
+    "key": "2c7c95faf3bfc98292e794277190309d00f10898a50f33bb386cdee381eed0a7",
+    "file": "src/modules/hooks/useWorkspaceEvents.ts",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise returned in function argument where a void return was expected.",
     "source": "async (event) => { if (cancelled) return; const { sessionId, projectId } = event.payload as { sessionId: string; projectId: string; buildType?: string; }; if (sessionId && projectId) { openSessionRef.current(sessionId); } }",
     "count": 1
   },
   {
-    "key": "56b0f22fc59f565727134696ca4c9d6c928e691adaaaabfe798b283334875b7c",
-    "file": "src/modules/shared/hooks/useWorkspaceEvents.ts",
+    "key": "c05d72400add9df52044d030d1145de1a6e750a94425f5cbbebd58810919e12d",
+    "file": "src/modules/hooks/useWorkspaceEvents.ts",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "listen(\"open-workspace\", async (event) => { if (cancelled) return; const { sessionId, projectId } = event.payload as { sessionId: string; projectId: string; buildType?: string; }; if (sessionId && projectId) { openSessionRef.current(sessionId); } }).then((unlisten) => { if (cancelled) { unlisten(); } else { unlistenWorkspaceFn = unlisten; } });",
     "count": 1
   },
   {
-    "key": "11e8893bcbee457a951ed303450779ab2522ff2866da3f14546b81bcf52d5f7e",
-    "file": "src/modules/shared/launchpad/components/ContainersSection.tsx",
+    "key": "77639c55f8846be3e43298b3a4395ebe528dc947a7c0fddf9ee768a9c835083c",
+    "file": "src/features/Launchpad/components/ContainersSection.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{() => runAction(row, \"start\")}",
     "count": 1
   },
   {
-    "key": "4048707308da805280b481ea1d65c63ff5070c479ef608bb8100a0df160bea1f",
-    "file": "src/modules/shared/launchpad/components/ContainersSection.tsx",
+    "key": "006a1beedffa17f44ef2d80d28fb7003dfec105eac1b57c72c030b9efbffad24",
+    "file": "src/features/Launchpad/components/ContainersSection.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{() => runAction(row, \"stop\")}",
     "count": 1
   },
   {
-    "key": "e09e4025772a917ecddbdfa134dd8ba0b774326f0a7bbe2be45c22f10a9fd2b5",
-    "file": "src/modules/shared/launchpad/components/ContainersSection.tsx",
+    "key": "528b819348cb4804e7b0580ff4c6777ccef28bbd7acdba8892e0559eeda37d51",
+    "file": "src/features/Launchpad/components/ContainersSection.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{() => handleInspect(row)}",
     "count": 1
   },
   {
-    "key": "f79c35f8c8550d5b3aebfec26d5b6053b34ab2ff3414edf53d0dfad316d36c30",
-    "file": "src/modules/shared/launchpad/components/ContainersSection.tsx",
+    "key": "4cdb5eb30bacb7f202b37d99d912c6cd3ee9be76673c99eabf5c9b48ab6ecf5b",
+    "file": "src/features/Launchpad/components/ContainersSection.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{() => runAction(row, \"restart\")}",
     "count": 1
   },
   {
-    "key": "1f82392d7508088706c5c4a3ffbbe05d4d25e681487edeabfc3a08287a0bab6f",
-    "file": "src/modules/shared/launchpad/components/RepoActionButtons.tsx",
+    "key": "cfeeafe70e17cbcead9ad20a115ba43d186f19d723892dea01b1d9767b46ab94",
+    "file": "src/features/Launchpad/components/RepoActionButtons.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{handleRemove}",
     "count": 1
   },
   {
-    "key": "50b864b048af9b5a1fac9fe4fe8a0c540136f3122f129a64e464efe7fefb4621",
-    "file": "src/modules/shared/launchpad/components/RepoActionButtons.tsx",
+    "key": "2087d4d4e0772bc9efcbd2a972cfe7d70ad47be61e49e3b06b198e0f8552bf0f",
+    "file": "src/features/Launchpad/components/RepoActionButtons.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{handleStartSession}",
     "count": 1
   },
   {
-    "key": "e4c1b42991c80df0672db664ce3d5eae1f79475761c65597d84b81bd2b907a67",
-    "file": "src/modules/shared/launchpad/components/RepoActionButtons.tsx",
+    "key": "5617a7fcc561bf18d849566ce0a883f83ff74ab83034a38f8c87f31690aa82a9",
+    "file": "src/features/Launchpad/components/RepoActionButtons.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{handleLocateInFinder}",
     "count": 1
   },
   {
-    "key": "b789184a40b38b6390774c9109455de86d5a3b9c7771f6caedafad2a57f4137f",
-    "file": "src/modules/shared/launchpad/components/RepoDetail/AgentLauncherSection.tsx",
+    "key": "ccdb5d23bc3ca860d73ebb105cf6520da0607fea5bcc696da2fd8f3fb2e5c111",
+    "file": "src/features/Launchpad/components/RepoDetail/AgentLauncherSection.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "launchSetup(context, { extraInstructions, trusted, keySource: lastModel?.keySource, model: lastModel?.model, accountId: lastModel?.selectedAccountId, cliAgentType: lastModel?.cliAgentType, listingModel: lastModel?.listingModel, listingModelType: lastModel?.listingModelType, tier: lastModel?.tier, });",
     "count": 1
   },
   {
-    "key": "ddf0c510c2ed94e20f4b303d8b56f7e507077849d6b9c72e97944da6f65dd37c",
-    "file": "src/modules/shared/launchpad/components/RepoDetail/RepoDetailForms.tsx",
+    "key": "874b0eaa00365b8f3f480ed27c0862e0be5dbe7e901cd0dec96064320d367644",
+    "file": "src/features/Launchpad/components/RepoDetail/RepoDetailForms.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{handleAdd}",
     "count": 2
   },
   {
-    "key": "b08e6f39b2b71c59789693055751cd97146d4367bfd4b3bf74527a3533079058",
-    "file": "src/modules/shared/launchpad/components/RepoDetail/RepoDetailPage.tsx",
+    "key": "7cb81f605d74018002af5de23145860f4d1ff341fa8b3f4be70a363135f240ce",
+    "file": "src/features/Launchpad/components/RepoDetail/RepoDetailPage.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to property where a void return was expected.",
     "source": "handleClearAnalysis",
     "count": 1
   },
   {
-    "key": "b51199d339ee6451b38baab96cb0e0810e11b9403657b5af521298577ebfdc15",
-    "file": "src/modules/shared/launchpad/components/RepoDetail/RepoDetailPage.tsx",
+    "key": "89994d6aaad55a38f8d2fbbc5f0d4f919b6f53f3409556b2335b14f451c59015",
+    "file": "src/features/Launchpad/components/RepoDetail/RepoDetailPage.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{() => deleteScript(row.name)}",
     "count": 1
   },
   {
-    "key": "db68c7cebdbbd702d4cc4b27dc621060b696a72660c95624b0f405b82e88da1d",
-    "file": "src/modules/shared/launchpad/components/RepoDetail/RepoDetailPage.tsx",
+    "key": "8a5006995b80a74ca34cc8971dcac78d9134f14b01858547d4037be325f4557b",
+    "file": "src/features/Launchpad/components/RepoDetail/RepoDetailPage.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{() => deleteVar(row.key)}",
     "count": 1
   },
   {
-    "key": "eeef40eed6712c015ca6edbcf7849333b211aed19325ca3346e80faacfe8d0d5",
-    "file": "src/modules/shared/launchpad/components/RepoDetail/RepoDetailPage.tsx",
+    "key": "fe1fab330e8519178b560369c934913383c355e549106532e23a86432052f69e",
+    "file": "src/features/Launchpad/components/RepoDetail/RepoDetailPage.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to attribute where a void return was expected.",
     "source": "{() => handleCopyScript(row)}",
     "count": 1
   },
   {
-    "key": "9951685fd58b1a0a00cd49ef877369cd24dc0d9e12c81117174a6d94c4857366",
-    "file": "src/modules/shared/layouts/AppLayout.tsx",
+    "key": "782f9c413a5b23726404653f29e3a3c4f1bf2bce50e88266ac6c1ea142243317",
+    "file": "src/scaffold/AppLayout/AppLayout.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void sendAdeActionResult(proposal.correlationId, { success: true, message: `Session created: ${info.sessionId}`, data: { sessionId: info.sessionId }, });",
     "count": 1
   },
   {
-    "key": "a124d6b6b2de1cd3980ddc1f64c650646a2ba3dfb944d4605e541f802c0fe4bb",
-    "file": "src/modules/shared/layouts/blocks/sessionTableItem.tsx",
+    "key": "8a0f58d4ce4d6666edc939e04ba16d3a4d344222453d6b098eb3cec25dfe6930",
+    "file": "src/features/SessionTable/sessionTableItem.tsx",
     "rule": "@typescript-eslint/switch-exhaustiveness-check",
     "message": "Switch is not exhaustive. Cases not matched: undefined",
     "source": "task.resultStatus",
     "count": 1
   },
   {
-    "key": "6b5a0910ce8deba99cc44620d102a37a723223e411f21414e0bfdd415c366751",
-    "file": "src/modules/shared/layouts/FocusedChatWorkstationRail/index.tsx",
+    "key": "08fb21326c96c505f91bf088070af19278809ebe6aeeef461e7c333d70ee6dfb",
+    "file": "src/scaffold/AppLayout/FocusedChatWorkstationRail/index.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void closeTerminalSession(sessionId);",
     "count": 1
   },
   {
-    "key": "5a727e8393e3cdf975e3edcfb5bd8a6d4fb74176b0bffafeca7ba18c825c0a4a",
-    "file": "src/modules/WorkStation/AppShell/AgentStationTopHeader.tsx",
+    "key": "12dc1aec23ee313f756bf85d2f5c20b43088119c65055b3689d05be95eb7d4c2",
+    "file": "src/scaffold/WorkbenchChrome/AgentStationTopHeader.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void WorkStationViewService.showWorkStation();",
@@ -6296,24 +6296,24 @@
     "count": 1
   },
   {
-    "key": "df3ae951f2eb7f271405fddceaaca9c39487ae2ed497135b8ad5535b7051e6f7",
-    "file": "src/modules/WorkStation/AppShell/PinnedWorkbenchChrome.tsx",
+    "key": "f527b43a382fe23dba4c2d2bcb2520b4e2b7d75c5d2d298a458fbf2d81a26f86",
+    "file": "src/scaffold/WorkbenchChrome/PinnedWorkbenchChrome.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void WorkStationViewService.showWorkStation();",
     "count": 1
   },
   {
-    "key": "0b806fbbf97116be252351641a5381fb45a0a0f580cac5bfa1c227caa659a1e8",
-    "file": "src/modules/WorkStation/AppShell/useWorkstationTabList.ts",
+    "key": "8e84e5e30b03035bb7ab67ad31781def5a4b1244fcad51d565d16a5c9b0b3b42",
+    "file": "src/scaffold/WorkbenchChrome/useWorkstationTabList.ts",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void closeTab({ tabId });",
     "count": 1
   },
   {
-    "key": "d8daac1a03cd807230e26258b18076574e08c7b000a47b14722bcdf3a3a9b39b",
-    "file": "src/modules/WorkStation/AppShell/useWorkstationTrailingSlot.tsx",
+    "key": "28df036418cdd6b277ba676421d30826eec7b2ebc0c15fa9e3a6e78b65307787",
+    "file": "src/scaffold/WorkbenchChrome/useWorkstationTrailingSlot.tsx",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void WorkStationViewService.showWorkStation();",
@@ -8008,10 +8008,10 @@
     "count": 1
   },
   {
-    "key": "e3f51da2c7a2c9def04d239b540cb4c7c7f8152a378468c26191eb30df057c47",
+    "key": "5c9d77c7a31e21f901315db58432db286ddd17b91e96e1f9411fd687b88e663e",
     "file": "src/modules/WorkStation/shared/TabBar/components/WorkstationTabContent.tsx",
     "rule": "@typescript-eslint/switch-exhaustiveness-check",
-    "message": "Switch is not exhaustive. Cases not matched: \"search\" | \"file\" | \"devtools\" | \"directory\" | \"git-diff\" | \"timeline-diff\" | \"git-log\" | \"git-commit-detail\" | \"git-stash-detail\" | \"terminal-content\" | \"dom-component-preview\" | \"url-preview\" | \"browser-session\" | \"project-settings\" | \"project-org\" | \"project-org-settings\" | \"project-git-sync-review\" | \"project-workitems\" | \"workItem-detail\" | \"chat-session\" | \"subagent-detail\" | \"agent-config\" | \"canvas-preview\" | \"github-issue-detail\" | \"github-pr-detail\"",
+    "message": "Switch is not exhaustive. Cases not matched: \"search\" | \"file\" | \"directory\" | \"git-diff\" | \"timeline-diff\" | \"git-log\" | \"git-commit-detail\" | \"git-stash-detail\" | \"terminal-content\" | \"dom-component-preview\" | \"url-preview\" | \"browser-session\" | \"project-settings\" | \"project-org\" | \"project-git-sync-review\" | \"project-workitems\" | \"workItem-detail\" | \"chat-session\" | \"subagent-detail\" | \"agent-config\" | \"canvas-preview\" | \"github-issue-detail\" | \"github-pr-detail\"",
     "source": "tab.type",
     "count": 1
   },
@@ -9368,8 +9368,8 @@
     "count": 2
   },
   {
-    "key": "2d4e0ae104d576ead6e8090b13bc7559fbe4c6e51105f9f857a4c917ec84d584",
-    "file": "src/shared/scheduling/visibilityAwarePoller.ts",
+    "key": "95c1e309872ffb3764ed3ad5038ea4873bf25a1a4fa3804cc7bde0788a26928d",
+    "file": "src/util/time/scheduling/visibilityAwarePoller.ts",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "void run();",
@@ -9397,14 +9397,6 @@
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
     "source": "set(updateSettingAtom, { key: \"workspace.defaultRepoLocation\", value });",
-    "count": 1
-  },
-  {
-    "key": "fe13347486567aafe31782e7a43034f63142388851640ceb324283cbfa44a0aa",
-    "file": "src/store/config/configAtom.ts",
-    "rule": "@typescript-eslint/no-floating-promises",
-    "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
-    "source": "set(updateSettingsBatchAtom, { \"chat.fontSize\": merged.fontSize, \"chat.codeFontSize\": merged.codeFontSize, \"chat.lineHeight\": merged.lineHeight, \"chat.typingEffectEnabled\": merged.typingEffectEnabled, \"chat.typingSpeed\": merged.typingSpeed, \"chat.decryptEffectEnabled\": merged.decryptEffectEnabled, \"chat.sendOnEnter\": merged.sendOnEnter, });",
     "count": 1
   },
   {
@@ -9880,11 +9872,11 @@
     "count": 1
   },
   {
-    "key": "19e978fd5f691ba5e60073afd06fb5ece9146a2a0b4df9a10425b30a58b78380",
+    "key": "8445cb3e4abcab76687cd8346cbad654626d4c9ed230d4f219cfd280d8fd258c",
     "file": "src/test/vitest.setup.ts",
     "rule": "@typescript-eslint/no-floating-promises",
     "message": "Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.",
-    "source": "i18next.init({ showSupportNotice: false, lng: \"en\", fallbackLng: \"en\", ns: [\"sessions\"], defaultNS: \"sessions\", resources: { en: { sessions: enSessions, }, }, interpolation: { escapeValue: false }, });",
+    "source": "i18next.init({ showSupportNotice: false, lng: \"en\", fallbackLng: \"en\", // Every shipped namespace, not just `sessions`: product code no longer // passes a literal default to `t()`, so an unregistered namespace would // surface as a raw key instead of the copy a test asserts on. ns: Object.keys(EN_RESOURCES), defaultNS: \"sessions\", resources: { en: EN_RESOURCES }, interpolation: { escapeValue: false }, });",
     "count": 1
   },
   {

@@ -13,9 +13,9 @@ import { useTranslation } from "react-i18next";
 import { CLI_AGENT } from "@src/api/tauri/rpc/schemas/validation";
 import { LOCAL_MODEL_PROVIDER, type ModelType } from "@src/api/types/keys";
 import {
+  InputShortTextIcon,
   InternetIcon,
   Key01Icon,
-  KeyboardIcon,
   Login01Icon,
   SearchAreaIcon,
 } from "@src/icons";
@@ -224,7 +224,7 @@ export function useProviderSelection({
         {
           key: "enter_token",
           label: t("keyVault.enterToken"),
-          icon: KeyboardIcon,
+          icon: InputShortTextIcon,
         },
       ];
     }
@@ -269,7 +269,7 @@ export function useProviderSelection({
         {
           key: "enter_token",
           label: t("keyVault.enterToken"),
-          icon: KeyboardIcon,
+          icon: InputShortTextIcon,
         },
       ];
     }

@@ -9,7 +9,7 @@
  * Worktree enumeration is local-only — GitHub remote repos always
  * return an empty map.
  *
- * Caching strategy: a module-scoped LRU keyed by `repoId`. Each map
+ * Caching strategy: a module-scoped bounded cache keyed by `repoId`. Each map
  * lives for ~5 min before the next call refreshes it on next open.
  * This is intentionally lightweight — worktrees change rarely and the
  * branch list itself is already cached separately.
@@ -36,7 +36,10 @@ interface CacheEntry {
 }
 
 const worktreeCache = new Map<string, CacheEntry>();
-const inflight = new Map<string, Promise<Map<string, string>>>();
+const inflight = new Map<
+  string,
+  { promise: Promise<Map<string, string>>; token: { valid: boolean } }
+>();
 const subscribers = new Set<() => void>();
 
 function notifySubscribers(): void {
@@ -58,6 +61,7 @@ function writeCache(
   map: Map<string, string>,
   entries: GitWorktreeEntry[]
 ): void {
+  worktreeCache.delete(repoId);
   if (worktreeCache.size >= MAX_CACHE_ENTRIES) {
     const oldestKey = worktreeCache.keys().next().value;
     if (oldestKey !== undefined) worktreeCache.delete(oldestKey);
@@ -68,6 +72,9 @@ function writeCache(
 
 function invalidateWorktreeMap(repoId: string): void {
   worktreeCache.delete(repoId);
+  const previous = inflight.get(repoId);
+  if (previous) previous.token.valid = false;
+  inflight.delete(repoId);
   notifySubscribers();
 }
 
@@ -100,7 +107,9 @@ async function fetchWorktreeMap(
   repoPath: string | undefined
 ): Promise<Map<string, string>> {
   const existing = inflight.get(repoId);
-  if (existing) return existing;
+  if (existing) return existing.promise;
+  // Invalidation ends this request generation without retaining per-repo counters.
+  const token = { valid: true };
 
   const promise = (async () => {
     const entries = await gitApi.getGitWorktrees({
@@ -115,15 +124,15 @@ async function fetchWorktreeMap(
       if (!entry.branch) continue;
       map.set(entry.branch, entry.path);
     }
-    writeCache(repoId, map, entries);
+    if (token.valid) writeCache(repoId, map, entries);
     return map;
   })();
 
-  inflight.set(repoId, promise);
+  inflight.set(repoId, { promise, token });
   try {
     return await promise;
   } finally {
-    inflight.delete(repoId);
+    if (inflight.get(repoId)?.promise === promise) inflight.delete(repoId);
   }
 }
 
@@ -166,7 +175,7 @@ export function useWorktreeEntries(
 /**
  * Returns a `branchName -> worktreePath` map for the given repo.
  * Returns an empty map until the first fetch resolves; subsequent
- * opens reuse the module-scoped LRU.
+ * opens reuse the module-scoped bounded cache.
  */
 export function useWorktreeMap(
   options: UseWorktreeMapOptions

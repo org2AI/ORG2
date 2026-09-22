@@ -3,8 +3,7 @@
  *
  * The category picker's open state and style, the panel handlers (screen
  * share, repository selection, category selection), the agent-picker and
- * advanced-config callbacks built on them, and the branch sync that keeps the
- * session draft aligned with the selected repository.
+ * advanced-config callbacks built on them.
  */
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";
@@ -13,7 +12,6 @@ import type { AgentSelection } from "@src/scaffold/GlobalSpotlight/palettes/Disp
 import { modelPickerStyleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 import type { useChatPanelAgentMode } from "./useChatPanelAgentMode";
-import { useChatPanelBranchSync } from "./useChatPanelBranchSync";
 import { useChatPanelCategoryPicker } from "./useChatPanelCategoryPicker";
 import type { useChatPanelSessionCreator } from "./useChatPanelSessionCreator";
 import { useSessionCreatorChatPanelHandlers } from "./useSessionCreatorChatPanelHandlers";
@@ -32,13 +30,9 @@ export function useChatPanelSelectionHandlers({
   } = mode;
   const {
     creator: { advancedConfig, effectiveSource, setAdvancedConfig },
-    currentBranch,
-    currentRepo,
     forceRefreshRepos,
-    loadBranchList,
     reposList,
     selectRepo,
-    selectedRepoId,
     worktree: { clearWorktreeLaunchSelection },
   } = session;
 
@@ -75,14 +69,6 @@ export function useChatPanelSelectionHandlers({
     },
     [setAdvancedConfig]
   );
-
-  useChatPanelBranchSync({
-    effectiveSource,
-    selectedRepoId,
-    currentRepoKind: currentRepo?.kind,
-    currentBranch,
-    loadBranchList,
-  });
 
   return {
     agentHeroRef,

@@ -339,6 +339,34 @@ pub fn load_events(session_id: &str) -> SqliteResult<Vec<CachedEvent>> {
     Ok(events)
 }
 
+/// Read control metadata without materializing or normalizing a transcript.
+pub fn load_events_by_type(session_id: &str, event_type: &str) -> SqliteResult<Vec<CachedEvent>> {
+    let conn = get_connection()?;
+    let mut stmt = conn.prepare_cached(
+        "SELECT id, session_id, event_type, function_name, thread_id,
+                args_json, result_json, content, created_at, meta_json, history_sequence
+         FROM events WHERE session_id = ?1 AND event_type = ?2 ORDER BY created_at, id",
+    )?;
+    let rows = stmt
+        .query_map(rusqlite::params![session_id, event_type], |row| {
+            Ok(CachedEvent {
+                id: row.get(0)?,
+                session_id: row.get(1)?,
+                event_type: row.get(2)?,
+                function_name: row.get(3)?,
+                thread_id: row.get(4)?,
+                args_json: row.get(5)?,
+                result_json: row.get(6)?,
+                content: row.get(7)?,
+                created_at: row.get(8)?,
+                meta_json: row.get(9)?,
+                history_sequence: row.get(10)?,
+            })
+        })?
+        .collect();
+    rows
+}
+
 /// Byte radius of the excerpt window taken on each side of the first match
 /// (snapped outward to char boundaries).
 const EXCERPT_RADIUS_BYTES: usize = 60;

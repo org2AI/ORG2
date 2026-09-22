@@ -1,4 +1,3 @@
-import { ACTION_ID } from "@src/ActionSystem";
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES } from "@src/i18n";
 import {
   ArrowLeft02Icon,
@@ -42,6 +41,7 @@ import {
   WorkHistoryIcon,
   WorkflowCircle05Icon,
 } from "@src/icons";
+import { ACTION_ID } from "@src/scaffold/ActionSystem";
 
 import type { ActionDefinition } from "./types";
 
@@ -202,25 +202,7 @@ export const ACTIONS: ActionDefinition[] = [
   },
 
   // Note: The legacy add-workspace action + sub-actions were removed. The
-  // The add-working-directory flow (Create / Clone URL / Clone GitHub / Import)
+  // add-working-directory flow (Create / Clone URL / Clone GitHub / Import)
   // lives inside `WorkingDirectoryPalette` via `useAddWorkingDirectoryFlow`, so GlobalSpotlight
   // doesn't need a top-level action entry for it.
 ];
-
-// ============ HELPER: Get action by ID ============
-
-export const getActionById = (id: string): ActionDefinition | undefined =>
-  ACTIONS.find((actionItem) => actionItem.id === id);
-
-// ============ TAG COLORS BY TYPE ============
-
-export const TAG_COLORS: Record<string, string> = {
-  action: "primary", // blue (primary-6)
-  repo: "warning", // orange (warning-6)
-  branch: "warning", // orange (warning-6)
-  language: "success",
-};
-
-// ============ SPOTLIGHT POSITIONING CONFIG ============
-// Re-export from constants.ts to avoid circular dependency
-export { SPOTLIGHT_CONFIG } from "./constants";

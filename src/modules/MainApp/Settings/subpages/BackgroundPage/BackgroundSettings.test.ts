@@ -12,7 +12,7 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@src/components/Message", () => ({ default: { warning: vi.fn() } }));
-vi.mock("@src/modules/shared/layouts/SectionLayout", () => ({
+vi.mock("@src/components/layout/Section", () => ({
   SECTION_CONTROL_STYLE: { width: 280 },
   SectionContainer: ({ children }: { children: ReactNode }) =>
     createElement("section", null, children),
@@ -64,6 +64,11 @@ it("keeps embedded palette/opacity writes and undo/redo without a router", async
         .click()
     );
     expect(store.get(backgroundConfigPersistAtom).pageOpacity).toBe(75);
+    // Sidebar opacity is owned by the translucency-gated row in
+    // AppearanceSection; this section must not render a second slider.
+    expect(
+      host.querySelector('[data-label="background.sidebarOpacity"]')
+    ).toBeNull();
     act(() =>
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true })

@@ -51,22 +51,12 @@ export function formatPairedDeviceSubtitle(
   formatTimestamp: (ms: number | null) => string,
   t: TFunction<"settings">
 ): string {
-  const parts: string[] = [];
-  parts.push(
-    t("mobileRemote.devicePairedAt", {
-      time: formatTimestamp(device.pairedAtMs),
-    })
-  );
   if (device.lastSeenMs != null && device.lastSeenMs > 0) {
-    parts.push(
-      t("mobileRemote.deviceLastSeenValue", {
-        time: formatTimestamp(device.lastSeenMs),
-      })
-    );
-  } else {
-    parts.push(t("mobileRemote.deviceNeverSeen"));
+    return t("mobileRemote.deviceLastSeenValue", {
+      time: formatTimestamp(device.lastSeenMs),
+    });
   }
-  return parts.join(" · ");
+  return t("mobileRemote.deviceNeverSeen");
 }
 
 export function resolvePairedDevicePresence(
@@ -103,10 +93,6 @@ export function formatPairedDeviceTierLabel(
     return t("mobileRemote.deviceTierReadOnly");
   }
   return t("mobileRemote.deviceTierFull");
-}
-
-export function isPairedDeviceReadOnlyTier(tier: string): boolean {
-  return tier === "read_only";
 }
 
 /** Default outdoor pairing label — unique enough for repeated QA pairings. */

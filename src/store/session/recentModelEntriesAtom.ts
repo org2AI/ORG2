@@ -16,6 +16,7 @@ import {
 } from "@src/api/tauri/rpc/schemas/validation";
 import { KEY_SOURCE, type KeySource } from "@src/api/tauri/session/index";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
+import { getModelVariantBaseModel } from "@src/util/modelVariants";
 
 const STORAGE_KEY = "orgii:recentModelEntries";
 const MAX_RECENT = 5;
@@ -25,17 +26,23 @@ export interface RecentModelEntry {
   sourceType: KeySource;
   accountId?: string;
   accountName?: string;
+  credentialSource?: string;
+  marketProfileId?: string;
   modelType: ModelType;
   cliAgentType?: CliAgentType;
   cliAgentLabel?: string;
   cliModelDisplay?: string;
 }
 
-const RecentModelEntrySchema = z.object({
+const marketProfileIdSchema = z.string().startsWith("market:").max(512);
+
+export const RecentModelEntrySchema = z.object({
   modelId: z.string(),
   sourceType: z.enum([KEY_SOURCE.OWN, KEY_SOURCE.HOSTED]),
   accountId: z.string().optional(),
   accountName: z.string().optional(),
+  credentialSource: z.string().startsWith("market:").max(1024).optional(),
+  marketProfileId: marketProfileIdSchema.optional(),
   modelType: ModelTypeSchema,
   cliAgentType: CliAgentTypeSchema.optional(),
   cliAgentLabel: z.string().optional(),
@@ -52,13 +59,54 @@ export const recentModelEntriesAtom = atomWithStorage<RecentModelEntry[]>(
   createZodJsonStorage(RecentModelEntriesSchema)
 );
 
-/** Whether two recent entries represent the same account + model selection. */
+type MarketSelectionIdentity = Pick<
+  RecentModelEntry,
+  "credentialSource" | "marketProfileId" | "cliAgentType"
+> & { modelType?: ModelType };
+
+/** UI identity only; selecting a Package still prepares fresh credentials. */
+export function marketSelectionsEquivalent(
+  left: MarketSelectionIdentity,
+  right: MarketSelectionIdentity
+): boolean {
+  const validProfileId = (id: string | undefined) =>
+    marketProfileIdSchema.safeParse(id).success;
+  if (
+    left.credentialSource?.startsWith("market:") &&
+    right.credentialSource?.startsWith("market:") &&
+    validProfileId(left.marketProfileId) &&
+    validProfileId(right.marketProfileId)
+  ) {
+    return (
+      left.marketProfileId === right.marketProfileId &&
+      (left.cliAgentType ?? left.modelType) ===
+        (right.cliAgentType ?? right.modelType)
+    );
+  }
+  // Old saved selections lack a stable profile id. Keep their exact-source
+  // identity instead of guessing from a Package's non-unique display name.
+  return left.credentialSource === right.credentialSource;
+}
+
+/**
+ * Whether two recent entries represent the same account + model selection.
+ * Variants of one model family (effort/fast) are the same selection: the row
+ * renders the family and edits its variant in place.
+ */
 export function recentEntriesEquivalent(
   left: RecentModelEntry,
   right: RecentModelEntry
 ): boolean {
-  if (left.modelId !== right.modelId || left.sourceType !== right.sourceType) {
+  if (
+    getModelVariantBaseModel(left.modelId) !==
+      getModelVariantBaseModel(right.modelId) ||
+    left.sourceType !== right.sourceType
+  ) {
     return false;
+  }
+
+  if (left.credentialSource || right.credentialSource) {
+    return marketSelectionsEquivalent(left, right);
   }
 
   if (left.accountId && right.accountId) {
@@ -94,4 +142,12 @@ export function recordRecentEntry(
     (existing) => !recentEntriesEquivalent(existing, entry)
   );
   return [entry, ...filtered].slice(0, MAX_RECENT);
+}
+
+export function findRecentByCredentialSource(
+  entries: RecentModelEntry[],
+  credentialSource: string | undefined
+): RecentModelEntry | undefined {
+  if (!credentialSource) return undefined;
+  return entries.find((entry) => entry.credentialSource === credentialSource);
 }

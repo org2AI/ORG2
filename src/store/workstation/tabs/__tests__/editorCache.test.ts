@@ -42,10 +42,7 @@ async function loadCacheAtoms() {
     workstationActiveSessionIdAtom: sessionView.workstationActiveSessionIdAtom,
     editorCacheAtom: cache.editorCacheAtom,
     activeEditorRepoAtom: cache.activeEditorRepoAtom,
-    activeRepoCacheAtom: cache.activeRepoCacheAtom,
-    editorCacheSizeAtom: cache.editorCacheSizeAtom,
     saveRepoCacheAtom: cache.saveRepoCacheAtom,
-    clearAllEditorCacheAtom: cache.clearAllEditorCacheAtom,
     disposeEditorCacheForSessionAtom: cache.disposeEditorCacheForSessionAtom,
   };
 }
@@ -86,15 +83,15 @@ describe("editor repo cache workspace scoping", () => {
     });
 
     expect(
-      store.get(atoms.activeRepoCacheAtom)?.fileTabs.map((tab) => tab.id)
+      store.get(atoms.editorCacheAtom)["/repo"]?.fileTabs.map((tab) => tab.id)
     ).toEqual(["b"]);
 
     store.set(atoms.workstationActiveSessionIdAtom, "session-a");
     expect(store.get(atoms.activeEditorRepoAtom)).toBe("/repo");
     expect(
-      store.get(atoms.activeRepoCacheAtom)?.fileTabs.map((tab) => tab.id)
+      store.get(atoms.editorCacheAtom)["/repo"]?.fileTabs.map((tab) => tab.id)
     ).toEqual(["a"]);
-    expect(store.get(atoms.editorCacheSizeAtom)).toBe(1);
+    expect(Object.keys(store.get(atoms.editorCacheAtom))).toHaveLength(1);
   });
 
   it("keeps Global Workspace independent from session workspaces", async () => {
@@ -114,34 +111,6 @@ describe("editor repo cache workspace scoping", () => {
     store.set(atoms.workstationActiveSessionIdAtom, null);
     expect(store.get(atoms.editorCacheAtom)["/repo"]?.activeFileTabId).toBe(
       "global"
-    );
-  });
-
-  it("clear all only clears the currently presented workspace", async () => {
-    const atoms = await loadCacheAtoms();
-    const store = createStore();
-
-    store.set(atoms.workstationActiveSessionIdAtom, "session-a");
-    store.set(atoms.saveRepoCacheAtom, {
-      repoPath: "/repo",
-      fileTabs: [fileTab("a")],
-      activeFileTabId: "a",
-      lastAccessedAt: 1,
-    });
-    store.set(atoms.workstationActiveSessionIdAtom, "session-b");
-    store.set(atoms.saveRepoCacheAtom, {
-      repoPath: "/repo",
-      fileTabs: [fileTab("b")],
-      activeFileTabId: "b",
-      lastAccessedAt: 1,
-    });
-
-    store.set(atoms.clearAllEditorCacheAtom);
-    expect(store.get(atoms.editorCacheAtom)).toEqual({});
-
-    store.set(atoms.workstationActiveSessionIdAtom, "session-a");
-    expect(store.get(atoms.editorCacheAtom)["/repo"]?.activeFileTabId).toBe(
-      "a"
     );
   });
 
@@ -205,7 +174,7 @@ describe("disposeEditorCacheForSessionAtom", () => {
     // The kept session is untouched.
     store.set(atoms.workstationActiveSessionIdAtom, "session-kept");
     expect(
-      store.get(atoms.activeRepoCacheAtom)?.fileTabs.map((tab) => tab.id)
+      store.get(atoms.editorCacheAtom)["/repo"]?.fileTabs.map((tab) => tab.id)
     ).toEqual(["y"]);
     // The deleted session's workspace is gone from memory and storage.
     store.set(atoms.workstationActiveSessionIdAtom, "session-gone");

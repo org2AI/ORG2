@@ -49,7 +49,6 @@ import { workStationEditorSecondaryCollapsedAtom } from "@src/store/ui/workStati
 import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPositionAtoms";
 import { workStationPrimarySidebarCollapsedAtom } from "@src/store/ui/workStationLayout/primarySidebarAtoms";
 import { workStationLayoutModeAtom } from "@src/store/ui/workStationLayout/splitLayoutAtoms";
-import { activeStatusBarCallbacksAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import {
   workspaceActiveAtom,
   workspaceFoldersAtom,
@@ -58,17 +57,11 @@ import { getSessionSearchText } from "@src/util/session/sessionSearch";
 
 import { NAV_DESTINATIONS } from "../../config";
 import {
-  buildBranchSpotlightItems,
   buildRepoSpotlightItems,
   sortRepoItemsSelectedFirst,
 } from "../../palettes/adapters";
 import { usePinnedSpotlightItems } from "../../pinning/usePinnedSpotlightItems";
-import type {
-  ActionDefinition,
-  BranchItem,
-  RepoItem,
-  SpotlightItem,
-} from "../../types";
+import type { ActionDefinition, RepoItem, SpotlightItem } from "../../types";
 import { useSpotlightState } from "../core";
 import type { UseSpotlightItemsReturn } from "../core/types";
 import { resolveRecentDefinitions } from "./recentSpotlightActions";
@@ -90,7 +83,6 @@ import {
   buildGroupedDefaultItems,
   buildLanguageItems,
   buildNavDestinationItem,
-  buildRepoActionItems,
   buildSkinItems,
   buildStaticActionItems,
   buildThemeItems,
@@ -118,7 +110,6 @@ export type {
   SpotlightEditorActionId,
   SpotlightStaticActionDefinition,
   SpotlightStaticActionFallback,
-  SpotlightStaticActionId,
 } from "./spotlightActionDefinitions";
 
 // ============================================
@@ -130,7 +121,6 @@ interface SpotlightItemsHandlers {
   onSelectStaticAction: (action: SpotlightStaticActionDefinition) => void;
   onSelectEditorAction: (actionId: SpotlightEditorActionId) => void;
   onSelectRepo: (repo: RepoItem) => void;
-  onSelectBranch: (branch: BranchItem) => void;
   onSelectLanguage: (language: LanguagePreference, label: string) => void;
   onSelectTheme: (theme: GlobalThemePreference) => void;
   onSelectSkin: (skinId: string, variant: SkinVariant) => void;
@@ -148,7 +138,6 @@ interface SpotlightItemsHandlers {
 
 export function useSpotlightItems(
   filteredRepos: RepoItem[],
-  filteredBranches: BranchItem[],
   handlers: SpotlightItemsHandlers
 ): UseSpotlightItemsReturn {
   const state = useSpotlightState();
@@ -156,13 +145,9 @@ export function useSpotlightItems(
   const workspaceFolders = useAtomValue(workspaceFoldersAtom);
   const workspaceActive = useAtomValue(workspaceActiveAtom);
   const isSidebarCollapsed = useAtomValue(sidebarCollapsedAtom);
-  const fallbackWorkstationSidebarCollapsed = useAtomValue(
+  const isWorkstationSidebarCollapsed = useAtomValue(
     workStationPrimarySidebarCollapsedAtom
   );
-  const activeStatusBarCallbacks = useAtomValue(activeStatusBarCallbacksAtom);
-  const isWorkstationSidebarCollapsed =
-    activeStatusBarCallbacks.primaryPanelCollapsed ??
-    fallbackWorkstationSidebarCollapsed;
   const isBottomPanelCollapsed = useAtomValue(
     workStationEditorSecondaryCollapsedAtom
   );
@@ -191,7 +176,6 @@ export function useSpotlightItems(
     onSelectStaticAction,
     onSelectEditorAction,
     onSelectRepo,
-    onSelectBranch,
     onSelectLanguage,
     onSelectTheme,
     onSelectSkin,
@@ -206,11 +190,9 @@ export function useSpotlightItems(
   // Extract specific fields to narrow memo dependencies. Previously this
   // depended on the entire state object, causing recomputation on any state
   // change (e.g. selectedIndex).
-  const { stage, path, currentAction, missingParam, searchQuery, isComplete } =
-    state;
-  const hasAction = path.some((segment) => segment.type === "action");
-  const hasRepo = path.some((segment) => segment.type === "repo");
-  const isGeneralSearch = Boolean(searchQuery) && !hasAction && !hasRepo;
+  const { currentAction, missingParam, searchQuery } = state;
+  const hasAction = currentAction !== null;
+  const isGeneralSearch = Boolean(searchQuery) && !hasAction;
   const resolvedSessionSearchInput = useMemo(
     () => resolveAgentSessionSearchInput(searchQuery),
     [searchQuery]
@@ -228,11 +210,8 @@ export function useSpotlightItems(
         )
       );
   }, [isGeneralSearch, resolvedSessionSearchInput.reference, sessions]);
-  const fallbackSessionLabel = t("navigation:routes.session", "Session");
-  const cloudSessionLabel = t(
-    "navigation:cloud.sessionRef.chipLabel",
-    "Team session"
-  );
+  const fallbackSessionLabel = t("navigation:routes.session");
+  const cloudSessionLabel = t("navigation:cloud.sessionRef.chipLabel");
   const getSessionText = useCallback(
     (session: Session) => getSessionSearchText(session, fallbackSessionLabel),
     [fallbackSessionLabel]
@@ -275,12 +254,8 @@ export function useSpotlightItems(
       workstationSidebarPosition,
     });
 
-    if (stage === "confirming" || stage === "executing") {
-      return [];
-    }
-
     // ========== SEARCH MODE (Global Search) ==========
-    if (searchQuery && !hasAction && !hasRepo) {
+    if (searchQuery && !hasAction) {
       const sessionItems = resolvedSessionSearchInput.reference
         ? [
             buildCloudSessionReferenceItem({
@@ -330,12 +305,6 @@ export function useSpotlightItems(
 
     // ========== ACTION PATH ==========
     if (hasAction && currentAction) {
-      if (currentAction.hasModal && currentAction.requiredParams.length === 0) {
-        return [];
-      }
-      if (isComplete) {
-        return [];
-      }
       if (missingParam === "repo") {
         return sortRepoItemsSelectedFirst(
           buildRepoSpotlightItems(filteredRepos, {
@@ -344,11 +313,6 @@ export function useSpotlightItems(
             idPrefix: "repo-",
           })
         );
-      }
-      if (missingParam === "branch") {
-        return buildBranchSpotlightItems(filteredBranches, {
-          onAction: onSelectBranch,
-        });
       }
       if (missingParam === "language") {
         return buildLanguageItems(
@@ -377,11 +341,6 @@ export function useSpotlightItems(
         );
       }
       return [];
-    }
-
-    // ========== REPO-FIRST PATH ==========
-    if (hasRepo && !hasAction) {
-      return buildRepoActionItems(onSelectAction, translate);
     }
 
     // ========== DEFAULT GROUPED SECTIONS ==========
@@ -457,13 +416,10 @@ export function useSpotlightItems(
       translate
     );
   }, [
-    stage,
     currentAction,
     missingParam,
     searchQuery,
-    isComplete,
     hasAction,
-    hasRepo,
     isSidebarCollapsed,
     isWorkstationSidebarCollapsed,
     isBottomPanelCollapsed,
@@ -491,14 +447,12 @@ export function useSpotlightItems(
     isEditorRoute,
     isWorkStationRoute,
     filteredRepos,
-    filteredBranches,
     currentRepoId,
     workingDirectoryActions,
     onSelectAction,
     onSelectStaticAction,
     onSelectEditorAction,
     onSelectRepo,
-    onSelectBranch,
     onSelectLanguage,
     onSelectTheme,
     onSelectSkin,
@@ -508,14 +462,9 @@ export function useSpotlightItems(
     translate,
   ]);
 
-  const pinnedItems = usePinnedSpotlightItems(
-    items,
-    "commands",
-    !hasAction && !hasRepo
-  );
+  const pinnedItems = usePinnedSpotlightItems(items, "commands", !hasAction);
 
   return {
     items: pinnedItems,
-    isLoading: false,
   };
 }

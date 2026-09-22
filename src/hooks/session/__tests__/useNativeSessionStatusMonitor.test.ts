@@ -35,6 +35,7 @@ import {
   deliverSessionTerminalNotification,
   shouldDeliverSessionTerminalNotification,
 } from "@src/hooks/session/sessionTerminalNotifications";
+import { chatPanelTabsAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import type { SessionStatus } from "@src/types/session/session";
 import {
@@ -176,6 +177,33 @@ describe("useNativeSessionStatusMonitor session-list status", () => {
     emitStatus("completed");
 
     expectRowStatus("completed");
+  });
+
+  it("marks completion from the selected Session tab as already visible", () => {
+    act(() => {
+      getInstrumentedStore().set(chatPanelTabsAtom, {
+        tabs: [
+          {
+            id: "selected-session-tab",
+            type: "session",
+            title: "Selected session",
+            sessionId: SESSION_ID,
+          },
+        ],
+        activeTabId: "selected-session-tab",
+      });
+    });
+
+    emitStatus("completed");
+
+    expect(deliverSessionTerminalNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        sessionInActiveTab: true,
+      }),
+      expect.anything(),
+      expect.any(Function)
+    );
   });
 
   it("does not let an unattributed old terminal close a newly dispatching turn", () => {

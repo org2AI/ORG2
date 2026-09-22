@@ -1,8 +1,8 @@
-import { createContext, useContext } from "react";
+import React, { createContext, useContext } from "react";
 
 import type { PermissionSheetRequest } from "@src/components/PermissionPrompt";
 
-import type { MobileRpcClient } from "../connection/mobileRpcClient";
+import { type MobileRpcClient } from "../connection/mobileRpcClient";
 import type {
   MobileConnectionConfig,
   MobileConnectionState,
@@ -17,13 +17,28 @@ import type {
   TranscriptRoundSummary,
 } from "../lib/transcriptLoadState";
 import type { TranscriptItem } from "../lib/transcriptReducer";
-import type { MobileSendStatus } from "./useMobileSend";
+import type { MobileReadStateSync } from "./mobileReadStateSync";
+import { type MobilePendingInbox } from "./useMobilePendingInbox";
+import { type MobileSendStatus } from "./useMobileSend";
+import type { MobileRosterPhase } from "./useMobileSessionList";
 
 export interface MobileRemoteContextValue {
+  readStateSync: MobileReadStateSync;
+  pendingInbox: MobilePendingInbox;
+  focusPermission: (requestId: string) => void;
+  bootstrapPending: boolean;
   connection: MobileConnectionState;
   sessions: MobileSessionRow[];
+  rosterPhase: MobileRosterPhase;
   transcriptItems: TranscriptItem[];
   transcriptPhase: TranscriptLoadPhase;
+  transcriptSessionId: string | null;
+  openingReady: boolean;
+  openedSession: {
+    requested: string;
+    sessionId: string;
+    managed: boolean;
+  } | null;
   transcriptError?: string;
   transcriptTruncated: boolean;
   transcriptRounds: TranscriptRoundSummary[];
@@ -36,10 +51,13 @@ export interface MobileRemoteContextValue {
   permissionQueueDepth: number;
   /** True while an answer is on the wire; the sheet must stay disabled. */
   permissionSubmitting: boolean;
+  /** Failure belongs to the currently presented permission request only. */
+  permissionFailed: boolean;
   rpc: MobileRpcClient | null;
   connectionConfig: MobileConnectionConfig | null;
   pairedDesktops: MobilePairedDesktopSummary[];
   connectLive: (config: MobileConnectionConfig) => Promise<void>;
+  retryConnection: () => Promise<boolean>;
   switchPairedDesktop: (desktopId: string) => Promise<void>;
   enterDemoMode: () => void;
   disconnect: () => Promise<void>;
@@ -68,6 +86,7 @@ export interface MobileRemoteContextValue {
   stopSession: (sessionId: string) => Promise<void>;
   sessionModel: MobileSessionModelState;
   refreshSessionModel: (sessionId: string) => Promise<void>;
+  loadSessionModels: (sessionId: string) => Promise<void>;
   setSessionModel: (
     sessionId: string,
     option: MobileModelOption
@@ -76,6 +95,16 @@ export interface MobileRemoteContextValue {
 
 export const MobileRemoteContext =
   createContext<MobileRemoteContextValue | null>(null);
+
+export interface MobileRemoteProvidersProps {
+  children: React.ReactNode;
+  /** Authenticated ORG2 Cloud subject; scopes all retained pairing state. */
+  authUserId: string;
+  relayUrl?: string;
+  demoByDefault?: boolean;
+  /** A freshly scanned QR must take precedence over a stored old desktop. */
+  suppressInitialBootstrap?: boolean;
+}
 
 export function useMobileRemote(): MobileRemoteContextValue {
   const value = useContext(MobileRemoteContext);

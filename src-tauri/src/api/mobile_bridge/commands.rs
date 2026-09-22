@@ -287,7 +287,12 @@ where
     R: DeserializeOwned,
 {
     let endpoint = relay_http_endpoint(config, path)?;
-    let access_token = org2_cloud_auth::current_access_token()?;
+    let access_token = org2_cloud_auth::current_access_token().map_err(|error| {
+        if error == org2_cloud_auth::CloudAuthError::Expired {
+            relay::request_auth_refresh();
+        }
+        error.to_string()
+    })?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()

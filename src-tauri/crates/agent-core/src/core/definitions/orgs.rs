@@ -71,6 +71,12 @@ impl PlanApprovalPolicy {
 #[serde(rename_all = "camelCase")]
 pub struct OrgMemberRuntimeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub market_profile_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cli_agent_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub key_source: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub account_id: Option<String>,

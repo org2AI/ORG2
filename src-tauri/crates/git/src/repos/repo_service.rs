@@ -13,7 +13,7 @@
 
 use super::repo_db::{self, RepoKind, RepoRecord};
 use super::unregister_workspace_from_watcher;
-use crate::util::tokio_git_command;
+use crate::util::{ensure_git_operand, tokio_git_command};
 
 // ============================================
 // Helpers
@@ -205,6 +205,9 @@ pub async fn clone_github(
     target_dir: String,
     name: Option<String>,
 ) -> Result<RepoRecord, String> {
+    // `git clone` accepts `--upload-pack=<cmd>` and `--config`, so the URL must
+    // be an operand before it reaches argv.
+    ensure_git_operand(&url, "repository URL")?;
     let repo_name = match name {
         Some(n) if !n.trim().is_empty() => n,
         _ => {

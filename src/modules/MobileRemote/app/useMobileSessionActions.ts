@@ -1,56 +1,34 @@
-import { type RefObject, useCallback } from "react";
+import { useCallback } from "react";
 
-import type { MobileRpcClient } from "../connection/mobileRpcClient";
-import type { MobileConnectionState } from "../connection/types";
+import type { PermissionSheetRequest } from "@src/components/PermissionPrompt";
+
+import { isPendingPermissions } from "../connection/sessionDiscoveryContract";
 import { DEMO_SESSIONS } from "../demo/demoFixtures";
-import type { MobileConnectionRefs } from "./useMobileConnectionRefs";
-import type { useMobileSend } from "./useMobileSend";
-import type { useMobileSessionList } from "./useMobileSessionList";
-import type { useMobileSessionModel } from "./useMobileSessionModel";
-import type { useMobileTranscript } from "./useMobileTranscript";
+import type { MobileRemoteState } from "./useMobileRemoteState";
 
-type TranscriptApi = ReturnType<typeof useMobileTranscript>;
-type SessionListApi = ReturnType<typeof useMobileSessionList>;
-type SessionModelApi = ReturnType<typeof useMobileSessionModel>;
-
-interface UseMobileSessionActionsParams {
-  connection: MobileConnectionState;
-  connectionRef: RefObject<MobileConnectionState>;
-  refs: Pick<MobileConnectionRefs, "clientRef" | "activeSessionRef">;
-  sessionsHasMore: boolean;
-  requireWritableClient: () => MobileRpcClient;
-  requestSessionList: SessionListApi["requestSessionList"];
-  resetSessions: SessionListApi["resetSessions"];
-  resetSend: ReturnType<typeof useMobileSend>["resetSend"];
-  beginLoad: TranscriptApi["beginLoad"];
-  failLoad: TranscriptApi["failLoad"];
-  showDemoTranscript: TranscriptApi["showDemoTranscript"];
-  requestSessionSnapshot: TranscriptApi["requestSessionSnapshot"];
-  resetTranscript: TranscriptApi["resetTranscript"];
-  refreshSessionModel: SessionModelApi["refreshSessionModel"];
-  resetSessionModel: SessionModelApi["resetSessionModel"];
-}
-
-/** Session-scoped RPC actions exposed through the provider context. */
-export function useMobileSessionActions({
-  connection,
-  connectionRef,
-  refs,
-  sessionsHasMore,
-  requireWritableClient,
-  requestSessionList,
-  resetSessions,
-  resetSend,
-  beginLoad,
-  failLoad,
-  showDemoTranscript,
-  requestSessionSnapshot,
-  resetTranscript,
-  refreshSessionModel,
-  resetSessionModel,
-}: UseMobileSessionActionsParams) {
-  const { clientRef, activeSessionRef } = refs;
-
+export function useMobileSessionActions(state: MobileRemoteState) {
+  const {
+    clientRef,
+    permissionRevisionRef,
+    activeSessionRef,
+    connection,
+    connectionRef,
+    readStateSync,
+    sessionsHasMore,
+    requestSessionList,
+    resetSessions,
+    releaseOpening,
+    beginLoad,
+    resetTranscript,
+    showDemoTranscript,
+    failLoad,
+    requestSessionSnapshot,
+    requireWritableClient,
+    reconcileSessionPermissions,
+    refreshSessionModel,
+    resetSessionModel,
+    resetSend,
+  } = state;
   const refreshSessions = useCallback(async () => {
     if (connection.demoMode) {
       resetSessions(DEMO_SESSIONS);
@@ -58,20 +36,22 @@ export function useMobileSessionActions({
     }
     const client = clientRef.current;
     if (!client || connection.presence !== "online") return;
-    await requestSessionList(client);
+    readStateSync.refresh();
+    await requestSessionList(client, false, true);
   }, [
     connection.demoMode,
     connection.presence,
+    clientRef,
+    readStateSync,
     requestSessionList,
     resetSessions,
-    clientRef,
   ]);
 
   const loadMoreSessions = useCallback(async () => {
     const client = clientRef.current;
     if (!client || connection.presence !== "online" || !sessionsHasMore) return;
     await requestSessionList(client, true);
-  }, [connection.presence, sessionsHasMore, requestSessionList, clientRef]);
+  }, [clientRef, connection.presence, sessionsHasMore, requestSessionList]);
 
   const subscribeSession = useCallback(
     async (sessionId: string) => {
@@ -96,39 +76,65 @@ export function useMobileSessionActions({
         subscriptionGeneration
       );
       if (!applied) return;
-      await refreshSessionModel(sessionId);
+      const canonicalId = activeSessionRef.current;
+      if (!canonicalId || clientRef.current !== client) return;
+      // Model hydration must progress even when permission recovery stalls/fails.
+      const modelReady = refreshSessionModel(canonicalId);
+      if (currentConnection.capabilities?.pendingInteractions) {
+        const revision = permissionRevisionRef.current;
+        const pending = await client
+          .call<{
+            interactions: PermissionSheetRequest[];
+            complete: boolean;
+          }>("interaction/pending", { sessionId: canonicalId })
+          .catch(() => null);
+        if (
+          clientRef.current === client &&
+          activeSessionRef.current === canonicalId &&
+          revision === permissionRevisionRef.current &&
+          pending?.complete &&
+          isPendingPermissions(pending.interactions)
+        ) {
+          reconcileSessionPermissions(canonicalId, pending.interactions);
+        }
+      }
+      await modelReady;
     },
     [
-      refreshSessionModel,
-      requestSessionSnapshot,
+      activeSessionRef,
       resetSend,
       beginLoad,
-      failLoad,
-      showDemoTranscript,
-      activeSessionRef,
-      clientRef,
       connectionRef,
+      clientRef,
+      requestSessionSnapshot,
+      refreshSessionModel,
+      showDemoTranscript,
+      failLoad,
+      permissionRevisionRef,
+      reconcileSessionPermissions,
     ]
   );
 
   const unsubscribeSession = useCallback(async () => {
     const sessionId = activeSessionRef.current;
+    const releasedOpening = releaseOpening();
     activeSessionRef.current = null;
     resetTranscript();
     resetSend();
     resetSessionModel();
     const currentConnection = connectionRef.current;
-    if (currentConnection.demoMode || !sessionId) return;
+    if (currentConnection.demoMode || !sessionId || releasedOpening) return;
     if (clientRef.current && currentConnection.presence === "online") {
       await clientRef.current.call("session/unsubscribe", { sessionId });
     }
   }, [
-    resetSessionModel,
-    resetSend,
-    resetTranscript,
     activeSessionRef,
-    clientRef,
+    releaseOpening,
+    resetTranscript,
+    resetSend,
+    resetSessionModel,
     connectionRef,
+    clientRef,
   ]);
 
   const openSessionFileInDesktop = useCallback(

@@ -69,8 +69,7 @@ const BANNED_CRATES: &[(&str, &str)] = &[
     ("hyper-tls", "reqwest's native-tls glue; we use rustls"),
     ("tokio-native-tls", "ws via native-tls; we use rustls"),
     // SSH transport for libgit2; we shell out to `git` for network ops
-    // (see `integrations::github::commands::github_clone_repo`) so the
-    // in-process SSH client is dead weight.
+    // so the in-process SSH client is dead weight.
     ("libssh2-sys", "git2 network ops are subprocess; SSH unused"),
     // hf-hub `default = ["online"]` silently drags in `ureq` +
     // `native-tls`. Any future user MUST set `default-features = false`

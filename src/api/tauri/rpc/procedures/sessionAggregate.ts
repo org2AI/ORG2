@@ -2,6 +2,17 @@ import { defineProcedure } from "../invoke";
 import * as schemas from "../schemas";
 
 export const sessionAggregate = {
+  sections: defineProcedure("sidebar_sections_list")
+    .output(schemas.sessionAggregate.SidebarSectionsSchema)
+    .build(),
+  mutateSections: defineProcedure("sidebar_sections_mutate")
+    .input(schemas.sessionAggregate.SidebarSectionMutationInput)
+    .output(schemas.sessionAggregate.SidebarSectionsSchema)
+    .build(),
+  sectionPage: defineProcedure("sidebar_section_page")
+    .input(schemas.sessionAggregate.SidebarSectionPageInput)
+    .output(schemas.sessionAggregate.SidebarSectionPageSchema)
+    .build(),
   list: defineProcedure("session_aggregate_list")
     .input(schemas.sessionAggregate.SessionAggregateListInput)
     .output(schemas.sessionAggregate.SessionListResponseSchema)

@@ -1,16 +1,8 @@
 import {
   FOCUSED_CHAT_WORKSTATION_TRAIL_RAIL_PADDING_CLASS,
   WORKSTATION_TRAIL_WIDTH,
-} from "@src/modules/shared/layouts/blocks/workstationTrailTokens";
+} from "@src/components/layout/tokens/workstationTrailTokens";
 import type { ChatPanelTab } from "@src/store/chatPanel/chatPanelTabsModel";
-
-/**
- * Width at which a maximized chat pane is wide enough to give the
- * conversation minimap a column of its own. Below it the pane is as tight as
- * a side pane, so the rail floats over the transcript there instead of
- * taking 36px the transcript cannot spare.
- */
-export const FOCUSED_CHAT_MINIMAP_COLUMN_CONTAINER_PX = 850;
 
 /**
  * Host for the conversation minimap inside the trail column.
@@ -27,9 +19,10 @@ export const FOCUSED_CHAT_WORKSTATION_MINIMAP_HOST_CLASS =
 export function resolveFocusedChatWorkstationSectionOrder(
   hasOpenTabs: boolean,
   hasSessionEnvironment: boolean,
-  hasSubagents = false,
-  sessionEnvironmentKind?: "local" | "cloud"
-): Array<"session" | "workspace" | "subagents" | "tabs"> {
+  hasSubagents: boolean,
+  sessionEnvironmentKind: "local" | "cloud" | undefined,
+  hasSources: boolean
+): Array<"session" | "workspace" | "subagents" | "sources" | "tabs"> {
   const environmentSections = hasSessionEnvironment
     ? sessionEnvironmentKind === "cloud"
       ? (["session", "workspace"] as const)
@@ -40,6 +33,9 @@ export function resolveFocusedChatWorkstationSectionOrder(
     // Spawned workers follow the environment groups and precede unrelated
     // open tabs, regardless of which environment group leads.
     ...(hasSubagents ? (["subagents"] as const) : []),
+    // What the user handed the agent belongs with the session's own work,
+    // before unrelated open tabs.
+    ...(hasSources ? (["sources"] as const) : []),
     ...(hasOpenTabs ? (["tabs"] as const) : []),
   ];
 }

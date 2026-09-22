@@ -1,0 +1,71 @@
+@use "./mobileUiTokens" as mobile;
+@reference "../../tailwind.css";
+
+// Imported only by the Remote viewport entry, including body-portaled dialogs.
+// Shared Modal/BottomSheet continue to own focus, dismissal and animation timing.
+html .liquid-modal-wrapper,
+html .orgii-bottom-sheet-wrapper {
+  @include mobile.sheet-surface;
+  --modal-radius: var(--mobile-sheet-radius);
+  --modal-title-font-size: var(--mobile-type-heading-size);
+  --modal-action-size: #{mobile.$touch-target};
+}
+
+// bg-overlay is a Tailwind inline color token, not a runtime CSS variable.
+html .liquid-modal-wrapper > .liquid-modal-mask,
+html .orgii-bottom-sheet-wrapper > .orgii-bottom-sheet-scrim {
+  @apply bg-bg-overlay;
+}
+
+html .liquid-modal-wrapper .liquid-modal-content,
+html .orgii-bottom-sheet-wrapper .orgii-bottom-sheet-panel {
+  background: var(--mobile-sheet-surface);
+  border-color: var(--mobile-sheet-border);
+  box-shadow: var(--mobile-sheet-shadow);
+  color: var(--color-text-1);
+  font-size: var(--mobile-type-body-size);
+  line-height: var(--mobile-type-body-leading);
+}
+
+html .orgii-bottom-sheet-panel {
+  border-radius: var(--mobile-sheet-radius) var(--mobile-sheet-radius) 0 0;
+}
+
+html .orgii-bottom-sheet-title {
+  font-size: var(--mobile-type-heading-size);
+  line-height: var(--mobile-type-heading-leading);
+}
+
+html .orgii-bottom-sheet-footer {
+  border-color: var(--mobile-sheet-divider);
+}
+
+html .liquid-modal-wrapper {
+  border-radius: 0;
+
+  > .liquid-modal-mask {
+    border-radius: 0;
+  }
+
+  > .liquid-modal-container {
+    max-height: 100dvh;
+    padding: max(#{mobile.$space-4}, env(safe-area-inset-top, 0px))
+      max(#{mobile.$space-4}, env(safe-area-inset-right, 0px))
+      max(#{mobile.$space-4}, env(safe-area-inset-bottom, 0px))
+      max(#{mobile.$space-4}, env(safe-area-inset-left, 0px));
+  }
+}
+
+html .liquid-modal-content {
+  > .liquid-modal-panel-header {
+    height: auto;
+    min-height: calc(#{mobile.$touch-target} + #{mobile.$space-2});
+    background: var(--mobile-sheet-surface);
+    line-height: var(--mobile-type-heading-leading);
+  }
+
+  > .liquid-modal-body {
+    font-size: var(--mobile-type-body-size);
+    line-height: var(--mobile-type-body-leading);
+  }
+}

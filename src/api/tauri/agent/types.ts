@@ -1,14 +1,10 @@
+import { RUST_AGENT_TYPE } from "@src/contracts/agent/rustAgentType";
 import type { SessionStatus } from "@src/types/session/session";
 
-export const RUST_AGENT_TYPE = {
-  OS: "os",
-  SDE: "sde",
-  WINGMAN: "wingman",
-  CUSTOM: "custom",
-} as const;
-
-export type RustAgentType =
-  (typeof RUST_AGENT_TYPE)[keyof typeof RUST_AGENT_TYPE];
+export {
+  RUST_AGENT_TYPE,
+  type RustAgentType,
+} from "@src/contracts/agent/rustAgentType";
 
 export type AgentToolFilter =
   | typeof RUST_AGENT_TYPE.OS
@@ -143,6 +139,7 @@ export interface SessionMeta {
   workspacePath?: string;
   model?: string;
   accountId?: string;
+  credentialSource?: string;
   workItemId?: string;
   projectSlug?: string;
   agentDefinitionId?: string;

@@ -79,7 +79,7 @@ export const AgentSessionSearchPalette: React.FC<
     [sessions]
   );
 
-  const fallbackSessionLabel = t("navigation:routes.session", "Session");
+  const fallbackSessionLabel = t("navigation:routes.session");
   const { filteredItems } = useFilteredItems({
     items: sortedSessions,
     searchQuery: resolvedSearchInput.query,
@@ -125,10 +125,7 @@ export const AgentSessionSearchPalette: React.FC<
           reference,
           ...resolveSpotlightCloudSessionPresentation({
             reference,
-            fallbackLabel: t(
-              "navigation:cloud.sessionRef.chipLabel",
-              "Team session"
-            ),
+            fallbackLabel: t("navigation:cloud.sessionRef.chipLabel"),
             auth: cloudAuth,
             remoteEntries: cloudRemoteSessions,
             localSessions: sessions,
@@ -201,10 +198,7 @@ export const AgentSessionSearchPalette: React.FC<
       {
         type: "action",
         id: "search-agent-sessions",
-        label: t(
-          "selectors.spotlight.actions.searchAgentSessions.pillLabel",
-          "Search Sessions"
-        ),
+        label: t("selectors.spotlight.actions.searchAgentSessions.pillLabel"),
         icon: Search01Icon,
         color: "primary",
       },
@@ -217,8 +211,7 @@ export const AgentSessionSearchPalette: React.FC<
       kernel={kernel}
       items={items}
       placeholder={t(
-        "selectors.spotlight.actions.searchAgentSessions.placeholder",
-        "Search Agent sessions..."
+        "selectors.spotlight.actions.searchAgentSessions.placeholder"
       )}
       path={path}
       onRemoveSegment={handleGoBack}

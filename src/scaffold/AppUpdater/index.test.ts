@@ -84,13 +84,6 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@src/components/AppMark", async () => {
-  const React = await import("react");
-  return {
-    default: () => React.createElement("span", { "data-testid": "app-mark" }),
-  };
-});
-
 vi.mock("@src/components/Button", async () => {
   const React = await import("react");
   const { default: Button } = await vi.importActual<
@@ -556,11 +549,13 @@ describe("AppUpdater", () => {
     await installAvailableAppUpdate();
     renderPreparedUpdate(update);
 
-    await capturedButton("Install and restart").onClick?.();
+    capturedButton("Install and restart").onClick?.();
 
-    expect(update.install).toHaveBeenCalledOnce();
-    expect(mocks.relaunch).toHaveBeenCalledOnce();
-    expect(mocks.setInstallPromptVisible).toHaveBeenCalledWith(false);
+    await vi.waitFor(() => {
+      expect(update.install).toHaveBeenCalledOnce();
+      expect(mocks.relaunch).toHaveBeenCalledOnce();
+      expect(mocks.setInstallPromptVisible).toHaveBeenCalledWith(false);
+    });
   });
 
   it("keeps one progress notice alive and updates it in place", async () => {

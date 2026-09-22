@@ -27,6 +27,7 @@ describe("settingsNavigation", () => {
           "models",
           "agent-orgs",
           "harness-connections",
+          "import",
           "rulesMemoryEvolution",
           "routines",
         ],
@@ -81,6 +82,11 @@ describe("settingsNavigation", () => {
     ).toMatchObject({
       label: "settings:sections.harnessConnections",
       path: "/orgii/app/settings/app/harness-connections",
+      groupId: "core",
+    });
+    expect(items.find((item) => item.id === "import")).toMatchObject({
+      label: "settings:sections.import",
+      path: "/orgii/app/settings/app/import",
       groupId: "core",
     });
     expect(items.every((item) => item.icon)).toBe(true);

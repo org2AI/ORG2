@@ -54,7 +54,7 @@ export interface ReplaceInputProps {
   /** Whether buttons are disabled */
   disabled?: boolean;
   /** Input ref - supports both input and textarea */
-  inputRef?: React.RefObject<HTMLInputElement | HTMLTextAreaElement>;
+  inputRef?: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   /** Custom class name */
   className?: string;
   /** Enable multiline input (uses textarea instead of input) */
@@ -197,7 +197,6 @@ export const ReplaceInput: React.FC<ReplaceInputProps> = memo(
         {onReplace && (
           <Button
             variant="tertiary"
-            appearance="soft"
             size="sidebar"
             aria-label={t("tooltips.replace")}
             iconOnly
@@ -218,7 +217,6 @@ export const ReplaceInput: React.FC<ReplaceInputProps> = memo(
         {onReplaceAll && (
           <Button
             variant="tertiary"
-            appearance="soft"
             size="sidebar"
             aria-label={t("tooltips.replaceAll")}
             iconOnly

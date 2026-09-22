@@ -6,6 +6,7 @@ import { type Root, createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DEFAULT_BUTTON_TOOLTIP_DELAY_MS } from "@src/config/tooltip";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 
 import { ConversationModePill } from "./ConversationModePill";
@@ -94,7 +95,7 @@ function hover(element: HTMLElement): void {
   act(() => {
     element.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
   });
-  act(() => vi.advanceTimersByTime(250));
+  act(() => vi.advanceTimersByTime(DEFAULT_BUTTON_TOOLTIP_DELAY_MS));
 }
 
 describe("ConversationModePill", () => {

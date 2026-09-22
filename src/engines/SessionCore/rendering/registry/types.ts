@@ -63,9 +63,6 @@ export type ComponentLoader = () => Promise<{
 /** Rendering context identifier */
 export type RenderContext = "chat" | "simulator" | "trajectory";
 
-/** Rendering mode */
-export type RenderMode = "interactive" | "simulation";
-
 // ============================================
 // CLI Agent Alias Types (from Rust cli_agents/alias_map.rs)
 // ============================================

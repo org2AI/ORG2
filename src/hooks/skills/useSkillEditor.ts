@@ -6,7 +6,7 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useMounted } from "@src/hooks/lifecycle/useMounted";
 import {
@@ -24,6 +24,12 @@ import {
   type DescriptionQuality,
   SKILL_SOURCE,
 } from "@src/types/extensions/types";
+import { isTextFile } from "@src/util/file/binaryDetection";
+
+import {
+  buildSkillEditorFrontmatter,
+  parseSkillEditorDocument,
+} from "./skillEditorDocument";
 
 function assessDescriptionQuality(description: string): DescriptionQuality {
   if (!description.trim()) return DESCRIPTION_QUALITY.MISSING;
@@ -33,116 +39,6 @@ function assessDescriptionQuality(description: string): DescriptionQuality {
 
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
-}
-
-function buildFrontmatter(draft: SkillEditorDraft): string {
-  const lines: string[] = [];
-  lines.push(`name: ${draft.name}`);
-  if (draft.description.trim())
-    lines.push(`description: ${draft.description.trim()}`);
-  if (draft.alwaysActive) lines.push("always: true");
-  if (draft.version.trim()) lines.push(`version: "${draft.version.trim()}"`);
-  if (draft.license.trim()) lines.push(`license: ${draft.license.trim()}`);
-  if (draft.compatibility.trim())
-    lines.push(`compatibility: ${draft.compatibility.trim()}`);
-  const bins = draft.requiredBins.map((b) => b.trim()).filter(Boolean);
-  if (bins.length > 0) {
-    lines.push("bins:");
-    for (const bin of bins) {
-      lines.push(`  - ${bin}`);
-    }
-  }
-  const envNames = draft.requiredEnv.map((e) => e.trim()).filter(Boolean);
-  if (envNames.length > 0) {
-    lines.push("env:");
-    for (const env of envNames) {
-      lines.push(`  - ${env}`);
-    }
-  }
-  return lines.join("\n");
-}
-
-interface ParsedFrontmatter {
-  alwaysActive: boolean;
-  version: string;
-  description: string;
-  license: string;
-  compatibility: string;
-  requiredBins: string[];
-  requiredEnv: string[];
-  body: string;
-}
-
-function parseFrontmatterFields(content: string): ParsedFrontmatter {
-  const result: ParsedFrontmatter = {
-    alwaysActive: false,
-    version: "",
-    description: "",
-    license: "",
-    compatibility: "",
-    requiredBins: [],
-    requiredEnv: [],
-    body: content,
-  };
-
-  if (!content.startsWith("---")) return result;
-
-  const endIdx = content.indexOf("---", 3);
-  if (endIdx === -1) return result;
-
-  const frontmatter = content.slice(3, endIdx);
-  result.body = content.slice(endIdx + 3).replace(/^\n+/, "");
-
-  let inBins = false;
-  let inEnv = false;
-
-  for (const line of frontmatter.split("\n")) {
-    const trimmed = line.trim();
-
-    if (!trimmed.startsWith("-") && trimmed.length > 0) {
-      inBins = false;
-      inEnv = false;
-    }
-
-    if (trimmed.startsWith("always:")) {
-      result.alwaysActive = trimmed.includes("true");
-    } else if (trimmed.startsWith("version:")) {
-      result.version = trimmed
-        .slice(8)
-        .trim()
-        .replace(/^["']|["']$/g, "");
-    } else if (trimmed.startsWith("description:")) {
-      result.description = trimmed
-        .slice(12)
-        .trim()
-        .replace(/^["']|["']$/g, "");
-    } else if (trimmed.startsWith("license:")) {
-      result.license = trimmed
-        .slice(8)
-        .trim()
-        .replace(/^["']|["']$/g, "");
-    } else if (trimmed.startsWith("compatibility:")) {
-      result.compatibility = trimmed
-        .slice(14)
-        .trim()
-        .replace(/^["']|["']$/g, "");
-    } else if (trimmed === "bins:" || trimmed.startsWith("bins:")) {
-      inBins = true;
-      inEnv = false;
-    } else if (trimmed === "env:" || trimmed.startsWith("env:")) {
-      inEnv = true;
-      inBins = false;
-    } else if (trimmed.startsWith("- ")) {
-      const val = trimmed
-        .slice(2)
-        .trim()
-        .replace(/^["']|["']$/g, "");
-      if (inBins && val) result.requiredBins.push(val);
-      else if (inEnv && val) result.requiredEnv.push(val);
-    }
-  }
-
-  return result;
 }
 
 export interface UseSkillEditorOptions {
@@ -177,6 +73,12 @@ export function useSkillEditor(
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const mountedRef = useMounted();
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+  const savingRef = useRef(false);
+  const editGeneration = useRef(0);
 
   const isEditing =
     draft?.editingSkillPath !== null && draft?.editingSkillPath !== undefined;
@@ -188,14 +90,14 @@ export function useSkillEditor(
 
   const estimatedTokenCount = useMemo(() => {
     if (!draft) return 0;
-    const fm = buildFrontmatter(draft);
+    const fm = buildSkillEditorFrontmatter(draft);
     const fullContent = fm ? `---\n${fm}\n---\n\n${draft.body}` : draft.body;
     return estimateTokens(fullContent);
   }, [draft]);
 
   const updateDraft = useCallback(
     (updates: Partial<SkillEditorDraft>) => {
-      if (!draft) return;
+      if (!draft || savingRef.current) return;
       setDraft({ ...draft, ...updates });
     },
     [draft, setDraft]
@@ -203,17 +105,27 @@ export function useSkillEditor(
 
   const startCreate = useCallback(() => {
     if (!draft) {
+      setSaveError(null);
+      setValidationError(null);
       setDraft(createEmptySkillDraft());
     }
   }, [draft, setDraft]);
 
   const startEdit = useCallback(
     async (skill: InstalledSkill, content: string) => {
-      const parsed = parseFrontmatterFields(content);
+      const generation = ++editGeneration.current;
+      setSaveError(null);
+      setValidationError(null);
+      const parsed = parseSkillEditorDocument(content);
       const workspacePath =
         skill.source === SKILL_SOURCE.WORKSPACE
-          ? (options.workspacePath ?? null)
+          ? (skill.path.match(/^(.*)[\\/]\.orgii[\\/]skills[\\/]/)?.[1] ??
+            options.workspacePath ??
+            null)
           : null;
+      if (skill.source === SKILL_SOURCE.WORKSPACE && !workspacePath) {
+        throw new Error("Cannot locate the skill workspace");
+      }
 
       let bundledFileDrafts: BundledFileDraft[] = [];
       if (skill.bundledFiles.length > 0) {
@@ -226,7 +138,11 @@ export function useSkillEditor(
         });
         bundledFileDrafts = results.map((r) => ({
           relativePath: r.relativePath,
-          content: r.error ? "" : r.content,
+          content: r.content,
+          originalPath: r.relativePath,
+          originalContent: r.error ? undefined : r.content,
+          readError: r.error ?? undefined,
+          binary: !r.error && !isTextFile(r.relativePath, r.content),
         }));
       }
 
@@ -235,8 +151,11 @@ export function useSkillEditor(
           ? SKILL_SCOPE.WORKSPACE
           : SKILL_SCOPE.GLOBAL;
 
+      if (!mountedRef.current || generation !== editGeneration.current) return;
       setDraft({
         name: skill.name,
+        originalFrontmatter: parsed.originalFrontmatter,
+        workspacePath,
         description: parsed.description || skill.description,
         alwaysActive: parsed.alwaysActive,
         version: parsed.version,
@@ -252,7 +171,7 @@ export function useSkillEditor(
         bundledFileDrafts,
       });
     },
-    [setDraft, options.workspacePath]
+    [setDraft, options.workspacePath, mountedRef]
   );
 
   const validateName = useCallback(
@@ -268,7 +187,17 @@ export function useSkillEditor(
   );
 
   const save = useCallback(async (): Promise<boolean> => {
-    if (!draft) return false;
+    if (!draft || savingRef.current) return false;
+    savingRef.current = true;
+    let savedDraft = draft;
+    const replaceSavedDraft = (updates: Partial<SkillEditorDraft>) => {
+      const previous = savedDraft;
+      savedDraft = { ...savedDraft, ...updates };
+      if (draftRef.current === previous) {
+        draftRef.current = savedDraft;
+        setDraft(savedDraft);
+      }
+    };
 
     setSaving(true);
     setSaveError(null);
@@ -280,11 +209,16 @@ export function useSkillEditor(
         return false;
       }
 
-      const frontmatter = buildFrontmatter(draft);
+      const frontmatter = buildSkillEditorFrontmatter(draft);
       const workspacePath =
         draft.scope === SKILL_SCOPE.WORKSPACE
-          ? (options.workspacePath ?? null)
+          ? (draft.workspacePath ?? options.workspacePath ?? null)
           : null;
+
+      if (draft.scope === SKILL_SCOPE.WORKSPACE && !workspacePath) {
+        setValidationError("Cannot save a workspace skill without a workspace");
+        return false;
+      }
 
       if (isEditing && draft.editingSkillPath) {
         let writePath = draft.editingSkillPath;
@@ -305,6 +239,10 @@ export function useSkillEditor(
                 : null,
           });
           writePath = movedPath;
+          replaceSavedDraft({
+            editingSkillPath: movedPath,
+            originalScope: draft.scope,
+          });
         }
 
         await invoke("skills_update", {
@@ -319,16 +257,27 @@ export function useSkillEditor(
           return false;
         }
 
-        await invoke("skills_create", {
+        const created = await invoke<InstalledSkill>("skills_create", {
           name: draft.name,
           frontmatter,
           body: draft.body,
           workspacePath,
         });
+        replaceSavedDraft({
+          editingSkillPath: created.path,
+          editingSkillName: draft.name,
+          originalScope: draft.scope,
+          workspacePath,
+        });
       }
 
-      const filesToWrite = draft.bundledFileDrafts.filter((file) =>
-        file.relativePath.trim()
+      const filesToWrite = draft.bundledFileDrafts.filter(
+        (file) =>
+          file.relativePath.trim() &&
+          !file.readError &&
+          !file.binary &&
+          (file.originalPath !== file.relativePath ||
+            file.originalContent !== file.content)
       );
       if (filesToWrite.length > 0) {
         const writeResults = await invoke<
@@ -345,7 +294,31 @@ export function useSkillEditor(
           })),
           workspacePath,
         });
-        const failed = writeResults.filter((result) => !result.success);
+        const completed = new Set(
+          writeResults
+            .filter((result) => result.success)
+            .map((result) => result.relativePath)
+        );
+        replaceSavedDraft({
+          bundledFileDrafts: savedDraft.bundledFileDrafts.map((file) =>
+            completed.has(file.relativePath)
+              ? {
+                  ...file,
+                  originalPath: file.relativePath,
+                  originalContent: file.content,
+                }
+              : file
+          ),
+        });
+        const failed = filesToWrite
+          .filter((file) => !completed.has(file.relativePath))
+          .map((file) => ({
+            relativePath: file.relativePath,
+            error:
+              writeResults.find(
+                (result) => result.relativePath === file.relativePath
+              )?.error ?? "Missing write confirmation",
+          }));
         if (failed.length > 0) {
           const summary = failed
             .map(
@@ -359,16 +332,16 @@ export function useSkillEditor(
         }
       }
 
-      if (mountedRef.current) {
-        clearDraft();
-      }
+      if (!mountedRef.current || draftRef.current !== savedDraft) return false;
+      clearDraft();
       return true;
     } catch (err) {
-      if (mountedRef.current) {
+      if (mountedRef.current && draftRef.current === savedDraft) {
         setSaveError(err instanceof Error ? err.message : String(err));
       }
       return false;
     } finally {
+      savingRef.current = false;
       if (mountedRef.current) {
         setSaving(false);
       }
@@ -376,6 +349,7 @@ export function useSkillEditor(
   }, [
     draft,
     isEditing,
+    setDraft,
     validateName,
     clearDraft,
     options.workspacePath,
@@ -383,6 +357,8 @@ export function useSkillEditor(
   ]);
 
   const discard = useCallback(() => {
+    editGeneration.current += 1;
+    draftRef.current = null;
     clearDraft();
     setSaveError(null);
     setValidationError(null);

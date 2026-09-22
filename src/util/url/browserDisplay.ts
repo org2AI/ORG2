@@ -1,3 +1,5 @@
+import { getFileNameFromFileUrl, isLocalFileUrl } from "./localFileUrl";
+
 /**
  * Get favicon URL for a given site URL.
  * Uses Google's favicon service which is reliable and fast.
@@ -14,10 +16,12 @@ export const getFaviconUrl = (url: string | undefined): string | undefined => {
 };
 
 /**
- * Get site name from URL (e.g., "google.com.hk" -> "Google")
+ * Get site name from URL (e.g., "google.com.hk" -> "Google"). A local file has
+ * no host, so it is named after the file instead.
  */
 export const getSiteNameFromUrl = (url: string | undefined): string => {
   if (!url) return "New Tab";
+  if (isLocalFileUrl(url)) return getFileNameFromFileUrl(url) || "New Tab";
   try {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname;

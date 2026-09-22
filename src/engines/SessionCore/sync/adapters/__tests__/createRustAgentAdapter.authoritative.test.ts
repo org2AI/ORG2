@@ -172,6 +172,7 @@ describe("Rust Agent authoritative history", () => {
         toolName: "read_file",
         toolCallId: "retained-call",
         toolOutput: "retained result",
+        toolIsError: true,
       }),
       row("boundary", "system", {
         sequence: 5,
@@ -194,7 +195,7 @@ describe("Rust Agent authoritative history", () => {
         signal
       );
       expect(projectNativeConversationItems(events)).toMatchObject([
-        { kind: "message", role: "user", text: summary },
+        { kind: "context_summary", summary },
         { kind: "message", role: "user", text: "retained user" },
         {
           kind: "tool_call",
@@ -205,6 +206,7 @@ describe("Rust Agent authoritative history", () => {
           kind: "tool_result",
           callId: "retained-call",
           output: "retained result",
+          isError: true,
         },
         { kind: "message", role: "assistant", text: "after boundary" },
       ]);
@@ -240,7 +242,13 @@ describe("Rust Agent authoritative history", () => {
         )
       );
       expect(
-        items.map((item) => (item.kind === "message" ? item.text : item.kind))
+        items.map((item) =>
+          item.kind === "message"
+            ? item.text
+            : item.kind === "context_summary"
+              ? item.summary
+              : item.kind
+        )
       ).toEqual(cutoff === 0 ? ["summary", "retained"] : ["summary"]);
       expect(rows[1].role).toBe("system");
       expect(rows[1].compactFromSequence).toBe(cutoff);

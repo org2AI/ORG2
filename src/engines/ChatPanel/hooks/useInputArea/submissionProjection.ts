@@ -2,6 +2,7 @@ import type {
   ComposerInputRef,
   ComposerSnapshot,
 } from "@src/components/ComposerInput";
+import { prependQuotedSelection } from "@src/engines/ChatPanel/chatSelections/quotedReply";
 import type { ChatImageAttachment } from "@src/store/ui/chatImageAtom";
 import { isCliSession } from "@src/util/session/sessionDispatch";
 
@@ -107,6 +108,12 @@ export function buildSubmissionContextBlocks({
 
 interface BuildSubmissionPayloadOptions {
   displayText: string;
+  /**
+   * Passage this message replies to. Prepended as a Markdown blockquote to
+   * every display copy so history, re-editing and the agent all see the same
+   * message; absent when the composer has no quote.
+   */
+  quotedSelection?: string;
   contextBlocks: string[];
   enableAgentInterceptors: boolean;
   hasAttachedImages: boolean;
@@ -118,6 +125,7 @@ interface BuildSubmissionPayloadOptions {
 
 export function buildSubmissionPayload({
   displayText,
+  quotedSelection,
   contextBlocks,
   enableAgentInterceptors,
   hasAttachedImages,
@@ -132,17 +140,26 @@ export function buildSubmissionPayload({
   // the user is sending real content that happens to mention the command
   // — and on session capability: CLI agents have no render_inline_canvas
   // tool, so the message must pass through as ordinary text there.
+  const quotedDisplayText = quotedSelection
+    ? prependQuotedSelection(displayText, quotedSelection)
+    : displayText;
   const { displayContent, agentContent } = projectOutgoingUserMessage({
-    displayText,
+    displayText: quotedDisplayText,
     contextBlocks,
     enableAgentInterceptors,
     allowCanvasInterception:
       !hasAttachedImages && !isCliSession(draftSessionId || null),
   });
   const projectedDisplayText = displayContent;
-  const displayTextWithoutMemberMentions = submitComposerSnapshot
+  const snapshotDisplayText = submitComposerSnapshot
     ? serializeSubmissionSnapshot(submitComposerSnapshot, true)
-    : projectedDisplayText;
+    : null;
+  const displayTextWithoutMemberMentions =
+    snapshotDisplayText === null
+      ? projectedDisplayText
+      : quotedSelection
+        ? prependQuotedSelection(snapshotDisplayText, quotedSelection)
+        : snapshotDisplayText;
   const { agentContent: agentContentWithoutMemberMentions } =
     projectOutgoingUserMessage({
       displayText: displayTextWithoutMemberMentions,

@@ -16,7 +16,7 @@ import {
 } from "react";
 
 import { createLogger } from "@src/hooks/logger";
-import { startVisibilityAwarePoller } from "@src/shared/scheduling/visibilityAwarePoller";
+import { startVisibilityAwarePoller } from "@src/util/time/scheduling/visibilityAwarePoller";
 
 const log = createLogger("useBrowserNetworkLogs");
 const EMPTY_NETWORK_ENTRIES: NetworkEntry[] = [];

@@ -3,14 +3,14 @@ import { act, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { testTranslate } from "@src/test/i18nTestTranslate";
 import { popupNativeMenu } from "@src/util/platform/tauri/nativeMenuPopup";
 
 import { TabContextMenu } from "./TabContextMenu";
 
 vi.mock("i18next", () => ({
   default: {
-    t: (_key: string, options?: { defaultValue?: string }) =>
-      options?.defaultValue ?? _key,
+    t: (...args: Parameters<typeof testTranslate>) => testTranslate(...args),
   },
 }));
 

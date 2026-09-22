@@ -26,7 +26,7 @@ import {
 } from "@src/engines/SessionCore/rendering/registry";
 import { getToolLabel } from "@src/engines/SessionCore/rendering/registry/initToolRegistry";
 import type { UniversalEventProps } from "@src/engines/SessionCore/rendering/types/universalProps";
-import { startVisibilityAwareInterval } from "@src/shared/scheduling/visibilityAwareInterval";
+import { startVisibilityAwareInterval } from "@src/util/time/scheduling/visibilityAwareInterval";
 
 import TitleOnlyBlock from "../../blocks/TitleOnlyBlock";
 import {

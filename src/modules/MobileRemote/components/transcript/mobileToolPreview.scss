@@ -1,0 +1,252 @@
+@use "../../mobileUiTokens" as mobile;
+
+// The shared Modal owns portal, focus, Escape and scroll-lock cleanup.
+// Edge-to-edge presentation is local to Remote; desktop modals are unchanged.
+.liquid-modal-wrapper:has(.mobile-tool-preview) {
+  border-radius: 0;
+  animation: none;
+
+  > .liquid-modal-container {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    padding: 0;
+  }
+}
+
+.liquid-modal-content.modal-fullscreen.mobile-tool-preview {
+  --mobile-tool-touch-size: #{mobile.$touch-target};
+
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  border: 0;
+  box-shadow: none;
+  animation: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+
+  > :first-child {
+    flex-shrink: 0;
+    height: auto;
+    min-height: 56px;
+    padding: 6px mobile.$space-3;
+    border-bottom: 1px solid var(--color-border-2);
+  }
+}
+
+.mobile-tool-preview__status {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--color-fill-1);
+  font-weight: var(--mobile-type-medium-weight);
+  white-space: nowrap;
+}
+
+// File identity owns both lines in one header; keep the trailing close action
+// aligned to the collapsed row even while the user inspects a long full path.
+.liquid-modal-content.modal-fullscreen.mobile-tool-preview--file
+  > :first-child {
+  align-items: flex-start;
+  min-height: calc(#{mobile.$touch-target} + #{mobile.$space-4});
+  padding: mobile.$space-2 mobile.$space-3;
+  border-bottom: 0;
+  background: var(--mobile-file-surface);
+}
+
+.liquid-modal-content.modal-fullscreen.mobile-tool-preview--file {
+  --mobile-file-surface: var(--color-chat-container);
+  background: var(--mobile-file-surface);
+}
+
+.mobile-file-viewer {
+  --cm-editor-background: var(
+    --mobile-file-surface,
+    var(--color-chat-container)
+  );
+  --cm-editor-gutter-bg: var(--cm-editor-background);
+  background: var(--cm-editor-background);
+}
+
+.mobile-file-identity > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-tool-preview__body {
+  min-height: 0;
+  overscroll-behavior: contain;
+  padding: mobile.$space-3 mobile.$space-3
+    calc(#{mobile.$space-3} + env(safe-area-inset-bottom, 0px));
+}
+
+.mobile-terminal-detail__frame,
+.mobile-search-detail__frame {
+  overflow: hidden;
+  border: 1px solid var(--color-border-1);
+  border-radius: mobile.$space-3;
+  background: var(--color-bg-2);
+}
+
+.mobile-search-detail__query {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: mobile.$space-2;
+  padding: mobile.$space-3 mobile.$space-4;
+  background: var(--color-fill-1);
+  color: var(--color-text-1);
+
+  svg {
+    margin-top: calc(#{mobile.$space-1} / 2);
+    color: var(--color-text-3);
+  }
+
+  pre {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-family: var(--font-mono);
+    font-size: var(--mobile-type-code-size);
+    line-height: var(--mobile-type-code-leading);
+    white-space: pre-wrap;
+  }
+}
+
+.mobile-search-detail__results {
+  max-width: 100%;
+  margin: 0;
+  padding: mobile.$space-3 mobile.$space-4;
+  overflow-x: auto;
+  color: var(--color-text-2);
+  font-family: var(--font-mono);
+  font-size: var(--mobile-type-code-size);
+  line-height: var(--mobile-type-code-leading);
+  overscroll-behavior-x: contain;
+  user-select: text;
+  white-space: pre;
+}
+
+.mobile-search-detail__query + .mobile-search-detail__results {
+  border-top: 1px solid var(--color-border-1);
+}
+
+.mobile-terminal-detail__command {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: mobile.$space-2;
+  padding: mobile.$space-3 mobile.$space-4;
+  background: var(--color-fill-1);
+  color: var(--color-text-1);
+  font-family: var(--font-mono);
+  font-size: var(--mobile-type-code-size);
+  line-height: var(--mobile-type-code-leading);
+
+  pre {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}
+
+.mobile-terminal-detail__prompt {
+  color: var(--color-text-3);
+  user-select: none;
+}
+
+.mobile-terminal-detail__output {
+  max-width: 100%;
+  margin: 0;
+  padding: mobile.$space-3 mobile.$space-4;
+  overflow-x: auto;
+  color: var(--color-text-2);
+  font-family: var(--font-mono);
+  font-size: var(--mobile-type-code-size);
+  line-height: var(--mobile-type-code-leading);
+  overscroll-behavior-x: contain;
+  user-select: text;
+  white-space: pre;
+}
+
+.mobile-terminal-detail__command + .mobile-terminal-detail__output {
+  border-top: 1px solid var(--color-border-1);
+}
+
+.mobile-terminal-detail__exit {
+  padding: mobile.$space-1 mobile.$space-4 mobile.$space-2;
+  border-top: 1px solid var(--color-border-1);
+  color: var(--color-danger-6);
+  font-family: var(--font-mono);
+  font-size: var(--mobile-type-caption-size);
+  line-height: var(--mobile-type-caption-leading);
+  text-align: right;
+}
+
+.mobile-terminal-detail__truncated,
+.mobile-tool-detail__truncated {
+  margin: mobile.$space-3 0 0;
+}
+
+.mobile-tool-preview__summary,
+.mobile-tool-preview__code {
+  max-width: 100%;
+  margin: 0;
+  border-radius: 10px;
+  background: var(--color-fill-1);
+  color: var(--color-text-2);
+  font-family: var(--font-mono);
+  user-select: text;
+}
+
+.mobile-tool-preview__summary {
+  margin-bottom: 18px;
+  padding: 10px mobile.$space-3;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.mobile-tool-preview__section {
+  margin-bottom: 18px;
+}
+
+.mobile-tool-preview__label {
+  margin-bottom: 6px;
+  color: var(--color-text-3);
+  font-weight: var(--mobile-type-medium-weight);
+}
+
+.mobile-tool-preview__code {
+  padding: mobile.$space-3;
+  overflow-x: auto;
+  white-space: pre;
+  overscroll-behavior-x: contain;
+}
+
+.mobile-file-viewer__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 0 0 env(safe-area-inset-bottom, 0px);
+  overflow: hidden;
+
+  > .mobile-file-viewer {
+    width: 100%;
+    height: auto;
+    flex: 1;
+  }
+
+  .mobile-readonly-editor .cm-editor {
+    height: 100%;
+  }
+
+  .cm-scroller {
+    overscroll-behavior: contain;
+  }
+}

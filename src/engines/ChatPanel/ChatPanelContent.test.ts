@@ -18,8 +18,6 @@ function render(sessionViewMode: SessionViewMode): string {
       displayMode: "full" as const,
       emptyChatContent: createElement("div", { "data-empty": "true" }),
       paginationEnabled: false,
-      position: "right" as const,
-      showPanelContent: true,
       showSessionContent: true,
       sessionViewMode,
       alternateSessionView: createElement("div", {

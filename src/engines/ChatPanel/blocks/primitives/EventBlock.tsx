@@ -38,16 +38,6 @@ export const getEventBlockShellHeaderClasses = (_isCollapsed: boolean) =>
   `flex cursor-pointer items-center justify-between ${EVENT_BLOCK_CONTENT_BG} p-2 transition-all duration-150`;
 
 /**
- * Standard button classes for header action buttons (copy, expand, etc.)
- * @param isVisible - Whether the button is visible (usually on hover)
- * @returns className string
- */
-export const getEventBlockHeaderButtonClasses = (isVisible: boolean) =>
-  `flex h-6 w-6 cursor-pointer items-center justify-center rounded text-text-3 transition-all duration-150 hover:text-text-1 ${
-    isVisible ? "opacity-100" : "opacity-0"
-  }`;
-
-/**
  * Standard expand/collapse button classes
  * Note: No background hover, only text color change from text-2 to text-1
  */
@@ -181,7 +171,7 @@ export const EventBlock: React.FC<EventBlockProps> = ({
         onMouseLeave={() => onHeaderHoverChange?.(false)}
       >
         {/* Left content */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 select-text">
+        <div className="flex min-w-0 flex-1 items-center gap-2 select-none">
           {headerLeft}
         </div>
 

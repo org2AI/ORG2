@@ -5,8 +5,13 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
+import MarkdownEditorModeSwitch from "@src/components/MarkdownTextareaEditor/ModeSwitch";
 import Message from "@src/components/Message";
 import Switch from "@src/components/Switch";
+import {
+  CreatorContentLayout,
+  PANEL_HEADER_TOKENS,
+} from "@src/components/layout/blocks";
 import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
 import LaunchButton from "@src/features/SessionCreator/components/LaunchButton";
 import { useKeyboardSave } from "@src/hooks/keyboard";
@@ -18,11 +23,6 @@ import {
   DetailSplitLayout,
   ManualCreateComposer,
 } from "@src/modules/ProjectManager/shared";
-import MarkdownEditorModeSwitch from "@src/modules/shared/components/MarkdownTextareaEditor/ModeSwitch";
-import {
-  CreatorContentLayout,
-  PANEL_HEADER_TOKENS,
-} from "@src/modules/shared/layouts/blocks";
 import { manualCreatorAtom } from "@src/store/ui/manualCreatorAtom";
 import {
   MANUAL_WORK_ITEM_CREATOR_DRAFT_ID,
@@ -322,7 +322,7 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
       submitButton={
         <>
           {layout === "spotlight" && (
-            <Button variant="secondary" size="small" onClick={onCancel}>
+            <Button size="small" onClick={onCancel}>
               {t("common:actions.cancel")}
             </Button>
           )}
@@ -343,8 +343,6 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
   return (
     <DetailSplitLayout
       title={t("workItems.newWorkItem")}
-      borderlessHeader
-      hideHeader
       publishHeaderToWorkstation={publishHeaderToWorkstation}
       headerActions={
         <>
@@ -378,7 +376,6 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
                     : t("workItems.showProperties")
                 }
                 aria-pressed={resolvedPropertiesOpen}
-                htmlType="button"
               />
             </ToolbarTooltip>
           ) : null}
@@ -397,7 +394,6 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
                 }
                 onClick={onCancel}
                 aria-label={t("common:actions.close")}
-                htmlType="button"
               />
             </ToolbarTooltip>
           ) : null}
@@ -455,13 +451,11 @@ const CreateWorkItemView: React.FC<CreateWorkItemViewProps> = ({
           />
         ) : undefined
       }
-      resizableRightPanel={resolvedPropertiesOpen}
       footer={
         showFooter && inlineFields.showManualInputs && !renderAgentComposer ? (
           chatPanelFooter ? (
             <>
               <Button
-                variant="secondary"
                 size="small"
                 onClick={inlineFields.resetDraftForCreateMore}
               >

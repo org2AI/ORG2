@@ -32,9 +32,7 @@ export function useAgentOrgOverviewPresentation(view: AgentOrgRunView | null) {
       : view.completion?.state === "certified"
         ? translatedCompletionOutcome
         : view.completion?.state === "needs_attention"
-          ? t("planner.agentOrgOverview.needsAttention", {
-              defaultValue: "Needs attention",
-            })
+          ? t("planner.agentOrgOverview.needsAttention")
           : translatedRunPhase
     : null;
   const completionBadgeClass =

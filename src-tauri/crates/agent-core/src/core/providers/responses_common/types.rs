@@ -112,8 +112,15 @@ pub struct ResponseReasoning {
 #[derive(Debug, Deserialize)]
 pub struct ResponsesUsage {
     pub input_tokens: Option<i64>,
+    pub input_tokens_details: Option<ResponsesInputTokenDetails>,
     pub output_tokens: Option<i64>,
     pub total_tokens: Option<i64>,
+}
+
+/// Responses input includes cached tokens; this detail is a subset, not extra input.
+#[derive(Debug, Deserialize)]
+pub struct ResponsesInputTokenDetails {
+    pub cached_tokens: Option<i64>,
 }
 
 /// Error from the Responses API.

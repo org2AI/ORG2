@@ -1,6 +1,6 @@
 //! LSP Discovery Commands
 //!
-//! Tauri commands for detecting installed language servers.
+//! Helpers for detecting installed language servers.
 
 use super::cache;
 use crate::command_detection::command_exists;
@@ -66,7 +66,6 @@ fn is_uninstall_supported(install_hint: &str) -> bool {
 
 /// Check which language servers are installed on the system
 /// Returns full info including display names (single source of truth)
-#[tauri::command]
 pub async fn lsp_check_installed() -> Vec<LanguageServerInfo> {
     tokio::task::spawn_blocking(|| {
         let result: Vec<LanguageServerInfo> = LANGUAGE_DISPLAY_NAMES
@@ -96,7 +95,6 @@ pub async fn lsp_check_installed() -> Vec<LanguageServerInfo> {
 }
 
 /// Return cached LSP servers if fresh, otherwise empty (caller should fetch fresh).
-#[tauri::command]
 pub fn lsp_get_cached() -> Vec<LanguageServerInfo> {
     cache::load_lsp().unwrap_or_default()
 }
@@ -106,7 +104,6 @@ pub fn lsp_get_cached() -> Vec<LanguageServerInfo> {
 /// Each entry is `(language_id, install_hint)`. A server that handles multiple
 /// language IDs (e.g. typescript-language-server handles both `typescript` and
 /// `javascript`) emits one entry per language ID, all sharing the same hint.
-#[tauri::command]
 pub fn lsp_get_supported_languages() -> Vec<(String, String)> {
     servers::STATIC_SERVERS
         .iter()

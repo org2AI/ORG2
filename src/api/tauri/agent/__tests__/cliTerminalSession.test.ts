@@ -1,17 +1,23 @@
+import { execFileSync } from "node:child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CliLaunchProfileView } from "@src/api/tauri/rpc/schemas/agentOrgs";
 
 import {
   appendCliCommandArgs,
+  cliAgentCreateTuiSession,
   deriveExpectedProcess,
   formatCliTuiCommand,
   resolveCliTuiCommand,
+  withCliCommandEnvironment,
 } from "../cliTerminalSession";
 
-const { getLaunchProfile } = vi.hoisted(() => ({
+const { getLaunchProfile, invoke } = vi.hoisted(() => ({
+  invoke: vi.fn(),
   getLaunchProfile: vi.fn(),
 }));
+
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 vi.mock("@src/api/tauri/rpc", () => ({
   rpc: {
@@ -237,5 +243,106 @@ describe("deriveExpectedProcess", () => {
 
   it("returns undefined for a blank command", () => {
     expect(deriveExpectedProcess("   ")).toBeUndefined();
+  });
+});
+
+describe("launch-scoped environment", () => {
+  it("overrides shell startup environment without interpreting directory contents", () => {
+    if (process.platform === "win32") return;
+    const folder = "/tmp/project's $(echo must-not-expand)";
+    const command = withCliCommandEnvironment(
+      "sh -c 'printf %s \"$CODEX_HOME\"'",
+      { CODEX_HOME: folder },
+      false
+    );
+    expect(
+      execFileSync("/bin/sh", ["-c", command], {
+        env: { PATH: process.env.PATH, CODEX_HOME: "/wrong/startup/profile" },
+      }).toString()
+    ).toBe(folder);
+  });
+  it("quotes Windows directory arguments and rejects environment-name injection", () => {
+    expect(
+      withCliCommandEnvironment(
+        "codex",
+        { CODEX_HOME: "C:/my project's" },
+        true
+      )
+    ).toBe("& { $env:CODEX_HOME='C:/my project''s'; & codex }");
+    expect(() =>
+      withCliCommandEnvironment("codex", { "HOME;echo": "bad" }, true)
+    ).toThrow();
+  });
+});
+
+it.each([
+  "C:/profiles/session",
+  "123",
+  "$env:PATH",
+  "$(throw 'unexpected')",
+  "",
+  "C:/my project's",
+])("always emits a PowerShell string literal for %s", (value) => {
+  expect(withCliCommandEnvironment("codex", { CODEX_HOME: value }, true)).toBe(
+    `& { $env:CODEX_HOME='${value.replace(/'/g, "''")}'; & codex }`
+  );
+});
+
+const powershellExecutable =
+  process.env.ORG2_TEST_PWSH ||
+  (process.platform === "win32" ? "powershell.exe" : undefined);
+it.skipIf(!powershellExecutable)(
+  "executes literal environment assignments in PowerShell and reaches the client body",
+  () => {
+    for (const folder of [
+      "C:/profiles/session",
+      "C:/my project's",
+      "$(throw 'must-not-run')",
+      "$env:PATH",
+      "",
+    ]) {
+      const command = withCliCommandEnvironment(
+        "{ [Console]::Write([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$env:CODEX_HOME))) }",
+        { CODEX_HOME: folder },
+        true
+      );
+      const output = execFileSync(
+        powershellExecutable!,
+        ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
+        { encoding: "utf8", timeout: 20_000 }
+      );
+      expect(Buffer.from(output.trim(), "base64").toString("utf8")).toBe(
+        folder
+      );
+    }
+  }
+);
+
+it("preserves an explicitly selected TUI model in the native create request", async () => {
+  invoke.mockResolvedValue({ sessionId: "cli_model" });
+  await cliAgentCreateTuiSession({
+    platform: "codex",
+    name: "Codex",
+    model: "gpt-5.3-codex",
+    repoPath: "/project",
+  });
+  expect(invoke).toHaveBeenLastCalledWith("cli_agent_create", {
+    params: {
+      platform: "codex",
+      name: "Codex",
+      model: "gpt-5.3-codex",
+      repoPath: "/project",
+      keySource: "own_key",
+      runner: "tui",
+    },
+  });
+  await cliAgentCreateTuiSession({ platform: "codex", name: "Codex" });
+  expect(invoke).toHaveBeenLastCalledWith("cli_agent_create", {
+    params: {
+      platform: "codex",
+      name: "Codex",
+      keySource: "own_key",
+      runner: "tui",
+    },
   });
 });

@@ -15,20 +15,16 @@ import { useTranslation } from "react-i18next";
 
 import type { GitHubReviewComment } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
-import PersonAvatar from "@src/components/PersonAvatar";
-import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
-import {
-  ArrowDown01Icon,
-  ArrowRight01Icon,
-  HugeiconsIcon,
-  Message01Icon,
-} from "@src/icons";
-import { formatTimeAgo } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/hooks/workstationIssueHelpers";
-import { MarkdownContent } from "@src/modules/shared/components/MarkdownContent";
+import DisclosureChevron from "@src/components/DisclosureChevron";
+import { MarkdownContent } from "@src/components/MarkdownContent";
 import MarkdownTextareaEditor, {
   type MarkdownEditorMode,
-} from "@src/modules/shared/components/MarkdownTextareaEditor";
-import MarkdownEditorModeSwitch from "@src/modules/shared/components/MarkdownTextareaEditor/ModeSwitch";
+} from "@src/components/MarkdownTextareaEditor";
+import MarkdownEditorModeSwitch from "@src/components/MarkdownTextareaEditor/ModeSwitch";
+import PersonAvatar from "@src/components/PersonAvatar";
+import { DETAIL_PANEL_TOKENS } from "@src/config/detailPanelTokens";
+import { HugeiconsIcon, Message01Icon } from "@src/icons";
+import { formatTimeAgo } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/hooks/workstationIssueHelpers";
 
 interface ThreadGroup {
   rootId: number;
@@ -146,7 +142,7 @@ function ReviewThread({
           <MarkdownTextareaEditor
             value={reply}
             onChange={(markdown) => setReply(markdown)}
-            placeholder={t("git.pr.replyPlaceholder", "Reply…")}
+            placeholder={t("git.pr.replyPlaceholder")}
             minHeight={56}
             maxHeight={144}
             appearance="outlined"
@@ -163,14 +159,12 @@ function ReviewThread({
               dataTestId={`pr-review-reply-mode-switch-${thread.rootId}`}
             />
             <Button
-              htmlType="button"
-              variant="secondary"
               size="mini"
               loading={submitting}
               disabled={!reply.trim() || submitting}
               onClick={() => void handleReply()}
             >
-              {t("git.pr.reply", "Reply")}
+              {t("git.pr.reply")}
             </Button>
           </div>
         </div>
@@ -202,26 +196,10 @@ export const PrReviewThreadsPanel: React.FC<PrReviewThreadsPanelProps> = ({
     <div className="shrink-0 border-t border-border-1">
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         onClick={() => setExpanded((prev) => !prev)}
         className="flex w-full items-center gap-1.5 px-4 py-2 text-[12px] text-text-2 hover:bg-fill-1"
       >
-        {expanded ? (
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            data-icon="chevron-down"
-            size={14}
-            strokeWidth={2}
-          />
-        ) : (
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            data-icon="chevron-right"
-            size={14}
-            strokeWidth={2}
-          />
-        )}
+        <DisclosureChevron expanded={expanded} size={14} strokeWidth={2} />
         <HugeiconsIcon
           icon={Message01Icon}
           data-icon="message-square"
@@ -229,9 +207,7 @@ export const PrReviewThreadsPanel: React.FC<PrReviewThreadsPanelProps> = ({
           strokeWidth={1.9}
           className="text-text-3"
         />
-        <span className="font-medium">
-          {t("git.pr.reviewThreads", "Review comments")}
-        </span>
+        <span className="font-medium">{t("git.pr.reviewThreads")}</span>
         <span className="rounded-full bg-fill-2 px-1.5 text-[10px] text-text-3 tabular-nums">
           {threads.length}
         </span>

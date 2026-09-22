@@ -36,7 +36,6 @@ export type {
   AgentOrgInboxPreviewRow,
   AgentOrgInboxRuntimeRow,
 } from "./orgTasks/inbox";
-export { AGENT_ORG_USER_SENDER_ID } from "./orgTasks/inbox";
 export type {
   AgentOrgMemberIntervention,
   ReturnToWorkOutcome,

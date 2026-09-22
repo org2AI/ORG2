@@ -173,3 +173,25 @@ describe("compact tool activity projection", () => {
       );
   });
 });
+
+it.each([true, false])(
+  "keeps an end gallery with compact activity %s",
+  (collapseToolActivity) => {
+    const image = tool("image", "mcp__generate", {
+      result: { images: ["data:image/png;base64,AAAA"] },
+    });
+    const events = [
+      tool("before", "run_shell"),
+      image,
+      message("answer"),
+      tool("after", "run_shell"),
+    ];
+    const { groups } = projectChatHistory(events, {
+      collapseToolActivity,
+      groups: { tailTurnPhase: "complete", allTurnsCollapsed: true },
+    });
+    expect(groups?.flatItems.at(-1)?.outputImages).toEqual([
+      "data:image/png;base64,AAAA",
+    ]);
+  }
+);

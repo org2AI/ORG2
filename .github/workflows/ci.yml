@@ -63,8 +63,8 @@ jobs:
           -e GIT_CONFIG_VALUE_0=/repo
           ghcr.io/gitleaks/gitleaks:v8.24.3
           git /repo --log-opts=HEAD --no-banner --redact --verbose
-          --config /repo/.gitleaks.toml
-          --gitleaks-ignore-path /repo/.gitleaksignore
+          --config /repo/config/gitleaks.toml
+          --gitleaks-ignore-path /repo/config/gitleaksignore
 
   # ── Change scope ────────────────────────────────────────────────────────────
   changes:

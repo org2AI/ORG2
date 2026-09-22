@@ -10,7 +10,7 @@
  * - effectiveSelectedApp — selected dock app or follow-mode app lock
  * - dockActiveApp — highlighted icon in dock
  * - currentWorkingApp — blue-dot indicator (always follows currentEvent)
- * - layout — grid layout (auto or manual, clamped to 1x1 when thread selected)
+ * - layout — grid layout (auto from thread count, 1x1 when thread selected)
  */
 import { useMemo } from "react";
 
@@ -38,8 +38,6 @@ interface UseSimulatorDisplayStateOptions {
   executionThreadCount: number;
   executionThreads: { threadId: string; eventCount: number }[];
   replayMode: ReplayMode;
-  autoLayoutEnabled: boolean;
-  manualLayout: ReturnType<typeof calculateAutoLayout>;
 }
 
 export interface UseSimulatorDisplayStateReturn {
@@ -47,8 +45,7 @@ export interface UseSimulatorDisplayStateReturn {
   displayEvent: SessionEvent | null;
   dockActiveApp: AppType | null;
   currentWorkingApp: AppType | undefined;
-  layout: ReturnType<typeof calculateAutoLayout> | "1x1";
-  isFollowing: boolean;
+  layout: ReturnType<typeof calculateAutoLayout>;
 }
 
 export function useSimulatorDisplayState({
@@ -64,8 +61,6 @@ export function useSimulatorDisplayState({
   executionThreadCount,
   executionThreads: _executionThreads,
   replayMode,
-  autoLayoutEnabled,
-  manualLayout,
 }: UseSimulatorDisplayStateOptions): UseSimulatorDisplayStateReturn {
   const effectiveSelectedApp = useMemo(() => {
     if (selectedApp) return selectedApp;
@@ -126,15 +121,9 @@ export function useSimulatorDisplayState({
     return undefined;
   }, [currentEvent]);
 
-  const layout = useMemo(() => {
-    if (selectedTaskId) return "1x1" as const;
-    if (autoLayoutEnabled && executionThreadCount > 0) {
-      return calculateAutoLayout(executionThreadCount);
-    }
-    return manualLayout;
-  }, [autoLayoutEnabled, executionThreadCount, manualLayout, selectedTaskId]);
-
-  const isFollowing = replayMode === "follow";
+  const layout = selectedTaskId
+    ? ("1x1" as const)
+    : calculateAutoLayout(executionThreadCount);
 
   return {
     effectiveSelectedApp,
@@ -142,6 +131,5 @@ export function useSimulatorDisplayState({
     dockActiveApp,
     currentWorkingApp,
     layout,
-    isFollowing,
   };
 }

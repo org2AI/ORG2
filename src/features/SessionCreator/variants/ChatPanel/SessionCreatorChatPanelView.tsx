@@ -1,10 +1,10 @@
 import React from "react";
 
+import { CREATOR_BOTTOM_DOCK_PADDING_CLASS } from "@src/components/layout/blocks";
 import { COMPOSER_HORIZONTAL_GUTTER_CLASS } from "@src/config/composerStackTokens";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import { CREATOR_COMPOSER_POSITION } from "@src/config/sessionCreatorConfig";
 import { usePinnedActionsVisibilityContextMenu } from "@src/engines/ChatPanel/InputArea/components/PinnedActionsBar/usePinnedActionsVisibilityContextMenu";
-import { CREATOR_BOTTOM_DOCK_PADDING_CLASS } from "@src/modules/shared/layouts/blocks";
 
 import {
   ChatPanelComposerGroup,

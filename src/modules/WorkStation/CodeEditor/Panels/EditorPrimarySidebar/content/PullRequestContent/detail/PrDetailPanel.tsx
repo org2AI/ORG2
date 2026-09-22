@@ -18,19 +18,21 @@ import { useTranslation } from "react-i18next";
 import InlineBanner, {
   useDismissibleMessage,
 } from "@src/components/InlineBanner";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import GitHubPrDetailTabs from "@src/features/GitHubWork/GitHubPrDetailTabs";
+import { useDetailRailLayout } from "@src/hooks/ui/layout/useDetailRailLayout";
 import { ExternalBrowserButton } from "@src/modules/WorkStation/shared/ExternalBrowserButton";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import GitHubPrDetailTabs from "@src/modules/shared/components/GitHubPrDetailTabs";
-import { resolvePullRequestDetailStatus } from "@src/shared/pr/prLevelActions";
 import {
   type PrIdentity,
   workstationPrScopeKey,
   workstationSelectedPrAtomFamily,
 } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
+import { resolvePullRequestDetailStatus } from "@src/util/git/pr/prLevelActions";
 
 import { useWorkstationPrDetail } from "../../../hooks/useWorkstationPrDetail";
 import { PrDetailSidebarRail } from "./PrDetailSidebarRail";
 import { PrDetailTabPanels } from "./PrDetailTabPanels";
+import { PrChecksRefreshContext } from "./prChecksRefreshContext";
 import { formatPrFilesCount } from "./prFilesDisplay";
 import { usePrDetailTrailRefs } from "./usePrDetailTrailRefs";
 import { usePrDetailViewState } from "./usePrDetailViewState";
@@ -133,12 +135,6 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
     setSelectedChangedFilePath,
   } = usePrDetailViewState({ repoId, repoPath, prNumber: identity.number });
 
-  const controller = useWorkstationPrDetail({
-    repoPath,
-    repoId,
-    pr: identity,
-  });
-
   const currentIdentity = useMemo(
     () => ({
       ...identity,
@@ -151,7 +147,7 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
     useDismissibleMessage(state.error);
 
   const baseBranch =
-    state.baseRef ?? identity.baseBranch ?? t("git.pr.baseBranch", "base");
+    state.baseRef ?? identity.baseBranch ?? t("git.pr.baseBranch");
 
   const tabs =
     tabsPlacement === "panel" ? (
@@ -165,7 +161,38 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
       />
     ) : null;
 
-  if (state.loading || (state.detail === null && state.error === null)) {
+  const loading =
+    state.loading || (state.detail === null && state.error === null);
+  const { paneRef, inlineRail } = useDetailRailLayout(!loading);
+  // After the layout hook: its pane is the element CI polling watches, so a
+  // panel parked in a background tab stops asking GitHub for checks.
+  const controller = useWorkstationPrDetail({
+    repoPath,
+    repoId,
+    pr: identity,
+    visibilityRef: paneRef,
+  });
+  const sidebar = (
+    <PrDetailSidebarRail
+      currentIdentity={currentIdentity}
+      state={state}
+      controller={controller}
+      activeTab={activeTab}
+      trailScrollContainerRef={trailScrollContainerRef}
+      trailContentRef={trailContentRef}
+      inline={inlineRail}
+    />
+  );
+
+  const checksRefresh = useMemo(
+    () => ({
+      refreshChecks: controller.refreshChecks,
+      refreshing: state.refreshingChecks,
+    }),
+    [controller.refreshChecks, state.refreshingChecks]
+  );
+
+  if (loading) {
     return (
       <GitHubDetailSkeleton
         kind="pr"
@@ -180,48 +207,56 @@ export const PrDetailPanel: React.FC<PrDetailPanelProps> = ({
   }
 
   return (
-    <div className="allow-select-deep flex h-full min-h-0 flex-col overflow-hidden">
-      {tabs}
+    <PrChecksRefreshContext.Provider value={checksRefresh}>
+      <div className="allow-select-deep flex h-full min-h-0 flex-col overflow-hidden">
+        {tabs}
 
-      {/* A background reconcile clears `state.error` as soon as it succeeds, so
+        {/* A background reconcile clears `state.error` as soon as it succeeds, so
           the strip holds the message until the reader dismisses it. */}
-      {visibleError ? (
-        <InlineBanner onDismiss={dismissError} dataTestId="pr-detail-error">
-          {visibleError}
-        </InlineBanner>
-      ) : null}
+        {visibleError ? (
+          <InlineBanner onDismiss={dismissError} dataTestId="pr-detail-error">
+            {visibleError}
+          </InlineBanner>
+        ) : null}
 
-      {/* Detail tabs mount lazily, then remain mounted to preserve view state. */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <PrDetailTabPanels
-          identity={identity}
-          currentIdentity={currentIdentity}
-          repoPath={repoPath}
-          repoId={repoId}
-          state={state}
-          detailViewState={detailViewState}
-          activeTab={activeTab}
-          baseBranch={baseBranch}
-          controller={controller}
-          setConversationDraft={setConversationDraft}
-          setSelectedCommitSha={setSelectedCommitSha}
-          setSelectedChangedFilePath={setSelectedChangedFilePath}
-          setTabContentNode={setTabContentNode}
-          setConversationScrollNode={setConversationScrollNode}
-          setConversationContentNode={setConversationContentNode}
-          onFileSelect={onFileSelect}
-        />
+        {/* Detail tabs mount lazily, then remain mounted to preserve view state. */}
+        <div
+          ref={paneRef}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          {inlineRail && activeTab !== "conversation" ? (
+            <div className="max-h-64 shrink-0 overflow-y-auto px-4 py-4">
+              {sidebar}
+            </div>
+          ) : null}
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <PrDetailTabPanels
+              identity={identity}
+              currentIdentity={currentIdentity}
+              repoPath={repoPath}
+              repoId={repoId}
+              state={state}
+              detailViewState={detailViewState}
+              activeTab={activeTab}
+              baseBranch={baseBranch}
+              controller={controller}
+              setConversationDraft={setConversationDraft}
+              setSelectedCommitSha={setSelectedCommitSha}
+              setSelectedChangedFilePath={setSelectedChangedFilePath}
+              setTabContentNode={setTabContentNode}
+              setConversationScrollNode={setConversationScrollNode}
+              setConversationContentNode={setConversationContentNode}
+              onFileSelect={onFileSelect}
+              inlineProperties={
+                inlineRail && activeTab === "conversation" ? sidebar : undefined
+              }
+            />
 
-        <PrDetailSidebarRail
-          currentIdentity={currentIdentity}
-          state={state}
-          controller={controller}
-          activeTab={activeTab}
-          trailScrollContainerRef={trailScrollContainerRef}
-          trailContentRef={trailContentRef}
-        />
+            {!inlineRail ? sidebar : null}
+          </div>
+        </div>
       </div>
-    </div>
+    </PrChecksRefreshContext.Provider>
   );
 };
 

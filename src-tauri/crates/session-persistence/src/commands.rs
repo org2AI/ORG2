@@ -131,22 +131,6 @@ pub async fn cache_clear_session_history(session_id: String) -> Result<TruncateR
         .map_err(|e| e.to_string())
 }
 
-/// Generate a unified-diff patch for all files modified in a session.
-///
-/// Uses the per-session file-history snapshots (pre-edit bytes vs. current
-/// on-disk content) — works for every SDE Agent session regardless of whether
-/// it used worktree isolation. Returns an empty string when the session has no
-/// file-history snapshots.
-#[tauri::command]
-pub async fn cache_get_session_diff(session_id: String) -> Result<String, String> {
-    tokio::task::spawn_blocking(move || {
-        agent_core::tools::file_history::session_unified_diff(&session_id)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
-}
-
 // ============================================
 // Per-Round Token Usage Commands
 // ============================================
@@ -185,19 +169,6 @@ pub async fn get_session_tool_usage_attributions(
 ) -> Result<Vec<super::tool_usage::ToolUsageAttributionRecord>, String> {
     tokio::task::spawn_blocking(move || {
         super::tool_usage::get_tool_usage_attributions(&session_id, turn_id.as_deref())
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub async fn get_session_tool_usage_attributions_for_call(
-    session_id: String,
-    tool_call_id: String,
-) -> Result<Vec<super::tool_usage::ToolUsageAttributionRecord>, String> {
-    tokio::task::spawn_blocking(move || {
-        super::tool_usage::get_tool_usage_attributions_for_call(&session_id, &tool_call_id)
     })
     .await
     .map_err(|e| e.to_string())?

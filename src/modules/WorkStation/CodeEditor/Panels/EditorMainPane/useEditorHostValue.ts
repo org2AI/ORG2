@@ -6,13 +6,11 @@ import type { UseFileContentManagerReturn } from "./hooks";
 interface UseEditorHostValueOptions extends Omit<
   EditorHostContextValue,
   | "fileContentState"
-  | "onSearchTabTitleChange"
   | "onGitDiffUnsavedChange"
   | "onBinaryUnsavedChange"
   | "repoId"
 > {
   fileContentManager: UseFileContentManagerReturn;
-  handleSearchTabTitleChange: (tabId: string, query: string) => void;
   handleGitDiffUnsavedChange: (hasUnsaved: boolean) => void;
   handleBinaryUnsavedChange: (hasUnsaved: boolean) => void;
   repoId?: string | null;
@@ -33,7 +31,6 @@ export function useEditorHostValue({
   onFileSelect,
   onFileSelectWithLine,
   onCursorPositionChange,
-  handleSearchTabTitleChange,
   handleGitDiffUnsavedChange,
   handleBinaryUnsavedChange,
   terminalState,
@@ -49,7 +46,6 @@ export function useEditorHostValue({
       onFileSelect,
       onFileSelectWithLine,
       onCursorPositionChange,
-      onSearchTabTitleChange: handleSearchTabTitleChange,
       onGitDiffUnsavedChange: handleGitDiffUnsavedChange,
       onBinaryUnsavedChange: handleBinaryUnsavedChange,
       terminalState,
@@ -64,7 +60,6 @@ export function useEditorHostValue({
       onFileSelect,
       onFileSelectWithLine,
       onCursorPositionChange,
-      handleSearchTabTitleChange,
       handleGitDiffUnsavedChange,
       handleBinaryUnsavedChange,
       terminalState,

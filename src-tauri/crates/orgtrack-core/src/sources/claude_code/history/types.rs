@@ -95,6 +95,10 @@ pub(super) struct ClaudeJsonlLine {
     /// Per-message uuid, preserved verbatim across continuation rewrites.
     #[serde(default)]
     pub(super) uuid: String,
+    #[serde(default)]
+    pub(super) parent_uuid: Option<String>,
+    #[serde(default)]
+    pub(super) is_api_error_message: bool,
     /// `true` on harness-injected user lines (command caveats, hook feedback,
     /// loop ticks) that Claude Code's own UI hides from the conversation.
     #[serde(default)]
@@ -126,6 +130,38 @@ pub(super) fn is_harness_injected_user_line(parsed: &ClaudeJsonlLine) -> bool {
 
 pub(super) fn is_claude_compact_summary(parsed: &ClaudeJsonlLine) -> bool {
     parsed.r#type == "user" && parsed.is_compact_summary
+}
+
+/// Provider control acknowledgements belong to the injected user envelope,
+/// not to the preceding human turn. Keep just that envelope's identity while
+/// scanning; never infer control semantics from assistant prose or entrypoint.
+#[derive(Default)]
+pub(super) struct ClaudeControlEnvelope {
+    user_uuid: Option<String>,
+}
+
+impl ClaudeControlEnvelope {
+    pub(super) fn clear(&mut self) {
+        self.user_uuid = None;
+    }
+
+    pub(super) fn observe(&mut self, parsed: &ClaudeJsonlLine) -> bool {
+        if parsed.r#type == "user" {
+            self.user_uuid = (is_harness_injected_user_line(parsed)
+                && !is_claude_compact_summary(parsed)
+                && !parsed.uuid.is_empty())
+            .then(|| parsed.uuid.clone());
+            return false;
+        }
+        parsed.r#type == "assistant"
+            && !parsed.is_api_error_message
+            && self.user_uuid.is_some()
+            && parsed.parent_uuid == self.user_uuid
+            && parsed
+                .message
+                .as_ref()
+                .is_some_and(|message| message.model == "<synthetic>")
+    }
 }
 
 #[derive(Debug, Deserialize)]

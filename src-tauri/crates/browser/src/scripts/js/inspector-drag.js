@@ -39,6 +39,7 @@ const showDropIndicator = (dropInfo) => {
     return;
   }
 
+  ensureOverlays();
   const rect = dropInfo.rect;
   dropIndicator.style.left = rect.left + "px";
   dropIndicator.style.width = rect.width + "px";
@@ -220,5 +221,9 @@ const updatePositions = () => {
   }
 };
 
-window.addEventListener("scroll", updatePositions, true);
-window.addEventListener("resize", updatePositions);
+// Overlays only need tracking once one has been shown; until then every page
+// would pay a capturing scroll listener for an inspector nobody opened.
+overlayAttachHooks.push(() => {
+  window.addEventListener("scroll", updatePositions, true);
+  window.addEventListener("resize", updatePositions);
+});

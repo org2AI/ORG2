@@ -43,14 +43,12 @@ const WorkItemMentionPicker: React.FC<WorkItemMentionPickerProps> = ({
     const agentOptions = agents.map((agent) => ({
       value: `agent:${agent.id}`,
       label: t("workItems.activity.mentionAgentOption", {
-        defaultValue: "{{name}} (agent)",
         name: agent.name,
       }),
     }));
     const orgOptions = agentOrgs.map((org) => ({
       value: `agent_org:${org.id}`,
       label: t("workItems.activity.mentionAgentOrgOption", {
-        defaultValue: "{{name}} (agent org)",
         name: org.name,
       }),
     }));
@@ -59,9 +57,7 @@ const WorkItemMentionPicker: React.FC<WorkItemMentionPickerProps> = ({
         ? [
             {
               value: ALL_MENTION_REF,
-              label: t("workItems.activity.mentionAll", {
-                defaultValue: "@all — everyone on this item",
-              }),
+              label: t("workItems.activity.mentionAll"),
             },
           ]
         : [];

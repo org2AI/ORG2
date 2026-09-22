@@ -99,10 +99,6 @@
       color: var(--color-text-1);
     }
 
-    &--current {
-      background: color-mix(in srgb, var(--color-primary-6) 5%, transparent);
-    }
-
     &--weekend {
       background: var(--color-fill-1);
       color: var(--color-text-4);
@@ -137,17 +133,14 @@
     .gantt-timeline__header-cell--emphasized,
     .gantt-timeline__grid-cell,
     .gantt-timeline__header-cell--today,
-    .gantt-timeline__header-cell--current,
     .gantt-timeline__header-cell--weekend,
     .gantt-timeline__grid-cell--today,
-    .gantt-timeline__grid-cell--current,
     .gantt-timeline__grid-cell--weekend {
       background: transparent;
     }
 
     .gantt-timeline__header-cell,
     .gantt-timeline__header-cell--today,
-    .gantt-timeline__header-cell--current,
     .gantt-timeline__header-cell--weekend {
       color: var(--color-text-2);
       font-weight: 400;
@@ -294,10 +287,6 @@
 
     &--today {
       background: color-mix(in srgb, var(--color-primary-6) 5%, transparent);
-    }
-
-    &--current {
-      background: color-mix(in srgb, var(--color-primary-6) 3%, transparent);
     }
 
     &--weekend {

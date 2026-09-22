@@ -27,7 +27,7 @@ interface SidebarItemProps {
   isCompareSelected: boolean;
   onSelect: () => void;
   onCompareToggle: () => void;
-  t: (key: string, fallback: string) => string;
+  t: (key: string) => string;
 }
 
 const SidebarItem: React.FC<SidebarItemProps> = ({
@@ -53,8 +53,6 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     >
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         onClick={onSelect}
         className="flex min-w-0 flex-1 items-start gap-1.5 text-left"
       >
@@ -77,10 +75,8 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
       {/* Compare checkbox — visible on hover or when active */}
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         onClick={onCompareToggle}
-        title={t("canvasApp.compareToggle", "Compare")}
+        title={t("canvasApp.compareToggle")}
         className={[
           "shrink-0 rounded px-1 py-0.5 text-[10px] font-medium transition-colors",
           isCompareSelected
@@ -88,7 +84,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
             : "text-text-4 opacity-0 group-hover:opacity-100 hover:text-text-2 focus-visible:opacity-100",
         ].join(" ")}
       >
-        {t("canvasApp.compareMark", "vs")}
+        {t("canvasApp.compareMark")}
       </Button>
     </div>
   );
@@ -102,7 +98,7 @@ interface CanvasSidebarProps {
   compareEventIds: string[];
   onSelect: (id: string) => void;
   onCompareToggle: (id: string) => void;
-  t: (key: string, fallback: string) => string;
+  t: (key: string) => string;
 }
 
 const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
@@ -116,17 +112,17 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
   const sidebarTab = useMemo<PrimarySidebarTab>(
     () => ({
       key: "canvas-sidebar",
-      label: t("canvasApp.sidebarTitle", "Canvases"),
+      label: t("canvasApp.sidebarTitle"),
       sections: [
         {
           key: "canvas-list",
-          title: t("canvasApp.sidebarTitle", "Canvases"),
+          title: t("canvasApp.sidebarTitle"),
           content: (
             <div className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
               {appEvents.length === 0 ? (
                 <Placeholder
                   variant="empty"
-                  title={t("canvasApp.noCanvases", "No canvases yet")}
+                  title={t("canvasApp.noCanvases")}
                 />
               ) : (
                 appEvents.map((event) => (
@@ -165,7 +161,7 @@ const CanvasSidebar: React.FC<CanvasSidebarProps> = ({
       {compareEventIds.length === 2 && (
         <div className="shrink-0 border-t border-border-1 px-3 py-2">
           <span className="text-[10px] text-primary-6">
-            {t("canvasApp.compareHint", "2 selected — showing diff")}
+            {t("canvasApp.compareHint")}
           </span>
         </div>
       )}

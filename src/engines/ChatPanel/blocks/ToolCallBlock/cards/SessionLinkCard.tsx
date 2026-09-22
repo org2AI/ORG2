@@ -3,7 +3,7 @@ import React from "react";
 import DiffStatsBadge from "@src/components/DiffStatsBadge";
 import PrStatusBadge from "@src/components/PrStatusBadge";
 import { HugeiconsIcon, SquareArrowUpRight02Icon } from "@src/icons";
-import { formatStatNumber } from "@src/shared/pr/formatStatNumber";
+import { formatStatNumber } from "@src/util/git/pr/formatStatNumber";
 import { linkAnchorProps } from "@src/util/ui/openLink";
 
 import { ToolResultCardFrameLink } from "./ToolResultCardFrame";

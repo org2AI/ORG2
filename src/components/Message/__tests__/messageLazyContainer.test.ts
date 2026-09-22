@@ -112,6 +112,22 @@ describe("Message (lazy toast container)", () => {
     expect(root?.children).toHaveLength(1);
   });
 
+  it("renders Spotlight messages centered at the top while keeping bottom toasts separate", async () => {
+    await act(async () => {
+      Message.spotlight("workspace ready", { duration: 0, closable: false });
+      Message.success("saved below", { duration: 0, closable: false });
+    });
+
+    await waitForToastText("workspace ready");
+    const root = document.querySelector("[data-message-root]");
+    expect(
+      root?.querySelector('[data-message-placement="spotlight"]')?.textContent
+    ).toContain("workspace ready");
+    expect(
+      root?.querySelector('[data-message-placement="bottom"]')?.textContent
+    ).toContain("saved below");
+  });
+
   it("removes toasts and the container on destroy", async () => {
     await act(async () => {
       Message.info("temporary", { duration: 0 });

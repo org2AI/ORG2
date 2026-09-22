@@ -27,7 +27,6 @@ import {
   Shield02Icon,
   SquareTerminalIcon,
 } from "@src/icons";
-import { focusBrowserUrlBar } from "@src/modules/WorkStation/Browser/shared/urlBarFocus";
 import { openEditorSpotlight } from "@src/scaffold/GlobalSpotlight/openSpotlight";
 import {
   CODE_EDITOR_MAIN_TERMINAL_SESSION_ID,
@@ -61,13 +60,38 @@ export type WorkStationLaunchShortcutId =
   | "open_source_control_tab"
   | "open_terminal_tab";
 
+const WORKSTATION_LAUNCH_SECTION_IDS = ["primary", "secondary"] as const;
+
+export type WorkStationLaunchSectionId =
+  (typeof WORKSTATION_LAUNCH_SECTION_IDS)[number];
+
 export interface WorkStationLaunchAction {
   id: WorkStationLaunchActionId;
+  sectionId: WorkStationLaunchSectionId;
   icon: IconSvgElement;
   label: string;
   /** Shortcut registry ID for the keyboard hint, when the action has one. */
   shortcutId?: WorkStationLaunchShortcutId;
   onClick: () => void;
+}
+
+export interface WorkStationLaunchSection {
+  id: WorkStationLaunchSectionId;
+  actions: WorkStationLaunchAction[];
+}
+
+/**
+ * Projects the shared launch model into its visual sections. Both the My
+ * Station launchpad and the tab-bar `+` menu consume this projection so their
+ * grouping cannot drift while still allowing either surface to filter items.
+ */
+export function getWorkStationLaunchSections(
+  actions: readonly WorkStationLaunchAction[]
+): WorkStationLaunchSection[] {
+  return WORKSTATION_LAUNCH_SECTION_IDS.map((id) => ({
+    id,
+    actions: actions.filter((action) => action.sectionId === id),
+  })).filter((section) => section.actions.length > 0);
 }
 
 /**
@@ -77,12 +101,12 @@ export interface WorkStationLaunchAction {
  * hook still returns its action); we only hide the entrance.
  */
 export const LAUNCHPAD_ACTION_IDS: readonly WorkStationLaunchActionId[] = [
-  "sourceControl",
   "explorer",
-  "searchFile",
-  "searchSessions",
+  "sourceControl",
   "terminal",
   "newBrowserTab",
+  "searchFile",
+  "searchSessions",
   "workItems",
   "projects",
 ];
@@ -105,7 +129,6 @@ export function useWorkStationLaunchActions(): WorkStationLaunchAction[] {
   const openBrowser = useCallback(
     (isPrivate: boolean) => {
       requestNewBrowserSession(isPrivate ? { isPrivate: true } : {});
-      focusBrowserUrlBar();
     },
     [requestNewBrowserSession]
   );
@@ -114,26 +137,15 @@ export function useWorkStationLaunchActions(): WorkStationLaunchAction[] {
     () => [
       {
         id: "explorer",
+        sectionId: "primary",
         icon: FolderClosedIcon,
         label: t("common:labels.files"),
         shortcutId: "open_file_folder_tab",
         onClick: () => openTabInMainPane(createExplorerTab()),
       },
       {
-        id: "searchFile",
-        icon: FileSearchIcon,
-        label: t("workstation.plusMenu.searchFile"),
-        shortcutId: "quick_open",
-        onClick: () => openEditorSpotlight(""),
-      },
-      {
-        id: "searchSessions",
-        icon: KanbanIcon,
-        label: t("workstation.plusMenu.searchSessions"),
-        onClick: () => openTabInMainPane(createSearchSessionsTab()),
-      },
-      {
         id: "sourceControl",
+        sectionId: "primary",
         icon: FileDiffIcon,
         label: t("common:actions.review"),
         shortcutId: "open_source_control_tab",
@@ -142,6 +154,7 @@ export function useWorkStationLaunchActions(): WorkStationLaunchAction[] {
       },
       {
         id: "terminal",
+        sectionId: "primary",
         icon: SquareTerminalIcon,
         label: t("common:tabs.terminal"),
         shortcutId: "open_terminal_tab",
@@ -155,18 +168,36 @@ export function useWorkStationLaunchActions(): WorkStationLaunchAction[] {
       },
       {
         id: "newBrowserTab",
+        sectionId: "primary",
         icon: InternetIcon,
         label: t("labels.browser"),
         onClick: () => openBrowser(false),
       },
       {
         id: "newPrivateBrowserTab",
+        sectionId: "primary",
         icon: Shield02Icon,
         label: t("workstation.plusMenu.newPrivateBrowserTab"),
         onClick: () => openBrowser(true),
       },
       {
+        id: "searchFile",
+        sectionId: "secondary",
+        icon: FileSearchIcon,
+        label: t("workstation.plusMenu.searchFile"),
+        shortcutId: "quick_open",
+        onClick: () => openEditorSpotlight(""),
+      },
+      {
+        id: "searchSessions",
+        sectionId: "secondary",
+        icon: KanbanIcon,
+        label: t("workstation.plusMenu.searchSessions"),
+        onClick: () => openTabInMainPane(createSearchSessionsTab()),
+      },
+      {
         id: "workItems",
+        sectionId: "secondary",
         icon: ListTodoIcon,
         label: t("workstation.plusMenu.workItems"),
         onClick: () =>
@@ -176,6 +207,7 @@ export function useWorkStationLaunchActions(): WorkStationLaunchAction[] {
       },
       {
         id: "projects",
+        sectionId: "secondary",
         icon: DeliveryBox01Icon,
         label: t("workstation.plusMenu.projects"),
         onClick: () =>

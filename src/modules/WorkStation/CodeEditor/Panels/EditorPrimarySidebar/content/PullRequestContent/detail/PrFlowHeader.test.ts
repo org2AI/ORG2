@@ -13,6 +13,7 @@ import {
 } from "vitest";
 
 import type { PrFile } from "@src/api/tauri/github";
+import { testTranslate, useTestTranslation } from "@src/test/i18nTestTranslate";
 
 import { PrFlowHeader } from "./PrFlowHeader";
 
@@ -25,18 +26,8 @@ const toast = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, unknown>) => {
-      if (typeof fallback === "string") return fallback;
-      if (typeof fallback?.defaultValue !== "string") return key;
-      const count = Number(fallback.count ?? 0);
-      const template =
-        count === 1 || typeof fallback.defaultValue_other !== "string"
-          ? fallback.defaultValue
-          : fallback.defaultValue_other;
-      return template.replace("{{count}}", String(count));
-    },
-  }),
+  useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
+    useTestTranslation(...args),
 }));
 
 vi.mock("@src/util/data/clipboard", () => ({
@@ -107,7 +98,9 @@ describe("PrFlowHeader", () => {
     expect(title?.textContent).toContain("Refine the flow header");
     expect(title?.textContent).toContain("#7");
     const status = container.querySelector("[data-testid='pr-flow-status']");
-    expect(status?.textContent).toContain("open");
+    expect(status?.textContent).toContain(
+      testTranslate("common:git.pr.status.open")
+    );
     expect(status?.firstElementChild?.className).toContain("bg-success-1");
     const subline = container.querySelector("[data-testid='pr-flow-subline']");
     expect(subline?.textContent).toContain("author");

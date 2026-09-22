@@ -24,7 +24,6 @@ export function TeamInboxPullRequestsNotice({
       title={t("teamInbox.errors.pullRequestsPartialLoad")}
       action={
         <Button
-          htmlType="button"
           variant="tertiary"
           size="small"
           icon={

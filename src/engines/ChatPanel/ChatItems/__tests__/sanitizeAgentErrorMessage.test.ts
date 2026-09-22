@@ -111,3 +111,13 @@ describe("requiresCodexReauthentication", () => {
     ).toBe(false);
   });
 });
+
+it("redacts local proxy capabilities from historical errors", () => {
+  const token = `session_${"a".repeat(32)}`;
+  const message = sanitizeAgentErrorMessage(
+    `HTTP 412: credential_store_read_failed, url: http://127.0.0.1:17930/cli/codex/${token}/v1/responses`
+  );
+  expect(message).not.toContain(token);
+  expect(message).toContain("credential_store_read_failed");
+  expect(message).toContain("/cli/codex/[REDACTED]/v1/responses");
+});

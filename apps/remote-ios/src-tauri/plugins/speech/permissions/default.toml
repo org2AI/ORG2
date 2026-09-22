@@ -1,0 +1,8 @@
+[default]
+description = "Allows ORG2 Remote to run iOS speech recognition"
+permissions = [
+  "allow-is-supported",
+  "allow-start",
+  "allow-stop",
+  "allow-cancel",
+]

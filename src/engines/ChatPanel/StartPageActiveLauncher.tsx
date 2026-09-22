@@ -1,6 +1,6 @@
 import React from "react";
 
-import { CreatorContentLayout } from "@src/modules/shared/layouts/blocks";
+import { CreatorContentLayout } from "@src/components/layout/blocks";
 
 import type { StartPageView } from "./startPageView";
 

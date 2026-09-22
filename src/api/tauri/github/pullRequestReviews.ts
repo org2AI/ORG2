@@ -133,6 +133,26 @@ export interface GitHubChecksSummary {
   state: string;
 }
 
+/** Latest deployment of a branch to one environment, with its latest status. */
+export interface GitHubDeployment {
+  id: number;
+  environment: string;
+  /** success | failure | error | inactive | in_progress | queued | pending */
+  state: string;
+  description: string | null;
+  environment_url: string | null;
+  log_url: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface GitHubDeploymentsSummary {
+  git_ref: string;
+  /** False when the repository never deploys — the section is then omitted. */
+  repo_has_deployments: boolean;
+  deployments: GitHubDeployment[];
+}
+
 export type PrReviewEvent = "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
 
 export async function listPrReviewsLocal(
@@ -211,6 +231,16 @@ export async function replyPrReviewCommentLocal(
     prNumber,
     commentId,
     body,
+  });
+}
+
+export async function getDeploymentsLocal(
+  repoFullName: string,
+  gitRef: string
+): Promise<GitHubDeploymentsSummary> {
+  return invokeWithAuth<GitHubDeploymentsSummary>("github_get_deployments", {
+    repoFullName,
+    gitRef,
   });
 }
 

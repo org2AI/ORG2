@@ -111,12 +111,7 @@ export function useManualCompact(): UseManualCompactReturn {
         return false;
       }
       if (resolveManualCompactSessionId(sessionId, binding) === null) {
-        Message.info(
-          t("contextInfo.manualCompactNativeProvider", {
-            defaultValue:
-              "Manual compaction here supports built-in Agent sessions. Compact native CLI history in its provider app.",
-          })
-        );
+        Message.info(t("contextInfo.manualCompactNativeProvider"));
         return false;
       }
 

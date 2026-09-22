@@ -3,7 +3,6 @@
  *
  * Shared layout shell for Workstation apps providing consistent structure:
  * - CodeEditor (code editor) - EditorPrimarySidebar
- * - DatabaseManager (database browser) - DatabasePrimarySidebar
  * - ProjectManager, Chat, SessionReplay variants
  *
  * Layout modes:
@@ -55,9 +54,7 @@ interface WorkStationShellProps {
   statusBar: React.ReactNode;
   /** Layout mode — determines whether the primary sidebar is on the left or right. */
   layoutMode?: "left" | "right";
-  /** Additional class name for the container */
-  className?: string;
-  /** Class name for the app (used for BEM styling) */
+  /** App class name added to the shell root (app-specific styling hook) */
   appClassName?: string;
 }
 
@@ -129,7 +126,6 @@ export const WorkStationShell: React.FC<WorkStationShellProps> = memo(
     content,
     statusBar,
     layoutMode = "left",
-    className,
     appClassName,
   }) => {
     const sidebarShortcut = useShortcutKeys("toggle_workstation_sidebar");
@@ -204,6 +200,9 @@ export const WorkStationShell: React.FC<WorkStationShellProps> = memo(
     const secondaryPosition = secondaryPanelConfig?.position ?? "right";
     const secondarySize = secondaryPanelConfig?.size ?? 0;
     const secondaryOnSizeChange = secondaryPanelConfig?.onSizeChange ?? noop;
+    // Every config carries its own bounds; these fallbacks only feed the
+    // always-called resize hooks when no secondary panel is mounted, where
+    // the resulting handlers are never attached.
     const secondaryMinSize = secondaryPanelConfig?.minSize ?? 100;
     const secondaryMaxSize = secondaryPanelConfig?.maxSize ?? 1200;
     const { handleMouseDown: handleSecondaryResize } = useResizeHandle(
@@ -237,8 +236,7 @@ export const WorkStationShell: React.FC<WorkStationShellProps> = memo(
           "work-station-shell__side-panel",
           !isLeftMode && "work-station-shell__side-panel--right",
           resolvedPrimarySidebar.collapsed &&
-            "work-station-shell__side-panel--collapsed",
-          appClassName && `${appClassName}__side-panel`
+            "work-station-shell__side-panel--collapsed"
         )}
         width={
           resolvedPrimarySidebar.collapsed ? 0 : resolvedPrimarySidebar.size
@@ -268,16 +266,13 @@ export const WorkStationShell: React.FC<WorkStationShellProps> = memo(
 
     const contentPanelElement = (
       <ContentPanel
-        className={classNames(
-          "work-station-shell__content-panel",
-          appClassName && `${appClassName}__content-panel`
-        )}
+        className="work-station-shell__content-panel"
         content={content}
       />
     );
 
     // Secondary panel: single mount. Always rendered when the config is
-    // present; collapse/maximize are reflected via CSS classes on the
+    // present; collapse is reflected via CSS classes on the
     // grid container so React never has to remount the subtree.
     const secondaryPanelCollapsed =
       !secondaryPanelConfig ||
@@ -298,8 +293,7 @@ export const WorkStationShell: React.FC<WorkStationShellProps> = memo(
               ? "work-station-shell__secondary-panel--right"
               : "work-station-shell__secondary-panel--left"),
           secondaryPanelCollapsed &&
-            "work-station-shell__secondary-panel--collapsed",
-          appClassName && `${appClassName}__secondary-panel`
+            "work-station-shell__secondary-panel--collapsed"
         )}
         position={secondaryPosition}
         size={secondarySize}
@@ -334,9 +328,7 @@ export const WorkStationShell: React.FC<WorkStationShellProps> = memo(
     const hasSecondary = !!secondaryPanelConfig;
 
     return (
-      <div
-        className={classNames("work-station-shell", appClassName, className)}
-      >
+      <div className={classNames("work-station-shell", appClassName)}>
         {hasSecondary ? (
           <div
             className={classNames(

@@ -48,12 +48,9 @@ export function useChatPanelSessionCreator({
 
   const {
     repos: reposList,
-    selectedRepoId,
     selectRepo,
     currentRepo,
-    currentBranch,
     branchLoading,
-    loadBranchList,
     forceRefreshRepos,
   } = useRepoSelection({ autoLoad: true });
   const {
@@ -97,14 +94,11 @@ export function useChatPanelSessionCreator({
     branchLoading,
     chatPanelLaunchContext,
     creator,
-    currentBranch,
     currentRepo,
     forceRefreshRepos,
     handleSessionStart,
-    loadBranchList,
     reposList,
     selectRepo,
-    selectedRepoId,
     setAttachedWorkItemContext,
     showMissingGitAlert,
     worktree,

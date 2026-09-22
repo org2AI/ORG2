@@ -32,13 +32,13 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import type { VirtuosoHandle } from "react-virtuoso";
 
-import { useActionSystem } from "@src/ActionSystem";
+import { FileTreeHoverPreview } from "@src/components/FileTreePreview/exports";
 import Input from "@src/components/Input";
 import { Placeholder } from "@src/components/Placeholder";
 import type { TreePanelNode } from "@src/components/TreePanelSidebar/types";
 import { TREE_ROW_HEIGHT } from "@src/components/TreeRow";
+import type { VirtualListHandle } from "@src/components/VirtualList";
 import type {
   FlattenedTreeNode,
   StickyScrollNode,
@@ -55,6 +55,7 @@ import {
 import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 import { HugeiconsIcon, Search01Icon } from "@src/icons";
 import { FolderHeaderRow } from "@src/modules/WorkStation/shared/FolderHeaderRow";
+import { useActionSystem } from "@src/scaffold/ActionSystem";
 import { fileTreeSelectedPathAtom } from "@src/store/ui/fileTreeSelectionAtom";
 
 import { FileExplorerContextMenu } from "./FileExplorerMenu";
@@ -127,7 +128,7 @@ export const FileTreeContent = memo(
           defaultValue: DEFAULT_NO_RESULTS_MESSAGE,
         });
 
-      const virtuosoRef = useRef<VirtuosoHandle>(null);
+      const listRef = useRef<VirtualListHandle>(null);
       const treeRef = useRef<VirtualizedStickyTreeHandle>(null);
       const containerRef = useRef<HTMLDivElement>(null);
       const memoryStatsKeyRef = useRef(Symbol("file-tree-memory"));
@@ -218,7 +219,7 @@ export const FileTreeContent = memo(
         baseFlattenedNodes,
         onToggleDirectory,
         dispatch,
-        virtuosoRef,
+        listRef,
       });
 
       useImperativeHandle(
@@ -227,6 +228,26 @@ export const FileTreeContent = memo(
           startCreatingNew: handleStartCreateNew,
         }),
         [handleStartCreateNew]
+      );
+
+      const hasFilter = filterQuery.trim().length > 0;
+      const withPathPreview = useCallback(
+        (node: TreePanelNode, row: React.ReactNode) =>
+          hasFilter && node.path !== renamingPath ? (
+            <FileTreeHoverPreview
+              path={node.path}
+              itemType={node.type === "directory" ? "folder" : "file"}
+              repoPath={repoPath || undefined}
+              as="div"
+              display="block"
+              placement="right"
+            >
+              {row}
+            </FileTreeHoverPreview>
+          ) : (
+            row
+          ),
+        [hasFilter, renamingPath, repoPath]
       );
 
       const renderItem = useCallback(
@@ -248,9 +269,10 @@ export const FileTreeContent = memo(
             item.node.type === "directory"
           ) {
             const isExpanded = item.node.expanded ?? false;
-            return (
+            return withPathPreview(
+              item.node,
               <FolderHeaderRow
-                name={item.node.name}
+                name={item.node.compactName ?? item.node.name}
                 expanded={isExpanded}
                 onToggle={() => onToggleDirectory(item.node.path)}
                 onContextMenu={(event) => handleContextMenu(event, item.node)}
@@ -261,7 +283,8 @@ export const FileTreeContent = memo(
           const isRenaming = renamingPath === item.node.path;
           const depth = isMultiRoot ? Math.max(0, item.depth - 1) : item.depth;
 
-          return (
+          return withPathPreview(
+            item.node,
             <div onContextMenu={(event) => handleContextMenu(event, item.node)}>
               <TreeNode
                 node={item.node}
@@ -269,6 +292,7 @@ export const FileTreeContent = memo(
                 onSelectNode={onSelectNode}
                 onToggleDirectory={onToggleDirectory}
                 isRenaming={isRenaming}
+                showNativeTitle={!hasFilter}
                 onRenameConfirm={handleRenameConfirm}
                 onRenameCancel={handleRenameCancel}
               />
@@ -286,6 +310,8 @@ export const FileTreeContent = memo(
           handleRenameCancel,
           handleCreateNewConfirm,
           handleCreateNewCancel,
+          withPathPreview,
+          hasFilter,
         ]
       );
 
@@ -304,14 +330,19 @@ export const FileTreeContent = memo(
             ? { status: aggregateStatus, staged: false }
             : null;
 
-          return (
+          return withPathPreview(
+            node,
             <StickyTreeRow
               depth={depth}
               expanded={Boolean(node.expanded)}
-              name={node.name}
+              name={node.compactName ?? node.name}
               onClick={onClick}
               stickyBgClass={stickyBgClass}
-              title={t("tooltips.scrollToItem", { name: node.name })}
+              title={
+                hasFilter
+                  ? undefined
+                  : t("tooltips.scrollToItem", { name: node.name })
+              }
             >
               <div className="flex h-3.5 w-5 shrink-0 items-center justify-center">
                 {gitInfo && (
@@ -326,7 +357,15 @@ export const FileTreeContent = memo(
             </StickyTreeRow>
           );
         },
-        [repoPath, isMultiRoot, gitFolderStatusMap, stickyBgClass, t]
+        [
+          repoPath,
+          isMultiRoot,
+          gitFolderStatusMap,
+          stickyBgClass,
+          t,
+          withPathPreview,
+          hasFilter,
+        ]
       );
 
       const handleStickyHeaderClick = useCallback(
@@ -354,7 +393,7 @@ export const FileTreeContent = memo(
         revealPath,
         revealKey,
         selectedPath,
-        virtuosoRef,
+        listRef,
         useVirtualization: flattenedNodes.length > 0,
         flattenedNodesRef,
         lastScrollTopRef,
@@ -362,7 +401,6 @@ export const FileTreeContent = memo(
         stickyHeight,
       });
 
-      const hasFilter = filterQuery.trim().length > 0;
       const showEmptyNoResults = !loading && treeData.length === 0 && hasFilter;
 
       return (
@@ -422,7 +460,7 @@ export const FileTreeContent = memo(
                   renderItem={renderItem}
                   renderStickyItem={renderStickyItem}
                   onStickyHeaderClick={handleStickyHeaderClick}
-                  virtuosoRef={virtuosoRef}
+                  listRef={listRef}
                   loading={loading}
                   error={error}
                   emptyMessage={resolvedEmptyMessage}

@@ -4,8 +4,8 @@ import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Textarea from "@src/components/Textarea";
+import { PanelFooter } from "@src/components/layout/blocks";
 import { Download01Icon } from "@src/icons";
-import { PanelFooter } from "@src/modules/shared/layouts/blocks";
 import {
   SpotlightFormBody,
   SpotlightFormShell,

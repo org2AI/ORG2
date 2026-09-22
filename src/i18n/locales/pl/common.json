@@ -18,12 +18,15 @@
     "file": "Szukaj w pliku",
     "named": "Szukaj w {{name}}"
   },
+  "sidebarSettings": {
+    "title": "Pasek boczny",
+    "showSidebar": "Pokaż pasek boczny",
+    "colorSourceControlFiles": "Kolory zmian na plikach"
+  },
   "teamInbox": {
-    "title": "Skrzynka zespołu",
     "listLabel": "Lista skrzynki zespołu",
     "itemsLabel": "Elementy skrzynki zespołu",
     "unreadCount": "Nieprzeczytane: {{count}}",
-    "allRead": "Wszystko przeczytane",
     "loadMore": "Wczytaj więcej",
     "filters": {
       "mentions": "Wzmianki",
@@ -65,7 +68,6 @@
         "subtitle": "Zarchiwizowane elementy pojawią się tutaj."
       }
     },
-    "loading": "Wczytywanie skrzynki zespołu…",
     "drop": {
       "title": "Upuść tutaj, aby utworzyć element pracy",
       "subtitle": "Sprawdź migawkę sesji, a następnie utwórz lub przekaż element pracy.",
@@ -318,6 +320,9 @@
     "confirm": "Potwierdź",
     "apply": "Zastosuj",
     "reset": "Resetuj",
+    "resetFilters": "Zresetuj filtry",
+    "cardView": "Widok kart",
+    "listView": "Widok listy",
     "search": "Szukaj",
     "add": "Dodaj",
     "remove": "Usuń",
@@ -372,7 +377,6 @@
     "restart": "Uruchom ponownie",
     "switchToStation": "Przełącz na {{station}}",
     "discard": "Odrzuć",
-    "run": "Uruchom",
     "clone": "Klonuj",
     "send": "Wyślij",
     "sendMessageQueued": "Wyślij (w kolejce)",
@@ -401,13 +405,12 @@
     "link": "Połącz",
     "copyName": "Kopiuj nazwę",
     "switchMethod": "Zmień metodę",
-    "dismiss": "Odrzuć",
     "clearSelection": "Wyczyść zaznaczenie",
-    "clearAll": "Wyczyść wszystko",
     "openOnGitHub": "Otwórz na GitHub",
     "createPullRequest": "Utwórz pull request",
     "expandView": "Rozwiń widok",
-    "restoreSplitView": "Przywróć widok podzielony"
+    "restoreSplitView": "Przywróć widok podzielony",
+    "overwrite": "Nadpisz"
   },
   "status": {
     "yes": "Tak",
@@ -483,7 +486,6 @@
     "nextPage": "Następna strona",
     "lastPage": "Ostatnia strona",
     "selectPage": "Wybierz stronę",
-    "title": "Paginacja",
     "round": "Round {{current}}",
     "previousRound": "Poprzednia runda",
     "nextRound": "Następna runda",
@@ -560,7 +562,6 @@
     "globPatternsHint": "Wzorce glob, oddzielone przecinkami",
     "outline": "Konspekt",
     "timeline": "Oś czasu",
-    "indexing": "Indeksowanie",
     "testExplorer": "Eksplorator testów",
     "installed": "Zainstalowane",
     "extensionViews": "Widoki rozszerzeń",
@@ -772,7 +773,7 @@
     "nextMatchLabel": "Następne dopasowanie",
     "clearSearch": "Wyczyść wyszukiwanie",
     "openFile": "Otwórz plik",
-    "openNativeDevTools": "Otwórz natywne DevTools przeglądarki",
+    "openNativeDevTools": "Otwórz DevTools",
     "captureScreenshot": "Zrzut ekranu",
     "enableInspectMode": "Inspekcja elementu",
     "disableInspectMode": "Zakończ inspekcję (Esc)",
@@ -788,7 +789,6 @@
     "closePanel": "Zamknij panel",
     "showSidebar": "Pokaż pasek boczny",
     "hideSidebar": "Ukryj pasek boczny",
-    "moreOptions": "Więcej opcji",
     "zoomIn": "Powiększ",
     "zoomOut": "Pomniejsz",
     "goBack": "Wstecz",
@@ -806,10 +806,9 @@
     "replaceAll": "Zamień wszystko (Ctrl+Alt+Enter)",
     "replaceAllLabel": "Zamień wszystko",
     "moreActions": "Więcej akcji...",
-    "formatSql": "Formatuj SQL (upiększ)",
-    "queryHistory": "Historia zapytań",
-    "executeQuery": "Wykonaj zapytanie ({{shortcut}})",
     "startVoiceInput": "Rozpocznij wprowadzanie głosowe",
+    "expandInput": "Rozwiń pole wprowadzania",
+    "collapseInput": "Zwiń pole wprowadzania",
     "cancelRecording": "Anuluj nagrywanie",
     "stopAndTranscribe": "Zatrzymaj i transkrybuj",
     "htmlPreview": "Podgląd HTML",
@@ -950,7 +949,8 @@
     "selectSidebarStash": "Wybierz jeden stash",
     "selectSidebarCommit": "Wybierz jeden commit",
     "selectSidebarPullRequest": "Wybierz jeden pull request",
-    "selectSidebarIssue": "Wybierz jedno issue"
+    "selectSidebarIssue": "Wybierz jedno issue",
+    "pressEnterToSearch": "Naciśnij Enter, aby wyszukać"
   },
   "inbox": {
     "scrollToBottom": "Przewiń na dół",
@@ -979,7 +979,6 @@
     "notGitInitialized": "Git nie został zainicjowany",
     "notGitInitializedTooltip": "Ten katalog roboczy nie ma jeszcze katalogu .git.",
     "publishBranchToOrigin": "Opublikuj gałąź \"{{branch}}\" do origin",
-    "scanningFiles": "Skanowanie plików...",
     "branchTooltipSwitching": "Gałąź: {{branch}} (przełączanie...)",
     "switchWorkspaceTooltip": "Zmień katalog roboczy",
     "switchWorktreeTooltip": "Przełącz worktree",
@@ -990,12 +989,6 @@
     "sessionAgent": "{{name}}",
     "gitActionsTooltip": "Akcje Git",
     "switchToSessionRepo": "Przełącz na {{name}}",
-    "embeddingProgress": "Embedding: przetworzono {{count}} fragmentów",
-    "embeddingProgressWithPercent": "Embedding: przetworzono {{count}} fragmentów ({{percent}}%)",
-    "embeddingShort": "Embedding {{percent}}%",
-    "embeddingLabel": "Embedding",
-    "indexingProgress": "Indeksowanie: {{processed}}/{{total}} plików ({{percent}}%)",
-    "indexingProgressWithFile": "Indeksowanie: {{processed}}/{{total}} plików ({{percent}}%)\nBieżący: {{file}}",
     "ports": {
       "workspaceSection": "Bieżący obszar roboczy",
       "externalSection": "Zewnętrzne",
@@ -1044,13 +1037,11 @@
       "enterUrlToStart": "Wprowadź URL, aby rozpocząć",
       "privateBrowsingEmptyTitle": "Przeglądanie prywatne: Wprowadź URL, aby rozpocząć",
       "simulatorBrowserNotice": "Ta przeglądarka służy tylko do odtwarzania sesji. Do trwałego przeglądania użyj przeglądarki w aplikacji głównej (Narzędzia → Przeglądarka).",
-      "tlsDevNote": "Uwaga: Niektóre strony HTTPS (jak GitHub) mogą wyświetlać błędy TLS w trybie deweloperskim z powodu weryfikacji certyfikatu. Spróbuj witryn HTTP lub prostych HTTPS, takich jak example.com.",
       "siteUnreachableTitle": "Nie można dotrzeć do tej witryny",
       "webviewHiddenTitle": "Widok sieciowy tymczasowo ukryty",
       "webviewHiddenBody": "Zamknij menu lub okno dialogowe, aby wyświetlić go ponownie.",
-      "embeddedFallbackTitle": "Ta witryna może nie działać we wbudowanej przeglądarce",
-      "embeddedFallbackBody": "Niektóre witryny blokują lub nie renderują się w WebView aplikacji. Jeśli strona pozostaje pusta, otwórz ją w przeglądarce systemowej.",
-      "currentUrl": "Bieżący URL"
+      "loadStalledTitle": "Ta strona nie zakończyła ładowania",
+      "copyUrl": "Kopiuj URL"
     },
     "unsavedChangesTitle": "Niezapisane zmiany",
     "ci": {
@@ -1066,7 +1057,9 @@
         "skipped": "Pominięte",
         "passed": "Zaliczone"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Plik zmieniony na dysku",
+    "fileChangedOnDiskBody": "Plik „{{name}}” zmienił się na dysku od czasu otwarcia. Nadpisać go swoją wersją?"
   },
   "git": {
     "loading": "Ładowanie statusu Git...",
@@ -1093,7 +1086,7 @@
       "createTokenButton": "Utwórz token",
       "openGitSettingsButton": "Otwórz ustawienia",
       "configureInSettings": "Skonfiguruj Git w ustawieniach",
-      "configureInSettingsDesc": "Dodaj dostęp GitHub App, zapisz token lub przeskanuj lokalne dane uwierzytelniające w Ustawienia → Połączenia, a następnie spróbuj ponownie wykonać tę operację Git."
+      "configureInSettingsDesc": "Dodaj dostęp GitHub App, zapisz token lub przeskanuj lokalne dane uwierzytelniające w Ustawienia → Połączenia, a następnie spróbuj ponownie wykonać tę operację Git"
     },
     "actions": {
       "publish": "Opublikuj",
@@ -1131,7 +1124,12 @@
       "returnFromMiniTerminal": "Pokaż tutaj",
       "resizeTerminal": "Zmień rozmiar terminala",
       "terminalProcessCount_one": "{{count}} proces",
-      "terminalProcessCount_other": "{{count}} procesu"
+      "terminalProcessCount_other": "{{count}} procesu",
+      "sources": "Źródła",
+      "sourcesCount_one": "Źródła: {{count}}",
+      "sourcesCount_other": "Źródła: {{count}}",
+      "loadMoreSources": "Załaduj więcej (+{{count}})",
+      "sourceImage": "Obraz"
     },
     "pr": {
       "title": "Pull request",
@@ -1214,6 +1212,93 @@
         "checkingConflicts": "Sprawdzanie konfliktów…",
         "autoMergeEnabled": "Automatyczne scalanie włączone",
         "inMergeQueue": "Oczekuje w kolejce scalania"
+      },
+      "mergeBox": {
+        "checksFailed": "Niektóre kontrole zakończyły się niepowodzeniem",
+        "checksPending": "Niektóre kontrole jeszcze się nie zakończyły",
+        "checksPassed": "Wszystkie kontrole zakończone pomyślnie",
+        "checksSkipped": "Wszystkie kontrole zostały pominięte",
+        "counts": {
+          "failing": "{{count}} z błędem",
+          "inProgress": "{{count}} w toku",
+          "skipped": "{{count}} pominięto",
+          "successful": "{{count}} pomyślnie",
+          "summary_one": "Kontrola: {{parts}}",
+          "summary_other": "Kontrole: {{parts}}"
+        },
+        "check": {
+          "queued": "W kolejce",
+          "started": "Rozpoczęto {{time}}",
+          "successfulIn": "Zakończono pomyślnie w {{duration}}",
+          "failingAfter": "Niepowodzenie po {{duration}}",
+          "skipped": "Pominięto",
+          "successful": "Powodzenie",
+          "failing": "Niepowodzenie"
+        },
+        "deployments": {
+          "label": "Wdrożenia",
+          "none": "Brak wdrożeń",
+          "active_one": "{{count}} aktywne wdrożenie",
+          "active_other": "Aktywne wdrożenia: {{count}}",
+          "view": "Zobacz wdrożenie",
+          "notDeployed": "Ta gałąź nie została wdrożona",
+          "deployed": "Ta gałąź została pomyślnie wdrożona",
+          "deploying": "Trwa wdrażanie tej gałęzi",
+          "deployFailed": "Podczas wdrażania tej gałęzi wystąpił błąd",
+          "deployInactive": "Ta gałąź nie jest już wdrożona",
+          "state": {
+            "active": "Aktywne",
+            "pending": "W toku",
+            "failure": "Niepowodzenie",
+            "inactive": "Nieaktywne"
+          }
+        },
+        "conditions": {
+          "reviewApproved": {
+            "title": "Zmiany zatwierdzone",
+            "detail": "Przesłano zatwierdzającą recenzję"
+          },
+          "reviewRequired": {
+            "title": "Wymagana recenzja",
+            "detail": "Do scalenia wymagana jest co najmniej jedna zatwierdzająca recenzja"
+          },
+          "reviewChangesRequested": {
+            "title": "Zażądano zmian",
+            "detail": "Recenzent zażądał zmian przed scaleniem"
+          },
+          "noConflicts": {
+            "title": "Brak konfliktów z gałęzią bazową",
+            "detail": "Scalanie można wykonać automatycznie"
+          },
+          "hasConflicts": {
+            "title": "Ta gałąź ma konflikty, które trzeba rozwiązać",
+            "detail": "Rozwiąż konflikty w gałęzi źródłowej, a następnie wypchnij zmiany"
+          },
+          "outOfDate": {
+            "title": "Ta gałąź jest nieaktualna względem gałęzi bazowej",
+            "detail": "Scal najnowsze zmiany z gałęzi bazowej z tą gałęzią"
+          },
+          "checkingConflicts": {
+            "title": "Sprawdzanie możliwości automatycznego scalenia…",
+            "detail": "Poczekaj chwilę, GitHub sprawdza stan gałęzi"
+          },
+          "autoMergeEnabled": {
+            "title": "Automatyczne scalanie włączone",
+            "detail": "Ten pull request zostanie scalony po spełnieniu wymagań"
+          },
+          "inMergeQueue": {
+            "title": "Oczekuje w kolejce scalania",
+            "detail": "GitHub scali go, gdy znajdzie się na początku kolejki"
+          }
+        },
+        "merged": {
+          "title": "Pull request pomyślnie scalony i zamknięty",
+          "detail": "Gałąź źródłową można bezpiecznie usunąć"
+        },
+        "closed": {
+          "title": "Zamknięto z niescalonymi commitami",
+          "detail": "Ten pull request jest zamknięty. Otwórz go ponownie, aby scalić"
+        }
       },
       "commits": {
         "backToList": "Wszystkie commity",
@@ -1332,7 +1417,7 @@
       "cannotParseRepoName": "Nie udało się odczytać nazwy repozytorium z remote origin",
       "authRequired": {
         "title": "Połącz GitHub",
-        "description": "Przejdź do Ustawienia → Połączenia, aby połączyć konto GitHub."
+        "description": "Przejdź do Ustawienia → Połączenia, aby połączyć konto GitHub"
       },
       "navigationTrail": "Nawigacja pull requesta",
       "failedToLoad": "Nie udało się wczytać pull requestów",
@@ -1502,15 +1587,112 @@
       "newIssueBodyPlaceholder": "Opisz issue (opcjonalnie)…",
       "authRequired": {
         "title": "Połącz GitHub",
-        "description": "Przejdź do Ustawienia → Połączenia, aby połączyć konto GitHub."
+        "description": "Przejdź do Ustawienia → Połączenia, aby połączyć konto GitHub"
       },
       "reAuthRequired": "Wymagana autoryzacja GitHub",
-      "reAuthDescription": "Twój token GitHub wygasł. Przejdź do Ustawienia → Połączenia, aby połączyć ponownie.",
+      "reAuthDescription": "Twój token GitHub wygasł. Przejdź do Ustawienia → Połączenia, aby połączyć ponownie",
       "goToSettings": "Przejdź do ustawień",
       "loadingTimeline": "Wczytywanie aktywności…",
       "label": "Issue",
       "linkedLoading": "Wczytywanie powiązanych elementów",
       "detailNavigation": "Nawigacja issue"
+    },
+    "branchSwitch": {
+      "title": "Przełącz gałąź",
+      "conflictsTitle": "Zmiany wymagają uwagi",
+      "blockedTitle": "Przełączenie gałęzi wymaga uwagi",
+      "working": "Zapisywanie i przełączanie…",
+      "current": "Bieżąca gałąź: {{branch}}",
+      "changedFiles": "Zmienione pliki: {{count}}",
+      "question": "Co chcesz zrobić ze zmianami?",
+      "leave": "Pozostaw zmiany na {{branch}}",
+      "leaveDescription": "Zapisz pracę na później i przełącz się z czystym drzewem roboczym",
+      "bring": "Przenieś zmiany do {{branch}}",
+      "bringDescription": "Przenieś niezatwierdzone zmiany do gałęzi docelowej",
+      "worktreeTitle": "Gałąź jest otwarta w innym drzewie roboczym",
+      "openWorktree": "Otwórz drzewo robocze",
+      "activeTask": "W tym worktree działa zadanie",
+      "activeTaskDescription": "Przełączenie teraz zmieni pliki, nad którymi pracuje agent",
+      "switchAnyway": "Przełącz mimo to",
+      "switchedTo": "Przełączono na {{branch}}",
+      "saveTitle": "Zapisz pliki przed przełączeniem",
+      "saveDescription": "Otwarte pliki zawierają niezapisane zmiany. Zapisz je, zanim wybierzesz, gdzie zachować zmiany",
+      "saveContinue": "Zapisz wszystko i kontynuuj",
+      "saveFailed": "Nie udało się zapisać wszystkich plików",
+      "multipleBuffers": "Ten plik ma zmiany w więcej niż jednym edytorze. Zapisz lub zamknij te edytory przed przełączeniem",
+      "editedWhileSaving": "Pliki zostały zmienione podczas zapisywania. Sprawdź najnowsze zmiany i spróbuj ponownie",
+      "savePreview": "Zapisz lub odrzuć zmiany w edytorze arkuszy przed przełączeniem gałęzi",
+      "messages": {
+        "detached_head": "Utwórz gałąź z bieżącego commita przed przełączeniem, aby odłączona praca pozostała dostępna",
+        "unborn": "Utwórz pierwszy commit przed użyciem zapisanych zmian gałęzi",
+        "ignored_collision": "Ignorowany plik zostałby nadpisany. Przenieś go, zanim przełączysz",
+        "worktree_branch_in_use": "Ta gałąź jest już otwarta w innym drzewie roboczym",
+        "invalid_branch_name": "Wybierz prawidłową nazwę gałęzi",
+        "branch_exists": "Ta gałąź już istnieje",
+        "branch_not_found": "Nie znaleziono gałęzi lub jest niejednoznaczna. Odśwież gałęzie i wybierz jawnie gałąź zdalną",
+        "upstream_mismatch": "Lokalna gałąź o tej nazwie śledzi inny upstream. Wybierz gałąź lokalną jawnie",
+        "operation_merge": "Zakończ lub przerwij scalanie przed przełączeniem gałęzi",
+        "operation_rebase": "Zakończ lub przerwij rebase przed przełączeniem gałęzi",
+        "operation_cherry_pick": "Zakończ lub przerwij cherry-pick przed przełączeniem gałęzi",
+        "operation_revert": "Zakończ lub przerwij revert przed przełączeniem gałęzi",
+        "operation_other": "Zakończ bieżącą operację Git przed przełączeniem gałęzi",
+        "stale": "Pliki lub gałęzie zmieniły się, gdy okno dialogowe było otwarte. Sprawdź najnowsze zmiany i spróbuj ponownie",
+        "save_failed": "Nie udało się dokończyć zapisywania zmian: {{detail}}. Sprawdź drzewo robocze i zapisane zmiany przed ponowną próbą",
+        "changed_while_saving": "Pliki zmieniły się podczas zapisywania. Nie podjęto próby checkout; twój snapshot jest dostępny",
+        "checkout_failed_restored": "Checkout nie powiódł się; twoje zmiany zostały przywrócone: {{detail}}",
+        "checkout_failed_saved": "Checkout nie powiódł się. Twoje zmiany są zapisane: {{detail}}",
+        "worktree_changed": "Drzewo robocze zmieniło się podczas checkout. Twoje oryginalne zmiany są zapisane; sprawdź bieżące pliki przed przywróceniem",
+        "restore_conflicts": "Przełączono na {{branch}}. Niektórych zmian nie udało się przywrócić: {{detail}}. Twoje oryginalne zmiany są zapisane",
+        "saved_on_previous": "Zmiany zapisane na poprzedniej gałęzi",
+        "brought": "Twoje zmiany podążyły za tobą na tę gałąź",
+        "worktree_missing": "Worktree już nie istnieje. Odśwież i spróbuj ponownie"
+      }
+    },
+    "dialogs": {
+      "detachedHead": {
+        "title": "Stan detached HEAD",
+        "body": "Jesteś w stanie detached HEAD na commicie {{shortHash}}.\n\nNie jesteś na żadnej gałęzi. Commity, które utworzysz, mogą zostać utracone, jeśli zrobisz checkout innej gałęzi bez wcześniejszego utworzenia nowej gałęzi.\n\n⚠️ Commity w stanie detached HEAD mogą zostać usunięte przez garbage collector.",
+        "createBranch": "Utwórz gałąź",
+        "continueWithoutBranch": "Kontynuuj bez gałęzi"
+      },
+      "largePush": {
+        "title": "Wykryto duży push",
+        "body": "Zamierzasz wykonać push {{commitCount}} commitów do {{remote}}/{{branch}}.\n\nTo więcej niż zwykle. Czy na pewno chcesz kontynuować?\n\n💡 Rozważ podzielenie dużych zmian na mniejsze, bardziej skupione commity.",
+        "confirm": "Push wszystkich commitów"
+      },
+      "protectedBranch": {
+        "title": "Gałąź chroniona",
+        "body": "Gałąź \"{{branch}}\" w {{remote}} jest chroniona i nie można wykonać push bezpośrednio do niej.\n\nW chronionych gałęziach zmiany muszą przechodzić przez pull requesty.",
+        "createPr": "Utwórz pull request"
+      },
+      "pullConflict": {
+        "title": "Nie można wykonać pull z lokalnymi zmianami",
+        "body": "Twoje lokalne zmiany zostałyby nadpisane przez zmiany przychodzące z \"{{branch}}\".{{fileInfo}}\n\nWybierz, jak kontynuować:",
+        "fileInfo_one": " (dotyczy {{count}} pliku)",
+        "fileInfo_other": " (dotyczy {{count}} plików)",
+        "stashAndPull": "Stash i Pull",
+        "discardAndPull": "Odrzuć i Pull"
+      },
+      "pushRejected": {
+        "title": "Push odrzucony",
+        "body": "Nie można wykonać push do {{remote}}/{{branch}}.\n\nZdalna gałąź zawiera commity, których nie masz lokalnie.{{behindInfo}}\n\n⚠️ Force push trwale nadpisze zmiany w zdalnym repozytorium.",
+        "behindInfo_one": " (brakuje {{count}} commita)",
+        "behindInfo_other": " (brakuje {{count}} commitów)",
+        "pullAndPush": "Pull i Push",
+        "forcePush": "Force Push"
+      },
+      "conflict": {
+        "titleMerge": "Konflikt merge",
+        "titleRebase": "Konflikt rebase",
+        "bodyMerge": "Podczas merge gałęzi \"{{branch}}\" wystąpiły konflikty.{{progress}}{{files}}\n\n⚠️ Przerwanie anuluje merge i przywróci twoją gałąź.",
+        "bodyRebase": "Podczas rebase na \"{{branch}}\" wystąpiły konflikty.{{progress}}{{files}}\n\n⚠️ Przerwanie przywróci twoją gałąź do stanu sprzed rebase.",
+        "progress": " (Krok {{current}} z {{total}})",
+        "files_one": "\n\nKonflikty w {{count}} pliku.",
+        "files_other": "\n\nKonflikty w {{count}} plikach.",
+        "resolve": "Rozwiąż konflikty",
+        "abortMerge": "Przerwij merge",
+        "abortRebase": "Przerwij rebase"
+      }
     }
   },
   "selectors": {
@@ -1523,11 +1705,11 @@
       "noResults": "Brak pasujących modeli",
       "chooseModel": "Wybierz model",
       "chooseKey": "Wybierz klucz",
-      "noCompatibleAccounts": "Brak zgodnych kluczy",
+      "noCompatibleKeys": "Brak zgodnych kluczy",
       "chooseModelHint": "Użyj klawiatury do nawigacji albo kliknij model myszą",
       "chooseKeyHint": "Użyj klawiatury do nawigacji albo kliknij klucz myszą",
       "noModelsForKey": "Brak włączonych modeli dla tego klucza",
-      "selectAccount": "Wybierz konto"
+      "selectKey": "Wybierz klucz"
     },
     "modelProperties": {
       "effort": "Wysiłek",
@@ -1565,7 +1747,6 @@
         "createWorkspace": "Utwórz nowy katalog roboczy"
       },
       "sources": {
-        "cloningFromGitHub": "klonowanie z GitHub",
         "cloningFromGitHubUrl": "klonowanie z URL GitHub",
         "cloningFromMyGitHub": "klonowanie z mojego GitHub",
         "creatingWorkspace": "tworzenie nowego katalogu roboczego",
@@ -1626,7 +1807,6 @@
         "createFrom": "Utwórz z Branch",
         "deleteBranch": "Usuń gałąź",
         "refresh": "Odśwież gałąź",
-        "checkoutDetachedSuccess": "Jesteś teraz w stanie detached HEAD na bieżącym commicie",
         "removeWorktree": "Usuń Worktree",
         "newWorktree": "Nowy worktree...",
         "refreshPullRequests": "Odśwież Pull requests"
@@ -1634,9 +1814,15 @@
       "messages": {
         "deletedCount_one": "Usunięto {{count}} gałąź",
         "deletedCount_other": "Usunięto {{count}} gałęzi",
-        "failedDeleteList": "Nie udało się usunąć: {{branches}}"
+        "failedDeleteList": "Nie udało się usunąć: {{branches}}",
+        "failedDelete": "Nie udało się usunąć gałęzi „{{branch}}”",
+        "prNoHeadBranch": "Pull request nie ma gałęzi head",
+        "readBranchesFailed": "Nie udało się odczytać gałęzi lokalnych",
+        "createPrBranchFailed": "Nie udało się utworzyć gałęzi PR",
+        "readRemotesFailed": "Nie udało się odczytać zdalnych repozytorium"
       },
       "labels": {
+        "defaultBranches": "Gałęzie domyślne",
         "otherBranches": "Inne gałęzie",
         "current": "Bieżąca",
         "recent": "Ostatnie",
@@ -1684,6 +1870,8 @@
       "selectWorktreeSource": "Wybierz gałąź lub pull request dla Worktree"
     },
     "spotlightFooter": {
+      "settings": "Ustawienia Spotlight",
+      "unpinAll": "Odepnij wszystko",
       "navigate": "Nawiguj",
       "select": "Wybierz",
       "switchColumn": "Zmień kolumnę",
@@ -1767,11 +1955,6 @@
         "integrations": "Agenci i integracje",
         "market": "Market",
         "actions": "Akcje"
-      },
-      "paramLabels": {
-        "repo": "Repo",
-        "folder": "Folder",
-        "branch": "Gałąź"
       },
       "actions": {
         "showInFinder": {
@@ -1872,11 +2055,13 @@
   "ellipsisMenu": {},
   "layoutSettings": {
     "chatPanelLocation": "Panel czatu",
+    "chatSplitRatio": "Udział panelu czatu",
+    "chatSplitRatioHint": "Stosowany zaraz po wybraniu; późniejsze przeciągnięcie separatora nadal ma pierwszeństwo.",
     "chatLeft": "Czat po lewej",
     "chatRight": "Czat po prawej",
     "sidebarPosition": "Pasek boczny Workstation",
     "modelPickerStyle": "Wybór",
-    "paginateChatHistory": "Podziel historię czatu na strony",
+    "paginateChatHistory": "Stronicowanie historii czatu",
     "modelPickerSpotlight": "Spotlight",
     "modelPickerMenu": "Menu",
     "left": "Lewa",
@@ -2125,13 +2310,29 @@
   "selectionMenu": {
     "addToChat": "Dodaj do czatu",
     "addThisFile": "Dodaj ten plik",
-    "addLines": "Dodaj linię {{from}} – {{to}}"
+    "addLines": "Dodaj linię {{from}} – {{to}}",
+    "replyToSelection": "Odpowiedz",
+    "clearQuotedSelection": "Usuń cytat",
+    "pinSelection": "Przypnij"
   },
   "browser": {
     "screenshot": {
       "added": "Zrzut ekranu dołączony do czatu",
       "failed": "Nie udało się przechwycić zrzutu ekranu: {{reason}}",
-      "noActivePage": "Brak aktywnej strony do przechwycenia"
+      "noActivePage": "Brak aktywnej strony do przechwycenia",
+      "saved": "Zapisano zrzut ekranu",
+      "saveFailed": "Nie udało się zapisać zrzutu ekranu: {{reason}}"
+    },
+    "menu": {
+      "pageTheme": "Motyw strony",
+      "themeAuto": "Automatyczny",
+      "themeLight": "Jasny",
+      "themeDark": "Ciemny",
+      "saveScreenshot": "Zapisz zrzut ekranu...",
+      "openHtmlFile": "Otwórz plik HTML..."
+    },
+    "openHtmlFile": {
+      "failed": "Nie udało się otworzyć pliku: {{reason}}"
     },
     "selectedElement": {
       "addElement": "Dodaj element",
@@ -2151,7 +2352,7 @@
   "globalToolbar": {},
   "quitConfirmation": {
     "title": "Zamknąć ORG2?",
-    "subtitle": "Uruchomione sesje zachowają swój bieżący stan. Możesz ponownie otworzyć ORG2 później.",
+    "subtitle": "Uruchomione sesje zachowają swój bieżący stan. Możesz ponownie otworzyć ORG2 później",
     "cancel": "Anuluj",
     "confirm": "Zamknij"
   },
@@ -2181,7 +2382,7 @@
   "browserCookieImport": {
     "safari": {
       "needsFullDiskAccess": "Needs Full Disk Access",
-      "explain": "Safari przechowuje pliki cookie w folderze chronionym przez macOS. Zezwól ORG2 na pełny dostęp do dysku w Ustawieniach systemowych, a następnie sprawdź ponownie.",
+      "explain": "{{browser}} przechowuje pliki cookie w folderze chronionym przez macOS. Zezwól ORG2 na pełny dostęp do dysku w Ustawieniach systemowych, a następnie sprawdź ponownie",
       "openSettings": "Open System Settings",
       "checkAgain": "Check again"
     },
@@ -2206,7 +2407,7 @@
     "doneSkipped_other": "{{count}} cookies were skipped",
     "empty": {
       "title": "No supported browsers found",
-      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from."
+      "body": "Install Chrome, Edge, Brave, or Firefox with saved logins to import from"
     },
     "category": {
       "banking": "Bank",
@@ -2215,7 +2416,7 @@
     },
     "errors": {
       "openSettingsFailed": "Couldn't open System Settings",
-      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow.",
+      "keychainDenied": "Keychain access was denied. Pick the profile again and choose Allow",
       "listFailed": "Couldn't find browsers to import from",
       "previewFailed": "Couldn't read cookies from that browser",
       "importFailed": "Couldn't import the selected cookies"
@@ -2244,22 +2445,6 @@
     "openFailed": "Nie udało się otworzyć dokumentu",
     "saveFirst": "Zapisz lub odrzuć zmiany przed otwarciem w innej aplikacji"
   },
-  "sqlEditor": {
-    "placeholder": "Wpisz zapytanie SQL...",
-    "format": "Formatuj",
-    "runQueryToSeeResults": "Uruchom zapytanie, aby zobaczyć wyniki",
-    "executingQuery": "Wykonywanie zapytania...",
-    "queryFailed": "Zapytanie nie powiodło się",
-    "queryCompleted": "Zapytanie ukończone",
-    "noResults": "Zapytanie nie zwróciło wyników",
-    "rowCount_one": "{{count}} wiersz",
-    "rowCount_other": "{{count}} wierszy",
-    "press": "Naciśnij",
-    "toRun": "aby uruchomić",
-    "nullValue": "NULL",
-    "booleanTrue": "true",
-    "booleanFalse": "false"
-  },
   "chatImage": {
     "maxReached": "Dozwolone maksymalnie {{max}} obrazów",
     "remainingWarning": "Można dodać jeszcze tylko {{remaining}} obraz(ów) (maks. {{max}})",
@@ -2277,5 +2462,11 @@
     "sessionJsonFile": "Sesja ORG2 w formacie JSON",
     "skillsSource": "Umiejętności ORG2",
     "gitServiceUnavailable": "Nie można połączyć się z lokalną usługą Git. Spróbuj ponownie po uruchomieniu aplikacji lub uruchom ORG2 ponownie, jeśli problem się powtarza."
+  },
+  "imageActions": {
+    "addToChat": "Dodaj do czatu",
+    "added": "Dodano do czatu",
+    "failed": "Nie udało się wykonać operacji na obrazie",
+    "downloadCopy": "Pobierz kopię"
   }
 }

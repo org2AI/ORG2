@@ -431,11 +431,12 @@ pub(super) fn codex_home_for_session(
     session: &CodeSession,
     account_id: Option<&str>,
     session_id: &str,
+    generation: u64,
 ) -> Result<std::path::PathBuf, String> {
     match session.key_source {
         KeySource::HostedKey => Ok(app_paths::codex_hosted_cli_profile_dir(session_id)),
         KeySource::OwnKey => account_id
-            .map(app_paths::codex_cli_profile_dir)
+            .map(|id| app_paths::codex_cli_profile_dir_for_generation(id, generation))
             .ok_or_else(|| "Codex CLI own-key session requires account_id".to_string()),
     }
 }
@@ -501,7 +502,14 @@ pub(super) fn configure_agent_profile(
     if matches!(agent, ModelType::Codex) && session.key_source == KeySource::OwnKey {
         let account_id = account_id
             .ok_or_else(|| "Codex CLI own-key session requires account_id".to_string())?;
-        let codex_home = codex_home_for_session(session, Some(account_id), session_id)?;
+        let generation = selected_key
+            .ok_or("Codex launch requires a selected key")?
+            .credential_generation;
+        let codex_home = codex_home_for_session(session, Some(account_id), session_id, generation)?;
+        super::profile_history::share_history_directory(
+            &app_paths::codex_cli_profile_dir(account_id).join("sessions"),
+            &codex_home.join("sessions"),
+        )?;
         env_vars.insert(
             "CODEX_HOME".to_string(),
             codex_home.to_string_lossy().to_string(),
@@ -605,7 +613,15 @@ pub(super) fn configure_agent_profile(
         } else {
             match account_id {
                 Some(account_id) => {
-                    let profile_home = app_paths::kiro_cli_profile_dir(account_id);
+                    let generation = selected_key
+                        .ok_or("Kiro own-key launch requires a selected key")?
+                        .credential_generation;
+                    let profile_home =
+                        app_paths::kiro_cli_profile_dir_for_generation(account_id, generation);
+                    super::profile_history::share_history_directory(
+                        &app_paths::kiro_cli_profile_dir(account_id).join(".kiro/sessions/cli"),
+                        &profile_home.join(".kiro/sessions/cli"),
+                    )?;
                     match crate::agent_sessions::cli::platform_adapters::kiro::proxy_auth::setup_own_key_home(
                         &profile_home,
                         env_vars,
@@ -641,7 +657,12 @@ pub(super) fn configure_agent_profile(
     }
     if matches!(agent, ModelType::Kiro) {
         if let Some(resume_id) = cli_resume_id {
-            crate::agent_sessions::cli::parsers::kiro::clean_stale_lock(resume_id);
+            if let Some(home) = env_vars.get("HOME") {
+                crate::agent_sessions::cli::parsers::kiro::clean_stale_lock_in(
+                    std::path::Path::new(home),
+                    resume_id,
+                );
+            }
         }
     }
 

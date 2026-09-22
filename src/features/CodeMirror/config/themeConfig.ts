@@ -66,6 +66,20 @@ export function getCodeMirrorTheme(): Extension {
  */
 export const CODEMIRROR_VISUAL_OVERRIDE_THEME = Prec.highest(
   EditorView.theme({
+    // Keep the current row visible over merge-view change backgrounds.
+    // Inline inserted/deleted text retains its own diff color.
+    "&.cm-editor .cm-line.cm-activeLine, &.cm-editor .cm-activeLineGutter": {
+      backgroundColor:
+        "var(--cm-editor-line-highlight, var(--color-fill-2)) !important",
+    },
+    "& .cm-searchMatch, & .cm-searchMatch-selected": {
+      backgroundColor:
+        "var(--text-selection, var(--color-primary-2)) !important",
+    },
+    "& .cm-searchMatch-selected": {
+      outline: "1px solid var(--color-primary-6)",
+      outlineOffset: "-1px",
+    },
     "& .cm-content": {
       caretColor: "var(--cm-editor-caret, var(--color-primary-6)) !important",
     },
@@ -106,6 +120,7 @@ export const CODEMIRROR_BASE_LAYOUT_THEME = EditorView.theme({
   "&": {
     height: "100%",
     fontSize: CODE_FONT_SIZE,
+    fontWeight: "400",
     fontFamily: CODE_FONT_FAMILY,
     backgroundColor: "var(--cm-editor-background)",
   },
@@ -125,10 +140,12 @@ export const CODEMIRROR_BASE_LAYOUT_THEME = EditorView.theme({
   },
   ".cm-lineNumbers": {
     borderRight: "none",
-    paddingLeft: "var(--cm-line-number-padding-left, 8px)",
+    paddingLeft: "0",
   },
   ".cm-lineNumbers .cm-gutterElement": {
     borderRight: "none",
+    // Row-owned spacing lets the active background cover the entire gutter.
+    paddingLeft: "calc(var(--cm-line-number-padding-left, 8px) + 5px)",
   },
   ".cm-line": {
     padding:

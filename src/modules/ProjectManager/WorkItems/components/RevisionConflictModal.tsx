@@ -39,7 +39,6 @@ export const RevisionConflictModal: React.FC<RevisionConflictModalProps> = ({
       cancelText={t("workItems.revisionConflict.useLatest")}
       okText={t("workItems.revisionConflict.keepMine")}
       maskClosable={false}
-      bodyClassName="p-4"
     >
       {conflict ? (
         <div

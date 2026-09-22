@@ -12,10 +12,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useActionSystemOptional } from "@src/ActionSystem";
 import { gitApi } from "@src/api/http/git";
 import type { StashEntry } from "@src/api/http/git/types";
 import { createLogger } from "@src/hooks/logger";
+import { useActionSystemOptional } from "@src/scaffold/ActionSystem";
 import { showGitActionDialogSafely } from "@src/util/dialogs/gitActionDialog";
 
 const log = createLogger("useStashState");

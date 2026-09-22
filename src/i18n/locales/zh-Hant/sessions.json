@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "作為新訊息傳送？",
+    "body": "這則訊息來自執行工作階段，無法在此編輯並回退對話。是否改為將這段文字作為新訊息傳送到對話末尾？現有訊息和檔案變更都會保留。",
+    "sendNew": "傳送新訊息"
+  },
   "tray": {
     "markAllRead": "全部標為已讀",
     "showKanban": "顯示看板",
@@ -88,8 +93,7 @@
       "openFolder": "開啟資料夾",
       "tabs": {
         "all": "全部",
-        "apps": "應用程式",
-        "clis": "命令列"
+        "apps": "應用程式"
       },
       "views": {
         "scanning": "掃描",
@@ -174,7 +178,8 @@
           "output": "輸出",
           "cache": "快取讀取",
           "cost": "成本",
-          "filterBySession": "依此工作階段篩選"
+          "filterBySession": "依此工作階段篩選",
+          "purpose": "用途"
         },
         "pricing": {
           "input": "輸入",
@@ -199,7 +204,17 @@
           "title": "尚無用量",
           "subtitle": "執行或掃描一些程式開發工作階段後，其 Token 用量將顯示在這裡。"
         },
-        "loadError": "無法載入用量資料"
+        "loadError": "無法載入用量資料",
+        "purposes": {
+          "main": "主回复",
+          "session_title": "会话标题",
+          "session_memory": "会话记忆",
+          "workspace_memory": "工作区记忆",
+          "auto_dream": "记忆整理",
+          "skill_prefetch": "技能选择",
+          "memory_prefetch": "记忆检索",
+          "compaction": "上下文压缩"
+        }
       },
       "sessions_other": "{{count}} 個工作階段",
       "details": {
@@ -507,8 +522,7 @@
     },
     "titleBar": {
       "showSidebar": "顯示側邊欄",
-      "hideSidebar": "隱藏側邊欄",
-      "showBottomPanel": "顯示底部面板"
+      "hideSidebar": "隱藏側邊欄"
     },
     "multiTask": {
       "monitoringProgress": "正在監控 {{count}} 個 Subagent 的進度",
@@ -579,6 +593,7 @@
     "voicePermissionSheetTitle": "需要麥克風存取權限"
   },
   "chat": {
+    "draftTooLong": "草稿過長（最多 {{max}} 個字元）",
     "cliPermissions": {
       "ask": "操作前審批",
       "workspace": "工作區權限",
@@ -613,23 +628,18 @@
       "inputPosition": "輸入框",
       "positionBottom": "底部",
       "positionMiddle": "置中",
-      "trailPosition": "軌跡列",
+      "repoBarPosition": "倉庫列",
       "positionUp": "上方",
       "positionDown": "下方",
-      "uiControls": "介面控制",
-      "showQuickActions": "顯示快捷操作",
+      "showQuickActions": "快捷操作",
       "showSkills": "釘選 Skills",
-      "showCliUpdate": "顯示 CLI 更新",
-      "title": "你想做什麼？",
-      "back": "返回起始頁",
+      "showCliUpdate": "CLI 更新",
+      "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新建會話"
       },
       "newWorkItem": {
         "title": "新建工作項目"
-      },
-      "setupRepo": {
-        "title": "設定 Repo"
       },
       "addApiKey": {
         "title": "新增 API 金鑰"
@@ -640,59 +650,27 @@
       "installLatestUpdate": {
         "title": "安裝最新更新"
       },
-      "agents": {
-        "title": "Agents"
-      },
       "tabs": {
         "session": "工作階段",
         "workItem": "工作項目",
         "more": "更多",
-        "work": "工作",
         "manage": "管理",
-        "heatmap": "趨勢",
         "runtime": "執行階段"
       },
       "quota": {
         "empty": "暫無配額資料。請在 Key Vault 中重新整理用量。",
         "refresh": "重新整理",
-        "justNow": "剛剛",
-        "minutesAgo": "{{count}}分鐘前",
-        "hoursAgo": "{{count}}小時前",
         "metrics": {
           "fiveHour": "5h",
           "sevenDay": "7d",
           "auto": "Auto",
           "api": "API",
-          "session": "Session",
-          "weekly": "Weekly",
           "monthly": "Monthly"
         }
       },
-      "exploreRepos": {
-        "title": "探索 Repos"
-      },
       "hints": {
-        "skill": {
-          "before": "Use",
-          "after": "to link a skill or tool"
-        },
-        "ask": {
-          "before": "Use",
-          "after": "to ask questions about the codebase"
-        },
-        "plan": {
-          "before": "Use",
-          "after": "to plan before building"
-        },
-        "switch": {
-          "before": "Use",
-          "after": "to switch sections"
-        },
         "previous": "Previous hint",
         "next": "Next hint"
-      },
-      "manageIssues": {
-        "title": "管理 Issues"
       }
     },
     "defaultTitle": "Session",
@@ -704,6 +682,7 @@
     "performActions_other": "執行 {{count}} 項操作",
     "showInlineDiffs": "行內差異",
     "inputSettings": "輸入設定",
+    "sendMethod": "發送方式",
     "navigation": {
       "title": "導覽",
       "openLinksIn": "連結開啟方式",
@@ -711,6 +690,8 @@
       "externalBrowser": "外部瀏覽器"
     },
     "compactInput": "緊湊輸入框",
+    "composerGlow": "輸入框光暈",
+    "separateEffortPill": "獨立 Effort 按鈕",
     "replay": {
       "follow": "跟隨"
     },
@@ -736,15 +717,11 @@
       "modeSourceBundled": "模式加載自內置回退(Cursor 探針尚未運行)。",
       "modeRefresh": "重新整理模式"
     },
-    "hideSimulator": "隱藏模擬器",
-    "showSimulator": "顯示模擬器",
-    "fullScreenChat": "聚焦聊天面板（隱藏工作站）",
     "maximizeChatPanel": "最大化聊天面板",
     "showWorkstation": "顯示工作站",
     "workstationUnavailableForPage": "此頁面不支援使用工作站",
     "hideWorkstation": "隱藏工作站",
     "restoreSplitView": "顯示工作站",
-    "shrinkToWorkstation": "縮小聊天面板（顯示工作站）",
     "tuiModeOn": "TUI 模式（點擊關閉）",
     "tuiModeOff": "啟用 TUI 模式",
     "tabs": {
@@ -896,10 +873,10 @@
       "exportJson": "匯出 JSON",
       "importAction": "匯入 Session",
       "exportDescription": "將目前 Session 匯出為可攜式 JSON 快照",
-      "importDescription": "將 Session JSON 快照匯入側邊欄。",
+      "importDescription": "將 Session JSON 快照匯入側邊欄",
       "jsonSnapshotNote": "匯入的 Session 是唯讀快照，並保留原始事件歷史",
       "chooseJson": "選擇 JSON 檔案",
-      "chooseJsonHint": "選擇一個 .orgii-session.json 匯出檔案。",
+      "chooseJsonHint": "選擇一個 .orgii-session.json 匯出檔案",
       "loadingPreview": "正在統計 Session 事件…",
       "noActiveSession": "未選取作用中 Session。",
       "importedName": "匯入 Session：{{name}}",
@@ -948,22 +925,9 @@
       "showMore_one": "顯示其餘 {{count}} 個",
       "showMore_other": "顯示其餘 {{count}} 個"
     },
-    "manageIssues": {
-      "title": "管理 Issues",
-      "myWork": "我的工作",
-      "allRepositories": "所有 Repos",
-      "newIssue": "新增 Issue",
-      "tabs": {
-        "recent": "最近",
-        "assigned": "指派給我",
-        "byMe": "由我建立",
-        "mentioned": "提及我"
-      }
-    },
     "readOnly": "唯讀",
     "panels": {
       "manageIssues": {
-        "searchPlaceholder": "GitHub search, e.g. is:issue is:open label:bug",
         "createIssueTrigger": "Issue",
         "newIssueTitle": "建立 GitHub issue",
         "issueTitlePlaceholder": "issue 標題",
@@ -973,28 +937,40 @@
         "addToChat": "Add",
         "repositoryLabel": "儲存庫",
         "createIssueFailed": "建立 issue 失敗",
-        "sourceIssues": "Issues",
-        "sourcePrs": "PRs",
         "stateOpen": "Open",
         "stateClosed": "Closed",
-        "stateAll": "所有狀態",
         "closeAsCompleted": "以已完成關閉",
         "closeAsNotPlanned": "以不計畫關閉",
         "statusUpdateFailed": "無法更新 GitHub 狀態",
         "assignedToMe": "指派給我的",
         "createdByMe": "由我建立",
-        "filters": "Filters",
-        "openInGitHub": "Open in GitHub",
-        "pullRequests": {
-          "reviewRequested": "待我審查",
-          "authoredByMe": "由我建立",
-          "otherTodos": "其他待辦"
-        },
         "assigneeUpdateNotApplied": "GitHub 未套用指派人變更",
         "assigneeUpdateSuccess": "已在 GitHub 上更新指派人",
         "updateIssueFailed": "更新 GitHub issue 失敗",
-        "refreshIssues": "重新整理議題",
-        "refreshPullRequests": "重新整理拉取請求"
+        "filters": {
+          "searchPlaceholder": "搜尋篩選條件",
+          "noMatches": "沒有符合的篩選條件",
+          "activeCount": "已啟用篩選：{{count}}",
+          "clear": "清除篩選",
+          "reviewRequestedFromMe": "請求我審查",
+          "noAssignee": "無負責人",
+          "noLabel": "無標籤",
+          "linkedPullRequest": "已連結拉取請求",
+          "draft": "草稿",
+          "readyForReview": "可供審查",
+          "recentlyUpdated": "最近 7 天內更新",
+          "stale": "30 天未更新",
+          "facetAuthor": "作者",
+          "facetAssignee": "負責人",
+          "facetLabel": "標籤",
+          "facetMilestone": "里程碑",
+          "facetReviewRequested": "請求審查",
+          "facetBaseBranch": "目標分支",
+          "facetCiStatus": "檢查",
+          "ciSuccess": "通過",
+          "ciFailure": "失敗",
+          "ciPending": "進行中"
+        }
       }
     },
     "sessionViews": {
@@ -1027,7 +1003,9 @@
     "sending": "正在傳送…",
     "typeMessage": "輸入訊息…",
     "session": "工作階段",
-    "history": "工作階段"
+    "history": "工作階段",
+    "goToPinnedPassage": "跳至釘選段落：{{preview}}",
+    "unpinPassage": "取消釘選"
   },
   "tools": {
     "noResultsFound": "未找到結果",
@@ -1908,14 +1886,13 @@
     "start": "開始",
     "missingGit": {
       "title": "缺少 Git",
-      "body": "未安裝 Git 或找不到 Git。請讓 ADE Manager 或 SDE Agent 為這台機器安裝 Git，然後重新啟動 ORG2。"
+      "body": "未安裝 Git 或找不到 Git。請讓 ADE Manager 或 SDE Agent 為這台機器安裝 Git，然後重新啟動 ORG2"
     },
     "model": "模型",
     "contextMenu": {
       "filesAndFolders": "檔案與資料夾",
       "session": "會話",
       "workItems": "工作項目",
-      "back": "返回",
       "recent": "最近使用",
       "showMore": "再顯示 {{remaining}} 項"
     },
@@ -1972,9 +1949,9 @@
       "formatting": "文字格式"
     },
     "regionNoticeTitle": "可能存在地區限制",
-    "regionNoticeBodyProvider": "您所在位置：{{location}}。某些模型在您所在地區可能不可用。",
-    "regionNoticeBodySanctions": "您所在位置：{{location}}。GitHub、npm、Docker Hub 等服務可能不可用。",
-    "regionNoticeBodyBoth": "您所在位置：{{location}}。因地區政策與貿易規則，某些模型以及 GitHub、npm、Docker Hub 等服務可能不可用。",
+    "regionNoticeBodyProvider": "您所在位置：{{location}}。某些模型在您所在地區可能不可用",
+    "regionNoticeBodySanctions": "您所在位置：{{location}}。GitHub、npm、Docker Hub 等服務可能不可用",
+    "regionNoticeBodyBoth": "您所在位置：{{location}}。因地區政策與貿易規則，某些模型以及 GitHub、npm、Docker Hub 等服務可能不可用",
     "selectAgent": "選擇 Agent",
     "placeholderDefault": "輸入訊息，使用 @ 加入檔案，使用 / 呼叫 skills",
     "wingmanPlaceholder": "描述你的任務 — Wingman 應該關注什麼？",
@@ -2123,7 +2100,7 @@
       "archiveTeardownRetained": "已封存，但有 {{count}} 個執行環境未能釋放，仍無法刪除。",
       "archiveTeardownQuiesced": "已封存並完全停止，現在可以永久刪除。",
       "dangerZone": "危險區域",
-      "deleteDescription": "永久刪除這個團隊及其所有工作階段與歷史記錄。",
+      "deleteDescription": "永久刪除這個團隊及其所有工作階段與歷史記錄",
       "deleteTeam": "刪除團隊",
       "deleteTitle": "永久刪除這個團隊？",
       "deleteWarning": "這會永久刪除團隊的所有工作階段與歷史記錄，且無法復原。",

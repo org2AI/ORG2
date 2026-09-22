@@ -2,8 +2,8 @@
  * EditorStatusBarLeft
  *
  * Left cluster of the CodeEditor status bar: workspace/repo, worktree,
- * branch + working diff, CI, git sync, session-repo hint, ports and the
- * indexing indicator. Presentational only — every value is passed in.
+ * branch + working diff, CI, git sync, session-repo hint and ports.
+ * Presentational only — every value is passed in.
  */
 import type { TFunction } from "i18next";
 import type { ExtractAtomValue } from "jotai";
@@ -16,23 +16,21 @@ import {
   CodeXmlIcon,
   FolderClosedIcon,
   FolderLibraryIcon,
-  FolderTreeIcon,
   HugeiconsIcon,
   Loading03Icon,
   WorkflowCircle05Icon,
 } from "@src/icons";
 import type { sessionRepoHintAtom } from "@src/store/repo";
 import type { ActiveWorktreeSelection } from "@src/store/workspace";
-import type { IndexingProgress } from "@src/store/workstation/codeEditor/search/indexingProgressAtom";
 
 import { CiStatusMenu } from "../CiStatusMenu";
+import GitInitializationStatusMenu from "../GitInitializationStatusMenu";
 import GitSyncStatusMenu from "../GitSyncStatusMenu";
 import { PortsStatusMenu } from "../PortsStatusMenu";
 import {
   StatusBarButton,
   StatusBarDivider,
   StatusBarLabel,
-  StatusBarSegment,
 } from "../StatusBarBase";
 import { StatusBarTooltip } from "../StatusBarTooltip";
 
@@ -60,13 +58,12 @@ export interface EditorStatusBarLeftProps {
   syncStatusLabel: string | null;
   commitShortSha: string | undefined;
   sessionRepoHint: SessionRepoHint;
-  showIndexingIndicator: boolean;
-  isIndexingActive: boolean;
-  indexingProgress: IndexingProgress;
   onRepoClick?: () => void;
   onBranchClick?: () => void;
   onWorktreeClick?: () => void;
   onSyncClick: () => void;
+  isInitializingGit: boolean;
+  onInitializeGit: () => Promise<void>;
   onFetchClick: () => Promise<void>;
   onPullClick: () => Promise<void>;
   onRebaseClick: () => Promise<void>;
@@ -96,13 +93,12 @@ export const EditorStatusBarLeft: React.FC<EditorStatusBarLeftProps> = ({
   syncStatusLabel,
   commitShortSha,
   sessionRepoHint,
-  showIndexingIndicator,
-  isIndexingActive,
-  indexingProgress,
   onRepoClick,
   onBranchClick,
   onWorktreeClick,
   onSyncClick,
+  isInitializingGit,
+  onInitializeGit,
   onFetchClick,
   onPullClick,
   onRebaseClick,
@@ -111,18 +107,10 @@ export const EditorStatusBarLeft: React.FC<EditorStatusBarLeftProps> = ({
 }) => (
   <>
     {repoName ? (
-      <StatusBarTooltip
-        label={t(
-          "workstation.switchWorkspaceTooltip",
-          "Switch working directory"
-        )}
-      >
+      <StatusBarTooltip label={t("workstation.switchWorkspaceTooltip")}>
         <StatusBarButton
           onClick={onRepoClick}
-          ariaLabel={t(
-            "workstation.switchWorkspaceTooltip",
-            "Switch working directory"
-          )}
+          ariaLabel={t("workstation.switchWorkspaceTooltip")}
           className="max-w-48 min-w-0"
           dataTestId="status-bar-repo-name"
         >
@@ -165,29 +153,17 @@ export const EditorStatusBarLeft: React.FC<EditorStatusBarLeftProps> = ({
     )}
 
     {repoName && isGitInitialized === false && (
-      <StatusBarSegment
-        className="text-text-2"
-        title={t("workstation.notGitInitializedTooltip")}
-      >
-        <HugeiconsIcon
-          icon={WorkflowCircle05Icon}
-          data-icon="git-branch"
-          size={13}
-          className="text-text-2"
-        />
-        <StatusBarLabel emphasis className="text-text-2">
-          {t("workstation.notGitInitialized")}
-        </StatusBarLabel>
-      </StatusBarSegment>
+      <GitInitializationStatusMenu
+        isInitializing={isInitializingGit}
+        onInitialize={onInitializeGit}
+      />
     )}
 
     {showGitControls && branchName && (
-      <StatusBarTooltip
-        label={t("workstation.switchWorktreeTooltip", "Switch worktree")}
-      >
+      <StatusBarTooltip label={t("workstation.switchWorktreeTooltip")}>
         <StatusBarButton
           onClick={onWorktreeClick}
-          ariaLabel={t("workstation.switchWorktreeTooltip", "Switch worktree")}
+          ariaLabel={t("workstation.switchWorktreeTooltip")}
           className="max-w-56 min-w-0"
           dataTestId="status-bar-worktree"
         >
@@ -215,7 +191,7 @@ export const EditorStatusBarLeft: React.FC<EditorStatusBarLeftProps> = ({
             ? t("workstation.branchTooltipSwitching", {
                 branch: branchName,
               })
-            : t("workstation.switchBranchTooltip", "Switch branch")
+            : t("workstation.switchBranchTooltip")
         }
       >
         <StatusBarButton
@@ -227,7 +203,7 @@ export const EditorStatusBarLeft: React.FC<EditorStatusBarLeftProps> = ({
               ? t("workstation.branchTooltipSwitching", {
                   branch: branchName,
                 })
-              : t("workstation.switchBranchTooltip", "Switch branch")
+              : t("workstation.switchBranchTooltip")
           }
         >
           {checkoutLoading ? (
@@ -315,55 +291,6 @@ export const EditorStatusBarLeft: React.FC<EditorStatusBarLeftProps> = ({
 
     <StatusBarDivider orientation="vertical" />
     <PortsStatusMenu />
-
-    {showIndexingIndicator && (
-      <StatusBarSegment
-        className="text-text-1"
-        title={
-          indexingProgress.status === "embedding"
-            ? indexingProgress.progress > 0
-              ? t("workstation.embeddingProgressWithPercent", {
-                  count: indexingProgress.chunksEmbedded,
-                  percent: indexingProgress.progress,
-                })
-              : t("workstation.embeddingProgress", {
-                  count: indexingProgress.chunksEmbedded,
-                })
-            : indexingProgress.filesTotal > 0
-              ? indexingProgress.currentFile
-                ? t("workstation.indexingProgressWithFile", {
-                    processed: indexingProgress.filesProcessed,
-                    total: indexingProgress.filesTotal,
-                    percent: indexingProgress.progress,
-                    file: indexingProgress.currentFile,
-                  })
-                : t("workstation.indexingProgress", {
-                    processed: indexingProgress.filesProcessed,
-                    total: indexingProgress.filesTotal,
-                    percent: indexingProgress.progress,
-                  })
-              : t("workstation.scanningFiles")
-        }
-      >
-        <HugeiconsIcon
-          icon={FolderTreeIcon}
-          data-icon="folder-tree"
-          size={13}
-          className={isIndexingActive ? "animate-pulse" : ""}
-        />
-        <StatusBarLabel emphasis>
-          {indexingProgress.status === "embedding"
-            ? indexingProgress.progress > 0
-              ? t("workstation.embeddingShort", {
-                  percent: indexingProgress.progress,
-                })
-              : `${t("workstation.embeddingLabel")}...`
-            : indexingProgress.filesTotal > 0
-              ? `${t("labels.indexing")} ${indexingProgress.filesProcessed}/${indexingProgress.filesTotal}`
-              : `${t("labels.indexing")}...`}
-        </StatusBarLabel>
-      </StatusBarSegment>
-    )}
   </>
 );
 

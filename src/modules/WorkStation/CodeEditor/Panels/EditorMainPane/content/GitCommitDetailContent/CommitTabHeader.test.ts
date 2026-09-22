@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 
 import type { CommitDiffResult } from "@src/api/http/git/types";
-import { FileHeaderToolbarContext } from "@src/modules/shared/components/FileHeader/FileHeaderToolbarContext";
+import { FileHeaderToolbarContext } from "@src/features/FileHeader/FileHeaderToolbarContext";
 import { diffViewModeAtom } from "@src/store/workstation/codeEditor";
 
 import { CommitTabHeader } from "./CommitTabHeader";

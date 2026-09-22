@@ -178,8 +178,6 @@ const FloatingReplayContainer: React.FC = memo(() => {
         housekeeper.features.stepExplain &&
         !miniCPMStepExplanationVisible ? (
           <Button
-            variant="secondary"
-            size="default"
             shape="circle"
             iconOnly
             icon={
@@ -199,8 +197,6 @@ const FloatingReplayContainer: React.FC = memo(() => {
         ) : null}
         {!chatVisible ? (
           <Button
-            variant="secondary"
-            size="default"
             shape="circle"
             iconOnly
             icon={

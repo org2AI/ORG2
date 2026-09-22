@@ -20,9 +20,9 @@ import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
 import Message from "@src/components/Message";
 import Tooltip from "@src/components/Tooltip";
+import { PANEL_HEADER_TOKENS } from "@src/components/layout/blocks/PanelHeader/tokens";
 import { createLogger } from "@src/hooks/logger";
 import { HugeiconsIcon, InformationCircleIcon } from "@src/icons";
-import { PANEL_HEADER_TOKENS } from "@src/modules/shared/layouts/blocks/PanelHeader/tokens";
 import { DEFAULT_SESSION_ORG_ID } from "@src/store/session";
 import type { Session } from "@src/store/session/sessionAtom/types";
 
@@ -209,6 +209,7 @@ const MoveToOrgDialog: React.FC<MoveToOrgDialogProps> = ({
       }
       headerActions={
         <Tooltip
+          kind="button"
           content={t("cloud.moveToOrg.hint")}
           position="bottom"
           style={{ zIndex: MODAL_SELECT_Z_INDEX }}
@@ -216,7 +217,6 @@ const MoveToOrgDialog: React.FC<MoveToOrgDialogProps> = ({
           <Button
             {...PANEL_HEADER_TOKENS.actionButton}
             aria-label={t("common:windowChrome.menus.help")}
-            htmlType="button"
             icon={
               <HugeiconsIcon
                 icon={InformationCircleIcon}

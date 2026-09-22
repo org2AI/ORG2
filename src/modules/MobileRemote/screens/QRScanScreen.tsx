@@ -91,8 +91,10 @@ export function QRScanScreen({ onBack, onAcceptPairing }: QRScanScreenProps) {
   return (
     <>
       <MobileTopBar title={t("pairing.scanTitle")} onBack={onBack} />
-      <div className="flex flex-1 flex-col px-4 py-4">
-        <p className="mb-3 text-sm text-text-2">{t("pairing.scanHint")}</p>
+      <div className="mobile-flow-screen flex flex-1 flex-col px-4 py-4">
+        <p className="mobile-type-secondary mb-3 text-text-2">
+          {t("pairing.scanHint")}
+        </p>
         {scanning ? (
           <div className="mb-4 flex flex-col gap-3">
             <video
@@ -103,7 +105,7 @@ export function QRScanScreen({ onBack, onAcceptPairing }: QRScanScreenProps) {
               aria-label={t("pairing.cameraPreview")}
               className="aspect-square w-full rounded-xl bg-black object-cover"
             />
-            <p role="status" className="text-sm text-text-2">
+            <p role="status" className="mobile-type-secondary text-text-2">
               {t("pairing.scanning")}
             </p>
             <MobileActionButton
@@ -129,6 +131,11 @@ export function QRScanScreen({ onBack, onAcceptPairing }: QRScanScreenProps) {
           </div>
         )}
         <Textarea
+          preventMobileFocusZoom
+          textareaStyle={{
+            fontSize: "var(--mobile-type-body-size)",
+            lineHeight: "var(--mobile-type-body-leading)",
+          }}
           disabled={scanning}
           value={payload}
           onChange={(value) => {
@@ -140,7 +147,12 @@ export function QRScanScreen({ onBack, onAcceptPairing }: QRScanScreenProps) {
           aria-label={t("pairing.urlPlaceholder")}
         />
         {errorKey ? (
-          <PageNotice type="danger" role="alert" className="mt-2">
+          <PageNotice
+            bodyClassName="mobile-type-secondary"
+            type="danger"
+            role="alert"
+            className="mt-2"
+          >
             {t(errorKey)}
           </PageNotice>
         ) : null}

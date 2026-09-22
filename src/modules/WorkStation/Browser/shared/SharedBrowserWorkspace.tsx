@@ -32,7 +32,6 @@ export interface SharedBrowserWorkspaceProps {
   devToolsPaneCollapsed?: boolean;
   publishUrlBarToHost?: WorkstationTabHeaderHost;
   respectModalBlocking?: boolean;
-  hideTabBar?: boolean;
   hideWebviews?: boolean;
   inlineUrlBar?: boolean;
   isInspectMode?: boolean;
@@ -53,7 +52,6 @@ export const SharedBrowserWorkspace: FC<SharedBrowserWorkspaceProps> = ({
   devToolsPaneCollapsed = false,
   publishUrlBarToHost,
   respectModalBlocking = false,
-  hideTabBar = true,
   hideWebviews = false,
   inlineUrlBar = false,
   isInspectMode = false,
@@ -94,7 +92,6 @@ export const SharedBrowserWorkspace: FC<SharedBrowserWorkspaceProps> = ({
             onOpenNativeDevTools={onOpenNativeDevTools}
             onToggleDevToolsPane={onToggleDevToolsPane}
             devToolsPaneCollapsed={devToolsPaneCollapsed}
-            hideTabBar={hideTabBar}
             hideWebviews={!active || hideWebviews}
             publishUrlBarToHost={publishUrlBarToHost}
             respectModalBlocking={respectModalBlocking}

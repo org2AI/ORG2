@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  effectiveChatPanelMaximizedAtom,
+  toggleActiveChatPanelMaximizedAtom,
+} from "@src/store/chatPanel/chatPanelLayoutAtoms";
 import { activeChatPanelTabHistoryAtom } from "@src/store/chatPanel/chatPanelTabNavigationAtoms";
 import { openCreateTargetInChatPanelStartPageAtom } from "@src/store/chatPanel/chatPanelTabOpen/startPage";
 import {
@@ -30,6 +34,7 @@ import {
   syncActiveChatPanelTabStateAtom,
 } from "@src/store/chatPanel/chatPanelTabsAtom";
 import {
+  activeChatPanelSessionIdAtom,
   activeChatPanelTabAtom,
   activeWorkManagementSectionAtom,
   chatPanelTabsAtom,
@@ -52,7 +57,6 @@ import {
   activeChatPanelSurfaceAtom,
   chatPanelMaximizedAtom,
   resetChatPanelSessionSurfaceAtom,
-  toggleChatPanelMaximizedAtom,
 } from "@src/store/ui/chatPanel/surfaceAtoms";
 import {
   kanbanDetailPanelVisibleAtom,
@@ -95,6 +99,7 @@ async function loadChatPanelTabAtoms() {
   const store = createInstrumentedStore();
 
   return {
+    activeChatPanelSessionIdAtom,
     activateChatPanelTabAtom,
     activeChatPanelTabAtom,
     activeChatPanelTabHistoryAtom,
@@ -685,8 +690,10 @@ describe("closeWorkItemChatPanelTabAtom", () => {
       },
     } as never);
     expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+    expect(store.get(effectiveChatPanelMaximizedAtom)).toBe(true);
 
     store.set(activateChatPanelTabAtom, sessionTabId);
+    expect(store.get(effectiveChatPanelMaximizedAtom)).toBe(false);
     expect(store.get(chatPanelMaximizedAtom)).toBe(false);
   });
 });
@@ -774,7 +781,7 @@ describe("openWorkManagementChatPanelTabAtom", () => {
     vi.useRealTimers();
   });
 
-  it("opens Kanban as a singleton pane-independent tab", async () => {
+  it("opens Kanban as a singleton Station-excluded tab", async () => {
     const {
       chatPanelMaximizedAtom,
       chatPanelTabsAtom,
@@ -794,12 +801,13 @@ describe("openWorkManagementChatPanelTabAtom", () => {
         .tabs.filter((tab) => tab.type === "work-management")
     ).toHaveLength(1);
     expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+    expect(store.get(effectiveChatPanelMaximizedAtom)).toBe(true);
     expect(store.get(activeWorkManagementSectionAtom)).toBe(
       WORK_MANAGEMENT_SECTION.KANBAN
     );
   });
 
-  it("lets Kanban share the Station and toggle pane maximization", async () => {
+  it("keeps the Station toggle disabled for Kanban", async () => {
     const {
       chatPanelMaximizedAtom,
       openWorkManagementChatPanelTabAtom,
@@ -808,12 +816,14 @@ describe("openWorkManagementChatPanelTabAtom", () => {
     } = await loadChatPanelTabAtoms();
     store.set(openWorkManagementChatPanelTabAtom, {});
     store.set(chatPanelMaximizedAtom, false);
-    store.set(toggleChatPanelMaximizedAtom);
-    expect(store.get(chatPanelMaximizedAtom)).toBe(true);
-    store.set(syncActiveChatPanelTabStateAtom);
-    expect(store.get(chatPanelMaximizedAtom)).toBe(true);
-    store.set(toggleChatPanelMaximizedAtom);
+    expect(store.set(toggleActiveChatPanelMaximizedAtom)).toBe(false);
     expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+
+    // Reconciliation leaves the user's preference untouched; the effective
+    // layout remains full-screen while Kanban owns the workbench.
+    store.set(syncActiveChatPanelTabStateAtom);
+    expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+    expect(store.get(effectiveChatPanelMaximizedAtom)).toBe(true);
   });
 
   it("restores the session's prior full-screen state after leaving Kanban", async () => {
@@ -1111,7 +1121,7 @@ describe("ChatPanel navigation tabs", () => {
     ).toHaveLength(1);
   });
 
-  it("opens Runtime as its own singleton pane-independent tab", async () => {
+  it("opens Runtime as its own singleton Station-excluded tab", async () => {
     const {
       chatPanelMaximizedAtom,
       chatPanelTabsAtom,
@@ -1223,10 +1233,13 @@ describe("ChatPanel navigation tabs", () => {
       title: "Manage ORG",
     });
 
-    const expectStationLayoutUnchanged = () => {
-      expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+    const expectStationUnavailable = () => {
+      expect(store.get(effectiveChatPanelMaximizedAtom)).toBe(true);
+      const savedMaximized = store.get(chatPanelMaximizedAtom);
+      expect(store.set(toggleActiveChatPanelMaximizedAtom)).toBe(false);
+      expect(store.get(chatPanelMaximizedAtom)).toBe(savedMaximized);
     };
-    expectStationLayoutUnchanged();
+    expectStationUnavailable();
 
     expect(store.get(chatPanelTabsAtom)).toMatchObject({
       activeTabId: managementTabId,
@@ -1288,7 +1301,7 @@ describe("ChatPanel navigation tabs", () => {
       title: "Manage ORG",
     });
     expect(switchedTabId).toBe(managementTabId);
-    expectStationLayoutUnchanged();
+    expectStationUnavailable();
     expect(
       store
         .get(chatPanelTabsAtom)
@@ -1438,6 +1451,7 @@ describe("openSessionInNewChatTabAtom", () => {
 
   it("opens a linked tab and switches the WorkStation session", async () => {
     const {
+      activeChatPanelSessionIdAtom,
       activeSessionIdAtom,
       chatPanelTabsAtom,
       openSessionInNewChatTabAtom,
@@ -1466,6 +1480,12 @@ describe("openSessionInNewChatTabAtom", () => {
       repoPath: "/repos/orgii",
     });
     expect(store.get(activeSessionIdAtom)).toBe("session-target");
+    expect(store.get(activeChatPanelSessionIdAtom)).toBe("session-target");
+
+    // Nested chat surfaces can claim the singleton pipeline without changing
+    // which tab is selected. Completion-message routing follows the tab.
+    store.set(activeSessionIdAtom, "nested-session");
+    expect(store.get(activeChatPanelSessionIdAtom)).toBe("session-target");
   });
 
   it("activates a linked session tab through the shared activation action", async () => {

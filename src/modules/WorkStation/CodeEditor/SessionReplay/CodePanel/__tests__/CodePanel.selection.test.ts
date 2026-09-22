@@ -30,7 +30,7 @@ vi.mock("@src/features/CodeViewer/VirtualizedModernDiff", () => ({
     React.createElement("div", { "data-testid": "single-diff" }),
 }));
 
-vi.mock("@src/modules/shared/components/FileHeader", () => ({
+vi.mock("@src/features/FileHeader", () => ({
   FileHeader: () => React.createElement("header"),
   default: () => React.createElement("header"),
 }));
@@ -45,16 +45,19 @@ vi.mock("@src/modules/WorkStation/shared/SelectedTextAddToChat", () => ({
   SelectedTextAddToChat: ({
     children,
     displayName,
+    filePath,
     scopeKey,
   }: {
     children?: React.ReactNode;
     displayName: string;
+    filePath?: string;
     scopeKey?: string | number;
   }) =>
     React.createElement(
       "div",
       {
         "data-selected-text-owner": displayName,
+        "data-selected-file-path": filePath,
         "data-selection-scope": scopeKey,
       },
       children
@@ -119,6 +122,8 @@ describe("CodePanel selected-text ownership", () => {
     const markup = renderPanel(makeWriteOperation());
 
     expect(markup).toContain('data-selected-text-owner="example.ts"');
+    // The path makes a selection a file pill instead of a terminal snippet.
+    expect(markup).toContain('data-selected-file-path="/repo/src/example.ts"');
     expect(markup).toContain('data-selection-scope="event-1"');
     expect(markup).toContain('data-testid="single-diff"');
   });
@@ -131,6 +136,7 @@ describe("CodePanel selected-text ownership", () => {
     const markup = renderPanel(current);
 
     expect(markup).toContain('data-selected-text-owner="example.ts"');
+    expect(markup).toContain('data-selected-file-path="/repo/src/example.ts"');
     expect(markup).toContain('data-selection-scope="event-1"');
     expect(markup).toContain('data-testid="combined-diff"');
   });

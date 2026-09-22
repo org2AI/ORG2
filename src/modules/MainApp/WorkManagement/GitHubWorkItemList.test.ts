@@ -41,9 +41,9 @@ describe("GitHubWorkItemToolbarActions", () => {
     expect(markup).not.toContain('data-icon="plus"');
     expect(markup).toContain('width="16"');
     expect(markup).toContain('height="16"');
-    expect(markup.match(/border-0 bg-transparent text-text-2/g)).toHaveLength(
-      2
-    );
+    expect(
+      markup.match(/btn:border-0 btn:bg-transparent btn:text-text-2/g)
+    ).toHaveLength(2);
     expect(markup.match(/height:28px/g)).toHaveLength(2);
   });
 });

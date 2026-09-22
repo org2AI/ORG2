@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { seedSidebarCloudScope } from "@src/features/Org2Cloud/sidebarCloudScope.testUtils";
+
 import {
   AUTH,
   CUSTOM_SUPABASE_URL,
@@ -26,7 +28,6 @@ const {
   org2CloudOrgsAtom,
   org2CloudRepoScopesAtom,
   org2CloudSyncEnabledAtom,
-  sidebarActiveCloudOrgIdAtom,
   Org2CloudProjectsError,
   Org2CloudSyncEngine,
   Org2CloudSyncError,
@@ -61,13 +62,14 @@ describe("Org2CloudSyncEngine project and endpoint synchronization", () => {
       })
     );
     store.set(org2CloudAuthAtom, { ...AUTH, supabaseUrl: CUSTOM_SUPABASE_URL });
+    seedSidebarCloudScope(store, "corg-1");
     engine.stop();
     engine = new Org2CloudSyncEngine(client, projectsClient, bridge, probe);
     engine.start(store);
   }
 
   it("drives the ProjectSyncChannel per org: full listing first, cursor delta after", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+    seedSidebarCloudScope(store, "corg-1");
     projectsClient.listOrgCollabState.mockResolvedValue({
       serverTime: "2026-07-01T12:00:00.000Z",
       projects: [
@@ -118,7 +120,7 @@ describe("Org2CloudSyncEngine project and endpoint synchronization", () => {
   });
 
   it("never polls inactive projects and pulls only after an explicit invalidation", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, null);
+    seedSidebarCloudScope(store, null);
     await engine.runSyncPass();
     projectsClient.listOrgCollabState.mockClear();
     client.getOrgRepoScopes.mockClear();
@@ -343,7 +345,7 @@ describe("Org2CloudSyncEngine project and endpoint synchronization", () => {
   });
 
   it("keeps project tombstones draining while session replay is over quota", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+    seedSidebarCloudScope(store, "corg-1");
     client.rewriteSessionEvents.mockRejectedValue(
       new Org2CloudSyncError("ORG2_QUOTA_EXCEEDED", 403)
     );
@@ -472,7 +474,7 @@ describe("Org2CloudSyncEngine project and endpoint synchronization", () => {
   });
 
   it("backs off + toasts when ORG2_SYNC_DISABLED surfaces through the channel's PUSH path", async () => {
-    store.set(sidebarActiveCloudOrgIdAtom, "corg-1");
+    seedSidebarCloudScope(store, "corg-1");
     // The listing RPC the engine awaits directly is UNGATED (0013: only
     // assert_org_member), so the entitlement gate can only fire inside the
     // channel's per-row pushes — which ack failures instead of throwing.

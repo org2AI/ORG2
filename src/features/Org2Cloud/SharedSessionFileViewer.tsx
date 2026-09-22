@@ -148,12 +148,9 @@ export default function SharedSessionFileViewer({
           getCloudEndpoint().supabaseUrl === reference.endpoint
         );
       });
-      if (name)
-        Message.success(t("sharedFile.downloaded", "Saved to Downloads"));
+      if (name) Message.success(t("sharedFile.downloaded"));
     } catch {
-      Message.error(
-        t("sharedFile.downloadError", "Unable to save to Downloads")
-      );
+      Message.error(t("sharedFile.downloadError"));
     } finally {
       setSaving(false);
     }
@@ -161,18 +158,13 @@ export default function SharedSessionFileViewer({
   return (
     <Modal
       visible
-      title={currentFile?.name ?? t("sharedFile.title", "Shared file")}
+      title={currentFile?.name ?? t("sharedFile.title")}
       onCancel={onClose}
       footer={null}
     >
       <div className="flex flex-col gap-3">
         {error ? (
-          <p role="alert">
-            {t(
-              "sharedFile.error",
-              "Unable to open this file. Check your account, server, and session access, then reopen the link."
-            )}
-          </p>
+          <p role="alert">{t("sharedFile.error")}</p>
         ) : currentFile ? (
           <>
             {activeMedia ? (
@@ -195,23 +187,18 @@ export default function SharedSessionFileViewer({
                 {preview}
               </pre>
             ) : (
-              <p>
-                {t(
-                  "sharedFile.downloadPreview",
-                  "Download this file to view its contents"
-                )}
-              </p>
+              <p>{t("sharedFile.downloadPreview")}</p>
             )}
             <Button
               data-testid="shared-file-download"
               loading={saving}
               onClick={() => void download()}
             >
-              {t("sharedFile.download", "Download")}
+              {t("sharedFile.download")}
             </Button>
           </>
         ) : (
-          <p role="status">{t("sharedFile.loading", "Loading shared file…")}</p>
+          <p role="status">{t("sharedFile.loading")}</p>
         )}
       </div>
     </Modal>

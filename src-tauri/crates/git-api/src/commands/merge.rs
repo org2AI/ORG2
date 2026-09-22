@@ -1,4 +1,4 @@
-use super::utils::{get_conflicted_files, run_git};
+use super::utils::{ensure_git_operand, get_conflicted_files, run_git};
 use crate::types::*;
 /**
  * Merge, Rebase, Cherry-pick, Revert, and Reset Operations
@@ -23,6 +23,7 @@ pub fn merge_branch(
     no_ff: bool,
     message: Option<&str>,
 ) -> Result<GitMergeResult, String> {
+    ensure_git_operand(branch, "branch")?;
     let mut args = vec!["merge"];
 
     if no_ff {
@@ -112,6 +113,12 @@ pub fn rebase_branch(
     upstream: &str,
     branch: Option<&str>,
 ) -> Result<GitRebaseResult, String> {
+    // `git rebase` accepts `--exec=<cmd>`, so an option-shaped value here would
+    // run an arbitrary program, not just change how the rebase behaves.
+    ensure_git_operand(upstream, "upstream")?;
+    if let Some(branch) = branch {
+        ensure_git_operand(branch, "branch")?;
+    }
     let args = rebase_args(upstream, branch);
 
     let output = run_git(repo_path, &args)?;
@@ -207,6 +214,7 @@ pub fn cherry_pick_commit(
     commit: &str,
     no_commit: bool,
 ) -> Result<GitCherryPickResult, String> {
+    ensure_git_operand(commit, "commit")?;
     let mut args = vec!["cherry-pick"];
 
     if no_commit {
@@ -281,6 +289,7 @@ pub fn revert_commit(
     commit: &str,
     no_commit: bool,
 ) -> Result<GitRevertResult, String> {
+    ensure_git_operand(commit, "commit")?;
     let mut args = vec!["revert"];
 
     if no_commit {
@@ -349,15 +358,30 @@ pub fn revert_continue(repo_path: &Path) -> Result<GitRevertResult, String> {
 // Reset Operations
 // ============================================
 
+/// Map a request's reset mode onto its git flag. The mode is interpolated into
+/// an option, so anything outside this allowlist would let the caller pick an
+/// arbitrary `git reset` option.
+pub(crate) fn reset_mode_flag(mode: &str) -> Result<&'static str, String> {
+    match mode {
+        "soft" => Ok("--soft"),
+        "mixed" => Ok("--mixed"),
+        "hard" => Ok("--hard"),
+        _ => Err(format!(
+            "Invalid reset mode: {mode}. Use 'soft', 'mixed', or 'hard'."
+        )),
+    }
+}
+
 /// Reset HEAD
 pub fn reset_head(
     repo_path: &Path,
     target_ref: &str,
     mode: &str,
 ) -> Result<GitResetResult, String> {
-    let mode_flag = format!("--{}", mode);
+    let mode_flag = reset_mode_flag(mode)?;
+    ensure_git_operand(target_ref, "ref")?;
 
-    let output = run_git(repo_path, &["reset", &mode_flag, target_ref])?;
+    let output = run_git(repo_path, &["reset", mode_flag, target_ref])?;
 
     let message = if output.status.success() {
         String::from_utf8_lossy(&output.stdout).to_string()
@@ -377,11 +401,8 @@ pub fn reset_file(
     file_path: &str,
     target_ref: &str,
 ) -> Result<GitResetResult, String> {
-    let output = run_git(repo_path, &["checkout", target_ref, "--", file_path])?;
-
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
+    ensure_git_operand(target_ref, "ref")?;
+    super::utils::run_git_path_operation(repo_path, &["checkout", target_ref], &[file_path])?;
 
     Ok(GitResetResult {
         success: true,

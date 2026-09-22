@@ -31,8 +31,6 @@ interface SpotlightInputProps {
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   /** Placeholder text */
   placeholder?: string;
-  /** Loading state */
-  isLoading?: boolean;
   /** Static glyph to display (defaults to Search); use `iconElement` for arbitrary JSX */
   icon?: IconSvgElement;
   /** Custom icon element (overrides icon prop) */
@@ -50,7 +48,6 @@ export const SpotlightInput: React.FC<SpotlightInputProps> = ({
   ariaLabel,
   onKeyDown,
   placeholder = "Search...",
-  isLoading: _isLoading = false,
   icon: IconComponent = Search01Icon,
   iconElement,
   trailingSlot,
@@ -115,12 +112,10 @@ export const SpotlightInput: React.FC<SpotlightInputProps> = ({
         {value ? (
           <Button
             variant="tertiary"
-            appearance="soft-no-drop"
             size="small"
             shape="round"
             iconOnly
             icon={<HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />}
-            htmlType="button"
             className="shrink-0 hover:bg-fill-2 hover:text-text-1"
             aria-label={t("common:tooltips.clearSearch")}
             onClick={handleResetSearch}
@@ -130,5 +125,3 @@ export const SpotlightInput: React.FC<SpotlightInputProps> = ({
     </div>
   );
 };
-
-export default SpotlightInput;

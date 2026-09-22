@@ -48,6 +48,7 @@
 | 15  | `editable={false}`                               | Render with `editable={false}`; try Cmd+X, paste.                    | Browser blocks input; no state mutation.                    |
 | 16  | Paste prose containing a URL                     | Paste `see https://example.com next`.                                | Entire payload stays plain text; no partial link pill.      |
 | 17  | Paste unsupported or grammar-breaking URL        | Paste `ftp://…`, a credential URL, or a URL containing `[` / `]`.    | Payload stays plain text; no link pill is created.          |
+| 18  | Caret and undo after cut                         | Select text mid-line; press Cmd+X; type; then press Cmd+Z twice.     | Caret stays at the cut point; Cmd+Z restores the cut text.  |
 
 ## Error / Degraded States
 

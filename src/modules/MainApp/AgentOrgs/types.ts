@@ -8,6 +8,7 @@
  * comes from the Rust backend via `get_available_agents`.
  */
 import type {
+  CliAgentType,
   ModelType,
   NativeHarnessType,
 } from "@src/api/tauri/rpc/schemas/validation";
@@ -260,6 +261,9 @@ export type PlanApprovalPolicy = (typeof PLAN_APPROVAL_POLICIES)[number];
 export const DEFAULT_PLAN_APPROVAL_POLICY: PlanApprovalPolicy = "coordinator";
 
 export interface OrgMemberRuntimeConfig {
+  credentialSource?: string;
+  marketProfileId?: string;
+  cliAgentType?: CliAgentType;
   keySource?: KeySource;
   accountId?: string;
   model?: string;

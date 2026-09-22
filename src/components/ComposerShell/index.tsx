@@ -17,6 +17,7 @@
  */
 import React, { forwardRef } from "react";
 
+import { placeCaretAtEnd } from "@src/components/ComposerInput/selection";
 import { INPUT_AREA } from "@src/config/inputAreaTokens";
 
 type ComposerShellVariant =
@@ -103,11 +104,15 @@ function focusComposerFromBackground(event: React.MouseEvent<HTMLDivElement>) {
 
   // Only fill the gaps around ComposerInput; clicks inside the editor retain
   // native caret placement, and portaled controls must not steal focus back.
-  shell
-    .querySelector<HTMLElement>(
-      '.composer-input-content[contenteditable="true"]'
-    )
-    ?.focus({ preventScroll: true });
+  const editor = shell.querySelector<HTMLElement>(
+    '.composer-input-content[contenteditable="true"]'
+  );
+  if (!editor) return;
+  editor.focus({ preventScroll: true });
+  // A bare focus() drops the caret at the very start of the text, in front of
+  // everything already typed. A click beside the editor means "keep writing",
+  // so put it at the end, the way focusing the composer does everywhere else.
+  placeCaretAtEnd(editor);
 }
 
 const ComposerShell = forwardRef<HTMLDivElement, ComposerShellProps>(
@@ -129,6 +134,7 @@ const ComposerShell = forwardRef<HTMLDivElement, ComposerShellProps>(
     return (
       <div
         ref={ref}
+        data-composer-focus-scope
         className={`relative flex w-full ${variant === "comment" ? "flex-row items-end" : "flex-col"} ${SHELL_TRANSITION_CLASSES} ${VARIANT_INTERACTION_CLASSES[variant]} ${VARIANT_CLASSES[variant]} ${VARIANT_BG_CLASS[variant]} ${className}`}
         style={style}
         onClick={focusComposerFromBackground}

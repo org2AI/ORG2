@@ -68,6 +68,9 @@ pub fn load_codex_image_from_path(
     original_ref: &str,
 ) -> Result<Option<String>, String> {
     use std::io::{BufRead, BufReader};
+    if turn_id.starts_with(super::output_images::OUTPUT_IMAGE_PREFIX) {
+        return super::output_images::load_output_image(path, turn_id, original_ref);
+    }
     let offset = super::catalog::codex_lazy_turn_offset(turn_id)
         .ok_or_else(|| "Invalid Codex image turn id".to_string())?;
     let mut file = File::open(path).map_err(|err| format!("Open Codex image source: {err}"))?;
@@ -84,6 +87,14 @@ pub fn load_codex_image_from_path(
         serde_json::from_str(&line).map_err(|err| format!("Parse Codex image source: {err}"))?;
     let message = super::messages::user_message_from_line(&parsed)
         .ok_or_else(|| "Codex image turn no longer points to a user message".to_string())?;
+    if let Some(position) = original_ref.strip_prefix(super::sources::INLINE_IMAGE_REF_PREFIX) {
+        return Ok(position
+            .parse::<usize>()
+            .ok()
+            .and_then(|position| message.image_refs.get(position))
+            .filter(|image| image.starts_with("data:image/"))
+            .cloned());
+    }
     let index = message
         .image_refs
         .iter()

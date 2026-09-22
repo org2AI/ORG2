@@ -85,8 +85,9 @@ describe("CollapsedInlineRow", () => {
     const active = container.querySelector(
       '[data-testid="active-section-pill"]'
     );
-    expect(active?.classList.contains("bg-surface-hover!")).toBe(true);
+    // Selected pills only recolor the border; surface and label stay idle.
+    expectIdleSurface(active);
     expect(active?.classList.contains("border-primary-6!")).toBe(true);
-    expect(active?.classList.contains("text-primary-6!")).toBe(true);
+    expect(active?.classList.contains("text-primary-6!")).toBe(false);
   });
 });

@@ -27,7 +27,7 @@ import {
   getModelAliasIcon,
   useModelAliasRegistryVersion,
 } from "@src/hooks/models/modelAliasRegistry";
-import { BoxIcon, HugeiconsIcon } from "@src/icons";
+import { BoxIcon, Clock04Icon, HugeiconsIcon } from "@src/icons";
 
 import {
   ICON_MAP,
@@ -35,6 +35,7 @@ import {
   THEMEABLE_ICONS,
   getIconProviderFromModelName,
   getIconProviderFromType,
+  isGenericTierModelName,
 } from "./config";
 
 // Re-export types and functions
@@ -112,6 +113,10 @@ const ModelIcon: React.FC<ModelIconProps> = memo(
       if (modelName) {
         const fromName = getIconProviderFromModelName(modelName, agentType);
         if (fromName !== "unknown") return fromName;
+        // A routing tier ("default", "auto") names no model. Borrowing the
+        // agent's brand mark here would claim a specific model is in use, so
+        // these fall through to the neutral placeholder below instead.
+        if (isGenericTierModelName(modelName)) return "unknown";
       }
 
       if (agentType) {
@@ -152,12 +157,16 @@ const ModelIcon: React.FC<ModelIconProps> = memo(
       if (fallback) {
         return <>{fallback}</>;
       }
-      // Default fallback: Box icon
+      // Routing tiers get the "decided at launch" clock; a model name we simply
+      // do not recognize keeps the generic box.
+      const isGenericTier = modelName
+        ? isGenericTierModelName(modelName)
+        : false;
       const fallbackColor = isSelected ? "text-primary-6" : "text-text-2";
       return (
         <HugeiconsIcon
-          icon={BoxIcon}
-          data-icon="box"
+          icon={isGenericTier ? Clock04Icon : BoxIcon}
+          data-icon={isGenericTier ? "clock-04" : "box"}
           size={numericSize}
           className={`${fallbackColor} ${className}`.trim()}
           style={style}

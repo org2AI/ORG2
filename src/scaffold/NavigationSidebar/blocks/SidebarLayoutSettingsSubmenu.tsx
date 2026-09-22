@@ -2,17 +2,26 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
+import { MenuSegmentedRow } from "@src/components/Dropdown/MenuControlRows";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
-import SegmentedTextPill from "@src/components/SegmentedTextPill";
-import Switch from "@src/components/Switch";
+import {
+  SIDE_POSITION_OPTIONS,
+  SPOTLIGHT_PLACEMENT_OPTIONS,
+  localizeMenuOptions,
+} from "@src/config/appearance/quickMenuOptions";
+import {
+  CHAT_SPLIT_RATIO_LABELS,
+  CHAT_SPLIT_RATIO_VALUES,
+  type ChatSplitRatio,
+} from "@src/engines/ChatPanel/config";
 import {
   type ModelPickerStyle,
-  chatTurnPaginationEnabledAtom,
   modelPickerStyleAtom,
 } from "@src/store/ui/chatPanel/displayPrefsAtoms";
+import { chatSplitRatioAtom } from "@src/store/ui/chatPanel/splitRatioAtoms";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
@@ -38,52 +47,10 @@ interface SidebarLayoutSettingsSubmenuProps {
 type ChatPanelPosition = "left" | "right";
 type WorkstationSidebarPosition = "left" | "right";
 
-function SegmentedControlRow<TValue extends string>({
-  label,
+const chatSplitRatioOptions = CHAT_SPLIT_RATIO_VALUES.map((value) => ({
   value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: TValue;
-  options: readonly { value: TValue; label: string }[];
-  onChange: (value: TValue) => void;
-}) {
-  return (
-    <div className={DROPDOWN_CLASSES.menuControlItem}>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <SegmentedTextPill
-        ariaLabel={label}
-        size="small"
-        value={value}
-        options={[...options]}
-        onChange={onChange}
-      />
-    </div>
-  );
-}
-
-function SwitchControlRow({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <div className={DROPDOWN_CLASSES.menuControlItem}>
-      <span>{label}</span>
-      <Switch
-        checked={checked}
-        onCheckedChange={onChange}
-        size="small"
-        ariaLabel={label}
-      />
-    </div>
-  );
-}
+  label: CHAT_SPLIT_RATIO_LABELS[value],
+}));
 
 export const SidebarLayoutSettingsSubmenu: React.FC<SidebarLayoutSettingsSubmenuProps> =
   React.memo(({ panelRef, position, onPointerDown, onMouseDown }) => {
@@ -99,25 +66,14 @@ export const SidebarLayoutSettingsSubmenu: React.FC<SidebarLayoutSettingsSubmenu
     const [chatPanelPosition, setChatPanelPosition] = useAtom(
       chatPanelPositionAtom
     );
+    const [chatSplitRatio, setChatSplitRatio] = useAtom(chatSplitRatioAtom);
     const [modelPickerStyle, setModelPickerStyle] =
       useAtom(modelPickerStyleAtom);
-    const [chatTurnPaginationEnabled, setChatTurnPaginationEnabled] = useAtom(
-      chatTurnPaginationEnabledAtom
+    const chatPositionOptions = localizeMenuOptions(SIDE_POSITION_OPTIONS, t);
+    const spotlightPlacementOptions = localizeMenuOptions(
+      SPOTLIGHT_PLACEMENT_OPTIONS,
+      tSettings
     );
-    const chatPositionOptions = [
-      { value: "left", label: t("layoutSettings.left") },
-      { value: "right", label: t("layoutSettings.right") },
-    ] as const;
-    const spotlightPlacementOptions = [
-      {
-        value: "top",
-        label: tSettings("general.spotlightPlacementOptions.top"),
-      },
-      {
-        value: "center",
-        label: tSettings("general.spotlightPlacementOptions.center"),
-      },
-    ] as const;
     const modelPickerStyleOptions = [
       { value: "spotlight", label: t("layoutSettings.modelPickerSpotlight") },
       { value: "dropdown", label: t("layoutSettings.modelPickerMenu") },
@@ -125,9 +81,7 @@ export const SidebarLayoutSettingsSubmenu: React.FC<SidebarLayoutSettingsSubmenu
 
     const handleChatPanelPositionChange = useCallback(
       (value: ChatPanelPosition) => {
-        if (stationMode === "my-station" || stationMode === "agent-station") {
-          setStationChatVisible(stationMode, true);
-        }
+        setStationChatVisible(stationMode, true);
         setChatPanelPosition(value);
       },
       [setChatPanelPosition, setStationChatVisible, stationMode]
@@ -142,38 +96,35 @@ export const SidebarLayoutSettingsSubmenu: React.FC<SidebarLayoutSettingsSubmenu
         onMouseDown={onMouseDown}
       >
         <div className={DROPDOWN_CLASSES.itemsColumnPadded}>
-          <SegmentedControlRow<ChatPanelPosition>
+          <MenuSegmentedRow<ChatPanelPosition>
             label={t("layoutSettings.chatPanelLocation")}
             value={chatPanelPosition}
             options={chatPositionOptions}
             onChange={handleChatPanelPositionChange}
           />
-          <SegmentedControlRow<WorkstationSidebarPosition>
+          <MenuSegmentedRow<ChatSplitRatio>
+            label={t("layoutSettings.chatSplitRatio")}
+            value={chatSplitRatio}
+            options={chatSplitRatioOptions}
+            onChange={setChatSplitRatio}
+          />
+          <MenuSegmentedRow<WorkstationSidebarPosition>
             label={t("layoutSettings.sidebarPosition")}
             value={layoutMode}
             options={chatPositionOptions}
             onChange={setLayoutModePersist}
           />
-          <SegmentedControlRow<ModelPickerStyle>
+          <MenuSegmentedRow<ModelPickerStyle>
             label={t("layoutSettings.modelPickerStyle")}
             value={modelPickerStyle}
             options={modelPickerStyleOptions}
             onChange={setModelPickerStyle}
           />
-          <SegmentedControlRow<SpotlightPlacement>
+          <MenuSegmentedRow<SpotlightPlacement>
             label={tSettings("general.spotlightPlacement")}
             value={spotlightPlacement}
             options={spotlightPlacementOptions}
             onChange={setSpotlightPlacement}
-          />
-          <div
-            className={DROPDOWN_CLASSES.menuGroupSeparator}
-            data-testid="sidebar-layout-pagination-separator"
-          />
-          <SwitchControlRow
-            label={t("layoutSettings.paginateChatHistory")}
-            checked={chatTurnPaginationEnabled}
-            onChange={setChatTurnPaginationEnabled}
           />
         </div>
       </div>

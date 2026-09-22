@@ -1,106 +1,59 @@
-/**
- * Supplemental unit tests for `runGuardedCheckout` recovery fallback branches.
- *
- * The primary `guardedCheckout.test.ts` covers every outcome with explicit
- * error fields. This file targets the remaining uncovered branches in the
- * recovery helpers: the `errorType ?? "other"` / default-message fallbacks
- * (when the failed checkout omits `errorType` / `error`) and the `catch`
- * path of `forceCheckout` (when the forced checkout itself throws).
- *
- * `gitApi` is mocked so no real git/HTTP calls happen.
- */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runGuardedCheckout } from "../guardedCheckout";
 
-const gitCheckout = vi.fn();
-const gitStashPush = vi.fn();
-
-vi.mock("@src/api/http/git", () => ({
-  gitApi: {
-    gitCheckout: (...args: unknown[]) => gitCheckout(...args),
-    gitStashPush: (...args: unknown[]) => gitStashPush(...args),
-  },
-}));
-
-function conflict(choice: "stash" | "force" | "cancel") {
-  return vi.fn().mockResolvedValue(choice);
-}
-
-const BASE = {
-  repoId: "repo-1",
-  repoPath: "/tmp/repo",
-  ref: "feature",
-} as const;
-
-/** First checkout always reports the dirty-tree conflict that triggers recovery. */
-function mockDirtyTree() {
-  gitCheckout.mockResolvedValueOnce({
-    success: false,
-    errorType: "uncommitted_changes",
-  });
-}
-
+const api = vi.hoisted(() => ({ prepare: vi.fn(), execute: vi.fn() }));
+vi.mock("@src/api/http/git/branchSwitch", () => ({ branchSwitchApi: api }));
+const p = {
+  current_branch: "main",
+  target_branch: "develop",
+  fingerprint: "v1",
+  changed_files: [],
+  default_strategy: "leave",
+  same_branch: false,
+  blocked: null,
+};
+const params = { repoId: "repo", ref: "develop", onConflict: vi.fn() };
 beforeEach(() => {
-  gitCheckout.mockReset();
-  gitStashPush.mockReset();
+  vi.resetAllMocks();
+  api.prepare.mockResolvedValue(p);
 });
-
-describe("runGuardedCheckout — stash recovery fallbacks", () => {
-  it("falls back to errorType 'other' and a default message when the post-stash checkout fails bare", async () => {
-    mockDirtyTree();
-    gitStashPush.mockResolvedValueOnce({ success: true });
-    // Post-stash checkout fails with neither errorType nor error supplied.
-    gitCheckout.mockResolvedValueOnce({ success: false });
-
-    const result = await runGuardedCheckout({
-      ...BASE,
-      onConflict: conflict("stash"),
-    });
-
-    expect(result).toEqual({
+describe("checkout recovery", () => {
+  it("re-reads HEAD after a lost execute response without retrying the mutation", async () => {
+    api.prepare
+      .mockResolvedValueOnce(p)
+      .mockResolvedValueOnce({ ...p, current_branch: "develop" });
+    api.execute.mockRejectedValue(new Error("connection lost"));
+    const r = await runGuardedCheckout(params);
+    expect(r).toMatchObject({ success: false, currentBranch: "develop" });
+    expect(api.execute).toHaveBeenCalledOnce();
+  });
+  it("does not invent a branch when recovery read also fails", async () => {
+    api.prepare
+      .mockResolvedValueOnce(p)
+      .mockRejectedValue(new Error("offline"));
+    api.execute.mockRejectedValue(new Error("offline"));
+    expect(await runGuardedCheckout(params)).toMatchObject({
       success: false,
-      outcome: "error",
-      errorType: "other",
-      message: "Failed to checkout after stash",
+      currentBranch: undefined,
     });
   });
-});
-
-describe("runGuardedCheckout — force recovery fallbacks", () => {
-  it("falls back to errorType 'other' and a default message when the force checkout fails bare", async () => {
-    mockDirtyTree();
-    // Forced checkout fails with neither errorType nor error supplied.
-    gitCheckout.mockResolvedValueOnce({ success: false });
-
-    const result = await runGuardedCheckout({
-      ...BASE,
-      onConflict: conflict("force"),
+  it("reports partial checkout from the backend without rolling back the display", async () => {
+    api.execute.mockResolvedValue({
+      outcome: "recovery_required",
+      current_branch: "develop",
+      message: "Saved",
+      snapshot_id: "id",
+      conflicts: [],
     });
-
-    expect(result).toEqual({
+    const complete = vi.fn();
+    expect(
+      await runGuardedCheckout({ ...params, onComplete: complete })
+    ).toMatchObject({
       success: false,
-      outcome: "error",
-      errorType: "other",
-      message: "Failed to force checkout",
+      currentBranch: "develop",
+      blocked: true,
     });
-    expect(gitStashPush).not.toHaveBeenCalled();
-  });
-
-  it("returns a normalized error (never throws) when the force checkout itself rejects", async () => {
-    mockDirtyTree();
-    gitCheckout.mockRejectedValueOnce(new Error("disk exploded"));
-
-    const result = await runGuardedCheckout({
-      ...BASE,
-      onConflict: conflict("force"),
-    });
-
-    expect(result).toEqual({
-      success: false,
-      outcome: "error",
-      errorType: "other",
-      message: "Failed to force checkout",
-    });
+    expect(complete).toHaveBeenCalledOnce();
   });
 });

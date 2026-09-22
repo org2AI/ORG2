@@ -3,10 +3,15 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import Input, { type InputProps } from "@src/components/Input";
+import type { InputProps } from "@src/components/Input";
 import Select from "@src/components/Select";
 import type { SelectOption } from "@src/components/Select";
-import { FilterIcon, HugeiconsIcon, Search01Icon } from "@src/icons";
+import { FilterIcon, HugeiconsIcon } from "@src/icons";
+
+import {
+  SettingsTableSearchInput,
+  type SettingsTableSearchShortcut,
+} from "./SettingsTableSearchInput";
 
 export interface SearchSortBarFilterConfig {
   pills: React.ReactNode;
@@ -29,7 +34,14 @@ export interface SearchSortBarProps {
   sortWidthClassName?: string;
   leftContent?: React.ReactNode;
   rightContent?: React.ReactNode;
+  /** Rendered immediately before {@link rightContent}. SettingsTable uses it
+   *  for controls it owns (the card-view toggle) so a consumer's own
+   *  `rightContent` stays untouched. */
+  leadingRightContent?: React.ReactNode;
   allowSearchClear?: boolean;
+  /** ⌘F / Ctrl+F focuses this field and shows its key hint. On by default;
+   *  pass `false` to opt out, or an object to change the binding. */
+  searchShortcut?: SettingsTableSearchShortcut;
   /** Tab pills rendered inline with searchCountText (pills left, count right) */
   tabPills?: React.ReactNode;
   /** Filter button + collapsible pills. When provided, renders Filter button and pills when expanded. */
@@ -51,7 +63,9 @@ const SearchSortBar: React.FC<SearchSortBarProps> = ({
   sortWidthClassName = "w-[180px]",
   leftContent,
   rightContent,
+  leadingRightContent,
   allowSearchClear = true,
+  searchShortcut,
   tabPills,
   filterConfig,
   noPadding = false,
@@ -68,11 +82,10 @@ const SearchSortBar: React.FC<SearchSortBarProps> = ({
     searchPlaceholder !== undefined &&
     typeof onSearchChange === "function";
 
-  const effectiveRightContent =
+  const consumerRightContent =
     rightContent ??
     (filterConfig ? (
       <Button
-        variant="secondary"
         iconOnly
         onClick={filterConfig.onToggle}
         icon={
@@ -86,6 +99,14 @@ const SearchSortBar: React.FC<SearchSortBarProps> = ({
         title={filterConfig.title ?? t("actions.filter")}
       />
     ) : undefined);
+
+  const effectiveRightContent =
+    leadingRightContent || consumerRightContent ? (
+      <div className="flex shrink-0 items-center gap-1.5">
+        {leadingRightContent}
+        {consumerRightContent}
+      </div>
+    ) : undefined;
 
   const effectiveTabPills = filterConfig?.expanded
     ? filterConfig.pills
@@ -103,24 +124,14 @@ const SearchSortBar: React.FC<SearchSortBarProps> = ({
             {leftContent}
             {hasSearchInput && (
               <div className="min-w-0 flex-1">
-                <Input
-                  className="w-full min-w-0"
-                  type="search"
+                <SettingsTableSearchInput
                   size={searchInputSize}
                   value={searchValue}
                   placeholder={searchPlaceholder}
-                  prefix={
-                    <HugeiconsIcon
-                      icon={Search01Icon}
-                      data-icon="search"
-                      size={14}
-                      className="text-text-3"
-                      aria-hidden
-                    />
-                  }
-                  onChange={(value) => onSearchChange(value)}
+                  onChange={onSearchChange}
                   allowClear={allowSearchClear}
                   onClear={onSearchClear}
+                  shortcut={searchShortcut}
                 />
               </div>
             )}

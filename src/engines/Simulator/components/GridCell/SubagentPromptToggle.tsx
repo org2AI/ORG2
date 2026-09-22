@@ -76,9 +76,7 @@ const SubagentPromptToggleComponent: React.FC<SubagentPromptToggleProps> = ({
 
   const hasPrompt = prompt !== null;
 
-  const label = t("simulator.subagentPane.viewTaskPrompt", {
-    defaultValue: "View task prompt",
-  });
+  const label = t("simulator.subagentPane.viewTaskPrompt");
 
   const panelStyle = useMemo<React.CSSProperties>(() => {
     const { width: viewportWidth } = getViewportSize();
@@ -106,7 +104,6 @@ const SubagentPromptToggleComponent: React.FC<SubagentPromptToggleProps> = ({
     <>
       <Button
         ref={buttonRef}
-        htmlType="button"
         variant="tertiary"
         size="small"
         iconOnly
@@ -143,9 +140,7 @@ const SubagentPromptToggleComponent: React.FC<SubagentPromptToggleProps> = ({
             ) : (
               <RawPromptPanel
                 text={prompt.rawText}
-                label={t("simulator.subagentPane.taskPromptTitle", {
-                  defaultValue: "Task prompt",
-                })}
+                label={t("simulator.subagentPane.taskPromptTitle")}
               />
             )}
           </div>,

@@ -2,17 +2,16 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import { buildCodexReauthPath } from "@src/config/mainAppPaths";
+import RefreshButton from "@src/components/Button/RefreshButton";
+import { buildAccountReauthPath } from "@src/config/mainAppPaths";
+import { AccountStatusIndicator } from "@src/features/KeyVault/AccountStatusIndicator";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
-import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
-import { HugeiconsIcon, Refresh04Icon } from "@src/icons";
-import { AccountStatusIndicator } from "@src/modules/shared/keyVault/AccountStatusIndicator";
 
 import { InlineCardFooter } from "../../shared/InlineCardPrimitives";
 import {
   areAccountRefreshActionsDisabled,
-  shouldShowCodexReconnect,
+  reconnectableOAuthAgent,
 } from "./accountInlineActions";
 
 interface AccountInlineActionsBarProps {
@@ -42,15 +41,8 @@ export const AccountInlineActionsBar: React.FC<
   const { t: tCommon } = useTranslation();
   const navigate = useNavigate();
 
-  const { spinClass, handleClick: handleRefreshClick } = useRefreshSpin(
-    onRefresh ?? (() => {}),
-    refreshing
-  );
-  const { spinClass: modelSpinClass, handleClick: handleRefreshModelsClick } =
-    useRefreshSpin(onRefreshModels ?? (() => {}), refreshingModels);
-
   const showEdit = !account.listingId && account.hasLocalKey && onEdit;
-  const showCodexReconnect = shouldShowCodexReconnect(account);
+  const reconnectAgent = reconnectableOAuthAgent(account);
   const anyRefreshing = areAccountRefreshActionsDisabled(
     refreshing,
     refreshingModels
@@ -61,72 +53,54 @@ export const AccountInlineActionsBar: React.FC<
       <div className="mr-auto flex min-h-7 items-center">
         <AccountStatusIndicator account={account} />
       </div>
-      {showCodexReconnect ? (
+      {reconnectAgent ? (
         <Button
           variant="primary"
           size="small"
-          onClick={() => navigate(buildCodexReauthPath(account.id))}
+          onClick={() =>
+            navigate(buildAccountReauthPath(reconnectAgent, account.id))
+          }
           title={tCommon("errors.reconnectCodex")}
         >
           {tCommon("errors.reconnectCodex")}
         </Button>
       ) : null}
       {onRefresh ? (
-        <Button
+        <RefreshButton
           variant="secondary"
           size="small"
-          onClick={handleRefreshClick}
+          label={resolvedRefreshLabel}
+          refreshing={refreshing}
           disabled={anyRefreshing}
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={14}
-              className={spinClass}
-            />
-          }
-          title={resolvedRefreshLabel}
-        >
-          {resolvedRefreshLabel}
-        </Button>
+          onRefresh={onRefresh ?? (() => {})}
+        />
       ) : null}
       {onRefreshModels ? (
-        <Button
+        <RefreshButton
           variant="secondary"
           size="small"
-          onClick={handleRefreshModelsClick}
+          label={t("keyVault.refreshModels.button")}
+          refreshing={refreshingModels}
           disabled={anyRefreshing}
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={14}
-              className={modelSpinClass}
-            />
-          }
-          title={t("keyVault.refreshModels.button")}
-        >
-          {t("keyVault.refreshModels.button")}
-        </Button>
+          onRefresh={onRefreshModels ?? (() => {})}
+        />
       ) : null}
       {showEdit ? (
-        <Button variant="secondary" size="small" onClick={onEdit}>
+        <Button size="small" onClick={onEdit}>
           {tCommon("actions.edit")}
         </Button>
       ) : null}
       {onDisconnect && account.hasLocalKey && account.isListed ? (
         <>
           <Button
-            variant="danger"
-            appearance="outline"
+            tone="danger"
             size="small"
             onClick={() => onDisconnect(account.id, "local")}
           >
             {t("keyVault.removeLocal")}
           </Button>
           <Button
-            variant="danger"
-            appearance="outline"
+            tone="danger"
             size="small"
             onClick={() => onDisconnect(account.id, "cloud")}
           >
@@ -136,8 +110,7 @@ export const AccountInlineActionsBar: React.FC<
       ) : null}
       {onDisconnect && !(account.hasLocalKey && account.isListed) ? (
         <Button
-          variant="danger"
-          appearance="outline"
+          tone="danger"
           size="small"
           onClick={() => onDisconnect(account.id)}
         >

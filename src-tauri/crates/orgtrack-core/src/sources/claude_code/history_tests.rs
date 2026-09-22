@@ -377,7 +377,7 @@ fn harness_injected_user_lines_do_not_open_rounds() {
             .iter()
             .map(|turn| turn.following_line_count)
             .collect::<Vec<_>>(),
-        vec![5, 1]
+        vec![3, 1]
     );
 
     let chunks =
@@ -631,6 +631,84 @@ fn claude_initial_window_previews_skip_tool_use_only_assistant_lines() {
             )
             .count(),
         1 // the loaded newest round's single assistant reply
+    );
+
+    std::fs::remove_file(&path).expect("remove fixture");
+    std::fs::remove_dir(&temp_dir).expect("remove temp dir");
+}
+
+#[test]
+fn bookkeeping_only_rounds_advertise_no_body() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "orgii-claude-bodyless-rounds-test-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+    let path = temp_dir.join("claude-bodyless-rounds.jsonl");
+    // An interrupted exchange: the first prompt is followed only by a harness
+    // attachment and a file-history snapshot, the interruption marker only by
+    // an API-error retry (whose nested error carries a "message" key) and
+    // queue bookkeeping, and just the third prompt gets a reply (then a hook
+    // summary and a last-prompt marker). The parser renders none of the
+    // bookkeeping rows, so the first two rounds have no body to advertise.
+    std::fs::write(&path, r#"{"type":"user","timestamp":"2026-09-14T13:52:56.412Z","origin":{"kind":"human"},"message":{"role":"user","content":"update the PR"}}
+{"type":"attachment","timestamp":"2026-09-14T13:52:56.411Z","attachment":{"type":"total_tokens_reminder","text":"<total_tokens>1 tokens left</total_tokens>"},"rendered":[{"content":"<system-reminder>1 tokens left</system-reminder>"}]}
+{"type":"file-history-snapshot","messageId":"m-1","snapshot":{"messageId":"m-1","trackedFileBackups":{},"timestamp":"2026-09-14T13:52:56.500Z"},"isSnapshotUpdate":false}
+{"type":"user","timestamp":"2026-09-14T13:53:10.644Z","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user]"}]}}
+{"type":"system","subtype":"api_error","level":"error","error":{"message":"Connection error.","connection":{"code":"ECONNRESET","message":"socket closed"}},"retryInMs":597,"retryAttempt":1,"timestamp":"2026-09-14T13:53:15.000Z"}
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-09-14T13:53:21.220Z","content":"fix the conflict"}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2026-09-14T13:53:21.228Z"}
+{"type":"user","timestamp":"2026-09-14T13:53:21.303Z","message":{"role":"user","content":"fix the conflict"}}
+{"type":"assistant","timestamp":"2026-09-14T13:53:39.999Z","message":{"role":"assistant","content":[{"type":"text","text":"resolved"}]}}
+{"type":"system","subtype":"stop_hook_summary","timestamp":"2026-09-14T13:53:40.100Z","hookCount":1,"level":"suggestion"}
+{"type":"last-prompt","lastPrompt":"fix the conflict","sessionId":"s"}
+"#).expect("write fixture");
+
+    let indexed =
+        index_claude_user_turns("claudecodeapp-bodyless", &path).expect("index user turns");
+    assert_eq!(
+        indexed
+            .iter()
+            .map(|turn| turn.following_line_count)
+            .collect::<Vec<_>>(),
+        vec![0, 0, 1]
+    );
+    // The parser agrees: nothing renders between the three prompts.
+    let chunks =
+        load_claude_code_history_from_path("claudecodeapp-bodyless", &path).expect("parse");
+    assert_eq!(
+        chunks
+            .iter()
+            .map(|chunk| chunk.function.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            imported_history::FUNCTION_USER_MESSAGE,
+            imported_history::FUNCTION_USER_MESSAGE,
+            imported_history::FUNCTION_USER_MESSAGE,
+            imported_history::FUNCTION_ASSISTANT,
+        ]
+    );
+
+    let window = load_claude_code_initial_window_from_path("claudecodeapp-bodyless", &path, 1)
+        .expect("load initial window");
+    // Unloaded bodyless rounds must not claim a fetchable body; a nonzero
+    // count paints an empty "Agent worked for" bar between the prompts.
+    assert_eq!(
+        window
+            .chunks
+            .iter()
+            .filter(|chunk| chunk.chunk_id.starts_with("imported-unloaded-turn-"))
+            .map(|chunk| chunk.result["unloadedTurn"]["bodyEventCount"].as_i64())
+            .collect::<Vec<_>>(),
+        vec![Some(0), Some(0)]
+    );
+    assert_eq!(
+        window
+            .turns
+            .iter()
+            .map(|turn| turn.body_event_count)
+            .collect::<Vec<_>>(),
+        vec![0, 0, 1]
     );
 
     std::fs::remove_file(&path).expect("remove fixture");
@@ -2169,4 +2247,31 @@ fn resending_first_claude_message_updates_the_same_cached_session() {
         assert_eq!(row.name, text);
     }
     std::fs::remove_dir_all(temp_dir).unwrap();
+}
+
+#[test]
+fn tool_result_images_survive_claude_replay() {
+    let path = std::env::temp_dir().join(format!(
+        "orgii-claude-output-image-{}.jsonl",
+        std::process::id()
+    ));
+    let rows = [
+        serde_json::json!({"type":"user","message":{"role":"user","content":"draw an avatar"}}),
+        serde_json::json!({"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"draw","name":"mcp__images__generate","input":{}}]}}),
+        serde_json::json!({"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"draw","content":[{"type":"image","source":{"type":"base64","media_type":"image/png","data":"AVATAR"}}]}]}}),
+    ];
+    std::fs::write(
+        &path,
+        rows.iter()
+            .map(Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n",
+    )
+    .unwrap();
+    let chunks = load_claude_code_history_from_path("claude-images", &path).unwrap();
+    assert!(chunks
+        .iter()
+        .any(|c| c.result["images"][0] == "data:image/png;base64,AVATAR"));
+    std::fs::remove_file(path).unwrap();
 }

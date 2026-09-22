@@ -10,7 +10,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 import { rpc } from "@src/api/tauri/rpc";
-import { normalizeFunctionName } from "@src/lib/activityData/activityNormalizers";
+import { normalizeFunctionName } from "@src/util/data/activityData/activityNormalizers";
 import { imageRefToRustPath } from "@src/util/file/imageRefs";
 
 import { parseJsonRecord, parseJsonStringArray } from "../core/schemas";
@@ -49,6 +49,7 @@ export interface PersistedMessage {
   toolCallId: string | null;
   toolInput: string | null;
   toolOutput: string | null;
+  toolIsError?: boolean;
   model: string | null;
   sequence: number;
   createdAt: string;
@@ -253,6 +254,7 @@ export function persistedMessageToSessionEvent(
   sessionId: string,
   options?: {
     transformDisplayText?: (content: string, source: string) => string;
+    preserveCompactBoundaryText?: boolean;
   }
 ): SessionEvent {
   // Compact-boundary rows get a dedicated collapsed renderer instead of
@@ -263,7 +265,11 @@ export function persistedMessageToSessionEvent(
     msg.compactFromSequence != null ||
     (msg.role === "system" && isCompactBoundaryContent(msg.content))
   ) {
-    return compactBoundaryToSessionEvent(msg, sessionId);
+    const event = compactBoundaryToSessionEvent(msg, sessionId);
+    if (options?.preserveCompactBoundaryText) {
+      event.result = { ...event.result, observation: msg.content };
+    }
+    return event;
   }
 
   const actionType =
@@ -294,6 +300,7 @@ export function persistedMessageToSessionEvent(
     result = {
       content: msg.toolOutput ?? msg.content,
       observation: msg.toolOutput ?? msg.content,
+      ...(msg.toolIsError ? { is_error: true } : {}),
     };
   } else if (msg.role === "tool_call") {
     // A call row records intent, not completion. The matching durable result
@@ -330,7 +337,12 @@ export function persistedMessageToSessionEvent(
     result,
     source,
     displayText,
-    displayStatus: msg.role === "tool_call" ? "pending" : "completed",
+    displayStatus:
+      msg.role === "tool_call"
+        ? "pending"
+        : msg.toolIsError
+          ? "failed"
+          : "completed",
     displayVariant: getDisplayVariant(msg.role as AgentMessageBase["role"]),
     activityStatus: getActivityStatus(msg.role as AgentMessageBase["role"]),
     callId: msg.toolCallId ?? undefined,

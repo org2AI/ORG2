@@ -221,11 +221,7 @@ export function useWorkItemQuickActions(
         actorName,
       });
       if (!invocation || !requestKey) {
-        Message.error(
-          t("workItems.quickActions.scopeChanged", {
-            defaultValue: "Quick action is no longer in this Work Item scope",
-          })
-        );
+        Message.error(t("workItems.quickActions.scopeChanged"));
         return true;
       }
 
@@ -233,7 +229,6 @@ export function useWorkItemQuickActions(
         () => {
           Message.success(
             t("workItems.quickActions.started", {
-              defaultValue: "Quick action “{{name}}” started",
               name: item.name,
             })
           );

@@ -54,9 +54,7 @@ export const PropertyFilterControl: React.FC<PropertyFilterControlProps> = ({
               ...option,
               label:
                 option.value === PROPERTY_FILTER_NONE_VALUE
-                  ? t("workItems.properties.noValue", {
-                      defaultValue: "No value",
-                    })
+                  ? t("workItems.properties.noValue")
                   : option.label,
             })
           )
@@ -90,12 +88,8 @@ export const PropertyFilterControl: React.FC<PropertyFilterControlProps> = ({
         prefix={
           <HugeiconsIcon icon={FilterIcon} data-icon="filter" size={13} />
         }
-        placeholder={t("workItems.properties.filter", {
-          defaultValue: "Property filter",
-        })}
-        ariaLabel={t("workItems.properties.filter", {
-          defaultValue: "Property filter",
-        })}
+        placeholder={t("workItems.properties.filter")}
+        ariaLabel={t("workItems.properties.filter")}
         dataTestId="work-items-property-filter-definition"
       />
       {selectedDefinition ? (
@@ -117,12 +111,8 @@ export const PropertyFilterControl: React.FC<PropertyFilterControlProps> = ({
           showSearch
           appearance="ghost"
           size="small"
-          placeholder={t("workItems.properties.filterValue", {
-            defaultValue: "Value",
-          })}
-          ariaLabel={t("workItems.properties.filterValue", {
-            defaultValue: "Property filter value",
-          })}
+          placeholder={t("workItems.properties.filterValue")}
+          ariaLabel={t("workItems.properties.filterValue")}
           dataTestId="work-items-property-filter-value"
         />
       ) : null}

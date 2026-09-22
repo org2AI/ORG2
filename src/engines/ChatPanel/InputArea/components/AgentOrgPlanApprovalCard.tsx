@@ -132,16 +132,14 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
             onClick={() => setExpanded(true)}
             data-testid="agent-org-plan-revision-open"
           >
-            {t("planner.agentOrgOverview.planApproval.open", {
-              defaultValue: "Open plan",
-            })}
+            {t("planner.agentOrgOverview.planApproval.open")}
           </Button>
         ) : loading ? (
           <div
             className="rounded-md bg-bg-2 p-2 text-xs text-text-3"
             data-testid="agent-org-plan-approval-loading"
           >
-            {t("common:status.loading", { defaultValue: "Loading plan…" })}
+            {t("common:status.loading")}
           </div>
         ) : loadError ? (
           <PageNotice
@@ -155,7 +153,7 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
                 onClick={() => void retry()}
                 data-testid="agent-org-plan-approval-retry"
               >
-                {t("common:actions.retry", { defaultValue: "Retry" })}
+                {t("common:actions.retry")}
               </Button>
             }
           >
@@ -195,9 +193,7 @@ const AgentOrgPlanApprovalCard: React.FC<AgentOrgPlanApprovalCardProps> = memo(
             className="mt-2 text-[11px] text-text-3"
             data-testid="agent-org-plan-revision-task-output"
           >
-            {t("planner.agentOrgOverview.planApproval.taskOutput", {
-              defaultValue: "Planning Task output saved",
-            })}
+            {t("planner.agentOrgOverview.planApproval.taskOutput")}
           </div>
         ) : null}
 

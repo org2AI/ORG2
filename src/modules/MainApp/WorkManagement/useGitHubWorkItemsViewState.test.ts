@@ -3,33 +3,27 @@ import { describe, expect, it } from "vitest";
 import { parseGitHubSearchQuery } from "./githubWorkItemsSearchQuery";
 import { getOpsPrListStates } from "./githubWorkItemsViewCache";
 import {
-  GITHUB_FILTER_PRESET,
-  applyGitHubPersonalFilters,
   areRequestedPrStatesLoaded,
-  getSelectedGitHubPersonalFilters,
   normalizeGitHubSearchQueryForScope,
 } from "./useGitHubWorkItemsViewState";
 
 describe("GitHub work-items view state model", () => {
-  it("applies and clears personal filter presets", () => {
-    const query = parseGitHubSearchQuery("is:issue is:open");
-    applyGitHubPersonalFilters(query, [
-      GITHUB_FILTER_PRESET.BY_ME,
-      GITHUB_FILTER_PRESET.ASSIGNED_TO_ME,
-    ]);
-    expect(query).toMatchObject({ author: "@me", assignee: "@me" });
-    applyGitHubPersonalFilters(query, []);
-    expect(query).toMatchObject({ author: null, assignee: null });
-  });
-
-  it("projects selected personal filters in stable order", () => {
-    const query = parseGitHubSearchQuery(
-      "is:issue is:open author:@me assignee:@me"
-    );
-    expect(getSelectedGitHubPersonalFilters(query)).toEqual([
-      GITHUB_FILTER_PRESET.BY_ME,
-      GITHUB_FILTER_PRESET.ASSIGNED_TO_ME,
-    ]);
+  it("canonicalizes finished qualifiers and leaves unfinished ones as typed", () => {
+    expect(
+      normalizeGitHubSearchQueryForScope(
+        "issue",
+        "is:issue is:open crash -label:wip author:alice,bob"
+      )
+    ).toBe("is:issue is:open author:alice author:bob -label:wip crash");
+    expect(
+      normalizeGitHubSearchQueryForScope(
+        "issue",
+        "is:issue is:open author:alice,"
+      )
+    ).toBe("is:issue is:open author:alice,");
+    expect(
+      normalizeGitHubSearchQueryForScope("pr", "is:pr is:open updated:>")
+    ).toBe("is:pr is:open updated:>");
   });
 
   it("preserves the selected PR state and routes it to the matching loader", () => {

@@ -14,6 +14,7 @@
  * Accounts passed in should already be narrowed to the current dispatch
  * context (e.g. via `getCliCompatibleAccounts` for CLI sessions).
  */
+import type { CliAgentType } from "@src/api/tauri/rpc/schemas/validation";
 import { KEY_SOURCE } from "@src/api/tauri/session";
 import {
   isOrgiiTierModel,
@@ -33,6 +34,8 @@ export interface PairCompatibilityContext {
   orgiiModelSet: ReadonlyMap<string, ORGIIPoolCategory>;
   /** Set of valid tier IDs loaded from the ORGII pool config. */
   orgiiCategoryIds: ReadonlySet<string>;
+  /** Active CLI runtime, used to keep Market recents agent-compatible. */
+  cliAgentType?: CliAgentType | string | null;
 }
 
 export function resolveCompatibleOwnKeyAccount(
@@ -67,6 +70,14 @@ export function isPairCompatible(
   pair: RecentModelEntry,
   ctx: PairCompatibilityContext
 ): boolean {
+  // Market selections contain a durable, opaque backend selector instead of
+  // a Key Vault account. The backend revalidates the entitlement at use time.
+  if (pair.credentialSource?.startsWith("market:")) {
+    return ctx.orgiiPoolEnabled
+      ? pair.cliAgentType === undefined
+      : Boolean(ctx.cliAgentType) && pair.cliAgentType === ctx.cliAgentType;
+  }
+
   if (isOrgiiTierModel(pair.modelId)) {
     if (!ctx.orgiiPoolEnabled) return false;
     const tierId = parseOrgiiTierId(pair.modelId);

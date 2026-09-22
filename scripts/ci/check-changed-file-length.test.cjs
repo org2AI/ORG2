@@ -10,6 +10,7 @@ const {
   countLines,
   findOversizedFiles,
   isCheckedSource,
+  isGeneratedSource,
   parseNullDelimitedPaths,
 } = require("./check-changed-file-length.cjs");
 
@@ -93,6 +94,81 @@ test("test code is exempt", () => {
   assert.deepEqual(
     findOversizedFiles(["src/app/root/e2e/types.ts"], { root }),
     []
+  );
+});
+
+test("i18n code is exempt", () => {
+  // The locale registry and loaders grow with each supported language.
+  for (const exempt of [
+    "src/i18n/index.ts",
+    "src/i18n/loaders/resources.ts",
+    "src/modules/MobileRemote/locales/en.ts",
+  ]) {
+    assert.equal(isCheckedSource(exempt), false, exempt);
+  }
+
+  // Only the i18n directories are exempt, not every file that mentions i18n.
+  assert.equal(isCheckedSource("src/hooks/i18n/useRouteLabel.ts"), true);
+  assert.equal(isCheckedSource("src/modules/MobileRemote/mobileI18n.ts"), true);
+
+  const root = makeTree({ "src/i18n/index.ts": lines(MAX_LINES + 50) });
+  assert.deepEqual(findOversizedFiles(["src/i18n/index.ts"], { root }), []);
+});
+
+test("declaration files and listed data tables are exempt", () => {
+  for (const exempt of [
+    "src/types/ambient/global.d.ts",
+    "src/types/mammoth.d.ts",
+    "src/config/languageRegistry.ts",
+  ]) {
+    assert.equal(isCheckedSource(exempt), false, exempt);
+  }
+
+  // Data tables are listed by exact path, not by name.
+  assert.equal(isCheckedSource("src/config/sidebarRegistry.ts"), true);
+  assert.equal(isCheckedSource("src/config/languageRegistry.tsx"), true);
+});
+
+test("generated files are exempt by their header comment", () => {
+  assert.equal(
+    isGeneratedSource(
+      "// Generated from mobile-relay-protocol. Do not edit; run the script.\n"
+    ),
+    true
+  );
+  assert.equal(
+    isGeneratedSource(
+      "/**\n * Generated Codex skin.\n *\n * DO NOT EDIT BY HAND.\n */\n"
+    ),
+    true
+  );
+  assert.equal(isGeneratedSource("/** @generated */\nexport {};\n"), true);
+
+  // Code that merely mentions generation, or says so outside a header
+  // comment or below the header, is still judged.
+  assert.equal(
+    isGeneratedSource("const hint = `system-generated request`;\n"),
+    false
+  );
+  assert.equal(
+    isGeneratedSource('const msg = "do not edit this field";\n'),
+    false
+  );
+  assert.equal(
+    isGeneratedSource(`${lines(20)}// DO NOT EDIT below this line\n`),
+    false
+  );
+
+  const root = makeTree({
+    "src/contracts/relay.ts": `// Generated. Do not edit.\n${lines(MAX_LINES + 50)}`,
+    "src/contracts/handwritten.ts": lines(MAX_LINES + 50),
+  });
+  assert.deepEqual(
+    findOversizedFiles(
+      ["src/contracts/relay.ts", "src/contracts/handwritten.ts"],
+      { root }
+    ),
+    [{ filePath: "src/contracts/handwritten.ts", lines: MAX_LINES + 50 }]
   );
 });
 

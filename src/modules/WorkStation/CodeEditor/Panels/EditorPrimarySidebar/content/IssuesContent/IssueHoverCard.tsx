@@ -96,10 +96,8 @@ const IssueHoverCardContent: React.FC<IssueHoverCardContentProps> = memo(
           <div className="truncate text-text-2">
             <span className="text-text-3">
               {wasUpdated
-                ? t("git.issues.updated", { defaultValue: "Last updated" })
-                : t("git.issues.notUpdated", {
-                    defaultValue: "not updated",
-                  })}
+                ? t("git.issues.updated")
+                : t("git.issues.notUpdated")}
             </span>
             {wasUpdated && (
               <>
@@ -134,7 +132,6 @@ const IssueHoverCardContent: React.FC<IssueHoverCardContentProps> = memo(
           <HoverCardMetadataRow icon={UserIcon} dataIcon="user">
             <div className="truncate text-text-2" title={assigneesTitle}>
               {t("git.issues.assignedTo", {
-                defaultValue: "Assigned to {{assignees}}",
                 assignees: assigneesTitle,
               })}
             </div>

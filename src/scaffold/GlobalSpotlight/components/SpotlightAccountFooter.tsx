@@ -208,5 +208,3 @@ export const SpotlightAccountFooter: React.FC<SpotlightAccountFooterProps> = (
     </div>
   );
 };
-
-export default SpotlightAccountFooter;

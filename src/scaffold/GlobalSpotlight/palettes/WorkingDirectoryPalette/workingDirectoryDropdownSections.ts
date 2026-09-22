@@ -145,7 +145,7 @@ export function buildWorkingDirectoryDropdownSections({
   if (displayedRecentItems.length > 0) {
     nextSections.push({
       key: "recent",
-      label: t("selectors.repo.sections.recent", "Recent"),
+      label: t("selectors.repo.sections.recent"),
       items: displayedRecentItems,
     });
   }
@@ -175,9 +175,7 @@ export function buildWorkingDirectoryDropdownSections({
     if (thisOrgItems.length > 0) {
       nextSections.push({
         key: "thisOrg",
-        label:
-          orgScopeName ??
-          t("selectors.repo.sections.thisOrg", "This organization"),
+        label: orgScopeName ?? t("selectors.repo.sections.thisOrg"),
         items: thisOrgItems,
       });
     }
@@ -187,12 +185,8 @@ export function buildWorkingDirectoryDropdownSections({
         label: orgScopeName
           ? t("selectors.repo.sections.outsideNamedOrg", {
               org: orgScopeName,
-              defaultValue: "Outside {{org}}",
             })
-          : t(
-              "selectors.repo.sections.outsideOrg",
-              "Outside this organization"
-            ),
+          : t("selectors.repo.sections.outsideOrg"),
         items: outsideOrgItems,
       });
     }
@@ -207,10 +201,7 @@ export function buildWorkingDirectoryDropdownSections({
     if (regularInactiveWorkspaceItems.length > 0) {
       nextSections.push({
         key: "multiRepoWorkspace",
-        label: t(
-          "workspaceForm.multiRepoWorkspace",
-          "Multi-Repo Working Directory"
-        ),
+        label: t("workspaceForm.multiRepoWorkspace"),
         items: regularInactiveWorkspaceItems,
       });
     }

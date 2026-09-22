@@ -42,10 +42,14 @@ impl CodexAgentPreview {
 pub(super) struct CodexTurnCatalogEntry {
     /// Small path/URL references only; embedded bytes belong to loaded turns.
     pub(super) image_refs: Vec<String>,
+    pub(super) output_images: Vec<super::output_images::CatalogOutputImage>,
     pub(super) byte_offset: u64,
     pub(super) started_at: String,
     pub(super) user_preview: String,
     pub(super) last_agent_preview: Option<CodexAgentPreview>,
+    /// Lines after this user row, up to the next one, that the replay parser
+    /// can render (`line_might_produce_codex_body`). Zero means the agent
+    /// never answered the round.
     pub(super) following_line_count: usize,
 }
 

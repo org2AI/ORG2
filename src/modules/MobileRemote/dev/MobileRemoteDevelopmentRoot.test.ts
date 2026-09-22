@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import React, { act } from "react";
+import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, it, vi } from "vitest";
 
@@ -20,19 +20,47 @@ describe("MobileRemoteDevelopmentRoot", () => {
     await i18n.changeLanguage("en");
     const platform = createBrowserMobileRemotePlatform();
     const createClient = vi.spyOn(platform.auth, "createClient");
-
-    const markup = renderToStaticMarkup(
-      React.createElement(
-        I18nextProvider,
-        { i18n },
-        React.createElement(MobileRemoteDevelopmentRoot, { platform })
-      )
+    let finishRestore!: () => void;
+    vi.spyOn(platform.connection, "load").mockReturnValue(
+      new Promise<null>((resolve) => {
+        finishRestore = () => resolve(null);
+      })
     );
+    vi.spyOn(platform.connection, "listPairedDesktops").mockResolvedValue([]);
+    const actEnvironment = globalThis as typeof globalThis & {
+      IS_REACT_ACT_ENVIRONMENT?: boolean;
+    };
+    const previousActEnvironment = actEnvironment.IS_REACT_ACT_ENVIRONMENT;
+    actEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          React.createElement(
+            I18nextProvider,
+            { i18n },
+            React.createElement(MobileRemoteDevelopmentRoot, { platform })
+          )
+        )
+      );
+      expect(host.querySelector('[aria-busy="true"]')).not.toBeNull();
+      expect(host.textContent).not.toContain("Mobile Remote");
+      expect(createClient).not.toHaveBeenCalled();
 
-    expect(markup).toContain("Mobile Remote");
-    expect(markup).not.toContain("Try demo");
-    expect(markup).toContain("Scan or paste pairing code");
-    expect(createClient).not.toHaveBeenCalled();
+      await act(async () => finishRestore());
+      expect(host.querySelector('[aria-busy="true"]')).toBeNull();
+      expect(host.textContent).toContain("Mobile Remote");
+      expect(host.textContent).toContain(enMobileRemote.welcome.scanQr);
+      expect(host.textContent).not.toContain("Try demo");
+      expect(createClient).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+      actEnvironment.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+      vi.restoreAllMocks();
+    }
   });
 
   it("reuses the stored account scope when development has no own pairings", async () => {

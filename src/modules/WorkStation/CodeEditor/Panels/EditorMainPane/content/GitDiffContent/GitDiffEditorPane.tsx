@@ -81,6 +81,7 @@ export function GitDiffEditorPane({
           changeType={effectiveGitFile.status}
           height="100%"
           viewMode={viewMode}
+          wordWrap={viewMode === "split" ? true : undefined}
           readOnly={viewMode === "split"}
           mergeControls={false}
           collapseUnchanged={true}

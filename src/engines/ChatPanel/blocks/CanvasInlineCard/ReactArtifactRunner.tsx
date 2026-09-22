@@ -225,7 +225,7 @@ const ReactArtifactRunner: React.FC<ReactArtifactRunnerProps> = ({
     <div className="h-full min-h-0 w-full bg-bg-1">
       {ready && compiled.id !== null ? (
         <iframe
-          title={t("canvasApp.reactArtifactFrame", "React canvas preview")}
+          title={t("canvasApp.reactArtifactFrame")}
           data-testid="react-artifact-frame"
           src={canvasArtifactUrl(compiled.id)}
           sandbox={REACT_ARTIFACT_FRAME_SANDBOX}

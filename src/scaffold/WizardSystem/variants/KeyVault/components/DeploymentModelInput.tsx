@@ -12,15 +12,11 @@ import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import RefreshButton from "@src/components/Button/RefreshButton";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
-import {
-  Add01Icon,
-  Cancel01Icon,
-  HugeiconsIcon,
-  Refresh04Icon,
-} from "@src/icons";
+import { Add01Icon, Cancel01Icon, HugeiconsIcon } from "@src/icons";
 
 interface DeploymentModelInputProps {
   models: string[];
@@ -119,8 +115,8 @@ const DeploymentModelInput: React.FC<DeploymentModelInputProps> = ({
                   {model}
                 </span>
                 <Button
-                  variant="danger"
-                  appearance="soft"
+                  variant="tertiary"
+                  tone="danger"
                   size="sidebar"
                   iconOnly
                   icon={
@@ -130,7 +126,6 @@ const DeploymentModelInput: React.FC<DeploymentModelInputProps> = ({
                       size={HEADER_ICON_SIZE.sm}
                     />
                   }
-                  htmlType="button"
                   onClick={() => handleRemove(index)}
                   aria-label={`${t("common:actions.delete")} ${model}`}
                 />
@@ -149,7 +144,6 @@ const DeploymentModelInput: React.FC<DeploymentModelInputProps> = ({
             />
           </div>
           <Button
-            variant="secondary"
             size="small"
             onClick={handleAdd}
             disabled={!draft.trim() || testing}
@@ -168,23 +162,13 @@ const DeploymentModelInput: React.FC<DeploymentModelInputProps> = ({
       )}
 
       {onRevalidate && models.length > 0 && (
-        <Button
-          variant="primary"
-          appearance="outline"
+        <RefreshButton
+          variant="secondary"
           size="small"
-          onClick={onRevalidate}
-          loading={revalidating}
-          disabled={revalidating}
-          icon={
-            <HugeiconsIcon
-              icon={Refresh04Icon}
-              data-icon="refresh-cw"
-              size={14}
-            />
-          }
-        >
-          {t("keyVault.revalidate")}
-        </Button>
+          label={t("keyVault.revalidate")}
+          refreshing={revalidating}
+          onRefresh={onRevalidate}
+        />
       )}
     </div>
   );

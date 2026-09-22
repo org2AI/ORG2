@@ -136,6 +136,23 @@ describe("useDraftManagement composer content ownership", () => {
     expect(store.get(sessionCreatorDraftStoreAtom)).toBe(settled);
   });
 
+  it("restores a saved draft on mount, before any timer runs", async () => {
+    // Regression: the restore ran on a 50 ms timer, so a remounted composer
+    // painted empty — placeholder up, caret at the start — and then jumped to
+    // the end when the draft arrived.
+    await mount("saved prompt");
+    await settle(500);
+    await root.unmount();
+    root = createSmokeRoot();
+
+    await mount();
+
+    expect(
+      root.container.querySelector('[contenteditable="true"]')?.textContent
+    ).toContain("saved prompt");
+    expect(sendButton().disabled).toBe(false);
+  });
+
   it("cancels pending persistence when the composer unmounts", async () => {
     await mount("unsaved prompt");
     await root.unmount();

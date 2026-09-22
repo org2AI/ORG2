@@ -26,7 +26,6 @@ import { LOCATION_ICONS } from "./locationConfig";
  * shared pill styles apply overflow ellipsis.
  */
 const SESSION_INFO_FIXED_LABEL_MAX_WIDTH = 180;
-const SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS = 2000;
 
 interface SessionInfoDisplayParams {
   isMultiRoot: boolean;
@@ -140,8 +139,7 @@ export function buildSessionInfoSegments({
         />
       ),
       tooltipFramed: true,
-      tooltipPosition: "bottom",
-      tooltipMouseEnterDelay: SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS,
+      tooltipPosition: "top",
       ariaLabel: t("selectors.sessionInfo.sourceAria"),
       disabled,
       onClick: handleRepoTriggerClick,
@@ -168,8 +166,7 @@ export function buildSessionInfoSegments({
         />
       ),
       tooltipFramed: true,
-      tooltipPosition: "bottom",
-      tooltipMouseEnterDelay: SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS,
+      tooltipPosition: "top",
       ariaLabel: t("selectors.sessionInfo.locationAria"),
       disabled,
       buttonRef: locationTriggerRef,
@@ -207,8 +204,7 @@ export function buildSessionInfoSegments({
         />
       ),
       tooltipFramed: true,
-      tooltipPosition: "bottom",
-      tooltipMouseEnterDelay: SESSION_INFO_SHORTCUT_TOOLTIP_DELAY_MS,
+      tooltipPosition: "top",
       ariaLabel: t("selectors.sessionInfo.branchAria"),
       disabled: disabled || branchLoading,
       onClick: handleBranchTriggerClick,

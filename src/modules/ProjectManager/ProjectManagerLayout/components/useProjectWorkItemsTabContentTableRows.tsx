@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import type { MemberEntry } from "@src/api/http/project";
 import Checkbox from "@src/components/Checkbox";
 import IntegrationIcon from "@src/components/IntegrationIcon";
+import { WorkManagementAssigneeCell } from "@src/features/GitHubWork/WorkManagementAssigneeCell";
+import type { WorkManagementTableRow } from "@src/features/GitHubWork/WorkManagementTable";
 import {
   formatWorkItemShortId,
   getWorkItemSourceIntegration,
@@ -18,8 +20,6 @@ import {
   WORKSPACE_SOURCE,
   type WorkspaceWorkItem,
 } from "@src/modules/ProjectManager/workspaceAggregate";
-import { WorkManagementAssigneeCell } from "@src/modules/shared/components/WorkManagementAssigneeCell";
-import type { WorkManagementTableRow } from "@src/modules/shared/components/WorkManagementTable";
 import type { WorkItemStatus } from "@src/types/core/workItem";
 import { formatCompactAge } from "@src/util/time/formatRelativeTime";
 

@@ -48,6 +48,8 @@ export interface TranscriptSubscribeResult {
   sessionId?: string;
   rounds?: TranscriptRoundIndexEnvelope;
   snapshot?: TranscriptSnapshotEnvelope;
+  /** Latest body is ready; the full directory is available through session/history. */
+  historyDeferred?: boolean;
 }
 
 export interface TranscriptRoundResult {

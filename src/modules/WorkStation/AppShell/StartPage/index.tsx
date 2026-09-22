@@ -30,8 +30,11 @@ import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 
 import {
   LAUNCHPAD_ACTION_IDS,
+  getWorkStationLaunchSections,
   useWorkStationLaunchActions,
 } from "../useWorkStationLaunchActions";
+
+const START_PAGE_SEPARATOR_CLASS = "mx-3 my-1 h-px bg-border-2";
 
 interface StartActionRowProps {
   icon: IconSvgElement;
@@ -52,8 +55,6 @@ const StartActionRow = memo<StartActionRowProps>(
     return (
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         onClick={onClick}
         className={`${SPOTLIGHT_CLASSES.itemRow} w-full text-left transition-colors ${SURFACE_TOKENS.hover} active:bg-fill-3`}
         style={{ height: SPOTLIGHT_TOKENS.itemHeight }}
@@ -98,8 +99,11 @@ export const WorkStationStartPage: React.FC = memo(() => {
   const hasActiveSession = useAtomValue(hasActiveSessionAtom);
   const setStationMode = useSetAtom(stationModeAtom);
 
-  const visibleActions = useMemo(
-    () => actions.filter((action) => LAUNCHPAD_ACTION_IDS.includes(action.id)),
+  const visibleActionSections = useMemo(
+    () =>
+      getWorkStationLaunchSections(
+        actions.filter((action) => LAUNCHPAD_ACTION_IDS.includes(action.id))
+      ),
     [actions]
   );
 
@@ -120,19 +124,30 @@ export const WorkStationStartPage: React.FC = memo(() => {
                 shortcutId={"open_agent_station"}
                 onClick={() => setStationMode("agent-station")}
               />
-              <div role="separator" className="mx-3 my-1 h-px bg-border-2" />
+              <div role="separator" className={START_PAGE_SEPARATOR_CLASS} />
             </>
           ) : null}
-          {visibleActions.map((action) => (
-            <StartActionRow
-              key={action.id}
-              icon={action.icon}
-              label={action.label}
-              shortcutId={action.shortcutId}
-              additions={action.id === "sourceControl" ? additions : undefined}
-              deletions={action.id === "sourceControl" ? deletions : undefined}
-              onClick={action.onClick}
-            />
+          {visibleActionSections.map((section, sectionIndex) => (
+            <React.Fragment key={section.id}>
+              {sectionIndex > 0 ? (
+                <div role="separator" className={START_PAGE_SEPARATOR_CLASS} />
+              ) : null}
+              {section.actions.map((action) => (
+                <StartActionRow
+                  key={action.id}
+                  icon={action.icon}
+                  label={action.label}
+                  shortcutId={action.shortcutId}
+                  additions={
+                    action.id === "sourceControl" ? additions : undefined
+                  }
+                  deletions={
+                    action.id === "sourceControl" ? deletions : undefined
+                  }
+                  onClick={action.onClick}
+                />
+              ))}
+            </React.Fragment>
           ))}
         </div>
       </div>

@@ -210,9 +210,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
     () => [
       {
         value: TABLE_GROUP_BY_PROJECT,
-        label: t("workItems.propertyFields.project", {
-          defaultValue: "Project",
-        }),
+        label: t("workItems.propertyFields.project"),
       },
       ...definitions.map((definition) => ({
         value: definition.id,
@@ -231,7 +229,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
     const builtin: Record<BuiltinColumn, TableColumn<WorkItemExtended>> = {
       shortId: {
         key: "shortId",
-        title: t("workItems.table.columns.shortId", { defaultValue: "ID" }),
+        title: t("workItems.table.columns.shortId"),
         width: 92,
         sorter: (a, b) => (a.shortId ?? "").localeCompare(b.shortId ?? ""),
         render: (_value, record) => (
@@ -242,7 +240,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
       },
       title: {
         key: "title",
-        title: t("workItems.table.columns.title", { defaultValue: "Title" }),
+        title: t("workItems.table.columns.title"),
         sorter: (a, b) => (a.name ?? "").localeCompare(b.name ?? ""),
         render: (_value, record) => (
           <span className="text-sm text-text-1">
@@ -252,7 +250,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
       },
       status: {
         key: "status",
-        title: t("workItems.table.columns.status", { defaultValue: "Status" }),
+        title: t("workItems.table.columns.status"),
         width: 120,
         sorter: (a, b) =>
           getWorkItemStatus(a).localeCompare(getWorkItemStatus(b)),
@@ -264,9 +262,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
       },
       priority: {
         key: "priority",
-        title: t("workItems.table.columns.priority", {
-          defaultValue: "Priority",
-        }),
+        title: t("workItems.table.columns.priority"),
         width: 96,
         sorter: (a, b) => (a.priority ?? "").localeCompare(b.priority ?? ""),
         render: (_value, record) =>
@@ -278,9 +274,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
       },
       assignee: {
         key: "assignee",
-        title: t("workItems.table.columns.assignee", {
-          defaultValue: "Assignee",
-        }),
+        title: t("workItems.table.columns.assignee"),
         width: 140,
         sorter: (a, b) =>
           (a.assignee?.name ?? "").localeCompare(b.assignee?.name ?? ""),
@@ -291,9 +285,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
       },
       targetDate: {
         key: "targetDate",
-        title: t("workItems.table.columns.targetDate", {
-          defaultValue: "Due",
-        }),
+        title: t("workItems.table.columns.targetDate"),
         width: 110,
         sorter: (a, b) =>
           (a.target_date ?? "").localeCompare(b.target_date ?? ""),
@@ -306,7 +298,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
       },
       labels: {
         key: "labels",
-        title: t("workItems.table.columns.labels", { defaultValue: "Labels" }),
+        title: t("workItems.table.columns.labels"),
         render: (_value, record) => (
           <span className="flex flex-wrap gap-1">
             {(record.labels ?? []).map((label) => (
@@ -366,9 +358,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
     if (propertyGroupBy === TABLE_GROUP_BY_PROJECT) {
       return groupWorkItemsByProject(
         items,
-        t("workItems.properties.noProject", {
-          defaultValue: "No linked Project",
-        })
+        t("workItems.properties.noProject")
       );
     }
     const definition = definitions.find(
@@ -423,9 +413,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
           showSearch
           appearance="ghost"
           size="small"
-          placeholder={t("workItems.table.groupByProperty", {
-            defaultValue: "Group by property",
-          })}
+          placeholder={t("workItems.table.groupByProperty")}
           prefix={
             <HugeiconsIcon
               icon={LayoutTwoRowIcon}
@@ -433,9 +421,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
               size={13}
             />
           }
-          ariaLabel={t("workItems.table.groupByProperty", {
-            defaultValue: "Group by property",
-          })}
+          ariaLabel={t("workItems.table.groupByProperty")}
           dataTestId="work-items-table-property-group"
         />
         <Select
@@ -445,9 +431,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
           onChange={(next) => onVisibleColumnsChange(next as string[])}
           appearance="ghost"
           size="small"
-          placeholder={t("workItems.table.columnsPicker", {
-            defaultValue: "Columns",
-          })}
+          placeholder={t("workItems.table.columnsPicker")}
           prefix={
             <HugeiconsIcon
               icon={LayoutThreeColumnIcon}
@@ -455,9 +439,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
               size={13}
             />
           }
-          ariaLabel={t("workItems.table.columnsPicker", {
-            defaultValue: "Columns",
-          })}
+          ariaLabel={t("workItems.table.columnsPicker")}
           dataTestId="work-items-table-columns"
         />
       </div>
@@ -469,9 +451,7 @@ export const WorkItemsTableView: React.FC<WorkItemsTableViewProps> = ({
                 <h3 className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-2">
                   <span>
                     {group.key === PROPERTY_FILTER_NONE_VALUE
-                      ? t("workItems.properties.noValue", {
-                          defaultValue: "No value",
-                        })
+                      ? t("workItems.properties.noValue")
                       : group.label}
                   </span>
                   <span className="text-text-4">{group.items.length}</span>

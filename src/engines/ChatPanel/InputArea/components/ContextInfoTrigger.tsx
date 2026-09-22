@@ -39,7 +39,6 @@ export const ContextInfoTrigger: React.FC<ContextInfoTriggerProps> = ({
   variant === "corner" ? (
     <Button
       layout="custom"
-      appearance="custom"
       ref={triggerRef}
       data-testid="context-info-button"
       className={`flex h-[28px] shrink-0 items-center gap-1.5 rounded-full text-text-3 transition-colors duration-200 ${triggerSurfaceClass} ${compact ? "w-[28px] justify-center px-0" : "px-2"}`}
@@ -59,7 +58,6 @@ export const ContextInfoTrigger: React.FC<ContextInfoTriggerProps> = ({
   ) : (
     <Button
       layout="custom"
-      appearance="custom"
       ref={triggerRef}
       data-testid="context-info-button"
       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-text-3 transition-colors duration-150 hover:text-text-2 ${triggerSurfaceClass}`}

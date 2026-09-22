@@ -1,4 +1,4 @@
-use super::utils::run_git;
+use super::utils::{run_git, run_git_path_operation};
 /**
  * Staging Operations
  *
@@ -24,26 +24,13 @@ pub fn stage_all_files(repo_path: &Path) -> Result<(), String> {
 
 /// Stage a specific file
 pub fn stage_file(repo_path: &Path, file: &str) -> Result<(), String> {
-    let output = run_git(repo_path, &["add", file])?;
-
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
-
-    Ok(())
+    run_git_path_operation(repo_path, &["add"], &[file])
 }
 
-/// Unstage files
+/// Unstage the selected literal paths in one index transaction.
 pub fn unstage_files(repo_path: &Path, files: &[String]) -> Result<(), String> {
-    for file in files {
-        let output = run_git(repo_path, &["reset", "HEAD", file])?;
-
-        if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).to_string());
-        }
-    }
-
-    Ok(())
+    let paths: Vec<_> = files.iter().map(String::as_str).collect();
+    run_git_path_operation(repo_path, &["reset", "HEAD"], &paths)
 }
 
 /// Discard changes in files
@@ -151,17 +138,29 @@ pub fn discard_changes(repo_path: &Path, files: &[String]) -> Result<(), String>
 
     let files_to_process: &[String] = if discard_all { &all_files } else { files };
 
+    // Updating the index is a prerequisite for destructive worktree edits.
+    // Do it once for the entire request before deleting even an untracked
+    // file: an index lock/permission failure must leave all selected files.
+    let paths_to_reset: Vec<_> = files_to_process
+        .iter()
+        .filter(|file| {
+            staged_new_files.contains(file.as_str())
+                || staged_files.contains(file.as_str())
+                || conflict_files.contains(file.as_str())
+        })
+        .map(String::as_str)
+        .collect();
+    if !paths_to_reset.is_empty() {
+        run_git_path_operation(repo_path, &["reset", "HEAD"], &paths_to_reset)?;
+    }
+
     for file in files_to_process {
         let file_path = repo_path.join(file);
 
         if conflict_files.contains(file.as_str()) {
             // Conflict file: restore to pre-merge state using HEAD version
             // First reset the index entry, then checkout from HEAD
-            let _ = run_git(repo_path, &["reset", "HEAD", "--", file]);
-            let output = run_git(repo_path, &["checkout", "HEAD", "--", file])?;
-            if !output.status.success() {
-                return Err(String::from_utf8_lossy(&output.stderr).to_string());
-            }
+            run_git_path_operation(repo_path, &["checkout", "HEAD"], &[file])?;
         } else if untracked_files.contains(file.as_str()) {
             // Untracked file: delete from filesystem
             if file_path.exists() {
@@ -175,7 +174,6 @@ pub fn discard_changes(repo_path: &Path, files: &[String]) -> Result<(), String>
             }
         } else if staged_new_files.contains(file.as_str()) {
             // Staged new file: unstage first, then delete
-            let _ = run_git(repo_path, &["reset", "HEAD", "--", file]);
             // Now delete the file
             if file_path.exists() {
                 if file_path.is_dir() {
@@ -187,31 +185,22 @@ pub fn discard_changes(repo_path: &Path, files: &[String]) -> Result<(), String>
                 }
             }
         } else {
-            // Tracked file (modified/deleted): may need to unstage first
-            if staged_files.contains(file.as_str()) {
-                let _ = run_git(repo_path, &["reset", "HEAD", "--", file]);
-            }
-
-            // Now checkout to discard working tree changes
-            let output = run_git(repo_path, &["checkout", "--", file])?;
-
-            if !output.status.success() {
-                return Err(String::from_utf8_lossy(&output.stderr).to_string());
-            }
+            // The index prerequisite succeeded; restore only this literal path.
+            run_git_path_operation(repo_path, &["checkout"], &[file])?;
         }
     }
 
     // For discard-all, also run git checkout -- . to catch any remaining tracked changes
     // (e.g., files with only worktree modifications that weren't in the staged set)
     if discard_all {
-        let output = run_git(repo_path, &["checkout", "--", "."])?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            // Don't fail if checkout has nothing to do
-            if !stderr.is_empty() && !stderr.contains("error: pathspec") {
-                return Err(stderr.to_string());
+        // Don't fail if checkout has nothing to do
+        run_git_path_operation(repo_path, &["checkout"], &["."]).or_else(|stderr| {
+            if stderr.is_empty() || stderr.contains("error: pathspec") {
+                Ok(())
+            } else {
+                Err(stderr)
             }
-        }
+        })?;
     }
 
     Ok(())
@@ -236,16 +225,6 @@ pub fn resolve_conflict(repo_path: &Path, file: &str, strategy: &str) -> Result<
         }
     };
 
-    let output = run_git(repo_path, &["checkout", flag, "--", file])?;
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
-
-    // Stage the file to mark conflict as resolved
-    let output = run_git(repo_path, &["add", file])?;
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
-
-    Ok(())
+    run_git_path_operation(repo_path, &["checkout", flag], &[file])?;
+    run_git_path_operation(repo_path, &["add"], &[file])
 }

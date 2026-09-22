@@ -40,6 +40,8 @@ Copy `config/env.example` to the repository-root `.env` only when you need local
 
 Build, test, CSS, and commit-message configuration lives in `config/`. The package scripts and Git hooks select these files explicitly. Use `pnpm build`, `pnpm test`, and `pnpm test:watch`; direct webpack or Vitest commands need `--config config/webpack.config.js` or `--config config/vitest.config.ts`, respectively. Editor integrations that ask for a config path should use the files in `config/` as well.
 
+Knip and Gitleaks configuration also lives in `config/`; use the package scripts for Knip. Oxlint configuration lives in `src/.oxlintrc.json` because its exclusions are scoped to the configuration directory; use `pnpm lint:fast`. Direct Gitleaks runs need `--config config/gitleaks.toml --gitleaks-ignore-path config/gitleaksignore`. Point Oxlint editor integrations at `src/.oxlintrc.json` if they do not discover it automatically. Generated Node helper symlinks belong in `src-tauri/bin/`.
+
 ESLint, Prettier, and unimported settings live in `package.json` so editors and CLI tools can discover them automatically. See [linting conventions](../docs/development/linting.md) for the reasoning behind the lint rules.
 
 Restart a running dev server after changing or relocating build configuration. The webpack wrapper loads its config only at startup, so an existing process can keep using old loader paths even after source hot reloads.
@@ -135,7 +137,7 @@ Add or update docs when behavior, architecture, setup, or user-visible behavior 
 Use the repository rules in `.cursor/rules/` as the source of truth. The most common expectations are:
 
 - Keep changes focused and remove dead code immediately.
-- Keep every TypeScript file you touch within 700 lines. CI's `File length (changed files)` step checks the `.ts` and `.tsx` files under `src/` that a pull request adds, modifies, or renames. It never judges files the pull request leaves alone, so split an existing long file the next time you change it. Markdown, JSON, styles, and other file types are not checked, and test files, `src/test/`, and `src/app/root/e2e/` are exempt. To check a branch locally, run `git diff --name-only --diff-filter=ACMR -z origin/develop...HEAD | node scripts/ci/check-changed-file-length.cjs`.
+- Keep every TypeScript file you touch within 700 lines. CI's `File length (changed files)` step checks the `.ts` and `.tsx` files under `src/` that a pull request adds, modifies, or renames. It never judges files the pull request leaves alone, so split an existing long file the next time you change it. Docs, Markdown, JSON (including locale catalogs), styles, and other file types are not checked, and test files, `src/test/`, `src/app/root/e2e/`, i18n code (`src/i18n/` and any `locales/` directory), `.d.ts` declaration files, generated files (a header comment in the first 10 lines saying `Do not edit` or `@generated`), and the data tables listed in the script (`src/config/languageRegistry.ts`) are exempt. To check a branch locally, run `git diff --name-only --diff-filter=ACMR -z origin/develop...HEAD | node scripts/ci/check-changed-file-length.cjs`.
 - Use existing shared components, hooks, stores, and design tokens.
 - Prefer typed constants and enums over hardcoded domain strings.
 - Let errors propagate instead of silently returning empty fallback data.

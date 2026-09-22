@@ -1,8 +1,9 @@
 /**
  * Tests for ComposerInput cut handler — pure logic only.
  *
- * DOM-level behaviour of `createCutHandler` is covered by TEST_CASES.md.
- * Here we test the extracted pure helper `partsToPlainText`.
+ * DOM-level behaviour of `createCutHandler` (caret, undo, emptied editor) is
+ * covered by `ComposerInput.cut.test.ts`. Here we test the extracted pure
+ * helper `partsToPlainText`.
  */
 import { describe, expect, it } from "vitest";
 

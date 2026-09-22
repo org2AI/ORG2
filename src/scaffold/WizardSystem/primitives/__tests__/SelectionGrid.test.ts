@@ -39,7 +39,7 @@ describe("SelectionGrid pill sizing", () => {
       })
     );
     expect(html).toContain("grid-template-columns:minmax(0, 1fr)");
-    expect(html).not.toContain("h-9 px-2 py-0");
+    expect(html).not.toContain("h-8 px-2 py-0");
     expect(html).not.toContain("h-2 w-2 rounded-full bg-primary-6");
   });
 
@@ -56,7 +56,7 @@ describe("SelectionGrid pill sizing", () => {
     expect(html).toContain('aria-pressed="true"');
   });
 
-  it("defaults selected and unselected pills to 36px across card variants", () => {
+  it("defaults selected and unselected pills to 32px across card variants", () => {
     for (const cardVariant of [
       "default",
       "subtle",
@@ -74,7 +74,7 @@ describe("SelectionGrid pill sizing", () => {
           cardVariant,
         })
       );
-      expect(html.match(/h-9 px-2 py-0/g)).toHaveLength(2);
+      expect(html.match(/h-8 px-2 py-0/g)).toHaveLength(2);
       expect(html).toContain('aria-pressed="true"');
       expect(html).toContain('aria-pressed="false"');
       expect(html).not.toContain("h-2 w-2 rounded-full bg-primary-6");
@@ -92,6 +92,6 @@ describe("SelectionGrid pill sizing", () => {
       })
     );
     expect(html).toContain("Connect your account");
-    expect(html).not.toContain("h-9 px-2 py-0");
+    expect(html).not.toContain("h-8 px-2 py-0");
   });
 });

@@ -22,6 +22,13 @@ import type {
 import Dropdown from "@src/components/Dropdown";
 import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import PersonAvatar from "@src/components/PersonAvatar";
+import {
+  WorkstationTrailBody,
+  WorkstationTrailEmptyText,
+  WorkstationTrailIconButton,
+  WorkstationTrailSection,
+  WorkstationTrailSurface,
+} from "@src/components/layout/blocks";
 import { WORKSTATION_TRAIL_CONTENT } from "@src/config/workstation/tokens";
 import {
   BubbleChatIcon,
@@ -30,19 +37,12 @@ import {
   Settings01Icon,
   Tick01Icon,
 } from "@src/icons";
-import {
-  WorkstationTrailBody,
-  WorkstationTrailEmptyText,
-  WorkstationTrailIconButton,
-  WorkstationTrailSection,
-  WorkstationTrailSurface,
-} from "@src/modules/shared/layouts/blocks";
+import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import {
   presentPullRequestActions,
   readRequestedReviewers,
-} from "@src/shared/pr/prLevelActions";
-import { latestReviewVerdicts } from "@src/shared/pr/prReviewRollup";
-import type { PrIdentity } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
+} from "@src/util/git/pr/prLevelActions";
+import { latestReviewVerdicts } from "@src/util/git/pr/prReviewRollup";
 
 import { PrLevelActions, reportPrAction } from "./PrLevelActions";
 import { PrMergeStatusList } from "./PrMergeStatusList";
@@ -138,10 +138,7 @@ function ReviewerStateIndicator({
   switch (state) {
     case "approved":
       return (
-        <span
-          title={t("git.pr.activity.approved", "approved these changes")}
-          className="inline-flex"
-        >
+        <span title={t("git.pr.activity.approved")} className="inline-flex">
           <HugeiconsIcon
             icon={Tick01Icon}
             data-icon="check"
@@ -154,7 +151,7 @@ function ReviewerStateIndicator({
     case "changes_requested":
       return (
         <span
-          title={t("git.pr.activity.changesRequested", "requested changes")}
+          title={t("git.pr.activity.changesRequested")}
           className="inline-flex"
         >
           <HugeiconsIcon
@@ -169,16 +166,13 @@ function ReviewerStateIndicator({
     case "awaiting":
       return (
         <span
-          title={t("git.pr.sidebar.awaitingReview", "Awaiting review")}
+          title={t("git.pr.sidebar.awaitingReview")}
           className="inline-flex h-2 w-2 rounded-full bg-warning-6"
         />
       );
     default:
       return (
-        <span
-          title={t("git.pr.activity.commented", "commented")}
-          className="inline-flex"
-        >
+        <span title={t("git.pr.activity.commented")} className="inline-flex">
           <HugeiconsIcon
             icon={BubbleChatIcon}
             data-icon="message-circle"
@@ -419,19 +413,13 @@ export const PrSidebar: React.FC<PrSidebarProps> = ({
         value: requestedReviewerLogins,
         loading: loadingReviewerCandidates,
         emptyContent: reviewerCandidatesError
-          ? t("git.pr.actions.reviewersLoadFailed", "Could not load reviewers")
-          : t("git.pr.actions.noReviewers", "No reviewers available"),
-        searchPlaceholder: t(
-          "git.pr.actions.searchReviewers",
-          "Search reviewers"
-        ),
-        triggerLabel: t("git.pr.sidebar.requestReviewers", "Request reviewers"),
+          ? t("git.pr.actions.reviewersLoadFailed")
+          : t("git.pr.actions.noReviewers"),
+        searchPlaceholder: t("git.pr.actions.searchReviewers"),
+        triggerLabel: t("git.pr.sidebar.requestReviewers"),
         onLoad: onLoadReviewerCandidates,
         onChange: onRequestedReviewersChange,
-        successMessage: t(
-          "git.pr.actions.reviewersUpdated",
-          "Reviewers updated"
-        ),
+        successMessage: t("git.pr.actions.reviewersUpdated"),
         dataTestId: "pr-reviewer-action",
       })
     : undefined;
@@ -443,16 +431,13 @@ export const PrSidebar: React.FC<PrSidebarProps> = ({
         value: assignees.map((assignee) => assignee.login),
         loading: loadingReviewerCandidates,
         emptyContent: reviewerCandidatesError
-          ? t("git.pr.sidebar.assigneesLoadFailed", "Could not load people")
-          : t("git.pr.sidebar.noAssigneeCandidates", "No people available"),
-        searchPlaceholder: t("git.pr.sidebar.searchAssignees", "Search people"),
-        triggerLabel: t("git.pr.sidebar.editAssignees", "Edit assignees"),
+          ? t("git.pr.sidebar.assigneesLoadFailed")
+          : t("git.pr.sidebar.noAssigneeCandidates"),
+        searchPlaceholder: t("git.pr.sidebar.searchAssignees"),
+        triggerLabel: t("git.pr.sidebar.editAssignees"),
         onLoad: onLoadReviewerCandidates,
         onChange: onAssigneesChange,
-        successMessage: t(
-          "git.pr.sidebar.assigneesUpdated",
-          "Assignees updated"
-        ),
+        successMessage: t("git.pr.sidebar.assigneesUpdated"),
         dataTestId: "pr-assignee-action",
       })
     : undefined;
@@ -464,13 +449,13 @@ export const PrSidebar: React.FC<PrSidebarProps> = ({
         value: labels.map((label) => label.name),
         loading: loadingLabelCandidates,
         emptyContent: labelCandidatesError
-          ? t("git.pr.sidebar.labelsLoadFailed", "Could not load labels")
-          : t("git.pr.sidebar.noLabelCandidates", "No labels available"),
-        searchPlaceholder: t("git.pr.sidebar.searchLabels", "Search labels"),
-        triggerLabel: t("git.pr.sidebar.editLabels", "Edit labels"),
+          ? t("git.pr.sidebar.labelsLoadFailed")
+          : t("git.pr.sidebar.noLabelCandidates"),
+        searchPlaceholder: t("git.pr.sidebar.searchLabels"),
+        triggerLabel: t("git.pr.sidebar.editLabels"),
         onLoad: onLoadLabelCandidates,
         onChange: onLabelsChange,
-        successMessage: t("git.pr.sidebar.labelsUpdated", "Labels updated"),
+        successMessage: t("git.pr.sidebar.labelsUpdated"),
         dataTestId: "pr-label-action",
       })
     : undefined;
@@ -484,7 +469,7 @@ export const PrSidebar: React.FC<PrSidebarProps> = ({
         className={`${WORKSTATION_TRAIL_CONTENT.sectionList} py-1`}
       >
         <WorkstationTrailSection
-          title={t("git.pr.sidebar.reviewers", "Reviewers")}
+          title={t("git.pr.sidebar.reviewers")}
           action={reviewerAction}
           dataTestId="pr-sidebar-reviewers"
         >
@@ -512,13 +497,13 @@ export const PrSidebar: React.FC<PrSidebarProps> = ({
             </ul>
           ) : (
             <WorkstationTrailEmptyText>
-              {t("git.pr.sidebar.noReviews", "No reviews")}
+              {t("git.pr.sidebar.noReviews")}
             </WorkstationTrailEmptyText>
           )}
         </WorkstationTrailSection>
 
         <WorkstationTrailSection
-          title={t("git.pr.sidebar.assignees", "Assignees")}
+          title={t("git.pr.sidebar.assignees")}
           action={assigneeAction}
           dataTestId="pr-sidebar-assignees"
         >
@@ -547,13 +532,13 @@ export const PrSidebar: React.FC<PrSidebarProps> = ({
             </ul>
           ) : (
             <WorkstationTrailEmptyText>
-              {t("git.pr.sidebar.noAssignees", "No one assigned")}
+              {t("git.pr.sidebar.noAssignees")}
             </WorkstationTrailEmptyText>
           )}
         </WorkstationTrailSection>
 
         <WorkstationTrailSection
-          title={t("git.pr.sidebar.labels", "Labels")}
+          title={t("git.pr.sidebar.labels")}
           action={labelAction}
           dataTestId="pr-sidebar-labels"
         >
@@ -578,13 +563,13 @@ export const PrSidebar: React.FC<PrSidebarProps> = ({
             </div>
           ) : (
             <WorkstationTrailEmptyText>
-              {t("git.pr.sidebar.noLabels", "None yet")}
+              {t("git.pr.sidebar.noLabels")}
             </WorkstationTrailEmptyText>
           )}
         </WorkstationTrailSection>
 
         <WorkstationTrailSection
-          title={t("git.pr.sidebar.actions", "Actions")}
+          title={t("git.pr.sidebar.actions")}
           dataTestId="pr-sidebar-actions"
         >
           <div className="flex flex-col gap-2 px-1 pb-0.5">

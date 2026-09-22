@@ -19,10 +19,10 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
 import { type SymbolInfo, getFileSymbols } from "@src/api/tauri/search";
 import { Placeholder } from "@src/components/Placeholder";
+import { VirtualList } from "@src/components/VirtualList";
 import { createLogger } from "@src/hooks/logger";
 import {
   DEBOUNCE_DELAYS,
@@ -309,7 +309,7 @@ export const OutlineContent: React.FC<OutlineContentProps> = memo(
     return (
       <div className="tree-guide-scope scrollbar-hide h-full overflow-y-auto pb-2">
         {useVirtualization ? (
-          <Virtuoso
+          <VirtualList
             totalCount={flattenedSymbols.length}
             itemContent={(index) => (
               <div key={flattenedSymbols[index].symbol.id}>
@@ -317,10 +317,9 @@ export const OutlineContent: React.FC<OutlineContentProps> = memo(
               </div>
             )}
             computeItemKey={(index) => flattenedSymbols[index].symbol.id}
-            overscan={20}
-            increaseViewportBy={{ top: 100, bottom: 100 }}
+            overscanPx={100}
             style={{ height: "100%" }}
-            defaultItemHeight={28}
+            estimatedItemHeight={28}
           />
         ) : (
           flattenedSymbols.map((item) => (

@@ -3,47 +3,32 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { InlineBanner } from "@src/components/InlineBanner";
-import { ORG2_CLOUD_OFFICIAL_WEB_ORIGIN } from "@src/features/Org2Cloud/config";
-import { ArrowRight02Icon, HugeiconsIcon, Unlink02Icon } from "@src/icons";
+import Select, { type SelectOption } from "@src/components/Select";
 import {
-  SECTION_VALUE_SMALL_MUTED_CLASSES,
+  SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import {
+  APPEARANCE_MODE,
+  type GlobalThemePreference,
+  THEME_PREFERENCE,
+} from "@src/config/appearance/globalThemes";
+import { createLogger } from "@src/hooks/logger";
+import {
+  ArrowRight02Icon,
+  HugeiconsIcon,
+  LaptopIcon,
+  PaintBrush01Icon,
+} from "@src/icons";
 
 import { useMobileRemote } from "../../app";
-import { useMobileAuth } from "../../auth/MobileAuthContext";
+import { useMobileTheme } from "../../appearance";
 import { MobileTopBar } from "../../components/MobileTopBar";
-import { MobileConfirmModal } from "../../components/modals/MobileConfirmModal";
-import { buildMobileWsUrl } from "../../connection/buildMobileWsUrl";
-import type {
-  MobileConnectionConfig,
-  MobilePermissionTier,
-} from "../../connection/types";
-import { useMobileRemotePlatform } from "../../platform";
+import { MobileProfileEntry } from "../../components/profile/MobileProfileEntry";
+import "./mobileSettings.scss";
 
-export function resolveRelayLabel(
-  config: MobileConnectionConfig | null,
-  demoMode: boolean
-): string {
-  if (demoMode) {
-    return "demo";
-  }
-  if (!config) {
-    return "";
-  }
-  try {
-    if (config.wsUrl?.trim()) {
-      return config.wsUrl.trim();
-    }
-    if (config.host?.trim()) {
-      return buildMobileWsUrl(config);
-    }
-  } catch {
-    return "";
-  }
-  return "";
-}
+const logger = createLogger("mobile-settings");
 
 function presenceLabel(
   presence: "online" | "offline" | "unknown",
@@ -59,175 +44,132 @@ function presenceLabel(
   }
 }
 
-export function resolvePermissionTierLabel(
-  tier: MobilePermissionTier | undefined,
-  t: (key: string) => string
-): string {
-  switch (tier) {
-    case "full":
-      return t("settings.permissionFull");
-    case "read_only":
-      return t("settings.permissionReadOnly");
-    default:
-      return t("settings.notAvailable");
-  }
-}
-
 export interface SettingsTabProps {
-  onOpenPairingGuide?: () => void;
-  onRevokePairing?: () => void;
+  onOpenDevices: () => void;
 }
 
-/** M-17 Settings — connection info and demo/live mode label. */
-export function SettingsTab({
-  onOpenPairingGuide,
-  onRevokePairing,
-}: SettingsTabProps) {
+/** Connection preferences and one entry into the shared account destination. */
+export function SettingsTab({ onOpenDevices }: SettingsTabProps) {
   const { t } = useTranslation("mobileRemote");
-  const { connection, connectionConfig } = useMobileRemote();
-  const { session, signOut, isDevelopmentBypass } = useMobileAuth();
-  const [confirmSignOut, setConfirmSignOut] = React.useState(false);
-  const platform = useMobileRemotePlatform();
-  const [opening, setOpening] = React.useState(false);
-  const [openFailed, setOpenFailed] = React.useState(false);
-  const openingRef = React.useRef(false);
-  const openCloudPage = async (path: "/account" | "/legal/privacy") => {
-    if (openingRef.current) return;
-    openingRef.current = true;
-    setOpening(true);
-    setOpenFailed(false);
-    try {
-      await platform.openExternal(
-        new URL(path, ORG2_CLOUD_OFFICIAL_WEB_ORIGIN).href
-      );
-    } catch {
-      setOpenFailed(true);
-    } finally {
-      openingRef.current = false;
-      setOpening(false);
-    }
-  };
+  const { connection } = useMobileRemote();
+  const { preference, status: themeStatus, setPreference } = useMobileTheme();
 
-  const relayLabel = resolveRelayLabel(connectionConfig, connection.demoMode);
-
-  const desktopValue = connection.desktopName
-    ? `${connection.desktopName} · ${presenceLabel(connection.presence, t)}`
-    : t("settings.notAvailable");
-
-  const modeLabel = connection.demoMode
-    ? t("settings.modeDemo")
-    : t("settings.modeLive");
+  const themeOptions: SelectOption[] = [
+    { value: THEME_PREFERENCE.SYSTEM, label: t("settings.themeSystem") },
+    { value: APPEARANCE_MODE.LIGHT, label: t("settings.themeLight") },
+    { value: APPEARANCE_MODE.DARK, label: t("settings.themeDark") },
+  ];
 
   return (
     <>
-      <MobileTopBar title={t("settings.title")} />
-      {confirmSignOut && !isDevelopmentBypass ? (
-        <MobileConfirmModal
-          title={t("settings.signOutConfirmTitle")}
-          description={t("settings.signOutConfirmBody")}
-          cancelLabel={t("settings.cancel")}
-          confirmLabel={t("settings.signOut")}
-          danger
-          onDismiss={() => setConfirmSignOut(false)}
-          onConfirm={signOut}
-        />
-      ) : null}
+      <div className="mobile-settings-header">
+        <MobileTopBar title={t("settings.title")} />
+      </div>
       {connection.demoMode ? (
         <InlineBanner tone="info">{t("settings.demoBanner")}</InlineBanner>
       ) : null}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div className="flex flex-col gap-5">
+      <div className="mobile-flow-screen mobile-settings flex-1">
+        <div className="mobile-settings__content">
           <SectionContainer
-            title={t("settings.account")}
+            className="mobile-settings__card mobile-settings__account"
             dataTestId="mobile-remote-account-settings"
           >
-            <SettingsValueRow
-              label={t("settings.signedInAs")}
-              value={
-                session.profile?.primaryEmail ??
-                session.profile?.displayName ??
-                session.userId
-              }
-            />
-            {!isDevelopmentBypass ? (
-              <>
-                <SectionRow showHeader={false}>
-                  <p className="text-sm text-text-2">
-                    {t("settings.accountWebHint")}
-                  </p>
-                </SectionRow>
-                <SettingsActionRow
-                  label={t("settings.manageAccount")}
-                  disabled={opening}
-                  onClick={() => void openCloudPage("/account")}
-                />
-                <SettingsActionRow
-                  label={t("settings.deleteAccount")}
-                  disabled={opening}
-                  onClick={() => void openCloudPage("/account")}
-                />
-                <SettingsActionRow
-                  label={t("settings.signOut")}
-                  danger
-                  onClick={() => setConfirmSignOut(true)}
-                />
-              </>
-            ) : null}
-            <SettingsActionRow
-              label={t("settings.privacyPolicy")}
-              disabled={opening}
-              onClick={() => void openCloudPage("/legal/privacy")}
-            />
-            {openFailed ? (
-              <InlineBanner tone="info">
-                {t("settings.openFailed")}
-              </InlineBanner>
-            ) : null}
+            <SectionRow showHeader={false} className="!py-0">
+              <MobileProfileEntry variant="row" />
+            </SectionRow>
           </SectionContainer>
 
           <SectionContainer
-            title={t("settings.connection")}
-            dataTestId="mobile-remote-connection-settings"
+            className="mobile-settings__card"
+            dataTestId="mobile-remote-preferences"
           >
-            <SettingsValueRow
-              label={t("settings.desktop")}
-              value={desktopValue}
-            />
-            <SettingsValueRow
-              label={t("settings.relay")}
-              value={
-                connection.demoMode
-                  ? t("settings.notAvailable")
-                  : relayLabel || t("settings.unknownRelay")
-              }
-            />
-            <SettingsValueRow
-              label={t("settings.permissionTier")}
-              value={resolvePermissionTierLabel(connection.tier, t)}
-            />
-            <SettingsValueRow label={t("settings.mode")} value={modeLabel} />
-          </SectionContainer>
-
-          {onOpenPairingGuide || onRevokePairing ? (
             <SectionContainer
-              title={t("settings.help")}
-              dataTestId="mobile-remote-help-settings"
+              className="mobile-settings__section"
+              dataTestId="mobile-remote-connection-settings"
             >
-              {onOpenPairingGuide ? (
-                <SettingsActionRow
-                  label={t("settings.pairingGuide")}
-                  onClick={onOpenPairingGuide}
+              <SectionRow showHeader={false} className="mobile-settings__row">
+                <Button
+                  layout="custom"
+                  className="mobile-settings__device-entry"
+                  onClick={onOpenDevices}
+                >
+                  <SettingsLabel
+                    icon={LaptopIcon}
+                    text={t("settings.connectionDevices")}
+                  />
+                  <span className="mobile-settings__desktop">
+                    <span
+                      className="mobile-settings__desktop-name"
+                      title={connection.desktopName}
+                    >
+                      {connection.desktopName || t("settings.notAvailable")}
+                    </span>
+                    <span className="mobile-settings__presence">
+                      <span
+                        className={`mobile-settings__status-dot mobile-settings__status-dot--${connection.presence}`}
+                        aria-hidden="true"
+                      />
+                      <span className="sr-only">
+                        {presenceLabel(connection.presence, t)}
+                      </span>
+                    </span>
+                    <HugeiconsIcon
+                      icon={ArrowRight02Icon}
+                      size={16}
+                      className="shrink-0"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </Button>
+              </SectionRow>
+            </SectionContainer>
+
+            <SectionContainer
+              className="mobile-settings__section"
+              dataTestId="mobile-remote-appearance-settings"
+            >
+              <SectionRow
+                label={
+                  <SettingsLabel
+                    icon={PaintBrush01Icon}
+                    text={t("settings.theme")}
+                  />
+                }
+                layout="inline"
+                headerClassName="mobile-settings__label"
+                className="mobile-settings__row"
+                equalColumns
+              >
+                <Select
+                  value={preference}
+                  options={themeOptions}
+                  appearance="bare"
+                  size="large"
+                  dropdownAlign="right"
+                  ariaLabel={t("settings.theme")}
+                  loading={themeStatus === "applying"}
+                  error={themeStatus === "error"}
+                  className="mobile-settings__theme min-w-0"
+                  selectorClassName="justify-end [&_.select-value]:text-right"
+                  style={SECTION_CONTROL_STYLE}
+                  onChange={(value) => {
+                    setPreference(String(value) as GlobalThemePreference).catch(
+                      (error) =>
+                        logger.warn("Mobile theme preference failed", error)
+                    );
+                  }}
                 />
-              ) : null}
-              {onRevokePairing ? (
-                <SettingsActionRow
-                  label={t("settings.revokePairing")}
-                  danger
-                  onClick={onRevokePairing}
-                />
+              </SectionRow>
+              {themeStatus === "error" ? (
+                <p
+                  role="alert"
+                  className="mobile-type-caption px-3 pb-3 text-danger-6"
+                >
+                  {t("settings.themeChangeFailed")}
+                </p>
               ) : null}
             </SectionContainer>
-          ) : null}
+          </SectionContainer>
         </div>
       </div>
     </>
@@ -236,58 +178,19 @@ export function SettingsTab({
 
 SettingsTab.displayName = "SettingsTab";
 
-interface SettingsRowProps {
-  label: string;
-  value: string;
-}
-
-function SettingsValueRow({ label, value }: SettingsRowProps) {
+function SettingsLabel({
+  icon,
+  text,
+}: {
+  icon: typeof LaptopIcon;
+  text: string;
+}) {
   return (
-    <SectionRow label={label} layout="inline" equalColumns>
-      <span
-        className={`block w-full min-w-0 truncate text-right ${SECTION_VALUE_SMALL_MUTED_CLASSES}`}
-        title={value}
-      >
-        {value}
+    <span className="mobile-settings__row-label">
+      <span className="mobile-settings__icon">
+        <HugeiconsIcon icon={icon} size={18} aria-hidden="true" />
       </span>
-    </SectionRow>
-  );
-}
-
-interface SettingsActionRowProps {
-  label: string;
-  danger?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}
-
-function SettingsActionRow({
-  label,
-  danger = false,
-  disabled,
-  onClick,
-}: SettingsActionRowProps) {
-  return (
-    <SectionRow showHeader={false} className="!min-h-0 !py-1.5">
-      <Button
-        htmlType="button"
-        variant={danger ? "danger" : "tertiary"}
-        appearance="ghost"
-        size="small"
-        long
-        icon={
-          <HugeiconsIcon
-            icon={danger ? Unlink02Icon : ArrowRight02Icon}
-            size={16}
-          />
-        }
-        iconPosition="right"
-        className="justify-between !px-0 font-normal"
-        onClick={onClick}
-        disabled={disabled}
-      >
-        {label}
-      </Button>
-    </SectionRow>
+      <span>{text}</span>
+    </span>
   );
 }

@@ -6,9 +6,9 @@ import {
   type WorkItemRun,
   projectApi,
 } from "@src/api/http/project";
+import { CollapsibleSection } from "@src/components/layout/blocks";
 import { useProjectDataChanged } from "@src/hooks/project";
 import ChangedFilesList from "@src/modules/ProjectManager/WorkItems/components/AgentWorkflow/ChangedFilesList";
-import { CollapsibleSection } from "@src/modules/shared/layouts/blocks";
 
 import PrSection from "./PrSection";
 import { useLiveDiffStats } from "./hooks/useLiveDiffStats";

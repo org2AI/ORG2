@@ -11,6 +11,7 @@ import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import Select from "@src/components/Select";
 import Textarea from "@src/components/Textarea";
+import { ActivityHeaderActionButton } from "@src/features/GitHubWork/ActivityTimeline";
 import { useProjectCachedResource } from "@src/hooks/project";
 import {
   Add01Icon,
@@ -22,7 +23,6 @@ import {
   PlayIcon,
   Settings02Icon,
 } from "@src/icons";
-import { ActivityHeaderActionButton } from "@src/modules/shared/components/ActivityTimeline";
 import Modal from "@src/scaffold/ModalSystem";
 
 import { WorkItemThreadSection } from "../WorkItemThread";
@@ -223,11 +223,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
         />
       }
       title={
-        <span className="font-normal">
-          {t("workItems.quickActions.title", {
-            defaultValue: "Quick actions",
-          })}
-        </span>
+        <span className="font-normal">{t("workItems.quickActions.title")}</span>
       }
       action={
         <ActivityHeaderActionButton
@@ -238,7 +234,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
               size={12}
             />
           }
-          label={t("common:actions.manage", { defaultValue: "Manage" })}
+          label={t("common:actions.manage")}
           onClick={() => setManageOpen(true)}
           disabled={disabled}
           data-testid="work-item-quick-actions-manage"
@@ -247,18 +243,13 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
     >
       {actions.length === 0 ? (
         <p className="text-xs text-text-4">
-          {t("workItems.quickActions.empty", {
-            defaultValue:
-              "No quick actions yet. Save a reusable prompt for an agent.",
-          })}
+          {t("workItems.quickActions.empty")}
         </p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {actions.map((action) => (
             <Button
               key={action.id}
-              variant="secondary"
-              appearance="outline"
               size="small"
               icon={
                 <HugeiconsIcon icon={PlayIcon} data-icon="play" size={12} />
@@ -277,9 +268,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
 
       <Modal
         visible={manageOpen}
-        title={t("workItems.quickActions.manageTitle", {
-          defaultValue: "Manage quick actions",
-        })}
+        title={t("workItems.quickActions.manageTitle")}
         width={520}
         onCancel={() => setManageOpen(false)}
         footer={null}
@@ -289,9 +278,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
             <Input
               value={draftName}
               onChange={(value) => setDraftName(value)}
-              placeholder={t("workItems.quickActions.namePlaceholder", {
-                defaultValue: "Action name (e.g. Fix CI)",
-              })}
+              placeholder={t("workItems.quickActions.namePlaceholder")}
               size="small"
               data-testid="work-item-quick-action-name"
             />
@@ -299,9 +286,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
               value={draftTarget ?? undefined}
               options={targetOptions}
               onChange={(value) => setDraftTarget(value as string)}
-              placeholder={t("workItems.quickActions.targetPlaceholder", {
-                defaultValue: "Target agent",
-              })}
+              placeholder={t("workItems.quickActions.targetPlaceholder")}
               size="small"
               showSearch
               dataTestId="work-item-quick-action-target"
@@ -309,9 +294,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
             <Textarea
               value={draftPrompt}
               onChange={(value) => setDraftPrompt(value)}
-              placeholder={t("workItems.quickActions.promptPlaceholder", {
-                defaultValue: "What should the agent do?",
-              })}
+              placeholder={t("workItems.quickActions.promptPlaceholder")}
               size="small"
               data-testid="work-item-quick-action-prompt"
             />
@@ -323,7 +306,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
                   onClick={handleCancelEdit}
                   data-testid="work-item-quick-action-cancel-edit"
                 >
-                  {t("common:actions.cancel", { defaultValue: "Cancel" })}
+                  {t("common:actions.cancel")}
                 </Button>
               ) : null}
               <Button
@@ -343,9 +326,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
                 onClick={() => void handleCreate()}
                 data-testid="work-item-quick-action-create"
               >
-                {editingId
-                  ? t("common:actions.save", { defaultValue: "Save" })
-                  : t("common:actions.add", { defaultValue: "Add" })}
+                {editingId ? t("common:actions.save") : t("common:actions.add")}
               </Button>
             </div>
           </div>
@@ -363,7 +344,6 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
                 </span>
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
                   iconOnly
                   icon={
@@ -374,14 +354,11 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
                     />
                   }
                   onClick={() => handleEdit(action)}
-                  aria-label={t("common:actions.edit", {
-                    defaultValue: "Edit action",
-                  })}
+                  aria-label={t("common:actions.edit")}
                   data-testid={`work-item-quick-action-edit-${action.id}`}
                 />
                 <Button
                   variant="tertiary"
-                  appearance="ghost"
                   size="mini"
                   iconOnly
                   icon={
@@ -392,17 +369,13 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
                     />
                   }
                   onClick={() => void handleArchive(action)}
-                  aria-label={t("workItems.quickActions.archive", {
-                    defaultValue: "Archive action",
-                  })}
+                  aria-label={t("workItems.quickActions.archive")}
                 />
               </div>
             ))}
             {actions.length === 0 ? (
               <p className="px-2 py-1 text-xs text-text-4">
-                {t("workItems.quickActions.emptyManage", {
-                  defaultValue: "Nothing saved yet.",
-                })}
+                {t("workItems.quickActions.emptyManage")}
               </p>
             ) : null}
           </div>
@@ -415,7 +388,7 @@ export const QuickActionsSection: React.FC<QuickActionsSectionProps> = ({
               }
               onClick={() => setManageOpen(false)}
             >
-              {t("common:actions.close", { defaultValue: "Close" })}
+              {t("common:actions.close")}
             </Button>
           </div>
         </div>

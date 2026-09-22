@@ -2,6 +2,7 @@ import type React from "react";
 
 import AnyIcon from "@src/components/AnyIcon";
 import Button from "@src/components/Button";
+import { KeyboardShortcut } from "@src/components/KeyboardShortcut";
 import { SESSION_ROW_PRESENTATION } from "@src/components/SessionRowPresentation";
 import { ArrowDown01Icon } from "@src/icons";
 
@@ -11,6 +12,21 @@ import type {
   NavigationMenuIconRenderer,
   NavigationMenuRowActionClickHandler,
 } from "./types";
+
+export function renderNavigationMenuHoverContent(
+  item: NavigationMenuItem,
+  trailingLabelClassName: string
+): React.ReactNode {
+  if (item.shortcut) {
+    return (
+      <KeyboardShortcut shortcut={item.shortcut} size="sm" rendering="icons" />
+    );
+  }
+  if (item.trailingLabel) {
+    return <span className={trailingLabelClassName}>{item.trailingLabel}</span>;
+  }
+  return undefined;
+}
 
 interface RenderLeadingIconArgs {
   item: NavigationMenuItem;
@@ -42,7 +58,6 @@ export function renderLeadingIcon({
             {icon}
           </span>
           <Button
-            htmlType="button"
             aria-label={action.label}
             title={action.label}
             className={`pointer-events-none absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 opacity-0 duration-150 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 focus:outline-none`}
@@ -54,7 +69,6 @@ export function renderLeadingIcon({
             aria-pressed={action.active}
             size="sidebar"
             variant="tertiary"
-            appearance="soft"
             iconOnly
             icon={
               <AnyIcon

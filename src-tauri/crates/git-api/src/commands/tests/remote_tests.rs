@@ -19,13 +19,13 @@ fn list_remotes_uses_repository_metadata_without_git_cli() {
     {
         let repository = git2::Repository::init(&repo_path).expect("initialize test repository");
         repository
-            .remote("origin", "git@github.com:org2ai/ORGII.git")
+            .remote("origin", "git@github.com:org2AI/ORG2.git")
             .expect("add origin");
         let mut config = repository.config().expect("open repository config");
         config
             .set_str(
                 "remote.origin.pushurl",
-                "https://github.com/org2ai/ORGII.git",
+                "https://github.com/org2AI/ORG2.git",
             )
             .expect("set push URL");
     }
@@ -37,11 +37,11 @@ fn list_remotes_uses_repository_metadata_without_git_cli() {
     assert_eq!(remotes[0].name, "origin");
     assert_eq!(
         remotes[0].fetch_url.as_deref(),
-        Some("git@github.com:org2ai/ORGII.git")
+        Some("git@github.com:org2AI/ORG2.git")
     );
     assert_eq!(
         remotes[0].push_url.as_deref(),
-        Some("https://github.com/org2ai/ORGII.git")
+        Some("https://github.com/org2AI/ORG2.git")
     );
 
     let _ = std::fs::remove_dir_all(&repo_path);
@@ -567,4 +567,80 @@ fn fetch_error_network() {
 fn fetch_error_unknown() {
     let err_type = detect_fetch_error_type("everything is fine");
     assert_eq!(err_type, GitErrorType::Unknown);
+}
+
+/// Temp repo whose `origin` is a local repository, so git's transport would
+/// actually spawn `--upload-pack` / `--receive-pack` programs if an
+/// option-shaped remote ever reached the command line.
+#[cfg(unix)]
+fn repo_with_local_origin(label: &str) -> std::path::PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "orgii-operand-{label}-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock after epoch")
+            .as_nanos()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    let upstream = root.join("upstream");
+    let work = root.join("work");
+    git2::Repository::init(&upstream).expect("init upstream");
+    let repository = git2::Repository::init(&work).expect("init work repo");
+    repository
+        .remote("origin", upstream.to_str().expect("utf8 path"))
+        .expect("add origin");
+    work
+}
+
+#[cfg(unix)]
+#[test]
+fn option_shaped_remote_and_branch_never_reach_git() {
+    use crate::commands::remote::{
+        add_remote, delete_remote, fetch_from_remote, push_to_remote, update_remote,
+    };
+    use crate::types::PushRequest;
+
+    let work = repo_with_local_origin("remote");
+    let marker = work.join("pwned");
+    let payload = format!("--upload-pack=touch {}", marker.display());
+    let receive_payload = format!("--receive-pack=touch {}", marker.display());
+
+    let fetch = fetch_from_remote(&work, Some(&payload), false, None, None, false);
+    assert!(fetch.is_err(), "fetch must reject an option-shaped remote");
+
+    let pull = pull_from_remote(&work, Some(&payload), None, None, None, None, false);
+    assert!(pull.is_err(), "pull must reject an option-shaped remote");
+    let pull = pull_from_remote(
+        &work,
+        Some("origin"),
+        Some(&payload),
+        None,
+        None,
+        None,
+        false,
+    );
+    assert!(pull.is_err(), "pull must reject an option-shaped branch");
+
+    let push = push_to_remote(
+        &work,
+        &PushRequest {
+            remote: Some(receive_payload.clone()),
+            branch: Some("main".to_string()),
+            set_upstream: false,
+            force: false,
+            auth_username: None,
+            auth_token: None,
+            store_auth: false,
+        },
+    );
+    assert!(push.is_err(), "push must reject an option-shaped remote");
+
+    assert!(add_remote(&work, "--mirror=fetch", "https://example.com/a.git").is_err());
+    assert!(add_remote(&work, "extra", &payload).is_err());
+    assert!(update_remote(&work, "origin", &payload).is_err());
+    assert!(delete_remote(&work, "--help").is_err());
+
+    assert!(!marker.exists(), "no injected program may run");
+    let _ = std::fs::remove_dir_all(work.parent().expect("temp root"));
 }

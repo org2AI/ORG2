@@ -14,10 +14,7 @@ import {
   MonitorIcon,
   Tick01Icon,
 } from "@src/icons";
-import {
-  POPUP_ANIMATION,
-  getPopupSurfaceStyle,
-} from "@src/scaffold/shared/popupTokens";
+import { POPUP_ANIMATION, getPopupSurfaceStyle } from "@src/scaffold/tokens";
 import { type StationMode, stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { useCurrentTheme } from "@src/util/ui/theme/themeUtils";
 import { getViewportSize } from "@src/util/ui/window/viewport";
@@ -335,14 +332,12 @@ const GeneralLayoutTour: React.FC<GeneralLayoutTourProps> = ({
             </span>
             <Button
               variant="tertiary"
-              appearance="soft-no-drop"
               size="mini"
               shape="round"
               iconOnly
               icon={
                 <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />
               }
-              htmlType="button"
               className="hover:bg-fill-2 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6 focus-visible:outline-none"
               aria-label={t("tutorials.chrome.close")}
               onClick={onClose}
@@ -411,8 +406,7 @@ const GeneralLayoutTour: React.FC<GeneralLayoutTourProps> = ({
           <div className="flex items-center justify-between gap-2">
             <Button
               size="mini"
-              variant="secondary"
-              appearance="ghost"
+              variant="tertiary"
               shape="circle"
               iconOnly
               icon={

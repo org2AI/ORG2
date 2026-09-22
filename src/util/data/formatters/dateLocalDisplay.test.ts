@@ -65,7 +65,7 @@ describe("local date display helpers", () => {
     vi.setSystemTime(new Date(2026, 1, 25, 14, 30, 0));
 
     expect(formatRelativeElapsedShort(new Date(2026, 1, 25, 14, 29, 30))).toBe(
-      "Now"
+      "Just now"
     );
     expect(formatRelativeElapsedShort(new Date(2026, 1, 25, 14, 25, 0))).toBe(
       "5m ago"

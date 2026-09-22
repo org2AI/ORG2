@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { type TodoEntry, projectApi } from "@src/api/http/project";
 import { storePillText } from "@src/config/pillTokens";
+import { sharedBrowserTabsAtom } from "@src/store/workstation/browser/tabs";
 import { mainPaneTabsAtom } from "@src/store/workstation/tabs";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
 import { getBrowserSessionWebviewLabel } from "@src/util/platform/tauri/browserSessionLabel";
@@ -35,6 +36,61 @@ function htmlToPlainText(html: string): string {
 export async function waitForPendingPills(): Promise<void> {
   if (pendingLoads.size === 0) return;
   await Promise.all(pendingLoads.values());
+}
+
+/**
+ * Compare two addresses as the same page: a fragment only scrolls within it,
+ * and a trailing slash is not a different resource. Anything unparseable is
+ * not a page we can match.
+ */
+function normalizeBrowserUrl(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    url.hash = "";
+    return url.href.replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The in-app browser session currently showing `url`, if any. A pasted address
+ * that matches an open session is a reference to that session — it becomes a
+ * browser pill carrying the page's content — rather than an ordinary link.
+ * The browser tab projection is kept in sync with live navigation, so the
+ * match follows the page the user is actually on.
+ */
+export function findBrowserSessionByUrl(
+  url: string
+): { sessionId: string; title: string } | null {
+  const target = normalizeBrowserUrl(url);
+  if (!target) return null;
+
+  // This runs inside paste and keystroke handlers. A window without the app
+  // store has no browser sessions to match — it must not throw and swallow
+  // the user's keystroke.
+  let store: ReturnType<typeof getInstrumentedStore>;
+  try {
+    store = getInstrumentedStore();
+  } catch {
+    return null;
+  }
+  const tabs = [
+    ...store.get(mainPaneTabsAtom),
+    ...store.get(sharedBrowserTabsAtom),
+  ];
+  for (const tab of tabs) {
+    if (tab.type !== "browser-session") continue;
+    const { sessionId, url: tabUrl } = tab.data as {
+      sessionId?: unknown;
+      url?: unknown;
+    };
+    if (typeof sessionId !== "string" || typeof tabUrl !== "string") continue;
+    if (normalizeBrowserUrl(tabUrl) === target) {
+      return { sessionId, title: tab.title };
+    }
+  }
+  return null;
 }
 
 /**

@@ -322,7 +322,7 @@ impl UnifiedMessageProcessor {
                 return None;
             }
         };
-        let provider = match self.side_query_provider(session_id, "skill-prefetch").await {
+        let provider = match self.side_query_provider(session_id, "skill_prefetch").await {
             Ok(provider) => provider,
             Err(err) => {
                 warn!(
@@ -377,7 +377,7 @@ impl UnifiedMessageProcessor {
     ) -> Option<JoinHandle<MemoryPrefetchOutput>> {
         let workspace_root = self.workspace_root()?;
         let provider = match self
-            .side_query_provider(session_id, "memory-prefetch")
+            .side_query_provider(session_id, "memory_prefetch")
             .await
         {
             Ok(provider) => provider,

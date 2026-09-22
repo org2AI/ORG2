@@ -4,24 +4,17 @@
  * Manages subagent child session state for ActivitySimulator:
  * - Queries DB for child sessions (re-fetches on eventStoreVersion change)
  * - Computes cursor-active subagents for the split pane
- * - Syncs allSubagentSessions to simulatorSubagentSessionsAtom (for
- *   SessionReplayMessages SubagentChip rows, without prop drilling)
- * - Manages split pane dismiss/reveal state
  *
  * Bug 5 note: trigger is eventStoreVersion (not event_count / events.length).
  * See docs/agent/subagent-rendering-bug--0417.md § Bug 5 for the
  * full root-cause chain. Do NOT change the trigger without reading that doc.
  */
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import type { SessionEvent } from "@src/engines/SessionCore";
 import { replayModeAtom } from "@src/engines/SessionCore";
-import {
-  focusedSubagentCellAtom,
-  simulatorSubagentSessionsAtom,
-  subagentPanelRevealRequestAtom,
-} from "@src/store/ui/simulatorAtom";
+import { focusedSubagentCellAtom } from "@src/store/ui/simulatorAtom";
 
 import { useSubagentEventCounts } from "./useSubagentEventCounts";
 import type { SubagentSession } from "./useSubagentSessions";
@@ -96,10 +89,8 @@ function fallbackSubagentSessionsFromEvents(
 }
 
 export interface UseSimulatorSubagentsReturn {
-  allSubagentSessions: SubagentSession[];
   activeSubagents: SubagentSession[];
   hasActiveSubagents: boolean;
-  handleSubagentPanelClose: () => void;
 }
 
 export function useSimulatorSubagents({
@@ -108,14 +99,9 @@ export function useSimulatorSubagents({
   currentEvent,
   allEvents,
 }: UseSimulatorSubagentsOptions): UseSimulatorSubagentsReturn {
-  const panelRevealRequest = useAtomValue(subagentPanelRevealRequestAtom);
   const focusedCellId = useAtomValue(focusedSubagentCellAtom);
   const setFocusedCellId = useSetAtom(focusedSubagentCellAtom);
   const replayMode = useAtomValue(replayModeAtom);
-  const [dismissedSnapshot, setDismissedSnapshot] = useState<{
-    keys: string;
-    reveal: number;
-  } | null>(null);
 
   // Focus lifecycle: the locate arrow (SubagentAdapter.handleNavigate) seeks
   // the main cursor into the subagent's clip window and pins the cell via
@@ -150,19 +136,6 @@ export function useSimulatorSubagents({
     }
     return Array.from(byId.values());
   }, [dbSubagentSessions, eventSubagentSessions]);
-
-  // Sync to atom so SessionReplayMessages can read without prop drilling.
-  // Cleanup clears the atom when ActivitySimulator unmounts so stale sessions
-  // never leak into the next mounted session.
-  const setSimulatorSubagentSessions = useSetAtom(
-    simulatorSubagentSessionsAtom
-  );
-  useEffect(() => {
-    setSimulatorSubagentSessions(allSubagentSessions);
-    return () => {
-      setSimulatorSubagentSessions([]);
-    };
-  }, [allSubagentSessions, setSimulatorSubagentSessions]);
 
   // Filter to sessions whose time-window covers the current replay cursor,
   // then UNION with clips that are still OPEN (endedAtMs === null, i.e.
@@ -274,27 +247,8 @@ export function useSimulatorSubagents({
     return ranked;
   }, [cursorOrAllSubagents, subagentCountMap]);
 
-  const activeSubagentKeys = activeSubagents.map((sub) => sub.key).join(",");
-
-  const handleSubagentPanelClose = useCallback(() => {
-    setDismissedSnapshot({
-      keys: activeSubagentKeys,
-      reveal: panelRevealRequest,
-    });
-  }, [activeSubagentKeys, panelRevealRequest]);
-
-  // Panel re-opens when either the key set or the reveal counter changes.
-  const isPanelDismissed =
-    dismissedSnapshot !== null &&
-    dismissedSnapshot.keys === activeSubagentKeys &&
-    dismissedSnapshot.reveal === panelRevealRequest;
-
-  const hasActiveSubagents = activeSubagents.length > 0 && !isPanelDismissed;
-
   return {
-    allSubagentSessions,
     activeSubagents,
-    hasActiveSubagents,
-    handleSubagentPanelClose,
+    hasActiveSubagents: activeSubagents.length > 0,
   };
 }

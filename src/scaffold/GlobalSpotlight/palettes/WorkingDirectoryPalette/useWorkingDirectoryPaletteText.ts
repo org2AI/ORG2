@@ -38,24 +38,20 @@ export function useWorkingDirectoryPaletteText({
       openFolderLabel: t("actions.openFolder"),
       addFolderLabel: t("selectors.repo.pathImport.addLabel"),
       sectionCurrentLabel: t("selectors.repo.sections.current"),
-      sectionRecentLabel: t("selectors.repo.sections.recent", "Recent"),
+      sectionRecentLabel: t("selectors.repo.sections.recent"),
       sectionSystemPathsLabel: t("selectors.repo.sections.systemPaths"),
       sectionExternalRecentLabel: t("selectors.repo.sections.usedElsewhere"),
       sectionRepoLabel: t("selectors.repo.sections.repo"),
       sectionWorkingDirectoryLabel: t("selectors.repo.sections.workspace"),
       sectionMultiRepoWorkingDirectoryLabel: t(
-        "workspaceForm.multiRepoWorkspace",
-        "Multi-Repo Working Directory"
+        "workspaceForm.multiRepoWorkspace"
       ),
-      sectionThisOrgLabel:
-        orgScopeName ??
-        t("selectors.repo.sections.thisOrg", "This organization"),
+      sectionThisOrgLabel: orgScopeName ?? t("selectors.repo.sections.thisOrg"),
       sectionOutsideOrgLabel: orgScopeName
         ? t("selectors.repo.sections.outsideNamedOrg", {
             org: orgScopeName,
-            defaultValue: "Outside {{org}}",
           })
-        : t("selectors.repo.sections.outsideOrg", "Outside this organization"),
+        : t("selectors.repo.sections.outsideOrg"),
     }),
     [t, isManageMode, switchPathLabel, orgScopeName]
   );

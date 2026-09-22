@@ -154,9 +154,7 @@ const WorktreeSourceModal: React.FC<WorktreeSourceModalProps> = ({
     () => [
       {
         id: "branch",
-        label: t("creator.worktreeSource.tabs.branch", {
-          defaultValue: "Branch",
-        }),
+        label: t("creator.worktreeSource.tabs.branch"),
         icon: (
           <HugeiconsIcon
             icon={WorkflowCircle05Icon}
@@ -168,9 +166,7 @@ const WorktreeSourceModal: React.FC<WorktreeSourceModalProps> = ({
       },
       {
         id: "github",
-        label: t("creator.worktreeSource.tabs.github", {
-          defaultValue: "GitHub",
-        }),
+        label: t("creator.worktreeSource.tabs.github"),
         icon: <GitHubIcon width={14} height={14} />,
       },
     ],
@@ -266,12 +262,7 @@ const WorktreeSourceModal: React.FC<WorktreeSourceModalProps> = ({
     setResolveError(null);
 
     if (!selectionRepoKey) {
-      setResolveError(
-        t("creator.worktreeSource.selectRepository", {
-          defaultValue:
-            "Select a repository before choosing a worktree source.",
-        })
-      );
+      setResolveError(t("creator.worktreeSource.selectRepository"));
       return;
     }
 
@@ -344,9 +335,7 @@ const WorktreeSourceModal: React.FC<WorktreeSourceModalProps> = ({
           value: customRefSource.baseBranch ?? "",
           defaultValue: `Use "${customRefSource.baseBranch}" as ref`,
         })}
-        detail={t("creator.worktreeSource.branchCustomRefHint", {
-          defaultValue: "Tag, commit, or any git ref",
-        })}
+        detail={t("creator.worktreeSource.branchCustomRefHint")}
         selected={
           sourceKey(fallbackSource ?? customRefSource) ===
           sourceKey(customRefSource)
@@ -382,16 +371,12 @@ const WorktreeSourceModal: React.FC<WorktreeSourceModalProps> = ({
       visible={open}
       onCancel={onClose}
       onOk={handleConfirm}
-      title={t("creator.worktreeSource.title", {
-        defaultValue: "Create worktree",
-      })}
+      title={t("creator.worktreeSource.title")}
       size="large"
       bodyClassName="p-0"
       okText={
         isResolving
-          ? t("creator.worktreeSource.resolving", {
-              defaultValue: "Resolving PR...",
-            })
+          ? t("creator.worktreeSource.resolving")
           : t("common:actions.create")
       }
       cancelText={t("common:actions.cancel")}
@@ -404,17 +389,13 @@ const WorktreeSourceModal: React.FC<WorktreeSourceModalProps> = ({
       <div className="flex min-h-0 flex-col">
         <div
           role="tablist"
-          aria-label={t("creator.worktreeSource.sourceTabs", {
-            defaultValue: "Worktree source",
-          })}
-          className="flex shrink-0 flex-wrap items-end gap-px border-b border-border-2 px-4 pt-1"
+          aria-label={t("creator.worktreeSource.sourceTabs")}
+          className="flex shrink-0 flex-wrap items-end gap-px border-b border-border-2 px-3 pt-1"
         >
           {tabs.map((tab) => (
             <Button
               layout="custom"
-              appearance="custom"
               key={tab.id}
-              htmlType="button"
               role="tab"
               id={`worktree-source-tab-${tab.id}`}
               aria-selected={activeTab === tab.id}
@@ -440,7 +421,7 @@ const WorktreeSourceModal: React.FC<WorktreeSourceModalProps> = ({
           role="tabpanel"
           id={`worktree-source-tabpanel-${activeTab}`}
           aria-labelledby={`worktree-source-tab-${activeTab}`}
-          className="min-h-80 p-4"
+          className="min-h-80 p-3"
         >
           {activeTab === "github" && renderGithubTab()}
           {activeTab === "branch" && renderBranchTab()}
@@ -450,7 +431,7 @@ const WorktreeSourceModal: React.FC<WorktreeSourceModalProps> = ({
           <div
             role="alert"
             aria-live="assertive"
-            className="border-t border-border-2 px-4 py-2 text-[12px] text-danger-6"
+            className="border-t border-border-2 px-3 py-2 text-[12px] text-danger-6"
           >
             {resolveError}
           </div>

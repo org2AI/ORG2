@@ -4,7 +4,10 @@ import { getORGIIPoolConfig } from "@src/api/http/orgiiHosted/poolConfig";
 import { formatModelAgentType } from "@src/assets/providers";
 import { ORGII_ORCHESTRATOR } from "@src/assets/providers/types";
 import type { SelectOption } from "@src/components/Select";
-import type { SettingsTableSelectFilter } from "@src/components/SettingsTable";
+import {
+  type SettingsTableSelectFilter,
+  renderAllFilterIcon,
+} from "@src/components/SettingsTable";
 import {
   ORGII_FALLBACK_TIERS,
   isOrgiiTierModel,
@@ -26,6 +29,10 @@ import type {
   ConsolidatedModelRow,
   ModelSourceEntry,
 } from "../../../Tables/types";
+import {
+  buildFamilyExemplars,
+  renderFamilyFilterIcon,
+} from "./modelFilterIcons";
 import {
   ALL_FILTER,
   MIN_FAMILY_SIZE,
@@ -115,16 +122,23 @@ export function useModelsTableData(
   const tabCount = displayFamilies.length + (otherFamilySet.size > 0 ? 1 : 0);
   const showFamilyFilter = tabCount > 1;
 
+  const familyExemplars = useMemo(
+    () => buildFamilyExemplars(allModelNames),
+    [allModelNames]
+  );
+
   const familyFilterOptions = useMemo<SelectOption[]>(() => {
     if (!showFamilyFilter) return [];
     return [
       {
         value: ALL_FILTER,
         label: t("modelsTable.filterAllProvider"),
+        icon: renderAllFilterIcon(),
       },
       ...displayFamilies.map((family) => ({
         value: family,
         label: family,
+        icon: renderFamilyFilterIcon(family, familyExemplars),
       })),
       ...(otherFamilySet.size > 0
         ? [
@@ -135,7 +149,7 @@ export function useModelsTableData(
           ]
         : []),
     ];
-  }, [showFamilyFilter, displayFamilies, otherFamilySet, t]);
+  }, [showFamilyFilter, displayFamilies, otherFamilySet, familyExemplars, t]);
 
   const statusFilterOptions = useMemo<SelectOption[]>(
     () => [

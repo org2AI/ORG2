@@ -5,9 +5,20 @@ import { getGitRemotes } from "@src/api/http/git/remotes";
 import type { WorkItemHandoffTransition } from "@src/api/http/project";
 import type { GitHubIssue } from "@src/api/tauri/github";
 import PageNotice from "@src/components/PageNotice";
+import PersistentDetailTabPanel from "@src/components/layout/blocks/PersistentDetailTabPanel";
+import GitHubDetailSkeleton from "@src/features/GitHubWork/GitHubDetailSkeleton";
+import LazyGitHubLinkedReferences from "@src/features/GitHubWork/GitHubLinkedReferences/lazy";
 import {
+  type ExtractedGitHubReference,
+  extractGitHubReferences,
+  getWorkItemReferenceText,
+} from "@src/features/GitHubWork/GitHubLinkedReferences/references";
+import ThreadDetailTabs, {
+  type ThreadDetailTab,
+} from "@src/features/GitHubWork/ThreadDetailTabs";
+import {
+  ArchiveArrowDownIcon,
   ArchiveArrowUpIcon,
-  ArchiveIcon,
   ClipboardListIcon,
   HugeiconsIcon,
   InternetIcon,
@@ -15,18 +26,7 @@ import {
 } from "@src/icons";
 import { WorkItemThreadSurface } from "@src/modules/ProjectManager/WorkItems/components";
 import GitHubIssueFlowHeader from "@src/modules/ProjectManager/WorkItems/components/GitHubIssueFlowHeader";
-import GitHubDetailSkeleton from "@src/modules/shared/components/GitHubDetailSkeleton";
-import LazyGitHubLinkedReferences from "@src/modules/shared/components/GitHubLinkedReferences/lazy";
-import {
-  type ExtractedGitHubReference,
-  extractGitHubReferences,
-  getWorkItemReferenceText,
-} from "@src/modules/shared/components/GitHubLinkedReferences/references";
-import ThreadDetailTabs, {
-  type ThreadDetailTab,
-} from "@src/modules/shared/components/ThreadDetailTabs";
-import { DetailPanePlaceholder } from "@src/modules/shared/layouts/DetailPaneLayout";
-import PersistentDetailTabPanel from "@src/modules/shared/layouts/blocks/PersistentDetailTabPanel";
+import { DetailPanePlaceholder } from "@src/scaffold/layouts/DetailPaneLayout";
 import type { Person } from "@src/types/core/shared";
 import type { WorkItem } from "@src/types/core/workItem";
 import { resolveGithubRepoFullName } from "@src/util/git/githubRemote";
@@ -466,9 +466,7 @@ const AssignedWorkItemDetail: React.FC<AssignedWorkItemDetailProps> = ({
           }
           variant="header"
           idPrefix="team-inbox-work-item-detail"
-          ariaLabel={t("projects:workItems.detailNavigation", {
-            defaultValue: "Work Item navigation",
-          })}
+          ariaLabel={t("projects:workItems.detailNavigation")}
         />
       }
       unread={item.readAt === null}
@@ -524,7 +522,7 @@ const AssignedWorkItemDetail: React.FC<AssignedWorkItemDetailProps> = ({
                 label: t("teamInbox.actions.archive"),
                 icon: (
                   <HugeiconsIcon
-                    icon={ArchiveIcon}
+                    icon={ArchiveArrowDownIcon}
                     data-icon="archive"
                     size={14}
                     strokeWidth={1.8}

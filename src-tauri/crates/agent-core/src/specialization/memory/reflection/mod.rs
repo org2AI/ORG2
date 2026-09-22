@@ -42,6 +42,7 @@ mod extract;
 mod provider;
 mod transcript;
 
+use rusqlite::OptionalExtension;
 use tracing::{debug, info, warn};
 
 use crate::core::definitions::resolve_learnings_for;
@@ -57,11 +58,32 @@ use provider::get_reflection_provider;
 pub use transcript::build_transcript;
 use transcript::MIN_TRANSCRIPT_LEN;
 
+/// These auxiliary learning tasks have no separately authorized dynamic
+/// provider. Never turn a missing Account Key into a default-key LLM call.
+pub(crate) fn ensure_account_background_session(
+    conn: &rusqlite::Connection,
+    session_id: &str,
+) -> Result<(), String> {
+    let source: Option<Option<String>> = conn
+        .query_row(
+            "SELECT credential_source FROM agent_sessions WHERE session_id = ?1",
+            [session_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| format!("Background learning owner lookup failed: {error}"))?;
+    if source.flatten().is_some() {
+        return Err("Skipping background learning: dynamic session source has no authorized auxiliary provider".into());
+    }
+    Ok(())
+}
+
 /// Attempt post-session reflection for the given session.
 ///
 /// Returns Ok(count) with the number of learnings stored, or Err if skipped.
 pub async fn maybe_reflect_on_session(session_id: &str) -> Result<usize, String> {
     let conn = get_connection().map_err(|e| format!("DB: {}", e))?;
+    ensure_account_background_session(&conn, session_id)?;
 
     let (agent_def_id, workspace_path, session_model, session_account): (
         Option<String>,
@@ -261,4 +283,36 @@ pub async fn maybe_reflect_on_session(session_id: &str) -> Result<usize, String>
     }
 
     Ok(stored)
+}
+
+#[cfg(test)]
+mod background_source_tests {
+    use super::ensure_account_background_session;
+
+    #[test]
+    fn durable_dynamic_owner_prevents_auxiliary_account_fallback() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE agent_sessions(session_id TEXT, account_id TEXT, credential_source TEXT);
+            INSERT INTO agent_sessions VALUES('package',NULL,'market:private-selection');
+            INSERT INTO agent_sessions VALUES('conflicting','account','market:private-selection');
+            INSERT INTO agent_sessions VALUES('malformed',NULL,'');
+            INSERT INTO agent_sessions VALUES('ordinary','account',NULL);",
+        )
+        .unwrap();
+        for id in ["package", "conflicting", "malformed"] {
+            let error = ensure_account_background_session(&conn, id).unwrap_err();
+            assert!(error.contains("no authorized auxiliary provider"));
+            assert!(!error.contains("private-selection"));
+        }
+        assert!(ensure_account_background_session(&conn, "ordinary").is_ok());
+    }
+
+    #[test]
+    fn owner_lookup_errors_do_not_degrade_to_an_account_provider() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        assert!(ensure_account_background_session(&conn, "session")
+            .unwrap_err()
+            .contains("owner lookup failed"));
+    }
 }

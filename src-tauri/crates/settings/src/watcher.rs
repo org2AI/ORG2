@@ -96,7 +96,11 @@ fn watcher_loop(
                     error!(error = %err, "failed to emit settings change event");
                 }
             }
-            Err(err) => warn!(error = %err, "failed to read settings after change"),
+            Err(err) => {
+                // Unreadable settings cannot retain an old remote access grant.
+                super::hooks::on_settings_changed(&serde_json::json!({}));
+                warn!(error = %err, "failed to read settings after change");
+            }
         }
     });
     Ok(())

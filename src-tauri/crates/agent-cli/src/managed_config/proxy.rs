@@ -31,7 +31,7 @@ pub fn managed_proxy_url() -> String {
     format!("http://127.0.0.1:{}", managed_proxy_port())
 }
 
-pub(super) fn generate_proxy_token() -> String {
+pub fn generate_proxy_token() -> String {
     let mut bytes = [0_u8; 32];
     rand::rng().fill_bytes(&mut bytes);
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
@@ -53,6 +53,10 @@ pub(super) fn codex_proxy_base_url(proxy_url: &str, proxy_token: &str) -> String
 
 pub(super) fn claude_code_proxy_base_url(proxy_url: &str, proxy_token: &str) -> String {
     proxy_route_base_url(proxy_url, CLAUDE_CODE_AGENT, proxy_token, "claude")
+}
+
+pub fn claude_desktop_proxy_base_url(proxy_url: &str, proxy_token: &str) -> String {
+    proxy_route_base_url(proxy_url, super::desktop::TARGET, proxy_token, "claude")
 }
 
 pub(super) fn openai_chat_proxy_base_url(

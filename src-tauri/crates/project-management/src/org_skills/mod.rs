@@ -681,53 +681,5 @@ pub fn materialize_all() -> Result<(), String> {
     Ok(())
 }
 
-pub mod commands {
-    use super::{OrgSkill, ShareOrgSkillRequest};
-
-    #[tauri::command]
-    pub async fn project_list_org_skills(org_id: String) -> Result<Vec<OrgSkill>, String> {
-        tokio::task::spawn_blocking(move || super::list(&org_id))
-            .await
-            .map_err(|err| format!("Task join error: {err}"))?
-    }
-
-    #[tauri::command]
-    pub async fn project_share_org_skill(
-        app: tauri::AppHandle,
-        request: ShareOrgSkillRequest,
-    ) -> Result<OrgSkill, String> {
-        let result = tokio::task::spawn_blocking(move || super::share(request))
-            .await
-            .map_err(|err| format!("Task join error: {err}"))?;
-        if result.is_ok() {
-            use tauri::Emitter;
-            let _ = app.emit(
-                crate::projects::events::DATA_CHANGED_EVENT,
-                chrono::Utc::now().to_rfc3339(),
-            );
-        }
-        result
-    }
-
-    #[tauri::command]
-    pub async fn project_unshare_org_skill(
-        app: tauri::AppHandle,
-        org_id: String,
-        id: String,
-    ) -> Result<OrgSkill, String> {
-        let result = tokio::task::spawn_blocking(move || super::unshare(&org_id, &id))
-            .await
-            .map_err(|err| format!("Task join error: {err}"))?;
-        if result.is_ok() {
-            use tauri::Emitter;
-            let _ = app.emit(
-                crate::projects::events::DATA_CHANGED_EVENT,
-                chrono::Utc::now().to_rfc3339(),
-            );
-        }
-        result
-    }
-}
-
 #[cfg(test)]
 mod tests;

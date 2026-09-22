@@ -11,7 +11,6 @@ import type { SessionEvent } from "@src/engines/SessionCore";
 
 import {
   isEmptyRunningEvent,
-  resolveNonEmptyEvent,
   resolveNonEmptyEventFromIds,
 } from "../skipEmptyRunningEvent";
 
@@ -91,35 +90,46 @@ describe("isEmptyRunningEvent", () => {
   });
 });
 
-describe("resolveNonEmptyEvent", () => {
+function resolveFromList(
+  current: SessionEvent | null,
+  events: SessionEvent[]
+): SessionEvent | null {
+  return resolveNonEmptyEventFromIds(
+    current,
+    events.map((event) => event.id),
+    new Map(events.map((event) => [event.id, event]))
+  );
+}
+
+describe("resolveNonEmptyEventFromIds over an event list", () => {
   it("returns the event unchanged when it is not empty+running", () => {
     const done = completedEvent("done");
-    expect(resolveNonEmptyEvent(done, [done])).toBe(done);
+    expect(resolveFromList(done, [done])).toBe(done);
   });
 
   it("returns null when given null", () => {
-    expect(resolveNonEmptyEvent(null, [])).toBeNull();
+    expect(resolveFromList(null, [])).toBeNull();
   });
 
   it("skips forward to the nearest non-empty event", () => {
     const empty = runningFileTool("empty");
     const good = completedEvent("good");
     const events = [empty, good];
-    expect(resolveNonEmptyEvent(empty, events)).toBe(good);
+    expect(resolveFromList(empty, events)).toBe(good);
   });
 
   it("falls back backward when there is no forward event", () => {
     const good = completedEvent("good");
     const empty = runningFileTool("empty");
     const events = [good, empty];
-    expect(resolveNonEmptyEvent(empty, events)).toBe(good);
+    expect(resolveFromList(empty, events)).toBe(good);
   });
 
   it("returns the original event when no non-empty alternative exists", () => {
     const empty1 = runningFileTool("e1");
     const empty2 = runningFileTool("e2");
     const events = [empty1, empty2];
-    const result = resolveNonEmptyEvent(empty1, events);
+    const result = resolveFromList(empty1, events);
     expect(result).toBe(empty1);
   });
 });

@@ -24,8 +24,11 @@ import {
   UserIcon,
   UserMultipleIcon,
 } from "@src/icons";
-import SplitViewLayout from "@src/modules/shared/layouts/SplitViewLayout";
-import { SUBPAGE_CONTENT_WRAPPER_CLASSES } from "@src/modules/shared/layouts/SubpageLayout/tokens";
+import SplitViewLayout from "@src/scaffold/layouts/SplitViewLayout";
+import {
+  SUBPAGE_CONTENT_WRAPPER_CLASSES,
+  SUBPAGE_SPLIT_VIEW_PRESET,
+} from "@src/scaffold/layouts/SubpageLayout/tokens";
 import type { Label } from "@src/types/core/shared";
 
 import {
@@ -124,7 +127,6 @@ const SettingsSidebar: React.FC<{
           return (
             <Button
               layout="custom"
-              appearance="custom"
               key={section.id}
               className={`w-full text-left ${getListItemClasses(isActive, "wideGap")}`}
               onClick={() => onSectionClick(section.id)}
@@ -177,13 +179,7 @@ const RepoSettings: React.FC<RepoSettingsProps> = ({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <SplitViewLayout
-        className="min-h-0 flex-1 overflow-hidden"
-        hideBreadcrumbWhenSidebarCollapsed={true}
-        mainContentClassName=""
-        listPanelBackgroundClassName=""
-        listWidth={180}
-        minListWidth={140}
-        maxListWidth={240}
+        {...SUBPAGE_SPLIT_VIEW_PRESET}
         listContent={
           <SettingsSidebar
             activeSection={activeSection}

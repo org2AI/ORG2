@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "Tham quan bố cục chung",
-      "description": "Tìm hiểu bảng trò chuyện, Runtime, bộ chuyển chế độ và thanh dock.",
+      "description": "Tìm hiểu bảng trò chuyện, Runtime, bộ chuyển chế độ và thanh dock",
       "duration": "1 phút",
       "steps": {
         "chat-panel": {
           "title": "Bảng trò chuyện",
-          "body": "Đây là nơi người dùng trò chuyện với tổng đài viên, xem xét hoạt động và gửi hướng dẫn tiếp theo."
+          "body": "Đây là nơi người dùng trò chuyện với tổng đài viên, xem xét hoạt động và gửi hướng dẫn tiếp theo"
         },
         "runtime": {
           "title": "Thời gian chạy",
-          "body": "Xem mức sử dụng và trạng thái chạy của bạn tại đây. Trong không gian làm việc, bạn cũng có thể kiểm tra trạng thái đồng bộ của thành viên và mở chi tiết sử dụng Codex, Claude và Cursor."
+          "body": "Xem mức sử dụng và trạng thái chạy của bạn tại đây. Trong không gian làm việc, bạn cũng có thể kiểm tra trạng thái đồng bộ của thành viên và mở chi tiết sử dụng Codex, Claude và Cursor"
         },
         "station-mode-pill": {
           "title": "Chuyển trạm chế độ",
-          "body": "Sử dụng viên thuốc này để chuyển đổi chế độ trạm. Máy tính để bàn có nghĩa là Trạm của tôi, không gian làm việc của bạn. Infinity có nghĩa là Trạm đại lý, chế độ xem hoạt động của đại lý."
+          "body": "Sử dụng viên thuốc này để chuyển đổi chế độ trạm. Máy tính để bàn có nghĩa là Trạm của tôi, không gian làm việc của bạn. Infinity có nghĩa là Trạm đại lý, chế độ xem hoạt động của đại lý"
         },
         "dock": {
           "title": "Đế trạm đại lý",
-          "body": "Đế cắm chuyển đổi các ứng dụng bên trong trạm. Chuyến tham quan tạm thời vô hiệu hóa tính năng tự động ẩn để các điều khiển này vẫn hiển thị."
+          "body": "Đế cắm chuyển đổi các ứng dụng bên trong trạm. Chuyến tham quan tạm thời vô hiệu hóa tính năng tự động ẩn để các điều khiển này vẫn hiển thị"
         }
       }
     },
     "codeEditor": {
       "title": "Chuyến tham quan Trình chỉnh sửa mã",
-      "description": "Tìm hiểu các tab, không gian trình soạn thảo, quản lý mã nguồn và lịch sử Git.",
+      "description": "Tìm hiểu các tab, không gian trình soạn thảo, quản lý mã nguồn và lịch sử Git",
       "duration": "2 phút",
       "steps": {
         "tabs": {
           "title": "tab Trình chỉnh sửa mã",
-          "body": "Các tab thu thập các tệp, khác biệt, thiết bị đầu cuối, chế độ xem kiểm soát nguồn và trang tổng quan bạn mở khi làm việc trong repo."
+          "body": "Các tab thu thập các tệp, khác biệt, thiết bị đầu cuối, chế độ xem kiểm soát nguồn và trang tổng quan bạn mở khi làm việc trong repo"
         },
         "editor-surface": {
           "title": "Không gian làm việc của Trình chỉnh sửa",
-          "body": "Đây là bề mặt chính của Trình soạn thảo Mã. Mở tệp, kiểm tra các khác biệt, chạy thiết bị đầu cuối và xem xét các thay đổi đã tạo tại đây."
+          "body": "Đây là bề mặt chính của Trình soạn thảo Mã. Mở tệp, kiểm tra các khác biệt, chạy thiết bị đầu cuối và xem xét các thay đổi đã tạo tại đây"
         },
         "create-tabs": {
           "title": "Tạo tab mới",
-          "body": "Sử dụng menu dấu cộng trong Tất cả các tab để tạo thiết bị đầu cuối, tab trình duyệt, tệp, trang tổng quan và tiện ích kho lưu trữ."
+          "body": "Sử dụng menu dấu cộng trong Tất cả các tab để tạo thiết bị đầu cuối, tab trình duyệt, tệp, trang tổng quan và tiện ích kho lưu trữ"
         },
         "source-control": {
           "title": "Thay đổi Git",
-          "body": "Kiểm soát nguồn mở để xem xét các tệp đã thay đổi, giai đoạn hoặc giai đoạn công việc, cam kết, kéo, đẩy, tìm nạp và đồng bộ hóa với từ xa."
+          "body": "Kiểm soát nguồn mở để xem xét các tệp đã thay đổi, giai đoạn hoặc giai đoạn công việc, cam kết, kéo, đẩy, tìm nạp và đồng bộ hóa với từ xa"
         },
         "git-history": {
           "title": "Lịch sử Git",
-          "body": "Lịch sử Git chuyển Kiểm soát nguồn sang chế độ lịch sử cam kết để bạn có thể kiểm tra các cam kết trước đó và các thay đổi liên quan."
+          "body": "Lịch sử Git chuyển Kiểm soát nguồn sang chế độ lịch sử cam kết để bạn có thể kiểm tra các cam kết trước đó và các thay đổi liên quan"
         }
       }
     }
   },
   "discovery": {
-    "title": "Hướng dẫn bắt đầu và tính năng mới",
-    "getStarted": "Bắt đầu",
-    "newFeatures": "Tính năng mới",
-    "branchesTitle": "Nhánh kho mã",
-    "branchesDescription": "Chuyển nhánh kho mã trực tiếp từ Spotlight."
+    "getStarted": "Bắt đầu"
   }
 }

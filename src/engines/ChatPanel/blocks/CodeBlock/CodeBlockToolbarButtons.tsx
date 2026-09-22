@@ -39,7 +39,6 @@ export const CodeBlockHeaderActions: React.FC<CodeBlockHeaderActionsProps> = ({
     {shouldShowOpenButton && (
       <Button
         variant="tertiary"
-        appearance="soft"
         size="mini"
         iconOnly
         icon={
@@ -50,7 +49,6 @@ export const CodeBlockHeaderActions: React.FC<CodeBlockHeaderActionsProps> = ({
             strokeWidth={1.75}
           />
         }
-        htmlType="button"
         title={t("common:actions.open")}
         aria-label={t("common:actions.open")}
         className="ml-auto shrink-0 bg-event-block hover:bg-fill-3 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
@@ -61,7 +59,6 @@ export const CodeBlockHeaderActions: React.FC<CodeBlockHeaderActionsProps> = ({
     {shouldShowCopyButton && (
       <Button
         variant="tertiary"
-        appearance="soft"
         size="mini"
         iconOnly
         icon={
@@ -81,7 +78,6 @@ export const CodeBlockHeaderActions: React.FC<CodeBlockHeaderActionsProps> = ({
             />
           )
         }
-        htmlType="button"
         title={copied ? t("common:status.copied") : t("common:actions.copy")}
         aria-label={
           copied ? t("common:status.copied") : t("common:actions.copy")
@@ -96,8 +92,6 @@ export const CodeBlockHeaderActions: React.FC<CodeBlockHeaderActionsProps> = ({
     {isPreviewable && (
       <Button
         layout="custom"
-        appearance="custom"
-        htmlType="button"
         onClick={(e) => {
           e.stopPropagation();
           handleTogglePreview();
@@ -151,7 +145,6 @@ export const CodeBlockFloatingToolbar: React.FC<
       {shouldShowOpenButton && (
         <Button
           variant="tertiary"
-          appearance="soft"
           size="mini"
           iconOnly
           icon={
@@ -162,7 +155,6 @@ export const CodeBlockFloatingToolbar: React.FC<
               strokeWidth={1.75}
             />
           }
-          htmlType="button"
           title={t("common:actions.open")}
           aria-label={t("common:actions.open")}
           className="bg-event-block hover:bg-fill-3 hover:text-text-1 focus-visible:ring-2 focus-visible:ring-primary-6/30 focus-visible:outline-none"
@@ -172,7 +164,6 @@ export const CodeBlockFloatingToolbar: React.FC<
       {shouldShowCopyButton && (
         <Button
           variant="tertiary"
-          appearance="soft"
           size="mini"
           iconOnly
           icon={
@@ -192,7 +183,6 @@ export const CodeBlockFloatingToolbar: React.FC<
               />
             )
           }
-          htmlType="button"
           title={copied ? t("common:status.copied") : t("common:actions.copy")}
           aria-label={
             copied ? t("common:status.copied") : t("common:actions.copy")

@@ -6,7 +6,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import type { OpenPRItem } from "@src/api/tauri/github";
@@ -25,7 +24,6 @@ import { ArrowDown01Icon, Refresh04Icon } from "@src/icons";
 import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { preparePullRequestBranch } from "@src/services/git/operations/preparePullRequestBranch";
 import { spotlightShowBranchInfoAtom } from "@src/store/ui/spotlightShowBranchInfoAtom";
-import { getViewportSize } from "@src/util/ui/window/viewport";
 
 import {
   SpotlightFooterToggle,
@@ -33,6 +31,7 @@ import {
 } from "../../components";
 import { useRefreshSpin } from "../../shared";
 import { PaletteBody, ShellFooterAction } from "../../shell";
+import { PickerDropdownShell } from "../../shell/PickerDropdownShell";
 import type { SpotlightItem } from "../../types";
 import { BranchDropdownList } from "./BranchDropdownList";
 import { type BranchPickerTab, BranchPickerTabs } from "./BranchPickerTabs";
@@ -326,7 +325,7 @@ export function BranchPullRequestPicker({
 
   const branchInfoToggle = (
     <SpotlightFooterToggle
-      label={t("selectors.spotlightFooter.showBranchInfo", "Show branch info")}
+      label={t("selectors.spotlightFooter.showBranchInfo")}
       checked={showBranchInfo}
       onCheckedChange={setShowBranchInfo}
     />
@@ -371,27 +370,13 @@ export function BranchPullRequestPicker({
     );
   }
   if (!isPositioned) return null;
-  const viewportWidth = getViewportSize().width;
-  const width = Math.min(
-    Math.max(420, panelPosition.width),
-    viewportWidth - 24
-  );
-  const left = Math.max(
-    12,
-    Math.min(panelPosition.left, viewportWidth - 12 - width)
-  );
-  return createPortal(
-    <div
+  return (
+    <PickerDropdownShell
       ref={panelRef}
       role="dialog"
       aria-label={placeholder}
-      className={`${DROPDOWN_CLASSES.panel} fixed flex flex-col`}
-      style={{
-        top: panelPosition.top,
-        bottom: panelPosition.bottom,
-        left,
-        width,
-      }}
+      position={panelPosition}
+      preferredWidth={Math.max(420, panelPosition.width)}
     >
       <DropdownSearch
         ref={inputRef}
@@ -428,8 +413,6 @@ export function BranchPullRequestPicker({
             return (
               <Button
                 layout="custom"
-                appearance="custom"
-                htmlType="button"
                 key={pr.number}
                 {...keyboard.getItemProps(index)}
                 disabled={selecting}
@@ -454,9 +437,7 @@ export function BranchPullRequestPicker({
         {pinnedActionItems.map((action, index) => (
           <Button
             layout="custom"
-            appearance="custom"
             key={action.id}
-            htmlType="button"
             {...keyboard.getItemProps(items.length + index)}
             disabled={action.data?.disabled}
             className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full justify-start`}
@@ -473,7 +454,6 @@ export function BranchPullRequestPicker({
         ))}
       </div>
       <div className="flex justify-end px-3 py-2">{branchInfoToggle}</div>
-    </div>,
-    document.body
+    </PickerDropdownShell>
   );
 }

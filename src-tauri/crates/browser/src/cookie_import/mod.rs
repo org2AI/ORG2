@@ -321,6 +321,12 @@ struct ReadOutcome {
 fn read_source_cookies(
     location: &sources::SourceLocation,
 ) -> Result<ReadOutcome, CookieReadError> {
+    // The scan already found this source blocked, so there is no store behind
+    // it to open. Say why, rather than fail on whatever its path points at.
+    if location.unavailable_reason.is_some() {
+        return Err(CookieReadError::FullDiskAccess);
+    }
+
     match location.kind {
         CookieSourceKind::Firefox => Ok(ReadOutcome {
             cookies: firefox::read_cookies(&location.store_path)?,

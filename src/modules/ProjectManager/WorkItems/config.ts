@@ -9,7 +9,6 @@ import { DROPDOWN_ITEM } from "@src/components/Dropdown/tokens";
 import {
   Calendar01Icon,
   CircleDotIcon,
-  CircleIcon,
   Delete02Icon,
   DeliveryBox01Icon,
   DiamondIcon,
@@ -17,21 +16,15 @@ import {
   HugeiconsIcon,
   ListChevronsDownUpIcon,
   Pen01Icon,
-  SignalFull01Icon,
   Tag01Icon,
   UserIcon,
   UserMultipleIcon,
 } from "@src/icons";
 import {
-  MILESTONE_COLORS,
   WORK_ITEM_PRIORITY_OPTIONS,
   WORK_ITEM_STATUS_OPTIONS,
 } from "@src/modules/ProjectManager/config/manage";
-import type {
-  ContextMenuItem,
-  DropdownOption,
-  Person,
-} from "@src/types/core/shared";
+import type { ContextMenuItem, Person } from "@src/types/core/shared";
 import type {
   WorkItem,
   WorkItemLabel,
@@ -43,7 +36,6 @@ import type {
 export {
   STATUS_COLORS,
   PRIORITY_COLORS,
-  ENTITY_COLORS as STORY_COLORS,
   MILESTONE_COLORS,
   LABEL_COLORS,
   DEFAULT_LABELS,
@@ -59,20 +51,6 @@ export {
 
 // i18n keys for labels - consumers must translate using t()
 export const MILESTONE_OPTIONS_KEY = "workItems.properties.noMilestone";
-
-// Mock milestone options (replace with API data)
-export const MILESTONE_OPTIONS: DropdownOption<string>[] = [
-  {
-    value: "none",
-    label: MILESTONE_OPTIONS_KEY,
-    icon: React.createElement(HugeiconsIcon, {
-      icon: DiamondIcon,
-      size: DROPDOWN_ITEM.iconSize,
-      opacity: 0.5,
-    }),
-    color: MILESTONE_COLORS.active,
-  },
-];
 
 // ============================================
 // Property Field Configuration
@@ -93,79 +71,6 @@ export interface PropertyFieldConfig {
     | "text";
   editable?: boolean;
 }
-
-export const PROPERTY_FIELDS: PropertyFieldConfig[] = [
-  {
-    key: "workItemStatus",
-    label: "workItems.propertyFields.status",
-    icon: React.createElement(HugeiconsIcon, {
-      icon: CircleIcon,
-      size: DROPDOWN_ITEM.iconSize,
-    }),
-    type: "status",
-    editable: true,
-  },
-  {
-    key: "priority",
-    label: "workItems.propertyFields.priority",
-    icon: React.createElement(HugeiconsIcon, {
-      icon: SignalFull01Icon,
-      size: DROPDOWN_ITEM.iconSize,
-    }),
-    type: "priority",
-    editable: true,
-  },
-  {
-    key: "assignee",
-    label: "workItems.propertyFields.assignee",
-    icon: React.createElement(HugeiconsIcon, {
-      icon: UserIcon,
-      size: DROPDOWN_ITEM.iconSize,
-    }),
-    type: "person",
-    editable: true,
-  },
-  {
-    key: "labels",
-    label: "workItems.propertyFields.labels",
-    icon: React.createElement(HugeiconsIcon, {
-      icon: Tag01Icon,
-      size: DROPDOWN_ITEM.iconSize,
-    }),
-    type: "label",
-    editable: true,
-  },
-  {
-    key: "project",
-    label: "workItems.propertyFields.project",
-    icon: React.createElement(HugeiconsIcon, {
-      icon: DeliveryBox01Icon,
-      size: DROPDOWN_ITEM.iconSize,
-    }),
-    type: "project",
-    editable: true,
-  },
-  {
-    key: "milestone",
-    label: "workItems.propertyFields.milestone",
-    icon: React.createElement(HugeiconsIcon, {
-      icon: DiamondIcon,
-      size: DROPDOWN_ITEM.iconSize,
-    }),
-    type: "milestone",
-    editable: true,
-  },
-  {
-    key: "endDate",
-    label: "workItems.propertyFields.dueDate",
-    icon: React.createElement(HugeiconsIcon, {
-      icon: Calendar01Icon,
-      size: DROPDOWN_ITEM.iconSize,
-    }),
-    type: "date",
-    editable: true,
-  },
-];
 
 // ============================================
 // Work Item ID Prefix

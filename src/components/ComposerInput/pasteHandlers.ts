@@ -10,22 +10,27 @@
  *   4. File reference (`application/x-orgii-file-reference`) → insert a
  *      file-reference pill with line range, suppress paste.
  *   5. Skill path or frontmatter → insert a skill pill, suppress paste.
- *   6. Otherwise, sanitize the plain-text payload and insert it manually so
- *      `contenteditable` does not pull in formatted HTML from the source.
+ *   6. Otherwise, render the clipboard's `text/html` flavor to markdown (or
+ *      keep the plain-text flavor when there is no structure to preserve),
+ *      sanitize it, and insert it manually so `contenteditable` never pulls in
+ *      formatted HTML nodes from the source.
  */
 import { capPillText, storePillText } from "@src/config/pillTokens";
 import { createLogger } from "@src/hooks/logger";
+import type { InstalledSkill } from "@src/types/extensions";
 import {
   type ReferenceDragPillData,
   clearReferenceDragData,
   getReferenceDragPillData,
-} from "@src/shared/dnd/referenceDragData";
-import type { InstalledSkill } from "@src/types/extensions";
+} from "@src/util/dnd/referenceDragData";
 import { extractSkillNameFromPath } from "@src/util/skills/skillPath";
 
 import type { ComposerFragmentPart } from "./cutHandler";
 import { parseGitHubPillUrl } from "./githubUrl";
+import { convertClipboardHtml } from "./htmlToMarkdown";
 import { parseHttpUrlPill } from "./httpUrl";
+import { segmentMarkdownLinks } from "./markdownLinkSegments";
+import { readUnsanitizedClipboardHtml } from "./nativeClipboardHtml";
 import type { ComposerPillAttrs } from "./types";
 import { TERMINAL_COPY_MAX_AGE, sanitizeText } from "./utils";
 
@@ -37,6 +42,18 @@ export interface PasteHandlerContext {
   getOnImagePaste: () => ((files: File[]) => void) | undefined;
   /** Returns the current installed-skills list for paste-time matching. */
   getInstalledSkills: () => InstalledSkill[];
+  /**
+   * Finish a paste that needs an async round trip, as one undoable
+   * transaction. Only the WebKit-sanitizer recovery path uses this; every
+   * other paste completes synchronously inside the event.
+   */
+  runDeferred: (work: () => Promise<void>) => void;
+  /**
+   * The browser pill for `url` when it is the page open in an in-app browser
+   * session, or `null`. Resolving it also starts loading that page's content
+   * into the pill, the same as @-mentioning the tab.
+   */
+  resolveBrowserPill: (url: string) => ComposerPillAttrs | null;
 }
 
 export interface DropHandlerContext {
@@ -112,6 +129,69 @@ function resolveSkill(
     const dirName = segments[segments.length - 2];
     return dirName?.toLowerCase() === lower;
   });
+}
+
+/**
+ * Whether a link's own words can serve as the pill's label. The serialized pill
+ * grammar splits the label from surrounding prose at the last whitespace, so a
+ * label containing spaces cannot round-trip (see `sanitizePillDisplayLabel`) —
+ * those stay as prose with the pill beside them instead. A label that is itself
+ * a URL is rejected too: showing the raw address is the thing a pill avoids.
+ */
+function isUsablePillLabel(label: string): boolean {
+  if (!label || /\s/.test(label)) return false;
+  if (label.includes("[") || label.includes("]")) return false;
+  return !/^[a-z][a-z0-9+.-]*:/iu.test(label);
+}
+
+/**
+ * Build the pill a URL deserves, or `null` when it is not one we represent —
+ * a relative path, a `mailto:`, a bracket-bearing URL the pill grammar cannot
+ * round-trip. GitHub repo/issue/PR references get their own icon and the
+ * `owner/repo#n` label, a page open in the in-app browser becomes a browser
+ * pill, and anything else becomes link text.
+ */
+export function pillForUrl(
+  url: string,
+  label: string,
+  resolveBrowserPill: (url: string) => ComposerPillAttrs | null
+): ComposerPillAttrs | null {
+  // A one-word link ("sudomaggie") reads better as its own words than as the
+  // address behind them; the address moves to the pill's hover tooltip.
+  const preferredName = isUsablePillLabel(label) ? label : "";
+
+  const githubReference = parseGitHubPillUrl(url);
+  if (githubReference) {
+    return {
+      filePath: githubReference.url,
+      fileName: preferredName || githubReference.displayName,
+      isFolder: false,
+      iconType: githubReference.iconType,
+      lineStart: null,
+      lineEnd: null,
+    };
+  }
+  // A page open in the in-app browser is a reference to that session, not an
+  // ordinary link.
+  const browserPill = resolveBrowserPill(url);
+  if (browserPill) return browserPill;
+
+  // Anything else is an ordinary link. It still travels as a pill so the
+  // address reaches the agent, but it renders as link text — blue, underlined
+  // on hover, no icon — rather than as a file-like chip.
+  const httpReference = parseHttpUrlPill(url);
+  if (httpReference) {
+    return {
+      filePath: httpReference.url,
+      // The address as the user entered it — scheme, query and all.
+      fileName: preferredName || httpReference.url,
+      isFolder: false,
+      iconType: "link",
+      lineStart: null,
+      lineEnd: null,
+    };
+  }
+  return null;
 }
 
 /**
@@ -261,14 +341,16 @@ export function createPasteHandler(ctx: PasteHandlerContext) {
     const httpReference = parseHttpUrlPill(pastedText);
     if (httpReference) {
       event.preventDefault();
-      ctx.insertPill({
-        filePath: httpReference.url,
-        fileName: httpReference.displayName,
-        isFolder: false,
-        iconType: "link",
-        lineStart: null,
-        lineEnd: null,
-      });
+      ctx.insertPill(
+        ctx.resolveBrowserPill(httpReference.url) ?? {
+          filePath: httpReference.url,
+          fileName: httpReference.url,
+          isFolder: false,
+          iconType: "link",
+          lineStart: null,
+          lineEnd: null,
+        }
+      );
       ctx.insertTextAtCaret(" ");
       return true;
     }
@@ -333,6 +415,106 @@ export function createPasteHandler(ctx: PasteHandlerContext) {
       }
     }
 
+    /**
+     * Deliver pasted text: collapse it into a paste pill when the user copied
+     * a large block, otherwise insert it inline. Shared so the deferred
+     * recovery path makes the same choice the synchronous path would. Either
+     * flavor goes in as text plus a pill per link, so a URL typed into prose is
+     * a link whether it was copied from a page or from plain text.
+     */
+    function deliverText(text: string, isMarkdown: boolean): void {
+      if (!text) return;
+      if (looksLikeLargePlainText(pastedText || text)) {
+        const pillPath = `paste://${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`;
+        ctx.insertPill({
+          filePath: pillPath,
+          fileName: isMarkdown ? "pasted.md" : "pasted.txt",
+          isFolder: false,
+          iconType: "paste",
+          lineStart: null,
+          lineEnd: null,
+        });
+        storePillText(pillPath, capPillText(sanitizeText(text)));
+        return;
+      }
+      // Every link becomes a pill, its words staying as readable text ahead of
+      // it — the same reference a lone pasted URL produces, just inline.
+      const segments = segmentMarkdownLinks(text);
+      segments.forEach((segment, index) => {
+        if (segment.kind === "text") {
+          ctx.insertTextAtCaret(sanitizeText(segment.text));
+          return;
+        }
+        const pill = pillForUrl(
+          segment.url,
+          segment.label,
+          ctx.resolveBrowserPill
+        );
+        if (!pill) {
+          // Not a reference we can represent — keep the markdown verbatim.
+          ctx.insertTextAtCaret(
+            sanitizeText(
+              segment.label ? `[${segment.label}](${segment.url})` : segment.url
+            )
+          );
+          return;
+        }
+        // When the pill carries the link's own words, they must not also be
+        // written as text — that is the duplication this avoids.
+        if (segment.label && pill.fileName !== segment.label) {
+          ctx.insertTextAtCaret(sanitizeText(`${segment.label} `));
+        }
+        ctx.insertPill(pill);
+        // A pill needs a gap before following prose, but not before a line
+        // break or a space the text already supplies.
+        const next = segments[index + 1];
+        const needsGap =
+          !next || (next.kind === "text" && !/^[\s)\]]/.test(next.text));
+        if (needsGap) ctx.insertTextAtCaret(" ");
+      });
+    }
+
+    // Rich clipboard flavor — convert `text/html` into markdown so links, list
+    // structure, code fences, and tables survive a paste from a browser, doc,
+    // or spreadsheet instead of flattening into undifferentiated prose.
+    // Everything above this line matches on the plain flavor first, so pill
+    // detection is unaffected.
+    const conversion = convertClipboardHtml(
+      clipboardData.getData("text/html"),
+      pastedText
+    );
+
+    // `stripped` means the markup parsed but had been emptied of its content
+    // before it reached us — WebKit's paste sanitizer removing custom elements
+    // and their subtrees. The bytes are still on the pasteboard, so ask the
+    // platform for them and finish the paste once they arrive.
+    if (conversion.kind === "stripped") {
+      event.preventDefault();
+      ctx.runDeferred(async () => {
+        const nativeHtml = await readUnsanitizedClipboardHtml();
+        const recovered = nativeHtml
+          ? convertClipboardHtml(nativeHtml, pastedText)
+          : null;
+        const usable = recovered?.kind === "markdown";
+        // Worth a line: this path only runs when the platform handed us gutted
+        // markup, and whether the native re-read rescued it is the first thing
+        // anyone debugging a flattened paste needs to know.
+        logger.debug(
+          `Clipboard HTML was stripped; native re-read ${
+            usable ? "recovered structure" : "did not help"
+          }`
+        );
+        deliverText(usable ? recovered.text : pastedText, usable);
+      });
+      return true;
+    }
+
+    const markdownText =
+      conversion.kind === "markdown" ? conversion.text : null;
+    const insertText = markdownText ?? pastedText;
+
     // Large JSON paste — collapse into a `paste` pill so the editor doesn't
     // get blown out by DevTools / API blob dumps. The raw JSON is stashed in
     // `storePillText` keyed by `paste://...`; submit flow auto-appends it as
@@ -356,22 +538,19 @@ export function createPasteHandler(ctx: PasteHandlerContext) {
         event.preventDefault();
         return true;
       }
-      if (looksLikeLargePlainText(pastedText)) {
-        const pillPath = `paste://${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2, 8)}`;
-        ctx.insertPill({
-          filePath: pillPath,
-          fileName: "pasted.txt",
-          isFolder: false,
-          iconType: "paste",
-          lineStart: null,
-          lineEnd: null,
-        });
-        storePillText(pillPath, capPillText(sanitizeText(pastedText)));
-        event.preventDefault();
-        return true;
-      }
+    }
+
+    // Size gate measures the plain flavor — what the user actually copied.
+    // Markdown conversion can double the character count of a link-dense list
+    // without adding a single word, and that expansion must not be what decides
+    // whether a paste stays readable in the editor or collapses into a pill.
+    // (An html-only clipboard has no plain flavor to measure, so it gates on
+    // the conversion instead.)
+    const sizeGateText = pastedText || insertText;
+    if (sizeGateText && looksLikeLargePlainText(sizeGateText)) {
+      event.preventDefault();
+      deliverText(insertText, markdownText !== null);
+      return true;
     }
 
     // Skill path / frontmatter detection.
@@ -403,12 +582,13 @@ export function createPasteHandler(ctx: PasteHandlerContext) {
       }
     }
 
-    // Fall back to a sanitized plain-text insert. We bypass the browser's
-    // default paste to avoid letting Word/HTML formatting bleed into the
-    // editor and to keep IME-tofu characters out of the document.
-    if (pastedText) {
+    // Insert sanitized text — the markdown rendering of the rich flavor when
+    // there was one, the plain flavor otherwise. Either way we bypass the
+    // browser's default paste so no HTML nodes enter the contenteditable and
+    // no IME-tofu characters reach the document.
+    if (insertText) {
       event.preventDefault();
-      ctx.insertTextAtCaret(sanitizeText(pastedText));
+      deliverText(insertText, markdownText !== null);
       return true;
     }
 

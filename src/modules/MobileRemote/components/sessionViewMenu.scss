@@ -1,0 +1,63 @@
+@use "../mobileUiTokens" as mobile;
+
+// Keep shared Dropdown selection, keyboard and portal behavior. Adapt only
+// this mobile surface rather than changing every desktop menu's density.
+.mobile-session-view-menu.mobile-session-view-menu {
+  @include mobile.adaptive-menu(10rem, 12rem);
+  @include mobile.compact-menu;
+
+  --mobile-menu-padding: #{mobile.$space-1};
+  --mobile-menu-radius: #{mobile.$space-3};
+  --mobile-menu-row-padding-x: #{mobile.$space-2};
+  --mobile-menu-row-padding-y: #{mobile.$space-1};
+
+  --dropdown-font-size: var(--mobile-type-secondary-size);
+  padding: var(--mobile-menu-padding);
+  border: 1px solid var(--color-border-1);
+  border-radius: var(--mobile-menu-radius);
+  box-shadow: var(--shadow-dropdown-soft);
+
+  // The first content child is the shared noninteractive section heading.
+  .mobile-session-view-menu__content > :first-child {
+    position: static;
+    padding: var(--mobile-menu-caption-padding-y)
+      var(--mobile-menu-row-padding-x);
+    font-size: var(--mobile-menu-caption-size);
+    line-height: var(--mobile-menu-caption-line-height);
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  // The panel owns the inset; do not stack the desktop list padding on it.
+  [role="listbox"] {
+    padding: 0;
+
+    > .flex {
+      gap: 0;
+    }
+  }
+
+  [role="option"] {
+    min-height: var(--mobile-menu-row-height);
+    padding: var(--mobile-menu-row-padding-y) var(--mobile-menu-row-padding-x);
+    gap: var(--mobile-menu-row-gap);
+    border-radius: var(--mobile-menu-row-radius);
+    line-height: var(--mobile-menu-line-height);
+
+    > span:first-child {
+      color: var(--color-text-3);
+
+      svg {
+        width: var(--mobile-menu-icon-size);
+        height: var(--mobile-menu-icon-size);
+      }
+    }
+
+    // Selection is communicated by the trailing shared checkmark; keep
+    // icon and label neutral so the whole row does not become an accent.
+    .truncate {
+      color: var(--color-text-1);
+    }
+  }
+}

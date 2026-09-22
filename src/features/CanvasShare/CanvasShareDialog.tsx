@@ -21,34 +21,19 @@ interface CanvasShareDialogProps {
 
 function errorMessage(
   error: CanvasShareDialogError,
-  t: (key: string, fallback: string) => string
+  t: (key: string) => string
 ): string {
   switch (error) {
     case "source-too-large":
-      return t(
-        "canvasApp.shareDialogTooLarge",
-        "This Canvas is too large for a reliable self-contained link."
-      );
+      return t("canvasApp.shareDialogTooLarge");
     case "short-unavailable-too-large":
-      return t(
-        "canvasApp.shareDialogShortUnavailable",
-        "The share service is temporarily unreachable and this Canvas is too large for a self-contained link. Try again in a moment."
-      );
+      return t("canvasApp.shareDialogShortUnavailable");
     case "unsupported-runtime":
-      return t(
-        "canvasApp.shareDialogUnsupported",
-        "This app version cannot create compressed Canvas links."
-      );
+      return t("canvasApp.shareDialogUnsupported");
     case "invalid-payload":
-      return t(
-        "canvasApp.shareDialogInvalid",
-        "This Canvas does not contain a publishable snapshot."
-      );
+      return t("canvasApp.shareDialogInvalid");
     default:
-      return t(
-        "canvasApp.shareDialogError",
-        "The Canvas link could not be created."
-      );
+      return t("canvasApp.shareDialogError");
   }
 }
 
@@ -66,7 +51,7 @@ const CanvasShareDialog: React.FC<CanvasShareDialogProps> = ({
   return (
     <Modal
       visible={visible}
-      title={t("canvasApp.shareDialogTitle", "Share Canvas")}
+      title={t("canvasApp.shareDialogTitle")}
       onCancel={onClose}
       footer={null}
       width={520}
@@ -76,10 +61,7 @@ const CanvasShareDialog: React.FC<CanvasShareDialogProps> = ({
           <div className="rounded-md border border-border-1 bg-fill-1 p-3">
             <div className="text-xs font-medium text-text-1">{title}</div>
             <div className="mt-1 text-xs leading-5 text-text-3">
-              {t(
-                "canvasApp.shareDialogScope",
-                "Only this Canvas snapshot is included. The conversation, repository, session, and later revisions are not shared."
-              )}
+              {t("canvasApp.shareDialogScope")}
             </div>
           </div>
 
@@ -92,36 +74,27 @@ const CanvasShareDialog: React.FC<CanvasShareDialogProps> = ({
                 className="h-2 w-2 animate-pulse rounded-full bg-primary-6"
                 aria-hidden
               />
-              {t("canvasApp.shareDialogPreparing", "Creating link…")}
+              {t("canvasApp.shareDialogPreparing")}
             </div>
           ) : state.phase === "ready" ? (
             <div className="flex flex-col gap-3">
               <Input
                 value={state.link}
                 readOnly
-                aria-label={t("canvasApp.shareDialogLink", "Canvas share link")}
+                aria-label={t("canvasApp.shareDialogLink")}
                 onFocus={(event) => event.currentTarget.select()}
                 errorMessage={
                   state.copyError
-                    ? t(
-                        "canvasApp.shareDialogCopyFailed",
-                        "Copy failed. Select the link and copy it manually."
-                      )
+                    ? t("canvasApp.shareDialogCopyFailed")
                     : undefined
                 }
               />
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 text-xs text-text-4">
-                  <div>
-                    {t(
-                      "canvasApp.shareDialogPublic",
-                      "Anyone with this link can view the snapshot."
-                    )}
-                  </div>
+                  <div>{t("canvasApp.shareDialogPublic")}</div>
                   {state.linkKind === "short" && state.expiresAt ? (
                     <div className="mt-1">
                       {t("canvasApp.shareDialogShortExpiry", {
-                        defaultValue: "Short link · valid until {{date}}",
                         date: new Intl.DateTimeFormat(i18n.language, {
                           year: "numeric",
                           month: "short",
@@ -131,41 +104,29 @@ const CanvasShareDialog: React.FC<CanvasShareDialogProps> = ({
                     </div>
                   ) : state.linkKind === "self-contained" ? (
                     <div className="mt-1 text-warning-6">
-                      {t(
-                        "canvasApp.shareDialogFallback",
-                        "The short-link service is unavailable, so a full link was created instead."
-                      )}
+                      {t("canvasApp.shareDialogFallback")}
                     </div>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {state.linkKind === "self-contained" ? (
                     <Button
-                      htmlType="button"
-                      variant="secondary"
                       loading={state.retryingShortLink}
                       disabled={state.retryingShortLink}
                       onClick={onRetryShortLink}
                     >
                       {state.retryingShortLink
-                        ? t("canvasApp.shareDialogRetryingShort", "Retrying…")
-                        : t(
-                            "canvasApp.shareDialogRetryShort",
-                            "Retry short link"
-                          )}
+                        ? t("canvasApp.shareDialogRetryingShort")
+                        : t("canvasApp.shareDialogRetryShort")}
                     </Button>
                   ) : null}
-                  <Button
-                    htmlType="button"
-                    variant="secondary"
-                    onClick={() => openLink(state.link)}
-                  >
-                    {t("canvasApp.shareDialogOpen", "Open")}
+                  <Button onClick={() => openLink(state.link)}>
+                    {t("canvasApp.shareDialogOpen")}
                   </Button>
-                  <Button htmlType="button" variant="primary" onClick={onCopy}>
+                  <Button variant="primary" onClick={onCopy}>
                     {state.copied
-                      ? t("canvasApp.shareDialogCopied", "Copied")
-                      : t("canvasApp.shareDialogCopy", "Copy link")}
+                      ? t("canvasApp.shareDialogCopied")
+                      : t("canvasApp.shareDialogCopy")}
                   </Button>
                 </div>
               </div>
@@ -178,9 +139,7 @@ const CanvasShareDialog: React.FC<CanvasShareDialogProps> = ({
               <span className="text-xs text-danger-6">
                 {errorMessage(state.error, t)}
               </span>
-              <Button htmlType="button" variant="secondary" onClick={onRetry}>
-                {t("canvasApp.retry", "Retry")}
-              </Button>
+              <Button onClick={onRetry}>{t("canvasApp.retry")}</Button>
             </div>
           )}
         </div>

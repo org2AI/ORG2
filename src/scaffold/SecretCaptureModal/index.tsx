@@ -38,6 +38,7 @@ import { rpc } from "@src/api/tauri/rpc";
 import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Message from "@src/components/Message";
+import PanelFooter from "@src/components/layout/blocks/PanelFooter";
 import {
   AGENT_SIDE_CHANNEL_EVENTS,
   type AgentSecretRequestDetail,
@@ -236,39 +237,34 @@ export const SecretCaptureModal: FC = () => {
   const submitDisabled = submitting || value.length === 0;
 
   const footer = (
-    <div className="flex w-full items-center justify-between gap-2">
-      <Button
-        size="small"
-        variant="secondary"
-        onClick={handlePasteFromClipboard}
-        disabled={submitting}
-      >
-        {t("secretCapture.pasteFromClipboard")}
-      </Button>
-      <div className="flex items-center gap-2">
+    <PanelFooter
+      left={
         <Button
           size="small"
-          variant="secondary"
-          onClick={() => {
-            void handleCancel();
-          }}
+          onClick={handlePasteFromClipboard}
           disabled={submitting}
         >
-          {t("actions.cancel")}
+          {t("secretCapture.pasteFromClipboard")}
         </Button>
-        <Button
-          size="small"
-          variant="primary"
-          onClick={() => {
-            void handleSubmit();
-          }}
-          disabled={submitDisabled}
-          loading={submitting}
-        >
-          {t("secretCapture.submit")}
-        </Button>
-      </div>
-    </div>
+      }
+      secondaryActions={[
+        {
+          label: t("actions.cancel"),
+          onClick: () => {
+            void handleCancel();
+          },
+          disabled: submitting,
+        },
+      ]}
+      primaryAction={{
+        label: t("secretCapture.submit"),
+        onClick: () => {
+          void handleSubmit();
+        },
+        disabled: submitDisabled,
+        loading: submitting,
+      }}
+    />
   );
 
   return (

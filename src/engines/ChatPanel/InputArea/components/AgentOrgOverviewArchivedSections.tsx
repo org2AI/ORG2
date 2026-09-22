@@ -23,20 +23,12 @@ const AgentOrgOverviewArchivedSections: React.FC<
           data-teardown-status={view.archiveTeardown.status}
         >
           {view.archiveTeardown.status === "pending"
-            ? t("planner.agentOrgOverview.archiveTeardownPending", {
-                defaultValue:
-                  "Archived. Runtime shutdown is still finishing in the background.",
-              })
+            ? t("planner.agentOrgOverview.archiveTeardownPending")
             : view.archiveTeardown.status === "retained_runtime"
               ? t("planner.agentOrgOverview.archiveTeardownRetained", {
                   count: view.archiveTeardown.retainedRuntimeCount,
-                  defaultValue:
-                    "Archived, but {{count}} runtime could not be released. Delete remains blocked.",
                 })
-              : t("planner.agentOrgOverview.archiveTeardownQuiesced", {
-                  defaultValue:
-                    "Archived and fully stopped. Permanent deletion is now available.",
-                })}
+              : t("planner.agentOrgOverview.archiveTeardownQuiesced")}
         </div>
       )}
 
@@ -51,19 +43,14 @@ const AgentOrgOverviewArchivedSections: React.FC<
             size={11}
             strokeWidth={2}
           />
-          {t("planner.agentOrgOverview.dangerZone", {
-            defaultValue: "Danger Zone",
-          })}
+          {t("planner.agentOrgOverview.dangerZone")}
         </div>
         <div className="text-[10px] leading-4 text-text-3">
-          {t("planner.agentOrgOverview.deleteDescription", {
-            defaultValue:
-              "Permanently delete this Team and all of its sessions and history.",
-          })}
+          {t("planner.agentOrgOverview.deleteDescription")}
         </div>
         <Button
-          htmlType="button"
-          variant="danger"
+          variant="primary"
+          tone="danger"
           size="mini"
           disabled={view.archiveTeardown?.status !== "quiesced"}
           onClick={onRequestDelete}
@@ -77,9 +64,7 @@ const AgentOrgOverviewArchivedSections: React.FC<
             />
           }
         >
-          {t("planner.agentOrgOverview.deleteTeam", {
-            defaultValue: "Delete Team",
-          })}
+          {t("planner.agentOrgOverview.deleteTeam")}
         </Button>
       </div>
     </>

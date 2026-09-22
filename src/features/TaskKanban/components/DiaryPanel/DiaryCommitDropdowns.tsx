@@ -28,11 +28,7 @@ import {
 } from "@src/icons";
 
 import type { DiaryCommitMarker } from "../../utils/diaryUtils";
-import {
-  formatDateTime,
-  formatTime,
-  getCommitBucketRangeLabel,
-} from "./diaryPanelUtils";
+import { formatDateTime, formatTime } from "./diaryPanelUtils";
 
 // ============================================================================
 // DiaryCommitHoverCardContent
@@ -163,8 +159,6 @@ export const DiaryCommitBucketDropdown: React.FC<
                 >
                   <Button
                     layout="custom"
-                    appearance="custom"
-                    htmlType="button"
                     className={`${DROPDOWN_CLASSES.item} ${DROPDOWN_CLASSES.itemHover} w-full min-w-0 justify-start text-left`}
                   >
                     <HugeiconsIcon
@@ -197,9 +191,3 @@ export const DiaryCommitBucketDropdown: React.FC<
     </Dropdown>
   );
 };
-
-export function getCommitBucketRangeLabelForMarker(
-  marker: GanttMarker
-): string {
-  return getCommitBucketRangeLabel(new Date(marker.timestamp));
-}

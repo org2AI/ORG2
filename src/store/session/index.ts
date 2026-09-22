@@ -27,7 +27,9 @@ export * from "./recentAgentSelectionsAtom";
 export * from "./creatorDefaultExecModeAtom";
 export * from "./pinnedActionsVisibleAtom";
 export * from "./compactComposerInputAtom";
+export * from "./composerGlowVisibleAtom";
 export * from "./creatorLaunchpadActionsVisibleAtom";
+export * from "./creatorLaunchpadSearchVisibleAtom";
 export * from "./creatorRepoChromePositionAtom";
 export * from "./cliUpdateAlertsAtom";
 

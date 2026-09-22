@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { Placeholder } from "@src/components/Placeholder";
+import { PLACEHOLDER_TOKENS, Placeholder } from "@src/components/Placeholder";
 import { HugeiconsIcon, WorkflowCircle05Icon } from "@src/icons";
 
 export function SourceControlSelectionPlaceholder({
@@ -28,7 +28,7 @@ export function SourceControlSelectionPlaceholder({
       icon={
         <HugeiconsIcon
           icon={WorkflowCircle05Icon}
-          size={72}
+          size={PLACEHOLDER_TOKENS.detailIconSize}
           strokeWidth={1.25}
           className="text-text-1 opacity-30"
         />

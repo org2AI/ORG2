@@ -15,6 +15,7 @@ import {
 } from "./toolUsageCache";
 
 export interface TokenUsageRecord {
+  usagePurpose?: string | null;
   inputTokens: number;
   contextTokens: number;
   contextUsageJson?: string | null;
@@ -32,13 +33,27 @@ function parseContextUsageSnapshot(
 }
 
 export function getLatestContextUsageSnapshot(
-  records: readonly { contextUsageJson?: string | null }[]
+  records: readonly {
+    contextUsageJson?: string | null;
+    usagePurpose?: string | null;
+  }[]
 ): ContextUsageSnapshot | undefined {
   for (let index = records.length - 1; index >= 0; index -= 1) {
+    if (records[index]?.usagePurpose) continue;
     const contextUsage = parseContextUsageSnapshot(
       records[index]?.contextUsageJson
     );
     if (contextUsage) return contextUsage;
+  }
+  return undefined;
+}
+
+/** Auxiliary tokens belong in lifetime usage, not the main context ring. */
+export function getLatestForegroundUsage(
+  records: readonly TokenUsageRecord[]
+): TokenUsageRecord | undefined {
+  for (let index = records.length - 1; index >= 0; index -= 1) {
+    if (!records[index].usagePurpose) return records[index];
   }
   return undefined;
 }

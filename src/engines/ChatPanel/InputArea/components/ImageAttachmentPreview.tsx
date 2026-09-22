@@ -8,8 +8,9 @@ import { useAtom } from "jotai";
 import React, { memo, useCallback, useState } from "react";
 
 import Button from "@src/components/Button";
-import ImagePreviewOverlay from "@src/components/ImagePreviewOverlay";
+import { useImageActions } from "@src/components/ImageActions/useImageActions";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
+import ImagePreviewOverlay from "@src/scaffold/ImagePreviewOverlay";
 import {
   type ChatImageAttachment,
   chatImageAttachmentsAtom,
@@ -27,6 +28,14 @@ interface ImageThumbnailProps {
 const ImageThumbnail: React.FC<ImageThumbnailProps> = memo(
   ({ image, onRemove }) => {
     const [showOverlay, setShowOverlay] = useState(false);
+    const imageActions = useImageActions(
+      {
+        src: image.dataUrl,
+        fileName: image.fileName,
+        localPath: image.localPath,
+      },
+      { allowAdd: false }
+    );
 
     const handleRemove = useCallback(
       (e: React.MouseEvent) => {
@@ -47,40 +56,54 @@ const ImageThumbnail: React.FC<ImageThumbnailProps> = memo(
     return (
       <>
         <div
-          className="group relative inline-flex h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border border-border-2 bg-fill-1"
-          onClick={handleClick}
+          className="group relative inline-flex h-12 w-12 shrink-0 cursor-pointer rounded-md border border-border-2 bg-fill-1 transition-[border-color] duration-200 ease-in-out hover:border-border-3"
           data-testid="chat-image-attachment-thumbnail"
           data-image-file-name={image.fileName}
         >
-          <img
-            src={image.dataUrl}
-            alt={image.fileName}
-            className="h-full w-full object-cover"
-            draggable={false}
-            loading="lazy"
-            decoding="async"
-            data-testid="chat-image-attachment-img"
-          />
+          {/* Thumbnail geometry is caller-owned; remove remains a sibling action. */}
           <Button
             layout="custom"
-            appearance="custom"
-            htmlType="button"
-            onClick={handleRemove}
-            className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-bg-3 text-text-2 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 hover:bg-fill-2 hover:text-text-1"
-            aria-label={`Remove ${image.fileName}`}
-            data-testid="chat-image-attachment-remove"
+            className="h-full w-full rounded-[inherit]"
+            onClick={handleClick}
+            aria-label={image.fileName}
+            aria-busy={imageActions.busy}
+            onContextMenu={imageActions.onContextMenu}
+            onKeyDown={imageActions.onKeyDown}
           >
-            <HugeiconsIcon
-              icon={Cancel01Icon}
-              data-icon="x"
-              size={10}
-              strokeWidth={2.5}
+            <img
+              src={image.dataUrl}
+              alt={image.fileName}
+              className="h-full w-full rounded-[inherit] object-cover"
+              draggable={false}
+              loading="lazy"
+              decoding="async"
+              data-testid="chat-image-attachment-img"
             />
           </Button>
+          <Button
+            hoverTone="danger"
+            size="sidebar"
+            shape="circle"
+            iconOnly
+            onClick={handleRemove}
+            className="absolute -top-1 -right-1 z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            aria-label={`Remove ${image.fileName}`}
+            data-testid="chat-image-attachment-remove"
+            icon={
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                data-icon="x"
+                size={12}
+                strokeWidth={2}
+              />
+            }
+          />
         </div>
         {showOverlay && (
           <ImagePreviewOverlay
+            allowAddToChat={false}
             dataUrl={image.dataUrl}
+            originalRef={image.localPath}
             fileName={image.fileName}
             onClose={handleCloseOverlay}
           />

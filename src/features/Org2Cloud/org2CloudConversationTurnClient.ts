@@ -2,15 +2,8 @@ import { z } from "zod/v4";
 
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
-import {
-  type CloudEndpoint,
-  ORG2_CLOUD_POSTGREST_SCHEMA,
-  getCloudEndpoint,
-} from "./config";
-import {
-  fetchWithTransportRetry,
-  runCloudRequestWithTimeout,
-} from "./org2CloudFetchRetry";
+import { type CloudEndpoint, getCloudEndpoint } from "./config";
+import { callOrg2CloudRpc } from "./org2CloudRpc";
 
 const CONVERSATION_TURN_RPC_TIMEOUT_MS = 15_000;
 
@@ -109,37 +102,13 @@ async function callConversationTurnRpc<T>(
   body: Record<string, unknown>,
   endpoint: Pick<CloudEndpoint, "supabaseUrl" | "anonKey"> = getCloudEndpoint()
 ): Promise<T> {
-  const payload = await runCloudRequestWithTimeout(async (signal) => {
-    const response = await fetchWithTransportRetry(
-      `${endpoint.supabaseUrl}/rest/v1/rpc/${functionName}`,
-      {
-        method: "POST",
-        headers: {
-          apikey: endpoint.anonKey,
-          authorization: `Bearer ${accessToken}`,
-          "content-type": "application/json",
-          "content-profile": ORG2_CLOUD_POSTGREST_SCHEMA,
-        },
-        body: JSON.stringify(body),
-        signal,
-      }
-    );
-    const text = await response.text();
-    let decoded: unknown = null;
-    try {
-      decoded = text ? JSON.parse(text) : null;
-    } catch {
-      decoded = null;
-    }
-    if (!response.ok) {
-      const message =
-        decoded && typeof decoded === "object" && "message" in decoded
-          ? String((decoded as { message: unknown }).message)
-          : `org2_cloud rpc ${functionName} failed with ${response.status}`;
-      throw new Org2CloudConversationTurnError(message, response.status);
-    }
-    return decoded;
-  }, CONVERSATION_TURN_RPC_TIMEOUT_MS);
+  const payload = await callOrg2CloudRpc(functionName, body, {
+    accessToken,
+    endpoint,
+    timeoutMs: CONVERSATION_TURN_RPC_TIMEOUT_MS,
+    createError: (message, status) =>
+      new Org2CloudConversationTurnError(message, status),
+  });
   const parsed = schema.safeParse(payload);
   if (!parsed.success) {
     throw new Org2CloudConversationTurnError(

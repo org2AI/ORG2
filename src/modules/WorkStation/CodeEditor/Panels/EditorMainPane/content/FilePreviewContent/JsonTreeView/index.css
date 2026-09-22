@@ -1,15 +1,3 @@
-/**
- * JsonTreeView Styles
- *
- * Tree view styling for JSON preview with syntax highlighting.
- */
-.json-tree-view--error {
-  height: 100%;
-  padding: 24px;
-}
-.json-tree-view__header {
-  flex-shrink: 0;
-}
 .json-tree-view__content {
   font-size: 13px;
   line-height: 1.6;

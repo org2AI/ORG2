@@ -51,45 +51,34 @@ const CanvasRevisionActivity: React.FC<CanvasRevisionActivityProps> = ({
   const { handleLocate } = useBlockHeader({ eventId });
   const handleNavigate = eventId ? handleLocate : undefined;
   const summary = summarizeCanvasRevisionActivity(args);
-  const canvasTitle = summary.title || t("canvasApp.revisionCanvas", "Canvas");
+  const canvasTitle = summary.title || t("canvasApp.revisionCanvas");
   const phase = phaseForStatus(status);
   const isLoading = status === "pending" || status === "running";
   const isFailed = status === "failed" || status === "cancelled";
   const title = isLoading
-    ? t("canvasApp.revisionTitle", "Updating {{title}}", { title: canvasTitle })
+    ? t("canvasApp.revisionTitle", { title: canvasTitle })
     : isFailed
-      ? t("canvasApp.revisionFailedTitle", "Couldn’t update {{title}}", {
+      ? t("canvasApp.revisionFailedTitle", {
           title: canvasTitle,
         })
-      : t("canvasApp.revisionDoneTitle", "Updated {{title}}", {
+      : t("canvasApp.revisionDoneTitle", {
           title: canvasTitle,
         });
   const detail = errorDetail?.trim()
     ? errorDetail.trim()
     : summary.changeKind === "targeted"
-      ? t(
-          "canvasApp.revisionTargetedSummary",
-          "{{amount}} targeted changes · same Canvas",
-          {
-            amount: summary.editCount,
-          }
-        )
+      ? t("canvasApp.revisionTargetedSummary", {
+          amount: summary.editCount,
+        })
       : summary.changeKind === "replacement"
-        ? t(
-            "canvasApp.revisionReplacementSummary",
-            "Full replacement · {{amount}} characters · same Canvas",
-            {
-              amount: formatCanvasRevisionCharacterCount(
-                summary.payloadCharacters
-              ),
-            }
-          )
+        ? t("canvasApp.revisionReplacementSummary", {
+            amount: formatCanvasRevisionCharacterCount(
+              summary.payloadCharacters
+            ),
+          })
         : summary.changeKind === "url"
-          ? t("canvasApp.revisionUrlSummary", "URL updated · same Canvas")
-          : t(
-              "canvasApp.revisionGenericSummary",
-              "Existing Canvas updated in place"
-            );
+          ? t("canvasApp.revisionUrlSummary")
+          : t("canvasApp.revisionGenericSummary");
 
   return (
     <div

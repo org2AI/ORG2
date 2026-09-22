@@ -156,3 +156,54 @@ fn stash_push_reports_noop_and_real_stashes_truthfully() {
 
     let _ = std::fs::remove_dir_all(&repo);
 }
+
+/// Regression: a selected filename was forwarded to `git stash push -- <name>`
+/// as a pathspec pattern, so stashing the file literally named `*.txt` swept
+/// every other modified `.txt` into the stash.
+#[cfg(unix)]
+#[test]
+fn stash_push_treats_selected_files_literally() {
+    if std::process::Command::new("git")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        eprintln!("skipping: git executable not available");
+        return;
+    }
+
+    let repo = std::env::temp_dir().join(format!(
+        "orgii-stash-literal-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock after epoch")
+            .as_nanos()
+    ));
+    let _ = std::fs::remove_dir_all(&repo);
+    std::fs::create_dir_all(&repo).expect("create test repo dir");
+
+    git_in(&repo, &["init"]);
+    for name in ["*.txt", "private.txt"] {
+        std::fs::write(repo.join(name), "base\n").expect("write file");
+    }
+    git_in(&repo, &["add", "."]);
+    git_in(&repo, &["commit", "-m", "init"]);
+    for name in ["*.txt", "private.txt"] {
+        std::fs::write(repo.join(name), "edited\n").expect("dirty file");
+    }
+
+    let result = stash_push(&repo, Some(&["*.txt".to_string()]), None, false).expect("stash runs");
+    assert!(result.success);
+    assert_eq!(
+        std::fs::read_to_string(repo.join("*.txt")).expect("read"),
+        "base\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(repo.join("private.txt")).expect("read"),
+        "edited\n",
+        "an unselected file matching the selected name as a glob must stay dirty"
+    );
+
+    let _ = std::fs::remove_dir_all(&repo);
+}

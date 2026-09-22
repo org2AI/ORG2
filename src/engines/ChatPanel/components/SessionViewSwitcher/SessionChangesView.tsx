@@ -44,7 +44,6 @@ const ChangedFileRowView: React.FC<{ row: ChangedFileRow }> = memo(
           <span className="shrink-0 text-text-3 tabular-nums">
             {t("chat.sessionViews.turnCount", {
               count: row.turnCount,
-              defaultValue: "{{count}} turns",
             })}
           </span>
         )}
@@ -90,16 +89,13 @@ const SessionChangesView: React.FC<SessionDerivedViewProps> = memo(
         loading={loading}
         error={error}
         isEmpty={changes.files.length === 0}
-        emptyLabel={t("chat.sessionViews.changesEmpty", {
-          defaultValue: "This session did not write any files.",
-        })}
+        emptyLabel={t("chat.sessionViews.changesEmpty")}
         topInset={topInset}
         summary={
           <span className="flex items-center gap-2">
             <span>
               {t("chat.sessionViews.fileCount", {
                 count: changes.files.length,
-                defaultValue: "{{count}} files",
               })}
             </span>
             <DiffStatsBadge

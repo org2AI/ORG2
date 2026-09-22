@@ -83,7 +83,6 @@ export function ToolResultCardFrameButton({
   return (
     <Button
       layout="custom"
-      appearance="custom"
       htmlType={type}
       className={classNames(
         CARD_FRAME_BASE,

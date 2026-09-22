@@ -19,6 +19,7 @@ export interface Org2CloudAuthCallback {
   refreshToken: string;
   /** Unix epoch seconds, straight off the wire (`expires_at`). */
   expiresAt: number;
+  oauthClientId?: string;
 }
 
 /**

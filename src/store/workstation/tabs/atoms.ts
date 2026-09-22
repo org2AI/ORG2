@@ -1,6 +1,5 @@
 import { type Setter, atom } from "jotai";
 
-import { workstationActiveSessionIdAtom } from "@src/store/session/viewAtom";
 import { clearTerminalTargetForWorkspaceAtom } from "@src/store/workstation/codeEditor/terminalTargetAtom";
 
 import {
@@ -32,6 +31,13 @@ import {
   closesSharedResourceOnDismiss,
   getWorkstationTabOwnership,
 } from "./types";
+import { presentedWorkstationWorkspaceKeyAtom } from "./workspaceScope";
+
+export {
+  GLOBAL_WORKSTATION_WORKSPACE_KEY,
+  sessionWorkstationWorkspaceKey,
+  presentedWorkstationWorkspaceKeyAtom,
+} from "./workspaceScope";
 
 const EMPTY_PANEL: PanelState = { tabs: [], activeTabId: null };
 const EMPTY_WORKSPACE: WorkstationWorkspaceState = {
@@ -39,26 +45,6 @@ const EMPTY_WORKSPACE: WorkstationWorkspaceState = {
   activeTabRef: null,
   tabOrder: [],
 };
-
-export const GLOBAL_WORKSTATION_WORKSPACE_KEY: WorkstationWorkspaceKey = {
-  kind: "global",
-};
-
-export function sessionWorkstationWorkspaceKey(
-  sessionId: string
-): WorkstationWorkspaceKey {
-  return { kind: "session", sessionId };
-}
-
-export const presentedWorkstationWorkspaceKeyAtom =
-  atom<WorkstationWorkspaceKey>((get) => {
-    const sessionId = get(workstationActiveSessionIdAtom);
-    return sessionId
-      ? sessionWorkstationWorkspaceKey(sessionId)
-      : GLOBAL_WORKSTATION_WORKSPACE_KEY;
-  });
-presentedWorkstationWorkspaceKeyAtom.debugLabel =
-  "presentedWorkstationWorkspaceKeyAtom";
 
 /** Recent tabs belonging to the workspace currently visible in My Station. */
 export const recentWorkstationTabsAtom = atom((get) => {
@@ -80,6 +66,9 @@ function workspaceFor(
   key: WorkstationWorkspaceKey
 ): WorkstationWorkspaceState {
   if (key.kind === "global") return state.globalWorkspace;
+  if (key.kind === "directory") {
+    return state.directoryWorkspaces?.[key.directory] ?? EMPTY_WORKSPACE;
+  }
   return state.sessionWorkspaces[key.sessionId] ?? EMPTY_WORKSPACE;
 }
 
@@ -165,20 +154,24 @@ function splitPanel(
     activeTabRef,
     tabOrder,
   };
-  return key.kind === "global"
-    ? {
-        ...previous,
-        shared: { tabs: nextSharedTabs },
-        globalWorkspace: nextWorkspace,
-      }
-    : {
-        ...previous,
-        shared: { tabs: nextSharedTabs },
-        sessionWorkspaces: {
-          ...previous.sessionWorkspaces,
-          [key.sessionId]: nextWorkspace,
-        },
-      };
+  const next = { ...previous, shared: { tabs: nextSharedTabs } };
+  if (key.kind === "global") return { ...next, globalWorkspace: nextWorkspace };
+  if (key.kind === "directory") {
+    return {
+      ...next,
+      directoryWorkspaces: {
+        ...previous.directoryWorkspaces,
+        [key.directory]: nextWorkspace,
+      },
+    };
+  }
+  return {
+    ...next,
+    sessionWorkspaces: {
+      ...previous.sessionWorkspaces,
+      [key.sessionId]: nextWorkspace,
+    },
+  };
 }
 
 function setAndPersist(
@@ -259,17 +252,31 @@ workstationLayoutAtom.debugLabel = "workstationLayoutAtom";
 
 export const claimLegacyWorkstationSeedAtom = atom(null, (get, set) => {
   const key = get(presentedWorkstationWorkspaceKeyAtom);
-  if (key.kind !== "session") return;
+  if (key.kind === "global") return;
   const state = get(workstationTabsStateAtom);
-  if (!state.legacySeed || state.sessionWorkspaces[key.sessionId]) return;
-  const next: WorkstationTabsStateV4 = {
-    ...state,
-    sessionWorkspaces: {
-      ...state.sessionWorkspaces,
-      [key.sessionId]: state.legacySeed,
-    },
-    legacySeed: null,
-  };
+  const existing =
+    key.kind === "session"
+      ? state.sessionWorkspaces[key.sessionId]
+      : state.directoryWorkspaces?.[key.directory];
+  if (!state.legacySeed || existing) return;
+  const next: WorkstationTabsStateV4 =
+    key.kind === "session"
+      ? {
+          ...state,
+          sessionWorkspaces: {
+            ...state.sessionWorkspaces,
+            [key.sessionId]: state.legacySeed,
+          },
+          legacySeed: null,
+        }
+      : {
+          ...state,
+          directoryWorkspaces: {
+            ...state.directoryWorkspaces,
+            [key.directory]: state.legacySeed,
+          },
+          legacySeed: null,
+        };
   setAndPersist(set, next);
 });
 claimLegacyWorkstationSeedAtom.debugLabel = "claimLegacyWorkstationSeedAtom";
@@ -362,6 +369,15 @@ function removeSharedTabsFromState(
       tabs: state.shared.tabs.filter((tab) => !tabIds.has(tab.id)),
     },
     globalWorkspace: removeRefs(state.globalWorkspace),
+    ...(state.directoryWorkspaces
+      ? {
+          directoryWorkspaces: Object.fromEntries(
+            Object.entries(state.directoryWorkspaces).map(
+              ([directory, workspace]) => [directory, removeRefs(workspace)]
+            )
+          ),
+        }
+      : {}),
     sessionWorkspaces: Object.fromEntries(
       Object.entries(state.sessionWorkspaces).map(([sessionId, workspace]) => [
         sessionId,

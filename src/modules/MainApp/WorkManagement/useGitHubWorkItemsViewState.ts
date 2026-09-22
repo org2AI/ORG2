@@ -32,11 +32,6 @@ export const ISSUE_REPO_FILTER = {
   CURRENT_WORKSTATION: "currentWorkstation",
 } as const;
 
-export const GITHUB_FILTER_PRESET = {
-  ASSIGNED_TO_ME: "assignedToMe",
-  BY_ME: "byMe",
-} as const;
-
 const selectedRepoAtom = atomWithStorage<string>(
   "orgii:kanbanGitHub:selectedRepo:v1",
   ISSUE_REPO_FILTER.CURRENT_WORKSTATION
@@ -84,25 +79,6 @@ function getInitialViewState(scope: OpsGitHubViewScope): ViewState {
   };
 }
 
-export function applyGitHubPersonalFilters(
-  query: ParsedGitHubSearchQuery,
-  values: (string | number)[]
-): void {
-  query.author = values.includes(GITHUB_FILTER_PRESET.BY_ME) ? "@me" : null;
-  query.assignee = values.includes(GITHUB_FILTER_PRESET.ASSIGNED_TO_ME)
-    ? "@me"
-    : null;
-}
-
-export function getSelectedGitHubPersonalFilters(
-  query: ParsedGitHubSearchQuery
-): string[] {
-  return [
-    ...(query.author === "@me" ? [GITHUB_FILTER_PRESET.BY_ME] : []),
-    ...(query.assignee === "@me" ? [GITHUB_FILTER_PRESET.ASSIGNED_TO_ME] : []),
-  ];
-}
-
 export function areRequestedPrStatesLoaded(
   states: PullRequestListState[],
   openLoaded: boolean,
@@ -140,10 +116,6 @@ export function useGitHubWorkItemsViewState({
   const selectedPrListStates = useMemo(
     () => getOpsPrListStates(parsedSearchQuery.state),
     [parsedSearchQuery.state]
-  );
-  const selectedPersonalFilters = useMemo(
-    () => getSelectedGitHubPersonalFilters(parsedSearchQuery),
-    [parsedSearchQuery]
   );
 
   useEffect(() => {
@@ -196,12 +168,6 @@ export function useGitHubWorkItemsViewState({
     },
     [setCurrentPage, setSelectedRepo]
   );
-  const selectPersonalFilters = useCallback(
-    (values: (string | number)[]) => {
-      updateSearchQuery((query) => applyGitHubPersonalFilters(query, values));
-    },
-    [updateSearchQuery]
-  );
   const refresh = useCallback(() => {
     setCurrentPage(1);
     setRefreshNonce((current) => current + 1);
@@ -216,11 +182,9 @@ export function useGitHubWorkItemsViewState({
     parsedSearchQuery,
     selectedIssueListStates,
     selectedPrListStates,
-    selectedPersonalFilters,
     updateSearchQuery,
     changeSearchQuery: setScopedSearchQuery,
     selectRepo,
-    selectPersonalFilters,
     refresh,
   };
 }

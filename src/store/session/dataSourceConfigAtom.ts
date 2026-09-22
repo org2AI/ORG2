@@ -112,6 +112,52 @@ export const dataSourcePresenceAtom = atomWithStorage<
 >(PRESENCE_STORAGE_KEY, {});
 
 /**
+ * Machine-owned record of a source whose most recent importer run failed
+ * (e.g. a store the OS refuses to open). Cleared by the next successful run.
+ */
+export interface DataSourceScanFailure {
+  /** Consecutive failed importer runs; drives the scheduler's backoff. */
+  failures: number;
+  lastAttemptAt: number;
+  error: string;
+}
+
+/**
+ * Runtime-only, like the probe retry deadlines: a failure is not user policy,
+ * and a relaunch should simply try the source again. Every rescan surface
+ * (scheduler, sidebar refresh, Runtime scan table) reports through
+ * {@link reduceDataSourceScanFailures} so a failing source is never stamped
+ * as scanned and a recovered one drops its error.
+ */
+export const dataSourceScanFailureAtom = atom<
+  Record<string, DataSourceScanFailure>
+>({});
+
+export function reduceDataSourceScanFailures(
+  previous: Record<string, DataSourceScanFailure>,
+  succeeded: readonly string[],
+  failed: readonly { sourceId: string; error: string }[],
+  now: number
+): Record<string, DataSourceScanFailure> {
+  if (
+    failed.length === 0 &&
+    !succeeded.some((sourceId) => previous[sourceId] !== undefined)
+  ) {
+    return previous;
+  }
+  const next = { ...previous };
+  for (const sourceId of succeeded) delete next[sourceId];
+  for (const { sourceId, error } of failed) {
+    next[sourceId] = {
+      failures: (previous[sourceId]?.failures ?? 0) + 1,
+      lastAttemptAt: now,
+      error,
+    };
+  }
+  return next;
+}
+
+/**
  * Per-source backend cache signature captured at the last rescan-driven
  * roster reload. The auto-scan compares fresh rescan signatures against this
  * baseline: a drift means SOME caller's sync (kanban, usage, transcript

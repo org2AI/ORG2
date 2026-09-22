@@ -25,8 +25,8 @@ import { getPRLocal } from "@src/api/tauri/github";
 import { getOrgtrackDiffReplayPreview } from "@src/api/tauri/lineage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { loadEvents } from "@src/engines/SessionCore/storage/cacheAdapter";
-import { PR_STATUS_UNKNOWN } from "@src/shared/pr/prStatus";
 import type { Repo } from "@src/store/repo/types";
+import { PR_STATUS_UNKNOWN } from "@src/util/git/pr/prStatus";
 
 import type { SubmissionRepoContext } from "../submissionsArtifacts";
 import {

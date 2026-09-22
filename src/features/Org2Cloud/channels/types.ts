@@ -10,6 +10,8 @@
  */
 import { z } from "zod/v4";
 
+import type { CloudChannelVisibility } from "@src/contracts/channels";
+
 export const CHANNEL_ADD_MEMBERS_MAX_PER_CALL = 100;
 
 export const CHANNELS_ERROR_CODES = [
@@ -26,7 +28,7 @@ export const CHANNELS_ERROR_CODES = [
   "ORG2_LAST_MANAGER",
 ] as const;
 
-export type CloudChannelVisibility = "org" | "private";
+export type { CloudChannelVisibility };
 export type CloudChannelPostPolicy = "everyone" | "managers";
 export type CloudChannelRole = "manager" | "member";
 

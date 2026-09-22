@@ -11,23 +11,23 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import {
-  InternetIcon,
-  Key02Icon,
-  KeyboardIcon,
-  SearchAreaIcon,
-} from "@src/icons";
-import type { ChannelProbeResult } from "@src/modules/MainApp/Integrations/Connections/Channels/types";
-import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import {
+  InputShortTextIcon,
+  InternetIcon,
+  Key02Icon,
+  SearchAreaIcon,
+} from "@src/icons";
+import type { ChannelProbeResult } from "@src/modules/MainApp/Integrations/Connections/Channels/types";
 import {
   SelectionGrid,
   type SelectionGridOption,
 } from "@src/scaffold/WizardSystem/primitives";
 
-import { CHANNEL_FORMS } from "./SetupForms";
+import { ChannelSetupForm } from "./SetupForms";
 import type { ProjectSyncAuthMethod } from "./channelWizardTypes";
 import type { GitScanCandidate } from "./useChannelWizardState";
 
@@ -55,15 +55,16 @@ export const ChannelContent: React.FC<ChannelContentProps> = ({
   onDismissProbeError,
 }) => {
   const { t } = useTranslation("integrations");
-  const ChannelForm = selectedType ? CHANNEL_FORMS[selectedType] : null;
 
   if (!selectedType) return null;
 
   return (
     <>
-      {ChannelForm && (
-        <ChannelForm config={channelConfig} onChange={onConfigChange} />
-      )}
+      <ChannelSetupForm
+        channelType={selectedType}
+        config={channelConfig}
+        onChange={onConfigChange}
+      />
       <SectionContainer>
         <SectionRow
           label={t("integrations.testConnection")}
@@ -71,9 +72,8 @@ export const ChannelContent: React.FC<ChannelContentProps> = ({
           required
         >
           <Button
-            variant={probeResult?.ok ? "success" : "primary"}
-            appearance={probeResult?.ok ? "outline" : undefined}
-            size="default"
+            variant={probeResult?.ok ? "secondary" : "primary"}
+            tone={probeResult?.ok ? "success" : undefined}
             loading={probing}
             disabled={!channelIsValid || probing}
             onClick={onProbe}
@@ -134,7 +134,7 @@ export const ProjectContent: React.FC<ProjectContentProps> = ({
       {
         key: STORY_SYNC_AUTH_METHOD.PAT,
         label: t("keyVault.enterToken"),
-        icon: KeyboardIcon,
+        icon: InputShortTextIcon,
       },
     ],
     [t]
@@ -225,7 +225,6 @@ export const ProjectContent: React.FC<ProjectContentProps> = ({
             ) : (
               <Button
                 variant="primary"
-                size="default"
                 loading={projectSubmitting}
                 disabled={isDuplicateName || projectSubmitting}
                 onClick={onProjectSubmit}
@@ -286,18 +285,18 @@ export const GitContent: React.FC<GitContentProps> = ({
     () => [
       {
         key: STORY_SYNC_AUTH_METHOD.SCAN,
-        label: t("gitConnections.methodScan", "Auto Detect"),
+        label: t("gitConnections.methodScan"),
         icon: SearchAreaIcon,
       },
       {
         key: STORY_SYNC_AUTH_METHOD.OAUTH,
-        label: t("gitConnections.methodOAuth", "Sign in with GitHub"),
+        label: t("gitConnections.methodOAuth"),
         icon: InternetIcon,
       },
       {
         key: STORY_SYNC_AUTH_METHOD.PAT,
         label: "PAT",
-        icon: KeyboardIcon,
+        icon: InputShortTextIcon,
       },
       {
         key: STORY_SYNC_AUTH_METHOD.SSH,
@@ -315,10 +314,7 @@ export const GitContent: React.FC<GitContentProps> = ({
       <SectionContainer>
         <SectionRow
           label={t("keyVault.setupMethod")}
-          description={t(
-            "gitConnections.methodPickerDesc",
-            "Pick how you want to authenticate to GitHub."
-          )}
+          description={t("gitConnections.methodPickerDesc")}
           layout="vertical"
           required
         >
@@ -351,10 +347,7 @@ export const GitContent: React.FC<GitContentProps> = ({
             description={
               gitOAuthFlow
                 ? gitOAuthFlow.kind === OAUTH_FLOW_KIND.DEVICE
-                  ? t(
-                      "gitConnections.oauthDeviceDesc",
-                      "Open the verification URL and enter this code to authorize GitHub."
-                    )
+                  ? t("gitConnections.oauthDeviceDesc")
                   : t("projectConnections.oauthBrowserDesc")
                 : t("keyVault.signInDesc")
             }
@@ -385,7 +378,6 @@ export const GitContent: React.FC<GitContentProps> = ({
             ) : (
               <Button
                 variant="primary"
-                size="default"
                 loading={gitSubmitting}
                 disabled={isDuplicateName || gitSubmitting}
                 onClick={onGitOAuthStart}
@@ -491,7 +483,7 @@ const GitScanPanel: React.FC<GitScanPanelProps> = ({
     if (detected.gh_cli) {
       out.push({
         kind: "gh_cli",
-        label: t("gitConnections.scanGhCli", "GitHub CLI (gh)"),
+        label: t("gitConnections.scanGhCli"),
         secret: detected.gh_cli.token,
         username: detected.gh_cli.username || undefined,
       });
@@ -499,11 +491,9 @@ const GitScanPanel: React.FC<GitScanPanelProps> = ({
     if (detected.credential_helper?.token) {
       out.push({
         kind: "credential_helper",
-        label: t(
-          "gitConnections.scanCredHelper",
-          "Git credential helper ({{name}})",
-          { name: detected.credential_helper.helper }
-        ),
+        label: t("gitConnections.scanCredHelper", {
+          name: detected.credential_helper.helper,
+        }),
         secret: detected.credential_helper.token,
         username: detected.credential_helper.username || undefined,
       });
@@ -518,7 +508,7 @@ const GitScanPanel: React.FC<GitScanPanelProps> = ({
         : key.filename;
       out.push({
         kind: "ssh_key",
-        label: t("gitConnections.scanSshKey", "SSH key — {{name}}", {
+        label: t("gitConnections.scanSshKey", {
           name: privateName,
         }),
         secret: `~/.ssh/${privateName}`,
@@ -531,15 +521,9 @@ const GitScanPanel: React.FC<GitScanPanelProps> = ({
   if (detecting) {
     return (
       <SectionContainer>
-        <SectionRow
-          label={t("gitConnections.scanning", "Scanning…")}
-          layout="vertical"
-        >
+        <SectionRow label={t("gitConnections.scanning")} layout="vertical">
           <div className="text-[12px] text-text-2">
-            {t(
-              "gitConnections.scanningDesc",
-              "Looking for gh CLI tokens, credential helpers, and SSH keys on this machine."
-            )}
+            {t("gitConnections.scanningDesc")}
           </div>
         </SectionRow>
       </SectionContainer>
@@ -553,15 +537,9 @@ const GitScanPanel: React.FC<GitScanPanelProps> = ({
   if (candidates.length === 0) {
     return (
       <SectionContainer>
-        <SectionRow
-          label={t("gitConnections.scanEmpty", "Nothing detected")}
-          layout="vertical"
-        >
+        <SectionRow label={t("gitConnections.scanEmpty")} layout="vertical">
           <div className="text-[12px] text-text-2">
-            {t(
-              "gitConnections.scanEmptyDesc",
-              "No gh CLI tokens, credential helpers, or SSH keys were found. Pick another method above."
-            )}
+            {t("gitConnections.scanEmptyDesc")}
           </div>
         </SectionRow>
       </SectionContainer>
@@ -571,11 +549,8 @@ const GitScanPanel: React.FC<GitScanPanelProps> = ({
   return (
     <SectionContainer>
       <SectionRow
-        label={t("gitConnections.scanResults", "Detected credentials")}
-        description={t(
-          "gitConnections.scanResultsDesc",
-          "Pick one to import. We validate tokens against GitHub before saving."
-        )}
+        label={t("gitConnections.scanResults")}
+        description={t("gitConnections.scanResultsDesc")}
         layout="vertical"
         required
       >
@@ -626,11 +601,8 @@ const GitSshPanel: React.FC<GitSshPanelProps> = ({
   return (
     <SectionContainer>
       <SectionRow
-        label={t("gitConnections.sshKeyPath", "SSH key path")}
-        description={t(
-          "gitConnections.sshKeyPathDesc",
-          "Absolute path to the private key (e.g. ~/.ssh/id_ed25519). The matching public key must already be registered on GitHub."
-        )}
+        label={t("gitConnections.sshKeyPath")}
+        description={t("gitConnections.sshKeyPathDesc")}
         required
       >
         <Input

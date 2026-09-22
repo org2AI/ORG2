@@ -24,6 +24,9 @@ pub struct CodeSession {
     pub model: Option<String>,
     pub tier: Option<String>,
     pub account_id: Option<String>,
+    /// Durable non-secret dynamic source; distinct from a KeyVault account.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_source: Option<String>,
     pub repo_path: Option<String>,
     pub branch: Option<String>,
     pub user_input: Option<String>,

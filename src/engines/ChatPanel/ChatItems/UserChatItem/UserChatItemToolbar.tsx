@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
-import { CHAT_BUBBLE_TOOLBAR_BUTTON_CLASS } from "@src/components/ChatBubble";
+import {
+  CHAT_BUBBLE_TOOLBAR_BUTTON_BASE_CLASS,
+  CHAT_BUBBLE_TOOLBAR_BUTTON_CLASS,
+} from "@src/components/ChatBubble";
 import { HugeiconsIcon, PencilEdit01Icon, Undo02Icon } from "@src/icons";
 
 import RawPromptToggle from "../RawPromptToggle";
@@ -100,10 +103,10 @@ export function UserChatItemToolbar({
           )}
           {isEditableDisplay && onRestoreCheckpoint && (
             <Button
-              variant="danger"
-              appearance="soft"
+              variant="tertiary"
+              tone="danger"
               size="mini"
-              aria-label={t("chat.restoreCheckpoint", "Restore checkpoint")}
+              aria-label={t("chat.restoreCheckpoint")}
               iconOnly
               icon={
                 <HugeiconsIcon
@@ -113,10 +116,9 @@ export function UserChatItemToolbar({
                   strokeWidth={1.75}
                 />
               }
-              htmlType="button"
               data-testid="chat-message-restore-checkpoint"
-              title={t("chat.restoreCheckpoint", "Restore checkpoint")}
-              className={`${CHAT_BUBBLE_TOOLBAR_BUTTON_CLASS} text-text-3 hover:text-danger-6`}
+              title={t("chat.restoreCheckpoint")}
+              className={`${CHAT_BUBBLE_TOOLBAR_BUTTON_BASE_CLASS} text-text-3 hover:text-danger-6`}
               onClick={(e) => {
                 e.stopPropagation();
                 onRestoreCheckpoint();
@@ -126,7 +128,6 @@ export function UserChatItemToolbar({
           {isEditableDisplay && (
             <Button
               variant="tertiary"
-              appearance="soft"
               size="mini"
               iconOnly
               icon={
@@ -137,7 +138,6 @@ export function UserChatItemToolbar({
                   strokeWidth={1.75}
                 />
               }
-              htmlType="button"
               data-testid="chat-message-user-edit-button"
               className={`${CHAT_BUBBLE_TOOLBAR_BUTTON_CLASS} text-text-3 hover:text-text-1`}
               onClick={(e) => {

@@ -13,12 +13,14 @@ import { isCliSession } from "@src/util/session/sessionDispatch";
 import type { ConversationRootLocator } from "./conversationTypes";
 import { conversationExecutionParentId } from "./localConversationContinuation";
 import {
+  NATIVE_SOURCE_EVENT_ID_ARG,
   nativeConversationEventSemanticKey,
   nativeConversationItemsAreProviderPortablePrefix,
   nativeSourceEventId,
   projectNativeConversationItems,
   sourceEventIdOfNativeItem,
 } from "./nativeConversationMaterializer";
+import { effectiveQueuedRetryEvents } from "./queuedRetryLineage";
 
 export const LOCAL_EXECUTION_TAIL_EVENT_PREFIX = "runlanded-";
 const STABLE_CANONICAL_SNAPSHOT_ATTEMPTS = 2;
@@ -203,7 +205,9 @@ export function verifiedNativeConversationSuffixEvents(
   childEvents: readonly SessionEvent[]
 ): SessionEvent[] | null {
   const canonicalItems = projectNativeConversationItems(canonicalEvents);
-  const childItems = projectNativeConversationItems(childEvents);
+  const childItems = projectNativeConversationItems(
+    effectiveQueuedRetryEvents(childEvents, canonicalEvents)
+  );
   if (
     !nativeConversationItemsAreProviderPortablePrefix(
       canonicalItems,
@@ -281,6 +285,10 @@ export function mergeVerifiedLocalExecutionTimeline(
   segments: readonly LocalExecutionSegment[]
 ): SessionEvent[] {
   let canonical = [...rootEvents];
+  segments = segments.map((segment) => ({
+    ...segment,
+    events: effectiveQueuedRetryEvents(segment.events, rootEvents),
+  }));
   // A reused child keeps materialized copies of turns that another child
   // executed later, and a provider may stamp those copies with its injection
   // time. Folding children in creation order would take such a copy before
@@ -423,12 +431,20 @@ export function projectVerifiedLocalExecutionTail(
     mergeVerifiedLocalExecutionTimeline(nativeRootEvents, segments).slice(
       nativeRootEvents.length
     )
-  ).map((event) => ({
-    ...event,
-    id: `${LOCAL_EXECUTION_TAIL_EVENT_PREFIX}${event.id}`,
-    chunk_id: `${LOCAL_EXECUTION_TAIL_EVENT_PREFIX}${event.id}`,
-    sessionId: canonicalSessionId,
-  }));
+  ).map((event) => {
+    // Provider-position ids repeat across native episodes. Scope the original
+    // source before moving it onto the root, and retain that identity for the
+    // canonical assembler, retry lineage and later materialization.
+    const sourceId = nativeSourceEventId(event);
+    const id = `${LOCAL_EXECUTION_TAIL_EVENT_PREFIX}${sourceId}`;
+    return {
+      ...event,
+      id,
+      chunk_id: id,
+      sessionId: canonicalSessionId,
+      args: { ...event.args, [NATIVE_SOURCE_EVENT_ID_ARG]: sourceId },
+    };
+  });
 }
 
 /**

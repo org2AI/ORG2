@@ -10,21 +10,21 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import {
-  DEFAULT_PERSONAL_PROJECT_ORG_ID,
-  canDeleteLocalProjectOrg,
-} from "@src/modules/ProjectManager/projectOrgVisibility";
-import {
   SECTION_ACTION_GAP_CLASSES,
   SECTION_DESCRIPTION_CLASSES,
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
 import {
   CARD_ROW_TOKENS,
   CollapsibleSection,
   DETAIL_PANEL_TOKENS,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/components/layout/blocks";
+import {
+  DEFAULT_PERSONAL_PROJECT_ORG_ID,
+  canDeleteLocalProjectOrg,
+} from "@src/modules/ProjectManager/projectOrgVisibility";
 import type { Label } from "@src/types/core/shared";
 
 import { LabelsSection } from "../../WorkItems/components/WorkItemsSettings/subpages";
@@ -218,9 +218,8 @@ export const OrgDangerZone: React.FC<{
               }}
             />
             <Button
-              htmlType="button"
-              size="default"
-              variant="danger"
+              variant="primary"
+              tone="danger"
               disabled={!canDelete || !isConfirmed || deleting}
               loading={deleting}
               data-testid="local-org-delete-confirm"

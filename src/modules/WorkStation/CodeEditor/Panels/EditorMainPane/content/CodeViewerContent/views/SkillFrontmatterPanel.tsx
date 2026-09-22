@@ -11,12 +11,9 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Switch from "@src/components/Switch";
 import Textarea from "@src/components/Textarea";
+import { SectionContainer, SectionRow } from "@src/components/layout/Section";
+import { CollapsibleSection } from "@src/components/layout/blocks";
 import { Add01Icon, Cancel01Icon, HugeiconsIcon, Tick01Icon } from "@src/icons";
-import {
-  SectionContainer,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
-import { CollapsibleSection } from "@src/modules/shared/layouts/blocks";
 import {
   type SkillFrontmatter,
   formatSkillFrontmatterPropertyLabel,
@@ -234,7 +231,6 @@ function AddPropertyRow({ onAdd }: AddPropertyRowProps) {
         >
           <div className="flex w-full justify-end gap-2">
             <Button
-              variant="secondary"
               size="small"
               icon={
                 <HugeiconsIcon icon={Cancel01Icon} data-icon="x" size={14} />

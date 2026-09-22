@@ -25,6 +25,18 @@ export const activeChatPanelTabAtom = atom((get) => {
 activeChatPanelTabAtom.debugLabel = "activeChatPanelTab";
 
 /**
+ * Session identity owned by the selected Chat Panel tab.
+ *
+ * This deliberately follows tab selection rather than the singleton session
+ * pipeline, which can be claimed temporarily by nested/secondary chat views.
+ */
+export const activeChatPanelSessionIdAtom = atom((get) => {
+  const tab = get(activeChatPanelTabAtom);
+  return tab?.type === "session" ? (tab.sessionId ?? null) : null;
+});
+activeChatPanelSessionIdAtom.debugLabel = "activeChatPanelSessionId";
+
+/**
  * Kanban content and sidebar selection are projections of the active
  * ChatPanel tab. Keeping this derived prevents tab chrome, content, and
  * sidebar state from drifting independently.

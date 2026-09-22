@@ -78,11 +78,6 @@ const MAIN_CONTENT_SELECTOR = "[data-main-content]";
  * those two selectors without a recurring timer.
  */
 
-interface UseNarrowChatFocusOptions {
-  /** Only run while a WorkStation / Agent Station route is active. */
-  enabled: boolean;
-}
-
 interface ResolveWorkbenchEvaluationWidthOptions {
   chatPanelDragging: boolean;
   chatPanelMaximized: boolean;
@@ -114,9 +109,7 @@ export function resolveWorkbenchEvaluationWidth({
   return Math.max(0, mainContentWidth - chatSlice);
 }
 
-export function useNarrowChatFocus({
-  enabled,
-}: UseNarrowChatFocusOptions): void {
+export function useNarrowChatFocus(): void {
   const chatPanelMaximized = useAtomValue(chatPanelMaximizedAtom);
   const chatPanelDragging = useAtomValue(chatPanelDraggingAtom);
   const chatWidth = useAtomValue(chatWidthAtom);
@@ -160,12 +153,6 @@ export function useNarrowChatFocus({
   const workbenchObservedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) {
-      wasNarrowRef.current = null;
-      autoTriggeredRef.current = false;
-      return;
-    }
-
     let resizeObserver: ResizeObserver | null = null;
     let lookupObserver: MutationObserver | null = null;
 
@@ -256,13 +243,12 @@ export function useNarrowChatFocus({
       workbenchElementRef.current = null;
       workbenchObservedRef.current = false;
     };
-  }, [enabled, setChatPanelMaximized]);
+  }, [setChatPanelMaximized]);
 
   // The workbench's animated width is intentionally ignored outside direct
   // manipulation. Observe it only while dragging so focus/unfocus animations
   // do not wake this state machine once per frame with an unused measurement.
   useEffect(() => {
-    if (!enabled) return;
     const observer = resizeObserverRef.current;
     const workbench = workbenchElementRef.current;
     if (!observer || !workbench) return;
@@ -278,14 +264,13 @@ export function useNarrowChatFocus({
       observer.unobserve(workbench);
       workbenchObservedRef.current = false;
     }
-  }, [chatPanelDragging, enabled]);
+  }, [chatPanelDragging]);
 
   // Atom-driven re-evaluations: chat width drag, chat visibility, or
   // maximize toggle changes shift the projected workbench width
   // without necessarily firing a ResizeObserver tick. Re-run the
   // same logic here so the breakpoint stays in sync.
   useEffect(() => {
-    if (!enabled) return;
     if (workbenchWidthRef.current <= 0 && mainContentWidthRef.current <= 0) {
       return;
     }
@@ -319,7 +304,6 @@ export function useNarrowChatFocus({
       setChatPanelMaximized(false);
     }
   }, [
-    enabled,
     chatPanelDragging,
     chatWidth,
     chatVisible,
@@ -331,9 +315,8 @@ export function useNarrowChatFocus({
   // narrow, drop the auto-flag so the eventual narrow→wide edge
   // doesn't try to restore a state they've already moved past.
   useEffect(() => {
-    if (!enabled) return;
     if (chatPanelMaximized) return;
     if (wasNarrowRef.current !== true) return;
     autoTriggeredRef.current = false;
-  }, [enabled, chatPanelMaximized]);
+  }, [chatPanelMaximized]);
 }

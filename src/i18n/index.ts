@@ -38,6 +38,7 @@ import { initReactI18next } from "react-i18next";
  * - zh: Simplified Chinese (简体中文)
  * - zh-Hant: Traditional Chinese (繁體中文)
  * - es: Spanish (Español)
+ * - hi: Hindi (हिन्दी)
  * - ru: Russian (Русский)
  * - pt: Portuguese (Português)
  * - de: German (Deutsch)
@@ -45,6 +46,7 @@ import { initReactI18next } from "react-i18next";
  * - ko: Korean (한국어)
  * - tr: Turkish (Türkçe)
  * - vi: Vietnamese (Tiếng Việt)
+ * - id: Indonesian (Bahasa Indonesia)
  * - pl: Polish (Polski)
  */
 export const SUPPORTED_LANGUAGES = [
@@ -53,6 +55,7 @@ export const SUPPORTED_LANGUAGES = [
   "zh",
   "zh-Hant",
   "es",
+  "hi",
   "ru",
   "pt",
   "de",
@@ -60,6 +63,7 @@ export const SUPPORTED_LANGUAGES = [
   "ko",
   "tr",
   "vi",
+  "id",
   "pl",
 ] as const;
 
@@ -93,6 +97,7 @@ export const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   zh: "简体中文",
   "zh-Hant": "繁體中文",
   es: "Español",
+  hi: "हिन्दी",
   ru: "Русский",
   pt: "Português",
   de: "Deutsch",
@@ -100,6 +105,7 @@ export const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   ko: "한국어",
   tr: "Türkçe",
   vi: "Tiếng Việt",
+  id: "Bahasa Indonesia",
   pl: "Polski",
 };
 
@@ -122,6 +128,7 @@ const LANGUAGE_ENGLISH_NAMES: Record<SupportedLanguage, string> = {
   zh: "Simplified Chinese",
   "zh-Hant": "Traditional Chinese",
   es: "Spanish",
+  hi: "Hindi",
   ru: "Russian",
   pt: "Portuguese",
   de: "German",
@@ -129,6 +136,7 @@ const LANGUAGE_ENGLISH_NAMES: Record<SupportedLanguage, string> = {
   ko: "Korean",
   tr: "Turkish",
   vi: "Vietnamese",
+  id: "Indonesian",
   pl: "Polish",
 };
 
@@ -465,6 +473,46 @@ async function loadLanguageResources(
         terms: (await import("./locales/vi/terms.json")).default,
         workflow: (await import("./locales/vi/workflow.json")).default,
         mobileRemote: await loadMobileRemoteBundle("vi"),
+      };
+    case "id":
+      return {
+        auth: (await import("./locales/id/auth.json")).default,
+        common: (await import("./locales/id/common.json")).default,
+        geo: (await import("./locales/id/geo.json")).default,
+        profile: (await import("./locales/id/profile.json")).default,
+        builderProfile: (await import("./locales/id/builderProfile.json"))
+          .default,
+        teamRuntime: (await import("./locales/id/teamRuntime.json")).default,
+        market: (await import("./locales/id/market.json")).default,
+        integrations: (await import("./locales/id/integrations.json")).default,
+        navigation: (await import("./locales/id/navigation.json")).default,
+        onboarding: (await import("./locales/id/onboarding.json")).default,
+        projects: (await import("./locales/id/projects.json")).default,
+        sessions: (await import("./locales/id/sessions.json")).default,
+        settings: (await import("./locales/id/settings.json")).default,
+        terms: (await import("./locales/id/terms.json")).default,
+        workflow: (await import("./locales/id/workflow.json")).default,
+        mobileRemote: await loadMobileRemoteBundle("id"),
+      };
+    case "hi":
+      return {
+        auth: (await import("./locales/hi/auth.json")).default,
+        common: (await import("./locales/hi/common.json")).default,
+        geo: (await import("./locales/hi/geo.json")).default,
+        profile: (await import("./locales/hi/profile.json")).default,
+        builderProfile: (await import("./locales/hi/builderProfile.json"))
+          .default,
+        teamRuntime: (await import("./locales/hi/teamRuntime.json")).default,
+        market: (await import("./locales/hi/market.json")).default,
+        integrations: (await import("./locales/hi/integrations.json")).default,
+        navigation: (await import("./locales/hi/navigation.json")).default,
+        onboarding: (await import("./locales/hi/onboarding.json")).default,
+        projects: (await import("./locales/hi/projects.json")).default,
+        sessions: (await import("./locales/hi/sessions.json")).default,
+        settings: (await import("./locales/hi/settings.json")).default,
+        terms: (await import("./locales/hi/terms.json")).default,
+        workflow: (await import("./locales/hi/workflow.json")).default,
+        mobileRemote: await loadMobileRemoteBundle("hi"),
       };
     case "pt":
       return {

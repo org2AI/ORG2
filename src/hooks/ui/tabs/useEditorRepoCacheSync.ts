@@ -22,13 +22,6 @@ import { useEditorCache } from "./useEditorCache";
 // Hook
 // ============================================
 
-export interface UseEditorRepoCacheSyncOptions {
-  /** Enable debug logging */
-  debug?: boolean;
-  /** Whether sync is enabled (default: true) */
-  enabled?: boolean;
-}
-
 /**
  * Syncs editor tab cache when repo changes
  *
@@ -38,22 +31,17 @@ export interface UseEditorRepoCacheSyncOptions {
  * useEditorRepoCacheSync();
  * ```
  */
-export function useEditorRepoCacheSync(
-  options: UseEditorRepoCacheSyncOptions = {}
-): void {
-  const { enabled = true } = options;
-
+export function useEditorRepoCacheSync(): void {
   const repoPath = useAtomValue(activeWorkspaceRootPathAtom) || null;
 
   // Editor cache hook
-  const { switchRepo, activeRepoPath: _activeRepoPath } = useEditorCache();
+  const { switchRepo } = useEditorCache();
 
   // Track previous repo to detect changes
   const prevRepoPathRef = useRef<string | null>(null);
   const isInitializedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return;
     if (!repoPath) return;
 
     // Skip if same repo
@@ -72,7 +60,7 @@ export function useEditorRepoCacheSync(
     // Repo changed - switch and cache
     prevRepoPathRef.current = repoPath;
     switchRepo(repoPath);
-  }, [repoPath, enabled, switchRepo]);
+  }, [repoPath, switchRepo]);
 }
 
 export default useEditorRepoCacheSync;

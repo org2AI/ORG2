@@ -77,10 +77,7 @@ const KeyVaultWizard: React.FC<KeyVaultWizardProps> = ({
     !!data.agent_type && !isApiKeyProvider(data.agent_type as string);
 
   const resolvedTitle =
-    title ??
-    (isCli
-      ? t("keyVault.addCliAgent", "Add Agent")
-      : t("keyVault.addAccount", "Add Account"));
+    title ?? (isCli ? t("keyVault.addCliAgent") : t("keyVault.addKey"));
 
   return (
     <WizardShell

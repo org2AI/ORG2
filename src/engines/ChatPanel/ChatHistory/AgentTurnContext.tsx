@@ -42,6 +42,8 @@ export interface AgentTurnContextValue {
   onRegenerate?: () => void;
   /** Optional sender label for group-chat merged streams. */
   groupSenderName?: string | null;
+  /** The final turn row owns image display instead of individual tool cards. */
+  outputImagesAtEnd?: boolean;
 }
 
 export const AgentTurnContext = createContext<AgentTurnContextValue | null>(

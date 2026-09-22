@@ -45,7 +45,8 @@
     "diff": "Diff",
     "colleagues": "Коллеги",
     "terminals": "Терминалы",
-    "openSourceRepo": "Open Source репо"
+    "openSourceRepo": "Open Source репо",
+    "closeSettings": "Закрыть настройки"
   },
   "routes": {
     "session": "Чат",
@@ -73,12 +74,7 @@
       "manual": "Вручную"
     },
     "tabs": {
-      "workstation": "Workstation",
-      "manage": "Управление",
-      "core": "Ядро",
-      "agent": "Agent",
-      "org": "Команда",
-      "agentOrgs": "Agent и команда"
+      "workstation": "Workstation"
     },
     "groupBy": {
       "none": "Без группировки",
@@ -100,55 +96,23 @@
       "untitledSession": "Session без названия",
       "enterSessionName": "Введите название Session"
     },
-    "groups": {
-      "economy": "Экономика",
-      "myServices": "Мои услуги",
-      "osAgent": "OS Agent",
-      "draft": "Draft",
-      "agent": "Coding Agent",
-      "cli": "CLI Agent",
-      "hostedKey": "Hosted Key",
-      "cloud": "Cloud",
-      "openSource": "Открытый код",
-      "timeline": "Таймлайн"
-    },
     "actions": {
       "addNew": "Добавить новое",
       "collapseAll": "Свернуть все",
-      "markAllRead": "Отметить все как прочитанные",
-      "toggleGroup": "Переключить раздел"
+      "markAllRead": "Отметить все как прочитанные"
     },
     "search": {
-      "folders": "Искать в рабочей области...",
-      "sessions": "Искать сессии...",
-      "projects": "Искать проекты...",
-      "colleagues": "Поиск коллег..."
-    },
-    "folderCounts": {
-      "repo": "{{count}} репо",
-      "multiRepoWorkspace": "{{count}} мульти-Repo Workspace",
-      "repo_plural": "{{count}} репо",
-      "multiRepoWorkspace_plural": "{{count}} мульти-Repo Workspace"
+      "sessions": "Искать сессии..."
     },
     "bottomBar": {
       "settings": "Настройки",
-      "clockLabel": "Текущее время",
       "updateAvailable": "Скачать обновление v{{version}}"
     },
     "settingsMenu": {
       "appearance": "Внешний вид",
       "modifyAppearance": "Изменить оформление",
-      "language": "Язык",
       "viewRam": "Показать RAM",
-      "tutorials": "Обучение",
       "openSettings": "Открыть настройки"
-    },
-    "empty": {
-      "noItems": "Нет элементов",
-      "noSessions": "Нет Session",
-      "noSessionsDesc": "Начните новую Session",
-      "noResultsFor": "Нет результатов для \"{{query}}\"",
-      "noSearchResults": "Ничего не найдено"
     },
     "presence": {
       "tooltip": "Установи статус — агенты адаптируются к тому, у клавиатуры ли ты.",
@@ -166,9 +130,18 @@
       "durationTomorrow": "Завтра",
       "unknownRole": "Неизвестная роль"
     },
-    "guide": {
-      "startSession": "Начать сессию",
-      "connectOrganization": "Подключить или создать рабочее пространство"
+    "sections": {
+      "section": "Раздел",
+      "create": "Новый раздел",
+      "name": "Название раздела",
+      "rename": "Переименовать раздел",
+      "delete": "Удалить раздел (сохранить сеансы)",
+      "remove": "Убрать из раздела",
+      "up": "Переместить вверх",
+      "down": "Переместить вниз",
+      "manage": "Управление разделом",
+      "more": "Загрузить ещё",
+      "retry": "Повторить"
     }
   },
   "launchpad": {
@@ -320,11 +293,11 @@
       "forkModelFallback": "Модель владельца {{model}} недоступна с вашими ключами — этот форк будет использовать {{fallback}}.",
       "forkModelUnavailable": "Модель владельца {{model}} недоступна с вашими ключами — выберите модель перед запуском этого форка.",
       "forkPickCheckoutTitle": "Select your local checkout of {{repo}}",
-      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable.",
+      "forkPickCheckoutHint": "The fork of \"{{session}}\" continues work on {{repo}}. Pick the workspace repo it should run in — only checkouts of that repo are selectable",
       "forkPickCheckoutClone": "Don't see it? Clone the repo and add it as a workspace first, then fork again.",
       "forkCheckoutMismatch": "The selected folder is not a checkout of {{repo}} — fork of \"{{session}}\" cancelled. Clone the repo first, then fork again.",
       "forkSetupTitle": "Continue on this machine",
-      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials.",
+      "forkSetupHint": "Create a writable continuation of \"{{session}}\" using your local checkout and credentials",
       "forkSetupWorkspace": "Workspace",
       "forkSetupNoWorkspace": "Continue without a workspace",
       "forkSetupAccount": "Account",
@@ -810,7 +783,6 @@
         "errorChannelMissing": "Этот канал больше недоступен",
         "errorMessageMissing": "Это сообщение больше недоступно",
         "loadError": "Не удалось загрузить сообщения",
-        "loadingMessages": "Загрузка сообщений…",
         "loadOlder": "Загрузить предыдущие сообщения",
         "unknownAuthor": "Участник команды"
       }
@@ -834,26 +806,26 @@
     "deleteRoleCancel": "Отмена",
     "deleteRoleOk": "Удалить",
     "deleteRoleTitle": "Удалить роль?",
-    "followUpSuggestionsDesc": "Предлагать возможные следующие шаги после завершённого хода по рабочему элементу. Использует дополнительный запрос к модели.",
+    "followUpSuggestionsDesc": "Предлагать возможные следующие шаги после завершённого хода по рабочему элементу. Использует дополнительный запрос к модели",
     "followUpSuggestionsLabel": "Предложения Agent по следующим шагам",
-    "goalMaxTurnsDesc": "Продолжать работу над моим последним запросом до N дополнительных ходов после того, как агент обычно остановился бы (0 = выкл.).",
+    "goalMaxTurnsDesc": "Продолжать работу над моим последним запросом до N дополнительных ходов после того, как агент обычно остановился бы (0 = выкл.)",
     "goalMaxTurnsLabel": "Бюджет продолжения цели",
     "guidanceLabel": "Указания для Agent",
     "guidancePlaceholder": "Как агент должен менять своё поведение, когда эта роль активна?",
-    "modeSwitchAutoPlanDesc": "Автоматически применять ожидающие предложения перехода в режим Plan по истечении таймера подтверждения.",
+    "modeSwitchAutoPlanDesc": "Автоматически применять ожидающие предложения перехода в режим Plan по истечении таймера подтверждения",
     "modeSwitchAutoPlanLabel": "Автопереход в режим Plan",
     "newRoleDefaultLabel": "Своя роль",
-    "pageDescription": "Определите роль, в которой вы сейчас находитесь. Агент читает указания активной роли и соответственно меняет поведение — например, задаёт меньше уточняющих вопросов, когда вы сосредоточены, или объединяет сводки, когда вас нет.",
+    "pageDescription": "Определите роль, в которой вы сейчас находитесь. Агент читает указания активной роли и соответственно меняет поведение — например, задаёт меньше уточняющих вопросов, когда вы сосредоточены, или объединяет сводки, когда вас нет",
     "pageTitle": "Мои роли",
-    "planAutoApproveDesc": "Автоматически утверждать ожидающие планы через N секунд (0 = ждать меня).",
+    "planAutoApproveDesc": "Автоматически утверждать ожидающие планы через N секунд (0 = ждать меня)",
     "planAutoApproveLabel": "Автоутверждение планов",
-    "questionAutoSkipDesc": "Автоматически пропускать ожидающие вопросы агента через N секунд (0 = ждать меня).",
+    "questionAutoSkipDesc": "Автоматически пропускать ожидающие вопросы агента через N секунд (0 = ждать меня)",
     "questionAutoSkipLabel": "Автопропуск вопросов",
     "roleNameLabel": "Название",
     "roleNamePlaceholder": "Название роли",
     "stanceAutonomous": "Автономно — никогда не ждать меня",
     "stanceDeferAndBatch": "Отложить и объединить — сначала работа, вопросы потом",
-    "stanceDesc": "Как агент обрабатывает блокирующие решения, пока эта роль активна.",
+    "stanceDesc": "Как агент обрабатывает блокирующие решения, пока эта роль активна",
     "stanceInteractive": "Интерактивно — спрашивать меня свободно",
     "stanceLabel": "Модель поведения"
   },
@@ -878,5 +850,10 @@
       "updated": "Недавно обновлённые",
       "forks": "Форки"
     }
+  },
+  "fileSearch": {
+    "replaceFailed": "Замена остановлена: результаты или файл изменились либо произошла ошибка записи. Некоторые файлы уже могли обновиться. Перед повторной попыткой выполните поиск заново.",
+    "budgetExceeded": "Достигнут лимит ресурсов поиска. Результаты неполные; сузьте область поиска.",
+    "timeout": "Время поиска истекло. Сузьте область поиска и повторите попытку."
   }
 }

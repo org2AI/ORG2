@@ -54,9 +54,7 @@ function LoadMoreResultsButton({
   return (
     <div className="flex w-full justify-center py-1.5">
       <Button
-        htmlType="button"
         variant="tertiary"
-        appearance="ghost"
         size="small"
         icon={
           <HugeiconsIcon

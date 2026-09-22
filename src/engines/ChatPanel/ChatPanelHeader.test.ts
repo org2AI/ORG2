@@ -46,6 +46,10 @@ const { getCollapsedSidebarChromeOffset } =
   await import("@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset");
 const { ChatPanelHeader } = await import("./ChatPanelHeader");
 const { chatPanelHeaderSlotsAtom } = await import("./header");
+const { chatPanelTabsAtom } =
+  await import("@src/store/chatPanel/chatPanelTabsState");
+type ChatPanelTabType =
+  import("@src/store/chatPanel/chatPanelTabsModel").ChatPanelTabType;
 type ChatPanelHeaderSlots = import("./header").ChatPanelHeaderSlots;
 
 const noop = () => undefined;
@@ -55,6 +59,7 @@ interface RenderOptions {
   sessionHeaderContent?: ReactNode;
   shouldOffsetHeaderForCollapsedSidebar?: boolean;
   publishedHeaderSlots?: ChatPanelHeaderSlots | null;
+  activeTabType?: ChatPanelTabType;
 }
 
 function render({
@@ -62,9 +67,14 @@ function render({
   sessionHeaderContent = createElement("span", { "data-session-name": "true" }),
   shouldOffsetHeaderForCollapsedSidebar = false,
   publishedHeaderSlots = null,
+  activeTabType = "session",
 }: RenderOptions): string {
   const store = createStore();
   store.set(chatPanelHeaderSlotsAtom, publishedHeaderSlots);
+  store.set(chatPanelTabsAtom, {
+    activeTabId: "active",
+    tabs: [{ id: "active", type: activeTabType, title: "Active tab" }],
+  });
 
   return renderToStaticMarkup(
     createElement(
@@ -99,7 +109,6 @@ function render({
         tokenUsageVisible: false,
         turnMetadataVisible: false,
         shouldOffsetHeaderForCollapsedSidebar,
-        showHeader: true,
         showSessionContent: true,
         showCloudShareSettings: false,
         t: ((key: string) => key) as unknown as TFunction<
@@ -120,12 +129,26 @@ function render({
 }
 
 describe("ChatPanelHeader tab row collapse", () => {
-  it("always offers the pane-level restore action", () => {
+  it("offers the restore action while the active tab allows a Station", () => {
     const markup = render({ tabRowCollapsed: false });
     expect(markup).toContain('data-tooltip-label="chat.showWorkstation"');
     expect(markup).not.toContain("workstationUnavailableForPage");
     expect(markup).not.toContain("disabled");
   });
+
+  it.each<ChatPanelTabType>(["work-management", "runtime", "organization"])(
+    "explains why Workstation cannot be shown for a %s tab",
+    (activeTabType) => {
+      const markup = render({ tabRowCollapsed: false, activeTabType });
+      expect(markup).toContain(
+        'data-tooltip-label="chat.workstationUnavailableForPage"'
+      );
+      expect(markup).toContain(
+        'aria-label="chat.workstationUnavailableForPage"'
+      );
+      expect(markup).toContain("disabled");
+    }
+  );
 
   it("keeps its own maximize toggle unless the pinned group sits in its corner", () => {
     // Chat on the left: the window's right edge belongs to the workstation,
@@ -146,6 +169,9 @@ describe("ChatPanelHeader tab row collapse", () => {
     const pinned = render({ tabRowCollapsed: false });
     expect(pinned).not.toContain('aria-label="chat.showWorkstation"');
     expect(pinned).toContain("padding-right:66px");
+    // A reservation that appears without a station opening or closing (a tab
+    // change, for one) snaps into place instead of sliding.
+    expect(pinned).not.toContain("transition-[padding]");
   });
 
   it("keeps both rows while the tab strip is worth showing", () => {

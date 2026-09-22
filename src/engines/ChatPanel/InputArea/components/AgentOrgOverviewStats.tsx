@@ -92,30 +92,22 @@ const AgentOrgOverviewStats: React.FC<AgentOrgOverviewStatsProps> = ({
           [
             [
               "activeMembers",
-              t("planner.agentOrgOverview.activeMembers", {
-                defaultValue: "Active members",
-              }),
+              t("planner.agentOrgOverview.activeMembers"),
               view.workState.activeMembers,
             ],
             [
               "inFlightTurns",
-              t("planner.agentOrgOverview.inFlightTurns", {
-                defaultValue: "In-flight turns",
-              }),
+              t("planner.agentOrgOverview.inFlightTurns"),
               view.workState.inFlightTurns,
             ],
             [
               "openTasks",
-              t("planner.agentOrgOverview.openTasks", {
-                defaultValue: "Open tasks",
-              }),
+              t("planner.agentOrgOverview.openTasks"),
               view.workState.openTasks,
             ],
             [
               "blockingInbox",
-              t("planner.agentOrgOverview.blockingInbox", {
-                defaultValue: "Blocking inbox",
-              }),
+              t("planner.agentOrgOverview.blockingInbox"),
               view.workState.blockingInbox,
             ],
           ] as const

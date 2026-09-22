@@ -17,23 +17,19 @@ const CanvasRevisionProgress: React.FC<CanvasRevisionProgressProps> = ({
   variant = "chat",
 }) => {
   const { t } = useTranslation("sessions");
-  const title = draft.title?.trim() || t("canvasApp.revisionCanvas", "Canvas");
+  const title = draft.title?.trim() || t("canvasApp.revisionCanvas");
   const applying = draft.phase === "applying";
   const detail = applying
-    ? t("canvasApp.revisionApplying", "Applying the validated change…")
-    : t(
-        "canvasApp.revisionReceiving",
-        "Generating the change · {{amount}} characters",
-        {
-          amount: formatCanvasRevisionCharacterCount(draft.receivedCharacters),
-        }
-      );
+    ? t("canvasApp.revisionApplying")
+    : t("canvasApp.revisionReceiving", {
+        amount: formatCanvasRevisionCharacterCount(draft.receivedCharacters),
+      });
   // Screen-reader announcement changes only on phase transitions. The visible
   // detail line updates its character counter at ~20Hz — putting it inside an
   // aria-live region used to spam assistive tech on every tick.
   const phaseAnnouncement = applying
-    ? t("canvasApp.revisionApplying", "Applying the validated change…")
-    : t("canvasApp.revisionReceivingLabel", "Generating the change…");
+    ? t("canvasApp.revisionApplying")
+    : t("canvasApp.revisionReceivingLabel");
 
   return (
     <div
@@ -63,7 +59,7 @@ const CanvasRevisionProgress: React.FC<CanvasRevisionProgressProps> = ({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs font-medium text-text-1">
-          {t("canvasApp.revisionTitle", "Updating {{title}}", { title })}
+          {t("canvasApp.revisionTitle", { title })}
         </span>
         <span
           aria-hidden

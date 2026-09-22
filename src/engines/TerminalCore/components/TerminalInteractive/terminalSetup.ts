@@ -123,8 +123,10 @@ export function initializeWhenContainerVisible({
     resizeObserver?.disconnect();
     resizeObserver = null;
 
-    fitTerminal();
+    // Fit using the renderer that will draw the first prompt. WebGL and DOM
+    // round cell widths differently, especially at fractional display scales.
     loadWebGL();
+    fitTerminal();
 
     setIsReady(true);
     initPty(terminal.cols, terminal.rows);

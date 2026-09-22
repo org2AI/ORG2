@@ -14,60 +14,56 @@
     },
     "generalLayout": {
       "title": "Tour de layout geral",
-      "description": "Conheça o painel de chat, Runtime, o seletor de modo e o dock.",
+      "description": "Conheça o painel de chat, Runtime, o seletor de modo e o dock",
       "duration": "1 min",
       "steps": {
         "chat-panel": {
           "title": "Painel de bate-papo",
-          "body": "É onde os usuários conversam com agentes, analisam atividades e enviam instruções de acompanhamento."
+          "body": "É onde os usuários conversam com agentes, analisam atividades e enviam instruções de acompanhamento"
         },
         "runtime": {
           "title": "Runtime",
-          "body": "Veja aqui seu uso e o status de execução. Em um espaço de trabalho, você também pode conferir a sincronização dos membros e abrir os detalhes de uso do Codex, Claude e Cursor."
+          "body": "Veja aqui seu uso e o status de execução. Em um espaço de trabalho, você também pode conferir a sincronização dos membros e abrir os detalhes de uso do Codex, Claude e Cursor"
         },
         "station-mode-pill": {
           "title": "Alternar estação modos",
-          "body": "Use esta pílula para alternar os modos de estação. Desktop significa My Station, seu espaço de trabalho. Infinito significa Agent Station, a visualização da atividade do agente."
+          "body": "Use esta pílula para alternar os modos de estação. Desktop significa My Station, seu espaço de trabalho. Infinito significa Agent Station, a visualização da atividade do agente"
         },
         "dock": {
           "title": "Agent Station dock",
-          "body": "O dock alterna aplicativos dentro da estação. O tour desativa temporariamente a ocultação automática para que esses controles permaneçam visíveis."
+          "body": "O dock alterna aplicativos dentro da estação. O tour desativa temporariamente a ocultação automática para que esses controles permaneçam visíveis"
         }
       }
     },
     "codeEditor": {
       "title": "Tour do editor de código",
-      "description": "Conheça as abas, o espaço do editor, o controle de código-fonte e o histórico do Git.",
+      "description": "Conheça as abas, o espaço do editor, o controle de código-fonte e o histórico do Git",
       "duration": "2 min",
       "steps": {
         "tabs": {
           "title": "Guias do editor de código",
-          "body": "As guias coletam os arquivos, diferenças, terminais, visualizações de controle de origem e painéis que você abre enquanto trabalhando no repositório."
+          "body": "As guias coletam os arquivos, diferenças, terminais, visualizações de controle de origem e painéis que você abre enquanto trabalhando no repositório"
         },
         "editor-surface": {
           "title": "Espaço de trabalho do editor",
-          "body": "Esta é a superfície principal do editor de código. Abra arquivos, inspecione diferenças, execute terminais e revise as alterações geradas aqui."
+          "body": "Esta é a superfície principal do editor de código. Abra arquivos, inspecione diferenças, execute terminais e revise as alterações geradas aqui"
         },
         "create-tabs": {
           "title": "Criar novas guias",
-          "body": "Use o menu de adição em Todas as guias para criar terminais, guias do navegador, arquivos, painéis e utilitários de repositório."
+          "body": "Use o menu de adição em Todas as guias para criar terminais, guias do navegador, arquivos, painéis e utilitários de repositório"
         },
         "source-control": {
           "title": "Alterações do Git",
-          "body": "Open Source Control para revisar arquivos alterados, preparar ou desestabilizar trabalho, confirmar, puxar, enviar, buscar e sincronizar com o controle remoto."
+          "body": "Open Source Control para revisar arquivos alterados, preparar ou desestabilizar trabalho, confirmar, puxar, enviar, buscar e sincronizar com o controle remoto"
         },
         "git-history": {
           "title": "Histórico do Git",
-          "body": "O histórico do Git alterna o controle de origem para o modo de histórico de commits para que você possa inspecionar commits anteriores e alterações relacionadas."
+          "body": "O histórico do Git alterna o controle de origem para o modo de histórico de commits para que você possa inspecionar commits anteriores e alterações relacionadas"
         }
       }
     }
   },
   "discovery": {
-    "title": "Primeiros passos e novidades",
-    "getStarted": "Primeiros passos",
-    "newFeatures": "Novidades",
-    "branchesTitle": "Branches do repositório",
-    "branchesDescription": "Troque de branch do repositório diretamente pelo Spotlight."
+    "getStarted": "Primeiros passos"
   }
 }

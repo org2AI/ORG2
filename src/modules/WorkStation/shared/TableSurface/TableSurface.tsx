@@ -15,10 +15,8 @@ export const TableSurface = memo(function TableSurface({
   toolbarLeading,
   toolbarTrailing,
   showFormulaBar = mode === "editable",
-  activeCellLabelFallback = "—",
   hasMoreRows = false,
   loadingMoreRows = false,
-  pagination,
   sortState,
   onSortColumn,
   emptyTitle,
@@ -60,7 +58,7 @@ export const TableSurface = memo(function TableSurface({
         leading={toolbarLeading}
         trailing={toolbarTrailing}
         showFormulaBar={showFormulaBar}
-        activeCellLabel={activeCellLabel || activeCellLabelFallback}
+        activeCellLabel={activeCellLabel || "—"}
         value={formulaValue}
         editable={editable}
         disabled={!activeCellLabel}
@@ -83,7 +81,6 @@ export const TableSurface = memo(function TableSurface({
           editable={editable}
           hasMoreRows={hasMoreRows}
           loadingMoreRows={loadingMoreRows}
-          pagination={pagination}
           sortState={sortState}
           onSortColumn={onSortColumn}
           formatCellValue={formatCellValue}

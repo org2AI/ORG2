@@ -58,10 +58,12 @@ describe("SelectedTextAddToChat", () => {
 
   function renderSurface({
     displayName = "example.ts",
+    filePath,
     enabled = true,
     scopeKey = "scope-a",
   }: {
     displayName?: string;
+    filePath?: string;
     enabled?: boolean;
     scopeKey?: string;
   } = {}): void {
@@ -72,7 +74,7 @@ describe("SelectedTextAddToChat", () => {
           { store },
           React.createElement(
             SelectedTextAddToChat,
-            { displayName, enabled, scopeKey },
+            { displayName, filePath, enabled, scopeKey },
             React.createElement("span", { id: "first" }, "const first = 1;"),
             React.createElement("span", { id: "second" }, "const second = 2;")
           )
@@ -128,6 +130,18 @@ describe("SelectedTextAddToChat", () => {
       type: "terminal",
       text: "const first = 1;",
       displayName: "example.ts",
+    });
+  });
+
+  it("preserves file identity and selected text at the diff write boundary", async () => {
+    renderSurface({ filePath: "src/example.ts" });
+    await selectText("first");
+    clickAddToChat();
+    expect(store.get(addToAgentAtom)).toEqual({
+      type: "file-selection",
+      filePath: "src/example.ts",
+      fileName: "example.ts",
+      text: "const first = 1;",
     });
   });
 

@@ -264,7 +264,7 @@ describe("groupBranchOptions", () => {
     ]);
   });
 
-  it("promotes the current and default branches to the top", () => {
+  it("pins default branches in their own section above Recent", () => {
     const options = [
       dated("f1", 12),
       dated("f2", 11),
@@ -272,26 +272,53 @@ describe("groupBranchOptions", () => {
       dated("f4", 9),
       dated("f5", 8),
       dated("main", 1),
+      option({ name: "origin/develop", isRemote: true }),
       dated("feature/current", 2),
     ];
     const groups = groupBranchOptions(options, undefined, "feature/current");
-    const recent = groups.find((g) => g.key === "recent");
-    const other = groups.find((g) => g.key === "other");
-    expect(recent?.options.map((o) => o.name)).toEqual([
-      "feature/current",
+    expect(groups.map((g) => g.key)).toEqual(["default", "recent", "other"]);
+    expect(groups[0].labelKey).toBe("defaultBranches");
+    expect(groups[0].options.map((o) => o.name)).toEqual([
       "main",
+      "origin/develop",
+    ]);
+    expect(groups[1].options.map((o) => o.name)).toEqual([
+      "feature/current",
       "f1",
       "f2",
       "f3",
       "f4",
     ]);
-    expect(other?.options.map((o) => o.name)).toEqual(["f5"]);
+    expect(groups[2].options.map((o) => o.name)).toEqual(["f5"]);
     const allNames = groups.flatMap((group) =>
       group.options.map((option) => option.name)
     );
-    expect(allNames.filter((name) => name === "main")).toHaveLength(1);
-    expect(allNames.filter((name) => name === "feature/current")).toHaveLength(
-      1
+    expect(new Set(allNames).size).toBe(allNames.length);
+  });
+
+  it("keeps one entry per default name instead of every remote copy", () => {
+    const remote = (name: string) => option({ name, isRemote: true });
+    const groups = groupBranchOptions([
+      dated("develop", 3),
+      remote("origin/develop"),
+      remote("upstream/develop"),
+      remote("fork/develop"),
+      remote("fork/main"),
+      remote("origin/main"),
+    ]);
+    expect(groups[0].key).toBe("default");
+    expect(groups[0].options.map((o) => o.name)).toEqual([
+      "develop",
+      "origin/main",
+    ]);
+    const rest = groups.slice(1).flatMap((g) => g.options.map((o) => o.name));
+    expect(rest).toEqual(
+      expect.arrayContaining([
+        "origin/develop",
+        "upstream/develop",
+        "fork/develop",
+        "fork/main",
+      ])
     );
   });
 
@@ -301,9 +328,9 @@ describe("groupBranchOptions", () => {
       option({ name: "feature/current", isCurrent: true }),
       dated("feature/recent", 12),
     ]);
-    expect(groups[0].options.map((o) => o.name)).toEqual([
+    expect(groups[0].options.map((o) => o.name)).toEqual(["main"]);
+    expect(groups[1].options.map((o) => o.name)).toEqual([
       "feature/current",
-      "main",
       "feature/recent",
     ]);
   });

@@ -30,6 +30,9 @@ export { minimapExtension } from "./minimap";
 // Go to line
 export { goToLineExtension } from "./goToLine";
 
+// Code navigation (go to definition, find references, back/forward)
+export { codeNavigationExtension } from "./codeNavigation";
+
 // BasicSetup presets
 export { BASIC_SETUP_CONFIG, BASIC_SETUP_SQL_CONFIG } from "./setupConfig";
 

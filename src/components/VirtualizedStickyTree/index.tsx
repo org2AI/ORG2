@@ -4,7 +4,7 @@
  * Reusable virtualized tree with VS Code-style sticky scroll.
  *
  * Features:
- * - Virtualized rendering with react-virtuoso
+ * - Virtualized rendering through the shared VirtualList primitive
  * - VS Code-style sticky headers with position-based clipping
  * - Scroll preservation when tree structure changes
  * - Generic - works with any tree node type
@@ -32,9 +32,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 
 import { Placeholder } from "@src/components/Placeholder";
+import {
+  VirtualList,
+  type VirtualListHandle,
+} from "@src/components/VirtualList";
 import { useElementDimensions } from "@src/hooks/ui/layout/useElementDimensions";
 import { editorShowTreeIndentGuidesAtom } from "@src/store/ui/editorSettingsAtom";
 
@@ -56,42 +59,6 @@ export type {
 } from "./types";
 export { useStickyScroll, useScrollPreservation } from "./hooks";
 export { STICKY_ROW, CHEVRON_SIZE, stickyRowPadding } from "./tokens";
-
-/**
- * Custom Scroller for Virtuoso with scroll event forwarding.
- * Defined outside component to prevent recreation on each render.
- * Also populates `scrollerDomRef` so useScrollPreservation can access the
- * real scroll container directly instead of using document.querySelector.
- */
-const createScrollerComponent = (
-  scrollHandlerRef: React.MutableRefObject<
-    ((event: React.UIEvent<HTMLDivElement>) => void) | undefined
-  >,
-  scrollerDomRef: React.MutableRefObject<HTMLDivElement | null>
-) => {
-  const Scroller = React.forwardRef<
-    HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement>
-  >((props, forwardedRef) => (
-    <div
-      {...props}
-      ref={(node) => {
-        scrollerDomRef.current = node;
-        if (typeof forwardedRef === "function") {
-          forwardedRef(node);
-        } else if (forwardedRef) {
-          forwardedRef.current = node;
-        }
-      }}
-      onScroll={(event) => {
-        props.onScroll?.(event);
-        scrollHandlerRef.current?.(event);
-      }}
-    />
-  ));
-  Scroller.displayName = "VirtualizedStickyTreeScroller";
-  return Scroller;
-};
 
 /**
  * Handle exposed by VirtualizedStickyTree
@@ -129,13 +96,13 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
     loading = false,
     error = null,
     emptyMessage = "No items",
-    virtuosoRef: externalVirtuosoRef,
+    listRef: externalListRef,
     onEndReached,
   }: VirtualizedStickyTreeProps<TNode>,
   ref: React.ForwardedRef<VirtualizedStickyTreeHandle>
 ): React.ReactElement {
-  const internalVirtuosoRef = useRef<VirtuosoHandle>(null);
-  const virtuosoRef = externalVirtuosoRef || internalVirtuosoRef;
+  const internalListRef = useRef<VirtualListHandle>(null);
+  const listRef = externalListRef || internalListRef;
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportHeight = useElementDimensions(containerRef, {
     dimension: "height",
@@ -147,20 +114,18 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
   const lastScrollTopRef = useRef(0);
   const scrollThrottleRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Scroll handler ref for stable Scroller component
-  const scrollHandlerRef = useRef<
-    ((event: React.UIEvent<HTMLDivElement>) => void) | undefined
-  >(undefined);
-
-  // Direct ref to the Virtuoso scroller DOM element — used by
-  // useScrollPreservation for precise scrollTop adjustment so we don't
-  // need document.querySelector(".scrollbar-hide").
+  // Direct ref to the scroller DOM element — used by useScrollPreservation
+  // for precise scrollTop adjustment so we don't need
+  // document.querySelector(".scrollbar-hide"). Populated from the list handle
+  // after mount; `VirtualList` owns the scroller element itself.
   const scrollerDomRef = useRef<HTMLDivElement | null>(null);
 
   // Scroll preservation for tree changes (VSCode anchor pattern)
-  const { updateAnchor, isRestoringRef } = useScrollPreservation({
+  // `isRestoringRef` is no longer read here: the only consumer was the old
+  // `rangeChanged` backup, and `updateAnchor` checks restoration internally.
+  const { updateAnchor } = useScrollPreservation({
     flattenedNodes,
-    virtuosoRef,
+    listRef,
     lastScrollTopRef,
     rowHeight,
     scrollerDomRef,
@@ -187,10 +152,11 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
     [updateAnchor]
   );
 
-  // Update scroll handler ref in effect
+  // `VirtualList` owns the scrolling element, so publish it for the
+  // preservation hook once it exists.
   useEffect(() => {
-    scrollHandlerRef.current = handleScrollerScroll;
-  }, [handleScrollerScroll]);
+    scrollerDomRef.current = listRef.current?.getScrollElement() ?? null;
+  });
 
   // Cleanup throttle
   useEffect(() => {
@@ -198,17 +164,6 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
       if (scrollThrottleRef.current) clearTimeout(scrollThrottleRef.current);
     };
   }, []);
-
-  // Stable Scroller component - passing ref objects (not .current) is safe
-  // as they're only accessed in event handlers, not during render
-  const virtuosoComponents = useMemo(
-    /* eslint-disable react-hooks/refs -- the factory captures ref objects for later scroll callbacks and never reads ref.current during render */
-    () => ({
-      Scroller: createScrollerComponent(scrollHandlerRef, scrollerDomRef),
-    }),
-    /* eslint-enable react-hooks/refs */
-    []
-  );
 
   // Sticky scroll with VS Code-style clipping (skip if no renderStickyItem)
   const stickyEnabled = !!renderStickyItem;
@@ -221,18 +176,9 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
     maxStickyHeightRatio: stickyEnabled ? maxStickyHeightRatio : 0,
   });
 
-  // Handle Virtuoso range changes - update anchor for scroll preservation
-  // Note: This is a backup update source; primary updates happen in scroll handler
-  const handleRangeChanged = useCallback(
-    (_range: { startIndex: number; endIndex: number }) => {
-      // Skip if restoring to avoid overwriting anchor during restoration
-      if (isRestoringRef.current) return;
-
-      // Update anchor from current scroll position
-      updateAnchor();
-    },
-    [updateAnchor, isRestoringRef]
-  );
+  // The former `rangeChanged` callback was a backup anchor update; the
+  // throttled scroll handler above is the primary one and covers every case
+  // that moves the viewport, so there is nothing left for it to catch.
 
   // Pre-built path→index Map for O(1) lookups in click/scroll handlers
   const pathIndexMap = useMemo(() => {
@@ -253,7 +199,7 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
       const nodeTop = index * rowHeight;
       const depth = flattenedNodes[index].depth;
       const stickyOffset = Math.min(depth, maxStickyItems) * rowHeight;
-      virtuosoRef.current?.scrollTo({
+      listRef.current?.scrollTo({
         top: Math.max(0, nodeTop - stickyOffset),
         behavior: "auto",
       });
@@ -265,7 +211,7 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
       pathIndexMap,
       rowHeight,
       maxStickyItems,
-      virtuosoRef,
+      listRef,
       onStickyHeaderClick,
     ]
   );
@@ -275,7 +221,7 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
     ref,
     () => ({
       scrollToIndex: (index, options) => {
-        virtuosoRef.current?.scrollToIndex({
+        listRef.current?.scrollToIndex({
           index,
           align: options?.align ?? "start",
           behavior: options?.behavior ?? "auto",
@@ -284,7 +230,7 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
       scrollToPath: (path, options) => {
         const index = pathIndexMap.get(path);
         if (index !== undefined) {
-          virtuosoRef.current?.scrollToIndex({
+          listRef.current?.scrollToIndex({
             index,
             align: options?.align ?? "start",
             behavior: options?.behavior ?? "auto",
@@ -292,12 +238,12 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
         }
       },
     }),
-    [pathIndexMap, virtuosoRef]
+    [pathIndexMap, listRef]
   );
 
   const hasNodes = flattenedNodes.length > 0;
 
-  // Stable Virtuoso callbacks so its internal itemContent memo keeps working
+  // Stable callbacks so the list's internal memo keeps working
   // when parent renders happen but the flattened list is unchanged.
   const handleItemContent = useCallback(
     (index: number) => renderItem(flattenedNodes[index], index),
@@ -336,19 +282,23 @@ function VirtualizedStickyTreeInner<TNode extends TreeNodeBase>(
       {/* Virtualized list */}
       {hasNodes && (
         <div className="h-full pb-2">
-          <Virtuoso
-            ref={virtuosoRef}
+          <VirtualList
+            ref={listRef}
             totalCount={flattenedNodes.length}
             itemContent={handleItemContent}
             computeItemKey={handleComputeItemKey}
-            overscan={overscan}
-            increaseViewportBy={increaseViewportBy}
             className="scrollbar-hide h-full"
-            followOutput={false}
-            defaultItemHeight={rowHeight}
-            components={virtuosoComponents}
-            rangeChanged={handleRangeChanged}
+            fixedItemHeight={rowHeight}
+            // Tree rows are uniform, so both legacy buffers are pixel budgets;
+            // the larger one wins rather than being summed.
+            overscanPx={Math.max(
+              overscan,
+              increaseViewportBy.top,
+              increaseViewportBy.bottom
+            )}
+            onScroll={handleScrollerScroll}
             endReached={onEndReached}
+            footer={<div aria-hidden="true" style={{ height: 60 }} />}
           />
         </div>
       )}

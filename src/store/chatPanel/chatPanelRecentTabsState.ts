@@ -4,7 +4,7 @@ import {
   recordRecentItem,
   recordRecentTransition,
   removeRecentTab,
-} from "@src/shared/tabs/recentTabs";
+} from "@src/util/tabs/recentTabs";
 
 import type { ChatPanelTab } from "./chatPanelTabsModel";
 

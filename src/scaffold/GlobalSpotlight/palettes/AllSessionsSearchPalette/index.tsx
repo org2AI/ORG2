@@ -21,13 +21,13 @@ import { useDebouncedCallback } from "@src/hooks/perf";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
 import { useSelector as useSelectorKernel } from "@src/scaffold/GlobalSpotlight/hooks/selectors/useSelector";
 import { sessionMapAtom } from "@src/store/session/sessionAtom";
+import { createLatestOnlySearchRunner } from "@src/util/latestOnlySearchRunner";
 
 import { ALL_SESSIONS_SEARCH_ICON } from "../../hooks/features/spotlightActionDefinitions.navigation";
 import type { BasePaletteProps } from "../../shared";
 import { PaletteBody, SpotlightShell } from "../../shell";
 import type { PathSegment, SpotlightItem } from "../../types";
 import { buildAllSessionsSearchItems } from "./allSessionsSearchItems";
-import { createLatestOnlySearchRunner } from "./latestOnlySearchRunner";
 
 // ============ PROPS ============
 
@@ -160,7 +160,7 @@ export const AllSessionsSearchPalette: React.FC<
         ? buildAllSessionsSearchItems({
             hits,
             sessionMap,
-            fallbackSessionLabel: t("chat.session", "Session"),
+            fallbackSessionLabel: t("chat.session"),
             onNavigate: handleNavigate,
           })
         : [],
@@ -204,8 +204,7 @@ export const AllSessionsSearchPalette: React.FC<
         type: "action",
         id: "search-all-sessions",
         label: t(
-          "common:selectors.spotlight.actions.searchAllSessions.pillLabel",
-          "Search All Sessions"
+          "common:selectors.spotlight.actions.searchAllSessions.pillLabel"
         ),
         icon: ALL_SESSIONS_SEARCH_ICON,
         color: "primary",
@@ -219,8 +218,7 @@ export const AllSessionsSearchPalette: React.FC<
       kernel={kernel}
       items={items}
       placeholder={t(
-        "common:selectors.spotlight.actions.searchAllSessions.placeholder",
-        "Search across all sessions..."
+        "common:selectors.spotlight.actions.searchAllSessions.placeholder"
       )}
       path={path}
       onRemoveSegment={handleGoBack}

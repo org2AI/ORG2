@@ -12,6 +12,7 @@ import {
 import { InputAreaComposerShell } from "./components/InputAreaComposerShell";
 import { InputAreaPortals } from "./components/InputAreaPortals";
 import SessionReadOnlyBar from "./components/SessionReadOnlyBar";
+import { useImageMenuTarget } from "./hooks/useImageMenuTarget";
 import { useInputAreaInteractiveModel } from "./hooks/useInputAreaInteractiveModel";
 import { useStopOnDoubleEscape } from "./hooks/useStopOnDoubleEscape";
 import type { InputAreaProps } from "./inputAreaProps";
@@ -61,6 +62,7 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
     topRowPills,
     topRowTrailingContent,
     statusBanners,
+    composerTray,
     followUpSuggestions = [],
     onFollowUpSuggestionSent,
     composerShellRef,
@@ -138,6 +140,17 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
       visibleSlashItems,
     } = model;
 
+    useImageMenuTarget({
+      sessionId,
+      enabled:
+        allowFileAttachments &&
+        !isEditMode &&
+        !submitDisabled &&
+        !model.wpReadOnly,
+      add: model.handleImagePaste,
+      input: composerInputRef,
+    });
+
     // Double-press Escape to stop the running turn. Active only while a turn
     // is running and stoppable; a single Escape is inert.
     useStopOnDoubleEscape(isWpGeneWorking && canStopAgent, interruptSession);
@@ -187,6 +200,8 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
               onSelect={submitFollowUpSuggestion}
             />
           )}
+
+          {composerTray}
 
           <InputAreaComposerShell
             model={model}

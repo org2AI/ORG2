@@ -1,6 +1,12 @@
 import { AppBootstrap } from "@src/app/root/AppBootstrap";
 import { AppProviders } from "@src/app/root/AppProviders";
 import ErrorBoundary from "@src/app/root/components/ErrorBoundary";
+// WorkStation owns the editor / git / terminal / file action surface and
+// registers it into the scaffold action system (see
+// `scaffold/ActionSystem/coreActionProvider`). Imported for that side effect at
+// the composition root so the provider is installed before any
+// `ActionSystemProvider` mounts — the scaffold must not import it itself.
+import "@src/modules/WorkStation/actions/install";
 
 const App = () => {
   return (

@@ -8,6 +8,7 @@
     "core:default",
     "core:event:default",
     "deep-link:default",
+    "speech:default",
     {
       "identifier": "opener:allow-open-url",
       "allow": [

@@ -8,18 +8,17 @@ import { useTerminalState } from "@/src/engines/TerminalCore/hooks/useTerminalSt
 import { invoke } from "@tauri-apps/api/core";
 import React, { memo, useEffect, useMemo } from "react";
 
-import { ActionSystemProvider } from "@src/ActionSystem";
 import { useWorkStationPanels } from "@src/hooks/tabHost/useWorkStationPanels";
+import { ActionSystemProvider } from "@src/scaffold/ActionSystem";
 
 import { WorkStationShell } from "../shared";
 // Imported from the SidebarModules entry (not the shared barrel): this
-// module evaluation is also what registers the SourceControl / Terminal /
-// Benchmark tab sidebars into TAB_SIDEBAR_REGISTRY.
+// module evaluation is also what registers the SourceControl / Terminal tab
+// sidebars into TAB_SIDEBAR_REGISTRY.
 import { SidebarSlot } from "../shared/SidebarModules";
 import { EditorIntegrations } from "./EditorLayout/components/EditorIntegrations";
 // Static imports — lazy loading added ~200-500ms of blank screen on first open
 // because Suspense fallback={null} shows nothing while the chunk loads.
-import FileSearchPanel from "./EditorLayout/overlays/FileSearchPanel";
 import EditorContent from "./Panels/EditorMainPane";
 import { EditorPrimarySidebar } from "./Panels/EditorPrimarySidebar";
 import { trackGitPollingVisibility } from "./gitPollingVisibility";
@@ -81,8 +80,6 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
 
     // === Local state, status-bar sync, and misc handlers ===
     const {
-      searchPanelVisible,
-      setSearchPanelVisible,
       setPrimaryPanel,
       activeCommitSha,
       handleCursorPositionChange,
@@ -99,7 +96,6 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
       repoName,
       editorState: codeEditorState,
       setPrimaryPanel,
-      setSearchPanelVisible,
       gitDiffState,
     });
 
@@ -121,13 +117,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
     });
 
     // === Destructure handlers from extracted hook ===
-    const {
-      handleSearchClose,
-      handleSearchChange,
-      handleSearchFileSelect,
-      handleTimelineCommitClick,
-      handleGitFileSelect,
-    } = handlers;
+    const { handleTimelineCommitClick, handleGitFileSelect } = handlers;
 
     const {
       sourceControlFilterMode,
@@ -268,19 +258,6 @@ export const CodeEditor: React.FC<CodeEditorProps> = memo(
           layoutMode={panels.layoutMode}
           appClassName="code-editor"
         />
-
-        {searchPanelVisible && (
-          <FileSearchPanel
-            visible={searchPanelVisible}
-            searchQuery={codeEditorState.searchQuery}
-            searchResults={codeEditorState.searchResults}
-            loading={codeEditorState.searchLoading}
-            repoPath={repoPath}
-            onSearchChange={handleSearchChange}
-            onFileSelect={handleSearchFileSelect}
-            onClose={handleSearchClose}
-          />
-        )}
       </ActionSystemProvider>
     );
   }

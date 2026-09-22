@@ -28,12 +28,16 @@ import { ArrowLeft01Icon, Settings01Icon } from "@src/icons";
 import {
   revealRenderedSettingsControl,
   revealSettingsControlWhenRendered,
-} from "@src/modules/shared/layouts/blocks/SettingsSearchDropdown/settingsControlSearch";
+} from "@src/scaffold/NavigationSidebar/variants/SettingsSearchDropdown/settingsControlSearch";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import { settingsReturnPathAtom } from "@src/store/ui/settingsNavigationAtom";
 
 import SidebarBase from "../SidebarBase";
-import { SidebarBottomBar, SidebarHeaderNavButton } from "../blocks";
+import {
+  SidebarBottomBar,
+  SidebarHeaderNavButton,
+  SidebarSectionLabel,
+} from "../blocks";
 import SidebarSettingsMenuButton from "../blocks/SidebarSettingsMenuButton";
 import HoverAnimatedIcon, {
   triggerIconAnimation,
@@ -41,6 +45,7 @@ import HoverAnimatedIcon, {
 import NavigationMenu from "../components/NavigationMenu";
 import type { NavigationMenuItem } from "../components/NavigationMenu/config";
 import SidebarAccountButton from "../connectors/SidebarAccountButton";
+import SettingsSidebarCount from "./SettingsSidebarCount";
 import SettingsSidebarSearch from "./SettingsSidebarSearch";
 import type { SettingsControlSearchItem } from "./settingsSidebarSearchPages";
 
@@ -54,7 +59,6 @@ const SettingsFooterBackButton: React.FC<SettingsFooterBackButtonProps> = ({
   onClick,
 }) => (
   <Button
-    htmlType="button"
     variant="tertiary"
     size="small"
     iconOnly
@@ -170,6 +174,8 @@ const SettingsSidebar: React.FC = () => {
       <SidebarHeaderNavButton
         icon={ArrowLeft01Icon}
         label={t("navigation:labels.settings")}
+        ariaLabel={t("navigation:labels.closeSettings")}
+        shortcutId="close_tab"
         onClick={handleBack}
       />
     ),
@@ -229,6 +235,10 @@ export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
         icon: item.icon,
         dataTestId: item.dataTestId,
         routePath: item.path,
+        labelBadge:
+          item.id === "general" || item.id === "development" ? (
+            <SettingsSidebarCount section={item.id} />
+          ) : undefined,
       })),
     []
   );
@@ -305,10 +315,8 @@ export const SettingsRootBody: React.FC<SettingsRootBodyProps> = ({
         onMenuItemClick={handleItemClick}
       />
       {namedSections.map((section) => (
-        <div key={section.id} className="mt-4">
-          <div className="mb-1 px-2 text-[11px] font-medium tracking-wider text-text-1 uppercase">
-            {section.label}
-          </div>
+        <div key={section.id} className="mt-2">
+          <SidebarSectionLabel label={section.label} />
           <NavigationMenu
             items={section.items}
             selectedKeys={selectedKeys}

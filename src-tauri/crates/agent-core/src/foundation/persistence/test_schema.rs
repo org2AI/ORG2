@@ -10,7 +10,8 @@
 //! `UPSERT_SESSION_SQL` / `UNIFIED_SESSION_SELECT`, removes the class.
 
 /// Full production column set (34 columns) plus the usage telemetry tables
-/// (`session_token_usage`, `session_llm_usage_spans`, `session_tool_usage`)
+/// (`session_token_usage`, `session_auxiliary_usage`, `session_llm_usage_spans`,
+/// `session_tool_usage`)
 /// so the delete cascade in `crud::ops` can run against the test schema.
 pub(crate) const AGENT_SESSIONS_TEST_DDL: &str = r#"
     CREATE TABLE IF NOT EXISTS agent_sessions (
@@ -45,6 +46,7 @@ pub(crate) const AGENT_SESSIONS_TEST_DDL: &str = r#"
         agent_exec_mode TEXT,
         product_mode TEXT,
         native_harness_type TEXT,
+        credential_source TEXT,
         draft_text TEXT,
         reply_target_event_id TEXT,
         pinned INTEGER NOT NULL DEFAULT 0,
@@ -66,6 +68,16 @@ pub(crate) const AGENT_SESSIONS_TEST_DDL: &str = r#"
         context_tokens INTEGER NOT NULL DEFAULT 0,
         context_usage_json TEXT,
         created_at TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS session_auxiliary_usage (
+        response_id TEXT PRIMARY KEY,
+        credential_source TEXT,
+        session_id TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        provider_usage_json TEXT NOT NULL,
+        token_usage_id INTEGER NOT NULL UNIQUE,
+        FOREIGN KEY(token_usage_id) REFERENCES session_token_usage(id) ON DELETE CASCADE
     );
     CREATE TABLE IF NOT EXISTS session_llm_usage_spans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,6 +153,7 @@ pub(crate) fn ensure_agent_sessions_schema(conn: &rusqlite::Connection) {
         ("project_id", "project_id TEXT"),
         ("project_name", "project_name TEXT"),
         ("native_harness_type", "native_harness_type TEXT"),
+        ("credential_source", "credential_source TEXT"),
         ("draft_text", "draft_text TEXT"),
         ("reply_target_event_id", "reply_target_event_id TEXT"),
         ("pinned", "pinned INTEGER NOT NULL DEFAULT 0"),

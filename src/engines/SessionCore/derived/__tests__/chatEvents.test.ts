@@ -238,6 +238,117 @@ describe("chatEventsAtom live streaming overlay", () => {
     ]);
   });
 
+  it("restores the failed queue owner after native history replaced its optimistic row and a later turn succeeded", () => {
+    const nativeUser = makeChatEvent(
+      "user-message-native-failed-turn",
+      "2026-06-06T20:00:01.000Z",
+      {
+        source: "user",
+        functionName: "user_message",
+        uiCanonical: "user_message",
+        displayVariant: "message",
+        displayText: "retry this request",
+        result: {
+          backendPersisted: true,
+          type: "user",
+          turnIntentId: "failed-native-intent",
+          message: { content: "retry this request", role: "user" },
+        },
+      }
+    );
+    const error = makeChatEvent(
+      "provider-auth-error",
+      "2026-06-06T20:00:02.000Z",
+      {
+        displayStatus: "failed",
+        displayText: "credential_operation_busy",
+      }
+    );
+    const laterSuccess = makeChatEvent(
+      "later-success",
+      "2026-06-06T20:01:00.000Z"
+    );
+    const persistedEvents = [nativeUser, error, laterSuccess];
+    const persistedCopy = structuredClone(persistedEvents);
+    const owner = {
+      id: "queue-native-failed",
+      turnIntentId: "failed-native-intent",
+      sessionId: "session-1",
+      content: "retry this request",
+      displayContent: "retry this request",
+      priority: "next" as const,
+      requiresExplicitDispatch: true,
+      status: "queued" as const,
+      deliveryError: "Agent request failed",
+      createdAt: nativeUser.createdAt,
+    };
+
+    // Hydrate the actual native-echo + failed-owner shape into a new store on
+    // each pass, as on restart. No synthetic failure is pre-seeded.
+    for (let restart = 0; restart < 2; restart += 1) {
+      const store = createStore();
+      store.set(sessionIdAtom, "session-1");
+      store.set(derivedSnapshotAtom, makeSnapshot(persistedEvents, false));
+      store.set(messageQueueAtom, [structuredClone(owner)]);
+
+      const projected = store.get(chatEventsAtom);
+      expect(projected).toHaveLength(3);
+      expect(projected[0]).toMatchObject({
+        id: "queued-user-failed-native-intent",
+        displayStatus: "failed",
+        displayText: owner.displayContent,
+        result: {
+          syntheticUserInput: true,
+          deliveryStatus: "failed",
+          deliveryError: owner.deliveryError,
+          queueMessageId: owner.id,
+          turnIntentId: owner.turnIntentId,
+        },
+      });
+      expect(projected.slice(1)).toEqual([error, laterSuccess]);
+      expect(store.get(chatEventsAtom)).toBe(projected);
+      expect(store.get(messageQueueAtom)).toEqual([owner]);
+      expect(persistedEvents).toEqual(persistedCopy);
+
+      // Retiring the owner restores ordinary native history; changing the
+      // active session must never project another session's failed owner.
+      store.set(sessionIdAtom, "session-2");
+      expect(store.get(chatEventsAtom)).toEqual(persistedEvents);
+      store.set(sessionIdAtom, "session-1");
+      store.set(messageQueueAtom, []);
+      expect(store.get(chatEventsAtom)).toEqual(persistedEvents);
+    }
+  });
+
+  it("does not turn an explicitly sent native delivery into a queue failure", () => {
+    const store = createStore();
+    store.set(sessionIdAtom, "session-1");
+    const sent = makeChatEvent("sent-native", "2026-06-06T20:00:01.000Z", {
+      source: "user",
+      result: {
+        backendPersisted: true,
+        turnIntentId: "sent-intent",
+        deliveryStatus: "sent",
+      },
+    });
+    store.set(derivedSnapshotAtom, makeSnapshot([sent], false));
+    store.set(messageQueueAtom, [
+      {
+        id: "stale-owner",
+        turnIntentId: "sent-intent",
+        sessionId: "session-1",
+        content: "old request",
+        displayContent: "old request",
+        priority: "next",
+        status: "queued",
+        requiresExplicitDispatch: true,
+        deliveryError: "stale error",
+        createdAt: sent.createdAt,
+      },
+    ]);
+    expect(store.get(chatEventsAtom)).toEqual([sent]);
+  });
+
   it("suppresses the pending overlay after the provider's real user echo", () => {
     const store = createStore();
     const pending = makeChatEvent(

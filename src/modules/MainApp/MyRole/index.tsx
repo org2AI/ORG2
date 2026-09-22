@@ -26,6 +26,12 @@ import Select from "@src/components/Select";
 import Switch from "@src/components/Switch";
 import Textarea from "@src/components/Textarea";
 import {
+  SECTION_CONTROL_STYLE,
+  SectionContainer,
+  SectionHeading,
+  SectionRow,
+} from "@src/components/layout/Section";
+import {
   Add01Icon,
   CircleIcon,
   Delete02Icon,
@@ -34,12 +40,6 @@ import {
   type IconSvgElement,
   MoonIcon,
 } from "@src/icons";
-import {
-  SECTION_CONTROL_STYLE,
-  SectionContainer,
-  SectionHeading,
-  SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
 import {
   CUSTOM_ROLE_ICON_IDS,
   resolveCustomRoleIcon,
@@ -111,10 +111,7 @@ const MyRolePage: React.FC = () => {
   const [customRoles, setCustomRoles] = useAtom(userCustomRolesAtom);
   const activeMode = useAtomValue(userPresenceModeAtom);
 
-  const guidancePlaceholder = t("myRole.guidancePlaceholder", {
-    defaultValue:
-      "How should the agent adapt its behavior when this role is active?",
-  });
+  const guidancePlaceholder = t("myRole.guidancePlaceholder");
 
   const handleBuiltInChange = useCallback(
     (key: BuiltInRoleConfig["settingsKey"]) => (value: string) => {
@@ -124,9 +121,7 @@ const MyRolePage: React.FC = () => {
   );
 
   const handleAddRole = useCallback(() => {
-    const baseLabel = t("myRole.newRoleDefaultLabel", {
-      defaultValue: "Custom role",
-    });
+    const baseLabel = t("myRole.newRoleDefaultLabel");
     const taken = new Set(customRoles.map((role) => role.id));
     const id = generateRoleId(baseLabel, taken);
     const next: CustomRoleDefinition = {
@@ -151,17 +146,13 @@ const MyRolePage: React.FC = () => {
   const handleDeleteRole = useCallback(
     async (role: CustomRoleDefinition) => {
       const confirmed = await confirmDestructiveAction({
-        title: t("myRole.deleteRoleTitle", {
-          defaultValue: "Delete role?",
-        }),
+        title: t("myRole.deleteRoleTitle"),
         message: t("myRole.deleteRoleMessage", {
           name: role.label,
           defaultValue: `"${role.label}" will be removed. This cannot be undone.`,
         }),
-        okLabel: t("myRole.deleteRoleOk", { defaultValue: "Delete" }),
-        cancelLabel: t("myRole.deleteRoleCancel", {
-          defaultValue: "Cancel",
-        }),
+        okLabel: t("myRole.deleteRoleOk"),
+        cancelLabel: t("myRole.deleteRoleCancel"),
       });
       if (!confirmed) return;
       setCustomRoles((prev) =>
@@ -192,21 +183,15 @@ const MyRolePage: React.FC = () => {
     () => [
       {
         value: PRESENCE_STANCE.INTERACTIVE,
-        label: t("myRole.stanceInteractive", {
-          defaultValue: "Interactive — ask me freely",
-        }),
+        label: t("myRole.stanceInteractive"),
       },
       {
         value: PRESENCE_STANCE.DEFER_AND_BATCH,
-        label: t("myRole.stanceDeferAndBatch", {
-          defaultValue: "Defer & batch — work first, ask later",
-        }),
+        label: t("myRole.stanceDeferAndBatch"),
       },
       {
         value: PRESENCE_STANCE.AUTONOMOUS,
-        label: t("myRole.stanceAutonomous", {
-          defaultValue: "Autonomous — never wait for me",
-        }),
+        label: t("myRole.stanceAutonomous"),
       },
     ],
     [t]
@@ -235,11 +220,8 @@ const MyRolePage: React.FC = () => {
     ) => (
       <>
         <SectionRow
-          label={t("myRole.stanceLabel", { defaultValue: "Behavior stance" })}
-          description={t("myRole.stanceDesc", {
-            defaultValue:
-              "How the agent treats blocking decisions while this role is active.",
-          })}
+          label={t("myRole.stanceLabel")}
+          description={t("myRole.stanceDesc")}
         >
           <Select
             value={values.stance}
@@ -252,13 +234,8 @@ const MyRolePage: React.FC = () => {
           />
         </SectionRow>
         <SectionRow
-          label={t("myRole.questionAutoSkipLabel", {
-            defaultValue: "Question auto-skip",
-          })}
-          description={t("myRole.questionAutoSkipDesc", {
-            defaultValue:
-              "Auto-skip pending agent questions after N seconds (0 = wait for me).",
-          })}
+          label={t("myRole.questionAutoSkipLabel")}
+          description={t("myRole.questionAutoSkipDesc")}
         >
           <NumberInput
             value={values.questionAutoResolveSecs}
@@ -274,13 +251,8 @@ const MyRolePage: React.FC = () => {
           />
         </SectionRow>
         <SectionRow
-          label={t("myRole.planAutoApproveLabel", {
-            defaultValue: "Plan auto-approve",
-          })}
-          description={t("myRole.planAutoApproveDesc", {
-            defaultValue:
-              "Auto-approve pending plans after N seconds (0 = wait for me).",
-          })}
+          label={t("myRole.planAutoApproveLabel")}
+          description={t("myRole.planAutoApproveDesc")}
         >
           <NumberInput
             value={values.planAutoApproveSecs}
@@ -295,32 +267,20 @@ const MyRolePage: React.FC = () => {
           />
         </SectionRow>
         <SectionRow
-          label={t("myRole.modeSwitchAutoPlanLabel", {
-            defaultValue: "Mode switch auto-plan",
-          })}
-          description={t("myRole.modeSwitchAutoPlanDesc", {
-            defaultValue:
-              "Auto-switch pending Plan mode suggestions when their confirmation timer expires.",
-          })}
+          label={t("myRole.modeSwitchAutoPlanLabel")}
+          description={t("myRole.modeSwitchAutoPlanDesc")}
         >
           <Switch
             checked={values.modeSwitchAutoPlan}
             onCheckedChange={(checked) =>
               onChange({ modeSwitchAutoPlan: checked })
             }
-            ariaLabel={t("myRole.modeSwitchAutoPlanLabel", {
-              defaultValue: "Mode switch auto-plan",
-            })}
+            ariaLabel={t("myRole.modeSwitchAutoPlanLabel")}
           />
         </SectionRow>
         <SectionRow
-          label={t("myRole.goalMaxTurnsLabel", {
-            defaultValue: "Goal continuation budget",
-          })}
-          description={t("myRole.goalMaxTurnsDesc", {
-            defaultValue:
-              "Keep working toward my last request for up to N extra turns after the agent would normally stop (0 = off).",
-          })}
+          label={t("myRole.goalMaxTurnsLabel")}
+          description={t("myRole.goalMaxTurnsDesc")}
         >
           <NumberInput
             value={values.goalMaxTurns}
@@ -409,27 +369,15 @@ const MyRolePage: React.FC = () => {
   return (
     <div className="settings-page absolute inset-0 overflow-hidden rounded-page">
       <div className="custom-scrollbar h-full overflow-y-auto px-6 pt-2 pb-8">
-        <SectionHeading
-          title={t("myRole.pageTitle", { defaultValue: "My Roles" })}
-        >
+        <SectionHeading title={t("myRole.pageTitle")}>
           <p className="text-[13px] leading-relaxed text-text-2">
-            {t("myRole.pageDescription", {
-              defaultValue:
-                "Define the role you're playing right now. The agent reads the active role's guidance and adapts its behavior accordingly — for example, asking fewer clarifying questions when you're heads-down, or batching summaries when you're away.",
-            })}
+            {t("myRole.pageDescription")}
           </p>
 
-          <SectionContainer
-            title={t("myRole.builtInTitle", { defaultValue: "Built-in roles" })}
-          >
+          <SectionContainer title={t("myRole.builtInTitle")}>
             <SectionRow
-              label={t("myRole.followUpSuggestionsLabel", {
-                defaultValue: "Agent follow-up suggestions",
-              })}
-              description={t("myRole.followUpSuggestionsDesc", {
-                defaultValue:
-                  "Suggest possible next steps after a completed Work Item turn. This uses an additional model request.",
-              })}
+              label={t("myRole.followUpSuggestionsLabel")}
+              description={t("myRole.followUpSuggestionsDesc")}
             >
               <Switch
                 checked={followUpSuggestionsEnabled}
@@ -439,9 +387,7 @@ const MyRolePage: React.FC = () => {
                     value: checked,
                   }).catch((error: unknown) => Message.error(String(error)));
                 }}
-                ariaLabel={t("myRole.followUpSuggestionsLabel", {
-                  defaultValue: "Agent follow-up suggestions",
-                })}
+                ariaLabel={t("myRole.followUpSuggestionsLabel")}
               />
             </SectionRow>
             {BUILT_IN_ROLES.map((role) => {
@@ -463,9 +409,7 @@ const MyRolePage: React.FC = () => {
                         <span>{t(role.labelKey)}</span>
                         {isActive && (
                           <span className="rounded-full bg-primary-1 px-2 py-px text-[10px] font-medium text-primary-6">
-                            {t("myRole.activeBadge", {
-                              defaultValue: "Active",
-                            })}
+                            {t("myRole.activeBadge")}
                           </span>
                         )}
                       </span>
@@ -503,15 +447,10 @@ const MyRolePage: React.FC = () => {
             })}
           </SectionContainer>
 
-          <SectionContainer
-            title={t("myRole.customTitle", { defaultValue: "Custom roles" })}
-          >
+          <SectionContainer title={t("myRole.customTitle")}>
             {customRoles.length === 0 ? (
               <div className="px-2 py-4 text-[13px] text-text-3">
-                {t("myRole.customEmpty", {
-                  defaultValue:
-                    'No custom roles yet. Add one to capture a stance the built-in three don\'t cover — e.g. "Deep work", "Pairing", or "On call".',
-                })}
+                {t("myRole.customEmpty")}
               </div>
             ) : (
               customRoles.map((role) => {
@@ -531,16 +470,10 @@ const MyRolePage: React.FC = () => {
                             size={14}
                             className="text-primary-6"
                           />
-                          <span>
-                            {t("myRole.roleNameLabel", {
-                              defaultValue: "Name",
-                            })}
-                          </span>
+                          <span>{t("myRole.roleNameLabel")}</span>
                           {isActive && (
                             <span className="rounded-full bg-primary-1 px-2 py-px text-[10px] font-medium text-primary-6">
-                              {t("myRole.activeBadge", {
-                                defaultValue: "Active",
-                              })}
+                              {t("myRole.activeBadge")}
                             </span>
                           )}
                         </span>
@@ -553,9 +486,7 @@ const MyRolePage: React.FC = () => {
                             handleRoleChange(role.id, { label: value })
                           }
                           style={SECTION_CONTROL_STYLE}
-                          placeholder={t("myRole.roleNamePlaceholder", {
-                            defaultValue: "Role name",
-                          })}
+                          placeholder={t("myRole.roleNamePlaceholder")}
                         />
                         <Select
                           value={role.iconId}
@@ -579,20 +510,14 @@ const MyRolePage: React.FC = () => {
                             />
                           }
                           onClick={() => void handleDeleteRole(role)}
-                          aria-label={t("myRole.deleteRoleOk", {
-                            defaultValue: "Delete",
-                          })}
-                          title={t("myRole.deleteRoleOk", {
-                            defaultValue: "Delete",
-                          })}
+                          aria-label={t("myRole.deleteRoleOk")}
+                          title={t("myRole.deleteRoleOk")}
                         />
                       </div>
                     </SectionRow>
                     <SectionRow
                       layout="vertical"
-                      label={t("myRole.guidanceLabel", {
-                        defaultValue: "Agent guidance",
-                      })}
+                      label={t("myRole.guidanceLabel")}
                     >
                       <Textarea
                         value={role.guidance}
@@ -620,14 +545,12 @@ const MyRolePage: React.FC = () => {
             )}
             <div className="flex pt-2">
               <Button
-                variant="secondary"
-                size="default"
                 icon={
                   <HugeiconsIcon icon={Add01Icon} data-icon="plus" size={14} />
                 }
                 onClick={handleAddRole}
               >
-                {t("myRole.addRole", { defaultValue: "Add custom role" })}
+                {t("myRole.addRole")}
               </Button>
             </div>
           </SectionContainer>

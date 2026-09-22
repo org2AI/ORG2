@@ -96,7 +96,6 @@ const GoToLinePanel: React.FC<GoToLinePanelProps> = ({ view, onClose }) => {
         <div className="flex h-7 items-center">
           <Button
             variant="tertiary"
-            appearance="soft"
             size="sidebar"
             aria-label={t("tooltips.closeEsc")}
             iconOnly
@@ -107,7 +106,6 @@ const GoToLinePanel: React.FC<GoToLinePanelProps> = ({ view, onClose }) => {
                 size={HEADER_ICON_SIZE.sm}
               />
             }
-            htmlType="button"
             onClick={onClose}
             title={t("tooltips.closeEsc")}
           />

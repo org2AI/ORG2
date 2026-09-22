@@ -242,7 +242,6 @@ const Tag: React.FC<TagProps> = ({
       {isInteractive ? (
         <Button
           layout="custom"
-          appearance="custom"
           className="tag-body"
           aria-pressed={checkable ? checked : undefined}
           tabIndex={getInteractiveTabIndex(false)}
@@ -256,7 +255,6 @@ const Tag: React.FC<TagProps> = ({
       {closable && (
         <Button
           layout="custom"
-          appearance="custom"
           className="tag-close"
           tabIndex={getInteractiveTabIndex(false)}
           aria-label="Close"

@@ -8,13 +8,13 @@ import {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import FindCard from "@src/components/FindCard";
+import FindCard from "@src/scaffold/GlobalSpotlight/FindCard";
 import {
   type FindTarget,
   adoptFindTarget,
   closeFindTarget,
   registerFindTarget,
-} from "@src/components/FindCard/findCoordinator";
+} from "@src/scaffold/GlobalSpotlight/FindCard/findCoordinator";
 
 import {
   REVIEW_SEARCH_LIMIT,
@@ -252,7 +252,6 @@ export function useReviewSearch({
               <FindCard
                 scope="file"
                 targetName={t("actions.review")}
-                scopeControls={false}
                 statusText={
                   result.error
                     ? t("status.error")

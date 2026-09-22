@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { FilterMailIcon } from "@src/icons";
-import { SIDEBAR_TOOLTIP_HOVER_DELAY } from "@src/scaffold/NavigationSidebar/config";
 
 import HoverAnimatedIcon, {
   triggerIconAnimation,
@@ -28,7 +27,6 @@ export function SessionFilterTrigger({
     <ToolbarTooltip
       label={t("sidebar.groupBy.title")}
       position="top"
-      mouseEnterDelay={SIDEBAR_TOOLTIP_HOVER_DELAY}
       disabled={isOpen}
     >
       <div ref={triggerRef} className="inline-flex">
@@ -44,7 +42,6 @@ export function SessionFilterTrigger({
           }`}
           onClick={toggle}
           onMouseEnter={(event) => triggerIconAnimation(event.currentTarget)}
-          appearance="soft"
           iconOnly
           icon={
             <HoverAnimatedIcon

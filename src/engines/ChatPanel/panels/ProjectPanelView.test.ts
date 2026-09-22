@@ -93,7 +93,8 @@ function primitive(name: string) {
 }
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: mocks.t }) }));
-vi.mock("jotai", () => ({
+vi.mock("jotai", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("jotai")>()),
   useSetAtom: (atom: string) =>
     atom === "work-item" ? mocks.openWorkItem : mocks.openProject,
   useAtomValue: () => mocks.cloudOrgs,
@@ -233,9 +234,9 @@ vi.mock("@src/modules/ProjectManager/shared", () => ({
   PropertiesPanel: primitive("PropertiesPanel"),
   PropertiesRailFrame: primitive("PropertiesRailFrame"),
 }));
-vi.mock("@src/modules/shared/layouts/blocks", async () => ({
+vi.mock("@src/components/layout/blocks", async () => ({
   PersistentDetailTabPanel: (
-    await import("@src/modules/shared/layouts/blocks/PersistentDetailTabPanel")
+    await import("@src/components/layout/blocks/PersistentDetailTabPanel")
   ).default,
   DetailHeaderTabs: primitive("DetailHeaderTabs"),
   DetailPanelContainer: primitive("DetailPanelContainer"),

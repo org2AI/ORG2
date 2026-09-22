@@ -18,8 +18,4 @@ export const REPLAY_CONFIG = {
   MAX_VALUE: 200,
   /** Step size for skip forward/backward buttons */
   SKIP_STEP: 20,
-  /** Threshold from max value to consider "at end" (for auto-follow mode) */
-  AT_END_THRESHOLD: 5,
-  /** Timeout (ms) before resetting replay mode after user interaction */
-  REPLAY_MODE_TIMEOUT: 5000,
 } as const;

@@ -33,51 +33,6 @@ export interface TerminalTheme {
   brightWhite: string;
 }
 
-/** CSS custom property names for ANSI colors, consumed by .ansi-*-fg / .ansi-*-bg classes. */
-export const ANSI_COLOR_CSS_KEYS = [
-  "--ansi-black",
-  "--ansi-red",
-  "--ansi-green",
-  "--ansi-yellow",
-  "--ansi-blue",
-  "--ansi-magenta",
-  "--ansi-cyan",
-  "--ansi-white",
-  "--ansi-bright-black",
-  "--ansi-bright-red",
-  "--ansi-bright-green",
-  "--ansi-bright-yellow",
-  "--ansi-bright-blue",
-  "--ansi-bright-magenta",
-  "--ansi-bright-cyan",
-  "--ansi-bright-white",
-] as const;
-
-/** Returns a map of CSS custom properties → color values for the given theme. */
-export function getAnsiColorCssVars(
-  themeName: TerminalThemeName
-): Record<string, string> {
-  const theme = TERMINAL_THEMES[themeName];
-  return {
-    "--ansi-black": theme.black,
-    "--ansi-red": theme.red,
-    "--ansi-green": theme.green,
-    "--ansi-yellow": theme.yellow,
-    "--ansi-blue": theme.blue,
-    "--ansi-magenta": theme.magenta,
-    "--ansi-cyan": theme.cyan,
-    "--ansi-white": theme.white,
-    "--ansi-bright-black": theme.brightBlack,
-    "--ansi-bright-red": theme.brightRed,
-    "--ansi-bright-green": theme.brightGreen,
-    "--ansi-bright-yellow": theme.brightYellow,
-    "--ansi-bright-blue": theme.brightBlue,
-    "--ansi-bright-magenta": theme.brightMagenta,
-    "--ansi-bright-cyan": theme.brightCyan,
-    "--ansi-bright-white": theme.brightWhite,
-  };
-}
-
 export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalTheme> = {
   dark: {
     background: "#141414",
@@ -87,7 +42,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalTheme> = {
     // default --color-primary-6 so the first paint is not a different color.
     cursor: "#43aafd",
     cursorAccent: "#141414",
-    selection: "#212121",
+    selection: "#264f78",
     black: "#09090b",
     red: "#ef4444",
     green: "#22c55e",
@@ -111,7 +66,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalTheme> = {
     // Pre-mount fallback only — see the dark theme's cursor note.
     cursor: "#1d8ffd",
     cursorAccent: "#fafafa",
-    selection: "#efefef",
+    selection: "#bfe8ff",
     black: "#1f2937",
     red: "#dc2626",
     green: "#16a34a",

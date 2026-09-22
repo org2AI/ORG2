@@ -1,85 +1,77 @@
 /**
  * SimpleGridCell
  *
- * Basic memoized grid cell without independent replay.
+ * Memoized grid cell without independent replay: renders the active app's
+ * content (or the booting state) for the shared simulator cursor.
  * Used for single-cell mode or when independent replay is not needed.
  * Custom memo comparison prevents unnecessary re-renders.
  */
 import { memo } from "react";
 
-import type { SessionEvent } from "@src/engines/SessionCore";
+import type { SessionEvent, SessionSpec } from "@src/engines/SessionCore";
 
-import SimulatorContentArea from "../../SimulatorMainPane";
-import type { GridCellProps } from "../../types/gridTypes";
+import type { AppType } from "../../types/appTypes";
+import { getEventRenderSignature } from "../../utils/eventRenderSignature";
+import { SimulatorSingleView } from "../SimulatorContentArea/SimulatorSingleView";
+import { BootingState } from "../SimulatorContentArea/StateDisplays";
+import { useSimulatorContent } from "../SimulatorContentArea/useSimulatorContent";
 
-type RenderSignatureEvent =
-  | (SessionEvent & { lastActivityAt?: string })
-  | null
-  | undefined;
-
-function getEventRenderSignature(event: RenderSignatureEvent): string {
-  if (!event) return "";
-  return [
-    event.id,
-    event.chunk_id ?? "",
-    event.functionName,
-    event.displayStatus,
-    event.displayText,
-    event.displayVariant,
-    event.lastActivityAt ?? "",
-    event.args ? JSON.stringify(event.args) : "",
-    event.result ? JSON.stringify(event.result) : "",
-    event.extracted ? JSON.stringify(event.extracted) : "",
-    event.payloadRefs ? JSON.stringify(event.payloadRefs) : "",
-  ].join("|");
+interface SimpleGridCellProps {
+  currentEvent: SessionEvent | null;
+  events: SessionEvent[];
+  specs: SessionSpec[];
+  forceAppType?: AppType | null;
 }
 
-function getEventsTailSignature(
-  events: readonly SessionEvent[] | undefined
-): string {
-  if (!events || events.length === 0) return "0";
-  const tail = events[events.length - 1];
-  return `${events.length}:${getEventRenderSignature(tail)}`;
-}
+const SimpleGridCellComponent = ({
+  currentEvent,
+  events,
+  specs,
+  forceAppType = null,
+}: SimpleGridCellProps) => {
+  const { mainContentAppType, isBootingEvent, displayContent } =
+    useSimulatorContent({
+      currentEvent,
+      events,
+      specs,
+      forceAppType,
+    });
 
-const SimpleGridCell = memo<
-  GridCellProps & { currentEvent: SessionEvent | null }
->(
-  ({ index, color, currentEvent, events, specs, forceAppType }) => (
-    <SimulatorContentArea
-      index={index}
-      agentColor={color}
-      currentEvent={currentEvent}
-      events={events}
-      specs={specs}
-      forceAppType={forceAppType}
-      hideHeader={true}
-    />
-  ),
-  (prev, next) => {
-    if (prev.index !== next.index) return false;
-    if (prev.color !== next.color) return false;
-    if (prev.forceAppType !== next.forceAppType) return false;
-    if (prev.events !== next.events) return false;
-    if (prev.specs !== next.specs) return false;
+  return (
+    <div className="group relative flex h-full w-full flex-col overflow-hidden transition-all duration-300">
+      {isBootingEvent ? (
+        <div className="relative flex h-full w-full flex-col overflow-hidden bg-bg-2">
+          <div className="min-h-0 flex-1 overflow-auto text-text-1">
+            <BootingState />
+          </div>
+        </div>
+      ) : (
+        <SimulatorSingleView
+          mainContentAppType={mainContentAppType}
+          displayContent={displayContent}
+        />
+      )}
+    </div>
+  );
+};
 
-    if (
-      getEventRenderSignature(prev.currentEvent) !==
-      getEventRenderSignature(next.currentEvent)
-    ) {
-      return false;
-    }
+const arePropsEqual = (
+  prev: SimpleGridCellProps,
+  next: SimpleGridCellProps
+): boolean => {
+  if (prev.forceAppType !== next.forceAppType) return false;
+  // Arrays are compared by reference: a changed tail always arrives as a new
+  // array, so a tail signature over the same reference could never differ.
+  if (prev.events !== next.events) return false;
+  if (prev.specs !== next.specs) return false;
 
-    if (
-      getEventsTailSignature(prev.events) !==
-      getEventsTailSignature(next.events)
-    ) {
-      return false;
-    }
+  return (
+    getEventRenderSignature(prev.currentEvent) ===
+    getEventRenderSignature(next.currentEvent)
+  );
+};
 
-    return true;
-  }
-);
+const SimpleGridCell = memo(SimpleGridCellComponent, arePropsEqual);
 SimpleGridCell.displayName = "SimpleGridCell";
 
 export { SimpleGridCell };

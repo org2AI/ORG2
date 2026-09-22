@@ -64,18 +64,14 @@ const GitDiffActionsMenu: React.FC<GitDiffActionsMenuProps> = ({
   return (
     <DropdownPanel className={DROPDOWN_WIDTHS.menuClass}>
       <div className={DROPDOWN_CLASSES.itemsColumnPadded}>
-        <DropdownItemGroup
-          label={t("creator.diffMenu.gitActions", {
-            defaultValue: "Git Actions",
-          })}
-        >
+        <DropdownItemGroup label={t("creator.diffMenu.gitActions")}>
           <DropdownItem
             className={LEFT_ALIGNED_ITEM_CLASS}
             disabled={gitActionsDisabled}
             onClick={run(onCommit)}
             dataTestId="git-diff-action-commit"
           >
-            {t("creator.diffMenu.commit", { defaultValue: "Commit" })}
+            {t("creator.diffMenu.commit")}
           </DropdownItem>
           <DropdownItem
             className={LEFT_ALIGNED_ITEM_CLASS}
@@ -83,9 +79,7 @@ const GitDiffActionsMenu: React.FC<GitDiffActionsMenuProps> = ({
             onClick={run(onCommitPush)}
             dataTestId="git-diff-action-commit-push"
           >
-            {t("creator.diffMenu.commitPush", {
-              defaultValue: "Commit & Push",
-            })}
+            {t("creator.diffMenu.commitPush")}
           </DropdownItem>
           {hasCommitsToPush && (
             <DropdownItem
@@ -94,7 +88,7 @@ const GitDiffActionsMenu: React.FC<GitDiffActionsMenuProps> = ({
               onClick={run(onPush)}
               dataTestId="git-diff-action-push"
             >
-              {t("creator.diffMenu.push", { defaultValue: "Push" })}
+              {t("creator.diffMenu.push")}
             </DropdownItem>
           )}
           <DropdownItem
@@ -109,9 +103,7 @@ const GitDiffActionsMenu: React.FC<GitDiffActionsMenuProps> = ({
 
         <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
 
-        <DropdownItemGroup
-          label={t("creator.diffMenu.review", { defaultValue: "Review" })}
-        >
+        <DropdownItemGroup label={t("creator.diffMenu.review")}>
           <DropdownItem
             className={LEFT_ALIGNED_ITEM_CLASS}
             icon={
@@ -125,9 +117,7 @@ const GitDiffActionsMenu: React.FC<GitDiffActionsMenuProps> = ({
             onClick={run(onViewMyStation)}
             dataTestId="git-diff-action-view-my-station"
           >
-            {t("creator.diffMenu.viewMyStation", {
-              defaultValue: "View in My Station",
-            })}
+            {t("creator.diffMenu.viewMyStation")}
           </DropdownItem>
           <DropdownItem
             className={LEFT_ALIGNED_ITEM_CLASS}
@@ -142,9 +132,7 @@ const GitDiffActionsMenu: React.FC<GitDiffActionsMenuProps> = ({
             onClick={run(onViewAgentStation)}
             dataTestId="git-diff-action-view-agent-station"
           >
-            {t("creator.diffMenu.viewAgentStation", {
-              defaultValue: "View in Agent Station",
-            })}
+            {t("creator.diffMenu.viewAgentStation")}
           </DropdownItem>
         </DropdownItemGroup>
       </div>

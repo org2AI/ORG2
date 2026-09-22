@@ -2,7 +2,7 @@
  * Orgii Main Layout Component
  *
  * Orchestrates providers and delegates layout to AppLayout.
- * All layout logic consolidated in layouts/shared/AppLayout.tsx
+ * All layout logic consolidated in src/scaffold/AppLayout/AppLayout.tsx
  *
  * The router mounts this shell only for WorkStation and Settings routes.
  * WorkStation remains mounted while Settings occupies the chat-panel slot.
@@ -29,6 +29,10 @@ import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavig
 import { useProjectDataChangedListener } from "@src/hooks/project";
 import { useUrlPreviewEvents } from "@src/hooks/tabHost/useUrlPreviewEvents";
 import { useGlobalBrowserWebviewLayering } from "@src/modules/WorkStation/Browser/hooks";
+import { AppLayout } from "@src/scaffold/AppLayout";
+import { FloatingSidebar } from "@src/scaffold/AppLayout/sidebar/FloatingSidebar";
+import { SidebarSelector } from "@src/scaffold/AppLayout/sidebar/SidebarSelector";
+import { DesktopSessionRosterProvider } from "@src/scaffold/NavigationSidebar/connectors/WorkstationSidebarConnector/DesktopSessionRosterProvider";
 import { CODE_EDITOR_TOUR_EVENT } from "@src/scaffold/Tutorials/codeEditorTourConfig";
 import {
   GENERAL_LAYOUT_TOUR_EVENT,
@@ -47,18 +51,13 @@ import {
 } from "@src/store/ui/chatPanel/widthAtoms";
 import { settingsReturnPathAtom } from "@src/store/ui/settingsNavigationAtom";
 import {
-  DEFAULT_SIDEBAR_WIDTH,
   sidebarCollapsedAtom,
-  sidebarWidthAtom,
   updateSidebarViewportAtom,
 } from "@src/store/ui/sidebarAtom";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPositionAtoms";
 
-import { useRouteLayoutType, useWorkspaceEvents } from "./shared/hooks";
-import { AppLayout } from "./shared/layouts";
-import { FloatingSidebar } from "./shared/layouts/sidebar/FloatingSidebar";
-import { SidebarSelector } from "./shared/layouts/sidebar/SidebarSelector";
+import { useWorkspaceEvents } from "./hooks";
 import { useNarrowChatFocus } from "./useNarrowChatFocus";
 import { useOpenUrlInBrowser } from "./useOpenUrlInBrowser";
 import { useStationWindowBridge } from "./useStationWindowBridge";
@@ -82,11 +81,9 @@ const GuideHighlightOverlay = React.lazy(
     )
 );
 
-const OnboardingHost = React.lazy(
+const WikiHost = React.lazy(
   () =>
-    import(
-      /* webpackChunkName: "tutorials" */ "@src/features/Onboarding/OnboardingHost"
-    )
+    import(/* webpackChunkName: "tutorials" */ "@src/features/Wiki/WikiHost")
 );
 
 const GeneralLayoutTour = React.lazy(
@@ -164,13 +161,7 @@ const AppShell = () => {
     if (viewportWidth !== undefined) updateSidebarViewport(viewportWidth);
   }, [viewportWidth, updateSidebarViewport]);
   const stationChatVisibility = useAtomValue(stationChatVisibilityAtom);
-  const sidebarCollapsed = useAtomValue(sidebarCollapsedAtom);
-  const sidebarWidth = useAtomValue(sidebarWidthAtom);
-  const routeLayoutType = useRouteLayoutType();
-  const currentStationChatVisible =
-    stationMode in stationChatVisibility
-      ? stationChatVisibility[stationMode as keyof typeof stationChatVisibility]
-      : false;
+  const currentStationChatVisible = stationChatVisibility[stationMode];
   const setChatWidth = useSetAtom(chatWidthAtom);
   const restoreChatWidth = useSetAtom(restoreChatWidthAtom);
   const setChatPanelMaximized = useSetAtom(chatPanelMaximizedAtom);
@@ -332,7 +323,7 @@ const AppShell = () => {
   const shouldBridgeWorkStationPipeline =
     !isSettingsRoute && activeChatPanelTab?.type === "session";
 
-  useNarrowChatFocus({ enabled: true });
+  useNarrowChatFocus();
   useWorkStationPipelineBridge(shouldBridgeWorkStationPipeline);
   // Detached station windows mirror this window's remembered session and
   // hand the surface back when they close.
@@ -341,65 +332,58 @@ const AppShell = () => {
   const chatPanelPosition = useAtomValue(chatPanelPositionAtom);
   // Settings always sits on the left; position atoms describe ChatPanel placement only.
   const chatPosition = isSettingsRoute ? "left" : chatPanelPosition;
-  const sessionSidebarWidth =
-    routeLayoutType === "session" && !sidebarCollapsed
-      ? sidebarWidth || DEFAULT_SIDEBAR_WIDTH
-      : 0;
 
   const effectiveChatFocus = useAtomValue(effectiveChatPanelMaximizedAtom);
 
   return (
     <BrowserProvider>
-      <BrowserEventBridge />
-      <Outlet />
-      <React.Suspense fallback={null}>
-        <SharedBrowserApp />
-      </React.Suspense>
-      <div
-        className="relative flex h-full"
-        data-guide-target={GUIDE_TARGETS.APP_ROOT}
-      >
-        {/* Main layout with sidebar, toolbar, content, and chat panel */}
-        <AppLayout
-          viewportWidth={viewportWidth}
-          sidebar={<SidebarSelector />}
-          floatingSidebar={<FloatingSidebar />}
-          showChatPanel
-          chatPosition={chatPosition}
-          chatPanelMaximized={effectiveChatFocus}
-          chatPanelMode={chatPanelMode}
-          sessionSidebarWidth={sessionSidebarWidth}
-        >
-          <div className="relative h-full w-full min-w-0">
-            <div
-              className="absolute inset-0 bg-workstation-bg"
-              data-guide-target={GUIDE_TARGETS.WORKSTATION}
-              data-tour-target={GENERAL_LAYOUT_TOUR_TARGETS.workstation}
-            >
-              <React.Suspense fallback={<WorkStationLoadingFallback />}>
-                <WorkStationPage
-                  isActive
-                  chatPanelFocused={effectiveChatFocus}
-                />
-              </React.Suspense>
-            </div>
-          </div>
-        </AppLayout>
+      <DesktopSessionRosterProvider>
+        <BrowserEventBridge />
+        <Outlet />
         <React.Suspense fallback={null}>
-          <GuideHighlightOverlay />
-          <OnboardingHost />
-          <GeneralLayoutTour
-            key={`general-layout-tour-${generalLayoutTourRunId}`}
-            open={generalLayoutTourOpen}
-            onClose={() => setGeneralLayoutTourOpen(false)}
-          />
-          <CodeEditorTour
-            key={`code-editor-tour-${codeEditorTourRunId}`}
-            open={codeEditorTourOpen}
-            onClose={() => setCodeEditorTourOpen(false)}
-          />
+          <SharedBrowserApp />
         </React.Suspense>
-      </div>
+        <div
+          className="relative flex h-full"
+          data-guide-target={GUIDE_TARGETS.APP_ROOT}
+        >
+          {/* Main layout with sidebar, toolbar, content, and chat panel */}
+          <AppLayout
+            viewportWidth={viewportWidth}
+            sidebar={<SidebarSelector />}
+            floatingSidebar={<FloatingSidebar />}
+            chatPosition={chatPosition}
+            chatPanelMaximized={effectiveChatFocus}
+            chatPanelMode={chatPanelMode}
+          >
+            <div className="relative h-full w-full min-w-0">
+              <div
+                className="absolute inset-0 bg-workstation-bg"
+                data-guide-target={GUIDE_TARGETS.WORKSTATION}
+                data-tour-target={GENERAL_LAYOUT_TOUR_TARGETS.workstation}
+              >
+                <React.Suspense fallback={<WorkStationLoadingFallback />}>
+                  <WorkStationPage chatPanelFocused={effectiveChatFocus} />
+                </React.Suspense>
+              </div>
+            </div>
+          </AppLayout>
+          <React.Suspense fallback={null}>
+            <GuideHighlightOverlay />
+            <WikiHost />
+            <GeneralLayoutTour
+              key={`general-layout-tour-${generalLayoutTourRunId}`}
+              open={generalLayoutTourOpen}
+              onClose={() => setGeneralLayoutTourOpen(false)}
+            />
+            <CodeEditorTour
+              key={`code-editor-tour-${codeEditorTourRunId}`}
+              open={codeEditorTourOpen}
+              onClose={() => setCodeEditorTourOpen(false)}
+            />
+          </React.Suspense>
+        </div>
+      </DesktopSessionRosterProvider>
     </BrowserProvider>
   );
 };

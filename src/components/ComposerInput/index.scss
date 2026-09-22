@@ -59,17 +59,24 @@
   // paint the caret at internal icon/text boundaries.
   > [data-composer-pill="true"] {
     display: inline-block;
+    max-width: 100%;
     white-space: nowrap;
     vertical-align: baseline;
   }
 
-  > [data-composer-pill="true"].is-selection-covered {
-    background: var(--color-fill-2);
+  // A pill points somewhere, so it takes a link's hover affordance. Only the
+  // words are underlined; a rule drawn under an icon reads as a stray line.
+  > [data-composer-pill="true"]:hover .composer-pill-label {
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
-  > [data-composer-pill="true"].is-selection-covered .composer-pill,
-  > [data-composer-pill="true"].is-selection-covered .composer-pill * {
-    color: var(--color-text-1) !important;
+  // A pill inside a selection takes the same highlight as the text around it,
+  // so the run reads as one continuous selection instead of a block that
+  // stands out mid-sweep. Its text and icon colours are left alone — those are
+  // what still mark it as a pill.
+  > [data-composer-pill="true"].is-selection-covered {
+    background: var(--text-selection, var(--color-primary-2));
   }
 
   // Placeholder driven by [data-placeholder] on the host when empty.
@@ -120,13 +127,6 @@
   }
 }
 
-.composer-input-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-3);
-  font-size: 14px;
-}
 // ===== Chat composer (compact / expanded) =====
 //
 // `chat-input-editor` marks the chat InputEditor. `chat-input-compact` is the
@@ -206,5 +206,22 @@
         right: 8px;
       }
     }
+  }
+}
+
+// ===== Expandable composer (useComposerExpansion) =====
+//
+// Expanded: a fixed tall writing surface. `!important` beats the inline
+// min/max-height ComposerInput sets from its props. The wrapper and host fill
+// the box too, so a click anywhere below the last line lands in the document.
+.composer-input.composer-input-expanded {
+  --composer-input-expanded-height: min(50vh, 560px);
+
+  min-height: var(--composer-input-expanded-height) !important;
+  max-height: var(--composer-input-expanded-height) !important;
+
+  .composer-input-wrapper,
+  .composer-input-content {
+    min-height: var(--composer-input-expanded-height) !important;
   }
 }

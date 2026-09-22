@@ -34,7 +34,7 @@ vi.mock("@src/modules/WorkStation/shared/PrimarySidebarLayout", () => ({
 vi.mock("@src/hooks/git/useRepoSelection", () => ({
   useRepoSelection: () => ({ currentBranch: "develop" }),
 }));
-vi.mock("@src/hooks/ui/useRefreshSpin", () => ({
+vi.mock("@src/components/RefreshIcon/useRefreshSpin", () => ({
   useRefreshSpin: (refresh: () => void) => ({ handleClick: refresh }),
 }));
 vi.mock("react-i18next", () => ({

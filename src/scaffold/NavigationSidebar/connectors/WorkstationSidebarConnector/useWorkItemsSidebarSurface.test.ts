@@ -4,23 +4,17 @@ import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
-import { SESSION_SIDEBAR_PAGE_SIZE } from "@src/store/session";
 import { CHAT_PANEL_CREATE_TARGET } from "@src/store/ui/chatPanel/selectionAtoms";
-import { STORY_ORG_SCOPE } from "@src/store/workstation/tabs";
 
 import { PROJECTS_NEW_WORK_ITEM_MENU_ITEM_ID } from "../sidebarConnectorUtils";
-import { LOAD_MORE_GROUP_PREFIX } from "../types";
 import * as ids from "../useProjectsWorkItemMenuItems/idHelpers";
 import type { UseProjectsWorkItemMenuItemsParams } from "../useProjectsWorkItemMenuItems/types";
 import { useWorkItemsSidebarSurface } from "./useWorkItemsSidebarSurface";
 
 const mocks = vi.hoisted(() => ({
   model: vi.fn(),
-  openWorkItem: vi.fn(),
   openProject: vi.fn(),
-  openOrganization: vi.fn(),
   openCreator: vi.fn(),
-  wrap: vi.fn(),
   mounted: vi.fn(),
   unmounted: vi.fn(),
 }));
@@ -36,21 +30,11 @@ vi.mock("../useProjectsWorkItemMenuItems/index", async () => ({
     return mocks.model(params);
   },
 }));
-vi.mock("./menuItemWrappers", () => ({
-  useRenderProjectsMenuItemWrapper: () => mocks.wrap,
-}));
 vi.mock("@src/store/chatPanel/chatPanelTabsAtom", async () => {
   const { atom } = await import("jotai");
   return {
-    openWorkItemInChatPanelTabAtom: atom(null, (_get, _set, value: unknown) =>
-      mocks.openWorkItem(value)
-    ),
     openProjectInChatPanelTabAtom: atom(null, (_get, _set, value: unknown) =>
       mocks.openProject(value)
-    ),
-    openOrganizationInChatPanelTabAtom: atom(
-      null,
-      (_get, _set, value: unknown) => mocks.openOrganization(value)
     ),
     openChatPanelCreateTargetAtom: atom(null, (_get, _set, value: unknown) =>
       mocks.openCreator(value)
@@ -63,35 +47,21 @@ const row = (id: string, label = id): NavigationMenuItem => ({
   key: id,
   label,
 });
-const groupA = "projects-work-items:org:org-a";
-const groupB = "projects-work-items:org:org-b";
 const project = { slug: "project-a" };
-const workItem = { id: "work-a" };
-const linearOrg = { id: "linear-a" };
-const linearWorkItem = { id: "linear-work-a" };
-const localOrg = { id: "org-a", name: "Team A", sync_provider: "local" };
-const menuItems = [
-  row("separator-projects"),
-  row(ids.getWorkItemMenuItemId("work-a"), "Original work item"),
-];
+const projectRowId = ids.getProjectOverviewMenuItemId("project-a");
+const menuItems = [row("separator-projects"), row(projectRowId, "Project A")];
 
 describe("persistent work-item sidebar surface", () => {
   let root: Root;
   let container: HTMLDivElement;
   let surface: ReturnType<typeof useWorkItemsSidebarSurface>;
   const activateDetail = vi.fn();
-  const reset = vi.fn();
-  const openLinkedSession = vi.fn();
-  const loadLinear = vi.fn();
-  const openLinearOrg = vi.fn();
-  const openLinearWorkItem = vi.fn();
 
   function Probe({ enabled, orgId }: { enabled: boolean; orgId: string }) {
     const value = useWorkItemsSidebarSurface({
       enabled,
       activeProjectOrgId: orgId,
       activateMyStationRouteForProjectTabContent: activateDetail,
-      handleOpenLinkedWorkItemSession: openLinkedSession,
     });
     useEffect(() => {
       surface = value;
@@ -112,17 +82,7 @@ describe("persistent work-item sidebar surface", () => {
       menuItems,
       loading: false,
       projectMap: new Map([["project-a", project]]),
-      workItemMap: new Map([["work-a", workItem]]),
-      linearOrgMap: new Map([["linear-a", linearOrg]]),
-      linearWorkItemMap: new Map([["linear-work-a", linearWorkItem]]),
-      localOrgMap: new Map([["org-a", localOrg]]),
-      linkedSessionIds: new Set(["linked-session"]),
-      getLoadMoreGroupId: ids.isProjectsWorkItemLoadMoreId,
-      loadLinearOrgWorkItems: loadLinear,
       toChatPanelProject: () => ({ slug: "project-a", name: "Project A" }),
-      toChatPanelWorkItem: () => ({ id: "work-a", title: "Work A" }),
-      openLinearOrg,
-      openLinearWorkItem,
     });
     container = document.createElement("div");
     root = createRoot(container);
@@ -132,90 +92,43 @@ describe("persistent work-item sidebar surface", () => {
     Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
   });
 
-  it("retains selection, per-group pagination and collapse state across view and scope switches", () => {
+  it("retains selection and collapse state across view and scope switches", () => {
     render();
-    click(row(`${LOAD_MORE_GROUP_PREFIX}${groupA}`));
-    click(row(`${LOAD_MORE_GROUP_PREFIX}${groupB}`));
-    click(row(ids.getWorkItemMenuItemId("work-a")));
-    expect(latestQuery().groupVisibleCounts.get(groupA)).toBe(
-      SESSION_SIDEBAR_PAGE_SIZE * 2
-    );
+    click(row(projectRowId));
     expect(surface.menuItems).toBe(menuItems);
-    expect(surface.renderMenuItemWrapper).toBe(mocks.wrap);
-    act(() => surface.onCollapsedSectionIdsChange(new Set([groupA])));
-    expect(latestQuery().groupVisibleCounts.has(groupA)).toBe(false);
-    expect(latestQuery().groupVisibleCounts.get(groupB)).toBe(
-      SESSION_SIDEBAR_PAGE_SIZE * 2
-    );
+    act(() => surface.onCollapsedSectionIdsChange(new Set(["projects"])));
     render(false, "org-b");
     expect(latestQuery()).toMatchObject({
       enabled: false,
       selectedOrgId: "org-b",
       searchQuery: "",
     });
-    expect(surface.selectedMenuItemId).toBe(
-      ids.getWorkItemMenuItemId("work-a")
-    );
-    expect(surface.collapsedSectionIds).toEqual(new Set([groupA]));
+    expect(surface.selectedMenuItemId).toBe(projectRowId);
+    expect(surface.collapsedSectionIds).toEqual(new Set(["projects"]));
     render(true);
-    expect(latestQuery().groupVisibleCounts.get(groupB)).toBe(
-      SESSION_SIDEBAR_PAGE_SIZE * 2
-    );
     expect(mocks.mounted).toHaveBeenCalledTimes(1);
     expect(mocks.unmounted).not.toHaveBeenCalled();
   });
 
-  it("dispatches local/project/work-item and Linear rows through their existing owners", () => {
+  it("opens project rows through the project tab owner", () => {
     render();
-    click(row(ids.getLocalOrgMenuItemId("org-a")));
-    expect(mocks.openOrganization).toHaveBeenCalledWith({
-      organization: {
-        kind: "local",
-        projectOrg: {
-          orgId: "org-a",
-          orgName: "Team A",
-          orgScope: STORY_ORG_SCOPE.PROJECT_ORG,
-          orgSyncProvider: "local",
-        },
-      },
-      title: "Team A",
-    });
-    click(row(ids.getProjectOverviewMenuItemId("project-a")));
+    click(row(projectRowId));
     expect(mocks.openProject).toHaveBeenCalledWith({
       slug: "project-a",
       name: "Project A",
     });
-    click(row(ids.getWorkItemMenuItemId("work-a")));
-    expect(mocks.openWorkItem).toHaveBeenCalledWith({
-      id: "work-a",
-      title: "Work A",
-    });
-    click(row(ids.getLinearOrgMenuItemId("linear-a")));
-    expect(openLinearOrg).toHaveBeenCalledWith(linearOrg);
-    click(row(ids.getLinearWorkItemMenuItemId("linear-work-a")));
-    expect(openLinearWorkItem).toHaveBeenCalledWith(linearWorkItem);
-    click(row("projects-linear-load:linear-a"));
-    expect(loadLinear).toHaveBeenCalledWith("linear-a");
-    expect(activateDetail).toHaveBeenCalledTimes(5);
-    expect(reset).not.toHaveBeenCalled();
+    expect(activateDetail).toHaveBeenCalledTimes(1);
+    click(row(ids.getProjectOverviewMenuItemId("missing")));
+    expect(mocks.openProject).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps linked-session row keys and creator organization context", () => {
+  it("opens the work-item creator without changing the selection", () => {
     render();
-    const linked = {
-      ...row("linked-session"),
-      key: "work-item-linked-session:work-a:linked-session",
-    };
-    click(linked);
-    expect(openLinkedSession).toHaveBeenCalledWith(linked);
-    expect(surface.selectedMenuItemId).toBe(linked.key);
-    expect(activateDetail).not.toHaveBeenCalled();
-    click(row(`${PROJECTS_NEW_WORK_ITEM_MENU_ITEM_ID}:org-a`));
+    click(row(PROJECTS_NEW_WORK_ITEM_MENU_ITEM_ID));
     expect(mocks.openCreator).toHaveBeenCalledWith({
       target: CHAT_PANEL_CREATE_TARGET.WORK_ITEM,
-      createProjectContext: { orgId: "org-a" },
     });
-    expect(reset).not.toHaveBeenCalled();
-    expect(surface.selectedMenuItemId).toBe(linked.key);
+    expect(activateDetail).not.toHaveBeenCalled();
+    expect(surface.selectedMenuItemId).toBe("");
   });
 });

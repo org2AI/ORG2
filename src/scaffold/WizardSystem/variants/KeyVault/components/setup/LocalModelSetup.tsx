@@ -7,12 +7,12 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import PageNotice from "@src/components/PageNotice";
 import Select from "@src/components/Select";
-import { HugeiconsIcon, Tick01Icon } from "@src/icons";
 import {
   SECTION_GAP_CLASSES,
   SectionContainer,
   SectionRow,
-} from "@src/modules/shared/layouts/SectionLayout";
+} from "@src/components/layout/Section";
+import { HugeiconsIcon, Tick01Icon } from "@src/icons";
 
 import type { AgentSetupProps } from "./types";
 
@@ -233,9 +233,6 @@ const LocalModelSetup: React.FC<AgentSetupProps> = ({
               className="min-w-0 flex-1"
             />
             <Button
-              variant="secondary"
-              appearance="outline"
-              size="default"
               icon={
                 <HugeiconsIcon icon={Tick01Icon} data-icon="check" size={14} />
               }
@@ -247,22 +244,21 @@ const LocalModelSetup: React.FC<AgentSetupProps> = ({
         </SectionRow>
 
         <SectionRow
-          label={t("keyVault.validate", "Validate")}
+          label={t("keyVault.validate")}
           description={t("keyVault.localModel.validateDesc")}
           required
         >
           <Button
-            variant={keyValidated ? "success" : "primary"}
-            appearance={keyValidated ? "outline" : undefined}
-            size="default"
+            variant={keyValidated ? "secondary" : "primary"}
+            tone={keyValidated ? "success" : undefined}
             loading={validatingKey}
             disabled={validatingKey || !effectiveBaseUrl}
             onClick={validateKey}
             className="h-8 min-h-8"
           >
             {keyValidated
-              ? `✓ ${t("keyVault.validated", "Validated")}`
-              : t("keyVault.validate", "Validate")}
+              ? `✓ ${t("keyVault.validated")}`
+              : t("keyVault.validate")}
           </Button>
         </SectionRow>
       </SectionContainer>

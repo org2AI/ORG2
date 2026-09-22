@@ -40,7 +40,6 @@ export function useEditorPrimarySidebarProps({
     handleFileSelect,
     handleFileSelectWithLine,
     handleDirectoryToggle,
-    handleSearchClick,
     handleFilterSearch,
     handleClearFilterSearch,
   } = handlers;
@@ -68,7 +67,6 @@ export function useEditorPrimarySidebarProps({
       onFileSelect: handleFileSelect,
       onFileSelectWithLine: handleFileSelectWithLine,
       onDirectoryToggle: handleDirectoryToggle,
-      onSearchClick: handleSearchClick,
       onCollapseAll: codeEditorState.collapseAll,
       onFilterSearch: handleFilterSearch,
       onClearSearch: handleClearFilterSearch,
@@ -92,7 +90,6 @@ export function useEditorPrimarySidebarProps({
       handleFileSelect,
       handleFileSelectWithLine,
       handleDirectoryToggle,
-      handleSearchClick,
       codeEditorState.collapseAll,
       handleFilterSearch,
       handleClearFilterSearch,

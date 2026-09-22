@@ -112,9 +112,7 @@ const OrgTaskBlock: React.FC<OrgTaskBlockProps> = ({
   toolUsage,
 }) => {
   const { t } = useTranslation("sessions");
-  const yesterdayLabel = t("common:relativeDate.yesterday", {
-    defaultValue: "Yesterday",
-  });
+  const yesterdayLabel = t("common:relativeDate.yesterday");
   const formattedTimestamp = timestamp
     ? formatSmartDateTime(timestamp, { yesterdayLabel })
     : null;

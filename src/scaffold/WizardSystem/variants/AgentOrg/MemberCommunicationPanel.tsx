@@ -13,7 +13,7 @@ import Checkbox from "@src/components/Checkbox";
 import Input from "@src/components/Input";
 import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
 import type { TeamMember } from "@src/modules/MainApp/AgentOrgs/components/TeamMemberTable";
-import { POPUP_Z_INDEX } from "@src/scaffold/shared/popupTokens";
+import { POPUP_Z_INDEX } from "@src/scaffold/tokens";
 import { useOverlayLayer } from "@src/store/ui/overlayLayerAtom";
 
 import { canonicalPairKey } from "./orgTree";

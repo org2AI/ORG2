@@ -9,15 +9,15 @@ import { useTranslation } from "react-i18next";
 
 import type { WorkItemOriginSession } from "@src/api/http/project";
 import Button from "@src/components/Button";
-import { HugeiconsIcon, RotateLeft01Icon } from "@src/icons";
 import {
   formatTokensShort,
   formatUsd,
-} from "@src/modules/shared/dataSource/usageFormat";
+} from "@src/features/RuntimeDataSource/usageFormat";
 import {
   SessionTable,
   type SessionTableItem,
-} from "@src/modules/shared/layouts/blocks";
+} from "@src/features/SessionTable";
+import { HugeiconsIcon, RotateLeft01Icon } from "@src/icons";
 import type { LinkedSession } from "@src/types/core/workItem";
 import {
   formatReplayDateLabel,
@@ -119,9 +119,7 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
           session.status === "failed" && shortId ? (
             <Button
               variant="tertiary"
-              appearance="ghost"
               size="mini"
-              htmlType="button"
               className="gap-1 text-[11px] hover:bg-fill-2 hover:text-text-1"
               onClick={() => {
                 retryFailedLinkedSession({
@@ -158,13 +156,9 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
     return [
       {
         id: originSession.session_id,
-        title: t("workItems.sessions.originTitle", {
-          defaultValue: "Creation session",
-        }),
+        title: t("workItems.sessions.originTitle"),
         description: originSession.session_id,
-        statusLabel: t("workItems.sessions.originStatus", {
-          defaultValue: "Created this item",
-        }),
+        statusLabel: t("workItems.sessions.originStatus"),
         statusColor: "var(--color-primary-6)",
         agentIcon: renderSessionAgentIcon(
           originSession.session_type,
@@ -218,7 +212,6 @@ export const LinkedSessionsList: React.FC<LinkedSessionsListProps> = ({
         >
           <span>
             {t("workItems.sessions.runsCount", {
-              defaultValue: "{{count}} runs",
               count: sessions.length,
             })}
           </span>

@@ -317,7 +317,7 @@ export const WorkingDirectoryPalette: React.FC<
   const showPathToggle = addMenuKind ? null : (
     <ShellFooterAction placement="inline">
       <SpotlightFooterToggle
-        label={t("selectors.spotlightFooter.showPath", "Show path")}
+        label={t("selectors.spotlightFooter.showPath")}
         checked={showPath}
         onCheckedChange={setShowPath}
       />
@@ -358,6 +358,7 @@ export const WorkingDirectoryPalette: React.FC<
       onClose={onClose}
       hasActiveAction={!addMenuKind && pinnedActionItems.length > 0}
       activeActionChip={SPOTLIGHT_FOOTER_ACTIVE_CHIP.switchSection}
+      pinScope="directories"
     >
       {palette}
     </SpotlightShell>

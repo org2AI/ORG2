@@ -14,6 +14,10 @@ const tableSource = readFileSync(
   resolve(__dirname, "../Table/index.tsx"),
   "utf8"
 );
+const searchInputSource = readFileSync(
+  resolve(__dirname, "SettingsTableSearchInput.tsx"),
+  "utf8"
+);
 
 describe("SettingsTable sticky toolbar contract", () => {
   it("keeps the body on the raised table surface by default", () => {
@@ -132,7 +136,9 @@ describe("SettingsTable sticky toolbar contract", () => {
       '<div className="order-1 flex w-full min-w-0 items-center justify-end gap-2 @[640px]:order-2 @[640px]:flex-1">'
     );
     expect(settingsTableSource).toContain('<div className="min-w-0 flex-1">');
-    expect(settingsTableSource).toContain('className="w-full min-w-0"');
+    // The field itself is `SettingsTableSearchInput`, whose default width class
+    // is what makes it fill that flex slot.
+    expect(searchInputSource).toContain('className = "w-full min-w-0"');
     expect(settingsTableSource).toContain(
       'className="flex shrink-0 items-center gap-2"'
     );

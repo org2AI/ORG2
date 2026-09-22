@@ -94,6 +94,10 @@ pub fn load_codex_app_for_session(
     Ok(chunks)
 }
 
+pub fn codex_app_review_path(conn: &Connection, session_id: &str) -> Result<PathBuf, String> {
+    resolve_codex_session_path(conn, codex_file_stem_from_session_id(session_id)?)
+}
+
 pub fn load_codex_app_initial_window_for_session(
     conn: &Connection,
     session_id: &str,
@@ -897,6 +901,7 @@ fn codex_sessions_dirs() -> Result<Vec<PathBuf>, String> {
     dirs.extend(codex_managed_sessions_dirs(
         &app_paths::codex_cli_profile_root(),
         &app_paths::codex_hosted_cli_profile_root(),
+        &app_paths::managed_cli_launch_root(),
     ));
     Ok(dirs)
 }
@@ -904,6 +909,7 @@ fn codex_sessions_dirs() -> Result<Vec<PathBuf>, String> {
 pub(crate) fn codex_managed_sessions_dirs(
     account_profiles_root: &Path,
     hosted_profiles_root: &Path,
+    launch_profiles_root: &Path,
 ) -> Vec<PathBuf> {
     let mut dirs = crate::sources::imported_history::managed_roots::profile_root_children(
         account_profiles_root,
@@ -912,6 +918,12 @@ pub(crate) fn codex_managed_sessions_dirs(
     dirs.extend(
         crate::sources::imported_history::managed_roots::profile_root_children(
             hosted_profiles_root,
+            &["sessions"],
+        ),
+    );
+    dirs.extend(
+        crate::sources::imported_history::managed_roots::profile_root_children(
+            launch_profiles_root,
             &["sessions"],
         ),
     );

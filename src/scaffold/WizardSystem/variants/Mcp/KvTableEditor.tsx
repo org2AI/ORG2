@@ -3,13 +3,12 @@
  */
 import React, { useMemo } from "react";
 
-import Button from "@src/components/Button";
+import DeleteIconButton from "@src/components/Button/DeleteIconButton";
 import Input from "@src/components/Input";
 import SettingsTable, {
   SETTINGS_TABLE_COL,
   type SettingsTableColumn,
 } from "@src/components/SettingsTable";
-import { Delete02Icon, HugeiconsIcon } from "@src/icons";
 
 export interface KvRow {
   id: string;
@@ -94,20 +93,7 @@ export const KvTableEditor: React.FC<KvTableEditorProps> = ({
         label: "",
         width: SETTINGS_TABLE_COL.hug,
         renderCell: (row) => (
-          <Button
-            variant="secondary"
-            size="default"
-            icon={
-              <HugeiconsIcon
-                icon={Delete02Icon}
-                data-icon="trash-2"
-                size={14}
-                className="text-danger-6"
-              />
-            }
-            iconOnly
-            onClick={() => onRemove(row.id)}
-          />
+          <DeleteIconButton onDelete={() => onRemove(row.id)} />
         ),
       },
     ],

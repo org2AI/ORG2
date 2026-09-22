@@ -3,22 +3,14 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { testTranslate } from "@src/test/i18nTestTranslate";
 import type { WorkItem } from "@src/types/core/workItem";
 
 import WorkItemFlowHeader from "./WorkItemFlowHeader";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, unknown>) => {
-      if (typeof fallback === "string") return fallback;
-      if (typeof fallback?.defaultValue !== "string") return key;
-      const count = Number(fallback.count ?? 0);
-      const template =
-        count === 1 || typeof fallback.defaultValue_other !== "string"
-          ? fallback.defaultValue
-          : fallback.defaultValue_other;
-      return template.replace("{{count}}", String(count));
-    },
+    t: (...args: Parameters<typeof testTranslate>) => testTranslate(...args),
     i18n: { resolvedLanguage: "en" },
   }),
 }));

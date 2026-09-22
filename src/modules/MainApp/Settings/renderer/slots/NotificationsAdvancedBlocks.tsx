@@ -3,7 +3,7 @@ import {
   SECTION_CONTROL_STYLE,
   SectionContainer,
   SectionRow,
-} from "@/src/modules/shared/layouts/SectionLayout";
+} from "@/src/components/layout/Section";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useAtomValue } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
@@ -223,11 +223,7 @@ const NotificationsAdvancedBlocks: React.FC = () => {
 
         {soundEnabled && (
           <>
-            <SectionRow
-              label={t("notifications.soundPreset")}
-              description={t("notifications.soundPresetDesc")}
-              indent
-            >
+            <SectionRow label={t("notifications.soundPreset")} indent>
               <div
                 className={`${SECTION_ACTION_GAP_CLASSES} w-full flex-wrap`}
                 style={SECTION_CONTROL_STYLE}
@@ -243,15 +239,15 @@ const NotificationsAdvancedBlocks: React.FC = () => {
                   />
                 </div>
                 <Button
-                  size="default"
+                  iconOnly
                   icon={
                     <HugeiconsIcon icon={PlayIcon} data-icon="play" size={14} />
                   }
                   onClick={() => void handlePreviewSound(soundPreset)}
                   disabled={soundVolume === 0}
-                >
-                  {t("notifications.previewSound")}
-                </Button>
+                  aria-label={t("notifications.previewSound")}
+                  title={t("notifications.previewSound")}
+                />
               </div>
             </SectionRow>
             <SectionRow label={t("notifications.volume")} indent>
@@ -342,7 +338,6 @@ const NotificationsAdvancedBlocks: React.FC = () => {
       <SectionContainer>
         <SectionRow label={t("notifications.testNotification")}>
           <Button
-            size="default"
             onClick={handleTestNotification}
             loading={isTesting}
             disabled={isRequestingPermission}

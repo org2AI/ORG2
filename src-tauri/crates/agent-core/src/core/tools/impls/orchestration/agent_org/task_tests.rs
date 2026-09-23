@@ -23,8 +23,12 @@ use super::TaskToolsContext;
 
 #[path = "completion_wait_tests.rs"]
 mod completion_wait_tests;
+#[path = "next_work_tests.rs"]
+mod next_work_tests;
 #[path = "rework_tests.rs"]
 mod rework_tests;
+#[path = "summary_terminal_tests.rs"]
+mod summary_terminal_tests;
 
 const RUN_ID: &str = "run-task-tools";
 const ROOT_SESSION: &str = "root-task-tools";

@@ -161,7 +161,7 @@ pub(crate) fn summary_context_for_turn(
         return Err("final_summary_context_exceeds_bound".to_string());
     }
     Ok(Some(format!(
-        "## Agent Org Final Summary (read-only)\n\nWrite the final user-facing report from only the bounded certified evidence below. Do not call tools, mutate the Team, invent missing evidence, or continue implementation. Preserve explicit failed/cancelled resolutions and reference requested report TaskOutputs/Artifacts instead of replacing them. Every item in userCancelledScope must be named explicitly as work the user cancelled or removed; never describe that item as completed, verified, passed, or replaced.\n\n```json\n{encoded}\n```"
+        "## Agent Org Final Summary (read-only)\n\nWrite the final user-facing report from only the bounded certified evidence below. Do not call tools, mutate the Team, invent missing evidence, or continue implementation. Preserve explicit failed/cancelled resolutions and reference requested report TaskOutputs/Artifacts instead of replacing them. Separate implemented, verified, and unverified claims using the actual checks, observed results, and evidence locations in TaskOutputs. A completion certificate proves record closure, not product quality. Missing or truncated evidence, zero discovered tests, or static inspection cannot justify a runtime-tested claim. Every item in userCancelledScope must be named explicitly as work the user cancelled or removed; never describe that item as completed, verified, passed, or replaced.\n\n```json\n{encoded}\n```"
     )))
 }
 

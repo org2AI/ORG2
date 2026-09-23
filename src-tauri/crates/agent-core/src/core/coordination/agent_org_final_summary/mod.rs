@@ -13,7 +13,7 @@ pub(crate) use store::{
     create_initial_for_certificate_in_tx, has_summary_receipt_for_turn_with_connection,
     is_summary_turn, is_summary_turn_with_connection, mark_failed_for_turn,
     mark_persisted_for_turn, mark_persisting_for_turn, reconcile_after_restart, retry_failed,
-    stable_event_id_for_turn, status_for_turn,
+    settle_terminal_turn_in_tx, stable_event_id_for_turn, status_for_turn,
 };
 pub use store::{FinalSummaryReceipt, FinalSummaryStatus};
 

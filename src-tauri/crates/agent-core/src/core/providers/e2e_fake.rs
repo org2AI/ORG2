@@ -12,6 +12,7 @@ use super::traits::{
 };
 
 mod agent_org_completion_wait;
+mod agent_org_report;
 mod agent_org_rework;
 mod agent_org_terminal;
 
@@ -1160,6 +1161,8 @@ impl LLMProvider for E2eFakeProvider {
         if cancel_flag.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Relaxed)) {
             return Err(ProviderError::Cancelled);
         }
+
+        agent_org_report::wait_window(messages, on_delta, cancel_flag).await?;
 
         let terminal_window = agent_org_terminal::member_window(messages);
         if terminal_window

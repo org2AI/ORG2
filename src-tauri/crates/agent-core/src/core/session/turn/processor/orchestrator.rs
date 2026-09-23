@@ -701,7 +701,11 @@ impl UnifiedMessageProcessor {
 
         // Flush any pending streaming content before completing the turn.
         handler.flush_streaming(session_id);
-        handler.verify_agent_org_completion_publication(session_id);
+        // A stopped attempt need not publish a complete report. Exact terminal
+        // settlement closes its receipt, even when the executor returned Ok.
+        if !self.session.cancel_flag.load(Ordering::SeqCst) {
+            handler.verify_agent_org_completion_publication(session_id);
+        }
         if let Some(error) = handler.take_assistant_persistence_error() {
             if !is_final_summary_turn && self.runtime.agent_org_context.is_some() {
                 let _ = crate::coordination::agent_org_formal_triggers::fail_attempt_for_turn(

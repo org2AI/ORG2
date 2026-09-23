@@ -1999,10 +1999,22 @@ export async function sendFromRenderedCreator(prompt) {
 
 export async function openRenderedSidebarSession(sessionId) {
   const selector = `[data-testid="sidebar-session-item-${sessionId}"]`;
-  await browser.waitUntil(async () => execJS(js.exists(selector)), {
-    timeout: RENDER_TIMEOUT_MS,
-    timeoutMsg: `Sidebar session ${sessionId} did not appear`,
-  });
+  await browser.waitUntil(
+    async () => {
+      if (await execJS(js.exists(selector))) return true;
+      // A restart across midnight moves this session into a collapsed date group.
+      for (const group of ["today", "yesterday", "thisWeek", "older"]) {
+        const toggle = `[data-sidebar-section-toggle="${group}"][aria-expanded="false"]`;
+        if (await execJS(js.exists(toggle)))
+          await execJS(js.visibleClick(toggle));
+      }
+      return execJS(js.exists(selector));
+    },
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      timeoutMsg: `Sidebar session ${sessionId} did not appear`,
+    }
+  );
   const clickResult = await execJS(js.visibleClick(selector));
   if (clickResult !== "clicked") {
     throw new Error(

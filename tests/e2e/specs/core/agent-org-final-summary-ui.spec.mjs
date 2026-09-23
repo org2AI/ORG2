@@ -3,6 +3,7 @@ import {
   runCompletionWaitScenario,
   runReworkScenario,
 } from "../../support/core/agentOrgCompletionDriver.mjs";
+import { runSummaryStopScenario } from "../../support/core/agentOrgSummaryDriver.mjs";
 import { captureTerminalFailure } from "../../support/core/agentOrgTerminalDriver.mjs";
 import {
   RENDER_TIMEOUT_MS,
@@ -80,6 +81,12 @@ describe("Agent Org final summary rendered UI", () => {
     await runReworkScenario();
   });
 
+  for (const window of ["before", "stream"]) {
+    it(`stops the report ${window} window and retries once without rerunning members`, async () => {
+      await runSummaryStopScenario(window, { postJson });
+    });
+  }
+
   it("leaves certified evidence visible after EventStore failure and retries only from the rendered button", async () => {
     const account = await getApiAccount();
     const model = selectPreferredModel(account);
@@ -87,7 +94,10 @@ describe("Agent Org final summary rendered UI", () => {
     await selectRenderedExecMode("build");
     await selectRenderedDefaultAgentOrg();
 
-    const scenarioId = `final_summary_failure_${RUN_ID}`;
+    // The report uses certified evidence, not the original chat's generic wait.
+    // Keep the existing bounded report window through Retry so Finalizing is
+    // observable; an immediate mock response can persist between two polls.
+    const scenarioId = `summary_stop_before_store_failure_${RUN_ID}`;
     const sessionId = await sendFromRenderedCreator(
       `Run E2E_AGENT_ORG_COMPLETION:${scenarioId}. Create a stoppable window by waiting for about 10 seconds before the final answer.`
     );

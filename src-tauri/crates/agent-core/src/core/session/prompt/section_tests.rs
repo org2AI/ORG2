@@ -441,6 +441,10 @@ fn coordinator_protocol_requires_action_evidence_and_explicit_rework() {
                 "state={state:?}, missing {required}"
             );
         }
+        if state == RunCompletionCandidateState::Certified {
+            assert!(section.contains("only for its closed work episode"));
+            assert!(section.contains("new authorized user request opens a new episode"));
+        }
     }
 }
 

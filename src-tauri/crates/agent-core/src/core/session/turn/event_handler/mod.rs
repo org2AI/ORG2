@@ -373,6 +373,12 @@ impl UnifiedEventHandler {
     }
 
     fn push_to_store_durable_assistant(&self, session_id: &str, event: SessionEvent) {
+        // Serialize authority check, EventStore commit and receipt binding with
+        // exact Turn settlement. Re-check cancellation after obtaining the lock.
+        let publication_guard = self
+            .config
+            .require_durable_assistant_event
+            .then(database::db::sessions_writer_guard);
         if self.is_cancelled() || !self.is_current_turn_generation() {
             return;
         }
@@ -473,6 +479,7 @@ impl UnifiedEventHandler {
                 }
             }
         }
+        drop(publication_guard);
         self.push_to_store(session_id, event);
     }
 
@@ -489,9 +496,29 @@ impl UnifiedEventHandler {
                 crate::coordination::agent_org_final_summary::FinalSummaryStatus::Persisted,
             )) => {}
             Ok(Some(crate::coordination::agent_org_final_summary::FinalSummaryStatus::Failed)) => {}
-            Ok(Some(_)) => self.record_assistant_persistence_error(
-                "active FinalSummaryReceipt has no persisted EventStore row".to_string(),
-            ),
+            Ok(Some(_)) => {
+                let settled = crate::coordination::agent_org_final_summary::mark_failed_for_turn(
+                    session_id,
+                    turn_intent_id,
+                    "event_store_missing",
+                )
+                .and_then(|_| {
+                    crate::coordination::agent_org_final_summary::status_for_turn(
+                        session_id,
+                        turn_intent_id,
+                    )
+                });
+                if !matches!(
+                    settled,
+                    Ok(Some(
+                        crate::coordination::agent_org_final_summary::FinalSummaryStatus::Persisted
+                    ))
+                ) {
+                    self.record_assistant_persistence_error(format!(
+                        "active FinalSummaryReceipt has no persisted EventStore row: {settled:?}"
+                    ));
+                }
+            }
             Err(error) => self.record_assistant_persistence_error(format!(
                 "FinalSummaryReceipt verification failed: {error}"
             )),

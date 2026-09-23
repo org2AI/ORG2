@@ -182,6 +182,12 @@ pub(crate) fn finalize_turn_in_tx(
         status.intent_status(),
     )?;
     release_turn_lease_in_tx(conn, session_id, turn_intent_id, "released", reason_code)?;
+    crate::coordination::agent_org_final_summary::settle_terminal_turn_in_tx(
+        conn,
+        session_id,
+        turn_intent_id,
+        status,
+    )?;
     let context = crate::coordination::agent_org_turn_contexts::require_context_with_connection(
         conn,
         session_id,

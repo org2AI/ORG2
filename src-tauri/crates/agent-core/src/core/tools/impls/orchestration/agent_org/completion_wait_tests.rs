@@ -7,9 +7,9 @@ use crate::coordination::agent_org_run_completion as completion;
 use crate::coordination::agent_org_runs::AgentOrgRunStore;
 use crate::lifecycle::TurnTerminalStatus;
 
-const OWNER_TURN: &str = "turn-result-producer";
+pub(super) const OWNER_TURN: &str = "turn-result-producer";
 
-async fn completed_task() -> String {
+pub(super) async fn completed_task() -> String {
     let created = create_owned("completion-evidence", ALICE).await;
     let id = created["task"]["id"].as_str().unwrap().to_owned();
     let conn = database::db::get_connection().unwrap();
@@ -32,7 +32,7 @@ async fn completed_task() -> String {
     id
 }
 
-async fn present(id: &str, mode: &str) {
+pub(super) async fn present(id: &str, mode: &str) {
     let output = TaskGetTool::new(tools_context(COORDINATOR_MEMBER_ID))
         .execute_text(json!({"id":id}), &coordinator_call())
         .await
@@ -54,7 +54,7 @@ async fn present(id: &str, mode: &str) {
     completion::record_provider_presentation(ROOT_SESSION, COORDINATOR_TURN, &messages).unwrap();
 }
 
-async fn request(summary: &str) -> crate::tools::traits::ToolExecuteResult {
+pub(super) async fn request(summary: &str) -> crate::tools::traits::ToolExecuteResult {
     OrgRunCompleteTool::new(tools_context(COORDINATOR_MEMBER_ID))
         .execute(
             json!({"candidate_outcome":"delivered","summary":summary}),

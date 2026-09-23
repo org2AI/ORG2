@@ -1984,8 +1984,11 @@
     "cliVersionOutdated": {
       "title": "{{cli}} güncellemesi var",
       "upgrade": "Terminalde güncelle",
-      "upgradeHint": "Cursor CLI ayrı bir terminalde güncellenir. Tamamlandığında sürümü yeniden kontrol edin.",
-      "upgradeTerminal": "Cursor CLI güncellemesi",
+      "upgradeDocs": "Resmî belgeler",
+      "upgradeChooseMethod": "İlk kurulum yöntemini seçin",
+      "upgradeNative": "Yerleşik güncelleyici",
+      "upgradeHint": "{{cli}} CLI ayrı bir terminalde güncellenir. Tamamlandığında sürümü yeniden kontrol edin.",
+      "upgradeTerminal": "{{cli}} CLI güncellemesi",
       "upgradeStarted": "Güncelleme terminalde başlatıldı. Tamamlandığında sürümü yeniden kontrol edin.",
       "upgradeFailed": "Güncelleme terminali açılamadı. Tekrar deneyin.",
       "muteUntilNextVersion": "Sonraki sürüme kadar uyarı gösterme",

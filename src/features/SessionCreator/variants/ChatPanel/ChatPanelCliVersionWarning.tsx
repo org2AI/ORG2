@@ -11,7 +11,7 @@ import {
   NotificationOff01Icon,
 } from "@src/icons";
 
-import CursorCliUpgradeButton from "./CursorCliUpgradeButton";
+import CliUpgradeButton from "./CliUpgradeButton";
 import type { SessionCreatorChatPanelViewProps } from "./chatPanelViewTypes";
 
 interface ChatPanelCliVersionWarningProps {
@@ -51,8 +51,11 @@ export const ChatPanelCliVersionWarning: React.FC<
         closeAriaLabel={t("common:actions.close")}
         action={
           <div className="flex items-center gap-px">
-            {cliVersionAlert.cliAgentType === "cursor_cli" && (
-              <CursorCliUpgradeButton />
+            {cliVersionAlert.cliAgent && (
+              <CliUpgradeButton
+                key={cliVersionAlert.cliAgent.name}
+                agent={cliVersionAlert.cliAgent}
+              />
             )}
             <Button
               variant="tertiary"

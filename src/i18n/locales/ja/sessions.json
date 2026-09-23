@@ -1984,8 +1984,11 @@
     "cliVersionOutdated": {
       "title": "{{cli}} の更新があります",
       "upgrade": "ターミナルで更新",
-      "upgradeHint": "別のターミナルで Cursor CLI を更新します。完了後にバージョンを再確認してください。",
-      "upgradeTerminal": "Cursor CLI を更新",
+      "upgradeDocs": "公式ドキュメント",
+      "upgradeChooseMethod": "元のインストール方法を選択",
+      "upgradeNative": "内蔵アップデーター",
+      "upgradeHint": "別のターミナルで {{cli}} CLI を更新します。完了後にバージョンを再確認してください。",
+      "upgradeTerminal": "{{cli}} CLI を更新",
       "upgradeStarted": "ターミナルで更新を開始しました。完了後にバージョンを再確認してください。",
       "upgradeFailed": "更新用のターミナルを開けませんでした。もう一度お試しください。",
       "muteUntilNextVersion": "次のバージョンまで通知しない",

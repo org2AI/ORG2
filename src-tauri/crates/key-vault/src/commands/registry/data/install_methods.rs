@@ -64,7 +64,7 @@ pub(crate) fn cli_install_methods(name: &str) -> Vec<CliInstallMethod> {
                 "curl",
                 "curl -fsSL https://gh.io/copilot-install | bash",
             ),
-            m("homebrew", "Homebrew", "brew install copilot-cli"),
+            m("homebrew", "Homebrew", "brew install --cask copilot-cli"),
             m("winget", "WinGet", "winget install GitHub.Copilot"),
         ],
         "kimi_cli" => vec![
@@ -146,7 +146,7 @@ pub(crate) fn cli_install_methods(name: &str) -> Vec<CliInstallMethod> {
             m("npm", "npm", "npm install -g codebuff"),
         ],
         "qwen_code" => vec![
-            m("npm", "npm", "npm install -g qwen-code"),
+            m("npm", "npm", "npm install -g @qwen-code/qwen-code"),
         ],
         "mimo_code" => vec![
             m(
@@ -276,7 +276,7 @@ pub(crate) fn cli_uninstall_methods(name: &str) -> Vec<CliInstallMethod> {
         ],
         "copilot" => vec![
             m("npm", "npm", "npm uninstall -g @github/copilot"),
-            m("homebrew", "Homebrew", "brew uninstall copilot-cli"),
+            m("homebrew", "Homebrew", "brew uninstall --cask copilot-cli"),
             m("winget", "WinGet", "winget uninstall GitHub.Copilot"),
         ],
         "kimi_cli" => vec![m("uv", "uv", "uv tool uninstall kimi-cli")],
@@ -295,7 +295,7 @@ pub(crate) fn cli_uninstall_methods(name: &str) -> Vec<CliInstallMethod> {
         "openclaw" => vec![m("npm", "npm", "npm uninstall -g openclaw")],
         "aug" => vec![m("npm", "npm", "npm uninstall -g @augmentcode/auggie")],
         "codebuff" => vec![m("npm", "npm", "npm uninstall -g codebuff")],
-        "qwen_code" => vec![m("npm", "npm", "npm uninstall -g qwen-code")],
+        "qwen_code" => vec![m("npm", "npm", "npm uninstall -g @qwen-code/qwen-code")],
         "mimo_code" => vec![
             m(
                 "native",

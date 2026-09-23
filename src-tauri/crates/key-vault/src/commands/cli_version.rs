@@ -130,7 +130,7 @@ fn source_for(agent_type: &str) -> Option<LatestVersionSource> {
         "mimo_code" => Some(LatestVersionSource::Npm("@mimo-ai/cli")),
         "antigravity" => Some(LatestVersionSource::AntigravityManifest),
         "continue_cli" => Some(LatestVersionSource::Npm("@continuedev/cli")),
-        "droid" => Some(LatestVersionSource::Npm("@factory/cli")),
+        "droid" => Some(LatestVersionSource::Npm("droid")),
         "mistral_vibe" => Some(LatestVersionSource::GithubRelease("mistralai/mistral-vibe")),
         "autohand" => Some(LatestVersionSource::Npm("autohand-cli")),
         "omp" => Some(LatestVersionSource::Npm("@oh-my-pi/pi-coding-agent")),
@@ -410,6 +410,14 @@ fn version_status(installed: Option<&str>, latest: Option<&str>) -> CliVersionSt
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn droid_checks_the_package_used_by_its_installer() {
+        assert!(matches!(
+            source_for("droid"),
+            Some(LatestVersionSource::Npm("droid"))
+        ));
+    }
 
     #[test]
     fn normalizes_release_tags_and_installer_paths() {

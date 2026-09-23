@@ -163,6 +163,8 @@ export const AvailableAgentSchema = z.object({
   configFiles: z.array(CliConfigFileSchema),
   installMethods: z.array(CliInstallMethodSchema),
   uninstallMethods: z.array(CliInstallMethodSchema),
+  /** Older discovery responses may not include upgrade capabilities. */
+  upgradeMethods: z.array(CliInstallMethodSchema).optional(),
   envConfig: AgentEnvConfigSchema.optional(),
   isComplexSetup: z.boolean(),
   defaultSetupMethod: z.string().optional(),

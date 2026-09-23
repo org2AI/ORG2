@@ -38,7 +38,7 @@ pub fn cli_agent_display_name(agent_name: &str) -> Option<&'static str> {
 // Shared types (serialized to frontend via JSON)
 // ============================================
 
-/// A single install/uninstall method for a CLI agent.
+/// A single install, uninstall, or upgrade method for a CLI agent.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliInstallMethod {
@@ -92,6 +92,8 @@ pub struct AvailableAgent {
     pub config_files: Vec<CliConfigFile>,
     pub install_methods: Vec<CliInstallMethod>,
     pub uninstall_methods: Vec<CliInstallMethod>,
+    /// Explicit upgrade actions; an empty list directs users to docs_url.
+    pub upgrade_methods: Vec<CliInstallMethod>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub env_config: Option<AgentEnvConfig>,
     pub is_complex_setup: bool,

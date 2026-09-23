@@ -1984,8 +1984,11 @@
     "cliVersionOutdated": {
       "title": "Hay una actualización de {{cli}}",
       "upgrade": "Actualizar en terminal",
-      "upgradeHint": "Actualiza Cursor CLI en un terminal independiente. Al terminar, vuelve a comprobar la versión.",
-      "upgradeTerminal": "Actualizar Cursor CLI",
+      "upgradeDocs": "Documentación oficial",
+      "upgradeChooseMethod": "Elige cómo lo instalaste",
+      "upgradeNative": "Actualizador integrado",
+      "upgradeHint": "Actualiza {{cli}} CLI en un terminal independiente. Al terminar, vuelve a comprobar la versión.",
+      "upgradeTerminal": "Actualizar {{cli}} CLI",
       "upgradeStarted": "Actualización iniciada en el terminal. Al terminar, vuelve a comprobar la versión.",
       "upgradeFailed": "No se pudo abrir el terminal de actualización. Inténtalo de nuevo.",
       "muteUntilNextVersion": "No avisar hasta la próxima versión",

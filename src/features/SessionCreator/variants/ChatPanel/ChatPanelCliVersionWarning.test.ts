@@ -5,6 +5,7 @@ import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CliAgentTypeSchema } from "@src/api/tauri/rpc/schemas/validationEnums";
+import type { AvailableAgent } from "@src/config/cliAgents/types";
 import zh from "@src/i18n/locales/zh/sessions.json";
 import { terminalSessionsAtom } from "@src/store/workstation/codeEditor/terminal";
 
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   setActive: vi.fn(),
   info: vi.fn(),
   error: vi.fn(),
+  openLink: vi.fn(),
 }));
 vi.mock("@src/services/terminal/TerminalService", () => ({
   TerminalService: {
@@ -24,6 +26,7 @@ vi.mock("@src/services/terminal/TerminalService", () => ({
     setActive: mocks.setActive,
   },
 }));
+vi.mock("@src/util/ui/openLink", () => ({ openLink: mocks.openLink }));
 vi.mock("@src/components/Message", () => ({
   default: { info: mocks.info, error: mocks.error },
 }));
@@ -51,11 +54,70 @@ describe("CLI upgrade notice", () => {
   let container: HTMLDivElement;
   let store: ReturnType<typeof createStore>;
   const onRefresh = vi.fn();
+  const agents: Record<string, AvailableAgent> = Object.fromEntries(
+    [
+      [
+        "cursor_cli",
+        "Cursor",
+        [{ id: "self", label: "", command: "cursor-agent update" }],
+      ],
+      [
+        "codex",
+        "Codex",
+        [
+          {
+            id: "npm",
+            label: "npm",
+            command: "npm install -g @openai/codex@latest",
+          },
+          {
+            id: "homebrew",
+            label: "Homebrew",
+            command: "brew upgrade --cask codex",
+          },
+        ],
+      ],
+      [
+        "opencode",
+        "OpenCode",
+        [{ id: "self", label: "", command: "opencode upgrade" }],
+      ],
+      ["trae_cli", "Trae Agent", []],
+    ].map(([name, displayName, upgradeMethods]) => [
+      name,
+      {
+        name,
+        displayName,
+        upgradeMethods,
+        docsUrl: `https://example.com/${name}`,
+        installed: true,
+        hasKeys: true,
+        description: "",
+        brandColor: "",
+        hasSubscriptionPlan: false,
+        nativeSubscriptionLabels: [],
+        compatibleApiProviders: [],
+        supportedProtocols: [],
+        configFiles: [],
+        installMethods: [],
+        uninstallMethods: [],
+        isComplexSetup: false,
+        supportedSetupMethods: [],
+        popular: false,
+        iconProvider: "",
+        command: name,
+        supportsRustAgents: true,
+        acpSupport: "unavailable",
+        supportsOrgiiPool: false,
+        supportsGui: true,
+      },
+    ])
+  ) as Record<string, AvailableAgent>;
   const render = (
     cliAgentType = "cursor_cli",
     visible = true,
     copies = 1,
-    displayName = cliAgentType === "codex" ? "Codex" : "Cursor"
+    displayName = agents[cliAgentType]?.displayName ?? cliAgentType
   ) =>
     act(() => {
       root.render(
@@ -67,7 +129,7 @@ describe("CLI upgrade notice", () => {
               React.createElement(ChatPanelCliVersionWarning, {
                 key,
                 cliVersionAlert: {
-                  cliAgentType,
+                  cliAgent: agents[cliAgentType],
                   cliDisplayName: displayName,
                   installedVersion: "2026.09.10-fd3934a",
                   latestVersion: "2026.09.18-9a7762b",
@@ -85,6 +147,15 @@ describe("CLI upgrade notice", () => {
     container.querySelector<HTMLButtonElement>(
       '[data-testid="session-creator-cli-version-upgrade"]'
     )!;
+  const chooseMethod = async (id: string) => {
+    await act(async () => upgrade().click());
+    expect(document.body.textContent).toContain("选择原来的安装方式");
+    const option = document.querySelector<HTMLButtonElement>(
+      `[data-testid="cli-upgrade-method-${id}"]`
+    );
+    expect(option).not.toBeNull();
+    await act(async () => option!.click());
+  };
   beforeEach(() => {
     vi.clearAllMocks();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -169,20 +240,29 @@ describe("CLI upgrade notice", () => {
     expect(mocks.focus).toHaveBeenCalledOnce();
   });
 
-  it("allows retry after launch failure and after the old terminal is closed", async () => {
-    mocks.execute.mockRejectedValueOnce(new Error("not ready"));
-    render();
-    await act(async () => upgrade().click());
-    expect(mocks.error).toHaveBeenCalledWith("无法打开升级终端，请重试");
-    expect(upgrade().disabled).toBe(false);
-    await act(async () => upgrade().click());
-    expect(mocks.execute).toHaveBeenCalledTimes(2);
-    act(() => store.set(terminalSessionsAtom, []));
-    await act(async () => upgrade().click());
-    expect(mocks.execute).toHaveBeenCalledTimes(3);
-  });
+  it.each(["cursor_cli", "codex"])(
+    "allows %s to retry after launch failure and terminal closure",
+    async (agent) => {
+      const launch = () =>
+        agent === "codex"
+          ? chooseMethod("npm")
+          : act(async () => upgrade().click());
+      mocks.execute.mockRejectedValueOnce(new Error("not ready"));
+      render(agent);
+      await launch();
+      expect(mocks.error).toHaveBeenCalledExactlyOnceWith(
+        "无法打开升级终端，请重试"
+      );
+      expect(upgrade().disabled).toBe(false);
+      await launch();
+      expect(mocks.execute).toHaveBeenCalledTimes(2);
+      act(() => store.set(terminalSessionsAtom, []));
+      await launch();
+      expect(mocks.execute).toHaveBeenCalledTimes(3);
+    }
+  );
 
-  it("does not offer or dispatch Cursor upgrades for another CLI, including late completion", async () => {
+  it("isolates simultaneous CLI upgrades and late completions", async () => {
     let finish!: (id: string) => void;
     mocks.execute.mockReturnValue(
       new Promise<string>((resolve) => {
@@ -192,13 +272,68 @@ describe("CLI upgrade notice", () => {
     render();
     act(() => upgrade().click());
     render("codex");
+    expect(upgrade().disabled).toBe(false);
+    mocks.execute.mockResolvedValueOnce("codex-terminal");
+    await chooseMethod("npm");
+    expect(mocks.execute).toHaveBeenLastCalledWith(
+      "npm install -g @openai/codex@latest",
+      {
+        name: "升级 Codex 命令行工具",
+      }
+    );
     await act(async () => finish("upgrade-terminal"));
     expect(container.querySelector(".page-notice__text")?.textContent).toBe(
       "Codex 有新版本 (2026.09.10-fd3934a > 2026.09.18-9a7762b)"
     );
-    expect(upgrade()).toBeNull();
-    expect(mocks.execute).toHaveBeenCalledOnce();
+    expect(mocks.execute).toHaveBeenCalledTimes(2);
     render("cursor_cli", false);
     expect(container.textContent).toBe("");
+  });
+
+  it("lets users choose Homebrew without changing package managers", async () => {
+    render("codex");
+    expect(mocks.execute).not.toHaveBeenCalled();
+    await chooseMethod("homebrew");
+    expect(mocks.execute).toHaveBeenCalledWith("brew upgrade --cask codex", {
+      name: "升级 Codex 命令行工具",
+    });
+    await act(async () => upgrade().click());
+    expect(mocks.execute).toHaveBeenCalledOnce();
+    expect(mocks.focus).toHaveBeenCalledOnce();
+    expect(
+      document.querySelector('[data-testid="cli-upgrade-method-npm"]')
+    ).toBeNull();
+  });
+
+  it("uses OpenCode's own updater", async () => {
+    render("opencode");
+    await act(async () => upgrade().click());
+    expect(mocks.execute).toHaveBeenCalledWith("opencode upgrade", {
+      name: "升级 OpenCode 命令行工具",
+    });
+  });
+
+  it("offers documentation when no safe command is available", async () => {
+    render("trae_cli");
+    expect(upgrade()).toBeNull();
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="session-creator-cli-upgrade-docs"]'
+        )!
+        .click()
+    );
+    expect(mocks.openLink).toHaveBeenCalledWith("https://example.com/trae_cli");
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("keeps separate app stores independent", async () => {
+    render();
+    await act(async () => upgrade().click());
+    render("cursor_cli", false);
+    store = createStore();
+    render();
+    await act(async () => upgrade().click());
+    expect(mocks.execute).toHaveBeenCalledTimes(2);
   });
 });

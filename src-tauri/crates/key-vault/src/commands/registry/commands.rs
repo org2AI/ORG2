@@ -19,7 +19,7 @@ use crate::provider_config::{
 use super::data::supported_setup_methods_for_agent;
 use super::data::{
     api_provider_registry, cli_agent_registry, cli_env_config, cli_install_methods,
-    cli_uninstall_methods, infer_install_method, CliConfigPathKind,
+    cli_uninstall_methods, cli_upgrade_methods, infer_install_method, CliConfigPathKind,
 };
 use super::{AvailableAgent, AvailableApiProvider, CliConfigFile};
 
@@ -440,6 +440,7 @@ fn get_available_agents_blocking() -> Vec<AvailableAgent> {
                 .collect(),
             install_methods: cli_install_methods(entry.name),
             uninstall_methods: cli_uninstall_methods(entry.name),
+            upgrade_methods: cli_upgrade_methods(entry.name),
             env_config: cli_env_config(entry.name),
             is_complex_setup: entry.is_complex_setup,
             default_setup_method: entry.default_setup_method.map(String::from),

@@ -1984,8 +1984,11 @@
     "cliVersionOutdated": {
       "title": "{{cli}} 업데이트가 있습니다",
       "upgrade": "터미널에서 업데이트",
-      "upgradeHint": "별도 터미널에서 Cursor CLI를 업데이트합니다. 완료 후 버전을 다시 확인하세요.",
-      "upgradeTerminal": "Cursor CLI 업데이트",
+      "upgradeDocs": "공식 문서",
+      "upgradeChooseMethod": "처음 설치한 방법 선택",
+      "upgradeNative": "내장 업데이트 도구",
+      "upgradeHint": "별도 터미널에서 {{cli}} CLI를 업데이트합니다. 완료 후 버전을 다시 확인하세요.",
+      "upgradeTerminal": "{{cli}} CLI 업데이트",
       "upgradeStarted": "터미널에서 업데이트를 시작했습니다. 완료 후 버전을 다시 확인하세요.",
       "upgradeFailed": "업데이트 터미널을 열지 못했습니다. 다시 시도하세요.",
       "muteUntilNextVersion": "다음 버전까지 알리지 않음",

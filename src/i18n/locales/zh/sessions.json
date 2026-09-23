@@ -1890,8 +1890,11 @@
     "cliVersionOutdated": {
       "title": "{{cli}} 有新版本",
       "upgrade": "在终端升级",
-      "upgradeHint": "在独立终端升级 Cursor 命令行工具，完成后点击重新检查",
-      "upgradeTerminal": "升级 Cursor 命令行工具",
+      "upgradeDocs": "查看官方文档",
+      "upgradeChooseMethod": "选择原来的安装方式",
+      "upgradeNative": "工具自带更新器",
+      "upgradeHint": "在独立终端升级 {{cli}} 命令行工具，完成后点击重新检查",
+      "upgradeTerminal": "升级 {{cli}} 命令行工具",
       "upgradeStarted": "已在终端启动升级，完成后点击重新检查",
       "upgradeFailed": "无法打开升级终端，请重试",
       "muteUntilNextVersion": "下一版本前不再提醒",

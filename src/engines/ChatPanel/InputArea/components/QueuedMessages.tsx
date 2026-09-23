@@ -53,6 +53,15 @@ export interface QueuedMessagesProps {
   onReorder: (fromIndex: number, toIndex: number) => void;
 }
 
+/**
+ * A submit can briefly enter the real queue while a just-finished turn's
+ * terminal crosses the lifecycle boundary. The dispatcher drains that row as
+ * soon as it confirms the backend is idle. Holding the tray mount for this
+ * short grace period prevents that hand-off from moving the composer for a
+ * single frame, while sustained follow-ups still expose the queue controls.
+ */
+export const QUEUE_TRAY_REVEAL_DELAY_MS = 200;
+
 const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
   ({ messages, onCancel, onSendNow, onReorder }) => {
     const setEditTarget = useSetAtom(queueEditTargetAtom);
@@ -70,6 +79,25 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
     }, [messages, editTarget, setEditTarget]);
 
     const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [trayVisible, setTrayVisible] = useState(false);
+    const hasMessages = messages.length > 0;
+
+    useEffect(() => {
+      if (!hasMessages) {
+        // Keep state writes on timer completions rather than synchronously in
+        // the effect body. Rendering is already suppressed by `hasMessages`,
+        // and this zero-delay reset starts the next non-empty batch hidden.
+        const resetTimer = window.setTimeout(() => {
+          setTrayVisible(false);
+        }, 0);
+        return () => window.clearTimeout(resetTimer);
+      }
+
+      const revealTimer = window.setTimeout(() => {
+        setTrayVisible(true);
+      }, QUEUE_TRAY_REVEAL_DELAY_MS);
+      return () => window.clearTimeout(revealTimer);
+    }, [hasMessages]);
 
     const sensors = useWebViewSensors({ activationDistance: 5 });
     const sortableIds = useMemo(
@@ -118,7 +146,7 @@ const QueuedMessages: React.FC<QueuedMessagesProps> = memo(
       [setEditTarget]
     );
 
-    if (messages.length === 0) return null;
+    if (!hasMessages || !trayVisible) return null;
 
     const draggable = messages.length > 1;
 

@@ -81,20 +81,20 @@ function UpgradeAction({
     if (store.get(stateAtom).phase === "opening" || focusExistingTerminal())
       return;
     store.set(stateAtom, { phase: "opening" });
-    try {
-      // Only registry-provided commands. Labels and versions never enter shell text.
-      // The terminal owns the process; dispatch does not imply upgrade success.
-      const sessionId = await TerminalService.executeInNewSession(command, {
-        name: t("creator.cliVersionOutdated.upgradeTerminal", {
-          cli: agent.displayName,
-        }),
-      });
-      store.set(stateAtom, { phase: "opened", sessionId });
-      Message.info(t("creator.cliVersionOutdated.upgradeStarted"));
-    } catch {
-      store.set(stateAtom, { phase: "idle" });
-      Message.error(t("creator.cliVersionOutdated.upgradeFailed"));
-    }
+    // Only registry-provided commands. Labels and versions never enter shell text.
+    // The terminal owns the process; dispatch does not imply upgrade success.
+    const sessionId = await TerminalService.executeInNewSession(command, {
+      name: t("creator.cliVersionOutdated.upgradeTerminal", {
+        cli: agent.displayName,
+      }),
+    });
+    store.set(stateAtom, { phase: "opened", sessionId });
+    Message.info(t("creator.cliVersionOutdated.upgradeStarted"));
+  };
+
+  const handleUpgradeFailure = () => {
+    store.set(stateAtom, { phase: "idle" });
+    Message.error(t("creator.cliVersionOutdated.upgradeFailed"));
   };
 
   const button = (
@@ -107,7 +107,11 @@ function UpgradeAction({
       })}
       onClick={
         selfUpdate
-          ? () => void openUpgradeTerminal(selfUpdate.command)
+          ? () => {
+              openUpgradeTerminal(selfUpdate.command).catch(
+                handleUpgradeFailure
+              );
+            }
           : undefined
       }
       aria-haspopup={selfUpdate ? undefined : "menu"}
@@ -162,7 +166,8 @@ function UpgradeAction({
           return;
         }
         const method = methods.find((method) => method.id === id);
-        if (method) void openUpgradeTerminal(method.command);
+        if (method)
+          openUpgradeTerminal(method.command).catch(handleUpgradeFailure);
       }}
     >
       {button}

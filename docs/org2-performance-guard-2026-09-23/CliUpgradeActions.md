@@ -22,3 +22,7 @@
 | Source / sync / transport | Not applicable; no provider transcript ingestion, sync or transport change                                     |
 
 Performance verdict: **blocked** for native desktop visible/hidden CPU/RSS and real PTY lifecycle measurement. Behavioral tests and targeted compilation pass, but they are not native performance evidence. The development frontend and native server eventually started in the original shared workspace, but desktop automation reported `Invalid app: org2ai.org2.dev`; no screenshot or native lifecycle measurement was obtained. The isolated PR worktree is verified with targeted tests and static checks. This is a verification limitation, not a measured regression. Actual third-party CLI upgrades have not been executed.
+
+## CI follow-up: explicit promise rejection handling
+
+Both the direct upgrade button and installer menu attach the same rejection handler to terminal launch. Failure returns the captured CLI/store state to idle and emits one error notification; success, single-flight deduplication, remounts and terminal reuse retain their existing ownership. No timers, subscriptions, automatic retries or retained collections were added. Rendered failure/retry/terminal-closure coverage now exercises both Cursor and Codex. The native measurement limitation above remains unchanged.

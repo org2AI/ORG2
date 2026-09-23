@@ -219,18 +219,27 @@ describe("CLI upgrade notice", () => {
     expect(mocks.focus).toHaveBeenCalledOnce();
   });
 
-  it("allows retry after launch failure and after the old terminal is closed", async () => {
-    mocks.execute.mockRejectedValueOnce(new Error("not ready"));
-    render();
-    await act(async () => upgrade().click());
-    expect(mocks.error).toHaveBeenCalledWith("无法打开升级终端，请重试");
-    expect(upgrade().disabled).toBe(false);
-    await act(async () => upgrade().click());
-    expect(mocks.execute).toHaveBeenCalledTimes(2);
-    act(() => store.set(terminalSessionsAtom, []));
-    await act(async () => upgrade().click());
-    expect(mocks.execute).toHaveBeenCalledTimes(3);
-  });
+  it.each(["cursor_cli", "codex"])(
+    "allows %s to retry after launch failure and terminal closure",
+    async (agent) => {
+      const launch = () =>
+        agent === "codex"
+          ? chooseMethod("npm")
+          : act(async () => upgrade().click());
+      mocks.execute.mockRejectedValueOnce(new Error("not ready"));
+      render(agent);
+      await launch();
+      expect(mocks.error).toHaveBeenCalledExactlyOnceWith(
+        "无法打开升级终端，请重试"
+      );
+      expect(upgrade().disabled).toBe(false);
+      await launch();
+      expect(mocks.execute).toHaveBeenCalledTimes(2);
+      act(() => store.set(terminalSessionsAtom, []));
+      await launch();
+      expect(mocks.execute).toHaveBeenCalledTimes(3);
+    }
+  );
 
   it("isolates simultaneous CLI upgrades and late completions", async () => {
     let finish!: (id: string) => void;

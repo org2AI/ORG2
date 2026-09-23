@@ -631,7 +631,7 @@
       "positionDown": "Bas",
       "showQuickActions": "Actions rapides",
       "showSkills": "Skills épinglées",
-      "showCliUpdate": "Mises à jour CLI",
+      "showCliUpdate": "Notifications de mise à jour CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Nouvelle session"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "Une mise à jour de {{cli}} est disponible",
-      "versions": "Actuelle : {{installed}} · Dernière : {{latest}}",
       "upgrade": "Mettre à jour dans le terminal",
       "upgradeHint": "Met à jour Cursor CLI dans un terminal séparé. Vérifiez ensuite la version.",
       "upgradeTerminal": "Mettre à jour Cursor CLI",

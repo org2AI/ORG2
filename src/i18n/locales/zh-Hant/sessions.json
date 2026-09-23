@@ -631,7 +631,7 @@
       "positionDown": "下方",
       "showQuickActions": "快捷操作",
       "showSkills": "釘選 Skills",
-      "showCliUpdate": "CLI 更新",
+      "showCliUpdate": "CLI 版本更新提醒",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新建會話"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} 有新版本",
-      "versions": "目前版本：{{installed}} · 最新版本：{{latest}}",
       "upgrade": "在終端機升級",
       "upgradeHint": "在獨立終端機升級 Cursor 命令列工具，完成後點擊重新檢查",
       "upgradeTerminal": "升級 Cursor 命令列工具",

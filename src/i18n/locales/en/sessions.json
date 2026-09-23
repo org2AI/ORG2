@@ -632,7 +632,7 @@
       "positionDown": "Down",
       "showQuickActions": "Quick actions",
       "showSkills": "Pinned skills",
-      "showCliUpdate": "CLI update",
+      "showCliUpdate": "CLI update notifications",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "New session"
@@ -1908,7 +1908,6 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} has an update",
-      "versions": "Current: {{installed}} · Latest: {{latest}}",
       "upgrade": "Upgrade in terminal",
       "upgradeHint": "Opens a separate terminal to upgrade Cursor CLI. Recheck the version when it finishes.",
       "upgradeTerminal": "Upgrade Cursor CLI",

@@ -1319,7 +1319,7 @@
     "deleteOrgTitle": "Team löschen?",
     "deleteOrgMessage": "\"{{name}}\" wird dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden.",
     "cliUpdateAlerts": {
-      "label": "Auf CLI-Updates hinweisen",
+      "label": "Benachrichtigungen zu CLI-Updates",
       "description": "Prüft CLI-Versionen und weist auf verfügbare Updates hin. Aus deaktiviert die Prüfungen"
     },
     "cliManagedConfig": {

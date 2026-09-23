@@ -631,7 +631,7 @@
       "positionDown": "Unten",
       "showQuickActions": "Schnellaktionen",
       "showSkills": "Angeheftete Skills",
-      "showCliUpdate": "CLI-Updates",
+      "showCliUpdate": "Benachrichtigungen zu CLI-Updates",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Neue Sitzung"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "Update für {{cli}} verfügbar",
-      "versions": "Aktuell: {{installed}} · Neueste: {{latest}}",
       "upgrade": "Im Terminal aktualisieren",
       "upgradeHint": "Aktualisiert Cursor CLI in einem separaten Terminal. Danach die Version erneut prüfen.",
       "upgradeTerminal": "Cursor CLI aktualisieren",

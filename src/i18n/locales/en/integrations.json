@@ -1069,7 +1069,7 @@
   },
   "agentOrgs": {
     "cliUpdateAlerts": {
-      "label": "Alert CLI updates",
+      "label": "CLI update notifications",
       "description": "Check CLI versions and alert when updates are available. Off disables checks"
     },
     "addRule": "Add Policy",

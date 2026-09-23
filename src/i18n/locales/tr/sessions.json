@@ -631,7 +631,7 @@
       "positionDown": "Alt",
       "showQuickActions": "Hızlı eylemler",
       "showSkills": "Sabitlenmiş beceriler",
-      "showCliUpdate": "CLI güncellemeleri",
+      "showCliUpdate": "CLI güncelleme bildirimleri",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Yeni oturum"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} güncellemesi var",
-      "versions": "Mevcut: {{installed}} · En yeni: {{latest}}",
       "upgrade": "Terminalde güncelle",
       "upgradeHint": "Cursor CLI ayrı bir terminalde güncellenir. Tamamlandığında sürümü yeniden kontrol edin.",
       "upgradeTerminal": "Cursor CLI güncellemesi",

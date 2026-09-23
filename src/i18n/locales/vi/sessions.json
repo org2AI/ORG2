@@ -631,7 +631,7 @@
       "positionDown": "Dưới",
       "showQuickActions": "Thao tác nhanh",
       "showSkills": "Kỹ năng đã ghim",
-      "showCliUpdate": "Bản cập nhật CLI",
+      "showCliUpdate": "Thông báo cập nhật CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Phiên mới"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "Có bản cập nhật cho {{cli}}",
-      "versions": "Hiện tại: {{installed}} · Mới nhất: {{latest}}",
       "upgrade": "Cập nhật trong terminal",
       "upgradeHint": "Cập nhật Cursor CLI trong terminal riêng. Kiểm tra lại phiên bản khi hoàn tất.",
       "upgradeTerminal": "Cập nhật Cursor CLI",

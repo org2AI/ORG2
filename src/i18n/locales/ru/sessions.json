@@ -631,7 +631,7 @@
       "positionDown": "Снизу",
       "showQuickActions": "Быстрые действия",
       "showSkills": "Закреплённые навыки",
-      "showCliUpdate": "Обновления CLI",
+      "showCliUpdate": "Уведомления об обновлениях CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Новая сессия"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "Доступно обновление {{cli}}",
-      "versions": "Текущая: {{installed}} · Последняя: {{latest}}",
       "upgrade": "Обновить в терминале",
       "upgradeHint": "Обновление Cursor CLI в отдельном терминале. После завершения проверьте версию.",
       "upgradeTerminal": "Обновление Cursor CLI",

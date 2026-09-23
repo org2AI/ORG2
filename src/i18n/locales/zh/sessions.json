@@ -632,7 +632,7 @@
       "positionDown": "下方",
       "showQuickActions": "快捷操作",
       "showSkills": "固定 Skills",
-      "showCliUpdate": "CLI 更新",
+      "showCliUpdate": "CLI 版本更新提醒",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新建会话"
@@ -1889,7 +1889,6 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} 有新版本",
-      "versions": "当前版本：{{installed}} · 最新版本：{{latest}}",
       "upgrade": "在终端升级",
       "upgradeHint": "在独立终端升级 Cursor 命令行工具，完成后点击重新检查",
       "upgradeTerminal": "升级 Cursor 命令行工具",

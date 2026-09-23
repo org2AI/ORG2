@@ -25,6 +25,12 @@ export const ChatPanelCliVersionWarning: React.FC<
   ChatPanelCliVersionWarningProps
 > = ({ cliVersionAlert }) => {
   const { t } = useTranslation(["sessions", "common"]);
+  const installedVersion =
+    cliVersionAlert.installedVersion ??
+    t("creator.cliVersionOutdated.unknownVersion");
+  const latestVersion =
+    cliVersionAlert.latestVersion ??
+    t("creator.cliVersionOutdated.unknownVersion");
   return (
     <div
       className={`mx-auto w-full ${CHAT_PANEL_WIDTH_TOKENS.contentMaxWidth}`}
@@ -80,18 +86,7 @@ export const ChatPanelCliVersionWarning: React.FC<
         title={t("creator.cliVersionOutdated.title", {
           cli: cliVersionAlert.cliDisplayName,
         })}
-        subtitle={
-          <span className="break-all">
-            {t("creator.cliVersionOutdated.versions", {
-              installed:
-                cliVersionAlert.installedVersion ??
-                t("creator.cliVersionOutdated.unknownVersion"),
-              latest:
-                cliVersionAlert.latestVersion ??
-                t("creator.cliVersionOutdated.unknownVersion"),
-            })}
-          </span>
-        }
+        titleSuffix={`(${installedVersion} > ${latestVersion})`}
       />
     </div>
   );

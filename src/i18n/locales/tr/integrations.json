@@ -1319,7 +1319,7 @@
     "deleteOrgTitle": "Ekip silinsin mi?",
     "deleteOrgMessage": "\"{{name}}\" kalıcı olarak kaldırılacak. Bu işlem geri alınamaz.",
     "cliUpdateAlerts": {
-      "label": "CLI güncellemelerini bildir",
+      "label": "CLI güncelleme bildirimleri",
       "description": "CLI sürümlerini denetle ve güncelleme olduğunda bildir. Kapalı, denetimleri devre dışı bırakır"
     },
     "cliManagedConfig": {

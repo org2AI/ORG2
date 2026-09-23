@@ -631,7 +631,7 @@
       "positionDown": "Dół",
       "showQuickActions": "Szybkie akcje",
       "showSkills": "Przypięte umiejętności",
-      "showCliUpdate": "Aktualizacje CLI",
+      "showCliUpdate": "Powiadomienia o aktualizacjach CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Nowa sesja"
@@ -2002,7 +2002,6 @@
     },
     "cliVersionOutdated": {
       "title": "Dostępna aktualizacja {{cli}}",
-      "versions": "Obecna: {{installed}} · Najnowsza: {{latest}}",
       "upgrade": "Aktualizuj w terminalu",
       "upgradeHint": "Aktualizuje Cursor CLI w osobnym terminalu. Po zakończeniu sprawdź wersję ponownie.",
       "upgradeTerminal": "Aktualizacja Cursor CLI",

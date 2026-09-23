@@ -631,7 +631,7 @@
       "positionDown": "아래",
       "showQuickActions": "빠른 작업",
       "showSkills": "고정된 스킬",
-      "showCliUpdate": "CLI 업데이트",
+      "showCliUpdate": "CLI 업데이트 알림",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "새 세션"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} 업데이트가 있습니다",
-      "versions": "현재: {{installed}} · 최신: {{latest}}",
       "upgrade": "터미널에서 업데이트",
       "upgradeHint": "별도 터미널에서 Cursor CLI를 업데이트합니다. 완료 후 버전을 다시 확인하세요.",
       "upgradeTerminal": "Cursor CLI 업데이트",

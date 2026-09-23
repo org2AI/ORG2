@@ -632,7 +632,7 @@
       "positionDown": "Bawah",
       "showQuickActions": "Tindakan cepat",
       "showSkills": "Skill yang disematkan",
-      "showCliUpdate": "Pembaruan CLI",
+      "showCliUpdate": "Notifikasi pembaruan CLI",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "Sesi baru"
@@ -1908,7 +1908,6 @@
     },
     "cliVersionOutdated": {
       "title": "Pembaruan {{cli}} tersedia",
-      "versions": "Saat ini: {{installed}} · Terbaru: {{latest}}",
       "upgrade": "Perbarui di terminal",
       "upgradeHint": "Memperbarui Cursor CLI di terminal terpisah. Periksa ulang versi setelah selesai.",
       "upgradeTerminal": "Perbarui Cursor CLI",

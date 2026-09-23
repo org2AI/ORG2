@@ -4,6 +4,7 @@ import React, { act } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CliAgentTypeSchema } from "@src/api/tauri/rpc/schemas/validationEnums";
 import zh from "@src/i18n/locales/zh/sessions.json";
 import { terminalSessionsAtom } from "@src/store/workstation/codeEditor/terminal";
 
@@ -50,7 +51,12 @@ describe("CLI upgrade notice", () => {
   let container: HTMLDivElement;
   let store: ReturnType<typeof createStore>;
   const onRefresh = vi.fn();
-  const render = (cliAgentType = "cursor_cli", visible = true, copies = 1) =>
+  const render = (
+    cliAgentType = "cursor_cli",
+    visible = true,
+    copies = 1,
+    displayName = cliAgentType === "codex" ? "Codex" : "Cursor"
+  ) =>
     act(() => {
       root.render(
         React.createElement(
@@ -62,7 +68,7 @@ describe("CLI upgrade notice", () => {
                 key,
                 cliVersionAlert: {
                   cliAgentType,
-                  cliDisplayName: "Cursor",
+                  cliDisplayName: displayName,
                   installedVersion: "2026.09.10-fd3934a",
                   latestVersion: "2026.09.18-9a7762b",
                   refreshing: false,
@@ -93,11 +99,15 @@ describe("CLI upgrade notice", () => {
     container.remove();
   });
 
-  it("explains versions, offers Cursor upgrade, and preserves recheck", async () => {
+  it("shows the version change in one title row, offers Cursor upgrade, and preserves recheck", async () => {
     render();
-    expect(container.textContent).toContain("Cursor 有新版本");
-    expect(container.textContent).toContain("当前版本：2026.09.10-fd3934a");
-    expect(container.textContent).toContain("最新版本：2026.09.18-9a7762b");
+    expect(container.querySelector(".page-notice__text")?.textContent).toBe(
+      "Cursor 有新版本 (2026.09.10-fd3934a > 2026.09.18-9a7762b)"
+    );
+    expect(
+      container.querySelector(".page-notice__text > .font-normal")?.textContent
+    ).toBe(" (2026.09.10-fd3934a > 2026.09.18-9a7762b)");
+    expect(container.querySelectorAll(".page-notice__text")).toHaveLength(1);
     expect(container.querySelector('[aria-label="actions.copy"]')).toBeNull();
     expect(upgrade().textContent).toBe("在终端升级");
     await act(async () => upgrade().click());
@@ -119,6 +129,17 @@ describe("CLI upgrade notice", () => {
       );
     });
     expect(onRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("uses the same title row for every registered CLI type", () => {
+    for (const cliType of CliAgentTypeSchema.options) {
+      const name = cliType.value;
+      render(name, true, 1, name);
+      expect(container.querySelector(".page-notice__text")?.textContent).toBe(
+        `${name} 有新版本 (2026.09.10-fd3934a > 2026.09.18-9a7762b)`
+      );
+      expect(container.querySelectorAll(".page-notice__text")).toHaveLength(1);
+    }
   });
 
   it("deduplicates concurrent notices and remounts, then focuses the same terminal", async () => {
@@ -172,6 +193,9 @@ describe("CLI upgrade notice", () => {
     act(() => upgrade().click());
     render("codex");
     await act(async () => finish("upgrade-terminal"));
+    expect(container.querySelector(".page-notice__text")?.textContent).toBe(
+      "Codex 有新版本 (2026.09.10-fd3934a > 2026.09.18-9a7762b)"
+    );
     expect(upgrade()).toBeNull();
     expect(mocks.execute).toHaveBeenCalledOnce();
     render("cursor_cli", false);

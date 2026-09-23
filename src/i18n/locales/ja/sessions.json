@@ -631,7 +631,7 @@
       "positionDown": "下",
       "showQuickActions": "クイックアクション",
       "showSkills": "ピン留めしたスキル",
-      "showCliUpdate": "CLI の更新",
+      "showCliUpdate": "CLI 更新通知",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "新しいセッション"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} の更新があります",
-      "versions": "現在：{{installed}} · 最新：{{latest}}",
       "upgrade": "ターミナルで更新",
       "upgradeHint": "別のターミナルで Cursor CLI を更新します。完了後にバージョンを再確認してください。",
       "upgradeTerminal": "Cursor CLI を更新",

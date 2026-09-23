@@ -1312,7 +1312,7 @@
     "deleteOrgTitle": "Usunąć zespół?",
     "deleteOrgMessage": "\"{{name}}\" zostanie trwale usunięta. Tej operacji nie można cofnąć.",
     "cliUpdateAlerts": {
-      "label": "Powiadamiaj o aktualizacjach CLI",
+      "label": "Powiadomienia o aktualizacjach CLI",
       "description": "Sprawdzaj wersje CLI i powiadamiaj, gdy dostępne są aktualizacje. Wyłączenie zatrzymuje sprawdzanie"
     },
     "cliManagedConfig": {

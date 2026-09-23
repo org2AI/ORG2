@@ -3,6 +3,9 @@ use rusqlite::{params, OptionalExtension};
 
 use super::*;
 
+#[path = "task_assignment_race_tests.rs"]
+mod task_assignment_race_tests;
+
 const RUN_ID: &str = "task-store-contract-run";
 const ROOT_SESSION: &str = "task-store-contract-root-session";
 const COORDINATOR_TURN: &str = "task-store-contract-coordinator-turn";

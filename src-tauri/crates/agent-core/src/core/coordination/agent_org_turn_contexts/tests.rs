@@ -6,6 +6,9 @@ use rusqlite::{params, Connection};
 use super::*;
 use crate::definitions::orgs::{AgentOrgLaunchSnapshot, FlatOrgMember, PlanApprovalPolicy};
 
+#[path = "wake_admission_tests.rs"]
+mod wake_admission_tests;
+
 const RUN_ID: &str = "run-a";
 const ROOT_SESSION_ID: &str = "session-root";
 const MEMBER_SESSION_ID: &str = "session-member";
@@ -623,6 +626,7 @@ fn member_wake_binds_oldest_dependency_ready_assignment_and_revalidates_at_start
         Some("wake-ready".into()),
         MEMBER_ID,
     )
+    .and_then(WakeAdmission::into_ready)
     .expect("accept ready TaskExecution");
     transaction.commit().expect("commit ready admission");
     assert_eq!(context.turn_kind, AgentOrgTurnKind::TaskExecution);
@@ -695,6 +699,7 @@ fn coordinator_reply_resumes_the_same_in_progress_task_execution() {
         None,
         MEMBER_ID,
     )
+    .and_then(WakeAdmission::into_ready)
     .expect("Coordinator reply resumes exact TaskExecution");
     transaction.commit().expect("commit reply wake");
 
@@ -748,9 +753,9 @@ fn unbound_plain_message_cannot_resume_task_execution() {
         None,
         MEMBER_ID,
     )
-    .expect_err("ordinary chat must not grant TaskExecution authority");
+    .expect("ordinary chat has no formal TaskExecution authority");
     transaction.rollback().expect("rollback rejected wake");
-    assert!(error.contains("no canonical ready"), "{error}");
+    assert!(matches!(error, WakeAdmission::NoReadyWork));
 }
 
 #[test]
@@ -1081,11 +1086,11 @@ fn durable_pause_continuation_excludes_parallel_ordinary_wake_until_terminal() {
         None,
         MEMBER_ID,
     )
-    .expect_err("ordinary Wake must not compete with a live continuation");
+    .expect("ordinary Wake defers to a live continuation");
     transaction
         .rollback()
         .expect("rollback rejected competing Wake");
-    assert!(error.contains("durable Pause continuation"), "{error}");
+    assert!(matches!(error, WakeAdmission::Deferred));
     assert_eq!(
         conn.query_row(
             "SELECT COUNT(*) FROM session_turn_intents WHERE turn_intent_id='turn-duplicate-wake'",
@@ -1113,6 +1118,7 @@ fn durable_pause_continuation_excludes_parallel_ordinary_wake_until_terminal() {
         None,
         MEMBER_ID,
     )
+    .and_then(WakeAdmission::into_ready)
     .expect("ordinary Wake may proceed after continuation is terminal");
     transaction.commit().expect("commit post-continuation Wake");
     assert_eq!(next.member_dispatch_sequence, Some(3));
@@ -1143,9 +1149,9 @@ fn failed_or_cancelled_blockers_never_unlock_a_task_wake() {
         None,
         MEMBER_ID,
     )
-    .expect_err("failed dependency cannot authorize TaskExecution");
+    .expect("failed dependency leaves no ready work");
     transaction.rollback().expect("rollback rejected wake");
-    assert!(error.contains("no canonical ready"), "{error}");
+    assert!(matches!(error, WakeAdmission::NoReadyWork));
 
     conn.execute(
         "UPDATE agent_org_runtime_tasks SET status='completed'
@@ -1164,6 +1170,7 @@ fn failed_or_cancelled_blockers_never_unlock_a_task_wake() {
         None,
         MEMBER_ID,
     )
+    .and_then(WakeAdmission::into_ready)
     .expect("completed dependency authorizes TaskExecution");
     transaction.commit().expect("commit unblocked wake");
     assert_eq!(context.task_id.as_deref(), Some("downstream"));
@@ -1545,15 +1552,17 @@ fn fifty_concurrent_task_wakes_admit_exactly_one_live_execution() {
         .into_iter()
         .map(|handle| handle.join().expect("task-wake thread"))
         .collect::<Vec<_>>();
-    assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
     assert_eq!(
         results
             .iter()
-            .filter(|result| result.as_ref().is_err_and(|error| {
-                error.contains(
-                    crate::coordination::agent_org_finality::TASK_EXECUTION_ALREADY_ACTIVE,
-                )
-            }))
+            .filter(|result| matches!(result, Ok(WakeAdmission::Ready(_))))
+            .count(),
+        1
+    );
+    assert_eq!(
+        results
+            .iter()
+            .filter(|result| matches!(result, Ok(WakeAdmission::Deferred)))
             .count(),
         COUNT - 1
     );

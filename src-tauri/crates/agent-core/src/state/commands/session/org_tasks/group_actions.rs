@@ -738,8 +738,10 @@ async fn rekick_existing(state: &AgentAppState, envelope: &RetryEnvelope) -> Res
             None,
             Some(envelope.identity.run_id.clone()),
             TurnIntentBridgeSource::AgentOrg,
+            None,
         )
-        .await?;
+        .await
+        .and_then(|admission| admission.into_ready())?;
     }
     Ok(())
 }

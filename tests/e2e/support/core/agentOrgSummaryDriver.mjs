@@ -23,6 +23,10 @@ import {
   waitForAgentOrgRunView,
   waitForApp,
 } from "./agentOrgUiDriver.mjs";
+import {
+  probeObsoleteAssignmentWake,
+  sendNewWorkAfterObsoleteWake,
+} from "./agentOrgWakeDriver.mjs";
 
 export async function runSummaryStopScenario(window, { postJson }) {
   if ((process.env.E2E_PROVIDER_MODE ?? "mock") !== "mock")
@@ -89,6 +93,8 @@ export async function runSummaryStopScenario(window, { postJson }) {
   const executionsBefore = rows(
     `SELECT session_id,turn_intent_id FROM agent_org_runtime_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
   );
+  if (window === "before")
+    await probeObsoleteAssignmentWake(runId, { postJson });
   await clickRenderedMemberSwitcher("coordinator", root);
   let streamWindow;
   if (window === "stream")
@@ -251,5 +257,6 @@ export async function runSummaryStopScenario(window, { postJson }) {
     );
     await browser.saveScreenshot(join(folder, `summary-stop-${window}.png`));
   }
+  if (window === "before") await sendNewWorkAfterObsoleteWake(root, runId);
   await invokeE2E("resetToNewSession");
 }

@@ -1005,6 +1005,45 @@ fn persist_task_assignment_fact_in_tx(
         .owner
         .as_deref()
         .ok_or_else(|| "Task assignment fact requires an exact owner".to_string())?;
+    // A dispatch snapshot can outlive completion or reassignment. Validate at
+    // the same writer boundary that serializes those Task mutations, so a late
+    // delivery cannot escape their settlement or create a new Coordinator wake.
+    let (current_status, current_owner, current_generation): (String, Option<String>, i64) = conn
+        .query_row(
+            "SELECT status,owner,activation_generation FROM agent_org_runtime_tasks
+             WHERE org_run_id=?1 AND id=?2",
+            rusqlite::params![&task.org_run_id, &task.id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .map_err(|error| format!("Task assignment current identity lookup failed: {error}"))?;
+    let obsolete = TaskStatus::from_wire(&current_status)?.is_terminal()
+        || current_owner.as_deref() != Some(owner_member_id)
+        || current_generation != task.activation_generation;
+    if obsolete {
+        let row = AgentInboxStore::insert_in_tx_without_formal_trigger(conn, owner_delivery)?;
+        conn.execute(
+            "INSERT INTO agent_org_runtime_inbox_delivery_resolutions (
+                inbox_id,org_run_id,resolution_kind,resolved_by_member_id,reason,created_at
+             ) VALUES (?1,?2,'cancelled','system:task_assignment',?3,?4)",
+            rusqlite::params![
+                row.id,
+                &task.org_run_id,
+                serde_json::json!({
+                    "code": "obsolete_task_assignment",
+                    "task_id": task.id,
+                    "delivery_owner": owner_member_id,
+                    "delivery_generation": task.activation_generation,
+                    "current_status": current_status,
+                    "current_owner": current_owner,
+                    "current_generation": current_generation,
+                })
+                .to_string(),
+                chrono::Utc::now().to_rfc3339(),
+            ],
+        )
+        .map_err(|error| format!("Task assignment cancellation write failed: {error}"))?;
+        return Ok(row.id);
+    }
     let sender_agent_id = owner_delivery.sender_agent_id.clone();
     let sender_member_id = owner_delivery.sender_member_id.clone();
     let owner_row = AgentInboxStore::insert_in_tx(conn, owner_delivery)

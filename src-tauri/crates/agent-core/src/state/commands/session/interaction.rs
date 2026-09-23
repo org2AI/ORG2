@@ -585,8 +585,10 @@ pub(crate) async fn plan_approval_response_impl(
         None,
         None,
         crate::foundation::session_bridge::TurnIntentBridgeSource::UserSubmit,
+        None,
     )
     .await
+    .and_then(|admission| admission.into_ready())
     .map(|_| ())
     .map_err(|err| format!("Failed to kick off Build turn after plan approval: {}", err))
 }

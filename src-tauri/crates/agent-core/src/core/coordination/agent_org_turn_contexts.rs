@@ -436,6 +436,9 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             actor_version INTEGER,
             activation_generation INTEGER,
             coordinator_work_revision INTEGER,
+            coordinator_presented_outputs_json TEXT NOT NULL DEFAULT '[]'
+                CHECK(json_valid(coordinator_presented_outputs_json)=1
+                      AND json_type(coordinator_presented_outputs_json)='array'),
             coordinator_observed_task_ids_json TEXT NOT NULL DEFAULT '[]'
                 CHECK(json_valid(coordinator_observed_task_ids_json)=1
                       AND json_type(coordinator_observed_task_ids_json)='array'

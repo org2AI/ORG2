@@ -304,3 +304,5 @@ export async function captureTerminalFailure(label) {
     console.error("[terminal-diagnostics]", String(error));
   }
 }
+
+export { rows as readOrgEvidence, literal as orgSqlLiteral };

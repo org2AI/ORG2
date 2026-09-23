@@ -50,7 +50,7 @@ impl MemberIdleHook for RecordingMemberIdleHook {
         &self,
         org_run_id: &str,
         coordinator_agent_id: &str,
-        member_id: &str,
+        member_turn: crate::session::turn::member_idle::MemberIdleSource<'_>,
         member_agent_id: &str,
         member_name: &str,
         reason: MemberIdleReason,
@@ -62,7 +62,7 @@ impl MemberIdleHook for RecordingMemberIdleHook {
         self.calls.lock().unwrap().push(IdleCall {
             org_run_id: org_run_id.to_string(),
             coordinator_agent_id: coordinator_agent_id.to_string(),
-            member_id: member_id.to_string(),
+            member_id: member_turn.member_id.to_string(),
             member_agent_id: member_agent_id.to_string(),
             member_name: member_name.to_string(),
             reason,

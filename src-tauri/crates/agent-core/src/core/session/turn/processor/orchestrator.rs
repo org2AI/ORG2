@@ -780,45 +780,6 @@ impl UnifiedMessageProcessor {
             }
         }
 
-        if matches!(final_turn_state, DialogTurnState::Completed) {
-            if let Some(org_context) = self.runtime.agent_org_context.as_ref() {
-                if self.runtime.agent_org_current_member_id.as_deref()
-                    == Some(crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID)
-                {
-                    let observation_session_id = session_id.to_string();
-                    let observation_turn_intent_id = context.turn_intent_id.clone();
-                    match tokio::task::spawn_blocking(move || {
-                        let Some((run_id, committed_revision)) =
-                            crate::coordination::agent_org_finality::final_coordinator_revision_for_turn(
-                                &observation_session_id,
-                                &observation_turn_intent_id,
-                            )?
-                        else {
-                            return Ok::<_, String>(None);
-                        };
-                        crate::coordination::agent_org_runs::AgentOrgRunStore::mark_coordinator_observed_work_revision(
-                            &run_id,
-                            committed_revision,
-                        )
-                    })
-                    .await
-                    {
-                        Ok(Ok(_)) => {}
-                        Ok(Err(error)) => warn!(
-                            run_id = %org_context.run_id,
-                            error = %error,
-                            "[unified_processor] failed to record the final committed Agent Org work revision observed by coordinator provider turn"
-                        ),
-                        Err(error) => warn!(
-                            run_id = %org_context.run_id,
-                            error = %error,
-                            "[unified_processor] coordinator work-revision observation task failed"
-                        ),
-                    }
-                }
-            }
-        }
-
         info!(
             "[unified_processor] Turn {}: session={}, state={:?}, tokens={}, tool_calls={}",
             turn_id, session_id, final_turn_state, result.total_tokens, tool_calls_count
@@ -917,7 +878,13 @@ impl UnifiedMessageProcessor {
             };
             member_idle::maybe_emit_member_idle_with_details(
                 self.runtime.agent_org_context.as_ref(),
-                self.runtime.agent_org_current_member_id.as_deref(),
+                self.runtime
+                    .agent_org_current_member_id
+                    .as_deref()
+                    .map(|member_id| member_idle::MemberIdleSource {
+                        member_id,
+                        turn_intent_id: Some(&context.turn_intent_id),
+                    }),
                 idle_reason,
                 self.agent_mode,
                 None,

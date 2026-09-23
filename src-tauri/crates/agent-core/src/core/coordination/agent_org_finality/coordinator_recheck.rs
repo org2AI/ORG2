@@ -82,6 +82,7 @@ pub(crate) fn record_task_mutation_in_tx(
     Ok(revision)
 }
 
+#[cfg(test)]
 pub(crate) fn final_coordinator_revision_for_turn(
     session_id: &str,
     turn_intent_id: &str,
@@ -181,6 +182,34 @@ pub(crate) fn finalize_turn_in_tx(
         status.intent_status(),
     )?;
     release_turn_lease_in_tx(conn, session_id, turn_intent_id, "released", reason_code)?;
+    let context = crate::coordination::agent_org_turn_contexts::require_context_with_connection(
+        conn,
+        session_id,
+        turn_intent_id,
+    )?;
+    if status == crate::lifecycle::TurnTerminalStatus::Completed
+        && context.source_kind.is_coordinator_root()
+    {
+        if let Some(revision) = context.coordinator_work_revision {
+            crate::coordination::agent_org_runs::mark_coordinator_observed_revision_with_conn(
+                conn,
+                &context.org_run_id,
+                revision,
+            )?;
+        }
+    }
+    if crate::coordination::agent_org_run_completion::recheck_pending_in_tx(
+        conn,
+        &context.org_run_id,
+    )? {
+        conn.execute(
+            "UPDATE agent_org_coordinator_completion_rechecks SET status='resolved',updated_at=?3
+            WHERE source_session_id=?1 AND source_turn_intent_id=?2 AND status='pending'",
+            params![session_id, turn_intent_id, chrono::Utc::now().to_rfc3339()],
+        )
+        .map_err(|e| e.to_string())?;
+        return Ok(Vec::new());
+    }
     materialize_coordinator_recheck_in_tx(conn, session_id, turn_intent_id, status)
 }
 

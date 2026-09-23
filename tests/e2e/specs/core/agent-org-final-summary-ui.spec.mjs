@@ -1,5 +1,10 @@
 /* global describe, before, afterEach, it, process, fetch */
 import {
+  runCompletionWaitScenario,
+  runReworkScenario,
+} from "../../support/core/agentOrgCompletionDriver.mjs";
+import { captureTerminalFailure } from "../../support/core/agentOrgTerminalDriver.mjs";
+import {
   RENDER_TIMEOUT_MS,
   REPLY_TIMEOUT_MS,
   RUN_ID,
@@ -10,6 +15,7 @@ import {
   invokeE2E,
   js,
   openAgentOrgOverviewPanel,
+  openRenderedSidebarSession,
   selectPreferredModel,
   selectRenderedDefaultAgentOrg,
   selectRenderedExecMode,
@@ -50,7 +56,12 @@ describe("Agent Org final summary rendered UI", () => {
     await waitForApp();
   });
 
-  afterEach(async () => {
+  afterEach(async function () {
+    if (this.currentTest?.state === "failed")
+      await captureTerminalFailure(this.currentTest.title);
+    await postJson("/agent/test/session/provider-request-capture", {
+      action: "disarm",
+    });
     if (armedSessionId) {
       await postJson(
         "/agent/test/agent-org/formal-convergence/clear-final-summary-event-store",
@@ -59,6 +70,14 @@ describe("Agent Org final summary rendered UI", () => {
       armedSessionId = null;
     }
     await invokeE2E("resetToNewSession");
+  });
+
+  it("finishes an authorized wait without a model turn to clear late idle notifications", async () => {
+    await runCompletionWaitScenario({ postJson });
+  });
+
+  it("repairs a reviewed defect, verifies the new version and redirects a pending consumer before delivery", async () => {
+    await runReworkScenario();
   });
 
   it("leaves certified evidence visible after EventStore failure and retries only from the rendered button", async () => {
@@ -92,15 +111,15 @@ describe("Agent Org final summary rendered UI", () => {
         const summary = failedView?.finalSummary;
         return Boolean(
           failedView?.taskOverview?.total === 1 &&
-            failedView?.taskOverview?.completed === 1 &&
-            failedView?.completion?.state === "certified" &&
-            failedView?.completion?.outcome === "delivered" &&
-            summary?.attempt === 1 &&
-            summary?.status === "failed" &&
-            summary?.typedError === "event_store_error" &&
-            summary?.canRetry === true &&
-            failedView?.runStatus === "idle" &&
-            failedView?.runPhase === RUN_PHASE.IDLE
+          failedView?.taskOverview?.completed === 1 &&
+          failedView?.completion?.state === "certified" &&
+          failedView?.completion?.outcome === "delivered" &&
+          summary?.attempt === 1 &&
+          summary?.status === "failed" &&
+          summary?.typedError === "event_store_error" &&
+          summary?.canRetry === true &&
+          failedView?.runStatus === "idle" &&
+          failedView?.runPhase === RUN_PHASE.IDLE
         );
       },
       {
@@ -149,10 +168,10 @@ describe("Agent Org final summary rendered UI", () => {
         ).view;
         return Boolean(
           activeRetryView?.finalSummary?.attempt === 2 &&
-            ["pending", "running", "persisting"].includes(
-              activeRetryView?.finalSummary?.status
-            ) &&
-            activeRetryView?.runPhase === RUN_PHASE.FINALIZING
+          ["pending", "running", "persisting"].includes(
+            activeRetryView?.finalSummary?.status
+          ) &&
+          activeRetryView?.runPhase === RUN_PHASE.FINALIZING
         );
       },
       {
@@ -172,10 +191,10 @@ describe("Agent Org final summary rendered UI", () => {
         ).view;
         return Boolean(
           persistedView?.finalSummary?.attempt === 2 &&
-            persistedView?.finalSummary?.status === "persisted" &&
-            persistedView?.finalSummary?.eventId &&
-            persistedView?.runStatus === "idle" &&
-            persistedView?.runPhase === RUN_PHASE.IDLE
+          persistedView?.finalSummary?.status === "persisted" &&
+          persistedView?.finalSummary?.eventId &&
+          persistedView?.runStatus === "idle" &&
+          persistedView?.runPhase === RUN_PHASE.IDLE
         );
       },
       {
@@ -187,19 +206,16 @@ describe("Agent Org final summary rendered UI", () => {
     );
 
     if (
-      await execJS(
-        js.exists('[data-testid="agent-org-final-summary-failed"]')
-      )
+      await execJS(js.exists('[data-testid="agent-org-final-summary-failed"]'))
     ) {
-      throw new Error("Failed final report card remained after persisted Retry");
+      throw new Error(
+        "Failed final report card remained after persisted Retry"
+      );
     }
 
-    await browser.refresh();
+    await browser.reloadSession();
     await waitForApp();
-    unwrap(
-      await invokeE2E("openSession", sessionId),
-      "openSession(final summary EventStore reload)"
-    );
+    await openRenderedSidebarSession(sessionId);
     await waitForAgentOrgRunView(
       sessionId,
       (view) =>
@@ -207,12 +223,25 @@ describe("Agent Org final summary rendered UI", () => {
         view?.finalSummary?.eventId === persistedView.finalSummary.eventId,
       "persisted final summary after reload"
     );
-    const chat = unwrap(
-      await invokeE2E("inspectChatState"),
-      "inspectChatState(final summary EventStore reload)"
-    );
-    const finalEvent = (chat.rawEvents ?? []).find(
-      (event) => event.id === persistedView.finalSummary.eventId
+    let finalEvent;
+    // The run projection is fetched separately from transcript hydration.
+    // Wait for the exact persisted event, not merely the receipt projection.
+    await browser.waitUntil(
+      async () => {
+        const chat = unwrap(
+          await invokeE2E("inspectChatState"),
+          "inspectChatState(final summary EventStore reload)"
+        );
+        finalEvent = (chat.rawEvents ?? []).find(
+          (event) => event.id === persistedView.finalSummary.eventId
+        );
+        return Boolean(finalEvent);
+      },
+      {
+        timeout: RENDER_TIMEOUT_MS,
+        interval: 150,
+        timeoutMsg: "Persisted final summary did not hydrate after app restart",
+      }
     );
     if (
       finalEvent?.result?.agent_org_completion_certificate?.id !==

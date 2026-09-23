@@ -838,6 +838,30 @@ impl UnifiedEventHandler {
 
 #[async_trait]
 impl TurnEventHandler for UnifiedEventHandler {
+    async fn on_provider_request(
+        &self,
+        session_id: &str,
+        messages: &[Value],
+    ) -> Result<(), String> {
+        let Some(turn_intent_id) = self.config.agent_org_turn_intent_id.clone() else {
+            return Ok(());
+        };
+        let session_id = session_id.to_string();
+        let messages = crate::coordination::agent_org_run_completion::presentation_input(messages);
+        if messages.is_empty() {
+            return Ok(());
+        }
+        tokio::task::spawn_blocking(move || {
+            crate::coordination::agent_org_run_completion::record_provider_presentation(
+                &session_id,
+                &turn_intent_id,
+                &messages,
+            )
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+
     fn on_message_delta(&self, session_id: &str, content: &str) {
         if self.is_cancelled() {
             return;

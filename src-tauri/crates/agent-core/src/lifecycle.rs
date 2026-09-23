@@ -560,7 +560,9 @@ pub fn finalize_agent_org_member_turn(
                     .collect();
                 crate::session::turn::member_idle::maybe_emit_member_idle_with_details(
                     Some(&snapshot.context),
-                    Some(&snapshot.member_id),
+                    Some(crate::session::turn::member_idle::MemberIdleSource {
+                        member_id: &snapshot.member_id, turn_intent_id,
+                    }),
                     MemberIdleReason::Failed,
                     snapshot.agent_exec_mode,
                     Some("Member failed; inspect failure_reason for requeued tasks and recovery guidance.".to_string()),
@@ -896,6 +898,35 @@ pub async fn finalize_session(
         }
 
         emit_session_status_changed(app_handle, session_id, final_status);
+    }
+
+    if is_agent_org_member_session && authority_error.is_none() {
+        if let Some(intent) = terminal_turn
+            .as_ref()
+            .and_then(|signal| signal.turn_intent_id.clone())
+        {
+            let sid = session_id.to_string();
+            match tokio::task::spawn_blocking(move || {
+                crate::coordination::agent_org_run_completion::recheck_after_turn(&sid, &intent)
+            })
+            .await
+            {
+                Ok(Ok((run_id, receipts))) => {
+                    if !receipts.is_empty() {
+                        if let Some(handle) = app_handle {
+                            use crate::tools::impls::orchestration::org_send_message::InboxWakeHook;
+                            crate::tools::impls::orchestration::inbox_wake::AppHandleInboxWakeHook::new(handle.clone())
+                                .wake_member_for_formal_receipts("coordinator",&run_id,&receipts);
+                        }
+                    }
+                }
+                result => tracing::warn!(
+                    session_id,
+                    ?result,
+                    "completion recheck after terminal persistence failed"
+                ),
+            }
+        }
     }
 
     if final_status.is_terminal() {

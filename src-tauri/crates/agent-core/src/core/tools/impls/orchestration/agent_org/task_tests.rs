@@ -21,6 +21,11 @@ use super::task_list_get::{TaskGetTool, TaskListTool};
 use super::task_update::TaskUpdateTool;
 use super::TaskToolsContext;
 
+#[path = "completion_wait_tests.rs"]
+mod completion_wait_tests;
+#[path = "rework_tests.rs"]
+mod rework_tests;
+
 const RUN_ID: &str = "run-task-tools";
 const ROOT_SESSION: &str = "root-task-tools";
 const COORDINATOR_TURN: &str = "turn-coordinator-task-tools";
@@ -678,6 +683,14 @@ async fn completion_request_replays_without_rewriting_progress() {
         .unwrap();
     assert_eq!(replay, first);
     assert_eq!(progress_after, progress_before);
+    let certificates: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM agent_org_runtime_run_completion_certificates WHERE org_run_id=?1",
+        [RUN_ID], |row| row.get(0),
+    ).unwrap();
+    assert_eq!(
+        certificates, 0,
+        "a running Coordinator has not committed its completion authority"
+    );
 }
 
 #[tokio::test]

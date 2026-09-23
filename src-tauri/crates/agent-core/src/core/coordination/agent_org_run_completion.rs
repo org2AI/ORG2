@@ -10,6 +10,18 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 
+mod notifications;
+mod pending;
+mod presentation;
+#[cfg(test)]
+pub(crate) use pending::recheck_pending;
+pub(crate) use pending::{completion_handles_wake, reconcile_after_restart};
+pub(crate) use pending::{
+    recheck_after_turn, recheck_after_wake, recheck_pending_in_tx, settle_completion_only_wake,
+    submit_in_tx, CompletionSubmission,
+};
+pub(crate) use presentation::{presentation_input, record_provider_presentation};
+
 use super::agent_org_runs::{
     guaranteed_current_turn_effects_with_connection, AgentOrgRunStatus, AgentOrgRunStore,
     COORDINATOR_MEMBER_ID,
@@ -461,7 +473,7 @@ fn try_assess_delivered_candidate_with_connection(
         ));
     }
 
-    let guaranteed = guaranteed_current_turn_effects_with_connection(
+    let mut guaranteed = guaranteed_current_turn_effects_with_connection(
         conn,
         org_run_id,
         quiescence.facts.root_session_id.as_deref(),
@@ -469,7 +481,34 @@ fn try_assess_delivered_candidate_with_connection(
         coordinator_turn_intent_id,
         projected_inbox_ids,
     )?;
-    let non_task_blockers = completion_non_task_blockers(quiescence, guaranteed);
+    let notifications = notifications::assess_notifications(
+        conn,
+        org_run_id,
+        &work_episode.id,
+        &RunCompletionCandidate {
+            request_id: "assessment",
+            request_digest: "",
+            outcome: RunCompletionOutcome::Delivered,
+            summary: "assessment",
+            evidence_task_ids: &[],
+            coordinator_session_id,
+            coordinator_turn_intent_id,
+            projected_inbox_ids,
+        },
+    )?;
+    guaranteed.unread_inbox_rows += notifications.reconciliable_blocking_count;
+    // Idle envelopes are only a hint until their exact producer is terminal.
+    // Read-only readiness must use the same proof as the committing owner.
+    guaranteed.terminal_member_ids.clear();
+    guaranteed.terminal_worker_turn_intents = 0;
+    let mut non_task_blockers = completion_non_task_blockers(quiescence, guaranteed);
+    if notifications.needs_model
+        && !non_task_blockers
+            .iter()
+            .any(|b| matches!(b, RunCompletionCandidateBlocker::UnreadInbox { .. }))
+    {
+        non_task_blockers.push(RunCompletionCandidateBlocker::UnreadInbox { count: 1 });
+    }
     if !non_task_blockers.is_empty() {
         return Ok(RunCompletionCandidateAssessment::new(
             RunCompletionCandidateState::Blocked,
@@ -513,17 +552,8 @@ fn try_assess_delivered_candidate_with_connection(
         ));
     }
 
-    let episode_task_ids = crate::coordination::agent_org_work_episodes::task_ids_with_connection(
-        conn,
-        org_run_id,
-        &work_episode.id,
-    )?
-    .into_iter()
-    .collect::<HashSet<_>>();
-    let tasks = AgentOrgTaskStore::list_with_connection(conn, org_run_id)?
-        .into_iter()
-        .filter(|task| episode_task_ids.contains(&task.id))
-        .collect::<Vec<_>>();
+    let tasks =
+        AgentOrgTaskStore::list_for_episode_with_connection(conn, org_run_id, &work_episode.id)?;
     if quiescence.facts.unresolved_handoff_count > 0 {
         return Ok(RunCompletionCandidateAssessment::new(
             RunCompletionCandidateState::Blocked,
@@ -678,17 +708,8 @@ pub fn certify_in_tx(
         candidate.projected_inbox_ids,
     )?;
 
-    let episode_task_ids = crate::coordination::agent_org_work_episodes::task_ids_with_connection(
-        conn,
-        org_run_id,
-        &work_episode.id,
-    )?
-    .into_iter()
-    .collect::<HashSet<_>>();
-    let tasks = AgentOrgTaskStore::list_with_connection(conn, org_run_id)?
-        .into_iter()
-        .filter(|task| episode_task_ids.contains(&task.id))
-        .collect::<Vec<_>>();
+    let tasks =
+        AgentOrgTaskStore::list_for_episode_with_connection(conn, org_run_id, &work_episode.id)?;
     if tasks.is_empty() {
         return Err("run_completion_no_formal_tasks".to_string());
     }
@@ -886,17 +907,8 @@ fn certify_user_handoff_cancellation_in_tx(
     if receipt.is_none_or(|(_, resolution)| resolution.as_deref() != Some(expected_resolution)) {
         return Err("run_completion_user_handoff_receipt_invalid".to_string());
     }
-    let episode_task_ids = crate::coordination::agent_org_work_episodes::task_ids_with_connection(
-        conn,
-        org_run_id,
-        &work_episode.id,
-    )?
-    .into_iter()
-    .collect::<HashSet<_>>();
-    let tasks = AgentOrgTaskStore::list_with_connection(conn, org_run_id)?
-        .into_iter()
-        .filter(|task| episode_task_ids.contains(&task.id))
-        .collect::<Vec<_>>();
+    let tasks =
+        AgentOrgTaskStore::list_for_episode_with_connection(conn, org_run_id, &work_episode.id)?;
     if tasks.is_empty() || tasks.iter().any(|task| task.status.is_open()) {
         return Err("run_completion_user_abandon_has_open_tasks".to_string());
     }

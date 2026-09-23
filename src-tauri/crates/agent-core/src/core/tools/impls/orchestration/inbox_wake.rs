@@ -246,6 +246,19 @@ async fn wake_one_member(
         }
     }
 
+    if member_id == crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID {
+        let run_id = org_run_id.to_string();
+        match tokio::task::spawn_blocking(move || {
+            crate::coordination::agent_org_run_completion::completion_handles_wake(&run_id)
+        })
+        .await
+        {
+            Ok(Ok(true)) => return WakeRequestOutcome::Coalesced,
+            Ok(Ok(false)) => {}
+            Ok(Err(error)) => return WakeRequestOutcome::Failed(error),
+            Err(error) => return WakeRequestOutcome::Failed(error.to_string()),
+        }
+    }
     // Direct user chat temporarily owns this member's next turn. Dispatching
     // an empty resume while the intervention is active cannot drain the inbox;
     // the lifecycle race guard would then see the same unread row and enqueue
@@ -477,7 +490,7 @@ async fn wake_session(
         formal_receipt_batch_id,
     )
     .await;
-    match result {
+    let outcome = match result {
         Ok(response) => {
             let coalesced = serde_json::from_str::<serde_json::Value>(&response.content)
                 .ok()
@@ -527,7 +540,23 @@ async fn wake_session(
             );
             WakeRequestOutcome::Failed(err)
         }
+    };
+    let recheck_run_id = org_run_id.to_string();
+    match tokio::task::spawn_blocking(move || {
+        crate::coordination::agent_org_run_completion::recheck_after_wake(&recheck_run_id)
+    })
+    .await
+    {
+        Ok(Ok(receipts)) if !receipts.is_empty() => AppHandleInboxWakeHook::new(app_handle)
+            .wake_member_for_formal_receipts("coordinator", org_run_id, &receipts),
+        Ok(Ok(_)) => {}
+        result => warn!(
+            org_run_id,
+            ?result,
+            "completion recheck after wake reservation release failed"
+        ),
     }
+    outcome
 }
 
 #[cfg(test)]

@@ -235,11 +235,27 @@ pub(crate) fn build_agent_org_context_section_with_task_snapshot(
     lines.push(String::new());
     if current_member_id == Some(COORDINATOR_MEMBER_ID) {
         lines.push(
+            "Carry each requested deliverable and acceptance criterion into task descriptions, including requested test files and actual test execution. Create dependent verification work that consumes the implementation result. A task's Completed status proves its recorded lifecycle, not that every user requirement was met. Compare actual TaskOutput evidence against the request before delivery. When evidence shows a missing deliverable, failed verification, or a test suite that ran no tests, create the missing work or a repair followed by independent re-verification; do not downgrade a requested check to an optional limitation. If a real environment or permission blocker prevents it, report that blocker and the unverified scope explicitly."
+                .to_string(),
+        );
+        lines.push(
+            "A promise to assign, inspect, or fix work is not execution. When a user authorizes Team work or an actionable member result requires coordination, call the necessary task tools in this Turn before ending. For example, 'also add examples' requires a Task and its verification, not a reply saying you will arrange it. Ordinary questions need no Task. End and wait only when durable dependencies, approval, or an explicit blocker require it; do not invent repeated model turns or poll for progress."
+                .to_string(),
+        );
+        lines.push(
+            "For rework, edit Pending tasks with patch_pending; replace changed InProgress work with cancel_and_replace; preserve Completed/Failed/Cancelled results and create a new Task with replaces_task_id. cancel_and_replace does not redirect downstream dependencies. Inspect the task graph after replacement and update each affected Pending consumer with `patch_pending` with the complete updated `blocked_by` list, substituting the replacement ID and preserving unrelated dependencies. Do this before yielding. For example, if review B waits for implementation A and A is replaced by A2, patch B to wait for A2. Completed tests of the old version do not verify the replacement: create a new dependent review/test task for the new version. Do not rewrite terminal evidence, impersonate owners, or run member work yourself."
+                .to_string(),
+        );
+        lines.push(
             "The atomic completion-candidate snapshot below is the only prompt-level readiness guidance. It is not a certificate: only `org_run_complete` can revalidate and create delivery authority. Never announce Delivered from open-task counts, free text, or Quiescence alone."
                 .to_string(),
         );
         lines.push(String::new());
     }
+    lines.push(
+        "TaskOutput must state the actual checks performed, their observed results, and evidence locations in content/artifact_ids, distinguishing implemented, verified, and unverified work. Missing tools, zero discovered tests, skipped checks, or static inspection alone do not satisfy requested runtime verification. Complete an implementation or review deliverable with honest evidence; if it reveals unmet acceptance criteria, report the gap in the output so the Coordinator can schedule repair and re-verification. Do not claim all requested work is verified from a successful command exit alone."
+            .to_string(),
+    );
     lines.push(
         "When you receive `MemberIdle` with non-empty `unfinished_task_ids`, do not wait silently: ask that owner to finish its lifecycle or use `operation=cancel_and_replace` for changed in-progress work. When `reason=failed`, the failed member's in-progress tasks become ownerless Pending rows; inspect eligibility and choose a new owner explicitly with `task_update operation=patch_pending owner_member_id=...`. Workers never self-claim ownerless work. Never assign outside `eligible_member_ids`, and do not ask one member to inspect another member's private failed context. If no recovery is possible, pause and report to the user."
             .to_string(),

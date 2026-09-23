@@ -942,6 +942,39 @@ pub(crate) async fn send_message_impl(
                     "{USER_DIRECTED_CANCELLED_ERROR_PREFIX} exact Turn was stopped before start"
                 ));
             }
+            // Recheck an already queued doorbell against the completion
+            // owner's durable disposition before starting a Provider.
+            if is_resume && intent_org_run_id.is_some() {
+                let check_session = sid.clone();
+                let check_intent = turn_intent_id.clone();
+                let absorbed = tokio::task::spawn_blocking(move || {
+                    crate::coordination::agent_org_run_completion::settle_completion_only_wake(
+                        &check_session,
+                        &check_intent,
+                    )
+                })
+                .await
+                .map_err(|e| e.to_string())??;
+                if absorbed {
+                    let check_session = sid.clone();
+                    let check_intent = turn_intent_id.clone();
+                    let (run_id, receipts) = tokio::task::spawn_blocking(move || {
+                        crate::coordination::agent_org_run_completion::recheck_after_turn(
+                            &check_session,
+                            &check_intent,
+                        )
+                    })
+                    .await
+                    .map_err(|e| e.to_string())??;
+                    if let Some(handle) = app_handle.as_ref().filter(|_| !receipts.is_empty()) {
+                        use crate::tools::impls::orchestration::org_send_message::InboxWakeHook;
+                        crate::tools::impls::orchestration::inbox_wake::AppHandleInboxWakeHook::new(handle.clone())
+                            .wake_member_for_formal_receipts("coordinator",&run_id,&receipts);
+                    }
+                    return Ok(crate::session::scheduler::ExecutionCompletion::NotAccepted);
+                }
+            }
+
             // Clear a stale pre-turn cancel signal before the durable
             // Agent Org gate. This must happen before that gate: deletion may
             // establish its cancelled fence immediately after the DB claim

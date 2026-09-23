@@ -215,6 +215,16 @@ pub struct ToolHookIntervention {
 // Event implementations share this callback contract across providers; keep
 // its event fields explicit instead of introducing provider-specific wrappers.
 pub trait TurnEventHandler: Send + Sync {
+    /// Observe the final request after compaction/truncation, before dispatch.
+    /// Session adapters may retain exact presentation evidence for this Turn.
+    async fn on_provider_request(
+        &self,
+        _session_id: &str,
+        _messages: &[serde_json::Value],
+    ) -> Result<(), String> {
+        Ok(())
+    }
+
     /// Called for each streaming text delta from the LLM.
     fn on_message_delta(&self, session_id: &str, content: &str);
 

@@ -285,9 +285,11 @@ mod restart_reconciliation;
 mod scope_closure;
 mod task_delivery_settlement;
 
+#[cfg(test)]
+pub(crate) use coordinator_recheck::final_coordinator_revision_for_turn;
+
 pub(crate) use coordinator_recheck::{
-    final_coordinator_revision_for_turn, finalize_turn, finalize_turn_in_tx,
-    record_task_mutation_in_tx, terminal_turn_is_current,
+    finalize_turn, finalize_turn_in_tx, record_task_mutation_in_tx, terminal_turn_is_current,
 };
 pub(crate) use execution_authority::{
     claim_task_execution_in_tx, freeze_run_generation_leases_in_tx, release_turn_lease_in_tx,

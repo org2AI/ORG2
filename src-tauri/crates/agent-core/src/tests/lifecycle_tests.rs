@@ -327,7 +327,13 @@ fn successful_empty_coordinator_finalize_does_not_observe_staged_work() {
     // This is the lifecycle shape of WakeNoop: processing returned Ok,
     // but no provider turn ran. Finalization must not promote a staged
     // revision merely because the outer scheduler call succeeded.
-    finalize_agent_org_member_turn(None, "root-session", None, &Ok(String::new()));
+    finalize_agent_org_member_turn(
+        None,
+        "root-session",
+        None,
+        &Ok(String::new()),
+        TurnTerminalStatus::Completed,
+    );
 
     let progress = AgentOrgRunStore::progress(&run_id)
         .expect("load progress after no-op")
@@ -403,7 +409,13 @@ async fn successful_member_finalize_keeps_in_progress_work_owned() {
     );
 
     let ok = Ok("done with this turn".to_string());
-    finalize_agent_org_member_turn(None, "member-session", None, &ok);
+    finalize_agent_org_member_turn(
+        None,
+        "member-session",
+        None,
+        &ok,
+        TurnTerminalStatus::Completed,
+    );
     assert!(
         crate::coordination::agent_org_watchdog::test_only_mark_failed_rewake_attempt(
             &run_id,
@@ -558,8 +570,20 @@ fn successful_cancelled_turn_does_not_blanket_resolve_member_inbox() {
     });
 
     let ok = Ok("the old Provider Turn ended naturally".to_string());
-    finalize_agent_org_member_turn(None, "member-session", None, &ok);
-    finalize_agent_org_member_turn(None, "member-session", None, &ok);
+    finalize_agent_org_member_turn(
+        None,
+        "member-session",
+        None,
+        &ok,
+        TurnTerminalStatus::Completed,
+    );
+    finalize_agent_org_member_turn(
+        None,
+        "member-session",
+        None,
+        &ok,
+        TurnTerminalStatus::Completed,
+    );
 
     let (unread_rows, resolutions): (i64, i64) = conn
         .query_row(
@@ -619,6 +643,7 @@ fn successful_turn_keeps_formal_rows_pending_when_member_still_owns_work() {
         "member-session",
         None,
         &Ok("turn boundary".to_string()),
+        TurnTerminalStatus::Completed,
     );
 
     assert!(
@@ -649,7 +674,13 @@ async fn failed_member_finalize_releases_task_for_coordinator_assignment() {
     seed_task_execution_turn(&run_id, "failed-task", "turn-failed-task");
 
     let error = Err("HTTP 429: rate limit exceeded".to_string());
-    finalize_agent_org_member_turn(None, "member-session", Some("turn-failed-task"), &error);
+    finalize_agent_org_member_turn(
+        None,
+        "member-session",
+        Some("turn-failed-task"),
+        &error,
+        TurnTerminalStatus::Failed,
+    );
 
     let task = AgentOrgTaskStore::get(&run_id, "failed-task")
         .unwrap()
@@ -719,7 +750,13 @@ fn deterministic_sibling_terminal_failure_never_requeues_completed_task() {
         "the completed target belongs to turn-winner",
     )
     .encode();
-    finalize_agent_org_member_turn(None, "member-session", Some("turn-loser"), &Err(failure));
+    finalize_agent_org_member_turn(
+        None,
+        "member-session",
+        Some("turn-loser"),
+        &Err(failure),
+        TurnTerminalStatus::Failed,
+    );
 
     let task = AgentOrgTaskStore::get(&run_id, "sibling-terminal-task")
         .unwrap()
@@ -768,7 +805,13 @@ async fn failed_member_finalize_releases_even_when_only_failed_member_is_eligibl
     seed_task_execution_turn(&run_id, "solo-task", "turn-solo-task");
 
     let error = Err("HTTP 500: provider exploded".to_string());
-    finalize_agent_org_member_turn(None, "member-session", Some("turn-solo-task"), &error);
+    finalize_agent_org_member_turn(
+        None,
+        "member-session",
+        Some("turn-solo-task"),
+        &error,
+        TurnTerminalStatus::Failed,
+    );
 
     let task = AgentOrgTaskStore::get(&run_id, "solo-task")
         .unwrap()
@@ -916,4 +959,257 @@ fn startup_recovery_keyset_scan_is_not_capped_at_first_hundred_runs() {
     assert_eq!(plan.inspected_runs, 105);
     assert_eq!(plan.recovered_task_count(), 0);
     assert!(plan.failures.is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cancelled_formal_turn_keeps_exact_terminal_outcome() {
+    let _serial = test_serial_guard();
+    let _sandbox = test_helpers::test_env::sandbox();
+    let run_id = seed_run("builtin:sde");
+    seed_in_progress_task(&run_id, "cancelled-work");
+    seed_task_execution_turn(&run_id, "cancelled-work", "cancelled-intent");
+
+    // A stopped provider loop is allowed to return Ok. The explicit terminal
+    // signal, not that transport return value, owns the persisted outcome.
+    tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(finalize_session(
+            "member-session",
+            &Ok(String::new()),
+            None,
+            None,
+            false,
+            Some(TerminalTurnSignal {
+                turn_id: "cancelled-dialog".into(),
+                turn_intent_id: Some("cancelled-intent".into()),
+                status: TurnTerminalStatus::Cancelled,
+                completed_at: chrono::Utc::now().to_rfc3339(),
+            }),
+        ))
+    });
+
+    let conn = database::db::get_connection().unwrap();
+    let status: String = conn
+        .query_row(
+            "SELECT status FROM session_turn_intents
+         WHERE session_id='member-session' AND turn_intent_id='cancelled-intent'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(status, "cancelled");
+    let task = AgentOrgTaskStore::get(&run_id, "cancelled-work")
+        .unwrap()
+        .unwrap();
+    assert_eq!(task.status, TaskStatus::InProgress);
+    assert_eq!(task.owner.as_deref(), Some("member-worker"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn failed_terminal_requeues_only_bound_task_and_duplicate_is_inert() {
+    let _serial = test_serial_guard();
+    let _sandbox = test_helpers::test_env::sandbox();
+    let hook = Arc::new(RecordingMemberIdleHook::default());
+    let _hook = MemberIdleHookGuard::install(hook.clone());
+    let run_id = seed_run("builtin:sde");
+    seed_in_progress_task(&run_id, "failed-bound-work");
+    seed_in_progress_task(&run_id, "unrelated-work");
+    seed_task_execution_turn(&run_id, "failed-bound-work", "failed-bound-intent");
+    let terminal = TerminalTurnSignal {
+        turn_id: "failed-bound-dialog".into(),
+        turn_intent_id: Some("failed-bound-intent".into()),
+        status: TurnTerminalStatus::Failed,
+        completed_at: chrono::Utc::now().to_rfc3339(),
+    };
+    for _ in 0..2 {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(finalize_session(
+                "member-session",
+                &Err("provider unavailable".into()),
+                None,
+                None,
+                false,
+                Some(terminal.clone()),
+            ))
+        });
+    }
+    let bound = AgentOrgTaskStore::get(&run_id, "failed-bound-work")
+        .unwrap()
+        .unwrap();
+    let unrelated = AgentOrgTaskStore::get(&run_id, "unrelated-work")
+        .unwrap()
+        .unwrap();
+    assert_eq!(bound.status, TaskStatus::Pending);
+    assert_eq!(bound.owner, None);
+    assert_eq!(unrelated.status, TaskStatus::InProgress);
+    assert_eq!(unrelated.owner.as_deref(), Some("member-worker"));
+    let notices = hook.snapshot();
+    assert_eq!(
+        notices.len(),
+        1,
+        "duplicate finalization cannot notify or requeue twice"
+    );
+    assert_eq!(notices[0].unfinished_task_ids, vec!["failed-bound-work"]);
+    let conn = database::db::get_connection().unwrap();
+    let terminal: (String, String, String) = conn
+        .query_row(
+            "SELECT intent.status,session.last_terminal_turn_id,session.last_terminal_turn_status
+         FROM session_turn_intents intent JOIN agent_sessions session USING(session_id)
+         WHERE intent.session_id='member-session' AND intent.turn_intent_id='failed-bound-intent'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(
+        terminal,
+        (
+            "failed".into(),
+            "failed-bound-dialog".into(),
+            "failed".into()
+        )
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn stale_generation_terminal_cannot_change_new_execution_or_notify() {
+    let _serial = test_serial_guard();
+    let _sandbox = test_helpers::test_env::sandbox();
+    let hook = Arc::new(RecordingMemberIdleHook::default());
+    let _hook = MemberIdleHookGuard::install(hook.clone());
+    let run_id = seed_run("builtin:sde");
+    seed_in_progress_task(&run_id, "old-work");
+    seed_task_execution_turn(&run_id, "old-work", "old-intent");
+    let conn = database::db::get_connection().unwrap();
+    conn.execute(
+        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id=?1",
+        [&run_id],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE agent_sessions SET status='running' WHERE session_id='member-session'",
+        [],
+    )
+    .unwrap();
+    for status in [
+        TurnTerminalStatus::Completed,
+        TurnTerminalStatus::Failed,
+        TurnTerminalStatus::Cancelled,
+    ] {
+        let response = if status == TurnTerminalStatus::Failed {
+            Err("late provider error".into())
+        } else {
+            Ok(String::new())
+        };
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(finalize_session(
+                "member-session",
+                &response,
+                None,
+                None,
+                false,
+                Some(TerminalTurnSignal {
+                    turn_id: "old-dialog".into(),
+                    turn_intent_id: Some("old-intent".into()),
+                    status,
+                    completed_at: chrono::Utc::now().to_rfc3339(),
+                }),
+            ))
+        });
+    }
+    let persisted: (String, Option<String>) = conn.query_row(
+        "SELECT status,last_terminal_turn_id FROM agent_sessions WHERE session_id='member-session'",
+        [], |row| Ok((row.get(0)?, row.get(1)?)),
+    ).unwrap();
+    assert_eq!(persisted, ("running".into(), None));
+    assert_eq!(
+        AgentOrgTaskStore::get(&run_id, "old-work")
+            .unwrap()
+            .unwrap()
+            .status,
+        TaskStatus::InProgress
+    );
+    assert!(hook.snapshot().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cancelled_terminal_with_transport_error_does_not_recover_or_notify_failure() {
+    let _serial = test_serial_guard();
+    let _sandbox = test_helpers::test_env::sandbox();
+    let hook = Arc::new(RecordingMemberIdleHook::default());
+    let _hook = MemberIdleHookGuard::install(hook.clone());
+    let run_id = seed_run("builtin:sde");
+    seed_in_progress_task(&run_id, "stopped-work");
+    seed_task_execution_turn(&run_id, "stopped-work", "stopped-intent");
+    let status = tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(finalize_session(
+            "member-session",
+            &Err("stream closed by Stop".into()),
+            None,
+            None,
+            false,
+            Some(TerminalTurnSignal {
+                turn_id: "stopped-dialog".into(),
+                turn_intent_id: Some("stopped-intent".into()),
+                status: TurnTerminalStatus::Cancelled,
+                completed_at: chrono::Utc::now().to_rfc3339(),
+            }),
+        ))
+    });
+    assert_eq!(status, AgentSessionStatus::Idle);
+    assert_eq!(
+        AgentOrgTaskStore::get(&run_id, "stopped-work")
+            .unwrap()
+            .unwrap()
+            .status,
+        TaskStatus::InProgress
+    );
+    assert!(hook.snapshot().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn provider_error_after_task_output_does_not_undo_committed_work() {
+    let _serial = test_serial_guard();
+    let _sandbox = test_helpers::test_env::sandbox();
+    let run_id = seed_run("builtin:sde");
+    seed_in_progress_task(&run_id, "already-delivered");
+    seed_task_execution_turn(&run_id, "already-delivered", "delivery-intent");
+    AgentOrgTaskStore::owner_complete_with_transactional_effects(
+        TaskOwnerExecution::new("member-session", "delivery-intent").unwrap(),
+        &run_id,
+        "already-delivered",
+        TaskOutputInput {
+            summary: "durable result".into(),
+            content: None,
+            artifact_ids: Vec::new(),
+        },
+        |_tx, _outcome, _tasks| Ok(()),
+    )
+    .unwrap();
+    tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(finalize_session(
+            "member-session",
+            &Err("provider failed after the tool committed".into()),
+            None,
+            None,
+            false,
+            Some(TerminalTurnSignal {
+                turn_id: "delivery-dialog".into(),
+                turn_intent_id: Some("delivery-intent".into()),
+                status: TurnTerminalStatus::Failed,
+                completed_at: chrono::Utc::now().to_rfc3339(),
+            }),
+        ))
+    });
+    assert_eq!(
+        AgentOrgTaskStore::get(&run_id, "already-delivered")
+            .unwrap()
+            .unwrap()
+            .status,
+        TaskStatus::Completed
+    );
+    let conn = database::db::get_connection().unwrap();
+    let status: String = conn.query_row("SELECT status FROM session_turn_intents WHERE session_id='member-session' AND turn_intent_id='delivery-intent'", [], |row| row.get(0)).unwrap();
+    assert_eq!(
+        status, "failed",
+        "task success and execution failure are different facts"
+    );
 }

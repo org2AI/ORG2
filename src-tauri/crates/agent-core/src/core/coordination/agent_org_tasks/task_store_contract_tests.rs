@@ -907,7 +907,7 @@ fn coordinator_task_mutations_advance_exact_context_and_materialize_one_terminal
     let receipts = crate::coordination::agent_org_finality::finalize_turn(
         ROOT_SESSION,
         COORDINATOR_TURN,
-        true,
+        crate::lifecycle::TurnTerminalStatus::Completed,
         "test_completed",
     )
     .expect("terminalize Coordinator Turn and materialize recheck");
@@ -915,7 +915,7 @@ fn coordinator_task_mutations_advance_exact_context_and_materialize_one_terminal
     let replay = crate::coordination::agent_org_finality::finalize_turn(
         ROOT_SESSION,
         COORDINATOR_TURN,
-        true,
+        crate::lifecycle::TurnTerminalStatus::Completed,
         "test_completed",
     )
     .expect("idempotent Coordinator finalization");

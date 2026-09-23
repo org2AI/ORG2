@@ -262,7 +262,7 @@ async fn enqueue_explicit(
                         )
                     });
                     let _ = result_tx.send(result);
-                    Ok(String::new())
+                    Ok(crate::session::scheduler::ExecutionCompletion::Finished)
                 })
             }),
         })

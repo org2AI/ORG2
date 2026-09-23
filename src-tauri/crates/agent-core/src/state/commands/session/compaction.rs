@@ -221,7 +221,7 @@ pub async fn agent_session_manual_compact(
                     // the oneshot as a structured status; an Err here would
                     // make the worker broadcast a spurious `agent:error`
                     // chat bubble.
-                    Ok(String::new())
+                    Ok(crate::session::scheduler::ExecutionCompletion::Finished)
                 })
             }),
         })

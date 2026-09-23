@@ -237,19 +237,6 @@ fn should_record_standalone_goal(
         && !has_agent_org_context
 }
 
-pub(super) fn terminal_intent_status_override(
-    state: crate::session::DialogTurnState,
-) -> Option<crate::foundation::session_bridge::TurnIntentBridgeStatus> {
-    match state {
-        crate::session::DialogTurnState::Cancelled => {
-            Some(crate::foundation::session_bridge::TurnIntentBridgeStatus::Cancelled)
-        }
-        crate::session::DialogTurnState::Running
-        | crate::session::DialogTurnState::Completed
-        | crate::session::DialogTurnState::Failed => None,
-    }
-}
-
 /// Implementation of agent_send_message.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn send_message_impl(
@@ -1033,7 +1020,9 @@ pub(crate) async fn send_message_impl(
                         "{USER_DIRECTED_WAITING_ERROR_PREFIX} intervention handoff is not released"
                     ));
                 }
-                Ok(Ok(false)) => return Ok(String::new()),
+                Ok(Ok(false)) => {
+                    return Ok(crate::session::scheduler::ExecutionCompletion::NotAccepted)
+                }
                 Ok(Err(err)) => {
                     if let Some(reservation) = direct_runtime_admission.as_ref() {
                         session.release_runtime_admission(reservation).await;
@@ -1138,17 +1127,14 @@ pub(crate) async fn send_message_impl(
                 turn_intent_id: turn_intent_id.clone(),
             };
 
-            let response =
-                crate::session::process_message(Arc::clone(&session), input, app_handle.clone())
-                    .await;
-
-            let final_turn_state = if cancel_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                crate::session::DialogTurnState::Cancelled
-            } else if response.is_ok() {
-                crate::session::DialogTurnState::Completed
-            } else {
-                crate::session::DialogTurnState::Failed
-            };
+            let (response, terminal_turn) =
+                crate::session::turn::entry::process_message_with_terminal(
+                    Arc::clone(&session),
+                    input,
+                    app_handle.clone(),
+                )
+                .await;
+            let final_turn_state = terminal_turn.status.dialog_state();
 
             let stats = response
                 .as_ref()
@@ -1175,18 +1161,13 @@ pub(crate) async fn send_message_impl(
                 turn_identity.as_ref(),
             )
             .await;
-            session.end_turn(final_turn_state, stats).await;
-
-            // The turn processor can return Ok with an empty response after a
-            // user stop. Persist the authoritative cancelled terminal before
-            // handing control back to the scheduler; its generic Ok =>
-            // completed write is then rejected by the intent state machine.
-            if let Some(status) = terminal_intent_status_override(final_turn_state) {
-                crate::foundation::session_bridge::update_turn_intent_status(
-                    &sid,
-                    &turn_intent_id,
-                    status,
-                );
+            if !session
+                .end_turn_if_current(&turn_id, turn_identity.as_ref(), final_turn_state, stats)
+                .await
+            {
+                return Ok(crate::session::scheduler::ExecutionCompletion::Turn(
+                    terminal_turn,
+                ));
             }
 
             // A durable WorkItemRun owns exactly this turn, not the whole
@@ -1248,29 +1229,6 @@ pub(crate) async fn send_message_impl(
                 }
             }
 
-            let terminal_turn =
-                response
-                    .as_ref()
-                    .ok()
-                    .map(|r| crate::lifecycle::TerminalTurnSignal {
-                        turn_id: r.turn_id.clone(),
-                        turn_intent_id: Some(turn_intent_id.clone()),
-                        status: match final_turn_state {
-                            crate::session::DialogTurnState::Cancelled => {
-                                crate::lifecycle::TurnTerminalStatus::Cancelled
-                            }
-                            crate::session::DialogTurnState::Failed => {
-                                crate::lifecycle::TurnTerminalStatus::Failed
-                            }
-                            crate::session::DialogTurnState::Running
-                            | crate::session::DialogTurnState::Completed => {
-                                crate::lifecycle::TurnTerminalStatus::Completed
-                            }
-                        },
-                        completed_at: chrono::Utc::now()
-                            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                    });
-
             let content_result = response.map(|r| r.content);
 
             // Persist the UserDirectedWork terminal before the ordinary
@@ -1312,7 +1270,7 @@ pub(crate) async fn send_message_impl(
                 app_handle.as_ref(),
                 Some(workspace_root.as_path()),
                 load_workspace_resources,
-                terminal_turn,
+                Some(terminal_turn.clone()),
             )
             .await;
             let user_directed_changed = direct_terminal_result?;
@@ -1401,7 +1359,9 @@ pub(crate) async fn send_message_impl(
 
             cancel_flag.store(false, std::sync::atomic::Ordering::SeqCst);
 
-            content_result
+            Ok(crate::session::scheduler::ExecutionCompletion::Turn(
+                terminal_turn,
+            ))
         })
     });
 

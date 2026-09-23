@@ -580,6 +580,15 @@ pub(super) async fn finalize_session_run(
             session_id,
             turn_intent_id,
             &outcome,
+            match raw_final_status {
+                SessionStatus::Completed | SessionStatus::Idle => {
+                    agent_core::lifecycle::TurnTerminalStatus::Completed
+                }
+                SessionStatus::Cancelled => agent_core::lifecycle::TurnTerminalStatus::Cancelled,
+                SessionStatus::Pending | SessionStatus::Running | SessionStatus::Failed => {
+                    agent_core::lifecycle::TurnTerminalStatus::Failed
+                }
+            },
         );
     }
 

@@ -77,6 +77,23 @@ impl TurnTerminalStatus {
             Self::Failed => "failed",
         }
     }
+
+    pub(crate) fn dialog_state(self) -> crate::session::DialogTurnState {
+        match self {
+            Self::Completed => crate::session::DialogTurnState::Completed,
+            Self::Cancelled => crate::session::DialogTurnState::Cancelled,
+            Self::Failed => crate::session::DialogTurnState::Failed,
+        }
+    }
+
+    pub(crate) fn intent_status(self) -> crate::foundation::session_bridge::TurnIntentBridgeStatus {
+        use crate::foundation::session_bridge::TurnIntentBridgeStatus;
+        match self {
+            Self::Completed => TurnIntentBridgeStatus::Completed,
+            Self::Cancelled => TurnIntentBridgeStatus::Cancelled,
+            Self::Failed => TurnIntentBridgeStatus::Failed,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -161,26 +178,25 @@ fn persist_and_emit_terminal_turn(
     app_handle: Option<&tauri::AppHandle>,
 ) {
     let session_status: crate::session::SessionStatus = final_status.into();
-    match session_persistence::finalize_terminal_turn_status(
+    let persisted = match session_persistence::finalize_terminal_turn_status(
         session_id,
         &terminal_turn.turn_id,
         terminal_turn.status.as_str(),
         session_status,
         &terminal_turn.completed_at,
     ) {
-        Ok(true) => {}
-        Ok(false) => tracing::warn!(
-            session_id = %session_id,
-            turn_id = %terminal_turn.turn_id,
-            "[lifecycle] terminal turn marker was not persisted because the session row was missing"
-        ),
-        Err(err) => tracing::warn!(
+        Ok(true) => true,
+        Ok(false) => return,
+        Err(err) => {
+            tracing::warn!(
             session_id = %session_id,
             turn_id = %terminal_turn.turn_id,
             error = %err,
             "[lifecycle] failed to persist terminal turn marker"
-        ),
-    }
+            );
+            false
+        }
+    };
 
     emit_session_status_changed(app_handle, session_id, final_status);
 
@@ -193,7 +209,7 @@ fn persist_and_emit_terminal_turn(
             "turnStatus": terminal_turn.status.as_str(),
             "sessionStatus": final_status.as_ref(),
             "completedAt": terminal_turn.completed_at,
-            "persisted": true,
+            "persisted": persisted,
         }),
     );
 }
@@ -259,6 +275,9 @@ async fn persist_session_error_event_for_intent(
 ) -> Result<(), String> {
     let mut event = build_session_error_event(session_id, message);
     if let Some(intent_id) = turn_intent_id {
+        // Retry/replay of one terminal failure must address the same event.
+        event.id = format!("session-error-{session_id}-turn-{intent_id}");
+        event.chunk_id = Some(event.id.clone());
         event.result["turnIntentId"] = serde_json::Value::String(intent_id.to_owned());
     }
 
@@ -389,16 +408,39 @@ pub fn finalize_agent_org_member_turn(
     session_id: &str,
     turn_intent_id: Option<&str>,
     response: &Result<String, String>,
-) {
+    terminal_status: TurnTerminalStatus,
+) -> bool {
     let typed_failure = response.as_ref().err().and_then(|error| {
         crate::coordination::agent_org_finality::AgentOrgTurnFailure::decode(error)
     });
-    let requeue_work = response.is_err()
+    let requeue_work = terminal_status == TurnTerminalStatus::Failed
         && typed_failure
             .as_ref()
             .is_none_or(|failure| failure.kind.permits_task_recovery());
     let outcome: Result<(Option<AgentOrgMemberLifecycleSnapshot>, Vec<String>), String> =
         crate::tools::impls::orchestration::member_idle::run_agent_org_blocking_section(|| {
+            let _writer = database::db::sessions_writer_guard();
+            let requeue_work = if let Some(intent) = turn_intent_id {
+                let conn = database::db::get_connection().map_err(|error| error.to_string())?;
+                if !crate::coordination::agent_org_finality::terminal_turn_is_current(
+                    &conn, session_id, intent,
+                )? {
+                    return Ok((None, Vec::new()));
+                }
+                let context =
+                    crate::coordination::agent_org_turn_contexts::require_context_with_connection(
+                        &conn, session_id, intent,
+                    )?;
+                requeue_work && context.turn_kind == crate::coordination::agent_org_turn_contexts::AgentOrgTurnKind::TaskExecution
+                    && conn.query_row(
+                        "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_tasks
+                         WHERE org_run_id=?1 AND id=?2 AND owner=?3 AND status='in_progress')",
+                        rusqlite::params![context.org_run_id, context.task_id, context.owner_member_id],
+                        |row| row.get::<_, bool>(0),
+                    ).map_err(|error| error.to_string())?
+            } else {
+                requeue_work
+            };
             // Recovery still validates the exact running TaskExecution. Let
             // that transaction settle the Task before terminalizing the same
             // Turn; deterministic authority failures skip recovery entirely.
@@ -411,14 +453,14 @@ pub fn finalize_agent_org_member_turn(
                 crate::coordination::agent_org_finality::finalize_turn(
                     session_id,
                     turn_intent_id,
-                    response.is_ok(),
+                    terminal_status,
                     typed_failure
                         .as_ref()
                         .map(|failure| failure.reason_code.as_str())
-                        .unwrap_or(if response.is_ok() {
-                            "turn_completed"
-                        } else {
-                            "provider_failed"
+                        .unwrap_or(match terminal_status {
+                            TurnTerminalStatus::Completed => "turn_completed",
+                            TurnTerminalStatus::Cancelled => "stopped",
+                            TurnTerminalStatus::Failed => "provider_failed",
                         }),
                 )?
             } else {
@@ -432,6 +474,9 @@ pub fn finalize_agent_org_member_turn(
         .and_then(|(snapshot, _)| snapshot.as_ref())
         .map(|snapshot| snapshot.context.run_id.clone());
 
+    let accepted = outcome
+        .as_ref()
+        .is_ok_and(|(snapshot, _)| snapshot.is_some());
     match outcome {
         Ok((Some(snapshot), completion_receipts)) => {
             if !completion_receipts.is_empty() {
@@ -457,7 +502,7 @@ pub fn finalize_agent_org_member_turn(
                 // race for them.
             }
 
-            if response.is_ok() {
+            if terminal_status == TurnTerminalStatus::Completed {
                 if let Err(err) = crate::coordination::agent_org_watchdog::clear_rewake_budget(
                     &snapshot.context.run_id,
                     &snapshot.member_id,
@@ -505,7 +550,7 @@ pub fn finalize_agent_org_member_turn(
                 }
             }
 
-            if let Err(err) = response {
+            if let (TurnTerminalStatus::Failed, Err(err)) = (terminal_status, response) {
                 let failure_guidance =
                     member_failure_recovery_guidance(err, &snapshot.requeued_tasks);
                 let unfinished_task_ids = snapshot
@@ -572,6 +617,7 @@ pub fn finalize_agent_org_member_turn(
             }
         }
     }
+    accepted
 }
 
 /// Decide whether the post-turn unread-inbox race guard should issue one wake.
@@ -712,6 +758,16 @@ pub async fn finalize_session(
         );
     }
 
+    let terminal_status = terminal_turn
+        .as_ref()
+        .map(|signal| signal.status)
+        .unwrap_or_else(|| {
+            if response.is_ok() {
+                TurnTerminalStatus::Completed
+            } else {
+                TurnTerminalStatus::Failed
+            }
+        });
     let final_status = if authority_error.is_some() {
         AgentSessionStatus::Failed
     } else if user_directed_turn || intervention_suspended_formal_turn || final_summary_turn {
@@ -719,7 +775,13 @@ pub async fn finalize_session(
         // Member or Team lifecycle. The structured agent:error still renders
         // the failure while the canonical Session returns to Idle.
         AgentSessionStatus::Idle
-    } else if response.is_ok() {
+    } else if terminal_status == TurnTerminalStatus::Cancelled {
+        if is_agent_org_member_session {
+            AgentSessionStatus::Idle
+        } else {
+            AgentSessionStatus::Cancelled
+        }
+    } else if terminal_status == TurnTerminalStatus::Completed {
         if is_agent_org_member_session {
             AgentSessionStatus::Idle
         } else {
@@ -729,10 +791,77 @@ pub async fn finalize_session(
         AgentSessionStatus::Failed
     };
 
+    if is_agent_org_member_session
+        && !user_directed_turn
+        && !intervention_suspended_formal_turn
+        && !final_summary_turn
+        && authority_error.is_none()
+    {
+        // Member finalization performs several synchronous SQLite operations
+        // under the shared writer lock (task requeue, recovery-budget cleanup,
+        // MemberIdle persistence, and Team quiescence reconciliation). Keep the
+        // complete blocking phase off the Tokio worker that is finalizing the
+        // provider turn; moving only the first query still leaves the later
+        // writes able to stall unrelated async sessions.
+        let sid = session_id.to_string();
+        let response = response.clone();
+        let turn_intent_id = terminal_turn
+            .as_ref()
+            .and_then(|signal| signal.turn_intent_id.clone());
+        let app_handle = app_handle.cloned();
+        match tokio::task::spawn_blocking(move || {
+            finalize_agent_org_member_turn(
+                app_handle.as_ref(),
+                &sid,
+                turn_intent_id.as_deref(),
+                &response,
+                terminal_status,
+            )
+        })
+        .await
+        {
+            Ok(false) => return final_status,
+            Ok(true) => {}
+            Err(err) => tracing::warn!(
+                session_id = %session_id,
+                error = %err,
+                "[lifecycle] Agent Org member finalization worker panicked"
+            ),
+        }
+    }
+
+    if is_agent_org_member_session
+        && (user_directed_turn || intervention_suspended_formal_turn || final_summary_turn)
+        && authority_error.is_none()
+    {
+        if let Some(intent) = terminal_turn
+            .as_ref()
+            .and_then(|signal| signal.turn_intent_id.clone())
+        {
+            let sid = session_id.to_string();
+            let settled = tokio::task::spawn_blocking(move || {
+                crate::coordination::agent_org_finality::finalize_turn(
+                    &sid,
+                    &intent,
+                    terminal_status,
+                    terminal_status.as_str(),
+                )
+            })
+            .await;
+            if !matches!(settled, Ok(Ok(_))) {
+                tracing::error!(
+                    session_id,
+                    ?settled,
+                    "failed to settle specialized Agent Org Turn"
+                );
+            }
+        }
+    }
+
     // A terminal error is durable before any status notification leaves this
     // function. Status broadcasts can be missed; the EventStore row is the
     // authoritative replay path after a window reload or app restart.
-    if let Err(message) = response {
+    if let (TurnTerminalStatus::Failed, Err(message)) = (terminal_status, response) {
         if let Err(err) = persist_session_error_event_for_intent(
             app_handle,
             session_id,
@@ -767,42 +896,6 @@ pub async fn finalize_session(
         }
 
         emit_session_status_changed(app_handle, session_id, final_status);
-    }
-
-    if is_agent_org_member_session
-        && !user_directed_turn
-        && !intervention_suspended_formal_turn
-        && !final_summary_turn
-        && authority_error.is_none()
-    {
-        // Member finalization performs several synchronous SQLite operations
-        // under the shared writer lock (task requeue, recovery-budget cleanup,
-        // MemberIdle persistence, and Team quiescence reconciliation). Keep the
-        // complete blocking phase off the Tokio worker that is finalizing the
-        // provider turn; moving only the first query still leaves the later
-        // writes able to stall unrelated async sessions.
-        let sid = session_id.to_string();
-        let response = response.clone();
-        let turn_intent_id = terminal_turn
-            .as_ref()
-            .and_then(|signal| signal.turn_intent_id.clone());
-        let app_handle = app_handle.cloned();
-        if let Err(err) = tokio::task::spawn_blocking(move || {
-            finalize_agent_org_member_turn(
-                app_handle.as_ref(),
-                &sid,
-                turn_intent_id.as_deref(),
-                &response,
-            );
-        })
-        .await
-        {
-            tracing::warn!(
-                session_id = %session_id,
-                error = %err,
-                "[lifecycle] Agent Org member finalization worker panicked"
-            );
-        }
     }
 
     if final_status.is_terminal() {

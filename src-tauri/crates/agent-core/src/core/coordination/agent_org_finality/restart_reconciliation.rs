@@ -231,7 +231,11 @@ pub(crate) fn reconcile_after_restart(conn: &Connection) -> Result<usize, String
                 conn,
                 &session_id,
                 &turn_intent_id,
-                status == "completed",
+                match status.as_str() {
+                    "completed" => crate::lifecycle::TurnTerminalStatus::Completed,
+                    "cancelled" => crate::lifecycle::TurnTerminalStatus::Cancelled,
+                    _ => crate::lifecycle::TurnTerminalStatus::Failed,
+                },
             )?
             .len(),
         );

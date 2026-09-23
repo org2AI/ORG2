@@ -103,7 +103,7 @@ async fn late_formal_batch_queues_one_trailing_turn_while_exact_retries_coalesce
                     executed_initial.fetch_add(1, Ordering::SeqCst);
                     initial_started_for_turn.notify_one();
                     release_initial_for_turn.notified().await;
-                    Ok(String::new())
+                    Ok(crate::session::scheduler::ExecutionCompletion::Finished)
                 })
             }),
         })
@@ -127,7 +127,7 @@ async fn late_formal_batch_queues_one_trailing_turn_while_exact_retries_coalesce
                 Box::pin(async move {
                     executed_trailing.fetch_add(1, Ordering::SeqCst);
                     trailing_finished_for_turn.notify_one();
-                    Ok(String::new())
+                    Ok(crate::session::scheduler::ExecutionCompletion::Finished)
                 })
             }),
         })
@@ -142,7 +142,9 @@ async fn late_formal_batch_queues_one_trailing_turn_while_exact_retries_coalesce
             turn_intent_id: String::new(),
             org_run_id: None,
             content: String::new(),
-            execute: Box::new(|| Box::pin(async { Ok("duplicate ran".to_string()) })),
+            execute: Box::new(|| {
+                Box::pin(async { Ok(crate::session::scheduler::ExecutionCompletion::Finished) })
+            }),
         })
         .await
         .expect("exact late wake retry");

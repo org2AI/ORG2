@@ -1312,7 +1312,7 @@
     "deleteOrgTitle": "Excluir equipe?",
     "deleteOrgMessage": "\"{{name}}\" será removida permanentemente. Esta ação não pode ser desfeita.",
     "cliUpdateAlerts": {
-      "label": "Alertar sobre atualizações de CLI",
+      "label": "Notificações de atualização da CLI",
       "description": "Verifica as versões das CLIs e alerta quando há atualizações disponíveis. Desativado desliga as verificações"
     },
     "cliManagedConfig": {

@@ -1076,7 +1076,7 @@
   },
   "agentOrgs": {
     "cliUpdateAlerts": {
-      "label": "提醒 CLI 更新",
+      "label": "CLI 版本更新提醒",
       "description": "检查 CLI 版本并在有更新时提醒。关闭后不再检查"
     },
     "scope": "适用仓库",

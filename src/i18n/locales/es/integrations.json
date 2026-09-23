@@ -1319,7 +1319,7 @@
     "deleteOrgTitle": "¿Eliminar equipo?",
     "deleteOrgMessage": "\"{{name}}\" se eliminará permanentemente. Esta acción no se puede deshacer.",
     "cliUpdateAlerts": {
-      "label": "Avisar de actualizaciones de CLI",
+      "label": "Notificaciones de actualizaciones de CLI",
       "description": "Comprueba las versiones de las CLI y avisa cuando haya actualizaciones disponibles. Desactivado deshabilita las comprobaciones"
     },
     "cliManagedConfig": {

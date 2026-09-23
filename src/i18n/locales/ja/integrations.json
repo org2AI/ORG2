@@ -1319,7 +1319,7 @@
     "deleteOrgTitle": "チームを削除しますか？",
     "deleteOrgMessage": "\"{{name}}\" は完全に削除されます。この操作は元に戻せません。",
     "cliUpdateAlerts": {
-      "label": "CLI の更新を通知",
+      "label": "CLI 更新通知",
       "description": "CLI のバージョンを確認し、更新がある場合に通知します。オフにするとチェックを無効にします"
     },
     "cliManagedConfig": {

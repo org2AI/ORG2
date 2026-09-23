@@ -1348,7 +1348,7 @@
     "deleteOrgTitle": "刪除團隊？",
     "deleteOrgMessage": "\"{{name}}\" 將被永久移除。此操作無法復原。",
     "cliUpdateAlerts": {
-      "label": "提醒 CLI 更新",
+      "label": "CLI 版本更新提醒",
       "description": "檢查 CLI 版本並在有更新時提醒。關閉後不再檢查"
     }
   },

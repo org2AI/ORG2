@@ -632,7 +632,7 @@
       "positionDown": "नीचे",
       "showQuickActions": "त्वरित क्रियाएँ",
       "showSkills": "पिन की गई स्किल",
-      "showCliUpdate": "CLI अपडेट",
+      "showCliUpdate": "CLI अपडेट सूचनाएँ",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "नया सत्र"
@@ -1908,7 +1908,6 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} का अपडेट उपलब्ध है",
-      "versions": "वर्तमान: {{installed}} · नवीनतम: {{latest}}",
       "upgrade": "टर्मिनल में अपडेट करें",
       "upgradeDocs": "आधिकारिक दस्तावेज़",
       "upgradeChooseMethod": "मूल इंस्टॉलेशन विधि चुनें",

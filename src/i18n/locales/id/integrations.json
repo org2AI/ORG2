@@ -1069,7 +1069,7 @@
   },
   "agentOrgs": {
     "cliUpdateAlerts": {
-      "label": "Peringatan pembaruan CLI",
+      "label": "Notifikasi pembaruan CLI",
       "description": "Periksa versi CLI dan beri peringatan saat pembaruan tersedia. Nonaktif akan mematikan pemeriksaan"
     },
     "addRule": "Tambah Kebijakan",

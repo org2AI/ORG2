@@ -114,6 +114,8 @@ interface PageNoticeProps {
   children?: React.ReactNode;
   /** Title in the header row (same row as icon, action, close) */
   title?: string;
+  /** Optional normal-weight text following the title in the same row */
+  titleSuffix?: string;
   /** Optional icon override — defaults to Check/TriangleAlert/AlertCircle/Info per type */
   icon?: React.ReactNode;
   /** Hide the icon entirely */
@@ -154,6 +156,7 @@ const PageNotice: React.FC<PageNoticeProps> = ({
   type = "info",
   children,
   title,
+  titleSuffix,
   icon,
   hideIcon = false,
   subtitle,
@@ -178,7 +181,7 @@ const PageNotice: React.FC<PageNoticeProps> = ({
   const handleCopy = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     const text = [
-      title,
+      title && titleSuffix ? `${title} ${titleSuffix}` : title,
       bodyRef.current?.innerText ?? bodyRef.current?.textContent,
       subtitleRef.current?.innerText ?? subtitleRef.current?.textContent,
     ]
@@ -273,6 +276,7 @@ const PageNotice: React.FC<PageNoticeProps> = ({
           // text non-selectable so a drag doesn't fight the toggle.
           <span className={isPill ? baseText.title : textClasses.title}>
             {title}
+            {titleSuffix && <span className="font-normal"> {titleSuffix}</span>}
           </span>
         ) : (
           showContent &&

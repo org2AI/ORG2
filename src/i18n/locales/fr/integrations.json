@@ -1319,7 +1319,7 @@
     "deleteOrgTitle": "Supprimer l’équipe ?",
     "deleteOrgMessage": "\"{{name}}\" sera supprimée définitivement. Cette action est irréversible.",
     "cliUpdateAlerts": {
-      "label": "Alerter des mises à jour CLI",
+      "label": "Notifications de mise à jour CLI",
       "description": "Vérifie les versions des CLI et alerte lorsqu’une mise à jour est disponible. Désactivé : aucune vérification"
     },
     "cliManagedConfig": {

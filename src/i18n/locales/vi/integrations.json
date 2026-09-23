@@ -1319,7 +1319,7 @@
     "deleteOrgTitle": "Xóa nhóm?",
     "deleteOrgMessage": "\"{{name}}\" sẽ bị xóa vĩnh viễn. Không thể hoàn tác thao tác này.",
     "cliUpdateAlerts": {
-      "label": "Cảnh báo cập nhật CLI",
+      "label": "Thông báo cập nhật CLI",
       "description": "Kiểm tra phiên bản CLI và cảnh báo khi có bản cập nhật. Tắt sẽ vô hiệu hóa việc kiểm tra"
     },
     "cliManagedConfig": {

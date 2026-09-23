@@ -631,7 +631,7 @@
       "positionDown": "아래",
       "showQuickActions": "빠른 작업",
       "showSkills": "고정된 스킬",
-      "showCliUpdate": "CLI 업데이트",
+      "showCliUpdate": "CLI 업데이트 알림",
       "showSpotlight": "Spotlight",
       "newSession": {
         "title": "새 세션"
@@ -1983,7 +1983,6 @@
     },
     "cliVersionOutdated": {
       "title": "{{cli}} 업데이트가 있습니다",
-      "versions": "현재: {{installed}} · 최신: {{latest}}",
       "upgrade": "터미널에서 업데이트",
       "upgradeDocs": "공식 문서",
       "upgradeChooseMethod": "처음 설치한 방법 선택",

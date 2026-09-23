@@ -136,7 +136,7 @@ describe("Table row interactions", () => {
     ).toBe(false);
   });
 
-  it("uses right and down chevrons for collapsed and expanded settings rows", () => {
+  it("expands settings rows without a chevron or expand column", () => {
     act(() => {
       root.render(
         createElement(Table<{ id: string }>, {
@@ -153,25 +153,38 @@ describe("Table row interactions", () => {
       );
     });
 
-    const expandButton = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Expand row"]'
-    );
-    expect(expandButton).not.toBeNull();
-    // index.scss tints the chevron on row hover through this class.
-    expect(expandButton?.classList.contains("table-expand-button")).toBe(true);
-    expect(
-      expandButton?.querySelector('[data-icon="chevron-right"]')
-    ).not.toBeNull();
+    const row = container.querySelector<HTMLTableRowElement>(".table-row");
+    expect(row?.tabIndex).toBe(0);
+    expect(row?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector(".table-expand-cell")).toBeNull();
+    expect(container.querySelectorAll("colgroup col")).toHaveLength(1);
 
-    act(() => expandButton?.click());
+    act(() => row?.click());
+    expect(row?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("Details");
 
-    const collapseButton = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Collapse row"]'
+    act(() =>
+      row?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        })
+      )
     );
-    expect(collapseButton).not.toBeNull();
-    expect(
-      collapseButton?.querySelector('[data-icon="chevron-down"]')
-    ).not.toBeNull();
+    expect(row?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("Details");
+
+    act(() =>
+      row?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: " ",
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    );
+    expect(row?.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("toggles a settings row from non-interactive content when a row callback is present", () => {
@@ -220,22 +233,22 @@ describe("Table row interactions", () => {
 
     expect(onRowClick).toHaveBeenCalledTimes(1);
     expect(
-      container.querySelector('button[aria-label="Collapse row"]')
-    ).not.toBeNull();
+      container.querySelector(".table-row")?.getAttribute("aria-expanded")
+    ).toBe("true");
 
     act(() => actionButton?.click());
 
     expect(onActionClick).toHaveBeenCalledTimes(1);
     expect(onRowClick).toHaveBeenCalledTimes(1);
     expect(
-      container.querySelector('button[aria-label="Collapse row"]')
-    ).not.toBeNull();
+      container.querySelector(".table-row")?.getAttribute("aria-expanded")
+    ).toBe("true");
 
     act(() => rowLabel?.click());
 
     expect(onRowClick).toHaveBeenCalledTimes(2);
     expect(
-      container.querySelector('button[aria-label="Expand row"]')
-    ).not.toBeNull();
+      container.querySelector(".table-row")?.getAttribute("aria-expanded")
+    ).toBe("false");
   });
 });

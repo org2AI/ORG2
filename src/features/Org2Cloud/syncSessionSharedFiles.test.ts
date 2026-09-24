@@ -60,7 +60,8 @@ describe("shared session artifact publication", () => {
       "session",
       "report.md",
       new Uint8Array([1, 2, 3]),
-      { path: "/author/report.md", revision: "e1:now" }
+      { path: "/author/report.md", revision: "e1:now" },
+      undefined
     );
     expect(event.filePath).toBe("/author/report.md");
   });
@@ -92,6 +93,29 @@ describe("shared session artifact publication", () => {
   it("propagates network failure for the existing delivery lifecycle to retry", async () => {
     mocks.upload.mockRejectedValue(new Error("offline"));
     await expect(syncSessionSharedFiles(input)).rejects.toThrow("offline");
+  });
+  it("forwards cancellation to lookup and upload and stops before the next file", async () => {
+    const controller = new AbortController();
+    mocks.upload.mockImplementation(async () => controller.abort());
+    await expect(
+      syncSessionSharedFiles({
+        ...input,
+        events: [event, { ...event, id: "e2", filePath: "/author/second.md" }],
+        signal: controller.signal,
+        assertCurrentIdentity: () => controller.signal.throwIfAborted(),
+      })
+    ).rejects.toThrow();
+    expect(mocks.find).toHaveBeenCalledWith(
+      "token",
+      input.endpoint,
+      "org",
+      "session",
+      expect.any(Array),
+      controller.signal
+    );
+    expect(mocks.upload.mock.calls[0][7]).toBe(controller.signal);
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.read).toHaveBeenCalledTimes(1);
   });
   it("bounds manifest queries and processes more than five files", async () => {
     await syncSessionSharedFiles({

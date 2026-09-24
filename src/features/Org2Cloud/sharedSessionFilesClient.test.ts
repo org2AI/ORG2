@@ -82,6 +82,50 @@ describe("shared file wire boundary", () => {
       }
     }
   );
+  it.each(["upload", "lookup"])(
+    "aborts an in-flight %s request without transport retry",
+    async (operation) => {
+      const controller = new AbortController();
+      let networkSignal: AbortSignal | undefined;
+      const fetch = vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            networkSignal = init.signal as AbortSignal;
+            networkSignal.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true }
+            );
+          })
+      );
+      vi.stubGlobal("fetch", fetch);
+      const pending =
+        operation === "upload"
+          ? uploadSharedSessionFile(
+              "jwt",
+              endpoint,
+              "org",
+              "session",
+              "report.md",
+              new Uint8Array([1]),
+              undefined,
+              controller.signal
+            )
+          : findSharedSessionFileRevisions(
+              "jwt",
+              endpoint,
+              "org",
+              "session",
+              [],
+              controller.signal
+            );
+      const assertion = expect(pending).rejects.toThrow("Aborted");
+      controller.abort();
+      await assertion;
+      expect(networkSignal?.aborted).toBe(true);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    }
+  );
   it("uploads binary bytes without local paths and verifies server digest", async () => {
     const bytes = new Uint8Array([0, 255, 128, 42]);
     const fetch = vi.fn().mockResolvedValue(

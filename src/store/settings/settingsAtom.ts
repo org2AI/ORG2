@@ -10,12 +10,11 @@
  * - External edits: file watcher → event → update atom
  * - File deleted: reset to defaults → recreate file
  */
-import { type Atom, atom } from "jotai";
+import { atom } from "jotai";
 
 import { rpcCall } from "@src/api/tauri/rpc/invoke";
 import { settings as settingsProcedures } from "@src/api/tauri/rpc/procedures/settings";
 import {
-  type SettingValue,
   type SettingsKey,
   type SettingsObject,
   generateJsoncContent,
@@ -24,6 +23,12 @@ import {
 } from "@src/config/settingsSchema";
 import { generateSettingsJsonSchema } from "@src/config/settingsSchema/generateJsonSchema";
 import { createLogger } from "@src/hooks/logger";
+
+import { settingsAtom } from "./settingsValueAtoms";
+
+// The read side lives in a Tauri-free module; re-exported so existing
+// importers keep one entry point.
+export { settingAtom, settingsAtom } from "./settingsValueAtoms";
 
 const log = createLogger("Settings");
 
@@ -38,15 +43,8 @@ const settingsRpc = {
 };
 
 // ============================================
-// Core Atom
+// Load state
 // ============================================
-
-/**
- * The central settings atom.
- * Initialized with defaults; hydrated from file during app startup.
- */
-export const settingsAtom = atom<SettingsObject>(getSettingsDefaults());
-settingsAtom.debugLabel = "settingsAtom";
 
 /**
  * Whether the settings have been loaded from disk.
@@ -171,37 +169,6 @@ function enqueueSettingsPartialWrite(
 /** Test seam: drop all outstanding local writes. */
 export function __resetPendingSettingsWrites(): void {
   pendingLocalWrites.clear();
-}
-
-// ============================================
-// Read-only atom for a single setting
-// ============================================
-
-/**
- * Create a derived read-only atom for a specific setting key.
- * Results are cached so the same key always returns the same atom instance,
- * which is critical for stable Jotai subscriptions (avoids re-mount loops).
- *
- * Usage:
- *   const fontSizeAtom = settingAtom("editor.fontSize");
- *   const fontSize = useAtomValue(fontSizeAtom); // 13
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const settingAtomCache = new Map<string, Atom<any>>();
-
-export function settingAtom<K extends SettingsKey>(
-  key: K
-): Atom<SettingValue<K>> {
-  const cached = settingAtomCache.get(key);
-  if (cached) return cached as Atom<SettingValue<K>>;
-
-  const derived = atom<SettingValue<K>>((get) => {
-    const settings = get(settingsAtom);
-    return settings[key];
-  });
-  derived.debugLabel = `setting:${key}`;
-  settingAtomCache.set(key, derived);
-  return derived;
 }
 
 // ============================================

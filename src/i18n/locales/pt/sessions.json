@@ -2650,7 +2650,8 @@
     "downloaded": "Salvo em Downloads",
     "downloadError": "Não foi possível salvar em Downloads",
     "title": "Arquivo compartilhado",
-    "error": "Não foi possível abrir este arquivo. Verifique sua conta, o servidor e o acesso à sessão e abra o link novamente.",
+    "error": "Não foi possível abrir este arquivo. Tente novamente ou verifique a conexão, a conta, o servidor e o acesso à sessão.",
+    "notUploaded": "Este arquivo ainda não foi enviado para esta sessão compartilhada. O dispositivo do remetente precisa concluir o envio; tente novamente para verificar.",
     "downloadPreview": "Baixe este arquivo para visualizar seu conteúdo",
     "download": "Baixar",
     "loading": "Carregando arquivo compartilhado…"

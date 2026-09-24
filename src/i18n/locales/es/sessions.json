@@ -2650,7 +2650,8 @@
     "downloaded": "Guardado en Descargas",
     "downloadError": "No se pudo guardar en Descargas",
     "title": "Archivo compartido",
-    "error": "No se puede abrir este archivo. Comprueba tu cuenta, el servidor y el acceso a la sesión, y vuelve a abrir el enlace.",
+    "error": "No se puede abrir este archivo. Vuelve a intentarlo o comprueba la conexión, la cuenta, el servidor y el acceso a la sesión.",
+    "notUploaded": "Este archivo aún no se ha subido a esta sesión compartida. El dispositivo del remitente debe completar la subida; vuelve a intentarlo para comprobarlo.",
     "downloadPreview": "Descarga este archivo para ver su contenido",
     "download": "Descargar",
     "loading": "Cargando archivo compartido…"

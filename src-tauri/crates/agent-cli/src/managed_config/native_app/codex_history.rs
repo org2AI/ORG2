@@ -14,6 +14,7 @@ mod store;
 mod tests;
 
 use super::NativeAppProfile;
+pub use files::{NativeStoreWriter, NATIVE_STORE_WRITER_LOCK};
 use files::{Stamp, WriterLock};
 use revision::{Observation, Revision};
 use serde::{Deserialize, Serialize};
@@ -557,12 +558,14 @@ fn reconcile_at_with_models(
         check()?;
         let pending = ledger.pending.get(&id).unwrap();
         let target = if pending.to_package { package } else { primary };
-        let recovery = pending
-            .lock_ids
-            .iter()
-            .map(|id| WriterLock::acquire(target, id))
-            .collect::<Result<Vec<_>, _>>()
-            .and_then(|_locks| finish(primary, package, journal, &mut ledger, &id, &check));
+        let lock_ids = pending.lock_ids.clone();
+        let recovery = NativeStoreWriter::exclusive(target).and_then(|_store| {
+            lock_ids
+                .iter()
+                .map(|id| WriterLock::acquire(target, id))
+                .collect::<Result<Vec<_>, _>>()
+                .and_then(|_locks| finish(primary, package, journal, &mut ledger, &id, &check))
+        });
         match recovery {
             Ok(()) => {
                 healed(&id);
@@ -775,12 +778,12 @@ fn reconcile_at_with_models(
             // Projection/lineage reads share the capture-attempt budget. A loaded
             // unfinished source consumes no full-rollout hash work.
             if writers & (1 << side) != 0 {
-                match revision::completed(home, row) {
+                match revision::terminal(home, row) {
                     Ok(true) => {}
                     result => {
                         check()?;
                         if let Err(error) = result {
-                            attention(&id, "Codex loaded revision is not complete", &error);
+                            attention(&id, "Codex loaded revision is not terminal", &error);
                         }
                         report.busy += 1;
                         ready = false;
@@ -986,6 +989,12 @@ fn recent_conversations(primary: &Path, rows: &BTreeMap<String, ThreadRecord>) -
     selected
 }
 
+struct CopyWriterGuards {
+    _target: NativeStoreWriter,
+    _source: Option<NativeStoreWriter>,
+    _threads: Vec<WriterLock>,
+}
+
 #[allow(clippy::too_many_arguments)]
 fn prepare_copy(
     source_home: &Path,
@@ -998,7 +1007,7 @@ fn prepare_copy(
     divergence: Option<&(Version, Version)>,
     selected: &Revision,
     check: &impl Fn() -> Result<(), String>,
-) -> Result<(Pending, Vec<WriterLock>), String> {
+) -> Result<(Pending, CopyWriterGuards), String> {
     let before = version(source_home, source)?;
     let target_before = target.map(|row| version(target_home, row)).transpose()?;
     let segments = lineage(source_home, source)?;
@@ -1014,6 +1023,12 @@ fn prepare_copy(
     }
     // Never write a loaded destination. A loaded source is read-only here:
     // it can be snapshotted only at a complete native projection frontier.
+    let target_store_writer = NativeStoreWriter::exclusive(target_home)?;
+    let source_store_writer = match NativeStoreWriter::exclusive(source_home) {
+        Ok(guard) => Some(guard),
+        Err(error) if error == "busy" => None,
+        Err(error) => return Err(error),
+    };
     let mut native_locks = locks(&[target_home], &segments)?;
     if let Some(target) = target {
         let physical = files::physical_id(&target.rollout_path)?;
@@ -1024,7 +1039,7 @@ fn prepare_copy(
             native_locks.push(WriterLock::acquire(target_home, &physical)?);
         }
     }
-    let source_loaded = match locks(&[source_home], &segments) {
+    let source_thread_loaded = match locks(&[source_home], &segments) {
         Ok(locks) => {
             native_locks.extend(locks);
             false
@@ -1032,6 +1047,7 @@ fn prepare_copy(
         Err(error) if error == "busy" => true,
         Err(error) => return Err(error),
     };
+    let source_loaded = source_thread_loaded || source_store_writer.is_none();
     check()?;
     if let Some((primary, package)) = divergence {
         let (expected_source, expected_target) = if to_package {
@@ -1102,7 +1118,7 @@ fn prepare_copy(
         return Err("Codex lineage exceeds the bounded snapshot limit".into());
     }
     if source_loaded {
-        if source.history_mode != "paginated" || !prepared.completed_rollouts()? {
+        if source.history_mode != "paginated" || !prepared.terminal_rollouts()? {
             return Err("busy".into());
         }
         for (segment, stamp) in segments.iter().zip(&captured_files) {
@@ -1390,7 +1406,7 @@ fn prepare_copy(
         if fresh.record().metadata_hash != prepared.record().metadata_hash
             || fresh.record().rollout_path != prepared.record().rollout_path
             || fresh.projections() != prepared.projections()
-            || !fresh.completed_rollouts()?
+            || !fresh.terminal_rollouts()?
         {
             return Err("busy".into());
         }
@@ -1441,7 +1457,11 @@ fn prepare_copy(
             rollout_alias,
             cancelling: false,
         },
-        native_locks,
+        CopyWriterGuards {
+            _target: target_store_writer,
+            _source: source_store_writer,
+            _threads: native_locks,
+        },
     ))
 }
 

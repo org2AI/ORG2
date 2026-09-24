@@ -651,7 +651,10 @@ fn install(
                             .next()
                             .and_then(|v| v.as_os_str().to_str())
                             .unwrap_or("");
-                        if matches!(
+                        if first == codex_history::NATIVE_STORE_WRITER_LOCK {
+                            dirty.all();
+                            changed = true;
+                        } else if matches!(
                             first,
                             "sessions" | "archived_sessions" | "thread-writer-locks"
                         ) {

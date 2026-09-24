@@ -134,13 +134,13 @@ fn seed_projection(home: &Path, rollout: &str) {
 }
 
 #[test]
-fn completed_gate_uses_its_held_snapshot_and_requires_every_selected_rollout() {
+fn terminal_gate_uses_its_held_snapshot_and_requires_every_selected_rollout() {
     let source = home();
     seed(source.path(), "thread", "current");
     seed_projection(source.path(), "ancestor");
     let ids = ["ancestor".into(), "current".into()];
     let before = prepare(source.path(), "thread", &ids).unwrap();
-    assert!(before.completed_rollouts().unwrap());
+    assert!(before.terminal_rollouts().unwrap());
     let history = Connection::open(source.path().join(HISTORY_FILE)).unwrap();
     history
         .execute(
@@ -149,11 +149,11 @@ fn completed_gate_uses_its_held_snapshot_and_requires_every_selected_rollout() {
         )
         .unwrap();
     assert!(
-        before.completed_rollouts().unwrap(),
+        before.terminal_rollouts().unwrap(),
         "a prepared snapshot must not drift with the live source"
     );
     let fresh = prepare(source.path(), "thread", &ids).unwrap();
-    assert!(!fresh.completed_rollouts().unwrap());
+    assert!(!fresh.terminal_rollouts().unwrap());
     assert_eq!(before.projections(), fresh.projections());
     drop(fresh);
     history
@@ -161,7 +161,7 @@ fn completed_gate_uses_its_held_snapshot_and_requires_every_selected_rollout() {
         .unwrap();
     history.execute("UPDATE thread_history_projection_state SET next_rollout_ordinal=10 WHERE thread_id='current'", []).unwrap();
     let progressed = prepare(source.path(), "thread", &ids).unwrap();
-    assert!(progressed.completed_rollouts().unwrap());
+    assert!(progressed.terminal_rollouts().unwrap());
     assert_ne!(before.projections(), progressed.projections());
     drop(progressed);
     history
@@ -169,20 +169,47 @@ fn completed_gate_uses_its_held_snapshot_and_requires_every_selected_rollout() {
         .unwrap();
     assert!(!prepare(source.path(), "thread", &ids)
         .unwrap()
-        .completed_rollouts()
+        .terminal_rollouts()
         .unwrap());
 }
 
 #[test]
-fn completed_gate_rejects_noncompleted_empty_null_and_legacy_turns() {
+fn terminal_gate_accepts_all_native_terminal_statuses_in_every_selected_rollout() {
+    let source = home();
+    seed(source.path(), "thread", "current");
+    seed_projection(source.path(), "ancestor");
+    let ids = ["ancestor".into(), "current".into()];
+    let history = Connection::open(source.path().join(HISTORY_FILE)).unwrap();
+    for ancestor in ["completed", "failed", "interrupted"] {
+        for current in ["completed", "failed", "interrupted"] {
+            history
+                .execute(
+                    "UPDATE thread_turns SET status=CASE thread_id WHEN 'ancestor' THEN ?1 ELSE ?2 END",
+                    [ancestor, current],
+                )
+                .unwrap();
+            assert!(
+                prepare(source.path(), "thread", &ids)
+                    .unwrap()
+                    .terminal_rollouts()
+                    .unwrap(),
+                "rejected terminal statuses {ancestor:?}/{current:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn terminal_gate_rejects_active_unknown_empty_null_and_legacy_turns() {
     let source = home();
     seed(source.path(), "thread", "current");
     let ids = ["current".into()];
     let history = Connection::open(source.path().join(HISTORY_FILE)).unwrap();
     for status in [
         "inProgress",
-        "failed",
-        "interrupted",
+        "unknown",
+        "FAILED",
+        "interrupted ",
         "",
         "COMPLETED",
         "completed ",
@@ -193,7 +220,7 @@ fn completed_gate_rejects_noncompleted_empty_null_and_legacy_turns() {
         assert!(
             !prepare(source.path(), "thread", &ids)
                 .unwrap()
-                .completed_rollouts()
+                .terminal_rollouts()
                 .unwrap(),
             "accepted {status:?}"
         );
@@ -213,12 +240,12 @@ fn completed_gate_rejects_noncompleted_empty_null_and_legacy_turns() {
         projections: completed.projections.clone(),
         projection_columns: completed.projection_columns.clone(),
     };
-    assert!(!malformed.completed_rollouts().unwrap());
+    assert!(!malformed.terminal_rollouts().unwrap());
     drop(completed);
     history.execute("DELETE FROM thread_turns", []).unwrap();
     assert!(!prepare(source.path(), "thread", &ids)
         .unwrap()
-        .completed_rollouts()
+        .terminal_rollouts()
         .unwrap());
     Connection::open(source.path().join(STATE_FILE))
         .unwrap()
@@ -226,7 +253,7 @@ fn completed_gate_rejects_noncompleted_empty_null_and_legacy_turns() {
         .unwrap();
     assert!(!prepare(source.path(), "thread", &ids)
         .unwrap()
-        .completed_rollouts()
+        .terminal_rollouts()
         .unwrap());
 }
 

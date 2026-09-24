@@ -271,6 +271,98 @@ fn completed_loaded_source_exports_a_fixed_snapshot_without_releasing_its_writer
 }
 
 #[test]
+fn store_fenced_source_exports_terminal_history_only_at_its_projected_frontier() {
+    let fixture = Fixture::new();
+    let mut raw = fixture.seed();
+    let history = Connection::open(fixture.primary.join("thread_history_1.sqlite")).unwrap();
+    let mut ordinal = 10;
+    // Real histories retain unsuccessful terminal turns after a later success.
+    // Reproduce both their raw native records and projected status/frontiers.
+    for (turn, status) in [
+        ("old-failure", "failed"),
+        ("old-interruption", "interrupted"),
+        ("latest-success", "completed"),
+    ] {
+        let start = raw.len();
+        let terminal = if status == "interrupted" {
+            json!({"type":"turn_aborted","turn_id":turn,"reason":"interrupted"})
+        } else {
+            json!({"type":"task_complete","turn_id":turn})
+        };
+        let records = [
+            json!({"ordinal":ordinal,"type":"event_msg","payload":{"type":"task_started","turn_id":turn}}),
+            json!({"ordinal":ordinal+1,"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":turn}]}}),
+            json!({"ordinal":ordinal+2,"type":"event_msg","payload":terminal}),
+        ];
+        for record in records {
+            raw.extend(serde_json::to_vec(&record).unwrap());
+            raw.push(b'\n');
+        }
+        history.execute(
+            "INSERT INTO thread_turns (thread_id,turn_id,rollout_ordinal,status,started_at,completed_at,rollout_byte_offset,rollout_end_ordinal,rollout_end_byte_offset) VALUES (?1,?2,?3,?4,1,2,?5,?6,?7)",
+            rusqlite::params![THREAD,turn,ordinal,status,start as i64,ordinal+2,raw.len() as i64],
+        ).unwrap();
+        ordinal += 3;
+    }
+    fs::write(fixture.rollout(false), &raw).unwrap();
+    history.execute(
+        "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=?2",
+        rusqlite::params![raw.len() as i64,ordinal],
+    ).unwrap();
+    let account = tempfile::tempdir().unwrap();
+    let _native = WriterLock::acquire(&account.path().canonicalize().unwrap(), THREAD).unwrap();
+    let _producer = NativeStoreWriter::acquire(&fixture.primary).unwrap();
+    let assert_busy = || {
+        let report = fixture.run(|| Ok(())).unwrap();
+        assert_eq!(report.copied, 0);
+        assert_eq!(report.busy, 1);
+        assert_eq!(report.conflicts, 0);
+        assert!(!fixture.rollout(true).exists());
+        assert_eq!(fs::read(fixture.rollout(false)).unwrap(), raw);
+    };
+    for status in ["inProgress", "futureTerminalStatus"] {
+        history
+            .execute(
+                "UPDATE thread_turns SET status=?1 WHERE turn_id='latest-success'",
+                [status],
+            )
+            .unwrap();
+        assert_busy();
+    }
+    history
+        .execute(
+            "UPDATE thread_turns SET status='completed' WHERE turn_id='latest-success'",
+            [],
+        )
+        .unwrap();
+    history
+        .execute(
+            "UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1",
+            [raw.len() as i64 - 1],
+        )
+        .unwrap();
+    assert_busy();
+    history.execute("UPDATE thread_history_projection_state SET next_rollout_byte_offset=?1,next_rollout_ordinal=?2", rusqlite::params![raw.len() as i64,ordinal-1]).unwrap();
+    assert_busy();
+    history
+        .execute(
+            "UPDATE thread_history_projection_state SET next_rollout_ordinal=?1",
+            [ordinal],
+        )
+        .unwrap();
+    let report = fixture.run(|| Ok(())).unwrap();
+    assert_eq!((report.copied, report.busy, report.conflicts), (1, 0, 0));
+    assert!(fs::read(fixture.rollout(true)).unwrap().starts_with(&raw));
+    assert_eq!(fs::read(fixture.rollout(false)).unwrap(), raw);
+    assert_eq!(
+        NativeStoreWriter::exclusive(&fixture.primary)
+            .err()
+            .as_deref(),
+        Some("busy")
+    );
+}
+
+#[test]
 fn loaded_noncompleted_unprojected_and_legacy_sources_remain_busy() {
     let fixture = Fixture::new();
     let original = fixture.seed();
@@ -1134,4 +1226,97 @@ fn denied_authority_never_mutates_first_turn_or_pending_recovery() {
             fixture.assert_recovered(&original);
         }
     }
+}
+
+#[test]
+fn separate_account_writer_fences_actual_store_both_directions() {
+    for writing_primary in [false, true] {
+        let fixture = Fixture::new();
+        let original = fixture.seed();
+        let account = tempfile::tempdir().unwrap();
+        let account_home = account.path().canonicalize().unwrap();
+        let native_home = if writing_primary {
+            &fixture.primary
+        } else {
+            &fixture.package
+        };
+        // Native still keeps this account-scoped lock; it is not the store lock.
+        let _native = WriterLock::acquire(&account_home, THREAD).unwrap();
+        let producer = NativeStoreWriter::acquire(native_home).unwrap();
+        let report = fixture.run(|| Ok(())).unwrap();
+        if writing_primary {
+            assert_eq!(report.copied, 1, "completed source remains exportable");
+            assert_eq!(fs::read(fixture.rollout(false)).unwrap(), original);
+            // Destination metadata is a newer revision. Never replace the live
+            // source inode even though its canonical thread lock is free.
+            let before = files::stamp(&fixture.rollout(false)).unwrap();
+            let returning = fixture.run(|| Ok(())).unwrap();
+            assert_eq!(returning.copied, 0);
+            assert_eq!(files::stamp(&fixture.rollout(false)).unwrap(), before);
+        } else {
+            assert_eq!(report.busy, 1);
+            assert_eq!(report.copied, 0);
+            assert!(!fixture.rollout(true).exists());
+        }
+        drop(producer);
+        fixture.assert_recovered(&original);
+    }
+}
+
+#[test]
+fn native_store_writer_blocks_pending_recovery_without_moving_old_account_locks() {
+    let fixture = Fixture::new();
+    fixture.seed();
+    interrupt_before_sql(&fixture);
+    let before = files::stamp(&fixture.rollout(true)).unwrap();
+    let pending_before = fs::read(&fixture.journal).unwrap();
+    let writer = NativeStoreWriter::acquire(&fixture.package).unwrap();
+    let report = fixture.run(|| Ok(())).unwrap();
+    assert_eq!(report.pending, 1);
+    assert_eq!(report.copied, 0);
+    assert_eq!(files::stamp(&fixture.rollout(true)).unwrap(), before);
+    assert_eq!(fs::read(&fixture.journal).unwrap(), pending_before);
+    drop(writer);
+    assert_eq!(fixture.run(|| Ok(())).unwrap().pending, 0);
+}
+
+#[test]
+fn native_store_writer_is_shared_between_accounts_and_scoped_to_store() {
+    let fixture = Fixture::new();
+    let first = NativeStoreWriter::acquire(&fixture.primary).unwrap();
+    let second = NativeStoreWriter::acquire(&fixture.primary).unwrap();
+    assert!(NativeStoreWriter::exclusive(&fixture.primary).is_err());
+    let unrelated = NativeStoreWriter::exclusive(&fixture.package).unwrap();
+    drop(first);
+    assert!(NativeStoreWriter::exclusive(&fixture.primary).is_err());
+    drop(second);
+    assert!(NativeStoreWriter::exclusive(&fixture.primary).is_ok());
+    drop(unrelated);
+}
+
+#[test]
+fn store_fence_remains_exclusive_through_native_file_and_sql_publication() {
+    let fixture = Fixture::new();
+    fixture.seed();
+    let checked = Cell::new(0);
+    let report = fixture
+        .run(|| {
+            if fixture.rollout(true).exists()
+                && read_ledger(&fixture.journal)
+                    .unwrap()
+                    .pending
+                    .contains_key(THREAD)
+            {
+                assert!(NativeStoreWriter::acquire(&fixture.package).is_err());
+                checked.set(checked.get() + 1);
+            }
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(report.copied, 1);
+    assert!(
+        checked.get() > 1,
+        "guard checked across multiple publication boundaries"
+    );
+    assert!(NativeStoreWriter::acquire(&fixture.package).is_ok());
 }

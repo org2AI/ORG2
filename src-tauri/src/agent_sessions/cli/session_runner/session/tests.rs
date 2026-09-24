@@ -1350,3 +1350,75 @@ fn managed_execution_removes_ambient_routing_without_removing_runtime_controls()
         Some(std::ffi::OsStr::new("/owned/session"))
     );
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn native_store_fence_survives_parent_guard_until_child_exits() {
+    use agent_cli::managed_config::native_app::codex_history::{
+        NativeStoreWriter, NATIVE_STORE_WRITER_LOCK,
+    };
+    use fs2::FileExt;
+    let home = tempfile::tempdir().unwrap();
+    let home = home.path().canonicalize().unwrap();
+    let writer = NativeStoreWriter::acquire(&home).unwrap();
+    let mut command = Command::new("/bin/sh");
+    command.args(["-c", "read release"]).stdin(Stdio::piped());
+    inherit_codex_store_writer(&mut command, &writer);
+    let mut child = command.spawn().unwrap();
+    drop(writer);
+    let probe = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(home.join(NATIVE_STORE_WRITER_LOCK))
+        .unwrap();
+    assert!(
+        probe.try_lock_exclusive().is_err(),
+        "child must retain the fence after parent guard drops"
+    );
+    drop(child.stdin.take());
+    child.wait().await.unwrap();
+    probe.try_lock_exclusive().unwrap();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn native_store_launch_waits_for_publication_and_bounds_contention() {
+    use agent_cli::managed_config::native_app::codex_history::{
+        NativeStoreWriter, NATIVE_STORE_WRITER_LOCK,
+    };
+    use fs2::FileExt;
+    let directory = tempfile::tempdir().unwrap();
+    let home = directory.path().canonicalize().unwrap();
+    drop(NativeStoreWriter::acquire(&home).unwrap());
+    let publication = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(home.join(NATIVE_STORE_WRITER_LOCK))
+        .unwrap();
+    publication.try_lock_exclusive().unwrap();
+    assert!(
+        acquire_codex_store_writer(&home, std::time::Duration::from_millis(20))
+            .await
+            .err()
+            .unwrap()
+            .contains("still publishing")
+    );
+    let release = tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(75)).await;
+        drop(publication);
+    });
+    let writer = acquire_codex_store_writer(&home, std::time::Duration::from_secs(2))
+        .await
+        .unwrap();
+    release.await.unwrap();
+    drop(writer);
+    let malformed = home.join("not-a-directory");
+    std::fs::write(&malformed, "fixture").unwrap();
+    assert!(
+        acquire_codex_store_writer(&malformed, std::time::Duration::from_secs(10))
+            .await
+            .err()
+            .unwrap()
+            .contains("Cannot fence")
+    );
+}

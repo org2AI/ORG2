@@ -642,27 +642,28 @@ impl PreparedThread {
         &self.projections
     }
 
-    /// A loaded source can only be considered for a fixed completed snapshot
-    /// when every selected immutable rollout has turns and all are completed.
+    /// A loaded source can only be considered for a fixed terminal snapshot
+    /// when every selected immutable rollout has turns and none is still active.
+    /// Failed and interrupted turns are terminal native history, not live writes.
     /// Read from this same held SQLite snapshot; never consult newer live rows.
     /// This is one prerequisite, not a replacement for the caller's raw-file,
     /// checkpoint, metadata, and destination writer-lock fences.
-    pub(super) fn completed_rollouts(&self) -> Result<bool, String> {
+    pub(super) fn terminal_rollouts(&self) -> Result<bool, String> {
         if self.record.history_mode != "paginated" || self.projections.is_empty() {
             return Ok(false);
         }
         let sql = format!(
-            "SELECT count(*),count(CASE WHEN status='completed' THEN 1 END) FROM {}.thread_turns WHERE thread_id=?1",
+            "SELECT count(*),count(CASE WHEN status IN ('completed','failed','interrupted') THEN 1 END) FROM {}.thread_turns WHERE thread_id=?1",
             self.history_schema
         );
         let mut statement = self.source.prepare(&sql).map_err(db_error)?;
         for projection in &self.projections {
-            let (total, completed): (i64, i64) = statement
+            let (total, terminal): (i64, i64) = statement
                 .query_row([&projection.rollout_id], |row| {
                     Ok((row.get(0)?, row.get(1)?))
                 })
                 .map_err(db_error)?;
-            if total == 0 || total != completed {
+            if total == 0 || total != terminal {
                 return Ok(false);
             }
         }

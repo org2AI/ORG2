@@ -51,6 +51,14 @@ pub(super) fn writer_state(
         let Some(version) = versions[side] else {
             continue;
         };
+        let _store = match files::NativeStoreWriter::exclusive(home) {
+            Ok(guard) => guard,
+            Err(error) if error == "busy" => {
+                state |= 1 << side;
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
         let keys = [id.to_owned(), files::physical_id(&version.path)?]
             .into_iter()
             .collect::<std::collections::BTreeSet<_>>();
@@ -69,7 +77,7 @@ pub(super) fn writer_state(
     Ok(state)
 }
 
-pub(super) fn completed(home: &Path, row: &ThreadRecord) -> Result<bool, String> {
+pub(super) fn terminal(home: &Path, row: &ThreadRecord) -> Result<bool, String> {
     if row.history_mode != "paginated" {
         return Ok(false);
     }
@@ -82,7 +90,7 @@ pub(super) fn completed(home: &Path, row: &ThreadRecord) -> Result<bool, String>
             .map(|segment| segment.id.clone())
             .collect::<Vec<_>>(),
     )?;
-    if prepared.record().metadata_hash != row.metadata_hash || !prepared.completed_rollouts()? {
+    if prepared.record().metadata_hash != row.metadata_hash || !prepared.terminal_rollouts()? {
         return Ok(false);
     }
     for segment in &segments {

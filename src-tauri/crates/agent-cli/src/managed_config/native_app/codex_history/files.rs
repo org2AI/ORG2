@@ -169,6 +169,236 @@ pub(super) fn tail(path: &Path) -> Result<Value, String> {
     serde_json::from_slice(&content[offset..]).map_err(|_| "Invalid Codex rollout tail".into())
 }
 
+/// Account-scoped CODEX_HOME and sqlite_home do not necessarily share native
+/// thread locks. ORG2 producers additionally fence the actual store before spawn.
+/// The inherited descriptor keeps the fence alive even if their parent exits.
+/// Never unlock explicitly: parent and child share an open-file description.
+pub struct NativeStoreWriter {
+    file: Option<File>,
+    release_notification: Option<File>,
+}
+
+pub const NATIVE_STORE_WRITER_LOCK: &str = ".org2-native-writer.lock";
+
+impl NativeStoreWriter {
+    fn open(home: &Path) -> Result<File, String> {
+        regular_path(home, true)?;
+        fs::create_dir_all(home).map_err(|_| "Cannot create Codex native store")?;
+        let path = home.join(NATIVE_STORE_WRITER_LOCK);
+        regular_path(&path, true)?;
+        OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)
+            .map_err(|_| "Cannot open Codex native store writer fence".into())
+    }
+
+    pub fn acquire(home: &Path) -> std::io::Result<Self> {
+        use std::os::unix::fs::MetadataExt;
+        let file = Self::open(home).map_err(std::io::Error::other)?;
+        FileExt::try_lock_shared(&file)?;
+        // A distinct open-file description can notify after our locked FD closes.
+        // It stays close-on-exec and cannot keep a child's writer fence alive.
+        let notification = Self::open(home).map_err(std::io::Error::other)?;
+        let held = file.metadata()?;
+        let notify = notification.metadata()?;
+        if (held.dev(), held.ino()) != (notify.dev(), notify.ino()) {
+            return Err(std::io::Error::other("Codex native store fence changed"));
+        }
+        Ok(Self {
+            file: Some(file),
+            release_notification: Some(notification),
+        })
+    }
+
+    pub(super) fn exclusive(home: &Path) -> Result<Self, String> {
+        let file = Self::open(home)?;
+        FileExt::try_lock_exclusive(&file).map_err(|_| "busy")?;
+        Ok(Self {
+            file: Some(file),
+            release_notification: None,
+        })
+    }
+
+    /// Only clear close-on-exec in the selected child's pre_exec callback.
+    /// Clearing it in the parent would leak this fence into unrelated launches.
+    pub fn raw_fd(&self) -> std::os::fd::RawFd {
+        use std::os::fd::AsRawFd;
+        self.file.as_ref().expect("live writer fence").as_raw_fd()
+    }
+}
+
+impl Drop for NativeStoreWriter {
+    fn drop(&mut self) {
+        // Cancellation drops the runner before terminating its native process.
+        // Closing our FD is therefore not proof that the last writer has left.
+        // Never explicitly unlock this descriptor shared with the native child.
+        drop(self.file.take());
+        let Some(notification) = self.release_notification.take() else {
+            return;
+        };
+        match notify_writer_released(&notification) {
+            Ok(true) => {}
+            Ok(false) => {
+                // Production runners drop inside Tokio. This cleanup belongs
+                // only to this release event and this already-validated inode;
+                // it neither scans stores nor keeps an app-lifetime poller.
+                if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+                    runtime.spawn(wait_for_writer_release(
+                        notification,
+                        std::time::Duration::from_secs(10),
+                    ));
+                } else {
+                    tracing::warn!(
+                        "Codex writer release notification needs a running Tokio runtime"
+                    );
+                }
+            }
+            Err(error) => tracing::warn!(%error, "Cannot notify Codex writer release"),
+        }
+    }
+}
+
+fn notify_writer_released(notification: &File) -> std::io::Result<bool> {
+    match FileExt::try_lock_exclusive(notification) {
+        Ok(()) => {
+            // This is a distinct, non-inherited open-file description. Release
+            // its probe lock before waking the observer, which probes it too.
+            FileExt::unlock(notification)?;
+            notification.set_modified(std::time::SystemTime::now())?;
+            Ok(true)
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
+async fn wait_for_writer_release(notification: File, timeout: std::time::Duration) -> bool {
+    let deadline = tokio::time::Instant::now() + timeout;
+    loop {
+        tokio::time::sleep_until(
+            (tokio::time::Instant::now() + std::time::Duration::from_millis(100)).min(deadline),
+        )
+        .await;
+        match notify_writer_released(&notification) {
+            Ok(true) => return true,
+            Ok(false) if tokio::time::Instant::now() < deadline => {}
+            Ok(false) => {
+                // An orphan/escaped descendant may retain the fence. Keep the
+                // store protected; a later native/focus event can reconcile it.
+                tracing::warn!("Timed out awaiting Codex writer release notification");
+                return false;
+            }
+            Err(error) => {
+                tracing::warn!(%error, "Cannot confirm Codex writer release");
+                return false;
+            }
+        }
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod writer_release_tests {
+    use super::*;
+    use std::{
+        io::BufRead,
+        process::{Child, Command, Stdio},
+        time::{Duration, SystemTime},
+    };
+
+    struct HeldChild(Child);
+    impl Drop for HeldChild {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+
+    fn inherited_child(writer: &NativeStoreWriter) -> HeldChild {
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", "trap '' TERM; printf 'ready\\n'; exec sleep 60"])
+            // Stdio duplicates the same open-file description into the child.
+            // Unlike pre_exec it preserves macOS posix_spawn, so this test
+            // cannot transiently inherit other parallel fixtures' lock FDs.
+            .stdin(Stdio::from(
+                writer.file.as_ref().unwrap().try_clone().unwrap(),
+            ))
+            .stdout(Stdio::piped());
+        let mut child = HeldChild(command.spawn().unwrap());
+        let mut ready = String::new();
+        BufReader::new(child.0.stdout.take().unwrap())
+            .read_line(&mut ready)
+            .unwrap();
+        assert_eq!(ready, "ready\n");
+        child
+    }
+
+    #[tokio::test]
+    async fn cancelled_writer_notifies_only_after_last_inherited_child_exits() {
+        let directory = tempfile::tempdir().unwrap();
+        let home = directory.path().canonicalize().unwrap();
+        let writer = NativeStoreWriter::acquire(&home).unwrap();
+        let mut first = inherited_child(&writer);
+        let mut last = inherited_child(&writer);
+        let path = home.join(NATIVE_STORE_WRITER_LOCK);
+        let old = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        File::open(&path).unwrap().set_modified(old).unwrap();
+
+        drop(writer); // Mirrors abort().await before native process termination.
+        assert!(NativeStoreWriter::exclusive(&home).is_err());
+        assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), old);
+        first.0.kill().unwrap();
+        first.0.wait().unwrap();
+        // TERM-resistant native child still owns the last inherited descriptor.
+        assert_eq!(unsafe { libc::kill(last.0.id() as i32, libc::SIGTERM) }, 0);
+        tokio::time::sleep(Duration::from_millis(150)).await;
+        assert!(last.0.try_wait().unwrap().is_none());
+        assert!(NativeStoreWriter::exclusive(&home).is_err());
+        assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), old);
+
+        last.0.kill().unwrap();
+        last.0.wait().unwrap();
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while fs::metadata(&path).unwrap().modified().unwrap() == old {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        assert!(NativeStoreWriter::exclusive(&home).is_ok());
+    }
+
+    #[tokio::test]
+    async fn release_confirmation_stops_at_deadline_without_notifying_busy_store() {
+        let directory = tempfile::tempdir().unwrap();
+        let home = directory.path().canonicalize().unwrap();
+        let writer = NativeStoreWriter::acquire(&home).unwrap();
+        let notification = NativeStoreWriter::open(&home).unwrap();
+        let old = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        notification.set_modified(old).unwrap();
+        let completed = tokio::time::timeout(
+            Duration::from_secs(1),
+            wait_for_writer_release(notification, Duration::from_millis(10)),
+        )
+        .await
+        .unwrap();
+        assert!(!completed);
+        assert_eq!(
+            fs::metadata(home.join(NATIVE_STORE_WRITER_LOCK))
+                .unwrap()
+                .modified()
+                .unwrap(),
+            old
+        );
+        assert!(NativeStoreWriter::exclusive(&home).is_err());
+        drop(writer);
+        assert!(NativeStoreWriter::exclusive(&home).is_ok());
+    }
+}
+
 /// Interoperate with Codex's own cross-process lock protocol. Holding only
 /// ORG2's lock would not protect a native GUI with a loaded thread.
 pub(super) struct WriterLock {

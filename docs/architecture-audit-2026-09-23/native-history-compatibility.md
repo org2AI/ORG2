@@ -145,10 +145,14 @@ controls; this reduction introduces no production UI controls or native inputs.
 | Update / provider switch / revocation | Invalidate runtime/config binding before commit                        | Source-boundary regression coverage; live App update matrix pending                                                     |
 | Failure / crash / repeated open-close | Bound work, retain unknown pending transaction, avoid duplicate writer | Recovery/launch tests; full repeated GUI lifecycle pending                                                              |
 
-One pre-existing limitation remains: the Codex coordinator restores dirty work for
-`busy` / `already synchronizing` failures and retries after 750 ms while pending.
-The same loop exists on `develop`; it was not introduced or expanded here. Do not
-use the event-driven design claim to certify the persistent-contention idle case.
+The Codex coordinator restores dirty work when a reconciliation call returns a
+transient `busy` / `already synchronizing` error, then uses the existing 750 ms
+coalescing delay before retrying that pending invalidation. A per-thread busy
+count returned in a successful report is different: it waits for a relevant
+invalidation and does not itself request another timed pass. Persistent transient
+errors can therefore retry, while a loaded writer requires a release event or
+explicit invalidation. Neither behavior establishes the persistent-contention
+idle case without measurement.
 
 **Performance verdict: blocked.** Source bounds and lifecycle tests cannot replace
 the missing visible/hidden/active resource measurements and real account/provider
@@ -365,8 +369,68 @@ used the prior running desktop package and is **not** Ready93 native GUI C4,
 cross-model pre-compaction acceptance or reservation recovery evidence. The
 provider's integer reserve percentage remained 0; no percentage delta is claimed.
 
-Remaining product acceptance: Ready93 C1–C6, C7–C14 and the visible/hidden/active/
+At that stage, remaining product acceptance was Ready93 C1–C6, C7–C14 and the visible/hidden/active/
 repeated-open resource matrix. The old second-round C6 used manual lock cleanup
 and cannot certify automatic reservation recovery. Do not clear a lock or call
 a reconciliation helper to make product acceptance pass. Performance verdict
 remains **blocked on the unexecuted runtime matrix**, not on reserve supply.
+
+## 2026-09-24 C7 writer boundary correction
+
+A real reverse continuation exposed a source fence mismatch: the account-scoped
+native app-server kept its rollout FD and native thread lock open, while ORG2
+published newer managed metadata over the indexed source path. The path received
+a new inode while the producer still held the old one. The completed canary was
+visible once in the GUI; no subsequent append or observed data loss is claimed.
+That successful transfer did not make C7 a pass.
+
+The producing boundary now fences the actual native store before app-server
+spawn, independently of account `CODEX_HOME`. Native producers share this lock;
+publication and pending recovery take it exclusively in addition to native
+per-thread locks. The native child inherits the locked open-file description.
+Teardown closes the parent's locked descriptor, then confirms exclusive
+availability using a separate notification descriptor for the same inode before
+updating its timestamp. Cancellation may drop the runner before native process
+teardown. Only a busy release starts asynchronous 100 ms checks for up to ten
+seconds on the existing Tokio runtime, so the final notification follows actual
+inherited-descriptor release. No provider-wide kill ordering is changed.
+Existing auth homes and native lock directories are neither moved nor deleted.
+
+| Layer / boundary                                | Verdict          | Reason                                                                                         | Verification                                                                        |
+| ----------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Owning writer boundary and native lock protocol | fix              | `sqlite_home` and account `CODEX_HOME` may differ                                              | Separate-home source/destination and pending-recovery regressions                   |
+| Startup parity                                  | fix              | OwnKey, hosted and managed turns use the same final store and app-server spawn                 | Shared runner path, inherited-FD regression, fresh/resume routing review            |
+| Contention defaults                             | fix              | A normal send must not fail on a millisecond engine probe                                      | Only `WouldBlock` waits asynchronously, at most ten seconds, during explicit launch |
+| Lifecycle / cancellation                        | keep with reason | Child owns the fence even if parent drops; bounded release cleanup confirms final close        | Real child FD inheritance, deferred-release and timeout regressions                 |
+| Source / destination symmetry                   | fix              | Loaded terminal source may export; loaded target must never be replaced                        | Exclusive target guard spans preparation, file/SQL publication and recovery         |
+| Persistence / wire / identity                   | keep with reason | No auth, native schema, model route, journal format or account-generation migration            | Diff and resolver-path inspection                                                   |
+| Background work                                 | keep with reason | Existing watcher observes release; bounded release-only cleanup, no idle timer or account scan | Event/coalescing call-chain inspection; final GUI resource matrix still required    |
+| UI / React                                      | skipped          | No UI implementation changed in this correction                                                | Source diff                                                                         |
+
+A producer conservatively delays writeback into other threads of the same store;
+independent stores remain independent. Native command/exec did not inherit the
+FD in the real probe, while stdio MCP did. Normal process-group teardown
+terminates those MCP children, and release cleanup observes the resulting close; an orphan or a descendant that escapes the group can
+conservatively retain the lock. If its final close exceeds the ten-second cleanup bound, or the runtime is absent
+or shutting down, a later native event or explicit invalidation may be needed for
+convergence. These are availability
+limitations, not permission to replace a live writer's file. Old-build producers
+must finish before the new fence protects their stores.
+
+The initial 42-test engine run passed, as did two runner regressions and library
+Clippy. Fence93 proved the production spawn holds the actual store lock; its
+product request hit ordinary quota exhaustion. Two protocol reserve replies kept
+the live inode stable, but exposed an overly strict historical status check:
+old failed turns prevented exporting an otherwise completely projected live
+snapshot. The adapter now accepts exactly the native terminal states completed,
+failed and interrupted while rejecting active/unknown states and projection lag.
+The full history suite passed 76 tests, including a live-store boundary regression,
+and agent_cli test Clippy passed. No historical data cleanup was performed.
+
+Fence93 predates that terminal-state fix. It converged automatically after source
+EOF, but did not pass C7 while the source was live. A separate final review found normal Stop releases its parent guard before child
+process-tree teardown. Release cleanup now confirms actual final close rather
+than announcing the earlier parent drop; a two-child regression and bounded-timeout
+regression cover that ordering. The final complete history suite passed 78 tests
+and test Clippy passed. Final runtime and complete performance acceptance remain pending; see the
+[acceptance report](../org2-performance-guard-2026-09-24/native-history-acceptance.md).

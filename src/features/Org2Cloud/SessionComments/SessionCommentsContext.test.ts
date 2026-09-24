@@ -33,6 +33,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   readFile: vi.fn(),
+  openSharedSessionFile: vi.fn(),
   addComment: vi.fn(),
   getCloudCapabilities: vi.fn(),
   loadCloudOrgMembers: vi.fn(),
@@ -431,16 +432,8 @@ describe("SessionCommentsProvider failed Team Chat retry", () => {
   });
 });
 
-vi.mock("../SharedSessionFileViewer", () => ({
-  default: ({
-    reference,
-  }: {
-    reference: { endpoint: string; source: { sessionId: string } };
-  }) =>
-    createElement("output", {
-      "data-file-endpoint": reference.endpoint,
-      "data-file-session": reference.source.sessionId,
-    }),
+vi.mock("../openSharedSessionFile", () => ({
+  openSharedSessionFile: mocks.openSharedSessionFile,
 }));
 
 describe("shared-file navigation origin", () => {
@@ -490,6 +483,7 @@ describe("shared-file navigation origin", () => {
   beforeEach(() => {
     localOpen.mockClear();
     mocks.readFile.mockReset();
+    mocks.openSharedSessionFile.mockClear();
     root = createSmokeRoot();
     mocks.useSessionComments.mockReturnValue({
       comments: [],
@@ -546,12 +540,16 @@ describe("shared-file navigation origin", () => {
     await click();
     expect(localOpen).not.toHaveBeenCalled();
     expect(mocks.readFile).not.toHaveBeenCalled();
-    expect(
-      root.container.querySelector("output")?.getAttribute("data-file-endpoint")
-    ).toBe("https://source.example");
-    expect(
-      root.container.querySelector("output")?.getAttribute("data-file-session")
-    ).toBe("remote");
+    expect(mocks.openSharedSessionFile).toHaveBeenCalledOnce();
+    expect(mocks.openSharedSessionFile.mock.calls[0][0]).toEqual({
+      id: "source",
+      endpoint: "https://source.example",
+      source: {
+        orgId: "org-1",
+        sessionId: "remote",
+        path: "/workspace/report.md",
+      },
+    });
   });
   it.each([
     local,
@@ -570,7 +568,7 @@ describe("shared-file navigation origin", () => {
       ).toBe("false");
       await click();
       expect(localOpen).toHaveBeenCalledOnce();
-      expect(root.container.querySelector("output")).toBeNull();
+      expect(mocks.openSharedSessionFile).not.toHaveBeenCalled();
     }
   );
   it("does not resolve legacy remote origins against a newly selected endpoint", async () => {
@@ -589,8 +587,16 @@ describe("shared-file navigation origin", () => {
     );
     await click();
     expect(localOpen).not.toHaveBeenCalled();
-    expect(
-      root.container.querySelector("output")?.getAttribute("data-file-endpoint")
-    ).toBe("");
+    expect(mocks.readFile).not.toHaveBeenCalled();
+    expect(mocks.openSharedSessionFile).toHaveBeenCalledOnce();
+    expect(mocks.openSharedSessionFile.mock.calls[0][0]).toEqual({
+      id: "source",
+      endpoint: "",
+      source: {
+        orgId: "org-1",
+        sessionId: "remote",
+        path: "/workspace/report.md",
+      },
+    });
   });
 });

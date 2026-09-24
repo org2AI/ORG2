@@ -7,7 +7,10 @@ import { type SmokeRoot, createSmokeRoot } from "@src/test/reactSmokeHarness";
 
 import SharedSessionFileViewer from "./SharedSessionFileViewer";
 import { SharedSessionFilesProvider } from "./SharedSessionFilesContext";
-import { org2CloudAuthAtom } from "./org2CloudAuthAtom";
+import {
+  org2CloudAuthAtom,
+  org2CloudAuthIdentityKey,
+} from "./org2CloudAuthAtom";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 
 const mocks = vi.hoisted(() => ({
@@ -96,7 +99,7 @@ describe("shared file viewer lifecycle", () => {
           },
           createElement(SharedSessionFileViewer, {
             reference: ref,
-            onClose: vi.fn(),
+            openingIdentity: org2CloudAuthIdentityKey(auth),
           })
         )
       )
@@ -366,5 +369,43 @@ describe("shared file viewer lifecycle", () => {
     });
     expect(document.querySelector("pre")).toBeNull();
     expect(document.body.textContent).not.toContain("hello");
+  });
+  it("shows loading without a modal or a disk write before the download resolves", async () => {
+    mocks.read.mockImplementation(() => new Promise(() => {}));
+    await render();
+    expect(
+      document.querySelector('[data-testid="shared-file-preview"]')
+    ).not.toBeNull();
+    expect(document.querySelector('[role="status"]')).not.toBeNull();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(mocks.write).not.toHaveBeenCalled();
+  });
+  it("does not reopen an old account's tab using a new account", async () => {
+    mocks.read.mockResolvedValue(file);
+    await render();
+    await act(async () => {
+      store.set(org2CloudAuthAtom, { ...auth, userId: "user-2" });
+    });
+    expect(document.querySelector("pre")).toBeNull();
+    expect(mocks.read).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('[role="alert"]')).not.toBeNull();
+  });
+  it("revokes image URLs on close", async () => {
+    const create = vi.fn(() => "blob:preview");
+    const revoke = vi.fn();
+    const oldCreate = URL.createObjectURL;
+    const oldRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = create;
+    URL.revokeObjectURL = revoke;
+    try {
+      mocks.read.mockResolvedValue({ ...file, name: "proof.png" });
+      await render();
+      expect(document.querySelector("img")?.src).toBe("blob:preview");
+      await root.unmount();
+      expect(revoke).toHaveBeenCalledWith("blob:preview");
+    } finally {
+      URL.createObjectURL = oldCreate;
+      URL.revokeObjectURL = oldRevoke;
+    }
   });
 });

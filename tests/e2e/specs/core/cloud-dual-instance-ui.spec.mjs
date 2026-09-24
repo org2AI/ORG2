@@ -5237,6 +5237,28 @@ describe("Shared session files across two desktop accounts", function () {
           timeoutMsg: "Real agent file did not preview on receiver",
         }
       );
+      const previewState = await executeOn(
+        peer.client,
+        `
+        const preview = document.querySelector('[data-testid="shared-file-preview"]');
+        const chat = document.querySelector('[data-testid="chat-message-assistant"]');
+        return { preview: !!preview?.getClientRects().length,
+          chat: !!chat?.getClientRects().length,
+          dialog: !!document.querySelector('[role="dialog"]') };
+      `
+      );
+      if (!previewState.preview || !previewState.chat || previewState.dialog)
+        throw new Error("Shared file must preview beside chat without a modal");
+      await clickRenderedOn(
+        peer.client,
+        link,
+        "focus existing shared file preview"
+      );
+      const previewCount = await executeOn(
+        peer.client,
+        `return document.querySelectorAll('[role="tab"][data-tab-id^="shared-file:"]').length;`
+      );
+      if (previewCount !== 1) throw new Error("Duplicate shared file preview");
       await capture(peer.client, join(artifacts, "real-agent-receiver.png"));
       for (const path of [downloadPath, duplicatePath]) {
         await clickRenderedOn(
@@ -5267,7 +5289,19 @@ describe("Shared session files across two desktop accounts", function () {
           duplicatePreserved: true,
         })
       );
-      await pressEscapeOn(peer.client);
+      await clickRenderedOn(
+        peer.client,
+        '[role="tab"][data-tab-id^="shared-file:"] [data-action="editor.tab.close"]',
+        "close shared preview"
+      );
+      await peer.client.waitUntil(
+        async () =>
+          executeOn(
+            peer.client,
+            `return !document.querySelector('[data-testid="shared-file-preview"]');`
+          ),
+        { timeout: 10_000, timeoutMsg: "Shared preview survived tab close" }
+      );
     } finally {
       fs.renameSync(`${filePath}.source-offline`, filePath);
       for (const path of [downloadPath, duplicatePath])

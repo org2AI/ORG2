@@ -25,7 +25,7 @@ vi.mock("@src/api/tauri/rpc", () => ({
     cloudFileOutbox: {
       claim: mocks.claim,
       settle: mocks.settle,
-      readSnapshot: mocks.readSnapshot,
+      readSnapshotChunk: mocks.readSnapshot,
     },
   },
 }));
@@ -72,7 +72,10 @@ describe("durable continuation file delivery lifecycle", () => {
       status: "captured",
       bytesBase64: "AQI=",
       capturedAt: 1,
-      sha256: "hash",
+      sha256:
+        "a12871fee210fb8619291eaea194581cbd2531e4b23759d225f6806923f63222",
+      size: 2,
+      offset: 0,
     });
     mocks.settle.mockResolvedValue(undefined);
     mocks.listen.mockResolvedValue(mocks.unlisten);
@@ -137,6 +140,7 @@ describe("durable continuation file delivery lifecycle", () => {
       orgId: "org",
       sessionId: "root",
       candidate: { path: "/report.md", revision: "event:1" },
+      offset: 0,
     });
   });
   it.each([

@@ -4,13 +4,19 @@ use base64::Engine;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use std::{fs::File, io::Read, path::Path};
+use std::{
+    fs::File,
+    io::{Read, Seek, Write},
+    path::Path,
+};
 
 const MAX_FILE_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_PENDING_BYTES: i64 = 256 * 1024 * 1024;
 
 pub(super) fn init(conn: &Connection) -> rusqlite::Result<()> {
-    conn.execute_batch(
+    // Replace derived accounting triggers atomically for existing receipts too.
+    conn.execute_batch("SAVEPOINT cloud_snapshot_schema")?;
+    let result = conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS cloud_file_snapshots (
           identity TEXT NOT NULL, org_id TEXT NOT NULL, session_id TEXT NOT NULL,
           path TEXT NOT NULL, revision TEXT NOT NULL, captured_at INTEGER NOT NULL,
@@ -22,20 +28,28 @@ pub(super) fn init(conn: &Connection) -> rusqlite::Result<()> {
           id INTEGER PRIMARY KEY CHECK(id=1), bytes INTEGER NOT NULL CHECK(bytes>=0)
         );
         INSERT OR IGNORE INTO cloud_file_snapshot_usage(id,bytes) VALUES(1,0);
-        CREATE TRIGGER IF NOT EXISTS cloud_snapshot_insert AFTER INSERT ON cloud_file_snapshots
-        WHEN NEW.bytes IS NOT NULL BEGIN
+        DROP TRIGGER IF EXISTS cloud_snapshot_insert;
+        DROP TRIGGER IF EXISTS cloud_snapshot_update;
+        DROP TRIGGER IF EXISTS cloud_snapshot_delete;
+        CREATE TRIGGER cloud_snapshot_insert AFTER INSERT ON cloud_file_snapshots
+        WHEN NEW.status='captured' BEGIN
           UPDATE cloud_file_snapshot_usage SET bytes=bytes+NEW.size_bytes WHERE id=1;
         END;
-        CREATE TRIGGER IF NOT EXISTS cloud_snapshot_update AFTER UPDATE OF bytes,size_bytes ON cloud_file_snapshots BEGIN
+        CREATE TRIGGER cloud_snapshot_update AFTER UPDATE OF bytes,size_bytes,status ON cloud_file_snapshots BEGIN
           UPDATE cloud_file_snapshot_usage SET bytes=bytes
-            - CASE WHEN OLD.bytes IS NOT NULL THEN OLD.size_bytes ELSE 0 END
-            + CASE WHEN NEW.bytes IS NOT NULL THEN NEW.size_bytes ELSE 0 END WHERE id=1;
+            - CASE WHEN OLD.status='captured' THEN OLD.size_bytes ELSE 0 END
+            + CASE WHEN NEW.status='captured' THEN NEW.size_bytes ELSE 0 END WHERE id=1;
         END;
-        CREATE TRIGGER IF NOT EXISTS cloud_snapshot_delete AFTER DELETE ON cloud_file_snapshots
-        WHEN OLD.bytes IS NOT NULL BEGIN
+        CREATE TRIGGER cloud_snapshot_delete AFTER DELETE ON cloud_file_snapshots
+        WHEN OLD.status='captured' BEGIN
           UPDATE cloud_file_snapshot_usage SET bytes=bytes-OLD.size_bytes WHERE id=1;
         END;",
-    )
+    );
+    if let Err(error) = result {
+        conn.execute_batch("ROLLBACK TO cloud_snapshot_schema; RELEASE cloud_snapshot_schema")?;
+        return Err(error);
+    }
+    conn.execute_batch("RELEASE cloud_snapshot_schema")
 }
 
 #[derive(Debug, Serialize)]
@@ -110,18 +124,25 @@ pub(super) fn read(
     })
 }
 
+/// A private OS snapshot handle, never the mutable source path.
+#[derive(Debug)]
+pub(super) struct CapturedFile {
+    file: File,
+    size: u64,
+}
+
 pub(super) fn save(
     conn: &Connection,
     scope: &[&str; 3],
     file: &Candidate,
-    capture: Result<Vec<u8>, &'static str>,
+    capture: Result<CapturedFile, &'static str>,
 ) -> Result<(), String> {
     let tx = database::begin_immediate(conn).map_err(|e| e.to_string())?;
     if exists(&tx, scope, file)? {
         return Ok(());
     }
-    let (mut status, mut bytes) = match capture {
-        Ok(bytes) => ("captured", Some(bytes)),
+    let (mut status, mut captured) = match capture {
+        Ok(captured) => ("captured", Some(captured)),
         Err(reason) => (reason, None),
     };
     let used: i64 = tx
@@ -131,19 +152,64 @@ pub(super) fn save(
             |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
-    if bytes
+    if captured
         .as_ref()
-        .is_some_and(|b| used + b.len() as i64 > MAX_PENDING_BYTES)
+        .is_some_and(|c| used + c.size as i64 > MAX_PENDING_BYTES)
     {
         status = "local_budget_exceeded";
-        bytes = None;
+        captured = None;
     }
-    let hash = bytes.as_ref().map(|b| format!("{:x}", Sha256::digest(b)));
+    let size = captured.as_ref().map_or(0, |c| c.size);
+    let mut buffer = vec![0u8; 256 * 1024];
+    // Hash the immutable handle first. Updating a column after populating the
+    // blob makes SQLite rebuild the entire row, including the large blob.
+    let hash = if let Some(captured) = captured.as_mut() {
+        let mut digest = Sha256::new();
+        let mut remaining = size;
+        while remaining > 0 {
+            let len = remaining.min(buffer.len() as u64) as usize;
+            captured
+                .file
+                .read_exact(&mut buffer[..len])
+                .map_err(|e| e.to_string())?;
+            digest.update(&buffer[..len]);
+            remaining -= len as u64;
+        }
+        captured.file.rewind().map_err(|e| e.to_string())?;
+        Some(format!("{:x}", digest.finalize()))
+    } else {
+        None
+    };
     tx.execute(
-        "INSERT INTO cloud_file_snapshots(identity,org_id,session_id,path,revision,captured_at,status,sha256,size_bytes,bytes)
-         VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
-        params![scope[0],scope[1],scope[2],file.path,file.revision,chrono::Utc::now().timestamp_millis(),status,hash,bytes.as_ref().map_or(0, |b| b.len() as i64),bytes],
+        "INSERT INTO cloud_file_snapshots(identity,org_id,session_id,path,revision,captured_at,status,size_bytes,sha256,bytes)
+         VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,CASE WHEN ?7='captured' THEN zeroblob(?8) ELSE NULL END)",
+        params![scope[0],scope[1],scope[2],file.path,file.revision,chrono::Utc::now().timestamp_millis(),status,size,hash],
     ).map_err(|e| e.to_string())?;
+    if let Some(mut captured) = captured {
+        let rowid = tx.last_insert_rowid();
+        {
+            let mut blob = tx
+                .blob_open(
+                    rusqlite::DatabaseName::Main,
+                    "cloud_file_snapshots",
+                    "bytes",
+                    rowid,
+                    false,
+                )
+                .map_err(|e| e.to_string())?;
+            let mut remaining = size;
+            while remaining > 0 {
+                let len = remaining.min(buffer.len() as u64) as usize;
+                captured
+                    .file
+                    .read_exact(&mut buffer[..len])
+                    .map_err(|e| e.to_string())?;
+                blob.write_all(&buffer[..len]).map_err(|e| e.to_string())?;
+                remaining -= len as u64;
+            }
+            blob.close().map_err(|e| e.to_string())?;
+        }
+    }
     tx.commit().map_err(|e| e.to_string())
 }
 
@@ -159,7 +225,7 @@ pub(super) fn release(conn: &Connection, identity: &str, id: i64) -> Result<(), 
 
 /// Reject non-regular and oversized sources before any copying. An OS snapshot
 /// is required: metadata comparisons alone cannot prove a coherent capture.
-pub(super) fn capture(path: &str) -> Result<Vec<u8>, &'static str> {
+pub(super) fn capture(path: &str) -> Result<CapturedFile, &'static str> {
     let path = Path::new(path);
     if !path.is_absolute() {
         return Err("invalid_source");
@@ -172,15 +238,14 @@ pub(super) fn capture(path: &str) -> Result<Vec<u8>, &'static str> {
         return Err("too_large");
     }
     let snapshot = platform_snapshot(path)?;
-    let mut bytes = Vec::new();
-    snapshot
-        .take(MAX_FILE_BYTES + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|_| "source_unavailable")?;
-    if bytes.len() as u64 > MAX_FILE_BYTES {
+    let size = snapshot.metadata().map_err(|_| "source_unavailable")?.len();
+    if size > MAX_FILE_BYTES {
         return Err("too_large");
     }
-    Ok(bytes)
+    Ok(CapturedFile {
+        file: snapshot,
+        size,
+    })
 }
 
 #[cfg(target_os = "macos")]

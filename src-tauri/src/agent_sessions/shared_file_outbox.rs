@@ -1,5 +1,7 @@
 //! Durable continuation-output delivery with immutable capture receipts.
 //! Canonical messages and auth tokens are never copied here.
+mod snapshot_cache;
+mod snapshot_chunks;
 mod snapshots;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -158,52 +160,55 @@ fn settle(
     outcome: Outcome,
     now: i64,
 ) -> Result<(), String> {
-    let tx = database::begin_immediate(conn).map_err(|e| e.to_string())?;
-    let row: Option<(String, i64)> = tx.query_row(
+    // Releasing a large blob also walks SQLite pages; bound the whole transaction.
+    snapshot_cache::bounded(conn, || {
+        let tx = database::begin_immediate(conn).map_err(|e| e.to_string())?;
+        let row: Option<(String, i64)> = tx.query_row(
         "SELECT org_id, attempts FROM cloud_file_outbox WHERE id = ?1 AND identity = ?2 AND lease = ?3",
         params![id, identity, lease], |row| Ok((row.get(0)?, row.get(1)?)),
     ).optional().map_err(|e| e.to_string())?;
-    let Some((org_id, attempts)) = row else {
-        return Ok(());
-    };
-    if matches!(outcome, Outcome::Uploaded | Outcome::CaptureFailed) {
-        if matches!(outcome, Outcome::Uploaded) {
-            snapshots::release(&tx, identity, id)?;
-        }
-        tx.execute("DELETE FROM cloud_file_outbox WHERE id = ?1", [id])
-            .map_err(|e| e.to_string())?;
-    } else {
-        let (label, delay) = match outcome {
-            Outcome::Cancelled => ("cancelled", 0),
-            Outcome::Quota => ("quota", 30 * 60_000),
-            Outcome::SourceUnavailable => ("source_unavailable", 30 * 60_000),
-            Outcome::Retry => (
-                "retry",
-                (5_000_i64 * 2_i64.pow(attempts.clamp(0, 9) as u32)).min(30 * 60_000),
-            ),
-            Outcome::Uploaded | Outcome::CaptureFailed => unreachable!(),
+        let Some((org_id, attempts)) = row else {
+            return Ok(());
         };
-        tx.execute(
-            "UPDATE cloud_file_outbox SET lease = NULL, next_attempt_at = ?1,
-             attempts = MIN(attempts + ?2, 32), last_outcome = ?3 WHERE id = ?4",
-            params![
-                now + delay,
-                i64::from(!matches!(outcome, Outcome::Cancelled)),
-                label,
-                id
-            ],
-        )
-        .map_err(|e| e.to_string())?;
-        if matches!(outcome, Outcome::Quota) {
-            // Quota is organization-wide. Do not hammer it once for every file.
+        if matches!(outcome, Outcome::Uploaded | Outcome::CaptureFailed) {
+            if matches!(outcome, Outcome::Uploaded) {
+                snapshots::release(&tx, identity, id)?;
+            }
+            tx.execute("DELETE FROM cloud_file_outbox WHERE id = ?1", [id])
+                .map_err(|e| e.to_string())?;
+        } else {
+            let (label, delay) = match outcome {
+                Outcome::Cancelled => ("cancelled", 0),
+                Outcome::Quota => ("quota", 30 * 60_000),
+                Outcome::SourceUnavailable => ("source_unavailable", 30 * 60_000),
+                Outcome::Retry => (
+                    "retry",
+                    (5_000_i64 * 2_i64.pow(attempts.clamp(0, 9) as u32)).min(30 * 60_000),
+                ),
+                Outcome::Uploaded | Outcome::CaptureFailed => unreachable!(),
+            };
             tx.execute(
+                "UPDATE cloud_file_outbox SET lease = NULL, next_attempt_at = ?1,
+             attempts = MIN(attempts + ?2, 32), last_outcome = ?3 WHERE id = ?4",
+                params![
+                    now + delay,
+                    i64::from(!matches!(outcome, Outcome::Cancelled)),
+                    label,
+                    id
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+            if matches!(outcome, Outcome::Quota) {
+                // Quota is organization-wide. Do not hammer it once for every file.
+                tx.execute(
                 "UPDATE cloud_file_outbox SET next_attempt_at = MAX(next_attempt_at, ?1), last_outcome = 'quota'
                  WHERE identity = ?2 AND org_id = ?3 AND lease IS NULL",
                 params![now + delay, identity, org_id],
             ).map_err(|e| e.to_string())?;
+            }
         }
-    }
-    tx.commit().map_err(|e| e.to_string())
+        tx.commit().map_err(|e| e.to_string())
+    })
 }
 
 async fn run<T: Send + 'static>(
@@ -254,7 +259,9 @@ pub async fn cloud_file_outbox_enqueue(
             if !snapshots::exists(&conn, &scope, &candidate)? {
                 let captured = snapshots::capture(&candidate.path);
                 database::with_sessions_writer(|| {
-                    snapshots::save(&conn, &scope, &candidate, captured)
+                    snapshot_cache::bounded(&conn, || {
+                        snapshots::save(&conn, &scope, &candidate, captured)
+                    })
                 })?;
             }
             Ok::<_, String>(())
@@ -314,6 +321,29 @@ pub async fn cloud_file_snapshot_read(
     tokio::task::spawn_blocking(move || {
         let conn = database::db::get_connection().map_err(|e| e.to_string())?;
         snapshots::read(&conn, &[&identity, &org_id, &session_id], &candidate)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn cloud_file_snapshot_read_chunk(
+    identity: String,
+    org_id: String,
+    session_id: String,
+    candidate: Candidate,
+    offset: usize,
+) -> Result<snapshot_chunks::SnapshotChunk, String> {
+    tokio::task::spawn_blocking(move || {
+        let conn = database::db::get_connection().map_err(|e| e.to_string())?;
+        snapshot_cache::bounded(&conn, || {
+            snapshot_chunks::read(
+                &conn,
+                &[&identity, &org_id, &session_id],
+                &candidate,
+                offset,
+            )
+        })
     })
     .await
     .map_err(|e| e.to_string())?

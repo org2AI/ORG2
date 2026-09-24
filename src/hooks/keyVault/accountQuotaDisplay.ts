@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 
+import type { QuotaResetCredits } from "@src/api/types/keyVault";
 import { CLI_AGENT } from "@src/api/types/keys";
 import type { UsageItem } from "@src/api/types/keys";
 
@@ -43,6 +44,8 @@ export interface AccountQuotaCard {
   accountName: string;
   accountPlan?: string | null;
   quotaMessage?: string | null;
+  /** Hover detail for `quotaMessage`, one entry per reset expiry. */
+  quotaMessageDetails?: string[];
   modelType: KeyVaultAccount["modelType"];
   metrics: AccountQuotaMetric[];
 }
@@ -490,23 +493,48 @@ export function getQuotaUsageLabel(
   return usageType.replace(/_/g, " ");
 }
 
-function getResetCreditsLabel(
-  account: KeyVaultAccount,
-  tIntegrations: TFunction<"integrations">
-): string | null {
-  if (account.modelType !== CLI_AGENT.CODEX) return null;
-  // Adapt the existing backend's reset-credit message, including cached legacy summaries.
-  const message = account.quotaInfo?.named_message;
-  const match = message?.match(
+function resolveResetCredits(
+  account: KeyVaultAccount
+): QuotaResetCredits | null {
+  if (
+    account.modelType !== CLI_AGENT.CODEX &&
+    account.modelType !== CLI_AGENT.CLAUDE_CODE
+  ) {
+    return null;
+  }
+  const credits = account.quotaInfo?.reset_credits;
+  if (credits && Number.isSafeInteger(credits.available)) {
+    return { ...credits, expirations: credits.expirations ?? [] };
+  }
+  // Quotas cached before `reset_credits` existed carry only the summary message.
+  const match = account.quotaInfo?.named_message?.match(
     /^Reset credits(?: available)?: (\d+)(?=$|[ /,(])/
   );
   if (!match) return null;
-  const count = Number(match[1]);
-  if (!Number.isSafeInteger(count)) return null;
-  return tIntegrations("keyVault.quota.resetsAvailable", {
-    count,
-    defaultValue: `${count} ${count === 1 ? "reset" : "resets"} available`,
+  const available = Number(match[1]);
+  return Number.isSafeInteger(available)
+    ? { available, expirations: [] }
+    : null;
+}
+
+function getResetCreditsMessage(
+  account: KeyVaultAccount,
+  tIntegrations: TFunction<"integrations">
+): Pick<AccountQuotaCard, "quotaMessage" | "quotaMessageDetails"> {
+  const credits = resolveResetCredits(account);
+  if (!credits) return { quotaMessage: null, quotaMessageDetails: [] };
+  const expiryLines = credits.expirations.flatMap(({ count, expires_at }) => {
+    const date = formatQuotaResetTime(expires_at)?.full;
+    return date
+      ? [tIntegrations("keyVault.quota.resetsExpire", { count, date })]
+      : [];
   });
+  return {
+    quotaMessage: tIntegrations("keyVault.quota.resetsAvailable", {
+      count: credits.available,
+    }),
+    quotaMessageDetails: expiryLines,
+  };
 }
 
 export function collectAccountQuotaCards(
@@ -549,7 +577,7 @@ export function collectAccountQuotaCards(
         id: account.id,
         accountName: accountLabels.accountName,
         accountPlan: accountLabels.accountPlan,
-        quotaMessage: getResetCreditsLabel(account, tIntegrations),
+        ...getResetCreditsMessage(account, tIntegrations),
         modelType: account.modelType,
         metrics: [
           {
@@ -567,7 +595,7 @@ export function collectAccountQuotaCards(
       id: account.id,
       accountName: accountLabels.accountName,
       accountPlan: accountLabels.accountPlan,
-      quotaMessage: getResetCreditsLabel(account, tIntegrations),
+      ...getResetCreditsMessage(account, tIntegrations),
       modelType: account.modelType,
       metrics,
     });

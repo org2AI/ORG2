@@ -441,6 +441,35 @@ pub(super) fn codex_home_for_session(
     }
 }
 
+// Called before spawn, inside the runner's blocking profile-setup phase.
+// An isolated ambient launch must write where native history discovery reads.
+fn configure_claude_profile(
+    key_source: KeySource,
+    account_id: Option<&str>,
+    session_id: &str,
+    isolated_ambient_dir: Option<std::path::PathBuf>,
+    env_vars: &mut HashMap<String, String>,
+) -> Result<(), String> {
+    let config_dir = if key_source == KeySource::HostedKey {
+        Some(app_paths::claude_code_cli_profile_dir(session_id))
+    } else {
+        account_id
+            .map(app_paths::claude_code_cli_profile_dir)
+            .or(isolated_ambient_dir)
+    };
+    if let Some(config_dir) = config_dir {
+        // Failing open would run with inherited settings and write a transcript
+        // outside the selected identity, making native reconciliation fail.
+        std::fs::create_dir_all(&config_dir)
+            .map_err(|err| format!("Failed to create Claude Code config directory: {err}"))?;
+        env_vars.insert(
+            "CLAUDE_CONFIG_DIR".to_string(),
+            config_dir.to_string_lossy().into_owned(),
+        );
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn configure_agent_profile(
     agent: &ModelType,
@@ -479,24 +508,13 @@ pub(super) fn configure_agent_profile(
     }
 
     if matches!(agent, ModelType::ClaudeCode) {
-        let claude_config_dir = if session.key_source == KeySource::HostedKey {
-            Some(app_paths::claude_code_cli_profile_dir(session_id))
-        } else {
-            account_id.map(app_paths::claude_code_cli_profile_dir)
-        };
-
-        if let Some(orgii_dir) = claude_config_dir {
-            if let Err(err) = std::fs::create_dir_all(&orgii_dir) {
-                tracing::warn!(
-                    "[CodeSession] Failed to create Claude Code config dir: {}",
-                    err
-                );
-            } else {
-                let config_path = orgii_dir.to_string_lossy().to_string();
-                tracing::info!("[CodeSession] CLAUDE_CONFIG_DIR={}", config_path);
-                env_vars.insert("CLAUDE_CONFIG_DIR".to_string(), config_path);
-            }
-        }
+        configure_claude_profile(
+            session.key_source,
+            account_id,
+            session_id,
+            app_paths::claude_code_isolated_ambient_config_dir(),
+            env_vars,
+        )?;
     }
 
     if matches!(agent, ModelType::Codex) && session.key_source == KeySource::OwnKey {
@@ -858,3 +876,7 @@ pub(super) async fn setup_opencode_sse_sanitizer(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "env_setup/tests.rs"]
+mod tests;

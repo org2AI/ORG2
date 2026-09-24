@@ -28,16 +28,24 @@ vi.mock("@src/components/ModelPropertiesDropdown/EffortSlider", () => ({
 
 describe("ModelVariantInlineCard default persistence", () => {
   it.each([
-    ["o4-mini", "o4"],
-    ["claude-opus-4-7", "claude-opus-4-7"],
+    ["o4-mini", "o4-mini", undefined],
+    ["o4-mini", "o4", "o4"],
+    ["claude-opus-4-7", "claude-opus-4-7", undefined],
   ])(
-    "preserves the %s family key after filtering bare choices",
-    (base, key) => {
+    "preserves %s under family key %s after filtering bare choices",
+    (base, key, catalogBase) => {
       const onChange = vi.fn();
       renderToStaticMarkup(
         React.createElement(ModelVariantInlineCard, {
           variants: [base, `${base}-low`, `${base}-medium`, `${base}-high`].map(
-            (model) => resolveModelVariantFields(model)
+            (model) => {
+              const variant = resolveModelVariantFields(model);
+              // Explicit catalog metadata owns the grouping key. Without it,
+              // size suffixes remain part of the model's effort family.
+              return catalogBase
+                ? { ...variant, base_model: catalogBase }
+                : variant;
+            }
           ),
           embedded: true,
           defaultVariantByBaseModel: new Map([[key, `${base}-high`]]),

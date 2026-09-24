@@ -399,4 +399,19 @@ describe("parseModelVariant", () => {
       fast: false,
     });
   });
+
+  it.each(["o4-mini", "o4-nano"])(
+    "keeps the %s size suffix in its inferred effort family",
+    (model) => {
+      expect(resolveModelVariantFields(model).base_model).toBe(model);
+      expect(resolveModelVariantFields(`${model}-high`).base_model).toBe(model);
+      expect(
+        resolveModelVariantFields(model, {
+          model,
+          base_model: "o4",
+          fast: false,
+        }).base_model
+      ).toBe("o4");
+    }
+  );
 });

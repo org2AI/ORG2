@@ -135,9 +135,11 @@ export function useFirstPaintSignal(): void {
   useLayoutEffect(() => {
     if (hasSignaledFirstPaint.current) return;
 
-    return afterRenderableRootContent(() => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+    let firstFrame = 0;
+    let secondFrame = 0;
+    const stopObserving = afterRenderableRootContent(() => {
+      firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => {
           if (hasSignaledFirstPaint.current) {
             return;
           }
@@ -159,5 +161,10 @@ export function useFirstPaintSignal(): void {
         });
       });
     });
+    return () => {
+      stopObserving();
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
   }, []);
 }

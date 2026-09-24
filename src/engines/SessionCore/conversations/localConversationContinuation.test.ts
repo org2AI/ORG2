@@ -805,7 +805,9 @@ describe("local native conversation continuation", () => {
     expect(result).toMatchObject({
       sessionId: "agentsession-child",
       terminalStatus: "completed",
-      agentTail: [expect.objectContaining({ id: "native-answer" })],
+      agentTail: [
+        expect.objectContaining({ id: "native-answer", repoPath: "/repo" }),
+      ],
     });
     expect(mocks.publishTurnIntentDispatch).toHaveBeenCalledWith(
       "turn-recover-adopted",
@@ -885,6 +887,30 @@ describe("local native conversation continuation", () => {
     expect(mocks.markTerminal).not.toHaveBeenCalled();
     expect(mocks.materialize).not.toHaveBeenCalled();
     expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("binds new CLI output to the actual automatic worktree, not the requested repository", async () => {
+    mocks.create.mockResolvedValue({ sessionId: "cliagent-artifacts" });
+    mocks.cliStatus.mockResolvedValue({
+      cliAgentType: "claude_code",
+      repoPath: "/selected/repository",
+      worktreePath: "/sender/automatic-worktree",
+    });
+    const result = await continueLocalConversation({
+      root,
+      title: "Shared artifacts",
+      timeline: [event("u1", "user", "original question")],
+      displayText: "create a report",
+      target: {
+        cliAgentType: "claude_code",
+        workspaceRepoPath: "/selected/repository",
+      },
+      turnIntentId: "turn-artifact-worktree",
+    });
+    expect(result.agentTail).toEqual([
+      expect.objectContaining({ repoPath: "/sender/automatic-worktree" }),
+    ]);
+    expect(childEvents.every((item) => !item.repoPath)).toBe(true);
   });
 
   it("materializes native history and preserves Plan in creation and dispatch", async () => {
@@ -1496,7 +1522,13 @@ describe("local native conversation continuation", () => {
 
     expect(mocks.cliWaitForTurnTerminal).toHaveBeenCalledTimes(2);
     expect(mocks.turnIntentStatus).toHaveBeenCalledOnce();
-    expect(mocks.getAgentSession).not.toHaveBeenCalled();
+    // One terminal metadata read binds artifact scope; it is not status polling.
+    expect(mocks.getAgentSession).toHaveBeenCalledExactlyOnceWith(
+      "agentsession-child"
+    );
+    expect(mocks.getAgentSession.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mocks.cliWaitForTurnTerminal.mock.invocationCallOrder[1]!
+    );
   });
 
   it("does not let a replayed CLI terminal finish the next exact turn", async () => {

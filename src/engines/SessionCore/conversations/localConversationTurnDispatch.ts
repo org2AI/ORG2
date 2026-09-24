@@ -26,6 +26,7 @@ import {
 import { createLogger } from "@src/hooks/logger";
 
 import type { LocalConversationTarget } from "./conversationTypes";
+import { scopeConversationArtifacts } from "./localConversationArtifactScope";
 import type {
   ContinueLocalConversationParams,
   ContinueLocalConversationResult,
@@ -167,7 +168,10 @@ export async function finishConversationTurn(params: {
   }
   return {
     terminalStatus,
-    agentTail: settled.agentTail,
+    agentTail: await scopeConversationArtifacts(
+      params.sessionId,
+      settled.agentTail
+    ),
   };
 }
 

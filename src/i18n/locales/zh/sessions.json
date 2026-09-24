@@ -2646,6 +2646,7 @@
     "limit": "最多显示 128 个账户"
   },
   "sharedFile": {
+    "resolvingOrigin": "共享文件的来源信息仍在加载，请稍后重试。",
     "downloaded": "已保存到下载文件夹",
     "downloadError": "无法保存到下载文件夹",
     "title": "共享文件",

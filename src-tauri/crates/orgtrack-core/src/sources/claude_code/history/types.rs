@@ -219,3 +219,11 @@ pub(super) struct ClaudeCodeSessionFile {
     pub(super) file_stem: String,
     pub(super) path: PathBuf,
 }
+
+/// ORGII's native materializer stamps every inherited record with this entrypoint.
+/// Keep the admission marker private so replay never republishes local-path bytes.
+pub(super) fn mark_materialized_args(args: &mut Value, materialized: bool) {
+    if materialized {
+        args["__orgiiMaterialized"] = Value::Bool(true);
+    }
+}

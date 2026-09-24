@@ -2647,6 +2647,7 @@
     "limit": "최대 128개 계정 표시"
   },
   "sharedFile": {
+    "resolvingOrigin": "공유 파일의 출처 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.",
     "downloaded": "다운로드 폴더에 저장됨",
     "downloadError": "다운로드 폴더에 저장할 수 없습니다",
     "title": "공유 파일",

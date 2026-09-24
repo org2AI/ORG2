@@ -2647,6 +2647,7 @@
     "mentionGroup": "隊友"
   },
   "sharedFile": {
+    "resolvingOrigin": "共享檔案的來源資訊仍在載入，請稍後重試。",
     "downloaded": "已儲存至下載資料夾",
     "downloadError": "無法儲存至下載資料夾",
     "title": "共享檔案",

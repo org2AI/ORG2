@@ -2647,6 +2647,7 @@
     "limit": "En fazla 128 hesap gösteriliyor"
   },
   "sharedFile": {
+    "resolvingOrigin": "Paylaşılan dosyanın kaynağı hâlâ yükleniyor. Lütfen biraz sonra tekrar deneyin.",
     "downloaded": "İndirilenler klasörüne kaydedildi",
     "downloadError": "İndirilenler klasörüne kaydedilemedi",
     "title": "Paylaşılan dosya",

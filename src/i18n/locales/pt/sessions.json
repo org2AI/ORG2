@@ -2647,6 +2647,7 @@
     "limit": "Mostrando até 128 contas"
   },
   "sharedFile": {
+    "resolvingOrigin": "A origem do arquivo compartilhado ainda está carregando. Tente novamente em instantes.",
     "downloaded": "Salvo em Downloads",
     "downloadError": "Não foi possível salvar em Downloads",
     "title": "Arquivo compartilhado",

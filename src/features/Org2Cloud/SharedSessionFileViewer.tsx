@@ -18,6 +18,7 @@ import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 import {
   type SharedSessionFile,
   findSharedSessionFile,
+  findSharedSessionFileVersion,
   readSharedSessionFile,
 } from "./sharedSessionFilesClient";
 
@@ -74,18 +75,27 @@ export default function SharedSessionFileViewer({
     void (async () => {
       const accessToken = await token();
       if (!stillCurrent()) return;
-      const located = reference.source
-        ? await findSharedSessionFile(
+      const source = reference.source;
+      const located = source?.version
+        ? await findSharedSessionFileVersion(
             accessToken,
             endpoint,
-            reference.source.orgId,
-            reference.source.sessionId,
-            reference.source.path,
-            undefined,
+            { ...source, version: source.version },
             controller.signal,
             shareToken
           )
-        : null;
+        : source
+          ? await findSharedSessionFile(
+              accessToken,
+              endpoint,
+              source.orgId,
+              source.sessionId,
+              source.path,
+              undefined,
+              controller.signal,
+              shareToken
+            )
+          : null;
       if (!stillCurrent()) return;
       if (reference.source && !located) {
         setError("not_uploaded");

@@ -477,6 +477,18 @@ loaded-target case and full lifecycle matrix remain pending. See the subsequent
 Combined2 section of the acceptance report rather than treating the older
 Combined93 failure as the current source result.
 
+The subsequent user-selected loaded-target run passed the rebuilt concurrency
+boundary: the real source retained its indexed inode across target SIGTERM,
+completed 250 lines, and automatically published to the managed store in about
+0.842 seconds. Source readback retained the new answer and settled to idle. A
+separate actual product Stop then released its inherited fence and automatically
+published the persisted interruption in about 0.833 seconds. Both stores'
+indexed records/messages remained consistent with no pending journal work.
+There was no visible partial assistant text before Stop, so live-rendering and
+partial-text retention are unverified. Native final reopen/menu-exit and the
+full performance matrix remain pending; signal exit required narrow cleanup of
+a verified vendor helper orphan.
+
 Indexed-generation correction verification:
 
 ```sh

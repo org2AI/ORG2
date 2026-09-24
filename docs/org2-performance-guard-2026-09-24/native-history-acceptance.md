@@ -383,3 +383,62 @@ Native normal-menu exit, actual Stop, sustained retention, contention and full
 provider/identity lifecycle coverage remain open. No full performance acceptance
 or merge-ready claim follows from these finite checks. The configured test
 target remains open for the required user navigation; the sampler has exited.
+
+## Combined2: concurrent target exit and actual Stop follow-up
+
+The user then selected the existing C7 conversation in the newly opened native
+window. Read-only process/start/profile checks and the native core's canonical
+thread lock plus current rollout FD confirmed the target had actually loaded
+that conversation. A new, real product request generated 250 numbered lines.
+The source app-server held FD 33 on the current indexed inode 401512209 and the
+inherited actual-store fence on FD 89. After identity revalidation, only the
+isolated native GUI received SIGTERM at 21:24:48 UTC. Eight seconds later, the
+still-active source retained the same path, FD and inode with its fence busy.
+
+The reply completed at 21:25:44.028 UTC. Automatic managed publication followed
+at 21:25:44.870 UTC, approximately 0.842 seconds later, before Refresh or any page
+change. Both indexes contained one conversation; ordered user/assistant records
+matched, the exact completion marker occurred in one assistant message per
+side, and journal pending/waits/observations were zero. The current raw source
+was a byte prefix of the destination, which added only destination settings.
+ORG2's next readback retained the new answer and settled to idle, with six turns
+in order and no stale-generation recovery error. This passes the rebuilt
+loaded-target-exit writer-safety, automatic-convergence and settled source
+readback case. It does not yet certify native reopen visibility or normal exit.
+
+A separate bounded cancellation request then ran through the same product UI.
+Its source app-server held the current rollout FD 39 and actual-store fence FD 65. This time the empty composer exposed the actual Stop control. Clicking it
+at 21:27:17 UTC stopped that process; the same store-fence inode became free and
+its release notification mtime advanced. The source persisted `turn_aborted` at
+21:27:17.257 UTC and automatic managed publication followed at 21:27:18.090 UTC
+(approximately 0.833 seconds). Both raw copies contained the interruption,
+their ordered messages matched, journal pending/waits/observations were zero,
+and ORG2 settled to idle. No Refresh, direct sync call, manual lock change or
+synthetic runner was used. Actual active-request cancellation, writer release
+and automatic interruption publication therefore passed.
+
+There was no visible partial assistant text before Stop, so partial-text
+retention and smooth live rendering are **not** passed. The earlier empty-Send
+observation and stale failed-turn overlay remain preserved; Stop availability
+was not consistently broken. The old failure appeared at the tail while active
+and disappeared during settled canonical readback; its separate projection
+diagnosis is still open.
+
+The signal exit again left the vendor modifier-monitor helper. Its previously
+sampled parent and current kernel-start identity were verified before narrow
+test-only SIGTERM cleanup; this is not automatic all-descendant release. Product
+Open then launched a fresh native test target for one final user check of the
+latest completion/interruption and normal menu Quit. That check remains pending
+at this writing. Full performance acceptance remains **blocked**.
+
+This follow-up used a separate bounded 393.8-second, one-second-interval sampler
+with the same process/start/responsibility method, which has now exited. The
+20.9-second live-target dispatch phase measured backend/WebKit/source CPU of
+10.754%/20.464%/4.317%; the next 72.6 seconds across target exit, source completion
+and settling measured 10.736%/20.474%/2.076%. The distinct 40-second cancellation
+request phase measured 13.455%/23.429%/3.101%. These mixed functional phases are
+not uncontended throughput or rendering benchmarks. After product reopen,
+120.7 seconds awaiting user inspection measured backend 0.763%, WebKit 1.504%,
+native 15.813% and no product source process; native startup and its open window
+are included. Long-duration retention and native normal-exit measurements still
+require their separate lifecycle checks.

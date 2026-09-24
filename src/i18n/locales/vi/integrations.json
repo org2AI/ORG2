@@ -113,7 +113,12 @@
       "resetsAvailable_one": "Có {{count}} lượt đặt lại",
       "resetsAvailable_few": "Có {{count}} lượt đặt lại",
       "resetsAvailable_many": "Có {{count}} lượt đặt lại",
-      "resetsAvailable_other": "Có {{count}} lượt đặt lại"
+      "resetsAvailable_other": "Có {{count}} lượt đặt lại",
+      "resetsExpire": "{{count}} lượt đặt lại hết hạn vào {{date}}",
+      "resetsExpire_one": "{{count}} lượt đặt lại hết hạn vào {{date}}",
+      "resetsExpire_few": "{{count}} lượt đặt lại hết hạn vào {{date}}",
+      "resetsExpire_many": "{{count}} lượt đặt lại hết hạn vào {{date}}",
+      "resetsExpire_other": "{{count}} lượt đặt lại hết hạn vào {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Danh sách đám mây không hợp lệ",

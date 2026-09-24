@@ -180,7 +180,11 @@ describe("CLI upgrade notice", () => {
     ).toBe(" (2026.09.10-fd3934a > 2026.09.18-9a7762b)");
     expect(container.querySelectorAll(".page-notice__text")).toHaveLength(1);
     expect(container.querySelector('[aria-label="actions.copy"]')).toBeNull();
-    expect(upgrade().textContent).toBe("在终端升级");
+    expect(upgrade().getAttribute("aria-label")).toBe("在终端升级");
+    expect(upgrade().querySelector('[data-icon="play"]')).not.toBeNull();
+    expect(upgrade().className).toContain("btn:text-primary-6");
+    expect(upgrade().className).toContain("btn:bg-transparent");
+    expect(upgrade().hasAttribute("title")).toBe(false);
     await act(async () => upgrade().click());
     expect(mocks.execute).toHaveBeenCalledWith("cursor-agent update", {
       name: "升级 Cursor 命令行工具",

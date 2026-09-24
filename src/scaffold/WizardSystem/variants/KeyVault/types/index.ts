@@ -8,6 +8,7 @@ import type {
   ProviderProtocol,
   SaveKeyRequest,
 } from "@src/api/tauri/rpc/schemas/validation";
+import type { QuotaInfo } from "@src/api/types/keys";
 import type { ModelType } from "@src/api/types/keys";
 
 // ============================================
@@ -101,6 +102,7 @@ export interface WizardData {
     plan_type?: string;
     limit_type?: string;
     quota_source?: string;
+    model_quotas?: QuotaInfo["model_quotas"];
     usage_items?: Array<{
       usage_type: string;
       enabled: boolean;

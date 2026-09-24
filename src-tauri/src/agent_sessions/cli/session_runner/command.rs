@@ -16,6 +16,8 @@ pub(super) struct CliCommandBuildRequest<'a> {
     pub agent: &'a ModelType,
     pub launch_profile: &'a ResolvedCliLaunchProfile,
     pub model: Option<&'a str>,
+    /// Upstream-only Codex capacity pool; keep model variant semantics above.
+    pub codex_wire_model: Option<&'a str>,
     pub turn: &'a CliTurnEnvelope,
     pub resume_id: Option<&'a str>,
     pub api_key: Option<&'a str>,
@@ -34,6 +36,7 @@ pub(super) fn build_command_with_launch_profile(
         agent,
         launch_profile,
         model,
+        codex_wire_model,
         turn,
         resume_id,
         api_key,
@@ -190,7 +193,11 @@ pub(super) fn build_command_with_launch_profile(
             if let Some(m) = model {
                 let codex_model = map_codex_model_variant(m);
                 cmd.push("-m".into());
-                cmd.push(codex_model.base_model);
+                cmd.push(
+                    codex_wire_model
+                        .unwrap_or(&codex_model.base_model)
+                        .to_owned(),
+                );
                 for config in codex_model.config_overrides {
                     cmd.push("-c".into());
                     cmd.push(config);

@@ -4,9 +4,35 @@ import type { OAuthModelCatalog } from "@src/api/services/keyValidation";
 import type { DetectedKey } from "@src/api/types/keys";
 
 import type { WizardData } from "../types";
-import { applyKey } from "./keyHelpers";
+import { applyKey, normalizeDetectedQuotaInfo } from "./keyHelpers";
 
 describe("keyHelpers", () => {
+  it("preserves model-scoped quota through detection and wizard persistence", () => {
+    const modelQuotas = [
+      {
+        model: "gpt-5.6-luna",
+        limit_id: "gpt-reserve",
+        allowed: true,
+        limit_reached: false,
+        usage_items: [
+          {
+            usage_type: "weekly",
+            enabled: true,
+            used: 3,
+            limit: 100,
+            remaining: 97,
+            remaining_percentage: 97,
+          },
+        ],
+      },
+    ];
+    const quota = normalizeDetectedQuotaInfo({
+      remaining_percentage: 0,
+      model_quotas: modelQuotas,
+    });
+    expect(quota?.remaining_percentage).toBe(0);
+    expect(quota?.model_quotas).toEqual(modelQuotas);
+  });
   it("applies Cursor token-only detections as OAuth accounts without requiring an API key", () => {
     const updates: Partial<WizardData>[] = [];
     let tokenDetected = false;

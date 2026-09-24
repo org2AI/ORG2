@@ -168,6 +168,7 @@ async fn validate_codex_access_token(
         quota_source: q.quota_source,
         is_unlimited: Some(q.is_unlimited),
         usage_items: q.usage_items,
+        model_quotas: q.model_quotas,
         auto_message: q.auto_message,
         named_message: q.named_message,
     });

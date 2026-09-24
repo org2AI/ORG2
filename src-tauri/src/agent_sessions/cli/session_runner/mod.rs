@@ -19,6 +19,7 @@
 //! - `token_sync`     — post-run token sync back to key vault
 
 mod codex_profile;
+mod codex_reserve;
 pub(crate) mod command;
 mod context_bridge;
 mod cursor_usage;

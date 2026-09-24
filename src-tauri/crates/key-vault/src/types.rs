@@ -78,6 +78,16 @@ impl QuotaResetCredits {
     }
 }
 
+/// A separate, model-scoped capacity pool. It never changes the account-wide meter.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ModelQuotaInfo {
+    pub model: String,
+    pub limit_id: String,
+    pub allowed: Option<bool>,
+    pub limit_reached: Option<bool>,
+    pub usage_items: Vec<UsageItem>,
+}
+
 /// Quota/usage information for an API key.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct QuotaInfo {
@@ -103,6 +113,9 @@ pub struct QuotaInfo {
     pub quota_source: Option<String>,
     /// All usage items (cursor_auto_composer, cursor_api, chat, completions, etc.)
     pub usage_items: Vec<UsageItem>,
+    /// Additional capacity restricted to a provider-reported model.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub model_quotas: Vec<ModelQuotaInfo>,
     /// Exact provider-reported balance. This is intentionally separate from
     /// percentage windows so callers never synthesize a misleading meter.
     #[serde(default)]

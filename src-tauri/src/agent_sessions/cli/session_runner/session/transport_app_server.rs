@@ -39,6 +39,7 @@ pub(super) async fn run_codex_app_server_branch(
     project_id: Option<String>,
     cli_resume_id: Option<String>,
     model: Option<&str>,
+    wire_model: Option<&str>,
     launch_profile: &ResolvedCliLaunchProfile,
     config: Option<serde_json::Value>,
     image_paths: Vec<String>,
@@ -69,7 +70,9 @@ pub(super) async fn run_codex_app_server_branch(
         working_dir: working_dir.to_string(),
         project_id,
         resume_thread_id: cli_resume_id.clone(),
-        model: super::super::command::codex_app_server_thread_model(model),
+        model: wire_model
+            .map(str::to_owned)
+            .or_else(|| super::super::command::codex_app_server_thread_model(model)),
         permission_mode: launch_profile.permission_mode,
         config,
         image_paths: image_paths.clone(),
@@ -177,7 +180,11 @@ pub(super) async fn run_codex_app_server_branch(
             cli_session_id_out = Some(result.thread_id);
             codex_app_server_turn_ok = is_successful_turn_status(&result.turn_status);
             if let Some(ref usage) = result.usage {
-                let round_model = usage.model.as_deref().or(model);
+                let round_model = super::super::codex_reserve::usage_model(
+                    model,
+                    usage.model.as_deref(),
+                    wire_model,
+                );
                 if let Err(err) = session_persistence::token_usage::insert_token_usage_record(
                     &session_id,
                     "code",

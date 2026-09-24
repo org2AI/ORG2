@@ -4,7 +4,10 @@ import { createLogger } from "@src/hooks/logger";
 import type { CloudEndpoint } from "./config";
 import { getCloudCapabilitiesConfirmed } from "./org2CloudCapabilities";
 import { readBoundedFile } from "./prepareSharedCommentFiles";
-import { collectSessionSharedFiles } from "./sessionSharedFileCandidates";
+import {
+  type SessionSharedFileCandidate,
+  collectSessionSharedFiles,
+} from "./sessionSharedFileCandidates";
 import {
   SharedSessionFileRequestError,
   findSharedSessionFileRevisions,
@@ -13,18 +16,37 @@ import {
 
 const log = createLogger("SessionSharedFiles");
 /** Runs inside the existing sender's sync/delivery lifecycle, never as a scanner or timer. */
-export async function syncSessionSharedFiles(input: {
+interface FileSyncContext {
   token: string;
   endpoint: CloudEndpoint;
   orgId: string;
   sessionId: string;
-  events: readonly SessionEvent[];
-  repoPath?: string;
   assertCurrentIdentity: () => void;
   signal?: AbortSignal;
-}): Promise<boolean> {
-  const candidates = collectSessionSharedFiles(input.events, input.repoPath);
-  if (!candidates.length) return true;
+}
+export async function syncSessionSharedFiles(
+  input: FileSyncContext & {
+    events: readonly SessionEvent[];
+    repoPath?: string;
+  }
+): Promise<boolean> {
+  const result = await syncSessionSharedFileCandidates({
+    ...input,
+    candidates: collectSessionSharedFiles(input.events, input.repoPath),
+  });
+  // Preserve the replay sender's existing acknowledgement contract here.
+  // Durable continuation jobs use the sourceUnavailable result independently.
+  return result.supported;
+}
+
+export async function syncSessionSharedFileCandidates(
+  input: FileSyncContext & {
+    candidates: readonly SessionSharedFileCandidate[];
+  }
+): Promise<{ supported: boolean; sourceUnavailable: boolean }> {
+  const { candidates } = input;
+  let sourceUnavailable = false;
+  if (!candidates.length) return { supported: true, sourceUnavailable };
   input.assertCurrentIdentity();
   const probe = await getCloudCapabilitiesConfirmed(
     input.token,
@@ -36,7 +58,8 @@ export async function syncSessionSharedFiles(input: {
       null,
       true
     );
-  if (!probe.capabilities.sharedSessionFiles) return false;
+  if (!probe.capabilities.sharedSessionFiles)
+    return { supported: false, sourceUnavailable };
   for (let offset = 0; offset < candidates.length; offset += 64) {
     const batch = candidates.slice(offset, offset + 64);
     input.assertCurrentIdentity();
@@ -56,6 +79,7 @@ export async function syncSessionSharedFiles(input: {
       try {
         bytes = await readBoundedFile(candidate.path);
       } catch (error) {
+        sourceUnavailable = true;
         // Historical transcripts may outlive local artifacts. Do not stop the
         // replay for an absent file or publish a false available-file record.
         log.warn(
@@ -78,5 +102,5 @@ export async function syncSessionSharedFiles(input: {
       input.assertCurrentIdentity();
     }
   }
-  return true;
+  return { supported: true, sourceUnavailable };
 }

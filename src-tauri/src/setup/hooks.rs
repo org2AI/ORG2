@@ -18,6 +18,7 @@ pub(crate) fn register_database_schemas() {
         agent_core::session::persistence::init(conn)?;
 
         agent_sessions::cli::init_cli_agent_tables(conn)?;
+        agent_sessions::shared_file_outbox::init_tables(conn)?;
         inbox::init_inbox_tables(conn)?;
 
         // Drop legacy knowledge graph tables (removed in the L3 memory rebuild).

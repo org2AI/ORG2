@@ -48,6 +48,7 @@ export const procedures = {
   flow: p.flow,
   humanSession: p.humanSession,
   cli: p.cli,
+  cloudFileOutbox: p.cloudFileOutbox,
 } as const;
 
 // ============================================================================

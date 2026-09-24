@@ -12,6 +12,9 @@ usage_diagnostics::commands::diagnostics_initialize,
 usage_diagnostics::commands::diagnostics_submit_usage_snapshot,
 // Cloud device identity for member-runtime sharing (separate id from the diagnostics install_id)
 infrastructure::cloud_identity::cloud_device_identity,
+agent_sessions::shared_file_outbox::cloud_file_outbox_enqueue,
+agent_sessions::shared_file_outbox::cloud_file_outbox_claim,
+agent_sessions::shared_file_outbox::cloud_file_outbox_settle,
 // Dev-only ORG2 Cloud auth import from the installed app's WebKit origin
 infrastructure::dev_bundled_auth::debug_import_bundled_org2_cloud_auth,
 // Main-window appearance commands

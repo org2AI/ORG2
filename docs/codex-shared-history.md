@@ -21,6 +21,22 @@ ORG2 app-server producers may keep authentication in an account-scoped `CODEX_HO
 
 Producer teardown closes the parent's descriptor and uses a distinct descriptor for the same inode to confirm exclusive availability before changing the fence timestamp. Cancellation can drop the parent before its child closes; only that release event starts bounded asynchronous checks (100 ms, at most ten seconds) on the existing Tokio runtime. The existing observer then reselects the latest revisions. If the parent crashes while its child remains alive, the inherited descriptor preserves data safety; after an orphan's exit outside the cleanup bound, without an available runtime, or after runtime shutdown, reconciliation may wait for the next native event or explicit invalidation. This does not add an idle polling timer. Processes started by an older build need to finish before the new producer fence can protect their stores.
 
+## Reading the current generation
+
+The native SQLite `threads.rollout_path` is authoritative for an indexed Codex
+store. Managed transcript reads, revision checks and follow-up turns resolve that
+row again instead of retaining a path merely because its old file still exists.
+A retained rollout generation may carry the same canonical thread ID while no
+longer being the current conversation. An invalid or unreadable indexed binding
+is reported as an error; it must not silently select a stale imported cache or
+an account-profile copy. Stores without an index retain bounded legacy discovery,
+which rejects ambiguous matching files.
+
+No native schema or history migration is required. Old retained generations and
+backups remain intact; deleting them is unnecessary and would discard recovery
+material. This correction addresses a real C7 finding where a successful reply
+reached both current stores but ORG2 reread the previous physical generation.
+
 ## Status
 
 Settings → App connections → Codex shows the observer state under the connection: active with the number of shared conversations (and how many need attention), idle while the profile is not the managed connection, or paused with the gate reason. The state comes from the last observer outcome and is never polled.

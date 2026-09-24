@@ -119,6 +119,17 @@ impl NativeStorageOwner {
             );
         }
         Uuid::parse_str(id).map_err(|_| "Invalid native transcript UUID")?;
+        let home = self.codex_home()?;
+        if let Some(path) = codex_index::resolve(&home, id)? {
+            let relative = path
+                .strip_prefix(&home)
+                .map_err(|_| "Codex index escaped Session home")?;
+            let path = self.managed_path(relative)?;
+            return Ok(Some(NativeTranscriptPaths {
+                native_path: path.clone(),
+                runner_path: path,
+            }));
+        }
         let root = self.managed_path(Path::new("sessions"))?;
         // One Session's store only; never fall back to all native/account history.
         find_codex_materialization(&root, id)?
@@ -153,11 +164,5 @@ impl NativeStorageOwner {
             runner_path: path.clone(),
             native_path: path,
         })
-    }
-
-    pub(super) fn cache_codex(&self, id: &str, paths: &NativeTranscriptPaths) {
-        if let Some(account) = &self.account {
-            cache_codex_native_paths(account, id, paths);
-        }
     }
 }

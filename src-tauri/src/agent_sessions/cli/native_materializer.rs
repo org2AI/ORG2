@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::Arc;
 
 use agent_core::session::persistence::{
     MaterializedHistoryContent, MaterializedHistoryRole, MaterializedHistorySeed,
@@ -42,6 +42,7 @@ use super::persistence;
 
 #[cfg(any(all(target_os = "macos", feature = "market-connect"), test))]
 pub(crate) mod claude_history_handoff;
+mod codex_index;
 #[cfg(any(all(target_os = "macos", feature = "market-connect"), test))]
 pub(crate) mod isolated_claude_history;
 mod storage;
@@ -49,20 +50,11 @@ use storage::NativeStorageOwner;
 mod claude_catalog_scan;
 use claude_catalog_scan::CatalogScan;
 
-const CODEX_NATIVE_PATH_CACHE_MAX_ENTRIES: usize = 512;
 const CLAUDE_PROJECT_INDEX_VERSION: u64 = 1;
 const CLAUDE_DESKTOP_ACCOUNT_SCAN_LIMIT: usize = 64;
 const CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT: usize = 2_048;
 const CLAUDE_DESKTOP_METADATA_SCAN_LIMIT: usize = 10_000;
 const CLAUDE_DESKTOP_METADATA_MAX_BYTES: u64 = 256 * 1024;
-// Codex stores rollouts in a date-sharded directory tree. Resolving the same
-// native UUID by walking that tree on every turn makes a long-running session
-// progressively more expensive even though its path is immutable. Cache only
-// successful resolutions and validate the provider file still exists before
-// reusing one; deletion or profile cleanup naturally falls back to discovery.
-static CODEX_NATIVE_PATH_CACHE: LazyLock<Mutex<HashMap<(String, String), NativeTranscriptPaths>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
 /// Claude's project index is shared by every ORG2 instance that points at the
 /// same native history root. The adjacent advisory lock keeps the complete
 /// read-modify-write transaction ordered across independently launched ORG2
@@ -649,37 +641,22 @@ fn codex_native_paths_for_relative(account_id: &str, relative: &Path) -> NativeT
     }
 }
 
-fn cache_codex_native_paths(account_id: &str, native_id: &str, paths: &NativeTranscriptPaths) {
-    let Ok(mut cache) = CODEX_NATIVE_PATH_CACHE.lock() else {
-        return;
-    };
-    let key = (account_id.to_string(), native_id.to_string());
-    if cache.len() >= CODEX_NATIVE_PATH_CACHE_MAX_ENTRIES && !cache.contains_key(&key) {
-        if let Some(evicted) = cache.keys().next().cloned() {
-            cache.remove(&evicted);
-        }
-    }
-    cache.insert(key, paths.clone());
-}
-
 fn existing_codex_native_paths(
     account_id: &str,
     native_id: &str,
 ) -> Result<Option<NativeTranscriptPaths>, String> {
-    let cache_key = (account_id.to_string(), native_id.to_string());
-    if let Some(paths) = CODEX_NATIVE_PATH_CACHE
-        .lock()
-        .ok()
-        .and_then(|cache| cache.get(&cache_key).cloned())
-    {
-        if paths.native_path.is_file() || paths.runner_path.is_file() {
-            return Ok(Some(paths));
-        }
-        if let Ok(mut cache) = CODEX_NATIVE_PATH_CACHE.lock() {
-            cache.remove(&cache_key);
-        }
+    let home = codex_native_app_home();
+    if let Some(path) = codex_index::resolve(&home, native_id)? {
+        let relative = path
+            .strip_prefix(&home)
+            .map_err(|_| "Codex index escaped its home")?;
+        return Ok(Some(NativeTranscriptPaths {
+            runner_path: app_paths::codex_cli_profile_dir(account_id).join(relative),
+            native_path: path,
+        }));
     }
-
+    // Only stores without a native SQLite index use legacy suffix discovery.
+    // The index resolver rejects absent rows/invalid paths when an index exists.
     let profile_root = codex_profile_sessions_root(account_id);
     let native_app_root = codex_native_app_sessions_root();
     let found = find_codex_materialization(&native_app_root, native_id)?
@@ -691,16 +668,25 @@ fn existing_codex_native_paths(
             None => return Ok(None),
         },
     };
-    let relative = found.strip_prefix(&root).map_err(|error| {
-        format!(
-            "resolved Codex rollout {} outside scanned root {}: {error}",
-            found.display(),
-            root.display()
-        )
-    })?;
-    let paths = codex_native_paths_for_relative(account_id, relative);
-    cache_codex_native_paths(account_id, native_id, &paths);
-    Ok(Some(paths))
+    let relative = found
+        .strip_prefix(&root)
+        .map_err(|_| "Codex transcript escaped scanned root")?;
+    Ok(Some(codex_native_paths_for_relative(account_id, relative)))
+}
+
+/// An indexed Codex store owns path selection even when its current row/file
+/// cannot be read. Imported caches must not turn that error into stale history.
+pub(super) fn has_indexed_codex_transcript(
+    session: &persistence::CodeSession,
+) -> Result<bool, String> {
+    if session.cli_agent_type.as_deref() != Some("codex") {
+        return Ok(false);
+    }
+    let owner = NativeStorageOwner::for_session(session)?;
+    if !owner.has_codex_store() {
+        return Ok(false);
+    }
+    codex_index::exists(&owner.codex_home()?)
 }
 
 fn registered_codex_native_paths(
@@ -776,6 +762,9 @@ pub(super) fn materialized_cli_transcript_path(
     let Some((agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
+    if agent == "codex" && has_indexed_codex_transcript(session)? {
+        return Ok(Some((agent, paths.native_path)));
+    }
     let Some(path) = preferred_materialized_transcript_path(&paths)? else {
         return Ok(None);
     };
@@ -862,6 +851,17 @@ pub(super) fn materialized_cli_transcript_revision(
     let Some((_agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
+    if has_indexed_codex_transcript(session)? {
+        // Retained generations may have identical sizes/mtimes. Include the
+        // indexed physical path without exposing it in the frontend token.
+        let revision = native_transcript_revision(&paths.native_path)?;
+        let identity = serde_json::to_vec(&(native_id, &paths.native_path, revision))
+            .map_err(|error| error.to_string())?;
+        return Ok(Some(format!(
+            "codex-indexed-v1:{:x}",
+            Sha256::digest(identity)
+        )));
+    }
     native_candidate_revision(&paths, native_id)
 }
 
@@ -2448,6 +2448,7 @@ fn find_codex_materialization(root: &Path, native_id: &str) -> Result<Option<Pat
     let suffix = format!("-{native_id}.jsonl");
     let mut pending = vec![root.to_path_buf()];
     let mut visited = 0usize;
+    let mut found = None;
     while let Some(directory) = pending.pop() {
         let entries = match fs::read_dir(&directory) {
             Ok(entries) => entries,
@@ -2486,12 +2487,13 @@ fn find_codex_materialization(root: &Path, native_id: &str) -> Result<Option<Pat
                     .file_name()
                     .and_then(|name| name.to_str())
                     .is_some_and(|name| name.ends_with(&suffix))
+                && found.replace(path).is_some()
             {
-                return Ok(Some(path));
+                return Err("Ambiguous Codex transcript without a native index".into());
             }
         }
     }
-    Ok(None)
+    Ok(found)
 }
 
 fn discard_cli_materialization(session_id: &str, native_id: &str) -> Result<bool, String> {
@@ -2672,7 +2674,6 @@ fn materialize_cli(
                     return Err(error);
                 }
             };
-            owner.cache_codex(&registered.id, &paths);
             if let Err(error) = replace_runner_link(&paths.native_path, &paths.runner_path) {
                 let _ = codex_native_catalog::archive_thread(
                     owner.catalog_profile(),
@@ -5717,11 +5718,6 @@ mod tests {
             .expect("create legacy Codex transcript parent");
         fs::write(&legacy_path, b"{}\n").expect("write legacy Codex transcript");
 
-        let cache_key = (account_id.to_string(), native_id.to_string());
-        CODEX_NATIVE_PATH_CACHE
-            .lock()
-            .expect("lock Codex native path cache")
-            .remove(&cache_key);
         let resolved = existing_codex_native_paths(account_id, native_id)
             .expect("scan Codex native roots")
             .expect("cold lookup should retain an existing native-App rollout");
@@ -5734,6 +5730,49 @@ mod tests {
                 .join("03")
                 .join(format!("rollout-2026-09-03T00-00-00-{native_id}.jsonl"))
         );
+    }
+
+    #[test]
+    fn legacy_codex_discovery_rejects_ambiguous_files_after_a_successful_read() {
+        let sandbox = test_env::sandbox();
+        let native_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+        let root = codex_native_app_sessions_root();
+        fs::create_dir_all(&root).unwrap();
+        let first = root.join(format!("rollout-first-{native_id}.jsonl"));
+        let second = root.join(format!("rollout-second-{native_id}.jsonl"));
+        fs::write(&first, b"{}\n").unwrap();
+        assert_eq!(
+            existing_codex_native_paths("legacy", native_id)
+                .unwrap()
+                .unwrap()
+                .native_path,
+            first
+        );
+        fs::write(&second, b"{}\n").unwrap();
+        for _ in 0..2 {
+            assert!(existing_codex_native_paths("legacy", native_id)
+                .unwrap_err()
+                .contains("Ambiguous"));
+        }
+        let session_id = "cliagent-managed-ambiguous-history";
+        create_native_session_with_source(
+            session_id,
+            "codex",
+            None,
+            sandbox.path(),
+            Some("test:workspace"),
+        );
+        let session = persistence::get_session(session_id).unwrap().unwrap();
+        let owner = NativeStorageOwner::for_session(&session).unwrap();
+        let managed = owner.codex_home().unwrap().join("sessions");
+        fs::create_dir_all(&managed).unwrap();
+        fs::write(managed.join(first.file_name().unwrap()), b"{}\n").unwrap();
+        assert!(owner.existing_codex(native_id).unwrap().is_some());
+        fs::write(managed.join(second.file_name().unwrap()), b"{}\n").unwrap();
+        assert!(owner
+            .existing_codex(native_id)
+            .unwrap_err()
+            .contains("Ambiguous"));
     }
 
     #[tokio::test(flavor = "current_thread")]

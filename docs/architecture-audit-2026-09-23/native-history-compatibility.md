@@ -434,3 +434,56 @@ than announcing the earlier parent drop; a two-child regression and bounded-time
 regression cover that ordering. The final complete history suite passed 78 tests
 and test Clippy passed. Final runtime and complete performance acceptance remain pending; see the
 [acceptance report](../org2-performance-guard-2026-09-24/native-history-acceptance.md).
+
+## 2026-09-24 authoritative Codex generation lookup
+
+Combined93 used local-only merge `b9056d6abaf196ed4c3576bfa30d5cf4b798aaea`
+(#2103 `4a29a30d` plus #2143 `a02d3da4` for Reserve selection). A real product
+250-line reply completed while the target exited; the writer fence kept the
+source FD attached, and current raw/index/journal stores converged automatically.
+ORG2 nevertheless reloaded the earlier two-turn transcript and entered recovery.
+The SQLite current generation contained the reply; an older retained file with
+the same canonical header did not. No native data was lost in this observation.
+
+The earliest invalid authority decision was `existing_codex_native_paths`: its
+cache trusted file existence and its cold fallback selected a filename suffix.
+LWW deliberately retains previous physical generations, so existence cannot
+prove the canonical thread still selects that path. Transcript reconciliation
+then replaced the frontend projection with the old file's valid but stale data.
+
+| Layer / boundary                    | Verdict          | Reason                                                                                     | Verification                                                                          |
+| ----------------------------------- | ---------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Domain authority / reader ownership | fix              | Native SQLite chooses the current rollout generation                                       | Indexed resolver used by managed reads, revision checks and materialization           |
+| Hidden defaults / error handling    | fix              | Unreadable or invalid indexed state must not fall through to an older cache/profile file   | Owning transcript/history boundary propagates resolution failure                      |
+| Cold/warm parity                    | fix              | A retained old file previously survived both cache validation and cold suffix discovery    | Remove existence-only path cache; reselect current indexed path                       |
+| Legacy compatibility                | keep with reason | Pre-index stores still need discovery, with no authoritative row to distinguish duplicates | Bounded discovery rejects ambiguous matching files                                    |
+| Persistence / recovery              | keep with reason | Previous generations are valid recovery material, not malformed records                    | No deletion, schema migration, auth change or manual repair                           |
+| Background/resource behavior        | keep with reason | Resolution occurs at explicit history/continuation boundaries                              | No new poller, scan subscription or retained cache; runtime matrix remains incomplete |
+| React / UI / API wire               | skipped          | Correction changes the backend source selection and error boundary                         | No UI filters, retry masks or control/layout changes                                  |
+
+Source regressions pass; a rebuilt combined runtime remains required after this
+correction. The preceding Combined93 source safety/automatic export success does
+not pass C7 continuation, Stop or the full performance matrix. Detailed measured
+results and remaining acceptance cells are in the performance report.
+
+Indexed-generation correction verification:
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked native_transcript_resolution_tests
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked native_materializer
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked commands::history
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked transcript_revision_tests
+cargo clippy --manifest-path src-tauri/Cargo.toml -p org2 --lib --tests --locked -- -D warnings
+```
+
+The four filters passed 5, 102, 8 and 6 tests respectively: **121 passed**, with
+seven existing opt-in tests ignored (five materializer, two history). Clippy and
+`git diff --check` passed. Owning-boundary regressions cover current-generation
+selection after an earlier read, same-size/mtime revision changes, invalid or
+locked indexes without stale fallback, managed/account symmetry and ambiguous
+legacy discovery. This does not replace the pending rebuilt GUI run.
+
+Removing the existence-only cache means each ordinary indexed resolution reads
+one SQLite row on demand. Unindexed legacy homes use a bounded directory walk;
+repeated legacy reads can cost more I/O than the old cached path. No new timer is
+added, but a large-legacy-home runtime baseline has not been measured.

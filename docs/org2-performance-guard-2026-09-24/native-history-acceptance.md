@@ -1,6 +1,6 @@
 # Native history acceptance follow-up
 
-Candidate implementation: `2b2c7259bb5cd56c4c98c5586b669f3a43461b88`, macOS ARM64, isolated instance 93. The candidate executable matches the previously recorded build receipt. The initial follow-up recorded verification of that candidate. The subsequent C7 section below records a newly discovered writer-boundary defect and pending verification of its correction.
+Candidate implementation: `2b2c7259bb5cd56c4c98c5586b669f3a43461b88`, macOS ARM64, isolated instance 93. The candidate executable matches the previously recorded build receipt. The initial follow-up recorded verification of that candidate. Later sections record writer-boundary corrections and Combined93 product evidence. The latest Combined93 run exposed stale generation lookup; its correction still requires a rebuilt run. Performance verdict remains **blocked**.
 
 ## Product evidence
 
@@ -222,3 +222,98 @@ native-client cost attribution, sustained retention and contention,
 identity/endpoint transitions and the remaining provider lifecycle cells. The
 finite samples do not demonstrate an unbounded regression, and do not establish
 a full pass.
+
+## Combined93: actual product streaming and generation readback
+
+This local-only candidate merged #2103 `4a29a30d6fd6be49b1a04266f48543c1bfbcaab8`
+with #2143 `a02d3da41d69f5e8d53b5390cdb822f0911bf2ef` to make the explicit Reserve
+selector available. Merge identity was `b9056d6abaf196ed4c3576bfa30d5cf4b798aaea`;
+executable SHA-256 was
+`24222973db6ac1ef43c2830ea19ac62c1cb1a62d4b03444070444d71c2fba07c`.
+Build and strict ad-hoc signature verification passed. This mixed build was not
+pushed into either PR and cannot be described as a pure #2103 build.
+
+The user newly opened the C7 thread in the managed native GUI; read-only FD
+inspection confirmed its thread lock and rollout. ORG2's actual chat UI then
+sent a bounded no-tool request with GPT 5.6 Luna Reserve Medium. Its source
+app-server held the inherited actual-store fence. Only the freshly verified
+managed GUI received SIGTERM during the active turn. Source FD and indexed inode
+matched before and immediately afterward; the final source inode was unchanged.
+The reply completed with exactly 250 numbered lines and its distinct final
+marker. Before any Refresh/focus/navigation, the managed store automatically
+contained the reply, with equal user/assistant sequence, a source-prefix raw file,
+single indexed rows and zero journal pending/waits/observations. Raw timestamps
+place destination import about 0.818 seconds after source completion. Earlier
+failed turns remained intact. The real product app-server exits after each turn;
+this is not same-live-producer evidence across two product turns.
+
+C7 still failed at ORG2 readback. Its durable session was completed with no live
+PID, but settled-tail recovery read the old two-turn generation and reported a
+missing native user anchor. The current SQLite `rollout_path` contained the reply;
+the older retained file still existed. Existence-only cached paths and filename
+suffix discovery had mistaken that old file for the current thread. The fix
+reselects the authoritative indexed generation and propagates invalid indexed
+state instead of substituting cached history. Historical retained files require
+no deletion or migration. No manual reconciliation or lock clearing was used.
+Second product continuation, actual Stop and native reopen of the new marker
+were withheld after that failure, preserving the failed acceptance result.
+
+### Measured resource phases
+
+The one-second sampler includes backend, responsible WebKit XPCs, managed native
+descendants and separate product source app-server. It retains PID/kernel-start
+identities after parent exit. CPU uses Mach timebase 125/3; source identities take
+precedence over backend membership. Three exit-transition samples overlapped and
+were de-duplicated in derived results; original samples remain preserved. RSS is
+summed, physical I/O is not scan count, and unsampled short-lived children are
+omitted. No compilation ran during this sample.
+
+| Actual phase                               | Seconds | Backend CPU % | WebKit CPU % | Native CPU % | Source CPU % |
+| ------------------------------------------ | ------- | ------------- | ------------ | ------------ | ------------ |
+| Target loaded, source idle                 | 47.4    | 0.726         | 1.367        | 3.773        | absent       |
+| Real product turn, target still live       | 37.6    | 11.330        | 20.390       | 21.532       | 3.378        |
+| Target exited, remaining stream and settle | 49.1    | 11.021        | 20.502       | 0.004        | 2.129        |
+| Minimize requested, failed recovery state  | 51.3    | 0.662         | 1.611        | 0            | absent       |
+| After normal ORG2 Quit                     | 58.2    | absent        | absent       | 0            | absent       |
+
+The live-target native cost was primarily its profile-local computer-use helper
+(19.115% of one core), not ORG2's history backend. Its loaded-idle RSS peaked at
+1,764.3 MiB. This attribution does not establish an unchanged-client comparison.
+The minimized observation was abnormal recovery, and accessibility did not
+independently certify minimization; it is not a normal hidden-idle pass. Product
+active rendering ran, but missing final history means these samples do not prove
+correct or smooth completed-turn rendering.
+
+Normal ORG2 CmdQ → Quit removed backend, WebKit and source cohorts; none survived
+the 58.2-second postquit interval. The earlier native SIGTERM left one vendor
+`bare-modifier-monitor` orphan, 22.9 MiB and zero measured CPU. Its managed-parent
+and kernel-start identities were retained; only that verified test descendant
+was subsequently cleaned up with SIGTERM. Native all-descendant release and
+normal native menu Quit therefore remain unpassed.
+
+**Performance verdict: blocked.** Rebuild the indexed-path correction before
+continuation/Stop/reopen acceptance; then complete normal native exit, repeated
+lifecycle, sustained retention/contention and provider/identity matrix cells.
+Finite observations above are evidence, not a complete acceptance pass.
+
+Indexed-generation correction verification:
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked native_transcript_resolution_tests
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked native_materializer
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked commands::history
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked transcript_revision_tests
+cargo clippy --manifest-path src-tauri/Cargo.toml -p org2 --lib --tests --locked -- -D warnings
+```
+
+The four filters passed 5, 102, 8 and 6 tests respectively: **121 passed**, with
+seven existing opt-in tests ignored (five materializer, two history). Clippy and
+`git diff --check` passed. Owning-boundary regressions cover current-generation
+selection after an earlier read, same-size/mtime revision changes, invalid or
+locked indexes without stale fallback, managed/account symmetry and ambiguous
+legacy discovery. This does not replace the pending rebuilt GUI run.
+
+Removing the existence-only cache means each ordinary indexed resolution reads
+one SQLite row on demand. Unindexed legacy homes use a bounded directory walk;
+repeated legacy reads can cost more I/O than the old cached path. No new timer is
+added, but a large-legacy-home runtime baseline has not been measured.

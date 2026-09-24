@@ -55,6 +55,54 @@ export const cloudFileOutbox = {
       })
     )
     .build(),
+  readSnapshotChunk: defineProcedure("cloud_file_snapshot_read_chunk")
+    .input(
+      z.object({
+        identity,
+        orgId: z.string(),
+        sessionId: z.string(),
+        candidate,
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .max(32 * 1024 * 1024),
+      })
+    )
+    .output(
+      z.object({
+        status: z.enum([
+          "captured",
+          "uploaded",
+          "not_captured",
+          "integrity_error",
+          "invalid_source",
+          "source_unavailable",
+          "too_large",
+          "local_storage_unavailable",
+          "atomic_capture_unsupported",
+          "source_busy_or_unavailable",
+          "local_budget_exceeded",
+        ]),
+        size: z
+          .number()
+          .int()
+          .min(0)
+          .max(32 * 1024 * 1024),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .max(32 * 1024 * 1024),
+        capturedAt: z.number().nullable(),
+        sha256: z.string().nullable(),
+        bytesBase64: z
+          .string()
+          .max(Math.ceil((256 * 1024) / 3) * 4)
+          .nullable(),
+      })
+    )
+    .build(),
   claim: defineProcedure("cloud_file_outbox_claim")
     .input(z.object({ identity, orgIds: z.array(z.string()) }))
     .output(z.object({ job: job.nullable(), retryAt: z.number().nullable() }))

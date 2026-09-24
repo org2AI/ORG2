@@ -43,7 +43,11 @@ export function encodeFileBytes(bytes: Uint8Array): string {
   return btoa(binary);
 }
 export async function fileSha256(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes));
+  const input =
+    bytes.buffer instanceof ArrayBuffer
+      ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      : new Uint8Array(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", input);
   return Array.from(new Uint8Array(digest), (value) =>
     value.toString(16).padStart(2, "0")
   ).join("");

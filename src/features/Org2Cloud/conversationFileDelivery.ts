@@ -228,12 +228,15 @@ export class ConversationFileDelivery {
           candidates: [{ path: job.path, revision: job.revision }],
           readCandidate: async (candidate) => {
             assertCurrent();
-            const bytes = await readConversationFileSnapshot({
-              identity,
-              orgId: job.orgId,
-              sessionId: job.sessionId,
-              candidate,
-            });
+            const bytes = await readConversationFileSnapshot(
+              {
+                identity,
+                orgId: job.orgId,
+                sessionId: job.sessionId,
+                candidate,
+              },
+              controller.signal
+            );
             assertCurrent();
             return bytes;
           },

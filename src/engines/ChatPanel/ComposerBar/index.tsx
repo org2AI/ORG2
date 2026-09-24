@@ -76,7 +76,7 @@ const ComposerBar: React.FC<ComposerBarProps> = memo(
     secondaryControlsPosition = "left",
     showContextInfo = true,
   }) => {
-    const rowClass = "flex min-w-0 items-center gap-0.5";
+    const rowClass = "flex min-w-0 max-w-full flex-wrap items-center gap-0.5";
 
     const addButton =
       hideAddButton || !onAddContent ? null : (
@@ -101,16 +101,14 @@ const ComposerBar: React.FC<ComposerBarProps> = memo(
         </Button>
       );
 
-    // The row's spare height sits above the 28px controls and it has no side
-    // padding, so the controls rest on the shell inset exactly where the
-    // inline row puts them: + and send stay put across compact/stacked moves.
+    // Preserve shell insets while allowing narrow toolbars to grow.
     const toolbarRow = (
       <div
         key="toolbar"
-        className={`flex h-9 min-h-9 w-full items-center justify-between pt-2 text-text-2 ${bottomPaddingClassName}`.trim()}
+        className={`flex min-h-9 w-full min-w-0 flex-wrap items-center justify-between gap-y-1 pt-2 text-text-2 ${bottomPaddingClassName}`.trim()}
         style={{ transform: "translateZ(0)" }}
       >
-        <div className={rowClass}>
+        <div className={`${rowClass} flex-1`}>
           {leftPrefix}
           {secondaryControlsPosition === "left" ? (
             <>
@@ -121,7 +119,7 @@ const ComposerBar: React.FC<ComposerBarProps> = memo(
             </>
           ) : null}
         </div>
-        <div className={rowClass}>
+        <div className={`${rowClass} ml-auto shrink-0`}>
           {secondaryControlsPosition === "right" ? (
             <>
               {addButton}

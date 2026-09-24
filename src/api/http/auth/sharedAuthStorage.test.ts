@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -9,8 +8,11 @@ const mocks = vi.hoisted(() => ({
   disk: new Map<string, unknown>(),
   init: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
-  getIdentifier: vi.fn(async () => "org2ai.org2"),
-  appDataDir: vi.fn(async () => "/app-data/org2ai.org2.dev/"),
+  getStorageProfile: vi.fn(async () => ({
+    path: "/app-data/org2ai.org2/shared-service-auth.json",
+    allowLegacyMigration: true,
+  })),
+  disksByPath: new Map<string, Map<string, unknown>>(),
   reload: vi.fn(async () => {}),
   save: vi.fn(async () => {}),
 }));
@@ -34,10 +36,9 @@ const cloudAuth = (
     supabaseUrl: url,
   });
 
-vi.mock("@tauri-apps/api/app", () => ({ getIdentifier: mocks.getIdentifier }));
-vi.mock("@tauri-apps/api/path", () => ({
-  appDataDir: mocks.appDataDir,
-  resolve: async (...parts: string[]) => path.resolve(...parts),
+vi.mock("@src/api/tauri/rpc/invoke", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@src/api/tauri/rpc/invoke")>()),
+  typedInvoke: mocks.getStorageProfile,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -46,8 +47,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 vi.mock("@tauri-apps/plugin-store", () => ({
   LazyStore: class {
+    private disk: Map<string, unknown>;
     constructor(path: string, options: unknown) {
       mocks.construct(path, options);
+      this.disk = mocks.disksByPath.get(path) ?? mocks.disk;
     }
 
     init = mocks.init;
@@ -55,19 +58,19 @@ vi.mock("@tauri-apps/plugin-store", () => ({
     save = mocks.save;
 
     async get<T>(key: string): Promise<T | undefined> {
-      return mocks.disk.get(key) as T | undefined;
+      return this.disk.get(key) as T | undefined;
     }
 
     async entries<T>(): Promise<Array<[string, T]>> {
-      return Array.from(mocks.disk.entries()) as Array<[string, T]>;
+      return Array.from(this.disk.entries()) as Array<[string, T]>;
     }
 
     async set(key: string, value: unknown): Promise<void> {
-      mocks.disk.set(key, value);
+      this.disk.set(key, value);
     }
 
     async delete(key: string): Promise<boolean> {
-      return mocks.disk.delete(key);
+      return this.disk.delete(key);
     }
   },
 }));
@@ -81,7 +84,11 @@ describe("shared service auth storage", () => {
     mocks.init.mockClear();
     mocks.isTauri.mockReset();
     mocks.isTauri.mockReturnValue(true);
-    mocks.getIdentifier.mockResolvedValue("org2ai.org2");
+    mocks.getStorageProfile.mockReset().mockResolvedValue({
+      path: "/app-data/org2ai.org2/shared-service-auth.json",
+      allowLegacyMigration: true,
+    });
+    mocks.disksByPath.clear();
     mocks.reload.mockClear();
     mocks.save.mockReset();
     mocks.suspend.mockReset().mockResolvedValue(1);
@@ -89,7 +96,6 @@ describe("shared service auth storage", () => {
   });
 
   it("dev reads and updates the bundled login through the primary auth file", async () => {
-    mocks.getIdentifier.mockResolvedValue("org2ai.org2.dev");
     mocks.disk.set("__orgii_shared_auth_schema", 2);
     mocks.disk.set("orgii.supabase.auth", "bundled-session");
     mocks.disk.set("orgii:org2-cloud-v1:auth", "bundled-cloud-session");
@@ -109,7 +115,7 @@ describe("shared service auth storage", () => {
       "refreshed-session"
     );
     vi.resetModules();
-    mocks.getIdentifier.mockResolvedValue("org2ai.org2");
+
     const bundled = await import("./sharedAuthStorage");
     await bundled.initializeSharedServiceAuthStorage();
     expect(localStorage.getItem("orgii.supabase.auth")).toBe(
@@ -123,22 +129,75 @@ describe("shared service auth storage", () => {
   });
 
   it("numbered test instances continue to use their own auth store", async () => {
-    mocks.getIdentifier.mockResolvedValue("org2ai.org2.instance2");
+    mocks.getStorageProfile.mockResolvedValue({
+      path: "/app-data/org2ai.org2.instance2/shared-service-auth.json",
+      allowLegacyMigration: true,
+    });
     const { initializeSharedServiceAuthStorage } =
       await import("./sharedAuthStorage");
     await initializeSharedServiceAuthStorage();
-    expect(mocks.construct).toHaveBeenCalledWith("shared-service-auth.json", {
-      defaults: {},
-      autoSave: false,
+    expect(mocks.construct).toHaveBeenCalledWith(
+      "/app-data/org2ai.org2.instance2/shared-service-auth.json",
+      {
+        defaults: {},
+        autoSave: false,
+      }
+    );
+  });
+
+  it("hydrates and writes only the native-selected custom home", async () => {
+    const firstPath = "/isolated/a/shared-service-auth.json";
+    const secondPath = "/isolated/b/shared-service-auth.json";
+    const first = new Map<string, unknown>();
+    const second = new Map<string, unknown>();
+    mocks.disk.set("orgii.supabase.auth", "stale bundle credentials");
+    mocks.disksByPath.set(firstPath, first);
+    mocks.disksByPath.set(secondPath, second);
+    mocks.getStorageProfile.mockResolvedValue({
+      path: firstPath,
+      allowLegacyMigration: false,
     });
+    localStorage.setItem("orgii.supabase.auth", "stale browser credentials");
+    localStorage.setItem(CLOUD_KEY, cloudAuth("stale browser owner"));
+    const a = await import("./sharedAuthStorage");
+    await a.initializeSharedServiceAuthStorage();
+    expect(localStorage.getItem(CLOUD_KEY)).toBeNull();
+    expect(first.has(CLOUD_KEY)).toBe(false);
+    expect(localStorage.getItem("orgii.supabase.auth")).toBeNull();
+    await a.sharedServiceAuthStorage.setItem(
+      "orgii.supabase.auth",
+      "A credentials"
+    );
+    vi.resetModules();
+    localStorage.clear();
+    mocks.getStorageProfile.mockResolvedValue({
+      path: secondPath,
+      allowLegacyMigration: false,
+    });
+    const b = await import("./sharedAuthStorage");
+    await b.initializeSharedServiceAuthStorage();
+    expect(localStorage.getItem("orgii.supabase.auth")).toBeNull();
+    await b.sharedServiceAuthStorage.setItem(
+      "orgii.supabase.auth",
+      "B credentials"
+    );
+    expect(first.get("orgii.supabase.auth")).toBe("A credentials");
+    expect(second.get("orgii.supabase.auth")).toBe("B credentials");
+    expect(mocks.disk.get("orgii.supabase.auth")).toBe(
+      "stale bundle credentials"
+    );
   });
 
   it("retries a failed native path lookup on focus synchronization", async () => {
-    mocks.getIdentifier.mockRejectedValueOnce(new Error("IPC not ready"));
+    localStorage.setItem(CLOUD_KEY, cloudAuth("unverified owner"));
+    localStorage.setItem("hosted_access_token", "unverified token");
+    mocks.getStorageProfile.mockRejectedValueOnce(new Error("IPC not ready"));
     const auth = await import("./sharedAuthStorage");
     await expect(auth.initializeSharedServiceAuthStorage()).rejects.toThrow(
       "IPC not ready"
     );
+    expect(localStorage.getItem(CLOUD_KEY)).toBeNull();
+    expect(localStorage.getItem("hosted_access_token")).toBeNull();
     mocks.disk.set("__orgii_shared_auth_schema", 2);
     mocks.disk.set("orgii.supabase.auth", "bundled-session");
     await auth.synchronizeSharedServiceAuthStorage();
@@ -159,7 +218,7 @@ describe("shared service auth storage", () => {
     await initializeSharedServiceAuthStorage();
 
     expect(mocks.construct).toHaveBeenCalledWith(
-      __SHARED_AUTH_STORAGE_INTERNALS.SHARED_AUTH_STORE_PATH,
+      "/app-data/org2ai.org2/shared-service-auth.json",
       { defaults: {}, autoSave: false }
     );
     expect(mocks.disk.get("orgii.supabase.auth")).toBe("shared-session");
@@ -268,8 +327,8 @@ describe("shared service auth storage", () => {
 
   it("awaitMirroredOrg2CloudAuth persists auth before Rust can read it", async () => {
     const {
-      SHARED_ORG2_CLOUD_AUTH_STORAGE_KEY,
       __SHARED_AUTH_STORAGE_INTERNALS,
+      SHARED_ORG2_CLOUD_AUTH_STORAGE_KEY,
       awaitMirroredOrg2CloudAuth,
     } = await import("./sharedAuthStorage");
     mocks.disk.set(
@@ -542,6 +601,7 @@ describe("shared service auth storage", () => {
       new Error("market_cloud_verification_unavailable")
     );
     const {
+      __SHARED_AUTH_STORAGE_INTERNALS,
       initializeSharedServiceAuthStorage,
       synchronizeSharedServiceAuthStorage,
       SHARED_AUTH_SYNCHRONIZED_EVENT,
@@ -594,7 +654,7 @@ describe("relay durable publication independent of Market readiness", () => {
     localStorage.clear();
     mocks.disk.clear();
     mocks.isTauri.mockReturnValue(true);
-    mocks.getIdentifier.mockResolvedValue("org2ai.org2");
+
     mocks.reload.mockReset().mockResolvedValue(undefined);
     mocks.save.mockReset().mockResolvedValue(undefined);
     mocks.suspend.mockReset().mockResolvedValue(1);

@@ -102,20 +102,27 @@ export async function uploadSharedSessionFile(
   sessionId: string,
   name: string,
   bytes: Uint8Array,
-  source?: { path: string; revision: string }
+  source?: { path: string; revision: string },
+  signal?: AbortSignal
 ): Promise<SharedSessionFile> {
   if (bytes.byteLength > SHARED_FILE_MAX_BYTES)
     throw new Error("Shared file exceeds the 32 MiB transfer limit");
   const result = FileSchema.parse(
-    await rpc(token, endpoint, "cloud_put_session_file", {
-      p_org_id: orgId,
-      p_session_id: sessionId,
-      p_name: name,
-      p_content: encodeFileBytes(bytes),
-      ...(source
-        ? { p_source_path: source.path, p_source_revision: source.revision }
-        : {}),
-    })
+    await rpc(
+      token,
+      endpoint,
+      "cloud_put_session_file",
+      {
+        p_org_id: orgId,
+        p_session_id: sessionId,
+        p_name: name,
+        p_content: encodeFileBytes(bytes),
+        ...(source
+          ? { p_source_path: source.path, p_source_revision: source.revision }
+          : {}),
+      },
+      signal
+    )
   );
   if (
     result.name !== name ||
@@ -190,18 +197,25 @@ export async function findSharedSessionFileRevisions(
   endpoint: CloudEndpoint,
   orgId: string,
   sessionId: string,
-  files: readonly { path: string; revision: string }[]
+  files: readonly { path: string; revision: string }[],
+  signal?: AbortSignal
 ): Promise<Set<string>> {
   if (files.length > 64) throw new Error("Shared file lookup batch exceeded");
   const rows = z
     .array(z.object({ path: z.string(), revision: z.string() }))
     .max(64)
     .parse(
-      await rpc(token, endpoint, "cloud_find_session_file_revisions", {
-        p_org_id: orgId,
-        p_session_id: sessionId,
-        p_files: files,
-      })
+      await rpc(
+        token,
+        endpoint,
+        "cloud_find_session_file_revisions",
+        {
+          p_org_id: orgId,
+          p_session_id: sessionId,
+          p_files: files,
+        },
+        signal
+      )
     );
   return new Set(rows.map((row) => `${row.path}\0${row.revision}`));
 }

@@ -14,6 +14,16 @@ pub fn upsert_aggregate_sessions(records: &[SessionAggregateRecord]) -> Result<(
     let conn = get_connection().map_err(|err| err.to_string())?;
     let store = SqliteRecordStore::new(&conn);
     for record in records {
+        let compatibility_copy: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM org_history_copies WHERE copy_session_id=?1)",
+                [&record.session_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        if compatibility_copy {
+            continue;
+        }
         store.upsert_session(&aggregate_to_core_session(record))?;
     }
     Ok(())
@@ -117,6 +127,17 @@ pub fn upsert_cli_session(session_id: &str) -> Result<(), String> {
 /// changes (rename, model swap) land without waiting for the next
 /// artifact-persistence pass.
 pub fn upsert_rust_agent_session(session_id: &str) -> Result<(), String> {
+    let conn = get_connection().map_err(|err| err.to_string())?;
+    let compatibility_copy: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM org_history_copies WHERE copy_session_id=?1)",
+            [session_id],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    if compatibility_copy {
+        return Ok(());
+    }
     let record = crate::agent_sessions::event_pipeline::commands::runtime_artifact_session_record(
         session_id,
     )?;

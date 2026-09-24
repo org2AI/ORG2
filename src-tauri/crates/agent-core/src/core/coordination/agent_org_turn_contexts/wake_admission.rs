@@ -25,7 +25,7 @@ pub(super) fn assess_wake(
 ) -> Result<WakeAdmission<Option<TaskWakeBinding>>, String> {
     validate_non_empty(request)?;
     let (root, snapshot, status): (Option<String>, String, String) = conn.query_row(
-        "SELECT root_session_id,org_snapshot_json,status FROM agent_org_runtime_runs WHERE id=?1",
+        "SELECT root_session_id,org_snapshot_json,status FROM agent_org_execution_runs WHERE id=?1",
         [&request.org_run_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     ).map_err(|error| error.to_string())?;
     let snapshot: AgentOrgLaunchSnapshot =
@@ -51,7 +51,7 @@ pub(super) fn assess_wake(
         return Ok(WakeAdmission::Deferred);
     }
     let intervention: bool = conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_member_interventions
+        "SELECT EXISTS(SELECT 1 FROM agent_org_execution_member_interventions
          WHERE org_run_id=?1 AND member_id=?2 AND status IN ('yield_requested','active','return_requested'))",
         params![request.org_run_id, member_id], |row| row.get(0),
     ).map_err(|error| error.to_string())?;
@@ -72,7 +72,7 @@ pub(super) fn assess_wake(
     };
     let busy: bool = conn
         .query_row(
-            "SELECT EXISTS(SELECT 1 FROM agent_org_task_execution_leases lease
+            "SELECT EXISTS(SELECT 1 FROM agent_org_execution_task_execution_leases lease
          JOIN session_turn_intents intent USING(session_id,turn_intent_id)
          WHERE lease.org_run_id=?1 AND lease.task_id=?2 AND lease.activation_generation=?3
            AND lease.state='active' AND intent.status IN ('queued','running','optimistic')
@@ -99,16 +99,16 @@ fn coordinator_has_input(
     request: &AgentOrgTurnAdmission,
 ) -> Result<bool, String> {
     conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_inbox inbox
-         LEFT JOIN agent_org_runtime_formal_trigger_receipts receipt ON receipt.inbox_id=inbox.id
+        "SELECT EXISTS(SELECT 1 FROM agent_org_execution_inbox inbox
+         LEFT JOIN agent_org_execution_formal_trigger_receipts receipt ON receipt.inbox_id=inbox.id
          WHERE inbox.org_run_id=?1 AND inbox.recipient_member_id='coordinator'
            AND inbox.delivery_class='formal_work' AND inbox.read_at IS NULL
-           AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution WHERE resolution.inbox_id=inbox.id)
+           AND NOT EXISTS(SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution WHERE resolution.inbox_id=inbox.id)
            AND (receipt.receipt_id IS NULL OR receipt.status IN ('pending','materialized'))
-           AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_formal_trigger_attempts attempt
+           AND NOT EXISTS(SELECT 1 FROM agent_org_execution_formal_trigger_attempts attempt
              WHERE attempt.receipt_id=receipt.receipt_id AND attempt.status IN ('queued','running')
                AND NOT (attempt.session_id=?2 AND attempt.turn_intent_id=?3)))
-         OR EXISTS(SELECT 1 FROM agent_org_runtime_final_summary_receipts summary
+         OR EXISTS(SELECT 1 FROM agent_org_execution_final_summary_receipts summary
            WHERE summary.org_run_id=?1 AND (summary.status='pending'
              OR (summary.coordinator_session_id=?2 AND summary.turn_intent_id=?3 AND summary.status IN ('running','persisting'))))",
         params![request.org_run_id,request.session_id,request.turn_intent_id], |row| row.get(0),
@@ -130,7 +130,7 @@ pub(crate) fn revalidate_wake_in_tx(
     );
     let current: bool = conn
         .query_row(
-            "SELECT activation_generation=?2 FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT activation_generation=?2 FROM agent_org_execution_runs WHERE id=?1",
             params![context.org_run_id, context.activation_generation],
             |row| row.get(0),
         )

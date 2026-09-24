@@ -873,7 +873,7 @@ mod tests {
             member_communication_links: Vec::new(),
         };
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                  id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
                  entry_mode,status,activation_generation,created_at,updated_at
              ) VALUES ('plan-run','plan-org','plan-coordinator-agent','plan-root',?1,
@@ -915,7 +915,7 @@ mod tests {
             .unwrap();
         }
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations (
+            "INSERT INTO agent_org_execution_member_materializations (
                  org_run_id,member_id,agent_id,generation,session_id,
                  authority_class,status,created_at,updated_at
              ) VALUES ('plan-run','planner','planner-agent',1,'planner-session',
@@ -950,7 +950,7 @@ mod tests {
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts (
+            "INSERT INTO agent_org_execution_turn_contexts (
                  session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
                  task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
                  source_kind,source_id,activation_generation,created_at
@@ -1019,7 +1019,7 @@ mod tests {
         );
         let receipt_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_tool_call_receipts
+                "SELECT COUNT(*) FROM agent_org_execution_tool_call_receipts
                  WHERE org_run_id='plan-run' AND tool_name='create_plan'",
                 [],
                 |row| row.get(0),

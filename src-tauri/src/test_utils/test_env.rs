@@ -98,27 +98,27 @@ mod tests {
         assert!(schema_object_exists(
             &conn,
             "table",
-            "agent_org_runtime_run_progress"
+            "agent_org_execution_run_progress"
         ));
         assert!(column_exists(
             &conn,
-            "agent_org_runtime_run_progress",
+            "agent_org_execution_run_progress",
             "work_revision"
         ));
         assert!(schema_object_exists(
             &conn,
             "table",
-            "agent_org_runtime_recovery_attempts"
+            "agent_org_execution_recovery_attempts"
         ));
         assert!(column_exists(
             &conn,
-            "agent_org_runtime_inbox",
+            "agent_org_execution_inbox",
             "causation_inbox_id"
         ));
         assert!(schema_object_exists(
             &conn,
             "index",
-            "idx_agent_org_runtime_inbox_causation_recipient_once"
+            "idx_agent_org_execution_inbox_causation_recipient_once"
         ));
     }
 }

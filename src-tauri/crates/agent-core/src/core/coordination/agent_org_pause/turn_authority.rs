@@ -9,10 +9,10 @@ pub(crate) fn claimed_continuation_in_tx(
 ) -> Result<bool, String> {
     conn.query_row(
         "SELECT EXISTS(
-            SELECT 1 FROM agent_org_runtime_pause_handoffs handoff
-            JOIN agent_org_runtime_pause_episodes episode USING(episode_id)
-            JOIN agent_org_runtime_runs run ON run.id=handoff.org_run_id
-            JOIN agent_org_runtime_turn_contexts context
+            SELECT 1 FROM agent_org_execution_pause_handoffs handoff
+            JOIN agent_org_execution_pause_episodes episode USING(episode_id)
+            JOIN agent_org_execution_runs run ON run.id=handoff.org_run_id
+            JOIN agent_org_execution_turn_contexts context
               ON context.session_id=handoff.session_id
              AND context.turn_intent_id=handoff.continuation_turn_intent_id
             JOIN session_turn_intents intent
@@ -43,13 +43,13 @@ pub(crate) fn released_execution_in_tx(
 ) -> Result<bool, String> {
     conn.query_row(
         "SELECT EXISTS(
-            SELECT 1 FROM agent_org_runtime_turn_contexts context
+            SELECT 1 FROM agent_org_execution_turn_contexts context
             JOIN session_turn_intents intent
               ON intent.session_id=context.session_id AND intent.turn_intent_id=context.turn_intent_id
-            JOIN agent_org_runtime_pause_episodes episode
+            JOIN agent_org_execution_pause_episodes episode
               ON episode.org_run_id=context.org_run_id
              AND episode.pause_generation=context.activation_generation+1
-            JOIN agent_org_runtime_pause_handoffs handoff
+            JOIN agent_org_execution_pause_handoffs handoff
               ON handoff.episode_id=episode.episode_id AND handoff.session_id=context.session_id
              AND handoff.original_turn_intent_id=context.turn_intent_id
             WHERE context.session_id=?1 AND context.turn_intent_id=?2

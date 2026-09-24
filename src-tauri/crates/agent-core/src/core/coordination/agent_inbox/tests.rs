@@ -25,7 +25,7 @@ fn task_assignment_ids_by_run(org_run_id: &str) -> Result<HashSet<String>, Strin
     let mut stmt = conn
         .prepare(
             "SELECT DISTINCT json_extract(payload_json, '$.task_id')
-             FROM agent_org_runtime_inbox
+             FROM agent_org_execution_inbox
              WHERE org_run_id=?1
                AND payload_kind='task_assigned'
                AND json_valid(payload_json)
@@ -113,7 +113,7 @@ fn inbox_history_pages_are_cursor_bounded_without_gaps() {
     let now = chrono::Utc::now().to_rfc3339();
     for _ in 0..205 {
         tx.execute(
-            "INSERT INTO agent_org_runtime_inbox (
+            "INSERT INTO agent_org_execution_inbox (
                  recipient_agent_id, recipient_member_id, sender_agent_id,
                  sender_member_id, org_run_id, payload_kind, payload_json,
                  request_id, created_at, read_at, causation_inbox_id
@@ -174,7 +174,7 @@ fn recent_run_snapshot_is_bounded_and_counts_do_not_load_payloads() {
     // write boundary no longer permits creating new ones.
     let conn = get_connection().expect("open inbox database for legacy fixture");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
              recipient_agent_id, recipient_member_id, sender_agent_id,
              sender_member_id, org_run_id, payload_kind, payload_json,
              request_id, created_at, read_at, causation_inbox_id
@@ -246,7 +246,7 @@ fn recent_run_snapshot_is_bounded_and_counts_do_not_load_payloads() {
     assert!(
         details
             .iter()
-            .any(|detail| detail.contains("idx_agent_org_runtime_inbox_run_unread_recipient")),
+            .any(|detail| detail.contains("idx_agent_org_execution_inbox_run_unread_recipient")),
         "watchdog/run-view unread aggregation must stay on the partial unread index: {details:?}"
     );
     assert!(
@@ -296,7 +296,7 @@ fn run_preview_omits_large_plan_payload() {
     database::db::get_connection()
         .expect("sandbox DB")
         .execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                 id,org_id,coordinator_agent_id,root_session_id,entry_mode,status,
                 activation_generation,has_initial_work,created_at,updated_at
              ) VALUES (?1,'org-preview','coordinator-agent','root-preview',
@@ -391,7 +391,7 @@ fn preview_and_assignment_scan_tolerate_corrupt_historical_payloads() {
         ("task_assigned", "also-not-json"),
     ] {
         conn.execute(
-            "INSERT INTO agent_org_runtime_inbox (
+            "INSERT INTO agent_org_execution_inbox (
                  recipient_agent_id, recipient_member_id, sender_agent_id,
                  org_run_id, payload_kind, payload_json, created_at
              ) VALUES ('worker', 'member-worker', 'sender', ?1, ?2, ?3, ?4)",
@@ -399,7 +399,7 @@ fn preview_and_assignment_scan_tolerate_corrupt_historical_payloads() {
         )
         .expect("seed corrupt historical inbox row");
     }
-    conn.execute_batch("DROP INDEX idx_agent_org_runtime_inbox_run_task_assignment_v4")
+    conn.execute_batch("DROP INDEX idx_agent_org_execution_inbox_run_task_assignment_v4")
         .expect("drop assignment index to simulate upgrade");
     init_schema(&conn).expect("schema upgrade tolerates corrupt historical payloads");
     AgentInboxStore::insert(InsertInboxParams {
@@ -445,7 +445,7 @@ fn task_execution_drain_claims_exactly_one_bound_assignment() {
     let now = chrono::Utc::now().to_rfc3339();
     for task_id in ["task-one", "task-two"] {
         conn.execute(
-            "INSERT INTO agent_org_runtime_tasks
+            "INSERT INTO agent_org_execution_tasks
              (id, org_run_id, activation_generation, subject, description, status, owner,
               execution_mode, blocked_by_json, created_by_participant_id,
               source_turn_intent_id, created_at, updated_at)
@@ -537,7 +537,7 @@ fn task_execution_drain_materializes_exact_bound_coordinator_reply() {
     let run_id = format!("run-reply-{}", uuid::Uuid::new_v4());
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs (
+        "INSERT INTO agent_org_execution_runs (
              id,org_id,coordinator_agent_id,root_session_id,entry_mode,status,
              activation_generation,created_at,updated_at
          ) VALUES (?1,'org-reply','coordinator-agent','root-session',
@@ -546,7 +546,7 @@ fn task_execution_drain_materializes_exact_bound_coordinator_reply() {
     )
     .expect("running Team");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
              id,org_run_id,activation_generation,subject,owner,status,execution_mode,
              created_by_participant_id,source_turn_intent_id,created_at,updated_at
          ) VALUES ('task-reply',?1,1,'Reply task','member-worker','in_progress',
@@ -564,7 +564,7 @@ fn task_execution_drain_materializes_exact_bound_coordinator_reply() {
     )
     .expect("source Turns");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
              source_kind,source_id,activation_generation,created_at
@@ -888,7 +888,7 @@ fn stale_session_cannot_ack_another_sessions_materialization() {
     .expect("insert inbox row");
     let conn = get_connection().expect("db");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations
+        "INSERT INTO agent_org_execution_inbox_materializations
          (inbox_id, session_id, transcript_message_id, transcript_intent_id, materialized_at)
          VALUES (?1, 'new-session', 'message', 'intent', ?2)",
         params![row.id, chrono::Utc::now().to_rfc3339()],

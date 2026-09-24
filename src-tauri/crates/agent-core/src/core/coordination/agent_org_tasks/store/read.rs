@@ -101,7 +101,7 @@ impl AgentOrgTaskStore {
     pub fn get(org_run_id: &str, task_id: &str) -> Result<Option<Task>, String> {
         let conn = get_connection().map_err(|error| error.to_string())?;
         let sql = format!(
-            "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks
+            "SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND id=?2"
         );
         let mut task = conn
@@ -115,7 +115,7 @@ impl AgentOrgTaskStore {
             let mut stmt = conn
                 .prepare(
                     "SELECT downstream.id
-                     FROM agent_org_runtime_tasks downstream,
+                     FROM agent_org_execution_tasks downstream,
                           json_each(downstream.blocked_by_json) edge
                      WHERE downstream.org_run_id=?1 AND edge.value=?2
                      ORDER BY downstream.created_at ASC, downstream.id ASC",
@@ -137,8 +137,8 @@ impl AgentOrgTaskStore {
         run_id: &str,
         episode_id: &str,
     ) -> Result<Vec<Task>, String> {
-        let sql=format!("SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks task
-            WHERE org_run_id=?1 AND EXISTS(SELECT 1 FROM agent_org_runtime_work_episode_tasks episode_task
+        let sql=format!("SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks task
+            WHERE org_run_id=?1 AND EXISTS(SELECT 1 FROM agent_org_execution_work_episode_tasks episode_task
                 WHERE episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id AND episode_task.work_episode_id=?2)
             ORDER BY created_at,id");
         let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
@@ -177,11 +177,11 @@ impl AgentOrgTaskStore {
             .prepare(
                 "WITH operational_ids(id) AS (
                      SELECT id
-                     FROM agent_org_runtime_tasks
+                     FROM agent_org_execution_tasks
                      WHERE org_run_id=?1 AND status IN ('pending','in_progress')
                      UNION
                      SELECT CAST(edge.value AS TEXT)
-                     FROM agent_org_runtime_tasks open_task,
+                     FROM agent_org_execution_tasks open_task,
                           json_each(
                               CASE WHEN json_valid(open_task.blocked_by_json)
                                    THEN open_task.blocked_by_json ELSE '[]' END
@@ -200,7 +200,7 @@ impl AgentOrgTaskStore {
                              THEN json_extract(task.metadata_json,'$.eligible_member_ids')
                              ELSE '[]' END,
                         task.created_at, task.updated_at
-                 FROM agent_org_runtime_tasks task
+                 FROM agent_org_execution_tasks task
                  JOIN operational_ids ON operational_ids.id=task.id
                  WHERE task.org_run_id=?1
                  ORDER BY task.created_at ASC, task.id ASC",
@@ -288,7 +288,7 @@ impl AgentOrgTaskStore {
         let cursor = after_task_id
             .map(|task_id| {
                 conn.query_row(
-                    "SELECT created_at,id FROM agent_org_runtime_tasks
+                    "SELECT created_at,id FROM agent_org_execution_tasks
                      WHERE org_run_id=?1 AND id=?2",
                     params![org_run_id, task_id],
                     |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
@@ -384,7 +384,7 @@ impl AgentOrgTaskStore {
         let bucket_wire = bucket.map(TaskPageBucket::as_wire);
         let filtered_total: i64 = if bucket.is_none() {
             conn.query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_tasks
+                "SELECT COUNT(*) FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND (?2 IS NULL OR status=?2)
                    AND (?3 IS NULL OR owner=?3)",
                 params![org_run_id, status_wire, owner],
@@ -418,11 +418,11 @@ impl AgentOrgTaskStore {
             (
                 "COALESCE((SELECT json_group_array(id) FROM (
                     SELECT downstream.id AS id
-                    FROM agent_org_runtime_tasks downstream, json_each(downstream.blocked_by_json) edge
+                    FROM agent_org_execution_tasks downstream, json_each(downstream.blocked_by_json) edge
                     WHERE downstream.org_run_id=task.org_run_id AND edge.value=task.id
                     ORDER BY downstream.created_at, downstream.id LIMIT ?9
                 )),'[]')",
-                "(SELECT COUNT(*) FROM agent_org_runtime_tasks downstream, json_each(downstream.blocked_by_json) edge
+                "(SELECT COUNT(*) FROM agent_org_execution_tasks downstream, json_each(downstream.blocked_by_json) edge
                   WHERE downstream.org_run_id=task.org_run_id AND edge.value=task.id)",
             )
         } else {
@@ -449,7 +449,7 @@ impl AgentOrgTaskStore {
                     NOT EXISTS (
                         SELECT 1
                         FROM json_each(task.blocked_by_json) edge
-                        LEFT JOIN agent_org_runtime_tasks blocker
+                        LEFT JOIN agent_org_execution_tasks blocker
                           ON blocker.org_run_id=task.org_run_id
                          AND blocker.id=edge.value
                         WHERE blocker.id IS NULL OR blocker.status<>'completed'
@@ -476,7 +476,7 @@ impl AgentOrgTaskStore {
                     task.failure_reason_json, task.cancel_reason_json, task.replaces_task_id,
                     task.created_at, task.updated_at, task.activation_generation,
                     {corrupt_predicate}
-             FROM agent_org_runtime_tasks task
+             FROM agent_org_execution_tasks task
              WHERE task.org_run_id=?1
                AND (?2 IS NULL OR task.status=?2)
                AND (?3 IS NULL OR task.owner=?3)
@@ -658,7 +658,7 @@ impl AgentOrgTaskStore {
         let bounded_limit = limit.clamp(1, 500);
         let mut stmt = conn
             .prepare(
-                "SELECT id FROM agent_org_runtime_tasks
+                "SELECT id FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND status IN ('pending','in_progress')
                  ORDER BY created_at ASC,id ASC LIMIT ?2",
             )
@@ -698,7 +698,7 @@ impl AgentOrgTaskStore {
                 "SELECT id,org_run_id,task_id,event_type,previous_owner,next_owner,
                         previous_status,next_status,actor_member_id,actor_kind,
                         source_turn_intent_id,created_at
-                 FROM agent_org_runtime_task_events WHERE org_run_id=?1
+                 FROM agent_org_execution_task_events WHERE org_run_id=?1
                  ORDER BY created_at ASC,id ASC",
             )
             .map_err(|error| error.to_string())?;

@@ -468,7 +468,7 @@ pub fn finalize_agent_org_member_turn(
                     )?;
                 requeue_work && context.turn_kind == crate::coordination::agent_org_turn_contexts::AgentOrgTurnKind::TaskExecution
                     && conn.query_row(
-                        "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_tasks
+                        "SELECT EXISTS(SELECT 1 FROM agent_org_execution_tasks
                          WHERE org_run_id=?1 AND id=?2 AND owner=?3 AND status='in_progress')",
                         rusqlite::params![context.org_run_id, context.task_id, context.owner_member_id],
                         |row| row.get::<_, bool>(0),
@@ -648,13 +648,13 @@ fn should_rewake_agent_org_member_after_turn(
             .query_row(
                 "SELECT EXISTS(
                      SELECT 1
-                     FROM agent_org_runtime_formal_trigger_receipts receipt
+                     FROM agent_org_execution_formal_trigger_receipts receipt
                      WHERE receipt.org_run_id=?1
                        AND receipt.status='pending'
                        AND receipt.doorbell_status IN ('missing','delivered')
                        AND NOT EXISTS (
                            SELECT 1
-                           FROM agent_org_runtime_formal_trigger_attempts attempt
+                           FROM agent_org_execution_formal_trigger_attempts attempt
                            WHERE attempt.receipt_id=receipt.receipt_id
                              AND attempt.status IN ('queued','running')
                        )

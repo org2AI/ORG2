@@ -273,6 +273,7 @@ pub(crate) async fn send_message_impl(
     source: TurnIntentBridgeSource,
     wake_reservation: Option<Arc<crate::coordination::agent_org_watchdog::MemberRewakeReservation>>,
 ) -> Result<WakeAdmission<AgentResponse>, String> {
+    crate::coordination::agent_org_history_store::require_writable_session(&session_id).await?;
     if state.is_shutting_down() {
         return Err("app_shutdown_in_progress: refusing to enqueue a new Agent turn".into());
     }

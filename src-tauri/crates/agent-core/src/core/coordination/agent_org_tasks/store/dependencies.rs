@@ -36,7 +36,7 @@ pub(super) fn persist_canonical_blocked_by_for_test_fixture(
 ) -> Result<(), String> {
     let mut stmt = conn
         .prepare(
-            "UPDATE agent_org_runtime_tasks
+            "UPDATE agent_org_execution_tasks
              SET blocked_by_json=?1
              WHERE org_run_id=?2 AND id=?3 AND blocked_by_json<>?1",
         )
@@ -56,7 +56,7 @@ pub(super) fn run_is_safe_for_operational_projection(
 ) -> Result<bool, String> {
     let count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_tasks
+            "SELECT COUNT(*) FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND status IN ('pending','in_progress')",
             params![run_id],
             |row| row.get(0),
@@ -72,11 +72,11 @@ pub(super) fn run_is_safe_for_operational_projection(
     let sql = format!(
         "WITH operational_ids(id) AS (
              SELECT id
-             FROM agent_org_runtime_tasks
+             FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND status IN ('pending','in_progress')
              UNION
              SELECT CAST(edge.value AS TEXT)
-             FROM agent_org_runtime_tasks open_task,
+             FROM agent_org_execution_tasks open_task,
                   json_each(
                       CASE WHEN json_valid(open_task.blocked_by_json)
                            THEN open_task.blocked_by_json ELSE '[]' END
@@ -97,7 +97,7 @@ pub(super) fn run_is_safe_for_operational_projection(
                     CASE WHEN metadata_json IS NULL
                               OR length(CAST(metadata_json AS BLOB))<={metadata_max}
                          THEN metadata_json ELSE '!' END AS metadata_json
-             FROM agent_org_runtime_tasks
+             FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND id IN (SELECT id FROM operational_ids)
          ) AS bounded_tasks"
     );

@@ -137,14 +137,17 @@ fn list_pinned_native_sidebar_sessions(
         SELECT s.session_id, s.updated_at, 'agent' AS source_kind
         FROM agent_sessions s
         WHERE s.pinned = 1
-          AND s.status != ?1
+          AND (s.status != ?1 OR EXISTS (SELECT 1 FROM org_history_sessions h WHERE h.session_id=s.session_id))
+          AND NOT EXISTS (SELECT 1 FROM org_history_copies c WHERE c.copy_session_id=s.session_id)
           AND s.parent_session_id IS NULL
           AND s.session_type IN (?2, ?3, ?4)
           AND (
               s.org_member_id IS NULL
+              OR EXISTS (SELECT 1 FROM org_history_sessions h WHERE h.session_id=s.session_id
+                  AND (h.root_session_id=s.session_id OR h.root_session_id IS NULL))
               OR EXISTS (
                   SELECT 1
-                  FROM agent_org_runtime_runs r
+                  FROM agent_org_execution_runs r
                   WHERE r.root_session_id = s.session_id
               )
           )
@@ -325,7 +328,7 @@ mod tests {
             .expect("seed coding session");
         }
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                 id, org_id, coordinator_agent_id, root_session_id,
                 entry_mode, status, created_at, updated_at
              ) VALUES (
@@ -488,7 +491,7 @@ mod tests {
             .expect("seed native session");
         }
         conn.execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                 id, org_id, coordinator_agent_id, root_session_id,
                 entry_mode, status, created_at, updated_at
              ) VALUES (
@@ -584,7 +587,7 @@ mod tests {
                        s.org_member_id IS NULL
                        OR EXISTS (
                            SELECT 1
-                           FROM agent_org_runtime_runs r
+                           FROM agent_org_execution_runs r
                            WHERE r.root_session_id = s.session_id
                        )
                    )
@@ -609,7 +612,7 @@ mod tests {
             "pinned agent page did not use ordered sidebar index:\n{details}"
         );
         assert!(
-            details.contains("idx_agent_org_runtime_runs_root_session"),
+            details.contains("idx_agent_org_execution_runs_root_session"),
             "pinned root membership probe did not use root-session index:\n{details}"
         );
     }
@@ -637,3 +640,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "history_tests.rs"]
+mod history_tests;

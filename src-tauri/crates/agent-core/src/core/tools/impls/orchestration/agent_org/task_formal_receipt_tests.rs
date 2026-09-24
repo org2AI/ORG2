@@ -18,7 +18,7 @@ fn task_output_receipt_binds_the_exact_source_turn_and_output_digest() {
         .expect("FormalTriggerReceipt schema");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs(
+        "INSERT INTO agent_org_execution_runs(
              id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
              entry_mode,status,activation_generation,has_initial_work,created_at,updated_at
          ) VALUES (?1,'org-task-output','coordinator-agent','root-task-output',NULL,
@@ -88,7 +88,7 @@ fn task_output_receipt_binds_the_exact_source_turn_and_output_digest() {
         .query_row(
             "SELECT source_kind,task_id,owner_member_id,source_turn_intent_id,
                     task_output_digest,status
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id='run-task-output'",
             [],
             |row| {

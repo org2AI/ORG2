@@ -78,7 +78,7 @@ export async function runCompletionWaitScenario({
     await browser.waitUntil(
       async () => {
         const raw = rows(
-          `SELECT completion_candidate_json FROM agent_org_runtime_run_progress WHERE org_run_id=${literal(runId)}`
+          `SELECT completion_candidate_json FROM agent_org_execution_run_progress WHERE org_run_id=${literal(runId)}`
         )[0]?.completion_candidate_json;
         candidate = raw ? JSON.parse(raw) : null;
         return Boolean(
@@ -100,10 +100,10 @@ export async function runCompletionWaitScenario({
     await browser.waitUntil(
       async () => {
         const tasks = rows(
-          `SELECT status,activation_generation FROM agent_org_runtime_tasks WHERE org_run_id=${literal(runId)}`
+          `SELECT status,activation_generation FROM agent_org_execution_tasks WHERE org_run_id=${literal(runId)}`
         );
         const turns = rows(
-          `SELECT intent.status FROM agent_org_runtime_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id) WHERE context.org_run_id=${literal(runId)} AND context.turn_kind='task_execution'`
+          `SELECT intent.status FROM agent_org_execution_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id) WHERE context.org_run_id=${literal(runId)} AND context.turn_kind='task_execution'`
         );
         return (
           tasks.length === 1 &&
@@ -122,13 +122,13 @@ export async function runCompletionWaitScenario({
     await waitForCandidate();
   }
   let during = rows(
-    `SELECT context.turn_intent_id,intent.status FROM agent_org_runtime_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id) WHERE context.org_run_id=${literal(runId)} AND context.turn_kind='task_execution'`
+    `SELECT context.turn_intent_id,intent.status FROM agent_org_execution_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id) WHERE context.org_run_id=${literal(runId)} AND context.turn_kind='task_execution'`
   );
   if (!during.some((turn) => turn.status === "running"))
     throw new Error("Member-end race window was not actually exercised");
   if (
     rows(
-      `SELECT id FROM agent_org_runtime_run_completion_certificates WHERE org_run_id=${literal(runId)}`
+      `SELECT id FROM agent_org_execution_run_completion_certificates WHERE org_run_id=${literal(runId)}`
     ).length
   )
     throw new Error("Candidate certified before member end");
@@ -193,7 +193,7 @@ export async function runCompletionWaitScenario({
     );
     pauseResumeEvidence = { beforePause, paused, resumed };
     during = rows(
-      `SELECT context.turn_intent_id,intent.status FROM agent_org_runtime_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id) WHERE context.org_run_id=${literal(runId)} AND context.turn_kind='task_execution'`
+      `SELECT context.turn_intent_id,intent.status FROM agent_org_execution_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id) WHERE context.org_run_id=${literal(runId)} AND context.turn_kind='task_execution'`
     );
   }
   if (!pauseResumeBeforeMemberExit)
@@ -213,7 +213,7 @@ export async function runCompletionWaitScenario({
     "event-driven completion and persisted report"
   );
   const dispositions = rows(
-    `SELECT inbox.id,inbox.payload_kind,inbox.read_at,resolution.resolution_kind,resolution.reason FROM agent_org_runtime_inbox inbox LEFT JOIN agent_org_runtime_inbox_delivery_resolutions resolution ON resolution.inbox_id=inbox.id WHERE inbox.org_run_id=${literal(runId)}`
+    `SELECT inbox.id,inbox.payload_kind,inbox.read_at,resolution.resolution_kind,resolution.reason FROM agent_org_execution_inbox inbox LEFT JOIN agent_org_execution_inbox_delivery_resolutions resolution ON resolution.inbox_id=inbox.id WHERE inbox.org_run_id=${literal(runId)}`
   );
   const idle = dispositions.filter((row) => row.payload_kind === "member_idle");
   const idleHandled = pauseResumeBeforeMemberExit
@@ -229,20 +229,20 @@ export async function runCompletionWaitScenario({
       `Idle notifications were left unresolved or handled by the wrong path: ${JSON.stringify(idle)}`
     );
   const certificateOwner = rows(
-    `SELECT coordinator_session_id AS session_id,coordinator_turn_intent_id AS turn_intent_id FROM agent_org_runtime_run_completion_certificates WHERE org_run_id=${literal(runId)} ORDER BY created_at DESC,id DESC LIMIT 1`
+    `SELECT coordinator_session_id AS session_id,coordinator_turn_intent_id AS turn_intent_id FROM agent_org_execution_run_completion_certificates WHERE org_run_id=${literal(runId)} ORDER BY created_at DESC,id DESC LIMIT 1`
   )[0];
   candidate ??= certificateOwner;
   if (!candidate?.session_id || !candidate?.turn_intent_id)
     throw new Error("Persisted completion has no exact coordinator owner");
   const later = rows(
-    `SELECT context.*,intent.status FROM agent_org_runtime_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id) WHERE context.org_run_id=${literal(runId)} AND context.turn_kind='coordinator' AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_final_summary_receipts summary WHERE summary.coordinator_session_id=context.session_id AND summary.turn_intent_id=context.turn_intent_id) AND context.context_id>(SELECT context_id FROM agent_org_runtime_turn_contexts WHERE session_id=${literal(candidate.session_id)} AND turn_intent_id=${literal(candidate.turn_intent_id)})`
+    `SELECT context.*,intent.status FROM agent_org_execution_turn_contexts context JOIN session_turn_intents intent USING(session_id,turn_intent_id) WHERE context.org_run_id=${literal(runId)} AND context.turn_kind='coordinator' AND NOT EXISTS(SELECT 1 FROM agent_org_execution_final_summary_receipts summary WHERE summary.coordinator_session_id=context.session_id AND summary.turn_intent_id=context.turn_intent_id) AND context.context_id>(SELECT context_id FROM agent_org_execution_turn_contexts WHERE session_id=${literal(candidate.session_id)} AND turn_intent_id=${literal(candidate.turn_intent_id)})`
   );
   if (later.some((turn) => !["cancelled", "coalesced"].includes(turn.status)))
     throw new Error(
       `Unexpected coordinator turns after saved authorization: ${JSON.stringify(later)}`
     );
   const summaries = rows(
-    `SELECT status,attempt,event_id FROM agent_org_runtime_final_summary_receipts WHERE org_run_id=${literal(runId)}`
+    `SELECT status,attempt,event_id FROM agent_org_execution_final_summary_receipts WHERE org_run_id=${literal(runId)}`
   );
   if (summaries.length !== 1 || summaries[0].status !== "persisted")
     throw new Error(
@@ -326,7 +326,7 @@ export async function runReworkScenario() {
   );
   const runId = finalView.context.runId;
   const tasks = rows(
-    `SELECT * FROM agent_org_runtime_tasks WHERE org_run_id=${literal(runId)}`
+    `SELECT * FROM agent_org_execution_tasks WHERE org_run_id=${literal(runId)}`
   );
   const task = (suffix) =>
     tasks.find((row) => row.subject === `E2E_AGENT_ORG_REWORK:${suffix}`);
@@ -360,14 +360,14 @@ export async function runReworkScenario() {
       "Old defect evidence was rewritten or replacement verification is missing"
     );
   const deliveries = rows(
-    `SELECT * FROM agent_org_runtime_inbox WHERE org_run_id=${literal(runId)} AND payload_kind='task_assigned'`
+    `SELECT * FROM agent_org_execution_inbox WHERE org_run_id=${literal(runId)} AND payload_kind='task_assigned'`
   ).filter((row) => JSON.parse(row.payload_json).task_id === delivery.id);
   if (deliveries.length !== 1 || deliveries[0].created_at < retest.updated_at)
     throw new Error(
       `Final consumer woke before replacement verification: ${JSON.stringify(deliveries)}`
     );
   const reports = rows(
-    `SELECT * FROM agent_org_runtime_final_summary_receipts WHERE org_run_id=${literal(runId)}`
+    `SELECT * FROM agent_org_execution_final_summary_receipts WHERE org_run_id=${literal(runId)}`
   );
   if (reports.length !== 1 || reports[0].status !== "persisted")
     throw new Error(

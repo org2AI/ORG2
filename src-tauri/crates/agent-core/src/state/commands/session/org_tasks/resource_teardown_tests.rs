@@ -35,7 +35,7 @@ async fn verify_task_resource_teardown(intervention: bool) {
             })
             .unwrap()
         });
-        conn.execute("INSERT INTO agent_org_runtime_tasks (
+        conn.execute("INSERT INTO agent_org_execution_tasks (
             id,org_run_id,activation_generation,subject,description,owner,status,execution_mode,
             blocked_by_json,created_by_participant_id,source_turn_intent_id,created_at,updated_at,output_json
         ) VALUES (?1,?2,1,?1,'service','member-planner',?3,'build','[]','coordinator','seed',?4,?4,
@@ -85,7 +85,7 @@ async fn verify_task_resource_teardown(intervention: bool) {
             runtime_lease_id: "newer-lease".into(),
             dialog_turn_generation: "newer-generation".into(),
         };
-        conn.execute("INSERT INTO agent_org_runtime_member_interventions (
+        conn.execute("INSERT INTO agent_org_execution_member_interventions (
             intervention_receipt_id,org_run_id,member_id,agent_id,session_id,status,source_event_id,
             original_task_id,original_turn_intent_id,runtime_lease_id,dialog_turn_generation,
             entered_at,last_user_activity_at,updated_at

@@ -473,7 +473,7 @@ pub fn init_schema(conn: &Connection) -> SqliteResult<()> {
 
 pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_runs (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_runs (
             id TEXT PRIMARY KEY,
             org_id TEXT NOT NULL,
             coordinator_agent_id TEXT NOT NULL,
@@ -507,14 +507,14 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
                 (status<>'archived' AND archived_at IS NULL AND archive_receipt_id IS NULL)
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_runs_org_updated
-            ON agent_org_runtime_runs(org_id, updated_at);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_runs_root_session
-            ON agent_org_runtime_runs(root_session_id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_runs_work_item
-            ON agent_org_runtime_runs(work_item_id);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_runs_status
-            ON agent_org_runtime_runs(status);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_runs_org_updated
+            ON agent_org_execution_runs(org_id, updated_at);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_runs_root_session
+            ON agent_org_execution_runs(root_session_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_runs_work_item
+            ON agent_org_execution_runs(work_item_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_runs_status
+            ON agent_org_execution_runs(status);",
     )?;
     materialization::init_schema(conn)?;
     progress::init_schema(conn)?;

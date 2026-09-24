@@ -163,6 +163,7 @@ export function toFrontendSession(record: SessionAggregateRecord): Session {
     parentSessionId: record.parentSessionId,
     orgMemberId: record.orgMemberId,
     agentOrgId: record.agentOrgId,
+    agentOrgMode: record.agentOrgMode,
     agentOrgName: record.agentOrgName,
     agentDefinitionId: record.agentDefinitionId,
     agentIconId: importedSource?.iconId ?? record.agentIconId,

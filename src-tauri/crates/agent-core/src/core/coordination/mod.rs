@@ -28,6 +28,7 @@ pub mod agent_org_final_summary;
 pub(crate) mod agent_org_finality;
 pub mod agent_org_formal_triggers;
 pub mod agent_org_history;
+pub mod agent_org_history_store;
 pub(crate) mod agent_org_ownership;
 pub mod agent_org_pause;
 pub mod agent_org_payload_limits;

@@ -44,7 +44,7 @@ impl AgentOrgRunStore {
                     idled_at,
                     archived_at,
                     archive_receipt_id
-             FROM agent_org_runtime_runs
+             FROM agent_org_execution_runs
              WHERE root_session_id IN ({placeholders})
              ORDER BY updated_at DESC, id DESC"
         );
@@ -92,7 +92,7 @@ impl AgentOrgRunStore {
                         idled_at,
                         archived_at,
                         archive_receipt_id
-                 FROM agent_org_runtime_runs
+                 FROM agent_org_execution_runs
                  WHERE root_session_id IS NOT NULL
                  ORDER BY updated_at DESC
                  LIMIT ?1",
@@ -150,7 +150,7 @@ impl AgentOrgRunStore {
                         idled_at,
                         archived_at,
                         archive_receipt_id
-                 FROM agent_org_runtime_runs
+                 FROM agent_org_execution_runs
                  WHERE root_session_id IS NOT NULL
                    AND status='running'
                    AND (?1 IS NULL OR id>?1)
@@ -197,7 +197,7 @@ impl AgentOrgRunStore {
                         idled_at,
                         archived_at,
                         archive_receipt_id
-                 FROM agent_org_runtime_runs
+                 FROM agent_org_execution_runs
                  WHERE root_session_id IS NOT NULL
                    AND status = ?1
                  ORDER BY updated_at ASC, id ASC
@@ -226,7 +226,7 @@ impl AgentOrgRunStore {
     ) -> Result<Option<AgentOrgRunStatus>, String> {
         let status_raw: Option<String> = conn
             .query_row(
-                "SELECT status FROM agent_org_runtime_runs WHERE id = ?1 LIMIT 1",
+                "SELECT status FROM agent_org_execution_runs WHERE id = ?1 LIMIT 1",
                 params![run_id],
                 |row| row.get(0),
             )

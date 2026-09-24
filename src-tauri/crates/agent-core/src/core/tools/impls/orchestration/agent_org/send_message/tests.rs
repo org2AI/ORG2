@@ -121,7 +121,7 @@ fn params(recipient_member_id: &str) -> serde_json::Value {
 fn grant_member_writer_in_frozen_snapshot(conn: &rusqlite::Connection, member_id: &str) {
     let mut snapshot: crate::definitions::orgs::AgentOrgLaunchSnapshot = conn
         .query_row(
-            "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id='run-1'",
+            "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id='run-1'",
             [],
             |row| row.get::<_, String>(0),
         )
@@ -133,7 +133,7 @@ fn grant_member_writer_in_frozen_snapshot(conn: &rusqlite::Connection, member_id
     snapshot.additional_task_graph_writer_member_ids.sort();
     snapshot.additional_task_graph_writer_member_ids.dedup();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?1 WHERE id='run-1'",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?1 WHERE id='run-1'",
         [serde_json::to_string(&snapshot).expect("encode frozen snapshot")],
     )
     .expect("persist frozen writer capability");
@@ -265,7 +265,7 @@ fn init_inbox_schema() -> test_helpers::test_env::SandboxGuard {
     };
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs (
+        "INSERT INTO agent_org_execution_runs (
              id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,
              entry_mode,status,activation_generation,created_at,updated_at
          ) VALUES ('run-1','org-1','agent-coord','root-1',?1,
@@ -309,7 +309,7 @@ fn init_inbox_schema() -> test_helpers::test_env::SandboxGuard {
     })
     .expect("seed builder authority Task");
     conn.execute_batch(&format!(
-        "INSERT INTO agent_org_runtime_member_materializations (
+        "INSERT INTO agent_org_execution_member_materializations (
              org_run_id,member_id,agent_id,generation,session_id,
              authority_class,status,created_at,updated_at
          ) VALUES
@@ -323,7 +323,7 @@ fn init_inbox_schema() -> test_helpers::test_env::SandboxGuard {
          ) VALUES
              ('root-1','coordinator-turn','run-1','agent_org','running','{now}','{now}'),
              ('builder-session','builder-turn','run-1','agent_org','running','{now}','{now}');
-         INSERT INTO agent_org_runtime_turn_contexts (
+         INSERT INTO agent_org_execution_turn_contexts (
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
              source_kind,source_id,root_authority_turn_id,actor_version,
@@ -374,7 +374,7 @@ fn seed_started_group_udw_with_link() -> crate::tools::call_context::CallContext
     let conn = database::db::get_connection().expect("test sqlite connection");
     let mut snapshot: crate::definitions::orgs::AgentOrgLaunchSnapshot = conn
         .query_row(
-            "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id='run-1'",
+            "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id='run-1'",
             [],
             |row| row.get::<_, String>(0),
         )
@@ -383,7 +383,7 @@ fn seed_started_group_udw_with_link() -> crate::tools::call_context::CallContext
     snapshot.member_communication_links =
         vec![crate::definitions::orgs::MemberCommunicationLink::canonical("builder", "planner")];
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?1 WHERE id='run-1'",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?1 WHERE id='run-1'",
         [serde_json::to_string(&snapshot).expect("encode launch snapshot")],
     )
     .expect("install frozen communication link");
@@ -410,7 +410,7 @@ fn seed_started_group_udw_with_link() -> crate::tools::call_context::CallContext
     )
     .expect("seed linked Planner session");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations (
+        "INSERT INTO agent_org_execution_member_materializations (
              org_run_id,member_id,agent_id,generation,session_id,
              authority_class,status,created_at,updated_at
          ) VALUES ('run-1','planner','agent-shared',1,'planner-session',
@@ -434,7 +434,7 @@ fn seed_started_group_udw_with_link() -> crate::tools::call_context::CallContext
     )
     .expect("seed Group source Inbox");
     conn.execute(
-        "UPDATE agent_org_runtime_inbox
+        "UPDATE agent_org_execution_inbox
          SET delivery_class='user_directed',display_text='@Builder Check the boundary'
          WHERE id=?1",
         [source.id],
@@ -448,7 +448,7 @@ fn seed_started_group_udw_with_link() -> crate::tools::call_context::CallContext
     )
     .expect("seed UDW intent");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              dispatch_member_id,member_dispatch_sequence,source_kind,source_id,
              root_authority_turn_id,actor_version,created_at
@@ -505,7 +505,7 @@ fn seed_started_group_udw_with_link() -> crate::tools::call_context::CallContext
 fn builder_authority_task_id() -> String {
     let conn = database::db::get_connection().expect("test sqlite connection");
     conn.query_row(
-        "SELECT task_id FROM agent_org_runtime_turn_contexts
+        "SELECT task_id FROM agent_org_execution_turn_contexts
          WHERE session_id='builder-session' AND turn_intent_id='builder-turn'",
         [],
         |row| row.get(0),
@@ -762,7 +762,7 @@ async fn started_udw_can_send_exactly_once_to_a_snapshot_linked_peer() {
     let (child_count, child_parent, child_source, child_depth): (i64, i64, i64, i64) = conn
         .query_row(
             "SELECT COUNT(*),MIN(parent_delivery_id),MIN(source_inbox_id),MIN(depth)
-             FROM agent_org_runtime_user_directed_deliveries
+             FROM agent_org_execution_user_directed_deliveries
              WHERE source_kind='member_inbox' AND dispatch_member_id='planner'",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
@@ -788,7 +788,7 @@ async fn udw_link_is_revalidated_from_the_persisted_snapshot_in_the_write_transa
     let conn = database::db::get_connection().expect("test sqlite connection");
     let mut snapshot: crate::definitions::orgs::AgentOrgLaunchSnapshot = conn
         .query_row(
-            "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id='run-1'",
+            "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id='run-1'",
             [],
             |row| row.get::<_, String>(0),
         )
@@ -796,7 +796,7 @@ async fn udw_link_is_revalidated_from_the_persisted_snapshot_in_the_write_transa
         .expect("load launch snapshot");
     snapshot.member_communication_links.clear();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?1 WHERE id='run-1'",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?1 WHERE id='run-1'",
         [serde_json::to_string(&snapshot).expect("encode launch snapshot")],
     )
     .expect("remove persisted link after tool assembly");
@@ -836,7 +836,7 @@ async fn udw_rejects_self_unknown_depth_and_delivery_budget_without_writes() {
 
     let conn = database::db::get_connection().expect("test sqlite connection");
     conn.execute(
-        "UPDATE agent_org_runtime_user_directed_roots
+        "UPDATE agent_org_execution_user_directed_roots
          SET max_cascade_depth=0 WHERE root_authority_turn_id='builder-udw-turn'",
         [],
     )
@@ -850,7 +850,7 @@ async fn udw_rejects_self_unknown_depth_and_delivery_budget_without_writes() {
         "{depth_error}"
     );
     conn.execute(
-        "UPDATE agent_org_runtime_user_directed_roots
+        "UPDATE agent_org_execution_user_directed_roots
          SET max_cascade_depth=2,next_delivery_ordinal=max_deliveries+2
          WHERE root_authority_turn_id='builder-udw-turn'",
         [],
@@ -886,7 +886,7 @@ async fn udw_coordinator_side_quest_uses_root_binding_without_formal_work() {
     let conn = database::db::get_connection().expect("test sqlite connection");
     let before_tasks: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_tasks WHERE org_run_id='run-1'",
+            "SELECT COUNT(*) FROM agent_org_execution_tasks WHERE org_run_id='run-1'",
             [],
             |row| row.get(0),
         )
@@ -914,26 +914,26 @@ async fn udw_coordinator_side_quest_uses_root_binding_without_formal_work() {
         .query_row(
             "SELECT
                 (SELECT COUNT(*)
-                 FROM agent_org_runtime_user_directed_coordinator_bindings),
+                 FROM agent_org_execution_user_directed_coordinator_bindings),
                 (SELECT COUNT(*)
-                 FROM agent_org_runtime_formal_trigger_receipts receipt
-                 JOIN agent_org_runtime_inbox inbox ON inbox.id=receipt.inbox_id
+                 FROM agent_org_execution_formal_trigger_receipts receipt
+                 JOIN agent_org_execution_inbox inbox ON inbox.id=receipt.inbox_id
                  WHERE inbox.delivery_class='user_directed'),
                 (SELECT context.turn_kind
-                 FROM agent_org_runtime_turn_contexts context
-                 JOIN agent_org_runtime_user_directed_coordinator_bindings binding
+                 FROM agent_org_execution_turn_contexts context
+                 JOIN agent_org_execution_user_directed_coordinator_bindings binding
                    ON binding.session_id=context.session_id
                   AND binding.turn_intent_id=context.turn_intent_id
                  LIMIT 1),
                 (SELECT context.source_kind
-                 FROM agent_org_runtime_turn_contexts context
-                 JOIN agent_org_runtime_user_directed_coordinator_bindings binding
+                 FROM agent_org_execution_turn_contexts context
+                 JOIN agent_org_execution_user_directed_coordinator_bindings binding
                    ON binding.session_id=context.session_id
                   AND binding.turn_intent_id=context.turn_intent_id
                  LIMIT 1),
                 (SELECT context.activation_generation
-                 FROM agent_org_runtime_turn_contexts context
-                 JOIN agent_org_runtime_user_directed_coordinator_bindings binding
+                 FROM agent_org_execution_turn_contexts context
+                 JOIN agent_org_execution_user_directed_coordinator_bindings binding
                    ON binding.session_id=context.session_id
                   AND binding.turn_intent_id=context.turn_intent_id
                  LIMIT 1)",
@@ -980,7 +980,7 @@ async fn udw_coordinator_side_quest_uses_root_binding_without_formal_work() {
         "{formal_staging_error}"
     );
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='idle' WHERE id='run-1'",
+        "UPDATE agent_org_execution_runs SET status='idle' WHERE id='run-1'",
         [],
     )
     .expect("idle Team around the same durable side quest");
@@ -996,8 +996,8 @@ async fn udw_coordinator_side_quest_uses_root_binding_without_formal_work() {
     let (idle_activation_status, idle_activation_generation): (String, Option<i64>) = conn
         .query_row(
             "SELECT run.status,context.activation_generation
-             FROM agent_org_runtime_runs run
-             JOIN agent_org_runtime_turn_contexts context ON context.org_run_id=run.id
+             FROM agent_org_execution_runs run
+             JOIN agent_org_execution_turn_contexts context ON context.org_run_id=run.id
              WHERE run.id='run-1' AND context.session_id='root-1'
                AND context.turn_intent_id=?1",
             [&wakes[0].turn_intent_id],
@@ -1007,7 +1007,7 @@ async fn udw_coordinator_side_quest_uses_root_binding_without_formal_work() {
     assert_eq!(idle_activation_status, "running");
     assert_eq!(idle_activation_generation, None);
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='paused' WHERE id='run-1'",
+        "UPDATE agent_org_execution_runs SET status='paused' WHERE id='run-1'",
         [],
     )
     .expect("pause Team around the same durable side quest");
@@ -1030,7 +1030,7 @@ async fn udw_coordinator_side_quest_uses_root_binding_without_formal_work() {
     );
     assert_eq!(
         conn.query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_tasks WHERE org_run_id='run-1'",
+            "SELECT COUNT(*) FROM agent_org_execution_tasks WHERE org_run_id='run-1'",
             [],
             |row| row.get::<_, i64>(0),
         )
@@ -1071,7 +1071,7 @@ async fn coordinator_side_quests_keep_durable_fifo_when_kicks_arrive_out_of_orde
     let queued_bindings: i64 = conn
         .query_row(
             "SELECT COUNT(*)
-             FROM agent_org_runtime_user_directed_coordinator_bindings binding
+             FROM agent_org_execution_user_directed_coordinator_bindings binding
              JOIN session_turn_intents intent
                ON intent.session_id=binding.session_id
               AND intent.turn_intent_id=binding.turn_intent_id
@@ -1265,7 +1265,7 @@ async fn execute_persists_and_wakes_by_member_id() {
     let binding: (String, String, String) = conn
         .query_row(
             "SELECT task_id,recipient_member_id,source_turn_intent_id
-             FROM agent_org_runtime_inbox_task_bindings WHERE inbox_id=?1",
+             FROM agent_org_execution_inbox_task_bindings WHERE inbox_id=?1",
             [rows[0].id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -1309,7 +1309,7 @@ async fn member_inbox_coordinator_task_dispatch_returns_root_guidance_with_zero_
     let conn = database::db::get_connection().expect("test sqlite connection");
     let before_bindings: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox_task_bindings WHERE org_run_id='run-1'",
+            "SELECT COUNT(*) FROM agent_org_execution_inbox_task_bindings WHERE org_run_id='run-1'",
             [],
             |row| row.get(0),
         )
@@ -1350,7 +1350,7 @@ async fn member_inbox_coordinator_task_dispatch_returns_root_guidance_with_zero_
     let inbox_count = AgentInboxStore::count_by_run("run-1").expect("count Inbox rows");
     let binding_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox_task_bindings WHERE org_run_id='run-1'",
+            "SELECT COUNT(*) FROM agent_org_execution_inbox_task_bindings WHERE org_run_id='run-1'",
             [],
             |row| row.get(0),
         )
@@ -1412,7 +1412,7 @@ fn formal_task_batch_validates_every_recipient_before_the_first_inbox_write() {
     assert_eq!(AgentInboxStore::count_by_run("run-1").unwrap(), 0);
     let binding_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox_task_bindings WHERE org_run_id='run-1'",
+            "SELECT COUNT(*) FROM agent_org_execution_inbox_task_bindings WHERE org_run_id='run-1'",
             [],
             |row| row.get(0),
         )
@@ -1427,7 +1427,7 @@ async fn binding_write_failure_rolls_back_inbox_receipt_and_wake() {
     let conn = database::db::get_connection().expect("test sqlite connection");
     conn.execute_batch(
         "CREATE TRIGGER fail_task_message_binding
-         BEFORE INSERT ON agent_org_runtime_inbox_task_bindings
+         BEFORE INSERT ON agent_org_execution_inbox_task_bindings
          BEGIN SELECT RAISE(ABORT,'injected task message binding failure'); END;",
     )
     .expect("install binding failure injection");
@@ -1455,9 +1455,9 @@ async fn binding_write_failure_rolls_back_inbox_receipt_and_wake() {
 
     let conn = database::db::get_connection().expect("test sqlite connection");
     for (table, expected) in [
-        ("agent_org_runtime_inbox", 0_i64),
-        ("agent_org_runtime_inbox_task_bindings", 0_i64),
-        ("agent_org_runtime_tool_call_receipts", 0_i64),
+        ("agent_org_execution_inbox", 0_i64),
+        ("agent_org_execution_inbox_task_bindings", 0_i64),
+        ("agent_org_execution_tool_call_receipts", 0_i64),
     ] {
         let count: i64 = conn
             .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
@@ -1503,7 +1503,7 @@ async fn ordinary_message_does_not_create_unread_work_after_run_is_archived() {
     let _sandbox = init_inbox_schema();
     let conn = database::db::get_connection().expect("test sqlite connection");
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='archived',activation_generation=activation_generation+1,
              archived_at=?1,archive_receipt_id='send-message-archive-receipt'
          WHERE id='run-1'",
@@ -1651,7 +1651,7 @@ async fn shutdown_request_is_rejected_while_member_still_owns_open_tasks() {
 
     let conn = database::db::get_connection().expect("test sqlite connection");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET status='completed',output_json='{
              \"summary\":\"done\",
              \"content\":null,
@@ -1693,7 +1693,7 @@ async fn routine_member_progress_without_task_or_purpose_is_guidance_with_zero_w
     let conn = database::db::get_connection().expect("test sqlite connection");
     let trigger_before: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts
+            "SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id='run-1'",
             [],
             |row| row.get(0),
@@ -1724,7 +1724,7 @@ async fn routine_member_progress_without_task_or_purpose_is_guidance_with_zero_w
     let conn = database::db::get_connection().expect("test sqlite connection");
     let trigger_after: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts
+            "SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id='run-1'",
             [],
             |row| row.get(0),
@@ -1849,7 +1849,7 @@ async fn actionable_member_coordination_purposes_create_exact_triggers() {
     let conn = database::db::get_connection().expect("test sqlite connection");
     let exact_triggers: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts
+            "SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id='run-1'
                AND source_kind IN (
                    'blocker','decision_required','material_change','risk','requested_reply'
@@ -1877,7 +1877,7 @@ async fn member_coordination_revalidates_task_run_and_turn_before_delivery() {
     let set_task = |status: &str, owner: &str| {
         let conn = database::db::get_connection().expect("test sqlite connection");
         conn.execute(
-            "UPDATE agent_org_runtime_tasks
+            "UPDATE agent_org_execution_tasks
              SET status=?1,
                  owner=?2,
                  output_json=NULL,
@@ -1891,7 +1891,7 @@ async fn member_coordination_revalidates_task_run_and_turn_before_delivery() {
     let set_run = |status: &str, generation: i64| {
         let conn = database::db::get_connection().expect("test sqlite connection");
         conn.execute(
-            "UPDATE agent_org_runtime_runs
+            "UPDATE agent_org_execution_runs
              SET status=?1,
                  activation_generation=?2,
                  archived_at=CASE WHEN ?1='archived' THEN updated_at ELSE NULL END,

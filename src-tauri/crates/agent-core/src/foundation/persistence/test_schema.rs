@@ -142,6 +142,10 @@ pub(crate) const AGENT_SESSIONS_TEST_DDL: &str = r#"
 pub(crate) fn ensure_agent_sessions_schema(conn: &rusqlite::Connection) {
     conn.execute_batch(AGENT_SESSIONS_TEST_DDL)
         .expect("agent_sessions test schema");
+    conn.execute_batch(include_str!(
+        "../../core/coordination/agent_org_history_store/schema.sql"
+    ))
+    .expect("history identity schema for session store tests");
 
     let existing: std::collections::HashSet<String> = conn
         .prepare("SELECT name FROM pragma_table_info('agent_sessions')")
@@ -178,4 +182,18 @@ pub(crate) fn ensure_agent_sessions_schema(conn: &rusqlite::Connection) {
             let _ = conn.execute(&format!("ALTER TABLE agent_sessions ADD COLUMN {decl}"), []);
         }
     }
+}
+
+/// Event cache columns owned by session-persistence, for core-only fixtures
+/// that cannot depend back on that crate. Full app tests use its initializer.
+pub(crate) fn ensure_session_events_schema(conn: &rusqlite::Connection) {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS events (
+        id TEXT PRIMARY KEY,session_id TEXT NOT NULL,event_type TEXT NOT NULL,
+        function_name TEXT,thread_id TEXT,args_json TEXT NOT NULL DEFAULT '{}',
+        result_json TEXT NOT NULL DEFAULT '{}',content TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,meta_json TEXT,history_sequence INTEGER,
+        UNIQUE(id,session_id));",
+    )
+    .expect("session event schema");
 }

@@ -400,8 +400,8 @@ fn detached_task_call_context(
     let identity: Option<(String, String)> = conn
         .query_row(
             "SELECT context.turn_intent_id,context.session_id
-             FROM agent_org_runtime_turn_contexts context
-             JOIN agent_org_runtime_runs run ON run.id=context.org_run_id
+             FROM agent_org_execution_turn_contexts context
+             JOIN agent_org_execution_runs run ON run.id=context.org_run_id
              JOIN session_turn_intents intent
                ON intent.session_id=context.session_id
               AND intent.turn_intent_id=context.turn_intent_id

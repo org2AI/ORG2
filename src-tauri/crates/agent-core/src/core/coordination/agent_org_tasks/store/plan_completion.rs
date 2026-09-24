@@ -55,7 +55,7 @@ impl AgentOrgTaskStore {
             plan_revision_id,
         )?;
         let sql = format!(
-            "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks
+            "SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks
              WHERE org_run_id = ?1 AND id = ?2"
         );
         let previous: Option<Task> = tx
@@ -98,7 +98,7 @@ impl AgentOrgTaskStore {
         let output_json = encode_optional_json("task output", current.output.as_ref())?;
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_tasks
+                "UPDATE agent_org_execution_tasks
                  SET status = ?1, output_json = ?2, updated_at = ?3
                  WHERE org_run_id = ?4 AND id = ?5 AND status = ?6 AND owner = ?7",
                 params![
@@ -118,6 +118,7 @@ impl AgentOrgTaskStore {
                 super::TASK_MUTATION_CONFLICT_ERROR
             ));
         }
+        crate::coordination::agent_org_history_store::mirror_task_output(tx, &current)?;
         insert_task_history_event_as(
             tx,
             org_run_id,
@@ -170,8 +171,8 @@ fn validate_plan_decision_authority(
         .query_row(
             "SELECT EXISTS(
                  SELECT 1
-                 FROM agent_org_runtime_plan_revisions revision
-                 JOIN agent_org_runtime_plan_decisions decision
+                 FROM agent_org_execution_plan_revisions revision
+                 JOIN agent_org_execution_plan_decisions decision
                    ON decision.plan_revision_id=revision.plan_revision_id
                  WHERE revision.plan_revision_id=?1 AND revision.org_run_id=?2
                    AND revision.source_task_id=?3 AND revision.source_member_id=?4
@@ -197,7 +198,7 @@ fn validate_plan_decision_authority(
     let (status_raw, generation, root_session_id): (String, i64, Option<String>) = conn
         .query_row(
             "SELECT status,activation_generation,root_session_id
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             [org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )

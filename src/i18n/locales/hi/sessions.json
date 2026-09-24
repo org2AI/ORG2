@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "पुराने संस्करण की बातचीत, केवल देखने के लिए",
+    "savedContent": "सहेजे गए समूह संदेश और परिणाम",
+    "unknownMember": "अज्ञात सदस्य",
+    "loading": "इतिहास लोड हो रहा है…",
+    "retry": "फिर कोशिश करें",
+    "empty": "कोई समूह सामग्री सहेजी नहीं गई",
+    "nextPage": "अगला पृष्ठ",
+    "firstPage": "पहला पृष्ठ"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "उपयोगकर्ता का अनुरोध",

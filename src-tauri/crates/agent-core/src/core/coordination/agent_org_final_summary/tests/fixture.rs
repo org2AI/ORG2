@@ -82,7 +82,7 @@ impl SummaryFixture {
             produced_at: now.clone(),
         };
         conn.execute(
-            "INSERT INTO agent_org_runtime_tasks(
+            "INSERT INTO agent_org_execution_tasks(
                 id,org_run_id,activation_generation,subject,description,owner,status,
                 execution_mode,blocked_by_json,output_json,created_by_participant_id,
                 source_turn_intent_id,created_at,updated_at
@@ -123,7 +123,7 @@ impl SummaryFixture {
             created_at: now.clone(),
         };
         conn.execute(
-            "INSERT INTO agent_org_runtime_run_completion_certificates(
+            "INSERT INTO agent_org_execution_run_completion_certificates(
                 id,org_run_id,activation_generation,work_revision,request_id,request_digest,
                 outcome,summary,coordinator_session_id,coordinator_turn_intent_id,
                 evidence_task_ids_json,closure_task_ids_json,task_output_refs_json,

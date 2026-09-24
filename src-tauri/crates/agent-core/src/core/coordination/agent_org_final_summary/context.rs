@@ -13,8 +13,8 @@ pub(crate) fn summary_context_for_turn(
     let source: Option<(String, String, String)> = conn
         .query_row(
             "SELECT receipt.org_run_id,receipt.certificate_id,receipt.evidence_digest
-             FROM agent_org_runtime_final_summary_receipts receipt
-             JOIN agent_org_runtime_run_completion_certificates certificate
+             FROM agent_org_execution_final_summary_receipts receipt
+             JOIN agent_org_execution_run_completion_certificates certificate
                ON certificate.id=receipt.certificate_id
              WHERE receipt.coordinator_session_id=?1 AND receipt.turn_intent_id=?2
                AND receipt.status IN ('running','persisting')",

@@ -29,11 +29,13 @@ import { useChatViewMessageQueue } from "./useChatViewMessageQueue";
 
 export function useChatViewAgentOrgSurface({
   sessionId,
+  readOnly = false,
   showCurrentPlanSurface,
   conversationRoot,
   onBeforeMessageDispatch,
 }: {
   sessionId: string;
+  readOnly?: boolean;
   showCurrentPlanSurface: boolean;
   conversationRoot: ConversationRootLocator | null;
   onBeforeMessageDispatch?: () => void;
@@ -42,7 +44,7 @@ export function useChatViewAgentOrgSurface({
     view: agentOrgRunView,
     error: agentOrgRunViewError,
     refresh: refreshAgentOrgRunView,
-  } = useAgentOrgRunView(sessionId);
+  } = useAgentOrgRunView(readOnly ? null : sessionId);
   // The dropdown's "current member" highlight should follow the
   // pipeline session, not the backend's `currentMemberId`. The
   // member selector now flips only the pipeline atom (via

@@ -61,7 +61,7 @@ fn coordinator_request_insert_failure_rolls_back_pending_creation() {
     create_plan_task(&context);
     get_connection()
         .expect("test db")
-        .execute("DROP TABLE agent_org_runtime_inbox", [])
+        .execute("DROP TABLE agent_org_execution_inbox", [])
         .expect("remove inbox to force request delivery failure");
 
     let params = approval_params(&context);

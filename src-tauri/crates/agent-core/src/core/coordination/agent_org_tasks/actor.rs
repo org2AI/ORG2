@@ -56,7 +56,7 @@ impl TaskGraphWriterAdmin {
             )?;
             let root_session_id: Option<String> = conn
                 .query_row(
-                    "SELECT root_session_id FROM agent_org_runtime_runs WHERE id=?1",
+                    "SELECT root_session_id FROM agent_org_execution_runs WHERE id=?1",
                     [org_run_id],
                     |row| row.get(0),
                 )
@@ -240,7 +240,7 @@ impl UserTaskHandoffAdmin {
         let row: Option<(String, i64, Option<String>)> = conn
             .query_row(
                 "SELECT status,activation_generation,root_session_id
-                 FROM agent_org_runtime_runs WHERE id=?1",
+                 FROM agent_org_execution_runs WHERE id=?1",
                 [org_run_id],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
@@ -371,8 +371,8 @@ impl SystemArchiveOrRecovery {
             let archive: Option<(String, i64, i64)> = conn
                 .query_row(
                     "SELECT run.status,run.activation_generation,archive.archive_generation
-                     FROM agent_org_runtime_archive_episodes archive
-                     JOIN agent_org_runtime_runs run ON run.id=archive.org_run_id
+                     FROM agent_org_execution_archive_episodes archive
+                     JOIN agent_org_execution_runs run ON run.id=archive.org_run_id
                      WHERE archive.org_run_id=?1 AND archive.archive_receipt_id=?2",
                     params![org_run_id, &self.receipt_id],
                     |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -407,7 +407,7 @@ impl SystemArchiveOrRecovery {
         let receipt: Option<(String, i64)> = conn
             .query_row(
                 "SELECT action_kind, attempts
-                 FROM agent_org_runtime_recovery_attempts
+                 FROM agent_org_execution_recovery_attempts
                  WHERE org_run_id=?1 AND reservation_token=?2
                    AND action_kind=?3 AND target_key=?4",
                 params![org_run_id, &self.receipt_id, action_kind, target_key],
@@ -525,7 +525,7 @@ fn load_run_snapshot(
     let row: Option<(String, i64, Option<String>)> = conn
         .query_row(
             "SELECT status, activation_generation, org_snapshot_json
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             [org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )

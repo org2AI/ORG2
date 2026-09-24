@@ -65,7 +65,7 @@ pub(crate) fn reserve_member_rewake_dispatch(
             .query_row(
                 "SELECT reason_fingerprint, attempts, next_allowed_at, updated_at,
                         reservation_token
-                 FROM agent_org_runtime_recovery_attempts
+                 FROM agent_org_execution_recovery_attempts
                  WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3",
                 params![run_id, MEMBER_REWAKE, member_id],
                 |row| {
@@ -84,7 +84,7 @@ pub(crate) fn reserve_member_rewake_dispatch(
         let token = uuid::Uuid::new_v4().to_string();
         let updated = tx
             .execute(
-                "UPDATE agent_org_runtime_recovery_attempts
+                "UPDATE agent_org_execution_recovery_attempts
                  SET reservation_token=?1
                  WHERE org_run_id=?2 AND action_kind=?3 AND target_key=?4
                    AND reason_fingerprint=?5",
@@ -113,7 +113,7 @@ pub(crate) fn commit_member_rewake_reservation(
     with_sessions_writer(|| -> Result<(), String> {
         let conn = get_connection().map_err(|err| err.to_string())?;
         conn.execute(
-            "UPDATE agent_org_runtime_recovery_attempts
+            "UPDATE agent_org_execution_recovery_attempts
              SET reservation_token=NULL
              WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3
                AND reservation_token=?4",
@@ -141,7 +141,7 @@ pub(crate) fn refund_member_rewake_reservation(
         let owns_current: bool = tx
             .query_row(
                 "SELECT EXISTS(
-                     SELECT 1 FROM agent_org_runtime_recovery_attempts
+                     SELECT 1 FROM agent_org_execution_recovery_attempts
                      WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3
                        AND reservation_token=?4
                  )",
@@ -168,7 +168,7 @@ pub(crate) fn refund_member_rewake_reservation(
             .filter(|p| p.reservation_token.is_none())
         {
             tx.execute(
-                "UPDATE agent_org_runtime_recovery_attempts
+                "UPDATE agent_org_execution_recovery_attempts
                  SET reason_fingerprint=?1, attempts=?2, next_allowed_at=?3,
                      updated_at=?4, reservation_token=?5
                  WHERE org_run_id=?6 AND action_kind=?7 AND target_key=?8
@@ -188,7 +188,7 @@ pub(crate) fn refund_member_rewake_reservation(
             .map_err(|err| err.to_string())?;
         } else {
             tx.execute(
-                "DELETE FROM agent_org_runtime_recovery_attempts
+                "DELETE FROM agent_org_execution_recovery_attempts
                  WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3
                    AND reservation_token=?4",
                 params![

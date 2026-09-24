@@ -86,6 +86,7 @@ export const upsertSession = (session: Session) => {
         parentSessionId: session.parentSessionId ?? existing.parentSessionId,
         orgMemberId: session.orgMemberId ?? existing.orgMemberId,
         agentOrgId: session.agentOrgId ?? existing.agentOrgId,
+        agentOrgMode: session.agentOrgMode ?? existing.agentOrgMode,
         agentOrgName: session.agentOrgName ?? existing.agentOrgName,
         agentDefinitionId:
           session.agentDefinitionId ?? existing.agentDefinitionId,

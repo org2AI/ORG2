@@ -36,7 +36,7 @@ fn summary_context_excludes_terminal_tasks_not_bound_by_certificate() {
     let conn = get_connection().unwrap();
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks(
+        "INSERT INTO agent_org_execution_tasks(
             id,org_run_id,activation_generation,subject,description,owner,status,
             execution_mode,blocked_by_json,output_json,created_by_participant_id,
             source_turn_intent_id,created_at,updated_at
@@ -73,7 +73,7 @@ fn summary_context_rejects_task_output_digest_drift() {
     fixture.claim("summary-turn-digest-drift");
     let conn = get_connection().unwrap();
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET output_json=json_set(output_json,'$.summary','mutated after certificate')
          WHERE org_run_id=?1 AND id='report-task'",
         [&fixture.run_id],
@@ -97,7 +97,7 @@ fn summary_context_requires_explicit_disclosure_of_user_cancelled_scope() {
         "sourceEventId": "cancel-request-1",
     });
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks(
+        "INSERT INTO agent_org_execution_tasks(
             id,org_run_id,activation_generation,subject,description,owner,status,
             execution_mode,blocked_by_json,cancel_reason_json,
             created_by_participant_id,source_turn_intent_id,created_at,updated_at
@@ -116,7 +116,7 @@ fn summary_context_requires_explicit_disclosure_of_user_cancelled_scope() {
         },
     );
     conn.execute(
-        "UPDATE agent_org_runtime_run_completion_certificates
+        "UPDATE agent_org_execution_run_completion_certificates
          SET resolution_links_json=?1 WHERE id=?2",
         rusqlite::params![
             serde_json::to_string(&fixture.certificate.resolution_links).unwrap(),

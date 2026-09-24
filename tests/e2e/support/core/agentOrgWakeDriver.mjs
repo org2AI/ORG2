@@ -59,7 +59,7 @@ function save(name, evidence) {
 export async function probeObsoleteAssignmentWake(runId, { postJson }) {
   const task =
     rows(`SELECT task.id,task.owner,session.session_id,session.agent_definition_id
-    FROM agent_org_runtime_tasks task JOIN agent_org_runtime_member_materializations member
+    FROM agent_org_execution_tasks task JOIN agent_org_execution_member_materializations member
       ON member.org_run_id=task.org_run_id AND member.member_id=task.owner AND member.status='succeeded'
     JOIN agent_sessions session ON session.session_id=member.session_id
     WHERE task.org_run_id=${literal(runId)} AND task.status='completed' LIMIT 1`)[0];
@@ -74,7 +74,7 @@ export async function probeObsoleteAssignmentWake(runId, { postJson }) {
   const before = intents();
   const budget = () =>
     rows(
-      `SELECT * FROM agent_org_runtime_recovery_attempts WHERE org_run_id=${literal(runId)} AND target_key=${literal(task.owner)}`
+      `SELECT * FROM agent_org_execution_recovery_attempts WHERE org_run_id=${literal(runId)} AND target_key=${literal(task.owner)}`
     );
   const budgetBefore = budget();
   const inboxIds = [];
@@ -122,8 +122,8 @@ export async function probeObsoleteAssignmentWake(runId, { postJson }) {
     throw new Error("Empty wake spent a recovery reservation");
   const inbox = rows(
     `SELECT inbox.id,inbox.read_at,resolution.resolution_kind,resolution.reason,
-       (SELECT COUNT(*) FROM agent_org_runtime_inbox observer WHERE observer.causation_inbox_id=inbox.id) AS observers
-     FROM agent_org_runtime_inbox inbox LEFT JOIN agent_org_runtime_inbox_delivery_resolutions resolution
+       (SELECT COUNT(*) FROM agent_org_execution_inbox observer WHERE observer.causation_inbox_id=inbox.id) AS observers
+     FROM agent_org_execution_inbox inbox LEFT JOIN agent_org_execution_inbox_delivery_resolutions resolution
        ON resolution.inbox_id=inbox.id WHERE inbox.id IN (${inboxIds.join(",")})`
   );
   if (inbox.length !== 2 || inbox.some((row) => row.read_at !== null))
@@ -154,7 +154,7 @@ export async function probeObsoleteAssignmentWake(runId, { postJson }) {
 
 export async function sendNewWorkAfterObsoleteWake(root, runId) {
   const before = rows(
-    `SELECT task_id,turn_intent_id FROM agent_org_runtime_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
+    `SELECT task_id,turn_intent_id FROM agent_org_execution_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
   );
   const marker = `member_end_wait_new_input_${RUN_ID}`;
   await openRenderedGroupChatView();
@@ -162,7 +162,7 @@ export async function sendNewWorkAfterObsoleteWake(root, runId) {
   const view = await waitForAgentOrgRunView(
     root,
     (view) =>
-      rows(`SELECT id FROM agent_org_runtime_tasks WHERE org_run_id=${literal(runId)}
+      rows(`SELECT id FROM agent_org_execution_tasks WHERE org_run_id=${literal(runId)}
         AND status='completed' AND instr(subject,${literal(marker)})>0`)
         .length === 1 &&
       view?.finalSummary?.status === "persisted" &&
@@ -171,7 +171,7 @@ export async function sendNewWorkAfterObsoleteWake(root, runId) {
     90000
   );
   const after = rows(
-    `SELECT task_id,turn_intent_id FROM agent_org_runtime_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
+    `SELECT task_id,turn_intent_id FROM agent_org_execution_turn_contexts WHERE org_run_id=${literal(runId)} AND turn_kind='task_execution' ORDER BY context_id`
   );
   if (
     after.length !== before.length + 1 ||

@@ -65,6 +65,7 @@ fn prepare_command_run(status: &str) -> AgentOrgRunContext {
     let context = context_with_shared_member_agent_id();
     let conn = get_connection().expect("db connection");
     crate::foundation::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+    crate::foundation::persistence::test_schema::ensure_session_events_schema(&conn);
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS session_turn_intents (
             session_id TEXT NOT NULL,
@@ -82,7 +83,7 @@ fn prepare_command_run(status: &str) -> AgentOrgRunContext {
     crate::coordination::init_agent_org_schemas(&conn).expect("complete Agent Org schemas");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs (
+        "INSERT INTO agent_org_execution_runs (
              id, org_id, coordinator_agent_id, root_session_id,
              org_snapshot_json, entry_mode, status, work_item_id,
              project_slug, routine_fire_id, summary, last_error,
@@ -109,7 +110,7 @@ fn inbox_count_for_member(context: &AgentOrgRunContext, member_id: &str) -> usiz
     let conn = get_connection().expect("db connection");
     let count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox
+            "SELECT COUNT(*) FROM agent_org_execution_inbox
              WHERE org_run_id=?1 AND recipient_member_id=?2",
             params![&context.run_id, member_id],
             |row| row.get(0),
@@ -203,7 +204,7 @@ fn seed_pause_turn_context(
         other => panic!("unknown test Turn kind {other}"),
     };
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,task_id,
             owner_member_id,dispatch_member_id,member_dispatch_sequence,source_kind,
             source_id,root_authority_turn_id,actor_version,activation_generation,created_at
@@ -284,7 +285,7 @@ fn configure_pause_resume_authority(conn: &rusqlite::Connection, context: &Agent
         member_communication_links: Vec::new(),
     };
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?2 WHERE id=?1",
         params![
             &context.run_id,
             serde_json::to_string(&snapshot).expect("serialize test snapshot")
@@ -311,7 +312,7 @@ fn configure_pause_resume_authority(conn: &rusqlite::Connection, context: &Agent
         .expect("seed canonical materialized Agent session");
     }
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations (
+        "INSERT INTO agent_org_execution_member_materializations (
             org_run_id,member_id,agent_id,generation,session_id,authority_class,
             status,created_at,updated_at
          ) VALUES (?1,?2,?3,1,?4,'formal','succeeded',?5,?5)",
@@ -325,7 +326,7 @@ fn configure_pause_resume_authority(conn: &rusqlite::Connection, context: &Agent
     )
     .expect("materialize coordinator");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations (
+        "INSERT INTO agent_org_execution_member_materializations (
             org_run_id,member_id,agent_id,generation,session_id,authority_class,
             status,created_at,updated_at
          ) VALUES (?1,'member-planner','builtin:sde',1,'planner-session','formal',
@@ -334,7 +335,7 @@ fn configure_pause_resume_authority(conn: &rusqlite::Connection, context: &Agent
     )
     .expect("materialize planner");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations (
+        "INSERT INTO agent_org_execution_member_materializations (
             org_run_id,member_id,agent_id,generation,session_id,authority_class,
             status,created_at,updated_at
          ) VALUES (?1,'member-builder','builtin:sde',1,'builder-session','formal',
@@ -368,9 +369,9 @@ fn group_chat_member_delivery_has_exact_udw_authority() {
     let (delivery_class, turn_kind, source_kind): (String, String, String) = conn
         .query_row(
             "SELECT inbox.delivery_class,context.turn_kind,context.source_kind
-             FROM agent_org_runtime_user_directed_deliveries delivery
-             JOIN agent_org_runtime_inbox inbox ON inbox.id=delivery.source_inbox_id
-             JOIN agent_org_runtime_turn_contexts context
+             FROM agent_org_execution_user_directed_deliveries delivery
+             JOIN agent_org_execution_inbox inbox ON inbox.id=delivery.source_inbox_id
+             JOIN agent_org_execution_turn_contexts context
                ON context.session_id=delivery.session_id
               AND context.turn_intent_id=delivery.turn_intent_id
              WHERE delivery.turn_intent_id='group-turn-planner'",
@@ -421,7 +422,7 @@ fn group_delivery_is_atomic_idempotent_and_conflict_safe() {
     assert!(error.contains("group_idempotency_mixed"), "{error}");
     let mixed_new_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+            "SELECT COUNT(*) FROM agent_org_execution_turn_contexts
              WHERE turn_intent_id='atomic-builder-mixed'",
             [],
             |row| row.get(0),
@@ -560,11 +561,11 @@ fn concurrent_exact_group_replays_commit_one_batch() {
     let (inbox_count, delivery_count, context_count): (i64, i64, i64) = conn
         .query_row(
             "SELECT
-                (SELECT COUNT(*) FROM agent_org_runtime_inbox
+                (SELECT COUNT(*) FROM agent_org_execution_inbox
                  WHERE org_run_id=?1 AND delivery_class='user_directed'),
-                (SELECT COUNT(*) FROM agent_org_runtime_user_directed_deliveries
+                (SELECT COUNT(*) FROM agent_org_execution_user_directed_deliveries
                  WHERE org_run_id=?1),
-                (SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+                (SELECT COUNT(*) FROM agent_org_execution_turn_contexts
                  WHERE org_run_id=?1 AND turn_kind='user_directed_work')",
             [&context.run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -757,8 +758,8 @@ fn formal_drain_never_claims_group_udw_and_udw_claims_only_its_source() {
     let (formal_read_at, group_read_at): (Option<String>, Option<String>) = conn
         .query_row(
             "SELECT
-                 (SELECT read_at FROM agent_org_runtime_inbox WHERE id=?1),
-                 (SELECT read_at FROM agent_org_runtime_inbox WHERE id=?2)",
+                 (SELECT read_at FROM agent_org_execution_inbox WHERE id=?1),
+                 (SELECT read_at FROM agent_org_execution_inbox WHERE id=?2)",
             params![formal.id, group[0].inbox_row.id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -838,7 +839,7 @@ fn udw_recovery_is_keyset_bounded_and_never_replays_started_work() {
     let (delivery_status, intent_status): (String, String) = conn
         .query_row(
             "SELECT delivery.status,intent.status
-             FROM agent_org_runtime_user_directed_deliveries delivery
+             FROM agent_org_execution_user_directed_deliveries delivery
              JOIN session_turn_intents intent
                ON intent.session_id=delivery.session_id
               AND intent.turn_intent_id=delivery.turn_intent_id
@@ -851,7 +852,7 @@ fn udw_recovery_is_keyset_bounded_and_never_replays_started_work() {
     assert_eq!(intent_status, "failed");
 
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET status='archived',archived_at=?2,
+        "UPDATE agent_org_execution_runs SET status='archived',archived_at=?2,
              archive_receipt_id='recovery-archive'
          WHERE id=?1",
         params![&context.run_id, chrono::Utc::now().to_rfc3339()],
@@ -924,7 +925,7 @@ fn interrupted_udw_classification_is_keyset_bounded_across_pages() {
     let (unknown_deliveries, failed_intents): (i64, i64) = conn
         .query_row(
             "SELECT
-                 (SELECT COUNT(*) FROM agent_org_runtime_user_directed_deliveries
+                 (SELECT COUNT(*) FROM agent_org_execution_user_directed_deliveries
                   WHERE turn_intent_id LIKE 'started-page-%' AND status='unknown'),
                  (SELECT COUNT(*) FROM session_turn_intents
                   WHERE turn_intent_id LIKE 'started-page-%' AND status='failed')",
@@ -1113,7 +1114,7 @@ fn coordinator_work_state_uses_only_the_latest_current_generation_turn() {
         },
     );
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts
+        "UPDATE agent_org_execution_turn_contexts
          SET terminal_reason='waiting_for_org_event'
          WHERE turn_intent_id='coordinator-waiting-old'",
         [],
@@ -1143,7 +1144,7 @@ fn coordinator_work_state_uses_only_the_latest_current_generation_turn() {
     );
 
     conn.execute(
-        "UPDATE agent_org_runtime_turn_contexts
+        "UPDATE agent_org_execution_turn_contexts
          SET terminal_reason='waiting_for_org_event'
          WHERE turn_intent_id='coordinator-finished-new'",
         [],
@@ -1158,6 +1159,7 @@ fn coordinator_work_state_uses_only_the_latest_current_generation_turn() {
 fn ensure_run_view_runtime_schema() {
     let conn = get_connection().expect("db connection");
     crate::foundation::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+    crate::foundation::persistence::test_schema::ensure_session_events_schema(&conn);
     crate::foundation::persistence::session_snapshots::ensure_tables_with(&conn)
         .expect("session snapshot schema");
     crate::session::persistence::init(&conn).expect("session schema");
@@ -1211,7 +1213,7 @@ fn assert_run_view_is_a_pure_read(status: &str) {
         .expect("read data version");
     let before_updated_at: String = observer
         .query_row(
-            "SELECT updated_at FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT updated_at FROM agent_org_execution_runs WHERE id=?1",
             [&context.run_id],
             |row| row.get(0),
         )
@@ -1225,7 +1227,7 @@ fn assert_run_view_is_a_pure_read(status: &str) {
         .expect("read data version after Run View");
     let after_updated_at: String = observer
         .query_row(
-            "SELECT updated_at FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT updated_at FROM agent_org_execution_runs WHERE id=?1",
             [&context.run_id],
             |row| row.get(0),
         )
@@ -1362,7 +1364,7 @@ fn run_view_marks_historical_unbound_coordinator_task_message_as_repairable() {
     };
     let conn = get_connection().expect("db connection");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?2 WHERE id=?1",
         params![
             &context.run_id,
             serde_json::to_string(&snapshot).expect("snapshot json")
@@ -1433,7 +1435,7 @@ fn task_state_window_projects_current_identity_owner_generation_and_replacement(
     let conn = get_connection().expect("db connection");
     let now = "2026-09-06T00:00:00Z";
     conn.execute_batch(&format!(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
              id,org_run_id,activation_generation,subject,description,owner,status,
              execution_mode,blocked_by_json,created_by_participant_id,
              source_turn_intent_id,created_at,updated_at
@@ -1441,7 +1443,7 @@ fn task_state_window_projects_current_identity_owner_generation_and_replacement(
              'task-original','{run_id}',1,'Original','',NULL,'pending','build','[]',
              'coordinator','turn-create','{now}','{now}'
          );
-         INSERT INTO agent_org_runtime_tasks (
+         INSERT INTO agent_org_execution_tasks (
              id,org_run_id,activation_generation,subject,description,owner,status,
              execution_mode,blocked_by_json,created_by_participant_id,
              source_turn_intent_id,replaces_task_id,created_at,updated_at
@@ -1519,7 +1521,7 @@ fn run_view_projects_only_active_interventions_and_distinguishes_formal_handoffs
     let conn = get_connection().expect("db connection");
     let now = "2026-08-26T00:00:00Z";
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_interventions (
+        "INSERT INTO agent_org_execution_member_interventions (
             intervention_receipt_id,org_run_id,member_id,agent_id,session_id,
             status,source_event_id,entered_at,last_user_activity_at,updated_at
          ) VALUES ('receipt-side-quest',?1,'member-planner','builtin:sde',
@@ -1528,7 +1530,7 @@ fn run_view_projects_only_active_interventions_and_distinguishes_formal_handoffs
     )
     .expect("insert nonbusy direct receipt");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_interventions (
+        "INSERT INTO agent_org_execution_member_interventions (
             intervention_receipt_id,org_run_id,member_id,agent_id,session_id,
             status,source_event_id,original_task_id,original_turn_intent_id,
             entered_at,last_user_activity_at,updated_at
@@ -1561,7 +1563,7 @@ fn run_view_projects_only_active_interventions_and_distinguishes_formal_handoffs
         )
         .expect("insert direct base Turn");
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_intervention_turns (
+            "INSERT INTO agent_org_execution_member_intervention_turns (
                 intervention_receipt_id,session_id,turn_intent_id,source_event_id,
                 dispatch_content,display_content,member_dispatch_sequence,
                 chain_position,status,enqueued_at,started_at
@@ -1777,7 +1779,7 @@ fn archived_group_message_writes_neither_inbox_nor_intervention_clear() {
     })
     .expect("enter intervention");
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='archived',activation_generation=activation_generation+1,
              archived_at=?2,archive_receipt_id=?3
          WHERE id=?1",
@@ -1857,7 +1859,7 @@ fn ordinary_group_message_is_not_a_formal_lifecycle_trigger() {
     let receipt_count: i64 = conn
         .query_row(
             "SELECT COUNT(*)
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1 AND inbox_id=?2",
             params![&context.run_id, rows[0].inbox_row.id],
             |db_row| db_row.get(0),
@@ -2043,8 +2045,8 @@ fn concurrent_pause_and_resume_requests_advance_each_episode_once() {
     let final_state: (String, i64, i64) = conn
         .query_row(
             "SELECT status,activation_generation,
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_episodes WHERE org_run_id=?1)
-             FROM agent_org_runtime_runs WHERE id=?1",
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_episodes WHERE org_run_id=?1)
+             FROM agent_org_execution_runs WHERE id=?1",
             [&run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -2059,7 +2061,7 @@ fn pause_run_update_failure_writes_no_episode_or_handoff() {
     let conn = get_connection().expect("db connection");
     conn.execute_batch(
         "CREATE TRIGGER reject_pause_run_update
-         BEFORE UPDATE ON agent_org_runtime_runs
+         BEFORE UPDATE ON agent_org_execution_runs
          WHEN OLD.status='running' AND NEW.status='paused'
          BEGIN SELECT RAISE(ABORT, 'injected pause run update failure'); END;",
     )
@@ -2076,9 +2078,9 @@ fn pause_run_update_failure_writes_no_episode_or_handoff() {
     let state: (String, i64, i64, i64) = conn
         .query_row(
             "SELECT status,activation_generation,
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_episodes WHERE org_run_id=?1),
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_handoffs WHERE org_run_id=?1)
-             FROM agent_org_runtime_runs WHERE id=?1",
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_episodes WHERE org_run_id=?1),
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_handoffs WHERE org_run_id=?1)
+             FROM agent_org_execution_runs WHERE id=?1",
             [&context.run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -2093,14 +2095,14 @@ fn pause_episode_insert_failure_rolls_back_status_generation_and_episode() {
     let conn = get_connection().expect("db connection");
     let original_generation: i64 = conn
         .query_row(
-            "SELECT activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT activation_generation FROM agent_org_execution_runs WHERE id=?1",
             params![&context.run_id],
             |row| row.get(0),
         )
         .expect("original generation");
     conn.execute_batch(
         "CREATE TRIGGER reject_pause_episode
-         BEFORE INSERT ON agent_org_runtime_pause_episodes
+         BEFORE INSERT ON agent_org_execution_pause_episodes
          BEGIN SELECT RAISE(ABORT, 'injected pause episode failure'); END;",
     )
     .expect("install failure trigger");
@@ -2116,8 +2118,8 @@ fn pause_episode_insert_failure_rolls_back_status_generation_and_episode() {
     let state: (String, i64, i64) = conn
         .query_row(
             "SELECT status,activation_generation,
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_episodes WHERE org_run_id=?1)
-             FROM agent_org_runtime_runs WHERE id=?1",
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_episodes WHERE org_run_id=?1)
+             FROM agent_org_execution_runs WHERE id=?1",
             params![&context.run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -2210,7 +2212,7 @@ fn pause_captures_only_current_generation_formal_in_flight_turns() {
         let mut statement = conn
             .prepare(
                 "SELECT original_turn_intent_id,turn_kind,drain_status
-                 FROM agent_org_runtime_pause_handoffs
+                 FROM agent_org_execution_pause_handoffs
                  WHERE episode_id=?1 ORDER BY original_turn_intent_id",
             )
             .expect("prepare receipt query");
@@ -2314,7 +2316,7 @@ fn pause_release_receipt_requires_the_exact_runtime_lease_and_turn_generation() 
     let conn = get_connection().expect("db connection");
     let still_waiting: String = conn
         .query_row(
-            "SELECT drain_status FROM agent_org_runtime_pause_handoffs
+            "SELECT drain_status FROM agent_org_execution_pause_handoffs
              WHERE episode_id=?1 AND session_id='release-owner-session'",
             [&paused.episode_id],
             |row| row.get(0),
@@ -2336,7 +2338,7 @@ fn pause_release_receipt_requires_the_exact_runtime_lease_and_turn_generation() 
     let conn = get_connection().expect("db connection");
     let released: String = conn
         .query_row(
-            "SELECT drain_status FROM agent_org_runtime_pause_handoffs
+            "SELECT drain_status FROM agent_org_execution_pause_handoffs
              WHERE episode_id=?1 AND session_id='release-owner-session'",
             [&paused.episode_id],
             |row| row.get(0),
@@ -2371,7 +2373,7 @@ fn pause_nth_child_failure_rolls_back_fence_and_all_receipts() {
     }
     conn.execute_batch(
         "CREATE TRIGGER reject_second_pause_child
-         BEFORE INSERT ON agent_org_runtime_pause_handoffs
+         BEFORE INSERT ON agent_org_execution_pause_handoffs
          WHEN NEW.original_turn_intent_id='child-two'
          BEGIN SELECT RAISE(ABORT, 'injected second child failure'); END;",
     )
@@ -2388,9 +2390,9 @@ fn pause_nth_child_failure_rolls_back_fence_and_all_receipts() {
     let state: (String, i64, i64, i64) = conn
         .query_row(
             "SELECT status,activation_generation,
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_episodes WHERE org_run_id=?1),
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_handoffs WHERE org_run_id=?1)
-             FROM agent_org_runtime_runs WHERE id=?1",
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_episodes WHERE org_run_id=?1),
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_handoffs WHERE org_run_id=?1)
+             FROM agent_org_execution_runs WHERE id=?1",
             [&context.run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -2443,7 +2445,7 @@ fn stale_formal_turn_cannot_materialize_or_ack_inbox_after_pause_fence() {
     .expect("insert ack race row");
     let conn = get_connection().expect("db connection");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations (
+        "INSERT INTO agent_org_execution_inbox_materializations (
             inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
          ) VALUES (?1,'root-shared-agent','message-ack','intent-ack',?2)",
         params![ack_row.id, chrono::Utc::now().to_rfc3339()],
@@ -2486,7 +2488,7 @@ fn stale_formal_turn_cannot_materialize_or_ack_inbox_after_pause_fence() {
     let conn = get_connection().expect("db connection");
     let unread_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox
+            "SELECT COUNT(*) FROM agent_org_execution_inbox
              WHERE id IN (?1,?2) AND read_at IS NULL",
             params![materialize_row.id, ack_row.id],
             |row| row.get(0),
@@ -2494,7 +2496,7 @@ fn stale_formal_turn_cannot_materialize_or_ack_inbox_after_pause_fence() {
         .expect("read post-race Inbox state");
     let materialize_receipt_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox_materializations
+            "SELECT COUNT(*) FROM agent_org_execution_inbox_materializations
              WHERE inbox_id=?1",
             [materialize_row.id],
             |row| row.get(0),
@@ -2512,7 +2514,7 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
     configure_pause_resume_authority(&conn, &context);
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute_batch(
-        "INSERT INTO agent_org_runtime_member_dispatch_allocators
+        "INSERT INTO agent_org_execution_member_dispatch_allocators
             (org_run_id,member_id,next_sequence)
          VALUES ('run-shared-agent','member-planner',6);",
     )
@@ -2529,7 +2531,7 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
         ("old-materialization-e", "pending", None),
     ] {
         conn.execute(
-            "INSERT INTO agent_org_runtime_tasks (
+            "INSERT INTO agent_org_execution_tasks (
                 id,org_run_id,activation_generation,subject,description,owner,status,execution_mode,
                 blocked_by_json,output_json,cancel_reason_json,created_by_participant_id,
                 source_turn_intent_id,created_at,updated_at
@@ -2548,13 +2550,13 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
         .expect("associate seeded Task with the active work episode");
     }
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET owner='member-builder'
+        "UPDATE agent_org_execution_tasks SET owner='member-builder'
          WHERE org_run_id=?1 AND id='reassigned-d'",
         [&context.run_id],
     )
     .expect("seed reassigned Task owner");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
              recipient_agent_id,recipient_member_id,sender_agent_id,sender_member_id,
              org_run_id,payload_kind,payload_json,created_at
          ) VALUES ('planner-agent','member-planner','coordinator-agent','coordinator',
@@ -2568,7 +2570,7 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
     .expect("seed terminal Task assignment Inbox row");
     let terminal_assignment_inbox_id = conn.last_insert_rowid();
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations (
+        "INSERT INTO agent_org_execution_inbox_materializations (
              inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
          ) VALUES (?1,'planner-session','terminal-assignment-message',
                    'terminal-assignment-intent',?2)",
@@ -2616,7 +2618,7 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
     let tasks_before: Vec<(String, String, Option<String>)> = {
         let mut statement = conn
             .prepare(
-                "SELECT id,status,owner FROM agent_org_runtime_tasks
+                "SELECT id,status,owner FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 ORDER BY id",
             )
             .expect("prepare Task snapshot");
@@ -2648,7 +2650,7 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
     let tasks_after: Vec<(String, String, Option<String>)> = {
         let mut statement = conn
             .prepare(
-                "SELECT id,status,owner FROM agent_org_runtime_tasks
+                "SELECT id,status,owner FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 ORDER BY id",
             )
             .expect("prepare post-Resume Task snapshot");
@@ -2668,8 +2670,8 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
         let mut statement = conn
             .prepare(
                 "SELECT context.member_dispatch_sequence
-                 FROM agent_org_runtime_pause_handoffs handoff
-                 JOIN agent_org_runtime_turn_contexts context
+                 FROM agent_org_execution_pause_handoffs handoff
+                 JOIN agent_org_execution_turn_contexts context
                    ON context.session_id=handoff.session_id
                   AND context.turn_intent_id=handoff.continuation_turn_intent_id
                  WHERE handoff.episode_id=?1
@@ -2687,7 +2689,7 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
     assert_eq!(planner_sequences, vec![6, 7]);
     let skipped_reason: String = conn
         .query_row(
-            "SELECT skip_reason FROM agent_org_runtime_pause_handoffs
+            "SELECT skip_reason FROM agent_org_execution_pause_handoffs
              WHERE episode_id=?1 AND task_id='completed-c'",
             [&resumed.episode_id],
             |row| row.get(0),
@@ -2698,10 +2700,10 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
         .query_row(
             "SELECT resolution.resolution_kind,resolution.reason,inbox.read_at,
                     (SELECT COUNT(*)
-                     FROM agent_org_runtime_inbox_materializations materialization
+                     FROM agent_org_execution_inbox_materializations materialization
                      WHERE materialization.inbox_id=inbox.id)
-             FROM agent_org_runtime_inbox inbox
-             JOIN agent_org_runtime_inbox_delivery_resolutions resolution
+             FROM agent_org_execution_inbox inbox
+             JOIN agent_org_execution_inbox_delivery_resolutions resolution
                ON resolution.inbox_id=inbox.id
              WHERE inbox.id=?1",
             [terminal_assignment_inbox_id],
@@ -2721,7 +2723,7 @@ fn resume_continues_only_legal_work_and_preserves_member_fifo_without_mutating_t
     let other_skip_reasons: Vec<(String, String)> = {
         let mut statement = conn
             .prepare(
-                "SELECT task_id,skip_reason FROM agent_org_runtime_pause_handoffs
+                "SELECT task_id,skip_reason FROM agent_org_execution_pause_handoffs
                  WHERE episode_id=?1 AND task_id IN ('reassigned-d','old-materialization-e')
                  ORDER BY task_id",
             )
@@ -2752,14 +2754,14 @@ fn exact_resume_continuation_consumes_old_assignment_only_after_task_success() {
     configure_pause_resume_authority(&conn, &context);
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_dispatch_allocators
+        "INSERT INTO agent_org_execution_member_dispatch_allocators
             (org_run_id,member_id,next_sequence)
          VALUES (?1,'member-planner',2)",
         [&context.run_id],
     )
     .expect("seed continuation FIFO");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
             id,org_run_id,activation_generation,subject,description,owner,status,execution_mode,
             blocked_by_json,output_json,cancel_reason_json,created_by_participant_id,
             source_turn_intent_id,created_at,updated_at
@@ -2823,7 +2825,7 @@ fn exact_resume_continuation_consumes_old_assignment_only_after_task_success() {
         },
     );
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations (
+        "INSERT INTO agent_org_execution_inbox_materializations (
              inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
          ) VALUES (?1,'planner-session','resume-owned-message',
                    'resume-owned-transcript-intent',?2)",
@@ -2854,7 +2856,7 @@ fn exact_resume_continuation_consumes_old_assignment_only_after_task_success() {
     let continuation_turn_intent_id: String = conn
         .query_row(
             "SELECT continuation_turn_intent_id
-             FROM agent_org_runtime_pause_handoffs
+             FROM agent_org_execution_pause_handoffs
              WHERE episode_id=?1 AND task_id='resume-owned-task'",
             [&resumed.episode_id],
             |row| row.get(0),
@@ -2914,7 +2916,7 @@ fn exact_resume_continuation_consumes_old_assignment_only_after_task_success() {
 
     let conn = get_connection().expect("db connection");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET status='completed',output_json='{}',updated_at=?3
          WHERE org_run_id=?1 AND id=?2",
         params![
@@ -2938,7 +2940,7 @@ fn exact_resume_continuation_consumes_old_assignment_only_after_task_success() {
     let conn = get_connection().expect("db connection");
     let read_at: Option<String> = conn
         .query_row(
-            "SELECT read_at FROM agent_org_runtime_inbox WHERE id=?1",
+            "SELECT read_at FROM agent_org_execution_inbox WHERE id=?1",
             [assignment.id],
             |row| row.get(0),
         )
@@ -2946,7 +2948,7 @@ fn exact_resume_continuation_consumes_old_assignment_only_after_task_success() {
     assert!(read_at.is_some());
     let unrelated_read_at: Option<String> = conn
         .query_row(
-            "SELECT read_at FROM agent_org_runtime_inbox WHERE id=?1",
+            "SELECT read_at FROM agent_org_execution_inbox WHERE id=?1",
             [unrelated_assignment.id],
             |row| row.get(0),
         )
@@ -2985,7 +2987,7 @@ fn resume_run_update_failure_keeps_active_episode_without_continuations() {
     let conn = get_connection().expect("db connection");
     conn.execute_batch(
         "CREATE TRIGGER reject_resume_run_update
-         BEFORE UPDATE ON agent_org_runtime_runs
+         BEFORE UPDATE ON agent_org_execution_runs
          WHEN OLD.status='paused' AND NEW.status='running'
          BEGIN SELECT RAISE(ABORT, 'injected Resume run update failure'); END;",
     )
@@ -3002,13 +3004,13 @@ fn resume_run_update_failure_keeps_active_episode_without_continuations() {
     let state: (String, i64, String, i64, i64) = conn
         .query_row(
             "SELECT run.status,run.activation_generation,episode.status,
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_handoffs handoff
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_handoffs handoff
                      WHERE handoff.episode_id=episode.episode_id
                        AND handoff.continuation_status IS NOT NULL),
                     (SELECT COUNT(*) FROM session_turn_intents intent
                      WHERE intent.org_run_id=run.id AND intent.source='resume')
-             FROM agent_org_runtime_runs run
-             JOIN agent_org_runtime_pause_episodes episode ON episode.org_run_id=run.id
+             FROM agent_org_execution_runs run
+             JOIN agent_org_execution_pause_episodes episode ON episode.org_run_id=run.id
              WHERE run.id=?1",
             [&context.run_id],
             |row| {
@@ -3079,13 +3081,13 @@ fn resume_continuation_insert_failure_rolls_back_run_and_receipts() {
     let state: (String, i64, String, i64, i64) = conn
         .query_row(
             "SELECT run.status,run.activation_generation,episode.status,
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_handoffs handoff
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_handoffs handoff
                      WHERE handoff.episode_id=episode.episode_id
                        AND handoff.continuation_status IS NOT NULL),
                     (SELECT COUNT(*) FROM session_turn_intents intent
                      WHERE intent.org_run_id=run.id AND intent.source='resume')
-             FROM agent_org_runtime_runs run
-             JOIN agent_org_runtime_pause_episodes episode ON episode.org_run_id=run.id
+             FROM agent_org_execution_runs run
+             JOIN agent_org_execution_pause_episodes episode ON episode.org_run_id=run.id
              WHERE run.id=?1",
             [&context.run_id],
             |row| {
@@ -3139,7 +3141,7 @@ fn resume_precommit_failure_rolls_back_generation_episode_and_continuations() {
     let conn = get_connection().expect("db connection");
     conn.execute_batch(
         "CREATE TRIGGER reject_resume_precommit
-         BEFORE UPDATE ON agent_org_runtime_pause_episodes
+         BEFORE UPDATE ON agent_org_execution_pause_episodes
          WHEN NEW.status='consumed'
          BEGIN SELECT RAISE(ABORT, 'injected Resume precommit failure'); END;",
     )
@@ -3159,13 +3161,13 @@ fn resume_precommit_failure_rolls_back_generation_episode_and_continuations() {
     let state: (String, i64, String, i64, i64) = conn
         .query_row(
             "SELECT run.status,run.activation_generation,episode.status,
-                    (SELECT COUNT(*) FROM agent_org_runtime_pause_handoffs handoff
+                    (SELECT COUNT(*) FROM agent_org_execution_pause_handoffs handoff
                      WHERE handoff.episode_id=episode.episode_id
                        AND handoff.continuation_status IS NOT NULL),
                     (SELECT COUNT(*) FROM session_turn_intents intent
                      WHERE intent.org_run_id=run.id AND intent.source='resume')
-             FROM agent_org_runtime_runs run
-             JOIN agent_org_runtime_pause_episodes episode ON episode.org_run_id=run.id
+             FROM agent_org_execution_runs run
+             JOIN agent_org_execution_pause_episodes episode ON episode.org_run_id=run.id
              WHERE run.id=?1",
             [&context.run_id],
             |row| {
@@ -3225,7 +3227,7 @@ fn restart_recovers_one_durable_continuation_without_replaying_it_twice() {
     let continuation_turn_intent_id: String = conn
         .query_row(
             "SELECT continuation_turn_intent_id
-             FROM agent_org_runtime_pause_handoffs WHERE episode_id=?1",
+             FROM agent_org_execution_pause_handoffs WHERE episode_id=?1",
             [&resumed.episode_id],
             |row| row.get(0),
         )
@@ -3262,7 +3264,7 @@ fn restart_recovers_one_durable_continuation_without_replaying_it_twice() {
     let recovered: (String, String, String) = conn
         .query_row(
             "SELECT handoff.drain_status,handoff.continuation_status,intent.status
-             FROM agent_org_runtime_pause_handoffs handoff
+             FROM agent_org_execution_pause_handoffs handoff
              JOIN session_turn_intents intent
                ON intent.session_id=handoff.session_id
               AND intent.turn_intent_id=handoff.continuation_turn_intent_id

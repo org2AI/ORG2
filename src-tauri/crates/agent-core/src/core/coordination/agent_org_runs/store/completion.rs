@@ -117,7 +117,7 @@ impl AgentOrgRunStore {
     ) -> Result<AgentOrgCompletionRequestOutcome, String> {
         let status: Option<String> = conn
             .query_row(
-                "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+                "SELECT status FROM agent_org_execution_runs WHERE id=?1",
                 params![run_id],
                 |row| row.get(0),
             )
@@ -132,7 +132,7 @@ impl AgentOrgRunStore {
         let unresolved_task_ids = {
             let mut stmt = conn
                 .prepare(
-                    "SELECT id FROM agent_org_runtime_tasks
+                    "SELECT id FROM agent_org_execution_tasks
                      WHERE org_run_id=?1 AND status IN ('pending','in_progress')
                      ORDER BY created_at ASC, id ASC",
                 )

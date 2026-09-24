@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { e2eUrl } from "../../support/core/e2eBaseUrl.mjs";
+import { createNativeWindowScreenshot } from "../../support/core/nativeWindowScreenshot.mjs";
 
 const MOUNT_TIMEOUT_MS = 60_000;
 const RENDER_TIMEOUT_MS = 12_000;
@@ -3799,6 +3800,96 @@ describe("Core chat rendering UI", () => {
     const navigation = await invokeE2E("navigateTo", "/orgii/workstation/code");
     if (!navigation || navigation.ok !== true) {
       throw new Error(`navigateTo failed: ${navigation?.error ?? "unknown"}`);
+    }
+  });
+
+  it("shows visible loading feedback after clicking a session with pending history", async function () {
+    if (!shouldRunScenario("session-loading")) return this.skip();
+    this.timeout(60_000);
+    const sessionId = `sdeagent-e2e-loading-${RUN_ID}`;
+    // Only seed the durable empty session. The real sidebar click and history
+    // loader own the loading/confirmed-empty transition; no loading atom is set.
+    const seeded = await invokeE2E("seedSidebarSession", {
+      sessionId,
+      name: "Loading feedback",
+      repoPath: E2E_REPO_PATH,
+      persist: true,
+    });
+    if (!seeded?.ok) throw new Error(`Session seed failed: ${seeded?.error}`);
+    const capture = createNativeWindowScreenshot();
+    const output = process.env.E2E_LOADING_ARTIFACTS;
+    try {
+      if (output) {
+        await mkdir(output, { recursive: true });
+        // Prime the native capture helper before the short loading window.
+        await capture.save(
+          browser,
+          Number(process.env.E2E_IDE_SERVER_PORT),
+          path.join(output, "before-click.png")
+        );
+      }
+      const rowSelector = `[data-testid="sidebar-session-item-${sessionId}"]`;
+      await browser.waitUntil(
+        () =>
+          execJS(`
+        const node = document.querySelector(${JSON.stringify(rowSelector)});
+        return !!node && node.getBoundingClientRect().height > 0;
+      `),
+        { timeout: RENDER_TIMEOUT_MS }
+      );
+      await execJS(
+        `document.querySelector(${JSON.stringify(rowSelector)}).click();`
+      );
+      await browser.waitUntil(
+        () =>
+          execJS(`
+        const node = document.querySelector('[data-testid="chat-loading-block"]');
+        return !!node && node.getBoundingClientRect().height > 0;
+      `),
+        { timeout: 3_000, interval: 100 }
+      );
+      const feedback = await execJS(`
+        const node = document.querySelector('[data-testid="chat-loading-block"]');
+        const label = node?.lastElementChild ?? node;
+        const rect = label?.getBoundingClientRect();
+        const hit = rect ? document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) : null;
+        return {text: node?.textContent?.trim(), role: node?.getAttribute('role'), busy: node?.getAttribute('aria-busy'), rect: rect?.toJSON(), exposed: !!hit && node.contains(hit), covering: hit?.className};
+      `);
+      if (output) {
+        await writeFile(
+          path.join(output, "loading-state.json"),
+          JSON.stringify(feedback)
+        );
+        await capture.save(
+          browser,
+          Number(process.env.E2E_IDE_SERVER_PORT),
+          path.join(output, "loading.png")
+        );
+      }
+      if (
+        !feedback.text ||
+        feedback.role !== "status" ||
+        feedback.busy !== "true" ||
+        !feedback.exposed
+      )
+        throw new Error(
+          `History waits without visible accessible feedback: ${JSON.stringify(feedback)}`
+        );
+      await browser.waitUntil(
+        () =>
+          execJS(`
+        return !document.querySelector('[data-testid="chat-loading-block"]');
+      `),
+        { timeout: 12_000, interval: 100 }
+      );
+      if (output)
+        await capture.save(
+          browser,
+          Number(process.env.E2E_IDE_SERVER_PORT),
+          path.join(output, "settled.png")
+        );
+    } finally {
+      capture.cleanup();
     }
   });
 

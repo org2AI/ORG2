@@ -599,6 +599,7 @@ export default function AppConnectionPage({
             ) : (
               <SelectionGrid
                 multiSelect
+                vertical
                 options={marketProfiles.map((profile) => {
                   const overLimit =
                     choosingProfiles.length >= 8 &&

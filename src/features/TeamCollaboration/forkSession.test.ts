@@ -6,6 +6,7 @@ import Message from "@src/components/Message";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { org2CloudAccessSettingsAtom } from "@src/features/Org2Cloud/org2CloudAccessSettings";
+import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { org2CloudOrgsAtom } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { COLLAB_IDENTITY_KIND } from "@src/store/collaboration/types";
 import type { RemoteTeammateSessionMetadata } from "@src/store/collaboration/types";
@@ -33,7 +34,12 @@ import {
   markForkHandoffConsumed,
   resolveForkWorkspacePath,
 } from "./forkSession";
-import { clearForkSetupMemory, saveForkSetupMemory } from "./forkSetupMemory";
+import {
+  FORK_SETUP_STORAGE_KEY,
+  clearForkSetupMemory,
+  loadForkSetupMemory,
+  saveForkSetupMemory,
+} from "./forkSetupMemory";
 import { ForkOperationError } from "./forkSnapshotIntegrity";
 import {
   resolveLocalCheckoutForScopeKey,
@@ -168,8 +174,24 @@ const FORKED_FROM: SessionForkedFrom = {
   forkedAt: "2026-07-02T00:00:00.000Z",
 };
 
+const setupScope = {
+  identityKey: "https://cloud.example|alice",
+  orgId: "org-1",
+  sourceSessionId: "remote-1",
+};
+const setupAuth = {
+  kind: "org2_cloud" as const,
+  supabaseUrl: "https://cloud.example",
+  supabaseAnonKey: "fixture",
+  userId: "alice",
+  accessToken: "fixture",
+  refreshToken: "fixture",
+  expiresAt: 9999999999,
+};
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.removeItem(FORK_SETUP_STORAGE_KEY);
+  store.set(org2CloudAuthAtom, setupAuth);
   localStorage.removeItem(__FORK_RELAY_INTERNALS.FORK_RELAY_STORAGE_KEY);
   forkSessionMock.mockResolvedValue(FORK_RESULT);
   resolveCheckoutMock.mockResolvedValue(null);
@@ -293,12 +315,61 @@ describe("resolveForkWorkspacePath", () => {
 });
 
 describe("forkTeammateSession (design §16.11 relay completion)", () => {
+  it.each([
+    "snapshot_incomplete",
+    "segment_integrity",
+    "replay_unavailable",
+    "backend_registration",
+  ] as const)(
+    "keeps confirmed setup and does not reopen it for %s",
+    async (kind) => {
+      const options = makeForkOptions({ repoScopeKey: undefined });
+      const selection = {
+        workspaceRepoPath: "/checkout",
+        execution: options.execution,
+      };
+      saveForkSetupMemory(undefined, selection, setupScope);
+      const error = new ForkOperationError(kind, "remote-1", "source failed");
+      forkSessionMock.mockRejectedValueOnce(error);
+      await expect(
+        forkTeammateSession({ ...options, promptForExecution: true })
+      ).rejects.toBe(error);
+      expect(store.get(forkSessionSetupRequestAtom)).toBeNull();
+      expect(forkSessionMock).toHaveBeenCalledOnce();
+      expect(loadForkSetupMemory(undefined, setupScope)).toEqual(selection);
+    }
+  );
+  it("does not save or execute a choice after the cloud identity changes", async () => {
+    const options = makeForkOptions({ repoScopeKey: undefined });
+    const pending = forkTeammateSession({
+      ...options,
+      promptForExecution: true,
+    });
+    const rejection = expect(pending).rejects.toMatchObject({
+      name: "ForkCancelledError",
+    });
+    await vi.waitFor(() =>
+      expect(store.get(forkSessionSetupRequestAtom)).not.toBeNull()
+    );
+    store.set(org2CloudAuthAtom, { ...setupAuth, userId: "bob" });
+    store.get(forkSessionSetupRequestAtom)!.resolve({
+      workspaceRepoPath: "/checkout",
+      execution: options.execution,
+    });
+    await rejection;
+    expect(forkSessionMock).not.toHaveBeenCalled();
+    expect(loadForkSetupMemory(undefined, setupScope)).toBeNull();
+  });
   it("reopens setup once when a remembered account is unavailable", async () => {
     const options = makeForkOptions({ repoScopeKey: undefined });
-    saveForkSetupMemory(options.remoteSession.repoScopeKey, {
-      workspaceRepoPath: "/old/checkout",
-      execution: { ...options.execution, accountId: "removed-account" },
-    });
+    saveForkSetupMemory(
+      options.remoteSession.repoScopeKey,
+      {
+        workspaceRepoPath: "/old/checkout",
+        execution: { ...options.execution, accountId: "removed-account" },
+      },
+      setupScope
+    );
     forkSessionMock.mockRejectedValueOnce(
       new ForkOperationError("agent_unavailable", "remote-1", "Account removed")
     );
@@ -323,7 +394,7 @@ describe("forkTeammateSession (design §16.11 relay completion)", () => {
       })
     );
     expect(saveSessionMock).toHaveBeenCalledTimes(1);
-    clearForkSetupMemory(options.remoteSession.repoScopeKey);
+    clearForkSetupMemory(options.remoteSession.repoScopeKey, setupScope);
   });
 
   it("waits for one explicit workspace/account/model setup before fetching the fork", async () => {

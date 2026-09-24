@@ -117,4 +117,22 @@ Neither final-instance log contained an auth-initialization failure or a vanishe
 
 The local webpack-dev-server version also rejects the tracked object-form proxy configuration. The private runner temporarily adapted it to array form and restored it afterward; that unrelated setup fix is not in this PR. WebDriver's initial `no window` handshake retries are visible in the run log. This is native/IPC integration evidence, not a passing rendered core UI suite.
 
-**Performance verdict: blocked** for full share-session acceptance. Current-code storage ownership and cleanup cells passed on macOS, but the visible/hidden resource phase did not establish its visibility precondition. Windows/Linux execution, long-duration resource behavior, real-provider continuation, and PR #2135's attachment-capture memory peak remain unverified. The implementation adds no periodic work and makes no measured performance-improvement claim.
+### Follow-up desktop run
+
+Executed `python3 /tmp/org2-isolation-verification-refresh/run.py` against commit `17ada499d17c06e5fdd939f368f90a6c93f0cf59`. WDIO completed **2 passing cases**, repeating the storage isolation, cold boot, importer rejection, and cross-profile cleanup assertions. The runner and native/WebView logs are private local artifacts; they are not a committed regression suite.
+
+The visibility precondition now uses one foreground window at a time. Each sample checks visibility before and after approximately 20 seconds. Values below cover **native processes only**, excluding WebKit, frontend build tooling and provider work; they are short offline samples, not a complete performance acceptance.
+
+| Window state        | A mean CPU | B mean CPU | A end RSS | B end RSS |
+| ------------------- | ---------- | ---------- | --------- | --------- |
+| A visible, B hidden | 1.90%      | 0.10%      | 188.5 MiB | 192.8 MiB |
+| A hidden, B visible | 0.10%      | 2.05%      | 168.7 MiB | 182.3 MiB |
+| Both hidden         | 0.05%      | 0.10%      | 168.2 MiB | 174.1 MiB |
+
+The browser-refresh probe now waits for `performance.timeOrigin` to change and `document.readyState` to become `complete`. The WebDriver plugin implements refresh by scheduling `window.location.reload()` and returning; the previous check could accept the old document's Tauri globals. On the new document, native auth-profile calls returned in **45 ms (A)** and **97 ms (B)**, with rendered root content and correct home paths. This is a passing bounded refresh probe, not proof that every earlier timeout had the same cause. Tauri still logged two custom-protocol fallback warnings per refresh.
+
+**Open startup defect:** B logged `React failed to render within timeout` followed by `Splash still visible, force hiding` while hidden after cold boot. The root had rendered by the final probe. The startup watchdog in `src/index.tsx` tests splash visibility after five wall-clock seconds, while `useFirstPaintSignal` removes it from `requestAnimationFrame`, which can be suspended in a hidden WebView. This mismatch explains why the log's claim is stronger than its evidence; hidden-startup behavior needs a dedicated regression and fix. Under the dual-instance protocol, the watchdog fire makes the overall lifecycle acceptance **fail**, despite the two passing WDIO cases. No production watchdog was disabled to obtain these results.
+
+Other warnings were the existing deprecated atom helper, native transparency lookup, and updater rejection of symlinked debug executable paths. Both owned native PIDs were absent after teardown; the normal webpack and Tauri configurations were restored. No cloud login or real provider was used in this run. The configured real-provider endpoint was probed separately and still failed DNS resolution before an API request could be sent.
+
+**Performance verdict: blocked** for full share-session acceptance. Short native visible/hidden measurements are now available, but native foreground activity near 2%, WebKit-group behavior, long-duration stability, Windows/Linux execution, real-provider continuation, and PR #2135's attachment-capture peak still need their applicable evidence. The hidden-startup watchdog is an explicit open lifecycle defect. The implementation adds no periodic work and makes no measured performance-improvement claim.

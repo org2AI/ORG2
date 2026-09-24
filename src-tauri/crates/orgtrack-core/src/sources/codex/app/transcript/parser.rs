@@ -5,9 +5,10 @@ use std::path::Path;
 use core_types::activity::ActivityChunk;
 use serde_json::{json, Value};
 
-use crate::sources::imported_history::{self, ImportedToolCall};
+use crate::sources::imported_history;
 
 use super::super::desktop_exec::codex_tool_output_text;
+use super::super::materialized_tool::{decode_tool_output, MATERIALIZED_TOOL_ID_PREFIX};
 use super::super::CodexJsonlLine;
 use super::collector::{
     CodexTranscriptCollectionMode, CodexTranscriptCollector, CodexTranscriptLoad,
@@ -22,7 +23,7 @@ use super::tool_calls::{
     codex_task_error_message, codex_tool_call_chunk, lifecycle_turn_id,
     output_parts_for_tool_calls, pending_custom_tool_calls_from_payload,
     pending_tool_calls_from_payload, resolve_codex_tool_outputs, wait_cell_id,
-    web_search_call_from_payload, PendingBackgroundToolCall,
+    web_search_call_from_payload, PendingBackgroundToolCall, PendingToolCalls,
 };
 use super::{CODEX_PROVIDER_SLUG, NATIVE_SOURCE_EVENT_ID_ARG, NATIVE_SOURCE_EVENT_ID_PREFIX};
 
@@ -142,7 +143,7 @@ pub(super) fn parse_codex_app_bounded<'a>(
     let mut reader = BufReader::new(file.take(max_bytes));
 
     let mut collector = CodexTranscriptCollector::new(session_id, mode);
-    let mut pending_tool_calls: imported_history::PendingCallMap<Vec<ImportedToolCall>> =
+    let mut pending_tool_calls: imported_history::PendingCallMap<PendingToolCalls> =
         imported_history::PendingCallMap::new();
     let mut background_tool_calls: imported_history::PendingCallMap<PendingBackgroundToolCall> =
         imported_history::PendingCallMap::new();
@@ -485,14 +486,31 @@ pub(super) fn parse_codex_app_bounded<'a>(
                 if let Some((call_id, calls)) =
                     pending_tool_calls_from_payload(&parsed.payload, &created_at)
                 {
-                    pending_tool_calls.insert(call_id, calls);
+                    let materialized_output = parsed
+                        .payload
+                        .get("id")
+                        .and_then(Value::as_str)
+                        .is_some_and(|id| id.starts_with(MATERIALIZED_TOOL_ID_PREFIX));
+                    pending_tool_calls.insert(
+                        call_id,
+                        PendingToolCalls {
+                            calls,
+                            materialized_output,
+                        },
+                    );
                 }
             }
             "custom_tool_call" => {
                 if let Some((call_id, calls)) =
                     pending_custom_tool_calls_from_payload(&parsed.payload, &created_at)
                 {
-                    pending_tool_calls.insert(call_id, calls);
+                    pending_tool_calls.insert(
+                        call_id,
+                        PendingToolCalls {
+                            calls,
+                            materialized_output: false,
+                        },
+                    );
                 }
             }
             "web_search_call" => {
@@ -509,8 +527,40 @@ pub(super) fn parse_codex_app_bounded<'a>(
             "function_call_output" | "custom_tool_call_output" => {
                 let call_id = parsed.payload.get("call_id").and_then(Value::as_str);
                 if let Some(call_id) = call_id {
-                    if let Some((file_order, calls)) = pending_tool_calls.take(call_id) {
+                    if let Some((file_order, pending)) = pending_tool_calls.take(call_id) {
+                        let calls = pending.calls;
                         let output_value = parsed.payload.get("output");
+                        if pending.materialized_output {
+                            if calls.len() != 1 {
+                                return Err(format!(
+                                    "Materialized call must have one result: call={call_id}"
+                                ));
+                            }
+                            // This is an explicitly versioned ORG2 transport,
+                            // not shell output to infer status/background jobs
+                            // from. Keep arbitrary JSON and diagnostic-looking
+                            // file contents opaque, including empty results.
+                            let decoded = decode_tool_output(output_value)
+                                .map_err(|error| format!("{error}: call={call_id}"))?;
+                            let mut chunk = imported_history::tool_call_chunk(
+                                session_id,
+                                CODEX_PROVIDER_SLUG,
+                                sequence,
+                                &calls[0],
+                                &decoded.output,
+                            );
+                            chunk.result["exit_code"] = json!(decoded.exit_code);
+                            chunk.result["is_error"] = json!(decoded.exit_code != 0);
+                            chunk.result["success"] = json!(decoded.exit_code == 0);
+                            chunk.result["status"] = json!(if decoded.exit_code == 0 {
+                                "completed"
+                            } else {
+                                "failed"
+                            });
+                            collector.current.push(chunk);
+                            sequence += 1;
+                            continue;
+                        }
                         let output = codex_tool_output_text(output_value);
                         if let Some(cell_id) = wait_cell_id(&calls) {
                             let cell_key = background_cell_key(cell_id);
@@ -640,8 +690,8 @@ pub(super) fn parse_codex_app_bounded<'a>(
         }
     }
 
-    for calls in pending_tool_calls.drain_in_file_order() {
-        for call in calls {
+    for pending in pending_tool_calls.drain_in_file_order() {
+        for call in pending.calls {
             collector
                 .current
                 .push(imported_history::unresolved_tool_call_chunk(

@@ -370,7 +370,7 @@ fn inspect_suffix_application(
             continue;
         };
         if let Some(expected_item) = expected.get(&identity) {
-            if &record["payload"] != expected_item {
+            if !injected_response_item_matches(&record["payload"], expected_item) {
                 return Err(format!(
                     "Codex rollout {} contains stable suffix identity {identity} with conflicting content",
                     path.display()
@@ -397,6 +397,28 @@ fn inspect_suffix_application(
             expected.len()
         ))
     }
+}
+
+fn injected_response_item_matches(actual: &Value, expected: &Value) -> bool {
+    if actual == expected {
+        return true;
+    }
+    // Codex 0.154 assigns an fco_* ID to injected function results. That ID
+    // is provider-owned; call_id still owns pairing. Permit only this exact
+    // addition, never a different body, pair, supplied ID or extra field.
+    let (Some(actual), Some(expected)) = (actual.as_object(), expected.as_object()) else {
+        return false;
+    };
+    expected.get("type").and_then(Value::as_str) == Some("function_call_output")
+        && !expected.contains_key("id")
+        && actual.get("id").and_then(Value::as_str).is_some_and(|id| {
+            id.strip_prefix("fco_")
+                .is_some_and(|suffix| !suffix.is_empty())
+        })
+        && actual.len() == expected.len() + 1
+        && expected
+            .iter()
+            .all(|(key, value)| actual.get(key) == Some(value))
 }
 
 /// Resolve the Desktop project before creating a managed native thread.
@@ -865,6 +887,53 @@ mod tests {
         assert_eq!(
             allowlisted_native_model_provider(&json!({"config": {}})),
             "openai"
+        );
+    }
+
+    #[test]
+    fn suffix_retry_accepts_only_provider_assigned_result_identity() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("rollout.jsonl");
+        let expected =
+            json!({"type":"function_call_output","call_id":"call_probe","output":"  original\n"});
+        let mut native = expected.clone();
+        native["id"] = json!("fco_provider_generated");
+        let write = |items: &[Value]| {
+            std::fs::write(
+                &path,
+                items
+                    .iter()
+                    .map(|item| format!("{}\n", json!({"type":"response_item","payload":item})))
+                    .collect::<String>(),
+            )
+            .unwrap()
+        };
+        write(&[native.clone()]);
+        let original = std::fs::read(&path).unwrap();
+        for _ in 0..2 {
+            assert_eq!(
+                inspect_suffix_application(&path, std::slice::from_ref(&expected)).unwrap(),
+                SuffixApplication::AlreadyApplied
+            );
+        }
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+        for (field, value) in [
+            ("output", json!("original\n")),
+            ("id", json!("msg_other")),
+            ("status", json!("completed")),
+        ] {
+            let mut divergent = native.clone();
+            divergent[field] = value;
+            write(&[divergent]);
+            assert!(inspect_suffix_application(&path, std::slice::from_ref(&expected)).is_err());
+        }
+        write(&[native.clone(), native.clone()]);
+        assert!(inspect_suffix_application(&path, std::slice::from_ref(&expected)).is_err());
+        native["call_id"] = json!("different_call");
+        write(&[native]);
+        assert_eq!(
+            inspect_suffix_application(&path, &[expected]).unwrap(),
+            SuffixApplication::Missing
         );
     }
 

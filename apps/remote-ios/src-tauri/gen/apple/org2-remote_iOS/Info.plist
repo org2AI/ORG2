@@ -61,5 +61,7 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>连接电脑上的 ORG2 Desktop 和本地开发服务 / Connect to ORG2 Desktop and the local development server on your computer</string>
 </dict>
 </plist>

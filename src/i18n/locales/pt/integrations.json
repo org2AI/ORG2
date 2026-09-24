@@ -114,7 +114,12 @@
       "resetsAvailable_one": "{{count}} redefinição disponível",
       "resetsAvailable_few": "{{count}} redefinições disponíveis",
       "resetsAvailable_many": "{{count}} redefinições disponíveis",
-      "resetsAvailable_other": "{{count}} redefinições disponíveis"
+      "resetsAvailable_other": "{{count}} redefinições disponíveis",
+      "resetsExpire": "{{count}} redefinições expiram em {{date}}",
+      "resetsExpire_one": "{{count}} redefinição expira em {{date}}",
+      "resetsExpire_few": "{{count}} redefinições expiram em {{date}}",
+      "resetsExpire_many": "{{count}} redefinições expiram em {{date}}",
+      "resetsExpire_other": "{{count}} redefinições expiram em {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Anúncio na nuvem inválido",

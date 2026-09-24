@@ -40,8 +40,9 @@ describe("RefreshButton", () => {
     expect(markup).toContain("height:32px");
     expect(markup).toContain("width:32px");
     expect(markup).toContain('aria-label="Rescan all"');
-    expect(markup).toContain('title="Rescan all"');
-    // Icon-only: the label lives in aria-label and title, never as text.
-    expect(markup.split("Rescan all")).toHaveLength(3);
+    expect(markup).not.toContain("title=");
+    // Icon-only: the label lives in aria-label and the hover tooltip, never
+    // as button text.
+    expect(markup.split("Rescan all")).toHaveLength(2);
   });
 });

@@ -172,7 +172,8 @@
   --mobile-change-action-padding: #{tokens.$space-2};
   --mobile-change-action-radius: #{tokens.$space-2};
 
-  background: var(--color-bg-2);
+  // Match the portaled mobile sheet instead of mixing desktop panel surfaces.
+  background: var(--mobile-sheet-surface);
   color: var(--color-text-1);
 
   .mobile-change-review__title {
@@ -211,7 +212,7 @@
     flex-direction: column;
     gap: tokens.$space-2;
     padding-block: 0 tokens.$space-4;
-    background: var(--color-bg-2);
+    background: var(--mobile-sheet-surface);
   }
   .mobile-change-review__toolbar {
     padding: 0;
@@ -259,6 +260,7 @@
     .mobile-change-review__dropdown-trigger {
       justify-content: flex-end;
       border-color: transparent;
+      background: transparent;
       > span {
         justify-content: flex-end;
       }
@@ -279,7 +281,7 @@
     min-width: 0;
     width: 100%;
     color: var(--color-text-2);
-    background: var(--color-bg-2);
+    background: var(--mobile-sheet-card);
     font-size: var(--mobile-type-secondary-size);
     border: 1px solid var(--color-border-2);
     border-radius: tokens.$space-2;
@@ -326,12 +328,12 @@
     flex-direction: column;
     isolation: isolate;
     margin-block: 0 tokens.$space-3;
-    border-color: var(--color-border-1);
+    border-color: var(--mobile-sheet-border);
     border-radius: tokens.$space-4;
-    background: var(--color-bg-2);
+    background: var(--mobile-sheet-card);
 
     .mobile-change-review__file-heading {
-      background: var(--color-fill-1);
+      background: transparent;
     }
     > .mobile-change-review__toolbar {
       padding: tokens.$space-1 tokens.$space-2;
@@ -417,7 +419,10 @@
 }
 
 .mobile-change-review-menu.mobile-change-review-menu {
-  @include tokens.adaptive-menu;
+  @include tokens.compact-selection-menu;
+  &--scope {
+    max-width: min(12rem, var(--mobile-menu-available-width));
+  }
   &--files {
     min-width: min(16rem, var(--mobile-menu-available-width));
   }
@@ -433,7 +438,7 @@
     );
   gap: tokens.$space-2;
   padding: tokens.$space-2 tokens.$space-3 tokens.$space-3;
-  background: var(--color-bg-2);
+  background: var(--mobile-sheet-surface);
 
   > :first-child {
     grid-column: 2;

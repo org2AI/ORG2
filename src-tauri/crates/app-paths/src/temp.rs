@@ -1,14 +1,13 @@
-//! Per-user system temp tree: the UID-isolated ORGII temp root, per-workspace
+//! Profile-owned temp tree: the ORGII data-home temp root, per-workspace
 //! and per-session scratchpads, the hosted Kiro proxy HOME, and the path
 //! sanitizers that turn workspace paths / ids into single path segments.
 
 use std::path::{Path, PathBuf};
 
-/// Per-session scratchpad: `/tmp/orgii-{uid}/{sanitized-workspace}/{session_id}/scratchpad/`.
+/// Per-session scratchpad: `<ORGII_HOME>/tmp/{sanitized-workspace}/{session_id}/scratchpad/`.
 ///
-/// Lives under the system temp dir with three-level isolation:
-/// UID → workspace → session. On macOS `/tmp` symlinks to `/private/tmp`;
-/// the base is canonicalized to avoid permission-check mismatches.
+/// Lives under the data home: profile → workspace → session. Writers and
+/// orphan cleanup share the same profile boundary as the session database.
 ///
 /// Returns the directory path on success. Creates with mode `0o700` on
 /// Unix (owner-only) to prevent other users from reading/writing agent
@@ -29,32 +28,20 @@ pub fn ensure_scratchpad(session_id: &str, workspace_path: &Path) -> std::io::Re
     Ok(dir)
 }
 
-/// Base temp dir for ORGII, per-user isolated.
+/// Profile-owned temp root, with an explicit `ORGII_TEMP_ROOT` override.
 ///
-/// Unix: `/tmp/orgii-{uid}/`  (resolves symlinks, e.g.
-/// `/private/tmp/orgii-501/` on macOS)
-/// Windows: `{TEMP}\orgii\`  (TEMP is already per-user)
+/// Do not reuse the legacy UID-wide OS temp tree: another instance (including
+/// an older binary) may delete files absent from its own session database.
+/// Legacy directories are intentionally neither migrated nor swept here.
 pub fn orgii_temp_root() -> PathBuf {
     if let Ok(override_path) = std::env::var("ORGII_TEMP_ROOT") {
         return PathBuf::from(override_path);
     }
 
-    let base = std::env::temp_dir();
-    let resolved = std::fs::canonicalize(&base).unwrap_or(base);
-
-    #[cfg(unix)]
-    {
-        let uid = unsafe { libc::getuid() };
-        resolved.join(format!("orgii-{}", uid))
-    }
-
-    #[cfg(not(unix))]
-    {
-        resolved.join("orgii")
-    }
+    crate::orgii_root().join("tmp")
 }
 
-/// Per-workspace temp dir: `/tmp/orgii-{uid}/{sanitized-workspace}/`.
+/// Per-workspace temp dir: `<ORGII_HOME>/tmp/{sanitized-workspace}/`.
 pub fn workspace_temp_dir(workspace_path: &Path) -> PathBuf {
     orgii_temp_root().join(sanitize_workspace_path(workspace_path))
 }
@@ -90,7 +77,7 @@ pub fn cleanup_scratchpad_by_session_id(session_id: &str) {
     }
 }
 
-/// Hosted Kiro proxy HOME root: `/tmp/orgii-{uid}/kiro-proxy/`.
+/// Hosted Kiro proxy HOME root: `<ORGII_HOME>/tmp/kiro-proxy/`.
 pub fn kiro_proxy_home_root() -> PathBuf {
     orgii_temp_root().join("kiro-proxy")
 }
@@ -123,14 +110,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn orgii_temp_root_contains_orgii_segment() {
-        let root = orgii_temp_root();
-        let root_str = root.to_string_lossy();
-        assert!(
-            root_str.contains("orgii"),
-            "should contain 'orgii': {}",
-            root_str
+    fn profile_temp_root_and_explicit_override() {
+        let _lock = crate::test_env::env_lock();
+        let _temp = crate::test_env::EnvVarGuard::unset("ORGII_TEMP_ROOT");
+        let _home = crate::test_env::EnvVarGuard::set("ORGII_HOME", "/profiles/a");
+        assert_eq!(orgii_temp_root(), Path::new("/profiles/a/tmp"));
+        let _override = crate::test_env::EnvVarGuard::set("ORGII_TEMP_ROOT", "/explicit/temp");
+        assert_eq!(orgii_temp_root(), Path::new("/explicit/temp"));
+    }
+
+    #[test]
+    fn session_cleanup_cannot_delete_another_profiles_scratchpad() {
+        let _lock = crate::test_env::env_lock();
+        let fixture = tempfile::tempdir().unwrap();
+        let _temp = crate::test_env::EnvVarGuard::unset("ORGII_TEMP_ROOT");
+        let _home = crate::test_env::EnvVarGuard::set(
+            "ORGII_HOME",
+            fixture.path().join("a").to_str().unwrap(),
         );
+        let workspace = Path::new("/workspace");
+        let a = ensure_scratchpad("same-session", workspace).unwrap();
+        std::fs::write(a.join("output.md"), b"A output").unwrap();
+        {
+            let _home_b = crate::test_env::EnvVarGuard::set(
+                "ORGII_HOME",
+                fixture.path().join("b").to_str().unwrap(),
+            );
+            let b = ensure_scratchpad("same-session", workspace).unwrap();
+            cleanup_scratchpad_by_session_id("same-session");
+            assert!(!b.exists());
+            assert_eq!(std::fs::read(a.join("output.md")).unwrap(), b"A output");
+        }
+        assert_eq!(scratchpad_dir("same-session", workspace), a);
+        cleanup_scratchpad_by_session_id("same-session");
+        assert!(!a.exists());
     }
 
     #[test]
@@ -146,9 +159,10 @@ mod tests {
 
     #[test]
     fn scratchpad_dir_three_level_isolation() {
+        let _lock = crate::test_env::env_lock();
         let dir = scratchpad_dir("sess-abc", Path::new("/Users/me/proj"));
         let dir_str = dir.to_string_lossy();
-        assert!(dir_str.contains("orgii"), "user-isolated: {}", dir_str);
+        assert!(dir.starts_with(orgii_temp_root()));
         assert!(
             dir_str.contains("sess-abc"),
             "session-isolated: {}",
@@ -163,6 +177,11 @@ mod tests {
 
     #[test]
     fn ensure_scratchpad_creates_directory() {
+        let _lock = crate::test_env::env_lock();
+        let fixture = tempfile::tempdir().unwrap();
+        let _home =
+            crate::test_env::EnvVarGuard::set("ORGII_HOME", fixture.path().to_str().unwrap());
+        let _temp = crate::test_env::EnvVarGuard::unset("ORGII_TEMP_ROOT");
         let session_id = format!("test-scratchpad-{}", std::process::id());
         let workspace = std::env::temp_dir().join("test-workspace-scratch");
         let result = ensure_scratchpad(&session_id, &workspace);

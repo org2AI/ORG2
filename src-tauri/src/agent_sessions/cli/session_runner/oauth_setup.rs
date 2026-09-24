@@ -202,12 +202,13 @@ pub(super) fn codex_cli_auth_payload(
         "access_token".to_string(),
         serde_json::Value::String(access_token.to_string()),
     );
-    if let Some(refresh_token) = refresh_token {
-        tokens.insert(
-            "refresh_token".to_string(),
-            serde_json::Value::String(refresh_token.to_string()),
-        );
-    }
+    // Codex requires a string even when this profile deliberately carries
+    // only an access token. Omitting it makes the CLI ignore the auth file
+    // and send an unauthenticated request instead of using the valid bearer.
+    tokens.insert(
+        "refresh_token".to_string(),
+        serde_json::Value::String(refresh_token.unwrap_or_default().to_string()),
+    );
     if let Some(id_token) = id_token {
         tokens.insert(
             "id_token".to_string(),

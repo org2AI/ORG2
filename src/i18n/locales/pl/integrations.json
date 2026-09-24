@@ -114,7 +114,12 @@
       "resetsAvailable_one": "Dostępny {{count}} reset",
       "resetsAvailable_few": "Dostępne {{count}} resety",
       "resetsAvailable_many": "Dostępnych {{count}} resetów",
-      "resetsAvailable_other": "Dostępnych {{count}} resetów"
+      "resetsAvailable_other": "Dostępnych {{count}} resetów",
+      "resetsExpire": "{{count}} resetów wygasa {{date}}",
+      "resetsExpire_one": "{{count}} reset wygasa {{date}}",
+      "resetsExpire_few": "{{count}} resety wygasają {{date}}",
+      "resetsExpire_many": "{{count}} resetów wygasa {{date}}",
+      "resetsExpire_other": "{{count}} resetów wygasa {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Oferta w chmurze nieprawidłowa",

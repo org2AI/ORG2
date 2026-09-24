@@ -116,7 +116,12 @@
       "resetsAvailable_one": "{{count}} reset tersedia",
       "resetsAvailable_few": "{{count}} reset tersedia",
       "resetsAvailable_many": "{{count}} reset tersedia",
-      "resetsAvailable_other": "{{count}} reset tersedia"
+      "resetsAvailable_other": "{{count}} reset tersedia",
+      "resetsExpire": "{{count}} reset kedaluwarsa pada {{date}}",
+      "resetsExpire_one": "{{count}} reset kedaluwarsa pada {{date}}",
+      "resetsExpire_few": "{{count}} reset kedaluwarsa pada {{date}}",
+      "resetsExpire_many": "{{count}} reset kedaluwarsa pada {{date}}",
+      "resetsExpire_other": "{{count}} reset kedaluwarsa pada {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Listing cloud tidak valid",

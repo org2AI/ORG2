@@ -63,6 +63,8 @@ export interface CollabSessionPushCursor {
   localContentRevision?: number;
   /** One-time full-history file publication has run on this device. */
   sharedFilesVersion?: 1;
+  /** Explicit CLI mutation epoch covered by an authoritative transcript read. */
+  cliHistoryEpoch?: number;
   /**
    * Local session content version covered by this cursor. On restart, a
    * matching remote summary plus this stamp proves that neither the native
@@ -143,6 +145,7 @@ const CloudPushCursorSchema = z.object({
   tailHash: z.string().nullable(),
   localContentRevision: z.number().int().nonnegative().optional(),
   sharedFilesVersion: z.literal(1).optional(),
+  cliHistoryEpoch: z.number().int().nonnegative().optional(),
   localContentUpdatedAt: z.string().optional(),
   importedReplay: z
     .object({

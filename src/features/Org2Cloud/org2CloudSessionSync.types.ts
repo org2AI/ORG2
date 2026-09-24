@@ -5,6 +5,7 @@
  */
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
+import type { CliReplayMutation } from "./org2CloudSessionTranscript";
 import type { ImportedReplayCheckpoint } from "./org2CloudSyncAtoms";
 import * as org2CloudSyncClient from "./org2CloudSyncClient";
 
@@ -40,6 +41,7 @@ export interface PreparedPushPlan {
 }
 
 export interface PreparedPushEvents {
+  cliHistoryMutation?: CliReplayMutation;
   stampAtRead: number;
   mode: "full" | "incremental";
   /** Absolute count of validated events omitted from `events`. */

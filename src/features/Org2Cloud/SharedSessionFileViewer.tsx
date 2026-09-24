@@ -1,5 +1,5 @@
 import { useAtomValue, useStore } from "jotai";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
@@ -13,6 +13,7 @@ import {
   org2CloudAuthIdentityKey,
 } from "./org2CloudAuthAtom";
 import { useCloudFreshAccessToken } from "./org2CloudSessionCommentsAtom.freshToken";
+import { useSharedSessionFileAccess } from "./sharedSessionFileAccess";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 import {
   type SharedSessionFile,
@@ -24,6 +25,7 @@ type Loaded = SharedSessionFile & {
   bytes: Uint8Array;
   identity: string;
   requestKey: string;
+  shareToken?: string;
 };
 export default function SharedSessionFileViewer({
   reference,
@@ -37,6 +39,11 @@ export default function SharedSessionFileViewer({
   const store = useStore();
   const identity = auth ? org2CloudAuthIdentityKey(auth) : "";
   const token = useCloudFreshAccessToken();
+  const access = useSharedSessionFileAccess();
+  const shareToken =
+    access?.endpoint === reference.endpoint ? access.shareToken : undefined;
+  const shareTokenRef = useRef(shareToken);
+  shareTokenRef.current = shareToken;
   const requestKey = JSON.stringify(reference);
   const [file, setFile] = useState<Loaded | null>(null);
   const [error, setError] = useState(false);
@@ -55,6 +62,7 @@ export default function SharedSessionFileViewer({
       const latest = store.get(org2CloudAuthAtom);
       return (
         !controller.signal.aborted &&
+        shareTokenRef.current === shareToken &&
         latest &&
         org2CloudAuthIdentityKey(latest) === identity &&
         getCloudEndpoint().supabaseUrl === endpoint.supabaseUrl
@@ -71,7 +79,8 @@ export default function SharedSessionFileViewer({
             reference.source.sessionId,
             reference.source.path,
             undefined,
-            controller.signal
+            controller.signal,
+            shareToken
           )
         : null;
       if (reference.source && !located)
@@ -81,16 +90,22 @@ export default function SharedSessionFileViewer({
         accessToken,
         endpoint,
         located?.id ?? reference.id,
-        controller.signal
+        controller.signal,
+        shareToken
       );
-      if (stillCurrent()) setFile({ ...result, identity, requestKey });
+      if (stillCurrent())
+        setFile({ ...result, identity, requestKey, shareToken });
     })().catch(() => {
       if (!controller.signal.aborted) setError(true);
     });
     return () => controller.abort();
-  }, [identity, requestKey, token, store]);
+  }, [identity, requestKey, token, store, shareToken]);
   const currentFile =
-    file?.identity === identity && file.requestKey === requestKey ? file : null;
+    file?.identity === identity &&
+    file.requestKey === requestKey &&
+    file.shareToken === shareToken
+      ? file
+      : null;
   const [media, setMedia] = useState<{
     fileId: string;
     url: string;
@@ -144,6 +159,7 @@ export default function SharedSessionFileViewer({
         const latest = store.get(org2CloudAuthAtom);
         return Boolean(
           latest &&
+          shareTokenRef.current === currentFile.shareToken &&
           org2CloudAuthIdentityKey(latest) === currentFile.identity &&
           getCloudEndpoint().supabaseUrl === reference.endpoint
         );

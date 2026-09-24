@@ -52,7 +52,7 @@ pub use messages::{
     load_session_memory_state, mark_turn_cancelled, materialize_agent_org_inbox_transcript,
     materialize_agent_org_inbox_transcript_for_turn, message_anchor, message_created_at,
     save_agent_org_assistant_msg_for_turn, save_assistant_msg, save_compact_summary_msg,
-    save_session_memory_state, save_snapshot, save_subagent_transcript, save_tool_call_msg,
+    save_session_memory_state, save_snapshot, save_tool_call_msg,
     save_tool_result_msg, save_user_msg, save_user_msg_with_id,
     seed_session_with_materialized_history, seed_session_with_messages,
     session_memory_commit_snapshot, take_turn_cancelled, truncate_messages_from_sequence,

@@ -44,7 +44,7 @@ fn cached_event_from_row(row: &rusqlite::Row<'_>) -> SqliteResult<CachedEvent> {
 
 fn load_events_for_turn_ranges(
     session_id: &str,
-    ranges: &[(String, Option<String>)],
+    ranges: &[(i64, Option<i64>)],
 ) -> SqliteResult<Vec<CachedEvent>> {
     if ranges.is_empty() {
         return Ok(Vec::new());
@@ -59,9 +59,9 @@ fn load_events_for_turn_ranges(
                         args_json, result_json, content, created_at, meta_json, history_sequence
                  FROM events
                  WHERE session_id = ?1
-                   AND created_at >= ?2
-                   AND created_at < ?3
-                 ORDER BY created_at ASC, COALESCE(history_sequence, rowid) ASC, id ASC",
+                   AND history_sequence >= ?2
+                   AND history_sequence < ?3
+                 ORDER BY history_sequence ASC, created_at ASC, id ASC",
             )?;
             let rows = stmt
                 .query_map(params![session_id, start, end], cached_event_from_row)?
@@ -73,8 +73,8 @@ fn load_events_for_turn_ranges(
                         args_json, result_json, content, created_at, meta_json, history_sequence
                  FROM events
                  WHERE session_id = ?1
-                   AND created_at >= ?2
-                 ORDER BY created_at ASC, COALESCE(history_sequence, rowid) ASC, id ASC",
+                   AND history_sequence >= ?2
+                 ORDER BY history_sequence ASC, created_at ASC, id ASC",
             )?;
             let rows = stmt
                 .query_map(params![session_id, start], cached_event_from_row)?
@@ -175,8 +175,8 @@ fn mark_turn_preview(mut event: CachedEvent) -> CachedEvent {
 fn load_final_assistant_event_for_range(
     conn: &Connection,
     session_id: &str,
-    start: &str,
-    end: Option<&str>,
+    start: i64,
+    end: Option<i64>,
 ) -> SqliteResult<Option<CachedEvent>> {
     let message_filter = "
       AND (
@@ -187,15 +187,16 @@ fn load_final_assistant_event_for_range(
       AND COALESCE(json_extract(meta_json, '$.displayVariant'), 'message') = 'message'
       AND COALESCE(json_extract(meta_json, '$.displayStatus'), 'completed') = 'completed'";
     let order_and_limit = "
-      ORDER BY created_at DESC, COALESCE(history_sequence, rowid) DESC, id DESC
+      ORDER BY history_sequence DESC, created_at DESC, id DESC
       LIMIT 1";
     let select = "SELECT id, session_id, event_type, function_name, thread_id,
                          args_json, result_json, content, created_at, meta_json, history_sequence
                   FROM events
-                  WHERE session_id = ?1 AND created_at >= ?2";
+                  WHERE session_id = ?1 AND history_sequence >= ?2";
 
     let event = if let Some(end) = end {
-        let query = format!("{select} AND created_at < ?3 {message_filter} {order_and_limit}");
+        let query =
+            format!("{select} AND history_sequence < ?3 {message_filter} {order_and_limit}");
         conn.query_row(
             &query,
             params![session_id, start, end],
@@ -224,17 +225,11 @@ pub fn load_turn_body_window(
         });
     };
 
-    let next_started_at = summary
-        .next_turn_id
-        .as_deref()
-        .and_then(|next_turn_id| {
-            turn_index::get_turn_summary(&conn, session_id, next_turn_id)
-                .ok()
-                .flatten()
-        })
-        .map(|next_turn| next_turn.started_at);
-    let events =
-        load_events_for_turn_ranges(session_id, &[(summary.started_at.clone(), next_started_at)])?;
+    let mut events = load_events_for_turn_ranges(
+        session_id,
+        &[(summary.start_sequence, summary.end_sequence)],
+    )?;
+    super::legacy_subagent_input::project_events(&conn, session_id, &mut events)?;
 
     Ok(CachedTurnBodyWindow {
         turn_id: turn_id.to_string(),
@@ -257,26 +252,14 @@ pub fn load_initial_turn_window(
         .iter()
         .flat_map(|turn| turn.user_event_ids.iter().cloned())
         .collect::<Vec<_>>();
+    // The index owns round boundaries. Timestamps are not unique: using them
+    // here can empty an older round and include it again in the latest round.
     let historical_ranges = turns[..recent_start]
         .iter()
-        .enumerate()
-        .map(|(turn_index, turn)| {
-            let next_started_at = turns
-                .get(turn_index + 1)
-                .map(|next_turn| next_turn.started_at.as_str());
-            (turn.started_at.as_str(), next_started_at)
-        })
-        .collect::<Vec<_>>();
+        .map(|turn| (turn.start_sequence, turn.end_sequence));
     let recent_ranges = turns[recent_start..]
         .iter()
-        .enumerate()
-        .map(|(offset, turn)| {
-            let turn_index = recent_start + offset;
-            let next_started_at = turns
-                .get(turn_index + 1)
-                .map(|next_turn| next_turn.started_at.clone());
-            (turn.started_at.clone(), next_started_at)
-        })
+        .map(|turn| (turn.start_sequence, turn.end_sequence))
         .collect::<Vec<_>>();
 
     let mut events = load_events_by_ids(session_id, &header_event_ids)?;
@@ -303,6 +286,7 @@ pub fn load_initial_turn_window(
             || !recent_turn_ids.contains(event.id.as_str())
     });
 
+    super::legacy_subagent_input::project_events(&conn, session_id, &mut events)?;
     Ok(CachedInitialTurnWindow { turns, events })
 }
 

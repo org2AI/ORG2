@@ -145,33 +145,6 @@ impl AgentTool {
             )
             .await;
 
-            // Persist transcript. Inner closure already logs IO errors via
-            // `warn!`; the only thing the discarded `Result` here can carry is
-            // a `JoinError` (the spawn_blocking thread panicked). Surface that
-            // explicitly so a panic in the persistence layer doesn't vanish
-            // into "no transcript and no log line".
-            {
-                let sid = bg_session_id.clone();
-                let msgs = messages.clone();
-                let join_result = tokio::task::spawn_blocking(move || {
-                    if let Err(err) =
-                        crate::session::persistence::save_subagent_transcript(&sid, &msgs)
-                    {
-                        warn!(
-                            "[agent:bg] Failed to persist transcript for {}: {}",
-                            sid, err
-                        );
-                    }
-                })
-                .await;
-                if let Err(join_err) = join_result {
-                    warn!(
-                        "[agent:bg] save_subagent_transcript task for {} did not complete cleanly: {}; transcript may be missing",
-                        bg_session_id, join_err
-                    );
-                }
-            }
-
             // Handle result + update registry.
             // Same finalizeAgentTool parity as the foreground path: backtrack
             // through message history when the terminal iteration was pure tool_use.

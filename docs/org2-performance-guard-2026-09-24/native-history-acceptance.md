@@ -592,3 +592,74 @@ Results: **123 passed / 7 existing opt-in ignores**, **1 real-native test passed
 Clippy passed, and diff whitespace checks passed. The native test uses only a
 local Responses fixture; it verifies fresh/resume reads, promotion and reopening
 with the installed core, not a hosted model or GUI rendering.
+
+## Combined4 rebuilt GUI and sustained contention measurement
+
+The locally combined package contains #2103 `3a73ef0c619086d074438376528d66af41b743d7`
+and #2143 `89825511bfc645090d5013dc59f5c8976a2f540a`. Its combined branch is not
+published. Main executable SHA-256:
+`df3d64c1974b3df79abaa7327e9527d02288371a9b0f2be8637e28cd588aefe7`.
+Build and strict ad-hoc signature verification passed. The unchanged frontend
+was reused with its source/build-input manifest verified.
+
+A new product-created Reserve conversation completed `ORG2_CLEAN_GUI_OK_0924`.
+The native UserMessage retained the exact submitted body and stored correlation
+in `client_id`. Automatic promotion bound the current raw to the native home.
+Product Configure/Open copied it; source and managed indexes each contained one
+row with equal ordered user/assistant messages and no pending/waiting work.
+The user explicitly confirmed that the native GUI body had neither internal
+marker and that the reply existed. This passes rebuilt clean-body GUI acceptance
+for new messages. Historical polluted messages were not edited or deleted.
+Native GUI automation was not used to obtain that confirmation.
+
+Two longer real product requests did not establish continuous visible streaming
+or partial-output cancellation. For a 120-line answer, observations at 18.7 and
+24.6 seconds showed only the leading marker; the complete body appeared later.
+For the longer narrative, observations at 26, 70, 91 and 103 seconds showed no
+assistant body; the response completed before a partial-text Stop could be
+performed. Stop was not clicked in that attempt. These are uncovered acceptance
+cells, not a successful cancellation test. They do not yet locate the delay at
+the provider, transport or renderer boundary.
+
+With the user-confirmed native conversation still loaded, another real ORG2
+send completed `ORG2_COMBINED4_LOADED_TARGET_OK_0924`. Source history retained
+all previous ordered messages and appended one user/assistant pair. The managed
+raw hash and inode remained unchanged, and reconciliation recorded exactly one
+wait for the loaded destination. This is evidence of safe deferral. The latest
+response was not present in the observed ORG2 accessibility text before minimize,
+although it existed in source raw; visible refresh remains under investigation.
+Exit convergence is a separate assertion and is not inferred from this wait.
+
+Sampling used kernel process-start identities, Mach timebase 125/3, and separate
+backend, responsible WebKit, source app-server and native GUI cohorts. No local
+build or model request ran during either idle measurement. The 600-second visible
+window included initial native navigation; its first 120 seconds are excluded
+from the settled row below. The minimized window deliberately retained the loaded
+destination and pending wait. OS minimize was exercised; DOM visibility and
+individual scan/listener counts were not instrumented.
+
+| Window                                    | Seconds | Backend / WebKit CPU, % of one core | Backend / WebKit RSS start → end, MiB | Backend / WebKit footprint start → end, MiB |
+| ----------------------------------------- | ------- | ----------------------------------- | ------------------------------------- | ------------------------------------------- |
+| Visible settled suffix                    | 478.7   | 0.578 / 1.131                       | 153.6 → 149.0 / 243.9 → 163.9         | 91.8 → 92.1 / 485.8 → 506.0                 |
+| Minimized, destination loaded and waiting | 600.1   | 0.599 / 1.416                       | 161.0 → 160.5 / 477.6 → 417.8         | 94.0 → 92.1 / 524.4 → 511.6                 |
+
+Backend and WebKit counts stayed at one and three. Backend physical reads/writes
+were 1.52/0.32 MiB in the visible suffix and 2.06/0.40 MiB while minimized;
+WebKit writes were zero. Native GUI CPU was 6.41% and 12.87%, respectively,
+with 103.7/124.2 MiB physical writes. Native membership changed during settling;
+its resource costs require a vendor baseline before attribution to this PR.
+RSS and footprint are separate indicators: decreasing RSS alone does not prove
+a memory bound. These finite windows do not certify overnight retention,
+background document throttling or the full provider/platform/identity matrix.
+
+Private evidence names: `combined4-build-receipt.json`,
+`combined4-native-clean-gui-confirmation.json`, `combined4-loaded-baseline.json`,
+`combined4-loaded-after-send.json`, `combined4-contention-observation.jsonl`,
+`combined4-visible-idle-settled-analysis.json`, and
+`combined4-minimized-wait-settled-analysis.json`.
+
+All published CI checks passed on implementation HEAD `3a73ef0` at the final
+implementation-check readback. Report-only follow-up commits must be checked
+separately. **Performance verdict: blocked** — continuous visible streaming,
+partial-text Stop/retention, final exit convergence and resource-release readback
+remain to be verified for this rebuilt package.

@@ -1,14 +1,22 @@
-import { useSetAtom } from "jotai";
+import { useSetAtom, useStore } from "jotai";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useAppNavigation } from "@src/hooks/navigation/useAppNavigation";
+import { openOrFocusChatPanelStartPageTabAtom } from "@src/store/chatPanel/chatPanelTabOpen/startPage";
 import {
   saveDraft,
   sessionCreatorDraftStoreAtom,
 } from "@src/store/session/creatorDraftAtom";
+import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
+import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 
 /** Start a separate composer draft; never replace the replayed session's input. */
 export function useNewCanvasDraft() {
+  const store = useStore();
+  const { t } = useTranslation("navigation");
+  const openStartPage = useSetAtom(openOrFocusChatPanelStartPageTabAtom);
+  const showChat = useSetAtom(activeStationChatVisibleAtom);
   const setDraftStore = useSetAtom(sessionCreatorDraftStoreAtom);
   const { goToNewSession } = useAppNavigation();
 
@@ -41,5 +49,10 @@ export function useNewCanvasDraft() {
       drafts: { ...previous.drafts, [draft.id]: draft },
     }));
     goToNewSession({ draftId: draft.id });
-  }, [goToNewSession, setDraftStore]);
+    // The active chat tab owns the displayed session. Clearing the shared
+    // pipeline alone leaves the previous session tab visible and its creator
+    // unmounted. Use the same Launchpad activation as the sidebar entry.
+    openStartPage({ title: t("routes.launchpad") });
+    showChat(store.get(stationModeAtom), true);
+  }, [goToNewSession, openStartPage, setDraftStore, showChat, store, t]);
 }

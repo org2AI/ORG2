@@ -2,7 +2,8 @@
 
 The replay toolbar publishes New Canvas even when no render event exists. The
 click creates a structured composer draft, then delegates navigation to
-`goToNewSession({ draftId })`. Existing draft promotion and snapshot hydration
+`goToNewSession({ draftId })`, activates the shared Launchpad tab, and reveals
+the active station chat pane. Existing draft promotion and snapshot hydration
 remain owned by the Session Creator. No message is sent by this action.
 
 | Area               | Verdict | Evidence                                                                                                 | Change or reason kept                                                           | Verification                                                                            |
@@ -21,7 +22,7 @@ restrictions remain; this change does not add Canvas tools to Codex App sessions
 
 Verification:
 
-- `pnpm test src/engines/Simulator/apps/canvas/CanvasApp.test.ts src/engines/Simulator/apps/canvas/CanvasApp.share.test.ts src/engines/Simulator/apps/canvas/useNewCanvasDraft.test.ts src/engines/SessionCore/hooks/session/useSessionCreator/useDraftManagement.test.ts src/engines/ChatPanel/hooks/useInputArea/__tests__/canvasSlashCommand.test.ts src/hooks/navigation/useAppNavigation.test.ts`: 6 files, 33 tests passed
+- `pnpm test src/engines/Simulator/apps/canvas/CanvasApp.test.ts src/engines/Simulator/apps/canvas/CanvasApp.share.test.ts src/engines/Simulator/apps/canvas/useNewCanvasDraft.test.ts src/engines/SessionCore/hooks/session/useSessionCreator/useDraftManagement.test.ts src/engines/ChatPanel/hooks/useInputArea/__tests__/canvasSlashCommand.test.ts src/hooks/navigation/useAppNavigation.test.ts`: 6 files, 35 tests passed
 - `pnpm test src/engines/Simulator/apps/canvas/CanvasApp.test.ts`: 7 passed after making the header test honor the production enabled gate
 - ESLint over all five changed TypeScript/TSX files: passed
 - TypeScript AST inspection of both changed production files: zero native or substitute action controls; the new control uses shared Button and NoDragRegion
@@ -41,3 +42,22 @@ improvement is claimed.
 
 Performance verdict: blocked on desktop lifecycle measurement; source inspection
 and automated lifecycle regressions found no new background resource.
+
+## Session-tab navigation regression
+
+The first implementation cleared pipeline session atoms but did not activate the
+creator tab. `usePanelTitle` reads `activeChatPanelTabAtom`, so an existing
+session tab continued displaying the old session and never mounted the draft
+consumer. The initial test manually mounted that consumer and missed this gate.
+
+Two new regressions started on an existing session tab, with chat visible and
+hidden. Both failed before the fix (`session` remained active rather than
+`start-page`). Both pass after using the existing Launchpad opener and active
+station visibility action. The harness uses the real `usePanelTitle` ownership
+projection and only mounts the real composer/draft restoration hook when the
+chat surface permits it. Existing session tabs are preserved; the other station's
+visibility is unchanged. No historical draft deletion is performed.
+
+Revealing chat uses the existing 300 ms coalesced width-persistence timer. It
+creates no recurring work, listener, or new cache. Desktop visual verification
+is still pending; the source and jsdom checks are not a substitute for it.

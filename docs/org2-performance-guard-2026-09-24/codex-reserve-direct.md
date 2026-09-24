@@ -84,7 +84,69 @@ Rollback restores the prior build; optional quota metadata can remain on disk.
 Before rollback, select ordinary Luna for sessions using the new reserve entry
 if the prior UI does not expose that model.
 
-Performance verdict: blocked for a full desktop lifecycle claim until visible /
-hidden idle and repeated open/close measurements are collected. Source inspection
-establishes removal of the new request-time probe, not a measured performance gain.
-This PR does not upgrade the separate native-history C7/performance verdict.
+## Final-package GUI evidence
+
+The isolated macOS instance 94 package was built with
+`pnpm run tauri:build:fast -- --instance 94 .local/ORG2-Reserve94.app` from
+`72f4fd456ad27e56c579f1e300ec4cac3ae245bc`. Its main executable SHA-256 is
+`b266cac57ccc667d946138fb7d14e06aa114c6ae81754df538e96ee446f1b24b`.
+The instance uses separate application, system and external-history homes.
+
+Actual product flow: Models & Keys → Add Key → OpenAI → Subscription → Autodetect
+→ Detect → Done. It detected 13 catalog models and separately enabled ordinary
+Luna and Luna Reserve in the new account. Saved account details showed ordinary
+weekly quota **0%** and reserve weekly quota **94%**, each with its own reset time.
+These screenshots were cropped from the running application to omit unrelated
+identity/sidebar content; they are not mockups.
+
+- [Autodetect model selections](../frontend-ui-audit-2026-09-24/assets/luna-reserve-autodetect.png)
+- [Independent quota meters](../frontend-ui-audit-2026-09-24/assets/luna-reserve-quota.png)
+
+Process-attributed macOS measurements sampled the exact instance executable and
+its responsible WebKit processes every three seconds. CPU is a percentage of one
+core, converting `proc_pid_rusage` Mach ticks using this machine’s 125/3 timebase
+(checked against `ps` CPU time); RSS is summed within each process group. Process start timestamps guard
+against PID reuse. Other builds were running, so this is runtime attribution,
+not a clean-machine benchmark or comparative performance claim. Short-lived
+processes between samples may be missed.
+
+| Scenario                | Duration | App CPU | WebKit CPU | App RSS start → end | WebKit RSS start → end | Physical writes |
+| ----------------------- | -------- | ------- | ---------- | ------------------- | ---------------------- | --------------- |
+| Visible idle            | 30.09 s  | 0.639%  | 2.025%     | 95.42 → 79.19 MiB   | 44.47 → 42.92 MiB      | 0 B             |
+| Hidden idle after Cmd-H | 30.02 s  | 0.671%  | 1.706%     | 79.50 → 71.72 MiB   | 45.81 → 38.38 MiB      | 0 B             |
+
+Both samples retained one application and three WebKit processes without
+membership changes. Physical reads were 897,024 B visible and 3,932,160 B hidden.
+Cmd-H was sent through native UI control; JavaScript visibility state was not
+independently sampled. Evidence labels are `reserve94-visible-idle` and
+`reserve94-hidden-idle`, retained privately with the process sampler.
+
+The actual GUI selected **GPT 5.6 Luna Reserve Medium** and returned exactly
+`ORG2_RESERVE_GUI_OK_0924` in the chat. The session persisted as completed with
+model `gpt-reserve-medium`; all four main/auxiliary usage records kept reserve
+identity (`gpt-reserve-medium` or `gpt-reserve`), and no tool usage was recorded.
+This establishes local product usage attribution, not an upstream monetary bill.
+[Actual reply](../frontend-ui-audit-2026-09-24/assets/luna-reserve-reply.png).
+
+The 55.10-second interaction sample included setup, one two-second model reply,
+and subsequent idle: app CPU 2.444%, WebKit 10.122%, sampled peak RSS 115.67 MiB
+and 417.64 MiB respectively, physical writes 16 KiB. It is not a sustained
+streaming benchmark. After normal product Quit, a 15.23-second observation found
+no instance process or attributable WebKit process. Reopening restored one session
+with its exact reply and the reserve-medium selection.
+
+A second normal quit left no instance/WebKit processes over 12.11 seconds. A
+second reopen again showed exactly one session, the exact reply in order, and
+reserve-medium selected. The two 20-second reopen samples ended at app/WebKit
+RSS 88.86/51.28 MiB and 113.02/58.34 MiB; each had one app plus three WebKit
+processes with no membership growth. Two cycles do not establish a long-run
+memory bound. The test instance was then normally quit.
+
+Performance verdict: blocked for the full lifecycle/performance matrix. The
+measured macOS visible/hidden, short active, quit and two reopen scenarios are
+complete, but no uncontended baseline, long streaming/load run, offline/reconnect,
+account/endpoint switch, or Windows/Linux runtime measurement was performed.
+The shared machine was under concurrent build load; the visible/hidden CPU
+results are not a near-zero or improvement claim. Source review found no new
+poller, subscription or unbounded retained state in this feature. These results
+do not upgrade the separate native-history C7/performance verdict.

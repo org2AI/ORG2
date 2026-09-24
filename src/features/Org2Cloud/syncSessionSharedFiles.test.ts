@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
-import { syncSessionSharedFiles } from "./syncSessionSharedFiles";
+import {
+  syncSessionSharedFileCandidates,
+  syncSessionSharedFiles,
+} from "./syncSessionSharedFiles";
 
 const mocks = vi.hoisted(() => ({
   capabilities: vi.fn(),
@@ -51,6 +54,23 @@ beforeEach(() => {
   mocks.read.mockResolvedValue(new Uint8Array([1, 2, 3]));
 });
 describe("shared session artifact publication", () => {
+  it("keeps a durable candidate pending when its source read fails", async () => {
+    mocks.read.mockRejectedValueOnce(new Error("volume unavailable"));
+    const pending = {
+      ...input,
+      candidates: [{ path: "/author/report.md", revision: "e1:now" }],
+    };
+    await expect(syncSessionSharedFileCandidates(pending)).resolves.toEqual({
+      supported: true,
+      sourceUnavailable: true,
+    });
+    expect(mocks.upload).not.toHaveBeenCalled();
+    await expect(syncSessionSharedFileCandidates(pending)).resolves.toEqual({
+      supported: true,
+      sourceUnavailable: false,
+    });
+    expect(mocks.upload).toHaveBeenCalledOnce();
+  });
   it("uploads an agent file without rewriting conversation events or requiring a comment", async () => {
     await syncSessionSharedFiles(input);
     expect(mocks.upload).toHaveBeenCalledWith(

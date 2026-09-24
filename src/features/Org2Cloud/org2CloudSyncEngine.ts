@@ -66,6 +66,7 @@ import { chatPanelSelectedCloudOrgAtom } from "@src/store/ui/chatPanel/selection
 import type { ProjectSyncBridge } from "../TeamCollaboration/engine/projectSyncBridge";
 import { tauriProjectSyncBridge } from "../TeamCollaboration/engine/projectSyncBridge";
 import { subscribeShareableScopeKeys } from "../TeamCollaboration/repoScopeResolver";
+import { ConversationFileDelivery } from "./conversationFileDelivery";
 import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
@@ -130,6 +131,7 @@ export type { Org2CloudSchemaVersionProbe } from "./org2CloudSyncEngine.schemaGa
 const SCOPE_RESOLUTION_DEBOUNCE_MS = 1_000;
 const log = createLogger("Org2CloudSyncEngine");
 export class Org2CloudSyncEngine extends Org2CloudSyncLifecycle {
+  private readonly conversationFiles = new ConversationFileDelivery();
   /** Imported-history roster activity capture, split out to
    * `Org2CloudExternalHistoryRoster`. */
   private readonly externalHistoryRoster = new Org2CloudExternalHistoryRoster();
@@ -213,6 +215,7 @@ export class Org2CloudSyncEngine extends Org2CloudSyncLifecycle {
     const auth = store.get(org2CloudAuthAtom);
     this.retentionIdentityKey = auth ? org2CloudAuthIdentityKey(auth) : null;
     super.start(store);
+    this.conversationFiles.start(store);
     this.captureExternalHistoryRosterActivity(store);
     this.sessionRosterUnsubscribe = store.sub(sessionsAtom, () => {
       this.captureExternalHistoryRosterActivity(store);
@@ -227,6 +230,7 @@ export class Org2CloudSyncEngine extends Org2CloudSyncLifecycle {
   }
 
   override stop(): void {
+    this.conversationFiles.stop();
     this.sessionRosterUnsubscribe?.();
     this.sessionRosterUnsubscribe = null;
     this.scopeResolutionUnsubscribe?.();

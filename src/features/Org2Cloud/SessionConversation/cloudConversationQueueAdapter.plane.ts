@@ -35,6 +35,7 @@ import { importRemoteSession } from "@src/features/TeamCollaboration/engine/coll
 import type { Session } from "@src/store/session";
 import { sessionsAtom } from "@src/store/session";
 
+import { enqueueConversationSharedFiles } from "../conversationFileOutbox";
 import {
   CanonicalConversationFamilyUnavailableError,
   loadCanonicalConversationTimeline,
@@ -268,19 +269,26 @@ export function createCloudTailPublisher(input: {
       freshEndpoint
     );
     requireBoundAuth();
-    const { syncSessionSharedFiles } =
-      await import("../syncSessionSharedFiles");
-    await syncSessionSharedFiles({
-      token: fresh.accessToken,
-      endpoint: { ...freshEndpoint, webOrigin: "", isOfficial: false },
-      orgId,
-      sessionId: rootSessionId,
-      events,
-      assertCurrentIdentity: requireBoundAuth,
-    });
     bumpConversationPlaneSignal(
       (update) => store.set(conversationPlaneSignalAtom, update),
       orgId
     );
+    try {
+      await enqueueConversationSharedFiles({
+        store,
+        auth: fresh,
+        orgId,
+        sessionId: rootSessionId,
+        events,
+        assertCurrentIdentity: requireBoundAuth,
+      });
+    } catch (error) {
+      // A failed local journal write must not turn a successful provider run
+      // into failure or silently lose its files. Retry publication on the same
+      // durable accepted turn; no provider re-execution or attachment upload.
+      throw new QueuedConversationRecoveryPendingError(
+        `Unable to persist pending attachment delivery: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   };
 }

@@ -536,3 +536,59 @@ reported pre-existing formatting differences; unrelated source formatting is
 excluded. No frontend code changed, so TypeScript/UI-control checks are not
 applicable. Latest `develop` was fetched and a merge-tree check found no
 conflicts; no unrelated target-branch changes were folded into this fix.
+
+## Combined3 fresh-session regression and correction
+
+The marker-correction bundle built and passed strict ad-hoc signature validation.
+A fresh own-key Reserve session completed the requested clean-body reply, but
+ORG2 entered its global error page with `Codex indexed rollout escaped its
+store`. The current row pointed at the legitimate account-owned raw directory,
+while SQLite lived in the native home. This run is **failed GUI acceptance**;
+the successful model response and clean persisted input do not override it.
+The error page also did not respond to normal menu Quit, so the verified isolated
+ORG2 process was terminated with SIGTERM. Daily apps were not targeted.
+
+The resolver correction scopes the extra permitted raw root to the persisted
+account owner. Current read authority stays distinct from the native destination,
+and missing/invalid rows never fall back to retained old files. Managed stores
+keep their original single-home boundary. No timers, polling, caches or new
+scans are introduced; resolution checks at most two known roots and one bounded
+SQLite row. Promotion remains under the existing producer/finalization lifecycle.
+
+The installed-native loopback fixture now exercises the production ORG2
+resolver and revision reader, followed by production convergence/catalog refresh
+and a new-process native read. It passed with literal fresh/resumed inputs and
+both durable correlation IDs intact. This is real provider protocol evidence,
+not GUI or paid-route acceptance. Private provider histories were not edited.
+
+The separate installed-native interruption reference received three output-text
+deltas, then invoked real `turn/interrupt`. `thread/read` returned an interrupted
+turn containing only its user message; raw history had `turn_aborted` and zero
+assistant response items. This establishes that unfinalized partial deltas are
+not durable history in the tested native version. A live GUI cancellation after
+visible text remains necessary to assess the product behavior; partial retention
+must not be reported as passed or simulated by inventing a native message.
+
+| Area               | Verdict                  | Evidence                                            | Change or reason kept                                                    | Verification                                                     |
+| ------------------ | ------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Background work    | keep                     | One current-row lookup; at most two canonical roots | No additional recurring work                                             | Targeted resolver tests and native protocol fixture              |
+| Memory             | keep, unverified runtime | No new retained state                               | Package idle and streaming samples still pending                         | No long-term bound claimed                                       |
+| Scope/isolation    | fix                      | Fresh indexed raw belongs to the saved account      | Allow only that owner alongside the native home; managed homes unchanged | Foreign-account, escaping-link and managed-isolation regressions |
+| Rendering/hot path | unverified               | Failed GUI canary stopped before streaming tests    | Fix the owning storage boundary before resuming GUI measurements         | GUI revalidation pending                                         |
+
+Performance verdict: blocked — rebuilt GUI clean-body, visible streaming,
+partial-output cancellation and sustained-resource measurements remain pending.
+
+Split-home correction validation:
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked -- native_materializer native_transcript_resolution_tests commands::history transcript_revision_tests
+ORGII_NATIVE_CODEX_APP_BINARY=<installed-desktop-core> cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked live_native_fresh_and_resumed_turns_are_in_default_desktop_list -- --ignored --nocapture
+cargo clippy --manifest-path src-tauri/Cargo.toml -p org2 --lib --tests --locked -- -D warnings
+git diff --check
+```
+
+Results: **123 passed / 7 existing opt-in ignores**, **1 real-native test passed**,
+Clippy passed, and diff whitespace checks passed. The native test uses only a
+local Responses fixture; it verifies fresh/resume reads, promotion and reopening
+with the installed core, not a hosted model or GUI rendering.

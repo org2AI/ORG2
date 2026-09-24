@@ -21,7 +21,11 @@ pub(super) fn exists(home: &Path) -> Result<bool, String> {
 /// None means there is no native index, permitting bounded legacy discovery.
 /// Once present, missing rows, invalid paths and unreadable state are errors;
 /// neither retained physical files nor an imported cache may replace authority.
-pub(super) fn resolve(home: &Path, id: &str) -> Result<Option<PathBuf>, String> {
+pub(super) fn resolve(
+    home: &Path,
+    runner_home: Option<&Path>,
+    id: &str,
+) -> Result<Option<PathBuf>, String> {
     uuid::Uuid::parse_str(id).map_err(|_| "Invalid native transcript UUID")?;
     if !exists(home)? {
         return Ok(None);
@@ -60,20 +64,29 @@ pub(super) fn resolve(home: &Path, id: &str) -> Result<Option<PathBuf>, String> 
     {
         return Err("Invalid Codex indexed rollout path".into());
     }
-    let root =
-        fs::canonicalize(home).map_err(|error| format!("Resolve Codex native home: {error}"))?;
     let current = fs::canonicalize(path)
         .map_err(|error| format!("Resolve Codex indexed rollout: {error}"))?;
-    let relative = current
-        .strip_prefix(&root)
-        .map_err(|_| "Codex indexed rollout escaped its store")?;
-    if !matches!(relative.components().next(), Some(Component::Normal(part)) if part == "sessions" || part == "archived_sessions")
-        || !current.is_file()
-    {
-        return Err("Codex indexed rollout is not a stored transcript".into());
+    // sqlite_home controls only the vendor index. Fresh own-key threads write
+    // raw history under CODEX_HOME, owned by the persisted account. Accept that
+    // exact second owner, never another account or an arbitrary indexed path.
+    for home in std::iter::once(home).chain(runner_home) {
+        let root = match fs::canonicalize(home) {
+            Ok(root) => root,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(format!("Resolve Codex history home: {error}")),
+        };
+        let Ok(relative) = current.strip_prefix(&root) else {
+            continue;
+        };
+        if !matches!(relative.components().next(), Some(Component::Normal(part)) if part == "sessions" || part == "archived_sessions")
+            || !current.is_file()
+        {
+            return Err("Codex indexed rollout is not a stored transcript".into());
+        }
+        // Retain the caller's root spelling (macOS /var vs /private/var).
+        return Ok(Some(home.join(relative)));
     }
-    // Retain the caller's root spelling (e.g. macOS /var versus /private/var).
-    Ok(Some(home.join(relative)))
+    Err("Codex indexed rollout escaped its store".into())
 }
 
 #[cfg(test)]
@@ -84,11 +97,11 @@ mod tests {
     #[test]
     fn indexed_codex_path_is_current_bounded_and_store_scoped() {
         let home = tempfile::tempdir().unwrap();
-        assert_eq!(resolve(home.path(), ID).unwrap(), None);
+        assert_eq!(resolve(home.path(), None, ID).unwrap(), None);
         let db = Connection::open(home.path().join(INDEX)).unwrap();
         db.execute_batch("CREATE TABLE threads(id TEXT, rollout_path TEXT)")
             .unwrap();
-        assert!(resolve(home.path(), ID).is_err());
+        assert!(resolve(home.path(), None, ID).is_err());
         let archived = home.path().join("archived_sessions/physical.jsonl");
         fs::create_dir_all(archived.parent().unwrap()).unwrap();
         fs::write(&archived, "{}\n").unwrap();
@@ -97,7 +110,10 @@ mod tests {
             [ID, archived.to_str().unwrap()],
         )
         .unwrap();
-        assert_eq!(resolve(home.path(), ID).unwrap(), Some(archived.clone()));
+        assert_eq!(
+            resolve(home.path(), None, ID).unwrap(),
+            Some(archived.clone())
+        );
         for invalid in [
             "relative.jsonl".to_string(),
             "x".repeat(8193),
@@ -108,7 +124,7 @@ mod tests {
         ] {
             db.execute("UPDATE threads SET rollout_path=?1", [&invalid])
                 .unwrap();
-            assert!(resolve(home.path(), ID).is_err());
+            assert!(resolve(home.path(), None, ID).is_err());
         }
         db.execute(
             "UPDATE threads SET rollout_path=?1",
@@ -117,12 +133,12 @@ mod tests {
         .unwrap();
         db.execute("INSERT INTO threads SELECT * FROM threads", [])
             .unwrap();
-        assert!(resolve(home.path(), ID).is_err());
+        assert!(resolve(home.path(), None, ID).is_err());
         db.execute("DELETE FROM threads WHERE rowid=2", []).unwrap();
         db.execute_batch("BEGIN EXCLUSIVE").unwrap();
-        assert!(resolve(home.path(), ID).is_err());
+        assert!(resolve(home.path(), None, ID).is_err());
         db.execute_batch("ROLLBACK; DROP TABLE threads").unwrap();
-        assert!(resolve(home.path(), ID).is_err());
+        assert!(resolve(home.path(), None, ID).is_err());
     }
 
     #[cfg(unix)]
@@ -143,6 +159,6 @@ mod tests {
             [ID, alias.to_str().unwrap()],
         )
         .unwrap();
-        assert!(resolve(home.path(), ID).is_err());
+        assert!(resolve(home.path(), None, ID).is_err());
     }
 }

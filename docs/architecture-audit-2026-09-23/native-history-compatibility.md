@@ -546,3 +546,32 @@ new background-resource ownership are inapplicable to this correction. No
 frontend filtering, dependency, native database format or CI change is added.
 Current installed-native protocol verification and remaining GUI/compatibility
 limitations are recorded in the acceptance report.
+
+## Fresh Codex split-home correction
+
+Combined3's actual new own-key session exposed a resolver regression: the native
+core wrote a valid fresh rollout below the persisted account's `CODEX_HOME`,
+while its `sqlite_home` pointed at the shared native index. ORG2 incorrectly
+required the indexed body to be below the index directory and raised a history
+RPC error after a successful model reply. The authoritative sources are the
+vendor's current SQLite row and its raw rollout; neither was manually repaired.
+
+The indexed resolver now accepts only the native history home or the exact
+persisted owning account's history home. Both require a canonical regular JSONL
+under `sessions` or `archived_sessions`. Managed-session homes retain their
+single-home restriction. Missing/invalid/locked current rows still fail closed,
+and retained generations never become fallback candidates.
+
+`indexed_path` explicitly distinguishes current read authority from the durable
+native destination and runner alias. Replay and revisions use the indexed path;
+existing fenced convergence promotes bytes and the supported native catalog RPC
+rebinds the row. Native App availability cannot claim a different, stale copy as
+current. No native schema, wire format, directory-wide scan, cache, timer or
+credential sharing is added. Historical recovery uses these ordinary product
+paths; no history is rewritten solely to conceal the error or XML marker.
+
+Architecture coverage: all ten layers checked within the storage boundary:
+compilation, live call chains, naming, current-path/destination semantics,
+fail-closed defaults, persisted-owner isolation, readable ownership, unchanged
+wire/schema, fresh-versus-resumed initialization and read/revision/mutation
+resolver symmetry. Unrelated UI, React and other provider refactors are skipped.

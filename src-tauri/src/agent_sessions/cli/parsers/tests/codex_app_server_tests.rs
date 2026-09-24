@@ -1039,10 +1039,10 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
 
     let binary = std::env::var("ORGII_NATIVE_CODEX_APP_BINARY")
         .expect("set ORGII_NATIVE_CODEX_APP_BINARY to the installed Desktop Codex binary");
-    let sandbox = tempfile::tempdir().expect("isolated Codex home");
+    let sandbox = crate::test_utils::test_env::sandbox();
     let root = sandbox.path().canonicalize().unwrap();
-    let home = root.join("account");
-    let native_home = root.join("desktop");
+    let home = app_paths::codex_cli_profile_dir("native-listability-account");
+    let native_home = app_paths::native_transcript_home_dir().join(".codex");
     let project = root.join("target project");
     let other_project = root.join("other project");
     let execution_worktree = root.join("execution worktree");
@@ -1053,8 +1053,17 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
         &other_project,
         &execution_worktree,
     ] {
-        std::fs::create_dir(dir).unwrap();
+        std::fs::create_dir_all(dir).unwrap();
     }
+    use crate::agent_sessions::cli::{native_materializer, persistence};
+    let org2_id = "orgii-desktop-listability-fixture";
+    let params = serde_json::from_value(json!({
+        "platform": "codex", "accountId": "native-listability-account",
+        "keySource": "own_key", "repoPath": project
+    }))
+    .unwrap();
+    persistence::create_session_with_source(org2_id, &params, None).unwrap();
+    let session = persistence::get_session(org2_id).unwrap().unwrap();
     let server = MockServer::start().await;
     let message = json!({
         "id": "msg_fixture", "type": "message", "role": "assistant", "status": "completed",
@@ -1236,6 +1245,23 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             assert_eq!(user["content"][0]["text"], *expected);
         }
         let path = std::path::Path::new(read["thread"]["path"].as_str().unwrap());
+        let org2_path = native_materializer::materialized_cli_transcript_path(
+            &session,
+            thread_id.as_deref().unwrap(),
+        )
+        .expect("ORG2 must read the vendor's fresh split-home row")
+        .unwrap()
+        .1;
+        assert_eq!(
+            std::fs::canonicalize(&org2_path).unwrap(),
+            std::fs::canonicalize(path).unwrap()
+        );
+        assert!(native_materializer::materialized_cli_transcript_revision(
+            &session,
+            thread_id.as_deref().unwrap()
+        )
+        .unwrap()
+        .is_some());
         let chunks =
             orgtrack_core::sources::codex::app::load_codex_app_from_path("fixture", path).unwrap();
         let replay: Vec<_> = chunks
@@ -1300,6 +1326,58 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
                 wrong_project.display()
             );
         }
+    }
+    persistence::update_cli_session_id_for_account(
+        org2_id,
+        Some("native-listability-account"),
+        thread_id.as_deref().unwrap(),
+    )
+    .unwrap();
+    assert!(tokio::task::spawn_blocking(move || {
+        native_materializer::publish_bound_native_transcript(org2_id)
+    })
+    .await
+    .unwrap()
+    .expect("fresh account rollout promotes through production convergence"));
+    let promoted = native_materializer::materialized_cli_transcript_path(
+        &session,
+        thread_id.as_deref().unwrap(),
+    )
+    .unwrap()
+    .unwrap()
+    .1;
+    assert!(promoted.starts_with(&native_home));
+    let mut reopened =
+        CodexAppServerRpcClient::launch(std::path::Path::new(&binary), &native_home, &project)
+            .await
+            .unwrap();
+    let read = reopened
+        .request(
+            "thread/read",
+            json!({
+                "threadId": thread_id, "includeTurns": true
+            }),
+            Duration::from_secs(10),
+        )
+        .await
+        .unwrap();
+    let reopened_users: Vec<_> = read["thread"]["turns"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|turn| turn["items"].as_array().unwrap())
+        .filter(|item| item["type"] == "userMessage")
+        .collect();
+    assert_eq!(reopened_users.len(), 2);
+    for (item, expected) in reopened_users
+        .iter()
+        .zip(["ORGII_VISIBLE_FRESH", "ORGII_VISIBLE_RESUME"])
+    {
+        assert_eq!(item["content"][0]["text"], expected);
+        assert_eq!(
+            item["clientId"],
+            format!("orgii-turn-intent:intent-{expected}")
+        );
     }
     let requests = server.received_requests().await.unwrap();
     assert_eq!(requests.len(), 2);

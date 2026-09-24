@@ -119,6 +119,9 @@ fn lock_claude_project_index_checked(
 
 #[derive(Debug, Clone)]
 struct NativeTranscriptPaths {
+    /// Authoritative current row, when a Codex index exists. Reads must use
+    /// this path even before runner bytes are promoted to the native store.
+    indexed_path: Option<PathBuf>,
     /// Durable transcript discovered by the provider's real native App.
     native_path: PathBuf,
     /// Account-profile alias used by ORG2's isolated provider runner.
@@ -599,6 +602,7 @@ fn claude_native_paths(
         .join(".claude")
         .join(&relative);
     NativeTranscriptPaths {
+        indexed_path: None,
         runner_path: account_id
             .map(|account_id| app_paths::claude_code_cli_profile_dir(account_id).join(relative))
             .unwrap_or_else(|| native_path.clone()),
@@ -636,6 +640,7 @@ fn codex_native_app_sessions_root() -> PathBuf {
 
 fn codex_native_paths_for_relative(account_id: &str, relative: &Path) -> NativeTranscriptPaths {
     NativeTranscriptPaths {
+        indexed_path: None,
         native_path: codex_native_app_sessions_root().join(relative),
         runner_path: codex_profile_sessions_root(account_id).join(relative),
     }
@@ -646,13 +651,16 @@ fn existing_codex_native_paths(
     native_id: &str,
 ) -> Result<Option<NativeTranscriptPaths>, String> {
     let home = codex_native_app_home();
-    if let Some(path) = codex_index::resolve(&home, native_id)? {
+    let runner_home = app_paths::codex_cli_profile_dir(account_id);
+    if let Some(path) = codex_index::resolve(&home, Some(&runner_home), native_id)? {
         let relative = path
             .strip_prefix(&home)
-            .map_err(|_| "Codex index escaped its home")?;
+            .or_else(|_| path.strip_prefix(&runner_home))
+            .map_err(|_| "Codex index escaped its owner homes")?;
         return Ok(Some(NativeTranscriptPaths {
-            runner_path: app_paths::codex_cli_profile_dir(account_id).join(relative),
-            native_path: path,
+            native_path: home.join(relative),
+            runner_path: runner_home.join(relative),
+            indexed_path: Some(path),
         }));
     }
     // Only stores without a native SQLite index use legacy suffix discovery.
@@ -762,8 +770,8 @@ pub(super) fn materialized_cli_transcript_path(
     let Some((agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
-    if agent == "codex" && has_indexed_codex_transcript(session)? {
-        return Ok(Some((agent, paths.native_path)));
+    if let Some(path) = paths.indexed_path {
+        return Ok(Some((agent, path)));
     }
     let Some(path) = preferred_materialized_transcript_path(&paths)? else {
         return Ok(None);
@@ -783,6 +791,11 @@ pub(crate) fn native_app_transcript_path(
     let Some((_agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
+    if let Some(current) = &paths.indexed_path {
+        if !paths_match(current, &paths.native_path) {
+            return Ok(None);
+        }
+    }
     Ok(paths.native_path.is_file().then_some(paths.native_path))
 }
 
@@ -851,12 +864,12 @@ pub(super) fn materialized_cli_transcript_revision(
     let Some((_agent, paths)) = materialized_cli_transcript_paths(session, native_id)? else {
         return Ok(None);
     };
-    if has_indexed_codex_transcript(session)? {
+    if let Some(path) = &paths.indexed_path {
         // Retained generations may have identical sizes/mtimes. Include the
         // indexed physical path without exposing it in the frontend token.
-        let revision = native_transcript_revision(&paths.native_path)?;
-        let identity = serde_json::to_vec(&(native_id, &paths.native_path, revision))
-            .map_err(|error| error.to_string())?;
+        let revision = native_transcript_revision(path)?;
+        let identity =
+            serde_json::to_vec(&(native_id, path, revision)).map_err(|error| error.to_string())?;
         return Ok(Some(format!(
             "codex-indexed-v1:{:x}",
             Sha256::digest(identity)
@@ -3311,7 +3324,7 @@ pub(super) async fn converge_bound_native_transcript_and_schedule_catalog(
 }
 
 #[cfg(test)]
-fn publish_bound_native_transcript(session_id: &str) -> Result<bool, String> {
+pub(super) fn publish_bound_native_transcript(session_id: &str) -> Result<bool, String> {
     let Some(refresh) = converge_bound_native_transcript(session_id)? else {
         return Ok(false);
     };
@@ -3501,6 +3514,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("native-revision-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
         let paths = super::NativeTranscriptPaths {
+            indexed_path: None,
             native_path: root.join("native.jsonl"),
             runner_path: root.join("runner.jsonl"),
         };
@@ -3603,6 +3617,152 @@ mod tests {
             interrupted,
             created_at: "2026-09-02T00:00:02Z".to_string(),
         }
+    }
+
+    #[test]
+    fn indexed_fresh_account_history_reads_current_then_promotes_without_stale_fallback() {
+        let sandbox = test_env::sandbox();
+        let account = "fresh-indexed-owner";
+        let session_id = "fresh-indexed-session";
+        let native_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+        create_native_session(session_id, "codex", Some(account), sandbox.path());
+        persistence::update_cli_session_id_for_account(session_id, Some(account), native_id)
+            .unwrap();
+        let session = persistence::get_session(session_id).unwrap().unwrap();
+        let home = codex_native_app_home();
+        fs::create_dir_all(&home).unwrap();
+        let db = rusqlite::Connection::open(home.join("state_5.sqlite")).unwrap();
+        db.execute_batch("CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT)")
+            .unwrap();
+        let relative = Path::new("sessions/2026/09/24/current.jsonl");
+        let runner = app_paths::codex_cli_profile_dir(account).join(relative);
+        let native = home.join(relative);
+        fs::create_dir_all(runner.parent().unwrap()).unwrap();
+        let raw = format!("{{\"type\":\"session_meta\",\"payload\":{{\"id\":\"{native_id}\"}}}}\n");
+        fs::write(&runner, &raw).unwrap();
+        db.execute(
+            "INSERT INTO threads VALUES (?1, ?2)",
+            [native_id, runner.to_str().unwrap()],
+        )
+        .unwrap();
+        let read = || {
+            materialized_cli_transcript_path(&session, native_id)
+                .unwrap()
+                .unwrap()
+                .1
+        };
+        assert_eq!(read(), runner);
+        let before = materialized_cli_transcript_revision(&session, native_id).unwrap();
+        assert!(native_app_transcript_path(&session, native_id)
+            .unwrap()
+            .is_none());
+        let paths = existing_codex_native_paths(account, native_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(paths.native_path, native);
+        assert!(ensure_durable_runner_alias(&paths, native_id).unwrap());
+        assert_eq!(fs::read(&native).unwrap(), raw.as_bytes());
+        assert!(paths_match(&native, &runner));
+        // The index still names the runner alias until native catalog refresh.
+        // Both that window and the subsequent rebound row resolve current bytes.
+        assert_eq!(read(), native);
+        assert_eq!(
+            native_app_transcript_path(&session, native_id).unwrap(),
+            Some(native.clone())
+        );
+        db.execute(
+            "UPDATE threads SET rollout_path=?1",
+            [native.to_str().unwrap()],
+        )
+        .unwrap();
+        assert_eq!(read(), native);
+        assert!(!ensure_durable_runner_alias(
+            &existing_codex_native_paths(account, native_id)
+                .unwrap()
+                .unwrap(),
+            native_id
+        )
+        .unwrap());
+        let next = home.join("sessions/2026/09/24/next-generation.jsonl");
+        fs::write(&next, &raw).unwrap();
+        db.execute(
+            "UPDATE threads SET rollout_path=?1",
+            [next.to_str().unwrap()],
+        )
+        .unwrap();
+        assert_eq!(read(), next);
+        assert_ne!(
+            before,
+            materialized_cli_transcript_revision(&session, native_id).unwrap()
+        );
+        fs::remove_file(&next).unwrap();
+        assert!(materialized_cli_transcript_path(&session, native_id).is_err());
+        assert!(materialized_cli_transcript_revision(&session, native_id).is_err());
+        assert_eq!(fs::read(&native).unwrap(), raw.as_bytes());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn indexed_account_history_rejects_other_accounts_and_escaping_links() {
+        let sandbox = test_env::sandbox();
+        let account = "indexed-owner";
+        let session_id = "indexed-owner-session";
+        let native_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+        create_native_session(session_id, "codex", Some(account), sandbox.path());
+        let session = persistence::get_session(session_id).unwrap().unwrap();
+        let home = codex_native_app_home();
+        fs::create_dir_all(&home).unwrap();
+        let db = rusqlite::Connection::open(home.join("state_5.sqlite")).unwrap();
+        db.execute_batch("CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT)")
+            .unwrap();
+        let foreign =
+            app_paths::codex_cli_profile_dir("other-owner").join("sessions/foreign.jsonl");
+        fs::create_dir_all(foreign.parent().unwrap()).unwrap();
+        fs::write(&foreign, "{}\n").unwrap();
+        let alias = app_paths::codex_cli_profile_dir(account).join("sessions/alias.jsonl");
+        fs::create_dir_all(alias.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(&foreign, &alias).unwrap();
+        db.execute(
+            "INSERT INTO threads VALUES (?1, ?2)",
+            [native_id, foreign.to_str().unwrap()],
+        )
+        .unwrap();
+        for path in [&foreign, &alias] {
+            db.execute(
+                "UPDATE threads SET rollout_path=?1",
+                [path.to_str().unwrap()],
+            )
+            .unwrap();
+            assert!(materialized_cli_transcript_path(&session, native_id).is_err());
+            assert!(materialized_cli_transcript_revision(&session, native_id).is_err());
+            assert!(existing_codex_native_paths(account, native_id).is_err());
+        }
+        // Managed sessions never gain the account-home allowance.
+        let managed_id = "indexed-managed-session";
+        create_native_session_with_source(
+            managed_id,
+            "codex",
+            None,
+            sandbox.path(),
+            Some("test:workspace"),
+        );
+        let managed = persistence::get_session(managed_id).unwrap().unwrap();
+        let managed_home = NativeStorageOwner::for_session(&managed)
+            .unwrap()
+            .codex_home()
+            .unwrap();
+        fs::create_dir_all(&managed_home).unwrap();
+        let managed_db = rusqlite::Connection::open(managed_home.join("state_5.sqlite")).unwrap();
+        managed_db
+            .execute_batch("CREATE TABLE threads(id TEXT PRIMARY KEY, rollout_path TEXT)")
+            .unwrap();
+        managed_db
+            .execute(
+                "INSERT INTO threads VALUES (?1, ?2)",
+                [native_id, foreign.to_str().unwrap()],
+            )
+            .unwrap();
+        assert!(materialized_cli_transcript_path(&managed, native_id).is_err());
     }
 
     #[test]
@@ -5619,6 +5779,7 @@ mod tests {
     fn divergent_native_and_runner_transcripts_fail_closed() {
         let sandbox = test_env::sandbox();
         let paths = NativeTranscriptPaths {
+            indexed_path: None,
             native_path: sandbox.path().join("native.jsonl"),
             runner_path: sandbox.path().join("runner.jsonl"),
         };

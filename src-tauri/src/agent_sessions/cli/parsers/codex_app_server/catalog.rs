@@ -912,7 +912,7 @@ mod tests {
         let original = std::fs::read(&path).unwrap();
         for _ in 0..2 {
             assert_eq!(
-                inspect_suffix_application(&path, &[expected.clone()]).unwrap(),
+                inspect_suffix_application(&path, std::slice::from_ref(&expected)).unwrap(),
                 SuffixApplication::AlreadyApplied
             );
         }
@@ -925,10 +925,10 @@ mod tests {
             let mut divergent = native.clone();
             divergent[field] = value;
             write(&[divergent]);
-            assert!(inspect_suffix_application(&path, &[expected.clone()]).is_err());
+            assert!(inspect_suffix_application(&path, std::slice::from_ref(&expected)).is_err());
         }
         write(&[native.clone(), native.clone()]);
-        assert!(inspect_suffix_application(&path, &[expected.clone()]).is_err());
+        assert!(inspect_suffix_application(&path, std::slice::from_ref(&expected)).is_err());
         native["call_id"] = json!("different_call");
         write(&[native]);
         assert_eq!(

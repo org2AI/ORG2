@@ -442,3 +442,39 @@ not uncontended throughput or rendering benchmarks. After product reopen,
 native 15.813% and no product source process; native startup and its open window
 are included. Long-duration retention and native normal-exit measurements still
 require their separate lifecycle checks.
+
+## Final native inspection and normal exit
+
+The user supplied a screenshot showing the latest 250-line completion marker
+and the later cancellation request in order, then confirmed normal native exit.
+The screenshot did not expose an explicit interrupted-status label; persisted
+interruption is established by the native raw `turn_aborted` evidence above.
+At 21:49:38 UTC, read-only kernel checks found all 16 identities captured at
+reopen absent, including the GUI/core and tracked descendants. A broader check
+of all 23 native process/start identities sampled during that reopen also found
+no survivors. No GUI root remained for the isolated profile. No signal or manual
+helper cleanup was used for this normal-exit cycle. This closes the observed
+normal native menu-exit/process-release check, not a claim about every possible
+unsampled short-lived descendant or long-duration resource behavior.
+
+After exit, both native indexes still contained one C7 conversation. The
+completion marker occurred once per side in an assistant message, and both
+retained one `turn_aborted`. Ordered user/assistant messages were identical
+between stores and unchanged from the Stop result. Only destination/thread
+settings events had been appended during native reopen/return. Journal pending,
+waits and observations were all zero; subsequent readback confirmed stability.
+No new model request was sent during final inspection or exit verification.
+
+The screenshot also showed a visible internal `<ide_context>` correlation
+envelope containing `orgii-turn-intent`. This is persisted producer data from
+the existing `native_correlated_user_input` → `with_turn_intent` path, which
+predates this PR. ORG2's parser extracts the correlation, while native Codex
+displays the raw user input. Raw-history sharing exposes that compatibility/
+presentation gap; it remains unmodified. No marker, native history or associated
+recovery data was deleted, and completely clean native prompt presentation is
+not claimed.
+
+**Performance verdict remains blocked:** finite lifecycle/process-release
+checks passed, but sustained retention/contention, smooth live rendering,
+partial-text cancellation retention and full provider/identity/platform matrix
+coverage remain incomplete.

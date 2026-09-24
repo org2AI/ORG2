@@ -489,6 +489,16 @@ partial-text retention are unverified. Native final reopen/menu-exit and the
 full performance matrix remain pending; signal exit required narrow cleanup of
 a verified vendor helper orphan.
 
+Final user inspection showed the latest completed reply and subsequent
+cancellation request in order. Normal native Quit then released all 16 reopen
+identities and all 23 identities observed by the bounded native sampler, with no
+signal cleanup in that cycle. Both indexes, ordered messages and interruption
+records remained consistent with zero pending journal work. The screenshot also
+exposed the pre-existing producer's `orgii-turn-intent` correlation envelope in
+native user input; this raw-data/presentation compatibility gap was not hidden
+or destructively cleaned up. Full performance/lifecycle matrix coverage remains
+incomplete despite the successful finite normal-exit check.
+
 Indexed-generation correction verification:
 
 ```sh

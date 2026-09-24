@@ -177,7 +177,13 @@ export class Org2CloudSyncEngine extends Org2CloudSyncLifecycle {
     this.client = client;
     this.projectsClient = projectsClient;
     this.projectSyncBridge = projectSyncBridge;
-    this.sessionSync = new Org2CloudSessionSync(() => this.store, client);
+    this.sessionSync = new Org2CloudSessionSync(
+      () => this.store,
+      client,
+      () => {
+        void this.runSyncPass();
+      }
+    );
     this.orgBackoff = new Org2CloudOrgBackoffTracker((orgId) =>
       this.isActiveOrg(orgId)
     );

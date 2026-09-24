@@ -22,12 +22,14 @@ import { getCloudCapabilitiesConfirmed } from "./org2CloudCapabilities";
 import { broadcastOrgControlChangedToPeers } from "./org2CloudControlBus";
 import { endpointForOrg } from "./org2CloudOrgEndpointRouter";
 import type {
+  Org2CloudSyncClientDeps,
   PreparedPushEvents,
   PreparedPushPlan,
 } from "./org2CloudSessionSync.types";
 import { Org2CloudSessionSyncUpload } from "./org2CloudSessionSync.upload";
 import type { CollabSessionPushCursor } from "./org2CloudSyncAtoms";
 import { isOrg2SyncErrorCode } from "./org2CloudSyncClient";
+import type { CloudStore } from "./org2CloudSyncLifecycle";
 import {
   SessionSharedFileRetry,
   sharedFileRetryScope,
@@ -67,12 +69,22 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
   private readonly sharedFileJobs = new Set<ReplayFileJob>();
   protected sharedFileGeneration = 0;
   private sharedFileDiagnosticAt = -Infinity;
+  private sharedFilePassDeferred = false;
+
+  constructor(
+    getStore: () => CloudStore | null,
+    client: Org2CloudSyncClientDeps,
+    private readonly onSharedFileCapacityAvailable: () => void = () => undefined
+  ) {
+    super(getStore, client);
+  }
 
   override reset(): void {
     super.reset();
     this.sharedFileGeneration++;
     this.sharedFileRetry.reset();
     this.sharedFileDiagnosticAt = -Infinity;
+    this.sharedFilePassDeferred = false;
     for (const job of this.sharedFileJobs) job.controller.abort();
   }
 
@@ -133,6 +145,8 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
     )
       deferredReason = "in-flight";
     if (deferredReason) {
+      if (deferredReason === "capacity" || deferredReason === "in-flight")
+        this.sharedFilePassDeferred = true;
       this.noteSharedFileDeferral(deferredReason);
       return;
     }
@@ -217,6 +231,17 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
         } else this.noteSharedFileDeferral("cancelled");
       } finally {
         this.sharedFileJobs.delete(job);
+        // The engine is event-driven, not periodically polled. Resume work
+        // deferred by occupied slots through its existing coalescing owner.
+        // Only deferral (not every success/failure) spends a follow-up pass.
+        if (this.sharedFilePassDeferred) {
+          this.sharedFilePassDeferred = false;
+          if (
+            typeof document === "undefined" ||
+            document.visibilityState !== "hidden"
+          )
+            this.onSharedFileCapacityAvailable();
+        }
       }
     })();
   }

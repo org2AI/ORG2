@@ -8,17 +8,23 @@
 
 现在正文只调度附件任务，不等待任务完成。正文已经干净时，待补传标记只触发独立附件工作，不影响正文的增量读取策略。共享文件版本标记仍是原有持久游标字段，没有改变存储格式。只有任务捕获的游标仍是当前游标，任务才能将附件标记为完成；否则保持待补传，下一轮重新评估。
 
-任务由现有同步实例拥有，同时最多两个；没有新增轮询、定时器或内存等待队列。槽位用尽时保留持久待补传标记，由后续既有同步轮次重试。取消中的任务在实际结束前仍占槽，避免连续 reset 导致真实并发失控。配额冷却仍按组织执行。
+任务由现有同步实例拥有，同时最多两个；没有新增轮询、定时器或内存等待队列。槽位用尽时保留持久待补传标记；槽位释放且此前有工作被推迟时，通知现有串行引擎补一轮同步。没有被推迟的任务不触发新轮次，隐藏/停止后不主动唤醒。取消中的任务在实际结束前仍占槽，避免连续 reset 导致真实并发失控。配额冷却仍按组织执行。
 
 查找与上传 RPC 接受可选 AbortSignal。reset、会话撤回、降为仅元数据、组织/会话移出本机范围时取消任务；异步边界再次校验身份、端点、运行代次和可见性。隐藏窗口不启动新的附件工作，在途请求结束后不再读取或上传下一个文件。能力探测仍使用现有共享探测和 15 秒超时，不能因单个任务取消而中止其他消费者的探测；附件 RPC 保留 30 秒超时。本机历史/文件读取沿用现有 IPC，不能被 AbortSignal 中断；取消后仍占槽直至读取实际结束，之后不得发起网络上传。
 
 历史缺失正文/附件没有被删除或修改；原发布端升级后仍需补传验证。撤销请求无法撤回服务端已经完成的写入，最终权限仍由服务端 ACL 决定。
 
+## 补测发现：并发槽位释放后没有唤醒
+
+引擎没有周期轮询；之前假设“后续同步轮次自然会来”，导致第三个会话的待补传游标可能一直等到用户再次操作。新增真实引擎回归先在无唤醒版本复现失败（预期 3 次附件调用，实际 2 次），然后验证释放槽位自动排空 3/7 个会话。测试冻结 bootstrap/focus 定时器，等待真实异步摘要计算，既不推进时钟也不手动再调一次 pass，避免定时器造成假通过。
+
+修复在附件任务的 `finally` 释放槽位后通知现有引擎；引擎复用原有单飞/合并机制。持久游标仍是任务发现与完成的依据，一个布尔位只合并唤醒需求。新增停止/隐藏后的负向断言；没有数据清理或历史状态迁移。
+
 ## 十层架构检查
 
 | 层                | 覆盖范围                                       | 结果                                                                                       |
 | ----------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| 1 编译            | TypeScript、相关测试、lint                     | 见下方命令；未修改 Rust，不运行 Rust 检查                                                  |
+| 1 编译            | TypeScript、相关测试、lint                     | 见下方命令；未修改 Rust；为桌面 E2E 编译当前 Rust 与 sidecar                               |
 | 2 结构/重复       | 回放、评论、续聊用户输入、续聊输出的附件调用点 | 本次改回放调度；显式评论必须先有可用附件引用，续聊执行链保持原有行为，未宣称已统一所有入口 |
 | 3 命名            | scheduleReplaySharedFiles / sharedFileJobs     | 调度方法返回 void，正文不等待附件任务                                                      |
 | 4 语义            | 正文成功与附件完成                             | 两种状态独立；旧任务不能认证更新后的游标                                                   |
@@ -44,14 +50,31 @@
 | Cursor 导入入口   | 代表性原始 chunk fixture 追加            | 引擎轮次，非真实桌面             | 导入源 fixture → sender → RPC mock       | 冷却期正文仍增量，恢复后完整补传附件       | 通过；Rust 规范化为 mock，不宣称端到端摄取覆盖 |
 | 所有真实 provider | create/append/compact/rotate/delete      | 冷启动、活动窗口、隐藏、二次启动 | 隔离 A 上传 / B 接收与云端账本           | 正文及精确版本可读，无额外重写，资源释放   | not run                                        |
 
-可见/隐藏 idle CPU、RSS、真实网络故障及原发布端历史恢复没有运行证据。目前没有启动包含本补丁的隔离 sender/receiver 实例；按双实例验证方法仍需执行接收端正文读取、云端账本与生命周期检查。因此运行性能结论为 **Performance verdict: blocked**（缺少上述真实运行验证），不是已测通过或已发现性能失败。现有测试仅证明调度和资源数量约束。
+### 隔离桌面补测
+
+Core UI E2E 最终结果：**7 passing / 1 skipped**。两个独立桌面身份、数据目录、WebView 存储和端口，运行当前 Rust/sidecar 构建；测试云端为独立本机 PostgreSQL 数据库，应用 cloud-infra 0001–0033 迁移，经 PostgREST 与故障代理调用真实 SQL。认证使用测试 JWT，未运行 GoTrue/Realtime 服务；未写入生产。
+
+- A→B、B→A：规范化用户/agent 事件经生产分享、上传、侧栏打开和文件预览路径；接收端没有源文件，实际预览字节匹配。
+- 附件上传挂起：正文 sender pass 126 ms 返回，接收端正文及后续第三条事件均可见，附件请求仍在挂起。
+- 实际 SQL 的 1,000 文件条目配额：正文 pass 123 ms 返回，接收端正文及追加均可见；旧附件仍可预览。填充记录仅在专用测试组织中创建，并在 finally 清理。
+- 撤回共享后真实 RPC 拒绝文件读取，预览显示错误；恢复测试共享后继续。
+- 两个账户各两次冷启动：身份不串号，文件 ID 不变，接收端预览仍可读。每个场景前后检查整个测试数据库账本；旧行无删除/权限变化、事件数量不倒退、epoch 不增长，未发生重写风暴。
+- 可见与隐藏各 20 秒：两个原生进程 CPU 时间分别增加 0.01/0.03 秒、0.02/0.01 秒，RSS 约 167–206 MiB 且下降。仅测原生进程，**不包含 WebKit renderer**，不能代表整应用性能。
+
+补测也修正了两处测试观察问题：用户附件实际是 role=link 的 span；刷新列表是异步操作，必须等已提交的列表游标达到 3 再重新点击，不能用旧行触发回放。只读 E2E 检查增加 eventsCount，未注入导入状态或替换生产下载链路。
+
+运行环境的 webpack-dev-server 5 拒绝仓库当前 object 形式 proxy；本次用本地临时适配为数组启动，finally 恢复，未混入 PR。日志中保留无 Realtime 服务的 CHANNEL_ERROR、测试仓库远端不可用、故意缺失附件，以及快速场景切换产生的 orgtrack 高频读取警告；不声称无 WARN/ERROR。
+
+**Performance verdict: blocked**：调度边界、双端正文/文件及原生短时 idle 检查通过；完整 WebKit 资源、旧版本升级、原始 provider create/compact/rotate/delete、真实 Realtime 重连及原发布端历史恢复未覆盖。真实模型回答测试未启用，明确 skipped；不能把规范化事件 fixture 当作 provider 摄取或完整生命周期验证。
 
 全量历史补传仍可能读入大型会话；最多两个任务不等于字节级内存预算。持久分页 outbox、不可变文件快照、按字节预算管理及统一续聊附件 owner 仍属于设计后续实现。
 
 ## 验证命令
 
-- `pnpm exec vitest run --config config/vitest.config.ts src/features/Org2Cloud/org2CloudSessionSync src/features/Org2Cloud/org2CloudSyncEngine src/features/Org2Cloud/sessionSharedFile src/features/Org2Cloud/syncSessionSharedFiles.test.ts src/features/Org2Cloud/sharedSessionFilesClient.test.ts src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter`：22 个文件、249 条测试通过。
+- `pnpm exec vitest run --config config/vitest.config.ts src/features/Org2Cloud/org2CloudSessionSync src/features/Org2Cloud/org2CloudSyncEngine src/features/Org2Cloud/sessionSharedFile src/features/Org2Cloud/syncSessionSharedFiles.test.ts src/features/Org2Cloud/sharedSessionFilesClient.test.ts src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter`：22 个文件、253 条测试通过。
 - `pnpm typecheck:fast`：通过。
+- `CARGO_BUILD_JOBS=2 node scripts/tauri/prepare-sidecars.cjs --profile debug`：通过；WDIO 构建两个隔离身份的 `cargo build -p org2 --features webdriver`。
+- `cd tests/e2e && pnpm test -- --spec ./specs/core/cloud-dual-instance-ui.spec.mjs --mochaOpts.grep "Shared session files across two desktop accounts"`：本地隔离 fixture/端口/故障代理环境下 7 passing / 1 skipped；环境变量使用 `E2E_SHARED_FILES_FIXTURE`、`E2E_SHARED_FILES_ARTIFACTS`、`E2E_ISOLATED_RUN=1`、`E2E_PROVIDER_MODE=mock`。
 - 对本次八个 TypeScript 文件运行 `pnpm exec eslint <changed-ts-files> --max-warnings 0`，对四个生产文件运行 `pnpm exec oxlint -c src/.oxlintrc.json --max-warnings 0 <changed-production-files>`。
 - `pnpm check:circular`、`pnpm check:test-placement`、`git diff --check`，结果记录在 PR 中。
 

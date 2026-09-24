@@ -52,6 +52,7 @@ export async function resolveDevelopmentPairingUserId(
 export interface MobileRemoteDevelopmentRootProps {
   platform: MobileRemotePlatform;
   pairingUserId?: string;
+  demoView?: "sessions" | "chat" | "settings";
 }
 
 /**
@@ -61,6 +62,7 @@ export interface MobileRemoteDevelopmentRootProps {
 export function MobileRemoteDevelopmentRoot({
   platform,
   pairingUserId = DEVELOPMENT_PAIRING_USER_ID,
+  demoView = "sessions",
 }: MobileRemoteDevelopmentRootProps) {
   const [recoveredPairingIntent, setRecoveredPairingIntent] = useState(() =>
     platform.auth.captureInitialPairingIntent()
@@ -103,6 +105,14 @@ export function MobileRemoteDevelopmentRoot({
         <MobileRemoteApp
           authUserId={pairingUserId}
           recoveredPairingIntent={recoveredPairingIntent}
+          demoByDefault
+          initialNavigation={
+            demoView === "chat"
+              ? { screen: "chat", selectedSessionId: "fix-auth-tests" }
+              : demoView === "settings"
+                ? { screen: "sessions", activeTab: "settings" }
+                : undefined
+          }
         />
       </MobileAuthContext.Provider>
     </MobileRemotePlatformProvider>

@@ -14,7 +14,7 @@ import {
 } from "./MobileRemoteDevelopmentRoot";
 
 describe("MobileRemoteDevelopmentRoot", () => {
-  it("enters the shared Mobile Remote app without constructing an auth client", async () => {
+  it("enters demo mode without constructing an auth client", async () => {
     await i18nReady;
     i18n.addResourceBundle("en", "mobileRemote", enMobileRemote, true, true);
     await i18n.changeLanguage("en");
@@ -51,8 +51,8 @@ describe("MobileRemoteDevelopmentRoot", () => {
 
       await act(async () => finishRestore());
       expect(host.querySelector('[aria-busy="true"]')).toBeNull();
-      expect(host.textContent).toContain("Mobile Remote");
-      expect(host.textContent).toContain(enMobileRemote.welcome.scanQr);
+      expect(host.textContent).toContain("fix-auth-tests");
+      expect(host.textContent).not.toContain(enMobileRemote.welcome.scanQr);
       expect(host.textContent).not.toContain("Try demo");
       expect(createClient).not.toHaveBeenCalled();
     } finally {

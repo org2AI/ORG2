@@ -65,21 +65,21 @@ The existing sync engine owns transmission start/stop, one file slot, lease arbi
 
 ## Performance and verification matrix
 
-| Area            | Verdict | Evidence                                 | Change or reason kept                           | Verification                           |
-| --------------- | ------- | ---------------------------------------- | ----------------------------------------------- | -------------------------------------- |
-| Background work | fix     | Source read removed from delayed upload  | Existing worker owns retry; no new timers       | Worker lifecycle and retry tests       |
-| Memory          | keep    | One capture slot and 32 MiB source bound | Bounded read/base64; not whole-batch bytes      | Size/admission tests; real RSS pending |
-| Retained bytes  | fix     | 256 MiB local staging budget             | Transactional admission, release on leased ack  | Budget/no-eviction/release tests       |
-| Scope/isolation | keep    | Identity/org/root/path/revision key      | Stale leases cannot release another task        | Isolation and command tests            |
-| Hot path        | keep    | No streaming delta or UI changes         | Blocking capture/hash off async/render executor | Native tests; desktop latency pending  |
+| Area            | Verdict | Evidence                                 | Change or reason kept                           | Verification                                               |
+| --------------- | ------- | ---------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| Background work | fix     | Source read removed from delayed upload  | Existing worker owns retry; no new timers       | Worker lifecycle and retry tests                           |
+| Memory          | keep    | One capture slot and 32 MiB source bound | Bounded read/base64; not whole-batch bytes      | Size/admission tests; measured capture/read peak 463.1 MiB |
+| Retained bytes  | fix     | 256 MiB local staging budget             | Transactional admission, release on leased ack  | Budget/no-eviction/release tests                           |
+| Scope/isolation | keep    | Identity/org/root/path/revision key      | Stale leases cannot release another task        | Isolation and command tests                                |
+| Hot path        | keep    | No streaming delta or UI changes         | Blocking capture/hash off async/render executor | Native tests; 32 MiB capture 228–515 ms                    |
 
-| Provider                           | Raw transition                           | App/UI state             | Topology/boundary                       | Expected invariant                                         | Observed evidence                                |
-| ---------------------------------- | ---------------------------------------- | ------------------------ | --------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------ |
-| Normalized continuation            | Deliver, overwrite/delete, retry, reopen | Publisher/worker restart | Rust filesystem/SQLite and TS transport | Captured bytes remain identical; body finality independent | Focused native and frontend regression suite     |
-| ORG2/Claude/Codex original sources | create/append/compact/rotate/fork        | Live/old row/restart     | Real sender/cloud/receiver              | Correct capture and exact historical rendering             | not run; no provider compatibility extrapolation |
-| Native desktop lifecycle           | visible/hidden/close/reopen              | Actual Tauri process     | CPU/RSS and resources                   | Stable idle and resource release                           | pending authorization and isolated setup         |
+| Provider                           | Raw transition                           | App/UI state             | Topology/boundary                       | Expected invariant                                         | Observed evidence                                                 |
+| ---------------------------------- | ---------------------------------------- | ------------------------ | --------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| Normalized continuation            | Deliver, overwrite/delete, retry, reopen | Publisher/worker restart | Rust filesystem/SQLite and TS transport | Captured bytes remain identical; body finality independent | Focused native and frontend regression suite                      |
+| ORG2/Claude/Codex original sources | create/append/compact/rotate/fork        | Live/old row/restart     | Real sender/cloud/receiver              | Correct capture and exact historical rendering             | not run; no provider compatibility extrapolation                  |
+| Native desktop lifecycle           | visible/hidden/close/reopen              | Actual Tauri process     | CPU/RSS and resources                   | Stable idle and resource release                           | short macOS measurements collected; full acceptance still blocked |
 
-**Performance verdict: blocked** until real desktop and dual-instance evidence is collected. Unit tests are not a substitute for that acceptance. No production writes, extra desktop windows, or historical cleanup have been performed by this implementation stage.
+**Performance verdict: fail** for the wider multi-instance isolation invariant; **blocked** for complete snapshot memory/provider acceptance. The user subsequently authorized isolated desktop instances and test-organization writes. Real macOS publisher/native/cloud/recipient checks now pass in both directions, including attachment-only HTTP 503, source overwrite/deletion, repeated publication, byte release, and two cold boots per instance. Short visible/hidden CPU/RSS and 32 MiB capture measurements are recorded in the [desktop verification report](../verification-2026-09-24/ContinuationFileSnapshots.md). Seeded events do not prove real-provider continuation: live provider attempts were blocked, and capture/read peak memory remains an open investigation. The final effect audit found startup auth outside the fresh test accounts and a cross-home scratchpad cleanup boundary; both instances were stopped. These require a separate isolation fix. No production deployment, manual historical cleanup, or PR merge occurred.
 
 ## Compatibility and rollback
 

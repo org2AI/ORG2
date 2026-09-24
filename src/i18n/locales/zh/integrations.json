@@ -114,7 +114,12 @@
       "resetsAvailable_one": "{{count}}个可用重置",
       "resetsAvailable_few": "{{count}}个可用重置",
       "resetsAvailable_many": "{{count}}个可用重置",
-      "resetsAvailable_other": "{{count}}个可用重置"
+      "resetsAvailable_other": "{{count}}个可用重置",
+      "resetsExpire": "{{count}}个重置将于{{date}}过期",
+      "resetsExpire_one": "{{count}}个重置将于{{date}}过期",
+      "resetsExpire_few": "{{count}}个重置将于{{date}}过期",
+      "resetsExpire_many": "{{count}}个重置将于{{date}}过期",
+      "resetsExpire_other": "{{count}}个重置将于{{date}}过期"
     },
     "health": {
       "cloudListingInvalid": "云端列表无效",

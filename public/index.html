@@ -373,7 +373,41 @@
           }
         }
 
-        var timerId = setTimeout(showStartupError, WATCHDOG_MS);
+        // One visibility-aware deadline owner for both pre-bundle and React
+        // startup. Hidden WebViews can suspend rAF; hidden time is not failure.
+        window.__ORGII_VISIBLE_STARTUP_TIMEOUT__ = function (callback, delay) {
+          var remaining = delay;
+          var startedAt = null;
+          var timer = null;
+          var stopped = false;
+          function cancel() {
+            stopped = true;
+            if (timer !== null) clearTimeout(timer);
+            timer = null;
+            document.removeEventListener("visibilitychange", update);
+          }
+          function update() {
+            if (stopped) return;
+            if (timer !== null) clearTimeout(timer);
+            timer = null;
+            if (startedAt !== null) {
+              remaining = Math.max(0, remaining - (performance.now() - startedAt));
+              startedAt = null;
+            }
+            if (document.visibilityState === "hidden") return;
+            startedAt = performance.now();
+            timer = setTimeout(function () {
+              if (stopped) return;
+              if (document.visibilityState === "hidden") { update(); return; }
+              cancel();
+              callback();
+            }, remaining);
+          }
+          document.addEventListener("visibilitychange", update);
+          update();
+          return cancel;
+        };
+        var cancelWatchdog = window.__ORGII_VISIBLE_STARTUP_TIMEOUT__(showStartupError, WATCHDOG_MS);
 
         // Called by the React first-paint path once the app is alive, and by
         // the reload circuit-breaker when it takes over the splash itself.
@@ -382,7 +416,7 @@
           if (diagnosticProbeTimerId !== null) {
             clearTimeout(diagnosticProbeTimerId);
           }
-          clearTimeout(timerId);
+          cancelWatchdog();
         };
 
         // Expose the panel so the bundle's circuit-breakers can reuse it.

@@ -56,6 +56,13 @@ vi.mock("@src/hooks/keyVault/accountQuotaDisplay", () => ({
       accountName: index === 0 ? "Codex account" : `Account ${index + 1}`,
       accountPlan: "Plus",
       quotaMessage: index === 0 ? "3 resets available" : null,
+      quotaMessageDetails:
+        index === 0
+          ? [
+              "1 reset expires Oct 4, 5:38 AM",
+              "2 resets expire Oct 22, 9:00 PM",
+            ]
+          : [],
       modelType: "codex",
       metrics: [
         ...(index === 0
@@ -326,8 +333,34 @@ describe("StartPageQuotaGrid", () => {
 
 it("renders provider reset-credit details", () => {
   const html = renderToStaticMarkup(createElement(StartPageQuotaGrid));
-  expect(html).toContain(" · 3 resets available");
+  expect(html).toMatch(
+    / · <span title="" class="cursor-help[^"]*">3 resets available<\/span>/
+  );
   expect(html).not.toContain("tag-pill");
+});
+
+it("shows reset expiries in a tooltip on hover", () => {
+  vi.useFakeTimers();
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  try {
+    act(() => root.render(createElement(StartPageQuotaGrid)));
+    const trigger = Array.from(container.querySelectorAll("span")).find(
+      (span) => span.textContent === "3 resets available"
+    )!;
+    act(() => {
+      trigger.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    });
+    act(() => vi.advanceTimersByTime(600));
+    const tooltip = document.querySelector<HTMLElement>(".native-tooltip");
+    expect(tooltip?.textContent).toContain("1 reset expires Oct 4, 5:38 AM");
+    expect(tooltip?.textContent).toContain("2 resets expire Oct 22, 9:00 PM");
+  } finally {
+    act(() => root.unmount());
+    container.remove();
+    vi.useRealTimers();
+  }
 });
 
 it("pages four cards at a time, clamps after removal, and resets on remount", () => {

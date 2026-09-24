@@ -4,16 +4,17 @@ import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MobileConnectionConfig } from "../connection/types";
+import type { MobileRemoteNavState } from "./mobileRemoteNavigation";
 import { useMobileRemoteCoordinator } from "./useMobileRemoteCoordinator";
 
 const mocks = vi.hoisted(() => ({
   stopSession: vi.fn(),
   disconnect: vi.fn(),
+  connection: { status: "disconnected", demoMode: false },
   connectionConfig: null as MobileConnectionConfig | null,
 }));
 vi.mock("../app", () => ({
   useMobileRemote: () => ({
-    connection: { status: "disconnected", demoMode: false },
     sessions: [],
     ...mocks,
   }),
@@ -28,8 +29,14 @@ describe("useMobileRemoteCoordinator", () => {
     IS_REACT_ACT_ENVIRONMENT?: boolean;
   };
   let previous: boolean | undefined;
-  function Probe({ intent = null }: { intent?: string | null }) {
-    const value = useMobileRemoteCoordinator(intent);
+  function Probe({
+    intent = null,
+    initialNavigation,
+  }: {
+    intent?: string | null;
+    initialNavigation?: Partial<MobileRemoteNavState>;
+  }) {
+    const value = useMobileRemoteCoordinator(intent, initialNavigation);
     renderedScreens.push(value.nav.screen);
     React.useEffect(() => {
       current = value;
@@ -41,6 +48,7 @@ describe("useMobileRemoteCoordinator", () => {
     environment.IS_REACT_ACT_ENVIRONMENT = true;
     mocks.stopSession.mockReset().mockResolvedValue(undefined);
     mocks.disconnect.mockReset().mockResolvedValue(undefined);
+    mocks.connection = { status: "disconnected", demoMode: false };
     mocks.connectionConfig = null;
     renderedScreens = [];
     container = document.createElement("div");
@@ -61,6 +69,29 @@ describe("useMobileRemoteCoordinator", () => {
   });
   it("keeps first-time devices on welcome", () => {
     expect(container.textContent).toBe("welcome");
+  });
+  it("opens sessions after the explicit demo bootstrap completes", () => {
+    mocks.connection = { status: "connected", demoMode: true };
+    act(() => root.render(React.createElement(Probe)));
+    expect(container.textContent).toBe("sessions");
+    expect(current.showTabBar).toBe(true);
+  });
+  it("opens an explicit demo destination without a navigation flash", () => {
+    act(() => root.unmount());
+    renderedScreens = [];
+    root = createRoot(container);
+    act(() =>
+      root.render(
+        React.createElement(Probe, {
+          initialNavigation: {
+            screen: "chat",
+            selectedSessionId: "fix-auth-tests",
+          },
+        })
+      )
+    );
+    expect(renderedScreens.at(-1)).toBe("chat");
+    expect(current.nav.selectedSessionId).toBe("fix-auth-tests");
   });
   it("does not treat a fresh pairing code as a restored device", () => {
     mocks.connectionConfig = {

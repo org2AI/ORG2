@@ -6,13 +6,15 @@ import type { MobileConnectionConfig } from "../connection/types";
 import { resolveMobileSessionTitle } from "../lib/sessionPresentation";
 import {
   type MobileRemoteNavAction,
+  type MobileRemoteNavState,
   createInitialMobileRemoteNavState,
   reduceMobileRemoteNav,
 } from "./mobileRemoteNavigation";
 
 /** Route intent owner; connection execution remains in ConnectingLiveBridge. */
 export function useMobileRemoteCoordinator(
-  recoveredPairingIntent: string | null
+  recoveredPairingIntent: string | null,
+  initialNavigation: Partial<MobileRemoteNavState> = {}
 ) {
   const {
     connection,
@@ -35,15 +37,15 @@ export function useMobileRemoteCoordinator(
   );
   const [storedNav, reduce] = useReducer(
     reduceMobileRemoteNav,
-    undefined,
+    initialNavigation,
     createInitialMobileRemoteNavState
   );
   // Project the restored route during render, before effects: no welcome-frame flash.
   const nav =
     storedNav.screen === "welcome" &&
     !recoveredPairingIntent &&
-    !connection.demoMode &&
-    (connection.status === "connected" ||
+    (connection.demoMode ||
+      connection.status === "connected" ||
       (connectionConfig && !connectionConfig.pairingCode))
       ? reduceMobileRemoteNav(storedNav, { type: "connecting_complete" })
       : storedNav;
@@ -89,9 +91,9 @@ export function useMobileRemoteCoordinator(
 
   useEffect(() => {
     if (
-      (connection.status === "connected" ||
+      (connection.demoMode ||
+        connection.status === "connected" ||
         (connectionConfig && !connectionConfig.pairingCode)) &&
-      !connection.demoMode &&
       !recoveredPairingIntent &&
       storedNav.screen === "welcome"
     ) {

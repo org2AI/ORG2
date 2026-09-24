@@ -25,6 +25,8 @@ const testState = vi.hoisted(() => ({
   revisionDraft: null as CanvasRevisionDraft | null,
 }));
 
+vi.mock("./useNewCanvasDraft", () => ({ useNewCanvasDraft: () => vi.fn() }));
+
 vi.mock("react-i18next", () => ({
   useTranslation: (...args: Parameters<typeof useTestTranslation>) =>
     useTestTranslation(...args),

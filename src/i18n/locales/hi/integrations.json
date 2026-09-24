@@ -116,7 +116,12 @@
       "resetsAvailable_one": "{{count}} रीसेट उपलब्ध",
       "resetsAvailable_few": "{{count}} रीसेट उपलब्ध",
       "resetsAvailable_many": "{{count}} रीसेट उपलब्ध",
-      "resetsAvailable_other": "{{count}} रीसेट उपलब्ध"
+      "resetsAvailable_other": "{{count}} रीसेट उपलब्ध",
+      "resetsExpire": "{{count}} रीसेट {{date}} को समाप्त होंगे",
+      "resetsExpire_one": "{{count}} रीसेट {{date}} को समाप्त होगा",
+      "resetsExpire_few": "{{count}} रीसेट {{date}} को समाप्त होंगे",
+      "resetsExpire_many": "{{count}} रीसेट {{date}} को समाप्त होंगे",
+      "resetsExpire_other": "{{count}} रीसेट {{date}} को समाप्त होंगे"
     },
     "health": {
       "cloudListingInvalid": "क्लाउड लिस्टिंग अमान्य",

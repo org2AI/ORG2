@@ -1,7 +1,8 @@
-import { getIdentifier } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
-import { appDataDir, resolve } from "@tauri-apps/api/path";
 import { LazyStore } from "@tauri-apps/plugin-store";
+
+import { typedInvoke } from "@src/api/tauri/rpc/invoke";
+import { serviceAuth } from "@src/api/tauri/rpc/procedures/serviceAuth";
 
 import {
   serializedCloudOwner,
@@ -16,8 +17,10 @@ import {
  *
  * Numbered secondary identifiers keep their own auth store. Only the dev
  * identity opts into the primary login; its other app data remains separate.
+ * A custom data home owns its auth file, even when the bundle ID is reused.
+ * Native resolves the location for every writer and reader. Custom homes do
+ * not migrate browser credentials, which may belong to a reused origin.
  */
-const SHARED_AUTH_STORE_PATH = "shared-service-auth.json";
 const SHARED_AUTH_SCHEMA_KEY = "__orgii_shared_auth_schema";
 const SHARED_AUTH_SCHEMA_VERSION = 2;
 
@@ -55,7 +58,12 @@ interface StringStorage {
   removeItem(key: string): void | Promise<void>;
 }
 
-let storePromise: Promise<LazyStore> | null = null;
+interface AuthStore {
+  sharedStore: LazyStore;
+  allowLegacyMigration: boolean;
+}
+
+let storePromise: Promise<AuthStore> | null = null;
 let operationQueue: Promise<void> = Promise.resolve();
 let initializePromise: Promise<void> | null = null;
 let synchronizePromise: Promise<void> | null = null;
@@ -137,19 +145,16 @@ function setLocalValue(key: string, value: string | undefined): void {
   }
 }
 
-function getStore(): Promise<LazyStore> {
+function getStore(): Promise<AuthStore> {
   storePromise ??= (async () => {
-    const identifier = await getIdentifier();
-    const storePath =
-      identifier === "org2ai.org2.dev"
-        ? await resolve(
-            await appDataDir(),
-            "..",
-            "org2ai.org2",
-            SHARED_AUTH_STORE_PATH
-          )
-        : SHARED_AUTH_STORE_PATH;
-    return new LazyStore(storePath, { defaults: {}, autoSave: false });
+    const profile = await typedInvoke(serviceAuth.getStorageProfile);
+    return {
+      sharedStore: new LazyStore(profile.path, {
+        defaults: {},
+        autoSave: false,
+      }),
+      allowLegacyMigration: profile.allowLegacyMigration,
+    };
   })().catch((error: unknown) => {
     // Startup can race native IPC availability. Preserve focus-return retry
     // instead of caching a rejected identity/path lookup for the whole app.
@@ -201,10 +206,10 @@ function writeCloudAuth(
   const transition = cloudTransition;
   const persisted = enqueueStoreOperation(async () => {
     const epoch = transition ? await transition.epoch : null;
-    const sharedStore = await getStore();
+    const { sharedStore, allowLegacyMigration } = await getStore();
     await reloadStore(sharedStore);
     const snapshot = await readStoreSnapshot(sharedStore);
-    await migrateLocalAuthOnce(sharedStore, snapshot);
+    if (allowLegacyMigration) await migrateLocalAuthOnce(sharedStore, snapshot);
     if (requireCurrentLocalValue && !currentMatches()) {
       throw new Error("Cloud auth write was superseded");
     }
@@ -326,10 +331,10 @@ async function initializeOrSynchronize(): Promise<void> {
   const generation = cloudWriteGeneration;
 
   await enqueueStoreOperation(async () => {
-    const sharedStore = await getStore();
+    const { sharedStore, allowLegacyMigration } = await getStore();
     await reloadStore(sharedStore);
     const snapshot = await readStoreSnapshot(sharedStore);
-    await migrateLocalAuthOnce(sharedStore, snapshot);
+    if (allowLegacyMigration) await migrateLocalAuthOnce(sharedStore, snapshot);
     // A focus read started before a local logout/account change must not
     // overwrite the new atom state while its durable write is queued.
     if (generation !== cloudWriteGeneration) return;
@@ -353,7 +358,12 @@ async function initializeOrSynchronize(): Promise<void> {
  * per-origin localStorage after a shared sign-out.
  */
 export function initializeSharedServiceAuthStorage(): Promise<void> {
-  initializePromise ??= initializeOrSynchronize();
+  initializePromise ??= initializeOrSynchronize().catch((error: unknown) => {
+    // Until native storage is resolved, browser credentials have no proven
+    // profile owner. Never let startup import them through its error fallback.
+    for (const key of MIRRORED_AUTH_KEYS) setLocalValue(key, undefined);
+    throw error;
+  });
   return initializePromise;
 }
 
@@ -380,7 +390,7 @@ export const sharedServiceAuthStorage: StringStorage = {
     if (!isTauri()) return localValue(key);
 
     return enqueueStoreOperation(async () => {
-      const sharedStore = await getStore();
+      const { sharedStore } = await getStore();
       await reloadStore(sharedStore);
       const value = await sharedStore.get<unknown>(key);
       return typeof value === "string" ? value : null;
@@ -399,10 +409,11 @@ export const sharedServiceAuthStorage: StringStorage = {
     }
 
     await enqueueStoreOperation(async () => {
-      const sharedStore = await getStore();
+      const { sharedStore, allowLegacyMigration } = await getStore();
       await reloadStore(sharedStore);
       const snapshot = await readStoreSnapshot(sharedStore);
-      await migrateLocalAuthOnce(sharedStore, snapshot);
+      if (allowLegacyMigration)
+        await migrateLocalAuthOnce(sharedStore, snapshot);
       await sharedStore.set(key, value);
       await sharedStore.save();
     });
@@ -420,10 +431,11 @@ export const sharedServiceAuthStorage: StringStorage = {
     }
 
     await enqueueStoreOperation(async () => {
-      const sharedStore = await getStore();
+      const { sharedStore, allowLegacyMigration } = await getStore();
       await reloadStore(sharedStore);
       const snapshot = await readStoreSnapshot(sharedStore);
-      await migrateLocalAuthOnce(sharedStore, snapshot);
+      if (allowLegacyMigration)
+        await migrateLocalAuthOnce(sharedStore, snapshot);
       await sharedStore.delete(key);
       await sharedStore.save();
     });
@@ -464,5 +476,4 @@ export const __SHARED_AUTH_STORAGE_INTERNALS = {
   MIRRORED_AUTH_KEYS,
   SHARED_AUTH_SCHEMA_KEY,
   SHARED_AUTH_SCHEMA_VERSION,
-  SHARED_AUTH_STORE_PATH,
 };

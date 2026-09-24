@@ -6,8 +6,10 @@ import { CLI_AGENT } from "@src/api/tauri/rpc/schemas/validationEnums";
 import Button from "@src/components/Button";
 import Dropdown from "@src/components/Dropdown";
 import DropdownHeader from "@src/components/Dropdown/DropdownHeader";
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import Message from "@src/components/Message";
 import type { AvailableAgent } from "@src/config/cliAgents/types";
+import { HugeiconsIcon, PlayIcon } from "@src/icons";
 import { TerminalService } from "@src/services/terminal/TerminalService";
 import { terminalSessionsAtom } from "@src/store/workstation/codeEditor/terminal";
 import { openLink } from "@src/util/ui/openLink";
@@ -97,14 +99,25 @@ function UpgradeAction({
     Message.error(t("creator.cliVersionOutdated.upgradeFailed"));
   };
 
+  const hint = t("creator.cliVersionOutdated.upgradeHint", {
+    cli: agent.displayName,
+  });
   const button = (
     <Button
-      variant="secondary"
+      variant="tertiary"
+      tone="primary"
       size="small"
+      iconOnly
+      icon={
+        <HugeiconsIcon
+          icon={PlayIcon}
+          data-icon="play"
+          size={14}
+          strokeWidth={1.8}
+        />
+      }
       loading={state.phase === "opening"}
-      title={t("creator.cliVersionOutdated.upgradeHint", {
-        cli: agent.displayName,
-      })}
+      aria-label={t("creator.cliVersionOutdated.upgrade")}
       onClick={
         selfUpdate
           ? () => {
@@ -117,60 +130,60 @@ function UpgradeAction({
       aria-haspopup={selfUpdate ? undefined : "menu"}
       aria-expanded={selfUpdate ? undefined : menuOpen}
       data-testid="session-creator-cli-version-upgrade"
-    >
-      {t("creator.cliVersionOutdated.upgrade")}
-    </Button>
+    />
   );
-  if (selfUpdate) return button;
+  if (selfUpdate) return <ToolbarTooltip label={hint}>{button}</ToolbarTooltip>;
 
   // Path-based installedVia is a heuristic (pipx/uv/pnpm may look like pip/npm).
   // Ask for the original installer instead of silently changing package managers.
   return (
-    <Dropdown
-      popupVisible={menuOpen}
-      disabled={state.phase === "opening"}
-      onVisibleChange={(open) => {
-        if (open && focusExistingTerminal()) return;
-        setMenuOpen(open);
-      }}
-      options={[
-        ...methods.map(({ id, label }) => ({
-          value: id,
-          label:
-            id === "native"
-              ? t("creator.cliVersionOutdated.upgradeNative")
-              : label,
-          dataTestId: `cli-upgrade-method-${id}`,
-        })),
-        ...(agent.docsUrl
-          ? [
-              {
-                value: "docs",
-                label: t("creator.cliVersionOutdated.upgradeDocs"),
-              },
-            ]
-          : []),
-      ]}
-      dropdownRender={(menu) => (
-        <>
-          <DropdownHeader>
-            {t("creator.cliVersionOutdated.upgradeChooseMethod")}
-          </DropdownHeader>
-          {menu}
-        </>
-      )}
-      onSelect={(id) => {
-        setMenuOpen(false);
-        if (id === "docs" && agent.docsUrl) {
-          openLink(agent.docsUrl);
-          return;
-        }
-        const method = methods.find((method) => method.id === id);
-        if (method)
-          openUpgradeTerminal(method.command).catch(handleUpgradeFailure);
-      }}
-    >
-      {button}
-    </Dropdown>
+    <ToolbarTooltip label={hint} disabled={menuOpen}>
+      <Dropdown
+        popupVisible={menuOpen}
+        disabled={state.phase === "opening"}
+        onVisibleChange={(open) => {
+          if (open && focusExistingTerminal()) return;
+          setMenuOpen(open);
+        }}
+        options={[
+          ...methods.map(({ id, label }) => ({
+            value: id,
+            label:
+              id === "native"
+                ? t("creator.cliVersionOutdated.upgradeNative")
+                : label,
+            dataTestId: `cli-upgrade-method-${id}`,
+          })),
+          ...(agent.docsUrl
+            ? [
+                {
+                  value: "docs",
+                  label: t("creator.cliVersionOutdated.upgradeDocs"),
+                },
+              ]
+            : []),
+        ]}
+        dropdownRender={(menu) => (
+          <>
+            <DropdownHeader>
+              {t("creator.cliVersionOutdated.upgradeChooseMethod")}
+            </DropdownHeader>
+            {menu}
+          </>
+        )}
+        onSelect={(id) => {
+          setMenuOpen(false);
+          if (id === "docs" && agent.docsUrl) {
+            openLink(agent.docsUrl);
+            return;
+          }
+          const method = methods.find((method) => method.id === id);
+          if (method)
+            openUpgradeTerminal(method.command).catch(handleUpgradeFailure);
+        }}
+      >
+        {button}
+      </Dropdown>
+    </ToolbarTooltip>
   );
 }

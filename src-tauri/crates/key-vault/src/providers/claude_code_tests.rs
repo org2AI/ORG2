@@ -68,7 +68,7 @@ fn reset_credits_at(program: serde_json::Value) -> Option<String> {
     let now = DateTime::parse_from_rfc3339("2026-09-24T12:00:00Z")
         .unwrap()
         .with_timezone(&Utc);
-    format_limit_reset_credits(&program, now)
+    limit_reset_credits(&program, now).map(|credits| credits.summary())
 }
 
 #[test]
@@ -96,6 +96,47 @@ fn surfaces_banked_limit_resets_from_usage_response() {
     assert_eq!(
         quota.named_message.as_deref(),
         Some("Reset credits available: 2, next expires 2099-01-01T00:00:00Z")
+    );
+    assert_eq!(
+        quota.reset_credits,
+        Some(crate::types::QuotaResetCredits {
+            available: 2,
+            expirations: vec![crate::types::QuotaResetExpiry {
+                count: 2,
+                expires_at: "2099-01-01T00:00:00Z".to_string(),
+            }],
+        })
+    );
+}
+
+#[test]
+fn groups_limit_reset_expiries_earliest_first() {
+    let now = DateTime::parse_from_rfc3339("2026-09-24T12:00:00Z")
+        .unwrap()
+        .with_timezone(&Utc);
+    let credits = limit_reset_credits(
+        &serde_json::json!({
+            "eligible": true,
+            "grants": [
+                { "resets_left": 1, "ends_at": "2026-10-22T21:00:00Z" },
+                { "resets_left": 2, "ends_at": "2026-10-04T05:38:00Z" },
+                { "resets_left": 1, "ends_at": "2026-10-04T13:38:00+08:00" },
+                { "resets_left": 1 }
+            ]
+        }),
+        now,
+    )
+    .unwrap();
+
+    assert_eq!(credits.available, 5);
+    let expirations: Vec<(u64, &str)> = credits
+        .expirations
+        .iter()
+        .map(|expiry| (expiry.count, expiry.expires_at.as_str()))
+        .collect();
+    assert_eq!(
+        expirations,
+        vec![(3, "2026-10-04T05:38:00Z"), (1, "2026-10-22T21:00:00Z")]
     );
 }
 

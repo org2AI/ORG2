@@ -113,7 +113,12 @@
       "resetsAvailable_one": "リセット可能回数：{{count}}回",
       "resetsAvailable_few": "リセット可能回数：{{count}}回",
       "resetsAvailable_many": "リセット可能回数：{{count}}回",
-      "resetsAvailable_other": "リセット可能回数：{{count}}回"
+      "resetsAvailable_other": "リセット可能回数：{{count}}回",
+      "resetsExpire": "{{count}}回分のリセットが{{date}}に期限切れ",
+      "resetsExpire_one": "{{count}}回分のリセットが{{date}}に期限切れ",
+      "resetsExpire_few": "{{count}}回分のリセットが{{date}}に期限切れ",
+      "resetsExpire_many": "{{count}}回分のリセットが{{date}}に期限切れ",
+      "resetsExpire_other": "{{count}}回分のリセットが{{date}}に期限切れ"
     },
     "health": {
       "cloudListingInvalid": "クラウドリスティング無効",

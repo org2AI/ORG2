@@ -33,6 +33,13 @@ export const QuotaBalanceSchema = z.object({
   currency: z.string(),
 });
 
+export const QuotaResetCreditsSchema = z.object({
+  available: z.number(),
+  expirations: z
+    .array(z.object({ count: z.number(), expires_at: z.string() }))
+    .default([]),
+});
+
 export const QuotaInfoSchema = z.object({
   remaining_percentage: z.number(),
   used: z.number().nullable(),
@@ -46,6 +53,7 @@ export const QuotaInfoSchema = z.object({
   quota_source: z.string().nullable(),
   usage_items: z.array(UsageItemSchema),
   balance: QuotaBalanceSchema.nullable().optional(),
+  reset_credits: QuotaResetCreditsSchema.nullable().optional(),
   auto_message: z.string().nullable(),
   named_message: z.string().nullable(),
 });

@@ -4,8 +4,10 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::providers::quota_windows::{normalize_reset_time, quota_from_windows, QuotaWindow};
-use crate::types::QuotaInfo;
+use crate::providers::quota_windows::{
+    group_reset_expiries, normalize_reset_time, quota_from_windows, QuotaWindow,
+};
+use crate::types::{QuotaInfo, QuotaResetCredits};
 
 const OAUTH_USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 // Claude Code sends these to opt into the banked limit-reset program
@@ -220,17 +222,22 @@ fn quota_from_usage_response(response: OAuthUsageResponse, now: DateTime<Utc>) -
     }
 
     let mut quota = quota_from_windows("claude_code", "oauth_usage", windows);
-    quota.named_message = response
+    if let Some(credits) = response
         .cedar_ember
         .as_ref()
-        .and_then(|program| format_limit_reset_credits(program, now));
+        .and_then(|program| limit_reset_credits(program, now))
+    {
+        quota.set_reset_credits(credits);
+    }
     quota
 }
 
-/// Summarizes banked limit resets in the message format shared with Codex
-/// reset credits. Returns `None` when the account is ineligible or the program
-/// is absent: unknown is not zero.
-fn format_limit_reset_credits(program: &serde_json::Value, now: DateTime<Utc>) -> Option<String> {
+/// Summarizes banked limit resets. Returns `None` when the account is
+/// ineligible or the program is absent: unknown is not zero.
+fn limit_reset_credits(
+    program: &serde_json::Value,
+    now: DateTime<Utc>,
+) -> Option<QuotaResetCredits> {
     let eligible = program.get("eligible").and_then(serde_json::Value::as_bool);
     if eligible == Some(false) {
         return None;
@@ -242,7 +249,7 @@ fn format_limit_reset_credits(program: &serde_json::Value, now: DateTime<Utc>) -
     };
 
     let mut available: u64 = 0;
-    let mut next_expiry: Option<DateTime<Utc>> = None;
+    let mut expiries = Vec::new();
     for grant in grants {
         let resets_left = grant
             .get("resets_left")
@@ -264,17 +271,13 @@ fn format_limit_reset_credits(program: &serde_json::Value, now: DateTime<Utc>) -
         }
         available = available.saturating_add(resets_left);
         if let Some(ends) = ends_at {
-            next_expiry = Some(next_expiry.map_or(ends, |current| current.min(ends)));
+            expiries.push((ends, resets_left));
         }
     }
 
-    let summary = format!("Reset credits available: {available}");
-    Some(match next_expiry {
-        Some(expires_at) => format!(
-            "{summary}, next expires {}",
-            expires_at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-        ),
-        None => summary,
+    Some(QuotaResetCredits {
+        available,
+        expirations: group_reset_expiries(expiries),
     })
 }
 

@@ -113,7 +113,12 @@
       "resetsAvailable_one": "{{count}} sıfırlama kullanılabilir",
       "resetsAvailable_few": "{{count}} sıfırlama kullanılabilir",
       "resetsAvailable_many": "{{count}} sıfırlama kullanılabilir",
-      "resetsAvailable_other": "{{count}} sıfırlama kullanılabilir"
+      "resetsAvailable_other": "{{count}} sıfırlama kullanılabilir",
+      "resetsExpire": "{{count}} sıfırlamanın süresi {{date}} tarihinde doluyor",
+      "resetsExpire_one": "{{count}} sıfırlamanın süresi {{date}} tarihinde doluyor",
+      "resetsExpire_few": "{{count}} sıfırlamanın süresi {{date}} tarihinde doluyor",
+      "resetsExpire_many": "{{count}} sıfırlamanın süresi {{date}} tarihinde doluyor",
+      "resetsExpire_other": "{{count}} sıfırlamanın süresi {{date}} tarihinde doluyor"
     },
     "health": {
       "cloudListingInvalid": "Bulut listesi geçersiz",

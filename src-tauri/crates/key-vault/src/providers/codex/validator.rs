@@ -6,12 +6,14 @@ use super::app_server::{
 };
 use super::id_token::extract_account_id_from_id_token;
 use super::model_discovery::parse_codex_models_response;
-use super::quota::quota_from_usage_json;
+use super::quota::{quota_from_usage_json, reset_credits_from_list_json};
 use crate::providers::openai::OpenAIValidator;
 use crate::types::{DiscoveredModel, QuotaInfo, ValidationResult};
 
 /// ChatGPT usage API endpoint
 const USAGE_API_URL: &str = "https://chatgpt.com/backend-api/wham/usage";
+/// Lists each reset credit with its own expiry; the usage API only has counts.
+const RESET_CREDITS_API_URL: &str = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits";
 const CODEX_MODELS_API_URL: &str = "https://chatgpt.com/backend-api/codex/models";
 const CODEX_MODELS_CLIENT_VERSION: &str = "0.124.0";
 const CODEX_USER_AGENT: &str = "codex_cli_rs/0.124.0 (orgii, cli)";
@@ -287,9 +289,48 @@ impl CodexValidator {
             .await
             .map_err(|err| format!("Codex usage API parse failed: {err}"))?;
 
-        quota_from_usage_json(&data).ok_or_else(|| {
+        let mut quota = quota_from_usage_json(&data).ok_or_else(|| {
             "Codex usage API response did not include primary or secondary windows".to_string()
-        })
+        })?;
+
+        // Only look up expiries when there is something to expire.
+        if quota
+            .reset_credits
+            .as_ref()
+            .is_some_and(|credits| credits.available > 0)
+        {
+            match self.fetch_reset_credits(token).await {
+                Ok(credits) => quota.set_reset_credits(credits),
+                Err(err) => log::warn!(
+                    "[CodexQuota] Reset credit expiry lookup failed ({err}); keeping the count only"
+                ),
+            }
+        }
+        Ok(quota)
+    }
+
+    async fn fetch_reset_credits(
+        &self,
+        token: &str,
+    ) -> Result<crate::types::QuotaResetCredits, String> {
+        let response = reqwest::Client::new()
+            .get(RESET_CREDITS_API_URL)
+            .header("Authorization", format!("Bearer {token}"))
+            .header("Accept", "application/json")
+            .timeout(self.timeout)
+            .send()
+            .await
+            .map_err(|err| format!("request failed: {err}"))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(format!("HTTP {}", status.as_u16()));
+        }
+        let data = response
+            .json::<serde_json::Value>()
+            .await
+            .map_err(|err| format!("parse failed: {err}"))?;
+        reset_credits_from_list_json(&data, chrono::Utc::now())
+            .ok_or_else(|| "response did not include a credits list".to_string())
     }
 
     pub async fn fetch_app_server_quota(

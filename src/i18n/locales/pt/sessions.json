@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Pedido do usuário",
+      "member_messages": "Mensagens recebidas",
+      "task_dispatch": "Tarefa atribuída",
+      "final_summary": "Relatório final"
+    },
+    "unknownSource": "Origem indisponível",
+    "legacyInbox": "Mensagens recebidas · origem indisponível",
+    "inboxSummary": "{{recipient}} recebeu {{count}} mensagens de {{senders}}",
+    "viewDetails": "Ver detalhes da execução",
+    "unavailable": "Detalhes da execução indisponíveis"
+  },
   "landedMessageEdit": {
     "title": "Enviar como nova mensagem?",
     "body": "Esta mensagem pertence a uma sessão de execução. Editá-la aqui não permite retroceder na conversa. Enviar este texto como nova mensagem no final? As mensagens e alterações de arquivos existentes serão mantidas.",

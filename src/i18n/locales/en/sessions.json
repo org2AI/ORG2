@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "User request",
+      "member_messages": "Inbox messages",
+      "task_dispatch": "Assigned task",
+      "final_summary": "Final report"
+    },
+    "unknownSource": "Source unavailable",
+    "legacyInbox": "Received messages · source unavailable",
+    "inboxSummary": "{{recipient}} received {{count}} messages from {{senders}}",
+    "viewDetails": "View execution details",
+    "unavailable": "Execution details unavailable"
+  },
   "landedMessageEdit": {
     "title": "Send as a new message?",
     "body": "This message belongs to an execution session. Editing it here cannot rewind the conversation. Send this text as a new message at the end instead? Existing messages and file changes will be kept.",

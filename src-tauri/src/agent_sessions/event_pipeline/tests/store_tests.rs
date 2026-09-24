@@ -2023,3 +2023,6 @@ fn real_generated_images_survive_initial_window_event_store() {
     store.set(events);
     assert_eq!(count(store.events()), 4, "hydrated event store");
 }
+
+#[path = "execution_window_tests.rs"]
+mod execution_window_tests;

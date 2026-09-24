@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "用户请求",
+      "member_messages": "收到消息",
+      "task_dispatch": "分配的任务",
+      "final_summary": "最终总结"
+    },
+    "unknownSource": "来源信息缺失",
+    "legacyInbox": "收到消息 · 来源信息缺失",
+    "inboxSummary": "{{recipient}} 收到 {{count}} 条消息，来自 {{senders}}",
+    "viewDetails": "查看执行详情",
+    "unavailable": "无法定位执行详情"
+  },
   "landedMessageEdit": {
     "title": "作为新消息发送？",
     "body": "这条消息来自执行会话，无法在此编辑并回退对话。是否改为将这段文字作为新消息发送到对话末尾？现有消息和文件更改都会保留。",

@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Benutzeranfrage",
+      "member_messages": "Eingegangene Nachrichten",
+      "task_dispatch": "Zugewiesene Aufgabe",
+      "final_summary": "Abschlussbericht"
+    },
+    "unknownSource": "Quelle unbekannt",
+    "legacyInbox": "Empfangene Nachrichten · Quelle unbekannt",
+    "inboxSummary": "{{recipient}} erhielt {{count}} Nachrichten von {{senders}}",
+    "viewDetails": "Ausführungsdetails anzeigen",
+    "unavailable": "Ausführungsdetails nicht verfügbar"
+  },
   "landedMessageEdit": {
     "title": "Als neue Nachricht senden?",
     "body": "Diese Nachricht gehört zu einer Ausführungssitzung. Durch Bearbeiten an dieser Stelle lässt sich die Unterhaltung nicht zurücksetzen. Diesen Text stattdessen als neue Nachricht am Ende senden? Vorhandene Nachrichten und Dateiänderungen bleiben erhalten.",

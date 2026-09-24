@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "使用者請求",
+      "member_messages": "收到訊息",
+      "task_dispatch": "指派的任務",
+      "final_summary": "最終總結"
+    },
+    "unknownSource": "缺少來源資訊",
+    "legacyInbox": "收到訊息 · 缺少來源資訊",
+    "inboxSummary": "{{recipient}} 收到 {{count}} 則訊息，來自 {{senders}}",
+    "viewDetails": "查看執行詳情",
+    "unavailable": "無法定位執行詳情"
+  },
   "landedMessageEdit": {
     "title": "作為新訊息傳送？",
     "body": "這則訊息來自執行工作階段，無法在此編輯並回退對話。是否改為將這段文字作為新訊息傳送到對話末尾？現有訊息和檔案變更都會保留。",

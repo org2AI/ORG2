@@ -728,7 +728,7 @@ pub(crate) fn cached_event_to_session_event(cached: &sqlite_cache::CachedEvent) 
 
     let meta_obj = meta.as_object();
 
-    let args: serde_json::Value = match serde_json::from_str(&cached.args_json) {
+    let mut args: serde_json::Value = match serde_json::from_str(&cached.args_json) {
         Ok(v) => normalize_event_record_value(v),
         Err(err) => {
             tracing::warn!(
@@ -885,6 +885,12 @@ pub(crate) fn cached_event_to_session_event(cached: &sqlite_cache::CachedEvent) 
         .and_then(|v| v.as_str())
         .map(String::from)
         .unwrap_or_else(|| resolve_ui_canonical(&function_name));
+
+    if args.get("agentOrgExecution").is_some() || result.get("agentOrgExecution").is_some() {
+        if let (Some(sequence), Some(args)) = (cached.history_sequence, args.as_object_mut()) {
+            args.insert("historySequence".to_string(), serde_json::json!(sequence));
+        }
+    }
 
     let mut event = SessionEvent {
         id: cached.id.clone(),

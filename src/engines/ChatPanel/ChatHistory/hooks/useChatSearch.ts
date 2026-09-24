@@ -22,6 +22,7 @@ import {
   chatSearchSyncAtomFamily,
 } from "@src/store/ui/chatPanel/miscAtoms";
 
+import { agentOrgExecutionNavigationAtom } from "../agentOrgExecutionNavigation";
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
 import type { ChatHistoryListHandle } from "../components/ChatHistoryList";
 import {
@@ -188,6 +189,11 @@ export function useChatSearch(
   const pendingScrollResultRef = useRef<SearchResult | null>(null);
   const pendingScrollNeedsLayoutRef = useRef(false);
 
+  const [executionNavigation, setExecutionNavigation] = useAtom(
+    agentOrgExecutionNavigationAtom
+  );
+  const preparedExecutionNavigationRef =
+    useRef<typeof executionNavigation>(null);
   const { navigateToEvent } = useEventNavigation();
   const { setTurnCollapseOverrideAtom, setCollapseStateAtom } =
     useChatCollapseState();
@@ -329,6 +335,70 @@ export function useChatSearch(
       finishPendingScroll(result);
     });
   }, [currentPageIndex, finishPendingScroll, flatItems, groupCounts]);
+
+  useEffect(() => {
+    if (!executionNavigation || executionNavigation.sessionId !== sessionId) {
+      preparedExecutionNavigationRef.current = null;
+      return;
+    }
+    const groupIndex = groupMeta.findIndex(
+      (meta) =>
+        meta.execution?.turnIntentId === executionNavigation.turnIntentId
+    );
+    if (groupIndex < 0) return;
+    const targetPage = pages.findIndex(
+      (page) =>
+        page.startGroupIndex <= groupIndex && page.endGroupIndex >= groupIndex
+    );
+    if (turnPaginationEnabled && targetPage < 0) return;
+    if (
+      turnPaginationEnabled &&
+      targetPage >= 0 &&
+      targetPage !== currentPageIndex
+    ) {
+      setTurnPageSelection({ sessionId, pageIndex: targetPage });
+      return;
+    }
+    if (preparedExecutionNavigationRef.current !== executionNavigation) {
+      preparedExecutionNavigationRef.current = executionNavigation;
+      setTurnCollapseOverride({
+        turnId: `agent-org-execution-${executionNavigation.turnIntentId}`,
+        collapsed: false,
+      });
+    }
+    // Execution anchors belong to group headers, not searchable body items.
+    // Wait for the expanded page layout, then use the same group navigation
+    // as the minimap, including executions with no inbox or body event.
+    const frame = window.requestAnimationFrame(() => {
+      if (!virtualListRef.current) return;
+      // Detach in the same frame as the actual movement. Detaching during
+      // preparation lets the viewport capture the old position first, then
+      // restore it when the expanded content reports its new size.
+      onExplicitNavigation();
+      virtualListRef.current.scrollToGroup({
+        groupIndex: turnPaginationEnabled
+          ? groupIndex - pages[currentPageIndex].startGroupIndex
+          : groupIndex,
+        behavior: "auto",
+      });
+      setExecutionNavigation(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    executionNavigation,
+    sessionId,
+    flatItems,
+    groupCounts,
+    onExplicitNavigation,
+    virtualListRef,
+    setExecutionNavigation,
+    groupMeta,
+    pages,
+    turnPaginationEnabled,
+    currentPageIndex,
+    setTurnPageSelection,
+    setTurnCollapseOverride,
+  ]);
 
   const performSearch = useCallback(
     async (

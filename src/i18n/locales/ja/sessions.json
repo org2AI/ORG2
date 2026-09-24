@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "ユーザーの依頼",
+      "member_messages": "受信メッセージ",
+      "task_dispatch": "割り当てられたタスク",
+      "final_summary": "最終レポート"
+    },
+    "unknownSource": "送信元情報なし",
+    "legacyInbox": "受信メッセージ · 送信元情報なし",
+    "inboxSummary": "{{recipient}} が {{senders}} から {{count}} 件のメッセージを受信",
+    "viewDetails": "実行の詳細を表示",
+    "unavailable": "実行の詳細を特定できません"
+  },
   "landedMessageEdit": {
     "title": "新しいメッセージとして送信しますか？",
     "body": "このメッセージは実行セッションに属します。ここで編集しても会話を巻き戻せません。代わりに会話の末尾へ新しいメッセージとして送信しますか？既存のメッセージとファイルの変更は保持されます。",

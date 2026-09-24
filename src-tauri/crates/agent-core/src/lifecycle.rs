@@ -279,6 +279,11 @@ async fn persist_session_error_event_for_intent(
         event.id = format!("session-error-{session_id}-turn-{intent_id}");
         event.chunk_id = Some(event.id.clone());
         event.result["turnIntentId"] = serde_json::Value::String(intent_id.to_owned());
+        if let Ok(execution) =
+            crate::coordination::agent_org_history::execution(session_id, intent_id)
+        {
+            event.args["agentOrgExecution"] = serde_json::json!(execution);
+        }
     }
 
     // Lifecycle errors are terminal user-visible facts, not high-frequency

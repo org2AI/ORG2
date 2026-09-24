@@ -33,6 +33,14 @@ import zhSessions from "@src/i18n/locales/zh/sessions.json";
 
 import AgentOrgGroupProjectionView from "../AgentOrgGroupProjectionView";
 
+const historyCalls = vi.hoisted(() => ({ index: vi.fn(), load: vi.fn() }));
+vi.mock("@src/engines/SessionCore/storage/sqliteCache", () => ({
+  loadTurnIndex: historyCalls.index,
+}));
+vi.mock("@src/engines/SessionCore/turns", () => ({
+  loadSessionTurnBodyIntoStore: historyCalls.load,
+}));
+
 const sessionsLocales: Record<
   string,
   {
@@ -363,6 +371,41 @@ describe("AgentOrgGroupProjectionView", () => {
       );
     });
   };
+
+  it("opens only a verified execution through the rendered details action", async () => {
+    historyCalls.index.mockResolvedValue([
+      { execution: { turnIntentId: "turn-root" } },
+    ]);
+    historyCalls.load.mockResolvedValue(undefined);
+    await renderView();
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="agentOrgExecution.viewDetails"]'
+    );
+    expect(button).not.toBeNull();
+    await act(async () => button!.click());
+    expect(historyCalls.index).toHaveBeenCalledWith("root-session", [
+      "agent-org-execution-turn-root",
+    ]);
+    expect(historyCalls.load).toHaveBeenCalledWith({
+      sessionId: "root-session",
+      turnId: "agent-org-execution-turn-root",
+    });
+    expect(onExitGroup).toHaveBeenCalledOnce();
+    expect(onMemberSelect).toHaveBeenCalledWith(members[0]);
+  });
+
+  it("keeps the current conversation when the exact execution is missing", async () => {
+    historyCalls.index.mockResolvedValue([]);
+    await renderView();
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="agentOrgExecution.viewDetails"]'
+    );
+    await act(async () => button!.click());
+    expect(button?.textContent).toContain("agentOrgExecution.unavailable");
+    expect(onExitGroup).not.toHaveBeenCalled();
+    expect(onMemberSelect).not.toHaveBeenCalled();
+    expect(historyCalls.load).not.toHaveBeenCalled();
+  });
 
   it("renders Coordinator and Member facts together without leaking internal ids or failures", async () => {
     await renderView();

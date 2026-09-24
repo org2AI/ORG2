@@ -28,6 +28,22 @@ import {
   sendNewWorkAfterObsoleteWake,
 } from "./agentOrgWakeDriver.mjs";
 
+async function assertRenderedSummaryExecution(intent) {
+  await browser.waitUntil(
+    async () =>
+      execJS(`
+      return Array.from(document.querySelectorAll('[data-testid="agent-org-execution-header"]'))
+        .some(header => header.getAttribute('data-turn-intent-id') === ${JSON.stringify(intent)} &&
+          (header.textContent || '').includes('Final report'));
+    `),
+    {
+      timeout: 20000,
+      interval: 100,
+      timeoutMsg: `Summary execution ${intent} has no real history header`,
+    }
+  );
+}
+
 export async function runSummaryStopScenario(window, { postJson }) {
   if ((process.env.E2E_PROVIDER_MODE ?? "mock") !== "mock")
     throw new Error(
@@ -145,6 +161,7 @@ export async function runSummaryStopScenario(window, { postJson }) {
       timeoutMsg: "Report Stop left the rendered composer in its running state",
     }
   );
+  await assertRenderedSummaryExecution(first.turnIntentId);
   const stopEventId = `agent-org-${first.receiptId}`;
   if (
     rows(
@@ -228,6 +245,22 @@ export async function runSummaryStopScenario(window, { postJson }) {
       view?.runStatus === "idle",
     "same report survives application restart"
   );
+  await clickRenderedMemberSwitcher("coordinator", root);
+  await assertRenderedSummaryExecution(persisted.finalSummary.turnIntentId);
+  const historyAnchors = rows(
+    `SELECT args_json FROM events WHERE session_id=${literal(root)} AND id IN (${literal(`agent-org-execution-${first.turnIntentId}`)},${literal(`agent-org-execution-${persisted.finalSummary.turnIntentId}`)})`
+  );
+  if (
+    historyAnchors.length !== 2 ||
+    historyAnchors.some(
+      (row) =>
+        JSON.parse(row.args_json).agentOrgExecution?.sourceKind !==
+        "final_summary"
+    )
+  )
+    throw new Error(
+      "Stopped and retried summary executions lost their durable source identity"
+    );
   const folder = process.env.E2E_EVIDENCE_DIR;
   if (folder) {
     mkdirSync(folder, { recursive: true });

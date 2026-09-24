@@ -132,22 +132,26 @@ pub type PersistEventsFn = fn(
 pub type PersistEventsAsyncFn =
     fn(label: &'static str, session_id: String, events: Vec<SessionEvent>, max_retries: u32);
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PersistedUserMessageSource {
     User,
     /// A Coordinator user message whose only user-facing projection is the
     /// Team Group feed. The wire adapter persists the canonical EventStore
     /// row but must not publish it through the ordinary Session snapshot.
     AgentOrgGroupRoot,
-    AgentOrgInboxTranscript,
+    AgentOrgInboxTranscript(core_types::agent_org_history::AgentOrgExecution),
+    AgentOrgInput {
+        execution: core_types::agent_org_history::AgentOrgExecution,
+        existing_event_id: Option<String>,
+    },
 }
 
 impl PersistedUserMessageSource {
-    pub fn is_agent_org_inbox_transcript(self) -> bool {
-        matches!(self, Self::AgentOrgInboxTranscript)
+    pub fn is_agent_org_inbox_transcript(&self) -> bool {
+        matches!(self, Self::AgentOrgInboxTranscript(_))
     }
 
-    pub fn is_agent_org_group_root(self) -> bool {
+    pub fn is_agent_org_group_root(&self) -> bool {
         matches!(self, Self::AgentOrgGroupRoot)
     }
 }

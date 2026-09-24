@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Prośba użytkownika",
+      "member_messages": "Odebrane wiadomości",
+      "task_dispatch": "Przydzielone zadanie",
+      "final_summary": "Raport końcowy"
+    },
+    "unknownSource": "Źródło niedostępne",
+    "legacyInbox": "Odebrane wiadomości · źródło niedostępne",
+    "inboxSummary": "{{recipient}}: otrzymano {{count}} wiadomości od {{senders}}",
+    "viewDetails": "Zobacz szczegóły wykonania",
+    "unavailable": "Szczegóły wykonania niedostępne"
+  },
   "landedMessageEdit": {
     "title": "Wysłać jako nową wiadomość?",
     "body": "Ta wiadomość należy do sesji wykonawczej. Edycja tutaj nie pozwala cofnąć rozmowy. Wysłać ten tekst jako nową wiadomość na końcu? Istniejące wiadomości i zmiany w plikach zostaną zachowane.",

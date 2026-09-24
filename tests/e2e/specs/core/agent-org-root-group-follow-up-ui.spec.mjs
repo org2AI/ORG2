@@ -14,6 +14,7 @@ import {
   getApiAccount,
   invokeE2E,
   openRenderedGroupChatView,
+  openRenderedSidebarSession,
   selectPreferredModel,
   selectRenderedDefaultAgentOrg,
   selectRenderedExecMode,
@@ -43,6 +44,62 @@ async function coordinatorUserInboxIds(runId, label) {
       )
       .map((row) => row.id)
   );
+}
+
+async function openExactExecutionDetails(
+  marker,
+  { requireDistantTarget = false } = {}
+) {
+  const target = await execJS(`
+    const row = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"]'))
+      .find(row => row.getAttribute('data-item-kind') === 'assistant_reply' && (row.textContent || '').includes(${JSON.stringify(marker)}));
+    const button = row?.querySelector('[data-testid="agent-org-execution-details"]');
+    if (!button || button.disabled) return null;
+    const intent = row.getAttribute('data-turn-intent-id');
+    button.click();
+    return intent;
+  `);
+  if (!target)
+    throw new Error(`No verified execution details action for ${marker}`);
+  let visibleSince = null;
+  await browser.waitUntil(
+    async () => {
+      const visible = await execJS(`
+    return !document.querySelector('[data-testid="agent-org-group-projection"]') &&
+      Array.from(document.querySelectorAll('[data-testid="agent-org-execution-header"]'))
+        .some(header => {
+          if (header.getAttribute('data-turn-intent-id') !== ${JSON.stringify(target)}) return false;
+          const rect = header.getBoundingClientRect();
+          let top = 0, bottom = window.innerHeight;
+          for (let parent = header.parentElement; parent; parent = parent.parentElement) {
+            if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(parent).overflowY)) {
+              const clip = parent.getBoundingClientRect();
+              top = Math.max(top, clip.top);
+              bottom = Math.min(bottom, clip.bottom);
+            }
+          }
+          const scroller = header.closest('[data-testid="chat-history-scroll-container"]');
+          if (${requireDistantTarget} && (!scroller ||
+              rect.top - scroller.getBoundingClientRect().top + scroller.scrollTop <= scroller.clientHeight)) return false;
+          return rect.height > 0 && rect.bottom > top && rect.top < bottom;
+        });
+  `);
+      if (!visible) {
+        visibleSince = null;
+        return false;
+      }
+      visibleSince ??= Date.now();
+      // A one-frame intersection must not hide a later anchor restoration.
+      return Date.now() - visibleSince >= 500;
+    },
+    {
+      timeout: REPLY_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: `Exact private execution ${target} did not enter the viewport`,
+    }
+  );
+  await openRenderedGroupChatView();
+  await waitForRenderedGroupChatActive("return from exact execution details");
 }
 
 describe("Agent Org Root Group follow-up rendered UI", () => {
@@ -124,6 +181,11 @@ describe("Agent Org Root Group follow-up rendered UI", () => {
         "Idle Root follow-up incorrectly entered the legacy Coordinator Inbox"
       );
     }
+
+    // The actual Group reply locates its precise older/private round through
+    // the production metadata RPC, member switch and paged chat navigation.
+    await openExactExecutionDetails("Root Group follow-up launch");
+    await openExactExecutionDetails(idleMessage);
 
     const activeMessage = `E2E Root FIFO active ${RUN_ID}. Create a stoppable window by waiting for about 4 seconds.`;
     const queuedMessage = `E2E Root FIFO queued next Turn ${RUN_ID}`;
@@ -212,6 +274,41 @@ describe("Agent Org Root Group follow-up rendered UI", () => {
         "Root FIFO follow-up incorrectly entered the legacy Coordinator Inbox"
       );
     }
+    // Produce enough real executions through the rendered composer that the
+    // last header starts below the viewport even when older rounds collapse.
+    let distantMessage = "";
+    for (let index = 0; index < 12; index++) {
+      distantMessage = `E2E Idle Root follow-up ${RUN_ID} history ${index}`;
+      await sendRenderedChatPrompt(distantMessage);
+      await waitForRenderedGroupChatMessage({
+        sender: coordinatorName,
+        text: distantMessage,
+        label: `dense execution history reply ${index}`,
+        timeout: REPLY_TIMEOUT_MS,
+      });
+      await waitForAgentOrgRunView(
+        sessionId,
+        (view) => view?.runStatus === "idle",
+        `dense execution history idle ${index}`,
+        REPLY_TIMEOUT_MS
+      );
+    }
+    await openExactExecutionDetails(distantMessage, {
+      requireDistantTarget: true,
+    });
+    // A refresh starts from the bounded durable history window (one loaded
+    // round). Older Group links must load and select the exact original round.
+    await browser.refresh();
+    await waitForApp();
+    await openRenderedSidebarSession(sessionId);
+    await openRenderedGroupChatView();
+    await waitForRenderedGroupChatActive("durable execution navigation");
+    await openExactExecutionDetails("Root Group follow-up launch");
+    await openExactExecutionDetails(idleMessage);
+    await openExactExecutionDetails(queuedMessage);
+    await openExactExecutionDetails(distantMessage, {
+      requireDistantTarget: true,
+    });
   });
   for (const kind of ["stream", "tool", "failure", "panic"]) {
     it(`preserves exact formal execution finality through the rendered ${kind} path`, async () => {

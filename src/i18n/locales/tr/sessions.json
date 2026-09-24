@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Kullanıcı isteği",
+      "member_messages": "Gelen mesajlar",
+      "task_dispatch": "Atanan görev",
+      "final_summary": "Son rapor"
+    },
+    "unknownSource": "Kaynak bilgisi yok",
+    "legacyInbox": "Alınan mesajlar · kaynak bilgisi yok",
+    "inboxSummary": "{{recipient}}, {{senders}} tarafından gönderilen {{count}} mesaj aldı",
+    "viewDetails": "Yürütme ayrıntılarını görüntüle",
+    "unavailable": "Yürütme ayrıntıları bulunamadı"
+  },
   "landedMessageEdit": {
     "title": "Yeni mesaj olarak gönderilsin mi?",
     "body": "Bu mesaj bir yürütme oturumuna ait. Burada düzenlemek konuşmayı geri alamaz. Bunun yerine bu metin sona yeni bir mesaj olarak gönderilsin mi? Mevcut mesajlar ve dosya değişiklikleri korunacak.",

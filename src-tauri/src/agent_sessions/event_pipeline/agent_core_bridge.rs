@@ -484,6 +484,29 @@ fn persist_user_message_event_adapter(
     source: bridge::PersistedUserMessageSource,
     turn_intent_id: &str,
 ) -> Result<(), String> {
+    if let bridge::PersistedUserMessageSource::AgentOrgInput {
+        execution,
+        existing_event_id: Some(id),
+    } = &source
+    {
+        let cached = session_persistence::get_event(session_id, id)
+            .map_err(|error| error.to_string())?
+            .ok_or("formal input source event missing")?;
+        let mut event = cached_event_to_session_event(&cached);
+        if event.result.get("agentOrgExecution").is_none() {
+            event.result["agentOrgExecution"] = serde_json::json!(execution);
+        }
+        save_events_retry(
+            "publish_execution_input",
+            session_id,
+            &[session_event_to_cached_event(&event)],
+            BULK_WRITE_MAX_RETRIES,
+        )?;
+        let state = handle.state::<EventStoreState>();
+        state.with_store_mut(session_id, |store| store.merge_events(vec![event]));
+        schedule_notify(handle, &state, session_id);
+        return Ok(());
+    }
     let mut result = serde_json::json!({
         "type": "user",
         "message": { "content": content, "role": "user" },
@@ -509,6 +532,27 @@ fn persist_user_message_event_adapter(
                 "agentOrgInboxTranscript".to_string(),
                 serde_json::json!(true),
             );
+        }
+    }
+
+    if let bridge::PersistedUserMessageSource::AgentOrgInput { execution, .. } = &source {
+        result["agentOrgExecution"] = serde_json::json!(execution);
+    }
+
+    if let bridge::PersistedUserMessageSource::AgentOrgInboxTranscript(execution) = &source {
+        // A replay repairs the same message; it cannot move the original input
+        // into a later execution. Keep the first durable association.
+        let original =
+            session_persistence::get_event(session_id, &format!("user-message-{message_id}"))
+                .map_err(|error| error.to_string())?;
+        if let Some(original) = original {
+            let original: serde_json::Value =
+                serde_json::from_str(&original.result_json).map_err(|error| error.to_string())?;
+            if let Some(provenance) = original.get("agentOrgExecution") {
+                result["agentOrgExecution"] = provenance.clone();
+            }
+        } else {
+            result["agentOrgExecution"] = serde_json::json!(execution);
         }
     }
 

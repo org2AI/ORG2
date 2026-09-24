@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "사용자 요청",
+      "member_messages": "받은 메시지",
+      "task_dispatch": "할당된 작업",
+      "final_summary": "최종 보고서"
+    },
+    "unknownSource": "출처 정보 없음",
+    "legacyInbox": "수신 메시지 · 출처 정보 없음",
+    "inboxSummary": "{{recipient}}: {{senders}}에게서 메시지 {{count}}개 수신",
+    "viewDetails": "실행 세부 정보 보기",
+    "unavailable": "실행 세부 정보를 찾을 수 없음"
+  },
   "landedMessageEdit": {
     "title": "새 메시지로 보내시겠습니까?",
     "body": "이 메시지는 실행 세션에 속합니다. 여기서 편집해도 대화를 되돌릴 수 없습니다. 대신 대화 끝에 새 메시지로 보내시겠습니까? 기존 메시지와 파일 변경 사항은 유지됩니다.",

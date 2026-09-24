@@ -36,7 +36,8 @@ const TURN_STATUS_FAILED: &str = "failed";
 /// can arrive through Team Session, personal Cloud sync, or runtime migration.
 /// v14: exclude internal lifecycle rows from `body_event_count`, so an
 /// imported round aborted before any output no longer advertises a body.
-const TURN_INDEX_VERSION: i64 = 14;
+/// v15: formal Org execution boundaries are independent of inbox message identity.
+const TURN_INDEX_VERSION: i64 = 15;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,6 +60,8 @@ pub struct CachedTurnSummary {
     /// Imported/legacy transcripts may not carry one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub turn_intent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution: Option<core_types::agent_org_history::AgentOrgExecution>,
     /// Files this round wrote to, materialized so the frontend never
     /// re-aggregates file changes from raw events.
     #[serde(default)]
@@ -90,6 +93,7 @@ struct IndexEventRow {
 
 #[derive(Debug, Clone)]
 struct TurnDraft {
+    org_execution: bool,
     turn_id: String,
     start_sequence: i64,
     end_sequence: Option<i64>,
@@ -446,6 +450,22 @@ fn max_timestamp(left: &str, right: &str) -> String {
     }
 }
 
+fn is_history_metadata_action(action: &str) -> bool {
+    action == "agent_org_execution"
+        || core_types::session_event::is_internal_lifecycle_action_type(action)
+}
+
+fn org_execution_for_row(
+    row: &IndexEventRow,
+) -> Option<core_types::agent_org_history::AgentOrgExecution> {
+    [&row.args_json, &row.result_json]
+        .into_iter()
+        .find_map(|json| {
+            let value: serde_json::Value = serde_json::from_str(json).ok()?;
+            serde_json::from_value(value.get("agentOrgExecution")?.clone()).ok()
+        })
+}
+
 struct TurnDraftBuilder<'a> {
     stale_intent_ids: &'a StaleIntentIds,
     drafts: Vec<TurnDraft>,
@@ -466,8 +486,49 @@ impl<'a> TurnDraftBuilder<'a> {
         if row.event_type.as_deref() == Some("queued_retry_lineage") {
             return;
         }
-        if is_user_message(row) {
-            let row_intent_id = turn_intent_id_for_row(row);
+        let execution = org_execution_for_row(row);
+        if let Some(execution) = execution.as_ref() {
+            let intent = &execution.turn_intent_id;
+            let existing = self
+                .current
+                .as_mut()
+                .filter(|turn| turn.turn_intent_id.as_ref() == Some(intent))
+                .or_else(|| {
+                    self.drafts
+                        .iter_mut()
+                        .find(|turn| turn.turn_intent_id.as_ref() == Some(intent))
+                });
+            if let Some(turn) = existing {
+                turn.turn_id = format!("agent-org-execution-{intent}");
+                turn.org_execution = true;
+                turn.ended_at = Some(max_timestamp(
+                    turn.ended_at.as_deref().unwrap_or(&turn.started_at),
+                    &row.created_at,
+                ));
+                turn.event_count += 1;
+                if is_user_message(row) {
+                    turn.user_event_ids.push(row.id.clone());
+                } else if !row
+                    .event_type
+                    .as_deref()
+                    .is_some_and(is_history_metadata_action)
+                {
+                    turn.body_event_count += 1;
+                }
+                turn.metadata_accumulator.add_event_at(
+                    row.function_name.as_deref(),
+                    &row.args_json,
+                    &row.result_json,
+                    &row.created_at,
+                );
+                return;
+            }
+        }
+        if is_user_message(row) || execution.is_some() {
+            let row_intent_id = execution
+                .as_ref()
+                .map(|execution| execution.turn_intent_id.clone())
+                .or_else(|| turn_intent_id_for_row(row));
 
             // Lifecycle-pre-durable terminal: this intent will never yield
             // a durable round (Stale = invalidated). Drop the row entirely
@@ -499,16 +560,34 @@ impl<'a> TurnDraftBuilder<'a> {
             }
 
             self.current = Some(TurnDraft {
-                turn_id: row.id.clone(),
+                org_execution: execution.is_some(),
+                turn_id: execution
+                    .as_ref()
+                    .map(|execution| format!("agent-org-execution-{}", execution.turn_intent_id))
+                    .unwrap_or_else(|| row.id.clone()),
                 start_sequence: row.order_sequence,
                 end_sequence: None,
                 next_turn_id: None,
                 started_at: row.created_at.clone(),
                 ended_at: Some(row.created_at.clone()),
-                user_event_ids: vec![row.id.clone()],
-                user_preview: row.content.clone(),
+                user_event_ids: if is_user_message(row) {
+                    vec![row.id.clone()]
+                } else {
+                    Vec::new()
+                },
+                user_preview: if is_user_message(row) {
+                    row.content.clone()
+                } else {
+                    String::new()
+                },
                 event_count: 1,
-                body_event_count: 0,
+                body_event_count: i64::from(
+                    !is_user_message(row)
+                        && !row
+                            .event_type
+                            .as_deref()
+                            .is_some_and(is_history_metadata_action),
+                ),
                 turn_intent_id: row_intent_id,
                 metadata_accumulator: TurnMetadataAccumulator::new(),
             });
@@ -544,7 +623,7 @@ impl<'a> TurnDraftBuilder<'a> {
             if !row
                 .event_type
                 .as_deref()
-                .is_some_and(core_types::session_event::is_internal_lifecycle_action_type)
+                .is_some_and(is_history_metadata_action)
             {
                 turn.body_event_count += 1;
             }
@@ -561,7 +640,12 @@ impl<'a> TurnDraftBuilder<'a> {
         if let Some(turn) = self.current.take() {
             self.drafts.push(turn);
         }
-        materialized_turn_drafts(self.drafts)
+        let mut drafts = materialized_turn_drafts(self.drafts);
+        for index in 0..drafts.len().saturating_sub(1) {
+            drafts[index].next_turn_id = Some(drafts[index + 1].turn_id.clone());
+            drafts[index].end_sequence = Some(drafts[index + 1].start_sequence);
+        }
+        drafts
     }
 }
 
@@ -603,7 +687,7 @@ fn materialized_turn_drafts(drafts: Vec<TurnDraft>) -> Vec<TurnDraft> {
         .into_iter()
         .enumerate()
         .filter_map(|(index, draft)| {
-            if draft.has_activity_rows() || index == last_index {
+            if draft.org_execution || draft.has_activity_rows() || index == last_index {
                 Some(draft)
             } else {
                 None
@@ -641,6 +725,9 @@ fn turn_summary_from_row(row: &rusqlite::Row<'_>) -> SqliteResult<CachedTurnSumm
         status: row.get(12)?,
         interrupted: interrupted_int != 0,
         turn_intent_id,
+        execution: row
+            .get::<_, Option<String>>(18)?
+            .and_then(|json| serde_json::from_str(&json).ok()),
         modified_files,
         resource_interactions,
         git_artifacts,
@@ -943,27 +1030,36 @@ pub fn load_cached_turn_index(
     select_turn_index(conn, session_id)
 }
 
-fn select_turn_index(conn: &Connection, session_id: &str) -> SqliteResult<Vec<CachedTurnSummary>> {
-    let mut stmt = conn.prepare_cached(
+fn turn_summary_select() -> String {
+    format!(
         "SELECT session_id, turn_id, start_sequence, end_sequence, next_turn_id, started_at, ended_at,
                 duration_ms, user_event_ids_json, user_preview, event_count, body_event_count,
                 status, interrupted, modified_files_json, resource_interactions_json,
-                git_artifacts_json, turn_intent_id
-         FROM session_turns
-         WHERE session_id = ?1
-         ORDER BY started_at ASC, start_sequence ASC",
-    )?;
-
-    let rows = stmt
-        .query_map([session_id], turn_summary_from_row)?
-        .collect::<SqliteResult<Vec<_>>>()?;
-
-    Ok(rows)
+                git_artifacts_json, turn_intent_id,
+                (SELECT COALESCE(json_extract(args_json, '$.agentOrgExecution'),
+                                 json_extract(result_json, '$.agentOrgExecution'))
+                 FROM events WHERE events.session_id = session_turns.session_id
+                   AND ({}) = session_turns.turn_intent_id
+                   AND COALESCE(json_extract(args_json, '$.agentOrgExecution'),
+                                json_extract(result_json, '$.agentOrgExecution')) IS NOT NULL
+                 ORDER BY history_sequence ASC LIMIT 1) AS execution_json
+         FROM session_turns", super::turn_window::EXECUTION_OWNER_SQL
+    )
 }
 
-/// Load only the requested materialized rounds. This is the low-memory read
-/// path used by a paged/virtualized transcript; the durable index remains the
-/// source of truth and no session-wide summary vector is constructed.
+fn select_turn_index(conn: &Connection, session_id: &str) -> SqliteResult<Vec<CachedTurnSummary>> {
+    let query = format!(
+        "{} WHERE session_id = ?1 ORDER BY start_sequence ASC, turn_id ASC",
+        turn_summary_select()
+    );
+    let mut stmt = conn.prepare_cached(&query)?;
+    let rows = stmt
+        .query_map([session_id], turn_summary_from_row)?
+        .collect();
+    rows
+}
+
+/// Read only requested rounds; no session-wide summary vector is constructed.
 pub fn load_turn_summaries(
     session_id: &str,
     turn_ids: &[String],
@@ -971,19 +1067,8 @@ pub fn load_turn_summaries(
     ensure_turn_index_fresh(session_id)?;
     let conn = get_connection()?;
     let mut summaries = Vec::with_capacity(turn_ids.len());
-    let mut statement = conn.prepare_cached(
-        "SELECT session_id, turn_id, start_sequence, end_sequence, next_turn_id, started_at, ended_at,
-                duration_ms, user_event_ids_json, user_preview, event_count, body_event_count,
-                status, interrupted, modified_files_json, resource_interactions_json,
-                git_artifacts_json, turn_intent_id
-         FROM session_turns
-         WHERE session_id = ?1 AND turn_id = ?2",
-    )?;
     for turn_id in turn_ids {
-        if let Some(summary) = statement
-            .query_row(params![session_id, turn_id], turn_summary_from_row)
-            .optional()?
-        {
+        if let Some(summary) = get_turn_summary(&conn, session_id, turn_id)? {
             summaries.push(summary);
         }
     }
@@ -995,17 +1080,13 @@ pub fn get_turn_summary(
     session_id: &str,
     turn_id: &str,
 ) -> SqliteResult<Option<CachedTurnSummary>> {
-    conn.query_row(
-        "SELECT session_id, turn_id, start_sequence, end_sequence, next_turn_id, started_at, ended_at,
-                duration_ms, user_event_ids_json, user_preview, event_count, body_event_count,
-                status, interrupted, modified_files_json, resource_interactions_json,
-                git_artifacts_json, turn_intent_id
-         FROM session_turns
-         WHERE session_id = ?1 AND turn_id = ?2",
-        params![session_id, turn_id],
-        turn_summary_from_row,
-    )
-    .optional()
+    let query = format!(
+        "{} WHERE session_id = ?1 AND turn_id = ?2",
+        turn_summary_select()
+    );
+    conn.prepare_cached(&query)?
+        .query_row(params![session_id, turn_id], turn_summary_from_row)
+        .optional()
 }
 
 #[cfg(test)]

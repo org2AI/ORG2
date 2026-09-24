@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Demande utilisateur",
+      "member_messages": "Messages reçus",
+      "task_dispatch": "Tâche attribuée",
+      "final_summary": "Rapport final"
+    },
+    "unknownSource": "Source indisponible",
+    "legacyInbox": "Messages reçus · source indisponible",
+    "inboxSummary": "{{recipient}} a reçu {{count}} messages de {{senders}}",
+    "viewDetails": "Voir les détails de l’exécution",
+    "unavailable": "Détails de l’exécution indisponibles"
+  },
   "landedMessageEdit": {
     "title": "Envoyer comme nouveau message ?",
     "body": "Ce message appartient à une session d’exécution. Le modifier ici ne permet pas de revenir en arrière dans la conversation. Envoyer ce texte comme nouveau message à la fin ? Les messages et modifications de fichiers existants seront conservés.",

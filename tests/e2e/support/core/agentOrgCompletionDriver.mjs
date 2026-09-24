@@ -8,6 +8,7 @@ import {
 } from "./agentOrgTerminalDriver.mjs";
 import {
   RUN_ID,
+  clickRenderedMemberSwitcher,
   configureCreatorForDefaultAgentOrg,
   execJS,
   getApiAccount,
@@ -241,13 +242,69 @@ export async function runReworkScenario() {
     throw new Error(
       "Repaired delivery task was not visible in the real team overview"
     );
+  const executionSources = rows(
+    `SELECT json_extract(args_json,'$.agentOrgExecution.sourceKind') AS source
+     FROM events WHERE session_id=${literal(root)} AND event_type='agent_org_execution'`
+  ).map((row) => row.source);
+  if (
+    executionSources.filter((source) => source === "user_input").length !== 1 ||
+    !executionSources.includes("member_messages") ||
+    executionSources.filter((source) => source === "final_summary").length !== 1
+  )
+    throw new Error(
+      `Actual coordinator wakes have incorrect persisted sources: ${JSON.stringify(executionSources)}`
+    );
+  await clickRenderedMemberSwitcher("coordinator", root);
+  await browser.waitUntil(
+    async () =>
+      execJS(`
+      const headers = Array.from(document.querySelectorAll('[data-testid="agent-org-execution-header"]'));
+      return headers.some(header => header.textContent.includes('Inbox messages')) &&
+        headers.some(header => header.textContent.includes('Final report'));
+    `),
+    {
+      timeout: 15000,
+      interval: 100,
+      timeoutMsg: "Private history lost the real wake sources",
+    }
+  );
+  const navigationLabels = await execJS(`
+    return Array.from(document.querySelectorAll('[aria-label^="Go to turn"]'))
+      .map(button => button.getAttribute('aria-label'));
+  `);
+  if (
+    !navigationLabels.some((label) =>
+      label.includes("Coordinator · Inbox messages")
+    ) ||
+    !navigationLabels.some((label) =>
+      label.includes("Coordinator · Final report")
+    ) ||
+    navigationLabels.some(
+      (label) =>
+        label.includes("agent-org-execution-") ||
+        label.includes("not loaded yet") ||
+        label.includes("[Agent Org inbox message")
+    )
+  )
+    throw new Error(
+      `Private history lost readable execution previews: ${JSON.stringify(navigationLabels)}`
+    );
   const folder = process.env.E2E_EVIDENCE_DIR;
   if (folder) {
     mkdirSync(folder, { recursive: true });
     writeFileSync(
       join(folder, "rework.json"),
       JSON.stringify(
-        { root, runId, tasks, deliveries, reports, rendered },
+        {
+          root,
+          runId,
+          tasks,
+          deliveries,
+          reports,
+          executionSources,
+          navigationLabels,
+          rendered,
+        },
         null,
         2
       )

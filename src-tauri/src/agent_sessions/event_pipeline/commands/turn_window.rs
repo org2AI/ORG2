@@ -152,17 +152,26 @@ fn make_turn_placeholder_event(
         id: format!("turn-placeholder-{}", turn.turn_id),
         chunk_id: Some(format!("turn-placeholder-{}", turn.turn_id)),
         session_id: session_id.to_string(),
-        created_at: turn
-            .ended_at
-            .clone()
-            .unwrap_or_else(|| turn.started_at.clone()),
+        created_at: if turn.execution.is_some() {
+            turn.started_at.clone()
+        } else {
+            turn.ended_at
+                .clone()
+                .unwrap_or_else(|| turn.started_at.clone())
+        },
         function_name: "turn_placeholder".to_string(),
         ui_canonical: "turn_placeholder".to_string(),
         action_type: "turn_placeholder".to_string(),
-        args: serde_json::json!({}),
+        args: serde_json::json!({ "agentOrgExecution": turn.execution, "historySequence": turn.execution.as_ref().map(|_| turn.start_sequence) }),
         result,
         source: EventSource::Assistant,
-        display_text: format!("Turn {} is not loaded yet.", turn.turn_id),
+        display_text: if turn.execution.is_some() {
+            // Formal history supplies its own source heading and localized
+            // round navigation; the cache identity is not user-facing text.
+            String::new()
+        } else {
+            format!("Turn {} is not loaded yet.", turn.turn_id)
+        },
         display_status: EventDisplayStatus::Completed,
         display_variant: EventDisplayVariant::Message,
         activity_status: ActivityStatus::Agent,
@@ -278,7 +287,9 @@ pub(crate) async fn load_initial_turn_window_events(
         window
             .turns
             .iter()
-            .filter(|turn| !turn_has_user_header(turn, &present_event_ids))
+            .filter(|turn| {
+                turn.execution.is_none() && !turn_has_user_header(turn, &present_event_ids)
+            })
             .map(|turn| make_turn_user_header_event(session_id, turn)),
     );
     events.extend(
@@ -291,6 +302,19 @@ pub(crate) async fn load_initial_turn_window_events(
     events.sort_by(|left, right| {
         left.created_at
             .cmp(&right.created_at)
+            .then_with(|| {
+                left.args
+                    .get("historySequence")
+                    .and_then(serde_json::Value::as_i64)
+                    .unwrap_or(i64::MAX)
+                    .cmp(
+                        &right
+                            .args
+                            .get("historySequence")
+                            .and_then(serde_json::Value::as_i64)
+                            .unwrap_or(i64::MAX),
+                    )
+            })
             .then_with(|| left.id.cmp(&right.id))
     });
     super::agent_org_group_visibility::retain_ordinary_session_events(
@@ -391,6 +415,10 @@ pub async fn es_unload_turn_body(
     }
     Ok(removed)
 }
+
+#[cfg(test)]
+#[path = "../tests/turn_placeholder_tests.rs"]
+mod placeholder_tests;
 
 #[cfg(test)]
 mod tests {

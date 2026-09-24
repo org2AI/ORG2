@@ -535,6 +535,10 @@ describe("Agent Org pause, resume, and sidebar rendered UI", () => {
         // control replaces the Pause button. Product-level double-gesture locking
         // is covered by AgentOrgTaskPanel.test.ts; keep this rendered path on one
         // real Resume click so it verifies the durable continuation boundary.
+        await postJson("/agent/test/session/provider-request-capture", {
+          action: "arm",
+          clear: true,
+        });
         await resumeButton.click();
         let resumedEvidence = null;
         await browser.waitUntil(
@@ -571,6 +575,33 @@ describe("Agent Org pause, resume, and sidebar rendered UI", () => {
           throw new Error(
             `Resume generation/Task/continuation evidence mismatch: ${JSON.stringify(resumedEvidence)}`
           );
+        }
+        const resumedProviderSessions = new Set();
+        try {
+          await browser.waitUntil(
+            async () => {
+              const captured = await postJson(
+                "/agent/test/session/provider-request-capture",
+                { action: "drain", clear: true }
+              );
+              for (const request of captured.captures ?? []) {
+                resumedProviderSessions.add(request.sessionId);
+              }
+              return resumedEvidence.durable.handoffs.every((handoff) =>
+                resumedProviderSessions.has(handoff.session_id)
+              );
+            },
+            {
+              timeout: REPLY_TIMEOUT_MS,
+              interval: 100,
+              timeoutMsg:
+                "Resume was dispatched but did not reach the provider for every captured Turn",
+            }
+          );
+        } finally {
+          await postJson("/agent/test/session/provider-request-capture", {
+            action: "disarm",
+          });
         }
         await browser.pause(500);
         const afterResumeProcessEvidence = await postJson(

@@ -549,9 +549,21 @@ fn chat_sort_rank(event: &SessionEvent) -> u8 {
     0
 }
 
-fn chat_sort_cmp(a: &SessionEvent, b: &SessionEvent) -> Ordering {
+pub(crate) fn chat_sort_cmp(a: &SessionEvent, b: &SessionEvent) -> Ordering {
     a.created_at
         .cmp(&b.created_at)
+        .then_with(|| {
+            a.args
+                .get("historySequence")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(i64::MAX)
+                .cmp(
+                    &b.args
+                        .get("historySequence")
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or(i64::MAX),
+                )
+        })
         .then_with(|| chat_sort_rank(a).cmp(&chat_sort_rank(b)))
         .then_with(|| a.id.cmp(&b.id))
 }

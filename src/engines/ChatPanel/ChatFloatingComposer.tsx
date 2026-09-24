@@ -217,7 +217,6 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
           />
 
           <ComposerActivityTrackers
-            sessionId={sessionId}
             inputAreaSessionId={inputAreaSessionId}
             processExpanded={processExpanded}
             onToggleProcess={onToggleProcess}

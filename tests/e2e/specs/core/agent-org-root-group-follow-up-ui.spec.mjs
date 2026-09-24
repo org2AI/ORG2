@@ -98,6 +98,56 @@ async function openExactExecutionDetails(
       timeoutMsg: `Exact private execution ${target} did not enter the viewport`,
     }
   );
+  const history = unwrap(
+    await invokeE2E("inspectChatState"),
+    "private execution history"
+  );
+  const anchors = history.chatEvents.filter(
+    (event) =>
+      event.actionType === "agent_org_execution" ||
+      event.actionType === "turn_placeholder"
+  );
+  for (let index = 1; index < anchors.length; index++) {
+    const earlier = anchors[index - 1];
+    const later = anchors[index];
+    if (
+      earlier.createdAt > later.createdAt ||
+      (earlier.createdAt === later.createdAt &&
+        (earlier.args.historySequence ?? Number.MAX_SAFE_INTEGER) >
+          (later.args.historySequence ?? Number.MAX_SAFE_INTEGER))
+    ) {
+      throw new Error(
+        `Private execution history moved backwards: ${earlier.id} then ${later.id}`
+      );
+    }
+  }
+  if (requireDistantTarget) {
+    await (await browser.$('[aria-label^="Go to turn 1 of "]')).click();
+    let oldestVisibleSince = null;
+    await browser.waitUntil(
+      async () => {
+        const visible = await execJS(`
+          const scroller = document.querySelector('[data-testid="chat-history-scroll-container"]');
+          const oldest = scroller?.querySelector('[data-chat-group-index="0"]');
+          if (!scroller || !oldest) return false;
+          const root = scroller.getBoundingClientRect();
+          const target = oldest.getBoundingClientRect();
+          return target.height > 0 && target.top >= root.top - 2 && target.top < root.bottom;
+        `);
+        if (!visible) oldestVisibleSince = null;
+        else oldestVisibleSince ??= Date.now();
+        return (
+          oldestVisibleSince !== null && Date.now() - oldestVisibleSince >= 500
+        );
+      },
+      {
+        timeout: REPLY_TIMEOUT_MS,
+        interval: 100,
+        timeoutMsg:
+          "Oldest private turn did not remain visible after minimap navigation",
+      }
+    );
+  }
   await openRenderedGroupChatView();
   await waitForRenderedGroupChatActive("return from exact execution details");
 }
@@ -296,9 +346,11 @@ describe("Agent Org Root Group follow-up rendered UI", () => {
     await openExactExecutionDetails(distantMessage, {
       requireDistantTarget: true,
     });
-    // A refresh starts from the bounded durable history window (one loaded
-    // round). Older Group links must load and select the exact original round.
-    await browser.refresh();
+    // Reopening starts from the bounded durable history window (one loaded
+    // round). Restart the driver with the app: WKWebView reload can poison
+    // tauri-webdriver-automation 0.1.3's pending-script mutex. Native refresh
+    // is covered separately through Computer Use without that script bridge.
+    await browser.reloadSession();
     await waitForApp();
     await openRenderedSidebarSession(sessionId);
     await openRenderedGroupChatView();

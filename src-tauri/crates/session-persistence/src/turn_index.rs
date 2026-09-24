@@ -344,6 +344,29 @@ fn load_existing_user_event_keys(
     Ok((ids, content_counts))
 }
 
+fn materialized_inbox_message_ids(
+    conn: &Connection,
+    session_id: &str,
+) -> SqliteResult<std::collections::HashSet<String>> {
+    let has_receipts: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master
+         WHERE type='table' AND name='agent_org_runtime_inbox_materializations')",
+        [],
+        |row| row.get(0),
+    )?;
+    if !has_receipts {
+        return Ok(std::collections::HashSet::new());
+    }
+    let mut stmt = conn.prepare_cached(
+        "SELECT transcript_message_id FROM agent_org_runtime_inbox_materializations
+         WHERE session_id=?1",
+    )?;
+    let ids = stmt
+        .query_map([session_id], |row| row.get(0))?
+        .collect::<SqliteResult<_>>()?;
+    Ok(ids)
+}
+
 fn backfill_missing_user_events(conn: &Connection, session_id: &str) -> SqliteResult<usize> {
     let messages = load_user_messages(conn, session_id)?;
     if messages.is_empty() {
@@ -352,8 +375,15 @@ fn backfill_missing_user_events(conn: &Connection, session_id: &str) -> SqliteRe
 
     let (existing_ids, mut existing_content_counts) =
         load_existing_user_event_keys(conn, session_id)?;
+    let inbox_message_ids = materialized_inbox_message_ids(conn, session_id)?;
     let mut inserted = 0;
     for message in messages {
+        // Model protocol role=user includes Inbox attachments. Their message
+        // and receipt commit together before the formal event writer runs;
+        // generic backfill must not race it and publish an untyped user event.
+        if inbox_message_ids.contains(&message.id) {
+            continue;
+        }
         let event_id = user_event_id_for_message(&message.id);
         // DirectMember persists its canonical EventStore source before the
         // matching provider-history row. That source id is also the stable
@@ -1676,3 +1706,7 @@ mod tests {
             .any(|item| item.path == "src/main.rs"));
     }
 }
+
+#[cfg(test)]
+#[path = "turn_index_inbox_backfill_tests.rs"]
+mod inbox_backfill_tests;

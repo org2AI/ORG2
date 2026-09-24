@@ -129,7 +129,6 @@ export const ComposerInteractionCards: React.FC<
 );
 
 interface ComposerActivityTrackersProps {
-  sessionId: string;
   inputAreaSessionId: string;
   processExpanded: boolean;
   onToggleProcess: () => void;
@@ -144,7 +143,6 @@ interface ComposerActivityTrackersProps {
 export const ComposerActivityTrackers: React.FC<
   ComposerActivityTrackersProps
 > = ({
-  sessionId,
   inputAreaSessionId,
   processExpanded,
   onToggleProcess,
@@ -156,16 +154,16 @@ export const ComposerActivityTrackers: React.FC<
   <>
     {processExpanded && (
       <ActiveProcesses
-        key={`process-expanded-${sessionId}`}
-        sessionId={sessionId}
+        key={`process-expanded-${inputAreaSessionId}`}
+        sessionId={inputAreaSessionId}
         onToggle={onToggleProcess}
         onVisibleCountChange={onProcessVisibleCountChange}
       />
     )}
     {!processExpanded && (
       <ActiveProcesses
-        key={`process-hidden-${sessionId}`}
-        sessionId={sessionId}
+        key={`process-hidden-${inputAreaSessionId}`}
+        sessionId={inputAreaSessionId}
         onToggle={onToggleProcess}
         onVisibleCountChange={onProcessVisibleCountChange}
         hidden

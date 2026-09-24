@@ -254,6 +254,15 @@ export async function runReworkScenario() {
     throw new Error(
       `Actual coordinator wakes have incorrect persisted sources: ${JSON.stringify(executionSources)}`
     );
+  const unassociatedMail = rows(
+    `SELECT id FROM events WHERE session_id=${literal(root)}
+     AND json_extract(result_json,'$.agentOrgInboxTranscript')=1
+     AND json_extract(result_json,'$.agentOrgExecution.turnIntentId') IS NULL`
+  );
+  if (unassociatedMail.length)
+    throw new Error(
+      `Fresh Inbox transcripts lost persisted execution identity: ${JSON.stringify(unassociatedMail)}`
+    );
   await clickRenderedMemberSwitcher("coordinator", root);
   await browser.waitUntil(
     async () =>

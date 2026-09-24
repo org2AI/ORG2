@@ -64,6 +64,9 @@ pub(crate) fn prepare_loaded_events(
 }
 
 #[cfg(test)]
+mod snapshot_order_tests;
+
+#[cfg(test)]
 mod streaming_snapshot_delta_tests {
     use super::notify::{build_settled_snapshot_delta, build_streaming_snapshot_delta};
     use super::*;
@@ -176,7 +179,7 @@ mod streaming_snapshot_delta_tests {
         let delta = build_settled_snapshot_delta(&mut store);
         assert_eq!(
             delta.chat_event_ids,
-            vec!["A", "B", "old-C", "original-error", "new-C", "D"]
+            vec!["A", "B", "D", "new-C", "old-C", "original-error"]
         );
         assert!(
             store.get_by_id("old-C").is_some(),

@@ -559,7 +559,25 @@ export async function configureCreatorForAgentOrg({
       `configured model mismatch: ${result.modelId} !== ${model}`
     );
   }
-  await browser.pause(500);
+  // configureWithExistingKey pins a frontend-only repository ID. Reconcile
+  // with the persisted fixture before the normal repo loader replaces it.
+  // This is setup only; task execution and result writes still use the UI.
+  unwrap(
+    await invokeE2E("ensureRepoSelected", { repoPath: E2E_REPO_PATH }),
+    "select persisted Agent Org fixture repository"
+  );
+  const repoName = E2E_REPO_PATH.split(/[\\/]/).filter(Boolean).at(-1);
+  await browser.waitUntil(
+    async () =>
+      String(
+        await execJS(js.text('[data-testid="session-creator-repo-chrome"]'))
+      ).includes(repoName),
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      interval: 100,
+      timeoutMsg: "Agent Org creator never displayed its fixture repository",
+    }
+  );
 }
 
 export async function removeAgentOrgsByName(name) {
@@ -972,12 +990,17 @@ export async function selectRenderedAgentOrg(agentOrgId) {
     timeout: RENDER_TIMEOUT_MS,
     timeoutMsg: `Agent Org option ${agentOrgId} never rendered`,
   });
-  const clickResult = await execJS(js.click(optionSelector));
-  if (clickResult !== "clicked") {
-    throw new Error(
-      `Agent Org option ${agentOrgId} did not click: ${clickResult}`
-    );
-  }
+  // The test id belongs to the row container; its shared Button owns the
+  // action. Clicking the container leaves the palette open and can steal
+  // composer input while the preconfigured selection masks the missed click.
+  await browser.$(`${optionSelector} [data-spotlight-row-action]`).click();
+  await browser.waitUntil(
+    async () => !(await execJS(js.exists(optionSelector))),
+    {
+      timeout: RENDER_TIMEOUT_MS,
+      timeoutMsg: `Agent Org picker did not close after selecting ${agentOrgId}`,
+    }
+  );
   const selection = unwrap(
     await invokeE2E("inspectCreatorSelection"),
     `inspectCreatorSelection(${agentOrgId})`

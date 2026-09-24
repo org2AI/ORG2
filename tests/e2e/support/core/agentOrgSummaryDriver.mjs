@@ -130,6 +130,43 @@ export async function runSummaryStopScenario(window, { postJson }) {
         timeoutMsg: "Report provider did not reach its streaming window",
       }
     );
+  if (window === "stream")
+    await browser.waitUntil(
+      async () => {
+        const current = await invokeE2E("inspectChatState");
+        const live = current?.chatEvents?.find(
+          (event) => event.args?.syntheticLive === true
+        );
+        const rendered = await execJS(`
+          const headers = Array.from(document.querySelectorAll('[data-testid="agent-org-execution-header"]'));
+          const latest = headers.at(-1);
+          return {
+            intent: latest?.getAttribute('data-turn-intent-id'),
+            title: latest?.textContent,
+            navigation: Array.from(document.querySelectorAll('[aria-label^="Go to turn "]'))
+              .map(node => node.getAttribute('aria-label')),
+          };
+        `);
+        // The fake provider's delta window need not create an active snapshot,
+        // and compact layouts can omit the navigator. Assert the actual formal
+        // header; when live text/navigation is present it must share that owner.
+        return (
+          rendered.intent === first.turnIntentId &&
+          rendered.title?.includes("Coordinator · Final report") &&
+          (!live ||
+            live.args?.agentOrgExecution?.turnIntentId ===
+              first.turnIntentId) &&
+          (rendered.navigation.length === 0 ||
+            rendered.navigation.at(-1)?.includes("Coordinator · Final report"))
+        );
+      },
+      {
+        timeout: 5000,
+        interval: 100,
+        timeoutMsg:
+          "Streaming report did not retain its formal execution header",
+      }
+    );
   const stop = '[data-testid="chat-send-button"][data-state="stop"]';
   await browser.waitUntil(
     async () =>

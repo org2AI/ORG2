@@ -35,7 +35,7 @@ pub use crud::{
     update_worktree_merge_status, upsert_session, UnifiedSessionRecord,
 };
 pub(crate) use crud::{
-    delete_session_with_connection, finish_session_delete, prepare_session_delete,
+    delete_session_with_connection, finish_session_delete, prepare_session_delete, update_status_at,
 };
 pub use sidebar::{
     list_agent_org_root_sessions_page, list_standalone_coding_sessions_page,

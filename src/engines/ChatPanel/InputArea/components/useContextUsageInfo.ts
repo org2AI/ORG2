@@ -6,6 +6,7 @@ import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHist
 import { useSessionId } from "@src/engines/SessionCore/hooks/session";
 import { useKeyVault } from "@src/hooks/keyVault";
 import { useValidatedLastPair } from "@src/hooks/models/useValidatedLastPair";
+import { sessionByIdAtom } from "@src/store/session";
 import type { ContextUsageSnapshot } from "@src/store/session/cliSessionStatusAtom";
 import {
   sessionContextTokensAtom,
@@ -16,6 +17,7 @@ import {
   type ResolvedModelVariantFields,
   getModelVariantBaseModel,
 } from "@src/util/modelVariants";
+import { selectionFromSession } from "@src/util/session/selectionFromSession";
 import { isCliSession } from "@src/util/session/sessionDispatch";
 
 type ContextWindowVariant = Pick<
@@ -124,7 +126,11 @@ export function useContextUsageInfo(): ContextUsageInfo {
     (!!sessionId && isCliSession(sessionId));
   const sessionTokens = useAtomValue(sessionContextTokensAtom);
   const contextUsage = useAtomValue(sessionContextUsageAtom);
-  const lastModel = useValidatedLastPair();
+  const creatorDefault = useValidatedLastPair();
+  const session = useAtomValue(sessionByIdAtom(sessionId ?? ""));
+  const lastModel = sessionId
+    ? selectionFromSession(session, null)
+    : creatorDefault;
   const { accounts } = useKeyVault({ autoLoad: true });
 
   const modelName = lastModel?.model || lastModel?.listingModel || "";

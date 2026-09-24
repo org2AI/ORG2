@@ -3,10 +3,11 @@ import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { accountHasModel } from "@src/hooks/models/useModelAccountLookup";
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
+
 import {
-  parseModelVariant,
-  resolveModelVariantFields,
-} from "@src/util/modelVariants";
+  resolveAccountModelVariant,
+  selectableAccountModelIds,
+} from "./accountModelCatalog";
 
 /**
  * Resolves the effective model id shown in chat input pills.
@@ -30,10 +31,6 @@ export function resolveModelDisplaySelection(
   }
   if (!isActiveSession) return selection;
 
-  // The session's stored model already encodes a user-chosen variant/effort;
-  // treat it as authoritative and do not overwrite it with the account default.
-  if (parseModelVariant(selection.model)) return selection;
-
   const selectedAccount = accounts.find((account) => {
     if (selection.selectedAccountId) {
       return account.id === selection.selectedAccountId;
@@ -51,11 +48,21 @@ export function resolveModelDisplaySelection(
   });
   if (!selectedAccount) return selection;
 
-  const baseModel = resolveModelVariantFields(selection.model).base_model;
-  const accountModelIds = (selectedAccount.availableModels ?? []).filter(
+  const variant = resolveAccountModelVariant(selectedAccount, selection.model);
+  if (
+    variant.reasoning ||
+    variant.fast ||
+    variant.thinking ||
+    variant.base_model !== selection.model
+  )
+    return selection;
+
+  const baseModel = variant.base_model;
+  const accountModelIds = selectableAccountModelIds(selectedAccount).filter(
     (modelId) =>
       accountHasModel(selectedAccount, modelId) &&
-      resolveModelVariantFields(modelId).base_model === baseModel
+      resolveAccountModelVariant(selectedAccount, modelId).base_model ===
+        baseModel
   );
   if (accountModelIds.length === 0) return selection;
 
@@ -65,7 +72,7 @@ export function resolveModelDisplaySelection(
       accountModelIds.includes(variant.model)
   )?.model;
   const variantInfos = accountModelIds.map((modelId) =>
-    resolveModelVariantFields(modelId)
+    resolveAccountModelVariant(selectedAccount, modelId)
   );
   const effectiveModel = resolveDefaultVariant(
     baseModel,

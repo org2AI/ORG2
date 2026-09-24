@@ -65,7 +65,6 @@ export function withCursorNativeModels(
 
   return {
     ...account,
-    status: "ready",
     canUseNativeHarness: true,
     nativeHarnessType: account.nativeHarnessType ?? NATIVE_HARNESS_TYPE.CURSOR,
     availableModels: Array.from(availableModels),
@@ -76,13 +75,13 @@ export function withCursorNativeModels(
 export function withClaudeCodeOAuthModels(
   account: KeyVaultAccount
 ): KeyVaultAccount {
-  return { ...account, status: "ready" };
+  return account;
 }
 
 export function withCodexOAuthModels(
   account: KeyVaultAccount
 ): KeyVaultAccount {
-  return { ...account, status: "ready" };
+  return account;
 }
 
 export function withNativeHarnessModels(

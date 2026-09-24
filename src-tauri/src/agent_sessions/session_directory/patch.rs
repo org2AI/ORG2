@@ -179,12 +179,14 @@ fn locate_session(session_id: &str) -> SqliteResult<Option<SessionLocation>> {
 /// error on the NEXT turn. Failing the patch up-front gives the frontend
 /// rollback path a useful message instead.
 ///
-/// Matching is deliberately lenient (exact, prefix in either direction, or
-/// alias) because palette model ids may carry variant suffixes; an empty
-/// `enabled_models` list means "no restriction" (e.g. fallback-populated
-/// native accounts).
-fn validate_account_model_compat(account_id: &str, model: &str) -> Result<(), String> {
-    let Some(key) = key_vault::key_store::KEY_SERVICE.get_key_by_id(account_id) else {
+/// Uses the same effective inventory and variant enablement as the picker;
+/// empty enablement never grants access to the entire discovered inventory.
+fn validate_account_model_compat(
+    account_id: &str,
+    model: &str,
+    key: Option<key_vault::key_store::ModelKey>,
+) -> Result<(), String> {
+    let Some(key) = key else {
         return Err(format!(
             "session_patch: account {account_id} not found in key vault"
         ));
@@ -192,17 +194,16 @@ fn validate_account_model_compat(account_id: &str, model: &str) -> Result<(), St
     if !key.enabled {
         return Err(format!("session_patch: account {account_id} is disabled"));
     }
-    if key.enabled_models.is_empty() {
-        return Ok(());
-    }
-    let compatible = key.enabled_models.iter().any(|enabled| {
-        enabled == model || model.starts_with(enabled.as_str()) || enabled.starts_with(model)
-    }) || key.model_aliases.iter().any(|alias| alias.alias == model);
+    let info = key_vault::commands::key_info_from_entry(key)?;
+    let compatible = info
+        .selectable_model_ids()
+        .iter()
+        .any(|enabled| enabled == model);
     if !compatible {
         return Err(format!(
             "session_patch: model {model} is not enabled for account {account_id} \
              (enabled: {:?})",
-            key.enabled_models
+            info.enabled_models
         ));
     }
     Ok(())
@@ -246,10 +247,13 @@ fn resolve_atomic_mode_axes(
     )))
 }
 
-/// Apply a patch synchronously. Public for `#[tauri::command]`
-/// adapter; tests can also call this directly with an in-memory DB
-/// once the connection abstraction allows it.
-pub fn apply_session_patch(session_id: &str, patch: &SessionPatch) -> Result<(), String> {
+/// Synchronous persistence phase. Keep private so transports cannot bypass
+/// identity serialization, runtime invalidation, or notifications.
+fn apply_session_patch(
+    session_id: &str,
+    patch: &SessionPatch,
+    account_lookup: &impl Fn(&str) -> Result<Option<key_vault::key_store::ModelKey>, String>,
+) -> Result<(), String> {
     // Reject the only structurally-invalid combination upfront so the
     // frontend gets a useful error instead of a silent no-op.
     if patch.account_id.is_some() && patch.model.is_none() {
@@ -257,9 +261,6 @@ pub fn apply_session_patch(session_id: &str, patch: &SessionPatch) -> Result<(),
             "session_patch: account_id provided without model — pair them in the same call"
                 .to_string(),
         );
-    }
-    if let (Some(account_id), Some(model)) = (patch.account_id.as_deref(), patch.model.as_deref()) {
-        validate_account_model_compat(account_id, model)?;
     }
     if patch.name.is_none()
         && patch.model.is_none()
@@ -275,6 +276,21 @@ pub fn apply_session_patch(session_id: &str, patch: &SessionPatch) -> Result<(),
     let location = locate_session(session_id)
         .map_err(|err| format!("session_patch lookup failed: {err}"))?
         .ok_or_else(|| format!("session_patch: session {session_id} not found"))?;
+
+    if let Some(model) = patch.model.as_deref() {
+        if model.trim().is_empty() {
+            return Err("session_patch: model cannot be empty".to_string());
+        }
+        // A model-only edit retains its account; validate the resulting pair,
+        // not just the fields that happened to be present in the wire payload.
+        let account_id = patch
+            .account_id
+            .clone()
+            .or_else(|| read_current_account(session_id));
+        if let Some(account_id) = account_id.as_deref() {
+            validate_account_model_compat(account_id, model, account_lookup(account_id)?)?;
+        }
+    }
 
     if let Some(name) = patch.name.as_deref() {
         let trimmed = name.trim();
@@ -466,6 +482,31 @@ pub async fn session_patch(
     session_id: String,
     patch: SessionPatch,
 ) -> Result<(), String> {
+    patch_session(state.inner(), session_id, patch).await
+}
+
+/// Shared desktop/mobile mutation boundary. Every identity edit must serialize
+/// with native publication, persist before invalidating the cached runtime, and
+/// emit the same account-switch notification before acknowledging success.
+pub async fn patch_session(
+    state: &agent_core::state::AgentAppState,
+    session_id: String,
+    patch: SessionPatch,
+) -> Result<(), String> {
+    patch_session_with_account_lookup(state, session_id, patch, |account_id| {
+        key_vault::key_store::KEY_SERVICE.get_key_by_id_checked(account_id)
+    })
+    .await
+}
+
+async fn patch_session_with_account_lookup(
+    state: &agent_core::state::AgentAppState,
+    session_id: String,
+    patch: SessionPatch,
+    account_lookup: impl Fn(&str) -> Result<Option<key_vault::key_store::ModelKey>, String>
+        + Send
+        + 'static,
+) -> Result<(), String> {
     let identity_changed = patch.model.is_some() || patch.account_id.is_some();
     // Model/account identity participates in provider-native publication.
     // Serialize that patch with interrupt/finalize/follow-up so an in-flight
@@ -474,7 +515,7 @@ pub async fn session_patch(
     // committed for the next turn once the current provider boundary settles.
     let _identity_guard = if identity_changed {
         Some(
-            crate::agent_sessions::cli::session_runner::session_identity_lock(&session_id)
+            agent_core::state::session_identity_lock(&session_id)
                 .await
                 .lock_owned()
                 .await,
@@ -482,131 +523,89 @@ pub async fn session_patch(
     } else {
         None
     };
-    let switched_to_project = patch.product_mode.as_deref() == Some("project");
-    let renamed = patch
-        .name
-        .as_deref()
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-        .map(str::to_string);
-    let switched_account = patch.account_id.clone();
-    let switched_model = patch.model.clone();
-    let patched_session_id = session_id.clone();
-    let prev_account = tokio::task::spawn_blocking(move || {
-        let prev_account = patch
-            .account_id
-            .is_some()
-            .then(|| read_current_account(&session_id))
-            .flatten();
-        apply_session_patch(&session_id, &patch).map(|()| prev_account)
-    })
-    .await
-    .map_err(|err| format!("session_patch task join error: {err}"))??;
-    if identity_changed {
-        state.invalidate_session(&patched_session_id).await;
-    }
-    if switched_to_project {
-        // Convert to Project (orgtrack/v1 §7.2): entering the Project
-        // product mode must invalidate Plan mode's snapshot/restore
-        // state, otherwise the pending-approval restore path would
-        // bounce a later turn back to the pre-Plan exec mode.
-        if let Some(session) = state.get_session(&patched_session_id).await {
-            let had_slot = session.plan_slot_cache.get(&patched_session_id).is_some();
-            let _ = session.pre_plan_mode_cache.take(&patched_session_id);
-            session.plan_slot_cache.clear(&patched_session_id);
-            if had_slot {
-                agent_core::bus::broadcast_event(
-                    "agent:exit_plan_mode",
-                    serde_json::json!({
-                        "sessionId": &patched_session_id,
-                        "source": "convert_to_project",
-                        "nextMode": agent_core::session::AgentExecMode::Build.as_str(),
-                    }),
+    // Once admitted, persistence and cache invalidation form one lifecycle.
+    // A disconnected mobile caller can cancel its response future, but cannot
+    // leave a completed blocking DB write paired with the previous runtime.
+    let state = state.clone();
+    tokio::spawn(async move {
+        let _identity_guard = _identity_guard;
+        let identity_session = if identity_changed {
+            state.get_session(&session_id).await
+        } else {
+            None
+        };
+        let runtime_mutation = match identity_session.as_ref() {
+            Some(session) => Some(session.begin_identity_mutation().await?),
+            None => None,
+        };
+        let switched_to_project = patch.product_mode.as_deref() == Some("project");
+        let renamed = patch
+            .name
+            .as_deref()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .map(str::to_string);
+        let switched_account = patch.account_id.clone();
+        let switched_model = patch.model.clone();
+        let patched_session_id = session_id.clone();
+        let prev_account = tokio::task::spawn_blocking(move || {
+            let prev_account = patch
+                .account_id
+                .is_some()
+                .then(|| read_current_account(&session_id))
+                .flatten();
+            apply_session_patch(&session_id, &patch, &account_lookup).map(|()| prev_account)
+        })
+        .await
+        .map_err(|err| format!("session_patch task join error: {err}"))??;
+        if let Some(mutation) = runtime_mutation {
+            mutation.invalidate_runtime().await;
+        }
+        if switched_to_project {
+            // Convert to Project (orgtrack/v1 §7.2): entering the Project
+            // product mode must invalidate Plan mode's snapshot/restore
+            // state, otherwise the pending-approval restore path would
+            // bounce a later turn back to the pre-Plan exec mode.
+            if let Some(session) = state.get_session(&patched_session_id).await {
+                let had_slot = session.plan_slot_cache.get(&patched_session_id).is_some();
+                let _ = session.pre_plan_mode_cache.take(&patched_session_id);
+                session.plan_slot_cache.clear(&patched_session_id);
+                if had_slot {
+                    agent_core::bus::broadcast_event(
+                        "agent:exit_plan_mode",
+                        serde_json::json!({
+                            "sessionId": &patched_session_id,
+                            "source": "convert_to_project",
+                            "nextMode": agent_core::session::AgentExecMode::Build.as_str(),
+                        }),
+                    );
+                }
+            }
+        }
+        if let Some(name) = renamed.as_deref() {
+            agent_core::lifecycle::emit_session_renamed(
+                state.app_handle.as_ref(),
+                &patched_session_id,
+                name,
+            );
+        }
+        if let Some(to_account) = switched_account.as_deref() {
+            if prev_account.as_deref() != Some(to_account) {
+                agent_core::lifecycle::emit_session_account_switched(
+                    state.app_handle.as_ref(),
+                    &patched_session_id,
+                    prev_account.as_deref(),
+                    to_account,
+                    switched_model.as_deref(),
                 );
             }
         }
-    }
-    if let Some(name) = renamed.as_deref() {
-        agent_core::lifecycle::emit_session_renamed(
-            state.app_handle.as_ref(),
-            &patched_session_id,
-            name,
-        );
-    }
-    if let Some(to_account) = switched_account.as_deref() {
-        if prev_account.as_deref() != Some(to_account) {
-            agent_core::lifecycle::emit_session_account_switched(
-                state.app_handle.as_ref(),
-                &patched_session_id,
-                prev_account.as_deref(),
-                to_account,
-                switched_model.as_deref(),
-            );
-        }
-    }
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|err| format!("session_patch lifecycle task join error: {err}"))?
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn project_derives_build_and_ordinary_modes_never_gain_pm_capability() {
-        assert_eq!(
-            resolve_atomic_mode_axes(Some("project"), Some("ask")).unwrap(),
-            Some(("project".to_string(), "build".to_string()))
-        );
-        assert_eq!(
-            resolve_atomic_mode_axes(Some("build"), Some("build")).unwrap(),
-            Some(("build".to_string(), "build".to_string()))
-        );
-        assert_eq!(
-            resolve_atomic_mode_axes(Some("plan"), Some("plan")).unwrap(),
-            Some(("plan".to_string(), "plan".to_string()))
-        );
-        assert!(resolve_atomic_mode_axes(Some("project-ish"), Some("build")).is_err());
-        assert!(resolve_atomic_mode_axes(Some("project"), Some("unrestricted")).is_err());
-    }
-
-    #[test]
-    fn double_option_distinguishes_absent_null_value() {
-        // Field absent → None → "leave alone"
-        let absent: SessionPatch = serde_json::from_str("{}").unwrap();
-        assert!(absent.draft_text.is_none());
-        assert!(absent.reply_target_event_id.is_none());
-
-        // Field is JSON null → Some(None) → "clear"
-        let nulled: SessionPatch =
-            serde_json::from_str(r#"{"draftText": null, "replyTargetEventId": null}"#).unwrap();
-        assert_eq!(nulled.draft_text, Some(None));
-        assert_eq!(nulled.reply_target_event_id, Some(None));
-
-        // Field is a string → Some(Some(_)) → "set"
-        let set: SessionPatch =
-            serde_json::from_str(r#"{"draftText": "hello", "replyTargetEventId": "evt_42"}"#)
-                .unwrap();
-        assert_eq!(set.draft_text, Some(Some("hello".to_string())));
-        assert_eq!(set.reply_target_event_id, Some(Some("evt_42".to_string())));
-    }
-
-    #[test]
-    fn empty_patch_is_rejected() {
-        let patch = SessionPatch::default();
-        let err = apply_session_patch("nonexistent", &patch).unwrap_err();
-        assert!(err.contains("at least one field"), "got: {err}");
-    }
-
-    #[test]
-    fn account_without_model_is_rejected() {
-        let patch = SessionPatch {
-            account_id: Some("acc_1".to_string()),
-            ..SessionPatch::default()
-        };
-        let err = apply_session_patch("nonexistent", &patch).unwrap_err();
-        assert!(
-            err.contains("account_id provided without model"),
-            "got: {err}"
-        );
-    }
-}
+#[path = "patch_tests.rs"]
+mod tests;

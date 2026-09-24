@@ -207,6 +207,15 @@ export const DeleteKeyByIdInput = z.object({
   keyId: z.string(),
 });
 
+export const ModelCatalogRefreshSchema = z.object({
+  expectedCredentialGeneration: z.number().int().nonnegative(),
+  expectedCatalogGeneration: z.number().int().nonnegative(),
+  availableModels: z.array(z.string()),
+  modelVariants: z.array(ModelVariantInfoSchema).nullable(),
+  defaultVariants: z.array(DefaultVariantInfoSchema).nullable(),
+  modelContextLengths: ModelContextLengthsSchema,
+});
+
 export const UpdateKeyHealthInput = z.object({
   keyId: z.string(),
   healthStatus: HealthStatusSchema,
@@ -215,6 +224,7 @@ export const UpdateKeyHealthInput = z.object({
   enabledModels: z.array(z.string()).nullable().optional(),
   quotaInfo: z.record(z.string(), z.unknown()).nullable().optional(),
   modelContextLengths: ModelContextLengthsSchema.nullable().optional(),
+  catalogRefresh: ModelCatalogRefreshSchema.nullable().optional(),
 });
 
 export const PromptPolishRequestSchema = z.object({

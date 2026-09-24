@@ -353,25 +353,36 @@ export interface ResolvedModelVariantFields {
   reasoning?: string | null;
   fast: boolean;
   context_window?: number | null;
+  /** Wire catalogs currently omit thinking; retain the ID grammar for this dimension. */
+  thinking?: boolean;
 }
 
-/** Frontend parse wins over backend model_variants wire metadata. */
+/** Catalog fields are authoritative; parse IDs only when metadata is absent. */
 export function resolveModelVariantFields(
   model: string,
-  fallback?: ResolvedModelVariantFields
+  metadata?: ResolvedModelVariantFields
 ): ResolvedModelVariantFields {
   const parsed = parseModelVariant(model);
+  if (metadata) {
+    return {
+      ...metadata,
+      model,
+      ...(metadata.thinking === undefined && parsed?.thinking
+        ? { thinking: true }
+        : {}),
+    };
+  }
   if (parsed) {
     return {
       model: parsed.model,
-      base_model: parsed.baseModel,
+      base_model:
+        parsed.reasoning || parsed.thinking || parsed.fast
+          ? parsed.baseModel
+          : model,
       reasoning: parsed.reasoning ?? null,
       fast: parsed.fast,
-      context_window: fallback?.context_window,
+      ...(parsed.thinking ? { thinking: true } : {}),
     };
-  }
-  if (fallback) {
-    return fallback;
   }
   return { model, base_model: model, fast: false };
 }

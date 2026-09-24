@@ -81,3 +81,32 @@ describe("buildVariantEditOptions", () => {
     }
   });
 });
+
+it("uses wire effort and fast fields while preserving the independent thinking dimension", () => {
+  const modelIds = ["claude-opus-4-8-thinking-high", "deployment-b"];
+  const metadata = [
+    {
+      model: modelIds[0],
+      base_model: "catalog-family",
+      reasoning: "low",
+      fast: true,
+    },
+    {
+      model: modelIds[1],
+      base_model: "catalog-family",
+      reasoning: "high",
+      fast: false,
+    },
+  ];
+  const options = buildVariantEditOptions(modelIds, metadata);
+  expect(options.availableLevels).toEqual(["low", "high"]);
+  expect(options.thinkingToggleable).toBe(true);
+  expect(options.parseSelection(modelIds[0])).toEqual({
+    thinking: true,
+    level: "low",
+    fast: true,
+  });
+  expect(
+    options.resolveVariantId({ thinking: false, level: "high", fast: false })
+  ).toBe("deployment-b");
+});

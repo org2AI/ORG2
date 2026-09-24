@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::models::{default_variants_for_key, model_variants_for_key};
-use super::{DefaultVariantInfo, FullKeyResponse, KeyInfo, ModelAliasInfo, ModelVariantInfo};
+use super::{FullKeyResponse, KeyInfo, ModelAliasInfo, ModelVariantInfo};
 use crate::commands::validate::key_can_refresh_quota;
 use crate::key_store::{AuthMethod, HealthStatus, ModelKey, ModelType};
 
@@ -105,22 +105,10 @@ fn enrich_cursor_native_models(info: &mut KeyInfo) -> Result<(), String> {
         merge_unique_models(&mut info.available_models, models);
     }
 
-    if info.enabled_models.is_empty() {
-        for model in CURSOR_NATIVE_FALLBACK_MODELS {
-            if info
-                .available_models
-                .iter()
-                .any(|available| available == model)
-            {
-                info.enabled_models.push(model.to_string());
-            }
-        }
-    }
-
     Ok(())
 }
 
-pub(in crate::commands) fn key_info_from_entry(entry: ModelKey) -> Result<KeyInfo, String> {
+pub fn key_info_from_entry(entry: ModelKey) -> Result<KeyInfo, String> {
     let mut info = KeyInfo::from(entry);
     enrich_cursor_native_models(&mut info)?;
     Ok(info)
@@ -224,7 +212,10 @@ impl From<ModelKey> for KeyInfo {
 
 impl From<ModelKey> for FullKeyResponse {
     fn from(entry: ModelKey) -> Self {
+        let default_variants = default_variants_for_key(&entry);
         FullKeyResponse {
+            credential_generation: entry.credential_generation,
+            model_catalog_generation: entry.model_catalog_generation,
             id: entry.id,
             name: entry.name,
             agent_type: entry.model_type.as_str().to_string(),
@@ -255,14 +246,7 @@ impl From<ModelKey> for FullKeyResponse {
                     context_window: variant.context_window.filter(|ctx| *ctx > 0),
                 })
                 .collect(),
-            default_variants: entry
-                .default_variants
-                .into_iter()
-                .map(|variant| DefaultVariantInfo {
-                    base_model: variant.base_model,
-                    model: variant.model,
-                })
-                .collect(),
+            default_variants,
             auth_method: match entry.auth_method {
                 AuthMethod::ApiKey => "api_key",
                 AuthMethod::Oauth => "oauth",

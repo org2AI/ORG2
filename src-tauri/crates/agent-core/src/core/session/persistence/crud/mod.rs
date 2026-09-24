@@ -33,7 +33,7 @@ pub use ops::{
     upsert_session,
 };
 pub(crate) use ops::{
-    delete_session_with_connection, finish_session_delete, prepare_session_delete,
+    delete_session_with_connection, finish_session_delete, prepare_session_delete, update_status_at,
 };
 pub(super) use record::{row_to_record, UNIFIED_SESSION_SELECT};
 pub use record::{session_type, UnifiedSessionRecord};

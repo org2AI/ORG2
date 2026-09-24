@@ -11,7 +11,7 @@ use crate::foundation::persistence::images::load_image_as_data_url;
 
 use crate::session::persistence as unified_persistence;
 use crate::session::IdeContext;
-use crate::state::{AgentAppState, AgentSession};
+use crate::state::{AgentAppState, AgentSession, SessionRuntime};
 use core_types::key_source::KeySource;
 
 /// Process a single inbound gateway message.
@@ -24,6 +24,22 @@ pub async fn process_gateway_message(
     ide_context: Option<&IdeContext>,
     app_handle: Option<tauri::AppHandle>,
 ) -> Result<Option<OutboundMessage>, String> {
+    let runtime = session
+        .get_runtime()
+        .await
+        .ok_or_else(|| format!("Session {} runtime not initialized", session.id))?;
+    process_gateway_message_with_runtime(msg, session, runtime, ide_context, app_handle).await
+}
+
+/// Keep the dispatcher-captured runtime through gateway preprocessing and the
+/// provider call, even when a newer selection clears the session cache.
+pub(crate) async fn process_gateway_message_with_runtime(
+    msg: InboundMessage,
+    session: Arc<AgentSession>,
+    runtime: Arc<SessionRuntime>,
+    ide_context: Option<&IdeContext>,
+    app_handle: Option<tauri::AppHandle>,
+) -> Result<Option<OutboundMessage>, String> {
     let preview: String = crate::utils::safe_truncate_chars_to_string(&msg.content, 80);
     info!(
         "Processing message from {}:{}: {}...",
@@ -31,11 +47,6 @@ pub async fn process_gateway_message(
     );
 
     let session_key = msg.session_key();
-
-    let runtime = session
-        .get_runtime()
-        .await
-        .ok_or_else(|| format!("Session {} runtime not initialized", session.id))?;
 
     let effective_model = runtime.model.clone();
 
@@ -47,6 +58,7 @@ pub async fn process_gateway_message(
         let user_input_preview: String =
             crate::utils::safe_truncate_chars_to_string(&msg.content, 200);
         let model = effective_model.clone();
+        let account_id = runtime.account_id.clone();
         if let Err(err) =
             tokio::task::spawn_blocking(move || match unified_persistence::get_session(&sk) {
                 Ok(Some(_)) => Ok(()),
@@ -58,6 +70,7 @@ pub async fn process_gateway_message(
                         name: format!("Channel: {}", channel),
                         status: super::SessionStatus::Running.as_str().to_string(),
                         model: Some(model),
+                        account_id,
                         session_type: session_type.to_string(),
                         channel: Some(channel),
                         chat_id: Some(chat_id),
@@ -151,8 +164,13 @@ pub async fn process_gateway_message(
         turn_intent_id: uuid::Uuid::new_v4().to_string(),
     };
 
-    let result =
-        crate::session::process_message(Arc::clone(&session), input, app_handle.clone()).await;
+    let result = super::turn::entry::process_message_with_runtime(
+        Arc::clone(&session),
+        runtime,
+        input,
+        app_handle.clone(),
+    )
+    .await;
 
     // Compact-fork redirect.
     if let Ok(ref pr) = result {

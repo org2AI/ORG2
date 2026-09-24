@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use tauri::Manager;
 
-use crate::state::AgentSession;
+use crate::state::{AgentSession, SessionRuntime};
 
 use super::super::types::{ProcessingContext, ProcessingResult};
 use super::event_handler::EventHandlerConfig;
@@ -129,6 +129,19 @@ pub async fn process_message(
         .await
         .ok_or_else(|| format!("Session {} runtime not initialized", session.id))?;
 
+    process_message_with_runtime(session, runtime, input, app_handle).await
+}
+
+/// Execute with the runtime captured while the caller prepared this turn.
+/// A later model selection may invalidate or replace the session cache, but
+/// applies to the next turn rather than changing this admitted provider call.
+/// Callers retain responsibility for their existing admission checks.
+pub(crate) async fn process_message_with_runtime(
+    session: Arc<AgentSession>,
+    runtime: Arc<SessionRuntime>,
+    input: TurnInput,
+    app_handle: Option<tauri::AppHandle>,
+) -> Result<ProcessingResult, String> {
     let workspace_path = runtime.workspace_state.read().working_dir().to_path_buf();
 
     let lsp_manager = extract_lsp_manager(&app_handle);
@@ -242,6 +255,10 @@ pub async fn process_message(
         .process(&session.id, &content, processing_context)
         .await
 }
+
+#[cfg(test)]
+#[path = "entry_runtime_tests.rs"]
+mod runtime_tests;
 
 #[cfg(test)]
 mod tests {

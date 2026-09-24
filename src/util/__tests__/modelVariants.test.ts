@@ -384,7 +384,7 @@ describe("parseModelVariant", () => {
     });
   });
 
-  it("prefers frontend parse over stale backend model variant metadata", () => {
+  it("uses backend catalog fields before model ID grammar", () => {
     expect(
       resolveModelVariantFields("gpt-5.1-codex-max-medium", {
         model: "gpt-5.1-codex-max-medium",
@@ -394,9 +394,24 @@ describe("parseModelVariant", () => {
       })
     ).toEqual({
       model: "gpt-5.1-codex-max-medium",
-      base_model: "gpt-5.1-codex-max",
-      reasoning: MODEL_REASONING_LEVEL.MEDIUM,
+      base_model: "gpt-5.1-codex-max-medium",
+      reasoning: MODEL_REASONING_LEVEL.MAX,
       fast: false,
     });
   });
+
+  it.each(["o4-mini", "o4-nano"])(
+    "keeps the %s size suffix in its inferred effort family",
+    (model) => {
+      expect(resolveModelVariantFields(model).base_model).toBe(model);
+      expect(resolveModelVariantFields(`${model}-high`).base_model).toBe(model);
+      expect(
+        resolveModelVariantFields(model, {
+          model,
+          base_model: "o4",
+          fast: false,
+        }).base_model
+      ).toBe("o4");
+    }
+  );
 });

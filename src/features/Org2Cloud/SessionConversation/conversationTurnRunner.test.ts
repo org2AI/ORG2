@@ -12,7 +12,12 @@ import {
 } from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { Org2CloudConversationError } from "@src/features/Org2Cloud/org2CloudConversationEventsClient";
+import {
+  collectSessionSharedFiles,
+  sharedFileAbsolutePath,
+} from "@src/features/Org2Cloud/sessionSharedFileCandidates";
 
+import { planeArtifactOrigin } from "./conversationPlaneEvents";
 import {
   buildPushedUserEvent,
   runConversationTurn,
@@ -104,6 +109,49 @@ describe("runConversationTurn", () => {
       },
     },
     publishTail: vi.fn().mockResolvedValue(undefined),
+  });
+
+  it("publishes the sender workspace for exact relative-link capture and receiver resolution", async () => {
+    const params = retryParams();
+    const output = {
+      ...buildPushedUserEvent(
+        "[Report](report.txt)",
+        undefined,
+        undefined,
+        "2026-09-24T00:00:00Z",
+        "output"
+      ),
+      source: "assistant",
+      repoPath: "/sender/automatic-worktree",
+    } as SessionEvent;
+    mocks.continueLocalConversation.mockResolvedValueOnce({
+      sessionId: "cliagent-sender",
+      terminalStatus: "completed",
+      agentTail: [output],
+    });
+    await runConversationTurn(params);
+    const published = params.publishTail.mock.calls[0]![1] as SessionEvent[];
+    expect(collectSessionSharedFiles(published, "/receiver/workspace")).toEqual(
+      [
+        {
+          path: "/sender/automatic-worktree/report.txt",
+          revision: `${published[0]!.id}:${output.createdAt}`,
+        },
+      ]
+    );
+    const origin = planeArtifactOrigin({
+      id: "cloud-row",
+      turnId: params.turnIntentId,
+      seq: 1,
+      rootSessionId: "shared-root",
+      authorUserId: "sender",
+      createdAt: output.createdAt,
+      event: published[0]!,
+    });
+    expect(sharedFileAbsolutePath("report.txt", origin.repoPath)).toBe(
+      "/sender/automatic-worktree/report.txt"
+    );
+    expect(origin.revision).toBe(`${published[0]!.id}:${output.createdAt}`);
   });
 
   it("publishes a proved empty failure but returns the original message to explicit Retry", async () => {

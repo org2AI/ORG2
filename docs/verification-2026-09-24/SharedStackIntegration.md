@@ -31,19 +31,38 @@ Sharing then failed: the native JSONL was written into the real user's default C
 
 Both instances' INFO-through-error effect-log audit found two matching lines: each client rejected the three RPC-only synthetic rows because their test metadata omitted `id`. These are local schema-filter diagnostics, not cloud deletes; the post-run ledger confirms no original rows changed or disappeared. Future desktop fixtures must provide complete metadata. This run does not establish clean rendered roster acceptance.
 
+## Isolated desktop rerun and workspace fix
+
+The next combined build included #2146. A real ambient/default Claude base turn persisted in the primary's isolated external-history root; the corresponding real-home JSONL did not exist. Its body uploaded and rendered on the secondary, which successfully continued with the base marker. This fixes the previously failed isolation/body boundary. The first continuation then exposed a separate attachment defect: the absolute Write artifact uploaded successfully, but the final relative Markdown link lacked its own receipt because published output had no sender workspace.
+
+The settled-turn producer now carries the persisted execution directory in the existing `repoPath` event field. The lightweight test frontend disables hot reload: copying the patch and recompiling alone left one pre-refresh attempt on old JavaScript. That attempt is recorded as pre-fix behavior. Both WebViews were then explicitly refreshed and a fresh base/share/continuation scenario was run.
+
+The patched scenario proved:
+
+- A real Claude base reply was shared from A and rendered on B. B's real continuation recalled that marker, wrote `scope2-proof.txt`, and published an explicitly relative Markdown link plus the persisted sender directory.
+- Both authenticated users resolved the final answer's exact uploader/path/revision receipt and downloaded identical 27-byte content. SHA-256: `c206970e4eaaf012222a7810930ed373776db2a2bcd0894a431fd54820ce5119`.
+- Each rendered app opened the final answer's link in the cloud attachment viewer. After overwriting the owned test source file, both reopened viewers still rendered the original bytes, with the Download control present.
+- A continued again without tools or file links, correctly recalled B's marker, and B rendered A's new answer. The new cloud tail contained only the new user/start/assistant events. Read-only SQLite inspection found no owner outbox or snapshot rows for B's file; B retained uploaded snapshots for the Write and final-answer revisions, with an empty pending outbox.
+- The fleet ledger went from 3514 to 3517 rows: three deliberately created test sessions, zero changed pre-existing rows, zero missing rows and zero changes outside the test organization. All 768 historical high-epoch rows remained unchanged.
+- The INFO-through-error destructive-effect audit found watchdog _startup_ messages and housekeeping reports with all removal/eviction counts zero. Six terminal-mirror gate warnings on B match the explicit `cliSessionStatusAtom` guard: hidden execution IDs differ from the visible imported-root ID, so they do not replace its global status mirror. Actual canonical continuation completion and receiver rendering were independently observed. No watchdog recovery fire or destructive cloud effect was observed.
+
+The run used two isolated instances on one Mac, not two physical machines. Account/model setup-helper output alone is not selection evidence. For the final refreshed scenario, persisted launch rows confirmed `claude-sonnet-4-6` on both sides: A used its auto-detected test account, while B had a null account and used ambient authentication. WebDriver screenshots were inspected and found black/unreadable, so they are **not** visual acceptance evidence. DOM visibility/content assertions and exact cloud byte reads establish the behavior above; native UI capture also remained unavailable because the computer-use connector had no auth token. Reload-time repository-fixture/terminal warnings, the screenshot defect, and complete lifecycle/resource acceptance remain open.
+
+Workspace-fix commands: `pnpm test src/engines/SessionCore/conversations/localConversationArtifactScope.test.ts src/engines/SessionCore/conversations/localConversationContinuation.test.ts src/features/Org2Cloud/SessionConversation/conversationTurnRunner.test.ts src/features/Org2Cloud/sessionSharedFileCandidates.test.ts src/features/Org2Cloud/SessionConversation/conversationPlaneEvents.test.ts src/features/Org2Cloud/conversationFileOutbox.test.ts src/features/Org2Cloud/sharedSessionFilesClient.test.ts` — 7 files / 125 tests passed. `pnpm run typecheck:fast`, changed-file `pnpm exec eslint`, and `git diff --check` passed. `node scripts/quality/dependency-boundaries/check.mjs` — 8888 modules, 3 existing edges, 0 new forbidden edges. Counts overlap earlier runs and are not summed.
+
 ## Remaining acceptance
 
-| Surface                                                               | Status                                                                 |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Server SQL and real JWT/RPC                                           | Passed as described above                                              |
-| Combined client unit behavior                                         | Passed as described above                                              |
-| Full rendered A-to-B and B-to-A continuation                          | Failed at Claude body publication; rerun after launch isolation fix    |
-| Real Claude Code continuation                                         | Base response passed; body sharing failed before continuation          |
-| Real Luna reserve continuation                                        | Prior run exposed provenance defects; final combined run pending       |
-| Visible/hidden idle, repeated open/close, restart and fault injection | Not completed for the final combined build                             |
-| Guest expiry/revocation in rendered WebView                           | Not completed for the final combined build                             |
-| Original 164-item semantic-prefix incident                            | Exact failing transcripts unavailable; not reproduced or claimed fixed |
-| WebDriver `no pending script with that id` / mutex poison             | Open test-driver defect from prior acceptance                          |
-| Historical high-epoch/polluted data                                   | Inventoried only; no destructive remediation                           |
+| Surface                                                               | Status                                                                                |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Server SQL and real JWT/RPC                                           | Passed as described above                                                             |
+| Combined client unit behavior                                         | Passed as described above                                                             |
+| Full rendered A-to-B and B-to-A continuation                          | Base A→B, B continuation→A and A follow-up→B passed; full lifecycle matrix incomplete |
+| Real Claude Code continuation                                         | Real base, peer continuation and owner follow-up passed as described above            |
+| Real Luna reserve continuation                                        | Prior run exposed provenance defects; final combined run pending                      |
+| Visible/hidden idle, repeated open/close, restart and fault injection | Not completed for the final combined build                                            |
+| Guest expiry/revocation in rendered WebView                           | Not completed for the final combined build                                            |
+| Original 164-item semantic-prefix incident                            | Exact failing transcripts unavailable; not reproduced or claimed fixed                |
+| WebDriver `no pending script with that id` / mutex poison             | Open test-driver defect from prior acceptance                                         |
+| Historical high-epoch/polluted data                                   | Inventoried only; no destructive remediation                                          |
 
 Performance verdict: blocked for the final stack until the remaining rendered lifecycle and resource measurements finish. Prior bounded-snapshot native measurements do not establish whole-app or WebKit performance.

@@ -520,3 +520,29 @@ Removing the existence-only cache means each ordinary indexed resolution reads
 one SQLite row on demand. Unindexed legacy homes use a bounded directory walk;
 repeated legacy reads can cost more I/O than the old cached path. No new timer is
 added, but a large-legacy-home runtime baseline has not been measured.
+
+## Native user-message correlation correction
+
+The screenshot's XML is authoritative persisted user content, produced by
+`native_correlated_user_input` → `with_turn_intent` → `turn/start.input`.
+The native renderer correctly shows that content; hiding a matching string in
+ORG2 would not correct the producing boundary. The writer now keeps the input
+literal and passes the bounded, namespaced intent through Codex's supported
+`clientUserMessageId`. Both ordinary and context-recovery starts share this
+construction. Native `client_id` is consumed at the current and legacy transcript
+boundaries, preserving submit identity on replay without a second lookup store.
+
+Source invariant: ORG2 must never inject its correlation envelope into newly
+submitted user text. Owned malformed client IDs do not acquire a fallback
+identity; absent/foreign metadata retains read-only legacy-envelope support.
+The historical inventory is the already-recorded C7 source and managed raw
+copies and their recovery artifacts. None are rewritten or deleted by this fix.
+The old screenshot therefore remains valid evidence of the prior producer.
+
+Architecture coverage: writer/reader wire contract, names/validation, dependency
+direction, default/legacy behavior, shared fresh/resume/recovery initialization,
+identity/dedupe and compilation. UI component design, schema migrations and
+new background-resource ownership are inapplicable to this correction. No
+frontend filtering, dependency, native database format or CI change is added.
+Current installed-native protocol verification and remaining GUI/compatibility
+limitations are recorded in the acceptance report.

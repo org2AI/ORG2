@@ -8,7 +8,6 @@
 //! - `spawn_retry`          — transient subprocess-spawn retry helpers
 //! - `skills_resolve`       — built-in SDE agent skills-config resolution
 
-use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::process::Stdio;
 use std::sync::Arc;
@@ -416,21 +415,6 @@ fn scope_codex_transport_to_turn(
     }
 }
 
-fn native_correlated_user_input<'a>(
-    agent: &ModelType,
-    user_input: &'a str,
-    turn_intent_id: Option<&str>,
-) -> Cow<'a, str> {
-    match (agent, turn_intent_id) {
-        (ModelType::Codex, Some(intent)) => Cow::Owned(
-            orgtrack_core::sources::imported_history::turn_correlation::with_turn_intent(
-                user_input, intent,
-            ),
-        ),
-        _ => Cow::Borrowed(user_input),
-    }
-}
-
 fn scope_native_codex_store(
     command: &mut Vec<String>,
     binary: &std::path::Path,
@@ -744,9 +728,8 @@ pub(crate) async fn run_session_with_ide_context(
     } else {
         None
     };
-    let transport_user_input = native_correlated_user_input(&agent, &user_input, turn_intent_id);
     let mut turn = super::input_assembly::build_turn_envelope(
-        transport_user_input.as_ref(),
+        &user_input,
         ide_context.as_ref(),
         Some(effective_mode_str),
         session.product_mode.as_deref(),

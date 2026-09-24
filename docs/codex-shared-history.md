@@ -61,6 +61,23 @@ Recovery uses the saved snapshot rather than rereading a source that may have co
 
 The adapter selects complete native revisions by last-write order; it does not merge individual messages or fields. Equal clocks with different data select the primary deterministically, and mtime changes without data changes do not create new revisions. Previously shared deleted data is not resurrected. Changed destination configuration or frozen dependencies preserve the originals and pending recovery material. Operator recovery must inspect the specific journal and backup; do not delete a pending journal or restore a whole profile over newer native work.
 
+## User-message correlation
+
+New ORG2 Codex turns carry their durable intent in the native app-server
+`turn/start.clientUserMessageId` field, namespaced as `orgii-turn-intent:<id>`.
+The user input stays literal. Native history persists this as `client_id` and
+returns it as `userMessage.clientId` after reopening; ORG2 consumes it at both
+current `item_completed/UserMessage` and legacy `user_message` ingestion
+boundaries. Fresh, resumed and context-recovery turn starts share this writer.
+
+Historical leading `<ide_context>` correlation envelopes remain readable, but
+are no longer produced. Native metadata takes precedence; malformed IDs in our
+namespace are rejected rather than silently borrowing an old body identity.
+Unrelated native client IDs are not interpreted as ORG2 intent IDs. Existing
+raw histories are not rewritten: old envelopes can still be visible in native
+Codex until separately authorized historical remediation. No database migration,
+sidecar, timer or additional history scan is introduced.
+
 ## Architecture audit
 
 The reviewed path is Cloud owner/configure → automatic observer or Open → native initialization → shared reconciliation engine → native rollout/catalog/projection. Background and explicit-open paths use the same engine and owner fence. Native schema/route handling belongs to the lower history adapter; Market owns identity and lifecycle; the existing app-server transport owns native bootstrap. No frontend state, route token, periodic API call, or manual session choice is a source of truth.

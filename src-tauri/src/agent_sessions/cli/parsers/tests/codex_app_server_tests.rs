@@ -810,6 +810,7 @@ fn native_turn(
     CodexAppServerTurn {
         session_id: SESSION_ID.to_string(),
         user_input: user_input.to_string(),
+        turn_intent_id: None,
         developer_instructions: Some(developer_instructions.to_string()),
         working_dir: "/workspace".to_string(),
         project_id: Some("desktop-project-id".to_string()),
@@ -820,6 +821,27 @@ fn native_turn(
         image_paths: vec!["/tmp/native-image.png".to_string()],
         allow_native_context_recovery: false,
     }
+}
+
+#[test]
+fn turn_correlation_is_native_metadata_not_user_text() {
+    for resume in [None, Some("existing-thread")] {
+        let mut turn = native_turn("Literal visible user text", "context", resume);
+        turn.turn_intent_id = Some("intent-1".into());
+        let input = build_turn_input(&turn);
+        let params =
+            super::turn_start_params("thread", &input, &json!({}), turn.turn_intent_id.as_deref())
+                .unwrap();
+        assert_eq!(params["clientUserMessageId"], "orgii-turn-intent:intent-1");
+        assert_eq!(params["input"][0]["text"], "Literal visible user text");
+        assert!(!params["input"].to_string().contains("orgii-turn-intent"));
+        assert!(!params["input"].to_string().contains("ide_context"));
+    }
+    assert!(super::turn_start_params("thread", &[], &json!({}), Some("bad\nintent")).is_err());
+    assert!(super::turn_start_params("thread", &[], &json!({}), None)
+        .unwrap()
+        .get("clientUserMessageId")
+        .is_none());
 }
 
 #[test]
@@ -914,6 +936,7 @@ async fn live_smoke_trivial_turn() {
     let turn = CodexAppServerTurn {
         session_id: SESSION_ID.to_string(),
         user_input: "Reply with exactly: pong".to_string(),
+        turn_intent_id: None,
         developer_instructions: None,
         working_dir: std::env::temp_dir().to_string_lossy().to_string(),
         project_id: None,
@@ -1121,6 +1144,7 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
         let turn = CodexAppServerTurn {
             session_id: "orgii-desktop-listability-fixture".to_string(),
             user_input: user_text.to_string(),
+            turn_intent_id: Some(format!("intent-{user_text}")),
             developer_instructions: Some(
                 "ORGII_PROVIDER_CONTEXT_MUST_NOT_BE_USER_TEXT".to_string(),
             ),
@@ -1182,6 +1206,46 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             1,
             "default Desktop list must contain the native thread once: {list}"
         );
+        // Read through a fresh native process: metadata must survive disk/reopen,
+        // while Desktop-visible text stays exactly the authored input.
+        let read = catalog
+            .request(
+                "thread/read",
+                json!({"threadId": thread_id, "includeTurns": true}),
+                Duration::from_secs(10),
+            )
+            .await
+            .unwrap();
+        let turns = read["thread"]["turns"].as_array().unwrap();
+        let users: Vec<_> = turns
+            .iter()
+            .flat_map(|turn| turn["items"].as_array().unwrap())
+            .filter(|item| item["type"] == "userMessage")
+            .collect();
+        let expected_texts = if user_text == "ORGII_VISIBLE_FRESH" {
+            vec!["ORGII_VISIBLE_FRESH"]
+        } else {
+            vec!["ORGII_VISIBLE_FRESH", "ORGII_VISIBLE_RESUME"]
+        };
+        assert_eq!(users.len(), expected_texts.len());
+        for (user, expected) in users.iter().zip(&expected_texts) {
+            assert_eq!(
+                user["clientId"],
+                format!("orgii-turn-intent:intent-{expected}")
+            );
+            assert_eq!(user["content"][0]["text"], *expected);
+        }
+        let path = std::path::Path::new(read["thread"]["path"].as_str().unwrap());
+        let chunks =
+            orgtrack_core::sources::codex::app::load_codex_app_from_path("fixture", path).unwrap();
+        let replay: Vec<_> = chunks
+            .iter()
+            .filter(|chunk| chunk.function == "user_message")
+            .collect();
+        assert_eq!(replay.len(), expected_texts.len());
+        for (user, expected) in replay.iter().zip(&expected_texts) {
+            assert_eq!(user.result["turnIntentId"], format!("intent-{expected}"));
+        }
         assert_ne!(matches[0]["source"], "exec");
         assert_eq!(matches[0]["projectId"], project_id);
         let projects = catalog
@@ -1294,6 +1358,7 @@ done
         let turn = CodexAppServerTurn {
             session_id: format!("slash-{expected_method}"),
             user_input: prompt.into(),
+            turn_intent_id: None,
             developer_instructions: None,
             working_dir: dir.path().to_string_lossy().into_owned(),
             project_id: None,
@@ -1377,6 +1442,7 @@ async fn live_native_question_round_trip_in_plan_mode() {
     let turn = CodexAppServerTurn {
         session_id: session.clone(),
         user_input: "Use request_user_input to ask me to choose Alpha or Beta. Wait for the tool answer, then reply with only the chosen label. Do not use other tools or propose a plan.".into(),
+        turn_intent_id: None,
         developer_instructions: None,
         working_dir: work.path().to_string_lossy().into_owned(),
         project_id: None, resume_thread_id: None,

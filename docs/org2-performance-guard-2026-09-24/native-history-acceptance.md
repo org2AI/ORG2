@@ -478,3 +478,61 @@ not claimed.
 checks passed, but sustained retention/contention, smooth live rendering,
 partial-text cancellation retention and full provider/identity/platform matrix
 coverage remain incomplete.
+
+## Correlation metadata correction after final screenshot
+
+The producer now uses native `turn/start.clientUserMessageId`, leaving user text
+literal. Current and legacy raw readers consume `client_id`; prior XML envelopes
+remain read-only compatibility. This supersedes the earlier statement that the
+presentation gap is unmodified **for new turns only**. Existing histories and
+recovery artifacts have not been altered, and the old Combined2 package does not
+validate this source correction.
+
+| Area               | Verdict | Evidence                                              | Change or reason kept                                           | Verification                                                       |
+| ------------------ | ------- | ----------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Background work    | keep    | Existing turn RPC and raw ingestion                   | No timer, process, subscription or scan added                   | Source call-chain review                                           |
+| Memory             | keep    | Intent bounded to 256 ASCII characters plus namespace | One per-turn metadata value; no app-lifetime map                | Boundary validation regression                                     |
+| Scope/isolation    | keep    | Metadata on the owning native user record             | No identity sidecar or cross-home lookup                        | Distinct identical-text turns and legacy/native append regressions |
+| Rendering/hot path | fix     | XML formerly injected into native user text           | Correct producer; constant-size metadata decode per user record | Literal-text RPC and raw-reader regressions                        |
+
+| Provider                      | Raw transition                                               | App/UI state                        | Topology/boundary                                     | Expected invariant                                             | Observed evidence                      |
+| ----------------------------- | ------------------------------------------------------------ | ----------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------- |
+| Codex                         | Current/legacy user records, completed and interrupted turns | Repeated parse                      | Raw → ORG2                                            | Stable distinct IDs, ordered clean text, preserved correlation | Targeted regression                    |
+| Codex                         | Legacy envelope followed by native metadata                  | Warm tail-window append             | Raw → mobile projection                               | Submit identity remains attached after append                  | Targeted regression                    |
+| Codex                         | Fresh and resumed turn                                       | New native process for history read | Real installed app-server → disk → native read → ORG2 | Literal body and durable client/intent ID                      | Results below                          |
+| Codex                         | New clean-body message                                       | Native GUI reopen                   | Rebuilt product → managed GUI                         | No newly injected XML; one ordered message                     | Not run after correction               |
+| Older Codex / other platforms | New metadata-bearing turn                                    | Runtime-dependent                   | Native protocol                                       | Field accepted and persisted                                   | Not run; no fallback to text injection |
+
+This correction does not change fence/reconciliation ownership. Previously
+measured C7/Stop/menu-Quit results remain evidence for those earlier binaries,
+not a complete performance verdict for a new package. Full sustained retention,
+contention, partial-text cancellation and provider/identity/platform coverage
+remain incomplete. **Performance verdict: blocked.**
+
+Correction verification (installed native core `0.155.0-alpha.16.3`):
+
+```sh
+cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core --lib --locked turn_correlation
+cargo test --manifest-path src-tauri/Cargo.toml -p orgtrack_core --lib --locked sources::codex::app::transcript
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked codex_app_server
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked managed_codex_native_reply_keeps_submit_identity_after_append
+# Set ORGII_NATIVE_CODEX_APP_BINARY to the installed Desktop core executable:
+cargo test --manifest-path src-tauri/Cargo.toml -p org2 --lib --locked live_native_fresh_and_resumed_turns_are_in_default_desktop_list -- --ignored --nocapture
+```
+
+Respectively **3, 30, 66, 1 and 1 passed (101 total)**. The regular transcript
+and app-server filters left 3 and 5 opt-in tests ignored; the named installed
+native test was explicitly run separately. That test uses temporary account,
+index and project homes plus a loopback Responses fixture (two model requests,
+no account credentials or paid service). Each production fresh/resumed turn is
+followed by a new native process reading the thread: native visible user text
+matches the authored input exactly; `clientId` survives persistence, and the
+actual raw file replays with the expected ORG2 `turnIntentId`, count and order.
+This is real native protocol/disk evidence, not GUI visual acceptance.
+
+`cargo clippy --manifest-path src-tauri/Cargo.toml -p org2 -p orgtrack_core --lib --tests --locked -- -D warnings`
+and `git diff --check` passed. Workspace-wide `cargo fmt --all -- --check`
+reported pre-existing formatting differences; unrelated source formatting is
+excluded. No frontend code changed, so TypeScript/UI-control checks are not
+applicable. Latest `develop` was fetched and a merge-tree check found no
+conflicts; no unrelated target-branch changes were folded into this fix.

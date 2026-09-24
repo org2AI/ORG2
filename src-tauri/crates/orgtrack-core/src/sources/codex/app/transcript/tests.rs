@@ -663,3 +663,137 @@ fn selected_skill_context_keeps_reply_in_native_command_turn() {
     }
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn codex_native_client_correlation_preserves_clean_text_and_replay_identity() {
+    let dir = std::env::temp_dir().join(format!(
+        "orgii-codex-native-client-correlation-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("rollout.jsonl");
+    let rows = serde_json::json!([
+        {"type":"turn_context","payload":{}},
+        {"type":"event_msg","payload":{"type":"task_started","turn_id":"turn-1"}},
+        {"type":"response_item","payload":{"type":"message","id":"msg_native_user","role":"user","content":[{"type":"input_text","text":"Same user text"}],"internal_chat_message_metadata_passthrough":{"content_item_kinds":["user.text"]}}},
+        {"type":"event_msg","payload":{"type":"item_completed","item":{"type":"UserMessage","id":"user-1","client_id":"orgii-turn-intent:intent-1","content":[{"type":"text","text":"Same user text"}]}}},
+        {"type":"event_msg","payload":{"type":"agent_message","message":"First reply"}},
+        {"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"First reply"}]}},
+        {"type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-1"}},
+        {"type":"event_msg","payload":{"type":"task_started","turn_id":"turn-2"}},
+        {"type":"response_item","payload":{"type":"message","id":"msg_native_user","role":"user","content":[{"type":"input_text","text":"Same user text"}],"internal_chat_message_metadata_passthrough":{"content_item_kinds":["user.text"]}}},
+        {"type":"event_msg","payload":{"type":"user_message","client_id":"orgii-turn-intent:intent-2","message":"Same user text"}},
+        {"type":"event_msg","payload":{"type":"agent_message","message":"Second reply"}},
+        {"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Second reply"}]}},
+        {"type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-2"}},
+        {"type":"event_msg","payload":{"type":"task_started","turn_id":"turn-3"}},
+        {"type":"event_msg","payload":{"type":"item_completed","item":{"type":"UserMessage","id":"user-3","client_id":"orgii-turn-intent:intent-3","content":[{"type":"text","text":"Same user text"}]}}},
+        {"type":"event_msg","payload":{"type":"turn_aborted","turn_id":"turn-3","reason":"interrupted"}}
+    ]);
+    let lines = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&path, format!("{lines}\n")).unwrap();
+    let chunks = load_codex_app_from_path("runner", &path).unwrap();
+    let messages = chunks
+        .iter()
+        .filter(|chunk| matches!(chunk.function.as_str(), "user_message" | "assistant"))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        messages.len(),
+        5,
+        "native mirrors must not duplicate user/reply rows"
+    );
+    assert_eq!(
+        messages
+            .iter()
+            .map(|chunk| chunk.function.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "user_message",
+            "assistant",
+            "user_message",
+            "assistant",
+            "user_message"
+        ]
+    );
+    assert_eq!(messages[0].result["message"]["content"], "Same user text");
+    assert_eq!(messages[2].result["message"]["content"], "Same user text");
+    assert_eq!(messages[0].result["turnIntentId"], "intent-1");
+    assert_eq!(messages[2].result["turnIntentId"], "intent-2");
+    assert_eq!(messages[4].result["message"]["content"], "Same user text");
+    assert_eq!(messages[4].result["turnIntentId"], "intent-3");
+    assert_ne!(messages[2].chunk_id, messages[4].chunk_id);
+    assert_ne!(messages[0].chunk_id, messages[2].chunk_id);
+    assert_eq!(messages[1].result["content"], "First reply");
+    assert_eq!(messages[3].result["content"], "Second reply");
+    let replay = load_codex_app_from_path("runner", &path).unwrap();
+    assert_eq!(
+        chunks
+            .iter()
+            .map(|chunk| (&chunk.chunk_id, &chunk.result))
+            .collect::<Vec<_>>(),
+        replay
+            .iter()
+            .map(|chunk| (&chunk.chunk_id, &chunk.result))
+            .collect::<Vec<_>>(),
+        "reopen must preserve row identity, correlation, ordering, and reply content"
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn codex_native_client_correlation_rejects_foreign_and_malformed_identity() {
+    let dir = std::env::temp_dir().join(format!(
+        "orgii-codex-native-client-correlation-boundaries-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    let historical = "<ide_context>\norgii-turn-intent:historical\n</ide_context>\n\nHello";
+    let oversized = format!("orgii-turn-intent:{}", "x".repeat(257));
+    let cases = [
+        (Some("orgii-turn-intent:real"), "Hello", Some("real")),
+        (None, historical, Some("historical")),
+        (Some("foreign-client-id"), "Hello", None),
+        (Some("foreign-client-id"), historical, Some("historical")),
+        (Some("orgii-turn-intent:real"), historical, Some("real")),
+        (Some("orgii-turn-intent:"), historical, None),
+        (Some("orgii-turn-intent:bad id"), historical, None),
+        (Some(oversized.as_str()), historical, None),
+    ];
+    for paginated in [false, true] {
+        for (index, (client_id, text, expected)) in cases.iter().enumerate() {
+            let payload = if paginated {
+                serde_json::json!({"type":"item_completed","item":{"type":"UserMessage","id":"native-user","client_id":client_id,"content":[{"type":"text","text":text}]}})
+            } else {
+                serde_json::json!({"type":"user_message","client_id":client_id,"message":text})
+            };
+            let path = dir.join(format!("{paginated}-{index}.jsonl"));
+            std::fs::write(
+                &path,
+                format!(
+                    "{}\n",
+                    serde_json::json!({"type":"event_msg","payload":payload})
+                ),
+            )
+            .unwrap();
+            let chunks = load_codex_app_from_path("runner", &path).unwrap();
+            let users = chunks
+                .iter()
+                .filter(|chunk| chunk.function == "user_message")
+                .collect::<Vec<_>>();
+            assert_eq!(users.len(), 1, "paginated={paginated}, case={index}");
+            assert_eq!(users[0].result["message"]["content"], "Hello");
+            assert_eq!(
+                users[0].result["turnIntentId"].as_str(),
+                *expected,
+                "paginated={paginated}, case={index}"
+            );
+        }
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}

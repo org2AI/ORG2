@@ -21,6 +21,7 @@ export async function syncSessionSharedFiles(input: {
   events: readonly SessionEvent[];
   repoPath?: string;
   assertCurrentIdentity: () => void;
+  signal?: AbortSignal;
 }): Promise<boolean> {
   const candidates = collectSessionSharedFiles(input.events, input.repoPath);
   if (!candidates.length) return true;
@@ -44,10 +45,12 @@ export async function syncSessionSharedFiles(input: {
       input.endpoint,
       input.orgId,
       input.sessionId,
-      batch
+      batch,
+      input.signal
     );
     input.assertCurrentIdentity();
     for (const candidate of batch) {
+      input.assertCurrentIdentity();
       if (existing.has(`${candidate.path}\0${candidate.revision}`)) continue;
       let bytes: Uint8Array;
       try {
@@ -69,7 +72,8 @@ export async function syncSessionSharedFiles(input: {
         input.sessionId,
         candidate.path.split("/").pop() || "file",
         bytes,
-        candidate
+        candidate,
+        input.signal
       );
       input.assertCurrentIdentity();
     }

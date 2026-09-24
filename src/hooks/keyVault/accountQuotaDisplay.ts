@@ -494,8 +494,14 @@ function getResetCreditsLabel(
   account: KeyVaultAccount,
   tIntegrations: TFunction<"integrations">
 ): string | null {
-  if (account.modelType !== CLI_AGENT.CODEX) return null;
-  // Adapt the existing backend's reset-credit message, including cached legacy summaries.
+  if (
+    account.modelType !== CLI_AGENT.CODEX &&
+    account.modelType !== CLI_AGENT.CLAUDE_CODE
+  ) {
+    return null;
+  }
+  // Codex reset credits and Claude banked limit resets share one backend
+  // message format; this also accepts cached legacy Codex summaries.
   const message = account.quotaInfo?.named_message;
   const match = message?.match(
     /^Reset credits(?: available)?: (\d+)(?=$|[ /,(])/

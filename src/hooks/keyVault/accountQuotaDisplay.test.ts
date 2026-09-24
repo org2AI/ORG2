@@ -157,6 +157,22 @@ describe("provider plan and reset details", () => {
     expect(card.accountPlan).toBe("Pro 20x");
     expect(card.quotaMessage).toBe("3 resets available");
   });
+
+  it("passes banked limit resets through for Claude accounts", () => {
+    const account = deepSeekAccount();
+    account.modelType = "claude_code";
+    account.quotaInfo!.named_message =
+      "Reset credits available: 1, next expires 2026-10-01T00:00:00Z";
+    const [card] = collectAccountQuotaCards([account], translate, translate);
+    expect(card.quotaMessage).toBe("1 reset available");
+  });
+
+  it("does not read reset credits from other providers' messages", () => {
+    const account = deepSeekAccount();
+    account.quotaInfo!.named_message = "Reset credits available: 3";
+    const [card] = collectAccountQuotaCards([account], translate, translate);
+    expect(card.quotaMessage).toBeNull();
+  });
 });
 
 it.each([

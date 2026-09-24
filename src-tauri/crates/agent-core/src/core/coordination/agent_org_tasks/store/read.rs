@@ -130,6 +130,27 @@ impl AgentOrgTaskStore {
         Ok(task)
     }
 
+    /// Completion validation reads only the active episode's full evidence,
+    /// never deserializing output history from earlier episodes.
+    pub(crate) fn list_for_episode_with_connection(
+        conn: &rusqlite::Connection,
+        run_id: &str,
+        episode_id: &str,
+    ) -> Result<Vec<Task>, String> {
+        let sql=format!("SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks task
+            WHERE org_run_id=?1 AND EXISTS(SELECT 1 FROM agent_org_runtime_work_episode_tasks episode_task
+                WHERE episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id AND episode_task.work_episode_id=?2)
+            ORDER BY created_at,id");
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+        let mut tasks = stmt
+            .query_map(params![run_id, episode_id], row_to_task)
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
+        TaskGraphIndex::new(&tasks).apply_projection(&mut tasks);
+        Ok(tasks)
+    }
+
     pub fn list(org_run_id: &str) -> Result<Vec<Task>, String> {
         let conn = get_connection().map_err(|error| error.to_string())?;
         list_tasks_with_conn(&conn, org_run_id)

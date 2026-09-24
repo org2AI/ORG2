@@ -56,6 +56,8 @@ pub struct AppHandleInboxWakeHook {
 pub enum WakeRequestOutcome {
     Enqueued,
     Coalesced,
+    NoReadyWork,
+    Deferred,
     DeferredPaused,
     DeferredIntervention,
     DeferredBackoff,
@@ -233,7 +235,7 @@ async fn wake_one_member(
                 member_id = %member_id,
                 "[inbox_wake] run does not exist; refusing wake"
             );
-            return WakeRequestOutcome::RunTerminal;
+            return WakeRequestOutcome::Failed(format!("Agent Org run {org_run_id} not found"));
         }
         Err(err) => {
             warn!(
@@ -246,6 +248,19 @@ async fn wake_one_member(
         }
     }
 
+    if member_id == crate::coordination::agent_org_runs::COORDINATOR_MEMBER_ID {
+        let run_id = org_run_id.to_string();
+        match tokio::task::spawn_blocking(move || {
+            crate::coordination::agent_org_run_completion::completion_handles_wake(&run_id)
+        })
+        .await
+        {
+            Ok(Ok(true)) => return WakeRequestOutcome::Coalesced,
+            Ok(Ok(false)) => {}
+            Ok(Err(error)) => return WakeRequestOutcome::Failed(error),
+            Err(error) => return WakeRequestOutcome::Failed(error.to_string()),
+        }
+    }
     // Direct user chat temporarily owns this member's next turn. Dispatching
     // an empty resume while the intervention is active cannot drain the inbox;
     // the lifecycle race guard would then see the same unread row and enqueue
@@ -463,6 +478,8 @@ async fn wake_session(
         }
     };
 
+    let reservation = Arc::new(reservation);
+
     // Empty `content` + `is_resume=true` → processor skips persisting
     // an empty user row (see `should_save_user_msg` branch in
     // `processor/mod.rs`), then `inbox_drain` injects the inbox
@@ -474,11 +491,27 @@ async fn wake_session(
         session_id.to_string(),
         org_run_id,
         recipient_member_id,
-        formal_receipt_batch_id,
+        formal_receipt_batch_id.or(Some(recovery_fingerprint)),
+        Arc::clone(&reservation),
     )
     .await;
-    match result {
-        Ok(response) => {
+    use crate::coordination::agent_org_turn_contexts::WakeAdmission;
+    let outcome = match result {
+        Ok(WakeAdmission::NoReadyWork | WakeAdmission::Deferred) => {
+            if let Err(error) =
+                crate::coordination::agent_org_watchdog::refund_member_rewake_reservation(
+                    &reservation,
+                )
+            {
+                return WakeRequestOutcome::Failed(error);
+            }
+            if matches!(result, Ok(WakeAdmission::NoReadyWork)) {
+                WakeRequestOutcome::NoReadyWork
+            } else {
+                WakeRequestOutcome::Deferred
+            }
+        }
+        Ok(WakeAdmission::Ready(response)) => {
             let coalesced = serde_json::from_str::<serde_json::Value>(&response.content)
                 .ok()
                 .and_then(|value| value.get("duplicate").and_then(serde_json::Value::as_bool))
@@ -500,13 +533,7 @@ async fn wake_session(
                 }
                 WakeRequestOutcome::Coalesced
             } else {
-                if let Err(err) =
-                    crate::coordination::agent_org_watchdog::commit_member_rewake_reservation(
-                        &reservation,
-                    )
-                {
-                    warn!(run_id = %org_run_id, member_id = %recipient_member_id, error = %err, "[inbox_wake] accepted wake was charged, but clearing its reservation token failed");
-                }
+                // The queued closure commits only after its final work check.
                 WakeRequestOutcome::Enqueued
             }
         }
@@ -527,7 +554,23 @@ async fn wake_session(
             );
             WakeRequestOutcome::Failed(err)
         }
+    };
+    let recheck_run_id = org_run_id.to_string();
+    match tokio::task::spawn_blocking(move || {
+        crate::coordination::agent_org_run_completion::recheck_after_wake(&recheck_run_id)
+    })
+    .await
+    {
+        Ok(Ok(receipts)) if !receipts.is_empty() => AppHandleInboxWakeHook::new(app_handle)
+            .wake_member_for_formal_receipts("coordinator", org_run_id, &receipts),
+        Ok(Ok(_)) => {}
+        result => warn!(
+            org_run_id,
+            ?result,
+            "completion recheck after wake reservation release failed"
+        ),
     }
+    outcome
 }
 
 #[cfg(test)]

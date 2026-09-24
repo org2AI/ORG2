@@ -301,7 +301,7 @@ impl Tool for TaskCreateTool {
                         originating_message_id: None,
                         replaces_task_id,
                     };
-                    if let Err(error) = AgentOrgRunStore::activate_idle_for_task_graph_in_tx(
+                    if let Err(error) = AgentOrgRunStore::activate_for_task_graph_in_tx(
                         tx,
                         &run_id,
                         &activation_session_id,

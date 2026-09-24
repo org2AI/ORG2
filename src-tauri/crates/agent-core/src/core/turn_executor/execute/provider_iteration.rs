@@ -86,6 +86,10 @@ pub(super) async fn call_provider(
 ) -> Result<LLMResponse, ProviderError> {
     let stream_normalizer_for_cb = std::sync::Mutex::new(TurnStreamNormalizer::new());
     provider.set_session_context(session_id);
+    handler
+        .on_provider_request(session_id, &request.messages)
+        .await
+        .map_err(ProviderError::Other)?;
 
     #[cfg(debug_assertions)]
     provider_request_capture::capture(

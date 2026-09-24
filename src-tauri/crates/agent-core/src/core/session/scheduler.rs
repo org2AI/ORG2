@@ -55,8 +55,19 @@ use crate::bus::broadcast_event;
 
 /// Boxed async callback type for scheduler messages.
 pub type ExecuteFn = Box<
-    dyn FnOnce() -> futures::future::BoxFuture<'static, Result<String, String>> + Send + 'static,
+    dyn FnOnce() -> futures::future::BoxFuture<'static, Result<ExecutionCompletion, String>>
+        + Send
+        + 'static,
 >;
+
+/// Internal completion only; response content is consumed by the executor.
+/// Maintenance and legacy adapters keep their existing completion behavior.
+#[derive(Debug)]
+pub enum ExecutionCompletion {
+    Finished,
+    NotAccepted,
+    Turn(crate::lifecycle::TerminalTurnSignal),
+}
 
 /// What kind of work a queued job represents.
 ///
@@ -572,12 +583,25 @@ impl WorkerTask {
                 });
 
             let should_reconcile_agent_org_run = match result {
-                Ok(_content) => {
+                Ok(completion) => {
+                    let unaccepted = matches!(completion, ExecutionCompletion::NotAccepted);
+                    let status = match completion {
+                        ExecutionCompletion::Turn(signal) => signal.status,
+                        ExecutionCompletion::NotAccepted => {
+                            crate::lifecycle::TurnTerminalStatus::Cancelled
+                        }
+                        ExecutionCompletion::Finished => {
+                            crate::lifecycle::TurnTerminalStatus::Completed
+                        }
+                    };
                     info!(
                         "[scheduler] Message {} completed for session {}",
                         msg.message_id, self.session_id
                     );
-                    if let Some(run_id) = org_run_id.as_deref() {
+                    if let Some(run_id) = org_run_id
+                        .as_deref()
+                        .filter(|_| status == crate::lifecycle::TurnTerminalStatus::Completed)
+                    {
                         match crate::coordination::agent_org_turn_contexts::optional_context_for_session(
                             &self.session_id,
                             &turn_intent_id,
@@ -611,12 +635,14 @@ impl WorkerTask {
                             ),
                         }
                     }
-                    // Lifecycle: running → completed.
-                    crate::foundation::session_bridge::update_turn_intent_status(
-                        &self.session_id,
-                        &turn_intent_id,
-                        crate::foundation::session_bridge::TurnIntentBridgeStatus::Completed,
-                    );
+                    // Consume the explicit terminal, including Cancelled with an Ok executor return.
+                    if org_run_id.is_none() || unaccepted {
+                        crate::foundation::session_bridge::update_turn_intent_status(
+                            &self.session_id,
+                            &turn_intent_id,
+                            status.intent_status(),
+                        );
+                    }
                     // agent:complete is already broadcast by processor; we
                     // only broadcast the updated queue status here.
                     true
@@ -637,7 +663,16 @@ impl WorkerTask {
                         &self.session_id,
                         &turn_intent_id,
                     );
-                    if user_directed_waiting {
+                    let already_terminal =
+                        crate::foundation::session_bridge::get_turn_intent_status(
+                            &self.session_id,
+                            &turn_intent_id,
+                        )
+                        .is_some_and(|status| !status.is_in_flight());
+                    let stale_callback = msg.generation != self.generation.load(Ordering::Acquire);
+                    if already_terminal || stale_callback {
+                        info!(session_id = %self.session_id, turn_intent_id, "ignoring terminal or stale executor fallback");
+                    } else if user_directed_waiting {
                         info!(
                             session_id = %self.session_id,
                             turn_intent_id = %turn_intent_id,
@@ -661,7 +696,12 @@ impl WorkerTask {
                     // Turn-only: an `agent:error` renders as a chat bubble.
                     // Maintenance jobs report failures through their own
                     // channel (e.g. the manual-compact command's reply).
-                    if is_turn && !user_directed_waiting && !user_directed_cancelled {
+                    if is_turn
+                        && !already_terminal
+                        && !stale_callback
+                        && !user_directed_waiting
+                        && !user_directed_cancelled
+                    {
                         let error_code = classify_streaming_error_message(err);
                         let streaming_error = StreamingError::new(err.clone(), error_code)
                             .with_details(serde_json::json!({
@@ -824,7 +864,7 @@ mod tests {
                 execute: Box::new(move || {
                     Box::pin(async move {
                         running_released.notified().await;
-                        Ok("ran".to_string())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })
@@ -844,7 +884,7 @@ mod tests {
                 execute: Box::new(move || {
                     Box::pin(async move {
                         cancelled_executed_for_closure.fetch_add(1, Ordering::SeqCst);
-                        Ok("must not run".to_string())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })
@@ -866,7 +906,7 @@ mod tests {
                     Box::pin(async move {
                         next_executed_for_closure.fetch_add(1, Ordering::SeqCst);
                         next_finished_for_closure.notify_one();
-                        Ok("ran next".to_string())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })
@@ -902,7 +942,7 @@ mod tests {
                 execute: Box::new(move || {
                     Box::pin(async move {
                         running_released.notified().await;
-                        Ok("ran".to_string())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })
@@ -922,7 +962,7 @@ mod tests {
                 execute: Box::new(move || {
                     Box::pin(async move {
                         stale_executed_for_closure.fetch_add(1, Ordering::SeqCst);
-                        Ok("ran".to_string())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })
@@ -955,7 +995,7 @@ mod tests {
                 execute: Box::new(move || {
                     Box::pin(async move {
                         running_released.notified().await;
-                        Ok("ran".to_string())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })
@@ -971,7 +1011,7 @@ mod tests {
                 turn_intent_id: String::new(),
                 org_run_id: None,
                 content: "duplicate".to_string(),
-                execute: Box::new(|| Box::pin(async { Ok("duplicate ran".to_string()) })),
+                execute: Box::new(|| Box::pin(async { Ok(ExecutionCompletion::Finished) })),
             })
             .await
             .expect("duplicate enqueue returns idempotent success");
@@ -1007,7 +1047,7 @@ mod tests {
                             Box::pin(async move {
                                 executed.fetch_add(1, Ordering::SeqCst);
                                 release.notified().await;
-                                Ok(String::new())
+                                Ok(ExecutionCompletion::Finished)
                             })
                         }),
                     })
@@ -1073,7 +1113,7 @@ mod tests {
                             busy_flag.fetch_add(1, Ordering::SeqCst);
                         }
                         released.notified().await;
-                        Ok(String::new())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })
@@ -1110,7 +1150,7 @@ mod tests {
                 execute: Box::new(move || {
                     Box::pin(async move {
                         executed_for_closure.fetch_add(1, Ordering::SeqCst);
-                        Ok("ran".to_string())
+                        Ok(ExecutionCompletion::Finished)
                     })
                 }),
             })

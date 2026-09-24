@@ -28,7 +28,7 @@ pub(crate) use budget::{
 pub use recover::{repair_missing_doorbells, spawn, DoorbellRepairReport};
 pub(crate) use reservation::{
     commit_member_rewake_reservation, refund_member_rewake_reservation,
-    reserve_member_rewake_dispatch, MemberRewakeReservationOutcome,
+    reserve_member_rewake_dispatch, MemberRewakeReservation, MemberRewakeReservationOutcome,
 };
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};

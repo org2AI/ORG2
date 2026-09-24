@@ -3,6 +3,9 @@ use rusqlite::{params, OptionalExtension};
 
 use super::*;
 
+#[path = "task_assignment_race_tests.rs"]
+mod task_assignment_race_tests;
+
 const RUN_ID: &str = "task-store-contract-run";
 const ROOT_SESSION: &str = "task-store-contract-root-session";
 const COORDINATOR_TURN: &str = "task-store-contract-coordinator-turn";
@@ -72,6 +75,8 @@ fn fixture() -> Fixture {
         .expect("plan approval schema");
     crate::coordination::agent_org_finality::create_schema(&conn)
         .expect("Task finality companion schema");
+    crate::coordination::agent_org_final_summary::create_schema(&conn)
+        .expect("final report receipt schema");
     let now = chrono::Utc::now().to_rfc3339();
     let snapshot = serde_json::json!({
         "schemaVersion": 1,
@@ -907,7 +912,7 @@ fn coordinator_task_mutations_advance_exact_context_and_materialize_one_terminal
     let receipts = crate::coordination::agent_org_finality::finalize_turn(
         ROOT_SESSION,
         COORDINATOR_TURN,
-        true,
+        crate::lifecycle::TurnTerminalStatus::Completed,
         "test_completed",
     )
     .expect("terminalize Coordinator Turn and materialize recheck");
@@ -915,7 +920,7 @@ fn coordinator_task_mutations_advance_exact_context_and_materialize_one_terminal
     let replay = crate::coordination::agent_org_finality::finalize_turn(
         ROOT_SESSION,
         COORDINATOR_TURN,
-        true,
+        crate::lifecycle::TurnTerminalStatus::Completed,
         "test_completed",
     )
     .expect("idempotent Coordinator finalization");
@@ -1187,7 +1192,7 @@ fn idle_group_root_atomically_activates_formal_work_before_task_write() {
     insert_group_root_context(&conn, GROUP_ROOT_TURN, 1);
 
     let tx = database::db::begin_immediate(&conn).expect("begin GroupRoot activation");
-    crate::coordination::agent_org_runs::AgentOrgRunStore::activate_idle_for_task_graph_in_tx(
+    crate::coordination::agent_org_runs::AgentOrgRunStore::activate_for_task_graph_in_tx(
         &tx,
         RUN_ID,
         ROOT_SESSION,
@@ -1637,7 +1642,7 @@ fn idle_user_directed_writer_activates_team_and_task_atomically() {
             allow_parallel_with_unlisted_open_tasks: true,
         },
         |tx, _task, _tasks| {
-            crate::coordination::agent_org_runs::AgentOrgRunStore::activate_idle_for_task_graph_in_tx(
+            crate::coordination::agent_org_runs::AgentOrgRunStore::activate_for_task_graph_in_tx(
                 tx,
                 RUN_ID,
                 MEMBER_A_SESSION,

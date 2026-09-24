@@ -9,7 +9,7 @@
 //! test scheduling order. One authority, kept in lock-step with
 //! `UPSERT_SESSION_SQL` / `UNIFIED_SESSION_SELECT`, removes the class.
 
-/// Full production column set (34 columns) plus the usage telemetry tables
+/// Production session columns plus the usage telemetry tables
 /// (`session_token_usage`, `session_auxiliary_usage`, `session_llm_usage_spans`,
 /// `session_tool_usage`)
 /// so the delete cascade in `crud::ops` can run against the test schema.
@@ -52,7 +52,10 @@ pub(crate) const AGENT_SESSIONS_TEST_DDL: &str = r#"
         pinned INTEGER NOT NULL DEFAULT 0,
         sm_content TEXT,
         sm_last_seq INTEGER,
-        sm_tokens_at_last_extraction INTEGER
+        sm_tokens_at_last_extraction INTEGER,
+        last_terminal_turn_id TEXT,
+        last_terminal_turn_status TEXT,
+        last_terminal_turn_at TEXT
     );
     CREATE TABLE IF NOT EXISTS session_token_usage (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

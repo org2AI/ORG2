@@ -222,7 +222,9 @@ impl WingmanLoop {
 
                 cancel_flag.store(false, std::sync::atomic::Ordering::SeqCst);
 
-                response.map(|r| r.content).map_err(|e| e.to_string())
+                response
+                    .map(|_| crate::session::scheduler::ExecutionCompletion::Finished)
+                    .map_err(|e| e.to_string())
             })
         });
 

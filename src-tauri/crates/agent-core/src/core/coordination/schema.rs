@@ -130,7 +130,7 @@ const RUNTIME_INDEXES: [&str; 70] = [
 
 const RUNTIME_TRIGGERS: [&str; 1] = ["trg_agent_org_runtime_plan_revisions_immutable"];
 const RUNTIME_MANIFEST_SHA256: &str =
-    "ca0b99fc4d60fe4a4d691c405114d7e48009b8b86fdeec78cf1a0f82998cd352";
+    "d96f244c1ddb4293c82109cf8dc4ca0a41179f4aa464a22b81c69ffe65f9313c";
 
 /// Exact private Agent Org tables created by official v1.3.0 and v1.2.6.
 const LEGACY_TABLES: [&str; 11] = [
@@ -195,11 +195,10 @@ pub(super) fn initialize(conn: &Connection) -> SqliteResult<()> {
         create_runtime_schema(&tx)?;
     }
     verify_manifest(&tx, &expected)?;
-    // The v1 runtime namespace above is intentionally frozen. New finality
-    // invariants therefore live in additive companion tables outside the
-    // frozen `agent_org_runtime_*` manifest. Creating them on every startup
-    // upgrades both fresh and existing databases without rewriting or
-    // invalidating the established runtime schema.
+    // The manifest includes completion candidates, presentation evidence and
+    // system dispositions. Only fresh/current databases are supported; an
+    // earlier manifest is rejected above, never migrated or rewritten here.
+    // Existing finality companions retain their separate additive owner.
     super::agent_org_finality::create_schema(&tx)?;
     agent_member_interventions::create_runtime_admission_schema(&tx)?;
     agent_inbox::repair_dangling_materializations(&tx)?;

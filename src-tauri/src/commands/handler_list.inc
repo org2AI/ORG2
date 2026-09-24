@@ -1141,6 +1141,14 @@ agent_core::state::commands::session::wingman_close_windows,
 agent_core::state::commands::session::wingman_show_desktop_control_test,
 agent_core::state::commands::session::wingman_list_monitors,
 
+// Harness-independent semantic UI commands
+crate::api::ui_commands::ui_runtime_register,
+crate::api::ui_commands::ui_runtime_unregister,
+crate::api::ui_commands::ui_command_active,
+crate::api::ui_commands::ui_command_result,
+crate::api::ui_commands::ui_prepare_file,
+crate::api::ui_commands::ui_terminal_io,
+
 // Optional Market module: disabled builds return an explicit unavailable result.
 crate::market_connection::market_connection_begin,
 crate::market_connection::market_connection_complete,

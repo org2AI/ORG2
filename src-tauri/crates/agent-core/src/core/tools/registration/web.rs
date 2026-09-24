@@ -21,6 +21,13 @@ use super::{register_if_enabled, ToolDeps};
 /// tool, and `control_internal_browser`.
 pub async fn register(registry: &mut ToolRegistry, deps: &ToolDeps, disabled: &HashSet<String>) {
     if let Some(bridge) = deps.action_bridge.clone() {
+        for kind in app_ui::agent_tools::ALL {
+            register_if_enabled(
+                registry,
+                Box::new(crate::tools::impls::web::org2_ui::Org2UiTool(*kind)),
+                disabled,
+            );
+        }
         register_if_enabled(
             registry,
             Box::new(OrgiiControlTool::new(bridge.clone())),

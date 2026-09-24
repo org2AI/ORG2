@@ -15,7 +15,10 @@ use std::collections::HashSet;
 
 #[test]
 fn management_tools_are_not_supported_on_sde_worker_kind() {
-    for tool_name in [tool_names::MANAGE_SESSION, tool_names::MANAGE_AGENT_DEF] {
+    for tool_name in [tool_names::MANAGE_SESSION, tool_names::MANAGE_AGENT_DEF]
+        .into_iter()
+        .chain(app_ui::agent_tools::ALL.iter().map(|kind| kind.name()))
+    {
         let agents = supported_agents_for(tool_name);
         assert!(agents.contains(&AgentKind::Os), "{tool_name} on OS");
         assert!(agents.contains(&AgentKind::Custom), "{tool_name} on Custom");
@@ -28,10 +31,13 @@ fn non_management_tools_supported_on_every_parent_agent_kind() {
     // `control_orgii` rides with the management surface (OS/Custom only)
     // in `supported_agents_for`, so it is excluded with them here.
     for entry in BUILTIN_TOOLS.iter().filter(|entry| {
-        !matches!(
-            entry.name,
-            tool_names::MANAGE_SESSION | tool_names::MANAGE_AGENT_DEF | tool_names::CONTROL_ORGII
-        )
+        app_ui::agent_tools::Kind::from_name(entry.name).is_none()
+            && !matches!(
+                entry.name,
+                tool_names::MANAGE_SESSION
+                    | tool_names::MANAGE_AGENT_DEF
+                    | tool_names::CONTROL_ORGII
+            )
     }) {
         let agents = supported_agents_for(entry.name);
         for kind in [AgentKind::Os, AgentKind::Sde, AgentKind::Custom] {

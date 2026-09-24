@@ -1,0 +1,491 @@
+{
+  "protocolVersion": 1,
+  "terminals": {
+    "excludedIdPrefixes": [
+      "agent-pty-",
+      "chatpanel-"
+    ]
+  },
+  "commands": [
+    {
+      "id": "ui.context",
+      "cli": [
+        "context"
+      ],
+      "description": "Inspect the main window and presented workspace.",
+      "topic": "targets",
+      "keywords": [
+        "state",
+        "状态",
+        "session",
+        "窗口"
+      ],
+      "capability": "ui.read",
+      "discoveryTier": "common",
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.tabs.list",
+      "cli": [
+        "tabs",
+        "list"
+      ],
+      "description": "List tabs belonging to a workspace. Preserve the tab ID and partition when focusing.",
+      "topic": "tabs",
+      "keywords": [
+        "tabs",
+        "标签页",
+        "list"
+      ],
+      "capability": "ui.read",
+      "discoveryTier": "common",
+      "params": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.file.open",
+      "cli": [
+        "file",
+        "open"
+      ],
+      "positional": "path",
+      "description": "Open an exact file path in MyStation. Relative paths use the target repository; line numbers start at 1.",
+      "topic": "files",
+      "keywords": [
+        "file",
+        "文件",
+        "line",
+        "行号"
+      ],
+      "capability": "ui.present",
+      "discoveryTier": "common",
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.web.open",
+      "cli": [
+        "web",
+        "open"
+      ],
+      "positional": "url",
+      "description": "Open or reuse an HTTP(S) page in MyStation Browser. A tab receipt does not mean the page has loaded.",
+      "topic": "browser",
+      "keywords": [
+        "page",
+        "网页",
+        "url",
+        "browser"
+      ],
+      "capability": "ui.present",
+      "discoveryTier": "common",
+      "params": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 4096,
+            "format": "uri"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.tab.open",
+      "cli": [
+        "tab",
+        "open"
+      ],
+      "positional": "kind",
+      "description": "Open or activate Explorer or Source Control without toggling the layout.",
+      "topic": "tabs",
+      "keywords": [
+        "explorer",
+        "source control",
+        "文件树",
+        "git"
+      ],
+      "capability": "ui.present",
+      "discoveryTier": "common",
+      "params": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "explorer",
+              "source-control"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.tab.focus",
+      "cli": [
+        "tab",
+        "focus"
+      ],
+      "positional": "tabId",
+      "description": "Reveal an existing tab by its returned ID and partition.",
+      "topic": "tabs",
+      "keywords": [
+        "focus",
+        "切换",
+        "tab"
+      ],
+      "capability": "ui.present",
+      "discoveryTier": "reference",
+      "params": {
+        "type": "object",
+        "properties": {
+          "tabId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "partition": {
+            "type": "string",
+            "enum": [
+              "shared",
+              "workspace"
+            ]
+          }
+        },
+        "required": [
+          "tabId",
+          "partition"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.terminal.open",
+      "cli": [
+        "terminal",
+        "open"
+      ],
+      "capability": "ui.present",
+      "description": "Open or reuse the workspace's MyStation shell terminal. Does not send input.",
+      "topic": "terminals",
+      "keywords": [
+        "terminal",
+        "shell",
+        "终端",
+        "命令",
+        "输入",
+        "输出",
+        "中断"
+      ],
+      "discoveryTier": "common",
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.terminal.new",
+      "cli": [
+        "terminal",
+        "new"
+      ],
+      "capability": "ui.present",
+      "description": "Create a shell terminal using the configured profile and target repository. Requires the presented workspace; optional --name.",
+      "topic": "terminals",
+      "keywords": [
+        "terminal",
+        "shell",
+        "终端",
+        "命令",
+        "输入",
+        "输出",
+        "中断"
+      ],
+      "discoveryTier": "reference",
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.terminal.list",
+      "cli": [
+        "terminal",
+        "list"
+      ],
+      "capability": "ui.read",
+      "description": "List shared MyStation shell terminal IDs and the target workspace's selected terminal. Does not claim PTY readiness.",
+      "topic": "terminals",
+      "keywords": [
+        "terminal",
+        "shell",
+        "终端",
+        "命令",
+        "输入",
+        "输出",
+        "中断"
+      ],
+      "discoveryTier": "common",
+      "params": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.terminal.focus",
+      "cli": [
+        "terminal",
+        "focus"
+      ],
+      "positional": "terminalId",
+      "capability": "ui.present",
+      "description": "Select and reveal a listed shell terminal in the target workspace.",
+      "topic": "terminals",
+      "keywords": [
+        "terminal",
+        "shell",
+        "终端",
+        "命令",
+        "输入",
+        "输出",
+        "中断"
+      ],
+      "discoveryTier": "reference",
+      "params": {
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "terminalId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.terminal.read",
+      "cli": [
+        "terminal",
+        "read"
+      ],
+      "positional": "terminalId",
+      "capability": "terminal.read",
+      "description": "Read a bounded tail of retained redacted PTY output. --maxBytes defaults to 4096 and is capped at 8192; not a rendered screen or full history.",
+      "topic": "terminals",
+      "keywords": [
+        "terminal",
+        "shell",
+        "终端",
+        "命令",
+        "输入",
+        "输出",
+        "中断"
+      ],
+      "discoveryTier": "common",
+      "params": {
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "maxBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8192
+          }
+        },
+        "required": [
+          "terminalId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.terminal.execute",
+      "cli": [
+        "terminal",
+        "execute"
+      ],
+      "positional": "terminalId",
+      "capability": "terminal.write",
+      "description": "Send --command plus one Enter to an explicitly selected live shell terminal. A receipt confirms input delivery, not command completion or success.",
+      "topic": "terminals",
+      "keywords": [
+        "terminal",
+        "shell",
+        "终端",
+        "命令",
+        "输入",
+        "输出",
+        "中断"
+      ],
+      "discoveryTier": "reference",
+      "params": {
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192
+          }
+        },
+        "required": [
+          "terminalId",
+          "command"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.terminal.input",
+      "cli": [
+        "terminal",
+        "input"
+      ],
+      "positional": "terminalId",
+      "capability": "terminal.write",
+      "description": "Send --data literally to a live shell terminal, without adding Enter. Use a params-file for multiline text or control characters.",
+      "topic": "terminals",
+      "keywords": [
+        "terminal",
+        "shell",
+        "终端",
+        "命令",
+        "输入",
+        "输出",
+        "中断"
+      ],
+      "discoveryTier": "reference",
+      "params": {
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "data": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192
+          }
+        },
+        "required": [
+          "terminalId",
+          "data"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "ui.terminal.interrupt",
+      "cli": [
+        "terminal",
+        "interrupt"
+      ],
+      "positional": "terminalId",
+      "capability": "terminal.write",
+      "description": "Send Ctrl+C to an explicit live shell terminal. Does not prove that its process exited.",
+      "topic": "terminals",
+      "keywords": [
+        "terminal",
+        "shell",
+        "终端",
+        "命令",
+        "输入",
+        "输出",
+        "中断"
+      ],
+      "discoveryTier": "reference",
+      "params": {
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "terminalId"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "hash": "7ee22d6bee0d1870784ca33b98959dea5686badabc08e03ae430b64e1d0a9443"
+}

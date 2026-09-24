@@ -40,7 +40,8 @@ describe("session artifact discovery", () => {
       id: "cloud-answer",
       args: { __orgiiArtifactOrigin: { uploaderUserId: "guest" } },
     });
-    expect(collectSessionSharedFiles([native, cloud])).toEqual([]);
+    const claude = event({ ...local, args: { __orgiiMaterialized: true } });
+    expect(collectSessionSharedFiles([native, cloud, claude])).toEqual([]);
     expect(collectSessionSharedFiles([native, local, cloud])).toEqual([
       { path: "/repo/result.txt", revision: "new-answer:now" },
     ]);

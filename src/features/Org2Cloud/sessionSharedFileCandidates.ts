@@ -62,7 +62,8 @@ export function collectSessionSharedFiles(
     // Its source device owns publication; never read this machine's matching path.
     if (
       event.args?.[CONVERSATION_ARTIFACT_ORIGIN_ARG] ||
-      scopedNativeSourceEventIdOf(event)
+      scopedNativeSourceEventIdOf(event) ||
+      event.args?.__orgiiMaterialized === true
     )
       continue;
     if (event.displayStatus !== "completed" || event.source === "system")

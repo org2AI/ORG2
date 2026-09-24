@@ -169,7 +169,9 @@ export function useWebviewLayout(
       if (!isVisibleRef.current || floatingFrame !== null) return;
       floatingFrame = window.requestAnimationFrame(() => {
         floatingFrame = null;
-        void updatePosition();
+        updatePosition().catch((error: unknown) => {
+          logger.warn("Failed to update floating webview position", error);
+        });
       });
     };
     window.addEventListener(

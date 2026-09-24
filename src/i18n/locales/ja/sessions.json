@@ -2322,6 +2322,10 @@
       "body": "Coordinator の作業には再開してください。@Member のサイドクエストは引き続き送信できます。",
       "resume": "再開"
     },
+    "finalizingBanner": {
+      "title": "この作業ラウンドを完了しています",
+      "body": "下書きは編集できます。最終レポートの完了後に送信できます。"
+    },
     "toolUseSummary": {
       "note": "{{sender}} は {{summary}} を実行しました",
       "readFiles_one": "{{count}} 件のファイル読み取り",
@@ -2430,7 +2434,17 @@
     "currentRecordUnavailable": "現在の状態を取得できません",
     "currentStatusLabel": "現在のステータス",
     "currentOwnerLabel": "現在の担当者",
-    "replacementLabel": "代替タスク"
+    "replacementLabel": "代替タスク",
+    "rejectedRequestRecovery": {
+      "restore": "下書きに戻す",
+      "warning": "この依頼の一部は実行済みの可能性があります。確認して未完了の作業だけを再送してください。",
+      "unavailable": "元の依頼を確認できなかったため、復元しませんでした",
+      "previewTitle": "拒否された依頼を下書きに追加しますか？",
+      "existingDraft": "現在の下書き",
+      "recoveredRequest": "拒否された依頼",
+      "append": "下書きに追加",
+      "appendExplanation": "依頼は現在の下書きの前に追加されます。自動送信はされません。"
+    }
   },
   "manageAgentDef": {
     "action": {

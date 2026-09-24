@@ -2369,6 +2369,10 @@
       "body": "Resume for Coordinator work. You can still @Member for a side quest.",
       "resume": "Resume"
     },
+    "finalizingBanner": {
+      "title": "Finishing this work round",
+      "body": "Keep editing your draft. You can send it after the final report finishes."
+    },
     "toolUseSummary": {
       "note": "{{sender}} performed {{summary}}",
       "readFiles_one": "{{count}} file read",
@@ -2429,7 +2433,17 @@
     "currentRecordUnavailable": "Current state unavailable",
     "currentStatusLabel": "Current status",
     "currentOwnerLabel": "Current owner",
-    "replacementLabel": "Replacement"
+    "replacementLabel": "Replacement",
+    "rejectedRequestRecovery": {
+      "restore": "Restore as draft",
+      "warning": "Other parts of this request may already have run. Review it and resend only unfinished work.",
+      "unavailable": "The original request could not be verified and was not restored",
+      "previewTitle": "Add the rejected request to your draft?",
+      "existingDraft": "Current draft",
+      "recoveredRequest": "Rejected request",
+      "append": "Add to draft",
+      "appendExplanation": "The rejected request will be added before your current draft. Nothing is sent automatically."
+    }
   },
   "manageAgentDef": {
     "action": {

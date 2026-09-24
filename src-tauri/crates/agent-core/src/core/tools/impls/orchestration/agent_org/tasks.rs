@@ -760,7 +760,10 @@ pub(crate) fn classify_task_receipt_error(
     Ok(map_task_write_error(error))
 }
 
-pub(crate) fn unresolved_episode_creation_response(error: &str) -> Option<Value> {
+pub(crate) fn unresolved_episode_creation_response(
+    error: &str,
+    rejected_request_turn_intent_id: &str,
+) -> Option<Value> {
     let episode_id = error.strip_prefix(
         crate::coordination::agent_org_work_episodes::UNRESOLVED_EPISODE_NEW_MISSION_ERROR,
     )?;
@@ -769,7 +772,8 @@ pub(crate) fn unresolved_episode_creation_response(error: &str) -> Option<Value>
         "created": false,
         "requires_episode_resolution": true,
         "active_work_episode_id": episode_id,
-        "guidance": "This user request arrived while the previous work episode is still uncertified. Do not add new-mission Tasks to it. First certify the previous episode if its completed and explicitly user-cancelled scope is valid, or explain the unresolved blocker to the user. Start the new Task graph only after that episode closes."
+        "rejected_request_turn_intent_id": rejected_request_turn_intent_id,
+        "guidance": "Task not created. This user request arrived while the previous work episode is still uncertified, and it will not be retried automatically. First certify the previous episode if its completed and explicitly user-cancelled scope is valid, or explain the unresolved blocker to the user. After that episode closes, restore the original request as a draft, review any other actions that may already have run, and resend only the unfinished work."
     }))
 }
 
@@ -850,4 +854,31 @@ pub(crate) fn compact_task_summary_to_json(task: &TaskSummary) -> Value {
         "created_at": task.created_at,
         "updated_at": task.updated_at,
     })
+}
+
+#[cfg(test)]
+mod rejected_request_response_tests {
+    use super::*;
+
+    #[test]
+    fn unresolved_episode_response_is_manual_and_bound_to_the_exact_turn() {
+        let response = unresolved_episode_creation_response(
+            &format!(
+                "{}:episode-active",
+                crate::coordination::agent_org_work_episodes::UNRESOLVED_EPISODE_NEW_MISSION_ERROR
+            ),
+            "turn-user-request",
+        )
+        .expect("typed unresolved episode response");
+
+        assert_eq!(response["created"], false);
+        assert_eq!(response["requires_episode_resolution"], true);
+        assert_eq!(
+            response["rejected_request_turn_intent_id"],
+            "turn-user-request"
+        );
+        assert!(response["guidance"]
+            .as_str()
+            .is_some_and(|guidance| guidance.contains("will not be retried automatically")));
+    }
 }

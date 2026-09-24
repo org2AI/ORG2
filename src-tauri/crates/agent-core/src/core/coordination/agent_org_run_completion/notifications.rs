@@ -199,12 +199,12 @@ fn classify(
                  JOIN agent_org_runtime_tasks task ON task.org_run_id=context.org_run_id AND task.id=context.task_id
                  JOIN agent_org_runtime_work_episode_tasks episode_task ON episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id
                  WHERE context.org_run_id=?1 AND context.turn_intent_id=?2 AND context.participant_id=?3
-                   AND context.turn_kind='task_execution' AND context.activation_generation=run.activation_generation
+                   AND context.turn_kind='task_execution'
                    AND task.status='completed' AND episode_task.work_episode_id=?4
                    AND NOT EXISTS(SELECT 1 FROM agent_org_runtime_turn_contexts newer
                      JOIN session_turn_intents next USING(session_id,turn_intent_id)
                      WHERE newer.org_run_id=context.org_run_id AND newer.participant_id=context.participant_id
-                       AND newer.context_id<>context.context_id
+                       AND newer.context_id>context.context_id
                        AND next.status IN ('optimistic','queued','running'))",
                 params![run_id,source_turn,member_id,episode_id],|r|r.get(0)).optional().map_err(|e|e.to_string())?;
             if status.as_deref() == Some("running") {
@@ -297,4 +297,138 @@ pub(super) fn reconcile_in_tx(
         .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn candidate<'a>() -> RunCompletionCandidate<'a> {
+        RunCompletionCandidate {
+            request_id: "request",
+            request_digest: "digest",
+            outcome: RunCompletionOutcome::Delivered,
+            summary: "done",
+            evidence_task_ids: &[],
+            coordinator_session_id: "root-session",
+            coordinator_turn_intent_id: "coordinator-turn",
+            projected_inbox_ids: &[],
+        }
+    }
+
+    fn fixture() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory database");
+        conn.execute_batch(
+            "CREATE TABLE agent_org_runtime_runs(
+                 id TEXT PRIMARY KEY,activation_generation INTEGER NOT NULL
+             );
+             CREATE TABLE session_turn_intents(
+                 session_id TEXT NOT NULL,turn_intent_id TEXT NOT NULL,status TEXT NOT NULL,
+                 PRIMARY KEY(session_id,turn_intent_id)
+             );
+             CREATE TABLE agent_org_runtime_turn_contexts(
+                 context_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 session_id TEXT NOT NULL,turn_intent_id TEXT NOT NULL,
+                 org_run_id TEXT NOT NULL,participant_id TEXT NOT NULL,
+                 turn_kind TEXT NOT NULL,task_id TEXT,activation_generation INTEGER
+             );
+             CREATE TABLE agent_org_runtime_tasks(
+                 org_run_id TEXT NOT NULL,id TEXT NOT NULL,status TEXT NOT NULL,
+                 activation_generation INTEGER NOT NULL,PRIMARY KEY(org_run_id,id)
+             );
+             CREATE TABLE agent_org_runtime_work_episode_tasks(
+                 org_run_id TEXT NOT NULL,work_episode_id TEXT NOT NULL,task_id TEXT NOT NULL
+             );
+             INSERT INTO agent_org_runtime_runs VALUES('run',4);
+             INSERT INTO session_turn_intents VALUES(
+                 'member-session','turn-before-pause','completed'
+             );
+             INSERT INTO agent_org_runtime_turn_contexts(
+                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+                 task_id,activation_generation
+             ) VALUES(
+                 'member-session','turn-before-pause','run','member','task_execution',
+                 'task',2
+             );
+             INSERT INTO agent_org_runtime_tasks VALUES('run','task','completed',2);
+             INSERT INTO agent_org_runtime_work_episode_tasks VALUES(
+                 'run','episode','task'
+             );",
+        )
+        .expect("notification fixture");
+        conn
+    }
+
+    #[test]
+    fn completed_member_idle_from_before_resume_is_reconciliable() {
+        let conn = fixture();
+        let message = AgentMessage::MemberIdle {
+            member_id: "member".to_string(),
+            member_name: "Worker".to_string(),
+            reason: MemberIdleReason::Available,
+            current_mode: None,
+            summary: None,
+            failure_reason: None,
+            unfinished_task_ids: Vec::new(),
+        };
+
+        let decision = classify(
+            &conn,
+            "run",
+            "episode",
+            &candidate(),
+            &message,
+            NotificationSource {
+                kind: Some("formal_lifecycle"),
+                turn: Some("turn-before-pause"),
+                output_digest: None,
+            },
+        )
+        .expect("classify old-generation idle");
+
+        assert!(matches!(decision, NotificationDecision::Reconciliable(_)));
+    }
+
+    #[test]
+    fn completed_member_idle_does_not_hide_newer_active_work() {
+        let conn = fixture();
+        conn.execute_batch(
+            "INSERT INTO session_turn_intents VALUES(
+                 'member-session','turn-after-resume','running'
+             );
+             INSERT INTO agent_org_runtime_turn_contexts(
+                 session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
+                 task_id,activation_generation
+             ) VALUES(
+                 'member-session','turn-after-resume','run','member','task_execution',
+                 'task',4
+             );",
+        )
+        .expect("newer execution");
+        let message = AgentMessage::MemberIdle {
+            member_id: "member".to_string(),
+            member_name: "Worker".to_string(),
+            reason: MemberIdleReason::Available,
+            current_mode: None,
+            summary: None,
+            failure_reason: None,
+            unfinished_task_ids: Vec::new(),
+        };
+
+        let decision = classify(
+            &conn,
+            "run",
+            "episode",
+            &candidate(),
+            &message,
+            NotificationSource {
+                kind: Some("formal_lifecycle"),
+                turn: Some("turn-before-pause"),
+                output_digest: None,
+            },
+        )
+        .expect("classify idle with newer work");
+
+        assert!(matches!(decision, NotificationDecision::NeedsModel));
+    }
 }

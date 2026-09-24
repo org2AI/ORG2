@@ -77,6 +77,7 @@ interface OrgTaskBlockProps {
   /** Optional group-chat sender name merged into the task header title. */
   groupSenderName?: string | null;
   toolUsage?: ToolUsageMetadata;
+  rejectedRequestRecoveryAction?: React.ReactNode;
 }
 
 // ============================================
@@ -110,6 +111,7 @@ const OrgTaskBlock: React.FC<OrgTaskBlockProps> = ({
   hideHeader = false,
   groupSenderName = null,
   toolUsage,
+  rejectedRequestRecoveryAction,
 }) => {
   const { t } = useTranslation("sessions");
   const yesterdayLabel = t("common:relativeDate.yesterday");
@@ -188,6 +190,7 @@ const OrgTaskBlock: React.FC<OrgTaskBlockProps> = ({
             action === "delete" ||
             operationOutcome !== "succeeded"
           }
+          rejectedRequestRecoveryAction={rejectedRequestRecoveryAction}
         />
       </div>
     );
@@ -256,6 +259,7 @@ const OrgTaskBlock: React.FC<OrgTaskBlockProps> = ({
               action === "delete" ||
               operationOutcome !== "succeeded"
             }
+            rejectedRequestRecoveryAction={rejectedRequestRecoveryAction}
           />
         </div>
       )}

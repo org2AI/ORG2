@@ -412,7 +412,10 @@ impl Tool for TaskCreateTool {
                             Ok(Ok(response))
                         }
                         Err(error) => {
-                            if let Some(response) = unresolved_episode_creation_response(&error)
+                            if let Some(response) = unresolved_episode_creation_response(
+                                &error,
+                                &activation_turn_intent_id,
+                            )
                                 .or_else(|| duplicate_task_creation_response(&error))
                             {
                                 let response = serde_json::to_string(&response)

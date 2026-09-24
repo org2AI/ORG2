@@ -376,6 +376,10 @@ pub struct ExtractedOrgTaskData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completion_deferred: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub requires_episode_resolution: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rejected_request_turn_intent_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub guidance: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,

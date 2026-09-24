@@ -2322,6 +2322,10 @@
       "body": "Coordinator 작업을 계속하려면 재개하세요. @Member 사이드 퀘스트는 계속 보낼 수 있습니다.",
       "resume": "Resume"
     },
+    "finalizingBanner": {
+      "title": "이번 작업을 마무리하는 중입니다",
+      "body": "초안은 계속 편집할 수 있으며 최종 보고서가 끝난 후 보낼 수 있습니다."
+    },
     "toolUseSummary": {
       "note": "{{sender}}이(가) {{summary}}을(를) 수행했습니다",
       "readFiles_one": "{{count}}회 파일 읽기",
@@ -2430,7 +2434,17 @@
     "currentRecordUnavailable": "현재 상태를 사용할 수 없음",
     "currentStatusLabel": "현재 상태",
     "currentOwnerLabel": "현재 담당자",
-    "replacementLabel": "대체 작업"
+    "replacementLabel": "대체 작업",
+    "rejectedRequestRecovery": {
+      "restore": "초안으로 복원",
+      "warning": "요청의 다른 부분은 이미 실행되었을 수 있습니다. 확인 후 미완료 작업만 다시 보내세요.",
+      "unavailable": "원래 요청을 확인할 수 없어 복원하지 않았습니다",
+      "previewTitle": "거부된 요청을 초안에 추가할까요?",
+      "existingDraft": "현재 초안",
+      "recoveredRequest": "거부된 요청",
+      "append": "초안에 추가",
+      "appendExplanation": "요청은 현재 초안 앞에 추가되며 자동으로 전송되지 않습니다."
+    }
   },
   "manageAgentDef": {
     "action": {

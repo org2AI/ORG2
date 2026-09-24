@@ -44,6 +44,59 @@ async function assertRenderedSummaryExecution(intent) {
   );
 }
 
+async function assertFinalizingDraftGuard(root, marker) {
+  const inputSelector = '[data-testid="chat-input"] [contenteditable="true"]';
+  await browser.waitUntil(async () => execJS(js.exists(inputSelector)), {
+    timeout: 10_000,
+    interval: 50,
+    timeoutMsg: "Finalizing composer did not mount",
+  });
+  if ((await execJS(js.type(inputSelector, marker))) !== "typed") {
+    throw new Error("Finalizing composer did not accept a local draft");
+  }
+  const before = rows(
+    `SELECT id FROM events WHERE session_id=${literal(root)} AND args_json LIKE ${literal(`%${marker}%`)}`
+  );
+  await browser.keys("\uE007");
+  await browser.pause(150);
+  const state = await execJS(`
+    const visible = element => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+    };
+    const shells = Array.from(document.querySelectorAll('[data-testid="chat-input"]')).filter(visible);
+    const shell = shells.at(-1) ?? null;
+    const editor = shell?.querySelector('[contenteditable="true"]') ?? null;
+    const send = shell?.querySelector('[data-testid="chat-send-button"]') ?? null;
+    const banner = Array.from(document.querySelectorAll('[data-testid="agent-org-finalizing-banner"]')).find(visible) ?? null;
+    return {
+      draft: editor?.textContent ?? null,
+      editable: editor?.getAttribute('contenteditable') ?? null,
+      sendDisabled: send?.disabled ?? null,
+      sendState: send?.getAttribute('data-state') ?? null,
+      bannerText: banner?.textContent ?? null,
+    };
+  `);
+  const after = rows(
+    `SELECT id FROM events WHERE session_id=${literal(root)} AND args_json LIKE ${literal(`%${marker}%`)}`
+  );
+  if (
+    !state?.draft?.includes(marker) ||
+    state.editable !== "true" ||
+    !(
+      (state.sendState === "submit" && state.sendDisabled === true) ||
+      (state.sendState === "stop" && state.sendDisabled === false)
+    ) ||
+    !state.bannerText ||
+    before.length !== after.length
+  ) {
+    throw new Error(
+      `Finalizing draft was sent, cleared, or hidden: ${JSON.stringify({ state, before, after })}`
+    );
+  }
+}
+
 export async function runSummaryStopScenario(window, { postJson }) {
   if ((process.env.E2E_PROVIDER_MODE ?? "mock") !== "mock")
     throw new Error(
@@ -112,6 +165,8 @@ export async function runSummaryStopScenario(window, { postJson }) {
   if (window === "before")
     await probeObsoleteAssignmentWake(runId, { postJson });
   await clickRenderedMemberSwitcher("coordinator", root);
+  const blockedDraft = `finalizing-draft-${window}-${RUN_ID}`;
+  await assertFinalizingDraftGuard(root, blockedDraft);
   let streamWindow;
   if (window === "stream")
     await browser.waitUntil(
@@ -198,6 +253,19 @@ export async function runSummaryStopScenario(window, { postJson }) {
       timeoutMsg: "Report Stop left the rendered composer in its running state",
     }
   );
+  const stoppedDraft = await execJS(
+    js.editorText('[data-testid="chat-input"] [contenteditable="true"]')
+  );
+  if (!String(stoppedDraft ?? "").includes(blockedDraft)) {
+    throw new Error("Report Stop did not preserve the finalizing draft");
+  }
+  if (
+    (await execJS(
+      js.type('[data-testid="chat-input"] [contenteditable="true"]', "")
+    )) !== "typed"
+  ) {
+    throw new Error("Stopped report draft could not be cleared for Retry");
+  }
   await assertRenderedSummaryExecution(first.turnIntentId);
   const stopEventId = `agent-org-${first.receiptId}`;
   if (
@@ -223,6 +291,15 @@ export async function runSummaryStopScenario(window, { postJson }) {
     button.click(); button.click(); return true;
   `);
   if (!retried) throw new Error("Rendered report Retry button was unavailable");
+  await browser.waitUntil(
+    async () =>
+      execJS(js.exists('[data-testid="agent-org-finalizing-banner"]')),
+    {
+      timeout: 10_000,
+      interval: 50,
+      timeoutMsg: "Report Retry did not restore the Finalizing input guard",
+    }
+  );
   const persisted = await waitForAgentOrgRunView(
     root,
     (view) =>

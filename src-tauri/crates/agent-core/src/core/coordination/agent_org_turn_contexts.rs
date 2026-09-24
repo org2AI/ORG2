@@ -1497,6 +1497,19 @@ pub(crate) fn accept_with_connection(
         (None, None) => {}
     }
 
+    if is_user_originated_admission(request)
+        && crate::coordination::agent_org_final_summary::is_finalizing_with_connection(
+            conn,
+            &request.org_run_id,
+        )?
+    {
+        return Err(format!(
+            "{}:{}",
+            crate::coordination::agent_org_final_summary::FINALIZING_INPUT_NOT_ACCEPTED,
+            request.org_run_id
+        ));
+    }
+
     let canonical = resolve_canonical_admission(conn, request)?;
     let sequence = match canonical.dispatch_member_id.as_deref() {
         Some(member_id) => Some(allocate_member_sequence(
@@ -1565,6 +1578,32 @@ pub(crate) fn accept_with_connection(
         require_context_with_connection(conn, &request.session_id, &request.turn_intent_id)?;
     claim_requested_task_execution_authority(conn, request, &context)?;
     Ok(context)
+}
+
+fn is_user_originated_admission(request: &AgentOrgTurnAdmission) -> bool {
+    match &request.kind {
+        AdmissionKind::GroupRoot { .. } => true,
+        AdmissionKind::UserDirectedWork {
+            source:
+                UserDirectedAdmissionSource::DirectMember { .. }
+                | UserDirectedAdmissionSource::GroupMention { .. },
+            ..
+        } => true,
+        AdmissionKind::Coordinator {
+            expected_generation: None,
+        } => matches!(
+            request.base_source,
+            TurnIntentBridgeSource::UserSubmit
+                | TurnIntentBridgeSource::Queue
+                | TurnIntentBridgeSource::ForceSend
+                | TurnIntentBridgeSource::Wingman
+                | TurnIntentBridgeSource::MobileRemote
+        ),
+        AdmissionKind::Coordinator { .. }
+        | AdmissionKind::TaskExecution { .. }
+        | AdmissionKind::UserDirectedWork { .. }
+        | AdmissionKind::CoordinatorMemberInbox { .. } => false,
+    }
 }
 
 fn claim_requested_task_execution_authority(

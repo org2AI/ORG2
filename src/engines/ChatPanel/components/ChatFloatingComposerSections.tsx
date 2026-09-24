@@ -232,10 +232,10 @@ interface ComposerStatusBannersProps {
   onModeSwitchCollapse: () => void;
   agentOrgIntervention: AgentOrgInterventionView | null;
   streamRetry: StreamRetryInfo | null;
-  groupChatPausedBottomContent: React.ReactNode;
+  agentOrgLifecycleBottomContent: React.ReactNode;
 }
 
-/** Banners stacked above the composer: mode switch, org intervention, stream retry, paused group chat. */
+/** Banners stacked above the composer: mode switch, org intervention, stream retry, Agent Org lifecycle. */
 export const ComposerStatusBanners: React.FC<ComposerStatusBannersProps> = ({
   sessionId,
   hasModeSwitch,
@@ -243,7 +243,7 @@ export const ComposerStatusBanners: React.FC<ComposerStatusBannersProps> = ({
   onModeSwitchCollapse,
   agentOrgIntervention,
   streamRetry,
-  groupChatPausedBottomContent,
+  agentOrgLifecycleBottomContent,
 }) => (
   <>
     {hasModeSwitch && !modeSwitchCollapsed && (
@@ -272,6 +272,6 @@ export const ComposerStatusBanners: React.FC<ComposerStatusBannersProps> = ({
         maxAttempts={streamRetry.maxAttempts}
       />
     )}
-    {groupChatPausedBottomContent}
+    {agentOrgLifecycleBottomContent}
   </>
 );

@@ -50,17 +50,25 @@ async function openExactExecutionDetails(
   marker,
   { requireDistantTarget = false } = {}
 ) {
-  const target = await execJS(`
+  const targetLookup = await execJS(`
     const row = Array.from(document.querySelectorAll('[data-testid="agent-org-group-projection-item"]'))
       .find(row => row.getAttribute('data-item-kind') === 'assistant_reply' && (row.textContent || '').includes(${JSON.stringify(marker)}));
     const button = row?.querySelector('[data-testid="agent-org-execution-details"]');
     if (!button || button.disabled) return null;
     const intent = row.getAttribute('data-turn-intent-id');
+    const mountedBeforeClick = Array.from(document.querySelectorAll('[data-testid="agent-org-execution-header"]'))
+      .some(header => header.getAttribute('data-turn-intent-id') === intent);
     button.click();
-    return intent;
+    return { intent, mountedBeforeClick };
   `);
-  if (!target)
+  if (!targetLookup?.intent)
     throw new Error(`No verified execution details action for ${marker}`);
+  if (requireDistantTarget && targetLookup.mountedBeforeClick) {
+    throw new Error(
+      `Distant execution ${targetLookup.intent} was already mounted before navigation`
+    );
+  }
+  const target = targetLookup.intent;
   let visibleSince = null;
   await browser.waitUntil(
     async () => {
@@ -122,6 +130,12 @@ async function openExactExecutionDetails(
     }
   }
   if (requireDistantTarget) {
+    const collapsedRounds = await execJS(`
+      return Array.from(document.querySelectorAll('[data-testid="turn-collapse-toggle"][aria-expanded="false"]')).length;
+    `);
+    if (collapsedRounds < 1) {
+      throw new Error("Dense private history did not exercise a collapsed round");
+    }
     await (await browser.$('[aria-label^="Go to turn 1 of "]')).click();
     let oldestVisibleSince = null;
     await browser.waitUntil(
@@ -324,11 +338,16 @@ describe("Agent Org Root Group follow-up rendered UI", () => {
         "Root FIFO follow-up incorrectly entered the legacy Coordinator Inbox"
       );
     }
-    // Produce enough real executions through the rendered composer that the
-    // last header starts below the viewport even when older rounds collapse.
+    // Produce at least 57 real executions through the rendered composer so the
+    // target is outside the mounted virtual window. Alternate long and short
+    // content while older rounds retain their real collapsed state.
     let distantMessage = "";
-    for (let index = 0; index < 12; index++) {
-      distantMessage = `E2E Idle Root follow-up ${RUN_ID} history ${index}`;
+    for (let index = 0; index < 57; index++) {
+      const suffix =
+        index % 3 === 0
+          ? ` ${"mixed long history content ".repeat(3).trimEnd()}`
+          : " short";
+      distantMessage = `E2E Idle Root follow-up ${RUN_ID} history ${index}${suffix}`;
       await sendRenderedChatPrompt(distantMessage);
       await waitForRenderedGroupChatMessage({
         sender: coordinatorName,

@@ -2322,6 +2322,10 @@
       "body": "Coordinator çalışması için devam ettirin. Yan görev için hâlâ @Member kullanabilirsiniz.",
       "resume": "Devam et"
     },
+    "finalizingBanner": {
+      "title": "Bu çalışma turu tamamlanıyor",
+      "body": "Taslağınızı düzenlemeye devam edin. Son rapor tamamlanınca gönderebilirsiniz."
+    },
     "toolUseSummary": {
       "note": "{{sender}} {{summary}} gerçekleştirdi",
       "readFiles_one": "{{count}} dosya okuma",
@@ -2430,7 +2434,17 @@
     "currentRecordUnavailable": "Geçerli durum kullanılamıyor",
     "currentStatusLabel": "Geçerli durum",
     "currentOwnerLabel": "Geçerli sorumlu",
-    "replacementLabel": "Değiştirme"
+    "replacementLabel": "Değiştirme",
+    "rejectedRequestRecovery": {
+      "restore": "Taslak olarak geri yükle",
+      "warning": "İsteğin diğer bölümleri çalışmış olabilir. İnceleyin ve yalnızca tamamlanmamış işi yeniden gönderin.",
+      "unavailable": "Asıl istek doğrulanamadı ve geri yüklenmedi",
+      "previewTitle": "Reddedilen istek taslağa eklensin mi?",
+      "existingDraft": "Mevcut taslak",
+      "recoveredRequest": "Reddedilen istek",
+      "append": "Taslağa ekle",
+      "appendExplanation": "İstek mevcut taslağın önüne eklenir ve otomatik olarak gönderilmez."
+    }
   },
   "manageAgentDef": {
     "action": {

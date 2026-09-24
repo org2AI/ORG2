@@ -119,6 +119,7 @@ export type {
   AgentOrgTaskPage,
   AgentOrgTaskAnnotation,
   AgentOrgTaskAnnotationPage,
+  AgentOrgRejectedRequestDraft,
 } from "./orgTasks/tasks";
 export {
   requestAgentOrgTaskHandoff,
@@ -126,4 +127,5 @@ export {
   getAgentOrgTaskPage,
   getAgentOrgTaskDetail,
   getAgentOrgTaskAnnotationPage,
+  getAgentOrgRejectedRequestDraft,
 } from "./orgTasks/tasks";

@@ -80,7 +80,7 @@ interface ChatFloatingComposerProps {
   hasModeSwitch: boolean;
   agentOrgIntervention: AgentOrgInterventionView | null;
   streamRetry: StreamRetryInfo | null;
-  groupChatPausedBottomContent: React.ReactNode;
+  agentOrgLifecycleBottomContent: React.ReactNode;
   onSubmitOverride: (input: SubmitOverrideInput) => Promise<boolean>;
   customMentionOptions: ReadonlyArray<CustomMentionOption>;
   queueEditProps: QueueEditInputAreaProps;
@@ -131,7 +131,7 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
     hasModeSwitch,
     agentOrgIntervention,
     streamRetry,
-    groupChatPausedBottomContent,
+    agentOrgLifecycleBottomContent,
     onSubmitOverride,
     customMentionOptions,
     queueEditProps,
@@ -267,7 +267,7 @@ const ChatFloatingComposer: React.FC<ChatFloatingComposerProps> = memo(
                 onModeSwitchCollapse={onModeSwitchCollapse}
                 agentOrgIntervention={agentOrgIntervention}
                 streamRetry={streamRetry}
-                groupChatPausedBottomContent={groupChatPausedBottomContent}
+                agentOrgLifecycleBottomContent={agentOrgLifecycleBottomContent}
               />
             }
             followUpSuggestions={followUpSuggestions}

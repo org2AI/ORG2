@@ -2369,6 +2369,10 @@
       "body": "समन्वयक के काम के लिए फिर से शुरू करें। साइड क्वेस्ट के लिए आप अब भी @Member कर सकते हैं।",
       "resume": "फिर से शुरू करें"
     },
+    "finalizingBanner": {
+      "title": "इस कार्य चरण को पूरा किया जा रहा है",
+      "body": "आप ड्राफ़्ट संपादित कर सकते हैं और अंतिम रिपोर्ट पूरी होने के बाद भेज सकते हैं।"
+    },
     "toolUseSummary": {
       "note": "{{sender}} ने {{summary}} किए",
       "readFiles_one": "{{count}} फ़ाइल पढ़ी",
@@ -2429,7 +2433,17 @@
     "currentRecordUnavailable": "वर्तमान स्थिति उपलब्ध नहीं",
     "currentStatusLabel": "वर्तमान स्थिति",
     "currentOwnerLabel": "वर्तमान स्वामी",
-    "replacementLabel": "प्रतिस्थापन"
+    "replacementLabel": "प्रतिस्थापन",
+    "rejectedRequestRecovery": {
+      "restore": "ड्राफ़्ट के रूप में वापस लाएँ",
+      "warning": "इस अनुरोध के अन्य हिस्से चल चुके हो सकते हैं। जाँचकर केवल अधूरा काम दोबारा भेजें।",
+      "unavailable": "मूल अनुरोध सत्यापित नहीं हुआ और वापस नहीं लाया गया",
+      "previewTitle": "अस्वीकृत अनुरोध को ड्राफ़्ट में जोड़ें?",
+      "existingDraft": "मौजूदा ड्राफ़्ट",
+      "recoveredRequest": "अस्वीकृत अनुरोध",
+      "append": "ड्राफ़्ट में जोड़ें",
+      "appendExplanation": "अनुरोध मौजूदा ड्राफ़्ट से पहले जोड़ा जाएगा और अपने आप नहीं भेजा जाएगा।"
+    }
   },
   "manageAgentDef": {
     "action": {

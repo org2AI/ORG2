@@ -26,6 +26,7 @@ import {
 } from "@src/store/ui/chatImageAtom";
 import { prewarmFileIndex } from "@src/util/platform/tauri/fileSearch";
 
+import { mergeRestoredImageAttachments } from "./restoreInputImages";
 import { useDroppedFilesConsumer } from "./useDroppedFilesConsumer";
 import { useImageAttachment } from "./useImageAttachment";
 
@@ -147,10 +148,14 @@ export function useInputAreaEffects(options: UseInputAreaEffectsOptions): void {
           ownerId: dropTargetId,
         })
       );
-      setImageAttachments((prev) => [
-        ...prev.filter((image) => image.ownerId !== dropTargetId),
-        ...restored,
-      ]);
+      setImageAttachments((prev) =>
+        mergeRestoredImageAttachments({
+          existing: prev,
+          restored,
+          ownerId: dropTargetId,
+          append: restoreToInput.appendImages === true,
+        })
+      );
     }
 
     setRestoreToInput(null);

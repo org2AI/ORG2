@@ -2322,6 +2322,10 @@
       "body": "Für Arbeit mit dem Coordinator fortsetzen. @Member-Side-Quests sind weiterhin möglich.",
       "resume": "Fortsetzen"
     },
+    "finalizingBanner": {
+      "title": "Diese Arbeitsrunde wird abgeschlossen",
+      "body": "Du kannst den Entwurf weiter bearbeiten und nach dem Abschlussbericht senden."
+    },
     "toolUseSummary": {
       "note": "{{sender}} führte {{summary}} aus",
       "readFiles_one": "{{count}} Dateilesevorgang",
@@ -2430,7 +2434,17 @@
     "currentRecordUnavailable": "Aktueller Zustand nicht verfügbar",
     "currentStatusLabel": "Aktueller Status",
     "currentOwnerLabel": "Aktueller Verantwortlicher",
-    "replacementLabel": "Ersatz"
+    "replacementLabel": "Ersatz",
+    "rejectedRequestRecovery": {
+      "restore": "Als Entwurf wiederherstellen",
+      "warning": "Andere Teile könnten bereits ausgeführt worden sein. Prüfe sie und sende nur offene Arbeit erneut.",
+      "unavailable": "Die ursprüngliche Anfrage konnte nicht verifiziert und nicht wiederhergestellt werden",
+      "previewTitle": "Abgelehnte Anfrage zum Entwurf hinzufügen?",
+      "existingDraft": "Aktueller Entwurf",
+      "recoveredRequest": "Abgelehnte Anfrage",
+      "append": "Zum Entwurf hinzufügen",
+      "appendExplanation": "Die Anfrage wird vor dem aktuellen Entwurf eingefügt. Es wird nichts automatisch gesendet."
+    }
   },
   "manageAgentDef": {
     "action": {

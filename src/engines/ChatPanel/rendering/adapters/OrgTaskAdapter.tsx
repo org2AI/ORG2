@@ -12,6 +12,7 @@ import type { UniversalEventProps } from "@src/engines/SessionCore/rendering/typ
 import { prettifyMemberName } from "@src/util/data/formatters/memberName";
 
 import OrgTaskBlock, { type OrgTaskAction } from "../../blocks/OrgTaskBlock";
+import { RejectedRequestRecoveryAction } from "../../blocks/OrgTaskBlock/RejectedRequestRecoveryAction";
 import ToolCallBlock from "../../blocks/ToolCallBlock";
 import { TaskListCard } from "../../blocks/ToolCallBlock/cards/TaskUpdateCard";
 import type {
@@ -242,6 +243,16 @@ export const OrgTaskAdapter: React.FC<UniversalEventProps> = (props) => {
         hideHeader={isSimulator}
         groupSenderName={groupSenderName}
         toolUsage={props.toolUsage}
+        rejectedRequestRecoveryAction={
+          extracted.requiresEpisodeResolution === true &&
+          extracted.rejectedRequestTurnIntentId &&
+          props.sessionId ? (
+            <RejectedRequestRecoveryAction
+              sessionId={props.sessionId}
+              turnIntentId={extracted.rejectedRequestTurnIntentId}
+            />
+          ) : undefined
+        }
       />
     </div>
   );

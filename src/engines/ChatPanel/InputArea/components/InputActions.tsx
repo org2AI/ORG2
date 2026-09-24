@@ -88,10 +88,10 @@ const InputActions: React.FC<InputActionsProps> = memo(
     });
     const lastInputActionRef = useRef<InputActionGuardState | null>(null);
 
-    // Non-empty input ALWAYS wins over the working indicator: the user can
-    // type a new message while the agent is running, and it will be silently
-    // queued. Retry is CLI-only (Rust agents have no resume).
-    const showSubmit = !isInputEmpty;
+    // A normal non-empty input wins over the working indicator so it can be
+    // queued. When admission is explicitly blocked, keep Stop reachable while
+    // the current execution is still active and leave the draft untouched.
+    const showSubmit = !isInputEmpty && !(submitDisabled && isWpGeneWorking);
     const showRetry =
       !showSubmit && canResume && isSessionTerminal && !isWpGeneWorking;
     const showStop = !showSubmit && isWpGeneWorking;

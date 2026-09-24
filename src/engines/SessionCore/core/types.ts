@@ -496,6 +496,8 @@ export interface RustExtractedOrgTaskData {
   taskAssignedDispatched?: boolean;
   /** Terminal update was postponed; the durable task lifecycle did not fail. */
   completionDeferred?: boolean;
+  requiresEpisodeResolution?: boolean;
+  rejectedRequestTurnIntentId?: string;
   guidance?: string;
   errorMessage?: string;
 }

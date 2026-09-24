@@ -2322,6 +2322,10 @@
       "body": "Tiếp tục để làm việc với Coordinator. Bạn vẫn có thể dùng @Member cho việc phụ.",
       "resume": "Tiếp tục"
     },
+    "finalizingBanner": {
+      "title": "Đang hoàn tất vòng công việc này",
+      "body": "Bạn vẫn có thể sửa bản nháp và gửi sau khi báo cáo cuối cùng hoàn tất."
+    },
     "toolUseSummary": {
       "note": "{{sender}} đã thực hiện {{summary}}",
       "readFiles_one": "{{count}} lần đọc tệp",
@@ -2430,7 +2434,17 @@
     "currentRecordUnavailable": "Không có trạng thái hiện tại",
     "currentStatusLabel": "Trạng thái hiện tại",
     "currentOwnerLabel": "Người phụ trách hiện tại",
-    "replacementLabel": "Nhiệm vụ thay thế"
+    "replacementLabel": "Nhiệm vụ thay thế",
+    "rejectedRequestRecovery": {
+      "restore": "Khôi phục thành bản nháp",
+      "warning": "Các phần khác có thể đã chạy. Hãy kiểm tra và chỉ gửi lại phần chưa hoàn tất.",
+      "unavailable": "Không thể xác minh nên yêu cầu gốc không được khôi phục",
+      "previewTitle": "Thêm yêu cầu bị từ chối vào bản nháp?",
+      "existingDraft": "Bản nháp hiện tại",
+      "recoveredRequest": "Yêu cầu bị từ chối",
+      "append": "Thêm vào bản nháp",
+      "appendExplanation": "Yêu cầu sẽ được thêm trước bản nháp hiện tại và không tự động gửi."
+    }
   },
   "manageAgentDef": {
     "action": {

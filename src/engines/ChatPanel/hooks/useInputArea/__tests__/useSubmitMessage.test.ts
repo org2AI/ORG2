@@ -606,6 +606,51 @@ describe("useSubmitMessage composer boundary", () => {
     );
   });
 
+  it("restores the complete draft when finalization wins the admission race", async () => {
+    const editorHarness = createEditor("send after the report");
+    const attachment = image("finalizing-image");
+    const imageAttachment = {
+      hasImages: true,
+      images: [attachment],
+      clearImages: vi.fn(),
+      restoreImages: vi.fn(),
+    };
+    const citeSnapshot = {
+      isCiteCode: true,
+      selectedCiteRange: { start: 2, end: 4 },
+      selectedCiteText: "final answer",
+      citeFileName: "report.md",
+    };
+    const citeCode = {
+      isCiteCode: true,
+      clearCiteCode: vi.fn(),
+      captureCiteCode: vi.fn(() => citeSnapshot),
+      restoreCiteCode: vi.fn(),
+    };
+    await mount(
+      optionsFor(editorHarness, {
+        imageAttachment,
+        citeCode,
+        handleSessChatSubmit: vi
+          .fn()
+          .mockRejectedValue(
+            new Error("agent_org_finalizing_input_not_accepted")
+          ),
+      })
+    );
+
+    await act(async () => {
+      await latestSubmit!();
+    });
+
+    expect(editorHarness.readText()).toBe("send after the report");
+    expect(imageAttachment.restoreImages).toHaveBeenCalledWith([attachment]);
+    expect(citeCode.restoreCiteCode).toHaveBeenCalledWith(citeSnapshot);
+    expect(mocks.messageError).toHaveBeenCalledWith(
+      "chat.failedToSendMessage: groupChat.finalizingBanner.body"
+    );
+  });
+
   it("restores each composer payload independently when one restore fails", async () => {
     const editorHarness = createEditor("restore everything possible");
     editorHarness.editor.setContent = vi.fn(() => {

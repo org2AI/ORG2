@@ -120,6 +120,55 @@ fn idle(
 }
 
 #[tokio::test]
+async fn final_member_exit_after_resume_rings_the_completion_doorbell_for_original_tasks() {
+    let _sandbox = sandbox();
+    let task_id = completed_task().await;
+    let conn = database::db::get_connection().unwrap();
+    conn.execute(
+        "UPDATE agent_org_runtime_runs SET activation_generation=3 WHERE id=?1",
+        [RUN_ID],
+    )
+    .unwrap();
+
+    let inbox_id = idle(MemberIdleReason::Available, None, vec![], OWNER_TURN);
+    let (receipt_id, receipt_task_id, source_turn, status, doorbell): (
+        String,
+        Option<String>,
+        Option<String>,
+        String,
+        String,
+    ) = conn
+        .query_row(
+            "SELECT receipt_id,task_id,source_turn_intent_id,status,doorbell_status
+             FROM agent_org_runtime_formal_trigger_receipts
+             WHERE inbox_id=?1",
+            [inbox_id],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
+        )
+        .expect("final MemberIdle must create a formal completion trigger");
+    assert_eq!(receipt_task_id.as_deref(), Some(task_id.as_str()));
+    assert_eq!(source_turn.as_deref(), Some(OWNER_TURN));
+    assert_eq!(status, "pending");
+    assert_eq!(doorbell, "missing");
+
+    let (run_id, missing_doorbells) = completion::recheck_after_turn(ALICE_SESSION, OWNER_TURN)
+        .expect("terminal persistence must recheck completion after the Member exits");
+    assert_eq!(run_id, RUN_ID);
+    assert!(
+        missing_doorbells.contains(&receipt_id),
+        "the exact MemberIdle trigger must be included alongside any earlier task trigger"
+    );
+}
+
+#[tokio::test]
 async fn completion_waits_for_exact_success_and_settles_only_redundant_rows() {
     let _sandbox = sandbox();
     let id = completed_task().await;

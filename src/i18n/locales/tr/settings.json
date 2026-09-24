@@ -1067,8 +1067,8 @@
           "changed": "Uygulama değiştiği için geçmiş uyumluluğunun yeniden doğrulanması gerekiyor",
           "route": "Hedef model ve sağlayıcı doğrulanamadı",
           "checking": "Konuşma geçmişi kontrol ediliyor",
-          "waiting": "Claude Desktop ve Claude Code uygulamalarının kapanması bekleniyor",
-          "namespace": "Claude Desktop uygulamasının geçmişi başlatması bekleniyor",
+          "waiting": "Geçmişi eşitlemek için Claude Desktop ve Claude Code uygulamalarını kapatın, ardından görüntülemek için Claude Desktop uygulamasını yeniden açın",
+          "namespace": "İlk kullanımda Claude Desktop uygulamasını açın, ardından geçmişi yüklemek için kapatıp yeniden açın",
           "attention": "Bazı konuşmaların incelenmesi gerekiyor; mevcut geçmiş korunuyor",
           "unavailable": "Otomatik geçmiş eşitleme geçici olarak kullanılamıyor"
         }

@@ -1067,8 +1067,8 @@
           "changed": "앱이 변경되어 기록 호환성을 다시 확인해야 합니다",
           "route": "대상 모델과 제공업체를 확인할 수 없습니다",
           "checking": "대화 기록을 확인하는 중",
-          "waiting": "Claude Desktop과 Claude Code가 종료되기를 기다리는 중",
-          "namespace": "Claude Desktop이 기록을 초기화하기를 기다리는 중",
+          "waiting": "Claude Desktop과 Claude Code를 종료하면 기록이 동기화됩니다. Claude Desktop을 다시 열어 확인하세요",
+          "namespace": "처음 사용할 때는 Claude Desktop을 연 뒤 종료하고 다시 열어 기록을 불러오세요",
           "attention": "일부 대화를 확인해야 하며 기존 기록은 보존됩니다",
           "unavailable": "자동 기록 동기화를 일시적으로 사용할 수 없습니다"
         }

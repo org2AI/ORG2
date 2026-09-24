@@ -1067,8 +1067,8 @@
           "changed": "Ứng dụng đã thay đổi và cần kiểm tra lại khả năng tương thích của lịch sử",
           "route": "Không thể xác minh mô hình và nhà cung cấp đích",
           "checking": "Đang kiểm tra lịch sử cuộc trò chuyện",
-          "waiting": "Đang chờ Claude Desktop và Claude Code đóng",
-          "namespace": "Đang chờ Claude Desktop khởi tạo lịch sử",
+          "waiting": "Thoát Claude Desktop và Claude Code để đồng bộ lịch sử, sau đó mở lại Claude Desktop để xem",
+          "namespace": "Lần đầu sử dụng: mở Claude Desktop, sau đó thoát và mở lại để tải lịch sử",
           "attention": "Một số cuộc trò chuyện cần được kiểm tra; lịch sử hiện có được giữ nguyên",
           "unavailable": "Tính năng tự động đồng bộ lịch sử tạm thời không khả dụng"
         }

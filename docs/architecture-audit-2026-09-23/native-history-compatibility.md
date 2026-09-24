@@ -19,6 +19,65 @@ not a general upstream compatibility monitoring service. PR #2110 is separate.
 **Scope verdict: reduced, with reasons for the retained groups below.** This is
 not a claim of completed product acceptance or permission to merge.
 
+## Claude follow-up: exit recovery and first use
+
+The follow-up fixes two failure boundaries: a process exiting between kernel
+identity reads no longer invalidates the entire Claude writer scan, and history
+work waits for the in-process configuration mutex instead of treating a status
+reader's lock as an ownership failure. Unknown live processes still fail closed;
+configuration and owner identity are rechecked after waiting. Cross-process locks
+remain nonblocking. The local mutex wait lasts until its current holder releases
+it and cannot be cancelled mid-wait. No polling or retry service was added.
+
+The fixed build passed two real metadata-only Open/Quit cycles: raw source and
+target converged automatically after exit, without a Refresh or page switch.
+The historical binary also passed one baseline cycle, so these observations do
+not establish which race caused the original incident. Deterministic tests cover
+both repaired boundaries. The follow-up Rust suites passed 412 tests with five
+opt-in native tests ignored; Clippy passed.
+
+A genuinely fresh managed profile initially displayed no history. After the first
+native Quit, automatic import completed; the second Open displayed one expected
+conversation. The cause is the ordering between vendor namespace registration
+and the live-writer guard. The user chose to retain this minimal lifecycle:
+**open once to initialize, quit Claude Desktop and Claude Code to allow import,
+then reopen Claude Desktop to view history**. First-window history visibility is
+not promised. The existing namespace and writer-wait messages now explain these
+steps in all 15 locales. There is no automatic application termination/relaunch,
+fabricated vendor namespace or relaxed writer guard.
+
+The namespace regression additionally checks that registration while a writer is
+live creates neither a target transcript nor a discovery row, then checks that
+the post-exit import is idempotent. This extends the owning-boundary fixture;
+it does not substitute for the first-use product flow.
+
+The new isolated instance95 passed the selected product flow through normal
+Configure/Open actions with official Claude 2.7032.0: the first-use and exit/reopen
+messages rendered in full, first Quit imported byte-identical raw history without
+Refresh or navigation, and the second Open showed one conversation with all six
+source messages in order. The final Quit retained the same raw bytes and journal
+without duplication. No new prompt was sent. A fresh-login catalog-load failure
+required restarting ORG2 before profile creation; that separate issue remains.
+
+Follow-up verification: `cargo test --manifest-path src-tauri/Cargo.toml -p org2
+--lib --locked market_connection::claude_history::namespace_tests:: --
+--test-threads=1` passed both tests. `pnpm test
+src/modules/MainApp/Settings/sections/HarnessConnections/AppConnectionPage.test.ts
+src/modules/MainApp/Settings/sections/HarnessConnections/historyStatus.test.ts`
+passed 24 tests. `pnpm check:i18n-keys`, `pnpm check:i18n:quality`, the frontend and
+instance95 product builds, and `git diff --check` passed. English dark-mode
+screenshots cover the new pending and writer-wait copy; light mode, narrow window
+and other locale screenshots were not captured. Existing format differences in
+the namespace test's unrelated timeout assertion were left unchanged.
+
+Architecture coverage for this follow-up: layers 1–7 cover compilation, the
+shared configuration lock, process classification and their failure semantics;
+layer 8 preserves existing IPC reason codes and native file formats; layer 9
+covers first-use registration versus reopen; layer 10 preserves the same
+vendor-owned account/project resolver. No React component or action control was
+changed. The full performance verdict remains blocked on the resource matrix
+and new-message/provider-accounting evidence described below.
+
 ## Remove / simplify / keep decisions
 
 | Group                                   | Verdict     | Necessity and consequence                                                                                                                                                                                                                                                                                                              |
@@ -49,18 +108,18 @@ snapshot v2. A source-code revert cannot recover already overwritten unique text
 
 ## Ten architecture layers
 
-| Layer                     | Coverage and result                                                                                                                                                           |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 Compilation             | Local Rust check/tests and changed-source formatting; current results below. Cross-platform CI belongs to the published revision.                                             |
-| 2 Dead code / duplication | Removed independent CI wrappers and unused helper APIs. Kept migration readers and distinct metadata-vs-action boundaries.                                                    |
-| 3 Naming                  | Local installation generation is explicitly process-local; raw revision hashes remain content identities. Logical session ID and physical rollout ID stay distinct.           |
-| 4 Semantic overloading    | Separate version diagnostics, action capability checks, raw write time, publication receipts and GUI/CLI evidence.                                                            |
-| 5 Defaults                | Explicit target route wins; native default must match provider. Unknown route/namespace pauses instead of guessing. Exact LWW timestamp tie favors primary.                   |
-| 6 Domain boundaries       | Native source storage is authoritative; display parser and UI filters do not define admissible history. Destination credentials/configuration remain local.                   |
-| 7 Discoverability         | One operation resolver, named raw/storage modules, shared history status and direct native fixture instructions. Removed monitoring-only entry points.                        |
-| 8 Wire / serialization    | Read legacy evidence, write current receipt formats; opaque native columns retained; actual incompatible contracts pause. Event target/reason mapping checked across Rust/TS. |
-| 9 Initialization parity   | Cold target uses vendor bootstrap with durable ownership; existing target uses the same route/profile fences. Claude fresh-window behavior remains an acceptance gap.         |
-| 10 Resolver symmetry      | Both handoff directions use destination config and independent revision receipts. Primary default probe uses a disposable home, never the primary account.                    |
+| Layer                     | Coverage and result                                                                                                                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 Compilation             | Local Rust check/tests and changed-source formatting; current results below. Cross-platform CI belongs to the published revision.                                                                                      |
+| 2 Dead code / duplication | Removed independent CI wrappers and unused helper APIs. Kept migration readers and distinct metadata-vs-action boundaries.                                                                                             |
+| 3 Naming                  | Local installation generation is explicitly process-local; raw revision hashes remain content identities. Logical session ID and physical rollout ID stay distinct.                                                    |
+| 4 Semantic overloading    | Separate version diagnostics, action capability checks, raw write time, publication receipts and GUI/CLI evidence.                                                                                                     |
+| 5 Defaults                | Explicit target route wins; native default must match provider. Unknown route/namespace pauses instead of guessing. Exact LWW timestamp tie favors primary.                                                            |
+| 6 Domain boundaries       | Native source storage is authoritative; display parser and UI filters do not define admissible history. Destination credentials/configuration remain local.                                                            |
+| 7 Discoverability         | One operation resolver, named raw/storage modules, shared history status and direct native fixture instructions. Removed monitoring-only entry points.                                                                 |
+| 8 Wire / serialization    | Read legacy evidence, write current receipt formats; opaque native columns retained; actual incompatible contracts pause. Event target/reason mapping checked across Rust/TS.                                          |
+| 9 Initialization parity   | Cold target uses vendor bootstrap with durable ownership; existing target uses the same route/profile fences. Claude first use explicitly requires initialization, exit and reopen; no first-window history guarantee. |
+| 10 Resolver symmetry      | Both handoff directions use destination config and independent revision receipts. Primary default probe uses a disposable home, never the primary account.                                                             |
 
 No layer was omitted from the source audit. Non-macOS native execution and full
 product/performance acceptance were not exercised here. Frontend layout refactoring,
@@ -77,14 +136,14 @@ controls; this reduction introduces no production UI controls or native inputs.
 | Isolation       | Owner/config/runtime generations checked at publication; unknown writers preserve pending work.                                      | Revocation, runtime replacement and profile tests.                                           |
 | Rendering       | Status reads return snapshots; event target scopes refresh.                                                                          | Existing frontend tests; no new UI layout in this audit.                                     |
 
-| State / transition                    | Expected invariant                                                     | Remaining evidence                                                                  |
-| ------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Disabled / signed out / retired owner | Release service and reject stale writes                                | Unit coverage; full account-switch product run pending                              |
-| Visible idle / hidden idle            | No periodic history scanning without pending work                      | Full CPU/RAM/I/O observations pending                                               |
-| Active native writer                  | Read only completed stable source; never overwrite loaded destination  | Engine/native fixture coverage; GUI concurrency pending                             |
-| Writer exit / namespace created       | Wake queued work from native invalidation                              | Claude delayed post-reopen recovery observed previously; exact trigger not resolved |
-| Update / provider switch / revocation | Invalidate runtime/config binding before commit                        | Source-boundary regression coverage; live App update matrix pending                 |
-| Failure / crash / repeated open-close | Bound work, retain unknown pending transaction, avoid duplicate writer | Recovery/launch tests; full repeated GUI lifecycle pending                          |
+| State / transition                    | Expected invariant                                                     | Remaining evidence                                                                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Disabled / signed out / retired owner | Release service and reject stale writes                                | Unit coverage; full account-switch product run pending                                                                  |
+| Visible idle / hidden idle            | No periodic history scanning without pending work                      | Full CPU/RAM/I/O observations pending                                                                                   |
+| Active native writer                  | Read only completed stable source; never overwrite loaded destination  | Engine/native fixture coverage; GUI concurrency pending                                                                 |
+| Writer exit / namespace created       | Wake queued work from native invalidation                              | Two metadata-only exit cycles passed; fresh-profile exit/import/reopen passed; original incident cause remains unproven |
+| Update / provider switch / revocation | Invalidate runtime/config binding before commit                        | Source-boundary regression coverage; live App update matrix pending                                                     |
+| Failure / crash / repeated open-close | Bound work, retain unknown pending transaction, avoid duplicate writer | Recovery/launch tests; full repeated GUI lifecycle pending                                                              |
 
 One pre-existing limitation remains: the Codex coordinator restores dirty work for
 `busy` / `already synchronizing` failures and retries after 750 ms while pending.
@@ -98,11 +157,11 @@ overall product performance.
 
 ## Provider acceptance and verification
 
-| Provider | Engine / native core                                                                                                                    | Desktop product acceptance                                                                                             |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Claude   | Historical implementation `05a87eec871`: 21 raw handoffs and 21 CLI resumes, destination config preserved, completed tools not replayed | Existing-profile GUI writeback/reopen was observed separately; fresh first Open and delayed recovery remain unresolved |
-| Codex    | Historical implementation `05a87eec871`: five engine/core cases, seven LWW checks, frozen forks/cold target/live writers                | Not passed: native GUI control was refused; no Configure/Open/continue/writeback/reopen claim                          |
-| Both     | Local audit revision checks listed below                                                                                                | Paid provider/SJC accounting and full resource matrix unverified                                                       |
+| Provider | Engine / native core                                                                                                                    | Desktop product acceptance                                                                                                                                           |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude   | Historical implementation `05a87eec871`: 21 raw handoffs and 21 CLI resumes, destination config preserved, completed tools not replayed | Two exit/writeback cycles passed; fresh initialization/exit/reopen passed with one conversation and all six source messages; first-window visibility is not promised |
+| Codex    | Historical implementation `05a87eec871`: five engine/core cases, seven LWW checks, frozen forks/cold target/live writers                | Not passed: native GUI control was refused; no Configure/Open/continue/writeback/reopen claim                                                                        |
+| Both     | Local audit revision checks listed below                                                                                                | Paid provider/SJC accounting and full resource matrix unverified                                                                                                     |
 
 Historical CI/native results are not current-head GUI evidence. This audit does
 not change raw-storage semantics; it does change the installation cache path and
@@ -236,3 +295,78 @@ recorded in the removal table above rather than listed as retained additions.
 | `src/modules/MainApp/Settings/sections/HarnessConnections/historyStatus.ts`                                      |        22 / 0 | keep     | 状态展示与事件作用域          |
 | `src/modules/MainApp/Settings/sections/HarnessConnections/useHarnessConnection.test.ts`                          |       254 / 0 | keep     | 状态展示与事件作用域          |
 | `src/modules/MainApp/Settings/sections/HarnessConnections/useHarnessConnection.ts`                               |         4 / 4 | keep     | 状态展示与事件作用域          |
+
+## Codex follow-up: runtime parameters, historical model routing and launch recovery
+
+The official core's plugin boolean overrides are now parsed as dotted CLI keys
+(including plugin IDs with `@` and `-`) plus typed TOML values. Only the known
+non-routing keys and plugin enabled booleans are allowed; credentials, profile,
+model and plugin command overrides remain rejected.
+
+The AppSource compatibility rule applies only to Codex bare model names. Explicit
+package aliases keep strict ownership; both Claude agents remain strict. Bare
+names use the configured default package even in a multi-package catalog. This
+is a declared compatibility policy, not proof of request provenance. A local HTTP
+regression uses the real AppSource resolver and production proxy, with synthetic
+remote credentials, to verify default fallback and explicit second-package
+routing across body model, destination and credential together. It does not
+prove live Market billing or a successful native canary.
+
+Launch recovery persists the observed GUI PID/start time before binding checks,
+then requires kernel evidence that the lifetime ended and a new profile scan
+before redispatch. Unknown dispatches, unreadable/live identities, owner changes,
+malformed records and concurrent Open remain protected. The existing bounded
+startup loop is unchanged; there is no idle timer, new background scan or kill.
+The reservation format/rollback boundary is documented in the compatibility guide.
+
+Architecture coverage: layers 1–10 reviewed for these paths (compile, live call
+chain, naming, model/alias distinction, fallback, cross-client scope, explicit
+policy, HTTP wire tuple, startup parity, resolver consistency). No whole-repo
+cleanup or performance claim is made.
+
+| Area               | Verdict | Evidence                                                             | Change or reason kept                                 | Verification                                         |
+| ------------------ | ------- | -------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------- |
+| Background work    | keep    | Existing user-action startup loop only                               | No new polling service; exit check on explicit Open   | Lifecycle tests; GUI recovery pending                |
+| Memory             | keep    | Reservation read capped at 257 bytes, stored state <=256             | One observed process, no growing registry             | Malformed/partial/oversized record coverage          |
+| Scope/isolation    | fix     | Strict aliases and both Claude agents; profile lock and owner checks | Codex-only compatibility; persisted lifetime recovery | Resolver, real HTTP proxy and kernel/lifecycle tests |
+| Rendering/hot path | keep    | No production React change in this follow-up                         | Existing #2110 remains separate                       | Not reverified here                                  |
+
+Performance verdict: blocked — visible/hidden/repeated GUI cycles, successful
+native continuation and remaining provider/resource matrix still require the
+acceptance executor. A built candidate and automated checks are not full GUI
+acceptance.
+
+Automated follow-up verification (final local source):
+
+- `cargo test --manifest-path src-tauri/Cargo.toml -p org2 -p agent_cli --lib --locked -- market_connection:: cli_managed_proxy:: managed_config:: agent_sessions::cli::native_materializer:: --test-threads=1`: 156 agent_cli + 281 app_lib passed; 5 explicit opt-in materializer tests ignored. Child test-process output is included in the parent coverage, not added again.
+- Targeted runtime/catalog/proxy checks also passed during implementation; these overlap the final suites and are not additional unique coverage.
+- The new local HTTP case checks the real compatibility policy and proxy path with two packages and distinct wire models/credentials; it does not contact Market.
+
+## 2026-09-24 delivery and external supply acceptance
+
+The follow-up source and Ready93 candidate were checked against the saved build
+receipt before submission: all 29 file hashes and the executable hash matched.
+The 437 passing tests (5 opt-in ignores), clean Clippy result and candidate
+build therefore apply to this source; this documentation update does not imply
+a new test execution. Latest `develop` was fetched and merge-tree checked without
+conflicts. No target-branch code was incorporated into the tested candidate.
+
+Claude H1 previously passed two normal-exit writeback rounds. The chosen H2
+behavior is first-use initialization followed by quit/reopen, with a fresh
+instance passing that workflow. These are recorded historical product results;
+they do not replace a final-candidate full lifecycle/resource run.
+
+The independent CPA reserve blocker was resolved in cloud-infra PR #148, now
+merged. One real request through instance 93's existing package proxy completed
+with upstream `gpt-reserve` while ordinary quota was denied: 343 input and 15
+output tokens. Database receipt/ledger reads verified buyer charge 65, seller
+payable 48 and platform revenue 17 micro-USD, with unused hold released. This
+used the prior running desktop package and is **not** Ready93 native GUI C4,
+cross-model pre-compaction acceptance or reservation recovery evidence. The
+provider's integer reserve percentage remained 0; no percentage delta is claimed.
+
+Remaining product acceptance: Ready93 C1–C6, C7–C14 and the visible/hidden/active/
+repeated-open resource matrix. The old second-round C6 used manual lock cleanup
+and cannot certify automatic reservation recovery. Do not clear a lock or call
+a reconciliation helper to make product acceptance pass. Performance verdict
+remains **blocked on the unexecuted runtime matrix**, not on reserve supply.

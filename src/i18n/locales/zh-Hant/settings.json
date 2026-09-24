@@ -1067,8 +1067,8 @@
           "changed": "應用程式已更新，需要重新驗證歷史相容性",
           "route": "無法確認目標模型和供應商",
           "checking": "正在檢查對話歷史",
-          "waiting": "等待 Claude Desktop 和 Claude Code 結束",
-          "namespace": "等待 Claude Desktop 初始化歷史目錄",
+          "waiting": "結束 Claude Desktop 和 Claude Code 後會自動同步歷史，重新開啟 Claude Desktop 即可查看",
+          "namespace": "首次使用：開啟 Claude Desktop 完成初始化，再結束並重新開啟以載入歷史",
           "attention": "部分對話需要處理，既有歷史已保留",
           "unavailable": "自動歷史同步暫時無法使用"
         }

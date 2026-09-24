@@ -1067,8 +1067,8 @@
           "changed": "L’application a changé et la compatibilité de l’historique doit être vérifiée à nouveau",
           "route": "Le modèle et le fournisseur de destination n’ont pas pu être vérifiés",
           "checking": "Vérification de l’historique des conversations",
-          "waiting": "En attente de la fermeture de Claude Desktop et Claude Code",
-          "namespace": "En attente de l’initialisation de l’historique par Claude Desktop",
+          "waiting": "Quittez Claude Desktop et Claude Code pour synchroniser l’historique, puis rouvrez Claude Desktop pour le consulter",
+          "namespace": "Première utilisation : ouvrez Claude Desktop, quittez-le puis rouvrez-le pour charger l’historique",
           "attention": "Certaines conversations nécessitent une intervention ; l’historique existant est conservé",
           "unavailable": "La synchronisation automatique de l’historique est temporairement indisponible"
         }

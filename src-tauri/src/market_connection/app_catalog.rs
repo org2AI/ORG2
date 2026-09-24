@@ -223,6 +223,19 @@ impl Catalog {
     }
 }
 
+// This is an explicit default-package compatibility policy, not provenance
+// proof: syntactically bare names can also arrive from non-history requests.
+fn codex_bare_model_fallback(agent: &str, model: &str) -> bool {
+    agent == "codex"
+        && !model.contains("-org2-")
+        && !model.starts_with("claude-org2-route-")
+        && !model.is_empty()
+        && model.len() <= 256
+        && model
+            .bytes()
+            .all(|value| value.is_ascii_alphanumeric() || matches!(value, b'-' | b'.' | b'_'))
+}
+
 pub(super) struct AppSource;
 impl Source for AppSource {
     fn namespace(&self) -> &'static str {
@@ -238,7 +251,14 @@ impl Source for AppSource {
         agent: &str,
         model: &str,
     ) -> Result<Option<RequestSelection>, String> {
-        Catalog::parse(key, agent)?.resolve(model).map(Some)
+        let catalog = Catalog::parse(key, agent)?;
+        match catalog.resolve(model) {
+            Ok(route) => Ok(Some(route)),
+            Err(_) if codex_bare_model_fallback(agent, model) => {
+                catalog.resolve(&catalog.default_model).map(Some)
+            }
+            Err(error) => Err(error),
+        }
     }
     fn models(&self, key: &str, agent: &str) -> Result<Option<Vec<SourceModel>>, String> {
         Ok(Some(
@@ -268,7 +288,7 @@ impl Source for AppSource {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn entry(purchase: &str, model: &str) -> CatalogModel {
+    pub(super) fn entry(purchase: &str, model: &str) -> CatalogModel {
         let selection = Selection {
             native_protocol: None,
             metadata: market_connect::ConnectionMetadata {
@@ -402,13 +422,75 @@ mod tests {
             assert_eq!(route.model, model);
         }
         assert_ne!(restored.models[0].id, restored.models[1].id);
-        assert!(AppSource
-            .request_selection(&key, "codex", "gpt-shared")
-            .is_err());
-        assert!(AppSource
-            .request_selection(&key, "codex", "unknown")
-            .is_err());
+        for requested in ["gpt-shared", "gpt-5.4"] {
+            let route = AppSource
+                .request_selection(&key, "codex", requested)
+                .unwrap()
+                .unwrap();
+            assert_eq!(route.selection, restored.models[0].selection);
+            assert_eq!(route.model, "gpt-shared");
+        }
+        let second = AppSource
+            .request_selection(&key, "codex", &restored.models[1].id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(second.selection, restored.models[1].selection);
+        let stale = entry("pa_retired", "gpt-shared");
+        for rejected in [
+            stale.id.as_str(),
+            "gpt-shared-org2-00000000000000000000",
+            "claude-org2-route-00000000000000000000000000000000",
+            "",
+            "gpt 5.4",
+        ] {
+            assert!(AppSource
+                .request_selection(&key, "codex", rejected)
+                .is_err());
+        }
         assert!(Catalog::parse(&key, "claude_code").is_err());
+    }
+
+    #[test]
+    fn claude_requests_keep_strict_alias_resolution() {
+        for agent in ["claude_desktop", "claude_code"] {
+            let mut c = catalog();
+            c.agent = agent.into();
+            for entry in &mut c.models {
+                let selection = Selection::parse(&entry.selection, agent).unwrap();
+                entry.id = alias_for_agent(&selection, agent).unwrap();
+            }
+            c.default_model = c.models[0].id.clone();
+            let key = c.key().unwrap();
+            for requested in ["gpt-shared", "claude-fable-5-1", "unknown"] {
+                assert!(AppSource.request_selection(&key, agent, requested).is_err());
+            }
+            assert!(AppSource
+                .request_selection(&key, agent, &c.models[1].id)
+                .unwrap()
+                .is_some());
+        }
+    }
+
+    #[test]
+    fn bare_model_compatibility_is_bounded_and_rejects_malformed_input() {
+        let c = catalog();
+        let key = c.key().unwrap();
+        for rejected in [
+            "x".repeat(257),
+            "gpt\nmodel".into(),
+            "模型".into(),
+            "gpt/model".into(),
+            "gpt=model".into(),
+        ] {
+            assert!(AppSource
+                .request_selection(&key, "codex", &rejected)
+                .is_err());
+        }
+        let route = AppSource
+            .request_selection(&key, "codex", &"x".repeat(256))
+            .unwrap()
+            .unwrap();
+        assert_eq!(route.selection, c.models[0].selection);
     }
     #[test]
     fn picker_labels_are_readable_bounded_and_do_not_change_routing() {
@@ -508,3 +590,7 @@ mod tests {
             .is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "app_catalog_proxy_tests.rs"]
+mod proxy_tests;

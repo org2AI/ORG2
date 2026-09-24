@@ -1067,8 +1067,8 @@
           "changed": "Die App hat sich geändert und die Verlaufskompatibilität muss erneut geprüft werden",
           "route": "Das Zielmodell und der Anbieter konnten nicht überprüft werden",
           "checking": "Der Gesprächsverlauf wird geprüft",
-          "waiting": "Warten, bis Claude Desktop und Claude Code beendet sind",
-          "namespace": "Warten, bis Claude Desktop seinen Verlauf eingerichtet hat",
+          "waiting": "Claude Desktop und Claude Code beenden, um den Verlauf zu synchronisieren, dann Claude Desktop erneut öffnen, um ihn anzuzeigen",
+          "namespace": "Erste Nutzung: Claude Desktop öffnen, dann beenden und erneut öffnen, um den Verlauf zu laden",
           "attention": "Einige Gespräche erfordern Aufmerksamkeit; der bestehende Verlauf bleibt erhalten",
           "unavailable": "Die automatische Verlaufssynchronisierung ist vorübergehend nicht verfügbar"
         }

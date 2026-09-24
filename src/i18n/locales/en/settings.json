@@ -1148,8 +1148,8 @@
           "changed": "The app changed and history compatibility must be checked again",
           "route": "The destination model and provider could not be verified",
           "checking": "Checking conversation history",
-          "waiting": "Waiting for Claude Desktop and Claude Code to quit",
-          "namespace": "Waiting for Claude Desktop to register its history",
+          "waiting": "Quit Claude Desktop and Claude Code to sync history, then reopen Claude Desktop to view it",
+          "namespace": "First use: open Claude Desktop, then quit and reopen it to load history",
           "attention": "Some conversations need attention; existing history is preserved",
           "unavailable": "Automatic history sync is temporarily unavailable"
         }

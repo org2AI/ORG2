@@ -156,6 +156,15 @@ fn info(pid: i32) -> Result<Option<libc::proc_bsdinfo>, String> {
     Err("Cannot verify official App process identity".into())
 }
 
+/// Check the recorded process lifetime, not its executable or current argv.
+/// PID reuse proves the old lifetime ended; unreadable kernel state does not.
+pub(super) fn has_exited(identity: &Identity) -> Result<bool, String> {
+    Ok(info(identity.pid)?.is_none_or(|value| {
+        (value.pbi_start_tvsec, value.pbi_start_tvusec) != identity.started
+            || value.pbi_status == libc::SZOMB
+    }))
+}
+
 // XNU bsd/sys/proc_info_private.h declares this as a 56-byte API structure
 // and PROC_PIDUNIQIDENTIFIERINFO as flavor 17. Public SDK/libc omit this ABI.
 // https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/proc_info_private.h
@@ -683,66 +692,9 @@ pub(crate) fn claude_writer_identities() -> Result<Vec<Identity>, &'static str> 
     }
     pids.truncate(bytes as usize / std::mem::size_of::<i32>());
     for pid in pids.into_iter().filter(|pid| *pid > 0) {
-        let Some(before) = info(pid).map_err(|_| "writer_unknown")? else {
-            continue;
-        };
-        if before.pbi_pid != pid as u32 || before.pbi_uid != uid {
-            return Err("writer_unknown");
-        }
-        if before.pbi_status == libc::SZOMB || before.pbi_flags & PROC_FLAG_INEXIT != 0 {
-            continue;
-        }
-        // PID/UID/start time survive exec. XNU kern_exec.c changes idversion;
-        // kern_sysctl.c warns procargs may read the previous VM map during exec.
-        // Fence every classification read, including proc_pidpath. This is an
-        // observation boundary, not prevention of an exec after the final read.
-        let generation_before = exec_generation(pid)?;
-        let mut path = [0u8; 4096];
-        let len = unsafe { libc::proc_pidpath(pid, path.as_mut_ptr().cast(), path.len() as u32) };
-        let executable = if len <= 0 {
-            if exiting(pid).map_err(|_| "writer_unknown")? {
-                continue;
-            }
-            None
-        } else {
-            if len as usize >= path.len() {
-                return Err("writer_unknown");
-            }
-            let end = path
-                .iter()
-                .position(|value| *value == 0)
-                .ok_or("writer_unknown")?;
-            Some(&path[..end])
-        };
-        let wrapper = executable
-            .map(|value| std::str::from_utf8(value).map_err(|_| "writer_unknown"))
-            .transpose()?
-            .and_then(|value| Path::new(value).file_name())
-            .and_then(|value| value.to_str())
-            .is_some_and(|name| matches!(name, "node" | "nodejs" | "bun" | "deno"));
-        let bytes = if executable.is_none() || wrapper {
-            match process_args(pid) {
-                Ok(bytes) => Some(bytes),
-                Err(_) if exiting(pid).map_err(|_| "writer_unknown")? => continue,
-                Err(_) => return Err("writer_unknown"),
-            }
-        } else {
-            None
-        };
-        let writer = classify_claude_writer(executable, app_pids.contains(&pid), bytes.as_deref())?;
-        let after = info(pid).map_err(|_| "writer_unknown")?;
-        let generation_after = exec_generation(pid)?;
-        let Some(identity) = inspected_writer_identity(
-            pid,
-            uid,
-            &before,
-            after.as_ref(),
-            (generation_before, generation_after),
-        )?
-        else {
-            continue;
-        };
-        if writer {
+        if let Some(identity) =
+            inspect_claude_writer(pid, uid, app_pids.contains(&pid), exec_generation)?
+        {
             if writers.len() >= 512 {
                 return Err("writer_unknown");
             }
@@ -751,6 +703,82 @@ pub(crate) fn claude_writer_identities() -> Result<Vec<Identity>, &'static str> 
     }
     Ok(writers)
 }
+
+// Kernel reads are not atomic: an ordinary process exit between any two reads
+// must not strand pending history. Only a confirmed exit can dismiss a failed
+// generation read; inaccessible live processes and changed identities fail closed.
+fn inspect_claude_writer(
+    pid: i32,
+    uid: u32,
+    registered: bool,
+    generation: impl Fn(i32) -> Result<ExecGeneration, &'static str>,
+) -> Result<Option<Identity>, &'static str> {
+    let Some(before) = info(pid).map_err(|_| "writer_unknown")? else {
+        return Ok(None);
+    };
+    if before.pbi_pid != pid as u32 || before.pbi_uid != uid {
+        return Err("writer_unknown");
+    }
+    if before.pbi_status == libc::SZOMB || before.pbi_flags & PROC_FLAG_INEXIT != 0 {
+        return Ok(None);
+    }
+    let live_generation = || match generation(pid) {
+        Ok(value) => Ok(Some(value)),
+        Err(_) if exiting(pid).map_err(|_| "writer_unknown")? => Ok(None),
+        Err(error) => Err(error),
+    };
+    // PID/UID/start time survive exec. Fence classification reads, including
+    // proc_pidpath, with XNU's exec generation; procargs may expose the old VM.
+    let Some(generation_before) = live_generation()? else {
+        return Ok(None);
+    };
+    let mut path = [0u8; 4096];
+    let len = unsafe { libc::proc_pidpath(pid, path.as_mut_ptr().cast(), path.len() as u32) };
+    let executable = if len <= 0 {
+        if exiting(pid).map_err(|_| "writer_unknown")? {
+            return Ok(None);
+        }
+        None
+    } else {
+        if len as usize >= path.len() {
+            return Err("writer_unknown");
+        }
+        let end = path
+            .iter()
+            .position(|value| *value == 0)
+            .ok_or("writer_unknown")?;
+        Some(&path[..end])
+    };
+    let wrapper = executable
+        .map(|value| std::str::from_utf8(value).map_err(|_| "writer_unknown"))
+        .transpose()?
+        .and_then(|value| Path::new(value).file_name())
+        .and_then(|value| value.to_str())
+        .is_some_and(|name| matches!(name, "node" | "nodejs" | "bun" | "deno"));
+    let bytes = if executable.is_none() || wrapper {
+        match process_args(pid) {
+            Ok(bytes) => Some(bytes),
+            Err(_) if exiting(pid).map_err(|_| "writer_unknown")? => return Ok(None),
+            Err(_) => return Err("writer_unknown"),
+        }
+    } else {
+        None
+    };
+    let writer = classify_claude_writer(executable, registered, bytes.as_deref())?;
+    let after = info(pid).map_err(|_| "writer_unknown")?;
+    let Some(generation_after) = live_generation()? else {
+        return Ok(None);
+    };
+    let identity = inspected_writer_identity(
+        pid,
+        uid,
+        &before,
+        after.as_ref(),
+        (generation_before, generation_after),
+    )?;
+    Ok(identity.filter(|_| writer))
+}
+
 fn claude_executable(path: &str) -> bool {
     // Installed browser native messaging host only writes its bridge socket/log;
     // it is not Desktop or a CLI writer. Keep scanning every other process and

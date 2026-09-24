@@ -919,3 +919,55 @@ fn owner_check_after_waiting_for_config_lock_cancels_dispatch() {
         );
     });
 }
+
+#[test]
+fn history_waits_for_local_config_reader_and_rechecks_before_writing() {
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    };
+    use std::time::Duration;
+    let _lock = TEST_ENV_LOCK.get_or_init(Default::default).lock().unwrap();
+    // Both native history coordinators use this boundary on blocking workers.
+    // Check an ordinary read, a configuration change, and owner cancellation.
+    for change in ["reader", "configuration", "owner"] {
+        let temp = tempfile::tempdir().unwrap();
+        let _home = OrgiiHomeGuard::set(&temp.path().join("orgii"));
+        let _external = ExternalHome::set(&temp.path().join("external"));
+        let profile = NativeAppProfile::new("codex", "https://cloud.example", "alice").unwrap();
+        apply(&profile).unwrap();
+        let guard = config::config_operation_guard().unwrap();
+        let owner_valid = AtomicBool::new(true);
+        let writes = AtomicBool::new(false);
+        let (started_tx, started_rx) = mpsc::channel();
+        let (done_tx, done_rx) = mpsc::channel();
+        std::thread::scope(|scope| {
+            let worker = scope.spawn(|| {
+                started_tx.send(()).unwrap();
+                let result = with_existing_profile(&profile, true, |check_profile| {
+                    if !owner_valid.load(Ordering::SeqCst) {
+                        return Err("market_identity_changed".into());
+                    }
+                    check_profile()?;
+                    writes.store(true, Ordering::SeqCst);
+                    Ok(())
+                });
+                done_tx.send(result).unwrap();
+            });
+            started_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+            let premature = done_rx.recv_timeout(Duration::from_millis(50));
+            if change == "configuration" {
+                operations::restore_agent_default_unlocked("codex", false).unwrap();
+            } else if change == "owner" {
+                owner_valid.store(false, Ordering::SeqCst);
+            }
+            drop(guard);
+            // Release before asserting so a failed test cannot strand the worker.
+            assert!(matches!(premature, Err(mpsc::RecvTimeoutError::Timeout)));
+            let result = done_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+            worker.join().unwrap();
+            assert_eq!(result.is_ok(), change == "reader", "{change}: {result:?}");
+            assert_eq!(writes.load(Ordering::SeqCst), change == "reader");
+        });
+    }
+}

@@ -225,10 +225,11 @@ pub fn with_existing_profile<T>(
     lock_targets: bool,
     action: impl FnOnce(&dyn Fn() -> Result<(), String>) -> Result<T, String>,
 ) -> Result<T, String> {
-    let _guard = super::CONFIG_OPERATION_LOCK
-        .get_or_init(|| std::sync::Mutex::new(()))
-        .try_lock()
-        .map_err(|_| "Native App configuration is busy")?;
+    // History runs on a blocking worker. Serialize with status/configuration
+    // readers instead of turning ordinary local contention into ScopeChanged.
+    // Re-read ownership below after the wait; callers must also recheck their
+    // owner lease before writing. Cross-process target locks remain nonblocking.
+    let _guard = super::config_operation_guard()?;
     let _locks = if lock_targets {
         super::target_lock::lock_app_targets(profile.agent(), Some(profile))?
     } else {

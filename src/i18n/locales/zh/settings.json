@@ -1148,8 +1148,8 @@
           "changed": "应用已更新，需要重新验证历史兼容性",
           "route": "无法确认目标模型和提供商",
           "checking": "正在检查对话历史",
-          "waiting": "等待 Claude Desktop 和 Claude Code 退出",
-          "namespace": "等待 Claude Desktop 初始化历史目录",
+          "waiting": "退出 Claude Desktop 和 Claude Code 后会自动同步历史，重新打开 Claude Desktop 即可查看",
+          "namespace": "首次使用：打开 Claude Desktop 完成初始化，再退出并重新打开以载入历史",
           "attention": "部分对话需要处理，已有历史已保留",
           "unavailable": "自动历史同步暂时不可用"
         }

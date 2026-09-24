@@ -42,11 +42,32 @@ fn managed_invocation_keeps_locked_route_authoritative() {
             b"-c",
             b"otel.environment=\"fixture\"",
         ],
+        vec![
+            b"codex",
+            b"-c",
+            b"features.code_mode_host=true",
+            b"app-server",
+            b"--analytics-default-enabled",
+            b"-c",
+            b"plugins.codex-app-tools@openai-bundled.mcp_servers.codex_app.enabled=true",
+        ],
+        vec![
+            b"codex",
+            b"-c",
+            b"plugins.browser@openai-bundled.enabled=false",
+            b"app-server",
+        ],
     ] {
         managed_invocation(&args).unwrap();
     }
     for setting in [
         b"model_provider=\"other\"".as_slice(),
+        b"plugins.codex-app-tools@openai-bundled.mcp_servers.codex_app.enabled=\"true\"",
+        b"plugins.codex-app-tools@openai-bundled.mcp_servers.codex_app.command=\"sh\"",
+        b"plugins.browser@openai-bundled.model=\"other\"",
+        b"plugins..enabled=true",
+        b"plugins.browser@openai-bundled.enabled={ on = true }",
+        b"plugins.browser@openai-bundled.enabled=[true]",
         b"profile=\"other\"",
         b"model_providers.org2.base_url=\"https://other.example\"",
         b"chatgpt_base_url=\"https://other.example\"",

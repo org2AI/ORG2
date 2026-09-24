@@ -155,15 +155,14 @@ fn managed_invocation(args: &[&[u8]]) -> Result<(), String> {
         if text.len() > 4096 {
             return Err(INVALID.into());
         }
-        let table: toml::Table = toml::from_str(text).map_err(|_| INVALID)?;
-        let (key, value) = single_setting(&table).ok_or(INVALID)?;
+        let (key, value) = single_setting(text).ok_or(INVALID)?;
         if !seen.insert(key.clone()) {
             return Err(INVALID.into());
         }
         let safe = match key.as_str() {
             "features.code_mode_host" | "analytics.enabled" => value.is_bool(),
             "otel.environment" => value.is_str(),
-            _ => false,
+            _ => plugin_toggle(&key) && value.is_bool(),
         };
         if !safe {
             return Err(INVALID.into());
@@ -172,23 +171,34 @@ fn managed_invocation(args: &[&[u8]]) -> Result<(), String> {
     Ok(())
 }
 
-fn single_setting(table: &toml::Table) -> Option<(String, &toml::Value)> {
+fn single_setting(text: &str) -> Option<(String, toml::Value)> {
+    let (key, raw) = text.split_once('=')?;
+    let segments: Vec<&str> = key.split('.').collect();
+    if segments.iter().any(|segment| {
+        segment.is_empty()
+            || !segment
+                .bytes()
+                .all(|value| value.is_ascii_alphanumeric() || matches!(value, b'_' | b'-' | b'@'))
+    }) {
+        return None;
+    }
+    let table: toml::Table = toml::from_str(&format!("value = {raw}")).ok()?;
     if table.len() != 1 {
         return None;
     }
-    let (key, value) = table.iter().next()?;
-    if !key
-        .bytes()
-        .all(|value| value.is_ascii_alphanumeric() || value == b'_')
-    {
+    let value = table.get("value")?;
+    if value.is_table() || value.is_array() {
         return None;
     }
-    if let Some(table) = value.as_table() {
-        let (child, value) = single_setting(table)?;
-        Some((format!("{key}.{child}"), value))
-    } else {
-        Some((key.clone(), value))
-    }
+    Some((key.to_string(), value.clone()))
+}
+
+fn plugin_toggle(key: &str) -> bool {
+    let segments: Vec<&str> = key.split('.').collect();
+    matches!(
+        segments.as_slice(),
+        ["plugins", _, "enabled"] | ["plugins", _, "mcp_servers", _, "enabled"]
+    )
 }
 
 fn select_core(

@@ -87,6 +87,26 @@ fn delayed_namespace_imports_real_source_before_reconciliation_can_report_clean(
         .system_home()
         .join(".claude/projects/-")
         .join(format!("{id}.jsonl"));
+    // Cold launch registers the namespace while Desktop is still a writer.
+    // Registration alone must not publish history or certify an empty target.
+    let running = registered_handoff(
+        &profile,
+        || Ok(()),
+        || Err(Status::Busy),
+        || panic!("cold-start writer reached handoff"),
+    );
+    assert!(matches!(
+        running,
+        Reconciliation::Complete(Report {
+            status: Status::Busy,
+            ..
+        })
+    ));
+    assert!(!target.exists());
+    assert!(!project.join(format!("local_{id}.json")).exists());
+    assert_eq!(fs::read(&source).unwrap(), bytes);
+    // The writer-exit transition permits the retained import; repeating that
+    // transition must preserve the transcript and exactly one discovery row.
     for _ in 0..2 {
         let result = registered_handoff(
             &profile,

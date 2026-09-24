@@ -74,6 +74,34 @@ explains why safe automatic ancestor reclamation remains unimplemented. More
 frequent raw-state writes can retain more generations; the 4,096-entry bound
 pauses work rather than reclaiming unproven ancestors.
 
+Codex resumes an imported thread with the package alias but runs its pre-turn
+context compaction with the thread's previous vendor model name. The managed
+proxy applies a compatibility policy for the `codex` app source only: a request
+model that is not a configured package alias and has a bare vendor-model shape
+routes to the user's configured default package, also when several packages are
+configured; explicit package aliases still resolve strictly, stale aliases are
+rejected, and Claude app sources are unchanged. This is a policy, not a proof that
+such names only come from history, and it does not by itself verify end-to-end
+routing or billing of the compaction request.
+
+The launch reservation distinguishes an unobserved dispatcher result from an
+observed GUI process. Once the selected profile's GUI is observed, its PID and
+kernel start time are persisted alongside the boot UUID before runtime binding
+is checked. A later Open can retry after that exact process lifetime has ended
+and a fresh profile scan finds no replacement to reuse. Live or unreadable
+processes and never-observed dispatches remain blocked; no background timer or
+process termination is added. Successful binding clears the reservation as before.
+
+Existing boot-only reservations remain readable and conservative: without an
+observed identity, retry still requires observing the running app or a new boot.
+The optional `observed-v1` record is bounded to 256 bytes; malformed/partial writes
+fail closed. Older binaries reject the extended record rather than launching a
+second writer. Before rolling back, complete a successful Open with the new
+binary to clear the record, then quit the native app normally. Do not truncate a
+live or uncertain reservation to bypass protection. Recovery of an observed
+failed launch is covered by deterministic lifecycle/kernel tests; real GUI
+acceptance of this new recovery path is still required.
+
 An indexed native roster can be unique while file-discovery fallback lists retained
 generations more than once. That vendor behavior is not hidden by UI filtering or
 ancestor deletion. Cloud/fallback acceptance must be reported separately.

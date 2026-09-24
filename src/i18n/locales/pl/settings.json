@@ -1067,8 +1067,8 @@
           "changed": "Aplikacja się zmieniła i trzeba ponownie sprawdzić zgodność historii",
           "route": "Nie udało się zweryfikować docelowego modelu i dostawcy",
           "checking": "Sprawdzanie historii rozmów",
-          "waiting": "Oczekiwanie na zamknięcie Claude Desktop i Claude Code",
-          "namespace": "Oczekiwanie na zainicjowanie historii przez Claude Desktop",
+          "waiting": "Zamknij Claude Desktop i Claude Code, aby zsynchronizować historię, a następnie otwórz ponownie Claude Desktop, aby ją wyświetlić",
+          "namespace": "Pierwsze użycie: otwórz Claude Desktop, zamknij go i otwórz ponownie, aby wczytać historię",
           "attention": "Niektóre rozmowy wymagają uwagi; dotychczasowa historia została zachowana",
           "unavailable": "Automatyczna synchronizacja historii jest tymczasowo niedostępna"
         }

@@ -1067,8 +1067,8 @@
           "changed": "O aplicativo mudou e a compatibilidade do histórico precisa ser verificada novamente",
           "route": "Não foi possível verificar o modelo e o provedor de destino",
           "checking": "Verificando o histórico de conversas",
-          "waiting": "Aguardando o encerramento do Claude Desktop e do Claude Code",
-          "namespace": "Aguardando o Claude Desktop inicializar seu histórico",
+          "waiting": "Encerre o Claude Desktop e o Claude Code para sincronizar o histórico e reabra o Claude Desktop para visualizá-lo",
+          "namespace": "Primeiro uso: abra o Claude Desktop, encerre-o e abra-o novamente para carregar o histórico",
           "attention": "Algumas conversas precisam de atenção; o histórico existente foi preservado",
           "unavailable": "A sincronização automática do histórico está temporariamente indisponível"
         }

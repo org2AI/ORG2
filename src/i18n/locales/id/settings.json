@@ -1148,8 +1148,8 @@
           "changed": "Aplikasi telah berubah dan kompatibilitas riwayat perlu diperiksa kembali",
           "route": "Model dan penyedia tujuan tidak dapat diverifikasi",
           "checking": "Memeriksa riwayat percakapan",
-          "waiting": "Menunggu Claude Desktop dan Claude Code ditutup",
-          "namespace": "Menunggu Claude Desktop menyiapkan riwayatnya",
+          "waiting": "Tutup Claude Desktop dan Claude Code untuk menyinkronkan riwayat, lalu buka kembali Claude Desktop untuk melihatnya",
+          "namespace": "Penggunaan pertama: buka Claude Desktop, lalu tutup dan buka kembali untuk memuat riwayat",
           "attention": "Beberapa percakapan perlu ditinjau; riwayat yang ada tetap disimpan",
           "unavailable": "Sinkronisasi riwayat otomatis untuk sementara tidak tersedia"
         }

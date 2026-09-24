@@ -680,3 +680,99 @@ fn current_process_exec_generation_is_readable_without_collecting_arguments() {
     let after = exec_generation(std::process::id() as i32).unwrap();
     assert_eq!(before, after);
 }
+
+#[test]
+fn claude_writer_scan_accepts_exit_at_either_generation_read() {
+    use std::cell::{Cell, RefCell};
+    // Exercise the production per-PID scanner with real kernel identity reads.
+    // Force the owned child to exit at each precise race boundary, rather than
+    // hoping a background process happens to exit during a stress test.
+    for exit_at in [1, 2] {
+        let child = RefCell::new(Child(
+            std::process::Command::new("/bin/sleep")
+                .arg("30")
+                .spawn()
+                .unwrap(),
+        ));
+        let pid = child.borrow().0.id() as i32;
+        let reads = Cell::new(0);
+        let result = inspect_claude_writer(pid, unsafe { libc::geteuid() }, true, |pid| {
+            reads.set(reads.get() + 1);
+            if reads.get() == exit_at {
+                child.borrow_mut().0.kill().unwrap();
+                child.borrow_mut().0.wait().unwrap();
+            }
+            exec_generation(pid)
+        });
+        let _ = child.borrow_mut().0.kill();
+        child.borrow_mut().0.wait().unwrap();
+        assert_eq!(reads.get(), exit_at);
+        assert_eq!(result, Ok(None), "exit at generation read {exit_at}");
+    }
+}
+
+#[test]
+fn claude_writer_scan_still_rejects_unreadable_live_generation() {
+    use std::cell::Cell;
+    for fail_at in [1, 2] {
+        let reads = Cell::new(0);
+        let result = inspect_claude_writer(
+            std::process::id() as i32,
+            unsafe { libc::geteuid() },
+            true,
+            |pid| {
+                reads.set(reads.get() + 1);
+                if reads.get() == fail_at {
+                    Err("writer_unknown")
+                } else {
+                    exec_generation(pid)
+                }
+            },
+        );
+        assert_eq!(reads.get(), fail_at);
+        assert_eq!(result, Err("writer_unknown"));
+    }
+}
+
+#[test]
+fn claude_writer_scan_still_rejects_exec_during_classification() {
+    let reads = std::cell::Cell::new(0);
+    let result = inspect_claude_writer(
+        std::process::id() as i32,
+        unsafe { libc::geteuid() },
+        true,
+        |pid| {
+            let mut generation = exec_generation(pid)?;
+            generation.id_version += reads.get();
+            reads.set(reads.get() + 1);
+            Ok(generation)
+        },
+    );
+    assert_eq!(reads.get(), 2);
+    assert_eq!(result, Err("writer_unknown"));
+}
+
+#[test]
+fn recorded_process_exit_requires_kernel_lifetime_evidence() {
+    let mut child = super::super::tests::FixtureChild(
+        std::process::Command::new("/bin/sleep")
+            .arg("30")
+            .spawn()
+            .unwrap(),
+    );
+    let pid = child.0.id() as i32;
+    let state = info(pid).unwrap().unwrap();
+    let identity = Identity {
+        pid,
+        started: (state.pbi_start_tvsec, state.pbi_start_tvusec),
+    };
+    assert!(!has_exited(&identity).unwrap());
+    let previous = Identity {
+        pid,
+        started: (identity.started.0 - 1, identity.started.1),
+    };
+    assert!(has_exited(&previous).unwrap());
+    child.0.kill().unwrap();
+    child.0.wait().unwrap();
+    assert!(has_exited(&identity).unwrap());
+}

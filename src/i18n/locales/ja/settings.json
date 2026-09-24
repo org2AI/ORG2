@@ -1067,8 +1067,8 @@
           "changed": "アプリが変更されたため、履歴の互換性を再確認する必要があります",
           "route": "同期先のモデルとプロバイダーを確認できませんでした",
           "checking": "会話履歴を確認しています",
-          "waiting": "Claude Desktop と Claude Code の終了を待っています",
-          "namespace": "Claude Desktop による履歴の初期化を待っています",
+          "waiting": "Claude Desktop と Claude Code を終了すると履歴が同期されます。Claude Desktop を再度開くと確認できます",
+          "namespace": "初回利用時は Claude Desktop を開いてから終了し、再度開くと履歴が読み込まれます",
           "attention": "確認が必要な会話がありますが、既存の履歴は保持されています",
           "unavailable": "履歴の自動同期は一時的に利用できません"
         }

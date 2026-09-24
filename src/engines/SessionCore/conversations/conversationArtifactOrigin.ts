@@ -1,4 +1,5 @@
 import type { SessionEvent } from "../core/types";
+import { scopedNativeSourceEventIdOf } from "./nativeSourceEventIdentity";
 
 /** Presentation provenance, never part of provider message/tool semantics. */
 export const CONVERSATION_ARTIFACT_ORIGIN_ARG = "__orgiiArtifactOrigin";
@@ -25,4 +26,13 @@ export function conversationArtifactOriginOf(
   )
     return null;
   return origin as unknown as ConversationArtifactOrigin;
+}
+
+/** Inherited rows cannot authorize reads of this device's source path. */
+export function isInheritedConversationEvent(event: SessionEvent): boolean {
+  return Boolean(
+    event.args?.[CONVERSATION_ARTIFACT_ORIGIN_ARG] ||
+    event.args?.__orgiiMaterialized === true ||
+    scopedNativeSourceEventIdOf(event)
+  );
 }

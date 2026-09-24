@@ -2647,6 +2647,7 @@
     "limit": "Es werden bis zu 128 Konten angezeigt"
   },
   "sharedFile": {
+    "resolvingOrigin": "Die Herkunft der geteilten Datei wird noch geladen. Bitte versuche es gleich erneut.",
     "downloaded": "Im Download-Ordner gespeichert",
     "downloadError": "Speichern im Download-Ordner nicht möglich",
     "title": "Geteilte Datei",

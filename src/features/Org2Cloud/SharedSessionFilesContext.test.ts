@@ -13,7 +13,15 @@ import {
 } from "./SharedSessionFilesContext";
 import { useSharedSessionFileAccess } from "./sharedSessionFileAccess";
 
-const mocks = vi.hoisted(() => ({ viewer: vi.fn(), access: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  viewer: vi.fn(),
+  access: vi.fn(),
+  notice: vi.fn(),
+}));
+vi.mock("@src/components/Message", () => ({ default: { info: mocks.notice } }));
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 vi.mock("./SharedSessionFileViewer", () => ({
   default: function MockViewer(props: unknown) {
     mocks.viewer(props);
@@ -118,6 +126,28 @@ describe("per-event shared file routing", () => {
       })
     );
   });
+  it.each([
+    { __orgiiMaterialized: true },
+    { __orgiiSourceEventId: "orgii_evt_inherited" },
+  ])(
+    "intercepts unresolved inherited output before cloud hydration: %s",
+    async (args) => {
+      await root.render(
+        createElement(
+          SharedSessionEventFilesProvider,
+          { event: { id: "preview", args } as unknown as SessionEvent },
+          createElement(LinkConsumer)
+        )
+      );
+      await act(async () => {
+        expect(open("/reader/proof.txt")).toBe(true);
+      });
+      expect(mocks.notice).toHaveBeenCalledWith("sharedFile.resolvingOrigin", {
+        duration: 5000,
+      });
+      expect(mocks.viewer).not.toHaveBeenCalled();
+    }
+  );
   it("preserves navigation for genuinely local owner output", async () => {
     await root.render(
       createElement(
@@ -132,7 +162,7 @@ describe("per-event shared file routing", () => {
         },
         createElement(
           SharedSessionEventFilesProvider,
-          { event: { args: {} } as SessionEvent },
+          { event: { id: "local", args: {} } as SessionEvent },
           createElement(LinkConsumer)
         )
       )

@@ -2647,6 +2647,7 @@
     "limit": "Affichage de 128 comptes au maximum"
   },
   "sharedFile": {
+    "resolvingOrigin": "La source du fichier partagé est en cours de chargement. Réessayez dans un instant.",
     "downloaded": "Enregistré dans Téléchargements",
     "downloadError": "Impossible d’enregistrer dans Téléchargements",
     "title": "Fichier partagé",

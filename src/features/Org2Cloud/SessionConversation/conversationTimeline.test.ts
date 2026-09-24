@@ -119,6 +119,63 @@ describe("conversationEventKey", () => {
 });
 
 describe("mergePlaneIntoTranscript", () => {
+  it.each(["preview", "unloaded", "both"])(
+    "uses the complete plane answer when its local twin is a %s turn placeholder",
+    (shape) => {
+      const text = "Completed report: [report.txt](report.txt)";
+      const placeholder = event({
+        id: "imported-unloaded-turn-history-1",
+        args: shape !== "unloaded" ? { turnPreviewOnly: true } : {},
+        result: {
+          content: text,
+          ...(shape !== "preview"
+            ? { unloadedTurn: { turnId: "history-1", bodyEventCount: 3 } }
+            : {}),
+        },
+        displayText: text,
+      });
+      const untouchedPreview = event({
+        id: "imported-unloaded-turn-history-0",
+        args: { turnPreviewOnly: true },
+        result: { content: "Earlier unhydrated answer" },
+        displayText: "Earlier unhydrated answer",
+      });
+      const progress = event({
+        id: "peer-progress",
+        result: { content: "Writing the report now" },
+        displayText: "Writing the report now",
+      });
+      const answer = event({
+        id: "peer-final",
+        result: { content: text },
+        displayText: text,
+        repoPath: "/sender/workspace",
+      });
+      const merged = mergePlaneIntoTranscript(
+        [untouchedPreview, placeholder],
+        [row(1, progress), row(2, answer, { authorUserId: "peer" })],
+        "owner-session"
+      );
+      const final = merged.find((item) => item.displayText === text)!;
+      expect(final.id).toBe("convplane-row-2");
+      expect(final.args.turnPreviewOnly).toBeUndefined();
+      expect(final.result?.unloadedTurn).toBeUndefined();
+      expect(final.args.__orgiiArtifactOrigin).toEqual({
+        uploaderUserId: "peer",
+        sessionId: "owner-session",
+        revision: `peer-final:${answer.createdAt}`,
+        repoPath: "/sender/workspace",
+      });
+      expect(merged.filter((item) => item.displayText === text)).toHaveLength(
+        1
+      );
+      expect(merged).toContain(untouchedPreview);
+      expect(placeholder.args.turnPreviewOnly).toBe(
+        shape !== "unloaded" ? true : undefined
+      );
+    }
+  );
+
   it("retains the local failed delivery owner over a published copy of the same intent", () => {
     const published = userEvent({
       id: "published-user",

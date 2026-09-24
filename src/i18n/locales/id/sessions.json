@@ -2646,6 +2646,7 @@
     "limit": "Menampilkan hingga 128 akun"
   },
   "sharedFile": {
+    "resolvingOrigin": "Sumber berkas bersama masih dimuat. Coba lagi sebentar lagi.",
     "downloaded": "Disimpan ke Unduhan",
     "downloadError": "Tidak dapat menyimpan ke Unduhan",
     "title": "File bersama",

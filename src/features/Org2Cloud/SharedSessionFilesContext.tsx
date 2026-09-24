@@ -7,13 +7,18 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   MarkdownLocalFileInterceptContext,
   useMarkdownLocalFileIntercepted,
   useMarkdownLocalFileInterceptor,
 } from "@src/components/MarkDown/extensions";
-import { conversationArtifactOriginOf } from "@src/engines/SessionCore/conversations/conversationArtifactOrigin";
+import Message from "@src/components/Message";
+import {
+  conversationArtifactOriginOf,
+  isInheritedConversationEvent,
+} from "@src/engines/SessionCore/conversations/conversationArtifactOrigin";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import SharedSessionFileDialog from "./SharedSessionFileDialog";
@@ -45,8 +50,22 @@ export function SharedSessionEventFilesProvider({
   children,
 }: React.PropsWithChildren<{ event: SessionEvent }>) {
   const scope = useContext(ScopeContext);
+  const { t } = useTranslation("sessions");
+  const waitForOrigin = useCallback(() => {
+    Message.info(t("sharedFile.resolvingOrigin"), { duration: 5000 });
+    return true;
+  }, [t]);
   const origin = conversationArtifactOriginOf(event);
-  if (!origin) return <>{children}</>;
+  if (!origin) {
+    // Materialized native history may arrive before its authenticated cloud row.
+    // Never reinterpret an unresolved inherited link as a local file (or select
+    // an arbitrary latest upload without the exact uploader/revision).
+    return isInheritedConversationEvent(event) ? (
+      <Context.Provider value={waitForOrigin}>{children}</Context.Provider>
+    ) : (
+      <>{children}</>
+    );
+  }
   return (
     <SharedSessionFilesProvider
       scope={{

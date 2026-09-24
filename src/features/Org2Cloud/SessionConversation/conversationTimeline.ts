@@ -164,8 +164,17 @@ export function mergePlaneIntoTranscript(
       // even for this viewer's own turn. Correct both sides from the plane;
       // preserving that stale stamp misattributes self turns after a cold
       // import and can incorrectly remove owner actions.
+      // A lazy turn preview can contain the complete final answer text, but
+      // it is not the durable answer event. Keeping its preview/unloaded flags
+      // makes group projection hide that answer as soon as another plane row
+      // supplies a loaded body. The authenticated plane owns the complete row;
+      // consume the matching placeholder without copying its lazy-view state.
+      const isTurnPlaceholder =
+        twin.args?.turnPreviewOnly === true ||
+        (typeof twin.result?.unloadedTurn === "object" &&
+          twin.result.unloadedTurn !== null);
       event = stampPlaneMetadata(
-        twin,
+        isTurnPlaceholder ? planeStream[index] : twin,
         row,
         row.event.source === "user" && viewer.status !== "loading"
       );

@@ -48,10 +48,11 @@ describe("ProjectManagerContentRouter trio keep-alive", () => {
       .map((node) => node.getAttribute("data-tab-id"))
       .sort();
 
-  const render = (activeIndex: number) =>
+  const render = (activeIndex: number, isActive = true) =>
     act(() => {
       root.render(
         createElement(ProjectManagerContentRouter, {
+          isActive,
           repoPath: "/repo",
           tabs,
           activeTab: tabs[activeIndex],
@@ -92,6 +93,18 @@ describe("ProjectManagerContentRouter trio keep-alive", () => {
       vi.advanceTimersByTime(PROJECT_TRIO_KEEP_ALIVE.graceMs);
     });
     expect(mountedIds()).toEqual(["lp"]);
+  });
+
+  it("pauses the active pane while the host is hidden without remounting it", () => {
+    render(0);
+    const pane = container.querySelector('[data-tab-id="wi"]');
+    expect(pane?.getAttribute("data-active")).toBe("true");
+    render(0, false);
+    expect(container.querySelector('[data-tab-id="wi"]')).toBe(pane);
+    expect(pane?.getAttribute("data-active")).toBe("false");
+    render(0, true);
+    expect(container.querySelector('[data-tab-id="wi"]')).toBe(pane);
+    expect(pane?.getAttribute("data-active")).toBe("true");
   });
 
   it("never keeps more than maxWarm trio tabs mounted", () => {

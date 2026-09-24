@@ -56,6 +56,10 @@ import {
 } from "@src/store/ui/sidebarAtom";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPositionAtoms";
+import {
+  resolveWorkstationPresentation,
+  workstationPresentationAtom,
+} from "@src/store/workstation/presentationAtoms";
 
 import { useWorkspaceEvents } from "./hooks";
 import { useNarrowChatFocus } from "./useNarrowChatFocus";
@@ -334,6 +338,12 @@ const AppShell = () => {
   const chatPosition = isSettingsRoute ? "left" : chatPanelPosition;
 
   const effectiveChatFocus = useAtomValue(effectiveChatPanelMaximizedAtom);
+  const workstationPresentation = useAtomValue(workstationPresentationAtom);
+  const workstationLayout = resolveWorkstationPresentation({
+    presentation: workstationPresentation,
+    chatMaximized: effectiveChatFocus,
+    settingsVisible: isSettingsRoute,
+  });
 
   return (
     <BrowserProvider>
@@ -363,7 +373,9 @@ const AppShell = () => {
                 data-tour-target={GENERAL_LAYOUT_TOUR_TARGETS.workstation}
               >
                 <React.Suspense fallback={<WorkStationLoadingFallback />}>
-                  <WorkStationPage chatPanelFocused={effectiveChatFocus} />
+                  <WorkStationPage
+                    workstationVisible={workstationLayout.workstationVisible}
+                  />
                 </React.Suspense>
               </div>
             </div>

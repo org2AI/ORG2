@@ -14,7 +14,10 @@ import {
 } from "@src/hooks/perf/useDebouncedCallback";
 import { toNativeFrame } from "@src/util/platform/tauri/nativeFrame";
 
-import { WEBVIEW_LAYOUT_CHANGED_EVENT } from "./webviewLayoutEvents";
+import {
+  WEBVIEW_FLOATING_LAYOUT_CHANGED_EVENT,
+  WEBVIEW_LAYOUT_CHANGED_EVENT,
+} from "./webviewLayoutEvents";
 
 const logger = createLogger("InlineWebviewLayout");
 
@@ -161,6 +164,18 @@ export function useWebviewLayout(
     if (!isWebviewCreated || !isWebviewAvailable) return;
 
     const scaleUpdateTimers = new Set<number>();
+    let floatingFrame: number | null = null;
+    const handleFloatingLayoutChange = () => {
+      if (!isVisibleRef.current || floatingFrame !== null) return;
+      floatingFrame = window.requestAnimationFrame(() => {
+        floatingFrame = null;
+        void updatePosition();
+      });
+    };
+    window.addEventListener(
+      WEBVIEW_FLOATING_LAYOUT_CHANGED_EVENT,
+      handleFloatingLayoutChange
+    );
 
     const handleScroll = () => {
       debouncedUpdatePosition();
@@ -205,6 +220,11 @@ export function useWebviewLayout(
     }
 
     scrollListenerRef.current = () => {
+      window.removeEventListener(
+        WEBVIEW_FLOATING_LAYOUT_CHANGED_EVENT,
+        handleFloatingLayoutChange
+      );
+      if (floatingFrame !== null) window.cancelAnimationFrame(floatingFrame);
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener(
         "orgii-ui-scale-applied",

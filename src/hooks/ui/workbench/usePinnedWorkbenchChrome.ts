@@ -20,6 +20,7 @@ import { stationChatVisibilityAtom } from "@src/store/ui/chatPanel/visibilityAto
 import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { chatPanelPositionAtom } from "@src/store/ui/workStationLayout/chatPositionAtoms";
+import { workstationPresentationAtom } from "@src/store/workstation/presentationAtoms";
 import { mainPaneHasRealTabsAtom } from "@src/store/workstation/tabHost";
 import type { StationMode } from "@src/types/ui/workstation";
 import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
@@ -100,10 +101,14 @@ export function shouldShowPinnedWorkbenchChrome({
  */
 export function usePinnedWorkbenchChromeAvailable(): boolean {
   const location = useLocation();
+  const presentation = useAtomValue(workstationPresentationAtom);
+  // Floating controls and the collapsed launcher own their chrome; neither
+  // the window-level group nor its reserved padding belongs to that layout.
   // A detached station window has no chat pane, so there are no side-pane
   // toggles to pin — nothing to draw, nothing to reserve room for.
   return (
     hasMacWindowChrome() &&
+    presentation === "docked" &&
     !isStationWindow() &&
     isPinnedWorkbenchChromePath(location.pathname)
   );

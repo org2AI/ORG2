@@ -11,6 +11,7 @@ import {
 } from "@src/modules/WorkStation/shared";
 import { CODE_EDITOR_TOUR_TARGETS } from "@src/scaffold/Tutorials/codeEditorTourConfig";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
+import { workstationPresentationAtom } from "@src/store/workstation/presentationAtoms";
 import type { WorkstationTabHost } from "@src/store/workstation/tabHost";
 
 import { useWorkstationTabList } from "./useWorkstationTabList";
@@ -26,6 +27,7 @@ export interface WorkstationTabBarProps {
 
 const WorkstationTabBar: React.FC<WorkstationTabBarProps> = memo(({ host }) => {
   const activeWorkspaceRootPath = useAtomValue(activeWorkspaceRootPathAtom);
+  const presentation = useAtomValue(workstationPresentationAtom);
 
   const {
     tabsForBar,
@@ -59,6 +61,7 @@ const WorkstationTabBar: React.FC<WorkstationTabBarProps> = memo(({ host }) => {
       onNewTabShortcutId={host === "browser" ? "browser_new_tab" : undefined}
       surfaceClassName=""
       dataTourTarget={CODE_EDITOR_TOUR_TARGETS.tabBar}
+      allowWindowDrag={presentation === "docked"}
     />
   );
 });

@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {
+  collapseWorkstationAtom,
+  floatWorkstationAtom,
+  workstationPresentationAtom,
+} from "@src/store/workstation/presentationAtoms";
+import {
   type WorkStationTab,
   createProjectSettingsTab,
   createStartTab,
@@ -14,6 +19,7 @@ import {
   CLOSE_TAB_CHORD_FALLBACK,
   closeTabChordFallbackAtom,
   effectiveChatPanelMaximizedAtom,
+  toggleActiveChatPanelMaximizedAtom,
 } from "../chatPanelLayoutAtoms";
 import { chatPanelTabsAtom } from "../chatPanelTabsState";
 
@@ -164,4 +170,39 @@ describe("closeTabChordFallbackAtom", () => {
       CLOSE_TAB_CHORD_FALLBACK.CLOSE_WINDOW
     );
   });
+});
+
+it("expands chat while floating and restores the split on explicit show", () => {
+  const store = createStore();
+  store.set(chatPanelTabsAtom, {
+    tabs: [{ id: "session", type: "session", title: "Session" }],
+    activeTabId: "session",
+  });
+  store.set(chatPanelMaximizedAtom, false);
+  store.set(floatWorkstationAtom);
+  expect(store.get(effectiveChatPanelMaximizedAtom)).toBe(true);
+  expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+  store.set(collapseWorkstationAtom);
+  expect(store.get(effectiveChatPanelMaximizedAtom)).toBe(true);
+  expect(store.set(toggleActiveChatPanelMaximizedAtom)).toBe(true);
+  expect(store.get(workstationPresentationAtom)).toBe("docked");
+  expect(store.get(effectiveChatPanelMaximizedAtom)).toBe(false);
+});
+
+it("closes a floating station before the window even when chat was maximized", () => {
+  const store = createStore();
+  store.set(chatPanelTabsAtom, {
+    tabs: [{ id: "launchpad", type: "start-page", title: "Launchpad" }],
+    activeTabId: "launchpad",
+  });
+  store.set(stationModeAtom, "agent-station");
+  store.set(chatPanelMaximizedAtom, true);
+  store.set(floatWorkstationAtom);
+  expect(store.get(closeTabChordFallbackAtom)).toBe(
+    CLOSE_TAB_CHORD_FALLBACK.CLOSE_STATION
+  );
+  store.set(collapseWorkstationAtom);
+  expect(store.get(closeTabChordFallbackAtom)).toBe(
+    CLOSE_TAB_CHORD_FALLBACK.CLOSE_WINDOW
+  );
 });

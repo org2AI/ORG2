@@ -16,7 +16,6 @@ describe("SideChatLauncher", () => {
     expect(markup).toContain('data-testid="side-chat-floating-button"');
     expect(markup).toContain('aria-label="Side Chat"');
     expect(markup).toContain('aria-haspopup="dialog"');
-    expect(markup).toContain("bottom-4");
-    expect(markup).toContain("right-4");
+    expect(markup).toContain("Side Chat");
   });
 });

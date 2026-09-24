@@ -2,7 +2,7 @@ import { useAtomValue } from "jotai";
 import React, { Suspense, memo, useLayoutEffect, useMemo } from "react";
 
 import { useBrowserContextAdapter } from "@src/engines/BrowserCore/hooks/useBrowserContextAdapter";
-import { dispatchWebviewLayoutChanged } from "@src/hooks/platform/useInlineWebview/webviewLayoutEvents";
+import { dispatchWebviewFloatingLayoutChanged } from "@src/hooks/platform/useInlineWebview/webviewLayoutEvents";
 import { webviewOverlayBlockedAtom } from "@src/store/ui/overlayAtom";
 
 import { activeSharedBrowserHostAtom } from "./sharedBrowserHostAtoms";
@@ -41,7 +41,7 @@ export const SharedBrowserApp: React.FC = memo(() => {
   }, [activeRect]);
 
   useLayoutEffect(() => {
-    dispatchWebviewLayoutChanged();
+    dispatchWebviewFloatingLayoutChanged();
   }, [activeRect]);
 
   return (

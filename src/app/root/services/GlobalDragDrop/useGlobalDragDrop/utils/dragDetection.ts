@@ -10,6 +10,8 @@ import {
 } from "@src/util/dnd/dragSideChannel";
 import { getNativeFrameScale } from "@src/util/platform/tauri/nativeFrame";
 
+import { isVisibleChatDropTarget } from "./routeUtils";
+
 /**
  * Check if a drag event is internal (from our app) vs external (from OS/IDE)
  */
@@ -102,8 +104,8 @@ function getExpandedChatDropTarget(
   let nearestDistance = Number.POSITIVE_INFINITY;
 
   Array.from(dropTargets).forEach((dropTarget) => {
+    if (!isVisibleChatDropTarget(dropTarget)) return;
     const rect = dropTarget.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
     if (
       coordinateX < rect.left - CHAT_DROP_TARGET_HIT_SLOP_PX ||
       coordinateX > rect.right + CHAT_DROP_TARGET_HIT_SLOP_PX ||
@@ -185,7 +187,10 @@ export function getChatDropTargetId(
 ): string | undefined {
   const targetElement = getDropTargetElement(eventOrPosition);
   const directTarget = targetElement?.closest(CHAT_DROP_TARGET_SELECTOR);
-  if (directTarget instanceof HTMLElement) {
+  if (
+    directTarget instanceof HTMLElement &&
+    isVisibleChatDropTarget(directTarget)
+  ) {
     return directTarget.dataset.chatDropTargetId;
   }
 
@@ -215,7 +220,8 @@ export function isDropInsideChatDropTarget(
   eventOrPosition: Event | { x: number; y: number }
 ): boolean {
   const targetElement = getDropTargetElement(eventOrPosition);
-  if (targetElement?.closest(CHAT_DROP_TARGET_SELECTOR)) return true;
+  const directTarget = targetElement?.closest(CHAT_DROP_TARGET_SELECTOR);
+  if (directTarget && isVisibleChatDropTarget(directTarget)) return true;
 
   if (eventOrPosition instanceof DragEvent) {
     return isPointInsideChatDropTarget(

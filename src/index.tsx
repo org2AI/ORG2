@@ -310,18 +310,23 @@ async function initializeApp() {
   // Mount React app
   const rootElement = document.getElementById("root");
   if (rootElement) {
-    // Track if React successfully rendered anything
-    let reactRendered = false;
-
     // SAFETY: If React fails to render within timeout, show emergency error
     // React 18's render() is async and doesn't throw - errors go to ErrorBoundary
     // or get silently swallowed. This timeout catches cases where React completely fails.
-    const splashTimeoutId = setTimeout(() => {
+    const startDeadline = (
+      window as unknown as {
+        __ORGII_VISIBLE_STARTUP_TIMEOUT__: (
+          callback: () => void,
+          delay: number
+        ) => () => void;
+      }
+    ).__ORGII_VISIBLE_STARTUP_TIMEOUT__;
+    const cancelStartupWatchdog = startDeadline(() => {
       const splash = document.getElementById("splash");
       if (splash && splash.style.display !== "none") {
         log.critical("[Init] React failed to render within timeout");
         // Check if React rendered anything at all
-        if (!reactRendered && rootElement.children.length === 0) {
+        if (rootElement.children.length === 0) {
           showEmergencyError(
             "Application Failed to Start",
             "React failed to render. Try clearing app data and restarting.",
@@ -341,7 +346,7 @@ async function initializeApp() {
       errorInfo: { componentStack?: string }
     ) => {
       log.critical("[React] Uncaught error:", error, errorInfo);
-      clearTimeout(splashTimeoutId);
+      cancelStartupWatchdog();
       showEmergencyError(
         "Critical React Error",
         "The application encountered a fatal error. Try clearing app data.",
@@ -354,8 +359,7 @@ async function initializeApp() {
         // Called for errors caught by Error Boundaries (React 19+)
         onCaughtError: (error: unknown, errorInfo: unknown) => {
           log.error("[React] Error caught by boundary:", error, errorInfo);
-          // ErrorBoundary handles display - just mark as rendered
-          reactRendered = true;
+          // The boundary owns the visible fallback.
         },
         // Called for errors NOT caught by Error Boundaries (fatal)
         onUncaughtError: handleReactError,
@@ -371,13 +375,21 @@ async function initializeApp() {
 
       root.render(<App />);
 
-      // Mark as rendered after a microtask (render is scheduled, not sync)
-      queueMicrotask(() => {
-        reactRendered = true;
-      });
+      // A scheduled render is not evidence of a committed frame. The actual
+      // first-paint signal settles both startup watchdogs and their listeners.
+      const splashDone = (
+        window as unknown as { __ORGII_SPLASH_DONE__?: () => void }
+      ).__ORGII_SPLASH_DONE__;
+      (
+        window as unknown as { __ORGII_SPLASH_DONE__: () => void }
+      ).__ORGII_SPLASH_DONE__ = () => {
+        cancelStartupWatchdog();
+        splashDone?.();
+      };
+      module.hot?.dispose(cancelStartupWatchdog);
     } catch (error) {
       // This only catches synchronous errors (rare in React 18)
-      clearTimeout(splashTimeoutId);
+      cancelStartupWatchdog();
       log.critical("[Init] React mount failed synchronously:", error);
       showEmergencyError(
         "Critical Startup Error",

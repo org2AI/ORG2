@@ -165,7 +165,7 @@ fn create_fixture(prefix: &str, status: AgentOrgRunStatus) -> DirectFixture {
 
     let conn = get_connection().expect("test sqlite connection");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_materializations (
+        "INSERT INTO agent_org_execution_member_materializations (
             org_run_id,member_id,agent_id,generation,session_id,
             authority_class,status,created_at,updated_at
          ) VALUES (?1,?2,?3,1,?4,'formal','succeeded',?5,?5)",
@@ -182,7 +182,7 @@ fn create_fixture(prefix: &str, status: AgentOrgRunStatus) -> DirectFixture {
         match status {
             AgentOrgRunStatus::Archived => {
                 conn.execute(
-                    "UPDATE agent_org_runtime_runs
+                    "UPDATE agent_org_execution_runs
                      SET status='archived',archived_at=?2,archive_receipt_id=?3,updated_at=?2
                      WHERE id=?1",
                     params![&run.id, &now, format!("archive-{prefix}")],
@@ -191,7 +191,7 @@ fn create_fixture(prefix: &str, status: AgentOrgRunStatus) -> DirectFixture {
             }
             other => {
                 conn.execute(
-                    "UPDATE agent_org_runtime_runs SET status=?2,updated_at=?3 WHERE id=?1",
+                    "UPDATE agent_org_execution_runs SET status=?2,updated_at=?3 WHERE id=?1",
                     params![&run.id, other.as_str(), &now],
                 )
                 .expect("set fixture Team status");
@@ -237,7 +237,7 @@ fn grant_direct_member_writer(fixture: &DirectFixture) {
     let conn = get_connection().expect("writer snapshot connection");
     let mut snapshot: crate::definitions::orgs::AgentOrgLaunchSnapshot = conn
         .query_row(
-            "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id=?1",
             [&fixture.run_id],
             |row| row.get::<_, String>(0),
         )
@@ -245,7 +245,7 @@ fn grant_direct_member_writer(fixture: &DirectFixture) {
         .expect("load launch snapshot");
     snapshot.additional_task_graph_writer_member_ids = vec![MEMBER_ID.to_string()];
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET org_snapshot_json=?2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET org_snapshot_json=?2 WHERE id=?1",
         params![
             &fixture.run_id,
             serde_json::to_string(&snapshot).expect("encode launch snapshot")
@@ -419,13 +419,13 @@ fn admission_atomically_persists_source_context_sequence_receipt_and_chain() {
                 (SELECT COUNT(*) FROM events WHERE id='event-atomic'),
                 (SELECT COUNT(*) FROM session_turn_intents
                    WHERE session_id=?1 AND turn_intent_id='turn-atomic' AND status='queued'),
-                (SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+                (SELECT COUNT(*) FROM agent_org_execution_turn_contexts
                    WHERE session_id=?1 AND turn_intent_id='turn-atomic'
                      AND source_kind='direct_member' AND source_id='event-atomic'),
-                (SELECT COUNT(*) FROM agent_org_runtime_member_intervention_turns
+                (SELECT COUNT(*) FROM agent_org_execution_member_intervention_turns
                    WHERE session_id=?1 AND turn_intent_id='turn-atomic'
                      AND member_dispatch_sequence=1 AND chain_position=1),
-                (SELECT COUNT(*) FROM agent_org_member_turn_admissions
+                (SELECT COUNT(*) FROM agent_org_execution_member_turn_admissions
                    WHERE session_id=?1 AND turn_intent_id='turn-atomic'
                      AND reservation_id='reservation-turn-atomic'
                      AND runtime_lease_id='runtime-lease-test' AND status='prepared')",
@@ -568,8 +568,8 @@ fn exact_replay_returns_the_same_receipt_and_never_allocates_again() {
         .query_row(
             "SELECT
                 (SELECT COUNT(*) FROM session_turn_intents WHERE session_id=?1),
-                (SELECT COUNT(*) FROM agent_org_runtime_turn_contexts WHERE session_id=?1),
-                (SELECT COUNT(*) FROM agent_org_runtime_member_intervention_turns WHERE session_id=?1)",
+                (SELECT COUNT(*) FROM agent_org_execution_turn_contexts WHERE session_id=?1),
+                (SELECT COUNT(*) FROM agent_org_execution_member_intervention_turns WHERE session_id=?1)",
             [&fixture.member_session_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -632,7 +632,7 @@ fn failed_dispatch_replay_stays_terminal_and_is_not_startup_recoverable() {
     let admission_status: String = get_connection()
         .expect("read failed runtime admission")
         .query_row(
-            "SELECT status FROM agent_org_member_turn_admissions
+            "SELECT status FROM agent_org_execution_member_turn_admissions
              WHERE session_id=?1 AND turn_intent_id='turn-dispatch-failed'",
             [&fixture.member_session_id],
             |row| row.get(0),
@@ -764,8 +764,8 @@ fn queue_cap_rejects_n_plus_one_and_keeps_the_user_event_only() {
             "SELECT
                 (SELECT COUNT(*) FROM events WHERE session_id=?1),
                 (SELECT COUNT(*) FROM session_turn_intents WHERE session_id=?1),
-                (SELECT COUNT(*) FROM agent_org_runtime_turn_contexts WHERE session_id=?1),
-                (SELECT COUNT(*) FROM agent_org_runtime_member_intervention_turns WHERE session_id=?1)",
+                (SELECT COUNT(*) FROM agent_org_execution_turn_contexts WHERE session_id=?1),
+                (SELECT COUNT(*) FROM agent_org_execution_member_intervention_turns WHERE session_id=?1)",
             [&fixture.member_session_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -781,7 +781,7 @@ fn receipt_or_chain_failure_rolls_back_turn_context_and_sequence() {
     let conn = get_connection().expect("test sqlite connection");
     conn.execute_batch(
         "CREATE TRIGGER fail_direct_chain_fixture
-         BEFORE INSERT ON agent_org_runtime_member_intervention_turns
+         BEFORE INSERT ON agent_org_execution_member_intervention_turns
          BEGIN SELECT RAISE(ABORT,'fixture chain failure'); END;",
     )
     .expect("install transaction fault");
@@ -795,11 +795,11 @@ fn receipt_or_chain_failure_rolls_back_turn_context_and_sequence() {
         .query_row(
             "SELECT
                 (SELECT COUNT(*) FROM session_turn_intents WHERE session_id=?1),
-                (SELECT COUNT(*) FROM agent_org_runtime_turn_contexts WHERE session_id=?1),
-                (SELECT COUNT(*) FROM agent_org_runtime_member_interventions WHERE session_id=?1),
-                (SELECT COUNT(*) FROM agent_org_runtime_member_dispatch_allocators
+                (SELECT COUNT(*) FROM agent_org_execution_turn_contexts WHERE session_id=?1),
+                (SELECT COUNT(*) FROM agent_org_execution_member_interventions WHERE session_id=?1),
+                (SELECT COUNT(*) FROM agent_org_execution_member_dispatch_allocators
                    WHERE org_run_id=?2 AND member_id=?3),
-                (SELECT COUNT(*) FROM agent_org_member_turn_admissions
+                (SELECT COUNT(*) FROM agent_org_execution_member_turn_admissions
                    WHERE session_id=?1)",
             params![&fixture.member_session_id, &fixture.run_id, MEMBER_ID],
             |row| {
@@ -868,7 +868,7 @@ fn fifty_concurrent_direct_turns_share_one_receipt_and_one_fifo() {
     let prepared_admissions: i64 = get_connection()
         .expect("read concurrent runtime admissions")
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_member_turn_admissions
+            "SELECT COUNT(*) FROM agent_org_execution_member_turn_admissions
              WHERE session_id=?1 AND status='prepared'",
             [&fixture.member_session_id],
             |row| row.get(0),
@@ -1116,7 +1116,7 @@ fn return_restores_one_exact_continuation_and_never_duplicates_it() {
     )
     .expect("start original formal Turn");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations (
+        "INSERT INTO agent_org_execution_inbox_materializations (
              inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
          ) VALUES (?1,?2,'task-restore-source','turn-original',?3)",
         params![
@@ -1192,7 +1192,7 @@ fn return_restores_one_exact_continuation_and_never_duplicates_it() {
     let conn = get_connection().expect("test sqlite connection");
     let continuation_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+            "SELECT COUNT(*) FROM agent_org_execution_turn_contexts
              WHERE session_id=?1 AND task_id='task-restore'
                AND turn_intent_id<> 'turn-original'",
             [&fixture.member_session_id],
@@ -1292,13 +1292,13 @@ fn return_restores_one_exact_continuation_and_never_duplicates_it() {
         .query_row(
             "SELECT inbox.read_at,
                     (SELECT COUNT(*)
-                     FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                     FROM agent_org_execution_inbox_delivery_resolutions resolution
                      WHERE resolution.inbox_id=inbox.id
                        AND resolution.reason='task_completed'),
                     (SELECT COUNT(*)
-                     FROM agent_org_runtime_inbox_materializations materialization
+                     FROM agent_org_execution_inbox_materializations materialization
                      WHERE materialization.inbox_id=inbox.id)
-             FROM agent_org_runtime_inbox inbox WHERE inbox.id=?1",
+             FROM agent_org_execution_inbox inbox WHERE inbox.id=?1",
             [assignment.id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -1356,13 +1356,13 @@ fn return_binds_one_continuation_to_the_current_activation_generation() {
         create_recoverable_formal_intervention("return-current-generation");
     let conn = get_connection().expect("test sqlite connection");
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET activation_generation=2,updated_at=?2 WHERE id=?1",
         params![&fixture.run_id, chrono::Utc::now().to_rfc3339()],
     )
     .expect("advance Team activation generation");
     conn.execute(
-        "UPDATE agent_org_runtime_tasks
+        "UPDATE agent_org_execution_tasks
          SET activation_generation=2,updated_at=?3
          WHERE org_run_id=?1 AND id=?2 AND owner=?4",
         params![
@@ -1390,7 +1390,7 @@ fn return_binds_one_continuation_to_the_current_activation_generation() {
     let continuations: Vec<(String, i64)> = conn
         .prepare(
             "SELECT turn_intent_id,activation_generation
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE session_id=?1 AND task_id=?2 AND turn_intent_id<>?3
              ORDER BY context_id ASC",
         )
@@ -1419,7 +1419,7 @@ fn return_binds_one_continuation_to_the_current_activation_generation() {
     let conn = get_connection().expect("test sqlite connection");
     let continuation_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+            "SELECT COUNT(*) FROM agent_org_execution_turn_contexts
              WHERE session_id=?1 AND task_id=?2 AND turn_intent_id<>?3",
             params![&fixture.member_session_id, &task_id, &formal_turn_id],
             |row| row.get(0),
@@ -1441,19 +1441,19 @@ fn return_does_not_restore_completed_cancelled_or_reassigned_work() {
         let conn = get_connection().expect("test sqlite connection");
         match mutation {
             "completed" => conn.execute(
-                "UPDATE agent_org_runtime_tasks
+                "UPDATE agent_org_execution_tasks
                  SET status='completed',output_json='{}',updated_at=?3
                  WHERE org_run_id=?1 AND id=?2",
                 params![&fixture.run_id, &task_id, chrono::Utc::now().to_rfc3339()],
             ),
             "cancelled" => conn.execute(
-                "UPDATE agent_org_runtime_tasks
+                "UPDATE agent_org_execution_tasks
                  SET status='cancelled',cancel_reason_json='{\"code\":\"test\"}',updated_at=?3
                  WHERE org_run_id=?1 AND id=?2",
                 params![&fixture.run_id, &task_id, chrono::Utc::now().to_rfc3339()],
             ),
             "reassigned" => conn.execute(
-                "UPDATE agent_org_runtime_tasks SET owner='different-member',updated_at=?3
+                "UPDATE agent_org_execution_tasks SET owner='different-member',updated_at=?3
                  WHERE org_run_id=?1 AND id=?2",
                 params![&fixture.run_id, &task_id, chrono::Utc::now().to_rfc3339()],
             ),
@@ -1479,7 +1479,7 @@ fn return_does_not_restore_completed_cancelled_or_reassigned_work() {
         let conn = get_connection().expect("test sqlite connection");
         let continuation_count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+                "SELECT COUNT(*) FROM agent_org_execution_turn_contexts
                  WHERE session_id=?1 AND task_id=?2 AND turn_intent_id<>?3",
                 params![&fixture.member_session_id, &task_id, &formal_turn_id],
                 |row| row.get(0),
@@ -1601,7 +1601,7 @@ fn stop_persists_one_exact_terminal_turn_and_return_waits_for_formal_yield() {
     let conn = get_connection().expect("read exact Stop evidence");
     let status: String = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_member_intervention_turns
+            "SELECT status FROM agent_org_execution_member_intervention_turns
              WHERE session_id=?1 AND turn_intent_id='turn-stop-direct'",
             [&fixture.member_session_id],
             |row| row.get(0),
@@ -1667,9 +1667,9 @@ fn restart_recovers_only_pending_direct_turns_and_never_replays_started_work() {
     let admission_statuses: (String, String) = conn
         .query_row(
             "SELECT
-                (SELECT status FROM agent_org_member_turn_admissions
+                (SELECT status FROM agent_org_execution_member_turn_admissions
                  WHERE turn_intent_id='turn-restart-started'),
-                (SELECT status FROM agent_org_member_turn_admissions
+                (SELECT status FROM agent_org_execution_member_turn_admissions
                  WHERE turn_intent_id='turn-restart-pending')",
             [],
             |row| Ok((row.get(0)?, row.get(1)?)),
@@ -1679,11 +1679,11 @@ fn restart_recovers_only_pending_direct_turns_and_never_replays_started_work() {
     let statuses: (String, String, String, String) = conn
         .query_row(
             "SELECT
-                (SELECT status FROM agent_org_runtime_member_intervention_turns
+                (SELECT status FROM agent_org_execution_member_intervention_turns
                  WHERE turn_intent_id='turn-restart-started'),
                 (SELECT status FROM session_turn_intents
                  WHERE turn_intent_id='turn-restart-started'),
-                (SELECT status FROM agent_org_runtime_member_intervention_turns
+                (SELECT status FROM agent_org_execution_member_intervention_turns
                  WHERE turn_intent_id='turn-restart-pending'),
                 (SELECT status FROM session_turn_intents
                  WHERE turn_intent_id='turn-restart-pending')",

@@ -76,8 +76,12 @@ async fn stop_winning_publication_boundary_prevents_late_report_binding_and_rest
     assert_eq!(summary::reconcile_after_restart(&conn).unwrap(), 0);
     assert_eq!(receipt().typed_error.as_deref(), Some("stopped"));
     assert_eq!(
-        conn.query_row("SELECT COUNT(*) FROM events", [], |r| r.get::<_, i64>(0))
-            .unwrap(),
+        conn.query_row(
+            "SELECT COUNT(*) FROM events WHERE session_id=?1",
+            [ROOT_SESSION],
+            |r| r.get::<_, i64>(0)
+        )
+        .unwrap(),
         0
     );
 }
@@ -134,7 +138,7 @@ async fn interrupted_receipt_write_rolls_back_turn_and_recovers_from_stable_even
         .unwrap();
     inject_event_commit_before_receipt_update(&event_id, &original.certificate_id);
     let conn = database::db::get_connection().unwrap();
-    conn.execute_batch("CREATE TRIGGER fail_report_binding BEFORE UPDATE ON agent_org_runtime_final_summary_receipts WHEN NEW.status='persisted' BEGIN SELECT RAISE(FAIL,'injected_receipt_write'); END;").unwrap();
+    conn.execute_batch("CREATE TRIGGER fail_report_binding BEFORE UPDATE ON agent_org_execution_final_summary_receipts WHEN NEW.status='persisted' BEGIN SELECT RAISE(FAIL,'injected_receipt_write'); END;").unwrap();
     assert!(
         finish(ROOT_SESSION, SUMMARY_TURN, TurnTerminalStatus::Cancelled)
             .unwrap_err()

@@ -35,6 +35,7 @@ fn setup(policy: PlanApprovalPolicy) -> (test_helpers::test_env::SandboxGuard, A
     let sandbox = test_helpers::test_env::sandbox();
     let conn = get_connection().expect("test db");
     crate::persistence::test_schema::ensure_agent_sessions_schema(&conn);
+    crate::persistence::test_schema::ensure_session_events_schema(&conn);
     conn.execute_batch(
         "CREATE TABLE session_turn_intents (
             session_id TEXT NOT NULL,
@@ -152,7 +153,7 @@ fn setup(policy: PlanApprovalPolicy) -> (test_helpers::test_env::SandboxGuard, A
     )
     .expect("persist Coordinator Turn intent");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             source_kind,source_id,activation_generation,created_at
          ) VALUES ('root-plan-approval','coordinator-turn',?1,'coordinator','coordinator',
@@ -196,7 +197,7 @@ fn create_plan_task_with_ids(
     )
     .expect("persist planning Turn intent");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts(
+        "INSERT INTO agent_org_execution_turn_contexts(
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
             task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
             source_kind,source_id,activation_generation,created_at

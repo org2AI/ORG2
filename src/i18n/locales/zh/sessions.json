@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "旧版本会话，仅供查看",
+    "savedContent": "已保存的群聊和输出",
+    "unknownMember": "未知成员",
+    "loading": "正在加载历史…",
+    "retry": "重试",
+    "empty": "暂无已保存的群聊内容",
+    "nextPage": "下一页",
+    "firstPage": "第一页"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "用户请求",

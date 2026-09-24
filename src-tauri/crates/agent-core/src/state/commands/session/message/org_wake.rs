@@ -47,7 +47,7 @@ pub(super) fn promote_agent_org_wake_session_to_running(
         "WITH RECURSIVE
          run_anchor(root_session_id) AS (
              SELECT root_session_id
-             FROM agent_org_runtime_runs
+             FROM agent_org_execution_runs
              WHERE id=?4 AND status=?5 AND root_session_id IS NOT NULL
          ),
          descendants(session_id) AS (
@@ -57,7 +57,7 @@ pub(super) fn promote_agent_org_wake_session_to_running(
              FROM agent_sessions child
              JOIN descendants parent ON child.parent_session_id=parent.session_id
              WHERE NOT EXISTS (
-                 SELECT 1 FROM agent_org_runtime_runs nested
+                 SELECT 1 FROM agent_org_execution_runs nested
                  WHERE nested.id<>?4
                    AND nested.root_session_id=child.session_id
              )
@@ -88,7 +88,7 @@ pub(super) fn promote_agent_org_wake_session_to_running(
            )
            AND NOT EXISTS (
                SELECT 1
-               FROM agent_org_runtime_member_interventions intervention
+               FROM agent_org_execution_member_interventions intervention
                WHERE intervention.org_run_id=?4
                  AND intervention.member_id=CASE
                      WHEN agent_sessions.session_id=(SELECT root_session_id FROM run_anchor)
@@ -132,7 +132,7 @@ pub(super) fn promote_agent_org_user_directed_session_to_running(
          WHERE session_id=?3
            AND EXISTS (
                SELECT 1
-               FROM agent_org_runtime_runs run
+               FROM agent_org_execution_runs run
                WHERE run.id=?4
                  AND run.status IN (?5,?6,?7)
            )",
@@ -191,7 +191,7 @@ pub(crate) fn resolve_agent_org_wake_mode(
             let row: Option<(String, String)> = tx
                 .query_row(
                     "SELECT execution_mode, status
-                     FROM agent_org_runtime_tasks
+                     FROM agent_org_execution_tasks
                      WHERE org_run_id=?1 AND id=?2 AND owner=?3",
                     params![run_id, task_id, owner_member_id],
                     |row| Ok((row.get(0)?, row.get(1)?)),

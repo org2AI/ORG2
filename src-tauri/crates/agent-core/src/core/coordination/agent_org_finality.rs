@@ -147,7 +147,7 @@ pub struct ScopeRemovalReceipt {
 
 pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_task_execution_leases (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_task_execution_leases (
             lease_id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             work_episode_id TEXT NOT NULL,
@@ -172,24 +172,24 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             UNIQUE(org_run_id, work_episode_id, task_id, activation_generation, execution_epoch),
             UNIQUE(continuation_receipt_id),
             FOREIGN KEY(org_run_id, task_id)
-                REFERENCES agent_org_runtime_tasks(org_run_id, id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_tasks(org_run_id, id) ON DELETE CASCADE,
             FOREIGN KEY(work_episode_id)
-                REFERENCES agent_org_runtime_work_episodes(id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_work_episodes(id) ON DELETE CASCADE,
             FOREIGN KEY(source_inbox_id)
-                REFERENCES agent_org_runtime_inbox(id) ON DELETE SET NULL,
+                REFERENCES agent_org_execution_inbox(id) ON DELETE SET NULL,
             FOREIGN KEY(prior_lease_id)
-                REFERENCES agent_org_task_execution_leases(lease_id)
+                REFERENCES agent_org_execution_task_execution_leases(lease_id)
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_task_execution_one_live
-            ON agent_org_task_execution_leases(
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_task_execution_one_live
+            ON agent_org_execution_task_execution_leases(
                 org_run_id,work_episode_id,task_id,activation_generation
             ) WHERE state='active';
-        CREATE INDEX IF NOT EXISTS idx_agent_org_task_execution_turn
-            ON agent_org_task_execution_leases(session_id,turn_intent_id,state);
-        CREATE INDEX IF NOT EXISTS idx_agent_org_task_execution_task
-            ON agent_org_task_execution_leases(org_run_id,task_id,execution_epoch DESC);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_task_execution_turn
+            ON agent_org_execution_task_execution_leases(session_id,turn_intent_id,state);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_task_execution_task
+            ON agent_org_execution_task_execution_leases(org_run_id,task_id,execution_epoch DESC);
 
-        CREATE TABLE IF NOT EXISTS agent_org_task_execution_reconciliations (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_task_execution_reconciliations (
             context_id INTEGER PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             task_id TEXT NOT NULL,
@@ -201,14 +201,14 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             reconciled_at TEXT NOT NULL,
             UNIQUE(session_id,turn_intent_id),
             FOREIGN KEY(context_id)
-                REFERENCES agent_org_runtime_turn_contexts(context_id) ON DELETE CASCADE
+                REFERENCES agent_org_execution_turn_contexts(context_id) ON DELETE CASCADE
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_task_execution_reconciliation_task
-            ON agent_org_task_execution_reconciliations(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_task_execution_reconciliation_task
+            ON agent_org_execution_task_execution_reconciliations(
                 org_run_id,task_id,activation_generation
             );
 
-        CREATE TABLE IF NOT EXISTS agent_org_scope_removal_receipts (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_scope_removal_receipts (
             receipt_id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             work_episode_id TEXT NOT NULL,
@@ -224,14 +224,14 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             UNIQUE(org_run_id, request_id),
             UNIQUE(root_user_event_id),
             FOREIGN KEY(org_run_id, target_task_id)
-                REFERENCES agent_org_runtime_tasks(org_run_id, id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_tasks(org_run_id, id) ON DELETE CASCADE,
             FOREIGN KEY(work_episode_id)
-                REFERENCES agent_org_runtime_work_episodes(id) ON DELETE CASCADE
+                REFERENCES agent_org_execution_work_episodes(id) ON DELETE CASCADE
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_scope_removal_episode
-            ON agent_org_scope_removal_receipts(org_run_id,work_episode_id,target_task_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_scope_removal_episode
+            ON agent_org_execution_scope_removal_receipts(org_run_id,work_episode_id,target_task_id);
 
-        CREATE TABLE IF NOT EXISTS agent_org_scope_resolution_receipts (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_scope_resolution_receipts (
             resolution_id TEXT PRIMARY KEY,
             root_receipt_id TEXT NOT NULL,
             org_run_id TEXT NOT NULL,
@@ -245,20 +245,20 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             created_at TEXT NOT NULL,
             UNIQUE(root_receipt_id,task_id,resolution_kind),
             FOREIGN KEY(root_receipt_id)
-                REFERENCES agent_org_scope_removal_receipts(receipt_id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_scope_removal_receipts(receipt_id) ON DELETE CASCADE,
             FOREIGN KEY(org_run_id,task_id)
-                REFERENCES agent_org_runtime_tasks(org_run_id,id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_tasks(org_run_id,id) ON DELETE CASCADE,
             FOREIGN KEY(work_episode_id)
-                REFERENCES agent_org_runtime_work_episodes(id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_work_episodes(id) ON DELETE CASCADE,
             CHECK(
                 (resolution_kind='dependency_replaced' AND replacement_task_id IS NOT NULL)
                 OR (resolution_kind<>'dependency_replaced' AND replacement_task_id IS NULL)
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_scope_resolution_episode
-            ON agent_org_scope_resolution_receipts(org_run_id,work_episode_id,task_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_scope_resolution_episode
+            ON agent_org_execution_scope_resolution_receipts(org_run_id,work_episode_id,task_id);
 
-        CREATE TABLE IF NOT EXISTS agent_org_coordinator_completion_rechecks (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_coordinator_completion_rechecks (
             org_run_id TEXT NOT NULL,
             source_session_id TEXT NOT NULL,
             source_turn_intent_id TEXT NOT NULL,
@@ -269,13 +269,13 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             PRIMARY KEY(org_run_id,source_session_id,source_turn_intent_id),
-            FOREIGN KEY(inbox_id) REFERENCES agent_org_runtime_inbox(id) ON DELETE SET NULL
+            FOREIGN KEY(inbox_id) REFERENCES agent_org_execution_inbox(id) ON DELETE SET NULL
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_completion_recheck_inbox
-            ON agent_org_coordinator_completion_rechecks(inbox_id)
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_completion_recheck_inbox
+            ON agent_org_execution_coordinator_completion_rechecks(inbox_id)
             WHERE inbox_id IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_agent_org_completion_recheck_pending
-            ON agent_org_coordinator_completion_rechecks(org_run_id,status,work_revision);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_completion_recheck_pending
+            ON agent_org_execution_coordinator_completion_rechecks(org_run_id,status,work_revision);",
     )
 }
 

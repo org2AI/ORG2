@@ -45,7 +45,7 @@ fn materialize(id: i64, session: &str, message: &str) {
     get_connection()
         .unwrap()
         .execute(
-            "INSERT INTO agent_org_runtime_inbox_materializations
+            "INSERT INTO agent_org_execution_inbox_materializations
         (inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at)
         VALUES (?1,?2,?3,'stable-message-identity',?4)",
             params![id, session, message, chrono::Utc::now().to_rfc3339()],
@@ -140,12 +140,12 @@ fn summary_source_requires_its_real_receipt_and_survives_terminal_status() {
     );
     let conn = get_connection().unwrap();
     let now = chrono::Utc::now().to_rfc3339();
-    conn.execute("INSERT INTO agent_org_runtime_run_completion_certificates(
+    conn.execute("INSERT INTO agent_org_execution_run_completion_certificates(
         id,org_run_id,activation_generation,work_revision,request_id,request_digest,outcome,summary,
         coordinator_session_id,coordinator_turn_intent_id,evidence_task_ids_json,closure_task_ids_json,
         task_output_refs_json,resolution_links_json,validator_version,created_at)
         VALUES ('certificate',?1,1,1,'request',?2,'delivered','done','root-shared-agent','root','[]','[]','[]','[]',1,?3)", params![context.run_id, "a".repeat(64), now]).unwrap();
-    conn.execute("INSERT INTO agent_org_runtime_final_summary_receipts(
+    conn.execute("INSERT INTO agent_org_execution_final_summary_receipts(
         receipt_id,org_run_id,activation_generation,certificate_id,evidence_digest,attempt,status,
         coordinator_session_id,turn_intent_id,started_at,terminal_at,typed_error,created_at,updated_at)
         VALUES ('summary',?1,1,'certificate',?2,1,'failed','root-shared-agent','root',?3,?3,'stopped',?3,?3)", params![context.run_id, "b".repeat(64), now]).unwrap();
@@ -208,14 +208,14 @@ fn coordinator_mail_wake_uses_its_trigger_receipt_without_relabeling_user_input(
         AgentOrgInputSource::UserInput
     );
     conn.execute("UPDATE session_turn_intents SET source='resume',status='completed' WHERE turn_intent_id='root'", []).unwrap();
-    conn.execute("UPDATE agent_org_runtime_formal_trigger_attempts SET status='resolved' WHERE turn_intent_id='root'", []).unwrap();
+    conn.execute("UPDATE agent_org_execution_formal_trigger_attempts SET status='resolved' WHERE turn_intent_id='root'", []).unwrap();
     assert_eq!(
         execution("root-shared-agent", "root").unwrap().source_kind,
         AgentOrgInputSource::MemberMessages
     );
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_initial_inputs (
+        "INSERT INTO agent_org_execution_initial_inputs (
         org_run_id,turn_intent_id,message_id,content,payload_json,status,created_at,updated_at)
         VALUES (?1,'root','initial-input','User request','{}','dispatched',?2,?2)",
         params![context.run_id, now],

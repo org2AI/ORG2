@@ -56,7 +56,7 @@ fn load_evidence(org_run_id: &str) -> Result<serde_json::Value, String> {
             "SELECT delivery_id,session_id,turn_intent_id,root_authority_turn_id,
                     parent_delivery_id,parent_inbox_id,source_kind,source_inbox_id,
                     dispatch_member_id,member_dispatch_sequence,depth,delivery_ordinal,status
-             FROM agent_org_runtime_user_directed_deliveries
+             FROM agent_org_execution_user_directed_deliveries
              WHERE org_run_id=?1
              ORDER BY delivery_id
              LIMIT 200",
@@ -89,7 +89,7 @@ fn load_evidence(org_run_id: &str) -> Result<serde_json::Value, String> {
             "SELECT binding_id,session_id,turn_intent_id,root_authority_turn_id,
                     parent_delivery_id,parent_inbox_id,source_inbox_id,depth,
                     delivery_ordinal,status
-             FROM agent_org_runtime_user_directed_coordinator_bindings
+             FROM agent_org_execution_user_directed_coordinator_bindings
              WHERE org_run_id=?1
              ORDER BY binding_id
              LIMIT 200",
@@ -117,7 +117,7 @@ fn load_evidence(org_run_id: &str) -> Result<serde_json::Value, String> {
     let mut inbox_statement = conn
         .prepare(
             "SELECT id,recipient_member_id,sender_member_id,read_at
-             FROM agent_org_runtime_inbox
+             FROM agent_org_execution_inbox
              WHERE org_run_id=?1 AND delivery_class='user_directed'
              ORDER BY id
              LIMIT 200",
@@ -140,7 +140,7 @@ fn load_evidence(org_run_id: &str) -> Result<serde_json::Value, String> {
         .prepare(
             "SELECT session_id,turn_intent_id,member_id,reservation_id,
                     runtime_lease_id,status,reason_code
-             FROM agent_org_member_turn_admissions
+             FROM agent_org_execution_member_turn_admissions
              WHERE org_run_id=?1
              ORDER BY prepared_at,session_id,turn_intent_id
              LIMIT 200",
@@ -165,15 +165,15 @@ fn load_evidence(org_run_id: &str) -> Result<serde_json::Value, String> {
     let (root_count, context_count, intent_count, tool_receipt_count): (i64, i64, i64, i64) = conn
         .query_row(
             "SELECT
-                 (SELECT COUNT(*) FROM agent_org_runtime_user_directed_roots
+                 (SELECT COUNT(*) FROM agent_org_execution_user_directed_roots
                   WHERE org_run_id=?1),
-                 (SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+                 (SELECT COUNT(*) FROM agent_org_execution_turn_contexts
                   WHERE org_run_id=?1 AND (
                     turn_kind='user_directed_work'
                     OR (turn_kind='coordinator' AND source_kind='member_inbox')
                   )),
                  (SELECT COUNT(*) FROM session_turn_intents WHERE org_run_id=?1),
-                 (SELECT COUNT(*) FROM agent_org_runtime_tool_call_receipts
+                 (SELECT COUNT(*) FROM agent_org_execution_tool_call_receipts
                   WHERE org_run_id=?1)",
             params![org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),

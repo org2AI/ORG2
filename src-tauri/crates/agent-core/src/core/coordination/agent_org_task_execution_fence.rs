@@ -186,7 +186,7 @@ pub(crate) fn begin_external_effect(
             .ok_or_else(|| "task_execution_external_effect_authority_stale".to_string())?;
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_tasks SET external_effect_unknown=1
+                "UPDATE agent_org_execution_tasks SET external_effect_unknown=1
                  WHERE org_run_id=?1 AND id=?2 AND status='in_progress'
                    AND owner=?3 AND activation_generation=?4",
                 params![
@@ -219,7 +219,7 @@ pub(crate) fn restore_external_effect_after_success(
             .ok_or_else(|| "task_execution_external_effect_authority_stale".to_string())?;
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_tasks SET external_effect_unknown=?5
+                "UPDATE agent_org_execution_tasks SET external_effect_unknown=?5
                  WHERE org_run_id=?1 AND id=?2 AND status='in_progress'
                    AND owner=?3 AND activation_generation=?4",
                 params![
@@ -245,13 +245,13 @@ fn external_effect_state_for_exact_execution(
 ) -> Result<Option<bool>, String> {
     conn.query_row(
         "SELECT task.external_effect_unknown
-         FROM agent_org_runtime_tasks task
-         JOIN agent_org_runtime_runs run ON run.id=task.org_run_id
+         FROM agent_org_execution_tasks task
+         JOIN agent_org_execution_runs run ON run.id=task.org_run_id
          WHERE task.org_run_id=?1 AND task.id=?2 AND task.status='in_progress'
            AND task.owner=?3 AND task.activation_generation=?4
            AND run.status='running' AND run.activation_generation=?4
            AND EXISTS (
-               SELECT 1 FROM agent_org_runtime_turn_contexts context
+               SELECT 1 FROM agent_org_execution_turn_contexts context
                JOIN session_turn_intents intent
                  ON intent.session_id=context.session_id
                 AND intent.turn_intent_id=context.turn_intent_id
@@ -282,7 +282,7 @@ pub(crate) fn external_effect_unknown_with_connection(
     task_id: &str,
 ) -> Result<bool, String> {
     conn.query_row(
-        "SELECT external_effect_unknown FROM agent_org_runtime_tasks
+        "SELECT external_effect_unknown FROM agent_org_execution_tasks
          WHERE org_run_id=?1 AND id=?2",
         params![org_run_id, task_id],
         |row| Ok(row.get::<_, i64>(0)? != 0),
@@ -299,7 +299,7 @@ pub(crate) fn clear_external_effect_unknown_in_tx(
 ) -> Result<(), String> {
     let changed = conn
         .execute(
-            "UPDATE agent_org_runtime_tasks SET external_effect_unknown=0
+            "UPDATE agent_org_execution_tasks SET external_effect_unknown=0
              WHERE org_run_id=?1 AND id=?2",
             params![org_run_id, task_id],
         )

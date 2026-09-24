@@ -348,22 +348,17 @@ fn materialized_inbox_message_ids(
     conn: &Connection,
     session_id: &str,
 ) -> SqliteResult<std::collections::HashSet<String>> {
-    let has_receipts: bool = conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM sqlite_master
-         WHERE type='table' AND name='agent_org_runtime_inbox_materializations')",
-        [],
-        |row| row.get(0),
-    )?;
-    if !has_receipts {
-        return Ok(std::collections::HashSet::new());
+    let mut ids = std::collections::HashSet::new();
+    for (table,sql) in [
+        ("agent_org_execution_inbox_materializations", "SELECT transcript_message_id FROM agent_org_execution_inbox_materializations WHERE session_id=?1"),
+        ("org_history_inbox_messages", "SELECT message_id FROM org_history_inbox_messages WHERE session_id=?1"),
+    ] {
+        let exists: bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=?1)",[table],|row|row.get(0))?;
+        if exists {
+            let mut stmt=conn.prepare_cached(sql)?;
+            for row in stmt.query_map([session_id],|row|row.get::<_,String>(0))? { ids.insert(row?); }
+        }
     }
-    let mut stmt = conn.prepare_cached(
-        "SELECT transcript_message_id FROM agent_org_runtime_inbox_materializations
-         WHERE session_id=?1",
-    )?;
-    let ids = stmt
-        .query_map([session_id], |row| row.get(0))?
-        .collect::<SqliteResult<_>>()?;
     Ok(ids)
 }
 
@@ -776,7 +771,13 @@ fn rebuild_turn_index_inner(session_id: &str) -> SqliteResult<Vec<CachedTurnSumm
     // intent was retired before it ran (Stale). Read failure
     // falls back to an empty set, which preserves the legacy behaviour of
     // building rounds purely from events.
-    let mut stale_intent_ids = load_stale_intent_ids(session_id);
+    let history_only =
+        agent_core::coordination::agent_org_history_store::is_history(&conn, session_id)?;
+    let mut stale_intent_ids = if history_only {
+        StaleIntentIds::new()
+    } else {
+        load_stale_intent_ids(session_id)
+    };
     // A superseded empty failure is one attempt of the surviving queue turn,
     // not a second navigable round. Keep its raw event/native audit rows.
     for marker in super::crud::load_events_by_type(session_id, "queued_retry_lineage")? {
@@ -805,7 +806,14 @@ fn rebuild_turn_index_inner(session_id: &str) -> SqliteResult<Vec<CachedTurnSumm
             }));
         }
     }
-    let intent_status_overlay = load_intent_status_overlay(session_id);
+    if history_only {
+        stale_intent_ids.clear();
+    }
+    let intent_status_overlay = if history_only {
+        IntentStatusOverlay::new()
+    } else {
+        load_intent_status_overlay(session_id)
+    };
     let drafts = stream_turn_drafts(&conn, session_id, &stale_intent_ids)?;
     let (event_count, max_sequence) = event_state(&conn, session_id)?;
     let rebuilt_at = Utc::now().to_rfc3339();

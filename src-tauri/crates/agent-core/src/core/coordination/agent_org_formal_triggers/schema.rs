@@ -2,7 +2,7 @@ use rusqlite::Connection;
 
 pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_formal_trigger_receipts (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_formal_trigger_receipts (
             receipt_id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             trigger_kind TEXT NOT NULL,
@@ -29,22 +29,22 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             updated_at TEXT NOT NULL,
             UNIQUE(org_run_id,trigger_kind,trigger_id,trigger_revision),
             UNIQUE(inbox_id),
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
-            FOREIGN KEY(inbox_id) REFERENCES agent_org_runtime_inbox(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
+            FOREIGN KEY(inbox_id) REFERENCES agent_org_execution_inbox(id) ON DELETE CASCADE
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_formal_trigger_pending
-            ON agent_org_runtime_formal_trigger_receipts(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_formal_trigger_pending
+            ON agent_org_execution_formal_trigger_receipts(
                 org_run_id,status,doorbell_status,created_at,receipt_id
             );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_formal_trigger_missing_doorbell
-            ON agent_org_runtime_formal_trigger_receipts(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_formal_trigger_missing_doorbell
+            ON agent_org_execution_formal_trigger_receipts(
                 doorbell_status,status,org_run_id,created_at
             ) WHERE status='pending' AND doorbell_status='missing';
-        CREATE INDEX IF NOT EXISTS idx_agent_org_formal_trigger_task
-            ON agent_org_runtime_formal_trigger_receipts(org_run_id,task_id,created_at)
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_formal_trigger_task
+            ON agent_org_execution_formal_trigger_receipts(org_run_id,task_id,created_at)
             WHERE task_id IS NOT NULL;
 
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_formal_trigger_attempts (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_formal_trigger_attempts (
             receipt_id TEXT NOT NULL,
             attempt INTEGER NOT NULL CHECK(attempt >= 1),
             session_id TEXT NOT NULL,
@@ -59,14 +59,14 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             updated_at TEXT NOT NULL,
             PRIMARY KEY(receipt_id,attempt),
             FOREIGN KEY(receipt_id)
-                REFERENCES agent_org_runtime_formal_trigger_receipts(receipt_id)
+                REFERENCES agent_org_execution_formal_trigger_receipts(receipt_id)
                 ON DELETE CASCADE
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_formal_trigger_one_active_attempt
-            ON agent_org_runtime_formal_trigger_attempts(receipt_id)
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_formal_trigger_one_active_attempt
+            ON agent_org_execution_formal_trigger_attempts(receipt_id)
             WHERE status IN ('queued','running');
-        CREATE INDEX IF NOT EXISTS idx_agent_org_formal_trigger_attempt_turn
-            ON agent_org_runtime_formal_trigger_attempts(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_formal_trigger_attempt_turn
+            ON agent_org_execution_formal_trigger_attempts(
                 session_id,turn_intent_id,status,receipt_id
             );",
     )

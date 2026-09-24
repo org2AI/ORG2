@@ -120,7 +120,7 @@ pub fn build_with_connection(
             load_open_task_objects(conn, org_run_id)?,
             "Tasks are still open",
             "agent_org_open_tasks",
-            "agent_org_runtime_tasks",
+            "agent_org_execution_tasks",
             AgentOrgRunBlockerRecoveryState::WaitingForRuntime,
             None,
         ));
@@ -156,7 +156,7 @@ pub fn build_from_candidate_with_connection(
                 run_objects(org_run_id),
                 "The Team is not available for completion",
                 "run_completion_run_unavailable",
-                "agent_org_runtime_runs",
+                "agent_org_execution_runs",
                 AgentOrgRunBlockerRecoveryState::SystemAttentionRequired,
                 None,
             ),
@@ -166,7 +166,7 @@ pub fn build_from_candidate_with_connection(
                 run_objects(org_run_id),
                 "The Coordinator view is stale",
                 "run_completion_stale_coordinator_snapshot",
-                "agent_org_runtime_turn_contexts",
+                "agent_org_execution_turn_contexts",
                 AgentOrgRunBlockerRecoveryState::SystemAttentionRequired,
                 None,
             ),
@@ -186,7 +186,7 @@ pub fn build_from_candidate_with_connection(
                 run_objects(org_run_id),
                 "Task data needs system repair",
                 "agent_org_corrupt_task_data",
-                "agent_org_runtime_tasks",
+                "agent_org_execution_tasks",
                 AgentOrgRunBlockerRecoveryState::SystemAttentionRequired,
                 None,
             ),
@@ -209,7 +209,7 @@ pub fn build_from_candidate_with_connection(
                 ),
                 "Member startup is still being reconciled",
                 "agent_org_pending_formal_materializations",
-                "agent_org_runtime_member_materializations",
+                "agent_org_execution_member_materializations",
                 AgentOrgRunBlockerRecoveryState::WaitingForRuntime,
                 None,
             ),
@@ -219,7 +219,7 @@ pub fn build_from_candidate_with_connection(
                 bounded_for_count(load_recovery_objects(conn, org_run_id)?, *count),
                 "System recovery is in progress",
                 "agent_org_active_recovery_reservations",
-                "agent_org_runtime_recovery_attempts",
+                "agent_org_execution_recovery_attempts",
                 AgentOrgRunBlockerRecoveryState::SystemRepairing,
                 None,
             ),
@@ -246,7 +246,7 @@ pub fn build_from_candidate_with_connection(
                 identity_objects("task", task_ids.clone()),
                 "Tasks are still open",
                 "agent_org_open_tasks",
-                "agent_org_runtime_tasks",
+                "agent_org_execution_tasks",
                 AgentOrgRunBlockerRecoveryState::WaitingForRuntime,
                 None,
             ),
@@ -256,7 +256,7 @@ pub fn build_from_candidate_with_connection(
                 bounded_for_count(load_handoff_objects(conn, org_run_id)?, *count),
                 "A task handoff is unresolved",
                 "agent_org_unresolved_task_handoffs",
-                "agent_org_runtime_task_execution_handoffs",
+                "agent_org_execution_task_execution_handoffs",
                 AgentOrgRunBlockerRecoveryState::UserActionRequired,
                 Some("review_handoff"),
             ),
@@ -275,7 +275,7 @@ pub fn build_from_candidate_with_connection(
                 }],
                 "Completion evidence is stale",
                 "agent_org_stale_completion_certificate",
-                "agent_org_runtime_run_completion_certificates",
+                "agent_org_execution_run_completion_certificates",
                 AgentOrgRunBlockerRecoveryState::SystemAttentionRequired,
                 None,
             ),
@@ -285,7 +285,7 @@ pub fn build_from_candidate_with_connection(
                 identity_objects("task", task_ids.clone()),
                 "Task closure evidence is incomplete",
                 "run_completion_delivery_closure_incomplete",
-                "agent_org_runtime_tasks",
+                "agent_org_execution_tasks",
                 AgentOrgRunBlockerRecoveryState::UserActionRequired,
                 Some("review_tasks"),
             ),
@@ -295,7 +295,7 @@ pub fn build_from_candidate_with_connection(
                 identity_objects("task", task_ids.clone()),
                 "Task scope-removal evidence is invalid",
                 "run_completion_scope_removal_invalid",
-                "agent_org_runtime_tasks",
+                "agent_org_execution_tasks",
                 AgentOrgRunBlockerRecoveryState::UserActionRequired,
                 Some("review_tasks"),
             ),
@@ -305,7 +305,7 @@ pub fn build_from_candidate_with_connection(
                 identity_objects("task", task_ids.clone()),
                 "Task replacement evidence is invalid",
                 "run_completion_replacement_chain_invalid",
-                "agent_org_runtime_tasks",
+                "agent_org_execution_tasks",
                 AgentOrgRunBlockerRecoveryState::UserActionRequired,
                 Some("review_tasks"),
             ),
@@ -366,11 +366,11 @@ fn append_system_blockers(
     if facts.corrupt_task_count > 0 {
         let predicate = crate::coordination::agent_org_tasks::corrupt_task_row_predicate_sql();
         let sql = format!(
-            "SELECT task.id,task.subject FROM agent_org_runtime_tasks task
+            "SELECT task.id,task.subject FROM agent_org_execution_tasks task
              WHERE task.org_run_id=?1 AND (
                  {predicate}
                  OR NOT EXISTS (
-                     SELECT 1 FROM agent_org_runtime_work_episode_tasks episode_task
+                     SELECT 1 FROM agent_org_execution_work_episode_tasks episode_task
                      WHERE episode_task.org_run_id=task.org_run_id
                        AND episode_task.task_id=task.id
                  )
@@ -386,7 +386,7 @@ fn append_system_blockers(
             objects,
             "Task data needs system repair",
             "agent_org_corrupt_task_data",
-            "agent_org_runtime_tasks",
+            "agent_org_execution_tasks",
             AgentOrgRunBlockerRecoveryState::SystemAttentionRequired,
             None,
         ));
@@ -399,7 +399,7 @@ fn append_system_blockers(
                 conn,
                 "SELECT intent.turn_intent_id,context.participant_id || ' turn'
                  FROM session_turn_intents intent
-                 JOIN agent_org_runtime_turn_contexts context
+                 JOIN agent_org_execution_turn_contexts context
                    ON context.session_id=intent.session_id
                   AND context.turn_intent_id=intent.turn_intent_id
                  WHERE intent.org_run_id=?1
@@ -425,11 +425,11 @@ fn append_system_blockers(
             load_objects(
                 conn,
                 "SELECT member_id,member_id
-                 FROM agent_org_runtime_member_materializations
+                 FROM agent_org_execution_member_materializations
                  WHERE org_run_id=?1
                    AND generation=(
                        SELECT activation_generation
-                       FROM agent_org_runtime_runs WHERE id=?1
+                       FROM agent_org_execution_runs WHERE id=?1
                    )
                    AND authority_class IN ('starting','formal')
                    AND status<>'succeeded'
@@ -439,7 +439,7 @@ fn append_system_blockers(
             )?,
             "Member startup is still being reconciled",
             "agent_org_pending_formal_materializations",
-            "agent_org_runtime_member_materializations",
+            "agent_org_execution_member_materializations",
             AgentOrgRunBlockerRecoveryState::WaitingForRuntime,
             None,
         ));
@@ -451,7 +451,7 @@ fn append_system_blockers(
             load_objects(
                 conn,
                 "SELECT target_key,action_kind || ' → ' || target_key
-                 FROM agent_org_runtime_recovery_attempts
+                 FROM agent_org_execution_recovery_attempts
                  WHERE org_run_id=?1 AND reservation_token IS NOT NULL
                  ORDER BY action_kind,target_key LIMIT ?2",
                 org_run_id,
@@ -459,7 +459,7 @@ fn append_system_blockers(
             )?,
             "System recovery is in progress",
             "agent_org_active_recovery_reservations",
-            "agent_org_runtime_recovery_attempts",
+            "agent_org_execution_recovery_attempts",
             AgentOrgRunBlockerRecoveryState::SystemRepairing,
             None,
         ));
@@ -478,14 +478,14 @@ fn append_system_blockers(
             load_objects(
                 conn,
                 "SELECT handoff.id,handoff.old_task_id || ' handoff'
-                 FROM agent_org_runtime_task_execution_handoffs handoff
+                 FROM agent_org_execution_task_execution_handoffs handoff
                  WHERE handoff.org_run_id=?1
                    AND handoff.state IN ('requested','yielding','timeout','unknown','failed')
                    AND handoff.resolution IS NULL
                    AND EXISTS (
                        SELECT 1
-                       FROM agent_org_runtime_work_episode_tasks episode_task
-                       JOIN agent_org_runtime_work_episodes episode
+                       FROM agent_org_execution_work_episode_tasks episode_task
+                       JOIN agent_org_execution_work_episodes episode
                          ON episode.id=episode_task.work_episode_id
                        WHERE episode_task.org_run_id=handoff.org_run_id
                          AND episode_task.task_id=handoff.old_task_id
@@ -497,7 +497,7 @@ fn append_system_blockers(
             )?,
             "A task handoff is unresolved",
             "agent_org_unresolved_task_handoffs",
-            "agent_org_runtime_task_execution_handoffs",
+            "agent_org_execution_task_execution_handoffs",
             AgentOrgRunBlockerRecoveryState::UserActionRequired,
             Some("review_handoff"),
         ));
@@ -520,7 +520,7 @@ fn append_system_blockers(
                 }],
                 "Completion evidence is stale",
                 "agent_org_stale_completion_certificate",
-                "agent_org_runtime_run_completion_certificates",
+                "agent_org_execution_run_completion_certificates",
                 AgentOrgRunBlockerRecoveryState::SystemAttentionRequired,
                 None,
             ));
@@ -537,7 +537,7 @@ pub fn append_completion_failure(blockers: &mut Vec<AgentOrgRunBlocker>, error: 
                 Some(ids),
                 "Task closure evidence is incomplete",
                 "run_completion_delivery_closure_incomplete",
-                "agent_org_runtime_tasks",
+                "agent_org_execution_tasks",
                 AgentOrgRunBlockerRecoveryState::UserActionRequired,
                 Some("review_tasks"),
             )
@@ -550,7 +550,7 @@ pub fn append_completion_failure(blockers: &mut Vec<AgentOrgRunBlocker>, error: 
                 Some(ids),
                 "Task scope-removal evidence is invalid",
                 "run_completion_scope_removal_invalid",
-                "agent_org_runtime_tasks",
+                "agent_org_execution_tasks",
                 AgentOrgRunBlockerRecoveryState::UserActionRequired,
                 Some("review_tasks"),
             )
@@ -563,7 +563,7 @@ pub fn append_completion_failure(blockers: &mut Vec<AgentOrgRunBlocker>, error: 
                 Some(ids),
                 "Task replacement evidence is invalid",
                 "run_completion_replacement_chain_invalid",
-                "agent_org_runtime_tasks",
+                "agent_org_execution_tasks",
                 AgentOrgRunBlockerRecoveryState::UserActionRequired,
                 Some("review_tasks"),
             )
@@ -614,7 +614,7 @@ fn load_in_flight_turn_objects(
         "SELECT intent.turn_intent_id,
                 context.participant_id || ' turn'
          FROM session_turn_intents intent
-         JOIN agent_org_runtime_turn_contexts context
+         JOIN agent_org_execution_turn_contexts context
            ON context.session_id=intent.session_id
           AND context.turn_intent_id=intent.turn_intent_id
          WHERE intent.org_run_id=?1
@@ -636,7 +636,7 @@ fn load_unknown_turn_objects(
         conn,
         "SELECT intent.turn_intent_id,context.participant_id || ' turn'
          FROM session_turn_intents intent
-         JOIN agent_org_runtime_turn_contexts context
+         JOIN agent_org_execution_turn_contexts context
            ON context.session_id=intent.session_id
           AND context.turn_intent_id=intent.turn_intent_id
          WHERE intent.org_run_id=?1
@@ -657,10 +657,10 @@ fn load_pending_materialization_objects(
     load_objects(
         conn,
         "SELECT member_id,member_id
-         FROM agent_org_runtime_member_materializations
+         FROM agent_org_execution_member_materializations
          WHERE org_run_id=?1
            AND generation=(
-               SELECT activation_generation FROM agent_org_runtime_runs WHERE id=?1
+               SELECT activation_generation FROM agent_org_execution_runs WHERE id=?1
            )
            AND authority_class IN ('starting','formal') AND status<>'succeeded'
          ORDER BY generation,member_id LIMIT ?2",
@@ -676,7 +676,7 @@ fn load_recovery_objects(
     load_objects(
         conn,
         "SELECT target_key,action_kind || ' → ' || target_key
-         FROM agent_org_runtime_recovery_attempts
+         FROM agent_org_execution_recovery_attempts
          WHERE org_run_id=?1 AND reservation_token IS NOT NULL
          ORDER BY action_kind,target_key LIMIT ?2",
         org_run_id,
@@ -691,8 +691,8 @@ fn load_plan_approval_objects(
     load_objects(
         conn,
         "SELECT revision.plan_revision_id,revision.plan_title
-         FROM agent_org_runtime_plan_revisions revision
-         JOIN agent_org_runtime_plan_decisions decision
+         FROM agent_org_execution_plan_revisions revision
+         JOIN agent_org_execution_plan_decisions decision
            ON decision.plan_revision_id=revision.plan_revision_id
          WHERE revision.org_run_id=?1 AND decision.status='pending'
          ORDER BY revision.created_at,revision.plan_revision_id LIMIT ?2",
@@ -710,8 +710,8 @@ fn pending_plan_approval_blocker(
         .query_row(
             "SELECT EXISTS(
                  SELECT 1
-                 FROM agent_org_runtime_plan_revisions revision
-                 JOIN agent_org_runtime_plan_decisions decision
+                 FROM agent_org_execution_plan_revisions revision
+                 JOIN agent_org_execution_plan_decisions decision
                    ON decision.plan_revision_id=revision.plan_revision_id
                  WHERE revision.org_run_id=?1 AND decision.status='pending'
                    AND decision.policy='user'
@@ -730,7 +730,7 @@ fn pending_plan_approval_blocker(
             "A plan decision is being resolved"
         },
         "agent_org_pending_plan_approvals",
-        "agent_org_runtime_plan_decisions",
+        "agent_org_execution_plan_decisions",
         if requires_user_action {
             AgentOrgRunBlockerRecoveryState::UserActionRequired
         } else {
@@ -747,13 +747,13 @@ fn load_handoff_objects(
     load_objects(
         conn,
         "SELECT handoff.id,handoff.old_task_id || ' handoff'
-         FROM agent_org_runtime_task_execution_handoffs handoff
+         FROM agent_org_execution_task_execution_handoffs handoff
          WHERE handoff.org_run_id=?1
            AND handoff.state IN ('requested','yielding','timeout','unknown','failed')
            AND handoff.resolution IS NULL
            AND EXISTS (
-               SELECT 1 FROM agent_org_runtime_work_episode_tasks episode_task
-               JOIN agent_org_runtime_work_episodes episode
+               SELECT 1 FROM agent_org_execution_work_episode_tasks episode_task
+               JOIN agent_org_execution_work_episodes episode
                  ON episode.id=episode_task.work_episode_id
                WHERE episode_task.org_run_id=handoff.org_run_id
                  AND episode_task.task_id=handoff.old_task_id
@@ -771,10 +771,10 @@ fn load_open_task_objects(
 ) -> Result<Vec<AgentOrgRunBlockerObject>, String> {
     load_objects(
         conn,
-        "SELECT task.id,task.subject FROM agent_org_runtime_tasks task
-         JOIN agent_org_runtime_work_episode_tasks episode_task
+        "SELECT task.id,task.subject FROM agent_org_execution_tasks task
+         JOIN agent_org_execution_work_episode_tasks episode_task
            ON episode_task.org_run_id=task.org_run_id AND episode_task.task_id=task.id
-         JOIN agent_org_runtime_work_episodes episode
+         JOIN agent_org_execution_work_episodes episode
            ON episode.id=episode_task.work_episode_id
          WHERE task.org_run_id=?1 AND episode.status='active'
            AND task.status IN ('pending','in_progress')
@@ -797,8 +797,8 @@ fn blocking_inbox_blockers(
                         inbox.recipient_member_id,
                         'unknown recipient'
                     )
-             FROM agent_org_runtime_inbox inbox
-             JOIN agent_org_runtime_runs run ON run.id=inbox.org_run_id
+             FROM agent_org_execution_inbox inbox
+             JOIN agent_org_execution_runs run ON run.id=inbox.org_run_id
              LEFT JOIN json_each(
                  CASE WHEN json_valid(run.org_snapshot_json)
                       THEN json_extract(run.org_snapshot_json,'$.members') ELSE '[]' END
@@ -807,13 +807,13 @@ fn blocking_inbox_blockers(
              WHERE inbox.org_run_id=?1 AND inbox.delivery_class='formal_work'
                AND inbox.read_at IS NULL
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                   SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
                    WHERE resolution.inbox_id=inbox.id
                )
                AND NOT (
                    inbox.payload_kind='shutdown_request'
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_org_runtime_tasks task
+                       SELECT 1 FROM agent_org_execution_tasks task
                        WHERE task.org_run_id=inbox.org_run_id
                          AND task.owner=inbox.recipient_member_id
                          AND task.status IN ('pending','in_progress')
@@ -823,7 +823,7 @@ fn blocking_inbox_blockers(
                    inbox.recipient_member_id<>'coordinator'
                    OR inbox.sender_agent_id=?2
                    OR EXISTS (
-                       SELECT 1 FROM agent_org_runtime_formal_trigger_receipts receipt
+                       SELECT 1 FROM agent_org_execution_formal_trigger_receipts receipt
                        WHERE receipt.inbox_id=inbox.id
                          AND receipt.status IN ('pending','materialized')
                    )
@@ -887,7 +887,7 @@ fn blocking_inbox_blockers(
             unbound,
             "A historical task message can be repaired by the Coordinator",
             "unbound_coordinator_task_message",
-            "agent_org_runtime_inbox_task_bindings",
+            "agent_org_execution_inbox_task_bindings",
             AgentOrgRunBlockerRecoveryState::CoordinatorRepairAvailable,
             None,
         ));
@@ -899,7 +899,7 @@ fn blocking_inbox_blockers(
             unavailable,
             "Inbox work targets a permanently unavailable member",
             "permanently_unavailable_inbox_recipient",
-            "agent_org_runtime_inbox",
+            "agent_org_execution_inbox",
             AgentOrgRunBlockerRecoveryState::CoordinatorRepairAvailable,
             None,
         ));
@@ -911,7 +911,7 @@ fn blocking_inbox_blockers(
             waiting,
             "Inbox work is waiting for its runtime",
             "agent_org_blocking_inbox",
-            "agent_org_runtime_inbox",
+            "agent_org_execution_inbox",
             AgentOrgRunBlockerRecoveryState::WaitingForRuntime,
             None,
         ));
@@ -923,7 +923,7 @@ fn blocking_inbox_blockers(
             attention,
             "Inbox data needs system attention",
             "agent_org_unrepairable_blocking_inbox",
-            "agent_org_runtime_inbox",
+            "agent_org_execution_inbox",
             AgentOrgRunBlockerRecoveryState::SystemAttentionRequired,
             None,
         ));
@@ -935,7 +935,7 @@ fn blocking_inbox_blockers(
             Vec::new(),
             "Additional Inbox work is waiting",
             "agent_org_blocking_inbox",
-            "agent_org_runtime_inbox",
+            "agent_org_execution_inbox",
             AgentOrgRunBlockerRecoveryState::WaitingForRuntime,
             None,
         ));

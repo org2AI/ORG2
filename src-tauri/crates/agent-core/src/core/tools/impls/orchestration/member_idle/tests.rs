@@ -57,7 +57,7 @@ fn seed_run(conn: &rusqlite::Connection, run_id: &str, status: &str) {
     crate::coordination::init_agent_org_schemas(conn).expect("canonical Agent Org schema");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_runs (
+        "INSERT INTO agent_org_execution_runs (
              id, org_id, coordinator_agent_id, root_session_id,
              entry_mode, status, created_at, updated_at,archived_at,archive_receipt_id
          ) VALUES (?1, 'org-1', 'coord', 'root-1', 'build', ?2, ?3, ?3,
@@ -72,7 +72,7 @@ fn seed_completed_task(conn: &rusqlite::Connection, run_id: &str, member_id: &st
     let now = chrono::Utc::now().to_rfc3339();
     let episode_id = format!("{run_id}-episode");
     conn.execute(
-        "INSERT INTO agent_org_runtime_work_episodes (
+        "INSERT INTO agent_org_execution_work_episodes (
              id,org_run_id,episode_sequence,status,opening_activation_generation,
              opening_work_revision,opened_by_turn_intent_id,created_at
          ) VALUES (?1,?2,1,'active',1,0,'turn-create',?3)",
@@ -80,7 +80,7 @@ fn seed_completed_task(conn: &rusqlite::Connection, run_id: &str, member_id: &st
     )
     .expect("seed active work episode");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
              id,org_run_id,activation_generation,subject,description,owner,status,
              execution_mode,blocked_by_json,output_json,created_by_participant_id,
              source_turn_intent_id,created_at,updated_at
@@ -92,7 +92,7 @@ fn seed_completed_task(conn: &rusqlite::Connection, run_id: &str, member_id: &st
     )
     .expect("seed terminal Task");
     conn.execute(
-        "INSERT INTO agent_org_runtime_work_episode_tasks (
+        "INSERT INTO agent_org_execution_work_episode_tasks (
              org_run_id,work_episode_id,task_id,associated_at
          ) VALUES (?1,?2,'task-terminal',?3)",
         rusqlite::params![run_id, &episode_id, &now],
@@ -110,7 +110,7 @@ fn seed_active_task_turn(conn: &rusqlite::Connection, run_id: &str, member_id: &
     )
     .expect("seed active worker Turn intent");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
              session_id,turn_intent_id,org_run_id,participant_id,turn_kind,
              task_id,owner_member_id,dispatch_member_id,member_dispatch_sequence,
              source_kind,source_id,activation_generation,created_at
@@ -168,7 +168,7 @@ fn routine_member_idle_persists_without_coordinator_provider_wake() {
     assert!(wake_hook.snapshot().is_empty());
     let receipt_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts",
+            "SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts",
             [],
             |row| row.get(0),
         )
@@ -212,7 +212,7 @@ fn final_member_idle_creates_exact_formal_receipt_and_wakes_coordinator() {
     let receipt: (String, String, String, String, String) = conn
         .query_row(
             "SELECT source_kind,status,task_id,owner_member_id,source_turn_intent_id
-             FROM agent_org_runtime_formal_trigger_receipts",
+             FROM agent_org_execution_formal_trigger_receipts",
             [],
             |row| {
                 Ok((

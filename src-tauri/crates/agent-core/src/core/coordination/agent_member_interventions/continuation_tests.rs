@@ -27,7 +27,12 @@ fn explicit_return_supplies_bound_task_instruction_without_new_input_rows() {
     let (fixture, task_id, original, continuation) = returned_task("return-input");
     let conn = get_connection().expect("database");
     let counts = || {
-        ["events", "agent_org_runtime_inbox", "session_turn_intents"].map(|table| {
+        [
+            "events",
+            "agent_org_execution_inbox",
+            "session_turn_intents",
+        ]
+        .map(|table| {
             conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
                 row.get::<_, i64>(0)
             })
@@ -103,24 +108,24 @@ fn return_instruction_revalidates_generation_and_task_before_provider() {
     let (fixture, task_id, _, continuation) = returned_task("return-stale-input");
     let conn = get_connection().expect("database");
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=2 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=2 WHERE id=?1",
         [&fixture.run_id],
     )
     .unwrap();
     assert!(continuation_nudge_for_turn(&fixture.member_session_id, &continuation).is_err());
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=1 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=1 WHERE id=?1",
         [&fixture.run_id],
     )
     .unwrap();
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET status='completed',output_json='{}' WHERE org_run_id=?1 AND id=?2",
+        "UPDATE agent_org_execution_tasks SET status='completed',output_json='{}' WHERE org_run_id=?1 AND id=?2",
         params![fixture.run_id, task_id],
     )
     .unwrap();
     assert!(continuation_nudge_for_turn(&fixture.member_session_id, &continuation).is_err());
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET status='in_progress',output_json=NULL WHERE org_run_id=?1 AND id=?2",
+        "UPDATE agent_org_execution_tasks SET status='in_progress',output_json=NULL WHERE org_run_id=?1 AND id=?2",
         params![fixture.run_id, task_id],
     )
     .unwrap();
@@ -130,7 +135,7 @@ fn return_instruction_revalidates_generation_and_task_before_provider() {
             .unwrap()
             .is_none()
     );
-    conn.execute_batch("DROP TABLE agent_org_runtime_member_interventions")
+    conn.execute_batch("DROP TABLE agent_org_execution_member_interventions")
         .unwrap();
     assert!(
         continuation_nudge_for_turn(&fixture.member_session_id, &continuation).is_err(),

@@ -177,3 +177,25 @@ fn section_count_is_bounded_at_the_write_boundary() {
     .is_err());
     assert_eq!(snapshot(&c).unwrap().sections.len(), MAX_SECTIONS);
 }
+
+#[test]
+fn archived_history_root_can_be_resolved_inside_a_custom_section() {
+    let _sandbox = crate::test_utils::test_env::sandbox();
+    let conn = database::db::get_connection().unwrap();
+    conn.execute_batch("INSERT INTO agent_sessions
+        (session_id,name,status,session_type,created_at,updated_at,org_member_id)
+        VALUES ('sdeagent-retired-section','Preserved team','archived','sde','now','now','coordinator');
+        INSERT INTO org_history_sessions(session_id,root_session_id,title,source_table)
+        VALUES ('sdeagent-retired-section','sdeagent-retired-section','Preserved team','fixture');").unwrap();
+    let row = super::lookup(
+        &conn,
+        "sdeagent-retired-section",
+        &std::collections::HashSet::new(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        row.agent_org_mode,
+        Some(agent_core::coordination::agent_org_history_store::HistoryMode::HistoryOnly)
+    );
+}

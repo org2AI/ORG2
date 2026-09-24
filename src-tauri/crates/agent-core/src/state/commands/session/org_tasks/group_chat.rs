@@ -361,7 +361,7 @@ pub(super) fn persist_group_chat_deliveries(
                 .query_row(
                     "SELECT
                          EXISTS(
-                             SELECT 1 FROM agent_org_runtime_turn_contexts context
+                             SELECT 1 FROM agent_org_execution_turn_contexts context
                              WHERE context.org_run_id=?1 AND context.turn_intent_id=?2
                          )
                          OR EXISTS(
@@ -382,7 +382,7 @@ pub(super) fn persist_group_chat_deliveries(
             let pending: i64 = tx
                 .query_row(
                     "SELECT COUNT(*)
-                     FROM agent_org_runtime_user_directed_deliveries
+                     FROM agent_org_execution_user_directed_deliveries
                      WHERE org_run_id=?1 AND dispatch_member_id=?2
                        AND status IN ('pending','started')",
                     params![&context.run_id, &input.target_member_id],
@@ -414,13 +414,22 @@ pub(super) fn persist_group_chat_deliveries(
                 },
             )?;
             tx.execute(
-                "UPDATE agent_org_runtime_inbox
+                "UPDATE agent_org_execution_inbox
                  SET delivery_class='user_directed',display_text=?2
                  WHERE id=?1 AND delivery_class='formal_work'",
                 params![inbox_row.id, effective_display],
             )
             .map_err(|error| error.to_string())?;
 
+            crate::coordination::agent_org_history_store::mirror_visible_item(
+                &tx,
+                &context.run_id,
+                &inbox_row.id.to_string(),
+                "group_message",
+                effective_display,
+                &inbox_row.created_at,
+            )
+            .map_err(|error| error.to_string())?;
             let admission =
                 crate::coordination::agent_org_turn_contexts::AgentOrgTurnAdmission::group_mention(
                     &context.run_id,
@@ -483,7 +492,7 @@ pub(super) fn persist_group_chat_deliveries(
 fn validate_group_run_status(conn: &rusqlite::Connection, run_id: &str) -> Result<(), String> {
     let status: Option<String> = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             [run_id],
             |row| row.get(0),
         )
@@ -515,7 +524,7 @@ fn resolve_group_target(
 ) -> Result<(String, String), String> {
     conn.query_row(
         "SELECT materialization.session_id,materialization.agent_id
-         FROM agent_org_runtime_member_materializations materialization
+         FROM agent_org_execution_member_materializations materialization
          JOIN agent_sessions session ON session.session_id=materialization.session_id
          WHERE materialization.org_run_id=?1
            AND materialization.member_id=?2
@@ -525,7 +534,7 @@ fn resolve_group_target(
            AND session.status<>'archived'
            AND materialization.generation=(
                SELECT MAX(latest.generation)
-               FROM agent_org_runtime_member_materializations latest
+               FROM agent_org_execution_member_materializations latest
                WHERE latest.org_run_id=?1 AND latest.member_id=?2
                  AND latest.status='succeeded'
            )
@@ -563,7 +572,7 @@ fn load_existing_group_delivery(
                     delivery.dispatch_member_id,delivery.member_dispatch_sequence,
                     delivery.status,delivery.dispatch_content,delivery.display_content,
                     delivery.images_json,delivery.source_kind
-             FROM agent_org_runtime_user_directed_deliveries delivery
+             FROM agent_org_execution_user_directed_deliveries delivery
              WHERE delivery.org_run_id=?1 AND delivery.turn_intent_id=?2",
             params![run_id, &input.turn_intent_id],
             |row| {
@@ -644,7 +653,7 @@ fn load_inbox_record(
         "SELECT id,recipient_agent_id,recipient_member_id,sender_agent_id,
                 sender_member_id,org_run_id,payload_kind,payload_json,request_id,
                 created_at,read_at
-         FROM agent_org_runtime_inbox
+         FROM agent_org_execution_inbox
          WHERE id=?1 AND org_run_id=?2 AND delivery_class='user_directed'",
         params![inbox_id, run_id],
         |row| {

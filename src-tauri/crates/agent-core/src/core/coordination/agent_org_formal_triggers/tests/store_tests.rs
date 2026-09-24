@@ -15,14 +15,14 @@ fn structured_fact_creates_one_exact_receipt_while_narration_creates_none() {
     let conn = get_connection().expect("formal trigger database");
     let receipts: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts",
+            "SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts",
             [],
             |row| row.get(0),
         )
         .unwrap();
     let inbox_id: i64 = conn
         .query_row(
-            "SELECT inbox_id FROM agent_org_runtime_formal_trigger_receipts",
+            "SELECT inbox_id FROM agent_org_execution_formal_trigger_receipts",
             [],
             |row| row.get(0),
         )
@@ -80,8 +80,8 @@ fn self_observed_coordinator_fact_is_resolved_without_a_follow_up_wake() {
     let state: (String, String, bool) = conn
         .query_row(
             "SELECT receipt.status,receipt.doorbell_status,inbox.read_at IS NOT NULL
-             FROM agent_org_runtime_formal_trigger_receipts receipt
-             JOIN agent_org_runtime_inbox inbox ON inbox.id=receipt.inbox_id
+             FROM agent_org_execution_formal_trigger_receipts receipt
+             JOIN agent_org_execution_inbox inbox ON inbox.id=receipt.inbox_id
              WHERE inbox.id=?1",
             [record.id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -110,7 +110,7 @@ fn doorbell_acknowledgement_does_not_cover_rows_created_after_its_snapshot() {
         .map(|inbox_id| {
             conn.query_row(
                 "SELECT doorbell_status
-                 FROM agent_org_runtime_formal_trigger_receipts
+                 FROM agent_org_execution_formal_trigger_receipts
                  WHERE inbox_id=?1",
                 [inbox_id],
                 |row| row.get::<_, String>(0),

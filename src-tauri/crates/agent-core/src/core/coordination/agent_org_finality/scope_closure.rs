@@ -28,7 +28,7 @@ pub(crate) fn scope_removal_by_request_in_tx(
         "SELECT receipt_id,org_run_id,work_episode_id,target_task_id,
                 root_user_event_id,request_id,actor_session_id,status,created_at,
                 request_digest
-         FROM agent_org_scope_removal_receipts
+         FROM agent_org_execution_scope_removal_receipts
          WHERE org_run_id=?1 AND request_id=?2",
         params![org_run_id, request_id],
         |row| Ok((decode_scope_receipt(row)?, row.get(9)?)),
@@ -48,16 +48,16 @@ pub(crate) fn create_scope_removal_in_tx(
     let episode_id: String = conn
         .query_row(
             "SELECT association.work_episode_id
-             FROM agent_org_runtime_work_episode_tasks association
-             JOIN agent_org_runtime_work_episodes episode
+             FROM agent_org_execution_work_episode_tasks association
+             JOIN agent_org_execution_work_episodes episode
                ON episode.id=association.work_episode_id
               AND episode.org_run_id=association.org_run_id
               AND episode.status='active'
-             JOIN agent_org_runtime_tasks task
+             JOIN agent_org_execution_tasks task
                ON task.org_run_id=association.org_run_id
               AND task.id=association.task_id
               AND task.status IN ('pending','in_progress')
-             JOIN agent_org_runtime_runs run
+             JOIN agent_org_execution_runs run
                ON run.id=association.org_run_id
               AND run.status='running'
               AND run.root_session_id=?3
@@ -70,7 +70,7 @@ pub(crate) fn create_scope_removal_in_tx(
     let root_user_event_id = format!("run-view-scope-removal:{request_id}");
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_scope_removal_receipts (
+        "INSERT INTO agent_org_execution_scope_removal_receipts (
             receipt_id,org_run_id,work_episode_id,target_task_id,root_user_event_id,
             request_id,request_digest,actor_session_id,actor_kind,status,created_at
          ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,'run_view_user','recorded',?9)",
@@ -109,8 +109,8 @@ pub(crate) fn valid_scope_removal_for_task(
     conn.query_row(
         "SELECT EXISTS(
              SELECT 1
-             FROM agent_org_scope_removal_receipts root
-             JOIN agent_org_runtime_work_episode_tasks target_episode
+             FROM agent_org_execution_scope_removal_receipts root
+             JOIN agent_org_execution_work_episode_tasks target_episode
                ON target_episode.org_run_id=root.org_run_id
               AND target_episode.work_episode_id=root.work_episode_id
               AND target_episode.task_id=?2
@@ -119,7 +119,7 @@ pub(crate) fn valid_scope_removal_for_task(
                AND (
                    root.target_task_id=?2
                    OR EXISTS (
-                       SELECT 1 FROM agent_org_scope_resolution_receipts resolution
+                       SELECT 1 FROM agent_org_execution_scope_resolution_receipts resolution
                        WHERE resolution.root_receipt_id=root.receipt_id
                          AND resolution.org_run_id=root.org_run_id
                          AND resolution.work_episode_id=root.work_episode_id
@@ -150,7 +150,7 @@ pub(crate) fn validate_scope_removal_reason_in_tx(
                  UNION
                  SELECT CAST(edge.value AS TEXT)
                  FROM dependency_ancestors ancestor
-                 JOIN agent_org_runtime_tasks task
+                 JOIN agent_org_execution_tasks task
                    ON task.org_run_id=?1 AND task.id=ancestor.task_id
                  JOIN json_each(
                      CASE WHEN json_valid(task.blocked_by_json)
@@ -160,9 +160,9 @@ pub(crate) fn validate_scope_removal_reason_in_tx(
              )
              SELECT EXISTS(
                  SELECT 1
-                 FROM agent_org_scope_removal_receipts root
-                 JOIN agent_org_runtime_runs run ON run.id=root.org_run_id
-                 JOIN agent_org_runtime_work_episode_tasks task_episode
+                 FROM agent_org_execution_scope_removal_receipts root
+                 JOIN agent_org_execution_runs run ON run.id=root.org_run_id
+                 JOIN agent_org_execution_work_episode_tasks task_episode
                    ON task_episode.org_run_id=root.org_run_id
                   AND task_episode.work_episode_id=root.work_episode_id
                   AND task_episode.task_id=?2
@@ -204,8 +204,8 @@ pub(crate) fn record_scope_resolution_in_tx(
     let root: Option<String> = conn
         .query_row(
             "SELECT root.work_episode_id
-             FROM agent_org_scope_removal_receipts root
-             JOIN agent_org_runtime_work_episode_tasks task_episode
+             FROM agent_org_execution_scope_removal_receipts root
+             JOIN agent_org_execution_work_episode_tasks task_episode
                ON task_episode.org_run_id=root.org_run_id
               AND task_episode.work_episode_id=root.work_episode_id
               AND task_episode.task_id=?3
@@ -218,14 +218,14 @@ pub(crate) fn record_scope_resolution_in_tx(
         .map_err(|error| error.to_string())?;
     let episode_id = root.ok_or_else(|| "scope_resolution_root_or_episode_mismatch".to_string())?;
     conn.execute(
-        "INSERT INTO agent_org_scope_resolution_receipts (
+        "INSERT INTO agent_org_execution_scope_resolution_receipts (
             resolution_id,root_receipt_id,org_run_id,work_episode_id,task_id,
             resolution_kind,replacement_task_id,source_turn_intent_id,created_at
          ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
          ON CONFLICT(root_receipt_id,task_id,resolution_kind) DO UPDATE SET
             replacement_task_id=excluded.replacement_task_id,
             source_turn_intent_id=COALESCE(
-                agent_org_scope_resolution_receipts.source_turn_intent_id,
+                agent_org_execution_scope_resolution_receipts.source_turn_intent_id,
                 excluded.source_turn_intent_id
             )",
         params![
@@ -260,7 +260,7 @@ pub(crate) fn record_scope_detachments_in_tx(
         let root_receipt_id: Option<String> = conn
             .query_row(
                 "SELECT json_extract(cancel_reason_json,'$.sourceEventId')
-                 FROM agent_org_runtime_tasks
+                 FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND id=?2 AND status='cancelled'
                    AND json_valid(cancel_reason_json)
                    AND json_extract(cancel_reason_json,'$.code') IN (

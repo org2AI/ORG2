@@ -148,7 +148,7 @@ pub(crate) fn record_trigger_in_tx(
     let run_is_running: bool = tx
         .query_row(
             "SELECT EXISTS(
-                 SELECT 1 FROM agent_org_runtime_runs
+                 SELECT 1 FROM agent_org_execution_runs
                  WHERE id=?1 AND status='running'
              )",
             [org_run_id],
@@ -175,7 +175,7 @@ pub(crate) fn record_trigger_in_tx(
     };
     let resolved_at = source.initially_resolved.then_some(now.as_str());
     tx.execute(
-        "INSERT INTO agent_org_runtime_formal_trigger_receipts (
+        "INSERT INTO agent_org_execution_formal_trigger_receipts (
              receipt_id,org_run_id,trigger_kind,trigger_id,trigger_revision,
              source_kind,target_member_id,inbox_id,task_id,owner_member_id,
              source_turn_intent_id,task_output_digest,plan_revision_id,status,
@@ -290,7 +290,7 @@ pub(crate) fn mark_doorbell_delivered_with_connection(
     let now = chrono::Utc::now().to_rfc3339();
     let updated = tx
         .execute(
-            "UPDATE agent_org_runtime_formal_trigger_receipts
+            "UPDATE agent_org_execution_formal_trigger_receipts
              SET doorbell_status='delivered',doorbell_delivered_at=?2,updated_at=?2
              WHERE receipt_id=?1 AND status='pending' AND doorbell_status='missing'",
             params![receipt_id, &now],
@@ -321,12 +321,12 @@ pub fn missing_doorbell_ids_for_run(org_run_id: &str, limit: usize) -> Result<Ve
     let mut stmt = conn
         .prepare(
             "SELECT receipt.receipt_id
-             FROM agent_org_runtime_formal_trigger_receipts receipt
-             JOIN agent_org_runtime_runs run ON run.id=receipt.org_run_id
+             FROM agent_org_execution_formal_trigger_receipts receipt
+             JOIN agent_org_execution_runs run ON run.id=receipt.org_run_id
              WHERE receipt.org_run_id=?1 AND run.status='running'
                AND receipt.status='pending' AND receipt.doorbell_status='missing'
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_runtime_formal_trigger_attempts attempt
+                   SELECT 1 FROM agent_org_execution_formal_trigger_attempts attempt
                    WHERE attempt.receipt_id=receipt.receipt_id
                      AND attempt.status IN ('queued','running')
                )
@@ -354,14 +354,14 @@ pub(crate) fn list_missing_doorbells_with_connection(
                     task_output_digest,plan_revision_id,status,doorbell_status,
                     current_attempt,materialized_input_id,materialized_event_id,resolved_at,
                     created_at,updated_at
-             FROM agent_org_runtime_formal_trigger_receipts receipt
+             FROM agent_org_execution_formal_trigger_receipts receipt
              WHERE receipt.status='pending' AND receipt.doorbell_status='missing'
                AND EXISTS (
-                   SELECT 1 FROM agent_org_runtime_runs run
+                   SELECT 1 FROM agent_org_execution_runs run
                    WHERE run.id=receipt.org_run_id AND run.status='running'
                )
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_runtime_formal_trigger_attempts attempt
+                   SELECT 1 FROM agent_org_execution_formal_trigger_attempts attempt
                    WHERE attempt.receipt_id=receipt.receipt_id
                      AND attempt.status IN ('queued','running')
                )
@@ -387,7 +387,7 @@ pub fn activity_with_connection(
             "SELECT
                  SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END),
                  SUM(CASE WHEN status='materialized' THEN 1 ELSE 0 END)
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1",
             [org_run_id],
             |row| {
@@ -402,7 +402,7 @@ pub fn activity_with_connection(
     let mut stmt = conn
         .prepare(
             "SELECT receipt_id
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1 AND status='pending'
              ORDER BY created_at,receipt_id LIMIT ?2",
         )
@@ -415,8 +415,8 @@ pub fn activity_with_connection(
     let coordinator_observing = conn
         .query_row(
             "SELECT EXISTS(
-                 SELECT 1 FROM agent_org_runtime_formal_trigger_attempts attempt
-                 JOIN agent_org_runtime_formal_trigger_receipts receipt
+                 SELECT 1 FROM agent_org_execution_formal_trigger_attempts attempt
+                 JOIN agent_org_execution_formal_trigger_receipts receipt
                    ON receipt.receipt_id=attempt.receipt_id
                  WHERE receipt.org_run_id=?1
                    AND attempt.status IN ('queued','running')
@@ -454,7 +454,7 @@ fn get_by_identity_with_connection(
                 task_output_digest,plan_revision_id,status,doorbell_status,
                 current_attempt,materialized_input_id,materialized_event_id,resolved_at,
                 created_at,updated_at
-         FROM agent_org_runtime_formal_trigger_receipts
+         FROM agent_org_execution_formal_trigger_receipts
          WHERE org_run_id=?1 AND trigger_kind=?2 AND trigger_id=?3 AND trigger_revision=?4",
         params![run_id, kind, id, revision],
         row_to_receipt,

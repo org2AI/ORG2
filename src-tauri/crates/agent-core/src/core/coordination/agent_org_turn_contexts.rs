@@ -20,7 +20,7 @@ const TASK_WAKE_CANDIDATE_LIMIT: i64 =
 const TASK_ASSISTANT_PERSISTENCE_TARGET_SQL: &str = "SELECT task.status,
             EXISTS(
                 SELECT 1
-                FROM agent_org_runtime_task_events event
+                FROM agent_org_execution_task_events event
                 WHERE event.org_run_id=task.org_run_id
                   AND event.task_id=task.id
                   AND event.previous_owner=?3
@@ -33,12 +33,12 @@ const TASK_ASSISTANT_PERSISTENCE_TARGET_SQL: &str = "SELECT task.status,
                   AND event.created_at=task.updated_at
                   AND event.rowid=(
                       SELECT MAX(latest.rowid)
-                      FROM agent_org_runtime_task_events latest
+                      FROM agent_org_execution_task_events latest
                       WHERE latest.org_run_id=task.org_run_id
                         AND latest.task_id=task.id
                   )
             )
-     FROM agent_org_runtime_tasks task
+     FROM agent_org_execution_tasks task
      WHERE task.org_run_id=?1 AND task.id=?2 AND task.owner=?3";
 
 pub(crate) const TURN_CONTEXT_INVARIANT_PREFIX: &str = "agent_org_turn_context_invalid:";
@@ -414,15 +414,15 @@ impl AgentOrgTurnAdmission {
 
 pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_member_dispatch_allocators (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_member_dispatch_allocators (
             org_run_id TEXT NOT NULL,
             member_id TEXT NOT NULL CHECK(length(trim(member_id)) > 0),
             next_sequence INTEGER NOT NULL CHECK(next_sequence >= 1),
             PRIMARY KEY(org_run_id, member_id),
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
         );
 
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_turn_contexts (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_turn_contexts (
             context_id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL CHECK(length(trim(session_id)) > 0),
             turn_intent_id TEXT NOT NULL CHECK(length(trim(turn_intent_id)) > 0),
@@ -453,7 +453,7 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                 REFERENCES session_turn_intents(session_id, turn_intent_id)
                 ON DELETE CASCADE,
             FOREIGN KEY(org_run_id)
-                REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
             CHECK(
                 (turn_kind='coordinator'
                  AND participant_id='coordinator'
@@ -508,20 +508,20 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                  ))
             )
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_runtime_turn_contexts_member_sequence
-            ON agent_org_runtime_turn_contexts(
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_turn_contexts_member_sequence
+            ON agent_org_execution_turn_contexts(
                 org_run_id, dispatch_member_id, member_dispatch_sequence
             )
             WHERE dispatch_member_id IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_turn_contexts_source
-            ON agent_org_runtime_turn_contexts(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_turn_contexts_source
+            ON agent_org_execution_turn_contexts(
                 org_run_id, source_kind, source_id, context_id
             );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_turn_contexts_group_root_session
-            ON agent_org_runtime_turn_contexts(session_id, context_id, source_id)
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_turn_contexts_group_root_session
+            ON agent_org_execution_turn_contexts(session_id, context_id, source_id)
             WHERE source_kind='group_root';
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_turn_contexts_public_timeline
-            ON agent_org_runtime_turn_contexts(org_run_id, created_at, context_id)
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_turn_contexts_public_timeline
+            ON agent_org_execution_turn_contexts(org_run_id, created_at, context_id)
             WHERE source_kind IN ('group_root','group_mention');",
     )
 }
@@ -540,7 +540,7 @@ pub(crate) fn member_dispatch_is_fifo_head_with_connection(
     conn.query_row(
         "SELECT NOT EXISTS(
              SELECT 1
-             FROM agent_org_runtime_turn_contexts earlier
+             FROM agent_org_execution_turn_contexts earlier
              JOIN session_turn_intents intent
                ON intent.session_id=earlier.session_id
               AND intent.turn_intent_id=earlier.turn_intent_id
@@ -658,11 +658,11 @@ fn has_live_pause_continuation(
     conn.query_row(
         "SELECT EXISTS(
              SELECT 1
-             FROM agent_org_runtime_pause_handoffs handoff
-             JOIN agent_org_runtime_pause_episodes episode
+             FROM agent_org_execution_pause_handoffs handoff
+             JOIN agent_org_execution_pause_episodes episode
                ON episode.episode_id=handoff.episode_id
-             JOIN agent_org_runtime_runs run ON run.id=handoff.org_run_id
-             JOIN agent_org_runtime_turn_contexts context
+             JOIN agent_org_execution_runs run ON run.id=handoff.org_run_id
+             JOIN agent_org_execution_turn_contexts context
                ON context.session_id=handoff.session_id
               AND context.turn_intent_id=handoff.continuation_turn_intent_id
              JOIN session_turn_intents intent
@@ -689,6 +689,7 @@ pub(crate) fn revalidate_context_with_connection(
     session_id: &str,
     turn_intent_id: &str,
 ) -> Result<AgentOrgTurnContext, String> {
+    super::agent_org_history_store::require_writable(conn, session_id)?;
     let context = revalidate_live_context_with_connection(conn, session_id, turn_intent_id)?;
     if context.turn_kind == AgentOrgTurnKind::TaskExecution {
         let task_id = context
@@ -712,6 +713,7 @@ pub(crate) fn revalidate_assistant_persistence_with_connection(
     session_id: &str,
     turn_intent_id: &str,
 ) -> Result<AgentOrgTurnContext, String> {
+    super::agent_org_history_store::require_writable(conn, session_id)?;
     let context = revalidate_live_context_with_connection(conn, session_id, turn_intent_id)?;
     validate_assistant_persistence_base_turn(conn, &context)?;
     if context.turn_kind == AgentOrgTurnKind::TaskExecution {
@@ -739,7 +741,7 @@ fn revalidate_live_context_with_connection(
     let run: Option<(Option<String>, Option<String>, i64, String)> = conn
         .query_row(
             "SELECT root_session_id, org_snapshot_json, activation_generation, status
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             [&context.org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -848,8 +850,8 @@ fn revalidate_live_context_with_connection(
                     .query_row(
                         "SELECT EXISTS(
                              SELECT 1
-                             FROM agent_org_runtime_user_directed_coordinator_bindings binding
-                             JOIN agent_org_runtime_inbox inbox ON inbox.id=binding.source_inbox_id
+                             FROM agent_org_execution_user_directed_coordinator_bindings binding
+                             JOIN agent_org_execution_inbox inbox ON inbox.id=binding.source_inbox_id
                              WHERE binding.org_run_id=?1
                                AND binding.session_id=?2
                                AND binding.turn_intent_id=?3
@@ -945,7 +947,7 @@ fn revalidate_live_context_with_connection(
                 AgentOrgTurnSourceKind::GroupMention | AgentOrgTurnSourceKind::MemberInbox => conn
                     .query_row(
                         "SELECT EXISTS(
-                             SELECT 1 FROM agent_org_runtime_inbox
+                             SELECT 1 FROM agent_org_execution_inbox
                              WHERE id=CAST(?1 AS INTEGER) AND org_run_id=?2
                                AND recipient_member_id=?3
                                AND delivery_class='user_directed'
@@ -966,7 +968,7 @@ fn revalidate_live_context_with_connection(
                 .query_row(
                     "SELECT EXISTS(
                          SELECT 1
-                         FROM agent_org_runtime_user_directed_deliveries delivery
+                         FROM agent_org_execution_user_directed_deliveries delivery
                          WHERE delivery.org_run_id=?1
                            AND delivery.session_id=?2
                            AND delivery.turn_intent_id=?3
@@ -1102,7 +1104,7 @@ pub(crate) fn unique_running_task_execution_turn_for_recovery(
     let mut statement = conn
         .prepare(
             "SELECT context.turn_intent_id
-             FROM agent_org_runtime_turn_contexts context
+             FROM agent_org_execution_turn_contexts context
              JOIN session_turn_intents base
                ON base.session_id=context.session_id
               AND base.turn_intent_id=context.turn_intent_id
@@ -1152,7 +1154,7 @@ fn resolve_next_task_wake_binding(
 ) -> Result<Option<TaskWakeBinding>, String> {
     let generation: Option<i64> = conn
         .query_row(
-            "SELECT activation_generation FROM agent_org_runtime_runs
+            "SELECT activation_generation FROM agent_org_execution_runs
              WHERE id=?1 AND status='running'",
             [org_run_id],
             |row| row.get(0),
@@ -1166,21 +1168,21 @@ fn resolve_next_task_wake_binding(
     let mut statement = conn
         .prepare(
             "SELECT id, payload_kind, payload_json
-             FROM agent_org_runtime_inbox
+             FROM agent_org_execution_inbox
              WHERE org_run_id=?1
                AND recipient_member_id=?2
                AND delivery_class='formal_work'
                AND read_at IS NULL
                AND payload_kind IN ('task_assigned','plan_approval_response')
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_task_execution_leases lease
+                   SELECT 1 FROM agent_org_execution_task_execution_leases lease
                    JOIN session_turn_intents intent USING(session_id,turn_intent_id)
-                   WHERE lease.continuation_receipt_id='inbox:' || agent_org_runtime_inbox.id
+                   WHERE lease.continuation_receipt_id='inbox:' || agent_org_execution_inbox.id
                      AND intent.status NOT IN ('queued','running','optimistic')
                )
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions resolution
-                   WHERE resolution.inbox_id=agent_org_runtime_inbox.id
+                   SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions resolution
+                   WHERE resolution.inbox_id=agent_org_execution_inbox.id
                )
              ORDER BY id ASC
              LIMIT ?3",
@@ -1313,13 +1315,13 @@ fn task_is_pending_and_ready(
     }
     conn.query_row(
         "SELECT EXISTS(
-             SELECT 1 FROM agent_org_runtime_tasks task
+             SELECT 1 FROM agent_org_execution_tasks task
              WHERE task.org_run_id=?1 AND task.id=?2
                AND task.owner=?3 AND task.status='pending'
                AND NOT EXISTS (
                    SELECT 1
                    FROM json_each(task.blocked_by_json) edge
-                   LEFT JOIN agent_org_runtime_tasks blocker
+                   LEFT JOIN agent_org_execution_tasks blocker
                      ON blocker.org_run_id=task.org_run_id
                     AND blocker.id=CAST(edge.value AS TEXT)
                    WHERE edge.type<>'text'
@@ -1342,13 +1344,13 @@ fn planning_revision_task(
 ) -> Result<Option<String>, String> {
     conn.query_row(
         "SELECT revision.source_task_id
-         FROM agent_org_runtime_plan_revisions revision
-         JOIN agent_org_runtime_plan_decisions decision
+         FROM agent_org_execution_plan_revisions revision
+         JOIN agent_org_execution_plan_decisions decision
            ON decision.plan_revision_id=revision.plan_revision_id
-         JOIN agent_org_runtime_tasks task
+         JOIN agent_org_execution_tasks task
            ON task.org_run_id=revision.org_run_id
           AND task.id=revision.source_task_id
-         JOIN agent_org_runtime_turn_contexts source_context
+         JOIN agent_org_execution_turn_contexts source_context
            ON source_context.session_id=revision.source_session_id
           AND source_context.turn_intent_id=revision.source_turn_intent_id
           AND source_context.org_run_id=revision.org_run_id
@@ -1379,7 +1381,7 @@ fn validate_task_execution_target(
 ) -> Result<(), String> {
     let target: Option<String> = conn
         .query_row(
-            "SELECT status FROM agent_org_runtime_tasks
+            "SELECT status FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND id=?2 AND owner=?3",
             params![org_run_id, task_id, owner_member_id],
             |row| row.get(0),
@@ -1471,6 +1473,7 @@ pub(crate) fn accept_with_connection(
     conn: &Connection,
     request: &AgentOrgTurnAdmission,
 ) -> Result<AgentOrgTurnContext, String> {
+    super::agent_org_history_store::require_writable(conn, &request.session_id)?;
     validate_non_empty(request)?;
 
     let base = read_base(conn, &request.session_id, &request.turn_intent_id)?;
@@ -1532,7 +1535,7 @@ pub(crate) fn accept_with_connection(
 
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
             session_id, turn_intent_id, org_run_id, participant_id, turn_kind,
             task_id, owner_member_id, dispatch_member_id, member_dispatch_sequence,
             source_kind, source_id, root_authority_turn_id, actor_version,
@@ -1650,7 +1653,7 @@ fn resolve_canonical_admission(
     let run: Option<(Option<String>, Option<String>, i64, String)> = conn
         .query_row(
             "SELECT root_session_id, org_snapshot_json, activation_generation, status
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             [&request.org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
@@ -1807,7 +1810,7 @@ fn resolve_canonical_admission(
             resolve_materialization_version(conn, request, owner_member_id, agent_id)?;
             let task_owner: Option<Option<String>> = conn
                 .query_row(
-                    "SELECT owner FROM agent_org_runtime_tasks
+                    "SELECT owner FROM agent_org_execution_tasks
                      WHERE org_run_id=?1 AND id=?2",
                     params![&request.org_run_id, task_id],
                     |row| row.get(0),
@@ -1978,7 +1981,7 @@ fn resolve_materialization_version(
     let version: Option<i64> = conn
         .query_row(
             "SELECT materialization.generation
-             FROM agent_org_runtime_member_materializations materialization
+             FROM agent_org_execution_member_materializations materialization
              JOIN agent_sessions session
                ON session.session_id=materialization.session_id
              WHERE materialization.org_run_id=?1
@@ -1990,7 +1993,7 @@ fn resolve_materialization_version(
                AND session.org_member_id=?2
                AND materialization.generation=(
                    SELECT MAX(latest.generation)
-                   FROM agent_org_runtime_member_materializations latest
+                   FROM agent_org_execution_member_materializations latest
                    WHERE latest.org_run_id=?1
                      AND latest.member_id=?2
                      AND latest.status='succeeded'
@@ -2023,7 +2026,7 @@ fn resolve_materialization_version_for_context(
     let version: Option<i64> = conn
         .query_row(
             "SELECT materialization.generation
-             FROM agent_org_runtime_member_materializations materialization
+             FROM agent_org_execution_member_materializations materialization
              JOIN agent_sessions session
                ON session.session_id=materialization.session_id
              WHERE materialization.org_run_id=?1
@@ -2035,7 +2038,7 @@ fn resolve_materialization_version_for_context(
                AND session.org_member_id=?2
                AND materialization.generation=(
                    SELECT MAX(latest.generation)
-                   FROM agent_org_runtime_member_materializations latest
+                   FROM agent_org_execution_member_materializations latest
                    WHERE latest.org_run_id=?1
                      AND latest.member_id=?2
                      AND latest.status='succeeded'
@@ -2080,7 +2083,7 @@ fn validate_source_inbox(
     let valid: bool = conn
         .query_row(
             "SELECT EXISTS(
-                SELECT 1 FROM agent_org_runtime_inbox
+                SELECT 1 FROM agent_org_execution_inbox
                 WHERE id=?1 AND org_run_id=?2 AND recipient_member_id=?3
                   AND delivery_class='user_directed'
              )",
@@ -2102,7 +2105,7 @@ fn allocate_member_sequence(
     member_id: &str,
 ) -> Result<i64, String> {
     conn.query_row(
-        "INSERT INTO agent_org_runtime_member_dispatch_allocators (
+        "INSERT INTO agent_org_execution_member_dispatch_allocators (
             org_run_id, member_id, next_sequence
          ) VALUES (?1, ?2, 2)
          ON CONFLICT(org_run_id, member_id) DO UPDATE
@@ -2367,7 +2370,7 @@ fn coordinator_wait_gate(
         let has_completion_certificate: bool = tx
             .query_row(
                 "SELECT EXISTS(
-                     SELECT 1 FROM agent_org_runtime_run_completion_certificates
+                     SELECT 1 FROM agent_org_execution_run_completion_certificates
                      WHERE org_run_id=?1
                        AND coordinator_session_id=?2
                        AND coordinator_turn_intent_id=?3
@@ -2383,7 +2386,7 @@ fn coordinator_wait_gate(
         let work_revision: i64 = tx
             .query_row(
                 "SELECT work_revision
-                 FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+                 FROM agent_org_execution_run_progress WHERE org_run_id=?1",
                 [org_run_id],
                 |row| row.get(0),
             )
@@ -2391,7 +2394,7 @@ fn coordinator_wait_gate(
         let newer_formal_fact: bool = tx
             .query_row(
                 "SELECT EXISTS(
-                     SELECT 1 FROM agent_org_runtime_formal_trigger_receipts
+                     SELECT 1 FROM agent_org_execution_formal_trigger_receipts
                      WHERE org_run_id=?1 AND status='pending'
                  )",
                 [org_run_id],
@@ -2410,20 +2413,20 @@ fn coordinator_wait_gate(
                 .query_row(
                     "SELECT EXISTS(
                          SELECT 1
-                         FROM agent_org_runtime_runs run
-                         JOIN agent_org_runtime_initial_inputs initial
+                         FROM agent_org_execution_runs run
+                         JOIN agent_org_execution_initial_inputs initial
                            ON initial.org_run_id=run.id
                          WHERE run.id=?1
                            AND run.root_session_id=?2
                            AND run.has_initial_work=1
                            AND initial.turn_intent_id=?3
                            AND NOT EXISTS (
-                               SELECT 1 FROM agent_org_runtime_tasks task
+                               SELECT 1 FROM agent_org_execution_tasks task
                                WHERE task.org_run_id=run.id
                            )
                            AND NOT EXISTS (
                                SELECT 1
-                               FROM agent_org_runtime_run_completion_certificates certificate
+                               FROM agent_org_execution_run_completion_certificates certificate
                                WHERE certificate.org_run_id=run.id
                            )
                      )",
@@ -2437,7 +2440,7 @@ fn coordinator_wait_gate(
         }
         let updated = tx
             .execute(
-                "UPDATE agent_org_runtime_turn_contexts
+                "UPDATE agent_org_execution_turn_contexts
                  SET terminal_reason='waiting_for_org_event'
                  WHERE org_run_id=?1 AND session_id=?2 AND turn_intent_id=?3
                    AND turn_kind='coordinator'
@@ -2495,7 +2498,7 @@ pub(crate) fn claim_coordinator_task_observation(
         let work_revision: i64 = tx
             .query_row(
                 "SELECT work_revision
-                 FROM agent_org_runtime_run_progress WHERE org_run_id=?1",
+                 FROM agent_org_execution_run_progress WHERE org_run_id=?1",
                 [org_run_id],
                 |row| row.get(0),
             )
@@ -2503,7 +2506,7 @@ pub(crate) fn claim_coordinator_task_observation(
         let newer_formal_fact: bool = tx
             .query_row(
                 "SELECT EXISTS(
-                     SELECT 1 FROM agent_org_runtime_formal_trigger_receipts
+                     SELECT 1 FROM agent_org_execution_formal_trigger_receipts
                      WHERE org_run_id=?1 AND status='pending'
                  )",
                 [org_run_id],
@@ -2522,7 +2525,7 @@ pub(crate) fn claim_coordinator_task_observation(
             .any(|observed| observed == task_id)
         {
             tx.execute(
-                "UPDATE agent_org_runtime_turn_contexts
+                "UPDATE agent_org_execution_turn_contexts
                  SET terminal_reason='waiting_for_org_event'
                  WHERE context_id=?1 AND terminal_reason IS NULL",
                 [context.context_id],
@@ -2540,7 +2543,7 @@ pub(crate) fn claim_coordinator_task_observation(
         observed.push(task_id.to_string());
         let observed_json = serde_json::to_string(&observed).map_err(|error| error.to_string())?;
         tx.execute(
-            "UPDATE agent_org_runtime_turn_contexts
+            "UPDATE agent_org_execution_turn_contexts
              SET coordinator_observed_task_ids_json=?2
              WHERE context_id=?1 AND terminal_reason IS NULL",
             params![context.context_id, observed_json],
@@ -2599,7 +2602,7 @@ fn group_root_source_event_ids_for_session_with_connection(
     let mut stmt = conn
         .prepare_cached(
             "SELECT source_id
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE session_id=?1 AND source_kind='group_root'
              ORDER BY context_id ASC",
         )
@@ -2647,7 +2650,7 @@ pub(crate) fn validate_formal_turn_generation_with_connection(
     }
     let run: Option<(String, i64)> = conn
         .query_row(
-            "SELECT status,activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status,activation_generation FROM agent_org_execution_runs WHERE id=?1",
             [&context.org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -2685,7 +2688,7 @@ fn read_context_optional(
                 activation_generation, coordinator_work_revision,
                 coordinator_observed_task_ids_json,
                 terminal_reason, created_at
-         FROM agent_org_runtime_turn_contexts
+         FROM agent_org_execution_turn_contexts
          WHERE session_id=?1 AND turn_intent_id=?2",
         params![session_id, turn_intent_id],
         decode_context,
@@ -2758,7 +2761,7 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                     context.coordinator_observed_task_ids_json,
                     context.terminal_reason,
                     context.created_at
-             FROM agent_org_runtime_turn_contexts context
+             FROM agent_org_execution_turn_contexts context
              JOIN session_turn_intents intent
                ON intent.session_id=context.session_id
               AND intent.turn_intent_id=context.turn_intent_id
@@ -2776,7 +2779,7 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
     let now = chrono::Utc::now().to_rfc3339();
     let abandoned = conn
         .execute(
-            "UPDATE agent_org_runtime_member_intervention_turns AS chain
+            "UPDATE agent_org_execution_member_intervention_turns AS chain
              SET status='abandoned',terminal_at=?1,failure_reason='app_restart_after_start'
              WHERE chain.status='running'
                AND EXISTS (
@@ -2789,12 +2792,12 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
         )
         .map_err(|error| error.to_string())?;
     conn.execute(
-        "UPDATE agent_org_member_turn_admissions AS admission
+        "UPDATE agent_org_execution_member_turn_admissions AS admission
          SET status='unknown',reason_code='app_restart_after_start',
              terminal_at=?1,updated_at=?1
          WHERE admission.status='committed'
            AND EXISTS (
-               SELECT 1 FROM agent_org_runtime_member_intervention_turns chain
+               SELECT 1 FROM agent_org_execution_member_intervention_turns chain
                WHERE chain.session_id=admission.session_id
                  AND chain.turn_intent_id=admission.turn_intent_id
                  AND chain.status='abandoned'
@@ -2809,7 +2812,7 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
          WHERE intent.status='running'
            AND EXISTS (
                SELECT 1
-               FROM agent_org_runtime_member_intervention_turns chain
+               FROM agent_org_execution_member_intervention_turns chain
                    WHERE chain.session_id=intent.session_id
                  AND chain.turn_intent_id=intent.turn_intent_id
                  AND chain.status='abandoned'
@@ -2818,11 +2821,11 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
     )
     .map_err(|error| error.to_string())?;
     conn.execute(
-        "UPDATE agent_org_runtime_member_interventions AS intervention
+        "UPDATE agent_org_execution_member_interventions AS intervention
          SET failure_reason='user_directed_turn_abandoned_after_restart',updated_at=?1
          WHERE intervention.status IN ('yield_requested','active','return_requested')
            AND EXISTS (
-               SELECT 1 FROM agent_org_runtime_member_intervention_turns chain
+               SELECT 1 FROM agent_org_execution_member_intervention_turns chain
                WHERE chain.intervention_receipt_id=intervention.intervention_receipt_id
                  AND chain.status='abandoned'
            )",
@@ -2840,10 +2843,11 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
             "UPDATE session_turn_intents AS intent
              SET status='failed',updated_at=?1
              WHERE intent.org_run_id IS NOT NULL
+               AND EXISTS (SELECT 1 FROM agent_org_execution_runs current_run WHERE current_run.id=intent.org_run_id)
                AND intent.status='running'
                AND EXISTS (
                    SELECT 1
-                   FROM agent_org_runtime_turn_contexts context
+                   FROM agent_org_execution_turn_contexts context
                    WHERE context.session_id=intent.session_id
                      AND context.turn_intent_id=intent.turn_intent_id
                      AND context.turn_kind='coordinator'
@@ -2867,7 +2871,7 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                             ORDER BY
                               CASE WHEN EXISTS (
                                   SELECT 1
-                                  FROM agent_org_runtime_task_events event
+                                  FROM agent_org_execution_task_events event
                                   WHERE event.org_run_id=context.org_run_id
                                     AND event.task_id=context.task_id
                                     AND event.previous_status='pending'
@@ -2875,7 +2879,7 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                                     AND event.source_turn_intent_id=context.turn_intent_id
                                     AND event.rowid=(
                                         SELECT MAX(latest.rowid)
-                                        FROM agent_org_runtime_task_events latest
+                                        FROM agent_org_execution_task_events latest
                                         WHERE latest.org_run_id=context.org_run_id
                                           AND latest.task_id=context.task_id
                                           AND latest.previous_status='pending'
@@ -2884,7 +2888,7 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                               ) THEN 0 ELSE 1 END,
                               context.context_id DESC
                         ) AS authority_rank
-                 FROM agent_org_runtime_turn_contexts context
+                 FROM agent_org_execution_turn_contexts context
                  JOIN session_turn_intents intent
                    ON intent.session_id=context.session_id
                   AND intent.turn_intent_id=context.turn_intent_id
@@ -2893,7 +2897,7 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                    AND context.activation_generation IS NOT NULL
                    AND intent.status IN ('optimistic','queued','running')
              )
-             INSERT OR IGNORE INTO agent_org_task_execution_reconciliations (
+             INSERT OR IGNORE INTO agent_org_execution_task_execution_reconciliations (
                  context_id,org_run_id,task_id,activation_generation,session_id,
                  turn_intent_id,disposition,reason_code,reconciled_at
              )
@@ -2909,9 +2913,10 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
              SET status=CASE WHEN intent.status='running' THEN 'failed' ELSE 'stale' END,
                  updated_at=?1
              WHERE intent.org_run_id IS NOT NULL
+               AND EXISTS (SELECT 1 FROM agent_org_execution_runs current_run WHERE current_run.id=intent.org_run_id)
                AND intent.status IN ('optimistic','queued','running')
                AND EXISTS (
-                   SELECT 1 FROM agent_org_task_execution_reconciliations reconciliation
+                   SELECT 1 FROM agent_org_execution_task_execution_reconciliations reconciliation
                    WHERE reconciliation.session_id=intent.session_id
                      AND reconciliation.turn_intent_id=intent.turn_intent_id
                      AND reconciliation.reason_code='duplicate_execution_rejected'
@@ -2921,7 +2926,7 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
         .map_err(|error| error.to_string())?;
     let runtime_absent_yields = conn
         .execute(
-            "UPDATE agent_org_runtime_member_interventions
+            "UPDATE agent_org_execution_member_interventions
              SET status='active',yield_released_at=COALESCE(yield_released_at,?1),
                  failure_reason=COALESCE(failure_reason,'runtime_absent_after_restart'),
                  updated_at=?1
@@ -2934,17 +2939,18 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
             "UPDATE session_turn_intents AS intent
              SET status='stale', updated_at=?1
              WHERE intent.org_run_id IS NOT NULL
+               AND EXISTS (SELECT 1 FROM agent_org_execution_runs current_run WHERE current_run.id=intent.org_run_id)
                AND intent.status IN ('optimistic', 'queued')
                AND NOT (
                   intent.status='queued'
                   AND (
                    EXISTS (
                     SELECT 1
-                    FROM agent_org_runtime_initial_inputs initial
-                    JOIN agent_org_runtime_turn_contexts context
+                    FROM agent_org_execution_initial_inputs initial
+                    JOIN agent_org_execution_turn_contexts context
                       ON context.org_run_id=initial.org_run_id
                      AND context.turn_intent_id=initial.turn_intent_id
-                    JOIN agent_org_runtime_runs run
+                    JOIN agent_org_execution_runs run
                       ON run.id=initial.org_run_id
                     WHERE initial.org_run_id=intent.org_run_id
                       AND initial.turn_intent_id=intent.turn_intent_id
@@ -2959,13 +2965,13 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                    )
                    OR EXISTS (
                     SELECT 1
-                    FROM agent_org_runtime_pause_handoffs handoff
-                    JOIN agent_org_runtime_pause_episodes episode
+                    FROM agent_org_execution_pause_handoffs handoff
+                    JOIN agent_org_execution_pause_episodes episode
                       ON episode.episode_id=handoff.episode_id
-                    JOIN agent_org_runtime_turn_contexts context
+                    JOIN agent_org_execution_turn_contexts context
                       ON context.session_id=intent.session_id
                      AND context.turn_intent_id=intent.turn_intent_id
-                    JOIN agent_org_runtime_runs run
+                    JOIN agent_org_execution_runs run
                       ON run.id=handoff.org_run_id
                     WHERE handoff.org_run_id=intent.org_run_id
                       AND handoff.session_id=intent.session_id
@@ -2978,13 +2984,13 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                    )
                    OR EXISTS (
                     SELECT 1
-                    FROM agent_org_runtime_member_intervention_turns chain
-                    JOIN agent_org_runtime_member_interventions intervention
+                    FROM agent_org_execution_member_intervention_turns chain
+                    JOIN agent_org_execution_member_interventions intervention
                       ON intervention.intervention_receipt_id=chain.intervention_receipt_id
-                    JOIN agent_org_runtime_turn_contexts context
+                    JOIN agent_org_execution_turn_contexts context
                       ON context.session_id=chain.session_id
                      AND context.turn_intent_id=chain.turn_intent_id
-                    JOIN agent_org_runtime_runs run ON run.id=context.org_run_id
+                    JOIN agent_org_execution_runs run ON run.id=context.org_run_id
                     WHERE chain.session_id=intent.session_id
                       AND chain.turn_intent_id=intent.turn_intent_id
                       AND chain.status='queued'
@@ -2995,11 +3001,11 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                    )
                    OR EXISTS (
                     SELECT 1
-                    FROM agent_org_runtime_user_directed_deliveries delivery
-                    JOIN agent_org_runtime_turn_contexts context
+                    FROM agent_org_execution_user_directed_deliveries delivery
+                    JOIN agent_org_execution_turn_contexts context
                       ON context.session_id=delivery.session_id
                      AND context.turn_intent_id=delivery.turn_intent_id
-                    JOIN agent_org_runtime_runs run ON run.id=delivery.org_run_id
+                    JOIN agent_org_execution_runs run ON run.id=delivery.org_run_id
                     WHERE delivery.session_id=intent.session_id
                       AND delivery.turn_intent_id=intent.turn_intent_id
                       AND delivery.status='pending'
@@ -3008,11 +3014,11 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
                    )
                    OR EXISTS (
                     SELECT 1
-                    FROM agent_org_runtime_user_directed_coordinator_bindings binding
-                    JOIN agent_org_runtime_turn_contexts context
+                    FROM agent_org_execution_user_directed_coordinator_bindings binding
+                    JOIN agent_org_execution_turn_contexts context
                       ON context.session_id=binding.session_id
                      AND context.turn_intent_id=binding.turn_intent_id
-                    JOIN agent_org_runtime_runs run ON run.id=binding.org_run_id
+                    JOIN agent_org_execution_runs run ON run.id=binding.org_run_id
                     WHERE binding.session_id=intent.session_id
                       AND binding.turn_intent_id=intent.turn_intent_id
                       AND binding.status='pending'
@@ -3030,10 +3036,11 @@ pub fn reconcile_in_flight_after_restart(conn: &Connection) -> Result<usize, Str
         .query_row(
             "SELECT COUNT(*)
              FROM session_turn_intents intent
-             LEFT JOIN agent_org_runtime_turn_contexts context
+             LEFT JOIN agent_org_execution_turn_contexts context
                ON context.session_id=intent.session_id
               AND context.turn_intent_id=intent.turn_intent_id
              WHERE intent.org_run_id IS NOT NULL
+               AND EXISTS (SELECT 1 FROM agent_org_execution_runs current_run WHERE current_run.id=intent.org_run_id)
                AND intent.status='running'
                AND context.context_id IS NULL",
             [],

@@ -64,12 +64,12 @@ fn watchdog_pending_task_projection_never_materializes_plan_markdown() {
     // source id remains valid and proves the hot path does not decode it.
     let conn = get_connection().unwrap();
     conn.execute(
-        "DROP TRIGGER trg_agent_org_runtime_plan_revisions_immutable",
+        "DROP TRIGGER trg_agent_org_execution_plan_revisions_immutable",
         [],
     )
     .unwrap();
     conn.execute(
-        "UPDATE agent_org_runtime_plan_revisions
+        "UPDATE agent_org_execution_plan_revisions
          SET plan_content=CAST(X'80' AS TEXT)
          WHERE plan_revision_id=?1",
         params![&pending.plan_revision_id],

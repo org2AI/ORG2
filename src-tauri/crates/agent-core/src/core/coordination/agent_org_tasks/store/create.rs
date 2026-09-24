@@ -117,7 +117,7 @@ impl AgentOrgTaskStore {
             let mut candidate_tasks = list_tasks_with_conn(&tx, &params.org_run_id)?;
             let activation_generation: i64 = tx
                 .query_row(
-                    "SELECT activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+                    "SELECT activation_generation FROM agent_org_execution_runs WHERE id=?1",
                     [&params.org_run_id],
                     |row| row.get(0),
                 )
@@ -180,7 +180,7 @@ impl AgentOrgTaskStore {
             let output_json = encode_optional_json("task output", task.output.as_ref())?;
 
             tx.execute(
-                "INSERT INTO agent_org_runtime_tasks (
+                "INSERT INTO agent_org_execution_tasks (
                     id, org_run_id, activation_generation, subject, description, active_form, owner,
                     status, execution_mode, blocked_by_json, metadata_json,
                     output_json, failure_reason_json, cancel_reason_json,
@@ -374,7 +374,7 @@ impl AgentOrgTaskStore {
             let now = now_rfc3339();
             let activation_generation: i64 = tx
                 .query_row(
-                    "SELECT activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+                    "SELECT activation_generation FROM agent_org_execution_runs WHERE id=?1",
                     [&org_run_id],
                     |row| row.get(0),
                 )
@@ -419,7 +419,7 @@ impl AgentOrgTaskStore {
                 let metadata_json = encode_metadata(task.metadata.as_ref())?;
                 let output_json = encode_optional_json("task output", task.output.as_ref())?;
                 tx.execute(
-                        "INSERT INTO agent_org_runtime_tasks (
+                        "INSERT INTO agent_org_execution_tasks (
                         id, org_run_id, activation_generation, subject, description, active_form, owner,
                         status, execution_mode, blocked_by_json, metadata_json,
                         output_json, failure_reason_json, cancel_reason_json,

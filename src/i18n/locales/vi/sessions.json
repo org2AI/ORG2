@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "Cuộc trò chuyện phiên bản cũ, chỉ xem",
+    "savedContent": "Tin nhắn nhóm và kết quả đã lưu",
+    "unknownMember": "Thành viên không xác định",
+    "loading": "Đang tải lịch sử…",
+    "retry": "Thử lại",
+    "empty": "Không có nội dung nhóm đã lưu",
+    "nextPage": "Trang tiếp theo",
+    "firstPage": "Trang đầu"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "Yêu cầu của người dùng",

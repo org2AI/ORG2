@@ -6,6 +6,7 @@ interface SessionVisibilityInput {
   parentSessionId?: string;
   parent_session_id?: string | null;
   agentOrgId?: string;
+  agentOrgMode?: "current" | "history_only";
   /**
    * Imported-history rows are read-only. The helper does not consult this
    * field — a child session stays hidden regardless — but the interface
@@ -35,5 +36,9 @@ export function isPrimarySessionListSession(
     hasParentSessionId ||
     session.session_id.includes(SUBAGENT_SESSION_ID_SEGMENT);
   if (isChildSession) return false;
-  return !session.orgMemberId || Boolean(session.agentOrgId);
+  return (
+    !session.orgMemberId ||
+    Boolean(session.agentOrgId) ||
+    session.agentOrgMode === "history_only"
+  );
 }

@@ -136,7 +136,7 @@ pub fn load_team_for_run(conn: &Connection, run_id: &str) -> Result<AgentOrgTeam
     let run: Option<AgentOrgRunOwnershipRow> = conn
         .query_row(
             "SELECT root_session_id,status,activation_generation,archived_at,archive_receipt_id
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             [run_id],
             |row| {
                 Ok(AgentOrgRunOwnershipRow {
@@ -174,7 +174,7 @@ pub fn load_team_for_run(conn: &Connection, run_id: &str) -> Result<AgentOrgTeam
 fn run_ids_for_root(conn: &Connection, root_session_id: &str) -> Result<Vec<String>, String> {
     let mut statement = conn
         .prepare(
-            "SELECT id FROM agent_org_runtime_runs
+            "SELECT id FROM agent_org_execution_runs
              WHERE root_session_id=?1 ORDER BY id",
         )
         .map_err(|error| error.to_string())?;
@@ -211,7 +211,7 @@ fn load_owned_sessions(
              SELECT descendant.session_id,descendant.parent_session_id,
                     descendant.org_member_id,descendant.status,descendant.depth,
                     descendant.cycle,
-                    (SELECT nested.id FROM agent_org_runtime_runs nested
+                    (SELECT nested.id FROM agent_org_execution_runs nested
                      WHERE nested.id<>?2
                        AND nested.root_session_id=descendant.session_id
                      ORDER BY nested.id LIMIT 1),

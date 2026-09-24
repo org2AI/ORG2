@@ -71,8 +71,8 @@ fn task_assignment_is_materialized_for_turn(
         .prepare(
             "SELECT EXISTS(
                  SELECT 1
-                 FROM agent_org_runtime_inbox inbox
-                 JOIN agent_org_runtime_inbox_materializations materialization
+                 FROM agent_org_execution_inbox inbox
+                 JOIN agent_org_execution_inbox_materializations materialization
                    ON materialization.inbox_id=inbox.id
                   AND materialization.session_id=?2
                  WHERE inbox.id=?1
@@ -86,7 +86,7 @@ fn task_assignment_is_materialized_for_turn(
                    AND json_extract(inbox.payload_json,'$.task_id')=?5
                    AND NOT EXISTS (
                        SELECT 1
-                       FROM agent_org_runtime_inbox_delivery_resolutions resolution
+                       FROM agent_org_execution_inbox_delivery_resolutions resolution
                        WHERE resolution.inbox_id=inbox.id
                    )
              )",
@@ -903,7 +903,7 @@ impl AgentOrgTaskStore {
     ) -> Result<(TaskMutationOutcome, T), String> {
         let current_status: Option<String> = conn
             .query_row(
-                "SELECT status FROM agent_org_runtime_tasks
+                "SELECT status FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND id=?2",
                 params![org_run_id, task_id],
                 |row| row.get(0),
@@ -1298,7 +1298,7 @@ impl AgentOrgTaskStore {
     ) -> Result<(), String> {
         let replaced_status: Option<String> = tx
             .query_row(
-                "SELECT status FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND id=?2",
+                "SELECT status FROM agent_org_execution_tasks WHERE org_run_id=?1 AND id=?2",
                 params![org_run_id, replaced_id],
                 |row| row.get(0),
             )
@@ -1349,7 +1349,7 @@ fn insert_task_row(tx: &rusqlite::Connection, task: &Task) -> Result<(), String>
     let cancel_reason_json =
         encode_optional_json("task cancel reason", task.cancel_reason.as_ref())?;
     tx.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
             id, org_run_id, activation_generation, subject, description, active_form, owner, status,
             execution_mode, blocked_by_json, metadata_json, output_json,
             failure_reason_json, cancel_reason_json, created_by_participant_id,
@@ -1423,9 +1423,9 @@ fn ensure_no_active_episode_semantic_duplicate(
         return Ok(());
     };
     let sql = format!(
-        "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks
+        "SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks
          WHERE org_run_id=?1 AND id IN (
-             SELECT task_id FROM agent_org_runtime_work_episode_tasks
+             SELECT task_id FROM agent_org_execution_work_episode_tasks
              WHERE org_run_id=?1 AND work_episode_id=?2
          )"
     );
@@ -1545,7 +1545,7 @@ fn update_task_row(tx: &rusqlite::Connection, task: &Task) -> Result<(), String>
         encode_optional_json("task cancel reason", task.cancel_reason.as_ref())?;
     let changed = tx
         .execute(
-            "UPDATE agent_org_runtime_tasks SET
+            "UPDATE agent_org_execution_tasks SET
                 subject=?1, description=?2, active_form=?3, owner=?4, status=?5,
                 execution_mode=?6, blocked_by_json=?7, metadata_json=?8,
                 output_json=?9, failure_reason_json=?10, cancel_reason_json=?11,
@@ -1572,6 +1572,7 @@ fn update_task_row(tx: &rusqlite::Connection, task: &Task) -> Result<(), String>
     if changed != 1 {
         return Err(format!("task_not_found: {}", task.id));
     }
+    crate::coordination::agent_org_history_store::mirror_task_output(tx, task)?;
     Ok(())
 }
 
@@ -1606,7 +1607,7 @@ fn mutate_lifecycle_in_tx<T>(
 ) -> Result<(TaskMutationOutcome, T), String> {
     ensure_run_allows_task_mutation(conn, org_run_id)?;
     let sql = format!(
-        "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks
+        "SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks
          WHERE org_run_id=?1 AND id=?2"
     );
     let previous: Task = conn

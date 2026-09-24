@@ -17,11 +17,11 @@ pub(super) fn active_episode_task_counts(
         "SELECT COUNT(*),
                 COALESCE(SUM(CASE WHEN task.status IN ('pending','in_progress')
                                   THEN 1 ELSE 0 END),0)
-         FROM agent_org_runtime_tasks task
-         JOIN agent_org_runtime_work_episode_tasks episode_task
+         FROM agent_org_execution_tasks task
+         JOIN agent_org_execution_work_episode_tasks episode_task
            ON episode_task.org_run_id=task.org_run_id
           AND episode_task.task_id=task.id
-         JOIN agent_org_runtime_work_episodes episode
+         JOIN agent_org_execution_work_episodes episode
            ON episode.id=episode_task.work_episode_id
           AND episode.org_run_id=episode_task.org_run_id
          WHERE task.org_run_id=?1 AND episode.status='active'",
@@ -38,7 +38,7 @@ pub(super) fn exact_member_turn_task_id(
     source_turn_intent_id: &str,
 ) -> Result<Option<String>, String> {
     conn.query_row(
-        "SELECT task_id FROM agent_org_runtime_turn_contexts
+        "SELECT task_id FROM agent_org_execution_turn_contexts
          WHERE org_run_id=?1 AND participant_id=?2
            AND turn_kind='task_execution' AND turn_intent_id=?3",
         params![run_id, member_id, source_turn_intent_id],
@@ -109,7 +109,7 @@ impl AgentInboxStore {
                 .map_err(|err| err.to_string())?;
             let run_running: bool = tx
                 .query_row(
-                    "SELECT EXISTS(SELECT 1 FROM agent_org_runtime_runs
+                    "SELECT EXISTS(SELECT 1 FROM agent_org_execution_runs
                      WHERE id=?1 AND status='running')",
                     params![&run_id],
                     |row| row.get(0),
@@ -127,7 +127,7 @@ impl AgentInboxStore {
             // Metadata only: retain the exact caller's execution, never infer
             // the source from whichever Turn happens to be running now.
             tx.execute(
-                "UPDATE agent_org_runtime_inbox SET source_turn_intent_id=?2 WHERE id=?1",
+                "UPDATE agent_org_execution_inbox SET source_turn_intent_id=?2 WHERE id=?1",
                 params![record.id, source_turn_intent_id],
             )
             .map_err(|e| e.to_string())?;
@@ -277,7 +277,7 @@ impl AgentInboxStore {
         if let Some(org_run_id) = params.org_run_id.as_deref() {
             let status: Option<String> = conn
                 .query_row(
-                    "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+                    "SELECT status FROM agent_org_execution_runs WHERE id=?1",
                     [org_run_id],
                     |row| row.get(0),
                 )
@@ -305,7 +305,7 @@ impl AgentInboxStore {
         let now = chrono::Utc::now().to_rfc3339();
 
         let insert_sql = if causation_inbox_id.is_some() {
-            "INSERT OR IGNORE INTO agent_org_runtime_inbox (
+            "INSERT OR IGNORE INTO agent_org_execution_inbox (
                     recipient_agent_id,
                     recipient_member_id,
                     sender_agent_id,
@@ -319,7 +319,7 @@ impl AgentInboxStore {
                     causation_inbox_id
                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL, ?10)"
         } else {
-            "INSERT INTO agent_org_runtime_inbox (
+            "INSERT INTO agent_org_execution_inbox (
                     recipient_agent_id,
                     recipient_member_id,
                     sender_agent_id,
@@ -368,7 +368,7 @@ impl AgentInboxStore {
                             request_id,
                             created_at,
                             read_at
-                     FROM agent_org_runtime_inbox
+                     FROM agent_org_execution_inbox
                      WHERE causation_inbox_id = ?1
                        AND payload_kind = ?2
                        AND recipient_agent_id = ?3
@@ -409,7 +409,7 @@ impl AgentInboxStore {
                     } = &params.message
                     {
                         let raw: Option<String> = conn.query_row(
-                            "SELECT output_json FROM agent_org_runtime_tasks WHERE org_run_id=?1 AND id=?2",
+                            "SELECT output_json FROM agent_org_execution_tasks WHERE org_run_id=?1 AND id=?2",
                             params![org_run_id, task_id], |row| row.get(0))
                             .optional().map_err(|e| e.to_string())?.flatten();
                         raw.map(|raw| serde_json::from_str::<crate::coordination::agent_org_tasks::TaskOutput>(&raw)
@@ -433,7 +433,7 @@ impl AgentInboxStore {
                     )?;
                     if suppress_self_wake {
                         conn.execute(
-                            "UPDATE agent_org_runtime_inbox
+                            "UPDATE agent_org_execution_inbox
                              SET read_at=?2 WHERE id=?1 AND read_at IS NULL",
                             rusqlite::params![id, chrono::Utc::now().to_rfc3339()],
                         )

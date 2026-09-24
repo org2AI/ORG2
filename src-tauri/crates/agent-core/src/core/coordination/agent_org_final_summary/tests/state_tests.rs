@@ -59,7 +59,7 @@ fn summary_claim_requires_its_exact_formal_trigger_in_the_same_transaction() {
     let mut conn = database::db::get_connection().expect("summary database");
     let tx = conn.transaction().expect("summary claim transaction");
     tx.execute(
-        "DELETE FROM agent_org_runtime_formal_trigger_receipts
+        "DELETE FROM agent_org_execution_formal_trigger_receipts
          WHERE org_run_id=?1 AND trigger_kind='final_summary'",
         [&fixture.run_id],
     )

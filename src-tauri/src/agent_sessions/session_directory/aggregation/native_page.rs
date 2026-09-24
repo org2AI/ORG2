@@ -215,6 +215,7 @@ fn plain_directory_page(
     let sql = format!(
         "SELECT session_id, source FROM orgtrack_core_sessions
          WHERE source IN ({placeholders})
+           AND NOT EXISTS (SELECT 1 FROM org_history_copies c WHERE c.copy_session_id=orgtrack_core_sessions.session_id)
          ORDER BY updated_at DESC LIMIT ?{limit_idx} OFFSET ?{offset_idx}",
         limit_idx = sources.len() + 1,
         offset_idx = sources.len() + 2,

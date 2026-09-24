@@ -22,7 +22,7 @@ fn thousand_pending_facts_still_materialize_one_bounded_batch() {
             "SELECT
                 SUM(CASE WHEN status='materialized' THEN 1 ELSE 0 END),
                 SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END)
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1",
             [&fixture.run_id],
             |row| Ok((row.get(0)?, row.get(1)?)),

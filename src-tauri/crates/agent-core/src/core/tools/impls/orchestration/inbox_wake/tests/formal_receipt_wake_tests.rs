@@ -18,7 +18,7 @@ fn unstarted_wakes_refund_exact_reservations_without_reviving_older_tokens() {
         };
     let count = || {
         conn.query_row(
-        "SELECT COUNT(*) FROM agent_org_runtime_recovery_attempts WHERE org_run_id='unstarted-run'",
+        "SELECT COUNT(*) FROM agent_org_execution_recovery_attempts WHERE org_run_id='unstarted-run'",
         [], |row| row.get::<_, i64>(0),
     ).unwrap()
     };
@@ -48,7 +48,7 @@ fn unstarted_wakes_refund_exact_reservations_without_reviving_older_tokens() {
     let next = reserve("new-empty-input");
     drop(next);
     let (fingerprint, token): (String, Option<String>) = conn.query_row(
-        "SELECT reason_fingerprint,reservation_token FROM agent_org_runtime_recovery_attempts WHERE org_run_id='unstarted-run'",
+        "SELECT reason_fingerprint,reservation_token FROM agent_org_execution_recovery_attempts WHERE org_run_id='unstarted-run'",
         [], |row| Ok((row.get(0)?,row.get(1)?)),
     ).unwrap();
     assert_eq!(fingerprint, "actual-provider-work");
@@ -72,9 +72,9 @@ fn reservation_storage_failure_remains_retryable_error() {
     else {
         panic!("reservation deferred");
     };
-    conn.execute_batch("CREATE TRIGGER reject_refund BEFORE DELETE ON agent_org_runtime_recovery_attempts BEGIN SELECT RAISE(ABORT,'controlled storage failure'); END;").unwrap();
+    conn.execute_batch("CREATE TRIGGER reject_refund BEFORE DELETE ON agent_org_execution_recovery_attempts BEGIN SELECT RAISE(ABORT,'controlled storage failure'); END;").unwrap();
     assert!(refund_member_rewake_reservation(&reservation).is_err());
-    assert!(conn.query_row("SELECT reservation_token IS NOT NULL FROM agent_org_runtime_recovery_attempts WHERE org_run_id='refund-error'",[],|row|row.get::<_,bool>(0)).unwrap());
+    assert!(conn.query_row("SELECT reservation_token IS NOT NULL FROM agent_org_execution_recovery_attempts WHERE org_run_id='refund-error'",[],|row|row.get::<_,bool>(0)).unwrap());
     conn.execute_batch("DROP TRIGGER reject_refund;").unwrap();
     assert!(refund_member_rewake_reservation(&reservation).unwrap());
 }

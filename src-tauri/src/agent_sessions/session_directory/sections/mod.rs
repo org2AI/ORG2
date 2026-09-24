@@ -34,7 +34,14 @@ fn lookup(
         return Ok(Some(row));
     }
     if let Some(record) = persistence::get_session(id).map_err(|e| e.to_string())? {
-        if record.parent_session_id.is_some() || record.status == "archived" {
+        let history = agent_core::coordination::agent_org_history_store::descriptor(conn, id)
+            .map_err(|error| error.to_string())?;
+        let historical_root = history.as_ref().is_some_and(|identity| {
+            identity.mode
+                == agent_core::coordination::agent_org_history_store::HistoryMode::HistoryOnly
+                && identity.root_session_id.as_deref() == Some(id)
+        });
+        if record.parent_session_id.is_some() || (record.status == "archived" && !historical_root) {
             return Ok(None);
         }
         let mut resolver = AgentMetadataResolver::new();
@@ -46,7 +53,10 @@ fn lookup(
         };
         if let Some(mut row) = row {
             super::aggregation::annotate_agent_org_root_rows(std::slice::from_mut(&mut row))?;
-            if row.org_member_id.is_some() && row.agent_org_id.is_none() {
+            if row.org_member_id.is_some()
+                && row.agent_org_id.is_none()
+                && row.agent_org_mode.is_none()
+            {
                 return Ok(None);
             }
             return Ok(Some(row));

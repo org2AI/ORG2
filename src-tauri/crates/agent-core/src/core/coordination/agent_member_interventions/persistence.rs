@@ -4,7 +4,7 @@ use super::{AgentMemberInterventionRecord, AppliedReturnToWorkOutcome, MemberInt
 
 pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_member_interventions (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_member_interventions (
             intervention_receipt_id TEXT PRIMARY KEY,
             org_run_id TEXT NOT NULL,
             member_id TEXT NOT NULL CHECK(length(trim(member_id)) > 0),
@@ -33,27 +33,27 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
             cleared_at TEXT,
             failure_reason TEXT,
             updated_at TEXT NOT NULL,
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
             CHECK((runtime_lease_id IS NULL) = (dialog_turn_generation IS NULL)),
             CHECK((original_task_id IS NULL) = (original_turn_intent_id IS NULL)),
             CHECK((cleared_at IS NULL) = (status NOT IN ('cleared','failed')))
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_member_intervention_active
-            ON agent_org_runtime_member_interventions(org_run_id, member_id)
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_member_intervention_active
+            ON agent_org_execution_member_interventions(org_run_id, member_id)
             WHERE status IN ('yield_requested','active','return_requested');
-        CREATE INDEX IF NOT EXISTS idx_agent_org_member_intervention_session
-            ON agent_org_runtime_member_interventions(session_id, status, updated_at);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_member_intervention_return_request
-            ON agent_org_runtime_member_interventions(org_run_id, return_request_id)
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_member_intervention_session
+            ON agent_org_execution_member_interventions(session_id, status, updated_at);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_member_intervention_return_request
+            ON agent_org_execution_member_interventions(org_run_id, return_request_id)
             WHERE return_request_id IS NOT NULL;
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_member_intervention_continuation
-            ON agent_org_runtime_member_interventions(session_id, continuation_turn_intent_id)
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_member_intervention_continuation
+            ON agent_org_execution_member_interventions(session_id, continuation_turn_intent_id)
             WHERE continuation_turn_intent_id IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_agent_org_member_intervention_public_timeline
-            ON agent_org_runtime_member_interventions(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_member_intervention_public_timeline
+            ON agent_org_execution_member_interventions(
                 org_run_id,cleared_at,intervention_receipt_id
             ) WHERE status='cleared';
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_member_intervention_turns (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_member_intervention_turns (
             intervention_receipt_id TEXT NOT NULL,
             session_id TEXT NOT NULL,
             turn_intent_id TEXT NOT NULL,
@@ -71,14 +71,14 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
             UNIQUE(intervention_receipt_id, chain_position),
             UNIQUE(source_event_id),
             FOREIGN KEY(intervention_receipt_id)
-                REFERENCES agent_org_runtime_member_interventions(intervention_receipt_id)
+                REFERENCES agent_org_execution_member_interventions(intervention_receipt_id)
                 ON DELETE CASCADE,
             FOREIGN KEY(session_id, turn_intent_id)
                 REFERENCES session_turn_intents(session_id, turn_intent_id)
                 ON DELETE CASCADE
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_member_intervention_turn_queue
-            ON agent_org_runtime_member_intervention_turns(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_member_intervention_turn_queue
+            ON agent_org_execution_member_intervention_turns(
                 intervention_receipt_id, status, member_dispatch_sequence
             );",
     )?;
@@ -90,7 +90,7 @@ pub(crate) fn create_schema(conn: &Connection) -> SqliteResult<()> {
 /// table on every startup and older builds safely preserve it.
 pub(crate) fn create_runtime_admission_schema(conn: &Connection) -> SqliteResult<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_member_turn_admissions (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_member_turn_admissions (
             session_id TEXT NOT NULL,
             turn_intent_id TEXT NOT NULL,
             org_run_id TEXT NOT NULL,
@@ -111,15 +111,15 @@ pub(crate) fn create_runtime_admission_schema(conn: &Connection) -> SqliteResult
                 REFERENCES session_turn_intents(session_id, turn_intent_id)
                 ON DELETE CASCADE,
             FOREIGN KEY(org_run_id)
-                REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE,
+                REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE,
             CHECK(
                 (status='prepared' AND committed_at IS NULL AND terminal_at IS NULL)
                 OR (status='committed' AND committed_at IS NOT NULL AND terminal_at IS NULL)
                 OR (status IN ('rejected','unknown') AND terminal_at IS NOT NULL)
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_member_turn_admission_recovery
-            ON agent_org_member_turn_admissions(status, updated_at);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_member_turn_admission_recovery
+            ON agent_org_execution_member_turn_admissions(status, updated_at);",
     )
 }
 
@@ -136,7 +136,7 @@ pub(super) const INTERVENTION_SELECT: &str = "SELECT
     intervention.original_member_dispatch_sequence,
     intervention.runtime_lease_id,
     intervention.dialog_turn_generation,
-    (SELECT COUNT(*) FROM agent_org_runtime_member_intervention_turns chain
+    (SELECT COUNT(*) FROM agent_org_execution_member_intervention_turns chain
       WHERE chain.intervention_receipt_id=intervention.intervention_receipt_id
         AND chain.status IN ('queued','running')),
     intervention.entered_at,
@@ -150,7 +150,7 @@ pub(super) const INTERVENTION_SELECT: &str = "SELECT
     intervention.cleared_revision,
     intervention.cleared_at,
     intervention.failure_reason
- FROM agent_org_runtime_member_interventions intervention";
+ FROM agent_org_execution_member_interventions intervention";
 
 pub(super) fn row_to_intervention(
     row: &rusqlite::Row<'_>,

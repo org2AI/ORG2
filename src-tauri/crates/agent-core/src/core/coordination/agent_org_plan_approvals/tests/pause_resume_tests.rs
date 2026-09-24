@@ -58,7 +58,7 @@ fn resumed_coordinator_can_approve_revision_authored_before_pause() {
     crate::coordination::agent_org_final_summary::create_schema(&conn)
         .expect("final summary schema");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_dispatch_allocators (
+        "INSERT INTO agent_org_execution_member_dispatch_allocators (
              org_run_id,member_id,next_sequence
          ) VALUES (?1,'planner',2)
          ON CONFLICT(org_run_id,member_id) DO UPDATE SET next_sequence=2",
@@ -70,7 +70,7 @@ fn resumed_coordinator_can_approve_revision_authored_before_pause() {
         ("planner", "planner-agent", "planner-session"),
     ] {
         conn.execute(
-            "INSERT INTO agent_org_runtime_member_materializations (
+            "INSERT INTO agent_org_execution_member_materializations (
                  org_run_id,member_id,agent_id,generation,session_id,
                  authority_class,status,created_at,updated_at
              ) VALUES (?1,?2,?3,1,?4,'formal','succeeded',?5,?5)",
@@ -119,7 +119,7 @@ fn resumed_coordinator_can_approve_revision_authored_before_pause() {
     let continuation_turn_id: String = conn
         .query_row(
             "SELECT continuation_turn_intent_id
-             FROM agent_org_runtime_pause_handoffs
+             FROM agent_org_execution_pause_handoffs
              WHERE episode_id=?1 AND turn_kind='coordinator'
                AND continuation_status='queued'",
             [&resumed.episode_id],
@@ -159,8 +159,8 @@ fn resumed_coordinator_can_approve_revision_authored_before_pause() {
     let (run_generation, actor_kind, actor_turn): (i64, String, Option<String>) = conn
         .query_row(
             "SELECT run.activation_generation,event.actor_kind,event.source_turn_intent_id
-             FROM agent_org_runtime_runs run
-             JOIN agent_org_runtime_task_events event ON event.org_run_id=run.id
+             FROM agent_org_execution_runs run
+             JOIN agent_org_execution_task_events event ON event.org_run_id=run.id
              WHERE run.id=?1 AND event.task_id=?2
                AND event.next_status='completed'
              ORDER BY event.created_at DESC LIMIT 1",

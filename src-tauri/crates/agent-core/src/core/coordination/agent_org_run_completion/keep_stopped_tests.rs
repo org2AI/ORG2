@@ -14,12 +14,12 @@ fn keep_stopped_closes_the_last_open_scope_as_cancelled() {
     crate::coordination::agent_org_task_handoffs::create_schema(&conn).unwrap();
     crate::coordination::agent_org_final_summary::create_schema(&conn).unwrap();
     conn.execute_batch(
-        r#"INSERT INTO agent_org_runtime_runs(
+        r#"INSERT INTO agent_org_execution_runs(
              id,org_id,coordinator_agent_id,root_session_id,entry_mode,status,
              activation_generation,created_at,updated_at
          ) VALUES ('run','org','coordinator-agent','root','standalone_session',
                    'running',3,'2026-08-28T00:00:00Z','2026-08-28T00:00:00Z');
-         INSERT INTO agent_org_runtime_tasks(
+         INSERT INTO agent_org_execution_tasks(
              id,org_run_id,activation_generation,subject,owner,status,execution_mode,
              cancel_reason_json,created_by_participant_id,source_turn_intent_id,
              created_at,updated_at
@@ -48,7 +48,7 @@ fn keep_stopped_closes_the_last_open_scope_as_cancelled() {
         episode
     );
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_execution_handoffs(
+        "INSERT INTO agent_org_execution_task_execution_handoffs(
              id,org_run_id,activation_generation,request_id,request_digest,
              old_task_id,old_owner_member_id,replacement_task_id,state,
              resolution,requested_at,released_at,resolved_at,updated_at
@@ -64,7 +64,7 @@ fn keep_stopped_closes_the_last_open_scope_as_cancelled() {
     let episode_state: (String, String, String) = conn
         .query_row(
             "SELECT status,outcome,certificate_id
-             FROM agent_org_runtime_work_episodes WHERE id=?1",
+             FROM agent_org_execution_work_episodes WHERE id=?1",
             [&episode],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -79,7 +79,7 @@ fn keep_stopped_closes_the_last_open_scope_as_cancelled() {
     );
     assert_eq!(
         conn.query_row(
-            "SELECT last_activity_outcome FROM agent_org_runtime_runs WHERE id='run'",
+            "SELECT last_activity_outcome FROM agent_org_execution_runs WHERE id='run'",
             [],
             |row| row.get::<_, String>(0),
         )
@@ -88,7 +88,7 @@ fn keep_stopped_closes_the_last_open_scope_as_cancelled() {
     );
     assert_eq!(
         conn.query_row(
-            "SELECT status FROM agent_org_runtime_final_summary_receipts
+            "SELECT status FROM agent_org_execution_final_summary_receipts
              WHERE certificate_id=?1",
             [&certificate.id],
             |row| row.get::<_, String>(0),

@@ -835,6 +835,8 @@ agent_core::state::commands::session::debug::org_runtime::debug_agent_org_emit_m
 agent_core::state::commands::session::debug::org_runtime::debug_agent_org_inbox_list,
 agent_core::state::commands::session::debug::org_runtime::debug_agent_org_tasks_list,
 agent_core::state::commands::session::org_tasks::agent_org_session_run_view,
+agent_core::state::commands::session::org_tasks::agent_org_history_descriptor,
+agent_core::state::commands::session::org_tasks::agent_org_history_page,
 agent_core::state::commands::session::org_tasks::agent_org_session_task_page,
 agent_core::state::commands::session::org_tasks::agent_org_session_task_detail,
 agent_core::state::commands::session::org_tasks::agent_org_session_task_annotation_page,

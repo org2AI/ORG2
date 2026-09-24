@@ -66,7 +66,7 @@ fn seed_run(run_id: &str, root_session_id: &str, status: &str, generation: i64) 
     database::db::get_connection()
         .expect("sandbox DB")
         .execute(
-            "INSERT INTO agent_org_runtime_runs (
+            "INSERT INTO agent_org_execution_runs (
                 id,org_id,coordinator_agent_id,root_session_id,org_snapshot_json,entry_mode,
                 status,activation_generation,created_at,updated_at
              ) VALUES (?1,'org-archive-test','coordinator-agent',?2,?3,
@@ -99,7 +99,7 @@ fn assert_archive_failure_rolled_back(run_id: &str, expected_error: &str) {
     );
     assert_eq!(
         scalar_string(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             run_id
         ),
         "running"
@@ -107,7 +107,7 @@ fn assert_archive_failure_rolled_back(run_id: &str, expected_error: &str) {
     let receipt_count: i64 = database::db::get_connection()
         .expect("sandbox DB")
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_archive_episodes WHERE org_run_id=?1",
+            "SELECT COUNT(*) FROM agent_org_execution_archive_episodes WHERE org_run_id=?1",
             [run_id],
             |row| row.get(0),
         )
@@ -127,7 +127,7 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     seed_run(run_id, root, "running", 1);
     let conn = database::db::get_connection().expect("sandbox DB");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
             id,org_run_id,activation_generation,subject,description,owner,status,execution_mode,
             blocked_by_json,created_by_participant_id,source_turn_intent_id,
             created_at,updated_at
@@ -144,7 +144,7 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     )
     .expect("seed Turn");
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox (
+        "INSERT INTO agent_org_execution_inbox (
             recipient_agent_id,recipient_member_id,sender_agent_id,sender_member_id,
             org_run_id,payload_kind,payload_json,created_at
          ) VALUES ('worker-agent','worker','coordinator-agent','coordinator',?1,
@@ -154,14 +154,14 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     .expect("seed Inbox");
     let inbox_id = conn.last_insert_rowid();
     conn.execute(
-        "INSERT INTO agent_org_runtime_inbox_materializations (
+        "INSERT INTO agent_org_execution_inbox_materializations (
             inbox_id,session_id,transcript_message_id,transcript_intent_id,materialized_at
          ) VALUES (?1,?2,'materialized-message','materialized-intent',?3)",
         params![inbox_id, member, "2026-08-23T00:00:00Z"],
     )
     .expect("seed Inbox materialization");
     conn.execute(
-        "INSERT INTO agent_org_runtime_plan_revisions (
+        "INSERT INTO agent_org_execution_plan_revisions (
             plan_revision_id,org_run_id,source_task_id,source_member_id,
             source_session_id,source_turn_intent_id,root_session_id,
             revision_number,plan_title,plan_path,plan_content,content_digest,created_at
@@ -173,14 +173,14 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     )
     .expect("seed Plan revision");
     conn.execute(
-        "INSERT INTO agent_org_runtime_plan_decisions (
+        "INSERT INTO agent_org_execution_plan_decisions (
             approval_id,plan_revision_id,request_id,policy,status,created_at
          ) VALUES ('approval-open','revision-open','approval-request','user','pending',?1)",
         params!["2026-08-23T00:00:00Z"],
     )
     .expect("seed Plan decision");
     conn.execute(
-        "INSERT INTO agent_org_runtime_turn_contexts (
+        "INSERT INTO agent_org_execution_turn_contexts (
             session_id,turn_intent_id,org_run_id,participant_id,turn_kind,task_id,
             owner_member_id,dispatch_member_id,member_dispatch_sequence,
             source_kind,source_id,activation_generation,created_at
@@ -190,7 +190,7 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     )
     .expect("seed Turn context");
     conn.execute(
-        "INSERT INTO agent_org_runtime_pause_episodes (
+        "INSERT INTO agent_org_execution_pause_episodes (
             episode_id,org_run_id,pause_request_id,pause_generation,status,
             teardown_owner_id,created_at,updated_at
          ) VALUES ('pause-open',?1,'pause-request',2,'active','pause-owner',?2,?2)",
@@ -198,7 +198,7 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     )
     .expect("seed Pause episode");
     conn.execute(
-        "INSERT INTO agent_org_runtime_pause_handoffs (
+        "INSERT INTO agent_org_execution_pause_handoffs (
             handoff_id,episode_id,org_run_id,session_id,original_turn_intent_id,
             turn_kind,participant_id,task_id,original_owner_member_id,
             original_activation_generation,original_intent_status,drain_status,
@@ -212,7 +212,7 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     )
     .expect("seed queued Pause continuation");
     conn.execute(
-        "INSERT INTO agent_org_runtime_member_interventions (
+        "INSERT INTO agent_org_execution_member_interventions (
             intervention_receipt_id,org_run_id,member_id,agent_id,session_id,
             status,source_event_id,entered_at,last_user_activity_at,updated_at
          ) VALUES ('intervention-open',?1,'worker','worker-agent',?2,
@@ -256,14 +256,14 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     assert!(wire["teardown"].get("lastError").is_none());
     assert_eq!(
         scalar_string(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             run_id
         ),
         "archived"
     );
     assert_eq!(
         scalar_string(
-            "SELECT status FROM agent_org_runtime_tasks WHERE org_run_id=?1",
+            "SELECT status FROM agent_org_execution_tasks WHERE org_run_id=?1",
             run_id
         ),
         "cancelled"
@@ -278,8 +278,8 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     assert_eq!(
         scalar_string(
             "SELECT decision.status
-             FROM agent_org_runtime_plan_decisions decision
-             JOIN agent_org_runtime_plan_revisions revision
+             FROM agent_org_execution_plan_decisions decision
+             JOIN agent_org_execution_plan_revisions revision
                ON revision.plan_revision_id=decision.plan_revision_id
              WHERE revision.org_run_id=?1",
             run_id
@@ -288,7 +288,7 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     );
     assert_eq!(
         scalar_string(
-            "SELECT continuation_status FROM agent_org_runtime_pause_handoffs WHERE org_run_id=?1",
+            "SELECT continuation_status FROM agent_org_execution_pause_handoffs WHERE org_run_id=?1",
             run_id
         ),
         "skipped"
@@ -296,7 +296,7 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     let materialization_count: i64 = database::db::get_connection()
         .expect("sandbox DB")
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_inbox_materializations WHERE inbox_id=?1",
+            "SELECT COUNT(*) FROM agent_org_execution_inbox_materializations WHERE inbox_id=?1",
             [inbox_id],
             |row| row.get(0),
         )
@@ -323,7 +323,7 @@ fn archive_fence_cancels_open_work_and_is_request_idempotent() {
     let teardown_count: i64 = database::db::get_connection()
         .expect("sandbox DB")
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_archive_teardowns WHERE org_run_id=?1",
+            "SELECT COUNT(*) FROM agent_org_execution_archive_teardowns WHERE org_run_id=?1",
             [run_id],
             |row| row.get(0),
         )
@@ -392,7 +392,7 @@ fn concurrent_different_archive_requests_transition_exactly_once() {
     assert_eq!(
         scalar_string(
             "SELECT CAST(activation_generation AS TEXT)
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             run_id
         ),
         "2"
@@ -431,7 +431,7 @@ fn archive_accepts_only_documented_source_states() {
     assert!(error.starts_with("team_not_ready:"));
     assert_eq!(
         scalar_string(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             "archive-starting-run"
         ),
         "starting"
@@ -448,7 +448,7 @@ fn archive_rolls_back_the_fence_when_a_cancellation_write_fails() {
     seed_run(run_id, root, "running", 1);
     let conn = database::db::get_connection().expect("sandbox DB");
     conn.execute(
-        "INSERT INTO agent_org_runtime_tasks (
+        "INSERT INTO agent_org_execution_tasks (
             id,org_run_id,activation_generation,subject,description,status,execution_mode,blocked_by_json,
             created_by_participant_id,source_turn_intent_id,created_at,updated_at
          ) VALUES ('task-rollback',?1,1,'Open work','','pending','build','[]',
@@ -458,7 +458,7 @@ fn archive_rolls_back_the_fence_when_a_cancellation_write_fails() {
     .expect("seed Task");
     conn.execute_batch(
         "CREATE TRIGGER abort_archive_task_cancel
-         BEFORE UPDATE OF status ON agent_org_runtime_tasks
+         BEFORE UPDATE OF status ON agent_org_execution_tasks
          WHEN NEW.status='cancelled'
          BEGIN SELECT RAISE(ABORT,'injected Archive cancellation failure'); END;",
     )
@@ -468,7 +468,7 @@ fn archive_rolls_back_the_fence_when_a_cancellation_write_fails() {
     assert_archive_failure_rolled_back(run_id, "injected Archive cancellation failure");
     assert_eq!(
         scalar_string(
-            "SELECT status FROM agent_org_runtime_tasks WHERE org_run_id=?1",
+            "SELECT status FROM agent_org_execution_tasks WHERE org_run_id=?1",
             run_id
         ),
         "pending"
@@ -514,7 +514,7 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
             }
             "inbox" => {
                 conn.execute(
-                    "INSERT INTO agent_org_runtime_inbox (
+                    "INSERT INTO agent_org_execution_inbox (
                         recipient_agent_id,recipient_member_id,sender_agent_id,
                         sender_member_id,org_run_id,payload_kind,payload_json,created_at
                      ) VALUES ('coordinator-agent','coordinator','worker-agent','worker',
@@ -526,7 +526,7 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
             "approval" => {
                 let task_id = format!("{run_id}-task");
                 conn.execute(
-                    "INSERT INTO agent_org_runtime_tasks (
+                    "INSERT INTO agent_org_execution_tasks (
                         id,org_run_id,activation_generation,subject,description,status,execution_mode,
                         blocked_by_json,created_by_participant_id,
                         source_turn_intent_id,created_at,updated_at
@@ -541,7 +541,7 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
                 )
                 .expect("seed approval source Task");
                 conn.execute(
-                    "INSERT INTO agent_org_runtime_plan_revisions (
+                    "INSERT INTO agent_org_execution_plan_revisions (
                         plan_revision_id,org_run_id,source_task_id,source_member_id,
                         source_session_id,source_turn_intent_id,root_session_id,
                         revision_number,plan_title,plan_path,plan_content,
@@ -560,7 +560,7 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
                 )
                 .expect("seed Plan revision");
                 conn.execute(
-                    "INSERT INTO agent_org_runtime_plan_decisions (
+                    "INSERT INTO agent_org_execution_plan_decisions (
                         approval_id,plan_revision_id,request_id,policy,status,created_at
                      ) VALUES (?1,?2,?3,'user','pending',?4)",
                     params![
@@ -574,7 +574,7 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
             }
             "intervention" => {
                 conn.execute(
-                    "INSERT INTO agent_org_runtime_member_interventions (
+                    "INSERT INTO agent_org_execution_member_interventions (
                         intervention_receipt_id,org_run_id,member_id,agent_id,
                         session_id,status,source_event_id,entered_at,
                         last_user_activity_at,updated_at
@@ -601,7 +601,7 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
                 )
                 .expect("seed Pause Turn intent");
                 conn.execute(
-                    "INSERT INTO agent_org_runtime_turn_contexts (
+                    "INSERT INTO agent_org_execution_turn_contexts (
                         session_id,turn_intent_id,org_run_id,participant_id,
                         turn_kind,source_kind,source_id,activation_generation,created_at
                      ) VALUES (?1,?2,?3,'coordinator','coordinator','root_turn',?2,1,?4)",
@@ -609,7 +609,7 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
                 )
                 .expect("seed Pause Turn context");
                 conn.execute(
-                    "INSERT INTO agent_org_runtime_pause_episodes (
+                    "INSERT INTO agent_org_execution_pause_episodes (
                         episode_id,org_run_id,pause_request_id,pause_generation,status,
                         teardown_owner_id,created_at,updated_at
                      ) VALUES (?1,?2,?3,2,'active',?4,?5,?5)",
@@ -623,7 +623,7 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
                 )
                 .expect("seed Pause episode");
                 conn.execute(
-                    "INSERT INTO agent_org_runtime_pause_handoffs (
+                    "INSERT INTO agent_org_execution_pause_handoffs (
                         handoff_id,episode_id,org_run_id,session_id,
                         original_turn_intent_id,turn_kind,participant_id,
                         original_activation_generation,original_intent_status,
@@ -649,19 +649,19 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
         let trigger = match boundary {
             "fence" => format!(
                 "CREATE TRIGGER fault_archive_fence_{boundary}
-                 BEFORE UPDATE OF status ON agent_org_runtime_runs
+                 BEFORE UPDATE OF status ON agent_org_execution_runs
                  WHEN NEW.id='{run_id}' AND NEW.status='archived'
                  BEGIN SELECT RAISE(ABORT,'fault_archive_fence'); END;"
             ),
             "episode" => format!(
                 "CREATE TRIGGER fault_archive_episode_{boundary}
-                 BEFORE INSERT ON agent_org_runtime_archive_episodes
+                 BEFORE INSERT ON agent_org_execution_archive_episodes
                  WHEN NEW.org_run_id='{run_id}'
                  BEGIN SELECT RAISE(ABORT,'fault_archive_episode'); END;"
             ),
             "teardown" => format!(
                 "CREATE TRIGGER fault_archive_teardown_{boundary}
-                 BEFORE INSERT ON agent_org_runtime_archive_teardowns
+                 BEFORE INSERT ON agent_org_execution_archive_teardowns
                  WHEN NEW.org_run_id='{run_id}'
                  BEGIN SELECT RAISE(ABORT,'fault_archive_teardown'); END;"
             ),
@@ -673,34 +673,34 @@ fn archive_rolls_back_at_every_non_task_transaction_boundary() {
             ),
             "inbox" => format!(
                 "CREATE TRIGGER fault_archive_inbox_{boundary}
-                 BEFORE INSERT ON agent_org_runtime_inbox_delivery_resolutions
+                 BEFORE INSERT ON agent_org_execution_inbox_delivery_resolutions
                  WHEN NEW.org_run_id='{run_id}'
                  BEGIN SELECT RAISE(ABORT,'fault_archive_inbox'); END;"
             ),
             "approval" => format!(
                 "CREATE TRIGGER fault_archive_approval_{boundary}
-                 BEFORE UPDATE OF status ON agent_org_runtime_plan_decisions
+                 BEFORE UPDATE OF status ON agent_org_execution_plan_decisions
                  WHEN NEW.plan_revision_id IN (
-                     SELECT plan_revision_id FROM agent_org_runtime_plan_revisions
+                     SELECT plan_revision_id FROM agent_org_execution_plan_revisions
                      WHERE org_run_id='{run_id}'
                  ) AND NEW.status='cancelled'
                  BEGIN SELECT RAISE(ABORT,'fault_archive_approval'); END;"
             ),
             "intervention" => format!(
                 "CREATE TRIGGER fault_archive_intervention_{boundary}
-                 BEFORE UPDATE OF cleared_at ON agent_org_runtime_member_interventions
+                 BEFORE UPDATE OF cleared_at ON agent_org_execution_member_interventions
                  WHEN NEW.org_run_id='{run_id}' AND NEW.cleared_at IS NOT NULL
                  BEGIN SELECT RAISE(ABORT,'fault_archive_intervention'); END;"
             ),
             "pause_continuation" => format!(
                 "CREATE TRIGGER fault_archive_pause_{boundary}
-                 BEFORE UPDATE OF continuation_status ON agent_org_runtime_pause_handoffs
+                 BEFORE UPDATE OF continuation_status ON agent_org_execution_pause_handoffs
                  WHEN NEW.org_run_id='{run_id}' AND NEW.continuation_status='skipped'
                  BEGIN SELECT RAISE(ABORT,'fault_archive_pause'); END;"
             ),
             "receipt_finalize" => format!(
                 "CREATE TRIGGER fault_archive_receipt_{boundary}
-                 BEFORE UPDATE OF task_cancel_count ON agent_org_runtime_archive_episodes
+                 BEFORE UPDATE OF task_cancel_count ON agent_org_execution_archive_episodes
                  WHEN NEW.org_run_id='{run_id}'
                  BEGIN SELECT RAISE(ABORT,'fault_archive_receipt'); END;"
             ),
@@ -733,7 +733,7 @@ fn archive_rejects_generation_overflow_without_mutation() {
     assert!(error.contains("generation overflow"));
     assert_eq!(
         scalar_string(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             "archive-overflow-run"
         ),
         "running"

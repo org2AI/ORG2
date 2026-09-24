@@ -22,7 +22,7 @@ pub(super) fn insert_record(
     revision: &AgentOrgPlanRevision,
 ) -> Result<(), String> {
     conn.execute(
-        "INSERT INTO agent_org_runtime_plan_revisions (
+        "INSERT INTO agent_org_execution_plan_revisions (
             plan_revision_id,org_run_id,source_task_id,source_member_id,
             source_session_id,source_turn_intent_id,root_session_id,
             revision_number,previous_plan_revision_id,plan_title,plan_path,
@@ -47,7 +47,7 @@ pub(super) fn insert_record(
     )
     .map_err(|err| err.to_string())?;
     conn.execute(
-        "INSERT INTO agent_org_runtime_plan_decisions (
+        "INSERT INTO agent_org_execution_plan_decisions (
             approval_id,plan_revision_id,request_id,policy,status,decision_by,
             feedback,created_at,resolved_at
          ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
@@ -74,10 +74,10 @@ pub(super) fn query_record<P: rusqlite::Params>(
 ) -> Result<Option<AgentOrgPlanRevision>, String> {
     let sql = format!(
         "SELECT {RECORD_SELECT}
-         FROM agent_org_runtime_plan_revisions revision
-         JOIN agent_org_runtime_plan_decisions decision
+         FROM agent_org_execution_plan_revisions revision
+         JOIN agent_org_execution_plan_decisions decision
            ON decision.plan_revision_id=revision.plan_revision_id
-         LEFT JOIN agent_org_runtime_tasks task
+         LEFT JOIN agent_org_execution_tasks task
            ON task.org_run_id=revision.org_run_id AND task.id=revision.source_task_id
          {where_clause} LIMIT 1"
     );

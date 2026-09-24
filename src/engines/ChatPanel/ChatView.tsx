@@ -57,6 +57,7 @@ import {
 } from "@src/util/session/sessionDispatch";
 
 import AgentOrgArchivedComposer from "./AgentOrgArchivedComposer";
+import AgentOrgHistoryBoundary from "./AgentOrgHistoryBoundary";
 import { ChatSessionContext } from "./ChatSessionContext";
 import { ChatViewComposerSection } from "./ChatViewComposerSection";
 import type { ChatViewComposerSectionProps } from "./ChatViewComposerSection.types";
@@ -316,6 +317,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       agentOrgInterventionSlot,
     } = useChatViewAgentOrgSurface({
       sessionId,
+      readOnly,
       showCurrentPlanSurface,
       conversationRoot: conversationTargetBinding?.root ?? null,
       onBeforeMessageDispatch: handleBeforeMessageDispatch,
@@ -664,15 +666,28 @@ const ChatViewWithLoadedBinding: React.FC<
 ChatViewWithLoadedBinding.displayName = "ChatViewWithLoadedBinding";
 
 const ChatView: React.FC<ChatViewProps> = memo(
-  ({ conversationTargetBinding, ...props }) =>
-    conversationTargetBinding === undefined ? (
-      <ChatViewWithLoadedBinding {...props} />
-    ) : (
-      <ResolvedChatView
-        {...props}
-        conversationTargetBinding={conversationTargetBinding}
-      />
-    )
+  ({ conversationTargetBinding, ...props }) => (
+    <AgentOrgHistoryBoundary
+      sessionId={props.sessionId}
+      renderTranscript={(sessionId, historyOnly) =>
+        historyOnly ? (
+          <ResolvedChatView
+            {...props}
+            sessionId={sessionId}
+            readOnly
+            conversationTargetBinding={null}
+          />
+        ) : conversationTargetBinding === undefined ? (
+          <ChatViewWithLoadedBinding {...props} />
+        ) : (
+          <ResolvedChatView
+            {...props}
+            conversationTargetBinding={conversationTargetBinding}
+          />
+        )
+      }
+    />
+  )
 );
 
 ChatView.displayName = "ChatView";

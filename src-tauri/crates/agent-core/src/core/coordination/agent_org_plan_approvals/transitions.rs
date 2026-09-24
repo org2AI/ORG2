@@ -33,7 +33,7 @@ pub(super) fn create_pending_in_tx(
     validate_owned_plan_path_with_connection(tx, &params.source_session_id, &params.plan_path)?;
     let run_status: Option<String> = tx
         .query_row(
-            "SELECT status FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status FROM agent_org_execution_runs WHERE id=?1",
             params![&params.org_run_id],
             |row| row.get(0),
         )
@@ -56,7 +56,7 @@ pub(super) fn create_pending_in_tx(
 
     let task: Option<(Option<String>, String, String)> = tx
         .query_row(
-            "SELECT owner, status, execution_mode FROM agent_org_runtime_tasks
+            "SELECT owner, status, execution_mode FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND id=?2",
             params![&params.org_run_id, &params.source_task_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -89,8 +89,8 @@ pub(super) fn create_pending_in_tx(
     let previous: Option<(String, i64)> = tx
         .query_row(
             "SELECT revision.plan_revision_id,revision.revision_number
-             FROM agent_org_runtime_plan_revisions revision
-             JOIN agent_org_runtime_plan_decisions decision
+             FROM agent_org_execution_plan_revisions revision
+             JOIN agent_org_execution_plan_decisions decision
                ON decision.plan_revision_id=revision.plan_revision_id
              WHERE revision.org_run_id=?1 AND revision.source_task_id=?2
              ORDER BY revision.revision_number DESC LIMIT 1",
@@ -102,10 +102,10 @@ pub(super) fn create_pending_in_tx(
     let revision_number = next_revision_number(previous.as_ref().map(|(_, number)| *number))?;
     let now = chrono::Utc::now().to_rfc3339();
     tx.execute(
-        "UPDATE agent_org_runtime_plan_decisions
+        "UPDATE agent_org_execution_plan_decisions
          SET status=?1, decision_by='automatic', resolved_at=?2
          WHERE status=?3 AND plan_revision_id IN (
-             SELECT plan_revision_id FROM agent_org_runtime_plan_revisions
+             SELECT plan_revision_id FROM agent_org_execution_plan_revisions
              WHERE org_run_id=?4 AND source_task_id=?5
          )",
         params![
@@ -223,7 +223,7 @@ pub(super) fn approve_pending_in_tx(
     let resolved_at = chrono::Utc::now().to_rfc3339();
     let changed = tx
         .execute(
-            "UPDATE agent_org_runtime_plan_decisions
+            "UPDATE agent_org_execution_plan_decisions
              SET status=?1, decision_by=?2, resolved_at=?3
              WHERE approval_id=?4 AND plan_revision_id=?5 AND status=?6",
             params![
@@ -384,7 +384,7 @@ fn enqueue_post_approval_messages_in_tx(
     )?;
     if suppress_self_wake {
         tx.execute(
-            "UPDATE agent_org_runtime_inbox SET read_at=?2 WHERE id=?1 AND read_at IS NULL",
+            "UPDATE agent_org_execution_inbox SET read_at=?2 WHERE id=?1 AND read_at IS NULL",
             params![decision_record.id, chrono::Utc::now().to_rfc3339()],
         )
         .map_err(|error| error.to_string())?;
@@ -414,7 +414,7 @@ fn participant_agent_ids_in_tx(
     let (coordinator_agent_id, snapshot_json): (String, Option<String>) = tx
         .query_row(
             "SELECT coordinator_agent_id, org_snapshot_json
-             FROM agent_org_runtime_runs WHERE id=?1 AND status='running'",
+             FROM agent_org_execution_runs WHERE id=?1 AND status='running'",
             params![run_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )

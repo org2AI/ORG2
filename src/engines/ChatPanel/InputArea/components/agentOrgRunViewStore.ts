@@ -5,6 +5,7 @@ import {
   getAgentOrgSessionRunView,
   subscribeAgentOrgStateChanges,
 } from "@src/api/tauri/agent/orgTasks";
+import { AGENT_ORG_HISTORY_READ_ONLY } from "@src/api/tauri/agent/orgTasks/errors";
 
 export const AGENT_ORG_RUN_VIEW_FALLBACK_MS = 60_000;
 export const AGENT_ORG_RUN_VIEW_PUSH_DEBOUNCE_MS = 50;
@@ -362,6 +363,14 @@ function refreshAgentOrgRunViewInternal(
     .catch((error: unknown) => {
       if (!isCurrentEntry(entry)) return;
       const message = error instanceof Error ? error.message : String(error);
+      if (message === AGENT_ORG_HISTORY_READ_ONLY) {
+        // Other surfaces can discover history without mounting ChatView.
+        // Retirement is authoritative: stop discovery and discard live views.
+        missingRunReplacement = publishMissingRun(entry, requestId);
+        // Discovery changed even when the empty snapshot stayed identical.
+        reconcilePollingTimer();
+        return;
+      }
       publishEntry(entry, entry.snapshot.view, message, requestId);
     })
     .finally(() => {

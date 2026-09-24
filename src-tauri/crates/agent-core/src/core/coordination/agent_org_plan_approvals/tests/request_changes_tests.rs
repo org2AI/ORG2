@@ -36,7 +36,7 @@ fn feedback_insert_failure_rolls_back_changes_requested_status() {
     let pending = create_pending_approval(&context);
     get_connection()
         .expect("test db")
-        .execute("DROP TABLE agent_org_runtime_inbox", [])
+        .execute("DROP TABLE agent_org_execution_inbox", [])
         .expect("remove inbox to force delivery failure");
 
     AgentOrgPlanApprovalStore::request_changes(

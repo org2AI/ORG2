@@ -217,7 +217,7 @@ fn sqlite_rejects_any_plan_revision_update() {
     let error = get_connection()
         .unwrap()
         .execute(
-            "UPDATE agent_org_runtime_plan_revisions
+            "UPDATE agent_org_execution_plan_revisions
              SET plan_content='# rewritten' WHERE plan_revision_id=?1",
             [&pending.plan_revision_id],
         )

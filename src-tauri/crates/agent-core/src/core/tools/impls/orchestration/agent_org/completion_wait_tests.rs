@@ -78,13 +78,13 @@ fn count(table: &str) -> i64 {
         .unwrap()
 }
 fn certificates() -> i64 {
-    count("agent_org_runtime_run_completion_certificates")
+    count("agent_org_execution_run_completion_certificates")
 }
 fn resolutions() -> i64 {
-    database::db::get_connection().unwrap().query_row("SELECT COUNT(*) FROM agent_org_runtime_inbox_delivery_resolutions WHERE resolution_kind='system_reconciled'",[],|r|r.get(0)).unwrap()
+    database::db::get_connection().unwrap().query_row("SELECT COUNT(*) FROM agent_org_execution_inbox_delivery_resolutions WHERE resolution_kind='system_reconciled'",[],|r|r.get(0)).unwrap()
 }
 fn candidate() -> Option<String> {
-    database::db::get_connection().unwrap().query_row("SELECT completion_candidate_json FROM agent_org_runtime_run_progress WHERE org_run_id=?1",[RUN_ID],|r|r.get(0)).unwrap()
+    database::db::get_connection().unwrap().query_row("SELECT completion_candidate_json FROM agent_org_execution_run_progress WHERE org_run_id=?1",[RUN_ID],|r|r.get(0)).unwrap()
 }
 fn idle(
     reason: MemberIdleReason,
@@ -125,7 +125,7 @@ async fn final_member_exit_after_resume_rings_the_completion_doorbell_for_origin
     let task_id = completed_task().await;
     let conn = database::db::get_connection().unwrap();
     conn.execute(
-        "UPDATE agent_org_runtime_runs SET activation_generation=3 WHERE id=?1",
+        "UPDATE agent_org_execution_runs SET activation_generation=3 WHERE id=?1",
         [RUN_ID],
     )
     .unwrap();
@@ -140,7 +140,7 @@ async fn final_member_exit_after_resume_rings_the_completion_doorbell_for_origin
     ) = conn
         .query_row(
             "SELECT receipt_id,task_id,source_turn_intent_id,status,doorbell_status
-             FROM agent_org_runtime_formal_trigger_receipts
+             FROM agent_org_execution_formal_trigger_receipts
              WHERE inbox_id=?1",
             [inbox_id],
             |row| {
@@ -192,13 +192,13 @@ async fn completion_waits_for_exact_success_and_settles_only_redundant_rows() {
     assert!(candidate().is_none());
     let conn = database::db::get_connection().unwrap();
     let (read_at,kind,reason):(Option<String>,String,String)=conn.query_row(
-        "SELECT inbox.read_at,resolution.resolution_kind,resolution.reason FROM agent_org_runtime_inbox inbox JOIN agent_org_runtime_inbox_delivery_resolutions resolution ON resolution.inbox_id=inbox.id WHERE inbox.id=?1",
+        "SELECT inbox.read_at,resolution.resolution_kind,resolution.reason FROM agent_org_execution_inbox inbox JOIN agent_org_execution_inbox_delivery_resolutions resolution ON resolution.inbox_id=inbox.id WHERE inbox.id=?1",
         [idle_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
     assert!(read_at.is_none());
     assert_eq!(kind, "system_reconciled");
     assert!(reason.contains(OWNER_TURN));
     assert!(reason.contains(COORDINATOR_TURN));
-    let output_evidence:String=conn.query_row("SELECT resolution.reason FROM agent_org_runtime_inbox_delivery_resolutions resolution JOIN agent_org_runtime_inbox inbox ON inbox.id=resolution.inbox_id WHERE inbox.payload_kind='task_completed' AND resolution.resolution_kind='system_reconciled'",[],|r|r.get(0)).unwrap();
+    let output_evidence:String=conn.query_row("SELECT resolution.reason FROM agent_org_execution_inbox_delivery_resolutions resolution JOIN agent_org_execution_inbox inbox ON inbox.id=resolution.inbox_id WHERE inbox.payload_kind='task_completed' AND resolution.resolution_kind='system_reconciled'",[],|r|r.get(0)).unwrap();
     let evidence: Value = serde_json::from_str(&output_evidence).unwrap();
     assert_eq!(
         evidence["evidence"]["presentation"]["turnIntentId"],
@@ -214,13 +214,13 @@ async fn completion_waits_for_exact_success_and_settles_only_redundant_rows() {
         AgentInboxStore::mark_many_read_for_session(&[idle_id], ROOT_SESSION).unwrap(),
         0
     );
-    let pending:i64=conn.query_row("SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts WHERE trigger_kind<>'final_summary' AND status<>'resolved'",[],|r|r.get(0)).unwrap();
+    let pending:i64=conn.query_row("SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts WHERE trigger_kind<>'final_summary' AND status<>'resolved'",[],|r|r.get(0)).unwrap();
     assert_eq!(pending, 0);
     for _ in 0..3 {
         assert!(!completion::recheck_pending(RUN_ID).unwrap());
     }
     assert_eq!(certificates(), 1);
-    assert_eq!(count("agent_org_runtime_final_summary_receipts"), 1);
+    assert_eq!(count("agent_org_execution_final_summary_receipts"), 1);
 }
 
 #[tokio::test]
@@ -264,7 +264,7 @@ async fn dense_redundant_notifications_do_not_require_a_model_turn() {
     assert_eq!(certificates(), 1);
     let conn = database::db::get_connection().unwrap();
     for id in ids {
-        let disposed: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions WHERE inbox_id=?1 AND resolution_kind='system_reconciled')", [id], |r| r.get(0)).unwrap();
+        let disposed: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions WHERE inbox_id=?1 AND resolution_kind='system_reconciled')", [id], |r| r.get(0)).unwrap();
         assert!(disposed);
     }
 }
@@ -399,7 +399,7 @@ async fn disposition_and_certificate_rollback_together_on_storage_failure() {
     )
     .unwrap();
     let conn = database::db::get_connection().unwrap();
-    conn.execute_batch("CREATE TRIGGER reject_completion BEFORE INSERT ON agent_org_runtime_run_completion_certificates BEGIN SELECT RAISE(ABORT,'injected completion storage failure'); END;").unwrap();
+    conn.execute_batch("CREATE TRIGGER reject_completion BEFORE INSERT ON agent_org_execution_run_completion_certificates BEGIN SELECT RAISE(ABORT,'injected completion storage failure'); END;").unwrap();
     // Session and formal-turn finality have different persistence boundaries;
     // the post-status recheck is where this fixture becomes quiescent.
     assert!(
@@ -450,7 +450,7 @@ async fn pause_generation_change_and_new_root_invalidate_candidate() {
                 .unwrap();
             }
             "generation" => {
-                conn.execute("UPDATE agent_org_runtime_runs SET activation_generation=activation_generation+1 WHERE id=?1",[RUN_ID]).unwrap();
+                conn.execute("UPDATE agent_org_execution_runs SET activation_generation=activation_generation+1 WHERE id=?1",[RUN_ID]).unwrap();
             }
             "root" => insert_coordinator_context_for_turn(&conn, "new-root"),
             _ => {
@@ -510,10 +510,10 @@ async fn late_redundant_idle_is_disposed_but_new_message_keeps_its_wake() {
     .unwrap();
     assert!(!completion::completion_handles_wake(RUN_ID).unwrap());
     let conn = database::db::get_connection().unwrap();
-    let (kind,read):(String,Option<String>)=conn.query_row("SELECT resolution.resolution_kind,inbox.read_at FROM agent_org_runtime_inbox inbox JOIN agent_org_runtime_inbox_delivery_resolutions resolution ON resolution.inbox_id=inbox.id WHERE inbox.id=?1",[late_id],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+    let (kind,read):(String,Option<String>)=conn.query_row("SELECT resolution.resolution_kind,inbox.read_at FROM agent_org_execution_inbox inbox JOIN agent_org_execution_inbox_delivery_resolutions resolution ON resolution.inbox_id=inbox.id WHERE inbox.id=?1",[late_id],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
     assert_eq!(kind, "system_reconciled");
     assert!(read.is_none());
-    let pending:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_runtime_formal_trigger_receipts WHERE inbox_id=?1 AND status='pending')",[substantive.id],|r|r.get(0)).unwrap();
+    let pending:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM agent_org_execution_formal_trigger_receipts WHERE inbox_id=?1 AND status='pending')",[substantive.id],|r|r.get(0)).unwrap();
     assert!(pending);
     assert!(
         AgentInboxStore::list_unread_for_member(COORDINATOR_MEMBER_ID, RUN_ID)
@@ -538,7 +538,7 @@ async fn old_idle_and_new_output_version_are_not_reconciled() {
         } else {
             // Inject an inconsistent producer version without a revision bump;
             // even corrupted storage must not reuse the old output proof.
-            conn.execute("UPDATE agent_org_runtime_tasks SET output_json=json_set(output_json,'$.content','New result and limits') WHERE id=?1",[&id]).unwrap();
+            conn.execute("UPDATE agent_org_execution_tasks SET output_json=json_set(output_json,'$.content','New result and limits') WHERE id=?1",[&id]).unwrap();
         }
         assert!(!completion::recheck_pending(RUN_ID).unwrap());
         assert!(candidate().is_none());

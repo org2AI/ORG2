@@ -121,7 +121,7 @@ impl AgentOrgTaskStore {
         let cursor = after_annotation_id
             .map(|id| {
                 conn.query_row(
-                    "SELECT created_at, id FROM agent_org_runtime_task_annotations
+                    "SELECT created_at, id FROM agent_org_execution_task_annotations
                      WHERE org_run_id=?1 AND task_id=?2 AND id=?3",
                     params![org_run_id, task_id, id],
                     |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
@@ -139,7 +139,7 @@ impl AgentOrgTaskStore {
             .prepare(
                 "SELECT id, org_run_id, task_id, kind, body, actor_kind,
                         actor_participant_id, source_turn_intent_id, created_at
-                 FROM agent_org_runtime_task_annotations
+                 FROM agent_org_execution_task_annotations
                  WHERE org_run_id=?1 AND task_id=?2
                    AND (?3 IS NULL OR created_at>?3 OR (created_at=?3 AND id>?4))
                  ORDER BY created_at ASC, id ASC LIMIT ?5",
@@ -254,7 +254,7 @@ fn append_annotation_in_tx(
     )?;
     ensure_run_allows_task_mutation(conn, org_run_id)?;
     let sql = format!(
-        "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks
+        "SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks
          WHERE org_run_id=?1 AND id=?2"
     );
     let task = conn
@@ -275,7 +275,7 @@ fn append_annotation_in_tx(
         created_at: now_rfc3339(),
     };
     conn.execute(
-        "INSERT INTO agent_org_runtime_task_annotations(
+        "INSERT INTO agent_org_execution_task_annotations(
             id, org_run_id, task_id, kind, body, actor_kind,
             actor_participant_id, source_turn_intent_id, created_at
          ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",

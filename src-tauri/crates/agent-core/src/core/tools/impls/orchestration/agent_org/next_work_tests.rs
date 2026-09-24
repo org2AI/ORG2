@@ -61,12 +61,7 @@ fn dispatch(turn: &str) {
 }
 
 async fn report() -> summary::FinalSummaryReceipt {
-    let receipt = start_report().await;
-    database::db::get_connection()
-        .unwrap()
-        .execute_batch("ALTER TABLE events ADD COLUMN function_name TEXT;")
-        .unwrap();
-    receipt
+    start_report().await
 }
 
 fn publish(receipt: &summary::FinalSummaryReceipt, failed: bool) {
@@ -166,7 +161,7 @@ async fn publication_follow_up_activates_both_writers_and_keeps_later_user_autho
         );
         assert_eq!(
             conn.query_row(
-                "SELECT COUNT(*) FROM agent_org_runtime_run_completion_certificates",
+                "SELECT COUNT(*) FROM agent_org_execution_run_completion_certificates",
                 [],
                 |r| r.get::<_, i64>(0)
             )
@@ -186,7 +181,7 @@ async fn publication_follow_up_rolls_back_generation_and_queued_authority_on_wri
     dispatch("new-request");
     let conn = database::db::get_connection().unwrap();
     conn.execute_batch(
-        "CREATE TRIGGER fail_new_task BEFORE INSERT ON agent_org_runtime_tasks
+        "CREATE TRIGGER fail_new_task BEFORE INSERT ON agent_org_execution_tasks
         BEGIN SELECT RAISE(ABORT,'disk I/O error: injected new task'); END;",
     )
     .unwrap();
@@ -233,7 +228,7 @@ async fn publication_follow_up_never_promotes_unfinished_or_invalid_authority() 
             let conn = database::db::get_connection().unwrap();
             assert_eq!(
                 conn.query_row(
-                    "SELECT COUNT(*) FROM agent_org_runtime_turn_contexts
+                    "SELECT COUNT(*) FROM agent_org_execution_turn_contexts
                      WHERE turn_intent_id='new-request'",
                     [],
                     |row| row.get::<_, i64>(0)
@@ -263,7 +258,7 @@ async fn publication_follow_up_never_promotes_unfinished_or_invalid_authority() 
             }
             "paused" => {
                 conn.execute(
-                    "UPDATE agent_org_runtime_runs SET status='paused' WHERE id=?1",
+                    "UPDATE agent_org_execution_runs SET status='paused' WHERE id=?1",
                     [RUN_ID],
                 )
                 .unwrap();
@@ -279,11 +274,11 @@ async fn publication_follow_up_never_promotes_unfinished_or_invalid_authority() 
                     .unwrap();
             }
             "stale" => {
-                conn.execute("UPDATE agent_org_runtime_turn_contexts SET activation_generation=2 WHERE turn_intent_id='new-request'", []).unwrap();
+                conn.execute("UPDATE agent_org_execution_turn_contexts SET activation_generation=2 WHERE turn_intent_id='new-request'", []).unwrap();
             }
             "other-turn" => insert_coordinator_context_for_turn(&conn, "unsettled-old-wake"),
             "database" => {
-                conn.execute_batch("DROP TABLE agent_org_runtime_run_progress")
+                conn.execute_batch("DROP TABLE agent_org_execution_run_progress")
                     .unwrap();
             }
             _ => unreachable!(),

@@ -1,4 +1,14 @@
 {
+  "agentOrgHistory": {
+    "readOnly": "Conversation d’une ancienne version, lecture seule",
+    "savedContent": "Messages et résultats de groupe enregistrés",
+    "unknownMember": "Membre inconnu",
+    "loading": "Chargement de l’historique…",
+    "retry": "Réessayer",
+    "empty": "Aucun contenu de groupe enregistré",
+    "nextPage": "Page suivante",
+    "firstPage": "Première page"
+  },
   "agentOrgExecution": {
     "sources": {
       "user_input": "Demande utilisateur",

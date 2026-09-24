@@ -129,11 +129,11 @@ fn recover_task_execution_failure_inner(
             failed_turn_intent_id,
         )?;
         let sql = format!(
-            "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks task
+            "SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks task
                  WHERE task.org_run_id=?1 AND task.id=?2 AND task.owner=?3
                    AND task.status='in_progress'
                    AND NOT EXISTS (
-                       SELECT 1 FROM agent_org_task_execution_leases live
+                       SELECT 1 FROM agent_org_execution_task_execution_leases live
                        WHERE live.org_run_id=task.org_run_id
                          AND live.task_id=task.id
                          AND live.state='active'
@@ -143,7 +143,7 @@ fn recover_task_execution_failure_inner(
                          )
                    )
                    AND EXISTS (
-                       SELECT 1 FROM agent_org_runtime_task_events event
+                       SELECT 1 FROM agent_org_execution_task_events event
                        WHERE event.org_run_id=task.org_run_id
                          AND event.task_id=task.id
                          AND event.previous_status='pending'
@@ -154,7 +154,7 @@ fn recover_task_execution_failure_inner(
                          AND event.created_at=task.updated_at
                          AND event.rowid=(
                              SELECT MAX(latest.rowid)
-                             FROM agent_org_runtime_task_events latest
+                             FROM agent_org_execution_task_events latest
                              WHERE latest.org_run_id=task.org_run_id
                                AND latest.task_id=task.id
                          )
@@ -343,7 +343,7 @@ fn release_owned_tasks_for_shutdown(
             .map_err(|error| error.to_string())?;
         let audit = actor.validate(&tx, org_run_id, owner_member_id)?;
         let sql = format!(
-            "SELECT {SELECT_COLUMNS} FROM agent_org_runtime_tasks
+            "SELECT {SELECT_COLUMNS} FROM agent_org_execution_tasks
              WHERE org_run_id=?1 AND owner=?2 AND status IN ('pending','in_progress')
              ORDER BY created_at ASC,id ASC"
         );
@@ -408,7 +408,7 @@ fn recover_task_in_tx(
         encode_optional_json("task failure reason", task.failure_reason.as_ref())?;
     let changed = tx
         .execute(
-            "UPDATE agent_org_runtime_tasks
+            "UPDATE agent_org_execution_tasks
              SET owner=?1,status=?2,metadata_json=?3,failure_reason_json=?4,
                  output_json=NULL,cancel_reason_json=NULL,updated_at=?5
              WHERE org_run_id=?6 AND id=?7 AND owner=?8
@@ -448,7 +448,7 @@ fn recover_task_in_tx(
         "Owner turn failed; Task was restored to ownerless pending"
     };
     tx.execute(
-        "INSERT INTO agent_org_runtime_task_annotations(
+        "INSERT INTO agent_org_execution_task_annotations(
             id,org_run_id,task_id,kind,body,actor_kind,
             actor_participant_id,source_turn_intent_id,created_at
          ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
@@ -479,7 +479,7 @@ fn release_reservation_in_tx(
 ) -> Result<(), String> {
     let changed = tx
         .execute(
-            "UPDATE agent_org_runtime_recovery_attempts SET reservation_token=NULL
+            "UPDATE agent_org_execution_recovery_attempts SET reservation_token=NULL
              WHERE org_run_id=?1 AND reservation_token=?2
                AND action_kind=?3 AND target_key=?4",
             params![

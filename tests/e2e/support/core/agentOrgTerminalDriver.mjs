@@ -82,7 +82,7 @@ export async function runFormalTerminalScenario(kind) {
     async () => {
       execution =
         rows(`SELECT context.session_id,context.turn_intent_id,intent.status
-      FROM agent_org_runtime_turn_contexts context JOIN session_turn_intents intent
+      FROM agent_org_execution_turn_contexts context JOIN session_turn_intents intent
       ON intent.session_id=context.session_id AND intent.turn_intent_id=context.turn_intent_id
       WHERE context.org_run_id=${literal(runId)} AND context.task_id=${literal(task.id)}
       AND context.turn_kind='task_execution' ORDER BY context.created_at LIMIT 1`)[0];
@@ -173,7 +173,7 @@ export async function runFormalTerminalScenario(kind) {
     }
   );
   const recovery =
-    rows(`SELECT attempts FROM agent_org_runtime_recovery_attempts
+    rows(`SELECT attempts FROM agent_org_execution_recovery_attempts
     WHERE org_run_id=${literal(runId)} AND action_kind='task_failure_recovery' AND target_key=${literal(task.id)}`);
   if (!failed && recovery.length)
     throw new Error(
@@ -181,7 +181,7 @@ export async function runFormalTerminalScenario(kind) {
     );
   if (failed) {
     const boundTask = rows(
-      `SELECT status,owner FROM agent_org_runtime_tasks WHERE org_run_id=${literal(runId)} AND id=${literal(task.id)}`
+      `SELECT status,owner FROM agent_org_execution_tasks WHERE org_run_id=${literal(runId)} AND id=${literal(task.id)}`
     )[0];
     if (boundTask?.status !== "pending" || boundTask?.owner !== null)
       throw new Error(

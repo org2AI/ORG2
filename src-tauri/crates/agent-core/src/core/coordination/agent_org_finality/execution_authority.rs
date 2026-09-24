@@ -36,7 +36,7 @@ pub(crate) fn claim_task_execution_in_tx(
     })?;
     let episode_id: String = conn
         .query_row(
-            "SELECT work_episode_id FROM agent_org_runtime_work_episode_tasks
+            "SELECT work_episode_id FROM agent_org_execution_work_episode_tasks
              WHERE org_run_id=?1 AND task_id=?2",
             params![&context.org_run_id, task_id],
             |row| row.get(0),
@@ -53,7 +53,7 @@ pub(crate) fn claim_task_execution_in_tx(
         .query_row(
             "SELECT lease.lease_id,lease.session_id,lease.turn_intent_id,
                     COALESCE(intent.status,'missing')
-             FROM agent_org_task_execution_leases lease
+             FROM agent_org_execution_task_execution_leases lease
              LEFT JOIN session_turn_intents intent
                ON intent.session_id=lease.session_id
               AND intent.turn_intent_id=lease.turn_intent_id
@@ -84,7 +84,7 @@ pub(crate) fn claim_task_execution_in_tx(
         ) {
             let now = chrono::Utc::now().to_rfc3339();
             conn.execute(
-                "UPDATE agent_org_task_execution_leases
+                "UPDATE agent_org_execution_task_execution_leases
                  SET state='released',terminal_reason_code='terminal_intent_reconciled',terminal_at=?2
                  WHERE lease_id=?1 AND state='active'",
                 params![lease_id, now],
@@ -109,7 +109,7 @@ pub(crate) fn claim_task_execution_in_tx(
     let prior: Option<(String, i64)> = conn
         .query_row(
             "SELECT lease_id,execution_epoch
-             FROM agent_org_task_execution_leases
+             FROM agent_org_execution_task_execution_leases
              WHERE org_run_id=?1 AND work_episode_id=?2 AND task_id=?3
              ORDER BY execution_epoch DESC LIMIT 1",
             params![&context.org_run_id, &episode_id, task_id],
@@ -135,7 +135,7 @@ pub(crate) fn claim_task_execution_in_tx(
     let lease_id = format!("task-execution-{}", uuid::Uuid::new_v4());
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_task_execution_leases (
+        "INSERT INTO agent_org_execution_task_execution_leases (
             lease_id,org_run_id,work_episode_id,task_id,activation_generation,
             execution_epoch,owner_member_id,session_id,turn_intent_id,source_kind,
             continuation_receipt_id,source_inbox_id,prior_lease_id,state,created_at
@@ -189,7 +189,7 @@ pub(crate) fn release_turn_lease_in_tx(
 ) -> Result<usize, String> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE agent_org_task_execution_leases
+        "UPDATE agent_org_execution_task_execution_leases
          SET state=?3,terminal_reason_code=?4,terminal_at=?5
          WHERE session_id=?1 AND turn_intent_id=?2 AND state='active'",
         params![session_id, turn_intent_id, state, reason_code, now],
@@ -206,7 +206,7 @@ pub(crate) fn release_task_leases_in_tx(
 ) -> Result<usize, String> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE agent_org_task_execution_leases
+        "UPDATE agent_org_execution_task_execution_leases
          SET state=?3,terminal_reason_code=?4,terminal_at=?5
          WHERE org_run_id=?1 AND task_id=?2 AND state='active'",
         params![org_run_id, task_id, state, reason_code, now],
@@ -222,7 +222,7 @@ pub(crate) fn freeze_run_generation_leases_in_tx(
 ) -> Result<usize, String> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE agent_org_task_execution_leases
+        "UPDATE agent_org_execution_task_execution_leases
          SET state='frozen',terminal_reason_code=?3,terminal_at=?4
          WHERE org_run_id=?1 AND activation_generation=?2 AND state='active'",
         params![org_run_id, activation_generation, reason_code, now],

@@ -182,7 +182,7 @@ pub(crate) struct UserDirectedCausalReply {
 
 pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_user_directed_roots (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_user_directed_roots (
             org_run_id TEXT NOT NULL,
             root_authority_turn_id TEXT NOT NULL CHECK(length(trim(root_authority_turn_id)) > 0),
             policy_version INTEGER NOT NULL CHECK(policy_version >= 1),
@@ -191,10 +191,10 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             next_delivery_ordinal INTEGER NOT NULL CHECK(next_delivery_ordinal >= 2),
             created_at TEXT NOT NULL,
             PRIMARY KEY(org_run_id, root_authority_turn_id),
-            FOREIGN KEY(org_run_id) REFERENCES agent_org_runtime_runs(id) ON DELETE CASCADE
+            FOREIGN KEY(org_run_id) REFERENCES agent_org_execution_runs(id) ON DELETE CASCADE
         );
 
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_user_directed_deliveries (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_user_directed_deliveries (
             delivery_id INTEGER PRIMARY KEY AUTOINCREMENT,
             org_run_id TEXT NOT NULL,
             session_id TEXT NOT NULL CHECK(length(trim(session_id)) > 0),
@@ -225,17 +225,17 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             UNIQUE(session_id, turn_intent_id),
             UNIQUE(org_run_id, root_authority_turn_id, delivery_ordinal),
             FOREIGN KEY(org_run_id, root_authority_turn_id)
-                REFERENCES agent_org_runtime_user_directed_roots(org_run_id, root_authority_turn_id)
+                REFERENCES agent_org_execution_user_directed_roots(org_run_id, root_authority_turn_id)
                 ON DELETE CASCADE,
             FOREIGN KEY(session_id, turn_intent_id)
-                REFERENCES agent_org_runtime_turn_contexts(session_id, turn_intent_id)
+                REFERENCES agent_org_execution_turn_contexts(session_id, turn_intent_id)
                 ON DELETE CASCADE,
             FOREIGN KEY(parent_delivery_id)
-                REFERENCES agent_org_runtime_user_directed_deliveries(delivery_id) ON DELETE RESTRICT,
+                REFERENCES agent_org_execution_user_directed_deliveries(delivery_id) ON DELETE RESTRICT,
             FOREIGN KEY(source_inbox_id)
-                REFERENCES agent_org_runtime_inbox(id) ON DELETE RESTRICT,
+                REFERENCES agent_org_execution_inbox(id) ON DELETE RESTRICT,
             FOREIGN KEY(parent_inbox_id)
-                REFERENCES agent_org_runtime_inbox(id) ON DELETE RESTRICT,
+                REFERENCES agent_org_execution_inbox(id) ON DELETE RESTRICT,
             CHECK(
                 (source_kind='direct_member'
                  AND source_event_id IS NOT NULL
@@ -264,18 +264,18 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                 (status IN ('failed','abandoned','unknown') AND terminal_at IS NOT NULL)
             )
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_runtime_udw_source_inbox
-            ON agent_org_runtime_user_directed_deliveries(source_inbox_id)
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_org_execution_udw_source_inbox
+            ON agent_org_execution_user_directed_deliveries(source_inbox_id)
             WHERE source_inbox_id IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_udw_member_fifo
-            ON agent_org_runtime_user_directed_deliveries(
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_udw_member_fifo
+            ON agent_org_execution_user_directed_deliveries(
                 org_run_id, dispatch_member_id, member_dispatch_sequence
             ) WHERE status IN ('pending','started');
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_udw_pending_recovery
-            ON agent_org_runtime_user_directed_deliveries(delivery_id)
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_udw_pending_recovery
+            ON agent_org_execution_user_directed_deliveries(delivery_id)
             WHERE status='pending';
 
-        CREATE TABLE IF NOT EXISTS agent_org_runtime_user_directed_coordinator_bindings (
+        CREATE TABLE IF NOT EXISTS agent_org_execution_user_directed_coordinator_bindings (
             binding_id INTEGER PRIMARY KEY AUTOINCREMENT,
             org_run_id TEXT NOT NULL,
             session_id TEXT NOT NULL CHECK(length(trim(session_id)) > 0),
@@ -300,15 +300,15 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             UNIQUE(source_inbox_id),
             UNIQUE(org_run_id,root_authority_turn_id,delivery_ordinal),
             FOREIGN KEY(org_run_id,root_authority_turn_id)
-                REFERENCES agent_org_runtime_user_directed_roots(org_run_id,root_authority_turn_id)
+                REFERENCES agent_org_execution_user_directed_roots(org_run_id,root_authority_turn_id)
                 ON DELETE CASCADE,
             FOREIGN KEY(session_id,turn_intent_id)
-                REFERENCES agent_org_runtime_turn_contexts(session_id,turn_intent_id)
+                REFERENCES agent_org_execution_turn_contexts(session_id,turn_intent_id)
                 ON DELETE CASCADE,
             FOREIGN KEY(parent_delivery_id)
-                REFERENCES agent_org_runtime_user_directed_deliveries(delivery_id) ON DELETE RESTRICT,
-            FOREIGN KEY(parent_inbox_id) REFERENCES agent_org_runtime_inbox(id) ON DELETE RESTRICT,
-            FOREIGN KEY(source_inbox_id) REFERENCES agent_org_runtime_inbox(id) ON DELETE RESTRICT,
+                REFERENCES agent_org_execution_user_directed_deliveries(delivery_id) ON DELETE RESTRICT,
+            FOREIGN KEY(parent_inbox_id) REFERENCES agent_org_execution_inbox(id) ON DELETE RESTRICT,
+            FOREIGN KEY(source_inbox_id) REFERENCES agent_org_execution_inbox(id) ON DELETE RESTRICT,
             CHECK(parent_inbox_id IS NULL OR parent_inbox_id<>source_inbox_id),
             CHECK(
                 (status='pending' AND started_at IS NULL AND terminal_at IS NULL AND failure_reason IS NULL)
@@ -320,8 +320,8 @@ pub(super) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
                 (status IN ('failed','abandoned','unknown') AND terminal_at IS NOT NULL)
             )
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_udw_coordinator_pending
-            ON agent_org_runtime_user_directed_coordinator_bindings(binding_id)
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_udw_coordinator_pending
+            ON agent_org_execution_user_directed_coordinator_bindings(binding_id)
             WHERE status='pending';",
     )
 }
@@ -378,7 +378,7 @@ pub(crate) fn insert_root_delivery_with_connection(
 
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_user_directed_roots (
+        "INSERT INTO agent_org_execution_user_directed_roots (
             org_run_id,root_authority_turn_id,policy_version,max_deliveries,
             max_cascade_depth,next_delivery_ordinal,created_at
          ) VALUES (?1,?2,?3,?4,?5,2,?6)
@@ -422,7 +422,7 @@ pub(crate) fn insert_linked_member_delivery_with_connection(
     let root_limits: Option<i64> = conn
         .query_row(
             "SELECT max_cascade_depth
-             FROM agent_org_runtime_user_directed_roots
+             FROM agent_org_execution_user_directed_roots
              WHERE org_run_id=?1 AND root_authority_turn_id=?2",
             params![request.org_run_id, &parent.root_authority_turn_id],
             |row| row.get(0),
@@ -440,7 +440,7 @@ pub(crate) fn insert_linked_member_delivery_with_connection(
     let pending: i64 = conn
         .query_row(
             "SELECT COUNT(*)
-             FROM agent_org_runtime_user_directed_deliveries
+             FROM agent_org_execution_user_directed_deliveries
              WHERE org_run_id=?1 AND dispatch_member_id=?2
                AND status IN ('pending','started')",
             params![request.org_run_id, request.recipient_member_id],
@@ -471,7 +471,7 @@ pub(crate) fn insert_linked_member_delivery_with_connection(
     })?;
     let delivery_ordinal: Option<i64> = conn
         .query_row(
-            "UPDATE agent_org_runtime_user_directed_roots
+            "UPDATE agent_org_execution_user_directed_roots
              SET next_delivery_ordinal=next_delivery_ordinal+1
              WHERE org_run_id=?1 AND root_authority_turn_id=?2
                AND next_delivery_ordinal<=max_deliveries+1
@@ -535,7 +535,7 @@ pub(crate) fn insert_linked_coordinator_delivery_with_connection(
     let max_depth: Option<i64> = conn
         .query_row(
             "SELECT max_cascade_depth
-             FROM agent_org_runtime_user_directed_roots
+             FROM agent_org_execution_user_directed_roots
              WHERE org_run_id=?1 AND root_authority_turn_id=?2",
             params![request.org_run_id, &parent.root_authority_turn_id],
             |row| row.get(0),
@@ -552,7 +552,7 @@ pub(crate) fn insert_linked_coordinator_delivery_with_connection(
     }
     let delivery_ordinal: Option<i64> = conn
         .query_row(
-            "UPDATE agent_org_runtime_user_directed_roots
+            "UPDATE agent_org_execution_user_directed_roots
              SET next_delivery_ordinal=next_delivery_ordinal+1
              WHERE org_run_id=?1 AND root_authority_turn_id=?2
                AND next_delivery_ordinal<=max_deliveries+1
@@ -593,7 +593,7 @@ pub(crate) fn insert_linked_coordinator_delivery_with_connection(
     let digest = format!("{:x}", Sha256::digest(encoded));
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO agent_org_runtime_user_directed_coordinator_bindings (
+        "INSERT INTO agent_org_execution_user_directed_coordinator_bindings (
             org_run_id,session_id,turn_intent_id,root_authority_turn_id,
             parent_delivery_id,parent_inbox_id,source_inbox_id,depth,delivery_ordinal,request_digest,
             dispatch_content,display_content,status,created_at
@@ -631,7 +631,7 @@ fn get_coordinator_binding_with_connection(
     conn.query_row(
         "SELECT org_run_id,session_id,turn_intent_id,root_authority_turn_id,
                 source_inbox_id,depth,delivery_ordinal,status
-         FROM agent_org_runtime_user_directed_coordinator_bindings
+         FROM agent_org_execution_user_directed_coordinator_bindings
          WHERE session_id=?1 AND turn_intent_id=?2",
         params![session_id, turn_intent_id],
         |row| {
@@ -663,7 +663,7 @@ fn insert_delivery(
     let images_json =
         serde_json::to_string(request.images.unwrap_or(&[])).map_err(|error| error.to_string())?;
     conn.execute(
-        "INSERT INTO agent_org_runtime_user_directed_deliveries (
+        "INSERT INTO agent_org_execution_user_directed_deliveries (
             org_run_id,session_id,turn_intent_id,root_authority_turn_id,
             parent_delivery_id,parent_inbox_id,source_kind,source_event_id,source_inbox_id,
             dispatch_member_id,member_dispatch_sequence,depth,delivery_ordinal,
@@ -704,7 +704,7 @@ pub(crate) fn get_by_turn_with_connection(
                 root_authority_turn_id,parent_delivery_id,parent_inbox_id,source_kind,source_event_id,
                 source_inbox_id,dispatch_member_id,member_dispatch_sequence,depth,
                 delivery_ordinal,request_digest,status
-         FROM agent_org_runtime_user_directed_deliveries
+         FROM agent_org_execution_user_directed_deliveries
          WHERE session_id=?1 AND turn_intent_id=?2",
         params![session_id, turn_intent_id],
         row_to_delivery,
@@ -745,7 +745,7 @@ pub(crate) fn causal_reply_for_turn(
     conn.query_row(
         "SELECT source_inbox_id,parent_inbox_id,root_authority_turn_id,
                 depth,delivery_ordinal
-         FROM agent_org_runtime_user_directed_coordinator_bindings
+         FROM agent_org_execution_user_directed_coordinator_bindings
          WHERE session_id=?1 AND turn_intent_id=?2",
         params![session_id, turn_intent_id],
         |row| {
@@ -781,13 +781,13 @@ pub(crate) fn mark_turn_started_with_connection(
         }
         let changed = conn
             .execute(
-                "UPDATE agent_org_runtime_user_directed_coordinator_bindings AS binding
+                "UPDATE agent_org_execution_user_directed_coordinator_bindings AS binding
                  SET status='started',started_at=?3
                  WHERE binding.session_id=?1 AND binding.turn_intent_id=?2
                    AND binding.status='pending'
                    AND NOT EXISTS (
                        SELECT 1
-                       FROM agent_org_runtime_user_directed_coordinator_bindings earlier
+                       FROM agent_org_execution_user_directed_coordinator_bindings earlier
                        WHERE earlier.org_run_id=binding.org_run_id
                          AND earlier.binding_id<binding.binding_id
                          AND earlier.status IN ('pending','started')
@@ -825,13 +825,13 @@ pub(crate) fn mark_turn_started_with_connection(
     let now = chrono::Utc::now().to_rfc3339();
     let changed = conn
         .execute(
-            "UPDATE agent_org_runtime_user_directed_deliveries AS delivery
+            "UPDATE agent_org_execution_user_directed_deliveries AS delivery
              SET status='started',started_at=?3
              WHERE delivery.session_id=?1 AND delivery.turn_intent_id=?2
                AND delivery.status='pending'
                AND NOT EXISTS (
                    SELECT 1
-                   FROM agent_org_runtime_user_directed_deliveries earlier
+                   FROM agent_org_execution_user_directed_deliveries earlier
                    WHERE earlier.org_run_id=delivery.org_run_id
                      AND earlier.dispatch_member_id=delivery.dispatch_member_id
                      AND earlier.member_dispatch_sequence<delivery.member_dispatch_sequence
@@ -853,7 +853,7 @@ pub(crate) fn mark_turn_started_with_connection(
         )?
     {
         conn.execute(
-            "UPDATE agent_org_runtime_user_directed_deliveries
+            "UPDATE agent_org_execution_user_directed_deliveries
              SET status='pending',started_at=NULL
              WHERE session_id=?1 AND turn_intent_id=?2 AND status='started'",
             params![session_id, turn_intent_id],
@@ -894,7 +894,7 @@ fn claim_exact_source_inbox(
 ) -> Result<(), String> {
     let changed = conn
         .execute(
-            "UPDATE agent_org_runtime_inbox
+            "UPDATE agent_org_execution_inbox
              SET read_at=COALESCE(read_at,?4)
              WHERE id=?1 AND org_run_id=?2 AND recipient_member_id=?3
                AND delivery_class='user_directed'",
@@ -961,7 +961,7 @@ pub(crate) fn mark_turn_terminal(
             let now = chrono::Utc::now().to_rfc3339();
             let changed = tx
                 .execute(
-                    "UPDATE agent_org_runtime_user_directed_coordinator_bindings
+                    "UPDATE agent_org_execution_user_directed_coordinator_bindings
                      SET status=?3,started_at=COALESCE(started_at,?4),terminal_at=?4,
                          failure_reason=?5
                      WHERE session_id=?1 AND turn_intent_id=?2
@@ -1021,7 +1021,7 @@ pub(crate) fn mark_turn_terminal(
         let now = chrono::Utc::now().to_rfc3339();
         let changed = tx
             .execute(
-                "UPDATE agent_org_runtime_user_directed_deliveries
+                "UPDATE agent_org_execution_user_directed_deliveries
                  SET status=?3,started_at=COALESCE(started_at,?4),terminal_at=?4,
                      failure_reason=?5
                  WHERE session_id=?1 AND turn_intent_id=?2
@@ -1108,7 +1108,7 @@ pub(crate) fn prepare_exact_group_cancellation(
                 let now = chrono::Utc::now().to_rfc3339();
                 let changed = tx
                     .execute(
-                        "UPDATE agent_org_runtime_user_directed_deliveries
+                        "UPDATE agent_org_execution_user_directed_deliveries
                          SET status='cancelled',started_at=?3,terminal_at=?3,
                              failure_reason='user_stop'
                          WHERE session_id=?1 AND turn_intent_id=?2 AND status='pending'",
@@ -1155,7 +1155,7 @@ pub(crate) fn next_pending_after_terminal(
     let owner: Option<(String, String, Option<String>)> = conn
         .query_row(
             "SELECT org_run_id,participant_id,dispatch_member_id
-             FROM agent_org_runtime_turn_contexts
+             FROM agent_org_execution_turn_contexts
              WHERE session_id=?1 AND turn_intent_id=?2",
             params![session_id, turn_intent_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -1172,14 +1172,14 @@ pub(crate) fn next_pending_after_terminal(
                         delivery.session_id,delivery.turn_intent_id,
                         delivery.dispatch_content,delivery.display_content,
                         delivery.images_json
-                 FROM agent_org_runtime_user_directed_deliveries delivery
-                 JOIN agent_org_runtime_turn_contexts context
+                 FROM agent_org_execution_user_directed_deliveries delivery
+                 JOIN agent_org_execution_turn_contexts context
                    ON context.session_id=delivery.session_id
                   AND context.turn_intent_id=delivery.turn_intent_id
                  JOIN session_turn_intents intent
                    ON intent.session_id=delivery.session_id
                   AND intent.turn_intent_id=delivery.turn_intent_id
-                 JOIN agent_org_runtime_runs run ON run.id=delivery.org_run_id
+                 JOIN agent_org_execution_runs run ON run.id=delivery.org_run_id
                  WHERE delivery.org_run_id=?1
                    AND delivery.dispatch_member_id=?2
                    AND delivery.status='pending'
@@ -1208,14 +1208,14 @@ pub(crate) fn next_pending_after_terminal(
                 "SELECT binding.org_run_id,'coordinator',binding.session_id,
                         binding.turn_intent_id,binding.dispatch_content,
                         binding.display_content,'[]'
-                 FROM agent_org_runtime_user_directed_coordinator_bindings binding
-                 JOIN agent_org_runtime_turn_contexts context
+                 FROM agent_org_execution_user_directed_coordinator_bindings binding
+                 JOIN agent_org_execution_turn_contexts context
                    ON context.session_id=binding.session_id
                   AND context.turn_intent_id=binding.turn_intent_id
                  JOIN session_turn_intents intent
                    ON intent.session_id=binding.session_id
                   AND intent.turn_intent_id=binding.turn_intent_id
-                 JOIN agent_org_runtime_runs run ON run.id=binding.org_run_id
+                 JOIN agent_org_execution_runs run ON run.id=binding.org_run_id
                  WHERE binding.org_run_id=?1 AND binding.status='pending'
                    AND context.turn_kind='coordinator'
                    AND context.source_kind='member_inbox'
@@ -1274,7 +1274,7 @@ pub(crate) fn dispatch_owner_for_turn(
     let conn = get_connection().map_err(|error| error.to_string())?;
     conn.query_row(
         "SELECT org_run_id,dispatch_member_id
-         FROM agent_org_runtime_turn_contexts
+         FROM agent_org_execution_turn_contexts
          WHERE session_id=?1 AND turn_intent_id=?2
            AND dispatch_member_id IS NOT NULL",
         params![session_id, turn_intent_id],
@@ -1350,25 +1350,28 @@ mod tests {
         let conn = Connection::open_in_memory().expect("open database");
         conn.execute_batch(
             "PRAGMA foreign_keys=ON;
-             CREATE TABLE agent_org_runtime_runs(id TEXT PRIMARY KEY);
-             CREATE TABLE agent_org_runtime_inbox(id INTEGER PRIMARY KEY);
-             CREATE TABLE agent_org_runtime_turn_contexts(
+             CREATE TABLE agent_org_execution_runs(id TEXT PRIMARY KEY);
+             CREATE TABLE agent_org_execution_inbox(id INTEGER PRIMARY KEY);
+             CREATE TABLE agent_org_execution_turn_contexts(
                 session_id TEXT NOT NULL, turn_intent_id TEXT NOT NULL,
                 UNIQUE(session_id,turn_intent_id)
              );",
         )
         .expect("create dependencies");
         create_schema(&conn).expect("create UDW schema");
-        conn.execute("INSERT INTO agent_org_runtime_runs(id) VALUES ('run')", [])
-            .expect("insert run");
         conn.execute(
-            "INSERT INTO agent_org_runtime_turn_contexts(session_id,turn_intent_id)
+            "INSERT INTO agent_org_execution_runs(id) VALUES ('run')",
+            [],
+        )
+        .expect("insert run");
+        conn.execute(
+            "INSERT INTO agent_org_execution_turn_contexts(session_id,turn_intent_id)
              VALUES ('session','turn')",
             [],
         )
         .expect("insert context");
         conn.execute(
-            "INSERT INTO agent_org_runtime_user_directed_roots(
+            "INSERT INTO agent_org_execution_user_directed_roots(
                 org_run_id,root_authority_turn_id,policy_version,max_deliveries,
                 max_cascade_depth,next_delivery_ordinal,created_at
              ) VALUES ('run','turn',1,8,2,2,'now')",
@@ -1377,7 +1380,7 @@ mod tests {
         .expect("insert root");
         let error = conn
             .execute(
-                "INSERT INTO agent_org_runtime_user_directed_deliveries(
+                "INSERT INTO agent_org_execution_user_directed_deliveries(
                     org_run_id,session_id,turn_intent_id,root_authority_turn_id,
                     source_kind,source_event_id,dispatch_member_id,
                     member_dispatch_sequence,depth,delivery_ordinal,request_digest,

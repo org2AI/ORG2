@@ -9,17 +9,17 @@ fn backfill_cannot_publish_inbox_transcripts_before_the_formal_source_writer() {
             id TEXT PRIMARY KEY, session_id TEXT NOT NULL, role TEXT NOT NULL,
             content TEXT NOT NULL, sequence INTEGER NOT NULL, created_at TEXT NOT NULL, images TEXT
          );
-         CREATE TABLE agent_org_runtime_inbox_materializations (
+         CREATE TABLE agent_org_execution_inbox_materializations (
             inbox_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL,
             transcript_message_id TEXT NOT NULL, transcript_intent_id TEXT NOT NULL,
             materialized_at TEXT NOT NULL
          );
-         CREATE INDEX idx_agent_org_runtime_inbox_materializations_session
-            ON agent_org_runtime_inbox_materializations(session_id,inbox_id);
+         CREATE INDEX idx_agent_org_execution_inbox_materializations_session
+            ON agent_org_execution_inbox_materializations(session_id,inbox_id);
          INSERT INTO agent_messages VALUES
             ('ordinary','session','user','[Agent Org inbox message] quoted by the user',0,'2026-09-24T00:00:00Z',NULL),
             ('mail','session','user','A member delivered work',1,'2026-09-24T00:00:01Z',NULL);
-         INSERT INTO agent_org_runtime_inbox_materializations VALUES
+         INSERT INTO agent_org_execution_inbox_materializations VALUES
             (1,'session','mail','stable-batch-id','2026-09-24T00:00:01Z'),
             (2,'session','mail','stable-batch-id','2026-09-24T00:00:01Z');",
     ).unwrap();
@@ -56,7 +56,7 @@ fn backfill_cannot_publish_inbox_transcripts_before_the_formal_source_writer() {
     ).unwrap();
     // The live delivery receipts can be retired after read acknowledgment.
     // The durable event still owns both message and execution identities.
-    conn.execute("DELETE FROM agent_org_runtime_inbox_materializations", [])
+    conn.execute("DELETE FROM agent_org_execution_inbox_materializations", [])
         .unwrap();
     assert_eq!(backfill_missing_user_events(&conn, "session").unwrap(), 0);
     let stored: String = conn

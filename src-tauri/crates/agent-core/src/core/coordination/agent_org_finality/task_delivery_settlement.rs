@@ -40,16 +40,16 @@ pub(crate) fn settle_task_bound_deliveries_in_tx(
     let mut statement = conn
         .prepare(
             "SELECT DISTINCT inbox.id
-             FROM agent_org_runtime_inbox inbox
-             LEFT JOIN agent_org_runtime_inbox_task_bindings binding
+             FROM agent_org_execution_inbox inbox
+             LEFT JOIN agent_org_execution_inbox_task_bindings binding
                ON binding.inbox_id=inbox.id
-             LEFT JOIN agent_org_runtime_formal_trigger_receipts trigger
+             LEFT JOIN agent_org_execution_formal_trigger_receipts trigger
                ON trigger.inbox_id=inbox.id
              WHERE inbox.org_run_id=?1
                AND inbox.delivery_class='formal_work'
                AND inbox.read_at IS NULL
                AND NOT EXISTS (
-                   SELECT 1 FROM agent_org_runtime_inbox_delivery_resolutions existing
+                   SELECT 1 FROM agent_org_execution_inbox_delivery_resolutions existing
                    WHERE existing.inbox_id=inbox.id
                )
                AND (
@@ -65,8 +65,8 @@ pub(crate) fn settle_task_bound_deliveries_in_tx(
                        AND json_valid(inbox.payload_json)
                        AND EXISTS (
                            SELECT 1
-                           FROM agent_org_runtime_plan_decisions decision
-                           JOIN agent_org_runtime_plan_revisions revision
+                           FROM agent_org_execution_plan_decisions decision
+                           JOIN agent_org_execution_plan_revisions revision
                              ON revision.plan_revision_id=decision.plan_revision_id
                            WHERE revision.org_run_id=?1
                              AND revision.source_task_id=?2
@@ -92,7 +92,7 @@ pub(crate) fn settle_task_bound_deliveries_in_tx(
     for inbox_id in &inbox_ids {
         inserted = inserted.saturating_add(
             conn.execute(
-                "INSERT OR IGNORE INTO agent_org_runtime_inbox_delivery_resolutions (
+                "INSERT OR IGNORE INTO agent_org_execution_inbox_delivery_resolutions (
                     inbox_id,org_run_id,resolution_kind,resolved_by_member_id,reason,
                     replacement_inbox_id,replacement_task_id,created_at
                  ) VALUES (?1,?2,?3,?4,?5,NULL,?6,?7)",
@@ -112,22 +112,22 @@ pub(crate) fn settle_task_bound_deliveries_in_tx(
     if !inbox_ids.is_empty() {
         for inbox_id in &inbox_ids {
             conn.execute(
-                "DELETE FROM agent_org_runtime_inbox_materializations WHERE inbox_id=?1",
+                "DELETE FROM agent_org_execution_inbox_materializations WHERE inbox_id=?1",
                 [inbox_id],
             )
             .map_err(|error| error.to_string())?;
             conn.execute(
-                "UPDATE agent_org_runtime_formal_trigger_attempts
+                "UPDATE agent_org_execution_formal_trigger_attempts
                  SET status='resolved',terminal_at=COALESCE(terminal_at,?2),updated_at=?2
                  WHERE receipt_id IN (
-                     SELECT receipt_id FROM agent_org_runtime_formal_trigger_receipts
+                     SELECT receipt_id FROM agent_org_execution_formal_trigger_receipts
                      WHERE inbox_id=?1
                  ) AND status IN ('queued','running')",
                 params![inbox_id, &now],
             )
             .map_err(|error| error.to_string())?;
             conn.execute(
-                "UPDATE agent_org_runtime_formal_trigger_receipts
+                "UPDATE agent_org_execution_formal_trigger_receipts
                  SET status='resolved',doorbell_status='suppressed',
                      resolved_at=COALESCE(resolved_at,?2),updated_at=?2
                  WHERE inbox_id=?1 AND status IN ('pending','materialized')",
@@ -159,7 +159,7 @@ pub(crate) fn settle_task_bound_deliveries_in_tx(
         if let Some(root_receipt_id) = scope_reason.source_event_id.as_deref() {
             let root_task_id: Option<String> = conn
                 .query_row(
-                    "SELECT target_task_id FROM agent_org_scope_removal_receipts
+                    "SELECT target_task_id FROM agent_org_execution_scope_removal_receipts
                      WHERE receipt_id=?1 AND org_run_id=?2 AND status='recorded'",
                     params![root_receipt_id, &current.org_run_id],
                     |row| row.get(0),

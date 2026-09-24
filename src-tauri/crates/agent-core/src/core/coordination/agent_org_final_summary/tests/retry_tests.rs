@@ -10,7 +10,7 @@ fn fail_and_idle(fixture: &SummaryFixture, turn_intent_id: &str) {
     super::super::mark_failed_for_turn("summary-root", turn_intent_id, "provider_error").unwrap();
     let conn = get_connection().unwrap();
     conn.execute(
-        "UPDATE agent_org_runtime_runs
+        "UPDATE agent_org_execution_runs
          SET status='idle',idled_at=?2,updated_at=?2
          WHERE id=?1 AND status='running' AND activation_generation=1",
         params![&fixture.run_id, chrono::Utc::now().to_rfc3339()],
@@ -36,7 +36,7 @@ fn explicit_retry_atomically_reactivates_the_same_generation() {
     let conn = get_connection().unwrap();
     let (status, generation): (String, i64) = conn
         .query_row(
-            "SELECT status,activation_generation FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT status,activation_generation FROM agent_org_execution_runs WHERE id=?1",
             [&fixture.run_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -45,7 +45,7 @@ fn explicit_retry_atomically_reactivates_the_same_generation() {
     assert_eq!(generation, fixture.certificate.activation_generation);
     let trigger_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM agent_org_runtime_formal_trigger_receipts
+            "SELECT COUNT(*) FROM agent_org_execution_formal_trigger_receipts
              WHERE org_run_id=?1 AND trigger_kind='final_summary'
                AND trigger_id=?2 AND trigger_revision=2",
             params![&fixture.run_id, &retried.receipt_id],
@@ -91,7 +91,7 @@ fn retry_rejects_changed_certified_evidence_without_reactivating() {
     let mut output: serde_json::Value = serde_json::from_str(
         &conn
             .query_row(
-                "SELECT output_json FROM agent_org_runtime_tasks
+                "SELECT output_json FROM agent_org_execution_tasks
                  WHERE org_run_id=?1 AND id='report-task'",
                 [&fixture.run_id],
                 |row| row.get::<_, String>(0),
@@ -101,7 +101,7 @@ fn retry_rejects_changed_certified_evidence_without_reactivating() {
     .unwrap();
     output["content"] = "Evidence changed after certification".into();
     conn.execute(
-        "UPDATE agent_org_runtime_tasks SET output_json=?2
+        "UPDATE agent_org_execution_tasks SET output_json=?2
          WHERE org_run_id=?1 AND id='report-task'",
         params![&fixture.run_id, output.to_string()],
     )

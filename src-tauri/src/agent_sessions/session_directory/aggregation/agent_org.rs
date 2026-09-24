@@ -39,10 +39,31 @@ pub(in crate::agent_sessions::session_directory) fn annotate_agent_org_root_rows
             .or_insert((run.org_id, org_name));
     }
 
+    let conn = database::db::get_connection().map_err(|error| error.to_string())?;
     for session in sessions {
+        if !root_session_ids.contains_key(&session.session_id) {
+            if let Some(history) = agent_core::coordination::agent_org_history_store::descriptor(
+                &conn,
+                &session.session_id,
+            )
+            .map_err(|error| error.to_string())?
+            {
+                if history
+                    .root_session_id
+                    .as_deref()
+                    .is_none_or(|root| root == session.session_id)
+                {
+                    session.agent_icon_id = Some(AGENT_ORG_ICON_ID.to_string());
+                    session.agent_org_name = history.title;
+                    session.agent_org_mode = Some(history.mode);
+                }
+            }
+        }
         if let Some((org_id, org_name)) = root_session_ids.get(&session.session_id) {
             session.agent_icon_id = Some(AGENT_ORG_ICON_ID.to_string());
             session.agent_org_id = Some(org_id.clone());
+            session.agent_org_mode =
+                Some(agent_core::coordination::agent_org_history_store::HistoryMode::Current);
             session.agent_org_name = Some(org_name.clone());
         }
     }

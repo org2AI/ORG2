@@ -67,10 +67,10 @@ fn list_bindings_with_connection(
             "SELECT receipt.call_id,decision.approval_id,revision.plan_revision_id,
                     revision.revision_number,revision.source_task_id,decision.status,
                     revision.plan_title,revision.plan_path,revision.plan_content
-               FROM agent_org_runtime_plan_revisions revision
-               JOIN agent_org_runtime_plan_decisions decision
+               FROM agent_org_execution_plan_revisions revision
+               JOIN agent_org_execution_plan_decisions decision
                  ON decision.plan_revision_id=revision.plan_revision_id
-               JOIN agent_org_runtime_tool_call_receipts receipt
+               JOIN agent_org_execution_tool_call_receipts receipt
                  ON receipt.org_run_id=revision.org_run_id
                 AND receipt.session_id=revision.source_session_id
                 AND receipt.turn_intent_id=revision.source_turn_intent_id
@@ -271,26 +271,26 @@ mod tests {
     fn binding_query_uses_formal_revision_and_exact_tool_receipt_identity() {
         let conn = Connection::open_in_memory().expect("open sqlite");
         conn.execute_batch(
-            "CREATE TABLE agent_org_runtime_plan_revisions (
+            "CREATE TABLE agent_org_execution_plan_revisions (
                  plan_revision_id TEXT PRIMARY KEY,org_run_id TEXT NOT NULL,
                  source_task_id TEXT NOT NULL,source_session_id TEXT NOT NULL,
                  source_turn_intent_id TEXT NOT NULL,revision_number INTEGER NOT NULL,
                  plan_title TEXT NOT NULL,plan_path TEXT NOT NULL,plan_content TEXT NOT NULL,
                  created_at TEXT NOT NULL
              );
-             CREATE TABLE agent_org_runtime_plan_decisions (
+             CREATE TABLE agent_org_execution_plan_decisions (
                  approval_id TEXT PRIMARY KEY,plan_revision_id TEXT NOT NULL,status TEXT NOT NULL
              );
-             CREATE TABLE agent_org_runtime_tool_call_receipts (
+             CREATE TABLE agent_org_execution_tool_call_receipts (
                  org_run_id TEXT NOT NULL,session_id TEXT NOT NULL,turn_intent_id TEXT NOT NULL,
                  call_id TEXT NOT NULL,tool_name TEXT NOT NULL,operation TEXT NOT NULL
              );
-             INSERT INTO agent_org_runtime_plan_revisions VALUES
+             INSERT INTO agent_org_execution_plan_revisions VALUES
                  ('revision-2','run-1','plan-task-2','planner-session','turn-2',2,
                   'Formal title','/tmp/formal-plan.md','# Formal plan','2026-08-29T00:00:00Z');
-             INSERT INTO agent_org_runtime_plan_decisions VALUES
+             INSERT INTO agent_org_execution_plan_decisions VALUES
                  ('approval-2','revision-2','approved');
-             INSERT INTO agent_org_runtime_tool_call_receipts VALUES
+             INSERT INTO agent_org_execution_tool_call_receipts VALUES
                  ('run-1','planner-session','turn-2','call-2','create_plan','agent_org_submit'),
                  ('run-1','planner-session','turn-2','wrong-tool','task_create','create');",
         )

@@ -70,7 +70,7 @@ pub(super) fn ensure_run_allows_task_mutation(
     let run: Option<(String, i64)> = conn
         .query_row(
             "SELECT status,activation_generation
-             FROM agent_org_runtime_runs WHERE id=?1",
+             FROM agent_org_execution_runs WHERE id=?1",
             params![org_run_id],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -105,7 +105,7 @@ pub(super) fn ensure_current_generation_has_no_certificate(
     let raw_generation_certificate: bool = conn
         .query_row(
             "SELECT EXISTS(
-                 SELECT 1 FROM agent_org_runtime_run_completion_certificates
+                 SELECT 1 FROM agent_org_execution_run_completion_certificates
                  WHERE org_run_id=?1 AND activation_generation=?2
              )",
             params![org_run_id, activation_generation],
@@ -281,7 +281,7 @@ pub(super) fn validate_task_persistence_invariants(
 
     let snapshot_json: Option<String> = conn
         .query_row(
-            "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id=?1",
             params![org_run_id],
             |row| row.get(0),
         )
@@ -509,7 +509,7 @@ pub(super) fn validate_task_model_invariants(
 
     let snapshot_json: String = conn
         .query_row(
-            "SELECT org_snapshot_json FROM agent_org_runtime_runs WHERE id=?1",
+            "SELECT org_snapshot_json FROM agent_org_execution_runs WHERE id=?1",
             params![&task.org_run_id],
             |row| row.get::<_, Option<String>>(0),
         )

@@ -12,7 +12,7 @@ pub fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
 
 pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS agent_org_runtime_recovery_attempts (
+        "CREATE TABLE IF NOT EXISTS agent_org_execution_recovery_attempts (
             org_run_id TEXT NOT NULL,
             action_kind TEXT NOT NULL,
             target_key TEXT NOT NULL,
@@ -23,8 +23,8 @@ pub(crate) fn create_schema(conn: &Connection) -> rusqlite::Result<()> {
             reservation_token TEXT,
             PRIMARY KEY (org_run_id, action_kind, target_key)
         );
-        CREATE INDEX IF NOT EXISTS idx_agent_org_runtime_recovery_attempts_run
-            ON agent_org_runtime_recovery_attempts(org_run_id);",
+        CREATE INDEX IF NOT EXISTS idx_agent_org_execution_recovery_attempts_run
+            ON agent_org_execution_recovery_attempts(org_run_id);",
     )
 }
 
@@ -56,7 +56,7 @@ pub(super) fn budget_disposition_with_connection(
     let row: Option<(String, i64, String)> = conn
         .query_row(
             "SELECT reason_fingerprint, attempts, next_allowed_at
-             FROM agent_org_runtime_recovery_attempts
+             FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3",
             params![run_id, action_kind, target_key],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -129,7 +129,7 @@ pub(super) fn record_attempt_with_connection(
 ) -> Result<(), String> {
     let previous: Option<(String, i64)> = conn
         .query_row(
-            "SELECT reason_fingerprint, attempts FROM agent_org_runtime_recovery_attempts
+            "SELECT reason_fingerprint, attempts FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3",
             params![run_id, action_kind, target_key],
             |row| Ok((row.get(0)?, row.get(1)?)),
@@ -147,7 +147,7 @@ pub(super) fn record_attempt_with_connection(
     let now = Utc::now();
     let next = now + ChronoDuration::seconds(RECOVERY_DELAYS_SECS[delay_index]);
     conn.execute(
-        "INSERT INTO agent_org_runtime_recovery_attempts
+        "INSERT INTO agent_org_execution_recovery_attempts
              (org_run_id, action_kind, target_key, reason_fingerprint, attempts, next_allowed_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
          ON CONFLICT(org_run_id, action_kind, target_key) DO UPDATE SET
@@ -174,7 +174,7 @@ pub fn clear_rewake_budget(run_id: &str, member_id: &str) -> Result<(), String> 
     with_sessions_writer(|| {
         let conn = get_connection().map_err(|err| err.to_string())?;
         conn.execute(
-            "DELETE FROM agent_org_runtime_recovery_attempts
+            "DELETE FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3",
             params![run_id, MEMBER_REWAKE, member_id],
         )
@@ -227,7 +227,7 @@ pub(crate) fn task_failure_recovery_already_processed_with_connection(
 ) -> Result<bool, String> {
     conn.query_row(
         "SELECT EXISTS(
-             SELECT 1 FROM agent_org_runtime_recovery_attempts
+             SELECT 1 FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3
          )",
         params![run_id, TASK_FAILURE_RECOVERY_EVENT, fingerprint],
@@ -250,7 +250,7 @@ pub(crate) fn reserve_task_failure_recovery_with_connection(
 ) -> Result<TaskRecoveryReservation, String> {
     let current_generation: i64 = conn
         .query_row(
-            "SELECT activation_generation FROM agent_org_runtime_runs
+            "SELECT activation_generation FROM agent_org_execution_runs
              WHERE id=?1 AND status='running'",
             [run_id],
             |row| row.get(0),
@@ -265,7 +265,7 @@ pub(crate) fn reserve_task_failure_recovery_with_connection(
     let now = Utc::now().to_rfc3339();
     let inserted = conn
         .execute(
-            "INSERT INTO agent_org_runtime_recovery_attempts(
+            "INSERT INTO agent_org_execution_recovery_attempts(
                 org_run_id,action_kind,target_key,reason_fingerprint,attempts,
                 next_allowed_at,updated_at,reservation_token
              ) VALUES (?1,?2,?3,?3,1,?4,?4,NULL)
@@ -279,7 +279,7 @@ pub(crate) fn reserve_task_failure_recovery_with_connection(
 
     let previous_attempts: i64 = conn
         .query_row(
-            "SELECT attempts FROM agent_org_runtime_recovery_attempts
+            "SELECT attempts FROM agent_org_execution_recovery_attempts
              WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3",
             params![run_id, TASK_FAILURE_RECOVERY, task_id],
             |row| row.get(0),
@@ -292,7 +292,7 @@ pub(crate) fn reserve_task_failure_recovery_with_connection(
     let exhausted = task_failure_recovery_attempts_exhausted(attempts);
     let token = uuid::Uuid::new_v4().to_string();
     conn.execute(
-        "INSERT INTO agent_org_runtime_recovery_attempts(
+        "INSERT INTO agent_org_execution_recovery_attempts(
             org_run_id,action_kind,target_key,reason_fingerprint,attempts,
             next_allowed_at,updated_at,reservation_token
          ) VALUES (?1,?2,?3,?4,?5,?6,?6,?7)
@@ -340,7 +340,7 @@ fn reserve_task_system_operation(
             .map_err(|error| error.to_string())?;
         let generation: i64 = tx
             .query_row(
-                "SELECT activation_generation FROM agent_org_runtime_runs
+                "SELECT activation_generation FROM agent_org_execution_runs
                  WHERE id=?1 AND status='running'",
                 params![run_id],
                 |row| row.get(0),
@@ -350,7 +350,7 @@ fn reserve_task_system_operation(
             .ok_or_else(|| format!("agent_org_run_not_mutable: {run_id}"))?;
         let previous_attempts: i64 = tx
             .query_row(
-                "SELECT attempts FROM agent_org_runtime_recovery_attempts
+                "SELECT attempts FROM agent_org_execution_recovery_attempts
                  WHERE org_run_id=?1 AND action_kind=?2 AND target_key=?3",
                 params![run_id, action_kind, target_key],
                 |row| row.get(0),
@@ -368,7 +368,7 @@ fn reserve_task_system_operation(
         let token = uuid::Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
         tx.execute(
-            "INSERT INTO agent_org_runtime_recovery_attempts(
+            "INSERT INTO agent_org_execution_recovery_attempts(
                 org_run_id,action_kind,target_key,reason_fingerprint,attempts,
                 next_allowed_at,updated_at,reservation_token
              ) VALUES (?1,?2,?3,?4,?5,?6,?6,?7)

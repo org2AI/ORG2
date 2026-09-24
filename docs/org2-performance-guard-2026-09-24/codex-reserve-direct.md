@@ -132,19 +132,50 @@ The 55.10-second interaction sample included setup, one two-second model reply,
 and subsequent idle: app CPU 2.444%, WebKit 10.122%, sampled peak RSS 115.67 MiB
 and 417.64 MiB respectively, physical writes 16 KiB. It is not a sustained
 streaming benchmark. After normal product Quit, a 15.23-second observation found
-no instance process or attributable WebKit process. Reopening restored one session
+no instance process. Reopening restored one session
 with its exact reply and the reserve-medium selection.
 
-A second normal quit left no instance/WebKit processes over 12.11 seconds. A
+A second normal quit left no instance process over 12.11 seconds. A
 second reopen again showed exactly one session, the exact reply in order, and
 reserve-medium selected. The two 20-second reopen samples ended at app/WebKit
 RSS 88.86/51.28 MiB and 113.02/58.34 MiB; each had one app plus three WebKit
 processes with no membership growth. Two cycles do not establish a long-run
-memory bound. The test instance was then normally quit.
+memory bound. The test instance was then normally quit. The original post-quit
+sampler rediscovered WebKit responsibility from live application roots, so an
+empty group after root exit alone cannot prove WebKit teardown. The additional
+identity-preserving exit check below closes that observation gap.
+
+## Bounded streaming and verified teardown
+
+The same package and product session subsequently completed a no-tool request
+for 250 numbered lines in 88.03 seconds. Read-back of the persisted assistant
+message matched all 250 lines in order (19,499 characters); the GUI showed the
+completed 1m 28s turn. Main output usage was 4,777 tokens, all five new main and
+auxiliary usage rows retained `gpt-reserve-medium`, and tool usage remained zero.
+
+Two-second process sampling covered a 61.15-second subset wholly within that
+turn: app CPU 4.341%, WebKit CPU 31.232%, with sampled peak RSS 176.59/684.50 MiB.
+This subset excludes prompt entry and intervals straddling turn boundaries;
+the entire 88-second turn was not continuously sampled. The subsequent
+120.04-second sample ended at app/WebKit RSS 122.73/215.81 MiB, down from
+155.70/718.48 MiB. Its settled 105.47-second subset (starting at least 15 seconds
+after completion) measured CPU 1.474%/4.643%, with zero physical writes. These
+are attributed process measurements under concurrent compilation, not a clean
+baseline, frame-time measurement, or evidence of near-zero idle CPU.
+
+Normal Cmd-Q and the product Quit confirmation closed the instance. A separate
+10-second read-only check retained all 18 PID plus kernel-start identities seen
+across the saved application, descendant and WebKit samples, including prior
+cycles. None remained alive with the same identity. Unlike rediscovering children
+from a live root, this check still detects known WebKit processes after the app
+exits and rejects PID reuse. It confirms their eventual exit, not the exact exit
+time in earlier cycles. Private evidence: `reserve94-bounded-stream.json`,
+`reserve94-stream-tail.json`, `reserve94-stream-verified.json` and
+`reserve94-verified-exit.json`.
 
 Performance verdict: blocked for the full lifecycle/performance matrix. The
-measured macOS visible/hidden, short active, quit and two reopen scenarios are
-complete, but no uncontended baseline, long streaming/load run, offline/reconnect,
+measured macOS visible/hidden, short active, bounded streaming, quit and two reopen scenarios are
+complete, but no uncontended baseline, sustained multi-turn load, offline/reconnect,
 account/endpoint switch, or Windows/Linux runtime measurement was performed.
 The shared machine was under concurrent build load; the visible/hidden CPU
 results are not a near-zero or improvement claim. Source review found no new

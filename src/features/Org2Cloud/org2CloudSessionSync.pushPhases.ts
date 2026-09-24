@@ -2,7 +2,7 @@
  * The write phases of one Org2CloudSessionSync push pass, run after its gates,
  * event preparation and shrink observation: one of the
  * three replay branches (bounded imported delta, cursor-anchored delta append
- * or epoch rewrite, first publish), then best-effort shared-file sync.
+ * or epoch rewrite, first publish), then independently scheduled shared-file sync.
  *
  * Fifth link of the Org2CloudSessionSync inheritance chain; which branch runs
  * is still decided by `pushSessionOnce` in Org2CloudSessionSync itself.
@@ -18,21 +18,32 @@ import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
 } from "./org2CloudAuthAtom";
+import { getCloudCapabilitiesConfirmed } from "./org2CloudCapabilities";
 import { broadcastOrgControlChangedToPeers } from "./org2CloudControlBus";
 import { endpointForOrg } from "./org2CloudOrgEndpointRouter";
 import type {
+  Org2CloudSyncClientDeps,
   PreparedPushEvents,
   PreparedPushPlan,
 } from "./org2CloudSessionSync.types";
 import { Org2CloudSessionSyncUpload } from "./org2CloudSessionSync.upload";
 import type { CollabSessionPushCursor } from "./org2CloudSyncAtoms";
 import { isOrg2SyncErrorCode } from "./org2CloudSyncClient";
+import type { CloudStore } from "./org2CloudSyncLifecycle";
 import {
   SessionSharedFileRetry,
   sharedFileRetryScope,
 } from "./sessionSharedFileRetry";
+import { SharedSessionFileRequestError } from "./sharedSessionFilesClient";
 
 const log = createLogger("Org2CloudSyncEngine");
+const MAX_REPLAY_FILE_JOBS = 2;
+
+interface ReplayFileJob {
+  orgId: string;
+  sessionId: string;
+  controller: AbortController;
+}
 
 /** One prepared pass, handed from `pushSessionOnce` to its write phases. */
 export interface PreparedPushPass {
@@ -53,12 +64,28 @@ export interface PreparedPushPass {
 
 export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
   private readonly sharedFileRetry = new SessionSharedFileRetry();
+  // No in-memory backlog: the persisted cursor remains pending if slots are full.
+  // Aborted jobs retain their slots until their actual work settles.
+  private readonly sharedFileJobs = new Set<ReplayFileJob>();
   protected sharedFileGeneration = 0;
+  private sharedFileDiagnosticAt = -Infinity;
+  private sharedFilePassDeferred = false;
+
+  constructor(
+    getStore: () => CloudStore | null,
+    client: Org2CloudSyncClientDeps,
+    private readonly onSharedFileCapacityAvailable: () => void = () => undefined
+  ) {
+    super(getStore, client);
+  }
 
   override reset(): void {
     super.reset();
     this.sharedFileGeneration++;
     this.sharedFileRetry.reset();
+    this.sharedFileDiagnosticAt = -Infinity;
+    this.sharedFilePassDeferred = false;
+    for (const job of this.sharedFileJobs) job.controller.abort();
   }
 
   override prune(
@@ -67,31 +94,32 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
   ): void {
     super.prune(orgs, sessions);
     this.sharedFileRetry.prune(orgs, sessions);
+    for (const job of this.sharedFileJobs) {
+      if (!orgs.has(job.orgId) || !sessions.has(job.sessionId))
+        job.controller.abort();
+    }
   }
 
-  protected isSharedFileSyncBackedOff(
-    auth: Org2CloudAuthState,
-    orgId: string,
-    sessionId: string
-  ): boolean {
-    return this.sharedFileRetry.isBackedOff(
-      sharedFileRetryScope(
-        auth,
-        endpointForOrg(orgId).supabaseUrl,
-        orgId,
-        sessionId
-      )
-    );
+  protected cancelReplaySharedFiles(orgId: string, sessionId: string): void {
+    for (const job of this.sharedFileJobs) {
+      if (job.orgId === orgId && job.sessionId === sessionId)
+        job.controller.abort();
+    }
   }
 
-  /** Attachments cannot fail a committed replay or certify an incomplete backfill. */
-  protected async syncReplaySharedFiles(
+  /**
+   * Body publication never waits for attachment probes, reads or uploads.
+   * Existing sync passes rediscover pending cursors after saturation/restart;
+   * no new polling loop or retained queue of transcript arrays is introduced.
+   */
+  protected scheduleReplaySharedFiles(
     auth: Org2CloudAuthState,
     orgId: string,
     session: Session,
-    events: SessionEvent[]
-  ): Promise<boolean> {
+    coveredEvents?: SessionEvent[]
+  ): void {
     const sessionId = session.session_id;
+    const cursor = this.getCursor(orgId, sessionId);
     const endpoint = endpointForOrg(orgId);
     const scope = sharedFileRetryScope(
       auth,
@@ -99,43 +127,135 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
       orgId,
       sessionId
     );
-    if (this.sharedFileRetry.isBackedOff(scope)) return false;
-    const generation = this.sharedFileGeneration;
-    const assertCurrentIdentity = () => {
-      const latest = this.getStore()?.get(org2CloudAuthAtom);
-      if (
-        generation !== this.sharedFileGeneration ||
-        !latest ||
-        org2CloudAuthIdentityKey(latest) !== org2CloudAuthIdentityKey(auth) ||
-        endpointForOrg(orgId).supabaseUrl !== endpoint.supabaseUrl
+    if (!cursor || cursor.sharedFilesVersion === 1) return;
+    let deferredReason: string | null = null;
+    if (
+      typeof document !== "undefined" &&
+      document.visibilityState === "hidden"
+    )
+      deferredReason = "hidden";
+    else if (this.sharedFileRetry.isBackedOff(scope))
+      deferredReason = "backoff";
+    else if (this.sharedFileJobs.size >= MAX_REPLAY_FILE_JOBS)
+      deferredReason = "capacity";
+    else if (
+      [...this.sharedFileJobs].some(
+        (job) => job.orgId === orgId && job.sessionId === sessionId
       )
-        throw new Error("Cloud identity changed while sharing session files");
-    };
-    try {
-      const { syncSessionSharedFiles } =
-        await import("./syncSessionSharedFiles");
-      const ready = await syncSessionSharedFiles({
-        token: auth.accessToken,
-        endpoint,
-        orgId,
-        sessionId,
-        events,
-        repoPath: session.repoPath,
-        assertCurrentIdentity,
-      });
-      assertCurrentIdentity();
-      return ready;
-    } catch (error) {
-      // Cancellation/account changes remain fatal; never update retry state
-      // or the current identity's cursor from an obsolete operation.
-      assertCurrentIdentity();
-      this.sharedFileRetry.noteFailure(scope, error);
-      log.warn(
-        `Replay published; shared files pending for session ${sessionId}`,
-        error
-      );
-      return false;
+    )
+      deferredReason = "in-flight";
+    if (deferredReason) {
+      if (deferredReason === "capacity" || deferredReason === "in-flight")
+        this.sharedFilePassDeferred = true;
+      this.noteSharedFileDeferral(deferredReason);
+      return;
     }
+    const job: ReplayFileJob = {
+      orgId,
+      sessionId,
+      controller: new AbortController(),
+    };
+    const generation = this.sharedFileGeneration;
+    const isCurrent = () => {
+      const latest = this.getStore()?.get(org2CloudAuthAtom);
+      return (
+        !job.controller.signal.aborted &&
+        generation === this.sharedFileGeneration &&
+        latest !== null &&
+        latest !== undefined &&
+        org2CloudAuthIdentityKey(latest) === org2CloudAuthIdentityKey(auth) &&
+        endpointForOrg(orgId).supabaseUrl === endpoint.supabaseUrl &&
+        (typeof document === "undefined" ||
+          document.visibilityState !== "hidden") &&
+        this.getCursor(orgId, sessionId) !== undefined
+      );
+    };
+    const assertCurrentIdentity = () => {
+      if (!isCurrent())
+        throw new Error("Replay attachment task is no longer active");
+    };
+    this.sharedFileJobs.add(job);
+    void (async () => {
+      try {
+        assertCurrentIdentity();
+        const { syncSessionSharedFiles } =
+          await import("./syncSessionSharedFiles");
+        assertCurrentIdentity();
+        let events = coveredEvents;
+        if (!events) {
+          // A pending file marker must not force the BODY to reload full history.
+          // Probe before a background backfill read on unsupported endpoints.
+          const probe = await getCloudCapabilitiesConfirmed(
+            auth.accessToken,
+            endpoint
+          );
+          assertCurrentIdentity();
+          if (!probe.confirmed || !probe.capabilities.sharedSessionFiles)
+            throw new SharedSessionFileRequestError(
+              "Shared file support unavailable",
+              null,
+              true
+            );
+          events = await this.loadPushEvents(sessionId);
+          assertCurrentIdentity();
+        }
+        const ready = await syncSessionSharedFiles({
+          token: auth.accessToken,
+          endpoint,
+          orgId,
+          sessionId,
+          events,
+          repoPath: session.repoPath,
+          assertCurrentIdentity,
+          signal: job.controller.signal,
+        });
+        assertCurrentIdentity();
+        // A newer body/cursor owns its own attachment acknowledgement. Even a
+        // successful older job cannot certify deltas that arrived during upload.
+        if (ready && this.getCursor(orgId, sessionId) === cursor)
+          this.setCursor({ ...cursor, sharedFilesVersion: 1 });
+        else if (ready) this.noteSharedFileDeferral("newer-body");
+        else
+          this.sharedFileRetry.noteFailure(
+            scope,
+            new Error("Shared files pending")
+          );
+      } catch (error) {
+        // Obsolete work never poisons body retries or a new identity's file state.
+        if (isCurrent()) {
+          this.sharedFileRetry.noteFailure(scope, error);
+          log.warn(
+            `Replay published; shared files pending for session ${sessionId}`,
+            error
+          );
+        } else this.noteSharedFileDeferral("cancelled");
+      } finally {
+        this.sharedFileJobs.delete(job);
+        // The engine is event-driven, not periodically polled. Resume work
+        // deferred by occupied slots through its existing coalescing owner.
+        // Only deferral (not every success/failure) spends a follow-up pass.
+        if (this.sharedFilePassDeferred) {
+          this.sharedFilePassDeferred = false;
+          if (
+            typeof document === "undefined" ||
+            document.visibilityState !== "hidden"
+          )
+            this.onSharedFileCapacityAvailable();
+        }
+      }
+    })().catch((error) => {
+      log.error("Replay attachment task cleanup failed", error);
+    });
+  }
+
+  /** One diagnostic per owner/minute, without another retained map or timer. */
+  private noteSharedFileDeferral(reason: string): void {
+    const now = Date.now();
+    if (now - this.sharedFileDiagnosticAt < 60_000) return;
+    this.sharedFileDiagnosticAt = now;
+    log.info(
+      `Replay attachments remain pending (${reason}); body scheduling is independent`
+    );
   }
 
   /**

@@ -472,6 +472,7 @@ export function createCloudHelpers({ store }: CloudHelperDeps) {
               sourceSessionId: row.sourceSessionId,
               accessMode: row.accessMode ?? null,
               eventsEpoch: row.eventsEpoch ?? null,
+              eventsCount: row.eventsCount ?? null,
               unresolvedCommentCount: row.unresolvedCommentCount ?? null,
             })),
           },

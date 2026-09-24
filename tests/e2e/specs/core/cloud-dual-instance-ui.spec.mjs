@@ -1,4 +1,4 @@
-/* global browser, describe, before, after, afterEach, it, process */
+/* global browser, describe, before, beforeEach, after, afterEach, it, process */
 import { join } from "node:path";
 
 import {
@@ -4915,6 +4915,45 @@ describe("Shared session files across two desktop accounts", function () {
   let fs;
   const artifacts = process.env.E2E_SHARED_FILES_ARTIFACTS;
   const fileRecords = [];
+  let ledgerBefore;
+  const readLedger = async () => {
+    const response = await fetch(`${fixture.faultControlUrl}/ledger`, {
+      method: "POST",
+    });
+    if (!response.ok) throw new Error(`Ledger read failed: ${response.status}`);
+    return response.json();
+  };
+  beforeEach(async function () {
+    if (fixture?.faultControlUrl) ledgerBefore = await readLedger();
+  });
+  afterEach(async function () {
+    if (!fixture?.faultControlUrl || !ledgerBefore) return;
+    const after = await readLedger();
+    const title = this.currentTest.title.replace(/[^a-zA-Z0-9]+/g, "-");
+    fs.writeFileSync(
+      join(artifacts, `ledger-${title}.json`),
+      JSON.stringify({ before: ledgerBefore, after }, null, 2)
+    );
+    for (const previous of ledgerBefore) {
+      const current = after.find(
+        (row) =>
+          row.org_id === previous.org_id &&
+          row.session_id === previous.session_id
+      );
+      if (
+        !current ||
+        current.deleted_at !== previous.deleted_at ||
+        current.events_epoch !== previous.events_epoch ||
+        current.events_count < previous.events_count ||
+        current.access_mode !== previous.access_mode
+      )
+        throw new Error(
+          `Unexpected existing-row mutation: ${JSON.stringify({ previous, current })}`
+        );
+    }
+    if (after.some((row) => row.events_epoch > 3))
+      throw new Error("Unexpected rewrite storm in fixture ledger");
+  });
   before(async function () {
     if (!process.env.E2E_SHARED_FILES_FIXTURE) this.skip();
     this.timeout(900_000);
@@ -5452,7 +5491,7 @@ describe("Shared session files across two desktop accounts", function () {
           { timeout: 30_000 }
         );
         await pressEscapeOn(receiver);
-        const userLink = `a[href$="${userName}"]`;
+        const userLink = `[role="link"][title="${userPath}"]`;
         await clickRenderedOn(receiver, userLink, "open received user file");
         await receiver.waitUntil(
           async () =>
@@ -5488,6 +5527,282 @@ describe("Shared session files across two desktop accounts", function () {
           sourceRemovedDuringOpen: true,
         })
       );
+    });
+  }
+  for (const fault of ["hang", "quota_on"]) {
+    it(`keeps received replay readable during attachment ${fault}`, async function () {
+      if (!fixture.faultControlUrl) this.skip();
+      this.timeout(180_000);
+      const sender = browser;
+      const receiver = peer.client;
+      const faultUrl = fixture.faultControlUrl;
+      const control = async (action) => {
+        const response = await fetch(`${faultUrl}/${action}`, {
+          method: "POST",
+        });
+        if (!response.ok)
+          throw new Error(`Fault fixture ${action}: ${response.status}`);
+        return response.json();
+      };
+      if (!fileRecords[0])
+        throw new Error("Healthy A-to-B transfer prerequisite missing");
+      await control(fault);
+      const faultSession = `sdeagent-attachment-${fault}-${RUN_ID}`;
+      const filePath = join(E2E_REPO_PATH, `pending-${fault}.md`);
+      fs.writeFileSync(filePath, `PENDING_ATTACHMENT_${fault}_${RUN_ID}`);
+      const marker = `READABLE_BODY_${fault}_${RUN_ID}`;
+      const base = {
+        sessionId: faultSession,
+        createdAt: new Date().toISOString(),
+        args: {},
+        result: {},
+        displayStatus: "completed",
+        displayVariant: "message",
+        activityStatus: "processed",
+        isDelta: false,
+      };
+      const events = [
+        {
+          ...base,
+          id: `user-${faultSession}`,
+          chunk_id: `user-${faultSession}`,
+          functionName: "user_message",
+          uiCanonical: "user_message",
+          actionType: "raw",
+          source: "user",
+          displayText: marker,
+        },
+        {
+          ...base,
+          id: `answer-${faultSession}`,
+          chunk_id: `answer-${faultSession}`,
+          functionName: "assistant_message",
+          uiCanonical: "agent_message",
+          actionType: "assistant",
+          source: "assistant",
+          displayText: `Body is available [pending file](${filePath})`,
+        },
+      ];
+      try {
+        // Fixtures establish durable source content only. The rendered share
+        // action and receiver opening exercise the actual production pipeline.
+        unwrapOn(
+          await invokeOn(sender, "seedSidebarSession", {
+            sessionId: faultSession,
+            name: marker,
+            persist: true,
+            repoPath: E2E_REPO_PATH,
+          }),
+          "fault source"
+        );
+        unwrapOn(
+          await invokeOn(sender, "openSession", faultSession),
+          "open fault source"
+        );
+        unwrapOn(
+          await invokeOn(sender, "seedChatEvents", faultSession, events, {
+            chatPanelMaximized: true,
+          }),
+          "fault source events"
+        );
+        unwrapOn(
+          await invokeOn(sender, "cloudTagSessionToOrg", {
+            sessionId: faultSession,
+            orgId: fixture.orgId,
+          }),
+          "fault source tag"
+        );
+        unwrapOn(
+          await invokeOn(sender, "cloudOpenSyncLevelDialog", {
+            sessionId: faultSession,
+          }),
+          "share fault source"
+        );
+        await clickRenderedOn(
+          sender,
+          `[data-testid="session-sync-level-mode-${fixture.orgId}"]`,
+          "fault share level"
+        );
+        await clickRenderedOn(
+          sender,
+          `[data-testid="session-sync-level-mode-option-${fixture.orgId}-full_replay"]`,
+          "share full fault replay"
+        );
+        await pressEscapeOn(sender);
+        const startedAt = Date.now();
+        unwrapOn(
+          await invokeOn(sender, "cloudRunSyncPass"),
+          "nonblocking body pass"
+        );
+        const passMs = Date.now() - startedAt;
+        if (passMs > 15_000)
+          throw new Error(`Body pass waited on attachment: ${passMs}ms`);
+        await sender.waitUntil(
+          async () => {
+            const state = await control("status");
+            return fault === "hang"
+              ? state.held > 0
+              : state.requests.some(
+                  (r) =>
+                    r.session === faultSession &&
+                    r.method === "cloud_put_session_file" &&
+                    r.error?.includes("ORG2_QUOTA_EXCEEDED")
+                );
+          },
+          {
+            timeout: 20_000,
+            interval: 250,
+            timeoutMsg: "Attachment fault was never exercised",
+          }
+        );
+        unwrapOn(
+          await invokeOn(receiver, "cloudRunSyncPass"),
+          "receiver fault pass"
+        );
+        await clickRenderedOn(
+          receiver,
+          '[data-testid="cloud-team-sessions-refresh"]',
+          "refresh fault replay"
+        );
+        await clickRenderedOn(
+          receiver,
+          `[data-testid="sidebar-cloud-session-item-${faultSession}"]`,
+          "open fault replay"
+        );
+        await waitForRenderedOn(
+          receiver,
+          `a[href="${filePath}"]`,
+          "body link despite missing attachment",
+          20_000
+        );
+        const text = await executeOn(
+          receiver,
+          "return document.body.innerText;"
+        );
+        if (!text.includes(marker) || !text.includes("Body is available"))
+          throw new Error("Receiver body content missing");
+        if (fault === "hang" && (await control("status")).held === 0)
+          throw new Error("Attachment completed before receiver proof");
+        await capture(
+          receiver,
+          join(artifacts, `attachment-${fault}-body.png`)
+        );
+        // A second committed body must reach cloud while the first upload is
+        // still held (or the organization is in quota cooldown).
+        const appendMarker = `APPENDED_BODY_${fault}_${RUN_ID}`;
+        const appended = [
+          ...events,
+          {
+            ...base,
+            id: `append-${faultSession}`,
+            chunk_id: `append-${faultSession}`,
+            functionName: "user_message",
+            uiCanonical: "user_message",
+            actionType: "raw",
+            source: "user",
+            displayText: appendMarker,
+          },
+        ];
+        unwrapOn(
+          await invokeOn(sender, "seedChatEvents", faultSession, appended, {
+            chatPanelMaximized: true,
+          }),
+          "append durable source"
+        );
+        unwrapOn(
+          await invokeOn(sender, "cloudRunSyncPass"),
+          "append despite attachment fault"
+        );
+        const ledger = await control("ledger");
+        const row = ledger.find((r) => r.session_id === faultSession);
+        if (!row || row.events_count !== 3 || row.deleted_at)
+          throw new Error(`Wrong fault ledger: ${JSON.stringify(row)}`);
+        await clickRenderedOn(
+          receiver,
+          '[data-testid="cloud-team-sessions-refresh"]',
+          "refresh appended replay"
+        );
+        // Refresh starts in requestAnimationFrame and completes asynchronously.
+        // Observe its committed listing before clicking an already-present row;
+        // otherwise the click legitimately carries the previous replay cursor.
+        await receiver.waitUntil(
+          async () => {
+            const state = unwrapOn(
+              await invokeOn(receiver, "cloudInspectDebugState", {}),
+              "refreshed replay cursor"
+            );
+            const entry = state.debug.remote[fixture.orgId];
+            return (
+              entry?.state === "ready" &&
+              entry.rows.some(
+                (item) =>
+                  item.sourceSessionId === faultSession &&
+                  item.eventsCount === 3
+              )
+            );
+          },
+          {
+            timeout: 20_000,
+            interval: 100,
+            timeoutMsg: "Refreshed listing never advertised the appended body",
+          }
+        );
+        await clickRenderedOn(
+          receiver,
+          `[data-testid="sidebar-cloud-session-item-${faultSession}"]`,
+          "reopen appended replay"
+        );
+        await receiver.waitUntil(
+          async () =>
+            (
+              await executeOn(receiver, "return document.body.innerText;")
+            ).includes(appendMarker),
+          {
+            timeout: 20_000,
+            interval: 250,
+            timeoutMsg: "Appended body never rendered",
+          }
+        );
+        if (fault === "quota_on") {
+          // Existing bytes remain readable even with exactly 1,000 file rows.
+          const saved = fileRecords[0];
+          await clickRenderedOn(
+            receiver,
+            `[data-testid="sidebar-cloud-session-item-${saved.sessionId}"]`,
+            "open prior replay at full quota"
+          );
+          await clickRenderedOn(
+            receiver,
+            `a[href="${saved.filePath}"]`,
+            "read prior attachment at full quota"
+          );
+          await receiver.waitUntil(
+            async () =>
+              executeOn(
+                receiver,
+                "return [...document.querySelectorAll('pre')].some(n=>n.textContent.includes(arguments[0]));",
+                [saved.content.trim()]
+              ),
+            { timeout: 20_000, interval: 250 }
+          );
+          await capture(
+            receiver,
+            join(artifacts, "quota-existing-file-readable.png")
+          );
+          await pressEscapeOn(receiver);
+        }
+        fs.writeFileSync(
+          join(artifacts, `attachment-${fault}-verified.json`),
+          JSON.stringify({
+            passMs,
+            row,
+            receiverBody: true,
+            receiverAppend: true,
+          })
+        );
+      } finally {
+        await control(fault === "hang" ? "release" : "quota_off");
+      }
     });
   }
   it("denies reopening after the owner revokes sharing", async function () {
@@ -5646,6 +5961,75 @@ describe("Shared session files across two desktop accounts", function () {
         );
         await pressEscapeOn(client);
       }
+    }
+  });
+  it("records native idle resources with visible and hidden windows", async function () {
+    if (!fixture.faultControlUrl || process.platform !== "darwin") this.skip();
+    this.timeout(120_000);
+    const { execFileSync } = await import("node:child_process");
+    const { setTimeout: delay } = await import("node:timers/promises");
+    const clients = [browser, peer.client];
+    const pids = [
+      process.env.E2E_IDE_SERVER_PORT,
+      process.env.E2E_SECONDARY_IDE_SERVER_PORT,
+    ].map((port) => {
+      const pid = execFileSync(
+        "lsof",
+        ["-t", `-iTCP:${port}`, "-sTCP:LISTEN"],
+        { encoding: "utf8" }
+      ).trim();
+      if (!/^\d+$/.test(pid))
+        throw new Error("Expected one isolated native process");
+      return pid;
+    });
+    const sample = () =>
+      pids.map((pid) => ({
+        pid,
+        measuredAt: Date.now(),
+        timeRssCpu: execFileSync("ps", ["-p", pid, "-o", "time=,rss=,%cpu="], {
+          encoding: "utf8",
+        }).trim(),
+      }));
+    const visibility = async () =>
+      Promise.all(
+        clients.map((client) =>
+          executeOn(client, "return document.visibilityState;")
+        )
+      );
+    const setWindow = async (operation) => {
+      for (const client of clients) {
+        const result = await client.executeAsyncScript(
+          `const done=arguments[arguments.length-1]; window.__TAURI_INTERNALS__.invoke('plugin:window|'+arguments[0],{label:'main'}).then(()=>done({ok:true})).catch(e=>done({error:String(e)}));`,
+          [operation]
+        );
+        if (!result.ok) throw new Error(`Window ${operation}: ${result.error}`);
+      }
+    };
+    const evidence = {
+      scope: "Native processes only; excludes WebKit renderer services",
+      pids,
+    };
+    try {
+      await setWindow("show");
+      await delay(10_000);
+      evidence.visibleStart = sample();
+      evidence.visibleStates = await visibility();
+      await delay(20_000);
+      evidence.visibleEnd = sample();
+      await setWindow("hide");
+      await delay(2_000);
+      evidence.hiddenStates = await visibility();
+      if (evidence.hiddenStates.some((state) => state !== "hidden"))
+        throw new Error("Native hide did not hide document");
+      evidence.hiddenStart = sample();
+      await delay(20_000);
+      evidence.hiddenEnd = sample();
+    } finally {
+      await setWindow("show");
+      fs.writeFileSync(
+        join(artifacts, "native-idle-resources.json"),
+        JSON.stringify(evidence, null, 2)
+      );
     }
   });
 });

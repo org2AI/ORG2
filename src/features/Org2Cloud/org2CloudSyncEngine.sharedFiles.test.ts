@@ -1,3 +1,4 @@
+import { setTimeout as waitRealTime } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ImportedHistorySource } from "@src/api/tauri/externalHistory";
@@ -40,7 +41,89 @@ describe("imported replay attachment failure recovery", () => {
   afterEach(() => {
     cleanupEngineFixture(fixture.engine);
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
+
+  it.each([3, 7])(
+    "drains %i capacity-deferred attachments without another user action",
+    async (sessionCount) => {
+      const { store, engine, client } = fixture;
+      store.set(
+        sessionsAtom,
+        Array.from({ length: sessionCount }, (_, i) => ({
+          ...SESSION,
+          session_id: `session-slot-${i}`,
+        }))
+      );
+      let release!: (ready: boolean) => void;
+      const held = new Promise<boolean>((resolve) => {
+        release = resolve;
+      });
+      syncFiles
+        .mockReturnValueOnce(held)
+        .mockReturnValueOnce(held)
+        .mockResolvedValue(true);
+      await engine.runSyncPass();
+      await vi.dynamicImportSettled();
+      expect(client.rewriteSessionEvents).toHaveBeenCalledTimes(sessionCount);
+      expect(syncFiles).toHaveBeenCalledTimes(2);
+      release(true);
+      for (let attempt = 0; attempt < 100; attempt++) {
+        if (
+          Object.values(store.get(org2CloudPushCursorsAtom)).every(
+            (cursor) => cursor.sharedFilesVersion === 1
+          )
+        )
+          break;
+        await waitRealTime(10);
+      }
+      // Do not advance bootstrap/focus timers or manually run another pass:
+      // completion itself must wake the session deferred by the slot limit.
+      expect(syncFiles).toHaveBeenCalledTimes(sessionCount);
+      expect(
+        Object.values(store.get(org2CloudPushCursorsAtom)).every(
+          (cursor) => cursor.sharedFilesVersion === 1
+        )
+      ).toBe(true);
+    }
+  );
+
+  it.each(["stop", "hidden"])(
+    "does not wake deferred work after %s",
+    async (transition) => {
+      const { store, engine } = fixture;
+      store.set(
+        sessionsAtom,
+        [1, 2, 3].map((i) => ({ ...SESSION, session_id: `session-${i}` }))
+      );
+      let release!: (ready: boolean) => void;
+      const held = new Promise<boolean>((resolve) => {
+        release = resolve;
+      });
+      syncFiles.mockReturnValue(held);
+      await engine.runSyncPass();
+      await vi.dynamicImportSettled();
+      expect(syncFiles).toHaveBeenCalledTimes(2);
+      if (transition === "stop") engine.stop();
+      else
+        vi.stubGlobal("document", {
+          visibilityState: "hidden",
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        });
+      const passes = engine.startedPassCount;
+      release(true);
+      await vi.dynamicImportSettled();
+      await waitRealTime(30);
+      expect(engine.startedPassCount).toBe(passes);
+      expect(syncFiles).toHaveBeenCalledTimes(2);
+      expect(
+        Object.values(store.get(org2CloudPushCursorsAtom)).every(
+          (cursor) => cursor.sharedFilesVersion !== 1
+        )
+      ).toBe(true);
+    }
+  );
 
   it("keeps bounded delta publication live during quota backoff, then backfills all skipped files", async () => {
     const { store, engine, client } = fixture;
@@ -88,6 +171,7 @@ describe("imported replay attachment failure recovery", () => {
       await engine.runSyncPass();
       vi.setSystemTime(Date.now() + EXTERNAL_HISTORY_ACTIVITY_DEBOUNCE_MS + 1);
       await engine.runSyncPass();
+      await vi.dynamicImportSettled();
     }
     await publishVersion(1);
     const key = `corg-1:${sessionId}`;
@@ -118,6 +202,7 @@ describe("imported replay attachment failure recovery", () => {
     vi.setSystemTime(Date.now() + SHARED_FILE_QUOTA_RETRY_MS);
     syncFiles.mockResolvedValue(true);
     await engine.runSyncPass();
+    await vi.dynamicImportSettled();
     expect(full).toHaveBeenCalledTimes(1);
     expect(syncFiles).toHaveBeenLastCalledWith(
       expect.objectContaining({ events })

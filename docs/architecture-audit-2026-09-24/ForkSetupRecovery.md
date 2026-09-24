@@ -1,41 +1,43 @@
-# 续聊设置恢复与记忆边界
+# Continuation setup recovery and remembered configuration
 
-对应审计 F10。`forkTeammateSession` 原先把所有 `ForkOperationError` 当成设置失效，清记忆并再次弹窗；现在只有 `agent_unavailable` 会重新选设置一次，回放/快照/后端错误向原操作返回，不伪装成配置问题。重新选择后的成功也不再显示“已按上次配置接续”。
+Implements Share Sessions finding F10. Previously, `forkTeammateSession` treated every `ForkOperationError` as invalid configuration, discarded remembered setup, and reopened selection. Only `agent_unavailable` now prompts once more. Replay, snapshot, and backend errors retain their original type and return to the operation. Success after re-selection no longer claims that the previous setup was reused.
 
-记忆升级为 v2：以服务器+登录用户、组织、仓库为键；无仓库时使用来源 session，避免所有无仓库续聊共用设置。保存最多 128 项、有效期 30 天，在访问时清理，不新增后台定时器。用 schema 校验配置；解析输入有 512 KiB 上限。没有可归属的登录身份时不复用记忆。选择设置过程中切账号会取消后续 fork，避免把前一身份确认的配置交给新的请求。
+Memory v2 is scoped by server and signed-in user, organization, and repository. Repository-less sessions use their source session identity. It retains at most 128 entries for 30 days and cleans up on access, with no background timer. Configuration is schema-validated and serialized input is limited to 512 KiB. Unknown identity disables reuse; switching identity during selection cancels the subsequent fork.
 
-v1 无法确定所属身份，因此不自动迁移、不删除；升级后首次需要重新确认。本改动不修改历史正文或原生 transcript。配置只是用户上次确认的选择，执行前的 Agent/账户可用性校验仍由原执行边界负责。
+The identity ownership of v1 entries cannot be established, so they are neither migrated nor deleted. First use after upgrading requires selection again. Historical body/native transcript data is unchanged. Remembered configuration is a prior user choice, not authority to bypass the execution boundary's agent/account validation.
 
-## 架构检查
+## Architecture review
 
-| 层            | 结论                                                                            |
-| ------------- | ------------------------------------------------------------------------------- |
-| 1 编译        | typecheck 通过；相关测试 3 files / 58 passed                                    |
-| 2 结构        | 所有 promptForExecution 入口汇入同一个 fork wrapper；一个配置存储模块           |
-| 3 命名        | setup memory 专指执行选择；不作为云授权凭证                                     |
-| 4 语义        | 配置失效、数据错误、执行结果分别处理                                            |
-| 5 默认分支    | 非 agent_unavailable 不弹设置；未登录、坏配置、过期返回无记忆                   |
-| 6 边界        | 记忆不覆盖执行校验；错误不通过重选模型消除                                      |
-| 7 可理解性    | 非配置错误保留原错误类型；重新选择不显示复用成功提示                            |
-| 8 Wire/持久化 | 无 RPC 变更；localStorage v2 新键，不猜测 v1 身份                               |
-| 9 初始化      | cloud 列表、imported replay、guest fork 共用 wrapper；headless 执行配置保持显式 |
-| 10 对称       | workspace、Agent、account、model 作为同一 selection 存取，共用作用域与有效期    |
+| Layer               | Finding                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1 Compilation       | Typecheck passed; 3 relevant files / 58 tests passed                                                    |
+| 2 Structure         | All promptForExecution entry points share the fork wrapper and one storage module                       |
+| 3 Naming            | Setup memory means execution selection, never cloud authorization                                       |
+| 4 Semantics         | Configuration failure, data failure, and execution result remain distinct                               |
+| 5 Defaults          | Only agent_unavailable reopens setup; signed-out, invalid, or expired entries are not reused            |
+| 6 Boundaries        | Memory does not replace execution validation; model selection cannot repair data errors                 |
+| 7 Understandability | Preserve non-configuration errors; do not claim reuse after re-selection                                |
+| 8 Wire/persistence  | No RPC change; a new localStorage v2 key avoids guessing v1 identity                                    |
+| 9 Initialization    | Cloud list, imported replay, and guest fork share the wrapper; headless configuration remains explicit  |
+| 10 Symmetry         | Workspace, agent, account, and model are stored/read as one selection under the same scope and lifetime |
 
-## 生命周期
+## Lifecycle
 
-| Area               | Verdict | Evidence                      | Change or reason kept                    | Verification                                      |
-| ------------------ | ------- | ----------------------------- | ---------------------------------------- | ------------------------------------------------- |
-| Background work    | keep    | 仅用户续聊触发存储访问        | 无轮询或过期计时器                       | 假时间前进不会产生任务                            |
-| Memory             | fix     | 原 registry 无条数/有效期限制 | 128 项、30 天、输入大小限制，访问时清理  | 超量、过期、坏数据回归                            |
-| Scope/isolation    | fix     | 原 repo 单键跨身份复用        | identity/org/repo 或 source session 分区 | 跨用户/端点/组织/无仓库来源、选择期间切账号回归   |
-| Rendering/hot path | keep    | 无组件或布局改动              | 只修复弹窗触发条件                       | 数据错误不产生 dialog request；配置错误仅重开一次 |
+| Area               | Verdict | Evidence                                       | Change or reason kept                                | Verification                                                                                        |
+| ------------------ | ------- | ---------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Background work    | keep    | Access occurs only during user continuation    | No polling or expiry timer                           | Advancing fake time creates no task                                                                 |
+| Memory             | fix     | Previous registry lacked count/lifetime limits | 128 entries, 30 days, input limit, on-access cleanup | Overflow, expiry, invalid-data regressions                                                          |
+| Scope/isolation    | fix     | Repository-only key crossed identities         | Partition by identity/org/repo or source session     | User, endpoint, organization, repository-less source, and mid-selection identity-switch regressions |
+| Rendering/hot path | keep    | No component/layout change                     | Correct only dialog trigger conditions               | Data errors create no dialog; invalid setup prompts only once                                       |
 
-本机 profile 的存储由既有隔离机制拥有；没有新增共享全局缓存。重启/module reload 重读 v2；退出登录不复用；历史 v1 只保留不读取。断网和源快照错误保留已确认配置。真实桌面多 profile、CPU/RSS、双机/provider rewrite/rotate 未新增实测，不能从函数测试推论。
+Existing profile storage owns local isolation; this change adds no shared global cache. Restart/module reload reads v2; signed-out requests do not reuse memory. v1 remains unread. Offline and source-snapshot errors preserve confirmed setup. Real desktop multi-profile, CPU/RSS, bilateral transfer, and provider rewrite/rotation were not newly measured; function tests cannot establish those outcomes.
 
-Performance verdict: blocked（资源上限与身份回归已验证；未完成真实桌面生命周期和资源测量）。本变更不声称提高运行性能或解决 native/canonical 历史一致性。
+Performance verdict: blocked. Resource limits and identity regressions are verified; real desktop lifecycle/resource acceptance remains incomplete. This change makes no performance-improvement or native/canonical consistency claim.
 
-## 验证
+## Verification
 
-`pnpm exec vitest run --config config/vitest.config.ts src/features/TeamCollaboration/forkSession.test.ts src/features/TeamCollaboration/forkSetupMemory.test.ts src/features/TeamCollaboration/cloudSessionFork.test.ts src/features/TeamCollaboration/useForkImportedSession.test.ts`：实际发现并执行 3 files / 58 tests，通过；`cloudSessionFork.test.ts` 不存在，没有将它算作覆盖。
+`pnpm exec vitest run --config config/vitest.config.ts src/features/TeamCollaboration/forkSession.test.ts src/features/TeamCollaboration/forkSetupMemory.test.ts src/features/TeamCollaboration/cloudSessionFork.test.ts src/features/TeamCollaboration/useForkImportedSession.test.ts` discovered and ran **3 files / 58 tests**, all passing. `cloudSessionFork.test.ts` does not exist and is not counted as coverage.
 
-`pnpm typecheck:fast`、四个变更 TS 文件 ESLint、`git diff --check` 通过。未改布局、按钮或输入控件，因此未添加截图；测试直接断言生产 wrapper 是否创建设置请求。
+`pnpm typecheck:fast`, ESLint for the four changed TS files, and `git diff --check` passed. No layout, button, or input changes; no screenshots were added. Tests directly assert whether the production wrapper creates a setup request.
+
+This English translation preserves the original verification record and its limitations; translation alone does not extend runtime acceptance.

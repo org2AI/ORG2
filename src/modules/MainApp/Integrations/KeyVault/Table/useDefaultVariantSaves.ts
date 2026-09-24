@@ -9,13 +9,11 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { saveKey } from "@src/api/services/keyValidation";
 import type { KeyVaultAccount } from "@src/hooks/keyVault";
-import { upsertSharedLocalKey } from "@src/hooks/keyVault/sharedLocalKeyStore";
+import { saveDefaultVariantOverrides } from "@src/hooks/keyVault/defaultVariantSaveCoordinator";
 
 import {
   type DefaultVariantOverrides,
-  applyDefaultVariantOverrides,
   defaultVariantOverridesSettled,
 } from "./defaultVariantOverrides";
 
@@ -49,7 +47,8 @@ export function useDefaultVariantSaves({
   >(new Map());
   const optimisticRef = useRef<Map<string, DefaultVariantOverrides>>(new Map());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const queueRef = useRef<Set<string>>(new Set());
+  const queueRef = useRef<Map<string, DefaultVariantOverrides>>(new Map());
+  const mountedRef = useRef(true);
 
   const flushQueue = useCallback(() => {
     if (timerRef.current) {
@@ -57,42 +56,40 @@ export function useDefaultVariantSaves({
       timerRef.current = null;
     }
 
-    const queued = [...queueRef.current];
-    if (queued.length === 0) return;
-    queueRef.current = new Set();
-
+    const queued = queueRef.current;
+    if (queued.size === 0) return;
+    queueRef.current = new Map();
     const accountById = new Map(
       accounts.map((account) => [account.id, account])
     );
-    void Promise.all(
-      queued.map((accountId) => {
-        const account = accountById.get(accountId);
-        const overrides = optimisticRef.current.get(accountId);
-        if (!account || !overrides) return Promise.resolve(undefined);
-        return saveKey({
-          id: account.id,
-          agent_type: account.modelType,
-          default_variants: applyDefaultVariantOverrides(
-            account.defaultVariants,
-            overrides
-          ),
-        });
-      })
-    )
-      // `saveKey` answers with the stored record, so publishing it settles the
-      // override. Re-listing every key would tell us nothing new.
-      .then((savedKeys) => {
-        for (const saved of savedKeys) {
-          if (saved) upsertSharedLocalKey(saved);
-        }
-      })
-      .catch(() => {
-        const empty = new Map<string, DefaultVariantOverrides>();
-        optimisticRef.current = empty;
-        setOptimisticDefaultVariants(empty);
-        // The write failed, so the store is the only trustworthy source left.
+    for (const [accountId, overrides] of queued) {
+      const account = accountById.get(accountId);
+      if (!account) continue;
+      // The shared coordinator owns optimistic state from this point onward,
+      // including writes handed off while this table is unmounting.
+      void saveDefaultVariantOverrides({
+        id: account.id,
+        agent_type: account.modelType,
+        default_variant_overrides: [...overrides].map(
+          ([base_model, model]) => ({ base_model, model })
+        ),
+      }).catch(() => {
         void onRefresh?.();
       });
+    }
+    // Drop only the local debounce overlay that was handed off. A newer click
+    // must retain its own overlay until its next debounce flush.
+    const next = new Map(optimisticRef.current);
+    for (const [accountId, submitted] of queued) {
+      const remaining = new Map(next.get(accountId));
+      for (const [family, model] of submitted) {
+        if (remaining.get(family) === model) remaining.delete(family);
+      }
+      if (remaining.size) next.set(accountId, remaining);
+      else next.delete(accountId);
+    }
+    optimisticRef.current = next;
+    if (mountedRef.current) setOptimisticDefaultVariants(next);
   }, [accounts, onRefresh]);
 
   // Keep the latest flush impl in a ref so the unmount cleanup can fire a
@@ -102,16 +99,17 @@ export function useDefaultVariantSaves({
     flushQueueRef.current = flushQueue;
   }, [flushQueue]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
       flushQueueRef.current();
-    },
-    []
-  );
+    };
+  }, []);
 
   const updateDefaultVariant = useCallback(
     (accountId: string, baseModel: string, model: string) => {
@@ -123,7 +121,10 @@ export function useDefaultVariantSaves({
       optimisticRef.current = next;
       setOptimisticDefaultVariants(next);
 
-      queueRef.current.add(accountId);
+      const queued =
+        queueRef.current.get(accountId) ?? new Map<string, string>();
+      queued.set(baseModel, model);
+      queueRef.current.set(accountId, queued);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         flushQueueRef.current();

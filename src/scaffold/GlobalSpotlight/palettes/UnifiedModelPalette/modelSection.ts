@@ -1,10 +1,13 @@
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
+import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
+import {
+  groupCatalogModels,
+  resolveAccountModelVariant,
+} from "@src/hooks/models/accountModelCatalog";
 import {
   type RecentModelEntry,
   marketSelectionsEquivalent,
 } from "@src/store/session/recentModelEntriesAtom";
-import { groupModels } from "@src/util/modelGrouping";
-import { getModelVariantBaseModel } from "@src/util/modelVariants";
 
 import type { SpotlightItem } from "../../types";
 
@@ -49,13 +52,20 @@ export function entryMatchesActiveConfig(
     | "selectedSourceModelType"
     | "listingModelType"
     | "cliAgentType"
-  >
+  >,
+  accounts: readonly KeyVaultAccount[] = []
 ): boolean {
   const activeModel = getActiveModelId(config);
   if (
     !activeModel ||
-    getModelVariantBaseModel(entry.modelId) !==
-      getModelVariantBaseModel(activeModel)
+    resolveAccountModelVariant(
+      accounts.find((account) => account.id === entry.accountId),
+      entry.modelId
+    ).base_model !==
+      resolveAccountModelVariant(
+        accounts.find((account) => account.id === config.selectedAccountId),
+        activeModel
+      ).base_model
   ) {
     return false;
   }
@@ -94,9 +104,10 @@ export function entryMatchesActiveConfig(
 }
 
 export function buildGroupByModel(
-  modelIds: Iterable<string>
+  modelIds: Iterable<string>,
+  accounts: readonly KeyVaultAccount[] = []
 ): Map<string, readonly string[]> {
-  const groups = groupModels(Array.from(modelIds));
+  const groups = groupCatalogModels(Array.from(modelIds), accounts);
   const groupMap = new Map<string, readonly string[]>();
   for (const group of groups) {
     for (const modelId of group.models) {

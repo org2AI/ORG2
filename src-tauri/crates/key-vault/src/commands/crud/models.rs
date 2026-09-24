@@ -390,6 +390,18 @@ pub(super) fn default_variants_for_key(entry: &ModelKey) -> Vec<DefaultVariantIn
         })
         .collect();
 
+    for variant in &entry.discovered_default_variants {
+        if !out
+            .iter()
+            .any(|current| current.base_model == variant.base_model)
+        {
+            out.push(DefaultVariantInfo {
+                base_model: variant.base_model.clone(),
+                model: variant.model.clone(),
+            });
+        }
+    }
+
     if matches!(entry.model_type, ModelType::Codex) {
         for model in entry
             .available_models
@@ -521,4 +533,34 @@ pub(super) fn model_variants_for_key(entry: &ModelKey) -> Vec<ModelVariantInfo> 
         );
     }
     out
+}
+
+/// Shared selectable catalog for desktop, mobile and external harness setup.
+/// Empty enablement is an explicit empty selection; discovery never grants it.
+impl super::KeyInfo {
+    pub fn selectable_model_ids(&self) -> Vec<String> {
+        if !self.enabled {
+            return Vec::new();
+        }
+        let enabled: std::collections::HashSet<&str> =
+            self.enabled_models.iter().map(String::as_str).collect();
+        let bases: std::collections::HashMap<&str, &str> = self
+            .model_variants
+            .iter()
+            .map(|variant| (variant.model.as_str(), variant.base_model.as_str()))
+            .collect();
+        let mut seen = std::collections::HashSet::new();
+        self.available_models
+            .iter()
+            .chain(self.model_variants.iter().map(|variant| &variant.model))
+            .filter(|model| {
+                (enabled.contains(model.as_str())
+                    || bases
+                        .get(model.as_str())
+                        .is_some_and(|base| enabled.contains(base)))
+                    && seen.insert(model.as_str())
+            })
+            .cloned()
+            .collect()
+    }
 }

@@ -18,7 +18,9 @@ import { computeSeedDefaultVariant } from "./defaultModelVariant";
 import {
   MODEL_REASONING_LEVEL,
   type ModelReasoningLevel,
-  parseModelVariant,
+  type ResolvedModelVariantFields,
+  resolveModelVariantFields,
+  toModelReasoningLevel,
 } from "./modelVariants";
 import {
   getModelEffortBaseModel,
@@ -95,35 +97,17 @@ interface IndexedVariant {
   fast: boolean;
 }
 
-function indexVariants(modelIds: readonly string[]): IndexedVariant[] {
-  const out: IndexedVariant[] = [];
-  for (const modelId of modelIds) {
-    const parsed = parseModelVariant(modelId);
-    if (parsed) {
-      // `thinking` is the parsed thinking flag (Anthropic extended
-      // thinking). Effort level is independent — a variant can have
-      // a reasoning level without being a thinking variant. Variants
-      // with no parsed level (e.g. `claude-opus-4-6-thinking`,
-      // `composer-2.5-fast`) are surfaced as the `Default` effort row
-      // only when concrete effort variants do not cover that combination.
-      out.push({
-        modelId,
-        thinking: parsed.thinking,
-        level: parsed.reasoning ?? MODEL_REASONING_LEVEL.BASELINE,
-        fast: parsed.fast,
-      });
-      continue;
-    }
-    // Unparsed ids (e.g. `claude-sonnet-4-6`) are treated as the
-    // unsuffixed Default variant.
-    out.push({
-      modelId,
-      thinking: false,
-      level: MODEL_REASONING_LEVEL.BASELINE,
-      fast: false,
-    });
-  }
-  return out;
+function indexVariants(
+  variants: readonly ResolvedModelVariantFields[]
+): IndexedVariant[] {
+  return variants.map((variant) => ({
+    modelId: variant.model,
+    thinking: variant.thinking ?? false,
+    level:
+      toModelReasoningLevel(variant.reasoning) ??
+      MODEL_REASONING_LEVEL.BASELINE,
+    fast: variant.fast,
+  }));
 }
 
 function selectionKey(selection: {
@@ -140,11 +124,17 @@ function selectionKey(selection: {
 }
 
 export function buildVariantEditOptions(
-  modelIds: readonly string[]
+  modelIds: readonly string[],
+  metadata: readonly ResolvedModelVariantFields[] = []
 ): VariantEditOptions {
-  const indexed = selectableModelVariants(
-    modelIds.map((model) => ({ model }))
-  ).flatMap(({ model }) => indexVariants([model]));
+  const metadataById = new Map(
+    metadata.map((variant) => [variant.model, variant])
+  );
+  const resolve = (modelId: string) =>
+    resolveModelVariantFields(modelId, metadataById.get(modelId));
+  const effortBase = (modelId: string) =>
+    metadataById.get(modelId)?.base_model ?? getModelEffortBaseModel(modelId);
+  const indexed = indexVariants(selectableModelVariants(modelIds.map(resolve)));
 
   // Effort levels are collected across BOTH thinking and non-thinking
   // variants. After the parser split, a non-thinking Claude variant
@@ -197,14 +187,14 @@ export function buildVariantEditOptions(
     // Previously saved bare family ids resolve through the same seed rule
     // as family selection, rather than adding an invented effort rung.
     if (
-      !parseModelVariant(modelId)?.reasoning &&
+      !resolve(modelId).reasoning &&
       !indexed.some((variant) => variant.modelId === modelId)
     ) {
-      const original = parseModelVariant(modelId);
-      const base = getModelEffortBaseModel(modelId);
+      const original = resolve(modelId);
+      const base = effortBase(modelId);
       const candidates = indexed.filter((variant) => {
         return (
-          getModelEffortBaseModel(variant.modelId) === base &&
+          effortBase(variant.modelId) === base &&
           variant.thinking === (original?.thinking ?? false) &&
           variant.fast === (original?.fast ?? false)
         );
@@ -220,18 +210,13 @@ export function buildVariantEditOptions(
       );
       if (resolved) return parseSelection(resolved);
     }
-    const parsed = parseModelVariant(modelId);
-    if (!parsed) {
-      return {
-        thinking: false,
-        level: MODEL_REASONING_LEVEL.BASELINE,
-        fast: false,
-      };
-    }
+    const variant = resolve(modelId);
     return {
-      thinking: parsed.thinking,
-      level: parsed.reasoning ?? MODEL_REASONING_LEVEL.BASELINE,
-      fast: parsed.fast,
+      thinking: variant.thinking ?? false,
+      level:
+        toModelReasoningLevel(variant.reasoning) ??
+        MODEL_REASONING_LEVEL.BASELINE,
+      fast: variant.fast,
     };
   };
 

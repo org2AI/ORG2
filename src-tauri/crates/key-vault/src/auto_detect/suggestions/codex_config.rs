@@ -14,7 +14,10 @@ pub(super) struct CodexModelProvider {
     pub env_key: Option<String>,
 }
 
-pub(super) fn codex_config_path_in(codex_home: Option<&str>, home: Option<&Path>) -> Option<PathBuf> {
+pub(super) fn codex_config_path_in(
+    codex_home: Option<&str>,
+    home: Option<&Path>,
+) -> Option<PathBuf> {
     if let Some(dir) = codex_home.map(str::trim).filter(|d| !d.is_empty()) {
         return Some(PathBuf::from(dir).join("config.toml"));
     }

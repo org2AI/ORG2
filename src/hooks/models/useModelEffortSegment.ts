@@ -7,11 +7,11 @@ import { buildGroupByModel } from "@src/scaffold/GlobalSpotlight/palettes/Unifie
 import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 import {
   formatReasoningLevel,
-  parseModelVariant,
-  resolveModelVariantFields,
+  toModelReasoningLevel,
 } from "@src/util/modelVariants";
 import { buildVariantEditOptions } from "@src/util/variantEditOptions";
 
+import { resolveAccountModelVariant } from "./accountModelCatalog";
 import { resolveModelDisplaySelection } from "./resolveModelDisplaySelection";
 import {
   accountHasModel,
@@ -61,7 +61,7 @@ export function useModelEffortSegment({
       };
     }
 
-    const groupByModel = buildGroupByModel(accountLookup.keys());
+    const groupByModel = buildGroupByModel(accountLookup.keys(), accounts);
     const family = groupByModel.get(modelId) ?? [modelId];
 
     const selectedAccount = accounts.find((account) => {
@@ -95,12 +95,20 @@ export function useModelEffortSegment({
     };
   }, [accountLookup, accounts, displaySelection, isHosted, modelId, onApply]);
 
+  const variantMetadata = useMemo(() => {
+    const account = accounts.find((entry) => entry.id === selectedAccountId);
+    return (
+      groupModelIds.length > 0 ? groupModelIds : modelId ? [modelId] : []
+    ).map((model) => resolveAccountModelVariant(account, model));
+  }, [accounts, groupModelIds, modelId, selectedAccountId]);
+
   const variantOptions = useMemo(
     () =>
       buildVariantEditOptions(
-        groupModelIds.length > 0 ? groupModelIds : modelId ? [modelId] : []
+        groupModelIds.length > 0 ? groupModelIds : modelId ? [modelId] : [],
+        variantMetadata
       ),
-    [groupModelIds, modelId]
+    [groupModelIds, modelId, variantMetadata]
   );
 
   const effectiveModelId = modelId
@@ -109,13 +117,15 @@ export function useModelEffortSegment({
       ) ?? modelId)
     : undefined;
   const variant = effectiveModelId
-    ? parseModelVariant(effectiveModelId)
+    ? variantMetadata.find((entry) => entry.model === effectiveModelId)
     : undefined;
 
   const effortLabel = useMemo(() => {
     const parts: string[] = [];
     if (variant?.reasoning) {
-      parts.push(formatReasoningLevel(variant.reasoning));
+      parts.push(
+        formatReasoningLevel(toModelReasoningLevel(variant.reasoning))
+      );
     }
     if (variant?.fast) {
       parts.push("Fast");
@@ -135,16 +145,17 @@ export function useModelEffortSegment({
       const account = accounts.find((entry) => entry.id === selectedAccountId);
       if (!account) return;
 
-      const baseModel = resolveModelVariantFields(nextModelId).base_model;
-      const nextDefaults = (account.defaultVariants ?? []).filter(
-        (entry) => entry.base_model !== baseModel
-      );
-      nextDefaults.push({ base_model: baseModel, model: nextModelId });
+      const baseModel = resolveAccountModelVariant(
+        account,
+        nextModelId
+      ).base_model;
 
       void saveKey({
         id: account.id,
         agent_type: account.modelType,
-        default_variants: nextDefaults,
+        default_variant_overrides: [
+          { base_model: baseModel, model: nextModelId },
+        ],
       });
     },
     [accounts, saveKey, selectedAccountId]

@@ -251,7 +251,6 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
         return saveKey({
           id: account.id,
           agent_type: account.modelType,
-          available_models: account.availableModels ?? [],
           enabled_models: [...enabledModels],
         });
       })

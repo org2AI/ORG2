@@ -263,3 +263,93 @@ it("keeps ordinary Account Key selection usable while signed out of Cloud", asyn
     mounted.dispose();
   }
 });
+
+it("dismisses an ordinary pick immediately but records it only after persistence", async () => {
+  signedInStore();
+  const mounted = await mountPicker();
+  let accept!: (accepted: boolean) => void;
+  mounted.onConfigChange.mockImplementationOnce(
+    () =>
+      new Promise<boolean>((resolve) => {
+        accept = resolve;
+      })
+  );
+  try {
+    mounted.picker.handleSourceSelect(
+      {
+        id: "key",
+        label: "My key",
+        type: "own_key",
+        modelType: "openai_api",
+        accountId: "key",
+      },
+      "gpt"
+    );
+    expect(mounted.onClose).toHaveBeenCalledOnce();
+    expect(mounted.recordRecent).not.toHaveBeenCalled();
+    await act(async () => accept(true));
+    expect(mounted.recordRecent).toHaveBeenCalledOnce();
+  } finally {
+    mounted.dispose();
+  }
+});
+
+it.each([false, true])(
+  "never records a refused or rejected pick (reject=%s)",
+  async (reject) => {
+    signedInStore();
+    const mounted = await mountPicker();
+    mounted.onConfigChange.mockImplementationOnce(() =>
+      reject ? Promise.reject(new Error("refused")) : false
+    );
+    try {
+      await act(async () =>
+        mounted.picker.handleSourceSelect(
+          {
+            id: "key",
+            label: "My key",
+            type: "own_key",
+            modelType: "openai_api",
+            accountId: "key",
+          },
+          "gpt"
+        )
+      );
+      expect(mounted.recordRecent).not.toHaveBeenCalled();
+    } finally {
+      mounted.dispose();
+    }
+  }
+);
+
+it("does not apply a prepared Market pick after a newer own-key selection", async () => {
+  signedInStore();
+  let finish!: (value: { credentialSource: string }) => void;
+  vi.mocked(prepareMarketProfileSource).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const mounted = await mountPicker();
+  try {
+    mounted.picker.handleMarketModelSelect(source, "gpt");
+    mounted.picker.handleSourceSelect(
+      {
+        id: "key",
+        label: "My key",
+        type: "own_key",
+        modelType: "openai_api",
+        accountId: "key",
+      },
+      "new-model"
+    );
+    await act(async () => finish({ credentialSource: "market:late" }));
+    expect(mounted.onConfigChange).toHaveBeenCalledOnce();
+    expect(mounted.recordRecent).toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: "new-model", accountId: "key" })
+    );
+  } finally {
+    mounted.dispose();
+  }
+});

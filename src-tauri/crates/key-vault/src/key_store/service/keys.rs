@@ -84,8 +84,41 @@ impl KeyService {
         store.get_all(agent_type).into_iter().cloned().collect()
     }
 
-    /// Save or update a key after enforcing persisted catalog invariants.
-    pub fn save_key(&self, mut key: ModelKey) -> Result<ModelKey, String> {
+    /// Save a complete internal record, validating against the record read
+    /// under the same lock as the eventual file replacement.
+    pub fn save_key(&self, key: ModelKey) -> Result<ModelKey, String> {
+        let key_id = key.id.clone();
+        self.try_update_store_for_key(Some(&key_id), |store| Self::save_key_in_store(store, key))
+    }
+
+    /// Apply an RPC field patch to the latest persisted account. The caller
+    /// provides only explicitly edited fields; discovery and token refreshes
+    /// committed earlier are preserved even when the UI's snapshot is old.
+    pub(crate) fn edit_key<F>(
+        &self,
+        key_id: Option<&str>,
+        model_type: ModelType,
+        edit: F,
+    ) -> Result<(Option<ModelKey>, ModelKey), String>
+    where
+        F: FnOnce(ModelKey) -> Result<ModelKey, String>,
+    {
+        self.try_update_store_for_key(key_id, |store| {
+            let previous = key_id.and_then(|id| store.get_by_id(id)).cloned();
+            let entry = edit(
+                previous
+                    .clone()
+                    .unwrap_or_else(|| ModelKey::new(model_type)),
+            )?;
+            let saved = Self::save_key_in_store(store, entry)?;
+            Ok((previous, saved))
+        })
+    }
+
+    fn save_key_in_store(
+        store: &mut super::super::store::KeyStore,
+        mut key: ModelKey,
+    ) -> Result<ModelKey, String> {
         // Explicit aliases are user-owned request IDs, including IDs absent
         // from discovery. Validate before touching the persisted credential.
         //
@@ -93,7 +126,7 @@ impl KeyService {
         // (rename, description, endpoint edits) carry the stored aliases along
         // unchanged, and a historical record that predates these rules must
         // not block every later write to the account.
-        let previous_key = self.get_key_by_id(&key.id);
+        let previous_key = store.get_by_id(&key.id).cloned();
         let retained: HashMap<String, Vec<String>> = previous_key
             .as_ref()
             .map(|existing| {
@@ -161,31 +194,62 @@ impl KeyService {
         }
         super::codex_cli_auth::bind_codex_cli_source(&mut key);
         let key_id = key.id.clone();
-        self.update_store(|store| {
-            if let Some(previous) = store.get_by_id(&key_id) {
-                key.credential_generation = previous.credential_generation;
-                key.codex_pending_source_token_hash =
-                    previous.codex_pending_source_token_hash.clone();
-                if !key.same_credential_material(previous) {
-                    key.credential_generation = key
-                        .credential_generation
-                        .checked_add(1)
-                        .ok_or_else(|| "Credential generation exhausted".to_string())?;
-                    key.oauth_auto_disabled = false;
-                    key.codex_pending_source_token_hash = None;
-                }
-                if previous.enabled && !key.enabled {
-                    key.oauth_auto_disabled = false;
-                }
-            } else {
-                key.credential_generation = 0;
+        if let Some(previous) = store.get_by_id(&key_id) {
+            if key.model_catalog_generation != previous.model_catalog_generation {
+                return Err("Model catalog changed during save; retry the account edit".into());
             }
-            store.set(key);
-            Ok(store
-                .get_by_id(&key_id)
-                .cloned()
-                .expect("KeyStore::set must retain the inserted key"))
-        })?
+            key.credential_generation = previous.credential_generation;
+            // Discovery defaults belong to a provider route. A new endpoint,
+            // protocol or provider must not inherit the old route's ladder.
+            if key.model_type != previous.model_type
+                || key.base_url != previous.base_url
+                || key.protocol != previous.protocol
+            {
+                key.discovered_default_variants.clear();
+            }
+            let aliases: HashSet<&str> = key
+                .model_aliases
+                .iter()
+                .chain(&previous.model_aliases)
+                .map(|alias| alias.alias.as_str())
+                .collect();
+            let discovered_ids = |entry: &ModelKey| {
+                entry
+                    .available_models
+                    .iter()
+                    .filter(|id| !aliases.contains(id.as_str()))
+                    .cloned()
+                    .collect::<HashSet<_>>()
+            };
+            if discovered_ids(&key) != discovered_ids(previous)
+                || key.model_variants != previous.model_variants
+                || key.discovered_default_variants != previous.discovered_default_variants
+            {
+                key.model_catalog_generation = key
+                    .model_catalog_generation
+                    .checked_add(1)
+                    .ok_or_else(|| "Model catalog generation exhausted".to_string())?;
+            }
+            key.codex_pending_source_token_hash = previous.codex_pending_source_token_hash.clone();
+            if !key.same_credential_material(previous) {
+                key.credential_generation = key
+                    .credential_generation
+                    .checked_add(1)
+                    .ok_or_else(|| "Credential generation exhausted".to_string())?;
+                key.oauth_auto_disabled = false;
+                key.codex_pending_source_token_hash = None;
+            }
+            if previous.enabled && !key.enabled {
+                key.oauth_auto_disabled = false;
+            }
+        } else {
+            key.credential_generation = 0;
+        }
+        store.set(key);
+        Ok(store
+            .get_by_id(&key_id)
+            .cloned()
+            .expect("KeyStore::set must retain the inserted key"))
     }
 
     /// Record behaviorally-observed reasoning capability for `model` on key
@@ -279,6 +343,14 @@ impl KeyService {
     ) -> Result<Option<ModelKey>, String> {
         self.update_store(|store| {
             if let Some(entry) = store.keys.get_mut(key_id) {
+                if available_models.is_some()
+                    || model_context_lengths.is_some_and(|contexts| !contexts.is_empty())
+                {
+                    entry.model_catalog_generation = entry
+                        .model_catalog_generation
+                        .checked_add(1)
+                        .ok_or_else(|| "Model catalog generation exhausted".to_string())?;
+                }
                 entry.health_status = health_status;
                 entry.last_validation_error = error_message;
                 entry.last_validated_at = Some(Utc::now());
@@ -359,11 +431,11 @@ impl KeyService {
                 entry.updated_at = Utc::now();
                 store.updated_at = Utc::now();
 
-                Some(entry.clone())
+                Ok(Some(entry.clone()))
             } else {
-                None
+                Ok(None)
             }
-        })
+        })?
     }
 
     /// Delete key by agent type and optional ID.

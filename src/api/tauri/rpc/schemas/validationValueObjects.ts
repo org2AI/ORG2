@@ -133,6 +133,8 @@ export const KeyInfoSchema = z.object({
 });
 
 export const FullKeyResponseSchema = z.object({
+  credential_generation: z.number().int().nonnegative().default(0),
+  model_catalog_generation: z.number().int().nonnegative().default(0),
   id: z.string(),
   name: z.string().nullable(),
   agent_type: ModelTypeSchema,
@@ -165,6 +167,7 @@ export const SaveKeyRequestSchema = z.object({
   model_aliases: z.array(ModelAliasInfoSchema).optional(),
   model_variants: z.array(ModelVariantInfoSchema).optional(),
   default_variants: z.array(DefaultVariantInfoSchema).optional(),
+  default_variant_overrides: z.array(DefaultVariantInfoSchema).optional(),
   quota_info: z.record(z.string(), z.unknown()).optional(),
   has_local_key: z.boolean().optional(),
   is_listed: z.boolean().optional(),

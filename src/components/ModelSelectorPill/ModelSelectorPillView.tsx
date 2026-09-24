@@ -433,7 +433,7 @@ const ModelSelectorPillView = forwardRef<
                     </span>
                     {levelLabel && (
                       <span
-                        className={`ml-1.5 shrink-0 font-normal ${levelToneClass(shownLevel, open)}`}
+                        className={`ml-1.5 min-w-0 truncate font-normal ${levelToneClass(shownLevel, open)}`}
                       >
                         {levelLabel}
                       </span>
@@ -451,7 +451,7 @@ const ModelSelectorPillView = forwardRef<
                 ariaExpanded={hasModelSelection ? open : undefined}
                 ariaLabel={`${ariaLabel ?? defaultLabel}: ${combinedLabel}${variant?.fast ? " · Fast" : ""}`}
                 dataTestId={dataTestId}
-                className={`shrink-0 ${triggerClassName ?? ""} ${className ?? ""}`}
+                className={`max-w-full shrink-0 ${triggerClassName ?? ""} ${className ?? ""}`}
                 leadingFlush={triggerLeadingFlush}
                 paddingX={paddingX}
                 onClick={hasModelSelection ? openMenu : onClick}
@@ -466,8 +466,8 @@ const ModelSelectorPillView = forwardRef<
       <PillGroup
         segments={segments}
         paddingX={paddingX}
-        className={`shrink-0 text-[13px] ${className ?? ""}`}
-        segmentClassName={`h-[28px] ${disabled ? "cursor-not-allowed [&>span]:opacity-50" : ""} ${triggerClassName ?? ""}`.trim()}
+        className={`max-w-full shrink-0 flex-wrap text-[13px] ${className ?? ""}`}
+        segmentClassName={`h-[28px] max-w-full ${disabled ? "cursor-not-allowed [&>span]:opacity-50" : ""} ${triggerClassName ?? ""}`.trim()}
       />
     );
 

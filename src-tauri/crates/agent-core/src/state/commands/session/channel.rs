@@ -26,77 +26,47 @@ pub async fn channel_process_message(
     );
     let session_key = session_id.unwrap_or_else(|| "tauri:direct".to_string());
     info!("[channel_process_message] session_key={}", session_key);
+    let identity_guard = crate::state::session_identity_lock(&session_key)
+        .await
+        .lock_owned()
+        .await;
 
-    // Model override is threaded per-request into `init_session`; we do NOT
-    // mutate any shared state. Account changes do still require invalidation
-    // so the next turn re-picks the provider. The comparison baseline is
-    // THIS session's runtime account — never a global (an unrelated
-    // session's switch must not affect us, and ours must not affect them).
-    {
-        let runtime_account = match state.get_session(&session_key).await {
-            Some(session) => session
-                .get_runtime()
-                .await
-                .and_then(|r| r.account_id.clone()),
+    // Explicit command edits still win. Otherwise keep the complete current
+    // session pair instead of reconstructing a model from agent defaults.
+    let (current_model, current_account) =
+        super::identity::resolve_initialization_model_pair(&state, &session_key, None, None)
+            .await?;
+    let previous_account = account_id
+        .as_ref()
+        .filter(|account| current_account.as_deref() != Some(account.as_str()))
+        .map(|_| current_account.clone());
+    if model.is_some() || account_id.is_some() {
+        let session = state.get_session(&session_key).await;
+        // A prepared Member turn pins its provider. Reject before writing and
+        // keep the admission guard through the atomic identity edit.
+        let mutation = match session.as_ref() {
+            Some(session) => Some(session.begin_identity_mutation().await?),
             None => None,
         };
-        let account_changed = if let Some(ref new_account_id) = account_id {
-            runtime_account.as_deref() != Some(new_account_id.as_str())
-        } else {
-            false
-        };
-
-        if account_changed {
-            state.invalidate_session(&session_key).await;
-            if let Some(ref new_account_id) = account_id {
-                session_persistence::update_account_id(&session_key, new_account_id).map_err(
-                    |err| format!("[channel] Failed to persist account switch: {}", err),
-                )?;
-                crate::lifecycle::emit_session_account_switched(
-                    state.app_handle.as_ref(),
-                    &session_key,
-                    runtime_account.as_deref(),
-                    new_account_id,
-                    model.as_deref(),
-                );
+        match (model.as_deref(), account_id.as_deref()) {
+            (Some(model), account) => {
+                session_persistence::update_model_and_account(&session_key, model, account)
+                    .map_err(|err| format!("[channel] Failed to persist model switch: {err}"))?;
             }
+            (None, Some(account)) => {
+                session_persistence::update_account_id(&session_key, account)
+                    .map_err(|err| format!("[channel] Failed to persist account switch: {err}"))?;
+            }
+            (None, None) => unreachable!("identity edit requires an override"),
         }
-        if let Some(ref new_model) = model {
-            session_persistence::update_model(&session_key, new_model)
-                .map_err(|err| format!("[channel] Failed to persist model switch: {}", err))?;
+        if let Some(mutation) = mutation {
+            // Release the admission guard before init, which validates the
+            // same domain while installing the replacement runtime.
+            mutation.invalidate_runtime().await;
         }
     }
-
-    // Effective model: the caller-supplied override takes precedence;
-    // otherwise the session's agent definition resolves it at
-    // `init_session` time.
-    let requested_model_override = model.clone();
-
-    // Account chain mirrors `resolve_session_identity`: override → this
-    // session's runtime → DB row. No global fallback.
-    let effective_account_id = if account_id.is_some() {
-        account_id
-    } else {
-        let runtime_account = match state.get_session(&session_key).await {
-            Some(session) => session
-                .get_runtime()
-                .await
-                .and_then(|r| r.account_id.clone()),
-            None => None,
-        };
-        if runtime_account.is_some() {
-            runtime_account
-        } else {
-            let sk = session_key.clone();
-            tokio::task::spawn_blocking(move || {
-                session_persistence::get_session(&sk)
-                    .map_err(|err| format!("[channel] DB error loading account_id: {}", err))
-                    .map(|opt| opt.and_then(|s| s.account_id))
-            })
-            .await
-            .map_err(|err| format!("[channel] Task panic loading account_id: {}", err))??
-        }
-    };
+    let requested_model_override = model.or(current_model);
+    let effective_account_id = account_id.or(current_account);
 
     let ide_context = if active_repo_path.is_some() || active_branch.is_some() {
         Some(crate::session::IdeContext {
@@ -121,6 +91,19 @@ pub async fn channel_process_message(
     .await?;
     let runtime = crate::init::init_session(&state, launch_spec).await?;
     let effective_model = runtime.model.clone();
+    if let (Some(previous_account), Some(account)) =
+        (previous_account, runtime.account_id.as_deref())
+    {
+        // Account-only edits still publish the resolved model. Consumers must
+        // receive this complete pair instead of merging it with optimistic UI.
+        crate::lifecycle::emit_session_account_switched(
+            state.app_handle.as_ref(),
+            &session_key,
+            previous_account.as_deref(),
+            account,
+            Some(&effective_model),
+        );
+    }
 
     let session_arc = state
         .get_session(&session_key)
@@ -141,10 +124,19 @@ pub async fn channel_process_message(
         turn_intent_id: uuid::Uuid::new_v4().to_string(),
     };
 
+    // The turn captures its provider separately. Never serialize the whole
+    // provider request behind the model-picker identity lock.
+    drop(identity_guard);
+
     const CALLER_TIMEOUT_SECS: u64 = 180;
     let response = tokio::time::timeout(
         std::time::Duration::from_secs(CALLER_TIMEOUT_SECS),
-        crate::session::process_message(session_arc, input, state.app_handle.clone()),
+        crate::session::turn::entry::process_message_with_runtime(
+            session_arc,
+            runtime,
+            input,
+            state.app_handle.clone(),
+        ),
     )
     .await
     .map_err(|_| format!("Request timed out after {}s", CALLER_TIMEOUT_SECS))?

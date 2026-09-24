@@ -428,6 +428,10 @@ pub struct ModelKey {
     /// Old managed profiles and in-flight results belong to their original generation.
     #[serde(default)]
     pub credential_generation: u64,
+    /// Increments when discovery, validation, or a catalog edit commits;
+    /// rejects late refreshes and stale whole-account saves.
+    #[serde(default)]
+    pub model_catalog_generation: u64,
     /// Exact local Codex login copied by the import; never exposed in KeyInfo.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub codex_cli_auth_path: Option<std::path::PathBuf>,
@@ -471,6 +475,10 @@ pub struct ModelKey {
     /// concrete variant model id stored here (e.g. `claude-4.6-opus-high`).
     #[serde(default)]
     pub default_variants: Vec<DefaultVariant>,
+    /// Discovery defaults are separate from user choices. Legacy defaults stay
+    /// user-owned because their original intent cannot be recovered safely.
+    #[serde(default)]
+    pub discovered_default_variants: Vec<DefaultVariant>,
     #[serde(default)]
     pub oauth_refresh_failure_count: u32,
     #[serde(default, with = "optional_flexible_datetime")]
@@ -506,7 +514,7 @@ pub struct ModelAlias {
     pub icon: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ModelVariant {
     pub model: String,
     pub base_model: String,
@@ -524,7 +532,7 @@ pub struct ModelVariant {
 /// A user-chosen default variant for one base model family. `base_model` is
 /// the family root (e.g. `claude-4.6-opus`); `model` is the concrete variant
 /// id the runtime should launch when that family is selected.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DefaultVariant {
     pub base_model: String,
     pub model: String,
@@ -546,6 +554,7 @@ impl ModelKey {
             account_metadata: HashMap::new(),
             auth_method: AuthMethod::ApiKey,
             credential_generation: 0,
+            model_catalog_generation: 0,
             codex_cli_auth_path: None,
             codex_pending_source_token_hash: None,
             oauth_auto_disabled: false,
@@ -563,6 +572,7 @@ impl ModelKey {
             model_aliases: Vec::new(),
             model_variants: Vec::new(),
             default_variants: Vec::new(),
+            discovered_default_variants: Vec::new(),
             oauth_refresh_failure_count: 0,
             last_oauth_refresh_failed_at: None,
             temporary_unavailable_until: None,
@@ -581,6 +591,7 @@ impl ModelKey {
             && self.api_key == other.api_key
             && self.session_token == other.session_token
             && self.base_url == other.base_url
+            && self.protocol == other.protocol
             && self.env_vars == other.env_vars
     }
 

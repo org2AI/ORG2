@@ -8,6 +8,7 @@ import type { MarketProfileSource } from "@src/features/MarketConnect/marketProf
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 
 import type { BasePaletteProps } from "../../shared";
+import type { ModelConfigChange } from "./modelSelectionCommit";
 
 export interface SourceOption {
   id: string;
@@ -24,7 +25,7 @@ export interface SourceOption {
 
 export interface UnifiedModelPaletteProps extends BasePaletteProps {
   advancedConfig: AdvancedConfig;
-  onConfigChange: (config: AdvancedConfig) => void;
+  onConfigChange: ModelConfigChange;
   /**
    * Display-name override for an already-running conversation's runtime.
    * Creator surfaces omit this and keep using the SessionCreator selection.

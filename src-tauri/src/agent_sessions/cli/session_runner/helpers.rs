@@ -13,6 +13,7 @@ use crate::agent_sessions::event_pipeline::commands::{
 use crate::api::websocket_handler;
 use agent_core::bus::broadcast_event;
 use agent_core::foundation::streaming::CLI_STREAMING_BUFFER;
+pub use agent_core::state::session_identity_lock;
 
 type RunningSessionsMap = HashMap<String, tokio::task::JoinHandle<()>>;
 
@@ -29,26 +30,8 @@ type SessionControlLocksMap = HashMap<String, Weak<Mutex<()>>>;
 static SESSION_CONTROL_LOCKS: std::sync::LazyLock<Mutex<SessionControlLocksMap>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
-// Provider identity (runtime/account/native UUID) is immutable for the whole
-// runner lifetime. Unlike the short control lock, this guard travels with the
-// background task through final native publication; a model picker may stage a
-// next-turn choice but cannot retarget the active runner's filesystem binding.
-static SESSION_IDENTITY_LOCKS: std::sync::LazyLock<Mutex<SessionControlLocksMap>> =
-    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
-
 pub async fn session_control_lock(session_id: &str) -> Arc<Mutex<()>> {
     let mut locks = SESSION_CONTROL_LOCKS.lock().await;
-    locks.retain(|_, lock| lock.strong_count() > 0);
-    if let Some(lock) = locks.get(session_id).and_then(Weak::upgrade) {
-        return lock;
-    }
-    let lock = Arc::new(Mutex::new(()));
-    locks.insert(session_id.to_string(), Arc::downgrade(&lock));
-    lock
-}
-
-pub async fn session_identity_lock(session_id: &str) -> Arc<Mutex<()>> {
-    let mut locks = SESSION_IDENTITY_LOCKS.lock().await;
     locks.retain(|_, lock| lock.strong_count() > 0);
     if let Some(lock) = locks.get(session_id).and_then(Weak::upgrade) {
         return lock;

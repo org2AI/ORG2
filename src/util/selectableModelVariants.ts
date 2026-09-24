@@ -1,4 +1,8 @@
-import { parseModelVariant } from "./modelVariants";
+import {
+  type ResolvedModelVariantFields,
+  parseModelVariant,
+  resolveModelVariantFields,
+} from "./modelVariants";
 
 /** Size variants such as o4-mini own an effort ladder; mini is not effort. */
 export function getModelEffortBaseModel(model: string): string {
@@ -13,18 +17,28 @@ export function getModelEffortBaseModel(model: string): string {
  * same thinking/speed combination. Keep bare ids for models without that
  * ladder, including speed-only and thinking-only families.
  */
-export function selectableModelVariants<T extends { model: string }>(
-  variants: readonly T[]
-): T[] {
+export function selectableModelVariants<
+  T extends {
+    model: string;
+    base_model?: string;
+    reasoning?: string | null;
+    fast?: boolean;
+    thinking?: boolean;
+  },
+>(variants: readonly T[]): T[] {
   const entries = variants.map((variant) => {
-    const parsed = parseModelVariant(variant.model);
+    const metadata =
+      variant.base_model !== undefined && variant.fast !== undefined
+        ? (variant as ResolvedModelVariantFields)
+        : undefined;
+    const resolved = resolveModelVariantFields(variant.model, metadata);
     return {
       variant,
-      reasoning: parsed?.reasoning,
+      reasoning: resolved.reasoning,
       key: JSON.stringify([
-        getModelEffortBaseModel(variant.model),
-        parsed?.thinking ?? false,
-        parsed?.fast ?? false,
+        metadata?.base_model ?? getModelEffortBaseModel(variant.model),
+        resolved.thinking ?? false,
+        resolved.fast,
       ]),
     };
   });

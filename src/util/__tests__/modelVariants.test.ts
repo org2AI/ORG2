@@ -384,7 +384,7 @@ describe("parseModelVariant", () => {
     });
   });
 
-  it("prefers frontend parse over stale backend model variant metadata", () => {
+  it("uses backend catalog fields before model ID grammar", () => {
     expect(
       resolveModelVariantFields("gpt-5.1-codex-max-medium", {
         model: "gpt-5.1-codex-max-medium",
@@ -394,8 +394,8 @@ describe("parseModelVariant", () => {
       })
     ).toEqual({
       model: "gpt-5.1-codex-max-medium",
-      base_model: "gpt-5.1-codex-max",
-      reasoning: MODEL_REASONING_LEVEL.MEDIUM,
+      base_model: "gpt-5.1-codex-max-medium",
+      reasoning: MODEL_REASONING_LEVEL.MAX,
       fast: false,
     });
   });

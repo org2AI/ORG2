@@ -327,8 +327,11 @@ pub(super) async fn send_initial_turn(
             content,
             None,
             crate::state::commands::session::identity::IdentityOverrides {
-                model,
-                account_id,
+                // The launch row already owns the chosen pair. Send resolves
+                // it under its own identity lock so a newer picker change
+                // cannot be replaced by this task's captured launch defaults.
+                model: None,
+                account_id: None,
                 workspace_root: Some(workspace_root),
                 native_harness_type,
             },
@@ -350,8 +353,20 @@ pub(super) async fn send_initial_turn(
         return Ok(());
     }
 
+    let identity_guard = crate::state::session_identity_lock(session_id)
+        .await
+        .lock_owned()
+        .await;
+    let (model, account_id) =
+        crate::state::commands::session::identity::resolve_initialization_model_pair(
+            state,
+            session_id,
+            model.as_deref(),
+            account_id.as_deref(),
+        )
+        .await?;
     let model = model.ok_or_else(|| "model is required for sub-agent launch".to_string())?;
-    let launch_spec = crate::init::launch_spec::AgentLaunchSpec::work_item_session(
+    let mut launch_spec = crate::init::launch_spec::AgentLaunchSpec::work_item_session(
         state,
         session_id,
         &model,
@@ -361,7 +376,12 @@ pub(super) async fn send_initial_turn(
         &sub_agent_ids,
     )
     .await?;
+    // Preserve credential-owned None rather than the constructor's empty
+    // account placeholder, which would conflict with a Market selector.
+    launch_spec.account_id = account_id;
     crate::init::init_session(state, launch_spec).await?;
+    // `send_message_impl` acquires this same non-reentrant lock itself.
+    drop(identity_guard);
 
     crate::state::commands::session::message::send_message_impl(
         state,
@@ -369,8 +389,8 @@ pub(super) async fn send_initial_turn(
         content,
         None,
         crate::state::commands::session::identity::IdentityOverrides {
-            model: Some(model),
-            account_id,
+            model: None,
+            account_id: None,
             workspace_root: Some(workspace_root),
             native_harness_type,
         },

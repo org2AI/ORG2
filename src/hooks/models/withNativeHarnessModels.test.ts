@@ -76,12 +76,12 @@ describe("withCodexOAuthModels — model list population", () => {
     expect(enriched.availableModels ?? []).toContain("custom-codex-model");
   });
 
-  it("sets status to ready", () => {
+  it("preserves account health", () => {
     const account = baseAccount({
-      status: "loading" as KeyVaultAccount["status"],
+      status: "error" as KeyVaultAccount["status"],
     });
     const enriched = withCodexOAuthModels(account);
-    expect(enriched.status).toBe("ready");
+    expect(enriched.status).toBe("error");
   });
 });
 

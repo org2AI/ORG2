@@ -8,3 +8,5 @@ mod model_type_tests;
 mod tests;
 
 mod oauth_generation_tests;
+
+mod model_catalog_tests;

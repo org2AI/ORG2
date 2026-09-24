@@ -11,12 +11,13 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { KeyInfo } from "@src/api/services/keyValidation";
+import type { KeyInfo, SaveKeyRequest } from "@src/api/services/keyValidation";
 
 import { useLocalKeys } from "./useLocalKeys";
 
 const mocks = vi.hoisted(() => ({
   listKeys: vi.fn<() => Promise<KeyInfo[]>>(),
+  saveKey: vi.fn<(request: SaveKeyRequest) => Promise<KeyInfo>>(),
 }));
 
 vi.mock("@src/api/services/keyValidation", () => ({
@@ -26,7 +27,7 @@ vi.mock("@src/api/services/keyValidation", () => ({
   getFullKey: vi.fn(),
   getKey: vi.fn(),
   refreshKeyQuota: vi.fn(),
-  saveKey: vi.fn(),
+  saveKey: mocks.saveKey,
   updateKeyHealth: vi.fn(),
   validateKey: vi.fn(),
 }));
@@ -131,5 +132,108 @@ describe("useLocalKeys loading", () => {
       await refresh;
     });
     expect(result.current.loading).toBe(false);
+  });
+});
+
+describe("useLocalKeys default family deltas", () => {
+  it("updates the display immediately while sending only the edited family", async () => {
+    const key = {
+      ...keyRecord("delta-key"),
+      default_variants: [
+        { base_model: "family-a", model: "provider-a" },
+        { base_model: "family-b", model: "provider-b" },
+      ],
+    };
+    mocks.listKeys.mockResolvedValueOnce([key]);
+    const result = renderLocalKeys();
+    await act(async () => {
+      await result.current.refreshAgents(true);
+    });
+    const save = deferred<KeyInfo>();
+    mocks.saveKey.mockReturnValueOnce(save.promise);
+    let pending!: Promise<KeyInfo | null>;
+    act(() => {
+      pending = result.current.saveKey({
+        id: key.id,
+        agent_type: key.agent_type,
+        default_variant_overrides: [
+          { base_model: "family-a", model: "chosen-a" },
+        ],
+      });
+    });
+    expect(result.current.allKeys[0].default_variants).toEqual([
+      { base_model: "family-a", model: "chosen-a" },
+      { base_model: "family-b", model: "provider-b" },
+    ]);
+    expect(mocks.saveKey).toHaveBeenLastCalledWith({
+      id: key.id,
+      agent_type: key.agent_type,
+      default_variant_overrides: [
+        { base_model: "family-a", model: "chosen-a" },
+      ],
+    });
+    await act(async () => {
+      save.resolve({
+        ...key,
+        default_variants: [
+          { base_model: "family-a", model: "chosen-a" },
+          { base_model: "family-b", model: "provider-b" },
+        ],
+      });
+      await pending;
+    });
+  });
+
+  it("a rejected family pick preserves independently refreshed defaults and accounts", async () => {
+    const key = {
+      ...keyRecord("delta-key"),
+      default_variants: [
+        { base_model: "family-a", model: "provider-a" },
+        { base_model: "family-b", model: "provider-b" },
+      ],
+    };
+    mocks.listKeys.mockResolvedValueOnce([key]);
+    const result = renderLocalKeys();
+    await act(async () => {
+      await result.current.refreshAgents(true);
+    });
+    let reject!: (error: Error) => void;
+    mocks.saveKey.mockReturnValueOnce(
+      new Promise((_resolve, no) => {
+        reject = no;
+      })
+    );
+    let pending!: Promise<KeyInfo | null>;
+    act(() => {
+      pending = result.current.saveKey({
+        id: key.id,
+        agent_type: key.agent_type,
+        default_variant_overrides: [
+          { base_model: "family-a", model: "failed-a" },
+        ],
+      });
+    });
+    mocks.listKeys.mockResolvedValueOnce([
+      {
+        ...key,
+        default_variants: [
+          { base_model: "family-a", model: "failed-a" },
+          { base_model: "family-b", model: "newer-b" },
+        ],
+      },
+      keyRecord("new-account"),
+    ]);
+    await act(async () => {
+      await result.current.refreshAgents(true);
+    });
+    await act(async () => {
+      reject(new Error("failed"));
+      await pending;
+    });
+    expect(result.current.allKeys).toHaveLength(2);
+    expect(result.current.allKeys[0].default_variants).toEqual([
+      { base_model: "family-a", model: "provider-a" },
+      { base_model: "family-b", model: "newer-b" },
+    ]);
   });
 });

@@ -311,6 +311,13 @@ pub(crate) async fn send_message_impl(
     );
 
     // ── 1. Resolve session identity (unified — single code path) ─────────
+    // Finish admission's runtime/DB writeback before a picker can commit the
+    // next-turn identity. Release before execution: an active reply keeps its
+    // captured provider while the picker can configure the following turn.
+    let identity_guard = crate::state::session_identity_lock(&session_id)
+        .await
+        .lock_owned()
+        .await;
     let identity = resolve_session_identity(state, &session_id, overrides).await?;
 
     let explicit_org_run_id = match (org_wake_run_id.as_deref(), intent_org_run_id.as_deref()) {
@@ -521,6 +528,7 @@ pub(crate) async fn send_message_impl(
         .get_session(&session_id)
         .await
         .ok_or_else(|| format!("Session not found after init: {}", session_id))?;
+    let admitted_runtime_lease_id = session_handle.runtime_lease_for(&runtime).await?;
 
     session_handle.refresh_last_active().await;
 
@@ -829,6 +837,8 @@ pub(crate) async fn send_message_impl(
         }
     }
 
+    drop(identity_guard);
+
     // ── 4b. Project root WorkItem bootstrap (orgtrack/v1 §7.2) ──────────
     //
     // The first accepted non-empty submission of a Project session with
@@ -1109,7 +1119,11 @@ pub(crate) async fn send_message_impl(
             }
 
             let turn_id = session
-                .begin_turn_with_intent(content.clone(), Some(turn_intent_id.clone()))
+                .begin_turn_with_runtime_lease(
+                    content.clone(),
+                    Some(turn_intent_id.clone()),
+                    Some(admitted_runtime_lease_id),
+                )
                 .await;
             if let Some(reservation) = direct_runtime_admission.as_ref() {
                 session.release_runtime_admission(reservation).await;
@@ -1138,9 +1152,13 @@ pub(crate) async fn send_message_impl(
                 turn_intent_id: turn_intent_id.clone(),
             };
 
-            let response =
-                crate::session::process_message(Arc::clone(&session), input, app_handle.clone())
-                    .await;
+            let response = crate::session::turn::entry::process_message_with_runtime(
+                Arc::clone(&session),
+                Arc::clone(&runtime),
+                input,
+                app_handle.clone(),
+            )
+            .await;
 
             let final_turn_state = if cancel_flag.load(std::sync::atomic::Ordering::SeqCst) {
                 crate::session::DialogTurnState::Cancelled

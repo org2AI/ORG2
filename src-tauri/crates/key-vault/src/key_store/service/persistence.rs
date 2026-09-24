@@ -147,6 +147,32 @@ impl KeyService {
 
         Ok(result)
     }
+
+    /// Fallible account edit. The caller's read, validation, and mutation all
+    /// happen under one lock; a rejected edit never rewrites credentials.json.
+    pub(crate) fn try_update_store_for_key<F, T>(
+        &self,
+        key_id: Option<&str>,
+        updater: F,
+    ) -> Result<T, String>
+    where
+        F: FnOnce(&mut KeyStore) -> Result<T, String>,
+    {
+        let _guard = self.lock.lock().map_err(|e| format!("Lock error: {}", e))?;
+        let mut loaded = self.load_store_checked()?;
+        if let Some(key_id) = key_id {
+            if let Some(error) = loaded.invalid_credential_error(key_id) {
+                return Err(error);
+            }
+        }
+        loaded.ensure_any_valid_credentials(&self.storage_file)?;
+        let result = updater(&mut loaded.store)?;
+        if !loaded.invalid_credentials.is_empty() {
+            loaded.log_diagnostics(&self.storage_file);
+        }
+        self.save_store(&loaded.store, &loaded.invalid_credentials)?;
+        Ok(result)
+    }
 }
 
 fn deserialize_key_store(contents: &str) -> Result<LoadedKeyStore, serde_json::Error> {

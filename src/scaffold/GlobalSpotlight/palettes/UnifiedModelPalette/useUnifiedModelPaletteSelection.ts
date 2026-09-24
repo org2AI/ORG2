@@ -14,6 +14,7 @@ import {
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { createLogger } from "@src/hooks/logger";
+import { resolveAccountModelVariant } from "@src/hooks/models/accountModelCatalog";
 import {
   accountHasModel,
   accountModelIds as listAccountModelIds,
@@ -23,11 +24,11 @@ import { separateEffortPillAtom } from "@src/store/session/separateEffortPillAto
 import type { ModelSourceScope } from "@src/store/ui/spotlightModelSourceScopeAtom";
 import { carryModelEffort } from "@src/util/carryModelEffort";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
-import {
-  parseModelVariant,
-  resolveModelVariantFields,
-} from "@src/util/modelVariants";
 
+import {
+  type ModelConfigChange,
+  commitModelSelection,
+} from "./modelSelectionCommit";
 import { buildSourceOptions, toSourceOption } from "./sourceItems";
 import type { SourceOption } from "./types";
 import { resolveVariantReselection } from "./variantReselect";
@@ -57,7 +58,7 @@ interface UseUnifiedModelPaletteSelectionParams {
   /** Flipping the source scope rebuilds both columns, so the cursor resets. */
   sourceScope?: ModelSourceScope;
   advancedConfig: AdvancedConfig;
-  onConfigChange: (config: AdvancedConfig) => void;
+  onConfigChange: ModelConfigChange;
   onClose: () => void;
   closeOnSourceSelect?: boolean;
   recordRecent: (entry: RecentModelEntry) => void;
@@ -81,6 +82,33 @@ export function useUnifiedModelPaletteSelection({
 }: UseUnifiedModelPaletteSelectionParams) {
   const { t } = useTranslation("integrations");
   const marketSelectionPendingRef = useRef(false);
+  const selectionGeneration = useRef(0);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const commitSelection = useCallback(
+    (
+      config: AdvancedConfig,
+      entry: RecentModelEntry,
+      close: boolean,
+      generation: number
+    ) =>
+      commitModelSelection({
+        config,
+        entry,
+        apply: onConfigChange,
+        record: recordRecent,
+        close: close ? onClose : undefined,
+        isCurrent: () => generation === selectionGeneration.current,
+        onError: (error) =>
+          Message.error(error instanceof Error ? error.message : String(error)),
+      }),
+    [onConfigChange, recordRecent, onClose]
+  );
   const separateEffortPill = useAtomValue(separateEffortPillAtom);
   const currentModelId = advancedConfig.model;
   // With the separate effort pill, a model pick keeps the current effort
@@ -150,6 +178,7 @@ export function useUnifiedModelPaletteSelection({
 
   const applySourceSelection = useCallback(
     (modelId: string, _modelLabel: string, source: SourceOption) => {
+      const generation = ++selectionGeneration.current;
       const sourceAccount = source.accountId
         ? accounts.find((account) => account.id === source.accountId)
         : undefined;
@@ -163,35 +192,36 @@ export function useUnifiedModelPaletteSelection({
               : []
           )
         : advancedConfig.model || "";
-      onConfigChange({
-        ...advancedConfig,
-        keySource: KEY_SOURCE.OWN,
-        selectedAccountId: source.accountId,
-        credentialSource: undefined,
-        marketProfileId: undefined,
-        agent: source.modelType,
-        provider: source.modelType,
-        model: resolvedModelId,
-        nativeHarnessType: source.nativeHarnessType,
-        selectedSourceLabel: source.label,
-        selectedSourceModelType: source.modelType,
-      });
-      recordRecent({
-        modelId: resolvedModelId,
-        sourceType: source.type,
-        accountId: source.accountId,
-        accountName: source.label,
-        modelType: source.modelType,
-      });
-      if (closeOnSourceSelect) onClose();
+      void commitSelection(
+        {
+          ...advancedConfig,
+          keySource: KEY_SOURCE.OWN,
+          selectedAccountId: source.accountId,
+          credentialSource: undefined,
+          marketProfileId: undefined,
+          agent: source.modelType,
+          provider: source.modelType,
+          model: resolvedModelId,
+          nativeHarnessType: source.nativeHarnessType,
+          selectedSourceLabel: source.label,
+          selectedSourceModelType: source.modelType,
+        },
+        {
+          modelId: resolvedModelId,
+          sourceType: source.type,
+          accountId: source.accountId,
+          accountName: source.label,
+          modelType: source.modelType,
+        },
+        closeOnSourceSelect,
+        generation
+      );
     },
     [
       accounts,
       advancedConfig,
       closeOnSourceSelect,
-      onConfigChange,
-      onClose,
-      recordRecent,
+      commitSelection,
       withCurrentEffort,
     ]
   );
@@ -242,15 +272,17 @@ export function useUnifiedModelPaletteSelection({
           : [];
       if (accountModelIds.length === 0) return selectedModelId;
 
-      const selectedVariant = parseModelVariant(selectedModelId);
-      const baseModel = selectedVariant?.baseModel ?? selectedModelId;
+      const baseModel = resolveAccountModelVariant(
+        sourceAccount,
+        selectedModelId
+      ).base_model;
       const persisted = (sourceAccount?.defaultVariants ?? []).find(
         (entry) =>
           entry.base_model === baseModel &&
           accountModelIds.includes(entry.model)
       )?.model;
       const variantInfos = accountModelIds.map((modelId) =>
-        resolveModelVariantFields(modelId)
+        resolveAccountModelVariant(sourceAccount, modelId)
       );
       return (
         resolveDefaultVariant(baseModel, variantInfos, persisted) ??
@@ -267,6 +299,7 @@ export function useUnifiedModelPaletteSelection({
       options?: { close?: boolean; keepVariant?: boolean }
     ) => {
       if (marketSelectionPendingRef.current) return;
+      const generation = ++selectionGeneration.current;
       const modelId = options?.keepVariant
         ? pickedModelId
         : withCurrentEffort(pickedModelId, marketSource.modelIds);
@@ -283,31 +316,36 @@ export function useUnifiedModelPaletteSelection({
       void prepareMarketProfileSource(marketSource, modelId)
         .then(({ credentialSource }) => {
           owner.assertCurrent();
+          if (!mounted.current || generation !== selectionGeneration.current)
+            return;
           const modelType = marketSourceModelType(marketSource, modelId);
-          onConfigChange({
-            ...advancedConfig,
-            keySource: KEY_SOURCE.OWN,
-            selectedAccountId: undefined,
-            credentialSource,
-            marketProfileId: marketSource.profile.id,
-            agent: modelType,
-            provider: modelType,
-            model: modelId,
-            nativeHarnessType: undefined,
-            cliAgentType: marketSource.cliAgentType,
-            selectedSourceLabel: marketSource.label,
-            selectedSourceModelType: modelType,
-          });
-          recordRecent({
-            modelId,
-            sourceType: KEY_SOURCE.OWN,
-            accountName: marketSource.label,
-            credentialSource,
-            marketProfileId: marketSource.profile.id,
-            modelType,
-            cliAgentType: marketSource.cliAgentType,
-          });
-          if (options?.close ?? closeOnSourceSelect) onClose();
+          return commitSelection(
+            {
+              ...advancedConfig,
+              keySource: KEY_SOURCE.OWN,
+              selectedAccountId: undefined,
+              credentialSource,
+              marketProfileId: marketSource.profile.id,
+              agent: modelType,
+              provider: modelType,
+              model: modelId,
+              nativeHarnessType: undefined,
+              cliAgentType: marketSource.cliAgentType,
+              selectedSourceLabel: marketSource.label,
+              selectedSourceModelType: modelType,
+            },
+            {
+              modelId,
+              sourceType: KEY_SOURCE.OWN,
+              accountName: marketSource.label,
+              credentialSource,
+              marketProfileId: marketSource.profile.id,
+              modelType,
+              cliAgentType: marketSource.cliAgentType,
+            },
+            options?.close ?? closeOnSourceSelect,
+            generation
+          );
         })
         .catch((error: unknown) => {
           const code = marketActivationErrorCode(error);
@@ -325,15 +363,7 @@ export function useUnifiedModelPaletteSelection({
           marketSelectionPendingRef.current = false;
         });
     },
-    [
-      advancedConfig,
-      closeOnSourceSelect,
-      onClose,
-      onConfigChange,
-      recordRecent,
-      t,
-      withCurrentEffort,
-    ]
+    [advancedConfig, closeOnSourceSelect, commitSelection, t, withCurrentEffort]
   );
 
   const handleSourceSelect = useCallback(
@@ -435,6 +465,7 @@ export function useUnifiedModelPaletteSelection({
         return;
       }
 
+      const generation = ++selectionGeneration.current;
       const reboundEntry: RecentModelEntry = {
         ...entry,
         modelId: options?.keepVariant
@@ -450,31 +481,31 @@ export function useUnifiedModelPaletteSelection({
         modelType: reboundAccount.modelType,
       };
 
-      onConfigChange({
-        ...advancedConfig,
-        keySource: KEY_SOURCE.OWN,
-        selectedAccountId: reboundAccount.id,
-        credentialSource: undefined,
-        marketProfileId: undefined,
-        agent: reboundAccount.modelType,
-        provider: reboundAccount.modelType,
-        model: reboundEntry.modelId,
-        nativeHarnessType: reboundAccount.nativeHarnessType,
-        selectedSourceLabel: reboundAccount.name,
-        selectedSourceModelType: reboundAccount.modelType,
-      });
-
-      recordRecent(reboundEntry);
-      if (options?.close !== false) onClose();
+      void commitSelection(
+        {
+          ...advancedConfig,
+          keySource: KEY_SOURCE.OWN,
+          selectedAccountId: reboundAccount.id,
+          credentialSource: undefined,
+          marketProfileId: undefined,
+          agent: reboundAccount.modelType,
+          provider: reboundAccount.modelType,
+          model: reboundEntry.modelId,
+          nativeHarnessType: reboundAccount.nativeHarnessType,
+          selectedSourceLabel: reboundAccount.name,
+          selectedSourceModelType: reboundAccount.modelType,
+        },
+        reboundEntry,
+        options?.close !== false,
+        generation
+      );
     },
     [
       accounts,
       advancedConfig,
       applyMarketSourceSelection,
       marketSources,
-      onConfigChange,
-      onClose,
-      recordRecent,
+      commitSelection,
       t,
       withCurrentEffort,
     ]

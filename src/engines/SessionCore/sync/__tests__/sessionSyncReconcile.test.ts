@@ -236,6 +236,25 @@ describe("reconcileInFlightHistory", () => {
     expect(recorded.loads).toEqual([]);
     expect(store.eventsBySession.get(SESSION_ID)).toEqual([original]);
   });
+  it("shows terminal provider failure immediately even when no native file was created", async () => {
+    const adapter = makeAdapter({
+      history: () => {
+        throw new Error("missing history");
+      },
+      postLoad: {
+        runStatus: "failed",
+        runError: "provider login expired",
+        transcriptSource: "native",
+      },
+    });
+    const { recorded, actions } = makeActions();
+    reconcileInFlightHistory(SESSION_ID, adapter, liveRefs(), actions);
+    await settle();
+    expect(adapter.loadHistoryCalls).toBe(1);
+    expect(recorded.runtimeStatus).toEqual(["failed"]);
+    expect(recorded.runtimeError.at(-1)).toBe("provider login expired");
+    expect(recorded.loads).toEqual([]);
+  });
   it("recovers when a provider creates its native file on a later bounded attempt", async () => {
     let attempts = 0;
     const adapter = makeAdapter({

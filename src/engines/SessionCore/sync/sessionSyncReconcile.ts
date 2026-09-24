@@ -15,7 +15,7 @@ import {
   loadPersistedHistory,
   waitForReconcileDelay,
 } from "./sessionSyncUtils";
-import type { SessionAdapter } from "./types";
+import type { PostLoadResult, SessionAdapter } from "./types";
 
 const log = createLogger("SessionHistoryReconcile");
 
@@ -51,9 +51,10 @@ export function reconcileInFlightHistory(
       if (!isCurrent()) return;
 
       if (!isCurrent()) return;
+      const postLoadLifecycle = capturePostLoadLifecycleSnapshot(sessionId);
+      let postResult: PostLoadResult | null = null;
       try {
-        const postLoadLifecycle = capturePostLoadLifecycleSnapshot(sessionId);
-        const postResult = adapter.postLoad
+        postResult = adapter.postLoad
           ? await adapter.postLoad(sessionId, reconcileController.signal)
           : null;
         if (!isCurrent()) return;
@@ -115,6 +116,22 @@ export function reconcileInFlightHistory(
         // Retry the existing bounded ladder; never turn a failed read into an
         // empty history or replace live events with an incomplete transcript.
         lastError = error;
+        if (
+          postResult?.runStatus === "failed" ||
+          postResult?.runStatus === "cancelled"
+        ) {
+          // Provider failure is already authoritative; do not leave the UI
+          // running for the retry ladder just because no transcript flushed.
+          applyPostLoadResult(sessionId, postResult, actions, {
+            lifecycleSnapshot: postLoadLifecycle,
+            acceptTerminalForUnchangedGeneration: true,
+          });
+          actions.setSessionRuntimeError(
+            postResult.runError ??
+              (error instanceof Error ? error.message : String(error))
+          );
+          return;
+        }
       }
     }
     if (lastError && isCurrent()) {

@@ -25,6 +25,36 @@ export const cloudFileOutbox = {
       })
     )
     .build(),
+  readSnapshot: defineProcedure("cloud_file_snapshot_read")
+    .input(
+      z.object({
+        identity,
+        orgId: z.string(),
+        sessionId: z.string(),
+        candidate,
+      })
+    )
+    .output(
+      z.object({
+        status: z.enum([
+          "captured",
+          "uploaded",
+          "not_captured",
+          "integrity_error",
+          "invalid_source",
+          "source_unavailable",
+          "too_large",
+          "local_storage_unavailable",
+          "atomic_capture_unsupported",
+          "source_busy_or_unavailable",
+          "local_budget_exceeded",
+        ]),
+        capturedAt: z.number().nullable(),
+        sha256: z.string().nullable(),
+        bytesBase64: z.string().nullable(),
+      })
+    )
+    .build(),
   claim: defineProcedure("cloud_file_outbox_claim")
     .input(z.object({ identity, orgIds: z.array(z.string()) }))
     .output(z.object({ job: job.nullable(), retryAt: z.number().nullable() }))
@@ -40,6 +70,7 @@ export const cloudFileOutbox = {
           "retry",
           "quota",
           "source_unavailable",
+          "capture_failed",
           "cancelled",
         ]),
       })

@@ -9,6 +9,7 @@ import {
   CONVERSATION_FILE_OUTBOX_CHANGED,
   conversationFileOutboxSignalAtom,
 } from "./conversationFileOutbox";
+import { readConversationFileSnapshot } from "./conversationFileSnapshot";
 import {
   org2CloudAuthAtom,
   org2CloudAuthIdentityKey,
@@ -225,6 +226,17 @@ export class ConversationFileDelivery {
           orgId: job.orgId,
           sessionId: job.sessionId,
           candidates: [{ path: job.path, revision: job.revision }],
+          readCandidate: async (candidate) => {
+            assertCurrent();
+            const bytes = await readConversationFileSnapshot({
+              identity,
+              orgId: job.orgId,
+              sessionId: job.sessionId,
+              candidate,
+            });
+            assertCurrent();
+            return bytes;
+          },
           assertCurrentIdentity: assertCurrent,
           signal: controller.signal,
         });
@@ -232,7 +244,7 @@ export class ConversationFileDelivery {
         outcome = !result.supported
           ? "retry"
           : result.sourceUnavailable
-            ? "source_unavailable"
+            ? "capture_failed"
             : "uploaded";
       } catch (error) {
         if (current())

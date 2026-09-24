@@ -17,10 +17,17 @@ const mocks = vi.hoisted(() => ({
   sync: vi.fn(),
   listen: vi.fn(),
   unlisten: vi.fn(),
+  readSnapshot: vi.fn(),
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@src/api/tauri/rpc", () => ({
-  rpc: { cloudFileOutbox: { claim: mocks.claim, settle: mocks.settle } },
+  rpc: {
+    cloudFileOutbox: {
+      claim: mocks.claim,
+      settle: mocks.settle,
+      readSnapshot: mocks.readSnapshot,
+    },
+  },
 }));
 vi.mock("./syncSessionSharedFiles", () => ({
   syncSessionSharedFileCandidates: mocks.sync,
@@ -61,6 +68,12 @@ describe("durable continuation file delivery lifecycle", () => {
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
     mocks.claim.mockResolvedValue({ job: null, retryAt: null });
+    mocks.readSnapshot.mockResolvedValue({
+      status: "captured",
+      bytesBase64: "AQI=",
+      capturedAt: 1,
+      sha256: "hash",
+    });
     mocks.settle.mockResolvedValue(undefined);
     mocks.listen.mockResolvedValue(mocks.unlisten);
     mocks.sync.mockResolvedValue({ supported: true, sourceUnavailable: false });
@@ -96,6 +109,36 @@ describe("durable continuation file delivery lifecycle", () => {
     await vi.advanceTimersByTimeAsync(60 * 60_000);
     expect(mocks.claim).toHaveBeenCalledTimes(reads);
   });
+  it("keeps a captured task retryable when snapshot IPC fails", async () => {
+    mocks.claim.mockResolvedValueOnce({ job, retryAt: null });
+    mocks.readSnapshot.mockRejectedValueOnce(new Error("database busy"));
+    mocks.sync.mockImplementationOnce(async (input) => {
+      await input.readCandidate(input.candidates[0]);
+      return { supported: true, sourceUnavailable: false };
+    });
+    worker.start(store);
+    await flush();
+    expect(mocks.settle).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "retry" })
+    );
+  });
+  it("wires the transport reader to the persisted scoped snapshot", async () => {
+    mocks.claim.mockResolvedValueOnce({ job, retryAt: null });
+    mocks.sync.mockImplementationOnce(async (input) => {
+      expect(await input.readCandidate(input.candidates[0])).toEqual(
+        new Uint8Array([1, 2])
+      );
+      return { supported: true, sourceUnavailable: false };
+    });
+    worker.start(store);
+    await flush();
+    expect(mocks.readSnapshot).toHaveBeenCalledWith({
+      identity: org2CloudAuthIdentityKey(auth),
+      orgId: "org",
+      sessionId: "root",
+      candidate: { path: "/report.md", revision: "event:1" },
+    });
+  });
   it.each([
     [
       "quota",
@@ -119,7 +162,7 @@ describe("durable continuation file delivery lifecycle", () => {
       );
     }
   );
-  it("keeps unavailable local bytes pending instead of acknowledging upload", async () => {
+  it("retires failed capture delivery without acknowledging a file upload", async () => {
     mocks.claim.mockResolvedValueOnce({ job, retryAt: null });
     mocks.sync.mockResolvedValueOnce({
       supported: true,
@@ -128,7 +171,7 @@ describe("durable continuation file delivery lifecycle", () => {
     worker.start(store);
     await flush();
     expect(mocks.settle).toHaveBeenCalledWith(
-      expect.objectContaining({ outcome: "source_unavailable" })
+      expect.objectContaining({ outcome: "capture_failed" })
     );
   });
   it("restores the persisted retry deadline after stop/start without reading early", async () => {

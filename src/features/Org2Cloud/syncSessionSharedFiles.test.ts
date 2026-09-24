@@ -54,6 +54,50 @@ beforeEach(() => {
   mocks.read.mockResolvedValue(new Uint8Array([1, 2, 3]));
 });
 describe("shared session artifact publication", () => {
+  it("propagates snapshot storage errors without marking a valid capture unavailable", async () => {
+    await expect(
+      syncSessionSharedFileCandidates({
+        ...input,
+        candidates: [{ path: "/author/report.md", revision: "e1:now" }],
+        readCandidate: async () => {
+          throw new Error("database busy");
+        },
+      })
+    ).rejects.toThrow("database busy");
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+  it("retries captured bytes after upload failure without rereading a changed source", async () => {
+    const bytes = new Uint8Array([4, 5, 6]);
+    const readCandidate = vi.fn().mockResolvedValue(bytes);
+    const pending = {
+      ...input,
+      candidates: [{ path: "/author/report.md", revision: "e1:now" }],
+      readCandidate,
+    };
+    mocks.upload.mockRejectedValueOnce(new Error("offline"));
+    await expect(syncSessionSharedFileCandidates(pending)).rejects.toThrow(
+      "offline"
+    );
+    mocks.read.mockResolvedValue(new Uint8Array([9, 9, 9]));
+    await syncSessionSharedFileCandidates(pending);
+    expect(mocks.upload.mock.calls.map((call) => call[5])).toEqual([
+      bytes,
+      bytes,
+    ]);
+    expect(mocks.read).not.toHaveBeenCalled();
+  });
+  it("does not fall back to the original source when a captured object is unavailable", async () => {
+    const result = await syncSessionSharedFileCandidates({
+      ...input,
+      candidates: [{ path: "/author/report.md", revision: "e1:now" }],
+      readCandidate: async () => null,
+    });
+    expect(result.sourceUnavailable).toBe(true);
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
   it("keeps a durable candidate pending when its source read fails", async () => {
     mocks.read.mockRejectedValueOnce(new Error("volume unavailable"));
     const pending = {

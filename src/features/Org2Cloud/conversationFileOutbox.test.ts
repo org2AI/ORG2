@@ -54,21 +54,26 @@ describe("continuation file producing boundary", () => {
       events,
       assertCurrentIdentity: () => {},
     });
-    expect(mocks.enqueue).toHaveBeenCalledWith({
-      identity: "https://cloud.example|author",
-      orgId: "org",
-      sessionId: "root",
-      candidates: expect.arrayContaining([
+    expect(
+      mocks.enqueue.mock.calls.map(([input]) => input.candidates).flat()
+    ).toEqual(
+      expect.arrayContaining([
         { path: "/workspace/report.pdf", revision: "answer:now" },
         { path: "/tmp/script-output.csv", revision: "answer:now" },
-      ]),
-    });
+      ])
+    );
+    for (const [input] of mocks.enqueue.mock.calls)
+      expect(input).toMatchObject({
+        identity: "https://cloud.example|author",
+        orgId: "org",
+        sessionId: "root",
+      });
     expect(JSON.stringify(mocks.enqueue.mock.calls)).not.toContain("secret");
     expect(JSON.stringify(events)).toBe(before);
-    expect(store.get(conversationFileOutboxSignalAtom)).toBe(1);
-    expect(mocks.emit).toHaveBeenCalledOnce();
+    expect(store.get(conversationFileOutboxSignalAtom)).toBe(2);
+    expect(mocks.emit).toHaveBeenCalledTimes(2);
   });
-  it("batches all files without imposing a total file count cap", async () => {
+  it("captures all files individually without imposing a total file count cap", async () => {
     await enqueueConversationSharedFiles({
       store: createStore(),
       auth,
@@ -81,7 +86,27 @@ describe("continuation file producing boundary", () => {
     });
     expect(
       mocks.enqueue.mock.calls.map(([input]) => input.candidates.length)
-    ).toEqual([256, 44]);
+    ).toEqual(Array(300).fill(1));
+  });
+  it("stops before capturing another source after identity changes during capture", async () => {
+    let current = true;
+    mocks.enqueue.mockImplementationOnce(async () => {
+      current = false;
+    });
+    await expect(
+      enqueueConversationSharedFiles({
+        store: createStore(),
+        auth,
+        orgId: "org",
+        sessionId: "root",
+        events: [output("[a](/first) [b](/second)")],
+        assertCurrentIdentity: () => {
+          if (!current) throw new Error("identity changed");
+        },
+      })
+    ).rejects.toThrow("identity changed");
+    expect(mocks.enqueue).toHaveBeenCalledOnce();
+    expect(mocks.emit).not.toHaveBeenCalled();
   });
   it("propagates journal errors without falsely signalling successful persistence", async () => {
     const store = createStore();

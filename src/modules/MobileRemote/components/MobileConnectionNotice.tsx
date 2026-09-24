@@ -6,6 +6,7 @@ import PageNotice from "@src/components/PageNotice";
 
 import { mobileConnectionFailureKey } from "../connection/mobileConnectionFeedback";
 import type { MobileConnectionState } from "../connection/types";
+import "./mobileConnectionNotice.css";
 
 /** The provider owns recovery; this view only guards its pending user action. */
 export function MobileConnectionNotice({
@@ -59,6 +60,9 @@ export function MobileConnectionNotice({
       <PageNotice
         type="warning"
         role="status"
+        compact
+        copyable={false}
+        className="mobile-connection-notice"
         title={t("connectionFeedback.title")}
         titleClassName="mobile-type-secondary"
         bodyClassName="mobile-type-caption text-text-2"

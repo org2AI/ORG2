@@ -2649,7 +2649,8 @@
     "downloaded": "Disimpan ke Unduhan",
     "downloadError": "Tidak dapat menyimpan ke Unduhan",
     "title": "File bersama",
-    "error": "Tidak dapat membuka file ini. Periksa akses akun, server, dan sesi Anda, lalu buka kembali tautannya.",
+    "error": "File ini tidak dapat dibuka. Coba lagi atau periksa koneksi, akun, server, dan akses sesi.",
+    "notUploaded": "File ini belum diunggah ke sesi bersama ini. Perangkat pengirim perlu menyelesaikan unggahan; coba lagi untuk memeriksa.",
     "downloadPreview": "Unduh file ini untuk melihat isinya",
     "download": "Unduh",
     "loading": "Memuat file bersama…"

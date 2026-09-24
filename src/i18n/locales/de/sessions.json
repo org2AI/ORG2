@@ -2650,7 +2650,8 @@
     "downloaded": "Im Download-Ordner gespeichert",
     "downloadError": "Speichern im Download-Ordner nicht möglich",
     "title": "Geteilte Datei",
-    "error": "Diese Datei kann nicht geöffnet werden. Prüfe dein Konto, den Server und den Sitzungszugriff und öffne den Link erneut.",
+    "error": "Diese Datei kann nicht geöffnet werden. Versuche es erneut oder prüfe Verbindung, Konto, Server und Sitzungszugriff.",
+    "notUploaded": "Diese Datei wurde noch nicht in diese geteilte Sitzung hochgeladen. Das Gerät des Absenders muss den Upload abschließen. Versuche es erneut, um den Status zu prüfen.",
     "downloadPreview": "Lade diese Datei herunter, um ihren Inhalt anzuzeigen",
     "download": "Herunterladen",
     "loading": "Geteilte Datei wird geladen…"

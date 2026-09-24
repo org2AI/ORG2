@@ -2650,7 +2650,8 @@
     "downloaded": "Zapisano w folderze Pobrane",
     "downloadError": "Nie można zapisać w folderze Pobrane",
     "title": "Udostępniony plik",
-    "error": "Nie można otworzyć tego pliku. Sprawdź konto, serwer i dostęp do sesji, a następnie ponownie otwórz link.",
+    "error": "Nie można otworzyć tego pliku. Spróbuj ponownie lub sprawdź połączenie, konto, serwer i dostęp do sesji.",
+    "notUploaded": "Ten plik nie został jeszcze przesłany do udostępnionej sesji. Urządzenie nadawcy musi zakończyć przesyłanie; spróbuj ponownie, aby sprawdzić.",
     "downloadPreview": "Pobierz ten plik, aby wyświetlić jego zawartość",
     "download": "Pobierz",
     "loading": "Ładowanie udostępnionego pliku…"

@@ -6,6 +6,7 @@ import {
   useMarkdownLocalFileInterceptor,
 } from "@src/components/MarkDown/extensions";
 
+import SharedSessionFileDialog from "./SharedSessionFileDialog";
 import { sharedFileAbsolutePath } from "./sessionSharedFileCandidates";
 import { SharedSessionFileAccessContext } from "./sharedSessionFileAccess";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
@@ -70,7 +71,14 @@ export function SharedSessionFilesProvider({
       <Context.Provider value={value}>
         {children}
         {selected?.key === scopeKey && (
-          <Suspense fallback={null}>
+          <Suspense
+            fallback={
+              <SharedSessionFileDialog
+                reference={selected.reference}
+                onClose={() => setSelected(null)}
+              />
+            }
+          >
             <Viewer
               reference={selected.reference}
               onClose={() => setSelected(null)}

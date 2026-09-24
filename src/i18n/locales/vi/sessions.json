@@ -2650,7 +2650,8 @@
     "downloaded": "Đã lưu vào thư mục Tải xuống",
     "downloadError": "Không thể lưu vào thư mục Tải xuống",
     "title": "Tệp được chia sẻ",
-    "error": "Không thể mở tệp này. Hãy kiểm tra tài khoản, máy chủ và quyền truy cập phiên rồi mở lại liên kết.",
+    "error": "Không thể mở tệp này. Hãy thử lại hoặc kiểm tra kết nối, tài khoản, máy chủ và quyền truy cập phiên.",
+    "notUploaded": "Tệp này chưa được tải lên phiên chia sẻ. Thiết bị của người gửi cần hoàn tất tải lên; hãy thử lại để kiểm tra.",
     "downloadPreview": "Tải tệp này xuống để xem nội dung",
     "download": "Tải xuống",
     "loading": "Đang tải tệp được chia sẻ…"

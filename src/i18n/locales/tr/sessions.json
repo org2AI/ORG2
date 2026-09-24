@@ -2650,7 +2650,8 @@
     "downloaded": "İndirilenler klasörüne kaydedildi",
     "downloadError": "İndirilenler klasörüne kaydedilemedi",
     "title": "Paylaşılan dosya",
-    "error": "Bu dosya açılamıyor. Hesabınızı, sunucuyu ve oturum erişiminizi kontrol edip bağlantıyı yeniden açın.",
+    "error": "Bu dosya açılamıyor. Yeniden deneyin veya bağlantınızı, hesabınızı, sunucuyu ve oturum erişimini kontrol edin.",
+    "notUploaded": "Bu dosya henüz paylaşılan oturuma yüklenmedi. Gönderenin cihazının yüklemeyi tamamlaması gerekiyor; kontrol etmek için yeniden deneyin.",
     "downloadPreview": "İçeriğini görmek için bu dosyayı indirin",
     "download": "İndir",
     "loading": "Paylaşılan dosya yükleniyor…"

@@ -27,6 +27,7 @@ interface Scope {
   sessionId: string;
   endpoint: string;
   repoPath?: string;
+  shareToken?: string;
   /** Local owner rows retain local navigation; plane rows override this per event. */
   eventOnly?: boolean;
   version?: { uploaderUserId: string; revision: string };
@@ -107,17 +108,26 @@ export function SharedSessionFilesProvider({
   );
   return (
     <ScopeContext.Provider value={scope}>
-      <Context.Provider value={value}>
-        {children}
-        {selected?.key === scopeKey && (
-          <Suspense fallback={null}>
-            <Viewer
-              reference={selected.reference}
-              onClose={() => setSelected(null)}
-            />
-          </Suspense>
-        )}
-      </Context.Provider>
+      <SharedSessionFileAccessContext.Provider value={access}>
+        <Context.Provider value={value}>
+          {children}
+          {selected?.key === scopeKey && (
+            <Suspense
+              fallback={
+                <SharedSessionFileDialog
+                  reference={selected.reference}
+                  onClose={() => setSelected(null)}
+                />
+              }
+            >
+              <Viewer
+                reference={selected.reference}
+                onClose={() => setSelected(null)}
+              />
+            </Suspense>
+          )}
+        </Context.Provider>
+      </SharedSessionFileAccessContext.Provider>
     </ScopeContext.Provider>
   );
 }

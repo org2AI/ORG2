@@ -47,6 +47,40 @@ describe("shared file wire boundary", () => {
       p_uploader_user_id: "guest",
     });
   });
+  it.each([200, 403])(
+    "keeps exact guest lookup on the capability RPC for status %s",
+    async (status) => {
+      const fetch = vi.fn().mockResolvedValue(new Response("null", { status }));
+      vi.stubGlobal("fetch", fetch);
+      const request = findSharedSessionFileVersion(
+        "jwt",
+        endpoint,
+        {
+          orgId: "ignored-org",
+          sessionId: "ignored-session",
+          path: "/shared/file.md",
+          version: { uploaderUserId: "author", revision: "original:time" },
+        },
+        undefined,
+        "guest-ticket"
+      );
+      if (status === 200) await expect(request).resolves.toBeNull();
+      else
+        await expect(request).rejects.toBeInstanceOf(
+          SharedSessionFileRequestError
+        );
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch.mock.calls[0][0]).toBe(
+        "https://cloud.example/rest/v1/rpc/cloud_find_session_file_version_by_share"
+      );
+      expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+        p_share_token: "guest-ticket",
+        p_source_path: "/shared/file.md",
+        p_source_revision: "original:time",
+        p_uploader_user_id: "author",
+      });
+    }
+  );
   it.each([
     [{ code: "P0001", message: "ORG2_QUOTA_EXCEEDED" }, "ORG2_QUOTA_EXCEEDED"],
     [

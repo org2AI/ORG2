@@ -11,11 +11,13 @@ import {
   SharedSessionFilesProvider,
   useOpenSessionSharedFile,
 } from "./SharedSessionFilesContext";
+import { useSharedSessionFileAccess } from "./sharedSessionFileAccess";
 
-const mocks = vi.hoisted(() => ({ viewer: vi.fn() }));
+const mocks = vi.hoisted(() => ({ viewer: vi.fn(), access: vi.fn() }));
 vi.mock("./SharedSessionFileViewer", () => ({
-  default: (props: unknown) => {
+  default: function MockViewer(props: unknown) {
     mocks.viewer(props);
+    mocks.access(useSharedSessionFileAccess());
     return null;
   },
 }));
@@ -56,6 +58,7 @@ describe("per-event shared file routing", () => {
               sessionId: "root",
               endpoint: "https://cloud.example",
               repoPath: "/reader",
+              shareToken: "guest-ticket",
               eventOnly: !imported,
             },
           },
@@ -68,6 +71,10 @@ describe("per-event shared file routing", () => {
       );
       await act(async () => {
         expect(open("proof.txt")).toBe(true);
+      });
+      expect(mocks.access).toHaveBeenCalledWith({
+        endpoint: "https://cloud.example",
+        shareToken: "guest-ticket",
       });
       expect(mocks.viewer).toHaveBeenCalledWith(
         expect.objectContaining({

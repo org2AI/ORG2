@@ -103,30 +103,75 @@ describe("shared file viewer lifecycle", () => {
     );
     await act(async () => {});
   }
-  it("opens the original guest version and never resolves another same-path upload", async () => {
-    mocks.version.mockResolvedValue(file);
+  it("passes the mounted replay capability to both path lookup and byte reads", async () => {
+    mocks.find.mockResolvedValue(file);
     mocks.read.mockResolvedValue(file);
-    const source = {
-      orgId: "org",
-      sessionId: "root",
-      path: "/sender/report.md",
-      version: { uploaderUserId: "guest", revision: "original:time" },
-    };
-    await render({ ...reference, source });
-    expect(mocks.version).toHaveBeenCalledWith(
-      "token",
-      expect.anything(),
-      source,
-      expect.any(AbortSignal)
+    await render(
+      {
+        ...reference,
+        id: "source",
+        source: { orgId: "org", sessionId: "session", path: "/report.md" },
+      },
+      "guest-ticket"
     );
-    expect(mocks.read).toHaveBeenCalledWith(
-      "token",
-      expect.anything(),
-      file.id,
-      expect.any(AbortSignal)
-    );
-    expect(mocks.find).not.toHaveBeenCalled();
+    expect(mocks.find.mock.calls[0][7]).toBe("guest-ticket");
+    expect(mocks.read.mock.calls[0][4]).toBe("guest-ticket");
+    expect(document.querySelector("pre")?.textContent).toBe("hello");
+    expect(document.body.innerHTML).not.toContain("guest-ticket");
   });
+  it("does not forward a different endpoint's capability", async () => {
+    mocks.read.mockResolvedValue(file);
+    await render(reference, "other-ticket", "https://other.example");
+    expect(mocks.read.mock.calls[0][4]).toBeUndefined();
+  });
+  it("discards pending bytes when the share capability changes", async () => {
+    let resolve!: (value: typeof file) => void;
+    mocks.read.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        })
+    );
+    mocks.read.mockImplementation(() => new Promise(() => {}));
+    await render(reference, "old-ticket");
+    const signal = mocks.read.mock.calls[0][3] as AbortSignal;
+    await render(reference, "new-ticket");
+    await act(async () => {
+      resolve(file);
+    });
+    expect(signal.aborted).toBe(true);
+    expect(mocks.read.mock.calls[1][4]).toBe("new-ticket");
+    expect(document.querySelector("pre")).toBeNull();
+  });
+  it.each([undefined, "guest-ticket"])(
+    "opens the original version using capability %s without a same-path retry",
+    async (shareToken) => {
+      mocks.version.mockResolvedValue(file);
+      mocks.read.mockResolvedValue(file);
+      const source = {
+        orgId: "org",
+        sessionId: "root",
+        path: "/sender/report.md",
+        version: { uploaderUserId: "guest", revision: "original:time" },
+      };
+      await render({ ...reference, source }, shareToken);
+      expect(mocks.version).toHaveBeenCalledWith(
+        "token",
+        expect.anything(),
+        source,
+        expect.any(AbortSignal),
+        shareToken
+      );
+      expect(mocks.read).toHaveBeenCalledWith(
+        "token",
+        expect.anything(),
+        file.id,
+        expect.any(AbortSignal),
+        shareToken
+      );
+      expect(mocks.find).not.toHaveBeenCalled();
+    }
+  );
   it("does not substitute a latest version when the requested revision is missing", async () => {
     mocks.version.mockResolvedValue(null);
     await render({

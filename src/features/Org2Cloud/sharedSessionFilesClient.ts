@@ -233,15 +233,19 @@ export async function findSharedSessionFileVersion(
     path: string;
     version: { uploaderUserId: string; revision: string };
   },
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  shareToken?: string
 ): Promise<SharedSessionFile | null> {
   const value = await rpc(
     token,
     endpoint,
-    "cloud_find_session_file_version",
+    shareToken
+      ? "cloud_find_session_file_version_by_share"
+      : "cloud_find_session_file_version",
     {
-      p_org_id: source.orgId,
-      p_session_id: source.sessionId,
+      ...(shareToken
+        ? { p_share_token: shareToken }
+        : { p_org_id: source.orgId, p_session_id: source.sessionId }),
       p_source_path: source.path,
       p_source_revision: source.version.revision,
       p_uploader_user_id: source.version.uploaderUserId,

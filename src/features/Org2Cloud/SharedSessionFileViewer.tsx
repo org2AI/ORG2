@@ -81,7 +81,8 @@ export default function SharedSessionFileViewer({
             accessToken,
             endpoint,
             { ...source, version: source.version },
-            controller.signal
+            controller.signal,
+            shareToken
           )
         : source
           ? await findSharedSessionFile(
@@ -91,11 +92,10 @@ export default function SharedSessionFileViewer({
               source.sessionId,
               source.path,
               undefined,
-              controller.signal
+              controller.signal,
+              shareToken
             )
           : null;
-      if (reference.source && !located)
-        throw new Error("File has not been uploaded by its source device");
       if (!stillCurrent()) return;
       if (reference.source && !located) {
         setError("not_uploaded");

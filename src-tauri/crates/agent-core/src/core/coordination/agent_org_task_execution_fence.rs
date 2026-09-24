@@ -314,9 +314,10 @@ pub(crate) fn clear_external_effect_unknown_in_tx(
 mod tests {
     use super::*;
 
-    fn identity() -> TaskExecutionEffectIdentity {
+    // TASK_FENCES is process-global; parallel tests must own distinct run keys.
+    fn identity(test_name: &str) -> TaskExecutionEffectIdentity {
         TaskExecutionEffectIdentity {
-            org_run_id: "run".to_string(),
+            org_run_id: format!("fence-test-{test_name}"),
             task_id: "task".to_string(),
             session_id: "session".to_string(),
             turn_intent_id: "turn".to_string(),
@@ -327,28 +328,38 @@ mod tests {
 
     #[tokio::test]
     async fn handoff_waits_for_the_exact_active_effect() {
-        let identity = identity();
+        let identity = identity("handoff-waits");
         let effect = acquire_effect(&identity).await;
-        assert_eq!(active_effect_count("run", "task"), 1);
+        assert_eq!(
+            active_effect_count(&identity.org_run_id, &identity.task_id),
+            1
+        );
 
-        let writer = tokio::spawn(async { acquire_handoff("run", "task").await });
+        let handoff_identity = identity.clone();
+        let writer = tokio::spawn(async move {
+            acquire_handoff(&handoff_identity.org_run_id, &handoff_identity.task_id).await
+        });
         tokio::task::yield_now().await;
         assert!(!writer.is_finished());
         drop(effect);
 
         let guard = writer.await.expect("writer task");
-        assert_eq!(active_effect_count("run", "task"), 0);
+        assert_eq!(
+            active_effect_count(&identity.org_run_id, &identity.task_id),
+            0
+        );
         drop(guard);
     }
 
     #[tokio::test]
     async fn effect_queued_after_handoff_cannot_overtake_the_writer() {
-        let identity = identity();
+        let identity = identity("late-effect");
         let first_effect = acquire_effect(&identity).await;
         let (queued_tx, queued_rx) = tokio::sync::oneshot::channel();
+        let handoff_identity = identity.clone();
         let writer = tokio::spawn(async move {
             queued_tx.send(()).unwrap();
-            acquire_handoff("run", "task").await
+            acquire_handoff(&handoff_identity.org_run_id, &handoff_identity.task_id).await
         });
         queued_rx.await.unwrap();
         tokio::task::yield_now().await;

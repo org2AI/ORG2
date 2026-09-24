@@ -229,7 +229,13 @@ describe("Org2CloudSessionSync local continuation replay", () => {
     const store = createStore();
     const cloud = client();
     const sync = new Org2CloudSessionSync(() => store, cloud);
-    const events = [event("file", "[report](/sender/report.md)")];
+    const events = [
+      {
+        ...event("file", ""),
+        uiCanonical: "write_file",
+        filePath: "/sender/report.md",
+      },
+    ];
     mocks.canonicalSnapshot.mockResolvedValue({ events, childRevision: "[]" });
     mocks.capabilities.mockResolvedValue({
       confirmed: true,
@@ -331,7 +337,13 @@ describe("Org2CloudSessionSync local continuation replay", () => {
     vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-stable");
     const store = createStore();
     const cloud = client();
-    const events = [event("file", "[report](/sender/report.md)")];
+    const events = [
+      {
+        ...event("file", ""),
+        uiCanonical: "write_file",
+        filePath: "/sender/report.md",
+      },
+    ];
     mocks.canonicalSnapshot.mockResolvedValue({ events, childRevision: "[]" });
     mocks.capabilities.mockResolvedValue({
       confirmed: true,

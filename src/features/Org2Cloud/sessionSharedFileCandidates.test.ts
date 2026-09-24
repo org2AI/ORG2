@@ -43,7 +43,7 @@ describe("session artifact discovery", () => {
     ).toEqual([]);
     expect(sharedFileAbsolutePath("   ", "/repo")).toBeNull();
   });
-  it("collects user file messages, successful writes and agent-generated linked output without a comment", () => {
+  it("collects explicit user attachments and successful writes without treating prose as upload authority", () => {
     const result = collectSessionSharedFiles([
       event({
         source: "user",
@@ -64,9 +64,35 @@ describe("session artifact discovery", () => {
     expect(result.map((file) => file.path)).toEqual([
       "/author/spec.pdf",
       "/author/result.md",
-      "/author/report.pdf",
-      "/author/plot.png",
     ]);
+  });
+  it.each(["assistant", "user"] as const)(
+    "does not grant file upload from %s Markdown",
+    (source) => {
+      expect(
+        collectSessionSharedFiles([
+          event({
+            source,
+            displayVariant: "message",
+            uiCanonical: "message",
+            repoPath: "/workspace",
+            displayText:
+              "[private](/outside/private.txt) ![image](file:///outside/image.png) [relative](../../secret.txt)",
+          }),
+        ])
+      ).toEqual([]);
+    }
+  );
+  it("does not grant file upload from an assistant attachment-shaped token", () => {
+    expect(
+      collectSessionSharedFiles([
+        event({
+          displayVariant: "message",
+          uiCanonical: "message",
+          displayText: "[file:/outside/private.txt]",
+        }),
+      ])
+    ).toEqual([]);
   });
   it("never uploads read-only, deleted, failed, running, or remote references", () => {
     expect(

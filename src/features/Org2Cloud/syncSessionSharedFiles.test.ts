@@ -51,6 +51,26 @@ beforeEach(() => {
   mocks.read.mockResolvedValue(new Uint8Array([1, 2, 3]));
 });
 describe("shared session artifact publication", () => {
+  it("never reads local bytes for a file named only in assistant prose", async () => {
+    await syncSessionSharedFiles({
+      ...input,
+      events: [
+        {
+          ...event,
+          uiCanonical: "message",
+          functionName: "message",
+          filePath: undefined,
+          displayVariant: "message",
+          displayText:
+            "[private](/outside/private.txt) [file:/outside/private.txt]",
+        },
+      ],
+    });
+    expect(mocks.capabilities).not.toHaveBeenCalled();
+    expect(mocks.find).not.toHaveBeenCalled();
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
   it("uploads an agent file without rewriting conversation events or requiring a comment", async () => {
     await syncSessionSharedFiles(input);
     expect(mocks.upload).toHaveBeenCalledWith(

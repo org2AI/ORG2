@@ -49,7 +49,10 @@ export function sharedFileAbsolutePath(
   }
   return parts.join("/");
 }
-/** Only explicit user references, generated-file links, and successful writes. Reads never opt files into sharing. */
+/**
+ * Only explicit user attachment tokens and successful write events grant upload
+ * provenance. Markdown is a display reference, never authority to read local bytes.
+ */
 export function collectSessionSharedFiles(
   events: readonly SessionEvent[],
   repoPath?: string
@@ -90,20 +93,9 @@ export function collectSessionSharedFiles(
     ) {
       add(data.filePath);
     }
-    if (
-      event.source === "user" ||
-      event.displayVariant === "message" ||
-      event.actionType === "assistant" ||
-      event.actionType === "message" ||
-      event.uiCanonical === "message"
-    ) {
+    if (event.source === "user") {
       for (const match of event.displayText.matchAll(/\[file:([^\]\r\n]+)\]/g))
         add(match[1]);
-      for (const match of event.displayText.matchAll(
-        /\[[^\]\n]+\]\((<[^>]+>|[^)\s]+)\)/g
-      )) {
-        if (!/^https?:/i.test(match[1])) add(match[1]);
-      }
     }
   }
   return [...files.values()];

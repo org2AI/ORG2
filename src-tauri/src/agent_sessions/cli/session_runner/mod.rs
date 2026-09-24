@@ -19,7 +19,6 @@
 //! - `token_sync`     — post-run token sync back to key vault
 
 mod codex_profile;
-mod codex_reserve;
 pub(crate) mod command;
 mod context_bridge;
 mod cursor_usage;
@@ -53,3 +52,6 @@ pub(crate) use session::run_session_with_ide_context;
 #[cfg(test)]
 #[path = "../tests/runner_command_tests.rs"]
 mod command_tests;
+
+#[cfg(test)]
+mod codex_reserve;

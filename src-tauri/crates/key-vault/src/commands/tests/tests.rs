@@ -638,6 +638,7 @@ fn live_codex_catalog_preserves_capabilities_and_completes_builtin_models() {
             "gpt-5.6-sol",
             "gpt-5.6-terra",
             "gpt-5.6-luna",
+            "gpt-reserve",
             "gpt-5.5",
         ]
     );
@@ -920,5 +921,48 @@ fn current_oauth_generations_are_preselected_without_overriding_provider_default
             .default_enabled_models
             .iter()
             .all(|id| catalog.models.contains(id)));
+    }
+}
+
+#[test]
+fn codex_reserve_catalog_is_distinct_from_ordinary_luna() {
+    use crate::commands::validate::{resolved_oauth_catalog, OAuthModelCatalogSource};
+    use crate::types::DiscoveredModel;
+    for source in [
+        OAuthModelCatalogSource::Live,
+        OAuthModelCatalogSource::Fallback,
+    ] {
+        let catalog = resolved_oauth_catalog(
+            "codex",
+            vec![DiscoveredModel {
+                id: "gpt-5.6-luna".into(),
+                ..Default::default()
+            }],
+            source,
+        )
+        .unwrap();
+        for base in ["gpt-5.6-luna", "gpt-reserve"] {
+            assert_eq!(
+                catalog
+                    .models
+                    .iter()
+                    .filter(|id| id.as_str() == base)
+                    .count(),
+                1
+            );
+            assert!(catalog.default_enabled_models.iter().any(|id| id == base));
+            assert!(catalog
+                .default_variants
+                .iter()
+                .any(|v| v.base_model == base && v.model == format!("{base}-medium")));
+        }
+        let reserve: Vec<_> = catalog
+            .model_variants
+            .iter()
+            .filter(|v| v.base_model == "gpt-reserve")
+            .collect();
+        assert_eq!(reserve.len(), 5);
+        assert!(reserve.iter().all(|v| !v.fast));
+        assert!(reserve.iter().any(|v| v.model == "gpt-reserve-max"));
     }
 }

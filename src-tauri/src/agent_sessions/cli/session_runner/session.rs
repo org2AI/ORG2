@@ -794,20 +794,7 @@ pub(crate) async fn run_session_with_ide_context(
     let acp_mcp_servers = session_mcp.acp_servers();
     let stderr_mcp_servers = Arc::new(session_mcp);
 
-    let codex_wire_model = if agent == ModelType::Codex
-        && oauth_retry_eligible
-        && managed_execution.is_none()
-        && !launch_profile
-            .env
-            .keys()
-            .any(|key| managed_routing_env_key(key))
-    {
-        super::codex_reserve::resolve_wire_model(selected_key.as_ref(), model.as_deref()).await
-    } else {
-        None
-    };
     let mut cmd_parts = build_command_with_launch_profile(CliCommandBuildRequest {
-        codex_wire_model,
         agent: &agent,
         launch_profile: &launch_profile,
         model: model.as_deref(),
@@ -1218,7 +1205,6 @@ pub(crate) async fn run_session_with_ide_context(
                 codex_project_id.clone(),
                 cli_resume_id.clone(),
                 model.as_deref(),
-                codex_wire_model,
                 &launch_profile,
                 codex_app_server_config.clone(),
                 image_paths.clone(),
@@ -1286,7 +1272,6 @@ pub(crate) async fn run_session_with_ide_context(
                 Some(effective_mode_str),
                 account_id,
                 model.as_deref(),
-                codex_wire_model,
                 session_timeout,
                 pre_message_snapshot_id.clone(),
                 snapshot_working_dir.clone(),

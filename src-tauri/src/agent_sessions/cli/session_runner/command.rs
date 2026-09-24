@@ -16,8 +16,6 @@ pub(super) struct CliCommandBuildRequest<'a> {
     pub agent: &'a ModelType,
     pub launch_profile: &'a ResolvedCliLaunchProfile,
     pub model: Option<&'a str>,
-    /// Upstream-only Codex capacity pool; keep model variant semantics above.
-    pub codex_wire_model: Option<&'a str>,
     pub turn: &'a CliTurnEnvelope,
     pub resume_id: Option<&'a str>,
     pub api_key: Option<&'a str>,
@@ -36,7 +34,6 @@ pub(super) fn build_command_with_launch_profile(
         agent,
         launch_profile,
         model,
-        codex_wire_model,
         turn,
         resume_id,
         api_key,
@@ -193,11 +190,7 @@ pub(super) fn build_command_with_launch_profile(
             if let Some(m) = model {
                 let codex_model = map_codex_model_variant(m);
                 cmd.push("-m".into());
-                cmd.push(
-                    codex_wire_model
-                        .unwrap_or(&codex_model.base_model)
-                        .to_owned(),
-                );
+                cmd.push(codex_model.base_model);
                 for config in codex_model.config_overrides {
                     cmd.push("-c".into());
                     cmd.push(config);
@@ -305,14 +298,28 @@ pub(super) fn codex_app_server_thread_model(model: Option<&str>) -> Option<Strin
     model.map(|m| map_codex_model_variant(m).base_model)
 }
 
+/// Preserve the explicitly selected quota pool in token records when upstream
+/// reports its underlying normal model. Other models retain reported identity.
+pub(super) fn codex_usage_model<'a>(
+    selected: Option<&'a str>,
+    reported: Option<&'a str>,
+) -> Option<&'a str> {
+    if codex_app_server_thread_model(selected).as_deref() == Some("gpt-reserve") {
+        selected
+    } else {
+        reported.or(selected)
+    }
+}
+
 fn map_codex_model_variant(model: &str) -> CodexModelLaunchConfig {
-    const CODEX_VARIANT_BASES: [&str; 11] = [
+    const CODEX_VARIANT_BASES: [&str; 12] = [
         "gpt-6-astra",
         "gpt-6-sol",
         "gpt-6-luna",
         "gpt-5.6-sol",
         "gpt-5.6-terra",
         "gpt-5.6-luna",
+        "gpt-reserve",
         "gpt-5.5",
         "gpt-5.4",
         "gpt-5.4-mini",
@@ -343,6 +350,7 @@ fn map_codex_model_variant(model: &str) -> CodexModelLaunchConfig {
                     | "gpt-5.6-sol"
                     | "gpt-5.6-terra"
                     | "gpt-5.6-luna"
+                    | "gpt-reserve"
             );
         if !CODEX_REASONING_LEVELS.contains(&reasoning) && !supports_max {
             continue;

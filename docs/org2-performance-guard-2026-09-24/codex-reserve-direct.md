@@ -1,86 +1,90 @@
-# Direct Codex OAuth Luna reserve
+# Explicit Codex OAuth Luna reserve
 
 ## Source and invariant
 
-The authoritative usage response can report `rate_limit.allowed = false` and
-`limit_reached = true` while a separate `additional_rate_limits` entry reports
-`limit_name = gpt-reserve`, `normal_model_slug = gpt-5.6-luna`, and available
-capacity. Previously the desktop discarded that additional pool and sent the
-ordinary model in both its native HTTP provider and CLI runner.
+OpenAI's usage API reports ordinary account quota in `rate_limit` and a separate
+`additional_rate_limits` pool with `limit_name = gpt-reserve` and
+`normal_model_slug = gpt-5.6-luna`. The two request IDs are distinct:
+`gpt-5.6-luna` selects ordinary Luna; `gpt-reserve` selects Luna Reserve. This PR
+exposes both in the native OAuth catalog and never automatically switches pools.
+Catalog membership means product support, not account entitlement: OpenAI remains
+the admission authority, including when reserve may be used after ordinary quota
+is exhausted. A missing quota snapshot does not imply available reserve capacity.
 
-Model-scoped quota now survives the usage API/app-server adapter, Autodetect,
-RPC validation, wizard normalization and credential persistence. Ordinary
-remaining percentage stays ordinary; it is not replaced by the reserve value.
-Cached credentials require only normal quota refresh; no data cleanup or schema
-migration is needed. The new optional JSON field is backward compatible and can
-be ignored on rollback.
+The source adapters preserve model-scoped pools through Autodetect, RPC, wizard
+normalization and credential persistence. The optional `model_quotas` JSON field
+is backward compatible. Existing accounts pick up the available model on load;
+a normal model refresh or enabling the entry makes it selectable. Newly imported
+OAuth accounts include both in the default enabled list. API-key catalogs are
+not completed with OAuth models. No stored histories or credentials are deleted.
+A quota refresh obtains new display data; no destructive remediation is needed.
 
-For a selected Luna variant, direct native OAuth callers consult the same
-fresh-usage resolver before sending. A switch requires explicit ordinary-pool
-exhaustion, exactly one matching reserve entry, explicit reserve permission and
-positive capacity in every reported reserve window. Unknown, malformed,
-contradictory or exhausted capacity keeps the original route. API keys, custom
-endpoints, managed Market routes and other models do not use this resolver.
-The selected session model, reasoning and service tier remain unchanged;
-`gpt-reserve` is only the upstream model. Both CLI transports record token usage
-against the selected model when an override was applied.
+The model picker and model management page show **GPT 5.6 Luna Reserve**, separate
+from **GPT 5.6 Luna**, using the stable request ID `gpt-reserve`. Both native HTTP
+and CLI exec/app-server use the selected ID and independent effort setting.
+Reserve exposes low/medium/high/xhigh/max, without synthesizing Fast or Ultra.
+Reserve-specific token records retain the selected pool if upstream reports the
+underlying ordinary model. Native-provider auxiliary work stays in the selected
+pool; rejection cannot redirect reserve work into ordinary quota or vice versa.
 
-The resolver adds no generation retry, reset-credit redemption or purchase.
-Overlapping lookups for the same endpoint/token/account share one bounded GET
-through a weak, at-most-32-entry registry. Completed quota is not cached; the
-last caller drops the cell and its HTTP future on cancellation. There is one
-GET per independent eligible request (again only if the existing OAuth
-retry rotates credentials). The request body is capped at 256 KiB and the entire
-lookup at five seconds; failure retains ordinary routing. The HTTP provider's
-existing cancellation selector also covers the lookup. CLI resolves before
-spawning. There is no retained quota cache, worker, subscription or idle task.
+Account details, the wizard quota display and start-page account cards display
+reported reserve windows independently from ordinary windows. The existing
+percentage and reset-time display primitives are reused. Unknown reserve data
+produces no invented meter; exhausted reserve remains visible at zero. App-server
+responses containing reserve alone keep ordinary quota unknown, matching the HTTP
+adapter. Invalid or suspended accounts suppress cached reserve meters under the
+existing account-display rule.
 
 ## Architecture review
 
-| Layer                     | Result                                                                                     |
-| ------------------------- | ------------------------------------------------------------------------------------------ |
-| 1 Compilation             | See verification below                                                                     |
-| 2 Ownership / duplication | One quota decision in key-vault, used by HTTP and both CLI transports                      |
-| 3 Naming                  | `model_quotas` describes scoped capacity; `codex_wire_model` is upstream-only              |
-| 4 Semantics               | Ordinary percentage, model capacity and selected model identity remain separate            |
-| 5 Defaults                | Unknown permission or probe failure never enables reserve                                  |
-| 6 Boundaries              | Provider-specific mapping stays in Codex adapters; shared quota data remains generic       |
-| 7 Readability             | Explicit exact-model guard and call-site route exclusions                                  |
-| 8 Wire                    | Optional additive quota field; only the Responses model is overridden                      |
-| 9 Entry points            | HTTP streaming/nonstreaming share one sender; exec/app-server share prelaunch resolution   |
-| 10 Resolver symmetry      | Selected OAuth token/account scopes quota and inference; HTTP rejects stale token evidence |
+| Layer                     | Result                                                                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1 Compilation             | Targeted tests, typecheck and lint listed in Verification                                                              |
+| 2 Ownership / duplication | Removed automatic quota lookup, global in-flight registry and wire override; existing send paths accept explicit model |
+| 3 Naming                  | Stable `gpt-reserve` identity with human-readable Luna Reserve label                                                   |
+| 4 Semantics               | Model selection, ordinary quota and reserve quota remain separate                                                      |
+| 5 Defaults                | Catalog defaults do not assert entitlement; no failure or unknown quota triggers fallback                              |
+| 6 Boundaries              | Codex adapter owns pool ingestion; shared quota field is generic; API-key catalog behavior unchanged                   |
+| 7 Readability             | Request ID is the chosen pool; no hidden runtime rewrite                                                               |
+| 8 Wire                    | Additive optional quota field; existing explicit model field carries `gpt-reserve`                                     |
+| 9 Entry points            | Wizard/live/fallback catalogs, persisted-account normalization, native HTTP and both CLI transports covered            |
+| 10 Resolver symmetry      | Model identity and effort agree across transports; auxiliary rejection scope differs between pools                     |
+
+All ten layers were inspected; unrelated domains were excluded.
 
 ## Lifecycle and performance
 
-| Area               | Verdict | Evidence                                                    | Change or reason kept                                                      | Verification                                                         |
-| ------------------ | ------- | ----------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Background work    | keep    | Resolver called only during active request/turn preparation | No timers, idle pollers or retained tasks added                            | Call-chain inspection; bounded HTTP fixture                          |
-| Memory             | keep    | At most 256 KiB usage body per active lookup                | Weak in-flight registry capped at 32, no retained quota or raw credentials | Body cap plus overlapping-lookup/no-result-cache test                |
-| Scope/isolation    | fix     | Credential and account captured per request                 | No prior-account quota reuse; custom endpoints excluded                    | Sequential account-switch fixture and custom/API-key exclusion tests |
-| Rendering/hot path | keep    | Pre-send lookup only; stream delta parsing unchanged        | No React changes or per-delta work                                         | Frontend contract tests and provider tests                           |
-
-Non-overlapping turns deliberately obtain fresh admission evidence: this is
-not a capacity reservation, and the provider still decides admission under
-concurrent consumption. No snapshot is cached across turns. The tradeoff is an
-extra usage-API round trip for direct Luna turns, even when ordinary quota is
-available. An unavailable quota service can delay launch by at most five seconds.
+| Area               | Verdict | Evidence                                                | Change or reason kept                                                                       | Verification                                           |
+| ------------------ | ------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Background work    | fix     | No request-time quota lookup remains                    | Removed automatic probe, timeout and in-flight registry; normal existing refresh owns quota | Source trace from send and quota refresh               |
+| Memory             | keep    | Model quota is part of the existing credential snapshot | No new app-lifetime registry, worker or retained request                                    | Ingestion/serialization tests                          |
+| Scope/isolation    | fix     | Pool selection is part of model identity                | No automatic cross-pool fallback; auxiliary rejection scopes differ                         | Request-building, CLI and auxiliary policy regressions |
+| Rendering/hot path | keep    | Pure projection on existing quota updates               | Shared display; no subscriptions/timers/network calls added; streaming parser unchanged     | Typecheck, display/grouping tests and UI audit         |
 
 ## Verification
 
-- `cargo test --manifest-path src-tauri/Cargo.toml -p key_vault --lib --locked providers::codex -- --test-threads=1`: 28 passed, one existing installed-CLI fixture ignored. Includes null windows, account switch, concurrent lookup sharing, malformed/denied capacity, oversized response and stalled-body deadline/connection release.
-- `cargo test --manifest-path src-tauri/Cargo.toml -p agent_core -p org2 --lib --locked -- codex_native:: codex_reserve:: session_runner::command_tests --test-threads=1`: 9 provider + 45 CLI tests passed; two opt-in live canaries excluded from the ordinary run.
-- `cargo test --manifest-path src-tauri/Cargo.toml -p agent_core -p org2 --lib --locked live_luna_reserve -- --ignored --nocapture --test-threads=1`, with an explicit existing isolated OAuth profile and isolated ORG2 home: both live canaries passed. No credential copy was made.
-- Native provider selected `gpt-5.6-luna-low`, resolved `gpt-reserve`, returned the exact marker without tools: 40 input / 11 output tokens, 3.55 seconds including quota probes.
-- Codex app-server selected `gpt-5.6-luna-low`, resolved `gpt-reserve`, completed without tools: 4,092 input / 11 output tokens, 3.71 seconds including quota lookup, process startup and teardown.
-- A separate installed Codex 0.154.0 exec smoke with the explicit reserve model also completed: 15,848 input / 12 output tokens. This is upstream compatibility evidence, not evidence of automatic routing by itself.
-- `./node_modules/.bin/vitest run --config config/vitest.config.ts src/api/tauri/rpc/schemas/__tests__/validationDiscovery.test.ts src/scaffold/WizardSystem/variants/KeyVault/hooks/keyHelpers.test.ts`: 10 passed.
-- `./node_modules/.bin/tsgo --noEmit --pretty false`: passed.
-- `./node_modules/.bin/eslint` on the six changed TypeScript files with `--max-warnings 0`: passed.
+- `cargo test --manifest-path src-tauri/Cargo.toml -p key_vault -p agent_core -p org2 --lib --locked codex`: 239 passed across the full run and affected key-vault rerun (13 provider / 85 key-vault / 141 application), eight opt-in or pre-existing ignored tests. Includes explicit wire IDs, effort, fresh/resumed CLI turns, token identity, auxiliary pool isolation, live/fallback catalogs, persisted normalization and malformed quota ingestion.
+- `pnpm exec vitest run --config config/vitest.config.ts` with the eight changed display/grammar/schema/wizard regression files listed in the PR: **137 passed** across the full run and affected UI rerun.
+- `pnpm exec tsgo --noEmit --pretty false`: passed.
+- Changed-file `pnpm exec eslint ... --max-warnings 0`: passed.
 - `cargo clippy --manifest-path src-tauri/Cargo.toml -p key_vault -p agent_core -p org2 --lib --tests --locked -- -D warnings`: passed.
-- `git diff --check`: passed. No dependency, lockfile, CI, schema migration or rendered control changes.
+- `git diff --check`: passed.
 
-The first live automatic-routing attempt correctly failed before generation because the adapter treated a null secondary window as malformed. Null-window handling was fixed at ingestion and covered in both usage-API and app-server fixtures before the successful rerun.
+Live verification explicitly selected `gpt-reserve-low` through both native HTTP
+and Codex app-server with tools disabled. The opt-in command
+`cargo test --manifest-path src-tauri/Cargo.toml -p agent_core -p org2 --lib --locked live_luna_reserve -- --ignored --nocapture --test-threads=1`
+passed both tests using an existing authorized OAuth account and isolated transcript
+roots. Native HTTP returned the exact canary (40 input / 11 output tokens), and
+app-server returned its exact canary (4,298 input / 11 output tokens). Both sent
+`gpt-reserve`. These are direct OAuth transport checks, not Market ledger evidence.
+Previous automatic-routing canaries are not credited to this revision.
 
-The test worktree reused an existing local process-manager sidecar to satisfy Tauri's build-time bundle resource check. No sidecar binary is part of the diff. The desktop bundle was not rebuilt or installed, so these are production provider/CLI-boundary checks, not rendered GUI acceptance. No screenshots are required for this data/routing-only change. Fast-tier live routing, Windows/Linux runs and the original history-sync C7 scenario were not rerun.
+No dependency, lockfile, CI or database-schema changes belong to this PR.
+Rollback restores the prior build; optional quota metadata can remain on disk.
+Before rollback, select ordinary Luna for sessions using the new reserve entry
+if the prior UI does not expose that model.
 
-Performance verdict: blocked for a full desktop lifecycle claim: visible/hidden idle, sustained streaming and repeated GUI open/close measurements were not rerun. The new request bounds, overlap sharing, account isolation and timeout cleanup checks passed. This report does not upgrade the separate native-history performance verdict.
+Performance verdict: blocked for a full desktop lifecycle claim until visible /
+hidden idle and repeated open/close measurements are collected. Source inspection
+establishes removal of the new request-time probe, not a measured performance gain.
+This PR does not upgrade the separate native-history C7/performance verdict.

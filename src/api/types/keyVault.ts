@@ -67,6 +67,7 @@ export interface VerificationData {
  * names without updating those callers.
  */
 export interface QuotaSnapshot {
+  model_quotas?: import("./keys").QuotaInfo["model_quotas"];
   remaining_percentage: number;
   used?: number;
   limit?: number;

@@ -13,6 +13,7 @@ pub const CODEX_OAUTH_MODELS: &[&str] = &[
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
+    "gpt-reserve",
     "gpt-5.5",
     "gpt-5.4",
     "gpt-5.4-mini",
@@ -28,6 +29,7 @@ pub const CODEX_OAUTH_DEFAULT_ENABLED_MODELS: &[&str] = &[
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
+    "gpt-reserve",
 ];
 
 /// Complete a Codex OAuth catalog without disturbing provider ordering.

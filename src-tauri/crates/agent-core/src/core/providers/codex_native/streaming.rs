@@ -53,7 +53,7 @@ impl LLMProvider for CodexNativeClient {
     ) -> Result<LLMResponse, ProviderError> {
         use futures_util::StreamExt;
 
-        let mut request_body = Self::build_responses_request(messages, tools, model, true);
+        let request_body = Self::build_responses_request(messages, tools, model, true);
 
         let url = self.responses_url();
         info!(
@@ -63,27 +63,13 @@ impl LLMProvider for CodexNativeClient {
             messages.len()
         );
 
-        let selected_model = request_body.model.clone();
         let mut auth_retry_used = false;
 
         'request_attempt: loop {
-            if cancel_flag.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Relaxed)) {
-                return Err(ProviderError::Cancelled);
-            }
-            let send_future = async {
-                request_body.model = self
-                    .reserve_wire_model(&selected_model)
-                    .await
-                    .unwrap_or(&selected_model)
-                    .to_owned();
-                self.build_request(&url, &request_body)?
-                    .send()
-                    .await
-                    .map_err(|err| ProviderError::RequestFailed(err.to_string()))
-            };
+            let send_future = self.build_request(&url, &request_body)?.send();
             let response = if let Some(flag) = cancel_flag {
                 tokio::select! {
-                    result = send_future => result?,
+                    result = send_future => result.map_err(|err| ProviderError::RequestFailed(err.to_string()))?,
                     _ = async {
                         while !flag.load(std::sync::atomic::Ordering::Relaxed) {
                             tokio::time::sleep(Duration::from_millis(50)).await;
@@ -94,7 +80,9 @@ impl LLMProvider for CodexNativeClient {
                     }
                 }
             } else {
-                send_future.await?
+                send_future
+                    .await
+                    .map_err(|err| ProviderError::RequestFailed(err.to_string()))?
             };
 
             if response.status().as_u16() == 401 && !auth_retry_used {

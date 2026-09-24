@@ -6,6 +6,7 @@ import { CLI_AGENT } from "@src/api/tauri/rpc/schemas/validation";
 import { isApiKeyProvider } from "@src/assets/providers";
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
+import ModelQuotaDisplay from "@src/components/ModelQuotaDisplay";
 import {
   getQuotaBgColorClass,
   getQuotaTextColorClass,
@@ -331,6 +332,7 @@ export const AccountInlineDetails: React.FC<AccountInlineDetailsProps> = ({
         right={
           <div className="flex min-w-0 flex-col gap-2">
             {accountUsageRows}
+            {showQuota && <ModelQuotaDisplay quotaInfo={account.quotaInfo} />}
             {account.baseUrl ? (
               <InfoRow
                 label={t("keyVault.info.baseUrl")}

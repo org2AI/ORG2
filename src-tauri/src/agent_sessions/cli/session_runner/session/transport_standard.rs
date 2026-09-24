@@ -47,7 +47,6 @@ pub(super) async fn run_standard_branch(
     mode: Option<&str>,
     account_id: Option<&str>,
     model: Option<&str>,
-    codex_wire_model: Option<&str>,
     session_timeout: tokio::time::Duration,
     pre_message_snapshot_id: Option<String>,
     snapshot_working_dir: String,
@@ -525,11 +524,8 @@ pub(super) async fn run_standard_branch(
         }
 
         if let Some(ref usage) = parser.token_usage() {
-            let round_model = super::super::codex_reserve::usage_model(
-                model,
-                usage.model.as_deref(),
-                codex_wire_model,
-            );
+            let round_model =
+                super::super::command::codex_usage_model(model, usage.model.as_deref());
             if let Err(err) = session_persistence::token_usage::insert_token_usage_record(
                 &session_id,
                 "code",

@@ -86,7 +86,6 @@ fn build_command_from_options(options: TestCommandBuildOptions<'_>) -> Vec<Strin
     );
 
     build_command_with_launch_profile(CliCommandBuildRequest {
-        codex_wire_model: None,
         agent: options.agent,
         launch_profile: &launch_profile,
         model: options.model,
@@ -148,8 +147,12 @@ fn build_claude_code_routes_context_to_system_prompt_and_keeps_user_text_literal
     let prompt_index = cmd.iter().position(|part| part == "-p").expect("-p");
     assert_eq!(prompt_index, cmd.len() - 1);
     assert!(!cmd.contains(&user_text.to_string()));
-    assert!(cmd.windows(2).any(|args| args == ["--input-format", "stream-json"]));
-    assert!(cmd.windows(2).any(|args| args == ["--permission-prompt-tool", "stdio"]));
+    assert!(cmd
+        .windows(2)
+        .any(|args| args == ["--input-format", "stream-json"]));
+    assert!(cmd
+        .windows(2)
+        .any(|args| args == ["--permission-prompt-tool", "stdio"]));
 
     let system_index = cmd
         .iter()
@@ -304,7 +307,6 @@ fn build_codex_astra_variants_split_model_and_overrides_for_both_transports() {
             let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
             let turn = CliTurnEnvelope::new("write tests");
             let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
-                codex_wire_model: None,
                 agent: &ModelType::Codex,
                 launch_profile: &profile,
                 model: Some(&model),
@@ -674,7 +676,6 @@ fn build_codex_app_server_argv_is_bare_subcommand() {
     let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
     let turn = CliTurnEnvelope::new("fix the bug");
     let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
-        codex_wire_model: None,
         agent: &ModelType::Codex,
         launch_profile: &profile,
         model: None,
@@ -699,7 +700,6 @@ fn build_codex_default_profile_uses_exec_argv() {
     let profile = app_server_profile(&ModelType::Codex, None);
     let turn = CliTurnEnvelope::new("native task travels over JSON-RPC");
     let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
-        codex_wire_model: None,
         agent: &ModelType::Codex,
         launch_profile: &profile,
         model: Some("gpt-5.5-high"),
@@ -726,7 +726,6 @@ fn build_codex_app_server_argv_keeps_gpt_5_6_max_overrides() {
     let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
     let turn = CliTurnEnvelope::new("write tests");
     let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
-        codex_wire_model: None,
         agent: &ModelType::Codex,
         launch_profile: &profile,
         model: Some("gpt-5.6-sol-max-fast"),
@@ -758,7 +757,6 @@ fn build_codex_app_server_preserves_additional_workspace_roots() {
     let turn = CliTurnEnvelope::new("write tests");
     let directories = vec!["/extra workspace".to_string(), String::new()];
     let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
-        codex_wire_model: None,
         agent: &ModelType::Codex,
         launch_profile: &profile,
         model: None,
@@ -785,7 +783,6 @@ fn build_codex_app_server_argv_never_exposes_mcp_profile() {
     let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
     let turn = CliTurnEnvelope::new("write tests");
     let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
-        codex_wire_model: None,
         agent: &ModelType::Codex,
         launch_profile: &profile,
         model: None,
@@ -805,36 +802,57 @@ fn build_codex_app_server_argv_never_exposes_mcp_profile() {
 }
 
 #[test]
-fn codex_reserve_override_keeps_selected_effort_on_exec_and_app_server() {
-    for transport in [None, Some("app-server")] {
-        let profile = app_server_profile(&ModelType::Codex, transport);
-        let turn = CliTurnEnvelope::new("canary");
-        let command = build_command_with_launch_profile(CliCommandBuildRequest {
-            agent: &ModelType::Codex,
-            launch_profile: &profile,
-            model: Some("gpt-5.6-luna-medium-fast"),
-            codex_wire_model: Some("gpt-reserve"),
-            turn: &turn,
-            resume_id: None,
-            api_key: None,
-            endpoint: None,
-            mode: None,
-            repo_path: None,
-            additional_dirs: &[],
-            mcp_config_path: None,
-            codex_mcp_profile: None,
-        });
-        assert!(command
-            .iter()
-            .any(|arg| arg == "model_reasoning_effort=\"medium\""));
-        assert!(command.iter().any(|arg| arg == "service_tier=\"priority\""));
-        if transport.is_none() {
-            let index = command.iter().position(|arg| arg == "-m").unwrap();
-            assert_eq!(command[index + 1], "gpt-reserve");
-        } else {
-            assert!(!command
-                .iter()
-                .any(|arg| arg == "-m" || arg == "gpt-reserve"));
+fn codex_explicit_reserve_and_ordinary_luna_never_cross_route() {
+    for base in ["gpt-5.6-luna", "gpt-reserve"] {
+        for effort in ["low", "medium", "high", "xhigh", "max"] {
+            let model = format!("{base}-{effort}");
+            let reasoning = format!("model_reasoning_effort=\"{effort}\"");
+            for resume_id in [None, Some("thread-123")] {
+                let cmd = build_command!(
+                    ModelType::Codex,
+                    task = "test",
+                    model = Some(&model),
+                    resume_id = resume_id
+                );
+                let idx = cmd.iter().position(|arg| arg == "-m").unwrap();
+                assert_eq!(cmd[idx + 1], base);
+                assert!(cmd.windows(2).any(|args| args == ["-c", &reasoning]));
+            }
+            assert_eq!(
+                codex_app_server_thread_model(Some(&model)).as_deref(),
+                Some(base)
+            );
+            let profile = app_server_profile(&ModelType::Codex, Some("app-server"));
+            let turn = CliTurnEnvelope::new("test");
+            let cmd = build_command_with_launch_profile(CliCommandBuildRequest {
+                agent: &ModelType::Codex,
+                launch_profile: &profile,
+                model: Some(&model),
+                turn: &turn,
+                resume_id: None,
+                api_key: None,
+                endpoint: None,
+                mode: None,
+                repo_path: None,
+                additional_dirs: &[],
+                mcp_config_path: None,
+                codex_mcp_profile: None,
+            });
+            assert!(cmd.windows(2).any(|args| args == ["-c", &reasoning]));
+            assert!(!cmd.iter().any(|arg| arg.contains("service_tier")));
         }
     }
+}
+
+#[test]
+fn codex_usage_retains_selected_reserve_pool() {
+    use super::command::codex_usage_model;
+    assert_eq!(
+        codex_usage_model(Some("gpt-reserve-low"), Some("gpt-5.6-luna")),
+        Some("gpt-reserve-low")
+    );
+    assert_eq!(
+        codex_usage_model(Some("gpt-5.6-luna-low"), Some("gpt-5.6-luna")),
+        Some("gpt-5.6-luna")
+    );
 }

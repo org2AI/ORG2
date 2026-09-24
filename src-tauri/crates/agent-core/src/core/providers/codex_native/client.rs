@@ -213,43 +213,6 @@ impl CodexNativeClient {
         Ok(req.json(body))
     }
 
-    pub(super) async fn reserve_wire_model(&self, model: &str) -> Option<&'static str> {
-        if model != key_vault::providers::codex::reserve::LUNA_MODEL {
-            return None;
-        }
-        // A custom endpoint owns its own routing and must not be probed at ChatGPT.
-        if self
-            .config
-            .api_base
-            .as_deref()
-            .is_some_and(|base| base.trim_end_matches('/') != CHATGPT_CODEX_BASE)
-        {
-            return None;
-        }
-        let (token, account) = {
-            let auth = self.auth_state.read().ok()?;
-            (
-                auth.access_token.clone(),
-                auth.extra_headers
-                    .iter()
-                    .find(|(name, _)| name.eq_ignore_ascii_case(super::CODEX_ACCOUNT_ID_HEADER))
-                    .map(|(_, value)| value.clone()),
-            )
-        };
-        let route = key_vault::providers::codex::reserve::resolve_oauth_wire_model(
-            &self.client,
-            &token,
-            account.as_deref(),
-            model,
-        )
-        .await;
-        // A concurrent refresh invalidates evidence obtained with the old token.
-        if self.current_access_token().ok().as_deref() != Some(token.as_str()) {
-            return None;
-        }
-        route
-    }
-
     fn current_access_token(&self) -> Result<String, ProviderError> {
         let auth_state = self.auth_state.read().map_err(|err| {
             ProviderError::RequestFailed(format!("Codex auth lock poisoned: {err}"))
@@ -464,19 +427,21 @@ mod tests {
         // The mode belongs to the current request, not a mutated/cached prompt.
         assert_eq!(messages[0]["content"], "Keep workspace edits scoped.");
     }
-    #[tokio::test]
-    async fn custom_endpoint_never_consults_chatgpt_reserve() {
-        crate::test_support::install_crypto_provider_for_tests();
-        let client = CodexNativeClient::new(
-            ProviderConfig {
-                api_key: "fixture".into(),
-                api_base: Some("http://127.0.0.1:1".into()),
-                extra_headers: HashMap::new(),
-                is_azure: false,
-            },
-            "gpt-5.6-luna".into(),
-        );
-        assert_eq!(client.reserve_wire_model("gpt-5.6-luna").await, None);
+    #[test]
+    fn explicit_reserve_and_ordinary_luna_keep_distinct_wire_ids() {
+        for base in ["gpt-5.6-luna", "gpt-reserve"] {
+            for effort in ["low", "medium", "high", "xhigh", "max"] {
+                let request = CodexNativeClient::build_responses_request(
+                    &[json!({"role":"user", "content":"test"})],
+                    None,
+                    &format!("{base}-{effort}"),
+                    true,
+                );
+                assert_eq!(request.model, base);
+                assert_eq!(request.reasoning, Some(json!({"effort":effort})));
+                assert!(request.service_tier.is_none());
+            }
+        }
     }
 
     #[tokio::test]
@@ -507,7 +472,7 @@ mod tests {
         {
             headers.insert(super::super::CODEX_ACCOUNT_ID_HEADER.to_owned(), account);
         }
-        let model = "gpt-5.6-luna-low";
+        let model = "gpt-reserve-low";
         let client = CodexNativeClient::new(
             ProviderConfig {
                 api_key: token.to_owned(),
@@ -516,11 +481,6 @@ mod tests {
                 is_azure: false,
             },
             model.to_owned(),
-        );
-        assert_eq!(
-            client.reserve_wire_model("gpt-5.6-luna").await,
-            Some("gpt-reserve"),
-            "account must currently require and permit reserve"
         );
         let response = tokio::time::timeout(std::time::Duration::from_secs(90), client.chat(
             &[json!({"role":"user", "content":"Reply exactly ORG2_SDE_RESERVE_OK. Do not use tools."})],

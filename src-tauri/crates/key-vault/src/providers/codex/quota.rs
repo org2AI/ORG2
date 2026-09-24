@@ -330,7 +330,15 @@ pub(super) fn quota_from_codex_rate_limits_response(
         }
     }
 
-    let mut quota = quota_from_windows(&plan_type, "codex_app_server", windows);
+    let mut quota = if windows.is_empty() {
+        QuotaInfo {
+            plan_type: Some(plan_type),
+            quota_source: Some("codex_app_server".into()),
+            ..QuotaInfo::new()
+        }
+    } else {
+        quota_from_windows(&plan_type, "codex_app_server", windows)
+    };
     if let Some(limits) = response.rate_limits_by_limit_id {
         // App-server identifies the reserve by limit id, without the usage API's
         // normal_model_slug. Only this known mapping is safe to infer.
@@ -684,7 +692,10 @@ mod tests {
             rate_limit_reset_credits: None,
         });
 
-        assert_eq!(quota.remaining_percentage, 100.0);
+        assert_eq!(quota.remaining_percentage, -1.0);
         assert!(quota.usage_items.is_empty());
+        assert_eq!(quota.used, None);
+        assert_eq!(quota.limit, None);
+        assert_eq!(quota.remaining, None);
     }
 }

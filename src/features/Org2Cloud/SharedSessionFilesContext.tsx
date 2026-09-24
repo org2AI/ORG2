@@ -1,10 +1,20 @@
-import React, { Suspense, lazy, useCallback, useMemo, useState } from "react";
+import React, {
+  Suspense,
+  createContext,
+  lazy,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   MarkdownLocalFileInterceptContext,
   useMarkdownLocalFileIntercepted,
   useMarkdownLocalFileInterceptor,
 } from "@src/components/MarkDown/extensions";
+import { conversationArtifactOriginOf } from "@src/engines/SessionCore/conversations/conversationArtifactOrigin";
+import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import { sharedFileAbsolutePath } from "./sessionSharedFileCandidates";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
@@ -15,6 +25,9 @@ interface Scope {
   sessionId: string;
   endpoint: string;
   repoPath?: string;
+  /** Local owner rows retain local navigation; plane rows override this per event. */
+  eventOnly?: boolean;
+  version?: { uploaderUserId: string; revision: string };
 }
 /**
  * The interception channel is declared beside the Markdown renderer
@@ -22,6 +35,32 @@ interface Scope {
  * feature owns the provider and the viewer it opens.
  */
 const Context = MarkdownLocalFileInterceptContext;
+const ScopeContext = createContext<Scope | null>(null);
+
+export function SharedSessionEventFilesProvider({
+  event,
+  children,
+}: React.PropsWithChildren<{ event: SessionEvent }>) {
+  const scope = useContext(ScopeContext);
+  const origin = conversationArtifactOriginOf(event);
+  if (!origin) return <>{children}</>;
+  return (
+    <SharedSessionFilesProvider
+      scope={{
+        ...(scope ?? { orgId: "", endpoint: "" }),
+        sessionId: origin.sessionId,
+        repoPath: origin.repoPath,
+        eventOnly: false,
+        version: {
+          uploaderUserId: origin.uploaderUserId,
+          revision: origin.revision,
+        },
+      }}
+    >
+      {children}
+    </SharedSessionFilesProvider>
+  );
+}
 export function SharedSessionFilesProvider({
   scope,
   children,
@@ -34,7 +73,7 @@ export function SharedSessionFilesProvider({
   const open = useCallback(
     (path: string) => {
       const scope = JSON.parse(scopeKey) as Scope | null;
-      if (!scope) return false;
+      if (!scope || scope.eventOnly) return false;
       const absolute = sharedFileAbsolutePath(path, scope.repoPath);
       // A shared-session reference must not fall through to the receiver's disk.
       setSelected({
@@ -46,6 +85,7 @@ export function SharedSessionFilesProvider({
             orgId: scope.orgId,
             sessionId: scope.sessionId,
             path: absolute ?? path,
+            ...(scope.version ? { version: scope.version } : {}),
           },
         },
       });
@@ -54,21 +94,23 @@ export function SharedSessionFilesProvider({
     [scopeKey]
   );
   const value = useMemo(
-    () => (scopeKey !== "null" ? open : null),
-    [scopeKey, open]
+    () => (scope && !scope.eventOnly ? open : null),
+    [scope, open]
   );
   return (
-    <Context.Provider value={value}>
-      {children}
-      {selected?.key === scopeKey && (
-        <Suspense fallback={null}>
-          <Viewer
-            reference={selected.reference}
-            onClose={() => setSelected(null)}
-          />
-        </Suspense>
-      )}
-    </Context.Provider>
+    <ScopeContext.Provider value={scope}>
+      <Context.Provider value={value}>
+        {children}
+        {selected?.key === scopeKey && (
+          <Suspense fallback={null}>
+            <Viewer
+              reference={selected.reference}
+              onClose={() => setSelected(null)}
+            />
+          </Suspense>
+        )}
+      </Context.Provider>
+    </ScopeContext.Provider>
   );
 }
 /** True inside a shared session; false keeps normal local navigation. */

@@ -193,7 +193,7 @@ describe("mergePlaneIntoTranscript", () => {
     expect(merged[0].args[CONVERSATION_SENDER_ARG]).toMatchObject({
       userId: "owner",
     });
-    expect(merged[1]).toBe(ownerReply);
+    expect(merged[1]).toMatchObject(ownerReply);
   });
 
   it("stamps authoritative authorship while preserving local event identity", () => {
@@ -242,7 +242,8 @@ describe("mergePlaneIntoTranscript", () => {
       { status: "known", userId: "owner" }
     );
 
-    expect(loading[0]).toBe(ownerUser);
+    expect(loading[0]).toMatchObject(ownerUser);
+    expect(loading[0].args[CONVERSATION_SENDER_ARG]).toBeUndefined();
     expect(hydrated[0]).toMatchObject(ownerUser);
     expect(hydrated[0].args[CONVERSATION_SENDER_ARG]).toMatchObject({
       userId: "owner",
@@ -306,7 +307,7 @@ describe("mergePlaneIntoTranscript", () => {
       { status: "known", userId: "member" }
     );
 
-    expect(loading[0]).toBe(remoteTwin);
+    expect(loading[0]).toMatchObject(remoteTwin);
     expect(loading[0].args[CONVERSATION_SENDER_ARG]).toEqual({
       userId: "owner",
     });
@@ -394,7 +395,12 @@ describe("mergePlaneIntoTranscript", () => {
     );
 
     expect(merged).toHaveLength(1);
-    expect(merged[0]).toBe(nativeEcho);
+    expect(merged[0]).toMatchObject(nativeEcho);
+    expect(merged[0].args.__orgiiArtifactOrigin).toEqual({
+      uploaderUserId: "member",
+      sessionId: "owner-session",
+      revision: "member-answer:2026-08-21T10:00:00Z",
+    });
   });
 
   it("matches repeated equal native messages one-to-one instead of collapsing the conversation", () => {
@@ -410,7 +416,7 @@ describe("mergePlaneIntoTranscript", () => {
       { status: "known", userId: "owner" }
     );
 
-    expect(merged).toEqual([first, second]);
+    expect(merged).toMatchObject([first, second]);
   });
 
   it("collapses a plane row that republishes an existing source identity", () => {

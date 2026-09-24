@@ -12,6 +12,7 @@ import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   find: vi.fn(),
+  version: vi.fn(),
   token: vi.fn(),
   save: vi.fn(),
   write: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("./config", () => ({
 vi.mock("./sharedSessionFilesClient", () => ({
   readSharedSessionFile: mocks.read,
   findSharedSessionFile: mocks.find,
+  findSharedSessionFileVersion: mocks.version,
 }));
 vi.mock("./org2CloudSessionCommentsAtom.freshToken", () => ({
   useCloudFreshAccessToken: () => mocks.token,
@@ -90,6 +92,44 @@ describe("shared file viewer lifecycle", () => {
     );
     await act(async () => {});
   }
+  it("opens the original guest version and never resolves another same-path upload", async () => {
+    mocks.version.mockResolvedValue(file);
+    mocks.read.mockResolvedValue(file);
+    const source = {
+      orgId: "org",
+      sessionId: "root",
+      path: "/sender/report.md",
+      version: { uploaderUserId: "guest", revision: "original:time" },
+    };
+    await render({ ...reference, source });
+    expect(mocks.version).toHaveBeenCalledWith(
+      "token",
+      expect.anything(),
+      source,
+      expect.any(AbortSignal)
+    );
+    expect(mocks.read).toHaveBeenCalledWith(
+      "token",
+      expect.anything(),
+      file.id,
+      expect.any(AbortSignal)
+    );
+    expect(mocks.find).not.toHaveBeenCalled();
+  });
+  it("does not substitute a latest version when the requested revision is missing", async () => {
+    mocks.version.mockResolvedValue(null);
+    await render({
+      ...reference,
+      source: {
+        orgId: "org",
+        sessionId: "root",
+        path: "/sender/report.md",
+        version: { uploaderUserId: "guest", revision: "old" },
+      },
+    });
+    expect(mocks.find).not.toHaveBeenCalled();
+    expect(mocks.read).not.toHaveBeenCalled();
+  });
   it("loads only on mount and displays safe text", async () => {
     mocks.read.mockResolvedValue({
       ...file,

@@ -7,6 +7,7 @@ import {
   encodeFileBytes,
   fileSha256,
   findSharedSessionFileRevisions,
+  findSharedSessionFileVersion,
   readSharedSessionFile,
   uploadSharedSessionFile,
 } from "./sharedSessionFilesClient";
@@ -20,6 +21,31 @@ const endpoint = {
 const id = "11111111-1111-4111-8111-111111111111";
 afterEach(() => vi.unstubAllGlobals());
 describe("shared file wire boundary", () => {
+  it("looks up exactly the original uploader and revision, without a path-only retry", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response("null", { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    expect(
+      await findSharedSessionFileVersion("jwt", endpoint, {
+        orgId: "org",
+        sessionId: "root",
+        path: "/shared/file.md",
+        version: { uploaderUserId: "guest", revision: "original:time" },
+      })
+    ).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][0]).toContain(
+      "/cloud_find_session_file_version"
+    );
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      p_org_id: "org",
+      p_session_id: "root",
+      p_source_path: "/shared/file.md",
+      p_source_revision: "original:time",
+      p_uploader_user_id: "guest",
+    });
+  });
   it.each([
     [{ code: "P0001", message: "ORG2_QUOTA_EXCEEDED" }, "ORG2_QUOTA_EXCEEDED"],
     [

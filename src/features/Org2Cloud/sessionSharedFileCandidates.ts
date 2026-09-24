@@ -1,3 +1,5 @@
+import { CONVERSATION_ARTIFACT_ORIGIN_ARG } from "@src/engines/SessionCore/conversations/conversationArtifactOrigin";
+import { scopedNativeSourceEventIdOf } from "@src/engines/SessionCore/conversations/nativeSourceEventIdentity";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 export interface SessionSharedFileCandidate {
@@ -56,6 +58,13 @@ export function collectSessionSharedFiles(
 ): SessionSharedFileCandidate[] {
   const files = new Map<string, SessionSharedFileCandidate>();
   for (const event of events) {
+    // A replayed provider row is inherited history, not a new local output.
+    // Its source device owns publication; never read this machine's matching path.
+    if (
+      event.args?.[CONVERSATION_ARTIFACT_ORIGIN_ARG] ||
+      scopedNativeSourceEventIdOf(event)
+    )
+      continue;
     if (event.displayStatus !== "completed" || event.source === "system")
       continue;
     const add = (path: string) => {

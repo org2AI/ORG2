@@ -219,3 +219,31 @@ export async function findSharedSessionFileRevisions(
     );
   return new Set(rows.map((row) => `${row.path}\0${row.revision}`));
 }
+
+/** Exact immutable version; never fall back to a same-path upload from another author. */
+export async function findSharedSessionFileVersion(
+  token: string,
+  endpoint: CloudEndpoint,
+  source: {
+    orgId: string;
+    sessionId: string;
+    path: string;
+    version: { uploaderUserId: string; revision: string };
+  },
+  signal?: AbortSignal
+): Promise<SharedSessionFile | null> {
+  const value = await rpc(
+    token,
+    endpoint,
+    "cloud_find_session_file_version",
+    {
+      p_org_id: source.orgId,
+      p_session_id: source.sessionId,
+      p_source_path: source.path,
+      p_source_revision: source.version.revision,
+      p_uploader_user_id: source.version.uploaderUserId,
+    },
+    signal
+  );
+  return value === null ? null : FileSchema.parse(value);
+}

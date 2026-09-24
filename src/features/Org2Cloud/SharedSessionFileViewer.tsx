@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
 
-import SharedSessionFileDialog from "./SharedSessionFileDialog";
 import { getCloudEndpoint } from "./config";
 import { downloadSharedSessionFile } from "./downloadSharedSessionFile";
 import {
@@ -30,10 +29,10 @@ type Loaded = SharedSessionFile & {
 };
 export default function SharedSessionFileViewer({
   reference,
-  onClose,
+  openingIdentity,
 }: {
   reference: SharedSessionFileReference;
-  onClose: () => void;
+  openingIdentity: string;
 }) {
   const { t } = useTranslation("sessions");
   const auth = useAtomValue(org2CloudAuthAtom);
@@ -58,7 +57,11 @@ export default function SharedSessionFileViewer({
     const endpoint = getCloudEndpoint();
     setFile(null);
     setError(null);
-    if (!identity || endpoint.supabaseUrl !== reference.endpoint) {
+    if (
+      !identity ||
+      identity !== openingIdentity ||
+      endpoint.supabaseUrl !== reference.endpoint
+    ) {
       setError("request_failed");
       return;
     }
@@ -114,8 +117,17 @@ export default function SharedSessionFileViewer({
       if (stillCurrent()) setError("request_failed");
     });
     return () => controller.abort();
-  }, [identity, requestKey, token, store, shareToken, attempt]);
+  }, [
+    identity,
+    openingIdentity,
+    requestKey,
+    token,
+    store,
+    shareToken,
+    attempt,
+  ]);
   const currentFile =
+    identity === openingIdentity &&
     file?.identity === identity &&
     file.requestKey === requestKey &&
     file.shareToken === shareToken
@@ -187,12 +199,29 @@ export default function SharedSessionFileViewer({
     }
   };
   return (
-    <SharedSessionFileDialog
-      reference={reference}
-      name={currentFile?.name}
-      onClose={onClose}
+    <section
+      data-testid="shared-file-preview"
+      className="flex h-full min-h-0 flex-col bg-bg-1 text-text-1"
+      aria-label={currentFile?.name ?? t("sharedFile.title")}
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-1 px-3 py-2">
+        <span className="min-w-0 truncate text-sm" title={currentFile?.name}>
+          {currentFile?.name ??
+            reference.source?.path.split(/[\\/]/).pop() ??
+            t("sharedFile.title")}
+        </span>
+        <Button
+          data-testid="shared-file-download"
+          variant="tertiary"
+          size="small"
+          disabled={!currentFile}
+          loading={saving}
+          onClick={() => void download()}
+        >
+          {t("sharedFile.download")}
+        </Button>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
         {error ? (
           <>
             <p role="alert">
@@ -218,34 +247,27 @@ export default function SharedSessionFileViewer({
                   title={currentFile.name}
                   src={activeMedia.url}
                   sandbox=""
-                  className="h-96 w-full"
+                  className="min-h-0 w-full flex-1"
                 />
               ) : (
                 <img
                   src={activeMedia.url}
                   alt={currentFile.name}
-                  className="max-h-96 max-w-full object-contain"
+                  className="min-h-0 max-w-full flex-1 object-contain"
                 />
               )
             ) : preview !== null ? (
-              <pre className="max-h-96 overflow-auto rounded-md bg-fill-1 p-3 text-sm break-words whitespace-pre-wrap text-text-1">
+              <pre className="min-h-0 flex-1 overflow-auto font-mono text-sm break-words whitespace-pre-wrap">
                 {preview}
               </pre>
             ) : (
               <p>{t("sharedFile.downloadPreview")}</p>
             )}
-            <Button
-              data-testid="shared-file-download"
-              loading={saving}
-              onClick={() => void download()}
-            >
-              {t("sharedFile.download")}
-            </Button>
           </>
         ) : (
           <p role="status">{t("sharedFile.loading")}</p>
         )}
       </div>
-    </SharedSessionFileDialog>
+    </section>
   );
 }

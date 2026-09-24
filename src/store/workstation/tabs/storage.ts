@@ -360,13 +360,27 @@ export function persistWorkstationTabsState(
   state: WorkstationTabsStateV4
 ): boolean {
   if (!hasLocalStorage()) return false;
+  const isTransient = (tab: WorkStationTab) =>
+    tab.type === "shared-file" ||
+    (tab.type === "browser-session" && tab.data.incognito);
   const privateIds = new Set(
-    state.shared.tabs
-      .filter((tab) => tab.type === "browser-session" && tab.data.incognito)
+    [
+      ...state.shared.tabs,
+      ...state.globalWorkspace.tabs,
+      ...Object.values(state.sessionWorkspaces).flatMap(
+        (workspace) => workspace.tabs
+      ),
+      ...Object.values(state.directoryWorkspaces ?? {}).flatMap(
+        (workspace) => workspace.tabs
+      ),
+      ...(state.legacySeed?.tabs ?? []),
+    ]
+      .filter(isTransient)
       .map((tab) => tab.id)
   );
   const durableWorkspace = (workspace: WorkstationWorkspaceState) => ({
     ...workspace,
+    tabs: workspace.tabs.filter((tab) => !isTransient(tab)),
     activeTabRef:
       workspace.activeTabRef && privateIds.has(workspace.activeTabRef.tabId)
         ? null
@@ -382,9 +396,7 @@ export function persistWorkstationTabsState(
     ),
     writeJson(WORKSTATION_V4_SHARED_KEY, {
       ...state.shared,
-      tabs: state.shared.tabs.filter(
-        (tab) => tab.type !== "browser-session" || !tab.data.incognito
-      ),
+      tabs: state.shared.tabs.filter((tab) => !isTransient(tab)),
     }),
     writeJson(
       WORKSTATION_V4_GLOBAL_KEY,

@@ -165,6 +165,7 @@ export const WorkstationTabIcon: React.FC<WorkstationTabIconProps> = memo(
     }
 
     switch (tab.type) {
+      case "shared-file":
       case "file":
       case "git-diff":
         return (

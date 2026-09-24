@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { getDefaultStore } from "jotai";
 import { act, createElement, useLayoutEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -11,7 +12,6 @@ import {
   SharedSessionFilesProvider,
   useOpenSessionSharedFile,
 } from "./SharedSessionFilesContext";
-import { useSharedSessionFileAccess } from "./sharedSessionFileAccess";
 
 const mocks = vi.hoisted(() => ({
   viewer: vi.fn(),
@@ -22,11 +22,14 @@ vi.mock("@src/components/Message", () => ({ default: { info: mocks.notice } }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("./SharedSessionFileViewer", () => ({
-  default: function MockViewer(props: unknown) {
-    mocks.viewer(props);
-    mocks.access(useSharedSessionFileAccess());
-    return null;
+vi.mock("./openSharedSessionFile", () => ({
+  openSharedSessionFile: (
+    reference: unknown,
+    access: unknown,
+    pending: unknown
+  ) => {
+    mocks.viewer({ reference, pending });
+    mocks.access(access);
   },
 }));
 let open: (path: string) => boolean;
@@ -142,10 +145,40 @@ describe("per-event shared file routing", () => {
       await act(async () => {
         expect(open("/reader/proof.txt")).toBe(true);
       });
-      expect(mocks.notice).toHaveBeenCalledWith("sharedFile.resolvingOrigin", {
-        duration: 5000,
+      expect(mocks.notice).not.toHaveBeenCalled();
+      expect(mocks.viewer).toHaveBeenCalledTimes(1);
+      const { pending } = mocks.viewer.mock.calls[0][0];
+      expect(getDefaultStore().get(pending.referenceAtom)).toBeNull();
+      const origin = {
+        uploaderUserId: "sender",
+        sessionId: "original",
+        revision: "v1",
+        repoPath: "/sender",
+      };
+      await root.render(
+        createElement(
+          SharedSessionEventFilesProvider,
+          {
+            event: {
+              id: "preview",
+              args: { ...args, [CONVERSATION_ARTIFACT_ORIGIN_ARG]: origin },
+            } as unknown as SessionEvent,
+          },
+          createElement(LinkConsumer)
+        )
+      );
+      expect(getDefaultStore().get(pending.referenceAtom)).toEqual({
+        id: "source",
+        endpoint: "",
+        source: {
+          orgId: "",
+          sessionId: "original",
+          path: "/reader/proof.txt",
+          version: { uploaderUserId: "sender", revision: "v1" },
+        },
       });
-      expect(mocks.viewer).not.toHaveBeenCalled();
+      // Hydration updates the existing tab without reopening a dismissed tab or stealing focus.
+      expect(mocks.viewer).toHaveBeenCalledTimes(1);
     }
   );
   it("preserves navigation for genuinely local owner output", async () => {

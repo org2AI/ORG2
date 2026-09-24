@@ -30,6 +30,7 @@ import {
 
 const EXPECTED_OWNERSHIP: Record<WorkStationTabType, WorkstationTabOwnership> =
   {
+    "shared-file": "workspace-local",
     file: "workspace-local",
     directory: "workspace-local",
     explorer: "workspace-local",
@@ -111,7 +112,7 @@ describe("WorkStation tab ownership policy", () => {
       })
     );
 
-    expect(results).toHaveLength(31);
+    expect(results).toHaveLength(32);
     expect(results.every(({ actual, expected }) => actual === expected)).toBe(
       true
     );

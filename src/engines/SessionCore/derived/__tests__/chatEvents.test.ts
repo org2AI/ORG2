@@ -430,6 +430,40 @@ describe("chatEventsAtom live streaming overlay", () => {
     ]);
   });
 
+  it("uses one CLI live row in Chat and one live bubble in Messages", () => {
+    const store = createStore();
+    store.set(sessionIdAtom, "session-1");
+    const live = makeChatEvent("cli-live", "2026-06-06T20:00:00.000Z", {
+      actionType: "assistant",
+      displayVariant: "message",
+      isDelta: true,
+      displayStatus: "running",
+      args: { syntheticLive: true },
+      displayText: "partial",
+      result: { content: "partial" },
+    });
+    // Rust includes the CLI cancellation row in Chat, but excludes deltas
+    // from Messages' completed transcript projection.
+    store.set(derivedSnapshotAtom, {
+      ...makeSnapshot([live]),
+      messagesEvents: [],
+    });
+    setLiveContent(store, "session-1", "partial");
+    expect(store.get(chatEventsAtom)).toEqual([live]);
+    expect(store.get(messagesEventsAtom)).toEqual([
+      expect.objectContaining({
+        displayText: "partial",
+        args: { syntheticLive: true },
+      }),
+    ]);
+    setLiveContent(store, "session-1", "partial continues");
+    expect(store.get(chatEventsAtom)).toEqual([live]);
+    expect(store.get(messagesEventsAtom)).toHaveLength(1);
+    expect(store.get(messagesEventsAtom)[0].displayText).toBe(
+      "partial continues"
+    );
+  });
+
   it("does not render live thinking as an Agent Station assistant message", () => {
     const store = createStore();
     store.set(sessionIdAtom, "session-1");

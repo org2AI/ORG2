@@ -628,7 +628,13 @@ raw hash and inode remained unchanged, and reconciliation recorded exactly one
 wait for the loaded destination. This is evidence of safe deferral. The latest
 response was not present in the observed ORG2 accessibility text before minimize,
 although it existed in source raw; visible refresh remains under investigation.
-Exit convergence is a separate assertion and is not inferred from this wait.
+After the user normally quit the native test app, read-only verification at
+23:36:23Z (before any refresh) found matching ordered user/assistant messages,
+one indexed conversation on each side, one new canary reply, zero pending,
+waiting or observation entries, and an empty launch lock. All 15 captured
+native process lifetimes had exited without signal cleanup. A second readback
+at 23:37:35Z stayed converged. Managed raw retained the full source prefix plus
+native settings metadata. Exact exit-to-convergence latency was not sampled.
 
 Sampling used kernel process-start identities, Mach timebase 125/3, and separate
 backend, responsible WebKit, source app-server and native GUI cohorts. No local
@@ -661,5 +667,42 @@ Private evidence names: `combined4-build-receipt.json`,
 All published CI checks passed on implementation HEAD `3a73ef0` at the final
 implementation-check readback. Report-only follow-up commits must be checked
 separately. **Performance verdict: blocked** — continuous visible streaming,
-partial-text Stop/retention, final exit convergence and resource-release readback
-remain to be verified for this rebuilt package.
+partial-text Stop/retention and the full lifecycle matrix remain unverified.
+Native exit convergence and captured native-process release passed as above.
+
+## CLI live-text boundary correction
+
+A bounded diagnostic rerun on Combined4 recorded 3,303 native
+`item/agentMessage/delta` notifications, beginning at 23:39:42.778Z, before
+`turn/completed` at 23:40:42.336Z. The workstation screenshot at approximately
+42 seconds still showed no current assistant body; the completed answer later
+appeared. This disproves provider-side buffering for this run. The diagnostic
+wrapper changed logging only, retained the main executable hash, and was restored
+after normal isolated-app exit. No raw history or native database was edited.
+
+The owning boundary is `createCliActivityHandlers`: it accumulated valid provider
+text into an EventStore cancellation projection but never called the existing
+`onStreamingDelta` callback. Workstation Messages deliberately excludes incomplete
+EventStore rows and reads the shared session-scoped live buffer. The adapter now
+publishes bounded accumulated text through that callback. Existing coalescing and
+cleanup remain owned by the shared buffer; no timer or subscription is added.
+The EventStore row remains for interrupted-output retention, is marked as the
+existing live renderer input, and prevents Chat from creating a second synthetic
+bubble. Terminalization removes its live classification. Completing an older
+thinking stream cannot clear a newer message stream; completion, failure, Stop,
+reset and disposal clear the current live callback.
+
+This was a presentation-ingestion defect over valid provider data, not malformed
+persisted history. Historical cleanup is unnecessary. No renderer string filter,
+provider-body rewrite, native schema change or CI change is introduced.
+
+Verification executed: `pnpm test
+src/engines/SessionCore/sync/adapters/cli/__tests__/createCliEventHandler.test.ts
+src/engines/SessionCore/derived/__tests__/chatEvents.test.ts
+src/engines/SessionCore/sync/__tests__/nativeTranscriptReconcile.test.ts
+src/engines/SessionCore/derived/__tests__/sessionScopedChatEvents.stability.test.ts`
+— **133 passed**. Rebuilt GUI verification of this correction is still pending.
+
+Performance verdict: blocked — live callback and cleanup unit regressions pass;
+actual continuous display, Stop/partial retention and remaining lifecycle cells
+require the newly rebuilt package.

@@ -575,3 +575,23 @@ compilation, live call chains, naming, current-path/destination semantics,
 fail-closed defaults, persisted-owner isolation, readable ownership, unchanged
 wire/schema, fresh-versus-resumed initialization and read/revision/mutation
 resolver symmetry. Unrelated UI, React and other provider refactors are skipped.
+
+## CLI live-text delivery correction
+
+The rebuilt GUI test located valid native deltas at the parser while workstation
+Messages remained empty until completion. The CLI ingestion adapter omitted the
+existing direct-stream callback. Connect that boundary without replacing provider
+history or interrupted-output persistence. One existing session-scoped buffer owns
+live text and coalescing; the live EventStore row is retained for cancellation,
+recognized by Chat instead of generating a duplicate placeholder, and loses its
+live classification at terminalization. Late completion of a different stream
+kind cannot clear the active kind.
+
+Architecture layers covered: compilation and call chains; live versus durable
+naming and state semantics; existing defaults and ownership; unchanged public wire
+and schema; shared handler initialization; symmetric completion/reset/disposal.
+No cross-provider transport rewrite, new cache, timer, subscription, UI control,
+configuration or migration. The source invariant is one live projection per
+surface with terminal partial text remaining durable. No historical cleanup.
+The performance report separates native exit success, the observed display
+failure, unit regression results and pending rebuilt GUI verification.

@@ -17,7 +17,7 @@ async fn owned_pty_requires_cleanup_barrier_after_public_status_is_terminal() {
     let control = TurnProcessControl {
         owner: owner.clone(),
         background_cancel: CancellationToken::new(),
-        require_owned_job_finality: true,
+        is_agent_org: true,
     };
     let process_cancel = CancellationToken::new();
     let cancellation_observer = process_cancel.clone();
@@ -31,7 +31,9 @@ async fn owned_pty_requires_cleanup_barrier_after_public_status_is_terminal() {
         call_id: "owned-pty-call".to_string(),
         turn_control: &control,
         process_cancel,
-    });
+        org_scope: None,
+    })
+    .unwrap();
     assert!(!owned_jobs_are_terminal(&owner));
 
     let owner_for_wait = owner.clone();
@@ -72,7 +74,7 @@ async fn failed_owned_pty_cleanup_remains_non_terminal() {
     let control = TurnProcessControl {
         owner: owner.clone(),
         background_cancel: CancellationToken::new(),
-        require_owned_job_finality: true,
+        is_agent_org: true,
     };
     let handle = "pty-owned-cleanup-failure-test".to_string();
     let completion = register_owned_pty_replay(OwnedPtyReplayRegistration {
@@ -84,7 +86,9 @@ async fn failed_owned_pty_cleanup_remains_non_terminal() {
         call_id: "owned-pty-cleanup-failure-call".to_string(),
         turn_control: &control,
         process_cancel: CancellationToken::new(),
-    });
+        org_scope: None,
+    })
+    .unwrap();
     mark_shell_cancel_requested(&handle);
     mark_exited(&handle, JobStatus::Killed);
     completion.finish(Err("process tree remains live".to_string()));

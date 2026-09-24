@@ -330,7 +330,7 @@ pub async fn execute_via_pty(
     if let Some(control) = identity
         .turn_process_control
         .as_ref()
-        .filter(|control| control.require_owned_job_finality)
+        .filter(|control| control.is_agent_org)
     {
         let pty_pid = pty
             .sessions
@@ -343,13 +343,7 @@ pub async fn execute_via_pty(
                     "Agent Org interactive command has no exact PTY process owner".to_string(),
                 )
             })?;
-        let handle = format!(
-            "pty-{}",
-            blake3::hash(
-                format!("{}\0{}\0{pty_pid}", identity.session_id, identity.call_id).as_bytes()
-            )
-            .to_hex()
-        );
+        let handle = identity.registration_id.clone();
         let completion =
             registry::register_owned_pty_replay(registry::OwnedPtyReplayRegistration {
                 handle: handle.clone(),
@@ -360,7 +354,9 @@ pub async fn execute_via_pty(
                 call_id: identity.call_id.clone(),
                 turn_control: control,
                 process_cancel: identity.process_cancel_token(),
-            });
+                org_scope: identity.org_scope.clone(),
+            })
+            .map_err(ToolError::ExecutionFailed)?;
         supervisor_guard.set_owned_job(OwnedPtyJob { handle, completion });
     }
     let capture_failure_context = PtyCaptureFailureContext {

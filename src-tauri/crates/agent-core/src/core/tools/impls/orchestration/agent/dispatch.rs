@@ -76,7 +76,7 @@ impl Tool for AgentTool {
         let parent_turn_owner = if ctx
             .turn_process_control
             .as_ref()
-            .is_some_and(|control| control.require_owned_job_finality)
+            .is_some_and(|control| control.is_agent_org)
         {
             let control = ctx.turn_process_control.as_ref().ok_or_else(|| {
                 ToolError::ExecutionFailed(

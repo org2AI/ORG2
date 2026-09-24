@@ -27,6 +27,9 @@ use crate::turn_executor::{
 };
 use tokio_util::sync::CancellationToken;
 
+#[path = "turn_executor_detached_shell_tests.rs"]
+mod detached_shell_tests;
+
 // ============================================
 // Mock Provider
 // ============================================
@@ -514,7 +517,7 @@ async fn owned_background_result_converges_inside_the_same_turn() {
     config.turn_process_control = Some(TurnProcessControl {
         owner: owner.clone(),
         background_cancel: CancellationToken::new(),
-        require_owned_job_finality: true,
+        is_agent_org: true,
     });
     let mut messages = vec![serde_json::json!({
         "role": "user",
@@ -587,7 +590,7 @@ async fn task_terminal_mutation_waits_for_owned_job_result_consumption() {
     config.turn_process_control = Some(TurnProcessControl {
         owner: owner.clone(),
         background_cancel: CancellationToken::new(),
-        require_owned_job_finality: true,
+        is_agent_org: true,
     });
     let mut messages = vec![serde_json::json!({
         "role": "user",
@@ -658,7 +661,7 @@ async fn unconverged_owned_job_is_cancelled_and_the_turn_fails_closed() {
     config.turn_process_control = Some(TurnProcessControl {
         owner: owner.clone(),
         background_cancel: CancellationToken::new(),
-        require_owned_job_finality: true,
+        is_agent_org: true,
     });
     let mut messages = vec![serde_json::json!({
         "role": "user",
@@ -708,7 +711,7 @@ async fn provider_error_still_tears_down_the_exact_owned_job() {
     config.turn_process_control = Some(TurnProcessControl {
         owner: owner.clone(),
         background_cancel: CancellationToken::new(),
-        require_owned_job_finality: true,
+        is_agent_org: true,
     });
     let mut messages = vec![serde_json::json!({
         "role": "user",

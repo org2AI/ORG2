@@ -89,15 +89,14 @@ pub struct TurnProcessOwner {
 pub struct TurnProcessControl {
     pub owner: TurnProcessOwner,
     pub background_cancel: CancellationToken,
-    /// Agent Org work consumes every owned background result inside this
-    /// exact Turn. Ordinary SDE controls leave this false.
-    pub require_owned_job_finality: bool,
+    /// Execution belongs to Agent Org. Resource kind determines whether it
+    /// blocks completion; this never changes its exact cancellation owner.
+    pub is_agent_org: bool,
 }
 
 impl PartialEq for TurnProcessControl {
     fn eq(&self, other: &Self) -> bool {
-        self.owner == other.owner
-            && self.require_owned_job_finality == other.require_owned_job_finality
+        self.owner == other.owner && self.is_agent_org == other.is_agent_org
     }
 }
 

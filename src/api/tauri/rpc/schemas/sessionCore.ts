@@ -174,8 +174,9 @@ const SessionEventRuntimeSchema = z
     repoId: z.string().optional(),
     repoPath: z.string().optional(),
     shellPid: z.number().optional(),
+    shellProcessHandle: z.string().optional(),
     shellProcessStatus: z
-      .enum(["running", "background", "exited", "killed"])
+      .enum(["running", "background", "exited", "killed", "unknown"])
       .optional(),
     shellExitCode: z.number().optional(),
     shellLogPath: z.string().optional(),

@@ -107,7 +107,7 @@ impl UnifiedMessageProcessor {
                     "Agent Org Turn process owner does not match the dispatched Turn".to_string(),
                 );
             }
-            control.require_owned_job_finality = true;
+            control.is_agent_org = true;
         }
         let turn_config = TurnConfig {
             turn_intent_id: turn_intent_id.to_string(),

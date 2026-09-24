@@ -17,7 +17,11 @@ use tokio_util::sync::CancellationToken;
 
 use crate::tools::call_context::{TurnProcessControl, TurnProcessOwner};
 
+mod resource_lifecycle;
 mod session_lifecycle;
+
+use resource_lifecycle::JobResourcePolicy;
+pub use resource_lifecycle::*;
 
 pub use session_lifecycle::{
     execution_blockers_for_sessions, purge_deleted_sessions, request_cancel_for_session,
@@ -47,6 +51,7 @@ enum ShellCompletionState {
 /// taking ownership away from the one task that owns the child handle.
 pub struct ShellMonitorCompletion {
     tx: watch::Sender<ShellCompletionState>,
+    pub handle: String,
 }
 
 impl ShellMonitorCompletion {
@@ -103,6 +108,7 @@ pub struct BackgroundJob {
     pub kind: JobKind,
     pub session_id: String,
     pub started_at: Instant,
+    finished_at: Option<Instant>,
     pub status: JobStatus,
     pub final_result: Option<String>,
     output_tx: broadcast::Sender<String>,
@@ -127,7 +133,8 @@ pub struct BackgroundJob {
     turn_owner: Option<TurnProcessOwner>,
     /// Agent Org jobs are consumed by their owner Turn and never participate
     /// in the ordinary SDE idle-wake or retention paths.
-    requires_in_turn_finality: bool,
+    resource_policy: JobResourcePolicy,
+    org_scope: Option<OrgResourceScope>,
     /// Per-process cancellation. This is distinct from the Turn token so an
     /// explicit kill_handle request terminates only the selected process.
     shell_cancel: Option<CancellationToken>,
@@ -235,7 +242,7 @@ pub fn acknowledge_outputs(handles: &[String]) {
     let mut reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
     for handle in handles {
         if let Some(job) = reg.get_mut(handle) {
-            if job.requires_in_turn_finality {
+            if job.resource_policy.is_org() {
                 continue;
             }
             job.output_acknowledged = true;
@@ -254,7 +261,7 @@ pub fn list_jobs_for_owner(owner: &TurnProcessOwner) -> Vec<JobSnapshot> {
         .into_iter()
         .flatten()
         .filter_map(|handle| reg.get(handle))
-        .filter(|job| job.requires_in_turn_finality)
+        .filter(|job| job.resource_policy.blocks_turn())
         .filter(|job| job.is_running() || !job.output_acknowledged)
         .map(|job| {
             let mut snapshot = job.snapshot();
@@ -289,7 +296,7 @@ pub async fn await_subagent_execution_for_owner(
                         "owned subagent {handle} disappeared before finality"
                     ));
                 };
-                if !job.requires_in_turn_finality || job.turn_owner.as_ref() != Some(owner) {
+                if !job.resource_policy.blocks_turn() || job.turn_owner.as_ref() != Some(owner) {
                     return Err(format!(
                         "owned subagent {handle} no longer matches its parent Turn"
                     ));
@@ -320,7 +327,7 @@ pub fn acknowledge_outputs_for_owner(owner: &TurnProcessOwner, handles: &[String
             .iter()
             .filter_map(|handle| {
                 let job = reg.get_mut(handle)?;
-                if !job.requires_in_turn_finality
+                if !job.resource_policy.blocks_turn()
                     || job.turn_owner.as_ref() != Some(owner)
                     || !owned_job_execution_finished(job)
                 {
@@ -348,7 +355,7 @@ pub fn remove_terminal_jobs_for_owner(owner: &TurnProcessOwner) {
             .into_iter()
             .flatten()
             .filter_map(|handle| reg.get(handle))
-            .filter(|job| job.requires_in_turn_finality && owned_job_execution_finished(job))
+            .filter(|job| owned_job_execution_finished(job))
             .map(|job| job.handle.clone())
             .collect::<Vec<_>>()
     };
@@ -406,7 +413,8 @@ pub fn register_shell(
         session_id,
         replay_identity: None,
         turn_owner: None,
-        requires_in_turn_finality: false,
+        org_scope: None,
+        resource_policy: JobResourcePolicy::Ordinary,
         shell_cancel: None,
         shell_completion: None,
     })
@@ -429,7 +437,8 @@ pub fn register_shell_replay(
         session_id,
         replay_identity: Some((replay_session_id, call_id)),
         turn_owner: None,
-        requires_in_turn_finality: false,
+        org_scope: None,
+        resource_policy: JobResourcePolicy::Ordinary,
         shell_cancel: None,
         shell_completion: None,
     })
@@ -446,21 +455,34 @@ pub fn register_owned_shell_replay(
     turn_control: &TurnProcessControl,
     process_cancel: CancellationToken,
 ) -> ShellMonitorCompletion {
+    let handle = if turn_control.is_agent_org {
+        format!("shell-{}", uuid::Uuid::new_v4())
+    } else {
+        pid.to_string()
+    };
     let replay_session_id = session_id.clone();
     let (completion_tx, completion_rx) = watch::channel(ShellCompletionState::Running);
     register_shell_inner(ShellRegistration {
-        handle: None,
+        handle: Some(handle.clone()),
         pid,
         command,
         log_path,
         session_id,
         replay_identity: Some((replay_session_id, call_id)),
         turn_owner: Some(turn_control.owner.clone()),
-        requires_in_turn_finality: turn_control.require_owned_job_finality,
+        org_scope: None,
+        resource_policy: if turn_control.is_agent_org {
+            JobResourcePolicy::DetachedOrgShell
+        } else {
+            JobResourcePolicy::Ordinary
+        },
         shell_cancel: Some(process_cancel),
         shell_completion: Some(completion_rx),
     });
-    ShellMonitorCompletion { tx: completion_tx }
+    ShellMonitorCompletion {
+        tx: completion_tx,
+        handle,
+    }
 }
 
 /// Register one interactive PTY command with a handle distinct from the
@@ -475,36 +497,23 @@ pub struct OwnedPtyReplayRegistration<'a> {
     pub call_id: String,
     pub turn_control: &'a TurnProcessControl,
     pub process_cancel: CancellationToken,
+    pub org_scope: Option<OrgResourceScope>,
 }
 
 pub fn register_owned_pty_replay(
     registration: OwnedPtyReplayRegistration<'_>,
-) -> ShellMonitorCompletion {
-    let OwnedPtyReplayRegistration {
-        handle,
-        pid,
-        command,
-        log_path,
-        session_id,
-        call_id,
-        turn_control,
-        process_cancel,
-    } = registration;
-    let replay_session_id = session_id.clone();
-    let (completion_tx, completion_rx) = watch::channel(ShellCompletionState::Running);
-    register_shell_inner(ShellRegistration {
-        handle: Some(handle),
-        pid,
-        command,
-        log_path,
-        session_id,
-        replay_identity: Some((replay_session_id, call_id)),
-        turn_owner: Some(turn_control.owner.clone()),
-        requires_in_turn_finality: turn_control.require_owned_job_finality,
-        shell_cancel: Some(process_cancel),
-        shell_completion: Some(completion_rx),
-    });
-    ShellMonitorCompletion { tx: completion_tx }
+) -> Result<ShellMonitorCompletion, String> {
+    register_managed_shell(ManagedShellRegistration {
+        handle: &registration.handle,
+        pid: registration.pid,
+        command: &registration.command,
+        log_path: registration.log_path,
+        session_id: &registration.session_id,
+        call_id: &registration.call_id,
+        control: Some(registration.turn_control),
+        org_scope: registration.org_scope,
+        cancel: registration.process_cancel,
+    })
 }
 
 struct ShellRegistration {
@@ -515,7 +524,8 @@ struct ShellRegistration {
     session_id: String,
     replay_identity: Option<(String, String)>,
     turn_owner: Option<TurnProcessOwner>,
-    requires_in_turn_finality: bool,
+    resource_policy: JobResourcePolicy,
+    org_scope: Option<OrgResourceScope>,
     shell_cancel: Option<CancellationToken>,
     shell_completion: Option<watch::Receiver<ShellCompletionState>>,
 }
@@ -529,7 +539,8 @@ fn register_shell_inner(registration: ShellRegistration) -> broadcast::Sender<St
         session_id,
         replay_identity,
         turn_owner,
-        requires_in_turn_finality,
+        resource_policy,
+        org_scope,
         shell_cancel,
         shell_completion,
     } = registration;
@@ -549,6 +560,7 @@ fn register_shell_inner(registration: ShellRegistration) -> broadcast::Sender<St
         },
         session_id,
         started_at: Instant::now(),
+        finished_at: None,
         status: JobStatus::Running,
         final_result: None,
         output_tx: tx,
@@ -557,7 +569,8 @@ fn register_shell_inner(registration: ShellRegistration) -> broadcast::Sender<St
         join_handle_attached: true,
         cancel_flag: None,
         turn_owner,
-        requires_in_turn_finality,
+        resource_policy,
+        org_scope,
         shell_cancel,
         shell_completion,
         shell_kill_requested: false,
@@ -608,7 +621,7 @@ pub fn register_subagent(
         session_id,
         Arc::clone(&cancel_flag),
         None,
-        false,
+        JobResourcePolicy::Ordinary,
     );
     (sender, cancel_flag)
 }
@@ -631,7 +644,7 @@ pub fn register_owned_subagent(
         session_id,
         Arc::clone(&cancel_flag),
         Some(owner),
-        true,
+        JobResourcePolicy::TurnBound,
     );
     (sender, cancel_flag)
 }
@@ -658,7 +671,7 @@ pub fn register_subagent_with_flag(
         session_id,
         cancel_flag,
         None,
-        false,
+        JobResourcePolicy::Ordinary,
     )
 }
 
@@ -669,7 +682,7 @@ fn register_subagent_inner(
     session_id: String,
     cancel_flag: Arc<AtomicBool>,
     turn_owner: Option<TurnProcessOwner>,
-    requires_in_turn_finality: bool,
+    resource_policy: JobResourcePolicy,
 ) -> broadcast::Sender<String> {
     let indexed_owner = turn_owner.clone();
     let (tx, _) = broadcast::channel(BROADCAST_CAPACITY);
@@ -683,6 +696,7 @@ fn register_subagent_inner(
         },
         session_id: session_id.clone(),
         started_at: Instant::now(),
+        finished_at: None,
         status: JobStatus::Running,
         final_result: None,
         output_tx: tx,
@@ -691,7 +705,8 @@ fn register_subagent_inner(
         join_handle_attached: false,
         cancel_flag: Some(Arc::clone(&cancel_flag)),
         turn_owner,
-        requires_in_turn_finality,
+        resource_policy,
+        org_scope: None,
         shell_cancel: None,
         shell_completion: None,
         shell_kill_requested: false,
@@ -765,6 +780,7 @@ pub fn mark_exited(handle: &str, status: JobStatus) {
     if matches!(job.status, JobStatus::Killed) {
         return;
     }
+    job.finished_at.get_or_insert_with(Instant::now);
     job.status = if job.shell_kill_requested && matches!(job.kind, JobKind::Shell { .. }) {
         JobStatus::Killed
     } else {
@@ -887,6 +903,18 @@ pub fn remove(handle: &str) {
             .collect::<Vec<_>>();
         tombs.retain(|_, tombstone| now.duration_since(tombstone.created_at) < TOMBSTONE_TTL);
         session_lifecycle::remove_expired_tombstone_indexes(&expired);
+        const MAX_TOMBSTONES: usize = 512;
+        if tombs.len() >= MAX_TOMBSTONES {
+            if let Some(oldest) = tombs
+                .iter()
+                .min_by_key(|(_, tomb)| tomb.created_at)
+                .map(|(key, _)| key.clone())
+            {
+                if let Some(old) = tombs.remove(&oldest) {
+                    session_lifecycle::remove_tombstone_index(&old.session_id, &oldest);
+                }
+            }
+        }
         let replaced = tombs.insert(
             handle.to_string(),
             Tombstone {
@@ -1049,6 +1077,7 @@ pub async fn await_shells_terminated_for_owner(
 /// List all jobs (shells + subagents). Pass `Some(session_id)` for session
 /// scope, `None` for global scope.
 pub fn list_jobs(session_id: Option<&str>) -> Vec<JobSnapshot> {
+    reap_detached_shells();
     let reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
     match session_id {
         Some(session_id) => session_lifecycle::live_handles(session_id)
@@ -1067,7 +1096,7 @@ pub fn list_jobs(session_id: Option<&str>) -> Vec<JobSnapshot> {
 pub fn acknowledge_output(handle: &str) {
     let mut reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(job) = reg.get_mut(handle) {
-        if !job.requires_in_turn_finality {
+        if !job.resource_policy.blocks_turn() {
             job.output_acknowledged = true;
         }
     }
@@ -1094,7 +1123,7 @@ pub fn list_jobs_for_reminder(session_id: &str) -> Vec<JobSnapshot> {
     reg.values()
         .filter(|job| {
             job.session_id == session_id
-                && !job.requires_in_turn_finality
+                && !job.resource_policy.is_org()
                 && (job.is_running() || !job.output_acknowledged)
         })
         .map(|job| job.snapshot())
@@ -1143,7 +1172,7 @@ pub fn claim_completion_wake_for_session(session_id: &str) -> bool {
         if job.session_id != session_id {
             continue;
         }
-        if job.requires_in_turn_finality {
+        if job.resource_policy.is_org() {
             continue;
         }
         if !job.is_running()
@@ -1177,7 +1206,7 @@ pub fn release_completion_wake_for_session(session_id: &str) {
         if job.session_id != session_id {
             continue;
         }
-        if job.requires_in_turn_finality {
+        if job.resource_policy.is_org() {
             continue;
         }
         if !job.is_running() && !job.output_acknowledged {
@@ -1261,6 +1290,7 @@ pub async fn retain_until_acknowledged_then_remove(
 /// reconciliation on reload. Only includes shell jobs with `Running` status.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunningShellJob {
+    pub handle: String,
     pub session_id: String,
     pub call_id: String,
     pub pid: u32,
@@ -1282,6 +1312,7 @@ pub fn list_running_shell_jobs() -> Vec<RunningShellJob> {
                 replay_session_id: Some(replay_session_id),
                 replay_call_id: Some(replay_call_id),
             } if replay_session_id == &job.session_id => Some(RunningShellJob {
+                handle: job.handle.clone(),
                 session_id: replay_session_id.clone(),
                 call_id: replay_call_id.clone(),
                 pid: *pid,
@@ -1390,7 +1421,6 @@ pub fn owned_jobs_are_terminal(owner: &TurnProcessOwner) -> bool {
         .into_iter()
         .flatten()
         .filter_map(|handle| reg.get(handle))
-        .filter(|job| job.requires_in_turn_finality)
         .all(owned_job_execution_finished)
 }
 
@@ -1706,7 +1736,7 @@ pub async fn cancel_and_await_jobs_for_owner(
             let Some(job) = reg.get_mut(&handle) else {
                 continue;
             };
-            if !job.requires_in_turn_finality || !job.is_running() {
+            if !job.is_running() {
                 continue;
             }
             match &job.kind {
@@ -1755,10 +1785,7 @@ pub async fn cancel_and_await_jobs_for_owner(
                     .into_iter()
                     .flatten()
                     .filter_map(|handle| reg.get(handle))
-                    .filter(|job| {
-                        job.requires_in_turn_finality
-                            && matches!(job.kind, JobKind::Subagent { .. })
-                    })
+                    .filter(|job| matches!(job.kind, JobKind::Subagent { .. }))
                     .all(owned_job_execution_finished)
             };
             if all_subagents_terminal {

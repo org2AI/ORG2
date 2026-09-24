@@ -9,6 +9,49 @@ import {
 } from "../shellProcessAtom";
 
 describe("shellProcessAtom", () => {
+  it("a missing registration records uncertainty rather than an invented exit", () => {
+    const store = createStore();
+    const identity = {
+      sessionId: "missing-process",
+      pid: 1001,
+      callId: "call",
+      handle: "shell-old",
+    };
+    store.set(updateShellProcessAtom, {
+      type: "start",
+      ...identity,
+      command: "serve",
+    });
+    store.set(updateShellProcessAtom, { type: "unknown", ...identity });
+    expect(
+      store.get(shellProcessMapAtom).get(identity.sessionId)?.get(identity.pid)
+    ).toMatchObject({
+      status: "unknown",
+      exitCode: undefined,
+    });
+  });
+  it("rejects a late callback from a different registration even when PID and call match", () => {
+    const store = createStore();
+    store.set(updateShellProcessAtom, {
+      type: "start",
+      sessionId: "same-call-session",
+      pid: 1001,
+      callId: "same-call",
+      handle: "new-registration",
+      command: "server",
+    });
+    store.set(updateShellProcessAtom, {
+      type: "exit",
+      sessionId: "same-call-session",
+      pid: 1001,
+      callId: "same-call",
+      handle: "old-registration",
+      killed: true,
+    });
+    expect(
+      store.get(shellProcessMapAtom).get("same-call-session")?.get(1001)?.status
+    ).toBe("running");
+  });
   it("ignores lifecycle updates for a reused PID from another tool call", () => {
     const store = createStore();
     store.set(updateShellProcessAtom, {

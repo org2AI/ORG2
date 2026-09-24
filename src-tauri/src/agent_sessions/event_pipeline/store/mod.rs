@@ -282,6 +282,32 @@ pub(super) fn hydrate_shell_event_bounded(event: &mut SessionEvent) {
         return;
     }
 
+    // Historical PIDs do not prove that this application still owns a process.
+    // Keep recorded terminal facts, but never revive/adopt a missing registration.
+    if matches!(
+        event
+            .args
+            .get("shellProcessStatus")
+            .and_then(|v| v.as_str()),
+        Some("running" | "background")
+    ) && !event
+        .args
+        .get("shellProcessHandle")
+        .and_then(|v| v.as_str())
+        .is_some_and(|handle| {
+            agent_core::tools::impls::coding::exec::registry::shell_registration_matches(
+                handle,
+                &event.session_id,
+                event.call_id.as_deref().unwrap_or_default(),
+            )
+        })
+    {
+        event.args["shellProcessStatus"] = "unknown".into();
+        if let Some(core_types::extracted::ExtractedData::Shell(shell)) = event.extracted.as_mut() {
+            shell.shell_process_status = Some("unknown".into());
+        }
+    }
+
     let legacy_preview = legacy_shell_text(event)
         .map(|text| utf8_tail(text, MAX_SHELL_REPLAY_PREVIEW_BYTES).to_string())
         .unwrap_or_default();

@@ -18,6 +18,9 @@ use super::stall_watchdog::StallWatchdog;
 use super::{BackgroundReason, ExecIdentity};
 
 const BACKGROUND_SAFETY_TIMEOUT_SECS: u64 = 3600;
+pub(super) fn background_safety_timeout(independent: bool, elapsed: Duration) -> bool {
+    !independent && elapsed >= Duration::from_secs(BACKGROUND_SAFETY_TIMEOUT_SECS)
+}
 pub(super) const SHELL_TOOL_RESULT_MAX_BYTES: usize = 30 * 1024;
 
 pub(super) fn bounded_background_result(
@@ -41,7 +44,7 @@ pub(super) fn bounded_background_result(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn handle_backgrounded(
-    command: &str,
+    completion: registry::ShellMonitorCompletion,
     pid: u32,
     effective_wait: u64,
     reason: BackgroundReason,
@@ -62,31 +65,15 @@ pub(super) fn handle_backgrounded(
         }
     };
     broadcast_system_output(&identity, &human_line);
-    broadcast_process_backgrounded(&identity, pid, reason, app_handle.as_ref());
 
-    let mut monitor_completion = None;
-    if pid != 0 {
-        let registry_path = log_path.clone().unwrap_or_default();
-        if let Some(control) = identity.turn_process_control.as_ref() {
-            monitor_completion = Some(registry::register_owned_shell_replay(
-                pid,
-                command.to_string(),
-                registry_path,
-                identity.session_id.clone(),
-                identity.call_id.clone(),
-                control,
-                identity.process_cancel.clone(),
-            ));
-        } else {
-            let _ = registry::register_shell_replay(
-                pid,
-                command.to_string(),
-                registry_path,
-                identity.session_id.clone(),
-                identity.call_id.clone(),
-            );
-        }
-    }
+    let handle = completion.handle.clone();
+    let mut monitor_completion = Some(completion);
+    registry::detach_shell(&handle);
+    broadcast_process_backgrounded(&identity, pid, reason, app_handle.as_ref());
+    let independent = identity
+        .turn_process_control
+        .as_ref()
+        .is_some_and(|control| control.is_agent_org);
     // Background execution is not admitted until the exact process is
     // indexed by its Turn/runtime owner. A handoff that acquires the writer
     // fence after this point can therefore cancel and await this process
@@ -105,16 +92,21 @@ pub(super) fn handle_backgrounded(
     let log_info = if log_path.is_some() {
         format!(
             "\nComplete output: Session Replay\n\n\
-             To wait for completion: await_output(command=\"wait_for\", handles=[\"{pid}\"], block_until_ms=60000)\n\
-             To wait for a pattern:  await_output(command=\"wait_for\", handles=[\"{pid}\"], pattern=\"your_regex\", block_until_ms=60000)\n\
-             To check status:        await_output(command=\"monitor\", handles=[\"{pid}\"])\n\
-             To read tail:           await_output(command=\"monitor\", handles=[\"{pid}\"], tail_lines=100)\n\
-             To kill:                run_shell(kill_handle=\"{pid}\")\n\
+             To wait for completion: await_output(command=\"wait_for\", handles=[\"{handle}\"], block_until_ms=60000)\n\
+             To wait for a pattern:  await_output(command=\"wait_for\", handles=[\"{handle}\"], pattern=\"your_regex\", block_until_ms=60000)\n\
+             To check status:        await_output(command=\"monitor\", handles=[\"{handle}\"])\n\
+             To read tail:           await_output(command=\"monitor\", handles=[\"{handle}\"], tail_lines=100)\n\
+             To kill:                run_shell(kill_handle=\"{handle}\")\n\
              If it is still running after a wait or two, STOP waiting: continue with other work or end your turn — \
              the session resumes automatically when the process exits."
         )
     } else {
-        format!("\nTo kill: run_shell(kill_handle=\"{pid}\")")
+        format!("\nTo kill: run_shell(kill_handle=\"{handle}\")")
+    };
+    let log_info = if independent {
+        log_info.replace("the session resumes automatically when the process exits.", "this service remains available after your Turn ends and does not wake the model on exit.")
+    } else {
+        log_info
     };
     let header = match reason {
         BackgroundReason::Explicit => format!("[process started in background as PID {pid}]"),
@@ -132,7 +124,7 @@ pub(super) fn handle_backgrounded(
         let (exit_code, mut killed, replay_failure, termination_result) = loop {
             if identity.cancellation_requested() {
                 if pid != 0 {
-                    registry::mark_shell_cancel_requested(&pid.to_string());
+                    registry::mark_shell_cancel_requested(&handle);
                 }
                 let termination_result = terminate_child_tree(pid, &mut child).await;
                 break (None, true, None, termination_result);
@@ -169,7 +161,7 @@ pub(super) fn handle_backgrounded(
                     break (status.code(), status.code().is_none(), None, Ok(()));
                 }
             }
-            if started.elapsed() >= Duration::from_secs(BACKGROUND_SAFETY_TIMEOUT_SECS) {
+            if background_safety_timeout(independent, started.elapsed()) {
                 let termination_result = if parent_exit.is_some() {
                     registry::terminate_shell_process_tree(pid)
                         .await
@@ -184,7 +176,7 @@ pub(super) fn handle_backgrounded(
                     termination_result,
                 );
             }
-            stall_watchdog.probe(&identity, pid);
+            stall_watchdog.probe(&identity, pid, &handle);
             tokio::time::sleep(Duration::from_millis(50)).await;
         };
 
@@ -202,7 +194,7 @@ pub(super) fn handle_backgrounded(
                     } else {
                         registry::JobStatus::Exited(exit_code.unwrap_or(-1))
                     };
-                    registry::mark_exited(&pid.to_string(), job_status);
+                    registry::mark_exited(&handle, job_status);
                 }
                 broadcast_system_output(
                     &identity,
@@ -218,11 +210,11 @@ pub(super) fn handle_backgrounded(
                     );
                 }
                 if let Some(completion) = monitor_completion.take() {
-                    completion.finish(Err(format!(
-                        "shell replay output did not drain: {writer_err}"
-                    )));
+                    // drain_output joins all tasks even when persistence fails.
+                    // The replay stays incomplete; resource release is separate.
+                    completion.finish(termination_result);
                 }
-                finish_background_job(pid, &identity).await;
+                finish_background_job(&handle, &identity).await;
                 return;
             }
         };
@@ -237,11 +229,11 @@ pub(super) fn handle_backgrounded(
         if identity
             .turn_process_control
             .as_ref()
-            .is_some_and(|control| control.require_owned_job_finality)
+            .is_some_and(|control| control.is_agent_org)
         {
             if let Ok(summary) = replay_result.as_ref() {
                 registry::set_final_result(
-                    &pid.to_string(),
+                    &handle,
                     format_summary(summary.clone(), exit_code.unwrap_or(-1)),
                 );
             }
@@ -254,7 +246,7 @@ pub(super) fn handle_backgrounded(
             } else {
                 registry::JobStatus::Exited(exit_code.unwrap_or(-1))
             };
-            registry::mark_exited(&pid.to_string(), job_status);
+            registry::mark_exited(&handle, job_status);
         }
         if killed {
             broadcast_system_output(&identity, &format!("[background process {pid} stopped]"));
@@ -286,7 +278,7 @@ pub(super) fn handle_backgrounded(
         if let Some(completion) = monitor_completion.take() {
             completion.finish(termination_result);
         }
-        finish_background_job(pid, &identity).await;
+        finish_background_job(&handle, &identity).await;
     });
 
     Ok(bounded_background_result(preview, &header, &log_info))
@@ -300,23 +292,21 @@ pub(super) fn handle_backgrounded(
 /// resumed turn can still see it. The old flat 60s eviction raced exactly
 /// that window: a session idle for longer than a minute lost the entry
 /// before any turn could read it.
-async fn finish_background_job(pid: u32, identity: &ExecIdentity) {
-    if pid == 0 {
-        return;
-    }
+async fn finish_background_job(handle: &str, identity: &ExecIdentity) {
     if identity
         .turn_process_control
         .as_ref()
-        .is_some_and(|control| control.require_owned_job_finality)
+        .is_some_and(|control| control.is_agent_org)
     {
         crate::tools::impls::orchestration::job_wake::current_job_completion_wake_hook()
             .resume_user_directed_handoff(&identity.session_id);
+        registry::reap_detached_shells();
         return;
     }
     crate::tools::impls::orchestration::job_wake::current_job_completion_wake_hook()
         .wake_owner(&identity.session_id);
     registry::retain_until_acknowledged_then_remove(
-        &pid.to_string(),
+        handle,
         Duration::from_secs(30 * 60),
         "subprocess",
     )

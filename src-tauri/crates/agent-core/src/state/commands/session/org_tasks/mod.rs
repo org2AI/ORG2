@@ -27,6 +27,7 @@ mod handoff;
 mod intervention;
 mod lifecycle;
 mod plan_approval;
+mod resource_teardown;
 mod run_view;
 mod task_pages;
 
@@ -41,5 +42,6 @@ pub use handoff::*;
 pub use intervention::*;
 pub use lifecycle::*;
 pub use plan_approval::*;
+pub(crate) use resource_teardown::release_user_directed_resources;
 pub use run_view::*;
 pub use task_pages::*;

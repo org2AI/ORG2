@@ -80,7 +80,7 @@ pub(super) async fn complete_non_tool_iteration(
     if config
         .turn_process_control
         .as_ref()
-        .is_some_and(|control| control.require_owned_job_finality)
+        .is_some_and(|control| control.is_agent_org)
         && !is_cancelled(cancel_flag)
     {
         let Some(control) = config.turn_process_control.as_ref() else {

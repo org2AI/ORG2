@@ -1939,8 +1939,8 @@ export async function waitForGroupChatPausedBanner(label) {
         }
         const text = String(state?.bannerText ?? "").toLowerCase();
         return (
-          text.includes("new work is paused") &&
-          text.includes("resume this agent team before sending a message") &&
+          text.includes("formal work is paused") &&
+          text.includes("resume for coordinator work") &&
           state?.resumeVisible === true &&
           state?.resumeDisabled === false
         );

@@ -491,16 +491,29 @@ describe("Agent Org pause, resume, and sidebar rendered UI", () => {
         const pausedSendButton = await browser.$(
           '[data-e2e-paused-send="true"]'
         );
-        if (!pausedSendState?.present || pausedSendState.disabled !== true) {
+        if (!pausedSendState?.present || pausedSendState.disabled) {
           throw new Error(
-            `Paused Group Chat submit button must be disabled: ${JSON.stringify(pausedSendState)}`
+            `Paused composer must remain usable for member side quests: ${JSON.stringify(pausedSendState)}`
           );
         }
-        try {
-          await pausedSendButton.click();
-        } catch (_expectedDisabledClick) {
-          // WebDriver correctly refuses interaction with a disabled product button.
-        }
+        // Formal work is blocked at routing, while explicit @Member work stays
+        // available. Exercise the real rejection and preserve the user's draft.
+        await pausedSendButton.click();
+        await browser.waitUntil(
+          async () =>
+            execJS(`
+            const toast = document.querySelector('[data-message-root="true"]');
+            const editor = document.querySelector('[data-testid="chat-input"] [contenteditable="true"]');
+            return Boolean(toast?.textContent?.includes('Resume for Coordinator work') &&
+              editor?.textContent?.includes(${JSON.stringify(pausedDraft)}));
+          `),
+          {
+            timeout: RENDER_TIMEOUT_MS,
+            interval: 100,
+            timeoutMsg:
+              "Paused formal submit did not show rejection and restore its draft",
+          }
+        );
         const afterBlockedSubmit = await postJson(
           "/agent/test/agent-org/pause/evidence",
           { org_run_id: runId }

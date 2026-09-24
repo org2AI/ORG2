@@ -1,7 +1,11 @@
 import { isInteractiveTool } from "./interactiveTools";
 import type { SessionEvent } from "./types";
 
-const TERMINAL_SHELL_PROCESS_STATUSES = new Set(["exited", "killed"]);
+const NON_LIVE_SHELL_PROCESS_STATUSES = new Set([
+  "exited",
+  "killed",
+  "unknown",
+]);
 const ACTIVE_SHELL_PROCESS_STATUSES = new Set(["running", "background"]);
 const TURN_BLOCKING_SHELL_PROCESS_STATUSES = new Set(["running"]);
 
@@ -40,7 +44,7 @@ export function isLiveRuntimeResourceEvent(event: SessionEvent): boolean {
   const shellProcessStatus = shellProcessStatusFromArgs(event.args);
   if (
     shellProcessStatus &&
-    TERMINAL_SHELL_PROCESS_STATUSES.has(shellProcessStatus)
+    NON_LIVE_SHELL_PROCESS_STATUSES.has(shellProcessStatus)
   ) {
     return false;
   }

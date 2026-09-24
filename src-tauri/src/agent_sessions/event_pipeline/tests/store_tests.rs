@@ -49,6 +49,31 @@ fn make_tool_result(id: &str, call_id: &str) -> SessionEvent {
 }
 
 #[test]
+fn historical_shell_registration_is_unknown_without_adopting_its_pid() {
+    for status in ["running", "background", "exited", "killed"] {
+        let mut event = make_tool_call("historical-service", "service-call");
+        event.function_name = "run_shell".into();
+        event.ui_canonical = "run_shell".into();
+        event.args = serde_json::json!({
+            "command": "serve", "shellPid": std::process::id(),
+            "shellProcessHandle": "shell-previous-application", "shellProcessStatus": status,
+        });
+        let mut store = EventStore::new();
+        store.set(vec![event]);
+        let loaded = store.get_by_id("historical-service").unwrap();
+        assert_eq!(
+            loaded.args["shellProcessStatus"],
+            if matches!(status, "running" | "background") {
+                "unknown"
+            } else {
+                status
+            }
+        );
+        assert_eq!(loaded.args["shellPid"], std::process::id());
+    }
+}
+
+#[test]
 fn test_conditional_set_preserves_events_written_during_refresh() {
     let mut store = EventStore::new();
     store.set(vec![make_event("old", "message")]);
@@ -206,7 +231,8 @@ fn test_merge_tool_result_preserves_background_shell_until_exact_exit_callback()
         "shellProcessStatus": "background"
     });
     let mut store = EventStore::new();
-    store.set(vec![shell]);
+    // A live tool callback does not re-adopt an unowned historical PID.
+    store.append(vec![shell]);
 
     store.merge_events(vec![make_tool_result("tr-background", "call-background")]);
 

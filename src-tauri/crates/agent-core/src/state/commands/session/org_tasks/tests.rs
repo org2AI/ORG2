@@ -6,6 +6,9 @@
 
 use super::*;
 
+#[path = "resource_teardown_tests.rs"]
+mod resource_teardown_tests;
+
 use std::collections::HashMap;
 
 use database::db::get_connection;

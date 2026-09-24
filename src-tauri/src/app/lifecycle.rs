@@ -14,6 +14,7 @@ const SHUTDOWN_READY_TO_EXIT: u8 = 2;
 static SHUTDOWN_PHASE: AtomicU8 = AtomicU8::new(SHUTDOWN_RUNNING);
 
 const AGENT_DRAIN_BUDGET: Duration = Duration::from_secs(3);
+const RESOURCE_DRAIN_BUDGET: Duration = Duration::from_secs(12);
 const DATABASE_POOL_DRAIN_BUDGET: Duration = Duration::from_secs(2);
 const CHECKPOINT_WRITER_BUDGET: Duration = Duration::from_millis(250);
 const CHECKPOINT_SQLITE_BUDGET: Duration = Duration::from_millis(500);
@@ -308,6 +309,7 @@ pub(crate) fn handle_run_event(app_handle: &tauri::AppHandle, event: tauri::RunE
 
 async fn perform_bounded_shutdown(app_handle: &tauri::AppHandle) {
     let started = std::time::Instant::now();
+    agent_core::tools::impls::coding::exec::registry::close_resource_admission();
     if let Some(state) = app_handle.try_state::<agent_core::state::AgentAppState>() {
         let report = state.begin_shutdown(AGENT_DRAIN_BUDGET).await;
         tracing::info!(
@@ -317,6 +319,13 @@ async fn perform_bounded_shutdown(app_handle: &tauri::AppHandle) {
             elapsed_ms = report.elapsed_ms,
             "[Shutdown] Agent admission fenced and accepted work drained"
         );
+    }
+
+    if let Err(error) =
+        agent_core::tools::impls::coding::exec::registry::shutdown_resources(RESOURCE_DRAIN_BUDGET)
+            .await
+    {
+        tracing::warn!(%error, "[Shutdown] resource finality could not be proved");
     }
 
     // PTY teardown deliberately uses `blocking_lock`, so this whole ordered

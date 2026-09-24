@@ -115,6 +115,8 @@ pub struct ExtractedShellData {
     pub is_failure: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shell_pid: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shell_process_handle: Option<String>,
     /// "running" | "background" | "exited" | "killed"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shell_process_status: Option<String>,

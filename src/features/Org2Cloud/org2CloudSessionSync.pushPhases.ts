@@ -1,8 +1,8 @@
 /**
  * The write phases of one Org2CloudSessionSync push pass, run after its gates,
- * event preparation and shrink observation: shared-file sync, then one of the
+ * event preparation and shrink observation: one of the
  * three replay branches (bounded imported delta, cursor-anchored delta append
- * or epoch rewrite, first publish).
+ * or epoch rewrite, first publish), then best-effort shared-file sync.
  *
  * Fifth link of the Org2CloudSessionSync inheritance chain; which branch runs
  * is still decided by `pushSessionOnce` in Org2CloudSessionSync itself.
@@ -27,6 +27,10 @@ import type {
 import { Org2CloudSessionSyncUpload } from "./org2CloudSessionSync.upload";
 import type { CollabSessionPushCursor } from "./org2CloudSyncAtoms";
 import { isOrg2SyncErrorCode } from "./org2CloudSyncClient";
+import {
+  SessionSharedFileRetry,
+  sharedFileRetryScope,
+} from "./sessionSharedFileRetry";
 
 const log = createLogger("Org2CloudSyncEngine");
 
@@ -48,10 +52,39 @@ export interface PreparedPushPass {
 }
 
 export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
-  /**
-   * Share the files a replay references. Resolves false when the server lacks
-   * shared session files, which keeps the cursor's `sharedFilesVersion` unset.
-   */
+  private readonly sharedFileRetry = new SessionSharedFileRetry();
+  protected sharedFileGeneration = 0;
+
+  override reset(): void {
+    super.reset();
+    this.sharedFileGeneration++;
+    this.sharedFileRetry.reset();
+  }
+
+  override prune(
+    orgs: ReadonlySet<string>,
+    sessions: ReadonlySet<string>
+  ): void {
+    super.prune(orgs, sessions);
+    this.sharedFileRetry.prune(orgs, sessions);
+  }
+
+  protected isSharedFileSyncBackedOff(
+    auth: Org2CloudAuthState,
+    orgId: string,
+    sessionId: string
+  ): boolean {
+    return this.sharedFileRetry.isBackedOff(
+      sharedFileRetryScope(
+        auth,
+        endpointForOrg(orgId).supabaseUrl,
+        orgId,
+        sessionId
+      )
+    );
+  }
+
+  /** Attachments cannot fail a committed replay or certify an incomplete backfill. */
   protected async syncReplaySharedFiles(
     auth: Org2CloudAuthState,
     orgId: string,
@@ -59,25 +92,50 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
     events: SessionEvent[]
   ): Promise<boolean> {
     const sessionId = session.session_id;
-    const { syncSessionSharedFiles } = await import("./syncSessionSharedFiles");
     const endpoint = endpointForOrg(orgId);
-    return syncSessionSharedFiles({
-      token: auth.accessToken,
-      endpoint,
+    const scope = sharedFileRetryScope(
+      auth,
+      endpoint.supabaseUrl,
       orgId,
-      sessionId,
-      events,
-      repoPath: session.repoPath,
-      assertCurrentIdentity: () => {
-        const latest = this.getStore()?.get(org2CloudAuthAtom);
-        if (
-          !latest ||
-          org2CloudAuthIdentityKey(latest) !== org2CloudAuthIdentityKey(auth) ||
-          endpointForOrg(orgId).supabaseUrl !== endpoint.supabaseUrl
-        )
-          throw new Error("Cloud identity changed while sharing session files");
-      },
-    });
+      sessionId
+    );
+    if (this.sharedFileRetry.isBackedOff(scope)) return false;
+    const generation = this.sharedFileGeneration;
+    const assertCurrentIdentity = () => {
+      const latest = this.getStore()?.get(org2CloudAuthAtom);
+      if (
+        generation !== this.sharedFileGeneration ||
+        !latest ||
+        org2CloudAuthIdentityKey(latest) !== org2CloudAuthIdentityKey(auth) ||
+        endpointForOrg(orgId).supabaseUrl !== endpoint.supabaseUrl
+      )
+        throw new Error("Cloud identity changed while sharing session files");
+    };
+    try {
+      const { syncSessionSharedFiles } =
+        await import("./syncSessionSharedFiles");
+      const ready = await syncSessionSharedFiles({
+        token: auth.accessToken,
+        endpoint,
+        orgId,
+        sessionId,
+        events,
+        repoPath: session.repoPath,
+        assertCurrentIdentity,
+      });
+      assertCurrentIdentity();
+      return ready;
+    } catch (error) {
+      // Cancellation/account changes remain fatal; never update retry state
+      // or the current identity's cursor from an obsolete operation.
+      assertCurrentIdentity();
+      this.sharedFileRetry.noteFailure(scope, error);
+      log.warn(
+        `Replay published; shared files pending for session ${sessionId}`,
+        error
+      );
+      return false;
+    }
   }
 
   /**

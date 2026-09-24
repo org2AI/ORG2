@@ -20,6 +20,38 @@ const endpoint = {
 const id = "11111111-1111-4111-8111-111111111111";
 afterEach(() => vi.unstubAllGlobals());
 describe("shared file wire boundary", () => {
+  it.each([
+    [{ code: "P0001", message: "ORG2_QUOTA_EXCEEDED" }, "ORG2_QUOTA_EXCEEDED"],
+    [
+      { code: "ORG2_FORBIDDEN", message: "private SQL details" },
+      "ORG2_FORBIDDEN",
+    ],
+    [{ message: "private SQL details" }, null],
+  ])(
+    "preserves safe domain errors without exposing raw backend diagnostics",
+    async (body, code) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            new Response(JSON.stringify(body), { status: 400 })
+          )
+      );
+      const error = await uploadSharedSessionFile(
+        "jwt",
+        endpoint,
+        "org",
+        "session",
+        "report.md",
+        new Uint8Array([1])
+      ).catch((error) => error);
+      expect(error).toBeInstanceOf(SharedSessionFileRequestError);
+      expect(error.code).toBe(code);
+      if (code) expect(error.message).toContain(code);
+      expect(error.message).not.toContain("private SQL details");
+    }
+  );
   it.each([503, 500, 403])(
     "preserves HTTP %s at lookup and upload boundaries",
     async (status) => {

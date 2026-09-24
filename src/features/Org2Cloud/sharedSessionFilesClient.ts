@@ -7,7 +7,8 @@ export class SharedSessionFileRequestError extends Error {
   constructor(
     message: string,
     readonly status: number | null,
-    readonly recoveryPending = false
+    readonly recoveryPending = false,
+    readonly code: string | null = null
   ) {
     super(message);
     this.name = "SharedSessionFileRequestError";
@@ -73,11 +74,22 @@ async function rpc(
           : controller.signal,
       }
     );
-    if (!response.ok)
+    if (!response.ok) {
+      // PostgREST puts RAISE EXCEPTION identifiers in message (code is P0001).
+      // Keep only a bounded domain code, never arbitrary server text or SQL.
+      const error = await response.json().catch(() => null);
+      const code =
+        [error?.message, error?.code].find(
+          (value): value is string =>
+            typeof value === "string" && /^ORG2_[A-Z0-9_]{1,80}$/.test(value)
+        ) ?? null;
       throw new SharedSessionFileRequestError(
-        `Shared file request failed (${response.status}). Check session access, file quota, and server support.`,
-        response.status
+        `Shared file request failed (${response.status}${code ? `: ${code}` : ""}). Check session access, file quota, and server support.`,
+        response.status,
+        false,
+        code
       );
+    }
     return await response.json();
   } finally {
     clearTimeout(timeout);

@@ -152,6 +152,7 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     access: CloudPushAccess
   ): Promise<void> {
     const sessionId = session.session_id;
+    const generation = this.sharedFileGeneration;
     if (
       access.accessMode !== COLLAB_SESSION_ACCESS_MODE.METADATA_ONLY &&
       this.pushGuards.isSessionPushBackedOff(orgId, sessionId)
@@ -169,9 +170,13 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     }
     try {
       await this.pushSessionOnce(auth, orgId, session, scopeKey, access);
-      this.pushGuards.clearSessionPushFailure(orgId, sessionId);
+      if (generation === this.sharedFileGeneration)
+        this.pushGuards.clearSessionPushFailure(orgId, sessionId);
     } catch (error) {
-      if (this.pushGuards.shouldBackOffSessionFailure(error)) {
+      if (
+        generation === this.sharedFileGeneration &&
+        this.pushGuards.shouldBackOffSessionFailure(error)
+      ) {
         this.pushGuards.noteSessionPushFailure(orgId, sessionId);
       }
       throw error;
@@ -210,15 +215,21 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     const cursor = this.getCursor(orgId, sessionId);
     // Old transcript cursors do not prove the referenced files were uploaded.
     // Probe is endpoint-cached; unsupported servers preserve the existing idle gate.
-    const needsFileBackfill =
-      cursor && cursor.sharedFilesVersion !== 1
-        ? (
-            await getCloudCapabilitiesConfirmed(
-              auth.accessToken,
-              endpointForOrg(orgId)
-            )
-          ).capabilities.sharedSessionFiles === true
-        : false;
+    let needsFileBackfill = false;
+    if (
+      cursor &&
+      cursor.sharedFilesVersion !== 1 &&
+      !this.isSharedFileSyncBackedOff(auth, orgId, sessionId)
+    ) {
+      const probe = await getCloudCapabilitiesConfirmed(
+        auth.accessToken,
+        endpointForOrg(orgId)
+      ).catch(() => null);
+      // An inconclusive file probe cannot fail the body or certify files.
+      // The post-publication attempt owns file errors and their backoff.
+      needsFileBackfill =
+        !probe?.confirmed || probe.capabilities.sharedSessionFiles === true;
+    }
     if (
       !needsFileBackfill &&
       this.isEventPlaneClean(orgId, session, currentLocalExecutionRevision)
@@ -245,7 +256,6 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
       localExecutionRevision,
       events,
     } = prepared;
-    let sharedFilesReady = false;
     const markPreparedClean = () => {
       this.markEventPlaneClean(
         orgId,
@@ -255,13 +265,6 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
         localContentRevision,
         localExecutionRevision
       );
-      const latestCursor = this.getCursor(orgId, sessionId);
-      if (
-        sharedFilesReady &&
-        latestCursor &&
-        latestCursor.sharedFilesVersion !== 1
-      )
-        this.setCursor({ ...latestCursor, sharedFilesVersion: 1 });
     };
     const publishPreparedTurnIndex = () => {
       void this.publishTurnIndexBestEffort(auth, orgId, session, stampAtRead);
@@ -290,16 +293,6 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     if (shrink === "skip") return;
     const confirmedShrink = shrink === "confirmed";
 
-    // A replay exposes its referenced files as independent immutable snapshots.
-    // Register only after the source session exists; no transcript bytes/hashes
-    // are rewritten to add attachment data.
-    await this.upsertMetadataIfChanged(auth, orgId, session, scopeKey, access);
-    sharedFilesReady = await this.syncReplaySharedFiles(
-      auth,
-      orgId,
-      session,
-      events
-    );
     const preparedPlan = await prepared.plan();
     const pass: PreparedPushPass = {
       auth,
@@ -316,14 +309,30 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
 
     if (cursor && mode === "incremental") {
       await this.pushIncrementalReplay(pass, cursor);
-      return;
-    }
-
-    if (cursor) {
+    } else if (cursor) {
       await this.pushCursorReplay(pass, cursor);
-      return;
+    } else {
+      await this.pushInitialReplay(pass);
     }
 
-    await this.pushInitialReplay(pass);
+    // Commit the body before touching referenced files. Keep the durable file
+    // marker pending across failures/restarts, even if the previous body had
+    // complete attachments. A later full backfill must cover skipped deltas.
+    const publishedCursor = this.getCursor(orgId, sessionId);
+    if (publishedCursor?.sharedFilesVersion === 1)
+      this.setCursor({ ...publishedCursor, sharedFilesVersion: undefined });
+    const sharedFilesReady = await this.syncReplaySharedFiles(
+      auth,
+      orgId,
+      session,
+      events
+    );
+    const latestCursor = this.getCursor(orgId, sessionId);
+    if (
+      sharedFilesReady &&
+      latestCursor &&
+      (mode === "full" || cursor?.sharedFilesVersion === 1)
+    )
+      this.setCursor({ ...latestCursor, sharedFilesVersion: 1 });
   }
 }

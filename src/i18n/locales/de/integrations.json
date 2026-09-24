@@ -113,7 +113,12 @@
       "resetsAvailable_one": "{{count}} Zurücksetzung verfügbar",
       "resetsAvailable_few": "{{count}} Zurücksetzungen verfügbar",
       "resetsAvailable_many": "{{count}} Zurücksetzungen verfügbar",
-      "resetsAvailable_other": "{{count}} Zurücksetzungen verfügbar"
+      "resetsAvailable_other": "{{count}} Zurücksetzungen verfügbar",
+      "resetsExpire": "{{count}} Zurücksetzungen laufen am {{date}} ab",
+      "resetsExpire_one": "{{count}} Zurücksetzung läuft am {{date}} ab",
+      "resetsExpire_few": "{{count}} Zurücksetzungen laufen am {{date}} ab",
+      "resetsExpire_many": "{{count}} Zurücksetzungen laufen am {{date}} ab",
+      "resetsExpire_other": "{{count}} Zurücksetzungen laufen am {{date}} ab"
     },
     "health": {
       "cloudListingInvalid": "Cloud-Angebot ungültig",

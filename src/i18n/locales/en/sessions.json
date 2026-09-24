@@ -2649,7 +2649,8 @@
     "downloaded": "Saved to Downloads",
     "downloadError": "Unable to save to Downloads",
     "title": "Shared file",
-    "error": "Unable to open this file. Check your account, server, and session access, then reopen the link.",
+    "error": "Unable to open this file. Retry, or check your connection, account, server, and session access.",
+    "notUploaded": "This file has not been uploaded to this shared session yet. The sender’s device needs to finish uploading it; retry to check again.",
     "downloadPreview": "Download this file to view its contents",
     "download": "Download",
     "loading": "Loading shared file…"

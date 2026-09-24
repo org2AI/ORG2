@@ -4,7 +4,6 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex, OnceLock};
-use tauri::Manager;
 
 const OFFICIAL: &str = "https://fpdyejwbiriliuqqcjoy.supabase.co";
 const PUBLIC_KEY: &str = "sb_publishable_FpHAgMYJFGb20HunqnhciA_-2nt9eYU";
@@ -159,21 +158,10 @@ fn now() -> f64 {
     chrono::Utc::now().timestamp_millis() as f64 / 1000.0
 }
 
-fn auth_store_path(directory: &std::path::Path, identifier: &str) -> std::path::PathBuf {
-    // Match sharedAuthStorage.ts: only the dedicated dev identity opts into
-    // primary auth. Every numbered secondary keeps its own canonical store.
-    let directory = if identifier == "org2ai.org2.dev" {
-        directory.parent().unwrap_or(directory).join("org2ai.org2")
-    } else {
-        directory.to_path_buf()
-    };
-    directory.join("shared-service-auth.json")
-}
-
 fn read_snapshot() -> Result<Option<Snapshot>, String> {
     let app = crate::api::get_app_handle().ok_or(REQUIRED)?;
-    let directory = app.path().app_data_dir().map_err(|_| REQUIRED)?;
-    let path = auth_store_path(&directory, &app.config().identifier);
+    let path = crate::infrastructure::shared_auth_paths::shared_auth_store_path(app)
+        .map_err(|_| REQUIRED)?;
     let file = match std::fs::File::open(path) {
         Ok(file) => file,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -690,19 +678,6 @@ mod tests {
         )
         .is_err());
         assert!(verify_response(&snapshot, b"{}").is_err());
-    }
-    #[test]
-    fn only_dedicated_dev_identity_shares_primary_auth_store() {
-        use std::path::Path;
-        let numbered = Path::new("/data/org2ai.org2.instance89");
-        assert_eq!(
-            auth_store_path(numbered, "org2ai.org2.instance89"),
-            numbered.join("shared-service-auth.json")
-        );
-        assert_eq!(
-            auth_store_path(Path::new("/data/org2ai.org2.dev"), "org2ai.org2.dev"),
-            Path::new("/data/org2ai.org2/shared-service-auth.json")
-        );
     }
     #[test]
     fn metadata_expiry_cannot_extend_the_verified_bearer_lifetime() {

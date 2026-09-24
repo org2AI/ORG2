@@ -218,7 +218,7 @@ version = "0.1.0"
 dependencies = [
  "app_platform",
  "dirs",
- "libc",
+ "tempfile",
  "tracing",
 ]
 
@@ -1920,6 +1920,7 @@ name = "e2e-test"
 version = "0.1.0"
 dependencies = [
  "agent_core",
+ "app_paths",
  "chrono",
  "dirs",
  "hex",

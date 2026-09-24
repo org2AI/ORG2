@@ -140,7 +140,8 @@ export async function readSharedSessionFile(
   token: string,
   endpoint: CloudEndpoint,
   id: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  shareToken?: string
 ): Promise<SharedSessionFile & { bytes: Uint8Array }> {
   const wire = FileSchema.extend({
     content: z.string().max(Math.ceil(SHARED_FILE_MAX_BYTES / 3) * 4 + 10),
@@ -148,8 +149,8 @@ export async function readSharedSessionFile(
     await rpc(
       token,
       endpoint,
-      "cloud_get_session_file",
-      { p_file_id: id },
+      shareToken ? "cloud_get_session_file_by_share" : "cloud_get_session_file",
+      { p_file_id: id, ...(shareToken ? { p_share_token: shareToken } : {}) },
       signal
     )
   );
@@ -179,15 +180,17 @@ export async function findSharedSessionFile(
   sessionId: string,
   sourcePath: string,
   revision?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  shareToken?: string
 ): Promise<SharedSessionFile | null> {
   const value = await rpc(
     token,
     endpoint,
-    "cloud_find_session_file",
+    shareToken ? "cloud_find_session_file_by_share" : "cloud_find_session_file",
     {
-      p_org_id: orgId,
-      p_session_id: sessionId,
+      ...(shareToken
+        ? { p_share_token: shareToken }
+        : { p_org_id: orgId, p_session_id: sessionId }),
       p_source_path: sourcePath,
       p_source_revision: revision ?? null,
     },

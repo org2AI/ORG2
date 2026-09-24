@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { DROPDOWN_PANEL } from "@src/components/Dropdown/tokens";
+import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import Message from "@src/components/Message";
 import {
   Cancel01Icon,
@@ -317,27 +318,29 @@ const PageNotice: React.FC<PageNoticeProps> = ({
           onClose) && (
           <div className="flex shrink-0 items-center gap-px">
             {copyable && (
-              <Button
-                variant="tertiary"
-                size="small"
-                iconOnly
-                icon={<HugeiconsIcon icon={Copy01Icon} size={14} />}
-                title={t("actions.copy")}
-                aria-label={t("actions.copy")}
-                onClick={handleCopy}
-              />
+              <ToolbarTooltip label={t("actions.copy")}>
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  iconOnly
+                  icon={<HugeiconsIcon icon={Copy01Icon} size={14} />}
+                  aria-label={t("actions.copy")}
+                  onClick={handleCopy}
+                />
+              </ToolbarTooltip>
             )}
             {action && <div className="shrink-0">{actionNode}</div>}
             {onClose && (
-              <Button
-                variant="tertiary"
-                size="small"
-                icon={resolvedCloseIcon}
-                iconOnly
-                title={closeAriaLabel}
-                aria-label={closeAriaLabel}
-                onClick={onClose}
-              />
+              <ToolbarTooltip label={closeAriaLabel}>
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  icon={resolvedCloseIcon}
+                  iconOnly
+                  aria-label={closeAriaLabel}
+                  onClick={onClose}
+                />
+              </ToolbarTooltip>
             )}
           </div>
         )}

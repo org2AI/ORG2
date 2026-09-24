@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SmokeRoot, createSmokeRoot } from "@src/test/reactSmokeHarness";
 
 import SharedSessionFileViewer from "./SharedSessionFileViewer";
+import { SharedSessionFilesProvider } from "./SharedSessionFilesContext";
 import { org2CloudAuthAtom } from "./org2CloudAuthAtom";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 
@@ -77,19 +78,69 @@ describe("shared file viewer lifecycle", () => {
   afterEach(async () => {
     await root.unmount();
   });
-  async function render(ref: SharedSessionFileReference = reference) {
+  async function render(
+    ref: SharedSessionFileReference = reference,
+    shareToken?: string,
+    endpoint = reference.endpoint
+  ) {
     await root.render(
       createElement(
         Provider,
         { store },
-        createElement(SharedSessionFileViewer, {
-          reference: ref,
-          onClose: vi.fn(),
-        })
+        createElement(
+          SharedSessionFilesProvider,
+          {
+            scope: { orgId: "org", sessionId: "session", endpoint, shareToken },
+          },
+          createElement(SharedSessionFileViewer, {
+            reference: ref,
+            onClose: vi.fn(),
+          })
+        )
       )
     );
     await act(async () => {});
   }
+  it("passes the mounted replay capability to both path lookup and byte reads", async () => {
+    mocks.find.mockResolvedValue(file);
+    mocks.read.mockResolvedValue(file);
+    await render(
+      {
+        ...reference,
+        id: "source",
+        source: { orgId: "org", sessionId: "session", path: "/report.md" },
+      },
+      "guest-ticket"
+    );
+    expect(mocks.find.mock.calls[0][7]).toBe("guest-ticket");
+    expect(mocks.read.mock.calls[0][4]).toBe("guest-ticket");
+    expect(document.querySelector("pre")?.textContent).toBe("hello");
+    expect(document.body.innerHTML).not.toContain("guest-ticket");
+  });
+  it("does not forward a different endpoint's capability", async () => {
+    mocks.read.mockResolvedValue(file);
+    await render(reference, "other-ticket", "https://other.example");
+    expect(mocks.read.mock.calls[0][4]).toBeUndefined();
+  });
+  it("discards pending bytes when the share capability changes", async () => {
+    let resolve!: (value: typeof file) => void;
+    mocks.read.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        })
+    );
+    mocks.read.mockImplementation(() => new Promise(() => {}));
+    await render(reference, "old-ticket");
+    const signal = mocks.read.mock.calls[0][3] as AbortSignal;
+    await render(reference, "new-ticket");
+    await act(async () => {
+      resolve(file);
+    });
+    expect(signal.aborted).toBe(true);
+    expect(mocks.read.mock.calls[1][4]).toBe("new-ticket");
+    expect(document.querySelector("pre")).toBeNull();
+  });
   it("loads only on mount and displays safe text", async () => {
     mocks.read.mockResolvedValue({
       ...file,
@@ -150,13 +201,15 @@ describe("shared file viewer lifecycle", () => {
       "session",
       "/sender/report.md",
       undefined,
-      expect.any(AbortSignal)
+      expect.any(AbortSignal),
+      undefined
     );
     expect(mocks.read).toHaveBeenCalledWith(
       "token",
       expect.any(Object),
       file.id,
-      expect.any(AbortSignal)
+      expect.any(AbortSignal),
+      undefined
     );
     expect(document.querySelector("pre")?.textContent).toBe("hello");
   });
@@ -172,7 +225,60 @@ describe("shared file viewer lifecycle", () => {
       },
     });
     expect(mocks.read).not.toHaveBeenCalled();
-    expect(document.querySelector('[role="alert"]')).not.toBeNull();
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(
+      "sharedFile.notUploaded"
+    );
+    mocks.find.mockResolvedValue(file);
+    mocks.read.mockResolvedValue(file);
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="shared-file-retry"]')!
+        .click();
+    });
+    expect(mocks.find).toHaveBeenCalledTimes(2);
+    expect(document.querySelector("pre")?.textContent).toBe("hello");
+    expect(mocks.write).not.toHaveBeenCalled();
+  });
+  it("retries a failed read in place and aborts the retry on close", async () => {
+    mocks.read.mockRejectedValueOnce(new Error("offline"));
+    await render();
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(
+      "sharedFile.error"
+    );
+    const firstSignal = mocks.read.mock.calls[0][3] as AbortSignal;
+    mocks.read.mockImplementationOnce(() => new Promise(() => {}));
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="shared-file-retry"]')!
+        .click();
+    });
+    expect(mocks.read).toHaveBeenCalledTimes(2);
+    expect(firstSignal.aborted).toBe(true);
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(document.querySelector('[role="status"]')).not.toBeNull();
+    expect(
+      document.querySelector('[data-testid="shared-file-retry"]')
+    ).toBeNull();
+    const retrySignal = mocks.read.mock.calls[1][3] as AbortSignal;
+    await root.unmount();
+    expect(retrySignal.aborted).toBe(true);
+  });
+  it("does not replace a new capability's content with an old request error", async () => {
+    let reject!: (error: Error) => void;
+    mocks.read.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail;
+        })
+    );
+    await render(reference, "old-ticket");
+    mocks.read.mockResolvedValue(file);
+    await render(reference, "new-ticket");
+    await act(async () => {
+      reject(new Error("revoked old ticket"));
+    });
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(document.querySelector("pre")?.textContent).toBe("hello");
   });
   it("aborts a pending source lookup on close", async () => {
     mocks.find.mockImplementation(() => new Promise(() => {}));

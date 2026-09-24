@@ -157,6 +157,53 @@ describe("provider plan and reset details", () => {
     expect(card.accountPlan).toBe("Pro 20x");
     expect(card.quotaMessage).toBe("3 resets available");
   });
+
+  it("passes banked limit resets through for Claude accounts", () => {
+    const account = deepSeekAccount();
+    account.modelType = "claude_code";
+    account.quotaInfo!.named_message =
+      "Reset credits available: 1, next expires 2026-10-01T00:00:00Z";
+    const [card] = collectAccountQuotaCards([account], translate, translate);
+    expect(card.quotaMessage).toBe("1 reset available");
+  });
+
+  it("lists each reset expiry in the hover title", () => {
+    const account = deepSeekAccount();
+    account.modelType = "codex";
+    const october4 = new Date(2026, 9, 4, 5, 38).toISOString();
+    const october22 = new Date(2026, 9, 22, 21, 0).toISOString();
+    account.quotaInfo!.reset_credits = {
+      available: 3,
+      expirations: [
+        { count: 1, expires_at: october4 },
+        { count: 2, expires_at: october22 },
+        { count: 1, expires_at: "not-a-date" },
+      ],
+    };
+    account.quotaInfo!.named_message = "Reset credits available: 9";
+    const [card] = collectAccountQuotaCards([account], translate, translate);
+    expect(card.quotaMessage).toBe("3 resets available");
+    expect(card.quotaMessageDetails).toEqual([
+      "1 reset expires Oct 4, 5:38 AM",
+      "2 resets expire Oct 22, 9:00 PM",
+    ]);
+  });
+
+  it("keeps the legacy message count without hover details", () => {
+    const account = deepSeekAccount();
+    account.modelType = "claude_code";
+    account.quotaInfo!.named_message = "Reset credits available: 2";
+    const [card] = collectAccountQuotaCards([account], translate, translate);
+    expect(card.quotaMessage).toBe("2 resets available");
+    expect(card.quotaMessageDetails).toEqual([]);
+  });
+
+  it("does not read reset credits from other providers' messages", () => {
+    const account = deepSeekAccount();
+    account.quotaInfo!.named_message = "Reset credits available: 3";
+    const [card] = collectAccountQuotaCards([account], translate, translate);
+    expect(card.quotaMessage).toBeNull();
+  });
 });
 
 it.each([

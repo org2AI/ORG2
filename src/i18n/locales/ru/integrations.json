@@ -113,7 +113,12 @@
       "resetsAvailable_one": "Доступен {{count}} сброс",
       "resetsAvailable_few": "Доступно {{count}} сброса",
       "resetsAvailable_many": "Доступно {{count}} сбросов",
-      "resetsAvailable_other": "Доступно {{count}} сброса"
+      "resetsAvailable_other": "Доступно {{count}} сброса",
+      "resetsExpire": "{{count}} сброса истекают {{date}}",
+      "resetsExpire_one": "{{count}} сброс истекает {{date}}",
+      "resetsExpire_few": "{{count}} сброса истекают {{date}}",
+      "resetsExpire_many": "{{count}} сбросов истекают {{date}}",
+      "resetsExpire_other": "{{count}} сброса истекают {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Облачное предложение недействительно",

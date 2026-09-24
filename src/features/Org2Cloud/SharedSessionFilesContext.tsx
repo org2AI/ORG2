@@ -6,7 +6,9 @@ import {
   useMarkdownLocalFileInterceptor,
 } from "@src/components/MarkDown/extensions";
 
+import SharedSessionFileDialog from "./SharedSessionFileDialog";
 import { sharedFileAbsolutePath } from "./sessionSharedFileCandidates";
+import { SharedSessionFileAccessContext } from "./sharedSessionFileAccess";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 
 const Viewer = lazy(() => import("./SharedSessionFileViewer"));
@@ -15,6 +17,7 @@ interface Scope {
   sessionId: string;
   endpoint: string;
   repoPath?: string;
+  shareToken?: string;
 }
 /**
  * The interception channel is declared beside the Markdown renderer
@@ -57,18 +60,33 @@ export function SharedSessionFilesProvider({
     () => (scopeKey !== "null" ? open : null),
     [scopeKey, open]
   );
+  const endpoint = scope?.endpoint;
+  const shareToken = scope?.shareToken;
+  const access = useMemo(
+    () => (endpoint && shareToken ? { endpoint, shareToken } : null),
+    [endpoint, shareToken]
+  );
   return (
-    <Context.Provider value={value}>
-      {children}
-      {selected?.key === scopeKey && (
-        <Suspense fallback={null}>
-          <Viewer
-            reference={selected.reference}
-            onClose={() => setSelected(null)}
-          />
-        </Suspense>
-      )}
-    </Context.Provider>
+    <SharedSessionFileAccessContext.Provider value={access}>
+      <Context.Provider value={value}>
+        {children}
+        {selected?.key === scopeKey && (
+          <Suspense
+            fallback={
+              <SharedSessionFileDialog
+                reference={selected.reference}
+                onClose={() => setSelected(null)}
+              />
+            }
+          >
+            <Viewer
+              reference={selected.reference}
+              onClose={() => setSelected(null)}
+            />
+          </Suspense>
+        )}
+      </Context.Provider>
+    </SharedSessionFileAccessContext.Provider>
   );
 }
 /** True inside a shared session; false keeps normal local navigation. */

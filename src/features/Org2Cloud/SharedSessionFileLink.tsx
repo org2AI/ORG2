@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useState } from "react";
 
+import SharedSessionFileDialog from "./SharedSessionFileDialog";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 
 const SharedSessionFileViewer = lazy(() => import("./SharedSessionFileViewer"));
@@ -26,7 +27,14 @@ export default function SharedSessionFileLink({
         {children}
       </a>
       {opened && (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <SharedSessionFileDialog
+              reference={reference}
+              onClose={() => setOpened(false)}
+            />
+          }
+        >
           <SharedSessionFileViewer
             reference={reference}
             onClose={() => setOpened(false)}

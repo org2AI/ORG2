@@ -48,6 +48,36 @@ pub struct QuotaBalance {
     pub currency: String,
 }
 
+/// Banked free limit resets: Codex reset credits and Claude limit resets.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct QuotaResetCredits {
+    /// Resets available to redeem.
+    pub available: u64,
+    /// Known expiries of the available resets, earliest first. Resets whose
+    /// expiry the provider does not report are not listed.
+    #[serde(default)]
+    pub expirations: Vec<QuotaResetExpiry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct QuotaResetExpiry {
+    /// How many of the available resets expire at `expires_at`.
+    pub count: u64,
+    /// RFC 3339 UTC timestamp.
+    pub expires_at: String,
+}
+
+impl QuotaResetCredits {
+    /// The reset-credit message format older clients and cached quotas parse.
+    pub fn summary(&self) -> String {
+        let summary = format!("Reset credits available: {}", self.available);
+        match self.expirations.first() {
+            Some(next) => format!("{summary}, next expires {}", next.expires_at),
+            None => summary,
+        }
+    }
+}
+
 /// Quota/usage information for an API key.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct QuotaInfo {
@@ -77,6 +107,9 @@ pub struct QuotaInfo {
     /// percentage windows so callers never synthesize a misleading meter.
     #[serde(default)]
     pub balance: Option<QuotaBalance>,
+    /// Banked limit resets, when the provider reports them.
+    #[serde(default)]
+    pub reset_credits: Option<QuotaResetCredits>,
     /// Auto-generated message from API
     pub auto_message: Option<String>,
     /// Named message from API
@@ -89,6 +122,12 @@ impl QuotaInfo {
             remaining_percentage: -1.0,
             ..Default::default()
         }
+    }
+
+    /// Records reset credits and mirrors them into `named_message`.
+    pub fn set_reset_credits(&mut self, credits: QuotaResetCredits) {
+        self.named_message = Some(credits.summary());
+        self.reset_credits = Some(credits);
     }
 
     pub fn unlimited() -> Self {

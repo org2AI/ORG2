@@ -1,12 +1,15 @@
-//! Durable continuation-output delivery. Only path/revision metadata is queued;
-//! canonical messages, auth tokens and file bytes are never copied here.
+//! Durable continuation-output delivery with immutable capture receipts.
+//! Canonical messages and auth tokens are never copied here.
+mod snapshots;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
 const LEASE_MS: i64 = 5 * 60_000;
 const MAX_BATCH: usize = 256;
+static CAPTURE_SLOT: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
 
 pub fn init_tables(conn: &Connection) -> rusqlite::Result<()> {
+    snapshots::init(conn)?;
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS cloud_file_outbox (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,6 +61,7 @@ pub enum Outcome {
     Retry,
     Quota,
     SourceUnavailable,
+    CaptureFailed,
     Cancelled,
 }
 
@@ -162,7 +166,10 @@ fn settle(
     let Some((org_id, attempts)) = row else {
         return Ok(());
     };
-    if matches!(outcome, Outcome::Uploaded) {
+    if matches!(outcome, Outcome::Uploaded | Outcome::CaptureFailed) {
+        if matches!(outcome, Outcome::Uploaded) {
+            snapshots::release(&tx, identity, id)?;
+        }
         tx.execute("DELETE FROM cloud_file_outbox WHERE id = ?1", [id])
             .map_err(|e| e.to_string())?;
     } else {
@@ -174,7 +181,7 @@ fn settle(
                 "retry",
                 (5_000_i64 * 2_i64.pow(attempts.clamp(0, 9) as u32)).min(30 * 60_000),
             ),
-            Outcome::Uploaded => unreachable!(),
+            Outcome::Uploaded | Outcome::CaptureFailed => unreachable!(),
         };
         tx.execute(
             "UPDATE cloud_file_outbox SET lease = NULL, next_attempt_at = ?1,
@@ -219,6 +226,42 @@ pub async fn cloud_file_outbox_enqueue(
     session_id: String,
     candidates: Vec<Candidate>,
 ) -> Result<(), String> {
+    validate(&identity, 2048)?;
+    validate(&org_id, 1024)?;
+    validate(&session_id, 1024)?;
+    if candidates.len() > MAX_BATCH {
+        return Err("Shared-file outbox IPC batch exceeds 256 items".into());
+    }
+    for candidate in &candidates {
+        validate(&candidate.path, 8192)?;
+        validate(&candidate.revision, 1024)?;
+    }
+    // Capture one file at a time outside the sessions writer lock. Persist a
+    // terminal capture receipt even on failure; repeated publication must not
+    // substitute a later version. Enqueue only after the receipt is durable.
+    for candidate in &candidates {
+        let (identity, org_id, session_id, candidate) = (
+            identity.clone(),
+            org_id.clone(),
+            session_id.clone(),
+            candidate.clone(),
+        );
+        let permit = CAPTURE_SLOT.acquire().await.map_err(|e| e.to_string())?;
+        tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            let conn = database::db::get_connection().map_err(|e| e.to_string())?;
+            let scope = [identity.as_str(), org_id.as_str(), session_id.as_str()];
+            if !snapshots::exists(&conn, &scope, &candidate)? {
+                let captured = snapshots::capture(&candidate.path);
+                database::with_sessions_writer(|| {
+                    snapshots::save(&conn, &scope, &candidate, captured)
+                })?;
+            }
+            Ok::<_, String>(())
+        })
+        .await
+        .map_err(|e| e.to_string())??;
+    }
     run(move |conn| enqueue(conn, &identity, &org_id, &session_id, &candidates)).await
 }
 
@@ -260,3 +303,18 @@ pub async fn cloud_file_outbox_settle(
 
 #[cfg(test)]
 mod tests;
+
+#[tauri::command]
+pub async fn cloud_file_snapshot_read(
+    identity: String,
+    org_id: String,
+    session_id: String,
+    candidate: Candidate,
+) -> Result<snapshots::Snapshot, String> {
+    tokio::task::spawn_blocking(move || {
+        let conn = database::db::get_connection().map_err(|e| e.to_string())?;
+        snapshots::read(&conn, &[&identity, &org_id, &session_id], &candidate)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

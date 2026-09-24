@@ -42,6 +42,10 @@ export async function syncSessionSharedFiles(
 export async function syncSessionSharedFileCandidates(
   input: FileSyncContext & {
     candidates: readonly SessionSharedFileCandidate[];
+    /** Durable output jobs supply a snapshot reader; it must never reopen a source path. */
+    readCandidate?: (
+      candidate: SessionSharedFileCandidate
+    ) => Promise<Uint8Array | null>;
   }
 ): Promise<{ supported: boolean; sourceUnavailable: boolean }> {
   const { candidates } = input;
@@ -76,17 +80,26 @@ export async function syncSessionSharedFileCandidates(
       input.assertCurrentIdentity();
       if (existing.has(`${candidate.path}\0${candidate.revision}`)) continue;
       let bytes: Uint8Array;
-      try {
-        bytes = await readBoundedFile(candidate.path);
-      } catch (error) {
-        sourceUnavailable = true;
-        // Historical transcripts may outlive local artifacts. Do not stop the
-        // replay for an absent file or publish a false available-file record.
-        log.warn(
-          `Shared session file unavailable at its source: ${candidate.path}`,
-          error
-        );
-        continue;
+      if (input.readCandidate) {
+        // null is a durable capture failure. IPC/storage exceptions are
+        // transient: propagate them so the outbox keeps the captured bytes.
+        const captured = await input.readCandidate(candidate);
+        if (captured === null) {
+          sourceUnavailable = true;
+          continue;
+        }
+        bytes = captured;
+      } else {
+        try {
+          bytes = await readBoundedFile(candidate.path);
+        } catch (error) {
+          sourceUnavailable = true;
+          log.warn(
+            `Shared session file unavailable at its source: ${candidate.path}`,
+            error
+          );
+          continue;
+        }
       }
       input.assertCurrentIdentity();
       await uploadSharedSessionFile(

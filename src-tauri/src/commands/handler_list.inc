@@ -15,6 +15,7 @@ infrastructure::cloud_identity::cloud_device_identity,
 agent_sessions::shared_file_outbox::cloud_file_outbox_enqueue,
 agent_sessions::shared_file_outbox::cloud_file_outbox_claim,
 agent_sessions::shared_file_outbox::cloud_file_outbox_settle,
+agent_sessions::shared_file_outbox::cloud_file_snapshot_read,
 // Dev-only ORG2 Cloud auth import from the installed app's WebKit origin
 infrastructure::dev_bundled_auth::debug_import_bundled_org2_cloud_auth,
 infrastructure::shared_auth_paths::shared_service_auth_storage_profile,

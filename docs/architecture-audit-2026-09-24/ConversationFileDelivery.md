@@ -1,88 +1,98 @@
-# Durable continuation output delivery and execution finality
+# Continuation file delivery: durable jobs and immutable capture
 
-Date: 2026-09-24. Covers Share Sessions F5 and continuation-specific F6. No cloud deployment, history cleanup, or canonical/provider-native message edits.
+Date: 2026-09-24. This document supersedes the path-only handoff described in #2128 for the continuation-output path. It does not claim that replay capture, historical link resolution, cloud manifests, or production rollout are complete.
 
 ## Authority, cause, and invariant
 
-Previously, `cloudConversationQueueAdapter.plane.ts` published body events and awaited `syncSessionSharedFiles`. `conversationTurnRunner.ts` waited for publication before `cloudConversationQueueAdapter.ts` called `coordination.finish`. Attachment capability probes, disk reads, and network uploads therefore gated completion; quota/connectivity failures could hold or fail successful execution.
+The original publisher pushed body events, awaited file capability/read/upload, and only then allowed `coordination.finish`. Network and quota failures could hold or fail successful execution. #2128 separated transmission into a durable local queue, but kept only source path and event revision. A delayed retry could therefore upload a later version of that path.
 
-New flow: persist body → signal readable body → journal file candidates in local SQLite → finish execution. The sync engine owns independent uploads. Transmission failures change only attachment tasks. Assistant Markdown, `[file:…]`, and shell-generated files remain automatic delivery entries without manual attachment or a write-tool allowlist.
+The new producing boundary persists the body and then captures each automatically discovered output before completing the local durable handoff. The authoritative captured bytes and receipt live in `sessions.db.cloud_file_snapshots`. Upload workers read only these bytes, never the original path. The first committed receipt for endpoint/user, organization, cloud root, path, and event revision wins. Repeated publication, restart, source overwrite, and source deletion cannot replace it.
 
-Journal persistence remains a required local handoff: disk-full/SQLite errors keep the same accepted turn in publication recovery, without pretending delivery succeeded, fabricating a failure tail, or rerunning the provider. Already-persisted body remains readable. Required execution inputs keep their previous pre-execution dependency.
+Assistant Markdown links, `[file:…]`, and shell artifacts still enter automatic collection. No write-tool allowlist or manual attachment is introduced. Original canonical/provider-native event text remains untouched.
 
-## Storage and recovery
+## Capture contract and platform boundaries
 
-- Add `sessions.db.cloud_file_outbox` and a due index with `CREATE IF NOT EXISTS`; preserve existing tables/history. Production and isolated test startup initialize the same schema.
-- Rows contain endpoint/user identity, organization, cloud root, source path/event revision, attempts, next-attempt deadline, lease, and outcome. No tokens, transcripts, or file bytes.
-- Unique identity/org/session/path/revision makes publication retry and partially persisted batches idempotent. Existing remote revisions are acknowledged without duplicate upload.
-- `BEGIN IMMEDIATE` claims one row with a five-minute UUID lease. Settling requires identity, row ID, and lease; stale consumers cannot acknowledge new claims.
-- Success deletes only the local pending row. Source read failure remains pending instead of acknowledging availability.
-- The 256-item IPC maximum bounds serialization, not total file count; all candidates are saved in batches. Claim reads one due row, not the entire queue.
-- One upload per consumer; yield after 32 jobs. Leases coordinate windows/processes; a Tauri event wakes peer windows in the same application.
-- Network/capability/access failures back off from five seconds to thirty minutes. Quota defers existing and new organization jobs for thirty minutes. Source-unavailable jobs also wait thirty minutes. Empty queues have no polling timer.
-- Hidden/offline/signout/identity/endpoint/org changes and stop abort transmission. Aborted work retains its slot until it really ends. Visibility, connectivity, matching identity, startup, and enqueue notifications resume work. Removed organizations retain jobs; server ACL remains authoritative.
+- Capture one bounded regular file at a time, with the existing 32 MiB per-file limit. A process-wide semaphore owns capture concurrency. The blocking worker owns its permit until actual completion, including after caller cancellation.
+- macOS uses `fclonefileat` on an opened descriptor: APFS copy-on-write bytes survive source replacement and concurrent later writes. Temporary names are private and removed through RAII.
+- Linux uses `FICLONE`; the filesystem and temporary destination must support compatible CoW cloning. Unsupported/cross-volume capture records `atomic_capture_unsupported`. **There is no ordinary streaming-copy fallback**, because timestamps do not establish a coherent point-in-time version.
+- Windows opens a read handle with only `FILE_SHARE_READ`, excluding incompatible write/delete access while copying. Busy sources fail explicitly. Windows/Linux paths require their own native runtime acceptance; macOS tests do not prove those platforms.
+- Missing, invalid, oversized, unsupported, busy, or local-budget-exhausted capture persists a failure receipt. It does not turn provider success into failure or silently capture a different version later. A new delivery revision is required to deliver a replacement.
+- Capture time is recorded. This guarantees bytes after capture, not that a delayed publication discovered the exact bytes at the earlier tool/event timestamp. This path captures at continuation handoff after body publication; event-time capture and historical provenance remain separate work.
 
-## Explicit limitations
+## Storage, budget, and release
 
-This PR journals candidates, **not immutable snapshots**. Upload still reads the current source path, so later overwrite/loss can change or remove historical bytes. F2/F4 capture and stable-reference work remains open.
+A new table is created alongside the existing outbox; no old table is rebuilt, no user history is scanned, and no existing journal is deleted. Receipts store capture state/time, SHA-256, size, and bytes. No credentials or transcripts are stored. Read RPCs verify the stored hash before returning base64 bytes.
 
-Replay retains #2119 scheduling/cursors and its existing read-failure readiness semantics. Only the new continuation worker consumes `sourceUnavailable`. Aggregate concurrency can be two replay tasks plus one continuation task, not one application-wide task.
+Pending captured bytes have a local 256 MiB safety budget, separate from all cloud entitlements. It bounds this initial SQLite staging implementation, not the user's plan or number of files. Admission under the writer transaction prevents concurrent captures from exceeding it. Transactional triggers maintain a singleton byte counter, so each admission reads one row rather than aggregating an ever-growing receipt history. Existing bytes are never evicted to admit new captures. Budget exhaustion records failure; configurable disk budgets and sender management UI remain necessary before treating this as the full storage design.
 
-No per-file management UI, reference GC, or cleanup control is added. Missing/revoked/unrecoverable sources keep metadata and back off. Guest reads still depend on #2123 / infra #147. Independent processes discover new jobs through startup/foreground recovery; Tauri notifications are not a cross-process bus.
+Successful server confirmation releases local bytes in the same transaction that acknowledges the leased outbox job; the compact receipt/hash remains so repeated publication cannot recapture later content. A stale lease cannot release bytes. Retry/quota/cancellation retain bytes. SQLite may retain reusable freed pages; this is not a promise that the file shrinks immediately. The durable receipt ledger is history, not an in-memory cache; lifecycle/retention for its metadata remains open.
 
-## Ten-layer architecture audit
+Capture failure retires the transmission task while preserving its failure receipt. Transient IPC/database errors propagate and retry; they must not be confused with a durable capture failure. A missing receipt for an older path-only job is explicit `not_captured`: no automatic historical recapture or source fallback.
 
-| Layer               | Coverage                                                        | Evidence/boundary                                           |
-| ------------------- | --------------------------------------------------------------- | ----------------------------------------------------------- |
-| 1 Compile           | TS checks/lint and Rust tests/Clippy                            | No claim that every repository test ran                     |
-| 2 Structure         | Shared candidate upload function                                | Replay cursor not migrated                                  |
-| 3 Naming            | outbox/sourceUnavailable/supported                              | supported does not mean bytes uploaded                      |
-| 4 Semantics         | body persistence/journal commit/file availability/turn finality | Only durable local handoff gates publication completion     |
-| 5 Defaults          | unsupported/read failure/quota/identity/storage failure         | No dropped jobs or transport-induced execution failure      |
-| 6 Ownership         | SQLite/sync engine/turn finality                                | Worker never calls turn finish/failure                      |
-| 7 Understandability | Recovery responsibilities and limits                            | No queue-status UI claim                                    |
-| 8 IPC               | Three typed commands and camelCase/enums                        | Cloud protocol unchanged; no token persistence              |
-| 9 Initialization    | Startup/test schema, command/router registration                | Isolated native command round trip and worker startup tests |
-| 10 Resolution       | identity/org whitelist and lease compare-and-set                | Current endpoint scope; server authorization retained       |
+The native 256-item IPC maximum remains a transient serialization bound, not a total attachment limit. The producer now submits one file per IPC, checks identity before the next capture, and wakes uploads after each durable handoff. This permits transmission to release staging bytes while the remaining outputs are captured. Captures are sequential per process. Database reads/hash/base64 work run off the render thread; file capture runs outside the sessions writer lock. Snapshot reads do not acquire that writer lock.
 
-| Entry              | Authority                    | Recovery/finality                                |
-| ------------------ | ---------------------------- | ------------------------------------------------ |
-| Output publication | Cloud body and local journal | Finish after journal, before upload              |
-| Publication retry  | Same accepted runner/turn    | Idempotent push/enqueue; no second provider run  |
-| Journal failure    | Accepted delivery retained   | Recovery pending, no false handoff               |
-| Transfer failure   | Per-file durable task        | Independent backoff                              |
-| Crash/new window   | Pending rows and leases      | Startup/peer wake; stale acknowledgment rejected |
-| Body-only response | Cloud body                   | No journal IPC                                   |
+## Completion and lifecycle
 
-## Performance and lifecycle
+Flow: publish body → signal readable body → capture/save receipts → persist file jobs → finish turn. Network upload is independent. Local journal persistence failure still keeps the same accepted turn in publication recovery, without provider re-execution or fabricated failure text.
 
-| Area            | Verdict | Evidence                                                | Change or reason kept                                                | Verification                                               |
-| --------------- | ------- | ------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Background work | fix     | Upload leaves publishTail; timer only for pending tasks | Empty queue does not poll; visibility/online gating and stop cleanup | Virtual idle hour, hidden/offline/stop, peer cleanup tests |
-| Memory          | keep    | One claimed file/timer; 32-job yield                    | No transcript queue; persistent pending rows not silently evicted    | 40-job drain test; real RSS unmeasured                     |
-| Scope/isolation | fix     | Full identity/resource key plus lease                   | Identity/org change cancels; token refresh does not                  | Rust identity/lease and TS stale-result tests              |
-| Hot path        | keep    | No streaming/UI edits                                   | Preserve original transcript text; no historical scan                | Producing-boundary automatic-link/original-text tests      |
+Input files required for execution retain their existing dependency. Replay and explicit-comment file paths retain their existing readers; this PR does not claim to fix their historical byte semantics. The receiving path-based viewer can still select the latest remote revision; exact event-to-attachment projection is not implemented here.
 
-| Provider                      | Raw transition                    | App/UI state                       | Topology/boundary              | Expected invariant                                      | Observed evidence                                                   |
-| ----------------------------- | --------------------------------- | ---------------------------------- | ------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------- |
-| Normalized continuation       | Completed output delivery         | Completion/recovery/worker restart | TS publisher/worker and SQLite | Automatic durable delivery independent of turn finality | Unit/state and native command tests                                 |
-| ORG2/Claude/Codex raw sources | create/append/compact/rotate/fork | Real desktop/old row/restart       | Provider/app/cloud/recipient   | Complete automatic file delivery                        | not run; normalized tests are not provider/dual-instance acceptance |
+The existing sync engine owns transmission start/stop, one file slot, lease arbitration, bounded drains, backoff, and wakeups. Empty queues do not poll. Hidden/offline/stopped/changed-identity consumers abort transmission and reject stale results. Captures already executing finish their local receipt under the original scope; they cannot upload under a new account. Tauri peer events cover windows in one application, not a cross-process bus.
 
-**Performance verdict: blocked.** Ownership, stop conditions, memory bounds, and backoff have tests. Real Tauri visible/hidden/close CPU/RSS, dual-instance transmission, cross-process wakeups, and raw-provider lifecycle matrices have not run. No extra desktop windows, production deployment, or history cleanup.
+## Architecture checks
 
-## Compatibility, rollback, and history
+| Layer               | Coverage                                           | Evidence or limitation                                                         |
+| ------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1 Compile           | TS/Rust changes and tests                          | Final command outcomes recorded in PR                                          |
+| 2 Structure         | Producer, outbox, capture, transport reader        | One capture store; injected reader reuses upload protocol                      |
+| 3 Naming            | captured/uploaded/not_captured/capture_failed      | Capture failure is distinct from transport retry                               |
+| 4 Semantics         | Event revision, capture time/hash, turn completion | No event-time or historical-original guarantee                                 |
+| 5 Defaults          | Missing/corrupt/released/unsupported bytes         | No source-path fallback; no timestamp-only coherence claim                     |
+| 6 Boundaries        | Disk/SQLite versus network versus execution        | Capture failure is file state; storage handoff failure is publication recovery |
+| 7 Understandability | This contract and explicit platform limits         | No new sender status UI                                                        |
+| 8 IPC               | Scoped snapshot read and capture_failed outcome    | Native and frontend ship together; cloud wire unchanged                        |
+| 9 Initialization    | Shared outbox init calls snapshot DDL              | Production and isolated command tests use the same initialization              |
+| 10 Resolution       | First receipt by full identity/resource/revision   | Matching receipt or explicit absence; never current source fallback            |
 
-Frontend and native ship together; old native lacks these commands and would leave publication recovery pending. Old clients ignore but retain the new table. Preserve the journal on rollback; older versions do not consume it, and re-upgrade resumes delivery. No promise of attachment recovery during rollback.
+| Entry                     | Source of truth                             | Recovery                                                |
+| ------------------------- | ------------------------------------------- | ------------------------------------------------------- |
+| New continuation output   | First captured receipt plus durable outbox  | Idempotent publication                                  |
+| Failed capture            | Durable failure receipt                     | New delivery revision; no rebinding                     |
+| Interrupted network       | Stored immutable bytes and lease            | Bounded retry/restart                                   |
+| IPC/database read failure | Existing receipt unchanged                  | Retry transport task                                    |
+| Successful upload         | Server revision plus retained local receipt | Release local bytes; repeat remote lookup is idempotent |
+| Historical path-only job  | No captured receipt                         | Explicit absence; no silent late capture                |
 
-No historical scan/reupload or deletion. No session foreign-key cascade, avoiding confusion between cloud root and local session IDs; future reference reclamation belongs to F8. No cloud schema or entitlement change.
+## Performance and verification matrix
 
-## Verification record
+| Area            | Verdict | Evidence                                 | Change or reason kept                           | Verification                                               |
+| --------------- | ------- | ---------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| Background work | fix     | Source read removed from delayed upload  | Existing worker owns retry; no new timers       | Worker lifecycle and retry tests                           |
+| Memory          | keep    | One capture slot and 32 MiB source bound | Bounded read/base64; not whole-batch bytes      | Size/admission tests; measured capture/read peak 463.1 MiB |
+| Retained bytes  | fix     | 256 MiB local staging budget             | Transactional admission, release on leased ack  | Budget/no-eviction/release tests                           |
+| Scope/isolation | keep    | Identity/org/root/path/revision key      | Stale leases cannot release another task        | Isolation and command tests                                |
+| Hot path        | keep    | No streaming delta or UI changes         | Blocking capture/hash off async/render executor | Native tests; 32 MiB capture 228–515 ms                    |
 
-After integration of #2122:
+| Provider                           | Raw transition                           | App/UI state             | Topology/boundary                       | Expected invariant                                         | Observed evidence                                                 |
+| ---------------------------------- | ---------------------------------------- | ------------------------ | --------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| Normalized continuation            | Deliver, overwrite/delete, retry, reopen | Publisher/worker restart | Rust filesystem/SQLite and TS transport | Captured bytes remain identical; body finality independent | Focused native and frontend regression suite                      |
+| ORG2/Claude/Codex original sources | create/append/compact/rotate/fork        | Live/old row/restart     | Real sender/cloud/receiver              | Correct capture and exact historical rendering             | not run; no provider compatibility extrapolation                  |
+| Native desktop lifecycle           | visible/hidden/close/reopen              | Actual Tauri process     | CPU/RSS and resources                   | Stable idle and resource release                           | short macOS measurements collected; full acceptance still blocked |
+
+**Performance verdict: fail** for the wider multi-instance isolation invariant; **blocked** for complete snapshot memory/provider acceptance. The user subsequently authorized isolated desktop instances and test-organization writes. Real macOS publisher/native/cloud/recipient checks now pass in both directions, including attachment-only HTTP 503, source overwrite/deletion, repeated publication, byte release, and two cold boots per instance. Short visible/hidden CPU/RSS and 32 MiB capture measurements are recorded in the [desktop verification report](../verification-2026-09-24/ContinuationFileSnapshots.md). Seeded events do not prove real-provider continuation: live provider attempts were blocked, and capture/read peak memory remains an open investigation. The final effect audit found startup auth outside the fresh test accounts and a cross-home scratchpad cleanup boundary; both instances were stopped. These require a separate isolation fix. No production deployment, manual historical cleanup, or PR merge occurred.
+
+## Compatibility and rollback
+
+Frontend and native must ship together; older native does not expose the new snapshot read command. The new additive table leaves old outbox rows intact. Rollback retains receipts/bytes; an old path-only consumer is unsafe for these jobs because it can reopen sources. Stop attachment transmission before downgrading to that consumer and preserve the profile for re-upgrade. No production deployment or downgrade is performed here.
+
+The complete blob/ref/reservation architecture, exact historical IDs, replay migration, configurable local budget, failure-management UI, metadata retention, and cross-platform real-machine acceptance remain open. None is implied by the continuation snapshot tests.
+
+## Commands and observed results
 
 ```sh
 pnpm exec vitest run --config config/vitest.config.ts \
   src/features/Org2Cloud/org2CloudSyncEngine*.test.ts \
+  src/features/Org2Cloud/conversationFileSnapshot.test.ts \
   src/features/Org2Cloud/conversationFileDelivery.test.ts \
   src/features/Org2Cloud/conversationFileOutbox.test.ts \
   src/features/Org2Cloud/syncSessionSharedFiles.test.ts \
@@ -91,7 +101,7 @@ pnpm exec vitest run --config config/vitest.config.ts \
   src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter.test.ts \
   src/features/Org2Cloud/SessionConversation/conversationTurnRunner.test.ts
 cargo test --manifest-path src-tauri/Cargo.toml --lib \
-  agent_sessions::shared_file_outbox::tests -- --test-threads=1
+  agent_sessions::shared_file_outbox -- --test-threads=1
 cargo clippy --manifest-path src-tauri/Cargo.toml --tests -- -D warnings
 pnpm typecheck:fast
 pnpm check:typed-lint
@@ -101,8 +111,6 @@ pnpm check:test-placement
 git diff --check
 ```
 
-Frontend **20 files / 249 passed**; Rust **8 passed**. Typecheck, changed-file lint, Clippy, boundary checks (zero new), cycle check, test placement, and whitespace passed. Typed lint: 1044 existing, zero new/increased. Normal commit hooks passed.
+Frontend: **21 files / 263 passed**. Native macOS: **17 passed**, including the real capture/enqueue/read/ack command path, APFS overwrite retention, database reopen, source deletion, immutable failure receipts, corruption rejection, quota accounting, and stale-lease protection. Windows/Linux native acceptance is not inferred from these results.
 
-Initial Rust build lacked a local sidecar; an ignored symlink fixed the environment without committing binaries. Early new tests corrected construction/order assumptions; expanded sync tests required a real empty-outbox IPC fixture response, preserving the idle no-periodic-pass assertion.
-
-Coverage includes producing boundary, publisher, worker, replay/client regression, SQLite reopen, competing leases, CAS, quota inheritance, source recovery, and native commands. No layout changes: screenshots cannot establish persistence invariants. No desktop E2E or performance measurement is implied. English translation changes documentation only and does not rerun these earlier checks.
+Typecheck and changed-file ESLint passed. Typed lint: 1044 existing, zero new/increased. Dependency boundaries: three existing, zero new across 8874 modules. No cycles across 8130 modules. Test placement consistent across 633 directories. The first Clippy run found an unnecessary clone in a new test; it was replaced with `std::slice::from_ref` before the final run. Build caches and the ignored local PM sidecar symlink are not committed.

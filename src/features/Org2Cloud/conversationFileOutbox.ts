@@ -17,7 +17,7 @@ export const CONVERSATION_FILE_OUTBOX_CHANGED =
   "org2-conversation-file-outbox-changed";
 const log = createLogger("ConversationFileOutbox");
 
-/** Enqueue metadata only; never wait for capabilities, disk reads or network uploads. */
+/** Capture immutable local bytes and enqueue; never wait for network upload. */
 export async function enqueueConversationSharedFiles(input: {
   store: Store;
   auth: Org2CloudAuthState;
@@ -27,22 +27,19 @@ export async function enqueueConversationSharedFiles(input: {
   assertCurrentIdentity: () => void;
 }): Promise<void> {
   const candidates = collectSessionSharedFiles(input.events);
-  // IPC batches bound transient memory. This is not an attachment count quota:
-  // all candidates are persisted; retries deduplicate a partially saved batch.
-  for (let offset = 0; offset < candidates.length; offset += 256) {
+  // A capture may read 32 MiB. Check identity between individual files, and
+  // wake delivery after each durable handoff instead of filling the entire
+  // local staging budget before any upload can begin.
+  for (const candidate of candidates) {
     input.assertCurrentIdentity();
     await rpc.cloudFileOutbox.enqueue({
       identity: org2CloudAuthIdentityKey(input.auth),
       orgId: input.orgId,
       sessionId: input.sessionId,
-      candidates: candidates.slice(offset, offset + 256),
+      candidates: [candidate],
     });
     input.assertCurrentIdentity();
-  }
-  if (candidates.length) {
     input.store.set(conversationFileOutboxSignalAtom, (value) => value + 1);
-    // Other windows may own the active sync engine. The local signal also
-    // works if the cross-window notification transport is unavailable.
     void emit(CONVERSATION_FILE_OUTBOX_CHANGED).catch((error) => {
       log.warn("Attachment journal saved; peer wake-up was unavailable", error);
     });

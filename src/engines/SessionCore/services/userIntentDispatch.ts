@@ -7,6 +7,7 @@
  * row, turn generation, optimistic footer, backend acceptance, and rollback
  * cannot drift between ordinary sends and conversation continuations.
  */
+import { isAgentOrgFinalizingInputError } from "@src/api/tauri/agent/orgTasks/errors";
 import {
   beginOptimisticTurn,
   failOptimisticTurn,
@@ -137,7 +138,11 @@ export function isUserIntentSendError(
   return error instanceof UserIntentSendError;
 }
 
-type UserIntentPreparationState = "prepared" | "accepted" | "failed";
+type UserIntentPreparationState =
+  | "prepared"
+  | "accepted"
+  | "failed"
+  | "retracted";
 const preparationStates = new WeakMap<
   UserIntentPreparation,
   UserIntentPreparationState
@@ -477,6 +482,26 @@ export async function failUserIntentPreparation(
   preparationStates.set(preparation, "failed");
 }
 
+/** Remove the optimistic row when the backend proves it accepted no Turn. */
+async function retractRejectedUserIntentPreparation(
+  preparation: UserIntentPreparation
+): Promise<void> {
+  const state = preparationStates.get(preparation);
+  if (state === "retracted") return;
+  if (state !== "prepared" && state !== "failed") return;
+  if (getTurnGeneration(preparation.sessionId) === preparation.generation) {
+    failOptimisticTurn(preparation.sessionId, preparation.runtimeStatusSource);
+    markTurnTerminal(preparation.sessionId, "cancelled", {
+      generation: preparation.generation,
+    });
+  }
+  await eventStoreProxy.removeByIdPrefix(
+    preparation.userEvent.id,
+    preparation.sessionId
+  );
+  preparationStates.set(preparation, "retracted");
+}
+
 async function resolveUserIntentPreparation(
   params: DispatchUserIntentParams
 ): Promise<UserIntentPreparation> {
@@ -550,7 +575,10 @@ export async function dispatchUserIntent(
         });
       },
       markSent: () => setUserIntentDelivery(preparation, "sent"),
-      markFailed: (error) => failUserIntentPreparation(preparation, error),
+      markFailed: (error) =>
+        isAgentOrgFinalizingInputError(error)
+          ? retractRejectedUserIntentPreparation(preparation)
+          : failUserIntentPreparation(preparation, error),
       onProjectionError: (phase, error) => {
         log.error(
           `Failed to project ${phase} delivery for ${params.sessionId}`,
@@ -559,8 +587,22 @@ export async function dispatchUserIntent(
       },
     });
   } catch (error) {
-    // markFailed is idempotent and already patched the same EventStore row.
-    await failUserIntentPreparation(preparation, error);
+    // markFailed owns the first attempt. Retry only its projection mutation:
+    // both ordinary failure patching and explicit-rejection retraction are
+    // idempotent.
+    if (isAgentOrgFinalizingInputError(error)) {
+      try {
+        await retractRejectedUserIntentPreparation(preparation);
+      } catch (projectionError) {
+        log.error(
+          "Failed to retract a finalizing-rejected user row:",
+          projectionError
+        );
+        await failUserIntentPreparation(preparation, error);
+      }
+    } else {
+      await failUserIntentPreparation(preparation, error);
+    }
     throw new UserIntentSendError(error, preparation.userEvent.id);
   }
   // Transport acceptance is the delivery boundary. Later local bookkeeping

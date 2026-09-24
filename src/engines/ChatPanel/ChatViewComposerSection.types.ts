@@ -80,7 +80,7 @@ export interface ChatViewComposerSectionProps {
   hasModeSwitch: boolean;
   agentOrgIntervention: AgentOrgInterventionView | null;
   streamRetry: StreamRetryInfo | null;
-  groupChatPausedBottomContent: React.ReactNode;
+  agentOrgLifecycleBottomContent: React.ReactNode;
   onSubmitOverride: (input: SubmitOverrideInput) => Promise<boolean>;
   customMentionOptions: ReadonlyArray<CustomMentionOption>;
   queueEditProps: QueueEditInputAreaProps;

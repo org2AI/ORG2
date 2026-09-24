@@ -46,7 +46,7 @@ fn test_turn_control(
             dialog_turn_generation: generation.to_string(),
         },
         background_cancel: CancellationToken::new(),
-        require_owned_job_finality: false,
+        is_agent_org: false,
     }
 }
 
@@ -348,11 +348,11 @@ async fn real_subprocess_background_timeout_and_cancel_cross_completion_barrier(
 #[cfg(unix)]
 #[tokio::test]
 #[serial_test::serial]
-async fn exact_owner_background_shell_stays_in_turn_and_skips_idle_wake() {
+async fn detached_org_shell_skips_turn_finality_and_idle_wake() {
     let _sandbox = test_helpers::test_env::sandbox();
     let temp = tempfile::tempdir().unwrap();
     let mut control = test_turn_control("owned-shell-finality", "owned-shell-turn");
-    control.require_owned_job_finality = true;
+    control.is_agent_org = true;
     let owner = control.owner.clone();
     let identity = ExecIdentity::new(&owner.session_id, "owned-shell-call")
         .with_turn_process_control(Some(control));
@@ -377,7 +377,7 @@ async fn exact_owner_background_shell_stays_in_turn_and_skips_idle_wake() {
     );
 
     let terminal = loop {
-        let jobs = registry::list_jobs_for_owner(&owner);
+        let jobs = registry::list_jobs(Some(&owner.session_id));
         if jobs
             .iter()
             .all(|job| !matches!(job.status, registry::JobStatus::Running))
@@ -394,9 +394,9 @@ async fn exact_owner_background_shell_stays_in_turn_and_skips_idle_wake() {
     ));
     assert!(registry::list_jobs_for_reminder(&owner.session_id).is_empty());
 
-    // `await_output` calls this exact acknowledgement after returning the
-    // replay. Exact-owner terminal jobs are removed immediately.
-    registry::acknowledge_outputs_for_owner(&owner, std::slice::from_ref(&handle));
+    // Explicit reads may consume detached results without a model wake.
+    registry::acknowledge_output(&handle);
+    registry::reap_detached_shells();
     assert!(registry::list_jobs_for_owner(&owner).is_empty());
     assert!(registry::get_status(&handle).is_none());
 }
@@ -510,14 +510,14 @@ async fn background_turn_cancel_escalates_and_waits_for_parent_child_exit() {
     assert_pid_absent(parent);
     assert_pid_absent(child);
     assert!(matches!(
-        registry::get_status(&parent.to_string()).map(|value| value.0),
+        registry::get_status(&identity.registration_id).map(|value| value.0),
         Some(registry::JobStatus::Killed)
     ));
     assert_ne!(
         wait_for_terminal_replay(&owner.session_id, "call-background").await,
         ShellReplayStatus::Running
     );
-    registry::remove(&parent.to_string());
+    registry::remove(&identity.registration_id);
 }
 
 #[cfg(unix)]
@@ -555,7 +555,7 @@ async fn timeout_background_turn_cancel_reaps_the_process_group() {
     assert!(!registry::process_tree_exists(parent));
     assert_pid_absent(parent);
     assert_pid_absent(child);
-    registry::remove(&parent.to_string());
+    registry::remove(&identity.registration_id);
 }
 
 #[cfg(unix)]
@@ -599,10 +599,10 @@ async fn natural_exit_racing_turn_cancel_has_one_terminal_barrier() {
 
         assert!(!registry::process_tree_exists(pid));
         assert!(matches!(
-            registry::get_status(&pid.to_string()).map(|value| value.0),
+            registry::get_status(&identity.registration_id).map(|value| value.0),
             Some(registry::JobStatus::Killed | registry::JobStatus::Exited(0))
         ));
-        registry::remove(&pid.to_string());
+        registry::remove(&identity.registration_id);
     }
 }
 
@@ -639,15 +639,27 @@ async fn latched_cancel_between_spawn_and_background_registration_is_not_lost() 
         replay,
     );
 
+    let completion = registry::register_managed_shell(registry::ManagedShellRegistration {
+        handle: &identity.registration_id,
+        pid,
+        command,
+        log_path: runtime.log_path.clone().unwrap(),
+        session_id: &identity.session_id,
+        call_id: &identity.call_id,
+        control: identity.turn_process_control.as_ref(),
+        org_scope: None,
+        cancel: identity.process_cancel.clone(),
+    })
+    .unwrap();
     control.background_cancel.cancel();
     handle_backgrounded(
-        command,
+        completion,
         pid,
         0,
         BackgroundReason::Timeout,
         child,
         runtime,
-        identity,
+        identity.clone(),
         None,
         None,
         None,
@@ -659,7 +671,7 @@ async fn latched_cancel_between_spawn_and_background_registration_is_not_lost() 
         .unwrap();
     assert!(!registry::process_tree_exists(pid));
     assert_pid_absent(pid);
-    registry::remove(&pid.to_string());
+    registry::remove(&identity.registration_id);
 }
 
 #[cfg(unix)]

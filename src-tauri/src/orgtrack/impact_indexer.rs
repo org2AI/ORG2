@@ -70,6 +70,7 @@ mod tests {
 
     fn turn(files: Vec<TurnModifiedFile>) -> CachedTurnSummary {
         CachedTurnSummary {
+            execution: None,
             session_id: "session-1".to_string(),
             turn_id: "turn-1".to_string(),
             turn_intent_id: None,

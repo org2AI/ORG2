@@ -75,11 +75,11 @@ pub(super) async fn prepare_iteration_input(
 
     // Mid-turn background-job updates are skipped on the first iteration;
     // the turn-start reminder owns turn-boundary delivery.
-    let require_owned_job_finality = config
+    let is_agent_org = config
         .turn_process_control
         .as_ref()
-        .is_some_and(|control| control.require_owned_job_finality);
-    if state.iteration > 1 && require_owned_job_finality {
+        .is_some_and(|control| control.is_agent_org);
+    if state.iteration > 1 && is_agent_org {
         let Some(control) = config.turn_process_control.as_ref() else {
             state.terminal_error =
                 Some("Agent Org Turn finality requires an exact runtime owner".to_string());

@@ -174,8 +174,9 @@ const SessionEventRuntimeSchema = z
     repoId: z.string().optional(),
     repoPath: z.string().optional(),
     shellPid: z.number().optional(),
+    shellProcessHandle: z.string().optional(),
     shellProcessStatus: z
-      .enum(["running", "background", "exited", "killed"])
+      .enum(["running", "background", "exited", "killed", "unknown"])
       .optional(),
     shellExitCode: z.number().optional(),
     shellLogPath: z.string().optional(),
@@ -501,7 +502,31 @@ export const TurnGitArtifactSchema = z.object({
   targetBranch: z.string().optional(),
 });
 
+export const AgentOrgExecutionSchema = z.object({
+  turnIntentId: z.string().min(1),
+  sourceKind: z.enum([
+    "user_input",
+    "member_messages",
+    "task_dispatch",
+    "final_summary",
+  ]),
+  participantId: z.string(),
+  participantName: z.string(),
+  inboxCount: z.number().int().nonnegative().optional(),
+  senders: z
+    .array(
+      z.object({
+        memberId: z.string().nullable().optional(),
+        name: z.string().nullable().optional(),
+        count: z.number().int().nonnegative(),
+      })
+    )
+    .optional(),
+});
+
 export const TurnSummarySchema = z.object({
+  turnIntentId: z.string().nullable().optional(),
+  execution: AgentOrgExecutionSchema.optional(),
   sessionId: z.string(),
   turnId: z.string(),
   startSequence: z.number(),

@@ -24,7 +24,7 @@ use crate::agent_sessions::event_pipeline::types::{
 /// `shellProcessStatus` (stamped by the exact call-id lifecycle bridge).
 /// Terminal states mean the shell is no longer a live runtime resource even
 /// if the event's display_status is still "running".
-const TERMINAL_SHELL_PROCESS_STATUSES: &[&str] = &["exited", "killed"];
+const NON_LIVE_SHELL_PROCESS_STATUSES: &[&str] = &["exited", "killed", "unknown"];
 const ACTIVE_SHELL_PROCESS_STATUSES: &[&str] = &["running", "background"];
 
 fn shell_process_status(event: &SessionEvent) -> Option<&str> {
@@ -41,7 +41,7 @@ fn shell_process_status(event: &SessionEvent) -> Option<&str> {
 /// Mirrors `isLiveRuntimeResourceEvent` in TS `runningEventGate.ts`.
 fn is_live_runtime_resource_event(event: &SessionEvent) -> bool {
     if let Some(status) = shell_process_status(event) {
-        if TERMINAL_SHELL_PROCESS_STATUSES.contains(&status) {
+        if NON_LIVE_SHELL_PROCESS_STATUSES.contains(&status) {
             return false;
         }
         if ACTIVE_SHELL_PROCESS_STATUSES.contains(&status) {
@@ -549,9 +549,21 @@ fn chat_sort_rank(event: &SessionEvent) -> u8 {
     0
 }
 
-fn chat_sort_cmp(a: &SessionEvent, b: &SessionEvent) -> Ordering {
+pub(crate) fn chat_sort_cmp(a: &SessionEvent, b: &SessionEvent) -> Ordering {
     a.created_at
         .cmp(&b.created_at)
+        .then_with(|| {
+            a.args
+                .get("historySequence")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(i64::MAX)
+                .cmp(
+                    &b.args
+                        .get("historySequence")
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or(i64::MAX),
+                )
+        })
         .then_with(|| chat_sort_rank(a).cmp(&chat_sort_rank(b)))
         .then_with(|| a.id.cmp(&b.id))
 }

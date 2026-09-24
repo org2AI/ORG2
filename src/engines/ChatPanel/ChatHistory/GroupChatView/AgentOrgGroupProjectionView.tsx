@@ -29,6 +29,7 @@ import AgentOrgOverviewTray from "../components/AgentOrgOverviewTray";
 import AgentOrgSurfaceSwitcher from "../components/AgentOrgSurfaceSwitcher";
 import { useAgentOrgOverviewDisclosure } from "../hooks/useAgentOrgOverviewDisclosure";
 import { useTranscriptViewport } from "../viewport/useTranscriptViewport";
+import { ExecutionDetailsButton } from "./ExecutionDetailsButton";
 import GroupChatMessageBubble from "./GroupChatMessageBubble";
 
 interface AgentOrgGroupProjectionViewProps {
@@ -411,6 +412,12 @@ const AgentOrgGroupProjectionView: React.FC<
                             {t(`groupChat.projection.state.${state}`)}
                           </span>
                         </span>
+                        <ExecutionDetailsButton
+                          item={item}
+                          members={members}
+                          onMemberSelect={onMemberSelect}
+                          onExitGroup={onExitGroup}
+                        />
                         {!archived &&
                           !reply &&
                           (item.canStop || item.retryMode) && (

@@ -232,6 +232,7 @@ async fn process_message_inner(
         agent_org_task_lifecycle: None,
         require_durable_assistant_event: false,
         agent_org_turn_intent_id: None,
+        agent_org_execution: None,
     };
 
     let policy = if runtime.agent_org_context.is_some() {

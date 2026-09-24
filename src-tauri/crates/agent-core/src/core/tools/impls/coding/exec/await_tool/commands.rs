@@ -313,6 +313,8 @@ impl AwaitTool {
                              flag).",
                             snap.handle,
                         ));
+                    } else if registry::is_independent_shell(&snap.handle) {
+                        response.push_str("\nThe service is still running independently. Continue other work or finish your Turn. Its exit updates this process only and does not wake the model.");
                     } else {
                         response.push_str(
                             "\nThe process is still running. Do NOT keep re-issuing the same wait — \

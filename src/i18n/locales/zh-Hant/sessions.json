@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "使用者請求",
+      "member_messages": "收到訊息",
+      "task_dispatch": "指派的任務",
+      "final_summary": "最終總結"
+    },
+    "unknownSource": "缺少來源資訊",
+    "legacyInbox": "收到訊息 · 缺少來源資訊",
+    "inboxSummary": "{{recipient}} 收到 {{count}} 則訊息，來自 {{senders}}",
+    "viewDetails": "查看執行詳情",
+    "unavailable": "無法定位執行詳情"
+  },
   "landedMessageEdit": {
     "title": "作為新訊息傳送？",
     "body": "這則訊息來自執行工作階段，無法在此編輯並回退對話。是否改為將這段文字作為新訊息傳送到對話末尾？現有訊息和檔案變更都會保留。",
@@ -2311,6 +2324,10 @@
       "body": "要交給 Coordinator 的工作請先恢復；仍可用 @Member 傳送支線工作。",
       "resume": "恢復"
     },
+    "finalizingBanner": {
+      "title": "正在完成本輪工作",
+      "body": "可以繼續編輯草稿，最終報告完成後即可傳送。"
+    },
     "toolUseSummary": {
       "note": "{{sender}} 進行了 {{summary}}",
       "readFiles_one": "{{count}} 次檔案讀取",
@@ -2419,7 +2436,17 @@
     "currentRecordUnavailable": "目前狀態無法使用",
     "currentStatusLabel": "目前狀態",
     "currentOwnerLabel": "目前負責人",
-    "replacementLabel": "替代任務"
+    "replacementLabel": "替代任務",
+    "rejectedRequestRecovery": {
+      "restore": "恢復為草稿",
+      "warning": "本則請求中的其他操作可能已執行，請檢查後只重傳未完成部分。",
+      "unavailable": "無法核實原請求，未恢復任何內容",
+      "previewTitle": "把被拒絕的請求加入草稿？",
+      "existingDraft": "目前草稿",
+      "recoveredRequest": "被拒絕的請求",
+      "append": "加入草稿",
+      "appendExplanation": "被拒絕的請求會加到目前草稿前面，不會自動傳送。"
+    }
   },
   "manageAgentDef": {
     "action": {

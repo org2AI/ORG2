@@ -3388,17 +3388,12 @@ async fn collect_agent_org_runtime_evidence(
 ) -> serde_json::Value {
     let mut active_runtime_count = 0usize;
     let mut active_turns = Vec::new();
-    let mut background_shells = Vec::new();
+    let background_shells =
+        agent_core::tools::impls::coding::exec::registry::list_running_shell_jobs()
+            .into_iter()
+            .filter(|job| session_ids.contains(&job.session_id))
+            .collect::<Vec<_>>();
     for session_id in session_ids {
-        for (pid, command) in
-            agent_core::tools::impls::coding::exec::registry::list_shell_for_session(session_id)
-        {
-            background_shells.push(serde_json::json!({
-                "session_id": session_id,
-                "pid": pid,
-                "command": command,
-            }));
-        }
         let Some(session) = state.get_session(session_id).await else {
             continue;
         };

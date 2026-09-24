@@ -192,6 +192,16 @@ async fn resume_user_directed_handoff_session(
     if !crate::tools::impls::coding::exec::registry::owned_jobs_are_terminal(&owner) {
         return;
     }
+    if crate::state::commands::session::org_tasks::release_user_directed_resources(
+        &receipt.intervention_receipt_id,
+        &owner,
+        std::time::Duration::from_secs(10),
+    )
+    .await
+    .is_err()
+    {
+        return;
+    }
     let Some(state) = app_handle.try_state::<crate::state::AgentAppState>() else {
         return;
     };

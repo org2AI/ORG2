@@ -9,6 +9,7 @@ import type { CursorIdeTurnSummary } from "@src/api/tauri/externalHistory";
 import { PILL_TYPE_LIST } from "@src/config/pillTokens";
 import { formatShortLocalTime24Hour } from "@src/util/data/formatters/date";
 
+import type { AgentOrgExecution } from "../agentOrgExecution";
 import type { ChatGroupMeta } from "../hooks/useChatGroups";
 
 const ROUND_PREVIEW_MAX_LENGTH = 96;
@@ -37,6 +38,20 @@ export function getRoundPreviewText(displayText: string | undefined): string {
   const normalizedText = stripped.replace(/\s+/g, " ").trim();
   if (normalizedText.length <= ROUND_PREVIEW_MAX_LENGTH) return normalizedText;
   return `${normalizedText.slice(0, ROUND_PREVIEW_MAX_LENGTH - 1)}…`;
+}
+
+/** Internal inputs are explained by their recorded source, not their model envelope. */
+export function getRoundNavigationPreview(
+  displayText: string | undefined,
+  execution: AgentOrgExecution | undefined,
+  sourceLabel: (source: AgentOrgExecution["sourceKind"]) => string
+): string {
+  if (execution && execution.sourceKind !== "user_input") {
+    return getRoundPreviewText(
+      `${execution.participantName} · ${sourceLabel(execution.sourceKind)}`
+    );
+  }
+  return getRoundPreviewText(displayText);
 }
 
 export function formatCursorIdeTurnPageTimeLabel(

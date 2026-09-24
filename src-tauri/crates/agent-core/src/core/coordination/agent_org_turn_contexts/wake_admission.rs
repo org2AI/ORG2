@@ -135,11 +135,21 @@ pub(crate) fn revalidate_wake_in_tx(
             |row| row.get(0),
         )
         .map_err(|error| error.to_string())?;
-    let ready = match assess_wake(conn, &request, &context.participant_id)? {
-        WakeAdmission::Ready(binding) => {
-            current && binding.as_ref().map(|b| b.task_id.as_str()) == context.task_id.as_deref()
+    // Resume has its own claimed work receipt; requiring fresh Inbox work
+    // here would reject it (and its own live continuation would defer it).
+    // The caller still revalidates Task ownership, generation and Member FIFO.
+    let ready = if crate::coordination::agent_org_pause::claimed_continuation_in_tx(
+        conn, session_id, turn_id,
+    )? {
+        current
+    } else {
+        match assess_wake(conn, &request, &context.participant_id)? {
+            WakeAdmission::Ready(binding) => {
+                current
+                    && binding.as_ref().map(|b| b.task_id.as_str()) == context.task_id.as_deref()
+            }
+            WakeAdmission::NoReadyWork | WakeAdmission::Deferred => false,
         }
-        WakeAdmission::NoReadyWork | WakeAdmission::Deferred => false,
     };
     if !ready {
         crate::foundation::session_bridge::update_turn_intent_status_with_connection(

@@ -119,6 +119,15 @@ fn terminal_turn_matches_status(
     turn_intent_id: &str,
     settled_as: Option<crate::lifecycle::TurnTerminalStatus>,
 ) -> Result<bool, String> {
+    if settled_as.is_some()
+        && crate::coordination::agent_org_pause::released_execution_in_tx(
+            conn,
+            session_id,
+            turn_intent_id,
+        )?
+    {
+        return Ok(true);
+    }
     let context = crate::coordination::agent_org_turn_contexts::require_context_with_connection(
         conn,
         session_id,
@@ -175,6 +184,11 @@ pub(crate) fn finalize_turn_in_tx(
     if !terminal_turn_matches_status(conn, session_id, turn_intent_id, Some(status))? {
         return Ok(Vec::new());
     }
+    let released_pause = crate::coordination::agent_org_pause::released_execution_in_tx(
+        conn,
+        session_id,
+        turn_intent_id,
+    )?;
     crate::foundation::session_bridge::update_turn_intent_status_with_connection(
         conn,
         session_id,
@@ -182,6 +196,11 @@ pub(crate) fn finalize_turn_in_tx(
         status.intent_status(),
     )?;
     release_turn_lease_in_tx(conn, session_id, turn_intent_id, "released", reason_code)?;
+    // Pause retains the Task and work episode for its continuation. The old
+    // runtime owns only its terminal record, never current Team side effects.
+    if released_pause {
+        return Ok(Vec::new());
+    }
     crate::coordination::agent_org_final_summary::settle_terminal_turn_in_tx(
         conn,
         session_id,

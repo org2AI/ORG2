@@ -105,6 +105,16 @@ pub fn init_session_tables(conn: &Connection) -> SqliteResult<()> {
         [],
     )?;
 
+    // Rebuildable lookup only: no business rows or historical content are changed.
+    conn.execute(
+        &format!(
+            "CREATE INDEX IF NOT EXISTS idx_events_execution_owner
+        ON events(session_id, ({}), history_sequence)",
+            super::turn_window::EXECUTION_OWNER_SQL
+        ),
+        [],
+    )?;
+
     // Complete shell transcripts live in append-only artifacts. The leaf
     // database crate owns this cross-layer storage schema so the app startup
     // path and lower-level replay tests use the exact same DDL.

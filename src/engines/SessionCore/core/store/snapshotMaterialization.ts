@@ -221,6 +221,7 @@ export function applyDeltaToCache(
     if (
       !previousEvent ||
       previousEvent.createdAt !== event.createdAt ||
+      previousEvent.args.historySequence !== event.args.historySequence ||
       chatSortRank(previousEvent) !== chatSortRank(event)
     ) {
       sortKeyChangedIds.add(event.id);

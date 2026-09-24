@@ -7,6 +7,7 @@
 import type { Store } from "jotai/vanilla/store";
 import { type MutableRefObject, useCallback, useRef } from "react";
 
+import { isAgentOrgFinalizingInputError } from "@src/api/tauri/agent/orgTasks/errors";
 import { Message } from "@src/components/Message";
 import { conversationRootKey } from "@src/engines/SessionCore/conversations/conversationTypes";
 import {
@@ -20,9 +21,11 @@ import {
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import {
   isUserIntentSendError,
+  removeOptimisticQueueUserDelivery,
   setOptimisticQueueUserDelivery,
 } from "@src/engines/SessionCore/services/userIntentDispatch";
 import { createLogger } from "@src/hooks/logger";
+import { restoreToInputAtom } from "@src/store/session/cliSessionStatusAtom";
 import {
   activeMessageDeliveriesAtom,
   messageQueueHydratedAtom,
@@ -156,6 +159,27 @@ export function useQueueActiveDeliveries({
               await removeActiveMessageDelivery(store, currentDelivery.id);
             })
             .catch(async (error: unknown) => {
+              if (!accepted && isAgentOrgFinalizingInputError(error)) {
+                // Rust proved this Turn never crossed admission. Retire the
+                // queue owner first, then retract its optimistic transcript
+                // row and return the complete payload to the composer.
+                await removeActiveMessageDelivery(store, currentDelivery.id);
+                await removeOptimisticQueueUserDelivery(
+                  optimisticDeliveryProjectionParams(currentDelivery)
+                ).catch((projectionError) => {
+                  log.error(
+                    "[useQueueDispatch] could not retract a finalizing-rejected transcript row:",
+                    projectionError
+                  );
+                });
+                store.set(restoreToInputAtom, {
+                  sessionId: currentDelivery.sessionId,
+                  displayContent: currentDelivery.displayContent,
+                  imageDataUrls: currentDelivery.imageDataUrls,
+                  appendImages: true,
+                });
+                return;
+              }
               if (
                 error instanceof QueuedConversationRecoveryBlockedError ||
                 error instanceof QueuedConversationTurnClosedError

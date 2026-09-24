@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Permintaan pengguna",
+      "member_messages": "Pesan masuk",
+      "task_dispatch": "Tugas yang diberikan",
+      "final_summary": "Laporan akhir"
+    },
+    "unknownSource": "Sumber tidak tersedia",
+    "legacyInbox": "Pesan diterima · sumber tidak tersedia",
+    "inboxSummary": "{{recipient}} menerima {{count}} pesan dari {{senders}}",
+    "viewDetails": "Lihat detail eksekusi",
+    "unavailable": "Detail eksekusi tidak tersedia"
+  },
   "landedMessageEdit": {
     "title": "Kirim sebagai pesan baru?",
     "body": "Pesan ini milik sesi eksekusi. Mengeditnya di sini tidak dapat memundurkan percakapan. Kirim teks ini sebagai pesan baru di akhir? Pesan dan perubahan berkas yang ada akan tetap disimpan.",
@@ -2358,6 +2371,10 @@
       "body": "Lanjutkan untuk kerja Koordinator. Anda tetap dapat @Anggota untuk tugas sampingan.",
       "resume": "Lanjutkan"
     },
+    "finalizingBanner": {
+      "title": "Menyelesaikan putaran kerja ini",
+      "body": "Anda tetap dapat mengedit draf dan mengirimnya setelah laporan akhir selesai."
+    },
     "toolUseSummary": {
       "note": "{{sender}} melakukan {{summary}}",
       "readFiles_one": "{{count}} pembacaan file",
@@ -2418,7 +2435,17 @@
     "currentRecordUnavailable": "Status saat ini tidak tersedia",
     "currentStatusLabel": "Status saat ini",
     "currentOwnerLabel": "Pemilik saat ini",
-    "replacementLabel": "Pengganti"
+    "replacementLabel": "Pengganti",
+    "rejectedRequestRecovery": {
+      "restore": "Pulihkan sebagai draf",
+      "warning": "Bagian lain mungkin sudah dijalankan. Tinjau dan kirim ulang hanya pekerjaan yang belum selesai.",
+      "unavailable": "Permintaan asli tidak dapat diverifikasi dan tidak dipulihkan",
+      "previewTitle": "Tambahkan permintaan yang ditolak ke draf?",
+      "existingDraft": "Draf saat ini",
+      "recoveredRequest": "Permintaan yang ditolak",
+      "append": "Tambahkan ke draf",
+      "appendExplanation": "Permintaan akan ditambahkan sebelum draf saat ini dan tidak dikirim otomatis."
+    }
   },
   "manageAgentDef": {
     "action": {

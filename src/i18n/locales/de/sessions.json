@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Benutzeranfrage",
+      "member_messages": "Eingegangene Nachrichten",
+      "task_dispatch": "Zugewiesene Aufgabe",
+      "final_summary": "Abschlussbericht"
+    },
+    "unknownSource": "Quelle unbekannt",
+    "legacyInbox": "Empfangene Nachrichten · Quelle unbekannt",
+    "inboxSummary": "{{recipient}} erhielt {{count}} Nachrichten von {{senders}}",
+    "viewDetails": "Ausführungsdetails anzeigen",
+    "unavailable": "Ausführungsdetails nicht verfügbar"
+  },
   "landedMessageEdit": {
     "title": "Als neue Nachricht senden?",
     "body": "Diese Nachricht gehört zu einer Ausführungssitzung. Durch Bearbeiten an dieser Stelle lässt sich die Unterhaltung nicht zurücksetzen. Diesen Text stattdessen als neue Nachricht am Ende senden? Vorhandene Nachrichten und Dateiänderungen bleiben erhalten.",
@@ -2311,6 +2324,10 @@
       "body": "Für Arbeit mit dem Coordinator fortsetzen. @Member-Side-Quests sind weiterhin möglich.",
       "resume": "Fortsetzen"
     },
+    "finalizingBanner": {
+      "title": "Diese Arbeitsrunde wird abgeschlossen",
+      "body": "Du kannst den Entwurf weiter bearbeiten und nach dem Abschlussbericht senden."
+    },
     "toolUseSummary": {
       "note": "{{sender}} führte {{summary}} aus",
       "readFiles_one": "{{count}} Dateilesevorgang",
@@ -2419,7 +2436,17 @@
     "currentRecordUnavailable": "Aktueller Zustand nicht verfügbar",
     "currentStatusLabel": "Aktueller Status",
     "currentOwnerLabel": "Aktueller Verantwortlicher",
-    "replacementLabel": "Ersatz"
+    "replacementLabel": "Ersatz",
+    "rejectedRequestRecovery": {
+      "restore": "Als Entwurf wiederherstellen",
+      "warning": "Andere Teile könnten bereits ausgeführt worden sein. Prüfe sie und sende nur offene Arbeit erneut.",
+      "unavailable": "Die ursprüngliche Anfrage konnte nicht verifiziert und nicht wiederhergestellt werden",
+      "previewTitle": "Abgelehnte Anfrage zum Entwurf hinzufügen?",
+      "existingDraft": "Aktueller Entwurf",
+      "recoveredRequest": "Abgelehnte Anfrage",
+      "append": "Zum Entwurf hinzufügen",
+      "appendExplanation": "Die Anfrage wird vor dem aktuellen Entwurf eingefügt. Es wird nichts automatisch gesendet."
+    }
   },
   "manageAgentDef": {
     "action": {

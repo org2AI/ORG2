@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "User request",
+      "member_messages": "Inbox messages",
+      "task_dispatch": "Assigned task",
+      "final_summary": "Final report"
+    },
+    "unknownSource": "Source unavailable",
+    "legacyInbox": "Received messages · source unavailable",
+    "inboxSummary": "{{recipient}} received {{count}} messages from {{senders}}",
+    "viewDetails": "View execution details",
+    "unavailable": "Execution details unavailable"
+  },
   "landedMessageEdit": {
     "title": "Send as a new message?",
     "body": "This message belongs to an execution session. Editing it here cannot rewind the conversation. Send this text as a new message at the end instead? Existing messages and file changes will be kept.",
@@ -2358,6 +2371,10 @@
       "body": "Resume for Coordinator work. You can still @Member for a side quest.",
       "resume": "Resume"
     },
+    "finalizingBanner": {
+      "title": "Finishing this work round",
+      "body": "Keep editing your draft. You can send it after the final report finishes."
+    },
     "toolUseSummary": {
       "note": "{{sender}} performed {{summary}}",
       "readFiles_one": "{{count}} file read",
@@ -2418,7 +2435,17 @@
     "currentRecordUnavailable": "Current state unavailable",
     "currentStatusLabel": "Current status",
     "currentOwnerLabel": "Current owner",
-    "replacementLabel": "Replacement"
+    "replacementLabel": "Replacement",
+    "rejectedRequestRecovery": {
+      "restore": "Restore as draft",
+      "warning": "Other parts of this request may already have run. Review it and resend only unfinished work.",
+      "unavailable": "The original request could not be verified and was not restored",
+      "previewTitle": "Add the rejected request to your draft?",
+      "existingDraft": "Current draft",
+      "recoveredRequest": "Rejected request",
+      "append": "Add to draft",
+      "appendExplanation": "The rejected request will be added before your current draft. Nothing is sent automatically."
+    }
   },
   "manageAgentDef": {
     "action": {

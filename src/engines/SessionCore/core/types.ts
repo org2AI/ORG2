@@ -248,9 +248,15 @@ export interface SessionEvent {
 
   /** Shell process PID (set by ShellProcessStarted event) */
   shellPid?: number;
+  shellProcessHandle?: string;
 
   /** Shell process status (updated by ShellProcessStarted/Exited events) */
-  shellProcessStatus?: "running" | "background" | "exited" | "killed";
+  shellProcessStatus?:
+    | "running"
+    | "background"
+    | "exited"
+    | "killed"
+    | "unknown";
 
   /** Shell process exit code (set by ShellProcessExited event) */
   shellExitCode?: number;
@@ -369,7 +375,13 @@ interface RustExtractedShellData {
   executionTime?: number;
   isFailure: boolean;
   shellPid?: number;
-  shellProcessStatus?: "running" | "background" | "exited" | "killed";
+  shellProcessHandle?: string;
+  shellProcessStatus?:
+    | "running"
+    | "background"
+    | "exited"
+    | "killed"
+    | "unknown";
   shellLogPath?: string;
   gitArtifacts?: ExtractedGitArtifactData[];
 }
@@ -484,6 +496,8 @@ export interface RustExtractedOrgTaskData {
   taskAssignedDispatched?: boolean;
   /** Terminal update was postponed; the durable task lifecycle did not fail. */
   completionDeferred?: boolean;
+  requiresEpisodeResolution?: boolean;
+  rejectedRequestTurnIntentId?: string;
   guidance?: string;
   errorMessage?: string;
 }

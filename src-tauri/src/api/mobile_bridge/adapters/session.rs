@@ -2280,6 +2280,7 @@ mod tests {
     #[test]
     fn cached_round_directory_exposes_canonical_turn_intent_id() {
         let turns = vec![session_persistence::CachedTurnSummary {
+            execution: None,
             session_id: "native-session".to_string(),
             turn_id: "round-1".to_string(),
             turn_intent_id: Some("intent-1".to_string()),

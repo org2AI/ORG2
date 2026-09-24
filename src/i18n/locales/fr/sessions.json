@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "Demande utilisateur",
+      "member_messages": "Messages reçus",
+      "task_dispatch": "Tâche attribuée",
+      "final_summary": "Rapport final"
+    },
+    "unknownSource": "Source indisponible",
+    "legacyInbox": "Messages reçus · source indisponible",
+    "inboxSummary": "{{recipient}} a reçu {{count}} messages de {{senders}}",
+    "viewDetails": "Voir les détails de l’exécution",
+    "unavailable": "Détails de l’exécution indisponibles"
+  },
   "landedMessageEdit": {
     "title": "Envoyer comme nouveau message ?",
     "body": "Ce message appartient à une session d’exécution. Le modifier ici ne permet pas de revenir en arrière dans la conversation. Envoyer ce texte comme nouveau message à la fin ? Les messages et modifications de fichiers existants seront conservés.",
@@ -2311,6 +2324,10 @@
       "body": "Reprenez pour travailler avec le Coordinator. Vous pouvez toujours utiliser @Member pour une tâche annexe.",
       "resume": "Reprendre"
     },
+    "finalizingBanner": {
+      "title": "Finalisation de cette phase de travail",
+      "body": "Continuez à modifier le brouillon. Vous pourrez l’envoyer après le rapport final."
+    },
     "toolUseSummary": {
       "note": "{{sender}} a effectué {{summary}}",
       "readFiles_one": "{{count}} lecture de fichier",
@@ -2419,7 +2436,17 @@
     "currentRecordUnavailable": "État actuel indisponible",
     "currentStatusLabel": "État actuel",
     "currentOwnerLabel": "Responsable actuel",
-    "replacementLabel": "Remplacement"
+    "replacementLabel": "Remplacement",
+    "rejectedRequestRecovery": {
+      "restore": "Restaurer comme brouillon",
+      "warning": "D’autres parties ont peut-être déjà été exécutées. Vérifiez et renvoyez uniquement le travail restant.",
+      "unavailable": "La demande d’origine n’a pas pu être vérifiée et n’a pas été restaurée",
+      "previewTitle": "Ajouter la demande rejetée au brouillon ?",
+      "existingDraft": "Brouillon actuel",
+      "recoveredRequest": "Demande rejetée",
+      "append": "Ajouter au brouillon",
+      "appendExplanation": "La demande sera ajoutée avant le brouillon actuel. Rien ne sera envoyé automatiquement."
+    }
   },
   "manageAgentDef": {
     "action": {

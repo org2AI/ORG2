@@ -23,6 +23,7 @@ import {
 import { isRetryAuditBoundary } from "@src/engines/SessionCore/conversations/retryAuditBoundary";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
+import { agentOrgExecution } from "../agentOrgExecution";
 import {
   ensureUniqueChunkIds,
   getStableActivityItemId,
@@ -393,6 +394,12 @@ export function processChatItems(
         item.event &&
         isAwaitOutputEvent(item.event)
       ) {
+        if (
+          run.length &&
+          agentOrgExecution(run[0].event)?.turnIntentId !==
+            agentOrgExecution(item.event)?.turnIntentId
+        )
+          flushRun(true);
         run.push({ item, event: item.event });
         continue;
       }
@@ -418,9 +425,13 @@ export function processChatItems(
   // Main processing loop
   // ------------------------------------------
   let sawManageTodo = false;
+  let previousExecution: string | undefined;
 
   for (let index = 0; index < events.length; index++) {
     let event = events[index];
+    const execution = agentOrgExecution(event)?.turnIntentId;
+    if (execution !== previousExecution) flushAllBuffers();
+    previousExecution = execution;
 
     if (
       runningChunksToSkip.has(event.id) ||

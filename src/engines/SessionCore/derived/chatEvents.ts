@@ -178,6 +178,25 @@ export function appendLiveAssistantEvent(
     _liveAssistantCreatedAtBySession.delete(sessionId);
     return events.filter((event) => event.id !== liveId);
   }
+  // Org executions enter a session FIFO and persist their start before any
+  // provider delta. Retain that formal owner on the ephemeral text as well.
+  // Look only at ordered start anchors (or their unloaded representation):
+  // late output from an older execution must never become the live owner.
+  let executionStart: SessionEvent | undefined;
+  for (let index = events.length - 1; index >= 0; index--) {
+    const event = events[index];
+    if (
+      event.sessionId === sessionId &&
+      (event.actionType === "agent_org_execution" ||
+        event.actionType === "turn_placeholder")
+    ) {
+      executionStart = event;
+      break;
+    }
+  }
+  const execution =
+    executionStart?.result?.agentOrgExecution ??
+    executionStart?.args?.agentOrgExecution;
   const liveEvent: SessionEvent = {
     id: liveId,
     chunk_id: null,
@@ -186,7 +205,10 @@ export function appendLiveAssistantEvent(
     functionName: "agent_message",
     uiCanonical: "agent_message",
     actionType: "assistant",
-    args: { syntheticLive: true },
+    args: {
+      syntheticLive: true,
+      ...(execution ? { agentOrgExecution: execution } : {}),
+    },
     result: { observation: content },
     source: "assistant",
     displayText: content,

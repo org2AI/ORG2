@@ -311,7 +311,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
       handleSendNow,
       queueEditProps,
       sessionMessageQueue,
-      groupChatPausedBottomContent,
+      agentOrgLifecycleBottomContent,
       shouldShowCurrentPlanSurface,
       agentOrgInterventionSlot,
     } = useChatViewAgentOrgSurface({
@@ -461,7 +461,7 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         hasModeSwitch,
         agentOrgIntervention: agentOrgInterventionSlot,
         streamRetry,
-        groupChatPausedBottomContent,
+        agentOrgLifecycleBottomContent,
         onSubmitOverride: handleConversationSubmitWithTailFollow,
         customMentionOptions: groupChatMentionOptions,
         queueEditProps,
@@ -469,11 +469,12 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         followUpSuggestions,
         onFollowUpSuggestionSent: clearFollowUpSuggestions,
         submitDisabled:
-          !groupChatViewActive &&
-          currentAgentOrgMember !== null &&
-          !currentAgentOrgMember.isCoordinator &&
-          (agentOrgRunView?.runStatus === "starting" ||
-            agentOrgRunView?.runStatus === "failed"),
+          agentOrgRunView?.runPhase === "finalizing" ||
+          (!groupChatViewActive &&
+            currentAgentOrgMember !== null &&
+            !currentAgentOrgMember.isCoordinator &&
+            (agentOrgRunView?.runStatus === "starting" ||
+              agentOrgRunView?.runStatus === "failed")),
       }),
       [
         sessionId,
@@ -502,13 +503,14 @@ const ResolvedChatView: React.FC<ResolvedChatViewProps> = memo(
         groupChatViewActive,
         currentAgentOrgMember,
         agentOrgRunView?.runStatus,
+        agentOrgRunView?.runPhase,
         hasAny,
         scrollNav,
         inlineSections,
         hasModeSwitch,
         agentOrgInterventionSlot,
         streamRetry,
-        groupChatPausedBottomContent,
+        agentOrgLifecycleBottomContent,
         handleConversationSubmitWithTailFollow,
         groupChatMentionOptions,
         queueEditProps,

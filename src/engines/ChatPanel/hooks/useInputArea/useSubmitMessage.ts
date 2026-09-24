@@ -18,6 +18,7 @@ import { useAtomValue, useStore } from "jotai";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import { isAgentOrgFinalizingInputError } from "@src/api/tauri/agent/orgTasks/errors";
 import Message from "@src/components/Message";
 import {
   chatQuotedSelectionsAtom,
@@ -366,7 +367,11 @@ export function useSubmitMessage({
             }
           }
 
-          const reason = err instanceof Error ? err.message : String(err);
+          const reason = isAgentOrgFinalizingInputError(err)
+            ? t("groupChat.finalizingBanner.body")
+            : err instanceof Error
+              ? err.message
+              : String(err);
           const baseMsg = t("chat.failedToSendMessage");
           Message.error(reason ? `${baseMsg}: ${reason}` : baseMsg);
         }

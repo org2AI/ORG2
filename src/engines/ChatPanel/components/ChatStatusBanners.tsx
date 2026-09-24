@@ -208,3 +208,26 @@ export function GroupChatPausedBanner({
     />
   );
 }
+
+export function AgentOrgFinalizingBanner() {
+  const { t } = useTranslation("sessions");
+
+  return (
+    <ChatStatusSegmentedBar
+      aria-live="polite"
+      testId="agent-org-finalizing-banner"
+      segments={[
+        {
+          key: "message",
+          className: "flex-1",
+          content: (
+            <ChatStatusTwoLineContent
+              title={t("groupChat.finalizingBanner.title")}
+              description={t("groupChat.finalizingBanner.body")}
+            />
+          ),
+        },
+      ]}
+    />
+  );
+}

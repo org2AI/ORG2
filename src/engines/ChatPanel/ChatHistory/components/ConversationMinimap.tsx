@@ -22,7 +22,10 @@ import { Cancel01Icon, HugeiconsIcon } from "@src/icons";
 import { isAssistantMessageEvent } from "../chatItemPipeline/dedup";
 import type { OptimizedChatItem } from "../chatItemPipeline/types";
 import type { ChatGroupMeta } from "../hooks/useChatGroups";
-import { getRoundPreviewText } from "../utils/turnPageFormatting";
+import {
+  getRoundNavigationPreview,
+  getRoundPreviewText,
+} from "../utils/turnPageFormatting";
 import { getTurnTimingLabels } from "../utils/turnTimingFormatting";
 
 export const MAX_CONVERSATION_MINIMAP_MARKERS = 20;
@@ -248,11 +251,18 @@ export function getConversationMinimapPlacementClasses(
   };
 }
 
-function getUserPreview(header: OptimizedChatItem | null): string {
+function getUserPreview(
+  header: OptimizedChatItem | null,
+  execution: ChatGroupMeta["execution"],
+  sourceLabel: Parameters<typeof getRoundNavigationPreview>[2]
+): string {
   const displayText = header?.event?.displayText;
-  if (typeof displayText !== "string") return "";
-  return getRoundPreviewText(
-    normalizeUserMessageText(stripExpandedPillContent(displayText))
+  return getRoundNavigationPreview(
+    typeof displayText === "string"
+      ? normalizeUserMessageText(stripExpandedPillContent(displayText))
+      : undefined,
+    execution,
+    sourceLabel
   );
 }
 
@@ -387,7 +397,16 @@ const ConversationMinimap: React.FC<ConversationMinimapProps> = memo(
         : markerGroupIndices.indexOf(previewGroupIndex);
     const previewHeader =
       previewGroupIndex === null ? null : groupHeaders[previewGroupIndex];
-    const previewTitle = getUserPreview(previewHeader);
+    const sourceLabel = (
+      source: NonNullable<ChatGroupMeta["execution"]>["sourceKind"]
+    ) => t(`sessions:agentOrgExecution.sources.${source}`);
+    const previewTitle = getUserPreview(
+      previewHeader,
+      previewGroupIndex === null
+        ? undefined
+        : groupMeta[previewGroupIndex]?.execution,
+      sourceLabel
+    );
     const previewResponse =
       previewGroupIndex === null
         ? ""
@@ -537,7 +556,11 @@ const ConversationMinimap: React.FC<ConversationMinimapProps> = memo(
 
         {markerGroupIndices.map((groupIndex, markerIndex) => {
           const turnPosition = navigableGroupIndices.indexOf(groupIndex) + 1;
-          const prompt = getUserPreview(groupHeaders[groupIndex]);
+          const prompt = getUserPreview(
+            groupHeaders[groupIndex],
+            groupMeta[groupIndex]?.execution,
+            sourceLabel
+          );
           const isActive = groupIndex === activeMarkerGroupIndex;
           const isHighlighted = highlightedMarkerGroupIndices.has(groupIndex);
           const widthClass = getConversationMarkerWidthClass(

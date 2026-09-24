@@ -31,6 +31,9 @@ use crate::definitions::orgs::{FlatOrgMember, OrgDefinition, PlanApprovalPolicy}
 use crate::session::{AgentExecMode, SessionStatus};
 use core_types::key_source::KeySource;
 
+#[path = "tests/pause_continuation_tests.rs"]
+mod pause_continuation_tests;
+
 struct WakeModeFixture {
     _sandbox: test_helpers::test_env::SandboxGuard,
     run_id: String,

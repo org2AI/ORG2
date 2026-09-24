@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
 import React, { memo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import { CHAT_ITEM_PADDING_X } from "@src/engines/ChatPanel/blocks/primitives/config";
@@ -46,6 +47,8 @@ function sameMeta(
   if (!left || !right) return false;
   return (
     left.turnId === right.turnId &&
+    left.execution?.sourceKind === right.execution?.sourceKind &&
+    left.execution?.participantName === right.execution?.participantName &&
     left.assistantModelId === right.assistantModelId &&
     left.durationMs === right.durationMs &&
     left.itemCount === right.itemCount &&
@@ -173,6 +176,7 @@ export const GroupHeaderRenderer: React.FC<GroupHeaderRendererProps> = memo(
     onEditSubmit,
     onRestoreCheckpoint,
   }) => {
+    const { t } = useTranslation("sessions");
     const header = groupHeaders[groupIndex];
     const meta = groupMeta[groupIndex];
     const collapseGroupIndex = sourceGroupIndex ?? groupIndex;
@@ -262,10 +266,23 @@ export const GroupHeaderRenderer: React.FC<GroupHeaderRendererProps> = memo(
 
     return (
       <div
+        data-chat-event-ids={meta?.execution ? header.event?.id : undefined}
         className={`group/turn ${CHAT_ITEM_PADDING_X} ${CHAT_PANEL_WIDTH_TOKENS.contentWidth} ${headerPaddingBottomClass}`.trim()}
         style={roundGap > 0 ? { marginTop: roundGap } : undefined}
       >
-        {showUserPart ? (
+        {showUserPart && meta?.execution ? (
+          <div
+            className="py-2 text-sm text-text-2"
+            data-testid="agent-org-execution-header"
+            data-turn-intent-id={meta.execution.turnIntentId}
+          >
+            <span className="font-medium">
+              {meta.execution.participantName}
+            </span>
+            <span aria-hidden> · </span>
+            {t(`agentOrgExecution.sources.${meta.execution.sourceKind}`)}
+          </div>
+        ) : showUserPart ? (
           <UserChatItem
             chatItem={header}
             compactPreview={compactUserMessage}

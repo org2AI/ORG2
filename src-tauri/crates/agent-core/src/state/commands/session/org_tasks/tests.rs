@@ -6,6 +6,12 @@
 
 use super::*;
 
+#[path = "resource_teardown_tests.rs"]
+mod resource_teardown_tests;
+
+#[path = "history_provenance_tests.rs"]
+mod history_provenance_tests;
+
 use std::collections::HashMap;
 
 use database::db::get_connection;

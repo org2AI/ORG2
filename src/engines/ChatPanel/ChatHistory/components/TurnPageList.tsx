@@ -28,7 +28,7 @@ import {
 import {
   formatCursorIdeTurnPageTimeLabel,
   formatTurnPageTimeLabel,
-  getRoundPreviewText,
+  getRoundNavigationPreview,
 } from "../utils/turnPageFormatting";
 
 interface TurnPageListProps {
@@ -85,7 +85,11 @@ const TurnPageList: React.FC<TurnPageListProps> = memo(
             ? stripExpandedPillContent(String(header.event.displayText))
             : undefined) ??
           meta?.previewText;
-        const text = getRoundPreviewText(rawPreviewText);
+        const text = getRoundNavigationPreview(
+          rawPreviewText,
+          meta?.execution,
+          (source) => t(`sessions:agentOrgExecution.sources.${source}`)
+        );
         return {
           pageIndex,
           text:

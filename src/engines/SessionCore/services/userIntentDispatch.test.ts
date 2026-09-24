@@ -499,6 +499,37 @@ describe("userIntentDispatch", () => {
     );
   });
 
+  it("retracts the exact optimistic row when finalizing rejects admission", async () => {
+    mocks.sendMessage.mockRejectedValueOnce(
+      new Error("agent_org_finalizing_input_not_accepted:run-finalizing")
+    );
+
+    await expect(
+      dispatchUserIntent({
+        sessionId: "agentsession-finalizing",
+        visibleText: "keep this as a draft",
+        runtimeStatusSource: "launch",
+        send: {
+          content: "keep this as a draft",
+          turnIntentId: "intent-finalizing",
+          turnIntentSource: "user_submit",
+          directUserIntent: true,
+        },
+      })
+    ).rejects.toThrow("agent_org_finalizing_input_not_accepted");
+
+    expect(mocks.removeByIdPrefix).toHaveBeenCalledWith(
+      "user-agentsession-finalizing",
+      "agentsession-finalizing"
+    );
+    expect(mocks.updateById).not.toHaveBeenCalled();
+    expect(mocks.markTurnTerminal).toHaveBeenCalledWith(
+      "agentsession-finalizing",
+      "cancelled",
+      { generation: 7 }
+    );
+  });
+
   it("diagnoses a missing accepted-row projection without resending transport", async () => {
     mocks.updateById.mockResolvedValueOnce(false);
 

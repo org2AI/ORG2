@@ -141,35 +141,38 @@ impl UnifiedMessageProcessor {
             }
             .map_err(|err| format!("Failed to save user message: {}", err))?;
 
-            // DirectMember and GroupRoot already persisted their exact visible
-            // EventStore source before admission. Rebuilding an ordinary
-            // backend user event here would create a second user fact.
-            if pre_persisted_source_event_id.is_none() {
-                if let Some(handle) = self.app_handle.as_ref() {
-                    let event_result = tokio::task::block_in_place(|| {
-                        crate::bus::event_pipeline_bridge::persist_user_message_event(
-                            handle,
-                            session_id,
-                            &message_id,
-                            content,
-                            context.display_text.as_deref(),
-                            context.images.as_deref(),
-                            crate::bus::event_pipeline_bridge::PersistedUserMessageSource::User,
-                            context.turn_intent_id.as_str(),
-                        )
-                    });
-                    if let Err(err) = event_result {
-                        if initial_input.is_some() {
-                            return Err(format!(
-                                "Failed to persist authoritative user-message event: {err}"
-                            ));
+            if let Some(handle) = self.app_handle.as_ref() {
+                let event_result = tokio::task::block_in_place(|| {
+                    use crate::bus::event_pipeline_bridge::PersistedUserMessageSource;
+                    let source = if self.runtime.agent_org_context.is_some() {
+                        PersistedUserMessageSource::AgentOrgInput {
+                            execution: crate::coordination::agent_org_history::execution(
+                                session_id,
+                                &context.turn_intent_id,
+                            )?,
+                            existing_event_id: pre_persisted_source_event_id,
                         }
-                        tracing::warn!(
-                            session_id,
-                            error = %err,
-                            "[unified_processor] failed to persist user-message UI event"
-                        );
+                    } else {
+                        PersistedUserMessageSource::User
+                    };
+                    crate::bus::event_pipeline_bridge::persist_user_message_event(
+                        handle,
+                        session_id,
+                        &message_id,
+                        content,
+                        context.display_text.as_deref(),
+                        context.images.as_deref(),
+                        source,
+                        context.turn_intent_id.as_str(),
+                    )
+                });
+                if let Err(err) = event_result {
+                    if initial_input.is_some() || self.runtime.agent_org_context.is_some() {
+                        return Err(format!(
+                            "Failed to persist authoritative user-message event: {err}"
+                        ));
                     }
+                    tracing::warn!(session_id, error = %err, "[unified_processor] failed to persist user-message UI event");
                 }
             }
         }
@@ -411,7 +414,9 @@ impl UnifiedMessageProcessor {
                             &materialization.content,
                             None,
                             None,
-                            crate::bus::event_pipeline_bridge::PersistedUserMessageSource::AgentOrgInboxTranscript,
+                            crate::bus::event_pipeline_bridge::PersistedUserMessageSource::AgentOrgInboxTranscript(
+                                crate::coordination::agent_org_history::inbox_execution(session_id, &context.turn_intent_id, &materialization.message_id)?
+                            ),
                             &materialization.intent_id,
                         )
                     })

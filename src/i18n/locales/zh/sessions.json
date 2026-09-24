@@ -1,4 +1,17 @@
 {
+  "agentOrgExecution": {
+    "sources": {
+      "user_input": "用户请求",
+      "member_messages": "收到消息",
+      "task_dispatch": "分配的任务",
+      "final_summary": "最终总结"
+    },
+    "unknownSource": "来源信息缺失",
+    "legacyInbox": "收到消息 · 来源信息缺失",
+    "inboxSummary": "{{recipient}} 收到 {{count}} 条消息，来自 {{senders}}",
+    "viewDetails": "查看执行详情",
+    "unavailable": "无法定位执行详情"
+  },
   "landedMessageEdit": {
     "title": "作为新消息发送？",
     "body": "这条消息来自执行会话，无法在此编辑并回退对话。是否改为将这段文字作为新消息发送到对话末尾？现有消息和文件更改都会保留。",
@@ -2358,6 +2371,10 @@
       "body": "要交给 Coordinator 的工作请先恢复；仍可用 @Member 发送支线工作。",
       "resume": "恢复"
     },
+    "finalizingBanner": {
+      "title": "正在完成本轮工作",
+      "body": "可以继续编辑草稿，最终报告完成后即可发送。"
+    },
     "toolUseSummary": {
       "note": "{{sender}} 进行了 {{summary}}",
       "readFiles_one": "{{count}} 次文件读取",
@@ -2418,7 +2435,17 @@
     "currentRecordUnavailable": "当前状态不可用",
     "currentStatusLabel": "当前状态",
     "currentOwnerLabel": "当前负责人",
-    "replacementLabel": "替代任务"
+    "replacementLabel": "替代任务",
+    "rejectedRequestRecovery": {
+      "restore": "恢复为草稿",
+      "warning": "本条请求中的其他操作可能已经执行，请检查后仅重发未完成部分。",
+      "unavailable": "无法核实原请求，未恢复任何内容",
+      "previewTitle": "把被拒绝的请求加入草稿？",
+      "existingDraft": "当前草稿",
+      "recoveredRequest": "被拒绝的请求",
+      "append": "加入草稿",
+      "appendExplanation": "被拒绝的请求会添加到当前草稿前面，不会自动发送。"
+    }
   },
   "manageAgentDef": {
     "action": {

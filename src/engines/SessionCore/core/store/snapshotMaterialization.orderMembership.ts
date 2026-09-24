@@ -80,6 +80,12 @@ export function compareChatEvents(
 ): number {
   return (
     left.createdAt.localeCompare(right.createdAt) ||
+    (typeof left.args.historySequence === "number"
+      ? left.args.historySequence
+      : Number.MAX_SAFE_INTEGER) -
+      (typeof right.args.historySequence === "number"
+        ? right.args.historySequence
+        : Number.MAX_SAFE_INTEGER) ||
     chatSortRank(left) - chatSortRank(right) ||
     left.id.localeCompare(right.id)
   );

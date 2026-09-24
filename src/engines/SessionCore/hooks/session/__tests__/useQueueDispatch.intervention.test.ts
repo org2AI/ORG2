@@ -12,6 +12,7 @@ import {
   QueuedConversationTurnFailedError,
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import { UserIntentSendError } from "@src/engines/SessionCore/services/userIntentDispatch";
+import { restoreToInputAtom } from "@src/store/session/cliSessionStatusAtom";
 import {
   type ActiveMessageDelivery,
   type QueuedMessage,
@@ -49,6 +50,7 @@ const mocks = vi.hoisted(() => ({
   messageWarning: vi.fn(),
   loadDurableMessageDeliveries: vi.fn(),
   persistDurableMessageQueue: vi.fn(),
+  removeByIdPrefix: vi.fn(),
   restoreTurnWorkingAfterInterruptFailure: vi.fn(),
   sendMessage: vi.fn(),
   updateById: vi.fn(),
@@ -95,6 +97,7 @@ vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
   eventStoreProxy: {
     append: mocks.append,
     getPersistedEvents: mocks.getPersistedEvents,
+    removeByIdPrefix: mocks.removeByIdPrefix,
     updateById: mocks.updateById,
     upsert: mocks.upsert,
   },
@@ -408,6 +411,7 @@ describe("useQueueDispatch Agent Org intervention", () => {
       .mockReset()
       .mockResolvedValue({ queue: [], active: [] });
     mocks.persistDurableMessageQueue.mockReset().mockResolvedValue(undefined);
+    mocks.removeByIdPrefix.mockReset().mockResolvedValue(1);
     mocks.restoreTurnWorkingAfterInterruptFailure.mockReset();
     mocks.sendMessage.mockReset().mockResolvedValue(undefined);
     mocks.updateById.mockReset().mockResolvedValue(true);
@@ -838,6 +842,37 @@ describe("useQueueDispatch Agent Org intervention", () => {
       SESSION_ID
     );
     expect(mocks.messageError).not.toHaveBeenCalled();
+  });
+
+  it("retires and restores a queued message rejected by finalization", async () => {
+    const message = {
+      ...makeCanonicalMessage("canonical-finalizing"),
+      displayContent: "send this after the report",
+      imageDataUrls: ["data:image/png;base64,queued"],
+    };
+    mocks.dispatchCanonicalConversation.mockRejectedValueOnce(
+      new UserIntentSendError(
+        "agent_org_finalizing_input_not_accepted:run-finalizing",
+        "queued-user:canonical-finalizing:"
+      )
+    );
+
+    await mountWithMessages([message]);
+
+    await vi.waitFor(() =>
+      expect(store.get(messageDeliveryRecordsAtom)).toEqual([])
+    );
+    expect(mocks.removeByIdPrefix).toHaveBeenCalledWith(
+      "queued-user:canonical-finalizing:",
+      SESSION_ID
+    );
+    expect(store.get(restoreToInputAtom)).toEqual({
+      sessionId: SESSION_ID,
+      displayContent: "send this after the report",
+      imageDataUrls: ["data:image/png;base64,queued"],
+      appendImages: true,
+    });
+    expect(mocks.updateById).not.toHaveBeenCalled();
   });
 
   it("holds an accepted turn that the provider failed outright as a failed row", async () => {

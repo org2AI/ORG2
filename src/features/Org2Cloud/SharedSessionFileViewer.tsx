@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
-import Modal from "@src/scaffold/ModalSystem";
 
+import SharedSessionFileDialog from "./SharedSessionFileDialog";
 import { getCloudEndpoint } from "./config";
 import { downloadSharedSessionFile } from "./downloadSharedSessionFile";
 import {
@@ -46,16 +46,19 @@ export default function SharedSessionFileViewer({
   shareTokenRef.current = shareToken;
   const requestKey = JSON.stringify(reference);
   const [file, setFile] = useState<Loaded | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"not_uploaded" | "request_failed" | null>(
+    null
+  );
+  const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     const reference = JSON.parse(requestKey) as SharedSessionFileReference;
     const controller = new AbortController();
     const endpoint = getCloudEndpoint();
     setFile(null);
-    setError(false);
+    setError(null);
     if (!identity || endpoint.supabaseUrl !== reference.endpoint) {
-      setError(true);
+      setError("request_failed");
       return;
     }
     const stillCurrent = () => {
@@ -83,9 +86,11 @@ export default function SharedSessionFileViewer({
             shareToken
           )
         : null;
-      if (reference.source && !located)
-        throw new Error("File has not been uploaded by its source device");
       if (!stillCurrent()) return;
+      if (reference.source && !located) {
+        setError("not_uploaded");
+        return;
+      }
       const result = await readSharedSessionFile(
         accessToken,
         endpoint,
@@ -96,10 +101,10 @@ export default function SharedSessionFileViewer({
       if (stillCurrent())
         setFile({ ...result, identity, requestKey, shareToken });
     })().catch(() => {
-      if (!controller.signal.aborted) setError(true);
+      if (stillCurrent()) setError("request_failed");
     });
     return () => controller.abort();
-  }, [identity, requestKey, token, store, shareToken]);
+  }, [identity, requestKey, token, store, shareToken, attempt]);
   const currentFile =
     file?.identity === identity &&
     file.requestKey === requestKey &&
@@ -172,15 +177,29 @@ export default function SharedSessionFileViewer({
     }
   };
   return (
-    <Modal
-      visible
-      title={currentFile?.name ?? t("sharedFile.title")}
-      onCancel={onClose}
-      footer={null}
+    <SharedSessionFileDialog
+      reference={reference}
+      name={currentFile?.name}
+      onClose={onClose}
     >
       <div className="flex flex-col gap-3">
         {error ? (
-          <p role="alert">{t("sharedFile.error")}</p>
+          <>
+            <p role="alert">
+              {error === "not_uploaded"
+                ? t("sharedFile.notUploaded")
+                : t("sharedFile.error")}
+            </p>
+            <Button
+              data-testid="shared-file-retry"
+              onClick={() => {
+                setError(null);
+                setAttempt((value) => value + 1);
+              }}
+            >
+              {t("common:actions.retry")}
+            </Button>
+          </>
         ) : currentFile ? (
           <>
             {activeMedia ? (
@@ -217,6 +236,6 @@ export default function SharedSessionFileViewer({
           <p role="status">{t("sharedFile.loading")}</p>
         )}
       </div>
-    </Modal>
+    </SharedSessionFileDialog>
   );
 }

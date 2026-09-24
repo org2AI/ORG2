@@ -54,10 +54,14 @@ mod tests {
                     "owner",
                 )
                 .unwrap();
-                let command = super::super::command(
+                let command = super::super::command_with_account_home(
                     agent,
                     &profile,
                     std::path::Path::new("/Applications/Vendor App.app"),
+                    &resolve().unwrap(),
+                    Some(std::path::Path::new(
+                        "/Applications/Vendor App.app/Contents/Resources/codex",
+                    )),
                 )
                 .unwrap();
                 let mut home = std::ffi::OsString::from("HOME=");

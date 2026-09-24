@@ -79,6 +79,7 @@ fn record(file: &mut File, bytes: &[u8]) -> Result<(), String> {
 
 trait Runtime {
     fn find(&mut self) -> Result<Option<Identity>, String>;
+    fn ready(&mut self, identity: &Identity) -> Result<bool, String>;
     fn activate(&mut self, identity: &Identity) -> Result<(), String>;
     fn dispatch(&mut self) -> Result<(), super::DispatchFailure>;
 }
@@ -91,40 +92,51 @@ fn run(
     timeout: Duration,
 ) -> Result<(), String> {
     check_owner()?;
-    if let Some(identity) = runtime.find()? {
-        check_owner()?;
-        // Finding one verified writer resolves even a prior timed-out launch.
-        // Clear before activation: inability to focus is not absence of a writer.
-        record(reservation, &[])?;
-        check_owner()?;
-        return runtime.activate(&identity);
-    }
-    if pending(reservation, boot)? {
+    let existing = runtime.find()?;
+    check_owner()?;
+    if existing.is_none() && pending(reservation, boot)? {
         return Err(UNCERTAIN.into());
     }
-    check_owner()?;
     record(reservation, boot)?;
     if let Err(error) = check_owner() {
-        // Dispatch has not begun, so this reservation is known to be unused.
-        record(reservation, &[])?;
-        return Err(error);
-    }
-    // Even a failed/timed-out open may have delivered its launch request. Keep
-    // the reservation until a unique writer is observed or macOS has rebooted.
-    let deadline = Instant::now() + timeout;
-    if let Err(error) = runtime.dispatch() {
-        if !error.started {
+        if existing.is_none() {
             record(reservation, &[])?;
         }
-        return Err(error.message.into());
+        return Err(error);
     }
+    let deadline = Instant::now() + timeout;
+    if existing.is_none() {
+        // A failed dispatcher may still have delivered its launch request.
+        if let Err(error) = runtime.dispatch() {
+            if !error.started {
+                record(reservation, &[])?;
+            }
+            return Err(error.message.into());
+        }
+    }
+    let mut candidate = existing;
     loop {
         check_owner()?;
-        if let Some(identity) = runtime.find()? {
+        let found = match candidate.take() {
+            Some(value) => Some(value),
+            None => runtime.find()?,
+        };
+        if let Some(identity) = found {
             check_owner()?;
-            record(reservation, &[])?;
-            check_owner()?;
-            return runtime.activate(&identity);
+            if runtime.ready(&identity)? {
+                check_owner()?;
+                // Runtime identity is proven before clearing the reservation.
+                // Activation can fail without creating a second writer.
+                record(reservation, &[])?;
+                check_owner()?;
+                let result = runtime.activate(&identity);
+                if result.is_err() && !runtime.ready(&identity).unwrap_or(false) {
+                    // Binding can disappear while the main-thread activation
+                    // is queued. Do not turn that ambiguity into a free retry.
+                    record(reservation, boot)?;
+                }
+                return result;
+            }
         }
         if Instant::now() >= deadline {
             return Err(UNCERTAIN.into());
@@ -136,53 +148,86 @@ fn run(
 pub(super) fn open(
     agent: &str,
     profile: &NativeAppProfile,
-    bundle: &Path,
+    client: &super::ResolvedNativeClient,
     check_owner: impl Fn() -> Result<(), String> + Clone + Send + Sync + 'static,
 ) -> Result<(), String> {
-    let executable = process::executable(bundle)?;
+    let bundle = &client.bundle;
+    let executable = &client.executable;
+    if process::executable(bundle)? != *executable {
+        return Err("native_app_changed".into());
+    }
+    let selected = client.clone();
+    let check_owner = move || {
+        selected.ensure_current()?;
+        check_owner()
+    };
     let user_data = profile
         .user_data()
         .canonicalize()
         .map_err(|_| "Cannot resolve official App profile")?;
     let mut reservation = lock(&profile.root().join("org2-launch.lock"))?;
     profile.validate(agent)?;
-    let mut command = super::command(agent, profile, bundle)?;
+    let mut command = super::command(agent, profile, client)?;
     struct MacRuntime<'a, C> {
         check_owner: C,
         executable: &'a Path,
         bundle_id: &'a str,
         profile: &'a Path,
+        managed_profile: &'a NativeAppProfile,
         command: &'a mut std::process::Command,
+        client: &'a super::ResolvedNativeClient,
+        binding: Option<process::ProfileBinding>,
     }
     impl<C: Fn() -> Result<(), String> + Clone + Send + Sync + 'static> Runtime for MacRuntime<'_, C> {
         fn find(&mut self) -> Result<Option<Identity>, String> {
             process::find(self.executable, self.profile, self.bundle_id)
         }
+        fn ready(&mut self, identity: &Identity) -> Result<bool, String> {
+            self.binding =
+                match process::ProfileBinding::observe(self.client, identity, self.managed_profile)
+                {
+                    Err(reason) if reason == "native_runtime_unverified" => None,
+                    result => result?,
+                };
+            Ok(self.binding.is_some())
+        }
         fn activate(&mut self, identity: &Identity) -> Result<(), String> {
-            process::activate(
-                identity,
-                self.executable,
-                self.profile,
-                self.check_owner.clone(),
-            )
+            let client = self.client.clone();
+            let binding = self.binding.clone();
+            let owner = self.check_owner.clone();
+            process::activate(identity, self.executable, self.profile, move || {
+                owner()?;
+                binding
+                    .as_ref()
+                    .ok_or("native_profile_runtime_unverified")?
+                    .check(&client)
+            })
         }
         fn dispatch(&mut self) -> Result<(), super::DispatchFailure> {
             super::run_dispatcher(self.command, STARTUP_TIMEOUT)
         }
     }
+    let mut runtime = MacRuntime {
+        check_owner: check_owner.clone(),
+        executable,
+        bundle_id: super::bundle_id(agent)?,
+        profile: &user_data,
+        managed_profile: profile,
+        command: &mut command,
+        client,
+        binding: None,
+    };
     run(
         &mut reservation,
         &process::boot()?,
         check_owner.clone(),
-        &mut MacRuntime {
-            check_owner,
-            executable: &executable,
-            bundle_id: super::bundle_id(agent)?,
-            profile: &user_data,
-            command: &mut command,
-        },
+        &mut runtime,
         STARTUP_TIMEOUT,
-    )
+    )?;
+    runtime
+        .binding
+        .map(|_| ())
+        .ok_or_else(|| "native_profile_runtime_unverified".into())
 }
 
 #[cfg(test)]

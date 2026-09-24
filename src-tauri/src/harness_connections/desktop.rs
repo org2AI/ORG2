@@ -1,27 +1,23 @@
 //! Read-only Desktop installation and applied-profile metadata. Never launch the app.
 use key_vault::harness_connections::{ConnectionAuthScheme, DesktopConnectionOptions};
 
-pub(super) async fn installation() -> Result<Option<String>, String> {
+pub(super) struct Installation {
+    pub(super) version: Option<String>,
+}
+
+pub(super) async fn installation() -> Result<Option<Installation>, String> {
     #[cfg(target_os = "macos")]
     {
         tokio::task::spawn_blocking(|| {
             let home = app_paths::external_history_home_dir();
             let candidates = [
-                home.join("Applications/Claude.app/Contents/Info.plist"),
-                std::path::PathBuf::from("/Applications/Claude.app/Contents/Info.plist"),
+                home.join("Applications/Claude.app"),
+                std::path::PathBuf::from("/Applications/Claude.app"),
             ];
-            for path in candidates {
-                if !path.exists() {
-                    continue;
+            for bundle in candidates {
+                if let Some(installation) = inspect_bundle(&bundle) {
+                    return Ok(Some(installation));
                 }
-                let value = plist::Value::from_file(path)
-                    .map_err(|_| "Cannot read Claude Desktop version")?;
-                return value
-                    .as_dictionary()
-                    .and_then(|value| value.get("CFBundleShortVersionString"))
-                    .and_then(plist::Value::as_string)
-                    .map(|value| Some(value.to_string()))
-                    .ok_or_else(|| "Cannot read Claude Desktop version".into());
             }
             Ok(None)
         })
@@ -51,55 +47,51 @@ pub(super) async fn installation() -> Result<Option<String>, String> {
             ])
             .env("ORGII_DESKTOP_EXECUTABLE", path);
         app_platform::hide_console(command.as_std_mut());
-        let output = tokio::time::timeout(std::time::Duration::from_secs(5), command.output())
-            .await
-            .map_err(|_| "Desktop version lookup timed out")?
-            .map_err(|_| "Cannot read Claude Desktop version")?;
-        if !output.status.success() {
-            return Err("Cannot read Claude Desktop version".into());
-        }
-        Ok(Some(
-            String::from_utf8_lossy(&output.stdout).trim().to_string(),
-        ))
+        // A missing product-version resource does not make an existing App
+        // incompatible. Only the actual configuration contract controls apply.
+        let version =
+            match tokio::time::timeout(std::time::Duration::from_secs(5), command.output()).await {
+                Ok(Ok(output)) if output.status.success() => {
+                    diagnostic_version(Some(&String::from_utf8_lossy(&output.stdout)))
+                }
+                _ => None,
+            };
+        Ok(Some(Installation { version }))
     }
     #[cfg(not(any(target_os = "macos", windows)))]
     Ok(None)
 }
 
-/// The local-profile schema is accepted for the verified 1.46388.x line and
-/// Desktop 2.110.x or newer 2.x releases. Each segment's leading digits are
-/// compared so a `-beta` style suffix does not fail as unparseable.
-pub(super) fn validate_version(version: &str) -> Result<(), String> {
-    let numbers = version
-        .trim()
-        .split('.')
-        .map(|segment| {
-            let digits = segment.trim_start_matches(|c: char| !c.is_ascii_digit());
-            let digits = &digits[..digits
-                .find(|c: char| !c.is_ascii_digit())
-                .unwrap_or(digits.len())];
-            digits.parse::<u32>()
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|_| "Cannot verify this Claude Desktop version")?;
-    if numbers.len() != 3 {
-        return Err("Cannot verify this Claude Desktop version".into());
+#[cfg(any(target_os = "macos", test))]
+fn inspect_bundle(bundle: &std::path::Path) -> Option<Installation> {
+    // Version metadata can be absent or use any vendor label. Presence is
+    // determined by an actual App executable, independently of that label.
+    let value = plist::Value::from_file(bundle.join("Contents/Info.plist")).ok();
+    let metadata = value.as_ref().and_then(plist::Value::as_dictionary);
+    let executable = metadata
+        .and_then(|value| value.get("CFBundleExecutable"))
+        .and_then(plist::Value::as_string)
+        .filter(|value| !value.is_empty() && !value.contains(['/', '\\']))
+        .unwrap_or("Claude");
+    if !bundle.join("Contents/MacOS").join(executable).is_file() {
+        return None;
     }
-    let supported = match numbers[0] {
-        1 => numbers.as_slice() >= [1, 46388, 1].as_slice(),
-        2 => numbers.as_slice() >= [2, 110, 0].as_slice(),
-        _ => false,
-    };
-    if supported {
-        return Ok(());
-    }
-    if !matches!(numbers[0], 1 | 2) {
-        return Err(format!(
-            "Claude Desktop {} uses an unverified configuration format; ORG2 supports verified 1.x and 2.x releases",
-            version.trim()
-        ));
-    }
-    Err("Update Claude Desktop to 1.46388.1 or 2.110.0 and newer".into())
+    Some(Installation {
+        version: diagnostic_version(
+            metadata
+                .and_then(|value| value.get("CFBundleShortVersionString"))
+                .and_then(plist::Value::as_string),
+        ),
+    })
+}
+
+/// Vendor versions are display metadata, including future/non-semver builds.
+#[cfg(any(target_os = "macos", windows, test))]
+fn diagnostic_version(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned)
 }
 
 pub(super) fn applied_options(
@@ -145,43 +137,52 @@ pub(super) fn applied_options(
 mod tests {
     use super::*;
     #[test]
-    fn only_verified_schema_versions_and_direct_model_ids_are_accepted() {
-        for version in [
-            "1.46388.1",
-            "1.46388.4",
-            "1.46388.1-beta",
-            "1.99999.0",
-            " 1.46388.4\n",
-            "2.110.0",
-            "2.110.1-beta",
-            "2.999.0",
-        ] {
-            validate_version(version).unwrap();
+    fn desktop_version_is_optional_diagnostic_metadata() {
+        for version in ["1.0.0", "2.2553.1", "3.0.0", "2027.preview", "nightly"] {
+            assert_eq!(diagnostic_version(Some(version)), Some(version.into()));
         }
-        for version in ["1.0.0", "1.46387.9", "1.46388.0-rc1", "2.109.9"] {
-            assert!(validate_version(version)
-                .unwrap_err()
-                .starts_with("Update Claude Desktop"));
-        }
-        for version in ["0.46388.1", "3.0.0"] {
-            let error = validate_version(version).unwrap_err();
-            assert!(error.contains(version), "{error}");
-            assert!(error.contains("unverified"), "{error}");
-        }
-        for version in [
-            "",
-            "beta",
-            "1.x.1",
-            "1.46388",
-            "1.46388.1.2",
-            "1.46388.1-beta.2",
-            "1..1",
-        ] {
-            assert_eq!(
-                validate_version(version).unwrap_err(),
-                "Cannot verify this Claude Desktop version"
+        assert_eq!(diagnostic_version(Some(" 3.0.0\n")), Some("3.0.0".into()));
+        assert_eq!(diagnostic_version(Some(" ")), None);
+        assert_eq!(diagnostic_version(None), None);
+    }
+
+    #[test]
+    fn executable_presence_is_independent_of_vendor_version_metadata() {
+        let temp = tempfile::tempdir().unwrap();
+        let bundle = temp.path().join("Claude.app");
+        let executable = bundle.join("Contents/MacOS/Claude");
+        std::fs::create_dir_all(executable.parent().unwrap()).unwrap();
+        let info = bundle.join("Contents/Info.plist");
+        let mut metadata = plist::Dictionary::new();
+        metadata.insert(
+            "CFBundleExecutable".into(),
+            plist::Value::String("Claude".into()),
+        );
+        for version in ["1.0.0", "3.0.0", "nightly"] {
+            metadata.insert(
+                "CFBundleShortVersionString".into(),
+                plist::Value::String(version.into()),
             );
+            plist::Value::Dictionary(metadata.clone())
+                .to_file_xml(&info)
+                .unwrap();
+            assert!(inspect_bundle(&bundle).is_none());
+            std::fs::write(&executable, b"fixture executable").unwrap();
+            assert_eq!(
+                inspect_bundle(&bundle).unwrap().version.as_deref(),
+                Some(version)
+            );
+            std::fs::remove_file(&executable).unwrap();
         }
+        std::fs::write(&executable, b"fixture executable").unwrap();
+        std::fs::remove_file(&info).unwrap();
+        assert!(inspect_bundle(&bundle).unwrap().version.is_none());
+        std::fs::write(&info, b"malformed optional metadata").unwrap();
+        assert!(inspect_bundle(&bundle).unwrap().version.is_none());
+    }
+
+    #[test]
+    fn direct_models_still_require_full_ids() {
         for model in [
             "claude-sonnet-5",
             "anthropic/claude-opus-5",

@@ -105,6 +105,8 @@ pub(super) fn seed(home: &Path, id: &str, rollout: &str) {
     ] {
         values[column_index(column)] = Value::Text(value.to_string());
     }
+    values[column_index("updated_at")] = Value::Integer(1);
+    values[column_index("updated_at_ms")] = Value::Integer(1000);
     state
         .execute(
             &format!(
@@ -209,6 +211,7 @@ fn completed_gate_rejects_noncompleted_empty_null_and_legacy_turns() {
         history_schema: "main",
         record: completed.record.clone(),
         projections: completed.projections.clone(),
+        projection_columns: completed.projection_columns.clone(),
     };
     assert!(!malformed.completed_rollouts().unwrap());
     drop(completed);
@@ -254,12 +257,13 @@ fn durable_snapshot_restores_complete_projection_without_original_databases() {
     assert_eq!(restored.record().rollout_path, original_path);
     assert_eq!(restored.projections().len(), 2);
     restored
-        .apply(
+        .apply_with_alias(
             target.path(),
             &target.path().join("sessions/replacement.jsonl"),
             &["replacement".into(), "ancestor".into()],
             "orgii",
             "target-model",
+            None,
             None,
             || Ok(()),
         )
@@ -365,19 +369,20 @@ fn publishes_raw_projections_and_conservative_new_route_without_other_state() {
     .unwrap();
     assert_eq!(prepared.projections()[0].next_byte_offset, Some(321));
     let published = prepared
-        .apply(
+        .apply_with_alias(
             target.path(),
             &target.path().join("sessions/replacement.jsonl"),
             &["replacement".into(), "ancestor".into()],
             "orgii",
             "market-model",
             None,
+            None,
             || Ok(()),
         )
         .unwrap();
     assert_eq!(published.metadata_hash, prepared.record().metadata_hash);
     assert_eq!(
-        text_value(&published.values, "model_provider").unwrap(),
+        text_value(&published.columns, &published.values, "model_provider").unwrap(),
         "orgii"
     );
     let (_, _, permissions, _) = published.routing_settings().unwrap();
@@ -385,11 +390,11 @@ fn publishes_raw_projections_and_conservative_new_route_without_other_state() {
     assert_eq!(permissions["network"], "restricted");
     assert_eq!(permissions["file_system"]["entries"][0]["access"], "read");
     assert_eq!(
-        text_value(&published.values, "approval_mode").unwrap(),
+        text_value(&published.columns, &published.values, "approval_mode").unwrap(),
         "on-request"
     );
     assert_eq!(
-        text_value(&published.values, "memory_mode").unwrap(),
+        text_value(&published.columns, &published.values, "memory_mode").unwrap(),
         "disabled"
     );
     let copied = open(target.path(), false, true).unwrap();
@@ -433,13 +438,14 @@ fn publishes_selected_route_and_preserves_permissions_and_grouping() {
     let before = list_threads(target.path(), None).unwrap().remove(0);
     let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
     let record = prepared
-        .apply(
+        .apply_with_alias(
             target.path(),
             &target.path().join("sessions/replacement.jsonl"),
             &["replacement".into()],
             "orgii",
             "chosen",
             Some(&before.metadata_hash),
+            None,
             || Ok(()),
         )
         .unwrap();
@@ -451,7 +457,10 @@ fn publishes_selected_route_and_preserves_permissions_and_grouping() {
         ("project_id", "local-project"),
         ("thread_section_id", "local-section"),
     ] {
-        assert_eq!(text_value(&record.values, field).unwrap(), expected);
+        assert_eq!(
+            text_value(&record.columns, &record.values, field).unwrap(),
+            expected
+        );
     }
     let history = Connection::open(target.path().join(HISTORY_FILE)).unwrap();
     assert_eq!(
@@ -480,17 +489,21 @@ fn source_snapshot_does_not_mix_later_metadata_or_projection_writes() {
         .execute("UPDATE thread_items SET item_json='later'", [])
         .unwrap();
     let record = prepared
-        .apply(
+        .apply_with_alias(
             target.path(),
             &target.path().join("sessions/rollout.jsonl"),
             &["rollout".into()],
             "orgii",
             "chosen",
             None,
+            None,
             || Ok(()),
         )
         .unwrap();
-    assert_eq!(text_value(&record.values, "title").unwrap(), "Conversation");
+    assert_eq!(
+        text_value(&record.columns, &record.values, "title").unwrap(),
+        "Conversation"
+    );
     let history = Connection::open(target.path().join(HISTORY_FILE)).unwrap();
     assert_ne!(
         history
@@ -508,12 +521,13 @@ fn identity_change_rolls_back_both_databases() {
     seed(source.path(), "thread", "rollout");
     let prepared = prepare(source.path(), "thread", &["rollout".into()]).unwrap();
     let mut checks = 0;
-    let result = prepared.apply(
+    let result = prepared.apply_with_alias(
         target.path(),
         &target.path().join("sessions/rollout.jsonl"),
         &["rollout".into()],
         "orgii",
         "chosen",
+        None,
         None,
         || {
             checks += 1;
@@ -537,13 +551,10 @@ fn identity_change_rolls_back_both_databases() {
 }
 
 #[test]
-fn refuses_unknown_columns_tables_triggers_or_missing_checkpoint() {
-    for mutation in [
-        "ALTER TABLE threads ADD COLUMN future_control TEXT",
-        "CREATE TABLE future_history(id TEXT)",
-        "CREATE TRIGGER surprise AFTER UPDATE ON threads BEGIN DELETE FROM projects; END",
-        "INSERT INTO _sqlx_migrations VALUES (56,1)",
-    ] {
+fn refuses_relevant_unknown_triggers_or_missing_checkpoint() {
+    {
+        let mutation =
+            "CREATE TRIGGER surprise AFTER UPDATE ON threads BEGIN DELETE FROM projects; END";
         let source = home();
         seed(source.path(), "thread", "rollout");
         Connection::open(source.path().join(STATE_FILE))
@@ -577,18 +588,22 @@ fn refuses_target_conflict_without_changing_history() {
         .unwrap();
     let prepared = prepare(source.path(), "thread", &["rollout".into()]).unwrap();
     assert!(prepared
-        .apply(
+        .apply_with_alias(
             target.path(),
             &target.path().join("sessions/rollout.jsonl"),
             &["rollout".into()],
             "orgii",
             "chosen",
             Some(&before.metadata_hash),
+            None,
             || Ok(())
         )
         .is_err());
     assert_eq!(
-        list_threads(target.path(), None).unwrap()[0].values[column_index("title")],
+        list_threads(target.path(), None).unwrap()[0]
+            .column("title")
+            .unwrap()
+            .clone(),
         Value::Text("renamed".into())
     );
 }
@@ -615,12 +630,13 @@ fn does_not_replace_projection_for_an_existing_unimported_ancestor() {
     )
     .unwrap();
     prepared
-        .apply(
+        .apply_with_alias(
             target.path(),
             &target.path().join("sessions/replacement.jsonl"),
             &["replacement".into()],
             "orgii",
             "chosen",
+            None,
             None,
             || Ok(()),
         )
@@ -653,15 +669,401 @@ fn refuses_database_sidecar_symlinks_before_opening_the_target() {
     std::fs::write(&outside, b"untouched").unwrap();
     std::os::unix::fs::symlink(&outside, target.path().join(format!("{STATE_FILE}-wal"))).unwrap();
     assert!(prepared
-        .apply(
+        .apply_with_alias(
             target.path(),
             &target.path().join("sessions/rollout.jsonl"),
             &["rollout".into()],
             "orgii",
             "chosen",
             None,
+            None,
             || Ok(())
         )
         .is_err());
     assert_eq!(std::fs::read(outside).unwrap(), b"untouched");
+}
+
+fn publish_for_test(
+    prepared: &PreparedThread,
+    target: &Path,
+    expected: Option<&str>,
+) -> Result<ThreadRecord, String> {
+    prepared.apply_with_alias(
+        target,
+        &target.join("sessions/replacement.jsonl"),
+        &["replacement".into()],
+        "orgii",
+        "market-model",
+        expected,
+        None,
+        || Ok(()),
+    )
+}
+
+fn add_opaque_columns(home: &Path, reverse: bool) {
+    let state = Connection::open(home.join(STATE_FILE)).unwrap();
+    let statements = [
+        "ALTER TABLE threads ADD COLUMN \"future\"\"payload\" BLOB",
+        "ALTER TABLE threads ADD COLUMN future_text TEXT",
+    ];
+    for sql in if reverse {
+        [statements[1], statements[0]]
+    } else {
+        statements
+    } {
+        state.execute_batch(sql).unwrap();
+    }
+    state
+        .execute(
+            "UPDATE threads SET \"future\"\"payload\"=?1,future_text='opaque'",
+            [vec![0u8, 255, 1]],
+        )
+        .unwrap();
+    Connection::open(home.join(HISTORY_FILE)).unwrap().execute_batch("ALTER TABLE thread_items ADD COLUMN future_blob BLOB; UPDATE thread_items SET future_blob=x'00ff02'; ALTER TABLE thread_turns ADD COLUMN future_status TEXT; UPDATE thread_turns SET future_status='native-extra';").unwrap();
+}
+
+#[test]
+fn opaque_native_columns_survive_direct_and_recovered_publication() {
+    let source = home();
+    seed(source.path(), "thread", "replacement");
+    add_opaque_columns(source.path(), false);
+    let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
+    let journal = tempfile::tempdir().unwrap();
+    let path = journal
+        .path()
+        .canonicalize()
+        .unwrap()
+        .join("prepared.sqlite");
+    prepared.persist_snapshot(&path, || Ok(())).unwrap();
+    let recovered = PreparedThread::from_snapshot(&path).unwrap();
+    assert_eq!(
+        prepared.record().metadata_hash,
+        recovered.record().metadata_hash
+    );
+    assert_eq!(
+        prepared.record().revision_metadata_hash().unwrap(),
+        recovered.record().revision_metadata_hash().unwrap()
+    );
+    for copy in [&prepared, &recovered] {
+        let target = home();
+        add_opaque_columns(target.path(), true);
+        let result = publish_for_test(copy, target.path(), None).unwrap();
+        assert_eq!(
+            result.column("future\"payload"),
+            Some(&Value::Blob(vec![0, 255, 1]))
+        );
+        assert_eq!(
+            result.column("future_text"),
+            Some(&Value::Text("opaque".into()))
+        );
+        let history = Connection::open(target.path().join(HISTORY_FILE)).unwrap();
+        assert_eq!(
+            history
+                .query_row("SELECT future_blob FROM thread_items", [], |row| row
+                    .get::<_, Vec<u8>>(0))
+                .unwrap(),
+            vec![0, 255, 2]
+        );
+        assert_eq!(
+            history
+                .query_row("SELECT future_status FROM thread_turns", [], |row| row
+                    .get::<_, String>(
+                    0
+                ))
+                .unwrap(),
+            "native-extra"
+        );
+    }
+}
+
+#[test]
+fn opaque_only_revision_changes_are_hashed_and_reject_stale_target_cas() {
+    let source = home();
+    let target = home();
+    for side in [source.path(), target.path()] {
+        seed(side, "thread", "replacement");
+        add_opaque_columns(side, false);
+    }
+    let before = list_threads(target.path(), None).unwrap().remove(0);
+    let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
+    Connection::open(target.path().join(STATE_FILE))
+        .unwrap()
+        .execute("UPDATE threads SET future_text='later'", [])
+        .unwrap();
+    let after = list_threads(target.path(), None).unwrap().remove(0);
+    assert_ne!(before.metadata_hash, after.metadata_hash);
+    assert_ne!(
+        before.revision_metadata_hash().unwrap(),
+        after.revision_metadata_hash().unwrap()
+    );
+    assert!(publish_for_test(&prepared, target.path(), Some(&before.metadata_hash)).is_err());
+    assert_eq!(
+        list_threads(target.path(), None).unwrap()[0].column("future_text"),
+        Some(&Value::Text("later".into()))
+    );
+}
+
+#[test]
+fn unrelated_tables_triggers_migrations_and_optional_column_removal_do_not_gate_copy() {
+    let source = home();
+    let target = home();
+    seed(source.path(), "thread", "replacement");
+    for side in [source.path(), target.path()] {
+        Connection::open(side.join(STATE_FILE)).unwrap().execute_batch("ALTER TABLE threads DROP COLUMN agent_nickname; CREATE TABLE unrelated(id TEXT PRIMARY KEY, value BLOB); INSERT INTO unrelated VALUES ('sentinel',x'00ff'); CREATE TRIGGER unrelated_only AFTER UPDATE ON unrelated BEGIN UPDATE unrelated SET value=x'01' WHERE id=NEW.id; END; INSERT INTO _sqlx_migrations VALUES(999,1);").unwrap();
+    }
+    let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
+    publish_for_test(&prepared, target.path(), None).unwrap();
+    assert_eq!(
+        Connection::open(target.path().join(STATE_FILE))
+            .unwrap()
+            .query_row(
+                "SELECT value FROM unrelated WHERE id='sentinel'",
+                [],
+                |row| row.get::<_, Vec<u8>>(0)
+            )
+            .unwrap(),
+        vec![0, 255]
+    );
+}
+
+#[test]
+fn cross_side_column_difference_preserves_destination_and_pending_snapshot() {
+    let source = home();
+    let target = home();
+    seed(source.path(), "thread", "replacement");
+    seed(target.path(), "thread", "replacement");
+    let before = list_threads(target.path(), None).unwrap().remove(0);
+    Connection::open(source.path().join(STATE_FILE)).unwrap().execute_batch("ALTER TABLE threads ADD COLUMN source_only BLOB; UPDATE threads SET source_only=x'ff';").unwrap();
+    let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
+    let journal = tempfile::tempdir().unwrap();
+    let snapshot = journal
+        .path()
+        .canonicalize()
+        .unwrap()
+        .join("pending.sqlite");
+    prepared.persist_snapshot(&snapshot, || Ok(())).unwrap();
+    let bytes = std::fs::read(&snapshot).unwrap();
+    let recovered = PreparedThread::from_snapshot(&snapshot).unwrap();
+    assert!(
+        publish_for_test(&recovered, target.path(), Some(&before.metadata_hash))
+            .unwrap_err()
+            .contains("contracts differ")
+    );
+    assert_eq!(
+        list_threads(target.path(), None).unwrap()[0].metadata_hash,
+        before.metadata_hash
+    );
+    assert_eq!(std::fs::read(snapshot).unwrap(), bytes);
+}
+
+#[test]
+fn unknown_projection_incoming_foreign_key_is_rejected_without_cascade() {
+    let source = home();
+    let target = home();
+    seed(source.path(), "thread", "replacement");
+    seed(target.path(), "thread", "replacement");
+    let before = list_threads(target.path(), None).unwrap().remove(0);
+    let history = Connection::open(target.path().join(HISTORY_FILE)).unwrap();
+    history.execute_batch("CREATE TABLE native_future(thread_id TEXT PRIMARY KEY REFERENCES thread_history_projection_state(thread_id) ON DELETE CASCADE,payload TEXT); INSERT INTO native_future VALUES('replacement','keep');").unwrap();
+    let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
+    assert!(
+        publish_for_test(&prepared, target.path(), Some(&before.metadata_hash))
+            .unwrap_err()
+            .contains("foreign-key")
+    );
+    assert_eq!(
+        history
+            .query_row("SELECT payload FROM native_future", [], |row| row
+                .get::<_, String>(0))
+            .unwrap(),
+        "keep"
+    );
+    assert_eq!(
+        history
+            .query_row("SELECT count(*) FROM thread_items", [], |row| row
+                .get::<_, i64>(0))
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        list_threads(target.path(), None).unwrap()[0].metadata_hash,
+        before.metadata_hash
+    );
+}
+
+#[test]
+fn unknown_trigger_in_projection_cleanup_chain_cannot_change_unrelated_rows() {
+    let source = home();
+    let target = home();
+    seed(source.path(), "thread", "replacement");
+    seed(target.path(), "thread", "replacement");
+    let before = list_threads(target.path(), None).unwrap().remove(0);
+    let history = Connection::open(target.path().join(HISTORY_FILE)).unwrap();
+    history.execute_batch("CREATE TABLE sentinel(value TEXT); INSERT INTO sentinel VALUES('keep'); CREATE TRIGGER cascade_surprise AFTER DELETE ON thread_realtime_items BEGIN DELETE FROM sentinel; END;").unwrap();
+    let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
+    assert!(
+        publish_for_test(&prepared, target.path(), Some(&before.metadata_hash))
+            .unwrap_err()
+            .contains("trigger")
+    );
+    assert_eq!(
+        history
+            .query_row("SELECT value FROM sentinel", [], |row| row
+                .get::<_, String>(0))
+            .unwrap(),
+        "keep"
+    );
+    assert_eq!(
+        history
+            .query_row("SELECT count(*) FROM thread_realtime_items", [], |row| row
+                .get::<_, i64>(
+                0
+            ))
+            .unwrap(),
+        1
+    );
+}
+
+#[test]
+fn unique_replace_policy_cannot_delete_an_unrelated_thread() {
+    let source = home();
+    let target = home();
+    seed(source.path(), "thread", "replacement");
+    seed(target.path(), "other", "other-rollout");
+    for side in [source.path(), target.path()] {
+        let db = Connection::open(side.join(STATE_FILE)).unwrap();
+        // The inline policy is preserved by a table rebuild, not an index.
+        let sql: String = db
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE name='threads'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let sql = sql.replacen(
+            "CREATE TABLE threads",
+            "CREATE TABLE replacement_threads",
+            1,
+        );
+        let sql = sql.replacen(
+            "title TEXT NOT NULL",
+            "title TEXT NOT NULL UNIQUE ON CONFLICT REPLACE",
+            1,
+        );
+        db.execute_batch(&format!("{sql}; INSERT INTO replacement_threads SELECT * FROM threads; DROP TABLE threads; ALTER TABLE replacement_threads RENAME TO threads;")).unwrap();
+    }
+    let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
+    assert!(publish_for_test(&prepared, target.path(), None).is_err());
+    let rows = list_threads(target.path(), None).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].id, "other");
+    assert_eq!(
+        Connection::open(target.path().join(HISTORY_FILE))
+            .unwrap()
+            .query_row(
+                "SELECT count(*) FROM thread_items WHERE thread_id='replacement'",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+        0
+    );
+}
+
+#[test]
+fn pending_legacy_snapshot_still_recovers_without_rewriting_its_bytes() {
+    let source = home();
+    let target = home();
+    seed(source.path(), "thread", "replacement");
+    let prepared = prepare(source.path(), "thread", &["replacement".into()]).unwrap();
+    let journal = tempfile::tempdir().unwrap();
+    let file = tempfile::NamedTempFile::new_in(journal.path().canonicalize().unwrap()).unwrap();
+    let legacy = Connection::open(file.path()).unwrap();
+    legacy
+        .pragma_update(None, "application_id", 0x4f524748_i64)
+        .unwrap();
+    legacy.pragma_update(None, "user_version", 1_i64).unwrap();
+    let meta: &[Column] = &[
+        ("singleton", "INTEGER", 1, 1),
+        ("version", "INTEGER", 1, 0),
+        ("thread_id", "TEXT", 1, 0),
+    ];
+    let rollouts: &[Column] = &[("position", "INTEGER", 1, 1), ("rollout_id", "TEXT", 1, 0)];
+    let tables: Vec<_> = [
+        ("snapshot_meta", meta),
+        ("snapshot_rollouts", rollouts),
+        ("thread_record", THREAD_COLUMNS),
+    ]
+    .into_iter()
+    .chain(HISTORY_TABLES.iter().copied())
+    .collect();
+    for (name, columns) in &tables {
+        let mut definitions = columns
+            .iter()
+            .map(|column| {
+                format!(
+                    "{} {}{}",
+                    column.0,
+                    column.1,
+                    if column.2 != 0 { " NOT NULL" } else { "" }
+                )
+            })
+            .collect::<Vec<_>>();
+        let mut key = columns
+            .iter()
+            .filter(|column| column.3 != 0)
+            .collect::<Vec<_>>();
+        key.sort_by_key(|column| column.3);
+        definitions.push(format!(
+            "PRIMARY KEY ({})",
+            key.iter()
+                .map(|column| column.0)
+                .collect::<Vec<_>>()
+                .join(",")
+        ));
+        // The v1 writer emitted commas without spaces, and its sealed schema
+        // receipt compared normalized DDL exactly. Reproduce that old format.
+        legacy
+            .execute_batch(&format!("CREATE TABLE {name} ({})", definitions.join(",")))
+            .unwrap();
+    }
+    legacy
+        .execute("INSERT INTO snapshot_meta VALUES(1,1,'thread')", [])
+        .unwrap();
+    legacy
+        .execute("INSERT INTO snapshot_rollouts VALUES(0,'replacement')", [])
+        .unwrap();
+    let source_db = open(source.path(), false, true).unwrap();
+    for (name, columns) in tables.into_iter().skip(2) {
+        let table = if name == "thread_record" {
+            "main.threads".to_string()
+        } else {
+            format!("history.{name}")
+        };
+        let mut statement = source_db
+            .prepare(&format!("SELECT {} FROM {table}", columns_sql(columns)))
+            .unwrap();
+        let mut rows = statement.query([]).unwrap();
+        while let Some(row) = rows.next().unwrap() {
+            let values = row_values(row, columns.len()).unwrap();
+            legacy
+                .execute(
+                    &format!(
+                        "INSERT INTO {name} VALUES ({})",
+                        vec!["?"; columns.len()].join(",")
+                    ),
+                    params_from_iter(values.iter()),
+                )
+                .unwrap();
+        }
+    }
+    drop(legacy);
+    let original = std::fs::read(file.path()).unwrap();
+    let recovered = PreparedThread::from_snapshot(file.path()).unwrap();
+    assert_eq!(
+        recovered.record().metadata_hash,
+        prepared.record().metadata_hash
+    );
+    publish_for_test(&recovered, target.path(), None).unwrap();
+    assert_eq!(std::fs::read(file.path()).unwrap(), original);
 }

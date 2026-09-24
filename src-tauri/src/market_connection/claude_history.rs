@@ -1,7 +1,11 @@
 //! Owner-scoped automatic history handoff, independent of frontend lifecycle.
 //! Filesystem callbacks collect bounded invalidations; they never parse history.
 //! Busy writers are waited on by process-exit notifications, not sync polling.
-use super::{claude_history_writers, owner};
+use super::{
+    claude_history_writers,
+    history_status::{HistorySyncState, HistorySyncView, emit_changed},
+    owner,
+};
 use crate::agent_sessions::cli::native_materializer::claude_history_handoff::{
     self, Report, Status,
 };
@@ -11,8 +15,8 @@ use std::{
     collections::HashSet,
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc, Mutex, OnceLock,
+        atomic::{AtomicBool, Ordering},
     },
 };
 use tokio::sync::Notify;
@@ -23,7 +27,6 @@ const MAX_DIRTY: usize = 128;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
     Disabled,
-    Watching,
     WaitingForExit,
     Syncing,
     Current,
@@ -34,14 +37,50 @@ enum Phase {
 struct Progress {
     pub phase: Phase,
     pub issues: usize,
+    reason: Option<&'static str>,
 }
 impl Default for Progress {
     fn default() -> Self {
         Self {
             phase: Phase::Disabled,
             issues: 0,
+            reason: None,
         }
     }
+}
+impl Progress {
+    fn view(&self) -> HistorySyncView {
+        let (state, reason) = match self.phase {
+            Phase::Disabled => (HistorySyncState::Idle, None),
+            Phase::Current => (HistorySyncState::Active, None),
+            Phase::Syncing => (HistorySyncState::Active, Some("claude_history_syncing")),
+            Phase::WaitingForExit => (
+                HistorySyncState::Active,
+                Some("claude_history_waiting_for_exit"),
+            ),
+            Phase::Attention => (HistorySyncState::Paused, Some("claude_history_attention")),
+            Phase::Unavailable => (HistorySyncState::Paused, Some("claude_history_unavailable")),
+        };
+        HistorySyncView {
+            state,
+            reason: self.reason.or(reason).map(str::to_owned),
+            native_version: None,
+            // The handoff report counts processed rows, not a full inventory.
+            // Never present those as a count of all shared conversations.
+            shared: 0,
+            conflicts: 0,
+            pending: self.issues,
+        }
+    }
+}
+
+/// Snapshot only: no filesystem scan, subscription or retry on a UI read.
+/// A retired or invalid owner cannot expose its previous account's state.
+pub(crate) fn status() -> HistorySyncView {
+    let slot = current().lock().unwrap_or_else(|e| e.into_inner());
+    slot.as_ref()
+        .map(|handle| handle.service.view())
+        .unwrap_or_else(|| Progress::default().view())
 }
 
 #[derive(Default)]
@@ -134,6 +173,7 @@ struct Service {
     lease: owner::Lease,
     dirty: Mutex<Dirty>,
     snapshot: Mutex<Progress>,
+    issues: Mutex<Issues>,
     wake: Notify,
     cancelled: CancellationToken,
     retiring: AtomicBool,
@@ -147,26 +187,107 @@ fn current() -> &'static Mutex<Option<Handle>> {
     CURRENT.get_or_init(Default::default)
 }
 impl Service {
+    fn view(&self) -> HistorySyncView {
+        let snapshot = self.snapshot.lock().unwrap_or_else(|e| e.into_inner());
+        if self.valid() && !self.retiring.load(Ordering::Acquire) {
+            snapshot.view()
+        } else {
+            Progress::default().view()
+        }
+    }
     fn accepts_wake(&self, lease: &owner::Lease) -> bool {
         !self.retiring.load(Ordering::Acquire)
             && !self.cancelled.is_cancelled()
             && self.lease.same_epoch(lease)
     }
+    fn namespace_pending(&self, ids: Option<HashSet<String>>) {
+        self.dirty
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .restore(ids);
+        self.publish_reason(
+            Phase::Unavailable,
+            0,
+            Some("claude_history_namespace_pending"),
+        );
+        // No self-wakeup: only a new namespace/config event or writer exit
+        // justifies another bounded import attempt.
+    }
+    /// Both Open and the filesystem queue publish through the same owner-scoped
+    /// issue set. The caller holds history_serial until publication completes.
+    fn record_reconciliation(&self, result: &Reconciliation, ids: Option<HashSet<String>>) {
+        if !self.valid() {
+            return;
+        }
+        match result {
+            Reconciliation::Unavailable => {
+                self.dirty
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .restore(ids);
+                self.publish_reason(
+                    Phase::Unavailable,
+                    0,
+                    Some("native_history_runtime_unknown"),
+                );
+            }
+            Reconciliation::NamespacePending => self.namespace_pending(ids),
+            Reconciliation::Complete(report) => {
+                tracing::debug!(status = ?report.status, processed = report.items.len(), "[Claude History] automatic handoff completed");
+                if matches!(
+                    report.status,
+                    Status::Busy | Status::WriterUnknown | Status::ScopeChanged
+                ) {
+                    self.dirty
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .restore(ids);
+                    self.publish(
+                        if report.status == Status::Busy {
+                            Phase::WaitingForExit
+                        } else {
+                            Phase::Unavailable
+                        },
+                        0,
+                    );
+                } else {
+                    let count = self
+                        .issues
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .update(report, ids.is_none());
+                    self.publish(
+                        if count > 0 {
+                            Phase::Attention
+                        } else {
+                            Phase::Current
+                        },
+                        count,
+                    );
+                }
+            }
+        }
+    }
     fn valid(&self) -> bool {
         !self.cancelled.is_cancelled() && self.lease.check().is_ok()
     }
     fn publish(&self, phase: Phase, issues: usize) {
+        self.publish_reason(phase, issues, None);
+    }
+    fn publish_reason(&self, phase: Phase, issues: usize, reason: Option<&'static str>) {
         if !self.valid() {
             return;
         }
         let mut value = self.snapshot.lock().unwrap_or_else(|e| e.into_inner());
-        if value.phase == phase && value.issues == issues {
+        if value.phase == phase && value.issues == issues && value.reason == reason {
             return;
         }
         value.phase = phase;
         value.issues = issues;
+        value.reason = reason;
         drop(value);
         tracing::debug!(?phase, issues, "[Claude History] automatic handoff state");
+        emit_changed("claude_desktop");
     }
 }
 
@@ -196,16 +317,21 @@ pub(super) fn ensure_started(lease: owner::Lease) {
         lease,
         dirty: Mutex::new(dirty),
         snapshot: Mutex::new(Progress::default()),
+        issues: Mutex::new(Issues::default()),
         wake: Notify::new(),
         cancelled: CancellationToken::new(),
         retiring: AtomicBool::new(false),
     });
     let task = tokio::spawn(run(service.clone()));
     *slot = Some(Handle { service, task });
+    drop(slot);
+    emit_changed("claude_desktop");
 }
 pub(super) fn stop() {
-    if let Some(handle) = current().lock().unwrap_or_else(|e| e.into_inner()).take() {
+    let handle = current().lock().unwrap_or_else(|e| e.into_inner()).take();
+    if let Some(handle) = handle {
         handle.service.cancelled.cancel();
+        emit_changed("claude_desktop");
     }
 }
 
@@ -325,9 +451,52 @@ fn install_watcher(
     Ok(watcher)
 }
 
-async fn reconcile(service: Arc<Service>, ids: Option<HashSet<String>>) -> Report {
+enum Reconciliation {
+    Complete(Report),
+    /// App identity failures are separate from transcript format errors.
+    Unavailable,
+    /// The vendor has not registered a local namespace yet. Retain work until
+    /// a namespace/writer/config event; never certify an empty target as current.
+    NamespacePending,
+}
+
+fn registered_handoff(
+    profile: &NativeAppProfile,
+    check_owner: impl Fn() -> Result<(), Status>,
+    check_writers: impl Fn() -> Result<(), Status>,
+    handoff: impl FnOnce() -> Report,
+) -> Reconciliation {
+    use crate::agent_sessions::cli::native_materializer::isolated_claude_history;
+    let failed_guard = std::cell::Cell::new(None);
+    let guard = || {
+        let result = check_owner().and_then(|_| check_writers());
+        result.map_err(|status| {
+            failed_guard.set(Some(status));
+            "Claude history owner or writer changed".to_owned()
+        })
+    };
+    let result = isolated_claude_history::import_after_launch(
+        profile,
+        std::time::Instant::now() + std::time::Duration::from_secs(15),
+        &guard,
+    );
+    match result {
+        Ok(false) => Reconciliation::NamespacePending,
+        Ok(true) => Reconciliation::Complete(handoff()),
+        Err(_) => Reconciliation::Complete(Report {
+            status: failed_guard.get().unwrap_or(Status::Unsupported),
+            items: Vec::new(),
+        }),
+    }
+}
+
+async fn reconcile(service: Arc<Service>, ids: Option<HashSet<String>>) -> Reconciliation {
     let _serial = super::history_serial().lock().await;
+    service.publish(Phase::Syncing, 0);
+    let pending = ids.clone();
+    let worker_service = service.clone();
     let result = async {
+        let service = worker_service;
         if !service.valid() {
             return Err(Status::ScopeChanged);
         }
@@ -339,30 +508,48 @@ async fn reconcile(service: Arc<Service>, ids: Option<HashSet<String>>) -> Repor
             .map_err(|_| Status::ScopeChanged)?;
         tokio::task::spawn_blocking(move || {
             let _operation = operation;
+            // This only runs for an actual handoff attempt, after the writer
+            // exit gate (or an explicit Open), never for UI reads or tokens.
+            let Ok(client) = super::native_compatibility::resolve("claude_desktop") else {
+                return Ok(Reconciliation::Unavailable);
+            };
+            if client.ensure_current().is_err() {
+                return Ok(Reconciliation::Unavailable);
+            }
             let profile = service
                 .lease
                 .native_app("claude_desktop")
                 .map_err(|_| Status::ScopeChanged)?
                 .ok_or(Status::Unsupported)?;
             native_app::with_existing_profile(&profile, true, |check_profile| {
-                Ok(claude_history_handoff::run_automatic(
-                    &profile,
-                    service.lease.user(),
-                    ids.as_ref(),
-                    || {
-                        if !service.valid() {
-                            return Err(Status::ScopeChanged);
+                let check_owner = || {
+                    if !service.valid() {
+                        return Err(Status::ScopeChanged);
+                    }
+                    client.ensure_current().map_err(|_| Status::ScopeChanged)?;
+                    check_profile().map_err(|_| Status::ScopeChanged)
+                };
+                let check_writers = || {
+                    claude_history_writers::writers_closed().map_err(|code| {
+                        if code == "busy" {
+                            Status::Busy
+                        } else {
+                            Status::WriterUnknown
                         }
-                        check_profile().map_err(|_| Status::ScopeChanged)
-                    },
+                    })
+                };
+                Ok(registered_handoff(
+                    &profile,
+                    check_owner,
+                    check_writers,
                     || {
-                        claude_history_writers::writers_closed().map_err(|code| {
-                            if code == "busy" {
-                                Status::Busy
-                            } else {
-                                Status::WriterUnknown
-                            }
-                        })
+                        claude_history_handoff::run_automatic(
+                            &profile,
+                            service.lease.user(),
+                            ids.as_ref(),
+                            check_owner,
+                            check_writers,
+                        )
                     },
                 ))
             })
@@ -372,10 +559,14 @@ async fn reconcile(service: Arc<Service>, ids: Option<HashSet<String>>) -> Repor
         .map_err(|_| Status::Failed)?
     }
     .await;
-    result.unwrap_or_else(|status| Report {
-        status,
-        items: Vec::new(),
-    })
+    let result = result.unwrap_or_else(|status| {
+        Reconciliation::Complete(Report {
+            status,
+            items: Vec::new(),
+        })
+    });
+    service.record_reconciliation(&result, pending);
+    result
 }
 
 async fn run(service: Arc<Service>) {
@@ -389,8 +580,6 @@ async fn run(service: Arc<Service>) {
         service.publish(Phase::Unavailable, 0);
         return;
     };
-    service.publish(Phase::Watching, 0);
-    let mut issues = Issues::default();
     let mut writers = None;
     let mut waiting = false;
     let mut configuration_stopped = false;
@@ -435,39 +624,16 @@ async fn run(service: Arc<Service>) {
                         .lock()
                         .unwrap_or_else(|e| e.into_inner())
                         .take();
-                    service.publish(Phase::Syncing, 0);
-                    let report = reconcile(service.clone(), ids.clone()).await;
-                    tracing::debug!(status = ?report.status, processed = report.items.len(), "[Claude History] automatic handoff completed");
                     if matches!(
-                        report.status,
-                        Status::Busy | Status::WriterUnknown | Status::ScopeChanged
+                        reconcile(service.clone(), ids).await,
+                        Reconciliation::Complete(Report {
+                            status: Status::Busy,
+                            ..
+                        })
                     ) {
-                        service
-                            .dirty
-                            .lock()
-                            .unwrap_or_else(|e| e.into_inner())
-                            .restore(ids);
-                        service.publish(
-                            if report.status == Status::Busy {
-                                Phase::WaitingForExit
-                            } else {
-                                Phase::Unavailable
-                            },
-                            0,
-                        );
-                        if report.status == Status::Busy {
-                            continue;
-                        }
-                    } else {
-                        let count = issues.update(&report, ids.is_none());
-                        service.publish(
-                            if count > 0 {
-                                Phase::Attention
-                            } else {
-                                Phase::Current
-                            },
-                            count,
-                        );
+                        // Re-register the process-exit wait after a writer
+                        // appears between the initial check and reconciliation.
+                        continue;
                     }
                 }
                 _ => {
@@ -494,6 +660,7 @@ async fn run(service: Arc<Service>) {
     // A still-running cleanup/refresh task can no longer consume wakeups.
     service.retiring.store(true, Ordering::Release);
     service.publish(Phase::Disabled, 0);
+    emit_changed("claude_desktop");
     // Dropping FSEvents/kqueue can join native threads; keep it off the executor.
     let _ = tokio::task::spawn_blocking(move || {
         drop(writers);
@@ -525,13 +692,15 @@ pub(super) async fn before_open(lease: owner::Lease) {
         .filter(|h| h.service.lease.same_epoch(&lease))
         .map(|h| h.service.clone());
     if let Some(service) = service {
-        let report = reconcile(service.clone(), None).await;
-        if matches!(report.status, Status::Busy | Status::WriterUnknown) {
-            service
-                .dirty
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .all();
+        if matches!(
+            reconcile(service.clone(), None).await,
+            Reconciliation::Complete(Report {
+                status: Status::Busy | Status::WriterUnknown | Status::ScopeChanged,
+                ..
+            })
+        ) {
+            // The shared result handler retains dirty work; ask the background
+            // queue to install its exit watch instead of silently losing it.
             service.wake.notify_one();
         }
     }
@@ -540,6 +709,53 @@ pub(super) async fn before_open(lease: owner::Lease) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn waiting_and_unverified_history_are_explicit_without_private_error_text() {
+        let waiting = Progress {
+            phase: Phase::WaitingForExit,
+            issues: 2,
+            reason: None,
+        }
+        .view();
+        assert_eq!(waiting.state, HistorySyncState::Active);
+        assert_eq!(
+            waiting.reason.as_deref(),
+            Some("claude_history_waiting_for_exit")
+        );
+        assert_eq!(waiting.pending, 2);
+        let unknown = Progress {
+            phase: Phase::Unavailable,
+            issues: 0,
+            reason: Some("claude_history_namespace_pending"),
+        }
+        .view();
+        assert_eq!(unknown.state, HistorySyncState::Paused);
+        assert_eq!(
+            unknown.reason.as_deref(),
+            Some("claude_history_namespace_pending")
+        );
+        assert_eq!(Progress::default().view().state, HistorySyncState::Idle);
+    }
+    #[test]
+    fn retired_owner_cannot_expose_or_replace_its_history_snapshot() {
+        let (lease, invalidate) = owner::test_lease("claude-snapshot-owner");
+        let service = Service {
+            lease,
+            dirty: Mutex::new(Dirty::default()),
+            snapshot: Mutex::new(Progress::default()),
+            issues: Mutex::new(Issues::default()),
+            wake: Notify::new(),
+            cancelled: CancellationToken::new(),
+            retiring: AtomicBool::new(false),
+        };
+        service.publish(Phase::Attention, 3);
+        assert_eq!(service.view().pending, 3);
+        invalidate();
+        service.publish(Phase::Current, 0);
+        assert_eq!(service.snapshot.lock().unwrap().phase, Phase::Attention);
+        assert_eq!(service.view().state, HistorySyncState::Idle);
+        assert_eq!(service.view().pending, 0);
+    }
     #[test]
     fn bursts_are_bounded_and_overflow_preserves_work() {
         let mut dirty = Dirty::default();
@@ -573,10 +789,63 @@ mod tests {
                 .iter()
                 .map(|(id, status)| claude_history_handoff::Item {
                     session_id: (*id).into(),
-                    title: String::new(),
                     status: *status,
                 })
                 .collect(),
+        }
+    }
+    #[test]
+    fn open_and_background_results_share_visible_unresolved_state() {
+        let (lease, _) = owner::test_lease("history-report-owner");
+        let service = Service {
+            lease,
+            dirty: Mutex::new(Dirty::default()),
+            snapshot: Mutex::new(Progress::default()),
+            issues: Mutex::new(Issues::default()),
+            wake: Notify::new(),
+            cancelled: CancellationToken::new(),
+            retiring: AtomicBool::new(false),
+        };
+        for status in [
+            Status::Unsupported,
+            Status::Conflict,
+            Status::Incomplete,
+            Status::Failed,
+            Status::Limit,
+        ] {
+            // A full Open pass must expose a rejected handoff, including a
+            // preflight rejection with no per-session results.
+            service.record_reconciliation(&Reconciliation::Complete(report(status, &[])), None);
+            assert_eq!(service.view().state, HistorySyncState::Paused);
+            assert_eq!(
+                service.view().reason.as_deref(),
+                Some("claude_history_attention")
+            );
+            assert_eq!(service.view().pending, 1);
+            // An unrelated background file event cannot clear that failure.
+            service.record_reconciliation(
+                &Reconciliation::Complete(report(Status::Clean, &[("other", Status::Clean)])),
+                Some(HashSet::from(["other".into()])),
+            );
+            assert_eq!(service.view().state, HistorySyncState::Paused);
+            assert_eq!(service.view().pending, 1);
+            service
+                .record_reconciliation(&Reconciliation::Complete(report(Status::Clean, &[])), None);
+            assert_eq!(service.view().state, HistorySyncState::Active);
+            assert_eq!(service.view().pending, 0);
+        }
+        for status in [Status::Busy, Status::WriterUnknown, Status::ScopeChanged] {
+            service.record_reconciliation(&Reconciliation::Complete(report(status, &[])), None);
+            assert!(service.dirty.lock().unwrap().pending());
+            assert_eq!(
+                service.snapshot.lock().unwrap().phase,
+                if status == Status::Busy {
+                    Phase::WaitingForExit
+                } else {
+                    Phase::Unavailable
+                }
+            );
+            service.dirty.lock().unwrap().take();
         }
     }
     #[test]
@@ -655,6 +924,7 @@ mod tests {
             lease: lease.clone(),
             dirty: Mutex::new(Dirty::default()),
             snapshot: Mutex::new(Progress::default()),
+            issues: Mutex::new(Issues::default()),
             wake: Notify::new(),
             cancelled: CancellationToken::new(),
             retiring: AtomicBool::new(false),
@@ -677,6 +947,7 @@ mod tests {
             lease: lease.clone(),
             dirty: Mutex::new(Dirty::default()),
             snapshot: Mutex::new(Progress::default()),
+            issues: Mutex::new(Issues::default()),
             wake: Notify::new(),
             cancelled: CancellationToken::new(),
             retiring: AtomicBool::new(false),
@@ -686,3 +957,7 @@ mod tests {
         assert!(replacement.accepts_wake(&lease));
     }
 }
+
+#[cfg(test)]
+#[path = "claude_history_namespace_tests.rs"]
+mod namespace_tests;

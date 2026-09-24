@@ -23,6 +23,15 @@ pub(super) fn valid_id(value: &str) -> bool {
         })
 }
 
+pub(super) fn physical_id(path: &Path) -> Result<String, String> {
+    path.file_stem()
+        .and_then(|value| value.to_str())
+        .and_then(|value| value.get(value.len().checked_sub(36)?..))
+        .filter(|value| valid_id(value))
+        .map(str::to_owned)
+        .ok_or_else(|| "Invalid Codex physical rollout identity".into())
+}
+
 /// Reject links at every component, including a replaced ancestor. The caller
 /// still owns the profile/configuration fence while committing the result.
 pub(super) fn regular_path(path: &Path, missing: bool) -> Result<(), String> {
@@ -72,6 +81,9 @@ pub(super) struct Stamp {
     changed: (i64, i64),
 }
 impl Stamp {
+    pub(super) fn modified_ns(&self) -> u128 {
+        self.modified_ns
+    }
     /// rename changes ctime on macOS without changing the staged inode or its
     /// bytes. Normal mutation comparisons still use full equality, including
     /// ctime; only recovery of our own journaled rename uses this identity.
@@ -157,45 +169,6 @@ pub(super) fn tail(path: &Path) -> Result<Value, String> {
     serde_json::from_slice(&content[offset..]).map_err(|_| "Invalid Codex rollout tail".into())
 }
 
-/// Complete `thread_settings_applied` records within the last `budget` bytes
-/// of a rollout, oldest first. A partial first line and any other record
-/// types are skipped; nothing here is trusted beyond being JSON.
-pub(super) fn settings_events_in_tail(path: &Path, budget: u64) -> Result<Vec<Value>, String> {
-    regular_path(path, false)?;
-    let mut file = File::open(path).map_err(|_| "Cannot open Codex rollout")?;
-    let len = file
-        .metadata()
-        .map_err(|_| "Cannot inspect Codex rollout")?
-        .len();
-    let start = len.saturating_sub(budget);
-    file.seek(SeekFrom::Start(start))
-        .map_err(|_| "Cannot seek Codex rollout")?;
-    let mut bytes = Vec::new();
-    file.take(budget)
-        .read_to_end(&mut bytes)
-        .map_err(|_| "Cannot read Codex rollout tail")?;
-    let mut events = Vec::new();
-    let mut lines = bytes.split(|b| *b == b'\n');
-    if start != 0 {
-        lines.next();
-    }
-    for line in lines {
-        if line.len() > MAX_RECORD || !line.contains(&b'"') {
-            continue;
-        }
-        if !line.windows(23).any(|w| w == b"thread_settings_applied") {
-            continue;
-        }
-        if let Ok(value) = serde_json::from_slice::<Value>(line) {
-            if value["type"] == "event_msg" && value["payload"]["type"] == "thread_settings_applied"
-            {
-                events.push(value);
-            }
-        }
-    }
-    Ok(events)
-}
-
 /// Interoperate with Codex's own cross-process lock protocol. Holding only
 /// ORG2's lock would not protect a native GUI with a loaded thread.
 pub(super) struct WriterLock {
@@ -237,6 +210,13 @@ impl Drop for WriterLock {
 pub(super) fn inventory(
     home: &Path,
 ) -> Result<std::collections::BTreeMap<String, PathBuf>, String> {
+    inventory_with_check(home, &|| Ok(()))
+}
+
+pub(super) fn inventory_with_check(
+    home: &Path,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<std::collections::BTreeMap<String, PathBuf>, String> {
     let mut result = std::collections::BTreeMap::new();
     let mut queue = vec![
         (home.join("sessions"), 0),
@@ -244,12 +224,16 @@ pub(super) fn inventory(
     ];
     let mut visited = 0;
     while let Some((directory, depth)) = queue.pop() {
+        check()?;
         if !directory.exists() {
             continue;
         }
         regular_path(&directory, false)?;
         for entry in fs::read_dir(directory).map_err(|_| "Cannot enumerate Codex history")? {
             visited += 1;
+            if visited % 64 == 0 {
+                check()?;
+            }
             if visited > MAX_FILES {
                 return Err("Codex rollout inventory exceeds limit".into());
             }
@@ -415,19 +399,6 @@ fn copy_with_check(
     Ok(temporary)
 }
 
-pub(super) fn publish(
-    temporary: tempfile::NamedTempFile,
-    destination: &Path,
-) -> Result<(), String> {
-    regular_path(destination, true)?;
-    temporary
-        .persist(destination)
-        .map_err(|_| "Cannot publish Codex history")?;
-    File::open(destination.parent().ok_or("Missing Codex history parent")?)
-        .and_then(|f| f.sync_all())
-        .map_err(|_| "Cannot flush Codex history directory".to_owned())
-}
-
 pub(super) fn append(path: &Path, value: &Value) -> Result<(), String> {
     let mut file = OpenOptions::new()
         .append(true)
@@ -437,6 +408,25 @@ pub(super) fn append(path: &Path, value: &Value) -> Result<(), String> {
     file.write_all(b"\n")
         .and_then(|_| file.sync_all())
         .map_err(|_| "Cannot flush Codex history settings".to_owned())
+}
+
+pub(super) fn alias_path(relative: &Path, alias: &str) -> Result<PathBuf, String> {
+    let stem = relative
+        .file_stem()
+        .and_then(|v| v.to_str())
+        .ok_or("Invalid Codex rollout filename")?;
+    let split = stem
+        .len()
+        .checked_sub(36)
+        .ok_or("Invalid Codex rollout filename")?;
+    if !valid_id(&stem[split..])
+        || !valid_id(alias)
+        || &stem[split..] == alias
+        || relative.extension().is_none_or(|v| v != "jsonl")
+    {
+        return Err("Invalid Codex rollout alias".into());
+    }
+    Ok(relative.with_file_name(format!("{}{alias}.jsonl", &stem[..split])))
 }
 
 #[cfg(test)]

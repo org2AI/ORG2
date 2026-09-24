@@ -4,6 +4,7 @@ import { defineProcedure, typedInvoke } from "@src/api/tauri/rpc/invoke";
 import { CliConfigManagedStatusSchema } from "@src/api/tauri/rpc/schemas/agentOrgs";
 
 import { authorizeMarketAccount } from "./accountConnection";
+import { marketAppSchemeSchema } from "./appScheme";
 import { withFreshMarketOwner } from "./auth";
 import type { MarketStore } from "./identity";
 
@@ -57,7 +58,7 @@ const moduleStatus = defineProcedure("market_connection_status")
   .output(
     z.object({
       enabled: z.boolean(),
-      app_scheme: z.string().regex(/^orgii(?:-market-local-[a-f0-9]{8})?$/),
+      app_scheme: marketAppSchemeSchema,
       buyer_persistent_credentials: z.boolean(),
       connections: z.array(
         connectionSchema.extend({

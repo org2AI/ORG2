@@ -1,4 +1,4 @@
-//! Narrow adapter for the audited Codex 0.155 native history stores.
+//! Narrow adapter for operation-compatible native Codex history stores.
 //!
 //! Callers own the native writer locks, rollout files, recovery journal and
 //! identity barrier. This module never opens credentials/configuration, starts
@@ -10,9 +10,14 @@
 mod schema;
 mod snapshot;
 
-use schema::{columns_sql, validate_schema, HISTORY_TABLES, LOCAL_COLUMNS, THREAD_COLUMNS};
+#[cfg(test)]
+use schema::columns_sql;
+use schema::{
+    names_sql, quote, read_columns, validate_columns, validate_schema, NativeColumn,
+    HISTORY_TABLES, LOCAL_COLUMNS, THREAD_COLUMNS,
+};
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -37,6 +42,7 @@ pub(super) struct ThreadRecord {
     pub metadata_hash: String,
     pub history_mode: String,
     values: Vec<Value>,
+    columns: Vec<NativeColumn>,
 }
 
 impl std::fmt::Debug for ThreadRecord {
@@ -66,16 +72,43 @@ pub(super) struct PreparedThread {
     history_schema: &'static str,
     record: ThreadRecord,
     projections: Vec<ProjectionSnapshot>,
+    projection_columns: BTreeMap<String, Vec<NativeColumn>>,
 }
 
 impl ThreadRecord {
+    pub(super) fn revision_metadata_hash(&self) -> Result<String, String> {
+        portable_hash(&self.columns, &self.values, &self.rollout_path, true)
+    }
+
+    pub(super) fn revision_metadata_time(&self) -> Result<u128, String> {
+        let milliseconds = match self.column("updated_at_ms") {
+            Some(Value::Integer(value)) => i128::from(*value),
+            None | Some(Value::Null) => match self.column("updated_at") {
+                Some(Value::Integer(value)) => i128::from(*value) * 1000,
+                _ => return Err("Invalid Codex metadata revision time".into()),
+            },
+            _ => return Err("Invalid Codex metadata revision time".into()),
+        };
+        u128::try_from(milliseconds)
+            .ok()
+            .and_then(|value| value.checked_mul(1_000_000))
+            .ok_or_else(|| "Invalid Codex metadata revision time".into())
+    }
+
+    fn column(&self, name: &str) -> Option<&Value> {
+        self.columns
+            .iter()
+            .position(|column| column.name == name)
+            .map(|index| &self.values[index])
+    }
+
     pub(super) fn archived(&self) -> bool {
-        self.values[column_index("archived")] == Value::Integer(1)
+        self.column("archived") == Some(&Value::Integer(1))
     }
     /// Native recency in seconds; a non-integer value sorts as oldest.
     pub(super) fn updated_at(&self) -> i64 {
-        match self.values[column_index("updated_at")] {
-            Value::Integer(value) => value,
+        match self.column("updated_at") {
+            Some(Value::Integer(value)) => *value,
             _ => i64::MIN,
         }
     }
@@ -85,19 +118,20 @@ impl ThreadRecord {
     pub(super) fn routing_settings(
         &self,
     ) -> Result<(Option<String>, String, serde_json::Value, serde_json::Value), String> {
-        let model = match &self.values[column_index("model")] {
-            Value::Null => None,
-            Value::Text(model) if model.is_empty() => None,
-            Value::Text(model) => Some(model.clone()),
+        let model = match self.column("model") {
+            Some(Value::Null) => None,
+            Some(Value::Text(model)) if model.is_empty() => None,
+            Some(Value::Text(model)) => Some(model.clone()),
             _ => return Err("Invalid stored native Codex model".into()),
         };
-        let provider = text_value(&self.values, "model_provider")?;
+        let provider = text_value(&self.columns, &self.values, "model_provider")?;
         if provider.is_empty() {
             return Err("Stored native Codex provider is empty".into());
         }
-        let permission = serde_json::from_str(&text_value(&self.values, "sandbox_policy")?)
-            .map_err(|_| "Invalid stored native Codex permission JSON".to_string())?;
-        let approval = text_value(&self.values, "approval_mode")?;
+        let permission =
+            serde_json::from_str(&text_value(&self.columns, &self.values, "sandbox_policy")?)
+                .map_err(|_| "Invalid stored native Codex permission JSON".to_string())?;
+        let approval = text_value(&self.columns, &self.values, "approval_mode")?;
         let approval = match approval.as_str() {
             "on-request" | "on-failure" | "untrusted" | "never" => {
                 serde_json::Value::String(approval)
@@ -173,6 +207,7 @@ fn row_values(row: &rusqlite::Row<'_>, count: usize) -> rusqlite::Result<Vec<Val
     (0..count).map(|index| row.get(index)).collect()
 }
 
+#[cfg(test)]
 fn column_index(name: &str) -> usize {
     THREAD_COLUMNS
         .iter()
@@ -180,8 +215,15 @@ fn column_index(name: &str) -> usize {
         .expect("audited thread column")
 }
 
-fn text_value(values: &[Value], name: &str) -> Result<String, String> {
-    match &values[column_index(name)] {
+fn value_index(columns: &[NativeColumn], name: &str) -> Result<usize, String> {
+    columns
+        .iter()
+        .position(|column| column.name == name)
+        .ok_or_else(|| format!("Missing native Codex field {name}"))
+}
+
+fn text_value(columns: &[NativeColumn], values: &[Value], name: &str) -> Result<String, String> {
+    match &values[value_index(columns, name)?] {
         Value::Text(text) => Ok(text.clone()),
         _ => Err(format!("Invalid native Codex thread field {name}")),
     }
@@ -227,28 +269,62 @@ fn hash_value(hasher: &mut Sha256, value: &Value) {
     hasher.update(bytes);
 }
 
-fn thread_record(values: Vec<Value>) -> Result<ThreadRecord, String> {
-    let id = text_value(&values, "id")?;
+fn thread_record(columns: Vec<NativeColumn>, values: Vec<Value>) -> Result<ThreadRecord, String> {
+    let id = text_value(&columns, &values, "id")?;
     validate_id(&id)?;
-    let rollout_path = PathBuf::from(text_value(&values, "rollout_path")?);
-    let cwd = PathBuf::from(text_value(&values, "cwd")?);
+    let rollout_path = PathBuf::from(text_value(&columns, &values, "rollout_path")?);
+    let cwd = PathBuf::from(text_value(&columns, &values, "cwd")?);
     if !cwd.is_absolute() {
         return Err("Native Codex working directory must be absolute".into());
     }
     if !rollout_path.is_absolute() {
         return Err("Native Codex rollout path must be absolute".into());
     }
-    let history_mode = text_value(&values, "history_mode")?;
+    let history_mode = text_value(&columns, &values, "history_mode")?;
     if !matches!(history_mode.as_str(), "legacy" | "paginated") {
         return Err("Unsupported native Codex history mode".into());
     }
-    match values[column_index("archived")] {
+    match values[value_index(&columns, "archived")?] {
         Value::Integer(0 | 1) => {}
         _ => return Err("Invalid native Codex archived flag".into()),
     }
+    let metadata_hash = portable_hash(&columns, &values, &rollout_path, false)?;
+    Ok(ThreadRecord {
+        id,
+        rollout_path,
+        cwd,
+        metadata_hash,
+        history_mode,
+        values,
+        columns,
+    })
+}
+
+// The revision digest excludes explicit local/bookkeeping fields and physical
+// placement. Publication CAS still includes all portable columns and filename.
+fn portable_hash(
+    columns: &[NativeColumn],
+    values: &[Value],
+    rollout_path: &Path,
+    revision: bool,
+) -> Result<String, String> {
     let mut hasher = Sha256::new();
-    for (column, value) in THREAD_COLUMNS.iter().zip(&values) {
-        if LOCAL_COLUMNS.contains(&column.0) {
+    for column in THREAD_COLUMNS {
+        let Some(index) = columns.iter().position(|native| native.name == column.0) else {
+            continue;
+        };
+        let value = &values[index];
+        if LOCAL_COLUMNS.contains(&column.0)
+            || (revision
+                && matches!(
+                    column.0,
+                    "created_at"
+                        | "created_at_ms"
+                        | "updated_at"
+                        | "updated_at_ms"
+                        | "rollout_path"
+                ))
+        {
             continue;
         }
         if column.0 == "rollout_path" {
@@ -261,14 +337,21 @@ fn thread_record(values: Vec<Value>) -> Result<ThreadRecord, String> {
             hash_value(&mut hasher, value);
         }
     }
-    Ok(ThreadRecord {
-        id,
-        rollout_path,
-        cwd,
-        metadata_hash: format!("{:x}", hasher.finalize()),
-        history_mode,
-        values,
-    })
+    // Keep the legacy digest unchanged when there are no extra columns, so an
+    // already pending journal can still compare its original metadata receipt.
+    let extras: Vec<_> = columns
+        .iter()
+        .enumerate()
+        .filter(|(_, column)| !THREAD_COLUMNS.iter().any(|known| known.0 == column.name))
+        .collect();
+    if !extras.is_empty() {
+        hasher.update(b"\0org2-native-extra-columns\0");
+        for (index, column) in extras {
+            hash_value(&mut hasher, &Value::Text(column.name.clone()));
+            hash_value(&mut hasher, &values[index]);
+        }
+    }
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 fn validate_id(id: &str) -> Result<(), String> {
@@ -284,16 +367,50 @@ fn validate_id(id: &str) -> Result<(), String> {
 }
 
 fn read_record(connection: &Connection, id: &str) -> Result<Option<ThreadRecord>, String> {
+    let columns = read_columns(connection, "main", "threads")?;
+    read_record_with_columns(connection, "threads", id, &columns)
+}
+
+fn read_record_with_columns(
+    connection: &Connection,
+    table: &str,
+    id: &str,
+    columns: &[NativeColumn],
+) -> Result<Option<ThreadRecord>, String> {
+    let bytes = connection
+        .query_row(
+            &format!(
+                "SELECT {} FROM {} WHERE id=?1",
+                row_size_sql(columns),
+                quote(table)
+            ),
+            [id],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()
+        .map_err(db_error)?;
+    if bytes.is_some_and(|bytes| bytes < 0 || bytes as u64 > MAX_METADATA_BYTES as u64) {
+        return Err("Codex thread metadata exceeds its limit".into());
+    }
     let sql = format!(
-        "SELECT {} FROM threads WHERE id=?1",
-        columns_sql(THREAD_COLUMNS)
+        "SELECT {} FROM {} WHERE id=?1",
+        names_sql(columns),
+        quote(table)
     );
     connection
-        .query_row(&sql, [id], |row| row_values(row, THREAD_COLUMNS.len()))
+        .query_row(&sql, [id], |row| row_values(row, columns.len()))
         .optional()
         .map_err(db_error)?
-        .map(thread_record)
+        .map(|values| thread_record(columns.to_vec(), values))
         .transpose()
+}
+
+fn row_size_sql(columns: &[NativeColumn]) -> String {
+    columns
+        .iter()
+        .map(|column| format!("coalesce(length(cast({} as blob)),0)", quote(&column.name)))
+        .collect::<Vec<_>>()
+        .join("+")
 }
 
 /// Bounded metadata discovery. `None` fails instead of silently truncating at
@@ -308,6 +425,7 @@ pub(super) fn list_threads(
     let connection = open(home, false, false)?;
     connection.execute_batch("BEGIN").map_err(db_error)?;
     validate_schema(&connection, "main")?;
+    let columns = read_columns(&connection, "main", "threads")?;
     let mut records = Vec::new();
     let mut bytes = 0usize;
     let mut push = |record: ThreadRecord| -> Result<(), String> {
@@ -323,22 +441,32 @@ pub(super) fn list_threads(
         for id in ids {
             validate_id(id)?;
             if seen.insert(id) {
-                if let Some(record) = read_record(&connection, id)? {
+                if let Some(record) =
+                    read_record_with_columns(&connection, "threads", id, &columns)?
+                {
                     push(record)?;
                 }
             }
         }
     } else {
+        let (count, bytes): (i64, i64) = connection.query_row(
+            &format!("SELECT count(*),coalesce(sum(size),0) FROM (SELECT {} AS size FROM threads ORDER BY id LIMIT {})", row_size_sql(&columns), MAX_THREADS + 1),
+            [], |row| Ok((row.get(0)?,row.get(1)?)),
+        ).map_err(db_error)?;
+        if count > MAX_THREADS as i64 || bytes < 0 || bytes as u64 > MAX_METADATA_BYTES as u64 {
+            return Err("Codex history inventory exceeds its limit".into());
+        }
         let sql = format!(
             "SELECT {} FROM threads ORDER BY id LIMIT {}",
-            columns_sql(THREAD_COLUMNS),
+            names_sql(&columns),
             MAX_THREADS + 1
         );
         let mut statement = connection.prepare(&sql).map_err(db_error)?;
         let mut rows = statement.query([]).map_err(db_error)?;
         while let Some(row) = rows.next().map_err(db_error)? {
             push(thread_record(
-                row_values(row, THREAD_COLUMNS.len()).map_err(db_error)?,
+                columns.clone(),
+                row_values(row, columns.len()).map_err(db_error)?,
             )?)?;
         }
     }
@@ -435,7 +563,22 @@ pub(super) fn prepare(
     validate_schema(&source, "history")?;
     let record = read_record(&source, id)?
         .ok_or_else(|| "Native Codex source thread disappeared".to_string())?;
-    prepare_rows(source, "history", record, rollout_ids)
+    let columns = read_projection_columns(&source, "history")?;
+    prepare_rows(source, "history", record, rollout_ids, columns)
+}
+
+fn read_projection_columns(
+    source: &Connection,
+    schema: &str,
+) -> Result<BTreeMap<String, Vec<NativeColumn>>, String> {
+    HISTORY_TABLES
+        .iter()
+        .map(|(table, _)| {
+            let columns = read_columns(source, schema, table)?;
+            validate_columns(table, &columns)?;
+            Ok((table.to_string(), columns))
+        })
+        .collect()
 }
 
 fn prepare_rows(
@@ -443,6 +586,7 @@ fn prepare_rows(
     history_schema: &'static str,
     record: ThreadRecord,
     rollout_ids: &[String],
+    projection_columns: BTreeMap<String, Vec<NativeColumn>>,
 ) -> Result<PreparedThread, String> {
     if rollout_ids.is_empty() || rollout_ids.len() > MAX_ROLLOUTS {
         return Err("Invalid Codex rollout lineage size".into());
@@ -459,14 +603,14 @@ fn prepare_rows(
         if !seen.insert(rollout_id) {
             return Err("Duplicate Codex rollout in lineage".into());
         }
-        for (table, columns) in HISTORY_TABLES {
+        for (table, columns) in &projection_columns {
             let lengths = columns
                 .iter()
-                .map(|column| format!("coalesce(length(cast({} as blob)),0)", column.0))
+                .map(|column| format!("coalesce(length(cast({} as blob)),0)", quote(&column.name)))
                 .collect::<Vec<_>>()
                 .join("+");
             let (count, bytes): (i64, i64) = source.query_row(
-                &format!("SELECT count(*),coalesce(sum({lengths}),0) FROM (SELECT {} FROM {history_schema}.{table} WHERE thread_id=?1 LIMIT {})", columns_sql(columns), MAX_PROJECTION_ROWS + 1),
+                &format!("SELECT count(*),coalesce(sum({lengths}),0) FROM (SELECT {} FROM {history_schema}.{table} WHERE thread_id=?1 LIMIT {})", names_sql(columns), MAX_PROJECTION_ROWS + 1),
                 [rollout_id], |row| Ok((row.get(0)?, row.get(1)?)),
             ).map_err(db_error)?;
             row_count = row_count.saturating_add(count);
@@ -486,6 +630,7 @@ fn prepare_rows(
         history_schema,
         record,
         projections,
+        projection_columns,
     })
 }
 
@@ -524,13 +669,23 @@ impl PreparedThread {
         Ok(true)
     }
 
+    pub(super) fn metadata_at(&self, path: &Path) -> Result<String, String> {
+        let mut values = self.record.values.clone();
+        values[value_index(&self.record.columns, "rollout_path")?] = Value::Text(
+            path.to_str()
+                .ok_or("Invalid Codex rollout path")?
+                .to_owned(),
+        );
+        Ok(thread_record(self.record.columns.clone(), values)?.metadata_hash)
+    }
+
     /// Publish projections and portable metadata. `None` requires a new target;
     /// `Some(hash)` compares the target's current portable metadata inside the
     /// write transaction. The caller's validated route matches its appended
     /// native settings event; existing permissions/organization are retained.
     /// Files must already be staged/published under the caller's recovery journal.
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn apply(
+    pub(super) fn apply_with_alias(
         &self,
         target_home: &Path,
         target_rollout_path: &Path,
@@ -538,6 +693,7 @@ impl PreparedThread {
         provider: &str,
         model: &str,
         expected_target_hash: Option<&str>,
+        alias: Option<(&str, &str)>,
         mut check_owner: impl FnMut() -> Result<(), String>,
     ) -> Result<ThreadRecord, String> {
         let imported: BTreeSet<&str> = imported_rollout_ids.iter().map(String::as_str).collect();
@@ -551,6 +707,16 @@ impl PreparedThread {
             })
         {
             return Err("Invalid Codex imported rollout set".into());
+        }
+        if let Some((old, new)) = alias {
+            if super::files::physical_id(&self.record.rollout_path)? != old
+                || super::files::physical_id(target_rollout_path)? != new
+                || self.record.id == new
+                || !imported.contains(old)
+                || self.projections.iter().any(|p| p.rollout_id == new)
+            {
+                return Err("Invalid Codex projection generation alias".into());
+            }
         }
         if provider.is_empty() || provider.len() > 256 || model.is_empty() || model.len() > 512 {
             return Err("Invalid target Codex history route".into());
@@ -582,6 +748,11 @@ impl PreparedThread {
             .map_err(db_error)?;
         validate_schema(&transaction, "main")?;
         validate_schema(&transaction, "history")?;
+        if read_columns(&transaction, "main", "threads")? != self.record.columns
+            || read_projection_columns(&transaction, "history")? != self.projection_columns
+        {
+            return Err("Native Codex source and destination column contracts differ; migration is required before history publication".into());
+        }
         let existing = read_record(&transaction, &self.record.id)?;
         if existing
             .as_ref()
@@ -591,14 +762,16 @@ impl PreparedThread {
             return Err("Native Codex target metadata changed before history publication".into());
         }
         let mut values = self.record.values.clone();
-        values[column_index("rollout_path")] = Value::Text(
+        values[value_index(&self.record.columns, "rollout_path")?] = Value::Text(
             target_rollout_path
                 .to_str()
                 .ok_or_else(|| "Invalid target Codex path".to_string())?
                 .to_string(),
         );
         for column in LOCAL_COLUMNS {
-            let index = column_index(column);
+            let Ok(index) = value_index(&self.record.columns, column) else {
+                continue;
+            };
             values[index] = existing
                 .as_ref()
                 .map(|record| record.values[index].clone())
@@ -618,30 +791,39 @@ impl PreparedThread {
         // its provider still matches the destination configuration. A provider
         // change must reach SQLite immediately, otherwise the GUI's state-only
         // provider filter can hide the conversation before native resume.
-        values[column_index("model_provider")] = Value::Text(provider.to_string());
-        values[column_index("model")] = Value::Text(model.to_string());
+        values[value_index(&self.record.columns, "model_provider")?] =
+            Value::Text(provider.to_string());
+        values[value_index(&self.record.columns, "model")?] = Value::Text(model.to_string());
         for projection in &self.projections {
             if !imported.contains(projection.rollout_id.as_str()) {
                 continue;
             }
+            let target_id = alias
+                .filter(|(old, _)| *old == projection.rollout_id)
+                .map(|(_, new)| new)
+                .unwrap_or(&projection.rollout_id);
             // Deleting a checkpoint invokes native realtime cleanup. Delete it
             // before restoring realtime rows, and write its new checkpoint last.
             transaction
                 .execute(
                     "DELETE FROM history.thread_history_projection_state WHERE thread_id=?1",
-                    [&projection.rollout_id],
+                    [target_id],
                 )
                 .map_err(db_error)?;
-            for (table, columns) in HISTORY_TABLES {
+            for (table, _) in HISTORY_TABLES {
+                let columns = self
+                    .projection_columns
+                    .get(*table)
+                    .ok_or("Missing native projection contract")?;
                 transaction
                     .execute(
                         &format!("DELETE FROM history.{table} WHERE thread_id=?1"),
-                        [&projection.rollout_id],
+                        [target_id],
                     )
                     .map_err(db_error)?;
                 let select = format!(
                     "SELECT {} FROM {}.{table} WHERE thread_id=?1",
-                    columns_sql(columns),
+                    names_sql(columns),
                     self.history_schema
                 );
                 let mut source_rows = self.source.prepare(&select).map_err(db_error)?;
@@ -650,13 +832,19 @@ impl PreparedThread {
                     .map_err(db_error)?;
                 let placeholders = vec!["?"; columns.len()].join(",");
                 let insert = format!(
-                    "INSERT INTO history.{table} ({}) VALUES ({placeholders})",
-                    columns_sql(columns)
+                    "INSERT OR ABORT INTO history.{table} ({}) VALUES ({placeholders})",
+                    names_sql(columns)
                 );
                 let mut insert = transaction.prepare(&insert).map_err(db_error)?;
                 let mut copied = 0usize;
                 while let Some(row) = rows.next().map_err(db_error)? {
-                    let values = row_values(row, columns.len()).map_err(db_error)?;
+                    let mut values = row_values(row, columns.len()).map_err(db_error)?;
+                    // Audited history tables all key rows by physical rollout.
+                    let key = columns
+                        .iter()
+                        .position(|column| column.name == "thread_id")
+                        .ok_or("Missing Codex projection identity column")?;
+                    values[key] = Value::Text(target_id.to_owned());
                     insert
                         .execute(params_from_iter(values.iter()))
                         .map_err(db_error)?;
@@ -668,17 +856,24 @@ impl PreparedThread {
             }
             check_owner()?;
         }
-        let columns = columns_sql(THREAD_COLUMNS);
-        let placeholders = vec!["?"; THREAD_COLUMNS.len()].join(",");
-        let update = THREAD_COLUMNS
+        let columns = names_sql(&self.record.columns);
+        let placeholders = vec!["?"; self.record.columns.len()].join(",");
+        let update = self
+            .record
+            .columns
             .iter()
-            .filter(|column| column.0 != "id")
-            .map(|column| format!("{}=excluded.{}", column.0, column.0))
+            .filter(|column| column.name != "id")
+            .map(|column| format!("{}=excluded.{}", quote(&column.name), quote(&column.name)))
             .collect::<Vec<_>>()
             .join(",");
-        transaction.execute(&format!("INSERT INTO threads ({columns}) VALUES ({placeholders}) ON CONFLICT(id) DO UPDATE SET {update}"), params_from_iter(values.iter())).map_err(db_error)?;
+        transaction.execute(&format!("INSERT OR ABORT INTO threads ({columns}) VALUES ({placeholders}) ON CONFLICT(id) DO UPDATE SET {update}"), params_from_iter(values.iter())).map_err(db_error)?;
         let result = read_record(&transaction, &self.record.id)?
             .ok_or_else(|| "Published Codex history metadata is missing".to_string())?;
+        if result.metadata_hash
+            != portable_hash(&self.record.columns, &values, target_rollout_path, false)?
+        {
+            return Err("Native Codex metadata changed during publication; history transaction was not committed".into());
+        }
         check_owner()?;
         transaction.commit().map_err(db_error)?;
         Ok(result)

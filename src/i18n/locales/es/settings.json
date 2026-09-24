@@ -1033,11 +1033,12 @@
     "marketApps": {
       "isolatedStorage": "Tus 50 conversaciones más recientes se sincronizan automáticamente. Si una conversación ya está abierta en Codex, cierra y vuelve a abrir Codex para recibir sus últimos mensajes. Los ajustes de la app y de la CLI se mantienen separados",
       "isolatedClaudeStorage": "Tus 50 conversaciones más recientes se sincronizan automáticamente cuando Claude Desktop y Claude Code se cierran",
+      "historyPolicy": "Si ambas copias cambian, la última escritura reemplaza la otra; los mensajes sobrescritos no se pueden recuperar",
       "loading": "Cargando paquetes de ORG2 Market…",
       "loadFailed": "No se pudieron cargar los paquetes de ORG2 Market",
       "nonePurchased": "Actualmente no hay paquetes de ORG2 Market disponibles",
       "checking": "Comprobando aplicación…",
-      "unavailable": "No disponible para esta versión instalada",
+      "unavailable": "Esta conexión de la app no está disponible",
       "notInstalled": "No instalada",
       "original": "Usando la configuración original de la aplicación",
       "open": "Abrir aplicación",
@@ -1047,7 +1048,6 @@
       "actionFailed": "No se pudo actualizar esta conexión",
       "openFailed": "No se pudo abrir esta aplicación",
       "restoreRequired": "Restaura la configuración original de esta app, luego selecciona tus paquetes y vuelve a aplicar la conexión",
-      "versionUnverified": "Esta versión de la app de escritorio no se ha verificado para conexiones aisladas con esta versión de ORG2. Actualiza ORG2 e inténtalo de nuevo",
       "workspaceNumber": "Servicio {{index}} de {{count}}",
       "openTerminal": "Abrir terminal",
       "terminalOpened": "Terminal abierta",
@@ -1057,10 +1057,21 @@
       "defaultModel": "Modelo predeterminado",
       "packageLimit": "Selecciona hasta 8 paquetes",
       "historySync": {
+        "observing": "La sincronización automática del historial está pendiente de cambios",
         "active": "Sincronización del historial activa · {{shared}} conversaciones compartidas",
         "attention": "Sincronización del historial activa · {{shared}} compartidas · {{conflicts}} requieren atención",
         "paused": "Sincronización del historial en pausa: {{reason}}",
-        "idle": "Sincronización del historial inactiva"
+        "idle": "Sincronización del historial inactiva",
+        "reasons": {
+          "compatibility": "No se ha verificado la compatibilidad con el formato del historial de esta aplicación",
+          "changed": "La aplicación ha cambiado y debe verificarse de nuevo la compatibilidad del historial",
+          "route": "No se pudieron verificar el modelo y el proveedor de destino",
+          "checking": "Comprobando el historial de conversaciones",
+          "waiting": "Esperando a que se cierren Claude Desktop y Claude Code",
+          "namespace": "Esperando a que Claude Desktop inicialice su historial",
+          "attention": "Algunas conversaciones requieren atención; el historial existente se conserva",
+          "unavailable": "La sincronización automática del historial no está disponible temporalmente"
+        }
       }
     }
   },

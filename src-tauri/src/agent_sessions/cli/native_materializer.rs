@@ -32,8 +32,9 @@ use super::native_ir::{
 #[cfg(test)]
 use super::native_ir::{native_item_semantically_equal, native_items_from_chunks};
 use super::native_store::{
-    append_suffix_atomically, copy_file_atomically, create_file_atomically, lock_claude_transcript,
-    native_transcript_revision, replace_file_link_atomically, write_file_atomically,
+    append_suffix_atomically, copy_file_atomically, create_file_atomically,
+    create_file_atomically_checked, lock_claude_transcript, native_transcript_revision,
+    replace_file_link_atomically, write_file_atomically,
 };
 use super::native_transcript::TRANSCRIPT_SOURCE_NATIVE;
 use super::parsers::codex_app_server as codex_native_catalog;
@@ -45,6 +46,8 @@ pub(crate) mod claude_history_handoff;
 pub(crate) mod isolated_claude_history;
 mod storage;
 use storage::NativeStorageOwner;
+mod claude_catalog_scan;
+use claude_catalog_scan::CatalogScan;
 
 const CODEX_NATIVE_PATH_CACHE_MAX_ENTRIES: usize = 512;
 const CLAUDE_PROJECT_INDEX_VERSION: u64 = 1;
@@ -79,6 +82,15 @@ impl Drop for ClaudeProjectIndexGuard {
 }
 
 fn lock_claude_project_index(index_path: &Path) -> Result<ClaudeProjectIndexGuard, String> {
+    lock_claude_project_index_checked(index_path, false, &|| Ok(()))
+}
+
+fn lock_claude_project_index_checked(
+    index_path: &Path,
+    nonblocking: bool,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<ClaudeProjectIndexGuard, String> {
+    check()?;
     let parent = index_path.parent().ok_or_else(|| {
         format!(
             "Claude project index has no parent directory: {}",
@@ -87,21 +99,29 @@ fn lock_claude_project_index(index_path: &Path) -> Result<ClaudeProjectIndexGuar
     })?;
 
     let lock_path = parent.join(".orgii-sessions-index.lock");
-    let lock_file = fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&lock_path)
-        .map_err(|error| {
-            format!(
-                "open Claude project index lock {}: {error}",
-                lock_path.display()
-            )
+    let mut options = fs::OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    if nonblocking {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    let lock_file = options.open(&lock_path).map_err(|error| {
+        format!(
+            "open Claude project index lock {}: {error}",
+            lock_path.display()
+        )
+    })?;
+    if nonblocking {
+        lock_file
+            .try_lock()
+            .map_err(|_| "claude_history_writer_busy".to_owned())?;
+    } else {
+        lock_file.lock().map_err(|error| {
+            format!("lock Claude project index {}: {error}", lock_path.display())
         })?;
-    lock_file
-        .lock()
-        .map_err(|error| format!("lock Claude project index {}: {error}", lock_path.display()))?;
+    }
+    check()?;
     Ok(ClaudeProjectIndexGuard { lock_file })
 }
 
@@ -1633,16 +1653,49 @@ fn backfill_claude_desktop_catalog_into(
     target_dir: &Path,
     inherit_model: bool,
     selection: ClaudeDesktopBackfill,
+    prepare_transcript: impl FnMut(&Path, &str) -> Result<bool, String>,
+) -> Result<usize, String> {
+    backfill_claude_desktop_catalog_into_checked(
+        official_root,
+        target_dir,
+        inherit_model,
+        selection,
+        &CatalogScan::standard(),
+        &|| Ok(()),
+        prepare_transcript,
+    )
+}
+
+fn backfill_claude_desktop_catalog_into_checked(
+    official_root: &Path,
+    target_dir: &Path,
+    inherit_model: bool,
+    selection: ClaudeDesktopBackfill,
+    scan: &CatalogScan,
+    check: &impl Fn() -> Result<(), String>,
     mut prepare_transcript: impl FnMut(&Path, &str) -> Result<bool, String>,
 ) -> Result<usize, String> {
-    let Some(official_account) = claude_desktop_active_account_id(official_root) else {
+    scan.check(check)?;
+    let Some(config) = official_root.parent().map(|home| home.join("config.json")) else {
+        return Ok(0);
+    };
+    let Some(account) = scan.row(&config, check)? else {
+        return Ok(0);
+    };
+    let Some(official_account) = account["lastKnownAccountUuid"]
+        .as_str()
+        .filter(|id| Uuid::parse_str(id).is_ok())
+    else {
+        if scan.strict() {
+            return Err("claude_history_catalog_unverified".into());
+        }
         return Ok(0);
     };
     // Sessions the gateway profile already lists, under any file name.
     let mut listed = HashSet::new();
     let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
-    for path in bounded_directory_paths(target_dir, &mut metadata_budget) {
-        if let Some(native_id) = claude_desktop_row(&path).and_then(|row| {
+    for path in scan.entries(target_dir, &mut metadata_budget, check)? {
+        if let Some(native_id) = scan.row(&path, check)?.and_then(|row| {
             let native_id = row["cliSessionId"].as_str()?;
             Uuid::parse_str(native_id).ok()?;
             Some(native_id.to_string())
@@ -1654,17 +1707,26 @@ fn backfill_claude_desktop_catalog_into(
     let mut project_budget = CLAUDE_DESKTOP_PROJECT_SCAN_LIMIT;
     let mut metadata_budget = CLAUDE_DESKTOP_METADATA_SCAN_LIMIT;
     let mut rows = Vec::new();
-    'projects: for project_dir in
-        bounded_directory_paths(&official_root.join(official_account), &mut project_budget)
-            .into_iter()
-            .filter(|path| path.is_dir())
-    {
-        for path in bounded_directory_paths(&project_dir, &mut metadata_budget) {
-            if let Some(row) = claude_desktop_row(&path) {
+    'projects: for project_dir in scan.entries(
+        &official_root.join(official_account),
+        &mut project_budget,
+        check,
+    )? {
+        scan.check(check)?;
+        if scan.strict()
+            && fs::symlink_metadata(&project_dir).is_ok_and(|m| m.file_type().is_symlink())
+        {
+            return Err("claude_history_catalog_changed".into());
+        }
+        if !project_dir.is_dir() {
+            continue;
+        }
+        for path in scan.entries(&project_dir, &mut metadata_budget, check)? {
+            if let Some(row) = scan.row(&path, check)? {
                 rows.push(row);
             }
         }
-        if metadata_budget == 0 {
+        if metadata_budget == 0 && !scan.strict() {
             break 'projects;
         }
     }
@@ -1682,6 +1744,7 @@ fn backfill_claude_desktop_catalog_into(
 
     let mut added = 0usize;
     for row in rows {
+        scan.check(check)?;
         if added >= insert_budget {
             break;
         }
@@ -1723,16 +1786,30 @@ fn backfill_claude_desktop_catalog_into(
         inherited.insert("sessionPermissionUpdates".to_string(), json!([]));
         inherited.insert("classifierSummaryEnabled".to_string(), json!(true));
         inherited.insert("orgiiMaterialization".to_string(), json!(true));
-        let _guard = lock_claude_project_index(&target)?;
+        let publication_check = || scan.check(check);
+        let _guard = lock_claude_project_index_checked(&target, scan.strict(), &publication_check)?;
         if target.exists() {
             continue;
         }
-        if !insert_json(&target, &Value::Object(inherited))? {
+        if !create_file_atomically_checked(
+            &target,
+            "Claude Desktop discovery row",
+            &publication_check,
+            |file| {
+                publication_check()?;
+                serde_json::to_writer_pretty(&mut *file, &Value::Object(inherited))
+                    .map_err(|_| "Cannot serialize Claude discovery row")?;
+                std::io::Write::write_all(file, b"\n")
+                    .map_err(|_| "Cannot serialize Claude discovery row")?;
+                publication_check()
+            },
+        )? {
             continue;
         }
         listed.insert(native_id.to_string());
         added += 1;
     }
+    scan.check(check)?;
     Ok(added)
 }
 
@@ -4817,8 +4894,7 @@ mod tests {
     }
 
     #[test]
-    fn isolated_market_first_launch_prepares_history_without_vendor_startup() {
-        use base64::engine::general_purpose::STANDARD;
+    fn isolated_market_first_launch_never_fabricates_vendor_history_identity() {
         let sandbox = test_env::sandbox();
         let _native_history = EnvVarGuard::set("ORGII_NATIVE_TRANSCRIPT_HOME", sandbox.path());
         let (_, official_project, _, standard_project) =
@@ -4838,30 +4914,14 @@ mod tests {
         .to_string();
         fs::write(&source, &bytes).unwrap();
         profile.prepare_launch_directories().unwrap();
-        isolated_claude_history::prepare_before_launch(&profile).unwrap();
-        let identity = fs::read(profile.home().join("ant-did")).unwrap();
-        let account = String::from_utf8(STANDARD.decode(&identity).unwrap()).unwrap();
-        let row = profile
-            .home()
-            .join("claude-code-sessions")
-            .join(account)
-            .join("00000000-0000-4000-8000-000000000001")
-            .join(format!("local_{id}.json"));
-        let imported: Value = serde_json::from_slice(&fs::read(&row).unwrap()).unwrap();
-        assert_eq!(imported["permissionMode"], "default");
-        assert!(!profile.home().join("config.json").exists());
-        assert!(!standard_project.join(format!("local_{id}.json")).exists());
-        assert_eq!(fs::read_to_string(&source).unwrap(), bytes);
-        isolated_claude_history::prepare_before_launch(&profile).unwrap();
-        assert_eq!(fs::read(profile.home().join("ant-did")).unwrap(), identity);
-        assert_eq!(
-            fs::read_dir(row.parent().unwrap())
-                .unwrap()
-                .flatten()
-                .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
-                .count(),
-            1
-        );
+        for _ in 0..2 {
+            assert!(!isolated_claude_history::import(&profile).unwrap());
+            assert!(!profile.home().join("ant-did").exists());
+            assert!(!profile.home().join("config.json").exists());
+            assert!(!profile.home().join("claude-code-sessions").exists());
+            assert!(!standard_project.join(format!("local_{id}.json")).exists());
+            assert_eq!(fs::read_to_string(&source).unwrap(), bytes);
+        }
     }
 
     #[test]
@@ -5137,8 +5197,14 @@ mod tests {
         assert_eq!(added, window);
         let first = listed(&target);
         assert_eq!(first.len(), window);
-        assert!(!first.contains(&ids[0]), "oldest conversation must stay behind");
-        assert!(!first.contains(&ids[window + 1]), "archived newest must not count");
+        assert!(
+            !first.contains(&ids[0]),
+            "oldest conversation must stay behind"
+        );
+        assert!(
+            !first.contains(&ids[window + 1]),
+            "archived newest must not count"
+        );
         assert!((1..=window).all(|index| first.contains(&ids[index])));
         let again = backfill_claude_desktop_catalog_into(
             &official_root,

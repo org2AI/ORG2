@@ -1033,11 +1033,12 @@
     "marketApps": {
       "isolatedStorage": "50 cuộc trò chuyện gần đây nhất của bạn sẽ tự động đồng bộ. Nếu một cuộc trò chuyện đang mở trong Codex, hãy thoát và mở lại Codex để nhận tin nhắn mới nhất. Cài đặt của ứng dụng và CLI vẫn tách biệt",
       "isolatedClaudeStorage": "50 cuộc trò chuyện gần đây nhất của bạn sẽ tự động đồng bộ sau khi Claude Desktop và Claude Code thoát",
+      "historyPolicy": "Nếu cả hai bản đều thay đổi, bản ghi sau sẽ thay thế bản kia; không thể khôi phục tin nhắn đã bị ghi đè",
       "loading": "Đang tải gói ORG2 Market…",
       "loadFailed": "Không thể tải gói ORG2 Market",
       "nonePurchased": "Hiện chưa có gói ORG2 Market nào",
       "checking": "Đang kiểm tra ứng dụng…",
-      "unavailable": "Không khả dụng cho phiên bản đã cài đặt này",
+      "unavailable": "Kết nối ứng dụng này không khả dụng",
       "notInstalled": "Chưa cài đặt",
       "original": "Đang dùng cấu hình gốc của ứng dụng",
       "open": "Mở ứng dụng",
@@ -1047,7 +1048,6 @@
       "actionFailed": "Không thể cập nhật kết nối ứng dụng này",
       "openFailed": "Không thể mở ứng dụng này",
       "restoreRequired": "Khôi phục thiết lập gốc của ứng dụng này, sau đó chọn các gói và áp dụng lại kết nối",
-      "versionUnverified": "Phiên bản ứng dụng máy tính này chưa được xác minh cho kết nối biệt lập trong bản ORG2 này. Hãy cập nhật ORG2 rồi thử lại",
       "workspaceNumber": "Dịch vụ {{index}} / {{count}}",
       "openTerminal": "Mở terminal",
       "terminalOpened": "Đã mở terminal",
@@ -1057,10 +1057,21 @@
       "defaultModel": "Mô hình mặc định",
       "packageLimit": "Chọn tối đa 8 gói",
       "historySync": {
+        "observing": "Tính năng tự động đồng bộ lịch sử đang theo dõi các thay đổi",
         "active": "Đồng bộ lịch sử đang hoạt động · đã chia sẻ {{shared}} cuộc trò chuyện",
         "attention": "Đồng bộ lịch sử đang hoạt động · đã chia sẻ {{shared}} · {{conflicts}} cần chú ý",
         "paused": "Đồng bộ lịch sử đã tạm dừng: {{reason}}",
-        "idle": "Đồng bộ lịch sử đang rảnh"
+        "idle": "Đồng bộ lịch sử đang rảnh",
+        "reasons": {
+          "compatibility": "Chưa xác minh khả năng tương thích với định dạng lịch sử của ứng dụng này",
+          "changed": "Ứng dụng đã thay đổi và cần kiểm tra lại khả năng tương thích của lịch sử",
+          "route": "Không thể xác minh mô hình và nhà cung cấp đích",
+          "checking": "Đang kiểm tra lịch sử cuộc trò chuyện",
+          "waiting": "Đang chờ Claude Desktop và Claude Code đóng",
+          "namespace": "Đang chờ Claude Desktop khởi tạo lịch sử",
+          "attention": "Một số cuộc trò chuyện cần được kiểm tra; lịch sử hiện có được giữ nguyên",
+          "unavailable": "Tính năng tự động đồng bộ lịch sử tạm thời không khả dụng"
+        }
       }
     }
   },

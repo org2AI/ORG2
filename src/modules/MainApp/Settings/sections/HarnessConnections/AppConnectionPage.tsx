@@ -38,6 +38,7 @@ import { SelectionGrid } from "@src/scaffold/WizardSystem/primitives";
 
 import ClaudeProfileEditor from "./ClaudeProfileEditor";
 import HarnessConnectionEditor from "./HarnessConnectionEditor";
+import { historyReasonKey } from "./historyStatus";
 import {
   refreshHarnessConnections,
   useHarnessConnection,
@@ -152,21 +153,25 @@ export default function AppConnectionPage({
     state.view?.configurationIssue ??
     state.view?.config.message ??
     null;
-  const historySync = target === "codex" ? state.view?.historySync : null;
+  const historySync = state.view?.historySync;
   const historySyncText = historySync
     ? historySync.state === "paused"
       ? t("harnessConnections.marketApps.historySync.paused", {
-          reason: historySync.reason ?? "",
+          reason: t(historyReasonKey(historySync.reason)),
         })
       : historySync.state === "active"
-        ? historySync.conflicts > 0
-          ? t("harnessConnections.marketApps.historySync.attention", {
-              shared: historySync.shared,
-              conflicts: historySync.conflicts,
-            })
-          : t("harnessConnections.marketApps.historySync.active", {
-              shared: historySync.shared,
-            })
+        ? historySync.reason
+          ? t(historyReasonKey(historySync.reason))
+          : target === "claude_desktop"
+            ? t("harnessConnections.marketApps.historySync.observing")
+            : historySync.conflicts > 0
+              ? t("harnessConnections.marketApps.historySync.attention", {
+                  shared: historySync.shared,
+                  conflicts: historySync.conflicts,
+                })
+              : t("harnessConnections.marketApps.historySync.active", {
+                  shared: historySync.shared,
+                })
         : t("harnessConnections.marketApps.historySync.idle")
     : null;
   const unavailable = Boolean(
@@ -227,9 +232,7 @@ export default function AppConnectionPage({
         content: t(
           code === "native_app_restore_required"
             ? "harnessConnections.marketApps.restoreRequired"
-            : code === "native_app_version_unverified"
-              ? "harnessConnections.marketApps.versionUnverified"
-              : "harnessConnections.marketApps.actionFailed"
+            : "harnessConnections.marketApps.actionFailed"
         ),
       });
     } finally {
@@ -531,7 +534,8 @@ export default function AppConnectionPage({
                 target === "claude_desktop"
                   ? "harnessConnections.marketApps.isolatedClaudeStorage"
                   : "harnessConnections.marketApps.isolatedStorage"
-              )}
+              )}{" "}
+              {t("harnessConnections.marketApps.historyPolicy")}
             </p>
           </SectionRow>
         )}
@@ -543,7 +547,7 @@ export default function AppConnectionPage({
                   ? "text-sm text-warning-6"
                   : SECTION_DESCRIPTION_CLASSES
               }
-              data-testid="codex-history-sync-status"
+              data-testid="native-history-sync-status"
             >
               {historySyncText}
             </p>

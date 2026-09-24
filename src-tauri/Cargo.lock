@@ -52,6 +52,7 @@ dependencies = [
  "toml_edit 0.20.2",
  "tracing",
  "url",
+ "uuid",
  "winreg 0.55.0",
 ]
 

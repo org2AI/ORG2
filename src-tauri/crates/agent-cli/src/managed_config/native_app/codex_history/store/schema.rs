@@ -1,10 +1,9 @@
-//! Exact native schema gate for the audited desktop capability.
+//! Operation-level native SQLite structure and dependency checks.
 use super::db_error;
 use rusqlite::Connection;
-use std::collections::BTreeSet;
 
-// name, declared type, NOT NULL, primary-key position. Exact column order is
-// deliberate: a new native field must be reviewed before it can be discarded.
+// Baseline fixtures and legacy recovery layout; production discovers columns.
+// name, declared type, NOT NULL, primary-key position.
 pub(super) type Column = (&'static str, &'static str, i64, i64);
 pub(super) const THREAD_COLUMNS: &[Column] = &[
     ("id", "TEXT", 0, 1),
@@ -92,6 +91,7 @@ pub(super) const HISTORY_TABLES: &[(&str, &[Column])] = &[
     ("thread_realtime_items", REALTIME_COLUMNS),
     ("thread_history_projection_state", CHECKPOINT_COLUMNS),
 ];
+#[cfg(test)]
 pub(super) const STATE_TABLES: &[&str] = &[
     "_sqlx_migrations",
     "backfill_state",
@@ -124,6 +124,7 @@ pub(super) const LOCAL_COLUMNS: &[&str] = &[
     "daybreak_enabled",
 ];
 
+#[cfg(test)]
 pub(super) fn columns_sql(columns: &[Column]) -> String {
     columns
         .iter()
@@ -132,76 +133,146 @@ pub(super) fn columns_sql(columns: &[Column]) -> String {
         .join(",")
 }
 
-pub(super) fn validate_table(
+/// Names and SQL values come from native SQLite, never executable DDL.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct NativeColumn {
+    pub name: String,
+    pub data_type: String,
+    pub not_null: i64,
+    pub primary_key: i64,
+    pub default: Option<String>,
+}
+
+pub(super) fn quote(name: &str) -> String {
+    format!("\"{}\"", name.replace('"', "\"\""))
+}
+
+pub(super) fn names_sql(columns: &[NativeColumn]) -> String {
+    columns
+        .iter()
+        .map(|column| quote(&column.name))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+pub(super) fn read_columns(
     connection: &Connection,
     schema: &str,
     table: &str,
-    expected: &[Column],
-) -> Result<(), String> {
+) -> Result<Vec<NativeColumn>, String> {
     let mut statement = connection
-        .prepare(&format!("PRAGMA {schema}.table_xinfo({table})"))
+        .prepare(&format!(
+            "PRAGMA {}.table_xinfo({})",
+            quote(schema),
+            quote(table)
+        ))
         .map_err(db_error)?;
-    let columns = statement
-        .query_map([], |row| {
-            Ok((
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, i64>(3)?,
-                row.get::<_, i64>(5)?,
-                row.get::<_, i64>(6)?,
-            ))
-        })
-        .map_err(db_error)?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(db_error)?;
-    if columns.len() != expected.len()
-        || columns.iter().zip(expected).any(|(actual, expected)| {
-            actual.0 != expected.0
-                || actual.1 != expected.1
-                || actual.2 != expected.2
-                || actual.3 != expected.3
-                || actual.4 != 0
-        })
-    {
-        return Err(format!(
-            "Unsupported native Codex schema for {table}; history was not changed"
-        ));
+    let mut rows = statement.query([]).map_err(db_error)?;
+    let mut columns = Vec::new();
+    while let Some(row) = rows.next().map_err(db_error)? {
+        if columns.len() == 256 || row.get::<_, i64>(6).map_err(db_error)? != 0 {
+            return Err("Codex history columns exceed the supported writable structure".into());
+        }
+        let column = NativeColumn {
+            name: row.get(1).map_err(db_error)?,
+            data_type: row
+                .get::<_, String>(2)
+                .map_err(db_error)?
+                .trim()
+                .to_ascii_uppercase(),
+            not_null: row.get(3).map_err(db_error)?,
+            primary_key: row.get(5).map_err(db_error)?,
+            default: row.get(4).map_err(db_error)?,
+        };
+        if column.name.is_empty()
+            || column.name.len() > 256
+            || column.name.contains('\0')
+            || column.data_type.len() > 128
+            || column.default.as_ref().is_some_and(|v| v.len() > 4096)
+            || !matches!(column.not_null, 0 | 1)
+            || !(0..=256).contains(&column.primary_key)
+        {
+            return Err("Invalid native Codex column contract".into());
+        }
+        columns.push(column);
     }
-    let mut keys = connection
-        .prepare(&format!("PRAGMA {schema}.foreign_key_list({table})"))
-        .map_err(db_error)?;
-    let foreign_keys: BTreeSet<Vec<String>> = keys
-        .query_map([], |row| (2..=7).map(|index| row.get(index)).collect())
-        .map_err(db_error)?
-        .collect::<Result<_, _>>()
-        .map_err(db_error)?;
-    let expected_keys: BTreeSet<Vec<String>> = if table == "threads" {
-        [
-            [
-                "projects",
-                "project_id",
-                "id",
-                "NO ACTION",
-                "SET NULL",
-                "NONE",
+    columns.sort_by(|a, b| a.name.cmp(&b.name));
+    if columns.is_empty() || columns.windows(2).any(|v| v[0].name == v[1].name) {
+        return Err("Missing or ambiguous native Codex table".into());
+    }
+    Ok(columns)
+}
+
+/// Keep the complete contract between the two native stores, but require only
+/// fields this operation reads or keys. Ordinary added columns remain opaque.
+pub(super) fn validate_columns(table: &str, columns: &[NativeColumn]) -> Result<(), String> {
+    let (required, key): (&[(&str, &str)], &[&str]) = match table {
+        "threads" | "thread_record" => (
+            &[
+                ("id", "TEXT"),
+                ("rollout_path", "TEXT"),
+                ("cwd", "TEXT"),
+                ("model_provider", "TEXT"),
+                ("model", "TEXT"),
+                ("sandbox_policy", "TEXT"),
+                ("approval_mode", "TEXT"),
+                ("updated_at", "INTEGER"),
+                ("archived", "INTEGER"),
+                ("history_mode", "TEXT"),
             ],
-            [
-                "thread_sections",
-                "thread_section_id",
-                "id",
-                "NO ACTION",
-                "SET NULL",
-                "NONE",
+            &["id"],
+        ),
+        "thread_turns" => (
+            &[
+                ("thread_id", "TEXT"),
+                ("turn_id", "TEXT"),
+                ("status", "TEXT"),
             ],
-        ]
-        .into_iter()
-        .map(|row| row.into_iter().map(String::from).collect())
-        .collect()
-    } else {
-        BTreeSet::new()
+            &["thread_id", "turn_id"],
+        ),
+        "thread_items" => (
+            &[
+                ("thread_id", "TEXT"),
+                ("turn_id", "TEXT"),
+                ("item_id", "TEXT"),
+            ],
+            &["thread_id", "turn_id", "item_id"],
+        ),
+        "thread_realtime_items" => (
+            &[("thread_id", "TEXT"), ("item_id", "TEXT")],
+            &["thread_id", "item_id"],
+        ),
+        "thread_history_projection_state" => (
+            &[
+                ("thread_id", "TEXT"),
+                ("next_rollout_byte_offset", "INTEGER"),
+                ("next_rollout_ordinal", "INTEGER"),
+            ],
+            &["thread_id"],
+        ),
+        _ => return Err("Unknown Codex history operation table".into()),
     };
-    if foreign_keys != expected_keys {
-        return Err(format!("Unsupported native Codex foreign keys on {table}"));
+    for (name, data_type) in required {
+        if !columns
+            .iter()
+            .any(|c| c.name == *name && c.data_type == *data_type)
+        {
+            return Err(format!(
+                "Codex history requires {table}.{name} with its native type"
+            ));
+        }
+    }
+    let mut actual: Vec<_> = columns.iter().filter(|c| c.primary_key > 0).collect();
+    actual.sort_by_key(|c| c.primary_key);
+    if actual.len() != key.len()
+        || actual
+            .iter()
+            .zip(key)
+            .enumerate()
+            .any(|(i, (c, k))| c.name != *k || c.primary_key != i as i64 + 1)
+    {
+        return Err(format!("Codex history identity key changed for {table}"));
     }
     Ok(())
 }
@@ -227,77 +298,123 @@ pub(super) fn normalized_sql(sql: &str) -> String {
 
 pub(super) fn validate_schema(connection: &Connection, schema: &str) -> Result<(), String> {
     let history = schema == "history";
-    let tables: BTreeSet<String> = connection
-        .prepare(&format!(
-            "SELECT name FROM {schema}.sqlite_master WHERE type='table'"
-        ))
-        .map_err(db_error)?
-        .query_map([], |row| row.get(0))
-        .map_err(db_error)?
-        .collect::<Result<_, _>>()
-        .map_err(db_error)?;
-    let expected: BTreeSet<String> = if history {
-        HISTORY_TABLES
-            .iter()
-            .map(|entry| entry.0.to_string())
-            .chain(std::iter::once("_sqlx_migrations".into()))
-            .collect()
+    let touched: Vec<&str> = if history {
+        HISTORY_TABLES.iter().map(|entry| entry.0).collect()
     } else {
-        STATE_TABLES
-            .iter()
-            .map(|name| (*name).to_string())
-            .collect()
+        vec!["threads"]
     };
-    if tables != expected {
-        return Err("Unsupported native Codex tables; history was not changed".into());
-    }
-    let versions: Vec<(i64, bool)> = connection
+    let relevant = |name: &str| touched.iter().any(|table| table.eq_ignore_ascii_case(name));
+    let mut statement = connection
         .prepare(&format!(
-            "SELECT version,success FROM {schema}._sqlx_migrations ORDER BY version"
+            "SELECT name FROM {}.sqlite_master WHERE type='table' ORDER BY name LIMIT 513",
+            quote(schema)
         ))
-        .map_err(db_error)?
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(db_error)?;
+    let tables: Vec<String> = statement
+        .query_map([], |r| r.get(0))
         .map_err(db_error)?
         .collect::<Result<_, _>>()
         .map_err(db_error)?;
-    if versions
-        != (1..=if history { 6 } else { 55 })
-            .map(|version| (version, true))
-            .collect::<Vec<_>>()
-    {
-        return Err("Unsupported native Codex migration version; history was not changed".into());
+    if tables.len() > 512 || tables.iter().any(|name| name.len() > 256) {
+        return Err("Codex history schema inspection exceeds its limit".into());
     }
-    if history {
-        for (table, columns) in HISTORY_TABLES {
-            validate_table(connection, schema, table, columns)?;
+    for table in &touched {
+        validate_columns(table, &read_columns(connection, schema, table)?)?;
+    }
+    // Unknown unrelated tables are preserved. Declared dependencies on rows we
+    // delete cannot be guessed or cascaded into an unexamined native table.
+    for table in &tables {
+        let mut statement = connection
+            .prepare(&format!(
+                "PRAGMA {}.foreign_key_list({})",
+                quote(schema),
+                quote(table)
+            ))
+            .map_err(db_error)?;
+        let mut rows = statement.query([]).map_err(db_error)?;
+        let mut count = 0;
+        while let Some(row) = rows.next().map_err(db_error)? {
+            count += 1;
+            if count > 256 {
+                return Err("Codex foreign-key inspection exceeds its limit".into());
+            }
+            let parent: String = row.get(2).map_err(db_error)?;
+            let from: String = row.get(3).map_err(db_error)?;
+            let to: Option<String> = row.get(4).map_err(db_error)?;
+            let update: String = row.get(5).map_err(db_error)?;
+            let delete: String = row.get(6).map_err(db_error)?;
+            if history && (relevant(table) || relevant(&parent)) {
+                return Err(
+                    "Codex projection has an unhandled native foreign-key dependency".into(),
+                );
+            }
+            if !history
+                && table.eq_ignore_ascii_case("threads")
+                && !matches!(
+                    (
+                        parent.as_str(),
+                        from.as_str(),
+                        to.as_deref(),
+                        update.as_str(),
+                        delete.as_str()
+                    ),
+                    (
+                        "projects",
+                        "project_id",
+                        Some("id"),
+                        "NO ACTION",
+                        "SET NULL"
+                    ) | (
+                        "thread_sections",
+                        "thread_section_id",
+                        Some("id"),
+                        "NO ACTION",
+                        "SET NULL"
+                    )
+                )
+            {
+                return Err("Codex thread has an unhandled native foreign-key dependency".into());
+            }
+            // The thread identity is never updated or replaced. Incoming keys
+            // targeting another mutable column need their own native adapter.
+            if !history
+                && parent.eq_ignore_ascii_case("threads")
+                && to.as_deref().is_some_and(|name| name != "id")
+            {
+                return Err(
+                    "Codex metadata has an unhandled incoming foreign-key dependency".into(),
+                );
+            }
         }
-    } else {
-        validate_table(connection, schema, "threads", THREAD_COLUMNS)?;
     }
-    let expected_triggers = if history {
+    let expected = if history {
         HISTORY_TRIGGERS
     } else {
         STATE_TRIGGERS
     };
-    let triggers: Vec<(String, String)> = connection
-        .prepare(&format!(
-            "SELECT name,sql FROM {schema}.sqlite_master WHERE type='trigger'"
-        ))
-        .map_err(db_error)?
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-        .map_err(db_error)?
-        .collect::<Result<_, _>>()
-        .map_err(db_error)?;
-    if triggers.len() != expected_triggers.len()
-        || triggers.iter().any(|(name, sql)| {
-            !expected_triggers
-                .iter()
-                .any(|(expected_name, expected_sql)| {
-                    name == expected_name && normalized_sql(sql) == normalized_sql(expected_sql)
-                })
+    let mut statement = connection.prepare(&format!("SELECT name,tbl_name,sql FROM {}.sqlite_master WHERE type='trigger' ORDER BY name LIMIT 513", quote(schema))).map_err(db_error)?;
+    let triggers = statement
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
         })
-    {
-        return Err("Unsupported native Codex triggers; history was not changed".into());
+        .map_err(db_error)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(db_error)?;
+    if triggers.len() > 512 {
+        return Err("Codex trigger inspection exceeds its limit".into());
+    }
+    for (name, table, sql) in triggers {
+        if relevant(&table)
+            && !expected
+                .iter()
+                .any(|(n, s)| name == *n && normalized_sql(&sql) == normalized_sql(s))
+        {
+            return Err("Codex history write has an unhandled native trigger".into());
+        }
     }
     Ok(())
 }

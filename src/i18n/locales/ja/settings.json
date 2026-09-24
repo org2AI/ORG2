@@ -1033,11 +1033,12 @@
     "marketApps": {
       "isolatedStorage": "直近 50 件の会話が自動的に同期されます。Codex で開いたままの会話は、最新メッセージを受け取るために Codex を終了して再起動してください。アプリと CLI の設定は個別に保持されます",
       "isolatedClaudeStorage": "Claude Desktop と Claude Code を終了すると、直近 50 件の会話が自動的に同期されます",
+      "historyPolicy": "両方が変更された場合は後で書き込まれた内容がもう一方を上書きします。上書きされたメッセージは復元できません",
       "loading": "ORG2 Market のパッケージを読み込んでいます…",
       "loadFailed": "ORG2 Market のパッケージを読み込めませんでした",
       "nonePurchased": "現在利用できる ORG2 Market のパッケージはありません",
       "checking": "アプリを確認中…",
-      "unavailable": "このインストール済みバージョンでは利用できません",
+      "unavailable": "このアプリ接続は利用できません",
       "notInstalled": "未インストール",
       "original": "アプリ本来の設定を使用中",
       "open": "アプリを開く",
@@ -1047,7 +1048,6 @@
       "actionFailed": "このアプリ接続を更新できませんでした",
       "openFailed": "このアプリを開けませんでした",
       "restoreRequired": "このアプリの元の設定を復元してから、パッケージを選び直して接続を適用してください",
-      "versionUnverified": "この ORG2 ビルドでは、このデスクトップアプリのバージョンで分離接続が動作するか未検証です。ORG2 を更新して再試行してください",
       "workspaceNumber": "サービス {{index}} / {{count}}",
       "openTerminal": "ターミナルを開く",
       "terminalOpened": "ターミナルを開きました",
@@ -1057,10 +1057,21 @@
       "defaultModel": "既定のモデル",
       "packageLimit": "パッケージは最大 8 個まで選択できます",
       "historySync": {
+        "observing": "履歴の自動同期は変更を監視しています",
         "active": "履歴同期は動作中 · {{shared}} 件の会話を共有",
         "attention": "履歴同期は動作中 · {{shared}} 件を共有 · {{conflicts}} 件に対応が必要",
         "paused": "履歴同期は一時停止中: {{reason}}",
-        "idle": "履歴同期は待機中"
+        "idle": "履歴同期は待機中",
+        "reasons": {
+          "compatibility": "このアプリの履歴形式との互換性はまだ確認されていません",
+          "changed": "アプリが変更されたため、履歴の互換性を再確認する必要があります",
+          "route": "同期先のモデルとプロバイダーを確認できませんでした",
+          "checking": "会話履歴を確認しています",
+          "waiting": "Claude Desktop と Claude Code の終了を待っています",
+          "namespace": "Claude Desktop による履歴の初期化を待っています",
+          "attention": "確認が必要な会話がありますが、既存の履歴は保持されています",
+          "unavailable": "履歴の自動同期は一時的に利用できません"
+        }
       }
     }
   },

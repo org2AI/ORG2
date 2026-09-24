@@ -1,6 +1,12 @@
 //! One authenticated owner, one filesystem subscription, no periodic scans.
-use super::owner;
-use crate::agent_sessions::cli::parsers::codex_app_server::prepare_history_store;
+use super::history_status::{HistorySyncState, HistorySyncView};
+use super::{
+    native_compatibility::{self, ResolvedNativeClient},
+    owner,
+};
+use crate::agent_sessions::cli::parsers::codex_app_server::{
+    isolated_default_route, prepare_history_store, resolve_target_route, ResolvedCodexHistoryRoute,
+};
 use agent_cli::managed_config::{
     self,
     native_app::{self, codex_history, NativeAppProfile},
@@ -83,83 +89,61 @@ struct Service {
     dirty: Mutex<Dirty>,
     wake: Notify,
     cancel: CancellationToken,
+    primary_model: Mutex<Option<CachedModel>>,
     package_model: Mutex<Option<CachedModel>>,
+    client: Mutex<Option<ResolvedNativeClient>>,
+    runtime: Mutex<Option<super::native_app_launch::process::codex_runtime::ProfileRuntime>>,
+    view: Mutex<HistorySyncView>,
 }
 struct Handle {
     service: Arc<Service>,
     task: tokio::task::JoinHandle<()>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum HistorySyncState {
-    /// No owner, or the profile is not the managed Market connection.
-    Idle,
-    /// Observing and reconciling.
-    Active,
-    /// The native release or its data failed a compatibility gate; nothing is
-    /// written until the next configuration change or app start.
-    Paused,
-}
-
-/// What Settings shows for automatic Codex history. Derived from the last
-/// observer outcome, never from a timer.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct HistorySyncView {
-    pub state: HistorySyncState,
-    pub reason: Option<String>,
-    pub native_version: Option<String>,
-    pub shared: usize,
-    pub conflicts: usize,
-    pub pending: usize,
-}
-
-fn status_slot() -> &'static Mutex<HistorySyncView> {
-    static VALUE: OnceLock<Mutex<HistorySyncView>> = OnceLock::new();
-    VALUE.get_or_init(|| {
-        Mutex::new(HistorySyncView {
-            state: HistorySyncState::Idle,
-            reason: None,
-            native_version: None,
-            shared: 0,
-            conflicts: 0,
-            pending: 0,
-        })
-    })
-}
-
 pub(crate) fn status() -> HistorySyncView {
-    status_slot()
+    let service = slot()
         .lock()
         .unwrap_or_else(|v| v.into_inner())
-        .clone()
+        .as_ref()
+        .map(|handle| handle.service.clone());
+    service
+        .filter(|service| service.check().is_ok())
+        .map(|service| {
+            service
+                .view
+                .lock()
+                .unwrap_or_else(|v| v.into_inner())
+                .clone()
+        })
+        .unwrap_or_default()
 }
 
-/// Settings re-reads the connection view on this event, so a pass that
-/// finishes after the page loaded is reflected without polling.
-pub(crate) const STATE_CHANGED_EVENT: &str = "codex-history-state-changed";
-
-fn publish(update: impl FnOnce(&mut HistorySyncView)) {
-    let mut view = status_slot().lock().unwrap_or_else(|v| v.into_inner());
-    let before = view.clone();
-    update(&mut view);
-    if *view == before {
-        return;
-    }
-    tracing::info!(state = ?view.state, reason = ?view.reason, shared = view.shared, conflicts = view.conflicts, pending = view.pending, "Codex automatic history state");
-    drop(view);
-    if let Some(app) = crate::api::get_app_handle() {
-        use tauri::Emitter;
-        let _ = app.emit(STATE_CHANGED_EVENT, ());
-    }
-}
 fn slot() -> &'static Mutex<Option<Handle>> {
     static VALUE: OnceLock<Mutex<Option<Handle>>> = OnceLock::new();
     VALUE.get_or_init(Default::default)
 }
 
 impl Service {
+    fn publish(&self, update: impl FnOnce(&mut HistorySyncView)) {
+        if self.check().is_err() {
+            return;
+        }
+        let mut view = self.view.lock().unwrap_or_else(|v| v.into_inner());
+        let before = view.clone();
+        update(&mut view);
+        view.reason = view
+            .reason
+            .take()
+            .map(|reason| public_reason(&reason).into());
+        if *view == before {
+            return;
+        }
+        // Detailed parser failures stay out of UI events and shared logs.
+        tracing::debug!(state = ?view.state, shared = view.shared, conflicts = view.conflicts, pending = view.pending, "Codex automatic history state");
+        drop(view);
+        super::history_status::emit_changed("codex");
+    }
+
     fn check(&self) -> Result<(), String> {
         if self.cancel.is_cancelled() {
             Err("Codex history owner retired".into())
@@ -193,7 +177,11 @@ pub(super) fn ensure_started(lease: owner::Lease) {
         }),
         wake: Notify::new(),
         cancel: CancellationToken::new(),
+        primary_model: Mutex::new(None),
         package_model: Mutex::new(None),
+        client: Mutex::new(None),
+        runtime: Mutex::new(None),
+        view: Mutex::new(HistorySyncView::default()),
     });
     let task = tokio::spawn(run(service.clone()));
     *current = Some(Handle { service, task });
@@ -206,6 +194,10 @@ pub(super) fn configuration_applied() {
         .as_ref()
         .map(|v| v.service.clone());
     if let Some(service) = service.filter(|v| v.check().is_ok()) {
+        *service
+            .primary_model
+            .lock()
+            .unwrap_or_else(|v| v.into_inner()) = None;
         *service
             .package_model
             .lock()
@@ -223,21 +215,12 @@ pub(super) fn stop() {
     if let Some(handle) = slot().lock().unwrap_or_else(|v| v.into_inner()).take() {
         handle.service.cancel.cancel();
     }
-    publish(|view| {
-        view.state = HistorySyncState::Idle;
-        view.reason = None;
-    });
+    super::history_status::emit_changed("codex");
 }
-pub(super) async fn before_open(lease: owner::Lease) -> Result<(), String> {
-    if let Err(reason) = super::native_app_launch::verify_codex_history().await {
-        lease.check()?;
-        tracing::warn!(%reason, "Codex automatic history is unavailable for this native release");
-        publish(|view| {
-            view.state = HistorySyncState::Paused;
-            view.reason = Some(reason.clone());
-        });
-        return Ok(());
-    }
+pub(super) async fn before_open(
+    lease: owner::Lease,
+    client: ResolvedNativeClient,
+) -> Result<(), String> {
     ensure_started(lease.clone());
     let service = slot()
         .lock()
@@ -246,21 +229,37 @@ pub(super) async fn before_open(lease: owner::Lease) -> Result<(), String> {
         .filter(|v| v.service.lease.same_epoch(&lease))
         .map(|v| v.service.clone())
         .ok_or("Codex history owner changed")?;
+    if let Err(reason) = client.ensure_current() {
+        lease.check()?;
+        service.publish(|view| {
+            view.state = HistorySyncState::Paused;
+            view.reason = Some(reason);
+            view.native_version = Some(client.version.clone());
+        });
+        return Ok(());
+    }
     // An explicit open is the one place a remembered bootstrap failure is retried.
+    *service
+        .primary_model
+        .lock()
+        .unwrap_or_else(|v| v.into_inner()) = None;
     *service
         .package_model
         .lock()
         .unwrap_or_else(|v| v.into_inner()) = None;
-    let result = match reconcile(service.clone(), None).await {
+    let result = match reconcile(service.clone(), None, Some(client)).await {
         Ok(report) => {
-            publish(|view| record(view, &report));
+            service.publish(|view| record(view, &report));
             report
         }
         Err(reason) => {
             service.check()?;
-            tracing::warn!(%reason, "Codex history preserved; native launch can continue");
+            tracing::warn!(
+                reason = public_reason(&reason),
+                "Codex history preserved; native launch can continue"
+            );
             if !transient(&reason) {
-                publish(|view| {
+                service.publish(|view| {
                     view.state = HistorySyncState::Paused;
                     view.reason = Some(reason.clone());
                 });
@@ -281,6 +280,7 @@ pub(super) async fn before_open(lease: owner::Lease) -> Result<(), String> {
 async fn reconcile(
     service: Arc<Service>,
     changed_files: Option<Vec<String>>,
+    selected: Option<ResolvedNativeClient>,
 ) -> Result<codex_history::Report, String> {
     let _serial = super::history_serial().lock().await;
     service.check()?;
@@ -288,28 +288,66 @@ async fn reconcile(
     tokio::task::spawn_blocking(move || {
         let _operation = operation;
         service.check()?;
+        let cached = service
+            .client
+            .lock()
+            .unwrap_or_else(|v| v.into_inner())
+            .clone();
+        let client = match selected.or(cached.filter(|v| v.ensure_current().is_ok())) {
+            Some(client) => client,
+            None => native_compatibility::resolve("codex")?,
+        };
+        service.publish(|view| view.native_version = Some(client.version.clone()));
+        *service.client.lock().unwrap_or_else(|v| v.into_inner()) = Some(client.clone());
+        client.ensure_current()?;
         let profile = service
             .lease
             .native_app("codex")?
             .ok_or("Missing Codex profile")?;
         native_app::with_existing_profile(&profile, true, |check_profile| {
-            let check = || {
-                service.check()?;
-                check_profile()
+            use super::native_app_launch::process::codex_runtime::ProfileRuntime;
+            // One discovery per coalesced batch; successful proofs are owner
+            // scoped. Commit fences recheck exact PIDs, not every OS process.
+            let cached = service
+                .runtime
+                .lock()
+                .unwrap_or_else(|v| v.into_inner())
+                .clone();
+            let runtime = match cached
+                .filter(|value| value.is_bound() && value.check(&client, &profile).is_ok())
+            {
+                Some(value) => value,
+                None => ProfileRuntime::capture(&client, &profile)?,
             };
+            *service.runtime.lock().unwrap_or_else(|v| v.into_inner()) = Some(runtime.clone());
             let primary = app_paths::native_transcript_home_dir().join(".codex");
             // Creating the user's first primary profile belongs to native Codex.
             // The parent watcher wakes this service when that profile appears.
             if !primary.is_dir() {
                 return Ok(codex_history::Report::default());
             }
-            // The user's own profile is never initialized or probed with a native
-            // process. Without an explicit model there, conversations still flow
-            // into the package and the return direction waits (see the engine).
-            let primary_model = codex_history::configured_route(&primary)?
-                .0
-                .unwrap_or_default();
-            let package_model = resolve_package_model(&service, &profile.home(), &check)?;
+            // Explicit config wins. Missing defaults are resolved by this
+            // runtime in an empty offline profile, never by opening primary.
+            let primary_configuration = primary_config_identity(&primary)?;
+            let check = || {
+                service.check()?;
+                client.ensure_current()?;
+                runtime.check(&client, &profile)?;
+                check_profile()?;
+                // The engine accepts a model string, so keep its provider
+                // selection under the same config generation as resolution.
+                // A provider switch cannot reuse the previous default model.
+                check_primary_configuration(&primary, &primary_configuration)
+            };
+            check()?;
+            let primary_model = resolve_primary_model_cached(
+                &service.primary_model,
+                &client.generation,
+                &primary,
+                &check,
+                || isolated_default_route(client.runtime()?, &check),
+            )?;
+            let package_model = resolve_package_model(&service, &client, &profile.home(), &check)?;
             codex_history::reconcile_changes(
                 &profile,
                 None,
@@ -321,6 +359,142 @@ async fn reconcile(
     })
     .await
     .map_err(|_| "Codex history worker stopped")?
+}
+
+fn primary_model(
+    home: &Path,
+    default: Option<&ResolvedCodexHistoryRoute>,
+) -> Result<String, String> {
+    match resolve_target_route(home, default) {
+        Ok(route) => Ok(route.model),
+        Err(reason) if reason == "target_route_unknown" => Ok(String::new()),
+        Err(reason) => Err(reason),
+    }
+}
+
+/// At most one offline metadata probe per owner/runtime/configuration state.
+/// Unknown capability stops only copies needing the primary's default route;
+/// explicit routes and primary-to-package sharing do not depend on the probe.
+fn resolve_primary_model_cached(
+    cache: &Mutex<Option<CachedModel>>,
+    generation: &str,
+    home: &Path,
+    check: &impl Fn() -> Result<(), String>,
+    probe: impl FnOnce() -> Result<Option<ResolvedCodexHistoryRoute>, String>,
+) -> Result<String, String> {
+    check()?;
+    let explicit = primary_model(home, None)?;
+    check()?;
+    if !explicit.is_empty() {
+        return Ok(explicit);
+    }
+    let fingerprint = runtime_config_fingerprint(config_fingerprint(home)?, generation);
+    if let Some(cached) = cache.lock().unwrap_or_else(|v| v.into_inner()).as_ref() {
+        if cached.fingerprint == fingerprint {
+            check()?;
+            return cached.model.clone();
+        }
+    }
+    let default = if primary_uses_bundled_catalog(home)? {
+        probe()?
+    } else {
+        None
+    };
+    check()?;
+    let model = primary_model(home, default.as_ref())?;
+    if fingerprint != runtime_config_fingerprint(config_fingerprint(home)?, generation) {
+        return Err("target_route_unknown".into());
+    }
+    check()?;
+    *cache.lock().unwrap_or_else(|v| v.into_inner()) = Some(CachedModel {
+        fingerprint,
+        model: Ok(model.clone()),
+    });
+    Ok(model)
+}
+
+/// An isolated empty-home catalog cannot describe a primary profile's custom
+/// model catalog. Explicit models already returned above; leave only its
+/// missing default pending rather than inspecting arbitrary catalog paths.
+fn primary_uses_bundled_catalog(home: &Path) -> Result<bool, String> {
+    let path = home.join("config.toml");
+    let mut bytes = Vec::new();
+    match std::fs::symlink_metadata(&path) {
+        Ok(value) if value.is_file() && value.len() <= 4 * 1024 * 1024 => {
+            std::fs::File::open(path)
+                .map_err(|_| "Cannot inspect Codex configuration")?
+                .take(4 * 1024 * 1024 + 1)
+                .read_to_end(&mut bytes)
+                .map_err(|_| "Cannot inspect Codex configuration")?;
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(true),
+        _ => return Err("Codex configuration is not a bounded regular file".into()),
+    }
+    if bytes.len() > 4 * 1024 * 1024 {
+        return Err("Codex configuration exceeds limit".into());
+    }
+    let text = std::str::from_utf8(&bytes).map_err(|_| "Invalid Codex local configuration")?;
+    let value: toml::Table =
+        toml::from_str(text).map_err(|_| "Invalid Codex local configuration")?;
+    let selected = value
+        .get("profile")
+        .and_then(toml::Value::as_str)
+        .and_then(|name| {
+            value
+                .get("profiles")
+                .and_then(toml::Value::as_table)?
+                .get(name)
+        })
+        .and_then(toml::Value::as_table);
+    Ok(selected
+        .and_then(|profile| profile.get("model_catalog_json"))
+        .or_else(|| value.get("model_catalog_json"))
+        .is_none())
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct PrimaryConfigIdentity {
+    length: u64,
+    modified: std::time::SystemTime,
+    #[cfg(unix)]
+    inode: (u64, u64, i64, i64),
+}
+
+/// Metadata-only commit fence; do not re-read/hash up to 4 MiB at every writer
+/// checkpoint. Configuration content is parsed once per reconciliation pass.
+fn primary_config_identity(home: &Path) -> Result<Option<PrimaryConfigIdentity>, String> {
+    let metadata = match std::fs::symlink_metadata(home.join("config.toml")) {
+        Ok(value) if value.is_file() && value.len() <= 4 * 1024 * 1024 => value,
+        Ok(_) => return Err("Codex primary configuration is not a bounded regular file".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err("Cannot inspect Codex primary configuration".into()),
+    };
+    Ok(Some(PrimaryConfigIdentity {
+        length: metadata.len(),
+        modified: metadata
+            .modified()
+            .map_err(|_| "Cannot identify Codex primary configuration")?,
+        #[cfg(unix)]
+        inode: {
+            use std::os::unix::fs::MetadataExt;
+            (
+                metadata.dev(),
+                metadata.ino(),
+                metadata.ctime(),
+                metadata.ctime_nsec(),
+            )
+        },
+    }))
+}
+
+fn check_primary_configuration(
+    home: &Path,
+    expected: &Option<PrimaryConfigIdentity>,
+) -> Result<(), String> {
+    if &primary_config_identity(home)? != expected {
+        return Err("target_route_unknown".into());
+    }
+    Ok(())
 }
 
 fn config_fingerprint(home: &Path) -> Result<[u8; 32], String> {
@@ -352,11 +526,13 @@ fn config_fingerprint(home: &Path) -> Result<[u8; 32], String> {
 
 fn resolve_package_model(
     service: &Service,
+    client: &ResolvedNativeClient,
     home: &Path,
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<String, String> {
     check()?;
-    let fingerprint = config_fingerprint(home)?;
+    let configuration = config_fingerprint(home)?;
+    let fingerprint = runtime_config_fingerprint(configuration, &client.generation);
     let store_present =
         home.join("state_5.sqlite").is_file() && home.join("thread_history_1.sqlite").is_file();
     if let Some(cached) = &*service
@@ -370,9 +546,9 @@ fn resolve_package_model(
             return cached.model.clone();
         }
     }
-    let model = prepare_history_store(home, check).map(|route| route.model);
+    let model = prepare_history_store(client.runtime()?, home, check).map(|route| route.model);
     check()?;
-    if config_fingerprint(home)? != fingerprint {
+    if config_fingerprint(home)? != configuration {
         return Err("Codex configuration changed during history initialization".into());
     }
     *service
@@ -383,6 +559,35 @@ fn resolve_package_model(
         model: model.clone(),
     });
     model
+}
+
+fn runtime_config_fingerprint(configuration: [u8; 32], generation: &str) -> [u8; 32] {
+    let mut digest = Sha256::new();
+    digest.update(configuration);
+    digest.update(generation);
+    digest.finalize().into()
+}
+
+fn app_watch_roots(service: &Service) -> Vec<PathBuf> {
+    let mut paths = vec![
+        app_paths::home_dir().join("Applications"),
+        PathBuf::from("/Applications"),
+    ];
+    if let Some(client) = &*service.client.lock().unwrap_or_else(|v| v.into_inner()) {
+        for relative in [
+            "",
+            "Contents",
+            "Contents/MacOS",
+            "Contents/Resources",
+            "Contents/_CodeSignature",
+        ] {
+            paths.push(client.bundle.join(relative));
+        }
+    }
+    paths.retain(|path| path.is_dir());
+    paths.sort();
+    paths.dedup();
+    paths
 }
 
 fn thread_id(path: &Path) -> Option<String> {
@@ -403,6 +608,7 @@ fn install(
     ];
     let manifest = app_paths::cli_config_profile_manifest("codex");
     let observed = homes.clone();
+    let app_roots = app_watch_roots(service);
     let manifest_callback = manifest.clone();
     let weak = Arc::downgrade(service);
     let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
@@ -418,6 +624,14 @@ fn install(
             }
             Ok(event) if !matches!(event.kind, notify::EventKind::Access(_)) => {
                 for path in event.paths {
+                    if app_roots
+                        .iter()
+                        .any(|root| path == *root || path.parent() == Some(root.as_path()))
+                    {
+                        *service.client.lock().unwrap_or_else(|v| v.into_inner()) = None;
+                        dirty.all();
+                        changed = true;
+                    }
                     if path == manifest_callback {
                         dirty.all();
                         changed = true;
@@ -474,7 +688,7 @@ fn install(
         }
     })
     .map_err(|_| "Cannot observe Codex history")?;
-    let roots = watch_roots(profile);
+    let roots = watch_roots(service, profile);
     for (path, mode) in &roots {
         watcher
             .watch(path, *mode)
@@ -483,13 +697,16 @@ fn install(
     Ok((watcher, roots))
 }
 
-fn watch_roots(profile: &NativeAppProfile) -> Vec<(PathBuf, RecursiveMode)> {
+fn watch_roots(service: &Service, profile: &NativeAppProfile) -> Vec<(PathBuf, RecursiveMode)> {
     let homes = [
         app_paths::native_transcript_home_dir().join(".codex"),
         profile.home(),
     ];
     let manifest = app_paths::cli_config_profile_manifest("codex");
-    let mut roots = Vec::new();
+    let mut roots = app_watch_roots(service)
+        .into_iter()
+        .map(|path| (path, RecursiveMode::NonRecursive))
+        .collect::<Vec<_>>();
     for home in homes {
         if home.is_dir() {
             roots.push((home.clone(), RecursiveMode::NonRecursive));
@@ -509,13 +726,27 @@ fn watch_roots(profile: &NativeAppProfile) -> Vec<(PathBuf, RecursiveMode)> {
     roots
 }
 
+fn public_reason(reason: &str) -> &'static str {
+    match reason {
+        "native_app_changed" => "native_app_changed",
+        "native_history_runtime_unknown" => "native_history_runtime_unknown",
+        "native_runtime_unverified" | "native_runtime_mismatch" | "native_app_process_stale" => {
+            "native_history_runtime_unknown"
+        }
+        "target_route_unknown" => "target_route_unknown",
+        _ => "native_history_unavailable",
+    }
+}
+
 fn transient(error: &str) -> bool {
     error.ends_with("busy") || error.ends_with("already synchronizing")
 }
 
 fn record(view: &mut HistorySyncView, report: &codex_history::Report) {
     view.state = HistorySyncState::Active;
-    view.reason = None;
+    view.reason = report
+        .target_route_pending
+        .then(|| "target_route_unknown".into());
     view.shared = report.shared;
     view.conflicts = report.conflicts;
     view.pending = report.pending;
@@ -523,17 +754,6 @@ fn record(view: &mut HistorySyncView, report: &codex_history::Report) {
 
 async fn run(service: Arc<Service>) {
     let result = async {
-        let native_version = match super::native_app_launch::verify_codex_history().await {
-            Ok(version) => version,
-            Err(reason) => {
-                publish(|view| {
-                    view.state = HistorySyncState::Paused;
-                    view.reason = Some(reason.clone());
-                });
-                return Err(reason);
-            }
-        };
-        publish(|view| view.native_version = Some(native_version));
         let profile = service.lease.native_app("codex")?.ok_or("Missing Codex history profile")?;
         // The user's native home is observed only while this profile is the
         // managed Market connection. Restore/reconfigure can happen within one
@@ -559,7 +779,7 @@ async fn run(service: Arc<Service>) {
                 }
                 if !managed {
                     watcher = None;
-                    publish(|view| {
+                    service.publish(|view| {
                         view.state = HistorySyncState::Idle;
                         view.reason = None;
                     });
@@ -570,13 +790,13 @@ async fn run(service: Arc<Service>) {
                     }
                     // Events before a subscription are unknown: rescan.
                     let changed_files = if resubscribed { None } else { taken.changed_files.clone() };
-                    match reconcile(service.clone(), changed_files).await {
+                    match reconcile(service.clone(), changed_files, None).await {
                         Ok(report) => {
                             if report.conflicts != conflicts {
                                 conflicts = report.conflicts;
-                                tracing::warn!(conflicts, "Codex history has preserved divergent or unavailable conversations");
+                                tracing::warn!(conflicts, "Codex history has conversations with unresolved synchronization failures");
                             }
-                            publish(|view| record(view, &report));
+                            service.publish(|view| record(view, &report));
                             if report.more {
                                 service.dirty.lock().unwrap_or_else(|v| v.into_inner()).all();
                             }
@@ -585,8 +805,8 @@ async fn run(service: Arc<Service>) {
                             service.dirty.lock().unwrap_or_else(|v| v.into_inner()).restore(taken);
                         }
                         Err(error) => {
-                            tracing::warn!(reason = %error, "Codex automatic history handoff paused until its next invalidation");
-                            publish(|view| {
+                            tracing::warn!(reason = public_reason(&error), "Codex automatic history handoff paused until its next invalidation");
+                            service.publish(|view| {
                                 view.state = HistorySyncState::Paused;
                                 view.reason = Some(error.clone());
                             });
@@ -594,7 +814,7 @@ async fn run(service: Arc<Service>) {
                     }
                     // Register newly created native directories. Comparing the root
                     // set avoids replacing subscriptions for every token append.
-                    if watcher.as_ref().is_some_and(|w| watch_roots(&profile) != w.1) {
+                    if watcher.as_ref().is_some_and(|w| watch_roots(&service, &profile) != w.1) {
                         watcher = Some(install(&service, &profile)?);
                     }
                 }
@@ -628,6 +848,274 @@ async fn run(service: Arc<Service>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn primary_resolution_uses_verified_default_only_for_its_provider() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        let default = ResolvedCodexHistoryRoute {
+            model: "verified-native-model".into(),
+            provider: "openai".into(),
+        };
+        assert_eq!(primary_model(&home, None).unwrap(), "");
+        assert_eq!(
+            primary_model(&home, Some(&default)).unwrap(),
+            "verified-native-model"
+        );
+        assert_eq!(std::fs::read_dir(&home).unwrap().count(), 0);
+        std::fs::write(
+            home.join("config.toml"),
+            "model_provider='another-provider'\n",
+        )
+        .unwrap();
+        assert_eq!(primary_model(&home, Some(&default)).unwrap(), "");
+        std::fs::write(
+            home.join("config.toml"),
+            "model_provider='another-provider'\nmodel='explicit-model'\n",
+        )
+        .unwrap();
+        assert_eq!(
+            primary_model(&home, Some(&default)).unwrap(),
+            "explicit-model"
+        );
+    }
+    #[test]
+    fn a_primary_provider_switch_fences_an_already_resolved_default() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        let default = ResolvedCodexHistoryRoute {
+            model: "verified-native-model".into(),
+            provider: "openai".into(),
+        };
+        let before = primary_config_identity(&home).unwrap();
+        assert_eq!(
+            primary_model(&home, Some(&default)).unwrap(),
+            "verified-native-model"
+        );
+        check_primary_configuration(&home, &before).unwrap();
+        std::fs::write(
+            home.join("config.toml"),
+            "model_provider='another-provider'\n",
+        )
+        .unwrap();
+        assert_eq!(
+            check_primary_configuration(&home, &before).unwrap_err(),
+            "target_route_unknown"
+        );
+        assert_eq!(primary_model(&home, Some(&default)).unwrap(), "");
+        let before_removal = primary_config_identity(&home).unwrap();
+        std::fs::remove_file(home.join("config.toml")).unwrap();
+        assert_eq!(
+            check_primary_configuration(&home, &before_removal).unwrap_err(),
+            "target_route_unknown"
+        );
+    }
+    #[test]
+    fn replacing_primary_configuration_invalidates_identity_even_at_the_same_size() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        std::fs::write(home.join("config.toml"), "model_provider='openai'\n").unwrap();
+        let before = primary_config_identity(&home).unwrap();
+        std::fs::write(home.join("replacement.toml"), "model_provider='orgii2'\n").unwrap();
+        std::fs::rename(home.join("replacement.toml"), home.join("config.toml")).unwrap();
+        assert_eq!(
+            check_primary_configuration(&home, &before).unwrap_err(),
+            "target_route_unknown"
+        );
+        assert_eq!(
+            before.unwrap().length,
+            primary_config_identity(&home).unwrap().unwrap().length
+        );
+    }
+    #[test]
+    fn bootstrap_cache_is_scoped_to_configuration_and_runtime() {
+        assert_ne!(
+            runtime_config_fingerprint([1; 32], "old"),
+            runtime_config_fingerprint([1; 32], "new")
+        );
+        assert_ne!(
+            runtime_config_fingerprint([1; 32], "same"),
+            runtime_config_fingerprint([2; 32], "same")
+        );
+    }
+    #[test]
+    fn explicit_primary_profile_skips_default_probe_and_uses_symmetric_fallback() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        let cache = Mutex::new(None);
+        std::fs::write(home.as_path().join("config.toml"),
+            "model='root-model'\nmodel_provider='root-provider'\nprofile='work'\n[profiles.work]\nmodel_provider='profile-provider'\n").unwrap();
+        let route = resolve_target_route(home.as_path(), None).unwrap();
+        assert_eq!(route.model, "root-model");
+        assert_eq!(route.provider, "profile-provider");
+        assert_eq!(
+            resolve_primary_model_cached(&cache, "runtime", home.as_path(), &|| Ok(()), || panic!(
+                "explicit route must not launch capability probe"
+            ))
+            .unwrap(),
+            "root-model"
+        );
+        std::fs::write(home.as_path().join("config.toml"),
+            "model='root-model'\nmodel_provider='root-provider'\nprofile='work'\n[profiles.work]\nmodel='profile-model'\n").unwrap();
+        let route = resolve_target_route(home.as_path(), None).unwrap();
+        assert_eq!(route.model, "profile-model");
+        assert_eq!(route.provider, "root-provider");
+        assert!(cache.lock().unwrap().is_none());
+    }
+    #[test]
+    fn unknown_default_is_cached_and_invalidated_by_runtime_or_config() {
+        use std::cell::Cell;
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        let cache = Mutex::new(None);
+        let probes = Cell::new(0);
+        let unknown = || {
+            probes.set(probes.get() + 1);
+            Ok(None)
+        };
+        for _ in 0..3 {
+            assert_eq!(
+                resolve_primary_model_cached(
+                    &cache,
+                    "runtime-a",
+                    home.as_path(),
+                    &|| Ok(()),
+                    unknown
+                )
+                .unwrap(),
+                ""
+            );
+        }
+        assert_eq!(probes.get(), 1);
+        assert_eq!(
+            resolve_primary_model_cached(&cache, "runtime-b", home.as_path(), &|| Ok(()), unknown)
+                .unwrap(),
+            ""
+        );
+        assert_eq!(probes.get(), 2);
+        std::fs::write(
+            home.as_path().join("config.toml"),
+            "model_provider='another-provider'\n",
+        )
+        .unwrap();
+        assert_eq!(
+            resolve_primary_model_cached(&cache, "runtime-b", home.as_path(), &|| Ok(()), unknown)
+                .unwrap(),
+            ""
+        );
+        assert_eq!(probes.get(), 3);
+        assert_eq!(std::fs::read_dir(home.as_path()).unwrap().count(), 1);
+    }
+    #[test]
+    fn runtime_default_is_cached_but_never_crosses_provider_boundary() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        let cache = Mutex::new(None);
+        let default = || {
+            Ok(Some(ResolvedCodexHistoryRoute {
+                model: "runtime-selected".into(),
+                provider: "openai".into(),
+            }))
+        };
+        assert_eq!(
+            resolve_primary_model_cached(&cache, "runtime", home.as_path(), &|| Ok(()), default)
+                .unwrap(),
+            "runtime-selected"
+        );
+        assert_eq!(
+            resolve_primary_model_cached(&cache, "runtime", home.as_path(), &|| Ok(()), || panic!(
+                "cached"
+            ))
+            .unwrap(),
+            "runtime-selected"
+        );
+        std::fs::write(
+            home.as_path().join("config.toml"),
+            "model_provider='another-provider'\n",
+        )
+        .unwrap();
+        assert_eq!(
+            resolve_primary_model_cached(&cache, "runtime", home.as_path(), &|| Ok(()), default)
+                .unwrap(),
+            ""
+        );
+    }
+    #[test]
+    fn probe_cancellation_or_primary_mutation_is_not_cached_as_unknown() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        let cache = Mutex::new(None);
+        assert_eq!(
+            resolve_primary_model_cached(&cache, "runtime", home.as_path(), &|| Ok(()), || Err(
+                "owner retired".into()
+            ))
+            .unwrap_err(),
+            "owner retired"
+        );
+        assert!(cache.lock().unwrap().is_none());
+        let before = primary_config_identity(home.as_path()).unwrap();
+        assert_eq!(
+            resolve_primary_model_cached(
+                &cache,
+                "runtime",
+                home.as_path(),
+                &|| check_primary_configuration(home.as_path(), &before),
+                || {
+                    std::fs::write(home.as_path().join("config.toml"), "model='changed'\n")
+                        .unwrap();
+                    Ok(Some(ResolvedCodexHistoryRoute {
+                        model: "old".into(),
+                        provider: "openai".into(),
+                    }))
+                }
+            )
+            .unwrap_err(),
+            "target_route_unknown"
+        );
+        assert!(cache.lock().unwrap().is_none());
+    }
+    #[test]
+    fn custom_primary_catalog_requires_explicit_model_in_root_or_selected_profile() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().canonicalize().unwrap();
+        let cache = Mutex::new(None);
+        for config in [
+            "model_catalog_json='/custom/catalog.json'\n",
+            "profile='work'\n[profiles.work]\nmodel_catalog_json='/custom/catalog.json'\n",
+            "model_catalog_json='/root/catalog.json'\nprofile='work'\n[profiles.work]\nmodel_provider='openai'\n",
+        ] {
+            std::fs::write(home.as_path().join("config.toml"), config).unwrap();
+            assert_eq!(resolve_primary_model_cached(&cache, "runtime", home.as_path(), &|| Ok(()),
+                || panic!("custom catalog cannot use isolated bundled default")).unwrap(), "");
+        }
+        for config in [
+            "model_catalog_json='/custom/catalog.json'\nmodel='custom-explicit'\n",
+            "model_catalog_json='/custom/catalog.json'\nprofile='work'\n[profiles.work]\nmodel='custom-explicit'\n",
+        ] {
+            std::fs::write(home.as_path().join("config.toml"), config).unwrap();
+            assert_eq!(resolve_primary_model_cached(&cache, "runtime", home.as_path(), &|| Ok(()),
+                || panic!("explicit model requires no probe")).unwrap(), "custom-explicit");
+        }
+        std::fs::write(home.as_path().join("config.toml"), "profile='work'\n[profiles.work]\n[profiles.unselected]\nmodel_catalog_json='/other/catalog.json'\n").unwrap();
+        assert!(primary_uses_bundled_catalog(home.as_path()).unwrap());
+    }
+    #[test]
+    fn pending_return_route_is_distinct_from_shared_count_and_private_errors() {
+        let mut view = HistorySyncView::default();
+        record(
+            &mut view,
+            &codex_history::Report {
+                shared: 4,
+                target_route_pending: true,
+                ..Default::default()
+            },
+        );
+        assert_eq!(view.reason.as_deref(), Some("target_route_unknown"));
+        assert_eq!(view.shared, 4);
+        assert_eq!(
+            public_reason("open /private/user/session/config.json: denied"),
+            "native_history_unavailable"
+        );
+    }
     #[test]
     fn dirty_queue_is_bounded_and_refresh_has_no_work() {
         let mut dirty = Dirty::default();

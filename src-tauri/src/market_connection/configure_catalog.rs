@@ -7,43 +7,25 @@ use super::{
 };
 use agent_cli::managed_config::model_catalog::{ModelCatalog, PickerModel};
 
-async fn codex_metadata() -> Result<serde_json::Value, String> {
-    use tokio::io::AsyncReadExt;
-    let binary = integrations::cli_binary_resolver::resolve_cli_binary_for_registry_name("codex")
-        .ok_or("Codex unavailable")?;
-    let mut child = tokio::process::Command::new(binary.command)
-        .args(["debug", "models", "--bundled"])
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .map_err(|_| "Could not read the installed Codex model catalog")?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or("Codex model catalog unavailable")?;
-    let mut bytes = Vec::new();
-    let status = tokio::time::timeout(std::time::Duration::from_secs(15), async {
-        stdout
-            .take(4 * 1024 * 1024 + 1)
-            .read_to_end(&mut bytes)
-            .await
-            .map_err(|_| "Codex model catalog unavailable")?;
-        if bytes.len() > 4 * 1024 * 1024 {
-            return Err("Codex model catalog too large");
-        }
-        child
-            .wait()
-            .await
-            .map_err(|_| "Codex model catalog unavailable")
+async fn codex_metadata(
+    client: &super::native_compatibility::ResolvedNativeClient,
+    lease: &super::owner::Lease,
+) -> Result<serde_json::Value, String> {
+    let client = client.clone();
+    let lease = lease.clone();
+    let cancellation = tokio_util::sync::CancellationToken::new();
+    let _cancel_on_drop = cancellation.clone().drop_guard();
+    tokio::task::spawn_blocking(move || {
+        super::native_compatibility::codex_bundled_catalog(&client, &|| {
+            lease.check()?;
+            if cancellation.is_cancelled() {
+                return Err("native_catalog_cancelled".into());
+            }
+            Ok(())
+        })
     })
     .await
-    .map_err(|_| "Codex model catalog timed out")??;
-    if !status.success() {
-        return Err("Update Codex to a version supporting native model catalogs".into());
-    }
-    serde_json::from_slice(&bytes).map_err(|_| "Invalid installed Codex model catalog".into())
+    .map_err(|_| "Native model catalog lookup stopped")?
 }
 
 pub(super) async fn configure(
@@ -65,7 +47,7 @@ pub(super) async fn configure(
         &agent,
         &default_model,
     )?;
-    super::native_app_launch::verify_installed(&agent).await?;
+    let resolved_client = super::native_compatibility::for_operation(&agent).await?;
     if agent == "claude_code" {
         use integrations::cli_binary_resolver::{
             probe_cli_binary_version, resolve_cli_binary_for_registry_name,
@@ -92,10 +74,21 @@ pub(super) async fn configure(
         }
     }
     let metadata = if agent == "codex" {
-        Some(codex_metadata().await?)
+        Some(
+            codex_metadata(
+                resolved_client
+                    .as_ref()
+                    .ok_or("Missing native App identity")?,
+                &lease,
+            )
+            .await?,
+        )
     } else {
         None
     };
+    if let Some(client) = &resolved_client {
+        client.ensure_current()?;
+    }
     let mut catalog = Catalog {
         version: 1,
         agent: agent.clone(),
@@ -201,6 +194,9 @@ pub(super) async fn configure(
     disambiguate_picker_labels(&mut catalog, &mut picker);
     let selection = catalog.key()?;
     // Validate all entries before requesting any credential or editing config.
+    if let Some(client) = &resolved_client {
+        client.ensure_current()?;
+    }
     let native_app = lease.native_app(&agent)?;
     let status = if agent == "claude_desktop" {
         crate::cli_managed_proxy::enable_dynamic_desktop(
@@ -209,7 +205,7 @@ pub(super) async fn configure(
             picker.models,
             expected_hashes,
             native_app,
-            lease.operation(),
+            super::native_compatibility::authorize(lease.operation(), resolved_client.clone()),
         )
         .await?
     } else {
@@ -220,7 +216,7 @@ pub(super) async fn configure(
             picker,
             expected_hashes,
             native_app,
-            lease.operation(),
+            super::native_compatibility::authorize(lease.operation(), resolved_client.clone()),
         )
         .await?
     };

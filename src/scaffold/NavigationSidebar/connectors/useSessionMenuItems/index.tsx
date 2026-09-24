@@ -72,12 +72,14 @@ function parentSessionIdFor(session: Session): string | null {
 
 function buildChildSessionMenuItem(
   session: Session,
+  parentItemId: string,
   buildSessionRow: (session: Session) => NavigationMenuItem
 ): NavigationMenuItem {
   const item = buildSessionRow(session);
   return {
     ...item,
     showIndentGuide: true,
+    parentItemId,
     visualTone: "secondary",
     dataTestId: `sidebar-subagent-session-item-${session.session_id}`,
     // Subagent rows don't carry a meaningful read status, so drop the dot.
@@ -107,7 +109,7 @@ function insertExpandedSubagentRows({
     if (!childSessions || childSessions.length === 0) continue;
     nextItems.push(
       ...childSessions.map((session) =>
-        buildChildSessionMenuItem(session, buildSessionRow)
+        buildChildSessionMenuItem(session, item.id, buildSessionRow)
       )
     );
   }

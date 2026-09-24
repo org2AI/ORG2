@@ -143,19 +143,6 @@ impl AgentTool {
             )
             .await;
 
-            // Persist subagent messages for future resume
-            {
-                let sid = task_session_id.clone();
-                let msgs = messages.clone();
-                tokio::task::spawn_blocking(move || {
-                    if let Err(err) =
-                        crate::session::persistence::save_subagent_transcript(&sid, &msgs)
-                    {
-                        warn!("[agent] Failed to persist transcript for {}: {}", sid, err);
-                    }
-                });
-            }
-
             // Handle result + update LinkedSession.
             // If the subagent's terminal iteration produced no text (pure
             // tool_use turn), backtrack through the turn's message history

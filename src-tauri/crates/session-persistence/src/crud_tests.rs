@@ -586,3 +586,143 @@ fn activity_probe_is_scoped_read_only_and_stops_at_first_match() {
         );
     });
 }
+
+#[test]
+fn legacy_subagent_late_input_recovers_complete_turn_without_rewriting_source() {
+    with_temp_orgii_home(|| {
+        let conn = get_connection().unwrap();
+        crate::schema::init_session_tables(&conn).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE agent_sessions (
+            session_id TEXT PRIMARY KEY, session_type TEXT, parent_session_id TEXT,
+            created_at TEXT, status TEXT);
+            CREATE TABLE agent_messages (id TEXT PRIMARY KEY, session_id TEXT, role TEXT,
+                content TEXT, sequence INTEGER, created_at TEXT, images TEXT);
+            INSERT INTO agent_sessions VALUES ('legacy-child','subagent','parent',
+                '2026-09-08T11:32:18Z','completed');",
+        )
+        .unwrap();
+        let sid = "legacy-child";
+        let mut launch = cached_event("parent", "launch", "2026-09-08T11:32:17Z");
+        launch.function_name = Some("agent".into());
+        launch.args_json = serde_json::json!({"subagentSessionId":sid,
+            "prompt":"investigate", "fork":false})
+        .to_string();
+        save_events("parent", &[launch]).unwrap();
+        let mut tool = cached_event(sid, "tool", "2026-09-08T11:32:25Z");
+        tool.function_name = Some("read_file".into());
+        tool.event_type = "tool_call".into();
+        let mut answer = cached_event(sid, "answer", "2026-09-08T11:34:54Z");
+        answer.function_name = Some("assistant".into());
+        answer.event_type = "assistant".into();
+        answer.result_json = serde_json::json!({"content":"findings"}).to_string();
+        let mut input = cached_event(sid, "input", "2026-09-08T11:34:55Z");
+        input.result_json = serde_json::json!({"message":{"content":"investigate"}}).to_string();
+        save_events(sid, &[tool, answer, input]).unwrap();
+        let window = crate::load_initial_turn_window(sid, 1).unwrap();
+        assert_eq!(window.turns.len(), 1);
+        assert_eq!(window.turns[0].body_event_count, 2);
+        assert_eq!(
+            window
+                .events
+                .iter()
+                .map(|e| e.id.as_str())
+                .collect::<Vec<_>>(),
+            ["input", "tool", "answer"]
+        );
+        let body = crate::load_turn_body_window(sid, "input").unwrap();
+        assert_eq!(
+            body.events
+                .iter()
+                .map(|e| e.id.as_str())
+                .collect::<Vec<_>>(),
+            ["input", "tool", "answer"]
+        );
+        let original: String = conn
+            .query_row(
+                "SELECT created_at FROM events WHERE id='input'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(original, "2026-09-08T11:34:55Z");
+        // A genuine later input still opens its own round.
+        let mut followup = cached_event(sid, "followup", "2026-09-08T11:35:00Z");
+        followup.result_json = serde_json::json!({"message":{"content":"continue"}}).to_string();
+        save_events(sid, &[followup]).unwrap();
+        let window = crate::load_initial_turn_window(sid, 1).unwrap();
+        assert_eq!(window.turns.len(), 2);
+        assert_eq!(window.turns[0].body_event_count, 2);
+        assert_eq!(window.turns[1].body_event_count, 0);
+        assert_eq!(
+            crate::load_turn_body_window(sid, "input")
+                .unwrap()
+                .events
+                .len(),
+            3
+        );
+        // Never claim unrelated preceding activity just because it came first.
+        conn.execute("UPDATE events SET args_json='{}' WHERE id='launch'", [])
+            .unwrap();
+        crate::rebuild_turn_index(sid).unwrap();
+        let turns = crate::load_turn_index(sid).unwrap();
+        assert!(turns.iter().all(|turn| turn.body_event_count == 0));
+    });
+}
+
+#[test]
+fn turn_windows_keep_distinct_rounds_when_events_share_a_timestamp() {
+    with_temp_orgii_home(|| {
+        let conn = get_connection().unwrap();
+        crate::schema::init_session_tables(&conn).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE agent_messages (id TEXT PRIMARY KEY,
+            session_id TEXT, role TEXT, content TEXT, sequence INTEGER,
+            created_at TEXT, images TEXT);",
+        )
+        .unwrap();
+        let sid = "same-timestamp-rounds";
+        let timestamp = "2026-09-24T00:00:00Z";
+        let first = cached_event(sid, "a-user", timestamp);
+        let mut reply = cached_event(sid, "b-reply", timestamp);
+        reply.event_type = "assistant".into();
+        reply.function_name = Some("assistant".into());
+        let next = cached_event(sid, "c-user", timestamp);
+        let mut next_reply = reply.clone();
+        next_reply.id = "d-reply".into();
+        save_events(sid, &[first, reply, next, next_reply]).unwrap();
+        let window = crate::load_initial_turn_window(sid, 1).unwrap();
+        assert_eq!(window.turns.len(), 2);
+        assert_eq!(
+            window
+                .events
+                .iter()
+                .map(|event| event.id.as_str())
+                .collect::<Vec<_>>(),
+            ["a-user", "b-reply", "c-user", "d-reply"]
+        );
+        assert!(window.events[1].args_json.contains("turnPreviewOnly"));
+        let first_body = crate::load_turn_body_window(sid, "a-user").unwrap();
+        assert_eq!(
+            first_body
+                .events
+                .iter()
+                .map(|event| event.id.as_str())
+                .collect::<Vec<_>>(),
+            ["a-user", "b-reply"]
+        );
+        let last_body = crate::load_turn_body_window(sid, "c-user").unwrap();
+        assert_eq!(
+            last_body
+                .events
+                .iter()
+                .map(|event| event.id.as_str())
+                .collect::<Vec<_>>(),
+            ["c-user", "d-reply"]
+        );
+        assert!(crate::load_turn_body_window(sid, "missing")
+            .unwrap()
+            .events
+            .is_empty());
+    });
+}

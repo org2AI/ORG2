@@ -1304,82 +1304,6 @@ pub fn save_snapshot(session_id: &str, tool_call_id: &str, hash: &str) -> Sqlite
 }
 
 // ============================================
-// Subagent Transcript Persistence
-// ============================================
-
-/// Persist a subagent's full message transcript for future resume.
-/// Skips the system message (index 0) — only user/assistant/tool messages are saved.
-///
-/// Routes through the shared `save_*_msg` helpers so the `sequence` column is
-/// populated via `next_sequence()` and the schema stays in sync with
-/// `foundation/persistence/session_snapshots.rs::ensure_tables()`. A prior
-/// version used a raw `INSERT` that referenced a non-existent `session_type`
-/// column and failed at runtime, losing every subagent transcript.
-pub fn save_subagent_transcript(
-    session_id: &str,
-    messages: &[serde_json::Value],
-) -> SqliteResult<()> {
-    for msg in messages.iter().skip(1) {
-        let role = msg
-            .get("role")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown");
-
-        let content = msg.get("content").and_then(|v| v.as_str()).unwrap_or("");
-
-        match role {
-            "user" => {
-                let _ = shared::save_user_msg(SESSION_TABLE_PREFIX, session_id, content, None)?;
-            }
-            "assistant" => {
-                let _ = shared::save_assistant_msg(SESSION_TABLE_PREFIX, session_id, content, "")?;
-                if let Some(tool_calls) = msg.get("tool_calls").and_then(|v| v.as_array()) {
-                    for tc in tool_calls {
-                        let tc_id = tc.get("id").and_then(|v| v.as_str()).unwrap_or("");
-                        let tc_name = tc
-                            .get("function")
-                            .and_then(|f| f.get("name"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("");
-                        let tc_args = tc
-                            .get("function")
-                            .and_then(|f| f.get("arguments"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("{}");
-                        let _ = shared::save_tool_call_msg(
-                            SESSION_TABLE_PREFIX,
-                            session_id,
-                            tc_id,
-                            tc_name,
-                            tc_args,
-                        )?;
-                    }
-                }
-            }
-            "tool" => {
-                let tc_id = msg
-                    .get("tool_call_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let tc_name = msg.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                let _ = shared::save_tool_result_msg(
-                    SESSION_TABLE_PREFIX,
-                    session_id,
-                    tc_id,
-                    tc_name,
-                    content,
-                )?;
-            }
-            _ => {
-                // Unknown role — skip rather than fail the whole transcript.
-            }
-        }
-    }
-
-    Ok(())
-}
-
-// ============================================
 // Session Memory Persistence
 // ============================================
 
@@ -2585,98 +2509,89 @@ mod tests {
         );
     }
 
-    /// Validates the skip-system-message logic used in `save_subagent_transcript`.
     #[test]
-    fn transcript_skips_system_message() {
-        let messages = [
-            serde_json::json!({"role": "system", "content": "You are helpful."}),
-            serde_json::json!({"role": "user", "content": "hello"}),
-            serde_json::json!({"role": "assistant", "content": "hi"}),
+    fn worker_iteration_publishes_non_streaming_output_without_duplicating_streamed_output() {
+        use crate::tools::impls::orchestration::subagent_handler::UnifiedSubagentHandler;
+        use crate::turn_executor::TurnEventHandler;
+        let _sandbox = test_env::sandbox();
+        let sid = "worker-completed-events";
+        seed_session_for_message_tests(sid);
+        let handler = UnifiedSubagentHandler::simple(
+            "parent".into(),
+            sid.into(),
+            "test".into(),
+            "explore".into(),
+        );
+        handler.on_assistant_iteration_complete(
+            sid,
+            Some("No deltas, complete answer"),
+            false,
+            "test",
+        );
+        let events = handler.take_completed_events();
+        assert_eq!(
+            events.len(),
+            1,
+            "durable text must also reach the chat event boundary"
+        );
+        assert_eq!(events[0].result["content"], "No deltas, complete answer");
+        assert_eq!(events[0].session_id, sid);
+        handler.on_message_delta(sid, "Streamed ");
+        handler.on_message_delta(sid, "answer");
+        handler.on_assistant_iteration_complete(sid, Some("Streamed answer"), true, "test");
+        let events = handler.take_completed_events();
+        assert_eq!(
+            events.len(),
+            1,
+            "streaming and completed text must share one event"
+        );
+        assert_eq!(events[0].result["content"], "Streamed answer");
+        handler.on_assistant_iteration_complete(sid, Some(""), true, "test");
+        handler.on_assistant_iteration_complete(sid, None, true, "test");
+        assert!(handler.take_completed_events().is_empty());
+        assert_eq!(load_messages(sid).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn worker_launch_input_precedes_live_output_and_resume_does_not_replay_history() {
+        use crate::tools::impls::orchestration::subagent_handler::{
+            SubagentHandlerConfig, UnifiedSubagentHandler,
+        };
+        use crate::turn_executor::TurnEventHandler;
+        let _sandbox = test_env::sandbox();
+        let sid = "worker-launch-order";
+        seed_session_for_message_tests(sid);
+        let handler = UnifiedSubagentHandler::new(SubagentHandlerConfig {
+            parent_session_id: "parent".into(),
+            subagent_session_id: sid.into(),
+            description: "test".into(),
+            subagent_type: "explore".into(),
+            agent_name: None,
+            instance_number: None,
+            parent_call_id: None,
+        });
+        let initial = vec![
+            serde_json::json!({"role":"system","content":"rules"}),
+            serde_json::json!({"role":"user","content":"investigate"}),
         ];
-
-        let non_system: Vec<_> = messages
-            .iter()
-            .skip(1)
-            .map(|m| m["role"].as_str().unwrap().to_string())
-            .collect();
-
-        assert_eq!(non_system, ["user", "assistant"]);
-    }
-
-    /// Validates tool_call extraction logic from assistant messages.
-    #[test]
-    fn transcript_extracts_tool_calls() {
-        let msg = serde_json::json!({
-            "role": "assistant",
-            "content": "",
-            "tool_calls": [
-                {
-                    "id": "tc_001",
-                    "function": {
-                        "name": "read_file",
-                        "arguments": "{\"path\": \"/tmp/test.rs\"}"
-                    }
-                },
-                {
-                    "id": "tc_002",
-                    "function": {
-                        "name": "write_file",
-                        "arguments": "{\"path\": \"/tmp/out.rs\", \"content\": \"hello\"}"
-                    }
-                }
-            ]
-        });
-
-        let tool_calls = msg.get("tool_calls").unwrap().as_array().unwrap();
-        assert_eq!(tool_calls.len(), 2);
-
-        let tc_id = tool_calls[0].get("id").and_then(|v| v.as_str()).unwrap();
-        assert_eq!(tc_id, "tc_001");
-
-        let tc_name = tool_calls[0]
-            .get("function")
-            .and_then(|f| f.get("name"))
-            .and_then(|v| v.as_str())
-            .unwrap();
-        assert_eq!(tc_name, "read_file");
-
-        let tc_args = tool_calls[1]
-            .get("function")
-            .and_then(|f| f.get("arguments"))
-            .and_then(|v| v.as_str())
-            .unwrap();
-        assert!(tc_args.contains("out.rs"));
-    }
-
-    /// Validates that messages without tool_calls are handled gracefully.
-    #[test]
-    fn transcript_no_tool_calls() {
-        let msg = serde_json::json!({
-            "role": "assistant",
-            "content": "just text, no tools"
-        });
-
-        let tool_calls = msg.get("tool_calls").and_then(|v| v.as_array());
-        assert!(tool_calls.is_none());
-    }
-
-    /// Validates empty message list (only system) produces no saved records.
-    #[test]
-    fn transcript_system_only_produces_nothing() {
-        let messages = [serde_json::json!({"role": "system", "content": "system prompt"})];
-
-        let non_system: Vec<_> = messages.iter().skip(1).collect();
-        assert!(non_system.is_empty());
-    }
-
-    /// Validates role extraction fallback for malformed messages.
-    #[test]
-    fn transcript_missing_role_defaults_to_unknown() {
-        let msg = serde_json::json!({"content": "no role field"});
-        let role = msg
-            .get("role")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown");
-        assert_eq!(role, "unknown");
+        handler.persist_launch_input(&initial, false).unwrap();
+        // These are the same callbacks used by foreground and background runs.
+        handler.on_tool_call(sid, "call-1", "read_file", "Read", &serde_json::json!({}));
+        handler.on_tool_result(sid, "call-1", "read_file", "Read", "data");
+        handler.on_assistant_iteration_complete(sid, Some("findings"), false, "test");
+        let rows = load_messages(sid).unwrap();
+        assert_eq!(
+            rows.iter().map(|row| row.role.as_str()).collect::<Vec<_>>(),
+            ["user", "tool_call", "tool_result", "assistant"]
+        );
+        let mut resumed = load_llm_history(sid).unwrap();
+        resumed.push(serde_json::json!({"role":"user","content":"continue"}));
+        handler.persist_launch_input(&resumed, true).unwrap();
+        handler.on_assistant_iteration_complete(sid, Some("done"), false, "test");
+        let rows = load_messages(sid).unwrap();
+        assert_eq!(rows.len(), 6);
+        assert_eq!(rows[4].content, "continue");
+        assert_eq!(rows[5].content, "done");
+        assert!(handler.persist_launch_input(&[], false).is_err());
     }
 }

@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { RouteSidebarBody } from "@src/scaffold/AppLayout/sidebar/RouteSidebarBody";
+import { NavigationMenuRowActionButton } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/NavigationMenu/RowActionButton";
 import type { Session } from "@src/store/session";
 import { sessionsAtom } from "@src/store/session";
 import { createSmokeRoot } from "@src/test/reactSmokeHarness";
@@ -13,6 +14,8 @@ import {
   DesktopSessionRosterProvider,
   useDesktopSessionRoster,
 } from "./DesktopSessionRosterProvider";
+import { buildCloudScopedMenuItems } from "./cloudScopedMenuItems";
+import { useDecorateSessionRowActions } from "./sessionRowActions";
 
 const mocks = vi.hoisted(() => ({
   publish: vi.fn(),
@@ -157,6 +160,7 @@ vi.mock("../useSessionMenuItems/menuItemBuilders", () => ({
     id: session.session_id,
     key: session.session_id,
     label: session.name,
+    pinned: session.pinned,
   }),
   separator: (id: string) => ({
     id: `separator-${id}`,
@@ -334,4 +338,116 @@ it("reports a failed replace-all tab action without an unhandled rejection", asy
   });
   expect(mocks.closeOtherTabs).toHaveBeenCalledOnce();
   expect(mocks.showError).toHaveBeenCalledWith("Unable to close tabs");
+});
+
+function ExpandedCloudMenu() {
+  const roster = useDesktopSessionRoster();
+  const decorate = useDecorateSessionRowActions({
+    activeSessionMoreMenuId: "",
+    deleteSessionCreatorDraft: noop,
+    handleMenuItemContextMenu: async () => undefined,
+    handleTogglePin: noop,
+    handleToggleSubagentExpansion: (id) =>
+      roster.setExpandedSubagentParentIds((previous) => {
+        const next = new Set(previous);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      }),
+    expandedSubagentParentIds: roster.expandedSubagentParentIds,
+    pinLabel: "Pin",
+    sessionMap: roster.projection.sessionMap,
+    setActiveSessionMoreMenuId: noop,
+    subagentParentIds: roster.projection.subagentParentIds,
+    tCommon: t,
+    unpinLabel: "Unpin",
+  });
+  const items = buildCloudScopedMenuItems({
+    cloudMenuItems: [{ id: "team", key: "team", label: "Team" }],
+    sessionMenuItems: decorate(roster.projection.menuItems),
+    mySessionsLabel: "My sessions",
+    mySessionsVisibleCount: 1,
+  });
+  return createElement(
+    "div",
+    null,
+    items.map((item) =>
+      createElement(
+        "div",
+        { key: item.key, "data-row": item.id },
+        item.label,
+        ...(item.rowActions ?? []).map((action) =>
+          createElement(NavigationMenuRowActionButton, {
+            key: action.label,
+            ...action,
+          })
+        )
+      )
+    )
+  );
+}
+
+it("clicking a pinned parent's real disclosure keeps its hydrated child beside it, then collapses it", async () => {
+  store.set(sessionsAtom, [
+    { ...session("sdeagent-parent"), pinned: true },
+    session("sdeagent-other"),
+  ]);
+  mocks.invoke.mockImplementation(async (_command, args) =>
+    args.parentSessionId === "sdeagent-parent"
+      ? [
+          {
+            sessionId: "agent-child",
+            name: "Explore",
+            status: "completed",
+            createdAt: "2026-09-17T00:00:00Z",
+            updatedAt: "2026-09-17T00:00:00Z",
+            sessionType: "subagent",
+            parentSessionId: "sdeagent-parent",
+          },
+        ]
+      : []
+  );
+  await root.render(
+    createElement(
+      Provider,
+      { store },
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(
+          DesktopSessionRosterProvider,
+          null,
+          createElement(ExpandedCloudMenu)
+        )
+      )
+    )
+  );
+  await flush();
+  const rows = () =>
+    Array.from(root.container.querySelectorAll<HTMLElement>("[data-row]")).map(
+      (row) => row.dataset.row
+    );
+  const toggle = (label: string) =>
+    root.container.querySelector<HTMLButtonElement>(
+      `button[title="sessions:kanban.sidebar.${label}Subagents"]`
+    )!;
+  expect(rows()).not.toContain("agent-child");
+  expect(
+    root.container.querySelector(
+      '[data-row="sdeagent-other"] button[title$="Subagents"]'
+    )
+  ).toBeNull();
+  act(() => toggle("show").click());
+  expect(rows()).toEqual([
+    "separator-cloud-pinned",
+    "sdeagent-parent",
+    "agent-child",
+    "team",
+    "separator-cloud-my-sessions",
+    "sdeagent-other",
+  ]);
+  expect(toggle("hide")).not.toBeNull();
+  act(() => toggle("hide").click());
+  expect(rows()).not.toContain("agent-child");
+  expect(toggle("show")).not.toBeNull();
 });

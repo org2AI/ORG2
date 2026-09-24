@@ -346,6 +346,7 @@ export const SessionCommentsProvider: React.FC<
                   session.importedFrom.shareEndpointUrl ??
                   "",
                 repoPath: session.repoPath,
+                shareToken: session.importedFrom.shareToken,
               }
             : null
         }

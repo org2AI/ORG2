@@ -58,6 +58,7 @@
  * `.projectsChannel.ts`, `.constants.ts`.
  */
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import { createLogger } from "@src/hooks/logger";
 import { sessionsAtom } from "@src/store/session/sessionAtom/atoms";
 import type { Session } from "@src/store/session/sessionAtom/types";
 import { chatPanelSelectedCloudOrgAtom } from "@src/store/ui/chatPanel/selectionAtoms";
@@ -127,6 +128,7 @@ export type { Org2CloudProjectsClientDeps } from "./org2CloudSyncEngine.projects
 export type { Org2CloudSchemaVersionProbe } from "./org2CloudSyncEngine.schemaGate";
 
 const SCOPE_RESOLUTION_DEBOUNCE_MS = 1_000;
+const log = createLogger("Org2CloudSyncEngine");
 export class Org2CloudSyncEngine extends Org2CloudSyncLifecycle {
   /** Imported-history roster activity capture, split out to
    * `Org2CloudExternalHistoryRoster`. */
@@ -181,7 +183,9 @@ export class Org2CloudSyncEngine extends Org2CloudSyncLifecycle {
       () => this.store,
       client,
       () => {
-        void this.runSyncPass();
+        void this.runSyncPass().catch((error) => {
+          log.error("Attachment capacity wake-up failed", error);
+        });
       }
     );
     this.orgBackoff = new Org2CloudOrgBackoffTracker((orgId) =>

@@ -243,7 +243,9 @@ export class Org2CloudSessionSyncPushPhases extends Org2CloudSessionSyncUpload {
             this.onSharedFileCapacityAvailable();
         }
       }
-    })();
+    })().catch((error) => {
+      log.error("Replay attachment task cleanup failed", error);
+    });
   }
 
   /** One diagnostic per owner/minute, without another retained map or timer. */

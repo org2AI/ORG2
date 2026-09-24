@@ -6,6 +6,7 @@ import {
   SharedSessionFileRequestError,
   encodeFileBytes,
   fileSha256,
+  findSharedSessionFile,
   findSharedSessionFileRevisions,
   findSharedSessionFileVersion,
   readSharedSessionFile,
@@ -203,6 +204,57 @@ describe("shared file wire boundary", () => {
     expect((await readSharedSessionFile("jwt", endpoint, id)).bytes).toEqual(
       bytes
     );
+  });
+  it("binds guest reads to the capability without trusting client org/session coordinates", async () => {
+    const bytes = new Uint8Array([42]);
+    const wire = {
+      id,
+      name: "a.bin",
+      size: 1,
+      sha256: await fileSha256(bytes),
+      content: encodeFileBytes(bytes),
+    };
+    const fetch = vi
+      .fn()
+      .mockImplementation(async () => new Response(JSON.stringify(wire)));
+    vi.stubGlobal("fetch", fetch);
+    await findSharedSessionFile(
+      "jwt",
+      endpoint,
+      "untrusted-org",
+      "untrusted-session",
+      "/report",
+      "r1",
+      undefined,
+      "ticket"
+    );
+    const signal = new AbortController().signal;
+    expect(
+      (await readSharedSessionFile("jwt", endpoint, id, signal, "ticket")).bytes
+    ).toEqual(bytes);
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      `${endpoint.supabaseUrl}/rest/v1/rpc/cloud_find_session_file_by_share`,
+      `${endpoint.supabaseUrl}/rest/v1/rpc/cloud_get_session_file_by_share`,
+    ]);
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      p_share_token: "ticket",
+      p_source_path: "/report",
+      p_source_revision: "r1",
+    });
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({
+      p_share_token: "ticket",
+      p_file_id: id,
+    });
+  });
+  it("does not retry a rejected guest capability through the member read API", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response("denied", { status: 403 }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      readSharedSessionFile("jwt", endpoint, id, undefined, "revoked")
+    ).rejects.toThrow("403");
+    expect(fetch).toHaveBeenCalledOnce();
   });
   it("rejects corrupt content", async () => {
     vi.stubGlobal(

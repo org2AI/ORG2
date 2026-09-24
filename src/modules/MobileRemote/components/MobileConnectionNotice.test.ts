@@ -60,6 +60,8 @@ describe("MobileConnectionNotice", () => {
     expect(host.textContent).toContain("connectionFeedback.retrying");
     expect(host.textContent).not.toContain("private server detail");
     expect(retryButton()?.textContent).toBe("connectionRecovery.retry");
+    expect(host.querySelectorAll("button")).toHaveLength(1);
+    expect(host.querySelector('[aria-label="actions.copy"]')).toBeNull();
     await render({ ...failed });
     expect(host.textContent).toContain("connectionFeedback.ticket");
     await render({ ...reconnecting, status: "connected", presence: "online" });

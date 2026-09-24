@@ -16,7 +16,9 @@ import {
 import { conversationArtifactOriginOf } from "@src/engines/SessionCore/conversations/conversationArtifactOrigin";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
+import SharedSessionFileDialog from "./SharedSessionFileDialog";
 import { sharedFileAbsolutePath } from "./sessionSharedFileCandidates";
+import { SharedSessionFileAccessContext } from "./sharedSessionFileAccess";
 import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 
 const Viewer = lazy(() => import("./SharedSessionFileViewer"));
@@ -96,6 +98,12 @@ export function SharedSessionFilesProvider({
   const value = useMemo(
     () => (scope && !scope.eventOnly ? open : null),
     [scope, open]
+  );
+  const endpoint = scope?.endpoint;
+  const shareToken = scope?.shareToken;
+  const access = useMemo(
+    () => (endpoint && shareToken ? { endpoint, shareToken } : null),
+    [endpoint, shareToken]
   );
   return (
     <ScopeContext.Provider value={scope}>

@@ -113,7 +113,12 @@
       "resetsAvailable_one": "{{count}} réinitialisation disponible",
       "resetsAvailable_few": "{{count}} réinitialisations disponibles",
       "resetsAvailable_many": "{{count}} réinitialisations disponibles",
-      "resetsAvailable_other": "{{count}} réinitialisations disponibles"
+      "resetsAvailable_other": "{{count}} réinitialisations disponibles",
+      "resetsExpire": "{{count}} réinitialisations expirent le {{date}}",
+      "resetsExpire_one": "{{count}} réinitialisation expire le {{date}}",
+      "resetsExpire_few": "{{count}} réinitialisations expirent le {{date}}",
+      "resetsExpire_many": "{{count}} réinitialisations expirent le {{date}}",
+      "resetsExpire_other": "{{count}} réinitialisations expirent le {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Annonce cloud invalide",

@@ -2650,7 +2650,8 @@
     "downloaded": "Enregistré dans Téléchargements",
     "downloadError": "Impossible d’enregistrer dans Téléchargements",
     "title": "Fichier partagé",
-    "error": "Impossible d’ouvrir ce fichier. Vérifiez votre compte, le serveur et l’accès à la session, puis rouvrez le lien.",
+    "error": "Impossible d’ouvrir ce fichier. Réessayez ou vérifiez la connexion, le compte, le serveur et l’accès à la session.",
+    "notUploaded": "Ce fichier n’a pas encore été envoyé dans cette session partagée. L’appareil de l’expéditeur doit terminer l’envoi ; réessayez pour vérifier.",
     "downloadPreview": "Téléchargez ce fichier pour voir son contenu",
     "download": "Télécharger",
     "loading": "Chargement du fichier partagé…"

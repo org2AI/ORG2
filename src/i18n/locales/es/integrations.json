@@ -113,7 +113,12 @@
       "resetsAvailable_one": "{{count}} restablecimiento disponible",
       "resetsAvailable_few": "{{count}} restablecimientos disponibles",
       "resetsAvailable_many": "{{count}} restablecimientos disponibles",
-      "resetsAvailable_other": "{{count}} restablecimientos disponibles"
+      "resetsAvailable_other": "{{count}} restablecimientos disponibles",
+      "resetsExpire": "{{count}} restablecimientos vencen el {{date}}",
+      "resetsExpire_one": "{{count}} restablecimiento vence el {{date}}",
+      "resetsExpire_few": "{{count}} restablecimientos vencen el {{date}}",
+      "resetsExpire_many": "{{count}} restablecimientos vencen el {{date}}",
+      "resetsExpire_other": "{{count}} restablecimientos vencen el {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Listado en la nube inválido",

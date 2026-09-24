@@ -113,7 +113,12 @@
       "resetsAvailable_one": "초기화 {{count}}회 사용 가능",
       "resetsAvailable_few": "초기화 {{count}}회 사용 가능",
       "resetsAvailable_many": "초기화 {{count}}회 사용 가능",
-      "resetsAvailable_other": "초기화 {{count}}회 사용 가능"
+      "resetsAvailable_other": "초기화 {{count}}회 사용 가능",
+      "resetsExpire": "초기화 {{count}}회가 {{date}}에 만료",
+      "resetsExpire_one": "초기화 {{count}}회가 {{date}}에 만료",
+      "resetsExpire_few": "초기화 {{count}}회가 {{date}}에 만료",
+      "resetsExpire_many": "초기화 {{count}}회가 {{date}}에 만료",
+      "resetsExpire_other": "초기화 {{count}}회가 {{date}}에 만료"
     },
     "health": {
       "cloudListingInvalid": "클라우드 목록 무효",

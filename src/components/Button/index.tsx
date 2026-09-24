@@ -12,7 +12,7 @@
  *                            the text / icon color
  *
  *   tone     — semantic color on top of the variant
- *              "danger" | "warning" | "success" | "merged"
+ *              "primary" | "danger" | "warning" | "success" | "merged"
  *              (hoverTone colors a neutral button only while hovered)
  *
  * A toggle is a tertiary or ghost with `aria-pressed`. `layout="custom"`

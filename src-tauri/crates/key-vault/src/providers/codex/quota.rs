@@ -1,7 +1,11 @@
 //! Codex quota mapping for the ChatGPT usage API and the app-server rate-limit RPC.
 
-use crate::providers::quota_windows::{quota_from_windows, unix_seconds_to_rfc3339, QuotaWindow};
-use crate::types::QuotaInfo;
+use crate::providers::quota_windows::{
+    group_reset_expiries, normalize_reset_time, quota_from_windows, unix_seconds_to_rfc3339,
+    QuotaWindow,
+};
+use crate::types::{QuotaInfo, QuotaResetCredits, QuotaResetExpiry};
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -161,13 +165,60 @@ pub(super) fn quota_from_usage_json(data: &serde_json::Value) -> Option<QuotaInf
         .to_lowercase();
 
     let mut quota = quota_from_windows(&plan_type, "codex_usage_api", windows);
-    // The usage API reports available credits inline; absence is unknown, not zero.
-    quota.named_message = data
+    // The usage API reports available credits inline, without expiries;
+    // absence is unknown, not zero.
+    if let Some(available) = data
         .get("rate_limit_reset_credits")
         .and_then(|credits| credits.get("available_count"))
         .and_then(serde_json::Value::as_u64)
-        .map(|available| format!("Reset credits available: {available}"));
+    {
+        quota.set_reset_credits(QuotaResetCredits {
+            available,
+            expirations: Vec::new(),
+        });
+    }
     Some(quota)
+}
+
+/// Maps `GET /wham/rate-limit-reset-credits`, which lists each credit with its
+/// own expiry. Only unexpired credits with `status: "available"` count.
+pub(super) fn reset_credits_from_list_json(
+    data: &serde_json::Value,
+    now: DateTime<Utc>,
+) -> Option<QuotaResetCredits> {
+    let credits = data.get("credits")?.as_array()?;
+    let mut live = 0u64;
+    let mut expiries = Vec::new();
+    for credit in credits {
+        if credit.get("status").and_then(serde_json::Value::as_str) != Some("available")
+            || credit
+                .get("is_supported_by_plan")
+                .and_then(serde_json::Value::as_bool)
+                == Some(false)
+        {
+            continue;
+        }
+        let expires_at = credit
+            .get("expires_at")
+            .and_then(serde_json::Value::as_str)
+            .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
+            .map(|value| value.with_timezone(&Utc));
+        if expires_at.is_some_and(|expires| expires <= now) {
+            continue;
+        }
+        live += 1;
+        if let Some(expires) = expires_at {
+            expiries.push((expires, 1));
+        }
+    }
+    let available = data
+        .get("available_count")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(live);
+    Some(QuotaResetCredits {
+        available,
+        expirations: group_reset_expiries(expiries),
+    })
 }
 
 pub(super) fn quota_from_codex_rate_limits_response(
@@ -213,22 +264,49 @@ pub(super) fn quota_from_codex_rate_limits_response(
 
     let mut quota = quota_from_windows(&plan_type, "codex_app_server", windows);
     if let Some(reset_credits) = response.rate_limit_reset_credits {
-        quota.named_message = format_codex_reset_credits(reset_credits);
+        quota.named_message = format_codex_reset_credits(&reset_credits);
+        quota.reset_credits = codex_app_server_reset_credits(reset_credits);
     }
     quota
 }
 
-fn format_codex_reset_credits(reset_credits: CodexRateLimitResetCredits) -> Option<String> {
+fn codex_next_expiry(reset_credits: &CodexRateLimitResetCredits) -> Option<String> {
+    reset_credits
+        .next_expires_at
+        .as_ref()
+        .and_then(|value| match value {
+            serde_json::Value::Number(number) => number.as_i64().and_then(unix_seconds_to_rfc3339),
+            serde_json::Value::String(value) => Some(value.clone()),
+            _ => None,
+        })
+}
+
+/// The app-server reports only the next expiry; at least one credit expires then.
+fn codex_app_server_reset_credits(
+    reset_credits: CodexRateLimitResetCredits,
+) -> Option<QuotaResetCredits> {
+    let available = reset_credits.available_count?;
+    let expirations = codex_next_expiry(&reset_credits)
+        .filter(|_| available > 0)
+        .map(|expires_at| QuotaResetExpiry {
+            count: 1,
+            expires_at: normalize_reset_time(&expires_at).unwrap_or(expires_at),
+        })
+        .into_iter()
+        .collect();
+    Some(QuotaResetCredits {
+        available,
+        expirations,
+    })
+}
+
+fn format_codex_reset_credits(reset_credits: &CodexRateLimitResetCredits) -> Option<String> {
     let available = reset_credits.available_count?;
     let summary = match reset_credits.total_earned_count {
         Some(total) => format!("Reset credits available: {available} (total earned: {total})"),
         None => format!("Reset credits available: {available}"),
     };
-    let expiry = reset_credits.next_expires_at.and_then(|value| match value {
-        serde_json::Value::Number(number) => number.as_i64().and_then(unix_seconds_to_rfc3339),
-        serde_json::Value::String(value) => Some(value),
-        _ => None,
-    });
+    let expiry = codex_next_expiry(reset_credits);
 
     match expiry {
         Some(expires_at) => Some(format!("{summary}, next expires {expires_at}")),
@@ -342,7 +420,7 @@ mod tests {
             assert_eq!(quota.plan_type.as_deref(), Some("pro"));
         }
         assert_eq!(
-            format_codex_reset_credits(CodexRateLimitResetCredits {
+            format_codex_reset_credits(&CodexRateLimitResetCredits {
                 available_count: None,
                 total_earned_count: Some(3),
                 next_expires_at: None,
@@ -386,6 +464,74 @@ mod tests {
         assert_eq!(
             quota.named_message.as_deref(),
             Some("Reset credits available: 2 (total earned: 3), next expires 2026-07-07T10:00:00Z")
+        );
+        assert_eq!(
+            quota.reset_credits,
+            Some(QuotaResetCredits {
+                available: 2,
+                expirations: vec![QuotaResetExpiry {
+                    count: 1,
+                    expires_at: "2026-07-07T10:00:00Z".to_string(),
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn reset_credit_list_reports_each_live_credit_expiry() {
+        let now = DateTime::parse_from_rfc3339("2026-09-24T12:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let credits = reset_credits_from_list_json(
+            &serde_json::json!({
+                "credits": [
+                    { "status": "available", "is_supported_by_plan": true,
+                      "expires_at": "2026-10-22T21:00:27.720619Z" },
+                    { "status": "available", "is_supported_by_plan": true,
+                      "expires_at": "2026-10-04T05:38:12.491791Z" },
+                    { "status": "redeemed", "expires_at": "2026-10-01T00:00:00Z" },
+                    { "status": "available", "is_supported_by_plan": false,
+                      "expires_at": "2026-10-01T00:00:00Z" },
+                    { "status": "available", "expires_at": "2026-09-01T00:00:00Z" }
+                ],
+                "total_earned_count": 0
+            }),
+            now,
+        )
+        .unwrap();
+
+        assert_eq!(credits.available, 2);
+        assert_eq!(
+            credits.expirations,
+            vec![
+                QuotaResetExpiry {
+                    count: 1,
+                    expires_at: "2026-10-04T05:38:12Z".to_string(),
+                },
+                QuotaResetExpiry {
+                    count: 1,
+                    expires_at: "2026-10-22T21:00:27Z".to_string(),
+                },
+            ]
+        );
+        assert_eq!(
+            credits.summary(),
+            "Reset credits available: 2, next expires 2026-10-04T05:38:12Z"
+        );
+    }
+
+    #[test]
+    fn reset_credit_list_prefers_reported_available_count() {
+        let credits = reset_credits_from_list_json(
+            &serde_json::json!({ "credits": [], "available_count": 3 }),
+            Utc::now(),
+        )
+        .unwrap();
+        assert_eq!(credits.available, 3);
+        assert!(credits.expirations.is_empty());
+        assert_eq!(
+            reset_credits_from_list_json(&serde_json::json!({}), Utc::now()),
+            None
         );
     }
 

@@ -471,6 +471,54 @@ fn codex_auth_payload_matches_credential_type_matrix() {
 }
 
 #[test]
+fn codex_bearer_only_profile_remains_readable_without_refresh_authority() {
+    // Match the required token fields consumed by Codex, rather than merely
+    // checking that our own JSON writer can read its output back.
+    #[derive(serde::Deserialize)]
+    struct CodexTokens {
+        access_token: String,
+        refresh_token: String,
+        id_token: String,
+    }
+
+    with_temp_orgii_home(|_| {
+        let mut key = ModelKey::new(ModelType::Codex);
+        key.auth_method = AuthMethod::Oauth;
+        key.session_token = Some("test-access".to_string());
+        key.env_vars
+            .insert(CODEX_ID_TOKEN_ENV_KEY.to_string(), "test-id".to_string());
+        for (index, refresh) in [None, Some(""), Some("  "), Some("test-refresh")]
+            .into_iter()
+            .enumerate()
+        {
+            let account_id = format!("bearer-only-{index}");
+            key.env_vars.remove(CODEX_REFRESH_TOKEN_ENV_KEY);
+            if let Some(refresh) = refresh {
+                key.env_vars
+                    .insert(CODEX_REFRESH_TOKEN_ENV_KEY.to_string(), refresh.to_string());
+            }
+            super::super::oauth_setup::write_codex_cli_auth_file(
+                &account_id,
+                &key,
+                &HashMap::new(),
+            )
+            .unwrap();
+            let auth = read_json(&app_paths::codex_cli_profile_dir(&account_id).join("auth.json"));
+            let tokens: CodexTokens = serde_json::from_value(auth["tokens"].clone()).unwrap();
+            assert_eq!(tokens.access_token, "test-access");
+            assert_eq!(tokens.id_token, "test-id");
+            assert_eq!(
+                tokens.refresh_token,
+                refresh
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or_default()
+            );
+            assert!(auth["OPENAI_API_KEY"].is_null());
+        }
+    });
+}
+
+#[test]
 fn zenmux_auth_json_stays_api_key_shaped_when_profile_is_rewritten() {
     use super::super::oauth_setup::write_codex_cli_auth_file;
 

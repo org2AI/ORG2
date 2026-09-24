@@ -250,7 +250,7 @@
     "ticket": "Connection verification failed. Check your phone’s clock and use the latest app",
     "authorization": "This device’s access is no longer valid. Pair again to reconnect",
     "unavailable": "Check your network and make sure ORG2 is running on your computer",
-    "retrying": "Retrying automatically. You can also reconnect now"
+    "retrying": "Retrying automatically…"
   },
   "connectionRecovery": {
     "retry": "Reconnect",

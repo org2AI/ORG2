@@ -36,6 +36,7 @@ import type {
   CloudCommentResolution,
   CloudSessionComment,
 } from "../org2CloudCommentsClient";
+import { endpointForOrg } from "../org2CloudOrgEndpointRouter";
 import {
   type AddCommentInput,
   type CloudSessionCommentsFetchState,
@@ -348,7 +349,14 @@ export const SessionCommentsProvider: React.FC<
                 repoPath: session.repoPath,
                 shareToken: session.importedFrom.shareToken,
               }
-            : null
+            : target
+              ? {
+                  ...target,
+                  endpoint: endpointForOrg(target.orgId).supabaseUrl,
+                  repoPath: session?.repoPath,
+                  eventOnly: true,
+                }
+              : null
         }
       >
         {children}

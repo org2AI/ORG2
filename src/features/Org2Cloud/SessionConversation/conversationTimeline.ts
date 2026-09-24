@@ -9,6 +9,7 @@
  * imported replay copy of it) keeps its local identity and takes the plane's
  * position; local events that predate the plane keep the timestamp merge.
  */
+import { CONVERSATION_ARTIFACT_ORIGIN_ARG } from "@src/engines/SessionCore/conversations/conversationArtifactOrigin";
 import {
   CONVERSATION_SENDER_ARG,
   CONVERSATION_VIEWER_LOADING,
@@ -26,7 +27,10 @@ import {
   materializedConversationTurnIdOf,
   sourceEventIdOf,
 } from "./continuationEvents";
-import { buildConversationPlaneStreamEvents } from "./conversationPlaneEvents";
+import {
+  buildConversationPlaneStreamEvents,
+  planeArtifactOrigin,
+} from "./conversationPlaneEvents";
 
 /**
  * Plane identity of an event. User rows match on the turn-intent id so the
@@ -68,8 +72,9 @@ function stampPlaneMetadata(
     ...event,
     args: {
       ...event.args,
+      [CONVERSATION_ARTIFACT_ORIGIN_ARG]: planeArtifactOrigin(row),
       ...(includeSender ? { [CONVERSATION_SENDER_ARG]: stamp } : {}),
-      [CONVERSATION_TURN_ID_ARG]: row.turnId,
+      ...(includeSender ? { [CONVERSATION_TURN_ID_ARG]: row.turnId } : {}),
     },
   };
 }
@@ -159,10 +164,20 @@ export function mergePlaneIntoTranscript(
       // even for this viewer's own turn. Correct both sides from the plane;
       // preserving that stale stamp misattributes self turns after a cold
       // import and can incorrectly remove owner actions.
-      event =
+      // A lazy turn preview can contain the complete final answer text, but
+      // it is not the durable answer event. Keeping its preview/unloaded flags
+      // makes group projection hide that answer as soon as another plane row
+      // supplies a loaded body. The authenticated plane owns the complete row;
+      // consume the matching placeholder without copying its lazy-view state.
+      const isTurnPlaceholder =
+        twin.args?.turnPreviewOnly === true ||
+        (typeof twin.result?.unloadedTurn === "object" &&
+          twin.result.unloadedTurn !== null);
+      event = stampPlaneMetadata(
+        isTurnPlaceholder ? planeStream[index] : twin,
+        row,
         row.event.source === "user" && viewer.status !== "loading"
-          ? stampPlaneMetadata(twin, row, true)
-          : twin;
+      );
     } else {
       event = planeStream[index];
     }

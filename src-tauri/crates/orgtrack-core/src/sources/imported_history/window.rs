@@ -67,22 +67,45 @@ fn assistant_preview_text(chunk: &ActivityChunk) -> Option<String> {
         .map(bounded_turn_preview)
 }
 
+// Keep only bounded provenance, never the potentially large body/tool args.
+// A lazy preview is still inherited history: dropping these markers would make
+// file links read or publish the receiver's local paths before cloud hydration.
+fn preview_source_args(source: &ActivityChunk) -> Value {
+    let mut args = json!({});
+    if source.args.get("__orgiiMaterialized") == Some(&Value::Bool(true)) {
+        args["__orgiiMaterialized"] = Value::Bool(true);
+    }
+    if let Some(id) = source
+        .args
+        .get("__orgiiSourceEventId")
+        .and_then(Value::as_str)
+    {
+        if id.len() <= 256 {
+            args["__orgiiSourceEventId"] = Value::String(id.to_string());
+        }
+    }
+    args
+}
+
 fn build_unloaded_turn_placeholder_chunk(
     session_id: &str,
     turn: &ProjectedTurnMetadata,
     next_turn_id: Option<&str>,
-    last_agent_preview: Option<&str>,
+    last_agent_preview: Option<&(String, Value)>,
 ) -> ActivityChunk {
     let internal_placeholder = format!("Imported turn {} is not loaded yet.", turn.turn_id);
-    let display_content = last_agent_preview.unwrap_or(&internal_placeholder);
+    let display_content = last_agent_preview
+        .map(|(text, _)| text.as_str())
+        .unwrap_or(&internal_placeholder);
     let mut chunk = ActivityChunk::new(session_id, "assistant", "assistant");
     chunk.chunk_id = format!("imported-unloaded-turn-{}", turn.turn_id);
     chunk.created_at = turn
         .ended_at
         .clone()
         .unwrap_or_else(|| turn.started_at.clone());
-    if last_agent_preview.is_some() {
-        chunk.args = json!({ "turnPreviewOnly": true });
+    if let Some((_, args)) = last_agent_preview {
+        chunk.args = args.clone();
+        chunk.args["turnPreviewOnly"] = Value::Bool(true);
     }
     chunk.result = json!({
         "observation": display_content,
@@ -113,6 +136,7 @@ fn build_user_preview_chunk(
     chunk.created_at = source.created_at.clone();
     chunk.thread_id = source.thread_id.clone();
     chunk.process_id = source.process_id.clone();
+    chunk.args = preview_source_args(source);
     chunk.result = json!({
         "type": "user",
         "message": {
@@ -205,7 +229,7 @@ pub fn build_initial_window_from_turns(
                 while chunks.peek().is_some_and(|next| !is_user_chunk(next)) {
                     if let Some(body) = chunks.next() {
                         if let Some(preview) = assistant_preview_text(&body) {
-                            last_agent_preview = Some(preview);
+                            last_agent_preview = Some((preview, preview_source_args(&body)));
                         }
                     }
                 }
@@ -215,7 +239,7 @@ pub fn build_initial_window_from_turns(
                     turns
                         .get(current_turn_index + 1)
                         .map(|next| next.turn_id.as_str()),
-                    last_agent_preview.as_deref(),
+                    last_agent_preview.as_ref(),
                 ));
             } else {
                 window.push(chunk);
@@ -400,6 +424,53 @@ mod tests {
             .expect("first preview");
         assert!(first_preview.len() <= 515);
         assert!(first_preview.ends_with('…'));
+    }
+
+    #[test]
+    fn initial_window_preserves_inherited_provenance_without_copying_body_args() {
+        let mut user = chunk("u1", FUNCTION_USER_MESSAGE, "inherited prompt");
+        user.args["__orgiiMaterialized"] = json!(true);
+        user.args["__orgiiSourceEventId"] = json!("orgii_evt_user");
+        let mut answer = chunk("a1", FUNCTION_ASSISTANT, "[file](proof.txt)");
+        answer.args["__orgiiMaterialized"] = json!(true);
+        answer.args["__orgiiSourceEventId"] = json!("orgii_evt_answer");
+        answer.args["largeBody"] = json!("x".repeat(10_000));
+        let window = build_initial_window(
+            "test-session",
+            vec![
+                user,
+                answer,
+                chunk("u2", FUNCTION_USER_MESSAGE, "local prompt"),
+                chunk("a2", FUNCTION_ASSISTANT, "local answer"),
+            ],
+            1,
+        );
+        for (index, source) in [(0, "orgii_evt_user"), (1, "orgii_evt_answer")] {
+            assert_eq!(window.chunks[index].args["__orgiiMaterialized"], true);
+            assert_eq!(window.chunks[index].args["__orgiiSourceEventId"], source);
+            assert!(window.chunks[index].args.get("content").is_none());
+            assert!(window.chunks[index].args.get("largeBody").is_none());
+        }
+        assert_eq!(window.chunks[1].args["turnPreviewOnly"], true);
+        assert!(window.chunks[3].args.get("__orgiiMaterialized").is_none());
+    }
+
+    #[test]
+    fn initial_window_does_not_inherit_provenance_from_an_earlier_answer() {
+        let mut inherited = chunk("a1", FUNCTION_ASSISTANT, "inherited answer");
+        inherited.args["__orgiiMaterialized"] = json!(true);
+        let window = build_initial_window(
+            "test-session",
+            vec![
+                chunk("u1", FUNCTION_USER_MESSAGE, "prompt"),
+                inherited,
+                chunk("a2", FUNCTION_ASSISTANT, "local final answer"),
+                chunk("u2", FUNCTION_USER_MESSAGE, "next"),
+            ],
+            1,
+        );
+        assert!(window.chunks[1].args.get("__orgiiMaterialized").is_none());
+        assert_eq!(window.chunks[1].result["observation"], "local final answer");
     }
 
     #[test]

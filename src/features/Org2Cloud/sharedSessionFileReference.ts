@@ -2,7 +2,12 @@
 export interface SharedSessionFileReference {
   id: string;
   endpoint: string;
-  source?: { orgId: string; sessionId: string; path: string };
+  source?: {
+    orgId: string;
+    sessionId: string;
+    path: string;
+    version?: { uploaderUserId: string; revision: string };
+  };
 }
 export function buildSharedSessionFileReference(
   id: string,

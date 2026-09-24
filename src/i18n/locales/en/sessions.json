@@ -2646,6 +2646,7 @@
     "limit": "Showing up to 128 accounts"
   },
   "sharedFile": {
+    "resolvingOrigin": "The shared file’s source is still loading. Please try again shortly.",
     "downloaded": "Saved to Downloads",
     "downloadError": "Unable to save to Downloads",
     "title": "Shared file",

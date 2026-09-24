@@ -2647,6 +2647,7 @@
     "limit": "Wyświetlanie do 128 kont"
   },
   "sharedFile": {
+    "resolvingOrigin": "Źródło udostępnionego pliku jest nadal ładowane. Spróbuj ponownie za chwilę.",
     "downloaded": "Zapisano w folderze Pobrane",
     "downloadError": "Nie można zapisać w folderze Pobrane",
     "title": "Udostępniony plik",

@@ -13,6 +13,7 @@ import type { SharedSessionFileReference } from "./sharedSessionFileReference";
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   find: vi.fn(),
+  version: vi.fn(),
   token: vi.fn(),
   save: vi.fn(),
   write: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("./config", () => ({
 vi.mock("./sharedSessionFilesClient", () => ({
   readSharedSessionFile: mocks.read,
   findSharedSessionFile: mocks.find,
+  findSharedSessionFileVersion: mocks.version,
 }));
 vi.mock("./org2CloudSessionCommentsAtom.freshToken", () => ({
   useCloudFreshAccessToken: () => mocks.token,
@@ -140,6 +142,49 @@ describe("shared file viewer lifecycle", () => {
     expect(signal.aborted).toBe(true);
     expect(mocks.read.mock.calls[1][4]).toBe("new-ticket");
     expect(document.querySelector("pre")).toBeNull();
+  });
+  it.each([undefined, "guest-ticket"])(
+    "opens the original version using capability %s without a same-path retry",
+    async (shareToken) => {
+      mocks.version.mockResolvedValue(file);
+      mocks.read.mockResolvedValue(file);
+      const source = {
+        orgId: "org",
+        sessionId: "root",
+        path: "/sender/report.md",
+        version: { uploaderUserId: "guest", revision: "original:time" },
+      };
+      await render({ ...reference, source }, shareToken);
+      expect(mocks.version).toHaveBeenCalledWith(
+        "token",
+        expect.anything(),
+        source,
+        expect.any(AbortSignal),
+        shareToken
+      );
+      expect(mocks.read).toHaveBeenCalledWith(
+        "token",
+        expect.anything(),
+        file.id,
+        expect.any(AbortSignal),
+        shareToken
+      );
+      expect(mocks.find).not.toHaveBeenCalled();
+    }
+  );
+  it("does not substitute a latest version when the requested revision is missing", async () => {
+    mocks.version.mockResolvedValue(null);
+    await render({
+      ...reference,
+      source: {
+        orgId: "org",
+        sessionId: "root",
+        path: "/sender/report.md",
+        version: { uploaderUserId: "guest", revision: "old" },
+      },
+    });
+    expect(mocks.find).not.toHaveBeenCalled();
+    expect(mocks.read).not.toHaveBeenCalled();
   });
   it("loads only on mount and displays safe text", async () => {
     mocks.read.mockResolvedValue({

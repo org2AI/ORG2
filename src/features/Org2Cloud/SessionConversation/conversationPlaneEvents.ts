@@ -1,3 +1,4 @@
+import { CONVERSATION_ARTIFACT_ORIGIN_ARG } from "@src/engines/SessionCore/conversations/conversationArtifactOrigin";
 import {
   CONVERSATION_SENDER_ARG,
   type ConversationSenderStamp,
@@ -11,6 +12,16 @@ import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import type { CloudConversationEvent } from "../org2CloudConversationEventsClient";
 
 const PLANE_ID_PREFIX = "convplane-";
+
+/** Always rebuild from the authenticated envelope, ignoring sender-supplied provenance. */
+export function planeArtifactOrigin(row: CloudConversationEvent) {
+  return {
+    uploaderUserId: row.authorUserId,
+    sessionId: row.rootSessionId,
+    revision: `${row.event.id}:${row.event.createdAt}`,
+    ...(row.event.repoPath ? { repoPath: row.event.repoPath } : {}),
+  };
+}
 
 /**
  * Synthesize stream rows from 0024 conversation-plane events. The payload
@@ -42,11 +53,13 @@ export function buildConversationPlaneStreamEvents(
         inner.source === "user"
           ? {
               ...inner.args,
+              [CONVERSATION_ARTIFACT_ORIGIN_ARG]: planeArtifactOrigin(row),
               [NATIVE_SOURCE_EVENT_ID_ARG]: nativeSourceEventId(inner),
               [CONVERSATION_SENDER_ARG]: stamp,
             }
           : {
               ...inner.args,
+              [CONVERSATION_ARTIFACT_ORIGIN_ARG]: planeArtifactOrigin(row),
               [NATIVE_SOURCE_EVENT_ID_ARG]: nativeSourceEventId(inner),
             },
     };

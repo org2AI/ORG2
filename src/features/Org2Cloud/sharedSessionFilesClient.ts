@@ -1,7 +1,10 @@
 import { z } from "zod/v4";
 
 import { type CloudEndpoint } from "./config";
-import { fetchWithTransportRetry } from "./org2CloudFetchRetry";
+import {
+  fetchWithTransportRetry,
+  runCloudRequestWithTimeout,
+} from "./org2CloudFetchRetry";
 
 export class SharedSessionFileRequestError extends Error {
   constructor(
@@ -37,13 +40,25 @@ const FileSchema = z.object({
 });
 export type SharedSessionFile = z.infer<typeof FileSchema>;
 export function encodeFileBytes(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 32768)
-    binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
-  return btoa(binary);
+  const nativeEncode = (bytes as Uint8Array & { toBase64?: () => string })
+    .toBase64;
+  if (nativeEncode) return nativeEncode.call(bytes);
+  // Each non-final chunk must end on a three-byte boundary so concatenating
+  // its Base64 does not introduce padding in the middle of the payload.
+  const chunkBytes = 3 * 8192;
+  const chunks: string[] = [];
+  for (let i = 0; i < bytes.length; i += chunkBytes)
+    chunks.push(
+      btoa(String.fromCharCode(...bytes.subarray(i, i + chunkBytes)))
+    );
+  return chunks.join("");
 }
 export async function fileSha256(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes));
+  const input =
+    bytes.buffer instanceof ArrayBuffer
+      ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      : new Uint8Array(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", input);
   return Array.from(new Uint8Array(digest), (value) =>
     value.toString(16).padStart(2, "0")
   ).join("");
@@ -55,45 +70,43 @@ async function rpc(
   body: unknown,
   signal?: AbortSignal
 ): Promise<unknown> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  try {
-    const response = await fetchWithTransportRetry(
-      `${endpoint.supabaseUrl}/rest/v1/rpc/${method}`,
-      {
-        method: "POST",
-        headers: {
-          apikey: endpoint.anonKey,
-          authorization: `Bearer ${token}`,
-          "content-type": "application/json",
-          "content-profile": "org2_cloud",
-        },
-        body: JSON.stringify(body),
-        signal: signal
-          ? AbortSignal.any([signal, controller.signal])
-          : controller.signal,
-      }
-    );
-    if (!response.ok) {
-      // PostgREST puts RAISE EXCEPTION identifiers in message (code is P0001).
-      // Keep only a bounded domain code, never arbitrary server text or SQL.
-      const error = await response.json().catch(() => null);
-      const code =
-        [error?.message, error?.code].find(
-          (value): value is string =>
-            typeof value === "string" && /^ORG2_[A-Z0-9_]{1,80}$/.test(value)
-        ) ?? null;
-      throw new SharedSessionFileRequestError(
-        `Shared file request failed (${response.status}${code ? `: ${code}` : ""}). Check session access, file quota, and server support.`,
-        response.status,
-        false,
-        code
+  return runCloudRequestWithTimeout(
+    async (timeoutSignal) => {
+      const response = await fetchWithTransportRetry(
+        `${endpoint.supabaseUrl}/rest/v1/rpc/${method}`,
+        {
+          method: "POST",
+          headers: {
+            apikey: endpoint.anonKey,
+            authorization: `Bearer ${token}`,
+            "content-type": "application/json",
+            "content-profile": "org2_cloud",
+          },
+          body: JSON.stringify(body),
+          signal: timeoutSignal,
+        }
       );
-    }
-    return await response.json();
-  } finally {
-    clearTimeout(timeout);
-  }
+      if (!response.ok) {
+        // PostgREST puts RAISE EXCEPTION identifiers in message (code is P0001).
+        // Keep only a bounded domain code, never arbitrary server text or SQL.
+        const error = await response.json().catch(() => null);
+        const code =
+          [error?.message, error?.code].find(
+            (value): value is string =>
+              typeof value === "string" && /^ORG2_[A-Z0-9_]{1,80}$/.test(value)
+          ) ?? null;
+        throw new SharedSessionFileRequestError(
+          `Shared file request failed (${response.status}${code ? `: ${code}` : ""}). Check session access, file quota, and server support.`,
+          response.status,
+          false,
+          code
+        );
+      }
+      return await response.json();
+    },
+    30000,
+    signal
+  );
 }
 export async function uploadSharedSessionFile(
   token: string,
@@ -150,14 +163,14 @@ export async function readSharedSessionFile(
       signal
     )
   );
-  const bytes = Uint8Array.from(atob(wire.content), (character) =>
-    character.charCodeAt(0)
-  );
-  if (
-    wire.id !== id ||
-    bytes.length !== wire.size ||
-    (await fileSha256(bytes)) !== wire.sha256
-  )
+  const binary = atob(wire.content);
+  if (wire.id !== id || binary.length !== wire.size)
+    throw new Error("Shared file download integrity check failed");
+  // TypedArray.from(string) materializes the character iterator before mapping.
+  // Allocate the bounded result directly instead of a file-sized temporary list.
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  if ((await fileSha256(bytes)) !== wire.sha256)
     throw new Error("Shared file download integrity check failed");
   return {
     id: wire.id,

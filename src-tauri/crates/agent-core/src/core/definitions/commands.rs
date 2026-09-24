@@ -23,11 +23,7 @@ pub async fn agent_definitions_list_all(
     state: tauri::State<'_, std::sync::Arc<AgentDefinitionsStore>>,
 ) -> Result<Vec<AgentDefinition>, String> {
     let mut all = get_builtin_agents();
-    let user_agents = state
-        .agents
-        .lock()
-        .map_err(|err| format!("Lock error: {}", err))?;
-    all.extend(user_agents.clone());
+    all.extend(state.snapshot());
     Ok(all)
 }
 
@@ -38,7 +34,10 @@ pub async fn agent_definitions_add(
 ) -> Result<String, String> {
     let agent: AgentDefinition =
         serde_json::from_str(&agent_json).map_err(|err| format!("Invalid agent JSON: {}", err))?;
-    state.insert(agent)
+    let store = state.inner().clone();
+    tokio::task::spawn_blocking(move || store.insert(agent))
+        .await
+        .map_err(|err| format!("Agent definition save worker failed: {err}"))?
 }
 
 #[tauri::command]
@@ -47,7 +46,11 @@ pub async fn agent_definitions_remove(
     app_state: tauri::State<'_, AgentAppState>,
     agent_id: String,
 ) -> Result<bool, String> {
-    let removed = state.remove(&agent_id)?;
+    let store = state.inner().clone();
+    let remove_id = agent_id.clone();
+    let removed = tokio::task::spawn_blocking(move || store.remove(&remove_id))
+        .await
+        .map_err(|err| format!("Agent definition remove worker failed: {err}"))??;
     if removed {
         let cancelled_memory_jobs =
             crate::memory::background::cancel_memory_jobs_for_agent(&agent_id);
@@ -279,12 +282,18 @@ pub async fn agent_def_update_patch(
     agent_id: String,
     patch: AgentDefinitionPatch,
 ) -> Result<AgentDefinition, String> {
-    let updated = if super::builtin::is_builtin_agent(&agent_id) {
-        let gated = patch.gate_for_builtin();
-        state.update_with_overlay(&agent_id, |def| gated.apply(def))
-    } else {
-        state.update(&agent_id, |def| patch.apply(def))
-    }?;
+    let store = state.inner().clone();
+    let update_id = agent_id.clone();
+    let updated = tokio::task::spawn_blocking(move || {
+        if super::builtin::is_builtin_agent(&update_id) {
+            let gated = patch.gate_for_builtin();
+            store.update_with_overlay(&update_id, |def| gated.apply(def))
+        } else {
+            store.update(&update_id, |def| patch.apply(def))
+        }
+    })
+    .await
+    .map_err(|err| format!("Agent definition save worker failed: {err}"))??;
     let cancelled_memory_jobs =
         crate::memory::background::cancel_disabled_memory_jobs_for_agent(&agent_id);
     if cancelled_memory_jobs > 0 {
@@ -313,7 +322,11 @@ pub async fn agent_def_reset_builtin(
     app_state: tauri::State<'_, AgentAppState>,
     agent_id: String,
 ) -> Result<AgentDefinition, String> {
-    state.reset_builtin(&agent_id)?;
+    let store = state.inner().clone();
+    let reset_id = agent_id.clone();
+    tokio::task::spawn_blocking(move || store.reset_builtin(&reset_id))
+        .await
+        .map_err(|err| format!("Agent definition reset worker failed: {err}"))??;
     let cancelled_memory_jobs =
         crate::memory::background::cancel_disabled_memory_jobs_for_agent(&agent_id);
     if cancelled_memory_jobs > 0 {

@@ -32,10 +32,7 @@ fn parse_optional_config<T: DeserializeOwned>(
 }
 
 pub(super) fn list_agents(store: &AgentDefinitionsStore) -> Result<String, ToolError> {
-    let agents = store
-        .agents
-        .lock()
-        .map_err(|err| ToolError::ExecutionFailed(format!("Lock error: {}", err)))?;
+    let agents = store.snapshot();
 
     if agents.is_empty() {
         return Ok("No custom agents defined. Use 'create' to add one.".to_string());
@@ -54,10 +51,7 @@ pub(super) fn get_agent(
     params: &Value,
 ) -> Result<String, ToolError> {
     let agent_id = required_string(params, "agent_id")?;
-    let agents = store
-        .agents
-        .lock()
-        .map_err(|err| ToolError::ExecutionFailed(format!("Lock error: {}", err)))?;
+    let agents = store.snapshot();
 
     let agent = agents
         .iter()
@@ -79,10 +73,7 @@ pub(super) fn create_agent(
     let context_window = params.get("context_window").and_then(|v| v.as_u64());
     let sub_agents = parse_sub_agents(params);
 
-    let agents = store
-        .agents
-        .lock()
-        .map_err(|err| ToolError::ExecutionFailed(format!("Lock error: {}", err)))?;
+    let agents = store.snapshot();
 
     let similar: Vec<&AgentDefinition> = agents
         .iter()

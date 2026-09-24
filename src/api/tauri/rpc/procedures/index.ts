@@ -13,6 +13,7 @@ export { searchRegex } from "./searchRegex";
 export { searchSymbol } from "./searchSymbol";
 export { sessionAggregate } from "./sessionAggregate";
 export { sessionCore } from "./sessionCore";
+export { serviceAuth } from "./serviceAuth";
 export { settings } from "./settings";
 export { terminal } from "./terminal";
 export { tools } from "./tools";

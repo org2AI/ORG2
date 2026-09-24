@@ -215,8 +215,8 @@ async function initializeApp() {
   try {
     await initializeSharedServiceAuthStorage();
   } catch (error) {
-    // Fall back to this origin's local session if the store is unavailable.
-    // A focus event retries synchronization after React mounts.
+    // Auth initialization clears unverified browser credentials on failure.
+    // Continue signed out; focus retries the durable store after React mounts.
     log.warn("[Init] Shared auth storage unavailable:", error);
   }
   // On Linux dev (ORGII_DEV_EAGER_APP, set by webpack.config.js), bundle App

@@ -1,6 +1,6 @@
 # Native history acceptance follow-up
 
-Candidate implementation: `2b2c7259bb5cd56c4c98c5586b669f3a43461b88`, macOS ARM64, isolated instance 93. The candidate executable matches the previously recorded build receipt. The initial follow-up recorded verification of that candidate. Later sections record writer-boundary corrections and Combined93 product evidence. The latest Combined93 run exposed stale generation lookup; its correction still requires a rebuilt run. Performance verdict remains **blocked**.
+Candidate implementation: `2b2c7259bb5cd56c4c98c5586b669f3a43461b88`, macOS ARM64, isolated instance 93. The candidate executable matches the previously recorded build receipt. The initial follow-up recorded verification of that candidate. Later sections record writer-boundary corrections, Combined93's stale-generation failure, and Combined2's rebuilt recovery/continuation evidence. Performance verdict remains **blocked**.
 
 ## Product evidence
 
@@ -317,3 +317,69 @@ Removing the existence-only cache means each ordinary indexed resolution reads
 one SQLite row on demand. Unindexed legacy homes use a bounded directory walk;
 repeated legacy reads can cost more I/O than the old cached path. No new timer is
 added, but a large-legacy-home runtime baseline has not been measured.
+
+## Combined2: rebuilt recovery and product continuation
+
+Local-only merge `88d607508da00275462b2429e0e5fc748ace62af` combines #2103
+`33fddce8` with #2143 `a02d3da4` for Reserve selection. The signed instance-93
+executable SHA-256 is
+`d615fcd6effa8c57c1ee2d2d31b921feb2a645012e1bcf97a362c75ca8289138`.
+The release Rust build completed; the reused frontend is unchanged between the
+two local combined candidates and its build files are recorded in the private
+build manifest. The combined branch is not published.
+
+The reopened product recovered the existing 250-line answer from the indexed
+generation without resending it. Native source and managed raw hashes remained
+unchanged during this recovery. A subsequent product request returned the exact
+short continuation marker, retained the earlier answer, and settled to idle.
+Thus rebuilt indexed-generation recovery and source continuation have real GUI
+evidence; this does not alone pass the whole C7 concurrent-writer case.
+
+A bounded 500-line request was then dispatched through the product for Stop
+acceptance. Its actual source app-server held the current indexed rollout inode
+and inherited actual-store writer fence. While it ran, the empty composer showed
+Send rather than Stop, an older failed prompt appeared at the end, and the
+working timer counted from that old prompt. No Send/Retry was clicked after the
+request. The request completed naturally before cancellation was exercised,
+retained its answer, and the source process exited. **Stop remains unpassed**;
+neither a successful cancellation nor a need to kill the process is claimed.
+This older conversation/control projection path is being investigated separately
+from the native generation resolver; no UI filter or persisted-data cleanup was
+applied.
+
+At that point the managed connection used the original setup: two catalog waits
+had timed out. Normal ORG2 Quit and a fresh process cleared the flight; the next
+catalog request succeeded, and product Configure/Open succeeded. Configure
+imported both new source replies with matching ordered user/assistant roles,
+one indexed conversation on each side, and zero pending/waits/observations.
+This was configuration-triggered reconciliation, not automatic publication on
+an active target's exit. The newly opened native process had loaded an empty
+thread; user selection of the existing C7 conversation is required before the
+current candidate's concurrent loaded-target case can proceed.
+
+The one-second process/responsibility sampler covered these phases and normal
+ORG2 exit/restart, then stopped after a bounded 13-minute run. Its Mach timebase,
+PID/start identity retention and source/backend separation follow the method
+above; there were no overlapping group identities in this run.
+
+| Actual phase                                | Seconds | Backend CPU % | WebKit CPU % | Native CPU % | Source CPU % |
+| ------------------------------------------- | ------- | ------------- | ------------ | ------------ | ------------ |
+| Bounded long request, target absent         | 108.1   | 11.628        | 21.768       | absent       | 2.617        |
+| After normal ORG2 Quit                      | 26.4    | absent        | absent       | absent       | absent       |
+| Configured, visible, native startup ongoing | 23.1    | 0.639         | 1.449        | 107.865      | absent       |
+| ORG2 minimize requested, native window open | 130.5   | 0.564         | 1.476        | 17.822       | absent       |
+
+All previously observed backend/WebKit/source identities were absent throughout
+the postquit interval. During the final 130.5-second window, backend RSS was
+117.6 → 116.8 MiB and WebKit RSS 131.1 → 133.4 MiB; backend/WebKit physical writes
+were zero. Native RSS fell from 1,451.8 to 1,214.5 MiB. These finite measurements
+do not establish a long-term memory bound or prove document visibility changes.
+The preceding 23.1-second native phase included a child `/usr/bin/tar` at 75.6%
+of one core and approximately 1.44 GiB total native physical writes, so it is
+startup/unpacking evidence, not stable-idle acceptance or an ORG2 regression
+attribution. No before/after native-client baseline was measured.
+
+Native normal-menu exit, actual Stop, sustained retention, contention and full
+provider/identity lifecycle coverage remain open. No full performance acceptance
+or merge-ready claim follows from these finite checks. The configured test
+target remains open for the required user navigation; the sampler has exited.

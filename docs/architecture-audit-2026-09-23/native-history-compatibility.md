@@ -466,6 +466,17 @@ correction. The preceding Combined93 source safety/automatic export success does
 not pass C7 continuation, Stop or the full performance matrix. Detailed measured
 results and remaining acceptance cells are in the performance report.
 
+Subsequent Combined2 (`88d60750`) rebuilt the correction and recovered the existing
+answer without resending or changing native raw data. A real short continuation
+and a bounded long reply completed against the current generation. Stop was not
+exercised successfully: the empty composer exposed Send while an older failed
+turn appeared at the tail; the bounded request completed naturally. This
+separate control/projection observation is preserved without a UI workaround or
+data cleanup. Configure later synchronized both replies; the rebuilt concurrent
+loaded-target case and full lifecycle matrix remain pending. See the subsequent
+Combined2 section of the acceptance report rather than treating the older
+Combined93 failure as the current source result.
+
 Indexed-generation correction verification:
 
 ```sh

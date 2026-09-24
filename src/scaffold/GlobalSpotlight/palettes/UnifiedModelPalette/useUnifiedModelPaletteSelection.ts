@@ -192,29 +192,33 @@ export function useUnifiedModelPaletteSelection({
               : []
           )
         : advancedConfig.model || "";
-      void commitSelection(
-        {
-          ...advancedConfig,
-          keySource: KEY_SOURCE.OWN,
-          selectedAccountId: source.accountId,
-          credentialSource: undefined,
-          marketProfileId: undefined,
-          agent: source.modelType,
-          provider: source.modelType,
-          model: resolvedModelId,
-          nativeHarnessType: source.nativeHarnessType,
-          selectedSourceLabel: source.label,
-          selectedSourceModelType: source.modelType,
-        },
-        {
-          modelId: resolvedModelId,
-          sourceType: source.type,
-          accountId: source.accountId,
-          accountName: source.label,
-          modelType: source.modelType,
-        },
-        closeOnSourceSelect,
-        generation
+      Promise.resolve(
+        commitSelection(
+          {
+            ...advancedConfig,
+            keySource: KEY_SOURCE.OWN,
+            selectedAccountId: source.accountId,
+            credentialSource: undefined,
+            marketProfileId: undefined,
+            agent: source.modelType,
+            provider: source.modelType,
+            model: resolvedModelId,
+            nativeHarnessType: source.nativeHarnessType,
+            selectedSourceLabel: source.label,
+            selectedSourceModelType: source.modelType,
+          },
+          {
+            modelId: resolvedModelId,
+            sourceType: source.type,
+            accountId: source.accountId,
+            accountName: source.label,
+            modelType: source.modelType,
+          },
+          closeOnSourceSelect,
+          generation
+        )
+      ).catch((error) =>
+        Message.error(error instanceof Error ? error.message : String(error))
       );
     },
     [
@@ -481,23 +485,27 @@ export function useUnifiedModelPaletteSelection({
         modelType: reboundAccount.modelType,
       };
 
-      void commitSelection(
-        {
-          ...advancedConfig,
-          keySource: KEY_SOURCE.OWN,
-          selectedAccountId: reboundAccount.id,
-          credentialSource: undefined,
-          marketProfileId: undefined,
-          agent: reboundAccount.modelType,
-          provider: reboundAccount.modelType,
-          model: reboundEntry.modelId,
-          nativeHarnessType: reboundAccount.nativeHarnessType,
-          selectedSourceLabel: reboundAccount.name,
-          selectedSourceModelType: reboundAccount.modelType,
-        },
-        reboundEntry,
-        options?.close !== false,
-        generation
+      Promise.resolve(
+        commitSelection(
+          {
+            ...advancedConfig,
+            keySource: KEY_SOURCE.OWN,
+            selectedAccountId: reboundAccount.id,
+            credentialSource: undefined,
+            marketProfileId: undefined,
+            agent: reboundAccount.modelType,
+            provider: reboundAccount.modelType,
+            model: reboundEntry.modelId,
+            nativeHarnessType: reboundAccount.nativeHarnessType,
+            selectedSourceLabel: reboundAccount.name,
+            selectedSourceModelType: reboundAccount.modelType,
+          },
+          reboundEntry,
+          options?.close !== false,
+          generation
+        )
+      ).catch((error) =>
+        Message.error(error instanceof Error ? error.message : String(error))
       );
     },
     [

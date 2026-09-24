@@ -177,7 +177,11 @@ export function createSessionPatchQueue(owner: {
       state.unsubscribe = owner.subscribe?.(id, () => reconcile(id, active));
     }
     owner.publish(state.projected);
-    if (start) void drain(id, state);
+    if (start)
+      drain(id, state).catch((error) => {
+        for (const operation of state.pending.splice(0))
+          operation.reject(error);
+      });
     return promise;
   };
 }

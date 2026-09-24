@@ -150,13 +150,13 @@ export function useModelEffortSegment({
         nextModelId
       ).base_model;
 
-      void saveKey({
+      saveKey({
         id: account.id,
         agent_type: account.modelType,
         default_variant_overrides: [
           { base_model: baseModel, model: nextModelId },
         ],
-      });
+      }).catch(() => undefined);
     },
     [accounts, saveKey, selectedAccountId]
   );

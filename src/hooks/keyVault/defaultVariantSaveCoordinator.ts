@@ -238,6 +238,9 @@ export function saveDefaultVariantOverrides(
     lane.unsubscribe = subscribeSharedLocalKeys(() => reconcile(active));
   }
   reconcile(lane);
-  if (start) void drain(lane);
+  if (start)
+    drain(lane).catch((error) => {
+      for (const operation of lane.pending.splice(0)) operation.reject(error);
+    });
   return promise;
 }

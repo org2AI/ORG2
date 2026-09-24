@@ -181,11 +181,11 @@ export function useUnifiedModelPaletteItems({
       const account = accounts.find((entry) => entry.id === accountId);
       if (!account) return;
 
-      void saveKey({
+      saveKey({
         id: account.id,
         agent_type: account.modelType,
         default_variant_overrides: [{ base_model: baseModel, model: modelId }],
-      });
+      }).catch(() => undefined);
     },
     [accounts, saveKey]
   );

@@ -403,7 +403,9 @@ const ModelPillComponent: React.FC = () => {
             model: nextModelId,
           };
 
-      void handleConfigChange(updatedConfig);
+      handleConfigChange(updatedConfig).catch((error) => {
+        Message.error(error instanceof Error ? error.message : String(error));
+      });
     },
     [advancedConfig, handleConfigChange, lastModel]
   );

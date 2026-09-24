@@ -12,16 +12,16 @@
  * Documentation alone did not hold: two directories re-mixed within a day of the
  * cleanup landing, which is why this check exists.
  */
-
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { sourceRoots } from "./workspace-sources.mjs";
+
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SCRIPT_DIR, "..", "..");
-const SRC = join(ROOT, "src");
 
-/** Every `*.test.ts` under `src/`, as paths relative to ROOT. */
+/** Every `*.test.ts` under application and package source roots. */
 function collectTests(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
@@ -38,7 +38,9 @@ function collectTests(dir, out = []) {
 // Group by the directory that *owns* the tests: for a `__tests__/x.test.ts`
 // that is the parent of `__tests__`, so both styles land in the same bucket.
 const owners = new Map();
-for (const file of collectTests(SRC)) {
+for (const file of sourceRoots(ROOT).flatMap((source) =>
+  collectTests(join(ROOT, source))
+)) {
   const inTestsDir = dirname(file).endsWith(`${"__tests__"}`);
   const owner = inTestsDir ? dirname(dirname(file)) : dirname(file);
   const bucket = owners.get(owner) ?? { colocated: [], testsDir: [] };

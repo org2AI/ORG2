@@ -1,12 +1,20 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "src/index.tsx",
-    "src/mobileRemoteEntry.tsx",
-    "src/mobileRemoteNativeEntry.tsx",
-    "src/**/*.test.{ts,tsx}"
-  ],
-  "project": ["src/**/*.{ts,tsx}"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/index.tsx",
+        "src/mobileRemoteEntry.tsx",
+        "src/mobileRemoteNativeEntry.tsx",
+        "src/**/*.test.{ts,tsx}"
+      ],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/*": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts"]
+    }
+  },
   "ignore": ["src/types/ambient/**", "src/types/**/*.d.ts"],
   "include": ["exports", "types", "nsExports", "nsTypes"],
   "ignoreExportsUsedInFile": true

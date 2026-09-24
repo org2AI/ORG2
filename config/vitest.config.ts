@@ -1,6 +1,8 @@
 import path from "path";
 import { defineConfig } from "vitest/config";
 
+import frontendProjects from "./frontend.workspace";
+
 const repoRoot = path.resolve(__dirname, "..");
 
 // Pin the suite's timezone process-wide, before any worker starts and before
@@ -26,6 +28,8 @@ export default defineConfig({
     },
   },
   test: {
+    name: "app",
+    projects: frontendProjects,
     include: ["src/**/*.test.ts"],
     environment: "node",
     globals: true,
@@ -61,7 +65,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "text-summary", "html", "json-summary"],
       reportsDirectory: "./coverage",
-      include: ["src/**/*.ts"],
+      include: ["src/**/*.ts", "packages/*/src/**/*.ts"],
       exclude: ["**/*.test.ts", "**/*.d.ts", "src/**/*.tsx"],
     },
   },

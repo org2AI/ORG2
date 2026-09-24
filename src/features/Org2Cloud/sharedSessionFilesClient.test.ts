@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { isRetryableCloudRequestError } from "./org2CloudFetchRetry";
@@ -19,8 +20,61 @@ const endpoint = {
   isOfficial: false,
 };
 const id = "11111111-1111-4111-8111-111111111111";
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 describe("shared file wire boundary", () => {
+  describe.each(["native", "fallback"] as const)(
+    "%s Base64 encoder",
+    (mode) => {
+      it.each([0, 1, 2, 3, 24575, 24576, 24577, 1048577])(
+        "preserves padding, binary values, and view bounds for %s bytes",
+        (size) => {
+          const backing = new Uint8Array(size + 2);
+          backing.fill(255);
+          const bytes = backing.subarray(1, size + 1);
+          for (let i = 0; i < size; i++) bytes[i] = i % 256;
+          const native = vi.fn(function (this: Uint8Array) {
+            return Buffer.from(this).toString("base64");
+          });
+          Object.defineProperty(bytes, "toBase64", {
+            value: mode === "native" ? native : undefined,
+          });
+          expect(encodeFileBytes(bytes)).toBe(
+            Buffer.from(bytes).toString("base64")
+          );
+          if (mode === "native") {
+            expect(native).toHaveBeenCalledOnce();
+            expect(native.mock.contexts[0]).toBe(bytes);
+          }
+        }
+      );
+    }
+  );
+  it("downloads a multi-chunk binary payload without changing its bytes", async () => {
+    const bytes = new Uint8Array(1024 * 1024 + 1);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = i % 256;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id,
+            name: "binary.dat",
+            size: bytes.length,
+            sha256: await fileSha256(bytes),
+            content: Buffer.from(bytes).toString("base64"),
+          })
+        )
+      )
+    );
+    expect((await readSharedSessionFile("jwt", endpoint, id)).bytes).toEqual(
+      bytes
+    );
+  });
+
   it.each([
     [{ code: "P0001", message: "ORG2_QUOTA_EXCEEDED" }, "ORG2_QUOTA_EXCEEDED"],
     [
@@ -119,13 +173,57 @@ describe("shared file wire boundary", () => {
               [],
               controller.signal
             );
-      const assertion = expect(pending).rejects.toThrow("Aborted");
+      const assertion = expect(pending).rejects.toMatchObject({
+        name: "AbortError",
+      });
       controller.abort();
       await assertion;
       expect(networkSignal?.aborted).toBe(true);
       expect(fetch).toHaveBeenCalledTimes(1);
     }
   );
+  it.each(["fetch", "body"])(
+    "enforces the deadline when %s ignores abort",
+    async (phase) => {
+      vi.useFakeTimers();
+      let networkSignal: AbortSignal | undefined;
+      const never = new Promise<never>(() => {});
+      const fetch = vi.fn((_url: string, init: RequestInit) => {
+        networkSignal = init.signal as AbortSignal;
+        return phase === "fetch"
+          ? never
+          : Promise.resolve({ ok: true, json: () => never });
+      });
+      vi.stubGlobal("fetch", fetch);
+      const pending = readSharedSessionFile("jwt", endpoint, id);
+      const assertion = expect(pending).rejects.toMatchObject({
+        name: "TimeoutError",
+      });
+      await vi.advanceTimersByTimeAsync(30000);
+      await assertion;
+      expect(networkSignal?.aborted).toBe(true);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+    }
+  );
+  it("settles caller cancellation even when fetch ignores abort", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {}))
+    );
+    const pending = readSharedSessionFile(
+      "jwt",
+      endpoint,
+      id,
+      controller.signal
+    );
+    const assertion = expect(pending).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    controller.abort();
+    await assertion;
+  });
   it("uploads binary bytes without local paths and verifies server digest", async () => {
     const bytes = new Uint8Array([0, 255, 128, 42]);
     const fetch = vi.fn().mockResolvedValue(

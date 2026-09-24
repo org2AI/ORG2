@@ -18,9 +18,7 @@ import type { Session } from "@src/store/session/sessionAtom/types";
 
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
 import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
-import { getCloudCapabilitiesConfirmed } from "./org2CloudCapabilities";
 import { broadcastOrgControlChangedToPeers } from "./org2CloudControlBus";
-import { endpointForOrg } from "./org2CloudOrgEndpointRouter";
 import { Org2CloudSessionPushGuards } from "./org2CloudSessionSync.pushGuards";
 import {
   Org2CloudSessionSyncPushPhases,
@@ -132,6 +130,7 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     orgId: string,
     sessionId: string
   ): Promise<void> {
+    this.cancelReplaySharedFiles(orgId, sessionId);
     try {
       await this.client.deleteSession(auth.accessToken, orgId, sessionId);
     } catch (error) {
@@ -192,6 +191,7 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
   ): Promise<void> {
     const sessionId = session.session_id;
     if (access.accessMode === COLLAB_SESSION_ACCESS_MODE.METADATA_ONLY) {
+      this.cancelReplaySharedFiles(orgId, sessionId);
       await this.upsertMetadataIfChanged(
         auth,
         orgId,
@@ -213,27 +213,7 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     const currentLocalExecutionRevision =
       await this.loadLocalExecutionRevision(sessionId);
     const cursor = this.getCursor(orgId, sessionId);
-    // Old transcript cursors do not prove the referenced files were uploaded.
-    // Probe is endpoint-cached; unsupported servers preserve the existing idle gate.
-    let needsFileBackfill = false;
-    if (
-      cursor &&
-      cursor.sharedFilesVersion !== 1 &&
-      !this.isSharedFileSyncBackedOff(auth, orgId, sessionId)
-    ) {
-      const probe = await getCloudCapabilitiesConfirmed(
-        auth.accessToken,
-        endpointForOrg(orgId)
-      ).catch(() => null);
-      // An inconclusive file probe cannot fail the body or certify files.
-      // The post-publication attempt owns file errors and their backoff.
-      needsFileBackfill =
-        !probe?.confirmed || probe.capabilities.sharedSessionFiles === true;
-    }
-    if (
-      !needsFileBackfill &&
-      this.isEventPlaneClean(orgId, session, currentLocalExecutionRevision)
-    ) {
+    if (this.isEventPlaneClean(orgId, session, currentLocalExecutionRevision)) {
       await this.upsertMetadataIfChanged(
         auth,
         orgId,
@@ -241,13 +221,10 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
         scopeKey,
         access
       );
+      this.scheduleReplaySharedFiles(auth, orgId, session);
       return;
     }
-    const prepared = await this.preparePushEventsForPass(
-      sessionId,
-      cursor,
-      needsFileBackfill
-    );
+    const prepared = await this.preparePushEventsForPass(sessionId, cursor);
     const {
       stampAtRead,
       mode,
@@ -321,18 +298,11 @@ export class Org2CloudSessionSync extends Org2CloudSessionSyncPushPhases {
     const publishedCursor = this.getCursor(orgId, sessionId);
     if (publishedCursor?.sharedFilesVersion === 1)
       this.setCursor({ ...publishedCursor, sharedFilesVersion: undefined });
-    const sharedFilesReady = await this.syncReplaySharedFiles(
+    this.scheduleReplaySharedFiles(
       auth,
       orgId,
       session,
-      events
+      mode === "full" || cursor?.sharedFilesVersion === 1 ? events : undefined
     );
-    const latestCursor = this.getCursor(orgId, sessionId);
-    if (
-      sharedFilesReady &&
-      latestCursor &&
-      (mode === "full" || cursor?.sharedFilesVersion === 1)
-    )
-      this.setCursor({ ...latestCursor, sharedFilesVersion: 1 });
   }
 }

@@ -88,6 +88,7 @@ describe("imported replay attachment failure recovery", () => {
       await engine.runSyncPass();
       vi.setSystemTime(Date.now() + EXTERNAL_HISTORY_ACTIVITY_DEBOUNCE_MS + 1);
       await engine.runSyncPass();
+      await vi.dynamicImportSettled();
     }
     await publishVersion(1);
     const key = `corg-1:${sessionId}`;
@@ -118,6 +119,7 @@ describe("imported replay attachment failure recovery", () => {
     vi.setSystemTime(Date.now() + SHARED_FILE_QUOTA_RETRY_MS);
     syncFiles.mockResolvedValue(true);
     await engine.runSyncPass();
+    await vi.dynamicImportSettled();
     expect(full).toHaveBeenCalledTimes(1);
     expect(syncFiles).toHaveBeenLastCalledWith(
       expect.objectContaining({ events })

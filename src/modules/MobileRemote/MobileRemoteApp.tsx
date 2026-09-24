@@ -10,6 +10,7 @@ import { MobileTabBar } from "./components/MobileTabBar";
 import { StopConfirmModal } from "./components/modals/StopConfirmModal";
 import { MobileProfileEntry } from "./components/profile/MobileProfileEntry";
 import { mobileConnectionFailureKey } from "./connection/mobileConnectionFeedback";
+import type { MobileRemoteNavState } from "./navigation/mobileRemoteNavigation";
 import { useMobileRemoteCoordinator } from "./navigation/useMobileRemoteCoordinator";
 import { ConnectingLiveBridge } from "./screens/ConnectingLiveBridge";
 import { ConnectingScreen } from "./screens/ConnectingScreen";
@@ -28,14 +29,20 @@ export interface MobileRemoteAppProps {
   recoveredPairingIntent?: string | null;
   /** Relay WebSocket URL — when set, skips demo fixtures. */
   relayUrl?: string;
+  /** Development-only fallback used when no paired desktop is stored. */
+  demoByDefault?: boolean;
+  /** Development-only initial destination used for deterministic UI captures. */
+  initialNavigation?: Partial<MobileRemoteNavState>;
 }
 
 interface MobileRemoteRoutesProps {
   recoveredPairingIntent: string | null;
+  initialNavigation?: Partial<MobileRemoteNavState>;
 }
 
 function MobileRemoteRoutes({
   recoveredPairingIntent,
+  initialNavigation,
 }: MobileRemoteRoutesProps) {
   const {
     connection,
@@ -53,7 +60,7 @@ function MobileRemoteRoutes({
     handleConfirmStop,
     handleConnectionRetry,
     handleConnectionRepair,
-  } = useMobileRemoteCoordinator(recoveredPairingIntent);
+  } = useMobileRemoteCoordinator(recoveredPairingIntent, initialNavigation);
   const { t } = useTranslation("mobileRemote");
   const { bootstrapPending, connectionConfig } = useMobileRemote();
 
@@ -212,6 +219,8 @@ export function MobileRemoteApp({
   authUserId,
   recoveredPairingIntent = null,
   relayUrl,
+  demoByDefault = false,
+  initialNavigation,
 }: MobileRemoteAppProps) {
   const auth = useContext(MobileAuthContext);
   return (
@@ -219,10 +228,13 @@ export function MobileRemoteApp({
       key={JSON.stringify([authUserId, auth?.session.supabaseUrl, relayUrl])}
       authUserId={authUserId}
       relayUrl={relayUrl}
-      demoByDefault={false}
+      demoByDefault={demoByDefault}
       suppressInitialBootstrap={recoveredPairingIntent !== null}
     >
-      <MobileRemoteRoutes recoveredPairingIntent={recoveredPairingIntent} />
+      <MobileRemoteRoutes
+        recoveredPairingIntent={recoveredPairingIntent}
+        initialNavigation={initialNavigation}
+      />
     </MobileRemoteProviders>
   );
 }

@@ -116,7 +116,12 @@
       "resetsAvailable_one": "{{count}} reset available",
       "resetsAvailable_few": "{{count}} resets available",
       "resetsAvailable_many": "{{count}} resets available",
-      "resetsAvailable_other": "{{count}} resets available"
+      "resetsAvailable_other": "{{count}} resets available",
+      "resetsExpire": "{{count}} resets expire {{date}}",
+      "resetsExpire_one": "{{count}} reset expires {{date}}",
+      "resetsExpire_few": "{{count}} resets expire {{date}}",
+      "resetsExpire_many": "{{count}} resets expire {{date}}",
+      "resetsExpire_other": "{{count}} resets expire {{date}}"
     },
     "health": {
       "cloudListingInvalid": "Cloud listing invalid",

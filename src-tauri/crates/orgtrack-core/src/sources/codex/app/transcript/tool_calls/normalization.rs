@@ -41,7 +41,10 @@ pub(in crate::sources::codex::app::transcript) fn pending_tool_calls_from_payloa
                 ),
             );
         }
-        if is_canonical_injected_tool_name(&raw_name) {
+        if source_item_id
+            .starts_with(super::super::super::materialized_tool::MATERIALIZED_TOOL_ID_PREFIX)
+            || is_canonical_injected_tool_name(&raw_name)
+        {
             return Some((
                 call_id.clone(),
                 vec![ImportedToolCall {

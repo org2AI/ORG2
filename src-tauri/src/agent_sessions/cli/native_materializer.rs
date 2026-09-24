@@ -18,6 +18,9 @@ use agent_core::state::AgentAppState;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::Utc;
 use core_types::activity::ActivityChunk;
+use orgtrack_core::sources::codex::app::materialized_tool::{
+    encode_tool_output, MATERIALIZED_TOOL_ID_PREFIX,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -242,7 +245,7 @@ fn authoritative_append_suffix(
     let authoritative = authoritative_native_items(session_id)?;
     provider_portable_append_suffix(&authoritative, complete).map_err(|reason| {
         format!(
-            "provider-native transcript is not a semantic prefix of the canonical conversation: native={} canonical={} ({reason})",
+            "provider-native transcript is not a semantic prefix of the canonical conversation: session={session_id} native={} canonical={} ({reason})",
             authoritative.len(),
             complete.len()
         )
@@ -2243,25 +2246,6 @@ fn ensure_claude_native_metadata(
     append_suffix_atomically(path, &serialize_jsonl(&metadata)?)
 }
 
-/// Codex exit codes for a tool output ORG2 injects. A `function_call_output`
-/// carries text, so the only failure channel the Codex rollout has is the
-/// exec envelope its own shell tools emit. Writing the bare output instead
-/// tells the resumed model a killed or failed command succeeded.
-const CODEX_TOOL_FAILURE_EXIT_CODE: i64 = 1;
-const CODEX_TOOL_INTERRUPT_EXIT_CODE: i64 = 130;
-
-fn codex_function_call_output(output: &str, is_error: bool, interrupted: bool) -> Value {
-    if !is_error && !interrupted {
-        return Value::String(output.to_string());
-    }
-    let exit_code = if interrupted {
-        CODEX_TOOL_INTERRUPT_EXIT_CODE
-    } else {
-        CODEX_TOOL_FAILURE_EXIT_CODE
-    };
-    Value::String(json!({"exit_code": exit_code, "output": output}).to_string())
-}
-
 fn codex_response_items(items: &[NativeConversationItem]) -> Vec<Value> {
     let mut projected = Vec::with_capacity(items.len());
     for item in items {
@@ -2304,7 +2288,7 @@ fn codex_response_items(items: &[NativeConversationItem]) -> Vec<Value> {
                 ..
             } => projected.push(json!({
                 "type": "function_call",
-                "id": format!("fc_{}", stable_uuid("orgii-codex-function-item", "", id).replace('-', "")),
+                "id": format!("{MATERIALIZED_TOOL_ID_PREFIX}{}", stable_uuid("orgii-codex-function-item", "", id).replace('-', "")),
                 "name": name,
                 "arguments": arguments,
                 "call_id": call_id
@@ -2318,7 +2302,7 @@ fn codex_response_items(items: &[NativeConversationItem]) -> Vec<Value> {
             } => projected.push(json!({
                 "type": "function_call_output",
                 "call_id": call_id,
-                "output": codex_function_call_output(output, *is_error, *interrupted)
+                "output": encode_tool_output(output, *is_error, *interrupted)
             })),
             NativeConversationItem::ContextSummary { id, summary, .. } => projected.push(json!({
                 "type": "message",
@@ -3978,6 +3962,117 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires installed Codex, Python 3 and macOS sandbox-exec; loopback model only"]
+    fn native_tool_output_rpc_round_trip() {
+        let temp = tempfile::tempdir().unwrap();
+        let native_path = temp.path().join("native-rollout.jsonl");
+        let mut items = vec![message("orgii_evt_probe", "user", "Read fixture files")];
+        for (index, output) in [
+            "{\"output\":\"literal\",\"session_id\":1}",
+            "Script failed\nExit code: 1\n",
+            "Script running with cell ID example\n",
+            "\t中文 😀\r\n  ",
+            "",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let id = format!("call_probe_{index}");
+            items.push(tool_call(&id, "read_file", "{\"path\":\"fixture\"}"));
+            items.push(tool_result(&id, "read_file", output, index == 1, false));
+        }
+        let script = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/agent_sessions/cli/native_materializer/opaque_tool_native_probe.py");
+        let mut child = std::process::Command::new("python3")
+            .arg(script)
+            .arg(&native_path)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        serde_json::to_writer(child.stdin.take().unwrap(), &codex_response_items(&items)).unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+        let native = native_items_from_provider_path("probe", "codex", &native_path).unwrap();
+        let suffix = provider_portable_append_suffix(&items, &native).unwrap();
+        assert_eq!(
+            suffix.len(),
+            4,
+            "two native user/assistant turns after the exact injected prefix"
+        );
+    }
+
+    #[test]
+    fn opaque_tool_results_round_trip_through_both_native_writers() {
+        let sandbox = test_env::sandbox();
+        let outputs = [
+            "{\"output\":\"literal file body\",\"session_id\":123}",
+            "Script failed\nExit code: 1\n",
+            "Script running with cell ID example\n",
+            "\t leading\r\n中文 😀\ntrailing  \n",
+            "",
+            "{}",
+        ];
+        let mut items = vec![message("orgii_evt_opaque_user", "user", "read these files")];
+        for (index, output) in outputs.iter().enumerate() {
+            for (status, is_error, interrupted) in [
+                ("ok", false, false),
+                ("failed", true, false),
+                ("stopped", true, true),
+            ] {
+                let id = format!("call_{index}_{status}");
+                items.push(tool_call(&id, "read_file", "{\"path\":\"fixture.json\"}"));
+                items.push(tool_result(&id, "read_file", output, is_error, interrupted));
+            }
+        }
+        for provider in ["codex", "claude_code"] {
+            let path = sandbox.path().join(format!("{provider}-opaque.jsonl"));
+            let records = if provider == "codex" {
+                codex_response_items(&items)
+                    .into_iter()
+                    .map(|payload| {
+                        json!({
+                            "type":"response_item", "payload":payload,
+                            "timestamp":"2026-09-24T00:00:00Z"
+                        })
+                    })
+                    .collect()
+            } else {
+                claude_records("opaque-native", Path::new("/repo"), &items).unwrap()
+            };
+            atomic_jsonl(&path, &records).unwrap();
+            let original = fs::read(&path).unwrap();
+            for _ in 0..2 {
+                let native = native_items_from_provider_path("opaque", provider, &path).unwrap();
+                assert!(provider_portable_append_suffix(&native, &items)
+                    .unwrap()
+                    .is_empty());
+                let mut continued = items.clone();
+                continued.push(message("orgii_evt_opaque_next", "user", "continue"));
+                assert_eq!(
+                    provider_portable_append_suffix(&native, &continued).unwrap(),
+                    continued[items.len()..]
+                );
+                if let NativeConversationItem::ToolResult { output, .. } = &mut continued[2] {
+                    output.push('!');
+                }
+                assert!(
+                    provider_portable_append_suffix(&native, &continued).is_err(),
+                    "real divergence must still fail closed"
+                );
+            }
+            assert_eq!(fs::read(&path).unwrap(), original);
+        }
+    }
+
+    #[test]
     fn failed_codex_tool_output_round_trips_as_a_failed_tool() {
         let sandbox = test_env::sandbox();
         let path = sandbox.path().join("rollout-failed-tool.jsonl");
@@ -3992,7 +4087,10 @@ mod tests {
             tool_result("call_ok", "list_files", "README.md", false, false),
         ];
         let projected = codex_response_items(&items);
-        assert_eq!(projected[3]["output"], "README.md");
+        assert_eq!(
+            projected[3]["output"],
+            encode_tool_output("README.md", false, false)
+        );
 
         let rollout = projected
             .iter()

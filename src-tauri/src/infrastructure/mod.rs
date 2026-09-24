@@ -14,6 +14,7 @@ pub mod frontend_log;
 
 // Dev-only bridge from the bundled macOS WebKit origin to tauri dev auth.
 pub mod dev_bundled_auth;
+pub mod shared_auth_paths;
 
 // Per-install cloud device identity for member-runtime sharing
 // (~/.orgii/cloud_device_id — deliberately separate from the diagnostics

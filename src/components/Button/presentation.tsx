@@ -20,7 +20,12 @@ export type ButtonVariant = "primary" | "secondary" | "tertiary" | "ghost";
  * secondary a tone-text outline, a tertiary tone text with a tinted hover,
  * a ghost tone text.
  */
-export type ButtonTone = "danger" | "warning" | "success" | "merged";
+export type ButtonTone =
+  | "primary"
+  | "danger"
+  | "warning"
+  | "success"
+  | "merged";
 export type ButtonSize =
   | "inline"
   | "sidebar"
@@ -74,8 +79,12 @@ const PRESSED = "btn-pressed:bg-surface-selected btn-pressed:text-primary-6";
  * Filled primaries. The fill stops inside a transparent 1px border so its
  * visible body matches the secondary outline's hairline-bordered box.
  */
+const PRIMARY_FILL_BRAND =
+  "btn:border btn:border-transparent btn:bg-clip-padding btn:text-white btn:bg-primary-6 btn-hover:bg-primary-5 btn-active:bg-primary-7";
+
 const PRIMARY_FILL = {
-  none: "btn:border btn:border-transparent btn:bg-clip-padding btn:text-white btn:bg-primary-6 btn-hover:bg-primary-5 btn-active:bg-primary-7",
+  none: PRIMARY_FILL_BRAND,
+  primary: PRIMARY_FILL_BRAND,
   danger:
     "btn:border-0 btn:text-white btn:bg-danger-6 btn-hover:bg-danger-5 btn-active:bg-danger-6",
   warning:
@@ -88,6 +97,7 @@ const PRIMARY_FILL = {
 
 /** Toned secondaries keep the neutral outline and take the tone's text. */
 const SECONDARY_TONE_TEXT = {
+  primary: "btn:text-primary-6",
   danger: "btn:text-danger-6",
   warning: "btn:text-warning-6",
   success: "btn:text-success-6",
@@ -96,6 +106,7 @@ const SECONDARY_TONE_TEXT = {
 
 /** Toned tertiaries: tone text on a tinted hover surface. */
 const TERTIARY_TONE = {
+  primary: "btn:text-primary-6 btn-hover:bg-primary-1 btn-focus:bg-primary-1",
   danger:
     "btn:text-danger-6 btn-hover:bg-danger-2 btn-hover:text-danger-6 btn-focus:bg-danger-2 btn-focus:text-danger-6",
   warning: "btn:text-warning-6 btn-hover:bg-warning-3 btn-focus:bg-warning-3",
@@ -105,6 +116,7 @@ const TERTIARY_TONE = {
 
 /** Toned ghosts: tone text that brightens on hover, no surface. */
 const GHOST_TONE = {
+  primary: "btn:text-primary-6 btn-hover:text-primary-5",
   danger: "btn:text-danger-6 btn-hover:text-danger-5",
   warning: "btn:text-warning-6 btn-hover:text-warning-5",
   success: "btn:text-success-6 btn-hover:text-success-5",

@@ -1,184 +1,172 @@
-# 会话与附件同步：当前流程及建议设计
+# Session and attachment sync: current flow and proposed design
 
-状态：供评审的设计文档，2026-09-24 UTC。止血修复 [#2111](https://github.com/org2AI/ORG2/pull/2111) 已合并到 develop；合并不等于客户端已升级或生产恢复已验证。本文的队列、状态界面、配额和存储变更尚未实施，不修改生产数据或限额。
+Status: design for review, 2026-09-24 UTC. The body hotfix [#2111](https://github.com/org2AI/ORG2/pull/2111) is merged; merging does not prove client rollout or production recovery. This document describes the original design baseline. Later implementation status is tracked in [the end-to-end audit](architecture-audit-2026-09-24/ShareSessions.md). Queue, quota, storage, and UI proposals are not claims that they are deployed.
 
-## 判断与验收标准
+## Judgment and acceptance criteria
 
-有配额合理；组织级累计 1,000 个文件作为日常数量门槛，与自动同步产物的使用方式不匹配。附件故障阻断正文是错误的故障边界。把 1,000 改成更大的常量不会解决快照、生命周期、可见状态和恢复问题。
+Quotas are reasonable. A cumulative organization limit of 1,000 file records is poorly matched to automatically shared artifacts. An attachment failure blocking the body is an incorrect failure boundary. Increasing that constant does not solve snapshots, lifecycle, observable state, or recovery.
 
-长期设计应满足：
+1. Attachment capacity, connectivity, and source failures cannot block an otherwise authorized body. Body authorization or persistence failures remain explicit.
+2. An event's attachment version is immutable; later local content cannot masquerade as an earlier artifact.
+3. Body publication, attachment availability, and upload progress are independent, explainable states with clear recovery ownership.
+4. Uploads have durable jobs, idempotent commits, authorization, quota reservations, and recovery. Success is not charged twice; cancellation does not leak reservations.
+5. Idle/hidden clients do not scan all historical files or retain unbounded queues/caches/retries. New content and quota changes drive incremental work.
+6. Deletion, revocation, cleanup, and rollback have verifiable semantics. Do not automatically delete referenced historical files to free space.
 
-1. 附件的容量、网络或源文件问题不能阻断已经合法授权的会话正文；正文自身的权限或存储失败仍必须显式报告。
-2. 同一个事件所引用的附件版本不可变；不能把之后的本机文件当作过去的产物。
-3. 已发布正文、附件可用性、上传任务进度是独立状态，界面可以解释缺什么、为什么缺、谁能恢复。
-4. 上传有持久任务、幂等提交、权限校验、限额预留与恢复机制；成功不重复计费，取消不泄漏占用。
-5. 空闲/隐藏时无全历史附件扫描，无无界重试、队列或缓存；新内容和配额变更驱动增量工作。
-6. 删除、撤销分享、清理附件和回滚都必须有可验证的语义，不能自动删除仍被会话引用的文件来腾空间。
+## Actual baseline flow
 
-## 当前真实流程
+### Replay body and automatic files before the incident
 
-### 事故前的会话正文与自动附件流程
+1. The sender selects shareable local sessions and publishes metadata such as titles.
+2. Normalized events yield user file references, assistant Markdown links, and successful write/edit artifacts. Ordinary reads alone do not create delivery. One scan retains the latest candidate per path, using event ID/time as revision. Assistant-delivered shell artifacts remain supported without a write-tool allowlist.
+3. Query existing revisions in batches of 64. Read missing candidates from the sender's current path, up to 32 MiB per file; skip absent/unreadable sources.
+4. Send base64 bytes through an RPC. The server checks content access, locks the organization, checks duplicate revision and COUNT/SUM limits (1,000 records / 1 GiB), then stores bytea in PostgreSQL.
+5. The old sender waits for attachments before publishing body segments. Quota failure therefore leaves a visible title with no body for every recipient.
+6. Recipients fetch bodies independently. File clicks resolve an ID or session/path and read through authenticated RPCs. Path lookup omits revision and chooses the newest upload, not an exact event snapshot.
 
-1. 发布端筛选允许共享的本机会话，发布标题等 metadata。
-2. 从规范化事件中找附件候选：用户文件引用、本地 Markdown 链接、成功写入/编辑文件等。普通读取文件不会自动成为共享附件。一次扫描按文件路径保留最后一个候选，revision 为事件 ID + 时间。
-3. 每 64 个候选查询已上传版本；未上传的，读取发送机器当前路径的字节，单文件最大 32 MiB。不存在或读取失败的本机文件被跳过。
-4. 字节以 base64 经 RPC 发送；云端先检查会话内容访问权限，再按组织加锁、查重复版本、对附件表 COUNT/SUM 检查 1,000 个 / 1 GiB，最后存入 PostgreSQL bytea。
-5. 旧实现直到附件成功才发布正文分段。配额拒绝发生在第 4 步，标题已经存在、正文未到达，因此所有接收端都读到空正文。
-6. 接收端取会话正文；点击附件时按文件 ID，或按会话 + 路径查找附件，再经鉴权 RPC 读取字节。路径查找目前不传 revision，会选择最近版本；不是严格的事件快照引用。
+Bodies already have segmented sync, cursors, object-storage offload, and plan quotas. Attachments use separate database-byte storage and hard-coded limits. Deduplication includes organization, uploader, session, path, and revision; it is not organization-wide content deduplication.
 
-正文已有分段同步、游标、对象存储卸载及套餐配额机制。附件另起一套数据库字节存储和硬编码限额，没有复用同一可配置配额模型。
+Source inspection found no production per-session/retention attachment reclamation path. Foreign-key cascades cover organization/account deletion, not session_id. This does not prove that no external production operations exist.
 
-附件表的去重包含组织、上传者、会话、路径、revision 等维度；不是组织内相同内容只存一份。已检查仓库中，没有发现附件随单个会话删除/保留期过期而回收的生产路径：表只有组织和账号删除的外键级联，session_id 本身不是会话外键。此为源码检查结论，不等于证明所有线上运维作业都不存在。
+### Other entries
 
-### 其他入口
+- Explicit comment files upload before comment submission replaces paths with cloud references; failure cannot claim availability.
+- Continuation input events and assistant output publish body into the conversation plane before synchronizing files. File errors can still affect running/completion state. These entries should share attachment infrastructure while retaining their different business dependencies.
+- A missing file required for execution may explicitly block that execution. Supplementary replay/output files cannot make already-published history unreadable.
 
-- 显式评论附件：先读取并上传文件，再把引用换成云端文件链接，提交评论。失败时评论不能声称附件已可用。
-- 云端续聊的用户事件和 assistant tail：正文事件先写入 conversation plane，再同步附件；附件异常仍可能影响后续运行/完成状态。这与旧 replay 的“先附件后正文”不同，但长期应采用同一个附件任务入口，避免各入口自行处理错误。
-- 对模型执行必需的输入附件与会话回放的补充产物，应明确区分。模型无法获取输入文件时，可以暂停该次执行并说明原因，但不能因此让已发布历史正文不可读。
+### What #2111 changed
 
-### PR #2111 改了什么
+Publish bodies first and attempt files afterward. Record attachment failures independently and leave `sharedFilesVersion` pending. Ordinary errors cool down per session for five minutes; quota errors cool down per organization for thirty. Retry memory is capped at 256 entries and partitioned by identity/endpoint/organization/session, using existing sync triggers rather than a new timer. Retry scans the complete candidate set so old failures are not lost behind newer increments.
 
-正文先提交，附件之后尝试；附件异常单独记录，未完成的 sharedFilesVersion 保持待补传。普通错误按会话冷却 5 分钟，配额错误按组织冷却 30 分钟；重试缓存最多 256 条、按身份/端点/组织/会话隔离，复用已有同步周期，无新定时器。后续补传会读完整候选集合，避免只上传最新增量而遗忘之前失败的附件。
+This is a hotfix, not the final design: no durable per-file outbox, remote status, changed quota, immutable capture, or lifecycle/GC. Attachment requests still extend the sender pass. #2119 subsequently separates replay scheduling; continuation isolation is proposed in #2128.
 
-它是止血修复：没有独立的持久附件任务队列，没有逐附件远端状态，没有改云端配额，也没有完成文件快照或生命周期设计。附件尝试仍在当前 sender pass 内等待，一次慢请求仍会拖长该 pass；因此尚未做到正文与附件的调度完全独立。
+## Proposed data and execution model
 
-## 建议的数据与执行模型
+### Ownership
 
-### 数据归属
+- **Local event store:** authoritative events and pending body operations; retain the existing body protocol.
+- **Local immutable snapshots/outbox:** captured bytes, hash, event association, identity/organization, attempts, and next attempt. Jobs reference durable snapshots rather than holding whole file batches in memory.
+- **Cloud attachment_refs:** event ID, stable attachment ID, blob ID, display name, MIME, capture provenance, and availability. Reads require the owning session ACL; a hash is not a credential.
+- **Cloud attachment_blobs:** organization-scoped hash, size, private object key, integrity, and lifecycle. Reuse physical bytes only after authorization; do not expose cross-organization deduplication observations.
+- **Cloud quota_usage/upload_reservations:** committed plus unexpired reserved bytes. Object upload and database commit are not one transaction; use idempotent finalize and reconciliation.
 
-- 本机正文/事件存储：事件及待同步操作的权威源，原有正文同步协议保留。
-- 本机不可变快照与持久 outbox：保存待上传的实际字节、content hash、事件关联、尝试次数、next_attempt_at 和身份/组织范围。任务仅保存路径指向快照，不在内存保留整批文件。
-- 云端 attachment_refs：事件 ID、稳定 attachment ID、blob ID、显示名、MIME、capture provenance、可用状态。读取必须通过所属会话的 ACL；文件 hash 不是访问凭证。
-- 云端 attachment_blobs：组织内 content hash、大小、私有对象 key、对象校验与生命周期状态。同组织相同字节可复用物理 blob，不跨组织暴露去重查询结果。
-- 云端 quota_usage / upload_reservations：已提交字节 + 有时效的预留字节，原子增减；对象上传与 DB 提交之间允许故障，通过幂等 finalize 和对账处理，不假设二者能做一个事务。
+Local jobs own transmission state; cloud references own availability. UI derives each state from its authority instead of inventing one “session synced” flag.
 
-避免两套状态互相覆盖：本地任务记录传输状态；云端引用记录可用性。界面从这两个权威来源派生各自的提示，不自行推断“整个会话已同步”。
+### Publication
 
-### 一次发布
+1. Persist body independently and assign stable attachment identity. Capture at user selection or artifact delivery, preferably using original produced bytes or a source with proven version consistency. Capture failure records explicit state; never reopen later content and call it the historical original. Body publication does not wait for network upload.
+2. Publish body with attachment IDs or an associated manifest. Recipients can read immediately and see pending/quota/missing state.
+3. A dedicated worker pages through local jobs. Initially budget at most two uploads per instance, with server organization/user limits; do not materialize all files. Prioritize active/explicit delivery over historical backfill.
+4. Server begin-upload checks ACL, metadata, and budget; reuse a verified authorized blob or atomically reserve capacity and issue short-lived upload credentials.
+5. Send bytes to private object storage rather than JSON/base64 database RPC. Use bounded resumable chunks for larger files.
+6. Finalize verifies trustworthy size/hash, object ownership, and current permission; idempotently commits the reference and settles reservation, then emits availability change.
+7. Reauthorize exact-version reads. Immediate revocation requires an authenticated proxy; signed URLs have a documented revocation window until expiration.
 
-1. 正文事件独立持久化，并为附件分配稳定 attachment ID。附件在用户选择文件或生成产物的边界捕获为本机不可变快照：优先使用生成时的原始字节，或能证明版本一致的源。快照捕获不得阻塞正文提交；无法捕获准确版本时记录明确状态，不把稍后读取的当前文件冒充事件发生时的内容。
-2. 正文独立同步，包含稳定 attachment ID 或对应 manifest 关联。接收端可以立即阅读正文，附件显示“待上传/配额暂停/源文件缺失”。
-3. 专用附件 worker 从本地 outbox 取少量任务，客户端建议每实例最多 2 个上传，并由服务端限制组织/用户速率；不一次读入所有文件。活跃会话、显式附件优先于历史回填。
-4. 服务端 begin-upload 校验 ACL、文件元数据和剩余额度，复用已授权且已校验的同组织 blob，或原子预留容量并下发短期上传凭据。
-5. 字节直接进入私有对象存储，不走 JSON/base64 数据库 RPC。大文件使用有界分块和可恢复上传。
-6. finalize 验证服务端可置信的大小/hash、对象归属与当前权限，幂等提交引用并结算预留；成功后发送 attachment 状态变化通知。
-7. 接收端点击附件时再次鉴权，按精确版本获取。要求立即撤销的场景走鉴权代理；采用短时签名 URL 时必须声明撤销存在至 URL 到期的窗口。
+Recover from failures before/after upload and finalize by querying server state. Do not blindly retransmit or classify every failure as retrying.
 
-本机任务和云端上传 reservation 都使用幂等键。失败可能在上传前、上传后、finalize 前后发生，重启后必须通过服务端状态查询恢复，不能盲目重新上传或把所有错误都设为“重试中”。
+### Scheduling and recovery
 
-### 调度与恢复边界
+Body and file queues have separate concurrency budgets. Body publishers register durable handoff without awaiting network/capability/quota requests. One profile-owned attachment coordinator controls uploads; multi-window/process contention needs explicit leases, not accidental duplicate loops. Task scope includes endpoint, account, organization, attachment ID, and captured version; server idempotency handles multiple devices.
 
-- 正文与附件使用独立队列和并发预算。正文发布者只登记附件任务，不 await 网络上传；大文件、慢附件服务、配额探测均不能串行占住正文 sender pass。
-- 本机持久 outbox 由该 profile 的唯一后台 owner 消费；多窗口不各自启动上传循环。任务键包含端点、账号、组织、attachment ID 和快照版本。多个设备上传同一对象时服务端幂等去重，不依赖客户端锁。
-- worker 分页取任务，本地快照按磁盘字节预算管理。不得把整个 outbox 或附件集合常驻内存；本地预算不足时暂停附件捕获/上传并显示原因，保留正文。
-- 定义 queued → uploading → committed 的成功路径，以及 retry_wait、quota_blocked、source_missing、forbidden、cancelled 等显式结果。短期错误保留 next_attempt_at，终止性错误不得被通用 timer 重复唤醒。
-- begin-upload/finalize 的幂等键、reservation 到期和释放规则必须在服务端实现。finalize 重复调用返回同一提交结果；过期任务需重新预留并校验权限，不能凭旧上传凭据提交。
-- 同一 blob 可以关联多个有独立 ACL 的会话引用；先验证请求者有权创建目标引用以及使用已有对象，再复用字节，不能因知道 hash 绕过私有会话权限。
-- 新引用创建与 GC 标记互斥。GC 用可验证的删除状态/宽限期，删除前重新核对引用；存储删除失败不得提前释放实际占用，对账不能靠无条件覆盖计数隐藏错误。
+Page jobs and bound local snapshot disk bytes. On budget exhaustion, pause capture with an explicit reason and preserve body delivery. Define queued/uploading/committed plus retry_wait, quota_blocked, source_missing, forbidden, and cancelled. Terminal failures must not be repeatedly awakened by generic timers.
 
-### 历史文件不能伪造快照
+Server idempotency, reservation expiry/release, and reauthorization are mandatory. New references and GC marking must be mutually safe. Recheck references after a grace period before physical deletion; failed deletion must not release actual usage prematurely. Reconciliation must expose discrepancies rather than overwrite counters blindly.
 
-导入旧 transcript 时，仅有路径/事件时间，不保证当时文件内容仍存在。若确有版本化源可恢复则使用该版本；否则标记“历史版本不可用”。允许用户另行分享当前文件，但必须显示“当前版本，捕获于某时”，不能绑定为历史事件的原始产物。
+### Historical sources
 
-本次源码显示的风险是：当前同步时才读取路径，且路径查看器选择最近云端版本。这可能让旧消息打开后来的文件。未把这一风险表述为已证明某个具体用户文件被替换。
+A path and old event timestamp cannot prove the original bytes still exist. Restore a real versioned source if available. Otherwise mark the historical version unavailable/unverified; a separately shared current file records its actual capture time and must not claim original-event provenance.
 
-## 用户可见行为：附件暂停不得影响正文
+Current source inspection proves a risk (late reads plus newest-path lookup), not that a specific user's file was replaced.
 
-这是产品不变量，不是“附件错误时尽量展示正文”的降级策略。
+## User-visible behavior: paused files never block the body
 
-| 场景                             | 正文行为                             | 附件行为                     | 点击后的反馈                                                            |
-| -------------------------------- | ------------------------------------ | ---------------------------- | ----------------------------------------------------------------------- |
-| 附件已上传，组织新增存储额度已满 | 正常打开、翻页、搜索、复制           | 原附件可预览/下载            | 正常打开；新增上传配额不能禁止已有对象读取                              |
-| 附件因存储额度暂停               | 正常打开；不等待额度查询或附件 RPC   | 显示“附件因空间不足暂停上传” | 展示原因和恢复主体；发送者/管理员可处理，接收者不能以本机路径代替源文件 |
-| 附件待上传或正在上传             | 正常打开                             | 显示待上传/上传中            | 显示状态；不能一直转圈，也不能点击毫无反应                              |
-| 源文件或历史版本缺失             | 正常打开                             | 显示“历史附件版本不可用”     | 说明需要源端提供文件；不得静默打开同路径最新文件                        |
-| 单个附件下载断网/失败            | 已缓存正文正常显示，正文请求独立处理 | 只标记该文件下载失败         | 可重试下载；不触发全文重载                                              |
-| 附件权限被撤销                   | 仍按正文自己的当前权限判断           | 不允许读取被撤销附件         | 显示无权访问；不泄露对象 URL/缓存字节                                   |
+| Scenario                                | Body                                           | Attachment/click feedback                                                              |
+| --------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Existing upload; new-storage quota full | Opens, pages, searches, copies normally        | Existing file previews/downloads; upload admission is not read authorization           |
+| Upload paused for quota                 | Opens without quota/file requests              | Explain the pause and sender/admin recovery; never use recipient-local paths           |
+| Pending/uploading                       | Opens normally                                 | Immediate explicit state, neither indefinite spinner nor ignored click                 |
+| Missing source/historical version       | Opens normally                                 | Explain unavailability and source-side recovery; no silent newest-version substitution |
+| One download fails/offline              | Cached body remains; body requests independent | Retry that download without full-body reload                                           |
+| File permission revoked                 | Body evaluated under its own ACL               | Deny file read without exposing URL/cached bytes                                       |
 
-界面可显示“正文已同步 · 2 个附件暂停上传”。正文容器不得等待附件 manifest 或内容请求完成才渲染；manifest 查询失败时显示附件状态暂不可确认，不把它变成正文加载错误。附件进入可用状态只更新对应文件，不重建正文时间线或丢失阅读位置。
+For example: “Body synced · 2 attachments paused.” Body rendering cannot await file manifests/content. A failed manifest means unknown file availability, not a body load error. File availability changes update the file without rebuilding the timeline or losing scroll position. Body-specific permission/network/storage errors retain their own explanations.
 
-这不改变正文自身的权限、网络和正文容量规则。全文不可读时必须给出正文自己的失败原因；不能把任何权限错误伪装成附件暂停。
+### What quotas control
 
-### 配额到底控制什么
+| Resource             | Purpose                                | Meter                                       | Exhaustion behavior                                                  |
+| -------------------- | -------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------- |
+| Stored bytes         | Retention/storage cost                 | Verified blob bytes plus live reservations  | Pause new bytes; allow authorized existing-blob references           |
+| Upload bandwidth     | Ingress/processing/provider cost       | Actual bytes per period                     | Pause/throttle upload; no duplicate storage charge                   |
+| Download bandwidth   | Egress cost                            | Actual bytes per period                     | Apply published file-download policy independently of bodies         |
+| Requests/concurrency | Fairness and resource protection       | Requests/time, active uploads, reservations | Structured retry deadline/queue; bodies do not join file queues      |
+| Metadata             | Many tiny/empty objects and index cost | Blob/ref/reservation counts and growth      | Separate configurable guard and alert, not a proxy for byte capacity |
 
-| 资源       | 配额/限流的目的                         | 建议的计量单位                    | 用尽后的影响范围                                       |
-| ---------- | --------------------------------------- | --------------------------------- | ------------------------------------------------------ |
-| 长期存储   | 控制占用和保留成本                      | 已校验 blob 字节 + 未过期预留字节 | 暂停新增附件字节，仍可添加经授权的既有 blob 引用       |
-| 上传流量   | 控制入口带宽、处理和供应商用量          | 实际传输字节/周期                 | 暂停或降低附件上传速率；不重复收取已提交对象的存储占用 |
-| 下载流量   | 控制出口带宽成本                        | 实际下载字节/周期                 | 仅按公开的附件下载策略节流；独立于正文预算             |
-| 请求与并发 | 防止单设备/成员挤占共享资源             | 请求/时间、同时上传数、预留总量   | 返回结构化重试时间、排队；正文不进入附件队列           |
-| 元数据数量 | 防止大量零字节/小文件耗尽索引和事务资源 | blob/ref/reservation 数量与增速   | 独立的高水位告警与可配置护栏，不能冒充存储容量         |
+Entitlements may expose these budgets, but quota is not authorization, sync correctness, or version consistency. The current 1,000-record guard does not prove physical storage exhaustion. Return structured resource/usedBytes/reservedBytes/limitBytes/retryPolicy fields; clients must not guess from HTTP 400 or strings. Never write attachment throttling into body sync failure state.
 
-配额也可以映射到套餐权益，但配置必须有资源预算依据。它不承担同步正确性、权限或版本一致性的职责；这些由提交协议与 ACL 保证。当前 1,000 个限制本质上是粗糙的资源保护，不能据此认定实际云存储已耗尽。
+## Quota recommendations
 
-服务端返回结构化错误，例如 resource=attachment_storage、usedBytes、reservedBytes、limitBytes、retryPolicy=quota_change。客户端不从 HTTP 400 或字符串猜测。不得把附件限流结果写入正文同步的失败/暂停状态。
+| Dimension              | Baseline                             | Recommendation                                                                                |
+| ---------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| File size              | 32 MiB                               | Retain as an explicit initial guard; revisit after object/chunk upload                        |
+| Organization capacity  | Hard-coded 1 GiB                     | Server-configured entitlement with used/limit/reserved; not a universal fixed team limit      |
+| Record count           | Reject at 1,000 accumulated versions | Separate abuse/metadata guard, sized with load evidence rather than marketed as file capacity |
+| Traffic/requests       | No explicit separate model           | Meter ingress, egress, request rate; reuse/retry must not double-charge storage               |
+| Body/file relationship | Separate hard-coded and plan systems | One entitlement API with independent budgets or guaranteed body reserve                       |
+| Full capacity          | Old sender blocks body too           | Pause new file uploads; preserve bodies and existing reads; actionable admin entry            |
+| Alerts                 | HTTP 400 observed                    | Configurable suggestions: 80% warning, 95% stronger warning, 100% admission pause             |
 
-## 配额设计建议
+Illustrative only: 1,000 files averaging 25 KiB occupy about 24.4 MiB, roughly 2.4% of 1 GiB. A few dozen large files can consume the same budget quickly. Metadata cost still matters, but needs its own tests and alerts.
 
-| 维度         | 现状                         | 建议                                                                                                              |
-| ------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 单文件大小   | 32 MiB                       | 先保留，作为明确的产品限制；对象存储/分块上传完成后再按用途调整                                                   |
-| 组织附件容量 | 独立硬编码 1 GiB             | 纳入服务端配置/套餐 entitlement，客户端展示 used/limit/reserved；1 GiB 可作为初期小额额度，不是所有团队的固定上限 |
-| 组织附件数量 | 累计 1,000 条即拒绝          | 不作为日常产品额度；若防滥用需要数量护栏，应独立配置、监控，根据元数据成本/容量测试定值                           |
-| 流量和请求   | 此附件路径缺少独立明确模型   | 上传流量、下载流量、请求速率分别核算；重试/复用不能重复扣存储容量                                                 |
-| 配额关系     | 附件硬限制与正文套餐两套模型 | 一个 entitlement API，分开的正文/附件预算或明确保留正文容量，附件不能耗尽正文可用预算                             |
-| 满额行为     | 旧版连正文都停止             | 暂停新增附件、保留正文与既有附件读取，给出管理员处理入口                                                          |
-| 预警         | 本次仅得到 HTTP 400          | 建议 80% 预警、95% 强提示、100% 暂停新增附件；阈值可配置                                                          |
+Do not invent a 10/100 GiB team allowance. Derive it from artifact rate × average size × retention × deduplication ratio, team size, storage/egress budget, then validate p95 size, peak requests, and metadata load. Raising a bytea/whole-organization aggregate limit alone does not provide scalable storage.
 
-容量示例（不是生产用量披露）：1,000 个平均 25 KiB 的小文件仅约 24.4 MiB，只占 1 GiB 的约 2.4%；同样的字节额度也可能很快被几十个大文件用完。文件数不能替代存储字节或流量计量。大量小文件的元数据成本确实存在，应单独做容量测试、速率限制和异常数量告警。
+## Retry and lifecycle rules
 
-不能凭空断言团队应有 10 GiB 或 100 GiB。配置额度应由“有效产物产生量 × 平均大小 × 保留时间 × 去重后的比例”、团队规模和实际存储/下载预算推导，再用实际 p95 文件大小、峰值请求与数据库元数据负载验证。当前 bytea + 全组织聚合校验不能仅靠调大限额长期扩展。
+- Transient/offline: jittered exponential backoff, network-return wakeups within rate/concurrency limits.
+- Quota: wait for capacity changes, reclaim, or explicit retry with a low-frequency safety check; avoid one known-failing request per session.
+- Authentication: wait for reauthentication; refresh preserves identity, account/endpoint switches revoke old execution authority.
+- Forbidden/revoked: stop transmission and expose state; reevaluate on access change.
+- Missing/too-large: explicit terminal reason rather than pointless timer retries.
+- Hidden/idle: pause noncritical backfill; preserve durable jobs and reservations during bounded pause/resume.
+- Server objects: revoked references deny new reads; GC only after no valid references and an explicit grace period. Expired unfinalized reservations govern temporary object cleanup.
+- Never delete still-referenced history automatically. Admin cleanup previews affected sessions and retains a recovery window before physical deletion.
 
-## 重试、可见性与生命周期
+## Delivery sequence and verification
 
-- transient/offline：有抖动的指数退避；下一次网络恢复可唤醒，但受并发/速率限制。
-- quota_blocked：等管理员调整额度、释放空间或明确重试；低频安全校验。不要每个会话重复发送已知必败请求。
-- auth_required：等待重新认证；token refresh 复用同一身份，账号/端点切换取消旧任务的执行权。
-- forbidden/revoked：停止传输并更新可见状态；恢复分享后由权限变更事件重新评估。
-- source_missing / too_large：显示明确的不可用原因，不做无意义定时重试。
-- hidden/idle：暂停非关键历史补传；活动上传遵循有界暂停/续传策略，不能因窗口隐藏丢失持久任务或泄漏 reservation。
-- 服务端对象：引用撤销即禁止新读取；只有所有有效引用消失、超过已定义恢复宽限期后，才由 GC 回收 blob 并释放容量。未 finalize 的临时对象按 reservation 到期策略清理。
-- 不自动删除仍有有效引用的历史产物来“腾空间”。管理员清理须先展示受影响会话，采用可恢复操作，并在物理删除前保留恢复窗口。
+A. #2111 is merged; verify sender backfill and recipient reads after rollout. Emergency expansion is a separate operational decision, not the final fix.
+B. Add configurable quota/usage APIs, independent states, local durable jobs, and shared upload ownership. Replace session-wide rescans; bound historical backfill separately.
+C. Introduce private object storage and blob/ref/reservation; migrate bytea by copying and verifying hashes/sizes before switching readers/writers. Preserve old IDs and old bytes until references are validated. Roll back through a reader adapter without changing IDs.
+D. Complete capture provenance, historical-reference resolution, GC, and budget management. The later audit prioritizes correct capture at the producing boundary before broad transport/history migration.
 
-建议用户看到两条状态，例如：“正文已同步 · 2 个附件因空间不足暂停”。单个文件显示其精确状态。需要区分“源端尚未同步”与“这个会话本来就没有活动”，不再统一显示 No activity yet。
+Required product regressions: a file RPC that never finishes does not delay readable body; zero new-upload budget still permits existing-file download; clicking a paused file gives immediate explanatory feedback.
 
-## 交付顺序与验证
+Verify first publication, append, body success/file failure, restart, offline recovery, duplicate finalize, identity/endpoint changes, revocation, delete/restore, competing final-capacity reservations, and source overwrite/missing. Dual-instance evidence must prove raw sender ingestion, cloud commit, and recipient exact bytes/body, not merely exchange two preseeded databases. Measure visible/hidden idle, active/backfill peaks, and post-completion resource release.
 
-A. #2111 已合并：下一步发布客户端修复，并验证原发布端补传与接收端读取。保持现有限额，单独由运维评估紧急附件扩容，不能把调大常量当最终方案。
-B. 增加服务端可配置配额/用量接口、正文与附件独立状态、本机持久任务与统一上传入口；替代会话级全量补扫。优先处理正在发生的显式分享，历史回填单独限速。
-C. 私有对象存储 + blob/ref/reservation 模型，迁移旧 bytea；校验每个对象 hash/大小，保留旧 ID 的解析兼容。先复制验证，再切读写；确认引用迁移成功之前不删旧字节。阶段回滚通过 reader adapter 回到旧存储，保持引用 ID 稳定。
-D. 完善快照捕获、导入历史的 provenance、引用生命周期/GC 和配额管理。
+## Ten-layer architecture coverage
 
-必须新增“附件 RPC 永不完成，正文仍先可读”“新增附件额度为零，已有附件仍可下载”“点击暂停附件出现明确反馈”三条产品回归，不能只断言请求没有抛异常。
+| Layer               | Covered                                    | Limitation/conclusion                                               |
+| ------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
+| 1 Compile           | Prior #2111 typecheck/233 tests/CI         | Proposed implementation not compiled by this document               |
+| 2 Structure         | Replay, comment, continuation input/output | Shared owner with distinct input/output dependencies                |
+| 3 Naming            | revision/sharedFilesVersion/quota          | Snapshot hash is distinct from protocol readiness                   |
+| 4 Semantics         | synced/file/session/budget                 | Separate body receipt, reference availability, task, physical bytes |
+| 5 Defaults          | missing/capability/400/quota/identity      | Explicit classification, not generic retry/empty state              |
+| 6 Boundaries        | replay/files/execution                     | Supplementary files cannot block history                            |
+| 7 Understandability | Empty activity versus missing body         | Explain state and recovery owner                                    |
+| 8 Wire              | base64/bytea/hash/path lookup              | Exact-reference/object protocol proposed, not tested                |
+| 9 Lifecycle         | boot/cursor/cooldown/reset                 | Durable ownership and resume required                               |
+| 10 Resolution       | File ID versus latest path                 | No implicit new-version fallback for historical snapshots           |
 
-各阶段验收必须覆盖：初次发布、增量追加、正文成功而附件失败、重启、断网恢复、重复 finalize、跨账号/端点、撤销分享、删除及恢复、并发抢占最后额度、源文件改写/缺失。双机实测需分别证明 A 的本机原始数据进入队列、云端提交、B 可读取精确正文和附件版本；不能仅拿两套预填数据库互相同步当验证。性能测 visible/hidden idle、回填峰值和任务完成后的资源释放。
+This is a sharing design, not a repository-wide refactor. Proposed object protocols, costs, GC, and production recovery have not been implemented or measured by this document.
 
-## 10 层架构检查范围
+## Source references
 
-| 层                 | 本次覆盖                                          | 结论/限制                                                            |
-| ------------------ | ------------------------------------------------- | -------------------------------------------------------------------- |
-| 1 编译             | 复用 #2111 的类型检查、233 测试与当前 CI 结果     | 本文未改代码，未对建议实现宣称已编译                                 |
-| 2 结构与重复       | replay、评论、续聊用户事件、assistant tail 四入口 | 统一附件任务所有者；各入口保留输入与附属产物的业务区别               |
-| 3 命名             | revision、sharedFilesVersion、quota               | 内容版本应使用不可变 snapshot/hash；同步协议标志不能等同逐附件可用性 |
-| 4 语义重载         | 已同步、文件、会话、额度                          | 拆分正文提交、引用可用、传输任务与物理 blob 计量                     |
-| 5 默认分支         | 缺文件、未知 capability、400、配额、身份切换      | 分类失败；不使用统一重试或统一空状态                                 |
-| 6 领域边界         | replay/附件/续聊执行                              | 附属文件不阻断历史；执行必需输入可单独阻断该次执行                   |
-| 7 可理解性         | No activity yet 与真实正文缺失                    | 展示可解释状态及恢复主体                                             |
-| 8 线协议           | base64 RPC、bytea、内容 hash、路径查找            | 建议对象上传与精确引用；本次未实际测试新协议                         |
-| 9 初始化与生命周期 | 冷启动、持久 cursor、内存冷却、身份 reset         | 长期需要持久 outbox、worker ownership 与 resume；当前 PR 是过渡实现  |
-| 10 解析一致性      | ID 查找与 source path 最新版本查找                | 明确 snapshot 引用 vs 当前文件引用，禁止隐式用新版本补旧快照         |
-
-范围仅为会话/附件共享设计，不是全仓重构审计。建议的对象存储协议、成本、GC 和生产恢复均未实施或实测。
-
-## 源码依据（设计基线）
-
-- ORGII/src/features/Org2Cloud/org2CloudSessionSync.ts
-- ORGII/src/features/Org2Cloud/org2CloudSessionSync.pushPhases.ts
-- ORGII/src/features/Org2Cloud/sessionSharedFileCandidates.ts
-- ORGII/src/features/Org2Cloud/syncSessionSharedFiles.ts
-- ORGII/src/features/Org2Cloud/prepareSharedCommentFiles.ts
-- ORGII/src/features/Org2Cloud/SharedSessionFileViewer.tsx
-- ORGII/src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter.ts
-- ORGII/src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter.plane.ts
-- ORGII-cloud-infra/supabase/migrations/0033_shared_session_files.sql
-- ORGII-cloud-infra/supabase/migrations/0001_org2_cloud_schema.sql 与 0005_broadcast_and_storage_offload.sql
+- `src/features/Org2Cloud/org2CloudSessionSync.ts`
+- `src/features/Org2Cloud/org2CloudSessionSync.pushPhases.ts`
+- `src/features/Org2Cloud/sessionSharedFileCandidates.ts`
+- `src/features/Org2Cloud/syncSessionSharedFiles.ts`
+- `src/features/Org2Cloud/prepareSharedCommentFiles.ts`
+- `src/features/Org2Cloud/SharedSessionFileViewer.tsx`
+- `src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter.ts`
+- `src/features/Org2Cloud/SessionConversation/cloudConversationQueueAdapter.plane.ts`
+- cloud-infra `supabase/migrations/0033_shared_session_files.sql`
+- cloud-infra `supabase/migrations/0001_org2_cloud_schema.sql` and `0005_broadcast_and_storage_offload.sql`

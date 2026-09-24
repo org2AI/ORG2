@@ -14,6 +14,7 @@ usage_diagnostics::commands::diagnostics_submit_usage_snapshot,
 infrastructure::cloud_identity::cloud_device_identity,
 // Dev-only ORG2 Cloud auth import from the installed app's WebKit origin
 infrastructure::dev_bundled_auth::debug_import_bundled_org2_cloud_auth,
+infrastructure::shared_auth_paths::shared_service_auth_storage_profile,
 // Main-window appearance commands
 app_window::commands::set_main_webview_zoom,
 app_window::commands::set_webview_zoom,

@@ -1,4 +1,4 @@
-import { createStore } from "jotai";
+import { createStore as createJotaiStore } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getImportedHistorySourceBySessionId } from "@src/api/tauri/externalHistory";
@@ -8,11 +8,19 @@ import { COLLAB_SESSION_ACCESS_MODE } from "@src/store/collaboration/types";
 import type { Session } from "@src/store/session";
 
 import type { CloudPushAccess } from "./org2CloudAccessSettings";
-import type { Org2CloudAuthState } from "./org2CloudAuthAtom";
+import {
+  type Org2CloudAuthState,
+  org2CloudAuthAtom,
+} from "./org2CloudAuthAtom";
 import { Org2CloudSessionSync } from "./org2CloudSessionSync";
 import type { Org2CloudSyncClientDeps } from "./org2CloudSessionSync.types";
 import type { CollabSessionPushCursor } from "./org2CloudSyncAtoms";
 import { org2CloudPushCursorsAtom } from "./org2CloudSyncAtoms";
+import {
+  SHARED_FILE_QUOTA_RETRY_MS,
+  SHARED_FILE_RETRY_MS,
+} from "./sessionSharedFileRetry";
+import { SharedSessionFileRequestError } from "./sharedSessionFilesClient";
 
 const mocks = vi.hoisted(() => ({
   childRevision: vi.fn(),
@@ -21,6 +29,11 @@ const mocks = vi.hoisted(() => ({
   canonicalSnapshot: vi.fn(),
   persistedRevision: vi.fn(),
   persistedEvents: vi.fn(),
+  readFile: vi.fn(),
+}));
+
+vi.mock("./prepareSharedCommentFiles", () => ({
+  readBoundedFile: mocks.readFile,
 }));
 
 vi.mock("./org2CloudCapabilities", () => ({
@@ -58,6 +71,12 @@ const AUTH: Org2CloudAuthState = {
   refreshToken: "refresh",
   expiresAt: 4_000_000_000,
 };
+
+function createStore() {
+  const store = createJotaiStore();
+  store.set(org2CloudAuthAtom, AUTH);
+  return store;
+}
 
 const SESSION: Session = {
   session_id: "cliagent-root",
@@ -110,7 +129,10 @@ function client() {
 }
 
 describe("Org2CloudSessionSync local continuation replay", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.capabilities.mockResolvedValue({ confirmed: true, capabilities: {} });
@@ -198,6 +220,191 @@ describe("Org2CloudSessionSync local continuation replay", () => {
     expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(2);
     expect(mocks.syncFiles).toHaveBeenCalledTimes(1);
   });
+
+  it("publishes the body before a real attachment RPC returns quota exceeded, and backs off the whole org", async () => {
+    let now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-stable");
+    const store = createStore();
+    const cloud = client();
+    const sync = new Org2CloudSessionSync(() => store, cloud);
+    const events = [event("file", "[report](/sender/report.md)")];
+    mocks.canonicalSnapshot.mockResolvedValue({ events, childRevision: "[]" });
+    mocks.capabilities.mockResolvedValue({
+      confirmed: true,
+      capabilities: { sharedSessionFiles: true },
+    });
+    mocks.readFile.mockResolvedValue(new Uint8Array([1]));
+    const real = await vi.importActual<
+      typeof import("./syncSessionSharedFiles")
+    >("./syncSessionSharedFiles");
+    mocks.syncFiles.mockImplementation(real.syncSessionSharedFiles);
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith("cloud_find_session_file_revisions"))
+        return new Response("[]");
+      expect(cloud.rewriteSessionEvents).toHaveBeenCalled();
+      expect(
+        store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+          ?.pushedCount
+      ).toBe(1);
+      return new Response(
+        JSON.stringify({ code: "P0001", message: "ORG2_QUOTA_EXCEEDED" }),
+        { status: 400 }
+      );
+    });
+    vi.stubGlobal("fetch", fetch);
+    await expect(pushPass(sync)).resolves.toBeUndefined();
+    expect(
+      store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+        ?.sharedFilesVersion
+    ).toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    // Clean sessions do not reload full transcripts just to retry attachments.
+    await pushPass(sync);
+    expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(1);
+    // Another session still publishes its body without retrying the org quota.
+    await pushPass(sync, { ...SESSION, session_id: "cliagent-other" });
+    expect(cloud.rewriteSessionEvents).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    now += SHARED_FILE_QUOTA_RETRY_MS;
+    mocks.syncFiles.mockResolvedValue(true);
+    await pushPass(sync);
+    expect(mocks.canonicalSnapshot).toHaveBeenCalledTimes(3);
+    expect(
+      store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+        ?.sharedFilesVersion
+    ).toBe(1);
+    expect(cloud.rewriteSessionEvents).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves failed attachments pending through later native appends and recovers without rewriting the body", async () => {
+    let now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-stable");
+    const store = createStore();
+    const cloud = client();
+    const sync = new Org2CloudSessionSync(() => store, cloud);
+    let events = [event("one", "first")];
+    mocks.canonicalSnapshot.mockImplementation(async () => ({
+      events,
+      childRevision: "[]",
+    }));
+    mocks.capabilities.mockResolvedValue({
+      confirmed: true,
+      capabilities: { sharedSessionFiles: true },
+    });
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("v1");
+    await pushPass(sync);
+    const key = `org-1:${SESSION.session_id}`;
+    expect(store.get(org2CloudPushCursorsAtom)[key].sharedFilesVersion).toBe(1);
+    mocks.syncFiles.mockRejectedValue(new Error("offline"));
+    events = [...events, event("two", "[file](/sender/new.md)")];
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("v2");
+    await pushPass(sync);
+    expect(store.get(org2CloudPushCursorsAtom)[key].pushedCount).toBe(2);
+    expect(
+      store.get(org2CloudPushCursorsAtom)[key].sharedFilesVersion
+    ).toBeUndefined();
+    events = [...events, event("three", "third")];
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("v3");
+    await pushPass(sync);
+    expect(store.get(org2CloudPushCursorsAtom)[key].pushedCount).toBe(3);
+    expect(mocks.syncFiles).toHaveBeenCalledTimes(2);
+    expect(
+      store.get(org2CloudPushCursorsAtom)[key].sharedFilesVersion
+    ).toBeUndefined();
+    now += SHARED_FILE_RETRY_MS;
+    mocks.syncFiles.mockResolvedValue(true);
+    await pushPass(sync);
+    expect(mocks.syncFiles).toHaveBeenLastCalledWith(
+      expect.objectContaining({ events })
+    );
+    expect(store.get(org2CloudPushCursorsAtom)[key].sharedFilesVersion).toBe(1);
+    expect(cloud.rewriteSessionEvents).toHaveBeenCalledTimes(1);
+    expect(cloud.appendSessionEvents).toHaveBeenCalledTimes(2);
+    await pushPass(sync);
+    expect(mocks.syncFiles).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries pending files after a cold restart without reuploading a committed body", async () => {
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-stable");
+    const store = createStore();
+    const cloud = client();
+    const events = [event("file", "[report](/sender/report.md)")];
+    mocks.canonicalSnapshot.mockResolvedValue({ events, childRevision: "[]" });
+    mocks.capabilities.mockResolvedValue({
+      confirmed: true,
+      capabilities: { sharedSessionFiles: true },
+    });
+    mocks.syncFiles.mockRejectedValue(
+      new SharedSessionFileRequestError(
+        "quota",
+        400,
+        false,
+        "ORG2_QUOTA_EXCEEDED"
+      )
+    );
+    await pushPass(new Org2CloudSessionSync(() => store, cloud));
+    mocks.syncFiles.mockResolvedValue(true);
+    await pushPass(new Org2CloudSessionSync(() => store, cloud));
+    expect(cloud.rewriteSessionEvents).toHaveBeenCalledTimes(1);
+    expect(
+      store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+        .sharedFilesVersion
+    ).toBe(1);
+  });
+
+  it("propagates body publication failure without attempting files or committing a cursor", async () => {
+    vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-stable");
+    const store = createStore();
+    const cloud = client();
+    cloud.rewriteSessionEvents.mockRejectedValue(new Error("body rejected"));
+    mocks.canonicalSnapshot.mockResolvedValue({
+      events: [event("one", "first")],
+      childRevision: "[]",
+    });
+    await expect(
+      pushPass(new Org2CloudSessionSync(() => store, cloud))
+    ).rejects.toThrow("body rejected");
+    expect(mocks.syncFiles).not.toHaveBeenCalled();
+    expect(
+      store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+    ).toBeUndefined();
+  });
+
+  it.each(["account", "reset"])(
+    "does not certify files or swallow cancellation after %s changes during upload",
+    async (change) => {
+      vi.mocked(loadCliTranscriptRevision).mockResolvedValue("native-stable");
+      const store = createStore();
+      const cloud = client();
+      const sync = new Org2CloudSessionSync(() => store, cloud);
+      mocks.canonicalSnapshot.mockResolvedValue({
+        events: [event("one", "first")],
+        childRevision: "[]",
+      });
+      mocks.syncFiles.mockImplementation(async () => {
+        if (change === "account")
+          store.set(org2CloudAuthAtom, { ...AUTH, userId: "other" });
+        else sync.reset();
+        return true;
+      });
+      await expect(pushPass(sync)).rejects.toThrow("Cloud identity changed");
+      expect(
+        store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+          .sharedFilesVersion
+      ).toBeUndefined();
+      if (change === "reset") {
+        mocks.syncFiles.mockResolvedValue(true);
+        await pushPass(sync);
+        expect(mocks.syncFiles).toHaveBeenCalledTimes(2);
+        expect(
+          store.get(org2CloudPushCursorsAtom)[`org-1:${SESSION.session_id}`]
+            .sharedFilesVersion
+        ).toBe(1);
+      }
+    }
+  );
 
   it("refuses a native root that changes during replay materialization", async () => {
     const sync = new Org2CloudSessionSync(() => createStore(), client());

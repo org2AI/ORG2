@@ -14,4 +14,4 @@
 
 Totals: 4 resolved fixes, 4 keep with reason, 1 implemented abstraction. No raw production buttons, inputs or clickable substitutes introduced. Metadata colors use semantic tokens; shared components own typography/hover/focus. No global design-system sweep.
 
-Visual evidence in ../verification-2026-09-25/session-sources: final categorized light page, dark 340px page, empty/loading/error states. These render actual feature and shared components using fictional source fixtures; navigation and image loading are mocked. They are not native-app E2E evidence. Original user screenshot contains local filesystem paths and is not checked in.
+Visual evidence in ../verification-2026-09-25/session-sources: final categorized light page, dark 340px page, empty/loading/error states. These render actual feature and shared components using fictional source fixtures; navigation and image loading are mocked. They are not native-app E2E evidence. The user subsequently explicitly requested their original application screenshot; user-screenshot.png is included unchanged as the primary PR illustration.

@@ -80,9 +80,14 @@ export function setTeamInboxReadState(
         cloudResult = await dependencies.setMentionRead(
           scope.accessToken,
           scope.activeCloudOrgId,
-          item.target.commentId,
+          item.target.kind === "channel_message"
+            ? item.target.messageId
+            : item.target.commentId,
           read,
-          runtime.scopeController.signal
+          runtime.scopeController.signal,
+          ...(item.target.kind === "channel_message"
+            ? (["channel_message"] as const)
+            : ([] as const))
         );
       } else {
         const updated = read

@@ -63,4 +63,37 @@ describe("useTeamInboxNavigation", () => {
         )
     ).toBe(false);
   });
+  it("opens channel mentions in the cloud channel tab without creating an Agent session", () => {
+    const store = createInstrumentedStore();
+    let navigate: ReturnType<typeof useTeamInboxNavigation> | undefined;
+    function HookProbe(): null {
+      // eslint-disable-next-line react-hooks/globals -- test callback capture
+      navigate = useTeamInboxNavigation();
+      return null;
+    }
+    renderToString(
+      React.createElement(Provider, { store }, React.createElement(HookProbe))
+    );
+    navigate?.({
+      kind: "open_channel_message",
+      orgId: "org",
+      channelId: "channel",
+      channelName: "design",
+      visibility: "private",
+      messageId: "message",
+    });
+    const tab = store
+      .get(chatPanelTabsAtom)
+      .tabs.find((tab) => tab.type === "channel");
+    expect(tab).toMatchObject({
+      type: "channel",
+      channel: {
+        scope: "cloud",
+        orgId: "org",
+        channelId: "channel",
+        name: "design",
+      },
+    });
+    expect(mocks.openCloudConversationRoot).not.toHaveBeenCalled();
+  });
 });

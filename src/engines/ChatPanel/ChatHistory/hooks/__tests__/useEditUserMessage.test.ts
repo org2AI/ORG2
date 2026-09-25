@@ -21,6 +21,7 @@ import type {
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { appendQueuedUserEvents } from "@src/engines/SessionCore/derived/chatEvents";
+import { UserIntentSendError } from "@src/engines/SessionCore/services/userIntentDispatch";
 import {
   type QueuedMessage,
   messageQueueAtom,
@@ -833,14 +834,58 @@ describe("useEditUserMessage resend projection", () => {
     expect(submitUserIntentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         displayContent: "retry after the owner retired",
-        turnIntentId: "turn-intent-retired",
+        turnIntentId: expect.any(String),
       })
+    );
+    expect(submitUserIntentSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ turnIntentId: "turn-intent-retired" })
     );
     expect(removeByIdPrefixSpy).toHaveBeenCalledWith(
       "queued-user:queue-retired:",
       expect.any(String)
     );
   });
+
+  it.each([false, true])(
+    "preserves accepted history when retrying a retired execution (send failure: %s)",
+    async (sendFails) => {
+      const accepted = {
+        event: {
+          id: "queued-user:queue-accepted-retired:",
+          source: "user",
+          displayText: "accepted prompt",
+          displayStatus: "completed",
+          result: {
+            syntheticUserInput: true,
+            deliveryStatus: "sent",
+            executionError: "runner recovery blocked",
+            deliveryOwnerRetired: true,
+            queueMessageId: "queue-accepted-retired",
+            turnIntentId: "accepted-retired-intent",
+          },
+        },
+        chunk_id: "queued-user:queue-accepted-retired:",
+      } as unknown as OptimizedChatItem;
+      if (sendFails) {
+        submitUserIntentSpy.mockRejectedValueOnce(
+          new UserIntentSendError("provider unavailable", "replacement-row")
+        );
+      }
+      await act(async () => {
+        await editUserMessage?.(accepted, "accepted prompt");
+      });
+      expect(submitUserIntentSpy).toHaveBeenCalledOnce();
+      expect(submitUserIntentSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ turnIntentId: expect.any(String) })
+      );
+      expect(submitUserIntentSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ turnIntentId: "accepted-retired-intent" })
+      );
+      expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+      expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+      expect(updateByIdSpy).not.toHaveBeenCalled();
+    }
+  );
 
   it("edits a hydrated failed queue row and patches its existing bubble", async () => {
     queuedDeliveries.current = [

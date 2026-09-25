@@ -196,11 +196,14 @@ export function useQueueActiveDeliveries({
                 // Cloud failure row remains the visible terminal result. Mark
                 // that row so an explicit Retry mints a fresh intent instead
                 // of waiting for an owner that no longer exists.
+                // Retirement ends execution ownership, not delivery. A prompt
+                // already accepted by the provider remains canonical history
+                // even when its runner cannot be reconciled or Cloud closes it.
                 const retiredProjection = await setOptimisticQueueUserDelivery(
                   optimisticDeliveryProjectionParams(currentDelivery),
                   "failed",
                   error,
-                  { ownerRetired: true }
+                  { ownerRetired: true, executionFailed: accepted }
                 ).catch((projectionError) => {
                   log.error(
                     "[useQueueDispatch] could not mark retired canonical transcript row:",

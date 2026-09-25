@@ -997,17 +997,21 @@ describe("useQueueDispatch Agent Org intervention", () => {
     );
     expect(store.get(messageQueueAtom)).toEqual([]);
     expect(mocks.dispatchCanonicalConversation).toHaveBeenCalledOnce();
-    expect(mocks.updateById).toHaveBeenCalledWith(
+    expect(mocks.updateById).toHaveBeenLastCalledWith(
       "queued-user:canonical-accepted-mismatch:",
       expect.objectContaining({
         displayStatus: "completed",
-        result: expect.objectContaining({ deliveryStatus: "sent" }),
+        result: expect.objectContaining({
+          deliveryStatus: "sent",
+          executionError: "accepted runner diverged from canonical transcript",
+          deliveryOwnerRetired: true,
+        }),
       }),
       SESSION_ID
     );
   });
 
-  it.each(["recovery-blocked", "turn-closed"])(
+  it.each(["recovery-blocked", "turn-closed", "accepted-turn-closed"])(
     "restores a reconciled-away failed row before retiring its %s owner",
     async (verdict) => {
       mocks.updateById.mockImplementation(async (_id, patch) =>
@@ -1026,6 +1030,9 @@ describe("useQueueDispatch Agent Org intervention", () => {
             throw new QueuedConversationTurnClosedError("terminal verdict");
           }
           await callbacks.onAccepted(`runner-${message.id}`);
+          if (verdict === "accepted-turn-closed") {
+            throw new QueuedConversationTurnClosedError("terminal verdict");
+          }
           throw new QueuedConversationRecoveryBlockedError("terminal verdict");
         }
       );
@@ -1040,7 +1047,10 @@ describe("useQueueDispatch Agent Org intervention", () => {
           id: `queued-user:${message.id}:`,
           result: expect.objectContaining({
             turnIntentId: message.turnIntentId,
-            deliveryStatus: "failed",
+            deliveryStatus: verdict === "turn-closed" ? "failed" : "sent",
+            ...(verdict === "turn-closed"
+              ? { deliveryError: "terminal verdict" }
+              : { executionError: "terminal verdict" }),
             deliveryOwnerRetired: true,
           }),
         }),
@@ -1127,7 +1137,9 @@ describe("useQueueDispatch Agent Org intervention", () => {
         expect.objectContaining({
           displayText: message.displayContent,
           result: expect.objectContaining({
-            deliveryStatus: "failed",
+            deliveryStatus: "sent",
+            executionError:
+              "accepted runner diverged from canonical transcript",
             deliveryOwnerRetired: true,
           }),
         }),

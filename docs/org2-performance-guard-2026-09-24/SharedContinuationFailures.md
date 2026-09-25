@@ -10,6 +10,35 @@ Accepted empty execution failures now keep `deliveryStatus: sent` and carry a se
 
 The exact typed native terminal diagnostic is propagated through settled continuation results instead of being replaced by a generic error. Ordinary tool results and previous turns' diagnostic text are not interpreted as this turn's failure.
 
+## Recovery and retry design review
+
+The equivalent-path review found two additional violations. Accepted recovery-blocked and turn-closed settlement still demoted the user projection to failed delivery. Also, the retired-owner retry branch reused the terminal intent when text was unchanged, despite describing the operation as a fresh submission. Its unconditional placeholder removal would delete an accepted prompt once retirement correctly preserved delivery status. Regression assertions now inspect the final persisted settlement, not merely an earlier successful acceptance write.
+
+The acceptance criteria are: an accepted prompt stays in canonical history through execution failure and recovery retirement; retired terminal intents are never submitted again; accepted history without an empty-attempt proof is never removed by retry; persistence failure retains the same recovery owner without automatic provider re-execution. All four criteria have producer/retry-boundary regression coverage. Eight assertions failed on the preceding implementation and pass with this change.
+
+| Term                         | Authority                                                                              | Meaning and invariant                                                                          |
+| ---------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Delivery acceptance          | Native `session_turn_intents`, restored through `onAccepted` into the durable delivery | The provider accepted this intent; a later execution verdict cannot undo delivery              |
+| Cloud admission / acceptance | Conversation-plane user event and Cloud FIFO ledger                                    | Publication and execution lease ownership; neither alone proves native acceptance              |
+| Execution outcome            | Native terminal receipt / published terminal event                                     | Success, failure or recovery blockage; independent of delivery                                 |
+| Retry ownership              | Durable held queue row, or an explicitly retired EventStore projection                 | A held empty attempt uses existing lineage; a retired owner always mints a new intent          |
+| Safe supersession            | Sender-local native empty-attempt lineage                                              | Required before replacing an accepted attempt; arbitrary recovery errors provide no such proof |
+
+| Entry / verdict                              | User projection                        | Owner / retry behavior                                                                     |
+| -------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Pre-acceptance blocked or stale intent       | Failed delivery                        | Hold existing row for explicit retry                                                       |
+| Proven empty accepted failure                | Sent + execution error                 | Hold existing queue owner; explicit retry uses native lineage                              |
+| Accepted recovery-blocked or turn-closed     | Sent + execution error + retired owner | Persist projection before retiring; retry appends a fresh intent and preserves old history |
+| Turn-closed before native acceptance         | Failed delivery + retired owner        | Fresh intent on explicit retry; replace unsent placeholder only                            |
+| Projection/storage failure during retirement | Existing accepted owner retained       | Existing bounded recovery backoff; no new provider send                                    |
+| Unknown error after acceptance               | Existing accepted owner retained       | Recover the same native intent, never infer a safe resend                                  |
+
+The same settlement function handles live acceptance and accepted rows restored after persistence recovery. Retry passes the new identity through either the canonical callback or ordinary submission. No new dispatch authority, timer, global cache, wire field or history migration is introduced. Strict divergence checks remain: preserving history does not authorize discarding an unpublished tool tail to make a retry succeed.
+
+Architecture layers reviewed: compilation (targeted tests, typecheck and lint), duplicate control paths (all terminal queue verdicts), naming/semantic overloading (table above), defaults (unknown post-acceptance errors remain recovery-only), boundaries (queue versus native versus Cloud authority), understandability (explicit history-preservation comments), persistence/wire compatibility (existing local metadata only), entry parity (live/recovered/explicit retry), and resolver symmetry (retired retry identity is independent of whether text changed). Unrelated provider/account/workspace resolver chains and repository-wide dead-code analysis were intentionally excluded.
+
+The original nine-character discrepancy is still unresolved. The two currently available materialized copies have identical 11,899-character outputs; trimming would remove only one character, and neither contains CRLF. That rules out those simple transformations for the available copies, but does not identify what happened to the unavailable 11,890-character artifact. No fuzzy comparison or historical rewrite is used.
+
 ## Historical remediation and compatibility
 
 Legacy accepted failed-send projections are restored in canonical reads only when existing sender-local native retry lineage matches the root session, intent, and queue identity. Cloud user publication alone is not treated as acceptance. No native transcript, Cloud audit row, or historical error is deleted. Previously persisted duplicate error cards can remain in old UI history; new attempts use the corrected lifecycle.
@@ -41,7 +70,8 @@ The desktop checks used the patched frontend with the existing isolated acceptan
 
 ## Verification
 
-- Targeted Vitest run: 16 suites, 379 tests passed (exact file list in the PR).
+- Targeted Vitest run: 16 suites, 382 tests passed (exact file list in the PR).
+- Retirement/retry regression: `pnpm test src/engines/SessionCore/hooks/session/__tests__/useQueueDispatch.intervention.test.ts src/engines/ChatPanel/ChatHistory/hooks/__tests__/useEditUserMessage.test.ts`: 8 failed before the follow-up fix; 66 passed after it. This includes projection failure/recovery and another send failure during retired-owner retry. These follow-up fault paths were tested through the production hooks with injected dependencies, not re-exercised in the real desktop.
 - `pnpm run typecheck:fast`: passed.
 - `pnpm exec eslint <changed TS/TSX files> --max-warnings 0`: passed.
 - `cargo test -p orgtrack_core sources::codex::app::transcript --lib`: 30 passed, 3 existing opt-in image acceptance tests ignored (local artifacts/resource acceptance required).

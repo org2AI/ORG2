@@ -3,7 +3,7 @@ import { act, createElement, useEffect } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getPRLocal } from "@src/api/tauri/github";
+import { getChecksLocal, getPRLocal } from "@src/api/tauri/github";
 import { readSessionPullRequests } from "@src/api/tauri/session/sessionPullRequests";
 import {
   type PullRequestHeadChecks,
@@ -12,7 +12,10 @@ import {
 
 import { useSessionPullRequests } from "./useSessionPullRequests";
 
-vi.mock("@src/api/tauri/github", () => ({ getPRLocal: vi.fn() }));
+vi.mock("@src/api/tauri/github", () => ({
+  getPRLocal: vi.fn(),
+  getChecksLocal: vi.fn(),
+}));
 vi.mock("@src/api/tauri/session/sessionPullRequests", () => ({
   readSessionPullRequests: vi.fn(),
 }));
@@ -150,6 +153,46 @@ describe("explicit conversation pull request attachments", () => {
     expect(container.textContent).toBe("PR 2153");
     await act(async () => pending.resolve(metadata(2152)));
     expect(container.textContent).toBe("PR 2153");
+  });
+  it("retains a loaded title through remount while a real shared-reader refresh is pending", async () => {
+    const actual = await vi.importActual<
+      typeof import("@src/services/git/pullRequestHeadChecks")
+    >("@src/services/git/pullRequestHeadChecks");
+    actual.clearPullRequestHeadChecks();
+    const oldNow = Date.now;
+    let now = oldNow();
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const pending = deferred<Record<string, unknown>>();
+    try {
+      vi.mocked(loadPullRequestHeadChecks).mockImplementation(
+        actual.loadPullRequestHeadChecks
+      );
+      vi.mocked(getPRLocal).mockResolvedValue({
+        ...metadata(2152).detail,
+        head: { sha: "head", ref: "feature" },
+      });
+      vi.mocked(getChecksLocal).mockRejectedValue(
+        new Error("checks unavailable")
+      );
+      await render();
+      expect(container.textContent).toBe("PR 2152");
+      expect(latest.items[0].error).toBe(true);
+      act(() => root.unmount());
+      root = createRoot(container);
+      now += 60_000;
+      vi.mocked(getPRLocal).mockReturnValue(pending.promise);
+      await render();
+      expect(container.textContent).toBe("PR 2152");
+      expect(latest.loading).toBe(true);
+      expect(latest.items[0].metadataLoading).toBe(false);
+      await act(async () =>
+        pending.resolve({ ...metadata(2152).detail, title: "Updated PR title" })
+      );
+      expect(container.textContent).toBe("Updated PR title");
+    } finally {
+      clock.mockRestore();
+      actual.clearPullRequestHeadChecks();
+    }
   });
   it("defers hidden reads and revalidates once visible", async () => {
     visibility = "hidden";

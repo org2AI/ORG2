@@ -22,6 +22,7 @@ export interface SessionPullRequest {
   headBranch: string;
   ciStatus: BranchCiStatus | null;
   error: boolean;
+  metadataLoading?: boolean;
 }
 
 export function canonicalPullRequestUrl(url: string): string | null {
@@ -95,6 +96,7 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
             number: ref.number,
             repoFullName: `${ref.owner}/${ref.repo}`,
             title: `#${ref.number}`,
+            metadataLoading: true,
             state: "unknown",
             draft: false,
             headBranch: "",
@@ -118,6 +120,7 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
               const head = detail.head as { ref?: unknown } | undefined;
               items[index] = {
                 ...items[index],
+                metadataLoading: false,
                 title:
                   typeof detail.title === "string"
                     ? detail.title
@@ -179,6 +182,7 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
               items[index] = {
                 ...item,
                 ...pr,
+                metadataLoading: false,
                 headBranch: typeof head?.ref === "string" ? head.ref : "",
                 ciStatus:
                   lifecycle === "open"
@@ -193,7 +197,11 @@ export function useSessionPullRequests(sessionId?: string, reloadKey?: string) {
               };
             } catch {
               if (cancelled) return;
-              items[index] = { ...items[index], error: true };
+              items[index] = {
+                ...items[index],
+                metadataLoading: false,
+                error: true,
+              };
             }
             setState({
               sessionId,

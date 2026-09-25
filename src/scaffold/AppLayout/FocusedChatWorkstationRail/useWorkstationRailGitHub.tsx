@@ -156,7 +156,9 @@ export function useWorkstationRailGitHub({
           className={getPrStatusVariant(lifecycle).textClass}
         />
       );
-      const label = pr.title || `#${pr.number}`;
+      const label = pr.metadataLoading
+        ? `#${pr.number} · ${t("common:actions.loading")}`
+        : pr.title || `#${pr.number}`;
       const ciLabel = ciStatus
         ? t(
             `common:git.pr.checks.${ciStatus === "success" ? "passed" : ciStatus === "failure" ? "failed" : ciStatus === "pending" ? "running" : ciStatus}Short`

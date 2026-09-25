@@ -168,6 +168,32 @@ describe("conversation pull request association", () => {
     );
     expect(openLink).not.toHaveBeenCalled();
   });
+  it("labels a cold metadata request as loading instead of a completed number-only PR", async () => {
+    attachments.mockReturnValue({
+      items: [
+        {
+          number: 2152,
+          url: "https://github.com/acme/repo/pull/2152",
+          repoFullName: "acme/repo",
+          title: "#2152",
+          state: "unknown",
+          draft: false,
+          headBranch: "",
+          ciStatus: null,
+          error: false,
+          metadataLoading: true,
+        },
+      ],
+      loading: true,
+      error: false,
+      refresh: vi.fn(),
+    });
+    lookup.mockReturnValue({ pr: null });
+    await render({ sessionId: "cold" });
+    expect(latest.pullRequestItems[0].label).toBe(
+      "#2152 · common:actions.loading"
+    );
+  });
   it("uses the session worktree and opens native PR details with that scope", async () => {
     lookup.mockImplementation(({ repoPath }) => ({
       pr:

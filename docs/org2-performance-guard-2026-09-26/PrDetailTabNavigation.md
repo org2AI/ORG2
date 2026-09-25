@@ -26,3 +26,9 @@ Tests cover cold load with blocked checks, late joins, cache hits, callback exce
 ## Workstation PR tab title
 
 The workstation factory previously formatted only the PR number. It now includes the title; the mounted detail renderer updates tab metadata from the existing scoped PR detail when available, including restored tabs and remote renames. Equality checks prevent redundant writes; no extra request, listener or timer is introduced. The shared truncated tab label and tooltip both use this title. Three regressions cover initial opening, restored title hydration/rename, and number-only loading fallback.
+
+## Title retention across remounts
+
+The complete metadata-plus-checks snapshot expired after 7.5 seconds, and failed checks never retained a complete snapshot. Remounted rails therefore lost previously loaded titles. The shared loader now retains successful metadata separately in a bounded 32-entry memory cache, seeds it while revalidating, and uses case-insensitive repository keys. Invalidation/clear remove both caches; generation and request order reject late cache writes. CI refresh still uses the original request and coalescing path. True cold loads explicitly display loading until metadata settles; failure keeps the existing retry behavior. GitHub remains authoritative, attachment storage still contains URLs only, and no persisted-data cleanup is needed.
+
+Verification: 55 tests across the shared loader, attachment hook, rail labels and branch consumers pass, including the actual shared loader with a checks failure followed by remount past the TTL and a delayed renamed title. TypeScript, changed-file ESLint and typed lint pass (0 new/increased findings). No new timer or additional request is introduced; the additional metadata cache is capped at 32 entries and follows existing clear/invalidate ownership. Native timing/CPU/RSS and account-switch behavior remain unverified under the limitations above.

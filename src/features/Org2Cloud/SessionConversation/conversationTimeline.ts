@@ -32,6 +32,7 @@ import {
   buildConversationPlaneStreamEvents,
   planeArtifactOrigin,
 } from "./conversationPlaneEvents";
+import { reconcileLegacyTerminalIdentity } from "./legacyTerminalIdentity";
 
 /**
  * Plane identity of an event. User rows match on the turn-intent id so the
@@ -99,6 +100,7 @@ export function mergePlaneIntoTranscript(
 ): SessionEvent[] {
   base = restoreAcceptedRetryUsers(base);
   if (rows.length === 0) return [...base];
+  rows = reconcileLegacyTerminalIdentity(base, rows);
   // A provider-native owner can fold a plane turn into its own transcript and
   // later publish that Session replay. Imports then contain both the original
   // plane identity and a namespaced native echo of it. Collapse those copies

@@ -12,3 +12,7 @@ UI actions now open the existing GitHub PR tab even if local repository resoluti
 Automated coverage: 92 tests across rail routing, real tab atoms, detail loader, scoped state, checks polling, detail panel and chat PR view. TypeScript checking passes. Native dev receives the production changes. Full native click-through and CPU/RSS measurements could not be performed: native app is unavailable to the UI automation tool, and browser mode reports Tauri IPC unavailable. No performance improvement is claimed.
 
 Performance verdict: blocked for real native visible/hidden idle and repeated-open measurements; scoped lifecycle regressions pass.
+
+## Pane ownership correction
+
+The rail dispatches to EditorTabService plus revealMyStation, not the chat-panel tab opener. This keeps the selected conversation mounted beside the existing workstation PR renderer. No new background resources or caches. Six focused tests pass; the real store test verifies opening two PRs and refocusing one without changing the chat tabs object or selected conversation. Previously opened chat-pane PR tabs are not destructively migrated.

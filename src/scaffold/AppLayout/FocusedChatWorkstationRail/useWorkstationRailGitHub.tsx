@@ -1,6 +1,5 @@
 /** Git workspace actions and the active conversation's associated pull request. */
 import type { TFunction } from "i18next";
-import { useSetAtom } from "jotai";
 import { useMemo } from "react";
 
 import GitHubIcon from "@src/assets/channelIcons/github.svg";
@@ -18,7 +17,7 @@ import {
   Refresh04Icon,
 } from "@src/icons";
 import { WorkStationViewService } from "@src/services/workStation/WorkStationViewService";
-import { openGitHubPrInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
+import { openPullRequestTab } from "@src/services/workStation/openPullRequestTab";
 import {
   getPrStatusLabelKey,
   getPrStatusVariant,
@@ -53,7 +52,6 @@ export function useWorkstationRailGitHub({
     sessionContext?.sessionId,
     sessionContext?.updatedAt
   );
-  const openPullRequest = useSetAtom(openGitHubPrInChatPanelTabAtom);
   // An unresolved conversation scope never borrows the active workspace's PR.
   const sessionBranch =
     sessionContext?.worktreeBranchName ?? sessionContext?.branchName;
@@ -189,7 +187,7 @@ export function useWorkstationRailGitHub({
               (sessionStatus.repoFullName &&
                 linkedPr.repoFullName.toLowerCase() ===
                   sessionStatus.repoFullName.toLowerCase()));
-          openPullRequest({
+          openPullRequestTab({
             prNumber: pr.number,
             prTitle: label,
             prUrl: pr.url,
@@ -234,7 +232,6 @@ export function useWorkstationRailGitHub({
     sessionBranch,
     sessionRepoId,
     t,
-    openPullRequest,
   ]);
 
   return {

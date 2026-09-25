@@ -24,12 +24,8 @@ vi.mock("./useSessionPullRequests", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./useSessionPullRequests")>()),
   useSessionPullRequests: attachments,
 }));
-vi.mock("jotai", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("jotai")>()),
-  useSetAtom: () => openPr,
-}));
-vi.mock("@src/store/chatPanel/chatPanelTabsAtom", () => ({
-  openGitHubPrInChatPanelTabAtom: {},
+vi.mock("@src/services/workStation/openPullRequestTab", () => ({
+  openPullRequestTab: openPr,
 }));
 vi.mock("@src/hooks/git/useActiveRepoRef", () => ({
   useActiveRepoRef: () => ({ repoId: "active", repoPath: "/active" }),

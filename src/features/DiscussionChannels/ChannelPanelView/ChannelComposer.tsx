@@ -20,6 +20,7 @@ import type { ComposerInputRef } from "@src/components/ComposerInput";
 import { COMPOSER_BOTTOM_DOCK_PADDING_CLASS } from "@src/config/composerStackTokens";
 import { CHAT_PANEL_WIDTH_TOKENS } from "@src/config/detailPanelTokens";
 import InputArea from "@src/engines/ChatPanel/InputArea";
+import type { CustomMentionOption } from "@src/engines/ChatPanel/hooks/useInputArea/types";
 
 import type { ChannelPostHandler } from "./channelPostHandler";
 
@@ -35,6 +36,7 @@ export interface ChannelComposerProps {
    * previous one's editor state.
    */
   composerId: string;
+  mentionOptions?: ReadonlyArray<CustomMentionOption>;
   placeholder: string;
   /** Null on the cloud variant: there is no message plane to post to. */
   onSubmit: ChannelPostHandler | null;
@@ -57,6 +59,7 @@ const noopSubmit: ChannelPostHandler = async () => true;
 
 const ChannelComposer: React.FC<ChannelComposerProps> = ({
   composerId,
+  mentionOptions,
   placeholder,
   onSubmit,
   notice,
@@ -94,6 +97,7 @@ const ChannelComposer: React.FC<ChannelComposerProps> = ({
         acceptDraggedPills={acceptDraggedPills}
         sessionId={composerId}
         sessionScope="none"
+        customMentionOptions={mentionOptions}
         placeholder={placeholder}
         onSubmitOverride={onSubmit ?? noopSubmit}
         submitDisabled={onSubmit === null}

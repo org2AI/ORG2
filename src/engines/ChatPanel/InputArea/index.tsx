@@ -244,6 +244,7 @@ const InputAreaInteractive: React.FC<InputAreaProps> = memo(
           slashLoading={slashLoading}
           currentMode={currentMode}
           includeProjectMode={includeProjectMode}
+          showModes={showAgentControls && !model.teamChatActive}
           slashQuery={slashQuery}
           onSlashCommandClose={handleSlashCommandClose}
           onSlashSelect={handleSlashSelect}

@@ -437,6 +437,57 @@ describe("useCloudChannelMessages", () => {
     expect(refusal.code).toBe("ORG2_CHANNEL_POST_FORBIDDEN");
   });
 
+  it("snapshots mention identities before refreshing auth and carries them through the write", async () => {
+    mocks.listCloudChannelMessages.mockResolvedValue(page([]));
+    renderProbe("org-a", "chan-1");
+    await flushAsync();
+    const token = deferred<typeof AUTH>();
+    mocks.ensureFreshSession.mockReturnValueOnce(token.promise);
+    const recipients = ["user-b"];
+    const response = makeMessage({
+      id: "mentioned",
+      mentionedUserIds: ["user-b"],
+    });
+    mocks.postCloudChannelMessage.mockResolvedValue(response);
+    let pending!: Promise<void>;
+    act(() => {
+      pending = state().postMessage("@B", recipients);
+    });
+    recipients[0] = "user-c";
+    expect(state().messages[0].mentionedUserIds).toEqual(["user-b"]);
+    await act(async () => {
+      token.resolve({ ...AUTH, accessToken: "fresh-token" });
+      await pending;
+    });
+    expect(mocks.postCloudChannelMessage).toHaveBeenCalledWith(
+      "fresh-token",
+      "org-a",
+      "chan-1",
+      "@B",
+      { mentionedUserIds: ["user-b"] }
+    );
+    expect(state().messages).toEqual([response]);
+  });
+
+  it("refuses a pending send when the channel changes during auth refresh", async () => {
+    mocks.listCloudChannelMessages.mockResolvedValue(page([]));
+    renderProbe("org-a", "chan-1");
+    await flushAsync();
+    const token = deferred<typeof AUTH>();
+    mocks.ensureFreshSession.mockReturnValueOnce(token.promise);
+    let pending!: Promise<void>;
+    act(() => {
+      pending = state().postMessage("old draft", ["user-b"]);
+    });
+    const rejection = expect(pending).rejects.toThrow("scope changed");
+    renderProbe("org-a", "chan-2");
+    await act(async () => {
+      token.resolve({ ...AUTH, accessToken: "fresh-token" });
+      await rejection;
+    });
+    expect(mocks.postCloudChannelMessage).not.toHaveBeenCalled();
+  });
+
   it("replaces the optimistic row with the server row on success", async () => {
     mocks.listCloudChannelMessages.mockResolvedValue(page([]));
     renderProbe("org-a", "chan-1");

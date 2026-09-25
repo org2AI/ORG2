@@ -45,13 +45,18 @@ export function useCloudChannelMessageMutations(input: {
   } = input;
 
   const postMessage = useCallback(
-    async (body: string): Promise<void> => {
+    async (
+      body: string,
+      mentionedUserIds: readonly string[] = []
+    ): Promise<void> => {
       if (!orgId || !channelId) throw new Error("no channel");
+      const recipients = [...mentionedUserIds];
       const keyAtStart = listKeyRef.current;
       const clientKey = idempotencyRef.current ? crypto.randomUUID() : null;
       const optimistic = createOptimisticMessage({
         channelId,
         body,
+        mentionedUserIds: recipients,
         authorUserId: authRef.current?.userId ?? "",
         authorDisplayName: authRef.current?.profile?.displayName ?? undefined,
         clientKey: clientKey ?? undefined,
@@ -61,12 +66,19 @@ export function useCloudChannelMessageMutations(input: {
       );
       try {
         const accessToken = await getFreshAccessToken();
+        if (listKeyRef.current !== keyAtStart)
+          throw new Error("channel scope changed");
         const message = await postCloudChannelMessage(
           accessToken,
           orgId,
           channelId,
           body,
-          clientKey ? { clientKey } : undefined
+          clientKey || recipients.length > 0
+            ? {
+                ...(clientKey ? { clientKey } : {}),
+                ...(recipients.length ? { mentionedUserIds: recipients } : {}),
+              }
+            : undefined
         );
         if (listKeyRef.current !== keyAtStart) return;
         setMessages((current) =>

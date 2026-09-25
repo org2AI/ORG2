@@ -37,6 +37,7 @@ const RESULT_RENDER_KEYS = [
   // Keep retry actions current even when the visible message body is unchanged.
   "queueMessageId",
   "deliveryOwnerRetired",
+  "executionError",
   "deliveryStatus",
   "deliveryError",
   "turnIntentId",

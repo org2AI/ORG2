@@ -18,6 +18,7 @@ import {
 } from "@src/engines/SessionCore/conversations/conversationSenderMetadata";
 import { CONVERSATION_TURN_ID_ARG } from "@src/engines/SessionCore/conversations/localConversationContinuation";
 import { nativeConversationEventSemanticKey } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
+import { restoreAcceptedRetryUsers } from "@src/engines/SessionCore/conversations/queuedRetryLineage";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 import { isSyntheticUserInputEvent } from "@src/engines/SessionCore/sync/utils/activityIds";
 
@@ -31,6 +32,7 @@ import {
   buildConversationPlaneStreamEvents,
   planeArtifactOrigin,
 } from "./conversationPlaneEvents";
+import { reconcileLegacyTerminalIdentity } from "./legacyTerminalIdentity";
 
 /**
  * Plane identity of an event. User rows match on the turn-intent id so the
@@ -96,7 +98,9 @@ export function mergePlaneIntoTranscript(
   streamSessionId: string,
   viewer: ConversationViewerState = CONVERSATION_VIEWER_LOADING
 ): SessionEvent[] {
+  base = restoreAcceptedRetryUsers(base);
   if (rows.length === 0) return [...base];
+  rows = reconcileLegacyTerminalIdentity(base, rows);
   // A provider-native owner can fold a plane turn into its own transcript and
   // later publish that Session replay. Imports then contain both the original
   // plane identity and a namespaced native echo of it. Collapse those copies
@@ -115,7 +119,8 @@ export function mergePlaneIntoTranscript(
       // behind a completed copy. Distinct intents remain independent.
       if (
         isSyntheticUserInputEvent(event) &&
-        event.result?.deliveryStatus === "failed"
+        (event.result?.deliveryStatus === "failed" ||
+          Boolean(event.result?.executionError))
       ) {
         uniqueBase[existingIndex] = event;
       }

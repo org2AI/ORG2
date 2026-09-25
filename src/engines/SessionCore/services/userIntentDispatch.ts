@@ -201,6 +201,8 @@ export interface OptimisticUserDeliveryOptions {
    * a queue row that will never return.
    */
   ownerRetired?: boolean;
+  /** Provider accepted this prompt; only execution, not delivery, failed. */
+  executionFailed?: boolean;
 }
 
 function optimisticQueueUserEvent(
@@ -222,8 +224,9 @@ function optimisticQueueUserEvent(
     createdAt: params.createdAt,
     imageDataUrls: params.imageDataUrls,
     turnIntentId: params.turnIntentId,
-    deliveryStatus: status,
-    deliveryError: reason,
+    deliveryStatus: options?.executionFailed ? "sent" : status,
+    deliveryError: options?.executionFailed ? undefined : reason,
+    executionError: options?.executionFailed ? reason : undefined,
     queueMessageId: params.queueMessageId,
     ...(options?.ownerRetired ? { deliveryOwnerRetired: true } : {}),
   });

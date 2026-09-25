@@ -216,6 +216,8 @@ async function continueLocalConversationAtQueueHead(
     return {
       sessionId: compatible.sessionId,
       terminalStatus: finished.terminalStatus,
+      terminalError: finished.terminalError,
+      terminalDiagnostic: finished.terminalDiagnostic,
       agentTail: finished.agentTail,
     };
   }
@@ -322,6 +324,8 @@ export async function recoverLocalConversationTurn(
     return {
       sessionId: params.runnerSessionId,
       terminalStatus: finished.terminalStatus,
+      terminalError: finished.terminalError,
+      terminalDiagnostic: finished.terminalDiagnostic,
       agentTail: finished.agentTail,
     };
   } catch (error) {

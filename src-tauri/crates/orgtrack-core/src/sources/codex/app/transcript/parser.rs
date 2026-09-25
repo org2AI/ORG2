@@ -403,9 +403,9 @@ pub(super) fn parse_codex_app_bounded<'a>(
                         .and_then(Value::as_str)
                         .is_some_and(|id| {
                             id.starts_with(NATIVE_SOURCE_EVENT_ID_PREFIX)
-                                || id.strip_prefix("msg_").is_some_and(|id| {
-                                    id.starts_with(NATIVE_SOURCE_EVENT_ID_PREFIX)
-                                })
+                                || id
+                                    .strip_prefix("msg_")
+                                    .is_some_and(|id| id.starts_with(NATIVE_SOURCE_EVENT_ID_PREFIX))
                         });
                     let has_portable_user_images =
                         !user_image_data_urls_from_response_message(&parsed.payload).is_empty();
@@ -552,8 +552,11 @@ pub(super) fn parse_codex_app_bounded<'a>(
                             chunk.result["exit_code"] = json!(decoded.exit_code);
                             chunk.result["is_error"] = json!(decoded.exit_code != 0);
                             chunk.result["success"] = json!(decoded.exit_code == 0);
+                            chunk.result["interrupted"] = json!(decoded.exit_code == 130);
                             chunk.result["status"] = json!(if decoded.exit_code == 0 {
                                 "completed"
+                            } else if decoded.exit_code == 130 {
+                                "interrupted"
                             } else {
                                 "failed"
                             });

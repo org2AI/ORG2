@@ -39,9 +39,10 @@ export function isRetryableFailedUserIntentHeader(
   const result = header?.event?.result;
   return Boolean(
     header?.event?.source === "user" &&
-    header.event.displayStatus === "failed" &&
+    (header.event.displayStatus === "failed" ||
+      Boolean(result?.executionError)) &&
     result?.syntheticUserInput === true &&
-    result.deliveryStatus === "failed" &&
+    (result.deliveryStatus === "failed" || Boolean(result.executionError)) &&
     typeof result.turnIntentId === "string" &&
     result.turnIntentId.length > 0
   );

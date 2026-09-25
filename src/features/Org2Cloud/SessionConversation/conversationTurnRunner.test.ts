@@ -1,3 +1,4 @@
+import terminalFixture from "@/src-tauri/crates/orgtrack-core/src/sources/fixtures/codex_terminal_error.json";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { projectNativeConversationItems } from "@src/engines/SessionCore/conversations/nativeConversationMaterializer";
@@ -18,6 +19,7 @@ import {
 } from "@src/features/Org2Cloud/sessionSharedFileCandidates";
 
 import { planeArtifactOrigin } from "./conversationPlaneEvents";
+import { mergePlaneIntoTranscript } from "./conversationTimeline";
 import {
   buildPushedUserEvent,
   runConversationTurn,
@@ -158,6 +160,7 @@ describe("runConversationTurn", () => {
     mocks.continueLocalConversation.mockResolvedValueOnce({
       sessionId: "runner",
       terminalStatus: "failed",
+      terminalError: "Usage limit reached until tomorrow",
       agentTail: [],
     });
     const params = retryParams();
@@ -172,6 +175,96 @@ describe("runConversationTurn", () => {
       mocks.persistCloudEmptyFailure.mock.invocationCallOrder[0]
     ).toBeLessThan(params.publishTail.mock.invocationCallOrder[0]!);
     expect(params.publishTail).toHaveBeenCalledOnce();
+    expect(params.publishTail.mock.calls[0][1]).toEqual([
+      expect.objectContaining({
+        displayText: "Usage limit reached until tomorrow",
+      }),
+    ]);
+  });
+
+  it("publishes the native receipt identity so a shared owner has one terminal error", async () => {
+    const diagnostic = {
+      ...terminalFixture.diagnostic,
+      sessionId: "runner",
+      source: "system",
+      createdAt: "2026-09-24T00:00:00Z",
+    } as unknown as SessionEvent;
+    const params = retryParams();
+    mocks.continueLocalConversation.mockResolvedValueOnce({
+      sessionId: "runner",
+      terminalStatus: "failed",
+      terminalError: diagnostic.result.error,
+      terminalDiagnostic: diagnostic,
+      agentTail: [],
+    });
+    await expect(runConversationTurn(params)).rejects.toBeInstanceOf(
+      QueuedConversationTurnFailedError
+    );
+    const published = params.publishTail.mock.calls[0][1] as SessionEvent[];
+    expect(published).toHaveLength(1);
+    expect(published[0].args.__orgiiNativeTerminalDiagnostic).toEqual(
+      diagnostic.args.__orgiiNativeTerminalDiagnostic
+    );
+    const rows = published.map((event, index) => ({
+      id: `cloud-${index}`,
+      rootSessionId: "shared-root",
+      authorUserId: "owner",
+      turnId: params.turnIntentId,
+      seq: index + 1,
+      event,
+      createdAt: event.createdAt,
+    }));
+    const merged = mergePlaneIntoTranscript([diagnostic], rows, "shared-root");
+    expect(merged).toHaveLength(1);
+    expect(merged[0].result.error).toBe(diagnostic.result.error);
+    expect(projectNativeConversationItems(merged)).toEqual([]);
+    // Equal text from another native receipt is a different failure.
+    const other = { ...diagnostic, id: "another-native-receipt" };
+    expect(
+      mergePlaneIntoTranscript([diagnostic, other], rows, "shared-root")
+    ).toHaveLength(2);
+    expect(mergePlaneIntoTranscript([], rows, "receiver")).toHaveLength(1);
+  });
+
+  it("publishes a terminal receipt after partial output without treating the attempt as empty", async () => {
+    const diagnostic = {
+      ...terminalFixture.diagnostic,
+      sessionId: "runner",
+      source: "system",
+    } as unknown as SessionEvent;
+    const answer = {
+      id: "partial-answer",
+      chunk_id: "partial-answer",
+      sessionId: "runner",
+      source: "assistant",
+      actionType: "assistant",
+      functionName: "assistant",
+      args: {},
+      result: { message: "Partial answer" },
+      displayText: "Partial answer",
+      uiCanonical: "agent_message",
+      displayStatus: "completed",
+      displayVariant: "message",
+      activityStatus: "agent",
+      createdAt: "2026-09-24T00:00:00Z",
+    } as SessionEvent;
+    mocks.continueLocalConversation.mockResolvedValueOnce({
+      sessionId: "runner",
+      terminalStatus: "failed",
+      terminalDiagnostic: diagnostic,
+      agentTail: [answer],
+    });
+    const params = retryParams();
+    await expect(runConversationTurn(params)).resolves.toMatchObject({
+      terminalStatus: "failed",
+    });
+    expect(mocks.persistCloudEmptyFailure).not.toHaveBeenCalled();
+    const published = params.publishTail.mock.calls[0][1] as SessionEvent[];
+    expect(published).toHaveLength(2);
+    expect(published[0].displayText).toBe("Partial answer");
+    expect(published[1].args.__orgiiNativeTerminalDiagnostic).toEqual(
+      diagnostic.args.__orgiiNativeTerminalDiagnostic
+    );
   });
 
   it("recovers an ambiguous failure publication without sending the provider again", async () => {

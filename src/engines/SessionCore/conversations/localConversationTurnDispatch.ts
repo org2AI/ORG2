@@ -42,6 +42,7 @@ import {
   materializeNativeConversation,
   supportsNativeConversationTarget,
 } from "./nativeConversationMaterializer";
+import { nativeTurnFailureDiagnostic } from "./nativeTerminalDiagnostic";
 import { QueuedConversationRecoveryPendingError } from "./queuedConversationContract";
 
 const TURN_WAIT_WINDOW_MS = 60_000;
@@ -144,7 +145,10 @@ export async function finishConversationTurn(params: {
   /** Recovery created this frontend lifecycle after provider acceptance. */
   settleAdoptedLifecycle?: boolean;
 }): Promise<
-  Pick<ContinueLocalConversationResult, "terminalStatus" | "agentTail">
+  Pick<
+    ContinueLocalConversationResult,
+    "terminalStatus" | "agentTail" | "terminalError" | "terminalDiagnostic"
+  >
 > {
   const terminalStatus = await waitForTurnTerminal(
     params.sessionId,
@@ -166,8 +170,16 @@ export async function finishConversationTurn(params: {
   if (params.settleAdoptedLifecycle) {
     settleUserIntentLifecycle(params, terminalStatus);
   }
+  const terminalDiagnostic =
+    terminalStatus === "failed"
+      ? nativeTurnFailureDiagnostic(settled.events, params.turnIntentId)
+      : undefined;
   return {
     terminalStatus,
+    terminalDiagnostic,
+    terminalError: (
+      terminalDiagnostic?.result.error as string | undefined
+    )?.trim(),
     agentTail: await scopeConversationArtifacts(
       params.sessionId,
       settled.agentTail
@@ -376,6 +388,8 @@ export async function runCreatedConversationTurn(
   return {
     sessionId: created.sessionId,
     terminalStatus: finished.terminalStatus,
+    terminalError: finished.terminalError,
+    terminalDiagnostic: finished.terminalDiagnostic,
     agentTail: finished.agentTail,
   };
 }

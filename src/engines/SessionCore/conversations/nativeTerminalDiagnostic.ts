@@ -1,6 +1,7 @@
 /** Parser-owned terminal receipts remain in audit history, not provider context. */
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
+import { conversationTurnIdOf } from "./localConversationTurnIdentity";
 import { nativeSourceEventId } from "./nativeSourceEventIdentity";
 
 const TERMINAL_DIAGNOSTIC_ARG = "__orgiiNativeTerminalDiagnostic";
@@ -84,4 +85,30 @@ export function provenFailedNativeDiagnosticSources(
         : [];
     })
   );
+}
+
+/** Read only this intent's typed terminal receipt, never an earlier turn's error. */
+export function nativeTurnFailureDiagnostic(
+  events: readonly SessionEvent[],
+  turnIntentId: string
+): SessionEvent | undefined {
+  let anchor = -1;
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (events[index].source === "user") {
+      if (conversationTurnIdOf(events[index]) === turnIntentId) anchor = index;
+      break;
+    }
+  }
+  if (anchor < 0) return undefined;
+  const suffix = events.slice(anchor + 1);
+  const sources = provenFailedNativeDiagnosticSources(
+    suffix,
+    events[anchor].sessionId
+  );
+  for (const event of suffix) {
+    if (!sources.has(nativeSourceEventId(event))) continue;
+    const error = event.result?.error;
+    if (typeof error === "string" && error.trim()) return event;
+  }
+  return undefined;
 }

@@ -44,6 +44,47 @@ const retried = () =>
   beginQueuedRetry(initial(), { ...message, turnIntentId: "retry" });
 
 describe("explicit empty failed queue attempt lineage", () => {
+  it("restores a legacy accepted failed prompt after restart without accepting unsent rows", () => {
+    const legacy = {
+      ...failed,
+      displayStatus: "failed",
+      result: {
+        ...failed.result,
+        syntheticUserInput: true,
+        deliveryStatus: "failed",
+        deliveryError: "usage limit",
+        queueMessageId: message.id,
+      },
+    } as SessionEvent;
+    const marker = JSON.parse(
+      JSON.stringify(retryLineageEvent("root", initial()))
+    );
+    const unsent = {
+      ...legacy,
+      id: "unsent",
+      result: { ...legacy.result, turnIntentId: "unsent" },
+    };
+    const otherScope = { ...legacy, sessionId: "other-root" };
+    const history = [legacy, unsent, otherScope, marker, user("next-send")];
+    expect(
+      projectNativeConversationItems(history).map((item) =>
+        item.kind === "message" ? item.turnId : ""
+      )
+    ).toEqual(["failed", "next-send"]);
+    const repaired = effectiveQueuedRetryEvents(history);
+    expect(repaired[0]).toMatchObject({
+      displayStatus: "completed",
+      result: {
+        deliveryStatus: "sent",
+        executionError: "usage limit",
+        queueMessageId: message.id,
+      },
+    });
+    expect(repaired[0].result?.deliveryError).toBeUndefined();
+    expect(effectiveQueuedRetryEvents(repaired)).toEqual(repaired);
+    expect(legacy.displayStatus).toBe("failed");
+    expect(projectNativeConversationItems([legacy])).toEqual([]);
+  });
   it("keeps a failure until the same queue explicitly retries; same text alone has no effect", () => {
     const marker = retryLineageEvent("root", initial());
     expect(

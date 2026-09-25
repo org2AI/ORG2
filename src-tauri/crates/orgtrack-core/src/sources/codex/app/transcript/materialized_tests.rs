@@ -78,6 +78,17 @@ fn materialized_tool_identity_preserves_names_args_and_rejects_bad_envelopes() {
         assert_eq!(chunks[0].result["output"], "\"output\": nested\n");
         assert_eq!(chunks[0].result["exit_code"], code);
         assert_eq!(chunks[0].result["is_error"], code != 0);
+        assert_eq!(chunks[0].result["interrupted"], interrupted);
+        assert_eq!(
+            chunks[0].result["status"],
+            if interrupted {
+                "interrupted"
+            } else if is_error {
+                "failed"
+            } else {
+                "completed"
+            }
+        );
     }
     for invalid in [
         json!(null),

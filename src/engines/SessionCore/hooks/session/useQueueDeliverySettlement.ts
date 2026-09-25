@@ -42,14 +42,16 @@ export function useQueueDeliverySettlement(store: Store) {
   const projectActiveCanonicalFailure = useCallback(
     async (
       delivery: ActiveMessageDelivery,
-      error: unknown
+      error: unknown,
+      executionFailed = false
     ): Promise<boolean> => {
       let projected = false;
       try {
         projected = await setOptimisticQueueUserDelivery(
           optimisticDeliveryProjectionParams(delivery),
           "failed",
-          error
+          error,
+          { executionFailed }
         );
       } catch (projectionError) {
         log.error(
@@ -66,13 +68,14 @@ export function useQueueDeliverySettlement(store: Store) {
   const returnFailedCanonicalDeliveryToQueue = useCallback(
     async (
       delivery: ActiveMessageDelivery,
-      error?: unknown
+      error?: unknown,
+      executionFailed = false
     ): Promise<boolean> => {
       try {
         await returnActiveDeliveryToMessageQueue(
           store,
           delivery.id,
-          queuedRetryFromDelivery(delivery, error)
+          queuedRetryFromDelivery(delivery, error, executionFailed)
         );
         return true;
       } catch (returnError) {

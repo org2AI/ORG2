@@ -338,7 +338,7 @@ mod tests {
         ));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("session.jsonl");
-        let records = vec![
+        let records = [
             json!({"type":"user","isMeta":true,"uuid":"meta","message":{"content":"https://hidden.example/meta"}}),
             json!({"type":"user","isCompactSummary":true,"message":{"content":"https://hidden.example/summary"}}),
             json!({"type":"assistant","message":{"content":[{"type":"thinking","thinking":"https://hidden.example/thought"},{"type":"text","text":"[Report](/repo/report.md) https://public.example"},{"type":"tool_use","id":"read1","name":"Read","input":{"file_path":"/repo/input.ts"}},{"type":"tool_use","id":"read2","name":"Read","input":{"file_path":"/missing.ts"}},{"type":"tool_use","id":"report","name":"make_report","input":{}}]}}),

@@ -55,9 +55,10 @@ const WorkstationTabHeader: React.FC = memo(() => {
 
   if (headerSlots?.hidden) return null;
 
-  // The Launchpad has no header controls, so it should not reserve an empty
+  // Launchpad and Sources have no header controls, so do not reserve an empty
   // 36px row below the tab bar.
-  if (activeTab?.type === "start") return null;
+  if (activeTab?.type === "start" || activeTab?.type === "session-sources")
+    return null;
 
   return (
     <div

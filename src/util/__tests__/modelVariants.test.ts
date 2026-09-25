@@ -400,3 +400,14 @@ describe("parseModelVariant", () => {
     });
   });
 });
+
+it("parses reserve effort without reusing ordinary Luna identity", () => {
+  for (const effort of ["low", "medium", "high", "xhigh", "max"]) {
+    expect(parseModelVariant(`gpt-reserve-${effort}`)).toMatchObject({
+      baseModel: "gpt-reserve",
+      reasoning: effort === "xhigh" ? "extra_high" : effort,
+      fast: false,
+    });
+  }
+  expect(parseModelVariant("gpt-reserve")).toBeUndefined();
+});

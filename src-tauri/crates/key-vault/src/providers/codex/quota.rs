@@ -4,7 +4,7 @@ use crate::providers::quota_windows::{
     group_reset_expiries, normalize_reset_time, quota_from_windows, unix_seconds_to_rfc3339,
     QuotaWindow,
 };
-use crate::types::{QuotaInfo, QuotaResetCredits, QuotaResetExpiry};
+use crate::types::{ModelQuotaInfo, QuotaInfo, QuotaResetCredits, QuotaResetExpiry};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
@@ -36,6 +36,7 @@ struct CodexRateLimitResetCredits {
 #[serde(rename_all = "camelCase")]
 pub(super) struct CodexRateLimitsResponse {
     rate_limits: Option<CodexRateLimitsPayload>,
+    rate_limits_by_limit_id: Option<std::collections::BTreeMap<String, serde_json::Value>>,
     rate_limit_reset_credits: Option<CodexRateLimitResetCredits>,
 }
 
@@ -119,6 +120,63 @@ fn push_usage_window(
     }
 }
 
+fn model_quota(model: &str, limit_id: &str, limit: &serde_json::Value) -> Option<ModelQuotaInfo> {
+    let mut windows = Vec::new();
+    let primary = limit
+        .get("primary_window")
+        .or_else(|| limit.get("primary"))
+        .filter(|window| !window.is_null());
+    let secondary = limit
+        .get("secondary_window")
+        .or_else(|| limit.get("secondary"))
+        .filter(|window| !window.is_null());
+    for window in [primary, secondary].into_iter().flatten() {
+        // Unknown or malformed windows must not turn into available capacity.
+        let percent = parse_usage_window_percent(window)?;
+        if !percent.is_finite() || !(0.0..=100.0).contains(&percent) {
+            return None;
+        }
+    }
+    push_usage_window(
+        &mut windows,
+        if secondary.is_some() {
+            QuotaWindow::session
+        } else {
+            QuotaWindow::weekly
+        },
+        primary,
+    );
+    push_usage_window(&mut windows, QuotaWindow::weekly, secondary);
+    if windows.is_empty() {
+        return None;
+    }
+    Some(ModelQuotaInfo {
+        model: model.to_owned(),
+        limit_id: limit_id.to_owned(),
+        allowed: limit.get("allowed").and_then(serde_json::Value::as_bool),
+        limit_reached: limit
+            .get("limit_reached")
+            .or_else(|| limit.get("limitReached"))
+            .and_then(serde_json::Value::as_bool),
+        usage_items: quota_from_windows("codex", "codex_model_pool", windows).usage_items,
+    })
+}
+
+pub(super) fn model_quotas_from_usage_json(data: &serde_json::Value) -> Vec<ModelQuotaInfo> {
+    data.get("additional_rate_limits")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| {
+            model_quota(
+                entry.get("normal_model_slug")?.as_str()?,
+                entry.get("limit_name")?.as_str()?,
+                entry.get("rate_limit")?,
+            )
+        })
+        .collect()
+}
+
 pub(super) fn quota_from_usage_json(data: &serde_json::Value) -> Option<QuotaInfo> {
     let rate_limit = data
         .get("rate_limit")
@@ -154,7 +212,8 @@ pub(super) fn quota_from_usage_json(data: &serde_json::Value) -> Option<QuotaInf
     }
     push_usage_window(&mut windows, QuotaWindow::weekly, weekly_window);
 
-    if windows.is_empty() {
+    let model_quotas = model_quotas_from_usage_json(data);
+    if windows.is_empty() && model_quotas.is_empty() {
         return None;
     }
 
@@ -164,7 +223,15 @@ pub(super) fn quota_from_usage_json(data: &serde_json::Value) -> Option<QuotaInf
         .unwrap_or("plus")
         .to_lowercase();
 
-    let mut quota = quota_from_windows(&plan_type, "codex_usage_api", windows);
+    let mut quota = if windows.is_empty() {
+        QuotaInfo {
+            plan_type: Some(plan_type),
+            quota_source: Some("codex_usage_api".into()),
+            ..QuotaInfo::new()
+        }
+    } else {
+        quota_from_windows(&plan_type, "codex_usage_api", windows)
+    };
     // The usage API reports available credits inline, without expiries;
     // absence is unknown, not zero.
     if let Some(available) = data
@@ -177,6 +244,7 @@ pub(super) fn quota_from_usage_json(data: &serde_json::Value) -> Option<QuotaInf
             expirations: Vec::new(),
         });
     }
+    quota.model_quotas = model_quotas;
     Some(quota)
 }
 
@@ -262,7 +330,28 @@ pub(super) fn quota_from_codex_rate_limits_response(
         }
     }
 
-    let mut quota = quota_from_windows(&plan_type, "codex_app_server", windows);
+    let mut quota = if windows.is_empty() {
+        QuotaInfo {
+            plan_type: Some(plan_type),
+            quota_source: Some("codex_app_server".into()),
+            ..QuotaInfo::new()
+        }
+    } else {
+        quota_from_windows(&plan_type, "codex_app_server", windows)
+    };
+    if let Some(limits) = response.rate_limits_by_limit_id {
+        // App-server identifies the reserve by limit id, without the usage API's
+        // normal_model_slug. Only this known mapping is safe to infer.
+        if let Some(reserve) = limits.get(super::reserve::RESERVE_MODEL) {
+            if let Some(pool) = model_quota(
+                super::reserve::LUNA_MODEL,
+                super::reserve::RESERVE_MODEL,
+                reserve,
+            ) {
+                quota.model_quotas.push(pool);
+            }
+        }
+    }
     if let Some(reset_credits) = response.rate_limit_reset_credits {
         quota.named_message = format_codex_reset_credits(&reset_credits);
         quota.reset_credits = codex_app_server_reset_credits(reset_credits);
@@ -432,6 +521,7 @@ mod tests {
     #[test]
     fn codex_rate_limits_response_maps_windows_and_reset_credits() {
         let response = CodexRateLimitsResponse {
+            rate_limits_by_limit_id: None,
             rate_limits: Some(CodexRateLimitsPayload {
                 plan_type: None,
                 primary: Some(CodexRateLimitWindow {
@@ -538,6 +628,7 @@ mod tests {
     #[test]
     fn codex_rate_limits_response_classifies_lone_weekly_primary_by_duration() {
         let quota = quota_from_codex_rate_limits_response(CodexRateLimitsResponse {
+            rate_limits_by_limit_id: None,
             rate_limits: Some(CodexRateLimitsPayload {
                 plan_type: None,
                 primary: Some(CodexRateLimitWindow {
@@ -596,11 +687,15 @@ mod tests {
     #[test]
     fn codex_rate_limits_response_handles_missing_payload() {
         let quota = quota_from_codex_rate_limits_response(CodexRateLimitsResponse {
+            rate_limits_by_limit_id: None,
             rate_limits: None,
             rate_limit_reset_credits: None,
         });
 
-        assert_eq!(quota.remaining_percentage, 100.0);
+        assert_eq!(quota.remaining_percentage, -1.0);
         assert!(quota.usage_items.is_empty());
+        assert_eq!(quota.used, None);
+        assert_eq!(quota.limit, None);
+        assert_eq!(quota.remaining, None);
     }
 }

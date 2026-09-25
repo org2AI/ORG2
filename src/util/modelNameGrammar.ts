@@ -67,3 +67,11 @@ export function withCursorHostedModelPrefix(
     ? `${CURSOR_HOSTED_MODEL_PREFIX}${coreModelName}`
     : coreModelName;
 }
+
+/** OpenAI reports this distinct capacity pool as Luna in normal_model_slug. */
+export const CODEX_RESERVE_MODEL = "gpt-reserve";
+export const CODEX_RESERVE_LABEL = "GPT 5.6 Luna Reserve";
+
+export function isCodexReserveModel(model: string): boolean {
+  return /^gpt-reserve(?:-(?:low|medium|high|xhigh|max))?$/.test(model);
+}

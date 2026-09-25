@@ -22,6 +22,8 @@ pub struct AuxiliaryModel {
 #[derive(Debug, Clone)]
 pub struct AuxiliaryModelPolicy {
     candidates: Vec<String>,
+    codex_oauth: bool,
+    reserve_candidate: Option<String>,
     scope: u64,
 }
 
@@ -68,13 +70,40 @@ impl AuxiliaryModelPolicy {
                 }
             }
         }
+        let reserve_candidate = (is_codex_oauth && account.enabled)
+            .then(|| {
+                account
+                    .enabled_models
+                    .iter()
+                    .find(|model| {
+                        auxiliary_model_id(spec, model) == "gpt-reserve"
+                            && account.available_models.contains(model)
+                    })
+                    .cloned()
+            })
+            .flatten();
         Self {
+            codex_oauth: is_codex_oauth,
+            reserve_candidate,
             candidates,
             scope: scope.finish(),
         }
     }
 
-    pub fn resolve(&self, _parent_model: &str) -> AuxiliaryModel {
+    pub fn resolve(&self, parent_model: &str) -> AuxiliaryModel {
+        // A reserve session's auxiliary work must use the same explicitly chosen
+        // pool. It may neither spend ordinary quota nor fall back across pools.
+        let parent = parent_model.rsplit('/').next().unwrap_or(parent_model);
+        if self.codex_oauth
+            && super::model_variant::parse_model_variant_id(parent).base_model == "gpt-reserve"
+        {
+            let mut scope = DefaultHasher::new();
+            (self.scope, "gpt-reserve").hash(&mut scope);
+            return AuxiliaryModel {
+                models: self.reserve_candidate.iter().cloned().collect(),
+                scope: scope.finish(),
+            };
+        }
         AuxiliaryModel {
             models: self.candidates.clone(),
             scope: self.scope,

@@ -66,6 +66,7 @@ impl CodexValidator {
         let client = reqwest::Client::new();
         let response = client
             .get(USAGE_API_URL)
+            .header(super::reserve::EXPOSURE_HEADER, "1")
             .header("Authorization", format!("Bearer {}", access_token))
             .header("Accept", "application/json")
             .timeout(self.timeout)
@@ -258,6 +259,7 @@ impl CodexValidator {
 
         let response = reqwest::Client::new()
             .get(USAGE_API_URL)
+            .header(super::reserve::EXPOSURE_HEADER, "1")
             .header("Authorization", format!("Bearer {token}"))
             .header("Accept", "application/json")
             .timeout(self.timeout)

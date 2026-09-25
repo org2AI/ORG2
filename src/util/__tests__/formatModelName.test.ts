@@ -247,3 +247,11 @@ describe("resolveModelFullLabel", () => {
     ).toBe("GPT 4o 2024-08-06");
   });
 });
+
+it("names explicit reserve separately from ordinary Luna", () => {
+  expect(formatModelName("gpt-reserve")).toBe("GPT 5.6 Luna Reserve");
+  expect(formatModelNameFull("gpt-reserve-high")).toBe(
+    "GPT 5.6 Luna Reserve High"
+  );
+  expect(formatModelName("gpt-5.6-luna-high")).toBe("GPT 5.6 Luna High");
+});

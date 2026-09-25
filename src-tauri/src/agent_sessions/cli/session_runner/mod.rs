@@ -52,3 +52,6 @@ pub(crate) use session::run_session_with_ide_context;
 #[cfg(test)]
 #[path = "../tests/runner_command_tests.rs"]
 mod command_tests;
+
+#[cfg(test)]
+mod codex_reserve;

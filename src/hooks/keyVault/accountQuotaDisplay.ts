@@ -3,6 +3,10 @@ import type { TFunction } from "i18next";
 import type { QuotaResetCredits } from "@src/api/types/keyVault";
 import { CLI_AGENT } from "@src/api/types/keys";
 import type { UsageItem } from "@src/api/types/keys";
+import {
+  CODEX_RESERVE_LABEL,
+  CODEX_RESERVE_MODEL,
+} from "@src/util/modelNameGrammar";
 
 import type { KeyVaultAccount } from "./types";
 
@@ -537,6 +541,24 @@ function getResetCreditsMessage(
   };
 }
 
+/** Model-scoped pools stay separate from ordinary account quota. Missing means unknown. */
+export function buildModelQuotaMetrics(
+  quota: KeyVaultAccount["quotaInfo"],
+  tIntegrations: TFunction<"integrations">
+): AccountQuotaPercentageMetric[] {
+  return (quota?.model_quotas ?? []).flatMap((pool) =>
+    pool.usage_items
+      .filter((item) => item.enabled)
+      .map((item) => ({
+        kind: "percentage" as const,
+        key: `${pool.limit_id}:${item.usage_type}`,
+        label: `${pool.limit_id === CODEX_RESERVE_MODEL && pool.model === "gpt-5.6-luna" ? CODEX_RESERVE_LABEL : pool.limit_id} · ${getQuotaUsageLabel(CLI_AGENT.CODEX, item.usage_type, tIntegrations)}`,
+        remainingPercent: item.remaining_percentage,
+        resetTime: item.reset_time,
+      }))
+  );
+}
+
 export function collectAccountQuotaCards(
   accounts: KeyVaultAccount[],
   tSessions: TFunction<"sessions">,
@@ -558,6 +580,27 @@ export function collectAccountQuotaCards(
             tIntegrations
           )
         : [];
+    const modelMetrics = buildModelQuotaMetrics(
+      account.quotaInfo,
+      tIntegrations
+    );
+    // A separate pool must not hide a legacy ordinary overall meter.
+    const ordinaryPercent = resolveKnownRemainingPercent(
+      account.quotaInfo.remaining_percentage
+    );
+    if (
+      modelMetrics.length > 0 &&
+      metrics.length === 0 &&
+      ordinaryPercent !== null
+    ) {
+      metrics.push({
+        kind: "percentage",
+        key: "overall",
+        label: tIntegrations("keyVault.quota.quotaUsage"),
+        remainingPercent: ordinaryPercent,
+      });
+    }
+    metrics.push(...modelMetrics);
     const balanceValue = resolveAccountQuotaBalanceValue(account.quotaInfo);
     if (balanceValue !== null) {
       metrics.unshift({

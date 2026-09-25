@@ -50,6 +50,7 @@ export function normalizeDetectedQuotaInfo(
     quota_source: quotaInfo.quota_source ?? undefined,
     is_unlimited: quotaInfo.is_unlimited ?? undefined,
     usage_items: quotaInfo.usage_items,
+    model_quotas: quotaInfo.model_quotas,
     auto_message: quotaInfo.auto_message ?? undefined,
     named_message: quotaInfo.named_message ?? undefined,
   };

@@ -295,3 +295,41 @@ it.each(["zh", "de", "en"])(
     }
   }
 );
+
+it("displays ordinary zero and reserve capacity independently", () => {
+  const account = deepSeekAccount(null);
+  account.modelType = "codex";
+  account.quotaInfo!.remaining_percentage = 0;
+  account.quotaInfo!.model_quotas = [
+    {
+      model: "gpt-5.6-luna",
+      limit_id: "gpt-reserve",
+      allowed: true,
+      limit_reached: false,
+      usage_items: [
+        {
+          usage_type: "weekly",
+          enabled: true,
+          used: null,
+          limit: null,
+          remaining: null,
+          remaining_percentage: 96,
+          reset_time: "2026-10-01T00:00:00Z",
+        },
+      ],
+    },
+  ];
+  const [card] = collectAccountQuotaCards([account], translate, translate);
+  expect(card.metrics).toHaveLength(3);
+  expect(card.metrics[0]).toMatchObject({ remainingPercent: 0 });
+  expect(card.metrics[2]).toMatchObject({
+    key: "gpt-reserve:weekly",
+    remainingPercent: 96,
+    resetTime: "2026-10-01T00:00:00Z",
+  });
+  expect(card.metrics[2].label).toContain("GPT 5.6 Luna Reserve");
+  account.quotaInfo!.model_quotas = undefined;
+  expect(
+    collectAccountQuotaCards([account], translate, translate)[0].metrics
+  ).toHaveLength(2);
+});

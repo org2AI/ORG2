@@ -9,7 +9,9 @@
  * - "older"   = previous generation
  */
 import {
+  CODEX_RESERVE_LABEL,
   extractGptModelTier,
+  isCodexReserveModel,
   isModelVariantSuffixToken,
   stripCursorHostedModelPrefix,
 } from "./modelNameGrammar";
@@ -189,6 +191,10 @@ function parseModelGroup(modelName: string, agentType?: string): ParsedGroup {
   const { coreModelName } = stripCursorHostedModelPrefix(modelName);
   const lower = coreModelName.toLowerCase();
   const cleaned = lower.replace(/-\d{8}$/, "").replace(/-latest$/, "");
+
+  if (isCodexReserveModel(cleaned)) {
+    return { label: CODEX_RESERVE_LABEL, sortVersion: 560 };
+  }
 
   if (isTierModelName(cleaned)) {
     return {

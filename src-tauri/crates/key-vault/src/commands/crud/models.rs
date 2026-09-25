@@ -192,6 +192,7 @@ fn codex_effort_variants_for_base_model(base_model: &str) -> Vec<ModelVariantInf
             | "gpt-5.6-sol"
             | "gpt-5.6-terra"
             | "gpt-5.6-luna"
+            | "gpt-reserve"
     ) {
         efforts.push("max");
     }

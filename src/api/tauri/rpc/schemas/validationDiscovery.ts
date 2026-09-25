@@ -12,6 +12,7 @@ import { z } from "zod/v4";
 
 import { AuthMethodSchema, CliAgentTypeSchema } from "./validationEnums";
 import {
+  ModelQuotaInfoSchema,
   ProviderProtocolSchema,
   UsageItemSchema,
 } from "./validationValueObjects";
@@ -30,6 +31,7 @@ export const DetectedQuotaInfoSchema = z.object({
   quota_source: z.string().nullable().optional(),
   is_unlimited: z.boolean().nullable().optional(),
   usage_items: z.array(UsageItemSchema).optional(),
+  model_quotas: z.array(ModelQuotaInfoSchema).optional(),
   auto_message: z.string().nullable().optional(),
   named_message: z.string().nullable().optional(),
 });

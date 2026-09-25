@@ -1,6 +1,41 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { rpc } from "../../router";
+import { DetectedQuotaInfoSchema } from "../validationDiscovery";
+import { QuotaInfoSchema } from "../validationValueObjects";
+
+it("retains separate reserve pools in both quota wire schemas", () => {
+  const payload = {
+    remaining_percentage: 0,
+    used: 100,
+    limit: 100,
+    remaining: 0,
+    reset_time: null,
+    billing_start: null,
+    plan_type: "pro",
+    limit_type: null,
+    is_unlimited: false,
+    quota_source: "codex_usage_api",
+    usage_items: [],
+    auto_message: null,
+    named_message: null,
+    model_quotas: [
+      {
+        model: "gpt-5.6-luna",
+        limit_id: "gpt-reserve",
+        allowed: true,
+        limit_reached: false,
+        usage_items: [],
+      },
+    ],
+  };
+  expect(DetectedQuotaInfoSchema.parse(payload).model_quotas).toEqual(
+    payload.model_quotas
+  );
+  expect(QuotaInfoSchema.parse(payload).model_quotas).toEqual(
+    payload.model_quotas
+  );
+});
 
 const { invokeMock } = vi.hoisted(() => ({ invokeMock: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));

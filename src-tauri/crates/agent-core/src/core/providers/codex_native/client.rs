@@ -427,4 +427,79 @@ mod tests {
         // The mode belongs to the current request, not a mutated/cached prompt.
         assert_eq!(messages[0]["content"], "Keep workspace edits scoped.");
     }
+    #[test]
+    fn explicit_reserve_and_ordinary_luna_keep_distinct_wire_ids() {
+        for base in ["gpt-5.6-luna", "gpt-reserve"] {
+            for effort in ["low", "medium", "high", "xhigh", "max"] {
+                let request = CodexNativeClient::build_responses_request(
+                    &[json!({"role":"user", "content":"test"})],
+                    None,
+                    &format!("{base}-{effort}"),
+                    true,
+                );
+                assert_eq!(request.model, base);
+                assert_eq!(request.reasoning, Some(json!({"effort":effort})));
+                assert!(request.service_tier.is_none());
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "live OAuth reserve canary; requires ORG2_CODEX_RESERVE_AUTH_FILE and consumes quota"]
+    async fn live_luna_reserve_native_provider() {
+        use crate::providers::traits::LLMProvider;
+        crate::test_support::install_crypto_provider_for_tests();
+        let auth: Value = serde_json::from_slice(
+            &std::fs::read(
+                std::env::var("ORG2_CODEX_RESERVE_AUTH_FILE")
+                    .expect("explicit canary auth path required"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let token = auth["tokens"]["access_token"]
+            .as_str()
+            .expect("OAuth access token");
+        let mut headers = HashMap::new();
+        if let Some(account) = auth["tokens"]["account_id"]
+            .as_str()
+            .map(str::to_owned)
+            .or_else(|| {
+                super::super::extract_account_id_from_id_token(
+                    auth["tokens"]["id_token"].as_str().unwrap_or_default(),
+                )
+            })
+        {
+            headers.insert(super::super::CODEX_ACCOUNT_ID_HEADER.to_owned(), account);
+        }
+        let model = "gpt-reserve-low";
+        let client = CodexNativeClient::new(
+            ProviderConfig {
+                api_key: token.to_owned(),
+                api_base: None,
+                extra_headers: headers,
+                is_azure: false,
+            },
+            model.to_owned(),
+        );
+        let response = tokio::time::timeout(std::time::Duration::from_secs(90), client.chat(
+            &[json!({"role":"user", "content":"Reply exactly ORG2_SDE_RESERVE_OK. Do not use tools."})],
+            None, model, 64, 0.0,
+        )).await.expect("bounded canary").expect("live reserve response");
+        assert_eq!(response.content.as_deref(), Some("ORG2_SDE_RESERVE_OK"));
+        assert!(response.tool_calls.is_empty());
+        assert_eq!(client.default_model(), model);
+        assert!(
+            response
+                .usage
+                .get("total_tokens")
+                .copied()
+                .unwrap_or_default()
+                > 0
+        );
+        println!(
+            "reserve canary: selected={model}, route=gpt-reserve, usage={:?}",
+            response.usage
+        );
+    }
 }

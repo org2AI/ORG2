@@ -7,7 +7,7 @@
  * strip is published directly into the 40px workstation header.
  */
 import { useAtomValue } from "jotai";
-import React, { memo, useCallback, useMemo } from "react";
+import React, { memo, useCallback, useEffect, useMemo } from "react";
 
 import { useWorkStationTabs } from "@src/hooks/tabHost/useWorkStationTabs";
 import { usePublishWorkstationTabHeader } from "@src/hooks/tabHost/useWorkstationTabHeader";
@@ -23,6 +23,7 @@ import {
 } from "@src/store/workstation/codeEditor/workstationSelectedPrAtom";
 import { createFileTab } from "@src/store/workstation/tabs";
 import type { GitHubPrDetailTabData } from "@src/store/workstation/tabs";
+import { githubPrTabTitle } from "@src/store/workstation/tabs/factories/githubPr";
 import { resolvePullRequestDetailStatus } from "@src/util/git/pr/prLevelActions";
 
 import type { UnifiedTabContentProps } from "../types";
@@ -30,7 +31,7 @@ import type { UnifiedTabContentProps } from "../types";
 const GitHubPrDetailTabRenderer: React.FC<UnifiedTabContentProps> = memo(
   ({ tab }) => {
     const tabData = tab.data as unknown as GitHubPrDetailTabData;
-    const { openTab } = useWorkStationTabs();
+    const { openTab, updateTabMeta } = useWorkStationTabs();
     const scopeKey = workstationPrScopeKey(
       tabData.repoId,
       tabData.repoPath,
@@ -38,6 +39,17 @@ const GitHubPrDetailTabRenderer: React.FC<UnifiedTabContentProps> = memo(
       tabData.prUrl
     );
     const selectedPr = useAtomValue(workstationSelectedPrAtomFamily(scopeKey));
+
+    const title = githubPrTabTitle(
+      tabData.prNumber,
+      typeof selectedPr.detail?.title === "string" &&
+        selectedPr.detail.title.trim()
+        ? selectedPr.detail.title
+        : tabData.prTitle
+    );
+    useEffect(() => {
+      if (tab.title !== title) updateTabMeta(tab.id, { title });
+    }, [tab.id, tab.title, title, updateTabMeta]);
 
     const handleFileSelect = useCallback(
       (path: string) => {

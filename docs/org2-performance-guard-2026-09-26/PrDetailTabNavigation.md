@@ -22,3 +22,7 @@ The rail dispatches to EditorTabService plus revealMyStation, not the chat-panel
 The attachment reader previously held PR metadata until the subsequent head-checks request settled. The shared loader now offers an optional metadata callback backed by its existing in-flight request. Original callers, late joiners and cache hits receive metadata before checks finish, without another GitHub request or new cache/timer. The rail rejects callbacks from hidden/unmounted/replaced effects, paints title/lifecycle immediately, and preserves metadata if checks fail. Shared request promise identity and existing final-result publication remain unchanged.
 
 Tests cover cold load with blocked checks, late joins, cache hits, callback exceptions, metadata rejection, checks failure retaining title, and late previous-session metadata. Native GUI timing remains manually verifiable; no measured performance improvement is claimed.
+
+## Workstation PR tab title
+
+The workstation factory previously formatted only the PR number. It now includes the title; the mounted detail renderer updates tab metadata from the existing scoped PR detail when available, including restored tabs and remote renames. Equality checks prevent redundant writes; no extra request, listener or timer is introduced. The shared truncated tab label and tooltip both use this title. Three regressions cover initial opening, restored title hydration/rename, and number-only loading fallback.

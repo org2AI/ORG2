@@ -44,6 +44,7 @@ describe("PR navigation beside chat", () => {
     const first = EditorTabService.getActiveTab();
     expect(first).toMatchObject({
       type: "github-pr-detail",
+      title: "#2153 Rail",
       data: { prNumber: 2153 },
     });
     openPullRequestTab({

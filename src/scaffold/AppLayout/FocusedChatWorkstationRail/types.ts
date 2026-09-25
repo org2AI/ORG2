@@ -106,6 +106,8 @@ export interface FocusedChatWorkstationRailProps {
 }
 
 export interface FocusedChatSessionContext {
+  sessionId?: string;
+  updatedAt?: string;
   /** Agent runtime that executes the session (for example, Codex or ORG2). */
   agentHarness?: {
     icon: FocusedChatRailIcon;

@@ -18,3 +18,13 @@ Scope: session-scoped PR summary, existing GitHub branch lookup, shared rail com
 Rollback: revert the feature; existing open-only callers and saved data remain compatible. The new section's existing local disclosure preference is harmless if the section is removed. No session data, database schema or mutation endpoint changes.
 
 Validation limits: tests use response fixtures and rendered component fixtures, not a packaged native end-to-end GitHub flow. No dual-machine behavior or runtime CPU/RSS improvement is claimed.
+
+## Explicit conversation attachments correction
+
+Branch lookup alone cannot discover PRs created on separate worktrees. Codex's provider-owned `thread_attachments` table is the authoritative association: resolve the actual rollout's `session_meta.id` and provider home, then read only that thread's explicit `pull_request` attachments. Do not infer association from prose, shell output, generic source links or the active workspace.
+
+The additive `session_pull_requests` command performs a read-only blocking-store read on the blocking executor, bounded to 100 records and 16 KB payloads. Missing legacy attachment storage yields no attachments; genuine read failures remain errors. No historical cleanup or database writes are needed. Codex storage schema changes may require an adapter update; non-Codex sessions retain the existing branch-based fallback.
+
+The frontend carries session identity and update revision from the parent rail, merges attached PRs before the branch result, and deduplicates canonical URLs. Metadata loading uses up to three workers and the existing shared head-check reader; hiding/unmounting/switching scope stops queued work and rejects old results. Failed metadata retains the explicit URL with retry. Native navigation requires a confirmed matching repository; otherwise open the attached PR URL.
+
+Production-reader readback against the current Codex rollout returned #2153 then #2152. Producer fixtures cover thread/provider isolation, removed attachments, absent/corrupt stores, URL validation and limits. Native GUI inspection was unavailable in this correction; the earlier single-row synthetic screenshots do not verify this missing-association case.

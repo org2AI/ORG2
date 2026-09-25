@@ -26,6 +26,10 @@ import {
 import { openLink } from "@src/util/ui/openLink";
 
 import type { FocusedChatRailItem, FocusedChatSessionContext } from "./types";
+import {
+  canonicalPullRequestUrl,
+  useSessionPullRequests,
+} from "./useSessionPullRequests";
 
 const GitHubRailIcon = ({
   size = 24,
@@ -45,6 +49,10 @@ export function useWorkstationRailGitHub({
   const { currentBranch } = useRepoSelection({ autoLoad: false });
   const activeBranchName = currentBranch || undefined;
   const { repoId, repoPath: activeRepoPath } = useActiveRepoRef();
+  const attached = useSessionPullRequests(
+    sessionContext?.sessionId,
+    sessionContext?.updatedAt
+  );
   const openPullRequest = useSetAtom(openGitHubPrInChatPanelTabAtom);
   // An unresolved conversation scope never borrows the active workspace's PR.
   const sessionBranch =
@@ -103,7 +111,29 @@ export function useWorkstationRailGitHub({
   const pullRequestItems = useMemo<FocusedChatRailItem[]>(() => {
     const { pr, ciStatus, error, loading, refresh } = sessionStatus;
     const items: FocusedChatRailItem[] = [];
-    if (pr && sessionRepoPath && sessionBranch) {
+    const linked = attached.items.map((item) => ({ ...item, attached: true }));
+    const branchUrl = pr ? canonicalPullRequestUrl(pr.url) : null;
+    if (
+      pr &&
+      sessionRepoPath &&
+      sessionBranch &&
+      !linked.some((item) => item.url === branchUrl)
+    ) {
+      linked.push({
+        ...pr,
+        title: pr.title || `#${pr.number}`,
+        draft: pr.draft === true,
+        url: branchUrl ?? pr.url,
+        repoFullName: sessionStatus.repoFullName ?? "",
+        headBranch: sessionBranch,
+        ciStatus,
+        error: false,
+        attached: false,
+      });
+    }
+    for (const linkedPr of linked) {
+      const pr = linkedPr;
+      const ciStatus = linkedPr.ciStatus;
       const lifecycle =
         pr.state.toLowerCase() === "open" && pr.draft
           ? "draft"
@@ -138,7 +168,7 @@ export function useWorkstationRailGitHub({
         key: `pull-request:${pr.url}`,
         label,
         icon,
-        title: `#${pr.number} ${label} · ${t(`common:${getPrStatusLabelKey(lifecycle)}`)}`,
+        title: `${label === `#${pr.number}` ? label : `#${pr.number} ${label}`} · ${t(`common:${getPrStatusLabelKey(lifecycle)}`)}`,
         ...(pr.state.toLowerCase() === "open" && ciStatus && ciLabel
           ? {
               status: {
@@ -152,27 +182,49 @@ export function useWorkstationRailGitHub({
               },
             }
           : {}),
-        onClick: () =>
+        onClick: () => {
+          const nativeRepo =
+            sessionRepoPath &&
+            (!linkedPr.attached ||
+              (sessionStatus.repoFullName &&
+                linkedPr.repoFullName.toLowerCase() ===
+                  sessionStatus.repoFullName.toLowerCase()));
+          if (!nativeRepo) {
+            openLink(pr.url);
+            return;
+          }
           openPullRequest({
             prNumber: pr.number,
             prTitle: label,
             prUrl: pr.url,
             prStatus: lifecycle,
-            headBranch: sessionBranch,
-            repoPath: sessionRepoPath,
+            headBranch: linkedPr.headBranch,
+            repoPath: sessionRepoPath!,
             repoId: sessionRepoId,
-          }),
+          });
+        },
       });
+      if (linkedPr.error)
+        items.push({
+          key: `pull-request-retry:${pr.url}`,
+          label: `${t("common:actions.retry")} #${pr.number}`,
+          title: t("common:labels.failedToLoadPullRequest"),
+          icon: Refresh04Icon,
+          onClick: () => attached.refresh(pr.url),
+        });
     }
-    if (error)
+    if (error || attached.error)
       items.push({
         key: "pull-request-retry",
         title: t("common:labels.failedToLoadPullRequest"),
         label: t("common:actions.retry"),
         icon: Refresh04Icon,
-        onClick: refresh,
+        onClick: () => {
+          refresh();
+          attached.refresh();
+        },
       });
-    else if (loading && !pr)
+    else if ((loading || attached.loading) && items.length === 0)
       items.push({
         key: "pull-request-loading",
         label: t("common:actions.loading"),
@@ -181,6 +233,7 @@ export function useWorkstationRailGitHub({
     return items;
   }, [
     sessionStatus,
+    attached,
     sessionRepoPath,
     sessionBranch,
     sessionRepoId,

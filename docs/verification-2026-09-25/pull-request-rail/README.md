@@ -15,3 +15,7 @@ Browser verification used the application's in-app browser. It confirmed:
 5. An empty PR item projection adds no blank PR group.
 
 The temporary fixture lived under `/tmp` and is not shipped as application code. The screenshots are unmodified browser captures. Full native-app integration, credential changes, and actual CPU/RSS measurements were not run here.
+
+## Attachment-source correction
+
+These original captures predate the correction that reads explicitly attached Codex PRs. They illustrate presentation only and do not demonstrate that PRs 2152 and 2153 appear in the live application. See `docs/org2-performance-guard-2026-09-25/ConversationPullRequestAttachments.md` for the production-reader evidence, new lifecycle tests, and unavailable native-UI verification boundary.

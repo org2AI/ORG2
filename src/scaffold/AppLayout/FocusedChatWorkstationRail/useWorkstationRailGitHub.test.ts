@@ -4,14 +4,30 @@ import { act, createElement, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { openLink } from "@src/util/ui/openLink";
+
 import type { FocusedChatSessionContext } from "./types";
+import type { SessionPullRequest } from "./useSessionPullRequests";
 import { useWorkstationRailGitHub } from "./useWorkstationRailGitHub";
 
-const { lookup, openPr } = vi.hoisted(() => ({
+const { lookup, openPr, attachments } = vi.hoisted(() => ({
   lookup: vi.fn(),
   openPr: vi.fn(),
+  attachments: vi.fn(() => ({
+    items: [] as SessionPullRequest[],
+    loading: false,
+    error: false,
+    refresh: vi.fn(),
+  })),
 }));
-vi.mock("jotai", () => ({ useSetAtom: () => openPr }));
+vi.mock("./useSessionPullRequests", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./useSessionPullRequests")>()),
+  useSessionPullRequests: attachments,
+}));
+vi.mock("jotai", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("jotai")>()),
+  useSetAtom: () => openPr,
+}));
 vi.mock("@src/store/chatPanel/chatPanelTabsAtom", () => ({
   openGitHubPrInChatPanelTabAtom: {},
 }));
@@ -49,9 +65,72 @@ async function render(context?: FocusedChatSessionContext) {
 afterEach(() => {
   roots.splice(0).forEach((root) => act(() => root.unmount()));
   vi.clearAllMocks();
+  attachments.mockReturnValue({
+    items: [],
+    loading: false,
+    error: false,
+    refresh: vi.fn(),
+  });
 });
 
 describe("conversation pull request association", () => {
+  it("shows multiple explicit PRs despite a different session branch and deduplicates branch results", async () => {
+    const make = (
+      number: number,
+      repoFullName = "acme/repo"
+    ): SessionPullRequest => ({
+      number,
+      url: `https://github.com/${repoFullName}/pull/${number}`,
+      repoFullName,
+      title: `Attached ${number}`,
+      state: "open",
+      draft: false,
+      headBranch: `pr-${number}`,
+      ciStatus: "success",
+      error: false,
+    });
+    attachments.mockReturnValue({
+      items: [make(2153), make(2152), make(9, "other/repo")],
+      loading: false,
+      error: false,
+      refresh: vi.fn(),
+    });
+    lookup.mockReturnValue({
+      pr: {
+        number: 2152,
+        url: "https://github.com/ACME/Repo/pull/2152/files",
+        state: "open",
+        title: "Branch duplicate",
+      },
+      repoFullName: "Acme/Repo",
+      ciStatus: "success",
+    });
+    await render({
+      sessionId: "conversation",
+      updatedAt: "revision",
+      repoPath: "/active",
+      branchName: "old-session-branch",
+    });
+    expect(attachments).toHaveBeenCalledWith("conversation", "revision");
+    expect(latest.pullRequestItems.map((item) => item.label)).toEqual([
+      "Attached 2153",
+      "Attached 2152",
+      "Attached 9",
+    ]);
+    latest.pullRequestItems[0].onClick?.({} as never);
+    expect(openPr).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prNumber: 2153,
+        headBranch: "pr-2153",
+        repoPath: "/active",
+      })
+    );
+    latest.pullRequestItems[2].onClick?.({} as never);
+    expect(openLink).toHaveBeenCalledWith(
+      "https://github.com/other/repo/pull/9"
+    );
+    expect(openPr).toHaveBeenCalledTimes(1);
+  });
   it("uses the session worktree and opens native PR details with that scope", async () => {
     lookup.mockImplementation(({ repoPath }) => ({
       pr:

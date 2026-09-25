@@ -41,8 +41,21 @@ pub(crate) fn validated_origin(raw: &'static str) -> Result<&'static str, &'stat
 pub(crate) fn validated_scheme(scheme: &'static str) -> Result<&'static str, &'static str> {
     let local = scheme
         .strip_prefix("orgii-market-local-")
-        .is_some_and(|suffix| suffix.len() == 8 && suffix.bytes().all(|b| b.is_ascii_hexdigit()));
-    if scheme == DEFAULT_APP_SCHEME || local {
+        .is_some_and(|suffix| {
+            suffix.len() == 8
+                && suffix
+                    .bytes()
+                    .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+        });
+    // Numbered bundles are 2..99; the separately defined dev bundle uses
+    // orgii-dev, never orgii-instance100. Keep this aligned with appScheme.ts.
+    let instance = scheme.strip_prefix("orgii-instance").is_some_and(|suffix| {
+        matches!(
+            suffix.as_bytes(),
+            [b'2'..=b'9'] | [b'1'..=b'9', b'0'..=b'9']
+        )
+    });
+    if matches!(scheme, DEFAULT_APP_SCHEME | "orgii-dev") || local || instance {
         Ok(scheme)
     } else {
         Err("invalid_market_app_scheme")
@@ -52,6 +65,64 @@ pub(crate) fn validated_scheme(scheme: &'static str) -> Result<&'static str, &'s
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn desktop_build_schemes_are_bounded_and_canonical() {
+        for value in [
+            "orgii",
+            "orgii-dev",
+            "orgii-instance2",
+            "orgii-instance9",
+            "orgii-instance10",
+            "orgii-instance93",
+            "orgii-instance99",
+            "orgii-market-local-12abcdef",
+        ] {
+            assert_eq!(validated_scheme(value), Ok(value));
+        }
+        for value in [
+            "orgii-instance0",
+            "orgii-instance1",
+            "orgii-instance100",
+            "orgii-instance02",
+            "orgii-instance093",
+            "orgii-instance+2",
+            "orgii-instance2x",
+            "orgii-instance2-dev",
+            "orgii-dev-other",
+            "orgii-market-local-12ABCDEF",
+            "orgii-market-local-12abcde",
+            "orgii-market-local-12abcdef0",
+            "orgii\n",
+            "orgii-instance93\n",
+            "https",
+        ] {
+            assert_eq!(validated_scheme(value), Err("invalid_market_app_scheme"));
+        }
+    }
+
+    #[test]
+    fn enrollment_envelopes_still_require_the_exact_compiled_scheme() {
+        let selected = app_scheme().unwrap();
+        for scheme in [
+            "orgii",
+            "orgii-dev",
+            "orgii-instance2",
+            "orgii-instance93",
+            "orgii-instance99",
+            "orgii-market-local-12abcdef",
+            selected,
+        ] {
+            assert!(validated_scheme(scheme).is_ok());
+            for path in ["/connect", "/authorized"] {
+                let raw = format!("{scheme}://market{path}?fixture=1");
+                assert_eq!(
+                    super::super::envelope(&raw, path).is_some(),
+                    scheme == selected
+                );
+            }
+        }
+    }
 
     #[test]
     fn defaults_are_secure_and_build_overrides_remain_bounded() {

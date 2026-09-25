@@ -475,6 +475,150 @@ describe("createCliEventHandler ingestion boundary", () => {
   // -------------------------------------------------------------------------
 
   describe("assistant / thinking streaming", () => {
+    it("feeds accumulated provider deltas to the workstation live-text boundary", async () => {
+      const onStreamingDelta = vi.fn();
+      handler = createCliEventHandler(SESSION_ID, { onStreamingDelta });
+      for (const content of ["ORG", "2_STREAM", " visible"]) {
+        handler.handleEvent(
+          activityEvent(
+            makeChunk({
+              action_type: "assistant_delta",
+              result: { content, is_delta: true },
+            })
+          )
+        );
+      }
+      expect(
+        onStreamingDelta.mock.calls.map(([value]) => value.content)
+      ).toEqual(["ORG", "ORG2_STREAM", "ORG2_STREAM visible"]);
+      expect(onStreamingDelta).toHaveBeenLastCalledWith({
+        isStreaming: true,
+        isThinking: false,
+        content: "ORG2_STREAM visible",
+      });
+      await flush();
+      // The cancellation projection still owns one accumulated row.
+      expect(eventsFor()).toHaveLength(1);
+      expect(eventsFor()[0].args).toEqual({ syntheticLive: true });
+      handler.handleEvent({
+        type: "agent:streaming_complete",
+        session_id: SESSION_ID,
+        payload: {
+          streamType: "message",
+          event: {
+            ...eventsFor()[0],
+            id: "message-final",
+            args: {},
+            displayStatus: "completed",
+            isDelta: false,
+          },
+        },
+      } as unknown as RawSessionEvent);
+      expect(onStreamingDelta).toHaveBeenLastCalledWith({
+        isStreaming: false,
+        isThinking: false,
+        content: "",
+      });
+      await flush();
+      expect(eventsFor()).toHaveLength(1);
+      expect(eventsFor()[0].id).toBe("message-final");
+    });
+
+    it("keeps the active message live when an older thinking stream completes", async () => {
+      const onStreamingDelta = vi.fn();
+      handler = createCliEventHandler(SESSION_ID, { onStreamingDelta });
+      handler.handleEvent(
+        activityEvent(
+          makeChunk({
+            action_type: "llm_thinking_delta",
+            result: { thought: "consider", is_delta: true },
+          })
+        )
+      );
+      expect(onStreamingDelta).toHaveBeenLastCalledWith({
+        isStreaming: true,
+        isThinking: true,
+        content: "consider",
+      });
+      handler.handleEvent(
+        activityEvent(
+          makeChunk({
+            action_type: "assistant_delta",
+            result: { content: "answer", is_delta: true },
+          })
+        )
+      );
+      await flush();
+      handler.handleEvent({
+        type: "agent:streaming_complete",
+        session_id: SESSION_ID,
+        payload: {
+          streamType: "thinking",
+          event: {
+            ...eventsFor()[0],
+            id: "thinking-final",
+            sessionId: SESSION_ID,
+          },
+        },
+      } as unknown as RawSessionEvent);
+      expect(onStreamingDelta).toHaveBeenLastCalledWith({
+        isStreaming: true,
+        isThinking: false,
+        content: "answer",
+      });
+      handler.reset();
+      await flush();
+    });
+
+    it.each(["completed", "failed", "cancelled", "reset", "dispose"])(
+      "clears live text on %s and starts the next handler with an empty accumulator",
+      async (ending) => {
+        const onStreamingDelta = vi.fn();
+        handler = createCliEventHandler(SESSION_ID, { onStreamingDelta });
+        const send = (target: typeof handler, content: string) =>
+          target.handleEvent(
+            activityEvent(
+              makeChunk({
+                action_type: "assistant_delta",
+                result: { content, is_delta: true },
+              })
+            )
+          );
+        send(handler, "partial");
+        if (ending === "reset") handler.reset();
+        else if (ending === "dispose") handler.dispose();
+        else
+          handler.handleEvent({
+            type: "code_session.status_changed",
+            session_id: SESSION_ID,
+            status: ending,
+          });
+        expect(onStreamingDelta).toHaveBeenLastCalledWith({
+          isStreaming: false,
+          isThinking: false,
+          content: "",
+        });
+        await flush();
+        if (["completed", "failed", "cancelled"].includes(ending)) {
+          expect(eventsFor()[0].args).toEqual({ syntheticLive: false });
+          expect(eventsFor()[0].displayText).toBe("partial");
+        }
+        if (ending === "dispose") {
+          send(handler, "late");
+          expect(onStreamingDelta).toHaveBeenCalledTimes(2);
+          handler = createCliEventHandler(SESSION_ID, { onStreamingDelta });
+        }
+        send(handler, "next");
+        expect(onStreamingDelta).toHaveBeenLastCalledWith({
+          isStreaming: true,
+          isThinking: false,
+          content: "next",
+        });
+        handler.dispose();
+        await flush();
+      }
+    );
+
     it("attributes live message and thinking projections to the runner turn", async () => {
       handler.handleEvent(
         activityEvent(

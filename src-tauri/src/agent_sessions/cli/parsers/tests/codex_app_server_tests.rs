@@ -810,6 +810,7 @@ fn native_turn(
     CodexAppServerTurn {
         session_id: SESSION_ID.to_string(),
         user_input: user_input.to_string(),
+        turn_intent_id: None,
         developer_instructions: Some(developer_instructions.to_string()),
         working_dir: "/workspace".to_string(),
         project_id: Some("desktop-project-id".to_string()),
@@ -820,6 +821,27 @@ fn native_turn(
         image_paths: vec!["/tmp/native-image.png".to_string()],
         allow_native_context_recovery: false,
     }
+}
+
+#[test]
+fn turn_correlation_is_native_metadata_not_user_text() {
+    for resume in [None, Some("existing-thread")] {
+        let mut turn = native_turn("Literal visible user text", "context", resume);
+        turn.turn_intent_id = Some("intent-1".into());
+        let input = build_turn_input(&turn);
+        let params =
+            super::turn_start_params("thread", &input, &json!({}), turn.turn_intent_id.as_deref())
+                .unwrap();
+        assert_eq!(params["clientUserMessageId"], "orgii-turn-intent:intent-1");
+        assert_eq!(params["input"][0]["text"], "Literal visible user text");
+        assert!(!params["input"].to_string().contains("orgii-turn-intent"));
+        assert!(!params["input"].to_string().contains("ide_context"));
+    }
+    assert!(super::turn_start_params("thread", &[], &json!({}), Some("bad\nintent")).is_err());
+    assert!(super::turn_start_params("thread", &[], &json!({}), None)
+        .unwrap()
+        .get("clientUserMessageId")
+        .is_none());
 }
 
 #[test]
@@ -914,6 +936,7 @@ async fn live_smoke_trivial_turn() {
     let turn = CodexAppServerTurn {
         session_id: SESSION_ID.to_string(),
         user_input: "Reply with exactly: pong".to_string(),
+        turn_intent_id: None,
         developer_instructions: None,
         working_dir: std::env::temp_dir().to_string_lossy().to_string(),
         project_id: None,
@@ -1016,10 +1039,10 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
 
     let binary = std::env::var("ORGII_NATIVE_CODEX_APP_BINARY")
         .expect("set ORGII_NATIVE_CODEX_APP_BINARY to the installed Desktop Codex binary");
-    let sandbox = tempfile::tempdir().expect("isolated Codex home");
+    let sandbox = crate::test_utils::test_env::sandbox();
     let root = sandbox.path().canonicalize().unwrap();
-    let home = root.join("account");
-    let native_home = root.join("desktop");
+    let home = app_paths::codex_cli_profile_dir("native-listability-account");
+    let native_home = app_paths::native_transcript_home_dir().join(".codex");
     let project = root.join("target project");
     let other_project = root.join("other project");
     let execution_worktree = root.join("execution worktree");
@@ -1030,8 +1053,17 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
         &other_project,
         &execution_worktree,
     ] {
-        std::fs::create_dir(dir).unwrap();
+        std::fs::create_dir_all(dir).unwrap();
     }
+    use crate::agent_sessions::cli::{native_materializer, persistence};
+    let org2_id = "orgii-desktop-listability-fixture";
+    let params = serde_json::from_value(json!({
+        "platform": "codex", "accountId": "native-listability-account",
+        "keySource": "own_key", "repoPath": project
+    }))
+    .unwrap();
+    persistence::create_session_with_source(org2_id, &params, None).unwrap();
+    let session = persistence::get_session(org2_id).unwrap().unwrap();
     let server = MockServer::start().await;
     let message = json!({
         "id": "msg_fixture", "type": "message", "role": "assistant", "status": "completed",
@@ -1121,6 +1153,7 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
         let turn = CodexAppServerTurn {
             session_id: "orgii-desktop-listability-fixture".to_string(),
             user_input: user_text.to_string(),
+            turn_intent_id: Some(format!("intent-{user_text}")),
             developer_instructions: Some(
                 "ORGII_PROVIDER_CONTEXT_MUST_NOT_BE_USER_TEXT".to_string(),
             ),
@@ -1182,6 +1215,63 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
             1,
             "default Desktop list must contain the native thread once: {list}"
         );
+        // Read through a fresh native process: metadata must survive disk/reopen,
+        // while Desktop-visible text stays exactly the authored input.
+        let read = catalog
+            .request(
+                "thread/read",
+                json!({"threadId": thread_id, "includeTurns": true}),
+                Duration::from_secs(10),
+            )
+            .await
+            .unwrap();
+        let turns = read["thread"]["turns"].as_array().unwrap();
+        let users: Vec<_> = turns
+            .iter()
+            .flat_map(|turn| turn["items"].as_array().unwrap())
+            .filter(|item| item["type"] == "userMessage")
+            .collect();
+        let expected_texts = if user_text == "ORGII_VISIBLE_FRESH" {
+            vec!["ORGII_VISIBLE_FRESH"]
+        } else {
+            vec!["ORGII_VISIBLE_FRESH", "ORGII_VISIBLE_RESUME"]
+        };
+        assert_eq!(users.len(), expected_texts.len());
+        for (user, expected) in users.iter().zip(&expected_texts) {
+            assert_eq!(
+                user["clientId"],
+                format!("orgii-turn-intent:intent-{expected}")
+            );
+            assert_eq!(user["content"][0]["text"], *expected);
+        }
+        let path = std::path::Path::new(read["thread"]["path"].as_str().unwrap());
+        let org2_path = native_materializer::materialized_cli_transcript_path(
+            &session,
+            thread_id.as_deref().unwrap(),
+        )
+        .expect("ORG2 must read the vendor's fresh split-home row")
+        .unwrap()
+        .1;
+        assert_eq!(
+            std::fs::canonicalize(&org2_path).unwrap(),
+            std::fs::canonicalize(path).unwrap()
+        );
+        assert!(native_materializer::materialized_cli_transcript_revision(
+            &session,
+            thread_id.as_deref().unwrap()
+        )
+        .unwrap()
+        .is_some());
+        let chunks =
+            orgtrack_core::sources::codex::app::load_codex_app_from_path("fixture", path).unwrap();
+        let replay: Vec<_> = chunks
+            .iter()
+            .filter(|chunk| chunk.function == "user_message")
+            .collect();
+        assert_eq!(replay.len(), expected_texts.len());
+        for (user, expected) in replay.iter().zip(&expected_texts) {
+            assert_eq!(user.result["turnIntentId"], format!("intent-{expected}"));
+        }
         assert_ne!(matches[0]["source"], "exec");
         assert_eq!(matches[0]["projectId"], project_id);
         let projects = catalog
@@ -1236,6 +1326,58 @@ async fn live_native_fresh_and_resumed_turns_are_in_default_desktop_list() {
                 wrong_project.display()
             );
         }
+    }
+    persistence::update_cli_session_id_for_account(
+        org2_id,
+        Some("native-listability-account"),
+        thread_id.as_deref().unwrap(),
+    )
+    .unwrap();
+    assert!(tokio::task::spawn_blocking(move || {
+        native_materializer::publish_bound_native_transcript(org2_id)
+    })
+    .await
+    .unwrap()
+    .expect("fresh account rollout promotes through production convergence"));
+    let promoted = native_materializer::materialized_cli_transcript_path(
+        &session,
+        thread_id.as_deref().unwrap(),
+    )
+    .unwrap()
+    .unwrap()
+    .1;
+    assert!(promoted.starts_with(&native_home));
+    let mut reopened =
+        CodexAppServerRpcClient::launch(std::path::Path::new(&binary), &native_home, &project)
+            .await
+            .unwrap();
+    let read = reopened
+        .request(
+            "thread/read",
+            json!({
+                "threadId": thread_id, "includeTurns": true
+            }),
+            Duration::from_secs(10),
+        )
+        .await
+        .unwrap();
+    let reopened_users: Vec<_> = read["thread"]["turns"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|turn| turn["items"].as_array().unwrap())
+        .filter(|item| item["type"] == "userMessage")
+        .collect();
+    assert_eq!(reopened_users.len(), 2);
+    for (item, expected) in reopened_users
+        .iter()
+        .zip(["ORGII_VISIBLE_FRESH", "ORGII_VISIBLE_RESUME"])
+    {
+        assert_eq!(item["content"][0]["text"], expected);
+        assert_eq!(
+            item["clientId"],
+            format!("orgii-turn-intent:intent-{expected}")
+        );
     }
     let requests = server.received_requests().await.unwrap();
     assert_eq!(requests.len(), 2);
@@ -1294,6 +1436,7 @@ done
         let turn = CodexAppServerTurn {
             session_id: format!("slash-{expected_method}"),
             user_input: prompt.into(),
+            turn_intent_id: None,
             developer_instructions: None,
             working_dir: dir.path().to_string_lossy().into_owned(),
             project_id: None,
@@ -1377,6 +1520,7 @@ async fn live_native_question_round_trip_in_plan_mode() {
     let turn = CodexAppServerTurn {
         session_id: session.clone(),
         user_input: "Use request_user_input to ask me to choose Alpha or Beta. Wait for the tool answer, then reply with only the chosen label. Do not use other tools or propose a plan.".into(),
+        turn_intent_id: None,
         developer_instructions: None,
         working_dir: work.path().to_string_lossy().into_owned(),
         project_id: None, resume_thread_id: None,

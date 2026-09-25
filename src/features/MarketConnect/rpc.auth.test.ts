@@ -67,6 +67,20 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+it.each(["orgii-dev", "orgii-instance93"])(
+  "decodes the native %s status before loading packages",
+  async (appScheme) => {
+    const store = signedInStore();
+    mocks.invoke.mockResolvedValueOnce({ ...status, app_scheme: appScheme });
+    const result = await loadMarketExecutionProfilesWithDiagnostics(store);
+    expect(result.errors).toEqual([]);
+    expect(result.profiles.map((profile) => profile.label)).toEqual([
+      "Beginner",
+    ]);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  }
+);
+
 it("refreshes expired signed-in auth, persists it and waits for native sync before loading packages", async () => {
   const store = signedInStore();
   store.set(org2CloudAuthAtom, { ...authFor(), expiresAt: 0 });

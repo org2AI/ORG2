@@ -286,14 +286,42 @@ describe("single-owner native transcript reconcile", () => {
 
   it("upgrades an in-flight job to preserve an interrupted partial suffix", async () => {
     const sessionId = "reconcile-interrupted";
-    const native = [makeEvent("native", sessionId)];
-    const partial = makeEvent("partial", sessionId);
+    const user: SessionEvent = {
+      ...makeEvent("accepted", sessionId),
+      source: "user",
+      actionType: "raw",
+      functionName: "user_message",
+      uiCanonical: "user_message",
+      result: {
+        message: { role: "user", content: "continue" },
+        turnIntentId: "accepted-intent",
+      },
+    };
+    const aborted: SessionEvent = {
+      ...makeEvent("aborted", sessionId),
+      source: "system",
+      actionType: "task_failed",
+      functionName: "task_failed",
+      uiCanonical: "task_failed",
+      result: {},
+      displayText: "",
+    };
+    const native = [makeEvent("native", sessionId), user, aborted];
+    const partial: SessionEvent = {
+      ...makeEvent(`stream-msg-${sessionId}-1-final`, sessionId),
+      isDelta: false,
+      result: { observation: "partial", turnIntentId: "accepted-intent" },
+    };
     mocks.cliStatus.mockResolvedValue({
       transcriptSource: "native",
       status: "cancelled",
     });
     historySequence([native]);
-    mocks.getPersisted.mockResolvedValue([...native, partial]);
+    // Native cache owns only finalized stream rows, never the native/user prefix.
+    mocks.getPersisted.mockResolvedValue([
+      makeEvent("older-cached-output", sessionId),
+      partial,
+    ]);
 
     const first = reconcileNativeTranscript(sessionId);
     const joined = reconcileNativeTranscript(sessionId, {
@@ -309,6 +337,18 @@ describe("single-owner native transcript reconcile", () => {
     );
     expect(mocks.closeTerminalEvents.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.getPersisted.mock.invocationCallOrder[0]
+    );
+    // Background idle refresh has no preserveInterruptedSuffix flag and must
+    // retain the same cache output with its conditional-write guard.
+    await expect(
+      reconcileNativeTranscript(sessionId, {
+        refreshGuard: () => true,
+      })
+    ).resolves.toEqual([...native, partial]);
+    expect(mocks.set).toHaveBeenLastCalledWith(
+      [...native, partial],
+      sessionId,
+      10
     );
   });
 

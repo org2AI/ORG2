@@ -534,6 +534,7 @@ windows = { version = "0.61", features = [
 ] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+toml = "0.8" # Inspect actual native route/config overrides; reuse the resolved test dependency
 socket2 = "0.6" # Bounded local IPC connect before the async runtime exists
 objc2 = { workspace = true }
 objc2-foundation = { workspace = true }

@@ -199,7 +199,20 @@ pub(super) fn create_file_atomically(
     label: &str,
     write: impl FnOnce(&mut fs::File) -> Result<(), String>,
 ) -> Result<bool, String> {
+    create_file_atomically_checked(destination, label, &|| Ok(()), write)
+}
+
+/// A scoped writer may be revoked while its staged file is being written or
+/// fsynced. Recheck immediately before publishing without replacing any file.
+pub(super) fn create_file_atomically_checked(
+    destination: &Path,
+    label: &str,
+    check: &impl Fn() -> Result<(), String>,
+    write: impl FnOnce(&mut fs::File) -> Result<(), String>,
+) -> Result<bool, String> {
+    check()?;
     ensure_parent(destination, label)?;
+    check()?;
     let staged = staged_path(destination, "create.tmp");
     let result = (|| {
         let mut file = fs::OpenOptions::new()
@@ -211,6 +224,7 @@ pub(super) fn create_file_atomically(
         file.sync_all()
             .map_err(|error| format!("sync staged {label}: {error}"))?;
         drop(file);
+        check()?;
         match fs::hard_link(&staged, destination) {
             Ok(()) => Ok(true),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
@@ -223,6 +237,7 @@ pub(super) fn create_file_atomically(
     let _ = fs::remove_file(&staged);
     if matches!(result, Ok(true)) {
         sync_parent(destination, label)?;
+        check()?;
     }
     result
 }
@@ -338,6 +353,31 @@ pub(super) fn append_suffix_atomically(path: &Path, suffix: &[u8]) -> Result<(),
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn revoked_stage_is_never_published_after_fsync() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("session.json");
+        let valid = std::cell::Cell::new(true);
+        let check = || {
+            if valid.get() {
+                Ok(())
+            } else {
+                Err("native_app_changed".into())
+            }
+        };
+        assert_eq!(
+            create_file_atomically_checked(&path, "guarded row", &check, |file| {
+                file.write_all(b"complete staged content")
+                    .map_err(|e| e.to_string())?;
+                valid.set(false);
+                Ok(())
+            }),
+            Err("native_app_changed".into())
+        );
+        assert!(!path.exists());
+        assert_eq!(fs::read_dir(temp.path()).unwrap().count(), 0);
+    }
 
     #[test]
     fn create_file_atomically_preserves_a_concurrent_desktop_write() {

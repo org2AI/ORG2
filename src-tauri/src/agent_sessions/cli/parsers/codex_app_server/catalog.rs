@@ -13,6 +13,11 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
+#[cfg(all(feature = "market-connect", target_os = "macos"))]
+mod default_route;
+#[cfg(all(feature = "market-connect", target_os = "macos"))]
+pub(crate) use default_route::isolated_default_route;
+
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
 const CODEX_NATIVE_MODEL_PROVIDER: &str = "openai";
 const CODEX_MANAGED_MODEL_PROVIDER: &str = "orgii";
@@ -62,13 +67,47 @@ pub(super) fn with_rpc<T>(
         &mut super::CodexAppServerRpcClient,
     ) -> Result<T, String>,
 ) -> Result<T, String> {
+    launch_rpc(
+        &native_codex_app_server_command(),
+        codex_home,
+        cwd,
+        operation,
+    )
+}
+
+/// The Market launcher passes the runtime belonging to its resolved GUI bundle.
+/// Do not rediscover a CLI here: that would validate one binary and run another.
+#[cfg(all(feature = "market-connect", target_os = "macos"))]
+pub(super) fn with_rpc_command<T>(
+    command: &Path,
+    codex_home: &Path,
+    cwd: &Path,
+    operation: impl FnOnce(
+        &tokio::runtime::Runtime,
+        &mut super::CodexAppServerRpcClient,
+    ) -> Result<T, String>,
+) -> Result<T, String> {
+    if !command.is_absolute() || !command.is_file() {
+        return Err("Codex app-server requires an explicit installed runtime".into());
+    }
+    launch_rpc(command, codex_home, cwd, operation)
+}
+
+fn launch_rpc<T>(
+    command: &Path,
+    codex_home: &Path,
+    cwd: &Path,
+    operation: impl FnOnce(
+        &tokio::runtime::Runtime,
+        &mut super::CodexAppServerRpcClient,
+    ) -> Result<T, String>,
+) -> Result<T, String> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|error| format!("create Codex app-server runtime: {error}"))?;
-    let command = native_codex_app_server_command();
     let mut client = runtime.block_on(super::CodexAppServerRpcClient::launch(
-        &command, codex_home, cwd,
+        command, codex_home, cwd,
     ))?;
     operation(&runtime, &mut client)
 }

@@ -1033,11 +1033,12 @@
     "marketApps": {
       "isolatedStorage": "En son 50 sohbetiniz otomatik olarak eşitlenir. Bir sohbet Codex'te zaten açıksa, en son mesajları almak için Codex'i kapatıp yeniden açın. Uygulama ve CLI ayarları ayrı kalır",
       "isolatedClaudeStorage": "Claude Desktop ve Claude Code kapatıldıktan sonra en son 50 sohbetiniz otomatik olarak eşitlenir",
+      "historyPolicy": "Her iki kopya da değişirse son yazılan diğerinin üzerine yazılır; üzerine yazılan mesajlar geri alınamaz",
       "loading": "ORG2 Market paketleri yükleniyor…",
       "loadFailed": "ORG2 Market paketleri yüklenemedi",
       "nonePurchased": "Şu anda kullanılabilir ORG2 Market paketi yok",
       "checking": "Uygulama denetleniyor…",
-      "unavailable": "Bu yüklü sürüm için kullanılamıyor",
+      "unavailable": "Bu uygulama bağlantısı kullanılamıyor",
       "notInstalled": "Yüklü değil",
       "original": "Uygulamanın özgün ayarını kullanıyor",
       "open": "Uygulamayı aç",
@@ -1047,7 +1048,6 @@
       "actionFailed": "Bu uygulama bağlantısı güncellenemedi",
       "openFailed": "Bu uygulama açılamadı",
       "restoreRequired": "Önce bu uygulamanın özgün ayarlarını geri yükleyin, ardından paketlerinizi seçip bağlantıyı yeniden uygulayın",
-      "versionUnverified": "Bu masaüstü uygulaması sürümü, bu ORG2 derlemesinde yalıtılmış bağlantılar için doğrulanmadı. ORG2’yi güncelleyip tekrar deneyin",
       "workspaceNumber": "Hizmet {{index}} / {{count}}",
       "openTerminal": "Terminali aç",
       "terminalOpened": "Terminal açıldı",
@@ -1057,10 +1057,21 @@
       "defaultModel": "Varsayılan model",
       "packageLimit": "En fazla 8 paket seçin",
       "historySync": {
+        "observing": "Otomatik geçmiş eşitleme değişiklikleri izliyor",
         "active": "Geçmiş eşitleme etkin · {{shared}} sohbet paylaşıldı",
         "attention": "Geçmiş eşitleme etkin · {{shared}} paylaşıldı · {{conflicts}} ilgi gerektiriyor",
         "paused": "Geçmiş eşitleme duraklatıldı: {{reason}}",
-        "idle": "Geçmiş eşitleme boşta"
+        "idle": "Geçmiş eşitleme boşta",
+        "reasons": {
+          "compatibility": "Bu uygulamanın geçmiş biçimiyle uyumluluk henüz doğrulanmadı",
+          "changed": "Uygulama değiştiği için geçmiş uyumluluğunun yeniden doğrulanması gerekiyor",
+          "route": "Hedef model ve sağlayıcı doğrulanamadı",
+          "checking": "Konuşma geçmişi kontrol ediliyor",
+          "waiting": "Geçmişi eşitlemek için Claude Desktop ve Claude Code uygulamalarını kapatın, ardından görüntülemek için Claude Desktop uygulamasını yeniden açın",
+          "namespace": "İlk kullanımda Claude Desktop uygulamasını açın, ardından geçmişi yüklemek için kapatıp yeniden açın",
+          "attention": "Bazı konuşmaların incelenmesi gerekiyor; mevcut geçmiş korunuyor",
+          "unavailable": "Otomatik geçmiş eşitleme geçici olarak kullanılamıyor"
+        }
       }
     }
   },

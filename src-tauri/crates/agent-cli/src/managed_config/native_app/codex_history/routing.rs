@@ -1,4 +1,5 @@
 //! Append-only routing snapshot for the audited Codex 0.155.0-alpha.9.2 wire format.
+//! Native optional settings additionally audited from 0.155.0-alpha.16.3 desktop output.
 //!
 //! A paginated rollout keeps every original byte (including ancestor cutoffs).
 //! Its appended event receives the caller's checked next ordinal; legacy rollouts
@@ -7,12 +8,11 @@
 //! New destination threads use the conservative helpers below. Unknown permission
 //! shapes fail closed instead of becoming a default that could expand access.
 
-use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use serde_json::{json, Map, Value};
 
-const MAX_SETTINGS_BYTES: usize = 64 * 1024;
+const MAX_PERMISSION_BYTES: usize = 64 * 1024;
 const MAX_PERMISSION_ENTRIES: usize = 256;
 
 pub(super) fn conservative_permission_profile() -> Value {
@@ -167,7 +167,7 @@ fn permission_profile(value: &Value) -> Result<Value, String> {
     if serde_json::to_vec(value)
         .map_err(|error| error.to_string())?
         .len()
-        > MAX_SETTINGS_BYTES
+        > MAX_PERMISSION_BYTES
     {
         return Err("Codex permission profile size limit exceeded".into());
     }
@@ -276,95 +276,6 @@ pub(super) fn settings_event(
         event["ordinal"] = json!(ordinal);
     }
     Ok(event)
-}
-
-/// Keys of the settings we emit, for comparison with what the native app writes.
-fn emitted_shape() -> Result<(BTreeSet<String>, BTreeMap<String, &'static str>), String> {
-    let event = settings_event(
-        "00000000-0000-7000-8000-000000000000",
-        "model",
-        "provider",
-        Path::new("/"),
-        &conservative_permission_profile(),
-        &conservative_approval_policy(),
-        Some(1),
-    )?;
-    Ok((
-        event["payload"]
-            .as_object()
-            .map(|v| v.keys().cloned().collect())
-            .unwrap_or_default(),
-        event["payload"]["thread_settings"]
-            .as_object()
-            .map(|v| v.iter().map(|(k, v)| (k.clone(), kind(v))).collect())
-            .unwrap_or_default(),
-    ))
-}
-
-fn kind(value: &Value) -> &'static str {
-    match value {
-        Value::Null => "null",
-        Value::Bool(_) => "bool",
-        Value::Number(_) => "number",
-        Value::String(_) => "string",
-        Value::Array(_) => "array",
-        Value::Object(_) => "object",
-    }
-}
-
-/// A native release may rename or retype the settings fields resume depends
-/// on. Compare our emitted shape with the events the native app itself wrote:
-/// every key we emit must still be one the native app uses, with the same
-/// value type, and the payload envelope must be unchanged. Native samples are
-/// the events carrying keys we never emit; without any sample nothing can be
-/// concluded and the schema gate alone applies.
-pub(super) fn native_shape_gate<'a>(
-    native_events: impl Iterator<Item = &'a Value>,
-) -> Result<usize, String> {
-    let (envelope, emitted) = emitted_shape()?;
-    let mut samples = 0usize;
-    let mut union: BTreeMap<String, BTreeSet<&'static str>> = BTreeMap::new();
-    let mut envelopes: BTreeSet<BTreeSet<String>> = BTreeSet::new();
-    for event in native_events {
-        let Some(settings) = event["payload"]["thread_settings"].as_object() else {
-            continue;
-        };
-        if settings.keys().all(|key| emitted.contains_key(key)) {
-            continue;
-        }
-        samples += 1;
-        envelopes.insert(
-            event["payload"]
-                .as_object()
-                .map(|v| v.keys().cloned().collect())
-                .unwrap_or_default(),
-        );
-        for (key, value) in settings {
-            union.entry(key.clone()).or_default().insert(kind(value));
-        }
-    }
-    if samples == 0 {
-        return Ok(0);
-    }
-    if envelopes.iter().any(|keys| *keys != envelope) {
-        return Err("Native Codex settings events changed their envelope".into());
-    }
-    for (key, ours) in &emitted {
-        match union.get(key) {
-            None => {
-                return Err(format!(
-                    "Native Codex settings events no longer carry `{key}`"
-                ));
-            }
-            Some(kinds) if !kinds.contains(ours) => {
-                return Err(format!(
-                    "Native Codex settings events changed the type of `{key}`"
-                ));
-            }
-            Some(_) => {}
-        }
-    }
-    Ok(samples)
 }
 
 #[cfg(test)]
@@ -491,75 +402,5 @@ mod tests {
             None
         )
         .is_err());
-    }
-
-    fn native_event(extra: &[(&str, Value)], rename: Option<(&str, &str)>) -> Value {
-        let mut settings = json!({
-            "model":"gpt","model_provider_id":"openai","approval_policy":"on-request",
-            "approvals_reviewer":"user","permission_profile":{"type":"managed"},"cwd":"/tmp",
-            "collaboration_mode":{"mode":"default"},"personality":"pragmatic",
-            "reasoning_effort":"low","service_tier":"default"
-        });
-        for (key, value) in extra {
-            settings[*key] = value.clone();
-        }
-        if let Some((from, to)) = rename {
-            let value = settings[from].take();
-            settings.as_object_mut().unwrap().remove(from);
-            settings[to] = value;
-        }
-        json!({"timestamp":"2026-09-22T00:00:00.000Z","ordinal":9,"type":"event_msg",
-            "payload":{"type":"thread_settings_applied","thread_id":"00000000-0000-7000-8000-000000000001","thread_settings":settings}})
-    }
-
-    #[test]
-    fn shape_gate_accepts_native_events_that_only_add_optional_keys() {
-        let events = [
-            native_event(&[], None),
-            native_event(
-                &[("active_permission_profile", json!({"type":"managed"}))],
-                None,
-            ),
-            native_event(&[("disabled_plugin_ids", json!([]))], None),
-        ];
-        assert_eq!(native_shape_gate(events.iter()).unwrap(), 3);
-    }
-
-    #[test]
-    fn shape_gate_ignores_our_own_minimal_events() {
-        let ours = settings_event(
-            "00000000-0000-7000-8000-000000000001",
-            "m",
-            "orgii",
-            Path::new("/tmp"),
-            &conservative_permission_profile(),
-            &conservative_approval_policy(),
-            Some(1),
-        )
-        .unwrap();
-        assert_eq!(native_shape_gate([ours].iter()).unwrap(), 0);
-    }
-
-    #[test]
-    fn shape_gate_refuses_renamed_retyped_or_reshaped_native_events() {
-        let renamed = [native_event(
-            &[],
-            Some(("permission_profile", "permissions")),
-        )];
-        assert!(native_shape_gate(renamed.iter())
-            .unwrap_err()
-            .contains("no longer carry `permission_profile`"));
-        let retyped = [native_event(
-            &[("model_provider_id", json!({"id":"openai"}))],
-            None,
-        )];
-        assert!(native_shape_gate(retyped.iter())
-            .unwrap_err()
-            .contains("type of `model_provider_id`"));
-        let mut reshaped = native_event(&[], None);
-        reshaped["payload"]["turn_id"] = json!("turn");
-        assert!(native_shape_gate([reshaped].iter())
-            .unwrap_err()
-            .contains("envelope"));
     }
 }

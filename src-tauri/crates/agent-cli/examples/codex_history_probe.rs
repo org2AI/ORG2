@@ -1,5 +1,7 @@
 //! Native regression driver. Only operates inside an explicitly marked,
 //! disposable probe root; never resolves the user's normal Codex/ORG2 home.
+//! Its check authorizes this synthetic candidate experiment only. Passing does
+//! not grant a production binary capability or certify native GUI isolation.
 #[cfg(unix)]
 mod native_probe {
     use agent_cli::managed_config::native_app::{codex_history, NativeAppProfile};

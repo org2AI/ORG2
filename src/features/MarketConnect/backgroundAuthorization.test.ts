@@ -77,6 +77,21 @@ it("posts only public proof with bearer auth and redeems locally without exposin
   createInstrumentedStore().set(org2CloudAuthAtom, null);
   expect(o.cancel).not.toHaveBeenCalled(); // attempt subscription was disposed
 });
+it("keeps the instance callback local and the Cloud proof independent of the scheme", async () => {
+  const o = options();
+  o.selection.protocol = "orgii-instance93:";
+  await authorizeMarketInBackground(o);
+  expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body))).toEqual({
+    workspace_id: "ws_test",
+    target: "org2",
+    state,
+    challenge,
+  });
+  expect(o.complete).toHaveBeenCalledWith(
+    `orgii-instance93://market/authorized?code=${code}&state=${state}`,
+    expect.any(Function)
+  );
+});
 it.each([
   "https://evil.example/buyer/connect/authorize",
   "http://market.org2.dev/buyer/connect/authorize",

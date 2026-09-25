@@ -65,6 +65,7 @@ pub(super) async fn run_codex_app_server_branch(
     let turn = codex_app_server::CodexAppServerTurn {
         session_id: session_id.clone(),
         user_input,
+        turn_intent_id: turn_intent_id.map(str::to_owned),
         developer_instructions,
         working_dir: working_dir.to_string(),
         project_id,

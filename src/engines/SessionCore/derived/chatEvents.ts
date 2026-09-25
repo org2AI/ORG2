@@ -173,6 +173,24 @@ export function appendLiveAssistantEvent(
     return events.filter((event) => event.id !== liveId);
   }
   const liveId = `live-assistant-${sessionId}`;
+  // CLI already owns a live EventStore row for cancellation retention. Chat
+  // renders that row with the same live buffer; only surfaces that omit it
+  // (Workstation Messages) need the additional synthetic placeholder.
+  if (
+    events.some(
+      (event) =>
+        event.id !== liveId &&
+        event.sessionId === sessionId &&
+        event.source === "assistant" &&
+        event.displayVariant === "message" &&
+        event.isDelta === true &&
+        event.args?.syntheticLive === true
+    )
+  ) {
+    return events.some((event) => event.id === liveId)
+      ? events.filter((event) => event.id !== liveId)
+      : events;
+  }
   const createdAt = getLiveAssistantCreatedAt(sessionId);
   if (isFinalAssistantDuplicate(events, content, createdAt, sessionId)) {
     _liveAssistantCreatedAtBySession.delete(sessionId);

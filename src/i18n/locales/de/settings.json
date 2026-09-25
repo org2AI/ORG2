@@ -1033,11 +1033,12 @@
     "marketApps": {
       "isolatedStorage": "Deine 50 neuesten Unterhaltungen werden automatisch synchronisiert. Ist eine Unterhaltung in Codex bereits geöffnet, beende Codex und öffne es erneut, um die neuesten Nachrichten zu erhalten. App- und CLI-Einstellungen bleiben getrennt",
       "isolatedClaudeStorage": "Deine 50 neuesten Unterhaltungen werden automatisch synchronisiert, sobald Claude Desktop und Claude Code beendet sind",
+      "historyPolicy": "Wenn beide Kopien geändert werden, überschreibt die später gespeicherte die andere; überschriebene Nachrichten können nicht wiederhergestellt werden",
       "loading": "ORG2 Market-Pakete werden geladen…",
       "loadFailed": "ORG2 Market-Pakete konnten nicht geladen werden",
       "nonePurchased": "Derzeit sind keine ORG2 Market-Pakete verfügbar",
       "checking": "App wird geprüft…",
-      "unavailable": "Für diese installierte Version nicht verfügbar",
+      "unavailable": "Diese App-Verbindung ist nicht verfügbar",
       "notInstalled": "Nicht installiert",
       "original": "Verwendet die ursprüngliche App-Konfiguration",
       "open": "App öffnen",
@@ -1047,7 +1048,6 @@
       "actionFailed": "Diese App-Verbindung konnte nicht aktualisiert werden",
       "openFailed": "Diese App konnte nicht geöffnet werden",
       "restoreRequired": "Stelle zuerst die ursprünglichen Einstellungen dieser App wieder her, wähle dann deine Pakete aus und wende die Verbindung erneut an",
-      "versionUnverified": "Diese Desktop-App-Version wurde mit diesem ORG2-Build noch nicht für isolierte Verbindungen geprüft. Aktualisiere ORG2 und versuche es erneut",
       "workspaceNumber": "Dienst {{index}} von {{count}}",
       "openTerminal": "Terminal öffnen",
       "terminalOpened": "Terminal geöffnet",
@@ -1057,10 +1057,21 @@
       "defaultModel": "Standardmodell",
       "packageLimit": "Wähle bis zu 8 Pakete",
       "historySync": {
+        "observing": "Die automatische Verlaufssynchronisierung wartet auf Änderungen",
         "active": "Verlaufssynchronisierung aktiv · {{shared}} Unterhaltungen geteilt",
         "attention": "Verlaufssynchronisierung aktiv · {{shared}} geteilt · {{conflicts}} benötigen Aufmerksamkeit",
         "paused": "Verlaufssynchronisierung pausiert: {{reason}}",
-        "idle": "Verlaufssynchronisierung inaktiv"
+        "idle": "Verlaufssynchronisierung inaktiv",
+        "reasons": {
+          "compatibility": "Die Kompatibilität mit dem Verlaufsformat dieser App wurde noch nicht geprüft",
+          "changed": "Die App hat sich geändert und die Verlaufskompatibilität muss erneut geprüft werden",
+          "route": "Das Zielmodell und der Anbieter konnten nicht überprüft werden",
+          "checking": "Der Gesprächsverlauf wird geprüft",
+          "waiting": "Claude Desktop und Claude Code beenden, um den Verlauf zu synchronisieren, dann Claude Desktop erneut öffnen, um ihn anzuzeigen",
+          "namespace": "Erste Nutzung: Claude Desktop öffnen, dann beenden und erneut öffnen, um den Verlauf zu laden",
+          "attention": "Einige Gespräche erfordern Aufmerksamkeit; der bestehende Verlauf bleibt erhalten",
+          "unavailable": "Die automatische Verlaufssynchronisierung ist vorübergehend nicht verfügbar"
+        }
       }
     }
   },

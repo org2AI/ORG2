@@ -1114,11 +1114,12 @@
     "marketApps": {
       "isolatedStorage": "Your 50 most recent conversations sync automatically. If a conversation is already open in Codex, quit and reopen Codex to receive its latest messages. App and CLI settings stay separate",
       "isolatedClaudeStorage": "Your 50 most recent conversations sync automatically after Claude Desktop and Claude Code quit",
+      "historyPolicy": "If both copies change, the later write replaces the other; overwritten messages cannot be recovered",
       "loading": "Loading ORG2 Market packages…",
       "loadFailed": "ORG2 Market packages could not be loaded",
       "nonePurchased": "No ORG2 Market packages are currently available",
       "checking": "Checking app…",
-      "unavailable": "Unavailable for this installed version",
+      "unavailable": "This app connection is unavailable",
       "notInstalled": "Not installed",
       "original": "Using the app’s original setup",
       "open": "Open app",
@@ -1128,7 +1129,6 @@
       "actionFailed": "Could not update this app connection",
       "openFailed": "Could not open this app",
       "restoreRequired": "Restore the original setup for this app, then select your packages and apply the connection again",
-      "versionUnverified": "This desktop app version has not been verified for isolated connections by this ORG2 build. Update ORG2 and try again",
       "workspaceNumber": "Service {{index}} of {{count}}",
       "openTerminal": "Open terminal",
       "terminalOpened": "Terminal opened",
@@ -1138,10 +1138,21 @@
       "defaultModel": "Default model",
       "packageLimit": "Select up to 8 packages",
       "historySync": {
+        "observing": "Automatic history sync is watching for changes",
         "active": "History sync active · {{shared}} conversations shared",
         "attention": "History sync active · {{shared}} shared · {{conflicts}} need attention",
         "paused": "History sync paused: {{reason}}",
-        "idle": "History sync idle"
+        "idle": "History sync idle",
+        "reasons": {
+          "compatibility": "Compatibility with this app’s history format has not been verified",
+          "changed": "The app changed and history compatibility must be checked again",
+          "route": "The destination model and provider could not be verified",
+          "checking": "Checking conversation history",
+          "waiting": "Quit Claude Desktop and Claude Code to sync history, then reopen Claude Desktop to view it",
+          "namespace": "First use: open Claude Desktop, then quit and reopen it to load history",
+          "attention": "Some conversations need attention; existing history is preserved",
+          "unavailable": "Automatic history sync is temporarily unavailable"
+        }
       }
     }
   },

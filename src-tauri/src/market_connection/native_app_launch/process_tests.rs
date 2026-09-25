@@ -1,8 +1,17 @@
 use super::*;
 
 fn raw(args: &[&[u8]], env: &[u8]) -> Vec<u8> {
+    raw_executable(
+        b"/Applications/Vendor App.app/Contents/MacOS/Vendor",
+        args,
+        env,
+    )
+}
+
+fn raw_executable(executable: &[u8], args: &[&[u8]], env: &[u8]) -> Vec<u8> {
     let mut bytes = (args.len() as i32).to_ne_bytes().to_vec();
-    bytes.extend_from_slice(b"/Applications/Vendor App.app/Contents/MacOS/Vendor\0\0\0");
+    bytes.extend_from_slice(executable);
+    bytes.extend_from_slice(b"\0\0\0");
     for arg in args {
         bytes.extend_from_slice(arg);
         bytes.push(0);
@@ -410,4 +419,360 @@ fn history_writer_detection_recognizes_native_and_script_entrypoints() {
         assert!(!claude_executable(path));
     }
     assert!(arguments(&[0, 0, 0, 0]).is_err());
+}
+
+#[test]
+fn missing_pidpath_uses_kernel_executable_without_a_vendor_name_allowlist() {
+    for executable in [
+        b"/retired/Any App.app/Contents/bin/background-helper".as_slice(),
+        b"/deleted/path/an-arbitrary-binary",
+        b"/Applications/Claude.app/Contents/Helpers/chrome-native-host",
+    ] {
+        let bytes = raw_executable(executable, &[b"Claude"], b"");
+        assert_eq!(classify_claude_writer(None, false, Some(&bytes)), Ok(false));
+        // Bundle registration is independent evidence, even with a renamed
+        // executable. The missing kernel path cannot hide a registered writer.
+        assert_eq!(classify_claude_writer(None, true, Some(&bytes)), Ok(true));
+    }
+    for executable in [
+        b"/opt/bin/claude".as_slice(),
+        b"/Applications/Claude.app/Contents/MacOS/Claude",
+        b"/private/candidate/Renamed Desktop.app/Contents/MacOS/Claude",
+    ] {
+        // An argv[0] disguise cannot turn the real executable into an unrelated process.
+        let bytes = raw_executable(executable, &[b"unrelated-worker"], b"");
+        assert_eq!(classify_claude_writer(None, false, Some(&bytes)), Ok(true));
+    }
+}
+
+#[test]
+fn wrapper_classification_uses_kernel_executable_and_only_argc_arguments() {
+    for executable in [
+        b"/opt/bin/node".as_slice(),
+        b"/opt/bin/nodejs",
+        b"/opt/bin/bun",
+        b"/opt/bin/deno",
+    ] {
+        let bytes = raw_executable(
+            executable,
+            &[
+                b"disguised-argv-zero",
+                b"/opt/lib/node_modules/@anthropic-ai/claude-code/cli.js",
+            ],
+            b"SECRET=fixture\0",
+        );
+        assert_eq!(classify_claude_writer(None, false, Some(&bytes)), Ok(true));
+        assert_eq!(
+            classify_claude_writer(Some(executable), false, Some(&bytes)),
+            Ok(true)
+        );
+        let bytes = raw_executable(
+            executable,
+            &[b"claude", b"/service/unrelated.js"],
+            b"/opt/lib/node_modules/@anthropic-ai/claude-code/cli.js\0SECRET=fixture\0",
+        );
+        assert_eq!(classify_claude_writer(None, false, Some(&bytes)), Ok(false));
+        assert_eq!(kernel_arguments(&bytes).unwrap().args.len(), 2);
+    }
+}
+
+#[test]
+fn contradictory_or_unreadable_kernel_executable_is_never_assumed_unrelated() {
+    let bytes = raw_executable(
+        b"/nonexistent/bin/node",
+        &[b"node", b"/service/plain.js"],
+        b"",
+    );
+    assert_eq!(
+        classify_claude_writer(None, false, None),
+        Err("writer_unknown")
+    );
+    assert_eq!(
+        classify_claude_writer(Some(b"/opt/bin/node"), false, None),
+        Err("writer_unknown")
+    );
+    for registered in [false, true] {
+        assert_eq!(
+            classify_claude_writer(Some(b"/different/bin/node"), registered, Some(&bytes)),
+            Err("writer_unknown")
+        );
+    }
+}
+
+#[test]
+fn kernel_path_aliases_require_one_stable_file_not_equal_basenames() {
+    use std::os::unix::{ffi::OsStrExt, fs::symlink};
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap();
+    let executable = root.join("node");
+    let alias = root.join("node-alias");
+    let other = root.join("other/node");
+    std::fs::write(&executable, b"fixture executable").unwrap();
+    symlink(&executable, &alias).unwrap();
+    std::fs::create_dir(other.parent().unwrap()).unwrap();
+    std::fs::write(&other, b"fixture executable").unwrap();
+    let bytes = raw_executable(
+        alias.as_os_str().as_bytes(),
+        &[b"node", b"/service/plain.js"],
+        b"",
+    );
+    assert_eq!(
+        classify_claude_writer(Some(executable.as_os_str().as_bytes()), false, Some(&bytes)),
+        Ok(false)
+    );
+    assert_eq!(
+        classify_claude_writer(Some(other.as_os_str().as_bytes()), false, Some(&bytes)),
+        Err("writer_unknown")
+    );
+    std::fs::remove_file(executable).unwrap();
+    assert!(!same_kernel_executable(
+        alias.as_os_str().as_bytes(),
+        other.as_os_str().as_bytes()
+    ));
+}
+
+#[test]
+fn invalid_kernel_records_fail_closed_without_parsing_environment() {
+    let valid = raw_executable(b"/opt/bin/node", &[b"node", b"/service/plain.js"], b"");
+    for bytes in [
+        vec![],
+        vec![0, 0, 0, 0],
+        valid[..6].to_vec(),
+        valid[..valid.len() - 1].to_vec(),
+        raw_executable(b"", &[b"node"], b""),
+        raw_executable(b"node", &[b"node"], b""),
+        raw_executable(b"/opt/../bin/node", &[b"node"], b""),
+        raw_executable(b"/opt/\xff/node", &[b"node"], b""),
+        raw_executable(b"/opt/bin/node", &[b"node", b"\xff"], b""),
+        vec![0; MAX_PROCESS_ARGS_BYTES + 1],
+    ] {
+        assert_eq!(
+            classify_claude_writer(None, false, Some(&bytes)),
+            Err("writer_unknown")
+        );
+    }
+    for count in [-1_i32, 0, 4097] {
+        let mut bytes = valid.clone();
+        bytes[..4].copy_from_slice(&count.to_ne_bytes());
+        assert_eq!(
+            classify_claude_writer(None, false, Some(&bytes)),
+            Err("writer_unknown")
+        );
+    }
+}
+
+#[test]
+fn writer_inspection_requires_unchanged_pid_uid_and_start_epoch() {
+    let generation = ExecGeneration {
+        unique_id: 123,
+        id_version: 4,
+    };
+    let generations = (generation, generation);
+    // SAFETY: proc_bsdinfo contains only integers and fixed byte arrays.
+    let mut before: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
+    before.pbi_pid = 7;
+    before.pbi_uid = 42;
+    before.pbi_start_tvsec = 100;
+    before.pbi_start_tvusec = 200;
+    assert_eq!(
+        inspected_writer_identity(7, 42, &before, None, generations),
+        Ok(None)
+    );
+    assert_eq!(
+        inspected_writer_identity(7, 42, &before, Some(&before), generations),
+        Ok(Some(Identity {
+            pid: 7,
+            started: (100, 200)
+        }))
+    );
+    for field in 0..4 {
+        let mut after = before;
+        match field {
+            0 => after.pbi_pid += 1,
+            1 => after.pbi_uid += 1,
+            2 => after.pbi_start_tvsec += 1,
+            _ => after.pbi_start_tvusec += 1,
+        }
+        assert_eq!(
+            inspected_writer_identity(7, 42, &before, Some(&after), generations),
+            Err("writer_unknown")
+        );
+    }
+    assert_eq!(
+        inspected_writer_identity(7, 43, &before, Some(&before), generations),
+        Err("writer_unknown")
+    );
+    let mut after = before;
+    after.pbi_flags |= PROC_FLAG_INEXIT;
+    assert_eq!(
+        inspected_writer_identity(7, 42, &before, Some(&after), generations),
+        Ok(None)
+    );
+    after.pbi_flags = 0;
+    after.pbi_status = libc::SZOMB;
+    assert_eq!(
+        inspected_writer_identity(7, 42, &before, Some(&after), generations),
+        Ok(None)
+    );
+}
+
+#[test]
+fn exec_generation_requires_complete_kernel_abi_data() {
+    assert_eq!(std::mem::size_of::<ProcessUniqueInfo>(), 56);
+    assert_eq!(std::mem::offset_of!(ProcessUniqueInfo, unique_id), 16);
+    assert_eq!(std::mem::offset_of!(ProcessUniqueInfo, id_version), 32);
+    let value = ProcessUniqueInfo {
+        unique_id: 123,
+        id_version: 4,
+        ..Default::default()
+    };
+    assert_eq!(
+        checked_exec_generation(&value, 56),
+        Ok(ExecGeneration {
+            unique_id: 123,
+            id_version: 4
+        })
+    );
+    for count in [-1, 0, 32, 55, 57] {
+        assert_eq!(
+            checked_exec_generation(&value, count),
+            Err("writer_unknown")
+        );
+    }
+    assert_eq!(
+        checked_exec_generation(&ProcessUniqueInfo::default(), 56),
+        Err("writer_unknown")
+    );
+}
+
+#[test]
+fn same_pid_uid_and_start_time_cannot_hide_an_exec_generation_change() {
+    // SAFETY: proc_bsdinfo contains only integers and fixed byte arrays.
+    let mut process: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
+    process.pbi_pid = 7;
+    process.pbi_uid = 42;
+    process.pbi_start_tvsec = 100;
+    process.pbi_start_tvusec = 200;
+    let before = ExecGeneration {
+        unique_id: 123,
+        id_version: 4,
+    };
+    for after in [
+        ExecGeneration {
+            id_version: 5,
+            ..before
+        },
+        ExecGeneration {
+            unique_id: 124,
+            ..before
+        },
+    ] {
+        assert_eq!(
+            inspected_writer_identity(7, 42, &process, Some(&process), (before, after)),
+            Err("writer_unknown")
+        );
+    }
+}
+
+#[test]
+fn current_process_exec_generation_is_readable_without_collecting_arguments() {
+    let before = exec_generation(std::process::id() as i32).unwrap();
+    let after = exec_generation(std::process::id() as i32).unwrap();
+    assert_eq!(before, after);
+}
+
+#[test]
+fn claude_writer_scan_accepts_exit_at_either_generation_read() {
+    use std::cell::{Cell, RefCell};
+    // Exercise the production per-PID scanner with real kernel identity reads.
+    // Force the owned child to exit at each precise race boundary, rather than
+    // hoping a background process happens to exit during a stress test.
+    for exit_at in [1, 2] {
+        let child = RefCell::new(Child(
+            std::process::Command::new("/bin/sleep")
+                .arg("30")
+                .spawn()
+                .unwrap(),
+        ));
+        let pid = child.borrow().0.id() as i32;
+        let reads = Cell::new(0);
+        let result = inspect_claude_writer(pid, unsafe { libc::geteuid() }, true, |pid| {
+            reads.set(reads.get() + 1);
+            if reads.get() == exit_at {
+                child.borrow_mut().0.kill().unwrap();
+                child.borrow_mut().0.wait().unwrap();
+            }
+            exec_generation(pid)
+        });
+        let _ = child.borrow_mut().0.kill();
+        child.borrow_mut().0.wait().unwrap();
+        assert_eq!(reads.get(), exit_at);
+        assert_eq!(result, Ok(None), "exit at generation read {exit_at}");
+    }
+}
+
+#[test]
+fn claude_writer_scan_still_rejects_unreadable_live_generation() {
+    use std::cell::Cell;
+    for fail_at in [1, 2] {
+        let reads = Cell::new(0);
+        let result = inspect_claude_writer(
+            std::process::id() as i32,
+            unsafe { libc::geteuid() },
+            true,
+            |pid| {
+                reads.set(reads.get() + 1);
+                if reads.get() == fail_at {
+                    Err("writer_unknown")
+                } else {
+                    exec_generation(pid)
+                }
+            },
+        );
+        assert_eq!(reads.get(), fail_at);
+        assert_eq!(result, Err("writer_unknown"));
+    }
+}
+
+#[test]
+fn claude_writer_scan_still_rejects_exec_during_classification() {
+    let reads = std::cell::Cell::new(0);
+    let result = inspect_claude_writer(
+        std::process::id() as i32,
+        unsafe { libc::geteuid() },
+        true,
+        |pid| {
+            let mut generation = exec_generation(pid)?;
+            generation.id_version += reads.get();
+            reads.set(reads.get() + 1);
+            Ok(generation)
+        },
+    );
+    assert_eq!(reads.get(), 2);
+    assert_eq!(result, Err("writer_unknown"));
+}
+
+#[test]
+fn recorded_process_exit_requires_kernel_lifetime_evidence() {
+    let mut child = super::super::tests::FixtureChild(
+        std::process::Command::new("/bin/sleep")
+            .arg("30")
+            .spawn()
+            .unwrap(),
+    );
+    let pid = child.0.id() as i32;
+    let state = info(pid).unwrap().unwrap();
+    let identity = Identity {
+        pid,
+        started: (state.pbi_start_tvsec, state.pbi_start_tvusec),
+    };
+    assert!(!has_exited(&identity).unwrap());
+    let previous = Identity {
+        pid,
+        started: (identity.started.0 - 1, identity.started.1),
+    };
+    assert!(has_exited(&previous).unwrap());
+    child.0.kill().unwrap();
+    child.0.wait().unwrap();
+    assert!(has_exited(&identity).unwrap());
 }

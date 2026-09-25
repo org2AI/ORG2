@@ -113,6 +113,7 @@ export function createCliEventHandler(
     clearToolCallDeltaBuffers,
   } = createCliActivityHandlers({
     sessionId,
+    onStreamingDelta: callbacks.onStreamingDelta,
     setStreamingMode,
     persistObservedEvent,
     onActivityObserved: () => {

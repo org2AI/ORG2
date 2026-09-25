@@ -39,6 +39,9 @@ pub(crate) fn native_history_path(
         match native_materializer::materialized_cli_transcript_path(&session, &native_id)? {
             Some(candidate) => candidate,
             None => {
+                if native_materializer::has_indexed_codex_transcript(&session)? {
+                    return Err("Indexed Codex transcript is unavailable".into());
+                }
                 // Legacy/moved provider files are still native history. Resolve
                 // their discovered path without first loading the complete body.
                 let conn = database::db::get_connection().map_err(|error| error.to_string())?;

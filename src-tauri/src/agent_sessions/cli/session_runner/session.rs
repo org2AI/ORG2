@@ -8,7 +8,6 @@
 //! - `spawn_retry`          — transient subprocess-spawn retry helpers
 //! - `skills_resolve`       — built-in SDE agent skills-config resolution
 
-use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::process::Stdio;
 use std::sync::Arc;
@@ -416,21 +415,6 @@ fn scope_codex_transport_to_turn(
     }
 }
 
-fn native_correlated_user_input<'a>(
-    agent: &ModelType,
-    user_input: &'a str,
-    turn_intent_id: Option<&str>,
-) -> Cow<'a, str> {
-    match (agent, turn_intent_id) {
-        (ModelType::Codex, Some(intent)) => Cow::Owned(
-            orgtrack_core::sources::imported_history::turn_correlation::with_turn_intent(
-                user_input, intent,
-            ),
-        ),
-        _ => Cow::Borrowed(user_input),
-    }
-}
-
 fn scope_native_codex_store(
     command: &mut Vec<String>,
     binary: &std::path::Path,
@@ -442,6 +426,54 @@ fn scope_native_codex_store(
         "sqlite_home={}",
         serde_json::to_string(&native_home.to_string_lossy()).expect("path serializes")
     ));
+}
+
+/// Wait only during a user-requested launch. Native snapshot probes can hold
+/// the exclusive fence briefly; ordinary sends must not fail on that race.
+#[cfg(unix)]
+async fn acquire_codex_store_writer(
+    home: &std::path::Path,
+    timeout: std::time::Duration,
+) -> Result<agent_cli::managed_config::native_app::codex_history::NativeStoreWriter, String> {
+    let deadline = tokio::time::Instant::now() + timeout;
+    loop {
+        match agent_cli::managed_config::native_app::codex_history::NativeStoreWriter::acquire(home)
+        {
+            Ok(writer) => return Ok(writer),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                if tokio::time::Instant::now() >= deadline {
+                    return Err("Codex history is still publishing; retry the turn shortly".into());
+                }
+                tokio::time::sleep_until(std::cmp::min(
+                    deadline,
+                    tokio::time::Instant::now() + std::time::Duration::from_millis(50),
+                ))
+                .await;
+            }
+            Err(error) => return Err(format!("Cannot fence Codex native history: {error}")),
+        }
+    }
+}
+
+/// The child owns a duplicate of the same locked open-file description. Only
+/// closing the final descriptor releases it, including after a parent crash.
+#[cfg(unix)]
+fn inherit_codex_store_writer(
+    command: &mut Command,
+    writer: &agent_cli::managed_config::native_app::codex_history::NativeStoreWriter,
+) {
+    let fd = writer.raw_fd();
+    // SAFETY: the guard outlives spawn; the callback invokes async-signal-safe
+    // fcntl only. The parent descriptor retains FD_CLOEXEC for other spawns.
+    unsafe {
+        command.pre_exec(move || {
+            let flags = libc::fcntl(fd, libc::F_GETFD);
+            if flags == -1 || libc::fcntl(fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC) == -1 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
 }
 
 /// Run a code session: spawn CLI, parse stdout, broadcast events.
@@ -696,9 +728,8 @@ pub(crate) async fn run_session_with_ide_context(
     } else {
         None
     };
-    let transport_user_input = native_correlated_user_input(&agent, &user_input, turn_intent_id);
     let mut turn = super::input_assembly::build_turn_envelope(
-        transport_user_input.as_ref(),
+        &user_input,
         ide_context.as_ref(),
         Some(effective_mode_str),
         session.product_mode.as_deref(),
@@ -1074,6 +1105,18 @@ pub(crate) async fn run_session_with_ide_context(
 
     let mut cli_session_id_out: Option<String> = None;
     let mut cli_plan_approval_gate_reached = false;
+    // All Codex turns use app-server. Fence its actual SQLite/rollout store,
+    // independently of account auth homes (including credential generations).
+    #[cfg(unix)]
+    let codex_store_writer = if use_codex_app_server {
+        Some(
+            acquire_codex_store_writer(&codex_native_store, std::time::Duration::from_secs(10))
+                .await?,
+        )
+    } else {
+        None
+    };
+
     // Project registration belongs to the native Desktop catalog. Resolve only
     // for fresh threads; resumes retain their existing project assignment.
     let codex_project_id = if use_codex_app_server && cli_resume_id.is_none() {
@@ -1142,6 +1185,9 @@ pub(crate) async fn run_session_with_ide_context(
         #[cfg(unix)]
         {
             spawn_cmd.process_group(0);
+            if let Some(writer) = &codex_store_writer {
+                inherit_codex_store_writer(&mut spawn_cmd, writer);
+            }
         }
         // Windows: launch the agent CLI without flashing a console window.
         #[cfg(windows)]

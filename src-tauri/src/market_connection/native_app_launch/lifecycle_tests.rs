@@ -14,14 +14,27 @@ struct Fake {
     activated: Vec<Identity>,
     dispatch_error: bool,
     spawn_error: bool,
+    runtime_ready: VecDeque<Result<bool, String>>,
+    activation_error: bool,
+    exited: VecDeque<Result<bool, String>>,
 }
 impl Runtime for Fake {
     fn find(&mut self) -> Result<Option<Identity>, String> {
         self.results.pop_front().unwrap_or(Ok(None))
     }
+    fn exited(&mut self, _identity: &Identity) -> Result<bool, String> {
+        self.exited.pop_front().unwrap_or(Ok(false))
+    }
+    fn ready(&mut self, _identity: &Identity) -> Result<bool, String> {
+        self.runtime_ready.pop_front().unwrap_or(Ok(true))
+    }
     fn activate(&mut self, identity: &Identity) -> Result<(), String> {
         self.activated.push(identity.clone());
-        Ok(())
+        if self.activation_error {
+            Err("native_runtime_unverified".into())
+        } else {
+            Ok(())
+        }
     }
     fn dispatch(&mut self) -> Result<(), super::super::DispatchFailure> {
         self.dispatches += 1;
@@ -58,6 +71,28 @@ fn repeated_open_reuses_exact_identity_without_spawning() {
     }
     assert_eq!(runtime.dispatches, 0);
     assert_eq!(runtime.activated, vec![identity(7), identity(7)]);
+}
+
+#[test]
+fn profile_runtime_failure_is_precise_and_cannot_clear_launch_reservation() {
+    for reason in [
+        "native_profile_runtime_unverified",
+        "native_profile_runtime_mismatch",
+    ] {
+        let (_dir, mut file) = reservation();
+        let mut runtime = Fake {
+            results: vec![Ok(Some(identity(7)))].into(),
+            runtime_ready: vec![Err(reason.into())].into(),
+            ..Fake::default()
+        };
+        assert_eq!(
+            run(&mut file, BOOT, || Ok(()), &mut runtime, Duration::ZERO).unwrap_err(),
+            reason
+        );
+        assert!(pending(&mut file, BOOT).unwrap());
+        assert!(runtime.activated.is_empty());
+        assert_eq!(runtime.dispatches, 0);
+    }
 }
 #[test]
 fn fresh_launch_holds_reservation_until_verified_process_and_allows_exit_relaunch() {
@@ -242,4 +277,130 @@ fn known_spawn_failure_and_pre_dispatch_owner_change_release_reservation() {
     );
     assert_eq!(runtime.dispatches, 0);
     assert!(!pending(&mut file, BOOT).unwrap());
+}
+
+#[test]
+fn gui_without_verified_runtime_preserves_reservation_for_existing_and_new_launch() {
+    for existing in [true, false] {
+        for ready in [Ok(false), Err("native_runtime_mismatch".into())] {
+            let (_dir, mut file) = reservation();
+            let mut runtime = Fake {
+                results: if existing {
+                    vec![Ok(Some(identity(7)))]
+                } else {
+                    vec![Ok(None), Ok(Some(identity(7)))]
+                }
+                .into(),
+                runtime_ready: vec![ready].into(),
+                ..Fake::default()
+            };
+            assert!(run(&mut file, BOOT, || Ok(()), &mut runtime, Duration::ZERO).is_err());
+            assert!(pending(&mut file, BOOT).unwrap());
+            assert!(runtime.activated.is_empty());
+            assert_eq!(runtime.dispatches, usize::from(!existing));
+            runtime.results.push_back(Ok(Some(identity(7))));
+            run(&mut file, BOOT, || Ok(()), &mut runtime, Duration::ZERO).unwrap();
+            assert_eq!(runtime.dispatches, usize::from(!existing));
+            assert_eq!(runtime.activated, vec![identity(7)]);
+            assert!(!pending(&mut file, BOOT).unwrap());
+        }
+    }
+}
+
+#[test]
+fn queued_activation_losing_runtime_binding_keeps_its_reservation() {
+    let (_dir, mut file) = reservation();
+    let mut runtime = Fake {
+        results: vec![Ok(Some(identity(7)))].into(),
+        runtime_ready: vec![Ok(true), Ok(false)].into(),
+        activation_error: true,
+        ..Fake::default()
+    };
+    assert!(run(&mut file, BOOT, || Ok(()), &mut runtime, Duration::ZERO).is_err());
+    assert_eq!(runtime.dispatches, 0);
+    assert!(pending(&mut file, BOOT).unwrap());
+}
+
+#[test]
+fn observed_failed_launch_recovers_after_exit_even_after_org2_restart() {
+    let (dir, mut file) = reservation();
+    let mut failed = Fake {
+        results: vec![Ok(None), Ok(Some(identity(7)))].into(),
+        runtime_ready: vec![Err("native_runtime_invocation_unverified".into())].into(),
+        ..Fake::default()
+    };
+    assert!(run(&mut file, BOOT, || Ok(()), &mut failed, Duration::ZERO).is_err());
+    assert_eq!(
+        pending_state(&mut file, BOOT).unwrap(),
+        (true, Some(identity(7)))
+    );
+    drop(file);
+    let mut file = lock(&dir.path().join("launch.lock")).unwrap();
+    let mut retry = Fake {
+        results: vec![Ok(None), Ok(None), Ok(Some(identity(8)))].into(),
+        exited: vec![Ok(true)].into(),
+        ..Fake::default()
+    };
+    run(&mut file, BOOT, || Ok(()), &mut retry, Duration::ZERO).unwrap();
+    assert_eq!(retry.dispatches, 1);
+    assert_eq!(retry.activated, vec![identity(8)]);
+    assert!(!pending(&mut file, BOOT).unwrap());
+}
+
+#[test]
+fn observed_launch_never_recovers_from_live_or_unreadable_identity() {
+    for exited in [Ok(false), Err("kernel unavailable".into())] {
+        let (_dir, mut file) = reservation();
+        record_observed(&mut file, BOOT, &identity(7)).unwrap();
+        let mut retry = Fake {
+            exited: vec![exited].into(),
+            ..Fake::default()
+        };
+        assert!(run(&mut file, BOOT, || Ok(()), &mut retry, Duration::ZERO).is_err());
+        assert_eq!(retry.dispatches, 0);
+        assert_eq!(
+            pending_state(&mut file, BOOT).unwrap(),
+            (true, Some(identity(7)))
+        );
+    }
+}
+
+#[test]
+fn recovery_rechecks_profile_and_reuses_a_replacement_without_dispatch() {
+    let (_dir, mut file) = reservation();
+    record_observed(&mut file, BOOT, &identity(7)).unwrap();
+    let mut retry = Fake {
+        results: vec![Ok(None), Ok(Some(identity(8)))].into(),
+        exited: vec![Ok(true)].into(),
+        ..Fake::default()
+    };
+    run(&mut file, BOOT, || Ok(()), &mut retry, Duration::ZERO).unwrap();
+    assert_eq!(retry.dispatches, 0);
+    assert_eq!(retry.activated, vec![identity(8)]);
+}
+
+#[test]
+fn reservation_rejects_partial_or_invalid_observation() {
+    for suffix in [
+        "observed-v1:",
+        "observed-v1:[0,123,456]",
+        "observed-v1:[7,123,1000000]",
+        "observed-v2:[7,123,456]",
+        "observed-v1:[7,123,456]garbage",
+    ] {
+        let (_dir, mut file) = reservation();
+        record(&mut file, &[BOOT, suffix.as_bytes()].concat()).unwrap();
+        assert!(pending_state(&mut file, BOOT).is_err());
+    }
+}
+
+#[test]
+fn oversized_reservation_never_permits_launch() {
+    let (_dir, mut file) = reservation();
+    let mut bytes = BOOT.to_vec();
+    bytes.extend_from_slice(&[b'x'; 300]);
+    record(&mut file, &bytes).unwrap();
+    let mut runtime = Fake::default();
+    assert!(run(&mut file, BOOT, || Ok(()), &mut runtime, Duration::ZERO).is_err());
+    assert_eq!(runtime.dispatches, 0);
 }

@@ -15,7 +15,27 @@ A failed gate pauses the handoff and is shown in Settings with its reason and th
 
 Native JSONL bytes, immutable rollout IDs, fork byte cutoffs, and all four history projection tables are retained. Continuation gets an appended native settings event for the destination's own provider/model. Existing destination permissions and grouping stay local; newly imported conversations get read-only, on-request permissions. Neither credentials, account settings, plugins, nor native control-plane tables are copied.
 
-The destination writer locks must be available. A loaded source may be read only when all selected turns are completed, the projection frontier exactly matches the raw file, and fresh metadata/checkpoints/file stamps still agree after staging. Otherwise it is deferred. A loaded native conversation can retain its writer lock after its turn ends. The audited GUI normally unloads inactive owners only after its own inactivity policy (up to three hours, with earlier eviction above ten inactive owners), not immediately when selecting another conversation. The handoff therefore does **not** promise live refresh of a conversation still loaded in the destination native process. Never bypass this lock to make a GUI test appear to pass. Actual native unload or process exit releases the boundary.
+The destination writer locks must be available. A loaded source may be read only when all selected turns are terminal (`completed`, `failed` or `interrupted`), the projection frontier exactly matches the raw file, and fresh metadata/checkpoints/file stamps still agree after staging. Otherwise it is deferred. A loaded native conversation can retain its writer lock after its turn ends. The audited GUI normally unloads inactive owners only after its own inactivity policy (up to three hours, with earlier eviction above ten inactive owners), not immediately when selecting another conversation. The handoff therefore does **not** promise live refresh of a conversation still loaded in the destination native process. Never bypass this lock to make a GUI test appear to pass. Actual native unload or process exit releases the boundary.
+
+ORG2 app-server producers may keep authentication in an account-scoped `CODEX_HOME` while writing a different `sqlite_home`. Native thread locks follow the former, so those producers additionally hold a shared `.org2-native-writer.lock` in the actual store before spawning. The child inherits the locked descriptor; the engine holds that store fence exclusively for target publication and pending recovery, alongside the native thread locks. Existing account lock directories are neither moved nor linked. Multiple producers can share a store, but writeback into any thread in that store waits until its producers finish. Terminal source snapshots still flow outward; an older failed or interrupted turn does not make a fully projected history incomplete. Unknown statuses and active turns remain fenced.
+
+Producer teardown closes the parent's descriptor and uses a distinct descriptor for the same inode to confirm exclusive availability before changing the fence timestamp. Cancellation can drop the parent before its child closes; only that release event starts bounded asynchronous checks (100 ms, at most ten seconds) on the existing Tokio runtime. The existing observer then reselects the latest revisions. If the parent crashes while its child remains alive, the inherited descriptor preserves data safety; after an orphan's exit outside the cleanup bound, without an available runtime, or after runtime shutdown, reconciliation may wait for the next native event or explicit invalidation. This does not add an idle polling timer. Processes started by an older build need to finish before the new producer fence can protect their stores.
+
+## Reading the current generation
+
+The native SQLite `threads.rollout_path` is authoritative for an indexed Codex
+store. Managed transcript reads, revision checks and follow-up turns resolve that
+row again instead of retaining a path merely because its old file still exists.
+A retained rollout generation may carry the same canonical thread ID while no
+longer being the current conversation. An invalid or unreadable indexed binding
+is reported as an error; it must not silently select a stale imported cache or
+an account-profile copy. Stores without an index retain bounded legacy discovery,
+which rejects ambiguous matching files.
+
+No native schema or history migration is required. Old retained generations and
+backups remain intact; deleting them is unnecessary and would discard recovery
+material. This correction addresses a real C7 finding where a successful reply
+reached both current stores but ORG2 reread the previous physical generation.
 
 ## Status
 
@@ -35,11 +55,28 @@ Settings → App connections → Codex shows the observer state under the connec
 
 ## Recovery and conflicts
 
-Each thread has an independent pending journal. A private, immutable SQLite snapshot contains only that thread's metadata and selected lineage projections. Destination writer locks remain held from prepare through publication. Available source locks are held too; a loaded source instead requires the strict completed-snapshot checks described above. Files are staged privately, fsynced, journaled, then published; replaced target rollouts are backed up outside native discovery. Directory entries are flushed before the journal can depend on them.
+Each thread has an independent pending journal. A private, immutable SQLite snapshot contains only that thread's metadata and selected lineage projections. Destination writer locks remain held from prepare through publication. Available source locks are held too; a loaded source instead requires the strict terminal-snapshot checks described above. Files are staged privately, fsynced, journaled, then published; replaced target rollouts are backed up outside native discovery. Directory entries are flushed before the journal can depend on them.
 
-Recovery uses the saved snapshot rather than rereading a source that may have continued, moved or disappeared. It recognizes its own already-published inode after rename, revalidates skipped ancestors and destination configuration, and can replay SQL publication before committing the new baseline. When the native app opened the conversation between the rename and the SQL step, it projected exactly the file we placed and rewrote the row's own metadata; recovery accepts that (every placed file is still our published copy and the native projection frontier sits at its end), keeps the native projection and only binds the route. Anything the native app appended since is real divergence and stays a per-thread conflict. Snapshot cleanup follows the committed journal; other threads continue.
+Recovery uses the saved snapshot rather than rereading a source that may have continued, moved or disappeared. It recognizes its own already-published inode after rename, revalidates skipped ancestors and destination configuration, and can replay SQL publication before committing the new baseline. When the native app opened the conversation between the rename and the SQL step, it projected exactly the file we placed and rewrote the row's own metadata; recovery accepts that (every placed file is still our published copy and the native projection frontier sits at its end), keeps the native projection and only binds the route. A newer native append is preserved; an obsolete unpublished selection is cancelled and the latest revisions are reselected instead of overwriting newer target data. Snapshot cleanup follows the committed journal; other threads continue.
 
-There is no last-writer-wins merge and no resurrection of previously shared deleted data. Simultaneous edits, changed destination configuration, or changed frozen dependencies preserve the originals and pending recovery material. Operator recovery must inspect the specific journal and backup; do not delete a pending journal or restore a whole profile over newer native work.
+The adapter selects complete native revisions by last-write order; it does not merge individual messages or fields. Equal clocks with different data select the primary deterministically, and mtime changes without data changes do not create new revisions. Previously shared deleted data is not resurrected. Changed destination configuration or frozen dependencies preserve the originals and pending recovery material. Operator recovery must inspect the specific journal and backup; do not delete a pending journal or restore a whole profile over newer native work.
+
+## User-message correlation
+
+New ORG2 Codex turns carry their durable intent in the native app-server
+`turn/start.clientUserMessageId` field, namespaced as `orgii-turn-intent:<id>`.
+The user input stays literal. Native history persists this as `client_id` and
+returns it as `userMessage.clientId` after reopening; ORG2 consumes it at both
+current `item_completed/UserMessage` and legacy `user_message` ingestion
+boundaries. Fresh, resumed and context-recovery turn starts share this writer.
+
+Historical leading `<ide_context>` correlation envelopes remain readable, but
+are no longer produced. Native metadata takes precedence; malformed IDs in our
+namespace are rejected rather than silently borrowing an old body identity.
+Unrelated native client IDs are not interpreted as ORG2 intent IDs. Existing
+raw histories are not rewritten: old envelopes can still be visible in native
+Codex until separately authorized historical remediation. No database migration,
+sidecar, timer or additional history scan is introduced.
 
 ## Architecture audit
 

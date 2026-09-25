@@ -233,13 +233,14 @@ describe("useWorkstationTrailingSlot pane controls", () => {
     }
   });
 
-  it("keeps the same four station controls together at the trailing edge across tab switches", () => {
+  it("keeps the same five station controls together at the trailing edge across tab switches", () => {
     store.set(workstationProjectTabBarAtom, { onAddProject: vi.fn() });
     renderHost("code");
 
     const stationControls = Array.from(container.querySelectorAll("button"));
     expect(stationControls.map((control) => control.title)).toEqual([
       "new-tab",
+      "chat.floatWorkstation",
       "common:actions.openInNewWindow",
       "chat.maximizeWorkStation",
       "chat.hideWorkstation",
@@ -249,8 +250,8 @@ describe("useWorkstationTrailingSlot pane controls", () => {
       renderHost(host);
 
       const controls = Array.from(container.firstElementChild!.children);
-      expect(controls.slice(-4)).toEqual(stationControls);
-      controls.slice(-4).forEach((control, index) => {
+      expect(controls.slice(-stationControls.length)).toEqual(stationControls);
+      controls.slice(-stationControls.length).forEach((control, index) => {
         expect(control).toBe(stationControls[index]);
       });
       if (host === "project") {

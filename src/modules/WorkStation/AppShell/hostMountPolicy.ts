@@ -79,16 +79,14 @@ export function shouldMountBrowserHost(options: {
  * keep-alive was buying back a React tree rebuild from already-warm data, not
  * avoiding a refetch.
  *
- * `isChatPanelMaximized` is part of the condition rather than only
- * `isAgentStation` so that "mounted" and "displayed" cannot drift apart: a
- * maximized chat panel hides the simulator just as completely as leaving the
- * surface does. It is a deliberate layout mode, not focus/blur, so this does
- * not thrash.
+ * Actual Workstation visibility is independent of chat layout: a floating
+ * workstation remains displayed while the chat fills the primary region.
+ * Collapsing it or opening Settings releases this stateless view.
  */
 export function shouldMountAgentStationHost(options: {
   isAgentStation: boolean;
-  isChatPanelMaximized: boolean;
+  workstationVisible: boolean;
 }): boolean {
-  const { isAgentStation, isChatPanelMaximized } = options;
-  return isAgentStation && !isChatPanelMaximized;
+  const { isAgentStation, workstationVisible } = options;
+  return isAgentStation && workstationVisible;
 }

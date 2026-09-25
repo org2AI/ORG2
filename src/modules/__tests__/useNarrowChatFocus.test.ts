@@ -14,7 +14,16 @@ import {
   vi,
 } from "vitest";
 
-import { chatPanelDraggingAtom } from "@src/store/ui/chatPanel/widthAtoms";
+import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import {
+  chatPanelDraggingAtom,
+  chatWidthAtom,
+} from "@src/store/ui/chatPanel/widthAtoms";
+import {
+  collapseWorkstationAtom,
+  dockWorkstationAtom,
+  floatWorkstationAtom,
+} from "@src/store/workstation/presentationAtoms";
 
 import {
   resolveWorkbenchEvaluationWidth,
@@ -109,6 +118,67 @@ describe("useNarrowChatFocus observer lifecycle", () => {
   afterAll(() => {
     Reflect.deleteProperty(actEnvironment, "IS_REACT_ACT_ENVIRONMENT");
   });
+
+  it.each([800, 1400])(
+    "pauses while undocked and evaluates current %dpx bounds on docking",
+    (returnWidth) => {
+      const observers: ResizeObserverMock[] = [];
+      class ResizeObserverMock {
+        readonly observe = vi.fn();
+        readonly unobserve = vi.fn();
+        readonly disconnect = vi.fn();
+        constructor(readonly callback: ResizeObserverCallback) {
+          observers.push(this);
+        }
+        notify(width: number) {
+          this.callback(
+            [
+              {
+                target: mainContent,
+                contentRect: new DOMRectReadOnly(0, 0, width, 800),
+                borderBoxSize: [{ inlineSize: width, blockSize: 800 }],
+                contentBoxSize: [{ inlineSize: width, blockSize: 800 }],
+                devicePixelContentBoxSize: [
+                  { inlineSize: width, blockSize: 800 },
+                ],
+              },
+            ],
+            this as unknown as ResizeObserver
+          );
+        }
+      }
+      vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+      const store = createStore();
+      store.set(chatPanelMaximizedAtom, false);
+      store.set(chatWidthAtom, 520);
+      act(() =>
+        root.render(
+          React.createElement(
+            Provider,
+            { store },
+            React.createElement(NarrowChatFocusProbe)
+          )
+        )
+      );
+      expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+      act(() => store.set(floatWorkstationAtom));
+      expect(observers[0].disconnect).toHaveBeenCalledOnce();
+      act(() => {
+        observers[0].notify(400);
+        store.set(chatWidthAtom, 600);
+      });
+      expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+      act(() => store.set(collapseWorkstationAtom));
+      expect(observers).toHaveLength(1);
+      expect(store.get(chatPanelMaximizedAtom)).toBe(false);
+      vi.mocked(mainContent.getBoundingClientRect).mockReturnValue({
+        width: returnWidth,
+      } as DOMRect);
+      act(() => store.set(dockWorkstationAtom));
+      expect(observers).toHaveLength(2);
+      expect(store.get(chatPanelMaximizedAtom)).toBe(returnWidth === 800);
+    }
+  );
 
   it("observes the workbench only during a direct divider drag", () => {
     const observers: ResizeObserverMock[] = [];

@@ -30,6 +30,7 @@ import {
 import { WorkStationSidebarToggleButton } from "@src/modules/WorkStation/shared";
 import { activeStatusBarAppAtom } from "@src/store/ui/workStationLayout/statusBarAtoms";
 import { activeWorkstationTabHeaderAtom } from "@src/store/workstation";
+import { workstationPresentationAtom } from "@src/store/workstation/presentationAtoms";
 import { activeWorkStationTabAtom } from "@src/store/workstation/tabs";
 import { isWindows } from "@src/util/platform/tauri";
 
@@ -41,6 +42,7 @@ const WorkstationTabHeader: React.FC = memo(() => {
   const activeApp = useAtomValue(activeStatusBarAppAtom);
   const activeTab = useAtomValue(activeWorkStationTabAtom);
   const windowsHost = isWindows();
+  const presentation = useAtomValue(workstationPresentationAtom);
   const shellLeadingChromeHidden =
     headerSlots?.shellLeadingChromeHidden ?? false;
   const isSourceControlTab =
@@ -65,7 +67,9 @@ const WorkstationTabHeader: React.FC = memo(() => {
         isBrowserTab ? "gap-px" : "gap-2"
       } pr-2 ${shellLeadingChromeHidden ? "" : "pl-1.5"}`}
       data-workstation-tab-header
-      data-tauri-drag-region={windowsHost ? undefined : true}
+      data-tauri-drag-region={
+        windowsHost || presentation !== "docked" ? undefined : true
+      }
     >
       {!shellLeadingChromeHidden && (
         <>

@@ -6,7 +6,9 @@
  * session. If the main window was showing that very station, the chat panel
  * takes the whole main window over (`chatPanelMaximizedAtom`) so the
  * station has one visible owner — the same invariant detached session
- * windows keep between the two in-window tab hosts. The takeover is remembered
+ * windows keep between the two in-window tab hosts. A floating Workstation
+ * instead collapses locally and returns to floating when its window closes.
+ * The docked-layout takeover is remembered
  * in `stationWindowChatTakeoverAtom` and undone by
  * `restoreStationAfterWindowClosedAtom` when Rust reports the window gone.
  *
@@ -26,6 +28,13 @@ import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import type { StationMode } from "@src/types/ui/workstation";
 import { isMainAppWindow } from "@src/util/platform/tauri/windowIdentity";
 
+import {
+  restoreWorkstationFromStationWindowAtom,
+  suspendWorkstationForStationWindowAtom,
+  workstationPresentationAtom,
+  workstationPresentationGenerationAtom,
+} from "./presentationAtoms";
+
 export interface OpenStationInNewWindowOptions {
   stationMode: StationMode;
   /** Native window title (the station's display name). */
@@ -39,14 +48,36 @@ export interface OpenStationInNewWindowOptions {
  */
 export const stationWindowChatTakeoverAtom = atom<StationMode | null>(null);
 stationWindowChatTakeoverAtom.debugLabel = "stationWindowChatTakeover";
+const stationWindowChatTakeoverGenerationAtom = atom<number | null>(null);
 
 export const openStationInNewWindowAtom = atom(
   null,
   async (get, set, options: OpenStationInNewWindowOptions): Promise<void> => {
     const { stationMode, title } = options;
     const sessionId = get(workstationActiveSessionIdAtom);
+    const presentationGeneration = get(workstationPresentationGenerationAtom);
 
     await openStationWindow(stationMode, { sessionId, title });
+    // Claim local ownership immediately after successful creation. Do not
+    // wait for the best-effort retarget event: a close during that await
+    // must be able to restore the presentation instead of leaving it hidden.
+    if (
+      isMainAppWindow() &&
+      get(stationModeAtom) === stationMode &&
+      get(workstationPresentationGenerationAtom) === presentationGeneration
+    ) {
+      if (get(workstationPresentationAtom) !== "docked") {
+        set(suspendWorkstationForStationWindowAtom, {
+          stationMode,
+          generation: presentationGeneration,
+        });
+      } else if (!get(chatPanelMaximizedAtom)) {
+        set(chatPanelMaximizedAtom, true);
+        set(stationWindowChatTakeoverAtom, stationMode);
+        set(stationWindowChatTakeoverGenerationAtom, presentationGeneration);
+      }
+    }
+
     // A window that already existed keeps its old session until told
     // otherwise; a fresh one was seeded through its route and ignores the
     // duplicate. Best effort — the window itself is already up.
@@ -55,12 +86,6 @@ export const openStationInNewWindowAtom = atom(
       get(workstationActiveSessionIdAtom),
       { selectStation: true }
     ).catch(() => undefined);
-
-    if (!isMainAppWindow()) return;
-    if (get(stationModeAtom) !== stationMode) return;
-    if (get(chatPanelMaximizedAtom)) return;
-    set(chatPanelMaximizedAtom, true);
-    set(stationWindowChatTakeoverAtom, stationMode);
   }
 );
 openStationInNewWindowAtom.debugLabel = "openStationInNewWindow";
@@ -73,9 +98,21 @@ openStationInNewWindowAtom.debugLabel = "openStationInNewWindow";
 export const restoreStationAfterWindowClosedAtom = atom(
   null,
   (get, set, closedStationMode: StationMode): void => {
+    const restoreCurrentStation = get(stationModeAtom) === closedStationMode;
+    set(restoreWorkstationFromStationWindowAtom, {
+      stationMode: closedStationMode,
+      restore: restoreCurrentStation,
+    });
     if (get(stationWindowChatTakeoverAtom) !== closedStationMode) return;
+    const generation = get(stationWindowChatTakeoverGenerationAtom);
     set(stationWindowChatTakeoverAtom, null);
-    if (get(chatPanelMaximizedAtom)) set(chatPanelMaximizedAtom, false);
+    set(stationWindowChatTakeoverGenerationAtom, null);
+    if (
+      restoreCurrentStation &&
+      generation === get(workstationPresentationGenerationAtom) &&
+      get(chatPanelMaximizedAtom)
+    )
+      set(chatPanelMaximizedAtom, false);
   }
 );
 restoreStationAfterWindowClosedAtom.debugLabel =

@@ -21,6 +21,7 @@ import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { chatWidthAtom } from "@src/store/ui/chatPanel/widthAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
+import { workstationPresentationAtom } from "@src/store/workstation/presentationAtoms";
 import {
   createInstrumentedStore,
   resetInstrumentedStore,
@@ -150,6 +151,26 @@ describe("AgentStationTopHeader", () => {
     expect(
       container.querySelector('button[title="chat.hideWorkstation"]')
     ).not.toBeNull();
+  });
+
+  it("floats from the shared entry and removes OS drag and docked pane actions", () => {
+    renderHeader();
+    const button = container.querySelector<HTMLButtonElement>(
+      'button[title="chat.floatWorkstation"]'
+    );
+    expect(button).not.toBeNull();
+    act(() => button!.click());
+    expect(store.get(workstationPresentationAtom)).toBe("floating");
+    expect(container.querySelector("[data-tauri-drag-region]")).toBeNull();
+    expect(
+      container.querySelector('button[title="chat.hideWorkstation"]')
+    ).toBeNull();
+    expect(
+      container.querySelector('button[title="chat.maximizeWorkStation"]')
+    ).toBeNull();
+    expect(
+      container.querySelector('button[title="chat.floatWorkstation"]')
+    ).toBeNull();
   });
 
   it("renders one shrink control to restore chat and dispatches once", () => {

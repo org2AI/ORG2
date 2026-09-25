@@ -17,9 +17,11 @@ import { PinnedSidebarChrome } from "@/src/scaffold/NavigationSidebar/PinnedSide
 import { PinnedWorkbenchChrome } from "@/src/scaffold/WorkbenchChrome/PinnedWorkbenchChrome";
 import { useAtomValue } from "jotai";
 import React, { memo, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import { sendAdeActionResult } from "@src/api/tauri/agent";
 import GlobalSessionSync from "@src/app/root/services/GlobalSessionSync";
+import { FloatingLauncherStack } from "@src/components/FloatingWindow/FloatingLauncher";
 import { WindowsTopBar } from "@src/components/WindowChrome";
 import {
   PANE_WIDTH_TRANSITION_CLASSES,
@@ -55,6 +57,10 @@ import {
 import { ActionSystemProvider } from "@src/scaffold/ActionSystem";
 import { GlobalSpotlightPortal } from "@src/scaffold/GlobalSpotlight/GlobalSpotlightPortal";
 import { GENERAL_LAYOUT_TOUR_TARGETS } from "@src/scaffold/Tutorials/generalLayoutTourConfig";
+import {
+  WorkstationFloatingControls,
+  WorkstationFloatingLauncher,
+} from "@src/scaffold/WorkbenchChrome/WorkstationFloatingControls";
 import { resolvedBackgroundConfigAtom } from "@src/store/ui/backgroundConfigAtom";
 import { type ChatPanelMode } from "@src/store/ui/chatPanel/selectionAtoms";
 import {
@@ -62,10 +68,16 @@ import {
   chatPanelDraggingAtom,
   chatWidthAtom,
 } from "@src/store/ui/chatPanel/widthAtoms";
+import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import type { ChatPanelPosition } from "@src/store/ui/workStationLayout/chatPositionAtoms";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
+import {
+  resolveWorkstationPresentation,
+  workstationPresentationAtom,
+} from "@src/store/workstation/presentationAtoms";
 
 import { GlobalModals } from "./GlobalModals";
+import { WorkstationSurface } from "./WorkstationSurface";
 import { useChatSplitAreaWidth } from "./useChatSplitAreaWidth";
 
 const SettingsSlot = React.lazy(
@@ -181,6 +193,15 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
   chatPanelMode = "session",
   children,
 }) => {
+  const { t } = useTranslation("common");
+  const stationMode = useAtomValue(stationModeAtom);
+  const presentation = useAtomValue(workstationPresentationAtom);
+  const layout = resolveWorkstationPresentation({
+    presentation,
+    chatMaximized: chatPanelMaximized,
+    settingsVisible: chatPanelMode === "settings",
+  });
+  const chatExpanded = layout.chatExpanded;
   const rawChatWidth = useAtomValue(chatWidthAtom);
   const isChatPanelDragging = useAtomValue(chatPanelDraggingAtom);
   const backgroundConfig = useAtomValue(resolvedBackgroundConfigAtom);
@@ -197,14 +218,14 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
   const chatWidth = clampChatWidth(effectiveRawWidth, viewportWidth);
   const chatWidthStyleValue = chatWidth > 0 ? CHAT_WIDTH_STYLE_VALUE : 0;
   const isChatOnLeft = chatPosition === "left";
-  const isChatVisible = chatPanelMaximized || chatWidth > 0;
+  const isChatVisible = chatExpanded || chatWidth > 0;
   // Settings doesn't have a "session" to render — when the slot is in
   // settings mode it must always be visible regardless of `chatWidth`
   // (otherwise an existing zero-width chat would hide the settings panel
   // too).
   const isSlotVisible = chatPanelMode === "settings" ? true : isChatVisible;
   const workbenchTouchesLeadingEdge = resolveWorkbenchTouchesLeadingEdge({
-    chatSlotMaximized: chatPanelMaximized,
+    chatSlotMaximized: chatExpanded,
     chatSlotVisible: isSlotVisible,
     chatSlotOnLeft: isChatOnLeft,
   });
@@ -220,11 +241,11 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
     ? ""
     : PANE_WIDTH_TRANSITION_CLASSES;
   const chatSlotStyle = getChatSlotLayoutStyle({
-    maximized: chatPanelMaximized,
+    maximized: chatExpanded,
     visible: isSlotVisible,
     visibleWidth: chatWidthStyleValue,
   });
-  const workbenchStyle = getWorkbenchLayoutStyle(chatPanelMaximized);
+  const workbenchStyle = getWorkbenchLayoutStyle(chatExpanded);
   const handlePaneTransitionEnd = useCallback(
     (event: React.TransitionEvent<HTMLDivElement>) => {
       if (event.currentTarget !== event.target) return;
@@ -235,7 +256,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
 
   useEffect(() => {
     dispatchWebviewLayoutChanged();
-  }, [chatPosition, chatPanelMaximized, chatWidth, isSlotVisible]);
+  }, [chatPosition, chatExpanded, chatWidth, isSlotVisible]);
 
   useEffect(() => {
     if (isSlotVisible) return;
@@ -263,7 +284,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
         }
       >
         <SettingsSlot
-          maximized={chatPanelMaximized}
+          maximized={chatExpanded}
           position={chatPosition}
           resizeIndicatorHost={resizeIndicatorHostElement}
         />
@@ -271,7 +292,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
     ) : (
       <ChatPanel
         viewportWidth={viewportWidth}
-        useExternalWidth={chatPanelMaximized}
+        useExternalWidth={chatExpanded}
         position={chatPosition}
         resizeIndicatorHost={resizeIndicatorHostElement}
         sessionCreatorSlot={AdeAwareSessionCreatorSlot}
@@ -292,7 +313,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
           ? GENERAL_LAYOUT_TOUR_TARGETS.chatPanel
           : undefined
       }
-      data-chat-focus={chatPanelMaximized || undefined}
+      data-chat-focus={chatExpanded || undefined}
       data-chat-slot-mode={chatPanelMode}
       onTransitionEnd={handlePaneTransitionEnd}
     >
@@ -300,7 +321,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
     </div>
   );
 
-  const resizeIndicatorHost = !chatPanelMaximized ? (
+  const resizeIndicatorHost = !chatExpanded ? (
     <div
       key="chat-workstation-resize-indicator-host"
       ref={setResizeIndicatorHostElement}
@@ -330,19 +351,24 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
             >
               {isChatOnLeft && chatSlot}
               {isChatOnLeft && resizeIndicatorHost}
-              <div
+              <WorkstationSurface
                 key="workbench-surface"
-                // Animate the real flex track to zero so inline native
-                // webviews and ResizeObserver consumers see the exact width
-                // throughout focus/unfocus instead of an overlay swap.
-                className={`relative z-0 h-full min-h-0 min-w-0 overflow-hidden ${paneTransitionClassName}`}
-                style={workbenchStyle}
-                aria-hidden={chatPanelMaximized}
-                data-find-scope-switching={
-                  isSlotVisible && isChatOnLeft && !chatPanelMaximized
-                }
-                data-workbench-surface
+                floating={layout.floating}
+                visible={layout.workstationVisible}
+                dockClassName={`relative z-0 h-full min-h-0 min-w-0 overflow-hidden ${paneTransitionClassName}`}
+                dockStyle={workbenchStyle}
+                label={t(
+                  stationMode === "agent-station"
+                    ? "terminology.agentStation"
+                    : "terminology.myStation"
+                )}
+                header={<WorkstationFloatingControls />}
                 onTransitionEnd={handlePaneTransitionEnd}
+                findScopeSwitching={
+                  isSlotVisible &&
+                  layout.workstationVisible &&
+                  (isChatOnLeft || layout.floating)
+                }
               >
                 <WorkbenchLeadingEdgeContext.Provider
                   value={workbenchTouchesLeadingEdge}
@@ -351,7 +377,7 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
                     {children}
                   </WorkbenchActionSystemScope>
                 </WorkbenchLeadingEdgeContext.Provider>
-              </div>
+              </WorkstationSurface>
               {!isChatOnLeft && resizeIndicatorHost}
               {!isChatOnLeft && chatSlot}
               {/* Global floating side chat: hosted over the whole pane
@@ -360,6 +386,14 @@ const AppLayoutComponent: React.FC<AppLayoutProps> = ({
               {!isSettingsSlot && (
                 <ChatPanelSideChat
                   SessionCreatorSlot={AdeAwareSessionCreatorSlot}
+                  renderFloatingLauncher={(launcher) => (
+                    <FloatingLauncherStack>
+                      {launcher}
+                      {presentation === "collapsed" && (
+                        <WorkstationFloatingLauncher />
+                      )}
+                    </FloatingLauncherStack>
+                  )}
                 />
               )}
             </div>

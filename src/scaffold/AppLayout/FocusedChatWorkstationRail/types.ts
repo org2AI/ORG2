@@ -22,6 +22,8 @@ export type FocusedChatRailIcon =
 export type FocusedChatRailItem = {
   key: string;
   label: string;
+  /** Full descriptive tooltip for truncated resource titles. */
+  title?: string;
   icon: FocusedChatRailIcon;
   /** Keyboard hint shown in a tooltip (e.g. "⌘E"). */
   shortcut?: string;
